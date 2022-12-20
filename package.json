@@ -4,10 +4,13 @@
     "author": "alexandrescu.sergiu@gmail.com",
     "main": "index.html",
     "publishConfig": {
-      "access": "public"
+        "access": "public"
     },
     "repository": {
-      "type": "git",
-      "url": "https://github.com/ventura8/bucurestiuldisparut.github.io"
+        "type": "git",
+        "url": "https://github.com/ventura8/bucurestiuldisparut.github.io"
+    },
+    "dependencies": {
+        "firebase": "^9.15.0"
     }
-  }
+}
