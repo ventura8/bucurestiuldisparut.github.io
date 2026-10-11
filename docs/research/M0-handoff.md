@@ -10,10 +10,10 @@ actually built and why.
 | Item | State |
 | --- | --- |
 | `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` | `[SUCCESS] stage 'static' passed` (23 gates) |
-| `PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh` | `[SUCCESS] stage 'tests' passed` (Vitest 6 files / 4 projects, pytest; every file ≥ 90%) |
+| `PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh` | `[SUCCESS] stage 'tests' passed`: Vitest 66 tests in 8 files over 4 projects (shared, ui in Chromium, engine, admin), pytest 101 tests; every measured file at 100% |
 | `PIPELINE_STAGE=build` | passes (`vite build` of engine and admin) |
 | `e2e`, `sonar`, `deps`, `release` | **no gates yet: these stages FAIL on purpose** (so do `quality` and `all`) |
-| Quality image | `docker/Dockerfile.quality` builds as `hcm-quality:local` |
+| Quality image | `docker/Dockerfile.quality` builds as `hcm-quality:local` (5.3 GB unpacked; about 5 min cold, seconds when cached) |
 | Lockfile | `package-lock.json` (lockfileVersion 3), `npm ci` works in the image |
 
 Nothing was committed or pushed (the orchestrator commits).
@@ -86,6 +86,9 @@ What the image contains, and where:
 - `/opt/hcm/firebase-emulators` (`FIREBASE_EMULATORS_PATH`): Firestore, Storage and Pub/Sub
   emulator JARs (`npm run emulators:setup`). World-writable so any uid can use them.
 - `ENV HCM_TEST_IMAGE=1`, `USER 10001:10001`, `git config --system safe.directory '*'`.
+- `ENV LD_PRELOAD=""`: the GDAL base image preloads `libtcmalloc_minimal.so.4` into every
+  process, and Chromium aborts under it (`tcmalloc: Attempt to free invalid pointer`, SIGILL).
+  Keep this in the quality image; the pipeline runtime image (M3) may keep tcmalloc for GDAL.
 - BuildKit cache mounts: `hcm-apt-cache`, `hcm-apt-lists`, `hcm-pip`.
 
 `.dockerignore` is an allowlist (root manifests, `packages/*/package.json`, `vendor/npm/braces`,
@@ -109,7 +112,8 @@ at the same absolute path, and nothing else from the host. `in-container.sh` ref
 
 Before the first gate, `pipeline.py` runs `npm ci --prefer-offline` into the bind-mounted
 `node_modules` whenever `node_modules/.hcm-install-stamp` does not hold the SHA-256 of
-`package-lock.json` (offline from the baked cache, about 20 s; free afterwards). Delete the stamp to force it.
+`package-lock.json` (offline from the baked cache: 1031 packages in about 6 s; free afterwards). Delete the
+stamp to force it. The static gates then take about 20 s in total, the tests stage about 5 s.
 
 Ad-hoc npm commands (install a dependency, regenerate the lockfile), always in a container:
 
@@ -218,17 +222,20 @@ per-file thresholds 90/90/90/90. The tests' `conftest.py` blocks every non-loopb
 | File | Relaxation |
 | --- | --- |
 | `eslint.config.js` | `no-console` off for `packages/shared/src/log.ts` only; test files get Vitest rules and larger size limits (600 lines, 120 per function, 8 params); `disableTypeChecked` for the plain-JS tool configs; CommonJS for `.dependency-cruiser.cjs` |
-| `ruff.toml` | `S603` off everywhere (subprocess audit marker); tests: `S101 S105 S106 S108 S607 PLR2004` |
+| `ruff.toml` | `S603` off everywhere (subprocess audit marker); tests: `S101 S105 S106 S108 S607 PLR2004`; `*.md` excluded (ruff 0.17 formats Python blocks inside Markdown; Markdown belongs to markdownlint) |
 | `.coveragerc` | `omit = scripts/ci/tests/*` (tests are not product code) |
 | `.markdownlint-cli2.jsonc` | `MD013`, `MD033`, `MD041` off; `MD024` siblings only (sibling-repo config) |
 | `.prettierignore` | `*.md` (markdownlint owns Markdown), `package-lock.json`, `seed/`, `docs/research/*.json` (verbatim research artifacts), `vendor/` |
 | `.gitleaks.toml` | path allowlist for gitignored caches and outputs only (scope, not tolerance) |
 | `knip.json` | `ignoreDependencies: ["braces"]` (it is used through `overrides` only) |
+| `.editorconfig` | `*.sh` and `scripts/git-hooks/*` use tabs, in two sections (shfmt does not match a mixed brace list) |
 
 To get `markdownlint` green, the research Markdown under `docs/research/` was reformatted
 (blank lines around headings and lists, `| --- |` table separators, `text` on bare code fences,
-four bold pseudo-headings turned into headings). The content was not changed. New addenda to
-`PLAN.md` must follow the same rules, or the static stage fails.
+bold pseudo-headings turned into headings). In `quality-conventions.md` one sentence was
+reworded: "Never `curl -u`" sat within five lines of `--user uid:gid`, which gitleaks' multi-line
+`curl-auth-user` rule reports. The content was not changed otherwise. New addenda to `PLAN.md`
+must follow the same rules, or the static stage fails.
 
 ## 8. TODO for the next agents
 
@@ -268,5 +275,11 @@ four bold pseudo-headings turned into headings). The content was not changed. Ne
   explicitly.
 - `firebase-tools` pulls ~800 packages. Overrides cover today's advisories; expect new ones.
 - Lit logs "Lit is in dev mode" in Node tests (Vite resolves the `development` condition). Harmless.
+- Re-export-only files (`packages/*/src/index.ts`) have no executable statements: v8 reports
+  them as 0 of 0 and Vitest's thresholds pass. The future `check_coverage.py` must treat 0/0 as covered.
+- typescript-eslint's `no-unused-vars` does not exempt `_`-prefixed parameters; omit unused
+  parameters instead.
+- A browser crash in a container writes `core.<pid>` into the repository root; `.gitignore`
+  covers `core.[0-9]*`.
 - The research Markdown is a moving target if the orchestrator appends to it: keep blank lines
   around headings and lists.

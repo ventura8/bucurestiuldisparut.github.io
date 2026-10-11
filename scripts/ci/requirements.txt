@@ -20,6 +20,8 @@ defusedxml==0.7.1
 editorconfig==0.17.1
 requests-mock==1.12.1
 taplo==0.9.3
+# Type stubs for defusedxml (mypy --strict; the XML readers of check_coverage.py and check_data_files.py)
+types-defusedxml==0.7.0.20260504
 
 # Transitive dependencies (regenerate: install the direct tools in a fresh venv of the image, then `pip freeze`)
 ast_serialize==0.12.1

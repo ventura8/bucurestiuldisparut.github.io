@@ -53,6 +53,8 @@ class Gate:
 NPM_RUN = ("npm", "run", "--silent")
 SHELL_FILES = ("*.sh", "scripts/git-hooks/*")
 DOCKERFILES = (":(glob)**/Dockerfile", ":(glob)**/Dockerfile.*")
+GITLEAKS_REPORT = ("--report-format", "json", "--report-path", "reports/gitleaks.json")
+GITLEAKS = ("gitleaks", "dir", "--redact", "--no-banner", "--config", ".gitleaks.toml", *GITLEAKS_REPORT, ".")
 
 GATES: dict[str, Gate] = {
     gate.name: gate
@@ -78,11 +80,7 @@ GATES: dict[str, Gate] = {
         Gate("shfmt", ("shfmt", "-d"), files=SHELL_FILES),
         Gate("hadolint", ("hadolint", "--failure-threshold", "warning", "--disable-ignore-pragma"), files=DOCKERFILES),
         Gate("actionlint", ("actionlint",), files=(".github/workflows/*.yml", ".github/workflows/*.yaml")),
-        Gate(
-            "gitleaks",
-            ("gitleaks", "dir", "--redact", "--no-banner", "--config", ".gitleaks.toml")
-            + ("--report-format", "json", "--report-path", "reports/gitleaks.json", "."),
-        ),
+        Gate("gitleaks", GITLEAKS),
         Gate("npm-audit", ("npm", "audit", "--audit-level=low")),
         Gate("pip-audit", ("pip-audit", "--no-deps", "--disable-pip", "--progress-spinner", "off", "-r", "scripts/ci/requirements.txt")),
         # tests
@@ -183,7 +181,9 @@ def _duplicated_gates() -> list[str]:
 def _composite_problems() -> list[str]:
     known = set(STAGES) | set(COMPOSITE_STAGES)
     clashes = [f"stage name '{name}' is both simple and composite" for name in sorted(set(STAGES) & set(COMPOSITE_STAGES))]
-    unknown = [f"composite '{name}' uses unknown stage '{part}'" for name, parts in COMPOSITE_STAGES.items() for part in parts if part not in known]
+    unknown = [
+        f"composite '{name}' uses unknown stage '{part}'" for name, parts in COMPOSITE_STAGES.items() for part in parts if part not in known
+    ]
     return clashes + unknown
 
 

@@ -13,8 +13,9 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-import pipeline
 import pytest
+
+import pipeline
 from pipeline import COMPOSITE_STAGES, GATES, STAGES, Context, Gate
 
 PIPELINE_PY = Path(pipeline.__file__)
@@ -323,8 +324,13 @@ def test_happy_path_main_runs_the_stage_inside_the_image(monkeypatch: pytest.Mon
 
 def test_happy_path_main_defaults_to_the_real_repository(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[Path] = []
+
+    def fake_run_pipeline(_stage: str, ctx: Context) -> int:
+        seen.append(ctx.root)
+        return 0
+
     monkeypatch.setenv(pipeline.IMAGE_MARKER, "1")
-    monkeypatch.setattr(pipeline, "run_pipeline", lambda _stage, ctx: seen.append(ctx.root) or 0)
+    monkeypatch.setattr(pipeline, "run_pipeline", fake_run_pipeline)
 
     assert pipeline.main(["--stage", "static"]) == 0
     assert seen == [pipeline.ROOT]

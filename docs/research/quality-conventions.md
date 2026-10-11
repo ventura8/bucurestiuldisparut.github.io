@@ -517,7 +517,7 @@ Auto-Sub found real GitHub Actions and Docker issues by including `.github` and 
   - 0 hotspots `TO_REVIEW`
   - 0 `duplicated_blocks` (Fork's bar)
   - server coverage ≥ 90
-  - It exits 2 when Sonar is not configured. The token is sent only as a `Bearer` header over HTTPS (`http.client.HTTPSConnection`). Never `curl -u`, which gitleaks flags.
+  - It exits 2 when Sonar is not configured. The token is sent only as a `Bearer` header over HTTPS (`http.client.HTTPSConnection`). Never pass it as a command-line user/password option, which gitleaks flags.
 - SonarCloud **Automatic Analysis must be OFF**.
 
 **Local `sonar` stage (part of `all`)**

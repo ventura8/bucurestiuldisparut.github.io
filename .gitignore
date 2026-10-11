@@ -42,6 +42,9 @@ __pycache__/
 .coverage
 .coverage.*
 
+# Core dumps of crashed processes (e.g. a browser in a test run); never source
+core.[0-9]*
+
 # Editors and OS
 .idea/
 .vscode/

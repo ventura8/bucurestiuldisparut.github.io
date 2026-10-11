@@ -15,6 +15,10 @@ max_line_length = 140
 trim_trailing_whitespace = false
 max_line_length = off
 
-# Shell: tabs, the shfmt default (sibling Watch-GPS convention).
-[{*.sh,scripts/git-hooks/*}]
+# Shell: tabs, the shfmt default (sibling Watch-GPS convention). Two sections, because shfmt's
+# EditorConfig reader does not match a brace list that mixes a pattern and a path.
+[*.sh]
+indent_style = tab
+
+[scripts/git-hooks/*]
 indent_style = tab

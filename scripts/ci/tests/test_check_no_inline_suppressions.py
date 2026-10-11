@@ -53,8 +53,8 @@ def write(root: Path, relative: str, text: str) -> None:
         (".github/workflows/ci.yml", d("# yam", "llint disable-line"), "yamllint directive"),
         (".github/workflows/ci.yaml", d("# ziz", "mor: ignore[artipacked]"), "zizmor ignore"),
         ("docs/x.md", d("<!-- markdown", "lint-disable MD013 -->"), "markdownlint directive"),
-        ("firestore.rules", d("allow read; // NO", "SONAR"), "NOSONAR marker"),
-        ("x.ts", d("const key = 'k'; // gitleaks", ":allow"), "gitleaks:allow marker"),
+        ("firestore.rules", d("allow read; // NO", "SONAR"), d("NO", "SONAR marker")),
+        ("x.ts", d("const key = 'k'; // gitleaks", ":allow"), d("gitleaks", ":allow marker")),
     ],
 )
 def test_bad_path_directive_is_reported(tmp_path: Path, relative: str, line: str, label: str) -> None:
@@ -74,6 +74,7 @@ def test_bad_path_directive_is_reported(tmp_path: Path, relative: str, line: str
         ("x.ts", "const isOnly = list.only;"),
         ("notes.txt", d("# no", "qa is not checked in plain text")),
         ("package.json", d('{"description": "es', "lint-dis", 'able is banned"}')),
+        ("docs/e.md", d("Sonar markers such as NO", "SONAR are banned in source files.")),
     ],
 )
 def test_happy_path_prose_and_unrelated_code_are_clean(tmp_path: Path, relative: str, text: str) -> None:

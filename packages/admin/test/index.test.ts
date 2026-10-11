@@ -1,5 +1,5 @@
 import { createRecordingSink } from '@hcm/test-support';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { bootAdmin } from '../src/index.js';
 
@@ -23,5 +23,18 @@ describe('bootAdmin', () => {
         bootAdmin({ sink: createRecordingSink().sink });
 
         expect(customElements.get('hcm-hello')).toBeDefined();
+    });
+
+    describe('without options', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('happyPath_logsToTheConsoleSinkInRomanian', () => {
+            const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+            expect(bootAdmin().locale).toBe('ro');
+            expect(info).toHaveBeenCalledWith('[admin] booted', { locale: 'ro' });
+        });
     });
 });

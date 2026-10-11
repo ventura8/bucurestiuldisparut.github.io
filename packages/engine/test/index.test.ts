@@ -1,5 +1,5 @@
 import { createRecordingSink } from '@hcm/test-support';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ENGINE_VERSION, MAPBOX_GL_VERSION, boot } from '../src/index.js';
 
@@ -33,5 +33,18 @@ describe('boot', () => {
 
     it('happyPath_pinsTheMapboxCdnVersion', () => {
         expect(MAPBOX_GL_VERSION).toBe('3.32.0');
+    });
+
+    describe('without options', () => {
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('happyPath_logsToTheConsoleSinkInRomanian', () => {
+            const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+            expect(boot().locale).toBe('ro');
+            expect(info).toHaveBeenCalledWith('[engine] booted', { version: ENGINE_VERSION, locale: 'ro' });
+        });
     });
 });

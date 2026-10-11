@@ -97,6 +97,12 @@ RUN --mount=type=cache,id=hcm-apt-cache,target=/var/cache/apt,sharing=locked \
 # Runs as the host uid (docker run --user) on a bind-mounted checkout; git must accept it.
 RUN git config --system --add safe.directory '*'
 
+# The GDAL base image preloads tcmalloc into EVERY process (LD_PRELOAD=libtcmalloc_minimal.so.4).
+# Chromium's own allocator aborts under it ("tcmalloc: Attempt to free invalid pointer", SIGILL), so
+# the quality image clears it: here it only runs linters, tests and browsers. The raster pipeline's
+# runtime image (pipeline/Dockerfile, M3) keeps the preload for GDAL's large warps.
+ENV LD_PRELOAD=""
+
 # scripts/ci/in-container.sh refuses to run anywhere this marker is missing.
 ENV HCM_TEST_IMAGE=1
 

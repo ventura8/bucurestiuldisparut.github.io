@@ -18,7 +18,7 @@ class StdoutHandler(logging.Handler):
         try:
             sys.stdout.write(self.format(record) + "\n")
             sys.stdout.flush()
-        except (OSError, ValueError):
+        except OSError, ValueError:
             self.handleError(record)
 
 

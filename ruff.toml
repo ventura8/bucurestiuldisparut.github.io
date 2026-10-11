@@ -2,7 +2,8 @@
 # comments are banned (scripts/ci/check_no_inline_suppressions.py): relaxations live here only.
 target-version = "py314"
 line-length = 140
-extend-exclude = ["seed", "vendor"]
+# Markdown belongs to markdownlint (as in .prettierignore): code in docs is illustration, not source.
+extend-exclude = ["seed", "vendor", "*.md"]
 
 [lint]
 select = ["E", "F", "W", "B", "C90", "I", "N", "UP", "S", "SIM", "RUF", "T20", "PT", "PL"]

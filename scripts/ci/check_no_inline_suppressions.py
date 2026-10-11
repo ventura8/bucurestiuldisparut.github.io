@@ -32,7 +32,8 @@ def _rules(*pairs: tuple[str, str]) -> tuple[Rule, ...]:
     return tuple((re.compile(pattern), label) for pattern, label in pairs)
 
 
-# Matched in every scanned file: these markers silence repository-wide tools.
+# Matched in every scanned source file (not in Markdown, which documents them): these markers
+# silence repository-wide tools.
 EVERYWHERE = _rules(
     (r"\bNOSONAR\b", "NOSONAR marker"),
     (r"gitleaks:allow", "gitleaks:allow marker"),
@@ -71,9 +72,13 @@ PYTHON = _rules(
     (r"pytest\.(skip|xfail|importorskip)\(", "runtime skip/xfail"),
 )
 
-SHELL = _rules((r"#\s*shellcheck\s+(disable|source)=", "shellcheck directive"),)
+SHELL = _rules(
+    (r"#\s*shellcheck\s+(disable|source)=", "shellcheck directive"),
+)
 
-DOCKERFILE = _rules((r"#\s*hadolint\s+(global\s+)?ignore", "hadolint ignore pragma"),)
+DOCKERFILE = _rules(
+    (r"#\s*hadolint\s+(global\s+)?ignore", "hadolint ignore pragma"),
+)
 
 YAML = _rules(
     (r"#\s*yamllint\s+(disable|enable)", "yamllint directive"),
@@ -92,7 +97,6 @@ RULES_BY_SUFFIX: dict[str, tuple[Rule, ...]] = {
     ".py": PYTHON,
     ".sh": SHELL,
     **dict.fromkeys((".yml", ".yaml"), YAML),
-    ".md": MARKDOWN,
     ".rules": (),
 }
 
@@ -133,6 +137,8 @@ def rules_for(path: Path) -> tuple[Rule, ...]:
         return DOCKERFILE + EVERYWHERE
     if path.parent.name == "git-hooks" and path.suffix == "":
         return SHELL + EVERYWHERE
+    if path.suffix == ".md":
+        return MARKDOWN
     specific = RULES_BY_SUFFIX.get(path.suffix)
     return () if specific is None else specific + EVERYWHERE
 
@@ -168,7 +174,10 @@ def markdown_lines(text: str) -> Iterator[tuple[int, str]]:
 def scan_text(relative: Path, text: str, rules: Sequence[Rule]) -> list[str]:
     lines: Iterable[tuple[int, str]] = markdown_lines(text) if relative.suffix == ".md" else enumerate(text.splitlines(), start=1)
     return [
-        f"  {relative}:{number}: forbidden {label} -> {line.strip()}" for number, line in lines for pattern, label in rules if pattern.search(line)
+        f"  {relative}:{number}: forbidden {label} -> {line.strip()}"
+        for number, line in lines
+        for pattern, label in rules
+        if pattern.search(line)
     ]
 
 
@@ -178,15 +187,19 @@ def scan_file(root: Path, relative: Path) -> list[str]:
         return []
     try:
         text = (root / relative).read_text(encoding="utf-8")
-    except (UnicodeDecodeError, OSError):
+    except UnicodeDecodeError, OSError:
         return []
     return scan_text(relative, text, rules)
+
+
+def is_scannable(root: Path, relative: Path) -> bool:
+    return not is_excluded(relative) and (root / relative).is_file()
 
 
 def candidates(root: Path, names: Sequence[str]) -> list[Path]:
     """The files to scan: `names` (relative to root) when given, else the whole tree; excluded and missing ones dropped."""
     paths = [Path(name) for name in names] if names else list(iter_files(root))
-    return [relative for relative in paths if not is_excluded(relative) and (root / relative).is_file()]
+    return [relative for relative in paths if is_scannable(root, relative)]
 
 
 def scan(root: Path, names: Sequence[str] = ()) -> list[str]:
