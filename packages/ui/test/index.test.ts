@@ -18,3 +18,13 @@ describe('@hcm/ui public API', () => {
         );
     });
 });
+
+describe('@hcm/ui/dynamic-color', () => {
+    it('happyPath_isASeparateEntryPoint', async () => {
+        // A separate entry: @material/material-color-utilities imports without file extensions, which plain Node
+        // (the engine's and admin's node tests, Cloud Functions) cannot resolve, so the main entry never loads it.
+        const dynamicColor = await import('@hcm/ui/dynamic-color');
+
+        expect(typeof dynamicColor.themeFromSeed).toBe('function');
+    });
+});

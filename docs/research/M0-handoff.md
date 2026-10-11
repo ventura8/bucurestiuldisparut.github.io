@@ -9,12 +9,14 @@ actually built and why.
 
 | Item | State |
 | --- | --- |
-| `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` | `[SUCCESS] stage 'static' passed` (48 gates; §10e added six) |
+| `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` | `[SUCCESS] stage 'static' passed` (49 gates; §10e added six, §10f `commits`) |
 | `PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh` | `[SUCCESS] stage 'tests' passed` (5 gates): Vitest over 6 projects (shared, ui in Chromium, engine, admin, functions, rules) under the emulators, rule coverage, pytest, the pipeline's pytest, and the per-file `coverage` gate at 100% overall |
 | `PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh` | `[SUCCESS] stage 'e2e' passed` (2 gates: `e2e-matrix`, `playwright` with the V00 harness smoke) |
 | `PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh` | `[SUCCESS] stage 'build' passed` (2 gates: `vite-build`, `bundle-budget`) |
 | `quality` | passes (static, tests, e2e, build) |
-| `sonar`, `deps` | **no gates yet: these stages FAIL on purpose** (so does `all`); `release` and `contract` are registered (§10) |
+| `sonar` | `[SUCCESS]`: gate `sonar` (§10f); without `SONAR_TOKEN` or `.sonar-token` it skips with a notice, so `all` passes too |
+| `deps` | gate `dependency-updates` (§10f); network-bound and weekly, it fails while a pin is behind (2 on 2026-10-12) |
+| `release`, `contract` | registered (§10) |
 | Quality image | `docker/Dockerfile.quality` builds as `hcm-quality:local` (5.3 GB unpacked; about 5 min cold, seconds when cached) |
 | Lockfile | `package-lock.json` (lockfileVersion 3), `npm ci` works in the image |
 
@@ -34,7 +36,8 @@ All npm versions were checked with `npm view` on 2026-10-11 and are pinned exact
 | Format / style | `prettier@3.9.10`, `stylelint@17.16.0`, `stylelint-config-standard@40.0.0`, `postcss-lit@1.4.1` |
 | HTML / Markdown | `htmlhint@1.9.2`, `html-validate@11.16.2`, `markdownlint-cli2@0.23.3` |
 | Architecture | `knip@6.41.0`, `dependency-cruiser@18.5.0` |
-| Runtime | `lit@3.3.3` (in `@hcm/ui`) |
+| Runtime | `lit@3.3.3` (in `@hcm/ui`); `zod@4.6.6` (`@hcm/shared`), `@material/material-color-utilities@0.4.0` (`@hcm/ui`), both added by the M1 contracts (§10g) |
+| Seed tooling | `sharp@0.35.5` (root devDependency, the legacy migration CLI; prebuilt `@img/sharp-linux-x64`) |
 | Firebase CLI | `firebase-tools@15.33.0` (root devDependency; emulator JARs baked into the image) |
 | Types | `@types/node@24.19.2` (Node 24 line, not the 26.x latest) |
 | Python CI tools | `scripts/ci/requirements.txt`: ruff 0.17.0, mypy 2.4.0, pytest 9.1.1, pytest-cov 7.1.0, coverage 7.16.2, yamllint 1.38.0, check-jsonschema 0.38.2, bandit 1.9.4, pip-audit 2.10.1, radon 6.0.1, defusedxml 0.7.1, editorconfig 0.17.1, requests-mock 1.12.1, taplo 0.9.3, plus every transitive dependency pinned; pip 26.2.1 |
@@ -42,8 +45,9 @@ All npm versions were checked with `npm view` on 2026-10-11 and are pinned exact
 
 Not added yet (add with the milestone that first imports them, so knip stays clean):
 `mapbox-gl@3.32.0` (dev dependency of `@hcm/engine` for types and browser tests; never bundled),
-`zod`, `@material/material-color-utilities`, `@m3e/web`, `@material/web`, `@axe-core/playwright`,
-`msw`, `jsdom`. (`firebase`, `@firebase/rules-unit-testing` and `@playwright/test` joined in M0: §10b, §10d.)
+`@m3e/web`, `@material/web`, `@axe-core/playwright`, `msw`, `jsdom`. (`firebase`,
+`@firebase/rules-unit-testing` and `@playwright/test` joined in M0: §10b, §10d; `zod`,
+`@material/material-color-utilities` and `sharp` in M1: §10g.)
 
 ### npm audit fixes (no allowlist)
 
@@ -207,11 +211,11 @@ The green marker is `{stage, head, status_sha256}`, the hash of
 4. Run `python3 -m pytest` in the image: `test_happy_path_every_gate_belongs_to_a_stage` and the
    registry test fail on typos. Update this file and the gate table in `docs/CI_PIPELINE.md` (when it exists).
 
-The registry holds 57 gates (`python3 scripts/ci/pipeline.py --list`; the table with each gate's
-command is `.agent/skills/quality/pipeline_skill.md` → *Stages*): static 48, tests 5 (`vitest`,
+The registry holds 60 gates (`python3 scripts/ci/pipeline.py --list`; the table with each gate's
+command is `.agent/skills/quality/pipeline_skill.md` → *Stages*): static 49, tests 5 (`vitest`,
 `rules-coverage`, `pytest` (also in static), `pipeline-pytest`, `coverage`), e2e 2 (`e2e-matrix`, `playwright`), build 2
-(`vite-build`, `bundle-budget`), release 3 (`release-check` plus the two build gates), contract 1
-(`contracts`); `sonar` and `deps` are empty.
+(`vite-build`, `bundle-budget`), sonar 1 (`sonar`), deps 1 (`dependency-updates`), release 3 (`release-check`
+plus the two build gates), contract 1 (`contracts`); no stage is empty (§10f).
 
 `scripts/ci/check_no_inline_suppressions.py` is the suppression gate (ported from Watch-GPS and
 extended with TS/Vitest/Playwright/CSS/HTML/Dockerfile patterns). It skips itself; its tests
@@ -246,8 +250,9 @@ must follow the same rules, or the static stage fails.
 
 ## 8. TODO for the next agents
 
-- **M1 (engine, shared, ui):** add `mapbox-gl@3.32.0` (dev, `@hcm/engine`), zod schemas, the
-  `MapPort` + `mapbox-adapter.ts` (the only file allowed to import `mapbox-gl`; dependency-cruiser
+- **M1 (engine, shared, ui):** the contracts are done (§10g: zod schemas, geo, URL hash, migration, theme;
+  the interfaces and ownership are `docs/research/M1-interfaces.md`). Still to do: add `mapbox-gl@3.32.0` (dev,
+  `@hcm/engine`), the `MapPort` + `mapbox-adapter.ts` (the only file allowed to import `mapbox-gl`; dependency-cruiser
   rule `only-the-map-adapter-imports-mapbox`), FakeMap in test-support, M3 tokens. Replace
   `hcm-hello` and `boot()` when the real viewer exists. Split engine tests into node and browser
   projects when the adapter arrives (one more `SUITES` row).
@@ -260,10 +265,10 @@ must follow the same rules, or the static stage fails.
   (`firebase emulators:exec` around Playwright, the functions emulator on `functions/dist`), the mock
   APIs, a `webServer` for the built site, and the functional, tour, a11y, no-WebGL and cross-browser
   projects of `design-review-testability.md` §4.3.
-- **Gates still to add:** jscpd, pylint and vulture (radon and bandit for `scripts/ci` landed in §10e); the `sonar` stage (copy `/opt/sonar-scanner` from the pinned scanner image
-  into `docker/Dockerfile.quality`, then `Gate("sonar", ("bash", "scripts/ci/sonar_scan.sh"))`) and the
-  `deps` stage (`scripts/ci/check_dependency_updates.py`).
-- The default `PIPELINE_STAGE` is `all`, which fails until the `sonar` stage has a gate.
+- **Gates still to add:** jscpd, pylint, vulture and zizmor (radon and bandit landed in §10e; the `sonar`
+  and `deps` stages and the `commits` gate in §10f).
+- The default `PIPELINE_STAGE` is `all` (`quality`, then `sonar`); it passes without a SonarCloud token.
+- **Ask-first edits** proposed with their exact diffs: `docs/research/DECISIONS-for-review.md` (§10f).
 
 ## 9. Caveats noticed
 
@@ -655,6 +660,79 @@ Added by the M0 review agent on 2026-10-12. It audited the scaffold against `qua
   (`core.hooksPath` is unset in this clone), WebSockets in the e2e firewall (`context.route` does not see
   them and the host-resolver rules do not stop an IP literal: `context.routeWebSocket` in M1).
 
+## 10f. M0 review leftovers closed
+
+Added on 2026-10-12 by the agent that closed the leftovers of §8, §10d and §10e that needed no ask-first edit.
+Verdicts: `static`, `tests`, `e2e`, `build`, `sonar` (skipped: no token on this machine) and `quality` pass; the
+`deps` stage runs and fails on the two pins that are behind (below), as designed.
+
+### What landed
+
+- **`sonar` stage.** `docker/Dockerfile.quality` copies the SonarScanner CLI 8.1.0.6389 (`bin`, `lib`, `conf`)
+  from `sonarsource/sonar-scanner-cli:12.2.0.4256_8.1.0`, pinned by the same digest `scripts/ci/sonar_scan.sh`
+  uses on the host, as a late layer (a scanner bump does not rebuild the npm, Playwright and emulator layers), and
+  links it into `/usr/local/bin`; it runs on the image's JDK 21. Gate `sonar` = `bash scripts/ci/sonar_scan.sh`,
+  which already skipped with a notice without a token and runs `sonar_report.py` after the scan. New in the script:
+  with a token it first runs `sonar_report.py --check-reports` (every coverage and test report named in
+  `sonar-project.properties` exists and is not empty; no token, no network), so an analysis without coverage is
+  never uploaded; in the image it passes `-Dsonar.scanner.skipJreProvisioning=true` and keeps `SONAR_USER_HOME` in
+  `reports/.cache/sonar`. `scripts/ci/run-all-checks.sh` forwards `SONAR_TOKEN` (by name). Tests: the skip, the
+  report precondition, the in-image hand-off (`test_sonar_scan.py`), `--check-reports` (`test_sonar_report.py`).
+- **`deps` stage.** Gate `dependency-updates` = `scripts/ci/check_dependency_updates.py`: npm (`npm outdated
+  --json` at the root and with `--workspaces`; `--include-workspace-root` prints `{}` with npm 11.19), PyPI (`pip
+  index versions --json`, 8 in parallel, for `scripts/ci/requirements.txt`, `pipeline/requirements-poetry.txt` and
+  `pipeline/pyproject.toml`), Docker (images pinned by tag and digest, against tags of the same shape on Docker Hub
+  or ghcr.io; best effort, an unreadable registry is a warning) and GitHub Actions (newest `vX.Y.Z` tag through
+  `git/matching-refs`, because `github/codeql-action`'s "latest release" is a CodeQL bundle). `HELD` holds
+  `typescript` 6.0.3, `@types/node` 24.19.2, the `node:24-bookworm-slim` image and `mando` 0.7.1 (`radon` 6.0.1
+  requires `mando <0.8`; found by the first real run). A stale hold fails. The HTTPS transport of
+  `check_contracts.py` moved to `scripts/ci/cihttp.py`, shared by both network gates. Offline tests with fake
+  registries; one test reads the real repository's pins and requires every `HELD` entry to match its pin.
+- **Conventional Commits.** `scripts/ci/check_commits.py` holds the rule (`type(scope): summary`, types `feat fix
+  docs refactor test build ci perf chore revert`, a lower-case scope required, `chore(wip)` included, `!` for
+  breaking, at most 100 characters, a blank line before the body). `scripts/git-hooks/commit-msg` runs it with
+  `--message-file -` in the quality image (comments and the scissors section ignored; git's `Merge ...` and the
+  autosquash subjects pass). Gate `commits` (static, after `gitleaks-history`) checks every non-merge commit of
+  `COMMIT_RANGE`, else of the `GITLEAKS_LOG_OPTS` range `ci.yml` already exports, so CI enforces it without a
+  workflow edit; locally it passes with a notice. In a range, `fixup!`/`squash!`/`amend!` commits fail. The four
+  commits of `origin/master..HEAD` pass.
+- **radon and bandit.** Both gates already covered `scripts/ci` and `pipeline/src` (§10c, §10e) and graded
+  everything A, `check_release.py` and `check_rules_coverage.py` included. `pipeline-radon` now also covers
+  `pipeline/tests` with `--no-assert`, like `radon` for `scripts/ci`; the new scripts were split until grade A.
+- **Proposals** for every ask-first item the reviewers raised (`.htmlvalidate.json`, `eslint.config.js` with
+  `eslint-plugin-playwright@2.12.1`, `.dependency-cruiser.cjs`, workflow hardening, `sonar.sources`,
+  `.gitleaksignore` with the exact fingerprint of the `14d4d7b` false positive, the `.gitleaks.toml` header,
+  `ruff.toml` for the GDAL stubs, the `pytest.ini` filter): `docs/research/DECISIONS-for-review.md`.
+
+### Found by the first real `deps` run (2026-10-12), not bumped here
+
+- npm `dependency-cruiser` 18.5.0 → 18.6.0 (root `package.json`; batch it with the `lint:deps` scope change of
+  DECISIONS §3, since both rebuild the image's npm layer).
+- Docker `docker/dockerfile` 1.27.1 → 1.28.0 (the `# syntax=` line of both Dockerfiles, with its digest).
+- PyPI `mando` 0.7.1 → 0.8.2 is held (above).
+
+## 10g. M1 contracts
+
+Added on 2026-10-12 by the M1 contracts agent, before the M1 workstreams start in parallel. The interfaces, the
+module ownership and the change-request process are `docs/research/M1-interfaces.md`; the public contract is
+`docs/ENGINE_API.md`. Status: `quality` passes (static, tests, e2e, build); every new file is at 100 % lines and
+branches.
+
+- `@hcm/shared`: City Manifest v1 (`schemas/manifest.ts`), embed config (`schemas/config.ts`), Firestore documents
+  (`schemas/firestore.ts`), localized validation (`schemas/validation.ts`: issues are `{path, code}` with `validation.*`
+  i18n keys), manifest/engine compatibility (`schemas/compat.ts`), geo (`geo/`), the URL-hash codec v1 with the legacy
+  hash (`url/hash.ts`), the Markdown subset and URL rules (`text/`), the legacy migration (`migration/`), and the
+  viewer's i18n keys (112 in both catalogues).
+- `@hcm/ui`: dynamic colour (`theme/dynamic-color.ts`, entry point `@hcm/ui/dynamic-color`, SpecVersion 2025 TonalSpot, WCAG checks) and the CLI
+  `scripts/gen-theme.mjs` (`npm run theme:gen --workspace @hcm/ui -- --seed '#8B5E3C'`).
+- Migration: `scripts/seed/migrate-legacy.mjs` (`npm run seed:migrate`) with the city seed
+  `scripts/seed/bucharest.city.json` wrote `seed/bucharest/manifest.static.json` and `seed/bucharest/derived/`
+  (45 photos, 34 cones, 9.52 MB, deterministic); the originals are untouched (DECISIONS §10).
+- The JavaScript CLIs load TypeScript through Node 24's type stripping plus a `module.registerHooks` resolve hook
+  (`.js` → `.ts`, extensionless → `.js` for the colour library). Their tests start them as child processes from
+  `packages/shared/test/cli` until a `tools` Vitest project exists (DECISIONS §9, M1 change request CR-2).
+- Scenario rows: V21 (embed API) and seven new rows on V01, V05, V07, V09, V13, V17 (`planned`).
+
 ## 11. Planned paths
 
 Appended by the M0 agent-assets agent on 2026-10-11. The `agent-assets` static gate
@@ -672,5 +750,4 @@ entries here; do not rewrite the rest of this file.
 - `starter-kit`: M1 (template) and M5 (template repository), the three-file kit for other cities.
 - `packages/engine/src/map/map-port.ts`: M1, the `MapPort` interface the engine core talks to.
 - `packages/engine/src/map/mapbox-adapter.ts`: M1, the only module allowed to import `mapbox-gl`.
-- `scripts/ci/check_dependency_updates.py`: the `deps` stage (latest stable of every pin, `HELD` table).
 - `scripts/ci/sonar_setup.py`: the user's one-time SonarCloud token helper (hidden prompt, writes `.sonar-token`).

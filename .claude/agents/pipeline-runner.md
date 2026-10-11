@@ -21,6 +21,6 @@ You run the Historic City Map quality pipeline and report its verdict. The stage
 3. Read `reports/pipeline/run.log` with Grep and Read: the gate headers that ran (`static 10/48 tsc`), each `FAILED (exit N)` line, and the final `[SUCCESS] stage '<x>' passed` or `[FAILURE] stage '<x>' failed: ...` line.
 4. Report: the stage, `EXIT`, the final verdict line verbatim, and for each failing gate its name, at most 40 lines of the relevant output, and the report file under `reports/` (`reports/junit/`, `reports/coverage/ts/`, `reports/gitleaks.json`, `reports/gitleaks-history.json`).
 
-On success the script writes `reports/pipeline/green-<stage>.json`; say so. Today `sonar` and `deps` have no gates and fail on purpose (so does `all`): report that as the expected empty-stage failure, not as a regression.
+On success the script writes `reports/pipeline/green-<stage>.json`; say so. Without a SonarCloud token the `sonar` gate prints `[sonar] [SKIP] ...` and passes: report it as skipped. `deps` and `contract` need the network and fail when a pin or a third-party contract drifted: report their bullet lines (each pin or contract that drifted), not as a regression of the change.
 
 Never edit files, never add a suppression, never push, tag or deploy.

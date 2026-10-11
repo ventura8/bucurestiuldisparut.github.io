@@ -49,13 +49,14 @@ PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh    # engine and admin bun
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Engine API](docs/ENGINE_API.md) (config.js, the element, the JavaScript API, the URL hash, City Manifest v1)
 - [CI pipeline](docs/CI_PIPELINE.md)
 - [Testing](docs/TESTING.md)
 - [Developer setup](docs/SETUP.md)
 - [Admin guide (RO)](docs/ADMIN_GUIDE.ro.md) · [Admin guide (EN)](docs/ADMIN_GUIDE.en.md)
 - [Lessons](docs/LESSONS.md)
 - [Release notes](docs/releases/README.md)
-- [Approved plan](docs/research/PLAN.md) and the [M0 hand-off](docs/research/M0-handoff.md)
+- [Approved plan](docs/research/PLAN.md), the [M0 hand-off](docs/research/M0-handoff.md) and the [M1 interfaces](docs/research/M1-interfaces.md)
 - For AI agents: [AGENTS.md](AGENTS.md)
 
 ## Credits

@@ -327,3 +327,41 @@ The user will perform all of their own steps through the admin Setup Assistant, 
   - Functions and the Cloud Run pipeline report through structured error logs.
   - The Setup Assistant shows a "Crash reports" panel listing the latest Error Reporting groups (through a callable).
 - **Tests:** consent gating (no GA request before consent, verified by the e2e firewall), event payload unit tests, the error-reporter redaction and rate limit, and an e2e for crash → `telemetry.reportError` with a mocked endpoint. CSP is updated for googletagmanager, google-analytics, firebaseinstallations and firebaselogging hosts.
+
+## Addendum 3 (2026-10-12, user direction): edit anything, POIs, live transparency for every overlay
+
+### Admin can edit anything
+
+- **Ground photos**:
+  - metadata (RO/EN), year range, author, license and links
+  - location by drag; bearing and FOV by handle
+  - replace the image (derivatives regenerate), publish/unpublish, delete
+- **POIs (new entity)**: points of interest beyond photos, such as places, buildings, demolished streets, events or notes.
+  - Firestore `cities/{city}/pois/{id}`:
+    - `category` (from a city-defined list with icon and colour)
+    - `geometry` (GeoJSON Point / LineString / Polygon), `title{ro,en}`, `description{ro,en}` (markdown subset)
+    - `yearStart`/`yearEnd`, `links[]`, optional `photoIds[]`, `published`
+  - Admin draws and edits the geometry on the map: vertex edit, move, delete. Use a GL v3-compatible draw library (Mapbox GL Draw or Terra Draw; verify v3 support) behind our own `MapDrawPort`.
+  - Bulk import and export as GeoJSON.
+  - POI categories are editable in city settings: name RO/EN, icon (Material Symbol), colour, default opacity.
+  - The manifest gains `pois[]` and `poiCategories[]`. The viewer renders POIs as icons, lines or fills, with labels at high zoom. Their detail opens in the same sheet as photos, and they are filtered by year with the timeline.
+- **Satellite / historical layers**:
+  - labels and descriptions RO/EN, attribution, year/date, order (drag), visibility default, default opacity
+  - **image adjustments**: brightness min/max, contrast, saturation, gamma/levels. These are previewed live via `raster-brightness-*`, `raster-contrast` and `raster-saturation`, stored on the layer and applied by the viewer, with no reprocessing.
+  - **geometry edits**:
+    - re-georeference in the GCP editor
+    - crop/mask by drawing a polygon (sent to the pipeline as a `-cutline`)
+    - replace the source image
+    - all of these re-run the pipeline and pass the CU guard before any MTS publish
+  - delete, which also removes the Mapbox tileset and source after confirmation
+- Everything is audited: `updatedBy`/`updatedAt` on every document and a `history` subcollection with the previous version, giving one-click revert. Security rules allow edits for admins only, with field validation per entity.
+
+### Live transparency for every overlay
+
+- The engine exposes an **overlay model**: each historical layer, the photos layer (markers + cones) and each POI category is an overlay with `visible` and `opacity` (0–1).
+- **Viewer**: the Layers sheet/panel lists every overlay with a toggle and an M3 slider.
+  - Moving the slider updates the map **live** (`raster-opacity`; `icon-opacity`/`text-opacity`/`line-opacity`/`fill-opacity`/`circle-opacity` for vector overlays), coalesced with requestAnimationFrame.
+  - Values persist in the URL hash (`&op=<overlayId>:<0-100>,...`) and are restored on load. Keyboard and screen-reader friendly (slider ARIA, live announcements).
+- **Admin**: the same slider sets the *default* opacity per overlay (saved to the doc, flows to the manifest). The admin map previews changes live before saving.
+- **Swipe-compare** also respects each overlay's opacity.
+- **Tests**: unit tests of the overlay model and the paint-property mapping per overlay type; e2e rows for viewer live opacity on raster, photos and POI overlays (pixel probes), hash persistence, keyboard control, and admin default-opacity save → manifest → viewer. Each row has a happy and a bad path, e.g. an out-of-range hash value is clamped and an unknown overlay id is ignored.

@@ -301,3 +301,58 @@ def test_bad_path_script_entry_point_exits_2_without_a_token(
         runpy.run_path(str(SCRIPT), run_name="__main__")
 
     assert exit_info.value.code == 2
+
+
+# --- --check-reports (before a scan) ------------------------------------------------------------------
+
+REPORTS = (
+    "sonar.javascript.lcov.reportPaths=reports/coverage/ts/lcov.info\n"
+    "sonar.python.coverage.reportPaths=reports/coverage/scripts.xml, reports/coverage/pipeline.xml\n"
+    "sonar.python.xunit.reportPath=reports/junit/pytest.xml\n"
+)
+REPORT_FILES = (
+    "reports/coverage/ts/lcov.info",
+    "reports/coverage/scripts.xml",
+    "reports/coverage/pipeline.xml",
+    "reports/junit/pytest.xml",
+)
+
+
+def reports_project(root: Path, properties: str = PROPERTIES + REPORTS) -> Path:
+    write(root, "sonar-project.properties", properties)
+    for report in REPORT_FILES:
+        write(root, report, "<coverage/>")
+    return root
+
+
+def test_happy_path_check_reports_needs_no_token_and_no_server(
+    tmp_path: Path, server: Callable[..., FakeServer], caplog: pytest.LogCaptureFixture
+) -> None:
+    fake = server(clean_answers())
+
+    assert run(reports_project(tmp_path), "--check-reports") == 0
+    assert caplog.messages[-1] == "[sonar] 4 coverage and test reports present"
+    assert fake.requests == []
+
+
+def test_bad_path_check_reports_lists_missing_and_empty_reports(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    root = reports_project(tmp_path)
+    (root / "reports/coverage/pipeline.xml").unlink()
+    (root / "reports/junit/pytest.xml").write_text("", encoding="utf-8")
+
+    assert run(root, "--check-reports") == 2
+    assert caplog.messages[-1] == "[sonar] missing or empty reports: reports/coverage/pipeline.xml, reports/junit/pytest.xml"
+
+
+@pytest.mark.parametrize(
+    ("properties", "message"),
+    [(PROPERTIES, "[sonar] missing or empty reports: (none configured)"), (None, "[sonar] cannot read ")],
+)
+def test_bad_path_check_reports_without_report_settings_exits_2(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, properties: str | None, message: str
+) -> None:
+    if properties is not None:
+        write(tmp_path, "sonar-project.properties", properties)
+
+    assert run(tmp_path, "--check-reports") == 2
+    assert caplog.messages[-1].startswith(message)

@@ -150,6 +150,13 @@
             "source": "docs/research/PLAN.md Addendum 2"
         },
         {
+            "id": "V21",
+            "area": "viewer",
+            "name": "Embed API (config.js auto-boot, mount, controller, events)",
+            "milestone": "M1",
+            "source": "docs/research/M1-interfaces.md §9; docs/ENGINE_API.md"
+        },
+        {
             "id": "A01",
             "area": "admin",
             "name": "Sign-in and owner claim",
@@ -386,6 +393,17 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V01-BAD-ENGINE-TOO-OLD",
+            "behaviour": "V01",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A manifest that needs a newer engine names the version it needs",
+            "asserts": "city.engine.minVersion newer than ENGINE_VERSION -> localized error with that version, no blank map",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> Errors and validation (checkManifestCompat)."
+        },
+        {
             "id": "S-V02-HAPPY",
             "behaviour": "V02",
             "area": "viewer",
@@ -474,6 +492,28 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V05-HAPPY-OVERLAY-HASH",
+            "behaviour": "V05",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Per-overlay opacity in the hash is restored",
+            "asserts": "#...&op=<layer>:40,photos:70 -> layer and photo overlays drawn at 40 % and 70 % (pixel probes); sliders show the values",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> URL hash v1 (PLAN Addendum 3 overlays)."
+        },
+        {
+            "id": "S-V05-BAD-UNKNOWN-OVERLAY",
+            "behaviour": "V05",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An unknown overlay id in the hash is ignored",
+            "asserts": "op=<unknown id>:50 and op=<id>:x -> ignored; known overlays keep their manifest opacity",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> URL hash v1."
+        },
+        {
             "id": "S-V06-HAPPY",
             "behaviour": "V06",
             "area": "viewer",
@@ -529,6 +569,17 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V07-BAD-NO-BEARING",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A photo without a bearing gets a plain marker and no cone",
+            "asserts": "photo without bearing -> unrotated marker, no view cone at high zoom, sheet still opens",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1. 11 of the migrated Bucharest photos have no cone (seed/bucharest/manifest.static.json)."
+        },
+        {
             "id": "S-V08-HAPPY",
             "behaviour": "V08",
             "area": "viewer",
@@ -582,6 +633,17 @@
             "tier": "e2e-viewer",
             "status": "planned",
             "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V09-HAPPY-LEGACY-HASH",
+            "behaviour": "V09",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A link from the old site opens the same view",
+            "asserts": "#15.5/44.4271/26.0853/90/!a3!p2 -> camera at that view; the hash is rewritten in the v1 form; layer codes ignored",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> URL hash v1 (legacy hash)."
         },
         {
             "id": "S-V10-HAPPY",
@@ -694,6 +756,17 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V13-BAD-MARKUP-IS-TEXT",
+            "behaviour": "V13",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Markup in About text is shown as text, never rendered",
+            "asserts": "About with an image tag carrying an onerror handler and a bold marker -> the tag is visible text, no element is created; bold renders; only https links are links",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1. Markdown subset: packages/shared/src/text/markdown.ts; a non-https link fails manifest validation."
+        },
+        {
             "id": "S-V14-HAPPY",
             "behaviour": "V14",
             "area": "viewer",
@@ -804,6 +877,17 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V17-BAD-CITY-MISMATCH",
+            "behaviour": "V17",
+            "area": "starter-kit",
+            "path": "bad",
+            "title": "A cityId that does not match the manifest is reported to the city owner",
+            "asserts": "config.js cityId differs from manifest.city.id -> instructive error naming both ids",
+            "tier": "e2e-starter-kit",
+            "status": "planned",
+            "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> config.js."
+        },
+        {
             "id": "S-V18-HAPPY",
             "behaviour": "V18",
             "area": "viewer",
@@ -890,6 +974,39 @@
             "tier": "e2e-viewer",
             "status": "planned",
             "notes": "Milestone M2."
+        },
+        {
+            "id": "S-V21-HAPPY",
+            "behaviour": "V21",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The JavaScript API mounts the viewer and drives it",
+            "asserts": "HistoricCityMap.mount(el, config) -> ready; setYear, toggleLayer, openPhoto, setLang change what is shown and fire hcm-layer-change / hcm-photo-open; the hash follows",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> JavaScript API."
+        },
+        {
+            "id": "S-V21-BAD-MISSING-CONTAINER",
+            "behaviour": "V21",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Auto-boot with a container selector that matches nothing reports it",
+            "asserts": "config.js container \"#nope\" -> nothing rendered, the console log names error.config.container; no map load",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> config.js (auto-boot)."
+        },
+        {
+            "id": "S-V21-BAD-AFTER-DESTROY",
+            "behaviour": "V21",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Calls after destroy do nothing and the map is gone",
+            "asserts": "controller.destroy() -> map removed (map-instance counter back to 0); later setYear/openPhoto throw nothing and change nothing",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> JavaScript API."
         },
         {
             "id": "S-A01-HAPPY",

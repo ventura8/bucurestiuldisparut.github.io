@@ -6,13 +6,13 @@ Security rules for the viewer, the admin and every page they load. Background an
 
 - Render with Lit templates (auto-escaping) and `textContent` only; Mapbox popups use `setDOMContent`.
 - ESLint bans `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `setHTML`, `setHTMLUnsafe`, `document.write`, `eval`, `new Function`, and the Lit `unsafeHTML` / `unsafeSVG` / `unsafeMathML` directives (`eslint.config.js`, plus `eslint-plugin-no-unsanitized`). Never relax these.
-- Legacy data contains HTML anchors (`seed/bucharest/photos.legacy.geojson`): the migrator parses them into structured `links: [{url, label}]` (https only; http upgraded or dropped) plus plain text. No HTML is stored.
-- Rich "About" text is a minimal Markdown subset (bold, italic, https links) rendered into DOM nodes, never HTML.
+- Legacy data contains HTML anchors (`seed/bucharest/photos.legacy.geojson`): the migrator (`packages/shared/src/migration/html.ts`, a linear scanner, no DOM, no backtracking regex) turns them into structured `links: [{url, label}]` (https kept; http upgraded only for `facebook.com`, `flickr.com`, `costingheorghe.ro`; anything else dropped) plus plain text; `<script>`/`<style>` content is discarded. No HTML is stored.
+- Rich "About" and privacy text is a minimal Markdown subset (bold, italic, https links, `\` escapes) parsed by `parseMarkdown` (`packages/shared/src/text/markdown.ts`) into a node tree that is rendered into DOM nodes, never HTML. A non-https link makes the manifest invalid (`validation.markdownLink`).
 - Untrusted strings shown as text only: EXIF fields, USGS metadata and HTML error bodies, Nominatim results, AI drafts, Mapbox job errors.
 
 ## URLs, ids, uploads
 
-- zod accepts `https:` URLs only; image URLs must match our bucket prefix exactly; external links get `rel="noopener noreferrer nofollow ugc"`.
+- zod accepts `https:` URLs only (no `user:password@`); image URLs are https or relative to the manifest (no `..`, no `//host`); external links get `rel="noopener noreferrer nofollow ugc"`. Every schema object is strict, so `__proto__` and any unknown key are rejected. Theme token values cannot contain `;`, braces, quotes, `:` or `url(`, so a value never leaves its CSS declaration. The manifest accepts only a `pk.` Mapbox token.
 - `#photo=<id>` must match `^[A-Za-z0-9_-]{1,40}$` and is looked up in a `Map`, never used in a selector.
 - No SVG upload, ever; the server sniffs magic bytes, limits input pixels and strips metadata from public derivatives; HEIC is converted server-side.
 

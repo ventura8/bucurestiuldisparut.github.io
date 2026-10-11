@@ -1,8 +1,8 @@
 """check_contracts.py: deep links and API drift probes against a scripted web, never the real one.
 
 `FakeWeb` answers each (method, URL) with a programmed response or error and records the calls;
-an unprogrammed request fails the test loudly. https_fetch itself is driven through a fake
-http.client.HTTPSConnection. The real links file is parsed too, so a malformed edit fails here.
+an unprogrammed request fails the test loudly (the transport itself is tested in test_cihttp.py).
+The real links file is parsed too, so a malformed edit fails here.
 """
 
 import http.client
@@ -11,13 +11,13 @@ import logging
 import runpy
 import sys
 from collections.abc import Mapping
-from http import HTTPStatus
 from pathlib import Path
-from typing import ClassVar
 
 import check_contracts
+import cihttp
 import pytest
-from check_contracts import Link, Probe, Request, Response
+from check_contracts import Link, Probe
+from cihttp import Request, Response
 
 CONTRACTS_PY = Path(check_contracts.__file__)
 M2M = check_contracts.M2M_API
@@ -166,7 +166,7 @@ def test_bad_path_redirect_loop_is_unreachable() -> None:
     problem = check_contracts.check_link(Link("a", LINK_URL), web)
 
     assert problem == f"link a: {LINK_URL} is unreachable (more than 10 redirects from {LINK_URL})"
-    assert len(web.calls) == check_contracts.MAX_REDIRECTS + 1
+    assert len(web.calls) == cihttp.MAX_REDIRECTS + 1
 
 
 def test_bad_path_network_error_is_unreachable() -> None:
@@ -228,77 +228,6 @@ def test_bad_path_probe_network_error_is_drift() -> None:
     web = FakeWeb({("HEAD", f"{CDN}/mapbox-gl.js"): http.client.RemoteDisconnected("closed")})
 
     assert check_contracts.check_probe(probe, web) == f"probe mapbox.glJs: HEAD {CDN}/mapbox-gl.js failed (closed)"
-
-
-# --- retry and transport ------------------------------------------------------------------------------
-
-
-def test_happy_path_one_network_blip_is_retried(log: pytest.LogCaptureFixture) -> None:
-    web = FakeWeb({("HEAD", LINK_URL): [TimeoutError("slow"), Response(200)]})
-
-    assert check_contracts.with_retry(web)(Request("HEAD", LINK_URL)) == Response(200)
-    assert f"  retrying HEAD {LINK_URL} after: slow" in log.text
-
-
-def test_bad_path_persistent_network_error_is_raised_after_the_retry() -> None:
-    web = FakeWeb({("HEAD", LINK_URL): TimeoutError("down")})
-
-    with pytest.raises(TimeoutError, match="down"):
-        check_contracts.with_retry(web)(Request("HEAD", LINK_URL))
-    assert len(web.calls) == 2
-
-
-class FakeConnection:
-    """Stands in for http.client.HTTPSConnection: records the exchange, answers one canned reply."""
-
-    instances: ClassVar[list[FakeConnection]] = []
-
-    def __init__(self, host: str, port: int | None, *, timeout: float, context: object) -> None:
-        self.host, self.port, self.timeout, self.context = host, port, timeout, context
-        self.sent: tuple[str, str, bytes | None, dict[str, str]] | None = None
-        self.closed = False
-        FakeConnection.instances.append(self)
-
-    def request(self, method: str, target: str, *, body: bytes | None, headers: dict[str, str]) -> None:
-        self.sent = (method, target, body, headers)
-
-    def getresponse(self) -> FakeReply:
-        return FakeReply()
-
-    def close(self) -> None:
-        self.closed = True
-
-
-class FakeReply:
-    status = 200
-
-    def getheaders(self) -> list[tuple[str, str]]:
-        return [("Content-Type", "text/css"), ("X-Cache", "HIT")]
-
-    def read(self, limit: int) -> bytes:
-        return b"body"[:limit]
-
-
-def test_happy_path_https_fetch_sends_one_request(monkeypatch: pytest.MonkeyPatch) -> None:
-    FakeConnection.instances.clear()
-    monkeypatch.setattr(http.client, "HTTPSConnection", FakeConnection)
-
-    response = check_contracts.https_fetch(Request("POST", "https://api.example.org:8443/a/b?x=1", b"{}", (("X-Probe", "1"),)))
-
-    connection = FakeConnection.instances[0]
-    assert response == Response(200, {"content-type": "text/css", "x-cache": "HIT"}, b"body")
-    assert (connection.host, connection.port, connection.timeout, connection.closed) == ("api.example.org", 8443, 30.0, True)
-    assert connection.sent == ("POST", "/a/b?x=1", b"{}", {"User-Agent": check_contracts.USER_AGENT, "X-Probe": "1"})
-
-
-def test_happy_path_bare_host_requests_the_root_path() -> None:
-    assert check_contracts.split_https("https://example.org") == ("example.org", None, "/")
-
-
-@pytest.mark.parametrize("url", ["http://example.org/", "ftp://example.org/x", "https:///no-host"])
-def test_bad_path_only_https_is_spoken(url: str) -> None:
-    with pytest.raises(check_contracts.TransportError, match="only https URLs are checked"):
-        check_contracts.https_fetch(Request("GET", url))
 
 
 # --- configuration errors -----------------------------------------------------------------------------
@@ -369,8 +298,3 @@ def test_bad_path_script_entry_point_exits_with_main_status(monkeypatch: pytest.
         runpy.run_path(str(CONTRACTS_PY), run_name="__main__")
 
     assert exit_info.value.code == check_contracts.EXIT_CONFIG
-
-
-def test_happy_path_success_statuses() -> None:
-    assert check_contracts.is_success(HTTPStatus.NO_CONTENT)
-    assert not check_contracts.is_success(HTTPStatus.MULTIPLE_CHOICES)

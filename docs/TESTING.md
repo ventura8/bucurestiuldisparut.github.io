@@ -8,8 +8,9 @@ Every tier runs **inside the quality image** (`hcm-quality:local`), never on the
 
 | Tier | Runner | What it proves | Status |
 | --- | --- | --- | --- |
-| Unit | Vitest 5 (node) | shared schemas, i18n, logging; engine core against FakeMap; admin state machines; function handlers with fake ports | running (shared, engine, admin) |
-| Component | Vitest 5 browser mode, headless Chromium (`@vitest/browser-playwright`) | Lit components with real custom elements, shadow DOM, focus and accessibility trees; the Mapbox adapter against the real `mapbox-gl` | running (ui) |
+| Unit | Vitest 5 (node) | shared schemas (manifest v1, config, Firestore documents, localized validation), geo, the URL-hash codec, the Markdown subset, the legacy migration, i18n, logging; engine core against FakeMap; admin state machines; function handlers with fake ports | running (shared, engine, admin) |
+| CLI tools | Vitest 5 (node), the CLI started as a child process | `scripts/seed/migrate-legacy.mjs` (on generated images in a temporary folder) and `packages/ui/scripts/gen-theme.mjs`: output, exit status, usage errors | running (from `packages/shared/test/cli` until a `tools` project exists) |
+| Component | Vitest 5 browser mode, headless Chromium (`@vitest/browser-playwright`) | Lit components with real custom elements, shadow DOM, focus and accessibility trees; dynamic colour with WCAG contrast checks; the Mapbox adapter against the real `mapbox-gl` | running (ui) |
 | Functions | Vitest (node), handlers with fakes, triggers through v2 `.run()`, adapters with a fake `fetch` or the Firestore emulator | every function and adapter, failure shapes of USGS and Mapbox | running (`setup-status`); more functions in M2 |
 | Rules | Vitest under the Firestore and Storage emulators, `@firebase/rules-unit-testing` | allow and deny for every role and path, field validation, limits; rule coverage (`rules-coverage` gate) | running |
 | Scripts | pytest with branch coverage (in `static` and `tests`) | the CI tooling in `scripts/ci` | running |

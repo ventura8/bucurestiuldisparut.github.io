@@ -6,7 +6,9 @@
 #   bash scripts/ci/sonar_scan.sh --check-token  # only validate the token
 #
 # - Needs the coverage reports of the tests stage (reports/coverage/ts/lcov.info, the Cobertura XML
-#   and JUnit files named in sonar-project.properties, which also holds the whole analysis scope).
+#   and JUnit files named in sonar-project.properties, which also holds the whole analysis scope):
+#   with a token, a missing or empty report stops the run before anything is uploaded
+#   (`sonar_report.py --check-reports`), so an analysis without coverage never reaches SonarCloud.
 # - The token comes from SONAR_TOKEN or the git-ignored .sonar-token (mode 0600: a file other users
 #   can read is refused). It reaches every process through the environment or stdin, never argv:
 #   the scanner reads SONAR_TOKEN itself (the image's entrypoint, which would turn it into
@@ -14,7 +16,9 @@
 #   token the analysis is skipped with a notice and exit 0: the CI job runs it with the secret.
 # - On the host, the pinned scanner image runs with the repository at the same absolute path (so
 #   report paths match) and the report runs in the quality image. Inside the quality image
-#   (HCM_TEST_IMAGE=1) both run directly, which needs `sonar-scanner` on PATH there.
+#   (HCM_TEST_IMAGE=1, the pipeline's `sonar` gate) both run directly: docker/Dockerfile.quality copies
+#   the scanner from the same pinned image. There it runs on the image's JDK 21 instead of downloading a
+#   JRE per run, and keeps SonarCloud's plugin cache in the git-ignored reports/.cache/sonar.
 # - SonarCloud's Automatic Analysis must be OFF; while it is on, the scanner is refused and the
 #   analysis is skipped with a notice saying where to turn it off.
 #
@@ -26,6 +30,7 @@ readonly QUALITY_IMAGE="${HCM_IMAGE:-hcm-quality:local}"
 readonly DEFAULT_HOST="https://sonarcloud.io"
 readonly REPORT_TASK=".scannerwork/report-task.txt"
 readonly SCANNER_LOG="reports/sonar/scanner.log"
+readonly SONAR_CACHE="reports/.cache/sonar"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly repo_root
@@ -102,7 +107,8 @@ in_quality_image() {
 
 scanner() {
 	if in_quality_image; then
-		sonar-scanner "$@"
+		SONAR_USER_HOME="${SONAR_USER_HOME:-${repo_root}/${SONAR_CACHE}}" \
+			sonar-scanner -Dsonar.scanner.skipJreProvisioning=true "$@"
 		return
 	fi
 	docker run --rm --user "$(id -u):$(id -g)" --entrypoint /opt/sonar-scanner/bin/sonar-scanner \
@@ -123,6 +129,8 @@ scan_and_report() {
 	if in_quality_image && ! command -v sonar-scanner >/dev/null 2>&1; then
 		fail "sonar-scanner is not installed in the quality image (docker/Dockerfile.quality)"
 	fi
+	report --check-reports ||
+		fail "the coverage and test reports are missing: run PIPELINE_STAGE=tests first (PIPELINE_STAGE=all runs both)"
 	local branch
 	branch="$(current_branch)"
 	local scanner_args=("-Dsonar.projectVersion=$(project_version)")

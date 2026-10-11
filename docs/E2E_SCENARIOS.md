@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 45 | 132 | 45 | 87 | 2 | 130 | 1 |
+| 46 | 142 | 48 | 94 | 2 | 140 | 1 |
 
 ## Viewer
 
@@ -17,6 +17,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V00-HAPPY` | V00 | happy | A static page at the loopback origin renders WebGL2 under SwiftShader | heading and probe canvas visible; a WebGL2 clear reads back rgba(0, 128, 255, 255) | e2e-viewer | exists | `e2e/specs/smoke.spec.ts` |
 | `S-V00-BAD-BLOCKED-HOST` | V00 | bad | A request to a host outside the allowlist is aborted and reported | fetch of api.mapbox.com fails in the page; the firewall fixture records the URL and the console guard the blocked load | e2e-viewer | exists | `e2e/specs/smoke.spec.ts` |
 | `S-V01-HAPPY` | V01 | happy | Manifest loads into map, timeline and photo markers | manifest -> map, timeline and photo markers rendered | e2e-viewer | planned | - |
+| `S-V01-BAD-ENGINE-TOO-OLD` | V01 | bad | A manifest that needs a newer engine names the version it needs | city.engine.minVersion newer than ENGINE_VERSION -> localized error with that version, no blank map | e2e-viewer | planned | - |
 | `S-V01-BAD-INVALID-MANIFEST` | V01 | bad | Schema-invalid manifest shows an error card | zod-invalid manifest -> error card, no blank map | e2e-viewer | planned | - |
 | `S-V01-BAD-MANIFEST404` | V01 | bad | Manifest 404 shows a localized error with Retry | manifest 404 -> localized error message and a Retry button | e2e-viewer | planned | - |
 | `S-V01-BAD-SLOW-STORAGE` | V01 | bad | Slow Storage shows a skeleton, then a timeout message | slow Storage -> skeleton, then a localized timeout message | e2e-viewer | planned | - |
@@ -27,15 +28,19 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V04-HAPPY` | V04 | happy | Selecting a year shows its layer and filters photos | year selection shows the layer; photo year filter in sync | e2e-viewer | planned | - |
 | `S-V04-BAD-YEAR-WITHOUT-LAYER` | V04 | bad | A year without a layer is disabled or snaps to the nearest | year without a layer -> stop disabled or snaps to the nearest year | e2e-viewer | planned | - |
 | `S-V05-HAPPY` | V05 | happy | Opacity slider changes the layer opacity | opacity 0 versus 1 by pixel probe; slider ARIA value | e2e-viewer | planned | - |
+| `S-V05-HAPPY-OVERLAY-HASH` | V05 | happy | Per-overlay opacity in the hash is restored | #...&op=<layer>:40,photos:70 -> layer and photo overlays drawn at 40 % and 70 % (pixel probes); sliders show the values | e2e-viewer | planned | - |
 | `S-V05-BAD-HASH-OUT-OF-RANGE` | V05 | bad | An out-of-range opacity in the URL hash is clamped | out-of-range hash value -> clamped | e2e-viewer | planned | - |
+| `S-V05-BAD-UNKNOWN-OVERLAY` | V05 | bad | An unknown overlay id in the hash is ignored | op=<unknown id>:50 and op=<id>:x -> ignored; known overlays keep their manifest opacity | e2e-viewer | planned | - |
 | `S-V06-HAPPY` | V06 | happy | Swipe compare creates a second map lazily and reveals both sides | lazy second map (count 2); slider reveals left versus right | e2e-viewer | planned | - |
 | `S-V06-BAD-COMPACT-WIDTH` | V06 | bad | On compact width compare is unavailable and a toggle is offered | compact width -> compare unavailable, toggle instead | e2e-viewer | planned | - |
 | `S-V06-BAD-EXIT-DESTROYS-MAP` | V06 | bad | Leaving compare destroys the second map | exit -> second map destroyed (count 1) | e2e-viewer | planned | - |
 | `S-V07-HAPPY` | V07 | happy | Photo clusters expand and open the photo sheet | clusters expand on zoom; click -> bottom sheet (compact) or side sheet (medium and up); view cones at high zoom | e2e-viewer | planned | - |
 | `S-V07-BAD-IMAGE404` | V07 | bad | A missing photo image shows a placeholder with alt text | image 404 -> placeholder and alt text | e2e-viewer | planned | - |
+| `S-V07-BAD-NO-BEARING` | V07 | bad | A photo without a bearing gets a plain marker and no cone | photo without bearing -> unrotated marker, no view cone at high zoom, sheet still opens | e2e-viewer | planned | - |
 | `S-V08-HAPPY` | V08 | happy | Lightbox opens, zooms, navigates and returns focus | open, pinch-zoom (touch), arrow keys, Esc returns focus | e2e-viewer | planned | - |
 | `S-V08-BAD-BROKEN-IMAGE` | V08 | bad | A broken full image shows an error state and close still works | broken full image -> error state; close still works | e2e-viewer | planned | - |
 | `S-V09-HAPPY` | V09 | happy | Deep links restore state and Share copies the URL | #photo= and #layers=&view= restore state; Share copies the URL | e2e-viewer | planned | - |
+| `S-V09-HAPPY-LEGACY-HASH` | V09 | happy | A link from the old site opens the same view | #15.5/44.4271/26.0853/90/!a3!p2 -> camera at that view; the hash is rewritten in the v1 form; layer codes ignored | e2e-viewer | planned | - |
 | `S-V09-BAD-MALFORMED-HASH` | V09 | bad | A malformed hash falls back to defaults | malformed hash -> defaults | e2e-viewer | planned | - |
 | `S-V09-BAD-UNKNOWN-PHOTO` | V09 | bad | An unknown photo id in the hash shows a toast | unknown photo id -> toast | e2e-viewer | planned | - |
 | `S-V10-HAPPY` | V10 | happy | Granted geolocation inside the city moves the camera | permission granted, in bounds -> camera moves | e2e-viewer | planned | - |
@@ -48,6 +53,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V12-BAD-INVALID-SEED` | V12 | bad | An invalid seed colour falls back to the default palette | invalid seed -> default palette | e2e-viewer | planned | - |
 | `S-V13-HAPPY` | V13 | happy | About and credits render from the manifest in RO and EN | rendered from the manifest, RO and EN | e2e-viewer | planned | - |
 | `S-V13-BAD-EMPTY-CREDITS` | V13 | bad | Empty credits hide the credits section | empty credits -> section hidden | e2e-viewer | planned | - |
+| `S-V13-BAD-MARKUP-IS-TEXT` | V13 | bad | Markup in About text is shown as text, never rendered | About with an image tag carrying an onerror handler and a bold marker -> the tag is visible text, no element is created; bold renders; only https links are links | e2e-viewer | planned | - |
 | `S-V14-HAPPY` | V14 | happy | Keyboard order reaches timeline, layers and photos with visible focus | skip link -> timeline -> layers -> photos; focus visible | e2e-viewer | planned | - |
 | `S-V14-BAD-FORCED-COLORS` | V14 | bad | Forced colours stay readable | forced-colors mode -> content readable | e2e-viewer | planned | - |
 | `S-V14-BAD-REDUCED-MOTION` | V14 | bad | Reduced motion disables fly animations | reduced motion -> no fly animation | e2e-viewer | planned | - |
@@ -63,6 +69,9 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V20-HAPPY` | V20 | happy | An uncaught error is reported to telemetry.reportError | uncaught error -> redacted report sent to telemetry.reportError (mocked) | e2e-viewer | planned | - |
 | `S-V20-BAD-RATE-LIMITED` | V20 | bad | Repeated errors are rate-limited | error storm -> reports capped by the rate limit | e2e-viewer | planned | - |
 | `S-V20-BAD-REPORTER-DOWN` | V20 | bad | A failing error reporter never breaks the viewer | reporter endpoint 5xx -> no visible error, viewer keeps working | e2e-viewer | planned | - |
+| `S-V21-HAPPY` | V21 | happy | The JavaScript API mounts the viewer and drives it | HistoricCityMap.mount(el, config) -> ready; setYear, toggleLayer, openPhoto, setLang change what is shown and fire hcm-layer-change / hcm-photo-open; the hash follows | e2e-viewer | planned | - |
+| `S-V21-BAD-AFTER-DESTROY` | V21 | bad | Calls after destroy do nothing and the map is gone | controller.destroy() -> map removed (map-instance counter back to 0); later setYear/openPhoto throw nothing and change nothing | e2e-viewer | planned | - |
+| `S-V21-BAD-MISSING-CONTAINER` | V21 | bad | Auto-boot with a container selector that matches nothing reports it | config.js container "#nope" -> nothing rendered, the console log names error.config.container; no map load | e2e-viewer | planned | - |
 
 ## Admin
 
@@ -147,6 +156,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | ID | Behaviour | Path | Scenario | Asserts | Tier | Status | Tests |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `S-V17-HAPPY` | V17 | happy | The starter kit renders a static manifest | static manifest renders without any backend | e2e-starter-kit | planned | - |
+| `S-V17-BAD-CITY-MISMATCH` | V17 | bad | A cityId that does not match the manifest is reported to the city owner | config.js cityId differs from manifest.city.id -> instructive error naming both ids | e2e-starter-kit | planned | - |
 | `S-V17-BAD-INVALID-CONFIG` | V17 | bad | An invalid config.js shows an instructive error | invalid config.js -> instructive error for the city owner | e2e-starter-kit | planned | - |
 | `S-V17-BAD-MISSING-CONFIG` | V17 | bad | A missing config.js shows an instructive error | missing config.js -> instructive error for the city owner | e2e-starter-kit | planned | - |
 

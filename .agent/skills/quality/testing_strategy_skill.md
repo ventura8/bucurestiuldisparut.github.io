@@ -11,6 +11,7 @@ How every file of **Historic City Map** reaches 90 % or more per file (lines and
 | Functions | Vitest node, handlers with injected fakes; triggers through v2 `.run(event)`; adapters with msw | every handler, trigger, adapter and the composition root `deps.ts` | `functions/test` (M2) |
 | Rules | Vitest node under `firebase emulators:exec --project demo-hcm`, `@firebase/rules-unit-testing` | Firestore and Storage rules: allow and deny per role, field validation, size and type limits | `firebase/rules-tests` (M2) |
 | Scripts | pytest, branch coverage | `scripts/ci/*.py` | `scripts/ci/tests` |
+| CLI tools (JavaScript) | Vitest node, the CLI run as a child process with `process.execPath` | `scripts/seed/migrate-legacy.mjs`, `packages/ui/scripts/gen-theme.mjs` (their logic is TypeScript tested in its package) | `packages/shared/test/cli` until the `tools` project exists (`docs/research/DECISIONS-for-review.md` §9) |
 | Pipeline | pytest in the GDAL image, synthetic world and scans, hypothesis (`ci` profile, derandomised) | `pipeline/src/hcm_pipeline` | `pipeline/tests/{unit,integration,synthetic}` (M3) |
 | E2E | Playwright 1.64 + `@axe-core/playwright`, emulators + mock APIs | the scenario registry `e2e/scenarios.json`: functional matrix, tour (11 viewports × light/dark × RO/EN), a11y specials, no-WebGL, Firefox/WebKit admin forms, pipeline compose | `e2e/` (harness smoke since M0, tiers from M1) |
 
@@ -52,6 +53,9 @@ E2E does **not** count toward the per-file coverage gate; unit and browser tests
 
 ## Gotchas found so far
 
+- zod 4 reports a missing enum or literal as `invalid_value`, not `invalid_type`: `validate` passes `reportInput: true` and treats an issue whose `input` is `undefined` as `validation.required`.
+- Test images are built in memory (`packages/shared/test/fixtures/png.ts` writes a grey PNG with `node:zlib`), never committed as binaries.
+- Coverage counts every `??`, `||`, `&&` operand and ternary as a branch (and ESLint's `complexity` also counts default parameters): a fallback that cannot happen (a regex group that always matches, the first element of a non-empty array) is an uncovered branch. Use `String(match[1])` or a typed tuple instead of `?? ''`.
 - The GDAL base image preloads tcmalloc into every process and Chromium aborts under it; the quality image sets `LD_PRELOAD=""`.
 - Lit's Node build shims `customElements`, so modules that register elements also load in node tests; it logs "Lit is in dev mode", which is harmless.
 - typescript-eslint's `no-unused-vars` does not exempt `_`-prefixed parameters: omit unused parameters instead.

@@ -19,7 +19,7 @@ The emulator JARs are baked into the image (`FIREBASE_EMULATORS_PATH`), JDK 21 i
 ## Must know
 
 - **The public viewer never reads Firestore** and loads no Firebase SDK for data; analytics and performance load only after consent and only with a `measurementId`.
-- Functions: thin triggers call pure handlers through ports; Cloud Run Admin and Secret Manager over REST with `fetch` so msw covers them; secrets read at runtime with a cache, never `defineSecret`; every writer validates with the shared zod schemas. `firebase-functions-test` is not used: trigger tests call `.run(event)`.
+- Functions: thin triggers call pure handlers through ports; Cloud Run Admin and Secret Manager over REST with `fetch` so msw covers them; secrets read at runtime with a cache, never `defineSecret`; every writer validates with the shared zod schemas (`packages/shared/src/schemas/firestore.ts`: city, layer, photo, job, usgsScene, setup status, admin; fixed in M1, refined in M2). `firebase-functions-test` is not used: trigger tests call `.run(event)`.
 - Rules: default deny; admin is claim plus `admins/{uid}`; strict field validation; no SVG; every `allow` tested allow and deny per role; rule coverage evaluated true and false.
 - The Firebase web config, `.secret.local` and service-account files are never committed or opened by an agent.
 

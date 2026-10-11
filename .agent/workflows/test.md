@@ -25,7 +25,7 @@ PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh > reports/pipeline/run.l
 grep -E '^\[(SUCCESS|FAILURE)\]|FAILED' reports/pipeline/run.log
 ```
 
-A passing stage ends with `[SUCCESS] stage '<x>' passed` and writes `reports/pipeline/green-<x>.json`. Quote that line before saying a change is done. Today `sonar` and `deps` have no gates and fail on purpose, so `all` fails too; `quality` (static, tests, e2e, build) passes.
+A passing stage ends with `[SUCCESS] stage '<x>' passed` and writes `reports/pipeline/green-<x>.json`. Quote that line before saying a change is done. `all` is `quality` (static, tests, e2e, build) followed by `sonar`, which skips with a notice and passes without a SonarCloud token. `deps` and `contract` are weekly network checks and fail when something drifted.
 
 ## Developer loop: one tool, inside the image
 

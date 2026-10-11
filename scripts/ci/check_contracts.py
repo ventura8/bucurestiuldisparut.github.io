@@ -13,26 +13,25 @@ and API shapes the product depends on still look the way the code assumes.
    - the Mapbox GL JS CDN serves the version pinned as MAPBOX_GL_VERSION in packages/engine/src/index.ts;
    - Earth Search still publishes the sentinel-2-c1-l2a collection (the georeferencing reference).
 
-Only https is spoken, through http.client (no extra dependency). A network error gets one retry so a
-blip does not open an issue. Usage: check_contracts.py [--root DIR] [--links FILE]. Exit status:
-0 every contract holds, 1 drift (CI opens or updates an issue), 2 the links file or the engine
-version cannot be read.
+Only https is spoken, through scripts/ci/cihttp.py (http.client, no extra dependency). A network
+error gets one retry so a blip does not open an issue. Usage: check_contracts.py [--root DIR]
+[--links FILE]. Exit status: 0 every contract holds, 1 drift (CI opens or updates an issue), 2 the
+links file or the engine version cannot be read.
 """
 
 import argparse
-import http.client
 import json
 import re
-import ssl
 import sys
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from http import HTTPStatus
 from pathlib import Path
 from typing import TypeGuard
-from urllib.parse import quote, urljoin, urlsplit
+from urllib.parse import quote, urlsplit
 
+from cihttp import NETWORK_ERRORS, Fetch, Request, Response, follow, https_fetch, is_success, with_retry
 from cilog import get_logger
 
 LOG = get_logger("contract")
@@ -44,14 +43,6 @@ M2M_API = "https://m2m.cr.usgs.gov/api/api/json/stable"
 PAGES_ORIGIN = "https://ventura8.github.io"
 EARTH_SEARCH = "https://earth-search.aws.element84.com/v1/collections"
 REFERENCE_COLLECTION = "sentinel-2-c1-l2a"
-USER_AGENT = "historic-city-map-contract-check (+https://github.com/ventura8/bucurestiuldisparut.github.io)"
-
-TIMEOUT_SECONDS = 30.0
-MAX_REDIRECTS = 10
-MAX_BODY_BYTES = 1 << 20
-REDIRECTS = frozenset(
-    {HTTPStatus.MOVED_PERMANENTLY, HTTPStatus.FOUND, HTTPStatus.SEE_OTHER, HTTPStatus.TEMPORARY_REDIRECT, HTTPStatus.PERMANENT_REDIRECT}
-)
 # Servers that reject HEAD outright; the link is then checked with GET.
 HEAD_REFUSED = frozenset({HTTPStatus.FORBIDDEN, HTTPStatus.METHOD_NOT_ALLOWED, HTTPStatus.NOT_IMPLEMENTED})
 PLACEHOLDER = re.compile(r"\{([A-Za-z][A-Za-z0-9]*)\}")
@@ -66,38 +57,6 @@ class ConfigError(Exception):
     """The links file or the engine source is not what this check expects (exit 2)."""
 
 
-class TransportError(Exception):
-    """A request this check refuses to make or finish: a non-https URL or a redirect loop."""
-
-
-NETWORK_ERRORS = (OSError, http.client.HTTPException, TransportError)
-
-
-@dataclass(frozen=True)
-class Request:
-    method: str
-    url: str
-    body: bytes | None = None
-    headers: tuple[tuple[str, str], ...] = ()
-
-
-@dataclass(frozen=True)
-class Response:
-    status: int
-    headers: Mapping[str, str] = field(default_factory=dict)
-    """Header names in lower case."""
-    body: bytes = b""
-
-    def json_field(self, name: str) -> object:
-        """A top-level field of a JSON object body; None when the body is not one."""
-        try:
-            document = json.loads(self.body)
-        except ValueError:
-            return None
-        return document.get(name) if isinstance(document, dict) else None
-
-
-Fetch = Callable[[Request], Response]
 Expectation = Callable[[Response], str | None]
 
 
@@ -113,60 +72,6 @@ class Probe:
     request: Request
     expect: Expectation
     """None when the contract holds, else what drifted."""
-
-
-# --- transport ----------------------------------------------------------------------------------------
-
-
-def split_https(url: str) -> tuple[str, int | None, str]:
-    """(host, port, path plus query) of an https URL; TransportError for anything else."""
-    parts = urlsplit(url)
-    if parts.scheme != "https" or not parts.hostname:
-        raise TransportError(f"only https URLs are checked: {url}")
-    path = parts.path or "/"
-    return parts.hostname, parts.port, f"{path}?{parts.query}" if parts.query else path
-
-
-def https_fetch(request: Request) -> Response:
-    """One HTTPS exchange, redirects not followed: status, lower-cased headers and at most 1 MiB of body."""
-    host, port, target = split_https(request.url)
-    connection = http.client.HTTPSConnection(host, port, timeout=TIMEOUT_SECONDS, context=ssl.create_default_context())
-    try:
-        connection.request(request.method, target, body=request.body, headers={"User-Agent": USER_AGENT, **dict(request.headers)})
-        reply = connection.getresponse()
-        return Response(reply.status, {name.lower(): value for name, value in reply.getheaders()}, reply.read(MAX_BODY_BYTES))
-    finally:
-        connection.close()
-
-
-def with_retry(fetch: Fetch, attempts: int = 2) -> Fetch:
-    """`fetch` with `attempts - 1` retries on a network error, so one blip does not open a weekly issue."""
-
-    def retrying(request: Request) -> Response:
-        for _ in range(attempts - 1):
-            try:
-                return fetch(request)
-            except NETWORK_ERRORS as error:
-                LOG.info("  retrying %s %s after: %s", request.method, request.url, error)
-        return fetch(request)
-
-    return retrying
-
-
-def follow(request: Request, fetch: Fetch) -> Response:
-    """The final response after following up to MAX_REDIRECTS redirects with the same method."""
-    current = request
-    for _ in range(MAX_REDIRECTS + 1):
-        response = fetch(current)
-        location = response.headers.get("location")
-        if response.status not in REDIRECTS or not location:
-            return response
-        current = Request(current.method, urljoin(current.url, location), current.body, current.headers)
-    raise TransportError(f"more than {MAX_REDIRECTS} redirects from {request.url}")
-
-
-def is_success(status: int) -> bool:
-    return HTTPStatus.OK <= status < HTTPStatus.MULTIPLE_CHOICES
 
 
 # --- deep links ---------------------------------------------------------------------------------------

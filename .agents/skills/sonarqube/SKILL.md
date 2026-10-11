@@ -5,20 +5,22 @@ description: Run and act on the Historic City Map SonarQube Cloud analysis (orga
 
 # SonarQube Skill
 
-Working notes: `.agent/skills/quality/sonarqube_skill.md`. Status: `sonar-project.properties`, `scripts/ci/sonar_scan.sh`, `scripts/ci/sonar_report.py` and the CI job `sonarqube` exist; `scripts/ci/sonar_setup.py` is planned; the `sonar` stage has no gate yet (the quality image has no `sonar-scanner`) and fails on purpose.
+Working notes: `.agent/skills/quality/sonarqube_skill.md`. Status: `sonar-project.properties`, `scripts/ci/sonar_scan.sh`, `scripts/ci/sonar_report.py`, the CI job `sonarqube` and the pipeline's `sonar` gate (the SonarScanner CLI copied into the quality image) exist; `scripts/ci/sonar_setup.py` is planned. Without a token the stage skips with a notice and passes.
 
 ## Commands
 
 ```bash
-bash scripts/ci/sonar_scan.sh                            # scanner image pinned by digest, then the verdict (skips without a token)
+PIPELINE_STAGE=sonar bash scripts/ci/run-all-checks.sh   # the gate: scanner in the quality image, then the verdict (skips without a token)
+bash scripts/ci/sonar_scan.sh                            # the same from the host, with the scanner image pinned by digest
 bash scripts/ci/sonar_scan.sh --check-token              # only validate the token (.sonar-token must be mode 0600)
+python3 scripts/ci/sonar_report.py --check-reports       # in the image: every report the scan reads exists (no token)
 python3 scripts/ci/sonar_setup.py                        # planned; the USER runs it: hidden prompt, writes .sonar-token
 gh secret set SONAR_TOKEN                                # the USER runs it: token on stdin
 ```
 
 ## Verdict
 
-`sonar_report.py` waits for the server's task and exits 1 unless the quality gate is OK, there are 0 open issues, 0 hotspots to review, 0 duplicated blocks and coverage is at least 90 %. Exit 2 means not configured: the stage skips, never fails.
+`sonar_report.py` waits for the server's task and exits 1 unless the quality gate is OK, there are 0 open issues, 0 hotspots to review, 0 duplicated blocks and coverage is at least 90 %. Without a token `sonar_scan.sh` skips (exit 0) before any of it; with one, missing `tests` reports stop it before the upload (exit 2: run `tests` first, or `all`).
 
 ## Rules
 

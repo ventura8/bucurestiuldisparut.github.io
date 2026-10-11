@@ -22,8 +22,8 @@
 
 | Workspace | Package | Status |
 | --- | --- | --- |
-| `packages/shared` | `@hcm/shared`: zod schemas (M1), i18n catalogues, logging with redaction | scaffold |
-| `packages/ui` | `@hcm/ui`: Lit 3 Material 3 Expressive kit, window classes, tokens | scaffold |
+| `packages/shared` | `@hcm/shared`: zod schemas (City Manifest v1, embed config, Firestore documents), validation with localized codes, geo helpers, the URL-hash codec, the Markdown subset, the legacy migration, i18n catalogues, logging with redaction | M1 contracts done |
+| `packages/ui` | `@hcm/ui`: Lit 3 Material 3 Expressive kit, window classes, dynamic colour (`themeFromSeed`) | scaffold; dynamic colour done |
 | `packages/engine` | `@hcm/engine`: the public viewer, global `window.HistoricCityMap` | scaffold |
 | `packages/admin` | `@hcm/admin`: Setup Assistant and daily flows | scaffold |
 | `packages/test-support` | `@hcm/test-support`: FakeMap, msw handlers, fixtures, emulator helpers (test-only) | scaffold |
@@ -44,7 +44,9 @@ Layering (enforced by dependency-cruiser): `shared` below `ui` below `engine` an
 
 ## Engine (public viewer)
 
-- A city page ships `index.html` and `config.js` (`{cityId, manifestUrl}`, or an inline static manifest for the starter kit). The engine fetches only the static manifest and photo WebP files from the public bucket.
+The public contract (config.js, `<hcm-map-viewer>`, the JavaScript API, the URL hash, the City Manifest v1, versioning) is [ENGINE_API.md](ENGINE_API.md); the M1 module interfaces and ownership are in [research/M1-interfaces.md](research/M1-interfaces.md).
+
+- A city page ships `index.html` and `config.js` (`window.HistoricCityMapConfig = {cityId?, manifestUrl? | manifest?, container?, lang?, engineBase?}`; the inline manifest is the starter kit's static mode). The engine fetches only the static manifest and photo WebP files from the public bucket.
 - Mapbox GL JS **3.32.0** is loaded from `api.mapbox.com` as the global `mapboxgl` and never bundled; Standard Satellite basemap; historical rasters in the `middle` slot; `performanceMetricsCollection: false`; the Mapbox logo and attribution are always visible.
 - The core (state, URL hash, timeline, controller) talks only to a `MapPort`; the Mapbox adapter is the only Mapbox-aware module. **One map per view**: swipe compare creates its second map lazily and destroys it.
 - Features: timeline, layer toggles and opacity, photos as clustered camera icons rotated by bearing with view cones, bottom or side sheet, lightbox, URL state and share, geolocate, About and credits, RO/EN, light/dark/seeded theme.
@@ -67,6 +69,8 @@ Firestore (zod schemas in `@hcm/shared` are reused by every writer):
 - `cities/{city}/layers/{id}`: year and date, label, kind, sensor, attribution, source (`mapbox`, `xyz`, `pmtiles`, zoom range, bounds), order, opacity, status, provenance (USGS ids, georeferencing method, GCPs, checkpoint RMSE), Mapbox tileset id.
 - `cities/{city}/photos/{id}`: title and description (`{ro, en}`), year range, author, licence (enum), rights holder, structured `links`, location, bearing, FOV, image (web, thumb, sha256, size), processing state, published flag, rights review, legacy id.
 - Also `usgsScenes/{entityId}`, `jobs/{id}` with logs, `admins/{uid}`, `setup/status` (non-secret health), `usage/mapbox-YYYY-MM`, `ops/guard`.
+
+The Bucharest seed manifest (`seed/bucharest/manifest.static.json`, with WebP derivatives in `seed/bucharest/derived/`) is produced from the legacy data by `scripts/seed/migrate-legacy.mjs` (`npm run seed:migrate`), whose rules are pure functions in `packages/shared/src/migration/`.
 
 Storage: a **private** bucket (`<proj>.firebasestorage.app`: uploads, rasters, USGS raw files, browse copies) and a **public** bucket (`<proj>-public`: manifest, `web.webp`, `thumb.webp` only, content-hashed and immutable). Legacy HTML is migrated to structured `links`; **no HTML is ever rendered from data**.
 

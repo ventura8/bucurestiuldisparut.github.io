@@ -58,9 +58,10 @@ git config core.hooksPath scripts/git-hooks
 ```
 
 - `scripts/git-hooks/pre-commit`: refuses staged secrets (`.env*` except `.env.example`, `.sonar-token`, `.secret.local`, service-account JSON, `*.p12`), runs the inline-suppression scan on the staged index and gitleaks on the staged changes. Hooks are local and optional, so the same file list is also the `repo-policy` static gate, and CI scans every pushed commit with `gitleaks-history`.
+- `scripts/git-hooks/commit-msg`: refuses a message that is not Conventional Commits, `type(scope): summary` (types `feat`, `fix`, `docs`, `refactor`, `test`, `build`, `ci`, `perf`, `chore`, `revert`; a lower-case scope is required, `chore(wip): ...` for work in progress; `!` before the colon for a breaking change; subject at most 100 characters; a blank line before the body). It runs `scripts/ci/check_commits.py --message-file -` in the quality image with the message on stdin. Comment lines and the scissors section are ignored, and git's own `Merge ...` and `fixup!`/`squash!`/`amend!` subjects pass (squash the latter before a pull request: the `commits` gate refuses them in CI).
 - `scripts/git-hooks/pre-push`: refuses a push to `master` or a `v*` tag unless `reports/pipeline/green-all.json` names the pushed commit and a clean tree.
 
-Work branches are pushed without a marker (backups after each commit); the hooks run their tools inside the quality image. No husky, lefthook or pre-commit framework.
+Work branches are pushed without a marker (backups after each commit); the hooks run their tools inside the quality image. No husky, lefthook or pre-commit framework. Hooks are local and optional, so CI repeats each check over the pushed commits: `repo-policy` (secret files), `gitleaks-history` and `commits`.
 
 ## Local environment file
 
@@ -81,7 +82,7 @@ The emulator JARs are in the image (`FIREBASE_EMULATORS_PATH`); `demo-hcm` needs
 2. Run `python3 scripts/ci/sonar_setup.py` (planned): a hidden prompt writes the git-ignored `.sonar-token` with mode 0600.
 3. Run `gh secret set SONAR_TOKEN` and paste the token on stdin, for the CI job.
 
-Agents never read, print or paste the token. Once the `sonar` stage has its gate (`docs/research/M0-handoff.md` → *TODO for the next agents*), a run without a token skips the scan instead of failing; until then the stage has no gate and fails on purpose, and so does `all`. The CI `sonarqube` job already skips with a notice when `SONAR_TOKEN` is missing.
+Agents never read, print or paste the token. The `sonar` stage (part of `all`) reads `SONAR_TOKEN` from the environment (`scripts/ci/run-all-checks.sh` forwards it by name) or `.sonar-token`; without either it prints `[sonar] [SKIP] ...` and passes, so `all` is green on a machine without a token. With a token it first checks that the `tests` stage's reports exist (run `all`, or `tests` before `sonar`), then scans with the SonarScanner in the quality image and applies the strict verdict. The CI `sonarqube` job skips with a notice when `SONAR_TOKEN` is missing.
 
 ## Cloud credentials (the user, once)
 

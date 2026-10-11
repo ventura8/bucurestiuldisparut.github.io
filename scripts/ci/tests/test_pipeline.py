@@ -167,9 +167,25 @@ def test_bad_path_stage_keeps_going_after_a_failure(tmp_path: Path) -> None:
     assert len(shell.calls) == 5
 
 
-def test_bad_path_empty_stage_fails(shell: FakeShell, log: pytest.LogCaptureFixture) -> None:
-    assert pipeline.run_stage("sonar", shell.context()) == ["sonar (no gates registered)"]
-    assert log.messages == ["sonar: no gates registered yet (docs/research/M0-handoff.md)"]
+def test_bad_path_empty_stage_fails(shell: FakeShell, log: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(STAGES, "deps", ())
+
+    assert pipeline.run_stage("deps", shell.context()) == ["deps (no gates registered)"]
+    assert log.messages == ["deps: no gates registered yet (docs/research/M0-handoff.md)"]
+    assert shell.calls == []
+
+
+def test_happy_path_sonar_and_deps_stages_run_their_scripts(shell: FakeShell) -> None:
+    assert pipeline.run_stage("sonar", shell.context()) == []
+    assert pipeline.run_stage("deps", shell.context()) == []
+    assert gate_commands(shell) == ["bash scripts/ci/sonar_scan.sh", "python3 scripts/ci/check_dependency_updates.py"]
+
+
+def test_happy_path_commits_gate_runs_after_the_history_scan() -> None:
+    static = STAGES["static"]
+
+    assert static.index("commits") == static.index("gitleaks-history") + 1
+    assert GATES["commits"].command == ("python3", "scripts/ci/check_commits.py")
 
 
 # --- setup: node_modules --------------------------------------------------------------------------
@@ -241,11 +257,14 @@ def test_bad_path_failing_stage_writes_no_marker(tmp_path: Path, log: pytest.Log
     assert not (tmp_path / "reports").exists()
 
 
-def test_bad_path_composite_stage_reports_every_failed_part(shell: FakeShell, log: pytest.LogCaptureFixture) -> None:
+def test_bad_path_composite_stage_reports_every_failed_part(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
+    shell = FakeShell(tmp_path, failing=["check_bundle_budget.py", "sonar_scan.sh"])
+
     assert pipeline.run_pipeline("all", shell.context()) == 1
-    assert log.messages[-1] == "[FAILURE] stage 'all' failed: sonar (no gates registered)"
+    assert log.messages[-1] == "[FAILURE] stage 'all' failed: build/bundle-budget, sonar/sonar"
     assert "e2e 2/2 playwright" in log.messages
     assert "build 1/2 vite-build" in log.messages
+    assert "sonar 1/1 sonar" in log.messages
 
 
 def test_bad_path_unborn_head_is_recorded(tmp_path: Path) -> None:
@@ -296,7 +315,8 @@ def test_happy_path_default_context_runs_from_the_root(tmp_path: Path) -> None:
 def test_happy_path_list_prints_the_registry(log: pytest.LogCaptureFixture) -> None:
     assert pipeline.main(["--list"]) == 0
     assert "e2e      e2e-matrix playwright" in log.messages
-    assert "sonar    (no gates yet)" in log.messages
+    assert "sonar    sonar" in log.messages
+    assert "deps     dependency-updates" in log.messages
     assert "all      quality sonar" in log.messages
     assert "tests    vitest rules-coverage pytest pipeline-pytest coverage" in log.messages
 

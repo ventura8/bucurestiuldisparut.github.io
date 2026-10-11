@@ -1,6 +1,6 @@
 # SonarQube Skill
 
-**Historic City Map** is analysed by SonarQube Cloud: organisation `ventura8`, project key `ventura8_bucurestiuldisparut.github.io`. The repository is public, so analysis runs both in CI (free) and locally in the `sonar` stage, which is part of `all` (`quality/pipeline_skill.md` → *Stages*). Status today: `sonar-project.properties`, `scripts/ci/sonar_scan.sh`, `scripts/ci/sonar_report.py` and the CI job `sonarqube` exist; `scripts/ci/sonar_setup.py` is planned. The `sonar` stage has no gate yet and fails on purpose: the quality image has no `sonar-scanner`, so registering `Gate("sonar", ("bash", "scripts/ci/sonar_scan.sh"))` first needs the scanner copied into `docker/Dockerfile.quality` from the pinned scanner image.
+**Historic City Map** is analysed by SonarQube Cloud: organisation `ventura8`, project key `ventura8_bucurestiuldisparut.github.io`. The repository is public, so analysis runs both in CI (free) and locally in the `sonar` stage, which is part of `all` (`quality/pipeline_skill.md` → *Stages*). Status today: `sonar-project.properties`, `scripts/ci/sonar_scan.sh`, `scripts/ci/sonar_report.py`, the CI job `sonarqube` and the `sonar` gate of the pipeline (`Gate("sonar", ("bash", "scripts/ci/sonar_scan.sh"))`, the scanner copied into `docker/Dockerfile.quality` from the pinned scanner image) exist; `scripts/ci/sonar_setup.py` is planned. Without a token the stage skips with a notice and passes.
 
 ## Scope (`sonar-project.properties`)
 
@@ -12,7 +12,7 @@
 
 ## The verdict (`scripts/ci/sonar_report.py`)
 
-After the upload it waits for the server's compute task (5 s polls, 600 s timeout) and exits 1 unless **all** hold: quality gate OK, 0 open issues, 0 security hotspots to review, 0 duplicated blocks, coverage at least 90 % as the server reports it. It exits 2 when Sonar is not configured, which the stage reports as skipped, not failed.
+After the upload it waits for the server's compute task (5 s polls, 600 s timeout) and exits 1 unless **all** hold: quality gate OK, 0 open issues, 0 security hotspots to review, 0 duplicated blocks, coverage at least 90 % as the server reports it. It exits 2 when Sonar is not configured or the server fails (`sonar_scan.sh` never calls it without a token: that is its skip). `--check-reports` needs neither token nor network: exit 2 unless every coverage and test report named in `sonar-project.properties` exists and is not empty; `sonar_scan.sh` runs it before scanning, so an analysis without coverage is never uploaded.
 
 ## CI job (`sonarqube` in `.github/workflows/ci.yml`)
 
@@ -23,7 +23,7 @@ After the upload it waits for the server's compute task (5 s polls, 600 s timeou
 
 ## Local `sonar` stage
 
-`scripts/ci/sonar_scan.sh` runs the scanner image `sonarsource/sonar-scanner-cli` pinned by digest (never `:latest`) with the repository mounted at the same path, then `sonar_report.py` in the quality image; `--check-token` only validates the token. The token comes from `SONAR_TOKEN` or the git-ignored `.sonar-token`, which is refused unless its mode is 0600 (`chmod 600 .sonar-token`); it reaches the scanner as an environment variable and is validated through `curl -K -` with the token on stdin, never in argv. Without a token the script skips with a notice and exits 0.
+The pipeline's `sonar` gate runs `scripts/ci/sonar_scan.sh` inside the quality image (`PIPELINE_STAGE=sonar`, or as the last part of `all`): there the SonarScanner CLI 8.1.0.6389 is copied from `sonarsource/sonar-scanner-cli:12.2.0.4256_8.1.0`, pinned by digest (never `:latest`), runs on the image's JDK 21 (`-Dsonar.scanner.skipJreProvisioning=true`, no JRE download) and keeps its plugin cache in `reports/.cache/sonar` (`SONAR_USER_HOME`). Run on the host, the script uses the scanner image itself, with the repository mounted at the same path, then `sonar_report.py` in the quality image. `--check-token` only validates the token. The token comes from `SONAR_TOKEN` (`scripts/ci/run-all-checks.sh` forwards it into the container by name) or the git-ignored `.sonar-token`, which is refused unless its mode is 0600 (`chmod 600 .sonar-token`); it reaches the scanner as an environment variable and is validated through `curl -K -` with the token on stdin, never in argv. Without a token the script prints `[sonar] [SKIP] ...` and exits 0. With one it then requires the `tests` reports (`--check-reports`), scans and reports.
 
 ## Credentials (human-only)
 

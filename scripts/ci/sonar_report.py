@@ -2,6 +2,7 @@
 """What SonarQube Cloud says about the last analysis, and whether it is clean enough to ship.
 
     python3 scripts/ci/sonar_report.py --report-task .scannerwork/report-task.txt [--min-coverage 90]
+    python3 scripts/ci/sonar_report.py --check-reports   # before a scan: every report the scan reads is there
 
 Clean means (the sibling repositories' release bar): the quality gate is OK, no open issue of any
 type, no security hotspot left to review, no duplicated block, and overall coverage as the server
@@ -18,7 +19,12 @@ git-ignored `.sonar-token`; it is only ever sent as a Bearer header over HTTPS
 (`http.client.HTTPSConnection` speaks nothing else) and never printed, logged or put on a
 command line. Ported from the sibling Watch-GPS-Dashboard script.
 
-Exit status: 0 clean, 1 not clean, 2 not configured, or the server refused or failed.
+`--check-reports` needs no token and no network: it only checks that every coverage and test report
+named in sonar-project.properties exists and is not empty, so scripts/ci/sonar_scan.sh never uploads
+an analysis without coverage (which would then fail the coverage bar for a reason nobody can see).
+
+Exit status: 0 clean, 1 not clean, 2 not configured, or the server refused or failed (and, with
+`--check-reports`: 0 every report present, 2 one missing).
 """
 
 import argparse
@@ -61,6 +67,8 @@ METRICS = (
     "code_smells",
     "security_hotspots",
 )
+# The analysis reads these reports (written by the tests stage); --check-reports requires each of them.
+REPORT_KEYS = ("sonar.javascript.lcov.reportPaths", "sonar.python.coverage.reportPaths", "sonar.python.xunit.reportPath")
 TASK_DONE = "SUCCESS"
 TASK_FAILED = ("FAILED", "CANCELED")
 
@@ -171,6 +179,38 @@ def config(root: Path, args: argparse.Namespace) -> Config:
         raise SonarError("not configured: sonar.organization and sonar.projectKey belong in sonar-project.properties")
     host = setting(props, "SONAR_HOST_URL", "sonar.host.url", DEFAULT_HOST)
     return Config(host, read_token(root), organization, project_key, args.branch, args.pull_request)
+
+
+# --- the reports a scan reads --------------------------------------------------------------------
+
+
+def report_paths(props: Mapping[str, str]) -> list[str]:
+    return [path for key in REPORT_KEYS for path in sonar_properties.split_list(props.get(key, ""))]
+
+
+def is_missing(path: Path) -> bool:
+    return not path.is_file() or path.stat().st_size == 0
+
+
+def missing_reports(root: Path, paths: Sequence[str]) -> list[str]:
+    if not paths:
+        return ["(none configured)"]
+    return [path for path in paths if is_missing(root / path)]
+
+
+def check_reports(root: Path) -> int:
+    """0 when every coverage and test report of sonar-project.properties exists and is not empty, else 2."""
+    try:
+        paths = report_paths(load_properties(root))
+    except SonarError as error:
+        LOG.error("[sonar] %s", error)
+        return 2
+    missing = missing_reports(root, paths)
+    if missing:
+        LOG.error("[sonar] missing or empty reports: %s", ", ".join(missing))
+        return 2
+    LOG.info("[sonar] %d coverage and test reports present", len(paths))
+    return 0
 
 
 # --- the analysis --------------------------------------------------------------------------------
@@ -309,12 +349,15 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser.add_argument("--min-coverage", type=float, default=DEFAULT_MIN_COVERAGE, help="the coverage bar in percent (default 90)")
     parser.add_argument("--branch", help="the analysed branch (default: the main branch)")
     parser.add_argument("--pull-request", help="the analysed pull request number")
+    parser.add_argument("--check-reports", action="store_true", help="only check the reports a scan reads exist (no token needed)")
     return parser.parse_args(argv)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     root: Path = args.root
+    if args.check_reports:
+        return check_reports(root)
     try:
         cfg = config(root, args)
         found = collect(cfg, wait_for_analysis(cfg, args.report_task or root / DEFAULT_REPORT_TASK))

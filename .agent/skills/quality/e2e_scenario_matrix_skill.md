@@ -1,6 +1,6 @@
 # E2E Scenario Matrix Skill
 
-Every user-visible behaviour of **Historic City Map** has at least one **happy** and one **bad** scenario, registered in `e2e/scenarios.json` before the behaviour counts as done. The registry was seeded from `docs/research/design-review-testability.md` §4.5 (viewer V01–V18, admin A01–A21, pipeline P01–P02) plus the consent and crash-reporting behaviours of `docs/research/PLAN.md` → *Addendum 2* (V19, V20, A22).
+Every user-visible behaviour of **Historic City Map** has at least one **happy** and one **bad** scenario, registered in `e2e/scenarios.json` before the behaviour counts as done. The registry was seeded from `docs/research/design-review-testability.md` §4.5 (viewer V01–V18, admin A01–A21, pipeline P01–P02) plus the consent and crash-reporting behaviours of `docs/research/PLAN.md` → *Addendum 2* (V19, V20, A22) and the M1 contracts of `docs/research/M1-interfaces.md` §9 (the embed API V21, and rows for engine compatibility, the overlay and legacy hashes, markup in About, a photo without bearing and a mismatched `cityId`).
 
 This file holds the rules; it never states test counts. Counts appear only in the `## Counts` section of `docs/E2E_SCENARIOS.md`, generated from the registry by `python3 scripts/ci/check_e2e_matrix.py write`.
 
@@ -42,7 +42,7 @@ Any other row field fails the gate. The allowed values are the tuples in `script
 2. A test names its scenarios: Playwright with `{ tag: '@S-...' }`, pytest with a docstring line `Scenarios: S-..., S-...`. Test files are searched under `e2e/`, `pipeline/tests/`, `functions/test/` and `firebase/rules-tests/`.
 3. The `e2e-matrix` gate (`python3 scripts/ci/check_e2e_matrix.py check`) works in both directions: every named id is registered, every `exists` row is named by a test, no `planned` row is (flip it to `exists`), ids are unique, every behaviour has a happy and a bad row, and `docs/E2E_SCENARIOS.md` is current. After any registry or tag change run `python3 scripts/ci/check_e2e_matrix.py write` in the image and commit the regenerated doc.
 4. Assert what the user sees (text, ARIA, a pixel probe, a recorded request); drive the app from outside; mock only external boundaries (Mapbox, USGS, STAC, Nominatim, AI, the network), never an owned module; no network, no sleeps, no wall clock.
-5. Format the registry with Prettier (4 spaces) and keep every row on the schema above.
+5. Format the registry with Prettier (4 spaces) and keep every row on the schema above. Titles and `asserts` are copied verbatim into the Markdown tables of `docs/E2E_SCENARIOS.md`: describe markup in words (no raw `<tag>`), or markdownlint rejects the generated doc.
 6. A bug a scenario found goes into `docs/LESSONS.md` with the row id that now pins it.
 7. The tour tier checks layout, axe and ARIA snapshots on every screen and state; it backs V15, V18 and A21 but does not replace their functional rows.
 

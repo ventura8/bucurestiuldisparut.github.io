@@ -9,6 +9,7 @@
 - `resolveLocale(tag)` maps a BCP 47 tag to a supported locale: English (`en`, `en-US`) stays English, anything else (including `fr`, empty, malformed) becomes `ro` (`DEFAULT_LOCALE`).
 - `translate(locale, key, params)` fills `{name}` placeholders; an unknown placeholder stays visible so a test can see it.
 - Data has its own translations: city, layer and photo texts are `{ro, en}` maps in Firestore and the manifest; a photo cannot be published without its EN title (scenario A10).
+- The viewer's keys (M1) are all in the catalogues already, by family: `validation.*` (the codes `validate` and `validateManifest` return, so a schema problem is always shown localized), `error.*`, `action.*`, `viewer.*`, `timeline.*`, `layers.*`, `photos.*`, `photo.*`, `license.*`, `lightbox.*`, `share.*`, `about.*`, `theme.*`, `language.*`, `consent.*`, `geolocate.*` (`docs/research/M1-interfaces.md` §7). Counted forms use `Intl.PluralRules(locale)` over `.one` / `.few` / `.other` keys.
 
 ## Rules
 
@@ -17,5 +18,5 @@
 3. Dates and numbers are formatted with `Intl` for the active locale; the timezone of tests is `Europe/Bucharest`.
 4. The viewer: RO by default, `?lang=en` or the language switch selects English, the choice persists after reload, `<html lang>` follows it (scenario V11). The admin: every screen in RO and EN; switching keeps form state (A21).
 5. The tour tier's **leak check**: in RO mode no English-only catalogue string and no raw message id appears in the DOM.
-6. The `i18n` static gate (`scripts/ci/check_i18n.py`) checks every `packages/*/src/i18n/` folder: one catalogue per locale, the same keys, no duplicates, no empty message, the same `{placeholder}` names. Keep each catalogue a flat object literal with one entry per line, or the gate reports the line it cannot read.
+6. The `i18n` static gate (`scripts/ci/check_i18n.py`) checks every `packages/*/src/i18n/` folder: one catalogue per locale, the same keys, no duplicates, no empty message, the same `{placeholder}` names. Keep each catalogue a flat object literal with one entry per line, or the gate reports the line it cannot read. An entry longer than 140 columns is wrapped by Prettier onto two lines and then fails this gate: shorten the message instead.
 7. Machine translation drafts (M4, `assist.translate`) are drafts: never auto-published.

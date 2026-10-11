@@ -10,10 +10,18 @@
         ".": {
             "types": "./src/index.ts",
             "default": "./src/index.ts"
+        },
+        "./dynamic-color": {
+            "types": "./src/theme/dynamic-color.ts",
+            "default": "./src/theme/dynamic-color.ts"
         }
+    },
+    "scripts": {
+        "theme:gen": "node scripts/gen-theme.mjs"
     },
     "dependencies": {
         "@hcm/shared": "0.0.0",
+        "@material/material-color-utilities": "0.4.0",
         "lit": "3.3.3"
     }
 }

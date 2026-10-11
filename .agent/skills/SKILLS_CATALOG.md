@@ -45,7 +45,7 @@ Subagents (`.claude/agents/`): `pipeline-runner` (runs one stage, returns the ve
 
 ## Web Skills
 
-- `web/engine_viewer_skill.md`: the public viewer engine (`@hcm/engine`): config and manifest, the `MapPort` seam, Mapbox GL 3.32.0 as an external global, layers, timeline, photos, URL state, one map per view.
+- `web/engine_viewer_skill.md`: the public viewer engine (`@hcm/engine`): config and manifest (contract: `docs/ENGINE_API.md`), the `MapPort` seam, Mapbox GL 3.32.0 as an external global, layers, timeline, photos, URL state, one map per view, the M1 interfaces.
 - `web/admin_setup_assistant_skill.md`: the admin (`@hcm/admin`): the Setup Assistant cards and their state machine, the minimum-input budget, photos, layers, georeferencer, jobs, settings.
 - `web/ui_m3_adaptive_skill.md`: the `@hcm/ui` kit: Lit 3 without decorators, `hcm-` elements, Material 3 Expressive, dynamic colour tokens, window classes, accessibility.
 - `web/i18n_skill.md`: Romanian default and source of truth, English typed against it, locale resolution, the leak check.
@@ -72,7 +72,7 @@ Subagents (`.claude/agents/`): `pipeline-runner` (runs one stage, returns the ve
 ## Workflow Skills
 
 - `workflow/human_steps_and_consent_skill.md`: what only the human does (accounts, billing, cards, passwords, token pastes, consents), how Claude drives the browser with consent per action, and the Setup Assistant deep links.
-- `workflow/git_and_pr_skill.md`: branches, Conventional Commits, push discipline, the pull request, CodeRabbit waves and the single Copilot review.
+- `workflow/git_and_pr_skill.md`: branches, Conventional Commits (the `commit-msg` hook and the `commits` gate), push discipline, the pull request, CodeRabbit waves and the single Copilot review.
 
 ---
 

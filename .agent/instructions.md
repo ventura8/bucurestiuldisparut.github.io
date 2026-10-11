@@ -10,7 +10,7 @@ Before beginning any implementation task:
 2. Read `.agent/instructions.md` (this file).
 3. Read `.agent/skills/SKILLS_CATALOG.md`.
 4. Read every directly relevant skill and workflow file (for example `.agent/skills/quality/pipeline_skill.md`, `.agent/skills/quality/e2e_scenario_matrix_skill.md`, `.agent/skills/web/engine_viewer_skill.md`).
-5. For milestone work, read the milestone's section of `docs/research/PLAN.md` and the TODO list in `docs/research/M0-handoff.md`.
+5. For milestone work, read the milestone's section of `docs/research/PLAN.md` and the TODO list in `docs/research/M0-handoff.md`; for M1, also `docs/research/M1-interfaces.md` (ownership, interfaces, change requests) and `docs/ENGINE_API.md`.
 6. Do not write or modify code until this review is complete.
 
 ---
@@ -40,7 +40,7 @@ The stages, their gates and the meaning of `quality` and `all` are defined once,
 
 ## Cost, Push and Secrets Discipline (Hard Rules)
 
-- **Never push before the local pipeline is green**: `bash scripts/ci/run-all-checks.sh` (default `all`) ends in `[SUCCESS] stage 'all' passed` before any push to `master` or a tag. Pushing is ask-first in every case. Until the sonar stage has a gate, `all` fails by design; say so instead of pushing.
+- **Never push before the local pipeline is green**: `bash scripts/ci/run-all-checks.sh` (default `all`) ends in `[SUCCESS] stage 'all' passed` before any push to `master` or a tag. Pushing is ask-first in every case. `all` ends with the `sonar` stage, which skips with a notice (and passes) without a SonarCloud token.
 - **Cloud cost**: Mapbox map loads and MTS compute units are billed beyond the free tier, so tests never hit Mapbox, the viewer creates one map per view, and MTS publishes only after approval within the compute-unit guard. The GCP budget ($5) alarm pauses the raster pipeline and MTS, never the public site.
 - **Human-only steps**: account creation, billing and card entry, terms acceptance, passwords, Google sign-in consents and token pastes are done by the user. Claude opens the exact page, explains the step and verifies the result; it never types the credential. Every accept, submit, publish, purchase or settings change in a browser is confirmed by the user in chat first, one at a time.
 - **Secrets never leave their place**: Mapbox and USGS secrets live only in Secret Manager (written by the `setup.*` callables); `SONAR_TOKEN` is the only repository secret; GCP access from CI is keyless (Workload Identity Federation). Local secrets (`.env.local`, `.sonar-token`, `.secret.local`) are git-ignored and never opened, printed or pasted.

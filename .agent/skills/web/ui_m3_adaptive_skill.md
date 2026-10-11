@@ -1,6 +1,6 @@
 # UI: Material 3 Adaptive Skill
 
-The component kit `@hcm/ui` (`packages/ui`), shared by the engine and the admin: Lit 3 custom elements, Material 3 with M3 Expressive, adaptive to every window size. Today it holds the window-class tokens (`packages/ui/src/theme/tokens.ts`) and the scaffolding sample `hcm-hello` (`packages/ui/src/hcm-hello.ts`).
+The component kit `@hcm/ui` (`packages/ui`), shared by the engine and the admin: Lit 3 custom elements, Material 3 with M3 Expressive, adaptive to every window size. Today it holds the window-class tokens (`packages/ui/src/theme/tokens.ts`), dynamic colour (`packages/ui/src/theme/dynamic-color.ts`) and the scaffolding sample `hcm-hello` (`packages/ui/src/hcm-hello.ts`). The M1 component inventory (tags, properties, events, slots) is `docs/research/M1-interfaces.md` §5.
 
 ## Lit without decorators
 
@@ -45,7 +45,8 @@ export function defineHcmExample(registry: CustomElementRegistry = customElement
 ## Material 3
 
 - Google's `@material/web` is in maintenance mode and M3 Expressive is not implemented on the web, so Expressive components come from `@m3e/web` (pinned) and stable `@material/web` form controls are used in the admin; both sit behind our own `hcm-*` wrappers in `@hcm/ui`. These dependencies are added in the milestone that first imports them.
-- **Colour**: `@material/material-color-utilities` generates light, dark and high-contrast `--md-sys-color-*` tokens from the city's seed colour; the admin precomputes them into the manifest. A low-contrast seed is adjusted with a warning; contrast is checked by axe per theme in the tour tier.
+- **Colour**: `@material/material-color-utilities@0.4.0` (SpecVersion 2025, TonalSpot) generates the light, dark and high-contrast `--md-sys-color-*` tokens (53 per scheme) from the city's seed colour: `themeFromSeed` in `packages/ui/src/theme/dynamic-color.ts`, imported as `@hcm/ui/dynamic-color` (a separate entry point, so the main entry and every node test of the engine and admin never load the colour library) (also `contrastRatio`, `contrastIssues`; an invalid seed falls back to `DEFAULT_SEED_COLOR`). The tokens are precomputed into the manifest (the admin, or `node packages/ui/scripts/gen-theme.mjs --seed '#8B5E3C'`), so the viewer never ships the colour library. Unit tests require WCAG 4.5 for every text pair in the standard schemes and 7 in the high-contrast ones for a set of hard seeds; axe checks contrast per theme in the tour tier.
+- The library's ESM files import without file extensions: fine for Vite and Vitest, but plain Node needs the resolve hook the CLI scripts register (`scripts/seed/migrate-legacy.mjs`).
 - **Shape and motion**: the M3 shape scale, spring-derived motion curves; `prefers-reduced-motion` disables fly animations.
 - **Fonts**: self-hosted Roboto Flex and a subsetted Material Symbols font; never Google Fonts (GDPR).
 

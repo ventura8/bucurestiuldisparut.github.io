@@ -75,13 +75,17 @@ FIREBASE_SCHEMA = ("check-jsonschema", "--schemafile", "node_modules/firebase-to
 COVERAGE_GATE = ("scripts/ci/check_coverage.py", "--min", "90", "--summary", "reports/coverage/summary.md", "--badge-dir", ".github/badges")
 # Raster pipeline (pipeline/): Poetry and its venv are baked into the quality image (docker/Dockerfile.quality);
 # every pipeline command runs from the repository root (pipeline/pyproject.toml holds the pytest, coverage and
-# mypy settings). Radon lists only what grades B or worse, so any output fails (Auto-Sub convention).
+# mypy settings). Radon lists only what grades B or worse, so any output fails (Auto-Sub convention); like the
+# CI tooling below it covers the tests too, with --no-assert (a test's assert is a check, not a branch).
 PIPELINE_VENV = "/opt/hcm/pipeline-venv"
 PIPELINE_PYTHON = f"{PIPELINE_VENV}/bin/python"
 POETRY = ("env", f"VIRTUAL_ENV={PIPELINE_VENV}", "/opt/hcm/poetry/bin/poetry", "--directory", "pipeline")
 PIPELINE_LOCK = (*POETRY, "check", "--lock", "--strict")
 PIPELINE_MYPY = ("mypy", "--config-file", "pipeline/pyproject.toml", "--python-executable", PIPELINE_PYTHON)
-PIPELINE_RADON = "! radon cc --min B --show-complexity pipeline/src | grep . && ! radon mi --min B --show pipeline/src | grep ."
+PIPELINE_RADON = (
+    "! radon cc --no-assert --min B --show-complexity pipeline/src pipeline/tests | grep ."
+    " && ! radon mi --min B --show pipeline/src pipeline/tests | grep ."
+)
 PIPELINE_AUDIT = (
     f"pip-audit --progress-spinner off --path {PIPELINE_VENV}/lib/python3.14/site-packages"
     " && pip-audit --no-deps --disable-pip --progress-spinner off -r pipeline/requirements-poetry.txt"
@@ -95,6 +99,16 @@ RADON = "! radon cc --no-assert --min B --show-complexity scripts/ci | grep . &&
 # run linters with argument lists from constant tables) and B405 (an xml.etree type import; parsing goes
 # through defusedxml). The tests are left out like pipeline-bandit leaves out pipeline/tests.
 BANDIT = ("bandit", "-q", "-r", "scripts/ci", "-x", "scripts/ci/tests", "--severity-level", "medium")
+# Conventional Commits over the commits a CI run introduces (COMMIT_RANGE, else the GITLEAKS_LOG_OPTS range ci.yml
+# computes); a local run has neither and passes with a notice, because scripts/git-hooks/commit-msg checks each commit.
+COMMITS = ("python3", "scripts/ci/check_commits.py")
+# SonarQube Cloud: the scanner (copied into the image from its pinned image), then the strict verdict of
+# sonar_report.py. Without SONAR_TOKEN or .sonar-token the script prints a [SKIP] notice and passes (user convention:
+# skipped, not failed); with one, missing coverage reports stop it before any upload.
+SONAR = ("bash", "scripts/ci/sonar_scan.sh")
+# Latest stable of every npm, PyPI, Docker and GitHub Actions pin (HELD entries aside); network-bound, so only in
+# the weekly `deps` stage, never in `quality` or `all`.
+DEPENDENCY_UPDATES = ("python3", "scripts/ci/check_dependency_updates.py")
 
 GATES: dict[str, Gate] = {
     gate.name: gate
@@ -144,6 +158,7 @@ GATES: dict[str, Gate] = {
         Gate("repo-budget", ("python3", "scripts/ci/check_repo_budget.py")),
         Gate("gitleaks", GITLEAKS),
         Gate("gitleaks-history", ("bash", "-c", GITLEAKS_HISTORY)),
+        Gate("commits", COMMITS),
         Gate("npm-audit", ("npm", "audit", "--audit-level=low")),
         Gate("pip-audit", ("pip-audit", "--no-deps", "--disable-pip", "--progress-spinner", "off", "-r", "scripts/ci/requirements.txt")),
         Gate("pipeline-pip-audit", ("bash", "-c", PIPELINE_AUDIT)),
@@ -164,6 +179,10 @@ GATES: dict[str, Gate] = {
         Gate("release-check", ("python3", "scripts/ci/check_release.py")),
         # contract (weekly, network): Setup Assistant deep links and third-party API shapes
         Gate("contracts", ("python3", "scripts/ci/check_contracts.py")),
+        # sonar (part of `all`): SonarQube Cloud analysis and the strict verdict; skipped without a token
+        Gate("sonar", SONAR),
+        # deps (weekly, network): every pin on its latest stable release
+        Gate("dependency-updates", DEPENDENCY_UPDATES),
     )
 }
 
@@ -213,6 +232,7 @@ STAGES: dict[str, tuple[str, ...]] = {
         "repo-budget",
         "gitleaks",
         "gitleaks-history",
+        "commits",
         # The CI tooling's own tests (scripts/ci/tests), so a tooling-only change is gated by `static`
         # (quality-conventions.md §4 gate 24); `tests` runs them again next to the other suites.
         "pytest",
@@ -225,10 +245,11 @@ STAGES: dict[str, tuple[str, ...]] = {
     # The registry check first (the scenario ids the specs carry), then the specs themselves.
     "e2e": ("e2e-matrix", "playwright"),
     "build": ("vite-build", "bundle-budget"),
-    # Filled by later milestones (docs/research/M0-handoff.md). An empty stage FAILS: it must never
-    # report green for work that does not exist yet.
-    "sonar": (),
-    "deps": (),
+    # Needs the reports of `tests` (run_pipeline runs `all` as quality, then sonar). A stage left empty would FAIL:
+    # it must never report green for work that does not exist yet.
+    "sonar": ("sonar",),
+    # Weekly drift (.github/workflows/deps.yml); like contract, never part of quality or all.
+    "deps": ("dependency-updates",),
     "release": ("release-check", "vite-build", "bundle-budget"),
     # Weekly third-party drift (.github/workflows/contract.yml); like deps, never part of quality or all.
     "contract": ("contracts",),

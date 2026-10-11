@@ -1,10 +1,11 @@
-"""scripts/git-hooks/pre-commit and pre-push, exercised by real git in throwaway repositories.
+"""scripts/git-hooks/pre-commit, commit-msg and pre-push, exercised by real git in throwaway repositories.
 
 Each test builds a repository under tmp_path holding copies of the hooks, the CI scripts they call
 and .gitleaks.toml, installs the hooks with `core.hooksPath` exactly as docs/SETUP.md says, then
 commits and pushes (to a bare repository next to it) as a developer would. Inside the quality image
-(HCM_TEST_IMAGE=1) the hooks run the real suppression scanner and the real gitleaks; the Docker
-path is checked with a fake `docker` that records its arguments and runs the command it wraps.
+(HCM_TEST_IMAGE=1) the hooks run the real suppression scanner, the real gitleaks and the real
+Conventional Commits check; the Docker path is checked with a fake `docker` that records its arguments
+and runs the command it wraps.
 
 Banned directives and the fake credential are assembled from fragments at run time, so this file
 contains neither (the suppression scan and gitleaks scan it too).
@@ -92,7 +93,7 @@ class Repo:
 
 
 def copy_tree_files(repo_root: Path) -> None:
-    for hook in ("pre-commit", "pre-push"):
+    for hook in ("pre-commit", "commit-msg", "pre-push"):
         target = repo_root / "scripts" / "git-hooks" / hook
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(HOOKS_DIR / hook, target)
@@ -172,7 +173,7 @@ def test_happy_path_clean_commit_passes_both_scans(repo: Repo) -> None:
 
 
 def test_happy_path_empty_commit_runs_no_scan(repo: Repo) -> None:
-    result = repo.git("commit", "--allow-empty", "-m", "chore: empty")
+    result = repo.git("commit", "--allow-empty", "-m", "chore(test): empty")
 
     assert result.returncode == 0, result.stderr
     assert "scan" not in output(result)
@@ -241,11 +242,13 @@ def test_happy_path_outside_the_image_tools_run_in_the_quality_image(repo: Repo,
 
     assert result.returncode == 0, result.stderr
     runs = [line for line in log.read_text(encoding="utf-8").splitlines() if line.startswith("run ")]
-    assert len(runs) == 2
+    assert len(runs) == 3
     assert all(f"--network none --user {os.getuid()}:{os.getgid()}" in line for line in runs)
     assert all(f"--volume={repo.root}:{repo.root} " in line and f"--workdir {repo.root} {IMAGE} " in line for line in runs)
     assert "python3 scripts/ci/check_no_inline_suppressions.py --root " in runs[0]
     assert runs[1].endswith(f"gitleaks git --pre-commit --staged --redact --no-banner --config .gitleaks.toml {repo.root}")
+    assert runs[2].startswith("run --rm --interactive --network none ")
+    assert runs[2].endswith(f"{IMAGE} python3 scripts/ci/check_commits.py --message-file -")
 
 
 def test_bad_path_missing_quality_image_is_reported(repo: Repo, tmp_path: Path) -> None:
@@ -267,6 +270,73 @@ def test_bad_path_missing_docker_is_reported(repo: Repo) -> None:
 
     assert result.returncode == 1
     assert "[pre-commit] refused: docker is required" in result.stderr
+
+
+# --- commit-msg -------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("message", ["Add stuff", "feat: no scope", "update(engine): unknown type"])
+def test_bad_path_unconventional_message_is_refused(repo: Repo, message: str) -> None:
+    repo.write("README.md", "# Fixture")
+
+    result = repo.commit("README.md", message=message)
+
+    assert result.returncode == 1
+    assert f"`{message}`: expected `type(scope): summary`" in output(result)
+    assert "[commit-msg] refused: write the subject as type(scope): summary" in result.stderr
+    assert repo.commit_count() == 1
+
+
+def test_happy_path_editor_template_comments_are_ignored(repo: Repo) -> None:
+    repo.write("README.md", "# Fixture")
+    assert repo.git("add", "README.md").returncode == 0
+    repo.env["GIT_EDITOR"] = "true"
+    template = repo.root.parent / "message.txt"
+    template.write_text("docs(repo): readme\n\n# Please enter the commit message for your changes.\n", encoding="utf-8")
+
+    result = repo.git("commit", "--edit", "-F", str(template))
+
+    assert result.returncode == 0, result.stderr
+    assert repo.git("log", "-1", "--format=%B").stdout.strip() == "docs(repo): readme"
+
+
+def test_happy_path_git_generated_subjects_pass_the_hook(repo: Repo) -> None:
+    assert repo.git("switch", "-q", "-c", "topic").returncode == 0
+    repo.write("README.md", "# Topic")
+    assert repo.commit("README.md", message="docs(repo): topic readme").returncode == 0
+    assert repo.git("commit", "--allow-empty", "--fixup", "HEAD").returncode == 0
+    assert repo.git("switch", "-q", "master").returncode == 0
+
+    result = repo.git("merge", "--no-ff", "--no-edit", "topic")
+
+    assert result.returncode == 0, result.stderr
+    assert repo.git("log", "-1", "--format=%s").stdout.strip() == "Merge branch 'topic'"
+
+
+def test_bad_path_commit_msg_without_docker_is_reported(repo: Repo, tmp_path: Path) -> None:
+    hook = str(repo.root / "scripts" / "git-hooks" / "commit-msg")
+    message = tmp_path / "COMMIT_EDITMSG"
+    message.write_text("feat(test): change\n", encoding="utf-8")
+    repo.env.pop("HCM_TEST_IMAGE")
+    repo.env["PATH"] = path_without("docker", repo.env["PATH"])
+
+    result = subprocess.run(["bash", hook, str(message)], cwd=repo.root, env=repo.env, capture_output=True, text=True, check=False)
+
+    assert result.returncode == 1
+    assert "[commit-msg] refused: docker is required" in result.stderr
+
+
+def test_bad_path_commit_msg_with_a_missing_image_or_message_file_is_refused(repo: Repo, tmp_path: Path) -> None:
+    hook = str(repo.root / "scripts" / "git-hooks" / "commit-msg")
+    message = tmp_path / "COMMIT_EDITMSG"
+    message.write_text("feat(test): change\n", encoding="utf-8")
+    use_fake_docker(repo, tmp_path, image_missing=True)
+
+    def run(*args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(["bash", hook, *args], cwd=repo.root, env=repo.env, capture_output=True, text=True, check=False)
+
+    assert "the quality image hcm-quality:local is missing" in run(str(message)).stderr
+    assert "expected the commit message file as the only argument" in run(str(tmp_path / "missing")).stderr
 
 
 # --- pre-push ---------------------------------------------------------------------------------------

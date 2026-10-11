@@ -1,4 +1,4 @@
-"""sonar_scan.sh: token discovery and validation, the skips, and the scanner/report hand-off inside the image.
+"""sonar_scan.sh: token discovery and validation, the skips, the report precondition and the scanner/report hand-off inside the image.
 
 The script runs from a copy in a temporary repository. `sonar-scanner` and `curl` are fakes on PATH
 and `scripts/ci/sonar_report.py` is a fake that records its arguments, so nothing reaches SonarQube.
@@ -17,6 +17,7 @@ FAKE_TOKEN = "fake-token"
 FAKE_SCANNER = """#!/usr/bin/env bash
 printf '%s\\n' "$@" > "$FAKE_LOG/scanner-args"
 printf '%s' "${SONAR_TOKEN:-}" > "$FAKE_LOG/scanner-token"
+printf '%s' "${SONAR_USER_HOME:-}" > "$FAKE_LOG/scanner-home"
 [[ -n "${FAKE_SCANNER_OUTPUT:-}" ]] && printf '%s\\n' "$FAKE_SCANNER_OUTPUT"
 exit "${FAKE_SCANNER_EXIT:-0}"
 """
@@ -31,9 +32,13 @@ esac
 """
 FAKE_REPORT = """import os, sys
 from pathlib import Path
+if sys.argv[1:] == ["--check-reports"]:
+    Path(os.environ["FAKE_LOG"], "reports-checked").write_text("yes", encoding="utf-8")
+    sys.exit(int(os.environ.get("FAKE_REPORTS_EXIT", "0")))
 Path(os.environ["FAKE_LOG"], "report-args").write_text("\\n".join(sys.argv[1:]), encoding="utf-8")
 sys.exit(int(os.environ.get("FAKE_REPORT_EXIT", "0")))
 """
+SKIP_JRE = "-Dsonar.scanner.skipJreProvisioning=true"
 SKIP_NO_TOKEN = "[sonar] [SKIP] no SONAR_TOKEN and no .sonar-token: analysis skipped (docs/SETUP.md explains the token step)\n"
 
 
@@ -55,12 +60,17 @@ def token_file(root: Path, mode: int = 0o600) -> None:
     write(root, ".sonar-token", f"  {FAKE_TOKEN}  ").chmod(mode)
 
 
+def path_without_scanner() -> str:
+    """The PATH without the quality image's real sonar-scanner (docker/Dockerfile.quality installs one)."""
+    return os.pathsep.join(entry for entry in os.environ["PATH"].split(os.pathsep) if not (Path(entry) / "sonar-scanner").exists())
+
+
 def scan(root: Path, *args: str, scanner: bool = True, **env: str) -> subprocess.CompletedProcess[str]:
     bin_dir = root.parent / "bin"
     if not scanner:
         (bin_dir / "sonar-scanner").unlink()
     variables = {
-        "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        "PATH": f"{bin_dir}:{path_without_scanner()}",
         "HOME": str(root.parent),
         "HCM_TEST_IMAGE": "1",
         "FAKE_LOG": str(root.parent / "log"),
@@ -149,10 +159,29 @@ def test_happy_path_token_file_feeds_scanner_and_report(checkout: Path) -> None:
 
     assert result.returncode == 0
     assert (logged(checkout, "scanner-args"), logged(checkout, "scanner-token")) == (
-        "-Dsonar.projectVersion=1.2.3\n-Dsonar.branch.name=master\n",
+        f"{SKIP_JRE}\n-Dsonar.projectVersion=1.2.3\n-Dsonar.branch.name=master\n",
         FAKE_TOKEN,
     )
-    assert logged(checkout, "report-args") == "--report-task\n.scannerwork/report-task.txt\n--branch\nmaster"
+    assert logged(checkout, "scanner-home") == f"{checkout}/reports/.cache/sonar"
+    assert (logged(checkout, "reports-checked"), logged(checkout, "report-args")) == (
+        "yes",
+        "--report-task\n.scannerwork/report-task.txt\n--branch\nmaster",
+    )
+
+
+def test_bad_path_missing_reports_stop_the_scan_before_any_upload(checkout: Path) -> None:
+    result = scan(checkout, SONAR_TOKEN=FAKE_TOKEN, FAKE_REPORTS_EXIT="2")
+
+    assert (result.returncode, result.stderr) == (
+        2,
+        "[sonar] the coverage and test reports are missing: run PIPELINE_STAGE=tests first (PIPELINE_STAGE=all runs both)\n",
+    )
+    assert not (checkout.parent / "log" / "scanner-args").exists()
+
+
+def test_happy_path_an_explicit_sonar_user_home_is_kept(checkout: Path, tmp_path: Path) -> None:
+    assert scan(checkout, SONAR_TOKEN=FAKE_TOKEN, SONAR_USER_HOME=str(tmp_path / "sonar-home")).returncode == 0
+    assert logged(checkout, "scanner-home") == str(tmp_path / "sonar-home")
 
 
 def test_bad_path_report_verdict_is_the_exit_status(checkout: Path) -> None:
@@ -193,6 +222,6 @@ def test_happy_path_detached_head_sends_no_branch(checkout: Path) -> None:
 
     assert scan(checkout, SONAR_TOKEN=FAKE_TOKEN).returncode == 0
     assert (logged(checkout, "scanner-args"), logged(checkout, "report-args")) == (
-        "-Dsonar.projectVersion=1.2.3\n",
+        f"{SKIP_JRE}\n-Dsonar.projectVersion=1.2.3\n",
         "--report-task\n.scannerwork/report-task.txt",
     )

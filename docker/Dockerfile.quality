@@ -18,6 +18,8 @@ FROM mvdan/shfmt@sha256:8c06884a35683d8763fba6c0d9484d11a61a96da65f8d497d6f62582
 FROM zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f AS gitleaks
 # node:24-bookworm-slim (Node 24.21.0, npm 11.19.0)
 FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS node
+# sonarsource/sonar-scanner-cli:12.2.0.4256_8.1.0 (SonarScanner CLI 8.1.0.6389, as in scripts/ci/sonar_scan.sh)
+FROM sonarsource/sonar-scanner-cli@sha256:a3f4215076706c95a17a68c19322ee916e40a3acd081a8c1a1e839e0194afa57 AS sonar-scanner
 
 # --- quality image ----------------------------------------------------------------------------
 # ghcr.io/osgeo/gdal:ubuntu-small-3.13.3 (Ubuntu 26.04, Python 3.14.4 with matching osgeo bindings)
@@ -114,6 +116,17 @@ RUN --mount=type=cache,id=hcm-pip,target=/root/.cache/pip,sharing=locked \
     && VIRTUAL_ENV=/opt/hcm/pipeline-venv /opt/hcm/poetry/bin/poetry --directory /opt/hcm/pipeline \
         install --no-root --with dev --no-interaction \
     && /opt/hcm/pipeline-venv/bin/python -c "import cv2, httpx, numpy, pytest, respx; from osgeo import gdal, gdal_array"
+
+# SonarScanner CLI for the `sonar` stage (scripts/ci/sonar_scan.sh runs it directly in this image). Only the
+# launcher, its jar and its default config: it runs on this image's JDK 21 (/usr/bin/java), and the analysers
+# it downloads from SonarCloud at scan time use this image's Node 24. Late in the file on purpose: a scanner
+# bump rebuilds only the layers below, not the npm, Playwright and emulator layers above.
+COPY --from=sonar-scanner /opt/sonar-scanner/bin /opt/sonar-scanner/bin
+COPY --from=sonar-scanner /opt/sonar-scanner/lib /opt/sonar-scanner/lib
+COPY --from=sonar-scanner /opt/sonar-scanner/conf /opt/sonar-scanner/conf
+RUN ln -s /opt/sonar-scanner/bin/sonar-scanner /usr/local/bin/sonar-scanner \
+    && HOME=/tmp/sonar-version sonar-scanner --version \
+    && rm -rf /tmp/sonar-version
 
 # Runs as the host uid (docker run --user) on a bind-mounted checkout; git must accept it.
 RUN git config --system --add safe.directory '*'
