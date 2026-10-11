@@ -85,6 +85,9 @@ COPY packages/ui/package.json packages/ui/
 COPY packages/engine/package.json packages/engine/
 COPY packages/admin/package.json packages/admin/
 COPY packages/test-support/package.json packages/test-support/
+COPY functions/package.json functions/
+COPY firebase/rules-tests/package.json firebase/rules-tests/
+COPY e2e/package.json e2e/
 RUN --mount=type=cache,id=hcm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=hcm-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     npm ci --no-audit --no-fund \
@@ -93,6 +96,24 @@ RUN --mount=type=cache,id=hcm-apt-cache,target=/var/cache/apt,sharing=locked \
     && rm -rf node_modules \
     && chmod -R a+rwX /opt/hcm/npm-cache /opt/hcm/firebase-emulators \
     && chmod -R a+rX /ms-playwright
+
+# Raster pipeline (pipeline/, docs/research/M0-handoff.md): its tests and type checks run in THIS image,
+# which already is the GDAL image the pipeline ships on (pipeline/Dockerfile uses the same base digest).
+# Poetry lives in its own venv (/opt/hcm/poetry, pinned with every transitive dependency by
+# pipeline/requirements-poetry.txt). The pipeline's locked runtime and dev dependencies go into
+# /opt/hcm/pipeline-venv: no pip of its own (Poetry installs into it), --system-site-packages so the base
+# image's `osgeo` bindings are importable (its numpy shadows the system one, same 2.x ABI). The pipeline
+# source is bind-mounted at run time, hence --no-root.
+COPY pipeline/requirements-poetry.txt pipeline/pyproject.toml pipeline/poetry.lock /opt/hcm/pipeline/
+RUN --mount=type=cache,id=hcm-pip,target=/root/.cache/pip,sharing=locked \
+    --mount=type=cache,id=hcm-poetry,target=/root/.cache/pypoetry,sharing=locked \
+    python3 -m venv /opt/hcm/poetry \
+    && /opt/hcm/poetry/bin/pip install "pip==${PIP_VERSION}" \
+    && /opt/hcm/poetry/bin/pip install --only-binary :all: -r /opt/hcm/pipeline/requirements-poetry.txt \
+    && python3 -m venv --without-pip --system-site-packages /opt/hcm/pipeline-venv \
+    && VIRTUAL_ENV=/opt/hcm/pipeline-venv /opt/hcm/poetry/bin/poetry --directory /opt/hcm/pipeline \
+        install --no-root --with dev --no-interaction \
+    && /opt/hcm/pipeline-venv/bin/python -c "import cv2, httpx, numpy, pytest, respx; from osgeo import gdal, gdal_array"
 
 # Runs as the host uid (docker run --user) on a bind-mounted checkout; git must accept it.
 RUN git config --system --add safe.directory '*'

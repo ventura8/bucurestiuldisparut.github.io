@@ -4,7 +4,7 @@
 Runs only inside the pinned quality image (docker/Dockerfile.quality sets HCM_TEST_IMAGE=1);
 scripts/ci/run-all-checks.sh starts the container and scripts/ci/in-container.sh calls
 
-    python3 scripts/ci/pipeline.py --stage <static|tests|e2e|build|sonar|deps|release|quality|all>
+    python3 scripts/ci/pipeline.py --stage <static|tests|e2e|build|sonar|deps|release|contract|quality|all>
 
 Each gate of the stage runs in order from the repository root, announced as `static 3/24 eslint`.
 Every gate runs even after a failure, so one run lists every problem. The run ends with
@@ -55,12 +55,59 @@ SHELL_FILES = ("*.sh", "scripts/git-hooks/*")
 DOCKERFILES = (":(glob)**/Dockerfile", ":(glob)**/Dockerfile.*")
 GITLEAKS_REPORT = ("--report-format", "json", "--report-path", "reports/gitleaks.json")
 GITLEAKS = ("gitleaks", "dir", "--redact", "--no-banner", "--config", ".gitleaks.toml", *GITLEAKS_REPORT, ".")
+# History mode over the commits a CI run introduces (GITLEAKS_LOG_OPTS, computed by .github/workflows/ci.yml): a secret
+# added and deleted again inside a push is in history although no longer in the tree. Locally the variable is unset
+# (the pre-commit hook scans every staged change instead), and the gate says so and passes.
+GITLEAKS_HISTORY = (
+    'if [[ -z "${GITLEAKS_LOG_OPTS:-}" ]]; then echo "  gitleaks-history: GITLEAKS_LOG_OPTS unset (set by CI); nothing to scan";'
+    " exit 0; fi;"
+    ' exec gitleaks git --redact --no-banner --config .gitleaks.toml --log-opts="$GITLEAKS_LOG_OPTS"'
+    " --report-format json --report-path reports/gitleaks-history.json ."
+)
+WORKFLOWS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
+COMPOSITE_ACTIONS = (".github/actions/*/action.yml", ".github/actions/*/action.yaml")
+# AGENTS.md workflow rules the GitHub schemas do not cover (no pull_request_target, top-level permissions,
+# persist-credentials: false, no ${{ }} inside run: scripts), as a JSON Schema over workflows and composite actions.
+WORKFLOW_POLICY = ("check-jsonschema", "--schemafile", "scripts/ci/workflow-policy.schema.json")
+ISSUE_FORMS = (".github/ISSUE_TEMPLATE/*.yml", ":(exclude).github/ISSUE_TEMPLATE/config.yml")
+SCHEMA = ("check-jsonschema", "--builtin-schema")
+FIREBASE_SCHEMA = ("check-jsonschema", "--schemafile", "node_modules/firebase-tools/schema/firebase-config.json")
+COVERAGE_GATE = ("scripts/ci/check_coverage.py", "--min", "90", "--summary", "reports/coverage/summary.md", "--badge-dir", ".github/badges")
+# Raster pipeline (pipeline/): Poetry and its venv are baked into the quality image (docker/Dockerfile.quality);
+# every pipeline command runs from the repository root (pipeline/pyproject.toml holds the pytest, coverage and
+# mypy settings). Radon lists only what grades B or worse, so any output fails (Auto-Sub convention).
+PIPELINE_VENV = "/opt/hcm/pipeline-venv"
+PIPELINE_PYTHON = f"{PIPELINE_VENV}/bin/python"
+POETRY = ("env", f"VIRTUAL_ENV={PIPELINE_VENV}", "/opt/hcm/poetry/bin/poetry", "--directory", "pipeline")
+PIPELINE_LOCK = (*POETRY, "check", "--lock", "--strict")
+PIPELINE_MYPY = ("mypy", "--config-file", "pipeline/pyproject.toml", "--python-executable", PIPELINE_PYTHON)
+PIPELINE_RADON = "! radon cc --min B --show-complexity pipeline/src | grep . && ! radon mi --min B --show pipeline/src | grep ."
+PIPELINE_AUDIT = (
+    f"pip-audit --progress-spinner off --path {PIPELINE_VENV}/lib/python3.14/site-packages"
+    " && pip-audit --no-deps --disable-pip --progress-spinner off -r pipeline/requirements-poetry.txt"
+)
+PIPELINE_PYTEST = (PIPELINE_PYTHON, "-m", "pytest", "-c", "pipeline/pyproject.toml", "--rootdir", ".")
+# CI tooling (scripts/ci, its tests included): Radon grade A, the same bar as ruff C90 and ESLint `complexity` 5.
+# --no-assert: ruff S101 already bans assert outside tests, and a test's assert is a check, not a branch.
+RADON = "! radon cc --no-assert --min B --show-complexity scripts/ci | grep . && ! radon mi --min B --show scripts/ci | grep ."
+# Bandit at medium severity and above over the CI scripts. Its low-severity findings here are the subprocess
+# audit markers B404/B603 (the same marker ruff's S603 relaxation in ruff.toml explains: these scripts exist to
+# run linters with argument lists from constant tables) and B405 (an xml.etree type import; parsing goes
+# through defusedxml). The tests are left out like pipeline-bandit leaves out pipeline/tests.
+BANDIT = ("bandit", "-q", "-r", "scripts/ci", "-x", "scripts/ci/tests", "--severity-level", "medium")
 
 GATES: dict[str, Gate] = {
     gate.name: gate
     for gate in (
         # static: cheapest first, network-bound audits last.
         Gate("suppressions", ("python3", "scripts/ci/check_no_inline_suppressions.py")),
+        Gate("skill-mirrors", ("python3", "scripts/ci/check_skill_mirrors.py")),
+        Gate("agent-assets", ("python3", "scripts/ci/check_agent_assets.py")),
+        Gate("data-files", ("python3", "scripts/ci/check_data_files.py")),
+        Gate("firebase-schema", FIREBASE_SCHEMA, files=(":(glob)**/firebase.json",)),
+        Gate("editorconfig", ("python3", "scripts/ci/check_editorconfig.py")),
+        Gate("e2e-matrix", ("python3", "scripts/ci/check_e2e_matrix.py", "check")),
+        Gate("i18n", ("python3", "scripts/ci/check_i18n.py")),
         Gate("prettier", (*NPM_RUN, "format:check")),
         Gate("tsc", (*NPM_RUN, "typecheck")),
         Gate("eslint", (*NPM_RUN, "lint")),
@@ -76,24 +123,60 @@ GATES: dict[str, Gate] = {
         Gate("ruff-check", ("ruff", "check", ".")),
         Gate("ruff-format", ("ruff", "format", "--check", ".")),
         Gate("mypy", ("mypy",)),
+        Gate("radon", ("bash", "-c", RADON)),
+        Gate("bandit", BANDIT),
+        Gate("pipeline-lock", PIPELINE_LOCK),
+        Gate("pipeline-mypy", PIPELINE_MYPY),
+        Gate("pipeline-radon", ("bash", "-c", PIPELINE_RADON)),
+        Gate("pipeline-bandit", ("bandit", "-q", "-r", "pipeline/src")),
         Gate("shellcheck", ("shellcheck", "-x", "--severity=style"), files=SHELL_FILES),
         Gate("shfmt", ("shfmt", "-d"), files=SHELL_FILES),
         Gate("hadolint", ("hadolint", "--failure-threshold", "warning", "--disable-ignore-pragma"), files=DOCKERFILES),
-        Gate("actionlint", ("actionlint",), files=(".github/workflows/*.yml", ".github/workflows/*.yaml")),
+        Gate("actionlint", ("actionlint",), files=WORKFLOWS),
+        Gate("workflow-schema", ("check-jsonschema", "--builtin-schema", "vendor.github-workflows"), files=WORKFLOWS),
+        Gate("workflow-timeouts", (*SCHEMA, "custom.github-workflows-require-timeout"), files=WORKFLOWS),
+        Gate("action-schema", (*SCHEMA, "vendor.github-actions"), files=(".github/actions/*/action.yml",)),
+        Gate("issue-forms-schema", (*SCHEMA, "vendor.github-issue-forms"), files=ISSUE_FORMS),
+        Gate("issue-config-schema", (*SCHEMA, "vendor.github-issue-config"), files=(".github/ISSUE_TEMPLATE/config.yml",)),
+        Gate("action-pins", ("python3", "scripts/ci/check_action_pins.py")),
+        Gate("workflow-policy", WORKFLOW_POLICY, files=(*WORKFLOWS, *COMPOSITE_ACTIONS)),
+        Gate("repo-policy", ("python3", "scripts/ci/check_repo_policy.py")),
+        Gate("repo-budget", ("python3", "scripts/ci/check_repo_budget.py")),
         Gate("gitleaks", GITLEAKS),
+        Gate("gitleaks-history", ("bash", "-c", GITLEAKS_HISTORY)),
         Gate("npm-audit", ("npm", "audit", "--audit-level=low")),
         Gate("pip-audit", ("pip-audit", "--no-deps", "--disable-pip", "--progress-spinner", "off", "-r", "scripts/ci/requirements.txt")),
+        Gate("pipeline-pip-audit", ("bash", "-c", PIPELINE_AUDIT)),
         # tests
+        # `npm test` runs every Vitest project under `firebase emulators:exec` (scripts/ci/run-emulated-tests.sh)
+        # and saves the Firestore rule-coverage report that `rules-coverage` then checks.
         Gate("vitest", (*NPM_RUN, "test")),
+        Gate("rules-coverage", ("python3", "scripts/ci/check_rules_coverage.py", "check")),
         Gate("pytest", ("python3", "-m", "pytest")),
+        Gate("pipeline-pytest", PIPELINE_PYTEST),
+        Gate("coverage", ("python3", *COVERAGE_GATE)),
+        # e2e: Playwright (e2e/playwright.config.ts) in the image's Chromium, behind the firewall fixture
+        Gate("playwright", (*NPM_RUN, "test:e2e")),
         # build
         Gate("vite-build", (*NPM_RUN, "build")),
+        Gate("bundle-budget", ("python3", "scripts/ci/check_bundle_budget.py")),
+        # release: the tag agrees with every package version and both release-notes files
+        Gate("release-check", ("python3", "scripts/ci/check_release.py")),
+        # contract (weekly, network): Setup Assistant deep links and third-party API shapes
+        Gate("contracts", ("python3", "scripts/ci/check_contracts.py")),
     )
 }
 
 STAGES: dict[str, tuple[str, ...]] = {
     "static": (
         "suppressions",
+        "skill-mirrors",
+        "agent-assets",
+        "data-files",
+        "firebase-schema",
+        "editorconfig",
+        "e2e-matrix",
+        "i18n",
         "prettier",
         "tsc",
         "eslint",
@@ -109,22 +192,46 @@ STAGES: dict[str, tuple[str, ...]] = {
         "ruff-check",
         "ruff-format",
         "mypy",
+        "radon",
+        "bandit",
+        "pipeline-lock",
+        "pipeline-mypy",
+        "pipeline-radon",
+        "pipeline-bandit",
         "shellcheck",
         "shfmt",
         "hadolint",
         "actionlint",
+        "workflow-schema",
+        "workflow-timeouts",
+        "action-schema",
+        "issue-forms-schema",
+        "issue-config-schema",
+        "action-pins",
+        "workflow-policy",
+        "repo-policy",
+        "repo-budget",
         "gitleaks",
+        "gitleaks-history",
+        # The CI tooling's own tests (scripts/ci/tests), so a tooling-only change is gated by `static`
+        # (quality-conventions.md §4 gate 24); `tests` runs them again next to the other suites.
+        "pytest",
         "npm-audit",
         "pip-audit",
+        "pipeline-pip-audit",
     ),
-    "tests": ("vitest", "pytest"),
+    # The per-file coverage gate reads the reports the test runners just wrote.
+    "tests": ("vitest", "rules-coverage", "pytest", "pipeline-pytest", "coverage"),
+    # The registry check first (the scenario ids the specs carry), then the specs themselves.
+    "e2e": ("e2e-matrix", "playwright"),
+    "build": ("vite-build", "bundle-budget"),
     # Filled by later milestones (docs/research/M0-handoff.md). An empty stage FAILS: it must never
     # report green for work that does not exist yet.
-    "e2e": (),
-    "build": ("vite-build",),
     "sonar": (),
     "deps": (),
-    "release": (),
+    "release": ("release-check", "vite-build", "bundle-budget"),
+    # Weekly third-party drift (.github/workflows/contract.yml); like deps, never part of quality or all.
+    "contract": ("contracts",),
 }
 
 COMPOSITE_STAGES: dict[str, tuple[str, ...]] = {

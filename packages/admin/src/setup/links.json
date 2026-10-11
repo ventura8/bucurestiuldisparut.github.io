@@ -1,0 +1,73 @@
+{
+    "$comment": "Setup Assistant deep links (docs/research/design-review-onboarding.md section 2), verified 2026-10-11. {name} placeholders are filled at run time; `sample` holds the values the weekly contract check (scripts/ci/check_contracts.py, .github/workflows/contract.yml) uses. Only verified links belong here.",
+    "links": [
+        {
+            "id": "gcp.firebaseConsole",
+            "step": "A2",
+            "purpose": "Accept the Google Cloud and Firebase terms (first time only)",
+            "url": "https://console.firebase.google.com/"
+        },
+        {
+            "id": "gcp.billingAccounts",
+            "step": "A3",
+            "purpose": "Create or pick a Cloud Billing account (the card is entered on Google's page)",
+            "url": "https://console.cloud.google.com/billing"
+        },
+        {
+            "id": "gcp.blazeUpgrade",
+            "step": "A4",
+            "purpose": "Link the billing account to the project (Blaze plan)",
+            "url": "https://console.firebase.google.com/project/{projectId}/usage/details",
+            "sample": { "projectId": "demo-hcm" }
+        },
+        {
+            "id": "mapbox.signup",
+            "step": "B1",
+            "purpose": "Create a Mapbox account",
+            "url": "https://account.mapbox.com/auth/signup/"
+        },
+        {
+            "id": "mapbox.console",
+            "step": "B2",
+            "purpose": "Leave demo access: add the payment method (choose Rotate token)",
+            "url": "https://console.mapbox.com/"
+        },
+        {
+            "id": "mapbox.usageThresholds",
+            "step": "B3",
+            "purpose": "Tick the usage alert thresholds",
+            "url": "https://console.mapbox.com/account/settings/usage-thresholds"
+        },
+        {
+            "id": "mapbox.accessTokens",
+            "step": "B4",
+            "purpose": "Create the secret token historic-map-server with the listed scopes",
+            "url": "https://console.mapbox.com/account/access-tokens/"
+        },
+        {
+            "id": "usgs.register",
+            "step": "C1",
+            "purpose": "Register a USGS ERS account",
+            "url": "https://ers.cr.usgs.gov/register"
+        },
+        {
+            "id": "usgs.accessRequest",
+            "step": "C2",
+            "purpose": "Request M2M API access",
+            "url": "https://ers.cr.usgs.gov/profile/access"
+        },
+        {
+            "id": "usgs.applicationToken",
+            "step": "C3",
+            "purpose": "Create the M2M application token (shown for 60 seconds)",
+            "url": "https://ers.cr.usgs.gov/password/appgenerate"
+        },
+        {
+            "id": "usgs.sceneMetadata",
+            "step": "C6",
+            "purpose": "Open a scene in EarthExplorer to order its scan",
+            "url": "https://earthexplorer.usgs.gov/scene/metadata/full/{datasetId}/{entityId}/",
+            "sample": { "datasetId": "5e839febdccb64b3", "entityId": "DS1105-2248DF076" }
+        }
+    ]
+}

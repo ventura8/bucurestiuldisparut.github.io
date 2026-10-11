@@ -1,0 +1,67 @@
+rules_version = '2';
+
+// Cloud Storage security rules for the PRIVATE bucket <project>.firebasestorage.app
+// (docs/research/design-review-security-cost.md §1.5): admin uploads, rasters, USGS raw files,
+// browse copies and derived artifacts. Published derivatives (manifest.json, web.webp, thumb.webp)
+// live in the separate <project>-public bucket, which only service accounts write; a wrong rule here
+// can therefore never publish an upload.
+//
+// Clients only create uploads under their own uid and never overwrite them; Cloud Functions and the
+// Cloud Run job (service accounts, which bypass rules) write everything else. Never trust the client
+// contentType: photos.onUpload sniffs magic bytes before processing.
+//
+// Tests: firebase/rules-tests/test/storage.test.ts. The Storage emulator reports no rule coverage, so
+// the matrix covers every condition explicitly.
+service firebase.storage {
+    match /b/{bucket}/o {
+
+        // Same identity rules as firestore.rules: a verified Google account with the `admin` claim
+        // and an admins/{uid} document (removing the document revokes access immediately). Reading
+        // Firestore from Storage rules needs roles/firebaserules.firestoreServiceAgent on the
+        // Storage service agent (granted by the bootstrap).
+        function authed() {
+            return request.auth != null
+                && request.auth.token.get('email_verified', false) == true
+                && request.auth.token.firebase.sign_in_provider == 'google.com';
+        }
+
+        function isAdmin() {
+            return authed()
+                && request.auth.token.get('admin', false) == true
+                && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+        }
+
+        // An admin uploading a NEW object into their own folder of a well-formed city id. Storage
+        // treats overwriting an existing object as `create` too, hence `resource == null`: every
+        // upload gets its own {upload} id, and photos.onUpload never sees an object change under it.
+        function ownUpload(city, uid) {
+            return isAdmin()
+                && request.auth.uid == uid
+                && city.matches('[a-z0-9-]{2,32}')
+                && resource == null;
+        }
+
+        // Photos: raster formats only, under 60 MiB. SVG is never accepted (it can carry script);
+        // HEIC/HEIF is converted server-side.
+        match /uploads/photos/{city}/{uid}/{upload}/{file} {
+            allow create: if ownUpload(city, uid)
+                && request.resource.size < 60 * 1024 * 1024
+                && request.resource.contentType.matches('image/(jpeg|png|webp|tiff|heic|heif)');
+            allow read, delete: if isAdmin();
+        }
+
+        // Historical rasters (GeoTIFF) for the georeferencing pipeline, under 8 GiB.
+        match /uploads/rasters/{city}/{uid}/{upload}/{file} {
+            allow create: if ownUpload(city, uid)
+                && request.resource.size < 8 * 1024 * 1024 * 1024
+                && request.resource.contentType.matches('image/tiff|application/octet-stream');
+            allow read, delete: if isAdmin();
+        }
+
+        // Derived artifacts (rasters/, raster-seg/, usgs-raw/, previews/, tmp/): admins read them,
+        // only service accounts write them.
+        match /{path=**} {
+            allow read: if isAdmin();
+        }
+    }
+}

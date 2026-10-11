@@ -1,0 +1,100 @@
+# Historic City Map Skills Catalog
+
+This catalog indexes the project skills of **Historic City Map** (București dispărut): what each one covers and when to read it.
+
+## Mandatory Execution Rule
+
+1. Before starting any task, read `AGENTS.md`, `.agent/instructions.md`, this catalog, and every skill and workflow file relevant to the task.
+2. Every task updates the Markdown that describes it (`README.md`, `docs/*.md`, `.agent/**`, `.agents/skills/**` and the `.claude/skills/**` mirror) in the same task. Never ship code-only changes.
+3. Verify every change with `scripts/ci/run-all-checks.sh` (inside the quality image); it is what CI runs, gate for gate. Quote its `[SUCCESS] stage '<x>' passed` line before saying done.
+
+---
+
+## Folder Layout
+
+- `governance/`: keeping the agent assets and the documentation in sync with the code, and where each lesson is written down.
+- `quality/`: the pipeline (the **only** definition of the stages), every gate and its fix, the test tiers, the e2e scenario registry, SonarQube Cloud, releases.
+- `web/`: the public viewer engine, the admin and its Setup Assistant, the Material 3 Expressive adaptive UI kit, i18n (RO default, EN), web security (no HTML from data, CSP).
+- `firebase/`: Cloud Functions (pure handlers and thin triggers), Firestore and Storage rules, the emulators, analytics and crash reporting.
+- `pipeline/`: the Python + GDAL raster pipeline, USGS M2M, Mapbox tileset publishing and its cost guard.
+- `workflow/`: human-only steps and per-action consent, git, pull requests and reviews.
+
+Agent-native digests live in `.agents/skills/<name>/SKILL.md` and, byte-identical, in `.claude/skills/<name>/SKILL.md`: `quality-pipeline`, `e2e-scenarios`, `sonarqube`, `firebase`, `raster-pipeline`, `setup-assistant`, `coderabbit-review-waves`, `resolve-pr-comments`, `prepare-release`. Edit the `.agents/skills/` copy, then `cp` it over the mirror.
+
+Subagents (`.claude/agents/`): `pipeline-runner` (runs one stage, returns the verdict), `e2e-matrix-auditor` (the registry against the tests), `docs-sync-checker` (the docs a diff must touch), `golden-reviewer` (Playwright screenshot diffs).
+
+---
+
+## Governance Skills
+
+- `governance/agent_asset_maintenance_skill.md`: keep `AGENTS.md`, `CLAUDE.md`, `.agent/`, `.agents/skills/`, `.claude/` in sync with the code every task; the drift rules (counts and stage definitions in one place, planned paths); *Where a lesson goes*.
+- `governance/doc_update_skill.md`: which document owns which fact (`README.md`, `docs/*.md`, the generated scenario doc, release notes, badges), the `docs/research/` addendum rule, and the Markdown style that keeps markdownlint green.
+
+---
+
+## Quality Skills
+
+- `quality/pipeline_skill.md`: the single entry point `scripts/ci/run-all-checks.sh`, the **canonical stage table** (`static`, `tests`, `e2e`, `build`, `sonar`, `deps`, `release`, `quality`, `all`), how to add a gate, the CI mapping, tool pins, holds and local tooling quirks.
+- `quality/ci_quality_gates_skill.md`: every gate in run order, its command, configuration, what it fails on and how to fix it without a suppression.
+- `quality/testing_strategy_skill.md`: the test tiers (node, Vitest browser mode, functions, rules, pytest, Playwright), fakes and seams (`MapPort` + FakeMap, msw, the mock APIs, the emulators), network isolation, naming, per-file coverage.
+- `quality/e2e_scenario_matrix_skill.md`: the scenario registry `e2e/scenarios.json` (V viewer, A admin, P pipeline), its id scheme, statuses, the test tags and the cross-check in both directions.
+- `quality/sonarqube_skill.md`: SonarQube Cloud (org `ventura8`), the CI job and the local `sonar` stage, the strict verdict, the token rules and the pitfalls inherited from the sibling repos.
+- `quality/prepare_release_skill.md`: versions, the two release-note files per tag, the engine `dist` and jsDelivr, the release checks.
+
+---
+
+## Web Skills
+
+- `web/engine_viewer_skill.md`: the public viewer engine (`@hcm/engine`): config and manifest, the `MapPort` seam, Mapbox GL 3.32.0 as an external global, layers, timeline, photos, URL state, one map per view.
+- `web/admin_setup_assistant_skill.md`: the admin (`@hcm/admin`): the Setup Assistant cards and their state machine, the minimum-input budget, photos, layers, georeferencer, jobs, settings.
+- `web/ui_m3_adaptive_skill.md`: the `@hcm/ui` kit: Lit 3 without decorators, `hcm-` elements, Material 3 Expressive, dynamic colour tokens, window classes, accessibility.
+- `web/i18n_skill.md`: Romanian default and source of truth, English typed against it, locale resolution, the leak check.
+- `web/web_security_skill.md`: no HTML from data, URL and id validation, CSP and headers, tokens in the browser, App Check, consent before analytics.
+
+---
+
+## Firebase Skills
+
+- `firebase/functions_skill.md`: Cloud Functions v2 (`@hcm/functions`): pure handlers, ports and REST adapters, the composition root, `.run()` tests, secrets read at runtime, the deploy artifact.
+- `firebase/rules_and_emulators_skill.md`: default-deny Firestore and Storage rules, the rules-test matrix and rule coverage, the emulators under the `demo-hcm` project, seeding and isolation.
+- `firebase/analytics_and_crash_skill.md`: GA4 and Performance Monitoring behind consent, the error reporter and Cloud Error Reporting, the event taxonomy, no PII.
+
+---
+
+## Pipeline Skills
+
+- `pipeline/raster_pipeline_skill.md`: the Python + GDAL pipeline (`pipeline/src/hcm_pipeline`): steps, the job state machine, the synthetic georeferencing harness, determinism, the Cloud Run Job.
+- `pipeline/usgs_m2m_skill.md`: USGS M2M facts (login-token, permissions, scene search, download flow, error shapes, maintenance) and the buy-scan flow.
+- `pipeline/mapbox_publishing_skill.md`: Mapbox tokens (secret, minted public), MTS publishing after approval, the compute-unit guard, the free Studio path, Mapbox terms.
+
+---
+
+## Workflow Skills
+
+- `workflow/human_steps_and_consent_skill.md`: what only the human does (accounts, billing, cards, passwords, token pastes, consents), how Claude drives the browser with consent per action, and the Setup Assistant deep links.
+- `workflow/git_and_pr_skill.md`: branches, Conventional Commits, push discipline, the pull request, CodeRabbit waves and the single Copilot review.
+
+---
+
+## Recommended Skill Order by Task Type
+
+| Task domain | Primary skills | Secondary skills |
+| --- | --- | --- |
+| **Any change** | `quality/pipeline_skill.md` | `quality/ci_quality_gates_skill.md`, `governance/agent_asset_maintenance_skill.md` |
+| **Viewer feature or bug** | `web/engine_viewer_skill.md`, `quality/e2e_scenario_matrix_skill.md` | `web/ui_m3_adaptive_skill.md`, `web/i18n_skill.md`, `quality/testing_strategy_skill.md` |
+| **Admin screen or Setup Assistant step** | `web/admin_setup_assistant_skill.md`, `workflow/human_steps_and_consent_skill.md` | `web/ui_m3_adaptive_skill.md`, `firebase/functions_skill.md`, `quality/e2e_scenario_matrix_skill.md` |
+| **UI component, theme or layout** | `web/ui_m3_adaptive_skill.md` | `web/i18n_skill.md`, `quality/testing_strategy_skill.md` |
+| **Text or language** | `web/i18n_skill.md` | `web/ui_m3_adaptive_skill.md` |
+| **Rendering data, URLs, CSP, tokens** | `web/web_security_skill.md` | `firebase/rules_and_emulators_skill.md` |
+| **Cloud Function** | `firebase/functions_skill.md` | `firebase/rules_and_emulators_skill.md`, `quality/testing_strategy_skill.md` |
+| **Firestore or Storage rules** | `firebase/rules_and_emulators_skill.md` | `web/web_security_skill.md` |
+| **Analytics, consent, crash reports** | `firebase/analytics_and_crash_skill.md` | `web/web_security_skill.md`, `web/i18n_skill.md` |
+| **Raster pipeline, georeferencing** | `pipeline/raster_pipeline_skill.md` | `pipeline/usgs_m2m_skill.md`, `pipeline/mapbox_publishing_skill.md` |
+| **USGS or Mapbox integration** | `pipeline/usgs_m2m_skill.md`, `pipeline/mapbox_publishing_skill.md` | `firebase/functions_skill.md`, `workflow/human_steps_and_consent_skill.md` |
+| **A gate fails** | `quality/ci_quality_gates_skill.md` | `quality/pipeline_skill.md` |
+| **Coverage below 90 %** | `quality/testing_strategy_skill.md` | `quality/ci_quality_gates_skill.md` |
+| **CI, tooling or a dependency bump** | `quality/pipeline_skill.md` | `quality/ci_quality_gates_skill.md`, `governance/doc_update_skill.md` |
+| **SonarQube** | `quality/sonarqube_skill.md` | `quality/ci_quality_gates_skill.md` |
+| **Release** | `quality/prepare_release_skill.md` | `governance/doc_update_skill.md`, `workflow/git_and_pr_skill.md` |
+| **Browser work in a console (Mapbox, Google Cloud, USGS, SonarCloud)** | `workflow/human_steps_and_consent_skill.md` | `web/admin_setup_assistant_skill.md` |
+| **PR review wave** | `.agents/skills/coderabbit-review-waves/SKILL.md` | `.agents/skills/resolve-pr-comments/SKILL.md`, `workflow/git_and_pr_skill.md` |

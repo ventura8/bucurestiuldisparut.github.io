@@ -9,7 +9,10 @@
         "node": ">=24.12.0"
     },
     "workspaces": [
-        "packages/*"
+        "packages/*",
+        "functions",
+        "firebase/rules-tests",
+        "e2e"
     ],
     "scripts": {
         "build": "npm run build --workspaces --if-present",
@@ -18,13 +21,14 @@
         "format:check": "prettier --check .",
         "lint": "eslint --max-warnings 0 --no-inline-config --report-unused-disable-directives-severity error .",
         "lint:css": "stylelint --max-warnings 0 --report-needless-disables --report-invalid-scope-disables --report-descriptionless-disables \"packages/*/src/**/*.{css,ts}\"",
-        "lint:deps": "depcruise packages --config .dependency-cruiser.cjs",
+        "lint:deps": "depcruise packages functions --config .dependency-cruiser.cjs",
         "lint:html": "htmlhint",
         "lint:html:validate": "html-validate --max-warnings 0",
         "lint:knip": "knip",
         "lint:md": "markdownlint-cli2",
-        "test": "vitest run --coverage",
+        "test": "firebase emulators:exec --project demo-hcm --only auth,firestore,storage 'bash scripts/ci/run-emulated-tests.sh'",
         "test:e2e": "npm run test:e2e --workspace @hcm/e2e",
+        "test:unit": "vitest run --coverage",
         "typecheck": "tsc -b"
     },
     "devDependencies": {
@@ -58,6 +62,9 @@
         "vitest": "5.0.3"
     },
     "overrides": {
+        "@firebase/firestore@4.18.0": {
+            "@grpc/grpc-js": "1.14.6"
+        },
         "@opentelemetry/core": "2.12.0",
         "basic-ftp": "6.2.3",
         "braces": "$braces",

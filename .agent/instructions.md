@@ -20,10 +20,10 @@ Before beginning any implementation task:
 Work through failures in this order, and never lower a gate to get past one:
 
 1. **Format**: Prettier (TS, JS, JSON, YAML, CSS), `ruff format`, `shfmt`, `taplo fmt`.
-2. **Lint**: the suppression scan, `tsc -b`, ESLint, stylelint, HTML linters, markdownlint, knip, dependency-cruiser, yamllint, ruff, mypy, shellcheck, hadolint, actionlint, gitleaks, the audits.
+2. **Lint**: the suppression scan, skill mirrors, agent assets, data files, EditorConfig, the scenario registry, i18n parity, `tsc -b`, ESLint, stylelint, HTML linters, markdownlint, knip, dependency-cruiser, yamllint, taplo, ruff, mypy, radon, bandit, shellcheck, hadolint, actionlint and the workflow checks (schemas, timeouts, action pins, the workflow policy), the repo policy (secret files, exact pins, image digests) and budget, gitleaks (tree and CI commit range), the CI tooling's own tests, the audits.
 3. **Tests**: Vitest (node projects and the Chromium browser project) and pytest.
-4. **Coverage**: 90 % or more per file, lines and branches; add behaviour tests, never exclusions.
-5. **E2E**: the Playwright tiers under the Firebase emulators and mock APIs (from M1).
+4. **Coverage**: 90 % or more per file, lines and branches (Vitest per file, then the `coverage` gate over the Sonar scope); add behaviour tests, never exclusions.
+5. **E2E**: the Playwright specs behind the firewall and console guard (today the harness smoke; the tiers under the Firebase emulators and mock APIs from M1).
 
 The stages, their gates and the meaning of `quality` and `all` are defined once, in `quality/pipeline_skill.md` → *Stages*. Every gate and how to fix it: `quality/ci_quality_gates_skill.md`.
 
@@ -40,7 +40,7 @@ The stages, their gates and the meaning of `quality` and `all` are defined once,
 
 ## Cost, Push and Secrets Discipline (Hard Rules)
 
-- **Never push before the local pipeline is green**: `bash scripts/ci/run-all-checks.sh` (default `all`) ends in `[SUCCESS] stage 'all' passed` before any push to `master` or a tag. Pushing is ask-first in every case. Until the e2e and sonar stages have gates (M1), `all` fails by design; say so instead of pushing.
+- **Never push before the local pipeline is green**: `bash scripts/ci/run-all-checks.sh` (default `all`) ends in `[SUCCESS] stage 'all' passed` before any push to `master` or a tag. Pushing is ask-first in every case. Until the sonar stage has a gate, `all` fails by design; say so instead of pushing.
 - **Cloud cost**: Mapbox map loads and MTS compute units are billed beyond the free tier, so tests never hit Mapbox, the viewer creates one map per view, and MTS publishes only after approval within the compute-unit guard. The GCP budget ($5) alarm pauses the raster pipeline and MTS, never the public site.
 - **Human-only steps**: account creation, billing and card entry, terms acceptance, passwords, Google sign-in consents and token pastes are done by the user. Claude opens the exact page, explains the step and verifies the result; it never types the credential. Every accept, submit, publish, purchase or settings change in a browser is confirmed by the user in chat first, one at a time.
 - **Secrets never leave their place**: Mapbox and USGS secrets live only in Secret Manager (written by the `setup.*` callables); `SONAR_TOKEN` is the only repository secret; GCP access from CI is keyless (Workload Identity Federation). Local secrets (`.env.local`, `.sonar-token`, `.secret.local`) are git-ignored and never opened, printed or pasted.

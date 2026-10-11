@@ -5,5 +5,11 @@
 !package-lock.json
 !.npmrc
 !packages/*/package.json
+!functions/package.json
+!firebase/rules-tests/package.json
+!e2e/package.json
 !vendor/npm/braces/**
 !scripts/ci/requirements.txt
+!pipeline/requirements-poetry.txt
+!pipeline/pyproject.toml
+!pipeline/poetry.lock

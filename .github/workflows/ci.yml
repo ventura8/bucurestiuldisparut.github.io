@@ -1,0 +1,418 @@
+name: CI Pipeline
+
+# The quality pipeline on GitHub Actions. Every gate runs inside the pinned quality image through the
+# wrapper a developer runs locally, `PIPELINE_STAGE=<stage> bash scripts/ci/run-all-checks.sh`; this
+# file only picks the stages, moves reports between jobs and holds the deploy jobs. It never calls a
+# lint or test tool itself (AGENTS.md -> Pipeline parity). Stage definitions:
+# .agent/skills/quality/pipeline_skill.md.
+#
+# Image: build-image is the only writer of the type=gha layer cache (scope hcm-quality); every other
+# job lets scripts/ci/build-and-test.sh rebuild the image from that cache and load it (seconds of
+# build, about a minute of load) before the stage runs.
+#
+# Deploys stay off until M2 (docs/research/PLAN.md): they run only on a push to master when the
+# repository variable DEPLOY_ENABLED is 'true', authenticate to Google Cloud with Workload Identity
+# Federation (variables GCP_WIF_PROVIDER, GCP_DEPLOY_SA, GCP_PROJECT_ID, GCP_REGION; no key), and
+# SONAR_TOKEN is the only repository secret.
+
+on:
+    push:
+        branches: [master]
+        tags: ['v*']
+    pull_request:
+        branches: [master]
+        types: [opened, synchronize, reopened, ready_for_review]
+    workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+    contents: read
+
+env:
+    HCM_IMAGE: hcm-quality:local
+    # Every stage job loads the image built from the cache that build-image filled.
+    LOAD_IMAGE: --load --cache-from type=gha,scope=hcm-quality
+    # A fork's token cannot create check runs: its test reports annotate the workflow run instead.
+    FORK_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+
+jobs:
+    build-image:
+        name: Build & Cache Quality Image
+        # Draft pull requests are skipped; marking one ready for review starts the run.
+        if: github.event.pull_request.draft != true
+        runs-on: ubuntu-24.04
+        timeout-minutes: 45
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - uses: ./.github/actions/quality-image
+
+            - name: Build the quality image into the Actions cache
+              env:
+                  HCM_DOCKER_BUILD_FLAGS: >-
+                      --cache-from type=gha,scope=hcm-quality --cache-to type=gha,mode=max,scope=hcm-quality --output type=cacheonly
+              run: bash scripts/ci/build-and-test.sh
+
+    static:
+        name: Lint & Security
+        needs: build-image
+        runs-on: ubuntu-24.04
+        timeout-minutes: 30
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+                  # The whole history, so the gitleaks commit range below resolves.
+                  fetch-depth: 0
+
+            - uses: ./.github/actions/quality-image
+
+            # The commits this run introduces, handed to the container for a history-mode gitleaks scan.
+            - name: Gitleaks commit range
+              env:
+                  EVENT_NAME: ${{ github.event_name }}
+                  PR_BASE: ${{ github.event.pull_request.base.sha }}
+                  PR_HEAD: ${{ github.event.pull_request.head.sha }}
+                  PUSH_BEFORE: ${{ github.event.before }}
+              run: |
+                  if [[ "$EVENT_NAME" == "pull_request" ]]; then
+                      range="${PR_BASE}..${PR_HEAD}"
+                  elif [[ -n "$PUSH_BEFORE" && ! "$PUSH_BEFORE" =~ ^0+$ ]]; then
+                      range="${PUSH_BEFORE}..${GITHUB_SHA}"
+                  else
+                      range="${GITHUB_SHA}"
+                  fi
+                  echo "GITLEAKS_LOG_OPTS=${range}" >>"$GITHUB_ENV"
+
+            - name: Static stage
+              env:
+                  PIPELINE_STAGE: static
+                  HCM_DOCKER_BUILD_FLAGS: ${{ env.LOAD_IMAGE }}
+              run: bash scripts/ci/run-all-checks.sh
+
+    tests:
+        name: Unit Tests & Coverage
+        needs: static
+        runs-on: ubuntu-24.04
+        timeout-minutes: 30
+        permissions:
+            contents: read
+            checks: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - uses: ./.github/actions/quality-image
+
+            - name: Tests stage
+              env:
+                  PIPELINE_STAGE: tests
+                  HCM_DOCKER_BUILD_FLAGS: ${{ env.LOAD_IMAGE }}
+              run: bash scripts/ci/run-all-checks.sh
+
+            - name: Unit test report
+              if: ${{ !cancelled() }}
+              uses: mikepenz/action-junit-report@6ef3fdcfcd5f0b5d14df3e659ef19b8c6820f93d # v6.6.1
+              with:
+                  check_name: Unit Test Report
+                  report_paths: reports/junit/*.xml
+                  require_tests: true
+                  detailed_summary: true
+                  annotate_only: ${{ env.FORK_PR }}
+
+            # scripts/ci/check_coverage.py writes the per-file table; the job summary shows it.
+            - name: Coverage summary
+              if: ${{ !cancelled() && hashFiles('reports/coverage/summary.md') != '' }}
+              run: cat reports/coverage/summary.md >>"$GITHUB_STEP_SUMMARY"
+
+            - name: Upload coverage and test reports (SonarQube)
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: coverage
+                  path: |
+                      reports/coverage/
+                      reports/junit/
+                  if-no-files-found: error
+                  retention-days: 7
+
+    e2e:
+        name: E2E (Playwright + Firebase Emulators) ${{ matrix.shard }}
+        needs: static
+        runs-on: ubuntu-24.04
+        timeout-minutes: 60
+        permissions:
+            contents: read
+            checks: write
+        strategy:
+            fail-fast: false
+            matrix:
+                # Shards as "index/total" (Playwright --shard). Grow the list and the total together.
+                shard: ['1/1']
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - uses: ./.github/actions/quality-image
+
+            - name: E2E stage
+              env:
+                  PIPELINE_STAGE: e2e
+                  E2E_SHARD: ${{ matrix.shard }}
+                  HCM_DOCKER_BUILD_FLAGS: ${{ env.LOAD_IMAGE }}
+              run: bash scripts/ci/run-all-checks.sh
+
+            - name: E2E test report
+              if: ${{ !cancelled() }}
+              uses: mikepenz/action-junit-report@6ef3fdcfcd5f0b5d14df3e659ef19b8c6820f93d # v6.6.1
+              with:
+                  check_name: E2E Test Report (${{ matrix.shard }})
+                  report_paths: reports/junit/e2e*.xml
+                  require_tests: true
+                  detailed_summary: true
+                  annotate_only: ${{ env.FORK_PR }}
+
+            - name: Upload the Playwright report
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: e2e-${{ strategy.job-index }}
+                  path: |
+                      reports/playwright/
+                      reports/test-results/
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+    build:
+        name: Build Engine & Admin
+        needs: static
+        runs-on: ubuntu-24.04
+        timeout-minutes: 30
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - uses: ./.github/actions/quality-image
+
+            - name: Build stage
+              env:
+                  PIPELINE_STAGE: build
+                  HCM_DOCKER_BUILD_FLAGS: ${{ env.LOAD_IMAGE }}
+              run: bash scripts/ci/run-all-checks.sh
+
+            - name: Upload the bundles
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: dist
+                  path: |
+                      packages/engine/dist/
+                      packages/admin/dist/
+                  if-no-files-found: error
+                  retention-days: 7
+
+            # The Bucharest site (M1/M2: sites/bucharest) is what GitHub Pages serves.
+            - name: Upload the GitHub Pages artifact
+              if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
+              uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+              with:
+                  path: sites/bucharest/dist
+
+    sonarqube:
+        name: SonarQube Cloud Analysis
+        needs: tests
+        # The default branch and this repository's pull requests only: fork PRs get no secrets, and a
+        # tag or another branch is a non-default-branch analysis, which the free plan refuses (403).
+        if: >-
+            (github.event_name != 'pull_request' && github.ref == 'refs/heads/master') ||
+            (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+        runs-on: ubuntu-24.04
+        timeout-minutes: 20
+        permissions:
+            contents: read
+        env:
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+                  # Blame data for new-code detection.
+                  fetch-depth: 0
+
+            # Without the token (the user creates it: docs/SETUP.md) or the project file, the job
+            # reports a skip instead of failing.
+            - name: SonarQube configured?
+              id: sonar
+              run: |
+                  if [[ -n "$SONAR_TOKEN" && -f sonar-project.properties ]]; then
+                      echo "enabled=true" >>"$GITHUB_OUTPUT"
+                  else
+                      echo "::notice title=SonarQube skipped::SONAR_TOKEN or sonar-project.properties is missing"
+                      echo "enabled=false" >>"$GITHUB_OUTPUT"
+                  fi
+
+            - name: Download coverage and test reports
+              if: steps.sonar.outputs.enabled == 'true'
+              uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+              with:
+                  name: coverage
+                  path: reports/
+
+            - name: Check the reports are present
+              id: reports
+              if: steps.sonar.outputs.enabled == 'true'
+              run: |
+                  for report in reports/coverage/ts/lcov.info reports/coverage/scripts.xml reports/junit/pytest.xml; do
+                      test -s "$report" || { echo "::error::missing or empty ${report}"; exit 1; }
+                  done
+                  echo "version=$(jq -r .version package.json)" >>"$GITHUB_OUTPUT"
+
+            - name: SonarQube scan
+              if: steps.sonar.outputs.enabled == 'true'
+              uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+              with:
+                  args: -Dsonar.projectVersion=${{ steps.reports.outputs.version }}
+
+            - name: SonarQube quality gate
+              if: steps.sonar.outputs.enabled == 'true'
+              uses: SonarSource/sonarqube-quality-gate-action@7a5fffe8e523c40e0c740b6bc2712ab503e52efa # v1.2.1
+              timeout-minutes: 10
+
+            - if: steps.sonar.outputs.enabled == 'true'
+              uses: ./.github/actions/quality-image
+
+            - name: Load the quality image
+              if: steps.sonar.outputs.enabled == 'true'
+              env:
+                  HCM_DOCKER_BUILD_FLAGS: ${{ env.LOAD_IMAGE }}
+              run: bash scripts/ci/build-and-test.sh
+
+            # The repository's release bar on top of the gate: no open issue, no hotspot to review, no
+            # duplicated block, server coverage of 90 % or more. Runs in the quality image (Python 3.14);
+            # the token reaches it through the environment only.
+            - name: Strict SonarQube verdict
+              if: steps.sonar.outputs.enabled == 'true'
+              run: >-
+                  docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp --env SONAR_TOKEN
+                  --volume "$PWD:$PWD" --workdir "$PWD" "$HCM_IMAGE"
+                  python3 scripts/ci/sonar_report.py --report-task .scannerwork/report-task.txt --min-coverage 90
+
+    deploy-pages:
+        name: Deploy to GitHub Pages
+        needs: [tests, e2e, build, sonarqube]
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
+        runs-on: ubuntu-24.04
+        timeout-minutes: 15
+        permissions:
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - name: Configure GitHub Pages
+              uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+            - name: Deploy
+              id: deployment
+              uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+    deploy-firebase:
+        name: Deploy Firebase (rules, indexes, functions, admin hosting)
+        needs: [tests, e2e, build, sonarqube]
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
+        runs-on: ubuntu-24.04
+        timeout-minutes: 30
+        permissions:
+            contents: read
+            id-token: write
+        # The WIF provider only trusts this repository's master ref (design-review-security-cost.md §2).
+        environment: deploy
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Authenticate to Google Cloud (Workload Identity Federation)
+              uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+              with:
+                  workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+                  service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+            - uses: ./.github/actions/quality-image
+
+            - name: Load the quality image
+              env:
+                  HCM_DOCKER_BUILD_FLAGS: ${{ env.LOAD_IMAGE }}
+              run: bash scripts/ci/build-and-test.sh
+
+            # firebase-tools is pinned in package.json and runs in the image; the short-lived
+            # credentials file of the auth step lives in the workspace, mounted at the same path.
+            - name: firebase deploy
+              env:
+                  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+              run: |
+                  in_image=(docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp --env GOOGLE_APPLICATION_CREDENTIALS
+                      --volume "$PWD:$PWD" --workdir "$PWD" "$HCM_IMAGE")
+                  "${in_image[@]}" npm ci --prefer-offline --no-audit --no-fund
+                  "${in_image[@]}" npx firebase deploy --non-interactive --project "$GCP_PROJECT_ID" \
+                      --only firestore,storage,functions,hosting
+
+    deploy-pipeline-image:
+        name: Publish Raster Pipeline Image (Cloud Run Job)
+        needs: [tests, e2e, build, sonarqube]
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
+        runs-on: ubuntu-24.04
+        timeout-minutes: 45
+        permissions:
+            contents: read
+            id-token: write
+        environment: deploy
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Authenticate to Google Cloud (Workload Identity Federation)
+              id: auth
+              uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+              with:
+                  workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+                  service_account: ${{ vars.GCP_DEPLOY_SA }}
+                  token_format: access_token
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+            - name: Log in to Artifact Registry
+              uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+              with:
+                  registry: ${{ vars.GCP_REGION }}-docker.pkg.dev
+                  username: oauth2accesstoken
+                  password: ${{ steps.auth.outputs.access_token }}
+
+            # The Cloud Run Job runs this image (pipeline/Dockerfile target `runtime`, M3); pointing the
+            # job at the new digest is part of the M3 deploy.
+            - name: Build and push the pipeline runtime image
+              uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+              with:
+                  context: pipeline
+                  file: pipeline/Dockerfile
+                  target: runtime
+                  push: true
+                  tags: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/hcm/pipeline:${{ github.sha }}
+                  cache-from: type=gha,scope=hcm-pipeline
+                  cache-to: type=gha,mode=max,scope=hcm-pipeline

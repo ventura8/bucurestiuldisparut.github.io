@@ -1,0 +1,14 @@
+{
+    "name": "@hcm/e2e",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Playwright end-to-end tests (PIPELINE_STAGE=e2e): the scenario registry e2e/scenarios.json, the network firewall and console guard fixtures, and the specs tagged with their @S-... scenario ids.",
+    "license": "UNLICENSED",
+    "type": "module",
+    "scripts": {
+        "test:e2e": "playwright test"
+    },
+    "devDependencies": {
+        "@playwright/test": "1.64.0"
+    }
+}

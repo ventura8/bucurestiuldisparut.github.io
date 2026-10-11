@@ -7,6 +7,7 @@ through `get_logger(name)`. Lines carry no timestamp or level prefix because the
 
 import logging
 import sys
+from collections.abc import Iterable
 
 _ROOT_NAME = "hcm"
 
@@ -31,3 +32,8 @@ def get_logger(name: str) -> logging.Logger:
         parent.addHandler(handler)
         parent.setLevel(logging.INFO)
     return parent.getChild(name)
+
+
+def bullets(items: Iterable[str]) -> str:
+    """`items` as an indented `  - item` list, one per line: the body of every gate's FAILED report."""
+    return "\n".join(map("  - {}".format, items))

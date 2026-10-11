@@ -1,0 +1,1775 @@
+{
+    "$comment": "E2E scenario registry: every user-visible behaviour has at least one happy and one bad row. Rules: .agent/skills/quality/e2e_scenario_matrix_skill.md. Row fields are checked by scripts/ci/check_e2e_matrix.py; status is 'planned' until a test tagged @<id> is in the tree, then 'exists'. Test counts appear only in the generated docs/E2E_SCENARIOS.md.",
+    "version": 1,
+    "behaviours": [
+        {
+            "id": "V00",
+            "area": "viewer",
+            "name": "E2E harness smoke",
+            "milestone": "M0",
+            "source": "docs/research/design-review-testability.md §4.2 (SwiftShader smoke, firewall fixture)"
+        },
+        {
+            "id": "V01",
+            "area": "viewer",
+            "name": "Boot",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V02",
+            "area": "viewer",
+            "name": "WebGL",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V03",
+            "area": "viewer",
+            "name": "Layer toggle",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V04",
+            "area": "viewer",
+            "name": "Timeline",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V05",
+            "area": "viewer",
+            "name": "Opacity",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V06",
+            "area": "viewer",
+            "name": "Swipe compare",
+            "milestone": "M4",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V07",
+            "area": "viewer",
+            "name": "Photos on map",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V08",
+            "area": "viewer",
+            "name": "Lightbox",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V09",
+            "area": "viewer",
+            "name": "Deep links and share",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V10",
+            "area": "viewer",
+            "name": "Geolocate",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V11",
+            "area": "viewer",
+            "name": "Language",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V12",
+            "area": "viewer",
+            "name": "Theme",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V13",
+            "area": "viewer",
+            "name": "About and credits",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V14",
+            "area": "viewer",
+            "name": "Keyboard and screen reader",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V15",
+            "area": "viewer",
+            "name": "Responsive",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V16",
+            "area": "viewer",
+            "name": "Privacy and cost",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V17",
+            "area": "starter-kit",
+            "name": "Starter kit (no Firebase)",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V18",
+            "area": "viewer",
+            "name": "Legal",
+            "milestone": "M1",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "V19",
+            "area": "viewer",
+            "name": "Analytics consent",
+            "milestone": "M1",
+            "source": "docs/research/PLAN.md Addendum 2"
+        },
+        {
+            "id": "V20",
+            "area": "viewer",
+            "name": "Crash reporting",
+            "milestone": "M2",
+            "source": "docs/research/PLAN.md Addendum 2"
+        },
+        {
+            "id": "A01",
+            "area": "admin",
+            "name": "Sign-in and owner claim",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A02",
+            "area": "admin",
+            "name": "Admin invitations",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A03",
+            "area": "admin",
+            "name": "Setup Assistant shell",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A04",
+            "area": "admin",
+            "name": "Blaze and billing detection",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A05",
+            "area": "admin",
+            "name": "Mapbox account and plan",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A06",
+            "area": "admin",
+            "name": "Mapbox secret token",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A07",
+            "area": "admin",
+            "name": "USGS ERS and M2M",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A08",
+            "area": "admin",
+            "name": "Photo upload",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A09",
+            "area": "admin",
+            "name": "Photo edit",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A10",
+            "area": "admin",
+            "name": "Photo publish",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A11",
+            "area": "admin",
+            "name": "Imagery search",
+            "milestone": "M3",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A12",
+            "area": "admin",
+            "name": "Import free scene",
+            "milestone": "M3",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A13",
+            "area": "admin",
+            "name": "Buy scan",
+            "milestone": "M4",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A14",
+            "area": "admin",
+            "name": "Upload GeoTIFF",
+            "milestone": "M3",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A15",
+            "area": "admin",
+            "name": "Link tileset or XYZ",
+            "milestone": "M3",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A16",
+            "area": "admin",
+            "name": "Georeferencer",
+            "milestone": "M3",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A17",
+            "area": "admin",
+            "name": "Auto-publish policy",
+            "milestone": "M3",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A18",
+            "area": "admin",
+            "name": "Jobs",
+            "milestone": "M3",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A19",
+            "area": "admin",
+            "name": "City settings",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A20",
+            "area": "admin",
+            "name": "Session security",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A21",
+            "area": "admin",
+            "name": "Admin i18n",
+            "milestone": "M2",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "A22",
+            "area": "admin",
+            "name": "Analytics and crash reporting setup",
+            "milestone": "M2",
+            "source": "docs/research/PLAN.md Addendum 2"
+        },
+        {
+            "id": "P01",
+            "area": "pipeline",
+            "name": "Import job end to end",
+            "milestone": "M3",
+            "source": "docs/research/design-review-testability.md §4.5"
+        },
+        {
+            "id": "P02",
+            "area": "pipeline",
+            "name": "Re-georeference",
+            "milestone": "M3",
+            "source": "docs/research/design-review-testability.md §4.5"
+        }
+    ],
+    "scenarios": [
+        {
+            "id": "S-V00-HAPPY",
+            "behaviour": "V00",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A static page at the loopback origin renders WebGL2 under SwiftShader",
+            "asserts": "heading and probe canvas visible; a WebGL2 clear reads back rgba(0, 128, 255, 255)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M0. Harness precondition of V02: the e2e tier can render WebGL2 without a GPU (e2e/specs/smoke.spec.ts)."
+        },
+        {
+            "id": "S-V00-BAD-BLOCKED-HOST",
+            "behaviour": "V00",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A request to a host outside the allowlist is aborted and reported",
+            "asserts": "fetch of api.mapbox.com fails in the page; the firewall fixture records the URL and the console guard the blocked load",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M0. Proves the firewall fixture (e2e/support/test.ts) that every later spec relies on to keep real Mapbox and Google off the network."
+        },
+        {
+            "id": "S-V01-HAPPY",
+            "behaviour": "V01",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Manifest loads into map, timeline and photo markers",
+            "asserts": "manifest -> map, timeline and photo markers rendered",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V01-BAD-MANIFEST404",
+            "behaviour": "V01",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Manifest 404 shows a localized error with Retry",
+            "asserts": "manifest 404 -> localized error message and a Retry button",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V01-BAD-INVALID-MANIFEST",
+            "behaviour": "V01",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Schema-invalid manifest shows an error card",
+            "asserts": "zod-invalid manifest -> error card, no blank map",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V01-BAD-SLOW-STORAGE",
+            "behaviour": "V01",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Slow Storage shows a skeleton, then a timeout message",
+            "asserts": "slow Storage -> skeleton, then a localized timeout message",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V02-HAPPY",
+            "behaviour": "V02",
+            "area": "viewer",
+            "path": "happy",
+            "title": "WebGL2 renders the map",
+            "asserts": "WebGL2 available -> map rendered",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V02-BAD-NO-WEBGL",
+            "behaviour": "V02",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Without WebGL a fallback card appears and the photo list still works",
+            "asserts": "--disable-3d-apis -> fallback card; photo list still usable",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V03-HAPPY",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Toggling a layer shows and hides it with its attribution",
+            "asserts": "layer on/off verified by pixel probe; attribution shown",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V03-BAD-TILE404",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A tile 404 shows a layer error chip and the map survives",
+            "asserts": "tile 404 -> layer error chip; map keeps working",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V04-HAPPY",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Selecting a year shows its layer and filters photos",
+            "asserts": "year selection shows the layer; photo year filter in sync",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V04-BAD-YEAR-WITHOUT-LAYER",
+            "behaviour": "V04",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A year without a layer is disabled or snaps to the nearest",
+            "asserts": "year without a layer -> stop disabled or snaps to the nearest year",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V05-HAPPY",
+            "behaviour": "V05",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Opacity slider changes the layer opacity",
+            "asserts": "opacity 0 versus 1 by pixel probe; slider ARIA value",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V05-BAD-HASH-OUT-OF-RANGE",
+            "behaviour": "V05",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An out-of-range opacity in the URL hash is clamped",
+            "asserts": "out-of-range hash value -> clamped",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V06-HAPPY",
+            "behaviour": "V06",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Swipe compare creates a second map lazily and reveals both sides",
+            "asserts": "lazy second map (count 2); slider reveals left versus right",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M4."
+        },
+        {
+            "id": "S-V06-BAD-COMPACT-WIDTH",
+            "behaviour": "V06",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On compact width compare is unavailable and a toggle is offered",
+            "asserts": "compact width -> compare unavailable, toggle instead",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M4."
+        },
+        {
+            "id": "S-V06-BAD-EXIT-DESTROYS-MAP",
+            "behaviour": "V06",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Leaving compare destroys the second map",
+            "asserts": "exit -> second map destroyed (count 1)",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M4."
+        },
+        {
+            "id": "S-V07-HAPPY",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Photo clusters expand and open the photo sheet",
+            "asserts": "clusters expand on zoom; click -> bottom sheet (compact) or side sheet (medium and up); view cones at high zoom",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V07-BAD-IMAGE404",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A missing photo image shows a placeholder with alt text",
+            "asserts": "image 404 -> placeholder and alt text",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V08-HAPPY",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Lightbox opens, zooms, navigates and returns focus",
+            "asserts": "open, pinch-zoom (touch), arrow keys, Esc returns focus",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V08-BAD-BROKEN-IMAGE",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A broken full image shows an error state and close still works",
+            "asserts": "broken full image -> error state; close still works",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V09-HAPPY",
+            "behaviour": "V09",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Deep links restore state and Share copies the URL",
+            "asserts": "#photo= and #layers=&view= restore state; Share copies the URL",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V09-BAD-UNKNOWN-PHOTO",
+            "behaviour": "V09",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An unknown photo id in the hash shows a toast",
+            "asserts": "unknown photo id -> toast",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V09-BAD-MALFORMED-HASH",
+            "behaviour": "V09",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A malformed hash falls back to defaults",
+            "asserts": "malformed hash -> defaults",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V10-HAPPY",
+            "behaviour": "V10",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Granted geolocation inside the city moves the camera",
+            "asserts": "permission granted, in bounds -> camera moves",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V10-BAD-DENIED",
+            "behaviour": "V10",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Denied geolocation shows a message",
+            "asserts": "permission denied -> message",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V10-BAD-OUT-OF-BOUNDS",
+            "behaviour": "V10",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A location outside the city shows a message",
+            "asserts": "out of city bounds -> message",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V11-HAPPY",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Romanian by default; English persists after reload",
+            "asserts": "RO by default; switch to EN persists after reload; html lang; localized dates",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V11-BAD-UNSUPPORTED-LANG",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An unsupported language falls back to Romanian",
+            "asserts": "?lang=fr -> RO",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V11-BAD-MISSING-KEY",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A missing English key falls back to Romanian",
+            "asserts": "missing key -> RO fallback (also blocked at build time)",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V12-HAPPY",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "happy",
+            "title": "System dark theme, manual toggle and seed colour apply",
+            "asserts": "system dark; manual toggle persists; seed colour applied (axe contrast)",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V12-BAD-INVALID-SEED",
+            "behaviour": "V12",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An invalid seed colour falls back to the default palette",
+            "asserts": "invalid seed -> default palette",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V13-HAPPY",
+            "behaviour": "V13",
+            "area": "viewer",
+            "path": "happy",
+            "title": "About and credits render from the manifest in RO and EN",
+            "asserts": "rendered from the manifest, RO and EN",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V13-BAD-EMPTY-CREDITS",
+            "behaviour": "V13",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Empty credits hide the credits section",
+            "asserts": "empty credits -> section hidden",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V14-HAPPY",
+            "behaviour": "V14",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Keyboard order reaches timeline, layers and photos with visible focus",
+            "asserts": "skip link -> timeline -> layers -> photos; focus visible",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V14-BAD-FORCED-COLORS",
+            "behaviour": "V14",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Forced colours stay readable",
+            "asserts": "forced-colors mode -> content readable",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V14-BAD-REDUCED-MOTION",
+            "behaviour": "V14",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Reduced motion disables fly animations",
+            "asserts": "reduced motion -> no fly animation",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V15-HAPPY",
+            "behaviour": "V15",
+            "area": "viewer",
+            "path": "happy",
+            "title": "No overflow or overlap at every viewport",
+            "asserts": "no overflow or overlap at all 11 viewports; touch targets at least 48 px",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V15-BAD-COMPACT-LANDSCAPE",
+            "behaviour": "V15",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Compact landscape collapses the controls into a menu",
+            "asserts": "compact landscape -> controls collapse into a menu",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V16-HAPPY",
+            "behaviour": "V16",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Only allowlisted hosts, no Firestore calls, one map load",
+            "asserts": "only allowlisted hosts; 0 Firestore calls; 1 map load",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V16-BAD-TILE-HOST-DOWN",
+            "behaviour": "V16",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A tile host outage shows a non-blocking toast",
+            "asserts": "tile host down -> non-blocking toast",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V17-HAPPY",
+            "behaviour": "V17",
+            "area": "starter-kit",
+            "path": "happy",
+            "title": "The starter kit renders a static manifest",
+            "asserts": "static manifest renders without any backend",
+            "tier": "e2e-starter-kit",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V17-BAD-MISSING-CONFIG",
+            "behaviour": "V17",
+            "area": "starter-kit",
+            "path": "bad",
+            "title": "A missing config.js shows an instructive error",
+            "asserts": "missing config.js -> instructive error for the city owner",
+            "tier": "e2e-starter-kit",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V17-BAD-INVALID-CONFIG",
+            "behaviour": "V17",
+            "area": "starter-kit",
+            "path": "bad",
+            "title": "An invalid config.js shows an instructive error",
+            "asserts": "invalid config.js -> instructive error for the city owner",
+            "tier": "e2e-starter-kit",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V18-HAPPY",
+            "behaviour": "V18",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Mapbox logo and attribution are visible at every viewport",
+            "asserts": "Mapbox logo and attribution visible at every viewport",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V18-BAD-COLLAPSED-ATTRIBUTION",
+            "behaviour": "V18",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Collapsed attribution on compact stays reachable",
+            "asserts": "compact collapsed attribution still reachable",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V19-HAPPY",
+            "behaviour": "V19",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Accepting consent loads analytics and sends events",
+            "asserts": "consent banner (RO/EN); accept -> GA4 loads, page_view and layer_toggle sent without PII",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V19-BAD-NO-REQUEST-BEFORE-CONSENT",
+            "behaviour": "V19",
+            "area": "viewer",
+            "path": "bad",
+            "title": "No analytics request is made before consent",
+            "asserts": "no GA or Firebase request before consent (firewall)",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V19-BAD-WITHDRAWN",
+            "behaviour": "V19",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Withdrawing consent in About stops further analytics",
+            "asserts": "consent withdrawn in About -> no further analytics requests",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V20-HAPPY",
+            "behaviour": "V20",
+            "area": "viewer",
+            "path": "happy",
+            "title": "An uncaught error is reported to telemetry.reportError",
+            "asserts": "uncaught error -> redacted report sent to telemetry.reportError (mocked)",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-V20-BAD-REPORTER-DOWN",
+            "behaviour": "V20",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A failing error reporter never breaks the viewer",
+            "asserts": "reporter endpoint 5xx -> no visible error, viewer keeps working",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-V20-BAD-RATE-LIMITED",
+            "behaviour": "V20",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Repeated errors are rate-limited",
+            "asserts": "error storm -> reports capped by the rate limit",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A01-HAPPY",
+            "behaviour": "A01",
+            "area": "admin",
+            "path": "happy",
+            "title": "Owner first sign-in gets the claim and the dashboard",
+            "asserts": "owner first sign-in -> admin claim -> dashboard",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A01-BAD-STRANGER",
+            "behaviour": "A01",
+            "area": "admin",
+            "path": "bad",
+            "title": "A non-admin is told and signed out",
+            "asserts": "stranger -> 'not an admin' message and sign-out",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A01-BAD-POPUP-CLOSED",
+            "behaviour": "A01",
+            "area": "admin",
+            "path": "bad",
+            "title": "Closing the sign-in popup offers Retry",
+            "asserts": "popup closed -> Retry",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A01-BAD-CLAIM-DELAY",
+            "behaviour": "A01",
+            "area": "admin",
+            "path": "bad",
+            "title": "A delayed claim is picked up by a token refresh",
+            "asserts": "claim delay -> automatic token refresh",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A02-HAPPY",
+            "behaviour": "A02",
+            "area": "admin",
+            "path": "happy",
+            "title": "An invitee signs in and becomes admin",
+            "asserts": "invite -> invitee signs in -> admin",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A02-BAD-INVALID-EMAIL",
+            "behaviour": "A02",
+            "area": "admin",
+            "path": "bad",
+            "title": "An invalid email is rejected",
+            "asserts": "invalid email -> validation message",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A02-BAD-REVOKE",
+            "behaviour": "A02",
+            "area": "admin",
+            "path": "bad",
+            "title": "A revoked admin loses access",
+            "asserts": "revoke -> access removed",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A02-BAD-OWNER-NOT-REVOCABLE",
+            "behaviour": "A02",
+            "area": "admin",
+            "path": "bad",
+            "title": "The owner cannot be revoked",
+            "asserts": "owner revoke -> refused",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A02-BAD-LAST-ADMIN",
+            "behaviour": "A02",
+            "area": "admin",
+            "path": "bad",
+            "title": "The last admin is protected",
+            "asserts": "removing the last admin -> refused",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A03-HAPPY",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "happy",
+            "title": "Every setup step shows its status and can be re-checked",
+            "asserts": "every step with status; resume; Re-check",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A03-BAD-PARTIAL-STATE",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "bad",
+            "title": "A partial setup opens at the first incomplete step",
+            "asserts": "partial state -> opens at the first incomplete step",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A04-HAPPY",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "happy",
+            "title": "Enabled billing shows green",
+            "asserts": "billing enabled -> green",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A04-BAD-NOT-ENABLED",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "Billing not enabled shows the deep link and cost explainer",
+            "asserts": "not enabled -> deep link and cost explainer",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A04-BAD-API-PERMISSION",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "An API permission error shows an actionable message",
+            "asserts": "API permission error -> actionable message",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A05-HAPPY",
+            "behaviour": "A05",
+            "area": "admin",
+            "path": "happy",
+            "title": "A Mapbox account with a card on file shows green",
+            "asserts": "card on file -> green",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A05-BAD-TRIAL",
+            "behaviour": "A05",
+            "area": "admin",
+            "path": "bad",
+            "title": "A trial or demo account leads to the payment step",
+            "asserts": "trial/demo -> payment step",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A05-BAD-MISSING-BILLING-ADDRESS",
+            "behaviour": "A05",
+            "area": "admin",
+            "path": "bad",
+            "title": "A missing billing address shows a message",
+            "asserts": "missing billing address -> message",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A06-HAPPY",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "happy",
+            "title": "A valid secret token is saved and public tokens are auto-minted within the input budget",
+            "asserts": "valid sk -> saved (masked) -> URL-restricted public token auto-minted -> green; input budget at most 2",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A06-BAD-MISSING-SCOPES",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "bad",
+            "title": "Missing scopes are listed with a pre-filled link",
+            "asserts": "missing scopes -> listed by name plus a pre-filled link",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A06-BAD-PUBLIC-TOKEN-PASTED",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "bad",
+            "title": "A pasted public token is explained",
+            "asserts": "pk pasted -> explanation",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A06-BAD-REVOKED",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "bad",
+            "title": "A revoked token is reported",
+            "asserts": "revoked token (401) -> message",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A06-BAD-MAPBOX-5XX",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Mapbox server error offers retry",
+            "asserts": "Mapbox 5xx -> retry",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A07-HAPPY",
+            "behaviour": "A07",
+            "area": "admin",
+            "path": "happy",
+            "title": "A valid token with an approved role shows green",
+            "asserts": "token valid and role approved -> green",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A07-BAD-INVALID-TOKEN",
+            "behaviour": "A07",
+            "area": "admin",
+            "path": "bad",
+            "title": "An HTML 403 means a bad token",
+            "asserts": "HTML 403 -> bad token message",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A07-BAD-ROLE-PENDING",
+            "behaviour": "A07",
+            "area": "admin",
+            "path": "bad",
+            "title": "A pending role auto-polls and flips green on approval",
+            "asserts": "role pending -> '24-48 h' with auto-poll (clock); flips green when the mock approves",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A07-BAD-MAINTENANCE",
+            "behaviour": "A07",
+            "area": "admin",
+            "path": "bad",
+            "title": "USGS maintenance shows a banner",
+            "asserts": "503 maintenance -> banner",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A08-HAPPY",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "happy",
+            "title": "Multi-file drop prefills from EXIF and produces thumbnails",
+            "asserts": "multi-file drop; EXIF prefills location, date and bearing; thumbnails appear (onUpload)",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A08-BAD-NO-EXIF",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "bad",
+            "title": "A photo without EXIF is placed manually",
+            "asserts": "no EXIF -> manual placement",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A08-BAD-DUPLICATE",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "bad",
+            "title": "A duplicate photo is flagged",
+            "asserts": "duplicate sha256 -> flagged",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A08-BAD-UNSUPPORTED-TYPE",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "bad",
+            "title": "HEIC or PDF uploads show an error",
+            "asserts": "HEIC or PDF -> error",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A08-BAD-OVER-SIZE",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "bad",
+            "title": "An oversized upload is rejected with a message",
+            "asserts": "over size -> rules reject with a message",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A09-HAPPY",
+            "behaviour": "A09",
+            "area": "admin",
+            "path": "happy",
+            "title": "Editing marker, bearing and FOV with title and translation suggestions",
+            "asserts": "drag marker and bearing handle, FOV slider; title suggestion (Nominatim); translation draft (AI)",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A09-BAD-NOMINATIM-429",
+            "behaviour": "A09",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Nominatim rate limit falls back to manual entry",
+            "asserts": "Nominatim 429 -> manual entry",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M4."
+        },
+        {
+            "id": "S-A09-BAD-AI-UNAVAILABLE",
+            "behaviour": "A09",
+            "area": "admin",
+            "path": "bad",
+            "title": "An unavailable AI produces no draft and nothing is auto-published",
+            "asserts": "AI unavailable -> no draft, never auto-published",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M4."
+        },
+        {
+            "id": "S-A10-HAPPY",
+            "behaviour": "A10",
+            "area": "admin",
+            "path": "happy",
+            "title": "Bulk publish rebuilds the manifest and the viewer shows the photo",
+            "asserts": "bulk publish -> manifest rebuilt -> viewer shows the photo (cross-app)",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A10-BAD-UNPUBLISH",
+            "behaviour": "A10",
+            "area": "admin",
+            "path": "bad",
+            "title": "Unpublishing hides the photo in the viewer",
+            "asserts": "unpublish -> hidden",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A10-BAD-MISSING-EN-TITLE",
+            "behaviour": "A10",
+            "area": "admin",
+            "path": "bad",
+            "title": "A photo without an English title cannot be published",
+            "asserts": "missing EN title -> blocked",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A11-HAPPY",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "Ranked scenes with footprints and browse previews",
+            "asserts": "ranked scenes, footprints, browse previews (Storage copies)",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A11-BAD-ZERO-RESULTS",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "Zero results show guidance",
+            "asserts": "zero results -> guidance",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A11-BAD-M2M-ERROR",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "An M2M error shows an actionable message",
+            "asserts": "M2M error -> actionable message",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A11-BAD-USGS-NOT-SET-UP",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without USGS setup a link to setup is shown",
+            "asserts": "USGS not set up -> link to setup",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A12-HAPPY",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A free scene imports to a draft, is approved and appears in the viewer",
+            "asserts": "queued -> steps -> draft with RMSE report -> approve -> viewer shows the layer",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A12-BAD-AUTOGCP-FAILS",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A georeferencing failure offers the georeferencer",
+            "asserts": "fails at autogcp -> error and 'Open georeferencer'",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A12-BAD-CANCEL",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "An import can be cancelled",
+            "asserts": "cancel -> job cancelled",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A12-BAD-RETRY",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failed import can be retried successfully",
+            "asserts": "retry -> succeeds",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A13-HAPPY",
+            "behaviour": "A13",
+            "area": "admin",
+            "path": "happy",
+            "title": "Buying a scan is prepared, tracked and auto-imported when delivered",
+            "asserts": "$30 + $5 estimate, EarthExplorer deep link, guide; 'I ordered it'; 'Check now' -> available -> auto-import and notification",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M4."
+        },
+        {
+            "id": "S-A13-BAD-NEVER-DELIVERED",
+            "behaviour": "A13",
+            "area": "admin",
+            "path": "bad",
+            "title": "An order never delivered goes into the reminder state",
+            "asserts": "never delivered -> reminder state",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M4."
+        },
+        {
+            "id": "S-A13-BAD-ALREADY-AVAILABLE",
+            "behaviour": "A13",
+            "area": "admin",
+            "path": "bad",
+            "title": "An available scene cannot be marked as ordered",
+            "asserts": "marking an available scene as ordered -> prevented",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M4."
+        },
+        {
+            "id": "S-A14-HAPPY",
+            "behaviour": "A14",
+            "area": "admin",
+            "path": "happy",
+            "title": "A georeferenced GeoTIFF goes straight to the publish path",
+            "asserts": "georeferenced GeoTIFF -> publish path",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A14-BAD-NOT-GEOREFERENCED",
+            "behaviour": "A14",
+            "area": "admin",
+            "path": "bad",
+            "title": "A GeoTIFF without georeference opens the georeferencer",
+            "asserts": "not georeferenced -> georeferencer",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A14-BAD-NON-TIFF",
+            "behaviour": "A14",
+            "area": "admin",
+            "path": "bad",
+            "title": "A non-TIFF upload shows an error",
+            "asserts": "non-TIFF -> error",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A14-BAD-LARGE-RESUMABLE",
+            "behaviour": "A14",
+            "area": "admin",
+            "path": "bad",
+            "title": "A large upload resumes after an interruption",
+            "asserts": "large file -> resumable upload completes after interruption",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A15-HAPPY",
+            "behaviour": "A15",
+            "area": "admin",
+            "path": "happy",
+            "title": "A valid tileset or XYZ URL previews and saves",
+            "asserts": "valid -> preview -> save",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A15-BAD-INVALID-URL",
+            "behaviour": "A15",
+            "area": "admin",
+            "path": "bad",
+            "title": "A 404 or invalid URL shows an error",
+            "asserts": "404 or invalid URL -> error",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A15-BAD-FOREIGN-PRIVATE-TILESET",
+            "behaviour": "A15",
+            "area": "admin",
+            "path": "bad",
+            "title": "Another account's private tileset shows an error",
+            "asserts": "another account's private mapbox:// tileset -> error",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A16-HAPPY",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "GCP editing updates residuals, transform and preview, and saving queues a job",
+            "asserts": "GCPs coloured by confidence; drag updates residuals; toggle a GCP; switch transform; overlay preview; save -> regeoref job",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A16-BAD-TOO-FEW-GCPS",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Too few GCPs disable the transform",
+            "asserts": "too few GCPs -> transform disabled",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A16-BAD-RMSE-OVER-THRESHOLD",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "An RMSE over the threshold shows a warning",
+            "asserts": "RMSE over threshold -> warning",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A17-HAPPY",
+            "behaviour": "A17",
+            "area": "admin",
+            "path": "happy",
+            "title": "A layer under the RMSE threshold is published automatically",
+            "asserts": "RMSE < X -> published automatically",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A17-BAD-RMSE-ABOVE-THRESHOLD",
+            "behaviour": "A17",
+            "area": "admin",
+            "path": "bad",
+            "title": "A layer above the RMSE threshold stays a draft",
+            "asserts": "RMSE > X -> stays draft",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A18-HAPPY",
+            "behaviour": "A18",
+            "area": "admin",
+            "path": "happy",
+            "title": "Jobs show live progress and logs, with retry and cancel",
+            "asserts": "live progress and logs; retry and cancel",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A18-BAD-STREAM-DROP",
+            "behaviour": "A18",
+            "area": "admin",
+            "path": "bad",
+            "title": "A dropped stream reconnects",
+            "asserts": "stream drop -> reconnect",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-A19-HAPPY",
+            "behaviour": "A19",
+            "area": "admin",
+            "path": "happy",
+            "title": "Settings with live M3 preview publish to the viewer",
+            "asserts": "draw bounds, About RO/EN, credits, seed colour with live M3 preview, basemap -> publish -> viewer reflects it",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A19-BAD-ZERO-AREA-BOUNDS",
+            "behaviour": "A19",
+            "area": "admin",
+            "path": "bad",
+            "title": "Zero-area bounds are rejected",
+            "asserts": "zero-area bounds -> validation message",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A19-BAD-LOW-CONTRAST-SEED",
+            "behaviour": "A19",
+            "area": "admin",
+            "path": "bad",
+            "title": "A low-contrast seed is auto-adjusted with a warning",
+            "asserts": "low-contrast seed -> auto-adjust warning",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A20-HAPPY",
+            "behaviour": "A20",
+            "area": "admin",
+            "path": "happy",
+            "title": "The session refreshes its token silently",
+            "asserts": "silent token refresh",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A20-BAD-ADMIN-REMOVED",
+            "behaviour": "A20",
+            "area": "admin",
+            "path": "bad",
+            "title": "An admin removed mid-session is denied on the next action",
+            "asserts": "admin removed mid-session -> next action denied",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A20-BAD-SIGNED-OUT-DEEP-LINK",
+            "behaviour": "A20",
+            "area": "admin",
+            "path": "bad",
+            "title": "A deep link while signed out leads to sign-in",
+            "asserts": "deep link while signed out -> sign-in",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A21-HAPPY",
+            "behaviour": "A21",
+            "area": "admin",
+            "path": "happy",
+            "title": "Every admin screen works in RO and EN and switching keeps form state",
+            "asserts": "every screen in RO and EN; switching language keeps form state",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A21-BAD-LEAK-CHECK",
+            "behaviour": "A21",
+            "area": "admin",
+            "path": "bad",
+            "title": "No English-only string or raw message id leaks into Romanian screens",
+            "asserts": "leak check (tour): no EN-only string or raw message id in RO mode",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A22-HAPPY",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "happy",
+            "title": "The measurement id is detected and crash reports are listed",
+            "asserts": "Analytics card: GA enabled -> measurementId detected and written to the manifest; Crash reports panel lists the latest groups",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A22-BAD-ANALYTICS-NOT-ENABLED",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "bad",
+            "title": "Analytics not enabled shows the deep link",
+            "asserts": "GA not enabled -> deep link and explanation",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A22-BAD-ERROR-REPORTING-UNAVAILABLE",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "bad",
+            "title": "An unavailable Error Reporting API shows an actionable message",
+            "asserts": "Error Reporting API error -> actionable message",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2."
+        },
+        {
+            "id": "S-P01-HAPPY",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A queued job produces a draft layer within tolerance",
+            "asserts": "queued job -> worker (synthetic tgz from mock M2M) -> MTS mock -> draft layer within tolerance",
+            "tier": "e2e-pipeline",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-P01-BAD-CORRUPT-ARCHIVE",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A corrupt archive fails the job with a clear error",
+            "asserts": "corrupt archive -> job failed with CorruptArchive",
+            "tier": "e2e-pipeline",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-P01-BAD-NO-REFERENCE",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Missing reference coverage fails the job with a clear error",
+            "asserts": "no reference coverage -> ReferenceUnavailable",
+            "tier": "e2e-pipeline",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-P01-BAD-MTS-FAILURE",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An MTS job failure is retried",
+            "asserts": "MTS job failure -> retry",
+            "tier": "e2e-pipeline",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-P01-BAD-SIGTERM",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "SIGTERM cancels the job and cleans up",
+            "asserts": "SIGTERM -> status cancelled, temp files removed",
+            "tier": "e2e-pipeline",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-P02-HAPPY",
+            "behaviour": "P02",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Re-georeferencing with manual GCPs produces a new version",
+            "asserts": "regeoref with manual GCPs -> new layer version",
+            "tier": "e2e-pipeline",
+            "status": "planned",
+            "notes": "Milestone M3."
+        },
+        {
+            "id": "S-P02-BAD-DEGENERATE-GCPS",
+            "behaviour": "P02",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A degenerate GCP set fails with an error",
+            "asserts": "degenerate GCP set -> error",
+            "tier": "e2e-pipeline",
+            "status": "planned",
+            "notes": "Milestone M3."
+        }
+    ]
+}

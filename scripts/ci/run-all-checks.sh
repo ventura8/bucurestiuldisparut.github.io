@@ -3,8 +3,8 @@
 #
 #   PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh
 #
-# Stages: static, tests, e2e, build, sonar, deps, release, quality (static+tests+e2e+build) and
-# all (quality+sonar, the default). Gates never run on the host: this wrapper builds the quality
+# Stages: static, tests, e2e, build, sonar, deps, release, contract, quality (static+tests+e2e+build)
+# and all (quality+sonar, the default). Gates never run on the host: this wrapper builds the quality
 # image, then runs scripts/ci/in-container.sh inside it as the calling user, with the repository
 # mounted at the SAME absolute path (coverage report paths match Sonar's) and a throwaway HOME.
 set -euo pipefail
@@ -24,6 +24,7 @@ main() {
 		--env PIPELINE_STAGE="${PIPELINE_STAGE:-all}" \
 		--env CI \
 		--env GITLEAKS_LOG_OPTS \
+		--env E2E_SHARD \
 		--volume "$root:$root" \
 		--workdir "$root" \
 		"$image" bash scripts/ci/in-container.sh

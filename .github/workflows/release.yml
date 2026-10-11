@@ -1,0 +1,59 @@
+name: Release
+
+# Publishes a v* tag (.agent/skills/quality/prepare_release_skill.md). The pipeline's `release` stage
+# runs first, in the quality image: the tag is vMAJOR.MINOR.PATCH and matches every package.json and
+# ENGINE_VERSION, both docs/releases notes files exist (scripts/ci/check_release.py), and the engine
+# and admin bundles are rebuilt. Only then the GitHub Release is created, titled by the H1 of the
+# description file, with that file as its body and the bundles attached. The pre-push hook already
+# required PIPELINE_STAGE=all green on the tagged commit. Planned with M5: the SonarQube gate of the
+# default-branch analysis of the same commit and the jsDelivr purge.
+
+on:
+    push:
+        tags: ['v*']
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    release:
+        name: Publish & Release
+        runs-on: ubuntu-24.04
+        timeout-minutes: 45
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - uses: ./.github/actions/quality-image
+
+            - name: Release stage
+              env:
+                  PIPELINE_STAGE: release
+                  HCM_DOCKER_BUILD_FLAGS: --load --cache-from type=gha,scope=hcm-quality
+              run: bash scripts/ci/run-all-checks.sh
+
+            # The single H1 of the description file is the release title (docs/releases/README.md).
+            - name: Release title
+              id: notes
+              env:
+                  TAG: ${{ github.ref_name }}
+              run: |
+                  title="$(sed -n 's/^# //p' "docs/releases/${TAG}_github_description.md" | head -n 1)"
+                  echo "title=${title:-$TAG}" >>"$GITHUB_OUTPUT"
+
+            - name: GitHub Release
+              uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+              with:
+                  name: ${{ steps.notes.outputs.title }}
+                  body_path: docs/releases/${{ github.ref_name }}_github_description.md
+                  fail_on_unmatched_files: true
+                  files: |
+                      packages/engine/dist/*
+                      packages/admin/dist/*

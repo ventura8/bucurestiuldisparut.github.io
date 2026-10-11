@@ -1,0 +1,260 @@
+rules_version = '2';
+
+// Firestore security rules (docs/research/design-review-security-cost.md §1.4).
+//
+// Firestore is private: the public viewer never reads it (it fetches the static manifest from the
+// public bucket). Only verified Google accounts that hold the `admin` custom claim AND have an
+// admins/{uid} document read or write here; everything else is denied by default. Cloud Functions
+// and the Cloud Run job use the Admin SDK, which bypasses these rules, so every server writer
+// re-validates with the shared zod schemas. Server-owned documents (admins, setup, usage, ops, job
+// logs) have no client write rule at all.
+//
+// Tests: firebase/rules-tests (allow/deny matrix per persona and collection). The tests stage fails
+// when any expression below was never evaluated (scripts/ci/check_rules_coverage.py).
+service cloud.firestore {
+    match /databases/{database}/documents {
+
+        // ---- Who is asking -----------------------------------------------------------------
+
+        // A signed-in, verified Google account: admins only ever sign in with Google.
+        function authed() {
+            return request.auth != null
+                && request.auth.token.get('email_verified', false) == true
+                && request.auth.token.firebase.sign_in_provider == 'google.com';
+        }
+
+        // The custom claim alone stays valid in an ID token for up to an hour after revocation;
+        // also requiring admins/{uid} makes removing an admin take effect immediately.
+        function isAdmin() {
+            return authed()
+                && request.auth.token.get('admin', false) == true
+                && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+        }
+
+        // ---- Value checks ------------------------------------------------------------------
+
+        function text(value, max) {
+            return value is string && value.size() <= max;
+        }
+
+        // Bilingual text {ro?, en?}: RO is the default locale, EN is optional.
+        function i18n(value, max) {
+            return value is map
+                && value.keys().hasOnly(['ro', 'en'])
+                && (!('ro' in value) || text(value.ro, max))
+                && (!('en' in value) || text(value.en, max));
+        }
+
+        function inRange(value, low, high) {
+            return value is number && value >= low && value <= high;
+        }
+
+        // Absolute https URLs only (no javascript:, data: or plain http links).
+        function httpsUrl(value) {
+            return text(value, 2048) && value.matches('https://[^ ]+');
+        }
+
+        // Every client write records who made it, with the server's clock (serverTimestamp()).
+        function stamped(data) {
+            return data.updatedBy == request.auth.uid && data.updatedAt == request.time;
+        }
+
+        function changedKeys() {
+            return request.resource.data.diff(resource.data).affectedKeys();
+        }
+
+        // ---- Cities ------------------------------------------------------------------------
+
+        // {west, south, east, north} in degrees; photo locations are checked against it.
+        function validBounds(bounds) {
+            return bounds is map
+                && bounds.keys().hasAll(['west', 'south', 'east', 'north'])
+                && bounds.keys().hasOnly(['west', 'south', 'east', 'north'])
+                && inRange(bounds.west, -180, 180)
+                && inRange(bounds.east, bounds.west, 180)
+                && inRange(bounds.south, -90, 90)
+                && inRange(bounds.north, bounds.south, 90);
+        }
+
+        function validCityEdit(data) {
+            return i18n(data.name, 100)
+                && validBounds(data.bounds)
+                && data.published is bool
+                && stamped(data);
+        }
+
+        // ---- Photos ------------------------------------------------------------------------
+
+        function photoFields() {
+            return ['title', 'description', 'year', 'yearEnd', 'author', 'license', 'rightsHolder', 'sourceUrl',
+                'sourceLabel', 'permissionNote', 'links', 'location', 'bearing', 'fov', 'published', 'rightsReview',
+                'legacyId', 'image', 'exif', 'processing', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'];
+        }
+
+        function licenses() {
+            return ['CC0', 'CC-BY-4.0', 'CC-BY-SA-4.0', 'PD', 'permission', 'permission-legacy', 'unknown'];
+        }
+
+        // Within the city's bounds, with half a degree of slack for photos taken from outside them.
+        function inCity(location, city) {
+            let bounds = get(/databases/$(database)/documents/cities/$(city)).data.bounds;
+            return location is map
+                && location.keys().hasAll(['lat', 'lng'])
+                && location.keys().hasOnly(['lat', 'lng'])
+                && inRange(location.lat, bounds.south - 0.5, bounds.north + 0.5)
+                && inRange(location.lng, bounds.west - 0.5, bounds.east + 0.5);
+        }
+
+        function validYears(data) {
+            return (!('year' in data) || (data.year is int && inRange(data.year, 1800, 2100)))
+                && (!('yearEnd' in data) || (data.yearEnd is int && inRange(data.yearEnd, data.get('year', 1800), 2100)));
+        }
+
+        function validCredits(data) {
+            return (!('author' in data) || text(data.author, 200))
+                && (!('rightsHolder' in data) || text(data.rightsHolder, 200))
+                && (!('sourceLabel' in data) || text(data.sourceLabel, 200))
+                && (!('sourceUrl' in data) || httpsUrl(data.sourceUrl))
+                && (!('permissionNote' in data) || text(data.permissionNote, 2000))
+                && (!('legacyId' in data) || text(data.legacyId, 64));
+        }
+
+        // The photo document as an admin edits it; server-owned fields are checked by create/update.
+        function validPhoto(data, city) {
+            return data.keys().hasAll(['title', 'location', 'license', 'published', 'updatedBy', 'updatedAt'])
+                && data.keys().hasOnly(photoFields())
+                && i18n(data.title, 200)
+                && (!('description' in data) || i18n(data.description, 5000))
+                && validYears(data)
+                && inCity(data.location, city)
+                && (!('bearing' in data) || inRange(data.bearing, 0, 360))
+                && (!('fov' in data) || inRange(data.fov, 1, 180))
+                && data.license in licenses()
+                && validCredits(data)
+                && (!('links' in data) || (data.links is list && data.links.size() <= 5))
+                && data.published is bool
+                && (!('rightsReview' in data) || data.rightsReview is bool)
+                && stamped(data);
+        }
+
+        // ---- Layers ------------------------------------------------------------------------
+
+        function validLayerEdit(data) {
+            return i18n(data.label, 200)
+                && (!('description' in data) || i18n(data.description, 5000))
+                && data.order is int
+                && inRange(data.opacity, 0, 1)
+                && data.defaultVisible is bool
+                && data.published is bool
+                && (!('attribution' in data) || text(data.attribution, 500))
+                && stamped(data);
+        }
+
+        // ---- Jobs --------------------------------------------------------------------------
+
+        // A job request: the dispatcher (jobs.onCreate) validates `params` per type with zod.
+        function validJobRequest(data) {
+            return data.keys().hasOnly(['type', 'status', 'params', 'createdBy', 'createdAt'])
+                && data.type in ['usgs-import', 'geotiff-import', 'regeoref', 'republish']
+                && data.status == 'queued'
+                && data.params is map
+                && data.createdBy == request.auth.uid
+                && data.createdAt == request.time;
+        }
+
+        // ---- Matches -----------------------------------------------------------------------
+
+        // Default deny: nothing is readable or writable unless a rule below allows it.
+        match /{document=**} {
+            allow read, write: if false;
+        }
+
+        // Written by the bootstrap script and admins.* callables only.
+        match /admins/{uid} {
+            allow read: if isAdmin() || (authed() && request.auth.uid == uid);
+        }
+
+        // Non-secret health records (secrets live in Secret Manager, never here).
+        match /setup/{doc} {
+            allow read: if isAdmin();
+        }
+
+        // Mapbox usage counters (usage/mapbox-YYYY-MM) and the budget guard (ops/guard).
+        match /usage/{doc} {
+            allow read: if isAdmin();
+        }
+
+        match /ops/{doc} {
+            allow read: if isAdmin();
+        }
+
+        // Cities are created and deleted by callables; id, Mapbox tokens and createdAt are server-owned.
+        match /cities/{city} {
+            allow read: if isAdmin();
+            allow update: if isAdmin()
+                && !changedKeys().hasAny(['id', 'mapbox', 'createdAt'])
+                && validCityEdit(request.resource.data);
+
+            // New photos start unpublished and unprocessed; photos.onUpload owns image, exif and
+            // processing. Publishing needs processed derivatives and a known licence.
+            match /photos/{photo} {
+                allow read: if isAdmin();
+                allow create: if isAdmin()
+                    && validPhoto(request.resource.data, city)
+                    && !request.resource.data.keys().hasAny(['image', 'exif'])
+                    && request.resource.data.processing == 'pending'
+                    && request.resource.data.published == false
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.createdAt == request.time;
+                allow update: if isAdmin()
+                    && validPhoto(request.resource.data, city)
+                    && !changedKeys().hasAny(['image', 'exif', 'processing', 'createdAt', 'createdBy'])
+                    && (request.resource.data.published == false
+                        || (resource.data.processing == 'done' && request.resource.data.license != 'unknown'));
+                allow delete: if isAdmin();
+            }
+
+            // Layers are created by the pipeline; admins edit presentation fields only.
+            match /layers/{layer} {
+                allow read: if isAdmin();
+                allow update: if isAdmin()
+                    && changedKeys().hasOnly(['label', 'description', 'order', 'opacity', 'defaultVisible', 'published',
+                        'attribution', 'updatedBy', 'updatedAt'])
+                    && validLayerEdit(request.resource.data);
+            }
+
+            // Admins queue jobs and may request cancellation; the job runner owns every other field.
+            match /jobs/{job} {
+                allow read: if isAdmin();
+                allow create: if isAdmin() && validJobRequest(request.resource.data);
+                allow update: if isAdmin()
+                    && changedKeys().hasOnly(['cancelRequested'])
+                    && request.resource.data.cancelRequested == true;
+
+                // Redacted job log lines, written by the job runner only.
+                match /logs/{line} {
+                    allow read: if isAdmin();
+                }
+            }
+
+            // Ground control points per layer; each point is validated server-side before a warp.
+            match /gcps/{layer} {
+                allow read, delete: if isAdmin();
+                allow create, update: if isAdmin()
+                    && request.resource.data.keys().hasOnly(['points', 'updatedBy', 'updatedAt'])
+                    && request.resource.data.points is list
+                    && request.resource.data.points.size() <= 300
+                    && stamped(request.resource.data);
+            }
+
+            // USGS scenes are harvested server-side; admins triage them.
+            match /usgsScenes/{scene} {
+                allow read: if isAdmin();
+                allow update: if isAdmin()
+                    && changedKeys().hasOnly(['status', 'note'])
+                    && request.resource.data.status in ['candidate', 'ordered', 'rejected']
+                    && (!('note' in request.resource.data) || text(request.resource.data.note, 1000));
+            }
+        }
+    }
+}

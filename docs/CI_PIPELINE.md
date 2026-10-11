@@ -1,0 +1,90 @@
+# CI Pipeline
+
+One script, one image, the same gates locally and in CI. This document is the overview: which gates apply to which file type, the CI workflows, tool versions and held dependencies. The **only** definition of the stages (and of `quality` and `all`) is [.agent/skills/quality/pipeline_skill.md](../.agent/skills/quality/pipeline_skill.md) → *Stages*; how to fix each gate is in [.agent/skills/quality/ci_quality_gates_skill.md](../.agent/skills/quality/ci_quality_gates_skill.md).
+
+## How it runs
+
+```bash
+PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh   # or tests, build, e2e, sonar, deps, release, contract, quality, all (default)
+python3 scripts/ci/pipeline.py --list                     # the live stage -> gate registry
+```
+
+1. `scripts/ci/run-all-checks.sh` builds `docker/Dockerfile.quality` as `hcm-quality:local` through `scripts/ci/build-and-test.sh` (seconds when cached).
+2. It runs the image as the calling user, `HOME=/tmp/hcm-home`, the repository mounted at the **same absolute path** (coverage paths match Sonar's), nothing else from the host.
+3. `scripts/ci/in-container.sh` refuses to run outside the image (`HCM_TEST_IMAGE=1`), then calls `python3 scripts/ci/pipeline.py --stage "$PIPELINE_STAGE"`.
+4. `pipeline.py` runs `npm ci --prefer-offline` from the image's cache when the lockfile changed, then every gate of the stage, keeping going after a failure, and ends with `[SUCCESS] stage '<x>' passed` (writing `reports/pipeline/green-<x>.json` with HEAD and a hash of `git status`) or `[FAILURE] stage '<x>' failed: ...`.
+
+Stages in one line each (the authoritative table is in the pipeline skill): `static` (every lint, format, type, architecture, secret and audit gate), `tests` (Vitest under the Firebase emulators, rule coverage, pytest, per-file coverage), `e2e` (the scenario registry check, then Playwright: today the harness smoke, from M1 under emulators and mock APIs), `build` (Vite and bundle budgets), `sonar` (scanner and strict verdict; no gate yet: the quality image has no `sonar-scanner`), `deps` (dependency currency, weekly, never in `all`), `release` (on a tag: tag, versions, release notes, bundles), `contract` (weekly: Setup Assistant deep links and third-party API shapes, never in `all`); `quality` is what CI runs, `all` is what runs locally before a push to `master` or a tag. An empty stage fails on purpose: today `sonar` and `deps`, so `all` fails while `quality` passes.
+
+The registry holds 57 gates: `static` 48, `tests` 5 (`pytest` also runs in `static`), `e2e` 2 (`e2e-matrix` also runs in `static`), `build` 2, `release` 3 (`vite-build` and `bundle-budget` reused), `contract` 1; `sonar` and `deps` have none yet.
+
+## Gates by file type
+
+| File type | Gates | Limits |
+| --- | --- | --- |
+| Every file | `suppressions` (no inline directive of any tool), `editorconfig` (UTF-8, LF, final newline, no trailing whitespace, no tab where spaces are required), `repo-policy` (no secret-bearing file in git's view, no reference to the banned legacy Mapbox account outside the docs that state the ban), `repo-budget`, `gitleaks` (secrets in the working tree), `gitleaks-history` (in CI, secrets in every commit of the pushed or proposed range) | tree at most 60 MB without `seed/`, no file above 5 MB |
+| TypeScript, JavaScript | `prettier`, `tsc` (`tsc -b`), `eslint` (typescript-eslint strict and stylistic type-checked, sonarjs, no-unsanitized, lit, wc, Vitest rules), `knip`, `dependency-cruiser`, `i18n` (RO/EN catalogue parity); planned jscpd | complexity 5, cognitive complexity 10, depth 3, file 400 lines, function 60 lines, 4 parameters (tests 600 / 120 / 8); no `console`, decorators, HTML sinks, `eval` |
+| CSS and Lit `css` templates | `stylelint` (standard config, `postcss-lit`) | colours only from M3 tokens |
+| HTML | `htmlhint`, `html-validate` (skipped until an HTML file exists; Prettier's `<!doctype html>` and `<meta ... />` fail html-validate's `doctype-style` and `void-style` until `.htmlvalidate.json` extends `html-validate:prettier`, an ask-first edit due before M1's first page) | no inline script, `lang` present |
+| Markdown | `markdownlint`, `agent-assets` (budgets, front matter, every documented path), `skill-mirrors` | `AGENTS.md` at most 24,000 bytes, skills at most 500 lines |
+| YAML | `yamllint`, `prettier`; for workflows `actionlint`, `workflow-schema`, `workflow-timeouts`, `action-pins` (full commit SHA plus `# vX.Y.Z`), `workflow-policy` (also for composite actions: no `pull_request_target`, top-level least-privilege `permissions`, `persist-credentials: false`, no `${{ }}` inside `run:`); `repo-policy` (an `image:` needs a digest, no `:latest`); `action-schema` for `.github/actions/*/action.yml`; `issue-forms-schema` and `issue-config-schema` for `.github/ISSUE_TEMPLATE/` | 4-space indentation, 140 columns, `timeout-minutes` on every job |
+| JSON, GeoJSON, XML, SVG | `prettier` (JSON), `data-files` (parses, no duplicate keys), `firebase-schema` for `firebase.json`, `e2e-matrix` for `e2e/scenarios.json` | no duplicate keys |
+| TOML | `taplo-fmt`, `taplo-lint` | |
+| Python | `ruff-check`, `ruff-format`, `mypy` (strict), `radon` (grade A, `scripts/ci`), `bandit` (`scripts/ci`, medium and up), `pytest` with branch coverage (in `static` and `tests`), `pip-audit`; for the raster pipeline `pipeline-lock`, `pipeline-mypy`, `pipeline-radon` (grade A), `pipeline-bandit`, `pipeline-pip-audit`, `pipeline-pytest`; `repo-policy` (`requirements*.txt` and `pyproject.toml` dependencies pinned with `==`); planned pylint and vulture | complexity 5, 5 arguments, no `print` |
+| Shell and git hooks | `shellcheck` (style severity), `shfmt`, `repo-policy` (no `:latest` image) | tabs |
+| Dockerfiles | `hadolint` (`--failure-threshold warning --disable-ignore-pragma`), `repo-policy` (every `FROM` and `# syntax=` by `@sha256:` digest, no `:latest`) | images pinned by digest |
+| npm dependencies | `npm-audit` (`--audit-level=low`), `knip`, `repo-policy` (every dependency and override one exact version) | fixed with `overrides`, never an allowlist |
+| Firestore and Storage rules | the `rules` Vitest project under the emulators and the `rules-coverage` gate (`scripts/ci/check_rules_coverage.py check`) | every Firestore expression evaluated; every `allow` both allows and denies; Storage rules by explicit allow and deny tests |
+| Bundles | `bundle-budget` (build stage) | gzip size of each shipped bundle within its budget |
+| Tests | `vitest` (node and Chromium projects, under the emulators), `rules-coverage`, `pytest`, `pipeline-pytest`, `coverage` (`scripts/ci/check_coverage.py`, scope from `sonar-project.properties`) | 90 % per file: lines, branches, functions, statements; Sonar scoring |
+| E2E specs | `e2e-matrix`, `playwright` (`e2e/playwright.config.ts`, firewall and console-guard fixtures in `e2e/support/test.ts`) | every spec tagged with a registered `@S-...` id; no request outside loopback, no console error; flaky fails in CI |
+
+## CI workflows (`.github/workflows/`)
+
+- `ci.yml` "CI Pipeline": push to `master` and `v*` tags, pull requests to `master` (drafts skipped), manual dispatch; concurrency per ref, cancelling superseded PR runs.
+  - `build-image` is the only writer of the GitHub Actions layer cache (scope `hcm-quality`): `bash scripts/ci/build-and-test.sh` with `HCM_DOCKER_BUILD_FLAGS` holding the `type=gha` cache flags. The local action `.github/actions/quality-image` frees runner disk, sets up Buildx and exposes the cache runtime to `docker build`.
+  - `static` → `tests` / `e2e` / `build`, each `PIPELINE_STAGE=<stage> bash scripts/ci/run-all-checks.sh`, whose build loads the image from the cache. `static` hands the commit range to the container (`GITLEAKS_LOG_OPTS`); `tests` publishes the JUnit check "Unit Test Report", the coverage summary and the `coverage` artifact; `e2e` is a matrix of `E2E_SHARD` values (`index/total`, one shard today) forwarded into the container; `build` uploads the bundles.
+  - `sonarqube` (after `tests`, not on fork PRs): the scan and quality-gate actions, then `scripts/ci/sonar_report.py` in the image. Without `SONAR_TOKEN` or `sonar-project.properties` it ends with a notice instead of failing.
+  - `deploy-pages`, `deploy-firebase` (rules, indexes, functions, admin Hosting with firebase-tools from the image) and `deploy-pipeline-image` (the Cloud Run Job image into Artifact Registry) run only on a push to `master` with the repository variable `DEPLOY_ENABLED` set to `true` (M2), through Workload Identity Federation: variables `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SA`, `GCP_PROJECT_ID`, `GCP_REGION`, environment `deploy`; no key.
+- `release.yml`: on `v*` tags, `PIPELINE_STAGE=release`, then the GitHub Release (title from the H1 of `docs/releases/vX.Y.Z_github_description.md`, that file as body, the engine and admin bundles attached) ([.agent/skills/quality/prepare_release_skill.md](../.agent/skills/quality/prepare_release_skill.md)).
+- `deps.yml` (Mondays, `deps` stage) and `contract.yml` (Mondays, `contract` stage, no secrets): on failure the local action `.github/actions/upsert-issue` opens or updates one issue, "Dependency updates available" or "Third-party contract drift".
+- `codeql.yml`: CodeQL advanced setup (default setup stays off), `security-extended`, languages `actions`, `javascript-typescript`, `python`; on push, PR and weekly.
+- Every action pinned by full commit SHA with a `# vX.Y.Z` comment; every job with `timeout-minutes`, least-privilege `permissions`, `persist-credentials: false`; runner `ubuntu-24.04` pinned; never `pull_request_target`; `${{ }}` values reach `run:` scripts through `env` (the last four are enforced by the `workflow-policy` gate). Editing workflows is ask first.
+- Repository meta: `.github/pull_request_template.md` (the done checklist), `.github/ISSUE_TEMPLATE/` (bug and feature forms; blank issues off), `.coderabbit.yaml`, and the README badges in `.github/badges/` (written by the `coverage` gate; `unknown` until its first run).
+
+## Tool versions
+
+All npm versions were checked with `npm view` on 2026-10-11 and are pinned exactly (`.npmrc` `save-exact=true`, `engine-strict=true`, Node 24.12 or later). The full list with every digest is in [research/M0-handoff.md](research/M0-handoff.md) → *Toolchain and pins*.
+
+| Area | Pin |
+| --- | --- |
+| Node / npm | Node 24.21.0, npm 11.19.0 (from `node:24-bookworm-slim`, by digest) |
+| TypeScript | 6.0.3 (**held**, see below) |
+| Build and test | vite 8.3.4, vitest 5.0.3, @vitest/coverage-v8 5.0.3, @vitest/browser-playwright 5.0.3, playwright 1.64.0, @playwright/test 1.64.0 (`@hcm/e2e`) |
+| Lint | eslint 10.12.0, @eslint/js 10.0.1, typescript-eslint 8.71.1, eslint-plugin-sonarjs 4.2.2, eslint-plugin-no-unsanitized 4.1.5, eslint-plugin-lit 2.3.1, eslint-plugin-wc 3.1.0, @vitest/eslint-plugin 1.6.27, eslint-config-prettier 10.1.8, globals 17.13.0 |
+| Format and style | prettier 3.9.10, stylelint 17.16.0, stylelint-config-standard 40.0.0, postcss-lit 1.4.1 |
+| HTML and Markdown | htmlhint 1.9.2, html-validate 11.16.2, markdownlint-cli2 0.23.3 |
+| Architecture | knip 6.41.0, dependency-cruiser 18.5.0 |
+| Runtime | lit 3.3.3; Mapbox GL JS 3.32.0 (external, from `api.mapbox.com`) |
+| Firebase | firebase-tools 15.33.0 (emulator JARs baked into the image), JDK 21; functions: firebase-functions 7.4.0, firebase-admin 14.5.0, google-auth-library 11.2.0; rules tests: @firebase/rules-unit-testing 6.0.0, firebase 13.0.0 |
+| Python | 3.14.4 (the GDAL image's interpreter); CI tools in `scripts/ci/requirements.txt`: ruff 0.17.0, mypy 2.4.0, pytest 9.1.1, pytest-cov 7.1.0, coverage 7.16.2, yamllint 1.38.0, check-jsonschema 0.38.2, bandit 1.9.4, pip-audit 2.10.1, radon 6.0.1, taplo 0.9.3 |
+| Raster pipeline | Poetry 2.5.1 (`pipeline/requirements-poetry.txt`); `pipeline/poetry.lock`: numpy 2.5.4, opencv-python-headless 5.0.0.93, httpx 0.28.1, google-cloud-firestore 2.34.1, google-cloud-storage 3.17.0; dev pytest 9.1.1, pytest-cov 7.1.0, coverage 7.16.2, respx 0.23.1, hypothesis 6.169.0; GDAL from the base image |
+| Image base | `ghcr.io/osgeo/gdal:ubuntu-small-3.13.3` (Ubuntu 26.04, GDAL 3.13.3), by digest |
+| Binaries | actionlint 1.7.12, hadolint 2.15.1, shellcheck 0.11.0, shfmt 3.14.1, gitleaks 8.30.1 (copied from digest-pinned images) |
+
+## Held dependencies
+
+Every dependency stays on its latest stable release; a deliberate hold is listed here with its reason (and in `scripts/ci/check_dependency_updates.py` once the `deps` stage exists).
+
+| Dependency | Held at | Latest | Reason |
+| --- | --- | --- | --- |
+| `typescript` | 6.0.3 | 7.0.2 | `typescript-eslint@8.71.1` peers `typescript >=4.8.4 <6.1.0` |
+| `@types/node` | 24.19.2 | 26.x | follows the Node 24 runtime, not the newest Node line |
+
+## Security advisories
+
+`npm audit --audit-level=low` reports zero vulnerabilities through `overrides` in the root `package.json` (`@grpc/grpc-js` under `@firebase/firestore@4.18.0`, `@opentelemetry/core`, `basic-ftp`, `uuid` under `gaxios@6.7.1`, `katex`, `smol-toml`), and `braces`, which has no fixed release, through the patched copy in `vendor/npm/braces` (its README explains the patch). Delete an override when upstream ships the fix. Reasons for each: [research/M0-handoff.md](research/M0-handoff.md) → *npm audit fixes (no allowlist)*.
+
+## Reports
+
+`reports/` is git-ignored: `reports/pipeline/green-<stage>.json`, `reports/coverage/ts/` (lcov, json-summary), `reports/coverage/{scripts,pipeline}.xml`, `reports/rules/` (Firestore rule coverage, JSON and HTML), `reports/junit/{vitest,pytest,pipeline,e2e}.xml`, `reports/playwright/` (Playwright HTML report), `reports/test-results/` (traces of failed e2e tests), `reports/gitleaks.json`. The `coverage` gate writes `reports/coverage/summary.md` and the badges in `.github/badges/`.

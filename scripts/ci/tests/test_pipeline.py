@@ -74,7 +74,7 @@ def test_happy_path_every_gate_belongs_to_a_stage() -> None:
 
 
 def test_happy_path_stage_names_cover_the_documented_stages() -> None:
-    assert pipeline.all_stage_names() == ["all", "build", "deps", "e2e", "quality", "release", "sonar", "static", "tests"]
+    assert pipeline.all_stage_names() == ["all", "build", "contract", "deps", "e2e", "quality", "release", "sonar", "static", "tests"]
 
 
 def test_bad_path_unknown_and_duplicated_gates_are_reported(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -144,20 +144,32 @@ def test_happy_path_file_gate_without_files_is_skipped(shell: FakeShell, log: py
 
 def test_happy_path_stage_announces_each_gate(shell: FakeShell, log: pytest.LogCaptureFixture) -> None:
     assert pipeline.run_stage("tests", shell.context()) == []
-    assert [message for message in log.messages if not message.startswith("  ")] == ["tests 1/2 vitest", "tests 2/2 pytest"]
-    assert gate_commands(shell) == ["npm run --silent test", "python3 -m pytest"]
+    assert [message for message in log.messages if not message.startswith("  ")] == [
+        "tests 1/5 vitest",
+        "tests 2/5 rules-coverage",
+        "tests 3/5 pytest",
+        "tests 4/5 pipeline-pytest",
+        "tests 5/5 coverage",
+    ]
+    assert gate_commands(shell) == [
+        "npm run --silent test",
+        "python3 scripts/ci/check_rules_coverage.py check",
+        "python3 -m pytest",
+        " ".join(pipeline.PIPELINE_PYTEST),
+        "python3 " + " ".join(pipeline.COVERAGE_GATE),
+    ]
 
 
 def test_bad_path_stage_keeps_going_after_a_failure(tmp_path: Path) -> None:
     shell = FakeShell(tmp_path, failing=["run --silent test"])
 
     assert pipeline.run_stage("tests", shell.context()) == ["tests/vitest"]
-    assert len(shell.calls) == 2
+    assert len(shell.calls) == 5
 
 
 def test_bad_path_empty_stage_fails(shell: FakeShell, log: pytest.LogCaptureFixture) -> None:
-    assert pipeline.run_stage("e2e", shell.context()) == ["e2e (no gates registered)"]
-    assert log.messages == ["e2e: no gates registered yet (docs/research/M0-handoff.md)"]
+    assert pipeline.run_stage("sonar", shell.context()) == ["sonar (no gates registered)"]
+    assert log.messages == ["sonar: no gates registered yet (docs/research/M0-handoff.md)"]
 
 
 # --- setup: node_modules --------------------------------------------------------------------------
@@ -222,7 +234,7 @@ def test_happy_path_passing_stage_writes_green_marker(shell: FakeShell, log: pyt
 
 
 def test_bad_path_failing_stage_writes_no_marker(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
-    shell = FakeShell(tmp_path, failing=["pytest"])
+    shell = FakeShell(tmp_path, failing=["python3 -m pytest"])
 
     assert pipeline.run_pipeline("tests", shell.context()) == 1
     assert log.messages[-1] == "[FAILURE] stage 'tests' failed: tests/pytest"
@@ -230,9 +242,10 @@ def test_bad_path_failing_stage_writes_no_marker(tmp_path: Path, log: pytest.Log
 
 
 def test_bad_path_composite_stage_reports_every_failed_part(shell: FakeShell, log: pytest.LogCaptureFixture) -> None:
-    assert pipeline.run_pipeline("quality", shell.context()) == 1
-    assert log.messages[-1] == "[FAILURE] stage 'quality' failed: e2e (no gates registered)"
-    assert "build 1/1 vite-build" in log.messages
+    assert pipeline.run_pipeline("all", shell.context()) == 1
+    assert log.messages[-1] == "[FAILURE] stage 'all' failed: sonar (no gates registered)"
+    assert "e2e 2/2 playwright" in log.messages
+    assert "build 1/2 vite-build" in log.messages
 
 
 def test_bad_path_unborn_head_is_recorded(tmp_path: Path) -> None:
@@ -282,9 +295,10 @@ def test_happy_path_default_context_runs_from_the_root(tmp_path: Path) -> None:
 
 def test_happy_path_list_prints_the_registry(log: pytest.LogCaptureFixture) -> None:
     assert pipeline.main(["--list"]) == 0
-    assert "e2e      (no gates yet)" in log.messages
+    assert "e2e      e2e-matrix playwright" in log.messages
+    assert "sonar    (no gates yet)" in log.messages
     assert "all      quality sonar" in log.messages
-    assert "tests    vitest pytest" in log.messages
+    assert "tests    vitest rules-coverage pytest pipeline-pytest coverage" in log.messages
 
 
 def test_bad_path_inconsistent_registry_refuses_to_run(monkeypatch: pytest.MonkeyPatch, log: pytest.LogCaptureFixture) -> None:
@@ -319,7 +333,7 @@ def test_happy_path_main_runs_the_stage_inside_the_image(monkeypatch: pytest.Mon
     monkeypatch.setenv(pipeline.IMAGE_MARKER, "1")
 
     assert pipeline.main(["--stage", "build"], shell.context()) == 0
-    assert gate_commands(shell) == ["npm run --silent build"]
+    assert gate_commands(shell) == ["npm run --silent build", "python3 scripts/ci/check_bundle_budget.py"]
 
 
 def test_happy_path_main_defaults_to_the_real_repository(monkeypatch: pytest.MonkeyPatch) -> None:

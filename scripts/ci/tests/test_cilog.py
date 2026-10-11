@@ -3,7 +3,7 @@
 import logging
 
 import pytest
-from cilog import StdoutHandler, get_logger
+from cilog import StdoutHandler, bullets, get_logger
 
 
 def test_happy_path_logger_writes_message_lines_to_stdout(capsys: pytest.CaptureFixture[str]) -> None:
@@ -45,3 +45,8 @@ def test_bad_path_closed_stdout_is_reported_not_raised(monkeypatch: pytest.Monke
     handler.emit(record)
 
     assert handled == [record]
+
+
+def test_happy_path_bullets_list_one_item_per_line() -> None:
+    assert bullets(["a", "b"]) == "  - a\n  - b"
+    assert bullets([]) == ""

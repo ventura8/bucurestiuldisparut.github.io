@@ -1,0 +1,43 @@
+---
+description: Build the engine and admin bundles (and later the functions deploy artifact and the pipeline image) inside the quality image, exactly as CI does
+---
+
+# Build Workflow
+
+Everything builds inside the pinned quality image `hcm-quality:local`; the host's Node 22 is never used. Stage definitions: `.agent/skills/quality/pipeline_skill.md` → *Stages*.
+
+## One command, CI-equivalent
+
+```bash
+mkdir -p reports/pipeline
+PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh > reports/pipeline/run.log 2>&1; echo "EXIT=$?"
+grep -E '^\[(SUCCESS|FAILURE)\]' reports/pipeline/run.log
+```
+
+The `build` stage runs `npm run build`, which runs every workspace's `build` script:
+
+| Package | Output | Notes |
+| --- | --- | --- |
+| `@hcm/engine` | `packages/engine/dist/engine.iife.js`, `engine.mjs`, `engine.css` | IIFE global `window.HistoricCityMap`; `mapbox-gl` external, mapped to the global `mapboxgl` (Mapbox GL JS 3.32.0 from `api.mapbox.com`); config in `packages/engine/vite.config.ts` |
+| `@hcm/admin` | `packages/admin/dist/admin.*` | global `HistoricCityMapAdmin`; deployed to Firebase Hosting from M2 |
+
+`dist/` is git-ignored: the `release` stage rebuilds the bundles on a tag and `release.yml` attaches them to the GitHub Release.
+
+## Ad-hoc, while iterating
+
+```bash
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
+  bash -c 'mkdir -p $HOME && npm run build --workspace @hcm/engine'
+```
+
+## Planned builds
+
+- `functions/dist/` (built since M0 by `npm run build`, deployed from M2): `functions/build.mjs` bundles `@hcm/shared` with Vite SSR, keeps npm dependencies external and writes `dist/package.json` with exact pins; its lockfile and the e2e emulator run on it join in M2.
+- Pipeline image (M3): `pipeline/Dockerfile` targets `test` (the GDAL test image) and `runtime` (the Cloud Run Job image).
+- Sites: `sites/bucharest/` (Pages) and `starter-kit/` copy the engine `dist` same-origin.
+- Bundle budget gate: gzip size of the engine IIFE and the admin bundle.
+
+## Rules
+
+- Never bundle `mapbox-gl`; never add a dependency without `npm view` and an exact pin (`docs/SETUP.md` → *npm in a container*).
+- A new workspace needs its `COPY` line in `docker/Dockerfile.quality`, or `npm ci` fails in the image build.
