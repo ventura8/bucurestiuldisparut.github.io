@@ -1,0 +1,9 @@
+/*
+ * Admin shell styles. Colours come from the M3 tokens (packages/ui/src/theme); the admin
+ * uses a navigation rail, never a drawer.
+ */
+.hcm-admin-root {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    min-block-size: 100dvh;
+}

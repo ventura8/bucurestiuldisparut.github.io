@@ -1,0 +1,24 @@
+{
+    "name": "@hcm/admin",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Admin app (Setup Assistant, photos, satellite layers, georeferencer, jobs): builds dist/admin.{iife.js,mjs,css}, served from Firebase Hosting.",
+    "license": "UNLICENSED",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        }
+    },
+    "scripts": {
+        "build": "vite build"
+    },
+    "dependencies": {
+        "@hcm/shared": "0.0.0",
+        "@hcm/ui": "0.0.0"
+    },
+    "devDependencies": {
+        "@hcm/test-support": "0.0.0"
+    }
+}

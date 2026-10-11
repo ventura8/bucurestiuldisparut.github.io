@@ -1,0 +1,16 @@
+{
+    "$schema": "https://unpkg.com/knip@6.41.0/schema.json",
+    "workspaces": {
+        ".": {
+            "project": ["*.{js,cjs,ts}"]
+        },
+        "packages/test-support": {
+            "project": ["src/**/*.ts"]
+        },
+        "packages/*": {
+            "entry": ["test/**/*.test.ts"],
+            "project": ["src/**/*.ts", "test/**/*.ts"]
+        }
+    },
+    "ignoreDependencies": ["braces"]
+}

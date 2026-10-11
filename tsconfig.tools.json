@@ -1,0 +1,11 @@
+// Node-side tool configuration written in TypeScript (Vitest and the per-package Vite configs).
+// Kept out of the package projects so browser sources never see Node globals.
+{
+    "extends": "./tsconfig.base.json",
+    "compilerOptions": {
+        "lib": ["es2023", "dom"],
+        "types": ["node"],
+        "outDir": "${configDir}/.tsbuild/tools"
+    },
+    "include": ["vitest.config.ts", "packages/*/vite.config.ts"]
+}

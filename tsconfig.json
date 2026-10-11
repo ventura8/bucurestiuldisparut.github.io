@@ -1,0 +1,19 @@
+// Solution file: `tsc -b` builds (type-checks) every project below in dependency order. Each package
+// has two projects: `<pkg>` (src/, product code) and `<pkg>/test` (tests, with Node + Vitest types).
+// Later milestones add {"path": "functions"}, {"path": "firebase/rules-tests"} and {"path": "e2e"}
+// when those workspaces get their package.json (docs/research/M0-handoff.md).
+{
+    "files": [],
+    "references": [
+        { "path": "packages/shared" },
+        { "path": "packages/shared/test" },
+        { "path": "packages/ui" },
+        { "path": "packages/ui/test" },
+        { "path": "packages/engine" },
+        { "path": "packages/engine/test" },
+        { "path": "packages/admin" },
+        { "path": "packages/admin/test" },
+        { "path": "packages/test-support" },
+        { "path": "tsconfig.tools.json" }
+    ]
+}

@@ -1,0 +1,70 @@
+{
+    "name": "historic-city-map",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Historical City Map Engine monorepo: viewer engine, admin, shared kit, Firebase backend and raster pipeline (first city: Bucharest).",
+    "license": "UNLICENSED",
+    "type": "module",
+    "engines": {
+        "node": ">=24.12.0"
+    },
+    "workspaces": [
+        "packages/*"
+    ],
+    "scripts": {
+        "build": "npm run build --workspaces --if-present",
+        "emulators:setup": "firebase setup:emulators:firestore && firebase setup:emulators:storage && firebase setup:emulators:pubsub",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "lint": "eslint --max-warnings 0 --no-inline-config --report-unused-disable-directives-severity error .",
+        "lint:css": "stylelint --max-warnings 0 --report-needless-disables --report-invalid-scope-disables --report-descriptionless-disables \"packages/*/src/**/*.{css,ts}\"",
+        "lint:deps": "depcruise packages --config .dependency-cruiser.cjs",
+        "lint:html": "htmlhint",
+        "lint:html:validate": "html-validate --max-warnings 0",
+        "lint:knip": "knip",
+        "lint:md": "markdownlint-cli2",
+        "test": "vitest run --coverage",
+        "test:e2e": "npm run test:e2e --workspace @hcm/e2e",
+        "typecheck": "tsc -b"
+    },
+    "devDependencies": {
+        "@eslint/js": "10.0.1",
+        "@types/node": "24.19.2",
+        "@vitest/browser-playwright": "5.0.3",
+        "@vitest/coverage-v8": "5.0.3",
+        "@vitest/eslint-plugin": "1.6.27",
+        "braces": "file:vendor/npm/braces",
+        "dependency-cruiser": "18.5.0",
+        "eslint": "10.12.0",
+        "eslint-config-prettier": "10.1.8",
+        "eslint-plugin-lit": "2.3.1",
+        "eslint-plugin-no-unsanitized": "4.1.5",
+        "eslint-plugin-sonarjs": "4.2.2",
+        "eslint-plugin-wc": "3.1.0",
+        "firebase-tools": "15.33.0",
+        "globals": "17.13.0",
+        "html-validate": "11.16.2",
+        "htmlhint": "1.9.2",
+        "knip": "6.41.0",
+        "markdownlint-cli2": "0.23.3",
+        "playwright": "1.64.0",
+        "postcss-lit": "1.4.1",
+        "prettier": "3.9.10",
+        "stylelint": "17.16.0",
+        "stylelint-config-standard": "40.0.0",
+        "typescript": "6.0.3",
+        "typescript-eslint": "8.71.1",
+        "vite": "8.3.4",
+        "vitest": "5.0.3"
+    },
+    "overrides": {
+        "@opentelemetry/core": "2.12.0",
+        "basic-ftp": "6.2.3",
+        "braces": "$braces",
+        "gaxios@6.7.1": {
+            "uuid": "11.1.1"
+        },
+        "katex": "0.19.0",
+        "smol-toml": "1.9.1"
+    }
+}

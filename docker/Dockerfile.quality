@@ -1,0 +1,105 @@
+# syntax=docker/dockerfile:1.27.1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
+#
+# Quality image: the ONLY place where lint, tests, e2e and builds run (locally and in CI).
+# Build: bash scripts/ci/build-and-test.sh (tag hcm-quality:local). Run: scripts/ci/run-all-checks.sh,
+# which bind-mounts the repository at its host path; nothing from the host home is mounted.
+# Every base image is pinned by digest (tag in the comment above it); apt packages by version.
+
+# --- static tool binaries ---------------------------------------------------------------------
+# rhysd/actionlint:1.7.12
+FROM rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 AS actionlint
+# hadolint/hadolint:v2.15.1-debian
+FROM hadolint/hadolint@sha256:9a3944b7fddcb947d1ffd90829ac1a6e5c30479223358f249d8b96c7d0019e27 AS hadolint
+# koalaman/shellcheck:v0.11.0
+FROM koalaman/shellcheck@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d AS shellcheck
+# mvdan/shfmt:v3.14.1
+FROM mvdan/shfmt@sha256:8c06884a35683d8763fba6c0d9484d11a61a96da65f8d497d6f625825a6043f2 AS shfmt
+# zricethezav/gitleaks:v8.30.1
+FROM zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f AS gitleaks
+# node:24-bookworm-slim (Node 24.21.0, npm 11.19.0)
+FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS node
+
+# --- quality image ----------------------------------------------------------------------------
+# ghcr.io/osgeo/gdal:ubuntu-small-3.13.3 (Ubuntu 26.04, Python 3.14.4 with matching osgeo bindings)
+FROM ghcr.io/osgeo/gdal:ubuntu-small-3.13.3@sha256:64250faf833c06d4b21afce4c27190039ba7ab58d70f0eebc87cf77d929c0b40 AS quality
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+ARG PIP_VERSION=26.2.1
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PATH=/opt/hcm/venv/bin:$PATH \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    FIREBASE_EMULATORS_PATH=/opt/hcm/firebase-emulators \
+    npm_config_cache=/opt/hcm/npm-cache \
+    npm_config_update_notifier=false
+
+# JDK 21: firebase-tools 15 emulators refuse older Java. git: the pipeline lists files and hashes
+# `git status`. python3.14-venv: the CI tool venv (the GDAL image ships no ensurepip).
+RUN --mount=type=cache,id=hcm-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=hcm-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        openjdk-21-jre-headless=21.0.12* \
+        git=1:2.53.0* \
+        curl=8.18.0* \
+        python3.14-venv=3.14.4* \
+    && java -version
+
+# Node 24 from the official image (binary, npm, corepack, headers for node-gyp).
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+COPY --from=node /usr/local/include/node /usr/local/include/node
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+    && node --version && npm --version
+
+COPY --from=actionlint /usr/local/bin/actionlint /usr/local/bin/actionlint
+COPY --from=hadolint /usr/bin/hadolint /usr/local/bin/hadolint
+COPY --from=shellcheck /bin/shellcheck /usr/local/bin/shellcheck
+COPY --from=shfmt /bin/shfmt /usr/local/bin/shfmt
+COPY --from=gitleaks /usr/bin/gitleaks /usr/local/bin/gitleaks
+RUN actionlint -version && hadolint --version && shellcheck --version && shfmt --version && gitleaks version
+
+# Python CI tooling (ruff, mypy, pytest, yamllint, taplo, ...): wheels only, every package pinned.
+COPY scripts/ci/requirements.txt /opt/hcm/requirements.txt
+RUN --mount=type=cache,id=hcm-pip,target=/root/.cache/pip,sharing=locked \
+    python3 -m venv /opt/hcm/venv \
+    && /opt/hcm/venv/bin/pip install "pip==${PIP_VERSION}" \
+    && /opt/hcm/venv/bin/pip install --only-binary :all: -r /opt/hcm/requirements.txt \
+    && ruff --version && mypy --version && taplo --version
+
+# npm workspaces: manifests and lockfile only (the source is bind-mounted at run time). This fills
+# the baked npm cache that the pipeline's runtime `npm ci --prefer-offline` installs from, then
+# installs the Playwright browsers and the Firebase emulator JARs at versions locked here. The
+# build-time node_modules is dropped afterwards; nothing at run time uses it.
+WORKDIR /opt/hcm/workspace
+COPY package.json package-lock.json .npmrc ./
+COPY vendor/npm/braces vendor/npm/braces
+COPY packages/shared/package.json packages/shared/
+COPY packages/ui/package.json packages/ui/
+COPY packages/engine/package.json packages/engine/
+COPY packages/admin/package.json packages/admin/
+COPY packages/test-support/package.json packages/test-support/
+RUN --mount=type=cache,id=hcm-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=hcm-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+    npm ci --no-audit --no-fund \
+    && npx playwright install --with-deps chromium firefox webkit \
+    && npm run emulators:setup \
+    && rm -rf node_modules \
+    && chmod -R a+rwX /opt/hcm/npm-cache /opt/hcm/firebase-emulators \
+    && chmod -R a+rX /ms-playwright
+
+# Runs as the host uid (docker run --user) on a bind-mounted checkout; git must accept it.
+RUN git config --system --add safe.directory '*'
+
+# scripts/ci/in-container.sh refuses to run anywhere this marker is missing.
+ENV HCM_TEST_IMAGE=1
+
+WORKDIR /opt/hcm
+USER 10001:10001
+CMD ["bash", "-c", "echo 'Run PIPELINE_STAGE=<stage> bash scripts/ci/run-all-checks.sh from the repository root.' >&2; exit 2"]

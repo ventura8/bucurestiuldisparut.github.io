@@ -1,0 +1,9 @@
+# The quality image needs only dependency manifests: the repository is bind-mounted at run time.
+# Allowlist, so the build context stays tiny and layer caches change only with the manifests.
+*
+!package.json
+!package-lock.json
+!.npmrc
+!packages/*/package.json
+!vendor/npm/braces/**
+!scripts/ci/requirements.txt

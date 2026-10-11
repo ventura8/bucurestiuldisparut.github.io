@@ -1,0 +1,11 @@
+/*
+ * Engine host styles. Colours, shapes and typography come from the M3 tokens generated
+ * per city (packages/ui/src/theme); nothing here hard-codes a colour.
+ */
+.hcm-engine-root {
+    display: block;
+    position: relative;
+    inline-size: 100%;
+    block-size: 100%;
+    container-type: size;
+}

@@ -1,0 +1,52 @@
+# Dependencies and build output
+node_modules/
+dist/
+.tsbuild/
+*.tsbuildinfo
+
+# Pipeline output (coverage, junit, green markers, gitleaks report, tool caches)
+reports/
+coverage/
+playwright-report/
+test-results/
+.docker-build-cache*/
+
+# SonarQube scanner state and the local token (scripts/ci, docs/research/M0-handoff.md)
+.scannerwork/
+.sonar/
+.sonar-token
+
+# Secrets and local environment: only the placeholder file is tracked
+.env*
+!.env.example
+*.secret.local
+.secret.local
+
+# Firebase CLI / emulator logs and state
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+database-debug.log
+pubsub-debug.log
+storage-debug.log
+ui-debug.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Agent scratch space
+.claude/worktrees/

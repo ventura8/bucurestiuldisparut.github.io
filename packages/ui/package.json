@@ -1,0 +1,19 @@
+{
+    "name": "@hcm/ui",
+    "version": "0.0.0",
+    "private": true,
+    "description": "Material 3 (Expressive) Lit 3 component kit: hcm-* custom elements, theme tokens and window classes.",
+    "license": "UNLICENSED",
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        }
+    },
+    "dependencies": {
+        "@hcm/shared": "0.0.0",
+        "lit": "3.3.3"
+    }
+}

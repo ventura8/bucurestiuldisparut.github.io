@@ -1,0 +1,6 @@
+// Test-only helpers. Sonar treats this package as tests; it is outside coverage.include.
+{
+    "extends": "../../tsconfig.base.json",
+    "include": ["src"],
+    "references": [{ "path": "../shared" }]
+}
