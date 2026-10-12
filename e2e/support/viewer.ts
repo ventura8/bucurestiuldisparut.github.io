@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page, type Route } from '@playwright/test';
-import { translate, type Locale, type MessageKey } from '@hcm/shared';
+import { translate, type Locale, type MessageKey, type ValidationIssue, type ValidationResult } from '@hcm/shared';
 
 import { readInstrumentation } from './instrumentation.js';
 import { mapIdle } from './map.js';
@@ -118,4 +118,25 @@ export function windowClassOf(width: number): 'compact' | 'medium' | 'expanded' 
         return 'expanded';
     }
     return width < 1600 ? 'large' : 'extra-large';
+}
+
+/** Expanded and wider windows dock the detail sheet in a pane; compact and medium ones open it as a modal sheet. */
+export function isDocked(page: Page): boolean {
+    return (page.viewportSize()?.width ?? 0) >= 840;
+}
+
+/**
+ * Closes the modal sheet on top (a photo's, the Layers'), which makes the map and its menu inert in compact and medium
+ * windows; a docked pane stays open. Window-class branches live in helpers like this one, so spec bodies stay linear
+ * (`playwright/no-conditional-in-test`).
+ */
+export async function closeModalSheet(page: Page): Promise<void> {
+    if (!isDocked(page)) {
+        await page.keyboard.press('Escape');
+    }
+}
+
+/** The issues `validateManifest` reports (none for a valid manifest). */
+export function manifestIssues(result: ValidationResult<unknown>): readonly ValidationIssue[] {
+    return result.ok ? [] : result.issues;
 }

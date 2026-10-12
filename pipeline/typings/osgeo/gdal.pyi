@@ -1,11 +1,10 @@
 """Stubs for the part of `osgeo.gdal` (GDAL 3.13) the repository calls.
 
-GDAL's names are CamelCase (GetDriverByName, WriteArray). pep8-naming (ruff N802) rejects a `def`
-with such a name and the repository never relaxes N802, so each function and method is declared as
-a typed callable attribute: calls type-check exactly the same way. Arguments are positional.
+GDAL's names are CamelCase (GetDriverByName, WriteArray) and the stubs spell them as GDAL does; ruff.toml
+allows N802 for `pipeline/typings/**/*.pyi` only. Arguments are positional-only, as the callers use them.
 """
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from typing import Any
 
 from numpy.typing import NDArray
@@ -17,27 +16,26 @@ GDT_Byte: int
 GeoTransform = tuple[float, float, float, float, float, float]
 
 class Band:
-    WriteArray: Callable[[NDArray[Any]], int]
-    ReadAsArray: Callable[[], NDArray[Any]]
-    Checksum: Callable[[], int]
+    def WriteArray(self, array: NDArray[Any], /) -> int: ...
+    def ReadAsArray(self) -> NDArray[Any]: ...
+    def Checksum(self) -> int: ...
 
 class Dataset:
     RasterXSize: int
     RasterYSize: int
     RasterCount: int
-    GetRasterBand: Callable[[int], Band]
-    GetGeoTransform: Callable[[], GeoTransform]
-    SetGeoTransform: Callable[[GeoTransform], int]
-    GetProjection: Callable[[], str]
-    SetProjection: Callable[[str], int]
-    FlushCache: Callable[[], int]
-    Close: Callable[[], int]
+    def GetRasterBand(self, index: int, /) -> Band: ...
+    def GetGeoTransform(self) -> GeoTransform: ...
+    def SetGeoTransform(self, transform: GeoTransform, /) -> int: ...
+    def GetProjection(self) -> str: ...
+    def SetProjection(self, wkt: str, /) -> int: ...
+    def FlushCache(self) -> int: ...
+    def Close(self) -> int: ...
 
 class Driver:
     ShortName: str
-    # Create(path, xsize, ysize, bands, data_type, creation_options)
-    Create: Callable[[str, int, int, int, int, Sequence[str]], Dataset]
+    def Create(self, path: str, xsize: int, ysize: int, bands: int, data_type: int, options: Sequence[str], /) -> Dataset: ...
 
-UseExceptions: Callable[[], None]
-GetDriverByName: Callable[[str], Driver | None]
-Open: Callable[[str], Dataset]
+def UseExceptions() -> None: ...
+def GetDriverByName(name: str, /) -> Driver | None: ...
+def Open(path: str, /) -> Dataset: ...

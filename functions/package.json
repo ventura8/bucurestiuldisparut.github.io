@@ -9,7 +9,8 @@
         "node": "24"
     },
     "scripts": {
-        "build": "node build.mjs"
+        "build": "node build.mjs",
+        "deploy-lock": "node deploy-lock.mjs"
     },
     "dependencies": {
         "@hcm/shared": "0.0.0",

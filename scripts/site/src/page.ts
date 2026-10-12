@@ -24,7 +24,7 @@ export const ENGINE_MODULE_FILE = 'engine.mjs';
 export const ENGINE_STYLESHEET_FILE = 'engine.css';
 
 /** The engine's default mount point (`DEFAULT_CONTAINER_SELECTOR` of @hcm/shared). */
-export const CONTAINER_ID = 'historic-city-map';
+const CONTAINER_ID = 'historic-city-map';
 
 export interface PageInputs {
     readonly spec: SiteSpec;

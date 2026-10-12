@@ -5,7 +5,16 @@ import { siteManifestData, type Json } from '../../fixtures/manifest.js';
 import { mapFacts, renderedFeatureIds } from '../../support/map.js';
 import { sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
-import { BUCHAREST_MANIFEST, engineEvents, openViewer, serveManifest, t, viewer, waitForEngineEvent } from '../../support/viewer.js';
+import {
+    BUCHAREST_MANIFEST,
+    engineEvents,
+    manifestIssues,
+    openViewer,
+    serveManifest,
+    t,
+    viewer,
+    waitForEngineEvent,
+} from '../../support/viewer.js';
 
 /**
  * Boot (behaviour V01) and WebGL (V02, happy path): the built Bucharest site fetches its manifest, validates it and
@@ -113,7 +122,7 @@ test(
         (broken['city'] as Json)['zoom'] = 99;
         const result = validateManifest(broken);
         expect(result.ok).toBe(false);
-        const count = result.ok ? 0 : result.issues.length;
+        const count = manifestIssues(result).length;
         await serveManifest(page, broken);
         await page.goto(sitePath('bucharest', { lang }));
 

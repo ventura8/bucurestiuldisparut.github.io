@@ -6,9 +6,11 @@ import { blend, expectColourAt, mapFacts, mapFraction } from '../../support/map.
 import { expect, test } from '../../support/test.js';
 import {
     chooseMenuItem,
+    closeModalSheet,
     currentHash,
     engineEvents,
     hashParam,
+    isDocked,
     openLayers,
     openViewer,
     opacitySlider,
@@ -85,11 +87,9 @@ test(
         expect(await engineEvents(page, 'hcm-photo-open')).toEqual([{ photoId: LONE }]);
 
         // A modal sheet (compact, medium) makes the map and its menu inert: the visitor closes it, then shares the view.
-        if (!isDocked(page)) {
-            await page.keyboard.press('Escape');
-            // Closing the photo takes it out of the hash (written once the state settles), so the link shares the view.
-            await expect.poll(() => hashParam(page, 'photo')).toBeNull();
-        }
+        // Closing the photo takes it out of the hash (written once the state settles); a docked pane keeps it there.
+        await closeModalSheet(page);
+        await expect.poll(() => hashParam(page, 'photo')).toBe(photoKeptOpen(page));
         await chooseMenuItem(page, lang, t(lang, 'action.share'));
         await expect(page.getByRole('status').filter({ hasText: t(lang, 'share.copied') })).toBeVisible();
         const copied = await page.evaluate(() => navigator.clipboard.readText());
@@ -158,11 +158,10 @@ test(
     async ({ page, lang }) => {
         await page.addInitScript(refusingClipboard);
         // A docked detail pane stays open while the visitor shares; a modal sheet would make the menu inert.
-        const docked = isDocked(page);
-        const photo = docked ? `&photo=${LONE}` : '';
-        await openViewer(page, { lang, hash: `17/44.42955/26.09560${photo}` });
+        const photos = [photoKeptOpen(page)].filter((photo) => photo !== null);
+        await openViewer(page, { lang, hash: ['17/44.42955/26.09560', ...photos.map((photo) => `photo=${photo}`)].join('&') });
         const heading = page.getByRole('heading', { name: LONE_TITLE });
-        await expect(heading).toHaveCount(docked ? 1 : 0);
+        await expect(heading).toHaveCount(photos.length);
         const before = page.url();
         const view = await mapFacts(page);
 
@@ -172,13 +171,13 @@ test(
         const after = await mapFacts(page);
         expect(after.zoom).toBeCloseTo(view.zoom, 3);
         expect(after.center[0]).toBeCloseTo(view.center[0], 5);
-        await expect(heading).toHaveCount(docked ? 1 : 0);
+        await expect(heading).toHaveCount(photos.length);
     },
 );
 
-/** Expanded and wider windows dock the detail sheet in a pane; narrower ones open it as a modal sheet. */
-function isDocked(page: Page): boolean {
-    return (page.viewportSize()?.width ?? 0) >= 840;
+/** The photo a share keeps open: LONE in a docked pane (expanded and wider windows), none behind a modal sheet. */
+function photoKeptOpen(page: Page): string | null {
+    return isDocked(page) ? LONE : null;
 }
 
 test('Overlay opacities go into the hash and come back after a reload', { tag: '@S-V23-HAPPY' }, async ({ page, lang }) => {

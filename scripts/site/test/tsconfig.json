@@ -1,10 +1,10 @@
-// Unit tests of the site build and their Vitest configuration (scripts/site/vitest.config.ts), type-checked apart from src/.
+// Unit tests of the site build (the `tools` project of vitest.config.ts), type-checked apart from src/.
 {
     "extends": "../../../tsconfig.base.json",
     "compilerOptions": {
         "types": ["node"],
         "rootDir": ".."
     },
-    "include": [".", "../vitest.config.ts"],
+    "include": ["."],
     "references": [{ "path": ".." }, { "path": "../../../packages/shared" }]
 }

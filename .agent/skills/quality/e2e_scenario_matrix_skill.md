@@ -46,6 +46,7 @@ Any other row field fails the gate. The allowed values are the tuples in `script
 6. Format the registry with Prettier (4 spaces) and keep every row on the schema above. Titles and `asserts` are copied verbatim into the Markdown tables of `docs/E2E_SCENARIOS.md`: describe markup in words (no raw `<tag>`), or markdownlint rejects the generated doc.
 7. A bug a scenario found goes into `docs/LESSONS.md` with the row id that now pins it.
 8. The tour tier checks layout, axe and ARIA snapshots on every screen and state; it backs V15, V18 and A21 but does not replace their functional rows.
+9. Specs are linted with `eslint-plugin-playwright`'s recommended rules (`eslint.config.js`): no sleeps, no `networkidle`, no forced clicks, web-first assertions (`toHaveCount`, `toHaveText` instead of reading `count()` or `allInnerTexts()`), no conditional in a test body and no conditional `expect`. A branch on the window class goes into a helper (`isDocked`, `closeModalSheet`, `manifestIssues` in `e2e/support/viewer.ts`, or a local `expect…` helper), assertion helpers are named `expect…` so `playwright/expect-expect` counts them, and a test function stays within 120 lines: a long journey is one function per step (`e2e/admin/specs/journey.spec.ts`).
 
 ## Tiers and projects (M1)
 

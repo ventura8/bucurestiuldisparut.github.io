@@ -45,8 +45,8 @@ export interface SiteBuildReport {
     readonly files: number;
 }
 
-export const DEFAULT_ENGINE_DIR = 'packages/engine/dist';
-export const DEFAULT_MAPBOX_GL_DIR = 'node_modules/mapbox-gl/dist';
+const DEFAULT_ENGINE_DIR = 'packages/engine/dist';
+const DEFAULT_MAPBOX_GL_DIR = 'node_modules/mapbox-gl/dist';
 
 /** A folder name: letters, digits, `_`, `.`, `-`, but never `.` or `..` themselves. */
 const SEGMENT = /^(?!\.{1,2}$)[\w.-]+$/;

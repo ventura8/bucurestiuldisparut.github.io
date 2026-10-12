@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { validateManifest, type MessageKey } from '@hcm/shared';
+import { validateManifest, type Locale, type MessageKey } from '@hcm/shared';
 
 import { siteManifestData, type Json } from '../../fixtures/manifest.js';
 import { BASEMAP_BACKGROUND, type Rgb } from '../../fixtures/world.js';
@@ -16,7 +16,7 @@ import {
     type LngLat,
 } from '../../support/map.js';
 import { expect, test } from '../../support/test.js';
-import { engineEvents, openLayers, openViewer, serveManifest, t, viewer, visibilitySwitch } from '../../support/viewer.js';
+import { engineEvents, manifestIssues, openLayers, openViewer, serveManifest, t, viewer, visibilitySwitch } from '../../support/viewer.js';
 
 /**
  * Points of interest (behaviour V24, PLAN Addendum 3) from the fixture set scripts/seed/e2e-pois.json
@@ -55,6 +55,14 @@ async function labelContrast(page: Page, icon: { x: number; y: number }): Promis
 async function openPoi(page: Page, lngLat: LngLat): Promise<void> {
     const point = await screenPointOf(page, lngLat);
     await page.mouse.click(point.x, point.y);
+}
+
+/** Closes the Layers sheet where it is modal; a docked Layers pane has no visible close button and stays open. */
+async function closeLayersSheet(page: Page, lang: Locale): Promise<void> {
+    const close = page.getByRole('button', { name: t(lang, 'action.close'), exact: true }).filter({ visible: true });
+    if ((await close.count()) > 0) {
+        await close.first().click();
+    }
 }
 
 function poiSheet(page: Page) {
@@ -107,10 +115,7 @@ test('POI labels show from zoom 16 and not below', { tag: '@S-V24-HAPPY' }, asyn
     // The photos are switched off: below zoom 16 their clusters would sit next to the building.
     await openLayers(page, lang);
     await visibilitySwitch(page, lang, t(lang, 'layers.photos')).click();
-    const close = page.getByRole('button', { name: t(lang, 'action.close'), exact: true }).filter({ visible: true });
-    if ((await close.count()) > 0) {
-        await close.first().click();
-    }
+    await closeLayersSheet(page, lang);
     await expect
         .poll(async () => labelContrast(page, await screenPointOf(page, CLADIRE)), { message: 'a label under the icon at zoom 16' })
         .toBeGreaterThan(20);
@@ -209,14 +214,14 @@ for (const breakage of BREAKAGES) {
     test(`A manifest with ${breakage.name} is refused, naming the issue`, { tag: '@S-V24-BAD-INVALID-POI' }, async ({ page, lang }) => {
         const manifest = siteManifestData();
         breakage.breakIt(manifest['pois'] as Json[]);
-        const result = validateManifest(manifest);
-        const issue = result.ok ? undefined : result.issues.find((candidate) => candidate.code === breakage.code);
+        const issues = manifestIssues(validateManifest(manifest));
+        const issue = issues.find((candidate) => candidate.code === breakage.code);
         expect(issue, `validateManifest reports ${breakage.code}`).toBeDefined();
         await serveManifest(page, manifest);
         await page.goto(`/bucharest/?lang=${lang}`);
 
         const card = page.getByRole('alert');
-        await expect(card).toContainText(t(lang, 'error.manifest.invalid', { count: String(result.ok ? 0 : result.issues.length) }));
+        await expect(card).toContainText(t(lang, 'error.manifest.invalid', { count: String(issues.length) }));
         await expect(card).toContainText(`${issue?.path ?? ''}: ${t(lang, breakage.code)}`);
         await expect(viewer(page).locator('canvas.mapboxgl-canvas')).toHaveCount(0);
     });

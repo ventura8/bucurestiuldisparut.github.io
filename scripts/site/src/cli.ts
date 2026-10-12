@@ -17,7 +17,7 @@ import type { SiteFileSystem } from './files.js';
 
 /** The committed sites, in build order. */
 export const DEFAULT_SITES: readonly string[] = ['sites/bucharest', 'starter-kit'];
-export const DEFAULT_OUT = 'dist/site';
+const DEFAULT_OUT = 'dist/site';
 /** A generated test value that encodes the scenario (`quality/testing_strategy_skill.md`), never a real token. */
 export const PLACEHOLDER_TOKEN = 'pk.e2e-fake-token';
 

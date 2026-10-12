@@ -104,7 +104,8 @@ describe('build-site.ts (the Node entry)', () => {
             env: { ...process.env, MAPBOX_PUBLIC_TOKEN: 'pk.child' },
         });
 
-        expect(result.status, result.stderr).toBe(EXIT_OK);
+        // On a failure the diff shows the whole result, stderr included.
+        expect(result).toMatchObject({ status: EXIT_OK });
         expect(files.readText('dist/site/starter-kit/data/manifest.json')).toContain('"publicToken":"pk.child"');
     });
 

@@ -1023,6 +1023,37 @@ integrated). Nothing committed, pushed or deployed; no *Ask first* file edited.
   the invoker fix in `ci.yml` (CR-M2b-6), the admin's dependency-cruiser layering (CR-M2b-7), the bundled city created
   published (§25a). CR-M2b-2 landed: without `HCM_OAUTH_CLIENT_IDS` the claim reads the Google sign-in client from Identity Toolkit (its answer shape is UNVERIFIED until the first real project).
 
+## 10s. The reviewed decisions applied
+
+Added on 2026-10-12 by the agent that applied `DECISIONS-for-review.md` §1 to §25 after the user approved them (relayed
+by the orchestrator). Each section's heading there says whether it was applied; §26 is the table of outcomes and §27 a
+new proposal (a standing approval for stricter gates) that waits for the user's own answer. Nothing committed, pushed
+or deployed.
+
+- **Configs**: `.htmlvalidate.json` extends `html-validate:prettier`; `eslint.config.js` lints `e2e/` with
+  `eslint-plugin-playwright@2.12.1`, refuses `styleMap`, holds the site build to the product limits and gives the
+  cities' `config.js` browser globals; `.dependency-cruiser.cjs` has the Firebase, functions and admin layering rules
+  and `lint:deps` cruises `e2e`, `firebase/rules-tests` and `scripts/site` (`dependency-cruiser` 18.6.0);
+  `vitest.config.ts` adds the `engine-browser` and `tools` projects and pre-bundles the browser tests' dependencies;
+  `knip.json` covers `scripts/site` and the CLIs' tests; `ruff.toml` allows `N802` in the GDAL stubs, now ordinary
+  `def`s; `sonar-project.properties` analyses `scripts/site/src` and `.github/actions`; `.gitleaksignore` holds the
+  `14d4d7b` fingerprint and `gitleaks-history` reads `.gitleaks-history.toml` (no path allowlist);
+  `packages/engine/vite.config.ts` minifies `engine.mjs` (budget 100 KB).
+- **Workflows**: `deploy-firebase` installs before authenticating; `sonarqube` checks every report through
+  `sonar_report.py --check-reports`; `deps.yml` opens its issue only for real findings; `release.yml` builds read-only
+  and publishes without repository code; `static` exports `COMMIT_RANGE`; `e2e` runs four shards; `build` reads
+  `vars.MAPBOX_PUBLIC_TOKEN` and the Pages artifact is `dist/site/bucharest`.
+- **Pipeline**: the `site-unit` gate, `test:site` and `scripts/site/vitest.config.ts` are gone (the site build's tests
+  are the `tools` project); new static gate `deploy-lock-audit`; the `contract` stage compares the Mapbox CDN's bytes
+  with the npm release's integrity.
+- **Functions**: `functions/deploy-env.json` (public `HCM_*` values per project, written as `dist/.env.<project>`),
+  `functions/deploy-lock/` (the artifact's locked tree, `npm run deploy-lock --workspace @hcm/functions` with the
+  network), sharp imported lazily; `functions/build.mjs` checks all three and dynamic imports.
+- **Tests moved or added**: `scripts/seed/test/migrate-legacy.test.ts` (on the real city seed), `scripts/seed/test/png.ts`,
+  `packages/ui/scripts/test/gen-theme.test.ts`, `packages/engine/test/browser/adapter-env.test.ts`,
+  `functions/test/deploy-env.test.ts`, the contract check's integrity probes.
+- **Not applied** (reasons in §26): §13b, §15c, §18b, §23b, §23c, §25c, §25d.
+
 ## 11. Planned paths
 
 Appended by the M0 agent-assets agent on 2026-10-11. The `agent-assets` static gate

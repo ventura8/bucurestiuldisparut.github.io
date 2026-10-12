@@ -9,7 +9,12 @@ check or narrows a scope to exactly the false positive it names.
 Opened on 2026-10-12 by the agent that closed the M0 review leftovers (`docs/research/M0-handoff.md` §10f), from
 the findings of §10d and §10e.
 
-## 1. `.htmlvalidate.json`: extend `html-validate:prettier`
+Addendum (2026-10-12, after the review): the user approved §1 to §25 as a whole, relayed to the applying agent by the
+orchestrator. Each heading now says `APPLIED 2026-10-12 (user approved)` or `NOT APPLIED: <reason>`; §26 records how
+they were applied, where a later section superseded an earlier one, where the stricter of two readings was taken, and
+why seven were not applied. §27 is a new proposal that waits for the user's own answer.
+
+## 1. `.htmlvalidate.json`: extend `html-validate:prettier` — APPLIED 2026-10-12 (user approved)
 
 Prettier 3 prints `<!doctype html>` and self-closing void tags (`<meta ... />`); html-validate's recommended
 `doctype-style` and `void-style` rules reject both, so today no committed `.html` file can pass the `prettier` and
@@ -24,7 +29,7 @@ exactly the rules that contradict Prettier's output and nothing else. M1 needs i
 
 Verify: `PIPELINE_STAGE=static` with the first committed `.html` file.
 
-## 2. `eslint.config.js`: Playwright rules for `e2e/`, why-comments for the test limits
+## 2. `eslint.config.js`: Playwright rules for `e2e/`, why-comments for the test limits — APPLIED 2026-10-12 (user approved; stricter variant, §26)
 
 Today `e2e/**` gets neither the test rules nor any size limit, and `eslint-plugin-playwright`
 (`quality-conventions.md` §4.2, `design-review-testability.md` §2) is not installed, so nothing enforces "no
@@ -89,7 +94,7 @@ npm install --save-exact --save-dev eslint-plugin-playwright@2.12.1
 
 Verify: `PIPELINE_STAGE=static` (eslint and knip: the new devDependency is used by the config) and `e2e`.
 
-## 3. `.dependency-cruiser.cjs`: keep the Firebase SDK out of the public viewer; scan `e2e/` and the rules tests
+## 3. `.dependency-cruiser.cjs`: keep the Firebase SDK out of the public viewer; scan `e2e/` and the rules tests — APPLIED 2026-10-12 (user approved; stricter variant, §26)
 
 `AGENTS.md`: the public viewer never reads Firestore and loads no Firebase SDK for data; Addendum 2 of `PLAN.md`
 allows only the consent-gated GA4 and Performance Monitoring. No rule enforces either today. With
@@ -142,9 +147,9 @@ batch it with the next dependency bump (`dependency-cruiser` 18.6.0 is already o
 Verify: `PIPELINE_STAGE=static` (`dependency-cruiser`), plus a throwaway import of `firebase/firestore` in an engine
 file, which must fail.
 
-## 4. Workflow hardening (`.github/workflows/`)
+## 4. Workflow hardening (`.github/workflows/`) — APPLIED 2026-10-12 (user approved): 4a to 4e
 
-### 4a. `ci.yml` `deploy-firebase`: install before authenticating
+### 4a. `ci.yml` `deploy-firebase`: install before authenticating — APPLIED 2026-10-12 (user approved)
 
 `npm ci` runs the install scripts of about 1,200 packages after the Workload Identity step has written a
 short-lived credentials file into the mounted workspace and exported `GOOGLE_APPLICATION_CREDENTIALS`. Install
@@ -191,7 +196,7 @@ first, authenticate last:
                    "${in_image[@]}" npx firebase deploy --non-interactive --project "$GCP_PROJECT_ID" \
 ```
 
-### 4b. `ci.yml` `sonarqube`: check every report the scan reads
+### 4b. `ci.yml` `sonarqube`: check every report the scan reads — APPLIED 2026-10-12 (user approved)
 
 The job checks `lcov.info`, `scripts.xml` and `pytest.xml` but not the raster pipeline's `pipeline.xml` and
 `junit/pipeline.xml`. `scripts/ci/sonar_report.py --check-reports` (added in §10f) reads the list from
@@ -240,7 +245,7 @@ Later option (not part of this decision): the job could run `PIPELINE_STAGE=sona
 scripts/ci/run-all-checks.sh` itself (pipeline parity) once the container receives the `GITHUB_*` variables the
 scanner reads to detect pull-request analyses; today the scan action does that detection.
 
-### 4c. `deps.yml`: open the issue only when something is behind
+### 4c. `deps.yml`: open the issue only when something is behind — APPLIED 2026-10-12 (user approved)
 
 The `deps` stage now has its gate (`dependency-updates`), so the empty Monday issue is gone. What remains: a
 registry outage (exit 2, "not checked" lines) would still open "Dependency updates available". Open or update the
@@ -267,7 +272,7 @@ issue only when the log names a pin that is behind (` -> `) or a stale hold (`HE
                uses: ./.github/actions/upsert-issue
 ```
 
-### 4d. `release.yml`: build without write access, publish without running repository code
+### 4d. `release.yml`: build without write access, publish without running repository code — APPLIED 2026-10-12 (user approved)
 
 Today the `release` stage (npm ci, every install script, the build) runs in the job that holds `contents: write`.
 Split it: the build job reads, the publish job writes and runs no repository code.
@@ -340,7 +345,7 @@ jobs:
 
 (upload-artifact keeps the paths below their common ancestor, the repository root, hence the `release/` prefixes.)
 
-### 4e. `ci.yml` `static`: name the commit range for the `commits` gate (optional)
+### 4e. `ci.yml` `static`: name the commit range for the `commits` gate (optional) — APPLIED 2026-10-12 (user approved)
 
 The new `commits` gate reads `COMMIT_RANGE` and falls back to `GITLEAKS_LOG_OPTS`, which this job already exports,
 so CI enforces Conventional Commits without this change. For clarity the same step can export both
@@ -354,7 +359,7 @@ so CI enforces Conventional Commits without this change. For clarity the same st
 Verify for all of §4: `PIPELINE_STAGE=static` (actionlint, workflow schemas, `workflow-policy`, `action-pins`),
 then one run on GitHub.
 
-## 5. `sonar-project.properties`: analyse `.github/actions` too
+## 5. `sonar-project.properties`: analyse `.github/actions` too — APPLIED 2026-10-12 (user approved)
 
 The composite actions (`quality-image`, `upsert-issue`) hold shell and GitHub Actions code like the workflows, which
 are already in `sonar.sources`:
@@ -369,9 +374,9 @@ are already in `sonar.sources`:
 Verify: `PIPELINE_STAGE=tests` (the `coverage` gate reads the same scope; YAML has no coverage, so it stays green)
 and the next Sonar analysis.
 
-## 6. gitleaks: the pushed false positive in `14d4d7b`, and the header of `.gitleaks.toml`
+## 6. gitleaks: the pushed false positive in `14d4d7b`, and the header of `.gitleaks.toml` — APPLIED 2026-10-12 (user approved): 6a, 6b and its stricter option
 
-### 6a. `.gitleaksignore` (new file) for exactly one finding
+### 6a. `.gitleaksignore` (new file) for exactly one finding — APPLIED 2026-10-12 (user approved)
 
 Commit `14d4d7b` (already on `origin/feat/engine-rewrite`) holds the multi-line `curl-auth-user` false positive of
 `docs/research/quality-conventions.md` that a later commit reworded (§7 of the hand-off). A pull request whose range
@@ -390,7 +395,7 @@ this file, `gitleaks git --log-opts="origin/master..HEAD"` reports no leak, and 
 whose fingerprints have no commit part) is unaffected. The alternative is squashing the branch before the pull request
 (a force-push of `feat/engine-rewrite`, also ask first).
 
-### 6b. `.gitleaks.toml`: say what the path allowlist really does
+### 6b. `.gitleaks.toml`: say what the path allowlist really does — APPLIED 2026-10-12 (user approved; stricter variant, §26)
 
 The header says "nothing tracked by git is exempted", but the allowlist also hides `.sonar-token` and `.env.local`
 in history mode, tracked or not. The `repo-policy` gate and the pre-commit hook refuse those files in git's view, so
@@ -410,7 +415,7 @@ Stricter option: give `gitleaks-history` its own config without the two secret-f
 
 Verify: `PIPELINE_STAGE=static` (`gitleaks`, `gitleaks-history` with `GITLEAKS_LOG_OPTS=origin/master..HEAD`).
 
-## 7. `ruff.toml`: GDAL's CamelCase names in the stubs
+## 7. `ruff.toml`: GDAL's CamelCase names in the stubs — APPLIED 2026-10-12 (user approved; stricter variant, §26)
 
 `pipeline/typings/osgeo/*.pyi` declares GDAL's CamelCase API as typed callable attributes, because ruff N802/N803
 reject a CamelCase `def` and `ruff.toml` is ask-first. A per-file ignore limited to the stubs allows ordinary `def`
@@ -424,7 +429,7 @@ stubs (a follow-up rewrites them):
 
 Verify: `PIPELINE_STAGE=static` (`ruff-check`, `pipeline-mypy`).
 
-## 8. `pytest.ini`: the `editorconfig` deprecation filter (keep)
+## 8. `pytest.ini`: the `editorconfig` deprecation filter (keep) — APPLIED 2026-10-12 (user approved): kept, no change
 
 The CI tooling's pytest turns every warning into an error, except one line that tolerates the `codecs.open()`
 deprecation warning `editorconfig` 0.17.1 (the latest release) raises on Python 3.14. The filter names the message,
@@ -433,7 +438,7 @@ the category and the module, so no other warning slips through. Recommendation: 
 replacing the library with an own `.editorconfig` parser in `scripts/ci/check_editorconfig.py`, is more code to
 maintain for no gain.
 
-## 9. `vitest.config.ts`: an `engine-browser` project and a `tools` project (M1 change request CR-2)
+## 9. `vitest.config.ts`: an `engine-browser` project and a `tools` project (M1 change request CR-2) — APPLIED 2026-10-12 (user approved)
 
 Added on 2026-10-12 by the M1 contracts agent (`docs/research/M1-interfaces.md` → *Change requests*). Two test
 environments M1 needs do not exist yet:
@@ -474,7 +479,7 @@ root solution, and add their globs to `TESTS` in `eslint.config.js` (also ask-fi
 
 Verify: `PIPELINE_STAGE=tests` (the `vitest` gate lists the new project names) and `static` (`tsc`, `eslint`, `knip`).
 
-## 10. The legacy migration writes new files under `seed/bucharest/` (for visibility)
+## 10. The legacy migration writes new files under `seed/bucharest/` (for visibility) — APPLIED 2026-10-12 (user approved): committed (§11)
 
 Added on 2026-10-12 by the M1 contracts agent. `seed/bucharest/` is ask-first for changes to the legacy originals,
 and none were changed: `photos.legacy.geojson`, `photos/` and `thumbnails/` are only read. The planned M1 migration
@@ -491,20 +496,20 @@ way. Re-running the migration rewrites both outputs from the originals.
 
 Verify: `npm run seed:migrate` in the quality image ends with `manifest written { photos: 45, cones: 34, ... }`.
 
-## 11. Orchestrator decisions taken overnight (2026-10-12), for review
+## 11. Orchestrator decisions taken overnight (2026-10-12), for review — APPLIED 2026-10-12 (user approved): confirmed
 
 | Item | Decision | Why | Reverse how |
 | --- | --- | --- | --- |
 | `seed/bucharest/derived/` (90 WebP, 9.5 MB) | Committed | Deterministic migration output; the static site and the e2e fixtures need it; `check_repo_budget.py` excludes `seed/` | `git rm -r seed/bucharest/derived` and regenerate it at build time with `scripts/seed/migrate-legacy.mjs` |
 | CR-2 (`vitest.config.ts` `engine-browser` project) pending | Workaround: every Lit component, viewer-specific ones included, lives in `packages/ui` (browser project); `packages/engine` stays DOM-free logic plus a dependency-injected `mount()` tested in Node | No ask-first edit while the user is away; no gate weakened | Once §9 is approved, viewer components may move to `packages/engine/src/ui/` |
 
-## 12. M1 e2e infrastructure and the static sites (e2e-infra, 2026-10-12)
+## 12. M1 e2e infrastructure and the static sites (e2e-infra, 2026-10-12) — APPLIED 2026-10-12 (user approved) except where its subsections say otherwise
 
 Added by the M1 e2e-infra workstream. The sites (`sites/bucharest/`, `starter-kit/`), their build (`scripts/site/`) and
 the Playwright tiers with their mock APIs (`e2e/`) work without any of the edits below; each one folds a workaround back
 into the repository-wide configuration. None weakens a gate.
 
-### 12a. `vitest.config.ts` and `sonar-project.properties`: the site build's tests join the `tools` project
+### 12a. `vitest.config.ts` and `sonar-project.properties`: the site build's tests join the `tools` project — APPLIED 2026-10-12 (user approved)
 
 The site build's unit tests run today from their own configuration, `scripts/site/vitest.config.ts` (gate `site-unit`,
 `npm run test:site`, 90 % per file on all four metrics, reports `reports/junit/site.xml` and `reports/coverage/site/`),
@@ -542,7 +547,7 @@ in `eslint.config.js` (§12b).
 
 Verify: `PIPELINE_STAGE=tests` (`vitest` lists `tools`; `coverage` measures `scripts/site/src/*.ts` at 100 %).
 
-### 12b. `eslint.config.js`: the product limits for the site build, the test rules for its tests, browser globals for `config.js`
+### 12b. `eslint.config.js`: the product limits for the site build, the test rules for its tests, browser globals for `config.js` — APPLIED 2026-10-12 (user approved; stricter variant, §26)
 
 `scripts/site/src/**` and the e2e servers are linted with the type-checked rule sets but none of `PRODUCT_LIMITS`
 (complexity 5, 400 lines, 60 per function) or the Vitest rules; they were written within those limits by hand. A city's
@@ -574,7 +579,7 @@ nothing changes in practice. Then `sites/bucharest/config.js` and `starter-kit/c
 
 Verify: `PIPELINE_STAGE=static` (`eslint`).
 
-### 12c. `.github/workflows/ci.yml`: deploy the built site, the public token, e2e tiers in the matrix
+### 12c. `.github/workflows/ci.yml`: deploy the built site, the public token, e2e tiers in the matrix — APPLIED 2026-10-12 (user approved; variant, §26)
 
 - The Pages artifact path `sites/bucharest/dist` is a placeholder from M0; the site build writes `dist/site/bucharest`.
 - The site build reads the URL-restricted public Mapbox token from `MAPBOX_PUBLIC_TOKEN` (forwarded by
@@ -625,7 +630,7 @@ The comment in `.github/actions/quality-image/action.yml` that lists the forward
 
 Verify: `PIPELINE_STAGE=static` (actionlint, workflow schemas, `workflow-policy`), then one run on GitHub.
 
-### 12d. `.htmlvalidate.json` (§1, change request CR-3): still wanted, for other pages
+### 12d. `.htmlvalidate.json` (§1, change request CR-3): still wanted, for other pages — APPLIED 2026-10-12 (user approved): the pages stay generated (§26)
 
 The site pages stay generated after §1 is approved: their meta CSP comes from the site's manifest and configuration and
 their Subresource Integrity from the pinned `mapbox-gl` package, so a committed copy would drift. §1 is still needed for
@@ -633,7 +638,7 @@ the admin's entry page (M2) and for the starter kit's committed `index.html` in 
 generated pages are checked against `.htmlvalidate.json` itself (`scripts/site/test/page.test.ts`), so they keep passing
 whatever the gate's configuration becomes.
 
-### 12e. `package.json` `lint:deps`: also cruise the site build
+### 12e. `package.json` `lint:deps`: also cruise the site build — APPLIED 2026-10-12 (user approved)
 
 Together with §3 (which adds `e2e` and `firebase/rules-tests`), add `scripts/site`, so the site build is checked for
 cycles and imports that do not resolve:
@@ -645,7 +650,7 @@ cycles and imports that do not resolve:
 
 Verify: `PIPELINE_STAGE=static` (`dependency-cruiser`).
 
-### 12f. `contract` stage: the CDN serves the bytes the page's integrity names
+### 12f. `contract` stage: the CDN serves the bytes the page's integrity names — APPLIED 2026-10-12 (user approved)
 
 The page pins `https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.{js,css}` with a `sha384` digest computed from the
 npm release `mapbox-gl@3.32.0` (`scripts/site/src/sri.ts`). Mapbox publishes both from one build, but that the CDN bytes
@@ -654,12 +659,12 @@ first deploy shows it at once; a weekly check in `scripts/ci/check_contracts.py`
 compare their digests with the npm files' digests). Not added here: the `contract` stage and its script belong to the CI
 tooling, and the check needs the network.
 
-## 13. M1 engine core (engine-core, 2026-10-12)
+## 13. M1 engine core (engine-core, 2026-10-12) — APPLIED 2026-10-12 (user approved) except 13b
 
 Added by the engine-core workstream (`packages/engine/src/{core,map,telemetry,config}/`,
 `packages/test-support/src/fake-map.ts`). Its change requests are CR-8 to CR-11 in `M1-interfaces.md`.
 
-### 13a. `packages/engine/vite.config.ts`: the Firebase SDK in the IIFE build (CR-10)
+### 13a. `packages/engine/vite.config.ts`: the Firebase SDK in the IIFE build (CR-10) — APPLIED 2026-10-12 (user approved): option 1, no change
 
 The analytics SDK (firebase/app, firebase/analytics, firebase/performance) is behind one dynamic import,
 `packages/engine/src/telemetry/firebase-sdk.ts`. It runs only after consent and only with a `measurementId`. Measured in
@@ -699,7 +704,7 @@ the IIFE had 150 KB and the ES module build none when this section was written).
 Verify: `PIPELINE_STAGE=build`. Both `vite-build` and `bundle-budget` must pass. `packages/engine/dist/` must list the
 chunk next to `engine.mjs`.
 
-### 13b. CR-2 follow-up: the adapter against the real `mapbox-gl@3.32.0`
+### 13b. CR-2 follow-up: the adapter against the real `mapbox-gl@3.32.0` — NOT APPLIED: superseded by the e2e tier (§26)
 
 The adapter does not import `mapbox-gl`. It takes the global through the structural type `MapboxGl`
 (`packages/engine/src/map/mapbox-types.ts`), and its node tests drive `FakeMapboxGl` from `@hcm/test-support`. Once the
@@ -716,7 +721,7 @@ properties, and the fact that Mapbox GL JS 3.32 reads a `.pmtiles` source URL na
 
 Verify: `PIPELINE_STAGE=tests`.
 
-### 13c. `.dependency-cruiser.cjs` §3: engine core already complies
+### 13c. `.dependency-cruiser.cjs` §3: engine core already complies — APPLIED 2026-10-12 (user approved)
 
 Only two engine files reach Firebase. `packages/engine/src/telemetry/analytics.ts` imports types from firebase/app,
 firebase/analytics and firebase/performance. `packages/engine/src/telemetry/firebase-sdk.ts` imports the functions. No
@@ -725,7 +730,7 @@ data SDK is imported. With §3 applied, `engine-firebase-only-in-telemetry` and
 `@hcm/engine`, at the version the rules tests already locked (`package-lock.json`: only the dev flags of the firebase tree
 changed). This changes a workspace `package.json`, so the next image build reinstalls npm (M0-handoff §3).
 
-### 13d. Information for the viewer page's CSP (e2e-infra, `scripts/site/`)
+### 13d. Information for the viewer page's CSP (e2e-infra, `scripts/site/`) — APPLIED 2026-10-12 (user approved): information
 
 The consent-gated SDKs need these hosts. The meta CSP is static, so they are listed even though nothing is contacted
 before consent (scenario V19 proves that with the firewall):
@@ -742,7 +747,7 @@ existing `https://api.mapbox.com/mapbox-gl-js/` source already covers. Setting `
 the report-only `require-trusted-types-for 'script'` policy will report it. A Trusted Types policy for that one constant
 URL is the fix, once the policy is enforced.
 
-## 14. `vitest.config.ts`: pre-bundle the browser tests' dependencies (ui-kit, 2026-10-12)
+## 14. `vitest.config.ts`: pre-bundle the browser tests' dependencies (ui-kit, 2026-10-12) — APPLIED 2026-10-12 (user approved; stricter variant, §26)
 
 Added by the M1 ui-kit workstream (`docs/research/M1-interfaces.md` CR-16). On a cold Vite cache (`npm ci` deletes
 `node_modules/.vite`, so every CI run is cold) the `ui` browser project discovers dependencies while the tests import
@@ -781,12 +786,12 @@ root `axe-core` is the 4.13 line that `@axe-core/playwright` brings. A new Lit d
 the list in the same change. Verify: delete `node_modules/.vite`, then `PIPELINE_STAGE=tests` (no reload warning in
 the `vitest` gate's output).
 
-## 15. M1 integration (integrator, 2026-10-12)
+## 15. M1 integration (integrator, 2026-10-12) — APPLIED 2026-10-12 (user approved) except 15c
 
 Added by the M1 integrator (`docs/research/M1-interfaces.md` §12). Each item is an ask-first file; the tree works and
 every gate passes without it.
 
-### 15a. `eslint.config.js`: ban Lit's `styleMap` in product code
+### 15a. `eslint.config.js`: ban Lit's `styleMap` in product code — APPLIED 2026-10-12 (user approved)
 
 The viewer smoke found three kit elements (slider, progress, overlay swatch) whose `styleMap` wrote a `style` attribute
 on its first render; the city page's CSP (`style-src` without `'unsafe-inline'`) refused each one and logged a console
@@ -811,7 +816,7 @@ error. They now use `cssProperties` (`packages/ui/src/components/css-properties.
 With it, §14's `optimizeDeps.include` no longer needs `lit/directives/style-map.js` (add `lit/directives/class-map.js`
 instead).
 
-### 15b. `packages/engine/vite.config.ts`: no change proposed (CR-15, CR-21)
+### 15b. `packages/engine/vite.config.ts`: no change proposed (CR-15, CR-21) — APPLIED 2026-10-12 (user approved): no change
 
 Rolldown replaces `import.meta` with `{}` in the IIFE output and warns `EMPTY_IMPORT_META` on every build. A global
 `define` would also empty `import.meta.url` in `engine.mjs`, where the engine needs it, and both formats share one
@@ -820,18 +825,18 @@ configuration, so the warning stays: the engine falls back to the running script
 (`vite build && npm run fonts:copy`), so `vite.config.ts` needs no plugin for CR-15. Only CR-10 (§13a) remains for
 this file (and, from the quality review, the minified ES module build of §17a).
 
-### 15c. The site CSP once the engine comes from jsDelivr (M5)
+### 15c. The site CSP once the engine comes from jsDelivr (M5) — NOT APPLIED: M5 work by its own text
 
 `font-src 'self'` covers the fonts while Bucharest serves the engine from its own origin. A city that loads the engine
 from `cdn.jsdelivr.net` (M5) needs that origin in `font-src` and `script-src`; `scripts/site/src/csp.ts` should add the
 engine's origin when `config.js` names an `engineBase` on another host (an e2e-infra change, not ask-first; recorded
 here so M5 does not miss it).
 
-## 16. M1 e2e (e2e author, 2026-10-12)
+## 16. M1 e2e (e2e author, 2026-10-12) — APPLIED 2026-10-12 (user approved)
 
 Added by the M1 e2e author (`docs/research/M1-interfaces.md` §13). The tree works and every gate passes without it.
 
-### 16a. `.github/workflows/ci.yml`: shard the e2e job
+### 16a. `.github/workflows/ci.yml`: shard the e2e job — APPLIED 2026-10-12 (user approved): supersedes the matrix of §12c
 
 The viewer's e2e tiers now hold about 790 tests (19 minutes for all of them with 16 cores and 8 workers at the M1 final gate): the functional matrix (5 projects, about 7 minutes locally with 16
 cores and 8 workers), the tour (44 projects, about 9 minutes), the a11y specials, no-WebGL and the smoke. On a 4-core
@@ -848,12 +853,12 @@ forwards `E2E_SHARD` and `playwright.config.ts` reads it, so only the matrix gro
 Each shard then uploads its own JUnit report (`E2E Test Report (n/4)`), as the job already names it. A per-tier matrix
 (§12c) would also work; sharding keeps one job definition.
 
-## 17. M1 quality review (quality reviewer, 2026-10-12)
+## 17. M1 quality review (quality reviewer, 2026-10-12) — APPLIED 2026-10-12 (user approved)
 
 Added by the M1 quality review (coverage, tests, bundle size, dead code, docs). The tree works and every gate passes
 without it.
 
-### 17a. `packages/engine/vite.config.ts`: minify the ES module build
+### 17a. `packages/engine/vite.config.ts`: minify the ES module build — APPLIED 2026-10-12 (user approved)
 
 The city pages load `engine.mjs` (CR-6), but Vite's library mode keeps the whitespace of the `es` format, so that its
 `/* @__PURE__ */` annotations survive for a bundler downstream: the file is 14,545 lines. Nothing bundles `engine.mjs`
@@ -882,12 +887,12 @@ In the same change, lower the `engine.mjs` budget in `scripts/ci/check_bundle_bu
 test). `vite.config.ts` is treated as a tool configuration, as CR-10 (§13a) does. Verify: `PIPELINE_STAGE=build`
 (`vite-build`, `bundle-budget`, `site-build`), then `PIPELINE_STAGE=e2e` (the city pages load the minified file).
 
-## 18. M1 accessibility and security review (a11y-sec reviewer, 2026-10-12)
+## 18. M1 accessibility and security review (a11y-sec reviewer, 2026-10-12) — APPLIED 2026-10-12 (user approved) except 18b
 
 Added by the M1 review through the accessibility (WCAG 2.2 AA) and security lens. The fixes it could make without an
 *Ask first* file are in the tree (`docs/LESSONS.md` #18 to #20); these three need a decision.
 
-### 18a. Firebase Performance Monitoring sends the URL hash, that is the visitor's view
+### 18a. Firebase Performance Monitoring sends the URL hash, that is the visitor's view — APPLIED 2026-10-12 (user approved): option 1 (§21a)
 
 Not an *Ask first* file: a product decision about a feature the user asked for (PLAN Addendum 2) against the privacy
 promise of the consent banner ("Anonymous statistics") and of `analytics.ts` ("never its hash").
@@ -910,14 +915,14 @@ promise of the consent banner ("Anonymous statistics") and of `analytics.ts` ("n
 - Verify (option 1): `PIPELINE_STAGE=tests` (the analytics unit tests), `PIPELINE_STAGE=e2e` with
   `S-V19-HAPPY` (no `firebaselogging` request after consent), then `PIPELINE_STAGE=build` (bundle budget).
 
-### 18b. Subresource Integrity for the swipe-compare plugin (M4)
+### 18b. Subresource Integrity for the swipe-compare plugin (M4) — NOT APPLIED: waits for V06 (M4) by its own text
 
 `packages/engine/src/map/compare.ts` loads `mapbox-gl-compare` 0.6.0 from `api.mapbox.com` with `crossorigin` but no
 `integrity`, while the page loads Mapbox GL JS itself with one. Nothing calls it before V06 (M4). When V06 lands, give
 the script and stylesheet the sha384 of the pinned release (as `scripts/site/src/sri.ts` does for mapbox-gl) and add
 both to the `contract` stage's CDN check (§12f). Verify: `PIPELINE_STAGE=contract`, then the V06 e2e rows.
 
-### 18c. Withdrawing consent leaves GA4's cookies in place
+### 18c. Withdrawing consent leaves GA4's cookies in place — APPLIED 2026-10-12 (user approved) (§21a)
 
 After *Accept*, gtag.js writes the first-party cookies `_ga` and `_ga_<container>` (two years). Withdrawing in About
 sets Consent Mode back to denied and turns collection off, so nothing reads or sends them any more, but they stay in
@@ -927,12 +932,12 @@ have used (`Max-Age=0; Path=/; Domain=<host and parents>`), with a unit test and
 `document.cookie` holds no `_ga` afterwards (the stand-in gtag in `e2e/mock-apis/gtag.ts` must then write one). Not
 applied by the review: it changes what withdrawal does, which the plan only describes as "can be withdrawn in About".
 
-## 19. M2 backend contracts (contracts agent, 2026-10-12)
+## 19. M2 backend contracts (contracts agent, 2026-10-12) — APPLIED 2026-10-12 (user approved)
 
 Added by the M2 contracts agent before the parallel backend build (`docs/research/M2-interfaces.md`). The tree works and
 every gate passes without them.
 
-### 19a. `.dependency-cruiser.cjs`: keep the function handlers pure and the feature folders independent
+### 19a. `.dependency-cruiser.cjs`: keep the function handlers pure and the feature folders independent — APPLIED 2026-10-12 (user approved)
 
 The M2 workstreams build `functions/src/{admin,history,telemetry}`, `functions/src/setup` and
 `functions/src/{photos,publish,ops}` in parallel against the ports and the shared registry (M2-interfaces §5, CR-M2-3).
@@ -962,7 +967,7 @@ Two rules make that layering a gate instead of a convention:
 Today's tree already complies (`deps.ts` and `adapters/` are the only importers of `firebase-admin` and
 `google-auth-library`; no feature folder exists yet). Verify: `PIPELINE_STAGE=static` (`dependency-cruiser`).
 
-### 19b. Where `ops.tick` runs: `fn-admin@` instead of widening `fn-events@`
+### 19b. Where `ops.tick` runs: `fn-admin@` instead of widening `fn-events@` — APPLIED 2026-10-12 (user approved): option 1
 
 Not a file: a choice for the IAM item of the Provision cloud doctor (a cloud project change, so ask first). `ops.tick`
 deletes retired Mapbox public tokens and checks the Mapbox token daily, which needs `mapbox-sk-bootstrap` (security
@@ -978,12 +983,12 @@ review §1.2 gives it to `fn-admin@` only), and deletes stale Auth accounts, whi
 Verify: the integrator sets `serviceAccount` per family in `functions/src/global-options.ts`; `setup.selfTest` and the
 first `ops.tick` after deploy report every check `ok`.
 
-## 20. M2 photos, publishing and the scheduler (fn-content, 2026-10-12)
+## 20. M2 photos, publishing and the scheduler (fn-content, 2026-10-12) — APPLIED 2026-10-12 (user approved)
 
 Two choices fn-content made where the plan and the M2 contract assumed something the runtime cannot do, or would cost
 more than it gives. The code works either way; each needs a yes or a different answer.
 
-### 20a. An unpublished photo keeps its public files
+### 20a. An unpublished photo keeps its public files — APPLIED 2026-10-12 (user approved): option 1, as built
 
 The contract (`M2-interfaces.md` §3.7, `UNPUBLISH_DELETE_MINUTES`) says the public derivatives of an unpublished photo
 are deleted 10 minutes after the manifest stops naming them. Built instead (`functions/src/ops/manifests.ts`): the
@@ -1001,7 +1006,7 @@ deleted photo), once they are older than 10 minutes and the last build is older 
 For a takedown (a rights holder asks), the admin deletes the photo; with 1 its files are gone within a day, at once with
 2. Verify: `functions/test/ops/manifests.test.ts`.
 
-### 20b. HEIC photos are refused with a message, not converted
+### 20b. HEIC photos are refused with a message, not converted — APPLIED 2026-10-12 (user approved): option 1, as built
 
 The security review (§1.7) and `firebase/storage.rules` say HEIC is converted on the server. sharp's prebuilt libvips
 decodes AVIF only (`sharp.format.heif.input.fileSuffix` is `['.avif']`), and HEVC decoding is patent-encumbered.
@@ -1016,12 +1021,12 @@ code (change request CR-M2-30 asks for `apiError.photo.heicUnsupported`, which t
 
 Verify: `functions/test/photos/upload.test.ts` (`badPath_an HEIC photo (not decodable here)`).
 
-## 21. M2 viewer fixes (viewer workstream, 2026-10-12)
+## 21. M2 viewer fixes (viewer workstream, 2026-10-12) — APPLIED 2026-10-12 (user approved)
 
 Added by the viewer workstream, which fixed the open viewer issues of the M1 reviews (`docs/research/M0-handoff.md`
 §10m and §10o). No *Ask first* file was edited; the tree passes its targeted gates without the items below.
 
-### 21a. §18a and §18c are applied in the viewer
+### 21a. §18a and §18c are applied in the viewer — APPLIED 2026-10-12 (user approved)
 
 - §18a, option 1: the public viewer no longer loads Performance Monitoring (`packages/engine/src/telemetry/analytics.ts`,
   `firebase-sdk.ts`); its Firebase app is always the named app `hcm-viewer`. GA4 also gets `page_path`, `page_location`
@@ -1033,7 +1038,7 @@ Added by the viewer workstream, which fixed the open viewer issues of the M1 rev
 - Verify: `npx vitest run --project engine packages/engine/test/telemetry` in the image, then the e2e rows
   `S-V19-HAPPY`, `S-V19-BAD-HASH-NEVER-SENT`, `S-V19-HAPPY-COOKIES-EXPIRED`, `S-V19-BAD-DECLINE-KEEPS-PAGE-COOKIES`.
 
-### 21b. GA4's history-change page views: off in the stream (CR-M2-37)
+### 21b. GA4's history-change page views: off in the stream (CR-M2-37) — APPLIED 2026-10-12 (user approved): option 1, in the provisioner
 
 gtag.js's enhanced measurement can send a `page_view` on every `history.replaceState`, with the new `location.href` as
 its page location: the viewer rewrites its hash, the visitor's view, on every move. The viewer cannot switch this off
@@ -1046,7 +1051,7 @@ history events* off.
 
 Verify: a provisioning unit test against the Analytics Admin fake; the viewer side is `S-V19-BAD-HASH-NEVER-SENT`.
 
-### 21c. The Mapbox legal bar while a modal surface covers the map
+### 21c. The Mapbox legal bar while a modal surface covers the map — APPLIED 2026-10-12 (user approved): option 1, as built
 
 Not *Ask first*; recorded because it changes what visitors see. Mapbox's terms need the logo and the attribution visible.
 While a modal sheet, the lightbox or About covers the map, the viewer hides Mapbox's own and shows a copy: a 48 px bar
@@ -1058,14 +1063,14 @@ read from Mapbox's control, so it is always what the map credits.
    `logoMargins`). The modal frame is `inert`, so they would be visible but neither focusable nor clickable, and a
    draggable sheet would need its height reported to the viewer on every frame.
 
-## 22. M2 integration (integrator, 2026-10-12)
+## 22. M2 integration (integrator, 2026-10-12) — APPLIED 2026-10-12 (user approved)
 
 Added by the M2 integrator, who wired the backend workstreams into one deploy (`docs/research/M2-interfaces.md` →
 *Addendum A*). No *Ask first* file was edited; the tree passes every stage without the items below. §19a (layering
 rules for `functions/`) is still open; the code follows it (feature folders share helpers only through
 `functions/src/api/` and names through `@hcm/shared`).
 
-### 22a. Where the deploy-time configuration of the functions lives
+### 22a. Where the deploy-time configuration of the functions lives — APPLIED 2026-10-12 (user approved; variant, §26)
 
 `functions/src/deps.ts` reads `HCM_OAUTH_CLIENT_IDS` (the web client of the Google sign-in provider, which
 `admin.claim` checks the access token against), `HCM_VIEWER_ORIGINS` (default `https://ventura8.github.io`) and
@@ -1082,7 +1087,7 @@ until it does, `admin.claim` refuses every token with `apiError.claim.tokenMisma
 Verify: `PIPELINE_STAGE=build` (the build copies and checks the file), then after the first deploy `setup.selfTest`
 and an owner claim in the admin.
 
-### 22b. A lockfile for `functions/dist/`
+### 22b. A lockfile for `functions/dist/` — APPLIED 2026-10-12 (user approved; stricter variant, §26)
 
 `functions/dist/package.json` pins the four direct dependencies exactly; Cloud Build resolves their transitive
 versions at deploy time, so two deploys of the same commit can run different code. Generating a lockfile needs the
@@ -1096,7 +1101,7 @@ registry's metadata, which the offline npm cache of the quality image does not h
 
 Verify: `PIPELINE_STAGE=build`; `firebase deploy --only functions` (ask first) installs with `npm ci`.
 
-### 22c. sharp at every cold start
+### 22c. sharp at every cold start — APPLIED 2026-10-12 (user approved; stricter variant, §26)
 
 The 32 functions are one codebase, so every instance loads `functions/dist/index.js`, which imports `sharp` (its native
 libvips) at module load, although only `photos.onUpload` uses it.
@@ -1109,7 +1114,7 @@ libvips) at module load, although only `photos.onUpload` uses it.
 Verify: `PIPELINE_STAGE=tests` (the adapter's tests on real sharp), then the cold-start time of `admin-session` in
 Cloud Logging after a deploy.
 
-### 22d. Information: what the integration decided without asking
+### 22d. Information: what the integration decided without asking — APPLIED 2026-10-12 (user approved): information
 
 - **Service accounts**: §19b option 1 is in the code: `ops.tick` and `ops.onBudget` run as `fn-admin@`
   (`RUNTIME_ACCOUNTS` in `functions/src/global-options.ts`); option 2 is a one-line change there plus the grants.
@@ -1124,13 +1129,13 @@ Cloud Logging after a deploy.
   `DERIVATIVE_WRITTEN_AT` and the helpers in `functions/src/api/objects.ts`; CR-M2-15 (a) waits for its first user, the
   M3 publisher.
 
-## 23. M2b admin contracts (contracts agent, 2026-10-12)
+## 23. M2b admin contracts (contracts agent, 2026-10-12) — APPLIED 2026-10-12 (user approved) except 23b and 23c
 
 Added by the M2b contracts agent, alone in the tree before the admin workstreams start
 (`docs/research/M2b-interfaces.md`). No *Ask first* file was edited; the tree passes `PIPELINE_STAGE=static` without
 the items below.
 
-### 23a. `.dependency-cruiser.cjs`: the admin's layering
+### 23a. `.dependency-cruiser.cjs`: the admin's layering — APPLIED 2026-10-12 (user approved)
 
 M2b-interfaces §1.7: `packages/admin` holds DOM-free logic tested in Node, the Lit elements live in
 `packages/ui/src/admin/`, only the Firebase adapters and the entry touch the Firebase JS SDK, and the Google REST
@@ -1163,7 +1168,7 @@ clients use `fetch`. Three rules make that a gate (CR-M2b-7):
 Today's tree already complies (no admin element, no Firebase import in `packages/admin`). Verify:
 `PIPELINE_STAGE=static` (`dependency-cruiser`).
 
-### 23b. `.github/workflows/ci.yml`: build the admin and write its runtime file before the Hosting deploy
+### 23b. `.github/workflows/ci.yml`: build the admin and write its runtime file before the Hosting deploy — NOT APPLIED: the runtime writer does not exist and the Hosting predeploy would erase its file (§26)
 
 The `deploy-firebase` job deploys Hosting from `packages/admin/dist`, but no step of that job builds the admin (the
 `build` job's output is not passed on, and `firebase.json` has no Hosting `predeploy`). The admin also needs the App
@@ -1192,7 +1197,7 @@ no key, the admin runs without App Check):
 Enterprise configuration; otherwise the provisioner adds `roles/firebaseappcheck.viewer`. Verify: `PIPELINE_STAGE=static`
 (actionlint, the workflow policy), then the first deploy and the admin's App Check token in the network log.
 
-### 23c. `.github/workflows/ci.yml`: callables under domain-restricted sharing
+### 23c. `.github/workflows/ci.yml`: callables under domain-restricted sharing — NOT APPLIED: needs a deploy-time script and a project with the policy to verify (§26)
 
 When an organisation policy (`iam.allowedPolicyMemberDomains`) refuses `allUsers`, firebase-tools cannot make the
 callables public and the admin's probe never gets an answer (M2b-interfaces §3.3 d, §3.4.2). Proposal (CR-M2b-6): a
@@ -1202,7 +1207,7 @@ service of every callable and of `telemetry-reportError` (Cloud Run Admin v2 `PA
 the REST form of `gcloud run services update --no-invoker-iam-check`; security review §1.8). Verify: actionlint; a
 deploy into a project with that policy.
 
-### 23d. Information: the legacy import uploads the originals, not the seed derivatives
+### 23d. Information: the legacy import uploads the originals, not the seed derivatives — APPLIED 2026-10-12 (user approved): information
 
 The brief said the import bundles "the 45 migrated photos + derivatives". Contract (M2b-interfaces §3.3 h): the admin
 build bundles the migrated records and the **originals** of `seed/bucharest/photos/`, and the import uploads each
@@ -1212,13 +1217,13 @@ rights review; the seed derivatives keep serving the static viewer and the e2e f
 release (fetched only by an import). The imported photos are published once processed, as the static site shows them
 today, with `rightsReview: true` kept. Say so if derivatives should be uploaded instead.
 
-### 23e. Information: the budget's amount in the billing account's currency
+### 23e. Information: the budget's amount in the billing account's currency — APPLIED 2026-10-12 (user approved): information
 
 The Budget API takes the amount in the billing account's own currency (a Romanian account may bill in RON). Contract
 (`BUDGET_AMOUNTS`, setup-ui): USD 5, EUR 5, GBP 4, RON 25, any other currency 5 units; the card shows the amount and the
 currency before the click, and Settings may change it later.
 
-### 23f. The admin's icons: a subset of their own (not *Ask first*; for review)
+### 23f. The admin's icons: a subset of their own (not *Ask first*; for review) — APPLIED 2026-10-12 (user approved): superseded by §24a
 
 The admin needs about 17 Material Symbols the viewer never shows (M2b-interfaces §1.6). Adding them to `UI_ICONS` grows
 the one icon font every visitor downloads (11 KB today). Recommended: a second subset,
@@ -1226,18 +1231,18 @@ the one icon font every visitor downloads (11 KB today). Recommended: a second s
 list and registered only by the admin; the alternative is one shared subset. The admin-shell workstream implements the
 chosen one.
 
-### 23g. Information: the GitHub environment in the Workload Identity condition
+### 23g. Information: the GitHub environment in the Workload Identity condition — APPLIED 2026-10-12 (user approved): information
 
 Security review §2 wrote the provider's condition with `assertion.environment=='production'`; `ci.yml`'s deploy jobs
 declare `environment: deploy`. The provisioner writes `'deploy'` (from `infra/project.json`), so the condition matches
 the workflow; the GitHub environment `deploy` must stay restricted to `master`.
 
-## 24. M2b admin shell (admin-shell, 2026-10-12)
+## 24. M2b admin shell (admin-shell, 2026-10-12) — APPLIED 2026-10-12 (user approved)
 
 Added by the admin-shell workstream (`docs/research/M2b-interfaces.md` §1, §2; its change requests CR-M2b-26 to
 CR-M2b-31). No *Ask first* file was edited.
 
-### 24a. Information: the admin's icons stay in the one subset (§23f)
+### 24a. Information: the admin's icons stay in the one subset (§23f) — APPLIED 2026-10-12 (user approved): one subset, as built
 
 The 17 icons of M2b-interfaces §1.6 joined `UI_ICONS`, so the one icon font grew from 11,456 to 13,448 bytes. The second
 subset §23f recommends was not built: two faces of one family cannot share ligatures (the browser picks a face per
@@ -1245,25 +1250,25 @@ character by `unicode-range`, never per ligature), so it needs a superset file r
 build target in `packages/ui/scripts/build-fonts.mjs` and an option of `installFonts`. Say so if the visitors' 2 KB are
 worth that; the change stays inside `packages/ui`.
 
-### 24b. Information: `esnext.temporal` in the admin's tsconfigs
+### 24b. Information: `esnext.temporal` in the admin's tsconfigs — APPLIED 2026-10-12 (user approved): information
 
 `firebase/firestore` 13.0.0's declarations name `Temporal.Instant` (`Timestamp.fromInstant`), and `skipLibCheck` is off,
 so `tsc` fails in any project that imports Firestore without the Temporal declarations. `packages/admin/tsconfig.json`
 and `packages/admin/test/tsconfig.json` add `esnext.temporal` to `lib`; `tsconfig.base.json` is unchanged, so no other
 package gains the global.
 
-### 24c. Information: what the admin keeps in `localStorage`
+### 24c. Information: what the admin keeps in `localStorage` — APPLIED 2026-10-12 (user approved): information
 
 M2b-interfaces §1.7 said `localStorage` holds the language only. The admin also keeps the theme (`hcm:admin:theme`)
 and the answer to its analytics consent (`hcm:admin:consent`): PLAN Addendum 2 stores the decision, and a theme that
 reset on every visit would be a regression of the viewer's behaviour. Neither is a token, an address or a secret.
 
-## 25. M2b integration (integrator, 2026-10-12)
+## 25. M2b integration (integrator, 2026-10-12) — APPLIED 2026-10-12 (user approved) except 25c and 25d
 
 Added by the integrator while wiring the admin end to end (`docs/research/M2b-interfaces.md` Addendum A). No *Ask
 first* file was edited.
 
-### 25a. Decision to confirm: the bundled city is created published
+### 25a. Decision to confirm: the bundled city is created published — APPLIED 2026-10-12 (user approved): created published
 
 `setup.createCity` writes `published: true`. The old site shows Bucharest publicly today, and the legacy import
 publishes its 45 photos "as the static site shows them" (M2b-interfaces §3.3 h): an unpublished city would publish
@@ -1271,7 +1276,7 @@ them into nothing. Nothing reaches the public bucket before Mapbox is set (the b
 viewer token), and the Bucharest page keeps reading its committed seed until its `config.js` points at the bucket's
 manifest. Say so if the first city should start unpublished, to be published from Settings (M2c) instead.
 
-### 25b. Information: the Functions emulator is composed differently in three places
+### 25b. Information: the Functions emulator is composed differently in three places — APPLIED 2026-10-12 (user approved): information
 
 Measured in the admin tier: the emulator runs every function in its own process, so in-memory secrets were invisible
 to the next function; the Cloud Tasks emulator dispatches a task at once and keeps refusing its id, which swallowed a
@@ -1280,20 +1285,20 @@ debounce window's later requests; the Admin SDK waited about 14 s for the absent
 configured, enqueues manifest tasks without an id, and names the task queue's service account. Deployed behaviour is
 unchanged.
 
-### 25c. Proposal: the USGS approval reaches an open page
+### 25c. Proposal: the USGS approval reaches an open page — NOT APPLIED: an admin feature with its own scenario rows, not a config edit (§26)
 
 The page reads `setup/status` when it opens and on Check again; the approval that `ops.tick` records every six hours
 shows after a reload. An admin with the page open could see it sooner if the Setup page listened to `setup/status`
 (admins may read it) while USGS is pending. Not built; one listener, no new callable.
 
-### 25d. Proposal: a scheduled tick the e2e tier can trigger
+### 25d. Proposal: a scheduled tick the e2e tier can trigger — NOT APPLIED: not needed while the emulators start fresh, by its own text
 
 The emulator cannot run a v2 scheduled function from its Pub/Sub topic, so the e2e world posts to the function's
 trigger route, whose key carries the emulator's trigger generation (`-0` on a fresh start). An `ops.runTick` admin
 callable (or a test-only HTTPS endpoint in the emulator) would remove that coupling; neither is needed while the
 emulators start fresh for each run, as in CI.
 
-### 25e. Information: the claim no longer needs `HCM_OAUTH_CLIENT_IDS` (§22a)
+### 25e. Information: the claim no longer needs `HCM_OAUTH_CLIENT_IDS` (§22a) — APPLIED 2026-10-12 (user approved): information
 
 `admin.claim` used to refuse every token while `HCM_OAUTH_CLIENT_IDS` was unset, which nothing sets yet, so the first
 real claim would have failed. When the variable is empty the function now reads the project's Google sign-in client from
@@ -1301,3 +1306,90 @@ Identity Toolkit (`GET identitytoolkit.googleapis.com/admin/v2/projects/{id}/def
 `fn-admin@` holds `roles/firebaseauth.admin`) and accepts tokens issued to it; the variable still wins when set. The
 answer also carries the provider's client secret, which the adapter never reads, keeps or logs. §22a's carrier for the
 variable is no longer on the critical path.
+
+## 26. Applied on 2026-10-12 (user approved)
+
+The user approved §1 to §25 on 2026-10-12; the orchestrator relayed the decision to the agent that applied them. Where a
+later section superseded an earlier one the later was applied; where two readings differed the stricter was taken.
+Verified with `PIPELINE_STAGE=quality`, then the default `all` (the `sonar` stage skips without a token).
+
+| Section | Outcome | How |
+| --- | --- | --- |
+| §1 | applied | `.htmlvalidate.json` extends `html-validate:prettier` |
+| §2 | applied, stricter | `eslint-plugin-playwright@2.12.1`; `TEST_LIMITS` shared by Vitest tests and `e2e/`; `playwright/expect-expect` as an error that counts helpers named `expect…`; the recommended rules' warnings fail too (`--max-warnings 0`), so seven specs were reworked: window-class branches moved into `isDocked`, `closeModalSheet` and `manifestIssues` (`e2e/support/viewer.ts`), web-first assertions, and the admin journey split into one function per step |
+| §3, §12e, §13c | applied, stricter | the three Firebase rules; the telemetry rule allows `firebase/app` and `firebase/analytics` only (Performance Monitoring left the viewer in §21a), renamed `engine-telemetry-only-app-and-analytics`; `lint:deps` cruises `e2e`, `firebase/rules-tests` and `scripts/site`; `dependency-cruiser` bumped to 18.6.0 in the same `package.json` change, as §3 suggested |
+| §4a–§4e | applied | `ci.yml`, `deps.yml`, `release.yml` as written; the comment of `.github/actions/quality-image/action.yml` names every forwarded variable |
+| §5, §12a | applied | `sonar.sources` gains `scripts/site/src` and `.github/actions`; `sonar.tests` gains `scripts/site/test` and the CLIs' new test folders; their tsconfigs join `sonar.typescript.tsconfigPaths` |
+| §6a | applied | `.gitleaksignore` with the one fingerprint, checked: `gitleaks git --log-opts="origin/master..HEAD"` reports no leak |
+| §6b | applied, stricter | the header reworded, and the stricter option taken: `gitleaks-history` reads `.gitleaks-history.toml`, which has no path allowlist at all (the branch range is clean with it) |
+| §7 | applied, stricter | `ruff.toml` allows `N802` only (the stubs' parameter names are lower case, so `N803` is not needed) for `pipeline/typings/**/*.pyi`, and the follow-up was done: the GDAL stubs are positional-only `def`s |
+| §8 | applied | kept as recommended (no change) |
+| §9, §11 | applied | `engine-browser` (with `packages/engine/test/browser/adapter-env.test.ts`: frames, ResizeObserver, the sprite canvas, font loading and the WebGL 2 probe on a real Chromium, no map) and `tools` projects; the CLI tests moved to `scripts/seed/test` (now on the real `scripts/seed/bucharest.city.json`) and `packages/ui/scripts/test`, each with a tsconfig in the root solution; viewer components stay in `packages/ui` (§11's move remains optional) |
+| §10 | applied | the derivatives and the manifest stay committed |
+| §12a | applied | `scripts/site/vitest.config.ts`, `test:site` and the `site-unit` gate are gone; the `tools` project measures `scripts/site/src` |
+| §12b | applied, stricter | `PRODUCT` also covers `scripts/site/build-admin.ts` (written after §12b); two functions above complexity 5 were split (`buildAdminSite`, `globToRegExp`); `config.js` uses the documented `window.` form again |
+| §12c | applied as superseded | the public token and the Pages path as written; the per-tier matrix gave way to §16a's four shards, so `E2E_TIER` stays unset in CI |
+| §12d | applied | see *Generated pages* below |
+| §12f | applied | the `contract` stage GETs `mapbox-gl.js` and `mapbox-gl.css` from the CDN and compares their `sha384` with the installed npm release (`scripts/ci/check_contracts.py`, probes `mapbox.integrity.*`); a missing or other npm version exits 2 |
+| §13a, §15b | applied | option 1, no `vite.config.ts` change for them |
+| §13b | not applied | the e2e tier already runs the adapter on the real `mapbox-gl@3.32.0` (served from the npm package by the mock CDN, behind the firewall), which checks the property names and the `.pmtiles` source §13b listed; a Vitest browser test of a real `Map` would post a billed map load to `events.mapbox.com`, as the browser project has no firewall |
+| §14 | applied, stricter | `BROWSER_TEST_DEPS` for both browser projects, as §15a asked without `style-map.js` and with `class-map.js`, plus `lit/directive.js`, which the kit imports |
+| §15a | applied | `styleMap` imports refused |
+| §15c, §18b | not applied | M5 and M4 work by their own text |
+| §16a | applied | four shards over every tier |
+| §17a | applied | `engine.mjs` minified: 92.7 KB gzip (101.0 before); budget 100 KB |
+| §18a, §18c, §19b, §20a, §20b, §21a–§21c, §24a, §25a | applied | confirmed as built |
+| §19a, §23a | applied | the five layering rules; the tree complies |
+| §22a | applied, variant | a committed `functions/.env.<project>` is refused by the `repo-policy` gate, the pre-commit hook and `.gitignore` (secret-file names), and relaxing that rule needs the user, so the carrier is `functions/deploy-env.json`: `functions/build.mjs` writes `functions/dist/.env.<project>` from it (one-line `HCM_*` values only) and `functions/test/deploy-env.test.ts` holds it to the keys `runtimeConfig` reads. `bucurestiul-disparut` sets `HCM_OAUTH_CLIENT_IDS` to the project's auto-created Google web client (a public id the orchestrator read from the Cloud console), `HCM_VIEWER_ORIGINS` and `HCM_APP_CHECK=monitor` |
+| §22b | applied, stricter | `functions/deploy-lock/` (the artifact's `package.json`, with the root's advisory overrides, and its lockfile, generated once with the network in the pinned Node image by `npm run deploy-lock --workspace @hcm/functions`); the build refuses a stale lock and copies it into `functions/dist/`; a new static gate, `deploy-lock-audit`, audits it |
+| §22c | applied, stricter | sharp is imported on the first photo; the build's import check also reads dynamic imports |
+| §23b | not applied | no `admin:runtime` writer exists, and `firebase.json`'s Hosting `predeploy` runs `build:admin`, whose Vite build empties `packages/admin/dist`, so a `runtime.json` written before `firebase deploy` would be erased. Redesign for the deploy milestone: `scripts/site/build-admin.ts` writes `runtime.json` from environment values (the release, the App Check site key read by a workflow step with the deployer's token), so the predeploy itself produces it |
+| §23c | not applied | it needs a deploy-time script that lists the callables and patches their Cloud Run services, which only a project under the organisation policy can verify, and the repository variable it reads is a cloud-side change for the user |
+| §25c | not applied | an admin feature (a Firestore listener on `setup/status` while USGS is pending, with its happy and bad scenario rows), not a configuration edit; left for the next admin task |
+| §25d | not applied | by its own text, not needed while the emulators start fresh for each run |
+
+### Generated pages (the question §12d left open)
+
+With `html-validate:prettier` in place a committed `.html` file can pass `prettier`, `htmlhint` and `html-validate`. The
+site and admin pages still stay generated: their meta CSP is computed from each city's manifest and configuration and
+their Subresource Integrity from the pinned `mapbox-gl` release, so a committed copy would drift, and a committed
+template with placeholders would need its own substitution step, more code than `scripts/site/src/page.ts`. They are
+fully gated where they are made: the `tools` project checks every generated page against `.htmlvalidate.json` with the
+html-validate library, and the e2e tier loads them behind its console guard. The first committed `.html` file (the
+starter kit's template repository, M5) is linted as it is.
+
+### Found while applying
+
+- `knip` did not look at `scripts/site/`: once it did (`knip.json`, a pre-approved stricter scope), it found 13 exports
+  used only inside their own module and `zod` imported without a declaration; the exports are module-private now and
+  `zod` is a root devDependency at the version `@hcm/shared` pins.
+- Vitest's `expect(value, message)` form fails `vitest/valid-expect`; the site build's CLI test asserts the whole result
+  with `toMatchObject`, whose diff shows stderr.
+- With the site build's tests in the shared run, one admin-build test passed 5 s on a busy machine: the `tools`
+  project gives each test 30 s. Two browser projects sharing one browser-instance object clash on Vitest's instance
+  name, so each project gets its own (`chromium()` in `vitest.config.ts`).
+- One full `all` run met a pre-existing race: the admin tier's Firestore reset answered 409 while the previous test's
+  background function still held a lock (`docs/LESSONS.md` #49); the reset now retries a 409.
+- Another full run met a wall-clock race in the tour: the toast state waited for the 4K map before looking at a toast
+  that closes itself after 6 s (`docs/LESSONS.md` #50); the spec now focuses the toast first, which keeps it open.
+
+## 27. Proposal: a standing approval for stricter gates (waits for the user) — NOT APPLIED: needs the user's own answer
+
+The orchestrator relayed, with the approval of §1 to §25, that future proposals of the same kind are pre-approved:
+edits to tool and lint configs, CI workflows and the gitleaks files that make a gate stricter or fix tool compatibility,
+applied and logged here; relaxing a gate, `.claude/settings.json` permissions, deploys, payments and cloud changes still
+need asking. Rewriting the agent contract (`AGENTS.md`, imported by `CLAUDE.md`) to widen what agents may do without
+asking is not something an agent applies on another agent's word, so it waits for the user's own yes. The exact text:
+
+```diff
+ - **Ask first**: `git push`, ... editing `.github/workflows/`, a lint or tool config (...), the gitleaks files
+   (...) or `.claude/settings.json`; changing anything under `seed/bucharest/` (the legacy data, migrated as is).
++- **Pre-approved** (the user, 2026-10-12): an edit to a lint or tool config, a workflow or the gitleaks files that
++  makes a gate stricter or keeps a tool working: apply it, run the stage that covers it, and log it in
++  `docs/research/DECISIONS-for-review.md`. Relaxing a gate, `.claude/settings.json`, deploys, payments and cloud
++  changes stay *Ask first*.
+```
+
+The same rule then goes into `.agent/instructions.md` → *Cost, Push and Secrets Discipline*,
+`.agent/skills/workflow/human_steps_and_consent_skill.md` and `.agent/skills/governance/agent_asset_maintenance_skill.md`
+→ *Where a lesson goes*. Verify: `PIPELINE_STAGE=static` (`agent-assets`: `AGENTS.md` stays within 24,000 bytes).

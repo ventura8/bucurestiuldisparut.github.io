@@ -31,7 +31,7 @@ def test_happy_path_small_bundles_pass(tmp_path: Path, caplog: pytest.LogCapture
     assert caplog.messages[0].endswith(
         " KB gzip (budget 450 KB)\n"
         "  packages/engine/dist/engine.iife.js: 0.1 KB gzip (budget 125 KB)\n"
-        "  packages/engine/dist/engine.mjs: 0.1 KB gzip (budget 110 KB)"
+        "  packages/engine/dist/engine.mjs: 0.1 KB gzip (budget 100 KB)"
     )
 
 

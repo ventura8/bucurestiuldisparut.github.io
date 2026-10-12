@@ -47,8 +47,20 @@ jobs:
                   cat deps.log
                   echo "status=${status}" >>"$GITHUB_OUTPUT"
 
-            - name: Open or update the reminder issue
+            # Exit 1 (behind, stale hold) and exit 2 (a registry could not be read) both fail the stage;
+            # only real findings belong in the reminder issue.
+            - name: Updates found?
+              id: found
               if: steps.check.outputs.status != '0'
+              run: |
+                  if grep -Eq '^  - (.* -> |HELD )' deps.log; then
+                      echo "updates=true" >>"$GITHUB_OUTPUT"
+                  else
+                      echo "updates=false" >>"$GITHUB_OUTPUT"
+                  fi
+
+            - name: Open or update the reminder issue
+              if: steps.found.outputs.updates == 'true'
               uses: ./.github/actions/upsert-issue
               with:
                   title: Dependency updates available

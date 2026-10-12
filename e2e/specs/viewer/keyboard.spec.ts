@@ -1,8 +1,8 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { focused, isOnTop, overlaps, visibleBoxes, type FocusInfo } from '../../support/layout.js';
 import { expect, test } from '../../support/test.js';
-import { openViewer, t, viewer } from '../../support/viewer.js';
+import { closeModalSheet, isDocked, openViewer, t, viewer } from '../../support/viewer.js';
 
 /**
  * Keyboard and screen reader (behaviour V14): the skip link leads to the timeline, the menu to the layers and the
@@ -45,10 +45,6 @@ async function tabUntil(page: Page, check: (info: FocusInfo) => boolean, what: s
     await expectFocus(page, check, what);
 }
 
-function isModal(page: Page): boolean {
-    return (page.viewportSize()?.width ?? 0) < 840;
-}
-
 async function openFromMenu(page: Page, item: string): Promise<void> {
     await page.keyboard.press('Enter');
     await expectFocus(page, (info) => info.role === 'menuitem', 'the first menu item');
@@ -74,9 +70,7 @@ test('The skip link leads to the timeline, the menu to the layers and the photos
     await tabUntil(page, (info) => info.name === menu, 'the menu button');
     await openFromMenu(page, t(lang, 'layers.title'));
     await expect(page.getByRole('slider', { name: t(lang, 'layers.opacity', { name: t(lang, 'layers.photos') }) })).toBeVisible();
-    if (isModal(page)) {
-        await page.keyboard.press('Escape');
-    }
+    await closeModalSheet(page);
     await expectFocus(page, (info) => info.name === menu, 'the menu button again');
 
     await openFromMenu(page, t(lang, 'photos.list'));
@@ -91,7 +85,7 @@ test('The skip link leads to the timeline, the menu to the layers and the photos
 const EXTRA_LARGE = { width: 1920, height: 1080 } as const;
 
 /** Tabs once and checks that the focused skip link covers none of `headings` and sits over the map pane. */
-async function skipLinkClearOf(page: Page, lang: 'ro' | 'en', headings: readonly string[]): Promise<void> {
+async function expectSkipLinkClearOf(page: Page, lang: 'ro' | 'en', headings: readonly string[]): Promise<void> {
     await page.keyboard.press('Tab');
     await expectFocus(page, (info) => info.name === t(lang, 'viewer.skipToTimeline'), 'the skip link');
     for (const name of headings) {
@@ -113,7 +107,7 @@ test(
         await page.setViewportSize(EXTRA_LARGE);
         await openViewer(page, { lang });
 
-        await skipLinkClearOf(page, lang, [t(lang, 'layers.title')]);
+        await expectSkipLinkClearOf(page, lang, [t(lang, 'layers.title')]);
         await page.keyboard.press('Enter');
         await expectFocus(page, (info) => info.role === 'slider' && info.name === t(lang, 'timeline.label'), 'the timeline');
     },
@@ -127,7 +121,7 @@ test(
         await openViewer(page, { lang, hash: `18/44.42955/26.09560&photo=${LONE}` });
         await expect(viewer(page).locator('.frame')).toHaveAttribute('data-panes', 'both');
 
-        await skipLinkClearOf(page, lang, [t(lang, 'layers.title'), LONE_TITLE]);
+        await expectSkipLinkClearOf(page, lang, [t(lang, 'layers.title'), LONE_TITLE]);
     },
 );
 
@@ -182,18 +176,26 @@ test(
         const sheet = viewer(page).locator('hcm-photo-sheet hcm-sheet[open]');
 
         await page.keyboard.press('Shift+Tab');
-        if (isModal(page)) {
-            await expect
-                .poll(() => sheet.evaluate((element) => element.matches(':focus-within')), {
-                    message: 'the focus stays in the modal sheet',
-                })
-                .toBe(true);
-            await page.keyboard.press('Escape');
-            await expect(page.getByRole('heading', { name: LONE_TITLE })).toHaveCount(0);
-            await expect(canvas).toBeFocused();
-        } else {
-            await expect(sheet).toHaveCount(0);
-            await expect(page.getByRole('heading', { name: LONE_TITLE })).toBeVisible();
-        }
+        await expectFocusAfterShiftTab(page, sheet, canvas);
     },
 );
+
+/**
+ * After Shift+Tab: below 840 px the photo's modal sheet keeps the focus, and Escape closes it and gives the focus back
+ * to the map; wider, the photo is a docked pane beside the map, which stays open.
+ */
+async function expectFocusAfterShiftTab(page: Page, sheet: Locator, canvas: Locator): Promise<void> {
+    if (isDocked(page)) {
+        await expect(sheet).toHaveCount(0);
+        await expect(page.getByRole('heading', { name: LONE_TITLE })).toBeVisible();
+        return;
+    }
+    await expect
+        .poll(() => sheet.evaluate((element) => element.matches(':focus-within')), {
+            message: 'the focus stays in the modal sheet',
+        })
+        .toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('heading', { name: LONE_TITLE })).toHaveCount(0);
+    await expect(canvas).toBeFocused();
+}

@@ -21,7 +21,7 @@ const REPOSITORY_PATH = /^(?!\/)(?!(?:.*\/)?\.\.(?:\/|$))[\w.\-/]+$/;
 const text = (max: number) => z.string().trim().min(1).max(max);
 const repositoryPath = z.string().max(300).regex(REPOSITORY_PATH);
 
-export const siteSpecSchema = z.strictObject({
+const siteSpecSchema = z.strictObject({
     /** The page's `<html lang>` until the engine resolves the visitor's language (docs/ENGINE_API.md → Language). */
     lang: z.enum(['ro', 'en']),
     title: text(100),

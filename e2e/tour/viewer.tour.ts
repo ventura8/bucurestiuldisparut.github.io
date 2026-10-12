@@ -186,6 +186,10 @@ test('The error card', { tag: '@S-V15-HAPPY' }, async ({ page, lang, axe, consol
 
 test('A toast', { tag: '@S-V15-HAPPY' }, async ({ page, lang, axe }) => {
     await page.goto(sitePath('bucharest', { lang, hash: '15/44.37000/25.97000&photo=no-such-photo' }));
+    // The toast shows as the manifest is applied and closes itself 6 s later, while a 4K map on a busy machine may take
+    // longer than that to settle. Focus inside it keeps it open (M3), as for a keyboard visitor reading it; focusing
+    // needs no stable frame, which a hover waits for and a loaded 4K page may not give within those 6 s.
+    await viewer(page).locator('hcm-snackbar .snackbar hcm-icon-button button').focus();
     await waitForEngineEvent(page, 'hcm-ready');
     await expect(page.getByRole('status').filter({ hasText: t(lang, 'error.unknownPhoto') })).toBeVisible();
     await checkState(page, lang, 'toast', axe);

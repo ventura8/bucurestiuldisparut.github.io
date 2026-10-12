@@ -57,11 +57,13 @@ GITLEAKS_REPORT = ("--report-format", "json", "--report-path", "reports/gitleaks
 GITLEAKS = ("gitleaks", "dir", "--redact", "--no-banner", "--config", ".gitleaks.toml", *GITLEAKS_REPORT, ".")
 # History mode over the commits a CI run introduces (GITLEAKS_LOG_OPTS, computed by .github/workflows/ci.yml): a secret
 # added and deleted again inside a push is in history although no longer in the tree. Locally the variable is unset
-# (the pre-commit hook scans every staged change instead), and the gate says so and passes.
+# (the pre-commit hook scans every staged change instead), and the gate says so and passes. Its own config,
+# .gitleaks-history.toml, has no path allowlist (every committed path is scanned); .gitleaksignore names the reviewed
+# false positives by fingerprint.
 GITLEAKS_HISTORY = (
     'if [[ -z "${GITLEAKS_LOG_OPTS:-}" ]]; then echo "  gitleaks-history: GITLEAKS_LOG_OPTS unset (set by CI); nothing to scan";'
     " exit 0; fi;"
-    ' exec gitleaks git --redact --no-banner --config .gitleaks.toml --log-opts="$GITLEAKS_LOG_OPTS"'
+    ' exec gitleaks git --redact --no-banner --config .gitleaks-history.toml --log-opts="$GITLEAKS_LOG_OPTS"'
     " --report-format json --report-path reports/gitleaks-history.json ."
 )
 WORKFLOWS = (".github/workflows/*.yml", ".github/workflows/*.yaml")
@@ -163,15 +165,15 @@ GATES: dict[str, Gate] = {
         Gate("gitleaks-history", ("bash", "-c", GITLEAKS_HISTORY)),
         Gate("commits", COMMITS),
         Gate("npm-audit", ("npm", "audit", "--audit-level=low")),
+        # The Cloud Functions deploy artifact's own locked tree (functions/deploy-lock, copied into functions/dist by
+        # functions/build.mjs): what Cloud Build installs is audited like the workspace (DECISIONS-for-review.md §22b).
+        Gate("deploy-lock-audit", ("npm", "audit", "--audit-level=low", "--prefix", "functions/deploy-lock")),
         Gate("pip-audit", ("pip-audit", "--no-deps", "--disable-pip", "--progress-spinner", "off", "-r", "scripts/ci/requirements.txt")),
         Gate("pipeline-pip-audit", ("bash", "-c", PIPELINE_AUDIT)),
         # tests
         # `npm test` runs every Vitest project under `firebase emulators:exec` (scripts/ci/run-emulated-tests.sh)
         # and saves the Firestore rule-coverage report that `rules-coverage` then checks.
         Gate("vitest", (*NPM_RUN, "test")),
-        # The static site build's unit tests (scripts/site/vitest.config.ts, >= 90 % per file) until the root
-        # vitest.config.ts gains its `tools` project (docs/research/DECISIONS-for-review.md §9, §12).
-        Gate("site-unit", (*NPM_RUN, "test:site")),
         Gate("rules-coverage", ("python3", "scripts/ci/check_rules_coverage.py", "check")),
         Gate("pytest", ("python3", "-m", "pytest")),
         Gate("pipeline-pytest", PIPELINE_PYTEST),
@@ -248,11 +250,12 @@ STAGES: dict[str, tuple[str, ...]] = {
         # (quality-conventions.md §4 gate 24); `tests` runs them again next to the other suites.
         "pytest",
         "npm-audit",
+        "deploy-lock-audit",
         "pip-audit",
         "pipeline-pip-audit",
     ),
     # The per-file coverage gate reads the reports the test runners just wrote.
-    "tests": ("vitest", "site-unit", "rules-coverage", "pytest", "pipeline-pytest", "coverage"),
+    "tests": ("vitest", "rules-coverage", "pytest", "pipeline-pytest", "coverage"),
     # The registry check first (the scenario ids the specs carry), then the sites the specs open, then the specs.
     "e2e": ("e2e-matrix", "e2e-build", "playwright"),
     "build": ("vite-build", "bundle-budget", "site-build"),

@@ -1,5 +1,6 @@
-// Architecture rules for the TypeScript workspaces (`npm run lint:deps`). Layering, bottom-up:
-// shared <- ui <- {engine, admin}; test-support is test-only. functions/ joins in M2 with its own rules.
+// Architecture rules for the TypeScript workspaces, the e2e suite, the rules tests and the site build (`npm run
+// lint:deps`). Layering, bottom-up: shared <- ui <- {engine, admin}; test-support is test-only; functions/ keeps its
+// SDKs in adapters/ and its feature folders independent (M2-interfaces §1, §5).
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
     forbidden: [
@@ -65,6 +66,68 @@ module.exports = {
             comment: 'Mapbox GL is reached only through engine/src/map/mapbox-adapter.ts (MapPort), so the core is testable with FakeMap.',
             from: { pathNot: '^packages/engine/src/map/mapbox-adapter\\.ts$' },
             to: { path: 'node_modules/mapbox-gl/' },
+        },
+        {
+            name: 'engine-firebase-only-in-telemetry',
+            severity: 'error',
+            comment: 'The public viewer loads no Firebase SDK, except the consent-gated telemetry (PLAN.md Addendum 2).',
+            from: { path: '^packages/engine/', pathNot: '^packages/engine/src/telemetry/' },
+            to: { path: 'node_modules/(firebase|@firebase)/' },
+        },
+        {
+            name: 'engine-telemetry-only-app-and-analytics',
+            severity: 'error',
+            comment:
+                'Telemetry may load firebase/app and firebase/analytics, nothing else (Performance Monitoring left the viewer: DECISIONS-for-review.md §18a, §21a).',
+            from: { path: '^packages/engine/src/telemetry/' },
+            to: { path: 'node_modules/(firebase|@firebase)/', pathNot: 'node_modules/firebase/(app|analytics)/' },
+        },
+        {
+            name: 'no-firebase-data-sdk-in-public-code',
+            severity: 'error',
+            comment: 'engine and shared (bundled into the viewer) never load Firestore, Auth, Storage or Realtime Database.',
+            from: { path: '^packages/(engine|shared)/' },
+            to: { path: 'node_modules/(firebase/(firestore|auth|storage|database)|@firebase/(firestore|auth|storage|database))' },
+        },
+        {
+            name: 'functions-sdks-only-in-adapters',
+            severity: 'error',
+            comment:
+                'Handlers and the callable plumbing reach Firestore, Auth, Google APIs and sharp only through functions/src/ports (adapters and the composition root import the SDKs), so every handler is tested with fakes.',
+            from: { path: '^functions/src/', pathNot: ['^functions/src/adapters/', '^functions/src/deps\\.ts$'] },
+            to: { path: 'node_modules/(firebase-admin|google-auth-library|sharp)/' },
+        },
+        {
+            name: 'functions-feature-folders-independent',
+            severity: 'error',
+            comment:
+                'A feature folder reaches another only through ports/, api/ and @hcm/shared (M2-interfaces §1, §5), so the three workstreams never edit or break each other.',
+            from: { path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops)/' },
+            to: { path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops)/', pathNot: '^functions/src/$1/' },
+        },
+        {
+            name: 'admin-firebase-sdk-only-in-adapters',
+            severity: 'error',
+            comment:
+                'The admin logic is tested in Node with fakes of its ports: only its Firebase adapters and its entry import the Firebase JS SDK (M2b-interfaces §1.7); the Google REST clients use fetch.',
+            from: { path: '^packages/admin/src/', pathNot: ['^packages/admin/src/firebase/', '^packages/admin/src/index\\.ts$'] },
+            to: { path: 'node_modules/(firebase|@firebase)/' },
+        },
+        {
+            name: 'admin-logic-without-lit',
+            severity: 'error',
+            comment:
+                'Admin elements live in packages/ui/src/admin; packages/admin is logic only (its entry registers the elements through @hcm/ui/admin).',
+            from: { path: '^packages/admin/src/' },
+            to: { path: 'node_modules/(lit|lit-html|@lit)/' },
+        },
+        {
+            name: 'viewer-never-loads-admin-elements',
+            severity: 'error',
+            comment:
+                'The engine and the viewer elements never import the admin elements, so no admin code or text reaches the public bundle.',
+            from: { path: ['^packages/engine/', '^packages/ui/src/(viewer|components|layout|theme|fonts)/'] },
+            to: { path: '^packages/ui/src/admin/' },
         },
     ],
     options: {

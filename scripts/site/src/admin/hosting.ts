@@ -63,8 +63,13 @@ function escapeRegExp(text: string): string {
     return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+interface GlobToken {
+    readonly source: string;
+    readonly length: number;
+}
+
 /** The regular expression of one glob token at the start of `rest`, and its length; null for a literal character. */
-function globToken(rest: string): { readonly source: string; readonly length: number } | null {
+function globToken(rest: string): GlobToken | null {
     for (const [pattern, source] of GLOB_TOKENS) {
         const match = pattern.exec(rest);
         if (match !== null) {
@@ -75,14 +80,19 @@ function globToken(rest: string): { readonly source: string; readonly length: nu
     return null;
 }
 
+/** The token at the start of `rest`: a glob token, else its first character, escaped. */
+function nextToken(rest: string): GlobToken {
+    return globToken(rest) ?? { source: escapeRegExp(rest.charAt(0)), length: 1 };
+}
+
 /** A Hosting glob as an anchored expression over a path with its leading `/` removed. */
 export function globToRegExp(glob: string): RegExp {
     let source = '';
     let rest = glob.replace(/^\//, '');
     while (rest !== '') {
-        const token = globToken(rest);
-        source += token?.source ?? escapeRegExp(rest.charAt(0));
-        rest = rest.slice(token?.length ?? 1);
+        const token = nextToken(rest);
+        source += token.source;
+        rest = rest.slice(token.length);
     }
     return new RegExp(`^${source}$`);
 }

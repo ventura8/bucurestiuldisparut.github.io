@@ -14,8 +14,8 @@ How a release of **Historic City Map** is prepared. Releases are git tags `vX.Y.
 
 ## What CI does on a tag (`release.yml`)
 
-- Runs `PIPELINE_STAGE=release` in the quality image: the tag and the version equality, both notes files, then the engine and admin bundles.
-- Creates the GitHub Release titled by the H1 of the description file (the tag when there is none), with the description file as body and `packages/engine/dist/*` and `packages/admin/dist/*` attached.
+- Job `build` (`contents: read`) runs `PIPELINE_STAGE=release` in the quality image: the tag and the version equality, both notes files, then the engine and admin bundles; it uploads the bundles and `docs/releases/` as the `release` artifact.
+- Job `publish`, the only one with `contents: write`, checks nothing out and runs no repository code: it downloads that artifact and creates the GitHub Release titled by the H1 of the description file (the tag when there is none), with the description file as body and `packages/engine/dist/*` and `packages/admin/dist/*` attached.
 - Planned (M5): confirm the SonarQube quality gate of the default-branch analysis of the same commit, then purge the jsDelivr cache for the major range (best effort). `dist` is git-ignored, so there is no committed bundle to compare.
 
 ## Rules

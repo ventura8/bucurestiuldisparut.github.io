@@ -24,7 +24,7 @@ import { DEFAULT_PROJECT_FILE, planProjectFile } from './project.js';
 export const DEFAULT_ADMIN_DIR = 'packages/admin/dist';
 
 /** The kit's self-hosted fonts (`packages/ui/fonts`, built by its `fonts:build`). */
-export const DEFAULT_FONTS_DIR = 'packages/ui/fonts';
+const DEFAULT_FONTS_DIR = 'packages/ui/fonts';
 
 /** Where the page finds them. */
 export const FONTS_FOLDER = 'fonts';
@@ -87,6 +87,15 @@ function write(files: SiteFileSystem, outDir: string, file: AdminFile): void {
     }
 }
 
+/** The input folders and files of `options`, the defaults where it names none. */
+function inputsOf(options: AdminBuildOptions): { readonly fontsDir: string; readonly seedDir: string; readonly projectFile: string } {
+    return {
+        fontsDir: options.fontsDir ?? DEFAULT_FONTS_DIR,
+        seedDir: options.seedDir ?? DEFAULT_SEED_DIR,
+        projectFile: options.projectFile ?? DEFAULT_PROJECT_FILE,
+    };
+}
+
 /** Writes the page and the legacy bundle into `options.outDir`; throws SiteBuildError (writing nothing) on a bad input. */
 export function buildAdminSite(options: AdminBuildOptions, files: SiteFileSystem): AdminBuildReport {
     const { outDir } = options;
@@ -94,9 +103,10 @@ export function buildAdminSite(options: AdminBuildOptions, files: SiteFileSystem
         throw new SiteBuildError(`the admin's output folder is ${DEFAULT_ADMIN_DIR} or a folder below dist/, got "${outDir}"`);
     }
     requireBundle(files, outDir);
-    const fonts = fontFiles(files, options.fontsDir ?? DEFAULT_FONTS_DIR);
-    const legacy = planLegacyBundle(files, options.seedDir ?? DEFAULT_SEED_DIR);
-    const project = planProjectFile(files, options.projectFile ?? DEFAULT_PROJECT_FILE);
+    const inputs = inputsOf(options);
+    const fonts = fontFiles(files, inputs.fontsDir);
+    const legacy = planLegacyBundle(files, inputs.seedDir);
+    const project = planProjectFile(files, inputs.projectFile);
     const planned: AdminFile[] = [{ to: 'index.html', content: renderAdminPage() }, project.file, ...fonts, ...legacy.files];
     files.remove(`${outDir}/${FONTS_FOLDER}`);
     files.remove(`${outDir}/${LEGACY_FOLDER}`);

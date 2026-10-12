@@ -64,7 +64,7 @@ test(
         await expect(page.getByRole('dialog', { name: t(lang, 'about.title') })).toBeVisible();
         const dialog = viewer(page).locator('hcm-about-dialog');
         await expect(dialog.getByText('<img src="x" onerror="document.body.dataset.pwned=1">', { exact: false })).toBeVisible();
-        expect(await viewer(page).locator('hcm-about-dialog img').count()).toBe(0);
+        await expect(viewer(page).locator('hcm-about-dialog img')).toHaveCount(0);
         await expect(viewer(page).locator('hcm-about-dialog strong', { hasText: 'gros' })).toBeVisible();
         const link = dialog.getByRole('link', { name: 'o legătură' });
         await expect(link).toHaveAttribute('href', 'https://example.org/about-e2e');

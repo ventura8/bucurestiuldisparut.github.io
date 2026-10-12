@@ -39,7 +39,7 @@ export interface LegacyBundle {
  * The manifest city as `setup.createCity` takes it (the fields a client may not create, CR-M2b-1): an allowlist, so the
  * viewer's public token and the analytics ids, which are not the seed's to give, never travel.
  */
-export type LegacyCity = Pick<
+type LegacyCity = Pick<
     City,
     'id' | 'name' | 'center' | 'zoom' | 'minZoom' | 'maxZoom' | 'bounds' | 'about' | 'credits' | 'privacy' | 'theme' | 'basemap'
 >;

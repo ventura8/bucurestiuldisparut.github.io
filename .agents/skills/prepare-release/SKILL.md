@@ -22,6 +22,6 @@ Working notes: `.agent/skills/quality/prepare_release_skill.md`; file rules: `do
    ```
 
    It must print `[SUCCESS] stage 'all' passed`.
-6. Ask before each of: pushing the release commit, creating the tag, pushing the tag. CI (`.github/workflows/release.yml`) runs `PIPELINE_STAGE=release` (tag, versions, notes, bundles) and creates the GitHub Release titled by the description's H1, with the engine and admin bundles attached; the Sonar check of the same commit and the jsDelivr purge come with M5.
+6. Ask before each of: pushing the release commit, creating the tag, pushing the tag. CI (`.github/workflows/release.yml`) runs `PIPELINE_STAGE=release` (tag, versions, notes, bundles) in a read-only job, then a second job that runs no repository code creates the GitHub Release titled by the description's H1, with the engine and admin bundles attached; the Sonar check of the same commit and the jsDelivr purge come with M5.
 
 No test counts in release notes; they live only in the generated `docs/E2E_SCENARIOS.md`.

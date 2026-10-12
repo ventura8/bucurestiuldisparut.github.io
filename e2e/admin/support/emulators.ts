@@ -37,6 +37,13 @@ interface SignInWithIdpResponse {
     readonly expiresIn: string;
 }
 
+/**
+ * Attempts at emptying Firestore. A background function of the previous test (a trigger, a manifest task) may still hold
+ * a document lock when the next test starts; the emulator then refuses the reset with 409 ABORTED ("Transaction lock
+ * timeout") after waiting for the lock itself, so the next attempt starts once that transaction is over.
+ */
+const FIRESTORE_RESET_ATTEMPTS = 3;
+
 async function ok(response: APIResponse, what: string): Promise<APIResponse> {
     if (!response.ok()) {
         throw new Error(`${what}: ${String(response.status())} ${await response.text()}`);
@@ -53,9 +60,23 @@ export class EmulatorWorld {
 
     /** Empties Firestore, Auth and Storage (the rules stay loaded). */
     async reset(): Promise<void> {
-        await ok(await this.#api.delete(FIRESTORE_DOCUMENTS.replace('/v1/', '/emulator/v1/'), { timeout: 30_000 }), 'Firestore reset');
+        await this.#resetFirestore();
         await ok(await this.#api.delete(`${emulatorOrigin('auth')}/emulator/v1/projects/${E2E_PROJECT_ID}/accounts`), 'Auth reset');
         await ok(await this.#api.post(`${emulatorOrigin('storage')}/internal/reset`), 'Storage reset');
+    }
+
+    /** Deletes every document; a 409 (a lock still held by the previous test's background work) is tried again. */
+    async #resetFirestore(): Promise<void> {
+        const reset = (): Promise<APIResponse> =>
+            this.#api.delete(FIRESTORE_DOCUMENTS.replace('/v1/', '/emulator/v1/'), { timeout: 30_000 });
+        for (let attempt = 1; attempt < FIRESTORE_RESET_ATTEMPTS; attempt += 1) {
+            const response = await reset();
+            if (response.status() !== 409) {
+                await ok(response, 'Firestore reset');
+                return;
+            }
+        }
+        await ok(await reset(), 'Firestore reset');
     }
 
     /** Signs `persona` in with Google (creating the account on first use) and returns its fresh tokens. */

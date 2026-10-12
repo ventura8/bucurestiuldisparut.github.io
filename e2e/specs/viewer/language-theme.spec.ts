@@ -5,7 +5,16 @@ import { siteManifestData, type Json } from '../../fixtures/manifest.js';
 import { i18nLeaks, pageTexts } from '../../support/i18n.js';
 import { sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
-import { BUCHAREST_MANIFEST, chooseMenuItem, menuButton, openViewer, t, viewer, waitForEngineEvent } from '../../support/viewer.js';
+import {
+    BUCHAREST_MANIFEST,
+    chooseMenuItem,
+    closeModalSheet,
+    menuButton,
+    openViewer,
+    t,
+    viewer,
+    waitForEngineEvent,
+} from '../../support/viewer.js';
 
 /**
  * Language (behaviour V11) and theme (V12): Romanian unless the URL, the visitor's stored choice or the embed asks for
@@ -28,9 +37,7 @@ test('Romanian by default; English chosen in the menu persists after a reload', 
     await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
     await expect(viewer(page).locator('hcm-photo-sheet .supporting')).toHaveText(t('ro', 'photo.year', { year: '1976' }));
 
-    if ((page.viewportSize()?.width ?? 0) < 840) {
-        await page.keyboard.press('Escape');
-    }
+    await closeModalSheet(page);
     await chooseMenuItem(page, 'ro', t('ro', 'language.en'));
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await expect(menuButton(page, 'en')).toBeVisible();

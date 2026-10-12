@@ -31,9 +31,10 @@ GZIP_LEVEL = 9
 # Bundle (repository-relative) -> gzip budget in KB: about 12 % above the M1 build (2026-10-12), so
 # growth is a reviewed decision. Mapbox GL is external to both engine builds.
 BUDGETS: Mapping[str, int] = {
-    # Viewer engine, ES module: what the city pages load (Lit, the M3 kit, zod, the viewer; 97.9 KB in
-    # M1). The Firebase SDK is its lazy `firebase-sdk-<hash>.js` chunk, fetched only after consent.
-    "packages/engine/dist/engine.mjs": 110,
+    # Viewer engine, ES module: what the city pages load (Lit, the M3 kit, zod, the viewer), minified since
+    # DECISIONS-for-review.md §17a (92.7 KB on 2026-10-12, 101.0 KB before). The Firebase SDK is its lazy
+    # `firebase-sdk-<hash>.js` chunk, fetched only after consent.
+    "packages/engine/dist/engine.mjs": 100,
     # Viewer engine, IIFE: the same plus the inlined Firebase SDK (no code splitting in IIFE builds,
     # DECISIONS-for-review.md §13a; 112.0 KB in M1).
     "packages/engine/dist/engine.iife.js": 125,

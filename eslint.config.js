@@ -7,14 +7,31 @@ import prettier from 'eslint-config-prettier';
 import { defineConfig } from 'eslint/config';
 import lit from 'eslint-plugin-lit';
 import nounsanitized from 'eslint-plugin-no-unsanitized';
+import playwright from 'eslint-plugin-playwright';
 import sonarjs from 'eslint-plugin-sonarjs';
 import wc from 'eslint-plugin-wc';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-/** Product source of every workspace package (functions/src joins in M2). */
-const PRODUCT = ['packages/*/src/**/*.ts', 'functions/src/**/*.ts'];
-const TESTS = ['packages/*/test/**/*.ts', 'packages/test-support/src/**/*.ts', 'functions/test/**/*.ts', 'firebase/rules-tests/**/*.ts'];
+/** Product source: every workspace package, the Cloud Functions and the static site build (it writes the page, its CSP and the served manifest). */
+const PRODUCT = [
+    'packages/*/src/**/*.ts',
+    'functions/src/**/*.ts',
+    'scripts/site/src/**/*.ts',
+    'scripts/site/build-site.ts',
+    'scripts/site/build-admin.ts',
+];
+/** Vitest suites and the test kit, the JavaScript CLIs' tests included (the `tools` project of vitest.config.ts). */
+const TESTS = [
+    'packages/*/test/**/*.ts',
+    'packages/test-support/src/**/*.ts',
+    'packages/*/scripts/test/**/*.ts',
+    'functions/test/**/*.ts',
+    'firebase/rules-tests/**/*.ts',
+    'scripts/*/test/**/*.ts',
+];
+/** Playwright specs, fixtures, mock APIs and config (the @hcm/e2e workspace). */
+const E2E = ['e2e/**/*.ts'];
 const NODE_TOOLING = ['*.config.ts', 'packages/*/vite.config.ts', 'eslint.config.js', '.dependency-cruiser.cjs'];
 
 /** XSS: data is never rendered as HTML (docs/research/design-review-security-cost.md §1.7). */
@@ -33,6 +50,11 @@ const UNSAFE_LIT_DIRECTIVES = {
         {
             group: ['lit/directives/unsafe-*', 'lit-html/directives/unsafe-*'],
             message: 'unsafeHTML/unsafeSVG/unsafeMathML render strings as markup; data is never HTML (security review §1.7).',
+        },
+        {
+            group: ['lit/directives/style-map.js', 'lit-html/directives/style-map.js'],
+            message:
+                "styleMap writes a style attribute the city page's CSP refuses; use cssProperties (packages/ui/src/components/css-properties.ts).",
         },
     ],
 };
@@ -58,6 +80,17 @@ const PRODUCT_LIMITS = {
     'max-lines-per-function': ['error', { max: 60, skipBlankLines: true, skipComments: true }],
     'max-params': ['error', 4],
     'sonarjs/cognitive-complexity': ['error', 10],
+};
+
+/**
+ * Tests may be longer than product code, never more complex: a test file holds one behaviour's happy and bad rows
+ * with their fixtures (600 lines), a test reads top to bottom as arrange / act / assert without helper indirection
+ * (120 lines per function), and the fixtures Vitest and Playwright inject arrive as parameters (8).
+ */
+const TEST_LIMITS = {
+    'max-lines': ['error', { max: 600, skipBlankLines: true, skipComments: true }],
+    'max-lines-per-function': ['error', { max: 120, skipBlankLines: true, skipComments: true }],
+    'max-params': ['error', 8],
 };
 
 export default defineConfig(
@@ -131,10 +164,31 @@ export default defineConfig(
             'vitest/no-focused-tests': 'error',
             'vitest/no-disabled-tests': 'error',
             'vitest/expect-expect': ['error', { assertFunctionNames: ['expect', 'expect.element'] }],
-            'max-lines': ['error', { max: 600, skipBlankLines: true, skipComments: true }],
-            'max-lines-per-function': ['error', { max: 120, skipBlankLines: true, skipComments: true }],
-            'max-params': ['error', 8],
+            ...TEST_LIMITS,
         },
+    },
+    {
+        // The e2e suite must stay deterministic (design-review-testability.md §2): no sleeps, no focused or
+        // skipped tests, no networkidle waits, no forced clicks, web-first assertions only.
+        files: E2E,
+        extends: [playwright.configs['flat/recommended']],
+        languageOptions: { globals: globals.node },
+        rules: {
+            'playwright/no-wait-for-timeout': 'error',
+            'playwright/no-focused-test': 'error',
+            'playwright/no-skipped-test': ['error', { allowConditional: false }],
+            'playwright/no-networkidle': 'error',
+            'playwright/no-force-option': 'error',
+            'playwright/prefer-web-first-assertions': 'error',
+            // A spec's assertion helpers are named expect… (expectFocus, expectState), so a test that only calls them asserts.
+            'playwright/expect-expect': ['error', { assertFunctionPatterns: ['^expect[A-Z]'] }],
+            ...TEST_LIMITS,
+        },
+    },
+    {
+        // A city's config.js is a classic script that assigns window.HistoricCityMapConfig (docs/ENGINE_API.md).
+        files: ['sites/*/config.js', 'starter-kit/config.js'],
+        languageOptions: { sourceType: 'script', globals: globals.browser },
     },
     {
         files: NODE_TOOLING,

@@ -38,7 +38,7 @@ window.HistoricCityMapConfig = {
 
 Bucharest serves the engine from its own origin (the site build copies every file of the engine build next to the page: `engine.mjs` with its lazy `firebase-sdk-<hash>.js` chunk, `engine.iife.js`, `engine.css` and `fonts/`). A module script runs after the deferred classic scripts above it, so `mapboxgl` and the configuration exist when the engine starts; `engine/engine.iife.js` with `defer` works the same way for pages that cannot load modules.
 
-`globalThis.HistoricCityMapConfig = {…}` is the same as `window.HistoricCityMapConfig = {…}` in a classic script (the committed `config.js` files use it). A site build reads `config.js` without running it (`scripts/site/src/config-js.ts`), so the file must be one assignment of literal data: objects, arrays, strings, numbers, booleans and `null`. A third-party city that loads it from jsDelivr pins an exact version with `integrity` and `crossorigin`; SRI is impossible with a range URL such as `@1`.
+`globalThis.HistoricCityMapConfig = {…}` is the same as `window.HistoricCityMapConfig = {…}` in a classic script; the committed `config.js` files use the `window.` form (ESLint gives them the browser globals). A site build reads `config.js` without running it (`scripts/site/src/config-js.ts`), so the file must be one assignment of literal data: objects, arrays, strings, numbers, booleans and `null`. A third-party city that loads it from jsDelivr pins an exact version with `integrity` and `crossorigin`; SRI is impossible with a range URL such as `@1`.
 
 ## config.js
 

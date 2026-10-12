@@ -24,6 +24,9 @@ M2M = check_contracts.M2M_API
 CDN = "https://api.mapbox.com/mapbox-gl-js/v3.32.0"
 COLLECTION_URL = f"{check_contracts.EARTH_SEARCH}/{check_contracts.REFERENCE_COLLECTION}"
 LINK_URL = "https://console.example.org/billing"
+# Stand-ins for the npm release's files; the probes compare the CDN's bytes with them.
+NPM_FILES = {"mapbox-gl.js": b"/* mapbox-gl 3.32.0 */", "mapbox-gl.css": b".mapboxgl-map{overflow:hidden}"}
+DIGESTS = {name: check_contracts.sri_digest(data) for name, data in NPM_FILES.items()}
 
 Answer = Response | Exception
 
@@ -55,17 +58,26 @@ def healthy_probe_answers() -> dict[tuple[str, str], Answer | list[Answer]]:
         ("OPTIONS", f"{M2M}/login-token"): Response(204, {"access-control-allow-methods": "GET, POST"}),
         ("HEAD", f"{CDN}/mapbox-gl.js"): Response(200, {"content-type": "application/javascript; charset=utf-8"}),
         ("HEAD", f"{CDN}/mapbox-gl.css"): Response(200, {"content-type": "text/css; charset=utf-8"}),
+        ("GET", f"{CDN}/mapbox-gl.js"): Response(200, {}, NPM_FILES["mapbox-gl.js"]),
+        ("GET", f"{CDN}/mapbox-gl.css"): Response(200, {}, NPM_FILES["mapbox-gl.css"]),
         ("GET", COLLECTION_URL): Response(200, {"content-type": "application/json"}, b'{"type": "Collection", "id": "sentinel-2-c1-l2a"}'),
     }
 
 
-def write_repo(root: Path, links: object, engine: str = "export const MAPBOX_GL_VERSION = '3.32.0';\n") -> None:
+def write_repo(
+    root: Path, links: object, engine: str = "export const MAPBOX_GL_VERSION = '3.32.0';\n", npm_version: str = "3.32.0"
+) -> None:
     links_file = root / check_contracts.LINKS_FILE
     links_file.parent.mkdir(parents=True, exist_ok=True)
     links_file.write_text(json.dumps(links), encoding="utf-8")
     engine_file = root / check_contracts.ENGINE_INDEX
     engine_file.parent.mkdir(parents=True, exist_ok=True)
     engine_file.write_text(engine, encoding="utf-8")
+    package = root / check_contracts.NPM_MAPBOX_GL
+    (package / "dist").mkdir(parents=True, exist_ok=True)
+    (package / "package.json").write_text(json.dumps({"name": "mapbox-gl", "version": npm_version}), encoding="utf-8")
+    for name, data in NPM_FILES.items():
+        (package / "dist" / name).write_bytes(data)
 
 
 def links_doc(*entries: object) -> dict[str, object]:
@@ -86,7 +98,7 @@ def test_happy_path_every_contract_holds(tmp_path: Path, log: pytest.LogCaptureF
     web = FakeWeb({**healthy_probe_answers(), ("HEAD", LINK_URL): Response(200)})
 
     assert check_contracts.main(["--root", str(tmp_path)], web) == 0
-    assert "[contract] OK: 7 checks, every link resolves and every API keeps its shape" in log.text
+    assert "[contract] OK: 9 checks, every link resolves and every API keeps its shape" in log.text
     assert "  ok    link gcp.billing" in log.text
 
 
@@ -97,7 +109,7 @@ def test_bad_path_drift_is_listed_and_exits_1(tmp_path: Path, log: pytest.LogCap
     web = FakeWeb({**answers, ("HEAD", LINK_URL): Response(404)})
 
     assert check_contracts.main(["--root", str(tmp_path)], web) == check_contracts.EXIT_DRIFT
-    assert "[contract] 2 of 7 checks drifted:" in log.text
+    assert "[contract] 2 of 9 checks drifted:" in log.text
     assert f"  - link gcp.billing: {LINK_URL} answers HTTP 404" in log.text
     assert (
         "  - probe usgs.m2m.passwordLoginRemoved: expected HTTP 404 with errorCode NOT_FOUND, got HTTP 200 with errorCode None" in log.text
@@ -106,10 +118,13 @@ def test_bad_path_drift_is_listed_and_exits_1(tmp_path: Path, log: pytest.LogCap
 
 
 def test_happy_path_probes_follow_the_engine_mapbox_version(tmp_path: Path) -> None:
-    write_repo(tmp_path, links_doc({"id": "a", "url": LINK_URL}), engine="export const MAPBOX_GL_VERSION = '3.40.1';\n")
+    write_repo(
+        tmp_path, links_doc({"id": "a", "url": LINK_URL}), engine="export const MAPBOX_GL_VERSION = '3.40.1';\n", npm_version="3.40.1"
+    )
     answers = healthy_probe_answers()
-    answers[("HEAD", "https://api.mapbox.com/mapbox-gl-js/v3.40.1/mapbox-gl.js")] = answers.pop(("HEAD", f"{CDN}/mapbox-gl.js"))
-    answers[("HEAD", "https://api.mapbox.com/mapbox-gl-js/v3.40.1/mapbox-gl.css")] = answers.pop(("HEAD", f"{CDN}/mapbox-gl.css"))
+    for method in ("HEAD", "GET"):
+        for name in check_contracts.CDN_FILES:
+            answers[(method, f"https://api.mapbox.com/mapbox-gl-js/v3.40.1/{name}")] = answers.pop((method, f"{CDN}/{name}"))
 
     assert check_contracts.main(["--root", str(tmp_path)], FakeWeb({**answers, ("HEAD", LINK_URL): Response(200)})) == 0
 
@@ -179,7 +194,7 @@ def test_bad_path_network_error_is_unreachable() -> None:
 
 
 def probe_named(name: str) -> Probe:
-    return next(probe for probe in check_contracts.build_probes("3.32.0") if probe.name == name)
+    return next(probe for probe in check_contracts.build_probes("3.32.0", DIGESTS) if probe.name == name)
 
 
 @pytest.mark.parametrize(
@@ -202,6 +217,13 @@ def probe_named(name: str) -> Probe:
         ),
         ("mapbox.glJs", Response(404, {"content-type": "text/html"}), "expected HTTP 200 application/javascript, got HTTP 404 'text/html'"),
         ("mapbox.glCss", Response(200), "expected HTTP 200 text/css, got HTTP 200 ''"),
+        ("mapbox.integrity.mapbox-gl.css", Response(403), "expected HTTP 200, got HTTP 403"),
+        (
+            "mapbox.integrity.mapbox-gl.js",
+            Response(200, {}, b"/* rebuilt */"),
+            f"the CDN file is not the npm release's ({check_contracts.sri_digest(b'/* rebuilt */')}, the page expects "
+            f"{DIGESTS['mapbox-gl.js']}): browsers would refuse it",
+        ),
         (
             "earthSearch.referenceCollection",
             Response(200, {}, b'{"id": "sentinel-2-l2a"}'),
@@ -217,7 +239,7 @@ def test_bad_path_probe_reports_the_drift(name: str, response: Response, problem
 
 
 def test_happy_path_probes_send_the_documented_requests() -> None:
-    probes = {probe.name: probe.request for probe in check_contracts.build_probes("3.32.0")}
+    probes = {probe.name: probe.request for probe in check_contracts.build_probes("3.32.0", DIGESTS)}
 
     assert probes["usgs.m2m.passwordLoginRemoved"] == Request("POST", f"{M2M}/login", b"{}", (("Content-Type", "application/json"),))
     assert probes["usgs.m2m.noBrowserCors"].headers == (("Origin", "https://ventura8.github.io"), ("Access-Control-Request-Method", "POST"))
@@ -298,3 +320,40 @@ def test_bad_path_script_entry_point_exits_with_main_status(monkeypatch: pytest.
         runpy.run_path(str(CONTRACTS_PY), run_name="__main__")
 
     assert exit_info.value.code == check_contracts.EXIT_CONFIG
+
+
+@pytest.mark.parametrize(
+    ("relative", "content", "message"),
+    [
+        ("package.json", None, "cannot read the npm release of mapbox-gl; run npm ci"),
+        ("dist/mapbox-gl.css", None, "cannot read the npm release of mapbox-gl; run npm ci"),
+        ("package.json", "{", "cannot read the npm release of mapbox-gl; run npm ci"),
+        ("package.json", "[]", "mapbox-gl None is installed, but the engine pins 3.32.0"),
+        ("package.json", '{"version": "3.31.0"}', "mapbox-gl 3.31.0 is installed, but the engine pins 3.32.0"),
+    ],
+)
+def test_bad_path_npm_release_unreadable_or_not_the_pinned_one_exits_2(
+    tmp_path: Path, log: pytest.LogCaptureFixture, relative: str, content: str | None, message: str
+) -> None:
+    write_repo(tmp_path, links_doc({"id": "a", "url": LINK_URL}))
+    target = tmp_path / check_contracts.NPM_MAPBOX_GL / relative
+    if content is None:
+        target.unlink()
+    else:
+        target.write_text(content, encoding="utf-8")
+
+    assert check_contracts.main(["--root", str(tmp_path)], FakeWeb({})) == check_contracts.EXIT_CONFIG
+    assert message in log.text
+
+
+def test_happy_path_installed_npm_release_is_the_pinned_one() -> None:
+    version = check_contracts.mapbox_version(check_contracts.ROOT / check_contracts.ENGINE_INDEX)
+
+    assert sorted(check_contracts.npm_release_digests(check_contracts.ROOT, version)) == sorted(check_contracts.CDN_FILES)
+
+
+def test_happy_path_digest_is_the_one_the_site_build_writes() -> None:
+    # scripts/site/src/sri.ts: `sha384-` and the base64 of the SHA-384 digest (the SRI spec's example input).
+    assert (
+        check_contracts.sri_digest(b"alert('Hello, world.');") == "sha384-H8BRh8j48O9oYatfu5AZzq6A9RINhZO5H16dQZngK7T62em8MUt1FLm52t+eX6xO"
+    )

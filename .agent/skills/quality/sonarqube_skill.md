@@ -4,8 +4,8 @@
 
 ## Scope (`sonar-project.properties`)
 
-- `sonar.sources`: `packages/{shared,ui,engine,admin}/src`, `functions/src`, `pipeline/src`, `scripts/ci`, `scripts/git-hooks`, `docker` and `.github/workflows`. Every listed folder must exist (the scanner refuses to start otherwise), so the sites and the starter kit join with M1 and M5. Workflows and Dockerfiles are in sources because Sonar's GitHub Actions and Docker security rules find real issues there.
-- `sonar.tests`: every package's `test/` tree, `packages/test-support/src`, `functions/test`, `firebase/rules-tests/test`, `pipeline/tests`, `scripts/ci/tests` (also excluded from sources) and `e2e`. Sources and tests stay disjoint, so no file is indexed twice.
+- `sonar.sources`: `packages/{shared,ui,engine,admin}/src`, `functions/src`, `pipeline/src`, `scripts/ci`, `scripts/site/src` (the static site build, measured by Vitest's `tools` project), `scripts/git-hooks`, `docker`, `.github/workflows` and `.github/actions`. Every listed folder must exist (the scanner refuses to start otherwise), so the starter kit joins with M5. Workflows, composite actions and Dockerfiles are in sources because Sonar's GitHub Actions and Docker security rules find real issues there.
+- `sonar.tests`: every package's `test/` tree, `packages/test-support/src`, `functions/test`, `firebase/rules-tests/test`, `pipeline/tests`, `scripts/ci/tests` (also excluded from sources), `scripts/site/test`, the CLIs' tests (`scripts/seed/test`, `packages/ui/scripts/test`) and `e2e`. Sources and tests stay disjoint, so no file is indexed twice.
 - Reports: `reports/coverage/ts/lcov.info` (Vitest), `reports/coverage/scripts.xml` (pytest for `scripts/ci`) and `reports/coverage/pipeline.xml` (the raster pipeline), `reports/junit/pytest.xml` and `reports/junit/pipeline.xml`.
 - `sonar.coverage.exclusions` is **empty**: every measured file must reach 90 %. The `coverage` gate (`scripts/ci/check_coverage.py`) reads the same file, so its scope equals Sonar's.
 - No `sonar.projectVersion` in the file: the scanner invocation passes the `package.json` version.
@@ -16,7 +16,7 @@ After the upload it waits for the server's compute task (5 s polls, 600 s timeou
 
 ## CI job (`sonarqube` in `.github/workflows/ci.yml`)
 
-- Needs the `tests` job; downloads its `coverage` artifact and checks every report is non-empty.
+- Needs the `tests` job; downloads its `coverage` artifact, loads the quality image and runs `scripts/ci/sonar_report.py --check-reports` in it, so every report `sonar-project.properties` names (the raster pipeline's included) is checked from the one list.
 - Runs for pushes to `master` and for pull requests from this repository only: fork PRs get no secrets, and a tag or another branch would be a non-default-branch analysis, which returns 403 on the free plan. A tag will be gated by looking up the default-branch analysis of the same commit (M5).
 - `SONAR_TOKEN` is the only repository secret. A first step checks for it and for `sonar-project.properties`; without either, every later step is skipped and the job ends with a notice instead of failing.
 - Scan and quality-gate actions pinned by full SHA with a `# vX.Y.Z` comment; then `sonar_report.py --min-coverage 90` inside the quality image (Python 3.14), the token passed through the environment.

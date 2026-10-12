@@ -20,23 +20,23 @@ import { ANALYTICS_IMAGE_SOURCES, ANALYTICS_SCRIPT_SOURCES, MAPBOX_CONNECT_SOURC
  */
 
 /** Firebase Auth's popup flow loads the gapi helper from here. */
-export const FIREBASE_AUTH_SCRIPT_SOURCES: readonly string[] = ['https://apis.google.com'];
+const FIREBASE_AUTH_SCRIPT_SOURCES: readonly string[] = ['https://apis.google.com'];
 
 /** reCAPTCHA Enterprise, behind App Check. */
-export const RECAPTCHA_SCRIPT_SOURCES: readonly string[] = ['https://www.google.com/recaptcha/', 'https://www.gstatic.com/recaptcha/'];
-export const RECAPTCHA_FRAME_SOURCES: readonly string[] = ['https://www.google.com/recaptcha/', 'https://recaptcha.google.com/recaptcha/'];
+const RECAPTCHA_SCRIPT_SOURCES: readonly string[] = ['https://www.google.com/recaptcha/', 'https://www.gstatic.com/recaptcha/'];
+const RECAPTCHA_FRAME_SOURCES: readonly string[] = ['https://www.google.com/recaptcha/', 'https://recaptcha.google.com/recaptcha/'];
 
 /** Every Google API the admin calls (Cloud REST, tokeninfo, Identity Toolkit, Firestore, Storage) and the callables. */
-export const GOOGLE_CONNECT_SOURCES: readonly string[] = ['https://*.googleapis.com', 'https://*.cloudfunctions.net', 'https://*.run.app'];
+const GOOGLE_CONNECT_SOURCES: readonly string[] = ['https://*.googleapis.com', 'https://*.cloudfunctions.net', 'https://*.run.app'];
 
 /** GA4 beacons after consent (the Analytics card's own measurement; the API hosts are under `*.googleapis.com`). */
-export const ADMIN_ANALYTICS_CONNECT_SOURCES: readonly string[] = [
+const ADMIN_ANALYTICS_CONNECT_SOURCES: readonly string[] = [
     'https://*.google-analytics.com',
     'https://*.analytics.google.com',
     'https://*.googletagmanager.com',
 ];
 
-export const ADMIN_IMAGE_SOURCES: readonly string[] = [
+const ADMIN_IMAGE_SOURCES: readonly string[] = [
     'https://storage.googleapis.com',
     'https://firebasestorage.googleapis.com',
     'https://api.mapbox.com',

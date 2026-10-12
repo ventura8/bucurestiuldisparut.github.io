@@ -10,16 +10,21 @@ and API shapes the product depends on still look the way the code assumes.
      500 INPUT_PARAMETER_REQUIRED, the error shapes the Setup Assistant and the pipeline parse;
    - USGS M2M sends no Access-Control-Allow-Origin to the GitHub Pages origin, so the browser
      cannot call it and the server-side path stays necessary;
-   - the Mapbox GL JS CDN serves the version pinned as MAPBOX_GL_VERSION in packages/engine/src/index.ts;
+   - the Mapbox GL JS CDN serves the version pinned as MAPBOX_GL_VERSION in packages/engine/src/index.ts, and
+     the very bytes of that npm release (node_modules/mapbox-gl/dist): the city pages carry the npm files'
+     Subresource Integrity (scripts/site/src/sri.ts), so a CDN file that differed would be refused by every
+     browser and the map would not load (DECISIONS-for-review.md §12f);
    - Earth Search still publishes the sentinel-2-c1-l2a collection (the georeferencing reference).
 
 Only https is spoken, through scripts/ci/cihttp.py (http.client, no extra dependency). A network
 error gets one retry so a blip does not open an issue. Usage: check_contracts.py [--root DIR]
 [--links FILE]. Exit status: 0 every contract holds, 1 drift (CI opens or updates an issue), 2 the
-links file or the engine version cannot be read.
+links file, the engine version or the installed npm release of mapbox-gl cannot be read.
 """
 
 import argparse
+import base64
+import hashlib
 import json
 import re
 import sys
@@ -38,6 +43,9 @@ LOG = get_logger("contract")
 ROOT = Path(__file__).resolve().parents[2]
 LINKS_FILE = Path("packages", "admin", "src", "setup", "links.json")
 ENGINE_INDEX = Path("packages", "engine", "src", "index.ts")
+NPM_MAPBOX_GL = Path("node_modules", "mapbox-gl")
+# The files every city page loads from the CDN with the integrity of the npm release.
+CDN_FILES = ("mapbox-gl.js", "mapbox-gl.css")
 
 M2M_API = "https://m2m.cr.usgs.gov/api/api/json/stable"
 PAGES_ORIGIN = "https://ventura8.github.io"
@@ -54,7 +62,7 @@ EXIT_CONFIG = 2
 
 
 class ConfigError(Exception):
-    """The links file or the engine source is not what this check expects (exit 2)."""
+    """The links file, the engine source or the npm release is not what this check expects (exit 2)."""
 
 
 Expectation = Callable[[Response], str | None]
@@ -194,7 +202,27 @@ def stac_collection(collection_id: str) -> Expectation:
     return expect
 
 
-def build_probes(mapbox_version: str) -> list[Probe]:
+def sri_digest(data: bytes) -> str:
+    """The Subresource Integrity value of `data`, as scripts/site/src/sri.ts writes it into the page."""
+    return "sha384-" + base64.b64encode(hashlib.sha384(data).digest()).decode("ascii")
+
+
+def same_bytes_as(expected: str) -> Expectation:
+    """HTTP 200 with a body whose integrity is `expected`, the npm release's (the page's `integrity` attribute)."""
+
+    def expect(response: Response) -> str | None:
+        if response.status != HTTPStatus.OK:
+            return f"expected HTTP 200, got HTTP {response.status}"
+        found = sri_digest(response.body)
+        if found == expected:
+            return None
+        return f"the CDN file is not the npm release's ({found}, the page expects {expected}): browsers would refuse it"
+
+    return expect
+
+
+def build_probes(mapbox_version: str, npm_digests: Mapping[str, str]) -> list[Probe]:
+    """Every API probe; `npm_digests` maps each of CDN_FILES to the integrity of the pinned npm release's copy."""
     cdn = f"https://api.mapbox.com/mapbox-gl-js/v{mapbox_version}"
     preflight = (("Origin", PAGES_ORIGIN), ("Access-Control-Request-Method", "POST"))
     return [
@@ -211,6 +239,7 @@ def build_probes(mapbox_version: str) -> list[Probe]:
         Probe("usgs.m2m.noBrowserCors", Request("OPTIONS", f"{M2M_API}/login-token", None, preflight), no_cors_allowance),
         Probe("mapbox.glJs", Request("HEAD", f"{cdn}/mapbox-gl.js"), served_as("application/javascript")),
         Probe("mapbox.glCss", Request("HEAD", f"{cdn}/mapbox-gl.css"), served_as("text/css")),
+        *(Probe(f"mapbox.integrity.{name}", Request("GET", f"{cdn}/{name}"), same_bytes_as(npm_digests[name])) for name in CDN_FILES),
         Probe(
             "earthSearch.referenceCollection",
             Request("GET", f"{EARTH_SEARCH}/{REFERENCE_COLLECTION}"),
@@ -237,6 +266,24 @@ def mapbox_version(engine_index: Path) -> str:
     if match is None:
         raise ConfigError(f"{engine_index}: no `MAPBOX_GL_VERSION = 'X.Y.Z'` constant")
     return match.group(1)
+
+
+def _installed_version(package: Path) -> object:
+    document = json.loads((package / "package.json").read_text(encoding="utf-8"))
+    return document.get("version") if isinstance(document, dict) else None
+
+
+def npm_release_digests(root: Path, version: str) -> dict[str, str]:
+    """The integrity of each of CDN_FILES in the installed npm release, which must be exactly `version`."""
+    package = root / NPM_MAPBOX_GL
+    try:
+        installed = _installed_version(package)
+        digests = {name: sri_digest((package / "dist" / name).read_bytes()) for name in CDN_FILES}
+    except (OSError, ValueError) as error:
+        raise ConfigError(f"{package}: cannot read the npm release of mapbox-gl; run npm ci ({error})") from error
+    if installed != version:
+        raise ConfigError(f"{package}: mapbox-gl {installed} is installed, but the engine pins {version}")
+    return digests
 
 
 # --- run ----------------------------------------------------------------------------------------------
@@ -274,7 +321,8 @@ def main(argv: Sequence[str] | None = None, fetch: Fetch | None = None) -> int:
     args = parse_args(argv)
     try:
         links = load_links(args.root / args.links)
-        probes = build_probes(mapbox_version(args.root / ENGINE_INDEX))
+        version = mapbox_version(args.root / ENGINE_INDEX)
+        probes = build_probes(version, npm_release_digests(args.root, version))
     except ConfigError as error:
         LOG.error("[contract] ERROR: %s", error)
         return EXIT_CONFIG

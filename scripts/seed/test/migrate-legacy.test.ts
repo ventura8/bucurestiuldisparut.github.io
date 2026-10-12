@@ -1,7 +1,7 @@
 /**
- * End-to-end tests of the migration CLI (`scripts/seed/migrate-legacy.mjs`), run as a child process with
- * the same Node the tests run on. They live in the shared package's node project because that is where the
- * migration rules are, and the Vitest projects are fixed by vitest.config.ts (ask-first).
+ * End-to-end tests of the migration CLI (`scripts/seed/migrate-legacy.mjs`), run as a child process with the same Node
+ * the tests run on (the `tools` project of vitest.config.ts). The migration rules themselves are unit-tested in
+ * packages/shared/test/migration; the city seed is the real `scripts/seed/bucharest.city.json`.
  */
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -9,15 +9,14 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
 
+import { conePolygon, parseManifestJson } from '@hcm/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { conePolygon } from '../../src/geo/cone.js';
-import { parseManifestJson } from '../../src/schemas/validation.js';
-import { validCity } from '../fixtures/manifest.js';
-import { greyPng } from '../fixtures/png.js';
+import { greyPng } from './png.js';
 
-const ROOT = resolve(import.meta.dirname, '../../../..');
+const ROOT = resolve(import.meta.dirname, '../../..');
 const CLI = join(ROOT, 'scripts/seed/migrate-legacy.mjs');
+const CITY_SEED = join(ROOT, 'scripts/seed/bucharest.city.json');
 const TIMEOUT = 60_000;
 
 let cityDir = '';
@@ -46,7 +45,7 @@ function writeFixture(seedColor = '#8B5E3C'): void {
         feature('missing.png', { type: 'Point', coordinates: [26.12, 44.44] }),
     ];
     writeFileSync(join(cityDir, 'photos.legacy.geojson'), JSON.stringify({ type: 'FeatureCollection', features }));
-    const city = validCity();
+    const city = JSON.parse(readFileSync(CITY_SEED, 'utf8')) as Record<string, unknown>;
     writeFileSync(cityFile, JSON.stringify({ ...city, theme: { seedColor } }));
 }
 

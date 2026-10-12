@@ -1,7 +1,10 @@
 # gitleaks runs in dir mode over the working tree (`gitleaks dir`, static gate), so it also walks
 # gitignored local trees: node_modules (third-party test fixtures full of example keys), tool caches
-# and the pipeline's own reports/. This allowlist is about scan SCOPE, not about tolerating a finding:
-# nothing tracked by git is exempted, and a real secret committed to this repository is still reported.
+# and the pipeline's own reports/. This allowlist is about scan SCOPE, not about tolerating a finding.
+# Two entries name the developer's local secret files (.sonar-token, .env.local) so the directory scan does
+# not report them; the repo-policy gate and the pre-commit hook refuse both files in git's view. History
+# mode (`gitleaks-history`, CI) uses .gitleaks-history.toml, which has no path allowlist at all, so every
+# committed path is scanned there; reviewed false positives are named by fingerprint in .gitleaksignore.
 # The Firebase web config and the Mapbox token never enter git; they are injected at build time
 # (docs/research/quality-conventions.md §4.4).
 

@@ -145,16 +145,14 @@ def test_happy_path_file_gate_without_files_is_skipped(shell: FakeShell, log: py
 def test_happy_path_stage_announces_each_gate(shell: FakeShell, log: pytest.LogCaptureFixture) -> None:
     assert pipeline.run_stage("tests", shell.context()) == []
     assert [message for message in log.messages if not message.startswith("  ")] == [
-        "tests 1/6 vitest",
-        "tests 2/6 site-unit",
-        "tests 3/6 rules-coverage",
-        "tests 4/6 pytest",
-        "tests 5/6 pipeline-pytest",
-        "tests 6/6 coverage",
+        "tests 1/5 vitest",
+        "tests 2/5 rules-coverage",
+        "tests 3/5 pytest",
+        "tests 4/5 pipeline-pytest",
+        "tests 5/5 coverage",
     ]
     assert gate_commands(shell) == [
         "npm run --silent test",
-        "npm run --silent test:site",
         "python3 scripts/ci/check_rules_coverage.py check",
         "python3 -m pytest",
         " ".join(pipeline.PIPELINE_PYTEST),
@@ -163,11 +161,11 @@ def test_happy_path_stage_announces_each_gate(shell: FakeShell, log: pytest.LogC
 
 
 def test_bad_path_stage_keeps_going_after_a_failure(tmp_path: Path) -> None:
-    # A gate early in the stage fails (`npm run --silent test` is a prefix of the site-unit command, so match a unique one).
+    # A gate early in the stage fails; every later gate still runs.
     shell = FakeShell(tmp_path, failing=["check_rules_coverage.py"])
 
     assert pipeline.run_stage("tests", shell.context()) == ["tests/rules-coverage"]
-    assert len(shell.calls) == 6
+    assert len(shell.calls) == 5
 
 
 def test_bad_path_empty_stage_fails(shell: FakeShell, log: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -328,7 +326,7 @@ def test_happy_path_list_prints_the_registry(log: pytest.LogCaptureFixture) -> N
     assert "sonar    sonar" in log.messages
     assert "deps     dependency-updates" in log.messages
     assert "all      quality sonar" in log.messages
-    assert "tests    vitest site-unit rules-coverage pytest pipeline-pytest coverage" in log.messages
+    assert "tests    vitest rules-coverage pytest pipeline-pytest coverage" in log.messages
 
 
 def test_bad_path_inconsistent_registry_refuses_to_run(monkeypatch: pytest.MonkeyPatch, log: pytest.LogCaptureFixture) -> None:

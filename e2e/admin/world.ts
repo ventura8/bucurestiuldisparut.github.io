@@ -82,8 +82,9 @@ export const FIREBASE_APP_NAME = '[DEFAULT]';
 /**
  * The environment of `firebase emulators:start` (the Functions emulator passes it to the functions): the fake upstreams
  * at the mock APIs (CR-M2-14, CR-M2-22), the admin's e2e origin (CR-M2-39, read once CR-M2b-4 lands), the bucket name,
- * and no metadata-server probe. No `HCM_OAUTH_CLIENT_IDS`, as in production: `admin.claim` asks the fake Identity
- * Toolkit for the Google sign-in client, the stand-in consent's (CR-M2b-2).
+ * and no metadata-server probe. No `HCM_OAUTH_CLIENT_IDS` (a real project sets it in functions/deploy-env.json), so
+ * `admin.claim` takes the path of a project without it: it asks the fake Identity Toolkit for the Google sign-in
+ * client, the stand-in consent's (CR-M2b-2).
  */
 export const EMULATOR_ENV: Readonly<Record<string, string>> = {
     HCM_UPSTREAM_BASE: MOCK_API_ORIGIN,

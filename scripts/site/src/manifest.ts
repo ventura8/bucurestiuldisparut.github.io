@@ -14,7 +14,7 @@ import { SiteBuildError, issuesText } from './errors.js';
  */
 
 /** One photo derivative to copy: `from` is relative to the site's media folder, `to` to the site's `data/` folder. */
-export interface MediaCopy {
+interface MediaCopy {
     readonly from: string;
     readonly to: string;
 }
@@ -25,7 +25,7 @@ export interface PreparedManifest {
 }
 
 /** The folder, below the site's `data/`, that holds the photo derivatives. */
-export const MEDIA_FOLDER = 'media';
+const MEDIA_FOLDER = 'media';
 
 function fileName(url: string): string {
     return url.slice(url.lastIndexOf('/') + 1);

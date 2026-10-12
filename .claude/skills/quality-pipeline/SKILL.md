@@ -44,7 +44,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
 
 - Docs or tooling only: `static`.
 - TypeScript or Python: `static`, `tests`, `build`.
-- A user-visible change, `e2e/`, `e2e/scenarios.json`, `sites/`, `starter-kit/` or `scripts/site/`: also `e2e` (`E2E_TIER=smoke,fn` for a quick run; unset runs every tier). The site build's unit tests are the `site-unit` gate of `tests`; the Pages sites are built by `site-build` in `build`.
+- A user-visible change, `e2e/`, `e2e/scenarios.json`, `sites/`, `starter-kit/` or `scripts/site/`: also `e2e` (`E2E_TIER=smoke,fn` for a quick run; unset runs every tier). The site build's unit tests run in Vitest's `tools` project (gate `vitest` of `tests`); the Pages sites are built by `site-build` in `build`.
 - A Setup Assistant deep link (`packages/admin/src/setup/links.json`) or a third-party probe: `contract`.
 - Before a push to `master` or a tag: `all` (the default: `quality`, then `sonar`, which skips with a notice without a token).
 - A dependency bump: `static`, `tests`, `build`, then `deps` to see what else is behind; a deliberate hold is a `HELD` entry with its reason in `scripts/ci/check_dependency_updates.py`.
@@ -70,3 +70,5 @@ Never suppress: no inline directive of any tool, no `.skip`/`.only`/`xfail`, no 
 - A browser crash leaves `core.<pid>` in the repository root (git-ignored); delete it.
 - Commit subjects are `type(scope): summary` (`scripts/git-hooks/commit-msg` locally, the `commits` gate over the CI range); squash `fixup!` commits before a pull request.
 - The image has a real `sonar-scanner` on `PATH`: a test that hides its fake tool must also drop the image's directories from `PATH`.
+- e2e specs are linted with `eslint-plugin-playwright`: no conditional in a test body (window-class branches go into helpers such as `closeModalSheet` in `e2e/support/viewer.ts`), assertion helpers are named `expect…`, a test function stays within 120 lines (a journey becomes one function per step).
+- A change to `functions/package.json`'s dependencies or to the root `overrides` refreshes `functions/deploy-lock/` (`npm run deploy-lock --workspace @hcm/functions` in the pinned Node image, with the network); the `vite-build` gate fails on a stale lock and `deploy-lock-audit` audits it.

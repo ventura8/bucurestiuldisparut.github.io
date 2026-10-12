@@ -1,7 +1,7 @@
 /**
- * End-to-end tests of `packages/ui/scripts/gen-theme.mjs`, run as a child process. The ui project runs in
- * Chromium (Vitest browser mode), which cannot start processes, so the CLI is exercised from this node
- * project; the colour logic itself is tested in packages/ui/test/dynamic-color.test.ts.
+ * End-to-end tests of `packages/ui/scripts/gen-theme.mjs`, run as a child process (the `tools` project of
+ * vitest.config.ts: the ui project runs in Chromium, which cannot start processes). The colour logic itself is tested
+ * in packages/ui/test/dynamic-color.test.ts.
  */
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -9,9 +9,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
 
+import { themeSchema } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
-
-import { themeSchema } from '../../src/schemas/manifest.js';
 
 const ROOT = resolve(import.meta.dirname, '../../../..');
 const CLI = join(ROOT, 'packages/ui/scripts/gen-theme.mjs');

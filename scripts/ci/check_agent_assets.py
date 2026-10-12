@@ -118,6 +118,8 @@ ROOT_FILES = frozenset(
         ".gitattributes",
         ".gitignore",
         ".gitleaks.toml",
+        ".gitleaks-history.toml",
+        ".gitleaksignore",
         ".htmlhintrc",
         ".htmlvalidate.json",
         ".markdownlint-cli2.jsonc",

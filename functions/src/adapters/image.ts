@@ -1,5 +1,5 @@
 import { PHOTO_LIMITS, type PhotoContentType } from '@hcm/shared';
-import sharp from 'sharp';
+import type sharp from 'sharp';
 
 import { UpstreamError } from '../ports/errors.js';
 import type { ImageInspection, ImageProcessor } from '../ports/image-processor.js';
@@ -41,6 +41,17 @@ export function sniffPhotoType(bytes: Uint8Array): PhotoContentType | undefined 
  */
 const UNDECODABLE: ReadonlySet<PhotoContentType> = new Set(['image/heic', 'image/heif']);
 
+let sharpLoading: Promise<typeof sharp> | undefined;
+
+/**
+ * sharp and its native libvips, loaded on the first photo (DECISIONS-for-review.md §22c): the 32 functions are one
+ * codebase, so every instance loads `index.js`, and only `photos.onUpload` ever needs an image library.
+ */
+async function loadSharp(): Promise<typeof sharp> {
+    sharpLoading ??= import('sharp').then((module) => module.default);
+    return sharpLoading;
+}
+
 /** Bytes sharp cannot read (CR-M2-23): `photos.onUpload` answers `apiError.photo.unreadable`. */
 function unreadable(): UpstreamError {
     return new UpstreamError('image', 'invalid');
@@ -48,7 +59,8 @@ function unreadable(): UpstreamError {
 
 /** Header only (no pixels are decoded), so the size of an image over the pixel limit is still reported. */
 async function inspectDecodable(bytes: Uint8Array, contentType: PhotoContentType): Promise<ImageInspection> {
-    const metadata = await sharp(bytes, { limitInputPixels: false })
+    const decoder = await loadSharp();
+    const metadata = await decoder(bytes, { limitInputPixels: false })
         .metadata()
         .catch(() => {
             throw unreadable();
@@ -73,7 +85,8 @@ export function createSharpImageProcessor(): ImageProcessor {
             return inspectDecodable(bytes, contentType);
         },
         webp: async (bytes, options) => {
-            const output = await sharp(bytes, { limitInputPixels: PHOTO_LIMITS.maxInputPixels })
+            const decoder = await loadSharp();
+            const output = await decoder(bytes, { limitInputPixels: PHOTO_LIMITS.maxInputPixels })
                 .rotate()
                 .resize({ width: options.longEdge, height: options.longEdge, fit: 'inside', withoutEnlargement: true })
                 .webp({ quality: options.quality })

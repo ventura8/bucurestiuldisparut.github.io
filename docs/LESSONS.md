@@ -256,3 +256,13 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the full e2e stage, where load changed the order of the import's three parallel uploads.
     - Fix and pin: two photos that both carry a `legacyId` are never each other's duplicate (`happyPath_twoLegacyPhotosOfOneImageAreBothProcessed`); a new upload of a legacy image still is (`badPath_aNewPhotoOfALegacyImageIsStillADuplicate`).
     - **A check that depends on which of two parallel jobs finishes first is a race: decide by data, never by order.**
+49. **An admin test failed before it started: the Firestore emulator refused to be emptied.**
+    - Seen: `S-A00-BAD-SCOPE-UNTICKED` failed in its `adminWorld` fixture with `Firestore reset: 409 ... Transaction lock timeout` (ABORTED), once in three full e2e runs; the test itself never ran.
+    - Found by: the `e2e` stage of `PIPELINE_STAGE=all` on 2026-10-12, with every tier in one run.
+    - Fix and pin: a background function of the previous admin test (a trigger, a manifest task) can still hold a document lock when the next test starts, and the emulator's delete-all waits for it, then answers 409; `EmulatorWorld.reset` (`e2e/admin/support/emulators.ts`) tries the Firestore reset up to three times on a 409 and fails on anything else.
+    - **A fixture that resets shared emulators must expect work the previous test started to still be finishing.**
+50. **The tour's toast state failed on a busy machine: the toast had closed before the test looked.**
+    - Seen: `A toast` (`S-V15-HAPPY`) at 3840 × 2160 found no `error.unknownPhoto` status in 15 s, once in four full e2e runs.
+    - Found by: the `e2e` stage of `PIPELINE_STAGE=all` on 2026-10-12, in a run that took a third longer than the others.
+    - Fix and pin: the toast shows when the manifest is applied and closes itself 6 s later, but the test first waited for `hcm-ready`, which needs the 4K map to settle; it now focuses the toast's close button at once (the M3 snackbar keeps itself open while it holds the focus, as for a keyboard visitor reading it), then waits for the map (`e2e/tour/viewer.tour.ts`). A first fix hovered the toast instead and failed under a load average above 40: a hover waits for two stable animation frames, which a 4K SwiftShader page did not produce before the 6 s ran out; a focus needs none.
+    - **A test of anything that times itself out must hold it open before waiting for something slower.**
