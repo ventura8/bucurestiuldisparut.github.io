@@ -34,24 +34,34 @@ export class HcmSegmentedButton extends LitElement {
         touchTarget,
         typeStyles,
         css`
+            /*
+             * Each segment is as wide as its label (flex-basis auto: an equal-share basis of 0 wrapped the longest
+             * Romanian label even on a wide screen) and never wider than its container: in a narrow one the segments
+             * shrink to their longest word and a long label wraps inside a taller segment instead of scrolling the
+             * page sideways (min-width: min-content keeps a label from spilling into its neighbour).
+             */
             :host {
                 display: inline-flex;
+                max-inline-size: 100%;
             }
 
             .group {
                 display: inline-flex;
+                max-inline-size: 100%;
             }
 
             button {
                 display: inline-flex;
-                flex: 1 1 0;
+                flex: 1 1 auto;
                 gap: 8px;
                 align-items: center;
                 justify-content: center;
                 box-sizing: border-box;
-                min-width: 48px;
-                height: 40px;
+                min-width: min-content;
+                min-height: 40px;
                 padding-inline: 12px;
+                padding-block: 0;
+                text-align: center;
                 margin: 0;
                 margin-inline-start: -1px;
                 border: 1px solid var(--md-sys-color-outline);

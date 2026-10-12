@@ -1015,6 +1015,17 @@
             "notes": "Milestone M1. ui-kit: hcm-sheet settleDetent and focus return."
         },
         {
+            "id": "S-V15-BAD-LONG-LABELS",
+            "behaviour": "V15",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Long Romanian labels in About wrap inside their choice instead of scrolling the dialog sideways",
+            "asserts": "at 320 and 360 px the full-screen About dialog has no horizontal scroll and its theme choice shows no icon beside the labels (only the check mark); at 1440 px no language or theme label wraps",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1. Integrator, found in the M1 review screenshots: hcm-segmented-button segments are content-sized and wrap in a narrow container (packages/ui/src/components/segmented-button.ts; unit tests in packages/ui/test/components/segmented-button.test.ts and packages/ui/test/viewer/hcm-about-dialog.test.ts)."
+        },
+        {
             "id": "S-V16-HAPPY",
             "behaviour": "V16",
             "area": "viewer",

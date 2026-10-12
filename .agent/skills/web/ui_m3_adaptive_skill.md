@@ -56,6 +56,7 @@ export function defineHcmExample(registry: CustomElementRegistry = customElement
 
 - Window classes are measured on the **host element** with container queries and a `ResizeObserver` (which also calls `map.resize()`), not on the viewport: compact below 600, medium 600–839, expanded 840–1199, large 1200–1599, extra-large from 1600 (`'extra-large'`); compact height below 480 for landscape phones (`WINDOW_CLASS_BREAKPOINTS`, `windowClassFor`, `isCompactHeight`, `WindowClassController`).
 - Touch targets at least 48 dp (`TOUCH_TARGET_MIN_PX`), safe areas, `dvh`, logical properties.
+- Romanian labels are long: a control's width comes from its content and its container, never an equal share. `hcm-segmented-button` segments are content-sized (`flex: 1 1 auto`), never wider than their container, and a long label wraps inside a taller segment instead of scrolling the page sideways; at compact width the About dialog drops the theme icons (only the check mark stays). A layout test measures label heights and the container's `scrollWidth` (`packages/ui/test/components/segmented-button.test.ts`).
 - Navigation: bottom sheet and navigation bar on compact, side sheet and rail from medium; no drawer.
 - The tour tier checks every screen at 11 viewports, light and dark, RO and EN: no horizontal overflow, no overlap of `[data-layout-check]` elements, no clipped labels, visible focus.
 

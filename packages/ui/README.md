@@ -21,7 +21,7 @@ passed in already localized (the kit has no catalogue of its own).
 | `hcm-switch` | `role="switch"`; `hcm-change` `{checked}`; the selected handle shows a check mark. |
 | `hcm-slider` | `role="slider"` with `aria-valuetext`; arrows ±step, PageUp/PageDown ±a tenth, Home/End; `hcm-input` per frame or key, `hcm-change` on release. |
 | `hcm-chip` | Filter chip, `aria-pressed`; `hcm-change` `{selected}`. |
-| `hcm-segmented-button` | Radio group with one Tab stop and wrapping arrows; `hcm-change` `{value}`. |
+| `hcm-segmented-button` | Radio group with one Tab stop and wrapping arrows; `hcm-change` `{value}`. Segments are as wide as their labels and wrap a long label in a narrow container. |
 | `hcm-card`, `hcm-list`, `hcm-list-item` | Containers; an `interactive` list item is a button. |
 | `hcm-sheet` | `bottom` (handle: tap cycles peek, half, full; ArrowUp/ArrowDown; drag snaps or closes) or `side`; `modal` adds a scrim and a Tab trap; focus moves in on open and back on close; `hcm-close`, `hcm-detent-change`. |
 | `hcm-dialog` | Native modal `<dialog>`; Tab wraps; Esc, close button and scrim close it with `returnValue` `cancel`, `close`, `scrim`; `close(value)` for actions; `fullscreen`. |

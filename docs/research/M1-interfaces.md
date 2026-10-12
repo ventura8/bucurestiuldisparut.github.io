@@ -619,7 +619,10 @@ SwiftShader (S-V16-HAPPY on c360 and l1440).
   `npm run build --workspace @hcm/engine` copies them to `dist/fonts/` (CR-15, without touching `vite.config.ts`).
 - **Found in the review screenshots**: the adapter drew POI glyphs with the family `Material Symbols Rounded`, which
   the kit never registers (it is `HCM Material Symbols Rounded`), so every POI was a plain dot; the sprite now uses
-  `ICON_FONT_FAMILY` of `@hcm/ui`. Photo markers grew from 16 to 22 CSS px, clusters from 24 to 30.
+  `ICON_FONT_FAMILY` of `@hcm/ui`. Photo markers grew from 16 to 22 CSS px, clusters from 24 to 30. The second capture
+  (all four viewports, light and dark) found About's theme choice wrapping "Ca sistemul" at 1440 px and scrolling the
+  full-screen dialog sideways at 360 px: `hcm-segmented-button` segments are content-sized now and wrap a long label in
+  a narrow container, and the full-screen About drops the theme icons (row S-V15-BAD-LONG-LABELS).
 - **Rejected for M1**: the timeline play button and its keys `timeline.play` / `timeline.pause` (CR-18a; PLAN has no
   play button); the compare toggle stays M4.
 - **Still open**: CR-1 and CR-4 (M2 rules), CR-2 (the engine's browser project), CR-3 (`.htmlvalidate.json`), CR-10

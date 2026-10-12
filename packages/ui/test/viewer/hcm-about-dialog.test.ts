@@ -2,10 +2,18 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 
 import { HCM_ABOUT_DIALOG_TAG, HcmAboutDialog, defineHcmAboutDialog } from '../../src/viewer/hcm-about-dialog.js';
-import { defineKitDoubles, fireKitEvent, mountElement, recordEvents, shadowQuery, shadowText } from './doubles.js';
+import { defineKitDoubles, fireKitEvent, mountElement, recordEvents, shadowQuery, shadowQueryAll, shadowText } from './doubles.js';
 import { testManifest } from './fixtures.js';
 
 const CITY = testManifest().city;
+
+/** The icons the theme choice passes to the kit's segmented button, per option. */
+function themeIcons(element: HcmAboutDialog): (string | undefined)[] {
+    const theme = shadowQueryAll(element, 'hcm-segmented-button').at(-1) as unknown as {
+        readonly options: readonly { readonly icon?: string }[];
+    };
+    return theme.options.map((option) => option.icon);
+}
 
 async function about(properties: Partial<HcmAboutDialog> = {}): Promise<HcmAboutDialog> {
     return mountElement<HcmAboutDialog>(HCM_ABOUT_DIALOG_TAG, { open: true, city: CITY, engineVersion: '1.4.2', ...properties });
@@ -33,6 +41,7 @@ describe('<hcm-about-dialog>', () => {
         expect(text).toContain('Motor: Historic City Map 1.4.2');
         expect(element.shadowRoot?.querySelector('strong')?.textContent).toBe('Despre');
         await expect.element(page.getByRole('link', { name: 'OpenStreetMap' })).toHaveAttribute('rel', 'noopener noreferrer nofollow ugc');
+        expect(themeIcons(element)).toEqual(['brightness_auto', 'light_mode', 'dark_mode']);
     });
 
     it('happyPath_englishAndFullScreen', async () => {
@@ -41,6 +50,8 @@ describe('<hcm-about-dialog>', () => {
         expect(shadowText(element)).toContain('Lost Bucharest');
         expect(shadowText(element)).toContain('No cookies without consent.');
         expect(shadowQuery(element, 'hcm-dialog').hasAttribute('fullscreen')).toBe(true);
+        // A compact screen has no room for an icon beside every theme label (the kit still shows the check mark).
+        expect(themeIcons(element)).toEqual([undefined, undefined, undefined]);
     });
 
     it('badPath_emptyCreditsHideTheirSection', async () => {

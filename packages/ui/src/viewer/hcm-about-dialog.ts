@@ -133,7 +133,10 @@ export class HcmAboutDialog extends LitElement {
     #preferences(): TemplateResult {
         const locale = this.locale;
         const languages = LOCALES.map((choice) => ({ value: choice, label: translate(locale, `language.${choice}`) }));
-        const themes = THEMES.map((choice) => ({ value: choice, label: translate(locale, `theme.${choice}`), icon: THEME_ICONS[choice] }));
+        // Full screen (compact width) leaves no room for an icon beside every Romanian theme label: only the
+        // selected segment keeps its check mark there.
+        const icons = (choice: ThemeMode): { readonly icon?: string } => (this.fullscreen ? {} : { icon: THEME_ICONS[choice] });
+        const themes = THEMES.map((choice) => ({ value: choice, label: translate(locale, `theme.${choice}`), ...icons(choice) }));
         const onLanguage = (event: Event): void => {
             this.#emit('hcm-locale-change', { locale: resolveLocale(changedValue(event)) });
         };

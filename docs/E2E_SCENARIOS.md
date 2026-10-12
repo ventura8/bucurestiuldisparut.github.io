@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 50 | 177 | 63 | 114 | 7 | 170 | 5 |
+| 50 | 178 | 63 | 115 | 7 | 171 | 5 |
 
 ## Viewer
 
@@ -73,6 +73,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V15-HAPPY` | V15 | happy | No overflow or overlap at every viewport | no overflow or overlap at all 11 viewports; touch targets at least 48 px | e2e-viewer | planned | - |
 | `S-V15-HAPPY-SHEET-HEIGHTS` | V15 | happy | The compact bottom sheet's handle changes its height by tap, drag and keys | tap cycles peek -> half -> full; ArrowUp and ArrowDown step one height; a drag snaps to the nearest height; the map stays visible above it | e2e-viewer | planned | - |
 | `S-V15-BAD-COMPACT-LANDSCAPE` | V15 | bad | Compact landscape collapses the controls into a menu | compact landscape -> controls collapse into a menu | e2e-viewer | planned | - |
+| `S-V15-BAD-LONG-LABELS` | V15 | bad | Long Romanian labels in About wrap inside their choice instead of scrolling the dialog sideways | at 320 and 360 px the full-screen About dialog has no horizontal scroll and its theme choice shows no icon beside the labels (only the check mark); at 1440 px no language or theme label wraps | e2e-viewer | planned | - |
 | `S-V15-BAD-SHEET-DRAG-CLOSE` | V15 | bad | Dragging the bottom sheet below its lowest height closes it | a drag below half the peek height closes the sheet and the focus returns to the control that opened it | e2e-viewer | planned | - |
 | `S-V16-HAPPY` | V16 | happy | Only allowlisted hosts, no Firestore calls, one map load | the built Bucharest site boots: map canvas inside hcm-map-viewer, hcm-ready fired, 1 map created and 1 map.load event, no request outside loopback and the mocked hosts (0 Firestore calls) | e2e-viewer | exists | `e2e/specs/smoke/viewer-boot.spec.ts` |
 | `S-V16-BAD-INLINE-SCRIPT` | V16 | bad | An inline script or an unknown host is refused by the page policy | an injected inline script is refused (script-src-elem) and does not run; an image from an unknown host is refused (img-src) before any request; the console shows both CSP refusals | e2e-viewer | exists | `e2e/specs/viewer/content-security-policy.spec.ts` |

@@ -813,7 +813,11 @@ engine-ui, e2e-infra). The resolved change requests and what the contract became
 - **Fixes the integration found**: the kit's `styleMap` against the page's CSP (now `cssProperties`), the missing
   fonts in the engine build, the POI glyph font family, small photo sprites, the store's double map destroy (CR-17c).
 - **Review screenshots**: captured at 360×800, 768×1024, 1440×900 and 2560×1440, light and dark, with the e2e
-  fixtures (firewall and console guard on) into the git-ignored `reports/screenshots/m1/`.
+  fixtures (firewall and console guard on) into the git-ignored `reports/screenshots/m1/`. Six screens per viewport and scheme
+  (home with the consent banner and the no-layers note, About, About's settings, photo markers with view cones, the
+  photo sheet, the timeline over the e2e layers); the capture is a scratch Playwright project
+  (`reports/m1-capture/`, git-ignored) that imports the e2e fixtures, run in the quality image with
+  `npx playwright test -c reports/m1-capture/playwright.config.ts` after `npm run build:site:e2e`.
 
 ## 11. Planned paths
 

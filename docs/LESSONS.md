@@ -51,3 +51,8 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
    - Found by: `packages/ui/test/viewer/kit-integration.test.ts` (the first) and temporary screenshots (the second); the viewer's unit tests use kit doubles, which have no stacking.
    - Fix and pin: the menu dock sits above the banner and the snackbar, the viewer sets `--hcm-sheet-z-index` above its floating controls (`packages/ui/src/viewer/viewer-styles.ts`).
    - **Stacking is a property of the assembled page: test the viewer with the real kit, not only with doubles.**
+8. **A Romanian label wrapped on a wide screen and pushed the About dialog sideways on a phone.**
+   - Seen: in the second M1 review capture, About's theme choice showed "Ca / sistemul" on two lines inside a 40 px segment at 1440 px, and at 360 px the three segments with icons were wider than the full-screen dialog, which scrolled sideways.
+   - Found by: looking at the screenshots of all four viewports; the kit's unit tests used short labels ("Sistem", "Luminos") and the viewer's tests use kit doubles, which have no layout.
+   - Fix and pin: `hcm-segmented-button` segments take their content width (`flex: 1 1 auto` instead of an equal share of 0), stay inside their container and wrap a long label in a taller segment; the full-screen About drops the theme icons. `happyPath_aWideContainerKeepsEveryLabelOnOneLine` and `badPath_aNarrowContainerWrapsALongLabelInsteadOfScrollingSideways` measure it (both fail on the old styles); planned row `S-V15-BAD-LONG-LABELS`.
+   - **Test layout with the real catalogue's longest strings, not short sample labels: Romanian is the long language here.**
