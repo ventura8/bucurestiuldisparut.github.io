@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     CONTRAST_PAIRS,
     DEFAULT_SEED_COLOR,
+    THEME_VARIANTS,
     contrastIssues,
     contrastRatio,
     isHexColor,
@@ -40,20 +41,32 @@ describe('themeFromSeed', () => {
         expect(themeFromSeed('#8b5e3c')).toEqual(themeFromSeed('#8B5E3C'));
     });
 
+    it.each(['expressive', 'vibrant'] as const)('happyPath_variant_%s_differsFromTonalSpotWithTheSameRoles', (variant) => {
+        const tonal = themeFromSeed('#8B5E3C');
+        const theme = themeFromSeed('#8B5E3C', variant);
+
+        expect(Object.keys(theme.dark)).toEqual(Object.keys(tonal.dark));
+        expect(theme.light['--md-sys-color-primary']).not.toBe(tonal.light['--md-sys-color-primary']);
+        expect(THEME_VARIANTS).toContain(variant);
+    });
+
     it.each([['brown'], ['#8B5E3'], [''], ['8B5E3C']])('badPath_invalidSeed_%s_usesTheDefaultPalette', (seed) => {
         expect(themeFromSeed(seed)).toEqual(themeFromSeed(DEFAULT_SEED_COLOR));
     });
 });
 
 describe('contrast', () => {
-    it.each(SEEDS)('happyPath_seed_%s_meetsWcagAaInStandardAndAaaInHighContrast', (seed) => {
-        const theme = themeFromSeed(seed);
+    it.each(SEEDS.flatMap((seed) => THEME_VARIANTS.map((variant) => [seed, variant] as const)))(
+        'happyPath_seed_%s_%s_meetsWcagAaInStandardAndAaaInHighContrast',
+        (seed, variant) => {
+            const theme = themeFromSeed(seed, variant);
 
-        expect(contrastIssues(theme.light, 4.5)).toEqual([]);
-        expect(contrastIssues(theme.dark, 4.5)).toEqual([]);
-        expect(contrastIssues(theme.highContrastLight, 7)).toEqual([]);
-        expect(contrastIssues(theme.highContrastDark, 7)).toEqual([]);
-    });
+            expect(contrastIssues(theme.light, 4.5)).toEqual([]);
+            expect(contrastIssues(theme.dark, 4.5)).toEqual([]);
+            expect(contrastIssues(theme.highContrastLight, 7)).toEqual([]);
+            expect(contrastIssues(theme.highContrastDark, 7)).toEqual([]);
+        },
+    );
 
     it('happyPath_wcagRatios', () => {
         expect(contrastRatio('#000000', '#ffffff')).toBeCloseTo(21, 6);

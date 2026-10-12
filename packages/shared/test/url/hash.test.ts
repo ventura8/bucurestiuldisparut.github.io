@@ -41,6 +41,15 @@ describe('encodeHash', () => {
     it('badPath_nothingToEncodeIsEmpty', () => {
         expect(encodeHash({})).toBe('');
     });
+
+    it('badPath_writesAtMostTheOverlayEntriesTheDecoderReads', () => {
+        const overlayOpacity = Object.fromEntries(
+            Array.from({ length: MAX_OVERLAY_ENTRIES + 3 }, (_, index) => [`o${String(index)}`, 0.5]),
+        );
+
+        expect(Object.keys(decodeHash(encodeHash({ overlayOpacity })).overlayOpacity ?? {})).toHaveLength(MAX_OVERLAY_ENTRIES);
+        expect(encodeHash({ overlayOpacity }).split(',')).toHaveLength(MAX_OVERLAY_ENTRIES);
+    });
 });
 
 describe('decodeHash', () => {
@@ -127,6 +136,24 @@ describe('decodeHash', () => {
         const entries = Array.from({ length: MAX_OVERLAY_ENTRIES + 5 }, (_, index) => `o${String(index)}:10`).join(',');
 
         expect(Object.keys(decodeHash(`#op=${entries}`).overlayOpacity ?? {})).toHaveLength(MAX_OVERLAY_ENTRIES);
+    });
+
+    it('happyPath_poiCategoryOpacitiesRoundTrip', () => {
+        expect(decodeHash('#op=kh4-1966:40,photos:70,cladiri:25').overlayOpacity).toEqual({ 'kh4-1966': 0.4, photos: 0.7, cladiri: 0.25 });
+    });
+
+    it('badPath_withKnownOverlayIdsUnknownOnesAreDropped', () => {
+        const limits = { minZoom: 0, maxZoom: 22, overlayIds: new Set(['kh4-1966', 'photos', 'cladiri']) };
+
+        expect(decodeHash('#op=kh4-1966:40,ghost:50,cladiri:150', limits).overlayOpacity).toEqual({ 'kh4-1966': 0.4, cladiri: 1 });
+        expect(decodeHash('#op=ghost:50', limits)).toEqual({ legacy: false });
+    });
+
+    it('badPath_knownOverlayIdsAlsoApplyWhenOpComesFirst', () => {
+        expect(decodeHash('#op=ghost:50,photos:10', { minZoom: 0, maxZoom: 22, overlayIds: new Set(['photos']) })).toEqual({
+            legacy: false,
+            overlayOpacity: { photos: 0.1 },
+        });
     });
 
     it('badPath_lastValidRepeatWins', () => {

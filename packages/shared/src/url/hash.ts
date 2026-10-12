@@ -5,7 +5,9 @@
  *
  * Decoding is defensive: the hash is visitor input. Numbers must be plain decimals, every range is
  * clamped, ids must match `ID_PATTERN` (anything else is dropped, never put into a selector), unknown
- * parameters are ignored and a hash longer than `MAX_HASH_LENGTH` is ignored as a whole. The legacy
+ * parameters are ignored and a hash longer than `MAX_HASH_LENGTH` is ignored as a whole. `op=` carries the opacity
+ * of each overlay in percent (PLAN Addendum 3: historical layers, `photos`, POI categories); given the manifest's
+ * overlay ids, the decoder also drops the entries of unknown overlays. The legacy
  * hash of the 2015–2022 site, `#zoom/lat/lng/rotation/!a3!p2`, decodes to its map view; its layer
  * codes (`!…`) are ignored and `legacy` tells the viewer to rewrite the hash in the v1 form.
  */
@@ -50,6 +52,11 @@ export interface HashLimits {
     readonly minZoom: number;
     readonly maxZoom: number;
     readonly bounds?: BBox;
+    /**
+     * The manifest's overlay ids (layer ids, `photos`, POI category ids): with it, an `op=` entry for any other id is
+     * dropped while decoding. Without it every well-formed id is kept (the overlay model ignores unknown ones).
+     */
+    readonly overlayIds?: ReadonlySet<string>;
 }
 
 export const DEFAULT_HASH_LIMITS: HashLimits = { minZoom: 0, maxZoom: 22 };
@@ -70,9 +77,11 @@ function encodeView(view: MapView): string {
     return bearing === 0 ? position : `${position}/${String(bearing)}`;
 }
 
+/** At most `MAX_OVERLAY_ENTRIES` entries, the most the decoder reads back. */
 function encodeOverlays(overlays: Readonly<Record<string, number>>): string | null {
     const entries = Object.entries(overlays)
         .filter(([id]) => isId(id))
+        .slice(0, MAX_OVERLAY_ENTRIES)
         .map(([id, value]) => `${id}:${String(Math.round(clamp(value, 0, 1) * 100))}`);
     return entries.length === 0 ? null : `op=${entries.join(',')}`;
 }
@@ -134,12 +143,16 @@ function decodeOverlayEntry(entry: string): [string, number] | null {
     return isId(id) && value !== null ? [id, clamp(value, 0, 100) / 100] : null;
 }
 
-function decodeOverlays(value: string): Partial<HashState> {
+function isKnownOverlay(entry: [string, number] | null, known: ReadonlySet<string> | undefined): entry is [string, number] {
+    return entry !== null && (known === undefined || known.has(entry[0]));
+}
+
+function decodeOverlays(value: string, limits: HashLimits): Partial<HashState> {
     const entries = value
         .split(',')
         .slice(0, MAX_OVERLAY_ENTRIES)
         .map(decodeOverlayEntry)
-        .filter((entry) => entry !== null);
+        .filter((entry) => isKnownOverlay(entry, limits.overlayIds));
     return entries.length === 0 ? {} : { overlayOpacity: Object.fromEntries(entries) };
 }
 
@@ -148,7 +161,7 @@ function decodeOpacity(value: string): Partial<HashState> {
     return opacity === null ? {} : { opacity: clamp(opacity, 0, 1) };
 }
 
-type ParamDecoder = (value: string) => Partial<HashState>;
+type ParamDecoder = (value: string, limits: HashLimits) => Partial<HashState>;
 
 function decodeLang(value: string): Partial<HashState> {
     const lang = LOCALES.find((locale) => locale === value);
@@ -164,15 +177,15 @@ const PARAM_DECODERS: ReadonlyMap<string, ParamDecoder> = new Map<string, ParamD
     ['lang', decodeLang],
 ]);
 
-function decodeParam(segment: string): Partial<HashState> {
+function decodeParam(segment: string, limits: HashLimits): Partial<HashState> {
     const separator = segment.indexOf('=');
     const decoder = separator < 0 ? undefined : PARAM_DECODERS.get(segment.slice(0, separator));
-    return decoder === undefined ? {} : decoder(segment.slice(separator + 1));
+    return decoder === undefined ? {} : decoder(segment.slice(separator + 1), limits);
 }
 
 /** The first segment: the map view, or already a parameter (`#photo=x`). */
 function decodeHead(first: string, limits: HashLimits): DecodedHash {
-    return first.includes('=') ? { legacy: false, ...decodeParam(first) } : decodeView(first, limits);
+    return first.includes('=') ? { legacy: false, ...decodeParam(first, limits) } : decodeView(first, limits);
 }
 
 /**
@@ -186,5 +199,5 @@ export function decodeHash(raw: string, limits: HashLimits = DEFAULT_HASH_LIMITS
     }
     // String.split always returns at least one element.
     const [first, ...rest] = text.split('&') as [string, ...string[]];
-    return rest.reduce<DecodedHash>((state, segment) => ({ ...state, ...decodeParam(segment) }), decodeHead(first, limits));
+    return rest.reduce<DecodedHash>((state, segment) => ({ ...state, ...decodeParam(segment, limits) }), decodeHead(first, limits));
 }

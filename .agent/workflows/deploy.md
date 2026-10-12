@@ -10,7 +10,7 @@ Nothing in this workflow runs without the user's explicit yes **for that action*
 
 | Target | What | How | Trigger |
 | --- | --- | --- | --- |
-| Public site | `sites/bucharest/` with the engine `dist` copied same-origin | `actions/deploy-pages` in `ci.yml` | push to `master` after every job is green |
+| Public site | `dist/site/bucharest` (the `site-build` gate: `sites/bucharest/` plus the engine `dist` copied same-origin; the URL-restricted token from `MAPBOX_PUBLIC_TOKEN`) | `actions/deploy-pages` in `ci.yml` (its artifact path still names the M0 placeholder folder inside the site's source folder: `docs/research/DECISIONS-for-review.md` §12c) | push to `master` after every job is green |
 | Admin | `packages/admin/dist` on Firebase Hosting (`<proj>.web.app`, own origin, CSP headers in `firebase.json`) | `firebase deploy --only hosting` in the `deploy-firebase` job of `ci.yml` through WIF | green CI on `master` |
 | Rules and indexes | Firestore and Storage rules, Firestore indexes | `firebase deploy --only firestore,storage` through WIF | green CI on `master` |
 | Functions | `functions/dist/` (the same artifact the e2e emulator ran) | `firebase deploy --only functions` through WIF | green CI on `master` |

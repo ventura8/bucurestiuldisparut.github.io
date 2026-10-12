@@ -1,21 +1,19 @@
 import { defineConfig } from '@playwright/test';
 
+import { MOCK_API_ORIGIN, SITE_ORIGIN } from './fixtures/world.js';
+import { e2eProjects, tiersFrom } from './projects.js';
+import type { WorkerOptions } from './support/test.js';
+
 /**
  * Playwright 1.64 end-to-end configuration (docs/research/design-review-testability.md §4.2-4.3).
- * Runs inside the quality image only: `PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh` (gate `playwright`,
- * `npm run test:e2e`). Paths are relative to this file (the e2e/ workspace); reports land in the repository's
- * reports/ folder, where the CI workflow collects them.
+ * Runs inside the quality image only: `PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh` (gates `e2e-build`,
+ * which builds the engine and the e2e sites into dist/e2e-site, then `playwright`). Paths are relative to this file
+ * (the e2e/ workspace); reports land in the repository's reports/ folder, where the CI workflow collects them.
  *
- * Today one project runs the harness smoke (specs/smoke.spec.ts). M1 adds the functional matrix, the tour,
- * the a11y specials, no-WebGL and the cross-browser projects, and a `webServer` that serves the built viewer.
+ * Two loopback servers start before the tests (`webServer`, e2e/mock-apis/main.ts): the built sites on
+ * 127.0.0.1:4310 and the mock APIs on 127.0.0.1:4311. The tiers and their projects are e2e/projects.ts; `E2E_TIER`
+ * picks them (`smoke,fn`; unset is all) and `E2E_SHARD` = "index/total" splits a run across CI jobs.
  */
-/** Loopback origin of the pages under test. Nothing listens here yet: the smoke spec fulfils its page itself. */
-const ORIGIN = 'http://127.0.0.1:4310';
-
-/** Only loopback resolves in Chromium: defence in depth behind the firewall fixture (support/test.ts). */
-const HOST_RULES = '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost';
-/** WebGL without a GPU: ANGLE on SwiftShader, which the containers and CI runners always have. */
-const GL_ARGS = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', HOST_RULES];
 
 interface Shard {
     current: number;
@@ -37,8 +35,10 @@ function shardFrom(value: string | undefined): Shard | null {
 }
 
 const CI = process.env['CI'] === 'true';
+/** Both servers run from the repository root, through Node's type stripping (scripts/site/register-ts.mjs). */
+const SERVER = 'node --import ./scripts/site/register-ts.mjs e2e/mock-apis/main.ts';
 
-export default defineConfig({
+export default defineConfig<object, WorkerOptions>({
     testDir: 'specs',
     forbidOnly: true,
     // In CI a test that passes only on its retry still fails the run: flakiness is a bug, the retry only adds a trace.
@@ -52,17 +52,21 @@ export default defineConfig({
         ['html', { open: 'never', outputFolder: '../reports/playwright' }],
         ['junit', { outputFile: '../reports/junit/e2e.xml' }],
     ],
+    // SwiftShader renders the map on the CPU: a first frame can take seconds in a busy container.
+    expect: {
+        timeout: 15_000,
+        toHaveScreenshot: { animations: 'disabled', caret: 'hide', scale: 'css', maxDiffPixelRatio: 0.002 },
+    },
     use: {
-        baseURL: ORIGIN,
+        baseURL: SITE_ORIGIN,
         trace: 'retain-on-failure',
         locale: 'ro-RO',
         timezoneId: 'Europe/Bucharest',
         serviceWorkers: 'block',
     },
-    projects: [
-        {
-            name: 'smoke-chromium',
-            use: { browserName: 'chromium', viewport: { width: 1440, height: 900 }, launchOptions: { args: GL_ARGS } },
-        },
+    webServer: [
+        { command: `${SERVER} mock`, cwd: '..', url: `${MOCK_API_ORIGIN}/__health`, reuseExistingServer: !CI, timeout: 60_000 },
+        { command: `${SERVER} site`, cwd: '..', url: `${SITE_ORIGIN}/__health`, reuseExistingServer: !CI, timeout: 60_000 },
     ],
+    projects: e2eProjects(tiersFrom(process.env['E2E_TIER'])),
 });

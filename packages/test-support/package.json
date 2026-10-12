@@ -10,9 +10,18 @@
         ".": {
             "types": "./src/index.ts",
             "default": "./src/index.ts"
+        },
+        "./axe": {
+            "types": "./src/axe.ts",
+            "default": "./src/axe.ts"
+        },
+        "./fake-map": {
+            "types": "./src/fake-map.ts",
+            "default": "./src/fake-map.ts"
         }
     },
     "dependencies": {
-        "@hcm/shared": "0.0.0"
+        "@hcm/shared": "0.0.0",
+        "axe-core": "4.14.0"
     }
 }

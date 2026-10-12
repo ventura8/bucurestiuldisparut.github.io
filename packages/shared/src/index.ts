@@ -18,16 +18,15 @@ export { MAX_URL_LENGTH, isHostOf, isHttpsUrl, isRelativeUrl, toHttpsUrl } from 
 export { markdownToPlainText, parseMarkdown } from './text/markdown.js';
 export type { InlineNode, MarkdownDocument, MarkdownParagraph } from './text/markdown.js';
 
-export { ID_PATTERN, MAX_TOKENS, TOKEN_NAME_PATTERN, isId } from './schemas/primitives.js';
+export { ID_PATTERN, MAX_LINKS, MAX_TOKENS, PHOTOS_OVERLAY_ID, TOKEN_NAME_PATTERN, isId } from './schemas/primitives.js';
 export type { ValidationCode } from './schemas/primitives.js';
 export {
+    LAYER_ADJUSTMENT_RANGES,
     LAYER_KINDS,
     LICENSES,
     MANIFEST_VERSION,
     MAX_LAYERS,
-    MAX_LINKS,
     MAX_PHOTOS,
-    PHOTO_LOCATION_SLACK_DEG,
     THEME_SCHEMES,
     citySchema,
     layerSchema,
@@ -35,11 +34,36 @@ export {
     photoSchema,
     themeSchema,
 } from './schemas/manifest.js';
+export { PHOTO_LOCATION_SLACK_DEG } from './schemas/manifest-rules.js';
+export {
+    GEOMETRY_TYPES,
+    MAX_GEOMETRY_VERTICES,
+    MAX_POLYGON_RINGS,
+    geometryDocSchema,
+    geometryFromDoc,
+    geometryPositions,
+    geometrySchema,
+    geometryToDoc,
+} from './schemas/geometry.js';
+export type { Geometry, GeometryDoc, GeometryType } from './schemas/geometry.js';
+export {
+    DEFAULT_POI_ICON,
+    ICON_NAME_PATTERN,
+    MAX_POIS,
+    MAX_POI_CATEGORIES,
+    MAX_POI_PHOTOS,
+    POI_ICONS,
+    photosOverlaySchema,
+    poiCategorySchema,
+    poiSchema,
+} from './schemas/poi.js';
+export type { PhotosOverlay, Poi, PoiCategory, PoiIcon } from './schemas/poi.js';
 export type {
     Basemap,
     City,
     Credit,
     Layer,
+    LayerAdjustmentName,
     LayerAdjustments,
     LayerKind,
     LayerSource,
@@ -58,6 +82,8 @@ export {
     ADMIN_ROLES,
     FIRESTORE_LICENSES,
     GEOREF_METHODS,
+    HISTORY_ACTIONS,
+    HISTORY_ENTITIES,
     JOB_STATUSES,
     JOB_TYPES,
     LAYER_STATUSES,
@@ -67,9 +93,12 @@ export {
     USGS_SCENE_STATUSES,
     adminDocSchema,
     cityDocSchema,
+    historyEntryDocSchema,
     jobDocSchema,
     layerDocSchema,
     photoDocSchema,
+    poiCategoryDocSchema,
+    poiDocSchema,
     setupStatusDocSchema,
     timestampSchema,
     usgsSceneDocSchema,
@@ -78,11 +107,16 @@ export type {
     AdminDoc,
     CityDoc,
     FirestoreLicense,
+    HistoryAction,
+    HistoryEntity,
+    HistoryEntryDoc,
     JobDoc,
     JobStatus,
     JobType,
     LayerDoc,
     PhotoDoc,
+    PoiCategoryDoc,
+    PoiDoc,
     SetupStatusDoc,
     TimestampLike,
     UsgsSceneDoc,
@@ -91,5 +125,24 @@ export { formatPath, isValidationCode, parseManifestJson, toValidationIssues, va
 export type { ValidationIssue, ValidationResult } from './schemas/validation.js';
 export { checkManifestCompat, compareVersions, parseVersion } from './schemas/compat.js';
 export type { ManifestCompat } from './schemas/compat.js';
+
+export {
+    DEFAULT_PHOTOS_OPACITY,
+    OVERLAY_KINDS,
+    findOverlay,
+    hashOverlayOpacity,
+    opacityPercent,
+    overlayLabel,
+    overlaysFromManifest,
+    resetOverlays,
+    withHashOpacity,
+    withOverlayOpacity,
+    withOverlayVisibility,
+} from './overlays/model.js';
+export type { Overlay, OverlayKind, OverlayLabel } from './overlays/model.js';
+export { MAP_LAYER_TYPES, OPACITY_PROPERTIES, OVERLAY_LAYER_TYPES, overlayOpacityPaint, rasterAdjustmentPaint } from './overlays/paint.js';
+export type { MapLayerType, OpacityBase, OpacityProperty, PaintUpdate, RasterAdjustmentPaint } from './overlays/paint.js';
+export { isPhotoNearYear, PHOTO_YEAR_WINDOW } from './overlays/photos.js';
+export { poiIcon, poiInYear } from './overlays/poi.js';
 
 export * from './migration/index.js';

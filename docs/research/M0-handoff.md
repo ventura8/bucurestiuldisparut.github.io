@@ -36,16 +36,19 @@ All npm versions were checked with `npm view` on 2026-10-11 and are pinned exact
 | Format / style | `prettier@3.9.10`, `stylelint@17.16.0`, `stylelint-config-standard@40.0.0`, `postcss-lit@1.4.1` |
 | HTML / Markdown | `htmlhint@1.9.2`, `html-validate@11.16.2`, `markdownlint-cli2@0.23.3` |
 | Architecture | `knip@6.41.0`, `dependency-cruiser@18.5.0` |
-| Runtime | `lit@3.3.3` (in `@hcm/ui`); `zod@4.6.6` (`@hcm/shared`), `@material/material-color-utilities@0.4.0` (`@hcm/ui`), both added by the M1 contracts (§10g) |
+| Runtime | `lit@3.3.3` (in `@hcm/ui`); `zod@4.6.6` (`@hcm/shared`), `@material/material-color-utilities@0.4.0` (`@hcm/ui`), both added by the M1 contracts (§10g); `firebase@13.0.0` (`@hcm/engine`, the lazy analytics chunk, M1) |
+| UI kit build (M1) | devDependencies of `@hcm/ui`: `harfbuzzjs@1.6.3`, `wawoff2@2.0.1`, `material-symbols@0.48.0`, `@fontsource-variable/roboto-flex@5.3.0` (`npm run fonts:build`/`fonts:check`); `axe-core@4.14.0` (`@hcm/test-support`, entry `@hcm/test-support/axe`) |
+| E2E (M1) | devDependencies of `@hcm/e2e`: `@axe-core/playwright@4.13.0`, `mapbox-gl@3.32.0` (served by the mock APIs, never bundled), `sharp@0.35.5` |
 | Seed tooling | `sharp@0.35.5` (root devDependency, the legacy migration CLI; prebuilt `@img/sharp-linux-x64`) |
 | Firebase CLI | `firebase-tools@15.33.0` (root devDependency; emulator JARs baked into the image) |
 | Types | `@types/node@24.19.2` (Node 24 line, not the 26.x latest) |
 | Python CI tools | `scripts/ci/requirements.txt`: ruff 0.17.0, mypy 2.4.0, pytest 9.1.1, pytest-cov 7.1.0, coverage 7.16.2, yamllint 1.38.0, check-jsonschema 0.38.2, bandit 1.9.4, pip-audit 2.10.1, radon 6.0.1, defusedxml 0.7.1, editorconfig 0.17.1, requests-mock 1.12.1, taplo 0.9.3, plus every transitive dependency pinned; pip 26.2.1 |
 | Python | 3.14.4 (the GDAL image's interpreter). The raster pipeline uses `requires-python = ">=3.14,<3.15"` (§10c) |
 
-Not added yet (add with the milestone that first imports them, so knip stays clean):
-`mapbox-gl@3.32.0` (dev dependency of `@hcm/engine` for types and browser tests; never bundled),
-`@m3e/web`, `@material/web`, `@axe-core/playwright`, `msw`, `jsdom`. (`firebase`,
+Not added yet (add with the milestone that first imports them, so knip stays clean): `msw`, `jsdom`; `mapbox-gl` as
+a devDependency of `@hcm/engine` waits for the engine's browser project (CR-2: the adapter uses a structural type and
+the page's global, so nothing imports it). `@m3e/web` 2.10.0 and `@material/web` 2.5.0 were checked in M1 and not
+adopted (`packages/ui/README.md` → *Decisions*). (`firebase`,
 `@firebase/rules-unit-testing` and `@playwright/test` joined in M0: §10b, §10d; `zod`,
 `@material/material-color-utilities` and `sharp` in M1: §10g.)
 
@@ -733,6 +736,85 @@ branches.
   `packages/shared/test/cli` until a `tools` Vitest project exists (DECISIONS §9, M1 change request CR-2).
 - Scenario rows: V21 (embed API) and seven new rows on V01, V05, V07, V09, V13, V17 (`planned`).
 
+## 10h. M1 contracts delta for PLAN Addendum 3
+
+Added on 2026-10-12 by the contracts agent, alone, before the parallel M1 build. The full list of contract changes is
+`docs/research/M1-interfaces.md` §11; the public side is `docs/ENGINE_API.md` (manifest `photosOverlay`,
+`poiCategories[]`, `pois[]`, *Overlays*, the `op=` overlay ids, the new controller calls and events).
+
+- New in `@hcm/shared`, every file at 100 % lines and branches: `schemas/geometry.ts` (GeoJSON Point, LineString and
+  Polygon for the manifest; the nested-array-free Firestore shape and the conversions), `schemas/poi.ts`,
+  `schemas/manifest-rules.ts` (the cross-value rules, kept apart so `manifest.ts` and the rules do not import each
+  other), `overlays/model.ts`, `overlays/paint.ts`, `overlays/poi.ts`; Firestore `poi`, `poiCategory` and `history`
+  documents; the hash's `HashLimits.overlayIds`; 16 i18n keys (128 in each catalogue).
+- The POI fixture set of the e2e fixture manifest is `scripts/seed/e2e-pois.json`, pinned by
+  `packages/shared/test/seed/e2e-pois.test.ts` against the migrated Bucharest manifest.
+- Scenarios V22–V24 (planned); the brief's "V21–V23" collided with the existing embed-API behaviour V21.
+- zod 4 behaviour the tests rely on: a failed size check (`.min`, `.max`) is "continuable", so the refinements after
+  it still run (an empty polygon ring reports both `validation.tooSmall` and `validation.ringClosed`), while a failed
+  type check aborts them. Write refinements that are safe on a short array, never on a mistyped one.
+- No ask-first file was needed. The rules side is change request CR-4 (M2).
+
+## 10i. M1 e2e infrastructure and the static sites
+
+Added on 2026-10-12 by the M1 e2e-infra workstream (paths: `e2e/**`, `sites/**`, `starter-kit/**`, `scripts/site/**`).
+Nothing committed or pushed; no ask-first file edited (proposals: `DECISIONS-for-review.md` §12).
+
+- **Static sites** (`scripts/site/`): `npm run build:site` (gate `site-build`, build stage) writes `dist/site/bucharest`
+  and `dist/site/starter-kit` from each site's `site.json`, `config.js` and `site.css`. The page is generated
+  (`src/page.ts`, `src/html.ts`: elements and escaped text only, no inline script or style), never committed while
+  `.htmlvalidate.json` lacks `html-validate:prettier` (§10d); its meta CSP (`src/csp.ts`, `src/origins.ts`) is the
+  security review's public-site policy plus the consent-gated GA4/Firebase hosts and the origins the manifest and
+  `config.js` name; Mapbox GL JS 3.32.0 loads from api.mapbox.com with `sha384` integrity computed from the pinned npm
+  package (`src/sri.ts`), then `config.js`, then `engine/engine.mjs` as a module. `config.js` is parsed with the
+  TypeScript parser, never run (`src/config-js.ts`; `sonarjs/code-eval` refuses `vm`), so it must be one assignment of
+  literal data. The served manifest (`src/manifest.ts`) gets the token from `MAPBOX_PUBLIC_TOKEN` (forwarded by
+  `run-all-checks.sh`; without it the e2e placeholder `pk.e2e-fake-token` and a warning) and its photos under
+  `data/media/<id>/` (relative to the manifest, since the schema forbids `..`). Every input is validated before the
+  output folder, which must lie below `dist/`, is replaced.
+- **Tests**: `scripts/site/test` (gate `site-unit`, tests stage, `npm run test:site`) with its own
+  `scripts/site/vitest.config.ts` (90 % per file, today 100 %) because the root configuration is ask-first (§12a).
+  The generated pages are validated with the html-validate library against `.htmlvalidate.json`; the CLI entry runs as
+  a child process under `node --import ./scripts/site/register-ts.mjs`.
+- **E2E** (`e2e/`): `npm run build:site:e2e` (gate `e2e-build`) builds the engine and `dist/e2e-site` (Bucharest with
+  the fixture manifest of `e2e/fixtures/manifest.ts`: the seed, two synthetic raster layers, `scripts/seed/e2e-pois.json`,
+  the e2e crash endpoint). Playwright's `webServer` starts the site server (`:4310`) and the mock APIs (`:4311`,
+  `e2e/mock-apis/`): Mapbox GL JS from the pinned package, a Standard-like fragment style with slots and the
+  `show3dObjects` schema, TileJSON and solid-colour tiles from sharp with a z/x/y label, generated SDF glyphs, an empty
+  sprite and icon set, map sessions, `events.mapbox.com` and GA4/Firebase beacons, jsDelivr engine paths, the crash
+  endpoint; `GET /__calls`, `POST /__reset`. The fixtures (`e2e/support/test.ts`) add the network rules (loopback,
+  mocked hosts forwarded per test, everything else blocked, WebSockets too), the console and placeholder guards, the
+  map-instance counter and engine events, axe, the admin-input budget and the `lang` option. Projects and tiers
+  (`E2E_TIER`): `e2e/projects.ts`.
+- **Scenarios** now `exists`: `S-V00-HAPPY-MOCK-MAP`, `S-V00-BAD-UNMOCKED-PATH` (new harness rows),
+  `S-V01-BAD-NO-JAVASCRIPT`, `S-V16-BAD-INLINE-SCRIPT` (new rows) and `S-V16-HAPPY` (the viewer smoke on c360 and
+  l1440, which passes once the engine auto-boots from `engine.mjs`: change request CR-6 in `M1-interfaces.md`).
+- **Dependencies** (`@hcm/e2e`): `@axe-core/playwright@4.13.0`, `mapbox-gl@3.32.0` (served by the mock, never bundled),
+  `sharp@0.35.5`, `@hcm/shared`. The quality image's npm layer rebuilds for them.
+- **Found on the way**: Mapbox GL 3.32 also requests `<sprite>/iconset.pbf` for a `mapbox://sprites/…` sprite; at zoom
+  14 a 256 px raster source loads zoom-15 tiles; Playwright's text locators skip `<noscript>` content; a glob with
+  `**/` inside a JSDoc comment ends the comment.
+
+## 10j. M1 integration
+
+Added on 2026-10-12 by the M1 integrator, alone in the tree after the four workstreams (ui-kit, engine-core,
+engine-ui, e2e-infra). The resolved change requests and what the contract became: `docs/research/M1-interfaces.md`
+§12 and its *Change requests* table. Nothing committed or pushed; no ask-first file edited (proposals:
+`DECISIONS-for-review.md` §15).
+
+- **The viewer boots**: `npm run build:site:e2e` builds the engine and `dist/e2e-site`; the viewer smoke S-V16-HAPPY
+  (one map, one billed map load, `hcm-ready`, no console error, nothing outside the mocked hosts) passes on c360 and
+  l1440 with the real Mapbox GL JS in SwiftShader.
+- **Engine build**: `npm run build --workspace @hcm/engine` is `vite build` followed by `fonts:copy` (the kit's
+  `packages/ui/fonts/*.woff2` and `LICENSES.md` into `dist/fonts/`, CR-15); the site build copies all of `dist/`.
+  `engine.mjs` keeps the Firebase SDK in its lazy chunk; the IIFE inlines it (CR-10) and warns `EMPTY_IMPORT_META`
+  (handled by `engineBaseOf`).
+- **New gate** `fonts` (static, after `i18n`; CR-14): `npm run --silent fonts:check --workspace @hcm/ui`.
+- **Fixes the integration found**: the kit's `styleMap` against the page's CSP (now `cssProperties`), the missing
+  fonts in the engine build, the POI glyph font family, small photo sprites, the store's double map destroy (CR-17c).
+- **Review screenshots**: captured at 360×800, 768×1024, 1440×900 and 2560×1440, light and dark, with the e2e
+  fixtures (firewall and console guard on) into the git-ignored `reports/screenshots/m1/`.
+
 ## 11. Planned paths
 
 Appended by the M0 agent-assets agent on 2026-10-11. The `agent-assets` static gate
@@ -745,9 +827,8 @@ entries here; do not rewrite the rest of this file.
 
 - `.claude/settings.json`: the Claude Code permission allowlist (pipeline and read-only commands). Editing it is ask first (`AGENTS.md` → *Boundaries*), so it waits for the user's explicit approval of its contents.
 - `e2e/env`: M1–M2, the emulator environment for e2e (`.env.demo-hcm`, the test `.secret.local`).
-- `sites`: M1, the city sites served by GitHub Pages.
-- `sites/bucharest`: M1, the Bucharest site (`index.html`, `config.js`).
-- `starter-kit`: M1 (template) and M5 (template repository), the three-file kit for other cities.
-- `packages/engine/src/map/map-port.ts`: M1, the `MapPort` interface the engine core talks to.
-- `packages/engine/src/map/mapbox-adapter.ts`: M1, the only module allowed to import `mapbox-gl`.
 - `scripts/ci/sonar_setup.py`: the user's one-time SonarCloud token helper (hidden prompt, writes `.sonar-token`).
+- `e2e/tour`: M1, the layout and accessibility tour (`*.tour.ts`, the `tour` tier of `e2e/projects.ts`).
+- `e2e/a11y`: M1, the reduced-motion and forced-colours specs (the `a11y` tier).
+- `e2e/specs/starter-kit`: M1, the starter-kit scenarios (V17) once the viewer boots from a static manifest.
+- `e2e/specs/viewer/no-webgl.spec.ts`: M1, scenario V02's bad path (the `nogl` project).

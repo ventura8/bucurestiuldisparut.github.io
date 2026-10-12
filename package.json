@@ -16,6 +16,8 @@
     ],
     "scripts": {
         "build": "npm run build --workspaces --if-present",
+        "build:site": "node --import ./scripts/site/register-ts.mjs scripts/site/build-site.ts",
+        "build:site:e2e": "npm run build --workspace @hcm/engine && node --import ./scripts/site/register-ts.mjs e2e/scripts/build-site.ts",
         "emulators:setup": "firebase setup:emulators:firestore && firebase setup:emulators:storage && firebase setup:emulators:pubsub",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
@@ -29,6 +31,7 @@
         "seed:migrate": "node scripts/seed/migrate-legacy.mjs",
         "test": "firebase emulators:exec --project demo-hcm --only auth,firestore,storage 'bash scripts/ci/run-emulated-tests.sh'",
         "test:e2e": "npm run test:e2e --workspace @hcm/e2e",
+        "test:site": "vitest run --config scripts/site/vitest.config.ts",
         "test:unit": "vitest run --coverage",
         "typecheck": "tsc -b"
     },

@@ -1,0 +1,169 @@
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { page } from 'vitest/browser';
+
+import { HCM_LIGHTBOX_TAG, HcmLightbox, defineHcmLightbox } from '../../src/viewer/hcm-lightbox.js';
+import { defineKitDoubles, mountElement, recordEvents, shadowQuery, shadowText } from './doubles.js';
+import { TEST_MANIFEST_URL, testManifest } from './fixtures.js';
+
+const MANIFEST = testManifest();
+
+async function lightbox(properties: Partial<HcmLightbox> = {}): Promise<HcmLightbox> {
+    const element = await mountElement<HcmLightbox>(HCM_LIGHTBOX_TAG, {
+        photos: MANIFEST.photos,
+        photoId: 'uranus-1984',
+        open: true,
+        manifestUrl: TEST_MANIFEST_URL,
+        ...properties,
+    });
+    await element.updateComplete;
+    return element;
+}
+
+function press(element: HcmLightbox, key: string): void {
+    shadowQuery(element, '[role="dialog"]').dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, composed: true }),
+    );
+}
+
+function pointer(element: HcmLightbox, type: string, pointerId: number, x: number, y: number): void {
+    shadowQuery(element, '.stage').dispatchEvent(
+        new PointerEvent(type, { pointerId, clientX: x, clientY: y, bubbles: true, composed: true }),
+    );
+}
+
+describe('<hcm-lightbox>', () => {
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmLightbox();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_aFocusedModalDialogWithThePhotoAndItsPosition', async () => {
+        const element = await lightbox();
+
+        const dialog = page.getByRole('dialog', { name: 'Fotografie mărită' });
+        await expect.element(dialog).toHaveAttribute('aria-modal', 'true');
+        expect(element.shadowRoot?.activeElement?.getAttribute('role')).toBe('dialog');
+        expect(shadowText(element)).toContain('Strada Uranus');
+        expect(shadowText(element)).toContain('2 din 3');
+        const image = shadowQuery(element, 'img') as HTMLImageElement;
+        expect(image.alt).toBe('Strada Uranus');
+        expect(image.getAttribute('src')).toBe(`${location.origin}/seed/bucharest/derived/uranus-colt-mihai-voda/web.webp`);
+    });
+
+    it('happyPath_arrowsAndButtonsStepThroughThePhotos', async () => {
+        const element = await lightbox({ locale: 'en' });
+        const events = recordEvents(element, 'hcm-photo-select');
+
+        press(element, 'ArrowLeft');
+        press(element, 'ArrowRight');
+        await page.getByRole('button', { name: 'Next photo' }).click();
+        await page.getByRole('button', { name: 'Previous photo' }).click();
+
+        expect(events.map((event) => event.detail)).toEqual([
+            { photoId: 'mihai-voda-1978' },
+            { photoId: 'fara-an' },
+            { photoId: 'fara-an' },
+            { photoId: 'mihai-voda-1978' },
+        ]);
+        expect(shadowText(element)).toContain('2 of 3');
+    });
+
+    it('badPath_noStepPastTheFirstOrLastPhoto', async () => {
+        const element = await lightbox({ photoId: 'mihai-voda-1978' });
+        const events = recordEvents(element, 'hcm-photo-select');
+
+        press(element, 'ArrowLeft');
+        await expect.element(page.getByRole('button', { name: 'Fotografia anterioară' })).toBeDisabled();
+
+        element.photoId = 'fara-an';
+        await element.updateComplete;
+        press(element, 'ArrowRight');
+        await expect.element(page.getByRole('button', { name: 'Fotografia următoare' })).toBeDisabled();
+
+        expect(events).toEqual([]);
+    });
+
+    it('happyPath_escapeAndTheCloseButtonClose', async () => {
+        const element = await lightbox();
+        const events = recordEvents(element, 'hcm-close');
+
+        press(element, 'Escape');
+        await page.getByRole('button', { name: 'Închide' }).click();
+
+        expect(events).toHaveLength(2);
+    });
+
+    it('happyPath_keysWheelPinchAndDragZoomAndPan', async () => {
+        const element = await lightbox();
+
+        press(element, '+');
+        press(element, '=');
+        expect(element.zoom.scale).toBeCloseTo(1.5625);
+        press(element, '-');
+        expect(element.zoom.scale).toBeCloseTo(1.25);
+        press(element, '0');
+        expect(element.zoom.scale).toBe(1);
+
+        const wheel = new WheelEvent('wheel', { deltaY: -200, bubbles: true, cancelable: true, composed: true });
+        shadowQuery(element, '.stage').dispatchEvent(wheel);
+        expect(wheel.defaultPrevented).toBe(true);
+        expect(element.zoom.scale).toBeGreaterThan(1.4);
+
+        pointer(element, 'pointerdown', 1, 100, 100);
+        pointer(element, 'pointermove', 1, 140, 100);
+        expect(element.zoom.offset.x).toBeGreaterThan(0);
+        pointer(element, 'pointerdown', 2, 200, 100);
+        pointer(element, 'pointermove', 2, 340, 100);
+        expect(element.zoom.scale).toBeGreaterThan(2);
+        pointer(element, 'pointerup', 2, 340, 100);
+        pointer(element, 'pointercancel', 1, 140, 100);
+        pointer(element, 'pointermove', 1, 400, 400);
+
+        const style = (shadowQuery(element, 'img') as HTMLImageElement).style.transform;
+        expect(style).toContain('scale(');
+        expect(style).toContain('translate(');
+    });
+
+    it('badPath_otherKeysAndStrayPointersChangeNothing', async () => {
+        const element = await lightbox();
+
+        press(element, 'a');
+        pointer(element, 'pointermove', 7, 10, 10);
+
+        expect(element.zoom).toEqual({ scale: 1, offset: { x: 0, y: 0 } });
+    });
+
+    it('badPath_aBrokenImageShowsAnErrorAndCloseStillWorks', async () => {
+        const element = await lightbox({ photoId: 'fara-an', locale: 'en' });
+        const events = recordEvents(element, 'hcm-close');
+
+        shadowQuery(element, 'img').dispatchEvent(new Event('error'));
+        await element.updateComplete;
+
+        await expect.element(page.getByRole('alert')).toHaveTextContent('The image could not be loaded.');
+        press(element, 'Escape');
+        expect(events).toHaveLength(1);
+
+        element.photoId = 'uranus-1984';
+        await element.updateComplete;
+        expect(element.failed).toBe(false);
+    });
+
+    it('badPath_closedOrUnknownPhotoRendersNothing', async () => {
+        const closed = await lightbox({ open: false });
+        expect(closed.shadowRoot?.querySelector('[role="dialog"]')).toBeNull();
+
+        const unknown = await lightbox({ photoId: 'nu-exista' });
+        expect(unknown.shadowRoot?.querySelector('[role="dialog"]')).toBeNull();
+    });
+
+    it('badPath_definingTwiceKeepsTheFirstRegistration', () => {
+        defineHcmLightbox();
+
+        expect(customElements.get(HCM_LIGHTBOX_TAG)).toBe(HcmLightbox);
+    });
+});

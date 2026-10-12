@@ -497,3 +497,331 @@ Verify: `npm run seed:migrate` in the quality image ends with `manifest written 
 | --- | --- | --- | --- |
 | `seed/bucharest/derived/` (90 WebP, 9.5 MB) | Committed | Deterministic migration output; the static site and the e2e fixtures need it; `check_repo_budget.py` excludes `seed/` | `git rm -r seed/bucharest/derived` and regenerate it at build time with `scripts/seed/migrate-legacy.mjs` |
 | CR-2 (`vitest.config.ts` `engine-browser` project) pending | Workaround: every Lit component, viewer-specific ones included, lives in `packages/ui` (browser project); `packages/engine` stays DOM-free logic plus a dependency-injected `mount()` tested in Node | No ask-first edit while the user is away; no gate weakened | Once §9 is approved, viewer components may move to `packages/engine/src/ui/` |
+
+## 12. M1 e2e infrastructure and the static sites (e2e-infra, 2026-10-12)
+
+Added by the M1 e2e-infra workstream. The sites (`sites/bucharest/`, `starter-kit/`), their build (`scripts/site/`) and
+the Playwright tiers with their mock APIs (`e2e/`) work without any of the edits below; each one folds a workaround back
+into the repository-wide configuration. None weakens a gate.
+
+### 12a. `vitest.config.ts` and `sonar-project.properties`: the site build's tests join the `tools` project
+
+The site build's unit tests run today from their own configuration, `scripts/site/vitest.config.ts` (gate `site-unit`,
+`npm run test:site`, 90 % per file on all four metrics, reports `reports/junit/site.xml` and `reports/coverage/site/`),
+because the root configuration is ask-first and has no project for the Node tooling under `scripts/`. Neither SonarQube
+nor the `coverage` gate sees `scripts/site` yet. With §9 approved, the `tools` row measures it too:
+
+```diff
+     {
+         // JavaScript CLIs, driven as child processes; their logic is TypeScript measured in its own package.
+         dir: '.',
+         project: { extends: true, test: { name: 'tools', environment: 'node', include: ['scripts/*/test/**/*.test.ts', 'packages/*/scripts/test/**/*.test.ts'] } },
+-        coverage: [],
++        // The static site build (scripts/site/src) is product code: it writes the page, its CSP and the served manifest.
++        coverage: ['scripts/site/src/**/*.ts'],
+     },
+```
+
+```diff
+ sonar.sources=packages/shared/src,\
+@@
+     scripts/ci,\
++    scripts/site/src,\
+     scripts/git-hooks,\
+@@
+ sonar.tests=packages/shared/test,\
+@@
+     scripts/ci/tests,\
++    scripts/site/test,\
+     e2e
+```
+
+Follow-ups in the same change: delete `scripts/site/vitest.config.ts`, the `test:site` script and the `site-unit` gate
+(with its row in `scripts/ci/tests/test_pipeline.py` and the stage tables), and add `scripts/site/test/**/*.ts` to `TESTS`
+in `eslint.config.js` (§12b).
+
+Verify: `PIPELINE_STAGE=tests` (`vitest` lists `tools`; `coverage` measures `scripts/site/src/*.ts` at 100 %).
+
+### 12b. `eslint.config.js`: the product limits for the site build, the test rules for its tests, browser globals for `config.js`
+
+`scripts/site/src/**` and the e2e servers are linted with the type-checked rule sets but none of `PRODUCT_LIMITS`
+(complexity 5, 400 lines, 60 per function) or the Vitest rules; they were written within those limits by hand. A city's
+`config.js` has no browser globals, so it writes `globalThis.HistoricCityMapConfig` (the same object as
+`window.HistoricCityMapConfig` in a classic script) instead of the form `docs/ENGINE_API.md` shows.
+
+```diff
+-const PRODUCT = ['packages/*/src/**/*.ts', 'functions/src/**/*.ts'];
+-const TESTS = ['packages/*/test/**/*.ts', 'packages/test-support/src/**/*.ts', 'functions/test/**/*.ts', 'firebase/rules-tests/**/*.ts'];
++const PRODUCT = ['packages/*/src/**/*.ts', 'functions/src/**/*.ts', 'scripts/site/src/**/*.ts', 'scripts/site/build-site.ts'];
++const TESTS = [
++    'packages/*/test/**/*.ts',
++    'packages/test-support/src/**/*.ts',
++    'functions/test/**/*.ts',
++    'firebase/rules-tests/**/*.ts',
++    'scripts/site/test/**/*.ts',
++];
+@@
++    {
++        // A city's config.js is a classic script that assigns window.HistoricCityMapConfig (docs/ENGINE_API.md).
++        files: ['sites/*/config.js', 'starter-kit/config.js'],
++        languageOptions: { sourceType: 'script', globals: globals.browser },
++    },
+```
+
+`PRODUCT` also brings the browser globals to the site build, which is Node code; it only uses imported Node modules, so
+nothing changes in practice. Then `sites/bucharest/config.js` and `starter-kit/config.js` may say `window.` again
+(`scripts/site/src/config-js.ts` accepts both).
+
+Verify: `PIPELINE_STAGE=static` (`eslint`).
+
+### 12c. `.github/workflows/ci.yml`: deploy the built site, the public token, e2e tiers in the matrix
+
+- The Pages artifact path `sites/bucharest/dist` is a placeholder from M0; the site build writes `dist/site/bucharest`.
+- The site build reads the URL-restricted public Mapbox token from `MAPBOX_PUBLIC_TOKEN` (forwarded by
+  `run-all-checks.sh`). A `pk.` token restricted to `https://ventura8.github.io` is public by design (it is in the served
+  manifest), so a repository variable fits; without it the build uses the e2e placeholder and says so.
+- `E2E_TIER` is forwarded too: the tour tier (44 projects) is worth its own shards once its specs exist.
+
+```diff
+             - name: Build stage
+               env:
+                   PIPELINE_STAGE: build
++                  MAPBOX_PUBLIC_TOKEN: ${{ vars.MAPBOX_PUBLIC_TOKEN }}
+                   HCM_DOCKER_BUILD_FLAGS: ${{ env.LOAD_IMAGE }}
+               run: bash scripts/ci/run-all-checks.sh
+@@
+-            # The Bucharest site (M1/M2: sites/bucharest) is what GitHub Pages serves.
++            # The Bucharest site, built by the site-build gate (scripts/site), is what GitHub Pages serves.
+             - name: Upload the GitHub Pages artifact
+               if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
+               uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+               with:
+-                  path: sites/bucharest/dist
++                  path: dist/site/bucharest
+@@
+     e2e:
+-        name: E2E (Playwright + Firebase Emulators) ${{ matrix.shard }}
++        name: E2E (Playwright, ${{ matrix.tier }}) ${{ matrix.shard }}
+@@
+             matrix:
+-                # Shards as "index/total" (Playwright --shard). Grow the list and the total together.
+-                shard: ['1/1']
++                # Tiers of e2e/projects.ts; shards as "index/total" (Playwright --shard) within a tier.
++                include:
++                    - { tier: 'smoke,fn,a11y,nogl', shard: '1/1' }
++                    - { tier: tour, shard: '1/2' }
++                    - { tier: tour, shard: '2/2' }
+@@
+                   PIPELINE_STAGE: e2e
++                  E2E_TIER: ${{ matrix.tier }}
+                   E2E_SHARD: ${{ matrix.shard }}
+@@
+-                  check_name: E2E Test Report (${{ matrix.shard }})
++                  check_name: E2E Test Report (${{ matrix.tier }} ${{ matrix.shard }})
+```
+
+The comment in `.github/actions/quality-image/action.yml` that lists the forwarded variables then names `E2E_TIER` and
+`MAPBOX_PUBLIC_TOKEN` too.
+
+Verify: `PIPELINE_STAGE=static` (actionlint, workflow schemas, `workflow-policy`), then one run on GitHub.
+
+### 12d. `.htmlvalidate.json` (§1, change request CR-3): still wanted, for other pages
+
+The site pages stay generated after §1 is approved: their meta CSP comes from the site's manifest and configuration and
+their Subresource Integrity from the pinned `mapbox-gl` package, so a committed copy would drift. §1 is still needed for
+the admin's entry page (M2) and for the starter kit's committed `index.html` in the template repository (M5). The
+generated pages are checked against `.htmlvalidate.json` itself (`scripts/site/test/page.test.ts`), so they keep passing
+whatever the gate's configuration becomes.
+
+### 12e. `package.json` `lint:deps`: also cruise the site build
+
+Together with §3 (which adds `e2e` and `firebase/rules-tests`), add `scripts/site`, so the site build is checked for
+cycles and imports that do not resolve:
+
+```diff
+-        "lint:deps": "depcruise packages functions --config .dependency-cruiser.cjs",
++        "lint:deps": "depcruise packages functions e2e firebase/rules-tests scripts/site --config .dependency-cruiser.cjs",
+```
+
+Verify: `PIPELINE_STAGE=static` (`dependency-cruiser`).
+
+### 12f. `contract` stage: the CDN serves the bytes the page's integrity names
+
+The page pins `https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.{js,css}` with a `sha384` digest computed from the
+npm release `mapbox-gl@3.32.0` (`scripts/site/src/sri.ts`). Mapbox publishes both from one build, but that the CDN bytes
+are identical is **unverified**: if they differed, browsers would refuse the script and the site would show nothing. The
+first deploy shows it at once; a weekly check in `scripts/ci/check_contracts.py` would keep it true (fetch both files,
+compare their digests with the npm files' digests). Not added here: the `contract` stage and its script belong to the CI
+tooling, and the check needs the network.
+
+## 13. M1 engine core (engine-core, 2026-10-12)
+
+Added by the engine-core workstream (`packages/engine/src/{core,map,telemetry,config}/`,
+`packages/test-support/src/fake-map.ts`). Its change requests are CR-8 to CR-11 in `M1-interfaces.md`.
+
+### 13a. `packages/engine/vite.config.ts`: the Firebase SDK in the IIFE build (CR-10)
+
+The analytics SDK (firebase/app, firebase/analytics, firebase/performance) is behind one dynamic import,
+`packages/engine/src/telemetry/firebase-sdk.ts`. It runs only after consent and only with a `measurementId`. Measured in
+the quality image on 2026-10-12 with a throwaway library build of `telemetry.ts`:
+
+| Build | What the SDK costs |
+| --- | --- |
+| ES module (`engine.mjs`) | a separate chunk `firebase-sdk-<hash>.js`, 83.6 KB raw, 23.9 KB gzip, fetched only after consent; telemetry itself is 2.8 KB gzip |
+| IIFE (`engine.iife.js`) | inlined: Vite builds IIFE output with `codeSplitting: false`, so the same 24 KB gzip is downloaded with the engine (not evaluated before consent, and served from the city's own origin, so no Google host is contacted) |
+
+The bundle budget of `engine.iife.js` is 150 KB gzip (`scripts/ci/check_bundle_budget.py`). Options:
+
+1. **Keep the configuration** (recommended for M1). The city pages load `engine.mjs` (CR-6, which the generated Bucharest
+   page already does), so visitors get the lazy chunk. The IIFE stays a fallback for third-party pages and carries the
+   SDK. The site build and the release must ship every file of `packages/engine/dist/`, the chunk included.
+2. **Drop the IIFE format in v1.** `docs/ENGINE_API.md` documents the IIFE and `window.HistoricCityMap`, so this is a
+   contract change that contracts and the integrator decide.
+3. **A second build pass for the IIFE** that loads the ES chunk at run time from `engineBase`. This needs a deterministic
+   chunk name in the ES build and a format flag that the telemetry loader reads:
+
+```diff
+         rolldownOptions: {
+             external: ['mapbox-gl'],
+             output: {
+                 globals: { 'mapbox-gl': 'mapboxgl' },
++                // The lazy analytics chunk keeps a fixed name, so the IIFE build can load it from `engineBase`.
++                chunkFileNames: '[name].mjs',
+             },
+         },
+```
+
+   The second half of option 3 (a `define` per format, which needs two `vite build` runs, and a loader that calls
+   `import(new URL('firebase-sdk.mjs', engineBase).href)` in the IIFE) touches `vite.config.ts`, the build script and
+   the CSP. Choose it only if the IIFE remains a first-class embed.
+
+Verify: `PIPELINE_STAGE=build`. Both `vite-build` and `bundle-budget` must pass. `packages/engine/dist/` must list the
+chunk next to `engine.mjs`.
+
+### 13b. CR-2 follow-up: the adapter against the real `mapbox-gl@3.32.0`
+
+The adapter does not import `mapbox-gl`. It takes the global through the structural type `MapboxGl`
+(`packages/engine/src/map/mapbox-types.ts`), and its node tests drive `FakeMapboxGl` from `@hcm/test-support`. Once the
+`engine-browser` project of §9 exists:
+
+- add `mapbox-gl@3.32.0` as a devDependency of `@hcm/engine` (the e2e workspace already pins it);
+- add a browser test that checks `mapboxgl satisfies MapboxGl` at the type level, and that mounts `createMapboxPort` on
+  the real library with a local style that has a `basemap` import and slots. The test then checks `getSlot`,
+  `getPaintProperty('raster-opacity')`, `getConfigProperty('basemap', 'show3dObjects')` and one canvas pixel probe.
+  This is `design-review-testability.md` §3.2.
+
+Until then, what has not been checked against the real library: the names of the paint, layout and configuration
+properties, and the fact that Mapbox GL JS 3.32 reads a `.pmtiles` source URL natively.
+
+Verify: `PIPELINE_STAGE=tests`.
+
+### 13c. `.dependency-cruiser.cjs` §3: engine core already complies
+
+Only two engine files reach Firebase. `packages/engine/src/telemetry/analytics.ts` imports types from firebase/app,
+firebase/analytics and firebase/performance. `packages/engine/src/telemetry/firebase-sdk.ts` imports the functions. No
+data SDK is imported. With §3 applied, `engine-firebase-only-in-telemetry` and
+`engine-telemetry-only-app-analytics-performance` pass as they are. Firebase 13.0.0 is now a runtime dependency of
+`@hcm/engine`, at the version the rules tests already locked (`package-lock.json`: only the dev flags of the firebase tree
+changed). This changes a workspace `package.json`, so the next image build reinstalls npm (M0-handoff §3).
+
+### 13d. Information for the viewer page's CSP (e2e-infra, `scripts/site/`)
+
+The consent-gated SDKs need these hosts. The meta CSP is static, so they are listed even though nothing is contacted
+before consent (scenario V19 proves that with the firewall):
+
+- `script-src https://www.googletagmanager.com`;
+- `connect-src https://*.google-analytics.com https://*.analytics.google.com https://firebaseinstallations.googleapis.com
+  https://firebaselogging-pa.googleapis.com https://firebaseremoteconfig.googleapis.com`;
+- the origin of `analytics.errorEndpoint` (the M2 `telemetry.reportError` function).
+
+The crash reports are POSTed as `text/plain` without credentials, so they need no CORS preflight.
+
+The compare plugin loads from `https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-compare/v0.6.0/`, which the
+existing `https://api.mapbox.com/mapbox-gl-js/` source already covers. Setting `script.src` is a Trusted Types sink, so
+the report-only `require-trusted-types-for 'script'` policy will report it. A Trusted Types policy for that one constant
+URL is the fix, once the policy is enforced.
+
+## 14. `vitest.config.ts`: pre-bundle the browser tests' dependencies (ui-kit, 2026-10-12)
+
+Added by the M1 ui-kit workstream (`docs/research/M1-interfaces.md` CR-16). On a cold Vite cache (`npm ci` deletes
+`node_modules/.vite`, so every CI run is cold) the `ui` browser project discovers dependencies while the tests import
+them (`lit/directives/style-map.js`, `lit/directives/repeat.js`, `lit/directives/keyed.js`, `axe-core`), re-optimises
+and reloads the page mid-run. Seen locally on 2026-10-12: "Vite unexpectedly reloaded a test", "Failed to fetch
+dynamically imported module", "The iframe … did not become ready within 60000ms" and "Multiple versions of Lit loaded"
+(there is one Lit in `node_modules`; the reload created a second pre-bundle). A second run on the warm cache passed. Vite
+suggests exactly this fix: list the dependencies so they are pre-bundled before the first test.
+
+```diff
+     {
+         dir: 'packages/ui',
+-        project: { extends: true, test: { name: 'ui', include: ['packages/ui/test/**/*.test.ts'], browser: chromium } },
++        project: {
++            extends: true,
++            // Pre-bundle what the browser tests import, so a cold cache (every CI run) never re-optimises and reloads a test.
++            optimizeDeps: {
++                include: [
++                    'lit',
++                    'lit/directives/keyed.js',
++                    'lit/directives/repeat.js',
++                    'lit/directives/style-map.js',
++                    'zod',
++                    '@material/material-color-utilities',
++                    '@hcm/test-support > axe-core',
++                ],
++            },
++            test: { name: 'ui', include: ['packages/ui/test/**/*.test.ts'], browser: chromium },
++        },
+         coverage: ['packages/ui/src/**/*.ts'],
+     },
+```
+
+`@hcm/test-support > axe-core` is Vite's nested-dependency syntax: `@hcm/test-support` pins `axe-core@4.14.0`, while the
+root `axe-core` is the 4.13 line that `@axe-core/playwright` brings. A new Lit directive or browser-test dependency joins
+the list in the same change. Verify: delete `node_modules/.vite`, then `PIPELINE_STAGE=tests` (no reload warning in
+the `vitest` gate's output).
+
+## 15. M1 integration (integrator, 2026-10-12)
+
+Added by the M1 integrator (`docs/research/M1-interfaces.md` §12). Each item is an ask-first file; the tree works and
+every gate passes without it.
+
+### 15a. `eslint.config.js`: ban Lit's `styleMap` in product code
+
+The viewer smoke found three kit elements (slider, progress, overlay swatch) whose `styleMap` wrote a `style` attribute
+on its first render; the city page's CSP (`style-src` without `'unsafe-inline'`) refused each one and logged a console
+error. They now use `cssProperties` (`packages/ui/src/components/css-properties.ts`). This rule keeps `styleMap` out
+(a `style=${…}` attribute binding is not caught by it; the e2e console guard still is):
+
+```diff
+ const UNSAFE_LIT_DIRECTIVES = {
+     patterns: [
+         {
+             group: ['lit/directives/unsafe-*', 'lit-html/directives/unsafe-*'],
+             message: 'unsafeHTML/unsafeSVG/unsafeMathML render strings as markup; data is never HTML (security review §1.7).',
+         },
++        {
++            group: ['lit/directives/style-map.js', 'lit-html/directives/style-map.js'],
++            message: "styleMap writes a style attribute the city page's CSP refuses; use cssProperties (packages/ui/src/components/css-properties.ts).",
++        },
+     ],
+ };
+```
+
+With it, §14's `optimizeDeps.include` no longer needs `lit/directives/style-map.js` (add `lit/directives/class-map.js`
+instead).
+
+### 15b. `packages/engine/vite.config.ts`: no change proposed (CR-15, CR-21)
+
+Rolldown replaces `import.meta` with `{}` in the IIFE output and warns `EMPTY_IMPORT_META` on every build. A global
+`define` would also empty `import.meta.url` in `engine.mjs`, where the engine needs it, and both formats share one
+configuration, so the warning stays: the engine falls back to the running script in the IIFE (`engineBaseOf` in
+`packages/engine/src/mount.ts`, unit-tested). The kit's fonts are copied by the package's own `fonts:copy` script
+(`vite build && npm run fonts:copy`), so `vite.config.ts` needs no plugin for CR-15. Only CR-10 (§13a) remains for
+this file.
+
+### 15c. The site CSP once the engine comes from jsDelivr (M5)
+
+`font-src 'self'` covers the fonts while Bucharest serves the engine from its own origin. A city that loads the engine
+from `cdn.jsdelivr.net` (M5) needs that origin in `font-src` and `script-src`; `scripts/site/src/csp.ts` should add the
+engine's origin when `config.js` names an `engineBase` on another host (an e2e-infra change, not ask-first; recorded
+here so M5 does not miss it).

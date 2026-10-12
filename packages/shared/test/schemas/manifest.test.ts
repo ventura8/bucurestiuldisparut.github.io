@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { MAX_LINKS } from '../../src/schemas/manifest.js';
+import { MAX_GEOMETRY_VERTICES, MAX_POLYGON_RINGS } from '../../src/schemas/geometry.js';
+import { MAX_LINKS } from '../../src/schemas/primitives.js';
 import { parseManifestJson, validateManifest, type ValidationIssue } from '../../src/schemas/validation.js';
-import { validCity, validLayer, validManifest, validPhoto } from '../fixtures/manifest.js';
+import { squareRing, validCity, validLayer, validManifest, validPhoto, validPoi, validPoiCategory } from '../fixtures/manifest.js';
 
 type Path = readonly (string | number)[];
+
+/** A Firebase web API key shape, assembled at run time so no `AIza…` literal is ever committed (gitleaks). */
+const FAKE_FIREBASE_KEY = ['AI', 'za', 'e2e'.padEnd(35, '0')].join('');
+const FIREBASE_IDS = { apiKey: FAKE_FIREBASE_KEY, appId: '1:123456789012:web:0a1b2c3d4e5f', projectId: 'demo-hcm' };
 
 /** The valid manifest with the value at `path` replaced (`undefined` deletes the key). */
 function patched(path: Path, value: unknown): Record<string, unknown> {
@@ -62,6 +67,13 @@ describe('manifest v1: happy paths', () => {
         expect(issuesOf(patched(['layers', 0, 'source'], source))).toEqual([]);
     });
 
+    it('happyPath_theFirebaseWebAppIdsForAnalytics', () => {
+        const analytics = { measurementId: 'G-E2E0000000', firebase: FIREBASE_IDS };
+        const result = validateManifest(patched(['city', 'analytics'], analytics));
+
+        expect(result.ok && result.value.city.analytics.firebase).toEqual(FIREBASE_IDS);
+    });
+
     it('happyPath_httpsStyleUrl', () => {
         expect(issuesOf(patched(['city', 'basemap'], { style: 'https://styles.example.org/style.json' }))).toEqual([]);
     });
@@ -69,6 +81,46 @@ describe('manifest v1: happy paths', () => {
     it('happyPath_adjustmentsWithOneBound', () => {
         expect(issuesOf(patched(['layers', 0, 'adjustments'], { brightnessMax: 0.5 }))).toEqual([]);
         expect(issuesOf(patched(['layers', 0, 'adjustments'], { brightnessMin: 0.5 }))).toEqual([]);
+    });
+
+    it('happyPath_aManifestWithoutPoisOrPhotosOverlay', () => {
+        const manifest = validManifest();
+        for (const key of ['photosOverlay', 'poiCategories', 'pois']) {
+            Reflect.deleteProperty(manifest, key);
+        }
+
+        expect(issuesOf(manifest)).toEqual([]);
+    });
+
+    it.each([
+        [
+            {
+                type: 'LineString',
+                coordinates: [
+                    [26.08, 44.42],
+                    [26.09, 44.43],
+                ],
+            },
+        ],
+        [{ type: 'Polygon', coordinates: [squareRing(26.08, 44.42, 0.01), squareRing(26.08, 44.42, 0.002)] }],
+        [{ type: 'Point', coordinates: [26.3, 44.6] }],
+    ])('happyPath_poiGeometry_%j_isValid', (geometry) => {
+        expect(issuesOf(patched(['pois', 0, 'geometry'], geometry))).toEqual([]);
+    });
+
+    it('happyPath_aPoiWithOnlyAnEndYearOrNoYears', () => {
+        const ended = patched(['pois', 0, 'yearStart'], undefined);
+        const poi = validPoi();
+        Reflect.deleteProperty(poi, 'yearStart');
+        Reflect.deleteProperty(poi, 'yearEnd');
+        const timeless = { ...validManifest(), pois: [poi] };
+
+        expect(issuesOf(ended)).toEqual([]);
+        expect(issuesOf(timeless)).toEqual([]);
+    });
+
+    it('happyPath_anyIconNameIsAccepted', () => {
+        expect(issuesOf(patched(['poiCategories', 0, 'icon'], 'celebration'))).toEqual([]);
     });
 
     it('happyPath_parsesJsonText', () => {
@@ -124,6 +176,34 @@ const RULES = [
     ['a secret Mapbox token', ['city', 'mapbox', 'publicToken'], 'sk.secret-scenario', 'city.mapbox.publicToken', 'validation.format'],
     ['a Universal Analytics id', ['city', 'analytics', 'measurementId'], 'UA-1234-1', 'city.analytics.measurementId', 'validation.format'],
     [
+        'a Firebase key of the wrong shape',
+        ['city', 'analytics', 'firebase'],
+        { ...FIREBASE_IDS, apiKey: 'not-a-key' },
+        'city.analytics.firebase.apiKey',
+        'validation.format',
+    ],
+    [
+        'a Firebase app id of another platform',
+        ['city', 'analytics', 'firebase'],
+        { ...FIREBASE_IDS, appId: '1:123456789012:android:0a1b' },
+        'city.analytics.firebase.appId',
+        'validation.format',
+    ],
+    [
+        'a Firebase project id with capitals',
+        ['city', 'analytics', 'firebase'],
+        { ...FIREBASE_IDS, projectId: 'Demo-HCM' },
+        'city.analytics.firebase.projectId',
+        'validation.format',
+    ],
+    [
+        'Firebase ids with a secret',
+        ['city', 'analytics', 'firebase'],
+        { ...FIREBASE_IDS, serviceAccount: 'x' },
+        'city.analytics.firebase.serviceAccount',
+        'validation.unknownKey',
+    ],
+    [
         'an http error endpoint',
         ['city', 'analytics', 'errorEndpoint'],
         'http://errors.example.org',
@@ -171,7 +251,12 @@ const RULES = [
         'layers[0].adjustments.brightnessMax',
         'validation.value',
     ],
+    ['a contrast below -1', ['layers', 0, 'adjustments', 'contrast'], -1.5, 'layers[0].adjustments.contrast', 'validation.tooSmall'],
+    ['a saturation over 1', ['layers', 0, 'adjustments', 'saturation'], 2, 'layers[0].adjustments.saturation', 'validation.tooBig'],
+    ['a brightness over 1', ['layers', 0, 'adjustments', 'brightnessMax'], 1.2, 'layers[0].adjustments.brightnessMax', 'validation.tooBig'],
+    ['an unknown adjustment', ['layers', 0, 'adjustments', 'gamma'], 2, 'layers[0].adjustments.gamma', 'validation.unknownKey'],
     ['an unknown layer kind', ['layers', 0, 'kind'], 'drawing', 'layers[0].kind', 'validation.value'],
+    ['a layer named like the photos overlay', ['layers', 0, 'id'], 'photos', 'layers[0].id', 'validation.duplicateId'],
     ['an end year before the year', ['photos', 0, 'yearEnd'], 1970, 'photos[0].yearEnd', 'validation.yearRange'],
     ['the licence unknown', ['photos', 0, 'license'], 'unknown', 'photos[0].license', 'validation.value'],
     ['an http link', ['photos', 0, 'links', 0, 'url'], 'http://www.example.org/x', 'photos[0].links[0].url', 'validation.httpsOnly'],
@@ -180,6 +265,103 @@ const RULES = [
     ['a bearing over 360', ['photos', 0, 'bearing'], 361, 'photos[0].bearing', 'validation.tooBig'],
     ['a zero field of view', ['photos', 0, 'fov'], 0, 'photos[0].fov', 'validation.tooSmall'],
     ['a fractional width', ['photos', 0, 'image', 'w'], 10.5, 'photos[0].image.w', 'validation.type'],
+    ['a photos overlay opacity below 0', ['photosOverlay', 'defaultOpacity'], -0.1, 'photosOverlay.defaultOpacity', 'validation.tooSmall'],
+    ['an unknown photos overlay key', ['photosOverlay', 'visible'], false, 'photosOverlay.visible', 'validation.unknownKey'],
+    ['a category named like the photos overlay', ['poiCategories', 0, 'id'], 'photos', 'poiCategories[0].id', 'validation.duplicateId'],
+    ['a category named like a layer', ['poiCategories', 0, 'id'], 'kh4-1966', 'poiCategories[0].id', 'validation.duplicateId'],
+    [
+        'a category without an English label',
+        ['poiCategories', 0, 'label', 'en'],
+        undefined,
+        'poiCategories[0].label.en',
+        'validation.required',
+    ],
+    ['a capitalised icon name', ['poiCategories', 0, 'icon'], 'Church', 'poiCategories[0].icon', 'validation.format'],
+    ['an icon name with a dash', ['poiCategories', 0, 'icon'], 'local-cafe', 'poiCategories[0].icon', 'validation.format'],
+    ['a named category colour', ['poiCategories', 0, 'color'], 'red', 'poiCategories[0].color', 'validation.format'],
+    ['a category opacity over 1', ['poiCategories', 0, 'defaultOpacity'], 1.5, 'poiCategories[0].defaultOpacity', 'validation.tooBig'],
+    ['a POI in an unknown category', ['pois', 0, 'category'], 'nope', 'pois[0].category', 'validation.reference'],
+    ['a POI showing an unknown photo', ['pois', 0, 'photoIds'], ['ghost'], 'pois[0].photoIds[0]', 'validation.reference'],
+    ['a POI photo id that is no id', ['pois', 0, 'photoIds'], ['a b'], 'pois[0].photoIds[0]', 'validation.format'],
+    ['a POI span ending before it starts', ['pois', 0, 'yearStart'], 1990, 'pois[0].yearEnd', 'validation.yearRange'],
+    ['a POI year before 1800', ['pois', 0, 'yearStart'], 1611, 'pois[0].yearStart', 'validation.tooSmall'],
+    ['a POI without a Romanian title', ['pois', 0, 'title'], { en: 'House' }, 'pois[0].title.ro', 'validation.required'],
+    [
+        'an http link in a POI text',
+        ['pois', 0, 'description', 'ro'],
+        '[x](http://e.org)',
+        'pois[0].description.ro',
+        'validation.markdownLink',
+    ],
+    ['a POI without links', ['pois', 0, 'links'], undefined, 'pois[0].links', 'validation.required'],
+    ['a POI far outside the city', ['pois', 0, 'geometry', 'coordinates'], [27.5, 44.4], 'pois[0].geometry', 'validation.outsideCity'],
+    [
+        'a position with an altitude',
+        ['pois', 0, 'geometry', 'coordinates'],
+        [26.08, 44.42, 80],
+        'pois[0].geometry.coordinates',
+        'validation.tooBig',
+    ],
+    [
+        'a longitude beyond 180',
+        ['pois', 0, 'geometry', 'coordinates'],
+        [181, 44.42],
+        'pois[0].geometry.coordinates[0]',
+        'validation.tooBig',
+    ],
+    ['an unsupported geometry type', ['pois', 0, 'geometry', 'type'], 'MultiPoint', 'pois[0].geometry.type', 'validation.value'],
+    ['a GeoJSON bbox member', ['pois', 0, 'geometry', 'bbox'], [26, 44, 27, 45], 'pois[0].geometry.bbox', 'validation.unknownKey'],
+    [
+        'a line of one position',
+        ['pois', 0, 'geometry'],
+        { type: 'LineString', coordinates: [[26.08, 44.42]] },
+        'pois[0].geometry.coordinates',
+        'validation.tooSmall',
+    ],
+    [
+        'a ring that is not closed',
+        ['pois', 0, 'geometry'],
+        {
+            type: 'Polygon',
+            coordinates: [
+                squareRing(26.08, 44.42)
+                    .slice(0, 4)
+                    .concat([[26.07, 44.41]]),
+            ],
+        },
+        'pois[0].geometry.coordinates[0]',
+        'validation.ringClosed',
+    ],
+    [
+        'a ring of three positions',
+        ['pois', 0, 'geometry'],
+        {
+            type: 'Polygon',
+            coordinates: [
+                [
+                    [26.08, 44.42],
+                    [26.09, 44.42],
+                    [26.08, 44.42],
+                ],
+            ],
+        },
+        'pois[0].geometry.coordinates[0]',
+        'validation.tooSmall',
+    ],
+    [
+        'a polygon without rings',
+        ['pois', 0, 'geometry'],
+        { type: 'Polygon', coordinates: [] },
+        'pois[0].geometry.coordinates',
+        'validation.tooSmall',
+    ],
+    [
+        'a polygon partly outside the city',
+        ['pois', 0, 'geometry'],
+        { type: 'Polygon', coordinates: [squareRing(26.08, 44.42, 0.8)] },
+        'pois[0].geometry',
+        'validation.outsideCity',
+    ],
 ] as const;
 
 describe('manifest v1: every rule reports a localized code', () => {
@@ -213,6 +395,57 @@ describe('manifest v1: every rule reports a localized code', () => {
         expect(issuesOf(manifest)).toEqual([
             { path: 'layers[1].id', code: 'validation.duplicateId' },
             { path: 'photos[1].id', code: 'validation.duplicateId' },
+        ]);
+    });
+
+    it('badPath_duplicatePoiAndCategoryIds', () => {
+        const manifest = { ...validManifest(), poiCategories: [validPoiCategory(), validPoiCategory()], pois: [validPoi(), validPoi()] };
+
+        expect(issuesOf(manifest)).toEqual([
+            { path: 'poiCategories[1].id', code: 'validation.duplicateId' },
+            { path: 'pois[1].id', code: 'validation.duplicateId' },
+        ]);
+    });
+
+    it('badPath_anEmptyRingIsTooShortAndOpen', () => {
+        const manifest = patched(['pois', 0, 'geometry'], { type: 'Polygon', coordinates: [[]] });
+
+        expect(issuesOf(manifest)).toEqual([
+            { path: 'pois[0].geometry.coordinates[0]', code: 'validation.tooSmall' },
+            { path: 'pois[0].geometry.coordinates[0]', code: 'validation.ringClosed' },
+        ]);
+    });
+
+    it('badPath_aRingOverTheVertexBudget', () => {
+        const ring = [...Array.from({ length: MAX_GEOMETRY_VERTICES }, (_, index) => [26 + index / 10_000, 44.4]), [26, 44.4]];
+
+        expect(issuesOf(patched(['pois', 0, 'geometry'], { type: 'Polygon', coordinates: [ring] }))).toEqual([
+            { path: 'pois[0].geometry.coordinates[0]', code: 'validation.tooBig' },
+        ]);
+    });
+
+    it('badPath_ringsTogetherOverTheVertexBudget', () => {
+        const half = Math.ceil(MAX_GEOMETRY_VERTICES / 2);
+        const ring = [...Array.from({ length: half }, (_, index) => [26 + index / 10_000, 44.4]), [26, 44.4]];
+
+        expect(issuesOf(patched(['pois', 0, 'geometry'], { type: 'Polygon', coordinates: [ring, ring] }))).toEqual([
+            { path: 'pois[0].geometry.coordinates', code: 'validation.tooBig' },
+        ]);
+    });
+
+    it('badPath_tooManyRings', () => {
+        const rings = Array.from({ length: MAX_POLYGON_RINGS + 1 }, () => squareRing(26.08, 44.42));
+
+        expect(issuesOf(patched(['pois', 0, 'geometry'], { type: 'Polygon', coordinates: rings }))).toEqual([
+            { path: 'pois[0].geometry.coordinates', code: 'validation.tooBig' },
+        ]);
+    });
+
+    it('badPath_aLineOverTheVertexBudget', () => {
+        const coordinates = Array.from({ length: MAX_GEOMETRY_VERTICES + 1 }, (_, index) => [26 + index / 10_000, 44.4]);
+
+        expect(issuesOf(patched(['pois', 0, 'geometry'], { type: 'LineString', coordinates }))).toEqual([
+            { path: 'pois[0].geometry.coordinates', code: 'validation.tooBig' },
         ]);
     });
 

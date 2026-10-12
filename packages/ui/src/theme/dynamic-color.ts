@@ -1,7 +1,7 @@
 /**
  * Material 3 dynamic colour: the four `--md-sys-color-*` token sets of a city theme (light, dark,
  * high-contrast light, high-contrast dark) from one seed colour, with `@material/material-color-utilities`
- * (SpecVersion 2025, TonalSpot). Pure: the admin calls it for the live preview, the manifest builder and
+ * (SpecVersion 2025; TonalSpot by default, Expressive or Vibrant for a bolder city). Pure: the admin calls it for the live preview, the manifest builder and
  * `packages/ui/scripts/gen-theme.mjs` precompute the tokens into the manifest, so the viewer never
  * ships the colour library.
  */
@@ -10,7 +10,9 @@ import {
     Hct,
     hexFromArgb,
     MaterialDynamicColors,
+    SchemeExpressive,
     SchemeTonalSpot,
+    SchemeVibrant,
     type DynamicColor,
     type DynamicScheme,
 } from '@material/material-color-utilities';
@@ -40,9 +42,16 @@ export function isHexColor(value: string): boolean {
     return HEX_COLOR.test(value);
 }
 
-/** The TonalSpot scheme of `seed` for one mode and contrast level. */
-export function schemeFor(seed: string, dark: boolean, contrastLevel: number): DynamicScheme {
-    return new SchemeTonalSpot(Hct.fromInt(argbFromHex(seed)), dark, contrastLevel, SPEC_VERSION);
+/** The scheme variants a city may pick: TonalSpot (the M3 default, calm), Expressive and Vibrant (M3 Expressive). */
+export const THEME_VARIANTS = ['tonalSpot', 'expressive', 'vibrant'] as const;
+
+export type ThemeVariant = (typeof THEME_VARIANTS)[number];
+
+const SCHEMES = { tonalSpot: SchemeTonalSpot, expressive: SchemeExpressive, vibrant: SchemeVibrant } as const;
+
+/** The scheme of `seed` for one mode, contrast level and variant (TonalSpot unless told otherwise). */
+export function schemeFor(seed: string, dark: boolean, contrastLevel: number, variant: ThemeVariant = 'tonalSpot'): DynamicScheme {
+    return new SCHEMES[variant](Hct.fromInt(argbFromHex(seed)), dark, contrastLevel, SPEC_VERSION);
 }
 
 /** `on_primary_container` → `--md-sys-color-on-primary-container`. */
@@ -63,13 +72,13 @@ export function tokensForScheme(scheme: DynamicScheme): ColorTokens {
 }
 
 /** The four token sets of a city theme; an invalid seed falls back to `DEFAULT_SEED_COLOR`. */
-export function themeFromSeed(seed: string): ThemeTokenSet {
+export function themeFromSeed(seed: string, variant: ThemeVariant = 'tonalSpot'): ThemeTokenSet {
     const source = isHexColor(seed) ? seed : DEFAULT_SEED_COLOR;
     return {
-        light: tokensForScheme(schemeFor(source, false, STANDARD_CONTRAST)),
-        dark: tokensForScheme(schemeFor(source, true, STANDARD_CONTRAST)),
-        highContrastLight: tokensForScheme(schemeFor(source, false, HIGH_CONTRAST)),
-        highContrastDark: tokensForScheme(schemeFor(source, true, HIGH_CONTRAST)),
+        light: tokensForScheme(schemeFor(source, false, STANDARD_CONTRAST, variant)),
+        dark: tokensForScheme(schemeFor(source, true, STANDARD_CONTRAST, variant)),
+        highContrastLight: tokensForScheme(schemeFor(source, false, HIGH_CONTRAST, variant)),
+        highContrastDark: tokensForScheme(schemeFor(source, true, HIGH_CONTRAST, variant)),
     };
 }
 

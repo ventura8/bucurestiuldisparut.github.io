@@ -13,7 +13,9 @@ Every user-visible behaviour has at least one happy and one bad row in `e2e/scen
 IMG="docker run --rm -u $(id -u):$(id -g) -e HOME=/tmp/hcm-home -v $PWD:$PWD -w $PWD hcm-quality:local"
 $IMG bash -c 'mkdir -p $HOME && python3 scripts/ci/check_e2e_matrix.py check'   # the e2e-matrix static gate
 $IMG bash -c 'mkdir -p $HOME && python3 scripts/ci/check_e2e_matrix.py write'   # regenerate docs/E2E_SCENARIOS.md
-PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh     # e2e-matrix, then every Playwright spec (today the V00 harness smoke)
+PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh     # e2e-matrix, e2e-build (engine + dist/e2e-site), every Playwright tier
+E2E_TIER=smoke,fn PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh   # some tiers: smoke, fn, tour, a11y, nogl
+$IMG bash -c 'mkdir -p $HOME && npm run --silent build:site:e2e'   # rebuild the e2e sites after an engine change
 $IMG bash -c 'mkdir -p $HOME && cd e2e && npx playwright test --grep @S-V00-HAPPY'   # one scenario by its tag
 ```
 
@@ -28,14 +30,12 @@ $IMG bash -c 'mkdir -p $HOME && cd e2e && npx playwright test --grep @S-V00-HAPP
 
 ## Fixtures every e2e test gets
 
-Specs import `test` and `expect` from `e2e/support/test.ts` (`../support/test.js`), never from `@playwright/test`.
+Specs import `test` and `expect` from `e2e/support/test.ts` (`../../support/test.js` from `e2e/specs/<tier>/`), never from `@playwright/test`. Projects and tiers: `e2e/projects.ts`; the servers, the mock APIs and the fixture manifest: `.agent/skills/quality/e2e_scenario_matrix_skill.md` → *Tiers and projects*.
 
-- Firewall (exists): any host outside `127.0.0.1` and `localhost` is aborted, recorded and fails the test at teardown; it proves the viewer never calls Firestore and never reaches real Mapbox or Google. A mock route registered later wins over it; a bad path that expects a block claims it with `firewall.take()`.
-- Console guard (exists): any console error or uncaught page error fails the test (claim an expected one with `consoleErrors.take()`). From M1 also: no `undefined`, `null` or `NaN` placeholder text in the DOM.
-
-From M1:
-
-- axe on every screen state (`wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa`).
-- Map-instance counter: one map per view; compare creates the second lazily and destroys it.
-- Admin-input budget: fills, clicks and file inputs per flow against a declared maximum.
-- Data isolation per test (city id `e2e-w{worker}-{test}`, unique Auth users) instead of global resets.
+- Network (`e2e/support/network.ts`): loopback passes, the mocked hosts (Mapbox, GA4/Firebase, jsDelivr, the e2e tile and telemetry hosts) are answered by the mock APIs and recorded per test, anything else is aborted, recorded and fails the test at teardown; it proves the viewer never calls Firestore and never reaches real Mapbox or Google. A `page.route` wins over it; a bad path that expects a block claims it with `firewall.take()`.
+- Console guard: any console error or uncaught page error fails the test (claim an expected one with `consoleErrors.take()`).
+- Placeholder guard: visible `undefined`, `null`, `NaN`, `[object Object]` or an unfilled `{param}` (shadow roots and accessible names included) fails the test.
+- `instrumentation.read(page)`: the map-instance counter (one map per view; compare creates the second lazily and destroys it) and the engine's `hcm-*` events. `mockApis.calls(host)` and `mockApis.mapLoadEvents()`: what this test sent to the mock APIs.
+- `axe.violations()`: WCAG 2.0 A/AA, 2.1 AA, 2.2 AA (the tour and a11y tiers).
+- `inputBudget.flow(name, limit)`: fills, clicks and file inputs per admin flow against a declared maximum (M2).
+- Planned with the admin tiers (M2): the Firebase emulators and data isolation per test (city id `e2e-w{worker}-{test}`, unique Auth users) instead of global resets.

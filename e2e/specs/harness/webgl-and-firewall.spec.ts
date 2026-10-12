@@ -1,15 +1,15 @@
-import { expect, test } from '../support/test.js';
+import { expect, test } from '../../support/test.js';
 
 /**
- * Harness smoke (behaviour V00 in e2e/scenarios.json): a static page at the loopback origin renders
- * WebGL2 under SwiftShader (the map's precondition in a GPU-less container), and the firewall fixture
- * aborts and reports a request to a real external host.
+ * Harness smoke (behaviour V00 in e2e/scenarios.json): a static page at the loopback origin renders WebGL2 under
+ * SwiftShader (the map's precondition in a GPU-less container), and the firewall fixture aborts and reports a request
+ * to a real external host that is not mocked.
  *
- * The page is fulfilled by the spec rather than committed as an .html file: the repository's Prettier
- * output (`<!doctype html>`, `<meta ... />`) fails html-validate's recommended `doctype-style` and
- * `void-style` rules, and that conflict is a config decision for M1 (docs/research/M0-handoff.md §10d).
+ * The page is fulfilled by the spec rather than committed as an .html file: the repository's Prettier output
+ * (`<!doctype html>`, `<meta ... />`) fails html-validate's recommended `doctype-style` and `void-style` rules, and
+ * that conflict is a config decision (docs/research/DECISIONS-for-review.md §1).
  */
-const PAGE = '/smoke.html';
+const PAGE = '/__harness/webgl.html';
 const SMOKE_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><title>E2E smoke</title><link rel="icon" href="data:,"></head>
@@ -18,8 +18,8 @@ const SMOKE_HTML = `<!DOCTYPE html>
 <canvas width="8" height="8" role="img" aria-label="WebGL2 probe"></canvas>
 </main></body>
 </html>`;
-/** A real Mapbox host: outside the allowlist, so the firewall must stop it before DNS or the network. */
-const EXTERNAL = 'https://api.mapbox.com/styles/v1/mapbox/standard';
+/** Firestore: never mocked, so the firewall must stop it before DNS or the network (the viewer never reads it). */
+const EXTERNAL = 'https://firestore.googleapis.com/v1/projects/demo-hcm/databases/(default)/documents/cities/bucuresti';
 /** RGBA the probe clears to: (0, 128, 255) at full opacity. */
 const PROBE_RGBA = [0, 128, 255, 255];
 
@@ -47,7 +47,7 @@ async function fetchOutcome(url: string): Promise<string> {
 }
 
 test.beforeEach(async ({ page }) => {
-    // A page-level route wins over the context-level firewall, so only this one URL is answered here.
+    // A page-level route wins over the context-level network routes, so only this one URL is answered here.
     await page.route(PAGE, (route) => route.fulfill({ contentType: 'text/html; charset=utf-8', body: SMOKE_HTML }));
 });
 

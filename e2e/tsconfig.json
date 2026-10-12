@@ -1,9 +1,12 @@
-// Playwright end-to-end tests (@hcm/e2e): the config, the fixtures and the specs. They run in Node
-// (process.env, the Playwright runner) and pass callbacks into the page (DOM types), so both apply.
+// Playwright end-to-end tests (@hcm/e2e): the config and projects, the fixtures, the specs, the setup project, the
+// mock APIs and the e2e site build. They run in Node (process.env, the Playwright runner, the servers started through
+// Node's type stripping, hence erasable syntax only) and pass callbacks into the page (DOM types), so both apply.
 {
     "extends": "../tsconfig.base.json",
     "compilerOptions": {
-        "types": ["node"]
+        "types": ["node"],
+        "erasableSyntaxOnly": true
     },
-    "include": ["playwright.config.ts", "support", "specs"]
+    "include": ["playwright.config.ts", "projects.ts", "support", "specs", "setup", "fixtures", "mock-apis", "scripts"],
+    "references": [{ "path": "../packages/shared" }, { "path": "../scripts/site" }]
 }

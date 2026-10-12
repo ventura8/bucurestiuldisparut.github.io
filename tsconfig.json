@@ -1,6 +1,7 @@
 // Solution file: `tsc -b` builds (type-checks) every project below in dependency order. Each package
 // has two projects: `<pkg>` (src/, product code) and `<pkg>/test` (tests, with Node + Vitest types).
-// functions/ uses Node (nodenext) resolution; firebase/rules-tests and e2e (Playwright) have tests only.
+// functions/ uses Node (nodenext) resolution; firebase/rules-tests and e2e (Playwright) have tests only;
+// scripts/site is the static site build (Node, run through type stripping) with its unit tests.
 {
     "files": [],
     "references": [
@@ -16,6 +17,8 @@
         { "path": "functions" },
         { "path": "functions/test" },
         { "path": "firebase/rules-tests" },
+        { "path": "scripts/site" },
+        { "path": "scripts/site/test" },
         { "path": "e2e" },
         { "path": "tsconfig.tools.json" }
     ]

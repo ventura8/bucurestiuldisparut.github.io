@@ -5,25 +5,29 @@
  */
 import { z } from 'zod';
 
-import { bboxContains, bboxExpand } from '../geo/bbox.js';
-import type { LngLat } from '../geo/math.js';
+import { bboxContains } from '../geo/bbox.js';
 import { isHttpsUrl } from '../text/urls.js';
+import { manifestRuleIssues } from './manifest-rules.js';
+import { photosOverlaySchema, poiCategorySchema, poiSchema, MAX_POI_CATEGORIES, MAX_POIS } from './poi.js';
 import {
     assetUrlSchema,
     bboxSchema,
     bearingSchema,
     coded,
+    firebaseAppIdsSchema,
     fovSchema,
     hexColorSchema,
     httpsUrlSchema,
     idSchema,
     isoDateSchema,
     latLngSchema,
+    linkSchema,
     lngLatSchema,
     localized,
     localizedMarkdown,
     localizedPartial,
     mapboxPublicTokenSchema,
+    MAX_LINKS,
     measurementIdSchema,
     opacitySchema,
     plainText,
@@ -45,20 +49,12 @@ export const LAYER_KINDS = ['satellite', 'aerial', 'map'] as const;
 /** The four generated colour schemes of a city theme. */
 export const THEME_SCHEMES = ['light', 'dark', 'highContrastLight', 'highContrastDark'] as const;
 
-/** A photo may stand this many degrees outside the city bounds (taken from outside, looking in). */
-export const PHOTO_LOCATION_SLACK_DEG = 0.5;
-
-/** Links per photo (the Firestore rules allow 5). */
-export const MAX_LINKS = 5;
-
 export const MAX_LAYERS = 100;
 export const MAX_PHOTOS = 5000;
 
 const MAPBOX_STYLE = /^mapbox:\/\/styles\/[A-Za-z0-9_-]{1,64}\/[A-Za-z0-9_-]{1,64}$/;
 const TILESET_ID = /^[a-z0-9_-]{1,32}\.[A-Za-z0-9_-]{1,64}$/;
 const STYLE_CONFIG_KEY = /^[A-Za-z][A-Za-z0-9]{0,40}$/;
-
-export const linkSchema = z.strictObject({ url: httpsUrlSchema, label: plainText(200) });
 
 export const creditSchema = z.strictObject({ label: localized(300), url: httpsUrlSchema.optional() });
 
@@ -86,7 +82,11 @@ export const basemapSchema = z.strictObject({
 });
 
 /** GA4 (loaded only after consent) and the crash-report endpoint (`telemetry.reportError`). */
-export const analyticsSchema = z.strictObject({ measurementId: measurementIdSchema.optional(), errorEndpoint: httpsUrlSchema.optional() });
+export const analyticsSchema = z.strictObject({
+    measurementId: measurementIdSchema.optional(),
+    errorEndpoint: httpsUrlSchema.optional(),
+    firebase: firebaseAppIdsSchema.optional(),
+});
 
 export const citySchema = z
     .strictObject({
@@ -125,13 +125,31 @@ export const layerSourceSchema = z.discriminatedUnion('type', [
     z.strictObject({ type: z.literal('pmtiles'), url: assetUrlSchema }),
 ]);
 
-/** Raster paint adjustments applied live by the viewer (PLAN Addendum 3; Mapbox `raster-*` paint properties). */
+/**
+ * The ranges and neutral values of the raster image adjustments (Mapbox `raster-brightness-min/max`, `raster-contrast`,
+ * `raster-saturation`). The schema refuses a value outside its range; `rasterAdjustmentPaint` clamps live slider values.
+ */
+export const LAYER_ADJUSTMENT_RANGES = {
+    brightnessMin: { min: 0, max: 1, neutral: 0 },
+    brightnessMax: { min: 0, max: 1, neutral: 1 },
+    contrast: { min: -1, max: 1, neutral: 0 },
+    saturation: { min: -1, max: 1, neutral: 0 },
+} as const;
+
+export type LayerAdjustmentName = keyof typeof LAYER_ADJUSTMENT_RANGES;
+
+function adjustmentSchema(name: LayerAdjustmentName) {
+    const range = LAYER_ADJUSTMENT_RANGES[name];
+    return z.number().min(range.min).max(range.max).optional();
+}
+
+/** Raster paint adjustments applied live by the viewer (PLAN Addendum 3); brightness min never above max. */
 export const layerAdjustmentsSchema = z
     .strictObject({
-        brightnessMin: z.number().min(0).max(1).optional(),
-        brightnessMax: z.number().min(0).max(1).optional(),
-        contrast: z.number().min(-1).max(1).optional(),
-        saturation: z.number().min(-1).max(1).optional(),
+        brightnessMin: adjustmentSchema('brightnessMin'),
+        brightnessMax: adjustmentSchema('brightnessMax'),
+        contrast: adjustmentSchema('contrast'),
+        saturation: adjustmentSchema('saturation'),
     })
     .refine((adjust) => (adjust.brightnessMin ?? 0) <= (adjust.brightnessMax ?? 1), coded('validation.value', ['brightnessMax']));
 
@@ -186,37 +204,21 @@ export const photoSchema = z
     })
     .refine(validYearRange, coded('validation.yearRange', ['yearEnd']));
 
-type Identified = readonly { readonly id: string }[];
-
-function duplicateIndexes(items: Identified): number[] {
-    const seen = new Set<string>();
-    return items.flatMap((item, index) => {
-        const duplicate = seen.has(item.id);
-        seen.add(item.id);
-        return duplicate ? [index] : [];
-    });
-}
-
 export const manifestSchema = z
     .strictObject({
         version: z.literal(MANIFEST_VERSION),
         city: citySchema,
         layers: z.array(layerSchema).max(MAX_LAYERS),
         photos: z.array(photoSchema).max(MAX_PHOTOS),
+        /** Defaults of the photos overlay; without it the photos start fully opaque. */
+        photosOverlay: photosOverlaySchema.optional(),
+        poiCategories: z.array(poiCategorySchema).max(MAX_POI_CATEGORIES).optional(),
+        pois: z.array(poiSchema).max(MAX_POIS).optional(),
     })
     .superRefine((manifest, context) => {
-        for (const key of ['layers', 'photos'] as const) {
-            for (const index of duplicateIndexes(manifest[key])) {
-                context.addIssue({ code: 'custom', ...coded('validation.duplicateId', [key, index, 'id']) });
-            }
+        for (const issue of manifestRuleIssues(manifest)) {
+            context.addIssue({ code: 'custom', ...coded(issue.code, [...issue.path]) });
         }
-        const area = bboxExpand(manifest.city.bounds, PHOTO_LOCATION_SLACK_DEG);
-        manifest.photos.forEach((photo, index) => {
-            const position: LngLat = [photo.location.lng, photo.location.lat];
-            if (!bboxContains(area, position)) {
-                context.addIssue({ code: 'custom', ...coded('validation.outsideCity', ['photos', index, 'location']) });
-            }
-        });
     });
 
 export type Manifest = z.infer<typeof manifestSchema>;

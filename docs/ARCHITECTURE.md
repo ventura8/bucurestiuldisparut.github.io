@@ -22,17 +22,17 @@
 
 | Workspace | Package | Status |
 | --- | --- | --- |
-| `packages/shared` | `@hcm/shared`: zod schemas (City Manifest v1, embed config, Firestore documents), validation with localized codes, geo helpers, the URL-hash codec, the Markdown subset, the legacy migration, i18n catalogues, logging with redaction | M1 contracts done |
-| `packages/ui` | `@hcm/ui`: Lit 3 Material 3 Expressive kit, window classes, dynamic colour (`themeFromSeed`) | scaffold; dynamic colour done |
-| `packages/engine` | `@hcm/engine`: the public viewer, global `window.HistoricCityMap` | scaffold |
+| `packages/shared` | `@hcm/shared`: zod schemas (City Manifest v1 with POIs, embed config, Firestore documents with history entries), validation with localized codes, geo helpers and POI geometries, the overlay model and its Mapbox paint mapping, the URL-hash codec, the Markdown subset, the legacy migration, i18n catalogues, logging with redaction | M1 contracts done (with PLAN Addendum 3) |
+| `packages/ui` | `@hcm/ui`: Lit 3 Material 3 Expressive kit (19 elements), theme and dynamic colour (`themeFromSeed`, `applyTheme`), window classes, self-hosted fonts, and the viewer's elements (`packages/ui/src/viewer/`) | M1 done |
+| `packages/engine` | `@hcm/engine`: the public viewer, global `window.HistoricCityMap`: configuration, the viewer store, the MapPort and its Mapbox adapter, consent-gated telemetry, `mount` and the auto-boot | M1 done (boots the built Bucharest site in the e2e smoke) |
 | `packages/admin` | `@hcm/admin`: Setup Assistant and daily flows | scaffold |
-| `packages/test-support` | `@hcm/test-support`: FakeMap, msw handlers, fixtures, emulator helpers (test-only) | scaffold |
+| `packages/test-support` | `@hcm/test-support`: `FakeMap` and a fake `mapboxgl` (`@hcm/test-support/fake-map`), axe (`@hcm/test-support/axe`), recording log sinks; msw handlers later (test-only) | M1 |
 | `functions/` | `@hcm/functions`: thin v2 triggers over pure handlers and ports | scaffold (`setup-status`); deploys from M2 |
 | `firebase/rules-tests/` | `@hcm/rules-tests`: allow and deny matrix under the emulators | running |
-| `e2e/` | `@hcm/e2e` (Playwright 1.64): `e2e/scenarios.json`, the firewall and console-guard fixtures, the harness smoke | smoke; tiers in M1 |
+| `e2e/` | `@hcm/e2e` (Playwright 1.64): `e2e/scenarios.json`, the mock APIs (`e2e/mock-apis/`), the fixture manifest, the firewall, console and placeholder guards, the tiers of `e2e/projects.ts` | harness and viewer smoke running; functional, tour, a11y and no-WebGL specs planned |
 | `pipeline/` | `pipeline/src/hcm_pipeline` (Python + GDAL, Poetry) | scaffold; steps in M3 |
 
-Layering (enforced by dependency-cruiser): `shared` below `ui` below `engine` and `admin`; engine and admin are independent; `shared` imports no DOM, Lit or Mapbox; only `packages/engine/src/map/mapbox-adapter.ts` imports `mapbox-gl`.
+Layering (enforced by dependency-cruiser): `shared` below `ui` below `engine` and `admin`; engine and admin are independent; `shared` imports no DOM, Lit or Mapbox; only `packages/engine/src/map/mapbox-adapter.ts` touches Mapbox GL, and it reads the page's global `mapboxgl` through a structural type instead of importing `mapbox-gl`. Because `ui` cannot import the engine, the viewer elements in `packages/ui/src/viewer/` drive the engine's store through a mirrored port (`store-port.ts`).
 
 ## Why this shape
 
@@ -49,7 +49,10 @@ The public contract (config.js, `<hcm-map-viewer>`, the JavaScript API, the URL 
 - A city page ships `index.html` and `config.js` (`window.HistoricCityMapConfig = {cityId?, manifestUrl? | manifest?, container?, lang?, engineBase?}`; the inline manifest is the starter kit's static mode). The engine fetches only the static manifest and photo WebP files from the public bucket.
 - Mapbox GL JS **3.32.0** is loaded from `api.mapbox.com` as the global `mapboxgl` and never bundled; Standard Satellite basemap; historical rasters in the `middle` slot; `performanceMetricsCollection: false`; the Mapbox logo and attribution are always visible.
 - The core (state, URL hash, timeline, controller) talks only to a `MapPort`; the Mapbox adapter is the only Mapbox-aware module. **One map per view**: swipe compare creates its second map lazily and destroys it.
-- Features: timeline, layer toggles and opacity, photos as clustered camera icons rotated by bearing with view cones, bottom or side sheet, lightbox, URL state and share, geolocate, About and credits, RO/EN, light/dark/seeded theme.
+- Features: timeline (a city without historical layers shows a "coming soon" note instead), photos as clustered camera icons rotated by bearing with view cones, bottom or side sheet, lightbox, URL state and share, geolocate, About and credits, RO/EN, light/dark/seeded theme.
+- The engine build ships next to its script everything it loads at run time: the lazy Firebase chunk (ES module build) and the kit's self-hosted fonts (`dist/fonts/`). The page's CSP refuses inline styles, so elements set styles only through the CSSOM.
+- **Overlays** (PLAN Addendum 3): every historical layer, the photos and every POI category is an overlay with a switch and a live opacity slider; opacities persist in the URL hash (`&op=`). The pure overlay model and the paint-property mapping (`raster-opacity`; icon, text, circle, line and fill opacity for vector overlays) live in `@hcm/shared`, so the admin's default-opacity editor uses the same code. Raster image adjustments (brightness range, contrast, saturation) are applied live as Mapbox paint properties, without reprocessing.
+- **Points of interest**: city-defined categories (label, Material Symbols icon, colour, default opacity); POIs as icons, lines or fills with labels at high zoom, filtered by the timeline, details in the same sheet as photos.
 
 ## Admin
 
@@ -65,9 +68,11 @@ Lit 3 custom elements with the `hcm-` prefix and no decorators; Expressive compo
 
 Firestore (zod schemas in `@hcm/shared` are reused by every writer):
 
-- `cities/{city}`: names and About (`{ro, en}`), centre, zoom, bounds, credits, theme seed and tokens, basemap, Mapbox user and public token (automatic), published flag.
-- `cities/{city}/layers/{id}`: year and date, label, kind, sensor, attribution, source (`mapbox`, `xyz`, `pmtiles`, zoom range, bounds), order, opacity, status, provenance (USGS ids, georeferencing method, GCPs, checkpoint RMSE), Mapbox tileset id.
+- `cities/{city}`: names and About (`{ro, en}`), centre, zoom, bounds, credits, theme seed and tokens, basemap, Mapbox user and public token (automatic), the photos overlay's default opacity, published flag.
+- `cities/{city}/layers/{id}`: year and date, label, kind, sensor, attribution, source (`mapbox`, `xyz`, `pmtiles`, zoom range, bounds), order, opacity, image adjustments, status, provenance (USGS ids, georeferencing method, GCPs, checkpoint RMSE), Mapbox tileset id.
 - `cities/{city}/photos/{id}`: title and description (`{ro, en}`), year range, author, licence (enum), rights holder, structured `links`, location, bearing, FOV, image (web, thumb, sha256, size), processing state, published flag, rights review, legacy id.
+- `cities/{city}/poiCategories/{id}` (label, icon, colour, default opacity, order) and `cities/{city}/pois/{id}` (category, geometry without nested arrays, title and description, year span, links, photo ids, published flag); the manifest carries them as `poiCategories[]` and `pois[]` with GeoJSON geometries.
+- Every admin-editable document (city, layer, photo, POI, POI category) carries `updatedBy` and `updatedAt` and keeps a `history` subcollection with the previous version of each change, written by a server trigger, for one-click revert.
 - Also `usgsScenes/{entityId}`, `jobs/{id}` with logs, `admins/{uid}`, `setup/status` (non-secret health), `usage/mapbox-YYYY-MM`, `ops/guard`.
 
 The Bucharest seed manifest (`seed/bucharest/manifest.static.json`, with WebP derivatives in `seed/bucharest/derived/`) is produced from the legacy data by `scripts/seed/migrate-legacy.mjs` (`npm run seed:migrate`), whose rules are pure functions in `packages/shared/src/migration/`.
@@ -99,7 +104,7 @@ Python with `osgeo.gdal` from the pinned GDAL image (Python 3.14), Poetry, as a 
 ## Analytics and crashes
 
 - GA4 (the Firebase JS SDK's analytics module) and Performance Monitoring in the viewer and the admin, **loaded only after consent** (an M3 consent banner, Consent Mode v2 defaults denied). The viewer lazy-loads them only when the manifest has a `measurementId` and the visitor consented; it still never reads Firestore.
-- Events without PII: `page_view`, `layer_toggle`, `year_change`, `photo_open`, `share`, `compare_open`, and admin flow events.
+- Events without PII: `page_view`, `layer_toggle`, `year_change`, `photo_open`, `poi_open`, `share`, `compare_open`, and admin flow events.
 - Crashes: global error handlers and error boundaries; GA4 `exception` events after consent; `telemetry.reportError` writes redacted structured logs that Cloud Error Reporting groups and alerts on; source maps are release artifacts; the Setup Assistant shows the latest error groups.
 
 ## Quality system

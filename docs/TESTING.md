@@ -8,14 +8,14 @@ Every tier runs **inside the quality image** (`hcm-quality:local`), never on the
 
 | Tier | Runner | What it proves | Status |
 | --- | --- | --- | --- |
-| Unit | Vitest 5 (node) | shared schemas (manifest v1, config, Firestore documents, localized validation), geo, the URL-hash codec, the Markdown subset, the legacy migration, i18n, logging; engine core against FakeMap; admin state machines; function handlers with fake ports | running (shared, engine, admin) |
+| Unit | Vitest 5 (node) | shared schemas (manifest v1, config, Firestore documents, localized validation), geo, the URL-hash codec, the Markdown subset, the legacy migration, i18n, logging; engine core against FakeMap, the Mapbox adapter against a fake `mapboxgl`, telemetry, the DOM-free `mount.ts`; admin state machines; function handlers with fake ports | running (shared, engine, admin) |
 | CLI tools | Vitest 5 (node), the CLI started as a child process | `scripts/seed/migrate-legacy.mjs` (on generated images in a temporary folder) and `packages/ui/scripts/gen-theme.mjs`: output, exit status, usage errors | running (from `packages/shared/test/cli` until a `tools` project exists) |
-| Component | Vitest 5 browser mode, headless Chromium (`@vitest/browser-playwright`) | Lit components with real custom elements, shadow DOM, focus and accessibility trees; dynamic colour with WCAG contrast checks; the Mapbox adapter against the real `mapbox-gl` | running (ui) |
+| Component | Vitest 5 browser mode, headless Chromium (`@vitest/browser-playwright`) | Lit components with real custom elements, shadow DOM, focus and accessibility trees, axe WCAG 2.2 AA (the kit's 19 elements and the viewer's elements, with kit doubles and once with the real kit); dynamic colour with WCAG contrast checks; the bundled icon subset; later the Mapbox adapter against the real `mapbox-gl` (CR-2) | running (ui) |
 | Functions | Vitest (node), handlers with fakes, triggers through v2 `.run()`, adapters with a fake `fetch` or the Firestore emulator | every function and adapter, failure shapes of USGS and Mapbox | running (`setup-status`); more functions in M2 |
 | Rules | Vitest under the Firestore and Storage emulators, `@firebase/rules-unit-testing` | allow and deny for every role and path, field validation, limits; rule coverage (`rules-coverage` gate) | running |
 | Scripts | pytest with branch coverage (in `static` and `tests`) | the CI tooling in `scripts/ci` | running |
 | Pipeline | pytest in the GDAL image with a synthetic world and scans | georeferencing within tolerance, failure paths, determinism | scaffold; steps in M3 |
-| End to end | Playwright 1.64 + axe under the emulators and mock APIs | every row of the scenario registry, layout and accessibility at 11 viewports, light and dark, RO and EN | harness smoke running (V00); tiers in M1 |
+| End to end | Playwright 1.64 + axe under the emulators and mock APIs | every row of the scenario registry, layout and accessibility at 11 viewports, light and dark, RO and EN | harness (V00), the viewer smoke on the built Bucharest site (S-V16-HAPPY: one map, one map load, `hcm-ready`, no console error), the no-JavaScript page and the CSP check running; the functional, tour, a11y and no-WebGL rows are planned |
 
 E2E does not count toward per-file coverage: unit and component tests carry every file, which keeps the gate deterministic.
 
@@ -55,7 +55,7 @@ Only external boundaries are faked; owned modules are never mocked.
 
 - pytest blocks every non-loopback socket (`scripts/ci/tests/conftest.py`).
 - Chromium starts with host-resolver rules that resolve only loopback.
-- Playwright installs a firewall route first (`e2e/support/test.ts`, automatic in every spec): any host outside `127.0.0.1` and `localhost` is aborted, recorded and fails the test at teardown. From M1, Mapbox GL JS and its CSS are served from `node_modules`, `api.mapbox.com` from fixtures, `events.mapbox.com` returns 204 and is counted. This proves the viewer never calls Firestore and never reaches real Mapbox or Google.
+- Playwright decides every request of the browser context (`e2e/support/network.ts`, automatic in every spec): loopback passes; a mocked host (`api.mapbox.com`, `events.mapbox.com`, the GA4 and Firebase hosts, `cdn.jsdelivr.net`, `tiles.e2e.test`, `telemetry.e2e.test`) is forwarded to the mock APIs on `127.0.0.1:4311`, which serve Mapbox GL JS and its CSS from the pinned `mapbox-gl` package, a local style, generated tiles and glyphs, and count `events.mapbox.com` and analytics beacons; anything else is aborted, recorded and fails the test at teardown, WebSockets included. This proves the viewer never calls Firestore and never reaches real Mapbox or Google.
 
 ## Emulators
 
@@ -70,19 +70,26 @@ Only external boundaries are faked; owned modules are never mocked.
 
 ## E2E today
 
-- Workspace `e2e/` (`@hcm/e2e`, `@playwright/test@1.64.0`), config `e2e/playwright.config.ts`, run by the `playwright` gate (`npm run test:e2e`) after the `e2e-matrix` check in the `e2e` stage.
-- One project, `smoke-chromium` (1440×900, `ro-RO`, `Europe/Bucharest`): headless Chromium with `--use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` (WebGL2 without a GPU) and host-resolver rules that resolve only loopback. `forbidOnly`; in CI one retry with `failOnFlakyTests`, so a flaky test still fails.
-- Fixtures (`e2e/support/test.ts`, automatic): the firewall above and a console guard that fails a test on any console error or uncaught page error. Specs import `test` and `expect` from there, never from `@playwright/test`; a bad path that provokes a block or an error on purpose claims it with `firewall.take()` or `consoleErrors.take()` and asserts what it got.
-- The harness smoke `e2e/specs/smoke.spec.ts` (behaviour V00): a static page at the loopback origin `http://127.0.0.1:4310` (fulfilled by the spec; M1 adds the `webServer` for the built site) renders a WebGL2 clear that reads back the expected pixel, and a fetch of `api.mapbox.com` is aborted, recorded by the firewall and seen by the console guard.
-- `E2E_SHARD=index/total` (forwarded by `run-all-checks.sh`, set by the CI matrix) shards the run. Reports: `reports/junit/e2e.xml`, `reports/playwright/` (HTML), `reports/test-results/` (traces of failed tests).
+- Workspace `e2e/` (`@hcm/e2e`: `@playwright/test@1.64.0`, `@axe-core/playwright@4.13.0`, `mapbox-gl@3.32.0` for the mock APIs, `sharp` for the tiles), config `e2e/playwright.config.ts`, projects `e2e/projects.ts`. The `e2e` stage runs `e2e-matrix`, then `e2e-build` (`npm run build:site:e2e`: the engine, then `dist/e2e-site/bucharest` with the e2e fixture manifest and `dist/e2e-site/starter-kit`), then `playwright` (`npm run test:e2e`).
+- Two servers start first (`webServer`, `e2e/mock-apis/main.ts`, run by Node from TypeScript): the built sites on `http://127.0.0.1:4310` as GitHub Pages serves them, and the mock APIs on `http://127.0.0.1:4311` (`GET /__calls?test=<id>&host=<host>`, `POST /__reset`, `GET /__health`).
+- Every project runs headless Chromium with `--use-angle=swiftshader --enable-unsafe-swiftshader --ignore-gpu-blocklist` (WebGL2 without a GPU) and host-resolver rules that resolve only loopback, and depends on `setup` (`e2e/setup/fixture.setup.ts`: the fixture manifest validates, both servers answer, the site serves the fixture). `forbidOnly`; in CI one retry with `failOnFlakyTests`, so a flaky test still fails.
+- Tiers (`E2E_TIER`, comma-separated; unset or `all` is every tier): `smoke` (`harness`, `smoke-c360`, `smoke-l1440`), `fn` (`fn-c360-ro`, `fn-m768-ro`, `fn-l1440-ro`, `fn-l1440-en`, `fn-c360-dark`), `tour` (`tour-<viewport>-<light|dark>-<ro|en>` over 11 viewports), `a11y` (`a11y-reduced-motion`, `a11y-forced-colors`), `nogl` (`--disable-3d-apis`).
+- Fixtures (`e2e/support/test.ts`): the network rules above, a console guard (any console error or uncaught page error fails the test), a placeholder guard (visible `undefined`, `null`, `NaN`, `[object Object]` or an unfilled `{param}` fails it), the map-instance counter and the engine's `hcm-*` events (`instrumentation`), the mock APIs' record of the test's calls (`mockApis`, with `mapLoadEvents()`), axe (`axe.violations()`, WCAG 2.2 AA) and the admin-input budget (`inputBudget`). Specs import `test` and `expect` from there, never from `@playwright/test`; a bad path that provokes a block or an error on purpose claims it with `firewall.take()` or `consoleErrors.take()` and asserts what it got.
+- The e2e world (`e2e/fixtures/world.ts`): two synthetic layers in solid colours (a `mapbox://` tileset and an `xyz` source) and the basemap background, which pixel probes (`probePixel` in `e2e/support/site.ts`) read back; the fixture manifest (`e2e/fixtures/manifest.ts`) adds them and the POI set `scripts/seed/e2e-pois.json` to the Bucharest seed.
+- Specs: the harness (`e2e/specs/harness/`: WebGL2, the firewall, Mapbox GL drawing the mock tiles in the `middle` slot), the viewer smoke on c360 and l1440 (`e2e/specs/smoke/`: one map, one map load, `hcm-ready`, no other host), and the functional specs (`e2e/specs/viewer/`: the page without JavaScript, the page's CSP refusing an inline script and an unknown image host).
+- `E2E_SHARD=index/total` (set by the CI matrix) shards the run; `run-all-checks.sh` forwards it and `E2E_TIER`. Reports: `reports/junit/e2e.xml`, `reports/playwright/` (HTML), `reports/test-results/` (traces of failed tests).
 
-## E2E tiers (M1)
+## Static site build
 
-- **Functional matrix** at compact 360, medium 768 and large 1440 in Romanian, plus English and dark variants.
-- **Tour** over 11 viewports (320×568 to 3840×2160, including 915×412 landscape) × light and dark × RO and EN: axe, no horizontal overflow, no overlap, no clipped text, 48 px touch targets on compact, visible focus, ARIA snapshots, the i18n leak check.
-- **Accessibility specials**: reduced motion, forced colours; **no WebGL**; **Firefox and WebKit** for admin forms; the **pipeline** compose tier.
-- **Admin-input budget**: fills, clicks and file inputs per flow against a declared maximum.
-- **Map-instance counter**: one map per page view.
+- `scripts/site/` builds a city site from its folder (`sites/bucharest/`, `starter-kit/`: `site.json`, `config.js`, `site.css`): the page is generated (`scripts/site/src/page.ts`, no committed `.html` until DECISIONS §1 is approved) with a meta CSP from the site's manifest and configuration and Subresource Integrity for Mapbox GL JS; `config.js` is parsed, never run; the manifest gets the build's token and its photos under `data/media/`.
+- Unit tests in `scripts/site/test` (gate `site-unit`, `npm run test:site`, its own Vitest configuration at 90 % per file): the generated pages pass the repository's `.htmlvalidate.json` through the html-validate library, every committed `site.json`, `config.js` and manifest validates, and every failure path is driven from outside (a missing engine build, a missing photo, a mismatched `cityId`, an output folder outside `dist/`).
+
+## E2E tiers still to fill
+
+- **Functional matrix**: the viewer behaviours V01–V24 as the viewer lands them.
+- **Tour** over 11 viewports (320×568 to 3840×2160, including 915×412 landscape) × light and dark × RO and EN: axe, no horizontal overflow, no overlap, no clipped text, 48 px touch targets on compact, visible focus, ARIA snapshots, the i18n leak check (`e2e/tour/*.tour.ts`).
+- **Accessibility specials** (`e2e/a11y/`): reduced motion, forced colours; **no WebGL** (`e2e/specs/viewer/no-webgl.spec.ts`); **Firefox and WebKit** for admin forms and the **pipeline** compose tier (M2, M3).
+- **Admin-input budget** flows (M2).
 - **Visual baselines**: a small, budgeted subset, recorded only inside the image, reviewed by the `golden-reviewer` subagent.
 
 ## Coverage gate

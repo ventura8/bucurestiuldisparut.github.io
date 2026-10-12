@@ -122,6 +122,9 @@ GATES: dict[str, Gate] = {
         Gate("editorconfig", ("python3", "scripts/ci/check_editorconfig.py")),
         Gate("e2e-matrix", ("python3", "scripts/ci/check_e2e_matrix.py", "check")),
         Gate("i18n", ("python3", "scripts/ci/check_i18n.py")),
+        # The kit's self-hosted fonts (packages/ui/fonts) are rebuilt in memory and must match byte for byte; every
+        # icon name in packages/ui/src/icons.ts must shape to one glyph of the committed subset (M1 CR-14).
+        Gate("fonts", (*NPM_RUN, "fonts:check", "--workspace", "@hcm/ui")),
         Gate("prettier", (*NPM_RUN, "format:check")),
         Gate("tsc", (*NPM_RUN, "typecheck")),
         Gate("eslint", (*NPM_RUN, "lint")),
@@ -166,15 +169,22 @@ GATES: dict[str, Gate] = {
         # `npm test` runs every Vitest project under `firebase emulators:exec` (scripts/ci/run-emulated-tests.sh)
         # and saves the Firestore rule-coverage report that `rules-coverage` then checks.
         Gate("vitest", (*NPM_RUN, "test")),
+        # The static site build's unit tests (scripts/site/vitest.config.ts, >= 90 % per file) until the root
+        # vitest.config.ts gains its `tools` project (docs/research/DECISIONS-for-review.md §9, §12).
+        Gate("site-unit", (*NPM_RUN, "test:site")),
         Gate("rules-coverage", ("python3", "scripts/ci/check_rules_coverage.py", "check")),
         Gate("pytest", ("python3", "-m", "pytest")),
         Gate("pipeline-pytest", PIPELINE_PYTEST),
         Gate("coverage", ("python3", *COVERAGE_GATE)),
-        # e2e: Playwright (e2e/playwright.config.ts) in the image's Chromium, behind the firewall fixture
+        # e2e: the engine and the e2e sites (dist/e2e-site, the fixture manifest), then Playwright
+        # (e2e/playwright.config.ts; E2E_TIER picks the tiers) in the image's Chromium, behind the firewall fixture
+        Gate("e2e-build", (*NPM_RUN, "build:site:e2e")),
         Gate("playwright", (*NPM_RUN, "test:e2e")),
         # build
         Gate("vite-build", (*NPM_RUN, "build")),
         Gate("bundle-budget", ("python3", "scripts/ci/check_bundle_budget.py")),
+        # The static city sites for GitHub Pages (dist/site/bucharest, dist/site/starter-kit) from the engine build
+        Gate("site-build", (*NPM_RUN, "build:site")),
         # release: the tag agrees with every package version and both release-notes files
         Gate("release-check", ("python3", "scripts/ci/check_release.py")),
         # contract (weekly, network): Setup Assistant deep links and third-party API shapes
@@ -196,6 +206,7 @@ STAGES: dict[str, tuple[str, ...]] = {
         "editorconfig",
         "e2e-matrix",
         "i18n",
+        "fonts",
         "prettier",
         "tsc",
         "eslint",
@@ -241,10 +252,10 @@ STAGES: dict[str, tuple[str, ...]] = {
         "pipeline-pip-audit",
     ),
     # The per-file coverage gate reads the reports the test runners just wrote.
-    "tests": ("vitest", "rules-coverage", "pytest", "pipeline-pytest", "coverage"),
-    # The registry check first (the scenario ids the specs carry), then the specs themselves.
-    "e2e": ("e2e-matrix", "playwright"),
-    "build": ("vite-build", "bundle-budget"),
+    "tests": ("vitest", "site-unit", "rules-coverage", "pytest", "pipeline-pytest", "coverage"),
+    # The registry check first (the scenario ids the specs carry), then the sites the specs open, then the specs.
+    "e2e": ("e2e-matrix", "e2e-build", "playwright"),
+    "build": ("vite-build", "bundle-budget", "site-build"),
     # Needs the reports of `tests` (run_pipeline runs `all` as quality, then sonar). A stage left empty would FAIL:
     # it must never report green for work that does not exist yet.
     "sonar": ("sonar",),

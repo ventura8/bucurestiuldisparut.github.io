@@ -20,6 +20,12 @@ export function isId(value: unknown): value is string {
     return typeof value === 'string' && ID_PATTERN.test(value);
 }
 
+/**
+ * The overlay id of the photo markers and cones (PLAN Addendum 3). Overlay ids are the layer ids, this one and the
+ * POI category ids, so no layer or category may use it.
+ */
+export const PHOTOS_OVERLAY_ID = 'photos';
+
 /** Options of a refinement whose failure reports `code` (at `path`, relative to the refined value). */
 export function coded(code: ValidationCode, path?: (string | number)[]): { message: ValidationCode; path?: (string | number)[] } {
     return path === undefined ? { message: code } : { message: code, path };
@@ -30,6 +36,11 @@ export const idSchema = z.string().regex(ID_PATTERN);
 /** A year range is valid when there is no end year, or an end year not before the (required) start year. */
 export function validYearRange(value: { readonly year?: number | undefined; readonly yearEnd?: number | undefined }): boolean {
     return value.yearEnd === undefined || (value.year !== undefined && value.year <= value.yearEnd);
+}
+
+/** A POI span: either bound may be absent (a demolished building with an unknown construction year), never inverted. */
+export function validYearSpan(value: { readonly yearStart?: number | undefined; readonly yearEnd?: number | undefined }): boolean {
+    return value.yearStart === undefined || value.yearEnd === undefined || value.yearStart <= value.yearEnd;
 }
 
 /** Trimmed, non-empty plain text of at most `max` characters (rendered as text, never as HTML). */
@@ -48,7 +59,7 @@ export function localizedPartial(max: number) {
 }
 
 /** Markdown-subset text (`text/markdown.ts`) whose links are all https. */
-export function markdownText(max: number) {
+function markdownText(max: number) {
     return plainText(max).refine((text) => parseMarkdown(text).rejectedLinks.length === 0, coded('validation.markdownLink'));
 }
 
@@ -56,7 +67,18 @@ export function localizedMarkdown(max: number) {
     return z.strictObject({ ro: markdownText(max), en: markdownText(max) });
 }
 
+/** Markdown subset, Romanian required and English optional (texts the viewer falls back to Romanian for). */
+export function localizedMarkdownPartial(max: number) {
+    return z.strictObject({ ro: markdownText(max), en: markdownText(max).optional() });
+}
+
 export const httpsUrlSchema = z.string().max(MAX_URL_LENGTH).refine(isHttpsUrl, coded('validation.httpsOnly'));
+
+/** Links per photo or POI (the Firestore rules allow 5). */
+export const MAX_LINKS = 5;
+
+/** A labelled https link (legacy HTML anchors were converted to these). */
+export const linkSchema = z.strictObject({ url: httpsUrlSchema, label: plainText(200) });
 
 /** An image or archive address: https, or relative to the manifest that names it (no `..`, no `//host`). */
 export const assetUrlSchema = z
@@ -98,6 +120,17 @@ export const mapboxPublicTokenSchema = z.string().regex(/^pk\.[A-Za-z0-9._-]{1,1
 
 /** A GA4 measurement id (`G-XXXXXXX`). */
 export const measurementIdSchema = z.string().regex(/^G-[A-Z0-9]{4,20}$/);
+
+/**
+ * The public identifiers of the city's Firebase web app, which `firebase/analytics` needs besides the measurement id
+ * (M1-interfaces CR-9). They are not secrets (every Firebase web page ships them), but the M2 manifest builder writes
+ * them from the Firebase Management API and they are never committed: gitleaks reports `AIza…` keys.
+ */
+export const firebaseAppIdsSchema = z.strictObject({
+    apiKey: z.string().regex(/^AIza[0-9A-Za-z_-]{35}$/),
+    appId: z.string().regex(/^1:\d{1,20}:web:[0-9a-f]{1,40}$/),
+    projectId: z.string().regex(/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/),
+});
 
 /** `major.minor.patch` of an engine release. */
 export const versionSchema = z.string().regex(/^\d{1,4}\.\d{1,4}\.\d{1,6}$/);

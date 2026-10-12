@@ -7,6 +7,7 @@
  */
 import { z } from 'zod';
 
+import { geometryDocSchema } from './geometry.js';
 import {
     analyticsSchema,
     basemapSchema,
@@ -14,27 +15,30 @@ import {
     layerAdjustmentsSchema,
     layerSourceSchema,
     LICENSES,
-    linkSchema,
-    MAX_LINKS,
     themeSchema,
     LAYER_KINDS,
 } from './manifest.js';
+import { iconNameSchema, MAX_POI_PHOTOS, photosOverlaySchema } from './poi.js';
 import {
     assetUrlSchema,
     bearingSchema,
     boundsRecordSchema,
     coded,
     fovSchema,
+    hexColorSchema,
     httpsUrlSchema,
     idSchema,
     isoDateSchema,
     latLngSchema,
+    linkSchema,
+    localizedMarkdownPartial,
     localizedPartial,
     mapboxPublicTokenSchema,
-    markdownText,
+    MAX_LINKS,
     opacitySchema,
     plainText,
     validYearRange,
+    validYearSpan,
     versionSchema,
     yearSchema,
     zoomSchema,
@@ -83,11 +87,17 @@ export const USGS_SCENE_STATUSES = ['candidate', 'ordered', 'available', 'import
 export const SERVICE_STATES = ['missing', 'ok', 'invalid'] as const;
 export const ADMIN_ROLES = ['owner', 'admin'] as const;
 export const GEOREF_METHODS = ['corners', 'gcps', 'auto'] as const;
+/** The audited, admin-editable documents (PLAN Addendum 3): each keeps a `history` subcollection. */
+export const HISTORY_ENTITIES = ['city', 'layer', 'photo', 'poi', 'poiCategory'] as const;
+export const HISTORY_ACTIONS = ['create', 'update', 'delete', 'revert'] as const;
 
-/** Who last wrote a client-editable document, and when (`serverTimestamp()`; the rules check both). */
+/**
+ * Who last wrote an audited document, and when. A client write stamps its uid and `serverTimestamp()` (the rules
+ * check both); a server writer stamps its own identity, `system:<writer>` (for example `system:pipeline`).
+ */
 const stamp = { updatedBy: uidSchema, updatedAt: timestampSchema };
 
-const localizedMarkdownPartial = z.strictObject({ ro: markdownText(10_000), en: markdownText(10_000).optional() });
+const cityText = localizedMarkdownPartial(10_000);
 
 /** `cities/{city}`. `id`, `mapbox` and `createdAt` are server-owned. */
 export const cityDocSchema = z.strictObject({
@@ -98,14 +108,16 @@ export const cityDocSchema = z.strictObject({
     zoom: zoomSchema.optional(),
     minZoom: zoomSchema.optional(),
     maxZoom: zoomSchema.optional(),
-    about: localizedMarkdownPartial.optional(),
-    privacy: localizedMarkdownPartial.optional(),
+    about: cityText.optional(),
+    privacy: cityText.optional(),
     credits: z.array(creditSchema).max(50).optional(),
     theme: themeSchema.optional(),
     basemap: basemapSchema.optional(),
     mapbox: z.strictObject({ user: z.string().max(64).optional(), publicToken: mapboxPublicTokenSchema.optional() }).optional(),
     analytics: analyticsSchema.optional(),
     engine: z.strictObject({ minVersion: versionSchema.optional() }).optional(),
+    /** Defaults of the photos overlay (PLAN Addendum 3), copied into the manifest. */
+    photosOverlay: photosOverlaySchema.optional(),
     published: z.boolean(),
     createdAt: timestampSchema.optional(),
     ...stamp,
@@ -149,7 +161,10 @@ export const photoDocSchema = z
     })
     .refine(validYearRange, coded('validation.yearRange', ['yearEnd']));
 
-/** `cities/{city}/layers/{layer}`: created by the pipeline; admins edit the presentation fields. */
+/**
+ * `cities/{city}/layers/{layer}`: created by the pipeline (stamped `system:pipeline`); admins edit the presentation
+ * fields, the default opacity and the image adjustments.
+ */
 export const layerDocSchema = z.strictObject({
     year: yearSchema,
     date: isoDateSchema.optional(),
@@ -183,9 +198,62 @@ export const layerDocSchema = z.strictObject({
         .optional(),
     mapbox: z.strictObject({ tilesetId: z.string().max(100), publishedSourceSha: sha256Schema.optional() }).optional(),
     createdAt: timestampSchema.optional(),
-    updatedBy: uidSchema.optional(),
-    updatedAt: timestampSchema.optional(),
+    ...stamp,
 });
+
+/** `cities/{city}/poiCategories/{category}`: edited in the city settings; the manifest lists them by `order`. */
+export const poiCategoryDocSchema = z.strictObject({
+    label: localizedPartial(100),
+    icon: iconNameSchema,
+    color: hexColorSchema,
+    defaultOpacity: opacitySchema,
+    order: z.number().int(),
+    createdAt: timestampSchema.optional(),
+    ...stamp,
+});
+
+/** `cities/{city}/pois/{poi}`: drawn and edited by admins; the geometry has no nested arrays (`geometry.ts`). */
+export const poiDocSchema = z
+    .strictObject({
+        category: idSchema,
+        geometry: geometryDocSchema,
+        title: localizedPartial(200),
+        description: localizedMarkdownPartial(5000).optional(),
+        yearStart: yearSchema.optional(),
+        yearEnd: yearSchema.optional(),
+        links: z.array(linkSchema).max(MAX_LINKS).optional(),
+        photoIds: z.array(idSchema).max(MAX_POI_PHOTOS).optional(),
+        published: z.boolean(),
+        createdAt: timestampSchema.optional(),
+        createdBy: uidSchema.optional(),
+        ...stamp,
+    })
+    .refine(validYearSpan, coded('validation.yearRange', ['yearEnd']));
+
+/** A document as it was, keyed by field (validated again with its entity's schema before a revert writes it). */
+const snapshotSchema = z
+    .record(z.string().min(1).max(64), z.unknown())
+    .refine((snapshot) => Object.keys(snapshot).length <= 100, coded('validation.tooBig'));
+
+/**
+ * `<audited document>/history/{entry}`, for example `cities/{city}/pois/{poi}/history/{entry}` (and
+ * `cities/{city}/history/{entry}` for the city itself). Written by a server trigger on every change of an audited
+ * document, never by a client: `previous` is the version before the change (none for a create), and the stamp is
+ * the change's own. A revert writes `previous` of the entry it names back to the document, which is audited again.
+ */
+export const historyEntryDocSchema = z
+    .strictObject({
+        entity: z.enum(HISTORY_ENTITIES),
+        entityId: idSchema,
+        action: z.enum(HISTORY_ACTIONS),
+        previous: snapshotSchema.nullable(),
+        changedFields: z.array(z.string().min(1).max(64)).max(100),
+        /** The history entry whose `previous` a revert restored. */
+        revertOf: z.string().min(1).max(128).optional(),
+        ...stamp,
+    })
+    .refine((entry) => (entry.action === 'create') === (entry.previous === null), coded('validation.value', ['previous']))
+    .refine((entry) => (entry.action === 'revert') === (entry.revertOf !== undefined), coded('validation.value', ['revertOf']));
 
 /** `cities/{city}/jobs/{job}`: admins create `queued` requests; the job runner owns every other field. */
 export const jobDocSchema = z.strictObject({
@@ -250,6 +318,11 @@ export type JobDoc = z.infer<typeof jobDocSchema>;
 export type UsgsSceneDoc = z.infer<typeof usgsSceneDocSchema>;
 export type SetupStatusDoc = z.infer<typeof setupStatusDocSchema>;
 export type AdminDoc = z.infer<typeof adminDocSchema>;
+export type PoiCategoryDoc = z.infer<typeof poiCategoryDocSchema>;
+export type PoiDoc = z.infer<typeof poiDocSchema>;
+export type HistoryEntryDoc = z.infer<typeof historyEntryDocSchema>;
+export type HistoryEntity = (typeof HISTORY_ENTITIES)[number];
+export type HistoryAction = (typeof HISTORY_ACTIONS)[number];
 export type FirestoreLicense = (typeof FIRESTORE_LICENSES)[number];
 export type JobStatus = (typeof JOB_STATUSES)[number];
 export type JobType = (typeof JOB_TYPES)[number];

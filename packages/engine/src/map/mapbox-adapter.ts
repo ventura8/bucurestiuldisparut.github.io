@@ -1,0 +1,378 @@
+/**
+ * `MapPort` on Mapbox GL JS 3.32.0, the global `mapboxgl` the page loads from api.mapbox.com (never bundled). The only
+ * module that drives Mapbox (dependency-cruiser `only-the-map-adapter-imports-mapbox`); the helpers next to it build
+ * the layers (`rasters.ts`, `photos.ts`, `pois.ts`), the sprite images (`icons.ts`), the overlay paint
+ * (`overlay-registry.ts`), the 3D-objects switch (`basemap.ts`) and the selection (`pointer.ts`).
+ *
+ * Rules (docs/research/M1-interfaces.md §4): `performanceMetricsCollection: false`; the attribution control always
+ * on (Mapbox collapses it on narrow maps, still reachable); 3D objects off while a historical layer is visible; one
+ * map per mount, counted in `mapLoadCount` (every map is a billed map load); paint property names only from
+ * `overlayOpacityPaint` and `rasterAdjustmentPaint`.
+ */
+import { wrapBearing, type MapView, type RasterAdjustmentPaint } from '@hcm/shared';
+
+import { EventListeners, Listeners } from '../core/listeners.js';
+import { Basemap3dObjects } from './basemap.js';
+import { browserAdapterEnv, type AdapterEnv } from './env.js';
+import { ensureIcon, PHOTO_CAMERA_ICON, PHOTO_CLUSTER_ICON, PHOTO_DIRECTION_ICON, poiIconId } from './icons.js';
+import {
+    PHOTOS_OVERLAY_ID,
+    type MapEventMap,
+    type MapOptions,
+    type MapPort,
+    type MapSlot,
+    type PhotoFeatureCollection,
+    type RasterLayerSpec,
+    type Unsubscribe,
+    type VectorOverlaySpec,
+} from './map-port.js';
+import { classifyError, mapboxOptions, whenLoaded } from './lifecycle.js';
+import type { MapboxEvent, MapboxGl, MapboxMap } from './mapbox-types.js';
+import { OverlayRegistry } from './overlay-registry.js';
+import {
+    PHOTO_CONE_FILL_LAYER,
+    PHOTO_CONES_SOURCE,
+    PHOTO_POINTS_SOURCE,
+    photoEntry,
+    photoLayers,
+    photoSources,
+    splitPhotoData,
+} from './photos.js';
+import { attachPointer, type Selection } from './pointer.js';
+import { poiData, poiEntry, poiLayers } from './pois.js';
+import { overlaySourceId, rasterBeforeId, rasterEntry, rasterLayer, rasterLayerId, rasterSource } from './rasters.js';
+
+/** The slot of the photo markers and cones: above the POI labels of the basemap. */
+const PHOTO_SLOT: MapSlot = 'top';
+
+const DEFAULT_VIEW: MapView = { center: [0, 0], zoom: 0, bearing: 0 };
+
+/** A subscriber that throws is the subscriber's problem: the map goes on (the store logs its own failures). */
+const ignore = (): void => undefined;
+
+interface Session {
+    readonly map: MapboxMap;
+    readonly options: MapOptions;
+    readonly registry: OverlayRegistry;
+    /** The manifest `order` of every raster layer on the map. */
+    readonly orders: Map<string, number>;
+    /** The colour and icon each POI overlay was drawn with: the same ones only need new data. */
+    readonly vectorStyles: Map<string, string>;
+    readonly cleanups: (() => void)[];
+    basemap: Basemap3dObjects | null;
+    resizeFrame: number | null;
+    abortLoad: (error: Error) => void;
+}
+
+class MapboxPort implements MapPort {
+    readonly #gl: MapboxGl;
+    readonly #env: AdapterEnv;
+    readonly #events = new EventListeners<MapEventMap>(ignore);
+    readonly #photoClicks = new Listeners<[string]>(ignore);
+    readonly #poiClicks = new Listeners<[string]>(ignore);
+    #session: Session | null = null;
+    #loaded = false;
+    #loads = 0;
+    #lastView: MapView = DEFAULT_VIEW;
+
+    constructor(gl: MapboxGl, env: AdapterEnv) {
+        this.#gl = gl;
+        this.#env = env;
+    }
+
+    get mapLoadCount(): number {
+        return this.#loads;
+    }
+
+    isWebGLSupported(): boolean {
+        return this.#gl.supported === undefined ? this.#env.probeWebGL() : this.#gl.supported();
+    }
+
+    async mount(container: HTMLElement, options: MapOptions): Promise<void> {
+        this.#close();
+        let map: MapboxMap;
+        try {
+            map = new this.#gl.Map(mapboxOptions(container, options));
+        } catch (error) {
+            throw new Error('webgl', { cause: error });
+        }
+        this.#loads += 1;
+        this.#lastView = options.view;
+        const session = this.#open(map, options, container);
+        await whenLoaded(map, (abort) => {
+            session.abortLoad = abort;
+        });
+        if (this.#session !== session) {
+            throw new Error('unknown');
+        }
+        this.#loaded = true;
+        this.#prepare(session);
+    }
+
+    /** The Mapbox map of the current mount, for the compare view (`compare.ts`); null without one. */
+    get native(): MapboxMap | null {
+        return this.#session?.map ?? null;
+    }
+
+    #open(map: MapboxMap, options: MapOptions, container: HTMLElement): Session {
+        const registry = new OverlayRegistry(map, this.#env.frames);
+        const session: Session = {
+            map,
+            options,
+            registry,
+            orders: new Map(),
+            vectorStyles: new Map(),
+            cleanups: [],
+            basemap: null,
+            resizeFrame: null,
+            abortLoad: ignore,
+        };
+        this.#session = session;
+        this.#forward(session, 'moveend', () => {
+            this.#events.emit('moveend', this.getView());
+        });
+        this.#forward(session, 'error', (event) => {
+            this.#events.emit('error', classifyError(event, this.#loaded));
+        });
+        this.#forward(session, 'webglcontextlost', () => {
+            this.#events.emit('webglcontextlost', undefined);
+        });
+        this.#forward(session, 'webglcontextrestored', () => {
+            this.#events.emit('webglcontextrestored', undefined);
+        });
+        session.cleanups.push(
+            this.#env.observeResize(container, () => {
+                this.#scheduleResize(session);
+            }),
+        );
+        return session;
+    }
+
+    #forward(session: Session, type: string, listener: (event: MapboxEvent) => void): void {
+        session.map.on(type, listener);
+        session.cleanups.push(() => session.map.off(type, listener));
+    }
+
+    /** One `resize` per animation frame however often the container changes size. */
+    #scheduleResize(session: Session): void {
+        session.resizeFrame ??= this.#env.frames.request(() => {
+            session.resizeFrame = null;
+            session.map.resize();
+        });
+    }
+
+    /** After `load`: sprite images, the photo sources and layers, the 3D switch, selection. */
+    #prepare(session: Session): void {
+        const { map, registry } = session;
+        for (const icon of [PHOTO_CAMERA_ICON, PHOTO_DIRECTION_ICON, PHOTO_CLUSTER_ICON]) {
+            this.#ensureIcon(session, icon);
+        }
+        for (const [id, source] of photoSources()) {
+            map.addSource(id, source);
+        }
+        for (const layer of photoLayers(PHOTO_SLOT, true, 1)) {
+            map.addLayer(layer);
+        }
+        registry.set(PHOTOS_OVERLAY_ID, photoEntry(true, 1));
+        session.basemap = new Basemap3dObjects(map);
+        const layers = (): readonly string[] =>
+            registry.entries().flatMap(([, entry]) => (entry.kind === 'raster' ? [] : entry.layers.map((layer) => layer.id)));
+        const select = (selection: Selection): void => {
+            this.#select(session, selection);
+        };
+        session.cleanups.push(attachPointer(map, { layers, select }));
+    }
+
+    #ensureIcon(session: Session, id: string): void {
+        ensureIcon(session.map, id, this.#env.icons, () => this.#session === session).catch(ignore);
+    }
+
+    #select(session: Session, selection: Selection): void {
+        if (selection.kind === 'photo') {
+            this.#photoClicks.emit(selection.id);
+        } else if (selection.kind === 'poi') {
+            this.#poiClicks.emit(selection.id);
+        } else {
+            this.#zoomIntoCluster(session, selection.clusterId, selection.center);
+        }
+    }
+
+    #zoomIntoCluster(session: Session, clusterId: number, center: readonly [number, number] | null): void {
+        session.map.getSource(PHOTO_POINTS_SOURCE)?.getClusterExpansionZoom?.(clusterId, (error, zoom) => {
+            if (error === null || error === undefined) {
+                this.flyTo(center === null ? { zoom } : { center, zoom });
+            }
+        });
+    }
+
+    /** The session once the style has loaded; null before (calls are ignored then). */
+    #ready(): Session | null {
+        return this.#loaded ? this.#session : null;
+    }
+
+    #updateBasemap(session: Session): void {
+        const visible = session.registry.entries().some(([, entry]) => entry.kind === 'raster' && entry.visible);
+        session.basemap?.update(visible);
+    }
+
+    addRasterLayer(spec: RasterLayerSpec, slot: MapSlot): void {
+        const session = this.#ready();
+        if (session === null) {
+            return;
+        }
+        this.removeLayer(spec.id);
+        session.map.addSource(overlaySourceId(spec.id), rasterSource(spec));
+        session.map.addLayer(rasterLayer(spec, slot), rasterBeforeId(session.orders, spec.order));
+        session.orders.set(spec.id, spec.order);
+        session.registry.set(spec.id, rasterEntry(spec));
+        this.#updateBasemap(session);
+    }
+
+    addVectorOverlay(spec: VectorOverlaySpec, slot: MapSlot): void {
+        const session = this.#ready();
+        if (session === null) {
+            return;
+        }
+        this.#ensureIcon(session, poiIconId(spec.icon));
+        const style = `${spec.color} ${spec.icon} ${slot}`;
+        if (session.vectorStyles.get(spec.id) === style) {
+            session.map.getSource(overlaySourceId(spec.id))?.setData(poiData(spec));
+            this.setOverlayVisibility(spec.id, spec.visible);
+            this.setOverlayOpacity(spec.id, spec.opacity);
+            return;
+        }
+        this.removeLayer(spec.id);
+        this.#drawVectorOverlay(session, spec, slot);
+        session.vectorStyles.set(spec.id, style);
+    }
+
+    #drawVectorOverlay(session: Session, spec: VectorOverlaySpec, slot: MapSlot): void {
+        session.map.addSource(overlaySourceId(spec.id), { type: 'geojson', data: poiData(spec) });
+        // In the photos' slot the POIs go below the photo markers and cones, which stay the topmost thing to click.
+        const beforeId = slot === PHOTO_SLOT ? PHOTO_CONE_FILL_LAYER : undefined;
+        for (const layer of poiLayers(spec, slot)) {
+            session.map.addLayer(layer, beforeId);
+        }
+        session.registry.set(spec.id, poiEntry(spec));
+    }
+
+    setOverlayVisibility(overlayId: string, visible: boolean): void {
+        const session = this.#ready();
+        if (session?.registry.setVisibility(overlayId, visible) === true) {
+            this.#updateBasemap(session);
+        }
+    }
+
+    setOverlayOpacity(overlayId: string, opacity: number): void {
+        this.#ready()?.registry.setOpacity(overlayId, opacity);
+    }
+
+    setLayerPaint(layerId: string, paint: RasterAdjustmentPaint): void {
+        const session = this.#ready();
+        if (session?.registry.get(layerId)?.kind !== 'raster') {
+            return;
+        }
+        for (const [property, value] of Object.entries(paint)) {
+            session.map.setPaintProperty(rasterLayerId(layerId), property, value);
+        }
+    }
+
+    removeLayer(layerId: string): void {
+        const session = this.#ready();
+        if (session === null || layerId === PHOTOS_OVERLAY_ID) {
+            return;
+        }
+        session.registry.remove(layerId);
+        session.orders.delete(layerId);
+        session.vectorStyles.delete(layerId);
+        this.#updateBasemap(session);
+    }
+
+    setPhotosData(data: PhotoFeatureCollection): void {
+        const session = this.#ready();
+        if (session === null) {
+            return;
+        }
+        const { points, cones } = splitPhotoData(data);
+        session.map.getSource(PHOTO_POINTS_SOURCE)?.setData(points);
+        session.map.getSource(PHOTO_CONES_SOURCE)?.setData(cones);
+    }
+
+    onPhotoClick(handler: (photoId: string) => void): Unsubscribe {
+        return this.#photoClicks.add(handler);
+    }
+
+    onPoiClick(handler: (poiId: string) => void): Unsubscribe {
+        return this.#poiClicks.add(handler);
+    }
+
+    flyTo(view: Partial<MapView>, options?: { readonly animate?: boolean }): void {
+        const session = this.#session;
+        if (session === null) {
+            return;
+        }
+        const camera = { ...view };
+        if (options?.animate === false || session.options.reducedMotion) {
+            session.map.jumpTo(camera);
+        } else {
+            session.map.flyTo(camera);
+        }
+    }
+
+    getView(): MapView {
+        const map = this.#session?.map;
+        if (map !== undefined) {
+            const center = map.getCenter();
+            this.#lastView = { center: [center.lng, center.lat], zoom: map.getZoom(), bearing: wrapBearing(map.getBearing()) };
+        }
+        return this.#lastView;
+    }
+
+    on<E extends keyof MapEventMap>(event: E, handler: (payload: MapEventMap[E]) => void): Unsubscribe {
+        return this.#events.on(event, handler);
+    }
+
+    resize(): void {
+        this.#session?.map.resize();
+    }
+
+    destroy(): void {
+        this.#close();
+        this.#events.clear();
+        this.#photoClicks.clear();
+        this.#poiClicks.clear();
+    }
+
+    /** Removes the current map (a pending mount rejects); the port's own listeners stay. */
+    #close(): void {
+        const session = this.#session;
+        if (session === null) {
+            return;
+        }
+        this.getView();
+        this.#session = null;
+        this.#loaded = false;
+        session.abortLoad(new Error('unknown'));
+        if (session.resizeFrame !== null) {
+            this.#env.frames.cancel(session.resizeFrame);
+        }
+        for (const cleanup of session.cleanups) {
+            cleanup();
+        }
+        session.registry.destroy();
+        session.map.remove();
+    }
+}
+
+/** The Mapbox map behind a port made by `createMapboxPort`; null for any other port or before `mount`. */
+export function nativeMap(port: MapPort): MapboxMap | null {
+    return port instanceof MapboxPort ? port.native : null;
+}
+
+/**
+ * The MapPort of the viewer (and of the compare view's second map). `env` defaults to the page's `window`; the node
+ * tests pass fakes (`@hcm/test-support`).
+ */
+export function createMapboxPort(gl: MapboxGl, env?: AdapterEnv): MapPort {
+    return new MapboxPort(gl, env ?? browserAdapterEnv(globalThis));
+}

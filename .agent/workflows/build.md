@@ -18,7 +18,7 @@ The `build` stage runs `npm run build`, which runs every workspace's `build` scr
 
 | Package | Output | Notes |
 | --- | --- | --- |
-| `@hcm/engine` | `packages/engine/dist/engine.iife.js`, `engine.mjs`, `engine.css` | IIFE global `window.HistoricCityMap`; `mapbox-gl` external, mapped to the global `mapboxgl` (Mapbox GL JS 3.32.0 from `api.mapbox.com`); config in `packages/engine/vite.config.ts` |
+| `@hcm/engine` | `packages/engine/dist/engine.iife.js`, `engine.mjs` (plus its lazy `firebase-sdk-<hash>.js`), `engine.css`, `fonts/` | IIFE global `window.HistoricCityMap`; Mapbox GL is never imported: the engine reads the page's global `mapboxgl` (Mapbox GL JS 3.32.0 from `api.mapbox.com`); config in `packages/engine/vite.config.ts`, then `fonts:copy` copies the kit's fonts and their licences into `dist/fonts/` |
 | `@hcm/admin` | `packages/admin/dist/admin.*` | global `HistoricCityMapAdmin`; deployed to Firebase Hosting from M2 |
 
 `dist/` is git-ignored: the `release` stage rebuilds the bundles on a tag and `release.yml` attaches them to the GitHub Release.
@@ -34,7 +34,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
 
 - `functions/dist/` (built since M0 by `npm run build`, deployed from M2): `functions/build.mjs` bundles `@hcm/shared` with Vite SSR, keeps npm dependencies external and writes `dist/package.json` with exact pins; its lockfile and the e2e emulator run on it join in M2.
 - Pipeline image (M3): `pipeline/Dockerfile` targets `test` (the GDAL test image) and `runtime` (the Cloud Run Job image).
-- Sites: `sites/bucharest/` (Pages) and `starter-kit/` copy the engine `dist` same-origin.
+- Sites: `npm run build:site` (gate `site-build`, after `vite-build`) writes `dist/site/bucharest` (Pages) and `dist/site/starter-kit` from `sites/bucharest/` and `starter-kit/`: the generated `index.html` (meta CSP, Mapbox GL with Subresource Integrity), `config.js`, `site.css`, `data/manifest.json` with the photos in `data/media/` and the Mapbox token from `MAPBOX_PUBLIC_TOKEN`, and the engine `dist` copied same-origin into `engine/`. The e2e variant (`npm run build:site:e2e`) writes `dist/e2e-site` with the e2e fixture manifest.
 - Bundle budget gate: gzip size of the engine IIFE and the admin bundle.
 
 ## Rules

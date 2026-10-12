@@ -79,6 +79,49 @@ export function validPhoto(): Record<string, unknown> {
     };
 }
 
+export function validPoiCategory(): Record<string, unknown> {
+    return {
+        id: 'cladiri',
+        label: { ro: 'Clădiri dispărute', en: 'Vanished buildings' },
+        icon: 'domain_disabled',
+        color: '#8B5E3C',
+        defaultOpacity: 0.9,
+    };
+}
+
+export function validPoi(): Record<string, unknown> {
+    return {
+        id: 'casa-uranus',
+        category: 'cladiri',
+        geometry: { type: 'Point', coordinates: [26.0872, 44.4285] },
+        title: { ro: 'Casa de pe Uranus', en: 'The house on Uranus street' },
+        description: { ro: '**Demolată** în 1984. [Sursa](https://example.org/poi/casa)' },
+        yearStart: 1890,
+        yearEnd: 1984,
+        links: [{ url: 'https://example.org/poi/casa', label: 'Sursa' }],
+        photoIds: ['mihai-voda-1978'],
+    };
+}
+
+/** A closed square ring around `[lng, lat]` (half side `size` degrees). */
+export function squareRing(lng: number, lat: number, size = 0.001): [number, number][] {
+    return [
+        [lng - size, lat - size],
+        [lng + size, lat - size],
+        [lng + size, lat + size],
+        [lng - size, lat + size],
+        [lng - size, lat - size],
+    ];
+}
+
 export function validManifest(): Record<string, unknown> {
-    return { version: 1, city: validCity(), layers: [validLayer()], photos: [validPhoto()] };
+    return {
+        version: 1,
+        city: validCity(),
+        layers: [validLayer()],
+        photos: [validPhoto()],
+        photosOverlay: { defaultOpacity: 0.8 },
+        poiCategories: [validPoiCategory()],
+        pois: [validPoi()],
+    };
 }

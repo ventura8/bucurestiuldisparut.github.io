@@ -2,7 +2,7 @@
 
 The public contract of the **Historic City Map** viewer engine (`@hcm/engine`) for city owners who embed it and for the agents who build it. It covers the embed configuration (`config.js`), the `<hcm-map-viewer>` element, the JavaScript API, the URL hash, the City Manifest v1 and the versioning rules. The exact TypeScript interfaces behind it, and who owns which module, are in [research/M1-interfaces.md](research/M1-interfaces.md); the architecture is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Status (M1): the manifest, configuration, URL hash and validation contracts are implemented and tested in `@hcm/shared` (`packages/shared/src/schemas/`, `packages/shared/src/url/hash.ts`). The element, the JavaScript API and the auto-boot are specified here and land with the M1 viewer.
+Status (M1): the manifest (with the POIs and overlay defaults of PLAN Addendum 3), configuration, URL hash, validation and overlay-model contracts are implemented and tested in `@hcm/shared` (`packages/shared/src/schemas/`, `packages/shared/src/url/hash.ts`, `packages/shared/src/overlays/`). The element, the JavaScript API and the auto-boot are implemented in `@hcm/engine` (`packages/engine/src/index.ts`, `packages/engine/src/mount.ts`) and `@hcm/ui` (`packages/ui/src/viewer/`) and boot the built Bucharest site in the e2e smoke (scenario S-V16-HAPPY).
 
 ## The three files of a city
 
@@ -20,7 +20,7 @@ A city site is a page, its `config.js` and the engine. Mapbox GL JS **3.32.0** i
         <link rel="stylesheet" href="engine/engine.css" />
         <script src="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js" defer></script>
         <script src="config.js" defer></script>
-        <script src="engine/engine.iife.js" defer></script>
+        <script type="module" src="engine/engine.mjs"></script>
     </head>
     <body>
         <div id="historic-city-map"></div>
@@ -36,7 +36,9 @@ window.HistoricCityMapConfig = {
 };
 ```
 
-Bucharest serves the engine from its own origin (CI copies the engine build next to the page). A third-party city that loads it from jsDelivr pins an exact version with `integrity` and `crossorigin`; SRI is impossible with a range URL such as `@1`.
+Bucharest serves the engine from its own origin (the site build copies every file of the engine build next to the page: `engine.mjs` with its lazy `firebase-sdk-<hash>.js` chunk, `engine.iife.js`, `engine.css` and `fonts/`). A module script runs after the deferred classic scripts above it, so `mapboxgl` and the configuration exist when the engine starts; `engine/engine.iife.js` with `defer` works the same way for pages that cannot load modules.
+
+`globalThis.HistoricCityMapConfig = {…}` is the same as `window.HistoricCityMapConfig = {…}` in a classic script (the committed `config.js` files use it). A site build reads `config.js` without running it (`scripts/site/src/config-js.ts`), so the file must be one assignment of literal data: objects, arrays, strings, numbers, booleans and `null`. A third-party city that loads it from jsDelivr pins an exact version with `integrity` and `crossorigin`; SRI is impossible with a range URL such as `@1`.
 
 ## config.js
 
@@ -49,16 +51,16 @@ Bucharest serves the engine from its own origin (CI copies the engine build next
 | `cityId` | string | none | `^[A-Za-z0-9_-]{1,40}$`. When present it must equal `manifest.city.id` (else `error.config.cityMismatch`); it also namespaces the stored preferences. |
 | `container` | string | `#historic-city-map` | CSS selector of the element to mount into (auto-boot only). |
 | `lang` | string | `ro` | A BCP 47 tag; anything that is not English resolves to Romanian. |
-| `engineBase` | string | the folder of the engine script | https or relative, ending with `/`: where the engine's own CSS, fonts and icons live. |
+| `engineBase` | string | the folder of the engine script | https or relative, ending with `/`: where the engine's own files live (`fonts/`: the self-hosted Roboto Flex and Material Symbols subset). |
 
-**Auto-boot.** When the IIFE build runs it reads `window.HistoricCityMapConfig`:
+**Auto-boot.** When either build runs (the ES module or the IIFE), it registers the elements and, once the document is parsed, reads `window.HistoricCityMapConfig`:
 
 - present and valid: it mounts into `container`; a missing element shows `error.config.container` in the console log and nothing on the page (there is nowhere to draw);
 - present and invalid: the error card in `container` shows `error.config.invalid` with the first issue (`path` and the localized `validation.*` message), so the city owner sees what to fix;
 - absent while `#historic-city-map` exists: the error card shows `error.config.missing` (scenario V17);
 - absent and no default container: nothing happens (the page uses `<hcm-map-viewer>` or `HistoricCityMap.mount` itself).
 
-**Language** is resolved in this order: the URL (`#…&lang=` or `?lang=`), the visitor's stored choice, `config.lang`, then Romanian. `<html lang>` follows the result (scenario V11).
+**Language** is resolved in this order: the URL (`#…&lang=` or `?lang=`), the visitor's stored choice, `config.lang`, then Romanian. `<html lang>` follows the result (scenario V11). The visitor switches it in the menu (the item names the other language) and in About; the theme (system, light, dark) is in About. `setLang` accepts any tag and resolves it like `config.lang`.
 
 ## `<hcm-map-viewer>`
 
@@ -72,6 +74,9 @@ The engine's custom element (Lit, registered by the engine; the tag never change
 | `engine-base` | `engineBase` | string | As in `config.js`. |
 | (none) | `manifest` | object | An inline manifest; set it before the element is connected. |
 | (none) | `controller` | `HistoricCityMapController` or `null` | Read-only; the same object `mount` returns, `null` before connection. |
+| (none) | `mapContainer` | `HTMLElement` or `null` | Read-only; the stable element inside the shadow root the map is mounted into (after the first render). |
+
+The engine also sets `mapboxCssUrl` (mapbox-gl.css of the pinned release, linked inside the shadow root, where the page's copy cannot reach), `engineVersion` and `bootError` (a configuration error found before any store exists), and connects its store with `attach(store, controller)` / `detach()`. Pages never set these.
 
 Events are `CustomEvent`s that bubble and cross shadow roots (`composed: true`):
 
@@ -80,7 +85,9 @@ Events are `CustomEvent`s that bubble and cross shadow roots (`composed: true`):
 | `hcm-ready` | `{ cityId, engineVersion, layers, photos }` (counts) | The manifest passed validation and the map's style loaded. |
 | `hcm-error` | `{ code, retryable, detail? }` | Boot or map error; `code` is an i18n key (`error.*`), `detail` a non-localized hint (an issue path, an HTTP status). |
 | `hcm-layer-change` | `{ layerId, visible, opacity, year }` | A historical layer was shown, hidden or faded (by the visitor, the hash or the API). |
+| `hcm-overlay-change` | `{ overlayId, kind, visible, opacity }` | Any overlay (a historical layer, `photos`, a POI category) was shown, hidden or faded; fired once per change, after a slider is released. |
 | `hcm-photo-open` | `{ photoId }` | A photo's sheet opened. |
+| `hcm-poi-open` | `{ poiId }` | A POI's details opened (in the same sheet as photos). |
 
 ## JavaScript API
 
@@ -99,10 +106,14 @@ interface HistoricCityMapController {
     readonly ready: Promise<{ readonly ok: true; readonly cityId: string } | { readonly ok: false; readonly code: MessageKey }>;
     /** Shows the layers of `year` (null: today, no historical layer). */
     setYear(year: number | null): void;
-    /** Shows or hides a layer; without `visible` it toggles. */
+    /** Shows or hides an overlay (a layer id, `photos` or a POI category id); without `visible` it toggles. */
     toggleLayer(layerId: string, visible?: boolean): void;
+    /** Sets an overlay's opacity (0 to 1, clamped) live; an unknown id is ignored. */
+    setOverlayOpacity(overlayId: string, opacity: number): void;
     /** Opens a photo's sheet (null closes it); an unknown id shows the `error.unknownPhoto` toast. */
     openPhoto(photoId: string | null): void;
+    /** Opens a POI's details (null closes them); an unknown id is ignored. */
+    openPoi(poiId: string | null): void;
     setLang(lang: 'ro' | 'en'): void;
     /** Removes the map (one map per view), every listener and the rendered content; later calls do nothing. */
     destroy(): void;
@@ -122,7 +133,7 @@ interface HistoricCityMapController {
 | view | 3 or 4 plain decimals (no exponent, no `Infinity`); zoom clamped to the city's `minZoom`..`maxZoom`, the centre to the city bounds, the bearing wrapped to `[0, 360)`. The encoder writes zoom with 2 decimals, latitude and longitude with 5, the bearing with 1 and omits a bearing of 0. |
 | `layers` | Visible historical layers; ids must match `^[A-Za-z0-9_-]{1,40}$`, others are dropped; duplicates removed; `layers=` (empty) means none. |
 | `opacity` | Opacity of the visible historical layers, clamped to `[0, 1]`. |
-| `op` | Per-overlay opacity (PLAN Addendum 3) in percent, clamped to `[0, 100]`; at most 50 entries; wins over `opacity`. Overlays are the layer ids, `photos` and, later, POI categories. |
+| `op` | Per-overlay opacity (PLAN Addendum 3) in percent, clamped to `[0, 100]`; at most 50 entries (the encoder never writes more); wins over `opacity`. Overlays are the layer ids, `photos` and the POI category ids ([Overlays](#overlays)). An entry for an id the manifest does not have is dropped (`decodeHash` with `overlayIds`), and the viewer writes only the overlays whose opacity differs from the manifest default. |
 | `photo` | The open photo; an id that is not in the manifest shows a toast (scenario V09). |
 | `lang` | `ro` or `en`; anything else is ignored. |
 
@@ -133,13 +144,15 @@ Unknown parameters are ignored, a repeated one keeps its last valid value, and a
 The only data the viewer reads: a static JSON file (from the public bucket, or inline in `config.js`). Schema: `manifestSchema` in `packages/shared/src/schemas/manifest.ts`; the Bucharest seed is `seed/bucharest/manifest.static.json`. Every object is strict: an unknown key is an error (which also blocks prototype-pollution keys).
 
 ```json
-{ "version": 1, "city": { "id": "bucuresti", "...": "..." }, "layers": [], "photos": [] }
+{ "version": 1, "city": { "id": "bucuresti", "...": "..." }, "layers": [], "photos": [], "photosOverlay": { "defaultOpacity": 1 }, "poiCategories": [], "pois": [] }
 ```
+
+`photosOverlay`, `poiCategories` and `pois` are optional (the Bucharest seed has none of them yet).
 
 Common rules:
 
 - **Text** is plain text, rendered with `textContent` or Lit templates, never as HTML; it is trimmed and must not be empty. `{ro, en}` means both languages are required, `{ro, en?}` that English falls back to Romanian.
-- **Markdown subset** (`about`, `privacy`): paragraphs separated by a blank line, `**bold**`, `_italic_` or `*italic*`, `[label](https://…)` links, `\` escapes. A link that is not https makes the manifest invalid; HTML is shown as text. Parser: `parseMarkdown` in `packages/shared/src/text/markdown.ts`.
+- **Markdown subset** (`about`, `privacy`, POI `description`): paragraphs separated by a blank line, `**bold**`, `_italic_` or `*italic*`, `[label](https://…)` links, `\` escapes. A link that is not https makes the manifest invalid; HTML is shown as text. Parser: `parseMarkdown` in `packages/shared/src/text/markdown.ts`.
 - **URLs** are https without credentials. Image and archive addresses may also be relative to the manifest (no `..`, no `//host`, no query).
 - **Coordinates** are `[lng, lat]` in degrees; bounds are `[[west, south], [east, north]]` with west < east and south < north.
 
@@ -157,14 +170,14 @@ Common rules:
 | `theme` | `{seedColor, tokens}` | `seedColor` `#rrggbb`; `tokens.light`, `.dark`, `.highContrastLight`, `.highContrastDark` each map 1 to 200 `--md-sys-*` names to values without `;`, braces, quotes, `:` or `url(` |
 | `basemap` | `{style, config?}` | `mapbox://styles/<owner>/<style>` or https; `config` sets Mapbox Standard configuration properties (at most 30) |
 | `mapbox` | `{publicToken}` | a `pk.` token (URL-restricted); a secret `sk.` token is rejected |
-| `analytics` | `{measurementId?, errorEndpoint?}` | `G-…`; https. GA4 loads only with a `measurementId` and the visitor's consent |
+| `analytics` | `{measurementId?, errorEndpoint?, firebase?}` | `G-…`; https; `firebase` is `{apiKey, appId, projectId}` of the city's Firebase web app (`AIza…`, `1:<number>:web:<hex>`, a project id), written by the manifest builder and never committed. GA4 loads only with a `measurementId`, the `firebase` ids and the visitor's consent; without the ids the consent banner still asks, but nothing is sent |
 | `engine` | `{minVersion?}` (optional) | the oldest engine that can read this manifest |
 
 ### `layers[]`
 
 | Field | Type | Rule |
 | --- | --- | --- |
-| `id` | string | unique in the manifest |
+| `id` | string | unique in the manifest; also an overlay id, so never `photos` and never a POI category id |
 | `year`, `date?` | integer, `YYYY-MM-DD` | 1800 to 2100; `date` within `year` |
 | `label`, `description?` | `{ro, en}` | at most 200 and 5,000 characters |
 | `kind` | `satellite`, `aerial` or `map` | |
@@ -174,7 +187,7 @@ Common rules:
 | `bounds?` | `[[w, s], [e, n]]` | where tiles exist |
 | `order` | integer | drawing order (higher on top) in the Standard style's `middle` slot |
 | `defaultVisible`, `opacity` | boolean, 0 to 1 | initial state |
-| `adjustments?` | `{brightnessMin?, brightnessMax?, contrast?, saturation?}` | Mapbox `raster-*` paint values (brightness 0 to 1, min ≤ max; contrast and saturation -1 to 1), applied live (PLAN Addendum 3) |
+| `adjustments?` | `{brightnessMin?, brightnessMax?, contrast?, saturation?}` | Mapbox `raster-brightness-min`, `raster-brightness-max`, `raster-contrast`, `raster-saturation` (brightness 0 to 1, min ≤ max; contrast and saturation -1 to 1; ranges and neutral values in `LAYER_ADJUSTMENT_RANGES`), applied live without reprocessing (PLAN Addendum 3). An absent adjustment is neutral; `rasterAdjustmentPaint` clamps live slider values and never lets the minimum pass the maximum. Mapbox has no gamma property: the brightness range is the levels control |
 
 ### `photos[]`
 
@@ -192,13 +205,59 @@ Common rules:
 | `bearing?`, `fov?` | number | 0 to 360 and 1 to 180; a photo with a bearing gets a view cone (default field of view 60°) |
 | `image` | `{web, thumb, w, h}` | WebP derivatives (2048 px and 400 px on the long edge), metadata stripped; `w`, `h` of `web` |
 
+### `photosOverlay` (optional)
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| `defaultOpacity` | number | 0 to 1: the photo markers' and view cones' opacity until the visitor moves the slider; without `photosOverlay` it is 1 |
+
+### `poiCategories[]` (optional)
+
+Points of interest (PLAN Addendum 3) are places, buildings, vanished streets, events or notes beyond the photos. Each belongs to one city-defined category, which is also an overlay with its own slider.
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| `id` | string | unique; also an overlay id: never `photos`, never a layer id |
+| `label` | `{ro, en}` | at most 100 characters |
+| `icon` | string | a Material Symbols name, `^[a-z0-9_]{1,64}$`. The engine bundles the names of `POI_ICONS` (`packages/shared/src/schemas/poi.ts`); any other valid name is drawn as `location_on`, so an older engine never refuses a newer icon |
+| `color` | `#rrggbb` | the icon background, line and fill colour of the category's POIs |
+| `defaultOpacity` | number | 0 to 1 |
+
+At most 50 categories.
+
+### `pois[]` (optional)
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| `id` | string | unique |
+| `category` | string | the id of one of `poiCategories` |
+| `geometry` | GeoJSON | `Point`, `LineString` (2 positions or more) or `Polygon` (closed rings of 4 positions or more, at most 20 rings); `[lng, lat]` positions only (no altitude, no `bbox`); at most 500 positions per geometry; every position within the city bounds plus 0.5° |
+| `title`, `description?` | `{ro, en?}` | at most 200 and 5,000 characters; `description` is Markdown subset |
+| `yearStart?`, `yearEnd?` | integer | 1800 to 2100; either may be absent (an open end), never `yearEnd` before `yearStart` |
+| `links` | `[{url, label}]` | at most 5, https only |
+| `photoIds?` | string[] | at most 20 ids of manifest photos, shown in the POI's details |
+
+At most 5,000 POIs. The timeline shows a POI at a year its span covers (an absent bound is open); "today" shows every POI (`poiInYear`). POI details open in the same sheet as photos, labels show from zoom 16.
+
+### Overlays
+
+The viewer's Layers panel lists one **overlay** per historical layer, one for the photos (markers and view cones, id `photos`) and one per POI category, each with a switch and a 0–100 % slider that updates the map live. Layer ids, `photos` and category ids are one namespace (a clash is `validation.duplicateId`), because the URL hash's `op=` names overlays by id. Order: historical layers by year (the higher `order` first within a year), the photos, then the categories in manifest order.
+
+| Kind | Starts | Opacity paint (`overlayOpacityPaint`) |
+| --- | --- | --- |
+| `raster` | `defaultVisible`, `opacity` | `raster-opacity` |
+| `photos` | visible, `photosOverlay.defaultOpacity` (1) | `icon-opacity`, `text-opacity` (markers, cluster counts), `fill-opacity` and `line-opacity` (view cones) |
+| `poi` | visible, `defaultOpacity` | `icon-opacity`, `text-opacity`, `circle-opacity`, `circle-stroke-opacity`, `line-opacity`, `fill-opacity` |
+
+Each paint value is the overlay's opacity times the map layer's designed opacity (a view cone drawn at 25 % stays at 25 % of the overlay). Model and mapping: `packages/shared/src/overlays/model.ts` and `packages/shared/src/overlays/paint.ts`.
+
 ## Errors and validation
 
 The engine checks a manifest in three steps, each with a localized message:
 
 1. `version` must be `1`, else `error.manifest.version`;
 2. `city.engine.minVersion`, when present, must not be newer than `ENGINE_VERSION`, else `error.manifest.engineTooOld` (with the version);
-3. the strict schema, else `error.manifest.invalid` with the issue count; each issue is `{path, code}` where `code` is a `validation.*` key (`validateManifest`, `checkManifestCompat` in `@hcm/shared`).
+3. the strict schema, else `error.manifest.invalid` with the issue count; each issue is `{path, code}` where `code` is a `validation.*` key (`validateManifest`, `checkManifestCompat` in `@hcm/shared`). The cross-value rules report `validation.duplicateId` (ids, overlay ids), `validation.outsideCity` (photos, POI geometries), `validation.reference` (a POI's category or photo that does not exist) and `validation.ringClosed` (an open polygon ring).
 
 A fetch that returns 404 shows `error.manifest.notFound`, a network failure `error.manifest.network`, a slow response `error.manifest.timeout`; each error card has a Retry button. No error ever leaves a blank map (scenario V01).
 
@@ -210,10 +269,10 @@ A fetch that returns 404 shows `error.manifest.notFound`, a network failure `err
 - **Removing, renaming or changing the meaning of a field** makes manifest v2 and engine 2.0; the builder can then write both generations side by side during the transition.
 - **`config.js`, the element and the JavaScript API** change additively in minor releases; a deprecated name keeps working for at least one minor release and is removed only in a major one.
 - **The URL hash** keeps v1's grammar for the whole 1.x line; new parameters are additive and old readers ignore them. The legacy hash stays readable.
-- **Planned additions in v1** (PLAN Addendum 3): `pois[]` and `poiCategories[]` (points of interest by category), introduced with `engine.minVersion` as above.
+- **Additions before 1.0.0** (PLAN Addendum 3, 2026-10-12): `photosOverlay`, `poiCategories[]`, `pois[]`, the overlay namespace rule and the `op=` overlay ids. They are part of the v1 baseline that every 1.x engine reads, so a manifest that uses them needs no `minVersion`. A Material Symbols name outside the bundled set falls back to the default pin instead of failing validation, so new icons never need a new manifest generation.
 
 ## Security
 
-- No HTML is rendered from data: Lit templates and `textContent` only; Mapbox popups use `setDOMContent` (`docs/research/design-review-security-cost.md` §1.7).
+- No HTML is rendered from data: Lit templates and `textContent` only; Mapbox popups use `setDOMContent` (`docs/research/design-review-security-cost.md` §1.7). POI descriptions are rendered like About: by walking `parseMarkdown(...).paragraphs` into DOM nodes.
 - Only https URLs and the URL-restricted Mapbox public token reach the page; a secret token cannot pass the schema.
 - The page's meta CSP and headers: [research/design-review-security-cost.md](research/design-review-security-cost.md) §1.8. Analytics hosts join the CSP only for the consent-gated SDKs.

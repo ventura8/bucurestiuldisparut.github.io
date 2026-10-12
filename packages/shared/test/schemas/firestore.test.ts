@@ -4,9 +4,12 @@ import { describe, expect, it } from 'vitest';
 import {
     adminDocSchema,
     cityDocSchema,
+    historyEntryDocSchema,
     jobDocSchema,
     layerDocSchema,
     photoDocSchema,
+    poiCategoryDocSchema,
+    poiDocSchema,
     setupStatusDocSchema,
     timestampSchema,
     usgsSceneDocSchema,
@@ -50,6 +53,7 @@ const docs = {
         about: { ro: '**Despre**' },
         mapbox: { user: 'ventura86', publicToken: 'pk.test-viewer-token' },
         analytics: { measurementId: 'G-TEST1234' },
+        photosOverlay: { defaultOpacity: 0.7 },
         published: false,
         createdAt: now,
         ...stamp,
@@ -92,6 +96,50 @@ const docs = {
             georef: { method: 'gcps', gcpCount: 12, checkpointRmseM: 8.5 },
         },
         mapbox: { tilesetId: 'test-owner.kh4-1966', publishedSourceSha: 'b'.repeat(64) },
+        adjustments: { brightnessMin: 0.05, contrast: 0.3 },
+        updatedBy: 'system:pipeline',
+        updatedAt: now,
+    },
+    poiCategory: {
+        label: { ro: 'Clădiri dispărute' },
+        icon: 'domain_disabled',
+        color: '#8B5E3C',
+        defaultOpacity: 0.9,
+        order: 2,
+        ...stamp,
+    },
+    poi: {
+        category: 'cladiri',
+        geometry: {
+            type: 'Polygon',
+            rings: [
+                {
+                    points: [
+                        { lat: 44.4268, lng: 26.086 },
+                        { lat: 44.4268, lng: 26.0878 },
+                        { lat: 44.4278, lng: 26.0878 },
+                        { lat: 44.4268, lng: 26.086 },
+                    ],
+                },
+            ],
+        },
+        title: { ro: 'Cvartal demolat' },
+        description: { ro: '**Demolat** în 1986.', en: '**Demolished** in 1986.' },
+        yearEnd: 1986,
+        links: [{ url: 'https://example.org/poi', label: 'Sursa' }],
+        photoIds: ['mihai-voda-1978'],
+        published: true,
+        createdAt: now,
+        createdBy: 'uid-admin',
+        ...stamp,
+    },
+    history: {
+        entity: 'poi',
+        entityId: 'cvartal',
+        action: 'update',
+        previous: { title: { ro: 'Cvartal' }, published: false, updatedBy: 'uid-admin', updatedAt: now },
+        changedFields: ['title', 'published'],
+        ...stamp,
     },
     job: {
         type: 'usgs-import',
@@ -127,6 +175,12 @@ describe('Firestore documents: happy paths', () => {
         ['usgsScene', usgsSceneDocSchema, docs.scene],
         ['setupStatus', setupStatusDocSchema, docs.setup],
         ['admin', adminDocSchema, docs.admin],
+        ['poiCategory', poiCategoryDocSchema, docs.poiCategory],
+        ['poi', poiDocSchema, docs.poi],
+        ['history', historyEntryDocSchema, docs.history],
+        ['history create', historyEntryDocSchema, { ...docs.history, action: 'create', previous: null, changedFields: [] }],
+        ['history revert', historyEntryDocSchema, { ...docs.history, action: 'revert', revertOf: 'entry-41' }],
+        ['a point POI', poiDocSchema, { ...docs.poi, geometry: { type: 'Point', point: { lat: 44.43, lng: 26.09 } } }],
     ] as const)('happyPath_%s', (_name, schema, doc) => {
         expect(check(schema, doc)).toMatchObject({ ok: true });
     });
@@ -202,7 +256,75 @@ describe('Firestore documents: bad paths', () => {
         expect(result.ok ? [] : result.issues).toContainEqual({ path, code });
     });
 
+    it('badPath_aHistorySnapshotOfTooManyFields', () => {
+        const previous = Object.fromEntries(Array.from({ length: 101 }, (_, index) => [`field${String(index)}`, index]));
+
+        const result = check(historyEntryDocSchema, { ...docs.history, previous });
+
+        expect(result.ok ? [] : result.issues).toEqual([{ path: 'previous', code: 'validation.tooBig' }]);
+    });
+
     it.each([[null], [{ seconds: '1', nanoseconds: 0 }], [{ seconds: 1 }], [new Date()]])('badPath_timestamp_%j', (value) => {
         expect(timestampSchema.safeParse(value).success).toBe(false);
+    });
+});
+
+/** PLAN Addendum 3: stamps on every audited document, POIs, POI categories, history entries, adjustments. */
+const ADDENDUM_3_BAD = [
+    ['a layer without a stamp', layerDocSchema, { ...docs.layer, updatedBy: undefined }, 'updatedBy', 'validation.required'],
+    [
+        'an adjustment out of range',
+        layerDocSchema,
+        { ...docs.layer, adjustments: { saturation: -2 } },
+        'adjustments.saturation',
+        'validation.tooSmall',
+    ],
+    [
+        'a photos overlay over 1',
+        cityDocSchema,
+        { ...docs.city, photosOverlay: { defaultOpacity: 2 } },
+        'photosOverlay.defaultOpacity',
+        'validation.tooBig',
+    ],
+    ['a category without a stamp', poiCategoryDocSchema, { ...docs.poiCategory, updatedAt: undefined }, 'updatedAt', 'validation.required'],
+    ['a category icon with spaces', poiCategoryDocSchema, { ...docs.poiCategory, icon: 'a b' }, 'icon', 'validation.format'],
+    ['a fractional category order', poiCategoryDocSchema, { ...docs.poiCategory, order: 1.5 }, 'order', 'validation.type'],
+    ['a POI without a stamp', poiDocSchema, { ...docs.poi, updatedBy: undefined }, 'updatedBy', 'validation.required'],
+    ['a POI without published', poiDocSchema, { ...docs.poi, published: undefined }, 'published', 'validation.required'],
+    ['an inverted POI span', poiDocSchema, { ...docs.poi, yearStart: 1990 }, 'yearEnd', 'validation.yearRange'],
+    ['a POI category that is no id', poiDocSchema, { ...docs.poi, category: '../x' }, 'category', 'validation.format'],
+    [
+        'GeoJSON arrays in a POI document',
+        poiDocSchema,
+        { ...docs.poi, geometry: { type: 'Point', coordinates: [26.09, 44.43] } },
+        'geometry.coordinates',
+        'validation.unknownKey',
+    ],
+    [
+        'an http link in a POI text',
+        poiDocSchema,
+        { ...docs.poi, description: { ro: '[x](http://e.org)' } },
+        'description.ro',
+        'validation.markdownLink',
+    ],
+    ['an unknown history entity', historyEntryDocSchema, { ...docs.history, entity: 'job' }, 'entity', 'validation.value'],
+    ['a create with a previous version', historyEntryDocSchema, { ...docs.history, action: 'create' }, 'previous', 'validation.value'],
+    ['an update without a previous version', historyEntryDocSchema, { ...docs.history, previous: null }, 'previous', 'validation.value'],
+    ['a revert without its entry', historyEntryDocSchema, { ...docs.history, action: 'revert' }, 'revertOf', 'validation.value'],
+    ['an update naming a reverted entry', historyEntryDocSchema, { ...docs.history, revertOf: 'entry-41' }, 'revertOf', 'validation.value'],
+    [
+        'a history entry without a stamp',
+        historyEntryDocSchema,
+        { ...docs.history, updatedAt: undefined },
+        'updatedAt',
+        'validation.required',
+    ],
+] as const;
+
+describe('Firestore documents of PLAN Addendum 3: bad paths', () => {
+    it.each(ADDENDUM_3_BAD)('badPath_%s', (_name, schema, doc, path, code) => {
+        const result = check(schema, doc);
+
+        expect(result.ok ? [] : result.issues).toContainEqual({ path, code });
     });
 });

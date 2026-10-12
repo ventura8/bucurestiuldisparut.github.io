@@ -1,6 +1,6 @@
 ---
 name: quality-pipeline
-description: Run the Historic City Map quality pipeline (scripts/ci/run-all-checks.sh inside the pinned hcm-quality image - suppression scan, skill mirrors, agent assets, data files, EditorConfig, scenario registry, i18n parity, Prettier, tsc, ESLint, stylelint, HTML and Markdown linters, knip, dependency-cruiser, YAML, TOML, ruff, mypy, radon, bandit, shell, Docker, workflow-policy and action-pin checks, repo policy (secret files, exact pins, image digests) and budget, gitleaks over the tree and the CI commit range, Conventional Commits over the CI commit range, npm and pip audits, Vitest with Chromium and pytest plus the per-file 90 percent coverage gate, vite build and bundle budget, the SonarQube scan and verdict, the weekly latest-stable dependency check) exactly as CI runs it, pick the right stage, add a gate, and fix a failing gate without an inline suppression. Use before claiming any change is done, when a CI job fails, or when adding or bumping a tool.
+description: Run the Historic City Map quality pipeline (scripts/ci/run-all-checks.sh inside the pinned hcm-quality image - suppression scan, skill mirrors, agent assets, data files, EditorConfig, scenario registry, i18n parity, font subset, Prettier, tsc, ESLint, stylelint, HTML and Markdown linters, knip, dependency-cruiser, YAML, TOML, ruff, mypy, radon, bandit, shell, Docker, workflow-policy and action-pin checks, repo policy (secret files, exact pins, image digests) and budget, gitleaks over the tree and the CI commit range, Conventional Commits over the CI commit range, npm and pip audits, Vitest with Chromium and pytest plus the per-file 90 percent coverage gate, the site build tests, Playwright e2e, vite build and bundle budget, the SonarQube scan and verdict, the weekly latest-stable dependency check) exactly as CI runs it, pick the right stage, add a gate, and fix a failing gate without an inline suppression. Use before claiming any change is done, when a CI job fails, or when adding or bumping a tool.
 ---
 
 # Quality Pipeline Skill
@@ -44,7 +44,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
 
 - Docs or tooling only: `static`.
 - TypeScript or Python: `static`, `tests`, `build`.
-- A user-visible change, `e2e/` or `e2e/scenarios.json`: also `e2e`.
+- A user-visible change, `e2e/`, `e2e/scenarios.json`, `sites/`, `starter-kit/` or `scripts/site/`: also `e2e` (`E2E_TIER=smoke,fn` for a quick run; unset runs every tier). The site build's unit tests are the `site-unit` gate of `tests`; the Pages sites are built by `site-build` in `build`.
 - A Setup Assistant deep link (`packages/admin/src/setup/links.json`) or a third-party probe: `contract`.
 - Before a push to `master` or a tag: `all` (the default: `quality`, then `sonar`, which skips with a notice without a token).
 - A dependency bump: `static`, `tests`, `build`, then `deps` to see what else is behind; a deliberate hold is a `HELD` entry with its reason in `scripts/ci/check_dependency_updates.py`.
