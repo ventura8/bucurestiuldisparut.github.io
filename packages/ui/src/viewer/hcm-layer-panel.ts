@@ -3,7 +3,8 @@
  * transparency). It lists every overlay (historical layers, the photos, the POI categories) in the ui-kit's
  * `<hcm-overlay-list>`, with a switch and a 0–100 % slider each, and the attribution of every visible historical
  * layer. It is presentational: the list's `hcm-overlay-visibility` and `hcm-overlay-opacity` events bubble to
- * `<hcm-map-viewer>`, which updates the store (the map follows live, the hash on release).
+ * `<hcm-map-viewer>`, which updates the store (the map follows live, the hash on release). A city without historical
+ * layers yet gets a note at the top, where the layers will be (below the photos and places it read as a footnote).
  */
 import { DEFAULT_LOCALE, overlayLabel, poiIcon, translate, type Locale, type Manifest, type Overlay } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
@@ -74,6 +75,18 @@ export class HcmLayerPanel extends LitElement {
                 gap: 16px;
             }
 
+            .empty {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px 16px;
+                border-radius: var(--md-sys-shape-corner-medium, 12px);
+                background: var(--md-sys-color-surface-container-high, Canvas);
+                color: var(--md-sys-color-on-surface-variant, CanvasText);
+                font-size: var(--md-sys-typescale-body-medium-size, 0.875rem);
+                line-height: var(--md-sys-typescale-body-medium-line-height, 1.25rem);
+            }
+
             .attribution {
                 font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
                 color: var(--md-sys-color-on-surface-variant, GrayText);
@@ -118,6 +131,7 @@ export class HcmLayerPanel extends LitElement {
         const locale = this.locale;
         const hasHistorical = manifest.layers.length > 0;
         return html`<div class="content">
+            ${hasHistorical ? nothing : html`<p class="empty"><hcm-icon name="timeline"></hcm-icon>${translate(locale, 'layers.empty')}</p>`}
             <hcm-overlay-list
                 .items=${overlayItems(this.overlays, manifest, locale)}
                 .groups=${overlayGroups(manifest, locale)}
@@ -128,7 +142,6 @@ export class HcmLayerPanel extends LitElement {
                 .shownText=${translate(locale, 'layers.shown')}
                 .hiddenText=${translate(locale, 'layers.hidden')}
             ></hcm-overlay-list>
-            ${hasHistorical ? nothing : html`<p class="empty">${translate(locale, 'layers.empty')}</p>`}
             <ul class="attribution">
                 ${attributionLines(this.overlays, manifest, locale).map((line) => html`<li>${line}</li>`)}
             </ul>

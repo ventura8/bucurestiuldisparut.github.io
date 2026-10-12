@@ -106,6 +106,13 @@ export const detailStyles = css`
         margin-block-start: 4px;
     }
 
+    /* A link of a list is a target of its own: 48 px tall like every touch target (a link inside a sentence is exempt). */
+    .details li > a {
+        display: inline-flex;
+        align-items: center;
+        min-block-size: 48px;
+    }
+
     .supporting {
         color: var(--md-sys-color-on-surface-variant, GrayText);
     }

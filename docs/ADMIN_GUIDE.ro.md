@@ -91,3 +91,16 @@ Primul ecran până când toate cardurile sunt verzi; poate fi re-verificat oric
 ## Probleme frecvente
 
 De completat odată cu fiecare ecran: mesajul afișat, cauza și ce trebuie făcut.
+
+### Harta publică (din M1)
+
+Când pagina orașului nu poate afișa harta, arată un card cu unul dintre mesajele de mai jos, în limba vizitatorului. Cele pe care le poate rezolva administratorul orașului:
+
+| Mesaj | Cauză | Ce faci |
+| --- | --- | --- |
+| „Harta nu a fost găsită: manifestul lipsește.” | pagina nu a găsit `manifest.json` la adresa din `config.js` | publici orașul (M2) sau corectezi `manifestUrl` în `config.js` |
+| „Datele hărții sunt nevalide (probleme găsite: N).”, urmat de `câmp: regulă` | manifestul încalcă o regulă din City Manifest v1; cardul numește primul câmp și regula | corectezi acel câmp (în aplicația de administrare din M2; pe un site făcut din kitul de pornire, în `data/manifest.json`) |
+| „Lipsește config.js” / „config.js este nevalid: …” | pagina nu are `window.HistoricCityMapConfig` sau un câmp din el este necunoscut ori greșit | compari `config.js` cu cel din kitul de pornire (`starter-kit/README.md`) |
+| „cityId din config.js (…) nu corespunde hărții (…).” | `config.js` arată spre manifestul altui oraș | faci `cityId` și orașul din manifest să fie același |
+| „Această hartă are nevoie de motorul X sau de unul mai nou.” | manifestul cere un motor mai nou decât cel încărcat de pagină | încarci versiunea de motor din mesaj |
+| „Browserul nu poate afișa harta (WebGL indisponibil).” | browserul vizitatorului nu are WebGL | nimic: vizitatorul primește în continuare lista fotografiilor |

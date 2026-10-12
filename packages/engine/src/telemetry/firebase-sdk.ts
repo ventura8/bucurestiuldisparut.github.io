@@ -4,13 +4,14 @@
  * ES module build emits this as its own file, fetched only after consent; see docs/research/M1-interfaces.md CR-10 for
  * the IIFE build.
  */
-import { initializeApp } from 'firebase/app';
+import { getApps, initializeApp } from 'firebase/app';
 import { initializeAnalytics, isSupported, logEvent, setAnalyticsCollectionEnabled, setConsent } from 'firebase/analytics';
 import { initializePerformance } from 'firebase/performance';
 
 import type { FirebaseSdk } from './analytics.js';
 
 export const firebaseSdk: FirebaseSdk = {
+    getApps,
     initializeApp,
     isSupported,
     setConsent,

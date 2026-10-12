@@ -94,7 +94,7 @@ export class HcmTimeline extends LitElement {
                 ${this.stops.map((stop, stopAt) => this.#stop(stop, stopAt, index))}
             </ol>
             <div
-                class="thumb"
+                class="thumb touch-target"
                 role="slider"
                 tabindex="0"
                 aria-label=${translate(this.locale, 'timeline.label')}

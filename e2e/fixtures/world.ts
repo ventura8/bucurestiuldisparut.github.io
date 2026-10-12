@@ -23,12 +23,28 @@ export const E2E_SITE_DIR = 'dist/e2e-site';
 export const E2E_TOKEN = 'pk.e2e-fake-token';
 export const E2E_MEASUREMENT_ID = 'G-E2E0000000';
 
+/**
+ * The Firebase web app ids of the analytics scenarios (CR-9: `city.analytics.firebase`), generated test values. The
+ * API key is assembled at run time so the source never holds a string shaped like a Google API key (gitleaks).
+ */
+export const E2E_FIREBASE_APP = {
+    apiKey: `${['AI', 'za'].join('')}${'E2eFakeKey'.padEnd(35, '0')}`,
+    appId: '1:123456789012:web:0e2e0e2e',
+    projectId: 'demo-hcm-e2e',
+} as const;
+
 /** Hosts that exist only in tests (`.test` is reserved, RFC 2606) and are answered by the mock APIs. */
 export const E2E_TILE_HOST = 'tiles.e2e.test';
 export const E2E_TELEMETRY_HOST = 'telemetry.e2e.test';
 export const E2E_ERROR_ENDPOINT = `https://${E2E_TELEMETRY_HOST}/report`;
 
 export type Rgb = readonly [red: number, green: number, blue: number];
+
+/**
+ * A basemap without Standard's configuration (`mapbox://styles/<owner>/e2e-plain`): a plain style with the three slots
+ * and no `schema`, so the engine must leave its 3D-objects switch alone (S-V03-BAD-STYLE-WITHOUT-CONFIG).
+ */
+export const E2E_PLAIN_STYLE_ID = 'e2e-plain';
 
 /** The basemap's background (the mock style), what a probe sees where no layer draws. */
 export const BASEMAP_BACKGROUND: Rgb = [242, 239, 233];
@@ -59,7 +75,10 @@ export const E2E_XYZ_LAYER: E2eXyzLayer = {
     tiles: `https://${E2E_TILE_HOST}/xyz/e2e-1980/{z}/{x}/{y}.png`,
 };
 
-/** A tileset whose TileJSON exists but whose every tile answers 404 (a tile outage, scenario S-V03-BAD-TILE404). */
+/**
+ * A tileset whose TileJSON exists but whose every tile answers 503 (a tile outage, scenario S-V03-BAD-TILE404). Not
+ * 404: Mapbox GL treats a 404 tile as "no imagery here" and never reports it (docs/LESSONS.md).
+ */
 export const E2E_BROKEN_TILESET = 'ventura86.e2e-broken';
 
 /** Tileset id → colour, for the mock tile server. */

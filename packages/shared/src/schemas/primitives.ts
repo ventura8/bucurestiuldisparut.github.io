@@ -10,6 +10,13 @@ import type { MessageKey } from '../i18n/index.js';
 import { parseMarkdown } from '../text/markdown.js';
 import { isHttpsUrl, isRelativeUrl, MAX_URL_LENGTH } from '../text/urls.js';
 
+/**
+ * No `eval`, ever: zod probes `Function('')` to compile faster object parsers, and every city page's CSP (no
+ * 'unsafe-eval') reports that probe as a violation (S-V16-BAD-INLINE-STYLE found it). Every schema module imports this
+ * one, so the setting is in place before the first parse; the interpreted parsers are fast enough for a manifest.
+ */
+z.config({ jitless: true });
+
 /** The localized error codes the validation helpers return: every `validation.*` catalogue key. */
 export type ValidationCode = Extract<MessageKey, `validation.${string}`>;
 

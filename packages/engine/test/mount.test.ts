@@ -52,6 +52,24 @@ describe('mount', () => {
         expect(world.viewer.removed).toBe(1);
     });
 
+    it('badPath_aConfigurationErrorCardSpeaksTheLanguageOfTheConfiguration', () => {
+        const world = testEnvironment();
+
+        mount(new FakeContainer().element, { manifestUrl: 'http://example.org/manifest.json', lang: 'en' }, world.env);
+
+        expect(world.viewer.getAttribute('lang')).toBe('en');
+    });
+
+    it('badPath_theAddressLanguageWinsForAConfigurationErrorCard', () => {
+        // S-V17-BAD-INVALID-CONFIG found it: with `?lang=en` the card's frame was Romanian around an English detail.
+        const world = testEnvironment({ location: { search: '?lang=en' } });
+
+        mount(new FakeContainer().element, { manifestUrl: './data/manifest.json', colour: 'red' }, world.env);
+
+        expect(world.viewer.getAttribute('lang')).toBe('en');
+        expect(world.viewer.bootError?.params).toEqual({ detail: 'colour: The field is not known.' });
+    });
+
     it('badPath_noConfigurationAtAllIsTheMissingConfigCard', async () => {
         const world = testEnvironment();
 

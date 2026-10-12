@@ -71,6 +71,23 @@ describe('<hcm-fab-menu>', () => {
         expect(deepFocus()).toBe(shadowPart(element, '.fab'));
     });
 
+    it('badPath_theFabHasTheFocusWhenTheChoiceIsAnnounced', async () => {
+        // S-V15-BAD-SHEET-DRAG-CLOSE found it: the viewer remembered the vanished menu item as the opener of the sheet
+        // it opened, so closing the sheet left the focus nowhere.
+        const element = await menu();
+        const focusAtSelect: (Element | null)[] = [];
+        element.addEventListener('hcm-select', () => {
+            focusAtSelect.push(deepFocus());
+        });
+        shadowPart(element, '.fab').click();
+        await element.updateComplete;
+
+        press(shadowPart(element, '[role="menu"]'), 'End');
+        await userEvent.keyboard('{Enter}');
+
+        expect(focusAtSelect).toEqual([shadowPart(element, '.fab')]);
+    });
+
     it('happyPath_escapeClosesAndReturnsToTheFab', async () => {
         const element = await menu();
         shadowPart(element, '.fab').click();
@@ -97,6 +114,37 @@ describe('<hcm-fab-menu>', () => {
 
         expect(toggles).toEqual([{ open: true }, { open: false }]);
         expect(element.shadowRoot?.querySelector('[role="menu"]')).toBeNull();
+    });
+
+    it('badPath_aWrappedMenuAlignedToTheStartKeepsItsFabInPlace', async () => {
+        // UX review: on a landscape phone the menu docks on the leading edge and wraps into two columns; aligned to the
+        // end, the wider open menu moved the FAB about 300 px from where it was tapped.
+        const element = await menu();
+        element.style.setProperty('--hcm-fab-menu-align', 'flex-start');
+        element.style.setProperty('--hcm-fab-menu-max-block-size', '120px');
+        const fab = shadowPart(element, '.fab');
+        const closed = fab.getBoundingClientRect();
+
+        fab.click();
+        await element.updateComplete;
+
+        const items = [...(element.shadowRoot?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+        const lefts = new Set(items.map((item) => Math.round(item.getBoundingClientRect().left)));
+        expect(lefts.size).toBe(2);
+        expect(fab.getBoundingClientRect().left).toBeCloseTo(closed.left, 0);
+        expect(Math.min(...lefts)).toBeCloseTo(closed.left, 0);
+    });
+
+    it('happyPath_byDefaultTheFabAndTheItemsLineUpOnTheInlineEnd', async () => {
+        const element = await menu();
+        const fab = shadowPart(element, '.fab');
+        fab.click();
+        await element.updateComplete;
+
+        const rights = [...(element.shadowRoot?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])].map((item) =>
+            Math.round(item.getBoundingClientRect().right),
+        );
+        expect(new Set(rights)).toEqual(new Set([Math.round(fab.getBoundingClientRect().right)]));
     });
 
     it('badPath_keysOnAClosedFabDoNothing', async () => {

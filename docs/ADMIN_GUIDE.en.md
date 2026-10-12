@@ -91,3 +91,16 @@ The first screen until every card is green; it can be re-checked at any time. Ea
 ## Troubleshooting
 
 To be completed with each screen: the message shown, its cause and what to do.
+
+### The public map (since M1)
+
+When the city page cannot show the map, it shows a card with the message below in the visitor's language. The ones a city owner can fix:
+
+| Message | Cause | What to do |
+| --- | --- | --- |
+| "The map was not found: the manifest is missing." | the page found no `manifest.json` at the address in `config.js` | publish the city (M2) or correct `manifestUrl` in `config.js` |
+| "The map data is invalid (problems found: N)." followed by `field: rule` | the manifest breaks a rule of City Manifest v1; the card names the first field and the rule | correct that field (in the admin from M2; in a starter-kit site, in `data/manifest.json`) |
+| "config.js is missing" / "config.js is invalid: …" | the page has no `window.HistoricCityMapConfig`, or a field in it is unknown or wrong | compare `config.js` with the starter kit's (`starter-kit/README.md`) |
+| "The cityId in config.js (…) does not match the map (…)." | `config.js` points at another city's manifest | make `cityId` and the manifest's city the same |
+| "This map needs engine X or newer." | the manifest asks for a newer engine than the page loads | load the engine version the message names |
+| "Your browser cannot show the map (WebGL unavailable)." | the visitor's browser has no WebGL | nothing: the visitor still gets the photo list |

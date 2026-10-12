@@ -65,6 +65,14 @@ describe('<hcm-poi-detail>', () => {
         expect(shadowText(element)).toContain('Category: Vanished buildings');
     });
 
+    it('badPath_photoThumbnailsShareOneTopEdgeInsteadOfTakingTheListGap', async () => {
+        const element = await detail({ poi: poi('casa-uranus'), category: category('cladiri') });
+
+        const tops = shadowQueryAll(element, '.thumbs li').map((item) => item.getBoundingClientRect().top);
+        expect(tops).toHaveLength(2);
+        expect(tops[1]).toBe(tops[0]);
+    });
+
     it('badPath_markupInTheDescriptionIsText', async () => {
         const element = await detail({ poi: poi('casa-uranus'), category: category('cladiri') });
 

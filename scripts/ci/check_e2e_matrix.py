@@ -6,8 +6,8 @@
     {"id": "S-V01-BOOT", "behaviour": "V01", "area": "viewer", "path": "happy" | "bad",
      "title": "...", "asserts": "what the user sees", "tier": "e2e-viewer", "status": "exists" | "planned"}
 
-plus an optional `"notes"`. Tests name the scenarios they cover: a Playwright test carries the tag
-`@S-…` (`test('…', { tag: '@S-V01-BOOT' }, …)`), a pytest test a docstring line
+plus an optional `"notes"`. Tests name the scenarios they cover: a Playwright test (a `*.spec.ts`, or a `*.tour.ts` of the
+tour) carries the tag `@S-…` (`test('…', { tag: '@S-V01-BOOT' }, …)`), a pytest test a docstring line
 `Scenarios: S-P01-IMPORT, S-P01-CORRUPT`. Checked in both directions:
 
 * every row is well-formed, ids are unique, and every behaviour has at least one happy and at
@@ -49,6 +49,8 @@ DECLARATION_RE = re.compile(r"^\s*(?:\"{3}|'{3})?\s*Scenarios:\s*(?P<ids>.+?)\s*
 # Test files that may name scenarios (repository-relative globs; fnmatch's `*` crosses folders).
 TEST_GLOBS = (
     "e2e/*.spec.ts",
+    # The layout and accessibility tour (e2e/tour/*.tour.ts) backs V15 and V18.
+    "e2e/*.tour.ts",
     "e2e/*.test.ts",
     "e2e/test_*.py",
     "e2e/*/test_*.py",

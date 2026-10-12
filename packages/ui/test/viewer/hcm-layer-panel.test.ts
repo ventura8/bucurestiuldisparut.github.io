@@ -121,7 +121,7 @@ describe('<hcm-layer-panel>', () => {
             'Show {name}',
             'Opacity: {name}',
             '{percent}%',
-            '{name}: opacity {percent} %',
+            '{name}: opacity {percent}%',
         ]);
         await expect.element(page.getByText('Source: USGS Corona')).toBeVisible();
     });
@@ -149,6 +149,10 @@ describe('<hcm-layer-panel>', () => {
         const element = await panel({ manifest, overlays: overlaysFromManifest(manifest), mode: 'docked' });
 
         expect(shadowText(element)).toContain('Straturile istorice vor apărea aici în curând.');
+        // UX review: the note leads the panel, where the layers will be, not after the photos and places.
+        const note = element.shadowRoot?.querySelector('.empty');
+        const list = element.shadowRoot?.querySelector('hcm-overlay-list');
+        expect(note?.compareDocumentPosition(list ?? note) ?? 0).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
     it('badPath_withoutAManifestTheFrameIsEmpty', async () => {

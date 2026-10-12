@@ -34,6 +34,13 @@ beforeAll(() => {
     defineViewerElements();
 });
 
+/** The names of the floating controls the e2e tour checks for overlaps (`data-layout-check`), sorted. */
+function layoutChecked(element: HTMLElement): string[] {
+    return [...(element.shadowRoot?.querySelectorAll('[data-layout-check]') ?? [])]
+        .map((node) => node.getAttribute('data-layout-check') ?? '')
+        .sort((a, b) => a.localeCompare(b));
+}
+
 describe('<hcm-map-viewer>: boot', () => {
     afterEach(() => {
         document.body.replaceChildren();
@@ -223,7 +230,7 @@ describe('<hcm-map-viewer>: store wiring', () => {
 
         store.showToast('error.tiles');
         await element.updateComplete;
-        await expect.element(page.getByRole('status')).toHaveTextContent('Unele dale ale hărții nu se încarcă.');
+        await expect.element(page.getByRole('status')).toHaveTextContent('Unele porțiuni ale hărții nu se încarcă.');
         fireKitEvent(part({ element, store }, 'hcm-snackbar'), 'hcm-dismiss', { reason: 'timeout' });
 
         expect(store.getState().toast).toBeNull();
@@ -263,6 +270,17 @@ describe('<hcm-map-viewer>: store wiring', () => {
         store.set({ locale: 'en' });
         await element.updateComplete;
         expect(shadowQuery(element, '.timeline-note').textContent).toContain('Historical layers coming soon');
+        expect(layoutChecked(element)).toEqual(['consent', 'menu', 'timeline-note']);
+    });
+
+    it('happyPath_everyFloatingControlIsNamedForTheLayoutCheck', async () => {
+        const { element, store } = await mountViewer();
+
+        store.set({ year: 1977 });
+        store.showToast('error.tiles');
+        await element.updateComplete;
+
+        expect(layoutChecked(element)).toEqual(['consent', 'menu', 'near-year', 'timeline', 'toast']);
     });
 
     it('badPath_withoutWebglNoTimelineNote', async () => {

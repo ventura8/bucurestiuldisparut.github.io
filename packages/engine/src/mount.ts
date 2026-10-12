@@ -18,6 +18,7 @@ import {
 } from '@hcm/ui';
 
 import { configFromAttributes, readConfig, type Result } from './config/load.js';
+import { urlLocaleOf } from './core/boot.js';
 import type { ViewerDeps, ViewerLocation } from './core/deps.js';
 import type { PreferenceStorage } from './core/preferences.js';
 import { createViewerStore, type ViewerState, type ViewerStore } from './core/store.js';
@@ -200,12 +201,22 @@ function languageOf(raw: unknown): Locale {
     return resolveLocale(typeof lang === 'string' ? lang : undefined);
 }
 
+/**
+ * The language of a boot error card (docs/ENGINE_API.md → Language): the page address first, then the configuration's
+ * own `lang`, so a city owner who opened `?lang=en` reads the whole card in English.
+ */
+function bootLocale(configLocale: Locale, env: Pick<MountEnvironment, 'location'>): Locale {
+    return urlLocaleOf(env.location) ?? configLocale;
+}
+
 /** The viewer elements drive the store through `ViewerStorePort`; this checks at compile time that it satisfies it. */
 function storePort(store: ViewerStore): ViewerStorePort {
     return store;
 }
 
-function fail(viewer: HcmMapViewer, error: ViewerError): HistoricCityMapController {
+/** Shows `error` in `viewer`'s card, in `locale` (the card follows the element's `lang`). */
+function fail(viewer: HcmMapViewer, error: ViewerError, locale: Locale): HistoricCityMapController {
+    viewer.setAttribute('lang', locale);
     viewer.bootError = error;
     return failedController(error.code, () => {
         viewer.remove();
@@ -225,7 +236,7 @@ function createMap(env: MountEnvironment): MapPort | null {
 function start(viewer: HcmMapViewer, config: EngineConfig, env: MountEnvironment): HistoricCityMapController {
     const map = createMap(env);
     if (map === null) {
-        return fail(viewer, { code: 'error.mapLoad', retryable: false });
+        return fail(viewer, { code: 'error.mapLoad', retryable: false }, bootLocale(resolveLocale(config.lang), env));
     }
     viewer.manifestUrl = config.manifestUrl ?? '';
     viewer.engineVersion = env.engineVersion;
@@ -252,15 +263,16 @@ function start(viewer: HcmMapViewer, config: EngineConfig, env: MountEnvironment
     return controller;
 }
 
-/** Boots `viewer` from a configuration result: an invalid one shows its error card, for the city owner to fix. */
-function bootViewer(viewer: HcmMapViewer, config: Result<EngineConfig>, env: MountEnvironment): HistoricCityMapController {
-    return config.ok ? start(viewer, config.value, env) : fail(viewer, config.error);
+/** Boots `viewer` from a configuration result: an invalid one shows its error card (in `locale`), for the city owner to fix. */
+function bootViewer(viewer: HcmMapViewer, config: Result<EngineConfig>, env: MountEnvironment, locale: Locale): HistoricCityMapController {
+    return config.ok ? start(viewer, config.value, env) : fail(viewer, config.error, locale);
 }
 
 /** `HistoricCityMap.mount(element, config)`: renders a viewer into `element` and returns its controller. */
 export function mount(element: Element, config: unknown, env: MountEnvironment): HistoricCityMapController {
     const viewer = env.document.createElement(VIEWER_TAG);
-    const controller = bootViewer(viewer, readConfig(config, languageOf(config)), env);
+    const locale = bootLocale(languageOf(config), env);
+    const controller = bootViewer(viewer, readConfig(config, locale), env, locale);
     element.append(viewer);
     return controller;
 }
@@ -276,7 +288,8 @@ export function bootDeclared(viewer: HcmMapViewer, env: MountEnvironment): Histo
         lang: viewer.getAttribute('lang'),
         engineBase: viewer.engineBase,
     };
-    return bootViewer(viewer, configFromAttributes(attributes, viewer.manifest, resolveLocale(attributes.lang)), env);
+    const locale = bootLocale(resolveLocale(attributes.lang), env);
+    return bootViewer(viewer, configFromAttributes(attributes, viewer.manifest, locale), env, locale);
 }
 
 /**
@@ -289,7 +302,7 @@ export function autoBoot(rawConfig: unknown, env: MountEnvironment): HistoricCit
     const container = querySelector(env, selector);
     if (container === null) {
         if (rawConfig !== undefined) {
-            env.log.error(translate(languageOf(rawConfig), 'error.config.container', { selector }), { selector });
+            env.log.error(translate(bootLocale(languageOf(rawConfig), env), 'error.config.container', { selector }), { selector });
         }
         return null;
     }

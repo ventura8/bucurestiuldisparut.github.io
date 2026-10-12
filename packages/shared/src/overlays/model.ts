@@ -109,17 +109,21 @@ export function withOverlayVisibility(overlays: readonly Overlay[], id: string, 
 }
 
 /**
- * Applies the opacities of a decoded URL hash: `opacity` (the single historical-layer slider of v1) to every raster
- * overlay, then each `op` entry to its overlay, which wins. Unknown ids are ignored; values are clamped.
+ * Applies the opacities of a decoded URL hash: `opacity` (the single historical-layer slider of v1) to the visible
+ * raster overlays (docs/ENGINE_API.md → URL hash v1; apply the hash's `layers` first), then each `op` entry to its
+ * overlay, which wins. A hidden layer keeps its own opacity. Unknown ids are ignored; values are clamped.
  */
 export function withHashOpacity(overlays: readonly Overlay[], hash: Pick<HashState, 'opacity' | 'overlayOpacity'>): readonly Overlay[] {
     const entries = [...rasterEntries(overlays, hash.opacity), ...Object.entries(hash.overlayOpacity ?? {})];
     return entries.reduce((list, [id, value]) => withOverlayOpacity(list, id, value), overlays);
 }
 
-/** `[id, opacity]` for every raster overlay; none without an opacity. */
+/** `[id, opacity]` for every visible raster overlay; none without an opacity. */
 function rasterEntries(overlays: readonly Overlay[], opacity: number | undefined): [string, number][] {
-    return opacity === undefined ? [] : overlays.filter((target) => target.kind === 'raster').map((target) => [target.id, opacity]);
+    if (opacity === undefined) {
+        return [];
+    }
+    return overlays.filter((target) => target.kind === 'raster' && target.visible).map((target) => [target.id, opacity]);
 }
 
 /**

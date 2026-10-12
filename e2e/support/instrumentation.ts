@@ -6,7 +6,9 @@ import type { Page } from '@playwright/test';
  *
  * - the **map-instance counter**: `window.mapboxgl` is trapped when Mapbox GL's UMD bundle assigns it, and its `Map`
  *   is replaced by a subclass that counts constructions and `remove()` calls, so a spec asserts one map per view (each
- *   map is a billed Mapbox map load) and that swipe compare creates and destroys its second map;
+ *   map is a billed Mapbox map load) and that swipe compare creates and destroys its second map. The live maps are kept
+ *   in `window.__hcmE2e.maps` so the map helpers (support/map.ts) can read what the user sees: where a coordinate is
+ *   drawn on the screen, when the map is idle, which features are rendered. Specs never drive the map through it;
  * - the **engine events**: every `hcm-*` event that reaches `document` (they bubble and are composed) is kept with
  *   its detail, so a spec can wait for `hcm-ready` even when it fired before the spec looked.
  */
@@ -25,10 +27,11 @@ export function instrumentPage(eventTypes: readonly string[]): void {
     interface Counted {
         created: number;
         removed: number;
+        maps: unknown[];
         events: { type: string; detail: unknown }[];
     }
     type MapClass = new (...args: unknown[]) => { remove(): unknown };
-    const state: Counted = { created: 0, removed: 0, events: [] };
+    const state: Counted = { created: 0, removed: 0, maps: [], events: [] };
     const target = window as unknown as Record<string, unknown>;
     Object.defineProperty(target, '__hcmE2e', { value: state });
     const counting = (Base: MapClass): MapClass =>
@@ -36,10 +39,12 @@ export function instrumentPage(eventTypes: readonly string[]): void {
             constructor(...args: unknown[]) {
                 super(...args);
                 state.created += 1;
+                state.maps.push(this);
             }
 
             override remove(): unknown {
                 state.removed += 1;
+                state.maps = state.maps.filter((map) => map !== this);
                 return super.remove();
             }
         };

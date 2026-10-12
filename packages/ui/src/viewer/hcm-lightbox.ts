@@ -1,8 +1,10 @@
 /**
  * `<hcm-lightbox>`: the full photo (scenario V08). A modal dialog over the whole viewer with the 2048 px WebP, its
  * position in the photo list, previous and next buttons, pinch, wheel and key zoom (`+`, `-`, `0`), drag to pan while
- * zoomed, arrow keys and Esc. It takes focus when it opens; `<hcm-map-viewer>` returns focus to the opener when it
- * closes. A broken image shows an error state and closing still works (S-V08-BAD-BROKEN-IMAGE).
+ * zoomed, arrow keys and Esc. It takes focus when it opens and keeps Tab inside it (it is modal); `<hcm-map-viewer>`
+ * returns focus to the opener when it closes. Stepping to the first or last photo disables the arrow that leads further:
+ * if that arrow had the focus, the focus moves to the dialog, so Esc and the arrow keys keep working. A broken image shows
+ * an error state and closing still works (S-V08-BAD-BROKEN-IMAGE).
  *
  * Events (viewer-internal): `hcm-close`, `hcm-photo-select` (`{photoId}`, the previous or next photo).
  */
@@ -10,6 +12,7 @@ import { DEFAULT_LOCALE, translate, type Locale, type Photo } from '@hcm/shared'
 import { LitElement, html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../components/css-properties.js';
+import { trapTab } from '../components/focus.js';
 import { EMPTY } from './empty.js';
 import { photoSelectEvent } from './hcm-poi-detail.js';
 import { lightboxStyles } from './lightbox-styles.js';
@@ -110,13 +113,17 @@ export class HcmLightbox extends LitElement {
             </div>
             <nav class="nav">
                 <hcm-icon-button
+                    data-arrow="previous"
                     icon="chevron_left"
+                    variant="tonal"
                     .label=${translate(this.locale, 'action.previous')}
                     .disabled=${index === 0}
                     @click=${this.#previous}
                 ></hcm-icon-button>
                 <hcm-icon-button
+                    data-arrow="next"
                     icon="chevron_right"
+                    variant="tonal"
                     .label=${translate(this.locale, 'action.next')}
                     .disabled=${index === this.photos.length - 1}
                     @click=${this.#next}
@@ -161,7 +168,29 @@ export class HcmLightbox extends LitElement {
         const index = this.photos.findIndex((photo) => photo.id === this.photoId);
         const target = this.photos[index + delta];
         if (target !== undefined) {
+            this.#keepFocus(index + delta);
             this.dispatchEvent(photoSelectEvent(target.id));
+        }
+    }
+
+    /** The arrow that photo `index` disables: `previous` on the first photo, `next` on the last, `none` in between. */
+    #disabledArrow(index: number): string {
+        if (index === 0) {
+            return 'previous';
+        }
+        return index === this.photos.length - 1 ? 'next' : 'none';
+    }
+
+    /** The `data-arrow` of the focused arrow button; empty when no arrow has the focus. */
+    #focusedArrow(): string {
+        const active = this.shadowRoot?.activeElement;
+        return active instanceof HTMLElement ? (active.dataset['arrow'] ?? '') : '';
+    }
+
+    /** A disabled button drops the focus: before stepping to photo `index`, the arrow it disables hands it to the dialog. */
+    #keepFocus(index: number): void {
+        if (this.#focusedArrow() === this.#disabledArrow(index)) {
+            this.renderRoot.querySelector<HTMLElement>('[role="dialog"]')?.focus();
         }
     }
 
@@ -178,6 +207,9 @@ export class HcmLightbox extends LitElement {
     }
 
     readonly #onKeyDown = (event: KeyboardEvent): void => {
+        if (trapTab(event, event.currentTarget as HTMLElement)) {
+            return;
+        }
         const actions: Readonly<Record<string, () => void>> = {
             Escape: this.#close,
             ArrowLeft: this.#previous,

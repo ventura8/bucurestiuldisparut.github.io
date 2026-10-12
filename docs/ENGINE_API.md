@@ -60,7 +60,7 @@ Bucharest serves the engine from its own origin (the site build copies every fil
 - absent while `#historic-city-map` exists: the error card shows `error.config.missing` (scenario V17);
 - absent and no default container: nothing happens (the page uses `<hcm-map-viewer>` or `HistoricCityMap.mount` itself).
 
-**Language** is resolved in this order: the URL (`#…&lang=` or `?lang=`), the visitor's stored choice, `config.lang`, then Romanian. `<html lang>` follows the result (scenario V11). The visitor switches it in the menu (the item names the other language) and in About; the theme (system, light, dark) is in About. `setLang` accepts any tag and resolves it like `config.lang`.
+**Language** is resolved in this order: the URL (`#…&lang=` or `?lang=`), the visitor's stored choice, `config.lang`, then Romanian. `<html lang>` follows the result (scenario V11). An error card shown before any manifest (a missing or invalid `config.js`) follows the URL, then `config.lang`. The visitor switches it in the menu (the item names the other language) and in About; the theme (system, light, dark) is in About. `setLang` accepts any tag and resolves it like `config.lang`.
 
 ## `<hcm-map-viewer>`
 
@@ -181,7 +181,7 @@ Common rules:
 | `year`, `date?` | integer, `YYYY-MM-DD` | 1800 to 2100; `date` within `year` |
 | `label`, `description?` | `{ro, en}` | at most 200 and 5,000 characters |
 | `kind` | `satellite`, `aerial` or `map` | |
-| `sensor?`, `attribution` | string | at most 100 and 500 characters; the attribution is always shown with the layer |
+| `sensor?`, `attribution` | string | at most 100 and 500 characters; the attribution is always shown with the layer, as plain text (markup in it is shown, never rendered) |
 | `source` | object | `{type: 'mapbox', tilesetId: '<owner>.<id>'}`, `{type: 'xyz', tiles: [https template with {z} {x} {y}], tileSize: 256 or 512}` or `{type: 'pmtiles', url}` |
 | `minzoom`, `maxzoom` | number | 0 to 24, `minzoom` ≤ `maxzoom` |
 | `bounds?` | `[[w, s], [e, n]]` | where tiles exist |
@@ -257,7 +257,7 @@ The engine checks a manifest in three steps, each with a localized message:
 
 1. `version` must be `1`, else `error.manifest.version`;
 2. `city.engine.minVersion`, when present, must not be newer than `ENGINE_VERSION`, else `error.manifest.engineTooOld` (with the version);
-3. the strict schema, else `error.manifest.invalid` with the issue count; each issue is `{path, code}` where `code` is a `validation.*` key (`validateManifest`, `checkManifestCompat` in `@hcm/shared`). The cross-value rules report `validation.duplicateId` (ids, overlay ids), `validation.outsideCity` (photos, POI geometries), `validation.reference` (a POI's category or photo that does not exist) and `validation.ringClosed` (an open polygon ring).
+3. the strict schema, else `error.manifest.invalid` with the issue count; each issue is `{path, code}` where `code` is a `validation.*` key (`validateManifest`, `checkManifestCompat` in `@hcm/shared`). The error card also names the first issue, `path: message` in the visitor's language (`layers[0].adjustments.brightnessMax: Valoarea nu este permisă.`), so the city owner sees what to fix; `hcm-error`'s `detail` carries the same issue untranslated (`layers[0].adjustments.brightnessMax validation.value`). The cross-value rules report `validation.duplicateId` (ids, overlay ids), `validation.outsideCity` (photos, POI geometries), `validation.reference` (a POI's category or photo that does not exist) and `validation.ringClosed` (an open polygon ring).
 
 A fetch that returns 404 shows `error.manifest.notFound`, a network failure `error.manifest.network`, a slow response `error.manifest.timeout`; each error card has a Retry button. No error ever leaves a blank map (scenario V01).
 

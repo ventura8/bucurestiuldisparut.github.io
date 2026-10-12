@@ -224,6 +224,8 @@ export async function drawIcon(id: string, env: IconEnv): Promise<MapImage | nul
 /**
  * Makes `id` available on `map` now (a placeholder) and draws it in the background; `isCurrent` turns false once the
  * map was destroyed, and a late drawing is then dropped. An unknown id or an image the map already has does nothing.
+ * `updateImage` does not repaint an idle map (Mapbox GL 3.32), so a drawing that lands after the map settled (a POI
+ * glyph whose font arrives late) asks for a frame, or the old placeholder stays on screen until the visitor moves.
  */
 export function ensureIcon(map: MapboxMap, id: string, env: IconEnv, isCurrent: () => boolean): Promise<void> {
     const spec = iconSpec(id);
@@ -234,6 +236,7 @@ export function ensureIcon(map: MapboxMap, id: string, env: IconEnv, isCurrent: 
     return drawIcon(id, env).then((image) => {
         if (image !== null && isCurrent()) {
             map.updateImage(id, image);
+            map.triggerRepaint();
         }
     });
 }

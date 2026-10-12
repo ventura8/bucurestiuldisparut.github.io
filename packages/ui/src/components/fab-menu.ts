@@ -18,7 +18,10 @@ const MOVE_KEYS: Readonly<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 
 
 /**
  * The M3 Expressive FAB menu: a FAB (`aria-haspopup="menu"`, `aria-expanded`, named `label`) that opens a short menu of
- * actions above it and turns into a close button (`closeLabel`). Opening focuses the first item; the arrow keys
+ * actions above it and turns into a close button (`closeLabel`). The menu is at most `--hcm-fab-menu-max-block-size`
+ * tall; beyond it the items continue in a second column (a landscape phone). The FAB and the items line up on the
+ * inline end, or on the side `--hcm-fab-menu-align` names (`flex-start` for a menu docked on the leading edge, so a
+ * wrapped, wider menu never moves the FAB from under the finger). Opening focuses the first item; the arrow keys
  * (wrapping), Home and End move between items; Esc or a focus leaving the menu closes it, Esc returning the focus to
  * the FAB. Choosing an item fires `hcm-select` with `{value}` and closes the menu; every open or close fires
  * `hcm-toggle` with `{open}`.
@@ -42,14 +45,20 @@ export class HcmFabMenu extends LitElement {
                 display: inline-flex;
                 flex-direction: column;
                 gap: 8px;
-                align-items: flex-end;
+                align-items: var(--hcm-fab-menu-align, flex-end);
             }
 
+            /*
+             * At most --hcm-fab-menu-max-block-size tall (the app sets it where the window is short): the items then
+             * continue in a second column instead of leaving the screen (no scrolling, which a keyboard could not reach).
+             */
             [role='menu'] {
                 display: flex;
-                flex-direction: column;
+                flex-flow: column wrap;
                 gap: 4px;
-                align-items: flex-end;
+                align-items: var(--hcm-fab-menu-align, flex-end);
+                align-content: flex-start;
+                max-block-size: var(--hcm-fab-menu-max-block-size, none);
                 padding: 0;
                 margin: 0;
             }
@@ -68,6 +77,7 @@ export class HcmFabMenu extends LitElement {
             }
 
             .item {
+                flex: none;
                 gap: 8px;
                 padding-inline: 24px;
             }
@@ -171,10 +181,15 @@ export class HcmFabMenu extends LitElement {
         }
     }
 
+    /**
+     * Closes the menu and focuses the FAB before announcing the choice: whatever the app opens in reply (a sheet, a
+     * dialog) then remembers the FAB as its opener and gives the focus back to it on close. The item that had the focus
+     * is gone with the menu (S-V15-BAD-SHEET-DRAG-CLOSE).
+     */
     private choose(value: string): void {
-        emit(this, 'hcm-select', { value });
         this.setOpen(false);
         this.fab()?.focus();
+        emit(this, 'hcm-select', { value });
     }
 
     private readonly onFabClick = (): void => {

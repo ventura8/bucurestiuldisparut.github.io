@@ -39,6 +39,42 @@ describe('<hcm-error-card>', () => {
         expect(element.shadowRoot?.querySelector('hcm-button')).toBeNull();
     });
 
+    it('badPath_anInvalidManifestNamesItsFirstIssueInTheVisitorsLanguage', async () => {
+        const error = {
+            code: 'error.manifest.invalid',
+            retryable: false,
+            params: {
+                count: '2',
+                detail: 'pois.1.geometry validation.ringClosed',
+                issuePath: 'pois.1.geometry',
+                issueCode: 'validation.ringClosed',
+            },
+        } as const;
+        const element = await mountElement<HcmErrorCard>(HCM_ERROR_CARD_TAG, { error });
+
+        expect(shadowText(element)).toContain('Datele hărții sunt nevalide (probleme găsite: 2).');
+        expect(shadowText(element)).toContain('pois.1.geometry: Un inel al poligonului trebuie să se termine unde începe.');
+        element.locale = 'en';
+        await element.updateComplete;
+        expect(shadowText(element)).toContain('pois.1.geometry: A polygon ring must end where it starts.');
+    });
+
+    it('badPath_anIssueWithoutAPathOrWithAnUnknownCodeShowsWhatItCan', async () => {
+        const element = await mountElement<HcmErrorCard>(HCM_ERROR_CARD_TAG, {
+            error: {
+                code: 'error.manifest.invalid',
+                retryable: false,
+                params: { count: '1', issuePath: '', issueCode: 'validation.json' },
+            },
+        });
+
+        expect(shadowText(element)).toContain('Conținutul nu este JSON valid.');
+        expect(shadowText(element)).not.toContain(': Conținutul');
+        element.error = { code: 'error.manifest.invalid', retryable: false, params: { count: '1', issueCode: 'not.a.code' } };
+        await element.updateComplete;
+        expect(element.shadowRoot?.querySelector('.issue')).toBeNull();
+    });
+
     it('badPath_noErrorRendersNothing', async () => {
         const element = await mountElement<HcmErrorCard>(HCM_ERROR_CARD_TAG);
 

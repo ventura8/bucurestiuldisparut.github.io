@@ -148,6 +148,33 @@ describe('HashWriter', () => {
         expect(target.written).toEqual(['#now']);
     });
 
+    it('badPath_aHashTheVisitorChangedMeanwhileIsNotOverwritten', () => {
+        // S-V11-HAPPY found it: a write scheduled by a state change replaced a newly typed `#…&photo=` before its
+        // hashchange reached the store.
+        const target = location('#start');
+        const writer = new HashWriter(target, () => '#state');
+        writer.schedule();
+
+        target.hash = '#typed';
+        vi.advanceTimersByTime(HASH_WRITE_DELAY_MS);
+
+        expect(target.written).toEqual([]);
+        writer.schedule();
+        vi.advanceTimersByTime(HASH_WRITE_DELAY_MS);
+        expect(target.written).toEqual(['#state']);
+    });
+
+    it('happyPath_syncAdoptsTheAddressBeforeItIsApplied', () => {
+        const target = location('#start');
+        const writer = new HashWriter(target, () => '#state');
+
+        target.hash = '#typed';
+        writer.sync();
+        writer.flush();
+
+        expect(target.written).toEqual(['#state']);
+    });
+
     it('badPath_aCancelledWriteNeverHappens', () => {
         const target = location();
         const writer = new HashWriter(target, () => '#never');

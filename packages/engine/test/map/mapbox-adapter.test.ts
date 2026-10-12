@@ -71,6 +71,11 @@ describe('Mapbox adapter', () => {
         expect(map.options).toMatchObject({
             accessToken: 'pk.test',
             language: 'en',
+            locale: {
+                'Map.Title': 'Map',
+                'AttributionControl.ToggleAttribution': 'Show or hide the map sources',
+                'LogoControl.Title': 'Mapbox homepage',
+            },
             performanceMetricsCollection: false,
             attributionControl: true,
             config: { basemap: { show3dObjects: true } },

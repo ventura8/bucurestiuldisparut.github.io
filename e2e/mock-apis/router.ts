@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { E2E_BROKEN_TILESET, TILESET_COLOURS, XYZ_COLOURS, type Rgb } from '../fixtures/world.js';
+import { E2E_BROKEN_TILESET, E2E_MEASUREMENT_ID, TILESET_COLOURS, XYZ_COLOURS, type Rgb } from '../fixtures/world.js';
 import { glyphRange, RANGE_SIZE } from './glyphs.js';
+import { firebaseWebConfig, GTAG_SCRIPT } from './gtag.js';
 import { mockedHostKind, type HostKind } from './hosts.js';
 import { basemapStyle } from './style.js';
 import { rasterTile, transparentPixel, type TileFormat } from './tiles.js';
@@ -115,10 +116,14 @@ function tileJson(tilesetId: string): MockResponse {
         : NOT_FOUND;
 }
 
+/** The broken tileset's tiles: a tile outage (503), which Mapbox GL reports, unlike a 404. */
+const TILE_OUTAGE: MockResponse = { status: 503, type: 'text/plain', body: 'tile service unavailable' };
+
 function mapboxTile(match: RegExpExecArray): Promise<MockResponse> | MockResponse {
-    const colour = TILESET_COLOURS.get(String(match[1]));
+    const tilesetId = String(match[1]);
+    const colour = TILESET_COLOURS.get(tilesetId);
     if (colour === undefined) {
-        return NOT_FOUND;
+        return tilesetId === E2E_BROKEN_TILESET ? TILE_OUTAGE : NOT_FOUND;
     }
     const size = match[5] === undefined ? 256 : 512;
     return tileResponse(colour, match, size, match[6] === 'png' ? 'png' : 'webp');
@@ -174,10 +179,21 @@ function routed(routes: readonly Route[], request: MockRequest, files: MockFiles
     return NOT_FOUND;
 }
 
-/** GA4 and Firebase: scripts load empty, beacons are accepted, an installation gets a fake id; all are recorded. */
+const WEB_CONFIG_PATH = /^\/v1alpha\/projects\/-\/apps\/([\w:-]+)\/webConfig$/;
+
+/** GET on an analytics host: the stand-in gtag.js, the Firebase web config of an app, `{}` for anything else. */
+function analyticsGet(request: MockRequest): MockResponse {
+    if (request.path.startsWith('/gtag/js')) {
+        return { status: 200, type: 'text/javascript', body: GTAG_SCRIPT };
+    }
+    const app = WEB_CONFIG_PATH.exec(request.path);
+    return app === null ? json({}) : json(firebaseWebConfig(String(app[1]), E2E_MEASUREMENT_ID));
+}
+
+/** GA4 and Firebase: gtag.js and the web config (gtag.ts), beacons accepted, an installation gets a fake id; all recorded. */
 function analytics(request: MockRequest): MockResponse {
     if (request.method !== 'POST') {
-        return request.path.startsWith('/gtag/js') ? { status: 200, type: 'text/javascript', body: '' } : json({});
+        return analyticsGet(request);
     }
     if (request.path.endsWith('/installations')) {
         return json({

@@ -92,6 +92,17 @@ describe('deepActiveElement and trapTab', () => {
         expect(deepActiveElement()).toBe(input);
     });
 
+    it('badPath_shiftTabOnTheFocusedContainerWrapsToTheLastInsteadOfLeaving', () => {
+        // A modal sheet or the lightbox focuses its container on open: Shift+Tab from there used to leave the modal.
+        const { root, input } = tree();
+        root.tabIndex = -1;
+        root.focus();
+
+        expect(trapTab(tab(), root)).toBe(false);
+        expect(trapTab(tab(true), root)).toBe(true);
+        expect(document.activeElement).toBe(input);
+    });
+
     it('badPath_shiftTabWithTheFocusOutsideIsLeftToTheBrowser', () => {
         const { root } = tree();
         (document.activeElement as HTMLElement | null)?.blur();

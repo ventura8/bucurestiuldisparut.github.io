@@ -107,7 +107,7 @@ describe('<hcm-overlay-list>', () => {
             { id: 'ortofoto-1945', opacity: 0.69, final: false },
             { id: 'ortofoto-1945', opacity: 0.69, final: true },
         ]);
-        expect(liveRegion(element)).toBe('Ortofoto 1945: opacity 69 %');
+        expect(liveRegion(element)).toBe('Ortofoto 1945: opacity 69%');
     });
 
     it('happyPath_draggingFadesPerFrame', async () => {

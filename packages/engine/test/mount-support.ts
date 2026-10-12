@@ -36,6 +36,10 @@ export class FakeViewer {
         return this.attributes.get(name) ?? null;
     }
 
+    setAttribute(name: string, value: string): void {
+        this.attributes.set(name, value);
+    }
+
     attach(store: ViewerStorePort, controller: ViewerController | null): void {
         this.store = store;
         this.controller = controller;
@@ -89,6 +93,8 @@ export interface TestEnvironmentOptions {
     /** `createMap` throws (Mapbox GL JS missing from the page). */
     readonly noMapbox?: boolean;
     readonly webgl?: boolean;
+    /** The page address's hash and query (`?lang=en`); empty by default. */
+    readonly location?: { readonly hash?: string; readonly search?: string };
 }
 
 /** A `MountEnvironment` with the real store on fakes; `containers` answers `querySelector`. */
@@ -129,7 +135,7 @@ export function testEnvironment(options: TestEnvironmentOptions = {}): TestEnvir
         },
         fetch: () => Promise.resolve(jsonResponse(body, options.status ?? 200)),
         storage: memoryStorage(),
-        location: { hash: '', replaceHash: () => undefined },
+        location: { hash: options.location?.hash ?? '', search: options.location?.search ?? '', replaceHash: () => undefined },
         log: log.log,
         engineVersion: '1.0.0',
         mapboxCssUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css',

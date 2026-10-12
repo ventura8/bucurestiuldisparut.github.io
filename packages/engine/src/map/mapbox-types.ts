@@ -60,6 +60,8 @@ export interface MapboxMapOptions {
     readonly maxBounds?: readonly [LngLat, LngLat];
     /** Mapbox Standard labels in the visitor's language. */
     readonly language: string;
+    /** Mapbox's own UI strings (the canvas's name, the attribution toggle, the logo link) in the visitor's language. */
+    readonly locale: Readonly<Record<string, string>>;
     /** Standard style configuration per import id (`{basemap: {...}}`). */
     readonly config?: Readonly<Record<string, Readonly<Record<string, string | number | boolean>>>>;
     readonly attributionControl: true;
@@ -82,6 +84,8 @@ export interface MapboxMap {
     hasImage(id: string): boolean;
     addImage(id: string, image: MapImage, options?: { readonly pixelRatio?: number }): unknown;
     updateImage(id: string, image: MapImage): unknown;
+    /** Draws a new frame; `updateImage` alone does not repaint an idle map. */
+    triggerRepaint(): unknown;
     flyTo(options: MapboxCameraOptions): unknown;
     jumpTo(options: MapboxCameraOptions): unknown;
     easeTo(options: MapboxCameraOptions): unknown;

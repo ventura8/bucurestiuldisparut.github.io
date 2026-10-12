@@ -1,7 +1,8 @@
 /**
  * The template of `<hcm-map-viewer>`, split by region: the frame (panes per window class), the map pane with its
  * status layer (skeleton, error card, no-WebGL fallback) and floating controls, the modal sheets, the About dialog
- * and the lightbox. Every function takes the view (state plus derived values) and the element's handlers; none keeps
+ * and the lightbox. Every floating control carries `data-layout-check` (its name): the e2e tour checks that no two of
+ * them overlap at any viewport (docs/research/design-review-testability.md §4.3). Every function takes the view (state plus derived values) and the element's handlers; none keeps
  * state. The map container is the one static `<div class="map">`: Lit never re-creates it, so the Mapbox canvas that
  * the engine mounts into it survives every render.
  */
@@ -115,7 +116,9 @@ function timelineArea(view: ViewerView, ready: Ready, handlers: ViewerHandlers):
 
 function timelineNote(locale: Locale): TemplateResult {
     return html`<div class="dock timeline-note">
-        <p class="note"><hcm-icon name="timeline"></hcm-icon><span>${translate(locale, 'timeline.empty')}</span></p>
+        <p class="note" data-layout-check="timeline-note">
+            <hcm-icon name="timeline"></hcm-icon><span>${translate(locale, 'timeline.empty')}</span>
+        </p>
     </div>`;
 }
 
@@ -178,10 +181,14 @@ function stateLayer(view: ViewerView, state: ViewerState, handlers: ViewerHandle
     return state.status === 'ready' ? EMPTY : skeleton(view.locale);
 }
 
+/**
+ * The boot state: the kit's M3 Expressive loading indicator (a wait of a few seconds). A linear `hcm-progress` has no
+ * width of its own and collapsed to nothing in this centred grid, so the screen showed only the static shimmer.
+ */
 function skeleton(locale: Locale): TemplateResult {
     return html`<div class="status">
         <div class="skeleton" role="status">
-            <hcm-progress indeterminate .label=${translate(locale, 'viewer.loading')}></hcm-progress>
+            <hcm-loading-indicator .label=${translate(locale, 'viewer.loading')}></hcm-loading-indicator>
             <div class="shimmer"></div>
             <p>${translate(locale, 'viewer.loading')}</p>
         </div>
@@ -245,6 +252,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
     return html`${timelineArea(view, ready, handlers)} ${nearYearChip(view, ready, handlers)}
         <div class="dock menu">
             <hcm-fab-menu
+                data-layout-check="menu"
                 icon="menu"
                 .label=${translate(view.locale, 'action.menu')}
                 .closeLabel=${translate(view.locale, 'action.close')}
@@ -258,6 +266,7 @@ function controls(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
 function consentBanner(locale: Locale, handlers: ViewerHandlers): TemplateResult {
     return html`<div class="dock consent">
         <hcm-consent-banner
+            data-layout-check="consent"
             .headline=${translate(locale, 'consent.title')}
             .body=${translate(locale, 'consent.body')}
             .acceptLabel=${translate(locale, 'consent.accept')}
@@ -271,6 +280,7 @@ function timeline(view: ViewerView, state: ViewerState, handlers: ViewerHandlers
     return html`<div class="dock timeline">
         <hcm-timeline
             id="timeline"
+            data-layout-check="timeline"
             .stops=${view.stops}
             .value=${state.year}
             .locale=${view.locale}
@@ -286,7 +296,7 @@ function nearYearChip(view: ViewerView, ready: Ready, handlers: ViewerHandlers):
         return EMPTY;
     }
     return html`<div class="dock chip">
-        <hcm-button variant="tonal" icon="photo_library" @click=${handlers.onNearYear}
+        <hcm-button variant="tonal" icon="photo_library" data-layout-check="near-year" @click=${handlers.onNearYear}
             >${translate(view.locale, 'photos.nearYear', { year: String(year) })}</hcm-button
         >
     </div>`;
@@ -301,6 +311,7 @@ function toast(view: ViewerView, state: ViewerState, handlers: ViewerHandlers): 
         ${keyed(
             current,
             html`<hcm-snackbar
+                data-layout-check="toast"
                 .message=${translate(view.locale, current.key, current.params)}
                 .closeLabel=${translate(view.locale, 'action.close')}
                 @hcm-dismiss=${handlers.onToastDismiss}

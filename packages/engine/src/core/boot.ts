@@ -34,6 +34,11 @@ function exactLocale(value: string | null | undefined): Locale | null {
     return value === 'ro' || value === 'en' ? value : null;
 }
 
+/** The language the page address asks for (`#…&lang=`, else `?lang=`), or null: it wins over every other choice. */
+export function urlLocaleOf(location: { readonly hash: string; readonly search?: string | undefined }): Locale | null {
+    return decodeHash(location.hash).lang ?? exactLocale(new URLSearchParams(location.search ?? '').get('lang'));
+}
+
 function themeOf(value: string | null): ThemeMode {
     return THEME_MODES.find((mode) => mode === value) ?? 'system';
 }
@@ -70,7 +75,7 @@ export class Boot {
         this.#host = host;
         const { config, location } = host.deps;
         this.defaultLocale = resolveLocale(config.lang);
-        this.#urlLocale = decodeHash(location.hash).lang ?? exactLocale(new URLSearchParams(location.search ?? '').get('lang'));
+        this.#urlLocale = urlLocaleOf(location);
     }
 
     initialState(): ViewerState {
@@ -247,6 +252,7 @@ export class Boot {
 
     /** A hash the visitor typed or navigated to (`hashchange`). */
     applyLocationHash(): void {
+        this.#host.hash.sync();
         const manifest = this.#host.getState().manifest;
         if (manifest !== null) {
             this.applyHash(decodeHash(this.#host.deps.location.hash, hashLimits(manifest)));

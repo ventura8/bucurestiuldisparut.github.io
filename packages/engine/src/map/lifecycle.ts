@@ -3,6 +3,8 @@
  * the attribution control on, the Standard configuration on the `basemap` import) and the reading of Mapbox `error`
  * events (a style error before `load` fails the mount; source and tile errors never do).
  */
+import { translate, type Locale } from '@hcm/shared';
+
 import type { MapOptions, MapEventMap } from './map-port.js';
 import type { MapboxEvent, MapboxMap, MapboxMapOptions } from './mapbox-types.js';
 import { layerIdOfSource } from './rasters.js';
@@ -37,6 +39,19 @@ export function classifyError(event: MapboxEvent, loaded: boolean): MapEventMap[
     return layerId === undefined ? { kind, message } : { kind, layerId, message };
 }
 
+/**
+ * Mapbox GL's UI strings the viewer shows (the map canvas's accessible name, the attribution toggle, the logo link) in
+ * the visitor's language: Mapbox's defaults are English, which the tour's i18n check found in every Romanian page.
+ * They are read when the map is created, so a later language switch keeps them until the next map.
+ */
+function mapboxUiStrings(locale: Locale): Readonly<Record<string, string>> {
+    return {
+        'Map.Title': translate(locale, 'map.title'),
+        'AttributionControl.ToggleAttribution': translate(locale, 'map.toggleAttribution'),
+        'LogoControl.Title': translate(locale, 'map.logo'),
+    };
+}
+
 export function mapboxOptions(container: HTMLElement, options: MapOptions): MapboxMapOptions {
     const config = options.config === undefined ? {} : { config: { basemap: options.config } };
     const maxBounds = options.maxBounds === undefined ? {} : { maxBounds: options.maxBounds };
@@ -50,6 +65,7 @@ export function mapboxOptions(container: HTMLElement, options: MapOptions): Mapb
         minZoom: options.minZoom,
         maxZoom: options.maxZoom,
         language: options.locale,
+        locale: mapboxUiStrings(options.locale),
         attributionControl: true,
         performanceMetricsCollection: false,
         ...maxBounds,

@@ -88,6 +88,14 @@ describe('sprite icons', () => {
         expect(map.images.get(PHOTO_CAMERA_ICON)?.data[0]).toBe(255);
     });
 
+    it('badPath_aDrawingThatLandsOnAnIdleMapAsksForAFrame', async () => {
+        const map = mapboxMap();
+        await ensureIcon(map, poiIconId('park'), fakeIconEnv(), () => true);
+
+        const calls = map.calls.map((call) => call.method).filter((method) => method === 'updateImage' || method === 'triggerRepaint');
+        expect(calls).toEqual(['updateImage', 'triggerRepaint']);
+    });
+
     it('badPath_anExistingUnknownOrLateIconIsLeftAlone', async () => {
         const map = mapboxMap();
         const env = fakeIconEnv();
@@ -100,6 +108,7 @@ describe('sprite icons', () => {
 
         expect(map.callsOf('addImage').map(([id]) => id)).toEqual([PHOTO_CAMERA_ICON, poiIconId('park'), PHOTO_CLUSTER_ICON]);
         expect(map.callsOf('updateImage')).toHaveLength(1);
+        expect(map.callsOf('triggerRepaint')).toHaveLength(1);
     });
 
     it('happyPath_theBrowserEnvUsesTheDocumentCanvasAndFonts', async () => {
@@ -268,6 +277,11 @@ describe('map lifecycle', () => {
             minZoom: 10,
             maxZoom: 20,
             language: 'ro',
+            locale: {
+                'Map.Title': 'Hartă',
+                'AttributionControl.ToggleAttribution': 'Arată sau ascunde sursele hărții',
+                'LogoControl.Title': 'Pagina Mapbox',
+            },
             attributionControl: true,
             performanceMetricsCollection: false,
             maxBounds: [

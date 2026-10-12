@@ -34,6 +34,18 @@ function tiles(source: LayerSource): Readonly<Record<string, unknown>> {
     }
 }
 
+const ATTRIBUTION_ENTITIES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;' };
+
+/**
+ * A layer's attribution as Mapbox GL needs it to show plain text: its attribution control parses a source's
+ * `attribution` as HTML (keeping `<a href>` links) and writes it with `innerHTML`. The manifest's attribution is plain
+ * text (no HTML from data, security review §1.7), so `&`, `<` and `>` are escaped: markup in the data stays visible
+ * text and can never become a link or an element.
+ */
+export function attributionText(attribution: string): string {
+    return attribution.replace(/[&<>]/g, (character) => String(ATTRIBUTION_ENTITIES[character]));
+}
+
 /** The raster source: tiles exist from `minzoom` to `maxzoom` inside `bounds`; Mapbox overzooms beyond `maxzoom`. */
 export function rasterSource(spec: RasterLayerSpec): Readonly<Record<string, unknown>> {
     const bounds = spec.bounds === undefined ? {} : { bounds: [...spec.bounds[0], ...spec.bounds[1]] };
@@ -42,7 +54,7 @@ export function rasterSource(spec: RasterLayerSpec): Readonly<Record<string, unk
         ...tiles(spec.source),
         minzoom: spec.minzoom,
         maxzoom: spec.maxzoom,
-        attribution: spec.attribution,
+        attribution: attributionText(spec.attribution),
         ...bounds,
     };
 }

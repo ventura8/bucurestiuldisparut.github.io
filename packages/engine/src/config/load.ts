@@ -78,12 +78,14 @@ function compatFailure(compat: Exclude<ReturnType<typeof checkManifestCompat>, {
     return compat.code === 'error.manifest.version' ? fail(compat.code, false) : fail(compat.code, false, { version: compat.minVersion });
 }
 
+/**
+ * `error.manifest.invalid` with the issue count, the first issue as a non-localized `detail` (the `hcm-error` hint) and
+ * as `issuePath` / `issueCode`, which the error card shows in the visitor's language so the city owner sees what to fix.
+ */
 function invalidFailure(issues: readonly ValidationIssue[]): Result<Manifest> {
-    const detail = issues
-        .slice(0, 1)
-        .map((issue) => `${issue.path} ${issue.code}`)
-        .join('');
-    return fail('error.manifest.invalid', false, { count: String(issues.length), detail });
+    const [first] = issues;
+    const issue = first === undefined ? {} : { detail: `${first.path} ${first.code}`, issuePath: first.path, issueCode: first.code };
+    return fail('error.manifest.invalid', false, { count: String(issues.length), ...issue });
 }
 
 function matchCity(config: EngineConfig, manifest: Manifest): Result<Manifest> {
@@ -116,7 +118,12 @@ async function readJson(response: Response): Promise<Attempt> {
     try {
         return { ok: true, value: JSON.parse(await response.text()) as unknown };
     } catch {
-        return fail('error.manifest.invalid', false, { count: '1', detail: 'validation.json' });
+        return fail('error.manifest.invalid', false, {
+            count: '1',
+            detail: 'validation.json',
+            issuePath: '',
+            issueCode: 'validation.json',
+        });
     }
 }
 

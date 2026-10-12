@@ -45,7 +45,7 @@ describe('<hcm-photo-sheet>', () => {
         const text = shadowText(element);
         expect(text).toContain('Anii 1978–1979');
         expect(text).toContain('Autor: Dan Vartanian');
-        expect(text).toContain('Publicată cu permisiune (drepturi în curs de verificare)');
+        expect(text).toContain('Publicată cu permisiune, din proiectul comunitar original');
         expect(text).toContain('Drepturile acestei fotografii sunt în curs de verificare.');
         expect(text).toContain('Strada spre Dâmbovița.');
         const link = page.getByRole('link', { name: 'Flickr' });

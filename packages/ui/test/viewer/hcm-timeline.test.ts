@@ -40,6 +40,17 @@ describe('<hcm-timeline>', () => {
         await expect.element(slider).toHaveAttribute('aria-orientation', 'horizontal');
     });
 
+    it('badPath_theThumbTouchTargetIsAtLeast48Pixels', async () => {
+        // The e2e tour found the 40 px thumb under the 48 px target size of compact windows.
+        const element = await timeline({ value: 1977 });
+        const thumb = shadowQuery(element, '.thumb');
+        const target = getComputedStyle(thumb, '::after');
+
+        expect(thumb.classList.contains('touch-target')).toBe(true);
+        expect(Number.parseFloat(target.width)).toBeGreaterThanOrEqual(48);
+        expect(Number.parseFloat(target.height)).toBeGreaterThanOrEqual(48);
+    });
+
     it('happyPath_todayInEnglish', async () => {
         const element = await timeline({ locale: 'en' });
 

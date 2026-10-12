@@ -7,6 +7,7 @@ import { layerOpacityPaint, OverlayRegistry, visibilityValue } from '../../src/m
 import { CONE_MIN_ZOOM, PHOTO_MAP_LAYERS, photoEntry, photoLayers, photoSources, splitPhotoData } from '../../src/map/photos.js';
 import { isPoiLayer, POI_LABEL_MIN_ZOOM, poiData, poiEntry, poiLayers, poiSource } from '../../src/map/pois.js';
 import {
+    attributionText,
     layerIdOfSource,
     overlaySourceId,
     rasterBeforeId,
@@ -49,6 +50,7 @@ function mapboxMap(): FakeMapboxMap {
         minZoom: 0,
         maxZoom: 22,
         language: 'ro',
+        locale: {},
         attributionControl: true,
         performanceMetricsCollection: false,
     });
@@ -86,6 +88,16 @@ describe('raster layers', () => {
         expect(rasterSource({ ...RASTER, source: { type: 'pmtiles', url: 'https://t.example.org/kh4.pmtiles' } })).toMatchObject({
             url: 'https://t.example.org/kh4.pmtiles',
         });
+    });
+
+    it('badPath_markupInTheAttributionReachesMapboxAsEscapedText', () => {
+        // Mapbox GL's attribution control parses a source attribution as HTML and keeps its links; the manifest's is plain text.
+        const attribution = '<a href="https://phish.example">USGS</a> & <img src=x onerror=alert(1)>';
+
+        expect(rasterSource({ ...RASTER, attribution })['attribution']).toBe(
+            '&lt;a href="https://phish.example"&gt;USGS&lt;/a&gt; &amp; &lt;img src=x onerror=alert(1)&gt;',
+        );
+        expect(attributionText('USGS EROS © 1966')).toBe('USGS EROS © 1966');
     });
 
     it('happyPath_theLayerSitsInItsSlotWithOpacityAndNeutralAdjustments', () => {

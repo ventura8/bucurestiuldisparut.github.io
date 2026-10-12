@@ -132,7 +132,13 @@ async function handleMock(request: IncomingMessage, response: ServerResponse, lo
     }
 }
 
+/**
+ * Starts listening. Idle keep-alive connections are never closed by the server: Node closes them after 5 s by default,
+ * and a request the test's API client sends on such a connection at that moment fails with ECONNRESET ("socket hang
+ * up"), which the firewall then reports as a blocked request (seen under load in the fn tier).
+ */
 function listen(server: Server, port: number): Promise<Server> {
+    server.keepAliveTimeout = 0;
     return new Promise((resolvePromise, reject) => {
         server.once('error', reject);
         server.listen(port, '127.0.0.1', () => {

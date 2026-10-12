@@ -1,6 +1,6 @@
 import { test as base, expect, type APIRequestContext, type Page } from '@playwright/test';
 
-import { axeViolations, type AxeViolation } from './a11y.js';
+import { axeViolations, type AxeOptions, type AxeViolation } from './a11y.js';
 import { InputBudget } from './budget.js';
 import { ENGINE_EVENTS, instrumentPage, readInstrumentation, type E2eInstrumentation } from './instrumentation.js';
 import { installNetwork, Recorder } from './network.js';
@@ -32,7 +32,7 @@ interface Instrumentation {
 }
 
 interface Axe {
-    violations(include?: readonly string[]): Promise<AxeViolation[]>;
+    violations(options?: AxeOptions): Promise<AxeViolation[]>;
 }
 
 interface TestFixtures {
@@ -107,7 +107,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         await use(new MockApis(mockApiRequest, `${testInfo.testId}#${String(testInfo.retry)}`));
     },
     axe: async ({ page }, use) => {
-        await use({ violations: (include = []) => axeViolations(page, include) });
+        await use({ violations: (options = {}) => axeViolations(page, options) });
     },
     inputBudget: async ({ page }, use) => {
         const budget = new InputBudget();

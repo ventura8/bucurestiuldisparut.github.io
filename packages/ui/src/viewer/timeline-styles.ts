@@ -5,10 +5,13 @@
  */
 import { css } from 'lit';
 
+import { touchTarget } from '../components/styles.js';
 import { baseStyles } from './shared-styles.js';
 
 export const timelineStyles = [
     baseStyles,
+    // The thumb is 40 px tall; its touch target is 48 × 48 px (the tour checks every target on compact).
+    touchTarget,
     css`
         :host {
             --hcm-timeline-spring: cubic-bezier(0.42, 1.67, 0.21, 0.9);

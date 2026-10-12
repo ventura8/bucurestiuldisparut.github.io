@@ -2,7 +2,7 @@ import { LitElement, css, html, nothing, type PropertyValues, type TemplateResul
 
 import { cssProperties } from './css-properties.js';
 import { clamp, defineOnce, emit, snapToStep } from './internal.js';
-import { baseStyles, focusRing } from './styles.js';
+import { baseStyles, focusRing, touchTarget } from './styles.js';
 
 export const HCM_SLIDER_TAG = 'hcm-slider';
 
@@ -30,6 +30,8 @@ export class HcmSlider extends LitElement {
     static override readonly styles = [
         baseStyles,
         focusRing,
+        // The 4 px handle is the keyboard and screen-reader target; its pointer target is 48 × 48 px (the track takes drags).
+        touchTarget,
         css`
             :host {
                 display: block;
@@ -163,7 +165,7 @@ export class HcmSlider extends LitElement {
             <span class="active"></span>
             <span class="inactive"><span class="stop"></span></span>
             <span
-                class="handle"
+                class="handle touch-target"
                 part="handle"
                 role="slider"
                 tabindex=${this.disabled ? '-1' : '0'}

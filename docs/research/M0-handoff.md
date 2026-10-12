@@ -819,6 +819,55 @@ engine-ui, e2e-infra). The resolved change requests and what the contract became
   (`reports/m1-capture/`, git-ignored) that imports the e2e fixtures, run in the quality image with
   `npx playwright test -c reports/m1-capture/playwright.config.ts` after `npm run build:site:e2e`.
 
+## 10k. M1 e2e scenarios
+
+Added on 2026-10-12 by the M1 e2e author. Nothing committed or pushed; no ask-first file edited (proposal:
+`DECISIONS-for-review.md` §16a, shard the CI e2e job). What the contract gained: `docs/research/M1-interfaces.md` §13.
+
+- **Specs**: the viewer matrix V01–V25 (`e2e/specs/viewer/*.spec.ts`, one file per area), the starter kit
+  (`e2e/specs/starter-kit/starter-kit.spec.ts`), the tour (`e2e/tour/viewer.tour.ts`), the a11y specials
+  (`e2e/a11y/`) and no-WebGL; every viewer and starter-kit row exists except swipe compare (V06, M4).
+- **Support**: `e2e/support/viewer.ts`, `map.ts`, `layout.ts`, `i18n.ts`; the instrumentation keeps the live maps
+  (read only); `siteManifestData()` for changed manifests; the mock APIs gained the plain basemap, Standard's
+  attribution, a 503 tile outage, the Firebase web config and the stand-in gtag.js; the servers never time out an idle
+  keep-alive connection. The matrix gate reads `e2e/*.tour.ts`; the tour projects allow 120 s per test, the functional
+  and a11y projects 60 s.
+- **Product fixes the scenarios found** (`docs/LESSONS.md` #9–#16): analytics never sent (Performance Monitoring on a
+  named Firebase app), the invalid-manifest card without its issue, `opacity=` fading hidden layers, focus lost after a
+  sheet opened from the menu, mixed languages on a config error card, zod's eval probe under the CSP, English Mapbox
+  labels on Romanian pages, and the tour's layout and contrast defects (toast off screen, chip over the menu, menu items
+  off screen on a landscape phone, small touch targets, unreadable lightbox texts), and a debounced hash write that
+  overwrote a newly opened link.
+
+## 10l. M1 quality review
+
+Added on 2026-10-12 by the M1 quality reviewer (coverage, tests, bundle size, dead code, docs). Nothing committed or
+pushed; no ask-first file edited (proposal: `DECISIONS-for-review.md` §17a, minify `engine.mjs`).
+
+- **Bundle budgets** (`scripts/ci/check_bundle_budget.py`): `engine.mjs`, which the city pages load, now has its own
+  budget (110 KB gzip; 97.9 KB in M1), and the IIFE's went from 150 to 125 KB (112.0 KB in M1, the Firebase SDK
+  inlined). zod is about 38 % of the engine's mapped bytes, Lit about 7 %.
+- **Agent assets**: lessons #12 (focus before the announcement), #14 (zod `jitless` under the CSP) and #16 (the hash
+  writer never overwrites the visitor's hash) now have their rules in the skills that own them.
+- **Docs**: msw is marked as planned (M2) in `docs/TESTING.md` and the testing skill; the `e2e` stage in
+  `docs/CI_PIPELINE.md` names the tour, the a11y specials and no-WebGL.
+
+## 10m. M1 final gate
+
+Added on 2026-10-12 after the three M1 reviews (UX and Material 3, accessibility and security, quality). Nothing
+committed or pushed; no ask-first file edited.
+
+- **The whole `quality` stage** (static, tests, e2e with every tier, build) ran green on the reviewed tree before the
+  fixes below, and again after them. The e2e stage alone took about 19 minutes (8 workers, 16 cores).
+- **Review screenshots**: 216 captures (12 states × 7 viewports from 360 × 800 to 3840 × 2160, light and dark, RO and
+  EN at 360 × 800 and 1920 × 1080) in the git-ignored `reports/screenshots/m1-final/`, taken with a scratch
+  Playwright configuration through the e2e fixtures. They found two defects no tier had seen (`docs/LESSONS.md` #21
+  and #22): a POI glyph whose font arrived after the map settled stayed invisible (`updateImage` does not repaint an
+  idle Mapbox map; new row `S-V24-BAD-ICON-FONT-LATE`), and the POI sheet's second photo thumbnail sat 4 px low.
+- **Docs**: the architecture's UI and analytics sections match the code (own Lit components, the consent banner and
+  error reports since M1, the open privacy decisions of `DECISIONS-for-review.md` §18), and both admin guides gained
+  the public map's error cards under troubleshooting.
+
 ## 11. Planned paths
 
 Appended by the M0 agent-assets agent on 2026-10-11. The `agent-assets` static gate
@@ -832,7 +881,3 @@ entries here; do not rewrite the rest of this file.
 - `.claude/settings.json`: the Claude Code permission allowlist (pipeline and read-only commands). Editing it is ask first (`AGENTS.md` → *Boundaries*), so it waits for the user's explicit approval of its contents.
 - `e2e/env`: M1–M2, the emulator environment for e2e (`.env.demo-hcm`, the test `.secret.local`).
 - `scripts/ci/sonar_setup.py`: the user's one-time SonarCloud token helper (hidden prompt, writes `.sonar-token`).
-- `e2e/tour`: M1, the layout and accessibility tour (`*.tour.ts`, the `tour` tier of `e2e/projects.ts`).
-- `e2e/a11y`: M1, the reduced-motion and forced-colours specs (the `a11y` tier).
-- `e2e/specs/starter-kit`: M1, the starter-kit scenarios (V17) once the viewer boots from a static manifest.
-- `e2e/specs/viewer/no-webgl.spec.ts`: M1, scenario V02's bad path (the `nogl` project).

@@ -148,7 +148,7 @@ describe('opacity and visibility updates', () => {
 });
 
 describe('URL hash opacities', () => {
-    it('happyPath_opacityAppliesToEveryRasterAndOpEntriesWin', () => {
+    it('happyPath_opacityAppliesToTheVisibleRastersAndOpEntriesWin', () => {
         const next = withHashOpacity(sample(), { opacity: 0.3, overlayOpacity: { 'kh9-1980': 0.9, photos: 0.5 } });
 
         expect(next.map((overlay) => [overlay.id, overlay.opacity])).toEqual([
@@ -159,6 +159,24 @@ describe('URL hash opacities', () => {
             ['cladiri', 0.9],
             ['strazi', 0.6],
         ]);
+    });
+
+    it('badPath_opacityLeavesHiddenRastersAtTheirOwnOpacity', () => {
+        // S-V05-BAD-HASH-OUT-OF-RANGE found it: `#layers=a&opacity=0` also faded every hidden layer, and the rewritten
+        // hash then carried an `op=` entry for each of them.
+        const hidden = withOverlayVisibility(sample(), 'kh4-1966-b', false);
+
+        const next = withHashOpacity(hidden, { opacity: 7 });
+
+        expect(next.map((overlay) => [overlay.id, overlay.opacity])).toEqual([
+            ['kh4-1966-a', 1],
+            ['kh4-1966-b', 0.9],
+            ['kh9-1980', 0.5],
+            ['photos', 0.8],
+            ['cladiri', 0.9],
+            ['strazi', 0.6],
+        ]);
+        expect(hashOverlayOpacity(next)).toEqual({ 'kh4-1966-a': 1 });
     });
 
     it('badPath_unknownIdsAreIgnoredAndValuesClamped', () => {

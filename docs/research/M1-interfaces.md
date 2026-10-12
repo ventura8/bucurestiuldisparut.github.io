@@ -628,6 +628,34 @@ SwiftShader (S-V16-HAPPY on c360 and l1440).
 - **Still open**: CR-1 and CR-4 (M2 rules), CR-2 (the engine's browser project), CR-3 (`.htmlvalidate.json`), CR-10
   (the Firebase SDK in the IIFE).
 
+## 13. E2E (2026-10-12)
+
+The e2e author implemented the viewer's scenario matrix (V01–V25 except swipe compare V06, which is M4), the starter kit
+(V17), the tour, the a11y specials and the no-WebGL project. What the contract gained or changed on the way, each with
+its unit test and its lesson in `docs/LESSONS.md` (#9–#16):
+
+- **Errors**: `error.manifest.invalid` carries `issuePath` and `issueCode` (the first issue) besides `count` and the
+  `hcm-error` `detail`; `<hcm-error-card>` shows `path: message` in the visitor's language. A boot error card (an
+  invalid or missing `config.js`) speaks the URL's language first, then `config.lang` (`urlLocaleOf` in
+  `packages/engine/src/core/boot.ts`, used by `mount.ts`).
+- **URL hash**: `withHashOpacity` applies the single `opacity=` to the visible rasters only, as `docs/ENGINE_API.md`
+  says (it faded every raster before). `HashWriter` never overwrites a hash the address gained since its last write
+  (`sync()` adopts it when the store applies a `hashchange`).
+- **Telemetry**: `FirebaseSdk` gains `getApps`; the viewer's Firebase app is the default app unless the page has one
+  (Performance Monitoring runs only on the default app), and Performance Monitoring starting in its own `try` never
+  stops analytics.
+- **i18n**: `map.title`, `map.toggleAttribution`, `map.logo` (Mapbox GL's own UI strings, passed as its `locale`
+  option by `mapboxOptions`); `error.manifest.invalid` reads "probleme găsite: {count}" / "problems found: {count}".
+- **UI**: the floating controls carry `data-layout-check`; the FAB menu chooses after focusing its button and wraps into
+  a second column under `--hcm-fab-menu-max-block-size` (set by the viewer on landscape phones); the slider handle and
+  the timeline thumb have 48 px touch targets; list links are 48 px tall; the toast flows in its top dock; the near-year
+  chip sits a row above the menu on compact; the lightbox draws its texts on a surface and its arrows are tonal.
+- **Shared**: zod runs `jitless` (no `Function('')` probe under the city pages' CSP).
+- **E2E world**: the broken tileset answers 503 (Mapbox GL never reports a 404 tile); the mock basemap carries Standard's
+  attribution and has a plain variant (`e2e-plain`); the mock APIs serve the Firebase web config and a stand-in gtag.js
+  that records each GA4 event as a `g/collect` beacon; specs change a copy of `siteManifestData()` (the built site's
+  manifest, with its `media/` paths). The matrix gate also reads `e2e/*.tour.ts`.
+
 ## Change requests
 
 A workstream that needs a change outside its paths appends a row here and continues against the current contract;

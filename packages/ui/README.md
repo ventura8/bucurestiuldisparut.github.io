@@ -17,7 +17,7 @@ passed in already localized (the kit has no catalogue of its own).
 | `hcm-button` | M3 Expressive small button (40 px in a 48 px target): `filled`, `tonal`, `outlined`, `text`; the slot is the name. |
 | `hcm-icon-button` | `label` is the name; `toggle` makes it `aria-pressed` and fires `hcm-change` `{selected}`; `variant` `standard`, `filled`, `tonal`, `outlined`. |
 | `hcm-fab` | `small` 40, `medium` 56 (M3 FAB), `large` 96 px; `extended` shows the label. |
-| `hcm-fab-menu` | FAB with `aria-haspopup="menu"`; arrows, Home, End, Esc; `hcm-select` `{value}`, `hcm-toggle` `{open}`. |
+| `hcm-fab-menu` | FAB with `aria-haspopup="menu"`; arrows, Home, End, Esc; `hcm-select` `{value}`, `hcm-toggle` `{open}`. Custom properties: `--hcm-fab-menu-max-block-size` (beyond it the items wrap into a second column), `--hcm-fab-menu-align` (`flex-end` by default; `flex-start` for a menu docked on the leading edge, so the wider wrapped menu never moves the FAB). |
 | `hcm-switch` | `role="switch"`; `hcm-change` `{checked}`; the selected handle shows a check mark. |
 | `hcm-slider` | `role="slider"` with `aria-valuetext`; arrows ±step, PageUp/PageDown ±a tenth, Home/End; `hcm-input` per frame or key, `hcm-change` on release. |
 | `hcm-chip` | Filter chip, `aria-pressed`; `hcm-change` `{selected}`. |
@@ -25,7 +25,7 @@ passed in already localized (the kit has no catalogue of its own).
 | `hcm-card`, `hcm-list`, `hcm-list-item` | Containers; an `interactive` list item is a button. |
 | `hcm-sheet` | `bottom` (handle: tap cycles peek, half, full; ArrowUp/ArrowDown; drag snaps or closes) or `side`; `modal` adds a scrim and a Tab trap; focus moves in on open and back on close; `hcm-close`, `hcm-detent-change`. |
 | `hcm-dialog` | Native modal `<dialog>`; Tab wraps; Esc, close button and scrim close it with `returnValue` `cancel`, `close`, `scrim`; `close(value)` for actions; `fullscreen`. |
-| `hcm-snackbar` | Always-present polite live region; timeout pauses on hover and focus; `hcm-action`, `hcm-dismiss` `{reason}`. |
+| `hcm-snackbar` | Always-present, visually hidden polite live region that gets the message alone `ANNOUNCE_DELAY_MS` after it shows (a region created with its text is not announced); timeout pauses on hover and focus; `hcm-action`, `hcm-dismiss` `{reason}`. |
 | `hcm-progress`, `hcm-loading-indicator` | `role="progressbar"`; the Expressive loading indicator morphs, and only pulses under reduced motion. |
 | `hcm-toolbar` | Floating toolbar, `role="toolbar"`, one Tab stop, arrows of its `orientation`, Home and End. |
 | `hcm-consent-banner` | Non-modal region; Accept and Decline look the same; `hcm-consent` `{decision}`. |
@@ -72,7 +72,7 @@ box), re-renders on a class change and reflects `window-class` and `height-class
   maintainer, no `sideEffects` field, pulls `@floating-ui/dom`, `composed-offset-position` and `tslib`; `@material/web`
   2.5.0 is in maintenance mode and its Expressive components are "Labs", not for production). The contract needs
   behaviour neither documents (`aria-valuetext` and PageUp/PageDown on the slider, per-frame input coalescing, detents),
-  and the engine is an embed with a 150 KB gzip budget, so every element is written in Lit with Google's token values
+  and the engine is an embed with a gzip budget (`scripts/ci/check_bundle_budget.py`), so every element is written in Lit with Google's token values
   (the research's option b). The `hcm-*` API stays the seam if a library is adopted later.
 - **Inline styles only through the CSSOM.** The city page's CSP has no `'unsafe-inline'` for styles, and Lit's
   `styleMap` writes a `style` attribute on its first render, which that CSP refuses (found by the viewer smoke in the

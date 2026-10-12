@@ -3,7 +3,7 @@ import type { Analytics, ConsentSettings } from 'firebase/analytics';
 import type { FirebasePerformance } from 'firebase/performance';
 import { describe, expect, it } from 'vitest';
 
-import { AnalyticsLoader, FIREBASE_APP_NAME, gaParams, type FirebaseSdk } from '../../src/telemetry/analytics.js';
+import { AnalyticsLoader, DEFAULT_FIREBASE_APP, FIREBASE_APP_NAME, gaParams, type FirebaseSdk } from '../../src/telemetry/analytics.js';
 import { CONSENT_DENIED, CONSENT_GRANTED, ConsentStore, parseConsent } from '../../src/telemetry/consent.js';
 import { brokenStorage, memoryStorage, recordingLog, settle } from '../core/support.js';
 
@@ -16,18 +16,29 @@ interface FakeSdk extends FirebaseSdk {
     readonly performance: { dataCollectionEnabled: boolean; instrumentationEnabled: boolean };
 }
 
-function fakeSdk(options: { readonly supported?: boolean; readonly throwOnLog?: boolean } = {}): FakeSdk {
+interface FakeSdkOptions {
+    readonly supported?: boolean;
+    readonly throwOnLog?: boolean;
+    /** The page already runs its own default Firebase app. */
+    readonly pageDefaultApp?: boolean;
+    /** `initializePerformance` throws, as Firebase does for an app that is not the default one. */
+    readonly performanceThrows?: boolean;
+}
+
+function fakeSdk(options: FakeSdkOptions = {}): FakeSdk {
     const log: string[] = [];
     const consents: ConsentSettings[] = [];
     const events: [string, unknown][] = [];
     const performance = { dataCollectionEnabled: false, instrumentationEnabled: false };
     const app: FirebaseApp = { name: FIREBASE_APP_NAME, options: {}, automaticDataCollectionEnabled: false };
+    const pageApp: FirebaseApp = { name: DEFAULT_FIREBASE_APP, options: {}, automaticDataCollectionEnabled: false };
     const analytics: Analytics = { app };
     return {
         log,
         consents,
         events,
         performance,
+        getApps: () => (options.pageDefaultApp === true ? [pageApp] : []),
         initializeApp: (appOptions, name) => {
             log.push(`initializeApp ${name} ${JSON.stringify(appOptions)}`);
             return app;
@@ -50,6 +61,9 @@ function fakeSdk(options: { readonly supported?: boolean; readonly throwOnLog?: 
             log.push(`collection ${String(enabled)}`);
         },
         initializePerformance: (_app, settings) => {
+            if (options.performanceThrows === true) {
+                throw new Error('Performance: Performance can only start when Firebase app instance is the default one.');
+            }
             log.push(`initializePerformance ${JSON.stringify(settings)}`);
             Object.assign(performance, settings);
             return performance as FirebasePerformance;
@@ -139,7 +153,7 @@ describe('analytics after consent', () => {
 
         expect(loads()).toBe(1);
         expect(sdk.log).toEqual([
-            `initializeApp hcm-viewer ${JSON.stringify({ ...IDS, measurementId: 'G-TEST1234' })}`,
+            `initializeApp [DEFAULT] ${JSON.stringify({ ...IDS, measurementId: 'G-TEST1234' })}`,
             `initializeAnalytics ${JSON.stringify({ config: { send_page_view: false, page_location: 'https://site.example.org/bucuresti/' } })}`,
             `initializePerformance ${JSON.stringify({ dataCollectionEnabled: true, instrumentationEnabled: true })}`,
         ]);
@@ -197,6 +211,42 @@ describe('analytics after consent', () => {
         await settle();
 
         expect(sdk.events).toEqual([]);
+    });
+
+    it('badPath_aPageWithItsOwnDefaultAppKeepsItAndRunsAnalyticsWithoutPerformance', async () => {
+        const sdk = fakeSdk({ pageDefaultApp: true });
+        const log = recordingLog();
+        const { analytics } = loader(sdk, log);
+        analytics.configure('G-TEST1234', IDS);
+        analytics.setConsent('granted');
+
+        analytics.send({ name: 'page_view' });
+        await settle();
+        analytics.setConsent('denied');
+        await settle();
+
+        expect(sdk.log[0]).toBe(`initializeApp hcm-viewer ${JSON.stringify({ ...IDS, measurementId: 'G-TEST1234' })}`);
+        expect(sdk.log.some((entry) => entry.startsWith('initializePerformance'))).toBe(false);
+        expect(sdk.events).toEqual([['page_view', {}]]);
+        expect(sdk.log.at(-1)).toBe('collection false');
+        expect(log.messages()).toEqual(['performance monitoring off: the page runs its own default Firebase app']);
+    });
+
+    it('badPath_aPerformanceMonitoringFailureNeverStopsAnalytics', async () => {
+        // S-V19-HAPPY found it: Firebase refuses Performance Monitoring on a named app, the whole load failed with it,
+        // and no analytics event was ever sent.
+        const sdk = fakeSdk({ performanceThrows: true });
+        const log = recordingLog();
+        const { analytics } = loader(sdk, log);
+        analytics.configure('G-TEST1234', IDS);
+        analytics.setConsent('granted');
+
+        analytics.send({ name: 'page_view' });
+        await settle();
+
+        expect(sdk.events).toEqual([['page_view', {}]]);
+        expect(log.messages()).toEqual(['performance monitoring failed to start']);
+        expect(String(log.records[0]?.data?.['error'])).toContain('default one');
     });
 
     it('badPath_anUnsupportedBrowserOrAFailedLoadSendsNothing', async () => {

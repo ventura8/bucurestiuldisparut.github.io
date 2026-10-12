@@ -1,8 +1,10 @@
 /**
  * `<hcm-error-card>`: a boot or configuration error, localized, with Retry when retrying can help (scenarios V01,
- * V17). It is an alert, so screen readers announce it; Retry fires `hcm-retry`. No error ever leaves a blank map.
+ * V17). An invalid manifest also names its first issue (`issuePath: validation message`, S-V24-BAD-INVALID-POI), so the
+ * city owner sees what to fix. It is an alert, so screen readers announce it; Retry fires `hcm-retry`. No error ever
+ * leaves a blank map.
  */
-import { DEFAULT_LOCALE, translate, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, isValidationCode, translate, type Locale } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
@@ -10,6 +12,22 @@ import { baseStyles } from './shared-styles.js';
 import type { ViewerError } from './store-port.js';
 
 export const HCM_ERROR_CARD_TAG = 'hcm-error-card';
+
+function paramsOf(error: ViewerError): Readonly<Record<string, string>> {
+    return error.params ?? {};
+}
+
+/** `path: message` of the first validation issue an error carries (an invalid manifest), or `''`. */
+function issueText(error: ViewerError, locale: Locale): string {
+    const params = paramsOf(error);
+    const code = params['issueCode'] ?? '';
+    if (!isValidationCode(code)) {
+        return '';
+    }
+    const message = translate(locale, code);
+    const path = params['issuePath'] ?? '';
+    return path === '' ? message : [path, message].join(': ');
+}
 
 export class HcmErrorCard extends LitElement {
     static override readonly properties = {
@@ -36,6 +54,15 @@ export class HcmErrorCard extends LitElement {
                 color: var(--md-sys-color-on-error-container, CanvasText);
                 overflow-wrap: anywhere;
             }
+
+            .card p {
+                margin: 0;
+            }
+
+            .issue {
+                font-family: var(--hcm-font-mono, ui-monospace, monospace);
+                font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
+            }
         `,
     ];
 
@@ -56,9 +83,11 @@ export class HcmErrorCard extends LitElement {
         const retry = (): void => {
             this.dispatchEvent(new CustomEvent('hcm-retry', { bubbles: true, detail: null }));
         };
+        const issue = issueText(error, this.locale);
         return html`<div class="card" role="alert">
             <hcm-icon name="error"></hcm-icon>
             <p>${translate(this.locale, error.code, error.params)}</p>
+            ${issue === '' ? nothing : html`<p class="issue">${issue}</p>`}
             ${
                 error.retryable
                     ? html`<hcm-button variant="filled" @click=${retry}>${translate(this.locale, 'action.retry')}</hcm-button>`

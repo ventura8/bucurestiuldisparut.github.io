@@ -12,7 +12,7 @@ import type { WorkerOptions } from './support/test.js';
  * | `smoke` | `harness`, `smoke-c360`, `smoke-l1440` | `specs/harness/` (the e2e preconditions), `specs/smoke/` (the viewer boots) |
  * | `fn` | `fn-c360-ro`, `fn-m768-ro`, `fn-l1440-ro`, `fn-l1440-en`, `fn-c360-dark` | `specs/viewer/`, `specs/starter-kit/` |
  * | `tour` | `tour-<viewport>-<light|dark>-<ro|en>`, 11 viewports | `tour/*.tour.ts` (layout, axe, ARIA snapshots) |
- * | `a11y` | `a11y-reduced-motion`, `a11y-forced-colors` | `a11y/` |
+ * | `a11y` | `a11y-reduced-motion`, `a11y-forced-colors` | `a11y/reduced-motion.spec.ts`, `a11y/forced-colors.spec.ts` |
  * | `nogl` | `nogl` (`--disable-3d-apis`) | `specs/viewer/no-webgl.spec.ts` |
  */
 
@@ -81,8 +81,15 @@ function smokeProjects(): E2eProject[] {
     ];
 }
 
+/**
+ * A functional or a11y scenario walks several states of a SwiftShader map (open a panel, move a slider, probe, close):
+ * 60 s each, as eight such pages in parallel take more than Playwright's default 30 s on a loaded machine.
+ */
+const SCENARIO_TIMEOUT_MS = 60_000;
+
 function functionalProjects(): E2eProject[] {
-    const fn = (name: string, use: Use): E2eProject => project('fn', name, SPECS, use, { testIgnore: NO_WEBGL_SPEC });
+    const fn = (name: string, use: Use): E2eProject =>
+        project('fn', name, SPECS, use, { testIgnore: NO_WEBGL_SPEC, timeout: SCENARIO_TIMEOUT_MS });
     return [
         fn('fn-c360-ro', chromium('c360')),
         fn('fn-m768-ro', chromium('m768')),
@@ -101,17 +108,31 @@ function tourProjects(): E2eProject[] {
                     `tour-${viewport}-${scheme}-${lang}`,
                     '**/*.tour.ts',
                     { ...chromium(viewport, lang), colorScheme: scheme },
-                    { testDir: 'tour' },
+                    // Several states per test, axe on each: a 3840 px frame under SwiftShader needs more than 30 s.
+                    { testDir: 'tour', timeout: 120_000 },
                 ),
             ),
         ),
     );
 }
 
+/** Each special runs only its own spec (selected by file, never by skip): the emulation is what the spec checks. */
 function a11yProjects(): E2eProject[] {
     return [
-        project('a11y', 'a11y-reduced-motion', '**/*.spec.ts', { ...chromium('l1440'), reducedMotion: 'reduce' }, { testDir: 'a11y' }),
-        project('a11y', 'a11y-forced-colors', '**/*.spec.ts', { ...chromium('l1440'), forcedColors: 'active' }, { testDir: 'a11y' }),
+        project(
+            'a11y',
+            'a11y-reduced-motion',
+            'reduced-motion.spec.ts',
+            { ...chromium('l1440'), reducedMotion: 'reduce' },
+            { testDir: 'a11y', timeout: SCENARIO_TIMEOUT_MS },
+        ),
+        project(
+            'a11y',
+            'a11y-forced-colors',
+            'forced-colors.spec.ts',
+            { ...chromium('l1440'), forcedColors: 'active' },
+            { testDir: 'a11y', timeout: SCENARIO_TIMEOUT_MS },
+        ),
     ];
 }
 

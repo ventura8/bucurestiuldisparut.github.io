@@ -3,7 +3,7 @@ import { html } from 'lit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
-import { defineHcmSnackbar, type HcmSnackbar } from '../../src/components/snackbar.js';
+import { ANNOUNCE_DELAY_MS, defineHcmSnackbar, type HcmSnackbar } from '../../src/components/snackbar.js';
 import { cleanup, fixture, recordEvents, shadowPart } from '../helpers.js';
 
 defineHcmSnackbar();
@@ -26,14 +26,32 @@ describe('<hcm-snackbar>', () => {
     });
 
     it('happyPath_showsTheMessageInAPoliteLiveRegion', async () => {
+        vi.useFakeTimers();
         const element = await snackbar();
-
         const status = shadowPart(element, '[role="status"]');
+        expect(shadowPart(element, '.snackbar').textContent).toContain('Straturile nu s-au încărcat');
+        // Empty when the snackbar appears, filled a moment later: a region added together with its text is not announced.
+        expect(status.textContent).toBe('');
 
-        await expect.element(page.getByRole('status')).toBeInTheDocument();
-        expect(status.textContent).toContain('Straturile nu s-au încărcat');
+        vi.advanceTimersByTime(ANNOUNCE_DELAY_MS);
+        await element.updateComplete;
+
+        expect(status.textContent).toBe('Straturile nu s-au încărcat');
         expect(status.getAttribute('aria-live')).toBe('polite');
+        vi.useRealTimers();
         expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_aSnackbarClosedBeforeItsAnnouncementIsNotAnnounced', async () => {
+        vi.useFakeTimers();
+        const element = await snackbar(0, '');
+
+        shadowPart(element, 'hcm-icon-button').click();
+        vi.advanceTimersByTime(ANNOUNCE_DELAY_MS);
+        await element.updateComplete;
+
+        expect(shadowPart(element, '[role="status"]').textContent).toBe('');
+        element.remove();
     });
 
     it('happyPath_theActionFiresAndDismisses', async () => {
@@ -61,6 +79,7 @@ describe('<hcm-snackbar>', () => {
         expect(dismissals).toEqual([{ reason: 'close' }]);
         expect(element.shadowRoot?.querySelector('.action')).toBeNull();
         await expect.element(page.getByRole('status')).toHaveTextContent('Link copiat');
+        expect(shadowPart(element, '.snackbar').textContent).toContain('Link copiat');
     });
 
     it('happyPath_itTimesOutButPausesWhileHoveredOrFocused', async () => {

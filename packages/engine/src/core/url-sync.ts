@@ -92,15 +92,27 @@ export interface HashLocation {
     replaceHash(hash: string): void;
 }
 
-/** Writes the hash at most once per `HASH_WRITE_DELAY_MS`, with the state of the moment it is written. */
+/**
+ * Writes the hash at most once per `HASH_WRITE_DELAY_MS`, with the state of the moment it is written. A hash the
+ * visitor (or the browser's history) put in the address since the last write or `sync` is never overwritten: its
+ * `hashchange` is on its way and wins (the e2e run of S-V11-HAPPY lost a `photo=` that way).
+ */
 export class HashWriter {
     readonly #location: HashLocation;
     readonly #encode: () => string;
     #timer: ReturnType<typeof setTimeout> | null = null;
+    /** The address's hash as this writer last wrote or adopted it. */
+    #known: string;
 
     constructor(location: HashLocation, encode: () => string) {
         this.#location = location;
         this.#encode = encode;
+        this.#known = location.hash;
+    }
+
+    /** Adopts the address's hash as it is now (the store is about to apply it). */
+    sync(): void {
+        this.#known = this.#location.hash;
     }
 
     schedule(): void {
@@ -113,9 +125,14 @@ export class HashWriter {
     /** Writes now (a legacy hash is rewritten at once); an unchanged hash is not written again. */
     flush(): void {
         this.cancel();
+        if (this.#location.hash !== this.#known) {
+            this.sync();
+            return;
+        }
         const hash = this.#encode();
         if (hash !== this.#location.hash) {
             this.#location.replaceHash(hash);
+            this.sync();
         }
     }
 

@@ -62,6 +62,11 @@ export class HcmPoiDetail extends LitElement {
                 gap: 8px;
             }
 
+            /* The grid's gap spaces the thumbnails: the detail lists' 4 px between items would push every later one down. */
+            .details .thumbs li + li {
+                margin-block-start: 0;
+            }
+
             .thumbs button {
                 display: block;
                 inline-size: 100%;

@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 
 import { validateManifest, type Manifest } from '@hcm/shared';
 
-import { E2E_ERROR_ENDPOINT, E2E_MEASUREMENT_ID, E2E_TILESET_LAYER, E2E_TOKEN, E2E_XYZ_LAYER } from './world.js';
+import { E2E_ERROR_ENDPOINT, E2E_MEASUREMENT_ID, E2E_SITE_DIR, E2E_TILESET_LAYER, E2E_TOKEN, E2E_XYZ_LAYER } from './world.js';
 
 /**
  * The e2e fixture manifest (docs/research/M1-interfaces.md §10), assembled from committed inputs and validated with
@@ -16,9 +16,10 @@ import { E2E_ERROR_ENDPOINT, E2E_MEASUREMENT_ID, E2E_TILESET_LAYER, E2E_TOKEN, E
  * 3. the POI fixture set `scripts/seed/e2e-pois.json` (photos overlay default, three categories, four POIs);
  * 4. the crash-report endpoint on the e2e telemetry host, and the e2e Mapbox token.
  *
- * A bad-path spec serves a broken copy of the fixture through `page.route` on the site's data/manifest.json;
- * `{ pois: false }` is the seed without POIs
- * (S-V24-BAD-NO-POIS), `{ analytics: true }` adds a GA4 measurement id (the consent banner, V19).
+ * A bad-path spec serves a changed copy of the manifest the built site serves (`siteManifestData`: the fixture with
+ * the site build's `media/` image paths) through `page.route` on the site's data/manifest.json; `{ pois: false }` is
+ * the seed without POIs (S-V24-BAD-NO-POIS), `{ layers: false }` Bucharest today (no historical layers),
+ * `{ analytics: true }` adds a GA4 measurement id (the consent banner, V19).
  */
 
 const ROOT = resolve(import.meta.dirname, '../..');
@@ -32,7 +33,7 @@ export interface FixtureOptions {
     readonly analytics?: boolean;
 }
 
-type Json = Record<string, unknown>;
+export type Json = Record<string, unknown>;
 
 function readJson(path: string): Json {
     return JSON.parse(readFileSync(join(ROOT, path), 'utf8')) as Json;
@@ -91,4 +92,18 @@ export function buildFixtureManifest(options: FixtureOptions = {}): Manifest {
         throw new Error(`the e2e fixture manifest is invalid: ${issues}`);
     }
     return result.value;
+}
+
+/**
+ * The manifest the built Bucharest site serves (`npm run build:site:e2e` writes it, with the photos under
+ * `data/media/`), as plain JSON a spec may change and serve again; the options remove the layers or the POIs, or add
+ * the GA4 measurement id, as for `buildFixtureManifest`.
+ */
+export function siteManifestData(options: FixtureOptions = {}): Json {
+    const served = JSON.parse(readFileSync(join(ROOT, E2E_SITE_DIR, 'bucharest/data/manifest.json'), 'utf8')) as Json;
+    const city = served['city'] as Json;
+    const analytics = { ...(city['analytics'] as Json), ...(options.analytics === true ? { measurementId: E2E_MEASUREMENT_ID } : {}) };
+    const { photosOverlay, poiCategories, pois, ...withoutPois } = served;
+    const places = options.pois === false ? {} : { photosOverlay, poiCategories, pois };
+    return { ...withoutPois, ...places, city: { ...city, analytics }, layers: options.layers === false ? [] : served['layers'] };
 }

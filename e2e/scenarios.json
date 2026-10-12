@@ -146,7 +146,7 @@
             "id": "V20",
             "area": "viewer",
             "name": "Crash reporting",
-            "milestone": "M2",
+            "milestone": "M1",
             "source": "docs/research/PLAN.md Addendum 2"
         },
         {
@@ -406,7 +406,7 @@
             "title": "Manifest loads into map, timeline and photo markers",
             "asserts": "manifest -> map, timeline and photo markers rendered",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -417,7 +417,7 @@
             "title": "Manifest 404 shows a localized error with Retry",
             "asserts": "manifest 404 -> localized error message and a Retry button",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -428,7 +428,7 @@
             "title": "Schema-invalid manifest shows an error card",
             "asserts": "zod-invalid manifest -> error card, no blank map",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -437,9 +437,9 @@
             "area": "viewer",
             "path": "bad",
             "title": "Slow Storage shows a skeleton, then a timeout message",
-            "asserts": "slow Storage -> skeleton, then a localized timeout message",
+            "asserts": "slow Storage -> skeleton with a visible loading indicator named viewer.loading, then a localized timeout message",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -450,7 +450,7 @@
             "title": "A manifest that needs a newer engine names the version it needs",
             "asserts": "city.engine.minVersion newer than ENGINE_VERSION -> localized error with that version, no blank map",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> Errors and validation (checkManifestCompat)."
         },
         {
@@ -472,7 +472,7 @@
             "title": "WebGL2 renders the map",
             "asserts": "WebGL2 available -> map rendered",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -481,9 +481,9 @@
             "area": "viewer",
             "path": "bad",
             "title": "Without WebGL a fallback card appears and the photo list still works",
-            "asserts": "--disable-3d-apis -> fallback card; photo list still usable",
+            "asserts": "--disable-3d-apis -> fallback card; photo list still usable, its last row scrolls clear of the menu button",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -494,7 +494,7 @@
             "title": "Toggling a layer shows and hides it with its attribution",
             "asserts": "layer on/off verified by pixel probe; attribution shown",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -502,11 +502,22 @@
             "behaviour": "V03",
             "area": "viewer",
             "path": "bad",
-            "title": "A tile 404 shows a layer error chip and the map survives",
-            "asserts": "tile 404 -> layer error chip; map keeps working",
+            "title": "A tileset whose tiles fail names the layer in a toast and the map keeps working",
+            "asserts": "tiles answering 503 (an outage) -> a toast names the layer; another layer still draws (pixel probe). A 404 tile means no imagery there to Mapbox GL and is never reported",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V03-BAD-ATTRIBUTION-MARKUP-IS-TEXT",
+            "behaviour": "V03",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Markup in a layer's attribution is shown as text, never rendered",
+            "asserts": "a layer whose attribution holds an https anchor tag, an ampersand and a bold tag -> the map's attribution control and the Layers panel show the characters as text; no link or element is created from them",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M1. Mapbox GL parses a source attribution as HTML (keeping links); the engine escapes it (packages/engine/src/map/rasters.ts attributionText)."
         },
         {
             "id": "S-V03-HAPPY-3D-OFF",
@@ -516,7 +527,7 @@
             "title": "A visible historical layer turns the basemap's 3D buildings off",
             "asserts": "the Standard style's show3dObjects configuration is false while a historical layer is visible and true again once it is hidden",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. engine-core CR-11: packages/engine/src/map/basemap.ts (unit tests in packages/engine/test/map/)."
         },
         {
@@ -527,7 +538,7 @@
             "title": "A basemap style without the basemap import is never reconfigured",
             "asserts": "toggling a layer on a style without the basemap import leaves its configuration alone and logs no console error",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. engine-core CR-11: packages/engine/src/map/basemap.ts."
         },
         {
@@ -538,7 +549,7 @@
             "title": "Selecting a year shows its layer and filters photos",
             "asserts": "year selection shows the layer; photo year filter in sync",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -549,7 +560,7 @@
             "title": "A year without a layer is disabled or snaps to the nearest",
             "asserts": "year without a layer -> stop disabled or snaps to the nearest year",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -560,7 +571,7 @@
             "title": "Photos near the selected year are one tap away",
             "asserts": "at a stop with photos within 10 years the chip 'Fotografii din jurul anului …' shows and opens the list of those photos; at 'today' no chip shows",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. engine-ui CR-20: packages/ui/src/viewer/viewer-render.ts; the window is PHOTO_YEAR_WINDOW of @hcm/shared."
         },
         {
@@ -571,7 +582,7 @@
             "title": "A city without historical layers says they are coming instead of showing a timeline",
             "asserts": "no timeline slider; the note 'Straturile istorice vin în curând' (EN 'Historical layers coming soon') is visible above the map chrome, clear of the menu button",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Integrator: packages/ui/src/viewer/viewer-render.ts (unit tests in packages/ui/test/viewer/hcm-map-viewer.test.ts); Bucharest has no layers until M3."
         },
         {
@@ -582,7 +593,7 @@
             "title": "The no-layers note never covers the menu button or the Mapbox logo",
             "asserts": "at 320 px and on a compact-height landscape phone the note wraps or shrinks; the menu button, the Mapbox logo and the attribution stay fully visible and clickable",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Integrator: packages/ui/src/viewer/viewer-styles.ts (.dock.timeline-note)."
         },
         {
@@ -593,7 +604,7 @@
             "title": "Opacity slider changes the layer opacity",
             "asserts": "opacity 0 versus 1 by pixel probe; slider ARIA value",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -604,7 +615,7 @@
             "title": "An out-of-range opacity in the URL hash is clamped",
             "asserts": "out-of-range hash value -> clamped",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -648,7 +659,7 @@
             "title": "Photo clusters expand and open the photo sheet",
             "asserts": "clusters expand on zoom; click -> bottom sheet (compact) or side sheet (medium and up); view cones at high zoom",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -659,7 +670,7 @@
             "title": "A missing photo image shows a placeholder with alt text",
             "asserts": "image 404 -> placeholder and alt text",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -670,7 +681,7 @@
             "title": "A photo without a bearing gets a plain marker and no cone",
             "asserts": "photo without bearing -> unrotated marker, no view cone at high zoom, sheet still opens",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. 11 of the migrated Bucharest photos have no cone (seed/bucharest/manifest.static.json)."
         },
         {
@@ -681,7 +692,7 @@
             "title": "A photo's rights holder is credited under its licence",
             "asserts": "the photo sheet shows '© <holder>' after the licence line",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Integrator (engine-ui CR-18): packages/ui/src/viewer/hcm-photo-sheet.ts, i18n photo.rightsHolder."
         },
         {
@@ -692,7 +703,7 @@
             "title": "A photo without a rights holder shows no © line",
             "asserts": "the sheet shows the licence and no '©' line, never an empty or placeholder credit",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Integrator: packages/ui/src/viewer/hcm-photo-sheet.ts."
         },
         {
@@ -703,7 +714,7 @@
             "title": "Lightbox opens, zooms, navigates and returns focus",
             "asserts": "open, pinch-zoom (touch), arrow keys, Esc returns focus",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -714,8 +725,30 @@
             "title": "A broken full image shows an error state and close still works",
             "asserts": "broken full image -> error state; close still works",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
+        },
+        {
+            "id": "S-V08-BAD-FOCUS-AT-LAST-PHOTO",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Reaching the last photo with the Next button keeps the focus in the lightbox",
+            "asserts": "Next pressed from the keyboard onto the last photo -> Next is disabled, the lightbox has the focus, Shift+Tab and Tab wrap inside it, Esc closes it and the focus returns to the opener",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M1. A focused button that becomes disabled drops the focus to the page (Chromium focus fixup)."
+        },
+        {
+            "id": "S-V08-BAD-SHORT-WINDOW",
+            "behaviour": "V08",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On a landscape phone the lightbox fits the whole photo on an opaque scrim",
+            "asserts": "915 x 412: the loaded full image lies inside the lightbox stage (not cropped); the scrim beside it is black, so the photo sheet and the menu do not show through",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M1. UX review: the stage's auto row let the image overflow and crop; the 92 % scrim let the viewer show through (packages/ui/src/viewer/lightbox-styles.ts; unit test in packages/ui/test/viewer/hcm-lightbox.test.ts)."
         },
         {
             "id": "S-V09-HAPPY",
@@ -725,7 +758,7 @@
             "title": "Deep links restore state and Share copies the URL",
             "asserts": "#photo= and #layers=&view= restore state; Share copies the URL",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -736,7 +769,7 @@
             "title": "An unknown photo id in the hash shows a toast",
             "asserts": "unknown photo id -> toast",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -747,7 +780,7 @@
             "title": "A malformed hash falls back to defaults",
             "asserts": "malformed hash -> defaults",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -758,7 +791,7 @@
             "title": "A link from the old site opens the same view",
             "asserts": "#15.5/44.4271/26.0853/90/!a3!p2 -> camera at that view; the hash is rewritten in the v1 form; layer codes ignored",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> URL hash v1 (legacy hash)."
         },
         {
@@ -769,7 +802,7 @@
             "title": "A refused clipboard without Web Share says the link could not be copied",
             "asserts": "the toast share.failed shows; the URL, the view and the open sheet are unchanged",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. engine-ui CR-20: packages/ui/src/viewer/services.ts, viewer-actions.ts."
         },
         {
@@ -780,7 +813,7 @@
             "title": "Granted geolocation inside the city moves the camera",
             "asserts": "permission granted, in bounds -> camera moves",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -791,7 +824,7 @@
             "title": "Denied geolocation shows a message",
             "asserts": "permission denied -> message",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -802,7 +835,7 @@
             "title": "A location outside the city shows a message",
             "asserts": "out of city bounds -> message",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -813,7 +846,7 @@
             "title": "Romanian by default; English persists after reload",
             "asserts": "RO by default; switch to EN persists after reload; html lang; localized dates",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -824,7 +857,7 @@
             "title": "An unsupported language falls back to Romanian",
             "asserts": "?lang=fr -> RO",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -833,9 +866,9 @@
             "area": "viewer",
             "path": "bad",
             "title": "A missing English key falls back to Romanian",
-            "asserts": "missing key -> RO fallback (also blocked at build time)",
+            "asserts": "English viewer: a photo title without its English text shows the Romanian one; no raw message key appears on the page (a missing catalogue key is a compile error and an i18n gate failure)",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -846,7 +879,7 @@
             "title": "System dark theme, manual toggle and seed colour apply",
             "asserts": "system dark; manual toggle persists; seed colour applied (axe contrast)",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -855,9 +888,9 @@
             "area": "viewer",
             "path": "bad",
             "title": "An invalid seed colour falls back to the default palette",
-            "asserts": "invalid seed -> default palette",
+            "asserts": "a theme seed that is not a hex colour is refused (error card naming city.theme.seedColor and validation.format) and the card keeps the engine palette, readable (axe colour contrast)",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -868,7 +901,7 @@
             "title": "A high-contrast preference switches to the high-contrast scheme",
             "asserts": "prefers-contrast: more -> the high-contrast tokens of the city theme; text contrast at least 7:1 (axe)",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. ui-kit: applyTheme follows prefers-contrast in every mode (packages/ui/src/theme/apply.ts; unit tests in packages/ui/test/theme/apply.test.ts)."
         },
         {
@@ -879,7 +912,7 @@
             "title": "Blocked font files leave readable text and no icon names on screen",
             "asserts": "the self-hosted font requests fail -> text in the fallback stack, no icon ligature shown as a word, every control keeps its accessible name",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. ui-kit: installFonts/loadIconFont (packages/ui/src/fonts/font-faces.ts) and hcm-icon's clipped 1 em box; no Google Fonts host is ever requested (V16)."
         },
         {
@@ -890,7 +923,7 @@
             "title": "About and credits render from the manifest in RO and EN",
             "asserts": "rendered from the manifest, RO and EN",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -901,7 +934,7 @@
             "title": "Empty credits hide the credits section",
             "asserts": "empty credits -> section hidden",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -912,7 +945,7 @@
             "title": "Markup in About text is shown as text, never rendered",
             "asserts": "About with an image tag carrying an onerror handler and a bold marker -> the tag is visible text, no element is created; bold renders; only https links are links",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Markdown subset: packages/shared/src/text/markdown.ts; a non-https link fails manifest validation."
         },
         {
@@ -923,7 +956,7 @@
             "title": "Keyboard order reaches timeline, layers and photos with visible focus",
             "asserts": "skip link -> timeline -> layers -> photos; focus visible",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -932,9 +965,9 @@
             "area": "viewer",
             "path": "bad",
             "title": "Forced colours stay readable",
-            "asserts": "forced-colors mode -> content readable",
+            "asserts": "forced-colors active -> every text has 4.5:1 against the colours actually painted, every kit control keeps an edge, axe (WCAG 2.2 AA without the author-colour rules) passes on the map, the Layers panel, the menu and About",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -943,9 +976,9 @@
             "area": "viewer",
             "path": "bad",
             "title": "Reduced motion disables fly animations",
-            "asserts": "reduced motion -> no fly animation",
+            "asserts": "reduced motion -> show my location jumps to the visitor (at most 2 move events, no fly animation); the loading skeleton does not shimmer",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -956,7 +989,7 @@
             "title": "Enter on the focused map opens the photo under its centre",
             "asserts": "with the map focused and a photo marker at its centre, Enter or Space opens that photo's sheet",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. engine-core CR-11: packages/engine/src/map/pointer.ts."
         },
         {
@@ -967,8 +1000,30 @@
             "title": "Enter on the focused map with nothing at its centre does nothing",
             "asserts": "no sheet opens and focus stays on the map",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. engine-core CR-11: packages/engine/src/map/pointer.ts."
+        },
+        {
+            "id": "S-V14-BAD-MODAL-TAB-WRAP",
+            "behaviour": "V14",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Shift+Tab right after a modal sheet opens stays inside the sheet",
+            "asserts": "photo opened from the focused map below 840 px -> the modal sheet takes the focus; Shift+Tab moves to its last control, never to the page behind; Esc closes it and the map has the focus again",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M1. trapTab (packages/ui/src/components/focus.ts) treats the focused container as the start of the trap."
+        },
+        {
+            "id": "S-V14-HAPPY-TOAST-ANNOUNCED",
+            "behaviour": "V14",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A toast is announced by a live region that exists before its text",
+            "asserts": "a toast appears (link copied, unknown photo, location refused) -> its polite status region is in the page empty, then holds the message only (not the Close label), so screen readers announce it",
+            "tier": "e2e-viewer",
+            "status": "planned",
+            "notes": "Milestone M1. The delay is unit-tested (packages/ui/test/components/snackbar.test.ts); the e2e needs a recorder of live-region changes inside shadow roots."
         },
         {
             "id": "S-V15-HAPPY",
@@ -978,7 +1033,7 @@
             "title": "No overflow or overlap at every viewport",
             "asserts": "no overflow or overlap at all 11 viewports; touch targets at least 48 px",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -987,10 +1042,10 @@
             "area": "viewer",
             "path": "bad",
             "title": "Compact landscape collapses the controls into a menu",
-            "asserts": "compact landscape -> controls collapse into a menu",
+            "asserts": "compact landscape -> controls collapse into a menu; the open two-column menu keeps its button where it was tapped",
             "tier": "e2e-viewer",
-            "status": "planned",
-            "notes": "Milestone M1."
+            "status": "exists",
+            "notes": "Milestone M1. UX review: the FAB menu aligned to the inline end moved its button 300 px when the menu wrapped (--hcm-fab-menu-align in packages/ui/src/components/fab-menu.ts)."
         },
         {
             "id": "S-V15-HAPPY-SHEET-HEIGHTS",
@@ -1000,7 +1055,7 @@
             "title": "The compact bottom sheet's handle changes its height by tap, drag and keys",
             "asserts": "tap cycles peek -> half -> full; ArrowUp and ArrowDown step one height; a drag snaps to the nearest height; the map stays visible above it",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. ui-kit: hcm-sheet detents (packages/ui/src/components/sheet.ts; unit tests in packages/ui/test/components/sheet.test.ts)."
         },
         {
@@ -1011,7 +1066,7 @@
             "title": "Dragging the bottom sheet below its lowest height closes it",
             "asserts": "a drag below half the peek height closes the sheet and the focus returns to the control that opened it",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. ui-kit: hcm-sheet settleDetent and focus return."
         },
         {
@@ -1022,7 +1077,7 @@
             "title": "Long Romanian labels in About wrap inside their choice instead of scrolling the dialog sideways",
             "asserts": "at 320 and 360 px the full-screen About dialog has no horizontal scroll and its theme choice shows no icon beside the labels (only the check mark); at 1440 px no language or theme label wraps",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Integrator, found in the M1 review screenshots: hcm-segmented-button segments are content-sized and wrap in a narrow container (packages/ui/src/components/segmented-button.ts; unit tests in packages/ui/test/components/segmented-button.test.ts and packages/ui/test/viewer/hcm-about-dialog.test.ts)."
         },
         {
@@ -1044,7 +1099,7 @@
             "title": "A tile host outage shows a non-blocking toast",
             "asserts": "tile host down -> non-blocking toast",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -1064,9 +1119,9 @@
             "area": "viewer",
             "path": "bad",
             "title": "No element writes a style attribute the page's CSP refuses",
-            "asserts": "opening the layers list (sliders, swatches), every sheet, the timeline and the loading indicator logs no CSP violation in the console",
+            "asserts": "the loading indicator, the timeline, the layers list (sliders, swatches), the POI and photo sheets, the lightbox, the photo list and About raise no CSP violation event and log none in the console",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Integrator: the kit's styleMap bindings were replaced by cssProperties (packages/ui/src/components/css-properties.ts); the console guard of every spec catches a regression."
         },
         {
@@ -1077,7 +1132,7 @@
             "title": "The starter kit renders a static manifest",
             "asserts": "static manifest renders without any backend",
             "tier": "e2e-starter-kit",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -1088,7 +1143,7 @@
             "title": "A missing config.js shows an instructive error",
             "asserts": "missing config.js -> instructive error for the city owner",
             "tier": "e2e-starter-kit",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -1099,7 +1154,7 @@
             "title": "An invalid config.js shows an instructive error",
             "asserts": "invalid config.js -> instructive error for the city owner",
             "tier": "e2e-starter-kit",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -1110,7 +1165,7 @@
             "title": "A cityId that does not match the manifest is reported to the city owner",
             "asserts": "config.js cityId differs from manifest.city.id -> instructive error naming both ids",
             "tier": "e2e-starter-kit",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> config.js."
         },
         {
@@ -1121,7 +1176,7 @@
             "title": "Mapbox logo and attribution are visible at every viewport",
             "asserts": "Mapbox logo and attribution visible at every viewport",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -1132,7 +1187,7 @@
             "title": "Collapsed attribution on compact stays reachable",
             "asserts": "compact collapsed attribution still reachable",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -1143,7 +1198,7 @@
             "title": "Accepting consent loads analytics and sends events",
             "asserts": "consent banner (RO/EN); accept -> GA4 loads, page_view and layer_toggle sent without PII",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -1154,7 +1209,7 @@
             "title": "No analytics request is made before consent",
             "asserts": "no GA or Firebase request before consent (firewall)",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -1165,7 +1220,7 @@
             "title": "Withdrawing consent in About stops further analytics",
             "asserts": "consent withdrawn in About -> no further analytics requests",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1."
         },
         {
@@ -1176,7 +1231,7 @@
             "title": "With consent, sharing logs one share event",
             "asserts": "after Accept and a completed share or copy, the GA4 mock records one share event; a cancelled share records none",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Integrator (engine-ui CR-17): ViewerStore.logShare (packages/engine/src/core/store.ts). Needs CR-9 (Firebase app ids in the manifest) to send anything."
         },
         {
@@ -1187,8 +1242,8 @@
             "title": "An uncaught error is reported to telemetry.reportError",
             "asserts": "uncaught error -> redacted report sent to telemetry.reportError (mocked)",
             "tier": "e2e-viewer",
-            "status": "planned",
-            "notes": "Milestone M2."
+            "status": "exists",
+            "notes": "Milestone M1 against the e2e telemetry endpoint of the mock APIs (analytics.errorEndpoint); the telemetry.reportError function and Cloud Error Reporting join in M2 (functions tier)."
         },
         {
             "id": "S-V20-BAD-REPORTER-DOWN",
@@ -1198,8 +1253,8 @@
             "title": "A failing error reporter never breaks the viewer",
             "asserts": "reporter endpoint 5xx -> no visible error, viewer keeps working",
             "tier": "e2e-viewer",
-            "status": "planned",
-            "notes": "Milestone M2."
+            "status": "exists",
+            "notes": "Milestone M1 against the e2e telemetry endpoint of the mock APIs (analytics.errorEndpoint); the telemetry.reportError function and Cloud Error Reporting join in M2 (functions tier)."
         },
         {
             "id": "S-V20-BAD-RATE-LIMITED",
@@ -1209,8 +1264,8 @@
             "title": "Repeated errors are rate-limited",
             "asserts": "error storm -> reports capped by the rate limit",
             "tier": "e2e-viewer",
-            "status": "planned",
-            "notes": "Milestone M2."
+            "status": "exists",
+            "notes": "Milestone M1 against the e2e telemetry endpoint of the mock APIs (analytics.errorEndpoint); the telemetry.reportError function and Cloud Error Reporting join in M2 (functions tier)."
         },
         {
             "id": "S-V20-BAD-TOKEN-REDACTED",
@@ -1220,7 +1275,7 @@
             "title": "A crash report never carries the Mapbox token",
             "asserts": "a crash whose message holds a tile URL with access_token reaches the mock endpoint without the query string",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. engine-core CR-11: packages/engine/src/telemetry/errors.ts."
         },
         {
@@ -1231,7 +1286,7 @@
             "title": "The JavaScript API mounts the viewer and drives it",
             "asserts": "HistoricCityMap.mount(el, config) -> ready; setYear, toggleLayer, openPhoto, setLang change what is shown and fire hcm-layer-change / hcm-photo-open; the hash follows",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> JavaScript API."
         },
         {
@@ -1242,7 +1297,7 @@
             "title": "Auto-boot with a container selector that matches nothing reports it",
             "asserts": "config.js container \"#nope\" -> nothing rendered, the console log names error.config.container; no map load",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> config.js (auto-boot)."
         },
         {
@@ -1253,7 +1308,7 @@
             "title": "Calls after destroy do nothing and the map is gone",
             "asserts": "controller.destroy() -> map removed (map-instance counter back to 0); later setYear/openPhoto throw nothing and change nothing",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. Contract: docs/ENGINE_API.md -> JavaScript API."
         },
         {
@@ -1264,7 +1319,7 @@
             "title": "Dragging a historical layer's opacity slider fades it live",
             "asserts": "Layers panel slider of the fixture raster at 30 % -> pixel probe blends 30 % of the layer over the basemap while dragging, before release; slider aria-valuenow 30 and aria-valuetext 30 %; the live region announces the new opacity",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
         },
         {
@@ -1275,7 +1330,7 @@
             "title": "The photos opacity slider fades the camera icons and the view cones together",
             "asserts": "photos slider at 50 % -> pixel probes at a camera icon and inside a view cone show half the contrast against the basemap; other overlays unchanged",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
         },
         {
@@ -1286,7 +1341,7 @@
             "title": "A POI category slider fades only that category's icons, lines and fills",
             "asserts": "Vanished buildings slider at 20 % -> the point icon and the block fill fade (pixel probes); the vanished street line of another category keeps its opacity",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
         },
         {
@@ -1297,7 +1352,7 @@
             "title": "Keyboard input past either end keeps the opacity within 0 to 100 %",
             "asserts": "End then ArrowRight -> 100 %; Home then ArrowLeft -> 0 %, the overlay is invisible but stays listed and switched on; PageUp/PageDown move by 10; no console error",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
         },
         {
@@ -1308,7 +1363,7 @@
             "title": "Moving the slider of a hidden overlay does not show it",
             "asserts": "overlay switched off, slider moved to 60 % -> nothing drawn (pixel probe); switching it on shows it at 60 %",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
         },
         {
@@ -1319,7 +1374,7 @@
             "title": "Overlay opacities survive a reload through the URL hash",
             "asserts": "raster 40 %, photos 70 %, Vanished buildings 20 % -> the hash carries op=<layer>:40,photos:70,cladiri:20; after reload the pixel probes and the sliders show the same values; untouched overlays are not in the hash",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3; replaces S-V05-HAPPY-OVERLAY-HASH. Contract: docs/ENGINE_API.md -> URL hash v1."
         },
         {
@@ -1330,7 +1385,7 @@
             "title": "Out-of-range overlay opacities in the hash are clamped",
             "asserts": "#...&op=<layer>:150,photos:-20 -> layer drawn at 100 % and photos at 0 % (pixel probes, slider values); the hash is rewritten with the clamped values",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Contract: docs/ENGINE_API.md -> URL hash v1."
         },
         {
@@ -1341,7 +1396,7 @@
             "title": "Unknown or malformed overlay entries in the hash are ignored",
             "asserts": "op=<unknown id>:50, op=cladiri:abc and op=photos:10:5 -> ignored; every overlay keeps its manifest opacity; the rewritten hash leaves them out",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3; replaces S-V05-BAD-UNKNOWN-OVERLAY. Contract: docs/ENGINE_API.md -> URL hash v1."
         },
         {
@@ -1352,7 +1407,7 @@
             "title": "POIs render in their category colours and open their details in the photo sheet",
             "asserts": "fixture POIs drawn as an icon, a line and a filled block in the category colours (pixel probes), labels from zoom 16; clicking one opens the same sheet as photos with title, category, years, the Markdown description, links and the linked photo thumbnails, and a thumbnail opens that photo",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
         },
         {
@@ -1363,7 +1418,7 @@
             "title": "The timeline filters POIs by their years",
             "asserts": "today -> all four fixture POIs; a stop at 1890 -> the block (from 1900) disappears; a stop at 1990 -> only the event without years remains (pixel probes, map features)",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
         },
         {
@@ -1374,7 +1429,7 @@
             "title": "Markup in a POI description is shown as text",
             "asserts": "the description containing an HTML bold tag shows the tag characters as text; no element is created from it; only https links are rendered, with rel noopener noreferrer nofollow ugc",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
         },
         {
@@ -1385,7 +1440,7 @@
             "title": "A manifest with an invalid POI is refused with a localized error",
             "asserts": "an unclosed polygon ring or a POI in an unknown category -> error card error.manifest.invalid with the issue path and validation.ringClosed / validation.reference in RO and EN; no blank map",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
         },
         {
@@ -1396,7 +1451,7 @@
             "title": "A manifest without POIs shows no places and no error",
             "asserts": "the Bucharest seed manifest (no pois, no poiCategories) -> no Places group in the Layers panel, no POI map layers, no console error",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
         },
         {
@@ -1407,8 +1462,19 @@
             "title": "A category icon the engine does not bundle is drawn as the default pin",
             "asserts": "category icon celebration -> its POI is drawn with the location_on pin; no missing-image warning from the map",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. PLAN Addendum 3. Fixture: the POI set scripts/seed/e2e-pois.json in the e2e fixture manifest (docs/research/M1-interfaces.md §10)."
+        },
+        {
+            "id": "S-V24-BAD-ICON-FONT-LATE",
+            "behaviour": "V24",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An icon font that arrives after the map settled still draws the POI glyphs",
+            "asserts": "the icon font request is held until the map is idle -> the POI shows its category disc without a glyph; once the font arrives the white glyph appears with no camera move or other interaction (pixel probes)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M1. Found by the M1 final-gate screenshots (1280x800 dark: two POIs without their glyphs): Map.updateImage does not repaint an idle Mapbox map, so ensureIcon (packages/engine/src/map/icons.ts) triggers the repaint."
         },
         {
             "id": "S-V25-HAPPY",
@@ -1418,7 +1484,7 @@
             "title": "A layer's stored image adjustments are applied on load",
             "asserts": "a pixel probe on the layer is brighter and greyer than the raw tile colour, as its adjustments say",
             "tier": "e2e-viewer",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M1. engine-core CR-11: setLayerPaint with rasterAdjustmentPaint (packages/engine/src/map/rasters.ts)."
         },
         {
@@ -1426,11 +1492,11 @@
             "behaviour": "V25",
             "area": "viewer",
             "path": "bad",
-            "title": "Crossed brightness bounds are clamped, never inverted",
-            "asserts": "with a brightness minimum above its maximum the probe stays within the raw tile's range; the image is never inverted",
+            "title": "Crossed brightness bounds are refused, so the image is never drawn inverted",
+            "asserts": "a manifest whose brightness minimum is above its maximum is refused (error card naming layers[0].adjustments.brightnessMax and validation.value); no inverted image is drawn",
             "tier": "e2e-viewer",
-            "status": "planned",
-            "notes": "Milestone M1. engine-core CR-11: rasterAdjustmentPaint of @hcm/shared."
+            "status": "exists",
+            "notes": "Milestone M1. engine-core CR-11: rasterAdjustmentPaint of @hcm/shared clamps the admin's live sliders (unit-tested); that preview's e2e row joins the admin in M2."
         },
         {
             "id": "S-A01-HAPPY",

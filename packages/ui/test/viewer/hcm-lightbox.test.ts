@@ -167,3 +167,83 @@ describe('<hcm-lightbox>', () => {
         expect(customElements.get(HCM_LIGHTBOX_TAG)).toBe(HcmLightbox);
     });
 });
+
+describe('<hcm-lightbox> focus', () => {
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmLightbox();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('badPath_theArrowThatGetsDisabledHandsTheFocusToTheDialog', async () => {
+        // A focused button that becomes disabled drops the focus: Esc and the arrow keys then stopped working.
+        const element = await lightbox({ locale: 'en' });
+        const closes = recordEvents(element, 'hcm-close');
+        const next = page.getByRole('button', { name: 'Next photo' });
+
+        await next.click();
+        element.photoId = 'fara-an';
+        await element.updateComplete;
+
+        await expect.element(next).toBeDisabled();
+        expect(element.shadowRoot?.activeElement?.getAttribute('role')).toBe('dialog');
+        press(element, 'Escape');
+        expect(closes).toHaveLength(1);
+    });
+
+    it('badPath_anArrowThatStaysEnabledKeepsTheFocus', async () => {
+        const element = await lightbox({ locale: 'en' });
+        shadowQuery(shadowQuery(element, '[data-arrow="previous"]'), 'button').focus();
+
+        press(element, 'ArrowRight');
+
+        expect(element.shadowRoot?.activeElement?.getAttribute('data-arrow')).toBe('previous');
+        (element.shadowRoot?.activeElement as HTMLElement | null)?.blur();
+        press(element, 'ArrowLeft');
+        expect(element.shadowRoot?.activeElement).toBeNull();
+    });
+
+    it('badPath_shiftTabFromTheDialogWrapsInsideItInsteadOfLeaving', async () => {
+        const element = await lightbox({ locale: 'en' });
+        const shiftTab = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true, composed: true });
+
+        shadowQuery(element, '[role="dialog"]').dispatchEvent(shiftTab);
+
+        expect(shiftTab.defaultPrevented).toBe(true);
+        expect(element.shadowRoot?.activeElement?.getAttribute('data-arrow')).toBe('next');
+    });
+});
+
+describe('<hcm-lightbox> layout', () => {
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmLightbox();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_aLandscapePhotoOnAShortWindowIsFittedOnAnOpaqueScrim', async () => {
+        const frame = document.createElement('div');
+        frame.style.cssText = 'position: relative; width: 640px; height: 300px;';
+        document.body.append(frame);
+        const element = document.createElement('hcm-lightbox');
+        Object.assign(element, { photos: MANIFEST.photos, photoId: 'uranus-1984', open: true, manifestUrl: TEST_MANIFEST_URL });
+        frame.append(element);
+        await element.updateComplete;
+        const image = shadowQuery(element, 'img') as HTMLImageElement;
+        await image.decode();
+
+        const stage = shadowQuery(element, '.stage').getBoundingClientRect();
+        const box = image.getBoundingClientRect();
+        expect(box.height).toBeGreaterThan(0);
+        expect(box.top).toBeGreaterThanOrEqual(stage.top - 0.5);
+        expect(box.bottom).toBeLessThanOrEqual(stage.bottom + 0.5);
+        expect(box.width / box.height).toBeCloseTo(image.naturalWidth / image.naturalHeight, 1);
+        expect(getComputedStyle(shadowQuery(element, '[role="dialog"]')).backgroundColor).toBe('rgb(0, 0, 0)');
+    });
+});

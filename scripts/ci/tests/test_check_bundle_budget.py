@@ -28,7 +28,11 @@ def test_happy_path_small_bundles_pass(tmp_path: Path, caplog: pytest.LogCapture
 
     assert bundles.main(["--root", str(tmp_path)]) == 0
     assert caplog.messages[0].startswith("[bundle-budget] OK:\n  packages/admin/dist/admin.iife.js: 0.")
-    assert caplog.messages[0].endswith(" KB gzip (budget 450 KB)\n  packages/engine/dist/engine.iife.js: 0.1 KB gzip (budget 150 KB)")
+    assert caplog.messages[0].endswith(
+        " KB gzip (budget 450 KB)\n"
+        "  packages/engine/dist/engine.iife.js: 0.1 KB gzip (budget 125 KB)\n"
+        "  packages/engine/dist/engine.mjs: 0.1 KB gzip (budget 110 KB)"
+    )
 
 
 def test_bad_path_oversized_and_missing_bundles_fail(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
@@ -38,6 +42,8 @@ def test_bad_path_oversized_and_missing_bundles_fail(tmp_path: Path, caplog: pyt
     output = caplog.messages[0]
     assert output.startswith("[bundle-budget] FAILED:\n  - packages/admin/dist/admin.iife.js: missing (run the build stage first)\n")
     assert "  - packages/engine/dist/engine.iife.js: 3.0 KB gzip (budget 2 KB)" in output
+    # The ES module build is what the city pages load: it has its own budget, so a missing one fails too.
+    assert "  - packages/engine/dist/engine.mjs: missing (run the build stage first)" in output
 
 
 def test_happy_path_gzip_size_is_reproducible() -> None:

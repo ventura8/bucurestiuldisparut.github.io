@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Build-stage gate: the shipped bundles stay within their gzip budgets.
 
-Every city page downloads the engine's IIFE bundle from jsDelivr before it can show a map, so its
-compressed size is a product property, measured the way a CDN serves it (gzip, level 9). Mapbox
-GL is not part of it (it is loaded from api.mapbox.com as the global `mapboxgl`, never bundled),
-which is exactly what a sudden jump here would reveal.
+Every city page downloads the engine before it can show a map (the city pages load the ES module
+build, a third-party embed may load the IIFE from jsDelivr), so their compressed size is a product
+property, measured the way a CDN serves it (gzip, level 9). Mapbox GL is not part of it (it is
+loaded from api.mapbox.com as the global `mapboxgl`, never bundled), which is exactly what a
+sudden jump here would reveal.
 
 `BUDGETS` holds the budget of each bundle; `--budget FILE=KB` overrides or adds one for a run.
 Raising a budget is a reviewed change to this table, with the reason in the commit, never a way
@@ -27,10 +28,15 @@ LOG = get_logger("bundle-budget")
 
 KB = 1000
 GZIP_LEVEL = 9
-# Bundle (repository-relative) -> gzip budget in KB.
+# Bundle (repository-relative) -> gzip budget in KB: about 12 % above the M1 build (2026-10-12), so
+# growth is a reviewed decision. Mapbox GL is external to both engine builds.
 BUDGETS: Mapping[str, int] = {
-    # Viewer engine: Lit, the M3 kit, zod and the viewer; Mapbox GL is external.
-    "packages/engine/dist/engine.iife.js": 150,
+    # Viewer engine, ES module: what the city pages load (Lit, the M3 kit, zod, the viewer; 97.9 KB in
+    # M1). The Firebase SDK is its lazy `firebase-sdk-<hash>.js` chunk, fetched only after consent.
+    "packages/engine/dist/engine.mjs": 110,
+    # Viewer engine, IIFE: the same plus the inlined Firebase SDK (no code splitting in IIFE builds,
+    # DECISIONS-for-review.md §13a; 112.0 KB in M1).
+    "packages/engine/dist/engine.iife.js": 125,
     # Admin: the engine's kit plus the Firebase SDK and the Setup Assistant.
     "packages/admin/dist/admin.iife.js": 450,
 }

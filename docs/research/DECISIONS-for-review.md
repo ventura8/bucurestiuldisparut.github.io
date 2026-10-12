@@ -670,7 +670,8 @@ the quality image on 2026-10-12 with a throwaway library build of `telemetry.ts`
 | ES module (`engine.mjs`) | a separate chunk `firebase-sdk-<hash>.js`, 83.6 KB raw, 23.9 KB gzip, fetched only after consent; telemetry itself is 2.8 KB gzip |
 | IIFE (`engine.iife.js`) | inlined: Vite builds IIFE output with `codeSplitting: false`, so the same 24 KB gzip is downloaded with the engine (not evaluated before consent, and served from the city's own origin, so no Google host is contacted) |
 
-The bundle budget of `engine.iife.js` is 150 KB gzip (`scripts/ci/check_bundle_budget.py`). Options:
+The bundle budgets are 125 KB gzip for `engine.iife.js` and 110 KB for `engine.mjs` (`scripts/ci/check_bundle_budget.py`;
+the IIFE had 150 KB and the ES module build none when this section was written). Options:
 
 1. **Keep the configuration** (recommended for M1). The city pages load `engine.mjs` (CR-6, which the generated Bucharest
    page already does), so visitors get the lazy chunk. The IIFE stays a fallback for third-party pages and carries the
@@ -817,7 +818,7 @@ Rolldown replaces `import.meta` with `{}` in the IIFE output and warns `EMPTY_IM
 configuration, so the warning stays: the engine falls back to the running script in the IIFE (`engineBaseOf` in
 `packages/engine/src/mount.ts`, unit-tested). The kit's fonts are copied by the package's own `fonts:copy` script
 (`vite build && npm run fonts:copy`), so `vite.config.ts` needs no plugin for CR-15. Only CR-10 (§13a) remains for
-this file.
+this file (and, from the quality review, the minified ES module build of §17a).
 
 ### 15c. The site CSP once the engine comes from jsDelivr (M5)
 
@@ -825,3 +826,103 @@ this file.
 from `cdn.jsdelivr.net` (M5) needs that origin in `font-src` and `script-src`; `scripts/site/src/csp.ts` should add the
 engine's origin when `config.js` names an `engineBase` on another host (an e2e-infra change, not ask-first; recorded
 here so M5 does not miss it).
+
+## 16. M1 e2e (e2e author, 2026-10-12)
+
+Added by the M1 e2e author (`docs/research/M1-interfaces.md` §13). The tree works and every gate passes without it.
+
+### 16a. `.github/workflows/ci.yml`: shard the e2e job
+
+The viewer's e2e tiers now hold about 790 tests (19 minutes for all of them with 16 cores and 8 workers at the M1 final gate): the functional matrix (5 projects, about 7 minutes locally with 16
+cores and 8 workers), the tour (44 projects, about 9 minutes), the a11y specials, no-WebGL and the smoke. On a 4-core
+GitHub runner (2 workers) one shard would take well over the job's `timeout-minutes: 60`. The pipeline already
+forwards `E2E_SHARD` and `playwright.config.ts` reads it, so only the matrix grows:
+
+```diff
+             matrix:
+                 # Shards as "index/total" (Playwright --shard). Grow the list and the total together.
+-                shard: ['1/1']
++                shard: ['1/4', '2/4', '3/4', '4/4']
+```
+
+Each shard then uploads its own JUnit report (`E2E Test Report (n/4)`), as the job already names it. A per-tier matrix
+(§12c) would also work; sharding keeps one job definition.
+
+## 17. M1 quality review (quality reviewer, 2026-10-12)
+
+Added by the M1 quality review (coverage, tests, bundle size, dead code, docs). The tree works and every gate passes
+without it.
+
+### 17a. `packages/engine/vite.config.ts`: minify the ES module build
+
+The city pages load `engine.mjs` (CR-6), but Vite's library mode keeps the whitespace of the `es` format, so that its
+`/* @__PURE__ */` annotations survive for a bundler downstream: the file is 14,545 lines. Nothing bundles `engine.mjs`
+again; it is a page script, served as it is. Measured in the quality image on 2026-10-12 with the same configuration
+plus `minify: true` (a throwaway build through Vite's JavaScript API, written to a scratch folder):
+
+| File | Today | Minified |
+| --- | --- | --- |
+| `engine.mjs` | 409.8 KB raw, 97.9 KB gzip | 343.4 KB raw, 89.9 KB gzip |
+| `firebase-sdk-<hash>.js` (after consent) | 83.7 KB raw, 23.9 KB gzip | 69.0 KB raw, 21.7 KB gzip |
+
+The IIFE is minified already; the option changes nothing there. The output still has no `import` of `mapbox-gl`.
+
+```diff
+         rolldownOptions: {
+             external: ['mapbox-gl'],
+             output: {
+                 globals: { 'mapbox-gl': 'mapboxgl' },
++                // engine.mjs is a page script that nothing bundles again: minify it like the IIFE.
++                minify: true,
+             },
+         },
+```
+
+In the same change, lower the `engine.mjs` budget in `scripts/ci/check_bundle_budget.py` from 110 to 100 KB (and its
+test). `vite.config.ts` is treated as a tool configuration, as CR-10 (§13a) does. Verify: `PIPELINE_STAGE=build`
+(`vite-build`, `bundle-budget`, `site-build`), then `PIPELINE_STAGE=e2e` (the city pages load the minified file).
+
+## 18. M1 accessibility and security review (a11y-sec reviewer, 2026-10-12)
+
+Added by the M1 review through the accessibility (WCAG 2.2 AA) and security lens. The fixes it could make without an
+*Ask first* file are in the tree (`docs/LESSONS.md` #18 to #20); these three need a decision.
+
+### 18a. Firebase Performance Monitoring sends the URL hash, that is the visitor's view
+
+Not an *Ask first* file: a product decision about a feature the user asked for (PLAN Addendum 2) against the privacy
+promise of the consent banner ("Anonymous statistics") and of `analytics.ts` ("never its hash").
+
+- What happens: after consent, every Performance Monitoring batch carries `web_app_info.page_url`, which
+  `firebase/performance` 0.7 computes as `location.href.split('?')[0]` (`node_modules/@firebase/performance`,
+  `Api.getUrl`). The viewer's address has no query but a hash, so the whole hash goes to Google:
+  `#<zoom>/<lat>/<lng>&photo=…`. After *My location* the map centres on the visitor, so the hash is their position to
+  about a metre at zoom 17, sent with the Firebase installation id. GA4 is not affected (its `page_location` is set to
+  the origin and path), nor are crash reports (`page` is the origin and path, redacted).
+- Options:
+  1. Drop Performance Monitoring from the public viewer (keep it in the admin, whose URLs hold no visitor position):
+     remove `initializePerformance` from `firebase-sdk.ts` and `analytics.ts`, its tests, and the
+     `firebaselogging*.googleapis.com` hosts from `scripts/site/src/csp.ts`. Smallest chunk, no leak.
+  2. Keep it and say so: the consent text and the privacy notice name "the map position you look at, which after
+     *My location* is yours", and the viewer pauses Performance Monitoring (`dataCollectionEnabled = false`) from a
+     *My location* until the visitor moves the map elsewhere. More code, a weaker promise.
+- Recommendation: option 1 for M1. GA4 events and crash reports already cover the plan's "crashes and analytics";
+  page-load timings can come from GA4's own `page_view` timing or a later, hash-free custom trace.
+- Verify (option 1): `PIPELINE_STAGE=tests` (the analytics unit tests), `PIPELINE_STAGE=e2e` with
+  `S-V19-HAPPY` (no `firebaselogging` request after consent), then `PIPELINE_STAGE=build` (bundle budget).
+
+### 18b. Subresource Integrity for the swipe-compare plugin (M4)
+
+`packages/engine/src/map/compare.ts` loads `mapbox-gl-compare` 0.6.0 from `api.mapbox.com` with `crossorigin` but no
+`integrity`, while the page loads Mapbox GL JS itself with one. Nothing calls it before V06 (M4). When V06 lands, give
+the script and stylesheet the sha384 of the pinned release (as `scripts/site/src/sri.ts` does for mapbox-gl) and add
+both to the `contract` stage's CDN check (§12f). Verify: `PIPELINE_STAGE=contract`, then the V06 e2e rows.
+
+### 18c. Withdrawing consent leaves GA4's cookies in place
+
+After *Accept*, gtag.js writes the first-party cookies `_ga` and `_ga_<container>` (two years). Withdrawing in About
+sets Consent Mode back to denied and turns collection off, so nothing reads or sends them any more, but they stay in
+the browser, while the privacy notice says that without consent the map "uses no cookies". Proposal: on withdrawal,
+`telemetry/analytics.ts` expires every `_ga` and `_ga_*` cookie for the page's host and each parent domain gtag may
+have used (`Max-Age=0; Path=/; Domain=<host and parents>`), with a unit test and an `S-V19-BAD-WITHDRAWN` assertion that
+`document.cookie` holds no `_ga` afterwards (the stand-in gtag in `e2e/mock-apis/gtag.ts` must then write one). Not
+applied by the review: it changes what withdrawal does, which the plan only describes as "can be withdrawn in About".

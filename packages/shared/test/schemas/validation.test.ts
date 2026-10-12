@@ -8,6 +8,12 @@ import { formatPath, isValidationCode, toValidationIssues, validate } from '../.
 type Issue = z.core.$ZodIssue;
 
 describe('validate', () => {
+    it('badPath_schemasNeverProbeEvalUnderACsp', () => {
+        // S-V16-BAD-INLINE-STYLE found it: zod's `Function('')` probe was a CSP violation on every city page.
+        expect(z.config().jitless).toBe(true);
+        expect(validate(z.strictObject({ id: z.string() }), { id: 'x' })).toEqual({ ok: true, value: { id: 'x' } });
+    });
+
     it('happyPath_returnsTheParsedValue', () => {
         expect(validate(z.number().int(), 3)).toEqual({ ok: true, value: 3 });
     });

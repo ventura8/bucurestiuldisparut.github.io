@@ -51,8 +51,10 @@ export function deepActiveElement(doc: Document = document): Element | null {
 }
 
 /**
- * Keeps Tab and Shift+Tab inside `root`: from the last tabbable element Tab wraps to the first, and back. Call it from
- * a `keydown` listener; returns true when it moved the focus (the event is then cancelled).
+ * Keeps Tab and Shift+Tab inside `root`: from the last tabbable element Tab wraps to the first, and back. Shift+Tab on
+ * `root` itself (a modal sheet or the lightbox takes the focus on its container when it opens) also goes to the last,
+ * instead of leaving the modal. Call it from a `keydown` listener; returns true when it moved the focus (the event is
+ * then cancelled).
  */
 export function trapTab(event: KeyboardEvent, root: Element | ShadowRoot): boolean {
     if (event.key !== 'Tab') {
@@ -76,9 +78,15 @@ function wrapTarget(backwards: boolean, root: Element | ShadowRoot): HTMLElement
         return null;
     }
     const doc = root instanceof ShadowRoot ? root.host.ownerDocument : root.ownerDocument;
-    return edgeTarget(backwards, deepActiveElement(doc), first, last);
+    return edgeTarget(backwards, focusedInside(deepActiveElement(doc), root), first, last);
 }
 
+/** The focused element, or null when the trap's own container has the focus (a modal focuses it when it opens). */
+function focusedInside(active: Element | null, root: Element | ShadowRoot): Element | null {
+    return root instanceof Element && active === root ? null : active;
+}
+
+/** `active` is null when nothing in particular has the focus, or the trap's own container has it. */
 function edgeTarget(backwards: boolean, active: Element | null, first: HTMLElement, last: HTMLElement): HTMLElement | null {
     if (backwards) {
         return active === first || active === null ? last : null;

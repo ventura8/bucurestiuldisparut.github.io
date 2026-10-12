@@ -71,6 +71,17 @@ def test_bad_path_doc_without_a_registry_fails(tmp_path: Path) -> None:
 # --- registry and tags ---------------------------------------------------------------------------
 
 
+def test_happy_path_a_tour_file_names_scenarios_too(tmp_path: Path) -> None:
+    pair(tmp_path, status="exists")
+    write(
+        tmp_path, "e2e/tour/viewer.tour.ts", f"test('tour', {{ tag: ['{tag('V01-BOOT')}', '{tag('V01-BROKEN-MANIFEST')}'] }}, () => {{}});"
+    )
+
+    assert matrix.run("write", tmp_path) == []
+    assert matrix.run("check", tmp_path) == []
+    assert "`e2e/tour/viewer.tour.ts`" in (tmp_path / "docs" / "E2E_SCENARIOS.md").read_text(encoding="utf-8")
+
+
 def tagged_pair(root: Path) -> None:
     """Both rows `exists`, named by a Playwright spec and (the happy one) by a pytest docstring too."""
     pair(root, status="exists")

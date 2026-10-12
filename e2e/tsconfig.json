@@ -7,6 +7,6 @@
         "types": ["node"],
         "erasableSyntaxOnly": true
     },
-    "include": ["playwright.config.ts", "projects.ts", "support", "specs", "setup", "fixtures", "mock-apis", "scripts"],
+    "include": ["playwright.config.ts", "projects.ts", "support", "specs", "tour", "a11y", "setup", "fixtures", "mock-apis", "scripts"],
     "references": [{ "path": "../packages/shared" }, { "path": "../scripts/site" }]
 }

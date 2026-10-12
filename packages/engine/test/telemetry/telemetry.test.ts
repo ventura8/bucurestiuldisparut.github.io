@@ -26,6 +26,7 @@ function fakeWindow(): TelemetryDeps['window'] & EventTarget {
 
 function sdk(events: string[]): FirebaseSdk {
     return {
+        getApps: () => [],
         initializeApp: () => ({}) as FirebaseApp,
         isSupported: () => Promise.resolve(true),
         setConsent: () => undefined,
@@ -176,6 +177,7 @@ describe('telemetry', () => {
         const firebase = await loadFirebaseSdk();
 
         expect(Object.keys(firebase).sort((a, b) => a.localeCompare(b))).toEqual([
+            'getApps',
             'initializeAnalytics',
             'initializeApp',
             'initializePerformance',

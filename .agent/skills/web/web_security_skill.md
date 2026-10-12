@@ -8,6 +8,7 @@ Security rules for the viewer, the admin and every page they load. Background an
 - ESLint bans `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `setHTML`, `setHTMLUnsafe`, `document.write`, `eval`, `new Function`, and the Lit `unsafeHTML` / `unsafeSVG` / `unsafeMathML` directives (`eslint.config.js`, plus `eslint-plugin-no-unsanitized`). Never relax these.
 - Legacy data contains HTML anchors (`seed/bucharest/photos.legacy.geojson`): the migrator (`packages/shared/src/migration/html.ts`, a linear scanner, no DOM, no backtracking regex) turns them into structured `links: [{url, label}]` (https kept; http upgraded only for `facebook.com`, `flickr.com`, `costingheorghe.ro`; anything else dropped) plus plain text; `<script>`/`<style>` content is discarded. No HTML is stored.
 - Rich "About" and privacy text and POI descriptions are a minimal Markdown subset (bold, italic, https links, `\` escapes) parsed by `parseMarkdown` (`packages/shared/src/text/markdown.ts`) into a node tree that is rendered into DOM nodes, never HTML. A non-https link makes the manifest invalid (`validation.markdownLink`); markup in a POI description shows as text (S-V24-BAD-MARKUP-IS-TEXT).
+- Mapbox GL parses a source's `attribution` as HTML (it keeps `<a href>` and writes the result with `innerHTML`): the engine escapes `&`, `<` and `>` of the manifest's plain-text attribution first (`attributionText`, `packages/engine/src/map/rasters.ts`; S-V03-BAD-ATTRIBUTION-MARKUP-IS-TEXT). Any new Mapbox source with data in its `attribution` goes through it.
 - POI category icons are Material Symbols names (`^[a-z0-9_]{1,64}$`) mapped onto the bundled set (`poiIcon`), never a URL or an SVG from data; colours are `#rrggbb` only.
 - Untrusted strings shown as text only: EXIF fields, USGS metadata and HTML error bodies, Nominatim results, AI drafts, Mapbox job errors.
 
@@ -24,6 +25,7 @@ Security rules for the viewer, the admin and every page they load. Background an
 - **A site's `config.js`** is read by the build without running it (`scripts/site/src/config-js.ts`, the TypeScript parser): exactly one `window.HistoricCityMapConfig = …` (or `globalThis.…`) of literal data; a call, a variable, a spread or a computed key is refused, then the data is validated with `engineConfigSchema`.
 - Analytics hosts (googletagmanager, google-analytics, firebaseinstallations, firebaselogging) are added to the CSP only for the consent-gated SDKs.
 - No inline `<script>`; a third-party city that loads the engine from jsDelivr pins an exact version with `integrity` and `crossorigin`.
+- Nothing compiles code at run time: zod runs `jitless` (`z.config({ jitless: true })` in `packages/shared/src/schemas/primitives.ts`), else it probes `Function('')` and every page view raises a `securitypolicyviolation` that never reaches the console. The e2e CSP specs record violation events, not only console errors (`docs/LESSONS.md` #14).
 
 ## Tokens and secrets in the browser
 

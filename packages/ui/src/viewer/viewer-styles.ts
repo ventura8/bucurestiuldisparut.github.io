@@ -146,12 +146,14 @@ export const viewerStyles = [
             }
         }
 
+        /* Without WebGL the photo list scrolls under the menu button: its last row can scroll clear of it. */
         .fallback {
             display: flex;
             flex-direction: column;
             gap: 16px;
             inline-size: min(560px, 100%);
             align-self: start;
+            padding-block-end: calc(var(--hcm-map-chrome) + 56px);
         }
 
         .dock {
@@ -200,9 +202,13 @@ export const viewerStyles = [
             inset-block-end: calc(var(--hcm-map-chrome) + env(safe-area-inset-bottom, 0px));
         }
 
+        /*
+         * Compact: one row above the menu button, which shares the row above the timeline (the tour found them
+         * overlapping at 320 px).
+         */
         .dock.chip {
             inset-inline-start: var(--hcm-gutter);
-            inset-block-end: calc(var(--hcm-map-chrome) + 100px + env(safe-area-inset-bottom, 0px));
+            inset-block-end: calc(var(--hcm-map-chrome) + 100px + 64px + env(safe-area-inset-bottom, 0px));
         }
 
         .dock.consent {
@@ -220,6 +226,14 @@ export const viewerStyles = [
             z-index: 25;
         }
 
+        /*
+         * The kit's snackbar places itself at the bottom of its container; here it flows in the top dock (the tour
+         * found it above the top edge of the map).
+         */
+        .dock.toast hcm-snackbar {
+            position: static;
+        }
+
         @container hcm-viewer (width >= 600px) {
             .dock.timeline {
                 inset-inline: calc(var(--hcm-gutter) + 72px);
@@ -234,6 +248,7 @@ export const viewerStyles = [
 
             .dock.chip {
                 inset-inline-start: calc(var(--hcm-gutter) + 72px);
+                inset-block-end: calc(var(--hcm-map-chrome) + 100px + env(safe-area-inset-bottom, 0px));
             }
 
             .dock.timeline-note {
@@ -248,9 +263,18 @@ export const viewerStyles = [
             margin-inline: 0;
         }
 
+        /*
+         * A landscape phone is too short for the whole menu: below the top gutter its items continue in a second
+         * column (the tour found items off screen). The menu is docked on the leading edge, so the FAB and the items
+         * line up there: aligned to the end, the wider two-column menu pushed the FAB 300 px away from where it was
+         * tapped (UX review).
+         */
         .frame[data-compact-height] .dock.menu {
             inset-inline: var(--hcm-gutter) auto;
             inset-block-end: calc(var(--hcm-map-chrome) + 8px);
+
+            --hcm-fab-menu-align: flex-start;
+            --hcm-fab-menu-max-block-size: calc(100cqb - var(--hcm-map-chrome) - 8px - 56px - 8px - var(--hcm-gutter));
         }
 
         .frame[data-compact-height] .dock.chip {

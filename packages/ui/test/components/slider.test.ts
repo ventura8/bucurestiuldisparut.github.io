@@ -40,6 +40,15 @@ describe('<hcm-slider>', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 
+    it('badPath_theThinHandleStillHasA48PixelTouchTarget', async () => {
+        // The e2e tour measured the 4 px handle as a touch target on compact windows.
+        const element = await slider();
+        const target = getComputedStyle(shadowPart(element, '.handle'), '::after');
+
+        expect(Number.parseFloat(target.width)).toBeGreaterThanOrEqual(48);
+        expect(Number.parseFloat(target.height)).toBeGreaterThanOrEqual(48);
+    });
+
     it('happyPath_keysMoveByStepPageAndToTheEnds', async () => {
         const element = await slider();
         const inputs = recordEvents<{ value: number }>(element, 'hcm-input');

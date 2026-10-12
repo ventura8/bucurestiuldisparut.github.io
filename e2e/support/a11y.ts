@@ -9,6 +9,21 @@ import type { Page } from '@playwright/test';
  */
 const AXE_TAGS: readonly string[] = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
+/**
+ * `css-orientation-lock` parses the page's stylesheets in a scratch document that inherits the page's CSP, whose
+ * `style-src` refuses the `<style>` elements axe writes there (its CSSOM preload): under the city sites' policy it
+ * cannot run and would only log CSP violations. So the rule is off and nothing is preloaded (the other preload, media
+ * readiness, serves audio and video rules; the viewer has neither). The viewer's styles lock no orientation.
+ */
+const RULES_BLOCKED_BY_THE_PAGE_CSP: readonly string[] = ['css-orientation-lock'];
+
+export interface AxeOptions {
+    /** Selectors to limit the check to (the whole page by default). */
+    readonly include?: readonly string[];
+    /** Rules that do not apply to the page as emulated (the colour rules under forced colours). */
+    readonly skipRules?: readonly string[];
+}
+
 export interface AxeViolation {
     readonly id: string;
     readonly impact: string;
@@ -16,9 +31,14 @@ export interface AxeViolation {
 }
 
 /** The violations on `page` (empty when it passes), optionally limited to `include` selectors. */
-export async function axeViolations(page: Page, include: readonly string[] = []): Promise<AxeViolation[]> {
-    let builder = new AxeBuilder({ page }).withTags([...AXE_TAGS]).exclude('canvas.mapboxgl-canvas');
-    for (const selector of include) {
+export async function axeViolations(page: Page, options: AxeOptions = {}): Promise<AxeViolation[]> {
+    // `options` replaces the run options, so it comes before the tags and rules that add to them.
+    let builder = new AxeBuilder({ page })
+        .options({ preload: false })
+        .withTags([...AXE_TAGS])
+        .disableRules([...RULES_BLOCKED_BY_THE_PAGE_CSP, ...(options.skipRules ?? [])])
+        .exclude('canvas.mapboxgl-canvas');
+    for (const selector of options.include ?? []) {
         builder = builder.include(selector);
     }
     const results = await builder.analyze();

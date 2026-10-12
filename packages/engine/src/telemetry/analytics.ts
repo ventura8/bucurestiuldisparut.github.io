@@ -15,6 +15,7 @@ import type { ConsentState, FirebaseAppIds, TelemetryEvent } from './telemetry-p
 
 /** The Firebase functions the viewer uses; `firebase-sdk.ts` (a lazy chunk) provides the real ones. */
 export interface FirebaseSdk {
+    readonly getApps: () => readonly FirebaseApp[];
     readonly initializeApp: (options: FirebaseOptions, name: string) => FirebaseApp;
     readonly isSupported: () => Promise<boolean>;
     readonly setConsent: (settings: ConsentSettings) => void;
@@ -24,7 +25,10 @@ export interface FirebaseSdk {
     readonly initializePerformance: (app: FirebaseApp, settings: PerformanceSettings) => FirebasePerformance;
 }
 
-/** The name of the viewer's Firebase app, so a page that runs its own default Firebase app is not disturbed. */
+/** Firebase's name for the default app: Performance Monitoring runs only on it (`performance/FB not default`). */
+export const DEFAULT_FIREBASE_APP = '[DEFAULT]';
+
+/** The name of the viewer's Firebase app when the page already runs its own default app (which is then left alone). */
 export const FIREBASE_APP_NAME = 'hcm-viewer';
 
 export interface AnalyticsConfig {
@@ -42,7 +46,8 @@ export interface AnalyticsDeps {
 interface Loaded {
     readonly sdk: FirebaseSdk;
     readonly analytics: GaAnalytics;
-    readonly performance: FirebasePerformance;
+    /** Null when Performance Monitoring could not start: analytics works without it. */
+    readonly performance: FirebasePerformance | null;
 }
 
 type GaEvent = TelemetryEvent | { readonly name: 'exception'; readonly description: string; readonly fatal: boolean };
@@ -130,7 +135,7 @@ export class AnalyticsLoader {
                 this.#deps.log.info('analytics unsupported in this browser');
                 return null;
             }
-            return initialize(sdk, config, this.#deps.pageLocation());
+            return initialize(sdk, config, this.#deps);
         } catch (error) {
             this.#deps.log.warn('analytics failed to load', { error: String(error) });
             return null;
@@ -138,19 +143,41 @@ export class AnalyticsLoader {
     }
 }
 
-/** Consent first (Consent Mode v2), then GA4 without the automatic page view, then Performance Monitoring. */
-function initialize(sdk: FirebaseSdk, config: AnalyticsConfig, pageLocation: string): Loaded {
-    const app = sdk.initializeApp({ ...config.firebase, measurementId: config.measurementId }, FIREBASE_APP_NAME);
+/**
+ * Consent first (Consent Mode v2), then GA4 without the automatic page view, then Performance Monitoring. The viewer's
+ * app is the page's default Firebase app unless the page already has one (Performance Monitoring refuses any other
+ * app, so it stays off then); a Performance Monitoring failure never stops analytics (S-V19-HAPPY found it did).
+ */
+function initialize(sdk: FirebaseSdk, config: AnalyticsConfig, deps: Pick<AnalyticsDeps, 'log' | 'pageLocation'>): Loaded {
+    const pageHasDefault = sdk.getApps().some((app) => app.name === DEFAULT_FIREBASE_APP);
+    const options = { ...config.firebase, measurementId: config.measurementId };
+    const app = sdk.initializeApp(options, pageHasDefault ? FIREBASE_APP_NAME : DEFAULT_FIREBASE_APP);
     sdk.setConsent(CONSENT_GRANTED);
-    const analytics = sdk.initializeAnalytics(app, { config: { send_page_view: false, page_location: pageLocation } });
-    const performance = sdk.initializePerformance(app, { dataCollectionEnabled: true, instrumentationEnabled: true });
+    const analytics = sdk.initializeAnalytics(app, { config: { send_page_view: false, page_location: deps.pageLocation() } });
+    const performance = pageHasDefault ? skipPerformance(deps.log) : startPerformance(sdk, app, deps.log);
     return { sdk, analytics, performance };
+}
+
+function skipPerformance(log: Logger): null {
+    log.info('performance monitoring off: the page runs its own default Firebase app');
+    return null;
+}
+
+function startPerformance(sdk: FirebaseSdk, app: FirebaseApp, log: Logger): FirebasePerformance | null {
+    try {
+        return sdk.initializePerformance(app, { dataCollectionEnabled: true, instrumentationEnabled: true });
+    } catch (error) {
+        log.warn('performance monitoring failed to start', { error: String(error) });
+        return null;
+    }
 }
 
 /** Consent Mode v2 and collection on or off for GA4 and Performance Monitoring. */
 function toggleCollection(loaded: Loaded, enabled: boolean): void {
     loaded.sdk.setConsent(enabled ? CONSENT_GRANTED : CONSENT_DENIED);
     loaded.sdk.setAnalyticsCollectionEnabled(loaded.analytics, enabled);
-    loaded.performance.dataCollectionEnabled = enabled;
-    loaded.performance.instrumentationEnabled = enabled;
+    if (loaded.performance !== null) {
+        loaded.performance.dataCollectionEnabled = enabled;
+        loaded.performance.instrumentationEnabled = enabled;
+    }
 }

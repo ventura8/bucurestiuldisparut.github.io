@@ -9,7 +9,7 @@
  tag vX ───►│ packages/engine → dist/engine.{iife.js,mjs,css} ──► jsDelivr @1 (other cities)
             │ packages/admin  → dist/admin.*  ──► Firebase Hosting <proj>.web.app (own origin)
             │ packages/{shared,ui,test-support}                                       │
-            │ sites/bucharest (index.html + config.js; engine same-origin) ──► GitHub Pages
+            │ sites/bucharest (config.js + site.json → generated index.html; engine same-origin) ──► GitHub Pages
             │ starter-kit/ (template + static-manifest mode, no backend needed)       │
             │ functions/ (Firebase Functions v2, TS, Node 24) ──► us-central1         │
             │ pipeline/ (Python + GDAL container) ──► Cloud Run Jobs                  │
@@ -24,12 +24,12 @@
 | --- | --- | --- |
 | `packages/shared` | `@hcm/shared`: zod schemas (City Manifest v1 with POIs, embed config, Firestore documents with history entries), validation with localized codes, geo helpers and POI geometries, the overlay model and its Mapbox paint mapping, the URL-hash codec, the Markdown subset, the legacy migration, i18n catalogues, logging with redaction | M1 contracts done (with PLAN Addendum 3) |
 | `packages/ui` | `@hcm/ui`: Lit 3 Material 3 Expressive kit (19 elements), theme and dynamic colour (`themeFromSeed`, `applyTheme`), window classes, self-hosted fonts, and the viewer's elements (`packages/ui/src/viewer/`) | M1 done |
-| `packages/engine` | `@hcm/engine`: the public viewer, global `window.HistoricCityMap`: configuration, the viewer store, the MapPort and its Mapbox adapter, consent-gated telemetry, `mount` and the auto-boot | M1 done (boots the built Bucharest site in the e2e smoke) |
+| `packages/engine` | `@hcm/engine`: the public viewer, global `window.HistoricCityMap`: configuration, the viewer store, the MapPort and its Mapbox adapter, consent-gated telemetry, `mount` and the auto-boot | M1 done (the built Bucharest site passes the e2e smoke, functional matrix, tour, a11y specials and no-WebGL tiers) |
 | `packages/admin` | `@hcm/admin`: Setup Assistant and daily flows | scaffold |
 | `packages/test-support` | `@hcm/test-support`: `FakeMap` and a fake `mapboxgl` (`@hcm/test-support/fake-map`), axe (`@hcm/test-support/axe`), recording log sinks; msw handlers later (test-only) | M1 |
 | `functions/` | `@hcm/functions`: thin v2 triggers over pure handlers and ports | scaffold (`setup-status`); deploys from M2 |
 | `firebase/rules-tests/` | `@hcm/rules-tests`: allow and deny matrix under the emulators | running |
-| `e2e/` | `@hcm/e2e` (Playwright 1.64): `e2e/scenarios.json`, the mock APIs (`e2e/mock-apis/`), the fixture manifest, the firewall, console and placeholder guards, the tiers of `e2e/projects.ts` | harness and viewer smoke running; functional, tour, a11y and no-WebGL specs planned |
+| `e2e/` | `@hcm/e2e` (Playwright 1.64): `e2e/scenarios.json`, the mock APIs (`e2e/mock-apis/`), the fixture manifest, the firewall, console and placeholder guards, the tiers of `e2e/projects.ts` | harness, smoke, the viewer's functional matrix, the tour, the a11y specials and no-WebGL running; swipe compare (M4), admin (M2) and pipeline (M3) specs planned |
 | `pipeline/` | `pipeline/src/hcm_pipeline` (Python + GDAL, Poetry) | scaffold; steps in M3 |
 
 Layering (enforced by dependency-cruiser): `shared` below `ui` below `engine` and `admin`; engine and admin are independent; `shared` imports no DOM, Lit or Mapbox; only `packages/engine/src/map/mapbox-adapter.ts` touches Mapbox GL, and it reads the page's global `mapboxgl` through a structural type instead of importing `mapbox-gl`. Because `ui` cannot import the engine, the viewer elements in `packages/ui/src/viewer/` drive the engine's store through a mirrored port (`store-port.ts`).
@@ -62,7 +62,7 @@ The public contract (config.js, `<hcm-map-viewer>`, the JavaScript API, the URL 
 
 ## UI
 
-Lit 3 custom elements with the `hcm-` prefix and no decorators; Expressive components from `@m3e/web` and stable `@material/web` form controls behind our own wrappers; colour tokens generated from the city seed with `@material/material-color-utilities` (light, dark, high contrast); window classes measured on the host element (compact below 600, medium, expanded, large, extra-large from 1600, compact height below 480); 48 dp touch targets; self-hosted Roboto Flex and Material Symbols; reduced motion honoured.
+Lit 3 custom elements with the `hcm-` prefix and no decorators; every Material 3 Expressive component is our own Lit element built on Google's token values (no `@m3e/web` or `@material/web` runtime: why in [packages/ui/README.md](../packages/ui/README.md) → *Decisions*); colour tokens generated from the city seed with `@material/material-color-utilities` (light, dark, high contrast) when the manifest is built, so the viewer applies the manifest's tokens and ships no colour library (a precomputed baseline theme covers loading and errors); window classes measured on the host element (compact below 600, medium, expanded, large, extra-large from 1600, compact height below 480); 48 dp touch targets; self-hosted Roboto Flex and Material Symbols; reduced motion honoured.
 
 ## Data
 
@@ -103,9 +103,10 @@ Python with `osgeo.gdal` from the pinned GDAL image (Python 3.14), Poetry, as a 
 
 ## Analytics and crashes
 
-- GA4 (the Firebase JS SDK's analytics module) and Performance Monitoring in the viewer and the admin, **loaded only after consent** (an M3 consent banner, Consent Mode v2 defaults denied). The viewer lazy-loads them only when the manifest has a `measurementId` and the visitor consented; it still never reads Firestore.
+- GA4 (the Firebase JS SDK's analytics module) and Performance Monitoring in the viewer and the admin, **loaded only after consent** (a Material 3 consent banner in RO and EN, Consent Mode v2 defaults denied; the choice is stored and can be changed in About). Since M1 the viewer lazy-loads the Firebase chunk only when the manifest has a `measurementId` and its Firebase ids and the visitor accepted; without them the banner still asks, but nothing is sent. It still never reads Firestore.
+- Open privacy decisions (`research/DECISIONS-for-review.md` §18): Performance Monitoring sends the page URL with its hash, which holds the visitor's view and, after *My location*, their position (§18a); GA4's cookies stay after consent is withdrawn (§18c).
 - Events without PII: `page_view`, `layer_toggle`, `year_change`, `photo_open`, `poi_open`, `share`, `compare_open`, and admin flow events.
-- Crashes: global error handlers and error boundaries; GA4 `exception` events after consent; `telemetry.reportError` writes redacted structured logs that Cloud Error Reporting groups and alerts on; source maps are release artifacts; the Setup Assistant shows the latest error groups.
+- Crashes: global error handlers and error boundaries; GA4 `exception` events after consent; the viewer POSTs redacted reports (no URL query or fragment, no token, no e-mail address; at most five per page) to the manifest's `analytics.errorEndpoint`, which from M2 is `telemetry.reportError`, writing structured logs that Cloud Error Reporting groups and alerts on; source maps are release artifacts; the Setup Assistant shows the latest error groups.
 
 ## Quality system
 

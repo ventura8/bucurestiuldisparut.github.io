@@ -86,7 +86,11 @@ describe('manifest checks', () => {
 
         expect(result).toEqual({
             ok: false,
-            error: { code: 'error.manifest.invalid', retryable: false, params: { count: '1', detail: 'layers validation.type' } },
+            error: {
+                code: 'error.manifest.invalid',
+                retryable: false,
+                params: { count: '1', detail: 'layers validation.type', issuePath: 'layers', issueCode: 'validation.type' },
+            },
         });
     });
 });
@@ -163,7 +167,11 @@ describe('manifest fetch', () => {
 
         expect(result).toEqual({
             ok: false,
-            error: { code: 'error.manifest.invalid', retryable: false, params: { count: '1', detail: 'validation.json' } },
+            error: {
+                code: 'error.manifest.invalid',
+                retryable: false,
+                params: { count: '1', detail: 'validation.json', issuePath: '', issueCode: 'validation.json' },
+            },
         });
     });
 

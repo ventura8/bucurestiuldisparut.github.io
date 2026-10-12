@@ -400,6 +400,11 @@ export class FakeMapboxMap implements MapboxMap {
         return this;
     }
 
+    triggerRepaint(): this {
+        this.#record('triggerRepaint');
+        return this;
+    }
+
     flyTo(options: MapboxCameraOptions): this {
         this.#record('flyTo', options);
         return this.#move(options);
