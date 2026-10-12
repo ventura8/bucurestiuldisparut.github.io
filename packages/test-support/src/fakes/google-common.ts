@@ -22,9 +22,17 @@ function derivedNumber(id: string): string {
     return `9${String(hash).padStart(11, '0')}`;
 }
 
-/** The projects one set of fakes has seen; `demo-hcm` is number `123456789012` (`FIXTURE_VALUES`). */
+/**
+ * The projects one set of fakes has seen; `demo-hcm` is number `123456789012` (`FIXTURE_VALUES`), known from the start
+ * so a first call that names it by number (Service Usage, IAM's pools) finds the same project as one that names its id.
+ */
 export class GoogleProjects {
     readonly #byId = new Map<string, GoogleProject>();
+
+    constructor() {
+        const id = String(FIXTURE_VALUES['projectId']);
+        this.#byId.set(id, { id, number: String(FIXTURE_VALUES['projectNumber']) });
+    }
 
     /** The project a path segment names, by id or by number. */
     resolve(segment: string): GoogleProject {

@@ -25,7 +25,7 @@ What only the human does, what Claude may do for them, and how. The rule behind 
 
 ## In the app (user direction)
 
-The user performs their steps through the admin's Setup Assistant, like any city admin (`docs/research/PLAN.md` → *Addendum*). The only out-of-app actions Claude takes are the initial Firebase project creation (done, with the user's yes) and the first admin deploy, which needs an explicit yes. Overnight work is local only: no cloud resources created, nothing pushed, no consents clicked.
+The user performs their steps through the admin's Setup Assistant, like any city admin (`docs/research/PLAN.md` → *Addendum*). Before billing is linked the admin has no server, so its first steps call Google from the browser with the owner's own token (bootstrap mode, `docs/research/M2b-interfaces.md` §3); each step asks Google for its own scope in a consent popup the user approves (read-only Cloud, billing, Cloud, Analytics), and the app explains Google's "unverified app" screen first. Approving those popups is the user's click, never Claude's. The only out-of-app actions Claude takes are the initial Firebase project creation (done, with the user's yes) and the first admin deploy, which needs an explicit yes. Overnight work is local only: no cloud resources created, nothing pushed, no consents clicked.
 
 ## Ask first (also outside the browser)
 

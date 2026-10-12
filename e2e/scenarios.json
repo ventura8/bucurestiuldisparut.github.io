@@ -185,6 +185,13 @@
             "source": "docs/research/PLAN.md Addendum 3; docs/research/M1-interfaces.md CR-11"
         },
         {
+            "id": "A00",
+            "area": "admin",
+            "name": "Admin e2e harness",
+            "milestone": "M2b",
+            "source": "docs/research/M2b-interfaces.md §2.6 and §6.2 (Google's consent stand-in, the admin server, the admin projects' firewall, the signed-in storage state, the hidden server)"
+        },
+        {
             "id": "A01",
             "area": "admin",
             "name": "Sign-in and owner claim",
@@ -351,6 +358,48 @@
             "name": "Crash reporting endpoint",
             "milestone": "M2",
             "source": "docs/research/PLAN.md Addendum 2 (telemetry.reportError -> Cloud Error Reporting); docs/research/M2-interfaces.md §3.4"
+        },
+        {
+            "id": "A25",
+            "area": "admin",
+            "name": "Bootstrap mode before Blaze",
+            "milestone": "M2b",
+            "source": "docs/research/M2b-interfaces.md §3.1-§3.2 (no functions, no Firestore before billing)"
+        },
+        {
+            "id": "A26",
+            "area": "admin",
+            "name": "Deployment detection and automatic owner claim",
+            "milestone": "M2b",
+            "source": "docs/research/M2b-interfaces.md §3.3 (d), (d2)"
+        },
+        {
+            "id": "A27",
+            "area": "admin",
+            "name": "Google OAuth scopes",
+            "milestone": "M2b",
+            "source": "docs/research/M2b-interfaces.md §2 (incremental scopes, memory-only tokens, the unverified-app notice)"
+        },
+        {
+            "id": "A28",
+            "area": "admin",
+            "name": "Legacy Bucharest import",
+            "milestone": "M2b",
+            "source": "docs/research/M2b-interfaces.md §3.3 (h)"
+        },
+        {
+            "id": "A29",
+            "area": "admin",
+            "name": "Admin navigation and layout",
+            "milestone": "M2b",
+            "source": "docs/research/M2b-interfaces.md §1.1-§1.2"
+        },
+        {
+            "id": "A30",
+            "area": "admin",
+            "name": "Minimum admin input",
+            "milestone": "M2b",
+            "source": "docs/research/M2b-interfaces.md §3.5; PLAN 'minimum admin input'"
         },
         {
             "id": "P01",
@@ -1634,15 +1683,114 @@
             "notes": "Milestone M1. engine-core CR-11: rasterAdjustmentPaint of @hcm/shared clamps the admin's live sliders (unit-tested); that preview's e2e row joins the admin in M2."
         },
         {
+            "id": "S-A00-HAPPY",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "happy",
+            "title": "Google's consent stand-in issues a token that the fake Google APIs honour",
+            "asserts": "a popup of /__oauth/authorize lists the owner preselected and the requested read-only Cloud scope ticked -> Allow posts idToken, accessToken, scope and expiresIn from the mock APIs' origin -> tokeninfo answers the owner, the e2e OAuth client and the granted scopes in the browser's world and in the shared one the Functions emulator reaches; the consent request is recorded as allowed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b. Google's OAuth is the only part of Google stood in for in the browser (docs/research/M2b-interfaces.md §2.6; e2e/admin/harness/consent.spec.ts)."
+        },
+        {
+            "id": "S-A00-BAD-CONSENT-CANCELLED",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "bad",
+            "title": "A cancelled consent tells the app and grants nothing",
+            "asserts": "Cancel on the stand-in page -> the opener receives a cancellation from the mock APIs' origin and no grant; the consent request is recorded as cancelled",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b. The admin's stand-in client reads it, or a closed popup, as popup-closed-by-user (e2e/admin/harness/consent.spec.ts)."
+        },
+        {
+            "id": "S-A00-BAD-SCOPE-UNTICKED",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "bad",
+            "title": "The consent grants only the chosen account and the scopes left ticked",
+            "asserts": "another account chosen and one requested scope unticked -> tokeninfo of the issued token names that account and only the scopes left ticked; the request is recorded with them",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b. The mechanism behind S-A27-BAD-SCOPE-DENIED and S-A27-BAD-WRONG-ACCOUNT (e2e/admin/harness/consent.spec.ts)."
+        },
+        {
+            "id": "S-A00-HAPPY-ADMIN-SERVER",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "happy",
+            "title": "The admin server serves the e2e build as Hosting does, with the emulators in its CSP",
+            "asserts": "the page holds the admin shell; firebase.json's headers with the CSP minus upgrade-insecure-requests and plus the emulators' and mock APIs' origins in connect-src; a deep link gets the app; /__/firebase/init.json is the demo-hcm web configuration and /runtime.json the e2e runtime; the legacy bundle's 45 records, the originals and the kit's fonts are served",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b. e2e/mock-apis/admin-server.ts over scripts/site/src/admin/hosting.ts, whose unit tests prove the CSP is the only header that differs (e2e/admin/harness/world.spec.ts)."
+        },
+        {
+            "id": "S-A00-BAD-UNFAKED-GOOGLE-HOST",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Google host that no fake answers stays blocked in the admin projects",
+            "asserts": "a fetch of a Firestore URL from the admin's origin fails in the page; the firewall records the URL and the console guard the blocked load",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b. The admin projects forward the fake upstreams' hosts only, so the admin never reaches real Firestore or any Google API without a fake (e2e/admin/harness/world.spec.ts)."
+        },
+        {
+            "id": "S-A00-HAPPY-SIGNED-IN-PERSONA",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "happy",
+            "title": "A persona's storage state is a Firebase Auth session the Auth emulator accepts",
+            "asserts": "with the admin persona, the admin origin's IndexedDB holds Firebase Auth's user record for that account, and the Auth emulator's accounts:lookup with its ID token answers the same uid and address",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b. The signed-in fixtures of the admin tier (owner, invited admin, editor, stranger) are storage states with IndexedDB (e2e/admin/support/session.ts; e2e/admin/harness/world.spec.ts)."
+        },
+        {
+            "id": "S-A00-HAPPY-SEEDED-MAP",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "happy",
+            "title": "The seeded owner, invitation and admin are what admin.session answers",
+            "asserts": "with mapOwner owner, invited admin and admins editor: admin.session on the Functions emulator answers the owner as admin with role owner and the claim, the invited persona as not an admin with an invitation pending, the editor as admin with role admin and the claim, and the stranger as neither, with the map claimed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b. The seeds of the admin tier (setup/owner, invites/{sha256 of the address}, admins/{uid} and the admin claim) match what the callables leave (e2e/admin/support/emulators.ts; e2e/admin/harness/world.spec.ts)."
+        },
+        {
+            "id": "S-A00-BAD-SIGNED-OUT",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without a persona the admin opens signed out",
+            "asserts": "no persona -> no Firebase Auth user record in the admin origin's IndexedDB",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b. e2e/admin/harness/world.spec.ts."
+        },
+        {
+            "id": "S-A00-BAD-SERVER-HIDDEN",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "bad",
+            "title": "A hidden server is unreachable until it is shown again",
+            "asserts": "while hidden, a call of admin-session from the admin's origin fails like an unreachable host (the console line claimed); shown again, the anonymous call is refused 401 by the callable's access rule, which the console guard of the admin tier expects",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b. 'Not deployed yet' at the network edge for the bootstrap specs (e2e/admin/support/deployment.ts; e2e/admin/harness/world.spec.ts)."
+        },
+        {
             "id": "S-A01-HAPPY",
             "behaviour": "A01",
             "area": "admin",
             "path": "happy",
             "title": "The project owner claims the map with Google and reaches the dashboard",
-            "asserts": "verified Google account -> admin.session says unclaimed -> 'I own this Google Cloud project' -> consent popup (mock OAuth, cloud-platform.read-only) -> admin.claim: tokeninfo of the caller's own token, testIamPermissions grants resourcemanager.projects.setIamPolicy on the mock Resource Manager -> admins/{uid} role owner and the admin claim -> dashboard; no e-mail address is configured or sent besides the ID token",
+            "asserts": "verified Google account signs in through the consent stand-in (no Cloud scope) -> admin.session says unclaimed -> the claim panel naming the project -> Confirm with Google (one click, one read-only consent: cloud-platform.read-only) -> admin.claim on the Functions emulator: tokeninfo of the caller's own token, testIamPermissions grants resourcemanager.projects.setIamPolicy on the mock Resource Manager -> admins/{uid} role owner, setup/owner and the admin claim -> the Setup Assistant open at billing; at most 2 inputs and 2 consents; no e-mail address is configured or sent besides the ID token",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6); M2b smoke of the admin tier, normal mode (docs/research/M2b-interfaces.md §1.3, §2.1, §3.3 d2; e2e/admin/specs/smoke.spec.ts)."
         },
         {
             "id": "S-A01-BAD-STRANGER",
@@ -1650,10 +1798,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A non-admin without an invitation is told and signed out",
-            "asserts": "a verified Google account, map already claimed, no invitation -> admin.join answers apiError.invite.notFound -> its message in the page language and sign-out",
+            "asserts": "a verified Google account signed in, the map already claimed, no invitation -> admin.session -> adminShell.auth.notAdmin in the page language with Use another Google account -> signed out: the sign-in button again; no admins document for the account",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6); the notAdmin state of docs/research/M2b-interfaces.md §1.3, with the stranger's storage state (e2e/admin/specs/smoke.spec.ts)."
         },
         {
             "id": "S-A01-BAD-POPUP-CLOSED",
@@ -1859,10 +2007,10 @@
             "area": "admin",
             "path": "happy",
             "title": "Billing and the budget are detected and recorded",
-            "asserts": "Google consent with the billing scope -> the mock Cloud Billing lists one account and billingEnabled -> the $5 budget is created -> setup.recordCloud stores billing ok with the budget id -> green",
+            "asserts": "one open billing account -> one click (Link billing and create the budget) and one cloud-billing consent -> billingInfo linked (Blaze) and the budget created (5 in a USD account, its BUDGET_AMOUNTS equivalent in another currency) with 50, 90 and 100 percent and forecast thresholds -> card green; after the claim setup.recordCloud stores billing ok with the budget id",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6), refined in M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
             "id": "S-A04-BAD-NOT-ENABLED",
@@ -1870,10 +2018,10 @@
             "area": "admin",
             "path": "bad",
             "title": "Billing not enabled shows the deep link and cost explainer",
-            "asserts": "billing not enabled -> deep link to Blaze and the cost explainer; the card advances by itself once the mock reports billing enabled",
+            "asserts": "no open billing account -> the explanation and the verified deep link to Google's billing page; the card lists the accounts every 10 s and links the new one by itself once the mock shows it",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6), refined in M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
         },
         {
             "id": "S-A04-BAD-API-PERMISSION",
@@ -1892,10 +2040,10 @@
             "area": "admin",
             "path": "happy",
             "title": "Provision cloud creates what is missing and the doctor shows each item",
-            "asserts": "Provision cloud with the admin token against the mock Google APIs -> each missing item created once (a second run changes nothing) -> setup.recordCloud stores every provision item ok",
+            "asserts": "Prepare the project (one click, one cloud-platform consent) against the mock Google APIs -> every doctor item observed and created once in order (APIs, service accounts, roles, buckets, CORS, lifecycle, secrets, budget topic, workload identity with the numeric ids of infra/project.json, App Check, crash alerts, API key) -> a second run writes nothing; the scheduler item stays pending until the deploy",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6), refined in M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
             "id": "S-A04-BAD-ORG-POLICY",
@@ -1907,6 +2055,72 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A04-BAD-SEVERAL-ACCOUNTS",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "Several open billing accounts are offered as a choice",
+            "asserts": "two open accounts -> a choice with the first preselected (one more input) -> the chosen account is linked and the budget created on it",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A04-BAD-BILLING-QUOTA",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "A billing account at its project quota is explained",
+            "asserts": "linking refused with the billing quota error -> adminSetup.billing.quota; billing stays as it was; Retry",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A04-BAD-BUDGET-EXISTS",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "An existing budget of the app is updated, not duplicated",
+            "asserts": "a budget with the app's name exists -> it is patched to the spec; the mock still lists one budget",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A04-BAD-BUDGET-PERMISSION",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "A missing billing role for the budget names the role",
+            "asserts": "billing linked but budget creation answers 403 -> apiError.cloud.permission naming roles/billing.costsManager; billing stays linked; Retry creates only the budget",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A04-BAD-PARTIAL-FAILURE",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "A provisioning item that fails does not stop the others",
+            "asserts": "Secret Manager answers 503 -> the secrets item and the roles that need the secrets show unavailable, every other item ok -> Retry what failed (one click) touches only those items and turns them ok",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
+        },
+        {
+            "id": "S-A04-BAD-TOKEN-EXPIRED-MID-RUN",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Google token that expires during provisioning resumes with one consent",
+            "asserts": "the access token expires mid-run (clock) -> the run stops with the remaining items pending and Continue -> Continue (one click, one consent) finishes without repeating done items",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
             "id": "S-A05-HAPPY",
@@ -1925,10 +2139,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A trial or demo account leads to the payment step",
-            "asserts": "a demo account: Mapbox refuses to create tokens (mock 403 on POST tokens) -> apiError.mapbox.mintRefused with the link to add a payment method; nothing stored",
+            "asserts": "a demo account: Mapbox refuses to create tokens (mock 403 on POST tokens) -> apiError.mapbox.mintRefused with the link to add a payment method; nothing stored in the city; after the owner adds a card on Mapbox's page the same token pasted again turns the card green",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
         },
         {
             "id": "S-A05-BAD-MISSING-BILLING-ADDRESS",
@@ -1949,8 +2163,8 @@
             "title": "A valid secret token is saved and public tokens are auto-minted within the input budget",
             "asserts": "valid sk -> TokenValid (sk, user) -> its scopes listed -> secret stored, tiles token minted, the viewer token (the site origin) and the admin token (web.app, firebaseapp.com) minted URL-restricted -> city mapbox.publicToken written, manifest queued -> green; input budget at most 2; the secret appears in no response, document or log line",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
         },
         {
             "id": "S-A06-BAD-MISSING-SCOPES",
@@ -2057,10 +2271,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A pending role auto-polls and flips green on approval",
-            "asserts": "permissions without download -> pending, 'Awaiting approval (24-48 h)' with the next check; ops.tick re-checks every 6 h (clock) and flips green when the mock approves",
+            "asserts": "permissions without download -> pending, apiError.usgs.accessPending with the next check; USGS approves on the mock, the check comes due (the server's clock cannot move, so setup/status.usgs.nextCheckAt does) and ops.tick, run by the e2e world, records the download role -> after a reload the card is green",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
         },
         {
             "id": "S-A07-BAD-MAINTENANCE",
@@ -2083,6 +2297,28 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A07-HAPPY-COUNTDOWN",
+            "behaviour": "A07",
+            "area": "admin",
+            "path": "happy",
+            "title": "The USGS paste box opens before the token page, with a 60-second countdown",
+            "asserts": "Open the USGS token page -> the paste box is open and focused before the ERS tab opens and a 60 s countdown runs -> pasting with the username filled saves at once (no Save click); input budget 3",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
+        },
+        {
+            "id": "S-A07-BAD-COUNTDOWN-EXPIRED",
+            "behaviour": "A07",
+            "area": "admin",
+            "path": "bad",
+            "title": "A countdown that ends with nothing pasted asks for a new token",
+            "asserts": "60 s pass (clock) with nothing pasted -> adminSetup.usgs.expired; the box stays open and the button starts again; nothing sent",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
             "id": "S-A08-HAPPY",
@@ -2730,8 +2966,8 @@
             "title": "The measurement id is detected and crash reports are listed",
             "asserts": "setup.analyticsConfig reads the mock Firebase Management web app config -> measurementId and the public app ids written to the city and the next manifest; telemetry.listGroups fills the Crash reports panel from the mock Error Reporting groups",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
         },
         {
             "id": "S-A22-BAD-ANALYTICS-NOT-ENABLED",
@@ -2765,6 +3001,39 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A22-HAPPY-STREAM-SETTING",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "happy",
+            "title": "History page views are turned off in the GA4 stream",
+            "asserts": "Turn off history page views (one click, one analytics.edit consent) -> the mock Analytics Admin stream reads pageChangesEnabled false and the card shows it checked",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
+        },
+        {
+            "id": "S-A22-BAD-NO-STREAM",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without a GA4 stream the setting explains what to enable first",
+            "asserts": "Firebase Management lists no analytics stream -> the card asks to enable Google Analytics first (deep link); nothing patched",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A22-HAPPY-CRASH-ALERTS",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "happy",
+            "title": "The crash e-mail switch turns the alert policy on and off",
+            "asserts": "switching crash e-mails off (one click, one consent) -> the mock alert policy reads enabled false; on again -> true",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
             "id": "S-A23-HAPPY",
@@ -2864,6 +3133,270 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/telemetry/report-error.test.ts."
+        },
+        {
+            "id": "S-A25-HAPPY",
+            "behaviour": "A25",
+            "area": "admin",
+            "path": "happy",
+            "title": "Before Blaze the owner signs in and sets up without any server",
+            "asserts": "the probe of admin.session gets no answer -> Sign in asks Google for read-only Cloud access with the consent note -> testIamPermissions on the mock proves ownership -> Setup in start-up mode with only the Setup destination; no Firestore, Storage or callable request after the probe",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
+        },
+        {
+            "id": "S-A25-BAD-NOT-OWNER",
+            "behaviour": "A25",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Google account that does not own the project cannot start the setup",
+            "asserts": "testIamPermissions grants nothing and Cloud Functions was never enabled -> adminShell.auth.notOwner naming the project id and Sign out; nothing else called",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A25-BAD-SERVER-DOWN",
+            "behaviour": "A25",
+            "area": "admin",
+            "path": "bad",
+            "title": "A set-up map whose server does not answer shows a retry, not the setup",
+            "asserts": "a non-owner, Cloud Functions enabled, the server not answering -> adminShell.backend.down with Try again; once the server answers Try again opens the normal sign-in flow",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A25-BAD-RELOAD-KEEPS-STEPS",
+            "behaviour": "A25",
+            "area": "admin",
+            "path": "bad",
+            "title": "A reload in start-up mode keeps the detected steps but no token",
+            "asserts": "reload after billing -> the steps show their state from sessionStorage, which holds no access token, e-mail address or secret; the next step asks Google again",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A25-BAD-PAGE-NEEDS-SERVER",
+            "behaviour": "A25",
+            "area": "admin",
+            "path": "bad",
+            "title": "A page that needs the server opens Setup in start-up mode",
+            "asserts": "the address #/photos in start-up mode -> Setup with adminShell.route.needsBackend",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A26-HAPPY",
+            "behaviour": "A26",
+            "area": "admin",
+            "path": "happy",
+            "title": "When the server appears the owner claims the map without a click",
+            "asserts": "the mock Cloud Functions list goes from none to every registry function ACTIVE and the server answers -> admin.claim with the in-memory token, no click -> ID token refreshed -> setup.createCity and setup.recordCloud with the start-up results -> normal mode with the full navigation, Setup opens at Mapbox",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
+        },
+        {
+            "id": "S-A26-BAD-PARTIAL-DEPLOY",
+            "behaviour": "A26",
+            "area": "admin",
+            "path": "bad",
+            "title": "A partial or failed deployment is shown and nothing is claimed",
+            "asserts": "some functions missing -> the ready and total counts, no claim; one FAILED function -> adminSetup.deploy.failed naming it",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A26-BAD-TOKEN-GONE",
+            "behaviour": "A26",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without a live Google token the claim costs one click",
+            "asserts": "the page was reloaded before the server appeared -> Confirm with Google (one click, one read-only consent) -> claimed; nothing claimed before the click",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A26-BAD-CLAIM-REFUSED",
+            "behaviour": "A26",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused claim is explained and leaves the account without admin rights",
+            "asserts": "admin.claim answers apiError.claim.tokenMismatch or apiError.claim.alreadyClaimed -> its message; no admins document, no claim, Retry or sign-out",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A27-HAPPY",
+            "behaviour": "A27",
+            "area": "admin",
+            "path": "happy",
+            "title": "Each step asks Google for its own scope only",
+            "asserts": "the recorded consent requests: read-only Cloud at sign-in in start-up mode, cloud-billing at billing, cloud-platform at provisioning, analytics.edit at the GA4 setting, each with the signed-in account as login hint; daily use after the setup asks for none",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A27-HAPPY-UNVERIFIED-NOTICE",
+            "behaviour": "A27",
+            "area": "admin",
+            "path": "happy",
+            "title": "Every consent explains why, for how long, and Google's unverified-app screen",
+            "asserts": "before the sign-in, billing and GA4-stream popups the panel or card shows why, that the permission stays in the tab for at most an hour, and how to continue past the unverified-app screen to the auth domain, in Romanian and English (the admin-l1440-en project)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
+        },
+        {
+            "id": "S-A27-BAD-SCOPE-DENIED",
+            "behaviour": "A27",
+            "area": "admin",
+            "path": "bad",
+            "title": "An unticked scope stops the step before any Google call",
+            "asserts": "the scope unticked on the consent page -> adminShell.oauth.scopeDenied naming the permission; no Google API called with the token; Retry asks again",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A27-BAD-POPUP-CLOSED",
+            "behaviour": "A27",
+            "area": "admin",
+            "path": "bad",
+            "title": "A cancelled consent changes nothing",
+            "asserts": "Cancel on the consent page of a setup step -> adminShell.oauth.popupClosed; the step is as before",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A27-BAD-WRONG-ACCOUNT",
+            "behaviour": "A27",
+            "area": "admin",
+            "path": "bad",
+            "title": "Choosing another Google account on the consent page is refused",
+            "asserts": "another account chosen -> adminShell.oauth.wrongAccount; the token is dropped and nothing called with it",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A27-BAD-TOKEN-NEVER-STORED",
+            "behaviour": "A27",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Google access token is never stored or sent elsewhere",
+            "asserts": "after every step no Google access token is found in localStorage, sessionStorage, IndexedDB, cookies or the address, nor in any request other than to Google and admin.claim",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A28-HAPPY",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "happy",
+            "title": "One click imports the 45 legacy photos through the photo pipeline",
+            "asserts": "Import the 45 photos (one click) -> 45 photo documents with their legacyId, each original uploaded and processed by photos.onUpload, published once processed with rightsReview kept -> the manifest lists them; input budget 1",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
+        },
+        {
+            "id": "S-A28-BAD-RERUN-IDEMPOTENT",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "bad",
+            "title": "Importing again creates nothing new",
+            "asserts": "a second import -> no new document, no new upload; the city still has 45 legacy photos",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A28-BAD-RESUME",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "bad",
+            "title": "An interrupted import finishes the missing photos only",
+            "asserts": "the page closed after some uploads -> the next import uploads only the photos without an image and finishes",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A28-BAD-PROCESSING-FAILED",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "bad",
+            "title": "A photo that fails processing is listed and the rest are imported",
+            "asserts": "one original fails processing -> listed with its apiError.photo reason; the other 44 are imported and published",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A29-HAPPY",
+            "behaviour": "A29",
+            "area": "admin",
+            "path": "happy",
+            "title": "The navigation follows the window class",
+            "asserts": "compact: navigation bar with Setup, Photos, Places, Layers and More; medium and expanded: collapsed rail; large: expanded rail; the active route is marked and survives a reload",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A29-BAD-UNKNOWN-ROUTE",
+            "behaviour": "A29",
+            "area": "admin",
+            "path": "bad",
+            "title": "An unknown address opens Setup",
+            "asserts": "an unknown or malformed hash -> Setup with adminShell.route.notFound",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A29-BAD-LANDSCAPE-PHONE",
+            "behaviour": "A29",
+            "area": "admin",
+            "path": "bad",
+            "title": "A landscape phone gets a rail instead of the bar",
+            "asserts": "915 x 412 (compact height) -> the collapsed rail instead of the bar; no floating control overlaps and none leaves the screen",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A30-HAPPY",
+            "behaviour": "A30",
+            "area": "admin",
+            "path": "happy",
+            "title": "The whole Setup Assistant takes at most ten inputs and four consents",
+            "asserts": "from sign-in to the legacy import with the mocks: at most 10 in-app inputs and 4 Google consents (setupInputBudget); the human-only work on the providers' pages is not counted",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
+        },
+        {
+            "id": "S-A30-BAD-RETRY-COSTS-ONE",
+            "behaviour": "A30",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failed step costs one more input, never a re-entry",
+            "asserts": "a provisioning item fails, then Retry -> one more input; nothing detected is asked again",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
             "id": "S-P01-HAPPY",

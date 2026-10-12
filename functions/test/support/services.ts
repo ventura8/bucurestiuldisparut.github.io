@@ -93,11 +93,17 @@ interface FakeWebApp {
     state: 'ACTIVE' | 'DELETED';
 }
 
-/** `FirebaseManagement` of a fresh project: its one active web app, Google Analytics not linked (`linkAnalytics()`). */
+/**
+ * `FirebaseManagement` of a fresh project: its one active web app, Google Analytics not linked (`linkAnalytics()`),
+ * Google sign-in with the fixture OAuth client (`analytics.signInClient`, null when not set up).
+ */
 export function createFakeFirebaseManagement() {
     const apps: FakeWebApp[] = [{ appId: String(FIXTURE_VALUES['appId']), displayName: 'historic-city-map', state: 'ACTIVE' }];
-    const analytics: { measurementId: string | undefined } = { measurementId: undefined };
-    const recorder = new PortRecorder<'listWebApps' | 'webAppConfig'>();
+    const analytics: { measurementId: string | undefined; signInClient: string | null } = {
+        measurementId: undefined,
+        signInClient: String(FIXTURE_VALUES['oauthClientId']),
+    };
+    const recorder = new PortRecorder<'listWebApps' | 'webAppConfig' | 'googleSignInClientId'>();
     const firebase: FirebaseManagement = {
         listWebApps: (projectId) =>
             promised(() => {
@@ -113,11 +119,16 @@ export function createFakeFirebaseManagement() {
                 const measurement = analytics.measurementId === undefined ? {} : { measurementId: analytics.measurementId };
                 return { projectId, appId, apiKey: String(FIXTURE_VALUES['apiKey']), ...measurement };
             }),
+        googleSignInClientId: (projectId) =>
+            promised(() => {
+                recorder.enter('googleSignInClientId', [projectId]);
+                return analytics.signInClient;
+            }),
     };
     const linkAnalytics = (measurementId = String(FIXTURE_VALUES['measurementId'])): void => {
         analytics.measurementId = measurementId;
     };
-    return { firebase, apps, linkAnalytics, recorder };
+    return { firebase, apps, linkAnalytics, analytics, recorder };
 }
 
 type ListGroupsResponse = Awaited<ReturnType<ErrorReporter['listGroups']>>;

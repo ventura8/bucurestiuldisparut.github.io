@@ -1,3 +1,5 @@
+import { upstreamHosts } from '@hcm/test-support/fakes';
+
 import { E2E_TELEMETRY_HOST, E2E_TILE_HOST } from '../fixtures/world.js';
 
 /**
@@ -5,6 +7,9 @@ import { E2E_TELEMETRY_HOST, E2E_TILE_HOST } from '../fixtures/world.js';
  *
  * - loopback (`127.0.0.1`, `localhost`): the site server and the mock APIs themselves;
  * - the mocked hosts below: every request is forwarded to the mock APIs, recorded, and answered there;
+ * - in the admin projects only, also the hosts of the fake upstreams (`upstreamHosts()` of `@hcm/test-support/fakes`:
+ *   Google Cloud's REST APIs and OAuth tokeninfo, Mapbox, USGS M2M, Nominatim; CR-M2-21), which the admin calls from
+ *   the browser (PLAN Addendum 1); a viewer page that reached one of them is still blocked;
  * - anything else (Firestore, real Google, an unknown CDN): aborted by the firewall, and the test fails.
  */
 
@@ -38,6 +43,13 @@ const SUFFIXES: readonly (readonly [string, HostKind])[] = [
 export function mockedHostKind(host: string): HostKind | null {
     const name = host.toLowerCase();
     return EXACT.get(name) ?? SUFFIXES.find(([suffix]) => name.endsWith(suffix))?.[1] ?? null;
+}
+
+const UPSTREAM_HOSTS: ReadonlySet<string> = new Set(upstreamHosts());
+
+/** True when a fake upstream answers `host` (the admin projects forward it to the mock APIs). */
+export function isUpstreamHost(host: string): boolean {
+    return UPSTREAM_HOSTS.has(host.toLowerCase());
 }
 
 export function isLoopback(host: string): boolean {

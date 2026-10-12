@@ -52,6 +52,16 @@ describe('createCloudTaskQueue', () => {
         ]);
     });
 
+    it('happyPath_unnamedTasksDropTheirIdButKeepTheDelay', async () => {
+        const tasks = client();
+        const queue = createCloudTaskQueue(tasks, 'us-central1', { named: false });
+
+        await expect(queue.enqueue('publish-buildManifest', TASK, { id: 'manifest-bucuresti-1', delaySeconds: 60 })).resolves.toBe(true);
+        await expect(queue.enqueue('publish-buildManifest', TASK, { id: 'manifest-bucuresti-1' })).resolves.toBe(true);
+
+        expect(tasks.calls.map((call) => call.options)).toEqual([{ scheduleDelaySeconds: 60 }, {}]);
+    });
+
     it('happyPath_withoutOptionsNoneAreSent', async () => {
         const tasks = client();
 

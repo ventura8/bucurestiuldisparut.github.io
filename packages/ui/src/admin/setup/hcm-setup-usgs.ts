@@ -1,0 +1,239 @@
+/**
+ * The USGS card's body (step f, `docs/research/M2b-interfaces.md` §3.3 f): the registration answers and the M2M
+ * access request to copy, the ERS username (one fill), "Open the USGS token page" (one click: the paste box is focused
+ * and the 60 s countdown starts, then the link opens ERS in a new tab), and the paste box (`type=password`): a paste
+ * with the username filled saves at once (no Save click); Enter does the same for a typed token. A countdown that ends
+ * says so and the box stays open. After saving: the role, the next check of a pending approval, the expiry reminder.
+ */
+import type { AdminSetupKey, UsgsRole } from '@hcm/shared';
+import { css, html, nothing, type TemplateResult } from 'lit';
+
+import { defineOnce } from '../../components/internal.js';
+import { defineHcmProgress } from '../../components/progress.js';
+import { visuallyHidden } from '../../components/styles.js';
+import { EMPTY } from '../shell/empty.js';
+import { SetupBody, defineSetupBodyParts } from './setup-body.js';
+import type { SetupViewState } from './setup-port.js';
+import { copyStyles, fieldStyles, setupTextStyles } from './setup-styles.js';
+import { formatDate, formatDateTime } from './setup-text.js';
+
+const HCM_SETUP_USGS_TAG = 'hcm-setup-usgs';
+
+/** ERS shows a new token for about this long (the countdown's full length). */
+const TOKEN_SECONDS = 60;
+
+/** The username (trimmed) and the expiry date the card's fields hold, from the state. */
+function typedFields(view: SetupViewState | null): { readonly username: string; readonly expiresOn: string } {
+    return view === null ? { username: '', expiresOn: '' } : { username: view.usgs.username.trim(), expiresOn: view.usgs.expiresOn };
+}
+
+export class HcmSetupUsgs extends SetupBody {
+    static override readonly properties = { ...SetupBody.properties, needsUsername: { state: true } };
+
+    static override readonly styles = [
+        setupTextStyles,
+        fieldStyles,
+        copyStyles,
+        visuallyHidden,
+        css`
+            .link-button {
+                display: inline-flex;
+                align-items: center;
+                box-sizing: border-box;
+                min-block-size: 48px;
+                padding-inline: 24px;
+                border-radius: var(--md-sys-shape-corner-full);
+                background: var(--md-sys-color-primary);
+                color: var(--md-sys-color-on-primary);
+                font-family: var(--md-sys-typescale-label-large-font);
+                font-size: var(--md-sys-typescale-label-large-size);
+                font-weight: var(--md-sys-typescale-label-large-weight);
+                text-decoration: none;
+            }
+
+            .link-button:focus-visible {
+                outline: 3px solid var(--md-sys-color-secondary);
+                outline-offset: 2px;
+            }
+
+            .countdown {
+                font-family: var(--md-sys-typescale-title-medium-font);
+                font-size: var(--md-sys-typescale-title-medium-size);
+            }
+        `,
+    ];
+
+    /** A token was pasted before the username: the hint says to fill it first. */
+    declare needsUsername: boolean;
+
+    constructor() {
+        super();
+        this.needsUsername = false;
+    }
+
+    protected override renderBody(state: SetupViewState): TemplateResult {
+        return html`<div class="body">
+            ${this.renderRequest(state)}
+            <div class="field">
+                <label for="usgs-username">${this.t('adminSetup.usgs.username')}</label>
+                <input
+                    id="usgs-username"
+                    autocomplete="username"
+                    spellcheck="false"
+                    .value=${state.usgs.username}
+                    @input=${this.onUsername}
+                    @change=${this.onFilled}
+                />
+            </div>
+            <div class="field">
+                <label for="usgs-expires">${this.t('adminSetup.usgs.expiresOn')}</label>
+                <input id="usgs-expires" type="date" .value=${state.usgs.expiresOn} @change=${this.onExpiry} />
+            </div>
+            <div class="actions">
+                <a
+                    class="link-button"
+                    href=${state.usgs.tokenPageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    @click=${this.onOpenTokenPage}
+                    >${this.t('adminSetup.usgs.openTokenPage')}<span class="visually-hidden"> ${this.t('adminSetup.newTab')}</span></a
+                >
+            </div>
+            ${this.renderTokenBox(state)} ${this.renderStatus(state)}
+        </div>`;
+    }
+
+    private renderRequest(state: SetupViewState): TemplateResult {
+        const area = state.usgs.area === null ? '' : this.t('adminSetup.usgs.area', { area: state.usgs.area });
+        const request = [this.t('adminSetup.usgs.justification'), this.t('adminSetup.usgs.datasets'), area].filter((line) => line !== '');
+        return html`<p class="note">${this.t('adminSetup.usgs.answers')}</p>
+            <div class="copy-row">
+                <span>${request.map((line) => html`<span>${line}</span>`)}</span>
+                ${this.copyButton('request', this.t('adminSetup.usgs.copyRequest'), request.join(' '))}
+            </div>`;
+    }
+
+    private renderTokenBox(state: SetupViewState): TemplateResult {
+        const { secondsLeft, expired } = state.usgs;
+        return html`<div class="field">
+            <label for="usgs-token">${this.t('adminSetup.usgs.token')}</label>
+            <input
+                id="usgs-token"
+                type="password"
+                autocomplete="off"
+                spellcheck="false"
+                aria-describedby="usgs-hint"
+                @paste=${this.onPaste}
+                @input=${this.onTokenInput}
+                @keydown=${this.onTokenKey}
+            />
+            <p id="usgs-hint" class="hint">${this.t(this.needsUsername ? 'adminSetup.usgs.needsUsername' : 'adminSetup.usgs.pasteHint')}</p>
+            ${secondsLeft === null ? nothing : this.renderCountdown(secondsLeft)}
+            <div role="alert">${expired ? html`<p class="alert">${this.t('adminSetup.usgs.expired')}</p>` : nothing}</div>
+        </div>`;
+    }
+
+    private renderCountdown(secondsLeft: number): TemplateResult {
+        const text = this.t('adminSetup.usgs.countdown', { seconds: String(secondsLeft) });
+        return html`<p class="countdown" role="timer">${text}</p>
+            <hcm-progress .value=${secondsLeft / TOKEN_SECONDS} label=${text}></hcm-progress>`;
+    }
+
+    private renderStatus(state: SetupViewState): TemplateResult {
+        const { role, nextCheckAt, expiresSoon, tokenExpiresAt } = state.usgs;
+        return html`${this.renderRole(role)}
+        ${nextCheckAt === null ? nothing : html`<p class="note">${this.t('adminSetup.usgs.nextCheck', { time: formatDateTime(this.locale, nextCheckAt) })}</p>`}
+        ${expiresSoon && tokenExpiresAt !== null ? this.renderExpiry(tokenExpiresAt) : nothing}`;
+    }
+
+    private renderRole(role: UsgsRole | null): TemplateResult {
+        if (role === null) {
+            return EMPTY;
+        }
+        const key: AdminSetupKey = `adminSetup.usgs.role.${role}`;
+        return html`<p class="role">${this.t(key)}</p>`;
+    }
+
+    private renderExpiry(tokenExpiresAt: string): TemplateResult {
+        return html`<p class="alert expiring">
+            ${this.t('adminSetup.usgs.expiresSoon', { date: formatDate(this.locale, tokenExpiresAt) })}
+        </p>`;
+    }
+
+    private readonly onUsername = (event: Event): void => {
+        const username = (event.target as HTMLInputElement).value;
+        this.needsUsername = false;
+        this.act((intents) => {
+            intents.draftUsgs({ username });
+        });
+    };
+
+    private readonly onFilled = (): void => {
+        this.act((intents) => {
+            intents.noteInput('usgs');
+        });
+    };
+
+    private readonly onExpiry = (event: Event): void => {
+        const expiresOn = (event.target as HTMLInputElement).value;
+        this.act((intents) => {
+            intents.draftUsgs({ expiresOn });
+        });
+        this.onFilled();
+    };
+
+    /** The paste box first, then the countdown; the link's own default action then opens ERS in a new tab. */
+    private readonly onOpenTokenPage = (): void => {
+        this.renderRoot.querySelector<HTMLInputElement>('#usgs-token')?.focus();
+        this.act((intents) => {
+            intents.startUsgsCountdown();
+        });
+    };
+
+    private readonly onPaste = (): void => {
+        this.onFilled();
+    };
+
+    private readonly onTokenInput = (event: Event): void => {
+        if ((event as InputEvent).inputType === 'insertFromPaste') {
+            this.submit(event.target as HTMLInputElement);
+        }
+    };
+
+    private readonly onTokenKey = (event: KeyboardEvent): void => {
+        if (event.key === 'Enter') {
+            this.submit(event.target as HTMLInputElement);
+        }
+    };
+
+    /** Saves the token in the box with the username (and the optional expiry), then clears the box. */
+    private submit(box: HTMLInputElement): void {
+        const applicationToken = box.value.trim();
+        const { username, expiresOn } = typedFields(this.view);
+        if (applicationToken === '') {
+            return;
+        }
+        if (username === '') {
+            this.needsUsername = true;
+            return;
+        }
+        box.value = '';
+        const request = { username, applicationToken, ...(expiresOn === '' ? {} : { expiresOn }) };
+        this.act((intents) => {
+            intents.saveUsgs(request);
+        });
+    }
+}
+
+/** Registers `<hcm-setup-usgs>` and what it renders. */
+export function defineHcmSetupUsgs(registry: CustomElementRegistry = customElements): void {
+    defineSetupBodyParts(registry);
+    defineHcmProgress(registry);
+    defineOnce(registry, HCM_SETUP_USGS_TAG, HcmSetupUsgs);
+}
+
+declare global {
+    interface HTMLElementTagNameMap {
+        'hcm-setup-usgs': HcmSetupUsgs;
+    }
+}

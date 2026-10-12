@@ -3,7 +3,7 @@ import { FIXTURE_VALUES } from '@hcm/test-support/api-fixtures';
 import { createFakeFetch, createUpstreamFakes, jsonResponse, route, routeTable } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
-import { FIREBASE_MANAGEMENT_API, createFirebaseManagement } from '../../src/adapters/firebase-management.js';
+import { FIREBASE_MANAGEMENT_API, IDENTITY_TOOLKIT_API, createFirebaseManagement } from '../../src/adapters/firebase-management.js';
 import { UpstreamError } from '../../src/ports/errors.js';
 
 const TOKEN = 'e2e-service-account-token';
@@ -115,5 +115,50 @@ describe('webAppConfig', () => {
 
     it('badPath_anUnknownAppIsNotFound', async () => {
         await expect(world().firebase.webAppConfig('demo-hcm', '1:1:web:gone')).rejects.toMatchObject({ failure: 'notFound' });
+    });
+});
+
+describe('googleSignInClientId', () => {
+    const IDP = `${IDENTITY_TOOLKIT_API}/projects/{project}/defaultSupportedIdpConfigs/google.com`;
+
+    it('happyPath_readsTheGoogleProvidersClientOncePerInstance', async () => {
+        const { upstream, firebase } = world();
+
+        await expect(firebase.googleSignInClientId('demo-hcm')).resolves.toBe(String(FIXTURE_VALUES['oauthClientId']));
+        await expect(firebase.googleSignInClientId('demo-hcm')).resolves.toBe(String(FIXTURE_VALUES['oauthClientId']));
+
+        expect(upstream.calls.filter((call) => call.operation === 'firebase-management.googleIdpConfig')).toHaveLength(1);
+        expect(upstream.calls[0]).toMatchObject({ headers: { authorization: `Bearer ${TOKEN}` } });
+    });
+
+    it('badPath_withoutGoogleSignInThereIsNoClient', async () => {
+        const { upstream, firebase } = world();
+        upstream.scenario('firebase-management.googleSignInOff');
+
+        await expect(firebase.googleSignInClientId('demo-hcm')).resolves.toBeNull();
+    });
+
+    it('badPath_aProviderWithoutAClientIdHasNone', async () => {
+        const upstream = createFakeFetch(routeTable([route('GET', IDP, 'idp', () => jsonResponse({ enabled: true }))]));
+
+        await expect(createFirebaseManagement({ tokens, fetch: upstream.fetch }).googleSignInClientId('demo-hcm')).resolves.toBeNull();
+    });
+
+    it('badPath_aFailedReadIsForgottenSoTheNextCallTriesAgain', async () => {
+        let calls = 0;
+        const upstream = createFakeFetch(
+            routeTable([
+                route('GET', IDP, 'idp', () => {
+                    calls += 1;
+                    return calls === 1
+                        ? jsonResponse({ error: { code: 503, status: 'UNAVAILABLE' } }, 503)
+                        : jsonResponse({ clientId: 'c-2' });
+                }),
+            ]),
+        );
+        const firebase = createFirebaseManagement({ tokens, fetch: upstream.fetch });
+
+        await expect(firebase.googleSignInClientId('demo-hcm')).rejects.toBeInstanceOf(UpstreamError);
+        await expect(firebase.googleSignInClientId('demo-hcm')).resolves.toBe('c-2');
     });
 });

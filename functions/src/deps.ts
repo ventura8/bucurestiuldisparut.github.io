@@ -1,5 +1,5 @@
 import { createLogger, type Logger } from '@hcm/shared';
-import { initializeApp, type App } from 'firebase-admin/app';
+import { initializeApp, type App, type AppOptions } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getFunctions } from 'firebase-admin/functions';
@@ -130,9 +130,13 @@ interface SecretContext {
     readonly setup: SetupRecords;
 }
 
-/** In the Functions emulator secrets stay in memory, so no local run can reach the real Secret Manager. */
+/**
+ * No local run can reach the real Secret Manager: in the Functions emulator the secrets live in the fake Secret Manager
+ * of the fake upstreams (`HCM_UPSTREAM_BASE`), which every function's worker process shares (the e2e admin tier saves a
+ * token with one function and reads it with another), or in memory when no fakes are configured.
+ */
 function secretStoreOf(env: Env, context: SecretContext): SecretStore {
-    if (env['FUNCTIONS_EMULATOR'] === 'true') {
+    if (env['FUNCTIONS_EMULATOR'] === 'true' && env['HCM_UPSTREAM_BASE'] === undefined) {
         return createMemorySecretStore();
     }
     return createSecretManagerStore({
@@ -163,7 +167,7 @@ export function createDeps(env: Env, app: App): Deps {
         iam: createGoogleIam({ fetch: upstream.fetch }),
         firebase: createFirebaseManagement(upstream),
         errors: createErrorReporter({ projectId: config.projectId, tokens: upstream.tokens, fetch: upstream.fetch, write }),
-        tasks: createCloudTaskQueue(getFunctions(app), config.region),
+        tasks: createCloudTaskQueue(getFunctions(app), config.region, { named: env['FUNCTIONS_EMULATOR'] !== 'true' }),
         blobs: createStorageBlobStore(getStorage(app), config.buckets),
         images: createSharpImageProcessor(),
         mapbox: createMapboxApi({ fetch: upstream.fetch }),
@@ -173,10 +177,22 @@ export function createDeps(env: Env, app: App): Deps {
     };
 }
 
+/**
+ * The Admin SDK's options. In the Functions emulator the task queue's service account is named, because the SDK would
+ * otherwise ask the metadata server, which does not exist locally, and wait for its timeout on every enqueue (14 s per
+ * manifest request in the e2e admin tier); the Cloud Tasks emulator ignores the account. Deployed, the runtime's own
+ * account comes from the metadata server.
+ */
+export function appOptions(env: Env): AppOptions | undefined {
+    return env['FUNCTIONS_EMULATOR'] === 'true'
+        ? { serviceAccountId: `fn-events@${requireProjectId(env)}.iam.gserviceaccount.com` }
+        : undefined;
+}
+
 let deps: Deps | undefined;
 
 /** The instance-wide dependencies, created by the first call that needs them (not at cold start). */
 export function getDeps(): Deps {
-    deps ??= createDeps(process.env, initializeApp());
+    deps ??= createDeps(process.env, initializeApp(appOptions(process.env)));
     return deps;
 }

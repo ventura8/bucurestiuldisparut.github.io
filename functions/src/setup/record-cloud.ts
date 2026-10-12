@@ -1,4 +1,11 @@
-import { PROVISION_ITEMS, timestampFromDate, type CallableRequest, type CallableResponse, type ServiceState } from '@hcm/shared';
+import {
+    PROVISION_ITEMS,
+    timestampFromDate,
+    type CallableRequest,
+    type CallableResponse,
+    type ProvisionItem,
+    type ServiceState,
+} from '@hcm/shared';
 
 import type { VerifiedCaller } from '../api/access.js';
 import type { Ports } from '../ports/index.js';
@@ -21,6 +28,14 @@ function worstState(states: readonly ServiceState[]): ServiceState {
     return states.reduce<ServiceState>((worst, state) => (SEVERITY.indexOf(state) < SEVERITY.indexOf(worst) ? state : worst), 'ok');
 }
 
+/** The item whose resource only the first deploy creates (`ops.tick`'s Cloud Scheduler job). */
+const AFTER_DEPLOY_ITEM: ProvisionItem = 'scheduler';
+
+/** An item's weight in the area's state: a scheduler still waiting for the first deploy counts as done. */
+function itemState(id: ProvisionItem, state: ServiceState): ServiceState {
+    return id === AFTER_DEPLOY_ITEM && state === 'pending' ? 'ok' : state;
+}
+
 /** The reported items (the last report of an id wins) replace the stored ones with the same id; the others stay. */
 function mergeItems(
     stored: readonly ProvisionItemRecord[],
@@ -38,8 +53,9 @@ function provisionRecord(
     checkedAt: Timestamp,
 ): ProvisionRecord {
     const items = mergeItems(current?.items ?? [], reported, checkedAt);
-    // An item never reported counts as `missing`, so the area is `ok` only once every item is.
-    const states = PROVISION_ITEMS.map((id) => items.find((item) => item.id === id)?.state ?? 'missing');
+    // An item never reported counts as `missing`, so the area is `ok` only once every item is; the scheduler's job is
+    // created by the first deploy, so its `pending` (waiting for that deploy) does not hold the area back (CR-M2b-21 b).
+    const states = PROVISION_ITEMS.map((id) => itemState(id, items.find((item) => item.id === id)?.state ?? 'missing'));
     return { state: worstState(states), checkedAt, items };
 }
 

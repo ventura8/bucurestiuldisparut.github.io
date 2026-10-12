@@ -201,6 +201,48 @@ describe('processPhotoUpload: refused', () => {
     });
 });
 
+describe("processPhotoUpload: the old site's photos", () => {
+    it('happyPath_twoLegacyPhotosOfOneImageAreBothProcessed', async () => {
+        const deps = contentDeps(NOW);
+        const bytes = await jpeg(24, 24);
+        const hash = sha(bytes);
+        const original = {
+            path: STORAGE_PATHS.photoOriginal(CITY, 'left', hash, 'image/jpeg'),
+            contentType: 'image/jpeg' as const,
+            bytes: 1,
+            sha256: hash,
+        };
+        await seedPhoto(deps, 'left', { processing: 'done', legacyId: 'legacy-left', original });
+        await seedPhoto(deps, 'right', { legacyId: 'legacy-right' });
+
+        await processPhotoUpload(deps, uploaded(deps, 'right', bytes));
+
+        expect(await photo(deps, 'right')).toMatchObject({ processing: 'done', original: { sha256: hash } });
+    });
+
+    it('badPath_aNewPhotoOfALegacyImageIsStillADuplicate', async () => {
+        const deps = contentDeps(NOW);
+        const bytes = await jpeg(24, 24);
+        const hash = sha(bytes);
+        const original = {
+            path: STORAGE_PATHS.photoOriginal(CITY, 'left', hash, 'image/jpeg'),
+            contentType: 'image/jpeg' as const,
+            bytes: 1,
+            sha256: hash,
+        };
+        await seedPhoto(deps, 'left', { processing: 'done', legacyId: 'legacy-left', original });
+        await seedPhoto(deps, 'p1');
+
+        await processPhotoUpload(deps, uploaded(deps, 'p1', bytes));
+
+        expect(await photo(deps, 'p1')).toMatchObject({
+            processing: 'failed',
+            processingError: 'apiError.photo.duplicate',
+            duplicateOf: 'left',
+        });
+    });
+});
+
 describe('processPhotoUpload: failures that are not the file', () => {
     it('badPath_anUnavailableBucketIsRetryableAndKeepsTheUpload @S-A08-BAD-STORAGE-DOWN', async () => {
         const deps = contentDeps(NOW);

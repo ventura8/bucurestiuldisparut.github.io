@@ -31,7 +31,9 @@ Security rules for the viewer, the admin and every page they load. Background an
 
 - Mapbox **public** tokens only, URL-restricted to their origin (viewer `https://ventura8.github.io`; admin `<proj>.web.app` and `<proj>.firebaseapp.com`), scopes `styles:read styles:tiles fonts:read`. Never `no-referrer` or `same-origin` referrer policies (the restriction needs the origin).
 - Secret tokens (Mapbox `sk`, USGS app token) never live in the browser beyond the paste box: they go straight to a `setup.*` callable and Secret Manager.
-- The Firebase web config is never committed; the admin reads `/__/firebase/init.json` on Hosting.
+- Google OAuth access tokens (the admin's bootstrap and provisioning steps, `docs/research/M2b-interfaces.md` §2) live in memory only, for at most an hour: never in Firestore, web storage, IndexedDB, a cookie, a URL, a log line or an error report (`redactText` strips `ya29.`); the only places they travel are Google's APIs and, once, `admin.claim`. No refresh token exists in the browser.
+- The Firebase web config is never committed; the admin reads `/__/firebase/init.json` on Hosting, and `/project.json` (a copy of the public `infra/project.json`, written by the admin's site build) names the only project its provisioner may touch.
+- The admin's CSP is defined in TypeScript (`scripts/site/src/admin/csp.ts`) and `scripts/site/test/admin-csp.test.ts` keeps `firebase.json`'s header equal to it; the e2e admin server sends the same policy minus `upgrade-insecure-requests`, plus the emulators' and mock APIs' origins, and a test proves those are the only differences. The page has no meta CSP and no inline code.
 - App Check (reCAPTCHA Enterprise) protects Firestore and callables in the admin; the public viewer needs none (no Firebase SDK for data).
 
 ## Consent and privacy

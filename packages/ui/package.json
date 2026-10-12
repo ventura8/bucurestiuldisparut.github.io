@@ -11,6 +11,10 @@
             "types": "./src/index.ts",
             "default": "./src/index.ts"
         },
+        "./admin": {
+            "types": "./src/admin/index.ts",
+            "default": "./src/admin/index.ts"
+        },
         "./dynamic-color": {
             "types": "./src/theme/dynamic-color.ts",
             "default": "./src/theme/dynamic-color.ts"

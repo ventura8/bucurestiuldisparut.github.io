@@ -33,6 +33,8 @@ import { revertRequestSchema, revertResponseSchema } from './history.js';
 import {
     analyticsConfigRequestSchema,
     analyticsConfigResponseSchema,
+    createCityRequestSchema,
+    createCityResponseSchema,
     recordCloudRequestSchema,
     recordCloudResponseSchema,
     rotatePublicTokenRequestSchema,
@@ -113,6 +115,7 @@ export const CALLABLES = {
     'setup.status': adminCallable('fn-setup', statusRequestSchema, setupStatusViewSchema),
     'setup.selfTest': adminCallable('fn-setup', selfTestRequestSchema, selfTestResponseSchema),
     'setup.recordCloud': adminCallable('fn-setup', recordCloudRequestSchema, recordCloudResponseSchema),
+    'setup.createCity': adminCallable('fn-setup', createCityRequestSchema, createCityResponseSchema),
     'setup.saveMapbox': adminCallable('fn-setup', saveMapboxRequestSchema, saveMapboxResponseSchema, 'consume'),
     'setup.saveUsgs': adminCallable('fn-setup', saveUsgsRequestSchema, saveUsgsResponseSchema, 'consume'),
     'setup.rotatePublicToken': adminCallable('fn-setup', rotatePublicTokenRequestSchema, rotatePublicTokenResponseSchema, 'consume'),

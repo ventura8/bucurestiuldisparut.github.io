@@ -38,5 +38,15 @@
     "sourceId": "e2e-1966-source",
     "jobId": "cle2e00job0000000000000001",
     "styleId": "cle2e00style000000000000001",
-    "usgsApiKey": "e2e-usgs-api-key-0001"
+    "usgsApiKey": "e2e-usgs-api-key-0001",
+    "functionId": "admin-session",
+    "functionState": "ACTIVE",
+    "topic": "budget",
+    "constraint": "iam.allowedPolicyMemberDomains",
+    "siteKey": "6Le2e0000000000000000000000000000000site",
+    "channelId": "10000000000000000001",
+    "alertPolicyId": "20000000000000000001",
+    "keyId": "0e2e0000-0000-4000-8000-0000000000a1",
+    "streamId": "500000001",
+    "serviceAgent": "firebasestorage"
 }

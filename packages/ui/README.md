@@ -3,7 +3,29 @@
 The component kit shared by the viewer engine and the admin: Lit 3 custom elements without decorators, `hcm-` tags,
 Material 3 with the M3 Expressive update, adaptive to the box it is given. The contract (tags, properties, events,
 slots) is `docs/research/M1-interfaces.md` §5.1; the additions made while building it are change request CR-12 there.
-The viewer's own elements live in `src/viewer/` (engine-ui workstream) and are not described here.
+The viewer's own elements live in `src/viewer/` (engine-ui workstream) and are not described here; the admin's live in
+`src/admin/` behind their own entry, described in *The admin's elements* below.
+
+## The admin's elements
+
+`@hcm/ui/admin` (`src/admin/index.ts`, M2b): imported only by `@hcm/admin`, never by the engine, so the viewer's bundle
+carries no admin element or text. `defineAdminElements()` registers them; `defineSetupElements()` the Setup pages.
+
+- **Shell** (`src/admin/shell/`): `hcm-admin-shell` (layout per window class through `shellLayout`: a navigation bar on
+  compact windows, a rail from medium, the expanded rail from large, a rail with the account button at its foot and no
+  top bar on a landscape phone; the start-up banner; the snackbar fixed above the bar; the city's theme), `hcm-admin-nav`
+  (bar, rail and expanded rail from one list), `hcm-account-menu` (language, theme, analytics consent, sign out),
+  `hcm-page-outlet` (the route's page, loaded lazily by the app), `hcm-admins-page` (`#/admins`).
+- **Auth panels** (`src/admin/auth/`): `hcm-sign-in`, `hcm-claim-panel`, `hcm-join-panel`, `hcm-blocked-panel` and
+  `hcm-consent-note` (the inline note before a Google popup: why, for at most an hour, Google's unverified-app screen).
+- **Setup** (`src/admin/setup/`): `hcm-setup-page` (progress ring; one column below 840 px, list and detail from there;
+  it follows only its width class and applies a change on the next animation frame), `hcm-setup-step` (one card: status
+  chip, why and cost, deep links, the consent note while the card's next action opens a popup, the body slot, Check
+  again; modes `inline`, `summary`, `detail`; the input counters as `data-*` attributes), one body per step
+  (`hcm-setup-billing`, `-provision`, `-deploy`, `-mapbox`, `-usgs` with the countdown, `-analytics`, `-import`),
+  `hcm-crash-groups` and `hcm-crashes-page`.
+- **Ports**: the elements never import `@hcm/admin` (layering); they read structural ports, `src/admin/admin-port.ts` and
+  `src/admin/setup/setup-port.ts`, which `packages/admin/test/app/admin-port.test.ts` checks against the real app.
 
 ## Elements
 
@@ -86,4 +108,6 @@ box), re-renders on a class change and reflects `window-class` and `height-class
 Vitest browser mode (Chromium), one file per element under `test/components/`: roles and names through `page.getByRole`,
 real key presses and clicks through `userEvent`, synthetic pointer events for drags, fake timers for the snackbar, and
 `axeViolations` from `@hcm/test-support/axe` (WCAG 2.2 AA rules) on every element. `test/helpers.ts` renders into a host
-themed with the baseline theme and the real fonts.
+themed with the baseline theme and the real fonts. The admin's elements are tested the same way under `test/admin/`,
+over a fake app (`test/admin/shell/fake-app.ts`) and a recording Setup port (`test/admin/setup/fixtures.ts`, whose
+`draftUsgs` also updates the state, as the controller does), in both languages.

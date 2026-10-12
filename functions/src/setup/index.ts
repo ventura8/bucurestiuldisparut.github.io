@@ -2,6 +2,7 @@ import '../global-options.js';
 
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { analyticsConfig, type AnalyticsConfigDeps } from './analytics-config.js';
+import { createCity, type CreateCityDeps } from './create-city.js';
 import { recordCloud, type RecordCloudDeps } from './record-cloud.js';
 import { rotatePublicToken, type RotatePublicTokenDeps } from './rotate-public-token.js';
 import { saveMapbox, type SaveMapboxDeps } from './save-mapbox.js';
@@ -15,6 +16,7 @@ export type SetupDeps = CallableDeps &
     StatusDeps &
     SelfTestDeps &
     RecordCloudDeps &
+    CreateCityDeps &
     SaveMapboxDeps &
     SaveUsgsDeps &
     RotatePublicTokenDeps &
@@ -31,6 +33,7 @@ export function defineSetupFunctions(getDeps: () => SetupDeps) {
         status: defineCallable('setup.status', setupStatus, getDeps),
         selfTest: defineCallable('setup.selfTest', selfTest, getDeps),
         recordCloud: defineCallable('setup.recordCloud', recordCloud, getDeps),
+        createCity: defineCallable('setup.createCity', createCity, getDeps),
         saveMapbox: defineCallable('setup.saveMapbox', saveMapbox, getDeps),
         saveUsgs: defineCallable('setup.saveUsgs', saveUsgs, getDeps),
         rotatePublicToken: defineCallable('setup.rotatePublicToken', rotatePublicToken, getDeps),

@@ -59,6 +59,8 @@ export {
     analyticsConfigRequestSchema,
     analyticsConfigResponseSchema,
     classifyMapboxToken,
+    createCityRequestSchema,
+    createCityResponseSchema,
     missingScopes,
     recordCloudRequestSchema,
     recordCloudResponseSchema,

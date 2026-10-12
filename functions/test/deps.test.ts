@@ -3,7 +3,7 @@ import { write } from 'firebase-functions/logger';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { systemClock } from '../src/adapters/system-clock.js';
-import { createDeps, getDeps, privateBucket, runtimeConfig } from '../src/deps.js';
+import { appOptions, createDeps, getDeps, privateBucket, runtimeConfig } from '../src/deps.js';
 import { UpstreamError } from '../src/ports/errors.js';
 
 // Application Default Credentials and Cloud Logging are outside boundaries: stand-ins only.
@@ -115,7 +115,19 @@ describe('createDeps', () => {
         expect(deps.config.projectId).toBe('demo-hcm');
     });
 
-    it('happyPath_theEmulatorKeepsSecretsInMemory', async () => {
+    it('happyPath_theEmulatorWithTheFakesKeepsSecretsInTheFakeSecretManager', async () => {
+        const fetch = answering(200, { payload: { data: Buffer.from('emulator-usgs-token').toString('base64') } });
+        vi.stubGlobal('fetch', fetch);
+        const deps = createDeps({ ...EMULATOR, HCM_UPSTREAM_BASE: FAKES }, app);
+
+        await expect(deps.secrets.read('usgs-app-token')).resolves.toBe('emulator-usgs-token');
+        expect(fetch).toHaveBeenCalledWith(
+            `${FAKES}/h/secretmanager.googleapis.com/v1/projects/demo-hcm/secrets/usgs-app-token/versions/latest:access`,
+            expect.objectContaining({ method: 'GET' }),
+        );
+    });
+
+    it('happyPath_theEmulatorWithoutTheFakesKeepsSecretsInMemory', async () => {
         const fetch = vi.fn();
         vi.stubGlobal('fetch', fetch);
         const deps = createDeps(EMULATOR, app);
@@ -180,6 +192,16 @@ describe('createDeps', () => {
             scope: 'functions',
             token: '[redacted]',
         });
+    });
+});
+
+describe('appOptions', () => {
+    it('happyPath_theEmulatorNamesTheTaskQueuesAccountSoNoMetadataServerIsAsked', () => {
+        expect(appOptions(EMULATOR)).toEqual({ serviceAccountId: 'fn-events@demo-hcm.iam.gserviceaccount.com' });
+    });
+
+    it('badPath_deployedTheRuntimesOwnAccountIsUsed', () => {
+        expect(appOptions(PROJECT)).toBeUndefined();
     });
 });
 

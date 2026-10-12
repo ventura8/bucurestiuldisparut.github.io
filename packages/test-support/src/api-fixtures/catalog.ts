@@ -1,5 +1,10 @@
 // The fixture catalogue: one import per JSON file of this folder (`happyPath_theCatalogueListsEveryFixtureFile` in
 // functions/test/support/api-fixtures.test.ts keeps it complete). Add a file, add its import and its RAW_FIXTURES entry here.
+import analyticsAdminEnhancedMeasurementSettingsGet from './analytics-admin/enhanced-measurement-settings.get.json' with { type: 'json' };
+import apiKeysKeyStringGet from './api-keys/key-string.get.json' with { type: 'json' };
+import apiKeysKeyGet from './api-keys/key.get.json' with { type: 'json' };
+import apiKeysOperationDone from './api-keys/operation.done.json' with { type: 'json' };
+import appCheckRecaptchaEnterpriseConfigGet from './app-check/recaptcha-enterprise-config.get.json' with { type: 'json' };
 import billingBudgetsCreateOk from './billing-budgets/create.ok.json' with { type: 'json' };
 import billingBudgetsListNone from './billing-budgets/list.none.json' with { type: 'json' };
 import billingBudgetsListOne from './billing-budgets/list.one.json' with { type: 'json' };
@@ -8,6 +13,8 @@ import cloudBillingBillingAccountsOneOpen from './cloud-billing/billing-accounts
 import cloudBillingBillingInfoDisabled from './cloud-billing/billing-info.disabled.json' with { type: 'json' };
 import cloudBillingBillingInfoEnabled from './cloud-billing/billing-info.enabled.json' with { type: 'json' };
 import cloudBillingBillingInfoForbidden from './cloud-billing/billing-info.forbidden.json' with { type: 'json' };
+import cloudBillingBillingInfoQuotaExceeded from './cloud-billing/billing-info.quota-exceeded.json' with { type: 'json' };
+import cloudFunctionsFunctionGet from './cloud-functions/function.get.json' with { type: 'json' };
 import cloudRunExecutionCancelOperation from './cloud-run/execution.cancel.operation.json' with { type: 'json' };
 import cloudRunExecutionCancelled from './cloud-run/execution.cancelled.json' with { type: 'json' };
 import cloudRunExecutionFailed from './cloud-run/execution.failed.json' with { type: 'json' };
@@ -15,12 +22,14 @@ import cloudRunExecutionRunning from './cloud-run/execution.running.json' with {
 import cloudRunExecutionSucceeded from './cloud-run/execution.succeeded.json' with { type: 'json' };
 import cloudRunJobNotFound from './cloud-run/job.not-found.json' with { type: 'json' };
 import cloudRunJobsRunOperation from './cloud-run/jobs.run.operation.json' with { type: 'json' };
+import cloudSchedulerJobGet from './cloud-scheduler/job.get.json' with { type: 'json' };
 import cloudStorageBucketIamOk from './cloud-storage/bucket-iam.ok.json' with { type: 'json' };
 import cloudStorageBucketIamPublicAccessPrevented from './cloud-storage/bucket-iam.public-access-prevented.json' with { type: 'json' };
 import cloudStorageBucketCreated from './cloud-storage/bucket.created.json' with { type: 'json' };
 import cloudStorageBucketExists from './cloud-storage/bucket.exists.json' with { type: 'json' };
 import cloudStorageBucketGet from './cloud-storage/bucket.get.json' with { type: 'json' };
 import cloudStorageBucketNotFound from './cloud-storage/bucket.not-found.json' with { type: 'json' };
+import cloudStorageStorageAgentGet from './cloud-storage/storage-agent.get.json' with { type: 'json' };
 import cloudTasksQueueCreated from './cloud-tasks/queue.created.json' with { type: 'json' };
 import cloudTasksQueueGet from './cloud-tasks/queue.get.json' with { type: 'json' };
 import cloudTasksQueueNotFound from './cloud-tasks/queue.not-found.json' with { type: 'json' };
@@ -31,11 +40,14 @@ import errorReportingGroupStatsTwoGroups from './error-reporting/group-stats.two
 import firebaseManagementAddGoogleAnalyticsOperation from './firebase-management/add-google-analytics.operation.json' with { type: 'json' };
 import firebaseManagementAnalyticsDetailsLinked from './firebase-management/analytics-details.linked.json' with { type: 'json' };
 import firebaseManagementAnalyticsDetailsNotLinked from './firebase-management/analytics-details.not-linked.json' with { type: 'json' };
+import firebaseManagementGoogleIdpConfigGet from './firebase-management/google-idp-config.get.json' with { type: 'json' };
 import firebaseManagementOperationDone from './firebase-management/operation.done.json' with { type: 'json' };
 import firebaseManagementWebAppConfigAnalytics from './firebase-management/web-app-config.analytics.json' with { type: 'json' };
 import firebaseManagementWebAppConfigNoAnalytics from './firebase-management/web-app-config.no-analytics.json' with { type: 'json' };
 import firebaseManagementWebAppsNone from './firebase-management/web-apps.none.json' with { type: 'json' };
 import firebaseManagementWebAppsOneActive from './firebase-management/web-apps.one-active.json' with { type: 'json' };
+import firebaseStorageDefaultBucketBillingRequired from './firebase-storage/default-bucket.billing-required.json' with { type: 'json' };
+import firebaseStorageDefaultBucketGet from './firebase-storage/default-bucket.get.json' with { type: 'json' };
 import googleOauthTokeninfoExpired from './google-oauth/tokeninfo.expired.json' with { type: 'json' };
 import googleOauthTokeninfoMissingScope from './google-oauth/tokeninfo.missing-scope.json' with { type: 'json' };
 import googleOauthTokeninfoOtherAccount from './google-oauth/tokeninfo.other-account.json' with { type: 'json' };
@@ -91,12 +103,20 @@ import mapboxTokensRetrieveInvalid from './mapbox/tokens.retrieve.invalid.json' 
 import mapboxTokensRetrievePublic from './mapbox/tokens.retrieve.public.json' with { type: 'json' };
 import mapboxTokensRetrieveSecret from './mapbox/tokens.retrieve.secret.json' with { type: 'json' };
 import mapboxTokensUpdateOk from './mapbox/tokens.update.ok.json' with { type: 'json' };
+import monitoringAlertPolicyGet from './monitoring/alert-policy.get.json' with { type: 'json' };
+import monitoringNotificationChannelGet from './monitoring/notification-channel.get.json' with { type: 'json' };
 import nominatimErrorRateLimited from './nominatim/error.rate-limited.json' with { type: 'json' };
 import nominatimErrorUnavailable from './nominatim/error.unavailable.json' with { type: 'json' };
 import nominatimReverseOk from './nominatim/reverse.ok.json' with { type: 'json' };
 import nominatimReverseUnable from './nominatim/reverse.unable.json' with { type: 'json' };
+import orgPolicyEffectivePolicyBooleanEnforced from './org-policy/effective-policy.boolean-enforced.json' with { type: 'json' };
+import orgPolicyEffectivePolicyListRestricted from './org-policy/effective-policy.list-restricted.json' with { type: 'json' };
+import orgPolicyEffectivePolicyNotEnforced from './org-policy/effective-policy.not-enforced.json' with { type: 'json' };
+import pubsubTopicGet from './pubsub/topic.get.json' with { type: 'json' };
+import recaptchaEnterpriseKeyGet from './recaptcha-enterprise/key.get.json' with { type: 'json' };
 import resourceManagerGetIamPolicyOk from './resource-manager/get-iam-policy.ok.json' with { type: 'json' };
 import resourceManagerProjectGet from './resource-manager/project.get.json' with { type: 'json' };
+import resourceManagerProjectGetNoOrganization from './resource-manager/project.get.no-organization.json' with { type: 'json' };
 import resourceManagerSetIamPolicyOk from './resource-manager/set-iam-policy.ok.json' with { type: 'json' };
 import resourceManagerSetIamPolicyOrgPolicy from './resource-manager/set-iam-policy.org-policy.json' with { type: 'json' };
 import resourceManagerTestIamPermissionsEmpty from './resource-manager/test-iam-permissions.empty.json' with { type: 'json' };
@@ -113,6 +133,7 @@ import secretManagerVersionsList from './secret-manager/versions.list.json' with
 import serviceUsageBatchEnableOperation from './service-usage/batch-enable.operation.json' with { type: 'json' };
 import serviceUsageEnableBillingRequired from './service-usage/enable.billing-required.json' with { type: 'json' };
 import serviceUsageEnableOperation from './service-usage/enable.operation.json' with { type: 'json' };
+import serviceUsageGenerateServiceIdentityOperation from './service-usage/generate-service-identity.operation.json' with { type: 'json' };
 import serviceUsageOperationDone from './service-usage/operation.done.json' with { type: 'json' };
 import serviceUsageServiceDisabled from './service-usage/service.disabled.json' with { type: 'json' };
 import serviceUsageServiceEnabled from './service-usage/service.enabled.json' with { type: 'json' };
@@ -142,6 +163,11 @@ function catalogue<Name extends string>(entries: Readonly<Record<Name, unknown>>
 
 /** Fixture name (`<service>/<operation>.<outcome>`, the file path without `.json`) → the raw JSON envelope. */
 export const RAW_FIXTURES = catalogue({
+    'analytics-admin/enhanced-measurement-settings.get': analyticsAdminEnhancedMeasurementSettingsGet,
+    'api-keys/key-string.get': apiKeysKeyStringGet,
+    'api-keys/key.get': apiKeysKeyGet,
+    'api-keys/operation.done': apiKeysOperationDone,
+    'app-check/recaptcha-enterprise-config.get': appCheckRecaptchaEnterpriseConfigGet,
     'billing-budgets/create.ok': billingBudgetsCreateOk,
     'billing-budgets/list.none': billingBudgetsListNone,
     'billing-budgets/list.one': billingBudgetsListOne,
@@ -150,6 +176,8 @@ export const RAW_FIXTURES = catalogue({
     'cloud-billing/billing-info.disabled': cloudBillingBillingInfoDisabled,
     'cloud-billing/billing-info.enabled': cloudBillingBillingInfoEnabled,
     'cloud-billing/billing-info.forbidden': cloudBillingBillingInfoForbidden,
+    'cloud-billing/billing-info.quota-exceeded': cloudBillingBillingInfoQuotaExceeded,
+    'cloud-functions/function.get': cloudFunctionsFunctionGet,
     'cloud-run/execution.cancel.operation': cloudRunExecutionCancelOperation,
     'cloud-run/execution.cancelled': cloudRunExecutionCancelled,
     'cloud-run/execution.failed': cloudRunExecutionFailed,
@@ -157,12 +185,14 @@ export const RAW_FIXTURES = catalogue({
     'cloud-run/execution.succeeded': cloudRunExecutionSucceeded,
     'cloud-run/job.not-found': cloudRunJobNotFound,
     'cloud-run/jobs.run.operation': cloudRunJobsRunOperation,
+    'cloud-scheduler/job.get': cloudSchedulerJobGet,
     'cloud-storage/bucket-iam.ok': cloudStorageBucketIamOk,
     'cloud-storage/bucket-iam.public-access-prevented': cloudStorageBucketIamPublicAccessPrevented,
     'cloud-storage/bucket.created': cloudStorageBucketCreated,
     'cloud-storage/bucket.exists': cloudStorageBucketExists,
     'cloud-storage/bucket.get': cloudStorageBucketGet,
     'cloud-storage/bucket.not-found': cloudStorageBucketNotFound,
+    'cloud-storage/storage-agent.get': cloudStorageStorageAgentGet,
     'cloud-tasks/queue.created': cloudTasksQueueCreated,
     'cloud-tasks/queue.get': cloudTasksQueueGet,
     'cloud-tasks/queue.not-found': cloudTasksQueueNotFound,
@@ -173,11 +203,14 @@ export const RAW_FIXTURES = catalogue({
     'firebase-management/add-google-analytics.operation': firebaseManagementAddGoogleAnalyticsOperation,
     'firebase-management/analytics-details.linked': firebaseManagementAnalyticsDetailsLinked,
     'firebase-management/analytics-details.not-linked': firebaseManagementAnalyticsDetailsNotLinked,
+    'firebase-management/google-idp-config.get': firebaseManagementGoogleIdpConfigGet,
     'firebase-management/operation.done': firebaseManagementOperationDone,
     'firebase-management/web-app-config.analytics': firebaseManagementWebAppConfigAnalytics,
     'firebase-management/web-app-config.no-analytics': firebaseManagementWebAppConfigNoAnalytics,
     'firebase-management/web-apps.none': firebaseManagementWebAppsNone,
     'firebase-management/web-apps.one-active': firebaseManagementWebAppsOneActive,
+    'firebase-storage/default-bucket.billing-required': firebaseStorageDefaultBucketBillingRequired,
+    'firebase-storage/default-bucket.get': firebaseStorageDefaultBucketGet,
     'google-oauth/tokeninfo.expired': googleOauthTokeninfoExpired,
     'google-oauth/tokeninfo.missing-scope': googleOauthTokeninfoMissingScope,
     'google-oauth/tokeninfo.other-account': googleOauthTokeninfoOtherAccount,
@@ -233,12 +266,20 @@ export const RAW_FIXTURES = catalogue({
     'mapbox/tokens.retrieve.public': mapboxTokensRetrievePublic,
     'mapbox/tokens.retrieve.secret': mapboxTokensRetrieveSecret,
     'mapbox/tokens.update.ok': mapboxTokensUpdateOk,
+    'monitoring/alert-policy.get': monitoringAlertPolicyGet,
+    'monitoring/notification-channel.get': monitoringNotificationChannelGet,
     'nominatim/error.rate-limited': nominatimErrorRateLimited,
     'nominatim/error.unavailable': nominatimErrorUnavailable,
     'nominatim/reverse.ok': nominatimReverseOk,
     'nominatim/reverse.unable': nominatimReverseUnable,
+    'org-policy/effective-policy.boolean-enforced': orgPolicyEffectivePolicyBooleanEnforced,
+    'org-policy/effective-policy.list-restricted': orgPolicyEffectivePolicyListRestricted,
+    'org-policy/effective-policy.not-enforced': orgPolicyEffectivePolicyNotEnforced,
+    'pubsub/topic.get': pubsubTopicGet,
+    'recaptcha-enterprise/key.get': recaptchaEnterpriseKeyGet,
     'resource-manager/get-iam-policy.ok': resourceManagerGetIamPolicyOk,
     'resource-manager/project.get': resourceManagerProjectGet,
+    'resource-manager/project.get.no-organization': resourceManagerProjectGetNoOrganization,
     'resource-manager/set-iam-policy.ok': resourceManagerSetIamPolicyOk,
     'resource-manager/set-iam-policy.org-policy': resourceManagerSetIamPolicyOrgPolicy,
     'resource-manager/test-iam-permissions.empty': resourceManagerTestIamPermissionsEmpty,
@@ -255,6 +296,7 @@ export const RAW_FIXTURES = catalogue({
     'service-usage/batch-enable.operation': serviceUsageBatchEnableOperation,
     'service-usage/enable.billing-required': serviceUsageEnableBillingRequired,
     'service-usage/enable.operation': serviceUsageEnableOperation,
+    'service-usage/generate-service-identity.operation': serviceUsageGenerateServiceIdentityOperation,
     'service-usage/operation.done': serviceUsageOperationDone,
     'service-usage/service.disabled': serviceUsageServiceDisabled,
     'service-usage/service.enabled': serviceUsageServiceEnabled,

@@ -348,6 +348,14 @@ describe('Google and Firebase port fakes', () => {
         await expect(firebase.webAppConfig('demo-hcm', 'missing')).rejects.toMatchObject({ failure: 'notFound' });
     });
 
+    it('happyPath_googleSignInHasTheFixtureClientUntilRemoved', async () => {
+        const { firebase, analytics } = createFakeFirebaseManagement();
+
+        await expect(firebase.googleSignInClientId('demo-hcm')).resolves.toBe('123456789012-e2eclient.apps.googleusercontent.com');
+        analytics.signInClient = null;
+        await expect(firebase.googleSignInClientId('demo-hcm')).resolves.toBeNull();
+    });
+
     it('happyPath_errorReportsAreKeptAndGroupsPaged', async () => {
         const group = {
             groupId: 'g',

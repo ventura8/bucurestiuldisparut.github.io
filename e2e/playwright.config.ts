@@ -1,5 +1,6 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
 
+import { ADMIN_EMULATORS, ADMIN_ORIGIN, E2E_PROJECT_ID, EMULATOR_ENV, emulatorOrigin } from './admin/world.js';
 import { MOCK_API_ORIGIN, SITE_ORIGIN } from './fixtures/world.js';
 import { e2eProjects, tiersFrom } from './projects.js';
 import type { WorkerOptions } from './support/test.js';
@@ -11,8 +12,12 @@ import type { WorkerOptions } from './support/test.js';
  * (the e2e/ workspace); reports land in the repository's reports/ folder, where the CI workflow collects them.
  *
  * Two loopback servers start before the tests (`webServer`, e2e/mock-apis/main.ts): the built sites on
- * 127.0.0.1:4310 and the mock APIs on 127.0.0.1:4311. The tiers and their projects are e2e/projects.ts; `E2E_TIER`
- * picks them (`smoke,fn`; unset is all) and `E2E_SHARD` = "index/total" splits a run across CI jobs.
+ * 127.0.0.1:4310 and the mock APIs on 127.0.0.1:4311. When the admin tier runs, two more (docs/research/M2b-interfaces.md
+ * §6.2): the admin server on 127.0.0.1:4312 (the e2e build of packages/admin/dist as Hosting serves it) and the Firebase
+ * emulators of project demo-hcm (auth, firestore, storage, functions from functions/dist, pubsub, tasks) with the
+ * Functions emulator's environment of e2e/admin/world.ts; they count as up once `admin-session` is loaded. The tiers
+ * and their projects are e2e/projects.ts; `E2E_TIER` picks them (`smoke,fn`; unset is all) and `E2E_SHARD` =
+ * "index/total" splits a run across CI jobs.
  */
 
 interface Shard {
@@ -35,8 +40,30 @@ function shardFrom(value: string | undefined): Shard | null {
 }
 
 const CI = process.env['CI'] === 'true';
-/** Both servers run from the repository root, through Node's type stripping (scripts/site/register-ts.mjs). */
+/** The e2e servers run from the repository root, through Node's type stripping (scripts/site/register-ts.mjs). */
 const SERVER = 'node --import ./scripts/site/register-ts.mjs e2e/mock-apis/main.ts';
+const TIERS = tiersFrom(process.env['E2E_TIER']);
+
+type WebServer = Extract<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>[number];
+
+/** The admin server and the emulators, only for a run that includes the admin tier. */
+function adminServers(): WebServer[] {
+    const emulators = `npx firebase emulators:start --project ${E2E_PROJECT_ID} --only ${ADMIN_EMULATORS.join(',')}`;
+    return [
+        { command: `${SERVER} admin`, cwd: '..', url: `${ADMIN_ORIGIN}/__health`, reuseExistingServer: !CI, timeout: 60_000 },
+        {
+            command: emulators,
+            cwd: '..',
+            env: { ...EMULATOR_ENV },
+            // A GET of a loaded callable answers 400; before the functions are loaded the emulator answers 404.
+            url: `${emulatorOrigin('functions')}/${E2E_PROJECT_ID}/us-central1/admin-session`,
+            reuseExistingServer: !CI,
+            // Java emulators and 32 functions loaded from functions/dist: slow on a cold container.
+            timeout: 240_000,
+            gracefulShutdown: { signal: 'SIGINT', timeout: 30_000 },
+        },
+    ];
+}
 
 export default defineConfig<object, WorkerOptions>({
     testDir: 'specs',
@@ -67,6 +94,7 @@ export default defineConfig<object, WorkerOptions>({
     webServer: [
         { command: `${SERVER} mock`, cwd: '..', url: `${MOCK_API_ORIGIN}/__health`, reuseExistingServer: !CI, timeout: 60_000 },
         { command: `${SERVER} site`, cwd: '..', url: `${SITE_ORIGIN}/__health`, reuseExistingServer: !CI, timeout: 60_000 },
+        ...(TIERS.includes('admin') ? adminServers() : []),
     ],
-    projects: e2eProjects(tiersFrom(process.env['E2E_TIER'])),
+    projects: e2eProjects(TIERS),
 });

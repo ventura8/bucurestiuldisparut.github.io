@@ -45,7 +45,7 @@ export const ro = {
     'apiError.analytics.notEnabled': 'Google Analytics nu este activat pentru proiect. Activează-l, apoi verifică din nou.',
     'apiError.analytics.noWebApp': 'Proiectul nu are o aplicație web Firebase.',
     'apiError.cloud.permission': 'Contul serverului nu are rolul {role} în proiect.',
-    'apiError.cloud.apiDisabled': 'Serviciul {api} nu este activat în proiect. Rulează din nou „Pregătește cloudul”.',
+    'apiError.cloud.apiDisabled': 'Serviciul {api} nu este activat în proiect. Rulează din nou „Pregătește proiectul”.',
     'apiError.errorReporting.unavailable': 'Rapoartele de erori nu pot fi citite acum. Încearcă din nou.',
     'apiError.secrets.unavailable': 'Secretele nu pot fi salvate. Verifică dacă Secret Manager este activat.',
     'apiError.photo.unsupportedType': 'Sunt acceptate doar fotografii JPEG, PNG, WebP sau TIFF.',

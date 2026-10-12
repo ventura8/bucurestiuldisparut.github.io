@@ -38,6 +38,18 @@ export interface ServiceUsageState {
     readonly enabled: Map<string, Set<string>>;
 }
 
+/** Whether `service` is enabled in the project (a project never seen has `SPARK_SERVICES`). */
+export function serviceEnabled(state: ServiceUsageState, projectId: string, service: string): boolean {
+    return (state.enabled.get(projectId) ?? new Set(SPARK_SERVICES)).has(service);
+}
+
+/** Enables `service` in the project, as a deploy or an earlier step would. */
+export function enableService(state: ServiceUsageState, projectId: string, service: string): void {
+    const enabled = state.enabled.get(projectId) ?? new Set(SPARK_SERVICES);
+    enabled.add(service);
+    state.enabled.set(projectId, enabled);
+}
+
 const SERVICE_USAGE: GoogleApi = {
     service: 'serviceusage.googleapis.com',
     title: 'Service Usage API',
@@ -46,6 +58,26 @@ const SERVICE_USAGE: GoogleApi = {
 
 function stringList(value: unknown): string[] {
     return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+/** v1beta1 `generateServiceIdentity`: the service agent's address, done at once. */
+function identityRoute(projects: GoogleProjects, nextOperation: () => string): Route {
+    return route(
+        'POST',
+        'https://serviceusage.googleapis.com/v1beta1/projects/{project}/services/{service}:generateServiceIdentity',
+        'service-usage.generateServiceIdentity',
+        authenticated(SERVICE_USAGE, (_request, params) => {
+            const project = projects.resolve(String(params['project']));
+            const service = String(params['service']);
+            return fixtureResponse('service-usage/generate-service-identity.operation', {
+                values: {
+                    projectNumber: project.number,
+                    serviceAgent: service.replace(/\.googleapis\.com$/, ''),
+                    operationId: nextOperation(),
+                },
+            });
+        }),
+    );
 }
 
 /** The fake Service Usage API; `billing` decides the billing precondition. */
@@ -144,6 +176,7 @@ export function createServiceUsageFake(state: ServiceUsageState, billing: Billin
                 }),
             ),
             route('GET', 'https://serviceusage.googleapis.com/v1/operations/{operation*}', 'service-usage.getOperation', auth(operation)),
+            identityRoute(projects, nextOperation),
         ],
         failure: (mode) => googleFailure(SERVICE_USAGE, mode),
         scenarios: {

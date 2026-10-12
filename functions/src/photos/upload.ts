@@ -129,14 +129,29 @@ async function readUpload(deps: PhotoDeps, object: FinalizedObject): Promise<Uin
     }
 }
 
-/** Another photo of the city whose original has the same SHA-256 (S-A08-BAD-DUPLICATE); the photo itself never counts. */
+/** Whether the photo being processed came from the old site (it carries a `legacyId`). */
+async function isLegacyPhoto(deps: PhotoDeps, upload: PhotoUpload): Promise<boolean> {
+    const current = await deps.documents.get(FIRESTORE_PATHS.photo(upload.cityId, upload.photoId), photoDocSchema);
+    return current?.legacyId !== undefined;
+}
+
+/**
+ * Another photo of the city whose original has the same SHA-256 (S-A08-BAD-DUPLICATE); the photo itself never counts.
+ * The old site placed one image at two spots (two legacy records, one file): two legacy photos are never each other's
+ * duplicate, so the legacy import keeps both whichever is processed first.
+ */
 async function refuseDuplicate(deps: PhotoDeps, upload: PhotoUpload, sha256: string): Promise<void> {
     const found = await deps.documents.query(FIRESTORE_PATHS.photos(upload.cityId), photoDocSchema, {
         where: [['original.sha256', '==', sha256]],
         limit: 2,
     });
-    const other = [...found.documents, ...found.invalid].find((document) => document.id !== upload.photoId);
-    if (other !== undefined) {
+    const others = [...found.documents, ...found.invalid].filter((document) => document.id !== upload.photoId);
+    const [other] = others;
+    if (other === undefined) {
+        return;
+    }
+    const legacyPair = found.documents.some((document) => document.id === other.id && document.data.legacyId !== undefined);
+    if (!(legacyPair && (await isLegacyPhoto(deps, upload)))) {
         throw new PhotoRefused({ code: 'apiError.photo.duplicate', duplicateOf: other.id });
     }
 }

@@ -52,10 +52,13 @@ describe('setup callables', () => {
     });
 
     it('happyPath_theWholeSetupFlowAnswersWhatTheRegistrySays', async () => {
-        const world = createWorld();
+        const world = createWorld({ city: false });
         world.upstream.scenario('firebase-management.analyticsLinked');
         const setup = functionsOf(world);
+        const city = { name: { ro: 'București', en: 'Bucharest' }, bounds: { west: 25.9, south: 44.3, east: 26.3, north: 44.6 } };
 
+        await expect(setup.createCity.run(callableRequest({ cityId: CITY, city }))).resolves.toEqual({ created: true });
+        await expect(setup.createCity.run(callableRequest({ cityId: CITY, city }))).resolves.toEqual({ created: false });
         await expect(setup.recordCloud.run(callableRequest({ billing: { state: 'ok' } }))).resolves.toMatchObject({
             status: { billing: { state: 'ok' } },
         });

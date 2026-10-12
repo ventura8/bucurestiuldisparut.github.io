@@ -21,6 +21,7 @@
     "hosting": {
         "site": "bucurestiul-disparut",
         "public": "packages/admin/dist",
+        "predeploy": ["npm --prefix \"$PROJECT_DIR\" run build:admin"],
         "cleanUrls": true,
         "trailingSlash": false,
         "ignore": ["**/.*", "**/*.map"],
@@ -66,6 +67,15 @@
                     {
                         "key": "Cache-Control",
                         "value": "no-cache"
+                    }
+                ]
+            },
+            {
+                "source": "legacy/**",
+                "headers": [
+                    {
+                        "key": "Cache-Control",
+                        "value": "public, max-age=86400"
                     }
                 ]
             }

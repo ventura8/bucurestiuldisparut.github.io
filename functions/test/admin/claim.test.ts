@@ -8,6 +8,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { claimFunction } from '../../src/admin/claim.js';
 import { UpstreamError } from '../../src/ports/errors.js';
+import { createFakeFirebaseManagement } from '../support/services.js';
 import type { GoogleIam } from '../../src/ports/google-iam.js';
 import { CONFIG, callableRequest, failureOf, fakeIam, googleToken, loggedText, openEmulators, type FakeIam, type World } from './world.js';
 
@@ -19,6 +20,8 @@ afterAll(async () => {
 
 const ACCESS_TOKEN = 'e2e-claim-access-token-0123456789';
 const CLIENT = CONFIG.oauthClientIds[0] ?? '';
+/** The Google sign-in client of the fake Firebase Management (`createFakeFirebaseManagement`). */
+const SIGN_IN_CLIENT = '123456789012-e2eclient.apps.googleusercontent.com';
 
 type TokenInfo = Awaited<ReturnType<GoogleIam['tokenInfo']>>;
 
@@ -61,6 +64,35 @@ describe('admin.claim', () => {
         expect((await world.sdkAuth.getUser(uid)).customClaims).toEqual({ admin: true });
         expect(loggedText(world.recording)).not.toContain(ACCESS_TOKEN);
         expect(loggedText(world.recording)).not.toContain(email);
+    });
+
+    it('happyPath_withoutConfiguredClientsTheGoogleSignInClientIsAsked', async () => {
+        const world = emulators.newWorld();
+        const { uid, email } = await newAccount(world);
+        const signIn = createFakeFirebaseManagement();
+        const iam = fakeIam(tokenInfo(email, { audience: SIGN_IN_CLIENT }), [OWNER_PERMISSION]);
+        const fn = claimFunction(() => ({ ...world, config: { ...CONFIG, oauthClientIds: [] }, firebase: signIn.firebase, iam }));
+
+        await expect(fn.run(callableRequest({ googleAccessToken: ACCESS_TOKEN }, { uid, token: googleToken(email) }))).resolves.toEqual({
+            role: 'owner',
+            refreshToken: true,
+        });
+
+        expect(signIn.recorder.calls).toEqual([{ method: 'googleSignInClientId', args: ['demo-hcm'] }]);
+    });
+
+    it('badPath_withoutConfiguredClientsOrGoogleSignInNoTokenMatches', async () => {
+        const world = emulators.newWorld();
+        const { uid, email } = await newAccount(world);
+        const signIn = createFakeFirebaseManagement();
+        signIn.analytics.signInClient = null;
+        const iam = fakeIam(tokenInfo(email, { audience: SIGN_IN_CLIENT }), [OWNER_PERMISSION]);
+        const fn = claimFunction(() => ({ ...world, config: { ...CONFIG, oauthClientIds: [] }, firebase: signIn.firebase, iam }));
+
+        const failure = await failureOf(fn.run(callableRequest({ googleAccessToken: ACCESS_TOKEN }, { uid, token: googleToken(email) })));
+
+        expect(failure).toMatchObject({ code: 'permission-denied', details: { code: 'apiError.claim.tokenMismatch' } });
+        expect(iam.calls).toEqual(['tokenInfo']);
     });
 
     it('happyPath_theFullCloudPlatformScopeAlsoProvesOwnership', async () => {

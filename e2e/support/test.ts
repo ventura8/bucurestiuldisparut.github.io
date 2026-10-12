@@ -1,4 +1,4 @@
-import { test as base, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { test as base, expect, type APIRequestContext, type ConsoleMessage, type Page, type TestInfo } from '@playwright/test';
 
 import { axeViolations, type AxeOptions, type AxeViolation } from './a11y.js';
 import { InputBudget } from './budget.js';
@@ -13,7 +13,9 @@ import { MockApis } from './site.js';
  * - `firewall` (automatic): loopback passes, a mocked host is answered by the mock APIs, anything else is aborted and
  *   recorded, and the test fails at teardown if anything was blocked (support/network.ts). Chromium's host-resolver
  *   rules (playwright.config.ts) are the second layer.
- * - `consoleErrors` (automatic): console errors and uncaught page errors fail the test at teardown.
+ * - `consoleErrors` (automatic): console errors and uncaught page errors fail the test at teardown, except the ones a
+ *   tier expects by design (option `expectedConsoleErrors`: a message text and the URL it is about, with the reason;
+ *   the admin tier's anonymous probe of `admin-session`, refused 401 by its access rule, is the only one today).
  * - `placeholderGuard` (automatic): visible text showing `undefined`, `null`, `NaN`, `[object Object]` or an unfilled
  *   `{param}` fails the test at teardown (support/placeholders.ts).
  * - `instrumentation` (automatic init script): the map-instance counter and the engine's events; read them with
@@ -22,6 +24,9 @@ import { MockApis } from './site.js';
  * - `axe`: the WCAG 2.2 AA check of the tour and a11y tiers.
  * - `inputBudget`: counted admin inputs per flow, checked at teardown.
  * - option `lang` (`ro` default, `en` in the English projects): the language a spec opens the viewer in.
+ * - option `forwardUpstreams` (`false` default, `true` in the admin projects): the firewall also forwards the fake upstreams'
+ *   hosts (Google Cloud, OAuth tokeninfo, Mapbox's APIs, USGS M2M, Nominatim) to the mock APIs (CR-M2-21). The admin
+ *   tier's own fixtures build on this `test` (e2e/admin/support/test.ts).
  *
  * A bad-path test that provokes a block or an error on purpose claims it with `take()`, which returns the recorded
  * entries and clears them, and asserts on what it got.
@@ -35,7 +40,18 @@ interface Axe {
     violations(options?: AxeOptions): Promise<AxeViolation[]>;
 }
 
-interface TestFixtures {
+/** A console error a tier expects by design: its text and the URL it is about (both must match), and why. */
+export interface ExpectedConsoleError {
+    readonly text: RegExp;
+    readonly url: RegExp;
+    readonly why: string;
+}
+
+interface TestOptions {
+    expectedConsoleErrors: readonly ExpectedConsoleError[];
+}
+
+export interface TestFixtures extends TestOptions {
     firewall: Recorder;
     consoleErrors: Recorder;
     placeholderGuard: undefined;
@@ -48,14 +64,23 @@ interface TestFixtures {
 export interface WorkerOptions {
     /** The viewer language of the project (`?lang=`). */
     lang: 'ro' | 'en';
+    /** Forward the fake upstreams' hosts as well (the admin projects). */
+    forwardUpstreams: boolean;
 }
 
-interface WorkerFixtures extends WorkerOptions {
+export interface WorkerFixtures extends WorkerOptions {
     mockApiRequest: APIRequestContext;
+}
+
+/** The id that tags a test's forwarded calls and names its partition of the fake upstreams (a retry gets its own). */
+export function testIdOf(testInfo: TestInfo): string {
+    return `${testInfo.testId}#${String(testInfo.retry)}`;
 }
 
 export const test = base.extend<TestFixtures, WorkerFixtures>({
     lang: ['ro', { option: true, scope: 'worker' }],
+    forwardUpstreams: [false, { option: true, scope: 'worker' }],
+    expectedConsoleErrors: [[], { option: true }],
     mockApiRequest: [
         async ({ playwright }, use) => {
             const api = await playwright.request.newContext();
@@ -65,19 +90,21 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         { scope: 'worker' },
     ],
     firewall: [
-        async ({ context, mockApiRequest }, use, testInfo) => {
+        async ({ context, mockApiRequest, forwardUpstreams }, use, testInfo) => {
             const blocked = new Recorder();
-            await installNetwork(context, mockApiRequest, `${testInfo.testId}#${String(testInfo.retry)}`, blocked);
+            await installNetwork(context, mockApiRequest, testIdOf(testInfo), blocked, { upstream: forwardUpstreams });
             await use(blocked);
             expect(blocked.take(), 'requests outside the loopback and mocked hosts were blocked').toEqual([]);
         },
         { auto: true },
     ],
     consoleErrors: [
-        async ({ page }, use) => {
+        async ({ page, expectedConsoleErrors }, use) => {
             const errors = new Recorder();
+            const expected = (message: ConsoleMessage): boolean =>
+                expectedConsoleErrors.some((allowed) => allowed.text.test(message.text()) && allowed.url.test(message.location().url));
             page.on('console', (message) => {
-                if (message.type() === 'error') {
+                if (message.type() === 'error' && !expected(message)) {
                     errors.record(message.text());
                 }
             });
@@ -104,7 +131,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
         { auto: true },
     ],
     mockApis: async ({ mockApiRequest }, use, testInfo) => {
-        await use(new MockApis(mockApiRequest, `${testInfo.testId}#${String(testInfo.retry)}`));
+        await use(new MockApis(mockApiRequest, testIdOf(testInfo)));
     },
     axe: async ({ page }, use) => {
         await use({ violations: (options = {}) => axeViolations(page, options) });

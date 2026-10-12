@@ -957,6 +957,72 @@ deployed; no *Ask first* file edited.
   forwarding, CR-M2-39, CR-M2-40), the provisioner's IAM and GA4 stream settings (CR-M2-5, CR-M2-37), the deploy-time
   configuration and a `functions/dist/` lockfile (§22a, §22b), the layering rules (§19a), App Check enforcement.
 
+## 10q. M2b admin contracts
+
+Added on 2026-10-12 by the M2b contracts agent, alone in the tree before the admin workstreams (admin-shell, setup-ui,
+google-clients, admin-e2e) start in parallel. The contract, the ownership and the change requests are
+`docs/research/M2b-interfaces.md`; proposals for *Ask first* files are `DECISIONS-for-review.md` §23. Nothing committed,
+pushed or deployed; no *Ask first* file edited. Every new file is at 100 % lines and branches.
+
+- **Contract**: the admin's routes, shell layout per window class, auth states, boot sequence and session expiry; Google
+  OAuth with one scope per step, memory-only tokens and the consent note that explains Google's unverified-app screen;
+  **bootstrap mode** before Blaze (no function, no Firestore: Google REST from the browser with the owner's token, step
+  state in memory and `sessionStorage`), the automatic owner claim once the server answers, the Setup Assistant's step
+  graph (a)–(h) with detection, actions and input budgets, the idempotent provisioner with its execution order, exact
+  API calls and roles, the legacy import, the e2e admin world.
+- **Code** (done): `PROVISION_ITEMS` gained `crash-alerts` and `api-key`; the admin's two catalogues
+  `packages/shared/src/i18n/admin-shell/` and `admin-setup/` (`translateAdminShell`, `translateAdminSetup`, over the new
+  `catalogueTranslator`); `packages/admin/src/google/scopes.ts` (`GOOGLE_SCOPES`, `unsatisfiedScopes`),
+  `packages/admin/src/setup/steps.ts` (`SETUP_STEPS`, `SETUP_STEP_SPECS`, `nextSetupStep`, `setupInputBudget`),
+  `packages/admin/src/routing/routes.ts` (`ADMIN_ROUTES`, `parseAdminRoute`, `adminRouteHash`), with their tests.
+- **Scenarios**: A04, A07 and A22 refined and extended; new behaviours A25 (bootstrap mode), A26 (deployment detection
+  and the automatic claim), A27 (Google OAuth scopes), A28 (the legacy import), A29 (navigation and layout), A30 (minimum
+  admin input), all `e2e-admin` and planned; `docs/E2E_SCENARIOS.md` regenerated.
+- **Found on the way** (in the skills now): `ci.yml`'s deploy jobs declare `environment: deploy` while the security
+  review's Workload Identity condition says `production` (§23g); the deploy job deploys Hosting from
+  `packages/admin/dist` without building it (§23b); a missing callable's 404 has no CORS headers, so the Firebase SDK
+  reports it as `internal` like a network failure, and "not deployed" needs Google's Cloud Functions list to tell from
+  "down"; the Hosting emulator would serve the admin's CSP with `upgrade-insecure-requests`, which upgrades the http
+  emulators, so the admin's e2e build gets its own server.
+- **Docs**: both admin guides (start-up mode, Google's permission screens, the automatic claim, provisioning, the server's
+  installation, the legacy import, the USGS countdown), `docs/ARCHITECTURE.md`, `docs/TESTING.md`, the admin, e2e,
+  consent, security, i18n and rules skills, the setup-assistant digest and its mirror, the catalogue.
+
+## 10r. M2b admin workstreams and integration
+
+Added on 2026-10-12 by the M2b integrator, after the four parallel workstreams (admin-shell, setup-ui, google-clients,
+admin-e2e). What exists, and how to extend it; the contract is `docs/research/M2b-interfaces.md` (Addendum A: the admin as
+integrated). Nothing committed, pushed or deployed; no *Ask first* file edited.
+
+- **New paths**: `packages/admin/src/{app,auth,firebase,routing,state}/` (the shell's DOM-free logic, `mount()` with
+  injected ports), `packages/admin/src/setup/` (the Setup controller, one flow per step), `packages/admin/src/google/`
+  (typed Google REST clients over `fetch`), `packages/admin/src/provision/` (the provisioner of `PROVISION_ITEMS`),
+  `packages/admin/src/import/` (the legacy import); `packages/ui/src/admin/` (the shell, the auth panels, the Setup cards,
+  entry `@hcm/ui/admin`); `infra/project.json` (the real project's public ids, GitHub owner 6506625 and repository
+  243934124); `scripts/site/build-admin.ts` and `scripts/site/src/admin/` (the admin's page, CSP, Hosting rules, fonts,
+  `project.json`, the legacy bundle); `e2e/admin/` (the admin tier: world, fixtures, harness, the owner's smoke and
+  journey), `e2e/mock-apis/{admin-server,oauth,oauth-page,lease}.ts`; ten new fake Google services in
+  `packages/test-support/src/fakes/`; `functions/src/setup/create-city.ts`.
+- **Build**: `npm run build` ends with the admin's site step (`scripts/site/build-admin.ts`), `npm run build:admin`
+  builds the admin and its folder (Hosting's `predeploy`), `npm run build:site:e2e` also builds `functions/dist` and the
+  admin's `e2e` bundle (`npm run build:e2e --workspace @hcm/admin`). Hosting serves `index.html`, `project.json` (a copy of
+  `infra/project.json`), `fonts/` and `legacy/bucharest/` (cached a day) next to `admin.iife.js` (about 310 KB gzipped,
+  budget 450).
+- **Iterating on the admin tier**: start one quality-image container with the four servers (`node --import
+  ./scripts/site/register-ts.mjs e2e/mock-apis/main.ts mock|site|admin` and `npx firebase emulators:start --project
+  demo-hcm --only auth,firestore,storage,functions,pubsub,tasks` with the environment of `e2e/admin/world.ts`), then run
+  `npx playwright test` in `e2e/` inside the same container with `E2E_TIER=admin`: outside CI the servers are reused. After
+  changing `functions/src` rebuild `functions/dist` and restart the emulators; after changing the admin rebuild its `e2e`
+  bundle and rerun `scripts/site/build-admin.ts` (Vite empties `dist/`).
+- **Extending**: a new admin page registers with `registerAdminPage(id, load)`; a new Setup step needs its row in
+  `SETUP_STEP_SPECS`, its flow in `packages/admin/src/setup/`, its body in `packages/ui/src/admin/setup/`, its texts in the
+  `admin-setup` catalogue (RO and EN) and its scenario rows; a new Google call goes through `packages/admin/src/google/`
+  and a fake in `packages/test-support/src/fakes/`; a new callable needs the registry row, `RUNTIME_ACCOUNTS`, the handler,
+  the group's export and the type checks of `functions/test/index.test.ts`.
+- **Waiting for the user** (ask first, `DECISIONS-for-review.md` §23–§25): `runtime.json` with the App Check site key and
+  the invoker fix in `ci.yml` (CR-M2b-6), the admin's dependency-cruiser layering (CR-M2b-7), the bundled city created
+  published (§25a). CR-M2b-2 landed: without `HCM_OAUTH_CLIENT_IDS` the claim reads the Google sign-in client from Identity Toolkit (its answer shape is UNVERIFIED until the first real project).
+
 ## 11. Planned paths
 
 Appended by the M0 agent-assets agent on 2026-10-11. The `agent-assets` static gate

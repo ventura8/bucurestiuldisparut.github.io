@@ -1,40 +1,300 @@
-import { createRecordingSink } from '@hcm/test-support';
+// The entry's wiring, in Node: the real Firebase SDK is initialized (the emulator and the production settings) but never
+// called, and every browser part is a plain object; no request leaves the test.
+import { createFakeFetch, E2E_PROJECT_CONFIG, jsonResponse } from '@hcm/test-support/fakes';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { bootAdmin } from '../src/index.js';
+import { CONSENT_KEY } from '../src/app/telemetry.js';
+import { createStandInPopup, STAND_IN_ORIGIN } from '../src/auth/stand-in.js';
+import {
+    analyticsFor,
+    autoStart,
+    browserDeps,
+    browserParts,
+    E2E_KIT,
+    projectOf,
+    registerAdminPage,
+    startAdmin,
+    telemetryFor,
+    type AdminScope,
+    type AdminWindow,
+} from '../src/index.js';
+import { E2E_WEB_CONFIG, settle, testLog } from './app/fakes.js';
 
-describe('bootAdmin', () => {
-    it('happyPath_bootsInRomanianByDefault', () => {
-        const recording = createRecordingSink();
+class MemoryStorage implements Storage {
+    readonly #values = new Map<string, string>();
 
-        expect(bootAdmin({ sink: recording.sink })).toEqual({ locale: 'ro', title: 'Administrare' });
-        expect(recording.records).toEqual([{ level: 'info', scope: 'admin', message: 'booted', data: { locale: 'ro' } }]);
+    get length(): number {
+        return this.#values.size;
+    }
+
+    clear(): void {
+        this.#values.clear();
+    }
+
+    getItem(key: string): string | null {
+        return this.#values.get(key) ?? null;
+    }
+
+    key(index: number): string | null {
+        return [...this.#values.keys()][index] ?? null;
+    }
+
+    removeItem(key: string): void {
+        this.#values.delete(key);
+    }
+
+    setItem(key: string, value: string): void {
+        this.#values.set(key, value);
+    }
+}
+
+function fakeWindow(files: Readonly<Record<string, Response>> = {}) {
+    const target = new EventTarget();
+    const cookies: string[] = [];
+    const fetcher = createFakeFetch((request) => {
+        const response = files[request.url.pathname];
+        return response === undefined
+            ? { operation: 'post', response: new Response(null, { status: 204 }) }
+            : { operation: request.url.pathname, response };
+    });
+    const popup = { closed: false };
+    const document = Object.defineProperty(Object.assign(new EventTarget(), { visibilityState: 'visible' }), 'cookie', {
+        get: () => '_ga=GA1.1.1',
+        set: (value: string) => {
+            cookies.push(value);
+        },
+    });
+    const win = Object.assign(target, {
+        document,
+        navigator: { languages: ['en-US'] },
+        sessionStorage: new MemoryStorage(),
+        localStorage: new MemoryStorage(),
+        innerWidth: 1440,
+        innerHeight: 900,
+        fetch: (input: RequestInfo | URL, init?: RequestInit) =>
+            fetcher.fetch(new URL(input instanceof Request ? input.url : input, 'https://demo-hcm.web.app'), init),
+        setTimeout: (callback: () => void, ms: number) => setTimeout(callback, ms),
+        clearTimeout: (handle: number) => {
+            clearTimeout(handle);
+        },
+        open: vi.fn(() => popup),
+        location: {
+            hash: '',
+            search: '?test=spec-1',
+            origin: 'https://demo-hcm.web.app',
+            pathname: '/',
+            hostname: 'demo-hcm.web.app',
+            reload: vi.fn(),
+        },
+        history: { pushState: vi.fn(), replaceState: vi.fn() },
+    });
+    return { win: win as unknown as AdminWindow, target, fetcher, cookies, popup };
+}
+
+/** The `e2e` build's kit, as `E2E_KIT` is in that build. */
+const E2E = { standInPopup: createStandInPopup };
+
+/** One configuration for every test: Firebase keeps one default app per process. */
+const CONFIG = { ...E2E_WEB_CONFIG, measurementId: 'G-E2E0000000' };
+
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
+describe('the entry', () => {
+    it('happyPath_importingItInNodeStartsNothing', () => {
+        expect(E2E_KIT).toBeNull();
+        expect(projectOf(E2E_WEB_CONFIG)).toEqual({ projectId: 'demo-hcm', cities: ['bucharest'] });
     });
 
-    it('happyPath_bootsInEnglish', () => {
-        expect(bootAdmin({ locale: 'en', sink: createRecordingSink().sink }).title).toBe('Administration');
+    it('happyPath_theE2eBuildWiresTheEmulatorsAndTheOauthStandIn', async () => {
+        const w = fakeWindow();
+        const parts = browserParts(w.win, E2E, testLog().log);
+        registerAdminPage('photos', () => Promise.resolve('hcm-photos-page'));
+
+        const deps = browserDeps(parts)(CONFIG, { release: 'e2e' }, null);
+        const consent = deps.google.request('cloudReadOnly', {});
+        w.target.dispatchEvent(
+            Object.assign(new Event('message'), { origin: STAND_IN_ORIGIN, source: w.popup, data: { cancelled: true } }),
+        );
+
+        await expect(consent).rejects.toMatchObject({ failure: 'popupClosed' });
+        expect(new URL(String(vi.mocked(w.win.open).mock.calls[0]?.[0])).searchParams.get('test')).toBe('spec-1');
+        await expect(deps.pages.load('admins')).resolves.toBe('hcm-admins-page');
+        await expect(deps.fetch('/runtime.json')).resolves.toMatchObject({ status: 204 });
+        expect(deps.pages.has('photos')).toBe(true);
+        expect(deps.languages).toEqual(['en-US']);
+        expect(deps.visibility.visible()).toBe(true);
     });
 
-    it('badPath_unsupportedLanguageFallsBackToRomanian', () => {
-        expect(bootAdmin({ locale: 'de-AT', sink: createRecordingSink().sink }).locale).toBe('ro');
-    });
+    it('happyPath_crashesArePostedToTheEmulatorsEndpointAndAWithdrawalExpiresCookies', async () => {
+        const w = fakeWindow();
+        const deps = browserDeps(browserParts(w.win, E2E, testLog().log))(CONFIG, { release: 'e2e' }, null);
 
-    it('happyPath_registersTheSharedElements', () => {
-        bootAdmin({ sink: createRecordingSink().sink });
+        const telemetry = deps.telemetry({ locale: () => 'en', windowClass: () => 'large', serverAnswers: () => true });
+        w.target.dispatchEvent(Object.assign(new Event('error'), { error: new Error('boom') }));
+        telemetry.setConsent('granted');
+        telemetry.setConsent('denied');
+        await settle();
 
-        expect(customElements.get('hcm-hello')).toBeDefined();
-    });
-
-    describe('without options', () => {
-        afterEach(() => {
-            vi.restoreAllMocks();
+        const post = w.fetcher.calls.find((call) => call.method === 'POST');
+        expect(post?.url).toBe('http://127.0.0.1:5001/demo-hcm/us-central1/telemetry-reportError');
+        expect(post?.headers['content-type']).toBe('text/plain');
+        expect(JSON.parse(post?.body ?? '{}')).toMatchObject({
+            message: 'Error: boom',
+            release: 'e2e',
+            windowClass: 'large',
+            locale: 'en',
         });
+        expect(w.win.localStorage.getItem(CONSENT_KEY)).toBe('denied');
+        expect(w.cookies).toHaveLength(2);
+    });
 
-        it('happyPath_logsToTheConsoleSinkInRomanian', () => {
-            const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    it('happyPath_aProjectFileBringsTheSetupAssistantAndItsPages', async () => {
+        const w = fakeWindow();
+        Object.assign(w.win.document, { baseURI: 'https://demo-hcm.web.app/' });
+        const project = {
+            ...E2E_PROJECT_CONFIG,
+            cities: [...E2E_PROJECT_CONFIG.cities],
+            viewerOrigins: [...E2E_PROJECT_CONFIG.viewerOrigins],
+        };
 
-            expect(bootAdmin().locale).toBe('ro');
-            expect(info).toHaveBeenCalledWith('[admin] booted', { locale: 'ro' });
+        const deps = browserDeps(browserParts(w.win, E2E, testLog().log))(CONFIG, { release: 'e2e' }, project);
+
+        expect(deps.project).toBe(project);
+        expect(deps.setup.initial).toBeNull();
+        await expect(deps.pages.load('setup')).resolves.toBe('hcm-setup-page');
+        await expect(deps.pages.load('crashes')).resolves.toBe('hcm-crashes-page');
+    });
+
+    it('badPath_anAddressWithoutATestIdGivesTheStandInAnEmptyOne', async () => {
+        const w = fakeWindow();
+        Object.assign(w.win.location, { search: '' });
+        vi.mocked(w.win.open).mockReturnValue(null);
+        const deps = browserDeps(browserParts(w.win, E2E, testLog().log))(CONFIG, { release: 'e2e' }, null);
+
+        await expect(deps.google.request(null, {})).rejects.toMatchObject({ failure: 'popupBlocked' });
+        expect(new URL(String(vi.mocked(w.win.open).mock.calls[0]?.[0])).searchParams.get('test')).toBe('');
+    });
+
+    it('happyPath_productionUsesFirebasesPopup', async () => {
+        const w = fakeWindow();
+        const deps = browserDeps(browserParts(w.win, null, testLog().log))(CONFIG, { release: 'r1' }, null);
+
+        await expect(deps.google.request(null, {})).rejects.toMatchObject({ failure: 'failed' });
+        expect(w.win.open).not.toHaveBeenCalled();
+        const telemetry = deps.telemetry({ locale: () => 'ro', windowClass: () => 'compact', serverAnswers: () => false });
+        telemetry.reportError(new Error('before the server'), { fatal: false, source: 'window' });
+        expect(w.fetcher.calls.filter((call) => call.method === 'POST')).toEqual([]);
+    });
+
+    it('badPath_withoutAMeasurementIdThereIsNoGa4', () => {
+        const parts = browserParts(fakeWindow().win, E2E, testLog().log);
+
+        parts.session.set('hcm:admin:returnTo', '#/admins');
+
+        const telemetry = telemetryFor(
+            parts,
+            { app: {} as never },
+            E2E_WEB_CONFIG,
+            'e2e',
+        )({
+            locale: () => 'ro',
+            windowClass: () => 'compact',
+            serverAnswers: () => true,
         });
+        telemetry.reportError(new Error('without GA4'), { fatal: false, source: 'window' });
+
+        expect(telemetry.available).toBe(false);
+        expect(analyticsFor(undefined, {} as never, parts)).toBeNull();
+        expect(analyticsFor('G-E2E0000000', {} as never, parts)).not.toBeNull();
+        expect(browserDeps(parts)(CONFIG, { release: 'e2e' }, null).setup.create({} as never)).toBeNull();
+        expect(parts.session.get('hcm:admin:returnTo')).toBe('#/admins');
+    });
+
+    it('badPath_startingWithoutAConfigurationShowsItsScreen', async () => {
+        const w = fakeWindow();
+        const shell: { app: unknown } = { app: null };
+
+        await startAdmin(browserParts(w.win, null, testLog().log), shell as never);
+
+        expect((shell.app as { state: { auth: string } }).state.auth).toBe('configMissing');
+    });
+
+    it('happyPath_theConfigurationIsReadFromHosting', async () => {
+        const w = fakeWindow({
+            '/__/firebase/init.json': new Response('{}', { status: 404 }),
+            '/runtime.json': jsonResponse({ release: 'x' }),
+        });
+        const shell: { app: unknown } = { app: null };
+
+        await startAdmin(browserParts(w.win, E2E, testLog().log), shell as never);
+
+        expect(w.fetcher.calls[0]?.url).toBe('https://demo-hcm.web.app/__/firebase/init.json');
+    });
+});
+
+describe('autoStart', () => {
+    function scope(readyState: DocumentReadyState, existing: boolean) {
+        const w = fakeWindow();
+        const shell = { app: null as unknown };
+        const appended: unknown[] = [];
+        const faces: unknown[] = [];
+        const document = Object.assign(new EventTarget(), {
+            readyState,
+            baseURI: 'https://demo-hcm.web.app/',
+            fonts: { add: (face: unknown) => faces.push(face) },
+            querySelector: () => (existing ? shell : null),
+            createElement: () => shell,
+            body: {
+                appendChild: (node: unknown) => {
+                    appended.push(node);
+                    return node;
+                },
+            },
+        });
+        const defined: string[] = [];
+        const registry = { get: () => undefined, define: (tag: string) => defined.push(tag) };
+        class Face {
+            readonly family: string;
+
+            constructor(family: string) {
+                this.family = family;
+            }
+        }
+        const adminScope = { document, customElements: registry, FontFace: Face } as unknown as AdminScope;
+        return { w, shell, appended, faces, defined, document, adminScope };
+    }
+
+    it('happyPath_aParsedPageStartsInItsShell', async () => {
+        const s = scope('complete', true);
+
+        autoStart(s.adminScope, s.w.win, null, testLog().log);
+        await settle(40);
+
+        expect(s.defined).toContain('hcm-admin-shell');
+        expect(s.faces.length).toBeGreaterThan(0);
+        expect(s.appended).toEqual([]);
+        expect((s.shell.app as { state: { auth: string } } | null)?.state.auth).toBe('configMissing');
+    });
+
+    it('happyPath_aPageStillLoadingStartsOnceParsedAndGetsAShellWhenItHasNone', async () => {
+        const s = scope('loading', false);
+
+        autoStart(s.adminScope, s.w.win, null, testLog().log);
+        expect(s.shell.app).toBeNull();
+        s.document.dispatchEvent(new Event('DOMContentLoaded'));
+        await settle(40);
+
+        expect(s.appended).toEqual([s.shell]);
+        expect(s.shell.app).not.toBeNull();
+    });
+
+    it('badPath_withoutADocumentNothingHappens', () => {
+        const s = scope('complete', true);
+
+        autoStart({}, s.w.win, null, testLog().log);
+
+        expect(s.defined).toEqual([]);
     });
 });

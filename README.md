@@ -44,7 +44,7 @@ Everything runs in Docker; the host needs only Docker and git ([docs/SETUP.md](d
 PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh   # lint, format, types, secrets, audits
 PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh    # unit, component and rules tests, 90 % coverage per file
 PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh      # Playwright end-to-end tests (E2E_TIER=smoke,fn for a subset)
-PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh    # engine and admin bundles, then the sites in dist/site/
+PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh    # engine and admin bundles (and the admin's Hosting folder), then the sites in dist/site/
 ```
 
 ## Documentation

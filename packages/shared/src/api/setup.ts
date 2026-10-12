@@ -6,7 +6,7 @@
  */
 import { z } from 'zod';
 
-import { httpsOriginSchema, mapboxTokenIdSchema } from '../schemas/firestore.js';
+import { cityDocSchema, httpsOriginSchema, mapboxTokenIdSchema } from '../schemas/firestore.js';
 import { PROVISION_ITEMS, SERVICE_STATES, USGS_ROLES, type SetupArea, type UsgsRole } from '../schemas/firestore-ops.js';
 import { cityIdSchema } from '../schemas/paths.js';
 import { coded, firebaseAppIdsSchema, isoDateSchema, mapboxPublicTokenSchema, measurementIdSchema } from '../schemas/primitives.js';
@@ -202,6 +202,31 @@ export const analyticsConfigResponseSchema = z.strictObject({
     firebase: firebaseAppIdsSchema,
     manifestQueued: z.boolean(),
 });
+
+/** `setup.createCity` (CR-M2b-1): creates `cities/{cityId}` once from the bundled city; an existing city stays unchanged. */
+export const createCityRequestSchema = z.strictObject({
+    cityId: cityIdSchema,
+    /**
+     * The bundled seed's name, view, texts, theme and basemap. The server owns the rest: `id`, `createdAt`, the stamp,
+     * `published` (true: the bundled city is public today), the viewer token (`setup.saveMapbox`) and the analytics ids
+     * (`setup.analyticsConfig`).
+     */
+    city: cityDocSchema.pick({
+        name: true,
+        bounds: true,
+        center: true,
+        zoom: true,
+        minZoom: true,
+        maxZoom: true,
+        about: true,
+        privacy: true,
+        credits: true,
+        theme: true,
+        basemap: true,
+    }),
+});
+/** `created: false` when the city already existed (the call is idempotent: a second owner claim, a reload). */
+export const createCityResponseSchema = z.strictObject({ created: z.boolean() });
 
 export type SaveMapboxRequest = z.infer<typeof saveMapboxRequestSchema>;
 export type SaveMapboxResponse = z.infer<typeof saveMapboxResponseSchema>;

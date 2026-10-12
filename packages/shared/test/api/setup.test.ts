@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
     analyticsConfigResponseSchema,
     classifyMapboxToken,
+    createCityRequestSchema,
     MAPBOX_BOOTSTRAP_SCOPES,
     MAPBOX_PUBLIC_SCOPES,
     MAPBOX_TILES_SCOPES,
@@ -118,6 +119,33 @@ describe('setup views', () => {
             ok: true,
         });
         expect(validate(recordCloudRequestSchema, { provision: { items: [{ id: 'apis', state: 'ok' }] } })).toMatchObject({ ok: true });
+    });
+
+    it('happyPath_createCityTakesTheBundledCitysFields', () => {
+        const city = { name: { ro: 'București' }, bounds: { west: 25.93, south: 44.33, east: 26.25, north: 44.55 }, zoom: 14.5 };
+
+        expect(validate(createCityRequestSchema, { cityId: 'bucharest', city })).toMatchObject({ ok: true });
+    });
+
+    it.each([
+        ['a server-owned field', { published: true }, 'city.published'],
+        ['the viewer token', { mapbox: { publicToken: 'pk.x' } }, 'city.mapbox'],
+    ])('badPath_createCityRefuses_%s', (_case, extra, path) => {
+        const city = { name: { ro: 'București' }, bounds: { west: 25.93, south: 44.33, east: 26.25, north: 44.55 }, ...extra };
+
+        expect(validate(createCityRequestSchema, { cityId: 'bucharest', city })).toMatchObject({
+            ok: false,
+            issues: [{ code: 'validation.unknownKey', path }],
+        });
+    });
+
+    it('happyPath_recordCloudTakesTheM2bDoctorItems', () => {
+        const items = [
+            { id: 'crash-alerts', state: 'ok' },
+            { id: 'api-key', state: 'pending' },
+        ];
+
+        expect(validate(recordCloudRequestSchema, { provision: { items } })).toMatchObject({ ok: true });
     });
 
     it.each([

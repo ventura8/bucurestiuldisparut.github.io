@@ -1,12 +1,31 @@
 // Playwright end-to-end tests (@hcm/e2e): the config and projects, the fixtures, the specs, the setup project, the
-// mock APIs and the e2e site build. They run in Node (process.env, the Playwright runner, the servers started through
-// Node's type stripping, hence erasable syntax only) and pass callbacks into the page (DOM types), so both apply.
+// mock APIs and the e2e site build, and the admin tier (admin/: its world, fixtures, harness and specs, which read the
+// admin's contract code in packages/admin/src: the scopes and the setup steps' input budgets). They run in Node
+// (process.env, the Playwright runner, the servers started through Node's type stripping, hence erasable syntax only)
+// and pass callbacks into the page (DOM types), so both apply.
 {
     "extends": "../tsconfig.base.json",
     "compilerOptions": {
         "types": ["node"],
         "erasableSyntaxOnly": true
     },
-    "include": ["playwright.config.ts", "projects.ts", "support", "specs", "tour", "a11y", "setup", "fixtures", "mock-apis", "scripts"],
-    "references": [{ "path": "../packages/shared" }, { "path": "../packages/test-support" }, { "path": "../scripts/site" }]
+    "include": [
+        "playwright.config.ts",
+        "projects.ts",
+        "support",
+        "specs",
+        "tour",
+        "a11y",
+        "setup",
+        "fixtures",
+        "mock-apis",
+        "scripts",
+        "admin"
+    ],
+    "references": [
+        { "path": "../packages/shared" },
+        { "path": "../packages/test-support" },
+        { "path": "../packages/admin" },
+        { "path": "../scripts/site" }
+    ]
 }

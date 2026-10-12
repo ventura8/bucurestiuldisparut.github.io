@@ -37,10 +37,24 @@ function taskOptions(options: { readonly id?: string; readonly delaySeconds?: nu
     };
 }
 
+/** The options without the task id (an unnamed task). */
+function withoutId(options: { readonly id?: string; readonly delaySeconds?: number }): { readonly delaySeconds?: number } {
+    return options.delaySeconds === undefined ? {} : { delaySeconds: options.delaySeconds };
+}
+
 /** An unknown error code: a 429 is rate limiting, anything else (5xx, network) is `unavailable`. */
 function failureOf(shape: FunctionsErrorShape): UpstreamFailure {
     const known = typeof shape.code === 'string' ? FAILURE_BY_CODE.get(shape.code) : undefined;
     return known ?? (shape.httpResponse?.status === 429 ? 'rateLimited' : 'unavailable');
+}
+
+export interface CloudTaskQueueOptions {
+    /**
+     * Whether tasks keep their ids (default true). The Cloud Tasks emulator dispatches a task at once, whatever its
+     * delay, and still refuses its id afterwards, so a named debounce window would swallow every later request of the
+     * window: in the Functions emulator each request is a task of its own (the queue still runs one at a time).
+     */
+    readonly named?: boolean;
 }
 
 /**
@@ -49,11 +63,13 @@ function failureOf(shape: FunctionsErrorShape): UpstreamFailure {
  * already (the manifest builder's debounce window, `manifestTaskId`) resolves `false`; every other failure is an
  * `UpstreamError` of `cloud-tasks`.
  */
-export function createCloudTaskQueue(client: TaskQueueClient, region: string): TaskQueue {
+export function createCloudTaskQueue(client: TaskQueueClient, region: string, settings: CloudTaskQueueOptions = {}): TaskQueue {
+    const named = settings.named ?? true;
     return {
         enqueue: async (queue, payload, options = {}) => {
             try {
-                await client.taskQueue(`locations/${region}/functions/${queue}`).enqueue({ ...payload }, taskOptions(options));
+                const kept = named ? options : withoutId(options);
+                await client.taskQueue(`locations/${region}/functions/${queue}`).enqueue({ ...payload }, taskOptions(kept));
                 return true;
             } catch (error) {
                 const shape = shapeOf(error);

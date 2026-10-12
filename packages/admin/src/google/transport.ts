@@ -1,0 +1,215 @@
+import type { Logger } from '@hcm/shared';
+
+import { failureOfAnswer, failureOfOperation, GoogleApiError, googleFailureOf, unavailableFailure, type GoogleFailure } from './failure.js';
+import { at, isRecord, list, stringAt } from './json.js';
+
+/**
+ * The one way the admin calls a Google REST API from the browser (`docs/research/M2b-interfaces.md` §3.4): `fetch`
+ * with the owner's access token as a bearer header, JSON in and out, Google's error JSON mapped to a
+ * {@link GoogleApiError}, a retry with backoff for 429 and 5xx answers and network failures, every page of a list, and
+ * long-running operations polled until done. The token is read from memory for each call and never logged; a 401 is
+ * never retried (the step drops the token and asks for a new one, §1.5).
+ */
+
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+
+type QueryValue = string | number | boolean | readonly string[] | undefined;
+
+export interface GoogleCall {
+    /** The operation's name for logs and failures (`cloud-billing.updateBillingInfo`). */
+    readonly operation: string;
+    readonly method?: HttpMethod;
+    /** Absolute URL without a query. */
+    readonly url: string;
+    readonly query?: Readonly<Record<string, QueryValue>>;
+    /** Sent as JSON. */
+    readonly body?: unknown;
+    /** The role a 403 names (`apiError.cloud.permission`); the provisioner's calls need the project owner's. */
+    readonly role?: string;
+}
+
+export interface GoogleTransportOptions {
+    readonly fetch: typeof fetch;
+    /** The current access token (memory only, §2.3); null once it was dropped: the call fails `unauthorized`. */
+    readonly token: () => string | null;
+    /** Waits; the injected clock's in the app, so tests advance it. */
+    readonly sleep: (ms: number) => Promise<void>;
+    readonly log: Logger;
+    /** Retries of a 429, a 5xx or a network failure (default 3). */
+    readonly retries?: number;
+    /** Polls of an unfinished long-running operation before it counts as unavailable (default 60). */
+    readonly operationPolls?: number;
+}
+
+export interface GoogleTransport {
+    /** One call; resolves to the JSON body (undefined for an empty one). */
+    call(call: GoogleCall): Promise<unknown>;
+    /** As `call`, but a 404 resolves to undefined. */
+    find(call: GoogleCall): Promise<unknown>;
+    /** Every item of a paged list (`field` of each page, following `nextPageToken`). */
+    pages(call: GoogleCall, field: string): Promise<readonly unknown[]>;
+    /** Waits for a long-running operation (`{name, done}` from `apiBase`) and resolves to its `response`. */
+    operation(apiBase: string, started: unknown, call: Pick<GoogleCall, 'operation' | 'role'>): Promise<unknown>;
+}
+
+const FIRST_RETRY_MS = 1000;
+const MAX_BACKOFF_MS = 8000;
+const MAX_DELAY_MS = 30_000;
+const OPERATION_POLL_MS = 2000;
+const MAX_PAGES = 50;
+const RETRYABLE: ReadonlySet<GoogleFailure['kind']> = new Set(['rateLimited', 'unavailable']);
+
+function urlOf(call: GoogleCall): string {
+    const url = new URL(call.url);
+    for (const [name, value] of Object.entries(call.query ?? {})) {
+        const values = Array.isArray(value) ? value : [value];
+        values
+            .filter((item) => item !== undefined)
+            .forEach((item) => {
+                url.searchParams.append(name, String(item));
+            });
+    }
+    return url.toString();
+}
+
+function requestInit(call: GoogleCall, token: string): RequestInit {
+    const method = call.method ?? 'GET';
+    const authorization = `Bearer ${token}`;
+    return call.body === undefined
+        ? { method, headers: { authorization } }
+        : { method, headers: { authorization, 'content-type': 'application/json' }, body: JSON.stringify(call.body) };
+}
+
+async function readBody(response: Response): Promise<unknown> {
+    const text = await response.text().catch(() => '');
+    try {
+        return JSON.parse(text) as unknown;
+    } catch {
+        return undefined;
+    }
+}
+
+function roleOf(call: Pick<GoogleCall, 'role'>): { readonly role?: string } {
+    return call.role === undefined ? {} : { role: call.role };
+}
+
+/** Backoff: Google's `Retry-After` when given, else 1, 2, 4, 8 s; never more than 30 s. */
+function delayOf(failure: GoogleFailure, attempt: number): number {
+    const backoff = Math.min(FIRST_RETRY_MS * 2 ** attempt, MAX_BACKOFF_MS);
+    return Math.min(failure.retryAfterSeconds === undefined ? backoff : failure.retryAfterSeconds * 1000, MAX_DELAY_MS);
+}
+
+class Transport implements GoogleTransport {
+    readonly #options: GoogleTransportOptions;
+
+    constructor(options: GoogleTransportOptions) {
+        this.#options = options;
+    }
+
+    readonly call = async (request: GoogleCall): Promise<unknown> => {
+        for (let tried = 0; ; tried += 1) {
+            try {
+                return await this.#attempt(request);
+            } catch (error) {
+                await this.#backoff(request, error, tried);
+            }
+        }
+    };
+
+    readonly find = async (request: GoogleCall): Promise<unknown> => {
+        try {
+            return await this.call(request);
+        } catch (error) {
+            if (googleFailureOf(error)?.kind === 'notFound') {
+                return undefined;
+            }
+            throw error;
+        }
+    };
+
+    readonly pages = async (request: GoogleCall, field: string): Promise<readonly unknown[]> => {
+        const items: unknown[] = [];
+        let pageToken: string | undefined;
+        for (let page = 0; page < MAX_PAGES; page += 1) {
+            const body = await this.call({ ...request, query: { ...request.query, pageToken } });
+            items.push(...list(at(body, field)));
+            pageToken = stringAt(body, 'nextPageToken');
+            if ((pageToken ?? '') === '') {
+                break;
+            }
+        }
+        return items;
+    };
+
+    readonly operation = async (apiBase: string, started: unknown, request: Pick<GoogleCall, 'operation' | 'role'>): Promise<unknown> => {
+        const polls = this.#options.operationPolls ?? 60;
+        let current = started;
+        let poll = 0;
+        while (at(current, 'done') !== true) {
+            current = await this.#poll(apiBase, current, request, poll < polls);
+            poll += 1;
+        }
+        const error = at(current, 'error');
+        if (isRecord(error)) {
+            throw new GoogleApiError(request.operation, failureOfOperation(error, request.role));
+        }
+        return at(current, 'response');
+    };
+
+    /** Waits before the next try of a retryable failure; rethrows anything else, and the last failure. */
+    async #backoff(request: GoogleCall, error: unknown, tried: number): Promise<void> {
+        const failure = googleFailureOf(error);
+        const retries = this.#options.retries ?? 3;
+        if (failure === undefined || tried >= retries || !RETRYABLE.has(failure.kind)) {
+            throw error;
+        }
+        this.#options.log.warn('google call retried', { operation: request.operation, status: failure.status, attempt: tried + 1 });
+        await this.#options.sleep(delayOf(failure, tried));
+    }
+
+    async #poll(apiBase: string, current: unknown, request: Pick<GoogleCall, 'operation' | 'role'>, mayPoll: boolean): Promise<unknown> {
+        const name = stringAt(current, 'name');
+        if (name === undefined || !mayPoll) {
+            throw new GoogleApiError(request.operation, unavailableFailure(request.role));
+        }
+        await this.#options.sleep(OPERATION_POLL_MS);
+        return this.call({ operation: request.operation, url: `${apiBase}/${name}`, ...roleOf(request) });
+    }
+
+    async #attempt(call: GoogleCall): Promise<unknown> {
+        const token = this.#options.token();
+        if (token === null) {
+            throw new GoogleApiError(call.operation, { kind: 'unauthorized', status: 0, ...roleOf(call) });
+        }
+        let response: Response;
+        try {
+            response = await this.#options.fetch(urlOf(call), requestInit(call, token));
+        } catch {
+            // The original error may hold the URL; it is dropped on purpose.
+            throw new GoogleApiError(call.operation, unavailableFailure(call.role));
+        }
+        const body = await readBody(response);
+        if (!response.ok) {
+            throw new GoogleApiError(call.operation, failureOfAnswer(response.status, response.headers, body, call.role));
+        }
+        return body;
+    }
+}
+
+/** A create whose 409 means the resource exists already: resolves to true when it was created, false when it existed. */
+export async function createOnce(transport: GoogleTransport, call: GoogleCall): Promise<boolean> {
+    try {
+        await transport.call(call);
+        return true;
+    } catch (error) {
+        if (googleFailureOf(error)?.kind !== 'conflict') {
+            throw error;
+        }
+        return false;
+    }
+}
+
+/** A transport over `fetch`. */
+export function createGoogleTransport(options: GoogleTransportOptions): GoogleTransport {
+    return new Transport(options);
+}

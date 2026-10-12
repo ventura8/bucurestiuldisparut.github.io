@@ -1,5 +1,6 @@
 import type { PlaywrightTestOptions, PlaywrightWorkerOptions, Project } from '@playwright/test';
 
+import { ADMIN_ORIGIN } from './admin/world.js';
 import type { WorkerOptions } from './support/test.js';
 
 /**
@@ -14,9 +15,15 @@ import type { WorkerOptions } from './support/test.js';
  * | `tour` | `tour-<viewport>-<light|dark>-<ro|en>`, 11 viewports | `tour/*.tour.ts` (layout, axe, ARIA snapshots) |
  * | `a11y` | `a11y-reduced-motion`, `a11y-forced-colors` | `a11y/reduced-motion.spec.ts`, `a11y/forced-colors.spec.ts` |
  * | `nogl` | `nogl` (`--disable-3d-apis`) | `specs/viewer/no-webgl.spec.ts` |
+ * | `admin` | `admin-setup`, `admin-harness`, `admin-{c360,m768,l1440}-ro`, `admin-l1440-en` | `admin/{setup,harness,specs}/` |
+ *
+ * The admin projects (docs/research/M2b-interfaces.md §6.2) open the admin server's origin, forward the fake
+ * upstreams' hosts (`forwardUpstreams`), depend on `admin-setup` (the admin build and the emulators answer) instead of
+ * `setup`, and run one test at a time (`workers: 1`, plus the lease of `e2e/admin/support/test.ts` across projects):
+ * the emulators' owner, admins and setup records are per project.
  */
 
-const TIERS = ['smoke', 'fn', 'tour', 'a11y', 'nogl'] as const;
+const TIERS = ['smoke', 'fn', 'tour', 'a11y', 'nogl', 'admin'] as const;
 export type Tier = (typeof TIERS)[number];
 
 /** Only loopback resolves in Chromium: defence in depth behind the firewall fixture (support/network.ts). */
@@ -140,12 +147,49 @@ function noWebGlProjects(): E2eProject[] {
     return [project('nogl', 'nogl', NO_WEBGL_SPEC, chromium('l1440', 'ro', NO_GL_ARGS))];
 }
 
+/** An admin flow waits for the emulators (callables, the Auth and Firestore emulators) besides the page. */
+const ADMIN_TIMEOUT_MS = 90_000;
+
+function adminProject(name: string, testMatch: string, use: Use): E2eProject {
+    return {
+        name,
+        testDir: 'admin',
+        testMatch,
+        use: { ...use, baseURL: ADMIN_ORIGIN, forwardUpstreams: true },
+        dependencies: ['admin-setup'],
+        workers: 1,
+        timeout: ADMIN_TIMEOUT_MS,
+        metadata: { tier: 'admin' },
+    };
+}
+
+/** The admin tier: its setup, the harness of its e2e world, and the functional specs at three window classes and in English. */
+function adminProjects(): E2eProject[] {
+    const setup: E2eProject = {
+        name: 'admin-setup',
+        testDir: 'admin/setup',
+        testMatch: '**/*.setup.ts',
+        use: chromium('l1440'),
+        metadata: { tier: 'admin' },
+    };
+    const SPECS_GLOB = 'specs/**/*.spec.ts';
+    return [
+        setup,
+        adminProject('admin-harness', 'harness/**/*.spec.ts', chromium('l1440')),
+        adminProject('admin-c360-ro', SPECS_GLOB, chromium('c360')),
+        adminProject('admin-m768-ro', SPECS_GLOB, chromium('m768')),
+        adminProject('admin-l1440-ro', SPECS_GLOB, chromium('l1440')),
+        adminProject('admin-l1440-en', SPECS_GLOB, chromium('l1440', 'en')),
+    ];
+}
+
 const BY_TIER: Readonly<Record<Tier, () => E2eProject[]>> = {
     smoke: smokeProjects,
     fn: functionalProjects,
     tour: tourProjects,
     a11y: a11yProjects,
     nogl: noWebGlProjects,
+    admin: adminProjects,
 };
 
 function isTier(value: string): value is Tier {

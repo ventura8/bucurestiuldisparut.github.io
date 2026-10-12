@@ -12,7 +12,8 @@ import { answer, type MockFiles, type MockResponse } from './router.js';
  *   `GET /__calls[?test=<id>&host=<host>]` lists the records (oldest first), `POST /__reset[?test=<id>]` forgets them,
  *   `GET /__health` says the server is up. Extensions (`MockExtension`) answer first: the fake upstreams of
  *   `@hcm/test-support/fakes/http` (Google Cloud, Mapbox's Tokens and Tilesets APIs, USGS M2M, Nominatim; main.ts) and
- *   their `/__upstream/…` control endpoints; whatever an extension leaves unanswered falls through to router.ts.
+ *   their `/__upstream/…` control endpoints, Google's consent stand-in (`/__oauth/…`, oauth.ts) and the admin tier's
+ *   lease (`/__lease/…`, lease.ts); whatever an extension leaves unanswered falls through to router.ts.
  * - **site**: the built sites (`dist/e2e-site`) as GitHub Pages serves them: `index.html` for a folder, a redirect to
  *   the folder with its trailing slash, `cache-control: max-age=600` and `access-control-allow-origin: *`.
  */
@@ -33,13 +34,18 @@ interface ExtensionRequest {
 /** Answers what it knows (undefined: the next extension, then the router, answers). */
 export interface MockExtension {
     answer(request: ExtensionRequest): Promise<MockResponse | undefined>;
-    /** A control request outside `/h/` (`/__upstream/…`). */
-    control(request: {
-        readonly method: string;
-        readonly path: string;
-        readonly query: URLSearchParams;
-        readonly body: string;
-    }): Promise<MockResponse | undefined>;
+    /** A control request outside `/h/` (`/__upstream/…`, `/__oauth/…`, `/__lease/…`). */
+    control(request: ControlRequest): Promise<MockResponse | undefined>;
+}
+
+/** A request to the mock APIs outside `/h/`, as an extension's `control` sees it. */
+export interface ControlRequest {
+    readonly method: string;
+    readonly path: string;
+    readonly query: URLSearchParams;
+    readonly body: string;
+    /** The request's headers (the e2e network layer adds `x-hcm-test` to a page's requests to the mock APIs). */
+    readonly headers: IncomingHttpHeaders;
 }
 
 /** One forwarded request as the mock saw it. */
@@ -62,7 +68,8 @@ const CORS_HEADERS = {
     'access-control-allow-headers': '*',
 } as const;
 
-const SITE_TYPES: Readonly<Record<string, string>> = {
+/** Content types by file extension, for the site server and the admin server (admin-server.ts). */
+export const SITE_TYPES: Readonly<Record<string, string>> = {
     '.html': 'text/html; charset=utf-8',
     '.js': 'text/javascript; charset=utf-8',
     '.mjs': 'text/javascript; charset=utf-8',
@@ -73,6 +80,8 @@ const SITE_TYPES: Readonly<Record<string, string>> = {
     '.png': 'image/png',
     '.svg': 'image/svg+xml',
     '.woff2': 'font/woff2',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
 };
 
 interface RequestTarget {
@@ -167,7 +176,13 @@ async function controlled(
 ): Promise<MockResponse | undefined> {
     const body = await readBody(request);
     for (const extension of extensions) {
-        const result = await extension.control({ method: request.method ?? 'GET', path: url.pathname, query: url.searchParams, body });
+        const result = await extension.control({
+            method: request.method ?? 'GET',
+            path: url.pathname,
+            query: url.searchParams,
+            body,
+            headers: request.headers,
+        });
         if (result !== undefined) {
             return result;
         }
@@ -206,7 +221,7 @@ async function handleMock(
  * and a request the test's API client sends on such a connection at that moment fails with ECONNRESET ("socket hang
  * up"), which the firewall then reports as a blocked request (seen under load in the fn tier).
  */
-function listen(server: Server, port: number): Promise<Server> {
+export function listen(server: Server, port: number): Promise<Server> {
     server.keepAliveTimeout = 0;
     return new Promise((resolvePromise, reject) => {
         server.once('error', reject);
@@ -216,7 +231,7 @@ function listen(server: Server, port: number): Promise<Server> {
     });
 }
 
-function failed(response: ServerResponse, error: unknown): void {
+export function failed(response: ServerResponse, error: unknown): void {
     if (!response.headersSent) {
         send(response, { status: 500, type: 'text/plain', body: `mock failure: ${String(error)}` });
     }
@@ -237,7 +252,7 @@ export function startMockApis(
     return listen(server, port);
 }
 
-async function isFile(path: string): Promise<boolean> {
+export async function isFile(path: string): Promise<boolean> {
     try {
         return (await stat(path)).isFile();
     } catch {

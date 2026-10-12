@@ -1,6 +1,6 @@
 import { FIXTURE_VALUES, fixtureBody, fixtureResponse } from '../api-fixtures/index.js';
 import { authenticated, googleError, googleFailure, type GoogleApi, type GoogleProjects } from './google-common.js';
-import { bodyField, jsonResponse, requestObject, route, type Route } from './routes.js';
+import { applyMask, bodyField, jsonResponse, requestObject, route, type Route } from './routes.js';
 import { sequence, type ServiceFake } from './service.js';
 
 /**
@@ -14,6 +14,8 @@ interface BillingAccount {
     readonly id: string;
     readonly displayName: string;
     open: boolean;
+    /** USD unless stated. */
+    readonly currencyCode?: string;
 }
 
 export interface BillingState {
@@ -24,6 +26,10 @@ export interface BillingState {
     linkForbidden: boolean;
     /** Account id → its budgets (the fixture's shape, with the request's fields). */
     readonly budgets: Map<string, Readonly<Record<string, unknown>>[]>;
+    /** `PUT billingInfo` answers 400 with a `QuotaFailure`: the account has as many projects as it may (S-A04-BAD-BILLING-QUOTA). */
+    quotaExceeded: boolean;
+    /** Budget writes answer 403: the caller lacks `roles/billing.costsManager` (S-A04-BAD-BUDGET-PERMISSION). */
+    budgetsForbidden: boolean;
 }
 
 const DEFAULT_ACCOUNT = String(FIXTURE_VALUES['billingAccountId']);
@@ -34,8 +40,13 @@ export function defaultBillingState(): BillingState {
         links: new Map(),
         linkForbidden: false,
         budgets: new Map(),
+        quotaExceeded: false,
+        budgetsForbidden: false,
     };
 }
+
+/** The second open account of `severalAccounts` (S-A04-BAD-SEVERAL-ACCOUNTS), billed in euros. */
+const SECOND_ACCOUNT = '0E2E00-0E2E00-0E2E02';
 
 const BILLING: GoogleApi = {
     service: 'cloudbilling.googleapis.com',
@@ -60,7 +71,7 @@ function accountBody(account: BillingAccount): Record<string, unknown> {
         open: account.open,
         displayName: account.displayName,
         masterBillingAccount: '',
-        currencyCode: 'USD',
+        currencyCode: account.currencyCode ?? 'USD',
     };
 }
 
@@ -77,9 +88,17 @@ export function createCloudBillingFake(state: BillingState, projects: GoogleProj
             merge: { billingAccountName: state.links.get(project.id) },
         });
     };
-    const link: Route['answer'] = (request, params) => {
+    /** The refusal a link gets before the account is even looked at (a missing role, the account's project quota). */
+    const linkRefusal = (): Response | undefined => {
         if (state.linkForbidden) {
             return fixtureResponse('cloud-billing/billing-info.forbidden');
+        }
+        return state.quotaExceeded ? fixtureResponse('cloud-billing/billing-info.quota-exceeded') : undefined;
+    };
+    const link: Route['answer'] = (request, params) => {
+        const refused = linkRefusal();
+        if (refused !== undefined) {
+            return refused;
         }
         const name = bodyField(request, 'billingAccountName');
         const project = projects.resolve(String(params['project']));
@@ -143,8 +162,21 @@ export function createCloudBillingFake(state: BillingState, projects: GoogleProj
             linkForbidden: () => {
                 state.linkForbidden = true;
             },
+            severalAccounts: () => {
+                if (!state.accounts.some((account) => account.id === SECOND_ACCOUNT)) {
+                    state.accounts.push({ id: SECOND_ACCOUNT, displayName: 'Second Billing Account', open: true, currencyCode: 'EUR' });
+                }
+            },
+            quotaExceeded: () => {
+                state.quotaExceeded = true;
+            },
         },
-        snapshot: () => ({ accounts: state.accounts, links: Object.fromEntries(state.links), linkForbidden: state.linkForbidden }),
+        snapshot: () => ({
+            accounts: state.accounts,
+            links: Object.fromEntries(state.links),
+            linkForbidden: state.linkForbidden,
+            quotaExceeded: state.quotaExceeded,
+        }),
     };
 }
 
@@ -162,7 +194,7 @@ export function createBillingBudgetsFake(state: BillingState): ServiceFake {
     };
     const create: Route['answer'] = (request, params) => {
         const account = String(params['account']);
-        if (!state.accounts.some((candidate) => candidate.id === account)) {
+        if (state.budgetsForbidden || !state.accounts.some((candidate) => candidate.id === account)) {
             return googleError('google/error.permission-denied', BUDGETS);
         }
         const fields = requestObject(request);
@@ -176,6 +208,17 @@ export function createBillingBudgetsFake(state: BillingState): ServiceFake {
         }
         budgetsOf(account).push(budget);
         return jsonResponse(budget);
+    };
+    const patch: Route['answer'] = (request, params) => {
+        const name = `billingAccounts/${String(params['account'])}/budgets/${String(params['budget'])}`;
+        const index = budgetsOf(String(params['account'])).findIndex((candidate) => candidate['name'] === name);
+        const budget = budgetsOf(String(params['account']))[index];
+        if (state.budgetsForbidden || budget === undefined) {
+            return googleError(state.budgetsForbidden ? 'google/error.permission-denied' : 'google/error.not-found', BUDGETS);
+        }
+        const updated = applyMask(budget, requestObject(request), request.url.searchParams.get('updateMask'));
+        budgetsOf(String(params['account']))[index] = updated;
+        return jsonResponse(updated);
     };
     const base = 'https://billingbudgets.googleapis.com/v1/billingAccounts/{account}/budgets';
     return {
@@ -191,6 +234,7 @@ export function createBillingBudgetsFake(state: BillingState): ServiceFake {
                     return jsonResponse(budgets.length === 0 ? {} : { budgets });
                 }),
             ),
+            route('PATCH', `${base}/{budget}`, 'billing-budgets.patch', authenticated(BUDGETS, patch)),
             route(
                 'GET',
                 `${base}/{budget}`,
@@ -203,7 +247,11 @@ export function createBillingBudgetsFake(state: BillingState): ServiceFake {
             ),
         ],
         failure: (mode) => googleFailure(BUDGETS, mode),
-        scenarios: {},
+        scenarios: {
+            budgetForbidden: () => {
+                state.budgetsForbidden = true;
+            },
+        },
         snapshot: () => ({ budgets: Object.fromEntries(state.budgets) }),
     };
 }

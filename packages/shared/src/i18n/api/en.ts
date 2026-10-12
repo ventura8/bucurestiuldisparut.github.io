@@ -41,7 +41,7 @@ export const en: ApiMessages = {
     'apiError.analytics.notEnabled': 'Google Analytics is not enabled for the project. Enable it, then check again.',
     'apiError.analytics.noWebApp': 'The project has no Firebase web app.',
     'apiError.cloud.permission': 'The server account lacks the role {role} in the project.',
-    'apiError.cloud.apiDisabled': 'The {api} service is not enabled in the project. Run "Provision cloud" again.',
+    'apiError.cloud.apiDisabled': 'The {api} service is not enabled in the project. Run "Prepare the project" again.',
     'apiError.errorReporting.unavailable': 'Crash reports cannot be read right now. Try again.',
     'apiError.secrets.unavailable': 'Secrets cannot be saved. Check that Secret Manager is enabled.',
     'apiError.photo.unsupportedType': 'Only JPEG, PNG, WebP or TIFF photos are accepted.',

@@ -26,6 +26,7 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'setup.status': 'fn-admin',
     'setup.selfTest': 'fn-admin',
     'setup.recordCloud': 'fn-admin',
+    'setup.createCity': 'fn-admin',
     'setup.saveMapbox': 'fn-admin',
     'setup.saveUsgs': 'fn-admin',
     'setup.rotatePublicToken': 'fn-admin',

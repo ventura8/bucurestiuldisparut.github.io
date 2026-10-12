@@ -6,7 +6,9 @@ import { sequence, type ServiceFake } from './service.js';
 /**
  * The Firebase Management API v1beta1 for `setup.analyticsConfig` and `setup.selfTest` (scenario A22): the project's
  * web apps, a web app's public config (with `measurementId` once Google Analytics is linked), `addGoogleAnalytics`
- * and `analyticsDetails`. A fresh project has its one web app (PLAN Addendum 2) and no Analytics.
+ * and `analyticsDetails`, and Identity Toolkit's Google sign-in provider (its OAuth client id, which `admin.claim`
+ * checks an owner's token against, CR-M2b-2). A fresh project has its one web app (PLAN Addendum 2), no Analytics and
+ * Google sign-in set up with the fixture OAuth client (`googleSignInOff` removes it).
  */
 
 interface FirebaseWebApp {
@@ -19,6 +21,8 @@ interface FirebaseProject {
     readonly apps: FirebaseWebApp[];
     /** The measurement id once Google Analytics is linked. */
     measurementId: string | undefined;
+    /** Firebase Auth's Google provider is configured (with the fixture OAuth client). */
+    googleSignIn: boolean;
 }
 
 export interface FirebaseState {
@@ -32,6 +36,7 @@ function defaultProject(): FirebaseProject {
     return {
         apps: [{ appId: String(FIXTURE_VALUES['appId']), displayName: 'historic-city-map', state: 'ACTIVE' }],
         measurementId: undefined,
+        googleSignIn: true,
     };
 }
 
@@ -110,6 +115,17 @@ export function createFirebaseManagementFake(state: FirebaseState, projects: Goo
             ),
             route(
                 'GET',
+                'https://identitytoolkit.googleapis.com/admin/v2/projects/{project}/defaultSupportedIdpConfigs/google.com',
+                'firebase-management.googleIdpConfig',
+                auth((_request, params) => {
+                    const { id, firebase } = projectOf(String(params['project']));
+                    return firebase.googleSignIn
+                        ? fixtureResponse('firebase-management/google-idp-config.get', { values: { projectId: id } })
+                        : googleError('google/error.not-found', FIREBASE);
+                }),
+            ),
+            route(
+                'GET',
                 'https://firebase.googleapis.com/v1beta1/operations/{operation*}',
                 'firebase-management.getOperation',
                 auth((_request, params) => {
@@ -134,6 +150,9 @@ export function createFirebaseManagementFake(state: FirebaseState, projects: Goo
             },
             analyticsLinked: () => {
                 projectOf(String(FIXTURE_VALUES['projectId'])).firebase.measurementId = String(FIXTURE_VALUES['measurementId']);
+            },
+            googleSignInOff: () => {
+                projectOf(String(FIXTURE_VALUES['projectId'])).firebase.googleSignIn = false;
             },
         },
         snapshot: () => ({ projects: Object.fromEntries(state.projects) }),

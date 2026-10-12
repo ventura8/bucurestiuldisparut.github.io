@@ -15,9 +15,10 @@
         "e2e"
     ],
     "scripts": {
-        "build": "npm run build --workspaces --if-present",
+        "build": "npm run build --workspaces --if-present && node --import ./scripts/site/register-ts.mjs scripts/site/build-admin.ts",
+        "build:admin": "npm run build --workspace @hcm/admin && node --import ./scripts/site/register-ts.mjs scripts/site/build-admin.ts",
         "build:site": "node --import ./scripts/site/register-ts.mjs scripts/site/build-site.ts",
-        "build:site:e2e": "npm run build --workspace @hcm/engine && node --import ./scripts/site/register-ts.mjs e2e/scripts/build-site.ts",
+        "build:site:e2e": "npm run build --workspace @hcm/engine && npm run build --workspace @hcm/functions && npm run build:e2e --workspace @hcm/admin && node --import ./scripts/site/register-ts.mjs e2e/scripts/build-site.ts",
         "emulators:setup": "firebase setup:emulators:firestore && firebase setup:emulators:storage && firebase setup:emulators:pubsub",
         "format": "prettier --write .",
         "format:check": "prettier --check .",

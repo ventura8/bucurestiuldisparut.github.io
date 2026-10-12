@@ -1123,3 +1123,181 @@ Cloud Logging after a deploy.
   CR-M2-16, CR-M2-23, CR-M2-30, CR-M2-31 (a–e), with the shared names `FIRESTORE_PATHS.cities` and
   `DERIVATIVE_WRITTEN_AT` and the helpers in `functions/src/api/objects.ts`; CR-M2-15 (a) waits for its first user, the
   M3 publisher.
+
+## 23. M2b admin contracts (contracts agent, 2026-10-12)
+
+Added by the M2b contracts agent, alone in the tree before the admin workstreams start
+(`docs/research/M2b-interfaces.md`). No *Ask first* file was edited; the tree passes `PIPELINE_STAGE=static` without
+the items below.
+
+### 23a. `.dependency-cruiser.cjs`: the admin's layering
+
+M2b-interfaces §1.7: `packages/admin` holds DOM-free logic tested in Node, the Lit elements live in
+`packages/ui/src/admin/`, only the Firebase adapters and the entry touch the Firebase JS SDK, and the Google REST
+clients use `fetch`. Three rules make that a gate (CR-M2b-7):
+
+```diff
++        {
++            name: 'admin-firebase-sdk-only-in-adapters',
++            severity: 'error',
++            comment: 'The admin logic is tested in Node with fakes of its ports: only its Firebase adapters and its entry import the Firebase JS SDK (M2b-interfaces §1.7); the Google REST clients use fetch.',
++            from: { path: '^packages/admin/src/', pathNot: ['^packages/admin/src/firebase/', '^packages/admin/src/index\\.ts$'] },
++            to: { path: 'node_modules/(firebase|@firebase)/' },
++        },
++        {
++            name: 'admin-logic-without-lit',
++            severity: 'error',
++            comment: 'Admin elements live in packages/ui/src/admin; packages/admin is logic only (its entry registers the elements through @hcm/ui/admin).',
++            from: { path: '^packages/admin/src/' },
++            to: { path: 'node_modules/(lit|lit-html|@lit)/' },
++        },
++        {
++            name: 'viewer-never-loads-admin-elements',
++            severity: 'error',
++            comment: 'The engine and the viewer elements never import the admin elements, so no admin code or text reaches the public bundle.',
++            from: { path: ['^packages/engine/', '^packages/ui/src/(viewer|components|layout|theme|fonts)/'] },
++            to: { path: '^packages/ui/src/admin/' },
++        },
+```
+
+Today's tree already complies (no admin element, no Firebase import in `packages/admin`). Verify:
+`PIPELINE_STAGE=static` (`dependency-cruiser`).
+
+### 23b. `.github/workflows/ci.yml`: build the admin and write its runtime file before the Hosting deploy
+
+The `deploy-firebase` job deploys Hosting from `packages/admin/dist`, but no step of that job builds the admin (the
+`build` job's output is not passed on, and `firebase.json` has no Hosting `predeploy`). The admin also needs the App
+Check site key, which the Provision cloud step creates in the browser (M2b-interfaces §1.4, §3.4 item `app-check`).
+Proposal (CR-M2b-6): before `firebase deploy`, in the image, build the admin and write `packages/admin/dist/runtime.json`
+= `{release: <commit>, appCheckSiteKey}`, the key read with the deployer's credentials from Firebase App Check
+(`GET https://firebaseappcheck.googleapis.com/v1/projects/<number>/apps/<appId>/recaptchaEnterpriseConfig`; absent:
+no key, the admin runs without App Check):
+
+```diff
+             - name: firebase deploy
+               env:
+                   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+               run: |
+                   in_image=(docker run --rm --user "$(id -u):$(id -g)" --env HOME=/tmp --env GOOGLE_APPLICATION_CREDENTIALS
+                       --volume "$PWD:$PWD" --workdir "$PWD" "$HCM_IMAGE")
+                   "${in_image[@]}" npm ci --prefer-offline --no-audit --no-fund
++                  "${in_image[@]}" npm run build:admin
++                  "${in_image[@]}" npm run admin:runtime -- --project "$GCP_PROJECT_ID" --release "$GITHUB_SHA"
+                   "${in_image[@]}" npx firebase deploy --non-interactive --project "$GCP_PROJECT_ID" \
+                       --only firestore,storage,functions,hosting
+```
+
+`build:admin` and `admin:runtime` are root scripts (the integrator adds them) over the admin target of `scripts/site/`
+(the admin-e2e workstream). **UNVERIFIED**: that `roles/firebase.viewer` (which `gh-deployer@` holds) reads the reCAPTCHA
+Enterprise configuration; otherwise the provisioner adds `roles/firebaseappcheck.viewer`. Verify: `PIPELINE_STAGE=static`
+(actionlint, the workflow policy), then the first deploy and the admin's App Check token in the network log.
+
+### 23c. `.github/workflows/ci.yml`: callables under domain-restricted sharing
+
+When an organisation policy (`iam.allowedPolicyMemberDomains`) refuses `allUsers`, firebase-tools cannot make the
+callables public and the admin's probe never gets an answer (M2b-interfaces §3.3 d, §3.4.2). Proposal (CR-M2b-6): a
+step after `firebase deploy`, only when the repository variable `HCM_NO_INVOKER_IAM_CHECK` is `true` (Claude sets it,
+with the user's yes, when the doctor reported the policy), that sets `invokerIamDisabled: true` on the Cloud Run
+service of every callable and of `telemetry-reportError` (Cloud Run Admin v2 `PATCH services/<name>?updateMask=invokerIamDisabled`,
+the REST form of `gcloud run services update --no-invoker-iam-check`; security review §1.8). Verify: actionlint; a
+deploy into a project with that policy.
+
+### 23d. Information: the legacy import uploads the originals, not the seed derivatives
+
+The brief said the import bundles "the 45 migrated photos + derivatives". Contract (M2b-interfaces §3.3 h): the admin
+build bundles the migrated records and the **originals** of `seed/bucharest/photos/`, and the import uploads each
+original through the normal photo pipeline. Why: `photos.onUpload` makes the 2048 px and 400 px WebP files from what it
+receives, so a 1600 px seed derivative would become an upscaled public image; the original is kept privately for the
+rights review; the seed derivatives keep serving the static viewer and the e2e fixture. Cost: 46 MB in the Hosting
+release (fetched only by an import). The imported photos are published once processed, as the static site shows them
+today, with `rightsReview: true` kept. Say so if derivatives should be uploaded instead.
+
+### 23e. Information: the budget's amount in the billing account's currency
+
+The Budget API takes the amount in the billing account's own currency (a Romanian account may bill in RON). Contract
+(`BUDGET_AMOUNTS`, setup-ui): USD 5, EUR 5, GBP 4, RON 25, any other currency 5 units; the card shows the amount and the
+currency before the click, and Settings may change it later.
+
+### 23f. The admin's icons: a subset of their own (not *Ask first*; for review)
+
+The admin needs about 17 Material Symbols the viewer never shows (M2b-interfaces §1.6). Adding them to `UI_ICONS` grows
+the one icon font every visitor downloads (11 KB today). Recommended: a second subset,
+`packages/ui/fonts/material-symbols-rounded-admin.woff2`, built by the same `build-fonts.mjs` from an `ADMIN_ICONS`
+list and registered only by the admin; the alternative is one shared subset. The admin-shell workstream implements the
+chosen one.
+
+### 23g. Information: the GitHub environment in the Workload Identity condition
+
+Security review §2 wrote the provider's condition with `assertion.environment=='production'`; `ci.yml`'s deploy jobs
+declare `environment: deploy`. The provisioner writes `'deploy'` (from `infra/project.json`), so the condition matches
+the workflow; the GitHub environment `deploy` must stay restricted to `master`.
+
+## 24. M2b admin shell (admin-shell, 2026-10-12)
+
+Added by the admin-shell workstream (`docs/research/M2b-interfaces.md` §1, §2; its change requests CR-M2b-26 to
+CR-M2b-31). No *Ask first* file was edited.
+
+### 24a. Information: the admin's icons stay in the one subset (§23f)
+
+The 17 icons of M2b-interfaces §1.6 joined `UI_ICONS`, so the one icon font grew from 11,456 to 13,448 bytes. The second
+subset §23f recommends was not built: two faces of one family cannot share ligatures (the browser picks a face per
+character by `unicode-range`, never per ligature), so it needs a superset file registered only by the admin, a second
+build target in `packages/ui/scripts/build-fonts.mjs` and an option of `installFonts`. Say so if the visitors' 2 KB are
+worth that; the change stays inside `packages/ui`.
+
+### 24b. Information: `esnext.temporal` in the admin's tsconfigs
+
+`firebase/firestore` 13.0.0's declarations name `Temporal.Instant` (`Timestamp.fromInstant`), and `skipLibCheck` is off,
+so `tsc` fails in any project that imports Firestore without the Temporal declarations. `packages/admin/tsconfig.json`
+and `packages/admin/test/tsconfig.json` add `esnext.temporal` to `lib`; `tsconfig.base.json` is unchanged, so no other
+package gains the global.
+
+### 24c. Information: what the admin keeps in `localStorage`
+
+M2b-interfaces §1.7 said `localStorage` holds the language only. The admin also keeps the theme (`hcm:admin:theme`)
+and the answer to its analytics consent (`hcm:admin:consent`): PLAN Addendum 2 stores the decision, and a theme that
+reset on every visit would be a regression of the viewer's behaviour. Neither is a token, an address or a secret.
+
+## 25. M2b integration (integrator, 2026-10-12)
+
+Added by the integrator while wiring the admin end to end (`docs/research/M2b-interfaces.md` Addendum A). No *Ask
+first* file was edited.
+
+### 25a. Decision to confirm: the bundled city is created published
+
+`setup.createCity` writes `published: true`. The old site shows Bucharest publicly today, and the legacy import
+publishes its 45 photos "as the static site shows them" (M2b-interfaces §3.3 h): an unpublished city would publish
+them into nothing. Nothing reaches the public bucket before Mapbox is set (the builder keeps no manifest without the
+viewer token), and the Bucharest page keeps reading its committed seed until its `config.js` points at the bucket's
+manifest. Say so if the first city should start unpublished, to be published from Settings (M2c) instead.
+
+### 25b. Information: the Functions emulator is composed differently in three places
+
+Measured in the admin tier: the emulator runs every function in its own process, so in-memory secrets were invisible
+to the next function; the Cloud Tasks emulator dispatches a task at once and keeps refusing its id, which swallowed a
+debounce window's later requests; the Admin SDK waited about 14 s for the absent metadata server on every enqueue.
+`functions/src/deps.ts` therefore, in the emulator only, keeps secrets in the fake Secret Manager when fakes are
+configured, enqueues manifest tasks without an id, and names the task queue's service account. Deployed behaviour is
+unchanged.
+
+### 25c. Proposal: the USGS approval reaches an open page
+
+The page reads `setup/status` when it opens and on Check again; the approval that `ops.tick` records every six hours
+shows after a reload. An admin with the page open could see it sooner if the Setup page listened to `setup/status`
+(admins may read it) while USGS is pending. Not built; one listener, no new callable.
+
+### 25d. Proposal: a scheduled tick the e2e tier can trigger
+
+The emulator cannot run a v2 scheduled function from its Pub/Sub topic, so the e2e world posts to the function's
+trigger route, whose key carries the emulator's trigger generation (`-0` on a fresh start). An `ops.runTick` admin
+callable (or a test-only HTTPS endpoint in the emulator) would remove that coupling; neither is needed while the
+emulators start fresh for each run, as in CI.
+
+### 25e. Information: the claim no longer needs `HCM_OAUTH_CLIENT_IDS` (§22a)
+
+`admin.claim` used to refuse every token while `HCM_OAUTH_CLIENT_IDS` was unset, which nothing sets yet, so the first
+real claim would have failed. When the variable is empty the function now reads the project's Google sign-in client from
+Identity Toolkit (`GET identitytoolkit.googleapis.com/admin/v2/projects/{id}/defaultSupportedIdpConfigs/google.com`,
+`fn-admin@` holds `roles/firebaseauth.admin`) and accepts tokens issued to it; the variable still wins when set. The
+answer also carries the provider's client secret, which the adapter never reads, keeps or logs. §22a's carrier for the
+variable is no longer on the critical path.

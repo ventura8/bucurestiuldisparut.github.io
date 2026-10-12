@@ -2,7 +2,7 @@
 
 Ghid pentru administratorul unui oraș din **Historic City Map** (primul oraș: **București dispărut**). Acesta este scheletul ghidului: secțiunile se completează odată cu funcțiile, în etapele M2–M5. Versiunea în engleză: [ADMIN_GUIDE.en.md](ADMIN_GUIDE.en.md); cele două versiuni se actualizează împreună.
 
-> Stare: aplicația de administrare apare în etapa M2. Până atunci, acest ghid descrie ce va face fiecare ecran.
+> Stare (M2b): conectarea, pagina administratorilor și tot Asistentul de configurare de mai jos funcționează cap-coadă cu emulatoarele Firebase și serviciile Google, Mapbox și USGS simulate din teste; primul proiect real se configurează cu Claude, cu acordul tău la fiecare pas. Ecranele pentru fotografii, straturi și setări urmează în M2c–M4.
 
 ## Ce faci tu și ce face aplicația
 
@@ -17,49 +17,94 @@ Aplicația deschide pagina exactă (link direct), îți arată butonul, verific�
 
 ## Prima conectare
 
-- Conectează-te cu Google. Dacă harta nu are încă un proprietar, aplicația îți oferă **Sunt proprietarul acestui proiect Google Cloud**: Google îți cere să permiți accesul doar pentru citire la proiectele tale Cloud, iar aplicația verifică la Google că acest cont deține proiectul. Devii proprietarul hărții; nicio adresă de e-mail nu este configurată nicăieri.
+- **O hartă nouă (încă fără server)**: înainte de legarea facturării harta nu are server, așa că primii pași vorbesc direct cu Google, din browserul tău („mod de pornire”). Conectează-te cu Google: Google îți cere să permiți accesul doar pentru citire la proiectele tale Cloud, iar aplicația verifică la Google că acest cont deține proiectul. Urmează facturarea, pregătirea proiectului și instalarea serverului (mai jos); imediat ce serverul răspunde, devii automat proprietarul hărții, fără alt clic.
+- **O hartă care are deja server, dar nu are proprietar**, de exemplu când revii mai târziu: aplicația îți oferă **Confirmă cu Google**: Google îți cere același acces pentru citire, iar aplicația verifică că acest cont deține proiectul. Devii proprietarul hărții; nicio adresă de e-mail nu este configurată nicăieri.
+- **Ferestrele de permisiune Google**: fiecare pas cere doar accesul de care are nevoie, în momentul în care rulează (citire la conectare, facturare pentru buget, Google Cloud pentru pregătirea proiectului, Google Analytics pentru o setare); activitatea zilnică nu cere niciunul. Aplicația spune de ce înainte de fiecare. Google poate spune că nu a verificat aplicația: e normal, aplicația este a proiectului tău; deschide opțiunile avansate și continuă. Accesul rămâne doar în fila browserului, cel mult o oră, și nu este salvat nicăieri; când expiră, pasul îți cere să continui.
 - Oricine altcineva are nevoie de o invitație: un administrator introduce adresa persoanei, aplicația păstrează doar o amprentă a ei (nu adresa) și îți dă linkul de trimis. Persoana invitată se conectează cu Google la acel link și alege **Alătură-te**. O invitație expiră după 14 zile.
 - Un cont Google fără invitație află acest lucru și este deconectat.
 
 ## Asistentul de configurare
 
-Primul ecran până când toate cardurile sunt verzi; poate fi re-verificat oricând. Fiecare pas are: un indicator de stare, motivul și costul, un link direct, „Fă-o pentru mine” unde se poate, o casetă de lipire cu verificare pe loc și avans automat.
+Primul ecran până când toate cardurile obligatorii sunt verzi; **Verifică din nou** re-verifică oricând toată pagina sau un singur card. Pagina arată un cerc de progres („6 din 9 pași gata”) și câte un card pentru fiecare pas, notat de la a la h. Fiecare card are un indicator de stare cu pictogramă (**De făcut**, **În așteptare**, **Gata**, **Necesită atenție**, **Indisponibil acum**), de ce e nevoie de pas și cât costă, linkurile directe spre paginile furnizorului (fiecare se deschide într-o filă nouă), nota despre permisiunea Google înaintea oricărei ferestre Google, butonul pasului și **Verifică din nou**. Pe telefon cardurile stau într-o singură coloană, iar cardul deschis se extinde pe loc; de la 840 px lățime lista stă în stânga și pasul deschis alături. Când un pas devine verde, următorul se deschide singur (cardul de statistici rămâne deschis pentru setarea fluxului).
 
-### Google Cloud: facturare (Blaze) și buget
+Tot asistentul cere cam zece clicuri sau câmpuri și patru permisiuni Google; ce faci pe paginile Google, Mapbox și USGS se adaugă și rămâne doar al tău. Capturile de ecran ale fiecărui pas, la lățimi de telefon, tabletă, laptop și ecran mare, în modurile luminos și întunecat, vin din testele end-to-end ([TESTING.md](TESTING.md) → *Review screenshots*).
 
-- Autentificare Google cu permisiunile suplimentare pentru facturare.
-- Dacă nu ai cont de facturare: link direct către pagina Google unde introduci cardul; aplicația detectează contul nou.
-- Un clic leagă contul de proiect (planul Blaze) și creează bugetul de 5 $ cu alerte.
-- De completat (M2): capturi de ecran, mesaje de eroare și ce înseamnă fiecare.
+**Modul de pornire.** Până la instalarea serverului hărții, un banner spune „Mod de pornire: harta nu are încă server, așa că pașii vorbesc direct cu Google.”, iar navigarea oferă doar Configurare. Ce găsesc pașii se păstrează în această filă a browserului (niciodată un token, o adresă sau date de card) și rezistă la reîncărcare; serverul îl înregistrează după instalare.
 
-### Pregătirea infrastructurii
+### a. Conectare și proprietate
 
-- Un clic pornește pregătirea idempotentă: API-uri, conturi de serviciu și permisiuni, bucket-uri, federarea identității pentru CI, secrete.
-- „Doctor”: starea fiecărui element, re-verificabilă.
-- De completat (M2).
+- **Conectează-te cu Google** deschide fereastra Google cu acces doar pentru citire la Google Cloud; apoi Google confirmă că acest cont deține proiectul. Gata.
+- Dacă serviciul Resource Manager este oprit într-un proiect nou-nouț, panoul de conectare se oferă să-l activeze (un clic, permisiunea Google Cloud).
 
-### Mapbox
+### b. Facturare Google Cloud și buget
 
-- Ieșirea din planul demo: adresa de facturare și cardul, pe pagina Mapbox.
-- Alertele de utilizare din consola Mapbox.
-- Tokenul secret: creat de tine în consolă, cu permisiunile afișate în aplicație; îl lipești o singură dată. Aplicația verifică permisiunile și creează automat tokenurile publice, restricționate la adresele site-ului și ale aplicației.
-- De completat (M2).
+- **Leagă facturarea și creează bugetul de 5 USD**: un clic și o permisiune Google (facturare; Google Cloud dacă serviciile de facturare trebuie întâi pornite, iar atunci pasul c nu mai cere nimic). Aplicația leagă contul tău de facturare de proiect (planul Blaze) și creează bugetul lunar în moneda contului (5 USD, 5 EUR, 4 GBP, 25 RON), cu alerte la 50 %, 90 % și 100 % din cheltuieli. Cardul arată costul înainte de clic: cam 0,5–2 USD pe lună.
+- **Încă fără cont de facturare**: cardul spune asta și are linkul **Conturile de facturare Google Cloud**, unde creezi contul și introduci cardul. Apoi arată „Așteptăm contul nou de facturare…” și verifică la fiecare 10 secunde (30 de minute, cât timp fila e vizibilă); contul nou se leagă singur.
+- **Mai multe conturi**: alege unul (primul e deja ales) și **Leagă acest cont**.
 
-### USGS
+### c. Pregătirea proiectului Google Cloud
 
-- Înregistrarea în ERS și cererea de acces M2M (textul justificării este gata scris); aprobarea durează 24–48 de ore lucrătoare.
-- Tokenul de aplicație: caseta de lipire se deschide înainte să îl generezi, pentru că USGS îl afișează doar circa 60 de secunde.
-- Aprobarea este detectată automat, iar cardul devine verde singur; până atunci spune că USGS nu a aprobat încă accesul M2M și verifică din nou la fiecare 6 ore.
-- Dacă USGS este în mentenanță sau nu răspunde când lipești tokenul, tokenul este păstrat și verificat din nou mai târziu; nu trebuie să îl lipești din nou.
-- De completat (M2).
+- **Pregătește proiectul**: un clic (și permisiunea Google Cloud, dacă nu a cerut-o deja facturarea). Aplicația pregătește, în ordine, cele 15 elemente din card, fiecare cu starea lui: serviciile Google, conturile de serviciu, permisiunile, spațiile de stocare cu accesul browserului și curățarea lor, locurile pentru cheile secrete, coada de publicare, instalarea din GitHub fără chei, App Check, alertele bugetului, politicile organizației, e-mailul la erori noi și restricția cheii de browser. Rulat din nou, nu schimbă nimic din ce există deja.
+- Un element care nu reușește spune de ce, iar elementele care depind de el așteaptă („Așteaptă: …”); celelalte merg mai departe. **Reia ce nu a reușit** le repetă doar pe acelea (câte un clic).
+- „Verificarea periodică” așteaptă cu „Se creează la prima instalare a serverului.”; asta nu ține pasul pe loc.
 
-### Analiză și raportarea erorilor
+### d. Instalarea serverului hărții
 
-- Activarea Google Analytics pentru proiect (termenii îi accepți tu); identificatorul de măsurare este detectat automat.
-- Panoul „Rapoarte de erori” cu cele mai recente grupuri de erori.
-- Vizitatorii văd analiza doar după ce își dau acordul. Google Analytics primește adresa paginii fără partea de după `#` (unde stau zona hărții și, după *Locația mea*, poziția vizitatorului); retragerea acordului în Despre îi șterge cookie-urile; harta publică nu folosește Performance Monitoring.
-- În fluxul web Google Analytics, lasă oprită opțiunea „Page changes based on browser history events” (măsurarea îmbunătățită): harta își rescrie adresa la fiecare mișcare. Asistentul o va seta singur (planificat).
-- De completat (M2).
+- Serverul (funcțiile Firebase) se instalează din GitHub Actions la următorul push pe `master` sau de către Claude, după acordul tău. Cardul arată variabilele depozitului GitHub pe care le citește instalarea, fiecare cu buton de copiere, apoi „Verificăm la fiecare 30 de secunde…” și „N din 33 funcții instalate”, și devine verde singur când toate funcțiile sunt instalate și răspund.
+- O funcție care nu s-a instalat este numită; „Funcțiile sunt instalate, dar nu răspund” arată spre o politică a organizației care blochează accesul public.
+
+### d2. Preluarea hărții
+
+- Imediat ce serverul răspunde, aplicația te face proprietarul hărții cu permisiunea Google pe care o mai are (fără clic), creează orașul din datele site-ului vechi, înregistrează ce a găsit modul de pornire și iese din el: bannerul dispare, iar navigarea arată Configurare, Administratori și Erori. Se deschide cardul Mapbox.
+- Dacă permisiunea Google a expirat (peste o oră sau după reîncărcarea paginii), panoul de preluare cere un clic: **Confirmă cu Google**.
+
+### e. Mapbox
+
+- Creezi contul și ieși din planul demo pe paginile Mapbox (card și adresă de facturare; linkul cardului spune să alegi *Rotate token*), bifezi alertele de utilizare, apoi creezi tokenul secret `historic-map-server` cu permisiunile din card (**Copiază permisiunile**).
+- Lipește tokenul în **Tokenul secret (sk.…)**: cardul spune „Pare un token secret.” înainte de a trimite ceva (un token public `pk.` este explicat în loc). **Salvează**: tokenul ajunge o singură dată în Secret Manager, iar aplicația creează tokenurile publice ale site-ului și ale administrării, restricționate la adresele lor.
+- Un cont demo nu poate crea tokenuri: cardul spune „Mapbox nu a creat tokenul public. Verifică datele de facturare ale contului Mapbox.”, cu linkul spre metoda de plată; adaug-o pe pagina Mapbox și lipește tokenul din nou.
+
+### f. USGS
+
+- Te înregistrezi la ERS și ceri accesul M2M cu răspunsurile și textul cererii deja scrise (**Copiază textul cererii**); aprobarea durează 24–48 de ore lucrătoare.
+- Scrie **Numele de utilizator ERS** (și, opțional, data expirării tokenului), apoi **Deschide pagina tokenului USGS**: caseta de lipire se deschide prima și pornește o numărătoare de 60 de secunde („Lipește tokenul în 60 s”), pentru că USGS arată un token nou doar cam un minut. Lipește-l: este verificat și salvat imediat, fără clic pe Salvează. Dacă timpul expiră, cardul spune asta și caseta rămâne deschisă: creează un token nou.
+- Până la aprobare cardul este **În așteptare**, cu „USGS nu a aprobat încă accesul M2M pentru acest cont. Verificăm din nou la fiecare 6 ore.” și ora următoarei verificări. Serverul observă singur aprobarea; cardul e verde data viitoare când deschizi administrarea.
+
+### g. Statistici și rapoarte de erori (opțional)
+
+- Urmezi linkul spre consola Firebase și activezi Google Analytics pentru proiect (accepți acolo termenii Google). Cardul verifică apoi la fiecare 15 secunde, timp de 15 minute, și arată ID-ul de măsurare.
+- **Nu mai număra schimbările de adresă ca vizualizări**: un clic și permisiunea Google Analytics; harta își rescrie adresa la fiecare mișcare, așa că vizualizările din istoricul browserului trebuie să rămână oprite. Cardul spune apoi „Schimbările de adresă nu mai sunt numărate ca vizualizări.”
+- **Trimite-mi un e-mail la erori noi** este pornit implicit; comutarea cere permisiunea Google Cloud.
+- Panoul **Rapoarte de erori** (și pagina **Erori**) listează grupurile de erori din ultimele șapte zile.
+- Vizitatorii sunt măsurați doar după acordul lor; Google Analytics nu primește niciodată partea de după `#` a adresei, unde stau vederea și poziția vizitatorului.
+
+### h. Fotografiile vechi ale Bucureștiului (opțional)
+
+- **Importă cele 45 fotografii**: un clic. Fotografiile trec prin procesarea obișnuită câte trei odată („N din 45 fotografii importate”), sunt publicate după procesare și rămân în coada de verificare a drepturilor; cardul se încheie cu „Toate cele 45 fotografii sunt pe hartă.”, iar datele publice ale orașului le listează. Un import repetat sau după o filă închisă nu adaugă nimic de două ori și termină doar ce lipsește.
+- O fotografie care nu a putut fi procesată apare în listă cu motivul ei; celelalte se importă.
+
+### Când un pas spune altceva
+
+| Mesaj | Cauză | Ce faci |
+| --- | --- | --- |
+| „Doar proprietarul proiectului Google Cloud … poate configura harta.” | contul nu deține proiectul, iar harta nu are încă server | conectează-te cu contul Google al proprietarului |
+| „Serverul hărții nu răspunde acum. Încearcă din nou peste un minut.” | harta a fost configurată, dar serverul ei nu răspunde | **Încearcă din nou**; dacă durează, verifică instalarea (pasul d) |
+| „Pasul are nevoie de permisiunea „…”, nebifată la Google. Nu s-a schimbat nimic.” | o permisiune a fost debifată în fereastra Google | apasă din nou butonul pasului și las-o bifată |
+| „Browserul a blocat fereastra Google. Permite ferestrele pop-up pentru acest site.” | ferestrele pop-up sunt blocate | permite ferestrele pop-up pentru adresa administrării |
+| „Ai ales alt cont Google decât cel conectat. Alege același cont.” | în fereastra Google a fost ales alt cont | alege contul conectat |
+| „Permisiunea Google pentru acest pas a expirat după o oră. Continuă ca să o reînnoiești.” | permisiunea se păstrează cel mult o oră | **Continuă** (un clic, o permisiune); pasul reia de unde a rămas |
+| „Contul de facturare are deja numărul maxim de proiecte. …” | limita Google de proiecte pe cont de facturare | alege alt cont sau cere mai multe de la Google |
+| „Niciun cont nou de facturare în 30 de minute. …” | contul nu a fost încă creat | creează-l, apoi **Verifică din nou** |
+| „Politica … a organizației blochează acest element.” | o regulă a organizației tale Google | ghidul acelei reguli; schimbarea ei e decizia ta |
+| „Contul serverului nu are rolul … în proiect.” | lipsește un rol contului care a făcut apelul | acordă rolul numit, apoi **Reia ce nu a reușit** sau **Verifică din nou** |
+| „Funcția … nu s-a instalat. Reia instalarea.” | o funcție nu s-a instalat | reia instalarea |
+| „Serverul nu s-a instalat nici după două ore. …” | instalarea nu a rulat | rulează-o (GitHub Actions sau Claude), apoi **Verifică din nou** |
+| „Mapbox a refuzat tokenul: nu este valid sau a fost revocat.” | token greșit, șters sau revocat | creează tokenul din nou și lipește-l |
+| „Tokenului îi lipsesc permisiunile: …” | permisiuni nebifate | creează tokenul din nou cu toate permisiunile din card |
+| „USGS a refuzat utilizatorul sau tokenul. …” | utilizator greșit sau token expirat | creează un token nou și lipește-l în 60 de secunde |
+| „USGS este în mentenanță. Reîncercăm automat.” | mentenanță USGS | nimic: tokenul este păstrat |
+| „Google Analytics nu este activat pentru proiect. …” | Analytics este oprit | activează-l în consola Firebase (linkul cardului) |
+| „Fotografii neprocesate: N. Motivul apare lângă fiecare.” | o fotografie din pachet nu a putut fi procesată | **Verifică din nou** sau editează fotografia când apar ecranele foto (M2c) |
 
 ## Activitatea zilnică
 

@@ -1,6 +1,7 @@
 import { FIXTURE_VALUES, fixtureBody } from '../api-fixtures/index.js';
 import { authenticated, googleError, googleFailure, type GoogleApi, type GoogleProjects } from './google-common.js';
 import { bodyField, jsonResponse, route, type Route, type RouteParams } from './routes.js';
+import type { PolicyStore } from './google-policies.js';
 import type { ServiceFake } from './service.js';
 
 /**
@@ -22,6 +23,8 @@ interface SecretVersion {
 export interface SecretsState {
     /** Project id → secret id → its versions, oldest first. */
     readonly projects: Map<string, Map<string, SecretVersion[]>>;
+    /** `<project id>/<secret id>` → the secret's IAM policy (the provisioner's `iam` item). */
+    readonly policies: PolicyStore;
 }
 
 const SECRET_MANAGER: GoogleApi = {
@@ -152,11 +155,29 @@ export function createSecretManagerFake(state: SecretsState, projects: GooglePro
         secrets.set(secretId, []);
         return jsonResponse(secretBody(number, secretId));
     };
+    const policyKey = (params: RouteParams): string => `${projects.resolve(String(params['project'])).id}/${String(params['secret'])}`;
     return {
         name: 'secret-manager',
         routes: [
             ...versionRoutes(withSecret),
             route('POST', BASE, 'secret-manager.secrets.create', auth(create)),
+            route(
+                'GET',
+                `${BASE}/{secret}:getIamPolicy`,
+                'secret-manager.secrets.getIamPolicy',
+                auth((_request, params) => withSecret(params, () => jsonResponse(state.policies.read(policyKey(params))))),
+            ),
+            route(
+                'POST',
+                `${BASE}/{secret}:setIamPolicy`,
+                'secret-manager.secrets.setIamPolicy',
+                auth((request, params) =>
+                    withSecret(params, () => {
+                        const stored = state.policies.write(policyKey(params), request);
+                        return stored === undefined ? googleError('google/error.aborted', SECRET_MANAGER) : jsonResponse(stored);
+                    }),
+                ),
+            ),
             route(
                 'GET',
                 `${BASE}/{secret}`,
@@ -184,6 +205,7 @@ export function createSecretManagerFake(state: SecretsState, projects: GooglePro
         },
         snapshot: () => ({
             projects: Object.fromEntries([...state.projects].map(([id, secrets]) => [id, Object.fromEntries(secrets)])),
+            policies: state.policies.snapshot(),
         }),
     };
 }

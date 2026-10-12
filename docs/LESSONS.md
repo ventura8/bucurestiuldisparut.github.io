@@ -186,3 +186,73 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the integrator, checking the bare imports of the built bundle against its manifest; every test ran from source, where the workspace's `node_modules` has zod.
     - Fix and pin: the build bundles everything except the functions' own pinned dependencies, then fails when a bare import is neither a Node built-in nor pinned, and loads the bundle to check every export's deploy manifest; the Functions emulator loads the same `functions/dist/` with all 32 functions.
     - **Test the artifact you deploy, not only the source it was built from.**
+35. **The legacy import would have dropped Ferdinand without a word.**
+    - Seen: the first end-to-end import (M2b) reported "All 45 photos are on the map." with 44 photo documents: the old site gave Bateriilor and Ferdinand the same id, and the import's "already imported under another id" check by `legacyId` counted Ferdinand as done.
+    - Found by: the e2e journey counting the photo documents in the emulator; the import's unit tests used unique ids.
+    - Fix and pin: a `legacyId` that more than one bundled record carries identifies nothing; those records match by document id only (`badPath_twoRecordsSharingALegacyIdAreBothImported`, `S-A28-HAPPY`).
+    - **Never assume the legacy data's ids are unique: count what a migration wrote, not what it reported.**
+36. **A quick click on the billing card asked Google for the wrong permission.**
+    - Seen: in start-up mode the billing button was clickable while the card was still asking Service Usage whether the billing APIs were on; a click in that window asked Google for `cloud-billing`, and the step then tried to enable the APIs with a token that cannot.
+    - Found by: the e2e journey, whose click came faster than a human's; the flow's unit tests awaited the detection first.
+    - Fix and pin: the card is busy (its button disabled) while the detection runs (`happyPath_enabledApisKeepTheBillingScope`).
+    - **A button whose meaning depends on a detection waits for that detection.**
+37. **The open card jumped to another step while the admin was reading it.**
+    - Seen: after a reload, the admin opened the analytics card; seconds later the page switched to the legacy import, because the Setup Assistant's start opened "the first incomplete step" once its slow checks (the import's detection reads 45 documents) finished.
+    - Found by: the e2e journey, which opened the card before the checks ended.
+    - Fix and pin: the start opens a step only when the admin has not opened one meanwhile (`badPath_aCardOpenedWhileTheFirstChecksRunStaysOpen`).
+    - **An automatic navigation that ends after an await must not override what the user chose during it.**
+38. **The analytics card hid the Google permission note before its last Google window.**
+    - Seen: once the measurement id was found the card turned green and the note disappeared, but the GA4 stream setting still opened Google's window.
+    - Found by: the e2e journey's check of the note before every popup (`S-A27-HAPPY-UNVERIFIED-NOTICE`).
+    - Fix and pin: the note follows the card's next popup (`scope`), not the card's state; sign-in and the claim, whose popups belong to the shell's panels, name no scope (`happyPath_aDoneStepWhoseNextActionAsksGoogleKeepsItsNote`).
+    - **Show a consent explanation next to every action that opens a consent, whatever the step's status.**
+39. **The USGS username disappeared when the window changed size.**
+    - Seen: a capture at another window size re-created the USGS card (one column versus list and detail), and the pasted token was refused with "Fill in the username first."; a rotated tablet would do the same.
+    - Found by: the review-screenshot run of the e2e journey.
+    - Fix and pin: the username and the expiry date live in the Setup Assistant's state (`draftUsgs`), never the token (`happyPath_theTypedFieldsSurviveTheCardBeingMadeAgain`).
+    - **Form state that must survive a layout change lives in the state, not in the element.**
+40. **A saved USGS token was "missing" a second later in the e2e world.**
+    - Seen: `setup.saveUsgs` stored the token, then `setup.selfTest` found no secret: the Functions emulator runs every function in its own worker process, and the emulator's in-memory secret store is per process.
+    - Found by: the e2e journey; every functions test ran one handler in one process.
+    - Fix and pin: in the emulator with fakes the secrets live in the fake Secret Manager of the mock APIs (`happyPath_theEmulatorWithTheFakesKeepsSecretsInTheFakeSecretManager`).
+    - **State the deployed system keeps in a shared service must not live in process memory in its local stand-in.**
+41. **The emulator never rebuilt the manifest after the import.**
+    - Seen: the manifest stayed at the version built before the 45 photos: the Cloud Tasks emulator dispatches a task at once, whatever its delay, and keeps refusing its id, so every later request of the same one-minute window was dropped.
+    - Found by: the e2e journey polling `manifests/bucharest` for 45 photos.
+    - Fix and pin: in the Functions emulator manifest tasks carry no id, so each request is a build of its own (`happyPath_unnamedTasksDropTheirIdButKeepTheDelay`); deployed, the named window stays.
+    - **When an emulator ignores a timing guarantee a design relies on, adapt the composition for the emulator, not the design.**
+42. **The admin's harness page could not reach the emulators.**
+    - Seen: a page answered by a Playwright route has no address space, so Chromium's Local Network Access refused its requests to the loopback emulators.
+    - Found by: the first admin harness specs (M2b).
+    - Fix and pin: the harness page is served by the e2e admin server on the admin's own origin (`/__harness`, `S-A00-HAPPY-SIGNED-IN-PERSONA`).
+    - **Serve a test page from the origin whose network rights it needs.**
+43. **A fake made a phantom project of the real one.**
+    - Seen: the fake Resource Manager knew a project first named by its number as a different project, so Service Usage refused billed APIs on a project whose billing was linked.
+    - Found by: the provisioner's tests against the fakes (M2b).
+    - Fix and pin: `demo-hcm` is known by id and number from the start (`packages/test-support/src/fakes/project.ts`).
+    - **A fake keyed by two identifiers must make them one record.**
+44. **Polling a long-running operation created the service account twice.**
+    - Seen: the transport resent the start call's method, query and body to the operation's URL, so IAM's create was POSTed again.
+    - Found by: the provisioner's write counts ("a second run writes nothing").
+    - Fix and pin: an operation is polled with a bare GET of its name (`packages/admin/test/google/transport.test.ts`).
+    - **Poll an operation by its name only; never replay the call that started it.**
+45. **The Setup page logged "ResizeObserver loop completed with undelivered notifications".**
+    - Seen: the page measured its own window class and changed its layout from the observer's callback, which resized the element it observed.
+    - Found by: the console guard of the setup page's browser tests (M2b).
+    - Fix and pin: the page follows only the width class and applies a change on the next animation frame (`packages/ui/test/admin/setup/hcm-setup-page.test.ts`).
+    - **Never change an observed element's size from its own ResizeObserver callback.**
+46. **The sign-in flow evaluated the same user twice.**
+    - Seen: Firebase announced the popup's user to `onAuthStateChanged` before `signInWithPopup` resolved, so the listener and the click's own flow both decided for the same uid.
+    - Found by: the auth controller's tests (M2b).
+    - Fix and pin: the controller evaluates each uid once and lets the click's flow continue (`packages/admin/test/auth/controller.test.ts`).
+    - **An auth listener and the flow that triggered it must agree on who decides.**
+47. **The first real owner claim would have been refused.**
+    - Seen: `admin.claim` accepted only tokens issued to an OAuth client listed in `HCM_OAUTH_CLIENT_IDS`, a deploy-time value nothing sets yet, so on the real project every claim would have answered `apiError.claim.tokenMismatch`; the e2e world set the variable and hid it.
+    - Found by: the integration review of the M2b journey against the production composition (`DECISIONS-for-review.md` §22a, CR-M2b-2).
+    - Fix and pin: without the variable the claim reads the project's Google sign-in client from Identity Toolkit (`happyPath_withoutConfiguredClientsTheGoogleSignInClientIsAsked`), and the e2e emulators no longer set it, so the journey's claim takes the production path (`S-A26-HAPPY`).
+    - **Configure the test world like production; every value a test sets for convenience is a path production never takes.**
+48. **One of the 45 legacy photos was sometimes refused as a duplicate.**
+    - Seen: the old site placed one file (`Al Orascu vazuta din Mihai Voda, partea din dreapta.jpg`) at two spots; the import uploads it for both records, and `photos.onUpload` refused the second as a duplicate of the first, but only when the first had finished processing before the second was checked, so the journey failed now and then.
+    - Found by: the full e2e stage, where load changed the order of the import's three parallel uploads.
+    - Fix and pin: two photos that both carry a `legacyId` are never each other's duplicate (`happyPath_twoLegacyPhotosOfOneImageAreBothProcessed`); a new upload of a legacy image still is (`badPath_aNewPhotoOfALegacyImageIsStillADuplicate`).
+    - **A check that depends on which of two parallel jobs finishes first is a race: decide by data, never by order.**

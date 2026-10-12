@@ -11,9 +11,11 @@ export {
     type UpstreamHandler,
     type UpstreamRequest,
 } from './fetch.js';
-export { GOOGLE_TOKENS, type GoogleGrant, type ProjectAccess } from './google-identity.js';
+export { DEPLOYMENTS, registryFunctions, type Deployment } from './google-functions.js';
+export { E2E_ORGANIZATION, GOOGLE_TOKENS, type GoogleGrant, type ProjectAccess } from './google-identity.js';
 export { BILLED_SERVICES, SPARK_SERVICES } from './google-services.js';
 export { PROVISIONED_SECRETS } from './google-secrets.js';
+export { E2E_PROJECT_CONFIG } from './project.js';
 export { MAPBOX_TOKENS } from './mapbox-state.js';
 export { jsonResponse, route, routeTable, type Route, type RouteAnswer, type RouteParams } from './routes.js';
 export { FAILURE_MODES, UPSTREAM_SERVICES, type FailureMode, type UpstreamServiceName } from './service.js';

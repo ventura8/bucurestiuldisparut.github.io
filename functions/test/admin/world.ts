@@ -22,8 +22,10 @@ import type { Clock } from '../../src/ports/clock.js';
 import type { DocumentStore } from '../../src/ports/documents.js';
 import type { ErrorReporter } from '../../src/ports/error-reporter.js';
 import { UpstreamError } from '../../src/ports/errors.js';
+import type { FirebaseManagement } from '../../src/ports/firebase-management.js';
 import type { GoogleIam } from '../../src/ports/google-iam.js';
 import type { RuntimeConfig } from '../../src/ports/runtime-config.js';
+import { createFakeFirebaseManagement } from '../support/services.js';
 
 const NOW = '2026-10-12T08:30:00.000Z';
 
@@ -68,6 +70,8 @@ export interface World {
     readonly admins: AdminDirectory;
     readonly clock: ReturnType<typeof fixedClock>;
     readonly config: RuntimeConfig;
+    /** Google sign-in's client (`admin.claim` when `config.oauthClientIds` is empty): the fixture client by default. */
+    readonly firebase: FirebaseManagement;
     readonly log: Logger;
     readonly recording: RecordingSink;
 }
@@ -97,6 +101,7 @@ export function openEmulators(name: string): Emulators {
                 admins: firestoreAdminDirectory(db),
                 clock: fixedClock(),
                 config: CONFIG,
+                firebase: createFakeFirebaseManagement().firebase,
                 log: createLogger('functions', { sink: recording.sink, minLevel: 'debug' }),
                 recording,
             };

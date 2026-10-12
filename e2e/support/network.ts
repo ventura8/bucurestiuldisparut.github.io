@@ -1,14 +1,16 @@
 import type { APIRequestContext, BrowserContext, Route, WebSocketRoute } from '@playwright/test';
 
 import { MOCK_API_ORIGIN, TEST_HEADER } from '../fixtures/world.js';
-import { isLoopback, mockedHostKind } from '../mock-apis/hosts.js';
+import { isLoopback, isUpstreamHost, mockedHostKind } from '../mock-apis/hosts.js';
 
 /**
  * The browser context's network, decided per request (docs/research/design-review-testability.md §4.2):
  *
- * - loopback (the site server): passes through;
- * - a mocked host (Mapbox, analytics, the CDN, the e2e tile and telemetry hosts): forwarded to the mock APIs as
- *   `/h/<host><path>`, tagged with the test's id, and answered from there; nothing reaches the real host;
+ * - loopback (the site and admin servers, the Firebase emulators): passes through; a page's request to the mock APIs
+ *   themselves (Google's consent stand-in, `/__oauth/…`) gets the test's id as `x-hcm-test`;
+ * - a mocked host (Mapbox, analytics, the CDN, the e2e tile and telemetry hosts), and in the admin projects
+ *   (`upstream`) a host of the fake upstreams: forwarded to the mock APIs as `/h/<host><path>`, tagged with the test's
+ *   id, and answered from there; nothing reaches the real host;
  * - anything else: aborted (`blockedbyclient`) and recorded, and the test fails at teardown (the firewall).
  *
  * WebSockets get the same rule through `routeWebSocket` (route handlers never see them). A page-level `page.route`
@@ -27,13 +29,30 @@ export class Recorder {
     take(): string[] {
         return this.#entries.splice(0);
     }
+
+    /** The entries that match `pattern`, which the test now owns; the others stay recorded. */
+    takeMatching(pattern: RegExp): string[] {
+        const taken = this.#entries.filter((entry) => pattern.test(entry));
+        const kept = this.#entries.filter((entry) => !pattern.test(entry));
+        this.#entries.splice(0, this.#entries.length, ...kept);
+        return taken;
+    }
+}
+
+/** How a context's network treats the hosts beyond the viewer's. */
+export interface NetworkOptions {
+    /** Forward the fake upstreams' hosts too (the admin projects, CR-M2-21). */
+    readonly upstream: boolean;
 }
 
 /** Playwright's message when the page, context or browser went away during a route. */
 const CLOSED = /has been closed|Target closed/;
 
-/** Request headers the mock needs; the browser's own (cookies, host, origin) stay out of the forwarded copy. */
-const FORWARDED_HEADERS = ['accept', 'content-type'];
+/**
+ * Request headers the mock needs (the fake upstreams read the bearer token); the browser's own (cookies, host, origin)
+ * stay out of the forwarded copy.
+ */
+const FORWARDED_HEADERS = ['accept', 'content-type', 'authorization'];
 
 function forwardedHeaders(headers: Readonly<Record<string, string>>, testId: string): Record<string, string> {
     const kept = Object.entries(headers).filter(([name]) => FORWARDED_HEADERS.includes(name));
@@ -54,12 +73,34 @@ async function forward(route: Route, api: APIRequestContext, testId: string): Pr
     await route.fulfill({ response });
 }
 
-async function decide(route: Route, api: APIRequestContext, testId: string, blocked: Recorder): Promise<void> {
+/** Loopback passes; a page's request to the mock APIs themselves carries the test's id, like a forwarded one. */
+async function passLoopback(route: Route, testId: string): Promise<void> {
+    const request = route.request();
+    if (new URL(request.url()).origin !== MOCK_API_ORIGIN) {
+        await route.fallback();
+        return;
+    }
+    await route.fallback({ headers: { ...(await request.allHeaders()), [TEST_HEADER]: testId } });
+}
+
+function isForwarded(host: string, options: NetworkOptions): boolean {
+    return mockedHostKind(host) !== null || (options.upstream && isUpstreamHost(host));
+}
+
+interface Decision {
+    readonly api: APIRequestContext;
+    readonly testId: string;
+    readonly blocked: Recorder;
+    readonly options: NetworkOptions;
+}
+
+async function decide(route: Route, decision: Decision): Promise<void> {
+    const { api, testId, blocked, options } = decision;
     const url = route.request().url();
     const host = new URL(url).hostname;
     if (isLoopback(host)) {
-        await route.fallback();
-    } else if (mockedHostKind(host) === null) {
+        await passLoopback(route, testId);
+    } else if (!isForwarded(host, options)) {
         blocked.record(url);
         await route.abort('blockedbyclient');
     } else {
@@ -85,8 +126,14 @@ function guardWebSocket(socket: WebSocketRoute, blocked: Recorder): void {
 }
 
 /** Installs the routes on `context`; `api` reaches the mock APIs from Node, `testId` tags every forwarded call. */
-export async function installNetwork(context: BrowserContext, api: APIRequestContext, testId: string, blocked: Recorder): Promise<void> {
-    await context.route('**/*', (route) => decide(route, api, testId, blocked));
+export async function installNetwork(
+    context: BrowserContext,
+    api: APIRequestContext,
+    testId: string,
+    blocked: Recorder,
+    options: NetworkOptions = { upstream: false },
+): Promise<void> {
+    await context.route('**/*', (route) => decide(route, { api, testId, blocked, options }));
     await context.routeWebSocket(/.*/, (socket) => {
         guardWebSocket(socket, blocked);
     });

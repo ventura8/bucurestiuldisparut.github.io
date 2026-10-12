@@ -104,6 +104,22 @@ describe('setup.recordCloud', () => {
         await expect(record(world, { provision: { items: reported } })).resolves.toMatchObject({ status: { provision: { state: worst } } });
     });
 
+    it('happyPath_aSchedulerWaitingForTheFirstDeployDoesNotHoldTheProvisioningBack', async () => {
+        const world = createWorld();
+        const waiting = PROVISION_ITEMS.map((id) => ({ id, state: id === 'scheduler' ? 'pending' : 'ok' }) as const);
+
+        await expect(record(world, { provision: { items: waiting } })).resolves.toMatchObject({ status: { provision: { state: 'ok' } } });
+    });
+
+    it('badPath_aSchedulerFoundBrokenStillHoldsTheProvisioningBack', async () => {
+        const world = createWorld();
+        const broken = PROVISION_ITEMS.map((id) => ({ id, state: id === 'scheduler' ? 'invalid' : 'ok' }) as const);
+
+        await expect(record(world, { provision: { items: broken } })).resolves.toMatchObject({
+            status: { provision: { state: 'invalid' } },
+        });
+    });
+
     it('happyPath_aBillingReportLeavesTheProvisioningAlone', async () => {
         const world = createWorld();
         await record(world, { provision: { items: items('ok') } });

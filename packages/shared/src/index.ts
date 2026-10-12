@@ -1,5 +1,11 @@
 export { DEFAULT_LOCALE, LOCALES, resolveLocale, translate } from './i18n/index.js';
 export type { Locale, MessageKey, Messages } from './i18n/index.js';
+export type { Translator } from './i18n/catalogue.js';
+// The admin's own texts (docs/research/M2b-interfaces.md §1.6): separate catalogues the viewer never imports.
+export { translateAdminShell } from './i18n/admin-shell/index.js';
+export type { AdminShellKey, AdminShellMessages } from './i18n/admin-shell/index.js';
+export { translateAdminSetup } from './i18n/admin-setup/index.js';
+export type { AdminSetupKey, AdminSetupMessages } from './i18n/admin-setup/index.js';
 export { REDACTED, consoleSink, createLogger, redact } from './log.js';
 export type { LogData, LogLevel, LogRecord, LogSink, Logger, LoggerOptions } from './log.js';
 

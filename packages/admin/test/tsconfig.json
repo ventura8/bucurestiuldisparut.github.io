@@ -2,6 +2,8 @@
 {
     "extends": "../../../tsconfig.base.json",
     "compilerOptions": {
+        // As in ../tsconfig.json: firebase/firestore's declarations name `Temporal.Instant`.
+        "lib": ["es2023", "dom", "dom.iterable", "esnext.temporal"],
         // Vitest's own declarations (including the browser-mode API) reference Node types such as BufferEncoding;
         // `vite/client` types the stylesheet side-effect import that src/index.ts keeps in its declarations.
         "types": ["node", "vite/client"]

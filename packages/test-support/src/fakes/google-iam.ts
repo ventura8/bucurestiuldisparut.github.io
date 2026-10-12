@@ -1,6 +1,6 @@
-import { fixtureBody } from '../api-fixtures/index.js';
+import { FIXTURE_VALUES, fixtureBody } from '../api-fixtures/index.js';
 import { authenticated, googleError, googleFailure, type GoogleApi, type GoogleProjects } from './google-common.js';
-import { bodyField, jsonResponse, requestObject, route, type Route, type RouteParams } from './routes.js';
+import { applyMask, bodyField, jsonResponse, requestObject, route, type Route, type RouteParams } from './routes.js';
 import { sequence, type ServiceFake } from './service.js';
 
 /**
@@ -23,6 +23,8 @@ interface ProjectIam {
     readonly pools: Map<string, string>;
     /** `<pool>/<provider>` → the provider as created (the request body plus its name and state). */
     readonly providers: Map<string, Readonly<Record<string, unknown>>>;
+    /** Deleted pools (`<pool>`) and providers (`<pool>/<provider>`): readable with state `DELETED` for 30 days. */
+    readonly deleted: Set<string>;
 }
 
 export interface IamState {
@@ -37,7 +39,7 @@ const IAM: GoogleApi = {
 };
 
 function emptyIam(): ProjectIam {
-    return { accounts: new Map(), accountPolicies: new Map(), pools: new Map(), providers: new Map() };
+    return { accounts: new Map(), accountPolicies: new Map(), pools: new Map(), providers: new Map(), deleted: new Set() };
 }
 
 function bindingsOf(value: unknown): readonly Binding[] {
@@ -168,6 +170,26 @@ function poolRoutes(iamOf: ProjectOf): Route[] {
         iam.providers.set(key, { ...requestObject(request), name, state: 'ACTIVE' });
         return operation(name);
     };
+    const undelete =
+        (key: (params: RouteParams) => string, name: (number: string, params: RouteParams) => string): Route['answer'] =>
+        (_request, params) => {
+            const { number, iam } = iamOf(String(params['project']));
+            if (!iam.deleted.delete(key(params))) {
+                return googleError('google/error.invalid-argument', IAM);
+            }
+            return operation(name(number, params));
+        };
+    const providerKey = (params: RouteParams): string => `${String(params['pool'])}/${String(params['provider'])}`;
+    const patchProvider: Route['answer'] = (request, params) => {
+        const { iam } = iamOf(String(params['project']));
+        const provider = iam.providers.get(providerKey(params));
+        if (provider === undefined) {
+            return googleError('google/error.not-found', IAM);
+        }
+        const updated = applyMask(provider, requestObject(request), request.url.searchParams.get('updateMask'));
+        iam.providers.set(providerKey(params), updated);
+        return operation(String(updated['name']));
+    };
     return [
         route(
             'GET',
@@ -179,27 +201,52 @@ function poolRoutes(iamOf: ProjectOf): Route[] {
         ),
         route('POST', POOLS, 'iam.workloadIdentityPools.create', auth(createPool)),
         route(
+            'POST',
+            `${POOLS}/{pool}:undelete`,
+            'iam.workloadIdentityPools.undelete',
+            auth(
+                undelete(
+                    (params) => String(params['pool']),
+                    (number, params) => poolName(number, String(params['pool'])),
+                ),
+            ),
+        ),
+        route(
             'GET',
             `${POOLS}/{pool}`,
             'iam.workloadIdentityPools.get',
             auth((_request, params) => {
                 const { number, iam } = iamOf(String(params['project']));
-                const displayName = iam.pools.get(String(params['pool']));
+                const pool = String(params['pool']);
+                const displayName = iam.pools.get(pool);
                 return displayName === undefined
                     ? googleError('google/error.not-found', IAM)
-                    : jsonResponse({ name: poolName(number, String(params['pool'])), displayName, state: 'ACTIVE' });
+                    : jsonResponse({ name: poolName(number, pool), displayName, state: iam.deleted.has(pool) ? 'DELETED' : 'ACTIVE' });
             }),
         ),
         route('POST', `${POOLS}/{pool}/providers`, 'iam.workloadIdentityPools.providers.create', auth(createProvider)),
+        route(
+            'POST',
+            `${POOLS}/{pool}/providers/{provider}:undelete`,
+            'iam.workloadIdentityPools.providers.undelete',
+            auth(
+                undelete(
+                    providerKey,
+                    (number, params) => `${poolName(number, String(params['pool']))}/providers/${String(params['provider'])}`,
+                ),
+            ),
+        ),
+        route('PATCH', `${POOLS}/{pool}/providers/{provider}`, 'iam.workloadIdentityPools.providers.patch', auth(patchProvider)),
         route(
             'GET',
             `${POOLS}/{pool}/providers/{provider}`,
             'iam.workloadIdentityPools.providers.get',
             auth((_request, params) => {
-                const provider = iamOf(String(params['project'])).iam.providers.get(
-                    `${String(params['pool'])}/${String(params['provider'])}`,
-                );
-                return provider === undefined ? googleError('google/error.not-found', IAM) : jsonResponse(provider);
+                const { iam } = iamOf(String(params['project']));
+                const provider = iam.providers.get(providerKey(params));
+                return provider === undefined
+                    ? googleError('google/error.not-found', IAM)
+                    : jsonResponse({ ...provider, state: iam.deleted.has(providerKey(params)) ? 'DELETED' : 'ACTIVE' });
             }),
         ),
     ];
@@ -220,7 +267,14 @@ export function createIamFake(state: IamState, projects: GoogleProjects): Servic
         name: 'iam',
         routes: [...poolRoutes(iamOf), ...accountRoutes(iamOf)],
         failure: (mode) => googleFailure(IAM, mode),
-        scenarios: {},
+        scenarios: {
+            /** The `github` pool of the e2e project was deleted (an earlier setup removed): it must be undeleted. */
+            poolDeleted: () => {
+                const { iam } = iamOf(String(FIXTURE_VALUES['projectId']));
+                iam.pools.set('github', 'GitHub Actions');
+                iam.deleted.add('github');
+            },
+        },
         snapshot: () => ({
             projects: Object.fromEntries(
                 [...state.projects].map(([id, iam]) => [
@@ -230,6 +284,7 @@ export function createIamFake(state: IamState, projects: GoogleProjects): Servic
                         accountPolicies: Object.fromEntries(iam.accountPolicies),
                         pools: Object.fromEntries(iam.pools),
                         providers: Object.fromEntries(iam.providers),
+                        deleted: [...iam.deleted],
                     },
                 ]),
             ),

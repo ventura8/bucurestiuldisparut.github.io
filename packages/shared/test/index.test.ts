@@ -5,6 +5,7 @@ import * as shared from '../src/index.js';
 /** The public API, by module: a removed or renamed export breaks the engine, the admin and the functions. */
 const EXPORTS = {
     i18nAndLogging: ['DEFAULT_LOCALE', 'LOCALES', 'REDACTED', 'consoleSink', 'createLogger', 'redact', 'resolveLocale', 'translate'],
+    adminI18n: ['translateAdminSetup', 'translateAdminShell'],
     geo: [
         'EARTH_RADIUS_M',
         'MAX_MERCATOR_LAT',
@@ -218,6 +219,8 @@ const EXPORTS = {
         'analyticsConfigRequestSchema',
         'analyticsConfigResponseSchema',
         'classifyMapboxToken',
+        'createCityRequestSchema',
+        'createCityResponseSchema',
         'missingScopes',
         'recordCloudRequestSchema',
         'recordCloudResponseSchema',

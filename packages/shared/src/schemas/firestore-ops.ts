@@ -50,7 +50,12 @@ export const USGS_SCENE_STATUSES = ['candidate', 'ordered', 'available', 'import
 export const SERVICE_STATES = ['missing', 'pending', 'ok', 'invalid', 'unavailable'] as const;
 /** The Setup Assistant's cards, in screen order (`setup/status` has one record per area). */
 export const SETUP_AREAS = ['billing', 'provision', 'mapbox', 'usgs', 'analytics', 'crash'] as const;
-/** The items of the "Provision cloud" doctor (PLAN Addendum 1, security review §1, §2). */
+/**
+ * The items of the "Provision cloud" doctor (PLAN Addendum 1, security review §1, §2), in screen order;
+ * `docs/research/M2b-interfaces.md` §3.4 says what each one creates and in which order the provisioner runs them.
+ * `crash-alerts` (the Cloud Monitoring e-mail channel and alert policy for new crash reports) and `api-key` (the
+ * browser API key's referrer restriction) joined in M2b.
+ */
 export const PROVISION_ITEMS = [
     'apis',
     'service-accounts',
@@ -65,6 +70,8 @@ export const PROVISION_ITEMS = [
     'app-check',
     'budget-alerts',
     'org-policies',
+    'crash-alerts',
+    'api-key',
 ] as const;
 /** `search` until USGS approves the M2M download role, then `download`. */
 export const USGS_ROLES = ['search', 'download'] as const;

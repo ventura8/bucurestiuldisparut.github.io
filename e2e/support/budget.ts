@@ -2,8 +2,8 @@ import type { Locator } from '@playwright/test';
 
 /**
  * The admin-input budget (docs/research/design-review-testability.md §4.3, PLAN "minimum admin input"): a flow
- * declares how many human inputs it may take, every fill, click and file choice goes through the flow, and the test
- * fails at teardown when a flow used more than its budget. Used by the admin tiers from M2, for example the Mapbox
+ * declares how many human inputs it may take, every fill, click, paste and file choice goes through the flow, and the
+ * test fails at teardown when a flow used more than its budget. Used by the admin tiers from M2, for example the Mapbox
  * setup (at most 2 inputs) or importing a free scene (at most 2 clicks).
  */
 
@@ -13,7 +13,18 @@ export interface InputFlow {
     readonly used: number;
     fill(locator: Locator, value: string): Promise<void>;
     click(locator: Locator): Promise<void>;
+    /** A paste from the clipboard (Ctrl+V): the field sees a `paste` event and an `insertFromPaste` input, as from a human. */
+    paste(locator: Locator, value: string): Promise<void>;
     setInputFiles(locator: Locator, files: string | readonly string[]): Promise<void>;
+}
+
+/** Puts `value` on the browser's clipboard and pastes it into `locator` with the keyboard. */
+async function pasteInto(locator: Locator, value: string): Promise<void> {
+    const page = locator.page();
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.evaluate((text) => navigator.clipboard.writeText(text), value);
+    await locator.focus();
+    await locator.press('ControlOrMeta+V');
 }
 
 export class InputBudget {
@@ -38,6 +49,10 @@ export class InputBudget {
             click: async (locator) => {
                 count();
                 await locator.click();
+            },
+            paste: async (locator, value) => {
+                count();
+                await pasteInto(locator, value);
             },
             setInputFiles: async (locator, files) => {
                 count();

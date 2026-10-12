@@ -144,7 +144,12 @@ export interface ResourceManagerState {
      * `user:`, `group:` and `domain:` members outside these domains, and `allUsers`.
      */
     allowedMemberDomains: readonly string[] | undefined;
+    /** The project's parent (`organizations/<id>`); a project outside any organisation has none (the default). */
+    parent: string | undefined;
 }
+
+/** The organisation of the scenarios that put the project inside one. */
+export const E2E_ORGANIZATION = 'organizations/100000000001';
 
 const RESOURCE_MANAGER: GoogleApi = {
     service: 'cloudresourcemanager.googleapis.com',
@@ -257,9 +262,10 @@ export function createResourceManagerFake(identity: IdentityState, state: Resour
                 'resource-manager.getProject',
                 auth((_request, params) => {
                     const project = projects.resolve(String(params['project']));
-                    return fixtureResponse('resource-manager/project.get', {
-                        values: { projectId: project.id, projectNumber: project.number },
-                    });
+                    const values = { projectId: project.id, projectNumber: project.number };
+                    return state.parent === undefined
+                        ? fixtureResponse('resource-manager/project.get.no-organization', { values })
+                        : fixtureResponse('resource-manager/project.get', { values, merge: { parent: state.parent } });
                 }),
             ),
         ];
@@ -271,8 +277,16 @@ export function createResourceManagerFake(identity: IdentityState, state: Resour
         scenarios: {
             domainRestricted: () => {
                 state.allowedMemberDomains = ['e2e.test'];
+                state.parent = E2E_ORGANIZATION;
+            },
+            inOrganization: () => {
+                state.parent = E2E_ORGANIZATION;
             },
         },
-        snapshot: () => ({ policies: Object.fromEntries(state.policies), allowedMemberDomains: state.allowedMemberDomains ?? null }),
+        snapshot: () => ({
+            policies: Object.fromEntries(state.policies),
+            allowedMemberDomains: state.allowedMemberDomains ?? null,
+            parent: state.parent ?? null,
+        }),
     };
 }

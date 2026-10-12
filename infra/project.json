@@ -1,0 +1,15 @@
+{
+    "projectId": "bucurestiul-disparut",
+    "projectNumber": "804854330662",
+    "region": "us-central1",
+    "cities": ["bucharest"],
+    "viewerOrigins": ["https://ventura8.github.io"],
+    "github": {
+        "owner": "ventura8",
+        "ownerId": 6506625,
+        "repo": "bucurestiuldisparut.github.io",
+        "repoId": 243934124,
+        "branch": "master",
+        "environment": "deploy"
+    }
+}

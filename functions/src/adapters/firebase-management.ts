@@ -12,6 +12,9 @@ import { at, stringAt, type Fetch } from './upstream-http.js';
  */
 export const FIREBASE_MANAGEMENT_API = 'https://firebase.googleapis.com/v1beta1';
 
+/** Identity Toolkit's admin API: the project's sign-in providers (Firebase Auth's own configuration). */
+export const IDENTITY_TOOLKIT_API = 'https://identitytoolkit.googleapis.com/admin/v2';
+
 type WebApp = Awaited<ReturnType<FirebaseManagement['listWebApps']>>[number];
 type WebAppConfig = Awaited<ReturnType<FirebaseManagement['webAppConfig']>>;
 
@@ -47,10 +50,28 @@ function toConfig(body: unknown): WebAppConfig {
     return measurementId === undefined ? { projectId, appId, apiKey } : { projectId, appId, apiKey, measurementId };
 }
 
+/**
+ * The Google provider's client id, or null when the provider is not configured (404). The answer also holds the
+ * provider's client secret: only `clientId` is read, and nothing of the answer is kept or logged.
+ */
+async function signInClientId(get: (url: string) => Promise<unknown>, projectId: string): Promise<string | null> {
+    try {
+        const body = await get(`${IDENTITY_TOOLKIT_API}/projects/${encodeURIComponent(projectId)}/defaultSupportedIdpConfigs/google.com`);
+        return stringAt(body, 'clientId') ?? null;
+    } catch (error) {
+        if (error instanceof UpstreamError && error.failure === 'notFound') {
+            return null;
+        }
+        throw error;
+    }
+}
+
 export function createFirebaseManagement(options: FirebaseManagementOptions): FirebaseManagement {
     const projectUrl = (projectId: string): string => `${FIREBASE_MANAGEMENT_API}/projects/${encodeURIComponent(projectId)}`;
     const get = async (url: string): Promise<unknown> =>
         googleJson(options.fetch, SERVICE, url, { method: 'GET', accessToken: await options.tokens.accessToken() });
+    /** The client id per project, once per instance (a failed read is forgotten, so the next claim tries again). */
+    const clients = new Map<string, Promise<string | null>>();
 
     async function listPage(
         projectId: string,
@@ -83,5 +104,13 @@ export function createFirebaseManagement(options: FirebaseManagementOptions): Fi
         },
         webAppConfig: async (projectId, appId) =>
             toConfig(await get(`${projectUrl(projectId)}/webApps/${encodeURIComponent(appId)}/config`)),
+        googleSignInClientId: (projectId) => {
+            const known = clients.get(projectId) ?? signInClientId(get, projectId);
+            clients.set(projectId, known);
+            known.catch(() => {
+                clients.delete(projectId);
+            });
+            return known;
+        },
     };
 }

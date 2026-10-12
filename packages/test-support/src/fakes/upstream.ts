@@ -1,9 +1,14 @@
 import { FIXTURE_VALUES } from '../api-fixtures/index.js';
 import { createFakeFetch, type FakeAnswer, type FakeFetch, type UpstreamRequest } from './fetch.js';
+import { createAnalyticsAdminFake, type AnalyticsAdminState } from './google-analytics-admin.js';
+import { createApiKeysFake, type ApiKeysState } from './google-api-keys.js';
+import { createAppCheckFake, createRecaptchaFake, type AppCheckState } from './google-app-check.js';
 import { createBillingBudgetsFake, createCloudBillingFake, defaultBillingState, type BillingState } from './google-billing.js';
 import { GoogleProjects } from './google-common.js';
 import { createErrorReportingFake, type ErrorReportingState } from './google-errors.js';
+import { createFirebaseStorageFake } from './google-firebase-storage.js';
 import { createFirebaseManagementFake, type FirebaseState } from './google-firebase.js';
+import { createCloudFunctionsFake, createCloudSchedulerFake, type DeploymentState } from './google-functions.js';
 import { createIamFake, type IamState } from './google-iam.js';
 import {
     createGoogleOauthFake,
@@ -12,6 +17,10 @@ import {
     type IdentityState,
     type ResourceManagerState,
 } from './google-identity.js';
+import { createMonitoringFake, type MonitoringState } from './google-monitoring.js';
+import { createOrgPolicyFake, type OrgPolicyState } from './google-org-policy.js';
+import { PolicyStore } from './google-policies.js';
+import { createPubSubFake, type PubSubState } from './google-pubsub.js';
 import { createCloudRunFake, type CloudRunState } from './google-run.js';
 import { createSecretManagerFake, latestSecretValue, type SecretsState } from './google-secrets.js';
 import { createServiceUsageFake, type ServiceUsageState } from './google-services.js';
@@ -25,9 +34,11 @@ import { FAILURE_MODES, type FailureMode, type ServiceFake, type UpstreamService
 import { createUsgsFake, defaultUsgsState, type UsgsState } from './usgs.js';
 
 /**
- * Every fake upstream in one place (docs/research/M2-interfaces.md §7): Google Cloud (OAuth tokeninfo, Resource Manager,
- * IAM, Cloud Billing, Billing Budgets, Service Usage, Firebase Management, Secret Manager, Cloud Run Admin, Cloud Tasks,
- * the Cloud Storage bucket API, Error Reporting), Mapbox, USGS M2M and Nominatim, answering from the shared fixtures
+ * Every fake upstream in one place (docs/research/M2-interfaces.md §7, M2b-interfaces.md §6.1): Google Cloud (OAuth
+ * tokeninfo, Resource Manager, IAM, Cloud Billing, Billing Budgets, Service Usage, Firebase Management, Secret Manager,
+ * Cloud Run Admin, Cloud Tasks, the Cloud Storage bucket API, Error Reporting, and for the admin's provisioner Cloud
+ * Functions, Cloud Scheduler, Pub/Sub, Org Policy, Firebase Storage, reCAPTCHA Enterprise, App Check, Monitoring, API
+ * Keys and Analytics Admin), Mapbox, USGS M2M and Nominatim, answering from the shared fixtures
  * with state a test can read and change. One instance is one world: a fresh Firebase project on Spark (one open
  * billing account, not linked; one web app; nothing provisioned), the Mapbox accounts of `MAPBOX_TOKENS`, the USGS
  * users of `USGS_CREDENTIALS`. Tests change it through `scenario(name)`, `fail(service, mode)` or `state` directly.
@@ -45,6 +56,14 @@ export interface UpstreamState {
     readonly cloudTasks: CloudTasksState;
     readonly cloudStorage: CloudStorageState;
     readonly errorReporting: ErrorReportingState;
+    /** The server's deployment (Cloud Functions list, Cloud Scheduler; M2b step d). */
+    readonly deployment: DeploymentState;
+    readonly pubsub: PubSubState;
+    readonly orgPolicy: OrgPolicyState;
+    readonly appCheck: AppCheckState;
+    readonly monitoring: MonitoringState;
+    readonly apiKeys: ApiKeysState;
+    readonly analyticsAdmin: AnalyticsAdminState;
     readonly mapbox: MapboxState;
     readonly usgs: UsgsState;
 }
@@ -65,6 +84,8 @@ export interface UpstreamFakes extends FakeFetch {
 
 /** Scenarios that span services: each runs the listed service scenarios in order. */
 const PRESETS: Readonly<Record<string, readonly string[]>> = {
+    /** The server deployed: every registry function `ACTIVE` and the `ops.tick` job scheduled (M2b step d). */
+    'google.deployed': ['cloud-functions.deployed'],
     /** Everything the Provision cloud step creates, on Blaze. */
     'google.provisioned': [
         'cloud-billing.enabled',
@@ -79,16 +100,23 @@ const PRESETS: Readonly<Record<string, readonly string[]>> = {
 function initialState(): UpstreamState {
     return {
         identity: defaultIdentityState(),
-        resourceManager: { policies: new Map(), allowedMemberDomains: undefined },
+        resourceManager: { policies: new Map(), allowedMemberDomains: undefined, parent: undefined },
         iam: { projects: new Map() },
         billing: defaultBillingState(),
         serviceUsage: { enabled: new Map() },
         firebase: { projects: new Map() },
-        secrets: { projects: new Map() },
+        secrets: { projects: new Map(), policies: new PolicyStore() },
         cloudRun: { jobs: new Set(), executions: new Map() },
         cloudTasks: { queues: new Map() },
-        cloudStorage: { buckets: new Map(), publicAccessPrevented: false },
+        cloudStorage: { buckets: new Map(), publicAccessPrevented: false, legacyRolesRefused: false },
         errorReporting: { groups: new Map() },
+        deployment: { deployment: 'none', schedulerJob: false },
+        pubsub: { topics: new Set(), policies: new PolicyStore() },
+        orgPolicy: { noDefaultGrants: false },
+        appCheck: { keys: new Map(), configs: new Map() },
+        monitoring: { channels: new Map(), policies: new Map() },
+        apiKeys: { projects: new Map() },
+        analyticsAdmin: { settings: new Map() },
         mapbox: defaultMapboxState(),
         usgs: defaultUsgsState(),
     };
@@ -109,6 +137,16 @@ function services(state: UpstreamState): readonly ServiceFake[] {
         createCloudTasksFake(state.cloudTasks, projects),
         createCloudStorageFake(state.cloudStorage, projects),
         createErrorReportingFake(state.errorReporting, projects),
+        createCloudFunctionsFake(state.deployment, state.serviceUsage, projects),
+        createCloudSchedulerFake(state.deployment, projects),
+        createPubSubFake(state.pubsub, projects),
+        createOrgPolicyFake(state.orgPolicy, state.resourceManager, state.cloudStorage, projects),
+        createFirebaseStorageFake(state.cloudStorage, state.billing, projects),
+        createRecaptchaFake(state.appCheck, projects),
+        createAppCheckFake(state.appCheck, projects),
+        createMonitoringFake(state.monitoring, projects),
+        createApiKeysFake(state.apiKeys, projects),
+        createAnalyticsAdminFake(state.analyticsAdmin, state.firebase),
         createMapboxFake(state.mapbox),
         createUsgsFake(state.usgs),
         createNominatimFake(),

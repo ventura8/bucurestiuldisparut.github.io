@@ -104,3 +104,29 @@ export function requestObject(request: UpstreamRequest): Readonly<Record<string,
 export function bodyField(request: UpstreamRequest, field: string): unknown {
     return requestObject(request)[field];
 }
+
+/** The value at a dotted path (`notificationsRule.pubsubTopic`), or undefined. */
+function valueAt(body: Readonly<Record<string, unknown>>, path: readonly string[]): unknown {
+    return path.reduce<unknown>(
+        (current, key) => (typeof current === 'object' && current !== null ? (current as Record<string, unknown>)[key] : undefined),
+        body,
+    );
+}
+
+/** `target` with `value` set at a dotted path, the objects on the way copied. */
+function withValue(target: Readonly<Record<string, unknown>>, path: readonly string[], value: unknown): Record<string, unknown> {
+    const [head = '', ...rest] = path;
+    const inner = target[head];
+    const child = typeof inner === 'object' && inner !== null ? (inner as Readonly<Record<string, unknown>>) : {};
+    return { ...target, [head]: rest.length === 0 ? value : withValue(child, rest, value) };
+}
+
+/** A PATCH: the fields of `updateMask` (every top-level field of the body without one) copied from the body. */
+export function applyMask(
+    target: Readonly<Record<string, unknown>>,
+    body: Readonly<Record<string, unknown>>,
+    updateMask: string | null,
+): Readonly<Record<string, unknown>> {
+    const paths = (updateMask ?? Object.keys(body).join(',')).split(',').filter((path) => path !== '');
+    return paths.reduce((current, path) => withValue(current, path.split('.'), valueAt(body, path.split('.'))), target);
+}
