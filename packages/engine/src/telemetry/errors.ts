@@ -3,10 +3,11 @@
  * error boundaries, are POSTed to the manifest's `analytics.errorEndpoint` (the M2 `telemetry.reportError` function,
  * which feeds Cloud Error Reporting) and, after consent, sent to GA4 as `exception` events. The reporter never
  * throws, sends at most `MAX_REPORTS_PER_PAGE` reports per page and one per message per `DEDUPE_WINDOW_MS`, and
- * redacts what it sends: no URL query or fragment (the hash holds the visitor's view, a tile URL the access token),
- * no token-looking strings, no e-mail addresses.
+ * redacts what it sends with `redactText` of `@hcm/shared`, the rules the `telemetry.reportError` endpoint applies again
+ * (docs/research/M2-interfaces.md CR-M2-4): no URL query or fragment (the hash holds the visitor's view, a tile URL the
+ * access token), no token-looking strings (Mapbox, Google API keys and access tokens), no e-mail addresses.
  */
-import { REDACTED, type Logger } from '@hcm/shared';
+import { redactText, type Logger } from '@hcm/shared';
 
 import type { ErrorReportPayload, ErrorSource } from './telemetry-port.js';
 
@@ -16,19 +17,6 @@ const MAX_MESSAGE_LENGTH = 500;
 const MAX_STACK_LENGTH = 4000;
 /** GA4 limits a parameter value to 100 characters. */
 const MAX_GA_DESCRIPTION = 100;
-
-const URL_TAIL = /(https?:\/\/[^\s?#'"()]+)[?#][^\s'"()]*/g;
-const SECRETS = [
-    /\b[ps]k\.[\w.-]{8,}/g,
-    /\bAIza[\w-]{20,}/g,
-    /\b(?:access_)?token=[^\s&'"]+/gi,
-    /\b[\w.+-]{1,64}@[a-z\d-]{1,63}(?:\.[a-z\d-]{1,63}){1,4}\b/gi,
-];
-
-/** `text` without URL queries and fragments, tokens and e-mail addresses. */
-export function redactText(text: string): string {
-    return SECRETS.reduce((current, pattern) => current.replace(pattern, REDACTED), text.replace(URL_TAIL, '$1'));
-}
 
 function messageOf(error: unknown): string {
     if (error instanceof Error) {

@@ -2,7 +2,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 
 import { HCM_PHOTO_LIST_TAG, HcmPhotoList, defineHcmPhotoList } from '../../src/viewer/hcm-photo-list.js';
-import { mountElement, recordEvents, shadowQueryAll } from './doubles.js';
+import { mountElement, recordEvents, shadowQuery, shadowQueryAll } from './doubles.js';
 import { TEST_MANIFEST_URL, testManifest } from './fixtures.js';
 
 const MANIFEST = testManifest();
@@ -59,6 +59,27 @@ describe('<hcm-photo-list>', () => {
         });
 
         expect(shadowQueryAll(element, 'img')[0]?.getAttribute('src')).toBe('');
+    });
+
+    it('happyPath_theDateIsBodyMediumSupportingTextUnderABodyLargeTitle', async () => {
+        const element = await mountElement<HcmPhotoList>(HCM_PHOTO_LIST_TAG, { photos: MANIFEST.photos.slice(0, 1) });
+        element.style.setProperty('--md-sys-typescale-body-medium-size', '14px');
+        element.style.setProperty('--md-sys-typescale-body-medium-line-height', '20px');
+        element.style.setProperty('--md-sys-typescale-body-large-size', '16px');
+
+        const date = getComputedStyle(shadowQuery(element, '.date'));
+        const title = getComputedStyle(shadowQuery(element, '.title'));
+
+        expect([date.fontSize, date.lineHeight, title.fontSize]).toEqual(['14px', '20px', '16px']);
+    });
+
+    it('badPath_theDateNeverFallsBackToTheSmallBodyStyle', async () => {
+        // The M1 UX review found the dates in body-small (12 px): a theme's body-small never reaches them now, and
+        // without any theme token the date is still 14 px (0.875rem).
+        const element = await mountElement<HcmPhotoList>(HCM_PHOTO_LIST_TAG, { photos: MANIFEST.photos.slice(0, 1) });
+        element.style.setProperty('--md-sys-typescale-body-small-size', '11px');
+
+        expect(getComputedStyle(shadowQuery(element, '.date')).fontSize).toBe('14px');
     });
 
     it('badPath_definingTwiceKeepsTheFirstRegistration', () => {

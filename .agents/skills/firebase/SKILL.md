@@ -11,16 +11,21 @@ Working notes: `.agent/skills/firebase/functions_skill.md`, `.agent/skills/fireb
 
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
-  bash -c 'mkdir -p $HOME && npx firebase emulators:exec --project demo-hcm --only firestore,storage "npx vitest run --project rules"'
+  bash -c 'mkdir -p $HOME && npx firebase emulators:exec --project demo-hcm --only auth,firestore,storage \
+  "METADATA_SERVER_DETECTION=none npx vitest run --project functions --project rules"'
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
+  bash -c 'mkdir -p $HOME && npm run build --workspace @hcm/functions'   # functions/dist, checked and loaded
 ```
 
-The emulator JARs are baked into the image (`FIREBASE_EMULATORS_PATH`), JDK 21 included; `demo-hcm` needs no credentials.
+The emulator JARs are baked into the image (`FIREBASE_EMULATORS_PATH`), JDK 21 included; `demo-hcm` needs no credentials. `.firebaserc`'s `default` is the real `bucurestiul-disparut`, so always name `--project demo-hcm`.
 
 ## Must know
 
-- **The public viewer never reads Firestore** and loads no Firebase SDK for data; analytics and performance load only after consent and only with a `measurementId`.
-- Functions: thin triggers call pure handlers through ports; Cloud Run Admin and Secret Manager over REST with `fetch` so msw covers them; secrets read at runtime with a cache, never `defineSecret`; every writer validates with the shared zod schemas (`packages/shared/src/schemas/firestore.ts`: city, layer, photo, job, usgsScene, setup status, admin; fixed in M1, refined in M2). `firebase-functions-test` is not used: trigger tests call `.run(event)`.
-- Rules: default deny; admin is claim plus `admins/{uid}`; strict field validation; no SVG; every `allow` tested allow and deny per role; rule coverage evaluated true and false.
+- **The public viewer never reads Firestore** and loads no Firebase SDK for data; GA4 loads only after consent and only with a `measurementId`, never sees the URL hash, and has its cookies expired on withdrawal; Performance Monitoring is not in the public viewer (it would send the hash).
+- Functions: thin triggers call pure handlers through the ports of `functions/src/ports/`; Google APIs, Mapbox and USGS over REST with `fetch` so a fake `fetch` covers them; secrets read at runtime with a cache, never `defineSecret`; every writer validates with the shared zod schemas (`packages/shared/src/schemas/firestore.ts` for the content documents, `packages/shared/src/schemas/firestore-ops.ts` for the operational ones, paths in `packages/shared/src/schemas/paths.ts`). `firebase-functions-test` is not used: trigger tests call `.run(event)`.
+- M2 contract (`docs/research/M2-interfaces.md`): every function is a row of the registry in `packages/shared/src/api/registry.ts` (access rule, App Check mode, instance cap, zod request and response); callables are built with `defineCallable` (`functions/src/api/callable.ts`) and fail with error codes (`ApiError` → `HttpsError(status, code, details)`, messages in `packages/shared/src/i18n/api/`). The fields a client may write are `CLIENT_WRITES` (`packages/shared/src/schemas/client-writes.ts`), mirrored by the rules.
+- Wiring: `functions/src/index.ts` exports one group per namespace from its folder's factory; `functions/src/global-options.ts` sets `us-central1`, the caps and `runAs(name)`, the service account of every function (`fn-admin@` for callables and `ops.*`, `fn-events@` for triggers, the builder and the crash endpoint); `functions/src/deps.ts` builds `RuntimeConfig` and the adapters, and in the Functions emulator keeps secrets in memory and sends upstream calls only to the fakes at `HCM_UPSTREAM_BASE`. `functions/test/index.test.ts` checks the exports against the registry.
+- Rules: default deny; admin is claim plus `admins/{uid}`; client writes exactly `CLIENT_WRITES` with the schemas' value checks and the stamp; no SVG; every `allow` tested allow and deny per persona; rule coverage evaluated true and false; a request may evaluate at most 1000 expressions, so checks stay cheap (bounded patterns, neutral defaults).
 - The Firebase web config, `.secret.local` and service-account files are never committed or opened by an agent.
 
 ## Ask first, every time

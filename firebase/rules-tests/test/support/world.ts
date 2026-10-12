@@ -9,6 +9,7 @@
  * owns a `scope`: its persona uids and its city ids start with it, and nothing is ever cleared.
  */
 import { assertFails, initializeTestEnvironment, type RulesTestEnvironment, type TokenOptions } from '@firebase/rules-unit-testing';
+import { FIRESTORE_PATHS, inviteIdFor } from '@hcm/shared';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
 import 'firebase/compat/storage';
@@ -21,41 +22,66 @@ firebase.firestore.setLogLevel('silent');
 
 // Every request is a round trip to the emulators (a 60 MiB upload among them), so each test file that
 // uses this world gets generous timeouts (set here rather than in the shared vitest.config.ts).
-vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
+vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
-/** Who is asking. Every non-admin persona fails exactly one of the admin conditions. */
+/**
+ * Who is asking. Every persona but `admin` misses at least one admin condition (docs/research/M2-interfaces.md §3.1):
+ * a verified Google account, the `admin` claim and an admins/{uid} document.
+ */
 export type Persona =
     | 'anonymous' // no Firebase Auth user
     | 'stranger' // verified Google account, no claim, no admins doc
+    | 'invited' // a stranger with a pending invitation (invites/{sha256}): admin.join has not run yet
     | 'unverified' // claim + admins doc, but email_verified is false
     | 'otherProvider' // claim + admins doc, but signed in with a password, not Google
-    | 'claimOnly' // claim but no admins doc: a revoked admin whose ID token is still valid
-    | 'docOnly' // admins doc but no claim: an admin whose claim was not set (yet)
+    | 'revoked' // claim but no admins doc: admins.revoke deleted it and the ID token still carries the claim
+    | 'pending' // admins doc but no claim yet: admin.join or admin.claim ran, the ID token is not refreshed
     | 'admin'; // verified Google account with the claim and the admins doc
 
-export const NON_ADMINS: readonly Persona[] = ['anonymous', 'stranger', 'unverified', 'otherProvider', 'claimOnly', 'docOnly'];
-export const EVERYONE: readonly Persona[] = [...NON_ADMINS, 'admin'];
+/** Every persona, `admin` last: a test that lets the admin write runs it after the denials. */
+export const EVERYONE: readonly Persona[] = [
+    'anonymous',
+    'stranger',
+    'invited',
+    'unverified',
+    'otherProvider',
+    'revoked',
+    'pending',
+    'admin',
+];
+/** The personas `authed()` accepts: a verified Google sign-in, whatever else they hold. */
+export const GOOGLE_ACCOUNTS: readonly Persona[] = ['stranger', 'invited', 'revoked', 'pending', 'admin'];
+export const ADMIN_ONLY: readonly Persona[] = ['admin'];
+export const NOBODY: readonly Persona[] = [];
+
+interface PersonaSpec {
+    readonly claims: TokenOptions | null;
+    readonly adminDoc: boolean;
+    readonly invite: boolean;
+}
 
 const GOOGLE: TokenOptions = { email_verified: true, firebase: { sign_in_provider: 'google.com' } };
 
-interface PersonaSpec {
-    readonly token: TokenOptions | null;
-    readonly adminDoc: boolean;
-}
-
 const PERSONAS: Readonly<Record<Persona, PersonaSpec>> = {
-    anonymous: { token: null, adminDoc: false },
-    stranger: { token: GOOGLE, adminDoc: false },
-    unverified: { token: { ...GOOGLE, email_verified: false, admin: true }, adminDoc: true },
-    otherProvider: { token: { email_verified: true, firebase: { sign_in_provider: 'password' }, admin: true }, adminDoc: true },
-    claimOnly: { token: { ...GOOGLE, admin: true }, adminDoc: false },
-    docOnly: { token: GOOGLE, adminDoc: true },
-    admin: { token: { ...GOOGLE, admin: true }, adminDoc: true },
+    anonymous: { claims: null, adminDoc: false, invite: false },
+    stranger: { claims: GOOGLE, adminDoc: false, invite: false },
+    invited: { claims: GOOGLE, adminDoc: false, invite: true },
+    unverified: { claims: { ...GOOGLE, email_verified: false, admin: true }, adminDoc: true, invite: false },
+    otherProvider: {
+        claims: { email_verified: true, firebase: { sign_in_provider: 'password' }, admin: true },
+        adminDoc: true,
+        invite: false,
+    },
+    revoked: { claims: { ...GOOGLE, admin: true }, adminDoc: false, invite: false },
+    pending: { claims: GOOGLE, adminDoc: true, invite: false },
+    admin: { claims: { ...GOOGLE, admin: true }, adminDoc: true, invite: false },
 };
 
+type Context = ReturnType<RulesTestEnvironment['unauthenticatedContext']>;
 type Db = firebase.firestore.Firestore;
 type Storage = firebase.storage.Storage;
 export type Data = firebase.firestore.DocumentData;
+export type Timestamp = firebase.firestore.Timestamp;
 
 /** The rules' answer to one request. */
 export type Verdict = 'allow' | 'deny';
@@ -63,6 +89,7 @@ export type Verdict = 'allow' | 'deny';
 export interface World {
     readonly env: RulesTestEnvironment;
     uid(persona: Persona): string;
+    email(persona: Persona): string;
     db(persona: Persona): Db;
     storage(persona: Persona): Storage;
     /** Writes a Firestore document with rules disabled (the Admin SDK's view). */
@@ -71,12 +98,88 @@ export interface World {
     seedObject(path: string, contentType: string): Promise<void>;
 }
 
+/** A fixed timestamp for seeded documents (never equal to request.time). */
+export function past(): Timestamp {
+    return firebase.firestore.Timestamp.fromMillis(Date.UTC(2026, 0, 1));
+}
+
+/** A fixed later timestamp (an invitation's expiry, a lease). */
+export function later(): Timestamp {
+    return firebase.firestore.Timestamp.fromMillis(Date.UTC(2026, 0, 15));
+}
+
+/** `request.time` on the server: the only accepted value for a client's createdAt/updatedAt. */
+export function serverTime(): firebase.firestore.FieldValue {
+    return firebase.firestore.FieldValue.serverTimestamp();
+}
+
+/** Removes a field in an update. */
+export function deleted(): firebase.firestore.FieldValue {
+    return firebase.firestore.FieldValue.delete();
+}
+
+/**
+ * `base` with `changes` applied, where a `deleted()` value removes the field: what an update with the same changes
+ * leaves, for writes that replace the whole document (`set`, which refuses the delete sentinel).
+ */
+export function withChanges(base: Data, changes: Data): Data {
+    const removed = new Set(Object.keys(changes).filter((field) => isDeletion(changes[field])));
+    return Object.fromEntries(Object.entries({ ...base, ...changes }).filter(([field]) => !removed.has(field)));
+}
+
+function isDeletion(value: unknown): boolean {
+    return value instanceof firebase.firestore.FieldValue && value.isEqual(deleted());
+}
+
+/** The audit fields every client write carries. */
+export function stampedBy(uid: string): Data {
+    return { updatedBy: uid, updatedAt: serverTime() };
+}
+
+/** A server write's stamp (`systemWriter`), at a fixed time in the past. */
+export function systemStamp(writer: string): Data {
+    return { updatedBy: `system:${writer}`, updatedAt: past() };
+}
+
+function seedPersonas(world: World): Promise<unknown> {
+    const seeds = EVERYONE.flatMap((persona) => {
+        const spec = PERSONAS[persona];
+        const writes: Promise<void>[] = [];
+        if (spec.adminDoc) {
+            const admin = { role: 'admin', email: world.email(persona), createdAt: past(), ...systemStamp('bootstrap') };
+            writes.push(world.seed(FIRESTORE_PATHS.admin(world.uid(persona)), admin));
+        }
+        if (spec.invite) {
+            const invite = {
+                role: 'admin',
+                invitedBy: world.uid('admin'),
+                createdAt: past(),
+                expiresAt: later(),
+                ...systemStamp('admins'),
+            };
+            writes.push(inviteIdFor(world.email(persona)).then((id) => world.seed(FIRESTORE_PATHS.invite(id), invite)));
+        }
+        return writes;
+    });
+    return Promise.all(seeds);
+}
+
 export async function createWorld(scope: string): Promise<World> {
     const env = await initializeTestEnvironment({ projectId: PROJECT_ID });
     const uid = (persona: Persona): string => `${scope}-${persona}`;
-    const context = (persona: Persona): ReturnType<RulesTestEnvironment['unauthenticatedContext']> => {
-        const { token } = PERSONAS[persona];
-        return token === null ? env.unauthenticatedContext() : env.authenticatedContext(uid(persona), token);
+    const email = (persona: Persona): string => `${uid(persona)}@example.test`;
+    // One context per persona: every context starts its own Firebase app, which costs more than the request.
+    const contexts = new Map<Persona, Context>();
+    const context = (persona: Persona): Context => {
+        const known = contexts.get(persona);
+        if (known !== undefined) {
+            return known;
+        }
+        const { claims } = PERSONAS[persona];
+        const created =
+            claims === null ? env.unauthenticatedContext() : env.authenticatedContext(uid(persona), { ...claims, email: email(persona) });
+        contexts.set(persona, created);
+        return created;
     };
     const seed = (path: string, data: Data): Promise<void> =>
         env.withSecurityRulesDisabled(async (admin) => {
@@ -86,31 +189,17 @@ export async function createWorld(scope: string): Promise<World> {
         env.withSecurityRulesDisabled(async (admin) => {
             await admin.storage().ref(path).put(bytes(16), { contentType });
         });
-    const admins = EVERYONE.filter((persona) => PERSONAS[persona].adminDoc);
-    await Promise.all(admins.map((persona) => seed(`admins/${uid(persona)}`, { addedBy: 'bootstrap' })));
-    return {
+    const world: World = {
         env,
         uid,
+        email,
         db: (persona) => context(persona).firestore(),
         storage: (persona) => context(persona).storage(),
         seed,
         seedObject,
     };
-}
-
-/** `request.time` on the server: the only accepted value for createdAt/updatedAt. */
-export function serverTime(): firebase.firestore.FieldValue {
-    return firebase.firestore.FieldValue.serverTimestamp();
-}
-
-/** The audit fields every admin write carries. */
-export function stampedBy(uid: string): Data {
-    return { updatedBy: uid, updatedAt: serverTime() };
-}
-
-/** A fixed timestamp for seeded documents (never equal to request.time). */
-export function past(): firebase.firestore.Timestamp {
-    return firebase.firestore.Timestamp.fromMillis(Date.UTC(2026, 0, 1));
+    await seedPersonas(world);
+    return world;
 }
 
 export function bytes(size: number): Uint8Array {

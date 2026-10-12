@@ -76,7 +76,7 @@ The engine's custom element (Lit, registered by the engine; the tag never change
 | (none) | `controller` | `HistoricCityMapController` or `null` | Read-only; the same object `mount` returns, `null` before connection. |
 | (none) | `mapContainer` | `HTMLElement` or `null` | Read-only; the stable element inside the shadow root the map is mounted into (after the first render). |
 
-The engine also sets `mapboxCssUrl` (mapbox-gl.css of the pinned release, linked inside the shadow root, where the page's copy cannot reach), `engineVersion` and `bootError` (a configuration error found before any store exists), and connects its store with `attach(store, controller)` / `detach()`. Pages never set these.
+The engine also sets `mapboxCssUrl` (mapbox-gl.css of the pinned release, linked inside the shadow root, where the page's copy cannot reach), `engineVersion` and `bootError` (a configuration error found before any store exists), and connects its store with `attach(store, controller)` / `detach()`. Pages never set these. A page may style the element itself (its size, `display`); the viewer's layout lives inside its shadow root. While a sheet, the lightbox or About covers the map, the Mapbox logo and attribution show in a bar at the element's bottom (or at the foot of About) instead of on the map, so they are never covered.
 
 Events are `CustomEvent`s that bubble and cross shadow roots (`composed: true`):
 
@@ -170,7 +170,7 @@ Common rules:
 | `theme` | `{seedColor, tokens}` | `seedColor` `#rrggbb`; `tokens.light`, `.dark`, `.highContrastLight`, `.highContrastDark` each map 1 to 200 `--md-sys-*` names to values without `;`, braces, quotes, `:` or `url(` |
 | `basemap` | `{style, config?}` | `mapbox://styles/<owner>/<style>` or https; `config` sets Mapbox Standard configuration properties (at most 30) |
 | `mapbox` | `{publicToken}` | a `pk.` token (URL-restricted); a secret `sk.` token is rejected |
-| `analytics` | `{measurementId?, errorEndpoint?, firebase?}` | `G-…`; https; `firebase` is `{apiKey, appId, projectId}` of the city's Firebase web app (`AIza…`, `1:<number>:web:<hex>`, a project id), written by the manifest builder and never committed. GA4 loads only with a `measurementId`, the `firebase` ids and the visitor's consent; without the ids the consent banner still asks, but nothing is sent |
+| `analytics` | `{measurementId?, errorEndpoint?, firebase?}` | `G-…`; https; `firebase` is `{apiKey, appId, projectId}` of the city's Firebase web app (`AIza…`, `1:<number>:web:<hex>`, a project id), written by the manifest builder and never committed. GA4 loads only with a `measurementId`, the `firebase` ids and the visitor's consent; without the ids the consent banner still asks, but nothing is sent. GA4 is told the page's origin and path, never the hash; withdrawing consent in About expires its `_ga` cookies; the viewer has no Performance Monitoring |
 | `engine` | `{minVersion?}` (optional) | the oldest engine that can read this manifest |
 
 ### `layers[]`

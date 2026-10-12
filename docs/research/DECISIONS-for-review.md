@@ -926,3 +926,200 @@ the browser, while the privacy notice says that without consent the map "uses no
 have used (`Max-Age=0; Path=/; Domain=<host and parents>`), with a unit test and an `S-V19-BAD-WITHDRAWN` assertion that
 `document.cookie` holds no `_ga` afterwards (the stand-in gtag in `e2e/mock-apis/gtag.ts` must then write one). Not
 applied by the review: it changes what withdrawal does, which the plan only describes as "can be withdrawn in About".
+
+## 19. M2 backend contracts (contracts agent, 2026-10-12)
+
+Added by the M2 contracts agent before the parallel backend build (`docs/research/M2-interfaces.md`). The tree works and
+every gate passes without them.
+
+### 19a. `.dependency-cruiser.cjs`: keep the function handlers pure and the feature folders independent
+
+The M2 workstreams build `functions/src/{admin,history,telemetry}`, `functions/src/setup` and
+`functions/src/{photos,publish,ops}` in parallel against the ports and the shared registry (M2-interfaces §5, CR-M2-3).
+Two rules make that layering a gate instead of a convention:
+
+```diff
+         {
+             name: 'only-the-map-adapter-imports-mapbox',
+             ...
+         },
++        {
++            name: 'functions-sdks-only-in-adapters',
++            severity: 'error',
++            comment: 'Handlers and the callable plumbing reach Firestore, Auth, Google APIs and sharp only through functions/src/ports (adapters and the composition root import the SDKs), so every handler is tested with fakes.',
++            from: { path: '^functions/src/', pathNot: ['^functions/src/adapters/', '^functions/src/deps\\.ts$'] },
++            to: { path: 'node_modules/(firebase-admin|google-auth-library|sharp)/' },
++        },
++        {
++            name: 'functions-feature-folders-independent',
++            severity: 'error',
++            comment: 'A feature folder reaches another only through ports/, api/ and @hcm/shared (M2-interfaces §1, §5), so the three workstreams never edit or break each other.',
++            from: { path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops)/' },
++            to: { path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops)/', pathNot: '^functions/src/$1/' },
++        },
+```
+
+Today's tree already complies (`deps.ts` and `adapters/` are the only importers of `firebase-admin` and
+`google-auth-library`; no feature folder exists yet). Verify: `PIPELINE_STAGE=static` (`dependency-cruiser`).
+
+### 19b. Where `ops.tick` runs: `fn-admin@` instead of widening `fn-events@`
+
+Not a file: a choice for the IAM item of the Provision cloud doctor (a cloud project change, so ask first). `ops.tick`
+deletes retired Mapbox public tokens and checks the Mapbox token daily, which needs `mapbox-sk-bootstrap` (security
+review §1.2 gives it to `fn-admin@` only), and deletes stale Auth accounts, which needs `roles/firebaseauth.admin`
+(also `fn-admin@` only).
+
+1. **Recommended**: run `ops.tick` as `fn-admin@` (`serviceAccount` on the scheduled function). `fn-admin@` already
+   holds every role the tick needs (Firestore, both buckets, the secrets, Auth, the task queue); `fn-events@` keeps the
+   Firestore and Storage triggers. No role is added anywhere.
+2. Grant `fn-events@` `secretAccessor` on `mapbox-sk-bootstrap` and `roles/firebaseauth.admin`. The most sensitive
+   secret would then be readable by the account every trigger runs as.
+
+Verify: the integrator sets `serviceAccount` per family in `functions/src/global-options.ts`; `setup.selfTest` and the
+first `ops.tick` after deploy report every check `ok`.
+
+## 20. M2 photos, publishing and the scheduler (fn-content, 2026-10-12)
+
+Two choices fn-content made where the plan and the M2 contract assumed something the runtime cannot do, or would cost
+more than it gives. The code works either way; each needs a yes or a different answer.
+
+### 20a. An unpublished photo keeps its public files
+
+The contract (`M2-interfaces.md` §3.7, `UNPUBLISH_DELETE_MINUTES`) says the public derivatives of an unpublished photo
+are deleted 10 minutes after the manifest stops naming them. Built instead (`functions/src/ops/manifests.ts`): the
+nightly sweep deletes only the public files that no photo document and no served manifest names (a replaced image, a
+deleted photo), once they are older than 10 minutes and the last build is older than 10 minutes.
+
+1. **Recommended (built)**: unpublishing hides a photo (it leaves the manifest at once); deleting the photo removes its
+   files at the next nightly sweep. The admin keeps its thumbnails, and publishing again needs no reprocessing. The
+   files' addresses are content-hashed (`photos/{city}/{photo}/{sha8}/…`), so nobody finds an unpublished photo
+   without having seen it published.
+2. Delete the files of unpublished photos too. Publishing again then needs `photos.reprocess` (the original is kept
+   privately), the photo is out of the manifest until it finishes, and the admin must load its own thumbnails of
+   unpublished photos from the private bucket.
+
+For a takedown (a rights holder asks), the admin deletes the photo; with 1 its files are gone within a day, at once with
+2. Verify: `functions/test/ops/manifests.test.ts`.
+
+### 20b. HEIC photos are refused with a message, not converted
+
+The security review (§1.7) and `firebase/storage.rules` say HEIC is converted on the server. sharp's prebuilt libvips
+decodes AVIF only (`sharp.format.heif.input.fileSuffix` is `['.avif']`), and HEVC decoding is patent-encumbered.
+Built: `photos.onUpload` recognises HEIC and HEIF by their magic numbers and sets `processing: 'failed'` with an error
+code (change request CR-M2-30 asks for `apiError.photo.heicUnsupported`, which tells the admin how to export a JPEG).
+
+1. **Recommended (built)** for M2: refuse with the message; iPhones export JPEG when set to "Most Compatible".
+2. Later: decode HEVC in the function with a WebAssembly libheif build (`libheif-js`, LGPL, about 2 MB): a new pinned
+   dependency, its licence reviewed, the 2 GiB memory checked on a 48 MP photo.
+3. Later: convert in the admin's browser before the upload. Chromium cannot decode HEIC either, so this needs the same
+   WebAssembly decoder in the admin bundle.
+
+Verify: `functions/test/photos/upload.test.ts` (`badPath_an HEIC photo (not decodable here)`).
+
+## 21. M2 viewer fixes (viewer workstream, 2026-10-12)
+
+Added by the viewer workstream, which fixed the open viewer issues of the M1 reviews (`docs/research/M0-handoff.md`
+§10m and §10o). No *Ask first* file was edited; the tree passes its targeted gates without the items below.
+
+### 21a. §18a and §18c are applied in the viewer
+
+- §18a, option 1: the public viewer no longer loads Performance Monitoring (`packages/engine/src/telemetry/analytics.ts`,
+  `firebase-sdk.ts`); its Firebase app is always the named app `hcm-viewer`. GA4 also gets `page_path`, `page_location`
+  on every event, and Google signals and ad personalisation off. Left for another owner: the site CSP still allows the
+  `firebaselogging` hosts (change request CR-M2-36 in `M2-interfaces.md`).
+- §18c, as proposed, with two limits: only a withdrawal (granted, then denied, with analytics configured) expires the
+  cookies, so a first *Decline* never touches an embedding page's own `_ga`; and GA4 starts with the consent as it is
+  when its chunk arrives, so a withdrawal during the load never grants it (`packages/engine/src/telemetry/cookies.ts`).
+- Verify: `npx vitest run --project engine packages/engine/test/telemetry` in the image, then the e2e rows
+  `S-V19-HAPPY`, `S-V19-BAD-HASH-NEVER-SENT`, `S-V19-HAPPY-COOKIES-EXPIRED`, `S-V19-BAD-DECLINE-KEEPS-PAGE-COOKIES`.
+
+### 21b. GA4's history-change page views: off in the stream (CR-M2-37)
+
+gtag.js's enhanced measurement can send a `page_view` on every `history.replaceState`, with the new `location.href` as
+its page location: the viewer rewrites its hash, the visitor's view, on every move. The viewer cannot switch this off
+from the page (only `send_page_view` for the first view), so the GA4 web stream must have *Page changes based on browser
+history events* off.
+
+1. **Recommended**: the provisioner sets `enhancedMeasurementSettings.pageChangesEnabled = false` through the Analytics
+   Admin API when it creates or detects the stream, and the card shows it checked (CR-M2-37).
+2. Or the admin guide tells the owner to switch it off by hand (written in both guides meanwhile).
+
+Verify: a provisioning unit test against the Analytics Admin fake; the viewer side is `S-V19-BAD-HASH-NEVER-SENT`.
+
+### 21c. The Mapbox legal bar while a modal surface covers the map
+
+Not *Ask first*; recorded because it changes what visitors see. Mapbox's terms need the logo and the attribution visible.
+While a modal sheet, the lightbox or About covers the map, the viewer hides Mapbox's own and shows a copy: a 48 px bar
+at the bottom of the viewer (the sheets, their scrim and the lightbox end above it) or the foot of About. The text is
+read from Mapbox's control, so it is always what the map credits.
+
+1. **Built**: the bar and the About foot (scenarios `S-V18-HAPPY-MODAL-STATES`, `S-V18-BAD-FULL-SHEET`).
+2. Alternative: move Mapbox's own controls above the sheet's top edge as it moves (what the native SDKs do with
+   `logoMargins`). The modal frame is `inert`, so they would be visible but neither focusable nor clickable, and a
+   draggable sheet would need its height reported to the viewer on every frame.
+
+## 22. M2 integration (integrator, 2026-10-12)
+
+Added by the M2 integrator, who wired the backend workstreams into one deploy (`docs/research/M2-interfaces.md` →
+*Addendum A*). No *Ask first* file was edited; the tree passes every stage without the items below. §19a (layering
+rules for `functions/`) is still open; the code follows it (feature folders share helpers only through
+`functions/src/api/` and names through `@hcm/shared`).
+
+### 22a. Where the deploy-time configuration of the functions lives
+
+`functions/src/deps.ts` reads `HCM_OAUTH_CLIENT_IDS` (the web client of the Google sign-in provider, which
+`admin.claim` checks the access token against), `HCM_VIEWER_ORIGINS` (default `https://ventura8.github.io`) and
+`HCM_APP_CHECK` (`monitor` until a week after the admin ships reCAPTCHA Enterprise). Nothing sets them at deploy yet:
+until it does, `admin.claim` refuses every token with `apiError.claim.tokenMismatch`. All three are public values.
+
+1. **Recommended**: `functions/.env.bucurestiul-disparut` (committed, non-secret, the Firebase convention) holding the
+   three values, copied into `functions/dist/` by `functions/build.mjs` next to `package.json`; the OAuth client id is
+   filled in once the Setup Assistant has created the sign-in provider. A test of the build checks that the file holds
+   only `HCM_*` keys.
+2. Firebase params (`defineList`, `defineString`) declared in `global-options.ts`: firebase-tools prompts for them at
+   the first deploy and stores them in the same `.env` file, so the result is the same with a prompt in between.
+
+Verify: `PIPELINE_STAGE=build` (the build copies and checks the file), then after the first deploy `setup.selfTest`
+and an owner claim in the admin.
+
+### 22b. A lockfile for `functions/dist/`
+
+`functions/dist/package.json` pins the four direct dependencies exactly; Cloud Build resolves their transitive
+versions at deploy time, so two deploys of the same commit can run different code. Generating a lockfile needs the
+registry's metadata, which the offline npm cache of the quality image does not hold (`npm install --package-lock-only
+--offline` answers `ENOTCACHED`), so it is a download (*Ask first*).
+
+1. **Recommended**: generate `functions/deploy-lock/package-lock.json` once with the network in the digest-pinned
+   `node:24-bookworm-slim` image, commit it, and let `functions/build.mjs` copy it into `functions/dist/` after checking
+   that its root dependencies equal `functions/package.json`'s; refresh it with every bump of those four.
+2. Keep resolving at deploy time (today).
+
+Verify: `PIPELINE_STAGE=build`; `firebase deploy --only functions` (ask first) installs with `npm ci`.
+
+### 22c. sharp at every cold start
+
+The 32 functions are one codebase, so every instance loads `functions/dist/index.js`, which imports `sharp` (its native
+libvips) at module load, although only `photos.onUpload` uses it.
+
+1. **Recommended**: `functions/src/adapters/image.ts` imports sharp lazily (`await import('sharp')` inside `inspect`
+   and `webp`), so the other 31 functions never load libvips; no other file changes.
+2. A second codebase for the photo functions (`firebase.json` `functions[]`), with its own build: more moving parts.
+3. Keep it (measure the cold start after the first deploy first).
+
+Verify: `PIPELINE_STAGE=tests` (the adapter's tests on real sharp), then the cold-start time of `admin-session` in
+Cloud Logging after a deploy.
+
+### 22d. Information: what the integration decided without asking
+
+- **Service accounts**: §19b option 1 is in the code: `ops.tick` and `ops.onBudget` run as `fn-admin@`
+  (`RUNTIME_ACCOUNTS` in `functions/src/global-options.ts`); option 2 is a one-line change there plus the grants.
+  The accounts and their roles are created by the provisioner (CR-M2-5); a deploy before they exist fails.
+- **Hosting**: `firebase.json` names the site `bucurestiul-disparut` and frames only its two auth domains, Google
+  sign-in and reCAPTCHA; `.firebaserc` gained `default: bucurestiul-disparut` beside `e2e: demo-hcm`. Every test and
+  emulator run names `--project demo-hcm`, and a test fails if an npm script starts the emulators without it.
+- **Emulators**: Pub/Sub (8085) and Cloud Tasks (9499) joined `firebase.json`, so the Functions emulator loads all 32
+  functions (`ops.*` need Pub/Sub, `publish.buildManifest` its queue).
+- **Contract change requests applied by the integrator** (contracts had finished): CR-M2-11 (a), CR-M2-15 (b–d),
+  CR-M2-16, CR-M2-23, CR-M2-30, CR-M2-31 (a–e), with the shared names `FIRESTORE_PATHS.cities` and
+  `DERIVATIVE_WRITTEN_AT` and the helpers in `functions/src/api/objects.ts`; CR-M2-15 (a) waits for its first user, the
+  M3 publisher.

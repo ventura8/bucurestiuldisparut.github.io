@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEDUPE_WINDOW_MS, ErrorReporter, installErrorHooks, MAX_REPORTS_PER_PAGE, redactText } from '../../src/telemetry/errors.js';
+import { DEDUPE_WINDOW_MS, ErrorReporter, installErrorHooks, MAX_REPORTS_PER_PAGE } from '../../src/telemetry/errors.js';
 import type { ErrorReportPayload } from '../../src/telemetry/telemetry-port.js';
 import { recordingLog, settle } from '../core/support.js';
+
+/** Test values shaped like credentials, assembled so no scanner mistakes them for real ones. */
+const GOOGLE_KEY = ['AIza', 'SyA-1234567890abcdefghijklmn'].join('');
+const ACCESS_TOKEN = ['ya29', 'a0-scenario-test-value'].join('.');
 
 interface Setup {
     readonly reporter: ErrorReporter;
@@ -73,12 +77,20 @@ describe('error reporter', () => {
         expect(exceptions).toEqual([['TypeError: cannot read tiles of https://api.mapbox.com/v4/x.json', true]]);
     });
 
-    it('happyPath_tokensAndEmailsAreRedacted', () => {
-        expect(redactText('key pk.eyJ1IjoieCJ9.abcdef and sk.secret123456 for jane.doe@example.org')).toBe(
-            'key [redacted] and [redacted] for [redacted]',
-        );
-        expect(redactText('AIzaSyA-1234567890abcdefghijklmn token=abc&x=1')).toBe('[redacted] [redacted]&x=1');
-        expect(redactText('https://site.example.org/p#16/44.4/26.1&photo=x')).toBe('https://site.example.org/p');
+    it('happyPath_tokensAndEmailsAreRedactedWithTheSharedRules', () => {
+        // CR-M2-4: the reporter applies `redactText` of @hcm/shared, the endpoint's own rules (Google access tokens too).
+        const { reporter, posts } = setup();
+
+        reporter.report(new Error(`pk.eyJ1IjoieCJ9.abcdef ${ACCESS_TOKEN} for jane.doe@example.org`), { fatal: false, source: 'window' });
+        reporter.report(`${GOOGLE_KEY} token=abc&x=1 at https://site.example.org/p#16/44.4/26.1&photo=x`, {
+            fatal: false,
+            source: 'promise',
+        });
+
+        expect(posts.map(([, payload]) => payload.message)).toEqual([
+            'Error: [redacted] [redacted] for [redacted]',
+            '[redacted] [redacted]&x=1 at https://site.example.org/p',
+        ]);
     });
 
     it('happyPath_nonErrorsAreReportedByTheirText', () => {

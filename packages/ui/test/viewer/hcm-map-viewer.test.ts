@@ -118,7 +118,7 @@ describe('<hcm-map-viewer>: boot', () => {
     it('badPath_withoutWebglThePhotoListStillWorks', async () => {
         const { element, store } = await mountViewer(readyState(testManifest(), { webgl: false }));
 
-        expect(shadowText(part({ element, store }, 'hcm-error-card'))).toContain('WebGL indisponibil');
+        expect(shadowText(part({ element, store }, 'hcm-error-card'))).toContain('nu poate afișa harta interactivă');
         expect(element.shadowRoot?.querySelector('hcm-timeline')).toBeNull();
         await page.getByRole('button', { name: /Strada Uranus/ }).click();
 

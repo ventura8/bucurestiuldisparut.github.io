@@ -4,7 +4,8 @@
 Every UI string exists in both `ro` (the default locale and the source of truth for keys) and
 `en`. TypeScript already rejects a missing key in `en` (it is typed `Messages`, derived from
 `ro`); this gate also catches what the type system cannot see, in every `packages/*/src/i18n/`
-folder:
+folder and every folder directly inside one (`packages/shared/src/i18n/api/`: the backend's error
+messages, kept apart so the public viewer never ships them):
 
 * each folder has one catalogue per locale (`ro.ts`, `en.ts`);
 * both define exactly the same keys, none of them twice;
@@ -39,7 +40,8 @@ LOG = get_logger("i18n")
 
 LOCALES = ("ro", "en")
 SOURCE_LOCALE = LOCALES[0]
-CATALOGUE_GLOB = "packages/*/src/i18n"
+# The UI catalogues, and the catalogues one level below them (the API error messages).
+CATALOGUE_GLOBS = ("packages/*/src/i18n", "packages/*/src/i18n/*")
 _STRING = r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\""
 ENTRY_RE = re.compile(rf"^\s*(?P<key>{_STRING}|[A-Za-z_$][\w$]*)\s*:\s*(?P<value>{_STRING}|`[^`$]*`)\s*,?\s*$")
 OPEN_RE = re.compile(r"^export\s+const\s+(?P<name>\w+)\b[^=]*=\s*\{\s*$")
@@ -155,7 +157,7 @@ def check_folder(root: Path, folder: Path) -> tuple[list[str], int]:
 
 
 def catalogue_folders(root: Path) -> list[Path]:
-    return sorted(path for path in root.glob(CATALOGUE_GLOB) if path.is_dir())
+    return sorted(path for pattern in CATALOGUE_GLOBS for path in root.glob(pattern) if path.is_dir())
 
 
 def merge(results: Sequence[tuple[list[str], int]]) -> tuple[list[str], int]:
@@ -163,10 +165,10 @@ def merge(results: Sequence[tuple[list[str], int]]) -> tuple[list[str], int]:
 
 
 def check(root: Path) -> tuple[list[str], int, int]:
-    """(problems, catalogue folders, keys) for every `packages/*/src/i18n` folder."""
+    """(problems, catalogue folders, keys) for every catalogue folder (`CATALOGUE_GLOBS`)."""
     folders = catalogue_folders(root)
     if not folders:
-        return [f"no catalogue folder matches {CATALOGUE_GLOB}"], 0, 0
+        return [f"no catalogue folder matches {' or '.join(CATALOGUE_GLOBS)}"], 0, 0
     problems, keys = merge([check_folder(root, folder) for folder in folders])
     return problems, len(folders), keys
 

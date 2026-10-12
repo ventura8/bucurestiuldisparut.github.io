@@ -32,9 +32,11 @@ import {
 /**
  * The layout and accessibility tour (docs/research/design-review-testability.md §4.3; behaviours V15 and V18): every
  * screen and state of the viewer on all 11 viewports, light and dark, Romanian and English (44 projects). Each state
- * must pass axe (WCAG 2.2 AA), scroll nothing sideways, keep its floating controls (`[data-layout-check]`, the Mapbox
- * logo and attribution) apart and on screen, clip no text, give every touch target 48 × 48 px on compact, leak no
- * message key (nor English into a Romanian page), and keep its landmarks (a partial ARIA snapshot).
+ * must pass axe (WCAG 2.2 AA), scroll nothing sideways, keep its usable floating controls (`[data-layout-check]`, the
+ * Mapbox logo and attribution) apart and on screen, clip no text, give every touch target 48 × 48 px on compact, leak
+ * no message key (nor English into a Romanian page), and keep its landmarks (a partial ARIA snapshot). Whenever the map
+ * is shown, exactly one Mapbox logo and one attribution are visible and nothing covers them (Mapbox terms): Mapbox's
+ * own on the map, or the viewer's copy in its legal bar or at the foot of About while a modal surface covers the map.
  */
 
 /**
@@ -51,12 +53,30 @@ function isCompact(page: Page): boolean {
     return (page.viewportSize()?.width ?? 0) < 600;
 }
 
-/** Every invariant of the tour for the state the page is in now; `state` names it in the failure messages. */
-async function checkState(page: Page, lang: Locale, state: string, axe: { violations(): Promise<unknown[]> }): Promise<void> {
+/** The Mapbox logo, and the attribution: Mapbox's own control on the map, or the viewer's copy (`map-attribution`). */
+const LEGAL = ['a.mapboxgl-ctrl-logo', '.mapboxgl-ctrl-attrib, [data-layout-check="map-attribution"]'] as const;
+
+/** Mapbox terms (V18): with a map on screen, one logo and one attribution are visible and nothing covers them. */
+async function checkLegal(page: Page, state: string): Promise<void> {
+    for (const selector of LEGAL) {
+        const shown = viewer(page).locator(selector).filter({ visible: true });
+        await expect(shown, `${state}: one visible ${selector}`).toHaveCount(1);
+        await expect(isOnTop(shown), `${state}: nothing covers ${selector}`).resolves.toBe(true);
+    }
+}
+
+/**
+ * Every invariant of the tour for the state the page is in now; `state` names it in the failure messages. Without a
+ * map (the error card) there is no Mapbox logo or attribution to check.
+ */
+async function checkState(page: Page, lang: Locale, state: string, axe: { violations(): Promise<unknown[]> }, map = true): Promise<void> {
     const viewport = page.viewportSize() ?? { width: 0, height: 0 };
     expect(await axe.violations(), `${state}: axe (WCAG 2.2 AA)`).toEqual([]);
     expect(await horizontalOverflow(page), `${state}: no horizontal scroll`).toBeLessThanOrEqual(0);
-    const boxes = await visibleBoxes(page, FLOATING);
+    if (map) {
+        await checkLegal(page, state);
+    }
+    const boxes = await visibleBoxes(page, FLOATING, { usable: true });
     expect(overlaps(boxes), `${state}: floating controls overlap`).toEqual([]);
     expect(outsideViewport(boxes, viewport), `${state}: floating controls off screen`).toEqual([]);
     expect(outsideViewport(await visibleBoxes(page, ['[role="menuitem"]']), viewport), `${state}: menu items off screen`).toEqual([]);
@@ -89,7 +109,8 @@ test('Home, the keyboard focus and the open menu', { tag: ['@S-V15-HAPPY', '@S-V
     await expect(viewer(page)).toMatchAriaSnapshot(frameSnapshot(lang, CITY[lang], true));
     await checkState(page, lang, 'home', axe);
 
-    const logo = viewer(page).locator('a.mapboxgl-ctrl-logo');
+    // On the map itself, Mapbox's own controls: the compact attribution is its toggle button.
+    const logo = viewer(page).locator('.mapboxgl-ctrl-bottom-left a.mapboxgl-ctrl-logo');
     await expect(logo).toBeVisible();
     await expect(isOnTop(logo)).resolves.toBe(true);
     const attribution = viewer(page).locator(isCompact(page) ? '.mapboxgl-ctrl-attrib-button' : '.mapboxgl-ctrl-attrib-inner');
@@ -106,7 +127,7 @@ test('Home, the keyboard focus and the open menu', { tag: ['@S-V15-HAPPY', '@S-V
     await checkState(page, lang, 'menu open', axe);
 });
 
-test('A historical year and the Layers panel', { tag: '@S-V15-HAPPY' }, async ({ page, lang, axe }) => {
+test('A historical year and the Layers panel', { tag: ['@S-V15-HAPPY', '@S-V18-HAPPY-MODAL-STATES'] }, async ({ page, lang, axe }) => {
     await openViewer(page, { lang, hash: '15/44.42700/26.08530&layers=e2e-1966' });
     await expect(page.getByRole('button', { name: t(lang, 'photos.nearYear', { year: '1966' }) })).toBeVisible();
     await checkState(page, lang, 'year 1966', axe);
@@ -116,7 +137,7 @@ test('A historical year and the Layers panel', { tag: '@S-V15-HAPPY' }, async ({
     await checkState(page, lang, 'layers panel', axe);
 });
 
-test('A photo, its lightbox, and the photo list', { tag: '@S-V15-HAPPY' }, async ({ page, lang, axe }) => {
+test('A photo, its lightbox, and the photo list', { tag: ['@S-V15-HAPPY', '@S-V18-HAPPY-MODAL-STATES'] }, async ({ page, lang, axe }) => {
     await openViewer(page, { lang, hash: `${PHOTO_VIEW}&photo=${PHOTO}` });
     await expect(page.getByRole('heading', { name: 'Ștrandul Operetă' })).toBeVisible();
     await checkState(page, lang, 'photo sheet', axe);
@@ -132,7 +153,7 @@ test('A photo, its lightbox, and the photo list', { tag: '@S-V15-HAPPY' }, async
     await checkState(page, lang, 'photo list', axe);
 });
 
-test('A point of interest and About', { tag: '@S-V15-HAPPY' }, async ({ page, lang, axe }) => {
+test('A point of interest and About', { tag: ['@S-V15-HAPPY', '@S-V18-HAPPY-MODAL-STATES'] }, async ({ page, lang, axe }) => {
     await openViewer(page, { lang, hash: '16/44.42680/26.08720' });
     await callController(page, 'openPoi', 'fixture-cladire');
     await expect(
@@ -160,7 +181,7 @@ test('The error card', { tag: '@S-V15-HAPPY' }, async ({ page, lang, axe, consol
     await page.goto(sitePath('bucharest', { lang }));
     await expect(page.getByRole('alert')).toContainText(t(lang, 'error.manifest.notFound'));
     expect(consoleErrors.take()).toEqual([expect.stringContaining('404')]);
-    await checkState(page, lang, 'error card', axe);
+    await checkState(page, lang, 'error card', axe, false);
 });
 
 test('A toast', { tag: '@S-V15-HAPPY' }, async ({ page, lang, axe }) => {

@@ -15,6 +15,12 @@ The app does almost everything automatically. Only you can:
 
 The app opens the exact page (deep link), shows you the button, verifies the result and moves on by itself. Secret keys go straight to Secret Manager; they are not kept in the browser and never shown again after saving.
 
+## First sign-in
+
+- Sign in with Google. If the map has no owner yet, the app offers **I own this Google Cloud project**: Google asks you to allow read-only access to your Cloud projects, and the app checks with Google that your account owns the project. You become the map's owner; no e-mail address is configured anywhere.
+- Anyone else needs an invitation: an admin enters the person's address, the app keeps only a fingerprint of it (not the address) and gives the link to send. The invited person signs in with Google at that link and chooses **Join**. An invitation expires after 14 days.
+- A Google account without an invitation is told so and signed out.
+
 ## Setup Assistant
 
 The first screen until every card is green; it can be re-checked at any time. Each step has: a status chip, the reason and the cost, a deep link, "Do it for me" where possible, a paste box with live verification, and automatic advance.
@@ -43,14 +49,16 @@ The first screen until every card is green; it can be re-checked at any time. Ea
 
 - ERS registration and the M2M access request (the justification text is pre-written); approval takes 24–48 business hours.
 - The application token: the paste box opens before you generate it, because USGS shows it for only about 60 seconds.
-- Approval is detected automatically and the card turns green by itself.
+- Approval is detected automatically and the card turns green by itself; until then it says that USGS has not approved M2M access yet and checks again every 6 hours.
+- If USGS is under maintenance or not answering when you paste the token, the token is kept and checked again later; you do not need to paste it again.
 - To be completed (M2).
 
 ### Analytics and crash reporting
 
 - Enable Google Analytics for the project (you accept the terms); the measurement id is detected automatically.
 - The "Crash reports" panel with the latest error groups.
-- Visitors are measured only after they consent.
+- Visitors are measured only after they consent. Google Analytics is told the page's address without its hash (which holds the visitor's view and, after *My location*, their position); withdrawing consent in About removes its cookies; the public map has no Performance Monitoring.
+- In the Google Analytics web stream, keep "Page changes based on browser history events" (enhanced measurement) off: the map rewrites its address on every move. The assistant will set it for you (planned).
 - To be completed (M2).
 
 ## Daily work
@@ -60,6 +68,7 @@ The first screen until every card is green; it can be re-checked at any time. Ea
 - Drop the files on the page; place, year and direction are filled from EXIF and the file name.
 - Pin the spot on the map and click what the camera looked at (that sets the direction); the default field of view is 60°.
 - Author, source and licence stay the same for the whole batch; the photo is published on save.
+- Accepted: JPEG, PNG, WebP and TIFF, up to 60 MB and 200 megapixels; SVG never. iPhone HEIC photos cannot be converted on the server yet: set the iPhone to Settings → Camera → Formats → Most Compatible, or export the photo as JPEG. A photo identical to one already uploaded is flagged as a duplicate.
 - To be completed (M2): editing, unpublishing, the rights-review queue for legacy photos.
 
 ### Historical satellite layers
@@ -79,7 +88,7 @@ The first screen until every card is green; it can be re-checked at any time. Ea
 
 - Jobs: live progress, retry, cancel.
 - Settings: the city's bounds, the About text (RO and EN), credits, the seed colour with a live preview.
-- Admins: invite by email, revoke; the owner cannot be revoked, and the last admin is protected.
+- Admins: invite by e-mail address (only its fingerprint is stored; you send the link yourself), remove an admin or a pending invitation; the owner cannot be removed and nobody can remove themselves, so the map always keeps an admin.
 - To be completed (M2–M3).
 
 ## Costs
@@ -98,9 +107,9 @@ When the city page cannot show the map, it shows a card with the message below i
 
 | Message | Cause | What to do |
 | --- | --- | --- |
-| "The map was not found: the manifest is missing." | the page found no `manifest.json` at the address in `config.js` | publish the city (M2) or correct `manifestUrl` in `config.js` |
+| "The map could not be found. Please try again later." | the page found no `manifest.json` at the address in `config.js` | publish the city (M2) or correct `manifestUrl` in `config.js` |
 | "The map data is invalid (problems found: N)." followed by `field: rule` | the manifest breaks a rule of City Manifest v1; the card names the first field and the rule | correct that field (in the admin from M2; in a starter-kit site, in `data/manifest.json`) |
 | "config.js is missing" / "config.js is invalid: …" | the page has no `window.HistoricCityMapConfig`, or a field in it is unknown or wrong | compare `config.js` with the starter kit's (`starter-kit/README.md`) |
 | "The cityId in config.js (…) does not match the map (…)." | `config.js` points at another city's manifest | make `cityId` and the manifest's city the same |
-| "This map needs engine X or newer." | the manifest asks for a newer engine than the page loads | load the engine version the message names |
-| "Your browser cannot show the map (WebGL unavailable)." | the visitor's browser has no WebGL | nothing: the visitor still gets the photo list |
+| "This map needs a newer version of this page (X). Please reload the page later." | the manifest asks for a newer engine than the page loads | load the engine version the message names |
+| "Your browser cannot show the interactive map. The photo list is still available." | the visitor's browser has no WebGL | nothing: the visitor still gets the photo list |

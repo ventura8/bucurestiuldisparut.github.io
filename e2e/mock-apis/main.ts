@@ -9,6 +9,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { createLogger } from '@hcm/shared';
+import { createUpstreamExtension } from '@hcm/test-support/fakes/http';
 
 import { E2E_SITE_DIR, MOCK_API_PORT, SITE_PORT } from '../fixtures/world.js';
 import { startMockApis, startSiteServer } from './server.js';
@@ -19,7 +20,8 @@ const role = process.argv[2];
 if (role === 'mock') {
     // The pinned devDependency of @hcm/e2e, byte for byte what api.mapbox.com serves for v3.32.0.
     const mapboxGlDist = dirname(fileURLToPath(import.meta.resolve('mapbox-gl/dist/mapbox-gl.js')));
-    await startMockApis(MOCK_API_PORT, { mapboxGlDist, engineDist: resolve('packages/engine/dist') });
+    // The fake upstreams (Google Cloud, Mapbox's Tokens and Tilesets APIs, USGS M2M, Nominatim) answer first, one world per test.
+    await startMockApis(MOCK_API_PORT, { mapboxGlDist, engineDist: resolve('packages/engine/dist') }, [createUpstreamExtension()]);
     log.info('mock APIs listening', { port: MOCK_API_PORT });
 } else if (role === 'site') {
     await startSiteServer(SITE_PORT, E2E_SITE_DIR);

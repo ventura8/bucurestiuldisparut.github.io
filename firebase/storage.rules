@@ -1,10 +1,11 @@
 rules_version = '2';
 
 // Cloud Storage security rules for the PRIVATE bucket <project>.firebasestorage.app
-// (docs/research/design-review-security-cost.md §1.5): admin uploads, rasters, USGS raw files,
-// browse copies and derived artifacts. Published derivatives (manifest.json, web.webp, thumb.webp)
-// live in the separate <project>-public bucket, which only service accounts write; a wrong rule here
-// can therefore never publish an upload.
+// (docs/research/design-review-security-cost.md §1.5, docs/research/M2-interfaces.md §2.4): admin
+// uploads, photo originals, rasters, USGS raw files, browse copies and derived artifacts. Nothing
+// here is public: published derivatives (manifest.json, web.webp, thumb.webp) live in the separate
+// <project>-public bucket, which only service accounts write, so a wrong rule here can never
+// publish an upload.
 //
 // Clients only create uploads under their own uid and never overwrite them; Cloud Functions and the
 // Cloud Run job (service accounts, which bypass rules) write everything else. Never trust the client
@@ -31,35 +32,45 @@ service firebase.storage {
                 && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
         }
 
-        // An admin uploading a NEW object into their own folder of a well-formed city id. Storage
-        // treats overwriting an existing object as `create` too, hence `resource == null`: every
-        // upload gets its own {upload} id, and photos.onUpload never sees an object change under it.
-        function ownUpload(city, uid) {
+        // An admin uploading a NEW, non-empty object into their own folder of a well-formed city id
+        // (CITY_ID_PATTERN) and upload id (ID_PATTERN). Storage treats overwriting an existing object
+        // as `create` too, hence `resource == null`: every upload gets its own name, and
+        // photos.onUpload never sees an object change under it.
+        function ownUpload(city, uid, upload) {
             return isAdmin()
                 && request.auth.uid == uid
                 && city.matches('[a-z0-9-]{2,32}')
-                && resource == null;
+                && upload.matches('[A-Za-z0-9_-]{1,40}')
+                && resource == null
+                && request.resource.size > 0;
         }
 
-        // Photos: raster formats only, under 60 MiB. SVG is never accepted (it can carry script);
-        // HEIC/HEIF is converted server-side.
-        match /uploads/photos/{city}/{uid}/{upload}/{file} {
-            allow create: if ownUpload(city, uid)
+        // Photos (STORAGE_PATHS.photoUpload): `{photo}` is the photo document the admin created just
+        // before, `{file}` a fresh nonce with an image extension (UPLOAD_FILE_PATTERN). Raster formats
+        // only, under 60 MiB. SVG is never accepted (it can carry script). HEIC/HEIF uploads are let
+        // through so photos.onUpload can refuse them with an actionable message (it cannot decode them:
+        // apiError.photo.heicUnsupported, DECISIONS-for-review.md §20b). The original file name travels as
+        // the custom metadata `originalName`.
+        match /uploads/photos/{city}/{uid}/{photo}/{file} {
+            allow create: if ownUpload(city, uid, photo)
+                && file.matches('[A-Za-z0-9_-]{8,64}[.](jpe?g|png|webp|tiff?|heic|heif)')
                 && request.resource.size < 60 * 1024 * 1024
-                && request.resource.contentType.matches('image/(jpeg|png|webp|tiff|heic|heif)');
+                && request.resource.contentType.matches('image/(jpeg|png|webp|tiff|heic|heif)')
+                && request.resource.metadata.get('originalName', '').size() <= 255
+                && firestore.exists(/databases/(default)/documents/cities/$(city)/photos/$(photo));
             allow read, delete: if isAdmin();
         }
 
-        // Historical rasters (GeoTIFF) for the georeferencing pipeline, under 8 GiB.
+        // Historical rasters (GeoTIFF) for the georeferencing pipeline (M3), under 8 GiB.
         match /uploads/rasters/{city}/{uid}/{upload}/{file} {
-            allow create: if ownUpload(city, uid)
+            allow create: if ownUpload(city, uid, upload)
                 && request.resource.size < 8 * 1024 * 1024 * 1024
                 && request.resource.contentType.matches('image/tiff|application/octet-stream');
             allow read, delete: if isAdmin();
         }
 
-        // Derived artifacts (rasters/, raster-seg/, usgs-raw/, previews/, tmp/): admins read them,
-        // only service accounts write them.
+        // Everything else (originals/, rasters/, raster-seg/, usgs-raw/, previews/, tmp/): admins
+        // read it, only service accounts write it. No path is readable without signing in.
         match /{path=**} {
             allow read: if isAdmin();
         }

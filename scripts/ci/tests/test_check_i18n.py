@@ -29,9 +29,9 @@ export const en: Messages = {
 """
 
 
-def catalogues(root: Path, ro: str = RO, en: str = EN, package: str = "shared") -> None:
-    write(root, f"packages/{package}/src/i18n/ro.ts", ro, newline=False)
-    write(root, f"packages/{package}/src/i18n/en.ts", en, newline=False)
+def catalogues(root: Path, ro: str = RO, en: str = EN, package: str = "shared", folder: str = "i18n") -> None:
+    write(root, f"packages/{package}/src/{folder}/ro.ts", ro, newline=False)
+    write(root, f"packages/{package}/src/{folder}/en.ts", en, newline=False)
 
 
 def test_happy_path_matching_catalogues_pass(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
@@ -90,7 +90,24 @@ def test_bad_path_missing_catalogue_file_or_literal(tmp_path: Path) -> None:
 
 def test_bad_path_no_catalogue_folder(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
     assert i18n.main(["--root", str(tmp_path)]) == 1
-    assert caplog.messages == ["[i18n] FAILED:\n  - no catalogue folder matches packages/*/src/i18n"]
+    assert caplog.messages == ["[i18n] FAILED:\n  - no catalogue folder matches packages/*/src/i18n or packages/*/src/i18n/*"]
+
+
+def test_happy_path_a_nested_catalogue_folder_is_checked_too(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    catalogues(tmp_path)
+    catalogues(tmp_path, folder="i18n/api")
+
+    assert i18n.main(["--root", str(tmp_path)]) == 0
+    assert caplog.messages == ["[i18n] OK: 2 catalogue folder(s), 6 keys, identical in ro and en"]
+
+
+def test_bad_path_a_nested_catalogue_folder_drifts(tmp_path: Path) -> None:
+    catalogues(tmp_path)
+    catalogues(tmp_path, en=EN.replace("plain: 'plain',", ""), folder="i18n/api")
+
+    problems, folders, _ = i18n.check(tmp_path)
+
+    assert (problems, folders) == (["packages/shared/src/i18n/api/en.ts: missing key 'plain' (defined in ro)"], 2)
 
 
 def test_happy_path_script_entry_point_exits_with_main_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

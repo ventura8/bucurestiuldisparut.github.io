@@ -1,6 +1,8 @@
 /**
  * `<hcm-photo-list>`: photos as a list of buttons (thumbnail, title, date). It is the viewer without a map (no WebGL,
- * scenario S-V02-BAD-NO-WEBGL) and the "photos near this year" sheet (V04). A choice fires `hcm-photo-select`.
+ * scenario S-V02-BAD-NO-WEBGL) and the "photos near this year" sheet (V04). A choice fires `hcm-photo-select`. M3 list
+ * items: the title in body-large, the date as supporting text in body-medium (14 px; the M1 UX review found the
+ * 12 px body-small too small to read on a phone).
  */
 import { DEFAULT_LOCALE, translate, type Locale, type Photo } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
@@ -65,11 +67,16 @@ export class HcmPhotoList extends LitElement {
 
             .title {
                 overflow-wrap: anywhere;
+                font-size: var(--md-sys-typescale-body-large-size, 1rem);
+                line-height: var(--md-sys-typescale-body-large-line-height, 1.5rem);
             }
 
             .date {
-                font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
+                font-size: var(--md-sys-typescale-body-medium-size, 0.875rem);
+                line-height: var(--md-sys-typescale-body-medium-line-height, 1.25rem);
+                letter-spacing: var(--md-sys-typescale-body-medium-tracking, 0.016rem);
                 color: var(--md-sys-color-on-surface-variant, GrayText);
+                overflow-wrap: anywhere;
             }
         `,
     ];

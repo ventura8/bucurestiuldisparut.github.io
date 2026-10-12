@@ -1,18 +1,14 @@
 import type { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 
+import { timestampSchema } from '../../src/schemas/firestore-common.js';
 import {
-    adminDocSchema,
     cityDocSchema,
     historyEntryDocSchema,
-    jobDocSchema,
     layerDocSchema,
     photoDocSchema,
     poiCategoryDocSchema,
     poiDocSchema,
-    setupStatusDocSchema,
-    timestampSchema,
-    usgsSceneDocSchema,
 } from '../../src/schemas/firestore.js';
 import { validate, type ValidationResult } from '../../src/schemas/validation.js';
 
@@ -141,29 +137,6 @@ const docs = {
         changedFields: ['title', 'published'],
         ...stamp,
     },
-    job: {
-        type: 'usgs-import',
-        status: 'waiting_usgs',
-        params: { entityId: 'DS1035' },
-        createdBy: 'uid-admin',
-        createdAt: now,
-        retryAt: now,
-        progress: 0.4,
-    },
-    scene: {
-        entityId: 'DS1035-1057DA023',
-        dataset: 'corona2',
-        acquisitionDate: '1966-07-12',
-        status: 'candidate',
-        downloadAvailable: true,
-        footprint: [
-            { lat: 44, lng: 26 },
-            { lat: 44.5, lng: 26 },
-            { lat: 44.5, lng: 26.5 },
-        ],
-    },
-    setup: { mapbox: { state: 'ok', checkedAt: now }, usgs: { state: 'missing' }, secretsRev: 3 },
-    admin: { role: 'owner', email: 'owner@example.test', displayName: 'Owner', createdAt: now },
 };
 
 describe('Firestore documents: happy paths', () => {
@@ -171,15 +144,16 @@ describe('Firestore documents: happy paths', () => {
         ['city', cityDocSchema, docs.city],
         ['photo', photoDocSchema, docs.photo],
         ['layer', layerDocSchema, docs.layer],
-        ['job', jobDocSchema, docs.job],
-        ['usgsScene', usgsSceneDocSchema, docs.scene],
-        ['setupStatus', setupStatusDocSchema, docs.setup],
-        ['admin', adminDocSchema, docs.admin],
         ['poiCategory', poiCategoryDocSchema, docs.poiCategory],
         ['poi', poiDocSchema, docs.poi],
         ['history', historyEntryDocSchema, docs.history],
         ['history create', historyEntryDocSchema, { ...docs.history, action: 'create', previous: null, changedFields: [] }],
         ['history revert', historyEntryDocSchema, { ...docs.history, action: 'revert', revertOf: 'entry-41' }],
+        [
+            'a revert that restores a deleted document',
+            historyEntryDocSchema,
+            { ...docs.history, action: 'revert', revertOf: 'entry-41', previous: null },
+        ],
         ['a point POI', poiDocSchema, { ...docs.poi, geometry: { type: 'Point', point: { lat: 44.43, lng: 26.09 } } }],
     ] as const)('happyPath_%s', (_name, schema, doc) => {
         expect(check(schema, doc)).toMatchObject({ ok: true });
@@ -236,20 +210,6 @@ describe('Firestore documents: bad paths', () => {
             'provenance.georef.method',
             'validation.value',
         ],
-        ['an unknown job type', jobDocSchema, { ...docs.job, type: 'delete-everything' }, 'type', 'validation.value'],
-        ['a job progress over 1', jobDocSchema, { ...docs.job, progress: 2 }, 'progress', 'validation.tooBig'],
-        [
-            'a footprint of two points',
-            usgsSceneDocSchema,
-            { ...docs.scene, footprint: docs.scene.footprint.slice(0, 2) },
-            'footprint',
-            'validation.tooSmall',
-        ],
-        ['an unknown USGS dataset', usgsSceneDocSchema, { ...docs.scene, dataset: 'declassi' }, 'dataset', 'validation.value'],
-        ['a secret in setup status', setupStatusDocSchema, { ...docs.setup, mapboxToken: 'sk.x' }, 'mapboxToken', 'validation.unknownKey'],
-        ['an unknown service state', setupStatusDocSchema, { ...docs.setup, usgs: { state: 'pending' } }, 'usgs.state', 'validation.value'],
-        ['an invalid admin e-mail', adminDocSchema, { ...docs.admin, email: 'not-an-address' }, 'email', 'validation.format'],
-        ['a timestamp as a string', adminDocSchema, { ...docs.admin, createdAt: '2026-10-12' }, 'createdAt', 'validation.type'],
     ] as const)('badPath_%s', (_name, schema, doc, path, code) => {
         const result = check(schema, doc);
 
@@ -310,6 +270,13 @@ const ADDENDUM_3_BAD = [
     ['an unknown history entity', historyEntryDocSchema, { ...docs.history, entity: 'job' }, 'entity', 'validation.value'],
     ['a create with a previous version', historyEntryDocSchema, { ...docs.history, action: 'create' }, 'previous', 'validation.value'],
     ['an update without a previous version', historyEntryDocSchema, { ...docs.history, previous: null }, 'previous', 'validation.value'],
+    [
+        'a delete without a previous version',
+        historyEntryDocSchema,
+        { ...docs.history, action: 'delete', previous: null },
+        'previous',
+        'validation.value',
+    ],
     ['a revert without its entry', historyEntryDocSchema, { ...docs.history, action: 'revert' }, 'revertOf', 'validation.value'],
     ['an update naming a reverted entry', historyEntryDocSchema, { ...docs.history, revertOf: 'entry-41' }, 'revertOf', 'validation.value'],
     [
@@ -323,6 +290,77 @@ const ADDENDUM_3_BAD = [
 
 describe('Firestore documents of PLAN Addendum 3: bad paths', () => {
     it.each(ADDENDUM_3_BAD)('badPath_%s', (_name, schema, doc, path, code) => {
+        const result = check(schema, doc);
+
+        expect(result.ok ? [] : result.issues).toContainEqual({ path, code });
+    });
+});
+
+/** M2: what `photos.onUpload` and `setup.saveMapbox` add to the content documents. */
+describe('Firestore content documents of M2', () => {
+    const processed = {
+        ...docs.photo,
+        processing: 'failed',
+        processingError: 'apiError.photo.unsupportedType',
+        duplicateOf: 'mihai-voda-1978',
+        suggested: { location: { lat: 44.43, lng: 26.09 }, year: 1936, bearing: 120, title: 'Strada Uranus' },
+        original: { path: 'originals/photos/bucuresti/p1/x.jpg', contentType: 'image/jpeg', bytes: 1234, sha256: 'c'.repeat(64) },
+    };
+
+    it('happyPath_aProcessedPhotoWithSuggestionsAndItsOriginal', () => {
+        expect(check(photoDocSchema, processed)).toMatchObject({ ok: true });
+    });
+
+    it('happyPath_aLegacyDateTextWithARomanianTitleOnly', () => {
+        expect(check(photoDocSchema, { ...docs.photo, title: { ro: 'Uranus' }, dateText: { ro: 'Iulie 1936' } })).toMatchObject({
+            ok: true,
+        });
+    });
+
+    it('happyPath_theViewerTokenIdAndItsOrigins', () => {
+        const mapbox = { ...docs.city.mapbox, publicTokenId: 'cijucimbe000brbkt48d0dhcx', allowedUrls: ['https://ventura8.github.io'] };
+
+        expect(check(cityDocSchema, { ...docs.city, mapbox })).toMatchObject({ ok: true });
+    });
+
+    it.each([
+        [
+            'a processing error that is no code',
+            photoDocSchema,
+            { ...processed, processingError: 'boom' },
+            'processingError',
+            'validation.value',
+        ],
+        [
+            'an original of an SVG',
+            photoDocSchema,
+            { ...processed, original: { ...processed.original, contentType: 'image/svg+xml' } },
+            'original.contentType',
+            'validation.value',
+        ],
+        ['a photo without a Romanian title', photoDocSchema, { ...docs.photo, title: { en: 'Uranus' } }, 'title.ro', 'validation.required'],
+        [
+            'a suggested year out of range',
+            photoDocSchema,
+            { ...processed, suggested: { year: 1700 } },
+            'suggested.year',
+            'validation.tooSmall',
+        ],
+        [
+            'an allowed URL with a path',
+            cityDocSchema,
+            { ...docs.city, mapbox: { allowedUrls: ['https://ventura8.github.io/bucuresti'] } },
+            'mapbox.allowedUrls[0]',
+            'validation.format',
+        ],
+        [
+            'a token id with capitals',
+            cityDocSchema,
+            { ...docs.city, mapbox: { publicTokenId: 'ABC' } },
+            'mapbox.publicTokenId',
+            'validation.format',
+        ],
+    ] as const)('badPath_%s', (_name, schema, doc, path, code) => {
         const result = check(schema, doc);
 
         expect(result.ok ? [] : result.issues).toContainEqual({ path, code });

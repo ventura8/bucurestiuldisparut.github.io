@@ -1,0 +1,134 @@
+import '../global-options.js';
+
+import {
+    CLIENT_WRITES,
+    FIRESTORE_PATHS,
+    auditedDocumentPath,
+    cityDocSchema,
+    historyEntryDocSchema,
+    historyEntryId,
+    layerDocSchema,
+    photoDocSchema,
+    poiCategoryDocSchema,
+    poiDocSchema,
+    timestampFromDate,
+    validate,
+    type AuditedDocument,
+    type CallableRequest,
+    type CallableResponse,
+    type HistoryEntity,
+    type HistoryEntryDoc,
+    type Schema,
+} from '@hcm/shared';
+
+import type { VerifiedCaller } from '../api/access.js';
+import { ApiError } from '../api/api-error.js';
+import { defineCallable, type CallableDeps } from '../api/callable.js';
+import type { DocumentTransaction } from '../ports/documents.js';
+import type { Ports } from '../ports/index.js';
+import { changedKeys, type Fields } from './diff.js';
+
+export type RevertDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
+
+/** Each audited entity's document schema: a restored version must pass today's schema before it is written. */
+const SCHEMAS: Readonly<Record<HistoryEntity, Schema<Fields>>> = {
+    city: cityDocSchema,
+    layer: layerDocSchema,
+    photo: photoDocSchema,
+    poi: poiDocSchema,
+    poiCategory: poiCategoryDocSchema,
+};
+
+const STAMP_FIELDS: ReadonlySet<string> = new Set(['updatedBy', 'updatedAt']);
+
+interface Revert {
+    readonly audited: AuditedDocument;
+    readonly entryId: string;
+    readonly caller: VerifiedCaller;
+    readonly now: Date;
+}
+
+/** The version an entry kept: a missing entry → `history.notFound`, a create's entry (nothing before it) → `nothingToRestore`. */
+function previousOf(entry: HistoryEntryDoc | undefined): Fields {
+    if (entry === undefined) {
+        throw new ApiError('apiError.history.notFound');
+    }
+    if (entry.previous === null) {
+        throw new ApiError('apiError.history.nothingToRestore');
+    }
+    return entry.previous;
+}
+
+/**
+ * The client-editable fields (`CLIENT_WRITES[entity].update`) come from the kept version; every server-owned field
+ * keeps its current value (a revert never resurrects a rotated token or a replaced image), or the kept version's when
+ * the document was deleted; the stamp is the caller's.
+ */
+function restoredVersion(revert: Revert, previous: Fields, current: Fields | undefined): Fields {
+    const editable: ReadonlySet<string> = new Set(CLIENT_WRITES[revert.audited.entity].update);
+    const serverOwned = Object.entries(current ?? previous).filter(([key]) => !editable.has(key));
+    const restored = Object.entries(previous).filter(([key]) => editable.has(key));
+    return {
+        ...Object.fromEntries(serverOwned),
+        ...Object.fromEntries(restored),
+        updatedBy: revert.caller.uid,
+        updatedAt: timestampFromDate(revert.now),
+    };
+}
+
+function checkedVersion(entity: HistoryEntity, version: Fields): Fields {
+    const result = validate(SCHEMAS[entity], version);
+    if (!result.ok) {
+        throw new ApiError('apiError.history.invalidSnapshot', { count: String(result.issues.length) });
+    }
+    return result.value;
+}
+
+/** The entry `history.revert` writes with the version: the history triggers skip the write it describes. */
+function revertEntry(revert: Revert, current: Fields | undefined, restored: Fields): HistoryEntryDoc {
+    return {
+        entity: revert.audited.entity,
+        entityId: revert.audited.entityId,
+        action: 'revert',
+        previous: current ?? null,
+        changedFields: changedKeys(current ?? {}, restored),
+        revertOf: revert.entryId,
+        updatedBy: revert.caller.uid,
+        updatedAt: timestampFromDate(revert.now),
+    };
+}
+
+/** Reads the entry and the current version, writes the restored version and its `revert` entry; all or nothing. */
+async function restore(transaction: DocumentTransaction, revert: Revert): Promise<string[]> {
+    const { audited } = revert;
+    const previous = previousOf(await transaction.get(FIRESTORE_PATHS.historyEntry(audited, revert.entryId), historyEntryDocSchema));
+    const path = auditedDocumentPath(audited);
+    const current = await transaction.get(path, SCHEMAS[audited.entity]);
+    const restored = checkedVersion(audited.entity, restoredVersion(revert, previous, current));
+    const entryId = historyEntryId(revert.now, `revert-${revert.caller.uid}`);
+    await transaction.set(path, SCHEMAS[audited.entity], restored);
+    await transaction.set(FIRESTORE_PATHS.historyEntry(audited, entryId), historyEntryDocSchema, revertEntry(revert, current, restored));
+    return changedKeys(current ?? {}, restored).filter((key) => !STAMP_FIELDS.has(key));
+}
+
+/**
+ * `history.revert` (admins; S-A23-HAPPY, S-A23-BAD-INVALID-SNAPSHOT, S-A23-BAD-CREATION-ENTRY): restores the version
+ * one history entry kept. A version today's schema refuses is not written (`history.invalidSnapshot` with the number
+ * of problems); the publish triggers rebuild the manifest as for any edit.
+ */
+async function historyRevert(
+    deps: RevertDeps,
+    caller: VerifiedCaller,
+    data: CallableRequest<'history.revert'>,
+): Promise<CallableResponse<'history.revert'>> {
+    const audited: AuditedDocument = { entity: data.entity, cityId: data.cityId, entityId: data.entityId };
+    const revert: Revert = { audited, entryId: data.entryId, caller, now: deps.clock.now() };
+    const restoredFields = await deps.documents.transaction((transaction) => restore(transaction, revert));
+    deps.log.info('history reverted', { uid: caller.uid, entity: data.entity, entityId: data.entityId, entryId: data.entryId });
+    return { restoredFields };
+}
+
+/** The `history-revert` callable. */
+export function revertFunction(getDeps: () => RevertDeps & CallableDeps) {
+    return defineCallable('history.revert', historyRevert, getDeps);
+}

@@ -1,0 +1,62 @@
+/**
+ * Romanian messages of the backend's error codes (`docs/research/M2-interfaces.md` → *Error codes*): the source of truth
+ * for the `ApiErrorCode` keys. Every callable and HTTPS function reports a failure as one of these codes
+ * (`packages/shared/src/api/errors.ts` maps each to its Functions status); the admin shows `translateApiError(locale,
+ * code, params)`. Kept apart from the viewer catalogue (`../ro.ts`) so the public viewer never ships admin texts.
+ * Keep one entry per line (scripts/ci/check_i18n.py).
+ */
+export const ro = {
+    'apiError.unauthenticated': 'Conectează-te cu Google pentru a continua.',
+    'apiError.accountNotAllowed': 'Conectează-te cu un cont Google verificat.',
+    'apiError.notAdmin': 'Acest cont Google nu administrează harta.',
+    'apiError.appCheck': 'Aplicația nu a putut fi verificată. Reîncarcă pagina și încearcă din nou.',
+    'apiError.invalidRequest': 'Cererea nu este validă (probleme găsite: {count}).',
+    'apiError.notFound': 'Elementul nu mai există.',
+    'apiError.conflict': 'Altcineva a modificat același lucru în același timp. Încearcă din nou.',
+    'apiError.rateLimited': 'Prea multe cereri. Încearcă din nou peste un minut.',
+    'apiError.unavailable': 'Serviciul nu este disponibil acum. Încearcă din nou.',
+    'apiError.internal': 'A apărut o eroare pe server.',
+    'apiError.guardPaused': 'Procesarea este oprită de protecția bugetului. Harta publică funcționează în continuare.',
+    'apiError.claim.tokenInvalid': 'Autorizarea Google a expirat sau nu este validă. Conectează-te din nou.',
+    'apiError.claim.tokenMismatch': 'Autorizarea Google aparține altui cont sau altei aplicații.',
+    'apiError.claim.scopeMissing': 'Permite accesul la proiectele tale Google Cloud ca să dovedești că ești proprietarul.',
+    'apiError.claim.notOwner': 'Acest cont nu este proprietar al proiectului Google Cloud {projectId}.',
+    'apiError.claim.alreadyClaimed': 'Harta are deja un proprietar. Cere-i o invitație.',
+    'apiError.invite.alreadyAdmin': 'Această persoană administrează deja harta.',
+    'apiError.invite.notFound': 'Nu există o invitație pentru acest cont Google. Cere una unui administrator.',
+    'apiError.invite.expired': 'Invitația a expirat. Cere una nouă.',
+    'apiError.revoke.owner': 'Proprietarul nu poate fi eliminat.',
+    'apiError.revoke.self': 'Nu te poți elimina singur.',
+    'apiError.history.notFound': 'Versiunea aceasta nu mai există.',
+    'apiError.history.nothingToRestore': 'Intrarea marchează crearea elementului: nu există o versiune anterioară.',
+    'apiError.history.invalidSnapshot': 'Versiunea anterioară nu mai este validă și nu poate fi restaurată (probleme: {count}).',
+    'apiError.mapbox.publicToken': 'Acesta este un token public (pk.). Lipește tokenul secret (sk.) pe care l-ai creat.',
+    'apiError.mapbox.tokenFormat': 'Textul nu arată ca un token secret Mapbox (acesta începe cu sk.).',
+    'apiError.mapbox.tokenInvalid': 'Mapbox a refuzat tokenul: nu este valid sau a fost revocat.',
+    'apiError.mapbox.missingScopes': 'Tokenului îi lipsesc permisiunile: {scopes}. Creează-l din nou cu toate.',
+    'apiError.mapbox.mintRefused': 'Mapbox nu a creat tokenul public. Verifică datele de facturare ale contului Mapbox.',
+    'apiError.mapbox.notConfigured': 'Conectează mai întâi Mapbox.',
+    'apiError.mapbox.unavailable': 'Mapbox nu răspunde. Încearcă din nou peste câteva minute.',
+    'apiError.usgs.credentials': 'USGS a refuzat utilizatorul sau tokenul. Creează un token nou și lipește-l în 60 de secunde.',
+    'apiError.usgs.maintenance': 'USGS este în mentenanță. Reîncercăm automat.',
+    'apiError.usgs.notConfigured': 'Conectează mai întâi USGS.',
+    'apiError.usgs.unavailable': 'USGS nu răspunde. Încearcă din nou mai târziu.',
+    'apiError.usgs.accessPending': 'USGS nu a aprobat încă accesul M2M pentru acest cont. Verificăm din nou la fiecare 6 ore.',
+    'apiError.analytics.notEnabled': 'Google Analytics nu este activat pentru proiect. Activează-l, apoi verifică din nou.',
+    'apiError.analytics.noWebApp': 'Proiectul nu are o aplicație web Firebase.',
+    'apiError.cloud.permission': 'Contul serverului nu are rolul {role} în proiect.',
+    'apiError.cloud.apiDisabled': 'Serviciul {api} nu este activat în proiect. Rulează din nou „Pregătește cloudul”.',
+    'apiError.errorReporting.unavailable': 'Rapoartele de erori nu pot fi citite acum. Încearcă din nou.',
+    'apiError.secrets.unavailable': 'Secretele nu pot fi salvate. Verifică dacă Secret Manager este activat.',
+    'apiError.photo.unsupportedType': 'Sunt acceptate doar fotografii JPEG, PNG, WebP sau TIFF.',
+    'apiError.photo.heicUnsupported': 'Fotografiile HEIC nu pot fi convertite. Pe iPhone: Setări → Cameră → Formate → Cel mai compatibil.',
+    'apiError.photo.tooLarge': 'Imaginea este prea mare (peste {megapixels} de megapixeli).',
+    'apiError.photo.unreadable': 'Imaginea nu a putut fi citită.',
+    'apiError.photo.duplicate': 'Această fotografie a fost deja încărcată.',
+    'apiError.telemetry.origin': 'Raportul vine de pe un site necunoscut.',
+    'apiError.telemetry.tooLarge': 'Raportul este prea mare.',
+} as const;
+
+export type ApiErrorCode = keyof typeof ro;
+
+export type ApiMessages = Readonly<Record<ApiErrorCode, string>>;

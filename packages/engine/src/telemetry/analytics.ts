@@ -1,34 +1,35 @@
 /**
- * GA4 and Performance Monitoring through the Firebase JS SDK (PLAN Addendum 2), loaded lazily and only when the
- * manifest has a `measurementId` (and the Firebase app ids, CR-9) **and** the visitor granted consent. Before that no
- * Firebase code runs and no Google host is contacted (scenario V19). Withdrawing consent turns collection off at once
- * and drops every later event. Events carry ids and flags only (no PII); the page location sent to GA4 is the page's
- * origin and path, never its hash (the visitor's view) or query.
+ * GA4 through the Firebase JS SDK (PLAN Addendum 2), loaded lazily and only when the manifest has a `measurementId`
+ * (and the Firebase app ids, CR-9) **and** the visitor granted consent. Before that no Firebase code runs and no Google
+ * host is contacted (scenario V19). Withdrawing consent turns collection off at once, drops every later event and
+ * expires GA4's cookies. Events carry ids and flags only (no PII); the page GA4 is told about is the page's origin and
+ * path, never its hash (the visitor's view, after *My location* their position) or query: `page_location` and
+ * `page_path` are set on the configuration and `page_location` on every event, and the automatic page view is off.
+ *
+ * Firebase Performance Monitoring is not part of the public viewer: it sends `location.href` up to the first `?`, so
+ * the whole hash, and cannot be told otherwise (docs/research/DECISIONS-for-review.md §18a; the admin may use it).
  */
 import type { Logger } from '@hcm/shared';
 import type { FirebaseApp, FirebaseOptions } from 'firebase/app';
 import type { Analytics as GaAnalytics, AnalyticsSettings, ConsentSettings } from 'firebase/analytics';
-import type { FirebasePerformance, PerformanceSettings } from 'firebase/performance';
 
 import { CONSENT_DENIED, CONSENT_GRANTED } from './consent.js';
 import type { ConsentState, FirebaseAppIds, TelemetryEvent } from './telemetry-port.js';
 
 /** The Firebase functions the viewer uses; `firebase-sdk.ts` (a lazy chunk) provides the real ones. */
 export interface FirebaseSdk {
-    readonly getApps: () => readonly FirebaseApp[];
     readonly initializeApp: (options: FirebaseOptions, name: string) => FirebaseApp;
     readonly isSupported: () => Promise<boolean>;
     readonly setConsent: (settings: ConsentSettings) => void;
     readonly initializeAnalytics: (app: FirebaseApp, options: AnalyticsSettings) => GaAnalytics;
     readonly logEvent: (analytics: GaAnalytics, name: string, params: Readonly<Record<string, string | number | boolean>>) => void;
     readonly setAnalyticsCollectionEnabled: (analytics: GaAnalytics, enabled: boolean) => void;
-    readonly initializePerformance: (app: FirebaseApp, settings: PerformanceSettings) => FirebasePerformance;
 }
 
-/** Firebase's name for the default app: Performance Monitoring runs only on it (`performance/FB not default`). */
-export const DEFAULT_FIREBASE_APP = '[DEFAULT]';
-
-/** The name of the viewer's Firebase app when the page already runs its own default app (which is then left alone). */
+/**
+ * The viewer's own named Firebase app: the page's default app stays free for an embedding page's own Firebase (only
+ * Performance Monitoring needed the default app, docs/LESSONS.md #9).
+ */
 export const FIREBASE_APP_NAME = 'hcm-viewer';
 
 export interface AnalyticsConfig {
@@ -41,13 +42,15 @@ export interface AnalyticsDeps {
     readonly log: Logger;
     /** `location.origin + location.pathname`. */
     readonly pageLocation: () => string;
+    /** `location.pathname`. */
+    readonly pagePath: () => string;
+    /** Expires GA4's cookies (`cookies.ts`); never throws. */
+    readonly clearCookies: () => void;
 }
 
 interface Loaded {
     readonly sdk: FirebaseSdk;
     readonly analytics: GaAnalytics;
-    /** Null when Performance Monitoring could not start: analytics works without it. */
-    readonly performance: FirebasePerformance | null;
 }
 
 type GaEvent = TelemetryEvent | { readonly name: 'exception'; readonly description: string; readonly fatal: boolean };
@@ -67,6 +70,11 @@ const GA_PARAMS: { readonly [N in GaEvent['name']]?: (event: Extract<GaEvent, { 
 export function gaParams(event: GaEvent): GaParams {
     const params = GA_PARAMS[event.name] as ((event: GaEvent) => GaParams) | undefined;
     return params === undefined ? {} : params(event);
+}
+
+/** A change from granted to denied: the only change that expires cookies (a first "Decline" leaves the page's alone). */
+function isWithdrawal(previous: ConsentState, next: ConsentState): boolean {
+    return previous === 'granted' && next === 'denied';
 }
 
 export class AnalyticsLoader {
@@ -91,14 +99,25 @@ export class AnalyticsLoader {
         this.#config = { measurementId, firebase };
     }
 
-    /** Withdrawing turns collection off at once; granting again (after a withdrawal) turns it back on. */
+    /**
+     * Withdrawing turns collection off at once and expires GA4's cookies, again once the SDK has applied it (gtag.js
+     * may still have written them while it loaded); granting again (after a withdrawal) turns collection back on.
+     */
     setConsent(consent: ConsentState): void {
+        const withdrawn = this.#config !== null && isWithdrawal(this.#consent, consent);
         this.#consent = consent;
-        if (consent !== 'unknown') {
-            this.#whenLoaded((loaded) => {
-                toggleCollection(loaded, consent === 'granted');
-            });
+        if (consent === 'unknown') {
+            return;
         }
+        if (withdrawn) {
+            this.#deps.clearCookies();
+        }
+        this.#whenLoaded((loaded) => {
+            toggleCollection(loaded, consent === 'granted');
+            if (withdrawn) {
+                this.#deps.clearCookies();
+            }
+        });
     }
 
     /** Sends `event` once the SDK is ready; dropped without configuration or consent (also if consent goes in between). */
@@ -110,7 +129,7 @@ export class AnalyticsLoader {
         this.#loading ??= this.#start(config);
         this.#whenLoaded((loaded) => {
             if (this.#consent === 'granted') {
-                loaded.sdk.logEvent(loaded.analytics, event.name, gaParams(event));
+                loaded.sdk.logEvent(loaded.analytics, event.name, { ...gaParams(event), page_location: this.#deps.pageLocation() });
             }
         });
     }
@@ -135,7 +154,7 @@ export class AnalyticsLoader {
                 this.#deps.log.info('analytics unsupported in this browser');
                 return null;
             }
-            return initialize(sdk, config, this.#deps);
+            return initialize(sdk, config, this.#deps, this.#consent === 'granted');
         } catch (error) {
             this.#deps.log.warn('analytics failed to load', { error: String(error) });
             return null;
@@ -143,41 +162,24 @@ export class AnalyticsLoader {
     }
 }
 
+/** Google signals and ad personalisation stay off whatever the property says (Consent Mode denies ad storage too). */
+const NO_ADVERTISING = { allow_google_signals: false, allow_ad_personalization_signals: false } as const;
+
 /**
- * Consent first (Consent Mode v2), then GA4 without the automatic page view, then Performance Monitoring. The viewer's
- * app is the page's default Firebase app unless the page already has one (Performance Monitoring refuses any other
- * app, so it stays off then); a Performance Monitoring failure never stops analytics (S-V19-HAPPY found it did).
+ * Consent first (Consent Mode v2, as it stands now: the visitor may have withdrawn while the chunk loaded), then GA4
+ * on the viewer's named app with the hash-free page location and without the automatic page view.
  */
-function initialize(sdk: FirebaseSdk, config: AnalyticsConfig, deps: Pick<AnalyticsDeps, 'log' | 'pageLocation'>): Loaded {
-    const pageHasDefault = sdk.getApps().some((app) => app.name === DEFAULT_FIREBASE_APP);
-    const options = { ...config.firebase, measurementId: config.measurementId };
-    const app = sdk.initializeApp(options, pageHasDefault ? FIREBASE_APP_NAME : DEFAULT_FIREBASE_APP);
-    sdk.setConsent(CONSENT_GRANTED);
-    const analytics = sdk.initializeAnalytics(app, { config: { send_page_view: false, page_location: deps.pageLocation() } });
-    const performance = pageHasDefault ? skipPerformance(deps.log) : startPerformance(sdk, app, deps.log);
-    return { sdk, analytics, performance };
+function initialize(sdk: FirebaseSdk, config: AnalyticsConfig, deps: AnalyticsDeps, granted: boolean): Loaded {
+    const app = sdk.initializeApp({ ...config.firebase, measurementId: config.measurementId }, FIREBASE_APP_NAME);
+    sdk.setConsent(granted ? CONSENT_GRANTED : CONSENT_DENIED);
+    const page = { page_location: deps.pageLocation(), page_path: deps.pagePath() };
+    const analytics = sdk.initializeAnalytics(app, { config: { send_page_view: false, ...page, ...NO_ADVERTISING } });
+    sdk.setAnalyticsCollectionEnabled(analytics, granted);
+    return { sdk, analytics };
 }
 
-function skipPerformance(log: Logger): null {
-    log.info('performance monitoring off: the page runs its own default Firebase app');
-    return null;
-}
-
-function startPerformance(sdk: FirebaseSdk, app: FirebaseApp, log: Logger): FirebasePerformance | null {
-    try {
-        return sdk.initializePerformance(app, { dataCollectionEnabled: true, instrumentationEnabled: true });
-    } catch (error) {
-        log.warn('performance monitoring failed to start', { error: String(error) });
-        return null;
-    }
-}
-
-/** Consent Mode v2 and collection on or off for GA4 and Performance Monitoring. */
+/** Consent Mode v2 and GA4 collection on or off. */
 function toggleCollection(loaded: Loaded, enabled: boolean): void {
     loaded.sdk.setConsent(enabled ? CONSENT_GRANTED : CONSENT_DENIED);
     loaded.sdk.setAnalyticsCollectionEnabled(loaded.analytics, enabled);
-    if (loaded.performance !== null) {
-        loaded.performance.dataCollectionEnabled = enabled;
-        loaded.performance.instrumentationEnabled = enabled;
-    }
 }

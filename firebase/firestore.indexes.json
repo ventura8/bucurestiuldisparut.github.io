@@ -1,15 +1,103 @@
 {
-    "indexes": [],
-    "fieldOverrides": [
+    "indexes": [
         {
             "collectionGroup": "photos",
-            "fieldPath": "description",
-            "indexes": []
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "published", "order": "ASCENDING" },
+                { "fieldPath": "updatedAt", "order": "DESCENDING" }
+            ]
         },
         {
             "collectionGroup": "photos",
-            "fieldPath": "exif",
-            "indexes": []
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "processing", "order": "ASCENDING" },
+                { "fieldPath": "updatedAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "photos",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "license", "order": "ASCENDING" },
+                { "fieldPath": "updatedAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "photos",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "rightsReview", "order": "ASCENDING" },
+                { "fieldPath": "updatedAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "pois",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "category", "order": "ASCENDING" },
+                { "fieldPath": "updatedAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "pois",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "published", "order": "ASCENDING" },
+                { "fieldPath": "updatedAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "layers",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "published", "order": "ASCENDING" },
+                { "fieldPath": "order", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "jobs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "createdAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "jobs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "createdAt", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "history",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "action", "order": "ASCENDING" },
+                { "fieldPath": "updatedAt", "order": "DESCENDING" }
+            ]
         }
+    ],
+    "fieldOverrides": [
+        { "collectionGroup": "cities", "fieldPath": "about", "indexes": [] },
+        { "collectionGroup": "cities", "fieldPath": "privacy", "indexes": [] },
+        { "collectionGroup": "cities", "fieldPath": "credits", "indexes": [] },
+        { "collectionGroup": "cities", "fieldPath": "theme", "indexes": [] },
+        { "collectionGroup": "photos", "fieldPath": "description", "indexes": [] },
+        { "collectionGroup": "photos", "fieldPath": "permissionNote", "indexes": [] },
+        { "collectionGroup": "photos", "fieldPath": "links", "indexes": [] },
+        { "collectionGroup": "photos", "fieldPath": "exif", "indexes": [] },
+        { "collectionGroup": "layers", "fieldPath": "description", "indexes": [] },
+        { "collectionGroup": "pois", "fieldPath": "geometry", "indexes": [] },
+        { "collectionGroup": "pois", "fieldPath": "description", "indexes": [] },
+        { "collectionGroup": "pois", "fieldPath": "links", "indexes": [] },
+        { "collectionGroup": "history", "fieldPath": "previous", "indexes": [] },
+        { "collectionGroup": "jobs", "fieldPath": "params", "indexes": [] },
+        { "collectionGroup": "jobs", "fieldPath": "steps", "indexes": [] },
+        { "collectionGroup": "logs", "fieldPath": "message", "indexes": [] },
+        { "collectionGroup": "manifests", "fieldPath": "skipped", "indexes": [] }
     ]
 }

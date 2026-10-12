@@ -15,6 +15,12 @@ Aplicația face aproape totul automat. Doar tu poți:
 
 Aplicația deschide pagina exactă (link direct), îți arată butonul, verifică rezultatul și trece singură la pasul următor. Cheile secrete ajung direct în Secret Manager; nu sunt păstrate în browser și nu apar niciodată în ecran după salvare.
 
+## Prima conectare
+
+- Conectează-te cu Google. Dacă harta nu are încă un proprietar, aplicația îți oferă **Sunt proprietarul acestui proiect Google Cloud**: Google îți cere să permiți accesul doar pentru citire la proiectele tale Cloud, iar aplicația verifică la Google că acest cont deține proiectul. Devii proprietarul hărții; nicio adresă de e-mail nu este configurată nicăieri.
+- Oricine altcineva are nevoie de o invitație: un administrator introduce adresa persoanei, aplicația păstrează doar o amprentă a ei (nu adresa) și îți dă linkul de trimis. Persoana invitată se conectează cu Google la acel link și alege **Alătură-te**. O invitație expiră după 14 zile.
+- Un cont Google fără invitație află acest lucru și este deconectat.
+
 ## Asistentul de configurare
 
 Primul ecran până când toate cardurile sunt verzi; poate fi re-verificat oricând. Fiecare pas are: un indicator de stare, motivul și costul, un link direct, „Fă-o pentru mine” unde se poate, o casetă de lipire cu verificare pe loc și avans automat.
@@ -43,14 +49,16 @@ Primul ecran până când toate cardurile sunt verzi; poate fi re-verificat oric
 
 - Înregistrarea în ERS și cererea de acces M2M (textul justificării este gata scris); aprobarea durează 24–48 de ore lucrătoare.
 - Tokenul de aplicație: caseta de lipire se deschide înainte să îl generezi, pentru că USGS îl afișează doar circa 60 de secunde.
-- Aprobarea este detectată automat, iar cardul devine verde singur.
+- Aprobarea este detectată automat, iar cardul devine verde singur; până atunci spune că USGS nu a aprobat încă accesul M2M și verifică din nou la fiecare 6 ore.
+- Dacă USGS este în mentenanță sau nu răspunde când lipești tokenul, tokenul este păstrat și verificat din nou mai târziu; nu trebuie să îl lipești din nou.
 - De completat (M2).
 
 ### Analiză și raportarea erorilor
 
 - Activarea Google Analytics pentru proiect (termenii îi accepți tu); identificatorul de măsurare este detectat automat.
 - Panoul „Rapoarte de erori” cu cele mai recente grupuri de erori.
-- Vizitatorii văd analiza doar după ce își dau acordul.
+- Vizitatorii văd analiza doar după ce își dau acordul. Google Analytics primește adresa paginii fără partea de după `#` (unde stau zona hărții și, după *Locația mea*, poziția vizitatorului); retragerea acordului în Despre îi șterge cookie-urile; harta publică nu folosește Performance Monitoring.
+- În fluxul web Google Analytics, lasă oprită opțiunea „Page changes based on browser history events” (măsurarea îmbunătățită): harta își rescrie adresa la fiecare mișcare. Asistentul o va seta singur (planificat).
 - De completat (M2).
 
 ## Activitatea zilnică
@@ -60,6 +68,7 @@ Primul ecran până când toate cardurile sunt verzi; poate fi re-verificat oric
 - Tragi fișierele în pagină; locul, anul și direcția sunt completate din EXIF și din numele fișierului.
 - Fixezi punctul pe hartă și dai clic pe ce privea aparatul (de aici direcția); unghiul implicit este 60°.
 - Autorul, sursa și licența rămân aceleași pentru tot lotul; fotografia se publică la salvare.
+- Sunt acceptate JPEG, PNG, WebP și TIFF, până la 60 MB și 200 de megapixeli; SVG niciodată. Fotografiile HEIC de pe iPhone nu pot fi convertite încă pe server: pe iPhone alege Setări → Cameră → Formate → Cel mai compatibil, sau exportă fotografia ca JPEG. O fotografie identică cu una deja încărcată este marcată ca duplicat.
 - De completat (M2): editare, retragere, coada de verificare a drepturilor pentru fotografiile vechi.
 
 ### Straturi istorice din satelit
@@ -79,7 +88,7 @@ Primul ecran până când toate cardurile sunt verzi; poate fi re-verificat oric
 
 - Lucrări: progres în timp real, reîncercare, anulare.
 - Setări: limitele orașului, textul „Despre” (RO și EN), mențiuni, culoarea de bază cu previzualizare.
-- Administratori: invitație prin e-mail, revocare; proprietarul nu poate fi revocat, iar ultimul administrator este protejat.
+- Administratori: invitație după adresa de e-mail (se păstrează doar amprenta ei; linkul îl trimiți tu), eliminarea unui administrator sau a unei invitații în așteptare; proprietarul nu poate fi eliminat și nimeni nu se poate elimina singur, așa că harta are mereu un administrator.
 - De completat (M2–M3).
 
 ## Costuri
@@ -98,9 +107,9 @@ Când pagina orașului nu poate afișa harta, arată un card cu unul dintre mesa
 
 | Mesaj | Cauză | Ce faci |
 | --- | --- | --- |
-| „Harta nu a fost găsită: manifestul lipsește.” | pagina nu a găsit `manifest.json` la adresa din `config.js` | publici orașul (M2) sau corectezi `manifestUrl` în `config.js` |
+| „Harta nu a fost găsită. Încearcă din nou mai târziu.” | pagina nu a găsit `manifest.json` la adresa din `config.js` | publici orașul (M2) sau corectezi `manifestUrl` în `config.js` |
 | „Datele hărții sunt nevalide (probleme găsite: N).”, urmat de `câmp: regulă` | manifestul încalcă o regulă din City Manifest v1; cardul numește primul câmp și regula | corectezi acel câmp (în aplicația de administrare din M2; pe un site făcut din kitul de pornire, în `data/manifest.json`) |
 | „Lipsește config.js” / „config.js este nevalid: …” | pagina nu are `window.HistoricCityMapConfig` sau un câmp din el este necunoscut ori greșit | compari `config.js` cu cel din kitul de pornire (`starter-kit/README.md`) |
 | „cityId din config.js (…) nu corespunde hărții (…).” | `config.js` arată spre manifestul altui oraș | faci `cityId` și orașul din manifest să fie același |
-| „Această hartă are nevoie de motorul X sau de unul mai nou.” | manifestul cere un motor mai nou decât cel încărcat de pagină | încarci versiunea de motor din mesaj |
-| „Browserul nu poate afișa harta (WebGL indisponibil).” | browserul vizitatorului nu are WebGL | nimic: vizitatorul primește în continuare lista fotografiilor |
+| „Această hartă are nevoie de o versiune mai nouă a paginii (X). Reîncarcă pagina mai târziu.” | manifestul cere un motor mai nou decât cel încărcat de pagină | încarci versiunea de motor din mesaj |
+| „Browserul tău nu poate afișa harta interactivă. Lista fotografiilor rămâne disponibilă.” | browserul vizitatorului nu are WebGL | nimic: vizitatorul primește în continuare lista fotografiilor |

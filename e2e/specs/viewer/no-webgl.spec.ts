@@ -5,18 +5,20 @@ import { t, viewer, waitForEngineEvent } from '../../support/viewer.js';
 
 /**
  * Without WebGL (behaviour V02, bad path; project `nogl`, Chromium with `--disable-3d-apis`): no map is created and
- * none is billed; a card says why, and the photo list is still there to browse every photo.
+ * none is billed; a card says why in plain words, and the photo list is still there to browse every photo.
  */
 
 test(
     'Without WebGL a card explains it and the photo list still opens every photo',
-    { tag: '@S-V02-BAD-NO-WEBGL' },
+    { tag: ['@S-V02-BAD-NO-WEBGL', '@S-V01-BAD-PLAIN-WORDS'] },
     async ({ page, lang, mockApis }) => {
         await page.goto(sitePath('bucharest', { lang }));
         await waitForEngineEvent(page, 'hcm-ready');
 
         expect(await page.evaluate(() => document.createElement('canvas').getContext('webgl2'))).toBeNull();
         await expect(page.getByRole('alert')).toContainText(t(lang, 'error.webgl'));
+        // Plain words for a visitor: no "WebGL" (the M1 UX review), the card says what still works.
+        await expect(page.getByRole('alert')).not.toContainText(/webgl/i);
         const list = viewer(page).locator('.fallback hcm-photo-list');
         await expect(list.getByRole('status')).toHaveText(t(lang, 'photos.count.other', { count: '45' }));
         const photos = list.getByRole('list', { name: t(lang, 'photos.list') }).getByRole('button');

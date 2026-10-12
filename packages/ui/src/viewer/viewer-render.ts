@@ -1,22 +1,26 @@
 /**
  * The template of `<hcm-map-viewer>`, split by region: the frame (panes per window class), the map pane with its
- * status layer (skeleton, error card, no-WebGL fallback) and floating controls, the modal sheets, the About dialog
- * and the lightbox. Every floating control carries `data-layout-check` (its name): the e2e tour checks that no two of
- * them overlap at any viewport (docs/research/design-review-testability.md §4.3). Every function takes the view (state plus derived values) and the element's handlers; none keeps
- * state. The map container is the one static `<div class="map">`: Lit never re-creates it, so the Mapbox canvas that
- * the engine mounts into it survives every render.
+ * status layer (skeleton, error card, no-WebGL fallback) and floating controls, the modal layer (the modal sheets, the
+ * About dialog and the lightbox) and, while a modal surface covers the map, the legal bar with the Mapbox logo and
+ * attribution (scenario V18: Mapbox's own controls are hidden then, never covered). Every floating control carries
+ * `data-layout-check` (its name): the e2e tour checks that no two of them overlap at any viewport
+ * (docs/research/design-review-testability.md §4.3). Every function takes the view (state plus derived values) and
+ * the element's handlers; none keeps state. The map container is the one static `<div class="map">`: Lit never
+ * re-creates it, so the Mapbox canvas that the engine mounts into it survives every render.
  */
 import { translate, type Locale, type Manifest, type MessageKey, type Photo, type Poi, type PoiCategory } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 
 import type { FabMenuItem } from '../components/fab-menu.js';
+import type { AttributionPart } from './attribution.js';
 import { EMPTY } from './empty.js';
 import type { SheetMode, ViewerLayout } from './layout.js';
 import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
 import { photosNearYear, type TimelineStop } from './timeline-model.js';
 import { otherLocale, type MenuAction } from './viewer-actions.js';
+import { legalMirror, modalOpen, renderLegalBar, type LegalMirror } from './viewer-legal.js';
 
 /** What one render needs, derived from the store state by the element. */
 export interface ViewerView {
@@ -28,6 +32,8 @@ export interface ViewerView {
     readonly manifestUrl: string;
     readonly engineVersion: string;
     readonly mapboxCssUrl: string;
+    /** The map's attribution as Mapbox GL shows it (`watchAttribution`), for the legal bar and About. */
+    readonly attribution: readonly AttributionPart[];
 }
 
 /** `hcm-overlay-opacity` of `<hcm-overlay-list>`: `final` is false while dragging, true on release. */
@@ -83,15 +89,6 @@ function dockedSheet(view: ViewerView, ready: Ready | null): DockedSheet | 'none
     return isDockable(sheet, view.layout.layersDocked) ? sheet : 'none';
 }
 
-/** True while a modal surface covers the frame (its content is then inert): the lightbox, About, a modal sheet. */
-function modalOpen(view: ViewerView): boolean {
-    const state = view.state;
-    if (state === null) {
-        return false;
-    }
-    return state.lightbox || state.sheet === 'about' || (view.layout.sheetMode !== 'docked' && state.sheet !== 'none');
-}
-
 type Panes = 'none' | 'leading' | 'trailing' | 'both';
 
 function panes(view: ViewerView, ready: Ready | null): Panes {
@@ -124,22 +121,35 @@ function timelineNote(locale: Locale): TemplateResult {
 
 export function renderViewer(view: ViewerView, handlers: ViewerHandlers): TemplateResult {
     const ready = readyOf(view);
+    const legal = legalMirror(view.state, view.layout.sheetMode);
     return html`${stylesheet(view)}
-        <div
-            class="frame"
-            data-panes=${panes(view, ready)}
-            ?data-compact-height=${view.state?.compactHeight === true}
-            ?data-timeline=${hasTimeline(view, ready)}
-            ?inert=${modalOpen(view)}
-        >
-            ${skipLink(view, ready, handlers)} ${leadingPane(view, ready, handlers)}
-            <div class="map-pane">
-                <div class="map" role="region" aria-label=${mapLabel(view, ready)}></div>
-                ${statusLayer(view, handlers)} ${ready === null ? nothing : controls(view, ready, handlers)}
+        <div class="viewer">
+            <div
+                class="frame"
+                data-panes=${panes(view, ready)}
+                ?data-compact-height=${view.state?.compactHeight === true}
+                ?data-timeline=${hasTimeline(view, ready)}
+                ?data-legal-mirror=${legal !== 'none'}
+                ?inert=${modalOpen(view.state, view.layout.sheetMode)}
+            >
+                ${skipLink(view, ready, handlers)} ${leadingPane(view, ready, handlers)}
+                <div class="map-pane">
+                    <div class="map" role="region" aria-label=${mapLabel(view, ready)}></div>
+                    ${statusLayer(view, handlers)} ${ready === null ? nothing : controls(view, ready, handlers)}
+                </div>
+                ${trailingPane(view, ready, handlers)}
             </div>
-            ${trailingPane(view, ready, handlers)}
-        </div>
-        ${ready === null ? nothing : overlays(view, ready, handlers)}`;
+            ${ready === null ? nothing : modalLayer(view, ready, legal, handlers)}
+        </div>`;
+}
+
+/**
+ * The modal surfaces in their own grid row, which ends where the legal bar begins: a sheet, its scrim or the lightbox
+ * never covers the logo and the attribution (the frame, and so the map, keeps the whole height).
+ */
+function modalLayer(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: ViewerHandlers): TemplateResult {
+    return html`<div class="modal-layer">${overlays(view, ready, legal, handlers)}</div>
+        ${legal === 'bar' ? renderLegalBar(view.attribution, view.locale, view.mapboxCssUrl) : nothing}`;
 }
 
 /** mapbox-gl.css inside the shadow root (the page's copy cannot reach it); the browser reuses its cached file. */
@@ -415,7 +425,7 @@ function trailingPane(view: ViewerView, ready: Ready | null, handlers: ViewerHan
     return html`<div class="pane trailing">${content()}</div>`;
 }
 
-function overlays(view: ViewerView, ready: Ready, handlers: ViewerHandlers): TemplateResult {
+function overlays(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: ViewerHandlers): TemplateResult {
     const { state, manifest } = ready;
     const mode = view.layout.sheetMode;
     const modal = mode === 'docked' ? nothing : modalSheets(view, ready, mode, handlers);
@@ -427,6 +437,8 @@ function overlays(view: ViewerView, ready: Ready, handlers: ViewerHandlers): Tem
             .engineVersion=${view.engineVersion}
             .consent=${state.consent}
             .analytics=${manifest.city.analytics.measurementId !== undefined}
+            .attribution=${legal === 'about' ? view.attribution : null}
+            .mapboxCssUrl=${view.mapboxCssUrl}
             ?fullscreen=${view.layout.aboutFullscreen}
             @hcm-close=${handlers.onSheetClose}
             .theme=${state.theme}

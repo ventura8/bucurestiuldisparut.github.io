@@ -16,6 +16,7 @@ export type { DecodedHash, HashLimits, HashState, MapView } from './url/hash.js'
 
 export { MAX_URL_LENGTH, isHostOf, isHttpsUrl, isRelativeUrl, toHttpsUrl } from './text/urls.js';
 export { markdownToPlainText, parseMarkdown } from './text/markdown.js';
+export { redactText } from './text/redact.js';
 export type { InlineNode, MarkdownDocument, MarkdownParagraph } from './text/markdown.js';
 
 export { ID_PATTERN, MAX_LINKS, MAX_TOKENS, PHOTOS_OVERLAY_ID, TOKEN_NAME_PATTERN, isId } from './schemas/primitives.js';
@@ -78,51 +79,104 @@ export type {
 } from './schemas/manifest.js';
 export { DEFAULT_CONTAINER_SELECTOR, engineConfigSchema } from './schemas/config.js';
 export type { EngineConfig } from './schemas/config.js';
+export { SYSTEM_WRITERS, systemWriter, timestampFromDate, timestampSchema, timestampToDate } from './schemas/firestore-common.js';
+export type { SystemWriter, TimestampLike } from './schemas/firestore-common.js';
 export {
-    ADMIN_ROLES,
     FIRESTORE_LICENSES,
     GEOREF_METHODS,
     HISTORY_ACTIONS,
     HISTORY_ENTITIES,
-    JOB_STATUSES,
-    JOB_TYPES,
     LAYER_STATUSES,
+    PHOTO_CONTENT_TYPES,
     PROCESSING_STATES,
-    SERVICE_STATES,
     USGS_DATASETS,
-    USGS_SCENE_STATUSES,
-    adminDocSchema,
     cityDocSchema,
     historyEntryDocSchema,
-    jobDocSchema,
+    httpsOriginSchema,
     layerDocSchema,
+    mapboxTokenIdSchema,
     photoDocSchema,
     poiCategoryDocSchema,
     poiDocSchema,
-    setupStatusDocSchema,
-    timestampSchema,
-    usgsSceneDocSchema,
 } from './schemas/firestore.js';
 export type {
-    AdminDoc,
     CityDoc,
     FirestoreLicense,
     HistoryAction,
     HistoryEntity,
     HistoryEntryDoc,
-    JobDoc,
-    JobStatus,
-    JobType,
     LayerDoc,
+    PhotoContentType,
     PhotoDoc,
     PoiCategoryDoc,
     PoiDoc,
-    SetupStatusDoc,
-    TimestampLike,
-    UsgsSceneDoc,
 } from './schemas/firestore.js';
+export {
+    ADMIN_ROLES,
+    GUARD_REASONS,
+    GUARD_STATES,
+    JOB_LOG_LEVELS,
+    JOB_MACHINES,
+    JOB_STATUSES,
+    JOB_STEP_STATES,
+    JOB_TYPES,
+    MANIFEST_BUILD_STATES,
+    MANIFEST_ENTITIES,
+    OPS_STEPS,
+    PROVISION_ITEMS,
+    SERVICE_STATES,
+    SETUP_AREAS,
+    USGS_ROLES,
+    USGS_SCENE_STATUSES,
+    adminDocSchema,
+    inviteDocSchema,
+    jobDocSchema,
+    jobLogDocSchema,
+    manifestStateDocSchema,
+    opsGuardDocSchema,
+    ownerDocSchema,
+    setupStatusDocSchema,
+    usageDocSchema,
+    usgsSceneDocSchema,
+} from './schemas/firestore-ops.js';
+export type {
+    AdminDoc,
+    AdminRole,
+    InviteDoc,
+    JobDoc,
+    JobLogDoc,
+    JobStatus,
+    JobType,
+    ManifestStateDoc,
+    OpsGuardDoc,
+    OpsStep,
+    OwnerDoc,
+    ProvisionItem,
+    ServiceState,
+    SetupArea,
+    SetupStatusDoc,
+    UsageDoc,
+    UsgsRole,
+    UsgsSceneDoc,
+} from './schemas/firestore-ops.js';
+export { CLIENT_WRITES } from './schemas/client-writes.js';
+export type { ClientCollection, ClientWrites } from './schemas/client-writes.js';
+export {
+    CITY_ID_PATTERN,
+    FIRESTORE_PATHS,
+    PHOTO_EXTENSIONS,
+    PHOTO_VARIANTS,
+    STORAGE_PATHS,
+    UPLOAD_FILE_PATTERN,
+    auditedDocumentPath,
+    cityIdSchema,
+    parseAuditedDocumentPath,
+    parsePhotoUploadPath,
+    publicObjectUrl,
+} from './schemas/paths.js';
+export type { AuditedDocument, PhotoUpload, PhotoVariant } from './schemas/paths.js';
 export { formatPath, isValidationCode, parseManifestJson, toValidationIssues, validate, validateManifest } from './schemas/validation.js';
-export type { ValidationIssue, ValidationResult } from './schemas/validation.js';
+export type { Schema, ValidationIssue, ValidationResult } from './schemas/validation.js';
 export { checkManifestCompat, compareVersions, parseVersion } from './schemas/compat.js';
 export type { ManifestCompat } from './schemas/compat.js';
 
@@ -146,3 +200,4 @@ export { isPhotoNearYear, PHOTO_YEAR_WINDOW } from './overlays/photos.js';
 export { poiIcon, poiInYear } from './overlays/poi.js';
 
 export * from './migration/index.js';
+export * from './api/index.js';

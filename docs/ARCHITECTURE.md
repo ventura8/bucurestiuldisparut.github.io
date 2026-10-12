@@ -22,13 +22,13 @@
 
 | Workspace | Package | Status |
 | --- | --- | --- |
-| `packages/shared` | `@hcm/shared`: zod schemas (City Manifest v1 with POIs, embed config, Firestore documents with history entries), validation with localized codes, geo helpers and POI geometries, the overlay model and its Mapbox paint mapping, the URL-hash codec, the Markdown subset, the legacy migration, i18n catalogues, logging with redaction | M1 contracts done (with PLAN Addendum 3) |
+| `packages/shared` | `@hcm/shared`: zod schemas (City Manifest v1 with POIs, embed config, every Firestore document and path, the fields clients may write), the backend API (callable and HTTPS request/response schemas, the function registry, error codes with RO/EN messages), validation with localized codes, geo helpers and POI geometries, the overlay model and its Mapbox paint mapping, the URL-hash codec, the Markdown subset, text redaction, the legacy migration, i18n catalogues, logging with redaction | M1 contracts done (with PLAN Addendum 3); M2 backend contracts done |
 | `packages/ui` | `@hcm/ui`: Lit 3 Material 3 Expressive kit (19 elements), theme and dynamic colour (`themeFromSeed`, `applyTheme`), window classes, self-hosted fonts, and the viewer's elements (`packages/ui/src/viewer/`) | M1 done |
 | `packages/engine` | `@hcm/engine`: the public viewer, global `window.HistoricCityMap`: configuration, the viewer store, the MapPort and its Mapbox adapter, consent-gated telemetry, `mount` and the auto-boot | M1 done (the built Bucharest site passes the e2e smoke, functional matrix, tour, a11y specials and no-WebGL tiers) |
 | `packages/admin` | `@hcm/admin`: Setup Assistant and daily flows | scaffold |
 | `packages/test-support` | `@hcm/test-support`: `FakeMap` and a fake `mapboxgl` (`@hcm/test-support/fake-map`), axe (`@hcm/test-support/axe`), recording log sinks; msw handlers later (test-only) | M1 |
-| `functions/` | `@hcm/functions`: thin v2 triggers over pure handlers and ports | scaffold (`setup-status`); deploys from M2 |
-| `firebase/rules-tests/` | `@hcm/rules-tests`: allow and deny matrix under the emulators | running |
+| `functions/` | `@hcm/functions`: thin v2 triggers over pure handlers and ports, the composition root, the deploy artifact `functions/dist/` | M2 backend done: the 32 functions of the registry, wired and tested under the emulators |
+| `firebase/rules-tests/` | `@hcm/rules-tests`: allow and deny matrix, field rules, limits and indexes under the emulators, plus `firebase.json` and `.firebaserc` | running (M2 rules) |
 | `e2e/` | `@hcm/e2e` (Playwright 1.64): `e2e/scenarios.json`, the mock APIs (`e2e/mock-apis/`), the fixture manifest, the firewall, console and placeholder guards, the tiers of `e2e/projects.ts` | harness, smoke, the viewer's functional matrix, the tour, the a11y specials and no-WebGL running; swipe compare (M4), admin (M2) and pipeline (M3) specs planned |
 | `pipeline/` | `pipeline/src/hcm_pipeline` (Python + GDAL, Poetry) | scaffold; steps in M3 |
 
@@ -47,7 +47,7 @@ Layering (enforced by dependency-cruiser): `shared` below `ui` below `engine` an
 The public contract (config.js, `<hcm-map-viewer>`, the JavaScript API, the URL hash, the City Manifest v1, versioning) is [ENGINE_API.md](ENGINE_API.md); the M1 module interfaces and ownership are in [research/M1-interfaces.md](research/M1-interfaces.md).
 
 - A city page ships `index.html` and `config.js` (`window.HistoricCityMapConfig = {cityId?, manifestUrl? | manifest?, container?, lang?, engineBase?}`; the inline manifest is the starter kit's static mode). The engine fetches only the static manifest and photo WebP files from the public bucket.
-- Mapbox GL JS **3.32.0** is loaded from `api.mapbox.com` as the global `mapboxgl` and never bundled; Standard Satellite basemap; historical rasters in the `middle` slot; `performanceMetricsCollection: false`; the Mapbox logo and attribution are always visible.
+- Mapbox GL JS **3.32.0** is loaded from `api.mapbox.com` as the global `mapboxgl` and never bundled; Standard Satellite basemap; historical rasters in the `middle` slot; `performanceMetricsCollection: false`; the Mapbox logo and attribution are always visible: while a modal sheet, the lightbox or About covers the map, the viewer hides Mapbox's own and shows the same logo and the attribution it reads from Mapbox's control in a legal bar below the sheet or the lightbox, or at the foot of About (`packages/ui/src/viewer/attribution.ts`, `viewer-legal.ts`, `hcm-map-attribution.ts`; scenario V18).
 - The core (state, URL hash, timeline, controller) talks only to a `MapPort`; the Mapbox adapter is the only Mapbox-aware module. **One map per view**: swipe compare creates its second map lazily and destroys it.
 - Features: timeline (a city without historical layers shows a "coming soon" note instead), photos as clustered camera icons rotated by bearing with view cones, bottom or side sheet, lightbox, URL state and share, geolocate, About and credits, RO/EN, light/dark/seeded theme.
 - The engine build ships next to its script everything it loads at run time: the lazy Firebase chunk (ES module build) and the kit's self-hosted fonts (`dist/fonts/`). The page's CSP refuses inline styles, so elements set styles only through the CSSOM.
@@ -73,7 +73,7 @@ Firestore (zod schemas in `@hcm/shared` are reused by every writer):
 - `cities/{city}/photos/{id}`: title and description (`{ro, en}`), year range, author, licence (enum), rights holder, structured `links`, location, bearing, FOV, image (web, thumb, sha256, size), processing state, published flag, rights review, legacy id.
 - `cities/{city}/poiCategories/{id}` (label, icon, colour, default opacity, order) and `cities/{city}/pois/{id}` (category, geometry without nested arrays, title and description, year span, links, photo ids, published flag); the manifest carries them as `poiCategories[]` and `pois[]` with GeoJSON geometries.
 - Every admin-editable document (city, layer, photo, POI, POI category) carries `updatedBy` and `updatedAt` and keeps a `history` subcollection with the previous version of each change, written by a server trigger, for one-click revert.
-- Also `usgsScenes/{entityId}`, `jobs/{id}` with logs, `admins/{uid}`, `setup/status` (non-secret health), `usage/mapbox-YYYY-MM`, `ops/guard`.
+- Also `usgsScenes/{entityId}`, `jobs/{id}` with logs, `admins/{uid}`, `invites/{sha256 of the address}` (never the address), `setup/status` (non-secret health of billing, provisioning, Mapbox, USGS, analytics and crash reports), `setup/owner` (the owner's uid), `usage/mapbox-YYYY-MM`, `ops/guard`, `manifests/{city}` (manifest builds). Every document carries `updatedBy` and `updatedAt`; the fields a client may write are one table, `CLIENT_WRITES`, which the rules mirror. Contracts: [research/M2-interfaces.md](research/M2-interfaces.md) §2.
 
 The Bucharest seed manifest (`seed/bucharest/manifest.static.json`, with WebP derivatives in `seed/bucharest/derived/`) is produced from the legacy data by `scripts/seed/migrate-legacy.mjs` (`npm run seed:migrate`), whose rules are pure functions in `packages/shared/src/migration/`.
 
@@ -81,7 +81,24 @@ Storage: a **private** bucket (`<proj>.firebasestorage.app`: uploads, rasters, U
 
 ## Cloud Functions
 
-Pure handlers with injected ports, thin triggers, REST adapters (Cloud Run Admin v2, Secret Manager) so tests can mock them; secrets read at runtime with a cache (no redeploy after a paste). Families: `setup.*`, `usgs.*`, `jobs.onCreate`, `ops.tick` (every 15 min), `ops.onBudget`, `photos.onUpload`, `publish.*` (debounced manifest builder), `admins.invite`, `telemetry.reportError`, `assist.*` (M4).
+Firebase Functions v2 (Node 24, `us-central1`), one codebase deployed from `functions/dist/`. Every function is one row of the registry in `@hcm/shared` (`CALLABLES`, `HTTP_ENDPOINTS`, `BACKGROUND_FUNCTIONS`: its access rule, App Check mode, instance cap and request/response schemas); every failure reaches the admin as an error code with Romanian and English messages. Contracts, ports and ownership: [research/M2-interfaces.md](research/M2-interfaces.md).
+
+| Group (deployed as `<group>-<name>`) | Functions | Trigger | Runs as |
+| --- | --- | --- | --- |
+| `admin` | `session`, `claim` (the owner proves ownership with Resource Manager and their own OAuth token), `join` (an invitation for the caller's address) | callable, any verified Google account | `fn-admin@` |
+| `admins` | `invite` (stores only the SHA-256 of the address), `revoke` (never the owner or oneself), `list` | callable, admins | `fn-admin@` |
+| `history` | `onCityWrite`, `onLayerWrite`, `onPhotoWrite`, `onPoiWrite`, `onPoiCategoryWrite` (the previous version of every audited change, newest 50 kept); `revert` | Firestore; callable | `fn-events@`; `fn-admin@` |
+| `setup` | `status`, `selfTest`, `recordCloud`, `saveMapbox`, `saveUsgs`, `rotatePublicToken`, `analyticsConfig` | callable, admins | `fn-admin@` |
+| `telemetry` | `reportError` (the public crash endpoint: origin-checked, 16 KiB, rate-limited, redacted, one structured log entry for Cloud Error Reporting); `listGroups` | HTTPS; callable | `fn-events@`; `fn-admin@` |
+| `publish` | `on…Write` (five diff-gated triggers that request a build), `buildManifest` (one at a time, debounced per minute, full build), `rebuildManifest` | Firestore; task queue; callable | `fn-events@`; `fn-events@`; `fn-admin@` |
+| `photos` | `onUpload` (magic bytes, header-only size check, SHA-256 duplicates, WebP 2048 and 400 px without metadata, EXIF suggestions; 2 GiB, one upload at a time), `reprocess` | Storage finalize on the private bucket; callable | `fn-events@`; `fn-admin@` |
+| `ops` | `tick` (every 15 min: guard, nightly rebuild and public-file sweep, Mapbox and USGS health, token retirement, expired invitations, stale accounts), `onBudget` (turns `ops/guard` red) | schedule; Pub/Sub `budget` | `fn-admin@` (`research/DECISIONS-for-review.md` §19b) |
+
+- **Shape**: each function file holds its thin trigger and its pure handler, which takes `Pick<Ports, …>`; a feature folder exports its group from a factory (`adminFunctions(getDeps)`, ...), and `functions/src/index.ts` only exports the groups. `functions/src/global-options.ts` sets the defaults (`us-central1`, at most 5 instances, concurrency 80, `fn-events@`) and `runAs(name)`, the service account of each registry name (`RUNTIME_ACCOUNTS`; `fn-admin@` is firebase-tools' shorthand for `fn-admin@<project>.iam.gserviceaccount.com`). Callables keep the registry's caps (2 or 3), the crash endpoint 2, the builder, the tick and the budget handler 1.
+- **Composition root** (`functions/src/deps.ts`): `RuntimeConfig` from the environment (`GCLOUD_PROJECT`, the default bucket of `FIREBASE_CONFIG`, `HCM_VIEWER_ORIGINS`, `HCM_OAUTH_CLIENT_IDS`, `HCM_APP_CHECK`) and one adapter per port, created on the first call: Firestore, Auth, Cloud Storage and Cloud Tasks through firebase-admin; Secret Manager, Resource Manager and tokeninfo, Firebase Management, Error Reporting, Mapbox and USGS M2M over REST with `fetch` and Application Default Credentials; sharp for images. In the Functions emulator secrets stay in memory and the REST adapters reach only the fake upstreams at `HCM_UPSTREAM_BASE` (anything else fails like a network error).
+- **Secrets** are read at runtime with a five-minute cache that `setup/status.secretsRev` invalidates, so a paste works without a redeploy; a save adds a version and destroys the older ones.
+- **Deploy artifact**: `npm run build --workspace @hcm/functions` (`functions/build.mjs`, Vite SSR) bundles the workspace code and its own dependencies (zod) into `functions/dist/index.js`, keeps the functions' npm dependencies (`firebase-admin`, `firebase-functions`, `google-auth-library`, `sharp`) external with their exact pins in `functions/dist/package.json`, then checks that every import left is pinned and that the bundle loads with a deploy manifest on every export. `firebase.json` deploys it (`predeploy` builds it).
+- Later: `usgs.*`, `jobs.onCreate` (M3), `assist.*` (M4).
 
 ## Raster pipeline
 
@@ -89,22 +106,27 @@ Python with `osgeo.gdal` from the pinned GDAL image (Python 3.14), Poetry, as a 
 
 ## Security
 
-- **Rules**: default deny; admin = custom claim **and** `admins/{uid}` document; strict field validation; size and type limits; no SVG. The Admin SDK bypasses rules, so every server writer validates with zod.
+- **Rules** (`firebase/firestore.rules`, `firebase/storage.rules`): default deny; admin = verified Google sign-in with the `admin` claim **and** an `admins/{uid}` document; clients write exactly the fields of `CLIENT_WRITES` with the values the zod schemas allow, stamped with their uid and the server time; `setup/*`, `invites`, `usage`, `ops`, `manifests`, job logs and every `history` are read-only; a whole document is validated on every write within Firestore's 1000-expression budget. Storage: uploads only into the admin's own folder under an existing photo document, 1 byte to 60 MiB, image types only (never SVG), never overwritten, nothing public. Composite indexes (`firebase/firestore.indexes.json`) serve the admin's lists of photos, POIs, layers, jobs and history. The Admin SDK bypasses rules, so every server writer validates with zod.
 - **App Check** (reCAPTCHA Enterprise) on the admin, Firestore and callables; none needed on the public viewer.
 - **CSP**: strict headers on Hosting, a meta CSP on Pages; ESLint bans every HTML sink.
-- **Identities**: least-privilege service accounts (`fn-admin`, `fn-events`, `job-raster`) and `gh-deployer` through Workload Identity Federation (no keys). The owner admin is granted by a bootstrap script; no email in the repository.
+- **Identities**: least-privilege service accounts (`fn-admin`, `fn-events`, `job-raster`) and `gh-deployer` through Workload Identity Federation (no keys). The first admin is the Google Cloud project's owner, proved in the app (`admin.claim`: Resource Manager `testIamPermissions` with the owner's own OAuth token); later admins join by invitation, stored as the hash of their address. No email address in the repository.
 - **Secrets**: Mapbox and USGS secrets only in Secret Manager; `SONAR_TOKEN` is the only repository secret; the Firebase web config is never committed (the admin reads `/__/firebase/init.json` on Hosting).
+
+## Deployment configuration
+
+- `firebase.json`: Firestore rules and indexes, Storage rules, the functions codebase (`functions/dist`, `nodejs24`), Hosting site **`bucurestiul-disparut`** serving `packages/admin/dist` (the admin bundle arrives in M2b) with the security review's headers: a CSP without inline code (Mapbox GL from its CDN folder, Google sign-in, reCAPTCHA, GA4; frames only for the auth domains `bucurestiul-disparut.web.app` and `.firebaseapp.com`, Google sign-in and reCAPTCHA), Trusted Types in report-only mode, `same-origin-allow-popups`, `strict-origin-when-cross-origin`, `nosniff` and a Permissions-Policy; and the emulator ports.
+- `.firebaserc`: `default` is the Firebase project `bucurestiul-disparut`, `e2e` the emulator project `demo-hcm`; every test and emulator run names `--project demo-hcm`. Deploying is ask-first and goes through CI with Workload Identity Federation.
 
 ## Cost guards
 
-- GCP: a $5 budget whose alarm pauses the raster pipeline and MTS, never the site; per-function `maxInstances`.
+- GCP: a $5 budget whose alarm (`ops.onBudget`) pauses the raster pipeline and MTS, never the site; per-function `maxInstances` (callables 2–3, the crash endpoint 2, uploads 5 with one at a time, the builder and the tick 1).
 - Mapbox: one map per view; usage alerts; MTS only after approval and within the compute-unit guard, with the free Studio upload path; at most 24 tilesets without approval; tests never hit Mapbox.
 - Expected: about $0.5–2 per month on GCP; Mapbox $0 within 50,000 map loads.
 
 ## Analytics and crashes
 
-- GA4 (the Firebase JS SDK's analytics module) and Performance Monitoring in the viewer and the admin, **loaded only after consent** (a Material 3 consent banner in RO and EN, Consent Mode v2 defaults denied; the choice is stored and can be changed in About). Since M1 the viewer lazy-loads the Firebase chunk only when the manifest has a `measurementId` and its Firebase ids and the visitor accepted; without them the banner still asks, but nothing is sent. It still never reads Firestore.
-- Open privacy decisions (`research/DECISIONS-for-review.md` §18): Performance Monitoring sends the page URL with its hash, which holds the visitor's view and, after *My location*, their position (§18a); GA4's cookies stay after consent is withdrawn (§18c).
+- GA4 (the Firebase JS SDK's analytics module) in the viewer and the admin, **loaded only after consent** (a Material 3 consent banner in RO and EN, Consent Mode v2 defaults denied; the choice is stored and can be changed in About). Since M1 the viewer lazy-loads the Firebase chunk only when the manifest has a `measurementId` and its Firebase ids and the visitor accepted; without them the banner still asks, but nothing is sent. It still never reads Firestore.
+- Privacy of the public viewer (`research/DECISIONS-for-review.md` §18a, §18c): GA4 is told the page's origin and path only (`page_location` and `page_path` on its configuration, `page_location` on every event, no automatic page view), never the hash, which holds the map view and, after *My location*, the visitor's position; Google signals and ad personalisation are off. Firebase Performance Monitoring is not part of the public viewer: it sends the URL with its hash and cannot be told otherwise (the admin, whose addresses hold no position, may use it). Withdrawing consent in About expires GA4's `_ga` and `_ga_*` cookies (host-only, each parent domain, every path prefix of the page); a first *Decline* touches no cookie. The GA4 web stream's enhanced measurement of history changes must stay off, because the viewer rewrites its hash on every move (change request CR-M2-37 in `research/M2-interfaces.md`).
 - Events without PII: `page_view`, `layer_toggle`, `year_change`, `photo_open`, `poi_open`, `share`, `compare_open`, and admin flow events.
 - Crashes: global error handlers and error boundaries; GA4 `exception` events after consent; the viewer POSTs redacted reports (no URL query or fragment, no token, no e-mail address; at most five per page) to the manifest's `analytics.errorEndpoint`, which from M2 is `telemetry.reportError`, writing structured logs that Cloud Error Reporting groups and alerts on; source maps are release artifacts; the Setup Assistant shows the latest error groups.
 

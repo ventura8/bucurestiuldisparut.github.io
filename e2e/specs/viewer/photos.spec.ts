@@ -5,7 +5,7 @@ import { siteManifestData, type Json } from '../../fixtures/manifest.js';
 import { mapFacts, mapIdle, renderedFeatureIds, renderedPoints, screenPointOf, type LngLat } from '../../support/map.js';
 import { isColour, probePixel } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
-import { engineEvents, openViewer, serveManifest, t, viewer, windowClassOf } from '../../support/viewer.js';
+import { chooseMenuItem, engineEvents, openViewer, serveManifest, t, viewer, windowClassOf } from '../../support/viewer.js';
 
 /**
  * Photos on the map (behaviour V07) and the lightbox (V08): clustered camera markers that expand when the visitor zooms
@@ -67,6 +67,41 @@ function expectedVariant(page: Page): string {
     const windowClass = windowClassOf(page.viewportSize()?.width ?? 0);
     const modal: Partial<Record<string, string>> = { compact: 'bottom', medium: 'side' };
     return modal[windowClass] ?? 'docked';
+}
+
+interface ListLine {
+    readonly text: string;
+    readonly size: string;
+    readonly lineHeight: string;
+    /** The text is cut: wider or taller than its box. */
+    readonly clipped: boolean;
+    /** It wraps onto more than one line. */
+    readonly wrapped: boolean;
+}
+
+/** Runs in the page: every date line and title of the open photo list, with its type size and whether it is cut. */
+function listTypography(): { readonly dates: ListLine[]; readonly titleSizes: string[] } {
+    const list = document.querySelector('hcm-map-viewer')?.shadowRoot?.querySelector('.photos-sheet hcm-photo-list')?.shadowRoot;
+    const line = (element: Element): ListLine => {
+        const style = getComputedStyle(element);
+        const html = element as HTMLElement;
+        return {
+            text: html.textContent.trim(),
+            size: style.fontSize,
+            lineHeight: style.lineHeight,
+            clipped: html.scrollWidth > html.clientWidth + 1 || html.scrollHeight > html.clientHeight + 1,
+            wrapped: element.getClientRects().length > 1 || html.getBoundingClientRect().height > Number.parseFloat(style.lineHeight) * 1.5,
+        };
+    };
+    return {
+        dates: Array.from(list?.querySelectorAll('.date') ?? []).map(line),
+        titleSizes: Array.from(list?.querySelectorAll('.title') ?? []).map((title) => getComputedStyle(title).fontSize),
+    };
+}
+
+async function openPhotoList(page: Page, lang: Locale): Promise<void> {
+    await chooseMenuItem(page, lang, t(lang, 'photos.list'));
+    await expect(viewer(page).locator('.photos-sheet hcm-photo-list').getByRole('status')).toBeVisible();
 }
 
 async function clickPhoto(page: Page, id: string): Promise<void> {
@@ -316,5 +351,46 @@ test(
         await expect(lightbox).toHaveCount(0);
         await expect(opener).toBeFocused();
         expect(consoleErrors.take()).toEqual([expect.stringContaining('404')]);
+    },
+);
+
+test(
+    'The photo list shows each date as 14 px supporting text under a 16 px title',
+    { tag: '@S-V07-HAPPY-LIST-DATES' },
+    async ({ page, lang }) => {
+        await openViewer(page, { lang });
+        await openPhotoList(page, lang);
+
+        const { dates, titleSizes } = await page.evaluate(listTypography);
+        expect(dates).toHaveLength(PHOTOS.length);
+        expect([...new Set(dates.map((date) => `${date.size}/${date.lineHeight}`))], 'M3 body-medium').toEqual(['14px/20px']);
+        expect([...new Set(titleSizes)], 'M3 body-large').toEqual(['16px']);
+        expect(dates.map((date) => date.text)).toContain(t(lang, 'photo.year', { year: '1976' }));
+        expect(dates.filter((date) => date.clipped)).toEqual([]);
+    },
+);
+
+test(
+    'A long or a missing date wraps in the same supporting text and is never cut',
+    { tag: '@S-V07-BAD-LIST-NO-DATE' },
+    async ({ page, lang }) => {
+        const manifest = siteManifestData();
+        const photos = manifest['photos'] as Json[];
+        const dated = photos.find((candidate) => candidate['id'] === LONE) ?? {};
+        dated['dateText'] = {
+            ro: 'Între primăvara lui 1974 și toamna lui 1976, după fotografiile de familie ale autorului',
+            en: 'Between the spring of 1974 and the autumn of 1976, from the author family photographs',
+        };
+        await serveManifest(page, manifest);
+        await page.setViewportSize({ width: 320, height: 640 });
+        await openViewer(page, { lang });
+        await openPhotoList(page, lang);
+
+        const { dates } = await page.evaluate(listTypography);
+        const long = dates.find((date) => date.text.startsWith(lang === 'ro' ? 'Între primăvara' : 'Between the spring'));
+        const unknown = dates.filter((date) => date.text === t(lang, 'photo.unknownYear'));
+        expect(long).toMatchObject({ size: '14px', clipped: false, wrapped: true });
+        expect(unknown.length, 'the photos without a date say so').toBeGreaterThan(0);
+        expect(unknown.every((date) => date.size === '14px' && !date.clipped)).toBe(true);
     },
 );

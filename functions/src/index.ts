@@ -1,6 +1,25 @@
 /**
- * The deployed functions: exports only. Firebase names a function after its export path, so the
- * namespace `setup` with its `status` export deploys as `setup-status` (client: httpsCallable(fns,
- * 'setup-status')). Logic lives in handlers/, wiring in triggers/ and deps.ts.
+ * The deployed functions: exports only (`docs/research/M2-interfaces.md` §5). Firebase names a function after its export
+ * path, so the group `admin` with its `claim` key deploys as `admin-claim` (`deployedName('admin.claim')`; the admin
+ * calls `httpsCallable(functions, 'admin-claim')`). Each feature folder builds its group from the composition root's
+ * `getDeps`, which creates the adapters on the first call, never at cold start; `functions/test/index.test.ts` checks
+ * that the exports are exactly the registry's functions, each with its region, instance cap and service account.
  */
-export * as setup from './triggers/setup.js';
+import { adminFunctions, adminsFunctions } from './admin/index.js';
+import { getDeps, privateBucket } from './deps.js';
+import { historyFunctions } from './history/index.js';
+import { opsFunctions } from './ops/index.js';
+import { photosFunctions } from './photos/index.js';
+import { publishFunctions } from './publish/index.js';
+import { defineSetupFunctions } from './setup/index.js';
+import { telemetryFunctions } from './telemetry/index.js';
+
+export const admin = adminFunctions(getDeps);
+export const admins = adminsFunctions(getDeps);
+export const history = historyFunctions(getDeps);
+export const telemetry = telemetryFunctions(getDeps);
+export const setup = defineSetupFunctions(getDeps);
+export const publish = publishFunctions(getDeps);
+/** `photos.onUpload` names its bucket when it is declared: the same private bucket the Storage adapter writes. */
+export const photos = photosFunctions(getDeps, privateBucket(process.env));
+export const ops = opsFunctions(getDeps);

@@ -1,0 +1,176 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+    auditedDocumentPath,
+    cityIdSchema,
+    FIRESTORE_PATHS,
+    parseAuditedDocumentPath,
+    parsePhotoUploadPath,
+    publicObjectUrl,
+    STORAGE_PATHS,
+} from '../../src/schemas/paths.js';
+
+const SHA = 'ab12cd34'.repeat(8);
+
+describe('Firestore paths', () => {
+    it('happyPath_everyBuilderSpellsItsPath', () => {
+        const city = 'bucuresti';
+
+        expect([
+            FIRESTORE_PATHS.city(city),
+            FIRESTORE_PATHS.photos(city),
+            FIRESTORE_PATHS.photo(city, 'p1'),
+            FIRESTORE_PATHS.layers(city),
+            FIRESTORE_PATHS.layer(city, 'l1'),
+            FIRESTORE_PATHS.pois(city),
+            FIRESTORE_PATHS.poi(city, 'x'),
+            FIRESTORE_PATHS.poiCategories(city),
+            FIRESTORE_PATHS.poiCategory(city, 'c'),
+            FIRESTORE_PATHS.jobs(city),
+            FIRESTORE_PATHS.job(city, 'j'),
+            FIRESTORE_PATHS.jobLogs(city, 'j'),
+            FIRESTORE_PATHS.usgsScenes(city),
+            FIRESTORE_PATHS.usgsScene(city, 'DS1035-1057DA023'),
+            FIRESTORE_PATHS.history({ entity: 'poi', cityId: city, entityId: 'x' }),
+            FIRESTORE_PATHS.historyEntry({ entity: 'city', cityId: city, entityId: city }, '1760000000000-evt_1'),
+            FIRESTORE_PATHS.admin('uid-1'),
+            FIRESTORE_PATHS.invite(SHA),
+            FIRESTORE_PATHS.usage('2026-10'),
+            FIRESTORE_PATHS.manifestState(city),
+        ]).toEqual([
+            'cities/bucuresti',
+            'cities/bucuresti/photos',
+            'cities/bucuresti/photos/p1',
+            'cities/bucuresti/layers',
+            'cities/bucuresti/layers/l1',
+            'cities/bucuresti/pois',
+            'cities/bucuresti/pois/x',
+            'cities/bucuresti/poiCategories',
+            'cities/bucuresti/poiCategories/c',
+            'cities/bucuresti/jobs',
+            'cities/bucuresti/jobs/j',
+            'cities/bucuresti/jobs/j/logs',
+            'cities/bucuresti/usgsScenes',
+            'cities/bucuresti/usgsScenes/DS1035-1057DA023',
+            'cities/bucuresti/pois/x/history',
+            'cities/bucuresti/history/1760000000000-evt_1',
+            'admins/uid-1',
+            `invites/${SHA}`,
+            'usage/mapbox-2026-10',
+            'manifests/bucuresti',
+        ]);
+        expect([
+            FIRESTORE_PATHS.admins,
+            FIRESTORE_PATHS.invites,
+            FIRESTORE_PATHS.setupStatus,
+            FIRESTORE_PATHS.setupOwner,
+            FIRESTORE_PATHS.opsGuard,
+        ]).toEqual(['admins', 'invites', 'setup/status', 'setup/owner', 'ops/guard']);
+        expect(FIRESTORE_PATHS.manifestStates).toBe('manifests');
+        expect(FIRESTORE_PATHS.cities).toBe(FIRESTORE_PATHS.city('bucuresti').split('/')[0]);
+    });
+
+    it.each([
+        ['a city id with capitals', () => FIRESTORE_PATHS.city('Bucuresti')],
+        ['a photo id with a slash', () => FIRESTORE_PATHS.photo('bucuresti', 'a/b')],
+        ['a uid that climbs up', () => FIRESTORE_PATHS.admin('..')],
+        ['an invitation id that is an e-mail address', () => FIRESTORE_PATHS.invite('a@example.test')],
+        ['a month 13', () => FIRESTORE_PATHS.usage('2026-13')],
+        [
+            'a history entry id without its time',
+            () => FIRESTORE_PATHS.historyEntry({ entity: 'poi', cityId: 'bucuresti', entityId: 'x' }, 'evt'),
+        ],
+        ['a city entity of another city', () => auditedDocumentPath({ entity: 'city', cityId: 'bucuresti', entityId: 'cluj' })],
+        ['a manifest of an empty city', () => FIRESTORE_PATHS.manifestState('')],
+    ])('badPath_%s_throws', (_name, build) => {
+        expect(build).toThrow(RangeError);
+    });
+});
+
+describe('audited documents', () => {
+    it.each([
+        ['cities/bucuresti', { entity: 'city', cityId: 'bucuresti', entityId: 'bucuresti' }],
+        ['cities/bucuresti/photos/p1', { entity: 'photo', cityId: 'bucuresti', entityId: 'p1' }],
+        ['cities/bucuresti/layers/l1', { entity: 'layer', cityId: 'bucuresti', entityId: 'l1' }],
+        ['cities/bucuresti/pois/x', { entity: 'poi', cityId: 'bucuresti', entityId: 'x' }],
+        ['cities/bucuresti/poiCategories/c', { entity: 'poiCategory', cityId: 'bucuresti', entityId: 'c' }],
+    ] as const)('happyPath_%s_roundTrips', (path, document) => {
+        expect(parseAuditedDocumentPath(path)).toEqual(document);
+        expect(auditedDocumentPath(document)).toBe(path);
+    });
+
+    it.each([
+        'cities',
+        'towns/bucuresti',
+        'cities/Bucuresti',
+        'cities/bucuresti/jobs/j1',
+        'cities/bucuresti/photos/a.b',
+        'towns/bucuresti/photos/p1',
+        'cities/x/photos/p1',
+        'cities/bucuresti/photos/p1/history/1',
+    ])('badPath_%s_isNotAudited', (path) => {
+        expect(parseAuditedDocumentPath(path)).toBeUndefined();
+    });
+});
+
+describe('Storage paths', () => {
+    it('happyPath_everyBuilderSpellsItsPath', () => {
+        expect([
+            STORAGE_PATHS.photoUpload('bucuresti', 'uid-1', 'p1', 'Xy7_aB9-q2.jpg'),
+            STORAGE_PATHS.photoOriginal('bucuresti', 'p1', SHA, 'image/heic'),
+            STORAGE_PATHS.photoDerivative('bucuresti', 'p1', SHA, 'thumb'),
+            STORAGE_PATHS.manifest('bucuresti'),
+        ]).toEqual([
+            'uploads/photos/bucuresti/uid-1/p1/Xy7_aB9-q2.jpg',
+            `originals/photos/bucuresti/p1/${SHA}.heic`,
+            'photos/bucuresti/p1/ab12cd34/thumb.webp',
+            'cities/bucuresti/manifest.json',
+        ]);
+    });
+
+    it('happyPath_anUploadPathParsesBack', () => {
+        expect(parsePhotoUploadPath('uploads/photos/bucuresti/uid-1/p1/Xy7_aB9-q2.jpeg')).toEqual({
+            cityId: 'bucuresti',
+            uid: 'uid-1',
+            photoId: 'p1',
+            fileName: 'Xy7_aB9-q2.jpeg',
+        });
+    });
+
+    it.each([
+        'uploads/photos/bucuresti/uid-1/p1',
+        'uploads/rasters/bucuresti/uid-1/p1/Xy7_aB9-q2.jpg',
+        'downloads/photos/bucuresti/uid-1/p1/Xy7_aB9-q2.jpg',
+        'uploads/photos/Bucuresti/uid-1/p1/Xy7_aB9-q2.jpg',
+        'uploads/photos/bucuresti/uid.1/p1/Xy7_aB9-q2.jpg',
+        'uploads/photos/bucuresti/uid-1/p.1/Xy7_aB9-q2.jpg',
+        'uploads/photos/bucuresti/uid-1/p1/short.jpg',
+        'uploads/photos/bucuresti/uid-1/p1/Xy7_aB9-q2.svg',
+    ])('badPath_%s_isNoPhotoUpload', (path) => {
+        expect(parsePhotoUploadPath(path)).toBeUndefined();
+    });
+
+    it.each([
+        ['an upload file without a nonce', () => STORAGE_PATHS.photoUpload('bucuresti', 'uid-1', 'p1', 'a.jpg')],
+        ['an original of a short hash', () => STORAGE_PATHS.photoOriginal('bucuresti', 'p1', 'abc', 'image/jpeg')],
+        ['a derivative of another city id', () => STORAGE_PATHS.photoDerivative('a', 'p1', SHA, 'web')],
+        ['a manifest of a city id with a slash', () => STORAGE_PATHS.manifest('a/b')],
+    ])('badPath_%s_throws', (_name, build) => {
+        expect(build).toThrow(RangeError);
+    });
+
+    it('happyPath_aPublicObjectUrl', () => {
+        expect(publicObjectUrl('bucurestiul-disparut-public', 'cities/bucuresti/manifest.json')).toBe(
+            'https://storage.googleapis.com/bucurestiul-disparut-public/cities/bucuresti/manifest.json',
+        );
+    });
+
+    it('badPath_aBucketNameWithASlashThrows', () => {
+        expect(() => publicObjectUrl('evil.example/x', 'm.json')).toThrow(RangeError);
+    });
+
+    it('badPath_cityIdsAreLowercaseStorageFolders', () => {
+        expect(cityIdSchema.safeParse('bucuresti').success).toBe(true);
+        expect(cityIdSchema.safeParse('Bucuresti').success).toBe(false);
+    });
+});

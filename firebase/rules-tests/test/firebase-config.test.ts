@@ -16,6 +16,7 @@ interface FirebaseJson {
     readonly storage: { readonly rules: string };
     readonly functions: readonly { readonly source: string; readonly codebase: string; readonly runtime: string }[];
     readonly hosting: {
+        readonly site: string;
         readonly public: string;
         readonly headers: readonly { readonly source: string; readonly headers: readonly Header[] }[];
     };
@@ -50,12 +51,23 @@ describe('emulators', () => {
             storage: { host: '127.0.0.1', port: 9199 },
             functions: { host: '127.0.0.1', port: 5001 },
             hosting: { host: '127.0.0.1', port: 5000 },
+            pubsub: { host: '127.0.0.1', port: 8085 },
+            tasks: { host: '127.0.0.1', port: 9499 },
             ui: { enabled: false },
         });
     });
 
-    it('badPath_testsCanOnlyTargetTheDemoProject', () => {
-        expect(JSON.parse(repoFile('.firebaserc'))).toEqual({ projects: { e2e: 'demo-hcm' } });
+    it('happyPath_theDefaultProjectIsTheMapsAndTheE2eAliasTheDemoProject', () => {
+        expect(JSON.parse(repoFile('.firebaserc'))).toEqual({ projects: { default: 'bucurestiul-disparut', e2e: 'demo-hcm' } });
+    });
+
+    it('badPath_everyEmulatorRunNamesTheDemoProject', () => {
+        // .firebaserc has a real default project: a run that named none would start the emulators for it.
+        const scripts = Object.values((JSON.parse(repoFile('package.json')) as { scripts: Record<string, string> }).scripts);
+        const runs = scripts.filter((script) => script.includes('firebase emulators:'));
+
+        expect(runs.length).toBeGreaterThan(0);
+        expect(runs.filter((script) => !script.includes('--project demo-hcm'))).toEqual([]);
     });
 });
 
@@ -68,7 +80,7 @@ describe('deploy targets', () => {
         });
         expect(config.storage.rules).toBe('firebase/storage.rules');
         expect(config.functions).toMatchObject([{ source: 'functions/dist', codebase: 'default', runtime: 'nodejs24' }]);
-        expect(config.hosting.public).toBe('packages/admin/dist');
+        expect(config.hosting).toMatchObject({ site: 'bucurestiul-disparut', public: 'packages/admin/dist' });
         expect(repoFile(config.firestore.rules)).toContain("rules_version = '2';");
     });
 });
@@ -89,6 +101,16 @@ describe('admin security headers', () => {
 
         expect(sources).toContain("'self'");
         expect(sources.filter((source) => ["'unsafe-inline'", "'unsafe-eval'", '*', 'http:', 'https:'].includes(source))).toEqual([]);
+    });
+
+    it('happyPath_googleSignInMayFrameTheAuthDomainOnEitherHostingDomain', () => {
+        expect(directive('frame-src')).toEqual(
+            expect.arrayContaining([
+                'https://bucurestiul-disparut.web.app',
+                'https://bucurestiul-disparut.firebaseapp.com',
+                'https://accounts.google.com',
+            ]),
+        );
     });
 
     it('badPath_mapboxGlLoadsOnlyFromItsVersionedCdnPath', () => {

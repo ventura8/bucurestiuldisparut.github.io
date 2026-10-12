@@ -315,3 +315,125 @@ describe('<hcm-map-viewer>: details, lightbox and menu', () => {
         expect(shadowQueryAll(mounted.element, 'hcm-about-dialog')).toHaveLength(1);
     });
 });
+
+/** Mapbox GL's attribution control as the engine's map draws it inside the viewer's map container. */
+function drawMapboxAttribution(mounted: Mounted, credits: string): HTMLElement {
+    const corner = document.createElement('div');
+    corner.className = 'mapboxgl-ctrl-bottom-right';
+    const control = document.createElement('details');
+    control.className = 'mapboxgl-ctrl mapboxgl-ctrl-attrib';
+    const inner = document.createElement('div');
+    inner.className = 'mapboxgl-ctrl-attrib-inner';
+    const mapbox = document.createElement('a');
+    mapbox.href = 'https://www.mapbox.com/about/maps/';
+    mapbox.textContent = '© Mapbox';
+    inner.append(mapbox, ` ${credits}`);
+    control.append(inner);
+    corner.append(control);
+    mounted.element.mapContainer?.append(corner);
+    return inner;
+}
+
+/** The mirrored legal line of the bar (or null without a bar). */
+function legalBar(mounted: Mounted): (HTMLElement & { parts: readonly { text: string }[] }) | null {
+    return (
+        mounted.element.shadowRoot?.querySelector<HTMLElement & { parts: readonly { text: string }[] }>('.legal hcm-map-attribution') ??
+        null
+    );
+}
+
+/** The credits the legal bar shows, once the mutation observer has delivered the map's latest attribution. */
+async function barCredits(mounted: Mounted, expected: readonly string[]): Promise<void> {
+    await vi.waitFor(() => {
+        expect(legalBar(mounted)?.parts.map((credit) => credit.text)).toEqual(expected);
+    });
+}
+
+describe('<hcm-map-viewer>: the Mapbox logo and attribution stay visible (V18)', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_aModalSheetEndsAboveTheLegalBarWhichMirrorsTheMapsAttribution', async () => {
+        const mounted = await mountViewer(readyState(), COMPACT);
+        const inner = drawMapboxAttribution(mounted, 'USGS (e2e)');
+        expect(legalBar(mounted)).toBeNull();
+        expect(part(mounted, '.frame').hasAttribute('data-legal-mirror')).toBe(false);
+
+        mounted.element.mapboxCssUrl = 'data:text/css,';
+        chooseFromMenu(mounted, 'layers');
+        await mounted.element.updateComplete;
+
+        await barCredits(mounted, ['© Mapbox', 'USGS (e2e)']);
+        // mapbox-gl.css reaches the map's shadow root and the bar's, which draws the logo from it.
+        expect(part(mounted, 'link[rel="stylesheet"]').getAttribute('href')).toBe('data:text/css,');
+        expect((legalBar(mounted) as (HTMLElement & { cssUrl: string }) | null)?.cssUrl).toBe('data:text/css,');
+        expect(part(mounted, '.frame').hasAttribute('data-legal-mirror')).toBe(true);
+        expect(getComputedStyle(inner).visibility).toBe('hidden');
+        const layer = part(mounted, '.modal-layer').getBoundingClientRect();
+        const legal = part(mounted, '.legal').getBoundingClientRect();
+        expect(layer.bottom).toBeCloseTo(legal.top, 0);
+        expect(legal.bottom).toBeCloseTo(mounted.element.getBoundingClientRect().bottom, 0);
+        // The bar is not under the inert frame: a tap on it reaches it.
+        const hit = mounted.element.shadowRoot?.elementFromPoint(legal.left + legal.width / 2, legal.top + legal.height / 2);
+        expect(hit?.closest('.legal')).not.toBeNull();
+
+        inner.append(' Corona 1966');
+        await barCredits(mounted, ['© Mapbox', 'USGS (e2e)', 'Corona 1966']);
+    });
+
+    it('happyPath_theLightboxAndAboutKeepTheirOwnCopy', async () => {
+        const mounted = await mountViewer(readyState(testManifest(), { selectedPhotoId: 'uranus-1984', lightbox: true }), EXPANDED);
+        drawMapboxAttribution(mounted, '');
+        await barCredits(mounted, ['© Mapbox']);
+
+        mounted.store.set({ lightbox: false, selectedPhotoId: null, sheet: 'about' });
+        await mounted.element.updateComplete;
+
+        expect(legalBar(mounted)).toBeNull();
+        const about = part(mounted, 'hcm-about-dialog') as HTMLElement & { attribution: readonly { text: string }[] | null };
+        expect(about.attribution?.map((credit) => credit.text)).toEqual(['© Mapbox']);
+        expect(part(mounted, '.frame').hasAttribute('data-legal-mirror')).toBe(true);
+    });
+
+    it('badPath_nothingCoversTheMapSoNoMirror', async () => {
+        // A docked sheet sits next to the map; without WebGL there is no map (and no Mapbox credit) at all.
+        const docked = await mountViewer(readyState(testManifest(), { sheet: 'photo', selectedPhotoId: 'uranus-1984' }), EXPANDED);
+        expect(legalBar(docked)).toBeNull();
+        expect(part(docked, '.frame').hasAttribute('data-legal-mirror')).toBe(false);
+        expect((part(docked, 'hcm-about-dialog') as HTMLElement & { attribution: unknown }).attribution).toBeNull();
+        document.body.replaceChildren();
+
+        const noMap = await mountViewer(
+            readyState(testManifest(), { webgl: false, sheet: 'photo', selectedPhotoId: 'uranus-1984' }),
+            COMPACT,
+        );
+        expect(part(noMap, '.frame').hasAttribute('inert')).toBe(true);
+        expect(legalBar(noMap)).toBeNull();
+        expect(part(noMap, '.frame').hasAttribute('data-legal-mirror')).toBe(false);
+    });
+});
+
+describe('<hcm-map-viewer>: the skip link', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_onExtraLargeItShowsOverTheMapNotOverTheLayersHeading', async () => {
+        const mounted = await mountViewer(readyState(), EXTRA_LARGE);
+
+        const pane = part(mounted, '.pane.leading').getBoundingClientRect();
+        const skip = part(mounted, '.skip').getBoundingClientRect();
+
+        expect(skip.left).toBeGreaterThanOrEqual(pane.right);
+        expect(skip.left - pane.right).toBeCloseTo(8, 0);
+    });
+
+    it('badPath_withoutALeadingPaneItKeepsTheMapsCorner', async () => {
+        const mounted = await mountViewer(readyState(), EXPANDED);
+
+        const skip = part(mounted, '.skip').getBoundingClientRect();
+
+        expect(skip.left - mounted.element.getBoundingClientRect().left).toBeCloseTo(8, 0);
+    });
+});

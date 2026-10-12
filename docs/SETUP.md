@@ -74,7 +74,19 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
   bash -c 'mkdir -p $HOME && npx firebase emulators:exec --project demo-hcm --only firestore,storage "npx vitest run --project rules"'
 ```
 
-The emulator JARs are in the image (`FIREBASE_EMULATORS_PATH`); `demo-hcm` needs no login. Emulator logs (`firebase-debug.log`, `firestore-debug.log`) are git-ignored. Details: [TESTING.md](TESTING.md) → *Emulators*.
+The emulator JARs are in the image (`FIREBASE_EMULATORS_PATH`); `demo-hcm` needs no login. **Always pass `--project demo-hcm`**: `.firebaserc`'s `default` is the real Firebase project `bucurestiul-disparut` (the deploy target), so a command without it would start the emulators for that project. Emulator logs (`firebase-debug.log`, `firestore-debug.log`, `pubsub-debug.log`) are git-ignored. Details: [TESTING.md](TESTING.md) → *Emulators*.
+
+The Cloud Functions deploy artifact and the Functions emulator on it:
+
+```bash
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
+  bash -c 'mkdir -p $HOME && npm run build --workspace @hcm/functions'   # functions/dist (checked, then loaded)
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
+  bash -c 'mkdir -p $HOME && npx firebase emulators:exec --project demo-hcm \
+  --only functions,firestore,auth,storage,pubsub,tasks "echo up"'      # loads all 32 functions
+```
+
+In the emulator the functions keep secrets in memory and reach Google, Mapbox and USGS only through the fake upstreams at `HCM_UPSTREAM_BASE` (unset: every such call fails like a network error), so a local run can never touch a real service.
 
 ## SonarQube Cloud token (the user, once)
 

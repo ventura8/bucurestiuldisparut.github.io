@@ -19,9 +19,10 @@ export const MAPBOX_CONNECT_SOURCES: readonly string[] = [
 ];
 
 /**
- * GA4 and Firebase Performance Monitoring, loaded only after consent and only when the manifest has a measurementId
+ * GA4 through the Firebase Analytics SDK, loaded only after consent and only when the manifest has a measurementId
  * (`firebase/analytics_and_crash_skill.md`). Listed in every build because the manifest can gain a measurementId
- * later without a rebuild of the page.
+ * later without a rebuild of the page. Performance Monitoring's hosts are gone: the public viewer no longer loads it
+ * (it would send the URL hash, the visitor's view; CR-M2-36).
  */
 export const ANALYTICS_SCRIPT_SOURCES: readonly string[] = ['https://www.googletagmanager.com'];
 
@@ -31,8 +32,6 @@ export const ANALYTICS_CONNECT_SOURCES: readonly string[] = [
     'https://*.googletagmanager.com',
     'https://firebase.googleapis.com',
     'https://firebaseinstallations.googleapis.com',
-    'https://firebaselogging.googleapis.com',
-    'https://firebaselogging-pa.googleapis.com',
     'https://firebaseremoteconfig.googleapis.com',
 ];
 

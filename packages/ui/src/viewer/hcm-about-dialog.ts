@@ -2,7 +2,8 @@
  * `<hcm-about-dialog>`: About, credits and the privacy notice of the city (scenario V13), the language and theme
  * choices (V11, V12), the engine version and the analytics consent with its withdrawal (V19), in the ui-kit's
  * `<hcm-dialog>` (full screen on compact). The About and privacy texts are the Markdown subset walked into DOM nodes;
- * empty credits hide their section (S-V13-BAD-EMPTY-CREDITS).
+ * empty credits hide their section (S-V13-BAD-EMPTY-CREDITS). The dialog sits in the browser's top layer, over the
+ * map's own logo and attribution, so its foot shows them (`<hcm-map-attribution>`, V18) whenever the map is there.
  *
  * Events (viewer-internal): `hcm-locale-change` (`{locale}`), `hcm-theme-change` (`{theme}`), and `hcm-consent`
  * (`{decision: 'denied'}`, the kit banner's event) when the visitor withdraws consent.
@@ -10,6 +11,7 @@
 import { DEFAULT_LOCALE, LOCALES, resolveLocale, translate, type City, type Credit, type Locale } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 
+import type { AttributionPart } from './attribution.js';
 import { EMPTY } from './empty.js';
 import { externalLink, renderMarkdown } from './markdown.js';
 import { baseStyles, detailStyles } from './shared-styles.js';
@@ -46,6 +48,8 @@ export class HcmAboutDialog extends LitElement {
         analytics: { type: Boolean },
         fullscreen: { type: Boolean },
         theme: { type: String },
+        attribution: { attribute: false },
+        mapboxCssUrl: { attribute: false },
     };
 
     static override readonly styles = [
@@ -64,6 +68,10 @@ export class HcmAboutDialog extends LitElement {
                 font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
                 color: var(--md-sys-color-on-surface-variant, GrayText);
             }
+
+            hcm-map-attribution {
+                flex: 1 1 100%;
+            }
         `,
     ];
 
@@ -76,6 +84,10 @@ export class HcmAboutDialog extends LitElement {
     declare analytics: boolean;
     declare fullscreen: boolean;
     declare theme: ThemeMode;
+    /** The map's attribution for the dialog's foot; null when there is no map to credit (or About is closed). */
+    declare attribution: readonly AttributionPart[] | null;
+    /** mapbox-gl.css, for the Mapbox logo at the foot. */
+    declare mapboxCssUrl: string;
 
     constructor() {
         super();
@@ -87,6 +99,8 @@ export class HcmAboutDialog extends LitElement {
         this.analytics = false;
         this.fullscreen = false;
         this.theme = 'system';
+        this.attribution = null;
+        this.mapboxCssUrl = '';
     }
 
     override render(): TemplateResult {
@@ -97,8 +111,19 @@ export class HcmAboutDialog extends LitElement {
             .closeLabel=${translate(locale, 'action.close')}
             ?fullscreen=${this.fullscreen}
         >
-            ${this.city === null ? nothing : this.#content(this.city)}
+            ${this.city === null ? nothing : this.#content(this.city)} ${this.#legal()}
         </hcm-dialog>`;
+    }
+
+    #legal(): TemplateResult {
+        return this.attribution === null
+            ? EMPTY
+            : html`<hcm-map-attribution
+                  slot="actions"
+                  .parts=${this.attribution}
+                  .locale=${this.locale}
+                  .cssUrl=${this.mapboxCssUrl}
+              ></hcm-map-attribution>`;
     }
 
     #content(city: City): TemplateResult {

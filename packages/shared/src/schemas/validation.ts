@@ -15,6 +15,9 @@ export interface ValidationIssue {
     readonly code: ValidationCode;
 }
 
+/** A zod schema of `T`, named here so ports and packages without their own zod dependency can type one. */
+export type Schema<T> = z.ZodType<T>;
+
 export type ValidationResult<T> =
     { readonly ok: true; readonly value: T } | { readonly ok: false; readonly issues: readonly ValidationIssue[] };
 

@@ -126,3 +126,63 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the screenshots; the thumbnails are a grid with an 8 px `gap`, and the shared `detailStyles` also gave every `li + li` of a detail sheet a 4 px top margin, which a grid adds on top of the gap. The POI detail's unit tests used kit doubles and checked the thumbnails' count, not their layout.
     - Fix and pin: `.details .thumbs li + li` resets the margin (`packages/ui/src/viewer/hcm-poi-detail.ts`; `badPath_photoThumbnailsShareOneTopEdgeInsteadOfTakingTheListGap`, which failed with 262 against 258 px).
     - **A shared spacing rule written for a stacked list does not belong in a grid: scope it, and measure edges where items must line up.**
+23. **Opening a sheet, the lightbox or About covered the Mapbox logo and attribution.**
+    - Seen: on phones the Layers, photo and POI bottom sheets, on medium screens the side sheets, and everywhere the lightbox and About lay over Mapbox's own logo and attribution in the map's bottom corners, which Mapbox's terms require to stay visible (`docs/research/design-review-security-cost.md` §5).
+    - Found by: the M1 UX review's screenshots (`docs/research/M0-handoff.md` §10m); the tour checked the logo and the attribution on the home screen only, and its overlap check never looked under a modal surface. Building the fix, the unit harness found that a page's own `display` on `<hcm-map-viewer>` beats the element's `:host` rule, so a layout grid on the host fell apart.
+    - Fix and pin: while a modal surface covers the map the viewer hides Mapbox's bottom controls and mirrors the logo and the attribution it reads from Mapbox's control (`attribution.ts`, `hcm-map-attribution.ts`, `viewer-legal.ts` in `packages/ui/src/viewer/`): in a legal bar, the last row of an inner grid (`.viewer`, not the host) below the modal layer, so sheets, scrims and the lightbox end above it; at the foot of About, which is in the top layer. The tour now checks every state: one visible logo and one attribution, nothing on top of them, and overlaps among the controls a visitor can use (`badPath_nothingCoversTheMapSoNoMirror`, `happyPath_aModalSheetEndsAboveTheLegalBarWhichMirrorsTheMapsAttribution`, `S-V18-HAPPY-MODAL-STATES`, `S-V18-BAD-FULL-SHEET`).
+    - **A legal or safety control must be checked in every state, not on the home screen; and never put a layout on `:host` that a page's style on the element can undo.**
+24. **After "My location", Performance Monitoring could send the visitor's position to Google.**
+    - Seen: after consent, every Performance Monitoring batch carried `location.href` up to the first `?`, that is the viewer's whole hash, which holds the map view and, after *My location*, the visitor's position (`docs/research/DECISIONS-for-review.md` §18a); the SDK has no setting to leave the hash out.
+    - Found by: the a11y and security review of M1, reading the Performance Monitoring module of the Firebase SDK; the GA4 stand-in of the e2e only echoed the page location the viewer configured, so a viewer that stopped setting it would still have passed.
+    - Fix and pin: the public viewer loads only firebase/app and firebase/analytics on its own named app; GA4 gets `page_location` and `page_path` without the hash on its configuration and `page_location` on every event, with Google signals and ad personalisation off (`happyPath_consentLoadsTheSdkOnceInConsentModeAndSendsEventsWithoutTheHash`, `happyPath_theFirebaseChunkHasOnlyAppAndAnalytics`). The stand-in now falls back to `location.href` like gtag.js (`S-V19-BAD-HASH-NEVER-SENT`).
+    - **A stand-in for a third-party script must fail the way the real one does when the app forgets a setting, or the test proves nothing.**
+25. **Withdrawing consent left GA4's cookies in the browser.**
+    - Seen: after *Accept*, gtag.js wrote `_ga` and `_ga_<container>` for two years; withdrawing in About switched collection off but kept them, while the privacy notice promises no cookies without consent (§18c).
+    - Found by: the a11y and security review of M1; nothing in the e2e world wrote a cookie.
+    - Fix and pin: a withdrawal (granted, then denied) expires every `_ga` and `_ga_*` cookie host-only, for each parent domain and every path prefix of the page, at once and again after the SDK stopped; GA4 starts with the consent as it is when its chunk arrives, so a withdrawal during the load never grants it; a first *Decline* touches no cookie, since an embedding page may run its own GA4 (`packages/engine/src/telemetry/cookies.ts`; `happyPath_everyGa4CookieIsExpiredHostOnlyForEachParentDomainAndEveryPathOfThePage`, `badPath_anEventQueuedBeforeAWithdrawalIsDroppedAndGa4NeverStartsGranted`, `S-V19-HAPPY-COOKIES-EXPIRED`, `S-V19-BAD-DECLINE-KEEPS-PAGE-COOKIES`).
+    - **Turning collection off is not removing what was collected: a withdrawal undoes what consent allowed.**
+26. **The error card spoke to developers and shouted its Retry.**
+    - Seen: a visitor read "Harta nu a fost găsită: manifestul lipsește." or "WebGL indisponibil", and a filled primary Retry dominated the card.
+    - Found by: the M1 UX review; the unit and e2e tests compared the card with the catalogue, whatever the catalogue said.
+    - Fix and pin: visitor errors in plain Romanian and English (keys unchanged; `error.config.*` still speak to the city owner), Retry is a filled tonal button with the refresh icon on the error container (`badPath_noVisitorErrorSpeaksJargonInEitherLanguage`, `happyPath_anM3ErrorContainerWithAFilledTonalRetry`, `S-V01-HAPPY-ERROR-CARD`, `S-V01-BAD-PLAIN-WORDS`).
+    - **A test that only compares the screen with the catalogue cannot catch bad copy: give visitor texts their own check.**
+27. **On extra-large screens the focused skip link covered the Layers heading.**
+    - Seen: at 1600 px and wider the first Tab showed "Sari la cronologie" at the viewer's top-left corner, over the heading of the docked Layers pane.
+    - Found by: the M1 UX review; the skip-link test looked at the focus order, not at what the focused link covers, and only the tour's home state (no pane open) was measured.
+    - Fix and pin: with a docked leading pane the link starts at the map pane (`happyPath_onExtraLargeItShowsOverTheMapNotOverTheLayersHeading`, `S-V14-HAPPY-SKIP-LINK-CLEAR`, `S-V14-BAD-SKIP-LINK-THREE-PANES`).
+    - **A control that appears only on focus needs its own layout check while focused.**
+28. **The photo list's dates were too small to read on a phone.**
+    - Seen: the date under each photo title was body-small (12 px).
+    - Found by: the M1 UX review; no test looked at type sizes.
+    - Fix and pin: M3 list typography, the title body-large and the date body-medium (14 px) supporting text that wraps (`happyPath_theDateIsBodyMediumSupportingTextUnderABodyLargeTitle`, `S-V07-HAPPY-LIST-DATES`, `S-V07-BAD-LIST-NO-DATE`).
+    - **Supporting text a visitor must read is body-medium at least.**
+29. **Every photo an admin saved with all its fields was refused.**
+    - Seen: the first M2 rules denied every photo create that filled every field, although each check passed on its own.
+    - Found by: the rules tests (`firebase/rules-tests/test/photos.test.ts`); the emulator's `firestore-debug.log` named the cause: Firestore denies a request whose rules evaluate more than 1000 expressions, and every reference to a function argument evaluates the argument again, so a check costs about ten.
+    - Fix and pin: cheap checks (a text is one bounded pattern such as `[\s\S]{1,200}`, an optional field is checked against a neutral default, the whole document once per write); the heaviest legitimate writes, a photo with every field and five links and every editable field of a city at once, stay near 650 of 1000 (`firebase/rules-tests/test/limits.test.ts` fails when one goes over).
+    - **A rules file has a cost budget like a bundle: test the heaviest legitimate write against it, not only each rule.**
+30. **The edit history could not be listed newest first.**
+    - Seen: the contract listed a document's history by id, descending; the Firestore emulator refuses it (`FAILED_PRECONDITION: Firestore does not support descending key scans`), so the query could never be tested and the admin's panel would have failed under the emulators.
+    - Found by: the documents adapter test on the emulator (`functions/test/adapters/documents.test.ts`); the in-memory fake answered the query happily.
+    - Fix and pin: history is listed by `updatedAt` descending; the revert's echo is skipped by matching any listed `revert` entry with the same time stamp; the fake document store refuses `__name__` descending as the emulator does (CR-M2-9).
+    - **A fake must refuse what the real service refuses, or it certifies queries production cannot run.**
+31. **A crash report from the city site lost its line number.**
+    - Seen: `redactText` removes a URL's query, and with it the `:line:col` that follows a script URL in a stack frame, so Cloud Error Reporting could not tell crashes in the same file apart.
+    - Found by: the endpoint's event tests (`functions/test/telemetry/error-event.test.ts`).
+    - Fix and pin: the report location is parsed from the frame before the text is redacted; the redacted stack is what is stored.
+    - **Extract the structure you need before you scrub a text; scrubbing first destroys more than the secret.**
+32. **HEIC photos could not be converted on the server as planned.**
+    - Seen: the security review assumed sharp converts HEIC; its prebuilt libvips decodes AVIF only (`sharp.format.heif.input.fileSuffix` is `['.avif']`), so an iPhone photo would have failed as "unreadable".
+    - Found by: fn-content's upload tests on real sharp with generated images (`functions/test/photos/upload.test.ts`).
+    - Fix and pin: `photos.onUpload` recognises HEIC and HEIF by their magic numbers and fails the photo with `apiError.photo.heicUnsupported`, which tells the admin how to export a JPEG (`S-A08-BAD-HEIC`; `docs/research/DECISIONS-for-review.md` §20b).
+    - **Check a codec claim against the binary you ship, not against the library's feature list.**
+33. **A pending USGS approval would have turned into "USGS is not responding" overnight.**
+    - Seen: `setup.saveUsgs` read a login refused with `AUTH_UNAUTHORIZED` (no M2M access yet) as `pending`, while `ops.tick`'s health check, a second implementation of the same record, fell back to `unavailable` with `apiError.usgs.unavailable`.
+    - Found by: the integration review that wired both into one deploy; each family's tests were green against its own reading.
+    - Fix and pin: both map it to `pending` with the new reason `apiError.usgs.accessPending` and check again six hours later (`badPath_aLoginRefusedForMissingM2mAccessStaysPending` in `functions/test/ops/services.test.ts`, `badPath_anAccountWithoutM2mAccessIsPendingToo` in `functions/test/setup/save-usgs.test.ts`, `S-A03-BAD-USGS-STILL-PENDING`).
+    - **Two writers of one record need one table of what each upstream answer means, or a test that runs both.**
+34. **The deploy artifact would have crashed at its first cold start.**
+    - Seen: `functions/build.mjs` bundled the workspace packages but left their own npm dependencies external, so `functions/dist/index.js` imported `zod`, which `functions/dist/package.json` does not install.
+    - Found by: the integrator, checking the bare imports of the built bundle against its manifest; every test ran from source, where the workspace's `node_modules` has zod.
+    - Fix and pin: the build bundles everything except the functions' own pinned dependencies, then fails when a bare import is neither a Node built-in nor pinned, and loads the bundle to check every export's deploy manifest; the Functions emulator loads the same `functions/dist/` with all 32 functions.
+    - **Test the artifact you deploy, not only the source it was built from.**

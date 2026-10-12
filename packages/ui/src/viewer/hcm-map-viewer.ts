@@ -7,7 +7,8 @@
  *
  * It never touches the map or the URL hash: the store does. The map container is a stable `<div>` in the shadow root
  * (`mapContainer`); mapbox-gl.css is linked inside the shadow root (`mapboxCssUrl`), the city theme is adopted on the
- * host (`applyTheme`).
+ * host (`applyTheme`). It reads Mapbox GL's attribution from that container (`watchAttribution`) to show it in its
+ * legal bar or in About while a modal surface covers the map (scenario V18).
  */
 import { resolveLocale, type ThemeTokens } from '@hcm/shared';
 import { LitElement, type TemplateResult } from 'lit';
@@ -15,6 +16,7 @@ import { LitElement, type TemplateResult } from 'lit';
 import { deepActiveElement, restoreFocus } from '../components/focus.js';
 import { applyTheme } from '../theme/apply.js';
 import { BASELINE_THEME } from '../theme/baseline.js';
+import { watchAttribution, type AttributionPart } from './attribution.js';
 import { OverlayChangeTracker, overlayEvents, viewerEvents, type PublicEvent } from './events.js';
 import type { HcmTimeline } from './hcm-timeline.js';
 import { layoutFor, type ViewerLayout } from './layout.js';
@@ -58,6 +60,11 @@ function idleOf(state: ViewerState): ViewerState {
 
 type Opener = 'sheet' | 'lightbox';
 
+/** A new attribution re-renders only when its text or links changed (Mapbox rewrites it on every source change). */
+function attributionChanged(next: readonly AttributionPart[], previous: readonly AttributionPart[] | undefined): boolean {
+    return JSON.stringify(next) !== JSON.stringify(previous);
+}
+
 export class HcmMapViewer extends LitElement {
     static override readonly properties = {
         manifestUrl: { type: String, attribute: 'manifest-url' },
@@ -69,6 +76,7 @@ export class HcmMapViewer extends LitElement {
         mapboxCssUrl: { attribute: false },
         engineVersion: { attribute: false },
         viewState: { state: true },
+        attribution: { state: true, hasChanged: attributionChanged },
     };
 
     static override readonly styles = viewerStyles;
@@ -89,10 +97,13 @@ export class HcmMapViewer extends LitElement {
     declare mapboxCssUrl: string;
     declare engineVersion: string;
     declare viewState: ViewerState | null;
+    /** What Mapbox GL's attribution control shows (empty until the map has drawn it). */
+    declare attribution: readonly AttributionPart[];
 
     #store: ViewerStorePort | null = null;
     #controller: ViewerController | null = null;
     #unsubscribe: Unsubscribe = () => undefined;
+    #stopAttribution: () => void = () => undefined;
     readonly #tracker = new OverlayChangeTracker();
     readonly #openers: Record<Opener, Element | null> = { sheet: null, lightbox: null };
     readonly #resizeObserver = new ResizeObserver((entries) => {
@@ -123,6 +134,7 @@ export class HcmMapViewer extends LitElement {
         this.mapboxCssUrl = '';
         this.engineVersion = '';
         this.viewState = null;
+        this.attribution = [];
     }
 
     /** The controller `mount` returned for this element; null before the engine attached one. */
@@ -159,6 +171,7 @@ export class HcmMapViewer extends LitElement {
         this.#resizeObserver.observe(this);
         this.#applyTheme(this.viewState);
         this.#subscribe();
+        this.#watchAttribution();
         if (this.#store === null && this.bootError === null) {
             bootstrap?.(this);
         }
@@ -168,7 +181,13 @@ export class HcmMapViewer extends LitElement {
         this.#resizeObserver.disconnect();
         this.#unsubscribe();
         this.#unsubscribe = () => undefined;
+        this.#stopAttribution();
         super.disconnectedCallback();
+    }
+
+    /** The map container exists from the first render on: its attribution is watched from then until disconnect. */
+    protected override firstUpdated(): void {
+        this.#watchAttribution();
     }
 
     override attributeChangedCallback(name: string, old: string | null, value: string | null): void {
@@ -191,8 +210,19 @@ export class HcmMapViewer extends LitElement {
             manifestUrl: this.manifestUrl,
             engineVersion: this.engineVersion,
             mapboxCssUrl: this.mapboxCssUrl,
+            attribution: this.attribution,
         };
         return renderViewer(view, this.#handlers);
+    }
+
+    #watchAttribution(): void {
+        this.#stopAttribution();
+        const container = this.mapContainer;
+        if (container !== null) {
+            this.#stopAttribution = watchAttribution(container, (parts) => {
+                this.attribution = parts;
+            });
+        }
     }
 
     #subscribe(): void {

@@ -208,9 +208,9 @@
         {
             "id": "A04",
             "area": "admin",
-            "name": "Blaze and billing detection",
+            "name": "Google Cloud billing and provisioning",
             "milestone": "M2",
-            "source": "docs/research/design-review-testability.md §4.5"
+            "source": "docs/research/design-review-testability.md §4.5; PLAN Addendum 1 (billing and Provision cloud in the app)"
         },
         {
             "id": "A05",
@@ -339,6 +339,20 @@
             "source": "docs/research/PLAN.md Addendum 2"
         },
         {
+            "id": "A23",
+            "area": "admin",
+            "name": "Edit history and revert",
+            "milestone": "M2",
+            "source": "docs/research/PLAN.md Addendum 3 (audited edits, one-click revert); docs/research/M2-interfaces.md §3.2"
+        },
+        {
+            "id": "A24",
+            "area": "admin",
+            "name": "Crash reporting endpoint",
+            "milestone": "M2",
+            "source": "docs/research/PLAN.md Addendum 2 (telemetry.reportError -> Cloud Error Reporting); docs/research/M2-interfaces.md §3.4"
+        },
+        {
             "id": "P01",
             "area": "pipeline",
             "name": "Import job end to end",
@@ -463,6 +477,28 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1. The generated site page (scripts/site/src/page.ts), e2e/specs/viewer/no-javascript.spec.ts."
+        },
+        {
+            "id": "S-V01-HAPPY-ERROR-CARD",
+            "behaviour": "V01",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A failed load shows a Material 3 error card with a filled tonal Retry",
+            "asserts": "manifest 404 -> the card is painted in the theme error container with on-error-container text; Retry is a filled tonal button (secondary container); axe WCAG 2.2 AA passes",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o). packages/ui/src/viewer/hcm-error-card.ts; unit test happyPath_anM3ErrorContainerWithAFilledTonalRetry."
+        },
+        {
+            "id": "S-V01-BAD-PLAIN-WORDS",
+            "behaviour": "V01",
+            "area": "viewer",
+            "path": "bad",
+            "title": "No error card a visitor meets speaks jargon",
+            "asserts": "manifest 404, a manifest that needs a newer engine and no WebGL -> in RO and EN the card names no manifest, WebGL, JSON, schema, engine or tiles; it says what to do or what still works",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o). Copy in packages/shared/src/i18n/ro.ts and en.ts (keys unchanged); unit test badPath_noVisitorErrorSpeaksJargonInEitherLanguage; the no-WebGL card in e2e/specs/viewer/no-webgl.spec.ts."
         },
         {
             "id": "S-V02-HAPPY",
@@ -705,6 +741,28 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1. Integrator: packages/ui/src/viewer/hcm-photo-sheet.ts."
+        },
+        {
+            "id": "S-V07-HAPPY-LIST-DATES",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The photo list shows each date as 14 px supporting text under a 16 px title",
+            "asserts": "photo list from the menu -> every date line is M3 body-medium (14 px on a 20 px line), every title body-large (16 px), none cut",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o)."
+        },
+        {
+            "id": "S-V07-BAD-LIST-NO-DATE",
+            "behaviour": "V07",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A long or a missing date wraps in the same supporting text and is never cut",
+            "asserts": "at 320 px a 90-character date text wraps at 14 px without being cut; the photos without a date say \"An necunoscut\" or \"Year unknown\" at 14 px",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o)."
         },
         {
             "id": "S-V08-HAPPY",
@@ -1026,6 +1084,28 @@
             "notes": "Milestone M1. The delay is unit-tested (packages/ui/test/components/snackbar.test.ts); the e2e needs a recorder of live-region changes inside shadow roots."
         },
         {
+            "id": "S-V14-HAPPY-SKIP-LINK-CLEAR",
+            "behaviour": "V14",
+            "area": "viewer",
+            "path": "happy",
+            "title": "On an extra-large screen the focused skip link shows over the map, clear of the Layers heading",
+            "asserts": "at 1920 x 1080 the first Tab shows the skip link over the map pane; the docked Layers heading stays uncovered (on top); Enter moves the focus to the timeline",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o)."
+        },
+        {
+            "id": "S-V14-BAD-SKIP-LINK-THREE-PANES",
+            "behaviour": "V14",
+            "area": "viewer",
+            "path": "bad",
+            "title": "With the Layers and a photo docked, the focused skip link covers neither heading",
+            "asserts": "extra-large with a photo open (three panes) -> the focused skip link overlaps neither pane; the Layers and the photo headings stay on top",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o)."
+        },
+        {
             "id": "S-V15-HAPPY",
             "behaviour": "V15",
             "area": "viewer",
@@ -1191,12 +1271,34 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V18-HAPPY-MODAL-STATES",
+            "behaviour": "V18",
+            "area": "viewer",
+            "path": "happy",
+            "title": "With a sheet, the lightbox or About open the Mapbox logo and attribution stay visible and uncovered",
+            "asserts": "tour, every state at all 11 viewports: exactly one visible Mapbox logo and one attribution, on top (Mapbox's own on the map; the viewer's legal bar below a modal sheet or the lightbox; the foot of About); the usable floating controls stay apart",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o). packages/ui/src/viewer/attribution.ts, viewer-legal.ts, hcm-map-attribution.ts; the tour (e2e/tour/viewer.tour.ts)."
+        },
+        {
+            "id": "S-V18-BAD-FULL-SHEET",
+            "behaviour": "V18",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A full-height sheet on a phone ends above the legal bar, which keeps the logo and the credits of a layer switched on",
+            "asserts": "360 x 800, the Layers sheet at full height -> the sheet ends where the legal bar begins; the bar's logo and attribution are on top and Mapbox's own controls hidden; switching on the 1966 layer adds USGS (e2e) to the bar; its links are https",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o)."
+        },
+        {
             "id": "S-V19-HAPPY",
             "behaviour": "V19",
             "area": "viewer",
             "path": "happy",
             "title": "Accepting consent loads analytics and sends events",
-            "asserts": "consent banner (RO/EN); accept -> GA4 loads, page_view and layer_toggle sent without PII",
+            "asserts": "consent banner (RO/EN); accept -> GA4 loads, page_view and layer_toggle sent without PII; the page location is the origin and path only; nothing reaches Performance Monitoring",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
@@ -1233,6 +1335,39 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1. Integrator (engine-ui CR-17): ViewerStore.logShare (packages/engine/src/core/store.ts). Needs CR-9 (Firebase app ids in the manifest) to send anything."
+        },
+        {
+            "id": "S-V19-BAD-HASH-NEVER-SENT",
+            "behaviour": "V19",
+            "area": "viewer",
+            "path": "bad",
+            "title": "After My location the position in the hash never reaches Google, and nothing goes to Performance Monitoring",
+            "asserts": "after Accept and My location (the hash holds the visitor's position) every GA4 hit carries the page's origin and path only, no request carries the position, and no request reaches Performance Monitoring (firebaselogging)",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o). docs/research/DECISIONS-for-review.md §18a: Performance Monitoring is out of the public viewer."
+        },
+        {
+            "id": "S-V19-HAPPY-COOKIES-EXPIRED",
+            "behaviour": "V19",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Withdrawing consent expires GA4's cookies and leaves the site's own",
+            "asserts": "Accept -> the GA4 stand-in writes _ga and the container cookie; withdrawing in About -> both expired, a site cookie kept, none back after a reload",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o). docs/research/DECISIONS-for-review.md §18c; packages/engine/src/telemetry/cookies.ts."
+        },
+        {
+            "id": "S-V19-BAD-DECLINE-KEEPS-PAGE-COOKIES",
+            "behaviour": "V19",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Declining at the banner never touches a cookie the viewer did not write",
+            "asserts": "a page's own _ga cookie survives Decline unchanged; no analytics request is made",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o). Only a withdrawal (granted, then denied) expires cookies: an embedding page may run its own GA4."
         },
         {
             "id": "S-V20-HAPPY",
@@ -1503,22 +1638,22 @@
             "behaviour": "A01",
             "area": "admin",
             "path": "happy",
-            "title": "Owner first sign-in gets the claim and the dashboard",
-            "asserts": "owner first sign-in -> admin claim -> dashboard",
+            "title": "The project owner claims the map with Google and reaches the dashboard",
+            "asserts": "verified Google account -> admin.session says unclaimed -> 'I own this Google Cloud project' -> consent popup (mock OAuth, cloud-platform.read-only) -> admin.claim: tokeninfo of the caller's own token, testIamPermissions grants resourcemanager.projects.setIamPolicy on the mock Resource Manager -> admins/{uid} role owner and the admin claim -> dashboard; no e-mail address is configured or sent besides the ID token",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A01-BAD-STRANGER",
             "behaviour": "A01",
             "area": "admin",
             "path": "bad",
-            "title": "A non-admin is told and signed out",
-            "asserts": "stranger -> 'not an admin' message and sign-out",
+            "title": "A non-admin without an invitation is told and signed out",
+            "asserts": "a verified Google account, map already claimed, no invitation -> admin.join answers apiError.invite.notFound -> its message in the page language and sign-out",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A01-BAD-POPUP-CLOSED",
@@ -1526,10 +1661,10 @@
             "area": "admin",
             "path": "bad",
             "title": "Closing the sign-in popup offers Retry",
-            "asserts": "popup closed -> Retry",
+            "asserts": "popup closed (sign-in or the claim consent) -> nothing claimed, Retry offered",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A01-BAD-CLAIM-DELAY",
@@ -1537,21 +1672,54 @@
             "area": "admin",
             "path": "bad",
             "title": "A delayed claim is picked up by a token refresh",
-            "asserts": "claim delay -> automatic token refresh",
+            "asserts": "admins/{uid} exists but the ID token has no admin claim yet -> admin.session answers refreshToken -> the app refreshes the token once and opens the dashboard",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A01-BAD-NOT-OWNER",
+            "behaviour": "A01",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Google account that does not own the project cannot claim it",
+            "asserts": "testIamPermissions grants nothing -> apiError.claim.notOwner naming the project id; no admins document, no claim",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A01-BAD-FOREIGN-TOKEN",
+            "behaviour": "A01",
+            "area": "admin",
+            "path": "bad",
+            "title": "An access token of another account or app is refused",
+            "asserts": "tokeninfo names another e-mail address or another OAuth client -> apiError.claim.tokenMismatch; Resource Manager is never called with it; the token appears in no log line",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/admin/claim.test.ts."
+        },
+        {
+            "id": "S-A01-BAD-ALREADY-CLAIMED",
+            "behaviour": "A01",
+            "area": "admin",
+            "path": "bad",
+            "title": "A second owner claim is refused once the map has an owner",
+            "asserts": "an owner exists -> apiError.claim.alreadyClaimed for another account (the owner's own repeat claim succeeds unchanged); the first owner keeps the role",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/admin/claim.test.ts."
         },
         {
             "id": "S-A02-HAPPY",
             "behaviour": "A02",
             "area": "admin",
             "path": "happy",
-            "title": "An invitee signs in and becomes admin",
-            "asserts": "invite -> invitee signs in -> admin",
+            "title": "An invited Google account joins as admin",
+            "asserts": "admins.invite stores invites/{sha256 of the lowercase address} and returns the admin link -> the invitee signs in with Google -> admin.session shows the pending invitation -> admin.join -> admins/{uid} role admin, admin claim, invitation deleted -> dashboard",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A02-BAD-INVALID-EMAIL",
@@ -1559,10 +1727,10 @@
             "area": "admin",
             "path": "bad",
             "title": "An invalid email is rejected",
-            "asserts": "invalid email -> validation message",
+            "asserts": "invalid address -> validation.format on the e-mail field, before and after the call (inviteRequestSchema in the page and in admins.invite)",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A02-BAD-REVOKE",
@@ -1570,10 +1738,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A revoked admin loses access",
-            "asserts": "revoke -> access removed",
+            "asserts": "admins.revoke -> admins/{uid} deleted, claim removed, sessions revoked -> the revoked admin is denied on the next action and listed no more",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A02-BAD-OWNER-NOT-REVOCABLE",
@@ -1581,32 +1749,65 @@
             "area": "admin",
             "path": "bad",
             "title": "The owner cannot be revoked",
-            "asserts": "owner revoke -> refused",
+            "asserts": "revoking the owner -> apiError.revoke.owner; the owner keeps the role",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A02-BAD-LAST-ADMIN",
             "behaviour": "A02",
             "area": "admin",
             "path": "bad",
-            "title": "The last admin is protected",
-            "asserts": "removing the last admin -> refused",
+            "title": "An admin cannot remove themselves, so the map always keeps an admin",
+            "asserts": "revoking oneself -> apiError.revoke.self; with the owner never revocable the map always keeps at least one admin",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A02-BAD-EXPIRED-INVITE",
+            "behaviour": "A02",
+            "area": "admin",
+            "path": "bad",
+            "title": "An expired invitation cannot be used",
+            "asserts": "the clock passes expiresAt (14 days) -> admin.join answers apiError.invite.expired; no admins document; ops.tick deletes the invitation",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/admin/join.test.ts (admin.join refuses it) and functions/test/ops/accounts.test.ts (ops.tick deletes it)."
+        },
+        {
+            "id": "S-A02-BAD-OTHER-ADDRESS",
+            "behaviour": "A02",
+            "area": "admin",
+            "path": "bad",
+            "title": "Signing in with an address that was not invited does not join",
+            "asserts": "the invitee signs in with another Google account -> no pending invitation -> apiError.invite.notFound and sign-out; the invitation stays pending",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A02-BAD-NO-ADDRESS-STORED",
+            "behaviour": "A02",
+            "area": "admin",
+            "path": "bad",
+            "title": "An invitation stores no e-mail address",
+            "asserts": "after admins.invite the invitation document holds role, invitedBy and its times only, and the address is in no Firestore document, response or log line",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/admin/invite.test.ts."
         },
         {
             "id": "S-A03-HAPPY",
             "behaviour": "A03",
             "area": "admin",
             "path": "happy",
-            "title": "Every setup step shows its status and can be re-checked",
-            "asserts": "every step with status; resume; Re-check",
+            "title": "The Setup Assistant shows every area with its status and can re-check it",
+            "asserts": "setup.status -> billing, provision, Mapbox, USGS, analytics and crash cards with their state chips and reasons; Re-check runs setup.selfTest and updates each chip; ready once billing, provision, Mapbox and USGS are ok",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A03-BAD-PARTIAL-STATE",
@@ -1614,21 +1815,54 @@
             "area": "admin",
             "path": "bad",
             "title": "A partial setup opens at the first incomplete step",
-            "asserts": "partial state -> opens at the first incomplete step",
+            "asserts": "partial setup/status -> the page opens at the first area that is not ok",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A03-BAD-SELFTEST-FAILURE",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failing self-test check names what to fix",
+            "asserts": "the mock Secret Manager refuses access -> the secrets check is invalid with apiError.secrets.unavailable and a link to Provision cloud; every other check still runs and shows its own state",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A03-BAD-NOTHING-SECRET-LEAVES",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "bad",
+            "title": "setup.status returns health fields only",
+            "asserts": "a setup/status document that also holds an unexpected field -> setup.status answers only the fields of setupStatusViewSchema (the stray field never leaves the function)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/setup/status.test.ts."
+        },
+        {
+            "id": "S-A03-BAD-USGS-STILL-PENDING",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "bad",
+            "title": "A USGS role still pending is checked again six hours later",
+            "asserts": "setup/status usgs pending with nextCheckAt passed and permissions without download -> ops.tick keeps it pending with the reason apiError.usgs.accessPending, checkedAt now and nextCheckAt six hours later",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/ops/services.test.ts."
         },
         {
             "id": "S-A04-HAPPY",
             "behaviour": "A04",
             "area": "admin",
             "path": "happy",
-            "title": "Enabled billing shows green",
-            "asserts": "billing enabled -> green",
+            "title": "Billing and the budget are detected and recorded",
+            "asserts": "Google consent with the billing scope -> the mock Cloud Billing lists one account and billingEnabled -> the $5 budget is created -> setup.recordCloud stores billing ok with the budget id -> green",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A04-BAD-NOT-ENABLED",
@@ -1636,10 +1870,10 @@
             "area": "admin",
             "path": "bad",
             "title": "Billing not enabled shows the deep link and cost explainer",
-            "asserts": "not enabled -> deep link and cost explainer",
+            "asserts": "billing not enabled -> deep link to Blaze and the cost explainer; the card advances by itself once the mock reports billing enabled",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A04-BAD-API-PERMISSION",
@@ -1647,10 +1881,32 @@
             "area": "admin",
             "path": "bad",
             "title": "An API permission error shows an actionable message",
-            "asserts": "API permission error -> actionable message",
+            "asserts": "a 403 from a Google API -> apiError.cloud.permission or apiError.cloud.apiDisabled naming the role or service",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A04-HAPPY-PROVISION",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "happy",
+            "title": "Provision cloud creates what is missing and the doctor shows each item",
+            "asserts": "Provision cloud with the admin token against the mock Google APIs -> each missing item created once (a second run changes nothing) -> setup.recordCloud stores every provision item ok",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A04-BAD-ORG-POLICY",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "An organisation policy that blocks public access is reported with its fix",
+            "asserts": "the mock org policy forbids allUsers -> the public bucket item is invalid with the fallback named; every other item still provisioned",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A05-HAPPY",
@@ -1658,10 +1914,10 @@
             "area": "admin",
             "path": "happy",
             "title": "A Mapbox account with a card on file shows green",
-            "asserts": "card on file -> green",
+            "asserts": "an account out of the demo plan: the pasted secret token mints the public tokens (proof of a card on file) -> the plan step is green",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A05-BAD-TRIAL",
@@ -1669,10 +1925,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A trial or demo account leads to the payment step",
-            "asserts": "trial/demo -> payment step",
+            "asserts": "a demo account: Mapbox refuses to create tokens (mock 403 on POST tokens) -> apiError.mapbox.mintRefused with the link to add a payment method; nothing stored",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A05-BAD-MISSING-BILLING-ADDRESS",
@@ -1680,10 +1936,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A missing billing address shows a message",
-            "asserts": "missing billing address -> message",
+            "asserts": "an account blocked on 'confirm billing information' (mock 422 on token creation) -> apiError.mapbox.mintRefused and the billing link; the secret token is not kept",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A06-HAPPY",
@@ -1691,10 +1947,10 @@
             "area": "admin",
             "path": "happy",
             "title": "A valid secret token is saved and public tokens are auto-minted within the input budget",
-            "asserts": "valid sk -> saved (masked) -> URL-restricted public token auto-minted -> green; input budget at most 2",
+            "asserts": "valid sk -> TokenValid (sk, user) -> its scopes listed -> secret stored, tiles token minted, the viewer token (the site origin) and the admin token (web.app, firebaseapp.com) minted URL-restricted -> city mapbox.publicToken written, manifest queued -> green; input budget at most 2; the secret appears in no response, document or log line",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A06-BAD-MISSING-SCOPES",
@@ -1702,10 +1958,10 @@
             "area": "admin",
             "path": "bad",
             "title": "Missing scopes are listed with a pre-filled link",
-            "asserts": "missing scopes -> listed by name plus a pre-filled link",
+            "asserts": "missing scopes -> apiError.mapbox.missingScopes listing them by name, plus the token page link; nothing stored",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A06-BAD-PUBLIC-TOKEN-PASTED",
@@ -1713,10 +1969,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A pasted public token is explained",
-            "asserts": "pk pasted -> explanation",
+            "asserts": "pk pasted -> apiError.mapbox.publicToken explained in the page before any call (classifyMapboxToken)",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A06-BAD-REVOKED",
@@ -1724,10 +1980,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A revoked token is reported",
-            "asserts": "revoked token (401) -> message",
+            "asserts": "revoked token (401) -> apiError.mapbox.tokenInvalid; Mapbox chip invalid",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A06-BAD-MAPBOX-5XX",
@@ -1735,10 +1991,43 @@
             "area": "admin",
             "path": "bad",
             "title": "A Mapbox server error offers retry",
-            "asserts": "Mapbox 5xx -> retry",
+            "asserts": "Mapbox 5xx -> apiError.mapbox.unavailable with Retry; nothing half-saved",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A06-HAPPY-ROTATE",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "happy",
+            "title": "Rotating the viewer token publishes the new one and retires the old",
+            "asserts": "setup.rotatePublicToken -> a new URL-restricted token in the city and the next manifest -> ops.tick deletes the old token 10 minutes later (clock)",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A06-BAD-SAVED-TWICE",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "bad",
+            "title": "Saving the token again updates the minted tokens instead of adding more",
+            "asserts": "a second setup.saveMapbox -> the existing viewer, admin and tiles token ids are updated; the mock lists as many tokens as before",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/setup/save-mapbox.test.ts."
+        },
+        {
+            "id": "S-A06-HAPPY-OLD-TOKEN-RETIRED",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "happy",
+            "title": "A replaced public token is deleted once its retirement time passes",
+            "asserts": "setup/status mapbox retiring entries past retireAt -> ops.tick deletes those tokens at Mapbox and removes them from the list; entries not yet due stay",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/ops/services.test.ts (the functions half of S-A06-HAPPY-ROTATE)."
         },
         {
             "id": "S-A07-HAPPY",
@@ -1746,10 +2035,10 @@
             "area": "admin",
             "path": "happy",
             "title": "A valid token with an approved role shows green",
-            "asserts": "token valid and role approved -> green",
+            "asserts": "login-token ok and permissions include download -> username and token in Secret Manager only, logout called -> green with the download role",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A07-BAD-INVALID-TOKEN",
@@ -1757,10 +2046,10 @@
             "area": "admin",
             "path": "bad",
             "title": "An HTML 403 means a bad token",
-            "asserts": "HTML 403 -> bad token message",
+            "asserts": "HTML 403 from login-token -> apiError.usgs.credentials; nothing stored",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A07-BAD-ROLE-PENDING",
@@ -1768,10 +2057,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A pending role auto-polls and flips green on approval",
-            "asserts": "role pending -> '24-48 h' with auto-poll (clock); flips green when the mock approves",
+            "asserts": "permissions without download -> pending, 'Awaiting approval (24-48 h)' with the next check; ops.tick re-checks every 6 h (clock) and flips green when the mock approves",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A07-BAD-MAINTENANCE",
@@ -1779,10 +2068,21 @@
             "area": "admin",
             "path": "bad",
             "title": "USGS maintenance shows a banner",
-            "asserts": "503 maintenance -> banner",
+            "asserts": "HTML 503 Application Offline -> apiError.usgs.maintenance banner; the chip is unavailable and ops.tick retries",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A07-BAD-TOKEN-EXPIRING",
+            "behaviour": "A07",
+            "area": "admin",
+            "path": "bad",
+            "title": "A USGS token close to its expiry shows a reminder",
+            "asserts": "saved with an expiry 10 days ahead (clock) -> the USGS card shows the date and the link to create a new token",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A08-HAPPY",
@@ -1838,6 +2138,72 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A08-HAPPY-PROCESSED",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "happy",
+            "title": "An upload becomes a private original, two public WebP files and suggestions",
+            "asserts": "a JPEG uploaded under its photo document -> processing done, the original under originals/, web and thumb WebP without metadata in the public bucket, EXIF position, direction and date as suggestions, the upload deleted",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/photos/upload.test.ts."
+        },
+        {
+            "id": "S-A08-BAD-NOT-A-PHOTO",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "bad",
+            "title": "An SVG or a PDF named like a photo is refused by its bytes",
+            "asserts": "the magic bytes are not JPEG, PNG, WebP or TIFF -> processing failed with apiError.photo.unsupportedType; nothing written to either bucket",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/photos/upload.test.ts."
+        },
+        {
+            "id": "S-A08-BAD-HEIC",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "bad",
+            "title": "An HEIC photo is refused with a message",
+            "asserts": "an HEIC file -> processing failed with apiError.photo.heicUnsupported, whose message says how to export a JPEG; nothing written to either bucket (DECISIONS-for-review.md §20b)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/photos/upload.test.ts."
+        },
+        {
+            "id": "S-A08-BAD-PIXEL-LIMIT",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "bad",
+            "title": "An image over 200 megapixels is refused from its header alone",
+            "asserts": "a 240-megapixel PNG header -> processing failed with apiError.photo.tooLarge; the pixels are never decoded",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/photos/upload.test.ts."
+        },
+        {
+            "id": "S-A08-BAD-DUPLICATE-HASH",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "bad",
+            "title": "The same file as another photo is flagged as its duplicate",
+            "asserts": "the upload's SHA-256 equals another photo's original -> processing failed with apiError.photo.duplicate and duplicateOf naming that photo; nothing public written",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/photos/upload.test.ts."
+        },
+        {
+            "id": "S-A08-BAD-STORAGE-DOWN",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Storage outage keeps the upload so Reprocess can retry it",
+            "asserts": "the bucket unavailable during processing -> processing failed with a retryable error and the upload kept; photos.reprocess processes the kept upload again",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/photos/upload.test.ts and functions/test/photos/reprocess.test.ts."
         },
         {
             "id": "S-A09-HAPPY",
@@ -1904,6 +2270,61 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A10-HAPPY-MANIFEST-BUILT",
+            "behaviour": "A10",
+            "area": "admin",
+            "path": "happy",
+            "title": "Publishing rebuilds the manifest with every published document",
+            "asserts": "a build task -> manifest.json gzip in the public bucket with a 60-second cache; manifests/{city} records builtVersion, url, sha256, bytes and counts",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/publish/build-manifest.test.ts."
+        },
+        {
+            "id": "S-A10-BAD-DOCUMENT-SKIPPED",
+            "behaviour": "A10",
+            "area": "admin",
+            "path": "bad",
+            "title": "A document the manifest refuses is skipped and listed",
+            "asserts": "one published document fails its manifest schema -> the manifest is published without it and manifests/{city}.skipped names it with its first issue",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/publish/build-manifest.test.ts."
+        },
+        {
+            "id": "S-A10-BAD-NO-PUBLIC-TOKEN",
+            "behaviour": "A10",
+            "area": "admin",
+            "path": "bad",
+            "title": "A city without its public token keeps the last good manifest",
+            "asserts": "no viewer token on the city -> status failed with apiError.mapbox.notConfigured; the last good url, sha256, counts and builtVersion stay; nothing uploaded",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/publish/build-manifest.test.ts."
+        },
+        {
+            "id": "S-A10-BAD-WRITE-DURING-BUILD",
+            "behaviour": "A10",
+            "area": "admin",
+            "path": "bad",
+            "title": "A change during a build queues the next build",
+            "asserts": "requestedVersion moves on while a build runs -> the build records the version it started from and queues another build task",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/publish/build-manifest.test.ts."
+        },
+        {
+            "id": "S-A10-BAD-NOTHING-TO-PUBLISH",
+            "behaviour": "A10",
+            "area": "admin",
+            "path": "bad",
+            "title": "A change the manifest does not carry requests no build",
+            "asserts": "a write to an unpublished document, or of the stamp and suggestions only -> no manifests/{city} change and no task",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/publish/fields.test.ts and functions/test/publish/on-write.test.ts."
         },
         {
             "id": "S-A11-HAPPY",
@@ -2219,10 +2640,10 @@
             "area": "admin",
             "path": "happy",
             "title": "The session refreshes its token silently",
-            "asserts": "silent token refresh",
+            "asserts": "an hour later (clock) the ID token refreshes silently and callables keep working",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A20-BAD-ADMIN-REMOVED",
@@ -2230,10 +2651,10 @@
             "area": "admin",
             "path": "bad",
             "title": "An admin removed mid-session is denied on the next action",
-            "asserts": "admin removed mid-session -> next action denied",
+            "asserts": "admin removed mid-session -> the next Firestore read and callable are denied (apiError.notAdmin) at once, without waiting for the token to expire",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A20-BAD-SIGNED-OUT-DEEP-LINK",
@@ -2245,6 +2666,39 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "Milestone M2."
+        },
+        {
+            "id": "S-A20-BAD-UNVERIFIED-ACCOUNT",
+            "behaviour": "A20",
+            "area": "admin",
+            "path": "bad",
+            "title": "A non-Google or unverified account is refused by every callable",
+            "asserts": "an ID token with another provider or email_verified false -> apiError.accountNotAllowed from admin.session, admin.claim and admin.join",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/admin/."
+        },
+        {
+            "id": "S-A20-BAD-NO-APP-CHECK",
+            "behaviour": "A20",
+            "area": "admin",
+            "path": "bad",
+            "title": "A call without App Check is refused once enforcement is on",
+            "asserts": "HCM_APP_CHECK=enforce and no App Check token -> the callable is refused and the app shows apiError.appCheck with Reload",
+            "tier": "functions",
+            "status": "planned",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A20-BAD-STALE-ACCOUNT",
+            "behaviour": "A20",
+            "area": "admin",
+            "path": "bad",
+            "title": "An account that never became an admin is deleted after 24 hours",
+            "asserts": "Auth accounts older than 24 hours without admins/{uid} -> deleted by ops.tick; the owner, admins, invited and newer accounts stay",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/ops/accounts.test.ts."
         },
         {
             "id": "S-A21-HAPPY",
@@ -2274,10 +2728,10 @@
             "area": "admin",
             "path": "happy",
             "title": "The measurement id is detected and crash reports are listed",
-            "asserts": "Analytics card: GA enabled -> measurementId detected and written to the manifest; Crash reports panel lists the latest groups",
+            "asserts": "setup.analyticsConfig reads the mock Firebase Management web app config -> measurementId and the public app ids written to the city and the next manifest; telemetry.listGroups fills the Crash reports panel from the mock Error Reporting groups",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A22-BAD-ANALYTICS-NOT-ENABLED",
@@ -2285,10 +2739,10 @@
             "area": "admin",
             "path": "bad",
             "title": "Analytics not enabled shows the deep link",
-            "asserts": "GA not enabled -> deep link and explanation",
+            "asserts": "a web app config without measurementId -> apiError.analytics.notEnabled with the deep link and explanation",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
             "id": "S-A22-BAD-ERROR-REPORTING-UNAVAILABLE",
@@ -2296,10 +2750,120 @@
             "area": "admin",
             "path": "bad",
             "title": "An unavailable Error Reporting API shows an actionable message",
-            "asserts": "Error Reporting API error -> actionable message",
+            "asserts": "Error Reporting answers 5xx -> apiError.errorReporting.unavailable with Retry; the rest of the card works",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A22-BAD-MISSING-ROLE",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "bad",
+            "title": "A server account without the Firebase viewer role gets an actionable message",
+            "asserts": "Firebase Management answers 403 -> apiError.cloud.permission naming roles/firebase.viewer; nothing written",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A23-HAPPY",
+            "behaviour": "A23",
+            "area": "admin",
+            "path": "happy",
+            "title": "Every edit is recorded and one click restores the previous version",
+            "asserts": "editing a POI's title writes a history entry with the previous version and the editor's uid; Revert restores it, a revert entry names the restored one, and the manifest is rebuilt",
+            "tier": "e2e-admin",
+            "status": "planned",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A23-BAD-INVALID-SNAPSHOT",
+            "behaviour": "A23",
+            "area": "admin",
+            "path": "bad",
+            "title": "A version that no longer validates is not restored",
+            "asserts": "history.revert of a snapshot that fails today's schema -> apiError.history.invalidSnapshot with the number of problems; the document is unchanged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/history/revert.test.ts."
+        },
+        {
+            "id": "S-A23-BAD-CREATION-ENTRY",
+            "behaviour": "A23",
+            "area": "admin",
+            "path": "bad",
+            "title": "The creation entry has nothing to restore",
+            "asserts": "the entry of a create offers no Revert; history.revert of it answers apiError.history.nothingToRestore",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/history/revert.test.ts."
+        },
+        {
+            "id": "S-A23-BAD-CLIENT-WRITE",
+            "behaviour": "A23",
+            "area": "admin",
+            "path": "bad",
+            "title": "No client can write or forge history",
+            "asserts": "an admin creating, changing or deleting any history entry with the Firestore SDK is denied; reading it is allowed",
+            "tier": "rules",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by firebase/rules-tests/test/history.test.ts, for each of the five audited entities."
+        },
+        {
+            "id": "S-A24-HAPPY",
+            "behaviour": "A24",
+            "area": "admin",
+            "path": "happy",
+            "title": "A crash report from the site reaches Cloud Error Reporting, redacted",
+            "asserts": "POST text/plain from an allowed origin -> 204; one ERROR log entry of type ReportedErrorEvent with service viewer (admin for the admin origin), the release and a report location; no query, token or e-mail address in it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/telemetry/report-error.test.ts."
+        },
+        {
+            "id": "S-A24-BAD-FOREIGN-ORIGIN",
+            "behaviour": "A24",
+            "area": "admin",
+            "path": "bad",
+            "title": "A report from an unknown site is refused",
+            "asserts": "Origin not among the viewer and admin origins -> 403 apiError.telemetry.origin; nothing logged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/telemetry/report-error.test.ts."
+        },
+        {
+            "id": "S-A24-BAD-RATE-LIMITED",
+            "behaviour": "A24",
+            "area": "admin",
+            "path": "bad",
+            "title": "An error storm is capped",
+            "asserts": "the 11th report of one client within a minute -> 429 apiError.rateLimited with Retry-After; at most the per-minute limits are logged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/telemetry/report-error.test.ts."
+        },
+        {
+            "id": "S-A24-BAD-TOO-LARGE",
+            "behaviour": "A24",
+            "area": "admin",
+            "path": "bad",
+            "title": "An oversized report is refused before it is parsed",
+            "asserts": "a body over 16 KiB -> 413 apiError.telemetry.tooLarge; nothing logged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/telemetry/report-error.test.ts."
+        },
+        {
+            "id": "S-A24-BAD-INVALID-BODY",
+            "behaviour": "A24",
+            "area": "admin",
+            "path": "bad",
+            "title": "A malformed report is refused",
+            "asserts": "invalid JSON, an unknown field or a page address with its hash -> 400 apiError.invalidRequest; nothing logged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/telemetry/report-error.test.ts."
         },
         {
             "id": "S-P01-HAPPY",

@@ -26,6 +26,8 @@ export interface MockResponse {
     readonly status: number;
     readonly type?: string;
     readonly body?: string | Uint8Array;
+    /** More response headers (an extension's upstream `retry-after`, say). */
+    readonly headers?: Readonly<Record<string, string>>;
 }
 
 /** Absolute folders the mock serves files from. */

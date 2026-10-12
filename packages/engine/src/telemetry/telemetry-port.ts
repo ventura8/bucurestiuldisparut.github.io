@@ -3,6 +3,8 @@
  * `createTelemetry` (`telemetry.ts`) implements it: consent (`consent.ts`), the consent-gated Firebase loader
  * (`analytics.ts`) and the error reporter (`errors.ts`).
  */
+import type { ErrorReport } from '@hcm/shared';
+
 import type { Unsubscribe } from '../map/map-port.js';
 
 export type ConsentState = 'unknown' | 'granted' | 'denied';
@@ -16,7 +18,8 @@ export type TelemetryEvent =
     | { readonly name: 'share' }
     | { readonly name: 'compare_open' };
 
-export type ErrorSource = 'window' | 'promise' | 'boundary';
+/** Where an error was caught: `window`, `promise` or `boundary` (`ERROR_SOURCES` of `@hcm/shared`). */
+export type ErrorSource = ErrorReport['source'];
 
 /** The Firebase web app identifiers `initializeApp` needs besides the measurement id (public values; CR-9). */
 export interface FirebaseAppIds {
@@ -55,17 +58,9 @@ export interface TelemetryPort {
     destroy(): void;
 }
 
-/** The body sent to `telemetry.reportError` (M2 HTTPS function). No PII: no hash, no query, no visitor position. */
-export interface ErrorReportPayload {
-    readonly message: string;
-    readonly stack?: string;
-    readonly release: string;
-    readonly cityId: string;
-    /** `location.origin + location.pathname`. */
-    readonly page: string;
-    readonly viewport: { readonly width: number; readonly height: number };
-    readonly windowClass: string;
-    readonly locale: string;
-    readonly fatal: boolean;
-    readonly source: ErrorSource;
-}
+/**
+ * The body sent to `telemetry.reportError` (M2 HTTPS function): `ErrorReport` of `@hcm/shared`, the schema the endpoint
+ * validates (docs/research/M2-interfaces.md CR-M2-4). No PII: no hash, no query, no visitor position; `page` is
+ * `location.origin + location.pathname`.
+ */
+export type ErrorReportPayload = ErrorReport;

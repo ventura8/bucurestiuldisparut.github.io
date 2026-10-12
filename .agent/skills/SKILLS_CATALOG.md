@@ -55,9 +55,9 @@ Subagents (`.claude/agents/`): `pipeline-runner` (runs one stage, returns the ve
 
 ## Firebase Skills
 
-- `firebase/functions_skill.md`: Cloud Functions v2 (`@hcm/functions`): pure handlers, ports and REST adapters, the composition root, `.run()` tests, secrets read at runtime, the deploy artifact.
-- `firebase/rules_and_emulators_skill.md`: default-deny Firestore and Storage rules, the rules-test matrix and rule coverage, the emulators under the `demo-hcm` project, seeding and isolation.
-- `firebase/analytics_and_crash_skill.md`: GA4 and Performance Monitoring behind consent, the error reporter and Cloud Error Reporting, the event taxonomy, no PII.
+- `firebase/functions_skill.md`: Cloud Functions v2 (`@hcm/functions`): the function registry and the callable plumbing (access rule, validation, error codes), family factories, pure handlers and thin triggers, per-function service accounts and caps (`global-options.ts`), ports and REST adapters, the composition root and the emulator's fake upstreams, `.run()` tests, secrets read at runtime, the checked deploy artifact `functions/dist/`.
+- `firebase/rules_and_emulators_skill.md`: default-deny Firestore and Storage rules mirroring `CLIENT_WRITES`, the 1000-expression budget, the indexes, the rules-test personas and matrix, rule coverage, the emulators under the `demo-hcm` project (the real project is `.firebaserc`'s default), seeding and isolation.
+- `firebase/analytics_and_crash_skill.md`: GA4 behind consent (never the URL hash; Performance Monitoring only in the admin), cookies expired on withdrawal, the error reporter and Cloud Error Reporting, the event taxonomy, no PII.
 
 ---
 

@@ -3,6 +3,9 @@
  * V17). An invalid manifest also names its first issue (`issuePath: validation message`, S-V24-BAD-INVALID-POI), so the
  * city owner sees what to fix. It is an alert, so screen readers announce it; Retry fires `hcm-retry`. No error ever
  * leaves a blank map.
+ *
+ * Material 3: an error container (`error-container` with `on-error-container` text and icon) and Retry as a filled
+ * tonal button with the refresh icon (the M1 UX review: a filled primary button shouted over the message).
  */
 import { DEFAULT_LOCALE, isValidationCode, translate, type Locale } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
@@ -57,11 +60,18 @@ export class HcmErrorCard extends LitElement {
 
             .card p {
                 margin: 0;
+                font-size: var(--md-sys-typescale-body-large-size, 1rem);
+                line-height: var(--md-sys-typescale-body-large-line-height, 1.5rem);
             }
 
-            .issue {
+            .card hcm-icon {
+                color: var(--md-sys-color-on-error-container, CanvasText);
+            }
+
+            .card .issue {
                 font-family: var(--hcm-font-mono, ui-monospace, monospace);
                 font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
+                line-height: var(--md-sys-typescale-body-small-line-height, 1rem);
             }
         `,
     ];
@@ -90,7 +100,9 @@ export class HcmErrorCard extends LitElement {
             ${issue === '' ? nothing : html`<p class="issue">${issue}</p>`}
             ${
                 error.retryable
-                    ? html`<hcm-button variant="filled" @click=${retry}>${translate(this.locale, 'action.retry')}</hcm-button>`
+                    ? html`<hcm-button variant="tonal" icon="refresh" @click=${retry}
+                          >${translate(this.locale, 'action.retry')}</hcm-button
+                      >`
                     : nothing
             }
         </div>`;

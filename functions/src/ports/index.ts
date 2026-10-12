@@ -1,24 +1,46 @@
 import type { Logger } from '@hcm/shared';
 
 import type { AdminDirectory } from './admin-directory.js';
+import type { AuthAdmin } from './auth-admin.js';
+import type { BlobStore } from './blob-store.js';
 import type { Clock } from './clock.js';
 import type { CloudRunJobs } from './cloud-run-jobs.js';
+import type { DocumentStore } from './documents.js';
+import type { ErrorReporter } from './error-reporter.js';
+import type { FirebaseManagement } from './firebase-management.js';
+import type { GoogleIam } from './google-iam.js';
+import type { ImageProcessor } from './image-processor.js';
 import type { MapboxApi } from './mapbox-api.js';
+import type { RuntimeConfig } from './runtime-config.js';
 import type { SecretStore } from './secret-store.js';
 import type { SetupRecords } from './setup-records.js';
+import type { TaskQueue } from './task-queue.js';
 import type { UsgsApi } from './usgs-api.js';
 
 /**
- * Every outside dependency of the handlers. A handler declares the ports it uses with
- * `Pick<Ports, ...>`; tests pass fakes, deps.ts (the composition root) passes the adapters.
+ * Every outside dependency of the handlers (docs/research/M2-interfaces.md §4). A handler declares the ports it uses
+ * with `Pick<Ports, ...>`; tests pass the in-memory fakes of `functions/test/support/`, deps.ts (the composition root,
+ * owned by the integrator) passes the adapters. Two M0 ports stay beside `documents`: `admins` is the bare existence
+ * check of `admins/{uid}` (like the rules' `exists()`, used by the access rule of `functions/src/api/access.ts`),
+ * `setup` the lenient read of `setup/status` (`setup.status` projects it field by field, so one malformed field never
+ * breaks the Setup Assistant); every write of either document goes through `documents` and its strict schema.
  */
 export interface Ports {
     readonly log: Logger;
     readonly clock: Clock;
+    readonly config: RuntimeConfig;
+    readonly documents: DocumentStore;
+    readonly auth: AuthAdmin;
     readonly secrets: SecretStore;
-    readonly admins: AdminDirectory;
-    readonly setup: SetupRecords;
-    readonly jobs: CloudRunJobs;
+    readonly iam: GoogleIam;
+    readonly firebase: FirebaseManagement;
+    readonly errors: ErrorReporter;
+    readonly tasks: TaskQueue;
+    readonly blobs: BlobStore;
+    readonly images: ImageProcessor;
     readonly mapbox: MapboxApi;
     readonly usgs: UsgsApi;
+    readonly jobs: CloudRunJobs;
+    readonly admins: AdminDirectory;
+    readonly setup: SetupRecords;
 }

@@ -4,14 +4,15 @@ import { horizontalOverflow, isOnTop, overlaps, visibleBoxes } from '../../suppo
 import { mapIdle } from '../../support/map.js';
 import { sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
-import { chooseMenuItem, menuButton, openLayers, t, viewer, waitForEngineEvent } from '../../support/viewer.js';
+import { chooseMenuItem, menuButton, openLayers, t, viewer, visibilitySwitch, waitForEngineEvent } from '../../support/viewer.js';
 
 /**
  * Responsive layout (behaviour V15) and the legal controls on compact (V18): a landscape phone collapses the controls
  * into the menu and turns the timeline upright; the compact bottom sheet has three heights and closes when dragged
  * away; long Romanian labels never scroll the full-screen About sideways; the collapsed Mapbox attribution stays
- * reachable. Each test sets its own viewport, so every functional project runs it at that size. The layout of every
- * screen at all 11 viewports is the tour's (e2e/tour/viewer.tour.ts).
+ * reachable, and a sheet at full height ends above the legal bar that carries the logo and the credits meanwhile. Each
+ * test sets its own viewport, so every functional project runs it at that size. The layout of every screen at all 11
+ * viewports is the tour's (e2e/tour/viewer.tour.ts).
  */
 
 async function boot(page: Page, size: { width: number; height: number }, lang: 'ro' | 'en', hash?: string): Promise<void> {
@@ -93,7 +94,8 @@ test(
         await boot(page, COMPACT, 'ro');
         await openLayers(page, 'ro');
         const { sheet, handle, box } = layersSheet(page);
-        const pane = (await viewer(page).locator('.map-pane').boundingBox())?.height ?? 0;
+        // The sheets' container: the viewer above the legal bar, which shows while a sheet covers the map (V18).
+        const pane = (await viewer(page).locator('.modal-layer').boundingBox())?.height ?? 0;
         await expect(sheet).toHaveAttribute('detent', 'half');
         await expect.poll(() => sheetHeight(box)).toBeCloseTo(pane * 0.5, -1);
 
@@ -206,5 +208,36 @@ test(
         await expect(credit).toBeVisible();
         await expect(isOnTop(credit)).resolves.toBe(true);
         await expect(viewer(page).getByRole('link', { name: t('ro', 'map.logo') })).toBeVisible();
+    },
+);
+
+test(
+    'A full-height sheet on a phone ends above the legal bar, which keeps the logo and the credits of a layer switched on',
+    { tag: '@S-V18-BAD-FULL-SHEET' },
+    async ({ page }) => {
+        await boot(page, COMPACT, 'ro');
+        await openLayers(page, 'ro');
+        const { sheet, handle, box } = layersSheet(page);
+        await settled(box);
+        await handle.click();
+        await expect(sheet).toHaveAttribute('detent', 'full');
+        await settled(box);
+
+        const legal = viewer(page).locator('.legal');
+        const logo = legal.locator('a.mapboxgl-ctrl-logo');
+        const credits = legal.locator('[data-layout-check="map-attribution"]');
+        for (const control of [logo, credits]) {
+            await expect(control).toBeVisible();
+            await expect(isOnTop(control)).resolves.toBe(true);
+        }
+        await expect(viewer(page).locator('.mapboxgl-ctrl-bottom-left a.mapboxgl-ctrl-logo')).toBeHidden();
+        const sheetBox = (await box.boundingBox()) ?? { y: 0, height: Number.POSITIVE_INFINITY };
+        const legalBox = (await legal.boundingBox()) ?? { y: 0 };
+        expect(sheetBox.y + sheetBox.height, 'the sheet ends where the legal bar begins').toBeLessThanOrEqual(legalBox.y + 1);
+
+        await visibilitySwitch(page, 'ro', 'Corona 1966 (e2e)').click();
+        await expect(credits).toContainText('USGS (e2e)');
+        await expect(credits.getByRole('link', { name: '© Mapbox' })).toHaveAttribute('href', 'https://www.mapbox.com/about/maps/');
+        await expect(logo).toHaveAttribute('aria-label', t('ro', 'map.logo'));
     },
 );

@@ -1,305 +1,210 @@
 /**
- * cities/{city}/photos/{photo}: strict field validation, server-owned processing fields and the
- * publish gate (processed derivatives + a known licence).
+ * cities/{city}/photos/{photo}: strict field validation like `photoDocSchema` (CR-1: `dateText`, `title.ro` required),
+ * locations within the city, the creation contract (`processing: 'pending'`, unpublished, the creator) and the publish
+ * gate (processed derivatives and a known licence). Server-owned fields: client-writes.test.ts.
  */
+import { FIRESTORE_PATHS } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { CITY_BOUNDS, cityDoc, links, newPhoto, photoDoc } from './support/documents.js';
 import {
-    EVERYONE,
-    NON_ADMINS,
     createWorld,
-    expected,
+    deleted,
     past,
     serverTime,
+    stampedBy,
     verdict,
-    verdicts,
+    withChanges,
     type Data,
+    type Verdict,
     type World,
 } from './support/world.js';
 
 const CITY_ID = 'rules-photos';
-const PHOTOS = `cities/${CITY_ID}/photos`;
 
 let world: World;
 let sequence = 0;
 
-function nextPath(): string {
+function nextPath(city = CITY_ID): string {
     sequence += 1;
-    return `${PHOTOS}/p${String(sequence)}`;
+    return FIRESTORE_PATHS.photo(city, `p${String(sequence)}`);
 }
 
-/** Every optional field present, so each validation branch is evaluated. */
-function fullPhoto(uid: string): Data {
-    return {
-        title: { ro: 'Piața Romană', en: 'Roman Square' },
-        description: { ro: 'Vedere spre nord.', en: 'Looking north.' },
-        year: 1935,
-        yearEnd: 1940,
-        author: 'Ion Mureșan',
-        rightsHolder: 'Ion Mureșan',
-        sourceLabel: 'Arhiva familiei',
-        sourceUrl: 'https://example.org/foto/1',
-        permissionNote: 'Permisiune scrisă pentru proiect.',
-        legacyId: 'ci9e9tn7b0356kzkuzlkncngf',
-        links: [{ url: 'https://example.org/sursa', label: 'Sursa' }],
-        location: { lat: 44.4462, lng: 26.0969 },
-        bearing: 90,
-        fov: 60,
-        license: 'permission-legacy',
-        published: false,
-        rightsReview: true,
-        processing: 'pending',
-        createdBy: uid,
-        createdAt: serverTime(),
-        updatedBy: uid,
-        updatedAt: serverTime(),
-    };
+function create(changes: Data, path = nextPath()): Promise<Verdict> {
+    return verdict(
+        world
+            .db('admin')
+            .doc(path)
+            .set(withChanges(newPhoto(world.uid('admin')), changes)),
+    );
 }
 
-/** Only the required fields. */
-function minimalPhoto(uid: string): Data {
+/** The minimal photo an admin may create: the required fields only. */
+function minimal(): Data {
+    const uid = world.uid('admin');
     return {
         title: { ro: 'Fără titlu' },
         location: { lat: 44.43, lng: 26.1 },
         license: 'unknown',
         published: false,
         processing: 'pending',
-        createdBy: uid,
         createdAt: serverTime(),
-        updatedBy: uid,
-        updatedAt: serverTime(),
+        createdBy: uid,
+        ...stampedBy(uid),
     };
 }
 
-/** A photo as photos.onUpload leaves it: processed, with derivatives. */
-function processedPhoto(license: string): Data {
-    return {
-        ...minimalPhoto('pipeline'),
-        license,
-        processing: 'done',
-        image: { web: 'photos/rules-photos/x/web.webp', thumb: 'photos/rules-photos/x/thumb.webp', sha256: 'ab12', w: 2048, h: 1536 },
-        exif: { artist: 'Unknown' },
-        createdAt: past(),
-        updatedAt: past(),
-    };
-}
-
-async function seeded(data: Data): Promise<string> {
+async function update(seed: Data, changes: Data): Promise<Verdict> {
     const path = nextPath();
-    await world.seed(path, data);
-    return path;
+    await world.seed(path, seed);
+    return verdict(
+        world
+            .db('admin')
+            .doc(path)
+            .update({ ...stampedBy(world.uid('admin')), ...changes }),
+    );
+}
+
+function processed(changes: Data = {}): Data {
+    return { ...photoDoc(CITY_ID, 'p0', world.uid('admin')), ...changes };
 }
 
 beforeAll(async () => {
     world = await createWorld('photos');
-    await world.seed(`cities/${CITY_ID}`, { id: CITY_ID, bounds: { west: 25.9, south: 44.3, east: 26.3, north: 44.6 } });
+    await world.seed(FIRESTORE_PATHS.city(CITY_ID), cityDoc(CITY_ID));
 });
 
 afterAll(async () => {
     await world.env.cleanup();
 });
 
-describe('read', () => {
-    it('happyPath_onlyAdminsReadPhotos', async () => {
-        const path = await seeded(processedPhoto('CC0'));
-
-        const result = await verdicts(EVERYONE, (persona) => world.db(persona).doc(path).get());
-
-        expect(result).toEqual(expected(EVERYONE, ['admin']));
-    });
-
-    it('badPath_rulesAreNotFiltersSoOnlyAdminsList', async () => {
-        const result = await verdicts(['stranger', 'admin'], (persona) => world.db(persona).collection(PHOTOS).get());
-
-        expect(result).toEqual({ stranger: 'deny', admin: 'allow' });
-    });
-});
-
 describe('create', () => {
+    it('happyPath_adminCreatesAPhotoWithOnlyTheRequiredFields', async () => {
+        expect(await verdict(world.db('admin').doc(nextPath()).set(minimal()))).toBe('allow');
+    });
+
     it.each([
-        ['every field', fullPhoto],
-        ['only the required fields', minimalPhoto],
-    ])('happyPath_adminCreatesAPhotoWith_%s', async (_label, photo) => {
-        const uid = world.uid('admin');
-
-        expect(await verdict(world.db('admin').doc(nextPath()).set(photo(uid)))).toBe('allow');
-    });
-
-    it('happyPath_locationsJustOutsideTheBoundsAreAccepted', async () => {
-        const uid = world.uid('admin');
-        const photo = { ...minimalPhoto(uid), location: { lat: 44.3 - 0.49, lng: 26.3 + 0.49 } };
-
-        expect(await verdict(world.db('admin').doc(nextPath()).set(photo))).toBe('allow');
-    });
-
-    it('badPath_nonAdminsCannotCreate', async () => {
-        const result = await verdicts(NON_ADMINS, (persona) =>
-            world
-                .db(persona)
-                .doc(nextPath())
-                .set(minimalPhoto(world.uid(persona))),
-        );
-
-        expect(result).toEqual(expected(NON_ADMINS, []));
+        ['every client field', {}],
+        ['the corners of the city plus half a degree', { location: { lat: CITY_BOUNDS.south - 0.5, lng: CITY_BOUNDS.west - 0.5 } }],
+        ['a year without an end year', { yearEnd: deleted() }],
+        ['the same start and end year', { year: 1900, yearEnd: 1900 }],
+        ['the oldest and newest years', { year: 1800, yearEnd: 2100 }],
+        ['no links', { links: [] }],
+        ['a dating text in Romanian only', { dateText: { ro: 'Iarna 1940' } }],
+        ['a source URL with a path, query and fragment', { sourceUrl: 'https://example.org/a/b?c=d#e' }],
+    ])('happyPath_adminCreatesAPhotoWith_%s', async (_label, changes) => {
+        expect(await create(changes)).toBe('allow');
     });
 
     it.each([
         ['published at once', { published: true }],
         ['processing claimed done', { processing: 'done' }],
-        ['server-owned image', { image: { web: 'https://evil.example/x.webp' } }],
-        ['server-owned exif', { exif: {} }],
         ['another creator', { createdBy: 'someone-else' }],
         ['a client createdAt', { createdAt: past() }],
-        ['an unknown field', { html: '<a href="x">x</a>' }],
-        ['a title in another language', { title: { fr: 'Place Romaine' } }],
+        ['no creator', { createdBy: deleted() }],
+        ['a title without Romanian', { title: { en: 'Roman Square' } }],
+        ['a title in another language', { title: { ro: 'Piața Romană', fr: 'Place Romaine' } }],
         ['a title that is not a map', { title: 'Piața Romană' }],
         ['a title over 200 characters', { title: { ro: 'x'.repeat(201) } }],
-        ['an English description over 5000 characters', { description: { en: 'x'.repeat(5001) } }],
-        ['a year before 1800', { year: 1799 }],
+        ['a blank title', { title: { ro: ' \n\t ' } }],
+        ['an empty English title', { title: { ro: 'Piața Romană', en: '' } }],
+        ['an English description over 5000 characters', { description: { ro: 'Vedere.', en: 'x'.repeat(5001) } }],
+        ['a dating text over 100 characters', { dateText: { ro: 'x'.repeat(101) } }],
+        ['a dating text without Romanian', { dateText: { en: 'July 1936' } }],
+        ['a year before 1800', { year: 1799, yearEnd: 1800 }],
         ['a fractional year', { year: 1935.5 }],
         ['an end year before the year', { year: 1935, yearEnd: 1930 }],
         ['an end year after 2100', { yearEnd: 2101 }],
-        ['a location outside the city', { location: { lat: 45.2, lng: 26.1 } }],
+        ['an end year without a year', { year: deleted() }],
+        ['a location north of the city', { location: { lat: CITY_BOUNDS.north + 0.51, lng: 26.1 } }],
+        ['a location south of the city', { location: { lat: CITY_BOUNDS.south - 0.51, lng: 26.1 } }],
+        ['a location east of the city', { location: { lat: 44.43, lng: CITY_BOUNDS.east + 0.51 } }],
+        ['a location west of the city', { location: { lat: 44.43, lng: CITY_BOUNDS.west - 0.51 } }],
         ['a location without longitude', { location: { lat: 44.43 } }],
         ['a location with altitude', { location: { lat: 44.43, lng: 26.1, alt: 80 } }],
-        ['a location that is not a map', { location: [26.1, 44.43] }],
+        ['a location that is a list', { location: [26.1, 44.43] }],
+        ['a location off the globe', { location: { lat: 91, lng: 26.1 } }],
         ['a bearing over 360', { bearing: 361 }],
+        ['a negative bearing', { bearing: -1 }],
         ['a field of view of 0', { fov: 0 }],
+        ['a field of view over 180', { fov: 181 }],
         ['an unknown licence', { license: 'GPL-3.0' }],
         ['an author over 200 characters', { author: 'x'.repeat(201) }],
         ['a rights holder that is not text', { rightsHolder: 42 }],
         ['a source label over 200 characters', { sourceLabel: 'x'.repeat(201) }],
         ['an http source URL', { sourceUrl: 'http://example.org/foto' }],
         ['a javascript: source URL', { sourceUrl: 'javascript:alert(1)' }],
+        ['a source URL with credentials', { sourceUrl: 'https://user:pass@example.org/foto' }],
+        ['a source URL with a space', { sourceUrl: 'https://example.org/a b' }],
+        ['a source URL over 2048 characters', { sourceUrl: `https://example.org/${'x'.repeat(2048)}` }],
         ['a permission note over 2000 characters', { permissionNote: 'x'.repeat(2001) }],
         ['a legacy id over 64 characters', { legacyId: 'x'.repeat(65) }],
-        ['six links', { links: Array.from({ length: 6 }, () => ({ url: 'https://example.org' })) }],
+        ['six links', { links: links(6) }],
         ['links that are not a list', { links: 'https://example.org' }],
+        ['a link without a label', { links: [{ url: 'https://example.org' }] }],
+        ['a link with an extra key', { links: [{ url: 'https://example.org', label: 'Sursa', target: '_blank' }] }],
+        ['an http link', { links: [...links(1), { url: 'http://example.org', label: 'Sursa' }] }],
+        ['a link label over 200 characters', { links: [...links(2), { url: 'https://example.org', label: 'x'.repeat(201) }] }],
+        ['a fourth link that is text', { links: [...links(3), 'https://example.org'] }],
+        ['a fifth link without a URL', { links: [...links(4), { label: 'Sursa' }] }],
         ['a published flag that is not a boolean', { published: 'no' }],
         ['a rights review flag that is not a boolean', { rightsReview: 'yes' }],
         ['another editor', { updatedBy: 'someone-else' }],
+        ['an unknown field', { html: '<a href="x">x</a>' }],
     ])('badPath_adminCannotCreateWith_%s', async (_label, changes) => {
-        const photo = { ...fullPhoto(world.uid('admin')), ...changes };
+        expect(await create(changes)).toBe('deny');
+    });
+
+    it.each(['title', 'location', 'license', 'published', 'processing'])('badPath_requiredFieldsCannotBeLeftOut_%s', async (field) => {
+        const photo = withChanges(minimal(), { [field]: deleted() });
 
         expect(await verdict(world.db('admin').doc(nextPath()).set(photo))).toBe('deny');
     });
 
-    it('badPath_requiredFieldsCannotBeLeftOut', async () => {
-        const untitled = minimalPhoto(world.uid('admin'));
-        delete untitled['title'];
-
-        expect(await verdict(world.db('admin').doc(nextPath()).set(untitled))).toBe('deny');
+    it.each(['p 1', 'x'.repeat(41), 'p.1'])('badPath_photoIdsFollowTheIdPattern_%s', async (id) => {
+        expect(await create({}, `${FIRESTORE_PATHS.photos(CITY_ID)}/${id}`)).toBe('deny');
     });
 
     it('badPath_photosNeedAnExistingCity', async () => {
-        const photo = minimalPhoto(world.uid('admin'));
-
-        expect(await verdict(world.db('admin').doc('cities/rules-photos-missing/photos/p1').set(photo))).toBe('deny');
+        expect(await create({}, nextPath('rules-photos-missing'))).toBe('deny');
     });
 });
 
 describe('update', () => {
-    const stamp = (): Data => ({ updatedBy: world.uid('admin'), updatedAt: serverTime() });
-
     it('happyPath_adminEditsTextAndPlacement', async () => {
-        const path = await seeded(processedPhoto('CC0'));
-
-        const changes = { ...stamp(), title: { ro: 'Calea Victoriei' }, bearing: 270, fov: 45 };
-
-        expect(await verdict(world.db('admin').doc(path).update(changes))).toBe('allow');
-    });
-
-    it('happyPath_adminPublishesAProcessedLicensedPhoto', async () => {
-        const path = await seeded(processedPhoto('CC-BY-4.0'));
-
-        expect(
-            await verdict(
-                world
-                    .db('admin')
-                    .doc(path)
-                    .update({ ...stamp(), published: true }),
-            ),
-        ).toBe('allow');
-    });
-
-    it('badPath_unprocessedPhotosCannotBePublished', async () => {
-        const path = await seeded({ ...processedPhoto('CC0'), processing: 'pending' });
-
-        expect(
-            await verdict(
-                world
-                    .db('admin')
-                    .doc(path)
-                    .update({ ...stamp(), published: true }),
-            ),
-        ).toBe('deny');
-    });
-
-    it('badPath_photosOfUnknownLicenceCannotBePublished', async () => {
-        const path = await seeded(processedPhoto('unknown'));
-
-        expect(
-            await verdict(
-                world
-                    .db('admin')
-                    .doc(path)
-                    .update({ ...stamp(), published: true }),
-            ),
-        ).toBe('deny');
+        expect(await update(processed(), { title: { ro: 'Calea Victoriei' }, bearing: 270, fov: 45 })).toBe('allow');
     });
 
     it.each([
-        ['image', { image: { web: 'https://evil.example/x.webp' } }],
-        ['exif', { exif: { artist: 'Forged' } }],
-        ['processing', { processing: 'failed' }],
-        ['createdAt', { createdAt: past().toMillis() }],
-        ['createdBy', { createdBy: 'someone-else' }],
-    ])('badPath_adminCannotChangeServerOwned_%s', async (_label, changes) => {
-        const path = await seeded(processedPhoto('CC0'));
-
-        expect(
-            await verdict(
-                world
-                    .db('admin')
-                    .doc(path)
-                    .update({ ...stamp(), ...changes }),
-            ),
-        ).toBe('deny');
+        ['a processed photo with a licence', {}],
+        ['a photo flagged for a rights review', { rightsReview: true }],
+    ])('happyPath_adminPublishes_%s', async (_label, seed) => {
+        expect(await update(processed(seed), { published: true })).toBe('allow');
     });
 
-    it('badPath_editsAreValidatedLikeCreates', async () => {
-        const path = await seeded(processedPhoto('CC0'));
-
-        expect(
-            await verdict(
-                world
-                    .db('admin')
-                    .doc(path)
-                    .update({ ...stamp(), bearing: 400 }),
-            ),
-        ).toBe('deny');
+    it('happyPath_adminUnpublishesWhateverTheState', async () => {
+        expect(await update(processed({ processing: 'pending', license: 'unknown', published: true }), { published: false })).toBe('allow');
     });
 
-    it('badPath_nonAdminsCannotEdit', async () => {
-        const path = await seeded(processedPhoto('CC0'));
-
-        const result = await verdicts(['stranger', 'claimOnly'], (persona) =>
-            world
-                .db(persona)
-                .doc(path)
-                .update({ updatedBy: world.uid(persona), updatedAt: serverTime(), bearing: 10 }),
-        );
-
-        expect(result).toEqual({ stranger: 'deny', claimOnly: 'deny' });
+    it.each([
+        ['an unprocessed photo', () => processed({ processing: 'pending' })],
+        ['a photo whose processing failed', () => processed({ processing: 'failed' })],
+        ['a photo without derivatives', () => withChanges(processed(), { image: deleted() })],
+        ['a photo of unknown licence', () => processed({ license: 'unknown' })],
+    ])('badPath_adminCannotPublish_%s', async (_label, seed) => {
+        expect(await update(seed(), { published: true })).toBe('deny');
     });
-});
 
-describe('delete', () => {
-    it('happyPath_onlyAdminsDelete', async () => {
-        const path = await seeded(processedPhoto('CC0'));
+    it('badPath_aPublishedPhotoCannotSwitchToAnUnknownLicence', async () => {
+        expect(await update(processed({ published: true }), { license: 'unknown' })).toBe('deny');
+    });
 
-        const result = await verdicts(['stranger', 'docOnly', 'admin'], (persona) => world.db(persona).doc(path).delete());
-
-        expect(result).toEqual({ stranger: 'deny', docOnly: 'deny', admin: 'allow' });
+    it.each([
+        ['a bearing of 400', { bearing: 400 }],
+        ['a title without Romanian', { title: { en: 'Victory Avenue' } }],
+        ['a removed title', { title: deleted() }],
+        ['a location outside the city', { location: { lat: 47.16, lng: 27.58 } }],
+    ])('badPath_editsAreValidatedLikeCreates_%s', async (_label, changes) => {
+        expect(await update(processed(), changes)).toBe('deny');
     });
 });

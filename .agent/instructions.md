@@ -10,7 +10,7 @@ Before beginning any implementation task:
 2. Read `.agent/instructions.md` (this file).
 3. Read `.agent/skills/SKILLS_CATALOG.md`.
 4. Read every directly relevant skill and workflow file (for example `.agent/skills/quality/pipeline_skill.md`, `.agent/skills/quality/e2e_scenario_matrix_skill.md`, `.agent/skills/web/engine_viewer_skill.md`).
-5. For milestone work, read the milestone's section of `docs/research/PLAN.md` and the TODO list in `docs/research/M0-handoff.md`; for M1, also `docs/research/M1-interfaces.md` (ownership, interfaces, change requests) and `docs/ENGINE_API.md`.
+5. For milestone work, read the milestone's section of `docs/research/PLAN.md` and the TODO list in `docs/research/M0-handoff.md`; for M1, also `docs/research/M1-interfaces.md` (ownership, interfaces, change requests) and `docs/ENGINE_API.md`; for M2, `docs/research/M2-interfaces.md` (the Firestore model, the callable and HTTPS contracts, the ports, ownership, change requests).
 6. Do not write or modify code until this review is complete.
 
 ---

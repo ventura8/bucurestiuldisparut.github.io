@@ -1,44 +1,35 @@
 import type { FirebaseApp } from 'firebase/app';
 import type { Analytics, ConsentSettings } from 'firebase/analytics';
-import type { FirebasePerformance } from 'firebase/performance';
 import { describe, expect, it } from 'vitest';
 
-import { AnalyticsLoader, DEFAULT_FIREBASE_APP, FIREBASE_APP_NAME, gaParams, type FirebaseSdk } from '../../src/telemetry/analytics.js';
+import { AnalyticsLoader, FIREBASE_APP_NAME, gaParams, type FirebaseSdk } from '../../src/telemetry/analytics.js';
 import { CONSENT_DENIED, CONSENT_GRANTED, ConsentStore, parseConsent } from '../../src/telemetry/consent.js';
 import { brokenStorage, memoryStorage, recordingLog, settle } from '../core/support.js';
 
 const IDS = { apiKey: 'test-api-key', appId: '1:2:web:3', projectId: 'demo-hcm' };
+const PAGE = 'https://site.example.org/bucuresti/';
 
 interface FakeSdk extends FirebaseSdk {
     readonly log: string[];
     readonly consents: ConsentSettings[];
     readonly events: [string, unknown][];
-    readonly performance: { dataCollectionEnabled: boolean; instrumentationEnabled: boolean };
 }
 
 interface FakeSdkOptions {
     readonly supported?: boolean;
     readonly throwOnLog?: boolean;
-    /** The page already runs its own default Firebase app. */
-    readonly pageDefaultApp?: boolean;
-    /** `initializePerformance` throws, as Firebase does for an app that is not the default one. */
-    readonly performanceThrows?: boolean;
 }
 
 function fakeSdk(options: FakeSdkOptions = {}): FakeSdk {
     const log: string[] = [];
     const consents: ConsentSettings[] = [];
     const events: [string, unknown][] = [];
-    const performance = { dataCollectionEnabled: false, instrumentationEnabled: false };
     const app: FirebaseApp = { name: FIREBASE_APP_NAME, options: {}, automaticDataCollectionEnabled: false };
-    const pageApp: FirebaseApp = { name: DEFAULT_FIREBASE_APP, options: {}, automaticDataCollectionEnabled: false };
     const analytics: Analytics = { app };
     return {
         log,
         consents,
         events,
-        performance,
-        getApps: () => (options.pageDefaultApp === true ? [pageApp] : []),
         initializeApp: (appOptions, name) => {
             log.push(`initializeApp ${name} ${JSON.stringify(appOptions)}`);
             return app;
@@ -60,28 +51,37 @@ function fakeSdk(options: FakeSdkOptions = {}): FakeSdk {
         setAnalyticsCollectionEnabled: (_analytics, enabled) => {
             log.push(`collection ${String(enabled)}`);
         },
-        initializePerformance: (_app, settings) => {
-            if (options.performanceThrows === true) {
-                throw new Error('Performance: Performance can only start when Firebase app instance is the default one.');
-            }
-            log.push(`initializePerformance ${JSON.stringify(settings)}`);
-            Object.assign(performance, settings);
-            return performance as FirebasePerformance;
-        },
     };
 }
 
-function loader(sdk: FirebaseSdk | Error, log = recordingLog()): { analytics: AnalyticsLoader; loads: () => number } {
+interface Loader {
+    readonly analytics: AnalyticsLoader;
+    readonly loads: () => number;
+    /** How often the loader asked for GA4's cookies to be expired. */
+    readonly cookieClears: () => number;
+}
+
+function loader(sdk: FirebaseSdk | Error, log = recordingLog()): Loader {
     let loads = 0;
+    let clears = 0;
     const analytics = new AnalyticsLoader({
         loadSdk: () => {
             loads += 1;
             return sdk instanceof Error ? Promise.reject(sdk) : Promise.resolve(sdk);
         },
         log: log.log,
-        pageLocation: () => 'https://site.example.org/bucuresti/',
+        pageLocation: () => PAGE,
+        pagePath: () => '/bucuresti/',
+        clearCookies: () => {
+            clears += 1;
+        },
     });
-    return { analytics, loads: () => loads };
+    return { analytics, loads: () => loads, cookieClears: () => clears };
+}
+
+/** What GA4 receives with every event: the page without its hash. */
+function withPage(params: Readonly<Record<string, unknown>> = {}): Readonly<Record<string, unknown>> {
+    return { ...params, page_location: PAGE };
 }
 
 describe('analytics', () => {
@@ -140,7 +140,7 @@ describe('analytics', () => {
 });
 
 describe('analytics after consent', () => {
-    it('happyPath_consentLoadsTheSdkOnceInConsentModeAndSendsEvents', async () => {
+    it('happyPath_consentLoadsTheSdkOnceInConsentModeAndSendsEventsWithoutTheHash', async () => {
         const sdk = fakeSdk();
         const { analytics, loads } = loader(sdk);
         analytics.configure('G-TEST1234', IDS);
@@ -152,39 +152,47 @@ describe('analytics after consent', () => {
         await settle();
 
         expect(loads()).toBe(1);
+        const config = {
+            send_page_view: false,
+            page_location: PAGE,
+            page_path: '/bucuresti/',
+            allow_google_signals: false,
+            allow_ad_personalization_signals: false,
+        };
         expect(sdk.log).toEqual([
-            `initializeApp [DEFAULT] ${JSON.stringify({ ...IDS, measurementId: 'G-TEST1234' })}`,
-            `initializeAnalytics ${JSON.stringify({ config: { send_page_view: false, page_location: 'https://site.example.org/bucuresti/' } })}`,
-            `initializePerformance ${JSON.stringify({ dataCollectionEnabled: true, instrumentationEnabled: true })}`,
+            `initializeApp hcm-viewer ${JSON.stringify({ ...IDS, measurementId: 'G-TEST1234' })}`,
+            `initializeAnalytics ${JSON.stringify({ config })}`,
+            'collection true',
         ]);
         expect(sdk.consents).toEqual([CONSENT_GRANTED]);
         expect(sdk.events).toEqual([
-            ['page_view', {}],
-            ['photo_open', { photo_id: 'p' }],
+            ['page_view', withPage()],
+            ['photo_open', withPage({ photo_id: 'p' })],
         ]);
     });
 
-    it('happyPath_withdrawingStopsCollectionAndLaterEvents', async () => {
+    it('happyPath_withdrawingStopsCollectionAndLaterEventsAndExpiresTheCookiesTwice', async () => {
         const sdk = fakeSdk();
-        const { analytics } = loader(sdk);
+        const { analytics, cookieClears } = loader(sdk);
         analytics.configure('G-TEST1234', IDS);
         analytics.setConsent('granted');
         analytics.send({ name: 'page_view' });
         await settle();
 
         analytics.setConsent('denied');
+        expect(cookieClears(), 'at once').toBe(1);
         analytics.send({ name: 'share' });
         await settle();
 
         expect(sdk.consents.at(-1)).toEqual(CONSENT_DENIED);
         expect(sdk.log.at(-1)).toBe('collection false');
-        expect(sdk.performance).toEqual({ dataCollectionEnabled: false, instrumentationEnabled: false });
-        expect(sdk.events).toEqual([['page_view', {}]]);
+        expect(sdk.events).toEqual([['page_view', withPage()]]);
+        expect(cookieClears(), 'and again once the SDK has stopped').toBe(2);
     });
 
     it('happyPath_grantingAgainTurnsCollectionBackOn', async () => {
         const sdk = fakeSdk();
-        const { analytics } = loader(sdk);
+        const { analytics, cookieClears } = loader(sdk);
         analytics.configure('G-TEST1234', IDS);
         analytics.setConsent('granted');
         analytics.send({ name: 'page_view' });
@@ -196,13 +204,13 @@ describe('analytics after consent', () => {
         await settle();
 
         expect(sdk.log.at(-1)).toBe('collection true');
-        expect(sdk.performance.dataCollectionEnabled).toBe(true);
-        expect(sdk.events.at(-1)).toEqual(['share', {}]);
+        expect(sdk.events.at(-1)).toEqual(['share', withPage()]);
+        expect(cookieClears()).toBe(2);
     });
 
-    it('badPath_anEventQueuedBeforeAWithdrawalIsDropped', async () => {
+    it('badPath_anEventQueuedBeforeAWithdrawalIsDroppedAndGa4NeverStartsGranted', async () => {
         const sdk = fakeSdk();
-        const { analytics } = loader(sdk);
+        const { analytics, cookieClears } = loader(sdk);
         analytics.configure('G-TEST1234', IDS);
         analytics.setConsent('granted');
 
@@ -211,42 +219,24 @@ describe('analytics after consent', () => {
         await settle();
 
         expect(sdk.events).toEqual([]);
+        // The visitor withdrew while the chunk loaded: GA4 starts denied, so gtag.js never writes a cookie.
+        expect(sdk.consents).toEqual([CONSENT_DENIED, CONSENT_DENIED]);
+        expect(sdk.log.filter((entry) => entry.startsWith('collection'))).toEqual(['collection false', 'collection false']);
+        expect(cookieClears()).toBe(2);
     });
 
-    it('badPath_aPageWithItsOwnDefaultAppKeepsItAndRunsAnalyticsWithoutPerformance', async () => {
-        const sdk = fakeSdk({ pageDefaultApp: true });
-        const log = recordingLog();
-        const { analytics } = loader(sdk, log);
-        analytics.configure('G-TEST1234', IDS);
-        analytics.setConsent('granted');
-
-        analytics.send({ name: 'page_view' });
-        await settle();
-        analytics.setConsent('denied');
+    it('badPath_aFirstDeclineOrAWithdrawalWithoutAnalyticsLeavesTheCookiesAlone', async () => {
+        // The page's own cookies (an embedding page may run its own GA4) are not the viewer's to expire.
+        const configured = loader(fakeSdk());
+        configured.analytics.configure('G-TEST1234', IDS);
+        configured.analytics.setConsent('denied');
+        const unconfigured = loader(fakeSdk());
+        unconfigured.analytics.setConsent('granted');
+        unconfigured.analytics.setConsent('denied');
         await settle();
 
-        expect(sdk.log[0]).toBe(`initializeApp hcm-viewer ${JSON.stringify({ ...IDS, measurementId: 'G-TEST1234' })}`);
-        expect(sdk.log.some((entry) => entry.startsWith('initializePerformance'))).toBe(false);
-        expect(sdk.events).toEqual([['page_view', {}]]);
-        expect(sdk.log.at(-1)).toBe('collection false');
-        expect(log.messages()).toEqual(['performance monitoring off: the page runs its own default Firebase app']);
-    });
-
-    it('badPath_aPerformanceMonitoringFailureNeverStopsAnalytics', async () => {
-        // S-V19-HAPPY found it: Firebase refuses Performance Monitoring on a named app, the whole load failed with it,
-        // and no analytics event was ever sent.
-        const sdk = fakeSdk({ performanceThrows: true });
-        const log = recordingLog();
-        const { analytics } = loader(sdk, log);
-        analytics.configure('G-TEST1234', IDS);
-        analytics.setConsent('granted');
-
-        analytics.send({ name: 'page_view' });
-        await settle();
-
-        expect(sdk.events).toEqual([['page_view', {}]]);
-        expect(log.messages()).toEqual(['performance monitoring failed to start']);
-        expect(String(log.records[0]?.data?.['error'])).toContain('default one');
+        expect([configured.cookieClears(), unconfigured.cookieClears()]).toEqual([0, 0]);
+        expect([configured.loads(), unconfigured.loads()]).toEqual([0, 0]);
     });
 
     it('badPath_anUnsupportedBrowserOrAFailedLoadSendsNothing', async () => {

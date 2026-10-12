@@ -5,6 +5,10 @@
  * compact, 24 dp from medium; supporting pane 360 px, 412 px from large; on extra-large a 360 px layers pane and a
  * 400 px detail pane). Floating controls keep a strip at the bottom of the map free for the Mapbox logo and
  * attribution (scenario V18) and respect the safe areas of notched phones.
+ *
+ * Inside the host, `.viewer` is a two-row grid: the frame spans both rows (the map never resizes), the modal layer
+ * fills the first, and the legal bar, shown while a modal surface covers the map, is the second (auto height): a
+ * sheet, its scrim and the lightbox end where the bar begins, and Mapbox's own bottom controls are hidden meanwhile.
  */
 import { css } from 'lit';
 
@@ -33,6 +37,42 @@ export const viewerStyles = [
             background: var(--md-sys-color-surface, Canvas);
         }
 
+        /* A wrapper, not the host, is the grid: a page may set the element's own display (display: block). */
+        .viewer {
+            position: relative;
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) auto;
+            grid-template-columns: minmax(0, 1fr);
+            block-size: 100%;
+        }
+
+        /* The modal surfaces' containing block; it lets pointers through to the map where no surface is open. */
+        .modal-layer {
+            position: relative;
+            grid-area: 1 / 1 / 2 / 2;
+            pointer-events: none;
+        }
+
+        .modal-layer > * {
+            pointer-events: auto;
+        }
+
+        .legal {
+            position: relative;
+            z-index: 32;
+            grid-area: 2 / 1 / 3 / 2;
+            padding-block-end: env(safe-area-inset-bottom, 0);
+            padding-inline: var(--hcm-gutter);
+            border-block-start: 1px solid var(--md-sys-color-outline-variant, GrayText);
+            background: var(--md-sys-color-surface-container, Canvas);
+        }
+
+        /* While the logo and the attribution show in the legal bar or in About, Mapbox's own stay out of sight. */
+        .frame[data-legal-mirror] .mapboxgl-ctrl-bottom-left,
+        .frame[data-legal-mirror] .mapboxgl-ctrl-bottom-right {
+            visibility: hidden;
+        }
+
         @container hcm-viewer (width >= 600px) {
             .frame {
                 --hcm-gutter: 24px;
@@ -51,8 +91,10 @@ export const viewerStyles = [
             }
         }
 
+        /* The frame spans both rows of the viewer: the map keeps the whole height while the legal bar shows. */
         .frame {
             display: grid;
+            grid-area: 1 / 1 / 3 / 2;
             grid-template-columns: minmax(0, 1fr);
             block-size: 100%;
         }
@@ -106,6 +148,12 @@ export const viewerStyles = [
 
         .skip:focus-visible {
             transform: none;
+        }
+
+        /* With the Layers pane docked on the leading side the skip link shows over the map, not over the pane's heading. */
+        .frame[data-panes='leading'] .skip,
+        .frame[data-panes='both'] .skip {
+            inset-inline-start: calc(var(--hcm-pane-leading) + 8px);
         }
 
         .status {

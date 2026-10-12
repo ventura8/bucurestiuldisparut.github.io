@@ -13,7 +13,8 @@ Mapbox account `ventura86`. How tokens are handled, how historical layers reach 
 
 - **Secret token** (created by the user in the Mapbox console, scopes `styles:read styles:tiles fonts:read tilesets:read tilesets:write tilesets:list tokens:read tokens:write`, no URL restriction; a token can only mint scopes it holds). Pasted once into the Setup Assistant; stored as `mapbox-sk-bootstrap` in Secret Manager; used only to mint and rotate.
 - `setup.saveMapbox` validates it (`GET /tokens/v2` → `TokenValid`, `usage=sk`, the `user` field becomes the username), lists missing scopes by name, then mints `mapbox-sk-tiles` (`tilesets:*`, rotated quarterly) and the **public tokens**: viewer (`allowedUrls: ["https://ventura8.github.io"]`, origin only) and admin (`<proj>.web.app`, `<proj>.firebaseapp.com`), scopes `styles:read styles:tiles fonts:read`. A separate dev token is minted only if ever needed, with the port in its URL.
-- `setup.rotatePublicToken` is the panic button: mint, rewrite the city doc and manifest, delete the old token after 10 minutes.
+- Every minted token carries the note `historic-city-map <project> <purpose> [city] (auto)` (purpose `viewer`, `admin` or `tiles`): a save finds each token again by its stored id, then by its note, so saving twice or after a save that stopped half-way updates the tokens in place and never adds more (S-A06-BAD-SAVED-TWICE); leftover tiles tokens are deleted. A demo or trial account (403 on create) and unconfirmed billing (422) answer `apiError.mapbox.mintRefused`, and nothing is stored, not even the pasted token.
+- `setup.rotatePublicToken` is the panic button: mint, rewrite the city doc and manifest, queue the old id in `setup/status.mapbox.retiring` (at most 10) with `retireAt` = now + 10 minutes; `ops.tick` deletes it then (S-A06-HAPPY-OLD-TOKEN-RETIRED).
 - URL restrictions are best effort (the Referer can be spoofed outside browsers): abuse is handled by usage monitoring and alerts.
 
 ## Publishing a layer
@@ -30,5 +31,5 @@ Mapbox account `ventura86`. How tokens are handled, how historical layers reach 
 
 ## Tests
 
-- msw handlers for `tokens/v2` (create, list, scopes, trial detection), `tilesets/v1` sources, recipe validate, publish, jobs, TileJSON and tiles, styles, fonts, sprites, `events` (204, counted).
+- The fake Mapbox of `@hcm/test-support/fakes` and its fixtures for `tokens/v2` (retrieve, list, create, update, delete; the demo account and the billing block), `tilesets/v1` (list; `MapboxTilesetsApi.listTilesets` of `functions/src/adapters/mapbox.ts`, joining the `MapboxApi` port with its first user, the M3 publisher); M3 adds sources, recipe validate, publish, jobs; the e2e mock APIs serve TileJSON and tiles, styles, fonts, sprites and `events` (204, counted).
 - Test tokens: `sk.e2e-trial`, `sk.e2e-missing-scopes`, `pk.e2e-fake-token` (not JWT-shaped).

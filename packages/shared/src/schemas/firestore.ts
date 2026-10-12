@@ -1,12 +1,18 @@
 /**
- * Firestore document shapes (PLAN → Data; `firebase/firestore.rules` → the client-writable subset).
- * Every server writer (Cloud Functions, the raster pipeline through its own models) validates with
- * these before writing, because the Admin SDK bypasses the rules. M1 fixes the shapes; M2 refines
- * them with the handlers that write them. Firestore stores no nested arrays, so boxes are
- * `{west, south, east, north}` and positions `{lat, lng}` here, unlike the manifest.
+ * Firestore content documents (PLAN → Data, Addendum 3): the city, its photos, layers, POIs and POI categories, and the
+ * `history` entries of every one of them. The operational documents (jobs, setup, admins, invitations, usage, the
+ * guard, manifest builds) are in `firestore-ops.ts`; the paths of both in `paths.ts`.
+ *
+ * Every server writer (Cloud Functions, the raster pipeline through its own models) validates with these before
+ * writing, because the Admin SDK bypasses the rules; `firebase/firestore.rules` checks the client-writable subset,
+ * which `CLIENT_WRITES` (`client-writes.ts`) lists field by field. Firestore stores no nested arrays, so boxes are
+ * `{west, south, east, north}` and positions `{lat, lng}` here, unlike the manifest. Final in M2
+ * (`docs/research/M2-interfaces.md` §2); a change is a change request.
  */
 import { z } from 'zod';
 
+import { apiErrorCodeSchema } from '../api/errors.js';
+import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import { geometryDocSchema } from './geometry.js';
 import {
     analyticsSchema,
@@ -44,62 +50,27 @@ import {
     zoomSchema,
 } from './primitives.js';
 
-/** What both Firestore SDKs' `Timestamp` expose (plain getters; the class itself is SDK-specific). */
-export interface TimestampLike {
-    readonly seconds: number;
-    readonly nanoseconds: number;
-}
-
-function isTimestampLike(value: unknown): value is TimestampLike {
-    return (
-        typeof value === 'object' &&
-        value !== null &&
-        typeof (value as Partial<TimestampLike>).seconds === 'number' &&
-        typeof (value as Partial<TimestampLike>).nanoseconds === 'number'
-    );
-}
-
-export const timestampSchema = z.custom<TimestampLike>(isTimestampLike, coded('validation.type'));
-
-const uidSchema = z.string().min(1).max(128);
-const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
-
 /** The photo licences Firestore accepts: the published ones plus `unknown`, which cannot be published. */
 export const FIRESTORE_LICENSES = [...LICENSES, 'unknown'] as const;
 export const PROCESSING_STATES = ['pending', 'done', 'failed'] as const;
 export const LAYER_STATUSES = ['draft', 'processing', 'awaiting_approval', 'ready', 'failed'] as const;
-export const JOB_TYPES = ['usgs-import', 'geotiff-import', 'regeoref', 'republish'] as const;
-/** The job state machine of security review §4.1. */
-export const JOB_STATUSES = [
-    'queued',
-    'starting',
-    'running',
-    'waiting_usgs',
-    'mts_processing',
-    'awaiting_approval',
-    'succeeded',
-    'failed',
-    'cancelled',
-] as const;
 export const USGS_DATASETS = ['corona2', 'declassii', 'declassiii'] as const;
-export const USGS_SCENE_STATUSES = ['candidate', 'ordered', 'available', 'imported', 'rejected'] as const;
-/** Setup health per connected service, as `functions/src/handlers/setup-status.ts` projects it. */
-export const SERVICE_STATES = ['missing', 'ok', 'invalid'] as const;
-export const ADMIN_ROLES = ['owner', 'admin'] as const;
 export const GEOREF_METHODS = ['corners', 'gcps', 'auto'] as const;
 /** The audited, admin-editable documents (PLAN Addendum 3): each keeps a `history` subcollection. */
 export const HISTORY_ENTITIES = ['city', 'layer', 'photo', 'poi', 'poiCategory'] as const;
 export const HISTORY_ACTIONS = ['create', 'update', 'delete', 'revert'] as const;
-
-/**
- * Who last wrote an audited document, and when. A client write stamps its uid and `serverTimestamp()` (the rules
- * check both); a server writer stamps its own identity, `system:<writer>` (for example `system:pipeline`).
- */
-const stamp = { updatedBy: uidSchema, updatedAt: timestampSchema };
+/** What an admin may upload as a photo (`firebase/storage.rules`); the server sniffs the bytes, never trusts this. */
+export const PHOTO_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/tiff', 'image/heic', 'image/heif'] as const;
 
 const cityText = localizedMarkdownPartial(10_000);
 
-/** `cities/{city}`. `id`, `mapbox` and `createdAt` are server-owned. */
+/** A Mapbox token id (`authorization` of the Tokens API), never the token itself. */
+export const mapboxTokenIdSchema = z.string().regex(/^[a-z0-9]{1,64}$/);
+
+/** An https origin without a path (`https://ventura8.github.io`): what a URL-restricted Mapbox token allows. */
+export const httpsOriginSchema = z.string().regex(/^https:\/\/[a-z0-9.-]{1,253}(?::\d{1,5})?$/);
+
+/** `cities/{city}`. `id`, `mapbox`, `analytics`, `engine` and `createdAt` are server-owned. */
 export const cityDocSchema = z.strictObject({
     id: idSchema.optional(),
     name: localizedPartial(100),
@@ -113,7 +84,16 @@ export const cityDocSchema = z.strictObject({
     credits: z.array(creditSchema).max(50).optional(),
     theme: themeSchema.optional(),
     basemap: basemapSchema.optional(),
-    mapbox: z.strictObject({ user: z.string().max(64).optional(), publicToken: mapboxPublicTokenSchema.optional() }).optional(),
+    /** Written by `setup.saveMapbox` and `setup.rotatePublicToken`: the viewer's URL-restricted public token. */
+    mapbox: z
+        .strictObject({
+            user: z.string().max(64).optional(),
+            publicToken: mapboxPublicTokenSchema.optional(),
+            publicTokenId: mapboxTokenIdSchema.optional(),
+            allowedUrls: z.array(httpsOriginSchema).max(10).optional(),
+        })
+        .optional(),
+    /** Written by `setup.analyticsConfig` (GA4 ids from the Firebase Management API) and the crash endpoint. */
     analytics: analyticsSchema.optional(),
     engine: z.strictObject({ minVersion: versionSchema.optional() }).optional(),
     /** Defaults of the photos overlay (PLAN Addendum 3), copied into the manifest. */
@@ -124,20 +104,42 @@ export const cityDocSchema = z.strictObject({
 });
 
 const photoImageDocSchema = z.strictObject({
+    /** https URLs of the content-hashed derivatives in the public bucket (`STORAGE_PATHS.photoDerivative`). */
     web: assetUrlSchema,
     thumb: assetUrlSchema,
+    /** SHA-256 of the original upload: the duplicate check and the derivative paths use it. */
     sha256: sha256Schema,
     w: z.number().int().min(1).max(20_000),
     h: z.number().int().min(1).max(20_000),
 });
 
-/** `cities/{city}/photos/{photo}`. `image`, `exif` and `processing` are owned by `photos.onUpload`. */
+/** The original upload, kept in the private bucket (`STORAGE_PATHS.photoOriginal`): uploads/ expire after 7 days. */
+const photoOriginalDocSchema = z.strictObject({
+    path: z.string().min(1).max(1024),
+    contentType: z.enum(PHOTO_CONTENT_TYPES),
+    bytes: z.number().int().min(1),
+    sha256: sha256Schema,
+});
+
+/** What `photos.onUpload` read from the file (EXIF, file name); the admin accepts a suggestion with one click. */
+const photoSuggestionsSchema = z.strictObject({
+    location: latLngSchema.optional(),
+    year: yearSchema.optional(),
+    bearing: bearingSchema.optional(),
+    title: plainText(200).optional(),
+});
+
+/**
+ * `cities/{city}/photos/{photo}`. `image`, `exif`, `processing`, `processingError`, `duplicateOf`, `suggested` and
+ * `original` are owned by `photos.onUpload`; `createdAt` and `createdBy` are set once by the client that creates it.
+ */
 export const photoDocSchema = z
     .strictObject({
         title: localizedPartial(200),
         description: localizedPartial(5000).optional(),
         year: yearSchema.optional(),
         yearEnd: yearSchema.optional(),
+        /** The legacy dating as written (`Iulie 1936`), shown when present (CR-1). */
         dateText: localizedPartial(100).optional(),
         author: plainText(200).optional(),
         license: z.enum(FIRESTORE_LICENSES),
@@ -155,6 +157,12 @@ export const photoDocSchema = z
         image: photoImageDocSchema.optional(),
         exif: z.record(z.string().max(64), z.union([z.string().max(500), z.number()])).optional(),
         processing: z.enum(PROCESSING_STATES),
+        /** Why the last processing failed (`apiError.photo.*`), set with `processing: 'failed'`. */
+        processingError: apiErrorCodeSchema.optional(),
+        /** The photo whose original has the same SHA-256 (flagged, never processed twice: S-A08-BAD-DUPLICATE). */
+        duplicateOf: idSchema.optional(),
+        suggested: photoSuggestionsSchema.optional(),
+        original: photoOriginalDocSchema.optional(),
         createdAt: timestampSchema.optional(),
         createdBy: uidSchema.optional(),
         ...stamp,
@@ -237,9 +245,12 @@ const snapshotSchema = z
 
 /**
  * `<audited document>/history/{entry}`, for example `cities/{city}/pois/{poi}/history/{entry}` (and
- * `cities/{city}/history/{entry}` for the city itself). Written by a server trigger on every change of an audited
- * document, never by a client: `previous` is the version before the change (none for a create), and the stamp is
- * the change's own. A revert writes `previous` of the entry it names back to the document, which is audited again.
+ * `cities/{city}/history/{entry}` for the city itself). Written by the `history.onWrite` triggers on every change of
+ * an audited document, never by a client: `previous` is the version before the change (none for a create), and the
+ * stamp is the change's own (for a delete, the deleting identity of the event's auth context). `history.revert`
+ * writes the restored document and its own `revert` entry (`revertOf`; `previous` is null when it restores a deleted
+ * document) in one transaction, and the trigger skips that change. Entry ids sort by time (`historyEntryId`); the
+ * newest `HISTORY_KEEP` entries per document are kept.
  */
 export const historyEntryDocSchema = z
     .strictObject({
@@ -252,77 +263,19 @@ export const historyEntryDocSchema = z
         revertOf: z.string().min(1).max(128).optional(),
         ...stamp,
     })
-    .refine((entry) => (entry.action === 'create') === (entry.previous === null), coded('validation.value', ['previous']))
+    .refine(
+        (entry) => entry.action === 'revert' || (entry.action === 'create') === (entry.previous === null),
+        coded('validation.value', ['previous']),
+    )
     .refine((entry) => (entry.action === 'revert') === (entry.revertOf !== undefined), coded('validation.value', ['revertOf']));
-
-/** `cities/{city}/jobs/{job}`: admins create `queued` requests; the job runner owns every other field. */
-export const jobDocSchema = z.strictObject({
-    type: z.enum(JOB_TYPES),
-    status: z.enum(JOB_STATUSES),
-    params: z.record(z.string().max(64), z.unknown()),
-    createdBy: uidSchema,
-    createdAt: timestampSchema,
-    cancelRequested: z.boolean().optional(),
-    step: z.string().max(64).optional(),
-    progress: z.number().min(0).max(1).optional(),
-    retryAt: timestampSchema.optional(),
-    executionName: z.string().max(500).optional(),
-    mapboxJobId: z.string().max(100).optional(),
-    error: z.strictObject({ code: z.string().max(64), message: plainText(2000) }).optional(),
-    updatedAt: timestampSchema.optional(),
-});
-
-/** `cities/{city}/usgsScenes/{entityId}`: harvested server-side; admins set `status` and `note`. */
-export const usgsSceneDocSchema = z.strictObject({
-    entityId: z.string().min(1).max(64),
-    dataset: z.enum(USGS_DATASETS),
-    acquisitionDate: isoDateSchema,
-    status: z.enum(USGS_SCENE_STATUSES),
-    note: plainText(1000).optional(),
-    downloadAvailable: z.boolean(),
-    browseUrl: assetUrlSchema.optional(),
-    footprint: z.array(latLngSchema).min(3).max(64).optional(),
-    rank: z.number().optional(),
-    createdAt: timestampSchema.optional(),
-    updatedAt: timestampSchema.optional(),
-});
-
-const serviceRecordSchema = z.strictObject({
-    state: z.enum(SERVICE_STATES),
-    checkedAt: timestampSchema.optional(),
-    detail: plainText(500).optional(),
-});
-
-/** `setup/status`: non-secret health only (secrets live in Secret Manager, never here). */
-export const setupStatusDocSchema = z.strictObject({
-    google: serviceRecordSchema.optional(),
-    mapbox: serviceRecordSchema.optional(),
-    usgs: serviceRecordSchema.optional(),
-    analytics: serviceRecordSchema.optional(),
-    secretsRev: z.number().int().min(0).optional(),
-});
-
-/** `admins/{uid}`: written by the bootstrap script and the `admins.*` callables only. */
-export const adminDocSchema = z.strictObject({
-    role: z.enum(ADMIN_ROLES),
-    email: z.email().max(254).optional(),
-    displayName: plainText(200).optional(),
-    invitedBy: uidSchema.optional(),
-    createdAt: timestampSchema,
-});
 
 export type CityDoc = z.infer<typeof cityDocSchema>;
 export type PhotoDoc = z.infer<typeof photoDocSchema>;
 export type LayerDoc = z.infer<typeof layerDocSchema>;
-export type JobDoc = z.infer<typeof jobDocSchema>;
-export type UsgsSceneDoc = z.infer<typeof usgsSceneDocSchema>;
-export type SetupStatusDoc = z.infer<typeof setupStatusDocSchema>;
-export type AdminDoc = z.infer<typeof adminDocSchema>;
 export type PoiCategoryDoc = z.infer<typeof poiCategoryDocSchema>;
 export type PoiDoc = z.infer<typeof poiDocSchema>;
 export type HistoryEntryDoc = z.infer<typeof historyEntryDocSchema>;
 export type HistoryEntity = (typeof HISTORY_ENTITIES)[number];
 export type HistoryAction = (typeof HISTORY_ACTIONS)[number];
 export type FirestoreLicense = (typeof FIRESTORE_LICENSES)[number];
-export type JobStatus = (typeof JOB_STATUSES)[number];
-export type JobType = (typeof JOB_TYPES)[number];
+export type PhotoContentType = (typeof PHOTO_CONTENT_TYPES)[number];

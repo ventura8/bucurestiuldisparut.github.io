@@ -1,0 +1,136 @@
+/** The M2 backend contract: error codes, request and response schemas, the function registry. */
+export { API_ERROR_CODES, isApiErrorCode, translateApiError } from '../i18n/api/index.js';
+export type { ApiErrorCode, ApiMessages } from '../i18n/api/index.js';
+export {
+    API_ERRORS,
+    FUNCTIONS_ERROR_STATUSES,
+    MAX_ERROR_ISSUES,
+    apiErrorCodeSchema,
+    apiErrorDetails,
+    apiErrorDetailsSchema,
+    apiErrorFromFailure,
+    apiErrorParamsSchema,
+    validationIssueSchema,
+} from './errors.js';
+export type { ApiErrorDetails, ApiErrorSpec, FunctionsErrorStatus } from './errors.js';
+export { emptyRequestSchema, googleAccessTokenSchema, healthViewFields, isoTimeSchema } from './common.js';
+export {
+    CLAIM_OAUTH_SCOPE,
+    INVITE_TTL_DAYS,
+    OWNER_PERMISSION,
+    adminsListRequestSchema,
+    adminsListResponseSchema,
+    claimRequestSchema,
+    claimResponseSchema,
+    inviteIdFor,
+    inviteRequestSchema,
+    inviteResponseSchema,
+    joinRequestSchema,
+    joinResponseSchema,
+    normalizeEmail,
+    revokeRequestSchema,
+    revokeResponseSchema,
+    sessionRequestSchema,
+    sessionResponseSchema,
+} from './admin.js';
+export type {
+    AdminsListResponse,
+    ClaimRequest,
+    ClaimResponse,
+    InviteRequest,
+    InviteResponse,
+    JoinResponse,
+    RevokeRequest,
+    SessionResponse,
+} from './admin.js';
+export { HISTORY_KEEP, historyEntryId, historyEntryIdSchema, revertRequestSchema, revertResponseSchema } from './history.js';
+export type { RevertRequest, RevertResponse } from './history.js';
+export {
+    MAPBOX_BOOTSTRAP_SCOPES,
+    MAPBOX_PUBLIC_SCOPES,
+    MAPBOX_TILES_SCOPES,
+    MAPBOX_TOKEN_AUDIENCES,
+    SELF_TEST_CHECKS,
+    SETUP_REQUIRED_AREAS,
+    TOKEN_RETIRE_MINUTES,
+    USGS_DOWNLOAD_PERMISSION,
+    USGS_EXPIRY_REMINDER_DAYS,
+    USGS_RECHECK_HOURS,
+    analyticsConfigRequestSchema,
+    analyticsConfigResponseSchema,
+    classifyMapboxToken,
+    missingScopes,
+    recordCloudRequestSchema,
+    recordCloudResponseSchema,
+    rotatePublicTokenRequestSchema,
+    rotatePublicTokenResponseSchema,
+    saveMapboxRequestSchema,
+    saveMapboxResponseSchema,
+    saveUsgsRequestSchema,
+    saveUsgsResponseSchema,
+    selfTestRequestSchema,
+    selfTestResponseSchema,
+    setupReady,
+    setupStatusViewSchema,
+    statusRequestSchema,
+    usgsRoleFromPermissions,
+} from './setup.js';
+export type {
+    AnalyticsConfigResponse,
+    MapboxTokenAudience,
+    MapboxTokenKind,
+    RecordCloudRequest,
+    RotatePublicTokenRequest,
+    RotatePublicTokenResponse,
+    SaveMapboxRequest,
+    SaveMapboxResponse,
+    SaveUsgsRequest,
+    SaveUsgsResponse,
+    SelfTestCheck,
+    SelfTestResponse,
+    SetupStatusView,
+} from './setup.js';
+export {
+    ERROR_GROUP_RESOLUTIONS,
+    ERROR_REPORT_LIMITS,
+    ERROR_REPORT_MAX_BYTES,
+    ERROR_SERVICES,
+    ERROR_SOURCES,
+    REPORTED_ERROR_EVENT_TYPE,
+    errorReportSchema,
+    listGroupsRequestSchema,
+    listGroupsResponseSchema,
+    reportedErrorEventSchema,
+} from './telemetry.js';
+export type { ErrorReport, ListGroupsRequest, ListGroupsResponse, ReportedErrorEvent } from './telemetry.js';
+export {
+    DERIVATIVE_WRITTEN_AT,
+    IMMUTABLE_CACHE_CONTROL,
+    MANIFEST_CACHE_CONTROL,
+    MANIFEST_DEBOUNCE_SECONDS,
+    MANIFEST_QUEUE,
+    MANIFEST_SPLIT_BYTES,
+    NIGHTLY_HOUR_UTC,
+    OPS_TICK_SCHEDULE,
+    PHOTO_LIMITS,
+    STALE_USER_HOURS,
+    UNPUBLISH_DELETE_MINUTES,
+    buildManifestTaskSchema,
+    manifestTaskId,
+    rebuildManifestRequestSchema,
+    rebuildManifestResponseSchema,
+    reprocessPhotoRequestSchema,
+    reprocessPhotoResponseSchema,
+} from './content.js';
+export type { BuildManifestTask, RebuildManifestRequest, RebuildManifestResponse } from './content.js';
+export { BACKGROUND_FUNCTIONS, CALLABLES, FUNCTION_OWNERS, HTTP_ENDPOINTS, deployedName } from './registry.js';
+export type {
+    AppCheckMode,
+    BackgroundTrigger,
+    CallableAccess,
+    CallableName,
+    CallableRequest,
+    CallableResponse,
+    CallableSpec,
+    FunctionOwner,
+} from './registry.js';

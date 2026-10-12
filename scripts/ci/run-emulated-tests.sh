@@ -10,6 +10,11 @@
 # Vitest exit status is preserved.
 set -uo pipefail
 
+# No test may reach the network: without this, firebase-admin's Google clients probe the GCE metadata
+# server (MetadataLookupWarning ... ETIMEDOUT), which on a busy machine also pushed emulator tests past
+# their hook timeouts (CR-M2-34, docs/research/M2-interfaces.md).
+export METADATA_SERVER_DETECTION=none
+
 npm run --silent test:unit
 status=$?
 python3 scripts/ci/check_rules_coverage.py save || status=1

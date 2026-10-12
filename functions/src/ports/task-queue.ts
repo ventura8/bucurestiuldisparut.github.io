@@ -1,0 +1,24 @@
+import type { BuildManifestTask } from '@hcm/shared';
+
+/** Every task queue of the backend and the payload its function takes (validated again on dispatch). */
+interface TaskPayloads {
+    readonly 'publish-buildManifest': BuildManifestTask;
+}
+
+type QueueName = keyof TaskPayloads;
+
+interface EnqueueOptions {
+    /** Cloud Tasks drops a second task with the same id (the manifest builder's debounce: `manifestTaskId`). */
+    readonly id?: string;
+    readonly delaySeconds?: number;
+}
+
+/**
+ * Cloud Tasks for the `onTaskDispatched` functions (`roles/cloudtasks.enqueuer`), through firebase-admin's
+ * `getFunctions().taskQueue()` (REST, OIDC handled) or the REST API itself. Adapter
+ * `functions/src/adapters/cloud-tasks.ts` (fn-content).
+ */
+export interface TaskQueue {
+    /** Resolves `false` when a task with the same id exists already (nothing new was queued). */
+    enqueue<Q extends QueueName>(queue: Q, payload: TaskPayloads[Q], options?: EnqueueOptions): Promise<boolean>;
+}

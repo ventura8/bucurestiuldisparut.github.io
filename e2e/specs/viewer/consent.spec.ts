@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 
 import { siteManifestData, type Json } from '../../fixtures/manifest.js';
 import { E2E_FIREBASE_APP, E2E_MEASUREMENT_ID, E2E_TILESET_LAYER, SITE_ORIGIN } from '../../fixtures/world.js';
@@ -12,7 +12,9 @@ import { chooseMenuItem, openLayers, openViewer, serveManifest, t, viewer, visib
  * Analytics consent (behaviour V19, PLAN Addendum 2): with a GA4 measurement id and the Firebase app ids in the
  * manifest the viewer asks first; before an answer, and after "Decline", no Google or Firebase host is contacted (the
  * firewall fixture would also fail the test on any other host). "Accept" loads the real Firebase Analytics SDK, whose
- * events reach the GA4 mock (mock-apis/gtag.ts) without personal data; withdrawing in About stops them.
+ * events reach the GA4 mock (mock-apis/gtag.ts) without personal data: the page location is the origin and path, never
+ * the hash with the visitor's view or position, and nothing goes to Performance Monitoring (not in the public viewer,
+ * docs/research/DECISIONS-for-review.md §18a). Withdrawing in About stops the events and expires GA4's cookies (§18c).
  */
 
 const LAYER_LABEL = 'Corona 1966 (e2e)';
@@ -38,6 +40,23 @@ async function gaEvents(mockApis: MockApis): Promise<{ name: string; params: URL
             return { name: params.get('en') ?? '', params };
         });
 }
+
+/** Performance Monitoring's hosts: the public viewer never contacts them. */
+const PERFORMANCE_HOSTS = ['firebaselogging.googleapis.com', 'firebaselogging-pa.googleapis.com'];
+
+/** The cookies of the city site, by name (Playwright reads them all, whatever their path). */
+async function siteCookies(context: BrowserContext): Promise<Record<string, string>> {
+    return Object.fromEntries((await context.cookies(SITE_ORIGIN)).map((cookie) => [cookie.name, cookie.value]));
+}
+
+/** GA4's own cookies among them: `_ga` and `_ga_<container>`. */
+async function ga4Cookies(context: BrowserContext): Promise<string[]> {
+    return Object.keys(await siteCookies(context))
+        .filter((name) => /^_ga(_|$)/.test(name))
+        .sort((a, b) => a.localeCompare(b));
+}
+
+const GA4_COOKIES = ['_ga', `_ga_${E2E_MEASUREMENT_ID.replace(/^G-/, '')}`];
 
 function banner(page: Page) {
     return viewer(page).locator('hcm-consent-banner');
@@ -105,6 +124,33 @@ test(
         // The hash holds the visitor's view (15/44.37000/25.97000) and the visible layers: none of it is sent.
         expect(sent).not.toContain('44.37');
         expect(sent).not.toContain('layers=');
+        expect((await analyticsCalls(mockApis)).filter((call) => PERFORMANCE_HOSTS.includes(call.host))).toEqual([]);
+    },
+);
+
+test(
+    'After My location the position in the hash never reaches Google, and nothing goes to Performance Monitoring',
+    { tag: '@S-V19-BAD-HASH-NEVER-SENT' },
+    async ({ page, context, lang, mockApis }) => {
+        await context.grantPermissions(['geolocation'], { origin: SITE_ORIGIN });
+        await context.setGeolocation({ latitude: 44.4301, longitude: 26.1003 });
+        await openWithAnalytics(page, lang);
+        await page.getByRole('button', { name: t(lang, 'consent.accept'), exact: true }).click();
+        await expect.poll(async () => (await gaEvents(mockApis)).map((event) => event.name)).toContain('page_view');
+
+        await chooseMenuItem(page, lang, t(lang, 'action.locate'));
+        // The map flies to the visitor, and the viewer writes their position into the address.
+        await expect.poll(() => page.evaluate(() => location.hash)).toMatch(/44\.430\d*\/26\.100/);
+        await toggleLayer(page, lang);
+        await expect.poll(async () => (await gaEvents(mockApis)).map((event) => event.name)).toContain('layer_toggle');
+
+        const calls = await analyticsCalls(mockApis);
+        expect(calls.filter((call) => PERFORMANCE_HOSTS.includes(call.host))).toEqual([]);
+        for (const event of await gaEvents(mockApis)) {
+            expect(event.params.get('dl'), `${event.name}: the page location without its hash`).toBe(`${SITE_ORIGIN}/bucharest/`);
+        }
+        const sent = calls.map((call) => `${call.path}${call.query} ${call.body}`).join('\n');
+        expect(sent).not.toMatch(/44\.430|26\.100/);
     },
 );
 
@@ -130,6 +176,47 @@ test(
         await expect(page.getByRole('button', { name: t(lang, 'action.menu'), exact: true })).toBeVisible();
         await expect(banner(page)).toHaveCount(0);
         expect(await gaEvents(mockApis)).toHaveLength(before);
+    },
+);
+
+test(
+    "Withdrawing consent expires GA4's cookies and leaves the site's own",
+    { tag: '@S-V19-HAPPY-COOKIES-EXPIRED' },
+    async ({ page, context, lang, mockApis }) => {
+        await context.addCookies([{ name: 'site_choice', value: 'kept', url: SITE_ORIGIN }]);
+        await openWithAnalytics(page, lang);
+        await page.getByRole('button', { name: t(lang, 'consent.accept'), exact: true }).click();
+        await expect.poll(async () => (await gaEvents(mockApis)).map((event) => event.name)).toContain('page_view');
+        await expect.poll(() => ga4Cookies(context), { message: 'gtag.js wrote its cookies after Accept' }).toEqual(GA4_COOKIES);
+
+        await chooseMenuItem(page, lang, t(lang, 'about.title'));
+        const about = viewer(page).locator('hcm-about-dialog');
+        await about.getByRole('button', { name: t(lang, 'consent.withdraw') }).click();
+        await expect(about).toContainText(t(lang, 'consent.denied'));
+
+        await expect.poll(() => ga4Cookies(context), { message: 'no GA4 cookie after the withdrawal' }).toEqual([]);
+        expect((await siteCookies(context))['site_choice']).toBe('kept');
+        await page.keyboard.press('Escape');
+        await page.reload();
+        await expect(page.getByRole('button', { name: t(lang, 'action.menu'), exact: true })).toBeVisible();
+        expect(await ga4Cookies(context), 'and none comes back on the next visit').toEqual([]);
+    },
+);
+
+test(
+    'Declining at the banner never touches a cookie the viewer did not write',
+    { tag: '@S-V19-BAD-DECLINE-KEEPS-PAGE-COOKIES' },
+    async ({ page, context, lang, mockApis }) => {
+        // A page that embeds the map may run its own GA4: its cookie is not the viewer's to expire.
+        await context.addCookies([{ name: '_ga', value: 'GA1.1.page.own', url: SITE_ORIGIN }]);
+        await openWithAnalytics(page, lang);
+
+        await page.getByRole('button', { name: t(lang, 'consent.decline'), exact: true }).click();
+        await expect(banner(page)).toHaveCount(0);
+        await toggleLayer(page, lang);
+
+        expect((await siteCookies(context))['_ga']).toBe('GA1.1.page.own');
+        expect(await analyticsCalls(mockApis)).toEqual([]);
     },
 );
 

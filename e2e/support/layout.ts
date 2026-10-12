@@ -15,8 +15,19 @@ export interface Box {
     readonly height: number;
 }
 
-/** Runs in the page: the visible boxes of the elements matching `selectors` (zero-size and hidden ones left out). */
-function boxesInPage(selectors: readonly string[]): Box[] {
+/**
+ * Runs in the page: the visible boxes of the elements matching `selectors` (zero-size and hidden ones left out; with
+ * `usable`, also those under an `inert` ancestor, such as the frame behind a modal sheet, whose controls no one can use).
+ */
+function boxesInPage([selectors, usable]: readonly [readonly string[], boolean]): Box[] {
+    const inert = (element: Element): boolean => {
+        for (let node: Node | null = element; node !== null; node = node.parentNode ?? (node instanceof ShadowRoot ? node.host : null)) {
+            if (node instanceof Element && node.hasAttribute('inert')) {
+                return true;
+            }
+        }
+        return false;
+    };
     const query = (selector: string): Element[] => {
         const found: Element[] = [];
         const visit = (root: Document | ShadowRoot): void => {
@@ -37,15 +48,19 @@ function boxesInPage(selectors: readonly string[]): Box[] {
     return selectors.flatMap((selector) =>
         query(selector)
             .filter((element) => element.checkVisibility({ visibilityProperty: true, opacityProperty: true }))
+            .filter((element) => !usable || !inert(element))
             .map((element) => ({ element, rect: element.getBoundingClientRect() }))
             .filter(({ rect }) => rect.width > 0 && rect.height > 0)
             .map(({ element, rect }) => ({ name: name(element), x: rect.x, y: rect.y, width: rect.width, height: rect.height })),
     );
 }
 
-/** The visible boxes of the elements matching `selectors`, shadow roots included. */
-export async function visibleBoxes(page: Page, selectors: readonly string[]): Promise<Box[]> {
-    return page.evaluate(boxesInPage, selectors);
+/**
+ * The visible boxes of the elements matching `selectors`, shadow roots included; `usable` leaves out the controls a
+ * modal surface makes inert (the tour's overlap check judges what the visitor can see and use).
+ */
+export async function visibleBoxes(page: Page, selectors: readonly string[], options: { readonly usable?: boolean } = {}): Promise<Box[]> {
+    return page.evaluate(boxesInPage, [selectors, options.usable === true] as const);
 }
 
 /** The pairs of boxes that overlap by more than `slack` CSS px in both directions. */

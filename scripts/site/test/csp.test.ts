@@ -54,6 +54,11 @@ describe('contentSecurityPolicy', () => {
         }
     });
 
+    it('badPath_performanceMonitoringHostsAreNotAllowed', () => {
+        // The viewer never loads Performance Monitoring, which would send the URL hash (CR-M2-36).
+        expect(contentSecurityPolicy({ connect: [], images: [] })).not.toContain('firebaselogging');
+    });
+
     it('happyPath_noInlineCodeAndNoEvalBeyondWebAssembly', () => {
         const policy = contentSecurityPolicy({ connect: [], images: [] });
 

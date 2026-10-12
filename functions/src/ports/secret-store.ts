@@ -8,7 +8,10 @@ export type SecretName = 'usgs-username' | 'usgs-app-token' | 'mapbox-sk-bootstr
 export interface SecretStore {
     /** The latest version's value (cached briefly), or undefined while the secret has no version. */
     read(name: SecretName): Promise<string | undefined>;
-    /** Adds `value` as the latest version, drops the cached value and returns the version's resource name. */
+    /**
+     * Adds `value` as the latest version, drops the cached value and returns the version's resource name; the older
+     * enabled versions are destroyed (security review §1.2: one active version each, nothing replaced left behind).
+     */
     write(name: SecretName, value: string): Promise<string>;
     /** Drops every cached value (setup/status.secretsRev changed on another instance). */
     invalidate(): void;

@@ -868,6 +868,95 @@ committed or pushed; no ask-first file edited.
   error reports since M1, the open privacy decisions of `DECISIONS-for-review.md` §18), and both admin guides gained
   the public map's error cards under troubleshooting.
 
+## 10n. M2 backend contracts
+
+Added on 2026-10-12 by the M2 contracts agent, alone in the tree before the parallel backend build. The contracts,
+module ownership and change requests are `docs/research/M2-interfaces.md`. Nothing committed or pushed; no ask-first
+file edited (proposals: `DECISIONS-for-review.md` §19). Every new file is at 100 % lines and branches.
+
+- **Firestore model** (`@hcm/shared`): `schemas/firestore.ts` keeps the content documents (photos gain the server-owned
+  `processingError`, `duplicateOf`, `suggested`, `original`; the city's `mapbox` gains the token id and its origins);
+  the operational ones moved to `schemas/firestore-ops.ts` (jobs with lease and steps, job log lines, scenes, the
+  six-area `setup/status`, `setup/owner`, admins, invitations by address hash, Mapbox usage, the guard, manifest
+  builds), every one stamped `updatedBy`/`updatedAt`; `schemas/firestore-common.ts` (timestamps, writers, the stamp),
+  `schemas/client-writes.ts` (`CLIENT_WRITES`, the fields a client may write: M1's CR-1 and CR-4 at the schema level),
+  `schemas/paths.ts` (`FIRESTORE_PATHS`, `STORAGE_PATHS`, lowercase city ids).
+- **API** (`packages/shared/src/api/`): request and response schemas of every callable and of the crash endpoint, the
+  registry `CALLABLES` / `HTTP_ENDPOINTS` / `BACKGROUND_FUNCTIONS`, 47 error codes with their callable and HTTP
+  statuses (`API_ERRORS`) and Romanian and English messages in `packages/shared/src/i18n/api/` (kept out of the
+  viewer bundle), helpers (`inviteIdFor`, `classifyMapboxToken`, `missingScopes`, `manifestTaskId`, `historyEntryId`,
+  `apiErrorFromFailure`, `setupReady`), and `redactText` (`packages/shared/src/text/redact.ts`, the engine's rules plus
+  `ya29.` tokens; CR-M2-4 asks engine-core to use it).
+- **Functions**: the port interfaces of every outside service (`functions/src/ports/`, with `UpstreamError` and
+  `InvalidDocumentError`) and the callable plumbing (`functions/src/api/`: `defineCallable`, `requireAccess`,
+  `ApiError`, `toHttpsError`), tested through the v2 `.run()` entry point.
+- **Gate change**: the `i18n` gate also checks folders directly inside a `packages/*/src/i18n/` folder (the API
+  catalogue), with its tests.
+- **Scenarios**: A01–A07, A20 and A22 refined, new behaviours A23 (edit history and revert) and A24 (the crash
+  reporting endpoint); the brief's numbers A22 and A23 were taken (`e2e_scenario_matrix_skill.md` rule 4).
+- **Tool behaviour met on the way** (now in `ci_quality_gates_skill.md`): ESLint's `complexity` counts each default
+  value of a destructuring; knip reports a second export of the same value and an exported type nobody imports outside
+  a package's entry file.
+
+## 10o. M2 viewer fixes
+
+Added on 2026-10-12 by the viewer workstream (`packages/ui/src/viewer/**`, `packages/engine/src/telemetry/**`), in
+parallel with the M2 backend. It fixed the open viewer issues of §10m and `DECISIONS-for-review.md` §18; decisions and
+the rest: `DECISIONS-for-review.md` §21, change requests CR-M2-36 to CR-M2-38 (and CR-M2-4, done) in
+`M2-interfaces.md`. Lessons: `docs/LESSONS.md` #23–#28. Nothing committed or pushed; no *Ask first* file edited.
+
+- **Mapbox logo and attribution in every state**: while a modal sheet, the lightbox or About covers the map, Mapbox's
+  own bottom controls are hidden and `<hcm-map-attribution>` shows the logo and the attribution read from Mapbox's
+  control (a `MutationObserver`, `attribution.ts`) in a legal bar under the modal layer, or at the foot of About. The
+  viewer's layout moved into an inner grid `.viewer`: a page may set the element's own `display`.
+- **Privacy**: no Performance Monitoring in the public viewer (the Firebase chunk is app and analytics only); GA4 gets
+  the page without its hash on its configuration and on every event; a withdrawal expires `_ga` and `_ga_*`.
+- **CR-M2-4** applied: the error reporter uses `redactText` and `ErrorReport` of `@hcm/shared`.
+- **Error card, skip link, photo list**: M3 error container with a filled tonal Retry and plain visitor copy (the
+  `error.*` texts in `packages/shared/src/i18n/`, keys unchanged); the skip link starts at the map pane past a docked
+  pane; photo-list dates in body-medium.
+- **Tests**: every new or changed viewer and telemetry file at 100 % lines and branches; 11 new e2e rows, all `exists`;
+  the tour checks the logo and the attribution in every state, the usable controls only (`visibleBoxes(…, { usable:
+  true })`). The GA4 stand-in falls back to `location.href` and writes the GA4 cookies, as gtag.js does.
+- **Bundle**: `engine.mjs` 101.0 KB gzip (budget 110), the IIFE 106.0 KB (125): the IIFE lost the inlined Performance
+  Monitoring.
+
+## 10p. M2 integration
+
+Added on 2026-10-12 by the M2 integrator, alone in the tree after the parallel backend workstreams (rules, fn-admin,
+fn-setup, fn-content, fakes) and the viewer fixes. What was wired, what the contract gained and what is still open:
+`docs/research/M2-interfaces.md` → *Addendum A*; decisions: `DECISIONS-for-review.md` §22. Nothing committed, pushed or
+deployed; no *Ask first* file edited.
+
+- **Functions wired**: `functions/src/index.ts` exports the 32 registry functions as eight groups from the folders'
+  factories; `functions/src/global-options.ts` sets `us-central1`, the caps, concurrency 80 and the runtime service
+  account of every function (`RUNTIME_ACCOUNTS`, `runAs`); `functions/src/deps.ts` builds `RuntimeConfig` and every
+  adapter, and keeps the Functions emulator off real hosts (`functions/src/adapters/emulator-fetch.ts`). The M0
+  `triggers/`, `handlers/` and `secret-store-rest.ts` are gone with their tests.
+- **Deploy artifact**: `sharp` 0.35.5 joined `functions/package.json` (and the lockfile's `functions` entry; sharp and
+  its `@img/*` packages are no longer dev-only); `functions/build.mjs` now bundles every non-pinned dependency (it had
+  left `zod` external), checks the bundle's imports and loads it. The Functions emulator loads all 32 functions from
+  `functions/dist/` once `firebase.json` has the Pub/Sub (8085) and Cloud Tasks (9499) emulators.
+- **Firebase config**: Hosting site `bucurestiul-disparut` (admin CSP: frames only for its two auth domains, Google
+  sign-in and reCAPTCHA); `.firebaserc` `default: bucurestiul-disparut` beside `e2e: demo-hcm`; a test refuses an npm
+  script that starts the emulators without `--project demo-hcm`.
+- **Change requests resolved**: the integrator's own (CR-M2-2, 8, 10, 12, 13, 14, 19, 20, 24, 26, 27, 29, 33, 34, 35,
+  38), and, the contracts agent having finished, the contract ones (CR-M2-9, 11, 15 b–d, 16, 23, 28, 30, 31, 32) and
+  the site build's CR-M2-36. New: CR-M2-39 and CR-M2-40 for M2b.
+- **The fakes** (`packages/test-support/src/{api-fixtures,fakes}/`, `functions/test/support/`): what they are and how
+  each tier uses them is `docs/TESTING.md` → *Fake upstreams* and `.agent/skills/quality/testing_strategy_skill.md` →
+  *Seams and fakes*; found on the way: a fixture whose `call` did not start with its method (caught by the catalogue
+  test), and Prettier's line breaks pushing a fake past `max-lines-per-function` (a service's routes are built by helper
+  functions).
+- **Scenarios**: 15 rows flipped to `exists`, 14 `functions` rows registered and tagged (A03, A06, A08, A10, A20).
+- **Tests**: `METADATA_SERVER_DETECTION=none` in `scripts/ci/run-emulated-tests.sh` (no metadata-server probe, no
+  hook timeouts); new `functions/test/{index,deps,global-options}.test.ts` and
+  `functions/test/adapters/emulator-fetch.test.ts`; every functions file at 100 % lines and branches.
+- **Lessons**: `docs/LESSONS.md` #29–#34.
+- **Left for M2b and later**: the admin and its emulator e2e tier (CR-M2-6, CR-M2-21, CR-M2-22's `x-hcm-test`
+  forwarding, CR-M2-39, CR-M2-40), the provisioner's IAM and GA4 stream settings (CR-M2-5, CR-M2-37), the deploy-time
+  configuration and a `functions/dist/` lockfile (§22a, §22b), the layering rules (§19a), App Check enforcement.
+
 ## 11. Planned paths
 
 Appended by the M0 agent-assets agent on 2026-10-11. The `agent-assets` static gate

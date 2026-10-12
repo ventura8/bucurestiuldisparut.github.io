@@ -1,0 +1,65 @@
+import { PROVISION_ITEMS, timestampFromDate, type CallableRequest, type CallableResponse, type ServiceState } from '@hcm/shared';
+
+import type { VerifiedCaller } from '../api/access.js';
+import type { Ports } from '../ports/index.js';
+import { commitStatus, stampOf, type SetupStatusFields } from './records.js';
+import { toSetupStatusView } from './view.js';
+
+export type RecordCloudDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
+
+type Request = CallableRequest<'setup.recordCloud'>;
+type Response = CallableResponse<'setup.recordCloud'>;
+type ProvisionRecord = NonNullable<SetupStatusFields['provision']>;
+type ProvisionItemRecord = NonNullable<ProvisionRecord['items']>[number];
+type Timestamp = ReturnType<typeof timestampFromDate>;
+
+/** Worst first: the provisioning doctor's area takes the worst state of its items. */
+const SEVERITY: readonly ServiceState[] = ['invalid', 'unavailable', 'missing', 'pending', 'ok'];
+
+/** The worst of `states` (`ok` for none). */
+function worstState(states: readonly ServiceState[]): ServiceState {
+    return states.reduce<ServiceState>((worst, state) => (SEVERITY.indexOf(state) < SEVERITY.indexOf(worst) ? state : worst), 'ok');
+}
+
+/** The reported items (the last report of an id wins) replace the stored ones with the same id; the others stay. */
+function mergeItems(
+    stored: readonly ProvisionItemRecord[],
+    reported: NonNullable<Request['provision']>,
+    checkedAt: Timestamp,
+): ProvisionItemRecord[] {
+    const fresh = [...new Map(reported.items.map((item) => [item.id, { ...item, checkedAt }])).values()];
+    const kept = stored.filter((item) => !fresh.some((report) => report.id === item.id));
+    return [...kept, ...fresh].sort((left, right) => PROVISION_ITEMS.indexOf(left.id) - PROVISION_ITEMS.indexOf(right.id));
+}
+
+function provisionRecord(
+    current: ProvisionRecord | undefined,
+    reported: NonNullable<Request['provision']>,
+    checkedAt: Timestamp,
+): ProvisionRecord {
+    const items = mergeItems(current?.items ?? [], reported, checkedAt);
+    // An item never reported counts as `missing`, so the area is `ok` only once every item is.
+    const states = PROVISION_ITEMS.map((id) => items.find((item) => item.id === id)?.state ?? 'missing');
+    return { state: worstState(states), checkedAt, items };
+}
+
+function applyReport(current: SetupStatusFields, request: Request, checkedAt: Timestamp): SetupStatusFields {
+    const billing = request.billing === undefined ? {} : { billing: { ...request.billing, checkedAt } };
+    const provision =
+        request.provision === undefined ? {} : { provision: provisionRecord(current.provision, request.provision, checkedAt) };
+    return { ...current, ...billing, ...provision };
+}
+
+/**
+ * `setup.recordCloud` (admin; PLAN Addendum 1, scenario A04): the browser-side Google Cloud steps (billing and the $5
+ * budget through `cloudbilling` and `billingbudgets`, the "Provision cloud" doctor, all with the admin's own token)
+ * report what they found; the server stamps the caller and stores it. The provisioning area is as good as its worst
+ * item, and every one of `PROVISION_ITEMS` must be reported `ok` before it is.
+ */
+export async function recordCloud(deps: RecordCloudDeps, caller: VerifiedCaller, request: Request): Promise<Response> {
+    const now = deps.clock.now();
+    const checkedAt = timestampFromDate(now);
+    const status = await commitStatus(deps.documents, stampOf(caller.uid, deps), (current) => applyReport(current, request, checkedAt));
+    deps.log.info('cloud setup recorded', { uid: caller.uid, billing: request.billing?.state, provision: status.provision?.state });
+    return { status: toSetupStatusView(status, now) };
+}

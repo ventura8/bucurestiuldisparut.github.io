@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
+import { createServer, type IncomingHttpHeaders, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
@@ -10,10 +10,37 @@ import { answer, type MockFiles, type MockResponse } from './router.js';
  *
  * - **mock APIs**: `/h/<host><path>` answers a forwarded request for a mocked host (router.ts) and records it;
  *   `GET /__calls[?test=<id>&host=<host>]` lists the records (oldest first), `POST /__reset[?test=<id>]` forgets them,
- *   `GET /__health` says the server is up.
+ *   `GET /__health` says the server is up. Extensions (`MockExtension`) answer first: the fake upstreams of
+ *   `@hcm/test-support/fakes/http` (Google Cloud, Mapbox's Tokens and Tilesets APIs, USGS M2M, Nominatim; main.ts) and
+ *   their `/__upstream/…` control endpoints; whatever an extension leaves unanswered falls through to router.ts.
  * - **site**: the built sites (`dist/e2e-site`) as GitHub Pages serves them: `index.html` for a folder, a redirect to
  *   the folder with its trailing slash, `cache-control: max-age=600` and `access-control-allow-origin: *`.
  */
+
+/** A forwarded request as an extension sees it: the router's fields plus the raw query, the headers and the test id. */
+interface ExtensionRequest {
+    readonly method: string;
+    readonly host: string;
+    readonly path: string;
+    /** `?…` or empty. */
+    readonly search: string;
+    readonly headers: IncomingHttpHeaders;
+    readonly body: string;
+    /** The `x-hcm-test` header ('' without it). */
+    readonly test: string;
+}
+
+/** Answers what it knows (undefined: the next extension, then the router, answers). */
+export interface MockExtension {
+    answer(request: ExtensionRequest): Promise<MockResponse | undefined>;
+    /** A control request outside `/h/` (`/__upstream/…`). */
+    control(request: {
+        readonly method: string;
+        readonly path: string;
+        readonly query: URLSearchParams;
+        readonly body: string;
+    }): Promise<MockResponse | undefined>;
+}
 
 /** One forwarded request as the mock saw it. */
 export interface RecordedCall {
@@ -73,7 +100,7 @@ async function readBody(request: IncomingMessage): Promise<string> {
 }
 
 function send(response: ServerResponse, result: MockResponse, extra: Readonly<Record<string, string>> = {}): void {
-    const headers: Record<string, string> = { 'cache-control': 'no-store', ...CORS_HEADERS, ...extra };
+    const headers: Record<string, string> = { 'cache-control': 'no-store', ...CORS_HEADERS, ...result.headers, ...extra };
     if (result.type !== undefined) {
         headers['content-type'] = result.type;
     }
@@ -101,21 +128,63 @@ class CallLog {
     }
 }
 
-async function forwarded(request: IncomingMessage, url: RequestTarget, log: CallLog, files: MockFiles): Promise<MockResponse> {
+async function extended(extensions: readonly MockExtension[], request: ExtensionRequest): Promise<MockResponse | undefined> {
+    for (const extension of extensions) {
+        const result = await extension.answer(request);
+        if (result !== undefined) {
+            return result;
+        }
+    }
+    return undefined;
+}
+
+async function forwarded(
+    request: IncomingMessage,
+    url: RequestTarget,
+    log: CallLog,
+    files: MockFiles,
+    extensions: readonly MockExtension[],
+): Promise<MockResponse> {
     const [, , host = '', ...rest] = url.pathname.split('/');
     const path = `/${rest.join('/')}`;
     const method = request.method ?? 'GET';
     const body = await readBody(request);
-    const result = method === 'OPTIONS' ? { status: 204 } : await answer({ method, host, path, query: url.searchParams, body }, files);
-    const test = request.headers[TEST_HEADER];
-    log.record({ test: typeof test === 'string' ? test : '', method, host, path, query: url.search, status: result.status, body });
+    const header = request.headers[TEST_HEADER];
+    const test = typeof header === 'string' ? header : '';
+    const result =
+        method === 'OPTIONS'
+            ? { status: 204 }
+            : ((await extended(extensions, { method, host, path, search: url.search, headers: request.headers, body, test })) ??
+              (await answer({ method, host, path, query: url.searchParams, body }, files)));
+    log.record({ test, method, host, path, query: url.search, status: result.status, body });
     return result;
 }
 
-async function handleMock(request: IncomingMessage, response: ServerResponse, log: CallLog, files: MockFiles): Promise<void> {
+async function controlled(
+    extensions: readonly MockExtension[],
+    request: IncomingMessage,
+    url: RequestTarget,
+): Promise<MockResponse | undefined> {
+    const body = await readBody(request);
+    for (const extension of extensions) {
+        const result = await extension.control({ method: request.method ?? 'GET', path: url.pathname, query: url.searchParams, body });
+        if (result !== undefined) {
+            return result;
+        }
+    }
+    return undefined;
+}
+
+async function handleMock(
+    request: IncomingMessage,
+    response: ServerResponse,
+    log: CallLog,
+    files: MockFiles,
+    extensions: readonly MockExtension[],
+): Promise<void> {
     const url = requestTarget(request);
     if (url.pathname.startsWith('/h/')) {
-        send(response, await forwarded(request, url, log, files));
+        send(response, await forwarded(request, url, log, files, extensions));
     } else if (url.pathname === '/__calls') {
         send(response, {
             status: 200,
@@ -128,7 +197,7 @@ async function handleMock(request: IncomingMessage, response: ServerResponse, lo
     } else if (url.pathname === '/__health') {
         send(response, { status: 200, type: 'text/plain', body: 'ok' });
     } else {
-        send(response, { status: 404, type: 'text/plain', body: 'unknown mock endpoint' });
+        send(response, (await controlled(extensions, request, url)) ?? { status: 404, type: 'text/plain', body: 'unknown mock endpoint' });
     }
 }
 
@@ -153,10 +222,15 @@ function failed(response: ServerResponse, error: unknown): void {
     }
 }
 
-/** Starts the mock APIs on 127.0.0.1:`port`. */
-export function startMockApis(port: number, files: MockFiles, log = new CallLog()): Promise<Server> {
+/** Starts the mock APIs on 127.0.0.1:`port`; `extensions` answer before the built-in routes. */
+export function startMockApis(
+    port: number,
+    files: MockFiles,
+    extensions: readonly MockExtension[] = [],
+    log = new CallLog(),
+): Promise<Server> {
     const server = createServer((request, response) => {
-        handleMock(request, response, log, files).catch((error: unknown) => {
+        handleMock(request, response, log, files, extensions).catch((error: unknown) => {
             failed(response, error);
         });
     });

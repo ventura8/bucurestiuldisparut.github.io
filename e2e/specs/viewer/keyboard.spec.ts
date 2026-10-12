@@ -1,13 +1,14 @@
 import type { Page } from '@playwright/test';
 
-import { focused, type FocusInfo } from '../../support/layout.js';
+import { focused, isOnTop, overlaps, visibleBoxes, type FocusInfo } from '../../support/layout.js';
 import { expect, test } from '../../support/test.js';
 import { openViewer, t, viewer } from '../../support/viewer.js';
 
 /**
  * Keyboard and screen reader (behaviour V14): the skip link leads to the timeline, the menu to the layers and the
- * photos, every stop shows a focus ring; the focused map opens the photo under its centre with Enter or Space. The
- * forced-colours and reduced-motion rows run in the a11y projects (e2e/a11y/).
+ * photos, every stop shows a focus ring; on an extra-large screen the focused skip link shows over the map, never over
+ * a docked pane's heading; the focused map opens the photo under its centre with Enter or Space. The forced-colours and
+ * reduced-motion rows run in the a11y projects (e2e/a11y/).
  */
 
 const LONE = 'strandul-opereta-1976';
@@ -85,6 +86,50 @@ test('The skip link leads to the timeline, the menu to the layers and the photos
     const title = (photo?.name ?? '').split(/\s{2,}|\n/)[0]?.trim() ?? '';
     await expect(page.getByRole('heading', { name: title }).first()).toBeVisible();
 });
+
+/** An extra-large screen: the Layers panel is docked in its own leading pane. */
+const EXTRA_LARGE = { width: 1920, height: 1080 } as const;
+
+/** Tabs once and checks that the focused skip link covers none of `headings` and sits over the map pane. */
+async function skipLinkClearOf(page: Page, lang: 'ro' | 'en', headings: readonly string[]): Promise<void> {
+    await page.keyboard.press('Tab');
+    await expectFocus(page, (info) => info.name === t(lang, 'viewer.skipToTimeline'), 'the skip link');
+    for (const name of headings) {
+        const heading = viewer(page).getByRole('heading', { name, exact: true });
+        await expect(heading).toBeVisible();
+        await expect(isOnTop(heading), `the skip link leaves "${name}" uncovered`).resolves.toBe(true);
+    }
+    const boxes = await visibleBoxes(page, ['.skip', '.pane']);
+    expect(overlaps(boxes), 'the skip link over a pane').toEqual([]);
+    const skip = await viewer(page).locator('.skip').boundingBox();
+    const map = await viewer(page).locator('.map-pane').boundingBox();
+    expect((skip?.x ?? -1) >= (map?.x ?? 0), 'the skip link starts inside the map pane').toBe(true);
+}
+
+test(
+    'On an extra-large screen the focused skip link shows over the map, clear of the Layers heading',
+    { tag: '@S-V14-HAPPY-SKIP-LINK-CLEAR' },
+    async ({ page, lang }) => {
+        await page.setViewportSize(EXTRA_LARGE);
+        await openViewer(page, { lang });
+
+        await skipLinkClearOf(page, lang, [t(lang, 'layers.title')]);
+        await page.keyboard.press('Enter');
+        await expectFocus(page, (info) => info.role === 'slider' && info.name === t(lang, 'timeline.label'), 'the timeline');
+    },
+);
+
+test(
+    'With the Layers and a photo docked, the focused skip link covers neither heading',
+    { tag: '@S-V14-BAD-SKIP-LINK-THREE-PANES' },
+    async ({ page, lang }) => {
+        await page.setViewportSize(EXTRA_LARGE);
+        await openViewer(page, { lang, hash: `18/44.42955/26.09560&photo=${LONE}` });
+        await expect(viewer(page).locator('.frame')).toHaveAttribute('data-panes', 'both');
+
+        await skipLinkClearOf(page, lang, [t(lang, 'layers.title'), LONE_TITLE]);
+    },
+);
 
 test('Enter or Space on the focused map opens the photo at its centre', { tag: '@S-V14-HAPPY-MAP-KEYBOARD' }, async ({ page, lang }) => {
     await openViewer(page, { lang, hash: '18/44.429359/26.095447' });

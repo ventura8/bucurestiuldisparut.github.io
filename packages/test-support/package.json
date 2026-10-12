@@ -2,7 +2,7 @@
     "name": "@hcm/test-support",
     "version": "0.0.0",
     "private": true,
-    "description": "Test-only helpers shared by every TS test project (fakes, recorders; from M1 the FakeMap and API fixtures). Never imported by product code.",
+    "description": "Test-only helpers shared by every TS test project: the recording log sink, FakeMap, axe, the upstream API fixtures (Google, Mapbox, USGS M2M, Nominatim) and the fake upstreams with their HTTP server. Never imported by product code.",
     "license": "UNLICENSED",
     "type": "module",
     "sideEffects": false,
@@ -18,6 +18,18 @@
         "./fake-map": {
             "types": "./src/fake-map.ts",
             "default": "./src/fake-map.ts"
+        },
+        "./api-fixtures": {
+            "types": "./src/api-fixtures/index.ts",
+            "default": "./src/api-fixtures/index.ts"
+        },
+        "./fakes": {
+            "types": "./src/fakes/index.ts",
+            "default": "./src/fakes/index.ts"
+        },
+        "./fakes/http": {
+            "types": "./src/fakes/http-server.ts",
+            "default": "./src/fakes/http-server.ts"
         }
     },
     "dependencies": {
