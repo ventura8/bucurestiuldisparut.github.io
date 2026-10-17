@@ -157,6 +157,29 @@ const SUITES: readonly Suite[] = [
         coverage: [],
     },
     {
+        // The e2e suite's own logic, unit-tested in Chromium (e2e/test/): how a split run takes its part of the queue
+        // (e2e/split.ts) and the tour's layout and accessibility checkers, the in-page probes on synthetic DOM fixtures and
+        // the pure rules they feed (e2e/support/). Sonar counts e2e/ as tests, so Vitest's per-file thresholds hold them.
+        dir: 'e2e',
+        project: {
+            extends: true,
+            optimizeDeps: { include: BROWSER_TEST_DEPS },
+            test: { name: 'e2e-support', include: ['e2e/test/**/*.test.ts'], browser: chromium() },
+        },
+        coverage: [
+            'e2e/split.ts',
+            'e2e/support/page-script.ts',
+            'e2e/support/dom-walk.ts',
+            'e2e/support/colour.ts',
+            'e2e/support/layout-probe.ts',
+            'e2e/support/layout-rules.ts',
+            'e2e/support/a11y-probe.ts',
+            'e2e/support/a11y-rules.ts',
+            'e2e/support/live-regions.ts',
+            'e2e/support/violations.ts',
+        ],
+    },
+    {
         // The Node tooling: JavaScript CLIs driven as child processes (their logic is TypeScript measured in its own package)
         // and the static site build, which is product code: it writes the page, its CSP and the served manifest.
         dir: '.',

@@ -117,6 +117,51 @@ describe('start', () => {
         expect(controller.getState().openStep).toBe('analytics');
     });
 
+    /** A setup whose legacy import's detection ends only when the test says so. */
+    function slowDetection(view: ReturnType<typeof statusView>) {
+        const detection: { finish?: (progress: { done: number; total: number; failed: [] }) => void } = {};
+        const started = setup((h) => {
+            h.backend.status.mockResolvedValue(view);
+            h.importer.detect.mockReturnValue(
+                new Promise((resolve) => {
+                    detection.finish = resolve;
+                }),
+            );
+        });
+        return { ...started, detection };
+    }
+
+    it('happyPath_theNextStepOpensAsSoonAsTheServersRecordIsInNotAfterTheImportsDetection', async () => {
+        const { harness, controller, detection } = slowDetection(READY_VIEW);
+
+        const starting = controller.start('normal', null);
+        await vi.waitFor(() => {
+            expect(harness.importer.detect).toHaveBeenCalledTimes(1);
+        });
+
+        expect(controller.getState().openStep).toBe('mapbox');
+        detection.finish?.({ done: 0, total: 45, failed: [] });
+        await starting;
+        expect(controller.getState().openStep).toBe('mapbox');
+    });
+
+    it('badPath_whenOnlyTheImportIsLeftItsDetectionDecidesWhatOpens', async () => {
+        const ok = { state: 'ok' as const, checkedAt: CHECKED };
+        const { harness, controller, detection } = slowDetection(
+            statusView({ ...READY_VIEW, mapbox: ok, usgs: ok, analytics: ok, crash: ok }),
+        );
+
+        const starting = controller.start('normal', null);
+        await vi.waitFor(() => {
+            expect(harness.importer.detect).toHaveBeenCalledTimes(1);
+        });
+
+        expect(controller.getState().openStep).toBeNull();
+        detection.finish?.({ done: 10, total: 45, failed: [] });
+        await starting;
+        expect(controller.getState().openStep).toBe('legacyImport');
+    });
+
     it('badPath_aServerThatDoesNotAnswerIsShownOnThePage', async () => {
         const { controller } = setup((h) => {
             h.backend.status.mockRejectedValue(functionsError('apiError.unavailable'));

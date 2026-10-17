@@ -51,7 +51,9 @@ export function settleDetent(height: number, containerHeight: number): SheetDete
  * covers its positioned container (the map); a `modal` sheet adds a scrim, traps Tab and is a dialog, a standard one
  * is a labelled region next to the live map. Opening moves the focus into the sheet, closing returns it to the opener.
  * Esc, the close button, the scrim or a drag below the lowest height close it and fire `hcm-close`; a new height
- * fires `hcm-detent-change` with `{detent}`. Slots: `header`, default, `actions`.
+ * fires `hcm-detent-change` with `{detent}`. Slots: `header`, default, `actions`; the actions' row takes no room while
+ * nothing is slotted there (its empty padding sat over the end of the content). The header row is a plain box, not a
+ * `header`: inside a dialog it is no page banner (axe found a second banner under the lightbox).
  */
 export class HcmSheet extends LitElement {
     static override readonly properties = {
@@ -62,6 +64,7 @@ export class HcmSheet extends LitElement {
         handleLabel: { type: String, attribute: 'handle-label' },
         modal: { type: Boolean, reflect: true },
         detent: { type: String, reflect: true },
+        hasActions: { state: true },
     };
 
     static override readonly styles = [
@@ -149,6 +152,11 @@ export class HcmSheet extends LitElement {
                 transition: none;
             }
 
+            /*
+             * M3's drag handle: a 32 × 4 bar in a 48 × 48 target at the top of the sheet. The target is the button itself:
+             * a 24 px button's centred 48 px ring rose 12 px above it and the sheet, which hides its overflow, cut it to
+             * 36 px (the tour's hit-tested target size).
+             */
             .handle {
                 position: relative;
                 display: grid;
@@ -156,13 +164,19 @@ export class HcmSheet extends LitElement {
                 place-items: center;
                 align-self: center;
                 width: 48px;
-                height: 24px;
+                height: 48px;
                 padding: 0;
-                margin: 4px 0 0;
+                margin: 0;
                 border: none;
                 background: none;
                 cursor: grab;
                 touch-action: none;
+            }
+
+            /* A round ring inside the handle's box: the sheet hides its overflow, and a ring past its top edge was cut. */
+            .handle:focus-visible {
+                border-radius: var(--md-sys-shape-corner-full);
+                outline-offset: -4px;
             }
 
             .bar {
@@ -173,11 +187,16 @@ export class HcmSheet extends LitElement {
                 opacity: 0.4;
             }
 
-            header {
+            .header {
                 display: flex;
                 gap: 8px;
                 align-items: center;
                 padding: 8px 8px 8px 24px;
+            }
+
+            /* Below the 48 px handle the header needs no space of its own above it. */
+            .handle + .header {
+                padding-block-start: 0;
             }
 
             .title {
@@ -215,6 +234,8 @@ export class HcmSheet extends LitElement {
     declare handleLabel: string;
     declare modal: boolean;
     declare detent: SheetDetent;
+    /** Whether anything is slotted into `actions` (the row is hidden otherwise). */
+    declare hasActions: boolean;
 
     private opener: Element | null = null;
     /** Ends the drag in progress (removes its listeners); null when the handle is not being dragged. */
@@ -230,6 +251,7 @@ export class HcmSheet extends LitElement {
         this.handleLabel = '';
         this.modal = false;
         this.detent = 'half';
+        this.hasActions = false;
     }
 
     /** Closes the sheet and fires `hcm-close` (what Esc, the close button and the scrim do). */
@@ -270,14 +292,18 @@ export class HcmSheet extends LitElement {
                 @keydown=${this.onKeyDown}
             >
                 ${this.renderHandle()}
-                <header>
+                <div class="header">
                     <div class="title title-medium"><slot name="header"></slot></div>
                     <hcm-icon-button icon="close" label=${this.closeLabel} @click=${this.onCloseClick}></hcm-icon-button>
-                </header>
+                </div>
                 <div class="content body-medium"><slot></slot></div>
-                <div class="actions"><slot name="actions"></slot></div>
+                <div class="actions" ?hidden=${!this.hasActions}><slot name="actions" @slotchange=${this.onActionsChange}></slot></div>
             </section>`;
     }
+
+    private readonly onActionsChange = (event: Event): void => {
+        this.hasActions = (event.target as HTMLSlotElement).assignedNodes().length > 0;
+    };
 
     private renderScrim(): TemplateResult {
         return this.modal ? html`<div class="scrim" part="scrim" @click=${this.onScrimClick}></div>` : html``;

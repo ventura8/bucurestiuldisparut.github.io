@@ -56,6 +56,9 @@ export class HcmErrorCard extends LitElement {
                 background: var(--md-sys-color-error-container, Canvas);
                 color: var(--md-sys-color-on-error-container, CanvasText);
                 overflow-wrap: anywhere;
+
+                /* Secondary on the error container measured 2.38:1 (the tour): Retry's ring takes the container's text colour. */
+                --hcm-focus-ring-color: var(--md-sys-color-on-error-container, CanvasText);
             }
 
             .card p {

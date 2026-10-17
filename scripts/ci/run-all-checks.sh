@@ -8,7 +8,7 @@
 # image, then runs scripts/ci/in-container.sh inside it as the calling user, with the repository
 # mounted at the SAME absolute path (coverage report paths match Sonar's) and a throwaway HOME.
 # Variables forwarded by name only (`--env NAME`, never NAME=value, so no value is in argv): CI,
-# the commit ranges CI computes (GITLEAKS_LOG_OPTS, COMMIT_RANGE), E2E_SHARD and E2E_TIER (the e2e run),
+# the commit ranges CI computes (GITLEAKS_LOG_OPTS, COMMIT_RANGE), E2E_SHARD, E2E_TIER and E2E_ADMIN_PART (the e2e run),
 # MAPBOX_PUBLIC_TOKEN (the site build's URL-restricted pk. token), SONAR_TOKEN and PIPELINE_JOBS (how many gates
 # run at once; unset is the CPU count, 1 runs them one at a time).
 set -euo pipefail
@@ -31,6 +31,7 @@ main() {
 		--env COMMIT_RANGE \
 		--env E2E_SHARD \
 		--env E2E_TIER \
+		--env E2E_ADMIN_PART \
 		--env MAPBOX_PUBLIC_TOKEN \
 		--env SONAR_TOKEN \
 		--env PIPELINE_JOBS \

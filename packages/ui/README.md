@@ -13,8 +13,10 @@ carries no admin element or text. `defineAdminElements()` registers them; `defin
 
 - **Shell** (`src/admin/shell/`): `hcm-admin-shell` (layout per window class through `shellLayout`: a navigation bar on
   compact windows, a rail from medium, the expanded rail from large, a rail with the account button at its foot and no
-  top bar on a landscape phone; the start-up banner; the snackbar fixed above the bar; the city's theme), `hcm-admin-nav`
-  (bar, rail and expanded rail from one list), `hcm-account-menu` (language, theme, analytics consent, sign out),
+  top bar on a landscape phone; an app shell as tall as the window where only the page scrolls, so nothing scrolls under
+  the bars; the start-up banner, the page and the snackbar docked below it in `<main>`, as is every panel; the city's
+  theme), `hcm-admin-nav` (bar, rail and expanded rail from one list; a rail taller than the window scrolls, a long
+  label wraps inside it), `hcm-account-menu` (language, theme, analytics consent, sign out),
   `hcm-page-outlet` (the route's page, loaded lazily by the app), `hcm-admins-page` (`#/admins`).
 - **Auth panels** (`src/admin/auth/`): `hcm-sign-in`, `hcm-claim-panel`, `hcm-join-panel`, `hcm-blocked-panel` and
   `hcm-consent-note` (the inline note before a Google popup: why, for at most an hour, Google's unverified-app screen).
@@ -39,15 +41,15 @@ passed in already localized (the kit has no catalogue of its own).
 | `hcm-button` | M3 Expressive small button (40 px in a 48 px target): `filled`, `tonal`, `outlined`, `text`; the slot is the name. |
 | `hcm-icon-button` | `label` is the name; `toggle` makes it `aria-pressed` and fires `hcm-change` `{selected}`; `variant` `standard`, `filled`, `tonal`, `outlined`. |
 | `hcm-fab` | `small` 40, `medium` 56 (M3 FAB), `large` 96 px; `extended` shows the label. |
-| `hcm-fab-menu` | FAB with `aria-haspopup="menu"`; arrows, Home, End, Esc; `hcm-select` `{value}`, `hcm-toggle` `{open}`. Custom properties: `--hcm-fab-menu-max-block-size` (beyond it the items wrap into a second column), `--hcm-fab-menu-align` (`flex-end` by default; `flex-start` for a menu docked on the leading edge, so the wider wrapped menu never moves the FAB). |
+| `hcm-fab-menu` | FAB with `aria-haspopup="menu"`; arrows, Home, End, Esc; `hcm-select` `{value}`, `hcm-toggle` `{open}`. Custom properties: `--hcm-fab-menu-max-block-size` (beyond it the items wrap into a second column), `--hcm-fab-menu-align` (`flex-end` by default; `flex-start` for a menu docked on the leading edge, so the wider wrapped menu never moves the FAB). `--hcm-fab-menu-gap` (8 px by default) between the items and the FAB: an app whose FAB sits beside a taller control sets more, so the open menu clears it (the viewer at medium and up, beside the timeline). Only the FAB and the items take the pointer: the rest of the open menu's box lets taps through to what is beneath it. |
 | `hcm-switch` | `role="switch"`; `hcm-change` `{checked}`; the selected handle shows a check mark. |
 | `hcm-slider` | `role="slider"` with `aria-valuetext`; arrows ±step, PageUp/PageDown ±a tenth, Home/End; `hcm-input` per frame or key, `hcm-change` on release. |
 | `hcm-chip` | Filter chip, `aria-pressed`; `hcm-change` `{selected}`. |
-| `hcm-segmented-button` | Radio group with one Tab stop and wrapping arrows; `hcm-change` `{value}`. Segments are as wide as their labels and wrap a long label in a narrow container. |
+| `hcm-segmented-button` | Radio group with one Tab stop and wrapping arrows; `hcm-change` `{value}`. Segments are as wide as their labels, at least 48 px (so the 48 px touch target never reaches past the group), and wrap a long label in a narrow container; when they cannot fit side by side even so (single words, text spacing), they stack one 48 px row each (the reflected `stacked`) until the host is wide enough again. |
 | `hcm-card`, `hcm-list`, `hcm-list-item` | Containers; an `interactive` list item is a button. |
-| `hcm-sheet` | `bottom` (handle: tap cycles peek, half, full; ArrowUp/ArrowDown; drag snaps or closes) or `side`; `modal` adds a scrim and a Tab trap; focus moves in on open and back on close; `hcm-close`, `hcm-detent-change`. |
-| `hcm-dialog` | Native modal `<dialog>`; Tab wraps; Esc, close button and scrim close it with `returnValue` `cancel`, `close`, `scrim`; `close(value)` for actions; `fullscreen`. |
-| `hcm-snackbar` | Always-present, visually hidden polite live region that gets the message alone `ANNOUNCE_DELAY_MS` after it shows (a region created with its text is not announced); timeout pauses on hover and focus; `hcm-action`, `hcm-dismiss` `{reason}`. |
+| `hcm-sheet` | `bottom` (handle, a 48 × 48 button at the top edge: tap cycles peek, half, full; ArrowUp/ArrowDown; drag snaps or closes) or `side`; `modal` adds a scrim and a Tab trap; focus moves in on open and back on close; `hcm-close`, `hcm-detent-change`. The `actions` row takes no room while nothing is slotted there; the header row is a plain box (no `header`, which would read as a second page banner). |
+| `hcm-dialog` | Native modal `<dialog>`; Tab wraps; Esc, close button and scrim close it with `returnValue` `cancel`, `close`, `scrim`; `close(value)` for actions; `fullscreen`. Its headline row is a plain box, not a `header` (a banner inside the admin's top bar). |
+| `hcm-snackbar` | Always-present, visually hidden polite live region that gets the message alone `ANNOUNCE_DELAY_MS` after it shows (a region created with its text is not announced); timeout pauses on hover and focus; `hcm-action`, `hcm-dismiss` `{reason}`. Its controls' focus ring is inverse primary on the inverse surface (`--hcm-focus-ring-color`). |
 | `hcm-progress`, `hcm-loading-indicator` | `role="progressbar"`; the Expressive loading indicator morphs, and only pulses under reduced motion. |
 | `hcm-toolbar` | Floating toolbar, `role="toolbar"`, one Tab stop, arrows of its `orientation`, Home and End. |
 | `hcm-consent-banner` | Non-modal region; Accept and Decline look the same; `hcm-consent` `{decision}`. |
@@ -65,6 +67,11 @@ passed in already localized (the kit has no catalogue of its own).
 - `src/theme/baseline.ts`: the precomputed theme of the default seed, for the viewer's loading and error states before
   a manifest arrives (the viewer never ships the colour library).
 - `@hcm/ui/dynamic-color`: `themeFromSeed(seed, variant)` with `tonalSpot` (default), `expressive` or `vibrant`.
+
+- The focus ring (`focusRing`) is 3 px of secondary, or of `--hcm-focus-ring-color` where a surface sets it: the ring
+  needs 3:1 against what is around it, and secondary is too close to the snackbar's inverse surface (1.62:1) and to the
+  viewer's error container (2.38:1). The viewer gives Mapbox's white attribution a ring that is dark in both schemes
+  (`light-dark()` of primary and inverse primary).
 
 ## Fonts and icons
 
@@ -110,4 +117,6 @@ real key presses and clicks through `userEvent`, synthetic pointer events for dr
 `axeViolations` from `@hcm/test-support/axe` (WCAG 2.2 AA rules) on every element. `test/helpers.ts` renders into a host
 themed with the baseline theme and the real fonts. The admin's elements are tested the same way under `test/admin/`,
 over a fake app (`test/admin/shell/fake-app.ts`) and a recording Setup port (`test/admin/setup/fixtures.ts`, whose
-`draftUsgs` also updates the state, as the controller does), in both languages.
+`draftUsgs` also updates the state, as the controller does), in both languages; `test/admin/shell/shell-layout.test.ts`
+pins the shell's layout (nothing under the bars, the focused control and the snackbar uncovered) and its landmarks with
+`axeRuleViolations` (named rules, best practices among them, on the whole document).

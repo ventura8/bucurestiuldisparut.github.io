@@ -29,9 +29,11 @@ const TESTS = [
     'functions/test/**/*.ts',
     'firebase/rules-tests/**/*.ts',
     'scripts/*/test/**/*.ts',
+    'e2e/test/**/*.ts',
 ];
-/** Playwright specs, fixtures, mock APIs and config (the @hcm/e2e workspace). */
+/** Playwright specs, fixtures, mock APIs and config (the @hcm/e2e workspace); its Vitest unit tests are TESTS above. */
 const E2E = ['e2e/**/*.ts'];
+const E2E_UNIT_TESTS = ['e2e/test/**/*.ts'];
 const NODE_TOOLING = ['*.config.ts', 'packages/*/vite.config.ts', 'eslint.config.js', '.dependency-cruiser.cjs'];
 
 /** XSS: data is never rendered as HTML (docs/research/design-review-security-cost.md §1.7). */
@@ -175,6 +177,7 @@ export default defineConfig(
         // The e2e suite must stay deterministic (design-review-testability.md §2): no sleeps, no focused or
         // skipped tests, no networkidle waits, no forced clicks, web-first assertions only.
         files: E2E,
+        ignores: E2E_UNIT_TESTS,
         extends: [playwright.configs['flat/recommended']],
         languageOptions: { globals: globals.node },
         rules: {

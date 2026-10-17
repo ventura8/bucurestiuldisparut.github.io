@@ -1,10 +1,10 @@
 import { axeViolations } from '@hcm/test-support/axe';
 import { html } from 'lit';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import { defineHcmSegmentedButton, type HcmSegmentedButton, type SegmentOption } from '../../src/components/segmented-button.js';
-import { cleanup, fixture, press, recordEvents } from '../helpers.js';
+import { cleanup, fixture, part, press, recordEvents } from '../helpers.js';
 
 defineHcmSegmentedButton();
 
@@ -113,6 +113,8 @@ describe('<hcm-segmented-button>', () => {
         for (const radio of element === null ? [] : radios(element)) {
             const box = radio.getBoundingClientRect();
             const label = radio.querySelector('span')?.getBoundingClientRect();
+            // M3's 48 px minimum, so the 48 px touch target never sticks out of the group ("Nu").
+            expect(box.width).toBeGreaterThanOrEqual(48);
             expect(label?.left).toBeGreaterThanOrEqual(box.left);
             expect(label?.right).toBeLessThanOrEqual(box.right);
         }
@@ -122,5 +124,88 @@ describe('<hcm-segmented-button>', () => {
         const element = await fixture<HcmSegmentedButton>(html`<hcm-segmented-button label="Empty"></hcm-segmented-button>`);
 
         expect(radios(element)).toEqual([]);
+    });
+});
+
+describe('<hcm-segmented-button> too wide for its container', () => {
+    afterEach(cleanup);
+
+    /** The admin's theme choice at 360 px: three single words that cannot wrap, in a 264 px dialog. */
+    const WORDS: readonly SegmentOption[] = [
+        { value: 'system', label: 'Automată' },
+        { value: 'light', label: 'Luminoasă' },
+        { value: 'dark', label: 'Întunecată' },
+    ];
+
+    async function inBox(
+        width: number,
+        options: readonly SegmentOption[] = WORDS,
+    ): Promise<{ box: HTMLElement; element: HcmSegmentedButton }> {
+        const box = await fixture<HTMLElement>(
+            html`<div style="inline-size: ${String(width)}px">
+                <hcm-segmented-button .options=${options} value="system" label="Temă"></hcm-segmented-button>
+            </div>`,
+        );
+        const element = part(box, 'hcm-segmented-button') as HcmSegmentedButton;
+        await document.fonts.ready;
+        return { box, element };
+    }
+
+    it('badPath_singleWordsThatDoNotFitStackOneSegmentPerRow_happyPath_sideBySideAgainWhenItWidens', async () => {
+        // The visual audit at 360 px: "Întunecată" ran past the account menu's edge and the dialog scrolled sideways.
+        const { box, element } = await inBox(200);
+        await vi.waitFor(() => {
+            expect(element.stacked).toBe(true);
+        });
+        await element.updateComplete;
+        const stacked = radios(element).map((radio) => radio.getBoundingClientRect());
+        expect(box.scrollWidth).toBeLessThanOrEqual(200);
+        expect(stacked.map((rect) => Math.round(rect.width))).toEqual([200, 200, 200]);
+        // Rows that touch are 48 px targets each (the tour's hit test found 40 px rows cut to 44 by the next one).
+        expect(stacked.map((rect) => Math.round(rect.height))).toEqual([48, 48, 48]);
+        expect(stacked[1]?.top).toBeGreaterThan(stacked[0]?.top ?? 0);
+
+        box.style.inlineSize = '600px';
+        await vi.waitFor(() => {
+            expect(element.stacked).toBe(false);
+        });
+        await element.updateComplete;
+        const row = radios(element).map((radio) => Math.round(radio.getBoundingClientRect().top));
+        expect(new Set(row).size).toBe(1);
+        expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth + 1);
+    });
+
+    it('badPath_widerTextInAGroupThatFittedStacksIt', async () => {
+        // WCAG 1.4.12's text spacing widens the labels while the host, capped at its container, keeps its size.
+        const { element } = await inBox(320);
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        expect(element.stacked).toBe(false);
+        const spacing = new CSSStyleSheet();
+        spacing.replaceSync('* { letter-spacing: 0.3em !important; word-spacing: 0.16em !important; }');
+        element.shadowRoot?.adoptedStyleSheets.push(spacing);
+        await vi.waitFor(() => {
+            expect(element.stacked).toBe(true);
+        });
+    });
+
+    it('happyPath_newLabelsAreMeasuredSideBySideAgain_andARemovedGroupStopsWatching', async () => {
+        const { element } = await inBox(200);
+        await vi.waitFor(() => {
+            expect(element.stacked).toBe(true);
+        });
+        element.options = [
+            { value: 'ro', label: 'RO' },
+            { value: 'en', label: 'EN' },
+        ];
+        await element.updateComplete;
+        await vi.waitFor(() => {
+            expect(element.stacked).toBe(false);
+        });
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        expect(element.stacked).toBe(false);
+        element.remove();
+        element.options = WORDS;
+        await element.updateComplete;
+        expect(element.stacked).toBe(false);
     });
 });

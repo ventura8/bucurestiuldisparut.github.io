@@ -120,6 +120,7 @@ export const ro = {
     'sheet.resize': 'Redimensionează panoul',
     'lightbox.label': 'Fotografie mărită',
     'lightbox.position': '{index} din {total}',
+    'lightbox.navigation': 'Navigare între fotografii',
     'share.copied': 'Linkul a fost copiat.',
     'share.failed': 'Linkul nu a putut fi copiat.',
     'about.title': 'Despre',

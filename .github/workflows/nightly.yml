@@ -49,8 +49,8 @@ jobs:
         name: Nightly E2E (Playwright) ${{ matrix.part }}
         needs: build-image
         runs-on: ubuntu-24.04
-        # The heaviest part is about 1,180 s of test time on the laptop: about 12 to 16 minutes on a 4-vCPU runner with
-        # Playwright's 2 workers, plus about 3 for the image and the servers.
+        # The heaviest part is about 2,400 s of test time on the laptop (the first tour-matrix shard): about 20 to 26
+        # minutes on a 4-vCPU runner with Playwright's 2 workers, plus about 3 for the image and the servers.
         timeout-minutes: 45
         permissions:
             contents: read
@@ -58,10 +58,11 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                # The four `e2e` jobs of ci.yml (`tier` is E2E_TIER, `shard` E2E_SHARD within that tier), plus the
-                # `tour-matrix` stage (35 projects of 7 tests, about 2,360 s of laptop test time, the largest frames
-                # first) in two parts of about 1,180 s: its first two fifths and its last three ("first-last/total",
-                # e2e/playwright.config.ts). The union must stay every tier.
+                # The five `e2e` jobs of ci.yml (`tier` is E2E_TIER, `shard` E2E_SHARD within that tier), plus the
+                # `tour-matrix` stage (35 projects of 11 tests, the largest frames first; about 8,000 s of laptop test
+                # time since every state runs the generic checkers, docs/research/DECISIONS-for-review.md §33e) in six
+                # count shards, the first (the 2560 and 3840 px frames) the heaviest at about 2,400 s. The union must stay
+                # every tier.
                 include:
                     - part: functional 1/3
                       stage: e2e
@@ -75,18 +76,42 @@ jobs:
                       stage: e2e
                       tier: fn
                       shard: 3/3
-                    - part: admin, smoke, a11y, no-WebGL, tour
+                    - part: tour 1/2
                       stage: e2e
-                      tier: admin,smoke,a11y,nogl,tour
+                      tier: tour
+                      shard: 1/2
+                    - part: tour 2/2
+                      stage: e2e
+                      tier: tour
+                      shard: 2/2
+                    - part: admin, smoke, a11y, no-WebGL
+                      stage: e2e
+                      tier: admin,smoke,a11y,nogl
                       shard: ''
-                    - part: tour matrix, largest frames
+                    - part: tour matrix 1/6
                       stage: tour-matrix
                       tier: tour-matrix
-                      shard: 1-2/5
-                    - part: tour matrix, the rest
+                      shard: 1/6
+                    - part: tour matrix 2/6
                       stage: tour-matrix
                       tier: tour-matrix
-                      shard: 3-5/5
+                      shard: 2/6
+                    - part: tour matrix 3/6
+                      stage: tour-matrix
+                      tier: tour-matrix
+                      shard: 3/6
+                    - part: tour matrix 4/6
+                      stage: tour-matrix
+                      tier: tour-matrix
+                      shard: 4/6
+                    - part: tour matrix 5/6
+                      stage: tour-matrix
+                      tier: tour-matrix
+                      shard: 5/6
+                    - part: tour matrix 6/6
+                      stage: tour-matrix
+                      tier: tour-matrix
+                      shard: 6/6
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:

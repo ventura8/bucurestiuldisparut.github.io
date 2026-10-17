@@ -616,3 +616,29 @@ Requests between the agents of the pipeline optimisation (2026-10-17). Each name
   `docs/LESSONS.md`), so a red `tests` run of the old tree on a busy machine is not a regression of the merge.
   - *integrator, 2026-10-17*: noted; since §32a only a dependency change rebuilds the npm layer. No red `tests` run
     in the integration: `tests` passed in every run, warm, in the fresh clone and inside `quality` and `all`.
+
+## Addendum: the admin tier split and the tour's generic checkers (invariants agent, 2026-10-17)
+
+Measured on 2026-10-17 with the laptop otherwise idle and the NUC running the user's own containers (its swap in use:
+17 GB). Every run below went through `scripts/ci/e2e-split.sh` from the same tree; `docs/research/DECISIONS-for-review.md`
+§33 records the changes.
+
+| Run | Tests | This machine's part | The NUC's part | Stage wall clock |
+| --- | ---: | --- | --- | ---: |
+| `e2e`, admin halves (`E2E_ADMIN_PART` `2/2` here, `1/2` there), before the generic checkers | 618 | 246 tests, done at 272 s | 372 tests, done at 220 s | **275 s** (306 s before §33a) |
+| `e2e` with `E2E_TIER=all`, the generic checkers on every tour and admin state | 1,039 | 414 tests in 10.4 min, done at 645 s | 625 tests in 15.0 min, done at 999 s | 1,141 s |
+| `e2e`, admin halves, with the checkers | 654 | 260 tests, done at 522 s | 394 tests, done at 379 s | 560 s |
+| `e2e`, admin `3/3` here and `1-2/3` there, with the checkers | 654 | 257 tests, done at 386 s | 397 tests, done at 413 s | **453 s** |
+
+- Test time per tier in the full run (the merged `reports/junit/e2e.xml`; the tour ran mostly on the NUC, the
+  functional tier on the laptop): `tour-matrix` 4,038 s for 385 tests, `fn` 3,877 s for 520, `tour` 1,192 s for 99,
+  `admin` 755 s for 23 (a journey 1.1 to 2.9 minutes with its ten state checks), the rest under 30 s. Per tour project
+  on the NUC: about 245 s at 3840 × 2160, 175 s at 2560 × 1440, 80 to 110 s for the others (11 tests each).
+- Before the checkers the tour's 9 per-push projects took about 600 s of laptop test time and the 35 others about
+  2,360 s; with them about 2,400 and 8,000 s. Every state currently fails its soft assertions, so every state also
+  takes an outlined screenshot (about 1 s at 3840 × 2160) and every failing test restarts its worker; a clean tour
+  will be faster than these numbers.
+- Per state on the laptop, measured by phase: axe 0.7 to 2.0 s, the Tab round 0.4 to 1.9 s, the text-spacing and
+  reflow variants 0.3 to 0.9 s, the contrast checks 0.1 to 0.4 s, the layout probe 0.05 to 0.7 s. The probes are
+  installed once per page as a library and called by name (`e2e/support/page-script.ts`), so a call sends a few bytes
+  instead of the helpers' 60 KB of source, and the trace of a failing test stays small.

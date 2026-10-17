@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import { defineHcmFabMenu, type FabMenuItem, type HcmFabMenu } from '../../src/components/fab-menu.js';
-import { cleanup, deepFocus, fixture, part, press, recordEvents, shadowPart } from '../helpers.js';
+import { cleanup, deepFocus, fixture, part, press, recordEvents, shadowPart, shadowRootOf } from '../helpers.js';
 
 defineHcmFabMenu();
 
@@ -145,6 +145,24 @@ describe('<hcm-fab-menu>', () => {
             Math.round(item.getBoundingClientRect().right),
         );
         expect(new Set(rights)).toEqual(new Set([Math.round(fab.getBoundingClientRect().right)]));
+    });
+
+    it('badPath_theOpenMenuTakesNoTapBesideTheFab', async () => {
+        // The tour: the open menu's box (as wide as its widest item) blocked the timeline beside the FAB on a tablet.
+        const element = await menu();
+        const fab = shadowPart(element, '.fab');
+        fab.click();
+        await element.updateComplete;
+        const host = element.getBoundingClientRect();
+        const button = fab.getBoundingClientRect();
+        const item = shadowPart(element, '[role="menuitem"]');
+        const first = item.getBoundingClientRect();
+        const root = shadowRootOf(element);
+
+        expect(button.left - host.left).toBeGreaterThan(16);
+        expect(document.elementFromPoint(host.left + 4, button.top + button.height / 2)).not.toBe(element);
+        expect(root.elementFromPoint(button.left + button.width / 2, button.top + button.height / 2)?.closest('.fab')).toBe(fab);
+        expect(root.elementFromPoint(first.left + 8, first.top + first.height / 2)?.closest('[role="menuitem"]')).toBe(item);
     });
 
     it('badPath_keysOnAClosedFabDoNothing', async () => {

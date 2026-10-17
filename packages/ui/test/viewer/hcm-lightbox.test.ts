@@ -246,4 +246,45 @@ describe('<hcm-lightbox> layout', () => {
         expect(box.width / box.height).toBeCloseTo(image.naturalWidth / image.naturalHeight, 1);
         expect(getComputedStyle(shadowQuery(element, '[role="dialog"]')).backgroundColor).toBe('rgb(0, 0, 0)');
     });
+
+    it('badPath_aLongTitleWrapsInsteadOfBeingCutOnANarrowPhone', async () => {
+        // The tour, with WCAG 1.4.12's text spacing at 320 px: the title ended in an ellipsis.
+        const frame = document.createElement('div');
+        frame.style.cssText = 'position: relative; width: 240px; height: 480px; letter-spacing: 0.12em; word-spacing: 0.16em;';
+        document.body.append(frame);
+        const element = document.createElement('hcm-lightbox');
+        Object.assign(element, { photos: MANIFEST.photos, photoId: 'uranus-1984', open: true, manifestUrl: TEST_MANIFEST_URL });
+        frame.append(element);
+        await element.updateComplete;
+
+        const title = shadowQuery(element, '.title');
+        expect(title.textContent).toBe('Strada Uranus');
+        expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
+        expect(getComputedStyle(title).textOverflow).toBe('clip');
+    });
+});
+
+describe('<hcm-lightbox> landmarks', () => {
+    beforeAll(() => {
+        defineKitDoubles();
+        defineHcmLightbox();
+    });
+
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_itsArrowsAreANamedNavigationAndItsHeaderNoBanner', async () => {
+        // The tour: the lightbox's navigation had no name, and its header was a banner beside the photo sheet's.
+        await lightbox({ locale: 'en' });
+
+        await expect.element(page.getByRole('navigation', { name: 'Photo navigation' })).toBeVisible();
+        expect(page.getByRole('banner').query()).toBeNull();
+    });
+
+    it('badPath_theNavigationIsNamedInRomanianToo', async () => {
+        await lightbox();
+
+        await expect.element(page.getByRole('navigation', { name: 'Navigare între fotografii' })).toBeVisible();
+    });
 });

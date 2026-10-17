@@ -15,12 +15,16 @@
 #
 # HCM_SPLIT_HOST   the ssh host (default nuc; empty: this machine only)
 # HCM_SPLIT_DIR    the tree's folder on it, under its home (default hcm-ci; a git clone, or created)
-# HCM_SPLIT_PARTS  this machine's parts and the remote's; they become E2E_SHARD ranges: the remote takes the head of
-#                  the queue (the admin tier and the long tour tests), this machine the tail (short functional tests).
-#                  Defaults, measured on 2026-10-17 (docs/research/pipeline-baseline.md): "2:3" for e2e and tour-matrix
-#                  ("1-3/5" there, "4-5/5" here), "1:2" for quality and all, where this machine also runs static, tests
-#                  and build first. The remote's part of e2e ends with the admin tier's 22 tests, one at a time (about
-#                  260 s under full load): a smaller remote share shortens this machine's wait, not the stage.
+# HCM_SPLIT_PARTS  this machine's parts and the remote's; they become E2E_SHARD ranges of every tier but the admin
+#                  tier: the remote takes the head of the queue (the long tour tests), this machine the tail (short
+#                  functional tests). Defaults, measured (docs/research/pipeline-baseline.md): "2:3" for e2e and
+#                  tour-matrix ("1-3/5" there, "4-5/5" here), "1:2" for quality and all, where this machine also runs
+#                  static, tests and build first.
+#
+# The admin tier's tests run one at a time on each machine (one Firebase project in its emulators), so they are not
+# counted into those ranges: each machine runs its own part of the admin projects (E2E_ADMIN_PART=1-2/3 on the remote,
+# 3/3 here; e2e/split.ts), each with its own emulators, at the same time (docs/research/DECISIONS-for-review.md §32f,
+# §33a).
 #
 # When the host does not answer within 5 s (ssh BatchMode), lacks docker or rsync, or another split holds it (a lock
 # folder next to HCM_SPLIT_DIR, stale after two hours), the stage runs here only, exactly as run-all-checks.sh runs it.
@@ -105,30 +109,35 @@ sync_tree() {
 		--exclude '.docker-build-cache*' --filter=':- .gitignore' "$root/" "$host:$dir/"
 }
 
-# The remote part: each Playwright stage with the remote's shard, every stage even after a failure. The remote shell
-# splits the arguments again, so E2E_TIER travels as `tier=<value>` (an empty value would vanish).
+# The admin part of each side (E2E_ADMIN_PART): of three parts the remote, about twice as fast, runs the first two (four
+# of the six admin projects, all journeys) and this machine the third, a journey and the harness (e2e/projects.ts deals
+# them out; a run without the admin tier ignores it). Measured on 2026-10-17 with the state checks: halves left this machine's two journeys the last to end.
+readonly REMOTE_ADMIN_PART=1-2/3 LOCAL_ADMIN_PART=3/3
+
+# The remote part: each Playwright stage with the remote's shard and admin part, every stage even after a failure. The
+# remote shell splits the arguments again, so E2E_TIER travels as `tier=<value>` (an empty value would vanish).
 run_remote() {
-	ssh "${SSH_OPTIONS[@]}" "$host" bash -s -- "$dir" "$remote_shard" "tier=${E2E_TIER:-}" "${stages[@]}" <<'REMOTE'
-dir=$1 shard=$2 tier=${3#tier=}
-shift 3
+	ssh "${SSH_OPTIONS[@]}" "$host" bash -s -- "$dir" "$remote_shard" "$REMOTE_ADMIN_PART" "tier=${E2E_TIER:-}" "${stages[@]}" <<'REMOTE'
+dir=$1 shard=$2 admin=$3 tier=${4#tier=}
+shift 4
 cd -- "$dir" || exit 2
 rc=0
 for stage in "$@"; do
-	PIPELINE_STAGE=$stage E2E_SHARD=$shard E2E_TIER=$tier bash scripts/ci/run-all-checks.sh </dev/null || rc=1
+	PIPELINE_STAGE=$stage E2E_SHARD=$shard E2E_ADMIN_PART=$admin E2E_TIER=$tier bash scripts/ci/run-all-checks.sh </dev/null || rc=1
 done
 exit "$rc"
 REMOTE
 }
 
 run_local() {
-	PIPELINE_STAGE=$stage E2E_SHARD=$local_shard bash "$root/scripts/ci/run-all-checks.sh"
+	PIPELINE_STAGE=$stage E2E_SHARD=$local_shard E2E_ADMIN_PART=$LOCAL_ADMIN_PART bash "$root/scripts/ci/run-all-checks.sh"
 }
 
 # The remote's part on this machine, after a dropped connection.
 run_remote_here() {
 	local rc=0 part
 	for part in "${stages[@]}"; do
-		PIPELINE_STAGE=$part E2E_SHARD=$remote_shard bash "$root/scripts/ci/run-all-checks.sh" || rc=1
+		PIPELINE_STAGE=$part E2E_SHARD=$remote_shard E2E_ADMIN_PART=$REMOTE_ADMIN_PART bash "$root/scripts/ci/run-all-checks.sh" || rc=1
 	done
 	return "$rc"
 }
@@ -184,8 +193,8 @@ main() {
 	parts=${HCM_SPLIT_PARTS:-$(default_parts "$stage")}
 	[[ $parts =~ ^([1-9][0-9]*):([1-9][0-9]*)$ ]] || local_only "HCM_SPLIT_PARTS must be <here>:<remote>, got '$parts'"
 	here=${BASH_REMATCH[1]} there=${BASH_REMATCH[2]} total=$((here + there))
-	# The host takes the head of the queue (e2e/projects.ts: the admin tier, which must start early to overlap the rest,
-	# and the long tour tests) and this machine the tail of short functional tests.
+	# The host takes the head of the queue (e2e/projects.ts: the long tour tests) and this machine the tail of short
+	# functional tests; each takes its part of the admin tier besides (E2E_ADMIN_PART).
 	remote_shard=$(shard_range 1 "$there" "$total")
 	local_shard=$(shard_range $((there + 1)) "$total" "$total")
 	command -v rsync >/dev/null || local_only "rsync is not installed here"
@@ -207,7 +216,7 @@ main() {
 	merge_root="$root/reports/split/merge"
 	rm -rf "$merge_root" "$root/reports/split/$label"
 	sync_tree
-	say "stage '$stage': $local_shard here, $remote_shard on $host (${stages[*]})"
+	say "stage '$stage': $local_shard here, $remote_shard on $host (${stages[*]}; admin part $LOCAL_ADMIN_PART here, $REMOTE_ADMIN_PART there)"
 
 	local started=$SECONDS remote_pid remote_rc=0 local_rc=0
 	(

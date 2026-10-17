@@ -2,7 +2,8 @@
  * The map follows the store (docs/research/M1-interfaces.md §6): `render` draws a freshly mounted map from the state,
  * `update` applies what changed between two states. Raster layers in the `middle` slot with their adjustments, the
  * photos (filtered by the timeline), one vector overlay per POI category in the `top` slot; visibility and opacity
- * whenever an overlay changes (the adapter coalesces opacity to one paint per animation frame).
+ * whenever an overlay changes (the adapter coalesces opacity to one paint per animation frame); a language switch
+ * also reaches Mapbox's own labels and the basemap's (`setLocale`).
  */
 import { findOverlay, PHOTOS_OVERLAY_ID, rasterAdjustmentPaint, type Manifest, type Overlay } from '@hcm/shared';
 
@@ -45,7 +46,15 @@ export class MapSync {
             return;
         }
         this.#overlays(previous.overlays, next.overlays);
-        if (next.year !== previous.year || next.locale !== previous.locale) {
+        this.#yearAndLanguage(previous, next, manifest);
+    }
+
+    /** A new year or language redraws the photos and POIs; a new language also relabels Mapbox's own controls. */
+    #yearAndLanguage(previous: ViewerState, next: ViewerState, manifest: Manifest): void {
+        if (next.locale !== previous.locale) {
+            this.#map.setLocale(next.locale);
+            this.#features(manifest, next);
+        } else if (next.year !== previous.year) {
             this.#features(manifest, next);
         }
     }

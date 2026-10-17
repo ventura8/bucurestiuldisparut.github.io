@@ -12,7 +12,8 @@ export const HCM_DIALOG_TAG = 'hcm-dialog';
  * it; Esc, the close button or a click on the scrim close it with `returnValue` `cancel`, `close` or `scrim`, and the
  * focus goes back to the element that had it before. Closing fires `hcm-close` with `{returnValue}`; `close(value)`
  * lets an action close it with its own value. `fullscreen` is the compact-window full-screen dialog. Slots: default
- * (content), `actions`.
+ * (content), `actions`. The headline row is a plain box, not a `header`: a dialog opened from a top bar put a banner
+ * inside the page's banner (axe, the admin's account menu).
  */
 export class HcmDialog extends LitElement {
     static override readonly properties = {
@@ -56,7 +57,7 @@ export class HcmDialog extends LitElement {
                 border-radius: 0;
             }
 
-            header {
+            .header {
                 display: flex;
                 gap: 8px;
                 align-items: center;
@@ -133,10 +134,10 @@ export class HcmDialog extends LitElement {
             @click=${this.onClick}
             @keydown=${this.onKeyDown}
         >
-            <header>
+            <div class="header">
                 <h2 id="headline" class="headline-small">${this.headline}</h2>
                 <hcm-icon-button icon="close" label=${this.closeLabel} @click=${this.onCloseClick}></hcm-icon-button>
-            </header>
+            </div>
             <div class="content body-medium"><slot></slot></div>
             <div class="actions"><slot name="actions"></slot></div>
         </dialog>`;

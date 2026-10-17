@@ -23,10 +23,15 @@ A city site is a page, its `config.js` and the engine. Mapbox GL JS **3.32.0** i
         <script type="module" src="engine/engine.mjs"></script>
     </head>
     <body>
-        <div id="historic-city-map"></div>
+        <main>
+            <h1 class="hcm-visually-hidden" lang="ro">București dispărut</h1>
+            <div id="historic-city-map"></div>
+        </main>
     </body>
 </html>
 ```
+
+The page's body is one `main` landmark headed by a level-one heading (the site's title, for screen readers only: `hcm-visually-hidden` of `engine.css`, since the map fills the window). Everything the viewer draws (the timeline, the menu, toasts, the legal bar) is then inside a landmark; a page that embeds the viewer among its own content puts it in its `main` or in a labelled region the same way. The generated city pages (`scripts/site/src/page.ts`) do this.
 
 ```js
 // config.js
@@ -76,7 +81,7 @@ The engine's custom element (Lit, registered by the engine; the tag never change
 | (none) | `controller` | `HistoricCityMapController` or `null` | Read-only; the same object `mount` returns, `null` before connection. |
 | (none) | `mapContainer` | `HTMLElement` or `null` | Read-only; the stable element inside the shadow root the map is mounted into (after the first render). |
 
-The engine also sets `mapboxCssUrl` (mapbox-gl.css of the pinned release, linked inside the shadow root, where the page's copy cannot reach), `engineVersion` and `bootError` (a configuration error found before any store exists), and connects its store with `attach(store, controller)` / `detach()`. Pages never set these. A page may style the element itself (its size, `display`); the viewer's layout lives inside its shadow root. While a sheet, the lightbox or About covers the map, the Mapbox logo and attribution show in a bar at the element's bottom (or at the foot of About) instead of on the map, so they are never covered.
+The engine also sets `mapboxCssUrl` (mapbox-gl.css of the pinned release, linked inside the shadow root, where the page's copy cannot reach), `engineVersion` and `bootError` (a configuration error found before any store exists), and connects its store with `attach(store, controller)` / `detach()`. Pages never set these. A page may style the element itself (its size, `display`); the viewer's layout lives inside its shadow root. While a sheet, the lightbox or About covers the map, the Mapbox logo and attribution show in a bar at the element's bottom (or at the foot of About) instead of on the map, so they are never covered. Floating controls keep the bottom 42 px of the map free for them, and a language switch also renames Mapbox's own controls (the map canvas, the logo link, the attribution toggle).
 
 Events are `CustomEvent`s that bubble and cross shadow roots (`composed: true`):
 

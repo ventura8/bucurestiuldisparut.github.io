@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { assertLayoutSound } from '../support/layout.js';
 import { expect, test } from '../support/test.js';
 import { chooseMenuItem, menuButton, openLayers, openViewer, t, viewer } from '../support/viewer.js';
 
@@ -7,7 +8,8 @@ import { chooseMenuItem, menuButton, openLayers, openViewer, t, viewer } from '.
  * Forced colours (behaviour V14, bad path; project `a11y-forced-colors`, `forced-colors: active`): with the system
  * palette the viewer stays readable and operable. Axe's colour rules judge the author's colours, which forced colours
  * replace (axe reports the theme's on-primary over the forced Canvas), so readability is measured here on the colours
- * the browser really paints: every visible text against the background behind it. Every control keeps an edge.
+ * the browser really paints: every visible text against the background behind it. Every control keeps an edge, and the
+ * generic layout checker of the tour holds in every state (forced colours change borders and so sizes).
  */
 
 const FORCED_COLOUR_RULES = ['color-contrast', 'color-contrast-enhanced'];
@@ -95,7 +97,9 @@ function edgelessControls(): string[] {
 async function expectReadable(
     page: Page,
     axe: { violations(options?: { skipRules?: readonly string[] }): Promise<unknown[]> },
+    state: string,
 ): Promise<void> {
+    await assertLayoutSound(page, `forced colours: ${state}`);
     expect(await page.evaluate(lowContrastTexts)).toEqual([]);
     expect(await page.evaluate(edgelessControls)).toEqual([]);
     expect(await axe.violations({ skipRules: FORCED_COLOUR_RULES })).toEqual([]);
@@ -108,11 +112,11 @@ test(
         await openViewer(page, { lang, hash: '15/44.42700/26.08530&layers=e2e-1966' });
         expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true);
         await expect(menuButton(page, lang)).toBeVisible();
-        await expectReadable(page, axe);
+        await expectReadable(page, axe, 'home');
 
         await openLayers(page, lang);
         await expect(page.getByRole('switch', { name: t(lang, 'layers.toggle', { name: 'Corona 1966 (e2e)' }) })).toBeVisible();
-        await expectReadable(page, axe);
+        await expectReadable(page, axe, 'layers');
 
         await page
             .getByRole('button', { name: t(lang, 'action.close'), exact: true })
@@ -121,7 +125,7 @@ test(
             .click();
         await menuButton(page, lang).click();
         await expect(page.getByRole('menuitem').first()).toBeVisible();
-        await expectReadable(page, axe);
+        await expectReadable(page, axe, 'menu open');
         await page.keyboard.press('Escape');
         await chooseMenuItem(page, lang, t(lang, 'about.title'));
         await expect(
@@ -129,6 +133,6 @@ test(
                 .locator('hcm-about-dialog')
                 .getByRole('heading', { name: t(lang, 'about.privacy') }),
         ).toBeVisible();
-        await expectReadable(page, axe);
+        await expectReadable(page, axe, 'about');
     },
 );

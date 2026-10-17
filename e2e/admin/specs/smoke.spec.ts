@@ -1,5 +1,11 @@
+import type { Page } from '@playwright/test';
+
 import { GOOGLE_SCOPES } from '../../../packages/admin/src/google/scopes.js';
+import { recordLiveRegions } from '../../support/live-regions.js';
+import { expectStateSound } from '../../support/state-check.js';
+import { adminVisit } from '../../tour/states.js';
 import { setupText, shellText } from '../support/i18n.js';
+import { SetupPage } from '../support/setup-page.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../support/test.js';
 import { E2E_PROJECT_ID, PERSONAS } from '../world.js';
 
@@ -11,12 +17,24 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * the project's owner signs in with Google, confirms the ownership with one read-only consent, and lands on the Setup
  * Assistant at its next step, billing; a stranger who signs in once the map has an owner is told the account does not
  * administer the map. Everything owned runs for real on the emulators; only Google's consent page is the stand-in.
+ * Each screen on the way (the claim panel, Setup, the account menu, an unknown address's snackbar, the blocked panel)
+ * runs the generic layout and accessibility checkers (behaviour A31, the admin's states of e2e/tour/states.ts).
  */
+
+/**
+ * Waits until Setup has settled: its check is done and the step it opens at (billing, the first not done) is open. A
+ * state checked before that changes under the checkers: the card opening mid-walk moved the steps below it off screen.
+ */
+async function setupSettled(page: Page, lang: 'ro' | 'en'): Promise<void> {
+    await expect(new SetupPage(page, lang).open('billing')).toBeVisible();
+    await expect(page.getByRole('button', { name: setupText(lang, 'adminSetup.recheck') }).first()).toBeEnabled();
+}
 
 test(
     'The project owner claims the map with Google and reaches the dashboard',
-    { tag: '@S-A01-HAPPY' },
+    { tag: ['@S-A01-HAPPY', '@S-A31-HAPPY', '@S-A29-BAD-UNKNOWN-ROUTE'] },
     async ({ page, lang, consent, setupBudget, adminWorld }) => {
+        await page.context().addInitScript(recordLiveRegions);
         await page.goto(adminPath(lang));
 
         // The daily sign-in asks Google for nothing beyond the account (§2.1).
@@ -27,31 +45,59 @@ test(
 
         // admin.session says the map has no owner: the claim costs one click and one read-only consent.
         await expect(page.getByText(shellText(lang, 'adminShell.auth.claimTitle', { projectId: E2E_PROJECT_ID }))).toBeVisible();
+        await expectStateSound(page, adminVisit('claim', lang));
         const claimButton = page.getByRole('button', { name: shellText(lang, 'adminShell.auth.claimAction') });
         const claim = await consent.opened(page, () => setupBudget.inputs('claim', 1).click(claimButton));
         expect(await claim.requestedScopes()).toEqual([GOOGLE_SCOPES.cloudReadOnly]);
         await claim.allow(setupBudget.consents('claim', 1));
 
-        // The dashboard of a map not set up yet is the Setup Assistant, open at its next step.
-        await expect(page.getByRole('heading', { name: setupText(lang, 'adminSetup.step.billing') })).toBeVisible();
+        // The dashboard of a map not set up yet is the Setup Assistant, open at its next step. In list and detail the step's
+        // heading is both a row of the list and the detail's title (two headings by one name): the row's is checked here.
+        const billing = new SetupPage(page, lang).card('billing');
+        await expect(billing.getByRole('heading', { name: setupText(lang, 'adminSetup.step.billing') })).toBeVisible();
         const owner = adminWorld.accounts.owner.uid;
         await expect
             .poll(() => adminWorld.emulators.document(`admins/${owner}`))
             .toEqual(expect.objectContaining({ role: 'owner', email: PERSONAS.owner.email }));
         expect(await adminWorld.emulators.document('setup/owner')).toEqual(expect.objectContaining({ uid: owner }));
+        await setupSettled(page, lang);
+        await expectStateSound(page, adminVisit('setup-billing', lang));
+
+        // The account menu is a dialog: Esc closes it and the focus goes back to its button.
+        const account = shellText(lang, 'adminShell.account.label');
+        await page.getByRole('button', { name: account }).filter({ visible: true }).click();
+        await expect(page.getByRole('dialog', { name: account })).toBeVisible();
+        await expectStateSound(page, adminVisit('account-menu', lang, { escape: { opener: account } }));
+
+        // An address the admin does not know opens Setup and says so (S-A29-BAD-UNKNOWN-ROUTE).
+        await page.goto(adminPath(lang, 'no-such-page'));
+        const notice = shellText(lang, 'adminShell.route.notFound');
+        // The snackbar's message, not its live region, which repeats the text a moment after it shows. The pointer then
+        // rests on it, which holds it open (its 8 s timer waits while it is pointed at) for the checkers to see it whole.
+        const message = page.getByText(notice).and(page.locator(':not([aria-live])'));
+        await expect(message).toBeVisible();
+        await message.hover();
+        await expect(page.getByRole('heading', { name: setupText(lang, 'adminSetup.step.billing') }).first()).toBeVisible();
+        await setupSettled(page, lang);
+        await expectStateSound(page, adminVisit('unknown-route', lang, { announcements: [notice] }));
     },
 );
 
 test.describe('a stranger, once the map has an owner', () => {
     test.use({ persona: 'stranger', mapOwner: 'owner' });
 
-    test('A non-admin without an invitation is told and signed out', { tag: '@S-A01-BAD-STRANGER' }, async ({ page, lang, adminWorld }) => {
-        await page.goto(adminPath(lang));
+    test(
+        'A non-admin without an invitation is told and signed out',
+        { tag: ['@S-A01-BAD-STRANGER', '@S-A31-HAPPY'] },
+        async ({ page, lang, adminWorld }) => {
+            await page.goto(adminPath(lang));
 
-        await expect(page.getByText(shellText(lang, 'adminShell.auth.notAdmin'))).toBeVisible();
-        await page.getByRole('button', { name: shellText(lang, 'adminShell.auth.otherAccount') }).click();
+            await expect(page.getByText(shellText(lang, 'adminShell.auth.notAdmin'))).toBeVisible();
+            await expectStateSound(page, adminVisit('blocked', lang));
+            await page.getByRole('button', { name: shellText(lang, 'adminShell.auth.otherAccount') }).click();
 
-        await expect(page.getByRole('button', { name: shellText(lang, 'adminShell.auth.signIn') })).toBeVisible();
-        expect(await adminWorld.emulators.document(`admins/${adminWorld.accounts.stranger.uid}`)).toBeUndefined();
-    });
+            await expect(page.getByRole('button', { name: shellText(lang, 'adminShell.auth.signIn') })).toBeVisible();
+            expect(await adminWorld.emulators.document(`admins/${adminWorld.accounts.stranger.uid}`)).toBeUndefined();
+        },
+    );
 });

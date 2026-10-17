@@ -5,7 +5,9 @@
  * unreadable on the scrim in the dark and the light theme). The scrim is opaque: at 92 % the docked pane, the menu
  * button and the sheet's own copy of the photo showed through around the image (UX review). The stage's one track is
  * `minmax(0, 1fr)`, so the image's `max-block-size: 100%` resolves against the stage: with an `auto` track a landscape
- * photo on a short window (a landscape phone) overflowed the stage and was cropped instead of fitted.
+ * photo on a short window (a landscape phone) overflowed the stage and was cropped instead of fitted. The title wraps
+ * instead of ending in an ellipsis: with wider text spacing (WCAG 1.4.12) a phone cut it (the tour). The header is a
+ * plain box, not a `header`, which would be a second page banner beside the page's own.
  */
 import { css } from 'lit';
 
@@ -33,7 +35,7 @@ export const lightboxStyles = [
             color: var(--md-sys-color-inverse-on-surface, Canvas);
         }
 
-        header {
+        .header {
             display: flex;
             align-items: center;
             gap: 16px;
@@ -46,9 +48,7 @@ export const lightboxStyles = [
         .title {
             flex: 1;
             min-inline-size: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            overflow-wrap: anywhere;
         }
 
         .stage {

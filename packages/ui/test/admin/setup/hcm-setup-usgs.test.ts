@@ -134,6 +134,25 @@ describe('<hcm-setup-usgs> the token', () => {
 
         expect(port.calls).toEqual([]);
     });
+
+    it('badPath_theExpiryFieldKeepsItsRingOnEveryStopTabMakesInsideIt', async () => {
+        const { element } = await usgs();
+        const expiry = shadowPart(element, '#usgs-expires') as HTMLInputElement;
+        shadowPart(element, '#usgs-username').focus();
+        const stops: { readonly own: boolean; readonly outline: string }[] = [];
+
+        // Tab walks the date's day, month and year, then its calendar button, where the field matches only :focus-within.
+        for (let press = 0; press < 6; press += 1) {
+            await userEvent.keyboard('{Tab}');
+            if (element.shadowRoot?.activeElement === expiry) {
+                stops.push({ own: expiry.matches(':focus'), outline: getComputedStyle(expiry).outlineStyle });
+            }
+        }
+
+        expect(stops.length).toBeGreaterThan(1);
+        expect(stops.some((stop) => !stop.own)).toBe(true);
+        expect(stops.map((stop) => stop.outline)).toEqual(stops.map(() => 'solid'));
+    });
 });
 
 describe('<hcm-setup-usgs> the countdown and the status', () => {

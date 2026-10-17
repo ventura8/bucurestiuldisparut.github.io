@@ -3,6 +3,7 @@ import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
 import { ADMIN_EMULATORS, ADMIN_ORIGIN, E2E_PROJECT_ID, EMULATOR_ENV, emulatorOrigin } from './admin/world.js';
 import { MOCK_API_ORIGIN, SITE_ORIGIN } from './fixtures/world.js';
 import { e2eProjects, tiersFrom } from './projects.js';
+import { adminPartFrom, shardRangeFrom, type ShardRange } from './split.js';
 import type { WorkerOptions } from './support/test.js';
 
 /**
@@ -17,34 +18,13 @@ import type { WorkerOptions } from './support/test.js';
  * emulators of project demo-hcm (auth, firestore, storage, functions from functions/dist, pubsub, tasks) with the
  * Functions emulator's environment of e2e/admin/world.ts; they count as up once `admin-session` is loaded. The tiers
  * and their projects are e2e/projects.ts; `E2E_TIER` picks them (`smoke,fn`; unset is every push's tiers, `all` adds
- * `tour-matrix`) and `E2E_SHARD` splits a run across CI jobs or machines (scripts/ci/e2e-split.sh).
+ * `tour-matrix`), `E2E_SHARD` splits a run across CI jobs or machines and `E2E_ADMIN_PART` gives a machine its part of
+ * the admin projects (scripts/ci/e2e-split.sh, e2e/split.ts).
  */
 
 interface Shard {
     current: number;
     total: number;
-}
-
-const SHARD_FORMAT = /^(\d+)(?:-(\d+))?\/(\d+)$/;
-
-/** Slices `first` to `last` of `total` equal ones. */
-interface ShardRange {
-    readonly first: number;
-    readonly last: number;
-    readonly total: number;
-}
-
-function isWithin({ first, last, total }: ShardRange): boolean {
-    return first >= 1 && first <= last && last <= total;
-}
-
-function shardRangeOf(value: string): ShardRange {
-    const [, first, last, total] = SHARD_FORMAT.exec(value) ?? [];
-    const range = { first: Number(first), last: Number(last ?? first), total: Number(total) };
-    if (!isWithin(range)) {
-        throw new Error(`E2E_SHARD must be "index/total" or "first-last/total" within 1..total, got "${value}"`);
-    }
-    return range;
 }
 
 /**
@@ -61,20 +41,22 @@ function shardOf({ first, last, total }: ShardRange): Shard {
     return { current: first === 1 ? 1 : 2, total: weights.length };
 }
 
-/**
- * `E2E_SHARD` (the CI matrix and scripts/ci/e2e-split.sh forward it through run-all-checks.sh; unset runs everything):
- * "index/total" is one of `total` equal slices, as Playwright's `--shard`; "first-last/total" is the slices `first` to
- * `last` together, one contiguous part of the run's queue, so a faster machine takes more of it ("2-3/3" beside "1/3").
- */
-function shardFrom(value: string | undefined): Shard | null {
-    return value === undefined || value === '' ? null : shardOf(shardRangeOf(value));
-}
-
 const CI = process.env['CI'] === 'true';
 /** The e2e servers run from the repository root, through Node's type stripping (scripts/site/register-ts.mjs). */
 const SERVER = 'node --import ./scripts/site/register-ts.mjs e2e/mock-apis/main.ts';
 const TIERS = tiersFrom(process.env['E2E_TIER']);
-const SHARD = shardFrom(process.env['E2E_SHARD']);
+/**
+ * `E2E_SHARD` (the CI matrix and scripts/ci/e2e-split.sh forward it through run-all-checks.sh; unset runs everything):
+ * one contiguous part of the run's queue (e2e/split.ts).
+ */
+const SHARD_RANGE = shardRangeFrom(process.env['E2E_SHARD']);
+const SHARD = SHARD_RANGE === null ? null : shardOf(SHARD_RANGE);
+/**
+ * `E2E_ADMIN_PART` (scripts/ci/e2e-split.sh gives each machine one): this run's part of the admin projects. With a shard
+ * as well, `split-reporter.ts` slices the other tiers without counting the admin tests (DECISIONS-for-review.md §32f).
+ */
+const ADMIN_PART = adminPartFrom(process.env['E2E_ADMIN_PART']);
+const SPLIT_REPORTER = SHARD !== null && ADMIN_PART !== null ? [['./split-reporter.ts'] as const] : [];
 /**
  * A run of the `tour-matrix` tier alone (stage `tour-matrix`, in `all` after the `e2e` stage) keeps its reports next to
  * the e2e stage's instead of over them: `reports/junit/e2e-tour-matrix.xml`, `reports/playwright-tour-matrix/`.
@@ -117,6 +99,7 @@ export default defineConfig<object, WorkerOptions>({
         ['junit', { outputFile: `../reports/junit/e2e${REPORT_SUFFIX}.xml` }],
         // A shard's results, for `playwright merge-reports` (scripts/ci/e2e-split.sh merges a split run's two parts).
         ...(SHARD === null ? [] : [['blob', { outputDir: `../reports/blob/e2e${REPORT_SUFFIX}` }] as const]),
+        ...SPLIT_REPORTER,
     ],
     // SwiftShader renders the map on the CPU: a first frame can take seconds in a busy container.
     expect: {
@@ -135,5 +118,5 @@ export default defineConfig<object, WorkerOptions>({
         { command: `${SERVER} site`, cwd: '..', url: `${SITE_ORIGIN}/__health`, reuseExistingServer: !CI, timeout: 60_000 },
         ...(TIERS.includes('admin') ? adminServers() : []),
     ],
-    projects: e2eProjects(TIERS),
+    projects: e2eProjects(TIERS, ADMIN_PART),
 });

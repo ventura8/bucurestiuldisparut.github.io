@@ -1,4 +1,4 @@
-import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
+import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
 import { defineHcmIcon } from './icon.js';
 import { defineOnce, emit } from './internal.js';
@@ -18,13 +18,17 @@ const NEXT_KEYS: Readonly<Record<string, number>> = { ArrowRight: 1, ArrowDown: 
 /**
  * An M3 single-select segmented button, with radio-group semantics: one Tab stop on the selected segment, arrow keys
  * (wrapping), Home and End move and select, a click selects. Every selection fires `hcm-change` with `{value}`; the
- * selected segment shows a check mark. `label` names the group.
+ * selected segment shows a check mark. `label` names the group. When the segments do not fit side by side even with
+ * their labels wrapped (single words, a narrow dialog, WCAG 1.4.12's text spacing), the group stacks them one per row
+ * (`stacked`, set on the next frame after a resize) until its host is again as wide as they need: a row that ran past a
+ * dialog's edge made the dialog scroll sideways (the visual audit of 2026-10-17, 360 px).
  */
 export class HcmSegmentedButton extends LitElement {
     static override readonly properties = {
         options: { attribute: false },
         value: { type: String },
         label: { type: String },
+        stacked: { type: Boolean, reflect: true },
     };
 
     static override readonly styles = [
@@ -72,6 +76,14 @@ export class HcmSegmentedButton extends LitElement {
                 --hcm-icon-size: 18px;
             }
 
+            /*
+             * M3: a segment is at least 48 px wide (12 + 24 + 12), so the touch target never reaches past the group: a
+             * two-letter label ("Nu") made a 46 px segment whose 48 px ring stuck out of a narrow container.
+             */
+            button > span {
+                min-inline-size: 24px;
+            }
+
             button:first-child {
                 margin-inline-start: 0;
                 border-start-start-radius: var(--md-sys-shape-corner-full);
@@ -88,6 +100,34 @@ export class HcmSegmentedButton extends LitElement {
                 color: var(--md-sys-color-on-secondary-container);
             }
 
+            /* One segment per row: the host takes the whole line, so its width says when they fit side by side again. */
+            :host([stacked]) {
+                display: flex;
+            }
+
+            :host([stacked]) .group {
+                flex-direction: column;
+                inline-size: 100%;
+            }
+
+            /* Rows touch, so each row is its own 48 px target: a 40 px row's ring lay under the row after it. */
+            :host([stacked]) button {
+                min-height: 48px;
+                margin: -1px 0 0;
+                border-radius: 0;
+            }
+
+            :host([stacked]) button:first-child {
+                margin-block-start: 0;
+                border-start-start-radius: var(--md-sys-shape-corner-large);
+                border-start-end-radius: var(--md-sys-shape-corner-large);
+            }
+
+            :host([stacked]) button:last-child {
+                border-end-start-radius: var(--md-sys-shape-corner-large);
+                border-end-end-radius: var(--md-sys-shape-corner-large);
+            }
+
             @media (forced-colors: active) {
                 button[aria-checked='true'] {
                     outline: 2px solid Highlight;
@@ -100,12 +140,66 @@ export class HcmSegmentedButton extends LitElement {
     declare options: readonly SegmentOption[];
     declare value: string;
     declare label: string;
+    declare stacked: boolean;
+
+    /** The width the segments need side by side, measured when they last overflowed. */
+    private needed = 0;
+    private frame = 0;
+    private readonly resizes = new ResizeObserver(() => {
+        this.scheduleArrange();
+    });
 
     constructor() {
         super();
         this.options = [];
         this.value = '';
         this.label = '';
+        this.stacked = false;
+    }
+
+    override connectedCallback(): void {
+        super.connectedCallback();
+        this.resizes.observe(this);
+    }
+
+    override disconnectedCallback(): void {
+        super.disconnectedCallback();
+        this.resizes.disconnect();
+        cancelAnimationFrame(this.frame);
+        this.frame = 0;
+    }
+
+    protected override updated(changed: PropertyValues<this>): void {
+        // The segments too: capped at its container, the host keeps its size while a wider text (WCAG 1.4.12's spacing)
+        // makes them overflow it.
+        for (const segment of Array.from(this.renderRoot.querySelectorAll('button'))) {
+            this.resizes.observe(segment);
+        }
+        if (changed.has('options')) {
+            // New labels: measure them side by side again.
+            this.stacked = false;
+            this.scheduleArrange();
+        }
+    }
+
+    /** Arranges the segments on the next frame: changing the layout inside the ResizeObserver's callback would resize what it observes. */
+    private scheduleArrange(): void {
+        if (this.frame === 0) {
+            this.frame = requestAnimationFrame(() => {
+                this.frame = 0;
+                this.arrange();
+            });
+        }
+    }
+
+    /** Stacks the segments while they overflow the host, and puts them side by side once the host is wide enough. */
+    private arrange(): void {
+        if (!this.stacked && this.scrollWidth > this.clientWidth + 1) {
+            this.needed = this.scrollWidth;
+            this.stacked = true;
+        } else if (this.stacked && this.clientWidth >= this.needed) {
+            this.stacked = false;
+        }
     }
 
     override render(): TemplateResult {

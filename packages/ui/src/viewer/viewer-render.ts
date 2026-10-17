@@ -330,11 +330,15 @@ function toast(view: ViewerView, state: ViewerState, handlers: ViewerHandlers): 
     </div>`;
 }
 
-/** Where a sheet shows, whether it is open and whether it can be closed (the always-docked layers pane cannot). */
+/**
+ * Where a sheet shows, whether it is open, whether it can be closed (the always-docked layers pane cannot) and whether
+ * a modal surface above it (the lightbox over a modal sheet) makes it inert.
+ */
 interface Placement {
     readonly mode: SheetMode;
     readonly open: boolean;
     readonly closable?: boolean;
+    readonly inert?: boolean;
 }
 
 const DOCKED_OPEN: Placement = { mode: 'docked', open: true };
@@ -347,6 +351,7 @@ function layerPanel(view: ViewerView, ready: Ready, placement: Placement, handle
         .mode=${placement.mode}
         .open=${placement.open}
         .closable=${placement.closable !== false}
+        ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
         @hcm-overlay-visibility=${handlers.onOverlayVisibility}
         @hcm-overlay-opacity=${handlers.onOverlayOpacity}
@@ -387,6 +392,7 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         .mode=${placement.mode}
         .open=${placement.open}
         .manifestUrl=${view.manifestUrl}
+        ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
         @hcm-photo-select=${handlers.onPhotoSelect}
         @hcm-lightbox-open=${handlers.onLightboxOpen}
@@ -406,7 +412,7 @@ function photosSheet(view: ViewerView, ready: Ready, placement: Placement, handl
     const onClose = (): void => {
         handlers.onSheetClose(new CustomEvent('hcm-close'));
     };
-    return html`<div class="photos-sheet" @hcm-close=${handlers.onSheetClose}>
+    return html`<div class="photos-sheet" ?inert=${placement.inert === true} @hcm-close=${handlers.onSheetClose}>
         ${renderSheetFrame({ ...placement, label, closeLabel: translate(view.locale, 'action.close'), handleLabel: translate(view.locale, 'sheet.resize'), onClose }, content)}
     </div>`;
 }
@@ -457,9 +463,13 @@ function overlays(view: ViewerView, ready: Ready, legal: LegalMirror, handlers: 
         ></hcm-lightbox>`;
 }
 
+/**
+ * The modal sheets; under the lightbox (opened from the photo sheet) they are inert, as the frame is: the tour found the
+ * photo sheet's image button, handle and Close usable and in the Tab order beneath the lightbox.
+ */
 function modalSheets(view: ViewerView, ready: Ready, mode: SheetMode, handlers: ViewerHandlers): TemplateResult {
-    const sheet = ready.state.sheet;
-    return html`${layerPanel(view, ready, { mode, open: sheet === 'layers' }, handlers)}
-    ${photoSheet(view, ready, { mode, open: sheet === 'photo' || sheet === 'poi' }, handlers)}
-    ${photosSheet(view, ready, { mode, open: sheet === 'photos' }, handlers)}`;
+    const { sheet, lightbox: inert } = ready.state;
+    return html`${layerPanel(view, ready, { mode, open: sheet === 'layers', inert }, handlers)}
+    ${photoSheet(view, ready, { mode, open: sheet === 'photo' || sheet === 'poi', inert }, handlers)}
+    ${photosSheet(view, ready, { mode, open: sheet === 'photos', inert }, handlers)}`;
 }

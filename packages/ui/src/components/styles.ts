@@ -17,10 +17,15 @@ export const baseStyles = css`
     }
 `;
 
-/** The M3 focus indicator: a 3 px secondary-colour ring outside the focused control, keyboard focus only. */
+/**
+ * The M3 focus indicator: a 3 px secondary-colour ring outside the focused control, keyboard focus only. A surface whose
+ * own colour is close to secondary sets `--hcm-focus-ring-color` for everything on it (the snackbar's inverse surface,
+ * the error container): the ring needs 3:1 against what is around it (WCAG 2.4.13, 1.4.11; the tour found 1.62:1 on the
+ * snackbar).
+ */
 export const focusRing = css`
     :focus-visible {
-        outline: var(--md-sys-state-focus-indicator-thickness) solid var(--md-sys-color-secondary);
+        outline: var(--md-sys-state-focus-indicator-thickness) solid var(--hcm-focus-ring-color, var(--md-sys-color-secondary));
         outline-offset: var(--md-sys-state-focus-indicator-outer-offset);
     }
 
@@ -91,9 +96,17 @@ export const visuallyHidden = css`
 
 /**
  * A 48 × 48 px touch target around a smaller visual control (M3: targets of at least 48 dp). The control needs
- * `position: relative` and the class `touch-target`.
+ * `position: relative` and the class `touch-target`. The target reaches past the control, so the control never hides
+ * its overflow: `stateLayer`'s `.interactive { overflow: hidden }` would cut the ring to the control's own box (a tap
+ * 2 px outside a 40 px icon button missed it; LA-6 of docs/research/layout-a11y-findings.md). The state layer stays in
+ * the control's shape by its own `inset: 0` and `border-radius: inherit`.
  */
 export const touchTarget = css`
+    .interactive.touch-target,
+    .touch-target {
+        overflow: visible;
+    }
+
     .touch-target::after {
         content: '';
         position: absolute;

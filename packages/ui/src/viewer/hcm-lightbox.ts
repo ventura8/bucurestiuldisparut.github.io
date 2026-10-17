@@ -96,11 +96,11 @@ export class HcmLightbox extends LitElement {
             tabindex="-1"
             @keydown=${this.#onKeyDown}
         >
-            <header>
+            <div class="header">
                 <p class="title">${title}</p>
                 <p class="position" aria-live="polite">${position}</p>
                 <hcm-icon-button icon="close" .label=${translate(this.locale, 'action.close')} @click=${this.#close}></hcm-icon-button>
-            </header>
+            </div>
             <div
                 class="stage"
                 @wheel=${this.#onWheel}
@@ -111,7 +111,7 @@ export class HcmLightbox extends LitElement {
             >
                 ${this.failed ? this.#error() : this.#image(photo, title)}
             </div>
-            <nav class="nav">
+            <nav class="nav" aria-label=${translate(this.locale, 'lightbox.navigation')}>
                 <hcm-icon-button
                     data-arrow="previous"
                     icon="chevron_left"

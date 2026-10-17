@@ -1,7 +1,7 @@
 """scripts/ci/e2e-split.sh: a stage's Playwright runs split between this machine and a second one over ssh.
 
 Each test copies the script into a throwaway tree whose scripts/ci/run-all-checks.sh is a stub (it records the stage,
-E2E_SHARD and E2E_TIER it was given, writes the blob report and green marker a run would, and exits as told), and puts
+E2E_SHARD, E2E_TIER and E2E_ADMIN_PART it was given, writes the blob report and green marker a run would, and exits as told), and puts
 fake `ssh`, `rsync` and `docker` first on PATH: `ssh` answers the script's three remote steps (prepare and lock, run,
 release) from what it reads on stdin, `rsync` copies the fake remote's reports back, `docker` records the report merge.
 """
@@ -20,7 +20,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "e2e-split.sh"
 SSH = "ssh -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30"
 
 STUB_RUN_ALL_CHECKS = """#!/usr/bin/env bash
-printf 'local %s %s %s\\n' "$PIPELINE_STAGE" "${E2E_SHARD:-}" "${E2E_TIER:-}" >>"$SPLIT_LOG"
+printf 'local %s %s %s %s\\n' "$PIPELINE_STAGE" "${E2E_SHARD:-}" "${E2E_TIER:-}" "${E2E_ADMIN_PART:-}" >>"$SPLIT_LOG"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 if [[ -n "${E2E_SHARD:-}" ]]; then
     mkdir -p "$root/reports/blob/e2e"
@@ -136,8 +136,8 @@ def test_happy_path_the_split_runs_one_part_here_and_the_other_on_the_host(split
     calls = split.calls()
     assert calls[0] == f"{SSH} nuc bash -s -- hcm-ci"
     assert calls[1] == f"rsync {split.root}/ nuc:hcm-ci/"
-    assert "local e2e 4-5/5 fn,tour" in calls
-    assert f"{SSH} nuc bash -s -- hcm-ci 1-3/5 tier=fn,tour e2e" in calls
+    assert "local e2e 4-5/5 fn,tour 3/3" in calls
+    assert f"{SSH} nuc bash -s -- hcm-ci 1-3/5 1-2/3 tier=fn,tour e2e" in calls
     merge = calls.index(f"docker junit {split.root}/reports/split/merge/e2e")
     assert sorted(calls[merge + 1 : merge + 3]) == ["report-1.zip", "report-4.zip"]
     assert (split.root / "reports/pipeline/green-e2e.json").is_file()
@@ -148,9 +148,9 @@ def test_happy_path_the_split_runs_one_part_here_and_the_other_on_the_host(split
 def test_happy_path_all_gives_the_host_two_of_three_parts_of_both_playwright_stages(split: Split) -> None:
     result = split.run(PIPELINE_STAGE="all", HCM_SPLIT_HOST="ci@nuc.lan", HCM_SPLIT_DIR="work/hcm")
 
-    assert "[split] stage 'all': 3/3 here, 1-2/3 on ci@nuc.lan (e2e tour-matrix)" in result.stdout
-    assert "local all 3/3 " in split.calls()
-    assert f"{SSH} ci@nuc.lan bash -s -- work/hcm 1-2/3 tier= e2e tour-matrix" in split.calls()
+    assert "[split] stage 'all': 3/3 here, 1-2/3 on ci@nuc.lan (e2e tour-matrix; admin part 3/3 here, 1-2/3 there)" in result.stdout
+    assert "local all 3/3  3/3" in split.calls()
+    assert f"{SSH} ci@nuc.lan bash -s -- work/hcm 1-2/3 1-2/3 tier= e2e tour-matrix" in split.calls()
 
 
 @pytest.mark.parametrize(("stage", "parts"), [("e2e", "2:3"), ("tour-matrix", "2:3"), ("quality", "1:2"), ("all", "1:2")])
@@ -161,7 +161,7 @@ def test_happy_path_each_stage_splits_by_its_measured_default(stage: str, parts:
 def test_happy_path_the_parts_can_be_chosen(split: Split) -> None:
     result = split.run(PIPELINE_STAGE="tour-matrix", HCM_SPLIT_PARTS="1:1")
 
-    assert "[split] stage 'tour-matrix': 2/2 here, 1/2 on nuc (tour-matrix)" in result.stdout
+    assert "[split] stage 'tour-matrix': 2/2 here, 1/2 on nuc (tour-matrix; admin part 3/3 here, 1-2/3 there)" in result.stdout
 
 
 @pytest.mark.parametrize(
@@ -185,7 +185,7 @@ def test_bad_path_without_a_usable_host_the_whole_stage_runs_here(split: Split, 
 
     assert result.returncode == 0
     assert result.stdout.splitlines()[0] == f"[split] {reason}: stage '{env['PIPELINE_STAGE']}' runs here only"
-    assert [call for call in split.calls() if call.startswith("local")] == [f"local {env['PIPELINE_STAGE']}  "]
+    assert [call for call in split.calls() if call.startswith("local")] == [f"local {env['PIPELINE_STAGE']}   "]
 
 
 def test_bad_path_a_failed_remote_part_fails_the_stage_and_drops_the_marker(split: Split) -> None:
@@ -211,6 +211,6 @@ def test_bad_path_a_dropped_connection_runs_the_remote_part_here(split: Split) -
 
     assert result.returncode == 0, result.stdout
     assert "[split] the connection to nuc dropped: running its part (1-3/5) here" in result.stdout
-    assert [call for call in split.calls() if call.startswith("local")] == ["local e2e 4-5/5 ", "local e2e 1-3/5 "]
+    assert [call for call in split.calls() if call.startswith("local")] == ["local e2e 4-5/5  3/3", "local e2e 1-3/5  1-2/3"]
     merge = split.calls().index(f"docker junit {split.root}/reports/split/merge/e2e")
     assert sorted(split.calls()[merge + 1 : merge + 3]) == ["report-1.zip", "report-4.zip"]

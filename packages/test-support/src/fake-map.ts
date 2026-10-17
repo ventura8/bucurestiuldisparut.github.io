@@ -7,7 +7,7 @@
  *   keeps sources, layers, paint and layout properties, images and configuration, records calls, and `fire` plays
  *   Mapbox's events. Nothing here renders; the browser tests with the real `mapbox-gl` come with CR-2.
  */
-import type { MapView } from '@hcm/shared';
+import type { Locale, MapView } from '@hcm/shared';
 
 import type {
     MapEventMap,
@@ -144,6 +144,10 @@ export class FakeMap implements MapPort {
         const handlers = this.#handlers[event] as Set<(payload: MapEventMap[E]) => void>;
         handlers.add(handler);
         return () => handlers.delete(handler);
+    }
+
+    setLocale(locale: Locale): void {
+        this.#record('setLocale', locale);
     }
 
     resize(): void {
@@ -449,6 +453,11 @@ export class FakeMapboxMap implements MapboxMap {
 
     getCanvas(): HTMLElement {
         return this.canvas as unknown as HTMLElement;
+    }
+
+    setLanguage(language: string): this {
+        this.#record('setLanguage', language);
+        return this;
     }
 
     resize(): this {

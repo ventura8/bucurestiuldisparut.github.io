@@ -9,7 +9,9 @@ import type { SiteSpec } from './site-spec.js';
  * The page holds no inline script or style: the meta CSP comes first, then Mapbox GL JS from api.mapbox.com (pinned,
  * with Subresource Integrity), the site's `config.js`, and the engine from the same origin as an ES module, which
  * boots from `window.HistoricCityMapConfig` into `#historic-city-map`. Without JavaScript a bilingual note explains
- * that the map needs it.
+ * that the map needs it. The body is one `main` landmark headed by the site's title (a level-one heading, visually
+ * hidden: the map fills the window), so everything the viewer draws (the timeline, toasts, the menu, the legal bar)
+ * is inside a landmark (axe's `landmark-one-main`, `page-has-heading-one` and `region`, the tour).
  */
 
 /** The Mapbox GL JS release the engine is written against (packages/engine `MAPBOX_GL_VERSION`). */
@@ -25,6 +27,9 @@ export const ENGINE_STYLESHEET_FILE = 'engine.css';
 
 /** The engine's default mount point (`DEFAULT_CONTAINER_SELECTOR` of @hcm/shared). */
 const CONTAINER_ID = 'historic-city-map';
+
+/** engine.css: text for screen readers only (the page's heading over the full-window map). */
+const VISUALLY_HIDDEN_CLASS = 'hcm-visually-hidden';
 
 export interface PageInputs {
     readonly spec: SiteSpec;
@@ -64,10 +69,14 @@ function head(inputs: PageInputs): HtmlElement {
 
 function body(spec: SiteSpec): HtmlElement {
     return element('body', {}, [
-        element('div', { id: CONTAINER_ID }),
-        element('noscript', {}, [
-            element('p', { lang: 'ro', class: 'site-noscript' }, [spec.noscript.ro]),
-            element('p', { lang: 'en', class: 'site-noscript' }, [spec.noscript.en]),
+        element('main', {}, [
+            // In the site's language, also once the visitor switches the viewer to the other one.
+            element('h1', { class: VISUALLY_HIDDEN_CLASS, lang: spec.lang }, [spec.title]),
+            element('div', { id: CONTAINER_ID }),
+            element('noscript', {}, [
+                element('p', { lang: 'ro', class: 'site-noscript' }, [spec.noscript.ro]),
+                element('p', { lang: 'en', class: 'site-noscript' }, [spec.noscript.en]),
+            ]),
         ]),
     ]);
 }

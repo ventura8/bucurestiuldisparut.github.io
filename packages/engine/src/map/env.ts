@@ -1,7 +1,7 @@
 /**
- * What the Mapbox adapter needs from the browser besides `mapboxgl`: animation frames (opacity coalescing, resize),
- * a ResizeObserver on the map's container (Mapbox itself only follows window resizes, an embedded map must follow
- * its box), a canvas for the sprite images, and a WebGL 2 probe for builds where `mapboxgl.supported` is missing.
+ * What the Mapbox adapter needs from the browser besides `mapboxgl`: animation frames (opacity coalescing), a
+ * ResizeObserver on the map's container (Mapbox itself only follows window resizes, an embedded map must follow its
+ * box; the adapter resizes the map in the callback itself, which runs at most once a frame), a canvas for the sprite images, and a WebGL 2 probe for builds where `mapboxgl.supported` is missing.
  * The node tests pass fakes; `browserAdapterEnv(window)` is the real thing.
  */
 import { canvasIconEnv, type IconEnv, type IconScope } from './icons.js';

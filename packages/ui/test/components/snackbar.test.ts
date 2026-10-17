@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import { ANNOUNCE_DELAY_MS, defineHcmSnackbar, type HcmSnackbar } from '../../src/components/snackbar.js';
-import { cleanup, fixture, recordEvents, shadowPart } from '../helpers.js';
+import { cleanup, deepFocus, fixture, recordEvents, ringContrast, shadowPart } from '../helpers.js';
 
 defineHcmSnackbar();
 
@@ -100,6 +100,18 @@ describe('<hcm-snackbar>', () => {
         vi.advanceTimersByTime(6000);
 
         expect(dismissals).toEqual([{ reason: 'timeout' }]);
+    });
+
+    it('happyPath_theFocusRingStandsOutOnTheInverseSurface', async () => {
+        // The tour measured the toast's Close ring at 1.62:1: the secondary ring on the inverse surface (3:1 needed).
+        const element = await snackbar(0, '');
+
+        await userEvent.tab();
+
+        const focused = deepFocus();
+        expect(focused?.getAttribute('aria-label')).toBe('Închide');
+        const surface = getComputedStyle(shadowPart(element, '.snackbar')).backgroundColor;
+        expect(ringContrast(focused, surface)).toBeGreaterThanOrEqual(3);
     });
 
     it('badPath_zeroTimeoutAndAnEmptyMessageNeverStartATimer', async () => {

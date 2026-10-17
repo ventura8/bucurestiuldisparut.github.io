@@ -12,8 +12,9 @@ export const baseStyles = css`
         color: var(--md-sys-color-on-surface, CanvasText);
     }
 
+    /* The kit's ring (focusRing): secondary, or the colour a surface sets in --hcm-focus-ring-color. */
     :focus-visible {
-        outline: 3px solid var(--md-sys-color-secondary, Highlight);
+        outline: 3px solid var(--hcm-focus-ring-color, var(--md-sys-color-secondary, Highlight));
         outline-offset: 2px;
     }
 

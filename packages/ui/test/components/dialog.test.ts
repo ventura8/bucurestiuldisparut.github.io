@@ -43,6 +43,16 @@ describe('<hcm-dialog>', () => {
         expect(await axeViolations(dialog)).toEqual([]);
     });
 
+    it('badPath_itsHeadlineRowIsNoBanner', async () => {
+        // axe, on the admin's account menu: the dialog's header was a banner inside the top bar's banner.
+        const { dialog, opener } = await dialogWithOpener();
+
+        await open(dialog, opener);
+
+        await expect.element(page.getByRole('heading', { name: 'Despre hartă' })).toBeVisible();
+        expect(page.getByRole('banner').query()).toBeNull();
+    });
+
     it('happyPath_tabWrapsInsideTheDialog', async () => {
         const { dialog, opener } = await dialogWithOpener();
         await open(dialog, opener);

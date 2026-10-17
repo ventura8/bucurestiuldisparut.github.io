@@ -115,6 +115,7 @@ export const en: Messages = {
     'sheet.resize': 'Resize the panel',
     'lightbox.label': 'Full-size photo',
     'lightbox.position': '{index} of {total}',
+    'lightbox.navigation': 'Photo navigation',
     'share.copied': 'The link was copied.',
     'share.failed': 'The link could not be copied.',
     'about.title': 'About',

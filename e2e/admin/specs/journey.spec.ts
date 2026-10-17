@@ -10,6 +10,9 @@ import type { ServerDeployment } from '../support/deployment.js';
 import type { EmulatorWorld } from '../support/emulators.js';
 import { apiText, setupText, shellText } from '../support/i18n.js';
 import { followDeepLink, SetupPage, standInProviderPages } from '../support/setup-page.js';
+import { recordLiveRegions } from '../../support/live-regions.js';
+import { expectStateSound } from '../../support/state-check.js';
+import { adminVisit, type AdminStateId } from '../../tour/states.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../support/test.js';
 import type { UpstreamControl } from '../support/upstream.js';
 import { ADMIN_WEB_CONFIG, emulatorOrigin, E2E_PROJECT_ID } from '../world.js';
@@ -75,6 +78,34 @@ function startOf(text: string): RegExp {
     return new RegExp(`^${(text.split('{')[0] ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 }
 
+/** The USGS countdown's text with any number of seconds, as a pattern. */
+function countdownPattern(lang: 'ro' | 'en'): RegExp {
+    const [head = '', tail = ''] = setupText(lang, 'adminSetup.usgs.countdown', { seconds: '\u0000' }).split('\u0000');
+    const escape = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`^${escape(head)}(\\d+)${escape(tail)}$`);
+}
+
+/** The seconds the USGS countdown shows now. */
+async function countdownSeconds(timer: Locator, lang: 'ro' | 'en'): Promise<number> {
+    const [, seconds] = countdownPattern(lang).exec(await timer.innerText()) ?? [];
+    return Number(seconds);
+}
+
+/**
+ * A state of the journey: the generic layout and accessibility checkers on it (the admin's inventory,
+ * e2e/tour/states.ts → `ADMIN_STATES`), then its review screenshots (`capture`, only with `HCM_SCREENSHOTS`).
+ */
+async function checkpoint(
+    page: Page,
+    lang: 'ro' | 'en',
+    shot: string,
+    state: AdminStateId,
+    announcements: readonly string[] = [],
+): Promise<void> {
+    await expectStateSound(page, adminVisit(state, lang, { announcements }));
+    await capture(page, shot);
+}
+
 /** What every step of the journey drives: the page, the Setup page object and the admin tier's fixtures. */
 interface Journey {
     readonly page: Page;
@@ -92,7 +123,7 @@ interface Journey {
 /** 1. Start-up mode: one read-only consent proves the ownership. */
 async function signInInStartUpMode({ page, lang, setup, consent, setupBudget, notes }: Journey): Promise<void> {
     await setup.expectConsentNote(page.locator('hcm-sign-in'), 'cloudReadOnly', notes);
-    await capture(page, '01-sign-in');
+    await checkpoint(page, lang, '01-sign-in', 'sign-in');
     const signInButton = page.getByRole('button', { name: shellText(lang, 'adminShell.auth.signIn') });
     const signIn = await consent.opened(page, () => setupBudget.inputs('signIn').click(signInButton));
     expect(await signIn.requestedScopes()).toEqual([GOOGLE_SCOPES.cloudReadOnly]);
@@ -117,7 +148,7 @@ async function linkBilling({ page, lang, setup, consent, setupBudget, upstream, 
         'href',
         'https://console.cloud.google.com/billing',
     );
-    await capture(page, '02-billing-no-account');
+    await checkpoint(page, lang, '02-billing-no-account', 'billing-no-account');
     await upstream.scenario('cloud-billing.accountOpen', 'browser');
     await page.clock.fastForward(10_000);
     await setup.expectState('billing', 'ok');
@@ -143,7 +174,7 @@ async function provisionWithARetry({ page, lang, setup, setupBudget, upstream, c
         'api-key': 'ok',
     });
     expect(consoleErrors.takeMatching(/status of 503/).length).toBeGreaterThan(0);
-    await capture(page, '03-provision-partial');
+    await checkpoint(page, lang, '03-provision-partial', 'provision-partial');
     await upstream.fail('secret-manager', null, 'browser');
     await provisionInputs.click(retry);
     await setup.expectState('provision', 'ok');
@@ -152,7 +183,7 @@ async function provisionWithARetry({ page, lang, setup, setupBudget, upstream, c
 /** 4. The server's installation, then the claim without a click. */
 async function installTheServer({ page, lang, setup, upstream, serverDeployment, emulators }: Journey, owner: string): Promise<void> {
     await expect(setup.open('deploy').getByText(setupText(lang, 'adminSetup.deploy.watching'))).toBeVisible();
-    await capture(page, '04-deploy-waiting');
+    await checkpoint(page, lang, '04-deploy-waiting', 'deploy-waiting');
     await upstream.scenario('cloud-functions.deployed', 'browser');
     // The functions reach the server's world of the fake upstreams until CR-M2b-3 forwards the test's: it holds the
     // secrets the browser's provisioning created in the test's world.
@@ -164,7 +195,7 @@ async function installTheServer({ page, lang, setup, upstream, serverDeployment,
     await expect(setup.open('mapbox')).toBeVisible();
     // Normal mode adds the server's pages (on a compact window behind More).
     await expect.poll(() => destinations(page).count()).toBeGreaterThan(1);
-    await capture(page, '05-claimed-mapbox');
+    await checkpoint(page, lang, '05-claimed-mapbox', 'mapbox-open');
     expect(await emulators.document(`admins/${owner}`)).toEqual(expect.objectContaining({ role: 'owner' }));
     expect(await emulators.document('cities/bucharest')).toEqual(expect.objectContaining({ published: true, updatedBy: owner }));
     expect(await emulators.document('setup/status')).toEqual(
@@ -188,7 +219,7 @@ async function connectMapbox({ page, lang, setup, setupBudget, upstream, console
     await expect(mapbox.getByRole('link', { name: startOf(setupText(lang, 'adminSetup.link.mapbox.console')) })).toBeVisible();
     await expect.poll(() => consoleErrors.takeMatching(/status of 400/).length).toBe(1);
     expect(await emulators.document('cities/bucharest')).not.toHaveProperty('mapbox');
-    await capture(page, '06-mapbox-trial');
+    await checkpoint(page, lang, '06-mapbox-trial', 'mapbox-trial', [apiText(lang, 'apiError.mapbox.mintRefused')]);
     await upstream.scenario('mapbox.upgraded', 'server');
     await mapboxInputs.paste(tokenBox, MAPBOX_TOKENS.trial);
     await mapboxInputs.click(save);
@@ -212,15 +243,21 @@ async function connectUsgs({ page, lang, setup, setupBudget, upstream, emulators
     await followDeepLink(page, () => usgsInputs.click(tokenPage));
     const usgsBox = usgs.getByLabel(setupText(lang, 'adminSetup.usgs.token'));
     await expect(usgsBox).toBeFocused();
-    await expect(usgs.getByRole('timer')).toHaveText(setupText(lang, 'adminSetup.usgs.countdown', { seconds: '60' }));
+    const timer = usgs.getByRole('timer');
+    await expect(timer).toHaveText(countdownPattern(lang));
+    // The page's clock keeps running after the jump (the Firebase SDK needs it), so a busy machine may show a second
+    // or two less than 60 and 55: the jump must take five seconds off, and the 60 s window must still be open.
+    const before = await countdownSeconds(timer, lang);
+    expect(before).toBeGreaterThan(45);
     await page.clock.fastForward(5_000);
-    await expect(usgs.getByRole('timer')).toHaveText(setupText(lang, 'adminSetup.usgs.countdown', { seconds: '55' }));
-    await capture(page, '07-usgs-countdown');
+    await expect.poll(() => countdownSeconds(timer, lang)).toBeLessThanOrEqual(before - 5);
+    expect(await countdownSeconds(timer, lang)).toBeGreaterThan(30);
+    await checkpoint(page, lang, '07-usgs-countdown', 'usgs-countdown');
     await usgsInputs.paste(usgsBox, USGS_CREDENTIALS.pending.applicationToken);
     await setup.expectState('usgs', 'pending');
     await expect(usgs.getByText(apiText(lang, 'apiError.usgs.accessPending'))).toBeVisible();
     await expect(usgs.getByText(startOf(setupText(lang, 'adminSetup.usgs.nextCheck')))).toBeVisible();
-    await capture(page, '08-usgs-pending');
+    await checkpoint(page, lang, '08-usgs-pending', 'usgs-pending');
     // USGS approves. Six hours later the server's tick checks again: its clock cannot move, so the check's time does.
     await upstream.scenario('usgs.m2mApproved', 'server');
     await emulators.updateFields('setup/status', { usgs: { nextCheckAt: new Date('2026-01-01T00:00:00Z') } }, ['usgs.nextCheckAt']);
@@ -261,7 +298,7 @@ async function enableAnalytics({
     expect(await analyticsConsent.requestedScopes()).toEqual([GOOGLE_SCOPES.analyticsEdit]);
     await analyticsConsent.allow(setupBudget.consents('analytics'));
     await expect(analytics.getByText(setupText(lang, 'adminSetup.analytics.streamOff'))).toBeVisible();
-    await capture(page, '09-analytics');
+    await checkpoint(page, lang, '09-analytics', 'analytics');
     expect(await emulators.document('cities/bucharest')).toEqual(
         expect.objectContaining({ analytics: expect.objectContaining({ measurementId: 'G-E2E0000000' }) }),
     );
@@ -277,7 +314,7 @@ async function importLegacyPhotos({ page, lang, setup, setupBudget, emulators }:
     await expect(page.locator('hcm-setup-step[data-step="legacyImport"] [data-photo]')).toHaveText([]);
     await setup.expectState('legacyImport', 'ok');
     await expect((await setup.show('legacyImport')).getByText(setupText(lang, 'adminSetup.import.done', { count: '45' }))).toBeVisible();
-    await capture(page, '10-import-done');
+    await checkpoint(page, lang, '10-import-done', 'import-done');
     const photos = Object.values(await emulators.collection('cities/bucharest/photos'));
     expect(
         photos.filter((photo) => photo['published'] === true && photo['processing'] === 'done' && photo['rightsReview'] === true),
@@ -304,11 +341,14 @@ test(
             '@S-A22-HAPPY',
             '@S-A22-HAPPY-STREAM-SETTING',
             '@S-A28-HAPPY',
+            '@S-A31-HAPPY',
+            '@S-A31-BAD-ALERTS',
         ],
     },
     async ({ page, lang, consent, setupBudget, upstream, serverDeployment, consoleErrors, adminWorld }) => {
-        // Eight steps, three polls and 45 photos through photos.onUpload on the emulators.
-        test.setTimeout(300_000);
+        // Eight steps, three polls, 45 photos through photos.onUpload on the emulators, and both generic checkers at ten
+        // states (about 6 minutes beside the viewer tiers on a loaded laptop, 2026-10-17).
+        test.setTimeout(600_000);
         const setup = new SetupPage(page, lang);
         const emulators = adminWorld.emulators;
         const notes = { projectId: E2E_PROJECT_ID, domain: ADMIN_WEB_CONFIG.authDomain };
@@ -317,6 +357,7 @@ test(
         await upstream.scenario('error-reporting.twoGroups', 'server');
         await standInProviderPages(page.context(), PROVIDER_ORIGINS);
         await serverDeployment.hide();
+        await page.context().addInitScript(recordLiveRegions);
         // The polls run on the page's clock: time flows, and the spec jumps ahead to the next poll.
         await page.clock.install();
         await page.clock.resume();

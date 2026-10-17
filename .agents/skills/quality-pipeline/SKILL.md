@@ -16,7 +16,7 @@ PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh    # docs and tooling ch
 PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh     # Vitest (node + Chromium) + pytest, 90 % per file
 PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh     # vite build of engine and admin
 PIPELINE_STAGE=quality bash scripts/ci/run-all-checks.sh   # what CI runs
-PIPELINE_STAGE=quality bash scripts/ci/e2e-split.sh        # the same, Playwright split with the NUC: about 5.5 min, not 21
+PIPELINE_STAGE=quality bash scripts/ci/e2e-split.sh        # the same, Playwright split with the NUC (e2e alone: 7.5 min)
 bash scripts/ci/run-all-checks.sh                          # default all: before a push to master or a tag
 PIPELINE_STAGE=release bash scripts/ci/run-all-checks.sh   # at a vX.Y.Z tag: versions, release notes, bundles
 PIPELINE_STAGE=contract bash scripts/ci/run-all-checks.sh  # deep links and third-party API shapes (network)
@@ -68,7 +68,7 @@ Never suppress: no inline directive of any tool, no `.skip`/`.only`/`xfail`, no 
 - The quality image sets `LD_PRELOAD=""`: the GDAL base preloads tcmalloc and Chromium aborts under it.
 - A new workspace needs a `COPY <dir>/package.json <dir>/` line in the Dockerfile's `manifests` stage, or `npm ci` fails in the image build.
 - A dependency change (lockfile, a manifest's dependency fields, `scripts/ci/requirements.txt`) rebuilds the image for three to five minutes on every machine; an npm script edit does not, because the `manifests` stage drops the scripts before the npm layer (keep `emulators:setup`, which that layer runs).
-- A split run (`scripts/ci/e2e-split.sh`) cannot end before the admin tier's 22 tests, which run one at a time on the NUC (about 260 s under full load): shifting functional tests between the machines balances the rest, not that floor.
+- A split run (`scripts/ci/e2e-split.sh`) gives each machine part of the admin tier's projects (`E2E_ADMIN_PART=1-2/3` on the NUC, about twice as fast, `3/3` here; their tests run one at a time against each machine's own emulators) and slices every other tier by `HCM_SPLIT_PARTS` without counting the admin tests (`e2e/split-reporter.ts`), so the two admin parts run at the same time instead of one chain ending the NUC's part.
 - `npm install` of a dependency runs in the digest-pinned `node:24-bookworm-slim` image, after `npm view` (`docs/SETUP.md` → *npm in a container*).
 - A browser crash leaves `core.<pid>` in the repository root (git-ignored); delete it.
 - Commit subjects are `type(scope): summary` (`scripts/git-hooks/commit-msg` locally, the `commits` gate over the CI range); squash `fixup!` commits before a pull request.

@@ -87,6 +87,17 @@ describe('MapSync', () => {
         expect(map.callsOf('setPhotosData')).toHaveLength(2);
         expect(map.callsOf('addVectorOverlay')).toHaveLength(4);
         expect(map.callsOf('setOverlayVisibility')).toEqual([['kh4-1966', true]]);
+        expect(map.callsOf('setLocale')).toEqual([['en']]);
+    });
+
+    it('badPath_aNewYearAloneLeavesMapboxLabelsAlone', () => {
+        // The tour: a language switch left Mapbox's own labels in the first language; only a switch relabels them.
+        const map = new FakeMap();
+
+        new MapSync(map, undefined).update(loaded, withYear(loaded, 1966));
+
+        expect(map.callsOf('setLocale')).toEqual([]);
+        expect(map.callsOf('setPhotosData')).toHaveLength(1);
     });
 
     it('badPath_anotherManifestOrNoneIsNotDiffed', () => {

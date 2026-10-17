@@ -65,6 +65,9 @@ export class HcmSnackbar extends LitElement {
                 pointer-events: auto;
 
                 --md-sys-color-on-surface-variant: var(--md-sys-color-inverse-on-surface);
+
+                /* Secondary is too close to the inverse surface (1.62:1): the ring takes the inverse primary of the action. */
+                --hcm-focus-ring-color: var(--md-sys-color-inverse-primary);
             }
 
             .message {

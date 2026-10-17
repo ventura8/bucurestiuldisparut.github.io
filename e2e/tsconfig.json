@@ -1,8 +1,9 @@
-// Playwright end-to-end tests (@hcm/e2e): the config and projects, the fixtures, the specs, the setup project, the
+// Playwright end-to-end tests (@hcm/e2e): the config, projects and split, the fixtures, the specs, the setup project, the
 // mock APIs and the e2e site build, and the admin tier (admin/: its world, fixtures, harness and specs, which read the
 // admin's contract code in packages/admin/src: the scopes and the setup steps' input budgets). They run in Node
 // (process.env, the Playwright runner, the servers started through Node's type stripping, hence erasable syntax only)
-// and pass callbacks into the page (DOM types), so both apply.
+// and pass callbacks into the page (DOM types), so both apply. test/ holds the Vitest unit tests of the e2e suite's own
+// logic (the split, the tour's checkers), run in Chromium by the `e2e-support` project of vitest.config.ts.
 {
     "extends": "../tsconfig.base.json",
     "compilerOptions": {
@@ -12,6 +13,9 @@
     "include": [
         "playwright.config.ts",
         "projects.ts",
+        "split.ts",
+        "split-reporter.ts",
+        "test",
         "support",
         "specs",
         "tour",

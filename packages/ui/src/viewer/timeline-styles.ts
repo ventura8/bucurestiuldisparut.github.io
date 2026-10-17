@@ -1,7 +1,11 @@
 /**
  * Styles of `<hcm-timeline>`. The thumb is the hero moment: a pill that morphs into a rounded square and grows while
  * it is dragged, on the M3 Expressive "fast spatial" spring converted for the web (cubic-bezier(0.42, 1.67, 0.21,
- * 0.9), 350 ms); `prefers-reduced-motion: reduce` turns every transition off.
+ * 0.9), 350 ms); `prefers-reduced-motion: reduce` turns every transition off. The horizontal timeline is exactly 84 px
+ * tall (8 + 48 + 28) and the vertical one 112 px wide (8 + 48 + 56): the viewer stacks its FAB and chip above it with
+ * those numbers (`--hcm-timeline-block`, `--hcm-timeline-inline`). The list of stops has no margin of its own: the
+ * browser's 1em of an `ol` collapsed through the track, made the timeline 100 px tall with a 16 px page font and more
+ * with a larger one, and left no room for the open FAB menu above it on a 568 px phone.
  */
 import { css } from 'lit';
 
@@ -37,6 +41,12 @@ export const timelineStyles = [
             position: relative;
             block-size: 48px;
             cursor: pointer;
+        }
+
+        .stops {
+            margin: 0;
+            padding: 0;
+            list-style: none;
         }
 
         :host([orientation='vertical']) .track {

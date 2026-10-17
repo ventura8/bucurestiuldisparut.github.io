@@ -175,3 +175,33 @@ describe('trackRatio', () => {
         expect(trackRatio(new DOMRect(0, 0, 0, 0), { clientX: 0, clientY: 0 }, false)).toBe(0);
     });
 });
+
+describe('<hcm-timeline> size', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('badPath_itsHeightIsTheViewersWhateverThePageFontSize', async () => {
+        // The viewer stacks the FAB 8 px above an 84 px timeline; the list's browser margin (1em) made it 100 px tall,
+        // more on a page with larger text, and the FAB landed on it (the tour found 0 px between them on phones).
+        const element = await timeline({ value: 1977 });
+        element.style.fontSize = '24px';
+        await element.updateComplete;
+
+        expect(element.getBoundingClientRect().height).toBe(84);
+        const track = shadowQuery(element, '.track').getBoundingClientRect();
+        expect(track.top - element.getBoundingClientRect().top).toBe(8);
+    });
+
+    it('badPath_theVerticalThumbStaysInsideAtBothEnds', async () => {
+        // With the list's margin the vertical track sat 16 px low and the thumb at the first year stuck out below it.
+        const element = await timeline({ orientation: 'vertical', value: null });
+        const box = element.getBoundingClientRect();
+        const thumb = shadowQuery(element, '.thumb');
+
+        await expect.poll(() => thumb.getBoundingClientRect().top).toBeGreaterThanOrEqual(box.top);
+        element.value = 1966;
+        await element.updateComplete;
+        await expect.poll(() => thumb.getBoundingClientRect().bottom).toBeLessThanOrEqual(box.bottom);
+    });
+});

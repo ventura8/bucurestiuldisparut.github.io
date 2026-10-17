@@ -9,7 +9,7 @@
  * map per mount, counted in `mapLoadCount` (every map is a billed map load); paint property names only from
  * `overlayOpacityPaint` and `rasterAdjustmentPaint`.
  */
-import { wrapBearing, type MapView, type RasterAdjustmentPaint } from '@hcm/shared';
+import { wrapBearing, type Locale, type MapView, type RasterAdjustmentPaint } from '@hcm/shared';
 
 import { EventListeners, Listeners } from '../core/listeners.js';
 import { Basemap3dObjects } from './basemap.js';
@@ -26,7 +26,7 @@ import {
     type Unsubscribe,
     type VectorOverlaySpec,
 } from './map-port.js';
-import { classifyError, mapboxOptions, whenLoaded } from './lifecycle.js';
+import { classifyError, mapboxOptions, relabelMapbox, whenLoaded } from './lifecycle.js';
 import type { MapboxEvent, MapboxGl, MapboxMap } from './mapbox-types.js';
 import { OverlayRegistry } from './overlay-registry.js';
 import {
@@ -52,6 +52,8 @@ const ignore = (): void => undefined;
 
 interface Session {
     readonly map: MapboxMap;
+    /** The element the map was mounted into (Mapbox's controls live inside it). */
+    readonly container: HTMLElement;
     readonly options: MapOptions;
     readonly registry: OverlayRegistry;
     /** The manifest `order` of every raster layer on the map. */
@@ -60,7 +62,6 @@ interface Session {
     readonly vectorStyles: Map<string, string>;
     readonly cleanups: (() => void)[];
     basemap: Basemap3dObjects | null;
-    resizeFrame: number | null;
     abortLoad: (error: Error) => void;
 }
 
@@ -118,13 +119,13 @@ class MapboxPort implements MapPort {
         const registry = new OverlayRegistry(map, this.#env.frames);
         const session: Session = {
             map,
+            container,
             options,
             registry,
             orders: new Map(),
             vectorStyles: new Map(),
             cleanups: [],
             basemap: null,
-            resizeFrame: null,
             abortLoad: ignore,
         };
         this.#session = session;
@@ -140,9 +141,11 @@ class MapboxPort implements MapPort {
         this.#forward(session, 'webglcontextrestored', () => {
             this.#events.emit('webglcontextrestored', undefined);
         });
+        // At once, in the observer's callback (after layout, before paint, at most once a frame): resized a frame later,
+        // the canvas kept its old width while a pane opened, which the tour caught at 2560 and 3840 px.
         session.cleanups.push(
             this.#env.observeResize(container, () => {
-                this.#scheduleResize(session);
+                session.map.resize();
             }),
         );
         return session;
@@ -151,14 +154,6 @@ class MapboxPort implements MapPort {
     #forward(session: Session, type: string, listener: (event: MapboxEvent) => void): void {
         session.map.on(type, listener);
         session.cleanups.push(() => session.map.off(type, listener));
-    }
-
-    /** One `resize` per animation frame however often the container changes size. */
-    #scheduleResize(session: Session): void {
-        session.resizeFrame ??= this.#env.frames.request(() => {
-            session.resizeFrame = null;
-            session.map.resize();
-        });
     }
 
     /** After `load`: sprite images, the photo sources and layers, the 3D switch, selection. */
@@ -332,6 +327,15 @@ class MapboxPort implements MapPort {
         return this.#events.on(event, handler);
     }
 
+    setLocale(locale: Locale): void {
+        const session = this.#session;
+        if (session === null) {
+            return;
+        }
+        relabelMapbox(session.container, locale);
+        session.map.setLanguage(locale);
+    }
+
     resize(): void {
         this.#session?.map.resize();
     }
@@ -353,9 +357,6 @@ class MapboxPort implements MapPort {
         this.#session = null;
         this.#loaded = false;
         session.abortLoad(new Error('unknown'));
-        if (session.resizeFrame !== null) {
-            this.#env.frames.cancel(session.resizeFrame);
-        }
         for (const cleanup of session.cleanups) {
             cleanup();
         }

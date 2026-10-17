@@ -23,8 +23,10 @@ const MOVE_KEYS: Readonly<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 
  * inline end, or on the side `--hcm-fab-menu-align` names (`flex-start` for a menu docked on the leading edge, so a
  * wrapped, wider menu never moves the FAB from under the finger). Opening focuses the first item; the arrow keys
  * (wrapping), Home and End move between items; Esc or a focus leaving the menu closes it, Esc returning the focus to
- * the FAB. Choosing an item fires `hcm-select` with `{value}` and closes the menu; every open or close fires
- * `hcm-toggle` with `{open}`.
+ * the FAB. The items end `--hcm-fab-menu-gap` (8 px) above the FAB; an app whose FAB sits beside a taller control sets
+ * more, so the menu clears it. Choosing an item fires `hcm-select` with `{value}` and closes the menu; every open or close fires
+ * `hcm-toggle` with `{open}`. Only the FAB and the items take the pointer: the rest of the element's box (beside the
+ * FAB under a wide menu, the gaps between items) lets taps through to what is beneath it.
  */
 export class HcmFabMenu extends LitElement {
     static override readonly properties = {
@@ -41,11 +43,16 @@ export class HcmFabMenu extends LitElement {
         stateLayer,
         typeStyles,
         css`
+            /*
+             * Only the FAB and the items take the pointer: the open menu's box is as wide as its widest item and reaches
+             * down beside the FAB, where nothing of it is drawn (the tour found it blocking the timeline there).
+             */
             :host {
                 display: inline-flex;
                 flex-direction: column;
-                gap: 8px;
+                gap: var(--hcm-fab-menu-gap, 8px);
                 align-items: var(--hcm-fab-menu-align, flex-end);
+                pointer-events: none;
             }
 
             /*
@@ -74,6 +81,7 @@ export class HcmFabMenu extends LitElement {
                 border-radius: var(--md-sys-shape-corner-full);
                 background: var(--md-sys-color-primary-container);
                 color: var(--md-sys-color-on-primary-container);
+                pointer-events: auto;
             }
 
             .item {

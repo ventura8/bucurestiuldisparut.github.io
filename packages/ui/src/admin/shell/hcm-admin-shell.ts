@@ -3,8 +3,11 @@
  * given (`app`, an `AdminAppPort`), one screen per auth state: a loading indicator, the sign-in, claim or join panel, a
  * blocked panel, or the shell itself: the navigation for the window class (bar on compact, collapsed rail from medium
  * and on a landscape phone, expanded rail from large), the top app bar with the page title and the account button, the
- * start-up banner, the page, the analytics consent banner. Messages show in the snackbar. It applies the city's theme
- * (or a live preview, or the kit's baseline) to itself and keeps `<html lang>` on the admin's language.
+ * start-up banner, the page, the analytics consent banner. Messages show in the snackbar. Every screen's content is in
+ * a landmark: a panel, the loading indicator, the start-up banner, the page and the snackbar are in `<main>`, beside the
+ * navigation and the top app bar (`banner`); only the page scrolls, and the snackbar takes its own place below it
+ * (shell-styles.ts). It applies the city's theme (or a live preview, or the kit's baseline) to itself and keeps
+ * `<html lang>` on the admin's language.
  */
 import { DEFAULT_LOCALE, translate, type AdminShellKey, type Locale, type ThemeTokens } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
@@ -123,11 +126,12 @@ export class HcmAdminShell extends LitElement {
     override render(): TemplateResult {
         const state = this.state;
         if (state === null) {
-            return this.#loading(shellText(DEFAULT_LOCALE, 'adminShell.loading'));
+            return html`<main class="screen">${this.#loading(shellText(DEFAULT_LOCALE, 'adminShell.loading'))}</main>`;
         }
         const screen = SCREENS[state.auth];
-        const content = screen === 'shell' ? this.#frame(state) : this.#panel(screen, state);
-        return html`${content} ${screen === 'shell' ? EMPTY : this.#snackbar(state)}`;
+        return screen === 'shell'
+            ? this.#frame(state)
+            : html`<main class="screen">${this.#panel(screen, state)} ${this.#snackbar(state)}</main>`;
     }
 
     /** Subscribes to the current app (once per app, while connected). */
@@ -192,11 +196,14 @@ export class HcmAdminShell extends LitElement {
         return html`<div class="frame" data-nav=${layout.nav}>
             ${layout.nav === 'bar' ? EMPTY : nav}
             <div class="column">
-                ${layout.topBar ? this.#topBar(state) : EMPTY} ${this.#banner(state)}
-                <main class="content"><hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet></main>
+                ${layout.topBar ? this.#topBar(state) : EMPTY}
+                <main class="content">
+                    <div class="scroller">${this.#banner(state)}<hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet></div>
+                    ${this.#snackbar(state)}
+                </main>
                 ${this.#consent(state)}
             </div>
-            ${layout.nav === 'bar' ? nav : EMPTY} ${this.#snackbar(state)}
+            ${layout.nav === 'bar' ? nav : EMPTY}
         </div>`;
     }
 

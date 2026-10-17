@@ -42,14 +42,37 @@ export function classifyError(event: MapboxEvent, loaded: boolean): MapEventMap[
 /**
  * Mapbox GL's UI strings the viewer shows (the map canvas's accessible name, the attribution toggle, the logo link) in
  * the visitor's language: Mapbox's defaults are English, which the tour's i18n check found in every Romanian page.
- * They are read when the map is created, so a later language switch keeps them until the next map.
+ * Mapbox reads them when the map and its controls are created; `relabelMapbox` rewrites them after a language switch.
  */
-function mapboxUiStrings(locale: Locale): Readonly<Record<string, string>> {
+function mapboxUiStrings(locale: Locale): Readonly<Record<MapboxUiString, string>> {
     return {
         'Map.Title': translate(locale, 'map.title'),
         'AttributionControl.ToggleAttribution': translate(locale, 'map.toggleAttribution'),
         'LogoControl.Title': translate(locale, 'map.logo'),
     };
+}
+
+type MapboxUiString = 'Map.Title' | 'AttributionControl.ToggleAttribution' | 'LogoControl.Title';
+
+/** Where Mapbox GL 3.32 writes each UI string: the element (inside the map's container) and its attribute. */
+const LABELLED: readonly { readonly selector: string; readonly attribute: string; readonly key: MapboxUiString }[] = [
+    { selector: 'canvas.mapboxgl-canvas', attribute: 'aria-label', key: 'Map.Title' },
+    { selector: 'a.mapboxgl-ctrl-logo', attribute: 'aria-label', key: 'LogoControl.Title' },
+    { selector: '.mapboxgl-ctrl-attrib-button', attribute: 'aria-label', key: 'AttributionControl.ToggleAttribution' },
+    { selector: '.mapboxgl-ctrl-attrib-button .mapboxgl-ctrl-icon', attribute: 'title', key: 'AttributionControl.ToggleAttribution' },
+];
+
+/**
+ * Rewrites Mapbox's UI strings in `container` (the map's) in `locale`: Mapbox has no API to change them once its
+ * controls exist, and a language switch left "Map", "Mapbox homepage" and the toggle's name in the first language.
+ */
+export function relabelMapbox(container: Pick<ParentNode, 'querySelectorAll'>, locale: Locale): void {
+    const strings = mapboxUiStrings(locale);
+    for (const { selector, attribute, key } of LABELLED) {
+        for (const element of container.querySelectorAll(selector)) {
+            element.setAttribute(attribute, strings[key]);
+        }
+    }
 }
 
 export function mapboxOptions(container: HTMLElement, options: MapOptions): MapboxMapOptions {

@@ -57,6 +57,17 @@ describe('renderSitePage', () => {
         expect(html).toMatch(/<p lang="en" class="site-noscript">The map needs JavaScript\./);
     });
 
+    it('happyPath_theMapIsTheMainLandmarkUnderTheSiteTitle', () => {
+        // The tour's axe check: no main landmark, no level-one heading, and the viewer's chrome outside every landmark.
+        const html = bucharestPage();
+        const main = /<main>([\s\S]*)<\/main>/.exec(html)?.[1] ?? '';
+
+        expect(main).toMatch(/^\s*<h1 class="hcm-visually-hidden" lang="ro">București dispărut<\/h1>/);
+        expect(main).toContain('<div id="historic-city-map"></div>');
+        expect(main).toContain('<noscript>');
+        expect(html.match(/<main>/g)).toHaveLength(1);
+    });
+
     it('badPath_noInlineScriptOrStyleCanAppear', () => {
         const html = bucharestPage();
 

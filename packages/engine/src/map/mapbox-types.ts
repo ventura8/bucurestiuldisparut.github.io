@@ -97,6 +97,8 @@ export interface MapboxMap {
         options: { readonly layers: readonly string[] },
     ): readonly MapboxFeature[];
     getCanvas(): HTMLElement;
+    /** The basemap's label language (reloads the sources); Mapbox's UI strings stay as created. */
+    setLanguage(language: string): unknown;
     resize(): unknown;
     remove(): void;
 }

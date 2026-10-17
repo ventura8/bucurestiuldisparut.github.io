@@ -142,6 +142,11 @@ export interface MapPort {
     flyTo(view: Partial<MapView>, options?: { readonly animate?: boolean }): void;
     getView(): MapView;
     on<E extends keyof MapEventMap>(event: E, handler: (payload: MapEventMap[E]) => void): Unsubscribe;
+    /**
+     * The visitor switched the language: Mapbox's own UI strings (the canvas's accessible name, the logo link, the
+     * attribution toggle) and the basemap's labels follow it (the tour found the first language's left behind).
+     */
+    setLocale(locale: Locale): void;
     /** Called by the viewer's ResizeObserver. */
     resize(): void;
     /** Removes the map and every listener; mount may be called again (a new map load). */

@@ -57,6 +57,21 @@ async function mounted(options: MapOptions = OPTIONS): Promise<Mounted> {
     return { port, gl, env, map: gl.map };
 }
 
+/** A map container whose Mapbox elements record the attributes the adapter writes (`<selector> <attribute>` → value). */
+function labelledContainer(): { readonly container: HTMLElement; readonly labels: Map<string, string> } {
+    const labels = new Map<string, string>();
+    const container = {
+        querySelectorAll: (selector: string) => [
+            {
+                setAttribute: (attribute: string, value: string) => {
+                    labels.set(`${selector} ${attribute}`, value);
+                },
+            },
+        ],
+    };
+    return { container: container as unknown as HTMLElement, labels };
+}
+
 describe('Mapbox adapter', () => {
     it('happyPath_webGlSupportComesFromMapboxOrTheProbe', () => {
         expect(createMapboxPort(new FakeMapboxGl({ supported: false }), fakeAdapterEnv()).isWebGLSupported()).toBe(false);
@@ -381,26 +396,26 @@ describe('Mapbox adapter: events and lifecycle', () => {
         expect(heard).toEqual(['second']);
     });
 
-    it('happyPath_theContainerResizeIsCoalescedPerFrame', async () => {
+    it('happyPath_theMapFollowsItsContainerInTheSameFrame', async () => {
+        // The tour at 2560 and 3840 px: resized a frame later, the canvas was still wider than its box once a pane opened.
         const { port, map, env } = await mounted();
 
         env.resizeObserved();
-        env.resizeObserved();
-        env.frames.run();
+        expect(map.callsOf('resize')).toHaveLength(1);
+        expect(env.frames.pending).toBe(0);
         port.resize();
 
         expect(map.callsOf('resize')).toHaveLength(2);
     });
 
-    it('happyPath_destroyRemovesTheMapAndAPendingResize', async () => {
+    it('happyPath_destroyRemovesTheMapAndStopsFollowingItsContainer', async () => {
         const { port, map, env, gl } = await mounted();
         const photos: string[] = [];
         port.onPhotoClick((id) => photos.push(id));
-        env.resizeObserved();
 
         port.destroy();
         port.destroy();
-        env.frames.run();
+        env.resizeObserved();
         port.resize();
         port.flyTo({ zoom: 3 });
 
@@ -416,6 +431,35 @@ describe('Mapbox adapter: events and lifecycle', () => {
         gl.map.fire('click', { point: { x: 1, y: 1 } });
         expect(photos).toEqual([]);
         expect(port.mapLoadCount).toBe(2);
+    });
+
+    it('happyPath_aLanguageSwitchRelabelsMapboxAndItsBasemap', async () => {
+        // The tour: after a switch to Romanian, Mapbox's canvas, logo and attribution toggle still spoke English.
+        const gl = new FakeMapboxGl();
+        const port = createMapboxPort(gl, fakeAdapterEnv());
+        const { container, labels } = labelledContainer();
+        const mounting = port.mount(container, OPTIONS);
+        gl.map.fire('load');
+        await mounting;
+
+        port.setLocale('ro');
+
+        expect(gl.map.callsOf('setLanguage')).toEqual([['ro']]);
+        expect(Object.fromEntries(labels)).toEqual({
+            'canvas.mapboxgl-canvas aria-label': 'Hartă',
+            'a.mapboxgl-ctrl-logo aria-label': 'Pagina Mapbox',
+            '.mapboxgl-ctrl-attrib-button aria-label': 'Arată sau ascunde sursele hărții',
+            '.mapboxgl-ctrl-attrib-button .mapboxgl-ctrl-icon title': 'Arată sau ascunde sursele hărții',
+        });
+    });
+
+    it('badPath_aLanguageSwitchWithoutAMapChangesNothing', async () => {
+        const { port, map } = await mounted();
+
+        port.destroy();
+        port.setLocale('ro');
+
+        expect(map.callsOf('setLanguage')).toEqual([]);
     });
 
     it('badPath_aStyleWithoutTheBasemapImportIsNeverReconfigured', async () => {

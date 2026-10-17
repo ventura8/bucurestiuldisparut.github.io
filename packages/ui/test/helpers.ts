@@ -3,6 +3,7 @@
 import { render, type TemplateResult } from 'lit';
 
 import { deepActiveElement } from '../src/components/focus.js';
+import { contrastRatio } from '../src/theme/dynamic-color.js';
 import { installFonts } from '../src/fonts/font-faces.js';
 import { applyTheme, clearTheme } from '../src/theme/apply.js';
 import { BASELINE_THEME } from '../src/theme/baseline.js';
@@ -86,4 +87,36 @@ export function press(target: Element, key: string, init: KeyboardEventInit = {}
 
 export function release(target: Element, key: string): void {
     target.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true, composed: true }));
+}
+
+/** `#rrggbb` of a computed opaque colour (`rgb(r, g, b)`), for `contrastRatio`. */
+function hexOf(colour: string): string {
+    const channels = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(colour);
+    if (channels === null) {
+        throw new Error(`not an rgb() colour: ${colour}`);
+    }
+    return `#${channels
+        .slice(1, 4)
+        .map((value) => Number(value).toString(16).padStart(2, '0'))
+        .join('')}`;
+}
+
+/** The shadow root of `element` (throws when it has none). */
+export function shadowRootOf(element: Element): ShadowRoot {
+    if (element.shadowRoot === null) {
+        throw new Error(`<${element.localName}> has no shadow root`);
+    }
+    return element.shadowRoot;
+}
+
+/** The contrast of the focus ring `element` shows now against `background` (a computed colour or `#rrggbb`). */
+export function ringContrast(element: Element | null, background: string): number {
+    if (element === null) {
+        throw new Error('nothing has the focus');
+    }
+    const style = getComputedStyle(element);
+    if (style.outlineStyle === 'none') {
+        throw new Error(`<${element.localName}> shows no focus ring`);
+    }
+    return contrastRatio(hexOf(style.outlineColor), background.startsWith('#') ? background : hexOf(background));
 }

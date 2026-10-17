@@ -1,6 +1,7 @@
 import type { PlaywrightTestOptions, PlaywrightWorkerOptions, Project } from '@playwright/test';
 
 import { ADMIN_ORIGIN } from './admin/world.js';
+import { inPart, type ShardRange } from './split.js';
 import type { WorkerOptions } from './support/test.js';
 
 /**
@@ -11,7 +12,7 @@ import type { WorkerOptions } from './support/test.js';
  *
  * | Tier | Projects | Specs |
  * | --- | --- | --- |
- * | `admin` | `admin-setup`, `admin-harness`, `admin-{c360,m768,l1440}-ro`, `admin-l1440-en` | `admin/{setup,harness,specs}/` |
+ * | `admin` | `admin-setup`, `admin-harness`, `admin-{c360,m768,l1440}-ro`, `admin-l1440-dark`, `admin-l1440-en` | `admin/{setup,harness,specs}/` |
  * | `smoke` | `harness`, `smoke-c360`, `smoke-l1440` | `specs/harness/` (the e2e preconditions), `specs/smoke/` (the viewer boots) |
  * | `a11y` | `a11y-reduced-motion`, `a11y-forced-colors` | `a11y/reduced-motion.spec.ts`, `a11y/forced-colors.spec.ts` |
  * | `nogl` | `nogl` (`--disable-3d-apis`) | `specs/viewer/no-webgl.spec.ts` |
@@ -28,7 +29,9 @@ import type { WorkerOptions } from './support/test.js';
  * upstreams' hosts (`forwardUpstreams`) and depend on `admin-setup` (the admin build and the emulators answer) instead
  * of `setup`. The emulators' owner, admins and setup records are per Firebase project, so the admin tests never run
  * at the same time: every admin spec file declares the Playwright lock `ADMIN_LOCK` (e2e/admin/support/test.ts), which
- * the dispatcher honours without holding a worker, and the lease of the mock APIs stays as the guard behind it.
+ * the dispatcher honours without holding a worker, and the lease of the mock APIs stays as the guard behind it. A run
+ * split between two machines gives each its own part of the admin projects (`E2E_ADMIN_PART`, e2e/split.ts): each
+ * machine starts its own emulators, so the two halves of that chain run at the same time.
  */
 
 /** Every tier, in run order (the table above). */
@@ -161,8 +164,9 @@ function tourProject(tier: 'tour' | 'tour-matrix', { viewport, scheme, lang }: T
         `tour-${viewport}-${scheme}-${lang}`,
         '**/*.tour.ts',
         { ...chromium(viewport, lang), colorScheme: scheme },
-        // Several states per test, axe on each: a 3840 px frame under SwiftShader needs more than 30 s.
-        { testDir: 'tour', timeout: 120_000 },
+        // Up to seven states per test, each through both generic checkers (axe, a full Tab round, the text-spacing and
+        // reflow variants): a 3840 px frame under SwiftShader took 90 s on a loaded laptop (2026-10-17), so 240 s.
+        { testDir: 'tour', timeout: 240_000 },
     );
 }
 
@@ -217,8 +221,14 @@ function adminProject(name: string, testMatch: string, use: Use): E2eProject {
     };
 }
 
-/** The admin tier: its setup, the harness of its e2e world, and the functional specs at three window classes and in English. */
-function adminProjects(): E2eProject[] {
+/**
+ * The admin tier: its setup, the harness of its e2e world, and the functional specs at three window classes, in the dark
+ * scheme and in English. With `part` (`E2E_ADMIN_PART`), only those parts of the test projects, dealt round robin in the
+ * order below: of three, part 1 is `admin-c360-ro` and `admin-l1440-dark`, part 2 `admin-m768-ro` and `admin-l1440-en`,
+ * part 3 `admin-l1440-ro` and `admin-harness` (scripts/ci/e2e-split.sh gives the NUC, about twice as fast, parts 1-2 and
+ * this machine part 3).
+ */
+function adminProjects(part: ShardRange | null): E2eProject[] {
     const setup: E2eProject = {
         name: 'admin-setup',
         testDir: 'admin/setup',
@@ -227,17 +237,20 @@ function adminProjects(): E2eProject[] {
         metadata: { tier: 'admin' },
     };
     const SPECS_GLOB = 'specs/**/*.spec.ts';
-    return [
-        setup,
-        adminProject('admin-harness', 'harness/**/*.spec.ts', chromium('l1440')),
+    const tests = [
         adminProject('admin-c360-ro', SPECS_GLOB, chromium('c360')),
         adminProject('admin-m768-ro', SPECS_GLOB, chromium('m768')),
         adminProject('admin-l1440-ro', SPECS_GLOB, chromium('l1440')),
+        // The dark scheme: colours, rings and contrast are the scheme's (the visual audit of 2026-10-17 found the admin
+        // checked only in light); dealt to part 1 with admin-c360-ro.
+        adminProject('admin-l1440-dark', SPECS_GLOB, { ...chromium('l1440'), colorScheme: 'dark' }),
         adminProject('admin-l1440-en', SPECS_GLOB, chromium('l1440', 'en')),
+        adminProject('admin-harness', 'harness/**/*.spec.ts', chromium('l1440')),
     ];
+    return [setup, ...tests.filter((_, position) => inPart(position, part))];
 }
 
-const BY_TIER: Readonly<Record<Tier, () => E2eProject[]>> = {
+const BY_TIER: Readonly<Record<Tier, (adminPart: ShardRange | null) => E2eProject[]>> = {
     admin: adminProjects,
     smoke: smokeProjects,
     a11y: a11yProjects,
@@ -270,8 +283,8 @@ export function tiersFrom(value: string | undefined): readonly Tier[] {
     return names.length === 0 ? PUSH_TIERS : TIERS.filter((tier) => names.includes(tier));
 }
 
-/** `setup`, then the projects of `tiers`. */
-export function e2eProjects(tiers: readonly Tier[]): E2eProject[] {
+/** `setup`, then the projects of `tiers` (of the admin tier, those of `adminPart` when given). */
+export function e2eProjects(tiers: readonly Tier[], adminPart: ShardRange | null = null): E2eProject[] {
     const setup: E2eProject = {
         name: 'setup',
         testDir: 'setup',
@@ -279,5 +292,5 @@ export function e2eProjects(tiers: readonly Tier[]): E2eProject[] {
         use: chromium('l1440'),
         metadata: { tier: 'setup' },
     };
-    return [setup, ...tiers.flatMap((tier) => BY_TIER[tier]())];
+    return [setup, ...tiers.flatMap((tier) => BY_TIER[tier](adminPart))];
 }

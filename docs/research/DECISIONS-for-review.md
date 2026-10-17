@@ -1954,7 +1954,7 @@ nothing ignored, and the next `static` failed `editorconfig` on eleven of its fi
 `.gitignore` now names `.hypothesis/` under *Python*; the original checkout, whose folder kept Hypothesis's own file,
 never showed it.
 
-### 32f. Proposal: the admin tier split between the two machines — NOT APPLIED: it needs a second way to split, for later
+### 32f. Proposal: the admin tier split between the two machines — APPLIED 2026-10-17 (pre-approved performance change; §33a)
 
 The admin tier's 22 tests run one at a time (the emulators' owner and setup records are per Firebase project, §29b)
 and sit at the head of the queue, so a split puts all of them into the NUC's part, where they ran 238 to 259 s of
@@ -1972,3 +1972,137 @@ stage grows again.
   one-minute `vitest` gate and is left until measured in a ten-minute run.
 - No GitHub Actions run of the new workflows exists yet; `docs/CI_PIPELINE.md` → *Expected wall time* holds
   estimates, now with `static` and `tests` measured on a 4-CPU container.
+
+## 33. Layout and accessibility invariants (the invariants agent, 2026-10-17) — APPLIED 2026-10-17 (pre-approved gate-tightening and performance changes, logged)
+
+The user's request of 2026-10-12: "in the phone screens the menu button sometimes overlaps with other elements. we
+should have tests for overlapping elements!!! also for accessibility!!". The tour checked the overlap of a few
+`[data-layout-check]` boxes on some states only, and missed the FAB's collisions elsewhere. What changed, the config
+edits among it logged here (each tightens a gate or keeps a tool working; none relaxes one); nothing was committed,
+pushed or deployed, and no product code changed: the violations the new checks find are listed in
+`docs/research/layout-a11y-findings.md` for the next task to fix.
+
+### 33a. The admin tier split between the machines (§32f) — APPLIED (performance)
+
+- `e2e/split.ts` (pure, unit-tested in `e2e/test/split.test.ts`): `E2E_ADMIN_PART=i/n` (or `first-last/n`) keeps
+  those parts of the admin test projects, dealt round robin in the order `admin-c360-ro`, `admin-m768-ro`,
+  `admin-l1440-ro`, `admin-l1440-en`, `admin-harness` (`e2e/projects.ts`). `admin-setup` runs wherever an admin
+  project does.
+- With `E2E_SHARD` set as well, `e2e/split-reporter.ts` (registered by `e2e/playwright.config.ts` only then) uses
+  Playwright 1.64's `Reporter.preprocess`: `testRun.skipSharding()`, then `testRun.exclude()` of the tests of every
+  tier but the admin tier and the dependency projects that lie outside the `E2E_SHARD` range of that queue. Playwright's
+  own shard counts every test, so each machine's admin projects would move the other tiers' boundaries; without the
+  admin tests in the count both machines see the same queue and their slices meet exactly. Without `E2E_ADMIN_PART`
+  nothing changes (CI's matrix, a single machine).
+- `scripts/ci/e2e-split.sh` runs `E2E_ADMIN_PART=1-2/3` on the NUC (`admin-c360-ro`, `admin-l1440-en`,
+  `admin-m768-ro`, `admin-harness`) and `3/3` here (`admin-l1440-ro`), also for the fallback that reruns a dropped
+  NUC's part here. Halves (`1/2`, `2/2`) were measured first: with the state checks of §33b this machine's two
+  journeys (about 2.5 minutes each beside the functional tests) ended the stage at 560 s while the NUC was done at
+  379 s, so the NUC, about twice as fast, takes three of the four journeys; `scripts/ci/run-all-checks.sh` forwards `E2E_ADMIN_PART` by name. Pinned by
+  `scripts/ci/tests/test_e2e_split.py`.
+- Measured before the checkers of §33b: a split `e2e` in 275 s (the NUC's part done at 220 s, this machine's at
+  272 s) against 306 s with the whole admin chain on the NUC. With the checkers: 560 s with halves, 453 s with
+  `1-2/3` : `3/3` (this machine done at 386 s, the NUC at 413 s).
+
+### 33b. The generic checkers and the state inventory — APPLIED (gate-tightening)
+
+- `assertLayoutSound` (`e2e/support/layout.ts`) and `assertAccessible` (`e2e/support/a11y.ts`) run on every state of
+  `e2e/tour/states.ts` (the viewer's 30 states at every tour project; the admin's 15 states in the journey and the
+  smoke at its four projects) and in the a11y specials; `docs/TESTING.md` → *The tour's checkers* lists every check.
+  The checks are soft assertions: a test still fails on any violation, and one run reports them all.
+- Axe in `assertAccessible` adds `wcag21a` and `best-practice` to the fixture's tags (the functional specs keep the
+  fixture's set).
+- Scenario rows: `S-V15-HAPPY` refined; new `S-V14-HAPPY-EVERY-STATE`, `S-V15-BAD-TEXT-SPACING`, `S-V15-BAD-REFLOW-320`;
+  `S-V14-HAPPY-TOAST-ANNOUNCED` now exists (the live-region recorder `e2e/support/live-regions.ts`); behaviour A31
+  (admin layout and accessibility) with `S-A31-HAPPY` and `S-A31-BAD-ALERTS`; `S-A29-BAD-UNKNOWN-ROUTE` now exists.
+- One sanctioned stacking: the open FAB menu may cover what lies beneath it (`SANCTIONED_STACKINGS`).
+
+### 33c. Config edits — APPLIED (they add a gate or keep the tools working)
+
+- `vitest.config.ts`: a new project `e2e-support` (Chromium) runs `e2e/test/**/*.test.ts`, and its `coverage` lists
+  the checkers' modules and `e2e/split.ts`, so the 90 % per-file thresholds hold them (Sonar counts `e2e/` as tests,
+  so `scripts/ci/check_coverage.py` skips them; Vitest's own per-file thresholds are the gate).
+- `eslint.config.js`: `e2e/test/**/*.ts` joins the Vitest file set (`TESTS`, the Vitest rules) and leaves the
+  Playwright block (`ignores`), whose rules would read Vitest's `test` as a Playwright test.
+- `e2e/tsconfig.json`: includes `split.ts`, `split-reporter.ts` and `test/`.
+- `e2e/projects.ts`: the tour's test timeout from 120 s to 240 s (up to seven states per test, each through both
+  checkers; a 3840 × 2160 journey took about 90 to 130 s on a loaded laptop). A longer timeout lowers no bar.
+
+### 33d. Test fixes — APPLIED (a flaky race, not a product change)
+
+- `e2e/admin/specs/journey.spec.ts`: the USGS countdown assertion read one exact second (`60`, then `55` after a 5 s
+  jump) of a clock the spec keeps running for the Firebase SDK; under load it saw 54 and failed. It now asserts the
+  jump took at least five seconds off and the 60 s window is still open (`docs/LESSONS.md` #54).
+- `e2e/admin/specs/smoke.spec.ts`: a heading lookup that matched the list and the detail pane of the l1440 Setup
+  page takes the first.
+
+### 33e. `.github/workflows/ci.yml` and `nightly.yml`: the e2e matrices rebalanced — APPLIED (keeps the jobs within their timeouts)
+
+Every tour state now runs both generic checkers: in the full run of 2026-10-17 the per-push tour took 1,192 s and the
+tour matrix 4,038 s of the NUC's test time (about twice that on the laptop), against about 600 and 2,360 s of laptop
+time before; the admin tier took 755 s with its state checks. The job that carried the admin, smoke, a11y, no-WebGL
+and tour tiers (about 860 s before, 40-minute timeout) would carry about 3,200 s of laptop time, and each of the
+nightly's two `tour-matrix` jobs about 4,000 s (45-minute timeout), both past their timeouts on a 4-vCPU runner with
+Playwright's two workers. No tier, test or row moves:
+
+```diff
+-                    - part: admin, smoke, a11y, no-WebGL, tour
+-                      tier: admin,smoke,a11y,nogl,tour
+-                      shard: ''
++                    - part: tour 1/2
++                      tier: tour
++                      shard: 1/2
++                    - part: tour 2/2
++                      tier: tour
++                      shard: 2/2
++                    - part: admin, smoke, a11y, no-WebGL
++                      tier: admin,smoke,a11y,nogl
++                      shard: ''
+```
+
+The same in `nightly.yml`'s `e2e` jobs, and its `tour-matrix` stage in six count shards (`1/6` to `6/6`) instead of
+`1-2/5` and `3-5/5`; the first shard (the 2560 and 3840 px frames) is the heaviest, at about 2,400 s of laptop time.
+Verified with the workflow gates of `static` (`actionlint`, `workflow-schema`, `workflow-timeouts`,
+`workflow-policy`, `action-pins`, `yamllint`, `prettier`). Retime from the first GitHub Actions runs.
+
+### 33f. The admin's shell becomes an app shell — APPLIED (a product fix of the findings, for the user to see)
+
+The admin agent's fixes of the admin's rows of `layout-a11y-findings.md` (its addendum lists them all). One changes how
+the admin feels, so it is set out here: on every window the shell is now as tall as the window and only the page
+scrolls (`.scroller` inside `<main>`), so the navigation bar, the rail and the top app bar keep their own places and no
+content ever scrolls under them. Before, the document scrolled under the sticky bar at 360 px: a focused Setup header,
+link, field or switch ended hidden under it (WCAG 2.4.11), axe found headers half covered (`target-size`), and at
+1440 px the account button scrolled away with the top bar. The snackbar is docked below the page (it takes no room while
+empty) instead of floating over it, where it hid the focused control too. The bar's More sheet now covers the window
+(it covered only the bar, whose sticky host was its containing block).
+
+The alternative was to keep the page scrolling and add `scroll-padding` for the bar: the focused control would clear it,
+but whatever the page is scrolled to still lies under the bar (axe flags a target half under it), and the snackbar
+would still cover the page. The cost of the app shell: a phone's address bar no longer hides as the page scrolls, and
+Space or Page Down scroll the page only once it was clicked or something in it has the focus (as in the Google Cloud
+console). Verified by
+the admin tier at its four projects and `packages/ui/test/admin/shell/shell-layout.test.ts`.
+
+### 33g. The verify pass: stricter checkers and a dark admin project — APPLIED (gate-tightening, logged)
+
+The verify agent of 2026-10-17 resolved the open change request LA-6 and ran the visual audit the checks could not
+replace (`docs/research/layout-a11y-findings.md` → *Addendum 2026-10-17: verify and visual audit*). No lint or tool
+configuration changed; these make the existing gates stricter:
+
+- **Touch targets are hit-tested** (`targetSizeOf`, `e2e/support/layout-probe.ts`): the kit's 48 px `touch-target`
+  ring counts only as far as a pointer reaches the control (each side hit-tested at its middle; a side off screen or
+  scrolled out of its list counts as computed). It read the pseudo-element's computed 48 px, which stays 48 px when an
+  `overflow: hidden` cuts it (LA-6).
+- **The open FAB menu's sanction is narrowed** (`SANCTIONED_STACKINGS`, `e2e/support/layout.ts`): it may cover the
+  map's content and the two top docks it is designed to grow over (the consent banner, the toast), no longer any chrome
+  (`under: '*'`). The audit found its last item on the timeline's thumb at 768 px.
+- **No box scrolls sideways** (`sideways-scroll`, `e2e/support/layout-rules.ts`): every scroller of the page, not only
+  the page, is checked for content wider than it (WCAG 1.4.10). The audit found a dialog's theme choice past its edge.
+- **A focus ring must not be cut off** (`ringCutBy`, `e2e/support/a11y-probe.ts`): the Tab round reports a ring whose
+  outline box leaves an ancestor that hides its overflow without scrolling. It found the map's ring cut away whole.
+- **The admin runs in the dark scheme too**: the project `admin-l1440-dark` (`e2e/projects.ts`), dealt to part 1 of a
+  split run (the NUC). It adds one admin journey and smoke, about 150 s of laptop test time, to the chain of CI's job
+  "admin, smoke, a11y, no-WebGL" (40-minute timeout; about 760 s of admin test time before). Retime that job from its
+  first GitHub Actions run.
+
+The state screenshots behind the audit are `HCM_STATE_SCREENSHOTS` (`e2e/support/state-shots.ts`), off by default.

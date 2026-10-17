@@ -120,13 +120,21 @@ class Controller implements SetupController {
     }
 
     /**
-     * The first checks, then the step to resume at; a card the admin opened while they ran (the legacy import's
-     * detection reads every photo) stays open.
+     * The first checks, then the step to resume at; a card the admin opened while they ran stays open. In normal mode
+     * the step opens as soon as the server's record is in, unless it is the legacy import, whose own detection (it reads
+     * every photo) decides it: the page no longer sat with every card closed until a later step's check ended, and a
+     * card that opened in the middle of reading it moved every step below it.
      */
     async start(mode: SetupMode, step: string | null): Promise<void> {
         this.store.set(initialSetupState(this.deps.host, mode));
-        await (mode === 'bootstrap' ? this.restoreBootstrap() : this.loadNormal());
-        this.ctx.update((state) => (state.openStep === null ? { ...state, openStep: resumeStep(state, step) } : state));
+        if (mode === 'bootstrap') {
+            await this.restoreBootstrap();
+        } else {
+            await this.loadStatus();
+            this.resume(step, (next) => next !== 'legacyImport');
+            await this.flows.legacyImport.detect();
+        }
+        this.resume(step, () => true);
     }
 
     async setMode(mode: SetupMode): Promise<void> {
@@ -181,12 +189,25 @@ class Controller implements SetupController {
     }
 
     private async loadNormal(): Promise<void> {
+        await this.loadStatus();
+        await this.flows.legacyImport.detect();
+    }
+
+    /** What the bootstrap left for the server (after the claim), then the server's record. */
+    private async loadStatus(): Promise<void> {
         const record = readBootstrapRecord(this.deps.session, this.deps.host.projectId);
         if (record !== null) {
             await this.finishBootstrap(record);
         }
         await this.refreshStatus();
-        await this.flows.legacyImport.detect();
+    }
+
+    /** Opens the step to resume at (the one the address named, else the first not done) unless a card is open or `ready` says wait. */
+    private resume(step: string | null, ready: (next: SetupStepId | null) => boolean): void {
+        this.ctx.update((state) => {
+            const next = resumeStep(state, step);
+            return state.openStep === null && ready(next) ? { ...state, openStep: next } : state;
+        });
     }
 
     /** (d2) after the claim: the city, then what the bootstrap found; the record goes once the server holds it. */

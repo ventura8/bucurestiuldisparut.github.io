@@ -71,6 +71,21 @@ test('A text without its English version shows the Romanian one, never a key', {
     expect(await i18nLeaks(page, 'en'), 'no raw message key is shown').toEqual([]);
 });
 
+test("A language switch also relabels the map's own controls", { tag: '@S-V11-BAD-MAPBOX-LABELS' }, async ({ page }) => {
+    // The tour: Mapbox writes these names once, so a switch left "Map", "Mapbox homepage" and the toggle in English.
+    await openViewer(page, { lang: 'en' });
+    const map = viewer(page).locator('.map');
+    await expect(map.locator('canvas.mapboxgl-canvas')).toHaveAttribute('aria-label', t('en', 'map.title'));
+
+    await chooseMenuItem(page, 'en', t('en', 'language.ro'));
+
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ro');
+    await expect(map.locator('canvas.mapboxgl-canvas')).toHaveAttribute('aria-label', t('ro', 'map.title'));
+    await expect(map.locator('a.mapboxgl-ctrl-logo')).toHaveAttribute('aria-label', t('ro', 'map.logo'));
+    await expect(map.locator('.mapboxgl-ctrl-attrib-button')).toHaveAttribute('aria-label', t('ro', 'map.toggleAttribution'));
+    expect(await i18nLeaks(page, 'ro'), 'no English-only text is left').toEqual([]);
+});
+
 test('The city theme follows the system, and the visitor choice persists', { tag: '@S-V12-HAPPY' }, async ({ page, lang }) => {
     await page.emulateMedia({ colorScheme: 'dark' });
     await openViewer(page, { lang });

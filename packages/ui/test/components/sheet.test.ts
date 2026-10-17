@@ -194,3 +194,68 @@ describe('<hcm-sheet>', () => {
         expect(sheet.detent).toBe('half');
     });
 });
+
+describe('<hcm-sheet> actions and landmarks', () => {
+    afterEach(cleanup);
+
+    it('happyPath_slottedActionsShowInTheirRow', async () => {
+        const { sheet, opener } = await sheetIn(true);
+        await open(sheet, opener);
+
+        await expect.poll(() => shadowPart(sheet, '.actions').hidden).toBe(false);
+        await expect.element(page.getByRole('button', { name: 'Mai mult' })).toBeVisible();
+    });
+
+    it('badPath_withoutActionsTheirRowTakesNoRoomAndNothingIsABanner', async () => {
+        // The tour: the empty actions row (16 px) sat over the end of a POI sheet's content, and axe took the sheet's
+        // header row for a second page banner under the lightbox.
+        const box = await fixture<HTMLElement>(
+            html`<div style="position: relative; height: 600px; width: 400px">
+                <hcm-sheet modal label="Loc" close-label="Închide" handle-label="Redimensionează"
+                    ><span slot="header">Casa Uranus</span>
+                    <p>Fișa locului</p></hcm-sheet
+                >
+            </div>`,
+        );
+        const sheet = part(box, 'hcm-sheet') as HcmSheet;
+        sheet.open = true;
+        await sheet.updateComplete;
+
+        await expect.element(page.getByRole('dialog', { name: 'Loc' })).toBeVisible();
+        expect(shadowPart(sheet, '.actions').hidden).toBe(true);
+        const content = shadowPart(sheet, '.content').getBoundingClientRect();
+        expect(content.bottom).toBeCloseTo(shadowPart(sheet, '.sheet').getBoundingClientRect().bottom, 0);
+        expect(page.getByRole('banner').query()).toBeNull();
+    });
+});
+
+describe('the drag handle', () => {
+    afterEach(cleanup);
+
+    it('happyPath_theHandlesFocusRingIsDrawnInsideTheSheet', async () => {
+        const { sheet, opener } = await sheetIn(false);
+        await open(sheet, opener);
+        await userEvent.keyboard('{Tab}');
+        const handle = shadowPart(sheet, '.handle');
+        const style = getComputedStyle(handle);
+        const grow = Number.parseFloat(style.outlineOffset) + Number.parseFloat(style.outlineWidth);
+
+        // The sheet hides its overflow: a ring past its top edge was cut (the visual audit's full-height sheet).
+        expect(deepFocus()).toBe(handle);
+        expect(handle.matches(':focus-visible')).toBe(true);
+        expect(handle.getBoundingClientRect().top - grow).toBeGreaterThanOrEqual(shadowPart(sheet, '.sheet').getBoundingClientRect().top);
+    });
+
+    it('happyPath_theHandleIsA48pxTargetFromTheSheetsTopEdge', async () => {
+        const { sheet, opener } = await sheetIn(false);
+        await open(sheet, opener);
+        const handle = shadowPart(sheet, '.handle').getBoundingClientRect();
+        const top = shadowPart(sheet, '.sheet').getBoundingClientRect().top;
+        const centre = handle.x + handle.width / 2;
+
+        // M3's 48 x 48 target is the button itself: a ring rising past the sheet's top edge was cut to 36 px (the tour).
+        expect([handle.width, handle.height, handle.top]).toEqual([48, 48, top]);
+        expect(sheet.shadowRoot?.elementFromPoint(centre, top + 1)).toBe(shadowPart(sheet, '.handle'));
+        expect(sheet.shadowRoot?.elementFromPoint(centre, handle.bottom - 1)).toBe(shadowPart(sheet, '.handle'));
+    });
+});

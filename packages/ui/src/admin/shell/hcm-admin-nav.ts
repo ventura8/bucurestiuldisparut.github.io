@@ -4,7 +4,9 @@
  * modal bottom sheet), the collapsed navigation rail (icons with their labels below: medium, expanded, and a landscape
  * phone) and the expanded rail (labels beside the icons: large windows); never a drawer. Destinations are hash links,
  * so the browser's own navigation (and its history) works; the current one has `aria-current="page"`. The `foot` slot
- * takes the account button on a landscape phone, where there is no top bar.
+ * takes the account button on a landscape phone, where there is no top bar. A rail taller than the window scrolls on
+ * its own (a landscape phone), and a label wider than its item wraps inside it (a long translation, or a reader's wider
+ * text spacing, WCAG 1.4.12) instead of leaving the rail.
  */
 import { DEFAULT_LOCALE, type Locale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
@@ -53,6 +55,7 @@ export class HcmAdminNav extends LitElement {
                 gap: 4px;
                 padding-block: 12px;
                 padding-inline-start: env(safe-area-inset-left);
+                overflow-y: auto;
             }
 
             :host([variant='rail']) nav {
@@ -71,8 +74,10 @@ export class HcmAdminNav extends LitElement {
                 align-items: center;
                 justify-content: center;
                 gap: 4px;
+                box-sizing: border-box;
                 min-block-size: 56px;
                 min-inline-size: 48px;
+                max-inline-size: 100%;
                 padding: 4px;
                 border: 0;
                 background: none;
@@ -105,7 +110,12 @@ export class HcmAdminNav extends LitElement {
                 font-size: var(--md-sys-typescale-label-large-size, 0.875rem);
             }
 
+            .label {
+                overflow-wrap: anywhere;
+            }
+
             .indicator {
+                flex: none;
                 display: grid;
                 place-items: center;
                 inline-size: 56px;
@@ -136,6 +146,11 @@ export class HcmAdminNav extends LitElement {
                 flex-direction: column;
                 gap: 4px;
                 padding-block-end: 16px;
+            }
+
+            /* An item as wide as the scrolling rail would lose the sides of a ring drawn outside it. */
+            :host([variant='rail']) .item:focus-visible {
+                outline-offset: calc(-1 * var(--md-sys-state-focus-indicator-thickness, 3px));
             }
         `,
     ];

@@ -402,6 +402,13 @@
             "source": "docs/research/M2b-interfaces.md §3.5; PLAN 'minimum admin input'"
         },
         {
+            "id": "A31",
+            "area": "admin",
+            "name": "Admin layout and accessibility",
+            "milestone": "M2b",
+            "source": "The user's request of 2026-10-12 (docs/research/DECISIONS-for-review.md §33)"
+        },
+        {
             "id": "P01",
             "area": "pipeline",
             "name": "Import job end to end",
@@ -979,6 +986,17 @@
             "notes": "Milestone M1."
         },
         {
+            "id": "S-V11-BAD-MAPBOX-LABELS",
+            "behaviour": "V11",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A language switch also relabels the map's own controls",
+            "asserts": "English viewer switched to Romanian in the menu: the map canvas, the Mapbox logo link and the attribution toggle carry their Romanian names; no English-only text is left on the page",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-10-17. The tour's i18n check found Mapbox's own labels ('Map', 'Mapbox homepage', the toggle) in the first language after a switch (docs/research/layout-a11y-findings.md): Mapbox sets them once, so the engine rewrites them through MapPort.setLocale (docs/research/M1-interfaces.md CR-22)."
+        },
+        {
             "id": "S-V12-HAPPY",
             "behaviour": "V12",
             "area": "viewer",
@@ -1072,7 +1090,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "Forced colours stay readable",
-            "asserts": "forced-colors active -> every text has 4.5:1 against the colours actually painted, every kit control keeps an edge, axe (WCAG 2.2 AA without the author-colour rules) passes on the map, the Layers panel, the menu and About",
+            "asserts": "forced-colors active -> every text has 4.5:1 against the colours actually painted, every kit control keeps an edge, axe (WCAG 2.2 AA without the author-colour rules) passes on the map, the Layers panel, the menu and About; the generic layout checker passes in every one of these states",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
@@ -1083,7 +1101,7 @@
             "area": "viewer",
             "path": "bad",
             "title": "Reduced motion disables fly animations",
-            "asserts": "reduced motion -> show my location jumps to the visitor (at most 2 move events, no fly animation); the loading skeleton does not shimmer",
+            "asserts": "reduced motion -> show my location jumps to the visitor (at most 2 move events, no fly animation); the loading skeleton does not shimmer; the generic layout checker passes after the jump",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1."
@@ -1127,10 +1145,21 @@
             "area": "viewer",
             "path": "happy",
             "title": "A toast is announced by a live region that exists before its text",
-            "asserts": "a toast appears (link copied, unknown photo, location refused) -> its polite status region is in the page empty, then holds the message only (not the Close label), so screen readers announce it",
+            "asserts": "a toast appears (link copied, location refused, unknown photo) -> a polite status region that was in the page before the text announces the message",
             "tier": "e2e-viewer",
-            "status": "planned",
-            "notes": "Milestone M1. The delay is unit-tested (packages/ui/test/components/snackbar.test.ts); the e2e needs a recorder of live-region changes inside shadow roots."
+            "status": "exists",
+            "notes": "Milestone M1. The delay is unit-tested (packages/ui/test/components/snackbar.test.ts); the e2e needs a recorder of live-region changes inside shadow roots. Since 2026-10-17 the tour records live-region changes inside shadow roots (e2e/support/live-regions.ts) and checks the share, location and unknown-photo toasts."
+        },
+        {
+            "id": "S-V14-HAPPY-EVERY-STATE",
+            "behaviour": "V14",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Every viewer state passes the generic accessibility checker at every viewport",
+            "asserts": "tour, every state of the inventory at all 11 viewports, light and dark, RO and EN: axe (WCAG 2.0, 2.1 and 2.2 A and AA plus best practices) passes; pointer targets at least 24 px or spaced (WCAG 2.5.8) and 48 px on compact and medium; one full Tab round reaches every control once, never climbing back up inside a component, each with a focus ring of 3:1, uncovered, without a trap and never out of an open modal; Esc closes a popup and the focus returns to its opener; switches, sliders, fields and icon buttons reach 3:1 in the page's scheme and in high contrast; landmarks are named and distinct; the slider's new opacity is announced",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-10-17. The user's request of 2026-10-12 ('in the phone screens the menu button sometimes overlaps with other elements. we should have tests for overlapping elements!!! also for accessibility!!'): the generic checkers of e2e/support/layout.ts and e2e/support/a11y.ts over the state inventory e2e/tour/states.ts (docs/TESTING.md, The tour's checkers)."
         },
         {
             "id": "S-V14-HAPPY-SKIP-LINK-CLEAR",
@@ -1159,11 +1188,11 @@
             "behaviour": "V15",
             "area": "viewer",
             "path": "happy",
-            "title": "No overflow or overlap at every viewport",
-            "asserts": "no overflow or overlap at all 11 viewports; touch targets at least 48 px",
+            "title": "Every viewer state passes the generic layout checker at every viewport",
+            "asserts": "tour, every state of the inventory at all 11 viewports, light and dark, RO and EN: every usable control is on top at its centre and four inner points; with a modal open nothing outside it is usable; no two pieces of floating chrome (the FAB and its menu, the timeline, chips, toasts, banners, sheets, Mapbox's logo, attribution and controls) overlap but the sanctioned open menu; 8 px between floating touch targets on compact and medium; nothing a visitor uses or reads is partly off screen; no sideways scroll; no clipped or overlapping text",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Milestone M1."
+            "notes": "Milestone M1; generic checker since 2026-10-17. The user's request of 2026-10-12 ('in the phone screens the menu button sometimes overlaps with other elements. we should have tests for overlapping elements!!! also for accessibility!!'): the generic checkers of e2e/support/layout.ts and e2e/support/a11y.ts over the state inventory e2e/tour/states.ts (docs/TESTING.md, The tour's checkers)."
         },
         {
             "id": "S-V15-BAD-COMPACT-LANDSCAPE",
@@ -1208,6 +1237,28 @@
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M1. Integrator, found in the M1 review screenshots: hcm-segmented-button segments are content-sized and wrap in a narrow container (packages/ui/src/components/segmented-button.ts; unit tests in packages/ui/test/components/segmented-button.test.ts and packages/ui/test/viewer/hcm-about-dialog.test.ts)."
+        },
+        {
+            "id": "S-V15-BAD-TEXT-SPACING",
+            "behaviour": "V15",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A reader's text spacing cuts and overlaps no text in any viewer state",
+            "asserts": "tour, every state with WCAG 1.4.12's spacing forced (line height 1.5, letters 0.12 em, words 0.16 em, paragraphs 2 em) -> no text is cut or runs over another, no control is covered or partly off screen, nothing scrolls sideways",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-10-17. The user's request of 2026-10-12 ('in the phone screens the menu button sometimes overlaps with other elements. we should have tests for overlapping elements!!! also for accessibility!!'): the generic checkers of e2e/support/layout.ts and e2e/support/a11y.ts over the state inventory e2e/tour/states.ts (docs/TESTING.md, The tour's checkers)."
+        },
+        {
+            "id": "S-V15-BAD-REFLOW-320",
+            "behaviour": "V15",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Every viewer state reflows at 320 CSS px",
+            "asserts": "tour, every state on a phone narrowed to 320 CSS px (WCAG 1.4.10) -> the layout checks still hold: nothing covered, overlapping, cut or partly off screen, no sideways scroll",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Since 2026-10-17. The 320 px projects of the tour matrix check it natively; the other upright phones narrow to 320 and back. The user's request of 2026-10-12 ('in the phone screens the menu button sometimes overlaps with other elements. we should have tests for overlapping elements!!! also for accessibility!!'): the generic checkers of e2e/support/layout.ts and e2e/support/a11y.ts over the state inventory e2e/tour/states.ts (docs/TESTING.md, The tour's checkers)."
         },
         {
             "id": "S-V16-HAPPY",
@@ -3360,10 +3411,10 @@
             "area": "admin",
             "path": "bad",
             "title": "An unknown address opens Setup",
-            "asserts": "an unknown or malformed hash -> Setup with adminShell.route.notFound",
+            "asserts": "an unknown hash -> Setup with the adminShell.route.notFound snackbar, which passes the layout and accessibility checkers",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+            "status": "exists",
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5). Since 2026-10-17: e2e/admin/specs/smoke.spec.ts."
         },
         {
             "id": "S-A29-BAD-LANDSCAPE-PHONE",
@@ -3375,6 +3426,28 @@
             "tier": "e2e-admin",
             "status": "planned",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
+        },
+        {
+            "id": "S-A31-HAPPY",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "happy",
+            "title": "Every admin state passes the generic layout and accessibility checkers",
+            "asserts": "at 360, 768 and 1440 px (RO) and 1440 px (EN), every state of the admin's inventory: the sign-in, the claim, the blocked panel, each Setup step and sub-state of the owner's journey, the account menu and the snackbar -> the generic layout checker (nothing covered, no floating chrome overlapping, nothing off screen, no clipped or overlapping text) and the generic accessibility checker (axe with best practices, target sizes, one full Tab round with 3:1 focus rings, non-text contrast in the scheme and in high contrast, landmarks, text spacing, reflow at 320 px) pass; Esc closes the account menu and the focus returns to its button",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Since 2026-10-17. The user's request of 2026-10-12 ('in the phone screens the menu button sometimes overlaps with other elements. we should have tests for overlapping elements!!! also for accessibility!!'): the generic checkers of e2e/support/layout.ts and e2e/support/a11y.ts over the state inventory e2e/tour/states.ts (docs/TESTING.md, The tour's checkers)."
+        },
+        {
+            "id": "S-A31-BAD-ALERTS",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "bad",
+            "title": "The Setup cards that report a failure stay sound and announce it",
+            "asserts": "provisioning with Secret Manager down, and a Mapbox demo account refused -> the failure is announced by a live region and the card with the failed item, Retry and the alert passes the layout and accessibility checkers",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Since 2026-10-17. The user's request of 2026-10-12 ('in the phone screens the menu button sometimes overlaps with other elements. we should have tests for overlapping elements!!! also for accessibility!!'): the generic checkers of e2e/support/layout.ts and e2e/support/a11y.ts over the state inventory e2e/tour/states.ts (docs/TESTING.md, The tour's checkers)."
         },
         {
             "id": "S-A30-HAPPY",

@@ -4,7 +4,10 @@
  * (`data-layout` from `layoutFor`); the container queries set the gutters and pane widths of each class (M3: 16 dp on
  * compact, 24 dp from medium; supporting pane 360 px, 412 px from large; on extra-large a 360 px layers pane and a
  * 400 px detail pane). Floating controls keep a strip at the bottom of the map free for the Mapbox logo and
- * attribution (scenario V18) and respect the safe areas of notched phones.
+ * attribution (scenario V18) and respect the safe areas of notched phones. They stack with M3's 8 px between touch
+ * targets: the strip, the timeline, the FAB, the "photos near this year" chip (the tour found the FAB on the timeline's
+ * top edge and the timeline 2 px from the collapsed attribution on phones). A dock is only a box around its control:
+ * the empty part of the toast dock and the FAB menu's let taps through to the map and the timeline.
  *
  * Inside the host, `.viewer` is a two-row grid: the frame spans both rows (the map never resizes), the modal layer
  * fills the first, and the legal bar, shown while a modal surface covers the map, is the second (auto height): a
@@ -22,7 +25,20 @@ export const viewerStyles = [
             /* The kit's modal sheets cover the whole viewer, above the floating controls (z-index up to 26). */
             --hcm-sheet-z-index: 28;
             --hcm-gutter: 16px;
-            --hcm-map-chrome: 36px;
+
+            /*
+             * The strip at the foot of the map: Mapbox's collapsed attribution (24 px, 10 px from the edge; the logo is 23
+             * px, 6 px from it) plus the 8 px every floating control keeps from it.
+             */
+            --hcm-map-chrome: 42px;
+
+            /* M3: 8 dp between touch targets. */
+            --hcm-dock-gap: 8px;
+
+            /* The horizontal timeline's height and the vertical one's width (hcm-timeline: 8 + 48 + 28, 8 + 48 + 56 px). */
+            --hcm-timeline-block: 84px;
+            --hcm-timeline-inline: 112px;
+            --hcm-fab-size: 56px;
             --hcm-pane-leading: 360px;
             --hcm-pane-trailing: 360px;
 
@@ -73,6 +89,32 @@ export const viewerStyles = [
             visibility: hidden;
         }
 
+        /*
+         * Mapbox's attribution is white in every theme: its toggle and links take a ring that is dark on white in both
+         * schemes, the light scheme's primary (the dark scheme's inverse primary). The dark scheme's secondary, a light
+         * tone, measured 1.71:1 on the collapsed attribution's toggle (the tour).
+         */
+        .mapboxgl-ctrl-attrib :focus-visible {
+            outline-color: light-dark(var(--md-sys-color-primary, Highlight), var(--md-sys-color-inverse-primary, Highlight));
+        }
+
+        /*
+         * Mapbox's box hides its overflow, and the canvas fills it: the canvas's ring is drawn inside it, or none of it
+         * showed (the tour's ring check found the map's focus invisible). The full attribution sits in the box's corner
+         * with no space below its links: they take a ring without offset, and the attribution the 3 px it needs.
+         */
+        .mapboxgl-canvas:focus-visible {
+            outline-offset: -3px;
+        }
+
+        .mapboxgl-ctrl-attrib:not(.mapboxgl-compact) {
+            padding-block: 3px;
+        }
+
+        .mapboxgl-ctrl-attrib a:focus-visible {
+            outline-offset: 0;
+        }
+
         @container hcm-viewer (width >= 600px) {
             .frame {
                 --hcm-gutter: 24px;
@@ -114,6 +156,15 @@ export const viewerStyles = [
         .pane {
             min-inline-size: 0;
             overflow: hidden;
+        }
+
+        /*
+         * The photo list's wrapper draws no box (as the other sheets' hosts): docked, its sheet is as tall as the pane and
+         * its body scrolls. As a block it grew with the list past the pane, which hides its overflow, so the photos
+         * below the fold were out of reach (the tour, from expanded up).
+         */
+        .photos-sheet {
+            display: contents;
         }
 
         .pane.leading .docked {
@@ -201,12 +252,18 @@ export const viewerStyles = [
             gap: 16px;
             inline-size: min(560px, 100%);
             align-self: start;
-            padding-block-end: calc(var(--hcm-map-chrome) + 56px);
+            padding-block-end: calc(var(--hcm-map-chrome) + var(--hcm-fab-size) + var(--hcm-dock-gap));
         }
 
         .dock {
             position: absolute;
             z-index: 10;
+        }
+
+        /* The menu's and the toast's docks are as wide as their popup or their row: only what they draw takes the pointer. */
+        .dock.menu,
+        .dock.toast {
+            pointer-events: none;
         }
 
         .dock.timeline {
@@ -243,7 +300,9 @@ export const viewerStyles = [
             /* Above the consent banner and the snackbar: the open menu grows upwards over them (kit-integration test). */
             z-index: 26;
             inset-inline-end: var(--hcm-gutter);
-            inset-block-end: calc(var(--hcm-map-chrome) + 100px + env(safe-area-inset-bottom, 0px));
+            inset-block-end: calc(
+                var(--hcm-map-chrome) + var(--hcm-timeline-block) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
+            );
         }
 
         .frame:not([data-timeline]) .dock.menu {
@@ -251,12 +310,15 @@ export const viewerStyles = [
         }
 
         /*
-         * Compact: one row above the menu button, which shares the row above the timeline (the tour found them
+         * Compact: one row above the menu button, which has the row above the timeline (the tour found them
          * overlapping at 320 px).
          */
         .dock.chip {
             inset-inline-start: var(--hcm-gutter);
-            inset-block-end: calc(var(--hcm-map-chrome) + 100px + 64px + env(safe-area-inset-bottom, 0px));
+            inset-block-end: calc(
+                var(--hcm-map-chrome) + var(--hcm-timeline-block) + var(--hcm-dock-gap) + var(--hcm-fab-size) + var(--hcm-dock-gap) +
+                    env(safe-area-inset-bottom, 0px)
+            );
         }
 
         .dock.consent {
@@ -296,11 +358,22 @@ export const viewerStyles = [
 
             .dock.chip {
                 inset-inline-start: calc(var(--hcm-gutter) + 72px);
-                inset-block-end: calc(var(--hcm-map-chrome) + 100px + env(safe-area-inset-bottom, 0px));
+                inset-block-end: calc(
+                    var(--hcm-map-chrome) + var(--hcm-timeline-block) + var(--hcm-dock-gap) + env(safe-area-inset-bottom, 0px)
+                );
             }
 
             .dock.timeline-note {
                 justify-content: center;
+            }
+
+            /*
+             * The FAB sits beside the timeline, which is taller: the open menu's items, wider than the FAB, end 8 px above
+             * the timeline instead of above the FAB (the visual audit found the last item over the timeline's thumb at
+             * 768 px).
+             */
+            .frame[data-timeline]:not([data-compact-height]) .dock.menu {
+                --hcm-fab-menu-gap: calc(var(--hcm-timeline-block) - var(--hcm-fab-size) + var(--hcm-dock-gap));
             }
         }
 
@@ -319,15 +392,26 @@ export const viewerStyles = [
          */
         .frame[data-compact-height] .dock.menu {
             inset-inline: var(--hcm-gutter) auto;
-            inset-block-end: calc(var(--hcm-map-chrome) + 8px);
+            inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-dock-gap));
 
             --hcm-fab-menu-align: flex-start;
-            --hcm-fab-menu-max-block-size: calc(100cqb - var(--hcm-map-chrome) - 8px - 56px - 8px - var(--hcm-gutter));
+            --hcm-fab-menu-max-block-size: calc(
+                100cqb - var(--hcm-map-chrome) - var(--hcm-dock-gap) - var(--hcm-fab-size) - 8px - var(--hcm-gutter)
+            );
         }
 
         .frame[data-compact-height] .dock.chip {
             inset-inline-start: calc(var(--hcm-gutter) + 72px);
-            inset-block-end: calc(var(--hcm-map-chrome) + 8px);
+            inset-block-end: calc(var(--hcm-map-chrome) + var(--hcm-dock-gap));
+        }
+
+        /*
+         * The top docks end before the vertical timeline on the trailing edge: on a short phone the centred toast and the
+         * consent banner reached over it (the tour found the toast's dock over its thumb).
+         */
+        .frame[data-compact-height][data-timeline] .dock.toast,
+        .frame[data-compact-height][data-timeline] .dock.consent {
+            inset-inline-end: calc(var(--hcm-gutter) + var(--hcm-timeline-inline) + var(--hcm-dock-gap));
         }
 
         @media (prefers-reduced-motion: reduce) {

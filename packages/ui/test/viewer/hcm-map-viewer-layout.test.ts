@@ -437,3 +437,42 @@ describe('<hcm-map-viewer>: the skip link', () => {
         expect(skip.left - mounted.element.getBoundingClientRect().left).toBeCloseTo(8, 0);
     });
 });
+
+describe('<hcm-map-viewer>: modal stacking and docked sheets', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('happyPath_underTheLightboxTheModalSheetsAreInertUntilItCloses', async () => {
+        // The tour, on phones and at 768 px: under the lightbox the photo sheet's image, handle and Close stayed usable.
+        const mounted = await mountViewer(readyState(), COMPACT);
+        mounted.store.openPhoto('uranus-1984');
+        await mounted.element.updateComplete;
+        const sheets = (): boolean[] =>
+            ['hcm-layer-panel', 'hcm-photo-sheet', '.photos-sheet'].map((selector) => part(mounted, selector).hasAttribute('inert'));
+        expect(sheets()).toEqual([false, false, false]);
+
+        mounted.store.setLightbox(true);
+        await mounted.element.updateComplete;
+        expect(sheets()).toEqual([true, true, true]);
+
+        mounted.store.setLightbox(false);
+        await mounted.element.updateComplete;
+        expect(sheets()).toEqual([false, false, false]);
+    });
+
+    it('badPath_theDockedPhotoListFillsItsPaneAndScrollsInside', async () => {
+        // The tour, from expanded up: the docked list grew past its pane, which hides its overflow, so the photos below
+        // the fold were out of reach.
+        const mounted = await mountViewer(readyState(), { width: 1000, height: 500 });
+        mounted.store.openSheet('photos');
+        await mounted.element.updateComplete;
+
+        const pane = part(mounted, '.pane.trailing').getBoundingClientRect();
+        const docked = part(mounted, '.pane.trailing section.docked').getBoundingClientRect();
+        const body = part(mounted, '.pane.trailing section.docked > .body');
+        expect(docked.height).toBe(pane.height);
+        expect(getComputedStyle(body).overflowY).toBe('auto');
+        expect(body.getBoundingClientRect().bottom).toBeLessThanOrEqual(pane.bottom);
+    });
+});
