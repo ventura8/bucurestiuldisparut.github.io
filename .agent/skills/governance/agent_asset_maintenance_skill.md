@@ -40,7 +40,7 @@ The agent assets are the project's only memory. The next agent reads these files
 ### 3. Cross-reference integrity
 
 - Write repository paths in back-ticks, relative to the repository root (`packages/engine/src/index.ts`). Inside `.agent/skills/`, a sibling skill may be named relative to that folder (`quality/pipeline_skill.md`).
-- Every back-ticked repository path exists, is git-ignored (`reports/`, `.env.local`, `.sonar-token`), or is listed under *Planned paths* in `docs/research/M0-handoff.md`. The `agent-assets` gate (`scripts/ci/check_agent_assets.py`) enforces this together with the byte and line budgets; `docs/research/` is not checked (it is the verbatim research record).
+- Every back-ticked repository path exists, is git-ignored (`reports/`, `.env.local`, `.sonar-token`, and build output such as `functions/dist` that a fresh clone has not built yet: the checker also asks git about a missing path as a folder, since `dist/` matches only folders), or is listed under *Planned paths* in `docs/research/M0-handoff.md`. The `agent-assets` gate (`scripts/ci/check_agent_assets.py`) enforces this together with the byte and line budgets; `docs/research/` is not checked (it is the verbatim research record).
 - Section references use the heading text: `docs/SETUP.md` → *npm in a container*. Renaming a heading means updating every reference to it.
 - No orphan: every skill appears in `SKILLS_CATALOG.md`; every subagent appears in `CLAUDE.md`.
 

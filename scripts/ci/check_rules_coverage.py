@@ -6,7 +6,7 @@ the measure (docs/research/design-review-testability.md §3.5). Two subcommands:
 
 * `save` runs INSIDE `firebase emulators:exec`, right after Vitest (scripts/ci/run-emulated-tests.sh):
   it fetches `/emulator/v1/projects/<project>:ruleCoverage` (JSON) and `...:ruleCoverage.html` from
-  FIRESTORE_EMULATOR_HOST and writes reports/rules/firestore-coverage.{json,html}.
+  FIRESTORE_EMULATOR_HOST, both at once, and writes reports/rules/firestore-coverage.{json,html}.
 * `check` (the `rules-coverage` gate) reads the saved JSON report and fails when
   1. an expression was never evaluated (an operand skipped by `&&`/`||` short-circuiting does not
      count as evaluated), or
@@ -26,7 +26,9 @@ import os
 import re
 import sys
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from functools import partial
 from http import HTTPStatus
 from pathlib import Path
 
@@ -38,6 +40,8 @@ ROOT = Path(__file__).resolve().parents[2]
 RULES = Path("firebase", "firestore.rules")
 JSON_REPORT = Path("reports", "rules", "firestore-coverage.json")
 HTML_REPORT = Path("reports", "rules", "firestore-coverage.html")
+# Each saved report with the suffix of its emulator endpoint.
+REPORTS = ((JSON_REPORT, ""), (HTML_REPORT, ".html"))
 DEFAULT_PROJECT = "demo-hcm"
 TIMEOUT_SECONDS = 30
 EXIT_FAILURE = 1
@@ -86,16 +90,24 @@ def fetch_http(host: str, path: str) -> bytes:
 
 
 def save_report(root: Path, env: Mapping[str, str], fetch: Fetch) -> list[Path]:
-    """Fetches the JSON and HTML coverage reports from the running emulator into reports/rules/."""
+    """Fetches the JSON and HTML coverage reports from the running emulator into reports/rules/.
+
+    The emulator builds each answer from every evaluation of the run (about 250 MB, 3 to 8 s of its CPU), so both
+    requests go out at once: the save lasts as long as the slower one, not their sum
+    (docs/research/pipeline-baseline.md, the tests addendum).
+    """
     host = env.get("FIRESTORE_EMULATOR_HOST")
     if not host:
         raise CoverageError("FIRESTORE_EMULATOR_HOST is not set: run inside `firebase emulators:exec`")
     project = env.get("GCLOUD_PROJECT") or DEFAULT_PROJECT
+    paths = [f"/emulator/v1/projects/{project}:ruleCoverage{suffix}" for _, suffix in REPORTS]
+    with ThreadPoolExecutor(max_workers=len(REPORTS)) as pool:
+        bodies = list(pool.map(partial(fetch, host), paths))
     written: list[Path] = []
-    for relative, suffix in ((JSON_REPORT, ""), (HTML_REPORT, ".html")):
+    for (relative, _), body in zip(REPORTS, bodies, strict=True):
         target = root / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(fetch(host, f"/emulator/v1/projects/{project}:ruleCoverage{suffix}"))
+        target.write_bytes(body)
         written.append(target)
     return written
 

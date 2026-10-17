@@ -6,8 +6,16 @@
 #
 # Afterwards it saves the Firestore emulator's rule-coverage report (only reachable while the
 # emulators run) to reports/rules/; the `rules-coverage` gate then checks it
-# (scripts/ci/check_rules_coverage.py). The report is saved even when Vitest fails, and the
-# Vitest exit status is preserved.
+# (scripts/ci/check_rules_coverage.py, which asks for the JSON and the HTML report at once). The
+# report is saved even when Vitest fails, and the Vitest exit status is preserved.
+#
+# `npm test` starts the emulators with JAVA_TOOL_OPTIONS=-XX:CICompilerCount=2: one C1 and one C2
+# compiler thread per JVM instead of about four and eight on 16 hardware threads, whose JIT work
+# took about two thirds of the Firestore emulator's CPU in a run this short, beside the tests.
+# C1 alone (-XX:TieredStopAtLevel=1) cut that further but made the two 250 MB coverage reports
+# slower to build than the tests gained (docs/research/pipeline-baseline.md, the tests addendum).
+# The Storage emulator echoes the JVM's "Picked up JAVA_TOOL_OPTIONS" line as an "Unexpected rules
+# runtime error" warning at start-up; that line is expected.
 set -uo pipefail
 
 # No test may reach the network: without this, firebase-admin's Google clients probe the GCE metadata

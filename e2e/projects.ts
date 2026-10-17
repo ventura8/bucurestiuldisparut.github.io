@@ -5,26 +5,42 @@ import type { WorkerOptions } from './support/test.js';
 
 /**
  * The Playwright projects of the e2e tiers (docs/research/design-review-testability.md §4.3), chosen per run with
- * `E2E_TIER` (comma-separated; unset or `all` runs every tier). Every project runs Chromium under SwiftShader
- * behind the host-resolver rules and depends on `setup`, which validates the fixture manifest and the servers once.
+ * `E2E_TIER` (comma-separated): unset runs the tiers of every push (all but `tour-matrix`), `all` runs every tier.
+ * Every project runs Chromium under SwiftShader behind the host-resolver rules and depends on `setup`, which validates
+ * the fixture manifest and the servers once.
  *
  * | Tier | Projects | Specs |
  * | --- | --- | --- |
+ * | `admin` | `admin-setup`, `admin-harness`, `admin-{c360,m768,l1440}-ro`, `admin-l1440-en` | `admin/{setup,harness,specs}/` |
  * | `smoke` | `harness`, `smoke-c360`, `smoke-l1440` | `specs/harness/` (the e2e preconditions), `specs/smoke/` (the viewer boots) |
- * | `fn` | `fn-c360-ro`, `fn-m768-ro`, `fn-l1440-ro`, `fn-l1440-en`, `fn-c360-dark` | `specs/viewer/`, `specs/starter-kit/` |
- * | `tour` | `tour-<viewport>-<light|dark>-<ro|en>`, 11 viewports | `tour/*.tour.ts` (layout, axe, ARIA snapshots) |
  * | `a11y` | `a11y-reduced-motion`, `a11y-forced-colors` | `a11y/reduced-motion.spec.ts`, `a11y/forced-colors.spec.ts` |
  * | `nogl` | `nogl` (`--disable-3d-apis`) | `specs/viewer/no-webgl.spec.ts` |
- * | `admin` | `admin-setup`, `admin-harness`, `admin-{c360,m768,l1440}-ro`, `admin-l1440-en` | `admin/{setup,harness,specs}/` |
+ * | `tour` | the per-push tour: `tour-{x3840,l1440,c915l,c360}-{light,dark}-ro`, `tour-c360-light-en` | `tour/*.tour.ts` (layout, axe, ARIA) |
+ * | `tour-matrix` | the other 35 `tour-<viewport>-<light|dark>-<ro|en>` of the 11 viewports (`all`, nightly) | `tour/*.tour.ts` |
+ * | `fn` | `fn-c360-ro`, `fn-m768-ro`, `fn-l1440-ro`, `fn-l1440-en`, `fn-c360-dark` | `specs/viewer/`, `specs/starter-kit/` |
+ *
+ * The run order is the order of this table: Playwright queues the projects in it, and an `E2E_SHARD` slice is a
+ * contiguous part of that queue. The admin tier comes first, so its tests (one at a time, behind one lock) run beside
+ * everything else instead of after it; the few long tests follow, the tour's largest viewports first; the many short
+ * functional tests come last and fill the workers to the end.
  *
  * The admin projects (docs/research/M2b-interfaces.md §6.2) open the admin server's origin, forward the fake
- * upstreams' hosts (`forwardUpstreams`), depend on `admin-setup` (the admin build and the emulators answer) instead of
- * `setup`, and run one test at a time (`workers: 1`, plus the lease of `e2e/admin/support/test.ts` across projects):
- * the emulators' owner, admins and setup records are per project.
+ * upstreams' hosts (`forwardUpstreams`) and depend on `admin-setup` (the admin build and the emulators answer) instead
+ * of `setup`. The emulators' owner, admins and setup records are per Firebase project, so the admin tests never run
+ * at the same time: every admin spec file declares the Playwright lock `ADMIN_LOCK` (e2e/admin/support/test.ts), which
+ * the dispatcher honours without holding a worker, and the lease of the mock APIs stays as the guard behind it.
  */
 
-const TIERS = ['smoke', 'fn', 'tour', 'a11y', 'nogl', 'admin'] as const;
+/** Every tier, in run order (the table above). */
+const TIERS = ['admin', 'smoke', 'a11y', 'nogl', 'tour', 'tour-matrix', 'fn'] as const;
 export type Tier = (typeof TIERS)[number];
+
+/**
+ * The tiers of every push (`E2E_TIER` unset): every scenario row of the registry. `tour-matrix` repeats the tour's rows
+ * at the remaining viewport, theme and language combinations; it runs in `all` (before a push to `master` or a tag,
+ * stage `tour-matrix`) and nightly (docs/research/DECISIONS-for-review.md §29).
+ */
+const PUSH_TIERS: readonly Tier[] = TIERS.filter((tier) => tier !== 'tour-matrix');
 
 /** Only loopback resolves in Chromium: defence in depth behind the firewall fixture (support/network.ts). */
 const HOST_RULES = '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost';
@@ -106,21 +122,60 @@ function functionalProjects(): E2eProject[] {
     ];
 }
 
-function tourProjects(): E2eProject[] {
-    return (Object.keys(VIEWPORTS) as ViewportName[]).flatMap((viewport) =>
-        (['light', 'dark'] as const).flatMap((scheme) =>
-            (['ro', 'en'] as const).map((lang) =>
-                project(
-                    'tour',
-                    `tour-${viewport}-${scheme}-${lang}`,
-                    '**/*.tour.ts',
-                    { ...chromium(viewport, lang), colorScheme: scheme },
-                    // Several states per test, axe on each: a 3840 px frame under SwiftShader needs more than 30 s.
-                    { testDir: 'tour', timeout: 120_000 },
-                ),
-            ),
-        ),
+interface TourVariant {
+    readonly viewport: ViewportName;
+    readonly scheme: 'light' | 'dark';
+    readonly lang: 'ro' | 'en';
+}
+
+/** What SwiftShader paints per frame: CSS pixels times the device pixel ratio squared. */
+function devicePixels(name: ViewportName): number {
+    const entry: Viewport = VIEWPORTS[name];
+    return entry.viewport.width * entry.viewport.height * (entry.deviceScaleFactor ?? 1) ** 2;
+}
+
+/** Every viewport, scheme and language of the tour (44), the largest frames first. */
+function tourVariants(): TourVariant[] {
+    const largestFirst = (Object.keys(VIEWPORTS) as ViewportName[]).sort((a, b) => devicePixels(b) - devicePixels(a));
+    return largestFirst.flatMap((viewport) =>
+        (['light', 'dark'] as const).flatMap((scheme) => (['ro', 'en'] as const).map((lang) => ({ viewport, scheme, lang }))),
     );
+}
+
+/**
+ * The per-push tour (tier `tour`): a phone, a phone held landscape (compact height), a laptop and a 4K screen, light and
+ * dark, in Romanian, plus the phone in English. Every tour test, and so every tour scenario row, runs on every push;
+ * the other 35 combinations are the `tour-matrix` tier.
+ */
+const PUSH_TOUR_VIEWPORTS: readonly ViewportName[] = ['c360', 'c915l', 'l1440', 'x3840'];
+const PUSH_TOUR_ENGLISH: TourVariant = { viewport: 'c360', scheme: 'light', lang: 'en' };
+
+function isPushTour(variant: TourVariant): boolean {
+    const english = variant.viewport === PUSH_TOUR_ENGLISH.viewport && variant.scheme === PUSH_TOUR_ENGLISH.scheme;
+    return variant.lang === 'ro' ? PUSH_TOUR_VIEWPORTS.includes(variant.viewport) : english;
+}
+
+function tourProject(tier: 'tour' | 'tour-matrix', { viewport, scheme, lang }: TourVariant): E2eProject {
+    return project(
+        tier,
+        `tour-${viewport}-${scheme}-${lang}`,
+        '**/*.tour.ts',
+        { ...chromium(viewport, lang), colorScheme: scheme },
+        // Several states per test, axe on each: a 3840 px frame under SwiftShader needs more than 30 s.
+        { testDir: 'tour', timeout: 120_000 },
+    );
+}
+
+function tourProjects(): E2eProject[] {
+    return tourVariants()
+        .filter((variant) => isPushTour(variant))
+        .map((variant) => tourProject('tour', variant));
+}
+
+function tourMatrixProjects(): E2eProject[] {
+    return tourVariants()
+        .filter((variant) => !isPushTour(variant))
+        .map((variant) => tourProject('tour-matrix', variant));
 }
 
 /** Each special runs only its own spec (selected by file, never by skip): the emulation is what the spec checks. */
@@ -157,7 +212,6 @@ function adminProject(name: string, testMatch: string, use: Use): E2eProject {
         testMatch,
         use: { ...use, baseURL: ADMIN_ORIGIN, forwardUpstreams: true },
         dependencies: ['admin-setup'],
-        workers: 1,
         timeout: ADMIN_TIMEOUT_MS,
         metadata: { tier: 'admin' },
     };
@@ -184,29 +238,36 @@ function adminProjects(): E2eProject[] {
 }
 
 const BY_TIER: Readonly<Record<Tier, () => E2eProject[]>> = {
+    admin: adminProjects,
     smoke: smokeProjects,
-    fn: functionalProjects,
-    tour: tourProjects,
     a11y: a11yProjects,
     nogl: noWebGlProjects,
-    admin: adminProjects,
+    tour: tourProjects,
+    'tour-matrix': tourMatrixProjects,
+    fn: functionalProjects,
 };
 
 function isTier(value: string): value is Tier {
     return (TIERS as readonly string[]).includes(value);
 }
 
-/** `E2E_TIER` as tiers: unset, empty or `all` is every tier; anything unknown throws, naming the valid ones. */
+/**
+ * `E2E_TIER` as tiers, in run order: unset or empty is the tiers of every push, `all` (alone or in the list) every
+ * tier; anything unknown throws, naming the valid ones.
+ */
 export function tiersFrom(value: string | undefined): readonly Tier[] {
     const names = (value ?? '')
         .split(',')
         .map((name) => name.trim())
-        .filter((name) => name !== '' && name !== 'all');
-    const unknown = names.filter((name) => !isTier(name));
+        .filter((name) => name !== '');
+    const unknown = names.filter((name) => name !== 'all' && !isTier(name));
     if (unknown.length > 0) {
         throw new Error(`E2E_TIER must be "all" or a comma-separated list of ${TIERS.join(', ')}; unknown: ${unknown.join(', ')}`);
     }
-    return names.length === 0 ? TIERS : TIERS.filter((tier) => names.includes(tier));
+    if (names.includes('all')) {
+        return TIERS;
+    }
+    return names.length === 0 ? PUSH_TIERS : TIERS.filter((tier) => names.includes(tier));
 }
 
 /** `setup`, then the projects of `tiers`. */

@@ -1,7 +1,10 @@
 import { GOOGLE_SCOPES } from '../../../packages/admin/src/google/scopes.js';
 import { setupText, shellText } from '../support/i18n.js';
-import { adminPath, expect, test } from '../support/test.js';
+import { ADMIN_LOCK, adminPath, expect, test } from '../support/test.js';
 import { E2E_PROJECT_ID, PERSONAS } from '../world.js';
+
+// One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
+test.describe.configure({ lock: ADMIN_LOCK });
 
 /**
  * The admin's smoke (docs/research/M2b-interfaces.md §1.3, §2.1, §3.3 d2): with the server answering (normal mode),

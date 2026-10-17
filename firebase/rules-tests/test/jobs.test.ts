@@ -72,7 +72,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-    await world.env.cleanup();
+    await world.close();
 });
 
 describe('queue a job', () => {

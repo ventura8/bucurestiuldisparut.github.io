@@ -4,8 +4,11 @@ import { GOOGLE_SCOPES } from '../../../packages/admin/src/google/scopes.js';
 import { MOCK_API_ORIGIN } from '../../fixtures/world.js';
 import { SIGN_IN_SCOPES } from '../../mock-apis/oauth.js';
 import { authorizeUrl, openHarnessPage, openPopup, receivedGrant, receivedMessages, tokenInfo } from '../support/harness.js';
-import { expect, test } from '../support/test.js';
+import { ADMIN_LOCK, expect, test } from '../support/test.js';
 import { PERSONAS } from '../world.js';
+
+// One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
+test.describe.configure({ lock: ADMIN_LOCK });
 
 /**
  * Harness (behaviour A00): Google's consent, stood in for by the mock APIs (docs/research/M2b-interfaces.md §2.6). A

@@ -42,7 +42,7 @@ All npm versions were checked with `npm view` on 2026-10-11 and are pinned exact
 | Seed tooling | `sharp@0.35.5` (root devDependency, the legacy migration CLI; prebuilt `@img/sharp-linux-x64`) |
 | Firebase CLI | `firebase-tools@15.33.0` (root devDependency; emulator JARs baked into the image) |
 | Types | `@types/node@24.19.2` (Node 24 line, not the 26.x latest) |
-| Python CI tools | `scripts/ci/requirements.txt`: ruff 0.17.0, mypy 2.4.0, pytest 9.1.1, pytest-cov 7.1.0, coverage 7.16.2, yamllint 1.38.0, check-jsonschema 0.38.2, bandit 1.9.4, pip-audit 2.10.1, radon 6.0.1, defusedxml 0.7.1, editorconfig 0.17.1, requests-mock 1.12.1, taplo 0.9.3, plus every transitive dependency pinned; pip 26.2.1 |
+| Python CI tools | `scripts/ci/requirements.txt`: ruff 0.17.0, mypy 2.4.0, pytest 9.1.1, pytest-cov 7.1.0, pytest-xdist 3.8.0 (2026-10-17), coverage 7.16.2, yamllint 1.38.0, check-jsonschema 0.38.2, bandit 1.9.4, pip-audit 2.10.1, radon 6.0.1, defusedxml 0.7.1, editorconfig 0.17.1, requests-mock 1.12.1, taplo 0.9.3, plus every transitive dependency pinned; pip 26.2.1 |
 | Python | 3.14.4 (the GDAL image's interpreter). The raster pipeline uses `requires-python = ">=3.14,<3.15"` (§10c) |
 
 Not added yet (add with the milestone that first imports them, so knip stays clean): `msw`, `jsdom`; `mapbox-gl` as
@@ -1053,6 +1053,142 @@ or deployed.
   `packages/ui/scripts/test/gen-theme.test.ts`, `packages/engine/test/browser/adapter-env.test.ts`,
   `functions/test/deploy-env.test.ts`, the contract check's integrity probes.
 - **Not applied** (reasons in §26): §13b, §15c, §18b, §23b, §23c, §25c, §25d.
+
+## 10t. Pipeline baseline and the clean-checkout fix
+
+Added on 2026-10-17 by the Measure agent of the pipeline optimisation (the user's goal: a pipeline that does not take
+too much time). Nothing committed, pushed or deployed; no gate, threshold, scenario or configuration changed.
+
+- **Measured** every stage on the laptop and the NUC, per gate with CPU use, per Vitest and Playwright project, the
+  slowest tests and the CI shards' shares: `docs/research/pipeline-baseline.md`. `quality` takes about 21 minutes on
+  the laptop and 14 on the NUC; `e2e` is 84 % and 71 % of it, and the serial admin tier runs alone for its last two
+  minutes; `static` is serial (about two of 16 threads busy) with ESLint at 73 to 80 s and a cold `tsc -b` at 38 to
+  40 s.
+- **Fixed** the `agent-assets` gate on a fresh clone: `git check-ignore --no-index` does not match `dist/` against a
+  folder that was never built, so `functions/dist` and `packages/admin/dist` were reported missing on the NUC and on
+  every CI runner. `scripts/ci/check_agent_assets.py` now also asks about a missing path's folder form; pinned by a
+  test, recorded in `.agent/skills/quality/pipeline_skill.md` → *Local tooling quirks*.
+
+## 10u. Pipeline optimisation: the CI workflows
+
+Added on 2026-10-17 by the CI agent of the pipeline optimisation. Nothing committed, pushed or run on GitHub; the
+decisions and their reasons are `docs/research/DECISIONS-for-review.md` §28, the estimates `docs/CI_PIPELINE.md` →
+*Expected wall time*.
+
+- **`ci.yml`**: `static`, `tests`, `e2e` and `build` need only `build-image` and run side by side; the deploy jobs
+  need all of them, `static` included. The e2e jobs are split by tier and measured test time (`E2E_TIER` and
+  `E2E_SHARD` per matrix entry): `fn` in three count shards (about 1,010, 1,130 and 1,110 s of laptop test time) and
+  `admin,smoke,a11y,nogl,tour` in one job (about 860 s), the only one that starts the emulators; §16a's shard 4
+  carried 2,289 s. `static` carries the `.tsbuild/` folders and `reports/.cache/mypy*` between runs
+  (`actions/cache` v6.1.0, `55cc8345863c7cc4c66a329aec7e433d2d1c52a9`). Timeouts: `static` and `tests` 20 minutes,
+  `e2e` 40, `build` 15.
+- **`nightly.yml`** (new): every day at 02:37 UTC on `master`, the four e2e jobs of `ci.yml` plus the `tour-matrix`
+  stage (the one `all` adds) as `E2E_SHARD` `1-2/5` and `3-5/5` (about 1,180 s each), its own `build-image`, and the issue "Nightly e2e
+  failed" through `.github/actions/upsert-issue` when anything fails.
+- **Not applied**: a docs-only path filter for pull requests (§28f, a proposal with its diff), because it would skip
+  gates on a push. **Unchanged**: the `type=gha` image transport, the npm cache and the browsers baked into the image,
+  `node_modules` not cached (`npm ci` takes 7 s), the concurrency rules.
+- **Lessons**: `tsc -b` with `.tsbuild/` folders restored from an earlier build still fails every dependent project of
+  a broken export (measured: cold 77 s, restored 3.1 s, restored after a breaking change 21.7 s with 16 errors in 10
+  files); an ESLint cache is not safe to carry with type-aware rules, so CI carries none (recorded in
+  `.agent/skills/quality/pipeline_skill.md` → *CI mapping*). Playwright 1.64 shards by test count; a tier list in
+  `E2E_TIER` plus a count shard inside a uniform tier is how CI balances by time.
+
+## 10v. Pipeline optimisation: the e2e stage
+
+Added on 2026-10-17 by the e2e agent of the pipeline optimisation. Nothing committed or pushed; the decisions and their
+reasons are `docs/research/DECISIONS-for-review.md` §29, the numbers `docs/research/pipeline-baseline.md` → *After the
+e2e optimisation*.
+
+- **Tiers** (`e2e/projects.ts`): the tour is split into `tour` (9 projects, every push) and `tour-matrix` (the other
+  35; `E2E_TIER` unset runs every tier but it, `all` every tier). New stage `tour-matrix` (`e2e-matrix`, `e2e-build`,
+  `playwright-tour-matrix`) in `all`, which is now `static`, `tests`, `e2e`, `tour-matrix`, `build`, `sonar`, and in the
+  nightly workflow (§28e). Every scenario row still runs on every push.
+- **Order and the admin tier**: the projects run `admin`, `smoke`, `a11y`, `nogl`, `tour`, `tour-matrix`, `fn`, longest
+  first; the admin projects lost `workers: 1` and every admin spec file declares the Playwright lock `ADMIN_LOCK`
+  (`e2e/admin/support/test.ts`), so the admin chain runs on one worker from the start instead of alone at the end; the
+  mock APIs' lease stays as the guard behind it.
+- **`E2E_SHARD`** takes `first-last/total` as well as `index/total` (`e2e/playwright.config.ts` turns a range into
+  Playwright's `PWTEST_SHARD_WEIGHTS`); a sharded run writes a blob report to `reports/blob/e2e*/`; a `tour-matrix`-only
+  run writes its own reports (`reports/junit/e2e-tour-matrix.xml`, `reports/playwright-tour-matrix/`).
+- **`e2e-build`** is `python3 scripts/ci/e2e_build.py`: `npm run build:site:e2e` unless its stamp in
+  `node_modules/.cache/hcm/` shows no input changed and no output was touched (`scripts/ci/tests/test_e2e_build.py`).
+- **Two machines**: `PIPELINE_STAGE=<stage> bash scripts/ci/e2e-split.sh` runs the stage here with the tail of each
+  Playwright run while the NUC runs the head from an rsync of the tree, merges both parts' reports and prints one
+  verdict (`scripts/ci/tests/test_e2e_split.py`). The `e2e` stage took 283 s this way, against 1052 s on the laptop and
+  592 s on the NUC before; 335 s on the NUC alone.
+- **`waitForEngineEvent`** (`e2e/support/viewer.ts`) waits for the event in the page instead of polling the recorded
+  events. Shorter `expect.poll` intervals were measured and reverted (no throughput at full CPU).
+- **Lessons** (in `.agent/skills/quality/pipeline_skill.md` → *Local tooling quirks*): Playwright's shard weights
+  variable, dependency phases that would serialise tiers, `merge-reports` across machines, waits at saturation, and the
+  image rebuild after a `package.json` or `requirements.txt` change.
+
+## 10w. Pipeline optimisation: the tests stage
+
+Added on 2026-10-17 by the tests agent of the pipeline optimisation. Nothing committed or pushed; the decisions are
+`docs/research/DECISIONS-for-review.md` §30, the numbers `docs/research/pipeline-baseline.md` → *Addendum: the tests
+stage*. Every gate, test file and threshold of `tests` runs as before.
+
+- **Emulators**: `npm test` gives the emulators' JVMs two JIT compiler threads (`JAVA_TOOL_OPTIONS=-XX:CICompilerCount=2`
+  in `package.json`); `scripts/ci/check_rules_coverage.py save` fetches the two 250 MB rule-coverage reports at once.
+  The tests stage already used one emulator session for everything that needs one (`vitest`); nothing else starts
+  them.
+- **Vitest**: `shared`, `engine`, `admin` and `functions` share one module graph per worker (`SHARED_MODULE_GRAPH` in
+  `vitest.config.ts`); the composition root's test, the one with `vi.mock`, is the new isolated project `functions-deps`;
+  `rules` and `tools` stay isolated. Both functions projects give every test and hook 60 s (`EMULATOR_TIMEOUTS`) instead
+  of per-file `vi.setConfig`. The browser projects' pre-bundled dependencies (§14 of the decisions) needed no change: no
+  re-optimisation in any run, cold or warm. The rules world seeds through one rules-disabled context held open per
+  file (`holdOwner` in `firebase/rules-tests/test/support/world.ts`, closed by `world.close()`) instead of a new
+  Firebase app per seed.
+- **pytest**: pytest-xdist 3.8.0 (`scripts/ci/requirements.txt`), at most four workers (`pytest.ini`); the pipeline's
+  tests stay in one process (GDAL per worker made them slower).
+- **Robustness**: the functions tests that timed out under load now have the emulator timeouts (`docs/LESSONS.md` #51);
+  the stand-in emulator of the rule-coverage tests no longer waits half a second to shut down.
+- **Lessons** (in `.agent/skills/quality/testing_strategy_skill.md` and `pipeline_skill.md`): Vitest starts Node projects
+  in alphabetical order, and starting the emulator-backed ones first was slower; the `vitest` gate is CPU-bound, so only
+  less CPU work makes it faster; any `package.json` edit rebuilds the image's npm layers.
+
+## 10x. Pipeline optimisation: the `static` stage and the gate engine
+
+Added on 2026-10-17 by the static agent of the pipeline optimisation. Nothing committed or pushed; the decisions are
+`docs/research/DECISIONS-for-review.md` §31, the numbers `docs/research/pipeline-baseline.md` → *Addendum: the `static`
+stage and the gate engine*. Every gate of every stage runs as before; only when, and how many at once, changed.
+
+- **Gate engine** (`scripts/ci/gate_runner.py`, new): `scripts/ci/pipeline.py` runs a stage's gates up to
+  `PIPELINE_JOBS` at once (default the CPU count; `scripts/ci/run-all-checks.sh` forwards the variable). `Gate` gained
+  `needs` (gates whose output it reads; the registry check refuses one listed later) and `exclusive` (runs alone: the
+  two Playwright gates). Output is one block per gate in registry order, as a serial run printed it, plus a
+  `<stage> finished in …` line; failures are listed in registry order. Within one run of `quality` or `all`, a gate a
+  previous stage ran is reused, not run again (`pytest`, `e2e-matrix`, `e2e-build`). Tests:
+  `scripts/ci/tests/test_gate_runner.py`, `test_pipeline_stages.py` (with the fake shell `fakeshell.py`, shared with
+  `test_pipeline.py`), 100 % branch coverage.
+- **`package.json`**: ESLint lints with worker threads, a quarter of the CPUs and at least two (eight, ESLint's `auto`
+  here, cost five times the CPU of one thread and was slower than four); Prettier and stylelint keep content-keyed
+  caches in `reports/.cache/`. ESLint keeps no cache (unsafe with type-aware rules).
+- **Measured on the busy laptop** (other agents' stages ran beside every run): warm `static` 149 to 176 s with the old
+  engine, 48 to 64 s with the new one at a similar load; cold 228 to 247 s against 88 s. Warm, ESLint is the critical
+  path; cold, `tsc -b` (47 s alone, 87 s beside the other gates).
+- **Proposed, not applied**: the image's npm layer keyed on the dependencies only (§31e: an npm script edit rebuilds
+  it today, 245 to 297 s); two costly ESLint rules that cannot add a finding here (§31f).
+
+## 10y. Pipeline optimisation: the integration
+
+Added on 2026-10-17 by the integrator of the pipeline optimisation. Nothing committed, pushed or deployed; the
+decisions are `docs/research/DECISIONS-for-review.md` §32, the after table of every stage
+`docs/research/pipeline-baseline.md` → *Addendum: the integrated pipeline*, the overview `docs/CI_PIPELINE.md` →
+*Stages, tiers and machines*.
+
+- **Combined** §28 to §31 without a code change: the gate engine's registry already held the `tour-matrix` stage, and
+  `package.json` carries both the tests agent's `test` script and the static agent's lint and format scripts.
+- **`docker/Dockerfile.quality`** has a `manifests` stage that copies every workspace manifest with its scripts dropped
+  (all but `emulators:setup`), so an npm script edit no longer rebuilds the npm, Playwright and emulator layers (§31e,
+  applied as §32a): a new workspace's `COPY` line goes there now, not next to `npm ci` as §3 above says.
+- **`scripts/ci/e2e-split.sh`**: measured default shares, `2:3` for `e2e` and `tour-matrix`, `1:2` for `quality` and `all`. **`nightly.yml`**
+  uploads the `tour-matrix` parts' reports too. **`.gitignore`** names `.hypothesis/` (`docs/LESSONS.md` #52).
+- **Measured** (laptop otherwise idle): `static` 48 s warm and 93 s in a fresh clone, `tests` 57 and 60 s, `build`
+  5 s; split with the NUC `e2e` 306 s, `quality` 324 s and `all` 398 s, against about 21 minutes for `quality` on the
+  laptop before.
+  The floor of a split e2e run is the admin tier's one-at-a-time chain on the NUC (§32f proposes halving it).
 
 ## 11. Planned paths
 

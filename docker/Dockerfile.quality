@@ -21,6 +21,33 @@ FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca92
 # sonarsource/sonar-scanner-cli:12.2.0.4256_8.1.0 (SonarScanner CLI 8.1.0.6389, as in scripts/ci/sonar_scan.sh)
 FROM sonarsource/sonar-scanner-cli@sha256:a3f4215076706c95a17a68c19322ee916e40a3acd081a8c1a1e839e0194afa57 AS sonar-scanner
 
+# --- npm manifests without their scripts ------------------------------------------------------
+# The npm layer of the quality image fills the npm cache and installs the browsers and the emulator JARs: it depends
+# on the manifests' dependency fields and the lockfile, not on their scripts. Copying the manifests with the scripts
+# dropped (all but `emulators:setup`, which that layer runs) keeps an npm script edit from rebuilding about four and a
+# half minutes of layers; BuildKit keys the COPY below on the files' content (DECISIONS-for-review.md §31e). No
+# manifest has an install lifecycle script, and the pipeline's own `npm ci` installs from the real manifests.
+FROM node AS manifests
+WORKDIR /m
+COPY package.json package-lock.json .npmrc ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/ui/package.json packages/ui/
+COPY packages/engine/package.json packages/engine/
+COPY packages/admin/package.json packages/admin/
+COPY packages/test-support/package.json packages/test-support/
+COPY functions/package.json functions/
+COPY firebase/rules-tests/package.json firebase/rules-tests/
+COPY e2e/package.json e2e/
+RUN node -e "const fs = require('node:fs'); \
+        for (const file of process.argv.slice(1)) { \
+            const manifest = JSON.parse(fs.readFileSync(file, 'utf8')); \
+            const setup = manifest.scripts?.['emulators:setup']; \
+            delete manifest.scripts; \
+            if (setup) { manifest.scripts = { 'emulators:setup': setup }; } \
+            fs.writeFileSync(file, JSON.stringify(manifest, null, 4)); \
+        }" \
+        package.json packages/*/package.json functions/package.json firebase/rules-tests/package.json e2e/package.json
+
 # --- quality image ----------------------------------------------------------------------------
 # ghcr.io/osgeo/gdal:ubuntu-small-3.13.3 (Ubuntu 26.04, Python 3.14.4 with matching osgeo bindings)
 FROM ghcr.io/osgeo/gdal:ubuntu-small-3.13.3@sha256:64250faf833c06d4b21afce4c27190039ba7ab58d70f0eebc87cf77d929c0b40 AS quality
@@ -75,21 +102,14 @@ RUN --mount=type=cache,id=hcm-pip,target=/root/.cache/pip,sharing=locked \
     && /opt/hcm/venv/bin/pip install --only-binary :all: -r /opt/hcm/requirements.txt \
     && ruff --version && mypy --version && taplo --version
 
-# npm workspaces: manifests and lockfile only (the source is bind-mounted at run time). This fills
-# the baked npm cache that the pipeline's runtime `npm ci --prefer-offline` installs from, then
-# installs the Playwright browsers and the Firebase emulator JARs at versions locked here. The
-# build-time node_modules is dropped afterwards; nothing at run time uses it.
+# npm workspaces: manifests (their scripts dropped, stage `manifests`) and lockfile only (the source is
+# bind-mounted at run time). This fills the baked npm cache that the pipeline's runtime
+# `npm ci --prefer-offline` installs from, then installs the Playwright browsers and the Firebase
+# emulator JARs at versions locked here. The build-time node_modules is dropped afterwards; nothing at
+# run time uses it. A new workspace needs its line in the `manifests` stage (and in .dockerignore).
 WORKDIR /opt/hcm/workspace
-COPY package.json package-lock.json .npmrc ./
+COPY --from=manifests /m/ ./
 COPY vendor/npm/braces vendor/npm/braces
-COPY packages/shared/package.json packages/shared/
-COPY packages/ui/package.json packages/ui/
-COPY packages/engine/package.json packages/engine/
-COPY packages/admin/package.json packages/admin/
-COPY packages/test-support/package.json packages/test-support/
-COPY functions/package.json functions/
-COPY firebase/rules-tests/package.json firebase/rules-tests/
-COPY e2e/package.json e2e/
 RUN --mount=type=cache,id=hcm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=hcm-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     npm ci --no-audit --no-fund \

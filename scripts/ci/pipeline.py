@@ -4,15 +4,20 @@
 Runs only inside the pinned quality image (docker/Dockerfile.quality sets HCM_TEST_IMAGE=1);
 scripts/ci/run-all-checks.sh starts the container and scripts/ci/in-container.sh calls
 
-    python3 scripts/ci/pipeline.py --stage <static|tests|e2e|build|sonar|deps|release|contract|quality|all>
+    python3 scripts/ci/pipeline.py --stage <static|tests|e2e|tour-matrix|build|sonar|deps|release|contract|quality|all>
 
-Each gate of the stage runs in order from the repository root, announced as `static 3/24 eslint`.
-Every gate runs even after a failure, so one run lists every problem. The run ends with
-`[SUCCESS] stage 'static' passed` (exit 0, and reports/pipeline/green-static.json records HEAD and
-a hash of `git status`) or `[FAILURE] stage 'static' failed: ...` (exit 1).
+The gates of a stage run from the repository root, several at once (scripts/ci/gate_runner.py: at most
+PIPELINE_JOBS, default the number of CPUs; a gate waits for the gates in its `needs`, and an `exclusive` gate runs
+alone). Their output is printed gate by gate in registry order, each block announced as `static 3/51 eslint` and
+closed by `  eslint passed in 27.0s`, so the log reads like a serial run. Every gate runs even after a failure, so
+one run lists every problem. A gate that already ran in an earlier stage of the same run (`pytest` and `e2e-matrix`
+in `quality`, also `e2e-build` in `all`) is not run again: its outcome is reused. The run ends with
+`[SUCCESS] stage 'static' passed` (exit 0, and reports/pipeline/green-static.json records HEAD and a hash of
+`git status`) or `[FAILURE] stage 'static' failed: ...` (exit 1), with the failures in registry order.
 
 Extending the pipeline (docs/research/M0-handoff.md): add a `Gate` to `GATES`, then its name to
-a stage in `STAGES`. `validate_registry()` (run first, and by the tests) rejects unknown names.
+a stage in `STAGES`. `validate_registry()` (run first, and by the tests) rejects unknown names and
+needs that do not come earlier in a stage.
 """
 
 import argparse
@@ -22,17 +27,19 @@ import os
 import subprocess
 import sys
 import time
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
 from cilog import get_logger
+from gate_runner import Console, Outcome, Output, Task, Work, run_tasks
 
 LOG = get_logger("pipeline")
 ROOT = Path(__file__).resolve().parents[2]
 
 IMAGE_MARKER = "HCM_TEST_IMAGE"
+JOBS_VARIABLE = "PIPELINE_JOBS"
 COMMAND_NOT_FOUND = 127
 EXIT_USAGE = 2
 
@@ -43,11 +50,15 @@ class Gate:
 
     With `files` (git pathspecs), the tracked and untracked-but-not-ignored files matching them
     are appended to the command; when nothing matches, the gate is skipped and counts as passed.
+    `needs` names the gates whose output it reads: when they are in the same stage, it starts after
+    they finish. An `exclusive` gate runs alone (it saturates the machine or binds fixed ports).
     """
 
     name: str
     command: tuple[str, ...]
     files: tuple[str, ...] = ()
+    needs: tuple[str, ...] = ()
+    exclusive: bool = False
 
 
 NPM_RUN = ("npm", "run", "--silent")
@@ -174,19 +185,23 @@ GATES: dict[str, Gate] = {
         # `npm test` runs every Vitest project under `firebase emulators:exec` (scripts/ci/run-emulated-tests.sh)
         # and saves the Firestore rule-coverage report that `rules-coverage` then checks.
         Gate("vitest", (*NPM_RUN, "test")),
-        Gate("rules-coverage", ("python3", "scripts/ci/check_rules_coverage.py", "check")),
+        Gate("rules-coverage", ("python3", "scripts/ci/check_rules_coverage.py", "check"), needs=("vitest",)),
         Gate("pytest", ("python3", "-m", "pytest")),
         Gate("pipeline-pytest", PIPELINE_PYTEST),
-        Gate("coverage", ("python3", *COVERAGE_GATE)),
-        # e2e: the engine and the e2e sites (dist/e2e-site, the fixture manifest), then Playwright
-        # (e2e/playwright.config.ts; E2E_TIER picks the tiers) in the image's Chromium, behind the firewall fixture
-        Gate("e2e-build", (*NPM_RUN, "build:site:e2e")),
-        Gate("playwright", (*NPM_RUN, "test:e2e")),
+        Gate("coverage", ("python3", *COVERAGE_GATE), needs=("vitest", "pytest", "pipeline-pytest")),
+        # e2e: the engine and the e2e sites (dist/e2e-site, the fixture manifest; `npm run build:site:e2e`, skipped while
+        # its stamp shows no input changed and no output was touched), then Playwright (e2e/playwright.config.ts; E2E_TIER
+        # picks the tiers, unset is every push's) in the image's Chromium, behind the firewall fixture
+        Gate("e2e-build", ("python3", "scripts/ci/e2e_build.py")),
+        # Eight browser workers saturate the machine, and its servers and emulators bind fixed ports: it runs alone.
+        Gate("playwright", (*NPM_RUN, "test:e2e"), needs=("e2e-build",), exclusive=True),
+        # tour-matrix (in `all`, and nightly): the tour's other 35 viewport, theme and language projects
+        Gate("playwright-tour-matrix", ("env", "E2E_TIER=tour-matrix", *NPM_RUN, "test:e2e"), needs=("e2e-build",), exclusive=True),
         # build
         Gate("vite-build", (*NPM_RUN, "build")),
-        Gate("bundle-budget", ("python3", "scripts/ci/check_bundle_budget.py")),
+        Gate("bundle-budget", ("python3", "scripts/ci/check_bundle_budget.py"), needs=("vite-build",)),
         # The static city sites for GitHub Pages (dist/site/bucharest, dist/site/starter-kit) from the engine build
-        Gate("site-build", (*NPM_RUN, "build:site")),
+        Gate("site-build", (*NPM_RUN, "build:site"), needs=("vite-build",)),
         # release: the tag agrees with every package version and both release-notes files
         Gate("release-check", ("python3", "scripts/ci/check_release.py")),
         # contract (weekly, network): Setup Assistant deep links and third-party API shapes
@@ -247,7 +262,8 @@ STAGES: dict[str, tuple[str, ...]] = {
         "gitleaks-history",
         "commits",
         # The CI tooling's own tests (scripts/ci/tests), so a tooling-only change is gated by `static`
-        # (quality-conventions.md §4 gate 24); `tests` runs them again next to the other suites.
+        # (quality-conventions.md §4 gate 24); `tests` lists them too (its coverage gate reads their report),
+        # and a run of `quality` or `all` reuses this outcome there instead of running them twice.
         "pytest",
         "npm-audit",
         "deploy-lock-audit",
@@ -258,8 +274,11 @@ STAGES: dict[str, tuple[str, ...]] = {
     "tests": ("vitest", "rules-coverage", "pytest", "pipeline-pytest", "coverage"),
     # The registry check first (the scenario ids the specs carry), then the sites the specs open, then the specs.
     "e2e": ("e2e-matrix", "e2e-build", "playwright"),
+    # The rest of the tour matrix (e2e/projects.ts, tier `tour-matrix`): every scenario row already ran in `e2e`; these
+    # projects repeat the tour at the other viewport, theme and language combinations before a push to master or a tag.
+    "tour-matrix": ("e2e-matrix", "e2e-build", "playwright-tour-matrix"),
     "build": ("vite-build", "bundle-budget", "site-build"),
-    # Needs the reports of `tests` (run_pipeline runs `all` as quality, then sonar). A stage left empty would FAIL:
+    # Needs the reports of `tests` (`all` runs it last). A stage left empty would FAIL:
     # it must never report green for work that does not exist yet.
     "sonar": ("sonar",),
     # Weekly drift (.github/workflows/deps.yml); like contract, never part of quality or all.
@@ -271,31 +290,48 @@ STAGES: dict[str, tuple[str, ...]] = {
 
 COMPOSITE_STAGES: dict[str, tuple[str, ...]] = {
     "quality": ("static", "tests", "e2e", "build"),
-    "all": ("quality", "sonar"),
+    # quality's stages with the rest of the tour matrix after e2e (its e2e build is still current there, and `build`'s
+    # production output stays what the run leaves behind), then sonar.
+    "all": ("static", "tests", "e2e", "tour-matrix", "build", "sonar"),
 }
 
 NPM_CI = ("npm", "ci", "--prefer-offline", "--no-audit", "--no-fund")
 INSTALL_STAMP = Path("node_modules", ".hcm-install-stamp")
 
-Runner = Callable[[Sequence[str]], int]
+Runner = Callable[[Sequence[str], Output], int]
 Capture = Callable[[Sequence[str]], str]
+
+
+def write_stdout(text: str) -> None:
+    """Prints gate output on the stream the log lines use, flushed, so the two stay in order."""
+    sys.stdout.write(text)
+    sys.stdout.flush()
 
 
 @dataclass(frozen=True)
 class Context:
-    """Where and how commands run; tests pass fakes instead of subprocess-backed callables."""
+    """Where and how commands run; tests pass fakes instead of subprocess-backed callables.
+
+    `run(argv, out)` runs a command, hands its merged stdout and stderr to `out` and returns its exit status;
+    `write` prints (gate output, the install's output); `jobs` is how many gates may run at once.
+    """
 
     root: Path
     run: Runner
     capture: Capture
+    write: Output = write_stdout
+    jobs: int = 1
 
 
-def run_command(argv: Sequence[str], cwd: Path) -> int:
-    """Runs `argv` in `cwd` with the terminal's stdout/stderr; a missing executable exits 127."""
+def run_command(argv: Sequence[str], out: Output, cwd: Path) -> int:
+    """Runs `argv` in `cwd` without stdin, handing each line of its stdout and stderr to `out`; a missing executable exits 127."""
     try:
-        return subprocess.run(list(argv), cwd=cwd, check=False).returncode
+        with subprocess.Popen(list(argv), cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT) as process:
+            for line in process.stdout or ():
+                out(line.decode("utf-8", "replace"))
+            return process.wait()
     except FileNotFoundError:
-        LOG.error("  command not found: %s", argv[0])
+        out(f"  command not found: {argv[0]}\n")
         return COMMAND_NOT_FOUND
 
 
@@ -304,8 +340,17 @@ def capture_output(argv: Sequence[str], cwd: Path) -> str:
     return subprocess.run(list(argv), cwd=cwd, check=True, capture_output=True, text=True).stdout
 
 
-def default_context(root: Path = ROOT) -> Context:
-    return Context(root=root, run=partial(run_command, cwd=root), capture=partial(capture_output, cwd=root))
+def default_jobs(environ: Mapping[str, str] = os.environ) -> int:
+    """PIPELINE_JOBS when it is a positive integer (1 runs the gates one at a time), else the CPUs this process may use."""
+    value = environ.get(JOBS_VARIABLE, "").strip()
+    if value.isdecimal() and int(value) > 0:
+        return int(value)
+    return os.process_cpu_count() or 1
+
+
+def default_context(root: Path = ROOT, jobs: int = 0) -> Context:
+    run = partial(run_command, cwd=root)
+    return Context(root=root, run=run, capture=partial(capture_output, cwd=root), jobs=jobs or default_jobs())
 
 
 def all_stage_names() -> list[str]:
@@ -329,9 +374,28 @@ def _composite_problems() -> list[str]:
     return clashes + unknown
 
 
+def _unknown_needs() -> list[str]:
+    return [f"gate '{gate.name}' needs unknown gate '{need}'" for gate in GATES.values() for need in gate.needs if need not in GATES]
+
+
+def _needs_of(gates: Sequence[str]) -> list[tuple[str, str]]:
+    return [(name, need) for name in gates if name in GATES for need in GATES[name].needs]
+
+
+def _late_needs_in(stage: str, gates: Sequence[str]) -> list[str]:
+    first = {name: index for index, name in reversed(list(enumerate(gates)))}
+    late = [(name, need) for name, need in _needs_of(gates) if first.get(need, -1) > first[name]]
+    return [f"stage '{stage}' lists gate '{need}' after '{name}', which needs it" for name, need in late]
+
+
+def _late_needs() -> list[str]:
+    """A gate's needs run first: in every stage that lists both, the needed gate must come before it."""
+    return [problem for stage, gates in STAGES.items() for problem in _late_needs_in(stage, gates)]
+
+
 def validate_registry() -> list[str]:
-    """Problems in GATES/STAGES/COMPOSITE_STAGES: unknown or duplicated names (empty when consistent)."""
-    return [*_unknown_gates(), *_duplicated_gates(), *_composite_problems()]
+    """Problems in GATES/STAGES/COMPOSITE_STAGES: unknown or duplicated names, misplaced needs (empty when consistent)."""
+    return [*_unknown_gates(), *_duplicated_gates(), *_composite_problems(), *_unknown_needs(), *_late_needs()]
 
 
 def expand_stage(name: str) -> list[str]:
@@ -348,33 +412,104 @@ def list_files(pathspecs: Sequence[str], ctx: Context) -> list[str]:
     return [name for name in names if (ctx.root / name).is_file()]
 
 
-def run_gate(gate: Gate, ctx: Context) -> bool:
-    argv = list(gate.command)
-    if gate.files:
-        files = list_files(gate.files, ctx)
-        if not files:
-            LOG.info("  %s skipped: no files match %s", gate.name, " ".join(gate.files))
-            return True
-        argv.extend(files)
+@dataclass(frozen=True)
+class Ran:
+    """A gate that already ran in this run: the stage that ran it and its outcome."""
+
+    stage: str
+    outcome: Outcome
+
+
+@dataclass(frozen=True)
+class Step:
+    """A gate as a stage runs it: its command with the matched files, or why it does not run here.
+
+    `skipped`: a file gate that matched no file (a pass). `ran`: an earlier stage of the same run already ran it.
+    """
+
+    gate: Gate
+    argv: tuple[str, ...]
+    skipped: bool = False
+    ran: Ran | None = None
+
+
+def plan_step(gate: Gate, ctx: Context, ran: Mapping[str, Ran]) -> Step:
+    if gate.name in ran:
+        return Step(gate, gate.command, ran=ran[gate.name])
+    if not gate.files:
+        return Step(gate, gate.command)
+    files = list_files(gate.files, ctx)
+    return Step(gate, (*gate.command, *files), skipped=not files)
+
+
+def _known_result(code: int, _out: Output) -> int:
+    return code
+
+
+def step_work(step: Step, ctx: Context) -> Work:
+    """What a step's task does: run its command, or report the result already known without running anything."""
+    if step.ran is not None:
+        return partial(_known_result, step.ran.outcome.code)
+    if step.skipped:
+        return partial(_known_result, 0)
+    return partial(ctx.run, step.argv)
+
+
+def _result(code: int) -> str:
+    return "passed" if code == 0 else f"FAILED (exit {code})"
+
+
+def closing_line(step: Step, outcome: Outcome) -> str:
+    """The line under a gate's output: skipped, reused from an earlier stage, or passed/FAILED with its own run time."""
+    name = step.gate.name
+    if step.skipped:
+        return f"  {name} skipped: no files match {' '.join(step.gate.files)}"
+    if step.ran is not None:
+        return f"  {name} {_result(outcome.code)} in stage '{step.ran.stage}' of this run ({step.ran.outcome.seconds:.1f}s); not run again"
+    return f"  {name} {_result(outcome.code)} in {outcome.seconds:.1f}s"
+
+
+def _task(step: Step, ctx: Context, names: Sequence[str]) -> Task:
+    needs = tuple(need for need in step.gate.needs if need in names)
+    return Task(step.gate.name, step_work(step, ctx), needs=needs, exclusive=step.gate.exclusive)
+
+
+def _console(stage: str, steps: Sequence[Step], ctx: Context) -> Console:
+    def opened(index: int) -> None:
+        LOG.info("%s %d/%d %s", stage, index + 1, len(steps), steps[index].gate.name)
+
+    def closed(index: int, outcome: Outcome) -> None:
+        LOG.info("%s", closing_line(steps[index], outcome))
+
+    return Console(write=ctx.write, opened=opened, closed=closed)
+
+
+def _summary(stage: str, outcomes: Sequence[Outcome], started: float, ctx: Context) -> None:
+    wall_clock = time.monotonic() - started
+    gate_time = sum(outcome.seconds for outcome in outcomes)
+    LOG.info("%s finished in %.1fs (gate time %.1fs, %d gates, up to %d at once)", stage, wall_clock, gate_time, len(outcomes), ctx.jobs)
+
+
+def _run_gates(stage: str, names: Sequence[str], ctx: Context, ran: dict[str, Ran]) -> list[Outcome]:
+    steps = [plan_step(GATES[name], ctx, ran) for name in names]
     started = time.monotonic()
-    code = ctx.run(argv)
-    verdict = "passed" if code == 0 else f"FAILED (exit {code})"
-    LOG.info("  %s %s in %.1fs", gate.name, verdict, time.monotonic() - started)
-    return code == 0
+    outcomes = run_tasks([_task(step, ctx, names) for step in steps], ctx.jobs, _console(stage, steps, ctx))
+    _summary(stage, outcomes, started, ctx)
+    ran.update({outcome.name: Ran(stage, outcome) for outcome in outcomes if outcome.name not in ran})
+    return outcomes
 
 
-def run_stage(stage: str, ctx: Context) -> list[str]:
-    """Runs every gate of a simple stage; returns the failed `stage/gate` names."""
-    gates = STAGES[stage]
-    if not gates:
+def run_stage(stage: str, ctx: Context, ran: dict[str, Ran] | None = None) -> list[str]:
+    """Runs every gate of a simple stage; returns the failed `stage/gate` names in registry order.
+
+    `ran` maps the gates earlier stages of this run ran to their outcome; this stage reuses those and adds its own.
+    """
+    names = STAGES[stage]
+    if not names:
         LOG.error("%s: no gates registered yet (docs/research/M0-handoff.md)", stage)
         return [f"{stage} (no gates registered)"]
-    failures: list[str] = []
-    for index, name in enumerate(gates, start=1):
-        LOG.info("%s %d/%d %s", stage, index, len(gates), name)
-        if not run_gate(GATES[name], ctx):
-            failures.append(f"{stage}/{name}")
-    return failures
+    outcomes = _run_gates(stage, names, ctx, {} if ran is None else ran)
+    return [f"{stage}/{outcome.name}" for outcome in outcomes if outcome.code != 0]
 
 
 def ensure_node_modules(ctx: Context) -> bool:
@@ -391,7 +526,7 @@ def ensure_node_modules(ctx: Context) -> bool:
     if stamp.is_file() and stamp.read_text(encoding="utf-8").strip() == digest:
         return True
     LOG.info("setup: npm ci (node_modules missing or older than package-lock.json)")
-    if ctx.run(NPM_CI) != 0:
+    if ctx.run(NPM_CI, ctx.write) != 0:
         return False
     stamp.write_text(digest + "\n", encoding="utf-8")
     return True
@@ -427,7 +562,8 @@ def verdict(stage: str, failures: Sequence[str], ctx: Context) -> int:
 def run_pipeline(stage: str, ctx: Context) -> int:
     if not ensure_node_modules(ctx):
         return verdict(stage, ["setup/npm-ci"], ctx)
-    return verdict(stage, [failure for simple in expand_stage(stage) for failure in run_stage(simple, ctx)], ctx)
+    ran: dict[str, Ran] = {}
+    return verdict(stage, [failure for simple in expand_stage(stage) for failure in run_stage(simple, ctx, ran)], ctx)
 
 
 def describe_registry() -> None:

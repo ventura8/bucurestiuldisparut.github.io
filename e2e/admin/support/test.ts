@@ -18,10 +18,10 @@ import { UpstreamControl } from './upstream.js';
  * guard, which expects the probe's 401 and Google's 404 for a resource not created yet; the placeholder guard; the input
  * budget):
  *
- * - `adminWorld` (automatic): takes the admin tier's lease, so one admin test runs at a time across projects and
- *   workers; empties the emulators, both worlds of the fake upstreams and the consent stand-in's records of the test;
- *   signs every persona in to the Auth emulator (`accounts`); with `mapOwner`, records the map as claimed by that
- *   persona. Released at teardown.
+ * - `adminWorld` (automatic): takes the admin tier's lease (the guard behind `ADMIN_LOCK`, below), so one admin test runs
+ *   at a time across projects, workers and even Playwright runs that share the servers; empties the emulators, both
+ *   worlds of the fake upstreams and the consent stand-in's records of the test; signs every persona in to the Auth
+ *   emulator (`accounts`); with `mapOwner`, records the map as claimed by that persona. Released at teardown.
  * - options `persona` (`null`: the page opens signed out), `mapOwner` (`null`: nobody claimed the map yet), `invited`
  *   (personas with a pending invitation of the owner) and `admins` (personas who already joined as admins); the last two
  *   need a `mapOwner`.
@@ -54,7 +54,19 @@ interface AdminFixtures extends AdminOptions {
     serverDeployment: ServerDeployment;
 }
 
-/** The lease every admin test holds while it runs (`e2e/mock-apis/lease.ts`). */
+/**
+ * The Playwright lock of the admin tier: every admin spec file starts with `test.describe.configure({ lock: ADMIN_LOCK })`,
+ * so the dispatcher never starts an admin test while another runs and gives the free workers other tests meanwhile (a
+ * worker never waits on the lease). The admin projects come first in e2e/projects.ts, so the admin tests run one after
+ * the other beside the viewer tiers instead of after them.
+ */
+export const ADMIN_LOCK = 'admin-emulators';
+
+/**
+ * The lease every admin test holds while it runs (`e2e/mock-apis/lease.ts`): with `ADMIN_LOCK` it is always free in a
+ * run; it still keeps two runs that share one set of servers (`reuseExistingServer` outside CI) apart, and an admin spec
+ * file that forgot the lock correct (only slower: its workers wait here).
+ */
 const LEASE = 'admin-emulators';
 
 /** How long a test may wait for the lease: every other admin test of the run may be ahead of it. */

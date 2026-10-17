@@ -15,7 +15,8 @@ Every agent tool reads these files, and each one has limits that fail silently:
   a `description` and a `tools` list.
 * **Paths.** Every repository path written in back-ticks, or as a relative Markdown link, in
   AGENTS.md, CLAUDE.md, README.md, `.agent/`, `.agents/`, `.claude/` and `docs/` exists, or is
-  git-ignored (`reports/`, `.sonar-token`), or is listed under *Planned paths* in
+  git-ignored (`reports/`, `.sonar-token`, and build output such as `functions/dist` that a fresh clone has not built
+  yet: a missing path is also asked as a folder), or is listed under *Planned paths* in
   `docs/research/M0-handoff.md` (`PLANNED_PATHS_DOC`). A moved or deleted file then fails here
   instead of sending the next agent to a file that is not there. `docs/research/` itself is the
   verbatim record of the research (alternative layouts included), so its own references are not
@@ -366,10 +367,24 @@ def check_ignore(root: Path, paths: Sequence[str]) -> str:
     return result.stdout if result.returncode in GIT_CHECK_IGNORE_OK else ""
 
 
+def ignore_queries(paths: Sequence[str]) -> list[str]:
+    """What `git check-ignore` is asked: every path, and the folder form of each one written without a trailing slash.
+
+    A build output that was never built (`functions/dist` in a fresh clone) does not exist, so git cannot tell that it is
+    a folder, and a folder pattern (`dist/`) does not match it; asked as `functions/dist/` it matches like the built one.
+    """
+    return sorted({*paths, *(f"{path}/" for path in paths if not path.endswith("/"))})
+
+
+def answered_as_file_or_folder(path: str, answered: set[str]) -> bool:
+    return path in answered or f"{path}/" in answered
+
+
 def git_ignored(root: Path, paths: Sequence[str]) -> set[str]:
-    """The subset of repository-relative paths git ignores (empty without paths, git or a repository)."""
-    output = check_ignore(root, paths) if paths else ""
-    return {line.strip() for line in output.splitlines() if line.strip()}
+    """The subset of repository-relative paths git ignores, as a file or as a folder (empty without paths, git or a repository)."""
+    output = check_ignore(root, ignore_queries(paths)) if paths else ""
+    answered = {line.strip() for line in output.splitlines()}
+    return {path for path in paths if answered_as_file_or_folder(path, answered)}
 
 
 def resolves(ref: Reference) -> bool:

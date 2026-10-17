@@ -12,7 +12,7 @@ Working notes: `.agent/skills/firebase/functions_skill.md`, `.agent/skills/fireb
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
   bash -c 'mkdir -p $HOME && npx firebase emulators:exec --project demo-hcm --only auth,firestore,storage \
-  "METADATA_SERVER_DETECTION=none npx vitest run --project functions --project rules"'
+  "METADATA_SERVER_DETECTION=none npx vitest run --project functions --project functions-deps --project rules"'
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
   bash -c 'mkdir -p $HOME && npm run build --workspace @hcm/functions'   # functions/dist, checked and loaded
 ```

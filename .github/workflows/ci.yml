@@ -8,7 +8,13 @@ name: CI Pipeline
 #
 # Image: build-image is the only writer of the type=gha layer cache (scope hcm-quality); every other
 # job lets scripts/ci/build-and-test.sh rebuild the image from that cache and load it (seconds of
-# build, about a minute of load) before the stage runs.
+# build, about a minute of load) before the stage runs. The npm cache and the Playwright browsers are
+# baked into the image, so a job's `npm ci --prefer-offline` takes seconds and downloads nothing.
+#
+# Shape (docs/CI_PIPELINE.md -> Expected wall time): static, tests, e2e and build all start as soon as
+# the image is cached, side by side; every gate still runs on every run, and the deploy jobs need all of
+# them. The e2e work is split by tier and by measured test time (docs/research/pipeline-baseline.md), so
+# only the job that holds the admin tier starts the Firebase emulators.
 #
 # Deploys stay off until M2 (docs/research/PLAN.md): they run only on a push to master when the
 # repository variable DEPLOY_ENABLED is 'true', authenticate to Google Cloud with Workload Identity
@@ -64,7 +70,8 @@ jobs:
         name: Lint & Security
         needs: build-image
         runs-on: ubuntu-24.04
-        timeout-minutes: 30
+        # Measured 115 to 168 s of mostly single-threaded gates on a cold tree, plus the image and the full history.
+        timeout-minutes: 20
         permissions:
             contents: read
         steps:
@@ -95,6 +102,28 @@ jobs:
                   echo "GITLEAKS_LOG_OPTS=${range}" >>"$GITHUB_ENV"
                   echo "COMMIT_RANGE=${range}" >>"$GITHUB_ENV"
 
+            # The incremental caches of `tsc -b` (a .tsbuild/ folder next to every tsconfig) and of mypy
+            # (reports/.cache/mypy*): both re-check every file whose content changed and every file whose
+            # dependencies' types changed, so a carried cache never hides an error (checked 2026-10-17 by
+            # breaking an export of packages/shared under a restored cache: every dependent project failed).
+            # Cold, `tsc -b` takes 38 to 77 s; with the previous run's caches 3 s, and 13 to 22 s after a change.
+            # ESLint's cache is left out on purpose: with the type-aware rules it can keep an unchanged file's
+            # verdict after the types it imports changed (docs/research/pipeline-baseline.md, CR-CI-2).
+            - name: Type-checker caches (restored here, saved after a green stage)
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: |
+                      .tsbuild
+                      */.tsbuild
+                      */*/.tsbuild
+                      */*/*/.tsbuild
+                      */*/*/*/.tsbuild
+                      !node_modules/**
+                      reports/.cache/mypy
+                      reports/.cache/mypy-pipeline
+                  key: static-typecheck-${{ runner.os }}-${{ github.sha }}
+                  restore-keys: static-typecheck-${{ runner.os }}-
+
             - name: Static stage
               env:
                   PIPELINE_STAGE: static
@@ -103,9 +132,12 @@ jobs:
 
     tests:
         name: Unit Tests & Coverage
-        needs: static
+        # Beside static, not after it: the stages share nothing but the image (deploys need both).
+        needs: build-image
         runs-on: ubuntu-24.04
-        timeout-minutes: 30
+        # Measured 65 to 77 s of gates on 16 hardware threads (docs/research/pipeline-baseline.md); a 4-vCPU
+        # runner takes about three times that, plus about two minutes for the image.
+        timeout-minutes: 20
         permissions:
             contents: read
             checks: write
@@ -149,19 +181,39 @@ jobs:
                   retention-days: 7
 
     e2e:
-        name: E2E (Playwright + Firebase Emulators) ${{ matrix.shard }}
-        needs: static
+        name: E2E (Playwright) ${{ matrix.part }}
+        needs: build-image
         runs-on: ubuntu-24.04
-        timeout-minutes: 60
+        # The heaviest part is about 1,130 s of test time on the laptop (16 threads, 8 workers); a 4-vCPU runner
+        # with Playwright's 2 workers needs about 10 to 15 minutes for it, plus about 3 for the image and the servers.
+        timeout-minutes: 40
         permissions:
             contents: read
             checks: write
         strategy:
             fail-fast: false
             matrix:
-                # Shards as "index/total" (Playwright --shard) over every tier of e2e/projects.ts (E2E_TIER unset).
-                # Grow the list and the total together.
-                shard: ['1/4', '2/4', '3/4', '4/4']
+                # Every per-push tier of e2e/projects.ts runs on every run (all but `tour-matrix`, the rest of the
+                # full tour, which .github/workflows/nightly.yml and the local `all` add), split so that each job carries
+                # about the same test time (laptop test-seconds measured on 2026-10-17, docs/research/pipeline-baseline.md):
+                # `tier` becomes E2E_TIER and `shard` E2E_SHARD ("index/total" within that tier; empty is the whole tier).
+                # Playwright shards by test count, which is fair inside the functional tier (five projects of the same 104
+                # specs): about 1,010, 1,130 and 1,110 s. The admin chain, the smoke, a11y and no-WebGL tiers and the
+                # per-push tour (about 860 s) share the last job, the only one that starts the admin server and the
+                # Firebase emulators. Rebalance from the per-project times of reports/junit/e2e.xml whenever a tier grows.
+                include:
+                    - part: functional 1/3
+                      tier: fn
+                      shard: 1/3
+                    - part: functional 2/3
+                      tier: fn
+                      shard: 2/3
+                    - part: functional 3/3
+                      tier: fn
+                      shard: 3/3
+                    - part: admin, smoke, a11y, no-WebGL, tour
+                      tier: admin,smoke,a11y,nogl,tour
+                      shard: ''
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -172,6 +224,7 @@ jobs:
             - name: E2E stage
               env:
                   PIPELINE_STAGE: e2e
+                  E2E_TIER: ${{ matrix.tier }}
                   E2E_SHARD: ${{ matrix.shard }}
                   HCM_DOCKER_BUILD_FLAGS: ${{ env.LOAD_IMAGE }}
               run: bash scripts/ci/run-all-checks.sh
@@ -180,7 +233,7 @@ jobs:
               if: ${{ !cancelled() }}
               uses: mikepenz/action-junit-report@6ef3fdcfcd5f0b5d14df3e659ef19b8c6820f93d # v6.6.1
               with:
-                  check_name: E2E Test Report (${{ matrix.shard }})
+                  check_name: E2E Test Report (${{ matrix.part }})
                   report_paths: reports/junit/e2e*.xml
                   require_tests: true
                   detailed_summary: true
@@ -199,9 +252,10 @@ jobs:
 
     build:
         name: Build Engine & Admin
-        needs: static
+        needs: build-image
         runs-on: ubuntu-24.04
-        timeout-minutes: 30
+        # Measured 4 to 10 s of gates; the rest is the image.
+        timeout-minutes: 15
         permissions:
             contents: read
         steps:
@@ -318,7 +372,7 @@ jobs:
 
     deploy-pages:
         name: Deploy to GitHub Pages
-        needs: [tests, e2e, build, sonarqube]
+        needs: [static, tests, e2e, build, sonarqube]
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
         runs-on: ubuntu-24.04
         timeout-minutes: 15
@@ -338,7 +392,7 @@ jobs:
 
     deploy-firebase:
         name: Deploy Firebase (rules, indexes, functions, admin hosting)
-        needs: [tests, e2e, build, sonarqube]
+        needs: [static, tests, e2e, build, sonarqube]
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
         runs-on: ubuntu-24.04
         timeout-minutes: 30
@@ -385,7 +439,7 @@ jobs:
 
     deploy-pipeline-image:
         name: Publish Raster Pipeline Image (Cloud Run Job)
-        needs: [tests, e2e, build, sonarqube]
+        needs: [static, tests, e2e, build, sonarqube]
         if: github.event_name == 'push' && github.ref == 'refs/heads/master' && vars.DEPLOY_ENABLED == 'true'
         runs-on: ubuntu-24.04
         timeout-minutes: 45

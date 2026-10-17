@@ -1,12 +1,15 @@
 """pipeline.py: registry consistency, stage expansion, gate execution, setup, verdicts and the CLI.
 
-Commands never really run here: a FakeShell records argv and returns programmed exit codes,
-except in the few tests that exercise the subprocess-backed defaults with the Python interpreter.
+Commands never really run here: a FakeShell (fakeshell.py) records argv, prints one line per command
+and returns programmed exit codes, except in the few tests that exercise the subprocess-backed defaults
+with the Python interpreter. How a stage runs its gates is in test_pipeline_stages.py; the scheduling
+rules themselves (jobs, needs, exclusive gates) are pinned by test_gate_runner.py.
 """
 
 import hashlib
 import json
 import logging
+import os
 import runpy
 import subprocess
 import sys
@@ -14,35 +17,12 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
+from fakeshell import FakeShell
 
 import pipeline
 from pipeline import COMPOSITE_STAGES, GATES, STAGES, Context, Gate
 
 PIPELINE_PY = Path(pipeline.__file__)
-
-
-class FakeShell:
-    """Records every command; a command fails when one of `failing` is a substring of it."""
-
-    def __init__(self, root: Path, failing: Sequence[str] = (), ls_files: Sequence[str] = ()) -> None:
-        self.root = root
-        self.failing = tuple(failing)
-        self.ls_files = "\0".join(ls_files) + ("\0" if ls_files else "")
-        self.calls: list[list[str]] = []
-        self.captured: list[list[str]] = []
-
-    def run(self, argv: Sequence[str]) -> int:
-        self.calls.append(list(argv))
-        line = " ".join(argv)
-        return 1 if any(token in line for token in self.failing) else 0
-
-    def capture(self, argv: Sequence[str]) -> str:
-        self.captured.append(list(argv))
-        outputs = {"ls-files": self.ls_files, "rev-parse": "0123abcd\n", "status": "?? new-file.ts\n"}
-        return outputs[argv[1]]
-
-    def context(self) -> Context:
-        return Context(root=self.root, run=self.run, capture=self.capture)
 
 
 @pytest.fixture
@@ -74,7 +54,8 @@ def test_happy_path_every_gate_belongs_to_a_stage() -> None:
 
 
 def test_happy_path_stage_names_cover_the_documented_stages() -> None:
-    assert pipeline.all_stage_names() == ["all", "build", "contract", "deps", "e2e", "quality", "release", "sonar", "static", "tests"]
+    stages = ["all", "build", "contract", "deps", "e2e", "quality", "release", "sonar", "static", "tests", "tour-matrix"]
+    assert pipeline.all_stage_names() == stages
 
 
 def test_bad_path_unknown_and_duplicated_gates_are_reported(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -84,6 +65,33 @@ def test_bad_path_unknown_and_duplicated_gates_are_reported(monkeypatch: pytest.
         "stage 'static' uses unknown gate 'no-such-gate'",
         "stage 'static' lists gate 'prettier' twice",
     ]
+
+
+def test_happy_path_every_need_names_a_gate_listed_before_it() -> None:
+    for stage, gates in STAGES.items():
+        for name in gates:
+            assert all(gates.index(need) < gates.index(name) for need in GATES[name].needs if need in gates), (stage, name)
+
+
+def test_bad_path_unknown_and_late_needs_are_reported(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(GATES, "coverage", Gate("coverage", ("true",), needs=("vitest", "jest")))
+    monkeypatch.setitem(STAGES, "tests", ("coverage", "vitest", "no-such-gate"))
+
+    assert pipeline.validate_registry() == [
+        "stage 'tests' uses unknown gate 'no-such-gate'",
+        "gate 'coverage' needs unknown gate 'jest'",
+        "stage 'tests' lists gate 'vitest' after 'coverage', which needs it",
+    ]
+
+
+def test_happy_path_gates_that_read_other_gates_output_wait_for_them() -> None:
+    assert GATES["coverage"].needs == ("vitest", "pytest", "pipeline-pytest")
+    assert GATES["rules-coverage"].needs == ("vitest",)
+    assert GATES["bundle-budget"].needs == ("vite-build",)
+    assert GATES["site-build"].needs == ("vite-build",)
+    assert GATES["playwright"].needs == ("e2e-build",)
+    assert GATES["playwright-tour-matrix"].needs == ("e2e-build",)
+    assert [name for name, gate in GATES.items() if gate.exclusive] == ["playwright", "playwright-tour-matrix"]
 
 
 def test_bad_path_composite_problems_are_reported(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -101,79 +109,11 @@ def test_bad_path_composite_problems_are_reported(monkeypatch: pytest.MonkeyPatc
     [
         ("static", ["static"]),
         ("quality", ["static", "tests", "e2e", "build"]),
-        ("all", ["static", "tests", "e2e", "build", "sonar"]),
+        ("all", ["static", "tests", "e2e", "tour-matrix", "build", "sonar"]),
     ],
 )
 def test_happy_path_stages_expand_in_run_order(stage: str, expected: list[str]) -> None:
     assert pipeline.expand_stage(stage) == expected
-
-
-# --- gates ----------------------------------------------------------------------------------------
-
-
-def test_happy_path_gate_runs_its_command(shell: FakeShell, log: pytest.LogCaptureFixture) -> None:
-    assert pipeline.run_gate(Gate("ruff-check", ("ruff", "check", ".")), shell.context()) is True
-    assert shell.calls == [["ruff", "check", "."]]
-    assert log.messages[-1].startswith("  ruff-check passed in ")
-
-
-def test_bad_path_failing_gate_reports_its_exit_code(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
-    shell = FakeShell(tmp_path, failing=["mypy"])
-
-    assert pipeline.run_gate(Gate("mypy", ("mypy",)), shell.context()) is False
-    assert log.messages[-1].startswith("  mypy FAILED (exit 1) in ")
-
-
-def test_happy_path_file_gate_appends_matching_existing_files(tmp_path: Path) -> None:
-    (tmp_path / "docker").mkdir()
-    (tmp_path / "docker" / "Dockerfile.quality").write_text("FROM scratch\n", encoding="utf-8")
-    (tmp_path / "a.sh").write_text("true\n", encoding="utf-8")
-    shell = FakeShell(tmp_path, ls_files=["a.sh", "docker/Dockerfile.quality", "a.sh", "deleted.sh"])
-    gate = Gate("lint-files", ("tool", "--flag"), files=("*.sh", "docker/Dockerfile*"))
-
-    assert pipeline.run_gate(gate, shell.context()) is True
-    assert shell.captured == [["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", "*.sh", "docker/Dockerfile*"]]
-    assert shell.calls == [["tool", "--flag", "a.sh", "docker/Dockerfile.quality"]]
-
-
-def test_happy_path_file_gate_without_files_is_skipped(shell: FakeShell, log: pytest.LogCaptureFixture) -> None:
-    assert pipeline.run_gate(Gate("htmlhint", ("htmlhint",), files=("*.html",)), shell.context()) is True
-    assert shell.calls == []
-    assert log.messages == ["  htmlhint skipped: no files match *.html"]
-
-
-def test_happy_path_stage_announces_each_gate(shell: FakeShell, log: pytest.LogCaptureFixture) -> None:
-    assert pipeline.run_stage("tests", shell.context()) == []
-    assert [message for message in log.messages if not message.startswith("  ")] == [
-        "tests 1/5 vitest",
-        "tests 2/5 rules-coverage",
-        "tests 3/5 pytest",
-        "tests 4/5 pipeline-pytest",
-        "tests 5/5 coverage",
-    ]
-    assert gate_commands(shell) == [
-        "npm run --silent test",
-        "python3 scripts/ci/check_rules_coverage.py check",
-        "python3 -m pytest",
-        " ".join(pipeline.PIPELINE_PYTEST),
-        "python3 " + " ".join(pipeline.COVERAGE_GATE),
-    ]
-
-
-def test_bad_path_stage_keeps_going_after_a_failure(tmp_path: Path) -> None:
-    # A gate early in the stage fails; every later gate still runs.
-    shell = FakeShell(tmp_path, failing=["check_rules_coverage.py"])
-
-    assert pipeline.run_stage("tests", shell.context()) == ["tests/rules-coverage"]
-    assert len(shell.calls) == 5
-
-
-def test_bad_path_empty_stage_fails(shell: FakeShell, log: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(STAGES, "deps", ())
-
-    assert pipeline.run_stage("deps", shell.context()) == ["deps (no gates registered)"]
-    assert log.messages == ["deps: no gates registered yet (docs/research/M0-handoff.md)"]
-    assert shell.calls == []
 
 
 def test_happy_path_sonar_and_deps_stages_run_their_scripts(shell: FakeShell) -> None:
@@ -242,6 +182,7 @@ def test_bad_path_failed_install_fails_the_whole_run(tmp_path: Path, log: pytest
 
     assert pipeline.run_pipeline("tests", shell.context()) == 1
     assert shell.calls == [list(pipeline.NPM_CI)]
+    assert shell.printed == ["ran " + " ".join(pipeline.NPM_CI) + "\n"]
     assert log.messages[-1] == "[FAILURE] stage 'tests' failed: setup/npm-ci"
     assert not (tmp_path / pipeline.INSTALL_STAMP).exists()
 
@@ -265,23 +206,13 @@ def test_bad_path_failing_stage_writes_no_marker(tmp_path: Path, log: pytest.Log
     assert not (tmp_path / "reports").exists()
 
 
-def test_bad_path_composite_stage_reports_every_failed_part(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
-    shell = FakeShell(tmp_path, failing=["check_bundle_budget.py", "sonar_scan.sh"])
-
-    assert pipeline.run_pipeline("all", shell.context()) == 1
-    assert log.messages[-1] == "[FAILURE] stage 'all' failed: build/bundle-budget, sonar/sonar"
-    assert "e2e 3/3 playwright" in log.messages
-    assert "build 1/3 vite-build" in log.messages
-    assert "sonar 1/1 sonar" in log.messages
-
-
 def test_bad_path_unborn_head_is_recorded(tmp_path: Path) -> None:
     def capture(argv: Sequence[str]) -> str:
         if argv[1] == "rev-parse":
             raise subprocess.CalledProcessError(128, list(argv))
         return ""
 
-    ctx = Context(root=tmp_path, run=lambda _argv: 0, capture=capture)
+    ctx = Context(root=tmp_path, run=lambda _argv, _out: 0, capture=capture)
 
     marker = pipeline.write_green_marker("static", ctx)
 
@@ -292,12 +223,57 @@ def test_bad_path_unborn_head_is_recorded(tmp_path: Path) -> None:
 
 
 def test_happy_path_run_command_returns_the_exit_code(tmp_path: Path) -> None:
-    assert pipeline.run_command([sys.executable, "-c", "raise SystemExit(3)"], tmp_path) == 3
+    lines: list[str] = []
+
+    assert pipeline.run_command([sys.executable, "-c", "raise SystemExit(3)"], lines.append, tmp_path) == 3
+    assert lines == []
 
 
-def test_bad_path_missing_executable_exits_127(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
-    assert pipeline.run_command(["hcm-no-such-tool"], tmp_path) == pipeline.COMMAND_NOT_FOUND
-    assert log.messages == ["  command not found: hcm-no-such-tool"]
+def test_happy_path_run_command_hands_over_stdout_and_stderr_line_by_line(tmp_path: Path) -> None:
+    lines: list[str] = []
+    script = "import sys; print('out', flush=True); print('err', file=sys.stderr, flush=True); sys.stdout.buffer.write(b'\\xff')"
+
+    assert pipeline.run_command([sys.executable, "-c", script], lines.append, tmp_path) == 0
+    assert lines == ["out\n", "err\n", "\ufffd"]
+
+
+def test_happy_path_run_command_gives_the_command_no_stdin(tmp_path: Path) -> None:
+    lines: list[str] = []
+
+    assert pipeline.run_command([sys.executable, "-c", "import sys; print(repr(sys.stdin.read()))"], lines.append, tmp_path) == 0
+    assert lines == ["''\n"]
+
+
+def test_bad_path_missing_executable_exits_127(tmp_path: Path) -> None:
+    lines: list[str] = []
+
+    assert pipeline.run_command(["hcm-no-such-tool"], lines.append, tmp_path) == pipeline.COMMAND_NOT_FOUND
+    assert lines == ["  command not found: hcm-no-such-tool\n"]
+
+
+def test_happy_path_write_stdout_prints_at_once(capsys: pytest.CaptureFixture[str]) -> None:
+    pipeline.write_stdout("a line\n")
+
+    assert capsys.readouterr().out == "a line\n"
+
+
+@pytest.mark.parametrize(("value", "expected"), [("3", 3), (" 12 ", 12), ("1", 1)])
+def test_happy_path_pipeline_jobs_sets_how_many_gates_run_at_once(value: str, expected: int) -> None:
+    assert pipeline.default_jobs({pipeline.JOBS_VARIABLE: value}) == expected
+
+
+@pytest.mark.parametrize("value", ["", "0", "-2", "many", "2.5"])
+def test_bad_path_an_unusable_pipeline_jobs_falls_back_to_the_cpu_count(value: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(os, "process_cpu_count", lambda: 6)
+
+    assert pipeline.default_jobs({pipeline.JOBS_VARIABLE: value}) == 6
+    assert pipeline.default_jobs({}) == 6
+
+
+def test_bad_path_an_unknown_cpu_count_runs_one_gate_at_a_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(os, "process_cpu_count", lambda: None)
+
+    assert pipeline.default_jobs({}) == 1
 
 
 def test_happy_path_capture_output_returns_stdout(tmp_path: Path) -> None:
@@ -309,12 +285,21 @@ def test_bad_path_capture_output_raises_on_failure(tmp_path: Path) -> None:
         pipeline.capture_output([sys.executable, "-c", "raise SystemExit(1)"], tmp_path)
 
 
-def test_happy_path_default_context_runs_from_the_root(tmp_path: Path) -> None:
+def test_happy_path_default_context_runs_from_the_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(pipeline.JOBS_VARIABLE, "5")
     ctx = pipeline.default_context(tmp_path)
+    lines: list[str] = []
 
     assert ctx.root == tmp_path
-    assert ctx.run([sys.executable, "-c", "pass"]) == 0
+    assert ctx.jobs == 5
+    assert ctx.write is pipeline.write_stdout
+    assert ctx.run([sys.executable, "-c", "import os; print(os.getcwd())"], lines.append) == 0
+    assert lines == [f"{tmp_path}\n"]
     assert ctx.capture([sys.executable, "-c", "import os, sys; sys.stdout.write(os.getcwd())"]) == str(tmp_path)
+
+
+def test_happy_path_default_context_takes_an_explicit_job_count(tmp_path: Path) -> None:
+    assert pipeline.default_context(tmp_path, jobs=2).jobs == 2
 
 
 # --- CLI ------------------------------------------------------------------------------------------
@@ -325,7 +310,8 @@ def test_happy_path_list_prints_the_registry(log: pytest.LogCaptureFixture) -> N
     assert "e2e      e2e-matrix e2e-build playwright" in log.messages
     assert "sonar    sonar" in log.messages
     assert "deps     dependency-updates" in log.messages
-    assert "all      quality sonar" in log.messages
+    assert "all      static tests e2e tour-matrix build sonar" in log.messages
+    assert "tour-matrix e2e-matrix e2e-build playwright-tour-matrix" in log.messages
     assert "tests    vitest rules-coverage pytest pipeline-pytest coverage" in log.messages
 
 

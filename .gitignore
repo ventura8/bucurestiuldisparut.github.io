@@ -39,6 +39,10 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+# Hypothesis's example database and constants cache (the pipeline's tests). Hypothesis writes a .gitignore into the
+# folder only when it creates the folder; rsync with the .gitignore filter (scripts/ci/e2e-split.sh) copies the folder
+# but not that file, and in such a copy its cache files were untracked and failed the editorconfig gate.
+.hypothesis/
 .coverage
 .coverage.*
 

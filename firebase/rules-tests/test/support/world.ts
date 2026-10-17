@@ -96,6 +96,8 @@ export interface World {
     seed(path: string, data: Data): Promise<void>;
     /** Uploads an object with rules disabled (what Cloud Functions or the Cloud Run job would write). */
     seedObject(path: string, contentType: string): Promise<void>;
+    /** Ends the seeding context, then cleans up the environment: every test file's `afterAll`. */
+    close(): Promise<void>;
 }
 
 /** A fixed timestamp for seeded documents (never equal to request.time). */
@@ -164,6 +166,40 @@ function seedPersonas(world: World): Promise<unknown> {
     return Promise.all(seeds);
 }
 
+/** The rules-disabled context the seeds of one world write through, until `release`. */
+interface Owner {
+    readonly context: Promise<Context>;
+    release(): Promise<void>;
+}
+
+/**
+ * `withSecurityRulesDisabled` starts a Firebase app, and with it a new connection to the emulators, for every call, which
+ * costs more than the write: one call held open for the world's lifetime makes each seed a single write (the rules
+ * project ran about a sixth faster, docs/research/pipeline-baseline.md, the tests addendum). `release` lets the call
+ * end, and the environment then deletes its app.
+ */
+function holdOwner(env: RulesTestEnvironment): Owner {
+    let release = (): void => undefined;
+    const released = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    let held: Promise<void> | undefined;
+    const context = new Promise<Context>((resolve, reject) => {
+        held = env.withSecurityRulesDisabled(async (owner) => {
+            resolve(owner);
+            await released;
+        });
+        held.catch(reject);
+    });
+    return {
+        context,
+        release: async () => {
+            release();
+            await held;
+        },
+    };
+}
+
 export async function createWorld(scope: string): Promise<World> {
     const env = await initializeTestEnvironment({ projectId: PROJECT_ID });
     const uid = (persona: Persona): string => `${scope}-${persona}`;
@@ -181,14 +217,17 @@ export async function createWorld(scope: string): Promise<World> {
         contexts.set(persona, created);
         return created;
     };
-    const seed = (path: string, data: Data): Promise<void> =>
-        env.withSecurityRulesDisabled(async (admin) => {
-            await admin.firestore().doc(path).set(data);
-        });
-    const seedObject = (path: string, contentType: string): Promise<void> =>
-        env.withSecurityRulesDisabled(async (admin) => {
-            await admin.storage().ref(path).put(bytes(16), { contentType });
-        });
+    const owner = holdOwner(env);
+    const seed = async (path: string, data: Data): Promise<void> => {
+        await (await owner.context).firestore().doc(path).set(data);
+    };
+    const seedObject = async (path: string, contentType: string): Promise<void> => {
+        await (await owner.context).storage().ref(path).put(bytes(16), { contentType });
+    };
+    const close = async (): Promise<void> => {
+        await owner.release();
+        await env.cleanup();
+    };
     const world: World = {
         env,
         uid,
@@ -197,6 +236,7 @@ export async function createWorld(scope: string): Promise<World> {
         storage: (persona) => context(persona).storage(),
         seed,
         seedObject,
+        close,
     };
     await seedPersonas(world);
     return world;

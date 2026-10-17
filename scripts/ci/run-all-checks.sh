@@ -3,13 +3,14 @@
 #
 #   PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh
 #
-# Stages: static, tests, e2e, build, sonar, deps, release, contract, quality (static+tests+e2e+build)
-# and all (quality+sonar, the default). Gates never run on the host: this wrapper builds the quality
+# Stages: static, tests, e2e, tour-matrix, build, sonar, deps, release, contract, quality (static+tests+e2e+build)
+# and all (static, tests, e2e, tour-matrix, build, sonar; the default). Gates never run on the host: this wrapper builds the quality
 # image, then runs scripts/ci/in-container.sh inside it as the calling user, with the repository
 # mounted at the SAME absolute path (coverage report paths match Sonar's) and a throwaway HOME.
 # Variables forwarded by name only (`--env NAME`, never NAME=value, so no value is in argv): CI,
 # the commit ranges CI computes (GITLEAKS_LOG_OPTS, COMMIT_RANGE), E2E_SHARD and E2E_TIER (the e2e run),
-# MAPBOX_PUBLIC_TOKEN (the site build's URL-restricted pk. token) and SONAR_TOKEN.
+# MAPBOX_PUBLIC_TOKEN (the site build's URL-restricted pk. token), SONAR_TOKEN and PIPELINE_JOBS (how many gates
+# run at once; unset is the CPU count, 1 runs them one at a time).
 set -euo pipefail
 
 main() {
@@ -32,6 +33,7 @@ main() {
 		--env E2E_TIER \
 		--env MAPBOX_PUBLIC_TOKEN \
 		--env SONAR_TOKEN \
+		--env PIPELINE_JOBS \
 		--volume "$root:$root" \
 		--workdir "$root" \
 		"$image" bash scripts/ci/in-container.sh

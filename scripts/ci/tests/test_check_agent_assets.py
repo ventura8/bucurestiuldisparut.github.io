@@ -146,6 +146,29 @@ def test_happy_path_existing_planned_and_ignored_paths_resolve(tmp_path: Path) -
     assert checked == 6
 
 
+def test_happy_path_unbuilt_output_folders_count_as_ignored_in_a_fresh_clone(tmp_path: Path) -> None:
+    # A fresh clone has no build output yet: `functions/dist` does not exist, so git only matches `dist/` when asked as
+    # a folder. A missing path that no pattern ignores, as a file or as a folder, still fails.
+    init_repo(tmp_path)
+    write(tmp_path, ".gitignore", "dist/\n")
+    write(
+        tmp_path,
+        "docs/TESTING.md",
+        "Built: `functions/dist`, `functions/dist/`, `packages/admin/dist/`, `functions/dist/index.js`,"
+        " [bundle](../packages/engine/dist).\n"
+        "Gone: `functions/gone`, `docs/distant.md`.",
+    )
+
+    errors, checked = assets.check_paths(tmp_path)
+
+    assert errors == [
+        "docs/TESTING.md:2: `functions/gone` does not exist",
+        "docs/TESTING.md:2: `docs/distant.md` does not exist",
+    ]
+    assert checked == 7
+    assert assets.ignore_queries(["functions/dist/", "reports/", "functions/dist"]) == ["functions/dist", "functions/dist/", "reports/"]
+
+
 def test_bad_path_missing_paths_are_reported_with_their_line(tmp_path: Path) -> None:
     init_repo(tmp_path)
     write(tmp_path, "docs/research/M0-handoff.md", "# Hand-off\n\n## Other\n\n- `docs/not-planned.md`")

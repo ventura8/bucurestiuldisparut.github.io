@@ -2,7 +2,8 @@
  * The test world of the fn-admin functions (admin, admins, history, telemetry): the real Firestore and Auth adapters
  * on the emulators (`npm test` runs Vitest under `firebase emulators:exec --only auth,firestore,storage`), a fresh
  * named Firestore database per test (test files run in parallel and `setup/owner` is one fixed document), scripted
- * fakes for the Google APIs, a recording logger and a fixed clock. Every value is a generated test value.
+ * fakes for the Google APIs, a recording logger and a fixed clock. Every value is a generated test value. The tests that
+ * use it get the emulator timeouts (60 s per test and hook) from the `functions` project of `vitest.config.ts`.
  */
 import { createLogger, type ListGroupsRequest, type ListGroupsResponse, type Logger, type ReportedErrorEvent } from '@hcm/shared';
 import { createRecordingSink, type RecordingSink } from '@hcm/test-support';
@@ -10,7 +11,6 @@ import { deleteApp, initializeApp, type App } from 'firebase-admin/app';
 import { getAuth, type Auth } from 'firebase-admin/auth';
 import { getFirestore, type Firestore } from 'firebase-admin/firestore';
 import type { CallableRequest } from 'firebase-functions/https';
-import { vi } from 'vitest';
 
 import type { Caller, CallerToken } from '../../src/api/access.js';
 import { createAuthAdmin } from '../../src/adapters/auth-admin.js';
@@ -28,10 +28,6 @@ import type { RuntimeConfig } from '../../src/ports/runtime-config.js';
 import { createFakeFirebaseManagement } from '../support/services.js';
 
 const NOW = '2026-10-12T08:30:00.000Z';
-
-// The emulators answer the first request of a fresh named database slowly, and the whole tests stage shares them with
-// the rules tests: every file that uses this world gets generous timeouts (set here, not in the shared vitest config).
-vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
 /** The emulator's project and the generated values of the runtime configuration (no secret among them). */
 export const CONFIG: RuntimeConfig = {

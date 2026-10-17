@@ -1393,3 +1393,552 @@ asking is not something an agent applies on another agent's word, so it waits fo
 The same rule then goes into `.agent/instructions.md` → *Cost, Push and Secrets Discipline*,
 `.agent/skills/workflow/human_steps_and_consent_skill.md` and `.agent/skills/governance/agent_asset_maintenance_skill.md`
 → *Where a lesson goes*. Verify: `PIPELINE_STAGE=static` (`agent-assets`: `AGENTS.md` stays within 24,000 bytes).
+
+## 28. Pipeline optimisation: the CI workflows (ci agent, 2026-10-17) — APPLIED 2026-10-17 (pre-approved performance changes, logged) except 28f
+
+Added by the CI agent of the pipeline optimisation (the user's goal of 2026-10-12: "optimize the pipelines, it has to
+not take too much time"; the user's terms: every gate and every scenario still run on every push, no threshold lowered,
+no gate skipped). The measurements behind it are in `docs/research/pipeline-baseline.md`. No GitHub Actions run exists
+yet (`gh run list` is empty), so the CI times below are estimates from the laptop's measured test time, to be replaced
+by the first runs (`docs/CI_PIPELINE.md` → *Expected wall time*). Verified with the workflow gates (`actionlint`,
+`workflow-schema`, `workflow-timeouts`, `workflow-policy`, `action-pins`, `yamllint`, `prettier`) and
+`PIPELINE_STAGE=static`. Nothing was committed or pushed.
+
+### 28a. `ci.yml`: `tests`, `e2e` and `build` beside `static` — APPLIED (performance; nothing skipped)
+
+`tests`, `e2e` and `build` waited for `static` (two to three minutes of gates plus the image) although they read
+nothing it writes. They now need only `build-image`. The three deploy jobs, which needed `static` only through them,
+name it directly (`needs: [static, tests, e2e, build, sonarqube]`), so nothing deploys unless every stage passed. The
+e2e jobs, the long pole, start about four to seven minutes earlier. The cost: when `static` fails, the other stages
+still run to their end (free minutes on a public repository; a pull request's next push cancels them).
+
+### 28b. `ci.yml`: the e2e jobs split by tier and measured time — APPLIED (performance; supersedes §16a's four count shards over every tier)
+
+§16a's four Playwright shards cut the whole run by test count: shard 4 got the tour's largest viewports and the whole
+serial admin chain, 1.6 to 1.9 times the work of shards 1 and 2 (`pipeline-baseline.md` → *The four CI shards*), and
+every shard started the admin server and the Firebase emulators. Still four jobs, but each now names its tiers in
+`E2E_TIER` and, inside them, a count shard in `E2E_SHARD`:
+
+| Job | `E2E_TIER` | `E2E_SHARD` | Laptop test time |
+| --- | --- | --- | ---: |
+| functional 1/3 | `fn` | `1/3` | about 1,010 s |
+| functional 2/3 | `fn` | `2/3` | about 1,130 s |
+| functional 3/3 | `fn` | `3/3` | about 1,110 s |
+| admin, smoke, a11y, no-WebGL, tour | `admin,smoke,a11y,nogl,tour` | (none) | about 860 s |
+
+Only the last job starts the emulators. The split of the tour into the per-push `tour` tier and the `tour-matrix` tier
+(the rest of the full tour, run nightly and by `all`) is the e2e agent's change, logged in its own section; the four
+jobs together run every tier but `tour-matrix`. The longest job drops from 2,289 s of laptop test time (shard 4) to
+about 1,130 s.
+
+### 28c. `ci.yml` `static`: carry the type-checker caches between runs — APPLIED (performance; new action `actions/cache` v6.1.0)
+
+```yaml
+            - name: Type-checker caches (restored here, saved after a green stage)
+              uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: |
+                      .tsbuild
+                      */.tsbuild
+                      */*/.tsbuild
+                      */*/*/.tsbuild
+                      */*/*/*/.tsbuild
+                      !node_modules/**
+                      reports/.cache/mypy
+                      reports/.cache/mypy-pipeline
+                  key: static-typecheck-${{ runner.os }}-${{ github.sha }}
+                  restore-keys: static-typecheck-${{ runner.os }}-
+```
+
+Every CI job starts from a fresh checkout, so `tsc -b` type-checks everything (37.5 to 39.8 s measured, 77 s on a busy
+laptop) and both mypys start cold (5 to 6 s). Measured in scratch clones on 2026-10-17: with the `.tsbuild/` folders of
+an earlier build restored and every source newer than them, as after a checkout, `tsc -b` took 3.1 s, and 0.8 s after
+an appended comment. It still fails where it must: a type error appended to `packages/shared/src/log.ts` was reported
+(exit 2, 13.5 s), and a changed signature of `createLogger` failed every dependent project that calls it (16 errors in
+10 files across `packages/shared`, `packages/engine`, `packages/admin`, `functions`, `e2e` and `scripts/site`, exit 2,
+21.7 s). mypy's cache is keyed on file contents too. ESLint's cache is deliberately not carried: it keeps a file's
+verdict while that file and the config are unchanged, so with the type-aware rules a file whose imported types changed
+could keep a stale pass (`pipeline-baseline.md`, CR-CI-2). A pull request's caches stay in its own scope; `master`
+never reads them.
+
+### 28d. Job timeouts sized from the measurements — APPLIED (tighter: a hung job fails sooner)
+
+`static` 30 → 20, `tests` 30 → 20, `build` 30 → 15, `e2e` 60 → 40 minutes, each about two to three times the
+estimated run (the reasons are comments in `ci.yml`); `build-image` keeps 45 (a cold image build) and `sonarqube` 20.
+
+### 28e. `.github/workflows/nightly.yml`: the full e2e matrix every night — APPLIED (new workflow; a decision for the user to see)
+
+The counterpart of the e2e agent's per-push tour: every night at 02:37 UTC, and on demand, on `master`: the four `e2e`
+jobs of `ci.yml` plus the `tour-matrix` stage that `all` adds (about 2,360 s of laptop test time) in two jobs of about
+1,180 s (`E2E_SHARD` `1-2/5` and `3-5/5`), so the full tour (11 viewports × light and dark × Romanian and English) runs
+at least once a day, besides before every push to `master` or a tag
+(`all`). It has its own `build-image` job, which also keeps the layer cache from expiring after seven idle days, uploads
+each part's Playwright report and log, and when anything fails a last job opens or updates the issue "Nightly e2e
+failed" through `.github/actions/upsert-issue`, as `deps.yml` and `contract.yml` do. Permissions: `contents: read` at
+the top, `checks: write` for the JUnit reports, `issues: write` only in the report job, which runs nothing but the local `upsert-issue` action.
+
+### 28f. Proposal: skip `tests`, `e2e` and `build` for a docs-only pull request — NOT APPLIED: it would skip gates on a push, which the user's terms rule out
+
+The optimisation brief asked for path filters, and the user's terms for the same work say every gate runs on every push.
+A docs-only pull request would still run `static` (markdownlint, agent assets, skill mirrors, EditorConfig, gitleaks),
+and its tests could not change outcome while no test reads Markdown, but they would not run. Pushes to `master` and
+tags would always run everything, and a skipped required check counts as passed. If you want it, this is the change:
+
+```diff
++    changes:
++        name: Docs-only pull request?
++        if: github.event_name == 'pull_request' && github.event.pull_request.draft != true
++        runs-on: ubuntu-24.04
++        timeout-minutes: 5
++        permissions:
++            contents: read
++            pull-requests: read
++        outputs:
++            docs-only: ${{ steps.files.outputs.docs-only }}
++        steps:
++            - name: List the changed files
++              id: files
++              env:
++                  GH_TOKEN: ${{ github.token }}
++                  PR: ${{ github.event.pull_request.number }}
++              run: |
++                  others="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --jq '.[].filename' | grep -cvE '\.md$' || true)"
++                  if [[ "$others" == "0" ]]; then echo "docs-only=true"; else echo "docs-only=false"; fi >>"$GITHUB_OUTPUT"
++
+     tests:
+-        needs: build-image
++        needs: [build-image, changes]
++        if: ${{ !cancelled() && needs.build-image.result == 'success' && needs.changes.outputs.docs-only != 'true' }}
+```
+
+The same two lines go on `e2e` and `build`; `sonarqube` and the deploy jobs follow through their `needs`. On such a pull
+request it saves the runner time of `tests`, `e2e` and `build` (about an hour of free runner minutes) and nothing of the
+wall time, which `static` then sets.
+
+### 28g. Information: what stays as it is, and why
+
+- **The image transport** stays the `type=gha` layer cache that `build-image` fills and every job loads (about a minute
+  by the workflow's own comment; not timed in CI yet). A `docker save` archive in `actions/cache` is the alternative to
+  measure once real job timings exist.
+- **`node_modules` is not cached**: the image bakes the npm cache, and `npm ci --prefer-offline` took 7 s on a fresh
+  tree, less than restoring an archive of `node_modules` would take. The Playwright browsers and the Firebase emulator
+  JARs are in the image.
+- **Concurrency** is unchanged: superseded pull-request runs are cancelled; every push to `master` runs to its end.
+- **The free-disk step** of `.github/actions/quality-image` runs in every job; its cost is unknown until a run is timed.
+
+## 29. Pipeline optimisation: the e2e stage (e2e agent, 2026-10-17) — APPLIED 2026-10-17 (pre-approved performance changes, logged; 29a is a decision for the user to see)
+
+Added by the e2e agent of the pipeline optimisation (the user's goal of 2026-10-12: "optimize the pipelines, it has to
+not take too much time"; the user's terms: every gate and every scenario row on every push, no threshold lowered, no
+gate skipped). Before: the `e2e` stage took 1052 s on the laptop and 592 s on the NUC, 861 tests
+(`docs/research/pipeline-baseline.md`). After, measured on 2026-10-17 with other agents' runs loading the laptop: 283 s
+split between the laptop and the NUC, 335 s on the NUC alone (`pipeline-baseline.md` → *After the e2e optimisation*).
+Nothing was committed or pushed; no scenario row, spec, threshold or timeout changed.
+
+### 29a. The per-push tour and the `tour-matrix` stage — APPLIED (a decision for the user to see)
+
+The tour ran its seven tests in 44 projects (11 viewports × light and dark × Romanian and English) on every run, 46 to
+47 % of the e2e test time, although every project carries the same three scenario tags (`S-V15-HAPPY`,
+`S-V18-HAPPY`, `S-V18-HAPPY-MODAL-STATES`). Now:
+
+| Where | Tour projects | Tests |
+| --- | --- | ---: |
+| tier `tour`, in `quality` and so on every push and in CI's per-push jobs | `tour-{c360,c915l,l1440,x3840}-{light,dark}-ro`, `tour-c360-light-en` (9) | 63 |
+| tier `tour-matrix`, stage `tour-matrix`: in `all` (before a push to `master` or a tag) and nightly (§28e) | the other 35 | 245 |
+
+Every scenario row still runs on every push (all seven tour tests run in the nine projects, and every other tier is
+unchanged); the full matrix runs before every push to `master` or a tag and every night. The per-push tour keeps a
+phone, a phone held landscape (compact height), a laptop and a 4K screen in both themes, and the phone in English, so
+the English catalogue's layout is checked on every push at the narrowest of those sizes. What a push
+no longer sees until `all` or the night: a layout defect that only 320, 412, 768, 1024, 1280, 1920 or 2560 px wide, or
+only English at other sizes, would show. `E2E_TIER` unset now means the push tiers, `E2E_TIER=all` every tier.
+
+`all` is `static` → `tests` → `e2e` → `tour-matrix` → `build` → `sonar`: the matrix comes before `build`, so its e2e build
+is still current and `build`'s production `packages/admin/dist` is what the run leaves. To undo: drop `tour-matrix`
+from `PUSH_TIERS`' exclusion in `e2e/projects.ts` (or set `E2E_TIER=all`).
+
+### 29b. The admin tier beside the others: a Playwright lock instead of one worker per project — APPLIED (performance)
+
+The admin projects ran with `workers: 1` and a blocking lease, last in the queue: 21 tests alone on one worker for the
+last 107 s (NUC) to 122 s (laptop) of every run. They now come first in `e2e/projects.ts` and every admin spec file
+declares `test.describe.configure({ lock: ADMIN_LOCK })` (Playwright 1.64's test locks): the dispatcher never starts
+two admin tests at once and gives the free workers other tests meanwhile, so the chain runs on one worker from the
+first minute (on the NUC it ended at test 386 of 616). The lease stays behind the lock, for two runs sharing one set of
+servers. Under full load the admin tests take about twice their idle time (198 s of test time against 100 s); their
+timeouts are unchanged and hold (90 s, the journey 300 s; the slowest took 28 s).
+
+Per-worker namespacing in the emulators, as first proposed, is not possible without changing the product: the owner
+(`setup/owner`), the admins and `setup/status` are singletons of the Firebase project, and the Functions emulator
+serves one project, so parallel admin tests would need one emulator suite (three JVMs and 32 functions) per worker.
+
+### 29c. Run order and `E2E_SHARD` ranges — APPLIED (performance)
+
+The tiers run in the order `admin`, `smoke`, `a11y`, `nogl`, `tour` (largest frames first), `tour-matrix`, `fn`: long
+tests first, the many short functional ones last to fill the workers (the NUC's packing went from 73 % to 89 %).
+`E2E_SHARD` keeps `index/total` and adds `first-last/total`, one contiguous part of several slices, for a faster machine
+that takes more: Playwright 1.64 reads shard weights only from the undocumented variable `PWTEST_SHARD_WEIGHTS`,
+which `e2e/playwright.config.ts` sets from the range before the runner reads it. If a Playwright release drops it, a
+range silently becomes equal slices (the two machines then finish less evenly; no test is lost or run twice, because
+both sides would split alike); the pipeline skill says how to check after a bump.
+
+### 29d. A stamped e2e build — APPLIED (performance; the gate's command changed)
+
+`e2e-build` runs `python3 scripts/ci/e2e_build.py`, which runs the same `npm run build:site:e2e` unless its stamp
+(`node_modules/.cache/hcm/e2e-build.json`) shows that no input file changed (git's blob ids of the working tree,
+untracked files included, minus documentation, CI, agent assets, tests and specs) and no output was touched (names,
+sizes, modification times, so the `build` stage's production admin forces a rebuild). It saves the 2.5 to 7 s build
+when only specs or docs changed, and in `all`'s `tour-matrix` stage. Tested by `scripts/ci/tests/test_e2e_build.py`.
+
+### 29e. `scripts/ci/e2e-split.sh`: the Playwright runs on two machines — APPLIED (new script; a decision for the user to see)
+
+`PIPELINE_STAGE=<stage> bash scripts/ci/e2e-split.sh` runs the stage here as `run-all-checks.sh` does, with the tail
+of every Playwright run (`E2E_SHARD=3/3`), while the NUC (`HCM_SPLIT_HOST`, default `nuc`; `HCM_SPLIT_DIR`, default
+`hcm-ci`) runs the head (`1-2/3`: the admin tier and the tour) of the stage's Playwright stages from the same tree in
+its own image, then merges both parts' reports and prints one verdict; the green marker stays only when both passed.
+What it sends: an rsync of the working tree as git sees it (no git-ignored file, so no `.env.local`, `.sonar-token`
+or `.secret.local`; no `.git`, no `node_modules`), exactly what the session helper `nuc-run.sh` sent during the
+measurements. It takes a lock folder next to `HCM_SPLIT_DIR` on the NUC, and runs the stage here only when the NUC
+does not answer in 5 s, lacks docker or rsync, or is busy; a connection lost mid-run has its part rerun here. It is a
+local convenience: CI and the pre-push hook are unchanged (the hook still wants the green marker of `all`). Tested by
+`scripts/ci/tests/test_e2e_split.py` with fake `ssh`, `rsync` and `docker`.
+
+### 29f. Information: shorter polls tried, measured, and reverted
+
+`expect.poll` waits 100, 250, 500 and then 1000 ms between tries; polling every 20 to 250 ms looked like a cheap win.
+On the NUC's functional tier (520 tests, two runs each) it was 1749 and 1649 s of test time against 1664 and 1738 s
+with Playwright's intervals: no difference, because with eight SwiftShader workers at 96 to 100 % CPU another worker
+uses what a waiting one leaves. The only wait changed is `waitForEngineEvent`, now an in-page promise like `mapIdle`
+(no polling, resolved by the event). The suite has no fixed sleep to remove (ESLint's Playwright rules forbid them).
+
+### 29g. Left for the integrator — DONE 2026-10-17 (the comment by the static agent, §31d; the shares by the integrator, §32b)
+
+- `scripts/ci/run-all-checks.sh` line 7 still says `all (quality+sonar, the default)`: edit it when no run is in
+  flight anywhere (bash reads the script by offset while it runs).
+- `HCM_SPLIT_PARTS`' defaults (`1:2` for `e2e` and `tour-matrix`, `1:4` for `quality` and `all`) were measured with the
+  other agents' runs on the laptop; after the faster `static` and `tests` land, time `quality` once and adjust.
+
+## 30. Pipeline optimisation: the tests stage (tests agent, 2026-10-17) — APPLIED 2026-10-17 (pre-approved performance changes, logged)
+
+Added by the tests agent of the pipeline optimisation (the user's goal of 2026-10-12: "optimize the pipelines, it has
+to not take too much time"; the user's terms: every gate and every scenario still run on every push, no threshold
+lowered, no gate skipped). Every Vitest project, test file and 90 % per-file threshold, `rules-coverage`, both pytest
+suites and the `coverage` gate run as before. The measurements are in `docs/research/pipeline-baseline.md` → *Addendum:
+the tests stage*. Verified with `PIPELINE_STAGE=tests` and `PIPELINE_STAGE=static`. Nothing was committed or pushed.
+
+### 30a. `package.json` `test`: two JIT compiler threads for the emulators' JVMs — APPLIED (performance)
+
+`"test": "JAVA_TOOL_OPTIONS=-XX:CICompilerCount=2 firebase emulators:exec ..."`. On 16 hardware threads the JVM starts
+12 compiler threads (3 on a 4-vCPU runner); in a run this short their C2 work was about two thirds of the Firestore
+emulator's CPU (rules tests alone: 63 to 78 CPU seconds by default, 44 with two threads, 20 to 23 with C1 only). The
+whole `vitest` gate, interleaved runs on the same machine: 61.9 to 65.4 s by default, 59.6 to 60.2 s with two threads,
+64.0 to 64.2 s with C1 only (`-XX:TieredStopAtLevel=1`), whose slower code made the two 250 MB rule-coverage reports
+take 10 s to build instead of 7 to 8. The Storage emulator relays the JVM's `Picked up JAVA_TOOL_OPTIONS` line as an
+"Unexpected rules runtime error" warning at start-up (recorded in `.agent/skills/quality/pipeline_skill.md`).
+
+### 30b. `vitest.config.ts`: four Node projects share one module graph per worker — APPLIED (performance)
+
+`isolate: false` (`SHARED_MODULE_GRAPH`) for `shared`, `engine`, `admin` and `functions`: a worker runs file after file
+without a new process and new imports (firebase-admin's among them). The one functions test file with `vi.mock`, the
+composition root's (`functions/test/deps.test.ts`), runs alone in a new isolated project, `functions-deps`, whose
+coverage joins the `functions` scope; a mock would otherwise leak into the next file of the worker. Worker CPU, each
+project run alone with coverage: `admin` 36 to 15 s, `shared` and `engine` 19 to 13 s, `functions` 69 to 46 s. On a
+4-CPU container (a GitHub-hosted runner's size) the `vitest` gate went from 101 to 112 s to 64 to 70 s with
+`shared`, `engine` and `admin` shared (with 30a) and to 54 to 60 s with `functions` too: `admin`'s 56 files took 20 s
+instead of 2. Checked: every file of a project in one worker in shuffled orders (functions with fresh emulators each
+time), with three and with fifteen workers; all pass. `rules` and `tools` stay isolated (their time is in the
+emulators and in child processes). Not a weaker gate: the same tests, coverage scope and thresholds.
+
+### 30c. `scripts/ci/check_rules_coverage.py save`: the JSON and HTML reports fetched at once — APPLIED (performance)
+
+Each answer is about 250 MB that the emulator builds from every evaluation of the run (2.8 to 4.9 s each); asked at
+once, the save lasts as long as the slower one (in isolation 7.1 to 8.7 s one after the other, 4.0 to 5.9 s at once).
+Same files, same `check`. Pinned by `test_happy_path_save_asks_for_both_reports_at_once` (a fetch that answers only
+when both requests are in flight) and `test_bad_path_a_failed_report_fails_the_save`.
+
+### 30d. `pytest.ini`, `scripts/ci/requirements.txt`: the CI tooling tests on at most four workers — APPLIED (performance; new pinned tool)
+
+`pytest-xdist==3.8.0` (and its `execnet==2.1.2`), `--numprocesses=auto --maxprocesses=4` in `pytest.ini`: 12.4 s to
+5.9 s on the laptop; one worker per core (16) took 7.8 s, each worker importing and collecting the suite. It costs about
+6 CPU seconds more (10.0 against 15.9), so where the gate runs beside others (`scripts/ci/gate_runner.py`) and is not
+the last to finish it saves nothing; it shortens a standalone run and any stage it ends. The pipeline's tests
+(`pipeline-pytest`) stay in one process: with workers each importing GDAL they took 9.2 s against 5.4 s. Adding the pin
+rebuilt the quality image once (the venv layer and everything after it). Also in
+`scripts/ci/tests/test_check_rules_coverage.py`: the stand-in emulator's `serve_forever` polls every 10 ms instead of
+500, so each shutdown no longer waits half a second (the two slowest steps of the suite).
+
+### 30e. Both functions projects give every test and hook 60 s — APPLIED (robustness, not a gate change)
+
+`EMULATOR_TIMEOUTS = { testTimeout: 60_000, hookTimeout: 60_000 }` on `functions` and `functions-deps`, replacing the
+`vi.setConfig` of `functions/test/admin/world.ts` and `functions/test/publish/on-write.test.ts`: in a shared module graph
+a helper's `vi.setConfig` would apply to the first file of a worker only (Vitest resets it after each file). It also
+covers the three emulator-backed files that had relied on Vitest's 5 s and 10 s defaults: two `createDeps` tests and a
+`beforeAll` timed out under load, the first of them again in a fresh clone of the unchanged branch (lesson 51 of
+`docs/LESSONS.md`). A test's own wait budget, like the `tools` project's 30 s, not a threshold: the assertions are
+unchanged; a fake that hangs fails after 60 s instead of 5.
+
+### 30f. The rules tests seed through one rules-disabled context per file — APPLIED (performance)
+
+`firebase/rules-tests/test/support/world.ts`: `withSecurityRulesDisabled` starts a Firebase app, and a new connection to
+the emulators, for every call, and `client-writes.test.ts` alone seeds about 200 documents. The world now holds one
+such call open (`holdOwner`) and seeds through its context; `world.close()` ends it and cleans up the environment (the
+eleven files' `afterAll`, which called `world.env.cleanup()`). Seeding bypasses the rules either way, so the rule
+coverage is the same (`rules-coverage` passes). The `rules` project alone: 10.6 to 10.8 s before, 8.6 to 9.0 s after;
+in the whole run its three longest files went from 25 to 26 s to 15 to 18 s, and they are the run's last to finish.
+
+### 30g. Information: tried and not kept
+
+- A sequencer that starts the slowest Node projects first (`rules`, then `functions`): the Vitest run took 52.3 s
+  instead of 45 to 47 s, because the `rules` files then ran beside the Chromium projects and took twice as long in sum
+  (235 s against 118 s); Vitest's alphabetical project order stays.
+- `pool: 'threads'` instead of child processes: more CPU (331 against 229 CPU seconds), slower.
+- The browser and the Node projects as two Vitest runs side by side (merged afterwards): alone they take 8.8 s and
+  25.4 s, one after the other in one run about their sum, but side by side the Node run took 36.2 s: the run is
+  CPU-bound, so the browser projects' share cannot be hidden, only made smaller.
+- Overlapping the emulators' start-up (about 6 s) with Vitest's own (about 3 s): it needs `emulators:start` with its own
+  readiness wait and teardown instead of `emulators:exec`; left for later.
+- Not saving the HTML rule-coverage report (250 MB that no gate reads): kept, it is a documented report, and fetched
+  beside the JSON it adds little time.
+
+## 31. Pipeline optimisation: the `static` stage and the gate engine (static agent, 2026-10-17) — APPLIED 2026-10-17 (pre-approved performance changes, logged) except 31f (31e applied by the integrator, §32a)
+
+Added by the static agent of the pipeline optimisation (the user's goal of 2026-10-12: "optimize the pipelines, it has
+to not take too much time"; the user's terms: every gate and every scenario still run on every push, no threshold
+lowered, no gate skipped). Every gate of every stage still runs with the same tool, rules and files; only when and how
+many at once changed. The measurements are in `docs/research/pipeline-baseline.md` → *Addendum: the `static` stage and
+the gate engine*. Nothing was committed or pushed.
+
+### 31a. The gates of a stage run at the same time — APPLIED (performance; a decision for the user to see)
+
+`scripts/ci/pipeline.py` hands each stage to the new `scripts/ci/gate_runner.py`, which runs up to `PIPELINE_JOBS`
+gates at once (default: the CPUs the container may use; `PIPELINE_JOBS=1` is the old one-at-a-time run). A gate that
+reads another gate's output waits for it (`Gate.needs`: `rules-coverage` and `coverage` after the test runners,
+`bundle-budget` and `site-build` after `vite-build`, both Playwright gates after `e2e-build`), and a gate that saturates
+the machine or binds fixed ports runs alone (`Gate.exclusive`: `playwright`, `playwright-tour-matrix`). The log still
+reads like a serial run: each gate's output is one block in registry order, announced and closed as before
+(`static 12/51 eslint` … `eslint passed in 48.2s`, the gate's own run time), the earliest unfinished gate shown live,
+then a line such as `static finished in 48.2s (gate time 141.5s, 51 gates, up to 16 at once)`. Every gate runs after a
+failure, and failures are listed in registry order whichever finished first; a gate whose own code raises is reported
+as failed (exit 70, with its traceback) instead of hanging the run. `validate_registry()` refuses a need that names no
+gate or comes after its gate in a stage. Gates of a stage write only git-ignored paths that `.gitleaks.toml` allowlists,
+so `gitleaks dir .` can walk the tree meanwhile. Pinned by `scripts/ci/tests/test_gate_runner.py` (concurrency, the
+job limit, needs, exclusive gates, ordered blocks, a raising task) and `test_pipeline_stages.py`; 100 % branch
+coverage.
+
+### 31b. A gate runs once per run — APPLIED (performance; a decision for the user to see)
+
+`pytest` is listed in `static` (a tooling-only change is gated by `static` alone) and in `tests` (its report feeds the
+`coverage` gate); `e2e-matrix` in `static`, `e2e` and `tour-matrix`; `e2e-build` in `e2e` and `tour-matrix`. In one run
+of `quality` or `all`, a later stage reuses the outcome of the same gate on the same tree and says so:
+`pytest passed in stage 'static' of this run (8.2s); not run again`. A reused failure is a failure again, listed under
+both stages (`static/pytest, tests/pytest`). Each stage run on its own still runs all its gates, so CI's separate
+`tests` job still runs `pytest`.
+
+### 31c. `package.json`: ESLint's worker threads, Prettier's and stylelint's caches — APPLIED (performance)
+
+```diff
+-        "format:check": "prettier --check .",
+-        "lint": "eslint --max-warnings 0 --no-inline-config --report-unused-disable-directives-severity error .",
+-        "lint:css": "stylelint --max-warnings 0 --report-needless-disables ...",
++        "format:check": "prettier --check --cache --cache-location reports/.cache/prettier/cache.json .",
++        "lint": "eslint --concurrency=$(( $(nproc) / 4 > 2 ? $(nproc) / 4 : 2 )) --max-warnings 0 --no-inline-config --report-unused-disable-directives-severity error .",
++        "lint:css": "stylelint --cache --cache-location reports/.cache/stylelint/ --cache-strategy content --max-warnings 0 --report-needless-disables ...",
+```
+
+- **ESLint's worker threads**: a quarter of the CPUs, at least two (4 on the laptop and the NUC, 2 on a 4-vCPU runner).
+  Each worker builds its own typed program, so the CPU cost grows fast; measured on the laptop with the same exit
+  status every time: one thread 86.8 s (136 CPU seconds), two 59.7 s (174), four 45.0 s (256), eight 69.2 s (721).
+  ESLint's own `auto` would take half the CPUs (eight here), the slowest of the four beside the other gates.
+- **Prettier's cache** (content strategy): a file is cached only after Prettier found it formatted, keyed on its
+  content, the resolved options and Prettier's version; 11 to 12 CPU seconds instead of 45 on a busy laptop.
+- **stylelint's cache** (content strategy): stylelint 17 caches a file only when its result has no problem at all, the
+  disable-comment reports (`--report-needless-disables` and the others) included, since it computes them while it lints
+  the file (`lib/lintSource.mjs`); keyed on the content, the resolved config and stylelint's version.
+- **Not ESLint's `--cache`**: it keys a file on its own content and config while the type-aware rules read the types of
+  other files, so a file whose imported types changed would keep a stale pass (CI carries none either, §28c).
+- **Already incremental, unchanged**: `tsc -b` (`.tsbuild/`), mypy and the pipeline's mypy (`reports/.cache/mypy*`),
+  ruff (`.ruff_cache/`, 0.1 s), and `npm ci` (only when `node_modules/.hcm-install-stamp` is stale).
+
+### 31d. `scripts/ci/run-all-checks.sh`: `PIPELINE_JOBS` forwarded, the stage comment updated — APPLIED
+
+`--env PIPELINE_JOBS` (by name, like every other variable), and the header comment lists `tour-matrix` and what `all`
+now runs (CR-E2E-1). Replaced atomically (a new file moved over the old one), so a run in flight kept its copy.
+
+### 31e. Proposal: the image's npm layer keyed on the dependencies only — APPLIED 2026-10-17 by the integrator, once no agent was mid-run (§32a)
+
+`docker/Dockerfile.quality` copies every `package.json` before the `npm ci` layer, so any npm script edit (§30a, §31c)
+rebuilds the npm, Playwright and emulator layers: 245 to 297 s on the laptop, and a cold layer in CI. A manifests stage
+that drops the `scripts` (keeping `emulators:setup`, which the layer runs) keys the layer on the dependency fields:
+
+```diff
++FROM node AS manifests
++WORKDIR /m
++COPY package.json package-lock.json .npmrc ./
++COPY packages/shared/package.json packages/shared/
++COPY packages/ui/package.json packages/ui/
++COPY packages/engine/package.json packages/engine/
++COPY packages/admin/package.json packages/admin/
++COPY packages/test-support/package.json packages/test-support/
++COPY functions/package.json functions/
++COPY firebase/rules-tests/package.json firebase/rules-tests/
++COPY e2e/package.json e2e/
++RUN node -e "const fs = require('node:fs'); for (const f of process.argv.slice(1)) { const p = JSON.parse(fs.readFileSync(f, 'utf8')); const keep = p.scripts?.['emulators:setup']; delete p.scripts; if (keep) p.scripts = { 'emulators:setup': keep }; fs.writeFileSync(f, JSON.stringify(p, null, 4) + '\n'); }" \
++    package.json packages/*/package.json functions/package.json firebase/rules-tests/package.json e2e/package.json
+ ...
+ WORKDIR /opt/hcm/workspace
+-COPY package.json package-lock.json .npmrc ./
++COPY --from=manifests /m/ ./
+ COPY vendor/npm/braces vendor/npm/braces
+-COPY packages/shared/package.json packages/shared/
+-... (the other workspace manifests)
+```
+
+The pipeline's own `npm ci` still installs from the real manifests at run time; the layer only fills the npm cache, the
+browsers and the emulator JARs. Verify: `bash scripts/ci/build-and-test.sh` twice with only an npm script changed in
+between (the second build reuses the npm layer), then `PIPELINE_STAGE=all`.
+
+### 31f. Proposal: two costly ESLint rules that cannot add a finding here — NOT APPLIED: it changes which rules run; for the user to decide
+
+ESLint is the longest gate of `static`. The Measure agent's rule timings (`TIMING=25`, NUC) put
+`sonarjs/deprecation` first (11.9 s, 18.7 % of the rule time), although `@typescript-eslint/no-deprecated` (1.4 s,
+also on) reports the same deprecated APIs from the same type information, and `sonarjs/aws-restricted-ip-admin-access`
+third (5.7 s, 9 %), a rule for AWS CDK security groups in a repository without AWS code. Turning both off in
+`eslint.config.js` would take about a quarter of ESLint's rule time:
+
+```diff
++            // Covered by @typescript-eslint/no-deprecated; AWS CDK rules have nothing to inspect here.
++            'sonarjs/deprecation': 'off',
++            'sonarjs/aws-restricted-ip-admin-access': 'off',
+```
+
+Verify: `PIPELINE_STAGE=static`, and a deliberate call of a `@deprecated` function still fails `eslint`.
+
+## 32. Pipeline optimisation: the integration (integrator, 2026-10-17) — APPLIED 2026-10-17 (pre-approved performance changes and fixes, logged) except 32f; 32d is a decision for the user to see
+
+Added by the integrator of the pipeline optimisation (the user's goal of 2026-10-12: "optimize the pipelines, it has
+to not take too much time"; the user's terms: every gate and every scenario row on every push, no threshold lowered, no
+gate skipped). §28 to §31 touched different files except `scripts/ci/pipeline.py`, `package.json`, the pipeline skill
+and the shared docs; the static agent had already merged the e2e agent's `tour-matrix` stage into the gate engine's
+registry, and no area's edit undid another's, so combining them took no code change. The measurements are in
+`docs/research/pipeline-baseline.md` → *Addendum: the integrated pipeline*. Nothing was committed, pushed or deployed.
+
+### 32a. `docker/Dockerfile.quality`: the npm layer keyed on the dependencies only (§31e) — APPLIED (performance)
+
+As §31e proposed, with the JavaScript spread over continuation lines (140 columns) and without a final newline in the
+rewritten manifests (only their content keys the cache):
+
+```dockerfile
+FROM node AS manifests
+WORKDIR /m
+COPY package.json package-lock.json .npmrc ./
+COPY packages/shared/package.json packages/shared/
+# ... every other workspace manifest, as the npm layer copied them before
+RUN node -e "const fs = require('node:fs'); \
+        for (const file of process.argv.slice(1)) { \
+            const manifest = JSON.parse(fs.readFileSync(file, 'utf8')); \
+            const setup = manifest.scripts?.['emulators:setup']; \
+            delete manifest.scripts; \
+            if (setup) { manifest.scripts = { 'emulators:setup': setup }; } \
+            fs.writeFileSync(file, JSON.stringify(manifest, null, 4)); \
+        }" \
+        package.json packages/*/package.json functions/package.json firebase/rules-tests/package.json e2e/package.json
+
+# in the quality stage, instead of the ten COPY lines of the manifests:
+COPY --from=manifests /m/ ./
+COPY vendor/npm/braces vendor/npm/braces
+```
+
+Verified on 2026-10-17: applying it rebuilt the image once, 205 s on the laptop and 216 s on the NUC (both at once);
+then a build context whose `package.json` differed only in a script (`lint:md` with one more flag) built in 2 s with
+the `npm ci` layer `CACHED`, where any script edit had cost 245 to 297 s (§30a and §31c each paid it, on every
+machine). The pipeline's own `npm ci` still installs from the real manifests at run time. No manifest has an install
+lifecycle script (`preinstall`, `install`, `postinstall`, `prepare`); one added later must be kept in that stage like
+`emulators:setup`. A new workspace's `COPY` line goes into the `manifests` stage. `hadolint` and `repo-policy` (a
+`FROM` of an earlier stage needs no digest) pass in `static`.
+
+### 32b. `scripts/ci/e2e-split.sh`: default shares from measurements — APPLIED (performance)
+
+`default_parts` is now `2:3` for `e2e` and `tour-matrix` and `1:2` for `quality` and `all` (before: `1:2`, and `1:4`
+for `quality` and `all`, chosen while the other agents' stages loaded the laptop). Measured with the laptop otherwise idle
+and the NUC running the user's own containers:
+
+| Stage | Shares | The laptop's part | The NUC's part | Stage wall clock |
+| --- | --- | --- | --- | ---: |
+| `e2e` | `1:2` | 205 tests, done at 187 s | 412 tests, done at 315 s | 317 s |
+| `e2e` | `2:3` | 246 tests, done at 209 s | 371 tests, done at 304 s | 306 s |
+| `quality` | `1:2` | `static` 46 s, `tests` 46 s, its e2e part 174 s, `build` 3 s: done at 273 s | 412 tests, done at 321 s | 324 s |
+| `tour-matrix`, inside `all` | `1:2` | 82 tests in 1.5 min | 165 tests in 2.3 min | (about 145 s of `all`) |
+| `tour-matrix` | `2:3` | 99 tests, done at 116 s | 148 tests, done at 130 s | 133 s |
+| `all` | `1:2` | `static`, `tests`, its two Playwright parts, `build`: done at 357 s | `e2e` 1-2/3, then `tour-matrix` 1-2/3: done at 393 s | 398 s |
+
+Both e2e splits end with the NUC's part, which ends with the admin chain (§32f): giving the laptop 41 more functional
+tests cut the NUC's part by only 11 s. In `quality` the laptop runs `static` and `tests` first (92 s), so it takes a
+third of the e2e tests, not a fifth: `1:4` would have moved about 80 tests onto the NUC's part, already the longer one.
+Pinned by `test_happy_path_each_stage_splits_by_its_measured_default` and the updated cases of
+`scripts/ci/tests/test_e2e_split.py`. `HCM_SPLIT_PARTS` still overrides it, for a busier or idler NUC.
+
+### 32c. `.github/workflows/nightly.yml`: upload the `tour-matrix` parts' reports — APPLIED (a fix: they were never uploaded)
+
+The two `tour-matrix` jobs write `reports/playwright-tour-matrix/` and `reports/test-results-tour-matrix/`
+(`e2e/playwright.config.ts`), but the upload step named only `reports/playwright/` and `reports/test-results/`, so a
+failed night of the tour matrix would have left no report and no trace to download:
+
+```diff
+                   path: |
+-                      reports/playwright/
+-                      reports/test-results/
++                      reports/playwright*/
++                      reports/test-results*/
+```
+
+Verified with the workflow gates of `static` (`actionlint`, `workflow-schema`, `workflow-timeouts`, `workflow-policy`,
+`action-pins`, `yamllint`, `prettier`).
+
+### 32d. The tour tiering, for the user to see — APPLIED (as §29a and §28e decided)
+
+The one change of the optimisation that moves work out of the per-push run, gathered here so it can be judged in one
+place:
+
+| Run | e2e tiers | Tour projects | Every scenario row |
+| --- | --- | ---: | --- |
+| every push and pull request (`ci.yml`), the local `quality` | `admin`, `smoke`, `a11y`, `nogl`, `tour`, `fn` | 9 of 44 | yes |
+| the local `all`, before every push to `master` or a tag (the pre-push hook wants its green marker) | the same plus `tour-matrix` | 44 | yes |
+| `nightly.yml`, every day on `master` | the same plus `tour-matrix` | 44 | yes |
+
+- **What moved**: 35 tour projects (245 tests, about 2,360 s of laptop test time) that repeat the tour's seven tests at
+  other viewport, theme and language combinations. Their scenario rows (`S-V15-HAPPY`, `S-V18-HAPPY`,
+  `S-V18-HAPPY-MODAL-STATES`) still run on every push in the nine kept projects (`tour-{c360,c915l,l1440,x3840}` in
+  light and dark, Romanian, and `tour-c360-light-en`); no gate, threshold, test or row was dropped.
+- **What a push no longer catches before `all` or the night**: a layout defect that only 320, 412, 768, 1024, 1280,
+  1920 or 2560 px, or English at a size other than 360 px, would show.
+- **What it saves**: the per-push e2e run went from 861 to 616 tests; split with the NUC the `tour-matrix` stage takes
+  133 s on its own and about 145 s inside `all`, and nothing in CI's per-push run.
+- **To undo**: remove `tour-matrix` from the exclusion that defines `PUSH_TIERS` in `e2e/projects.ts` (every run then
+  takes every tier), or set `E2E_TIER=all` where one run should.
+
+### 32e. `.gitignore`: `.hypothesis/` — APPLIED (a fix: `static` failed in a copied tree)
+
+Hypothesis writes `.hypothesis/.gitignore` (`*`) only when it creates the folder itself. rsync with
+`--filter=':- .gitignore'` (`scripts/ci/e2e-split.sh`, the session's NUC helper, and the integrator's scratch copy)
+copies that folder empty, without the file; in the copy, `pipeline-pytest` then wrote its constants cache into a folder
+nothing ignored, and the next `static` failed `editorconfig` on eleven of its files (`docs/LESSONS.md` #52). The root
+`.gitignore` now names `.hypothesis/` under *Python*; the original checkout, whose folder kept Hypothesis's own file,
+never showed it.
+
+### 32f. Proposal: the admin tier split between the two machines — NOT APPLIED: it needs a second way to split, for later
+
+The admin tier's 22 tests run one at a time (the emulators' owner and setup records are per Firebase project, §29b)
+and sit at the head of the queue, so a split puts all of them into the NUC's part, where they ran 238 to 259 s of
+test time under full load and finished last in every split run. That chain is now the floor of a split `e2e`. Each
+machine starts its own emulators, so each could run half of the chain (two of the four admin viewport projects, each
+with its own owner's journey): about 130 s each, and an `e2e` stage of about 230 s instead of 306 s. It needs a
+selection that is not one contiguous queue slice (for example `E2E_ADMIN_PART=1/2` read by `e2e/projects.ts`, beside the
+count shard of the other tiers) and a split script that passes both; not worth the extra moving part until the e2e
+stage grows again.
+
+### 32g. Information: what stays open
+
+- §31f (two costly ESLint rules) and §28f (a docs-only path filter) wait for the user.
+- CR-TESTS-2: the e2e emulators run without the two-JIT-thread flag of `npm test`; it was measured only for the
+  one-minute `vitest` gate and is left until measured in a ten-minute run.
+- No GitHub Actions run of the new workflows exists yet; `docs/CI_PIPELINE.md` → *Expected wall time* holds
+  estimates, now with `static` and `tests` measured on a 4-CPU container.

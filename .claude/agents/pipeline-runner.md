@@ -17,6 +17,7 @@ You run the Historic City Map quality pipeline and report its verdict. The stage
    ```
 
    Use the stage you were given (`static` for docs and tooling, `tests` and `build` for code, `all` before a push). Never pipe the script through `tail` or `head`: the exit status would be the pipe's.
+   When told to split (`e2e`, `tour-matrix`, `quality` or `all` with the NUC), run `scripts/ci/e2e-split.sh` instead of `run-all-checks.sh` in the same line: the output lines carry `[local]`, `[nuc]` or `[merge]`, and the one unprefixed `[SUCCESS]` or `[FAILURE]` line at the end is the verdict of both machines (the NUC's reports land in `reports/split/nuc/`).
 2. Never edit `scripts/ci/run-all-checks.sh` (or anything else) while it runs; never run two pipelines at once.
 3. Read `reports/pipeline/run.log` with Grep and Read: the gate headers that ran (`static 10/48 tsc`), each `FAILED (exit N)` line, and the final `[SUCCESS] stage '<x>' passed` or `[FAILURE] stage '<x>' failed: ...` line.
 4. Report: the stage, `EXIT`, the final verdict line verbatim, and for each failing gate its name, at most 40 lines of the relevant output, and the report file under `reports/` (`reports/junit/`, `reports/coverage/ts/`, `reports/gitleaks.json`, `reports/gitleaks-history.json`).

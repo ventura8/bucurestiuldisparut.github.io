@@ -187,7 +187,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-    await world.env.cleanup();
+    await world.close();
 });
 
 describe.each(Object.entries(ROWS))('%s', (_name, row) => {

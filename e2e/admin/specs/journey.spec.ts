@@ -10,9 +10,12 @@ import type { ServerDeployment } from '../support/deployment.js';
 import type { EmulatorWorld } from '../support/emulators.js';
 import { apiText, setupText, shellText } from '../support/i18n.js';
 import { followDeepLink, SetupPage, standInProviderPages } from '../support/setup-page.js';
-import { adminPath, expect, test } from '../support/test.js';
+import { ADMIN_LOCK, adminPath, expect, test } from '../support/test.js';
 import type { UpstreamControl } from '../support/upstream.js';
 import { ADMIN_WEB_CONFIG, emulatorOrigin, E2E_PROJECT_ID } from '../world.js';
+
+// One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
+test.describe.configure({ lock: ADMIN_LOCK });
 
 /**
  * The owner's whole journey through the Setup Assistant (docs/research/M2b-interfaces.md §3), against the emulators and

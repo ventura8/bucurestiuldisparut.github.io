@@ -52,10 +52,36 @@ const BROWSER_TEST_DEPS = [
     '@hcm/test-support > axe-core',
 ];
 
+/**
+ * The Node projects without module mocks share one module graph per worker instead of loading a fresh one for every
+ * file (a fresh one costs a process start and the imports, firebase-admin's among them): on four CPUs the `vitest` gate
+ * took about a third less time (docs/research/pipeline-baseline.md, the tests addendum). Checked with every file of a
+ * project in one worker in shuffled orders, and with three and fifteen workers. Their tests restore what they change
+ * (fake timers, stubbed globals, environment variables); Vitest restores mocks and `vi.setConfig` after each file, so a
+ * setting a test needs belongs in its project (below), not in a helper module that only the first file of a worker
+ * would evaluate. A `vi.mock` would leak into the next file of the worker: the one test that needs it, the composition
+ * root's, is its own isolated project (`functions-deps`). `rules` and `tools` stay isolated: their time is in the
+ * emulators and in child processes, not in loading modules.
+ */
+const SHARED_MODULE_GRAPH = { isolate: false } as const;
+
+/**
+ * The functions tests wait on the emulators, whose first answer on a fresh connection takes seconds while the whole stage
+ * shares them: 60 s per test and hook for every file of both functions projects, as the rules world gives its files.
+ * Two files that relied on Vitest's 5 s and 10 s defaults timed out under load (docs/LESSONS.md #51).
+ */
+const EMULATOR_TIMEOUTS = { testTimeout: 60_000, hookTimeout: 60_000 } as const;
+
+/** The composition root's test replaces `google-auth-library` and `firebase-functions/logger` with `vi.mock`. */
+const COMPOSITION_ROOT_TEST = 'functions/test/deps.test.ts';
+
 const SUITES: readonly Suite[] = [
     {
         dir: 'packages/shared',
-        project: { extends: true, test: { name: 'shared', environment: 'node', include: ['packages/shared/test/**/*.test.ts'] } },
+        project: {
+            extends: true,
+            test: { name: 'shared', ...SHARED_MODULE_GRAPH, environment: 'node', include: ['packages/shared/test/**/*.test.ts'] },
+        },
         coverage: ['packages/shared/src/**/*.ts'],
     },
     {
@@ -74,6 +100,7 @@ const SUITES: readonly Suite[] = [
             extends: true,
             test: {
                 name: 'engine',
+                ...SHARED_MODULE_GRAPH,
                 environment: 'node',
                 include: ['packages/engine/test/**/*.test.ts'],
                 exclude: ['packages/engine/test/browser/**'],
@@ -93,13 +120,35 @@ const SUITES: readonly Suite[] = [
     },
     {
         dir: 'packages/admin',
-        project: { extends: true, test: { name: 'admin', environment: 'node', include: ['packages/admin/test/**/*.test.ts'] } },
+        project: {
+            extends: true,
+            test: { name: 'admin', ...SHARED_MODULE_GRAPH, environment: 'node', include: ['packages/admin/test/**/*.test.ts'] },
+        },
         coverage: ['packages/admin/src/**/*.ts'],
     },
     {
         dir: 'functions',
-        project: { extends: true, test: { name: 'functions', environment: 'node', include: ['functions/test/**/*.test.ts'] } },
+        project: {
+            extends: true,
+            test: {
+                name: 'functions',
+                ...SHARED_MODULE_GRAPH,
+                ...EMULATOR_TIMEOUTS,
+                environment: 'node',
+                include: ['functions/test/**/*.test.ts'],
+                exclude: [COMPOSITION_ROOT_TEST],
+            },
+        },
         coverage: ['functions/src/**/*.ts'],
+    },
+    {
+        // A fresh module graph for the one functions test file with `vi.mock`; its coverage joins the `functions` scope.
+        dir: 'functions',
+        project: {
+            extends: true,
+            test: { name: 'functions-deps', ...EMULATOR_TIMEOUTS, environment: 'node', include: [COMPOSITION_ROOT_TEST] },
+        },
+        coverage: [],
     },
     {
         dir: 'firebase/rules-tests',

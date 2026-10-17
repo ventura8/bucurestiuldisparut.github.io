@@ -208,10 +208,11 @@ def test_happy_path_save_writes_json_and_html_reports(repo: Path, log: pytest.Lo
 
     assert coverage.main(["save", "--root", str(repo)], env=env, fetch=fetch) == 0
 
-    assert fetch.calls == [
+    assert sorted(fetch.calls) == [
         ("127.0.0.1:8080", "/emulator/v1/projects/demo-other:ruleCoverage"),
         ("127.0.0.1:8080", "/emulator/v1/projects/demo-other:ruleCoverage.html"),
     ]
+    assert (repo / coverage.JSON_REPORT).read_text(encoding="utf-8") == "report for /emulator/v1/projects/demo-other:ruleCoverage"
     assert (repo / coverage.HTML_REPORT).read_text(encoding="utf-8") == "report for /emulator/v1/projects/demo-other:ruleCoverage.html"
     assert log.messages == [
         "rules coverage report saved: reports/rules/firestore-coverage.json",
@@ -224,7 +225,36 @@ def test_happy_path_save_defaults_to_the_demo_project(repo: Path) -> None:
 
     coverage.save_report(repo, {"FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080"}, fetch)
 
-    assert fetch.calls[0] == ("127.0.0.1:8080", "/emulator/v1/projects/demo-hcm:ruleCoverage")
+    assert ("127.0.0.1:8080", "/emulator/v1/projects/demo-hcm:ruleCoverage") in fetch.calls
+
+
+def test_happy_path_save_asks_for_both_reports_at_once(repo: Path) -> None:
+    # Each answer costs the emulator seconds: the second request must not wait for the first answer. A fetch that
+    # answers only once both requests have arrived passes only when they are in flight together.
+    both_asked = threading.Barrier(2, timeout=10)
+
+    def fetch(host: str, path: str) -> bytes:
+        both_asked.wait()
+        return f"{host}{path}".encode()
+
+    written = coverage.save_report(repo, {"FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080"}, fetch)
+
+    assert [path.relative_to(repo) for path in written] == [coverage.JSON_REPORT, coverage.HTML_REPORT]
+
+
+def test_bad_path_a_failed_report_fails_the_save(repo: Path, log: pytest.LogCaptureFixture) -> None:
+    def fetch(host: str, path: str) -> bytes:
+        if path.endswith(".html"):
+            raise coverage.CoverageError(f"GET {path} from {host} returned HTTP 500")
+        return b"{}"
+
+    assert (
+        coverage.main(["save", "--root", str(repo)], env={"FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080"}, fetch=fetch)
+        == coverage.EXIT_FAILURE
+    )
+    assert errors(log) == [
+        "[FAILURE] rules coverage: GET /emulator/v1/projects/demo-hcm:ruleCoverage.html from 127.0.0.1:8080 returned HTTP 500"
+    ]
 
 
 def test_bad_path_save_outside_the_emulators_fails(repo: Path, log: pytest.LogCaptureFixture) -> None:
@@ -252,7 +282,8 @@ class EmulatorHandler(socketserver.StreamRequestHandler):
 @pytest.fixture
 def emulator() -> Iterator[str]:
     server = socketserver.TCPServer(("127.0.0.1", 0), EmulatorHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    # shutdown() waits for the serving loop's next poll: the default half second was the slowest step of this suite.
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     yield f"127.0.0.1:{server.server_address[1]}"
     server.shutdown()

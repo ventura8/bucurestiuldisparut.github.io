@@ -16,6 +16,7 @@ PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh    # docs and tooling ch
 PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh     # Vitest (node + Chromium) + pytest, 90 % per file
 PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh     # vite build of engine and admin
 PIPELINE_STAGE=quality bash scripts/ci/run-all-checks.sh   # what CI runs
+PIPELINE_STAGE=quality bash scripts/ci/e2e-split.sh        # the same, Playwright split with the NUC: about 5.5 min, not 21
 bash scripts/ci/run-all-checks.sh                          # default all: before a push to master or a tag
 PIPELINE_STAGE=release bash scripts/ci/run-all-checks.sh   # at a vX.Y.Z tag: versions, release notes, bundles
 PIPELINE_STAGE=contract bash scripts/ci/run-all-checks.sh  # deep links and third-party API shapes (network)
@@ -44,16 +45,16 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
 
 - Docs or tooling only: `static`.
 - TypeScript or Python: `static`, `tests`, `build`.
-- A user-visible change, `e2e/`, `e2e/scenarios.json`, `sites/`, `starter-kit/` or `scripts/site/`: also `e2e` (`E2E_TIER=smoke,fn` for a quick run; unset runs every tier). The site build's unit tests run in Vitest's `tools` project (gate `vitest` of `tests`); the Pages sites are built by `site-build` in `build`.
+- A user-visible change, `e2e/`, `e2e/scenarios.json`, `sites/`, `starter-kit/` or `scripts/site/`: also `e2e` (`E2E_TIER=smoke,fn` for a quick run; unset runs every push's tiers, every scenario row; `all` and the `tour-matrix` stage add the rest of the tour matrix; `bash scripts/ci/e2e-split.sh` instead of `run-all-checks.sh` splits the Playwright runs with the NUC). The site build's unit tests run in Vitest's `tools` project (gate `vitest` of `tests`); the Pages sites are built by `site-build` in `build`.
 - A Setup Assistant deep link (`packages/admin/src/setup/links.json`) or a third-party probe: `contract`.
-- Before a push to `master` or a tag: `all` (the default: `quality`, then `sonar`, which skips with a notice without a token).
+- Before a push to `master` or a tag: `all` (the default: `quality` with the `tour-matrix` stage after `e2e`, then `sonar`, which skips with a notice without a token).
 - A dependency bump: `static`, `tests`, `build`, then `deps` to see what else is behind; a deliberate hold is a `HELD` entry with its reason in `scripts/ci/check_dependency_updates.py`.
 
 ## Adding a gate
 
 1. Pin the tool: exact npm devDependency, an exact line in `scripts/ci/requirements.txt`, or a digest-pinned binary in `docker/Dockerfile.quality`.
 2. Add `Gate("<name>", (...))` to `GATES` in `scripts/ci/pipeline.py`; npm tools get a `package.json` script and run as `(*NPM_RUN, "<script>")`.
-3. Add the name to its stage in `STAGES` (cheapest first, network-bound last).
+3. Add the name to its stage in `STAGES` (cheapest first, network-bound last). The gates of a stage run at the same time (`scripts/ci/gate_runner.py`, at most `PIPELINE_JOBS`, output still in registry order): a gate that reads another gate's output gets `needs=("<gate>",)` and comes after it, one that saturates the machine or binds fixed ports gets `exclusive=True`, and tool caches go under `reports/.cache/`.
 4. Run the pytest suite in the image: the registry tests reject unknown, duplicated or unstaged gates.
 5. Update `pipeline_skill.md`, `ci_quality_gates_skill.md`, `docs/CI_PIPELINE.md` and this skill (then `cp` it to `.claude/skills/quality-pipeline/SKILL.md`).
 
@@ -65,7 +66,9 @@ Never suppress: no inline directive of any tool, no `.skip`/`.only`/`xfail`, no 
 
 - Never edit `scripts/ci/run-all-checks.sh` while it runs (bash reads it by offset). When another run may be in flight, replace it atomically: write a temporary file next to it and `mv` it over (the running bash keeps the old inode).
 - The quality image sets `LD_PRELOAD=""`: the GDAL base preloads tcmalloc and Chromium aborts under it.
-- A new workspace needs a `COPY <dir>/package.json <dir>/` line in the Dockerfile, or `npm ci` fails in the image build.
+- A new workspace needs a `COPY <dir>/package.json <dir>/` line in the Dockerfile's `manifests` stage, or `npm ci` fails in the image build.
+- A dependency change (lockfile, a manifest's dependency fields, `scripts/ci/requirements.txt`) rebuilds the image for three to five minutes on every machine; an npm script edit does not, because the `manifests` stage drops the scripts before the npm layer (keep `emulators:setup`, which that layer runs).
+- A split run (`scripts/ci/e2e-split.sh`) cannot end before the admin tier's 22 tests, which run one at a time on the NUC (about 260 s under full load): shifting functional tests between the machines balances the rest, not that floor.
 - `npm install` of a dependency runs in the digest-pinned `node:24-bookworm-slim` image, after `npm view` (`docs/SETUP.md` → *npm in a container*).
 - A browser crash leaves `core.<pid>` in the repository root (git-ignored); delete it.
 - Commit subjects are `type(scope): summary` (`scripts/git-hooks/commit-msg` locally, the `commits` gate over the CI range); squash `fixup!` commits before a pull request.

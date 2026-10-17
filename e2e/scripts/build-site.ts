@@ -1,4 +1,5 @@
-// Builds the sites the e2e tiers serve (`npm run build:site:e2e`, gate `e2e-build` of the e2e stage) into dist/e2e-site:
+// Builds the sites the e2e tiers serve (`npm run build:site:e2e`, which gate `e2e-build` runs through scripts/ci/e2e_build.py
+// unless nothing changed since the last build) into dist/e2e-site:
 // Bucharest with the e2e fixture manifest (e2e/fixtures/manifest.ts), so its meta CSP names the e2e tile and telemetry
 // hosts exactly as a production build names its own, and the starter kit as committed. Both carry the e2e token.
 // The same build code as production (scripts/site/src/build.ts); only the manifest and the token differ.

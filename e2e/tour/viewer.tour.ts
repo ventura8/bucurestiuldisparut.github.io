@@ -31,7 +31,8 @@ import {
 
 /**
  * The layout and accessibility tour (docs/research/design-review-testability.md §4.3; behaviours V15 and V18): every
- * screen and state of the viewer on all 11 viewports, light and dark, Romanian and English (44 projects). Each state
+ * screen and state of the viewer on all 11 viewports, light and dark, Romanian and English (44 projects: the nine of
+ * tier `tour` on every push, the other 35 of tier `tour-matrix` in `all` and nightly, e2e/projects.ts). Each state
  * must pass axe (WCAG 2.2 AA), scroll nothing sideways, keep its usable floating controls (`[data-layout-check]`, the
  * Mapbox logo and attribution) apart and on screen, clip no text, give every touch target 48 × 48 px on compact, leak
  * no message key (nor English into a Romanian page), and keep its landmarks (a partial ARIA snapshot). Whenever the map

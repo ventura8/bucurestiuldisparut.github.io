@@ -13,9 +13,6 @@ import { onContentWrite, onWriteFunctions } from '../../src/publish/on-write.js'
 import { CITY_ID } from './city.js';
 import { contentDeps } from './fakes.js';
 
-// The emulator answers the first request of a fresh named database slowly, and the tests stage shares it.
-vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
-
 let app: App;
 let db: Firestore;
 

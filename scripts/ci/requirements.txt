@@ -10,6 +10,8 @@ ruff==0.17.0
 mypy==2.4.0
 pytest==9.1.1
 pytest-cov==7.1.0
+# Runs the CI tooling tests on four worker processes (pytest.ini)
+pytest-xdist==3.8.0
 coverage==7.16.2
 yamllint==1.38.0
 check-jsonschema==0.38.2
@@ -33,6 +35,7 @@ charset-normalizer==3.5.2
 click==8.5.0
 colorama==0.4.6
 cyclonedx-python-lib==11.12.0
+execnet==2.1.2
 filelock==4.1.1
 idna==3.20
 iniconfig==2.3.1

@@ -39,7 +39,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/h -e npm_config_cache=/tmp/h
 ```
 
 - Versions are exact (`.npmrc` `save-exact=true`); the latest stable release, unless a hold is recorded in [CI_PIPELINE.md](CI_PIPELINE.md) → *Held dependencies*.
-- A new workspace also needs its `COPY <dir>/package.json <dir>/` line in `docker/Dockerfile.quality`.
+- A new workspace also needs its `COPY <dir>/package.json <dir>/` line in the `manifests` stage of `docker/Dockerfile.quality` (which drops the manifests' scripts, so an npm script edit does not rebuild the image's npm layer).
 - Run `npm audit --audit-level=low` afterwards (the `static` stage does); fix advisories with `overrides`, never an allowlist.
 
 ## One tool inside the image

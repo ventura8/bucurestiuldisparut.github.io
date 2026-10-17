@@ -17,6 +17,8 @@ PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh     # Vitest (Lit in head
 PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh     # vite build: engine and admin into packages/*/dist
 PIPELINE_STAGE=quality bash scripts/ci/run-all-checks.sh   # what CI runs
 bash scripts/ci/run-all-checks.sh                          # default stage `all`: before every push to master or a tag
+PIPELINE_STAGE=quality bash scripts/ci/e2e-split.sh        # the same stage, its Playwright runs split with the NUC (ssh nuc): about 5.5 min
+bash scripts/ci/e2e-split.sh                               # `all` split the same way (about 6.5 min): the pre-push run with the NUC
 python3 scripts/ci/pipeline.py --list                      # the live stage -> gate registry (safe on the host)
 bash scripts/ci/build-and-test.sh                          # (re)build the quality image hcm-quality:local only
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \

@@ -13,8 +13,10 @@ Every user-visible behaviour has at least one happy and one bad row in `e2e/scen
 IMG="docker run --rm -u $(id -u):$(id -g) -e HOME=/tmp/hcm-home -v $PWD:$PWD -w $PWD hcm-quality:local"
 $IMG bash -c 'mkdir -p $HOME && python3 scripts/ci/check_e2e_matrix.py check'   # the e2e-matrix static gate
 $IMG bash -c 'mkdir -p $HOME && python3 scripts/ci/check_e2e_matrix.py write'   # regenerate docs/E2E_SCENARIOS.md
-PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh     # e2e-matrix, e2e-build (engine + dist/e2e-site), every Playwright tier
-E2E_TIER=smoke,fn PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh   # some tiers: smoke, fn, tour, a11y, nogl
+PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh     # e2e-matrix, e2e-build (stamped), every push's tiers (every scenario row)
+PIPELINE_STAGE=e2e bash scripts/ci/e2e-split.sh          # the same, the Playwright run split with the NUC (ssh nuc), one merged verdict
+PIPELINE_STAGE=tour-matrix bash scripts/ci/run-all-checks.sh   # the tour's other 35 projects (in `all` and nightly)
+E2E_TIER=smoke,fn PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh   # some tiers: admin, smoke, a11y, nogl, tour, tour-matrix, fn
 $IMG bash -c 'mkdir -p $HOME && npm run --silent build:site:e2e'   # rebuild the e2e sites after an engine change
 $IMG bash -c 'mkdir -p $HOME && cd e2e && npx playwright test --grep @S-V00-HAPPY'   # one scenario by its tag
 ```

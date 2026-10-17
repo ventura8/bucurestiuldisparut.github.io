@@ -31,9 +31,32 @@ export async function engineEvents(page: Page, type: string): Promise<unknown[]>
     return events.filter((event) => event.type === type).map((event) => event.detail);
 }
 
-/** Waits for the engine event `type` (it may have fired before the spec looked). */
+/**
+ * Runs in the page: resolves once the engine event `type` reached `document`, at once when the instrumentation already
+ * recorded one (false without the instrumentation, so the caller tries again).
+ */
+function engineEventInPage(type: string): Promise<boolean> {
+    const state = (window as unknown as { __hcmE2e?: { events: { type: string }[] } }).__hcmE2e;
+    if (state === undefined) {
+        return Promise.resolve(false);
+    }
+    if (state.events.some((event) => event.type === type)) {
+        return Promise.resolve(true);
+    }
+    return new Promise((resolve) => {
+        document.addEventListener(
+            type,
+            () => {
+                resolve(true);
+            },
+            { capture: true, once: true },
+        );
+    });
+}
+
+/** Waits for the engine event `type`, when it fires (it may have fired before the spec looked). */
 export async function waitForEngineEvent(page: Page, type: string): Promise<void> {
-    await expect.poll(async () => (await engineEvents(page, type)).length, { message: `the page receives ${type}` }).toBeGreaterThan(0);
+    await expect.poll(() => page.evaluate(engineEventInPage, type), { message: `the page receives ${type}` }).toBe(true);
 }
 
 export interface ViewerOpenOptions extends OpenOptions {

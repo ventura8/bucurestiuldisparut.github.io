@@ -60,7 +60,7 @@ reports/   (gitignored: junit/ coverage/ pipeline/ playwright/ gitleaks.json)
   - `deps`
   - `release`
   - `quality` = static → tests → e2e → build. This is what CI runs.
-  - `all` = quality → sonar. Run locally before every push.
+  - `all` = quality with the rest of the tour matrix (stage `tour-matrix`, after `e2e`) → sonar. Run locally before every push.
   - `deps` is never part of `quality` or `all`.
 - **Verdict line:** `[SUCCESS] stage '<x>' passed`. A passing stage writes `reports/pipeline/green-<stage>.json` with `{head, status_sha256}`, where the hash is taken over `git status --porcelain=v1 --untracked-files=all`.
 - **Container guard:** the script refuses to run unless `BD_TEST_IMAGE=1`, which is set only in `docker/Dockerfile.test` (Whisper pattern).

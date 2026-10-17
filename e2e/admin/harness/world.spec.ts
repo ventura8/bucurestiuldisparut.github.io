@@ -6,7 +6,7 @@ import { LEGACY_FOLDER } from '../../../scripts/site/src/admin/legacy.js';
 import { ADMIN_SHELL_ELEMENT } from '../../../scripts/site/src/admin/page.js';
 import { FIREBASE_AUTH_DB, FIREBASE_USER_KEY } from '../support/session.js';
 import { fetchOutcome, openHarnessPage } from '../support/harness.js';
-import { expect, test } from '../support/test.js';
+import { ADMIN_LOCK, expect, test } from '../support/test.js';
 import {
     ADMIN_CONNECT_ORIGINS,
     ADMIN_PROJECT,
@@ -17,6 +17,9 @@ import {
     PERSONAS,
     type PersonaName,
 } from '../world.js';
+
+// One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
+test.describe.configure({ lock: ADMIN_LOCK });
 
 /**
  * Harness (behaviour A00): the rest of the admin's e2e world (docs/research/M2b-interfaces.md §6.2): the admin server

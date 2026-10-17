@@ -40,4 +40,4 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
 ## Rules
 
 - Never bundle `mapbox-gl`; never add a dependency without `npm view` and an exact pin (`docs/SETUP.md` → *npm in a container*).
-- A new workspace needs its `COPY` line in `docker/Dockerfile.quality`, or `npm ci` fails in the image build.
+- A new workspace needs its `COPY` line in the `manifests` stage of `docker/Dockerfile.quality`, or `npm ci` fails in the image build.
