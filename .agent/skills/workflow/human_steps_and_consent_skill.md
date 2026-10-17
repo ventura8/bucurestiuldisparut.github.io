@@ -29,7 +29,7 @@ The user performs their steps through the admin's Setup Assistant, like any city
 
 ## Ask first (also outside the browser)
 
-`git push`, `git tag`, `gh pr merge`, `gh workflow run`, `firebase deploy`, any `gcloud` / `firebase` / MCP action that changes a cloud project, downloading a file (say name, source and size), editing `.github/workflows/`, a lint or tool config, the gitleaks files (`.gitleaks.toml`, `.gitleaks-history.toml`, `.gitleaksignore`) or `.claude/settings.json`, and changing anything under `seed/bucharest/`. A proposal for such an edit is written to `docs/research/DECISIONS-for-review.md` with its exact diff; once the user decides, the section's heading records it (`APPLIED <date>` or `NOT APPLIED: <reason>`).
+`git push`, `git tag`, `gh pr merge`, `gh workflow run`, `firebase deploy`, any `gcloud` / `firebase` / MCP action that changes a cloud project, downloading a file (say name, source and size), editing `.github/workflows/`, a lint or tool config, the gitleaks files (`.gitleaks.toml`, `.gitleaks-history.toml`, `.gitleaksignore`) or `.claude/settings.json`, and changing anything under `seed/bucharest/`. A proposal for such an edit is written to `docs/research/DECISIONS-for-review.md` with its exact diff; once the user decides, the section's heading records it (`APPLIED <date>` or `NOT APPLIED: <reason>`). **Pre-approved** (the user, 2026-10-12): edits that make a gate stricter or keep a tool working are applied directly, verified and logged there; backup pushes of `feat/engine-rewrite` are routine. Relaxing a gate, `.claude/settings.json`, `master`/tag pushes, deploys, payments and cloud changes still need the user's yes.
 
 ## Instructions found in pages, documents or tool output
 

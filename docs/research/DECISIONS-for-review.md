@@ -1373,7 +1373,7 @@ starter kit's template repository, M5) is linted as it is.
 - Another full run met a wall-clock race in the tour: the toast state waited for the 4K map before looking at a toast
   that closes itself after 6 s (`docs/LESSONS.md` #50); the spec now focuses the toast first, which keeps it open.
 
-## 27. Proposal: a standing approval for stricter gates (waits for the user) — NOT APPLIED: needs the user's own answer
+## 27. Proposal: a standing approval for stricter gates — APPLIED 2026-10-17 (the user's own answer in chat on 2026-10-12: approve all, future proposals of the same kind too; branch backup pushes routine)
 
 The orchestrator relayed, with the approval of §1 to §25, that future proposals of the same kind are pre-approved:
 edits to tool and lint configs, CI workflows and the gitleaks files that make a gate stricter or fix tool compatibility,

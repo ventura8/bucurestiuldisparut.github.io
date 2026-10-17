@@ -60,6 +60,7 @@ Whatever a task established that these files do not already say is written down 
 | Learned | Goes to |
 | --- | --- |
 | A rule the user gave (cost, pushing, secrets, consent, scope) | `AGENTS.md` → *Boundaries* / *Global Rules* and `.agent/instructions.md` → *Cost, Push and Secrets Discipline* |
+| A standing approval the user gave (a class of actions no longer ask-first) | `AGENTS.md` → *Boundaries* → *Pre-approved*, `.agent/instructions.md`, `workflow/human_steps_and_consent_skill.md`, `docs/research/DECISIONS-for-review.md` |
 | A dependency bump or a deliberate hold, with its reason | `docs/CI_PIPELINE.md` → *Held dependencies* / *Tool versions*, `quality/pipeline_skill.md` → *Latest stable dependencies and holds*, `docs/research/M0-handoff.md` (append) |
 | A stage, gate, tool pin or CI job change | `quality/pipeline_skill.md`, `quality/ci_quality_gates_skill.md`, `.agents/skills/quality-pipeline/SKILL.md` (+ mirror), `docs/CI_PIPELINE.md` |
 | A quirk of the developer machine, Docker or the quality image | `quality/pipeline_skill.md` → *Local tooling quirks*, `docs/SETUP.md` |
