@@ -43,7 +43,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
 
 ## Which stage
 
-- Docs or tooling only: `static`.
+- Docs or tooling only: `static`. In CI a pull request whose every changed file is Markdown runs only `static` too (the `changes` job of `ci.yml` skips `tests`, `e2e`, `build` and with them `sonarqube`); a push runs everything.
 - TypeScript or Python: `static`, `tests`, `build`.
 - A user-visible change, `e2e/`, `e2e/scenarios.json`, `sites/`, `starter-kit/` or `scripts/site/`: also `e2e` (`E2E_TIER=smoke,fn` for a quick run; unset runs every push's tiers, every scenario row; `all` and the `tour-matrix` stage add the rest of the tour matrix; `bash scripts/ci/e2e-split.sh` instead of `run-all-checks.sh` splits the Playwright runs with the NUC). The site build's unit tests run in Vitest's `tools` project (gate `vitest` of `tests`); the Pages sites are built by `site-build` in `build`.
 - A Setup Assistant deep link (`packages/admin/src/setup/links.json`) or a third-party probe: `contract`.

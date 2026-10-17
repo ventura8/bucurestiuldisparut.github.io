@@ -139,6 +139,10 @@ export default defineConfig(
             'no-restricted-syntax': ['error', ...BANNED_SYNTAX],
             '@typescript-eslint/switch-exhaustiveness-check': 'error',
             '@typescript-eslint/consistent-type-imports': 'error',
+            // Covered by @typescript-eslint/no-deprecated; AWS CDK rules have nothing to inspect here.
+            // Together about a quarter of ESLint's rule time (docs/research/DECISIONS-for-review.md §31f).
+            'sonarjs/deprecation': 'off',
+            'sonarjs/aws-restricted-ip-admin-access': 'off',
         },
     },
     {

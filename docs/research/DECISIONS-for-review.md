@@ -1394,7 +1394,7 @@ The same rule then goes into `.agent/instructions.md` → *Cost, Push and Secret
 `.agent/skills/workflow/human_steps_and_consent_skill.md` and `.agent/skills/governance/agent_asset_maintenance_skill.md`
 → *Where a lesson goes*. Verify: `PIPELINE_STAGE=static` (`agent-assets`: `AGENTS.md` stays within 24,000 bytes).
 
-## 28. Pipeline optimisation: the CI workflows (ci agent, 2026-10-17) — APPLIED 2026-10-17 (pre-approved performance changes, logged) except 28f
+## 28. Pipeline optimisation: the CI workflows (ci agent, 2026-10-17) — APPLIED 2026-10-17 (pre-approved performance changes, logged); 28f APPLIED 2026-10-17 (user approved in chat)
 
 Added by the CI agent of the pipeline optimisation (the user's goal of 2026-10-12: "optimize the pipelines, it has to
 not take too much time"; the user's terms: every gate and every scenario still run on every push, no threshold lowered,
@@ -1477,7 +1477,7 @@ each part's Playwright report and log, and when anything fails a last job opens 
 failed" through `.github/actions/upsert-issue`, as `deps.yml` and `contract.yml` do. Permissions: `contents: read` at
 the top, `checks: write` for the JUnit reports, `issues: write` only in the report job, which runs nothing but the local `upsert-issue` action.
 
-### 28f. Proposal: skip `tests`, `e2e` and `build` for a docs-only pull request — NOT APPLIED: it would skip gates on a push, which the user's terms rule out
+### 28f. Proposal: skip `tests`, `e2e` and `build` for a docs-only pull request — APPLIED 2026-10-17 (user approved in chat)
 
 The optimisation brief asked for path filters, and the user's terms for the same work say every gate runs on every push.
 A docs-only pull request would still run `static` (markdownlint, agent assets, skill mirrors, EditorConfig, gitleaks),
@@ -1514,6 +1514,27 @@ tags would always run everything, and a skipped required check counts as passed.
 The same two lines go on `e2e` and `build`; `sonarqube` and the deploy jobs follow through their `needs`. On such a pull
 request it saves the runner time of `tests`, `e2e` and `build` (about an hour of free runner minutes) and nothing of the
 wall time, which `static` then sets.
+
+**As applied (2026-10-17, the user approved in chat).** The `needs` and `if` lines above went on `tests`, `e2e` (all
+four parts) and `build` as proposed; `sonarqube` and the deploy jobs are unchanged. Three changes to the `changes` job,
+each so that only a pull request whose files are all Markdown skips anything:
+
+- **It runs on every event but a draft** (`if: github.event.pull_request.draft != true`, like `build-image`) and
+  answers `docs-only=false` at once outside a pull request. Skipped on a push, it would have skipped `sonarqube` and the
+  three deploy jobs: a skipped job skips every later job in its chain whose `if` has no status function, even through
+  a job that ran (`tests` runs on `!cancelled()`, `sonarqube` has none).
+- **A failed listing fails the step.** In the proposal, `gh api ... | grep -cv ... || true` counted the empty output
+  of a failed call as zero other files and answered `true`, skipping every test on an API error. The listing is now its
+  own assignment, which fails the step under the runner's `bash -e`; the output stays unset and `tests`, `e2e` and
+  `build` run (their `!cancelled()` keeps them going after a failed `changes`).
+- **A rename counts its old path too** (`--jq '.[] | .filename, (.previous_filename // empty)'`), so moving `a.ts` to
+  `a.md` is not docs-only.
+
+Checked: the step script with a stand-in `gh` gave `false` on a push, `true` for Markdown files only and for a
+Markdown-to-Markdown rename, `false` for a mixed list, a `.ts`-to-`.md` rename and an empty list, and failed with no
+output on an API error. No Vitest, Playwright, pytest or build input reads a Markdown file (searched 2026-10-17; the
+Markdown checks are all in `static`). `actionlint` (with shellcheck), `workflow-schema`, `workflow-timeouts`,
+`workflow-policy`, `action-pins`, `yamllint --strict` and `prettier --check` pass in the quality image.
 
 ### 28g. Information: what stays as it is, and why
 
@@ -1699,7 +1720,7 @@ in the whole run its three longest files went from 25 to 26 s to 15 to 18 s, and
 - Not saving the HTML rule-coverage report (250 MB that no gate reads): kept, it is a documented report, and fetched
   beside the JSON it adds little time.
 
-## 31. Pipeline optimisation: the `static` stage and the gate engine (static agent, 2026-10-17) — APPLIED 2026-10-17 (pre-approved performance changes, logged) except 31f (31e applied by the integrator, §32a)
+## 31. Pipeline optimisation: the `static` stage and the gate engine (static agent, 2026-10-17) — APPLIED 2026-10-17 (pre-approved performance changes, logged; 31e applied by the integrator, §32a); 31f APPLIED 2026-10-17 (user approved in chat)
 
 Added by the static agent of the pipeline optimisation (the user's goal of 2026-10-12: "optimize the pipelines, it has
 to not take too much time"; the user's terms: every gate and every scenario still run on every push, no threshold
@@ -1796,7 +1817,7 @@ The pipeline's own `npm ci` still installs from the real manifests at run time; 
 browsers and the emulator JARs. Verify: `bash scripts/ci/build-and-test.sh` twice with only an npm script changed in
 between (the second build reuses the npm layer), then `PIPELINE_STAGE=all`.
 
-### 31f. Proposal: two costly ESLint rules that cannot add a finding here — NOT APPLIED: it changes which rules run; for the user to decide
+### 31f. Proposal: two costly ESLint rules that cannot add a finding here — APPLIED 2026-10-17 (user approved in chat)
 
 ESLint is the longest gate of `static`. The Measure agent's rule timings (`TIMING=25`, NUC) put
 `sonarjs/deprecation` first (11.9 s, 18.7 % of the rule time), although `@typescript-eslint/no-deprecated` (1.4 s,
@@ -1811,6 +1832,15 @@ third (5.7 s, 9 %), a rule for AWS CDK security groups in a repository without A
 ```
 
 Verify: `PIPELINE_STAGE=static`, and a deliberate call of a `@deprecated` function still fails `eslint`.
+
+**As applied (2026-10-17, the user approved in chat).** The two lines and the comment are in the shared `rules` block
+of `eslint.config.js`, after `sonarjs.configs.recommended`. `eslint --print-config` shows `@typescript-eslint/no-deprecated`
+at `error` and both sonarjs rules `off` for product code, tests and `e2e/`; on plain JavaScript configs
+`sonarjs/deprecation` never ran (it needs type information, which `disableTypeChecked` removes there). Checked in the
+quality image: `npm run lint` exits 0 in 41.4 s with neither rule in the timing table; a throwaway
+`packages/shared/src/zz-deprecation-probe.ts` calling a `@deprecated` function failed with
+`` `probeOld` is deprecated. Use {@link probeNew}  @typescript-eslint/no-deprecated `` (exit 1) and was deleted. The full
+`static` stage was not run here (another workflow was working in the same tree).
 
 ## 32. Pipeline optimisation: the integration (integrator, 2026-10-17) — APPLIED 2026-10-17 (pre-approved performance changes and fixes, logged) except 32f; 32d is a decision for the user to see
 
@@ -1937,7 +1967,7 @@ stage grows again.
 
 ### 32g. Information: what stays open
 
-- §31f (two costly ESLint rules) and §28f (a docs-only path filter) wait for the user.
+- §31f (two costly ESLint rules) and §28f (a docs-only path filter): applied on 2026-10-17 after the user approved them in chat.
 - CR-TESTS-2: the e2e emulators run without the two-JIT-thread flag of `npm test`; it was measured only for the
   one-minute `vitest` gate and is left until measured in a ten-minute run.
 - No GitHub Actions run of the new workflows exists yet; `docs/CI_PIPELINE.md` → *Expected wall time* holds

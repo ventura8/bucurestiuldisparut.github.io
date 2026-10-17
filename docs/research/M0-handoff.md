@@ -1085,9 +1085,11 @@ decisions and their reasons are `docs/research/DECISIONS-for-review.md` §28, th
 - **`nightly.yml`** (new): every day at 02:37 UTC on `master`, the four e2e jobs of `ci.yml` plus the `tour-matrix`
   stage (the one `all` adds) as `E2E_SHARD` `1-2/5` and `3-5/5` (about 1,180 s each), its own `build-image`, and the issue "Nightly e2e
   failed" through `.github/actions/upsert-issue` when anything fails.
-- **Not applied**: a docs-only path filter for pull requests (§28f, a proposal with its diff), because it would skip
-  gates on a push. **Unchanged**: the `type=gha` image transport, the npm cache and the browsers baked into the image,
-  `node_modules` not cached (`npm ci` takes 7 s), the concurrency rules.
+- **Docs-only pull requests** (§28f, applied on 2026-10-17 after the user approved it in chat): the `changes` job lists
+  the pull request's files, and when every one is Markdown `tests`, `e2e` and `build` are skipped, and with `tests`
+  `sonarqube`; `static` runs. Pushes, tags and dispatches run everything. **Unchanged**: the `type=gha` image
+  transport, the npm cache and the browsers baked into the image, `node_modules` not cached (`npm ci` takes 7 s), the
+  concurrency rules.
 - **Lessons**: `tsc -b` with `.tsbuild/` folders restored from an earlier build still fails every dependent project of
   a broken export (measured: cold 77 s, restored 3.1 s, restored after a breaking change 21.7 s with 16 errors in 10
   files); an ESLint cache is not safe to carry with type-aware rules, so CI carries none (recorded in
@@ -1168,8 +1170,9 @@ stage and the gate engine*. Every gate of every stage runs as before; only when,
 - **Measured on the busy laptop** (other agents' stages ran beside every run): warm `static` 149 to 176 s with the old
   engine, 48 to 64 s with the new one at a similar load; cold 228 to 247 s against 88 s. Warm, ESLint is the critical
   path; cold, `tsc -b` (47 s alone, 87 s beside the other gates).
-- **Proposed, not applied**: the image's npm layer keyed on the dependencies only (§31e: an npm script edit rebuilds
-  it today, 245 to 297 s); two costly ESLint rules that cannot add a finding here (§31f).
+- **Applied later**: the image's npm layer keyed on the dependencies only (§31e, by the integrator, §32a); two costly
+  ESLint rules that cannot add a finding here turned off (§31f, after the user approved it in chat on 2026-10-17:
+  `sonarjs/deprecation`, which `@typescript-eslint/no-deprecated` covers, and `sonarjs/aws-restricted-ip-admin-access`).
 
 ## 10y. Pipeline optimisation: the integration
 

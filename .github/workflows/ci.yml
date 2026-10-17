@@ -12,9 +12,10 @@ name: CI Pipeline
 # baked into the image, so a job's `npm ci --prefer-offline` takes seconds and downloads nothing.
 #
 # Shape (docs/CI_PIPELINE.md -> Expected wall time): static, tests, e2e and build all start as soon as
-# the image is cached, side by side; every gate still runs on every run, and the deploy jobs need all of
-# them. The e2e work is split by tier and by measured test time (docs/research/pipeline-baseline.md), so
-# only the job that holds the admin tier starts the Firebase emulators.
+# the image is cached, side by side; every gate still runs on every push and dispatch, and the deploy jobs
+# need all of them. A pull request whose every changed file is Markdown runs static only (the changes job:
+# no test, build or e2e reads Markdown). The e2e work is split by tier and by measured test time
+# (docs/research/pipeline-baseline.md), so only the job that holds the admin tier starts the Firebase emulators.
 #
 # Deploys stay off until M2 (docs/research/PLAN.md): they run only on a push to master when the
 # repository variable DEPLOY_ENABLED is 'true', authenticate to Google Cloud with Workload Identity
@@ -65,6 +66,39 @@ jobs:
                   HCM_DOCKER_BUILD_FLAGS: >-
                       --cache-from type=gha,scope=hcm-quality --cache-to type=gha,mode=max,scope=hcm-quality --output type=cacheonly
               run: bash scripts/ci/build-and-test.sh
+
+    changes:
+        name: Docs-only pull request?
+        # A pull request whose every changed file is Markdown skips tests, e2e and build, and through tests sonarqube;
+        # static (markdownlint, agent assets, skill mirrors, EditorConfig, gitleaks) still runs
+        # (docs/research/DECISIONS-for-review.md §28f). The job runs on every event and answers `false` at once outside a
+        # pull request: a skipped job would also skip every later job whose `if` has no status function (sonarqube, the
+        # deploys), even through a job that ran. A failed listing fails the step and leaves the output unset, so the stages run.
+        if: github.event.pull_request.draft != true
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            pull-requests: read
+        outputs:
+            docs-only: ${{ steps.files.outputs.docs-only }}
+        steps:
+            - name: List the changed files
+              id: files
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  EVENT_NAME: ${{ github.event_name }}
+                  PR: ${{ github.event.pull_request.number }}
+              run: |
+                  if [[ "$EVENT_NAME" != "pull_request" ]]; then
+                      echo "docs-only=false" >>"$GITHUB_OUTPUT"
+                      exit 0
+                  fi
+                  # A rename lists its old path as well, so moving code to a .md name is not docs-only.
+                  paths='.[] | .filename, (.previous_filename // empty)'
+                  files="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" --jq "$paths")"
+                  others="$(grep -cvE '\.md$' <<<"$files" || true)"
+                  if [[ "$others" == "0" ]]; then echo "docs-only=true"; else echo "docs-only=false"; fi >>"$GITHUB_OUTPUT"
 
     static:
         name: Lint & Security
@@ -132,8 +166,10 @@ jobs:
 
     tests:
         name: Unit Tests & Coverage
-        # Beside static, not after it: the stages share nothing but the image (deploys need both).
-        needs: build-image
+        # Beside static, not after it: the stages share nothing but the image (deploys need both). Skipped only for a
+        # docs-only pull request; `!cancelled()` keeps it running when changes was skipped or failed (output unset).
+        needs: [build-image, changes]
+        if: ${{ !cancelled() && needs.build-image.result == 'success' && needs.changes.outputs.docs-only != 'true' }}
         runs-on: ubuntu-24.04
         # Measured 65 to 77 s of gates on 16 hardware threads (docs/research/pipeline-baseline.md); a 4-vCPU
         # runner takes about three times that, plus about two minutes for the image.
@@ -182,7 +218,9 @@ jobs:
 
     e2e:
         name: E2E (Playwright) ${{ matrix.part }}
-        needs: build-image
+        # Skipped only for a docs-only pull request, like tests.
+        needs: [build-image, changes]
+        if: ${{ !cancelled() && needs.build-image.result == 'success' && needs.changes.outputs.docs-only != 'true' }}
         runs-on: ubuntu-24.04
         # The heaviest part is about 1,130 s of test time on the laptop (16 threads, 8 workers); a 4-vCPU runner
         # with Playwright's 2 workers needs about 10 to 15 minutes for it, plus about 3 for the image and the servers.
@@ -252,7 +290,9 @@ jobs:
 
     build:
         name: Build Engine & Admin
-        needs: build-image
+        # Skipped only for a docs-only pull request, like tests.
+        needs: [build-image, changes]
+        if: ${{ !cancelled() && needs.build-image.result == 'success' && needs.changes.outputs.docs-only != 'true' }}
         runs-on: ubuntu-24.04
         # Measured 4 to 10 s of gates; the rest is the image.
         timeout-minutes: 15
