@@ -92,3 +92,71 @@ describe('Navigation', () => {
         expect(n.shell.get().route.id).toBe('setup');
     });
 });
+
+describe('Navigation: the unsaved-changes question', () => {
+    function guarded(unsaved: { value: boolean }) {
+        const location = new FakeLocation('#/admins');
+        const shell = shellStateAccess();
+        const registry = new PageRegistry();
+        registry.register('admins', () => Promise.resolve('hcm-admins-page'));
+        registry.register('photos', () => Promise.resolve('hcm-photos-page'));
+        const nav = new Navigation({
+            shell,
+            location,
+            session: new MemoryStore(),
+            pages: registry,
+            track: vi.fn(),
+            unsaved: () => unsaved.value,
+        });
+        shell.update({ auth: 'admin', mode: 'normal' });
+        nav.stateChanged(shell.get());
+        return { location, shell, nav };
+    }
+
+    it('badPath_aLinkWithAnUnsavedEditAsksFirstAndKeepEditingStays', () => {
+        const unsaved = { value: true };
+        const n = guarded(unsaved);
+
+        n.nav.navigate({ id: 'photos', params: [] });
+        const asked = n.shell.get().leaving;
+        n.nav.stay();
+
+        expect(asked).toEqual({ kind: 'route', route: { id: 'photos', params: [] } });
+        expect(n.shell.get()).toMatchObject({ leaving: null, route: { id: 'admins' } });
+        expect(n.location.current).toBe('#/admins');
+    });
+
+    it('happyPath_discardOpensTheAddressAskedFor', () => {
+        const unsaved = { value: true };
+        const n = guarded(unsaved);
+        n.nav.navigate({ id: 'photos', params: [] });
+
+        n.nav.leave();
+
+        expect(n.shell.get()).toMatchObject({ leaving: null, route: { id: 'photos' } });
+    });
+
+    it('badPath_anAddressTypedOrBackPutsTheEditorBackAndAsks', () => {
+        const unsaved = { value: true };
+        const n = guarded(unsaved);
+
+        n.location.visit('#/photos');
+        const back = n.location.writes.at(-1);
+        n.nav.leave();
+
+        expect(back).toEqual({ hash: '#/admins', replace: true });
+        expect(n.shell.get().route.id).toBe('photos');
+    });
+
+    it('happyPath_nothingIsAskedWithoutAnEditTheSameAddressOrAfterASignOutQuestion', () => {
+        const unsaved = { value: false };
+        const n = guarded(unsaved);
+        n.nav.navigate({ id: 'photos', params: [] });
+        unsaved.value = true;
+        n.nav.navigate({ id: 'photos', params: [] });
+        n.shell.update({ leaving: { kind: 'signOut' } });
+        n.nav.leave();
+
+        expect(n.shell.get()).toMatchObject({ leaving: null, route: { id: 'photos' } });
+    });
+});

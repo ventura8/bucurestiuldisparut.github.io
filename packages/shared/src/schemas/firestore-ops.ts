@@ -25,7 +25,10 @@ import {
 } from './primitives.js';
 import { isValidationCode } from './validation.js';
 
-export const JOB_TYPES = ['usgs-import', 'geotiff-import', 'regeoref', 'republish'] as const;
+/** The jobs an admin may queue with the Firestore SDK (`firebase/firestore.rules` lists the same four). */
+export const CLIENT_JOB_TYPES = ['usgs-import', 'geotiff-import', 'regeoref', 'republish'] as const;
+/** Every job type: the client's, and `layer-delete`, which only `layers.delete` queues (CR-M2c-3). */
+export const JOB_TYPES = [...CLIENT_JOB_TYPES, 'layer-delete'] as const;
 /** The job state machine of security review §4.1. */
 export const JOB_STATUSES = [
     'queued',

@@ -53,13 +53,11 @@ export function resolveAdminRoute(hash: string, context: RouteContext): Resolved
 
 /**
  * The navigation's destinations: Setup alone in start-up mode; in normal mode Setup and every route whose page exists,
- * in `ADMIN_ROUTES` order. History is reached from an item (`#/history/<entity>/<id>`), never from the navigation.
+ * in `ADMIN_ROUTES` order. History joined once its page existed (M2c, CR-M2c-8): the city's recent changes are a page of
+ * their own, and an item's History opens `#/history/<entity>/<id>`.
  */
 export function navigationDestinations(context: RouteContext): readonly AdminDestination[] {
-    const ids =
-        context.mode === 'normal'
-            ? ADMIN_ROUTES.filter((id) => id === 'setup' || (id !== 'history' && context.hasPage(id)))
-            : ['setup' as const];
+    const ids = context.mode === 'normal' ? ADMIN_ROUTES.filter((id) => id === 'setup' || context.hasPage(id)) : ['setup' as const];
     return ids.map(destinationOf);
 }
 

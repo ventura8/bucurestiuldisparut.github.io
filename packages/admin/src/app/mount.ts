@@ -4,13 +4,15 @@
  * (`<hcm-admin-shell>` of `@hcm/ui/admin` reads it through its structural `AdminAppPort`). DOM-free: the entry
  * (`../index.ts`) builds the real ports, the node tests pass fakes.
  */
-import type { AdminsListResponse, InviteResponse, Locale, Logger, RevokeRequest, ThemeTokens } from '@hcm/shared';
+import type { Locale, Logger, ThemeTokens } from '@hcm/shared';
 
 import { AuthController } from '../auth/controller.js';
 import { GoogleAccessStore } from '../auth/google-access.js';
 import type { GoogleAuthPort } from '../auth/google-auth.js';
 import { GoogleAccessService } from '../auth/google-service.js';
 import { checkOwnership, enableService } from '../auth/ownership.js';
+import type { ContentStores } from '../content/areas.js';
+import { ContentRegistry, type ContentDeps } from '../content/registry.js';
 import type { FirebasePorts } from '../firebase/ports.js';
 import type { PageRegistry } from '../routing/pages.js';
 import type { AdminRoute, AdminRouteId } from '../routing/routes.js';
@@ -19,10 +21,11 @@ import { NO_GATE, type AdminState, type NoticeInput, type ShellStateAccess, type
 import { Store } from '../state/store.js';
 import { CityTheme } from './city-theme.js';
 import type { AdminRuntime, FirebaseWebConfig } from './config.js';
+import { contentServices } from './content-services.js';
 import { Navigation } from './navigation.js';
 import { destinationOf } from '../routing/router.js';
 import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } from './ports.js';
-import { guardCallables, outcomeOf, type AdminProject, type Outcome, type SetupModuleSpec, type ShellServices } from './services.js';
+import { guardCallables, type AdminProject, type SetupModuleSpec, type ShellServices } from './services.js';
 import type { AdminEvent, AdminTelemetry } from './telemetry.js';
 
 /** `localStorage`: the theme the admin chose (`system` by default). */
@@ -64,11 +67,18 @@ export interface AdminDeps<Setup, SetupIntents> {
     readonly telemetry: (view: TelemetryView) => AdminTelemetry;
     /** The Setup Assistant (`NO_SETUP` until setup-ui's module is wired). */
     readonly setup: SetupModuleSpec<Setup, SetupIntents>;
+    /** The editors' areas (`docs/research/M2c-interfaces.md` §2); without it no area has a store. */
+    readonly content?: ContentDeps;
 }
 
 export interface AdminIntents<SetupIntents> {
     signIn(): Promise<void>;
+    /** Signs out; with an unsaved edit on screen the shell asks first (`leaving`). */
     signOut(): Promise<void>;
+    /** The unsaved-changes question: keep editing. */
+    stayOnPage(): void;
+    /** The unsaved-changes question: discard, then go where the admin asked (or sign out). */
+    leavePage(): Promise<void>;
     claim(): Promise<void>;
     join(): Promise<void>;
     /** Try again (`backendDown`). */
@@ -84,10 +94,6 @@ export interface AdminIntents<SetupIntents> {
     setConsent(consent: 'granted' | 'denied'): void;
     dismissNotice(): void;
     setWindowClass(windowClass: string): void;
-    /** `#/admins` (A02). */
-    listAdmins(): Promise<Outcome<AdminsListResponse>>;
-    inviteAdmin(email: string): Promise<Outcome<InviteResponse>>;
-    revokeAdmin(request: RevokeRequest): Promise<Outcome<{ readonly revoked: true }>>;
     readonly setup: SetupIntents;
 }
 
@@ -99,6 +105,10 @@ export interface AdminApp<Setup, SetupIntents> {
     loadPage(id: AdminRouteId): Promise<string | null>;
     /** Crash reporting for the entry's global hooks and the elements' error boundaries. */
     readonly telemetry: AdminTelemetry;
+    /** The editors' stores (`AdminAppPort.content`): each created when its page first reads it, all destroyed on sign-out. */
+    readonly content: ContentStores;
+    /** Whether an area holds an edit that leaving the page would lose (the entry's `beforeunload`). */
+    hasUnsavedChanges(): boolean;
     destroy(): void;
 }
 
@@ -123,6 +133,7 @@ function initialState<Setup>(deps: AdminDeps<Setup, unknown>): AdminState<Setup>
         analytics: false,
         windowClass: 'compact',
         notice: null,
+        leaving: null,
         projectId: deps.config.projectId,
         authDomain: deps.config.authDomain,
         setup: deps.setup.initial,
@@ -151,6 +162,8 @@ interface Parts<Setup> {
     readonly navigation: Navigation;
     readonly telemetry: AdminTelemetry;
     readonly firebase: FirebasePorts;
+    /** Whether an editor area holds an edit leaving would lose. */
+    readonly unsaved: () => boolean;
 }
 
 function servicesFor<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup>): ShellServices<Setup> {
@@ -188,13 +201,26 @@ function servicesFor<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup>
 
 function shellIntents<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup>): Omit<AdminIntents<never>, 'setup'> {
     const { controller, store } = parts;
-    const callables = parts.firebase.callables;
     const update = (patch: Partial<AdminState<Setup>>): void => {
         store.update(patch);
     };
     return {
         signIn: () => controller.signIn(),
-        signOut: () => controller.signOut(),
+        signOut: () => {
+            if (parts.unsaved()) {
+                update({ leaving: { kind: 'signOut' } });
+                return Promise.resolve();
+            }
+            return controller.signOut();
+        },
+        stayOnPage: () => {
+            parts.navigation.stay();
+        },
+        leavePage: () => {
+            const signingOut = store.state.leaving?.kind === 'signOut';
+            parts.navigation.leave();
+            return signingOut ? controller.signOut() : Promise.resolve();
+        },
         claim: () => controller.claim(),
         join: () => controller.join(),
         retry: () => controller.retry(),
@@ -226,9 +252,6 @@ function shellIntents<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup
         setWindowClass: (windowClass) => {
             update({ windowClass });
         },
-        listAdmins: () => outcomeOf(() => callables.call('admins.list', {})),
-        inviteAdmin: (email) => outcomeOf(() => callables.call('admins.invite', { email })),
-        revokeAdmin: (request) => outcomeOf(() => callables.call('admins.revoke', request)),
     };
 }
 
@@ -236,12 +259,7 @@ function shellIntents<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup
 export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>): AdminApp<Setup, SetupIntents> {
     const store = new Store<AdminState<Setup>>(initialState(deps), deps.log);
     const shell = shellAccess(store);
-    const telemetry = deps.telemetry({
-        locale: () => store.state.locale,
-        windowClass: () => store.state.windowClass,
-        serverAnswers: () => store.state.mode === 'normal',
-    });
-    store.update({ consent: telemetry.consent, analytics: telemetry.available });
+    const telemetry = telemetryOf(deps, store);
     const google = new GoogleAccessService({
         port: deps.google,
         store: new GoogleAccessStore(() => deps.clock.now()),
@@ -261,13 +279,18 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
     const track = (event: AdminEvent): void => {
         telemetry.track(event);
     };
-    const navigation = new Navigation({ shell, location: deps.location, session: deps.session, pages: deps.pages, track });
+    const content = contentRegistry(deps, { shell, callables: firebase.callables, denied });
+    const unsaved = (): boolean => content.hasUnsavedChanges();
+    const navigation = new Navigation({ shell, location: deps.location, session: deps.session, pages: deps.pages, track, unsaved });
     const cityTheme = new CityTheme({ documents: deps.firebase.documents, shell, cityId: deps.project.cities[0] ?? null, denied });
     const stopWatching = store.subscribe((state) => {
         navigation.stateChanged(state);
         cityTheme.stateChanged(state);
+        if (state.auth !== 'admin') {
+            content.destroyAll();
+        }
     });
-    const parts: Parts<Setup> = { store, shell, controller, google, navigation, telemetry, firebase };
+    const parts: Parts<Setup> = { store, shell, controller, google, navigation, telemetry, firebase, unsaved };
     const intents: AdminIntents<SetupIntents> = { ...shellIntents(deps, parts), setup: deps.setup.create(servicesFor(deps, parts)) };
     controller.start().catch((error: unknown) => {
         deps.log.error('admin start failed', { error: String(error) });
@@ -280,11 +303,47 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
         intents,
         loadPage: (id) => deps.pages.load(id),
         telemetry,
+        content: content.stores,
+        hasUnsavedChanges: () => content.hasUnsavedChanges(),
         destroy: () => {
             stopWatching();
             controller.stop();
             navigation.stop();
             cityTheme.stop();
+            content.destroyAll();
         },
     };
+}
+
+/** Telemetry over the app's state: the language, the window class, whether the server answers. */
+function telemetryOf<Setup>(deps: AdminDeps<Setup, unknown>, store: Store<AdminState<Setup>>): AdminTelemetry {
+    const telemetry = deps.telemetry({
+        locale: () => store.state.locale,
+        windowClass: () => store.state.windowClass,
+        serverAnswers: () => store.state.mode === 'normal',
+    });
+    store.update({ consent: telemetry.consent, analytics: telemetry.available });
+    return telemetry;
+}
+
+/** The editors' stores over the entry's `ContentDeps` and the shell's services (none without `deps.content`). */
+function contentRegistry<Setup>(
+    deps: AdminDeps<Setup, unknown>,
+    parts: { readonly shell: ShellStateAccess; readonly callables: FirebasePorts['callables']; readonly denied: () => void },
+): ContentRegistry {
+    const content = deps.content;
+    if (content === undefined) {
+        return new ContentRegistry({}, () => {
+            throw new Error('no content services');
+        });
+    }
+    const services = contentServices({
+        ...parts,
+        content,
+        cities: deps.project.cities,
+        clock: deps.clock,
+        local: deps.local,
+        log: deps.log,
+    });
+    return new ContentRegistry(content.modules, () => services);
 }

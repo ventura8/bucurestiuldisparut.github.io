@@ -1,0 +1,53 @@
+/**
+ * The admin map's factory as the entry builds it (`../app/content-wiring.ts`, the pois section): Mapbox GL JS from
+ * api.mapbox.com on the first map, the admin's token read from `setup/status` for every new map (Setup may have minted
+ * it since the last one), reduced motion from the page, the click-only drawing tools until Terra Draw is installed
+ * (`terraDraw`: docs/research/M2c-interfaces.md §4.2), and the page's animation frames, resize observer and canvas.
+ */
+import { FIRESTORE_PATHS, type Logger } from '@hcm/shared';
+import { browserAdapterEnv, loadMapboxGl, type BrowserScope, type MapboxLoaderScope } from '@hcm/ui/map';
+import type { TerraDrawModules } from '@hcm/ui/map/draw';
+
+import { createAdminMapFactory, type AdminMapFactory } from './factory.js';
+
+/** A Mapbox public token, as `setup/status` keeps the admin's (a secret `sk.` token never passes). */
+const PUBLIC_TOKEN = /^pk\.[A-Za-z0-9._-]{1,1000}$/;
+
+/** The page's parts the map needs. */
+export type AdminMapScope = MapboxLoaderScope & BrowserScope & { matchMedia?(query: string): { readonly matches: boolean } };
+
+export interface AdminMapSources {
+    readonly scope: AdminMapScope;
+    /** A Firestore document's fields, or null (`DocumentsPort.get`). */
+    readonly readDoc: (path: string) => Promise<Readonly<Record<string, unknown>> | null>;
+    /** Terra Draw's constructors once its packages are installed; null meanwhile. */
+    readonly terraDraw: (() => Promise<TerraDrawModules>) | null;
+    readonly log: Logger;
+}
+
+function objectAt(value: unknown, key: string): unknown {
+    return typeof value === 'object' && value !== null ? (value as Readonly<Record<string, unknown>>)[key] : undefined;
+}
+
+/** `setup/status.mapbox.adminToken`, or null when Setup has not minted it (or the read failed). */
+export async function adminTokenOf(readDoc: AdminMapSources['readDoc'], log: Logger): Promise<string | null> {
+    try {
+        const token = objectAt(objectAt(await readDoc(FIRESTORE_PATHS.setupStatus), 'mapbox'), 'adminToken');
+        return typeof token === 'string' && PUBLIC_TOKEN.test(token) ? token : null;
+    } catch (error) {
+        log.warn('setup status unreadable: no admin map', { error: String(error) });
+        return null;
+    }
+}
+
+export function adminMapFactoryOf(sources: AdminMapSources): AdminMapFactory {
+    const { scope, log } = sources;
+    return createAdminMapFactory({
+        gl: () => loadMapboxGl(scope),
+        token: () => adminTokenOf(sources.readDoc, log),
+        terraDraw: sources.terraDraw,
+        reducedMotion: () => scope.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true,
+        env: browserAdapterEnv(scope),
+        log,
+    });
+}

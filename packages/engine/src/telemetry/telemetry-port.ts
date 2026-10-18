@@ -4,8 +4,7 @@
  * (`analytics.ts`) and the error reporter (`errors.ts`).
  */
 import type { ErrorReport } from '@hcm/shared';
-
-import type { Unsubscribe } from '../map/map-port.js';
+import type { Unsubscribe } from '@hcm/ui/map';
 
 export type ConsentState = 'unknown' | 'granted' | 'denied';
 

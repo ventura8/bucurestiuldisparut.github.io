@@ -2106,3 +2106,211 @@ configuration changed; these make the existing gates stricter:
   first GitHub Actions run.
 
 The state screenshots behind the audit are `HCM_STATE_SCREENSHOTS` (`e2e/support/state-shots.ts`), off by default.
+
+## 34. M2c admin editors (contracts agent, 2026-10-17) — PROPOSED
+
+What the M2c contract (`docs/research/M2c-interfaces.md`) needs from files the workstreams may not change on their own,
+and three product decisions for the user to see. Nothing here is applied yet: 34a is of the pre-approved kind (stricter or
+equal) and is applied, verified and logged by the pois workstream in the change that moves the map; 34b and 34c change
+what a gate measures or how long CI runs, so they wait for the user's answer.
+
+### 34a. `.dependency-cruiser.cjs`: the map's new home and the draw library — APPLIED (2026-10-17, pois workstream; pre-approved kind: stricter or equal)
+
+The admin may not import the engine (`engine-and-admin-independent`), so `packages/engine/src/map/` moves to
+`packages/ui/src/map/` (M2c-interfaces CR-M2c-1). The rule that guards Mapbox GL follows the file, and two new rules keep
+Terra Draw out of the viewer and in one module:
+
+```diff
+         {
+             name: 'only-the-map-adapter-imports-mapbox',
+             severity: 'error',
+-            comment: 'Mapbox GL is reached only through engine/src/map/mapbox-adapter.ts (MapPort), so the core is testable with FakeMap.',
+-            from: { pathNot: '^packages/engine/src/map/mapbox-adapter\\.ts$' },
++            comment: 'Mapbox GL is reached only through ui/src/map/mapbox-adapter.ts (MapPort), so the core is testable with FakeMap.',
++            from: { pathNot: '^packages/ui/src/map/mapbox-adapter\\.ts$' },
+             to: { path: 'node_modules/mapbox-gl/' },
+         },
++        {
++            name: 'only-the-draw-adapter-imports-terra-draw',
++            severity: 'error',
++            comment: 'Terra Draw is reached only through ui/src/map/draw/terra-draw-adapter.ts (MapDrawPort, M2c-interfaces §4).',
++            from: { pathNot: '^packages/ui/src/map/draw/terra-draw-adapter\\.ts$' },
++            to: { path: 'node_modules/terra-draw' },
++        },
++        {
++            name: 'viewer-never-loads-the-draw-tools',
++            severity: 'error',
++            comment: 'The public viewer never ships the admin drawing tools.',
++            from: { path: ['^packages/engine/', '^packages/ui/src/(viewer|components|layout|theme|fonts)/'] },
++            to: { path: ['^packages/ui/src/map/draw/', 'node_modules/terra-draw'] },
++        },
+```
+
+Verify: `PIPELINE_STAGE=static` (the `dependency-cruiser` gate) after the move.
+
+Applied by the pois workstream with the move (CR-M2c-1, 2026-10-17), exactly as the diff above: `npm run lint:deps` in the
+quality image reports no violation (1060 modules). The move left the `engine-browser` project of `vitest.config.ts` without
+a file (its one test, `adapter-env.test.ts`, now runs in the `ui` project, which is Chromium too); Vitest runs an empty
+project without failing, so the config stays as it is. **Proposal** (ask-first file, not applied): drop that project and
+the `engine` project's `exclude` of `packages/engine/test/browser/**` in the next change to `vitest.config.ts`.
+
+### 34b. The admin page loads the ES module build — PROPOSED (for the user: it changes what the bundle budget measures)
+
+The admin page loads `admin.iife.js`, and an IIFE build inlines every dynamic import (§13a's finding for the engine), so
+each M2c page and Terra Draw would sit in the one file the budget measures (311 KB gzip of 450 on 2026-10-17, before
+M2c). Proposal: the admin page (`scripts/site/src/admin/page.ts`) loads `admin.mjs` as a module script, which already
+splits lazy chunks (the analytics SDK is one today); each area's page and the draw library become chunks loaded when
+their route opens; the build is minified like the engine's (§17a). `scripts/ci/check_bundle_budget.py` then measures
+`admin.mjs` (the entry, 450 KB) and the largest lazy chunk (a new budget), instead of `admin.iife.js`. The alternative is
+to keep the IIFE and minify it, which keeps everything in one file and the same budget. Verify: `PIPELINE_STAGE=build`
+(`bundle-budget`) and the admin tier.
+
+### 34c. The admin's journeys at the tour projects — PROPOSED (for the user: CI time)
+
+Every new admin screen and state must pass the generic checkers at every tour viewport, light and dark (the task's rule;
+M2c-interfaces §12.2), while today the admin's states run at its six admin projects only. Proposal: one tour file per
+area (`e2e/tour/admin-<area>.tour.ts`) at the tour projects, as the viewer's: the per-push `tour` tier's nine projects
+and the `tour-matrix` stage's other 35 (nightly and in `all`); each journey in its own city of the content world
+(M2c-interfaces §12.3), so they need no lock. Cost: about 70 states, so roughly as many admin tour tests as the viewer's
+per project; the `tour` jobs of `ci.yml` and the `tour-matrix` shards of `nightly.yml` need rebalancing from the first
+measured run (a workflow edit that keeps the jobs within their timeouts: the pre-approved kind once measured).
+
+### 34d. Information: Terra Draw, not Mapbox GL Draw — PROPOSED (a decision for the user to see)
+
+`terra-draw` 1.37.0 and `terra-draw-mapbox-gl-adapter` 1.5.0 (MIT, no runtime dependencies, the adapter's peer
+`mapbox-gl ^3.9.2`) behind our own `MapDrawPort`, bundled into the admin only. Mapbox GL Draw 1.5.2 (ISC) states no
+Mapbox GL v3 support, brings a control and a stylesheet we would have to hide (its buttons are under 48 px) and has no
+validation hook. The comparison is M2c-interfaces §4.1.
+
+### 34e. Information: a deleted layer's tileset goes after seven days — PROPOSED (a decision for the user to see)
+
+Deleting a layer removes its document at once (it leaves the public map within a minute) and queues the deletion of its
+Mapbox tileset and source for seven days later, so History can restore it without reprocessing (which would cost
+compute units). Mapbox bills the tileset's hosting meanwhile (within the free tier for a few layers). M2c-interfaces §8.4.
+
+### 34f. Information: an English title is not required to publish — PROPOSED (a decision for the user to see)
+
+The M2 row `S-A10-BAD-MISSING-EN-TITLE` ("A photo without an English title cannot be published") contradicts CR-1 of
+`M1-interfaces.md` (Romanian required, English optional, the viewer falls back to Romanian). It is replaced by
+`S-A10-BAD-NOT-PUBLISHABLE` (processing not done, failed, or the licence unknown: the rules' publish gate).
+
+### 34g. Installing Terra Draw — PROPOSED (for the user: an npm install downloads files, which AGENTS.md puts under ask first)
+
+The pois workstream (2026-10-17) built `MapDrawPort` with two implementations: the Terra Draw adapter
+(`packages/ui/src/map/draw/terra-draw-adapter.ts`, written and unit-tested against the structural types of
+`terra-draw-types.ts`) and click-only drawing on `MapPort` (`click-draw-adapter.ts`: a point is one click, a line and an
+area grow with every click, vertices are moved and removed in the vertex list). The admin uses the click-only tools until
+the packages are installed, because installing `terra-draw@1.37.0` and `terra-draw-mapbox-gl-adapter@1.5.0` downloads
+them from the npm registry. With a yes: install both, exact, as dependencies of `@hcm/ui` in the pinned Node container
+(`docs/SETUP.md` → *npm in a container*), check `npm audit --audit-level=low`, add the loader and pass it as `terraDraw` in
+the pois section of `packages/admin/src/app/content-wiring.ts` (M2c-interfaces CR-M2c-20). Dragging a whole shape, a
+vertex or a midpoint on the map comes with it. Verify: `PIPELINE_STAGE=tests` (a browser test with the real Terra Draw),
+then `build` (the bundle budget, §34b).
+
+### 34h. The admin's Mapbox GL JS without Subresource Integrity — PROPOSED (for the user to see; a stricter option offered)
+
+The admin adds `mapbox-gl.js` of the pinned release from `api.mapbox.com` when its first map opens (`loadMapboxGl`,
+`packages/ui/src/map/mapbox-loader.ts`), so the Setup pages never load it. The viewer's page names the script with an
+`integrity` hash the site build computes; the lazily added script has none (the CSP still limits scripts to
+`https://api.mapbox.com/mapbox-gl-js/`, as for the compare plugin). Stricter option: the admin page's build writes the
+hash into the page (a `data-mapbox-integrity` attribute the entry reads) and the loader sets `integrity` and
+`crossOrigin` with it. Verify: `PIPELINE_STAGE=build` and the admin tier.
+
+### 34i. The dashboard as the admin's first screen — PROPOSED (for the user: what an admin sees first)
+
+The M2c brief's "dashboard home" is built as `#/home` (behaviour A40, `M2c-interfaces.md` CR-M2c-24): what the city
+holds, what waits for an admin (photos in rights review, unpublished photos, running and failed jobs), each a link to its
+page, one chip per Setup area from `setup/status` and the public map's state. It is the first destination of the rail
+and the drawer, and under More on the compact bar, whose four places stay Setup, Photos, Places and Layers. An empty
+address still opens Setup (M2b's rule, `packages/admin/src/routing/router.ts`). Proposal: once Setup is complete, an
+empty address opens the dashboard, and the dashboard takes Setup's place on the compact bar (Setup moves under More).
+With a yes: the target of `isBlank` (`resolveAdminRoute`) and `ADMIN_ROUTE_SPECS` in `packages/admin/src/routing/`, their tests, and the
+`S-A40-*` rows. Verify: `PIPELINE_STAGE=tests`, then the admin tier.
+
+## 35. M2c integration (integrator, 2026-10-18)
+
+The integrator wired the four workstreams' editors into the shell, ran the cross-app journeys on the emulators and resolved
+the change requests that fell to it (`M2c-interfaces.md` §13). Nothing was committed, pushed or deployed; no real Google,
+Mapbox or USGS endpoint was called. Applied items are of the pre-approved kinds (stricter, or a product fix the checks
+found); the rest wait for the user.
+
+### 35a. The editors' catalogue split per area (CR-M2c-25) — APPLIED (structure, no gate changed)
+
+`packages/shared/src/i18n/admin-content/{ro,en}.ts` had reached about 800 lines each, past ESLint's `max-lines` (400), so
+`static` failed on them. They are now one catalogue folder per area at the depth the `i18n` gate already reads
+(`packages/*/src/i18n/*`): `admin-content/` keeps the kit's and the map's sections, `admin-photos/`, `admin-pois/`,
+`admin-layers/`, `admin-settings/` and `admin-ops/` (admins, history, jobs, crash reports) hold the rest, and
+`admin-content/index.ts` merges them into `translateAdminContent` and `ADMIN_CONTENT_CATALOGUES`. The split moved the 769
+keys unchanged; `packages/shared/test/i18n-admin.test.ts` checks each folder's sections and prefixes, that no key is in two
+folders and that the merge holds them all. No configuration changed (the `i18n` gate counts 10 catalogue folders now).
+
+### 35b. The Bucharest site names another city than the project — PROPOSED (for the user)
+
+The built site (`sites/bucharest/config.js`) and the legacy manifest (`seed/bucharest/manifest.static.json`) name the city
+`bucuresti`; the project (`infra/project.json`), the admin and therefore every manifest the backend builds name it
+`bucharest`. The viewer refuses a manifest of another city ("cityId din config.js (bucuresti) nu corespunde hărții
+(bucharest)"), so the site cannot switch to the backend's manifest as it is. The admin-to-viewer journeys serve the site a
+`config.js` naming `bucharest` meanwhile (`e2e/admin/support/flows.ts`). Options: (1) the site's `config.js` names
+`bucharest` when its `manifestUrl` moves to the public bucket (visitors' stored language and theme, kept per city id, are
+read once under the old id and written under the new one), the recommended one; (2) rename the project's city to
+`bucuresti` (`infra/project.json`, the e2e worlds), which also changes the Firestore paths. `seed/bucharest/` stays as
+migrated either way (ask first). Verify: the A41 journeys without the routed `config.js`.
+
+### 35c. The history collection-group read narrowed — APPLIED (stricter; logged)
+
+CR-M2c-6's `match /{path=**}/history/{entry} { allow read: if isAdmin(); }` let an admin read a `history` document
+anywhere, `setup/status/history/h1` included, which the rules matrix's default-deny test refused. Now:
+
+```diff
+         match /{path=**}/history/{entry} {
+-            allow read: if isAdmin();
++            allow list: if isAdmin();
++            allow get: if isAdmin() && path[0] == 'cities';
+         }
+```
+
+A condition on the path cannot hold for a collection-group query (the emulator then denies the whole query), so `list`
+stays open to admins: an admin could still list a `history` collection outside `cities/`, where nothing writes one.
+Verified by `firebase/rules-tests` (203 tests, the `rules-coverage` gate) in `PIPELINE_STAGE=tests`.
+
+### 35d. The place editor's texts commit on each key — APPLIED (a product fix the A41 journey found)
+
+The place editor's titles, descriptions and links committed on `change`; a new place's Romanian title typed and then a
+click on Save did nothing, because Save was still disabled (the draft had no title yet) and a disabled button takes no
+click, so the field was never left. They commit on `input` now, as the photo editor's texts already did
+(`packages/ui/src/admin/pois/poi-fields.ts`). Years (and the photo editor's numbers) still commit on `change`: half a
+number is not a year and would flash an error. A year-only edit therefore still needs the field left (Tab) before Save:
+for the user to see; the alternative is to commit numbers on `input` and show their errors only once the field is left.
+
+### 35e. A revoked admin's open draft is lost — PROPOSED (for the user: a product behaviour)
+
+When the owner removes an admin who is editing, the admin's next Save is refused (the rules need `admins/{uid}`), the shell
+asks `admin.session` again and replaces the page with "This Google account does not administer this map": the draft goes
+with it. `S-A20-BAD-REVOKED-WHILE-EDITING` (planned) wants the draft to stay visible until sign-out. Proposal: on that
+transition the shell keeps the open page read-only under a banner ("Your access was removed: copy what you need, then sign
+out") while an area holds unsaved changes; the stores stop their listeners but keep their drafts. `S-A02-BAD-REVOKE` now
+proves the refusal, that nothing is written and the panel (`e2e/admin/specs/flows/revoke.spec.ts`).
+
+### 35f. The admin bundle is at its budget — for the user (§34b is now urgent)
+
+`admin.iife.js` measures 448.1 KB gzip of its 450 KB budget with every editor wired (`PIPELINE_STAGE=build`,
+2026-10-18). Terra Draw (§34g) or the next area will not fit. §34b (the admin page loads the ES module build, each area
+and the draw library a lazy chunk, minified as the engine's) or its alternative (minify the IIFE) needs the user's answer
+before M3.
+
+### 35g. The editors' states at every tour viewport (§34c) — still PROPOSED
+
+The M2c states pass the generic checkers at the five admin projects (c360, m768, l1440 in light, dark and English). The
+review screenshots of every state at 360 × 800, 768 × 1024, 1440 × 900 and 2560 × 1440, light and dark
+(`reports/screenshots/m2c/`, `docs/TESTING.md` → *Review screenshots*) were looked at instead; running the checkers there
+is §34c's CI time, which waits for the user.
+
+### 35h. What the review screenshots showed — APPLIED (product fixes, each with a check)
+
+The contact sheets of every editor state at 360 × 800, 768 × 1024, 1440 × 900 and 2560 × 1440, light and dark
+(`reports/screenshots/m2c/sheets/`), showed four defects the checkers had passed, each now fixed and pinned by a test
+(`docs/LESSONS.md` 81–84): the map box an empty block without a map (`hcm-admin-map[no-map]`), the layer editor's Romanian
+and English texts out of their columns on wide panes, "Configurare" broken across two lines on the phone's bar (the bar's
+items lost their 4 px inline padding), and the chosen position of the list of positions filled with a colour that left its
+fields at 1.27:1 in high contrast (now ringed). One gap of the checkers is recorded for their owner: a state's checks
+measure only what is scrolled into the window, so a fault below the fold waits for a layout change to be seen (lesson 84).

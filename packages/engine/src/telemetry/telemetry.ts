@@ -5,9 +5,9 @@
  * listener.
  */
 import type { Logger } from '@hcm/shared';
+import type { Unsubscribe } from '@hcm/ui/map';
 
 import type { PreferenceStorage } from '../core/preferences.js';
-import type { Unsubscribe } from '../map/map-port.js';
 import { AnalyticsLoader, type FirebaseSdk } from './analytics.js';
 import { ConsentStore, type ConsentValue } from './consent.js';
 import { expireAnalyticsCookies, type CookieJar } from './cookies.js';

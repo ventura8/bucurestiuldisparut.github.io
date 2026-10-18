@@ -83,6 +83,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.history.notFound': spec('not-found'),
     'apiError.history.nothingToRestore': spec('failed-precondition'),
     'apiError.history.invalidSnapshot': spec('failed-precondition'),
+    'apiError.history.layerGone': spec('failed-precondition'),
     'apiError.mapbox.publicToken': spec('invalid-argument'),
     'apiError.mapbox.tokenFormat': spec('invalid-argument'),
     'apiError.mapbox.tokenInvalid': spec('permission-denied'),
@@ -106,6 +107,10 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.photo.tooLarge': spec('invalid-argument'),
     'apiError.photo.unreadable': spec('invalid-argument'),
     'apiError.photo.duplicate': spec('already-exists'),
+    'apiError.layers.alreadyLinked': spec('already-exists'),
+    'apiError.layers.busy': spec('failed-precondition'),
+    'apiError.layers.foreignTileset': spec('permission-denied'),
+    'apiError.layers.secretInAddress': spec('invalid-argument'),
     'apiError.telemetry.origin': spec('permission-denied'),
     'apiError.telemetry.tooLarge': spec('invalid-argument', 413),
 };

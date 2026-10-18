@@ -1,7 +1,7 @@
+import type { MapOptions, RasterLayerSpec } from '@hcm/ui/map';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HASH_WRITE_DELAY_MS } from '../../src/core/url-sync.js';
-import type { MapOptions, RasterLayerSpec } from '../../src/map/map-port.js';
 import { layer, manifest } from './fixtures.js';
 import { harness, loaded, MANIFEST_URL } from './harness.js';
 import { jsonResponse, settle } from './support.js';

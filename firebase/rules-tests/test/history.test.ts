@@ -30,6 +30,28 @@ afterAll(async () => {
     await world.close();
 });
 
+describe("the city's recent changes", () => {
+    it('happyPath_onlyAdminsQueryEveryHistoryAtOnceNewestFirst', async () => {
+        const recent = await verdicts(EVERYONE, (persona) =>
+            world.db(persona).collectionGroup('history').orderBy('updatedAt', 'desc').limit(50).get(),
+        );
+        const deleted = await verdicts(EVERYONE, (persona) =>
+            world.db(persona).collectionGroup('history').where('action', '==', 'delete').orderBy('updatedAt', 'desc').get(),
+        );
+
+        expect({ recent, deleted }).toEqual({ recent: expected(EVERYONE, ['admin']), deleted: expected(EVERYONE, ['admin']) });
+    });
+
+    it('badPath_noClientWritesAnEntryThroughTheCollectionGroupEither', async () => {
+        const db = world.db('admin');
+        const forged = { ...historyEntryDoc(world.uid('admin')), ...stampedBy(world.uid('admin')) };
+
+        const create = await verdict(db.doc(`elsewhere/x/history/${ENTRY_ID}`).set(forged));
+
+        expect(create).toBe('deny');
+    });
+});
+
 describe.each(HISTORY_ENTITIES)('history of a %s', (entity) => {
     it('happyPath_onlyAdminsReadTheHistoryNewestFirst', async () => {
         const entries = await verdicts(EVERYONE, (persona) =>

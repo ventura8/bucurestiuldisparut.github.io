@@ -130,8 +130,20 @@ const photoSuggestionsSchema = z.strictObject({
 });
 
 /**
- * `cities/{city}/photos/{photo}`. `image`, `exif`, `processing`, `processingError`, `duplicateOf`, `suggested` and
- * `original` are owned by `photos.onUpload`; `createdAt` and `createdBy` are set once by the client that creates it.
+ * A refused replacement of a photo that already has an image (`docs/research/M2c-interfaces.md` §6.4, CR-M2c-4): the
+ * image stays published and this records why the new file was refused; the next successful processing removes it.
+ */
+const photoReplacementSchema = z.strictObject({
+    error: apiErrorCodeSchema,
+    at: timestampSchema,
+    /** The photo the refused file repeats (`apiError.photo.duplicate`). */
+    duplicateOf: idSchema.optional(),
+});
+
+/**
+ * `cities/{city}/photos/{photo}`. `image`, `exif`, `processing`, `processingError`, `duplicateOf`, `suggested`,
+ * `original` and `replacement` are owned by `photos.onUpload`; `createdAt` and `createdBy` are set once by the client
+ * that creates it.
  */
 export const photoDocSchema = z
     .strictObject({
@@ -163,6 +175,7 @@ export const photoDocSchema = z
         duplicateOf: idSchema.optional(),
         suggested: photoSuggestionsSchema.optional(),
         original: photoOriginalDocSchema.optional(),
+        replacement: photoReplacementSchema.optional(),
         createdAt: timestampSchema.optional(),
         createdBy: uidSchema.optional(),
         ...stamp,

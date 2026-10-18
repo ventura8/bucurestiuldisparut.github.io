@@ -10,7 +10,7 @@
 
 Proiectul este și un **motor reutilizabil** (Historic City Map): orice oraș își poate face propria hartă istorică din trei fișiere și o aplicație de administrare care face aproape totul automat — configurarea conturilor Google Cloud, Mapbox și USGS, găsirea și importul imaginilor, georeferențierea și publicarea straturilor, gestionarea fotografiilor și a locurilor de interes, cu un cursor de transparență pentru fiecare strat, pentru fotografii și pentru fiecare categorie de locuri. Interfața este în română (implicit) și engleză, cu Material Design 3, adaptată oricărui ecran.
 
-> Stare: rescrierea completă este în lucru pe ramura `feat/engine-rewrite` (etapa M1, gata de revizuire: motorul de vizualizare, kitul Material 3, fotografiile migrate și punctele de interes, cu consimțământ pentru statistici și rapoarte de erori, trec testele end-to-end pe 11 dimensiuni de ecran, în temă deschisă și întunecată, în română și engleză; straturile istorice vin în M3). Site-ul vechi rămâne publicat până la înlocuire.
+> Stare: rescrierea completă este în lucru pe ramura `feat/engine-rewrite`. M1 (motorul de vizualizare, kitul Material 3, fotografiile migrate și punctele de interes, cu consimțământ pentru statistici și rapoarte de erori) trece testele end-to-end pe 11 dimensiuni de ecran, în temă deschisă și întunecată, în română și engleză; M2 și M2b (serverul, aplicația de administrare și Asistentul de configurare) și M2c (editoarele pentru fotografii, locuri, straturi, setări, istoric, procesări și administratori, ale căror salvări ajung în harta publică prin manifestul construit de server) funcționează cap-coadă pe emulatoarele Firebase; straturile istorice vin în M3. Site-ul vechi rămâne publicat până la înlocuire.
 
 ## English
 
@@ -18,7 +18,7 @@ Proiectul este și un **motor reutilizabil** (Historic City Map): orice oraș î
 
 It is also a **reusable engine** (Historic City Map): any city can host its own historical map from a three-file starter kit and an admin app that does almost everything automatically — setting up the Google Cloud, Mapbox and USGS accounts, finding and importing imagery, georeferencing and publishing layers, managing photos and points of interest, with a live transparency slider for every layer, the photos and each category of places. The interface is in Romanian (default) and English, Material Design 3, adaptive to every screen.
 
-> Status: the full rewrite is in progress on the `feat/engine-rewrite` branch (milestone M1, ready for review: the viewer engine, the Material 3 kit, the migrated photos and points of interest, with consent-gated analytics and crash reports, pass the end-to-end tests on 11 screen sizes, light and dark, Romanian and English; historical layers arrive in M3). The legacy site stays live until it is replaced.
+> Status: the full rewrite is in progress on the `feat/engine-rewrite` branch. M1 (the viewer engine, the Material 3 kit, the migrated photos and points of interest, consent-gated analytics and crash reports) passes the end-to-end tests on 11 screen sizes, light and dark, Romanian and English; M2 and M2b (the backend, the admin and its Setup Assistant) and M2c (the admin's editors for photos, places, layers, settings, history, jobs and admins, whose saves reach the viewer through the server-built manifest) run end to end on the Firebase emulators; historical layers arrive in M3. The legacy site stays live until it is replaced.
 
 ## Repository
 
@@ -27,7 +27,7 @@ An npm-workspaces monorepo:
 | Path | Contents |
 | --- | --- |
 | `packages/engine` | `@hcm/engine`, the public viewer (Lit + Mapbox GL JS 3.32.0, loaded from Mapbox's CDN, never bundled); exposes `window.HistoricCityMap` |
-| `packages/admin` | `@hcm/admin`, the admin and its Setup Assistant |
+| `packages/admin` | `@hcm/admin`, the admin: its Setup Assistant and the editors (photos, places, layers, settings, history, jobs, admins, crash reports) |
 | `packages/ui` | `@hcm/ui`, the Material 3 Expressive component kit, its self-hosted fonts and the viewer's elements ([packages/ui/README.md](packages/ui/README.md)) |
 | `packages/shared` | `@hcm/shared`, schemas (City Manifest v1), the overlay model, the URL hash, i18n (RO/EN), logging |
 | `packages/test-support` | `@hcm/test-support`, fakes and fixtures for tests |

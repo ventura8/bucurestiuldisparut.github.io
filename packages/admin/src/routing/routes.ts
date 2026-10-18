@@ -1,9 +1,10 @@
 /**
  * The admin's hash routes (`docs/research/M2b-interfaces.md` §1.1): `#/<route>` plus at most two id segments
  * (`#/photos/<photoId>`, `#/history/<entity>/<id>`, `#/setup/<step>`). Hash routing needs no Hosting rewrite and keeps
- * every address on the one `index.html`.
+ * every address on the one `index.html`. `#/home` is the dashboard the M2c editors added (`docs/research/M2c-interfaces.md`
+ * CR-M2c-24).
  */
-export const ADMIN_ROUTES = ['setup', 'photos', 'pois', 'layers', 'jobs', 'settings', 'admins', 'history', 'crashes'] as const;
+export const ADMIN_ROUTES = ['home', 'setup', 'photos', 'pois', 'layers', 'jobs', 'settings', 'admins', 'history', 'crashes'] as const;
 
 export type AdminRouteId = (typeof ADMIN_ROUTES)[number];
 
@@ -17,6 +18,11 @@ export interface AdminRouteSpec {
 }
 
 export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> = {
+    /**
+     * The dashboard (M2c, ops-screens): under More on the compact bar until it becomes the first screen
+     * (`DECISIONS-for-review.md` §34i).
+     */
+    home: { icon: 'home', needsBackend: true, inCompactBar: false },
     setup: { icon: 'checklist', needsBackend: false, inCompactBar: true },
     photos: { icon: 'photo_library', needsBackend: true, inCompactBar: true },
     pois: { icon: 'place', needsBackend: true, inCompactBar: true },

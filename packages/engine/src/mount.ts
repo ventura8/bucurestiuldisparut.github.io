@@ -16,15 +16,13 @@ import {
     type ViewerReady,
     type ViewerStorePort,
 } from '@hcm/ui';
+import { createMapboxPort, type MapboxGl, type MapPort, type Unsubscribe } from '@hcm/ui/map';
 
 import { configFromAttributes, readConfig, type Result } from './config/load.js';
 import { urlLocaleOf } from './core/boot.js';
 import type { ViewerDeps, ViewerLocation } from './core/deps.js';
 import type { PreferenceStorage } from './core/preferences.js';
 import { createViewerStore, type ViewerState, type ViewerStore } from './core/store.js';
-import { createMapboxPort } from './map/mapbox-adapter.js';
-import type { MapboxGl } from './map/mapbox-types.js';
-import type { MapPort, Unsubscribe } from './map/map-port.js';
 import { createTelemetry } from './telemetry/telemetry.js';
 import type { TelemetryPort } from './telemetry/telemetry-port.js';
 

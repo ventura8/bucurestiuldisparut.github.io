@@ -79,6 +79,31 @@
                 { "fieldPath": "action", "order": "ASCENDING" },
                 { "fieldPath": "updatedAt", "order": "DESCENDING" }
             ]
+        },
+        {
+            "collectionGroup": "history",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                { "fieldPath": "action", "order": "ASCENDING" },
+                { "fieldPath": "updatedAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "history",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                { "fieldPath": "entity", "order": "ASCENDING" },
+                { "fieldPath": "updatedAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "history",
+            "queryScope": "COLLECTION_GROUP",
+            "fields": [
+                { "fieldPath": "entity", "order": "ASCENDING" },
+                { "fieldPath": "action", "order": "ASCENDING" },
+                { "fieldPath": "updatedAt", "order": "DESCENDING" }
+            ]
         }
     ],
     "fieldOverrides": [
@@ -95,6 +120,16 @@
         { "collectionGroup": "pois", "fieldPath": "description", "indexes": [] },
         { "collectionGroup": "pois", "fieldPath": "links", "indexes": [] },
         { "collectionGroup": "history", "fieldPath": "previous", "indexes": [] },
+        {
+            "collectionGroup": "history",
+            "fieldPath": "updatedAt",
+            "indexes": [
+                { "order": "ASCENDING", "queryScope": "COLLECTION" },
+                { "order": "DESCENDING", "queryScope": "COLLECTION" },
+                { "arrayConfig": "CONTAINS", "queryScope": "COLLECTION" },
+                { "order": "DESCENDING", "queryScope": "COLLECTION_GROUP" }
+            ]
+        },
         { "collectionGroup": "jobs", "fieldPath": "params", "indexes": [] },
         { "collectionGroup": "jobs", "fieldPath": "steps", "indexes": [] },
         { "collectionGroup": "logs", "fieldPath": "message", "indexes": [] },

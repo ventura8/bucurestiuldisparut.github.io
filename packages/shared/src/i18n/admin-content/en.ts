@@ -1,0 +1,65 @@
+import type { AdminContentKitKey } from './ro.js';
+
+/**
+ * English texts of the editing kit and the admin map's drawing tools.
+ * Typed against the Romanian source of truth (`ro.ts`): a missing or extra key is a type error.
+ */
+export const en: Readonly<Record<AdminContentKitKey, string>> = {
+    // [section common] owner: ops-screens (the editing kit); keys adminContent.common.*
+    'adminContent.common.save': 'Save',
+    'adminContent.common.discard': 'Discard changes',
+    'adminContent.common.you': 'you',
+    'adminContent.common.server': 'the server',
+    'adminContent.common.someone': 'another admin',
+    'adminContent.common.denied': 'Access was refused. Check that you are still an admin.',
+    'adminContent.common.loadFailed': 'This could not be read ({code}). Try again.',
+    'adminContent.common.reconnecting': 'Reconnecting…',
+    'adminContent.common.loading': 'Loading…',
+    'adminContent.common.retry': 'Try again',
+    'adminContent.common.more': 'Show more',
+    'adminContent.common.back': 'Back to the list',
+    'adminContent.common.close': 'Close',
+    'adminContent.common.cancel': 'Cancel',
+    'adminContent.common.offline': 'You are offline: nothing was saved. Try again once the connection is back.',
+    'adminContent.common.unsavedTitle': 'Discard your changes?',
+    'adminContent.common.unsavedBody': 'The changes made here are not saved and are lost if you leave.',
+    'adminContent.common.keepEditing': 'Keep editing',
+    // [end common]
+    // [section map] owner: pois (the admin map, the drawing toolbar, the vertex list); keys adminContent.map.*
+    'adminContent.map.noToken': 'The map appears once Mapbox is set up.',
+    'adminContent.map.noWebgl': 'This browser cannot draw the map (WebGL 2 is missing). The fields and the list of positions still work.',
+    'adminContent.map.failed': 'The map could not load. The fields and the list of positions still work.',
+    'adminContent.map.loading': 'Loading the map…',
+    'adminContent.map.unavailable': 'The map is not available here yet: type the place in the fields.',
+    'adminContent.map.openSetup': 'Set up Mapbox',
+    'adminContent.map.label': 'Map',
+    'adminContent.map.zoomIn': 'Zoom in',
+    'adminContent.map.zoomOut': 'Zoom out',
+    'adminContent.map.crosshair': 'Map centre: the arrow keys move the map, Add at centre puts a position here.',
+    'adminContent.map.toolbar': 'Drawing tools',
+    'adminContent.map.tool.select': 'Select and move',
+    'adminContent.map.tool.draw': 'Draw',
+    'adminContent.map.tool.addCentre': 'Add at centre',
+    'adminContent.map.tool.deleteVertex': 'Delete the chosen position',
+    'adminContent.map.tool.undoVertex': 'Remove the last position',
+    'adminContent.map.drawHint.point': 'Click the map where the place is.',
+    'adminContent.map.drawHint.linestring': 'Click the map for each position of the line; the line appears from the second.',
+    'adminContent.map.drawHint.polygon': 'Click the map for each corner; the area appears from the third.',
+    'adminContent.map.drawHint.select': 'Drag the shape or its positions; the middle of an edge adds a position.',
+    'adminContent.map.refused.outside': 'That position is outside the city.',
+    'adminContent.map.refused.self-intersection': 'The edges of an area may not cross.',
+    'adminContent.map.refused.too-many-vertices': 'A shape has at most 500 positions.',
+    'adminContent.map.refused.too-many-rings': 'An area has at most 20 rings.',
+    'adminContent.map.refused.zero-area': 'An area needs a size.',
+    'adminContent.map.vertices': 'Positions of the shape',
+    'adminContent.map.verticesEmpty': 'No position yet: draw on the map or add at its centre.',
+    'adminContent.map.vertex': 'Position {number}',
+    'adminContent.map.latitude': 'Latitude',
+    'adminContent.map.longitude': 'Longitude',
+    'adminContent.map.chooseVertex': 'Choose position {number}',
+    'adminContent.map.moveUp': 'Move position {number} up',
+    'adminContent.map.moveDown': 'Move position {number} down',
+    'adminContent.map.removeVertex': 'Remove position {number}',
+    'adminContent.map.vertexRefused': 'The shape needs at least {min} positions.',
+    // [end map]
+};

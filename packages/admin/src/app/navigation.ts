@@ -18,6 +18,8 @@ export interface NavigationDeps {
     readonly session: KeyValueStore;
     readonly pages: PageRegistry;
     readonly track: (event: AdminEvent) => void;
+    /** Whether an editor area holds an edit leaving would lose (`docs/research/M2c-interfaces.md` §2.4). */
+    readonly unsaved?: () => boolean;
 }
 
 export class Navigation {
@@ -25,6 +27,8 @@ export class Navigation {
     readonly #stop: Unsubscribe;
     #shown = false;
     #mode: ShellState['mode'] = null;
+    /** Set by Discard: the address change it makes is not questioned again. */
+    #allowNext = false;
     /** The address of the last page view (one per route shown). */
     #tracked: string | null = null;
 
@@ -44,14 +48,35 @@ export class Navigation {
         this.#shown = shown;
         this.#mode = state.mode;
         if (shown) {
+            // The shell appears (or its mode changes): no page holds an edit yet, so nothing is asked.
+            this.#allowNext = true;
             this.#apply(this.#returnTo() ?? this.#deps.location.hash());
         } else {
             this.#keep(this.#deps.location.hash());
         }
     }
 
+    /** Opens `route`; with an unsaved edit on screen the shell asks first (`leaving`) and goes nowhere yet. */
     navigate(route: AdminRoute): void {
+        if (this.#guarded(route)) {
+            return;
+        }
         this.#deps.location.setHash(adminRouteHash(route), false);
+    }
+
+    /** Discard: the next address change goes through unasked (the page then closes its store, which forgets the edit). */
+    leave(): void {
+        const leaving = this.#deps.shell.get().leaving;
+        this.#deps.shell.update({ leaving: null });
+        if (leaving?.kind === 'route') {
+            this.#allowNext = true;
+            this.#deps.location.setHash(adminRouteHash(leaving.route), false);
+        }
+    }
+
+    /** Keep editing: the question goes away and nothing moves. */
+    stay(): void {
+        this.#deps.shell.update({ leaving: null });
     }
 
     stop(): void {
@@ -79,12 +104,43 @@ export class Navigation {
         }
     }
 
+    /** True when leaving the current page for `route` would lose an edit: the shell then asks (`leaving`). */
+    #guarded(route: AdminRoute): boolean {
+        const current = this.#deps.shell.get().route;
+        const unsaved = this.#deps.unsaved?.() ?? false;
+        if (!unsaved || adminRouteHash(route) === adminRouteHash(current)) {
+            return false;
+        }
+        this.#deps.shell.update({ leaving: { kind: 'route', route } });
+        return true;
+    }
+
+    /**
+     * An address typed or a Back with an unsaved edit: a hash change cannot be cancelled, so the editor's address is put
+     * back (without a history entry) and the shell asks; Discard then opens the address asked for.
+     */
+    #heldBack(hash: string, context: RouteContext): boolean {
+        if (this.#allowNext) {
+            this.#allowNext = false;
+            return false;
+        }
+        const route = resolveAdminRoute(hash, context).route;
+        if (!this.#guarded(route)) {
+            return false;
+        }
+        this.#deps.location.setHash(adminRouteHash(this.#deps.shell.get().route), true);
+        return true;
+    }
+
     #apply(hash: string): void {
         if (!showsShell(this.#deps.shell.get().auth)) {
             this.#keep(hash);
             return;
         }
         const context = this.#context();
+        if (this.#heldBack(hash, context)) {
+            return;
+        }
         const resolved = resolveAdminRoute(hash, context);
         const address = adminRouteHash(resolved.route);
         if (resolved.notice !== null) {

@@ -1,24 +1,25 @@
 /**
- * Map fakes for the engine's node tests (docs/research/M1-interfaces.md §4):
+ * Map fakes for the engine's and the admin's tests (docs/research/M1-interfaces.md §4, M2c-interfaces.md §3):
  *
  * - `FakeMap` implements `MapPort` and records every call, so the store and the viewer are tested by what they ask
- *   the map to do; `emit`, `clickPhoto` and `clickPoi` play the map's side.
+ *   the map to do; `emit`, `clickPhoto`, `clickPoi` and `clickMap` play the map's side.
  * - `FakeMapboxGl` stands in for the global `mapboxgl` (Mapbox GL JS 3.32.0) in the adapter's tests: `FakeMapboxMap`
  *   keeps sources, layers, paint and layout properties, images and configuration, records calls, and `fire` plays
  *   Mapbox's events. Nothing here renders; the browser tests with the real `mapbox-gl` come with CR-2.
  */
-import type { Locale, MapView } from '@hcm/shared';
+import type { BBox, LngLat, Locale, MapView } from '@hcm/shared';
 
 import type {
     MapEventMap,
     MapOptions,
+    MapPadding,
     MapPort,
     MapSlot,
     PhotoFeatureCollection,
     RasterLayerSpec,
     Unsubscribe,
     VectorOverlaySpec,
-} from '../../engine/src/map/map-port.js';
+} from '../../ui/src/map/map-port.js';
 import type {
     MapboxCameraOptions,
     MapboxCompareConstructor,
@@ -31,7 +32,7 @@ import type {
     MapboxMapOptions,
     MapImage,
     MapPoint,
-} from '../../engine/src/map/mapbox-types.js';
+} from '../../ui/src/map/mapbox-types.js';
 
 export interface RecordedCall {
     readonly method: string;
@@ -57,6 +58,7 @@ export class FakeMap implements MapPort {
     #loads = 0;
     readonly #photoHandlers = new Set<(photoId: string) => void>();
     readonly #poiHandlers = new Set<(poiId: string) => void>();
+    readonly #mapClickHandlers = new Set<(position: LngLat) => void>();
     readonly #handlers: Handlers = { moveend: new Set(), error: new Set(), webglcontextlost: new Set(), webglcontextrestored: new Set() };
 
     constructor(options: FakeMapOptions = {}) {
@@ -131,9 +133,22 @@ export class FakeMap implements MapPort {
         return () => this.#poiHandlers.delete(handler);
     }
 
+    onMapClick(handler: (position: LngLat) => void): Unsubscribe {
+        this.#mapClickHandlers.add(handler);
+        return () => this.#mapClickHandlers.delete(handler);
+    }
+
     flyTo(view: Partial<MapView>, options?: { readonly animate?: boolean }): void {
         this.#record('flyTo', view, options);
         this.view = { ...this.view, ...view };
+    }
+
+    fitBounds(bounds: BBox, options?: { readonly padding?: number; readonly animate?: boolean }): void {
+        this.#record('fitBounds', bounds, options);
+    }
+
+    setPadding(padding: MapPadding): void {
+        this.#record('setPadding', padding);
     }
 
     getView(): MapView {
@@ -159,6 +174,7 @@ export class FakeMap implements MapPort {
         this.mounted = false;
         this.#photoHandlers.clear();
         this.#poiHandlers.clear();
+        this.#mapClickHandlers.clear();
         for (const handlers of Object.values(this.#handlers)) {
             handlers.clear();
         }
@@ -186,10 +202,17 @@ export class FakeMap implements MapPort {
         }
     }
 
-    /** How many subscribers are listening (photo and POI clicks plus every event). */
+    /** A click on the map that hit no photo or POI (`onMapClick`). */
+    clickMap(position: LngLat): void {
+        for (const handler of this.#mapClickHandlers) {
+            handler(position);
+        }
+    }
+
+    /** How many subscribers are listening (photo, POI and map clicks plus every event). */
     get listenerCount(): number {
         const events = Object.values(this.#handlers).reduce((sum, handlers) => sum + handlers.size, 0);
-        return events + this.#photoHandlers.size + this.#poiHandlers.size;
+        return events + this.#photoHandlers.size + this.#poiHandlers.size + this.#mapClickHandlers.size;
     }
 }
 
@@ -412,6 +435,16 @@ export class FakeMapboxMap implements MapboxMap {
     flyTo(options: MapboxCameraOptions): this {
         this.#record('flyTo', options);
         return this.#move(options);
+    }
+
+    fitBounds(bounds: readonly [LngLat, LngLat], options: { readonly padding: number; readonly animate: boolean }): this {
+        this.#record('fitBounds', bounds, options);
+        return this;
+    }
+
+    setPadding(padding: MapPadding): this {
+        this.#record('setPadding', padding);
+        return this;
     }
 
     jumpTo(options: MapboxCameraOptions): this {

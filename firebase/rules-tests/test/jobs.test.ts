@@ -6,7 +6,7 @@
 import { FIRESTORE_PATHS, JOB_STATUSES, JOB_TYPES, USGS_SCENE_STATUSES } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { jobDoc, newJob, usgsSceneDoc } from './support/documents.js';
+import { jobDoc, layerDoc, newJob, usgsSceneDoc } from './support/documents.js';
 import {
     createWorld,
     deleted,
@@ -21,6 +21,9 @@ import {
 } from './support/world.js';
 
 const CITY_ID = 'rules-jobs';
+/** A deleted layer's tileset clean-up is queued by `layers.delete` only (CR-M2c-3): never a client's job. */
+const SERVER_ONLY_JOBS: readonly string[] = ['layer-delete'];
+const CLIENT_JOBS = JOB_TYPES.filter((type) => !SERVER_ONLY_JOBS.includes(type));
 const FINISHED = ['succeeded', 'failed', 'cancelled'];
 const TRIAGE = ['candidate', 'ordered', 'rejected'];
 
@@ -76,8 +79,19 @@ afterAll(async () => {
 });
 
 describe('queue a job', () => {
-    it.each(JOB_TYPES)('happyPath_adminQueues_%s', async (type) => {
+    it.each(CLIENT_JOBS)('happyPath_adminQueues_%s', async (type) => {
         expect(await queue({ type })).toBe('allow');
+    });
+
+    it('badPath_noClientDeletesALayerOrQueuesItsTilesetDeletion @S-A33-BAD-CLIENT-LAYER-DELETE', async () => {
+        const layer = await seeded(FIRESTORE_PATHS.layer(CITY_ID, 'l1960'), layerDoc());
+        const removal = await verdict(world.db('admin').doc(layer).delete());
+
+        expect({ job: await queue({ type: 'layer-delete', params: { layerId: 'l1960' } }), removal }).toEqual({
+            job: 'deny',
+            removal: 'deny',
+        });
+        expect(JOB_TYPES).toContain('layer-delete');
     });
 
     it.each([

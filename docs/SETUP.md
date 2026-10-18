@@ -83,7 +83,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
   bash -c 'mkdir -p $HOME && npm run build --workspace @hcm/functions'   # functions/dist (checked, then loaded)
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
   bash -c 'mkdir -p $HOME && npx firebase emulators:exec --project demo-hcm \
-  --only functions,firestore,auth,storage,pubsub,tasks "echo up"'      # loads all 33 functions
+  --only functions,firestore,auth,storage,pubsub,tasks "echo up"'      # loads all 35 functions
 ```
 
 In the emulator the functions keep secrets in memory and reach Google, Mapbox and USGS only through the fake upstreams at `HCM_UPSTREAM_BASE` (unset: every such call fails like a network error), so a local run can never touch a real service.

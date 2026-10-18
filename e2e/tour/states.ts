@@ -1,6 +1,7 @@
 import type { Locale } from '@hcm/shared';
 import { expect, type BrowserContext, type Locator, type Page, type Route } from '@playwright/test';
 
+import { POIS_STATES } from '../admin/specs/pois/states.js';
 import { SITE_ORIGIN } from '../fixtures/world.js';
 import { siteManifestData } from '../fixtures/manifest.js';
 import { settleAnimations } from '../support/layout.js';
@@ -599,6 +600,97 @@ const ADMIN_STATES = {
     'account-menu': { title: 'The account menu (a dialog): language, theme, analytics, sign out', visit: 'smoke.spec.ts, the owner' },
     'unknown-route': { title: 'An unknown address: Setup with the "page not found" snackbar', visit: 'smoke.spec.ts, the owner' },
     blocked: { title: 'A stranger: the "not an admin" panel', visit: 'smoke.spec.ts, the stranger' },
+    // The M2c editors (docs/research/M2c-interfaces.md §11.2, §12.2): one marked section per area, ids '<area>.<state>';
+    // a workstream appends inside its own section only and never moves the markers.
+    // [section common] owner: ops-screens (the editing kit: the unsaved guard, the conflict banner, offline, the map's states)
+    // [end common]
+    // [section photos] owner: photos
+    'photos.empty': { title: 'Photos: none yet, with Add photos and the drop zone', visit: 'specs/photos/photos.spec.ts' },
+    'photos.upload-refused': { title: 'Photos: a file refused before upload, with its reason', visit: 'specs/photos/photos.spec.ts' },
+    'photos.list': {
+        title: 'Photos: the list with its filters, search and rows (processing, refused, rights to check)',
+        visit: 'specs/photos/photos.spec.ts',
+    },
+    'photos.bulk': { title: 'Photos: four selected, the bulk actions', visit: 'specs/photos/photos.spec.ts' },
+    'photos.report': {
+        title: 'Photos: the photos a bulk Publish skipped, each with its reason (a dialog)',
+        visit: 'specs/photos/photos.spec.ts',
+    },
+    'photos.editor': {
+        title: "Photos: a photo's editor (beside the list from 840 px, full screen on a phone)",
+        visit: 'specs/photos/photos.spec.ts',
+    },
+    'photos.set-fields': { title: 'Photos: author, source and licence for the selection (a dialog)', visit: 'specs/photos/photos.spec.ts' },
+    'photos.editor-invalid': {
+        title: 'Photos: the editor with a field to correct, Save off and its reason',
+        visit: 'specs/photos/photos.spec.ts',
+    },
+    'photos.delete-confirm': { title: 'Photos: the delete confirmation (a dialog)', visit: 'specs/photos/photos.spec.ts' },
+    'photos.deleted-undo': { title: 'Photos: the photo deleted, the snackbar offering Undo', visit: 'specs/photos/photos.spec.ts' },
+    // [end photos]
+    // [section pois] owner: pois
+    ...POIS_STATES,
+    // [end pois]
+    // [section layers] owner: layers-settings
+    'layers.empty': { title: 'Layers: none yet, with Link a layer', visit: 'specs/layers/layers.spec.ts' },
+    'layers.list': { title: 'Layers: the list, top first, with Move up/down', visit: 'specs/layers/layers.spec.ts' },
+    'layers.link': { title: 'Layers: link an existing layer (a dialog)', visit: 'specs/layers/layers.spec.ts' },
+    'layers.link-refused': { title: "Layers: another account's tileset refused", visit: 'specs/layers/layers.spec.ts' },
+    'layers.editor': { title: "Layers: a layer's editor with its map", visit: 'specs/layers/layers.spec.ts' },
+    'layers.adjusting': { title: 'Layers: image adjustments moved, levels met', visit: 'specs/layers/layers.spec.ts' },
+    'layers.delete-confirm': { title: 'Layers: "Delete the layer?" (a dialog)', visit: 'specs/layers/layers.spec.ts' },
+    // [end layers]
+    // [section settings] owner: layers-settings
+    'settings.sections': { title: 'Settings: the sections, none open', visit: 'specs/settings/settings.spec.ts' },
+    'settings.area': { title: "Settings: the city's bounds and start view", visit: 'specs/settings/settings.spec.ts' },
+    'settings.area-invalid': { title: 'Settings: bounds of no width, Save off', visit: 'specs/settings/settings.spec.ts' },
+    'settings.area-refused': { title: 'Settings: bounds refused, what they leave out', visit: 'specs/settings/settings.spec.ts' },
+    'settings.texts-link-refused': { title: 'Settings: a non-https link in About', visit: 'specs/settings/settings.spec.ts' },
+    'settings.theme': { title: 'Settings: seed colour, presets, basemap', visit: 'specs/settings/settings.spec.ts' },
+    'settings.theme-preview': { title: 'Settings: a seed colour previewed', visit: 'specs/settings/settings.spec.ts' },
+    'settings.categories': { title: 'Settings: the place categories', visit: 'specs/settings/settings.spec.ts' },
+    'settings.category-editor': { title: 'Settings: a category, its icon not bundled', visit: 'specs/settings/settings.spec.ts' },
+    'settings.category-low-contrast': { title: 'Settings: an unreadable colour, a tone offered', visit: 'specs/settings/settings.spec.ts' },
+    'settings.category-delete-move': { title: 'Settings: delete a category in use (a dialog)', visit: 'specs/settings/settings.spec.ts' },
+    'settings.categories-limit': { title: 'Settings: fifty categories, Add off', visit: 'specs/settings/settings.spec.ts' },
+    'settings.overlays': { title: 'Settings: the default opacities', visit: 'specs/settings/settings.spec.ts' },
+    // [end settings]
+    // [section ops] owner: ops-screens (admins, history, jobs, crash reports)
+    'home.dashboard': {
+        title: "Home: the city's counts, what waits, the services' chips and the public map",
+        visit: 'specs/ops/ops.spec.ts, the dashboard',
+    },
+    'jobs.empty': { title: 'Jobs: none yet', visit: 'specs/ops/ops.spec.ts, jobs' },
+    'jobs.list': { title: 'Jobs: the live list with its status chips', visit: 'specs/ops/ops.spec.ts, jobs' },
+    'jobs.detail': {
+        title: "Jobs: a running job's progress, steps and log (full screen on a phone)",
+        visit: 'specs/ops/ops.spec.ts, jobs',
+    },
+    'jobs.cancel-confirm': { title: 'Jobs: "Cancel this job?" (a dialog)', visit: 'specs/ops/ops.spec.ts, jobs' },
+    'history.recent': { title: "History: the city's recent changes with their filters", visit: 'specs/ops/ops.spec.ts, history' },
+    'history.deleted': { title: 'History: the Deleted filter, each with Restore', visit: 'specs/ops/ops.spec.ts, history' },
+    'history.revert-confirm': { title: 'History: "Restore what was deleted?" (a dialog)', visit: 'specs/ops/ops.spec.ts, history' },
+    'history.document': {
+        title: "History: a place's versions and the selected one's fields before and after",
+        visit: 'specs/ops/ops.spec.ts, history',
+    },
+    'history.revert-refused': { title: 'History: a refused revert, with its reason as an alert', visit: 'specs/ops/ops.spec.ts, history' },
+    'admins.list': { title: 'Admins: the admins and the pending invitations', visit: 'specs/ops/ops.spec.ts, admins' },
+    'admins.detail': { title: "Admins: an admin's detail with Remove access", visit: 'specs/ops/ops.spec.ts, admins' },
+    'admins.revoke-confirm': { title: 'Admins: "Remove access for …?" (a dialog)', visit: 'specs/ops/ops.spec.ts, admins' },
+    'admins.invite': { title: 'Admins: the Invite dialog with an address refused at the field', visit: 'specs/ops/ops.spec.ts, admins' },
+    'admins.invite-link': { title: 'Admins: the new invitation with its sign-in link and Copy', visit: 'specs/ops/ops.spec.ts, admins' },
+    'crashes.empty': { title: 'Crash reports: none in the period', visit: 'specs/ops/ops.spec.ts, crash reports' },
+    'crashes.list': { title: "Crash reports: a period's error groups", visit: 'specs/ops/ops.spec.ts, crash reports' },
+    'crashes.detail': {
+        title: "Crash reports: a group's counts, first and last seen, and the console link",
+        visit: 'specs/ops/ops.spec.ts, crash reports',
+    },
+    'crashes.error': {
+        title: 'Crash reports: Error Reporting disabled, with the way to Setup',
+        visit: 'specs/ops/ops.spec.ts, crash reports',
+    },
+    // [end ops]
 } as const;
 
 export type AdminStateId = keyof typeof ADMIN_STATES;

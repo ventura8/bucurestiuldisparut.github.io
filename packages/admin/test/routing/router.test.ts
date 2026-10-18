@@ -37,11 +37,10 @@ describe('resolveAdminRoute', () => {
 });
 
 describe('navigationDestinations', () => {
-    it('happyPath_normalModeListsSetupAndEveryBuiltPageButHistory', () => {
-        expect(navigationDestinations(NORMAL).map((destination) => destination.id)).toEqual(['setup', 'photos', 'admins']);
-        expect(navigationDestinations({ mode: 'normal', hasPage: () => true }).map((destination) => destination.id)).toEqual(
-            ADMIN_ROUTES.filter((id) => id !== 'history'),
-        );
+    it('happyPath_normalModeListsSetupAndEveryBuiltPageHistoryIncluded', () => {
+        expect(navigationDestinations(NORMAL).map((destination) => destination.id)).toEqual(['setup', 'photos', 'admins', 'history']);
+        expect(navigationDestinations({ mode: 'normal', hasPage: () => true }).map((destination) => destination.id)).toEqual(ADMIN_ROUTES);
+        expect(destinationOf('home')).toEqual({ id: 'home', icon: 'home', compact: false });
     });
 
     it('badPath_startUpModeListsSetupAlone', () => {

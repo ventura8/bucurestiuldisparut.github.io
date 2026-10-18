@@ -4,8 +4,8 @@
  * preference, and the page address, query and `hashchange` of the location.
  */
 import type { EngineConfig, Logger } from '@hcm/shared';
+import type { MapPort, Unsubscribe } from '@hcm/ui/map';
 
-import type { MapPort, Unsubscribe } from '../map/map-port.js';
 import type { TelemetryPort } from '../telemetry/telemetry-port.js';
 import type { PreferenceStorage } from './preferences.js';
 

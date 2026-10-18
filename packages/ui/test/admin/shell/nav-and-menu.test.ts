@@ -9,6 +9,24 @@ import type { HcmSheet } from '../../../src/components/sheet.js';
 import type { HcmSwitch } from '../../../src/components/switch.js';
 import { adminState, cleanup, deep, deepAll, deepText, defineAll, DESTINATIONS, FakeAdminApp, mount, updated } from './fake-app.js';
 
+/** The words of an element's text that the browser broke across two lines (a range over one word with two line boxes). */
+function brokenWords(element: Element): string[] {
+    const broken: string[] = [];
+    // Lit puts a comment marker before a bound text, so every text node is read, not the first child.
+    for (const text of [...element.childNodes].filter((node): node is Text => node instanceof Text)) {
+        for (const match of text.data.matchAll(/\S+/g)) {
+            const range = document.createRange();
+            range.setStart(text, match.index);
+            range.setEnd(text, match.index + match[0].length);
+            const tops = new Set([...range.getClientRects()].map((rect) => Math.round(rect.top)));
+            if (tops.size > 1) {
+                broken.push(match[0]);
+            }
+        }
+    }
+    return broken;
+}
+
 function links(nav: Element): HTMLAnchorElement[] {
     return deepAll(nav, 'a.item') as HTMLAnchorElement[];
 }
@@ -49,6 +67,21 @@ describe('<hcm-admin-nav>', () => {
 
         expect(sheet.open).toBe(false);
         expect(await axeViolations(nav)).toEqual([]);
+    });
+
+    it('happyPath_onA360PxPhoneEveryRomanianLabelOfTheBarKeepsItsWordsWhole', async () => {
+        // The visual audit of 2026-10-18: "Configurare" broke after its tenth letter, its last "e" on a line of its own.
+        const nav = await mount<HcmAdminNav>(
+            html`<hcm-admin-nav variant="bar" current="setup" locale="ro" .destinations=${DESTINATIONS}></hcm-admin-nav>`,
+            360,
+        );
+        // Measured in the kit's own font (Roboto Flex), as the admin draws it, not a fallback.
+        await document.fonts.load('500 12px "HCM Roboto Flex"', 'Configurare');
+        await updated(nav);
+
+        const labels = deepAll(nav, 'nav > .item .label');
+        expect(labels.map((label) => label.textContent.trim())).toEqual(['Configurare', 'Fotografii', 'Locuri', 'Straturi', 'Mai mult']);
+        expect(labels.flatMap((label) => brokenWords(label))).toEqual([]);
     });
 
     it('badPath_aBarWithFewDestinationsHasNoMore', async () => {

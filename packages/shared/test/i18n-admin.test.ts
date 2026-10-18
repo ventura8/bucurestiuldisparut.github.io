@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
+import { ADMIN_CONTENT_CATALOGUES, translateAdminContent } from '../src/i18n/admin-content/index.js';
 import { en as setupEn } from '../src/i18n/admin-setup/en.js';
 import { translateAdminSetup } from '../src/i18n/admin-setup/index.js';
 import { ro as setupRo } from '../src/i18n/admin-setup/ro.js';
@@ -17,6 +21,7 @@ const CEDILLA = /[şţŞŢ]/;
 const FAMILIES = [
     ['admin shell', shellRo, shellEn],
     ['Setup Assistant', setupRo, setupEn],
+    ['admin editors', ADMIN_CONTENT_CATALOGUES.ro, ADMIN_CONTENT_CATALOGUES.en],
 ] as const;
 
 describe('admin catalogues', () => {
@@ -50,6 +55,119 @@ describe('admin catalogues', () => {
 
     it('badPath_anUnknownPlaceholderStaysVisible', () => {
         expect(translateAdminSetup('ro', 'adminSetup.import.progress', { done: '3' })).toBe('3 din {total} fotografii importate');
+    });
+});
+
+/**
+ * The editors' texts are one catalogue folder per area (CR-M2c-25 of docs/research/M2c-interfaces.md): each area edits its
+ * own files. Every folder keeps its areas' marked sections, the same in both languages, and every key carries its section's
+ * prefix, so no area's text lands in another's folder and the merge of `ADMIN_CONTENT_CATALOGUES` overrides nothing.
+ */
+const CONTENT_FOLDERS = {
+    'admin-content': ['common', 'map'],
+    'admin-photos': ['photos'],
+    'admin-pois': ['pois'],
+    'admin-layers': ['layers'],
+    'admin-settings': ['settings'],
+    'admin-ops': ['admins', 'history', 'jobs', 'crashes'],
+} as const;
+const SECTION_START = /^\s*\/\/ \[section ([a-z]+)\]/;
+const SECTION_END = /^\s*\/\/ \[end ([a-z]+)\]/;
+const ENTRY_KEY = /^\s*'([^']+)':/;
+
+interface Scan {
+    readonly order: string[];
+    readonly ends: string[];
+    readonly misplaced: string[];
+    readonly keys: string[];
+    open: string | null;
+}
+
+function captured(pattern: RegExp, line: string): string | null {
+    return pattern.exec(line)?.[1] ?? null;
+}
+
+/** A key outside every section, or outside its own section's prefix, is misplaced. */
+function checkKey(scan: Scan, key: string | null): void {
+    if (key === null) {
+        return;
+    }
+    scan.keys.push(key);
+    if (!key.startsWith(`adminContent.${scan.open ?? '-'}.`)) {
+        scan.misplaced.push(key);
+    }
+}
+
+function scanLine(scan: Scan, line: string): void {
+    const start = captured(SECTION_START, line);
+    const end = captured(SECTION_END, line);
+    if (start !== null) {
+        scan.order.push(start);
+        scan.open = start;
+    } else if (end !== null) {
+        scan.ends.push(end);
+        scan.open = null;
+    } else {
+        checkKey(scan, captured(ENTRY_KEY, line));
+    }
+}
+
+/** The sections of a catalogue's source in order, their end markers, every key and every misplaced key. */
+function sectionsOf(source: string): Omit<Scan, 'open'> {
+    const scan: Scan = { order: [], ends: [], misplaced: [], keys: [], open: null };
+    for (const line of source.split('\n')) {
+        scanLine(scan, line);
+    }
+    return { order: scan.order, ends: scan.ends, misplaced: scan.misplaced, keys: scan.keys };
+}
+
+function catalogueSource(folder: string, file: string): string {
+    return readFileSync(resolve(import.meta.dirname, '../src/i18n', folder, file), 'utf8');
+}
+
+const FOLDER_FILES = Object.entries(CONTENT_FOLDERS).flatMap(([folder, sections]) =>
+    ['ro.ts', 'en.ts'].map((file) => [folder, file, sections] as const),
+);
+
+describe("the admin editors' catalogues", () => {
+    it.each(FOLDER_FILES)('happyPath_%s/%s keeps its marked sections, in order', (folder, file, sections) => {
+        const scan = sectionsOf(catalogueSource(folder, file));
+
+        expect({ order: scan.order, ends: scan.ends, misplaced: scan.misplaced }).toEqual({
+            order: sections,
+            ends: sections,
+            misplaced: [],
+        });
+    });
+
+    it.each(['ro.ts', 'en.ts'])('happyPath_the folders of %s hold every key once, and the merge holds them all', (file) => {
+        const keys = Object.keys(CONTENT_FOLDERS).flatMap((folder) => sectionsOf(catalogueSource(folder, file)).keys);
+        const locale = file === 'ro.ts' ? 'ro' : 'en';
+
+        expect(new Set(keys).size).toBe(keys.length);
+        expect(keys.toSorted(byText)).toEqual(Object.keys(ADMIN_CONTENT_CATALOGUES[locale]).toSorted(byText));
+    });
+
+    it('happyPath_translatesInBothLanguages', () => {
+        expect(translateAdminContent('ro', 'adminContent.admins.revokeConfirm', { name: 'Ana' })).toBe('Retragi accesul pentru Ana?');
+        expect(translateAdminContent('en', 'adminContent.common.save')).toBe('Save');
+    });
+
+    it('badPath_aKeyInAnotherAreasSectionOrOutsideEverySectionIsReported', () => {
+        const source = [
+            '    // [section photos] owner: photos',
+            "    'adminContent.photos.empty': 'x',",
+            "    'adminContent.pois.empty': 'y',",
+            '    // [end photos]',
+            "    'adminContent.jobs.empty': 'z',",
+        ].join('\n');
+
+        expect(sectionsOf(source)).toEqual({
+            order: ['photos'],
+            ends: ['photos'],
+            misplaced: ['adminContent.pois.empty', 'adminContent.jobs.empty'],
+            keys: ['adminContent.photos.empty', 'adminContent.pois.empty', 'adminContent.jobs.empty'],
+        });
     });
 });
 

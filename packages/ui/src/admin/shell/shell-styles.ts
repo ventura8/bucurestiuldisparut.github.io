@@ -38,6 +38,11 @@ export const shellStyles = [
             grid-template-columns: auto minmax(0, 1fr);
         }
 
+        /* The compact full-screen editor (an editor page's chrome): no navigation while it shows. */
+        .frame[data-nav='none'] {
+            grid-template-rows: minmax(0, 1fr);
+        }
+
         .frame hcm-admin-nav {
             min-block-size: 0;
         }
@@ -90,6 +95,18 @@ export const shellStyles = [
             flex: 1 1 auto;
             min-block-size: 0;
             overflow-y: auto;
+        }
+
+        /* A list and detail page fills the page area and scrolls its own panes (fill mode, CR-M2c-8). */
+        .scroller:has(> hcm-page-outlet[fill]) {
+            display: flex;
+            flex-direction: column;
+            overflow-y: hidden;
+        }
+
+        .scroller > hcm-page-outlet[fill] {
+            flex: 1 1 auto;
+            min-block-size: 0;
         }
 
         .loading {

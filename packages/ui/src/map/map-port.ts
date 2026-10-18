@@ -1,0 +1,172 @@
+/**
+ * The only map surface the engine core and the admin's editors see (docs/research/M1-interfaces.md §4,
+ * M2c-interfaces.md §3). `mapbox-adapter.ts` implements it on the global `mapboxgl` (Mapbox GL JS 3.32.0, never
+ * bundled); `FakeMap` (`@hcm/test-support`) implements it for the unit tests. Paint property names never appear in
+ * the core: the adapter takes them from `overlayOpacityPaint` and `rasterAdjustmentPaint` of `@hcm/shared`.
+ */
+import type { BBox, Geometry, LayerAdjustments, LayerSource, LngLat, Locale, MapView, RasterAdjustmentPaint } from '@hcm/shared';
+
+/** The overlay id of the photo markers and cones (PLAN Addendum 3); defined once, in @hcm/shared. */
+export { PHOTOS_OVERLAY_ID } from '@hcm/shared';
+
+/** Mapbox Standard style slots: bottom (above polygons), middle (above roads, below 3D buildings), top (above POI labels). */
+export type MapSlot = 'bottom' | 'middle' | 'top';
+
+export interface RasterLayerSpec {
+    /** The manifest layer id; the adapter derives its own ids from it (`hcm-raster-<id>`, `hcm-source-<id>`). */
+    readonly id: string;
+    /** `mapbox` becomes `mapbox://<tilesetId>`; `xyz` a raster source with `tiles` and `tileSize`; `pmtiles` a raster source on its URL. */
+    readonly source: LayerSource;
+    readonly minzoom: number;
+    readonly maxzoom: number;
+    readonly bounds?: BBox;
+    readonly visible: boolean;
+    /** 0..1, `raster-opacity`. */
+    readonly opacity: number;
+    /** Applied as `rasterAdjustmentPaint(adjustments)` (all four `raster-*` values, absent ones neutral). */
+    readonly adjustments?: LayerAdjustments;
+    /** Higher draws on top of lower within the slot (the manifest `order`). */
+    readonly order: number;
+    /** Added to the attribution control while the layer is visible. */
+    readonly attribution: string;
+}
+
+/** Properties of a photo point; titles are already in the current locale. */
+export interface PhotoPointProperties {
+    readonly id: string;
+    readonly title: string;
+    readonly year: number | null;
+    /** Rotates the camera icon; null draws an unrotated marker and no cone. */
+    readonly bearing: number | null;
+}
+
+export interface PhotoPointFeature {
+    readonly type: 'Feature';
+    readonly geometry: { readonly type: 'Point'; readonly coordinates: LngLat };
+    readonly properties: PhotoPointProperties;
+}
+
+/** A view cone (`conePolygon` from @hcm/shared), shown from zoom 17. */
+export interface PhotoConeFeature {
+    readonly type: 'Feature';
+    readonly geometry: { readonly type: 'Polygon'; readonly coordinates: readonly (readonly LngLat[])[] };
+    readonly properties: { readonly id: string };
+}
+
+/** Points and cones in one collection; the adapter splits them (points are clustered, cones are not). */
+export interface PhotoFeatureCollection {
+    readonly type: 'FeatureCollection';
+    readonly features: readonly (PhotoPointFeature | PhotoConeFeature)[];
+}
+
+/** One POI on the map; the title is already in the current locale (the label from zoom 16). */
+export interface PoiFeature {
+    readonly type: 'Feature';
+    readonly geometry: Geometry;
+    readonly properties: { readonly id: string; readonly title: string };
+}
+
+/**
+ * A vector overlay (PLAN Addendum 3): today one POI category. The adapter draws its points as `symbol` (icon + label)
+ * with a `circle` behind the icon, its LineStrings and polygon outlines as `line`, its polygons as `fill`, all from one
+ * GeoJSON source, in the category colour; the store passes only the POIs the timeline shows (`poiInYear`).
+ */
+export interface VectorOverlaySpec {
+    /** The overlay id: the POI category id. */
+    readonly id: string;
+    readonly kind: 'poi';
+    readonly features: readonly PoiFeature[];
+    /** `#rrggbb`. */
+    readonly color: string;
+    /** A bundled Material Symbols name (`poiIcon(category.icon)`), rasterised once per name with `addImage`. */
+    readonly icon: string;
+    readonly visible: boolean;
+    /** 0..1, applied with `overlayOpacityPaint('poi', opacity, base)`. */
+    readonly opacity: number;
+    /** False: clicks pass through to the map (`onMapClick`), as the admin's drawing needs; true by default. */
+    readonly clickable?: boolean;
+}
+
+export interface MapOptions {
+    /** `basemap.style` of the manifest. */
+    readonly style: string;
+    /** Mapbox Standard configuration, set on the `basemap` import. */
+    readonly config?: Readonly<Record<string, string | number | boolean>>;
+    readonly accessToken: string;
+    readonly view: MapView;
+    readonly minZoom: number;
+    readonly maxZoom: number;
+    readonly maxBounds?: BBox;
+    readonly locale: Locale;
+    /** True with `prefers-reduced-motion: reduce`: flyTo jumps instead of animating. */
+    readonly reducedMotion: boolean;
+}
+
+export type MapErrorKind = 'style' | 'source' | 'tile' | 'webgl' | 'unknown';
+
+export interface MapEventMap {
+    moveend: MapView;
+    error: { readonly kind: MapErrorKind; readonly layerId?: string; readonly message: string };
+    webglcontextlost: undefined;
+    webglcontextrestored: undefined;
+}
+
+export type Unsubscribe = () => void;
+
+/** The map's padding in CSS px: `flyTo` and `fitBounds` centre in what is left (the compact editor's bottom sheet). */
+export interface MapPadding {
+    readonly top: number;
+    readonly right: number;
+    readonly bottom: number;
+    readonly left: number;
+}
+
+export interface MapPort {
+    /** False without WebGL (`mapboxgl.supported()`); the viewer then shows the photo list (scenario V02). */
+    isWebGLSupported(): boolean;
+    /** Creates the map in `container`; resolves when the style has loaded, rejects with a MapErrorKind message. */
+    mount(container: HTMLElement, options: MapOptions): Promise<void>;
+    /** Adds or replaces (same id) a historical raster layer in `slot` (the viewer uses 'middle'). */
+    addRasterLayer(spec: RasterLayerSpec, slot: MapSlot): void;
+    /** Adds or replaces (same id: new features after a year change) a vector overlay in `slot` (the viewer uses 'top'). */
+    addVectorOverlay(spec: VectorOverlaySpec, slot: MapSlot): void;
+    /** Any overlay id: a raster layer id, PHOTOS_OVERLAY_ID or a vector overlay id; an unknown id is ignored. */
+    setOverlayVisibility(overlayId: string, visible: boolean): void;
+    /**
+     * Any overlay id; clamped to 0..1; coalesced to one paint update per animation frame while a slider moves. Paints
+     * `overlayOpacityPaint(kind, opacity, base)` on every map layer of the overlay, `base` being that map layer's
+     * designed opacity (a view cone's fill is translucent at full overlay opacity). An unknown id is ignored.
+     */
+    setOverlayOpacity(overlayId: string, opacity: number): void;
+    /** Live raster image adjustments (the admin's preview, the viewer on load); an unknown layer id is ignored. */
+    setLayerPaint(layerId: string, paint: RasterAdjustmentPaint): void;
+    /** A raster layer or vector overlay id. */
+    removeLayer(layerId: string): void;
+    /** Replaces every photo marker and cone. */
+    setPhotosData(data: PhotoFeatureCollection): void;
+    /** A click on a photo marker or cone (a cluster click zooms in instead). */
+    onPhotoClick(handler: (photoId: string) => void): Unsubscribe;
+    /** A click on a POI's icon, line or fill. */
+    onPoiClick(handler: (poiId: string) => void): Unsubscribe;
+    /** A click (or tap) on the map that hit no photo marker or POI, as a position: the admin's selection and picks. */
+    onMapClick(handler: (position: LngLat) => void): Unsubscribe;
+    /** Moves the camera; animated unless `reducedMotion` or `animate: false`. */
+    flyTo(view: Partial<MapView>, options?: { readonly animate?: boolean }): void;
+    /** Fits the camera to a box (the city, an edited geometry); animated unless `reducedMotion` or `animate: false`. */
+    fitBounds(bounds: BBox, options?: { readonly padding?: number; readonly animate?: boolean }): void;
+    /** Kept across a new mount; `flyTo` and `fitBounds` then centre above the padding (M2c-interfaces §3.2). */
+    setPadding(padding: MapPadding): void;
+    getView(): MapView;
+    on<E extends keyof MapEventMap>(event: E, handler: (payload: MapEventMap[E]) => void): Unsubscribe;
+    /**
+     * The visitor switched the language: Mapbox's own UI strings (the canvas's accessible name, the logo link, the
+     * attribution toggle) and the basemap's labels follow it (the tour found the first language's left behind).
+     */
+    setLocale(locale: Locale): void;
+    /** Called by the viewer's ResizeObserver. */
+    resize(): void;
+    /** Removes the map and every listener; mount may be called again (a new map load). */
+    destroy(): void;
+    /** How many maps this port has created (each is a billed Mapbox map load): 1 per view. */
+    readonly mapLoadCount: number;
+}

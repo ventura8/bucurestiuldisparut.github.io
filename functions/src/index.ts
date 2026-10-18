@@ -8,6 +8,7 @@
 import { adminFunctions, adminsFunctions } from './admin/index.js';
 import { getDeps, privateBucket } from './deps.js';
 import { historyFunctions } from './history/index.js';
+import { layersFunctions } from './layers/index.js';
 import { opsFunctions } from './ops/index.js';
 import { photosFunctions } from './photos/index.js';
 import { publishFunctions } from './publish/index.js';
@@ -23,3 +24,5 @@ export const publish = publishFunctions(getDeps);
 /** `photos.onUpload` names its bucket when it is declared: the same private bucket the Storage adapter writes. */
 export const photos = photosFunctions(getDeps, privateBucket(process.env));
 export const ops = opsFunctions(getDeps);
+/** `layers.delete` and `layers.link` (M2c layers-settings, CR-M2c-3, CR-M2c-27). */
+export const layers = layersFunctions(getDeps);

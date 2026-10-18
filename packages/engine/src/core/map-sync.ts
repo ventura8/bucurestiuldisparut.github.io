@@ -6,8 +6,8 @@
  * also reaches Mapbox's own labels and the basemap's (`setLocale`).
  */
 import { findOverlay, PHOTOS_OVERLAY_ID, rasterAdjustmentPaint, type Manifest, type Overlay } from '@hcm/shared';
+import type { MapPort } from '@hcm/ui/map';
 
-import type { MapPort } from '../map/map-port.js';
 import { photoFeatures, poiSpecs, rasterSpec } from './map-specs.js';
 import type { ViewerState } from './state.js';
 

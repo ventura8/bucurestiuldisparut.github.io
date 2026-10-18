@@ -1,8 +1,18 @@
 // The admin app must satisfy the structural ports its elements read (`docs/research/M2b-interfaces.md` §1.7): a change
 // on either side that breaks the other fails `tsc` here, the Setup Assistant's state and intents (setup-ui's
 // `SetupViewState`, `SetupIntentsPort`) included. The runtime assertions only keep the file a test.
-import type { AdminAppPort, AdminPageElement } from '@hcm/ui/admin';
+import type { AdminAppPort, AdminPageElement, ContentPort } from '@hcm/ui/admin';
 import { describe, expect, it } from 'vitest';
+
+import type { ADMINS_MODULE } from '../../src/admins/admins.js';
+import type { CRASHES_MODULE } from '../../src/crashes/crashes.js';
+import type { HISTORY_MODULE } from '../../src/history/history.js';
+import type { HOME_MODULE } from '../../src/home/home.js';
+import type { JOBS_MODULE } from '../../src/jobs/jobs.js';
+import type { layersModule } from '../../src/layers/layers.js';
+import type { PHOTOS_MODULE } from '../../src/photos/module.js';
+import type { POIS_MODULE } from '../../src/pois/pois.js';
+import type { settingsModule } from '../../src/settings/settings.js';
 
 import { ADMIN_AUTH_STATES } from '../../src/auth/auth-state.js';
 import type { AdminApp } from '../../src/app/mount.js';
@@ -21,6 +31,44 @@ const STATES_MIRRORED: Assignable<(typeof ADMIN_AUTH_STATES)[number], AdminAppPo
 const ROUTES_MIRRORED: Assignable<(typeof ADMIN_ROUTES)[number], AdminAppPort['state']['route']['id']> = true;
 const PAGE_GETS_THE_APP: Assignable<EntryApp, NonNullable<AdminPageElement['app']>> = true;
 
+/** The store an area's module creates. */
+type StoreOf<Module extends { create(services: never): unknown }> = ReturnType<Module['create']>;
+
+// Each real area store satisfies its page's port (docs/research/M2c-interfaces.md §2.3): one marked section per area.
+// [section photos] owner: photos
+const PHOTOS_PORT: Assignable<StoreOf<typeof PHOTOS_MODULE>, NonNullable<ContentPort['photos']>> = true;
+// [end photos]
+// [section pois] owner: pois
+const POIS_PORT: Assignable<StoreOf<typeof POIS_MODULE>, NonNullable<ContentPort['pois']>> = true;
+
+describe('the photos and places ports', () => {
+    it('happyPath_thePhotosAndPlacesStoresSatisfyTheirPagesPorts', () => {
+        expect([PHOTOS_PORT, POIS_PORT]).toEqual([true, true]);
+    });
+});
+// [end pois]
+// [section layers] owner: layers-settings
+const LAYERS_PORT: Assignable<StoreOf<typeof layersModule>, NonNullable<ContentPort['layers']>> = true;
+// [end layers]
+// [section settings] owner: layers-settings
+const SETTINGS_PORT: Assignable<StoreOf<ReturnType<typeof settingsModule>>, NonNullable<ContentPort['settings']>> = true;
+
+describe('the layers and settings ports', () => {
+    it('happyPath_theLayersAndSettingsStoresSatisfyTheirPagesPorts', () => {
+        expect([LAYERS_PORT, SETTINGS_PORT]).toEqual([true, true]);
+    });
+});
+// [end settings]
+// [section ops] owner: ops-screens
+const OPS_PORTS: readonly true[] = [
+    true satisfies Assignable<StoreOf<typeof ADMINS_MODULE>, NonNullable<ContentPort['admins']>>,
+    true satisfies Assignable<StoreOf<typeof HISTORY_MODULE>, NonNullable<ContentPort['history']>>,
+    true satisfies Assignable<StoreOf<typeof JOBS_MODULE>, NonNullable<ContentPort['jobs']>>,
+    true satisfies Assignable<StoreOf<typeof CRASHES_MODULE>, NonNullable<ContentPort['crashes']>>,
+    true satisfies Assignable<StoreOf<typeof HOME_MODULE>, NonNullable<ContentPort['home']>>,
+];
+// [end ops]
+
 describe('the admin ports', () => {
     it('happyPath_theAppAndItsStateSatisfyTheElementsPorts', () => {
         expect([APP_SATISFIES_PORT, MISSING_CONFIG_APP_SATISFIES_PORT, STATES_MIRRORED, ROUTES_MIRRORED, PAGE_GETS_THE_APP]).toEqual([
@@ -31,6 +79,7 @@ describe('the admin ports', () => {
             true,
         ]);
         expect(ADMIN_AUTH_STATES).toHaveLength(13);
-        expect(ADMIN_ROUTES).toHaveLength(9);
+        expect(ADMIN_ROUTES).toHaveLength(10);
+        expect(OPS_PORTS).toHaveLength(5);
     });
 });

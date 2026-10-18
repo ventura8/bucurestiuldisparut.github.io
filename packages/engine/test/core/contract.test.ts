@@ -4,6 +4,7 @@
  */
 import type { Locale, MapView, MessageKey, Overlay } from '@hcm/shared';
 import type { WindowClass } from '@hcm/ui';
+import { PHOTOS_OVERLAY_ID, type MapErrorKind, type MapEventMap, type MapPort, type PhotoPointProperties } from '@hcm/ui/map';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { initialState, type Toast } from '../../src/core/state.js';
@@ -19,7 +20,6 @@ import {
     type ViewerStatus,
     type ViewerStore,
 } from '../../src/core/store.js';
-import { PHOTOS_OVERLAY_ID, type MapErrorKind, type MapEventMap, type MapPort, type PhotoPointProperties } from '../../src/map/map-port.js';
 import type { TelemetryWindow } from '../../src/telemetry/telemetry.js';
 import type { ConsentState, TelemetryPort } from '../../src/telemetry/telemetry-port.js';
 

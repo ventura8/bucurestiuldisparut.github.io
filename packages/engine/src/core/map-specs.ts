@@ -20,7 +20,6 @@ import {
     type Poi,
     type PoiCategory,
 } from '@hcm/shared';
-
 import type {
     MapOptions,
     PhotoConeFeature,
@@ -29,7 +28,8 @@ import type {
     PoiFeature,
     RasterLayerSpec,
     VectorOverlaySpec,
-} from '../map/map-port.js';
+} from '@hcm/ui/map';
+
 import { photosNearYear } from './timeline.js';
 
 /** Length of a view cone's sides on the map, in metres (a drawing choice, `ViewCone.distanceM`). */

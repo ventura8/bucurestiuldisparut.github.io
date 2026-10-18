@@ -30,6 +30,7 @@ import {
     reprocessPhotoResponseSchema,
 } from './content.js';
 import { revertRequestSchema, revertResponseSchema } from './history.js';
+import { layerDeleteRequestSchema, layerDeleteResponseSchema, layerLinkRequestSchema, layerLinkResponseSchema } from './layers.js';
 import {
     analyticsConfigRequestSchema,
     analyticsConfigResponseSchema,
@@ -122,6 +123,8 @@ export const CALLABLES = {
     'setup.analyticsConfig': adminCallable('fn-setup', analyticsConfigRequestSchema, analyticsConfigResponseSchema),
     'publish.rebuildManifest': adminCallable('fn-content', rebuildManifestRequestSchema, rebuildManifestResponseSchema),
     'photos.reprocess': adminCallable('fn-content', reprocessPhotoRequestSchema, reprocessPhotoResponseSchema),
+    'layers.delete': adminCallable('fn-content', layerDeleteRequestSchema, layerDeleteResponseSchema, 'consume'),
+    'layers.link': adminCallable('fn-content', layerLinkRequestSchema, layerLinkResponseSchema),
 } as const satisfies Readonly<Record<string, CallableSpec>>;
 
 export type CallableName = keyof typeof CALLABLES;

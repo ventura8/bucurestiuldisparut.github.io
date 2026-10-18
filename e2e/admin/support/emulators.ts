@@ -111,6 +111,22 @@ export class EmulatorWorld {
         await ok(response, `claims of ${uid}`);
     }
 
+    /** An account's custom claims and the time before which its sessions are revoked (`validSince`, seconds). */
+    async account(uid: string): Promise<{ readonly claims: Readonly<Record<string, unknown>>; readonly validSince: number }> {
+        const response = await this.#api.post(`${AUTH}/projects/${E2E_PROJECT_ID}/accounts:lookup`, {
+            headers: EMULATOR_ADMIN,
+            data: { localId: [uid] },
+        });
+        const body = (await (await ok(response, `lookup of ${uid}`)).json()) as {
+            readonly users?: readonly { readonly customAttributes?: string; readonly validSince?: string }[];
+        };
+        const [user] = body.users ?? [];
+        return {
+            claims: JSON.parse(user?.customAttributes ?? '{}') as Readonly<Record<string, unknown>>,
+            validSince: Number(user?.validSince ?? '0'),
+        };
+    }
+
     /** Writes a whole document (`setup/owner`, `admins/<uid>`), bypassing the rules. */
     async setDocument(path: string, data: Readonly<Record<string, unknown>>): Promise<void> {
         const response = await this.#api.patch(`${FIRESTORE_DOCUMENTS}/${path}`, {
@@ -146,6 +162,12 @@ export class EmulatorWorld {
         await ok(response, 'ops.tick (restart the emulators if the functions were reloaded)');
     }
 
+    /** Deletes a document as another admin or the server would (the history trigger records it), bypassing the rules. */
+    async deleteDocument(path: string): Promise<void> {
+        const response = await this.#api.delete(`${FIRESTORE_DOCUMENTS}/${path}`, { headers: EMULATOR_ADMIN });
+        await ok(response, `delete of ${path}`);
+    }
+
     /** A document's data, or undefined when it does not exist. */
     async document(path: string): Promise<Record<string, unknown> | undefined> {
         const response = await this.#api.get(`${FIRESTORE_DOCUMENTS}/${path}`, { headers: EMULATOR_ADMIN });
@@ -154,6 +176,19 @@ export class EmulatorWorld {
         }
         const body = (await (await ok(response, `read of ${path}`)).json()) as { readonly fields?: FirestoreFields };
         return decodeFields(body.fields ?? {});
+    }
+
+    /**
+     * An object of the Storage emulator's bucket `bucket` (`demo-hcm-public`: what the viewer reads), read past the rules,
+     * or undefined when it does not exist. A gzip-encoded object (the manifest) comes back as it is stored.
+     */
+    async storageObject(bucket: string, path: string): Promise<Buffer | undefined> {
+        const url = `${emulatorOrigin('storage')}/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media`;
+        const response = await this.#api.get(url, { headers: EMULATOR_ADMIN });
+        if (response.status() === 404) {
+            return undefined;
+        }
+        return (await ok(response, `read of gs://${bucket}/${path}`)).body();
     }
 
     /** Every document of a collection (`cities/bucharest/photos`), by id, read past the rules. */

@@ -7,7 +7,10 @@
  * a landmark: a panel, the loading indicator, the start-up banner, the page and the snackbar are in `<main>`, beside the
  * navigation and the top app bar (`banner`); only the page scrolls, and the snackbar takes its own place below it
  * (shell-styles.ts). It applies the city's theme (or a live preview, or the kit's baseline) to itself and keeps
- * `<html lang>` on the admin's language.
+ * `<html lang>` on the admin's language. An editor page asks for its full-screen editor on a compact window or a
+ * landscape phone (`hcm-chrome` `{chrome: 'editor'}`, `docs/research/M2c-interfaces.md` §1.3): the navigation bar (or
+ * the landscape rail) hides while it shows, for that page only. A notice with an action (an editor's Undo) shows it in
+ * the snackbar.
  */
 import { DEFAULT_LOCALE, translate, type AdminShellKey, type Locale, type ThemeTokens } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
@@ -17,9 +20,10 @@ import { WindowClassController, type WindowSize } from '../../layout/window-clas
 import { applyTheme, type ThemeMode } from '../../theme/apply.js';
 import { BASELINE_THEME } from '../../theme/baseline.js';
 import type { WindowClass } from '../../theme/tokens.js';
-import type { AdminAppPort, AdminAuthStatePort, AdminStatePort } from '../admin-port.js';
+import type { AdminAppPort, AdminAuthStatePort, AdminRouteIdPort, AdminStatePort } from '../admin-port.js';
+import type { PageChrome } from '../editing/hcm-list-detail.js';
 import { EMPTY } from './empty.js';
-import { noticeOf, shellText } from './text.js';
+import { contentText, noticeOf, shellText } from './text.js';
 import type { AdminNavVariant } from './hcm-admin-nav.js';
 import { shellStyles } from './shell-styles.js';
 
@@ -94,11 +98,16 @@ export class HcmAdminShell extends LitElement {
     });
     #subscribed: { readonly app: AdminAppPort; readonly stop: () => void } | null = null;
     #theme: { readonly tokens: ThemeTokens; readonly mode: ThemeMode } | null = null;
+    /** The chrome the current page asked for, and for which route (a page that is gone cannot ask back). */
+    #chrome: { readonly chrome: PageChrome; readonly route: AdminRouteIdPort } | null = null;
 
     constructor() {
         super();
         this.app = null;
         this.state = null;
+        this.addEventListener('hcm-chrome', (event) => {
+            this.#setChrome((event as CustomEvent<{ readonly chrome: PageChrome }>).detail.chrome);
+        });
     }
 
     override connectedCallback(): void {
@@ -154,6 +163,20 @@ export class HcmAdminShell extends LitElement {
         this.#subscribed = null;
     }
 
+    #setChrome(chrome: PageChrome): void {
+        const route = this.state?.route.id;
+        if (route !== undefined) {
+            this.#chrome = { chrome, route };
+            this.requestUpdate();
+        }
+    }
+
+    /** The full-screen editor hides the compact bar, or the landscape phone's rail. */
+    #hidesNav(state: AdminStatePort, layout: ShellLayout): boolean {
+        const editor = this.#chrome?.chrome === 'editor' && this.#chrome.route === state.route.id;
+        return editor && (layout.nav === 'bar' || !layout.topBar);
+    }
+
     #applyTheme(state: AdminStatePort): void {
         const theme = { tokens: themeTokensOf(state), mode: state.theme.mode };
         const last = this.#theme;
@@ -182,9 +205,12 @@ export class HcmAdminShell extends LitElement {
         return panels[screen]();
     }
 
-    #frame(state: AdminStatePort): TemplateResult {
-        const layout = shellLayout(this.#size.size);
-        const nav = html`<hcm-admin-nav
+    /** The navigation for the layout, or nothing while a compact full-screen editor shows. */
+    #nav(state: AdminStatePort, layout: ShellLayout): TemplateResult {
+        if (this.#hidesNav(state, layout)) {
+            return EMPTY;
+        }
+        return html`<hcm-admin-nav
             .destinations=${state.destinations}
             .current=${state.route.id}
             .variant=${layout.nav}
@@ -193,18 +219,26 @@ export class HcmAdminShell extends LitElement {
         >
             ${layout.topBar ? EMPTY : html`<hcm-account-menu slot="foot" .app=${this.app} .state=${state}></hcm-account-menu>`}
         </hcm-admin-nav>`;
-        return html`<div class="frame" data-nav=${layout.nav}>
-            ${layout.nav === 'bar' ? EMPTY : nav}
-            <div class="column">
-                ${layout.topBar ? this.#topBar(state) : EMPTY}
-                <main class="content">
-                    <div class="scroller">${this.#banner(state)}<hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet></div>
-                    ${this.#snackbar(state)}
-                </main>
-                ${this.#consent(state)}
+    }
+
+    #frame(state: AdminStatePort): TemplateResult {
+        const layout = shellLayout(this.#size.size);
+        const shown = this.#nav(state, layout);
+        return html`<div class="frame" data-nav=${this.#hidesNav(state, layout) ? 'none' : layout.nav}>
+                ${layout.nav === 'bar' ? EMPTY : shown}
+                <div class="column">
+                    ${layout.topBar ? this.#topBar(state) : EMPTY}
+                    <main class="content">
+                        <div class="scroller">
+                            ${this.#banner(state)}<hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet>
+                        </div>
+                        ${this.#snackbar(state)}
+                    </main>
+                    ${this.#consent(state)}
+                </div>
+                ${layout.nav === 'bar' ? shown : EMPTY}
             </div>
-            ${layout.nav === 'bar' ? nav : EMPTY}
-        </div>`;
+            ${this.#leaving(state)}`;
     }
 
     #topBar(state: AdminStatePort): TemplateResult {
@@ -218,6 +252,27 @@ export class HcmAdminShell extends LitElement {
         return state.auth === 'bootstrap'
             ? html`<p class="banner" role="note">${shellText(state.locale, 'adminShell.bootstrap.banner')}</p>`
             : EMPTY;
+    }
+
+    /** "Discard your changes?" before leaving an edit that is not saved (Keep editing has the focus). */
+    #leaving(state: AdminStatePort): TemplateResult {
+        const keep = (): void => {
+            this.app?.intents.stayOnPage();
+        };
+        const leave = (): void => {
+            void this.app?.intents.leavePage();
+        };
+        return html`<hcm-confirm-dialog
+            destructive
+            .open=${(state.leaving ?? null) !== null}
+            .headline=${contentText(state.locale, 'adminContent.common.unsavedTitle')}
+            .body=${contentText(state.locale, 'adminContent.common.unsavedBody')}
+            .confirmLabel=${contentText(state.locale, 'adminContent.common.discard')}
+            .cancelLabel=${contentText(state.locale, 'adminContent.common.keepEditing')}
+            .closeLabel=${contentText(state.locale, 'adminContent.common.close')}
+            @hcm-confirm=${leave}
+            @hcm-cancel=${keep}
+        ></hcm-confirm-dialog>`;
     }
 
     /** The analytics consent banner, while GA4 is configured and the admin has not answered. */
@@ -243,11 +298,17 @@ export class HcmAdminShell extends LitElement {
         const dismiss = (): void => {
             this.app?.intents.dismissNotice();
         };
+        const action = state.notice?.action;
+        const act = (): void => {
+            action?.run();
+        };
         return html`<hcm-snackbar
             data-layout-check="snackbar"
             .message=${noticeOf(state.locale, state.notice)}
+            .actionLabel=${action === undefined ? '' : contentText(state.locale, action.key)}
             .closeLabel=${shellText(state.locale, 'adminShell.notice.close')}
-            .timeoutMs=${8000}
+            .timeoutMs=${action === undefined ? 8000 : 10_000}
+            @hcm-action=${act}
             @hcm-dismiss=${dismiss}
         ></hcm-snackbar>`;
     }

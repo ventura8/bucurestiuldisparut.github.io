@@ -2,7 +2,10 @@
  * `<hcm-page-outlet>`: where the shell shows the current route's page (`docs/research/M2b-interfaces.md` §1.1). The page
  * registry of the app names the page's element once its module is loaded (`app.loadPage`); the outlet creates it and
  * sets `app` and `state` on it at every change. A route without a page (Setup before setup-ui's page is wired, a page
- * whose module failed to load) shows a short note instead of an empty screen.
+ * whose module failed to load) shows a short note instead of an empty screen. A page whose class declares
+ * `static fillsPage = true` (the editors' list and detail pages, `docs/research/M2c-interfaces.md` §1.3) is given the
+ * page area's whole height: the outlet reflects `fill`, the shell stops scrolling the page area, and the page scrolls
+ * its own panes.
  */
 import { LitElement, css, html, type TemplateResult } from 'lit';
 
@@ -13,6 +16,11 @@ import { shellText } from './text.js';
 export const HCM_PAGE_OUTLET_TAG = 'hcm-page-outlet';
 
 type Loaded = { readonly route: AdminRouteIdPort; readonly page: AdminPageElement | null } | null;
+
+/** True when the page's class asks for the page area's whole height (CR-M2c-8). */
+export function fillsPage(page: Element | null): boolean {
+    return (page?.constructor as { readonly fillsPage?: unknown } | undefined)?.fillsPage === true;
+}
 
 export class HcmPageOutlet extends LitElement {
     static override readonly properties = {
@@ -26,6 +34,17 @@ export class HcmPageOutlet extends LitElement {
         css`
             :host {
                 display: block;
+            }
+
+            :host([fill]) {
+                display: flex;
+                flex-direction: column;
+                min-block-size: 0;
+            }
+
+            :host([fill]) > * {
+                flex: 1 1 auto;
+                min-block-size: 0;
             }
 
             .note {
@@ -58,6 +77,7 @@ export class HcmPageOutlet extends LitElement {
             page.app = this.app;
             page.state = this.state;
         }
+        this.toggleAttribute('fill', fillsPage(page));
     }
 
     override render(): TemplateResult {

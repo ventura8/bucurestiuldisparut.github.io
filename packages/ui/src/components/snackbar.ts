@@ -2,7 +2,7 @@ import { LitElement, css, html, nothing, type PropertyValues, type TemplateResul
 
 import { defineHcmIconButton } from './icon-button.js';
 import { defineOnce, emit } from './internal.js';
-import { baseStyles, focusRing, stateLayer, typeStyles, visuallyHidden } from './styles.js';
+import { baseStyles, focusRing, stateLayer, touchTarget, typeStyles, visuallyHidden } from './styles.js';
 
 export const HCM_SNACKBAR_TAG = 'hcm-snackbar';
 
@@ -36,6 +36,7 @@ export class HcmSnackbar extends LitElement {
         baseStyles,
         focusRing,
         stateLayer,
+        touchTarget,
         typeStyles,
         visuallyHidden,
         css`
@@ -75,7 +76,10 @@ export class HcmSnackbar extends LitElement {
                 padding-block: 14px;
             }
 
+            /* The action keeps its label whole and its 48 px target (an editor's Undo on a phone, CR-M2c-17). */
             .action {
+                flex: none;
+                min-width: 48px;
                 height: 40px;
                 padding-inline: 12px;
                 border: none;
@@ -163,7 +167,7 @@ export class HcmSnackbar extends LitElement {
             ${
                 this.actionLabel === ''
                     ? nothing
-                    : html`<button class="action interactive label-large" @click=${this.onAction}>${this.actionLabel}</button>`
+                    : html`<button class="action interactive touch-target label-large" @click=${this.onAction}>${this.actionLabel}</button>`
             }
             <hcm-icon-button icon="close" label=${this.closeLabel} @click=${this.onClose}></hcm-icon-button>
         </div>`;

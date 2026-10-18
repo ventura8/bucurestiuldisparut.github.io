@@ -1,0 +1,155 @@
+/**
+ * The layers page's map (`docs/research/M2c-interfaces.md` §3.5, §5.2, §8.1): one map per page visit, created when the
+ * page shows its map host (`hcm-admin-map`) and the city's frame is known, destroyed when the page goes. It draws the
+ * open layer above the Standard basemap as saved, and the editor's draft overrides it live through the map's preview
+ * (`PreviewLayer`): opacity and image adjustments, never a write. The admin map is always Standard: Satellite is never
+ * loaded (§3.4).
+ */
+import { bboxCenter, bboxFromRecord, roundTo, type BBox, type CityDoc, type LayerDoc, type Locale, type MapView } from '@hcm/shared';
+import type { RasterLayerSpec } from '@hcm/ui/map';
+
+import type { AdminMapFactory, AdminMapHandle, AdminMapResult } from '../map/factory.js';
+import type { PreviewLayer } from './preview.js';
+
+export type MapStatus = 'none' | 'loading' | 'ready' | 'no-token' | 'no-webgl' | 'failed';
+
+/** What a new map needs of the city: its bounds and its start view. */
+export interface CityFrame {
+    readonly bounds: BBox;
+    readonly view: MapView;
+}
+
+/** The manifest's default start zoom for a city without one. */
+const DEFAULT_ZOOM = 13;
+
+export function frameOf(city: CityDoc): CityFrame {
+    const bounds = bboxFromRecord(city.bounds);
+    const center = city.center === undefined ? bboxCenter(bounds) : ([city.center.lng, city.center.lat] as const);
+    return { bounds, view: { center, zoom: city.zoom ?? DEFAULT_ZOOM, bearing: 0 } };
+}
+
+/** The open layer as the map draws it (shown, whatever its "shown at start"; the draft's look comes as a preview). */
+export function rasterOf(id: string, layer: LayerDoc): RasterLayerSpec {
+    return {
+        id,
+        source: layer.source,
+        minzoom: layer.minzoom,
+        maxzoom: layer.maxzoom,
+        ...(layer.bounds === undefined ? {} : { bounds: bboxFromRecord(layer.bounds) }),
+        visible: true,
+        opacity: layer.opacity,
+        ...(layer.adjustments === undefined ? {} : { adjustments: layer.adjustments }),
+        order: layer.order,
+        attribution: layer.attribution ?? '',
+    };
+}
+
+export interface AreaMapDeps {
+    readonly maps: AdminMapFactory | null;
+    readonly locale: () => Locale;
+    readonly preview: PreviewLayer;
+    readonly status: (status: MapStatus) => void;
+}
+
+export class AreaMap {
+    readonly #deps: AreaMapDeps;
+    #container: HTMLElement | null = null;
+    #frame: CityFrame | null = null;
+    #handle: AdminMapHandle | null = null;
+    #layers: readonly RasterLayerSpec[] = [];
+    /** Bumped by every attach and detach: a slower create of an older host is dropped. */
+    #generation = 0;
+
+    constructor(deps: AreaMapDeps) {
+        this.#deps = deps;
+    }
+
+    /** The page shows its map host (a new host replaces the old map). */
+    attach(container: HTMLElement): void {
+        if (container !== this.#container) {
+            this.detach();
+            this.#container = container;
+            void this.#create();
+        }
+    }
+
+    /** The city's bounds and view (the map waits for them). */
+    setFrame(frame: CityFrame): void {
+        const first = this.#frame === null;
+        this.#frame = frame;
+        if (first) {
+            void this.#create();
+        }
+    }
+
+    /** The saved layers the map draws (the open one; none on the list alone). */
+    show(layers: readonly RasterLayerSpec[]): void {
+        this.#layers = layers;
+        this.#handle?.preview.show({ layers });
+    }
+
+    zoomBy(delta: number): void {
+        const port = this.#handle?.port;
+        if (port !== undefined) {
+            const view = port.getView();
+            port.flyTo({ zoom: roundTo(view.zoom + delta, 2) });
+        }
+    }
+
+    /** The page went: the map is destroyed, the previews forgotten. */
+    detach(): void {
+        this.#generation += 1;
+        this.#container = null;
+        this.#deps.preview.attach(null);
+        this.#handle?.destroy();
+        this.#handle = null;
+        this.#deps.status('none');
+    }
+
+    async #create(): Promise<void> {
+        const request = this.#request();
+        if (request === null) {
+            return;
+        }
+        const generation = this.#generation;
+        this.#deps.status('loading');
+        const { container, frame, maps } = request;
+        this.#created(await maps.create(container, { bounds: frame.bounds, view: frame.view, locale: this.#deps.locale() }), generation);
+    }
+
+    /** What a new map needs, once the page shows the host and the city is known; null before (or with a map already). */
+    #request(): { readonly container: HTMLElement; readonly frame: CityFrame; readonly maps: AdminMapFactory } | null {
+        const { maps } = this.#deps;
+        const container = this.#container;
+        const frame = this.#frame;
+        if (container === null || frame === null || this.#handle !== null) {
+            return null;
+        }
+        if (maps === null) {
+            this.#deps.status('failed');
+            return null;
+        }
+        return { container, frame, maps };
+    }
+
+    #created(result: AdminMapResult, generation: number): void {
+        if (generation !== this.#generation) {
+            this.#discard(result);
+            return;
+        }
+        if (!result.ok) {
+            this.#deps.status(result.reason);
+            return;
+        }
+        this.#handle = result.map;
+        result.map.preview.show({ layers: this.#layers });
+        this.#deps.preview.attach(result.map.preview);
+        this.#deps.status('ready');
+    }
+
+    #discard(result: AdminMapResult): void {
+        if (result.ok) {
+            result.map.destroy();
+        }
+    }
+}

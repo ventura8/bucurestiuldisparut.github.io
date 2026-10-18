@@ -20,6 +20,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { recordHistory, type DocumentChange } from '../../src/history/record.js';
 import { revertFunction } from '../../src/history/revert.js';
 import { callableRequest, failureOf, googleToken, openEmulators, sorted, type World } from '../admin/world.js';
+import { contentDeps } from '../publish/fakes.js';
 
 const emulators = openEmulators('fn-history-revert');
 
@@ -88,7 +89,7 @@ function expectDocument(actual: object | undefined, expected: object): void {
 }
 
 function revert(world: World, data: unknown) {
-    return revertFunction(() => world).run(
+    return revertFunction(() => ({ ...world, blobs: contentDeps().blobs })).run(
         callableRequest(data, { uid: ADMIN, token: googleToken('admin@example.test', { admin: true }) }),
     );
 }

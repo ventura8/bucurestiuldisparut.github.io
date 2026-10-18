@@ -46,6 +46,27 @@ export type {
 export { HISTORY_KEEP, historyEntryId, historyEntryIdSchema, revertRequestSchema, revertResponseSchema } from './history.js';
 export type { RevertRequest, RevertResponse } from './history.js';
 export {
+    LAYER_DELETE_GRACE_DAYS,
+    LINKABLE_SOURCE_TYPES,
+    freeOverlayId,
+    layerDeleteParamsSchema,
+    layerDeleteRequestSchema,
+    layerDeleteResponseSchema,
+    layerLinkRequestSchema,
+    layerLinkResponseSchema,
+    layerSourceRefusal,
+    sourceOrigins,
+    tilesetOwnerOf,
+} from './layers.js';
+export type {
+    LayerDeleteParams,
+    LayerDeleteRequest,
+    LayerDeleteResponse,
+    LayerLinkRequest,
+    LayerLinkResponse,
+    LayerSourceRefusal,
+} from './layers.js';
+export {
     MAPBOX_BOOTSTRAP_SCOPES,
     MAPBOX_PUBLIC_SCOPES,
     MAPBOX_TILES_SCOPES,

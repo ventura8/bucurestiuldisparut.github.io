@@ -6,22 +6,28 @@
  */
 import './admin.css';
 
-import { createLogger, type Logger } from '@hcm/shared';
+import { CITY_ID_PATTERN, createLogger, type Logger } from '@hcm/shared';
 import { installFonts, type FontFaceConstructor } from '@hcm/ui';
-import { HCM_ADMINS_PAGE_TAG, SETUP_PAGE_TAGS, defineAdminElements, defineSetupElements, type HcmAdminShell } from '@hcm/ui/admin';
+import { EDITOR_PAGE_TAGS, SETUP_PAGE_TAGS, defineAdminElements, defineSetupElements, type HcmAdminShell } from '@hcm/ui/admin';
 
 import { bootAdmin, type BootEnvironment } from './app/boot.js';
+import { loadColor, themeFromSeed } from './app/color.js';
+import { areaServices } from './app/content-wiring.js';
 import { documentVisibility, webStorage, windowClock, windowLocation, type LocationWindow } from './app/browser.js';
 import type { Clock, HashLocation, KeyValueStore } from './app/ports.js';
 import type { AdminRuntime, FirebaseWebConfig } from './app/config.js';
 import { errorEndpointFor, installErrorHooks, AdminErrorReporter } from './app/errors.js';
-import type { AdminDeps, TelemetryView } from './app/mount.js';
+import type { AdminApp, AdminDeps, TelemetryView } from './app/mount.js';
 import type { AdminProject, SetupModuleSpec } from './app/services.js';
 import { setupModuleFor } from './app/setup-wiring.js';
 import { AdminTelemetry, expireAnalyticsCookies } from './app/telemetry.js';
 import { createGoogleAuth, type PopupSignIn } from './auth/google-auth.js';
 import { createStandInPopup } from './auth/stand-in.js';
+import type { ContentModules } from './content/areas.js';
+import type { ContentDeps } from './content/registry.js';
 import { createAnalytics, type AnalyticsPort } from './firebase/analytics.js';
+import { contentStore } from './firebase/content.js';
+import { contentSdk } from './firebase/content-sdk.js';
 import { credentialSignIn, firebasePopup, firebasePorts } from './firebase/adapters.js';
 import type { FirebasePorts } from './firebase/ports.js';
 import type { ProjectConfig } from './provision/project-config.js';
@@ -30,6 +36,28 @@ import type { SetupState } from './setup/state.js';
 import { initFirebase, loadAnalyticsSdk, type FirebaseHandles } from './firebase/app.js';
 import { firebaseSdk } from './firebase/sdk.js';
 import { PageRegistry, type PageLoader } from './routing/pages.js';
+// The editor areas' modules, one marked section per area (§11.2).
+// [section photos] owner: photos
+import { PHOTOS_MODULE } from './photos/module.js';
+// [end photos]
+// [section pois] owner: pois
+import { POIS_MODULE } from './pois/pois.js';
+// [end pois]
+// [section layers] owner: layers-settings
+import { layersModule } from './layers/layers.js';
+// [end layers]
+// [section settings] owner: layers-settings
+import { colorLibrary } from './app/color.js';
+import { settingsModule } from './settings/settings.js';
+import { contrastPasses } from './settings/theme.js';
+// [end settings]
+// [section ops] owner: ops-screens
+import { ADMINS_MODULE } from './admins/admins.js';
+import { CRASHES_MODULE } from './crashes/crashes.js';
+import { HISTORY_MODULE } from './history/history.js';
+import { HOME_MODULE } from './home/home.js';
+import { JOBS_MODULE } from './jobs/jobs.js';
+// [end ops]
 import type { AdminRouteId } from './routing/routes.js';
 
 export type { AdminApp, AdminDeps, AdminIntents } from './app/mount.js';
@@ -37,13 +65,40 @@ export type { SetupModuleSpec, ShellServices } from './app/services.js';
 
 /** The pages besides Setup's: a later workstream registers its own (`registerAdminPage`). */
 const PAGES = new PageRegistry();
-PAGES.register('admins', () => Promise.resolve(HCM_ADMINS_PAGE_TAG));
-for (const id of ['setup', 'crashes'] as const) {
-    PAGES.register(id, () => {
-        defineSetupElements();
-        return Promise.resolve(SETUP_PAGE_TAGS[id]);
-    });
+PAGES.register('setup', () => {
+    defineSetupElements();
+    return Promise.resolve(SETUP_PAGE_TAGS.setup);
+});
+/** The editors' area modules (`docs/research/M2c-interfaces.md` §2.1), one per area, set in the sections below. */
+const CONTENT: { -readonly [Area in keyof ContentModules]: ContentModules[Area] } = {};
+// The M2c editors' pages (docs/research/M2c-interfaces.md §11.2): one marked section per area; a workstream registers
+// its pages and its content module inside its own section only and never moves the markers.
+// [section photos] owner: photos
+CONTENT.photos = PHOTOS_MODULE;
+PAGES.register('photos', () => Promise.resolve(EDITOR_PAGE_TAGS.photos));
+// [end photos]
+// [section pois] owner: pois
+CONTENT.pois = POIS_MODULE;
+PAGES.register('pois', () => Promise.resolve(EDITOR_PAGE_TAGS.pois));
+// [end pois]
+// [section layers] owner: layers-settings
+CONTENT.layers = layersModule;
+PAGES.register('layers', () => Promise.resolve(EDITOR_PAGE_TAGS.layers));
+// [end layers]
+// [section settings] owner: layers-settings
+CONTENT.settings = settingsModule({ passes: contrastPasses((tokens, minimum) => colorLibrary().contrastIssues(tokens, minimum)) });
+PAGES.register('settings', () => Promise.resolve(EDITOR_PAGE_TAGS.settings));
+// [end settings]
+// [section ops] owner: ops-screens (admins, history, jobs, crash reports, the dashboard)
+CONTENT.home = HOME_MODULE;
+CONTENT.admins = ADMINS_MODULE;
+CONTENT.history = HISTORY_MODULE;
+CONTENT.jobs = JOBS_MODULE;
+CONTENT.crashes = CRASHES_MODULE;
+for (const id of ['home', 'admins', 'history', 'jobs', 'crashes'] as const) {
+    PAGES.register(id, () => Promise.resolve(EDITOR_PAGE_TAGS[id]));
 }
+// [end ops]
 
 /** Adds a page to the shell (imported lazily when its route opens). */
 export function registerAdminPage(id: AdminRouteId, load: PageLoader): void {
@@ -70,16 +125,24 @@ function testIdOf(win: AdminWindow): string {
 }
 
 /** Google's popup through Firebase, or the e2e stand-in's page. */
-/** What only the `e2e` build carries: the OAuth stand-in; the Firebase emulators come with it. */
+/** What only the `e2e` build carries: the OAuth stand-in and the per-test city; the Firebase emulators come with it. */
 export interface E2eKit {
     readonly standInPopup: typeof createStandInPopup;
+    /** The address's `?city=` (a test's own city, CR-M2c-7), or null. */
+    readonly city: (search: string) => string | null;
+}
+
+/** The `?city=` of the `e2e` build's address: a valid city id, else null (the project's first city). */
+export function e2eCity(search: string): string | null {
+    const city = new URLSearchParams(search).get('city');
+    return city !== null && CITY_ID_PATTERN.test(city) ? city : null;
 }
 
 /**
  * The kit of the `e2e` build, null in production: the mode is a constant for the bundler, so the production bundle
- * carries no stand-in.
+ * carries no stand-in and no city override.
  */
-export const E2E_KIT: E2eKit | null = import.meta.env.MODE === 'e2e' ? { standInPopup: createStandInPopup } : null;
+export const E2E_KIT: E2eKit | null = import.meta.env.MODE === 'e2e' ? { standInPopup: createStandInPopup, city: e2eCity } : null;
 
 function popupFor(win: AdminWindow, handles: FirebaseHandles, e2e: E2eKit | null, clock: Clock): PopupSignIn {
     if (e2e === null) {
@@ -200,6 +263,27 @@ function setupFor(setup: SetupParts, project: ProjectConfig | null): SetupModule
     });
 }
 
+/** Loads the colour library `services.theme` uses (in the browser only: Node cannot load it, `app/color.ts`). */
+export function loadColourLibrary(
+    log: Logger,
+    load: Parameters<typeof loadColor>[0] = () => import('@hcm/ui/dynamic-color'),
+): Promise<void> {
+    return loadColor(load).catch((error: unknown) => {
+        log.error('the colour library did not load', { error: String(error) });
+    });
+}
+
+/** The editors' dependencies over the real Firestore (`docs/research/M2c-interfaces.md` §2.2). */
+export function contentDepsFor(parts: BrowserParts, handles: FirebaseHandles, fetcher: typeof fetch): ContentDeps {
+    return {
+        modules: CONTENT,
+        store: contentStore({ sdk: contentSdk, firestore: handles.firestore, uid: () => handles.auth.currentUser?.uid ?? null }),
+        theme: themeFromSeed,
+        areas: areaServices({ handles, fetch: fetcher }),
+        cityId: parts.e2e?.city(parts.win.location.search) ?? null,
+    };
+}
+
 /** Every dependency of `mount` but the configuration, from the real browser and Firebase. */
 export function browserDeps(parts: BrowserParts): BootEnvironment<EntrySetup, EntryIntents>['build'] {
     const { win, e2e, log, clock } = parts;
@@ -215,6 +299,7 @@ export function browserDeps(parts: BrowserParts): BootEnvironment<EntrySetup, En
             pages: PAGES,
             telemetry: telemetryFor(parts, handles, config, runtime.release),
             setup: setupFor({ parts, config, firebase, fetch: fetcher }, project),
+            content: contentDepsFor(parts, handles, fetcher),
         };
     };
 }
@@ -230,6 +315,19 @@ export async function startAdmin(parts: BrowserParts, shell: Pick<HcmAdminShell,
         build: browserDeps(parts),
     });
     shell.app = app;
+    guardUnload(parts.win, app);
+}
+
+/**
+ * Reloading or closing the tab with an edit that is not saved: the browser's own question (`docs/research/M2c-interfaces.md`
+ * §2.4). The listener asks the app each time; it prevents nothing while no area holds an unsaved edit.
+ */
+export function guardUnload(win: Pick<AdminWindow, 'addEventListener'>, app: Pick<AdminApp<unknown, unknown>, 'hasUnsavedChanges'>): void {
+    win.addEventListener('beforeunload', (event: Event) => {
+        if (app.hasUnsavedChanges()) {
+            event.preventDefault();
+        }
+    });
 }
 
 /** What the auto-start needs of the global scope (absent in Node). */
@@ -250,6 +348,7 @@ export function autoStart(scope: AdminScope, win: AdminWindow, e2e: E2eKit | nul
     }
     defineAdminElements(registry);
     installFonts(doc, 'fonts/', Face);
+    void loadColourLibrary(log);
     const start = (): void => {
         const shell = doc.querySelector('hcm-admin-shell') ?? doc.body.appendChild(doc.createElement('hcm-admin-shell'));
         void startAdmin(browserParts(win, e2e, log), shell);

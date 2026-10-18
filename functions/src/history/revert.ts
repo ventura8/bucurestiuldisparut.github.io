@@ -27,8 +27,9 @@ import { defineCallable, type CallableDeps } from '../api/callable.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { changedKeys, type Fields } from './diff.js';
+import { cancelLayerDeletes, reprocessIfSwept, waitingLayerDeletes, type RestoreDeps } from './restore.js';
 
-export type RevertDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
+export type RevertDeps = Pick<Ports, 'documents' | 'clock' | 'log'> & RestoreDeps;
 
 /** Each audited entity's document schema: a restored version must pass today's schema before it is written. */
 const SCHEMAS: Readonly<Record<HistoryEntity, Schema<Fields>>> = {
@@ -46,6 +47,8 @@ interface Revert {
     readonly entryId: string;
     readonly caller: VerifiedCaller;
     readonly now: Date;
+    /** A restored layer's `layer-delete` jobs still waiting, cancelled with the restore (CR-M2c-5). */
+    readonly cancel: readonly string[];
 }
 
 /** The version an entry kept: a missing entry → `history.notFound`, a create's entry (nothing before it) → `nothingToRestore`. */
@@ -106,15 +109,23 @@ async function restore(transaction: DocumentTransaction, revert: Revert): Promis
     const current = await transaction.get(path, SCHEMAS[audited.entity]);
     const restored = checkedVersion(audited.entity, restoredVersion(revert, previous, current));
     const entryId = historyEntryId(revert.now, `revert-${revert.caller.uid}`);
+    await cancelLayerDeletes(transaction, current === undefined ? revert.cancel : [], revert);
     await transaction.set(path, SCHEMAS[audited.entity], restored);
     await transaction.set(FIRESTORE_PATHS.historyEntry(audited, entryId), historyEntryDocSchema, revertEntry(revert, current, restored));
     return changedKeys(current ?? {}, restored).filter((key) => !STAMP_FIELDS.has(key));
 }
 
+/** Whether the audited document is gone now (a revert would bring a deleted document back). */
+async function isDeleted(deps: RevertDeps, audited: AuditedDocument): Promise<boolean> {
+    return (await deps.documents.get(auditedDocumentPath(audited), SCHEMAS[audited.entity])) === undefined;
+}
+
 /**
  * `history.revert` (admins; S-A23-HAPPY, S-A23-BAD-INVALID-SNAPSHOT, S-A23-BAD-CREATION-ENTRY): restores the version
  * one history entry kept. A version today's schema refuses is not written (`history.invalidSnapshot` with the number
- * of problems); the publish triggers rebuild the manifest as for any edit.
+ * of problems); the publish triggers rebuild the manifest as for any edit. A deleted layer comes back only while its
+ * tileset exists (its waiting `layer-delete` job is cancelled, a finished one answers `history.layerGone`); a deleted
+ * photo whose public files were swept meanwhile is processed again from its original (CR-M2c-5).
  */
 async function historyRevert(
     deps: RevertDeps,
@@ -122,8 +133,13 @@ async function historyRevert(
     data: CallableRequest<'history.revert'>,
 ): Promise<CallableResponse<'history.revert'>> {
     const audited: AuditedDocument = { entity: data.entity, cityId: data.cityId, entityId: data.entityId };
-    const revert: Revert = { audited, entryId: data.entryId, caller, now: deps.clock.now() };
+    const deleted = await isDeleted(deps, audited);
+    const cancel = deleted ? await waitingLayerDeletes(deps, audited) : [];
+    const revert: Revert = { audited, entryId: data.entryId, caller, now: deps.clock.now(), cancel };
     const restoredFields = await deps.documents.transaction((transaction) => restore(transaction, revert));
+    if (deleted) {
+        await reprocessIfSwept(deps, caller, audited);
+    }
     deps.log.info('history reverted', { uid: caller.uid, entity: data.entity, entityId: data.entityId, entryId: data.entryId });
     return { restoredFields };
 }

@@ -14,11 +14,10 @@ import {
     type MessageKey,
 } from '@hcm/shared';
 import { isCompactHeight, windowClassFor } from '@hcm/ui';
+import { Listeners, type Unsubscribe } from '@hcm/ui/map';
 
-import type { Unsubscribe } from '../map/map-port.js';
 import { Boot, type BootHost } from './boot.js';
 import type { ViewerDeps } from './deps.js';
-import { Listeners } from './listeners.js';
 import { Preferences } from './preferences.js';
 import { withYear, type SheetName, type ThemeMode, type ViewerState } from './state.js';
 import { encodeViewerHash, HashWriter } from './url-sync.js';

@@ -30,12 +30,19 @@ describe('the function registry', () => {
         expect(open).toEqual(['admin.session', 'admin.claim', 'admin.join']);
     });
 
-    it('badPath_everySecretPasteConsumesItsAppCheckToken', () => {
+    it('badPath_everySecretPasteAndLayerDeleteConsumesItsAppCheckToken', () => {
         const consuming = Object.entries(CALLABLES)
             .filter(([, spec]) => spec.appCheck === 'consume')
             .map(([name]) => name);
 
-        expect(consuming).toEqual(['admin.claim', 'admin.join', 'setup.saveMapbox', 'setup.saveUsgs', 'setup.rotatePublicToken']);
+        expect(consuming).toEqual([
+            'admin.claim',
+            'admin.join',
+            'setup.saveMapbox',
+            'setup.saveUsgs',
+            'setup.rotatePublicToken',
+            'layers.delete',
+        ]);
     });
 
     it('badPath_eachCallableValidatesItsRequest', () => {

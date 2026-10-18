@@ -121,9 +121,9 @@ describe('createSetupCloud', () => {
         const deployed = await cloud.deployment(ACCESS);
 
         expect(nothing).toMatchObject({ kind: 'forbidden', api: 'cloudfunctions.googleapis.com' });
-        expect(partial).toEqual({ ready: 11, total: 33, failed: [] });
-        expect(failed).toEqual({ ready: 32, total: 33, failed: ['admin-session'] });
-        expect(deployed).toEqual({ ready: 33, total: 33, failed: [] });
+        expect(partial).toEqual({ ready: 11, total: 35, failed: [] });
+        expect(failed).toEqual({ ready: 34, total: 35, failed: ['admin-session'] });
+        expect(deployed).toEqual({ ready: 35, total: 35, failed: [] });
     });
 
     it('happyPath_theStreamsHistoryPageViewsAreTurnedOff', async () => {

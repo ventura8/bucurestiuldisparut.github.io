@@ -33,6 +33,8 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'setup.analyticsConfig': 'fn-admin',
     'publish.rebuildManifest': 'fn-admin',
     'photos.reprocess': 'fn-admin',
+    'layers.delete': 'fn-admin',
+    'layers.link': 'fn-admin',
     'telemetry.reportError': 'fn-events',
     'history.onCityWrite': 'fn-events',
     'history.onLayerWrite': 'fn-events',

@@ -2,7 +2,7 @@
  * The admin's state (`docs/research/M2b-interfaces.md` §1.7): one immutable object the shell renders, replaced on every
  * change (`store.ts`). `setup` is the Setup Assistant's own part (setup-ui), opaque to the shell.
  */
-import type { AdminSetupKey, AdminShellKey, ApiErrorCode, Locale, ThemeTokens } from '@hcm/shared';
+import type { AdminContentKey, AdminSetupKey, AdminShellKey, ApiErrorCode, Locale, ThemeTokens } from '@hcm/shared';
 
 import type { AdminAuthState, AdminMode } from '../auth/auth-state.js';
 import type { AuthUser } from '../firebase/ports.js';
@@ -14,12 +14,14 @@ export type ConsentState = 'unknown' | 'granted' | 'denied';
 
 type AdminRole = 'owner' | 'admin';
 
-/** A message key of any admin catalogue: the shell's, the Setup Assistant's or the API's error codes. */
-export type NoticeKey = AdminShellKey | AdminSetupKey | ApiErrorCode;
+/** A message key of any admin catalogue: the shell's, the Setup Assistant's, the editors' or the API's error codes. */
+export type NoticeKey = AdminShellKey | AdminSetupKey | AdminContentKey | ApiErrorCode;
 
 export interface NoticeInput {
     readonly key: NoticeKey;
     readonly params?: Readonly<Record<string, string>>;
+    /** The snackbar's action (an editor's Undo for ten seconds, `docs/research/M2c-interfaces.md` §9.5). */
+    readonly action?: { readonly key: AdminContentKey; run(): void };
 }
 
 /** A message the snackbar (or a panel) shows; `id` changes with every notice, so the same text shows again. */
@@ -54,6 +56,12 @@ export interface AdminDestination {
     readonly compact: boolean;
 }
 
+/**
+ * Leaving an edit that is not saved (`docs/research/M2c-interfaces.md` §2.4): the shell asks "Discard your changes?"
+ * before it opens `route`, or before it signs out.
+ */
+type AdminLeaving = { readonly kind: 'route'; readonly route: AdminRoute } | { readonly kind: 'signOut' };
+
 export interface AdminState<Setup = unknown> {
     readonly auth: AdminAuthState;
     /** Null until the probe has answered. */
@@ -74,6 +82,8 @@ export interface AdminState<Setup = unknown> {
     /** The shell's width class (`compact`, `medium`, ...), for crash reports. */
     readonly windowClass: string;
     readonly notice: AdminNotice | null;
+    /** The unsaved-changes question while it is asked, else null. */
+    readonly leaving: AdminLeaving | null;
     /** From the web configuration: the project the texts name, the domain of Google's unverified-app screen. */
     readonly projectId: string;
     readonly authDomain: string;

@@ -4,10 +4,9 @@
  * accepting grants `analytics_storage` only (no advertising storage, no ad personalisation, ever).
  */
 import type { Logger } from '@hcm/shared';
+import { Listeners, type Unsubscribe } from '@hcm/ui/map';
 
-import { Listeners } from '../core/listeners.js';
 import { Preferences, type PreferenceStorage } from '../core/preferences.js';
-import type { Unsubscribe } from '../map/map-port.js';
 import type { ConsentState } from './telemetry-port.js';
 
 export type ConsentValue = 'granted' | 'denied';

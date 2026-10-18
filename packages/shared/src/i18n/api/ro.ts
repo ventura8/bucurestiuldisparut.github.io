@@ -30,6 +30,7 @@ export const ro = {
     'apiError.history.notFound': 'Versiunea aceasta nu mai există.',
     'apiError.history.nothingToRestore': 'Intrarea marchează crearea elementului: nu există o versiune anterioară.',
     'apiError.history.invalidSnapshot': 'Versiunea anterioară nu mai este validă și nu poate fi restaurată (probleme: {count}).',
+    'apiError.history.layerGone': 'Stratul nu mai poate fi restaurat: plăcile lui de la Mapbox au fost deja șterse.',
     'apiError.mapbox.publicToken': 'Acesta este un token public (pk.). Lipește tokenul secret (sk.) pe care l-ai creat.',
     'apiError.mapbox.tokenFormat': 'Textul nu arată ca un token secret Mapbox (acesta începe cu sk.).',
     'apiError.mapbox.tokenInvalid': 'Mapbox a refuzat tokenul: nu este valid sau a fost revocat.',
@@ -53,6 +54,10 @@ export const ro = {
     'apiError.photo.tooLarge': 'Imaginea este prea mare (peste {megapixels} de megapixeli).',
     'apiError.photo.unreadable': 'Imaginea nu a putut fi citită.',
     'apiError.photo.duplicate': 'Această fotografie a fost deja încărcată.',
+    'apiError.layers.alreadyLinked': 'Această sursă este deja stratul „{layer}”.',
+    'apiError.layers.busy': 'Stratul este procesat acum. Încearcă din nou după ce procesarea se termină.',
+    'apiError.layers.foreignTileset': 'Setul de dale aparține contului Mapbox „{owner}”. Poți lega doar seturile contului hărții.',
+    'apiError.layers.secretInAddress': 'Adresa conține o cheie de acces. Folosește o adresă fără cheie: ea apare pe harta publică.',
     'apiError.telemetry.origin': 'Raportul vine de pe un site necunoscut.',
     'apiError.telemetry.tooLarge': 'Raportul este prea mare.',
 } as const;

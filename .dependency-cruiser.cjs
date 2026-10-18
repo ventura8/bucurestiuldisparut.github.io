@@ -63,9 +63,23 @@ module.exports = {
         {
             name: 'only-the-map-adapter-imports-mapbox',
             severity: 'error',
-            comment: 'Mapbox GL is reached only through engine/src/map/mapbox-adapter.ts (MapPort), so the core is testable with FakeMap.',
-            from: { pathNot: '^packages/engine/src/map/mapbox-adapter\\.ts$' },
+            comment: 'Mapbox GL is reached only through ui/src/map/mapbox-adapter.ts (MapPort), so the core is testable with FakeMap.',
+            from: { pathNot: '^packages/ui/src/map/mapbox-adapter\\.ts$' },
             to: { path: 'node_modules/mapbox-gl/' },
+        },
+        {
+            name: 'only-the-draw-adapter-imports-terra-draw',
+            severity: 'error',
+            comment: 'Terra Draw is reached only through ui/src/map/draw/terra-draw-adapter.ts (MapDrawPort, M2c-interfaces §4).',
+            from: { pathNot: '^packages/ui/src/map/draw/terra-draw-adapter\\.ts$' },
+            to: { path: 'node_modules/terra-draw' },
+        },
+        {
+            name: 'viewer-never-loads-the-draw-tools',
+            severity: 'error',
+            comment: 'The public viewer never ships the admin drawing tools.',
+            from: { path: ['^packages/engine/', '^packages/ui/src/(viewer|components|layout|theme|fonts)/'] },
+            to: { path: ['^packages/ui/src/map/draw/', 'node_modules/terra-draw'] },
         },
         {
             name: 'engine-firebase-only-in-telemetry',

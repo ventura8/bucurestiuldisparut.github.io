@@ -26,6 +26,7 @@ export const en: ApiMessages = {
     'apiError.history.notFound': 'This version no longer exists.',
     'apiError.history.nothingToRestore': 'This entry records the creation: there is no earlier version.',
     'apiError.history.invalidSnapshot': 'The earlier version is no longer valid and cannot be restored (problems: {count}).',
+    'apiError.history.layerGone': 'The layer cannot be restored: its Mapbox tiles have already been deleted.',
     'apiError.mapbox.publicToken': 'This is a public token (pk.). Paste the secret token (sk.) you created.',
     'apiError.mapbox.tokenFormat': 'This does not look like a Mapbox secret token (one starts with sk.).',
     'apiError.mapbox.tokenInvalid': 'Mapbox refused the token: it is invalid or has been revoked.',
@@ -49,6 +50,10 @@ export const en: ApiMessages = {
     'apiError.photo.tooLarge': 'The image is too large (over {megapixels} megapixels).',
     'apiError.photo.unreadable': 'The image could not be read.',
     'apiError.photo.duplicate': 'This photo has already been uploaded.',
+    'apiError.layers.alreadyLinked': 'This source is already the layer “{layer}”.',
+    'apiError.layers.busy': 'The layer is being processed. Try again once the processing ends.',
+    'apiError.layers.foreignTileset': 'The tileset belongs to the Mapbox account “{owner}”. Only the map’s own tilesets can be linked.',
+    'apiError.layers.secretInAddress': 'The address contains an access key. Use an address without one: it is shown on the public map.',
     'apiError.telemetry.origin': 'The report comes from an unknown site.',
     'apiError.telemetry.tooLarge': 'The report is too large.',
 };

@@ -1,9 +1,9 @@
 import { decodeHash } from '@hcm/shared';
+import type { PhotoFeatureCollection } from '@hcm/ui/map';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createViewerStore, PHOTO_YEAR_WINDOW } from '../../src/core/store.js';
 import { HASH_WRITE_DELAY_MS, hashLimits } from '../../src/core/url-sync.js';
-import type { PhotoFeatureCollection } from '../../src/map/map-port.js';
 import { manifest } from './fixtures.js';
 import { harness, loaded } from './harness.js';
 

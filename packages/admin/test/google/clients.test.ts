@@ -200,8 +200,8 @@ describe('the deployment', () => {
         const expected = expectedFunctions();
         const active = expected.map((id) => ({ id, state: 'ACTIVE' }));
 
-        expect(expected).toHaveLength(33);
-        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 33, total: 33, failed: [] });
+        expect(expected).toHaveLength(35);
+        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 35, total: 35, failed: [] });
     });
 
     it('badPath_someMissingIsPendingAndOneFailedIsInvalid', () => {

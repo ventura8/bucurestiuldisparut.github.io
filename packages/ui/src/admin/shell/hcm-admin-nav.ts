@@ -97,8 +97,10 @@ export class HcmAdminNav extends LitElement {
                 padding-inline: 16px;
             }
 
+            /* The whole fifth of the bar for the label: "Configurare" broke after its tenth letter at 360 px with 4 px padding. */
             :host([variant='bar']) .item {
                 flex: 1 1 0;
+                padding-inline: 0;
             }
 
             :host([variant='expanded']) .item {

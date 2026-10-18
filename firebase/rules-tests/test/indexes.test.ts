@@ -77,7 +77,11 @@ describe('composite indexes', () => {
         const unknown = index.fields.filter((field) => !fieldsOf(index.collectionGroup).includes(field.fieldPath.split('.')[0] ?? ''));
 
         expect(unknown).toEqual([]);
-        expect(index.queryScope).toBe('COLLECTION');
+        // History's recent changes are the one collection-group query (docs/research/M2c-interfaces.md §9.2, CR-M2c-6).
+        expect([index.queryScope, index.collectionGroup === 'history' || index.queryScope === 'COLLECTION']).toEqual([
+            expect.stringMatching(/^COLLECTION(_GROUP)?$/),
+            true,
+        ]);
         expect(index.fields.length).toBeGreaterThanOrEqual(2);
     });
 
@@ -93,27 +97,56 @@ describe('composite indexes', () => {
         'jobs: status ASCENDING, createdAt ASCENDING',
         'history: action ASCENDING, updatedAt DESCENDING',
     ])('happyPath_theAdminQueryHasItsIndex_%s', (wanted) => {
-        expect(config.indexes.map(signature)).toContain(wanted);
+        expect(config.indexes.filter((index) => index.queryScope === 'COLLECTION').map(signature)).toContain(wanted);
+    });
+
+    it.each([
+        'history: action ASCENDING, updatedAt DESCENDING',
+        'history: entity ASCENDING, updatedAt DESCENDING',
+        'history: entity ASCENDING, action ASCENDING, updatedAt DESCENDING',
+    ])('happyPath_historysRecentChangesHaveTheirCollectionGroupIndex_%s', (wanted) => {
+        expect(config.indexes.filter((index) => index.queryScope === 'COLLECTION_GROUP').map(signature)).toContain(wanted);
     });
 
     it('badPath_noIndexIsDeclaredTwice', () => {
-        const signatures = config.indexes.map(signature);
+        const signatures = config.indexes.map((index) => `${index.queryScope} ${signature(index)}`);
 
         expect(new Set(signatures).size).toBe(signatures.length);
     });
 });
 
+/** The single-field overrides that add an index instead of removing them all. */
+const ADDED_FIELD_INDEXES = new Set(['history.updatedAt']);
+
 describe('single-field exemptions', () => {
-    it.each(config.fieldOverrides.map((override) => [`${override.collectionGroup}.${override.fieldPath}`, override] as const))(
-        'happyPath_%s_isASchemaFieldWithoutIndexes',
-        (_name, override) => {
-            expect(fieldsOf(override.collectionGroup)).toContain(override.fieldPath);
-            expect(override.indexes).toEqual([]);
-        },
-    );
+    it.each(
+        config.fieldOverrides
+            .filter((override) => !ADDED_FIELD_INDEXES.has(`${override.collectionGroup}.${override.fieldPath}`))
+            .map((override) => [`${override.collectionGroup}.${override.fieldPath}`, override] as const),
+    )('happyPath_%s_isASchemaFieldWithoutIndexes', (_name, override) => {
+        expect(fieldsOf(override.collectionGroup)).toContain(override.fieldPath);
+        expect(override.indexes).toEqual([]);
+    });
+
+    it('happyPath_historysUpdatedAtKeepsItsDefaultsAndGainsTheCollectionGroupOrder', () => {
+        const override = config.fieldOverrides.find(
+            (candidate) => `${candidate.collectionGroup}.${candidate.fieldPath}` === 'history.updatedAt',
+        );
+
+        expect(override?.indexes).toEqual([
+            { order: 'ASCENDING', queryScope: 'COLLECTION' },
+            { order: 'DESCENDING', queryScope: 'COLLECTION' },
+            { arrayConfig: 'CONTAINS', queryScope: 'COLLECTION' },
+            { order: 'DESCENDING', queryScope: 'COLLECTION_GROUP' },
+        ]);
+    });
 
     it('badPath_noCompositeIndexUsesAnExemptField', () => {
-        const exempt = new Set(config.fieldOverrides.map((override) => `${override.collectionGroup}.${override.fieldPath}`));
+        const exempt = new Set(
+            config.fieldOverrides
+                .filter((override) => override.indexes.length === 0)
+                .map((override) => `${override.collectionGroup}.${override.fieldPath}`),
+        );
         const clashes = config.indexes.flatMap((index) =>
             index.fields.filter((field) => exempt.has(`${index.collectionGroup}.${field.fieldPath}`)).map(() => signature(index)),
         );

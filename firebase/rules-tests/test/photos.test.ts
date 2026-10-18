@@ -200,6 +200,14 @@ describe('update', () => {
     });
 
     it.each([
+        ['a refused replacement (photos.onUpload owns it, CR-M2c-4)', { replacement: { error: 'apiError.photo.unreadable', at: 'x' } }],
+        ['a removed refusal of a replacement', { replacement: deleted() }],
+    ])('badPath_noClientWritesServerOwnedFields_%s', async (_label, changes) => {
+        const seed = withChanges(processed(), { replacement: { error: 'apiError.photo.unreadable', at: past() } });
+        expect(await update(seed, changes)).toBe('deny');
+    });
+
+    it.each([
         ['a bearing of 400', { bearing: 400 }],
         ['a title without Romanian', { title: { en: 'Victory Avenue' } }],
         ['a removed title', { title: deleted() }],

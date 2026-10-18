@@ -1,16 +1,15 @@
 // A scripted `AdminAppPort` for the admin elements' browser tests: the state is set by the test, every intent call is
-// recorded, the admins callables answer what the test scripted.
-import type { AdminsListResponse, InviteResponse } from '@hcm/shared';
+// recorded, and the editor areas' stores are the ones the test puts in `areas`.
 import { render, type TemplateResult } from 'lit';
 
 import type {
     AdminAppPort,
     AdminDestinationPort,
     AdminIntentsPort,
-    AdminOutcomePort,
     AdminRouteIdPort,
     AdminStatePort,
 } from '../../../src/admin/admin-port.js';
+import type { ContentPort } from '../../../src/admin/content-port.js';
 import { defineAdminElements } from '../../../src/admin/define.js';
 import { installFonts } from '../../../src/fonts/font-faces.js';
 import { applyTheme, clearTheme } from '../../../src/theme/apply.js';
@@ -48,44 +47,15 @@ export function adminState(overrides: Partial<AdminStatePort> = {}): AdminStateP
     };
 }
 
-const ADMINS_LIST: AdminsListResponse = {
-    admins: [
-        {
-            uid: 'owner-uid',
-            role: 'owner',
-            email: 'owner@e2e.test',
-            displayName: 'Owner',
-            createdAt: '2026-10-01T10:00:00.000Z',
-            self: true,
-        },
-        { uid: 'admin-uid', role: 'admin', email: 'ana@e2e.test', createdAt: '2026-10-02T10:00:00.000Z', self: false },
-        { uid: 'quiet-uid', role: 'admin', createdAt: '2026-10-03T10:00:00.000Z', self: false },
-    ],
-    invites: [
-        {
-            inviteId: 'a'.repeat(64),
-            role: 'admin',
-            invitedBy: 'owner-uid',
-            createdAt: '2026-10-10T10:00:00.000Z',
-            expiresAt: '2026-10-24T10:00:00.000Z',
-        },
-    ],
-};
-
-const INVITED: InviteResponse = {
-    inviteId: 'b'.repeat(64),
-    expiresAt: '2026-10-26T10:00:00.000Z',
-    signInUrl: 'https://demo-hcm.web.app/',
-};
-
 export class FakeAdminApp implements AdminAppPort {
     readonly calls: string[] = [];
     readonly #listeners = new Set<(state: AdminStatePort) => void>();
     #state: AdminStatePort;
     pages: Partial<Record<AdminRouteIdPort, string | null>> = {};
-    list: AdminOutcomePort<AdminsListResponse> = { ok: true, value: ADMINS_LIST };
-    invite: AdminOutcomePort<InviteResponse> = { ok: true, value: INVITED };
-    revoke: AdminOutcomePort<{ readonly revoked: true }> = { ok: true, value: { revoked: true } };
+    /** The editor areas' stores a test gives the pages (any other area has none). */
+    readonly areas: Partial<Record<keyof ContentPort, unknown>> = {};
+    /** `content.<area>`: the test's store, or null. */
+    readonly content = new Proxy({} as ContentPort, { get: (_target, area: string) => this.areas[area as keyof ContentPort] ?? null });
     readonly intents: AdminIntentsPort;
 
     constructor(state: AdminStatePort = adminState()) {
@@ -104,6 +74,8 @@ export class FakeAdminApp implements AdminAppPort {
         this.intents = {
             signIn: record('signIn'),
             signOut: record('signOut'),
+            stayOnPage: sync('stayOnPage'),
+            leavePage: record('leavePage'),
             claim: record('claim'),
             join: record('join'),
             retry: record('retry'),
@@ -115,18 +87,6 @@ export class FakeAdminApp implements AdminAppPort {
             setConsent: sync('setConsent'),
             dismissNotice: sync('dismissNotice'),
             setWindowClass: sync('setWindowClass'),
-            listAdmins: () => {
-                this.calls.push('listAdmins');
-                return Promise.resolve(this.list);
-            },
-            inviteAdmin: (email) => {
-                this.calls.push(`inviteAdmin ${email}`);
-                return Promise.resolve(this.invite);
-            },
-            revokeAdmin: (request) => {
-                this.calls.push(`revokeAdmin ${JSON.stringify(request)}`);
-                return Promise.resolve(this.revoke);
-            },
             setup: null,
         };
     }

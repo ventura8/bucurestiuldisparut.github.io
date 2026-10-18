@@ -353,6 +353,16 @@ service cloud.firestore {
             allow read: if isAdmin();
         }
 
+        // History's recent changes (M2c, CR-M2c-6): one collection-group query over every audited document's
+        // `history` subcollection, kept to the city's path by the page. Admins list them; a single entry is read only
+        // under cities/ (a `history` document anywhere else stays closed, as every path the contract does not name: a
+        // condition on the path cannot hold for a collection-group query, so it guards `get` alone). No client writes
+        // an entry.
+        match /{path=**}/history/{entry} {
+            allow list: if isAdmin();
+            allow get: if isAdmin() && path[0] == 'cities';
+        }
+
         // Cities are created and deleted by callables; admins edit the settings.
         match /cities/{city} {
             allow read: if isAdmin();

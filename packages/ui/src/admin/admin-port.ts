@@ -6,18 +6,11 @@
  * assignable to `AdminAppPort`, which `packages/admin/test/app/admin-port.test.ts` checks at compile time. The elements
  * render `state` and call the intents; they never touch Firebase, Google or the address themselves.
  */
-import type {
-    AdminSetupKey,
-    AdminShellKey,
-    AdminsListResponse,
-    ApiErrorCode,
-    InviteResponse,
-    Locale,
-    RevokeRequest,
-    ThemeTokens,
-} from '@hcm/shared';
+import type { Locale, ThemeTokens } from '@hcm/shared';
 
 import type { ThemeMode } from '../theme/apply.js';
+import type { ContentPort } from './content-port.js';
+import type { AdminNoticeInputPort } from './notice-port.js';
 import type { SetupIntentsPort, SetupViewState } from './setup/setup-port.js';
 
 export type AdminAuthStatePort =
@@ -35,7 +28,7 @@ export type AdminAuthStatePort =
     | 'notAdmin'
     | 'admin';
 
-export type AdminRouteIdPort = 'setup' | 'photos' | 'pois' | 'layers' | 'jobs' | 'settings' | 'admins' | 'history' | 'crashes';
+export type AdminRouteIdPort = 'home' | 'setup' | 'photos' | 'pois' | 'layers' | 'jobs' | 'settings' | 'admins' | 'history' | 'crashes';
 
 export interface AdminRoutePort {
     readonly id: AdminRouteIdPort;
@@ -49,13 +42,7 @@ export interface AdminDestinationPort {
     readonly compact: boolean;
 }
 
-/** A message key of any admin catalogue: the shell's, the Setup Assistant's or the API's error codes. */
-export type AdminNoticeKey = AdminShellKey | AdminSetupKey | ApiErrorCode;
-
-export interface AdminNoticeInputPort {
-    readonly key: AdminNoticeKey;
-    readonly params?: Readonly<Record<string, string>>;
-}
+export type { AdminNoticeInputPort, AdminNoticeKey, AdminOutcomePort } from './notice-port.js';
 
 export interface AdminNoticePort extends AdminNoticeInputPort {
     readonly id: number;
@@ -76,18 +63,21 @@ export interface AdminStatePort {
     readonly analytics: boolean;
     readonly windowClass: string;
     readonly notice: AdminNoticePort | null;
+    /** The unsaved-changes question while the shell asks it (`docs/research/M2c-interfaces.md` §2.4). */
+    readonly leaving?: { readonly kind: 'route'; readonly route: AdminRoutePort } | { readonly kind: 'signOut' } | null;
     readonly projectId: string;
     readonly authDomain: string;
     /** The Setup Assistant's state (setup-ui's `SetupViewState`), null before its controller exists or without one. */
     readonly setup: SetupViewState | null;
 }
 
-/** A call's result for a screen: the value, or the message to show. */
-export type AdminOutcomePort<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: AdminNoticeInputPort };
-
 export interface AdminIntentsPort {
     signIn(): Promise<void>;
     signOut(): Promise<void>;
+    /** The unsaved-changes question: keep editing. */
+    stayOnPage(): void;
+    /** The unsaved-changes question: discard and leave. */
+    leavePage(): Promise<void>;
     claim(): Promise<void>;
     join(): Promise<void>;
     retry(): Promise<void>;
@@ -99,9 +89,6 @@ export interface AdminIntentsPort {
     setConsent(consent: 'granted' | 'denied'): void;
     dismissNotice(): void;
     setWindowClass(windowClass: string): void;
-    listAdmins(): Promise<AdminOutcomePort<AdminsListResponse>>;
-    inviteAdmin(email: string): Promise<AdminOutcomePort<InviteResponse>>;
-    revokeAdmin(request: RevokeRequest): Promise<AdminOutcomePort<{ readonly revoked: true }>>;
     /** The Setup Assistant's intents (setup-ui's `SetupIntentsPort`), null without one. */
     readonly setup: SetupIntentsPort | null;
 }
@@ -112,6 +99,8 @@ export interface AdminAppPort {
     readonly intents: AdminIntentsPort;
     /** The tag of a route's page element, once its module is loaded (null: no page). */
     loadPage(id: AdminRouteIdPort): Promise<string | null>;
+    /** The editors' area stores (`docs/research/M2c-interfaces.md` §2.3). */
+    readonly content: ContentPort;
 }
 
 /**

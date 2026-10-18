@@ -52,7 +52,7 @@ const HEIC_ERROR: ApiErrorCode = 'apiError.photo.heicUnsupported';
 const UNDECODABLE: ReadonlySet<PhotoContentType> = new Set(['image/heic', 'image/heif']);
 
 /** The fields one processing result replaces; everything else of the document stays as the admin wrote it. */
-const SERVER_FIELDS = ['image', 'exif', 'suggested', 'original', 'processingError', 'duplicateOf'] as const;
+const SERVER_FIELDS = ['image', 'exif', 'suggested', 'original', 'processingError', 'duplicateOf', 'replacement'] as const;
 
 const DERIVATIVES: Readonly<Record<PhotoVariant, { readonly longEdge: number; readonly quality: number }>> = {
     web: { longEdge: PHOTO_LIMITS.webLongEdge, quality: PHOTO_LIMITS.webQuality },
@@ -235,14 +235,36 @@ async function recordDone(deps: PhotoDeps, upload: PhotoUpload, processed: Proce
     }));
 }
 
-async function recordFailed(deps: PhotoDeps, upload: PhotoUpload, refusal: Refusal): Promise<void> {
-    await updatePhoto(deps, upload, (current) => ({
+/** A photo without an image fails: it has nothing to show, so the manifest leaves it out. */
+function failedPhoto(deps: PhotoDeps, current: PhotoDoc, refusal: Refusal): PhotoDoc {
+    return {
         ...omit(current, ['processingError', 'duplicateOf']),
         ...compact<Pick<PhotoDoc, 'duplicateOf'>>({ duplicateOf: refusal.duplicateOf }),
         processing: 'failed',
         processingError: refusal.code,
         ...stamp(deps),
-    }));
+    };
+}
+
+/**
+ * A photo that already has an image keeps it, processed and published as it was, when its replacement is refused
+ * (`docs/research/M2c-interfaces.md` §6.4, CR-M2c-4): `replacement` records why, for the admin's editor; failing the
+ * photo would take a published photo off the public map.
+ */
+function refusedReplacement(deps: PhotoDeps, current: PhotoDoc, refusal: Refusal): PhotoDoc {
+    const at = timestampFromDate(deps.clock.now());
+    return {
+        ...omit(current, ['replacement']),
+        processing: 'done',
+        replacement: compact<NonNullable<PhotoDoc['replacement']>>({ error: refusal.code, at, duplicateOf: refusal.duplicateOf }),
+        ...stamp(deps),
+    };
+}
+
+async function recordFailed(deps: PhotoDeps, upload: PhotoUpload, refusal: Refusal): Promise<void> {
+    await updatePhoto(deps, upload, (current) =>
+        current.image === undefined ? failedPhoto(deps, current, refusal) : refusedReplacement(deps, current, refusal),
+    );
 }
 
 /** A failure that is not the file's fault (Storage or Firestore unavailable): retryable with Reprocess, upload kept. */
@@ -282,8 +304,9 @@ async function processKnownUpload(deps: PhotoDeps, upload: PhotoUpload, object: 
 /**
  * Processes one finalized object of the private bucket: anything but `uploads/photos/{city}/{uid}/{photo}/{file}` is
  * ignored, an upload without its photo document is deleted, a refused file is recorded on the document
- * (`processing: 'failed'`, `processingError`, `duplicateOf`) and deleted, a processed one sets `image`, `exif`,
- * `suggested`, `original` and `processing: 'done'` (stamped `system:photos`) and is deleted.
+ * (`processing: 'failed'`, `processingError`, `duplicateOf`; for a photo that already has an image, a replacement, only
+ * `replacement`: CR-M2c-4) and deleted, a processed one sets `image`, `exif`, `suggested`, `original` and
+ * `processing: 'done'` and removes `replacement` (stamped `system:photos`) and is deleted.
  */
 export async function processPhotoUpload(deps: PhotoDeps, object: FinalizedObject): Promise<UploadOutcome> {
     const upload = parsePhotoUploadPath(object.name);

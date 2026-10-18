@@ -6,6 +6,8 @@ export { translateAdminShell } from './i18n/admin-shell/index.js';
 export type { AdminShellKey, AdminShellMessages } from './i18n/admin-shell/index.js';
 export { translateAdminSetup } from './i18n/admin-setup/index.js';
 export type { AdminSetupKey, AdminSetupMessages } from './i18n/admin-setup/index.js';
+export { translateAdminContent } from './i18n/admin-content/index.js';
+export type { AdminContentKey, AdminContentMessages } from './i18n/admin-content/index.js';
 export { REDACTED, consoleSink, createLogger, redact } from './log.js';
 export type { LogData, LogLevel, LogRecord, LogSink, Logger, LoggerOptions } from './log.js';
 
@@ -119,6 +121,7 @@ export type {
 } from './schemas/firestore.js';
 export {
     ADMIN_ROLES,
+    CLIENT_JOB_TYPES,
     GUARD_REASONS,
     GUARD_STATES,
     JOB_LOG_LEVELS,
@@ -204,6 +207,17 @@ export { MAP_LAYER_TYPES, OPACITY_PROPERTIES, OVERLAY_LAYER_TYPES, overlayOpacit
 export type { MapLayerType, OpacityBase, OpacityProperty, PaintUpdate, RasterAdjustmentPaint } from './overlays/paint.js';
 export { isPhotoNearYear, PHOTO_YEAR_WINDOW } from './overlays/photos.js';
 export { poiIcon, poiInYear } from './overlays/poi.js';
+export {
+    ADJUSTMENT_SLIDERS,
+    adjustmentDelta,
+    adjustmentFromSlider,
+    normalizeAdjustments,
+    sameAdjustments,
+    signedPercent,
+    sliderFromAdjustment,
+    withAdjustment,
+} from './overlays/adjustments.js';
+export type { AdjustmentSlider } from './overlays/adjustments.js';
 
 export * from './migration/index.js';
 export * from './api/index.js';

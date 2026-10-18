@@ -146,9 +146,7 @@ describe('configMissingApp', () => {
         app.telemetry.setConsent('denied');
         app.destroy();
 
-        await expect(app.intents.listAdmins()).rejects.toThrow('no configuration');
-        await expect(app.intents.inviteAdmin('a@e2e.test')).rejects.toThrow('no configuration');
-        await expect(app.intents.revokeAdmin({ kind: 'admin', uid: 'x' })).rejects.toThrow('no configuration');
+        expect([app.content.jobs, app.content.admins, app.hasUnsavedChanges()]).toEqual([null, null, false]);
         expect(app.state.auth).toBe('configMissing');
     });
 });

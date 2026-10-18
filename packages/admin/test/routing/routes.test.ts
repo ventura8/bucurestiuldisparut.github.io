@@ -20,6 +20,7 @@ describe('parseAdminRoute', () => {
         ['#/setup/usgs', { id: 'setup', params: ['usgs'] }],
         ['#/photos/coltul-strada-fonteriei', { id: 'photos', params: ['coltul-strada-fonteriei'] }],
         ['#/history/photo/arionoaia-1980', { id: 'history', params: ['photo', 'arionoaia-1980'] }],
+        ['#/home', { id: 'home', params: [] }],
     ])('happyPath_%s', (hash, route) => {
         expect(parseAdminRoute(hash)).toEqual(route);
     });

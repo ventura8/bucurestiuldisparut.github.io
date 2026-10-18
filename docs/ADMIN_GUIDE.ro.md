@@ -2,7 +2,7 @@
 
 Ghid pentru administratorul unui oraș din **Historic City Map** (primul oraș: **București dispărut**). Acesta este scheletul ghidului: secțiunile se completează odată cu funcțiile, în etapele M2–M5. Versiunea în engleză: [ADMIN_GUIDE.en.md](ADMIN_GUIDE.en.md); cele două versiuni se actualizează împreună.
 
-> Stare (M2b): conectarea, pagina administratorilor și tot Asistentul de configurare de mai jos funcționează cap-coadă cu emulatoarele Firebase și serviciile Google, Mapbox și USGS simulate din teste; primul proiect real se configurează cu Claude, cu acordul tău la fiecare pas. Ecranele pentru fotografii, straturi și setări urmează în M2c–M4.
+> Stare (M2c): conectarea, Asistentul de configurare și editoarele de zi cu zi de mai jos (Acasă, fotografii, locuri, straturi, setări, istoric, procesări, administratori și erori) funcționează cap-coadă cu emulatoarele Firebase și serviciile Google, Mapbox și USGS simulate din teste, iar ce salvează un editor ajunge în harta publică prin manifestul construit de server. Previzualizările pe hartă ale editoarelor au nevoie de un token Mapbox (testele cap-coadă le rulează fără); imaginile din satelit și georeferențierea urmează în M3. Primul proiect real se configurează cu Claude, cu acordul tău la fiecare pas.
 
 ## Ce faci tu și ce face aplicația
 
@@ -50,7 +50,7 @@ Tot asistentul cere cam zece clicuri sau câmpuri și patru permisiuni Google; c
 
 ### d. Instalarea serverului hărții
 
-- Serverul (funcțiile Firebase) se instalează din GitHub Actions la următorul push pe `master` sau de către Claude, după acordul tău. Cardul arată variabilele depozitului GitHub pe care le citește instalarea, fiecare cu buton de copiere, apoi „Verificăm la fiecare 30 de secunde…” și „N din 33 funcții instalate”, și devine verde singur când toate funcțiile sunt instalate și răspund.
+- Serverul (funcțiile Firebase) se instalează din GitHub Actions la următorul push pe `master` sau de către Claude, după acordul tău. Cardul arată variabilele depozitului GitHub pe care le citește instalarea, fiecare cu buton de copiere, apoi „Verificăm la fiecare 30 de secunde…” și „N din 35 funcții instalate”, și devine verde singur când toate funcțiile sunt instalate și răspund.
 - O funcție care nu s-a instalat este numită; „Funcțiile sunt instalate, dar nu răspund” arată spre o politică a organizației care blochează accesul public.
 
 ### d2. Preluarea hărții
@@ -104,37 +104,84 @@ Tot asistentul cere cam zece clicuri sau câmpuri și patru permisiuni Google; c
 | „USGS a refuzat utilizatorul sau tokenul. …” | utilizator greșit sau token expirat | creează un token nou și lipește-l în 60 de secunde |
 | „USGS este în mentenanță. Reîncercăm automat.” | mentenanță USGS | nimic: tokenul este păstrat |
 | „Google Analytics nu este activat pentru proiect. …” | Analytics este oprit | activează-l în consola Firebase (linkul cardului) |
-| „Fotografii neprocesate: N. Motivul apare lângă fiecare.” | o fotografie din pachet nu a putut fi procesată | **Verifică din nou** sau editează fotografia când apar ecranele foto (M2c) |
+| „Fotografii neprocesate: N. Motivul apare lângă fiecare.” | o fotografie din pachet nu a putut fi procesată | **Verifică din nou** sau deschide fotografia în pagina Fotografii |
 
 ## Activitatea zilnică
 
+Navigarea are Acasă, Configurare, Fotografii, Locuri, Straturi, Procesări, Setări, Administratori, Istoric și Erori (pe telefon, bara păstrează Configurare, Fotografii, Locuri și Straturi; restul sunt sub **Mai mult**). Toate editoarele funcționează la fel:
+
+- **Liste și editoare.** De la 840 px lățime, lista stă în stânga și elementul deschis lângă ea; pe tabletă elementul înlocuiește lista, cu **Înapoi la listă**; pe telefon ocupă toată pagina, cu **Închide**. Adresa unui element (`#/photos/<id>`) poate fi salvată sau trimisă altui administrator.
+- **Ciorne.** Ce modifici este o ciornă: harta paginii o arată imediat și nu se scrie nimic până la **Salvează**. Salvarea scrie o singură modificare, cu contul tău; harta publică urmează în aproximativ un minut. **Renunță la modificări** aduce înapoi versiunea salvată. Dacă pleci din pagină, te deconectezi sau reîncarci cu modificări nesalvate, aplicația te întreabă întâi (**Continuă editarea** sau **Renunță**); schimbarea limbii păstrează ciorna. Un câmp cu o problemă o spune sub el, iar Salvează rămâne oprit până o corectezi.
+- **Alt administrator a salvat același element între timp**: editorul îi spune numele și ora; câmpurile schimbate doar de el se adaugă, iar pentru câmpurile schimbate de amândoi alegi să le păstrezi pe ale tale sau să le iei pe ale lui. Un element șters între timp nu mai poate fi salvat; Istoricul îl restaurează.
+- **Fiecare modificare rămâne în Istoric** (mai jos) și poate fi anulată cu un clic.
+- **Înainte de cardul Mapbox** (fără tokenul administratorului), caseta hărții din editoare spune asta și duce la card; toate câmpurile și lista de puncte funcționează în continuare.
+
+### Acasă
+
+Ce conține orașul și ce te așteaptă (fotografii cu drepturi de verificat, fotografii nepublicate, procesări în lucru sau eșuate), fiecare cu link spre pagina lui, câte un indicator pentru fiecare zonă a Configurării și starea hărții publice. Aplicația se deschide încă pe Configurare; deschiderea pe Acasă după ce configurarea e gata este o decizie care te așteaptă (`docs/research/DECISIONS-for-review.md` §34i).
+
 ### Fotografii
 
-- Tragi fișierele în pagină; locul, anul și direcția sunt completate din EXIF și din numele fișierului.
-- Fixezi punctul pe hartă și dai clic pe ce privea aparatul (de aici direcția); unghiul implicit este 60°.
-- Autorul, sursa și licența rămân aceleași pentru tot lotul; fotografia se publică la salvare.
-- Sunt acceptate JPEG, PNG, WebP și TIFF, până la 60 MB și 200 de megapixeli; SVG niciodată. Fotografiile HEIC de pe iPhone nu pot fi convertite încă pe server: pe iPhone alege Setări → Cameră → Formate → Cel mai compatibil, sau exportă fotografia ca JPEG. O fotografie identică cu una deja încărcată este marcată ca duplicat.
-- De completat (M2): editare, retragere, coada de verificare a drepturilor pentru fotografiile vechi.
+- **Adaugă fotografii** sau trage fișierele pe listă: JPEG, PNG, WebP și TIFF, până la 60 MB. Un fișier mai mare sau de alt tip este refuzat în pagină, înainte de orice încărcare. Se încarcă trei fișiere deodată, fiecare cu progresul lui; o încărcare întreruptă continuă, iar **Încearcă din nou** o reia.
+- **Completate pentru tine**: titlul din numele fișierului; locul, anul și direcția din EXIF, pentru fotografiile pe care nu le-ai atins încă (un loc din afara orașului este ignorat); autorul, sursa, licența și deținătorul drepturilor din lotul tău anterior („Fotografiile noi primesc: …”). O fotografie fără loc ajunge la ultimul tău punct (sau în centrul orașului) și este marcată **Verifică locul** până îi muți punctul sau alegi **Confirmă locul**; până atunci, publicarea mai multor fotografii deodată o sare. După o reîncărcare, valorile EXIF neaplicate apar ca sugestii, cu **Aplică**.
+- **Filtre**: Toate, Nepublicate, În procesare, Refuzate, Drepturi de verificat; **Caută după titlu sau autor**.
+- **Editorul**: titlul și descrierea (româna obligatorie, engleza opțională: vizitatorii citesc atunci textul în română), data și anii, autorul, licența, deținătorul drepturilor, sursa, nota despre permisiune, până la 5 linkuri https, drepturile de verificat, **Publicată pe harta publică**. Locul: tragi punctul sau scrii latitudinea și longitudinea; **Alege direcția pe hartă**, apoi un clic pe ce privea aparatul (de la tastatură: **Spre centrul hărții**); glisorul **Unghiul de vedere** lărgește conul pe loc. O fotografie încărcată în această sesiune pornește cu Publicată activat (se publică la salvare); o fotografie încă în procesare, refuzată sau cu licență necunoscută nu poate fi publicată, iar comutatorul spune de ce.
+- **Mai multe fotografii deodată**: le bifezi (sau **Selectează tot**), apoi **Publică**, **Retrage de pe hartă**, **Autor, sursă și licență**, confirmi drepturile sau **Șterge**. O fotografie pe care acțiunea nu o poate schimba rămâne cum era și este numită cu motivul ei (**Vezi de ce**).
+- **Înlocuiește imaginea** (în editor): fișierul nou se procesează în timp ce imaginea veche rămâne pe harta publică, apoi îi ia locul dintr-odată. Un fișier refuzat lasă imaginea veche publicată și spune de ce; același fișier încă o dată nu schimbă nimic; **Anulează înlocuirea** oprește încărcarea.
+- **Șterge fotografia** întreabă întâi; mesajul de după oferă **Anulează** timp de zece secunde, iar Istoricul o restaurează și mai târziu (una ale cărei fișiere publice au fost deja curățate este procesată din nou din originalul păstrat).
+- Fotografiile HEIC de pe iPhone nu pot fi convertite încă pe server: pe iPhone alege Setări → Cameră → Formate → Cel mai compatibil, sau exportă fotografia ca JPEG. O fotografie identică cu una deja încărcată este marcată ca duplicat, cu link spre prima.
 
-### Straturi istorice din satelit
+### Locuri
 
-- „Caută imagini”: scene USGS ordonate după acoperire, cu previzualizări.
-- „Importă (gratuit)” pentru cadrele deja scanate; „Cumpără scanarea” pregătește comanda EarthExplorer (plata o faci tu); „Încarcă GeoTIFF”; „Leagă un tileset sau XYZ”.
-- Costul estimat (megaocteți și unități de procesare Mapbox) este afișat înainte de import.
-- De completat (M3–M4).
+- **Adaugă loc**, apoi **Punct**, **Linie** sau **Suprafață**. Desenezi pe hartă (Enter sau un clic pe primul punct încheie o linie sau o suprafață, Esc șterge ultimul punct) sau folosești **lista de puncte**: **Adaugă în centru** pune un punct în centrul hărții (vederea de pornire a orașului, când nu există hartă), latitudinea și longitudinea se pot scrie, iar punctele se pot muta mai sus, mai jos sau șterge. Un punct din afara orașului, laturi care se intersectează, mai mult de 500 de puncte sau o formă fără suprafață sunt refuzate pe loc, fiecare cu motivul lui.
+- Categoria (pentru un loc nou, ultima pe care ai folosit-o), titlurile, descrierea în subsetul Markdown cu previzualizare (aldine, cursive, linkuri https; HTML-ul rămâne text simplu), anii (oricare poate rămâne gol), până la 5 linkuri, până la 20 de fotografii legate, **Publicat**. Un loc nou se publică la salvare; **Redesenează ca …** schimbă forma (după ce te întreabă).
+- Indicatoarele de categorie, Nepublicate și căutarea după titlu filtrează lista. Mai multe locuri deodată: **Publică**, **Retrage de pe hartă**, **Mută în categoria…**, **Șterge**.
+- **Exportă toate (GeoJSON)** salvează toate locurile (sau selecția) ca fișier `.geojson`. **Importă GeoJSON** citește un astfel de fișier (până la 5 MB) în pagină: o previzualizare numără locurile noi, schimbate, neschimbate și refuzate, fiecare refuz cu motivul lui (o formă nesuportată, o altitudine, un contur deschis, un punct din afara orașului, o categorie necunoscută, prea multe puncte); locurile fără o categorie cunoscută o primesc pe cea aleasă de tine; **Importă** le scrie (cel mult 5.000 de locuri în total). Un fișier exportat și importat din nou nu schimbă nimic.
+- **Șterge locul** întreabă întâi; Istoricul îl restaurează.
 
-### Georeferențiere
+### Straturi istorice
 
-- Puncte de control pe scanare și pe harta de referință (OpenStreetMap și Sentinel-2), tabel de reziduuri, previzualizare suprapusă.
-- Un strat se publică după aprobarea ta sau automat, când eroarea medie este sub prag.
-- De completat (M3).
+- Straturile sunt create de procesarea imaginilor (M3); până atunci pagina spune asta. Lista le arată în ordinea desenării (primul este desenat deasupra), cu starea lor și Publicat; tragi unul sau folosești **Mută mai sus** și **Mută mai jos**.
+- **Editorul stratului**: eticheta și descrierea (româna, engleza opțională), atribuirea, anul și data, **Afișat la deschiderea hărții**, **Opacitate implicită** și patru ajustări ale imaginii, **Nivel de negru**, **Nivel de alb**, **Contrast** și **Saturație**, fiecare citită ca procent cu semn, cu **Resetează ajustările**. Fiecare glisor schimbă imediat harta paginii; Salvează publică valorile, iar vizitatorii văd exact ce ai văzut tu. Nivelul de negru nu trece niciodată de nivelul de alb.
+- **Leagă un strat**: un tileset al contului Mapbox al orașului sau adresa https a unui server de dale. Tilesetul altui cont (inclusiv cele ale Mapbox) și o adresă care conține o cheie sunt refuzate înainte să se trimită ceva. Un strat legat pornește nepublicat și ascuns la deschidere. Adresa unui server de dale trebuie permisă și în politica de securitate a conținutului a site-ului și a aplicației de administrare: dialogul o numește.
+- **Șterge stratul** întreabă întâi: stratul dispare de pe harta publică în aproximativ un minut, iar tilesetul lui Mapbox este șters după șapte zile, dacă nu restaurezi stratul din Istoric între timp (procesarea care așteaptă se vede în pagina Procesări).
+- Înlocuirea imaginii unui strat, decuparea și georeferențierea din nou vin odată cu procesarea imaginilor (M3).
 
-### Lucrări, setări și administratori
+### Setări
 
-- Lucrări: progres în timp real, reîncercare, anulare.
-- Setări: limitele orașului, textul „Despre” (RO și EN), mențiuni, culoarea de bază cu previzualizare.
-- Administratori: invitație după adresa de e-mail (se păstrează doar amprenta ei; linkul îl trimiți tu), eliminarea unui administrator sau a unei invitații în așteptare; proprietarul nu poate fi eliminat și nimeni nu se poate elimina singur, așa că harta are mereu un administrator.
-- De completat (M2–M3).
+Fiecare secțiune are propriul Salvează.
+
+- **Zona orașului**: limitele (scrise sau desenate ca dreptunghi pe hartă), vederea de pornire (**Folosește vederea hărții**), zoomul minim și maxim. Limitele care ar lăsa fotografii sau locuri pe dinafară sunt refuzate, iar pagina le enumeră.
+- **Texte**: numele, „Despre” și textul despre confidențialitate, în română și engleză (subsetul Markdown, previzualizat cum îl vor vedea vizitatorii; un link care nu e https este refuzat la rândul lui) și mențiunile (până la 50, în ordinea aleasă de tine).
+- **Temă și hartă de bază**: culoarea de bază (o valoare hex, selectorul de culoare sau una din opt propuneri), previzualizată pe loc în pagina Setări; o culoare care ar face textul greu de citit este mutată la cea mai apropiată nuanță lizibilă, cu o notă. Harta de bază pe care o văd vizitatorii (Standard sau Standard Satellite); harta aplicației de administrare este mereu Standard.
+- **Categorii de locuri**: adaugi una (eticheta în română și o pictogramă; culoarea, opacitatea și eticheta în engleză au valori implicite), o editezi, le reordonezi, o ștergi. Selectorul oferă 30 de pictograme, prin care te miști cu săgețile; o culoare pe care pictograma albă s-ar vedea greu este mutată la o nuanță lizibilă. Ștergerea unei categorii folosite încă de locuri te întreabă întâi unde merg ele. Pagina spune când ai ajuns la limită.
+- **Opacități implicite**: opacitatea cu care pornește fiecare strat suprapus (fiecare strat istoric, fotografiile, fiecare categorie de locuri) și, pentru straturi, dacă apar la deschidere; un singur Salvează le scrie pe toate. Linkul unui vizitator care fixează o opacitate are în continuare prioritate.
+
+### Istoric
+
+- **Istoric** arată modificările orașului, cele mai noi primele, cu cine și când le-a făcut; filtrezi după ce s-a schimbat (fotografii, locuri, straturi, categorii de locuri, setările orașului) și după felul modificării (modificate, create, șterse, aduse înapoi). Linkul de istoric al unei fotografii sau al unui loc deschide versiunile lui, fiecare cu câmpurile schimbate, înainte și după.
+- **Readu această versiune** (după ce te întreabă) aduce înapoi câmpurile acelei versiuni; versiunea de acum rămâne în Istoric, deci și revenirea se poate anula. Cu filtrul pe **Șterse**, fiecare element șters oferă **Restaurează**. O versiune pe care regulile de azi o refuză nu este adusă înapoi, iar pagina spune de ce.
+
+### Procesări
+
+Lista procesărilor, actualizată pe loc (În lucru, Eșuate, Încheiate), cu progresul lor; pașii și jurnalul unei procesări pe măsură ce apar; **Anulează procesarea** (după ce te întreabă) cât timp rulează. Ștergerea unui strat așteaptă cu data ei („Rulează după …, odată cu procesarea imaginilor.”).
+
+### Administratori
+
+- **Invită** un administrator cu adresa contului său Google: se păstrează doar amprenta ei; copiezi linkul și îl trimiți tu. Invitația expiră după 14 zile și poate fi anulată. Persoana invitată deschide linkul, se conectează cu acel cont Google și alege **Alătură-te**.
+- **Retrage accesul** întreabă întâi și numește administratorul. De atunci, acel administrator nu mai poate salva nimic: următoarea lui salvare este refuzată, iar aplicația îi spune că acel cont nu mai este administrator (o modificare încă nesalvată de pe ecranul lui se pierde; păstrarea ei pe ecran este planificată, scenariul S-A20-BAD-REVOKED-WHILE-EDITING). Proprietarul nu poate fi eliminat și nimeni nu se poate elimina singur, așa că harta are mereu un administrator.
+
+### Erori
+
+Erorile întâlnite de vizitatori și de administratori, grupate, pe 24 de ore, 7 zile sau 30 de zile, cu numărul și versiunile lor; un grup arată când a apărut prima și ultima dată, iar mesajul și stiva ca text simplu, fără date personale. Când Error Reporting este oprit în proiect, pagina spune asta și duce la cardul de statistici al Configurării.
+
+### De la Salvează la harta vizitatorilor
+
+Fiecare salvare a ceva publicat cere serverului să refacă datele hărții publice (manifestul), cel mult o dată pe minut; vizitatorii văd schimbarea la următoarea vizită. Testele cap-coadă verifică tot lanțul pe emulatoare: o fotografie publicată, redenumită, adusă înapoi și retrasă; un loc adăugat de la tastatură; opacitatea implicită, afișarea la deschidere și ajustările unui strat; fiecare ajunge în harta construită exact cum a fost salvat (scenariile S-A41-*).
+
+### Imagini din satelit și georeferențiere (M3)
+
+Căutarea scenelor USGS, importul cadrelor scanate, încărcarea unui GeoTIFF și editorul de puncte de control (pe OpenStreetMap și Sentinel-2, niciodată pe Mapbox Satellite) vin odată cu procesarea imaginilor în M3, cu costul estimat afișat înainte de fiecare import.
 
 ## Costuri
 
@@ -144,7 +191,20 @@ Tot asistentul cere cam zece clicuri sau câmpuri și patru permisiuni Google; c
 
 ## Probleme frecvente
 
-De completat odată cu fiecare ecran: mesajul afișat, cauza și ce trebuie făcut.
+Mesajul afișat, cauza și ce trebuie făcut, pentru fiecare ecran.
+
+### Editoarele (din M2c)
+
+| Mesaj | Cauză | Ce faci |
+| --- | --- | --- |
+| un mesaj sub un câmp, iar Salvează oprit | câmpul încalcă o regulă (un titlu în română gol, un an de sfârșit înaintea celui de început, un link care nu e https, un loc în afara orașului) | corectezi câmpul numit; Salvează pornește când nu mai e nicio problemă |
+| editorul numește alt administrator și ora | celălalt a salvat același element între timp | păstrezi câmpurile tale sau le iei pe ale lui, apoi Salvează |
+| „Ești offline: nu s-a salvat nimic. …” | conexiunea s-a pierdut | Salvează din nou când revine; ciorna rămâne |
+| „Accesul a fost refuzat. …”, apoi „Acest cont Google nu administrează harta. …” | accesul tău a fost retras | ceri altui administrator o invitație nouă |
+| „Harta apare după ce configurezi Mapbox.” | cardul Mapbox nu e gata (nu există tokenul administratorului) | termini cardul Mapbox; până atunci scrii locurile în câmpuri |
+| „Imaginea nouă a fost refuzată, iar cea veche rămâne publicată.” | fișierul de înlocuire nu a trecut verificarea serverului | alegi alt fișier (motivul apare lângă mesaj) |
+| tilesetul aparține altui cont Mapbox | **Leagă un strat** cu tilesetul altui cont | legi un tileset al contului Mapbox al orașului |
+| o categorie nu se poate șterge | locuri o folosesc încă | alegi categoria în care se mută locurile, apoi Șterge |
 
 ### Harta publică (din M1)
 
@@ -155,6 +215,6 @@ Când pagina orașului nu poate afișa harta, arată un card cu unul dintre mesa
 | „Harta nu a fost găsită. Încearcă din nou mai târziu.” | pagina nu a găsit `manifest.json` la adresa din `config.js` | publici orașul (M2) sau corectezi `manifestUrl` în `config.js` |
 | „Datele hărții sunt nevalide (probleme găsite: N).”, urmat de `câmp: regulă` | manifestul încalcă o regulă din City Manifest v1; cardul numește primul câmp și regula | corectezi acel câmp (în aplicația de administrare din M2; pe un site făcut din kitul de pornire, în `data/manifest.json`) |
 | „Lipsește config.js” / „config.js este nevalid: …” | pagina nu are `window.HistoricCityMapConfig` sau un câmp din el este necunoscut ori greșit | compari `config.js` cu cel din kitul de pornire (`starter-kit/README.md`) |
-| „cityId din config.js (…) nu corespunde hărții (…).” | `config.js` arată spre manifestul altui oraș | faci `cityId` și orașul din manifest să fie același |
+| „cityId din config.js (…) nu corespunde hărții (…).” | `config.js` arată spre manifestul altui oraș | faci `cityId` și orașul din manifest să fie același; site-ul București numește încă orașul vechi `bucuresti`, iar proiectul `bucharest`: se aliniază când site-ul trece pe manifestul serverului (`docs/research/DECISIONS-for-review.md` §35b) |
 | „Această hartă are nevoie de o versiune mai nouă a paginii (X). Reîncarcă pagina mai târziu.” | manifestul cere un motor mai nou decât cel încărcat de pagină | încarci versiunea de motor din mesaj |
 | „Browserul tău nu poate afișa harta interactivă. Lista fotografiilor rămâne disponibilă.” | browserul vizitatorului nu are WebGL | nimic: vizitatorul primește în continuare lista fotografiilor |

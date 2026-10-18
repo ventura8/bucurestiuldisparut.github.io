@@ -4,6 +4,7 @@
  */
 import type { Logger } from '@hcm/shared';
 
+import { ContentRegistry } from '../content/registry.js';
 import { NO_GATE, type AdminState } from '../state/state.js';
 import { LANGUAGE_KEY, resolveAdminLocale } from '../state/locale.js';
 import { Store } from '../state/store.js';
@@ -32,9 +33,10 @@ export interface BootEnvironment<Setup, SetupIntents> {
 
 const NOTHING = (): Promise<void> => Promise.resolve();
 
-function refused(): Promise<never> {
-    return Promise.reject(new Error('the admin has no configuration'));
-}
+/** No editor area: the configuration is missing, so no page can open. */
+const NO_CONTENT = new ContentRegistry({}, () => {
+    throw new Error('no content services without a configuration');
+}).stores;
 
 type MissingEnvironment = Pick<BootEnvironment<null, null>, 'location' | 'local' | 'languages' | 'log'>;
 
@@ -54,6 +56,7 @@ function missingState(env: MissingEnvironment): AdminState<null> {
         analytics: false,
         windowClass: 'compact',
         notice: null,
+        leaving: null,
         projectId: '',
         authDomain: '',
         setup: null,
@@ -65,8 +68,8 @@ export function configMissingApp(env: MissingEnvironment): AdminApp<null, null> 
     const initial = missingState(env);
     const store = new Store(initial, env.log);
     const intents: AdminIntents<null> = {
-        ...{ signIn: NOTHING, signOut: NOTHING, claim: NOTHING, join: NOTHING, retry: NOTHING, enableApi: NOTHING },
-        ...{ listAdmins: refused, inviteAdmin: refused, revokeAdmin: refused },
+        ...{ signIn: NOTHING, signOut: NOTHING, claim: NOTHING, join: NOTHING, retry: NOTHING, enableApi: NOTHING, leavePage: NOTHING },
+        stayOnPage: () => undefined,
         reload: () => {
             env.location.reload();
         },
@@ -97,6 +100,8 @@ export function configMissingApp(env: MissingEnvironment): AdminApp<null, null> 
         intents,
         loadPage: () => Promise.resolve(null),
         telemetry,
+        content: NO_CONTENT,
+        hasUnsavedChanges: () => false,
         destroy: () => undefined,
     };
 }

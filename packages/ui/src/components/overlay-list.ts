@@ -22,6 +22,11 @@ export interface OverlayListItem {
     readonly color?: string;
     /** A bundled Material Symbols name. */
     readonly icon?: string;
+    /**
+     * Whether the row has the visibility switch (default true). The admin's overlay defaults list the photos and the POI
+     * categories without one: only a historical layer has a "shown at start" (CR-M2c-10).
+     */
+    readonly toggleable?: boolean;
 }
 
 /** A group heading (`layers.group.historical`, `layers.group.places`); a kind without one is listed without heading. */
@@ -49,8 +54,9 @@ function valueOf(event: Event): number {
 
 /**
  * The live-transparency list of PLAN Addendum 3, shared by the viewer's Layers panel and the admin's default-opacity
- * editor: per overlay a switch (`toggleLabel`, "Show {name}") and a 0–100 % slider (`opacityLabel`; arrows ±1,
- * PageUp/PageDown ±10, Home/End; `aria-valuetext` and the visible value from `valueText`, "{percent} %"). A hidden
+ * editor: per overlay a switch (`toggleLabel`, "Show {name}"; none on a row whose `toggleable` is false) and a 0–100 %
+ * slider (`opacityLabel`; arrows ±1, PageUp/PageDown ±10, Home/End; `aria-valuetext` and the visible value from
+ * `valueText`, "{percent} %"). A hidden
  * overlay keeps its slider enabled. Fires `hcm-overlay-visibility` with `{id, visible}` and `hcm-overlay-opacity` with
  * `{id, opacity, final}` (`final: false` per frame while dragging or per key press, `true` on release); once a change
  * settles, `changedText` (and `shownText` / `hiddenText` for the switch) is announced in a polite live region. The
@@ -218,13 +224,7 @@ export class HcmOverlayList extends LitElement {
         return html`<li data-overlay=${item.id}>
             ${this.renderSwatch(item)}
             <span class="name body-large">${name}</span>
-            <hcm-switch
-                .checked=${item.visible}
-                label=${fillTemplate(this.toggleLabel, { name })}
-                @hcm-change=${(event: Event) => {
-                    this.onVisibility(item, checkedOf(event));
-                }}
-            ></hcm-switch>
+            ${this.renderSwitch(item)}
             <div class="opacity">
                 <hcm-slider
                     min="0"
@@ -243,6 +243,18 @@ export class HcmOverlayList extends LitElement {
                 <span class="value body-medium" aria-hidden="true">${valueText}</span>
             </div>
         </li>`;
+    }
+
+    private renderSwitch(item: OverlayListItem): TemplateResult | typeof nothing {
+        return item.toggleable === false
+            ? nothing
+            : html`<hcm-switch
+                  .checked=${item.visible}
+                  label=${fillTemplate(this.toggleLabel, { name: item.label })}
+                  @hcm-change=${(event: Event) => {
+                      this.onVisibility(item, checkedOf(event));
+                  }}
+              ></hcm-switch>`;
     }
 
     private renderSwatch(item: OverlayListItem): TemplateResult {

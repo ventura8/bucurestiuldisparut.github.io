@@ -17,7 +17,7 @@ carries no admin element or text. `defineAdminElements()` registers them; `defin
   the bars; the start-up banner, the page and the snackbar docked below it in `<main>`, as is every panel; the city's
   theme), `hcm-admin-nav` (bar, rail and expanded rail from one list; a rail taller than the window scrolls, a long
   label wraps inside it), `hcm-account-menu` (language, theme, analytics consent, sign out),
-  `hcm-page-outlet` (the route's page, loaded lazily by the app), `hcm-admins-page` (`#/admins`).
+  `hcm-page-outlet` (the route's page, loaded lazily by the app; a list and detail page fills the page area).
 - **Auth panels** (`src/admin/auth/`): `hcm-sign-in`, `hcm-claim-panel`, `hcm-join-panel`, `hcm-blocked-panel` and
   `hcm-consent-note` (the inline note before a Google popup: why, for at most an hour, Google's unverified-app screen).
 - **Setup** (`src/admin/setup/`): `hcm-setup-page` (progress ring; one column below 840 px, list and detail from there;
@@ -26,6 +26,14 @@ carries no admin element or text. `defineAdminElements()` registers them; `defin
   again; modes `inline`, `summary`, `detail`; the input counters as `data-*` attributes), one body per step
   (`hcm-setup-billing`, `-provision`, `-deploy`, `-mapbox`, `-usgs` with the countdown, `-analytics`, `-import`),
   `hcm-crash-groups` and `hcm-crashes-page`.
+- **The editors** (M2c, [docs/research/M2c-interfaces.md](../../docs/research/M2c-interfaces.md)): the editing kit
+  (`src/admin/editing/`: `hcm-list-detail`, `hcm-confirm-dialog`, `hcm-empty-state`, the `AreaPage` base that opens and
+  closes its area's store), the admin map (`src/admin/map/`: `hcm-admin-map`, the map's box with mapbox-gl.css inside its
+  shadow root, the 48 px zoom buttons, the keyboard's crosshair and the reason there is no map, collapsed to that note
+  with `[no-map]`; `hcm-draw-toolbar`; `hcm-vertex-list`), and one folder per area with its page and its port:
+  `src/admin/photos/` (`hcm-photos-page`, `hcm-admin-photo-list`, `hcm-admin-photo-editor`), `src/admin/pois/`,
+  `src/admin/layers/`, `src/admin/settings/` (with `hcm-icon-picker`), `src/admin/admins/`, `src/admin/history/`,
+  `src/admin/jobs/`, `src/admin/crashes/` and `src/admin/home/`; `src/admin/content-port.ts` gathers the areas' ports.
 - **Ports**: the elements never import `@hcm/admin` (layering); they read structural ports, `src/admin/admin-port.ts` and
   `src/admin/setup/setup-port.ts`, which `packages/admin/test/app/admin-port.test.ts` checks against the real app.
 

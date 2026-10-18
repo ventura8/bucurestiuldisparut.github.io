@@ -1,8 +1,8 @@
 /** Small helpers shared by the engine-core tests (memory storage, a recording logger, a fake telemetry, responses). */
 import { createLogger, type Logger, type LogRecord } from '@hcm/shared';
 import { createRecordingSink } from '@hcm/test-support';
+import type { Unsubscribe } from '@hcm/ui/map';
 
-import type { Unsubscribe } from '../../src/map/map-port.js';
 import type { ConsentState, TelemetryContext, TelemetryEvent, TelemetryPort } from '../../src/telemetry/telemetry-port.js';
 
 export type MemoryStorage = Map<string, string> & Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;

@@ -187,7 +187,7 @@ Common rules:
 | `label`, `description?` | `{ro, en}` | at most 200 and 5,000 characters |
 | `kind` | `satellite`, `aerial` or `map` | |
 | `sensor?`, `attribution` | string | at most 100 and 500 characters; the attribution is always shown with the layer, as plain text (markup in it is shown, never rendered) |
-| `source` | object | `{type: 'mapbox', tilesetId: '<owner>.<id>'}`, `{type: 'xyz', tiles: [https template with {z} {x} {y}], tileSize: 256 or 512}` or `{type: 'pmtiles', url}` |
+| `source` | object | `{type: 'mapbox', tilesetId: '<owner>.<id>'}`, `{type: 'xyz', tiles: [https template with {z} {x} {y}], tileSize: 256 or 512}` or `{type: 'pmtiles', url}`. The admin links a `mapbox` tileset of the city's own Mapbox account only, and never an address carrying a key or a token (`layers.link`, which refuses them as `apiError.layers.foreignTileset` and `apiError.layers.secretInAddress`); an `xyz` host must also be in the page's CSP (`img-src`, `connect-src`) |
 | `minzoom`, `maxzoom` | number | 0 to 24, `minzoom` ≤ `maxzoom` |
 | `bounds?` | `[[w, s], [e, n]]` | where tiles exist |
 | `order` | integer | drawing order (higher on top) in the Standard style's `middle` slot |

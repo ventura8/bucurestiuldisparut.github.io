@@ -18,6 +18,14 @@
         "./dynamic-color": {
             "types": "./src/theme/dynamic-color.ts",
             "default": "./src/theme/dynamic-color.ts"
+        },
+        "./map": {
+            "types": "./src/map/index.ts",
+            "default": "./src/map/index.ts"
+        },
+        "./map/draw": {
+            "types": "./src/map/draw/index.ts",
+            "default": "./src/map/draw/index.ts"
         }
     },
     "scripts": {

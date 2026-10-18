@@ -179,4 +179,24 @@ describe('<hcm-overlay-list>', () => {
         expect([...(element.shadowRoot?.querySelectorAll('h3') ?? [])].map((heading) => heading.textContent)).toEqual(['Places']);
         expect(element.shadowRoot?.querySelectorAll('ul')).toHaveLength(2);
     });
+
+    it('happyPath_aRowThatIsNotToggleableHasOnlyItsSlider', async () => {
+        const items = ITEMS.map((item) => (item.kind === 'raster' ? item : { ...item, toggleable: false }));
+        const element = await list('en', items);
+
+        expect(element.shadowRoot?.querySelectorAll('hcm-switch')).toHaveLength(2);
+        expect(element.shadowRoot?.querySelector('[data-overlay="photos"] hcm-switch')).toBeNull();
+        await expect.element(page.getByRole('slider', { name: 'Opacity: Fotografii' })).toHaveAttribute('aria-valuenow', '100');
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_toggleableTrueKeepsTheSwitch', async () => {
+        const element = await list(
+            'ro',
+            ITEMS.filter((item) => item.id === 'ortofoto-1945').map((item) => ({ ...item, toggleable: true })),
+        );
+
+        await expect.element(page.getByRole('switch', { name: 'Afișează Ortofoto 1945' })).toBeChecked();
+        expect(element.shadowRoot?.querySelectorAll('hcm-switch')).toHaveLength(1);
+    });
 });

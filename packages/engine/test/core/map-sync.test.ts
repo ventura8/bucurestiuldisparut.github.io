@@ -1,10 +1,10 @@
 import { rasterAdjustmentPaint, withOverlayOpacity, withOverlayVisibility } from '@hcm/shared';
 import { FakeMap } from '@hcm/test-support/fake-map';
+import type { RasterLayerSpec, VectorOverlaySpec } from '@hcm/ui/map';
 import { describe, expect, it } from 'vitest';
 
 import { MapSync } from '../../src/core/map-sync.js';
 import { initialState, withManifest, withYear } from '../../src/core/state.js';
-import type { RasterLayerSpec, VectorOverlaySpec } from '../../src/map/map-port.js';
 import { layer, manifest, omit } from './fixtures.js';
 
 describe('MapSync', () => {

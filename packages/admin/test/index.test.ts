@@ -1,6 +1,7 @@
 // The entry's wiring, in Node: the real Firebase SDK is initialized (the emulator and the production settings) but never
 // called, and every browser part is a plain object; no request leaves the test.
 import { createFakeFetch, E2E_PROJECT_CONFIG, jsonResponse } from '@hcm/test-support/fakes';
+import { EDITOR_PAGE_TAGS } from '@hcm/ui/admin';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CONSENT_KEY } from '../src/app/telemetry.js';
@@ -10,7 +11,11 @@ import {
     autoStart,
     browserDeps,
     browserParts,
+    contentDepsFor,
     E2E_KIT,
+    e2eCity,
+    guardUnload,
+    loadColourLibrary,
     projectOf,
     registerAdminPage,
     startAdmin,
@@ -18,6 +23,7 @@ import {
     type AdminScope,
     type AdminWindow,
 } from '../src/index.js';
+import { ADMIN_ROUTES } from '../src/routing/routes.js';
 import { E2E_WEB_CONFIG, settle, testLog } from './app/fakes.js';
 
 class MemoryStorage implements Storage {
@@ -92,7 +98,7 @@ function fakeWindow(files: Readonly<Record<string, Response>> = {}) {
 }
 
 /** The `e2e` build's kit, as `E2E_KIT` is in that build. */
-const E2E = { standInPopup: createStandInPopup };
+const E2E = { standInPopup: createStandInPopup, city: e2eCity };
 
 /** One configuration for every test: Firebase keeps one default app per process. */
 const CONFIG = { ...E2E_WEB_CONFIG, measurementId: 'G-E2E0000000' };
@@ -105,6 +111,55 @@ describe('the entry', () => {
     it('happyPath_importingItInNodeStartsNothing', () => {
         expect(E2E_KIT).toBeNull();
         expect(projectOf(E2E_WEB_CONFIG)).toEqual({ projectId: 'demo-hcm', cities: ['bucharest'] });
+    });
+
+    it('happyPath_everyEditorRouteLoadsItsOwnPage', async () => {
+        // Before any test registers a page of its own: the loaders the entry's sections register.
+        const deps = browserDeps(browserParts(fakeWindow().win, E2E, testLog().log))(CONFIG, { release: 'e2e' }, null);
+        const editors = ADMIN_ROUTES.filter((id) => id !== 'setup');
+
+        await expect(Promise.all(editors.map((id) => deps.pages.load(id)))).resolves.toEqual(editors.map((id) => EDITOR_PAGE_TAGS[id]));
+    });
+
+    it('happyPath_leavingThePageWithAnUnsavedEditAsksTheBrowsersQuestion', () => {
+        const target = new EventTarget();
+        let unsaved = false;
+        guardUnload(target as never, { hasUnsavedChanges: () => unsaved });
+
+        const quiet = new Event('beforeunload', { cancelable: true });
+        target.dispatchEvent(quiet);
+        unsaved = true;
+        const asked = new Event('beforeunload', { cancelable: true });
+        target.dispatchEvent(asked);
+
+        expect([quiet.defaultPrevented, asked.defaultPrevented]).toEqual([false, true]);
+    });
+
+    it('badPath_aColourLibraryThatDoesNotLoadIsLogged', async () => {
+        const { log, recording } = testLog();
+
+        await loadColourLibrary(log, () => Promise.reject(new Error('offline')));
+
+        expect(recording.records.at(-1)).toMatchObject({ level: 'error', message: 'the colour library did not load' });
+    });
+
+    it('happyPath_theEditorsStoreStampsWithTheSignedInUid', async () => {
+        const parts = browserParts(fakeWindow().win, E2E, testLog().log);
+        const signedOut = contentDepsFor(parts, { firestore: () => ({}), auth: { currentUser: null } } as never, fetch);
+        const signedIn = contentDepsFor(parts, { firestore: () => ({}), auth: { currentUser: { uid: 'owner-uid' } } } as never, fetch);
+
+        await expect(signedOut.store.batch([])).resolves.toEqual({ ok: false, reason: 'denied' });
+        await expect(signedIn.store.batch([])).rejects.toThrow();
+    });
+
+    it('happyPath_theE2eBuildEditsTheTestsOwnCity', () => {
+        const w = fakeWindow();
+        Object.assign(w.win.location, { search: '?test=spec-1&city=e2e-photos-1' });
+
+        const deps = browserDeps(browserParts(w.win, E2E, testLog().log))(CONFIG, { release: 'e2e' }, null);
+
+        expect(deps.content?.cityId).toBe('e2e-photos-1');
+        expect([e2eCity('?city=Not_Valid'), e2eCity(''), e2eCity('?city=cluj')]).toEqual([null, null, 'cluj']);
     });
 
     it('happyPath_theE2eBuildWiresTheEmulatorsAndTheOauthStandIn', async () => {
@@ -121,6 +176,12 @@ describe('the entry', () => {
         await expect(consent).rejects.toMatchObject({ failure: 'popupClosed' });
         expect(new URL(String(vi.mocked(w.win.open).mock.calls[0]?.[0])).searchParams.get('test')).toBe('spec-1');
         await expect(deps.pages.load('admins')).resolves.toBe('hcm-admins-page');
+        await expect(deps.pages.load('crashes')).resolves.toBe('hcm-crashes-list-page');
+        await expect(deps.pages.load('home')).resolves.toBe('hcm-home-page');
+        expect(deps.content?.cityId).toBeNull();
+        expect(Object.keys(deps.content?.modules ?? {})).toEqual(expect.arrayContaining(['home', 'admins', 'history', 'jobs', 'crashes']));
+        expect(deps.content?.store.newId()).toMatch(/^[A-Za-z0-9]{20}$/);
+        expect(() => deps.content?.theme('#6750a4')).toThrow('not loaded');
         await expect(deps.fetch('/runtime.json')).resolves.toMatchObject({ status: 204 });
         expect(deps.pages.has('photos')).toBe(true);
         expect(deps.languages).toEqual(['en-US']);
@@ -164,9 +225,10 @@ describe('the entry', () => {
         expect(deps.project).toBe(project);
         expect(deps.setup.initial).toBeNull();
         await expect(deps.pages.load('setup')).resolves.toBe('hcm-setup-page');
-        await expect(deps.pages.load('crashes')).resolves.toBe('hcm-crashes-page');
     });
+});
 
+describe('the entry: sign-in, telemetry and start', () => {
     it('badPath_anAddressWithoutATestIdGivesTheStandInAnEmptyOne', async () => {
         const w = fakeWindow();
         Object.assign(w.win.location, { search: '' });

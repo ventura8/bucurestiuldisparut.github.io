@@ -44,7 +44,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 6. **Every point of interest was drawn as a plain white dot.**
    - Seen: in the M1 review screenshots, POI markers showed a dot instead of their category glyph.
    - Found by: looking at the screenshots; the unit tests used a fake font loader that accepted any family name, and the adapter asked for `Material Symbols Rounded` while the kit registers `HCM Material Symbols Rounded`.
-   - Fix and pin: the sprite uses `ICON_FONT_FAMILY` of `@hcm/ui` (`packages/engine/src/map/icons.ts`); `happyPath_aPoiIconIsItsMaterialSymbolGlyph` pins the name.
+   - Fix and pin: the sprite uses `ICON_FONT_FAMILY` of `@hcm/ui` (`packages/ui/src/map/icons.ts`); `happyPath_aPoiIconIsItsMaterialSymbolGlyph` pins the name.
    - **A name two packages must agree on is imported from its owner, never typed twice.**
 7. **The open menu lay under the consent banner, and a modal sheet under the floating timeline.**
    - Seen: engine-ui's viewer with the real kit: the FAB menu's items were covered by the consent banner; the kit's modal sheet (z-index 2) slid under the timeline dock.
@@ -104,7 +104,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 18. **A layer's attribution could have put a link on the map.**
     - Seen: a manifest attribution `<a href="https://…">USGS</a>` became a live link in the map's attribution, and `<b>` or `Arhiva <Națională>` lost their characters; the Layers panel (Lit) showed the same text literally.
     - Found by: the a11y and security review of M1, reading Mapbox GL 3.32's attribution control: it parses every source `attribution` as HTML, keeps `<a href>` (http, https, mailto) and writes the result with `innerHTML`. The schema allows any plain text there, and no unit or e2e test fed it markup.
-    - Fix and pin: the engine escapes `&`, `<` and `>` before handing the attribution to Mapbox (`attributionText` in `packages/engine/src/map/rasters.ts`; `badPath_markupInTheAttributionReachesMapboxAsEscapedText`, `S-V03-BAD-ATTRIBUTION-MARKUP-IS-TEXT`).
+    - Fix and pin: the engine escapes `&`, `<` and `>` before handing the attribution to Mapbox (`attributionText` in `packages/ui/src/map/rasters.ts`; `badPath_markupInTheAttributionReachesMapboxAsEscapedText`, `S-V03-BAD-ATTRIBUTION-MARKUP-IS-TEXT`).
     - **A third-party API that takes "text" may render HTML: read what it does with the string before passing data to it.**
 19. **Keyboard users lost the lightbox at its last photo, and Shift+Tab left the modals.**
     - Seen: pressing the lightbox's Next button (Enter) onto the last photo disabled it while it had the focus; Chromium moved the focus to `<body>`, so Esc and the arrow keys stopped working. Shift+Tab right after a modal sheet or the lightbox opened (they focus their container) left the modal for the page behind it, and the lightbox did not trap Tab at all.
@@ -119,7 +119,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 21. **Points of interest stayed plain discs until the visitor moved the map.**
     - Seen: in the M1 final-gate screenshots (1280 × 800, dark, no historical layers) two POIs showed their category disc without a glyph; the same screen in the other captures had them.
     - Found by: looking at the 216 final screenshots; the e2e and unit tiers were green, because the icon font always arrived before the map settled there, and `FakeMapboxMap.updateImage` stands for a map that redraws by itself. Mapbox GL 3.32's `updateImage` only swaps the image's pixels: an idle map draws them at its next frame, which nothing asks for.
-    - Fix and pin: `ensureIcon` (`packages/engine/src/map/icons.ts`) calls `triggerRepaint()` after `updateImage` (`badPath_aDrawingThatLandsOnAnIdleMapAsksForAFrame`); `S-V24-BAD-ICON-FONT-LATE` holds the icon font until the map is idle, then sees the glyph appear without any interaction (it failed on the old build in two projects).
+    - Fix and pin: `ensureIcon` (`packages/ui/src/map/icons.ts`) calls `triggerRepaint()` after `updateImage` (`badPath_aDrawingThatLandsOnAnIdleMapAsksForAFrame`); `S-V24-BAD-ICON-FONT-LATE` holds the icon font until the map is idle, then sees the glyph appear without any interaction (it failed on the old build in two projects).
     - **A third-party update that arrives after the view settled must ask for a frame: test it by delaying the input until the view is idle, not only by running fast.**
 22. **The second photo of a point of interest sat 4 px lower than the first.**
     - Seen: in the final screenshots at every viewport, the POI sheet's photo thumbnails did not share one top edge.
@@ -356,3 +356,83 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the screenshots first, then the Tab round's ring check, which until then only asked whether an outline was set and how it contrasted, never whether it was drawn.
     - Fix and pin: the canvas's ring is inset (`outline-offset: -3px`), the attribution's links take an offset-free ring with 3 px of padding around them, the handle a round ring inside its box (`kit-integration.test.ts`, `sheet.test.ts`); the probe's `ringCutterOf` reports a ring cut by an ancestor (`e2e/test/a11y-probe.test.ts`).
     - **A style that is set is not a style that is drawn: check that nothing clips the focus indicator, the way a pointer check hit-tests a target.**
+69. **Tab reached only the first drawing tool of the places editor.**
+    - Seen: admin, `#/pois/<id>`, every admin project: the kit's one-stop toolbar (`hcm-toolbar`) sets `tabindex` on its slotted icon-button hosts (0 on the active one, -1 on the rest); a host with `tabindex=-1` hides its shadow button from Tab, so Select and Add at centre were reachable only with the arrow keys, and the active host, a focusable element without a name of its own, counted as a stop Tab never reached.
+    - Found by: the Tab round of `expectStateSound` at the state `pois.new-place` (e2e admin tier); the ui tests clicked the tools and axe has no rule for a focusable host without a name inside a toolbar.
+    - Fix and pin: the tools are a named group (`role="group"`), each its own Tab stop, 8 px apart so their 48 px rings do not overlap (`S-A32-BAD-NO-MAP-TOKEN`, `packages/ui/test/admin/map/map-elements.test.ts`).
+    - **A roving tabindex on custom-element hosts governs the hosts, not the controls in their shadow trees: keep every control its own Tab stop unless the focus pattern sets the controls' own `tabindex`.**
+70. **The places list repeated four target and contrast faults the photos page had already fixed.**
+    - Seen: admin, `#/pois`, at 360 and 768 px: native check boxes (their drawing reaches 1:1 against the surface), Import GeoJSON as a label around a 1 x 1 visually hidden file input (no border, and its focus hidden under other content), filter chips whose wrapped rows were 8 px apart (their 48 px rings overlapping), a 43 px wide History link, and, with text spacing at 360 px, the import dialog's Import ring over the bottom of the category select at the edge of the scrolling content.
+    - Found by: the generic checkers at the admin projects (non-text contrast, focus obscured, target size, occlusion); the ui tests and axe passed.
+    - Fix and pin: M3 check boxes with a `touch-target` ring, a kit button opening a `hidden` input, chip rows 16 px apart, `min-inline-size: 48px` on the link, the refusals listed after the select (`pois.list`, `pois.import-preview`, `S-A34-BAD-INVALID-FEATURES`); the dialog's action ring and the link width are reported to the kit's owners (CR-M2c-23).
+    - **A new area starts from the patterns of the areas the checkers already passed: a native control or a visually hidden input brings back a fault that was fixed elsewhere.**
+71. **A draft that had been touched kept another admin's stale values in the fields it did not change.**
+    - Seen: admin, the photo editor: after a remote save, a draft with one edited field still held the old values of every other field, so the next Save would have written them back and undone the other admin's change.
+    - Found by: `packages/admin/test/photos/draft.test.ts` (the photos workstream, CR-M2c-19).
+    - Fix and pin: the draft rebases on every snapshot: the fields it does not change take the remote values, the overlapping ones raise the conflict choice.
+    - **A draft is a set of changed fields over the latest snapshot, never a copy of the document taken when the editor opened.**
+72. **A recording `Proxy` handed to a Lit property binding broke the render.**
+    - Seen: ui tests of the photos and places pages: `nextDirectiveConstructor is not a constructor` once a page passed its intents to a child element.
+    - Found by: the browser tests of the photos and places pages (CR-M2c-21).
+    - Fix and pin: the fakes answer only intent names: `undefined` for `_$`-prefixed names and `then` (`packages/ui/test/admin/editing/fake-area.ts`, `kit.test.ts`).
+    - **Lit probes a bound value for `_$litDirective$`: a test double that answers every property is a directive to Lit.**
+73. **The kit's slider stayed where the key put it after the store refused the value.**
+    - Seen: admin, the layer editor: the black level pressed past the white level stopped in the store, but the slider showed the refused position.
+    - Found by: a ui test and the keyboard spec `S-A35-BAD-KEYBOARD-LIMITS` (CR-M2c-30).
+    - Fix and pin: the binding is `live()`, and the announcement says the kept value (`packages/ui/test/admin/layers/layers-page.test.ts`).
+    - **A control that moves itself must be bound with `live()` when the store may refuse the move: Lit compares with what it last rendered, not with what the control shows.**
+74. **Dependency-cruiser's `no-circular` counts type-only imports.**
+    - Seen: the content port importing an area's port which imported the umbrella port back for its shared types.
+    - Found by: the `dependency-cruiser` gate (CR-M2c-26).
+    - Fix and pin: the shared types live in a base file (`packages/ui/src/admin/area-port.ts`) that both import.
+    - **Shared types go below both of their users, never in the file that aggregates them.**
+75. **A text field that commits on `change` left Save disabled until the admin left the field, and a disabled button takes no click.**
+    - Seen: admin, `#/pois`, a new point: the Romanian title typed, then a click on Save did nothing: the draft still had an empty title (the field reported it on `change` only), so Save stayed disabled, and a click on a disabled button does not take the focus, so `change` never fired.
+    - Found by: the admin-to-viewer journey `S-A41-HAPPY-PLACE` and the revoke journey (`e2e/admin/specs/flows/`); the places spec had pressed Tab after every field.
+    - Fix and pin: the place editor's titles, descriptions and links commit on `input` (`packages/ui/test/admin/pois/poi-editor.test.ts` types with `input` events); years still commit on `change`, since half a number is not a year (`DECISIONS-for-review.md` §35d).
+    - **A spec that presses Tab after every field hides the click a person makes straight after typing: type, then click Save, as a person does.**
+76. **The built Bucharest site refuses every manifest the backend builds.**
+    - Seen: the viewer served the manifest the admin's save published: "cityId din config.js (bucuresti) nu corespunde hărții (bucharest)". The site's `config.js` and the legacy manifest name `bucuresti`; the project's city (`infra/project.json`), the admin and every built manifest name `bucharest`.
+    - Found by: the first admin-to-viewer journey (`e2e/admin/specs/flows/publish.spec.ts`); each side was tested only against its own fixtures.
+    - Fix and pin: the journeys serve the site a `config.js` naming the project's city; aligning the site is the user's decision (`DECISIONS-for-review.md` §35b).
+    - **Test the hand-over between two apps with the real output of one as the input of the other: two fixtures that each pass prove nothing about the join.**
+77. **A collection-group rule opened every `history` folder in the database to admins.**
+    - Seen: `match /{path=**}/history/{entry}` (History's recent changes) let an admin read `setup/status/history/h1`, a path the contract does not name.
+    - Found by: the rules matrix's default-deny test (`firebase/rules-tests/test/identity.test.ts`) in the integration's `tests` run.
+    - Fix and pin: `get` requires the path to start with `cities`; `list` stays open to admins, because a condition on the path cannot hold for a collection-group query (the emulator then denies the whole query; `history.test.ts`).
+    - **A recursive wildcard matches everywhere: narrow what a rule can narrow, and write down what a query rule cannot.**
+78. **A new server-owned field needs a value in the rules tests' complete document, or its deny tests prove nothing.**
+    - Seen: `replacement` joined `photoDocSchema`; the generated tests "a client cannot change or remove it" read `removed: allow` (the fixture had no such field to remove) and the create test sent `undefined`.
+    - Found by: `firebase/rules-tests/test/client-writes.test.ts` and `documents.test.ts` in the integration's `tests` run.
+    - Fix and pin: `photoDoc` in `firebase/rules-tests/test/support/documents.ts` carries `replacement`.
+    - **The schema and the rules tests' fixture change together: a field the fixture lacks is a field no rule test exercises.**
+79. **A revoked admin's open draft disappears with the page.**
+    - Seen: admin, two browsers: the owner removed an admin whose place editor held a change; the admin's Save was refused, then the shell asked `admin.session` again and replaced the page with "This Google account does not administer this map", the draft with it.
+    - Found by: `S-A02-BAD-REVOKE` (`e2e/admin/specs/flows/revoke.spec.ts`), which raced it at first: on some projects the title was read before the panel came.
+    - Fix and pin: the spec asserts the refusal, that nothing is written and the panel; keeping the draft visible is `S-A20-BAD-REVOKED-WHILE-EDITING` (planned, `DECISIONS-for-review.md` §35e).
+    - **Assert the state a race ends in, never one it passes through.**
+80. **Playwright's `--project` takes every following word as a project name.**
+    - Seen: `npx playwright test --project admin-l1440-ro admin/specs/flows` answered `Project(s) "admin/specs/flows" not found`.
+    - Found by: running one spec folder during the integration.
+    - Fix and pin: the file filter goes first: `npx playwright test admin/specs/flows --project admin-l1440-ro` (`docs/TESTING.md`).
+    - **Put positional filters before variadic options.**
+81. **Without a map, every editor's map box stayed an empty block above the form.**
+    - Seen: the review screenshots of 2026-10-18, every admin editor at 360 × 800 and 768 × 1024: the box kept its 45vh (or 240 px) with only "The map appears once Mapbox is set up." at its top, pushing the editor's heading half a screen down.
+    - Found by: looking at the contact sheets (`reports/screenshots/m2c/sheets/`); no checker measures empty space.
+    - Fix and pin: `hcm-admin-map` sets `no-map` on its host while it only says why there is no map, and the pages size `[no-map]` to its note (`packages/ui/test/admin/map/map-elements.test.ts`, `packages/ui/test/admin/photos/photos-page.test.ts` measure the box against its note).
+    - **A box sized for its content in one state needs its size in every other state: look at the screenshot of each.**
+82. **On a wide pane the layer editor put the Romanian description beside the two names.**
+    - Seen: `#/layers/<id>` at 1600 and 2560 px: the texts' auto-fit grid made three columns, so the Romanian and English fields no longer faced each other.
+    - Found by: the contact sheet of `layers.editor` at 2560 × 1440.
+    - Fix and pin: the localized pairs take at least half the row each (`.fields.pairs`); `packages/ui/test/admin/layers/layers-page.test.ts` checks the columns at 800, 1600 and 2560 px.
+    - **A grid of paired fields fixes its column count; `auto-fit` is for fields that do not belong together.**
+83. **"Configurare" broke after its tenth letter on the phone's navigation bar.**
+    - Seen: every admin page at 360 px once the bar held four destinations and More: 72 px per item minus 4 px of padding each side left 64 px for a 65 px word, and `overflow-wrap: anywhere` put its last "e" on a line of its own.
+    - Found by: the contact sheets; the text check looks for cut and overlapping text, not a word broken across lines.
+    - Fix and pin: the bar's items have no inline padding; `packages/ui/test/admin/shell/nav-and-menu.test.ts` loads the kit's font ("HCM Roboto Flex") and fails on any word of a bar label split over two lines (a range per word; Lit's comment marker means every text node is read, not the first child).
+    - **Measure text in the font the product draws it with: a fallback font is narrower, and the test passes for nothing.**
+84. **A chosen row filled with the secondary container left its own fields at 1.27:1 in high contrast.**
+    - Seen: the places editor's list of positions, the chosen position, in the light high-contrast scheme: the fields' borders and the row's icons against `secondary-container` (#554f64).
+    - Found by: the non-text contrast check, only once the map box stopped pushing the list below the window (lesson 81): a state's checks see what is in the window.
+    - Fix and pin: the chosen row is ringed (an inset 2 px `secondary` ring), not filled (`pois.editor` in the tour inventory).
+    - **Never fill the background of a container whose controls are measured against the surface; and remember that a state's checks cover only what is scrolled into view.**

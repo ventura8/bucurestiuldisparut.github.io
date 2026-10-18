@@ -116,6 +116,7 @@ export function photoDoc(cityId: string, photoId: string, creator: string): Data
             bytes: 1_048_576,
             sha256: SHA,
         },
+        replacement: { error: 'apiError.photo.duplicate', at: past(), duplicateOf: 'p-original' },
         createdAt: past(),
         createdBy: creator,
         ...systemStamp('photos'),

@@ -381,6 +381,7 @@ export function shellStateAccess(overrides: Partial<ShellState> = {}): ShellStat
         gate: NO_GATE,
         route: { id: 'setup', params: [] },
         destinations: [],
+        leaving: null,
         locale: 'en',
         theme: { mode: 'system', city: null, preview: null },
         consent: 'unknown',

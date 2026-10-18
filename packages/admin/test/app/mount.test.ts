@@ -1,9 +1,15 @@
 import type { CallableResponse } from '@hcm/shared';
 import { BASELINE_THEME } from '@hcm/ui';
+import { FakeContentStore } from '@hcm/test-support/fake-content-store';
 import { createUpstreamFakes, GOOGLE_TOKENS } from '@hcm/test-support/fakes';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ADMINS_MODULE } from '../../src/admins/admins.js';
 import { mount, THEME_KEY, type AdminDeps, type TelemetryView } from '../../src/app/mount.js';
+import type { AreaModule } from '../../src/content/areas.js';
+import type { ContentDeps } from '../../src/content/registry.js';
+import type { ContentServices } from '../../src/content/services.js';
+import { JOBS_MODULE } from '../../src/jobs/jobs.js';
 import { NO_SETUP, type SetupModuleSpec, type ShellServices } from '../../src/app/services.js';
 import { AdminTelemetry, CONSENT_KEY } from '../../src/app/telemetry.js';
 import { GoogleAuthError } from '../../src/auth/google-auth.js';
@@ -31,6 +37,7 @@ import {
     testLog,
     undeployed,
 } from './fakes.js';
+import { asContentStore, NO_AREA_SERVICES, nth } from '../content/world.js';
 
 interface Counter {
     readonly count: number;
@@ -156,24 +163,137 @@ describe('mount', () => {
         expect(app.state.auth).toBe('signedOut');
         expect(w.location.reloads).toBe(1);
     });
+});
 
-    it('happyPath_theAdminsPageCallsTheServerAndGetsMessagesOnFailure', async () => {
+describe('mount: the editor areas', () => {
+    it('happyPath_theEditorAreasGetTheShellsServicesAndLoseTheirStoresOnSignOut', async () => {
         const w = world();
         w.auth.user = OWNER;
         deployed(w.callables, w.auth, SESSION.owner);
-        const list: CallableResponse<'admins.list'> = { admins: [], invites: [] };
-        w.callables.answer('admins.list', () => list);
-        w.callables.fail('admins.invite', failure('already-exists', 'apiError.invite.alreadyAdmin', { email: 'a@e2e.test' }));
-        w.callables.answer('admins.revoke', () => ({ revoked: true }));
-        const app = mount(w.deps);
+        const store = new FakeContentStore();
+        const seen: ContentServices[] = [];
+        let destroyed = 0;
+        let unsaved = true;
+        const module: AreaModule<{ readonly n: number }, null> = {
+            area: 'jobs',
+            create: (services) => {
+                seen.push(services);
+                return {
+                    state: { n: 0 },
+                    subscribe: () => () => undefined,
+                    intents: null,
+                    open: () => undefined,
+                    close: () => undefined,
+                    hasUnsavedChanges: () => unsaved,
+                    destroy: () => {
+                        destroyed += 1;
+                    },
+                };
+            },
+        };
+        const content: ContentDeps = {
+            modules: { jobs: module as never },
+            store: asContentStore(store),
+            theme: () => ({ light: {}, dark: {}, highContrastLight: {}, highContrastDark: {} }),
+            areas: NO_AREA_SERVICES,
+            cityId: 'e2e-city',
+        };
+        const app = mount({ ...w.deps, content });
         await settle();
 
-        await expect(app.intents.listAdmins()).resolves.toEqual({ ok: true, value: list });
-        await expect(app.intents.inviteAdmin('a@e2e.test')).resolves.toEqual({
-            ok: false,
-            error: { key: 'apiError.invite.alreadyAdmin', params: { email: 'a@e2e.test' } },
+        expect(app.content.jobs).toBe(app.content.jobs);
+        const services = nth(seen);
+        services.notify({ key: 'adminContent.jobs.cancelRequested' });
+        expect([services.cityId, services.user(), services.locale(), app.hasUnsavedChanges()]).toEqual([
+            'e2e-city',
+            { uid: OWNER.uid, name: OWNER.displayName },
+            'ro',
+            true,
+        ]);
+        expect(app.state.notice?.key).toBe('adminContent.jobs.cancelRequested');
+        unsaved = false;
+        await app.intents.signOut();
+
+        expect([destroyed, services.user(), app.hasUnsavedChanges()]).toEqual([1, null, false]);
+        app.destroy();
+    });
+
+    it('badPath_signingOutWithAnUnsavedEditAsksFirst', async () => {
+        const w = world();
+        w.auth.user = OWNER;
+        deployed(w.callables, w.auth, SESSION.owner);
+        let unsaved = true;
+        const module: AreaModule<null, null> = {
+            area: 'jobs',
+            create: () => ({
+                ...{ state: null, subscribe: () => () => undefined, intents: null, open: () => undefined, close: () => undefined },
+                hasUnsavedChanges: () => unsaved,
+                destroy: () => undefined,
+            }),
+        };
+        const store = asContentStore(new FakeContentStore());
+        const theme = (): ReturnType<ContentDeps['theme']> => ({ light: {}, dark: {}, highContrastLight: {}, highContrastDark: {} });
+        const app = mount({
+            ...w.deps,
+            content: { modules: { jobs: module as never }, store, theme, areas: NO_AREA_SERVICES, cityId: null },
         });
-        await expect(app.intents.revokeAdmin({ kind: 'admin', uid: 'someone' })).resolves.toEqual({ ok: true, value: { revoked: true } });
+        await settle();
+        expect(app.content.jobs).not.toBeNull();
+
+        await app.intents.signOut();
+        const asked = app.state.leaving;
+        app.intents.stayOnPage();
+        const stayed = app.state.auth;
+        await app.intents.signOut();
+        unsaved = false;
+        await app.intents.leavePage();
+        await settle();
+
+        expect([asked, stayed, app.state.auth, app.state.leaving]).toEqual([{ kind: 'signOut' }, 'admin', 'signedOut', null]);
+        await expect(app.intents.leavePage()).resolves.toBeUndefined();
+    });
+});
+
+describe('mount: the city the editor areas edit', () => {
+    it('happyPath_theProjectsFirstCityWithoutAnOverrideAndNoAreasWithoutContent', async () => {
+        const w = world();
+        w.auth.user = { ...OWNER, displayName: null };
+        deployed(w.callables, w.auth, SESSION.owner);
+        const seen: ContentServices[] = [];
+        const module: AreaModule<null, null> = {
+            area: 'home',
+            create: (services) => {
+                seen.push(services);
+                return {
+                    state: null,
+                    subscribe: () => () => undefined,
+                    intents: null,
+                    open: () => undefined,
+                    close: () => undefined,
+                    hasUnsavedChanges: () => false,
+                    destroy: () => undefined,
+                };
+            },
+        };
+        const store = asContentStore(new FakeContentStore());
+        const theme = (): ReturnType<ContentDeps['theme']> => ({ light: {}, dark: {}, highContrastLight: {}, highContrastDark: {} });
+        const app = mount({
+            ...w.deps,
+            content: { modules: { home: module as never }, store, theme, areas: NO_AREA_SERVICES, cityId: null },
+        });
+        const bare = mount(w.deps);
+        await settle();
+
+        expect(app.content.home).not.toBeNull();
+        expect([seen[0]?.cityId, seen[0]?.user()]).toEqual(['bucharest', { uid: OWNER.uid, name: OWNER.email }]);
+        expect([bare.content.home, bare.content.jobs]).toEqual([null, null]);
+        expect(() =>
+            mount({
+                ...w.deps,
+                project: { projectId: 'demo-hcm', cities: [] },
+                content: { modules: {}, store, theme, areas: NO_AREA_SERVICES, cityId: null },
+            }),
+        ).not.toThrow();
     });
 });
 
@@ -184,10 +304,35 @@ describe('mount: sessions ending and the city read', () => {
         const answers: CallableResponse<'admin.session'>[] = [SESSION.admin, SESSION.admin, SESSION.stranger];
         w.callables.answer('admin.session', () => answers.shift() ?? SESSION.stranger);
         w.callables.fail('admins.list', failure('permission-denied', 'apiError.notAdmin'));
-        const app = mount(w.deps);
+        const store = asContentStore(new FakeContentStore());
+        const theme = (): ReturnType<ContentDeps['theme']> => ({ light: {}, dark: {}, highContrastLight: {}, highContrastDark: {} });
+        const app = mount({
+            ...w.deps,
+            content: { modules: { admins: ADMINS_MODULE }, store, theme, areas: NO_AREA_SERVICES, cityId: null },
+        });
         await settle();
 
-        await expect(app.intents.listAdmins()).resolves.toMatchObject({ ok: false, error: { key: 'apiError.notAdmin' } });
+        await app.content.admins?.intents.refresh();
+        await settle();
+
+        expect(app.state.auth).toBe('notAdmin');
+    });
+
+    it('badPath_aRefusedFirestoreReadOfAnAreaMakesTheShellAskAgain', async () => {
+        const w = world();
+        w.auth.user = OWNER;
+        const answers: CallableResponse<'admin.session'>[] = [SESSION.admin, SESSION.admin, SESSION.stranger];
+        w.callables.answer('admin.session', () => answers.shift() ?? SESSION.stranger);
+        const fake = new FakeContentStore();
+        const theme = (): ReturnType<ContentDeps['theme']> => ({ light: {}, dark: {}, highContrastLight: {}, highContrastDark: {} });
+        const app = mount({
+            ...w.deps,
+            content: { modules: { jobs: JOBS_MODULE }, store: asContentStore(fake), theme, areas: NO_AREA_SERVICES, cityId: null },
+        });
+        await settle();
+
+        app.content.jobs?.open([]);
+        fake.fail('cities/bucharest/jobs', { kind: 'denied', code: 'permission-denied' });
         await settle();
 
         expect(app.state.auth).toBe('notAdmin');

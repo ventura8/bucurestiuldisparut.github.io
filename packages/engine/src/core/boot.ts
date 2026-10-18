@@ -5,9 +5,9 @@
  * still works, scenario V02) and its events. A newer `load` (Retry) supersedes an older one still in flight.
  */
 import { decodeHash, resolveLocale, type DecodedHash, type Locale, type Manifest, type MapView, type MessageKey } from '@hcm/shared';
+import type { MapEventMap, Unsubscribe } from '@hcm/ui/map';
 
 import { loadManifest } from '../config/load.js';
-import type { MapEventMap, Unsubscribe } from '../map/map-port.js';
 import type { TelemetryContext } from '../telemetry/telemetry-port.js';
 import { mapOptions } from './map-specs.js';
 import { MapSync } from './map-sync.js';
