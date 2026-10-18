@@ -248,6 +248,8 @@ describe('the theme section', () => {
             basemap: { style: 'mapbox://styles/mapbox/standard-satellite' },
         });
         expect(store.state.citySection.theme.preview).toBeNull();
+        // The shell wore the preview on the whole admin from the seed to the Save (CR-M2c-28).
+        expect(world.previews).toEqual([TOKENS('#00658f'), null]);
     });
 
     it('badPath_anInvalidSeedPreviewsNothingAndDiscardEndsThePreview', () => {
@@ -260,6 +262,19 @@ describe('the theme section', () => {
 
         expect(store.state.citySection.theme.preview).toBeNull();
         expect(world.store.writes).toEqual([]);
+        expect(world.previews).toEqual([TOKENS('#00658f'), null]);
+    });
+
+    it('badPath_leavingSettingsOrSigningOutEndsThePreview', () => {
+        const { store, world } = open(['theme']);
+        store.intents.setSeed('#00658F');
+
+        store.close();
+        store.open(['theme']);
+        store.intents.setSeed('#00658F');
+        store.destroy();
+
+        expect(world.previews).toEqual([TOKENS('#00658f'), null, TOKENS('#00658f'), null]);
     });
 
     it('badPath_aLowContrastSeedIsMovedWithAWarning', () => {
@@ -293,6 +308,32 @@ describe('the categories section', () => {
             order: 2,
         });
         expect(preview.calls).toEqual([]);
+    });
+
+    it('happyPath_aNewCategorysIconFollowsItsLabelUntilOneIsPicked', () => {
+        const { store } = open(['categories', '_new']);
+        const icon = (): string | undefined => store.state.category?.value?.icon;
+
+        store.intents.setCategoryLabel('ro', 'Fântâni');
+        expect(icon()).toBe('water');
+        store.intents.setCategoryLabel('ro', 'Biserici');
+        expect(icon()).toBe('church');
+        store.intents.editCategory({ icon: 'museum' });
+        store.intents.setCategoryLabel('ro', 'Fântâni');
+        expect(icon()).toBe('museum');
+
+        store.intents.discardCategory();
+        expect(icon()).toBe('location_on');
+        store.intents.setCategoryLabel('en', 'Fountains');
+        expect(icon()).toBe('water');
+    });
+
+    it('badPath_aLabelWithNoKnownWordKeepsThePin', () => {
+        const { store } = open(['categories', '_new']);
+
+        store.intents.setCategoryLabel('ro', 'Corona 1968');
+
+        expect(store.state.category?.value?.icon).toBe('location_on');
     });
 
     it('badPath_aNewCategoryWithoutANameOrWithAnUnreadableColourIsRefused', async () => {

@@ -5,7 +5,7 @@ import { createUpstreamFakes, GOOGLE_TOKENS } from '@hcm/test-support/fakes';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ADMINS_MODULE } from '../../src/admins/admins.js';
-import { mount, THEME_KEY, type AdminDeps, type TelemetryView } from '../../src/app/mount.js';
+import { mount, SERVER_SEEN_KEY, serverMemory, THEME_KEY, type AdminDeps, type TelemetryView } from '../../src/app/mount.js';
 import type { AreaModule } from '../../src/content/areas.js';
 import type { ContentDeps } from '../../src/content/registry.js';
 import type { ContentServices } from '../../src/content/services.js';
@@ -198,9 +198,12 @@ describe('mount: the editor areas', () => {
             areas: NO_AREA_SERVICES,
             cityId: 'e2e-city',
         };
+        w.documents.data.set('cities/e2e-city', { theme: { seedColor: '#6750a4', tokens: BASELINE_THEME } });
         const app = mount({ ...w.deps, content });
         await settle();
 
+        // The e2e build's own city is the one whose colours the shell wears (CR-M2c-7), not the project's first.
+        expect(app.state.theme.city).toEqual(BASELINE_THEME);
         expect(app.content.jobs).toBe(app.content.jobs);
         const services = nth(seen);
         services.notify({ key: 'adminContent.jobs.cancelRequested' });
@@ -211,6 +214,13 @@ describe('mount: the editor areas', () => {
             true,
         ]);
         expect(app.state.notice?.key).toBe('adminContent.jobs.cancelRequested');
+        // An area's theme preview is the whole admin's (CR-M2c-28), until it ends.
+        services.previewTheme(BASELINE_THEME);
+        expect(app.state.theme.preview).toBe(BASELINE_THEME);
+        services.previewTheme(null);
+        expect(app.state.theme.preview).toBeNull();
+        // Writes reach Firestore while the access holds (a revoked admin's are refused at once: content/revoked.test.ts).
+        expect(await services.store.create('cities/e2e-city/notes/n1', { text: 'n' })).toEqual({ ok: true });
         unsaved = false;
         await app.intents.signOut();
 
@@ -467,5 +477,20 @@ describe('mount: telemetry, start-up mode and the Setup Assistant', () => {
         expect(app.intents.setup).toBeNull();
         expect(app.state.locale).toBe('ro');
         expect(w.documents.watchers.size).toBe(0);
+    });
+});
+
+describe('serverMemory', () => {
+    it('happyPath_rememberedPerProject_badPath_anotherProjectsNoteSaysNothing', () => {
+        const local = new MemoryStore();
+        const memory = serverMemory(local, 'demo-hcm');
+
+        expect(memory.known()).toBe(false);
+        memory.remember();
+        expect([memory.known(), local.get(SERVER_SEEN_KEY), serverMemory(local, 'other-project').known()]).toEqual([
+            true,
+            'demo-hcm',
+            false,
+        ]);
     });
 });

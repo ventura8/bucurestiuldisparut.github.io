@@ -54,7 +54,7 @@ describe('admin catalogues', () => {
     });
 
     it('badPath_anUnknownPlaceholderStaysVisible', () => {
-        expect(translateAdminSetup('ro', 'adminSetup.import.progress', { done: '3' })).toBe('3 din {total} fotografii importate');
+        expect(translateAdminSetup('ro', 'adminSetup.import.progress', { done: '3' })).toBe('Fotografii importate: 3 din {total}');
     });
 });
 

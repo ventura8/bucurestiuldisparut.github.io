@@ -436,3 +436,238 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the non-text contrast check, only once the map box stopped pushing the list below the window (lesson 81): a state's checks see what is in the window.
     - Fix and pin: the chosen row is ringed (an inset 2 px `secondary` ring), not filled (`pois.editor` in the tour inventory).
     - **Never fill the background of a container whose controls are measured against the surface; and remember that a state's checks cover only what is scrolled into view.**
+85. **The deployed admin logged a CORS error before its server existed.**
+    - Seen: the live admin of 2026-10-17, a Hosting-only deploy of a new map: before sign-in the console said the fetch of `…cloudfunctions.net/admin-session` was blocked by CORS, then `net::ERR_FAILED`.
+    - Found by: the user, in the browser's console; the e2e journey hid the server and claimed that error as expected.
+    - Fix and pin: a new map's first deploy says it has no server (`HCM_ADMIN_START_UP=1`, `runtime.json` → `startUp`), and the admin then calls nothing of the server until Google lists every function `ACTIVE` (step d). Tried first in Chromium: a `no-cors` fetch only trades the CORS error for "Failed to load resource: the server responded with a status of 404": every answer of 400 or more is logged, whatever the mode (`S-A25-HAPPY` asserts no request and no console error; `S-A25-BAD-NO-START-UP-DEPLOY` keeps the probe's path).
+    - **A request whose expected answer is an error always shows in the console: ask something that knows instead of probing what is not there.**
+86. **A start-up page reloaded after its server came kept the admin in start-up mode.**
+    - Seen: the owner's journey, after the claim: the reload to see USGS's approval opened the start-up sign-in again (the routed `runtime.json` still said `startUp`), as a functions-only deploy would leave the start-up page in place.
+    - Found by: `e2e/admin/specs/journey.spec.ts` at the five admin projects, the first run with the start-up runtime.
+    - Fix and pin: a browser that has had the server's answer (`hcm:admin:serverSeen`) probes despite `startUp` (`packages/admin/test/auth/controller.test.ts`, the journey).
+    - **A deploy-time flag goes stale the moment the world changes: let what the browser has seen since outrank it.**
+87. **The admin's boot log and crash reports said `release: dev`.**
+    - Seen: the live admin's console, 2026-10-17: `admin booting { release: 'dev' }`; every crash report of the admin would have been filed under `dev`.
+    - Found by: reading the live console; the `runtime.json` writer of §23b had never been built, and the fallback hid it.
+    - Fix and pin: the admin's site build writes `runtime.json` with `<version>+<short commit>` (`scripts/site/test/admin-runtime.test.ts`, `admin-build.test.ts`).
+    - **A value a report needs is written by the build that ships the code, not left to a deploy step that does not exist yet.**
+88. **Turning a phone with the account menu open dropped the focus on the page.**
+    - Seen: the admin at 360 × 800 with the account dialog open, turned to 800 × 360: the menu moved from the top bar to the rail's foot, the old one went with its dialog, and the focus fell to the body.
+    - Found by: the hardening review's follow-up; the tour checks each state at one viewport, so nothing turned a page mid-state.
+    - Fix and pin: the shell gives the new menu's button the focus when the one in use was replaced (`S-A29-BAD-ROTATE-MENU-OPEN`; `packages/ui/test/admin/shell/shell-layout.test.ts`).
+    - **When a layout change re-creates a component, the focus it held must be handed to its successor: turn the device with the focus inside the part that moves.**
+89. **A toast left from the previous state went in the middle of the next state's checks.**
+    - Seen: the tour at 3840 × 2160, dark, on the NUC: `viewer.language` reported "Tab never reaches Close" for the toast the `locate-toast` state had held open; switching the language re-worded it, its timer started again, and it went during the Tab round.
+    - Found by: the tour's generic checkers in a split run on the slower machine (the state passed on the laptop).
+    - Fix and pin: the `language` state closes a leftover toast before it switches (`dismissToast`, `e2e/support/viewer.ts`).
+    - **A state's checks need a settled page: close or hold whatever times out, never let a timer race the checks.**
+90. **With the admin's map on screen, a dialog's scrim covered Mapbox's logo and attribution.**
+    - Seen: the photos page with its map at 1440 × 900, the Set fields, delete and publish report dialogs open: the legal line under the scrim.
+    - Found by: the generic layout checker's legal rule, once the admin's e2e had its mocked Mapbox (CR-M2c-7) and the map drew.
+    - Fix and pin: the kit's modal registry (`packages/ui/src/components/modal-registry.ts`): an open modal dialog marks the admin map `covered`, which hides its canvas and controls until the dialog closes (`modal-registry.test.ts`, `dialog.test.ts`, `map-elements.test.ts`).
+    - **A third party's legal line must stay visible or go with what it labels: hide the map under a modal instead of dimming it.**
+91. **Publishing a batch of photos took one input more than its budget.**
+    - Seen: `S-A10-HAPPY`, "select all and publish": Select all showed only after a first row was ticked.
+    - Found by: the input budget of the content flows (`CONTENT_INPUT_BUDGETS`), counted by `InputFlow`.
+    - Fix and pin: Select all shows whenever the list has rows (`photos-page.test.ts`).
+    - **Count the inputs of a flow from the first screen: a control that appears only after another input costs that input.**
+92. **A photo's pin could not be placed with a pointer.**
+    - Seen: the photo editor with its map: in Select mode a click did nothing, and the click tools have no drag (Terra Draw waits for §34g).
+    - Found by: `S-A09-HAPPY` driving the map with clicks (WCAG 2.5.7, a single-pointer alternative to dragging).
+    - Fix and pin: in Select mode a click moves the selected point; the photo's editor selects its pin (`click-draw-adapter.test.ts`, `photos/map.test.ts`).
+    - **Every drag needs a click-only alternative; a selected point should go where the pointer says.**
+93. **A photo dropped before the city was read was created at 0, 0 and refused as "not an admin".**
+    - Seen: `S-A37` specs uploading right after the page opened, with no remembered pin: the photo document at (0, 0), refused by the rules, which the page showed as a missing admin right.
+    - Found by: the replace and upload specs in a fresh city of the content world.
+    - Fix and pin: the upload queue waits for a pin (the last one, else the city's centre) before it creates the document (`upload-queue.test.ts` badPath_aFileDroppedBeforeTheCityIsReadWaitsForItsCentre).
+    - **A default that depends on loaded data must wait for that data, never fall back to zero.**
+94. **The shell wore the project's city theme in another city.**
+    - Seen: a content world's city (`?city=`) in the admin: the colours of `project.cities[0]`.
+    - Found by: the content specs' review screenshots.
+    - Fix and pin: the shell's theme follows the edited city (`mount.test.ts`).
+    - **Derive the theme from the same city the editors edit.**
+95. **An import file chosen right after the places page opened was planned against no categories.**
+    - Seen: `S-A34-BAD-MARKUP-IS-TEXT`, flaky 3 of 4: every feature "unknown category", an existing id counted as new.
+    - Found by: the import spec choosing its file at once.
+    - Fix and pin: the importer plans its preview again when the places or the categories change (`importer.test.ts`).
+    - **A preview computed from live lists must be recomputed when they arrive.**
+96. **The list of positions kept a coordinate the map had refused.**
+    - Seen: a position typed outside the city: the field kept the refused value while the shape kept its old position.
+    - Found by: `S-A32-BAD-OUTSIDE-CITY`.
+    - Fix and pin: a refused value puts the field back at the shape's position (`map-elements.test.ts`).
+    - **A field must show what was stored, not what was refused.**
+97. **A new place's toolbar said Select while the map was drawing.**
+    - Seen: Add place, Area: the Select tool pressed (and its hint about dragging) while each click added a position.
+    - Found by: the drawing spec reading the pressed tool.
+    - Fix and pin: the tools follow the drawing session; a finished point selects (`poi-editor.test.ts`).
+    - **A toolbar is a view of the mode, never its own state.**
+98. **Importing over the limit did not say the numbers.**
+    - Seen: "the file would pass 5000 places", without how many there are and how many the file adds; a failed count read as too many.
+    - Found by: `S-A34-BAD-TOO-MANY` ("with the numbers").
+    - Fix and pin: the refusal names the city's count, the file's and the limit; a count that failed is a failure (`importer.test.ts`, `pois-page.test.ts`).
+    - **A limit refused should name the limit and both sides of the sum.**
+99. **A place's address opened directly on a phone went Back to the previous site.**
+    - Seen: `#/pois/gara` opened from a link: the browser's Back left the admin.
+    - Found by: `S-A29-BAD-DEEP-LINK-COMPACT`.
+    - Fix and pin: the navigation puts the list under an item opened directly (`navigation.test.ts`).
+    - **An item reached by its address needs its list under it in the history.**
+100. **A phone held sideways had no page heading.**
+    - Seen: 915 × 412, the rail and no top bar: axe's `page-has-heading-one`.
+    - Found by: `S-A29-BAD-LANDSCAPE-PHONE` through the generic checkers.
+    - Fix and pin: a visually hidden h1 in the main region when the top bar is not shown (`shell-layout.test.ts`).
+    - **Every layout of a page keeps its heading; hiding a bar must not hide the page's name.**
+101. **The places list did not preview the open draft.**
+    - Seen: a title changed in the editor, the list beside it still showed the old one.
+    - Found by: `S-A38-HAPPY` (M2c-interfaces §5.2).
+    - Fix and pin: the list shows the open draft (`pois-page.test.ts`).
+    - **What the contract says is previewed must be checked where it is previewed.**
+102. **A place added before the city's categories were listed lost its remembered category.**
+    - Seen: Add place right after the page opened: the select showed the first category, the draft had none and was invalid.
+    - Found by: `S-A30-BAD-STICKY-FIELDS`, flaky 1 of 3.
+    - Fix and pin: a new place without a category gets the remembered one (else the first) once the categories arrive or when it opens (`pois.test.ts`).
+    - **A remembered choice must be applied when its options arrive, not only when the form opens.**
+103. **A refused Mapbox or USGS save left the chip as it was, although the server recorded why.**
+    - Seen: a revoked Mapbox token: the alert said so, the chip stayed "To do".
+    - Found by: `S-A06-BAD-REVOKED`.
+    - Fix and pin: after a refused save the card reads `setup.status` again (`credentials.test.ts`).
+    - **When the server records a failure, show its record, not a guess of it.**
+104. **A provisioning item's own reason vanished once the run was recorded.**
+    - Seen: an organisation policy blocking the public bucket: "Needs attention" and no reason in normal mode.
+    - Found by: `S-A04-BAD-ORG-POLICY`.
+    - Fix and pin: an item keeps the reason the page knows when the record has none for the same state (`records.test.ts`); `setup.recordCloud` keeps API error codes only.
+    - **When a store keeps less than the page knows, merge rather than replace.**
+105. **A Google token that expired mid-provisioning offered only a Retry that could not work.**
+    - Seen: the item said "Continue to renew it", the card showed Retry, which ran again with the dead token.
+    - Found by: `S-A04-BAD-TOKEN-EXPIRED-MID-RUN`; the unit test's fake provisioner threw, the real one stops and resolves.
+    - Fix and pin: a run that stopped on a 401 drops the token and offers Continue (`provision.test.ts`).
+    - **A fake must fail the way the real thing fails; read the real one's contract before writing the fake's.**
+106. **The start-up steps' results were lost when the page reloaded before the server came.**
+    - Seen: after the claim, billing and provisioning back to "To do": the bootstrap record in `sessionStorage` had been overwritten by the claim card's first change, before the Setup controller read it.
+    - Found by: `S-A26-BAD-TOKEN-GONE`.
+    - Fix and pin: the record is mirrored only once it was read (`context.test.ts`, `controller.test.ts`).
+    - **A store mirrored on every change must be read before the first write.**
+107. **On a landscape phone the editors flapped between one pane and two.**
+    - Seen: 915 × 412: the full-screen editor hid the rail, which widened the page past 840 px, which split it and brought the rail back; the Tab round missed what the flap left inert.
+    - Found by: the admin tour (§34c) at `tour-c915l`, its first run.
+    - Fix and pin: the list and detail never split at a compact height (`splitsAt`, `kit.test.ts`).
+    - **A layout decision that changes what it measures needs a rule that does not depend on its own result.**
+108. **A map scrolled to a strip had its own attribution counted as covering it.**
+    - Seen: the layer editor at 915 × 412, scrolled: a sample of the canvas hit Mapbox's attribution.
+    - Found by: the admin tour's scroll sweep at `tour-c915l`.
+    - Fix and pin: the layout probe counts a map's own controls over its canvas as the map (`ownMapControl`, `layout-probe.test.ts`); the legal rule still checks them.
+    - **A checker's rule must know what a component draws over itself by design.**
+109. **In WebKit the admin stayed at "Loading…" behind a gapi stand-in that never answered.**
+    - Seen: the first `admin-webkit-l1440-ro` run: Firebase Auth fetches Google's gapi loader as soon as it starts on Safari; the firewall refused it, and a first stand-in (an empty script) left Firebase waiting for its callback, holding the admin's start.
+    - Found by: the Firefox and WebKit projects of the editors' forms (CR-M2c-7's follow-up).
+    - Fix and pin: the fake upstreams answer `apis.google.com/js/api.js` with a loader that calls its callback without `gapi.load`, which Firebase handles as an unreachable loader (`google-apis.ts`, `upstream-google.test.ts`). The CSP messages WebKit logs for Playwright's own inspector styles and for the report-only Trusted Types header are expected only in the WebKit projects, each with its reason (`engineConsoleErrors`); the header is for the user (`DECISIONS-for-review.md` §37g).
+    - **A stand-in must fail the way the real service fails, quickly: one that never answers holds whatever waits for it.**
+110. **A long-lived emulator turned green journeys red.**
+    - Seen: the History and drawing journeys failed in every project of a per-push tour, even alone, after hours of runs against one Functions emulator: its trigger queue was minutes behind (about three trigger runs a second, 25,000 runs), so a history entry or a manifest build came after the test's wait.
+    - Found by: the admin tour's runs in the long-lived dev container; a fresh emulator passed the same run (126 of 127).
+    - Fix and pin: none in the product; the pipeline starts its emulators per run, and the waits on the Functions emulator share `FUNCTIONS_TIMEOUT_MS` (120 s) for a full parallel run.
+    - **Before blaming the code, look at how far behind the shared service is; restart a long-lived emulator before believing a wave of timeouts.**
+111. **"Add at centre" placed a new place nowhere when it was clicked before the city's view was read.**
+    - Seen: `flows/publish.spec.ts` at `admin-c360-ro` on the NUC: the place's list of positions stayed empty after the click; the map had no centre yet to give.
+    - Found by: the split quality run, under the load of every worker.
+    - Fix and pin: the drawing toolbar's "Add at centre" is off until the places page knows the city's view (`canAddCentre`, `centreKnown`; `map-elements.test.ts`, `pois-page.test.ts`).
+    - **A control that needs data must be off until the data is there; a busy machine clicks before a person would.**
+112. **Every admin page checked Google Analytics while the Setup's analytics card was the next step.**
+    - Seen: `photos/publish.spec.ts` on the Photos page logged `setup-analyticsConfig` 400 ("not enabled") at start: the Setup Assistant runs on every page of an admin session, and opening its next step, analytics, ran the card's check and listed the crash groups.
+    - Found by: the console guard, when a locked Setup test had left the project's `setup/status` at that step.
+    - Fix and pin: the analytics card checks only while the Setup page shows (`setPageShown`, `controller.test.ts`, `module.test.ts`).
+    - **A step's check belongs to its card on screen, not to a state machine that runs behind every page.**
+113. **Tests without the lock read what the locked tests reset.**
+    - Seen: the Admins page of a locked test lacked its owner (the list is the oldest 100 by `createdAt`, and the content worlds' admins were older and never removed); a content test of a removed admin saw the claim screen, because a locked test's reset had emptied `setup/owner` for a moment.
+    - Found by: the split quality run (five admin projects, sixteen workers).
+    - Fix and pin: a content world's admin joins after the personas (`JOINED`) and leaves at teardown (`ContentWorld.retire`); the removed-admin test moved to the locked `flows/revoke.spec.ts`.
+    - **A lock-free test may touch only its own world: any answer that depends on a project-wide document belongs under the lock.**
+114. **The first click of a new line or area vanished when its category arrived.**
+    - Seen: the drawing tour at `tour-x3840-dark-ro` and `tour-c360-light-en`: four clicks gave an area of the last three corners, two clicks no line; the first click's dot showed, then went.
+    - Found by: the admin tour under the split run's load, read from the trace (the positions kept were clicks two to four).
+    - Fix and pin: the places map sets the drawing tools again for a shape not drawn yet only when they are in another mode; applying the same place again (its colour, once the categories arrive) no longer empties a started sketch (`map-session.ts`, `map-session.test.ts`).
+    - **Re-applying the same state must be a no-op: a setter that also resets loses whatever the user started meanwhile.**
+115. **A state was checked before the map its editor had just opened existed.**
+    - Seen: `admin.photos.editor` at `tour-c360-light-ro`: "0 visible map attributions"; the wait for loaded maps saw no map yet and passed at once.
+    - Found by: the admin tour, opening a photo from the compact list.
+    - Fix and pin: the state check also waits while an admin map box is still creating its map (`status` `loading`, `mapsLoadedInPage` in `e2e/support/state-check.ts`).
+    - **A wait for "every map loaded" passes on no map at all: wait for what is about to exist, too.**
+116. **A locked test's reset deleted every content world's public photo files.**
+    - Seen: `photos/publish.spec.ts` (unpublish) at `admin-c360-ro`: no public file of a photo just processed; the Undo of a delete could not restore a photo whose files were gone.
+    - Found by: the targeted rerun of the split run's failures, beside the locked specs.
+    - Fix and pin: the reset reads a Storage path's city where `STORAGE_PATHS` puts it (second in `photos/<city>/…` and `cities/<city>/…`, third in `uploads/photos/<city>/…` and `originals/photos/<city>/…`); it took the photo's id for the city of a public derivative (`storageKeptByReset`, `e2e/admin/support/emulators.ts`).
+    - **A rule that keeps other tests' data must be checked against every path family it meets, not the first one written.**
+117. **A new photo was refused as "changed by someone else" by its own first write.**
+    - Seen: `photos/interrupted.spec.ts` at `admin-c360-ro` and `photos/upload.spec.ts` at `admin-l1440-dark` on the NUC: the photo document's create was answered 409 `ALREADY_EXISTS` although the document holding its data dated from that very commit; Firestore's SDK ran the transaction again, which found the document and reported a conflict, so the upload never started.
+    - Found by: the split quality run, read from the trace's commit bodies.
+    - Fix and pin: a create that finds a document holding exactly its data, stamped by the same admin, takes it as its own landed attempt (`#ownCreate`, `packages/admin/src/firebase/content.ts`, `content.test.ts`); any other document stays a conflict. The 409 Chromium logs for such a commit is expected in the admin projects with its reason (`FIRESTORE_COMMIT_RETRIED`, `e2e/admin/support/test.ts`, which also expects the 400 of a commit refused because a trigger wrote the document since the transaction's read).
+    - **A transaction may run again after a commit whose answer was lost: its check must accept its own earlier write.**
+118. **Saving a photo opened as soon as it was processed said another admin had changed it.**
+    - Seen: `photos/publish.spec.ts` (publish on the first Save) at `admin-c360-ro`: "Someone else changed: published"; the upload queue had just written its suggestions (the place, the title) in a transaction, which the editor's listener had not delivered yet, so the Save's version check found a newer version and every changed field was named.
+    - Found by: the targeted rerun of the photo specs beside the locked chain, read from the trace's commits.
+    - Fix and pin: a Save refused for a newer version waits for that version, still saving (at most `REFUSED_WAIT_MS`); once it is the base, a change of other fields has merged in and the Save goes again, so its outcome is the second write's and what follows a Save (the remembered fields, "Saved") follows it; a change of the same fields is the conflict (`#decideRefusal`, `packages/admin/src/photos/draft.ts`, `draft.test.ts`). A first version retried in the background was found by `editing/sticky.spec.ts`: the Save said the conflict and the fields were not remembered.
+    - **A version check is about the document; a conflict is about fields: decide it with the newer version in hand.**
+119. **A test failed before it began: the Auth emulator dropped the sign-in of its content world.**
+    - Seen: `photos/upload.spec.ts` at `admin-c360-ro`, a repeat of the photo specs beside the locked chain: `signInWithIdp` failed with `socket hang up (ECONNRESET)` while the fixture prepared the world.
+    - Found by: the targeted rerun with `--repeat-each=2`.
+    - Fix and pin: the emulator helpers send a request again when the emulator drops the connection, at most twice (`resending`, `e2e/admin/support/resend.ts`); every request they send is idempotent.
+    - **A shared local service under load drops connections: the test's own plumbing must survive a reset; the product's requests are still checked as they are.**
+120. **An admin of a deployed map was shown the start-up mode when the server's first answer was slow.**
+    - Seen: `editing/drafts.spec.ts` (two tests) and `editing/sticky.spec.ts` at `admin-l1440-ro` in a split run: the places editor never came; the page asked to "confirm again with Google" to continue the setup. The one anonymous probe of `admin-session` had timed out after 10 s on a busy Functions emulator, which the shell took for "no server" for the whole visit.
+    - Found by: the split quality run, from the failures' page snapshots.
+    - Fix and pin: a probe that timed out is sent again, up to three in all (`PROBE_ATTEMPTS`, `packages/admin/src/auth/controller.ts`, `controller.test.ts`); a missing or unreachable server is still decided by the first answer (M2b-interfaces §1.4).
+    - **A timeout is not an answer: a decision that sends a person somewhere else needs one, or a second try.**
+121. **Undo of a photo's delete said "use History" although the delete's entry was there.**
+    - Seen: `photos/publish.spec.ts` (Undo) at `admin-c360-ro` on the NUC, twice: the photo's history held the delete stamped `09:57:03Z` and the publish before it stamped `09:57:03.215Z`; Undo takes the newest entry by its stamp and found the update.
+    - Found by: the split quality runs, from the history entries the test's own reads recorded in its trace.
+    - Fix and pin: a delete's entry is stamped at the event's time but never before the version it deleted (a millisecond after it), since the Firestore emulator's event times have whole seconds (`deletedAt`, `functions/src/history/record.ts`, `record.test.ts`; M2-interfaces §2.2).
+    - **An order built from two clocks needs a rule for when they disagree: a delete cannot come before what it deleted.**
+122. **Leaving a settings section right after Save asked about changes already stored.**
+    - Seen: the tour's settings journey at `tour-x2560-light-ro` (`tour-matrix`) and `editing/sticky.spec.ts`: Save, then another section at once: the unsaved guard's question, because a section's draft counted its changes as unsaved until the snapshot of its own write came back.
+    - Found by: the split `all` run's tour matrix.
+    - Fix and pin: the editing kit's draft is not unsaved right after a successful Save until the next edit (`#written`, `packages/admin/src/layers/draft.ts`, `draft.test.ts`), as the places' draft already was; the specs wait for the page's own "Saved" before they leave.
+    - **A guard must ask about what the person would lose, not about what the page has not heard back yet.**
+123. **The settings' round colour presets counted as covered at 320 × 568.**
+    - Seen: `admin.settings.theme` in every `tour-c320-*` project (`tour-matrix`): the detail pane cut the presets row to its top 8 px, and two of the five points the occlusion check sampled in that strip lay outside the round buttons, where the hit is their own row.
+    - Found by: the split `all` run's tour matrix, the first with the admin's journeys at every viewport.
+    - Fix and pin: the checker samples a control only inside its own shape, its box without the corners its rounded border cuts off (`withinShape`, `e2e/support/dom-walk.ts`; `layout-probe.test.ts`); a control another element covers still fails. Nothing was allowlisted.
+    - **A probe that samples a box must know the shape it stands for: a circle is not its bounding square.**
+124. **The admin's Romanian put a number before a noun: "Ștergi 1 locuri?", "Au revenit 1 câmpuri", "Importă cele 45 fotografii", "De 1 ori".**
+    - Seen: the M2d review screenshots (`reports/screenshots/m2d/`, the history's revert snackbar and the jobs, crashes and import cards) and the unit tests that pinned the wrong text (`Point, 1 positions`, `1 items`); Romanian needs "un loc", "2 locuri" and "45 de fotografii", English "1 place".
+    - Found by: reading the contact sheets; the i18n gate checks keys and placeholders, not grammar.
+    - Fix and pin: every admin count says "Noun: {count}" or "the selected nouns ({count})" (`admin-pois`, `admin-ops`, `admin-setup`, `admin-shell` catalogues; `pois-page.test.ts`, `history-page.test.ts`, `hcm-setup-analytics.test.ts`, `crashes-home.test.ts`, `i18n-admin.test.ts`); the same pass made "(opțional)" agree with feminine labels ("Descriere (română, opțională)"), the who of "Modificat de {who}" "tine" and "server" (`editor-chrome.test.ts`), deletes say "restaura din Istoric" as the History button does, the three editors' conflict buttons the same words, a layer's tiles "dale" everywhere, and the photos' empty state names the button instead of a drop a phone cannot make.
+    - **A count goes after a colon or in parentheses unless the catalogue has plural forms; a test that pins "1 positions" pins a bug.**
+125. **History showed a year as "1,980" and a geometry as "Point" or "LineString".**
+    - Seen: the history's "Ce s-a schimbat" values (`describeValue`), pinned so by `history-page.test.ts`.
+    - Found by: the M2d UX review of the history screens.
+    - Fix and pin: years (`year`, `yearStart`, `yearEnd`) are formatted without grouping and a geometry's type uses the place editor's shape names ("Linie, poziții: 3") (`packages/ui/src/admin/history/describe.ts`, `history-page.test.ts`).
+    - **A number that names something (a year, an id) is not a quantity: format it without a thousands separator.**
+126. **A category's swatch sat inside its name, which then broke over two lines on a phone with its opacity under the swatch.**
+    - Seen: `admin.settings.categories` and `categories-limit` at every viewport in the M2d review screenshots ("Categoria" / "01" beside a 40 px circle at 360 × 800).
+    - Found by: the contact sheets; the tour's checkers passed it (nothing overlapped or was cut).
+    - Fix and pin: a reorder row's `lead` is the row's first grid column beside both lines (`.row[data-lead]`, `packages/ui/src/admin/layers/reorder.ts`, `layers-styles.ts`; `categories.test.ts` measures the swatch left of the name and centred on both lines).
+    - **A leading icon is a column of the list item, never an inline glyph in its title.**
+127. **The settings repeated one bounds problem under all four edges, and told the admin to draw a rectangle on a map the page does not have.**
+    - Seen: `admin.settings.area-invalid` in the M2d review screenshots: the same sentence four times at 360 × 800; the help text above them said "Desenează un dreptunghi pe hartă" while the settings page has no map yet (§37e).
+    - Found by: the contact sheets.
+    - Fix and pin: a problem of the bounds as a whole is said once below the four edges, each edge `aria-invalid` and described by it, an edge's own problem still at that edge (`issueShownAt`, `packages/ui/src/admin/layers/form-parts.ts`, `settings/area-section.ts`; `settings-page.test.ts`); the help says to type the four edges.
+    - **A rule that spans fields is said once, where the fields are, and every field it names points to it; help text describes the screen that exists.**
+128. **The timeline spec read the 1966 markers before the year's filter was drawn.**
+    - Seen: `S-V04-HAPPY` at `fn-m768-ro` on the NUC in the final split `all` run of 2026-10-18: at the 1966 stop the map still drew today's eleven markers, among them `gara-obor` and `parcul-ferdinand-1930`.
+    - Found by: the split `all` run; every other project passed it. The spec polled until the markers contained the 1960 photo, which today's markers already did, then read them once.
+    - Fix and pin: one poll for the whole filtered set, the 1960 photo present and nothing outside 1956–1976 (`e2e/specs/viewer/timeline.spec.ts`).
+    - **Poll for the state you assert, never for a part of it that the previous state already had.**
+129. **The Setup cards' copy buttons stood at a different place in every row.**
+    - Seen: `admin.deploy-waiting` in the M2 final screenshots (`reports/screenshots/m2-final/`), every viewport: the four repository variables' copy buttons zigzagged, each midway between its value and the row's end; the Mapbox scopes and the USGS request rows the same.
+    - Found by: reading the contact sheets; nothing overlapped, so no checker could see it.
+    - Fix and pin: a copy row's text takes the free space and the button with its "Copied." status follows it (`.copy-row > :first-child`, `packages/ui/src/admin/setup/setup-styles.ts`; `badPath_theCopyButtonsLineUpWhateverTheValuesLength` in `hcm-setup-credentials.test.ts` measures values of different lengths at 1000 px, where the old rule fails).
+    - **`justify-content: space-between` over three items puts the middle one midway: give the text the free space instead, and test with values of different lengths.**
+130. **The places editor put Save before Discard changes, the other editors after it.**
+    - Seen: the M2 final screenshots, `admin.pois.editor` beside `admin.layers.editor` and the settings: Save, then Discard in places; Discard, then Save in layers and settings.
+    - Found by: the contact sheets; each editor's tests checked its own buttons, never the order across editors.
+    - Fix and pin: the places editor's head reads Discard changes, then Save at the trailing end (`packages/ui/src/admin/pois/hcm-poi-editor.ts`; `poi-editor.test.ts` pins the order).
+    - **The same two actions keep the same order in every editor; Material puts the confirming one last.**
+131. **The silent-refresh spec left the place editor while its Save was still on its way.**
+    - Seen: `S-A20-HAPPY` at `admin-c360-ro` on the NUC in the final split `all` run of 2026-10-18: the address of the places list was held back and the editor stayed, saved.
+    - Found by: the split `all` run; the spec waited for the write in Firestore (the emulator's REST API), which can hold it before the page has its answer, and a draft still saving holds a new address back (lesson 122).
+    - Fix and pin: the spec waits for the page's own "Saved" before it leaves (`e2e/admin/specs/shell/shell.spec.ts`), as `editing/sticky.spec.ts` does.
+    - **What the server holds is not what the page knows: leave a page only once the page says so.**

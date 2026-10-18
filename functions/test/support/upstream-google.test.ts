@@ -3,7 +3,7 @@
  * billing and provisioning steps, the analytics card, the crash panel and the pipeline's executions see, from a fresh
  * Spark project to a provisioned one.
  */
-import { createUpstreamFakes, GOOGLE_TOKENS, type UpstreamFakes } from '@hcm/test-support/fakes';
+import { createUpstreamFakes, GOOGLE_TOKENS, upstreamHosts, type UpstreamFakes } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
 const P = 'https://cloudresourcemanager.googleapis.com/v3/projects/demo-hcm';
@@ -533,5 +533,82 @@ describe('Cloud Storage, Error Reporting and the presets', () => {
         expect(() => {
             fakes.fail('nominatim', 'apiDisabled');
         }).toThrow('nominatim has no failure mode apiDisabled');
+    });
+});
+
+describe("the scenarios of the Setup Assistant's step specs", () => {
+    it('happyPath_theBillingApisCanBeOnWithoutBilling', async () => {
+        const fakes = createUpstreamFakes();
+        const service = (name: string): string => `https://serviceusage.googleapis.com/v1/projects/demo-hcm/services/${name}`;
+        expect(await call(fakes, 'GET', service('cloudbilling.googleapis.com'))).toMatchObject({ body: { state: 'DISABLED' } });
+
+        fakes.scenario('service-usage.billingApisEnabled');
+
+        expect(await call(fakes, 'GET', service('cloudbilling.googleapis.com'))).toMatchObject({ body: { state: 'ENABLED' } });
+        expect(await call(fakes, 'GET', service('billingbudgets.googleapis.com'))).toMatchObject({ body: { state: 'ENABLED' } });
+        expect(await call(fakes, 'GET', service('cloudfunctions.googleapis.com'))).toMatchObject({ body: { state: 'DISABLED' } });
+    });
+
+    it('badPath_aStaleBudgetOfTheAppIsListedOutOfSpec', async () => {
+        const fakes = createUpstreamFakes();
+        const budgets = 'https://billingbudgets.googleapis.com/v1/billingAccounts/0E2E00-0E2E00-0E2E01/budgets';
+
+        fakes.scenario('billing-budgets.staleBudget');
+        const listed = (await call(fakes, 'GET', budgets)).body as { budgets: Record<string, unknown>[] };
+
+        expect(listed.budgets).toHaveLength(1);
+        expect(listed.budgets[0]).toMatchObject({
+            displayName: 'historic-city-map demo-hcm',
+            amount: { specifiedAmount: { currencyCode: 'USD', units: '3' } },
+            thresholdRules: [{ thresholdPercent: 1, spendBasis: 'CURRENT_SPEND' }],
+        });
+    });
+
+    it('happyPath_theAppsBudgetInSpecHasNoTopicYet', async () => {
+        const fakes = createUpstreamFakes();
+
+        fakes.scenario('billing-budgets.appBudget');
+        const listed = (await call(fakes, 'GET', 'https://billingbudgets.googleapis.com/v1/billingAccounts/0E2E00-0E2E00-0E2E01/budgets'))
+            .body as { budgets: Record<string, unknown>[] };
+
+        expect(listed.budgets[0]).toMatchObject({
+            displayName: 'historic-city-map demo-hcm',
+            amount: { specifiedAmount: { units: '5' } },
+            notificationsRule: { disableDefaultIamRecipients: false },
+        });
+    });
+
+    it('happyPath_theCrashAlertPolicyIsProvisionedOnceAndItsSwitchPatchesIt', async () => {
+        const fakes = createUpstreamFakes();
+        const policies = 'https://monitoring.googleapis.com/v3/projects/demo-hcm/alertPolicies';
+        expect(await call(fakes, 'GET', policies)).toMatchObject({ body: { alertPolicies: [] } });
+
+        fakes.scenario('monitoring.crashAlertsProvisioned');
+        fakes.scenario('monitoring.crashAlertsProvisioned');
+        const listed = (await call(fakes, 'GET', policies)).body as { alertPolicies: { name: string; displayName: string }[] };
+        const [policy] = listed.alertPolicies;
+        const patched = await call(fakes, 'PATCH', `https://monitoring.googleapis.com/v3/${String(policy?.name)}?updateMask=enabled`, {
+            enabled: false,
+        });
+
+        expect(listed.alertPolicies).toHaveLength(1);
+        expect(policy).toMatchObject({ displayName: 'historic-city-map new crash reports', enabled: true });
+        expect(patched).toMatchObject({ status: 200, body: { enabled: false } });
+    });
+
+    it('happyPath_theGapiLoaderIsAnEmptyScriptWithNoFailureOrScenario', async () => {
+        const fakes = createUpstreamFakes();
+
+        const response = await fakes.fetch('https://apis.google.com/js/api.js?onload=__iframefcb1', { method: 'GET' });
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get('content-type')).toContain('javascript');
+        const loader = await response.text();
+        expect(loader).toMatch(/^\/\/ e2e stand-in/);
+        expect(loader).toContain("searchParams.get('onload')");
+        expect(() => {
+            fakes.fail('google-apis', 'unavailable');
+        }).toThrow('google-apis has no failure mode unavailable');
+        expect(upstreamHosts()).toContain('apis.google.com');
     });
 });

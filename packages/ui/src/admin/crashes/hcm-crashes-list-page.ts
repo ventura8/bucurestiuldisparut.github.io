@@ -21,11 +21,12 @@ import type { CrashesIntentsPort, CrashesViewState, CrashGroupPort, CrashPeriodP
 export const HCM_CRASHES_LIST_PAGE_TAG = 'hcm-crashes-list-page';
 
 /**
- * The project's Error Reporting page in the Google Cloud console (**UNVERIFIED** until the weekly contract probe has
- * checked it and it joins `packages/admin/src/setup/links.json`, CR-M2c-15).
+ * An error group's page in the Google Cloud console's Error Reporting: the verified link `gcp.errorGroup` of
+ * `packages/admin/src/setup/links.json`, which the weekly contract check probes (CR-M2c-15;
+ * `packages/admin/test/setup/links.test.ts` keeps this copy equal to it).
  */
-export function errorReportingUrl(projectId: string): string {
-    return `https://console.cloud.google.com/errors?project=${encodeURIComponent(projectId)}`;
+export function errorGroupUrl(projectId: string, groupId: string): string {
+    return `https://console.cloud.google.com/errors/detail/${encodeURIComponent(groupId)}?project=${encodeURIComponent(projectId)}`;
 }
 
 const PERIODS: readonly CrashPeriodPort[] = [24, 168, 720];
@@ -186,7 +187,7 @@ export class HcmCrashesListPage extends AreaPage<CrashesViewState, CrashesIntent
                 <dd>${contentText(locale, `adminContent.crashes.resolution.${group.resolution}`)}</dd>
             </dl>
             <p>
-                <a class="external" href=${errorReportingUrl(projectId)} target="_blank" rel="noopener noreferrer"
+                <a class="external" href=${errorGroupUrl(projectId, group.groupId)} target="_blank" rel="noopener noreferrer"
                     >${contentText(locale, 'adminContent.crashes.openConsole')}<hcm-icon name="open_in_new"></hcm-icon
                 ></a>
             </p>

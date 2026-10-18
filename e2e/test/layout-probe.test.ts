@@ -14,6 +14,7 @@ import {
     movingAnimations,
     probeLayout,
     sampleElement,
+    ownMapControl,
     scrollAxes,
     showsThrough,
     sidewaysCulprits,
@@ -25,6 +26,7 @@ import {
     type LayoutSnapshot,
     type ProbeOptions,
 } from '../support/layout-probe.js';
+import { cornerRadius, cutCorner, withinShape } from '../support/dom-walk.js';
 import { layoutViolations } from '../support/layout-rules.js';
 import { at, clearStage, h, host, stage } from './fixtures.js';
 
@@ -279,6 +281,23 @@ describe('texts and the legal line', () => {
         expect(checksOf(snapshot).filter((check) => check === 'legal')).toHaveLength(2);
     });
 
+    test('happyPath_aMapScrolledPastItsFootOwesNoLogoUntilItShowsIt', () => {
+        const scroller = h(
+            'div',
+            { style: at(0, 0, 400, 300, 'overflow: auto;') },
+            h('canvas', { class: 'map', style: 'display: block; width: 380px; height: 500px;' }),
+            h('div', { style: 'height: 400px;' }),
+        );
+        stage(scroller);
+
+        const cut = probeLayout(OPTIONS);
+        scroller.scrollTop = 300;
+        const footInView = probeLayout(OPTIONS);
+
+        expect([cut.legal.map, footInView.legal.map]).toEqual([false, true]);
+        expect(checksOf(footInView).filter((check) => check === 'legal')).toHaveLength(2);
+    });
+
     test('badPath_thePageScrollsSideways', () => {
         stage(h('div', { style: 'position: absolute; left: 0; top: 0; width: 1200px; height: 10px;' }));
         document.body.style.overflowX = 'auto';
@@ -323,6 +342,49 @@ describe('edge cases of the probes', () => {
         expect(idOrNull(registry, button)).toBe(0);
         expect(sampleElement(registry, h('button'), true)).toEqual([]);
         expect(showsThrough(button, null)).toBe(false);
+    });
+
+    test('happyPath_aMapsOwnControlsOverItsCanvasDoNotCoverIt_butAnotherElementDoes', () => {
+        const canvas = h('canvas', { style: at(0, 0, 200, 100) });
+        const attribution = h('a', { style: at(0, 0, 200, 100) }, '© Mapbox');
+        const map = h(
+            'div',
+            { class: 'mapboxgl-map' },
+            h('div', { class: 'mapboxgl-canvas-container' }, canvas),
+            h('div', { class: 'mapboxgl-control-container' }, attribution),
+        );
+        stage(map);
+        const registry = { elements: [], ids: new Map() };
+        expect(sampleElement(registry, canvas, true)).toEqual([{ x: 100, y: 50, hit: 0, ok: true, pinned: false }]);
+        expect(ownMapControl(canvas, attribution)).toBe(true);
+        expect(ownMapControl(canvas, h('div'))).toBe(false);
+        expect(ownMapControl(h('button'), attribution)).toBe(false);
+    });
+
+    test('happyPath_aRoundControlScrolledToAStripIsSampledInsideItsShape_butACoveredOneStillMisses', () => {
+        // A round 48 px button whose top 8 px show above the scroller's edge: its strip's corners lie outside the circle.
+        const round = h('button', { style: at(16, 0, 48, 48, 'border-radius: 50%; border: 0;') });
+        const scroller = h('div', { style: at(0, 100, 200, 8, 'overflow: auto;') }, h('div', { style: at(0, 0, 200, 400) }, round));
+        const square = h('button', { style: at(100, 0, 48, 48) }, 'x');
+        const cover = h('div', { style: at(100, 0, 20, 48, 'background: white;') });
+        stage(scroller, square, cover);
+        const registry = { elements: [], ids: new Map() };
+
+        expect(sampleElement(registry, round, false).every((sample) => sample.ok)).toBe(true);
+        expect(sampleElement(registry, square, false).some((sample) => !sample.ok)).toBe(true);
+    });
+
+    test('happyPath_roundedCornersInPercentPixelsAndEllipses', () => {
+        const box = new DOMRect(0, 0, 48, 24);
+        expect(cornerRadius('50%', 48)).toBe(24);
+        expect(cornerRadius('9999px', 24)).toBe(12);
+        expect(cornerRadius('none', 24)).toBe(0);
+        expect(cutCorner('24px 12px', box, [0, 0, 1, 1], 1, 1)).toBe(true);
+        expect(cutCorner('24px 12px', box, [0, 0, 1, 1], 20, 10)).toBe(false);
+        expect(cutCorner('0px', box, [0, 0, 1, 1], 1, 1)).toBe(false);
+        const round = h('div', { style: at(0, 0, 40, 40, 'border-radius: 50%;') });
+        stage(round);
+        expect([withinShape(round, 1, 1), withinShape(round, 20, 20), withinShape(round, 39, 39)]).toEqual([false, true, false]);
     });
 
     test('happyPath_aTouchTargetWithoutItsPseudoElementSize', () => {

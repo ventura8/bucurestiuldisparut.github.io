@@ -102,6 +102,8 @@ export class EditDraft<T extends object> {
     #state: DraftState<T> = EMPTY_DRAFT;
     /** The snapshot that raised the conflict, until the admin resolves it. */
     #theirs: Stored<T> | null = null;
+    /** The value the last Save wrote: until the snapshot that follows becomes the base, nothing is unsaved. */
+    #written: T | null = null;
 
     constructor(spec: DraftSpec<T>, deps: DraftDeps<T>) {
         this.#spec = spec;
@@ -116,9 +118,12 @@ export class EditDraft<T extends object> {
         return this.#spec.path;
     }
 
-    /** Whether leaving now would lose an edit. */
+    /**
+     * Whether leaving now would lose an edit: not right after a Save, while the written value waits for its snapshot
+     * (leaving then asked about changes already stored, `docs/LESSONS.md` 122).
+     */
     get unsaved(): boolean {
-        return this.#state.dirty.length > 0;
+        return this.#state.dirty.length > 0 && this.#state.value !== this.#written;
     }
 
     /** A snapshot of the document (null: missing or deleted): the first one starts the draft, later ones rebase it. */
@@ -184,6 +189,7 @@ export class EditDraft<T extends object> {
     async #write(base: Stored<T>, value: T): Promise<WriteOutcome> {
         this.#set({ ...this.#state, saving: true });
         const outcome = await this.#deps.store.update(this.#spec.path, this.#fieldsOf(value, this.#state.dirty), base.version);
+        this.#written = outcome.ok ? value : this.#written;
         this.#set({ ...this.#state, saving: false });
         return outcome;
     }

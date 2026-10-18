@@ -1,7 +1,7 @@
 import type { CallableResponse } from '@hcm/shared';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AuthController, PROBE_TIMEOUT_MS } from '../../src/auth/controller.js';
+import { AuthController, PROBE_ATTEMPTS, PROBE_TIMEOUT_MS } from '../../src/auth/controller.js';
 import { GoogleAccessStore } from '../../src/auth/google-access.js';
 import { GoogleAuthError } from '../../src/auth/google-auth.js';
 import { GoogleAccessService } from '../../src/auth/google-service.js';
@@ -32,6 +32,11 @@ interface Options {
     readonly user?: AuthUser | null;
     readonly verdicts?: OwnershipVerdict[];
     readonly enabled?: boolean;
+    readonly startUp?: boolean;
+    /** An editor holds unsaved changes. */
+    readonly unsaved?: () => boolean;
+    /** This browser has had an answer from the server before. */
+    readonly seen?: boolean;
 }
 
 function harness(options: Options = {}) {
@@ -55,8 +60,29 @@ function harness(options: Options = {}) {
     const shell = shellStateAccess();
     const session = new MemoryStore();
     const { log, recording } = testLog();
-    const controller = new AuthController({ auth, callables, google, ownership, enableApi, shell, session, log });
-    return { auth, callables, port, google, ownership, enableApi, shell, session, recording, controller, state: () => shell.get() };
+    const startUp = options.startUp ?? false;
+    const unsaved = options.unsaved ?? (() => false);
+    const memory = { seen: options.seen ?? false };
+    const serverSeen = {
+        known: () => memory.seen,
+        remember: () => {
+            memory.seen = true;
+        },
+    };
+    const controller = new AuthController({
+        auth,
+        callables,
+        google,
+        ownership,
+        enableApi,
+        shell,
+        session,
+        log,
+        startUp,
+        unsaved,
+        serverSeen,
+    });
+    return { auth, callables, port, google, ownership, enableApi, shell, session, recording, controller, memory, state: () => shell.get() };
 }
 
 async function started(h: ReturnType<typeof harness>): Promise<void> {
@@ -95,6 +121,34 @@ describe('AuthController in normal mode (the server answers)', () => {
         expect(h.port.requests).toEqual([{ scope: null, options: {} }]);
         expect(h.state()).toMatchObject({ auth: 'admin', role: 'admin' });
         expect(h.callables.named('admin.session')).toBe(2);
+    });
+
+    it('badPath_aProbeThatTimedOutIsSentAgainAndAnAdminStillReachesTheShell', async () => {
+        const h = harness({ user: OWNER });
+        // A cold start: the first probe times out, the next one answers.
+        const answers: (CallableResponse<'admin.session'> | Error)[] = [failure('deadline-exceeded', 'apiError.internal')];
+        h.callables.answer('admin.session', () => {
+            const next = answers.shift() ?? SESSION.owner;
+            if (next instanceof Error) {
+                throw next;
+            }
+            return next;
+        });
+
+        await started(h);
+
+        expect(h.state()).toMatchObject({ auth: 'admin', mode: 'normal' });
+        expect(h.recording.records.map((record) => record.message)).toContain('the server probe timed out: probing again');
+    });
+
+    it('badPath_aServerThatOnlyTimesOutIsTakenAsNoServerAfterTheLastProbe', async () => {
+        const h = harness();
+        h.callables.fail('admin.session', failure('deadline-exceeded', 'apiError.internal'));
+
+        await started(h);
+
+        expect(h.callables.named('admin.session')).toBe(PROBE_ATTEMPTS);
+        expect(h.state()).toMatchObject({ auth: 'signedOut', mode: 'bootstrap' });
     });
 
     it('badPath_aDelayedClaimIsPickedUpByOneTokenRefresh', async () => {
@@ -343,6 +397,50 @@ describe('AuthController in bootstrap mode (no server yet)', () => {
         expect(h.state().auth).toBe(expected);
     });
 
+    it('happyPath_aStartUpDeployCallsNothingOfTheServerUntilGoogleSaysItIsInstalled', async () => {
+        const h = harness({ startUp: true });
+        undeployed(h.callables);
+        await started(h);
+        expect(h.state()).toMatchObject({ auth: 'signedOut', mode: 'bootstrap' });
+
+        h.port.outcomes.push(access(READ_ONLY));
+        await h.controller.signIn();
+
+        expect(h.port.requests[0]?.scope).toBe('cloudReadOnly');
+        expect(h.state()).toMatchObject({ auth: 'bootstrap', mode: 'bootstrap', user: OWNER });
+        // No probe: a function that is not deployed answers 404 without CORS headers, which the browser logs as an error.
+        expect(h.callables.calls).toEqual([]);
+        expect(h.recording.records.map((record) => record.message)).toContain('start-up deploy: bootstrap mode without probing the server');
+
+        // Step (d) saw every function ACTIVE: now the server is probed, and it answers.
+        deployed(h.callables, h.auth, SESSION.owner);
+        expect(await h.controller.serverReady()).toBe(true);
+        expect(h.callables.calls.map((call) => call.name)).toContain('admin.session');
+        expect(h.state()).toMatchObject({ auth: 'admin', mode: 'normal' });
+        expect(h.memory.seen).toBe(true);
+    });
+
+    it('happyPath_aBrowserThatHadTheServersAnswerProbesItDespiteAStartUpDeploy', async () => {
+        // A functions-only deploy left the start-up page in place: the server is there, so the session decides.
+        const h = harness({ startUp: true, seen: true, user: OWNER });
+        deployed(h.callables, h.auth, SESSION.owner);
+
+        await started(h);
+
+        expect(h.state()).toMatchObject({ auth: 'admin', mode: 'normal' });
+    });
+
+    it('badPath_aStartUpDeployWithAStrangerAsksGoogleAndNeverTheServer', async () => {
+        const h = harness({ startUp: true, verdicts: [{ kind: 'notOwner' }] });
+        await started(h);
+
+        h.port.outcomes.push(access(READ_ONLY));
+        await h.controller.signIn();
+
+        expect(h.state().auth).toBe('notOwner');
+        expect(h.callables.calls).toEqual([]);
+    });
+
     it('badPath_aReloadKeepsTheUserButAsksForTheConsentAgain', async () => {
         const h = harness({ user: OWNER });
         undeployed(h.callables);
@@ -539,6 +637,26 @@ describe('AuthController: sessions ending', () => {
         await settle();
 
         expect(h.state().auth).toBe('notAdmin');
+    });
+
+    it('badPath_aRemovedAdminWithUnsavedChangesKeepsThePageReadOnlyUntilSignOut', async () => {
+        // S-A20-BAD-REVOKED-WHILE-EDITING (DECISIONS-for-review.md §35e): the draft stays on screen.
+        const h = harness({ user: OWNER, unsaved: () => true });
+        const answers: CallableResponse<'admin.session'>[] = [SESSION.admin, SESSION.admin, SESSION.stranger];
+        h.callables.answer('admin.session', () => answers.shift() ?? SESSION.stranger);
+        await started(h);
+
+        await h.controller.accessDenied();
+        await settle();
+        expect(h.state()).toMatchObject({ auth: 'admin', revoked: true });
+        expect(h.auth.signOuts).toBe(0);
+        const asked = h.callables.named('admin.session');
+        await h.controller.accessDenied();
+        expect(h.callables.named('admin.session')).toBe(asked);
+
+        await h.controller.signOut();
+        await settle();
+        expect(h.state()).toMatchObject({ auth: 'signedOut', revoked: false, gate: { issue: null } });
     });
 
     it('badPath_aDenialOutsideTheShellAsksNothing', async () => {

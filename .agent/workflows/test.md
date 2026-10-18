@@ -58,4 +58,4 @@ The emulator JARs and Playwright browsers are baked into the image; the `demo-hc
 - `reports/pipeline/green-<stage>.json`, `reports/pipeline/run.log`
 - `reports/coverage/ts/` (`lcov.info`, `coverage-summary.json`), `reports/coverage/scripts.xml`
 - `reports/junit/vitest.xml`, `reports/junit/pytest.xml`, `reports/gitleaks.json`
-- `reports/playwright/` (HTML report), `reports/test-results/` (traces of failed tests), `reports/junit/e2e.xml`
+- `reports/playwright/` (HTML report), `reports/test-results/` (a failed test's screenshot, error context and light trace; rerun it with `--trace retain-on-failure` for the DOM at each step), `reports/junit/e2e.xml`

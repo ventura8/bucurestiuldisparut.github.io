@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { FIXTURE_VALUES } from '@hcm/test-support/api-fixtures';
 import { E2E_PROJECT_CONFIG } from '@hcm/test-support/fakes';
 
-import { MOCK_API_ORIGIN } from '../fixtures/world.js';
+import { E2E_TILE_HOST, MOCK_API_ORIGIN } from '../fixtures/world.js';
 
 /**
  * The admin's e2e world (docs/research/M2b-interfaces.md §6.2): the admin server, the Firebase emulators of project
@@ -51,13 +51,18 @@ export function emulatorOrigin(name: EmulatorName): string {
     return `http://${host}:${String(port)}`;
 }
 
-/** The origins the admin's e2e build connects to besides its own: the emulators it uses and the mock APIs. */
+/**
+ * The origins the admin's e2e build connects to besides its own: the emulators it uses, the mock APIs, and the e2e tile
+ * host of the XYZ layers: an admin whose city has an XYZ layer adds its server to the CSP by hand
+ * (`docs/ADMIN_GUIDE.en.md`, CR-M2c-27), as the e2e world does here.
+ */
 export const ADMIN_CONNECT_ORIGINS: readonly string[] = [
     emulatorOrigin('auth'),
     emulatorOrigin('firestore'),
     emulatorOrigin('storage'),
     emulatorOrigin('functions'),
     MOCK_API_ORIGIN,
+    `https://${E2E_TILE_HOST}`,
 ];
 
 /** What Hosting's `/__/firebase/init.json` answers for `demo-hcm` (the fields `firebaseWebConfigSchema` reads). */

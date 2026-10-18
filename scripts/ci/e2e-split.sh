@@ -21,8 +21,8 @@
 #                  tour-matrix ("1-3/5" there, "4-5/5" here), "1:2" for quality and all, where this machine also runs
 #                  static, tests and build first.
 #
-# The admin tier's tests run one at a time on each machine (one Firebase project in its emulators), so they are not
-# counted into those ranges: each machine runs its own part of the admin projects (E2E_ADMIN_PART=1-2/3 on the remote,
+# The admin tier's locked tests run one at a time on each machine (one Firebase project in its emulators; its content
+# tests, a city each, run on every worker), so the admin tier is not counted into those ranges: each machine runs its own part of the admin projects (E2E_ADMIN_PART=1-2/3 on the remote,
 # 3/3 here; e2e/split.ts), each with its own emulators, at the same time (docs/research/DECISIONS-for-review.md §32f,
 # §33a).
 #

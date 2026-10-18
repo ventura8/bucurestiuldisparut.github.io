@@ -8,6 +8,7 @@
 import { DEFAULT_FOV, MAX_FOV, MIN_FOV, type Locale, type ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
+import type { FieldsLeft } from '../editing/number-fields.js';
 import { EMPTY } from '../shell/empty.js';
 import { numberField, numberOf } from './editor-fields.js';
 import { fieldIssue, localized, messageText, photoHref, photoText } from './photo-text.js';
@@ -21,6 +22,8 @@ export interface PlaceInput {
     readonly intents: PhotosIntentsPort | null;
     /** The map can take a pick (Set direction, Point at map centre). */
     readonly mapReady: boolean;
+    /** The number fields left since the photo opened: only they say their problem. */
+    readonly left: FieldsLeft;
 }
 
 const REPLACE_KEYS = {
@@ -126,7 +129,7 @@ function suggestions(input: PlaceInput): TemplateResult {
 }
 
 function placeFields(input: PlaceInput): TemplateResult {
-    const { locale, value, issues, intents } = input;
+    const { locale, value, issues, intents, left } = input;
     const error = fieldIssue(locale, issues, 'location');
     const set = (axis: 'lat' | 'lng', typed: string): void => {
         const number = numberOf(typed);
@@ -146,6 +149,7 @@ function placeFields(input: PlaceInput): TemplateResult {
             (typed) => {
                 set('lat', typed);
             },
+            left,
         )}
         ${numberField(
             {
@@ -160,6 +164,7 @@ function placeFields(input: PlaceInput): TemplateResult {
             (typed) => {
                 set('lng', typed);
             },
+            left,
         )}
     </div>`;
 }
@@ -219,6 +224,7 @@ export function placeSection(input: PlaceInput): TemplateResult {
             (typed) => {
                 intents?.edit({ bearing: numberOf(typed) });
             },
+            input.left,
         )}
         ${direction(input)}
         <div class="field">

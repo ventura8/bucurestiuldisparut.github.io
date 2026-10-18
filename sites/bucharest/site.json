@@ -8,5 +8,6 @@
         "en": "The map needs JavaScript. Turn JavaScript on in your browser to see the historical photos and layers of Bucharest."
     },
     "manifest": "seed/bucharest/manifest.static.json",
+    "legacyCityId": "bucuresti",
     "media": "seed/bucharest/derived"
 }

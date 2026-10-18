@@ -15,7 +15,8 @@ import { subresourceIntegrity } from './sri.js';
  * <outDir>/index.html          generated (page.ts), with the meta CSP of this site's manifest and configuration
  * <outDir>/config.js           the site's own, validated
  * <outDir>/site.css            the site's own
- * <outDir>/data/manifest.json  the source manifest, photos moved to data/media/, the build's Mapbox token
+ * <outDir>/data/manifest.json  the source manifest, photos moved to data/media/, the build's Mapbox token, the city
+ *                              renamed to config.js's when the source names the site's `legacyCityId`
  * <outDir>/data/media/<id>/…   the photo derivatives
  * <outDir>/engine/…            packages/engine/dist (engine.mjs, engine.iife.js, engine.css, source maps)
  * ```
@@ -90,6 +91,29 @@ function integrity(files: SiteFileSystem, mapboxGlDir: string): { script: string
     };
 }
 
+/** `value` as a plain object, or null. */
+function recordOf(value: unknown): Readonly<Record<string, unknown>> | null {
+    return typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Readonly<Record<string, unknown>>) : null;
+}
+
+/** The ids of a site whose source manifest names a legacy city (site-spec.ts → `legacyCityId`), or null. */
+function cityRename(legacyCityId: string | undefined, configCityId: string | undefined): { from: string; to: string } | null {
+    return legacyCityId === undefined || configCityId === undefined ? null : { from: legacyCityId, to: configCityId };
+}
+
+/**
+ * The source manifest with its city renamed to `config.js`'s when it names the site's `legacyCityId`; anything else is
+ * returned as it is, and validated later.
+ */
+function withSiteCity(source: unknown, rename: { from: string; to: string } | null): unknown {
+    const manifest = recordOf(source);
+    const city = recordOf(manifest?.['city']);
+    if (rename === null || city?.['id'] !== rename.from) {
+        return source;
+    }
+    return { ...manifest, city: { ...city, id: rename.to } };
+}
+
 function checkCity(configCityId: string | undefined, manifestCityId: string, siteDir: string): void {
     if (configCityId !== undefined && configCityId !== manifestCityId) {
         throw new SiteBuildError(`${siteDir}/config.js: cityId "${configCityId}" does not match the manifest's city "${manifestCityId}"`);
@@ -102,7 +126,8 @@ function plan(options: SiteBuildOptions, files: SiteFileSystem): { files: Planne
     const spec = parseSiteSpec(files.readText(specFile), specFile);
     const configSource = files.readText(requireFile(files, `${siteDir}/config.js`, 'every site has one (docs/ENGINE_API.md → config.js)'));
     const config = readConfigJs(configSource, `${siteDir}/config.js`);
-    const { manifest, media } = prepareManifest(options.manifest ?? readJson(files, spec.manifest), token, spec.manifest);
+    const source = withSiteCity(options.manifest ?? readJson(files, spec.manifest), cityRename(spec.legacyCityId, config.cityId));
+    const { manifest, media } = prepareManifest(source, token, spec.manifest);
     checkCity(config.cityId, manifest.city.id, siteDir);
     const csp = contentSecurityPolicy(manifestOrigins(manifest, config));
     const page = renderSitePage({ spec, csp, mapboxGlIntegrity: integrity(files, options.mapboxGlDir ?? DEFAULT_MAPBOX_GL_DIR) });

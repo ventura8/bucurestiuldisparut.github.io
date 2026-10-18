@@ -103,20 +103,9 @@ const SUITES: readonly Suite[] = [
                 ...SHARED_MODULE_GRAPH,
                 environment: 'node',
                 include: ['packages/engine/test/**/*.test.ts'],
-                exclude: ['packages/engine/test/browser/**'],
             },
         },
         coverage: ['packages/engine/src/**/*.ts'],
-    },
-    {
-        // What the engine needs from a real browser (animation frames, ResizeObserver, canvas, WebGL 2); same coverage scope as `engine`.
-        dir: 'packages/engine',
-        project: {
-            extends: true,
-            optimizeDeps: { include: BROWSER_TEST_DEPS },
-            test: { name: 'engine-browser', include: ['packages/engine/test/browser/**/*.test.ts'], browser: chromium() },
-        },
-        coverage: [],
     },
     {
         dir: 'packages/admin',
@@ -173,6 +162,7 @@ const SUITES: readonly Suite[] = [
             'e2e/support/colour.ts',
             'e2e/support/layout-probe.ts',
             'e2e/support/layout-rules.ts',
+            'e2e/support/scroll-probe.ts',
             'e2e/support/a11y-probe.ts',
             'e2e/support/a11y-rules.ts',
             'e2e/support/live-regions.ts',

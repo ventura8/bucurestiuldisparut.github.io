@@ -1,4 +1,4 @@
-import { ADMIN_ORIGIN, ADMIN_WEB_CONFIG, FIREBASE_APP_NAME, PERSONAS } from '../world.js';
+import { ADMIN_ORIGIN, ADMIN_WEB_CONFIG, FIREBASE_APP_NAME } from '../world.js';
 import type { SignedInAccount } from './emulators.js';
 
 /**
@@ -22,18 +22,17 @@ export const FIREBASE_USER_KEY = `firebase:authUser:${ADMIN_WEB_CONFIG.apiKey}:$
 
 /** What `UserImpl._fromJSON` reads back. */
 function persistedUser(account: SignedInAccount, now: number): Record<string, unknown> {
-    const persona = PERSONAS[account.persona];
     return {
         uid: account.uid,
         email: account.email,
         emailVerified: true,
-        displayName: persona.displayName,
+        displayName: account.displayName,
         isAnonymous: false,
         providerData: [
             {
                 providerId: 'google.com',
-                uid: persona.sub,
-                displayName: persona.displayName,
+                uid: account.sub,
+                displayName: account.displayName,
                 email: account.email,
                 phoneNumber: null,
                 photoURL: null,

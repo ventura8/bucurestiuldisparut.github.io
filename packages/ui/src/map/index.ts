@@ -38,7 +38,7 @@ export type {
     MapPoint,
 } from './mapbox-types.js';
 export { createMapboxPort, nativeMap } from './mapbox-adapter.js';
-export { MAPBOX_GL_CSS_URL, MAPBOX_GL_SCRIPT_URL, MAPBOX_GL_VERSION, loadMapboxGl } from './mapbox-loader.js';
+export { MAPBOX_GL_CSS_URL, MAPBOX_GL_SCRIPT_URL, MAPBOX_GL_VERSION, MAPBOX_INTEGRITY_ATTRIBUTE, loadMapboxGl } from './mapbox-loader.js';
 export type { MapboxLoaderScope } from './mapbox-loader.js';
 export type { FrameScheduler } from './overlay-registry.js';
 export { browserAdapterEnv } from './env.js';

@@ -32,6 +32,7 @@ export const UPSTREAM_SERVICES = [
     'mapbox',
     'usgs',
     'nominatim',
+    'google-apis',
 ] as const;
 
 export type UpstreamServiceName = (typeof UPSTREAM_SERVICES)[number];

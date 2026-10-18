@@ -5,6 +5,8 @@
  * - a point is one click; a rectangle two corners; both then switch to `select`;
  * - a line exists from its second click, an area from its third; every further click adds a vertex at the end, until the
  *   editor picks another tool, so Save works at any time and the input budget holds (n clicks for n vertices);
+ * - in `select`, a click on the map moves the selected point there (a photo's pin, a point place): the single-pointer way
+ *   to place it (WCAG 2.5.7), within the same limits;
  * - nothing is dragged: vertices are moved, inserted and removed in the vertex list, which `load`s the result.
  *
  * The shapes are drawn as one vector overlay whose clicks pass through to the map, in the editor's colour. The same
@@ -133,16 +135,44 @@ class ClickDrawPort implements MapDrawPort {
 
     #onClick(position: Position): void {
         const session = this.#session;
-        const shape = shapeOfMode(this.#mode);
-        if (session === null || shape === null || this.#pick !== null) {
+        if (session === null || this.#pick !== null) {
             return;
         }
         const refusal = checkPositions([position], session.options);
-        if (refusal === null) {
-            this.#add(session, shape, position);
+        if (refusal !== null) {
+            this.#refuseIfActive(refusal);
+            return;
+        }
+        const shape = shapeOfMode(this.#mode);
+        if (shape === null) {
+            this.#moveSelectedPoint(position);
         } else {
+            this.#add(session, shape, position);
+        }
+    }
+
+    /** A click outside the limits is refused where a click does something: a drawing tool, or a point to move. */
+    #refuseIfActive(refusal: DrawRefusal): void {
+        if (shapeOfMode(this.#mode) !== null || this.#selectedPoint() !== null) {
             this.#refusals.emit(refusal);
         }
+    }
+
+    /** The selected feature while the tools select and it is a point; null otherwise. */
+    #selectedPoint(): DrawnFeature | null {
+        const selected = this.#mode === 'select' && this.#selected !== null ? this.#good.get(this.#selected) : undefined;
+        return selected?.geometry.type === 'Point' ? selected : null;
+    }
+
+    /** In `select`, the selected point goes where the map was clicked. */
+    #moveSelectedPoint(position: Position): void {
+        const point = this.#selectedPoint();
+        if (point === null) {
+            return;
+        }
+        this.#good.set(point.id, { ...point, geometry: { type: 'Point', coordinates: position } });
+        this.#render();
+        this.#changes.emit({ features: this.snapshot(), final: true });
     }
 
     #add(session: Session, shape: DrawShape, position: Position): void {

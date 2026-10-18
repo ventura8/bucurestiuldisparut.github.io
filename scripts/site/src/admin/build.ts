@@ -1,23 +1,26 @@
 import { SiteBuildError } from '../errors.js';
 import type { SiteFileSystem } from '../files.js';
 import { DEFAULT_SEED_DIR, LEGACY_FOLDER, planLegacyBundle, type AdminFile } from './legacy.js';
+import { subresourceIntegrity } from '../sri.js';
 import { ADMIN_SCRIPT_FILE, ADMIN_STYLESHEET_FILE, renderAdminPage } from './page.js';
 import { DEFAULT_PROJECT_FILE, planProjectFile } from './project.js';
+import { planRuntimeFile, type BuildEnvironment } from './runtime.js';
 
 /**
  * Completes the admin's Hosting folder after its Vite build (docs/research/M2b-interfaces.md §4, admin-e2e):
  *
  * ```text
  * <outDir>/admin.iife.js, admin.css, …   the Vite build (production, or the `e2e` mode for the admin tier), required
- * <outDir>/index.html                    generated (page.ts)
+ * <outDir>/index.html                    generated (page.ts), naming the digest of the pinned mapbox-gl.js
+ * <outDir>/runtime.json                  the release and, for a start-up deploy, `startUp` (runtime.ts)
  * <outDir>/project.json                  the committed infra/project.json, checked (project.ts, CR-M2b-26)
  * <outDir>/fonts/…                       the kit's self-hosted fonts and their licences (packages/ui/fonts), which the
  *                                        admin loads from `fonts/` next to the page, as the engine's site pages do
  * <outDir>/legacy/bucharest/…            the legacy import bundle (legacy.ts)
  * ```
  *
- * Every input is read and validated before anything is written, and only `index.html`, `project.json`, `fonts/` and
- * `legacy/` are replaced: the Vite output stays. The production folder is `packages/admin/dist` (`firebase.json` → `hosting.public`); a test
+ * Every input is read and validated before anything is written, and only `index.html`, `runtime.json`, `project.json`,
+ * `fonts/` and `legacy/` are replaced: the Vite output stays. The production folder is `packages/admin/dist` (`firebase.json` → `hosting.public`); a test
  * writes below `dist/`.
  */
 
@@ -29,6 +32,9 @@ const DEFAULT_FONTS_DIR = 'packages/ui/fonts';
 /** Where the page finds them. */
 export const FONTS_FOLDER = 'fonts';
 
+/** The pinned Mapbox GL JS release whose digest the page names (a pinned devDependency of `@hcm/e2e`). */
+const DEFAULT_MAPBOX_GL_DIR = 'node_modules/mapbox-gl/dist';
+
 export interface AdminBuildOptions {
     /** The admin's Hosting folder: `packages/admin/dist`, or a folder below `dist/`. */
     readonly outDir: string;
@@ -38,11 +44,16 @@ export interface AdminBuildOptions {
     readonly fontsDir?: string;
     /** The project the admin provisions; default `infra/project.json`. */
     readonly projectFile?: string;
+    /** The pinned Mapbox GL JS release; default `node_modules/mapbox-gl/dist`. */
+    readonly mapboxGlDir?: string;
+    /** The build's environment: the commit (`HCM_COMMIT`, `GITHUB_SHA`) and a start-up deploy (`HCM_ADMIN_START_UP`). */
+    readonly env?: BuildEnvironment;
 }
 
 export interface AdminBuildReport {
     readonly outDir: string;
     readonly projectId: string;
+    readonly release: string;
     readonly photos: number;
     readonly originals: number;
     readonly warnings: number;
@@ -87,13 +98,27 @@ function write(files: SiteFileSystem, outDir: string, file: AdminFile): void {
     }
 }
 
-/** The input folders and files of `options`, the defaults where it names none. */
-function inputsOf(options: AdminBuildOptions): { readonly fontsDir: string; readonly seedDir: string; readonly projectFile: string } {
+/** The input folders of `options`, the defaults where it names none. */
+function foldersOf(options: AdminBuildOptions): Required<Pick<AdminBuildOptions, 'fontsDir' | 'seedDir' | 'mapboxGlDir'>> {
     return {
         fontsDir: options.fontsDir ?? DEFAULT_FONTS_DIR,
         seedDir: options.seedDir ?? DEFAULT_SEED_DIR,
-        projectFile: options.projectFile ?? DEFAULT_PROJECT_FILE,
+        mapboxGlDir: options.mapboxGlDir ?? DEFAULT_MAPBOX_GL_DIR,
     };
+}
+
+/** The inputs of `options`, the defaults where it names none. */
+function inputsOf(options: AdminBuildOptions): Required<Omit<AdminBuildOptions, 'outDir'>> {
+    return { ...foldersOf(options), projectFile: options.projectFile ?? DEFAULT_PROJECT_FILE, env: options.env ?? {} };
+}
+
+/** The digest of the pinned `mapbox-gl.js` the first admin map loads from api.mapbox.com (§34h). */
+function mapboxGlIntegrity(files: SiteFileSystem, mapboxGlDir: string): string {
+    const script = `${mapboxGlDir}/mapbox-gl.js`;
+    if (!files.isFile(script)) {
+        throw new SiteBuildError(`${script} is missing: install the dependencies (mapbox-gl is a pinned devDependency of @hcm/e2e)`);
+    }
+    return subresourceIntegrity(files.readBytes(script));
 }
 
 /** Writes the page and the legacy bundle into `options.outDir`; throws SiteBuildError (writing nothing) on a bad input. */
@@ -107,12 +132,14 @@ export function buildAdminSite(options: AdminBuildOptions, files: SiteFileSystem
     const fonts = fontFiles(files, inputs.fontsDir);
     const legacy = planLegacyBundle(files, inputs.seedDir);
     const project = planProjectFile(files, inputs.projectFile);
-    const planned: AdminFile[] = [{ to: 'index.html', content: renderAdminPage() }, project.file, ...fonts, ...legacy.files];
+    const runtime = planRuntimeFile(files, inputs.env);
+    const page = renderAdminPage(undefined, { mapboxGlIntegrity: mapboxGlIntegrity(files, inputs.mapboxGlDir) });
+    const planned: AdminFile[] = [{ to: 'index.html', content: page }, runtime.file, project.file, ...fonts, ...legacy.files];
     files.remove(`${outDir}/${FONTS_FOLDER}`);
     files.remove(`${outDir}/${LEGACY_FOLDER}`);
     for (const file of planned) {
         write(files, outDir, file);
     }
     const counts = { photos: legacy.photos, originals: legacy.originals, warnings: legacy.warnings, fonts: fonts.length - 1 };
-    return { outDir, projectId: project.projectId, ...counts, files: planned.length };
+    return { outDir, projectId: project.projectId, release: runtime.release, ...counts, files: planned.length };
 }

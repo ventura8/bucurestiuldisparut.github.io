@@ -76,6 +76,24 @@ export function versionOf(data: DocumentData | undefined): string {
     return parsed.success ? timestampToDate(parsed.data).toISOString() : '';
 }
 
+/**
+ * A value as text that does not depend on the order of a map's keys, nor on its undefined fields, which Firestore leaves
+ * out (a create's data against what was read back).
+ */
+function canonical(value: unknown): string {
+    if (Array.isArray(value)) {
+        return `[${value.map(canonical).join(',')}]`;
+    }
+    if (value !== null && typeof value === 'object') {
+        const fields = Object.entries(value)
+            .filter(([, inner]) => inner !== undefined)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([key, inner]) => [JSON.stringify(key), canonical(inner)].join(':'));
+        return `{${fields.join(',')}}`;
+    }
+    return value === undefined ? 'undefined' : JSON.stringify(value);
+}
+
 type Parsed<T> =
     | { readonly ok: true; readonly doc: Stored<T> }
     | { readonly ok: false; readonly path: string; readonly issues: ReturnType<typeof toValidationIssues> };
@@ -197,7 +215,7 @@ class FirestoreContentStore implements ContentStore {
     create(path: string, data: Fields, options: { readonly withCreator?: boolean } = {}): Promise<WriteOutcome> {
         return this.#transact(path, (transaction, snapshot, ref) => {
             if (snapshot.exists()) {
-                return { ok: false, reason: 'conflict' };
+                return this.#ownCreate(snapshot, data) ? { ok: true } : { ok: false, reason: 'conflict' };
             }
             transaction.set(ref, { ...data, ...this.#creation(options.withCreator === true) });
             return { ok: true };
@@ -258,6 +276,16 @@ class FirestoreContentStore implements ContentStore {
         } else {
             failed({ kind: 'failed', code: 'invalid-document' });
         }
+    }
+
+    /**
+     * A document that holds what this create writes, stamped by this admin: the create's own earlier attempt, whose commit
+     * landed although its answer said otherwise (the transaction then runs again and finds it: `docs/LESSONS.md` 117).
+     */
+    #ownCreate(snapshot: DocumentSnapshot, data: Fields): boolean {
+        const stored = snapshot.data(READ_OPTIONS) ?? {};
+        const same = Object.entries(data).every(([key, value]) => canonical(stored[key]) === canonical(value));
+        return same && stored['updatedBy'] === this.#deps.uid();
     }
 
     #stamp(): Fields {

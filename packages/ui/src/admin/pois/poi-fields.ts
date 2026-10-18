@@ -2,13 +2,14 @@
  * The place editor's fields (docs/research/M2c-interfaces.md §7.2): category, titles and descriptions in Romanian and
  * English (the description in the Markdown subset, previewed as DOM by the viewer's own renderer: markup stays text),
  * the years (either open), the links (at most five, https), the linked photos and Published. Every field shows its
- * problem at the field (`aria-invalid`, `aria-describedby`) in the viewer's validation words. Native inputs, styled by
- * the editing kit.
+ * problem at the field (`aria-invalid`, `aria-describedby`) in the viewer's validation words; a year once it has been
+ * left (it commits on every key, `../editing/number-fields.ts`). Native inputs, styled by the editing kit.
  */
 import { MAX_LINKS, type AdminContentKey, type Locale, type ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { renderMarkdown } from '../../viewer/markdown.js';
+import { numberValue, type FieldsLeft } from '../editing/number-fields.js';
 import { EMPTY } from '../shell/empty.js';
 import { fieldIssue, issueText, localized, poiText } from './poi-text.js';
 import type { CategoryItemPort, PhotoChoicePort, PoiLinkPort, PoiPatchPort, PoiTextPort, PoiValuePort } from './pois-port.js';
@@ -18,6 +19,8 @@ export interface FieldContext {
     readonly value: PoiValuePort;
     readonly issues: readonly ValidationIssue[];
     readonly edit: (patch: PoiPatchPort) => void;
+    /** The number fields left since the place opened: only they say their problem. */
+    readonly left: FieldsLeft;
 }
 
 type Language = 'ro' | 'en';
@@ -179,7 +182,8 @@ const YEAR_KEYS: Readonly<Record<'yearStart' | 'yearEnd', AdminContentKey>> = {
 };
 
 function yearField(context: FieldContext, field: 'yearStart' | 'yearEnd'): TemplateResult {
-    const { invalid, describedBy, line } = problem(context, field, { id: field, hints: 'years-hint' });
+    const shownIssues = context.left.has(field) ? context.issues : [];
+    const { invalid, describedBy, line } = problem({ ...context, issues: shownIssues }, field, { id: field, hints: 'years-hint' });
     return html`<div class="field" ?data-invalid=${invalid !== nothing}>
         <label for=${field}>${poiText(context.locale, YEAR_KEYS[field])}</label>
         <input
@@ -188,12 +192,15 @@ function yearField(context: FieldContext, field: 'yearStart' | 'yearEnd'): Templ
             inputmode="numeric"
             min="1800"
             max="2100"
-            .value=${String(context.value[field] ?? '')}
+            .value=${numberValue(String(context.value[field] ?? ''))}
             aria-invalid=${invalid}
             aria-describedby=${describedBy}
-            @change=${(event: Event) => {
+            @input=${(event: Event) => {
                 const year = yearOf(inputOf(event));
                 context.edit(field === 'yearStart' ? { yearStart: year } : { yearEnd: year });
+            }}
+            @focusout=${() => {
+                context.left.leave(field);
             }}
         />
         ${line}

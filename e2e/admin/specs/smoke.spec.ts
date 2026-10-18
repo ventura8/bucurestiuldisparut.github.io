@@ -32,7 +32,7 @@ async function setupSettled(page: Page, lang: 'ro' | 'en'): Promise<void> {
 
 test(
     'The project owner claims the map with Google and reaches the dashboard',
-    { tag: ['@S-A01-HAPPY', '@S-A31-HAPPY', '@S-A29-BAD-UNKNOWN-ROUTE'] },
+    { tag: ['@S-A01-HAPPY', '@S-A31-HAPPY', '@S-A29-BAD-UNKNOWN-ROUTE', '@S-A27-HAPPY'] },
     async ({ page, lang, consent, setupBudget, adminWorld }) => {
         await page.context().addInitScript(recordLiveRegions);
         await page.goto(adminPath(lang));
@@ -98,6 +98,35 @@ test.describe('a stranger, once the map has an owner', () => {
 
             await expect(page.getByRole('button', { name: shellText(lang, 'adminShell.auth.signIn') })).toBeVisible();
             expect(await adminWorld.emulators.document(`admins/${adminWorld.accounts.stranger.uid}`)).toBeUndefined();
+        },
+    );
+});
+
+test.describe('the owner of a claimed map on a phone', () => {
+    test.use({ persona: 'owner', mapOwner: 'owner' });
+
+    test(
+        'Rotating a phone with the account menu open gives the focus back to the account button',
+        { tag: ['@S-A29-BAD-ROTATE-MENU-OPEN'] },
+        async ({ page, lang }) => {
+            const account = shellText(lang, 'adminShell.account.label');
+            const button = page.getByRole('button', { name: account });
+            const dialog = page.getByRole('dialog', { name: account });
+            await page.setViewportSize({ width: 360, height: 800 });
+            await page.goto(adminPath(lang));
+            await setupSettled(page, lang);
+
+            // Upright, the menu is the top bar's; held sideways (a compact height), the rail's foot holds it instead.
+            for (const turned of [
+                { width: 800, height: 360 },
+                { width: 360, height: 800 },
+            ]) {
+                await button.click();
+                await expect(dialog).toBeVisible();
+                await page.setViewportSize(turned);
+                await expect(dialog).toBeHidden();
+                await expect(button).toBeFocused();
+            }
         },
     );
 });

@@ -117,9 +117,10 @@ describe('<hcm-admins-page>: invitations and failures', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
 
-    it('happyPath_anInvitationIsMadeItsLinkCopiedAndThenCancelled', async () => {
+    it('happyPath_anInvitationIsMadeItsLinkCopiedAtOnceAndAgainAndThenCancelled', async () => {
         const admins = area(adminsState());
         const { element, app } = await page('admins', admins);
+        const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
         const input = await openInvite(element);
         input.value = 'new.admin@e2e.test';
         deep(element, 'hcm-dialog hcm-button[icon="person_add"]').click();
@@ -127,14 +128,16 @@ describe('<hcm-admins-page>: invitations and failures', () => {
 
         expect(admins.named('invite')).toEqual(['invite "new.admin@e2e.test"']);
         expect(app.named('navigate')).toEqual([`navigate {"id":"admins","params":["invite","${'a'.repeat(64)}"]}`]);
+        await vi.waitFor(() => {
+            expect(writeText.mock.calls).toEqual([['https://demo-hcm.web.app/']]);
+        });
 
         admins.set({ selected: { kind: 'invite', inviteId: 'a'.repeat(64) }, invited: INVITED });
         await updated(element);
-        const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+        expect(deepAll(element, '[role="status"]').map((status) => status.textContent.trim())).toContain('The link was copied.');
         deepAll(element, '.pane .actions hcm-button')[0]?.click();
         await updated(element);
-        expect(writeText).toHaveBeenCalledWith('https://demo-hcm.web.app/');
-        expect(deepAll(element, '[role="status"]').map((status) => status.textContent.trim())).toContain('The link was copied.');
+        expect(writeText).toHaveBeenCalledTimes(2);
 
         deepAll(element, '.pane .actions hcm-button')[1]?.click();
         await updated(element);
@@ -162,6 +165,24 @@ describe('<hcm-admins-page>: invitations and failures', () => {
         deep(element, 'hcm-dialog hcm-button[variant="text"]').click();
         await updated(element);
         expect((deep(element, 'hcm-dialog') as HTMLElement & { open: boolean }).open).toBe(false);
+    });
+
+    it('badPath_aClipboardThatRefusesTheNewLinkLeavesItWithCopy', async () => {
+        const admins = area(adminsState());
+        const { element } = await page('admins', admins);
+        const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
+        const input = await openInvite(element);
+        input.value = 'new.admin@e2e.test';
+        input.closest('form')?.requestSubmit();
+        await updated(element);
+        await vi.waitFor(() => {
+            expect(writeText).toHaveBeenCalledTimes(1);
+        });
+
+        admins.set({ selected: { kind: 'invite', inviteId: 'a'.repeat(64) }, invited: INVITED });
+        await updated(element);
+        expect(deepAll(element, '[role="status"]').map((status) => status.textContent.trim())).not.toContain('The link was copied.');
+        expect(deepAll(element, '.pane .actions hcm-button')).toHaveLength(2);
     });
 
     it('badPath_anOlderInvitationExplainsTheLinkAndAClipboardRefusalSelectsIt', async () => {

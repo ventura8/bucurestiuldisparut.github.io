@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { E2E_BROKEN_TILESET, E2E_MEASUREMENT_ID, TILESET_COLOURS, XYZ_COLOURS, type Rgb } from '../fixtures/world.js';
+import { E2E_BROKEN_TILESET, E2E_MEASUREMENT_ID, tilesetColour, XYZ_COLOURS, type Rgb } from '../fixtures/world.js';
 import { glyphRange, RANGE_SIZE } from './glyphs.js';
 import { firebaseWebConfig, GTAG_SCRIPT } from './gtag.js';
 import { mockedHostKind, type HostKind } from './hosts.js';
@@ -101,7 +101,7 @@ function tileResponse(colour: Rgb, match: RegExpExecArray, size: number, format:
 }
 
 function tileJson(tilesetId: string): MockResponse {
-    const known = TILESET_COLOURS.has(tilesetId) || tilesetId === E2E_BROKEN_TILESET;
+    const known = tilesetColour(tilesetId) !== undefined || tilesetId === E2E_BROKEN_TILESET;
     return known
         ? json({
               tilejson: '2.2.0',
@@ -123,7 +123,7 @@ const TILE_OUTAGE: MockResponse = { status: 503, type: 'text/plain', body: 'tile
 
 function mapboxTile(match: RegExpExecArray): Promise<MockResponse> | MockResponse {
     const tilesetId = String(match[1]);
-    const colour = TILESET_COLOURS.get(tilesetId);
+    const colour = tilesetColour(tilesetId);
     if (colour === undefined) {
         return tilesetId === E2E_BROKEN_TILESET ? TILE_OUTAGE : NOT_FOUND;
     }

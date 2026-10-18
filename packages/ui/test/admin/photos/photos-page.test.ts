@@ -102,6 +102,24 @@ describe('<hcm-photos-page>: the list', () => {
         expect((chips[0] as HTMLElement & { selected: boolean }).selected).toBe(true);
     });
 
+    it('happyPath_selectAllIsOfferedBeforeAnythingIsSelected', async () => {
+        const photos = area(photosState());
+        const { element } = await photosPage(photos);
+        expect(deepAll(element, '.bulk')).toEqual([]);
+
+        const selectAll = deepAll(element, 'hcm-button').find((button) => button.textContent.includes('Select all'));
+        deep(selectAll ?? element, 'button').click();
+
+        expect(photos.named('selectAll')).toEqual(['selectAll']);
+    });
+
+    it('badPath_anEmptyListOffersNoSelectAll', async () => {
+        const photos = area(photosState({ list: { ...photosState().list, rows: [], loaded: 0 } }));
+        const { element } = await photosPage(photos);
+
+        expect(deepAll(element, 'hcm-button').filter((button) => button.textContent.includes('Select all'))).toEqual([]);
+    });
+
     it('happyPath_theBulkBarActsOnTheSelection', async () => {
         const photos = area(photosState({ list: { ...photosState().list, selection: ['p1', 'p2'] } }));
         const { element } = await photosPage(photos);
@@ -137,7 +155,7 @@ describe('<hcm-photos-page>: the list states', () => {
 
         photos.set({ list: { ...photos.state.list, status: 'ready' } });
         await updated(element);
-        expect(deepText(element)).toContain('No photos yet. Drop photos here to add them.');
+        expect(deepText(element)).toContain('No photos yet. Add the first ones with Add photos.');
 
         photos.set({ list: { ...photos.state.list, loaded: 3, reconnecting: true } });
         await updated(element);

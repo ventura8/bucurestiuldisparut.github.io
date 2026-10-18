@@ -16,7 +16,7 @@ function config(value: string, target = 'globalThis'): string {
 
 describe('readConfigJs', () => {
     it('happyPath_theCommittedSitesAreValid', () => {
-        expect(readConfigJs(committed('sites/bucharest/config.js'))).toEqual({ cityId: 'bucuresti', manifestUrl: './data/manifest.json' });
+        expect(readConfigJs(committed('sites/bucharest/config.js'))).toEqual({ cityId: 'bucharest', manifestUrl: './data/manifest.json' });
         expect(readConfigJs(committed('starter-kit/config.js'))).toEqual({ cityId: 'exemplu', manifestUrl: './data/manifest.json' });
     });
 

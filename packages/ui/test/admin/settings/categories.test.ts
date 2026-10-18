@@ -58,6 +58,14 @@ describe('<hcm-settings-page> categories', () => {
             '#/settings/categories/biserici',
         ]);
         expect(deep(element, '.swatch').style.getPropertyValue('--swatch')).toBe('#8b5e3c');
+        // The swatch leads both lines of its row (M3 list item), never inline in the name (the review screenshots).
+        const first = nth(deepAll(element, '.reorder-row'), 0);
+        const rects = ['.swatch', '.row-title', '.row-detail'].map((part) => deep(first, part).getBoundingClientRect());
+        const [swatch, title, detail] = [nth(rects, 0), nth(rects, 1), nth(rects, 2)];
+        const middle = (swatch.top + swatch.bottom) / 2;
+        expect(swatch.right).toBeLessThan(title.left);
+        expect(title.left).toBe(detail.left);
+        expect([middle > title.top, middle < detail.bottom]).toEqual([true, true]);
         nth(deepAll(nth(deepAll(element, '.reorder-row'), 1), 'hcm-icon-button'), 0).click();
         deep(deep(deep(element, '.pane > .actions'), 'hcm-button'), 'button').click();
 

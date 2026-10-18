@@ -77,6 +77,7 @@ export class PhotoEditor {
             store: services.store,
             cityId: services.cityId,
             bounds: deps.bounds,
+            clock: services.clock,
             preset: (photo) => this.#preset(photo),
             changed: () => {
                 this.#emit();

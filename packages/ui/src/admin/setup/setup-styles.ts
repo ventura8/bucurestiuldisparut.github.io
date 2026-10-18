@@ -139,16 +139,20 @@ export const copyStyles = css`
         list-style: none;
     }
 
+    /*
+     * The text takes the free space, so every row's copy button (and its "Copied." status after it) sits at the trailing
+     * edge, one under the other (space-between put the button midway between the text and the empty status).
+     */
     .copy-row {
         display: flex;
         gap: 8px;
         align-items: center;
-        justify-content: space-between;
         min-block-size: 48px;
     }
 
-    .copy-row span {
+    .copy-row > :first-child {
         display: flex;
+        flex: 1 1 auto;
         flex-direction: column;
         min-inline-size: 0;
     }

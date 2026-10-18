@@ -182,6 +182,22 @@ describe('EditDraft with another admin', () => {
         expect(draft.state).toMatchObject({ gone: false, base: null, value: null });
     });
 
+    it('happyPath_rightAfterASaveNothingIsUnsavedUntilTheNextEdit', async () => {
+        const { draft, world } = draftOf();
+        world.store.docs.set(LAYER_PATH('corona'), layerDoc());
+        draft.load(stored(layerDoc()));
+        draft.edit({ opacity: 0.4 });
+
+        // Saved, its snapshot not here yet: leaving loses nothing.
+        await expect(draft.save()).resolves.toEqual({ ok: true });
+        expect(draft.state.dirty).toEqual(['opacity']);
+        expect(draft.unsaved).toBe(false);
+
+        // The next edit is unsaved again.
+        draft.edit({ opacity: 0.6 });
+        expect(draft.unsaved).toBe(true);
+    });
+
     it('happyPath_discardReturnsToTheDocumentAsRead', () => {
         const { draft } = draftOf();
         draft.discard();

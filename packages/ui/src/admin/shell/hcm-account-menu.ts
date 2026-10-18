@@ -2,7 +2,8 @@
  * `<hcm-account-menu>`: the account button of the top app bar (or of the rail's foot on a landscape phone) and its
  * dialog (`docs/research/M2b-interfaces.md` §1.2): who is signed in, the language (Romanian, English: switching keeps
  * every form's state), the theme (automatic, light, dark), the analytics consent (withdrawable at any time, when GA4 is
- * configured) and Sign out.
+ * configured) and Sign out. A rotation of a phone moves it between the top bar and the rail: the shell then gives the
+ * new one's button the focus the old one held (`active`, `focusButton`).
  */
 import { translate, type Locale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
@@ -83,6 +84,19 @@ export class HcmAccountMenu extends LitElement {
         this.app = null;
         this.state = null;
         this.open = false;
+    }
+
+    /** The dialog is open, or the focus is on the button or in the dialog. */
+    get active(): boolean {
+        return this.open || (this.shadowRoot?.activeElement ?? null) !== null;
+    }
+
+    /** Gives the account button the focus once it is drawn. */
+    async focusButton(): Promise<void> {
+        await this.updateComplete;
+        const button = this.renderRoot.querySelector<HTMLElement & { updateComplete?: Promise<unknown> }>('hcm-icon-button');
+        await button?.updateComplete;
+        button?.focus();
     }
 
     override render(): TemplateResult {

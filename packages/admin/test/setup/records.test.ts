@@ -59,6 +59,32 @@ describe('applyStatusView', () => {
         expect(state.crashes.lastReportAt).toBe(CHECKED);
     });
 
+    it('badPath_aRecordedItemKeepsTheReasonThePageKnowsForTheSameState', () => {
+        const base = initialSetupState(createHarness().host, 'normal');
+        const policy = { key: 'adminSetup.provision.orgPolicy', params: { constraint: 'storage.publicAccessPrevention' } } as const;
+        const known = new Map<string, Partial<(typeof base.provision.items)[number]>>([
+            ['buckets', { state: 'invalid', detail: policy }],
+            ['secrets', { state: 'unavailable', detail: { key: 'apiError.unavailable' } }],
+        ]);
+        const shown = { ...base, provision: { items: base.provision.items.map((item) => ({ ...item, ...known.get(item.id) })) } };
+        const view = statusView({
+            provision: {
+                state: 'invalid',
+                checkedAt: CHECKED,
+                items: [
+                    { id: 'buckets', state: 'invalid' },
+                    { id: 'secrets', state: 'ok' },
+                ],
+            },
+        });
+
+        const items = applyStatusView(shown, view, START).provision.items;
+
+        expect(items.find((item) => item.id === 'buckets')).toEqual({ id: 'buckets', state: 'invalid', detail: policy });
+        expect(items.find((item) => item.id === 'secrets')).toEqual({ id: 'secrets', state: 'ok', detail: null });
+        expect(items.find((item) => item.id === 'apis')).toEqual({ id: 'apis', state: 'missing', detail: null });
+    });
+
     it('badPath_anEmptyRecordKeepsTheDefaults', () => {
         const state = applyStatusView(initialSetupState(createHarness().host, 'normal'), statusView(), START);
 

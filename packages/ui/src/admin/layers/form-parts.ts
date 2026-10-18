@@ -17,6 +17,11 @@ export interface FieldSpec {
     readonly value: string;
     /** The problem Save found at this field, or null. */
     readonly issue: ValidationIssue | null;
+    /**
+     * The id of a message several fields share (the city's four edges, refused together): the field is marked invalid and
+     * described by it instead of repeating the problem under itself.
+     */
+    readonly issueShownAt?: string;
     readonly help?: string;
     readonly type?: 'text' | 'url' | 'date';
     /** `decimal` for coordinates and zooms (a numeric keyboard); `numeric` for a year. */
@@ -27,7 +32,8 @@ export interface FieldSpec {
 }
 
 function describedBy(spec: FieldSpec): string | typeof nothing {
-    const ids = [spec.help === undefined ? '' : `${spec.id}-help`, spec.issue === null ? '' : `${spec.id}-error`].filter((id) => id !== '');
+    const error = spec.issueShownAt ?? `${spec.id}-error`;
+    const ids = [spec.help === undefined ? '' : `${spec.id}-help`, spec.issue === null ? '' : error].filter((id) => id !== '');
     return ids.length === 0 ? nothing : ids.join(' ');
 }
 
@@ -66,7 +72,11 @@ export function field(locale: Locale, spec: FieldSpec): TemplateResult {
     return html`<div class="field" ?data-invalid=${spec.issue !== null}>
         <label for=${spec.id}>${spec.label}</label>
         ${inputOf(spec)} ${spec.help === undefined ? nothing : html`<span class="note" id=${helpId}>${spec.help}</span>`}
-        ${spec.issue === null ? nothing : html`<span class="error" id=${errorId}>${translate(locale, spec.issue.code)}</span>`}
+        ${
+            spec.issue === null || spec.issueShownAt !== undefined
+                ? nothing
+                : html`<span class="error" id=${errorId}>${translate(locale, spec.issue.code)}</span>`
+        }
     </div>`;
 }
 

@@ -2,8 +2,10 @@
  * One POI category's editor (`#/settings/categories/<id>`; behaviour A39): label in both languages, icon, colour and
  * default opacity, previewed live on the page's map (the category's overlay), written by Save. A new category
  * (`#/settings/categories/_new`) is created by its first Save under the id its Romanian label gives, free in the overlay
- * namespace; an existing one is a draft guarded by the version read. A colour the white glyph does not read on cannot be
- * saved: the editor proposes the nearest tone that reads (one click takes it).
+ * namespace; an existing one is a draft guarded by the version read. Until the admin picks an icon, a new category's icon
+ * follows its label (`guessCategoryIcon`: "Fântâni" gives water), so the common case needs no click in the picker. A
+ * colour the white glyph does not read on cannot be saved: the editor proposes the nearest tone that reads (one click
+ * takes it).
  */
 import { FIRESTORE_PATHS, poiCategoryDocSchema, validate, type PoiCategoryDoc, type ValidationIssue } from '@hcm/shared';
 
@@ -21,6 +23,7 @@ import {
     type NewCategory,
 } from './categories.js';
 import { nearestTone, readsWithWhite } from './colour.js';
+import { guessCategoryIcon } from './icon-guess.js';
 
 export interface CategoryEditorState {
     /** The category's id, or `NEW_CATEGORY` before its first Save. */
@@ -73,6 +76,8 @@ export class CategoryEditor {
     readonly #deps: CategoryEditorDeps;
     readonly #draft: EditDraft<PoiCategoryDoc> | null;
     #state: CategoryEditorState;
+    /** A new category's icon was picked by the admin: the label no longer chooses it. */
+    #iconPicked = false;
 
     constructor(id: string, deps: CategoryEditorDeps) {
         this.#deps = deps;
@@ -118,7 +123,9 @@ export class CategoryEditor {
         }
         const value = this.#state.value;
         if (value !== null) {
-            const next = { ...value, ...patch };
+            this.#iconPicked ||= patch.icon !== undefined;
+            const edited = { ...value, ...patch };
+            const next = this.#iconPicked ? edited : { ...edited, icon: guessCategoryIcon(edited.label) };
             this.#set({ ...this.#state, value: next, dirty: true, issues: newIssues(next), proposedColor: proposalOf(next) });
         }
     }
@@ -134,6 +141,7 @@ export class CategoryEditor {
     discard(): void {
         this.#draft?.discard();
         if (this.#draft === null) {
+            this.#iconPicked = false;
             this.#set({ ...this.#state, value: newCategory(this.#deps.categories()), dirty: false, issues: [], proposedColor: null });
         }
     }

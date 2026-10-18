@@ -85,6 +85,27 @@ describe('provision: run', () => {
         expect(ctx.state().provision.items[0]).toEqual({ id: 'apis', state: 'ok', detail: null });
     });
 
+    it('badPath_aRunTheProvisionerStoppedAtA401OffersContinueAndDropsTheToken', async () => {
+        const { harness, ctx, flow } = setup('normal');
+        // The provisioner reports the refused item and the ones it did, then stops without throwing.
+        harness.cloud.provision.mockImplementationOnce(
+            reporting([
+                { id: 'apis', state: 'ok' },
+                { id: 'secrets', state: 'invalid', detail: 'adminShell.session.googleExpired' },
+            ]),
+        );
+
+        await flow.run();
+
+        expect(ctx.state().steps.provision).toMatchObject({
+            busy: false,
+            needsContinue: true,
+            error: { key: 'adminShell.session.googleExpired' },
+        });
+        expect(harness.google.dropped).toBe(1);
+        expect(harness.backend.recordCloud).toHaveBeenCalledTimes(1);
+    });
+
     it('badPath_aClosedPopupRunsNothing', async () => {
         const { harness, flow } = setup();
         harness.google.answer = () => Promise.resolve(null);

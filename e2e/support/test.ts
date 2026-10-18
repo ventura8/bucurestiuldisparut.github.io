@@ -77,6 +77,12 @@ export function testIdOf(testInfo: TestInfo): string {
     return `${testInfo.testId}#${String(testInfo.retry)}`;
 }
 
+/** A console error as recorded: Chromium's "Failed to load resource" names no address, so the address follows it. */
+function described(message: ConsoleMessage): string {
+    const text = message.text();
+    return text.startsWith('Failed to load resource') ? `${text} (${message.location().url})` : text;
+}
+
 export const test = base.extend<TestFixtures, WorkerFixtures>({
     lang: ['ro', { option: true, scope: 'worker' }],
     forwardUpstreams: [false, { option: true, scope: 'worker' }],
@@ -105,7 +111,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
                 expectedConsoleErrors.some((allowed) => allowed.text.test(message.text()) && allowed.url.test(message.location().url));
             page.on('console', (message) => {
                 if (message.type() === 'error' && !expected(message)) {
-                    errors.record(message.text());
+                    errors.record(described(message));
                 }
             });
             page.on('pageerror', (error) => {

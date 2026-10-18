@@ -1,10 +1,13 @@
 /**
  * Native fields of the photo editor (`docs/research/M2c-interfaces.md` §9.5 fields, §1.6 messages): a label, the input
  * (outlined, 48 px, the editing kit's styles), an optional hint, and the field's problem as text tied to it
- * (`aria-invalid`, `aria-describedby`). Text is passed on every keystroke; numbers when the field is left (so a
- * half-typed `44.` is not rewritten under the cursor).
+ * (`aria-invalid`, `aria-describedby`). Texts and numbers are passed on every keystroke; a number keeps what the admin
+ * typed while it is the same number (a half-typed `44.` is not rewritten under the cursor) and says its problem only
+ * once it has been left (`../editing/number-fields.ts`, `DECISIONS-for-review.md` §35d).
  */
 import { html, nothing, type TemplateResult } from 'lit';
+
+import { numberValue, type FieldsLeft } from '../editing/number-fields.js';
 
 import { partId } from './photo-text.js';
 
@@ -73,12 +76,14 @@ export function areaField(input: FieldInput & { readonly maxlength: number }, ch
     </div>`;
 }
 
-/** A number field, reported when it is left or Enter is pressed (`''` for an empty field). */
+/** A number field, reported on every keystroke (`''` for an empty or unfinished one); its problem shows once it is left. */
 export function numberField(
     input: FieldInput & { readonly min: number; readonly max: number; readonly step: string },
     changed: (value: string) => void,
+    left: FieldsLeft,
 ): TemplateResult {
-    return html`<div class="field" ?data-invalid=${input.error !== null}>
+    const shown: FieldInput = left.has(input.id) ? input : { ...input, error: null };
+    return html`<div class="field" ?data-invalid=${shown.error !== null}>
         <label for=${input.id}>${input.label}</label>
         <input
             id=${input.id}
@@ -87,14 +92,17 @@ export function numberField(
             min=${input.min}
             max=${input.max}
             step=${input.step}
-            .value=${input.value}
-            aria-invalid=${input.error === null ? 'false' : 'true'}
-            aria-describedby=${describedBy(input)}
-            @change=${(event: Event) => {
+            .value=${numberValue(input.value)}
+            aria-invalid=${shown.error === null ? 'false' : 'true'}
+            aria-describedby=${describedBy(shown)}
+            @input=${(event: Event) => {
                 changed(valueOf(event));
             }}
+            @focusout=${() => {
+                left.leave(input.id);
+            }}
         />
-        ${notes(input)}
+        ${notes(shown)}
     </div>`;
 }
 

@@ -85,6 +85,19 @@ async function entries(world: World) {
     return (await world.documents.query(FIRESTORE_PATHS.history(POI), historyEntryDocSchema)).documents;
 }
 
+describe('history.onPoiWrite: the stamp of a delete', () => {
+    it('badPath_aDeleteInTheSecondOfTheLastWriteIsStillItsNewestEntry', async () => {
+        const world = emulators.newWorld();
+        // The emulator's event times have whole seconds: the delete's says 08:20:00 for a version written at 08:20:00.640.
+        await world.db.doc(POI_PATH).set(poi('Unu', 'u-editor', timestampFromDate(new Date('2026-10-12T08:20:00.640Z'))));
+
+        await change(world, undefined, { id: 'e-delete', time: '2026-10-12T08:20:00Z', authId: 'u-deleter' });
+
+        const [deleted] = await entries(world);
+        expect(deleted?.data).toMatchObject({ action: 'delete', updatedAt: timestampFromDate(new Date('2026-10-12T08:20:00.641Z')) });
+    });
+});
+
 describe('history.onPoiWrite', () => {
     it('happyPath_aCreateAnUpdateAndADeleteEachKeepTheVersionBefore', async () => {
         const world = emulators.newWorld();

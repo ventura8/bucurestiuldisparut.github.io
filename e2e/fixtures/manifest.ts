@@ -3,14 +3,15 @@ import { join, resolve } from 'node:path';
 
 import { validateManifest, type Manifest } from '@hcm/shared';
 
-import { E2E_ERROR_ENDPOINT, E2E_MEASUREMENT_ID, E2E_SITE_DIR, E2E_TILESET_LAYER, E2E_TOKEN, E2E_XYZ_LAYER } from './world.js';
+import { E2E_CITY_ID, E2E_ERROR_ENDPOINT, E2E_MEASUREMENT_ID, E2E_SITE_DIR, E2E_TILESET_LAYER, E2E_TOKEN, E2E_XYZ_LAYER } from './world.js';
 
 /**
  * The e2e fixture manifest (docs/research/M1-interfaces.md §10), assembled from committed inputs and validated with
  * `validateManifest` before anything is served, so an invalid fixture fails the build and the `setup` project, never
  * a scenario:
  *
- * 1. the migrated Bucharest manifest `seed/bucharest/manifest.static.json` (45 photos, its derived images);
+ * 1. the migrated Bucharest manifest `seed/bucharest/manifest.static.json` (45 photos, its derived images), its city named
+ *    as the site names it (`E2E_CITY_ID`);
  * 2. the two synthetic raster layers of `world.ts`: a `mapbox://` tileset and an `xyz` source, both painted by the
  *    mock APIs in solid colours;
  * 3. the POI fixture set `scripts/seed/e2e-pois.json` (photos overlay default, three categories, four POIs);
@@ -78,7 +79,7 @@ function fixtureManifestData(options: FixtureOptions = {}): Json {
             : { errorEndpoint: E2E_ERROR_ENDPOINT };
     return {
         ...seed,
-        city: { ...city, mapbox: { publicToken: E2E_TOKEN }, analytics },
+        city: { ...city, id: E2E_CITY_ID, mapbox: { publicToken: E2E_TOKEN }, analytics },
         layers: options.layers === false ? [] : fixtureLayers(),
         ...(options.pois === false ? {} : readJson('scripts/seed/e2e-pois.json')),
     };

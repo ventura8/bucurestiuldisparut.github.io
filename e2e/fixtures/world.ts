@@ -19,6 +19,13 @@ export const TEST_HEADER = 'x-hcm-test';
 /** Where the e2e build writes the sites (`npm run build:site:e2e`). */
 export const E2E_SITE_DIR = 'dist/e2e-site';
 
+/**
+ * The Bucharest site's city (`sites/bucharest/config.js`), which is the project's (`infra/project.json`): the fixture
+ * manifest names it, as every manifest the backend builds does (the legacy manifest's own `bucuresti` is renamed by the
+ * site build, `DECISIONS-for-review.md` §35b).
+ */
+export const E2E_CITY_ID = 'bucharest';
+
 /** Generated test values that encode the scenario, never real ones (`quality/testing_strategy_skill.md`). */
 export const E2E_TOKEN = 'pk.e2e-fake-token';
 export const E2E_MEASUREMENT_ID = 'G-E2E0000000';
@@ -82,7 +89,20 @@ export const E2E_XYZ_LAYER: E2eXyzLayer = {
 export const E2E_BROKEN_TILESET = 'ventura86.e2e-broken';
 
 /** Tileset id → colour, for the mock tile server. */
-export const TILESET_COLOURS: ReadonlyMap<string, Rgb> = new Map([[E2E_TILESET_LAYER.tilesetId, E2E_TILESET_LAYER.colour]]);
+const TILESET_COLOURS: ReadonlyMap<string, Rgb> = new Map([[E2E_TILESET_LAYER.tilesetId, E2E_TILESET_LAYER.colour]]);
+
+/**
+ * The Mapbox account of the admin tier's cities (`cities/<city>.mapbox.user`): every tileset of it is one solid colour,
+ * so the admin map draws any layer the pipeline would have published there (`e2e-user.corona-1968`) and a probe of the
+ * admin map knows what it shows.
+ */
+const E2E_MAPBOX_USER = 'e2e-user';
+export const E2E_USER_TILESET_COLOUR: Rgb = [60, 90, 200];
+
+/** The colour the mock tile server paints a tileset with, or undefined for one it does not know. */
+export function tilesetColour(tilesetId: string): Rgb | undefined {
+    return TILESET_COLOURS.get(tilesetId) ?? (tilesetId.startsWith(`${E2E_MAPBOX_USER}.`) ? E2E_USER_TILESET_COLOUR : undefined);
+}
 
 /** xyz layer id (the path segment after `/xyz/`) → colour. */
 export const XYZ_COLOURS: ReadonlyMap<string, Rgb> = new Map([[E2E_XYZ_LAYER.id, E2E_XYZ_LAYER.colour]]);

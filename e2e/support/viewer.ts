@@ -86,9 +86,30 @@ export async function chooseMenuItem(page: Page, lang: Locale, label: string): P
     await page.getByRole('menuitem', { name: label, exact: true }).click();
 }
 
-/** Opens the Layers panel unless it is already shown. */
+/** Keeps a toast open while a check looks at it: the pointer rests on it, as a visitor's would (M3 pauses the timeout). */
+export async function holdToast(page: Page, message: string): Promise<void> {
+    const toast = viewer(page).locator('hcm-snackbar .snackbar').filter({ hasText: message });
+    await expect(toast).toBeVisible();
+    await toast.dispatchEvent('pointerenter');
+}
+
+/** Closes the toast on show, if one is (a state that is not about a toast is checked without one). */
+export async function dismissToast(page: Page, lang: Locale): Promise<void> {
+    const close = viewer(page)
+        .locator('hcm-snackbar')
+        .getByRole('button', { name: t(lang, 'action.close'), exact: true });
+    if (await close.isVisible()) {
+        await close.click();
+        await expect(close).toBeHidden();
+    }
+}
+
+/**
+ * Opens the Layers panel unless it is already shown. Its first slider named for the photos is the photos' own (a category
+ * may carry the same name: DECISIONS-for-review.md §37i).
+ */
 export async function openLayers(page: Page, lang: Locale): Promise<void> {
-    const opacity = page.getByRole('slider', { name: t(lang, 'layers.opacity', { name: t(lang, 'layers.photos') }) });
+    const opacity = page.getByRole('slider', { name: t(lang, 'layers.opacity', { name: t(lang, 'layers.photos') }) }).first();
     if (!(await opacity.isVisible())) {
         await chooseMenuItem(page, lang, t(lang, 'layers.title'));
     }

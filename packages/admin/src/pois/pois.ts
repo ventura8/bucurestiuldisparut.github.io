@@ -27,12 +27,15 @@ import { LAST_CATEGORY_KEY, PlaceActions } from './actions.js';
 import type { BulkAction } from './bulk.js';
 import type { PoiContext } from './draft.js';
 import { PlaceEditor, type PlaceEditorState } from './editor.js';
-import { exportFileName, exportText, GEOJSON_MEDIA_TYPE } from './geojson.js';
 import { Importer } from './importer.js';
 import { PoisMap, UNCATEGORISED_COLOR, type EditTarget } from './map-session.js';
 import { categoryItemOf, cityFrameOf, drawLimitsOf, poiItemOf, type CategoryItem, type PoiItem, type PoiValue } from './model.js';
 import {
+    exportFile,
     importOverlays,
+    lacksCategory,
+    newPlaceCategory,
+    newPlaceValue,
     notFound,
     photoChoiceOf,
     placeOverlays,
@@ -73,6 +76,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         this.#cell = new Store<PoisState>(INITIAL_POIS_STATE, services.log);
         this.#list = this.#liveList(FIRESTORE_PATHS.pois(services.cityId), poiDocSchema, poiItemOf, (list) => {
             this.#cell.update({ list });
+            this.#importer.contextChanged();
             this.#placesChanged();
         });
         this.#categories = this.#liveList(
@@ -81,8 +85,10 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
             categoryItemOf,
             (categories) => {
                 this.#cell.update({ categories });
+                this.#importer.contextChanged();
                 this.#placesChanged();
                 this.#editor?.recheck();
+                this.#categoryArrived();
             },
         );
         this.#photos = this.#liveList(FIRESTORE_PATHS.photos(services.cityId), photoDocSchema, photoChoiceOf, (photos) => {
@@ -212,6 +218,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         }
         this.#editor?.close();
         this.#editor = id !== null && isId(id) ? this.#editorFor(id) : null;
+        this.#categoryArrived();
         this.#cell.update({ editor: this.#editorState(id) });
         this.#targetChanged();
     }
@@ -293,12 +300,20 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
 
     #add(shape: PlaceShape): string {
         const id = this.#services.store.newId();
-        const categories = this.#cell.state.categories.items;
-        const remembered = this.#services.local.get(LAST_CATEGORY_KEY);
-        const category = categories.find((item) => item.id === remembered)?.id ?? categories[0]?.id ?? '';
-        const value: PoiValue = { category, geometry: null, title: { ro: '' }, links: [], photoIds: [], published: true };
-        this.#fresh.set(id, this.#newEditor(id, { value, shape }));
+        this.#fresh.set(id, this.#newEditor(id, { value: newPlaceValue(this.#newCategory()), shape }));
         return id;
+    }
+
+    #newCategory(): string {
+        return newPlaceCategory(this.#cell.state.categories.items, this.#services.local.get(LAST_CATEGORY_KEY));
+    }
+
+    /** A new place added before the categories were listed gets its category once they are (the select showed the first). */
+    #categoryArrived(): void {
+        const category = lacksCategory(this.#editor?.state.draft) ? this.#newCategory() : '';
+        if (category !== '') {
+            this.#editor?.edit({ category });
+        }
     }
 
     async #save(): Promise<WriteOutcome | null> {
@@ -328,19 +343,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
     #export(onlySelection: boolean): SavedFile {
         const { list, categories, selection } = this.#cell.state;
         const chosen = onlySelection ? list.items.filter((item) => selection.includes(item.id)) : list.items;
-        const places = chosen.map((item) => ({ id: item.id, value: item.value }));
-        const { cityId, clock } = this.#services;
-        return {
-            name: exportFileName(cityId, new Date(clock.now())),
-            type: GEOJSON_MEDIA_TYPE,
-            text: exportText(cityId, places, categories.items),
-        };
-    }
-
-    #retry(): void {
-        this.#list.retry();
-        this.#categories.retry();
-        this.#editor?.retry();
+        return exportFile(this.#services.cityId, this.#services.clock.now(), chosen, categories.items);
     }
 
     /** Adds a vertex at the map's centre (the city's starting view's without a map: the keyboard path still works). */
@@ -351,12 +354,6 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
 
     #selectAll(): void {
         this.#cell.update({ selection: shownPlaces(this.#cell.state.list.items, this.#cell.state.filter).map((item) => item.id) });
-    }
-
-    #loadPhotos(): void {
-        if (!this.#photos.active) {
-            this.#photos.show({ orderBy: [['updatedAt', 'desc']] });
-        }
     }
 
     #intents(): PoisIntents {
@@ -372,7 +369,9 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
                 this.#list.more();
             },
             retry: () => {
-                this.#retry();
+                this.#list.retry();
+                this.#categories.retry();
+                this.#editor?.retry();
             },
             add: (shape) => this.#add(shape),
             toggleSelected: (id) => {
@@ -386,7 +385,9 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
             },
             bulk: (action) => this.#bulk(action),
             loadPhotos: () => {
-                this.#loadPhotos();
+                if (!this.#photos.active) {
+                    this.#photos.show({ orderBy: [['updatedAt', 'desc']] });
+                }
             },
         };
     }

@@ -86,7 +86,7 @@ export type { SettingsIntentsPort, SettingsViewState } from './settings/settings
 // [section ops] owner: ops-screens
 export { HCM_ADMINS_PAGE_TAG, HcmAdminsPage } from './admins/hcm-admins-page.js';
 export type { AdminSelectionPort, AdminsIntentsPort, AdminsViewState } from './admins/admins-port.js';
-export { HCM_CRASHES_LIST_PAGE_TAG, HcmCrashesListPage, errorReportingUrl } from './crashes/hcm-crashes-list-page.js';
+export { HCM_CRASHES_LIST_PAGE_TAG, HcmCrashesListPage, errorGroupUrl } from './crashes/hcm-crashes-list-page.js';
 export type { CrashesIntentsPort, CrashesViewState, CrashGroupPort, CrashPeriodPort } from './crashes/crashes-port.js';
 export { HCM_HISTORY_PAGE_TAG, HcmHistoryPage } from './history/hcm-history-page.js';
 export { describeValue } from './history/describe.js';

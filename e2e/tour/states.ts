@@ -1,6 +1,7 @@
 import type { Locale } from '@hcm/shared';
 import { expect, type BrowserContext, type Locator, type Page, type Route } from '@playwright/test';
 
+import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
 import { SITE_ORIGIN } from '../fixtures/world.js';
 import { siteManifestData } from '../fixtures/manifest.js';
@@ -13,6 +14,8 @@ import {
     BUCHAREST_MANIFEST,
     callController,
     chooseMenuItem,
+    dismissToast,
+    holdToast,
     menuButton,
     openLayers,
     openViewer,
@@ -27,10 +30,13 @@ import {
  * for overlapping elements!!! also for accessibility!!"): every screen and state of the viewer, each with how the tour
  * reaches it, and every state of the admin with the spec that reaches it. Every visit runs the generic layout checker
  * and the generic accessibility checker (e2e/support/state-check.ts → `expectStateSound`) at the project's viewport,
- * scheme and language: the viewer's on all 11 viewports (e2e/tour/viewer.tour.ts, tiers `tour` and `tour-matrix`), the
- * admin's at its four projects (e2e/admin/specs/). A state that does not exist at a window size (a bottom sheet's
- * heights on anything but a phone held upright, the Layers item of a menu whose panel is always docked) is left out
- * there by `exists`, never skipped. The landscape variants are the `c915l` projects; swipe compare (V06) joins in M4.
+ * scheme and language: the viewer's on all 11 viewports (e2e/tour/viewer.tour.ts, tiers `tour` and `tour-matrix`); the
+ * admin editors' too, each journey in a city of its own (e2e/tour/admin-*.tour.ts, DECISIONS-for-review.md §34c); the
+ * admin's singleton screens (Setup, Admins, Crash reports, Home, the sign-in, the claim, a revoked session), which
+ * need the admin tier's lock, at its five projects (e2e/admin/specs/). A state that does not exist at a window size (a
+ * bottom sheet's heights on anything but a phone held upright, the Layers item of a menu whose panel is always docked)
+ * is left out there by `exists`, never skipped. The landscape variants are the `c915l` projects; swipe compare (V06)
+ * joins in M4.
  */
 
 /** What a state's steps drive and read. */
@@ -173,6 +179,9 @@ const VIEWER_STATES = {
         title: 'The menu switched the language: the whole viewer in the other language',
         enter: async ({ page, lang }) => {
             const other = lang === 'ro' ? 'en' : 'ro';
+            // The previous state's toast is closed first: re-worded in the other language, its timer starts again and it
+            // went mid-check on a slow machine (the Tab round then never reached its Close).
+            await dismissToast(page, lang);
             await chooseMenuItem(page, lang, t(lang, `language.${other}`));
             await expect(menuButton(page, other)).toBeVisible();
         },
@@ -344,13 +353,6 @@ type ViewerStateId = keyof typeof VIEWER_STATES;
 /** A state of the inventory with its id. */
 function viewerState(id: ViewerStateId): ViewerState {
     return { id: `viewer.${id}`, ...(VIEWER_STATES[id] as Omit<ViewerState, 'id'>) };
-}
-
-/** Keeps a toast open while the tour checks it: the pointer rests on it, as a visitor's would (M3 pauses the timeout). */
-async function holdToast(page: Page, message: string): Promise<void> {
-    const toast = viewer(page).locator('hcm-snackbar .snackbar').filter({ hasText: message });
-    await expect(toast).toBeVisible();
-    await toast.dispatchEvent('pointerenter');
 }
 
 async function expectErrorCard(page: Page, message: string): Promise<void> {
@@ -603,93 +605,64 @@ const ADMIN_STATES = {
     // The M2c editors (docs/research/M2c-interfaces.md §11.2, §12.2): one marked section per area, ids '<area>.<state>';
     // a workstream appends inside its own section only and never moves the markers.
     // [section common] owner: ops-screens (the editing kit: the unsaved guard, the conflict banner, offline, the map's states)
+    'session-revoked': {
+        title: 'The access removed while editing: the page and its draft under the banner, with Sign out (§35e)',
+        visit: 'specs/flows/revoke.spec.ts',
+    },
     // [end common]
     // [section photos] owner: photos
-    'photos.empty': { title: 'Photos: none yet, with Add photos and the drop zone', visit: 'specs/photos/photos.spec.ts' },
-    'photos.upload-refused': { title: 'Photos: a file refused before upload, with its reason', visit: 'specs/photos/photos.spec.ts' },
+    'photos.empty': { title: 'Photos: none yet, with Add photos and the drop zone', visit: 'tour/admin-photos.tour.ts' },
+    'photos.upload-refused': { title: 'Photos: a file refused before upload, with its reason', visit: 'tour/admin-photos.tour.ts' },
     'photos.list': {
         title: 'Photos: the list with its filters, search and rows (processing, refused, rights to check)',
-        visit: 'specs/photos/photos.spec.ts',
+        visit: 'tour/admin-photos.tour.ts',
     },
-    'photos.bulk': { title: 'Photos: four selected, the bulk actions', visit: 'specs/photos/photos.spec.ts' },
+    'photos.bulk': { title: 'Photos: four selected, the bulk actions', visit: 'tour/admin-photos.tour.ts' },
     'photos.report': {
         title: 'Photos: the photos a bulk Publish skipped, each with its reason (a dialog)',
-        visit: 'specs/photos/photos.spec.ts',
+        visit: 'tour/admin-photos.tour.ts',
     },
     'photos.editor': {
         title: "Photos: a photo's editor (beside the list from 840 px, full screen on a phone)",
-        visit: 'specs/photos/photos.spec.ts',
+        visit: 'tour/admin-photos.tour.ts',
     },
-    'photos.set-fields': { title: 'Photos: author, source and licence for the selection (a dialog)', visit: 'specs/photos/photos.spec.ts' },
+    'photos.set-fields': { title: 'Photos: author, source and licence for the selection (a dialog)', visit: 'tour/admin-photos.tour.ts' },
     'photos.editor-invalid': {
         title: 'Photos: the editor with a field to correct, Save off and its reason',
-        visit: 'specs/photos/photos.spec.ts',
+        visit: 'tour/admin-photos.tour.ts',
     },
-    'photos.delete-confirm': { title: 'Photos: the delete confirmation (a dialog)', visit: 'specs/photos/photos.spec.ts' },
-    'photos.deleted-undo': { title: 'Photos: the photo deleted, the snackbar offering Undo', visit: 'specs/photos/photos.spec.ts' },
+    'photos.delete-confirm': { title: 'Photos: the delete confirmation (a dialog)', visit: 'tour/admin-photos.tour.ts' },
+    'photos.deleted-undo': { title: 'Photos: the photo deleted, the snackbar offering Undo', visit: 'tour/admin-photos.tour.ts' },
     // [end photos]
     // [section pois] owner: pois
     ...POIS_STATES,
     // [end pois]
     // [section layers] owner: layers-settings
-    'layers.empty': { title: 'Layers: none yet, with Link a layer', visit: 'specs/layers/layers.spec.ts' },
-    'layers.list': { title: 'Layers: the list, top first, with Move up/down', visit: 'specs/layers/layers.spec.ts' },
-    'layers.link': { title: 'Layers: link an existing layer (a dialog)', visit: 'specs/layers/layers.spec.ts' },
-    'layers.link-refused': { title: "Layers: another account's tileset refused", visit: 'specs/layers/layers.spec.ts' },
-    'layers.editor': { title: "Layers: a layer's editor with its map", visit: 'specs/layers/layers.spec.ts' },
-    'layers.adjusting': { title: 'Layers: image adjustments moved, levels met', visit: 'specs/layers/layers.spec.ts' },
-    'layers.delete-confirm': { title: 'Layers: "Delete the layer?" (a dialog)', visit: 'specs/layers/layers.spec.ts' },
+    'layers.empty': { title: 'Layers: none yet, with Link a layer', visit: 'tour/admin-layers.tour.ts' },
+    'layers.list': { title: 'Layers: the list, top first, with Move up/down', visit: 'tour/admin-layers.tour.ts' },
+    'layers.link': { title: 'Layers: link an existing layer (a dialog)', visit: 'tour/admin-layers.tour.ts' },
+    'layers.link-refused': { title: "Layers: another account's tileset refused", visit: 'tour/admin-layers.tour.ts' },
+    'layers.editor': { title: "Layers: a layer's editor with its map", visit: 'tour/admin-layers.tour.ts' },
+    'layers.adjusting': { title: 'Layers: image adjustments moved, levels met', visit: 'tour/admin-layers.tour.ts' },
+    'layers.delete-confirm': { title: 'Layers: "Delete the layer?" (a dialog)', visit: 'tour/admin-layers.tour.ts' },
     // [end layers]
     // [section settings] owner: layers-settings
-    'settings.sections': { title: 'Settings: the sections, none open', visit: 'specs/settings/settings.spec.ts' },
-    'settings.area': { title: "Settings: the city's bounds and start view", visit: 'specs/settings/settings.spec.ts' },
-    'settings.area-invalid': { title: 'Settings: bounds of no width, Save off', visit: 'specs/settings/settings.spec.ts' },
-    'settings.area-refused': { title: 'Settings: bounds refused, what they leave out', visit: 'specs/settings/settings.spec.ts' },
-    'settings.texts-link-refused': { title: 'Settings: a non-https link in About', visit: 'specs/settings/settings.spec.ts' },
-    'settings.theme': { title: 'Settings: seed colour, presets, basemap', visit: 'specs/settings/settings.spec.ts' },
-    'settings.theme-preview': { title: 'Settings: a seed colour previewed', visit: 'specs/settings/settings.spec.ts' },
-    'settings.categories': { title: 'Settings: the place categories', visit: 'specs/settings/settings.spec.ts' },
-    'settings.category-editor': { title: 'Settings: a category, its icon not bundled', visit: 'specs/settings/settings.spec.ts' },
-    'settings.category-low-contrast': { title: 'Settings: an unreadable colour, a tone offered', visit: 'specs/settings/settings.spec.ts' },
-    'settings.category-delete-move': { title: 'Settings: delete a category in use (a dialog)', visit: 'specs/settings/settings.spec.ts' },
-    'settings.categories-limit': { title: 'Settings: fifty categories, Add off', visit: 'specs/settings/settings.spec.ts' },
-    'settings.overlays': { title: 'Settings: the default opacities', visit: 'specs/settings/settings.spec.ts' },
+    'settings.sections': { title: 'Settings: the sections, none open', visit: 'tour/admin-settings.tour.ts' },
+    'settings.area': { title: "Settings: the city's bounds and start view", visit: 'tour/admin-settings.tour.ts' },
+    'settings.area-invalid': { title: 'Settings: bounds of no width, Save off', visit: 'tour/admin-settings.tour.ts' },
+    'settings.area-refused': { title: 'Settings: bounds refused, what they leave out', visit: 'tour/admin-settings.tour.ts' },
+    'settings.texts-link-refused': { title: 'Settings: a non-https link in About', visit: 'tour/admin-settings.tour.ts' },
+    'settings.theme': { title: 'Settings: seed colour, presets, basemap', visit: 'tour/admin-settings.tour.ts' },
+    'settings.theme-preview': { title: 'Settings: a seed colour previewed', visit: 'tour/admin-settings.tour.ts' },
+    'settings.categories': { title: 'Settings: the place categories', visit: 'tour/admin-settings.tour.ts' },
+    'settings.category-editor': { title: 'Settings: a category, its icon not bundled', visit: 'tour/admin-settings.tour.ts' },
+    'settings.category-low-contrast': { title: 'Settings: an unreadable colour, a tone offered', visit: 'tour/admin-settings.tour.ts' },
+    'settings.category-delete-move': { title: 'Settings: delete a category in use (a dialog)', visit: 'tour/admin-settings.tour.ts' },
+    'settings.categories-limit': { title: 'Settings: fifty categories, Add off', visit: 'tour/admin-settings.tour.ts' },
+    'settings.overlays': { title: 'Settings: the default opacities', visit: 'tour/admin-settings.tour.ts' },
     // [end settings]
     // [section ops] owner: ops-screens (admins, history, jobs, crash reports)
-    'home.dashboard': {
-        title: "Home: the city's counts, what waits, the services' chips and the public map",
-        visit: 'specs/ops/ops.spec.ts, the dashboard',
-    },
-    'jobs.empty': { title: 'Jobs: none yet', visit: 'specs/ops/ops.spec.ts, jobs' },
-    'jobs.list': { title: 'Jobs: the live list with its status chips', visit: 'specs/ops/ops.spec.ts, jobs' },
-    'jobs.detail': {
-        title: "Jobs: a running job's progress, steps and log (full screen on a phone)",
-        visit: 'specs/ops/ops.spec.ts, jobs',
-    },
-    'jobs.cancel-confirm': { title: 'Jobs: "Cancel this job?" (a dialog)', visit: 'specs/ops/ops.spec.ts, jobs' },
-    'history.recent': { title: "History: the city's recent changes with their filters", visit: 'specs/ops/ops.spec.ts, history' },
-    'history.deleted': { title: 'History: the Deleted filter, each with Restore', visit: 'specs/ops/ops.spec.ts, history' },
-    'history.revert-confirm': { title: 'History: "Restore what was deleted?" (a dialog)', visit: 'specs/ops/ops.spec.ts, history' },
-    'history.document': {
-        title: "History: a place's versions and the selected one's fields before and after",
-        visit: 'specs/ops/ops.spec.ts, history',
-    },
-    'history.revert-refused': { title: 'History: a refused revert, with its reason as an alert', visit: 'specs/ops/ops.spec.ts, history' },
-    'admins.list': { title: 'Admins: the admins and the pending invitations', visit: 'specs/ops/ops.spec.ts, admins' },
-    'admins.detail': { title: "Admins: an admin's detail with Remove access", visit: 'specs/ops/ops.spec.ts, admins' },
-    'admins.revoke-confirm': { title: 'Admins: "Remove access for …?" (a dialog)', visit: 'specs/ops/ops.spec.ts, admins' },
-    'admins.invite': { title: 'Admins: the Invite dialog with an address refused at the field', visit: 'specs/ops/ops.spec.ts, admins' },
-    'admins.invite-link': { title: 'Admins: the new invitation with its sign-in link and Copy', visit: 'specs/ops/ops.spec.ts, admins' },
-    'crashes.empty': { title: 'Crash reports: none in the period', visit: 'specs/ops/ops.spec.ts, crash reports' },
-    'crashes.list': { title: "Crash reports: a period's error groups", visit: 'specs/ops/ops.spec.ts, crash reports' },
-    'crashes.detail': {
-        title: "Crash reports: a group's counts, first and last seen, and the console link",
-        visit: 'specs/ops/ops.spec.ts, crash reports',
-    },
-    'crashes.error': {
-        title: 'Crash reports: Error Reporting disabled, with the way to Setup',
-        visit: 'specs/ops/ops.spec.ts, crash reports',
-    },
+    ...OPS_STATES,
     // [end ops]
 } as const;
 

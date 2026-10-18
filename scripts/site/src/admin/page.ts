@@ -4,10 +4,11 @@ import { element, renderDocument, type HtmlElement } from '../html.js';
  * The admin's `index.html` (docs/research/M2b-interfaces.md §4, admin-e2e), generated like the city pages instead of
  * committed (`DECISIONS-for-review.md` §1, §12d). Firebase Hosting serves it from `packages/admin/dist` for every path
  * (the `**` rewrite) with the Content Security Policy as a header (`./csp.ts`), so the page holds no meta policy and
- * no inline code: the admin's stylesheet, then its bundle (`dist/admin.iife.js`, the build the bundle budget measures;
- * Mapbox GL stays the global `mapboxgl` when the georeferencer needs it, M3), which starts the admin in the page's
- * `<hcm-admin-shell>` and loads the kit's fonts from `fonts/` next to the page (`build.ts` copies them). Without
- * JavaScript a bilingual note explains that the admin needs it.
+ * no inline code: the admin's stylesheet, then its bundle (`dist/admin.iife.js`, the build the bundle budget measures),
+ * which starts the admin in the page's `<hcm-admin-shell>` and loads the kit's fonts from `fonts/` next to the page
+ * (`build.ts` copies them). Mapbox GL JS is added by the first map (`loadMapboxGl` of `@hcm/ui/map`), with the
+ * Subresource Integrity digest the page names in `<html data-mapbox-integrity>` (`DECISIONS-for-review.md` §34h).
+ * Without JavaScript a bilingual note explains that the admin needs it.
  */
 
 /** The shell element the admin's entry starts in (`packages/admin/src/index.ts`, admin-shell). */
@@ -27,6 +28,14 @@ export interface AdminPageSpec {
     /** Shown when JavaScript is off: one paragraph per language. */
     readonly noscript: { readonly ro: string; readonly en: string };
 }
+
+/** What the build computes for the page: the digest of the pinned `mapbox-gl.js` (`scripts/site/src/sri.ts`). */
+export interface AdminPageBuild {
+    readonly mapboxGlIntegrity?: string;
+}
+
+/** The `<html>` attribute that names it (`MAPBOX_INTEGRITY_ATTRIBUTE` of `@hcm/ui/map`, which the loader reads). */
+export const MAPBOX_INTEGRITY_ATTRIBUTE = 'data-mapbox-integrity';
 
 /** The admin page every city project deploys (Romanian is the default language). */
 export const ADMIN_PAGE: AdminPageSpec = {
@@ -67,6 +76,7 @@ function body(spec: AdminPageSpec): HtmlElement {
 }
 
 /** The admin page's HTML. */
-export function renderAdminPage(spec: AdminPageSpec = ADMIN_PAGE): string {
-    return renderDocument(element('html', { lang: spec.lang }, [head(spec), body(spec)]));
+export function renderAdminPage(spec: AdminPageSpec = ADMIN_PAGE, build: AdminPageBuild = {}): string {
+    const integrity = build.mapboxGlIntegrity === undefined ? {} : { [MAPBOX_INTEGRITY_ATTRIBUTE]: build.mapboxGlIntegrity };
+    return renderDocument(element('html', { lang: spec.lang, ...integrity }, [head(spec), body(spec)]));
 }

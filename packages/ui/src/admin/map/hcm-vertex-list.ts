@@ -104,11 +104,12 @@ export class HcmVertexList extends LitElement {
         if (position === undefined) {
             return;
         }
-        if (value === null) {
-            input.value = coordinateText(position[axis]);
-            return;
+        // The field shows the shape's position until the area answers: an accepted edit renders the new one, a refused
+        // one (outside the city, crossing edges) leaves the position as it was, and the field must not say otherwise.
+        input.value = coordinateText(position[axis]);
+        if (value !== null) {
+            this.#edit({ kind: 'set', index, position: axis === 0 ? [value, position[1]] : [position[0], value] });
         }
-        this.#edit({ kind: 'set', index, position: axis === 0 ? [value, position[1]] : [position[0], value] });
     }
 
     #field(index: number, axis: 0 | 1, value: number): TemplateResult {

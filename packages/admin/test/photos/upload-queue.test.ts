@@ -15,16 +15,16 @@ function queueWorld(options: { bounds?: typeof BOUNDS | null; world?: PhotosWorl
     const world = options.world ?? photosWorld();
     const memory = new PhotoMemory(world.services.local);
     const changes: (readonly UploadItem[])[] = [];
-    const bounds = options.bounds === undefined ? BOUNDS : options.bounds;
+    const city = { bounds: options.bounds === undefined ? BOUNDS : options.bounds };
     const queue = new UploadQueue({
         services: world.services,
         memory,
-        bounds: () => bounds,
+        bounds: () => city.bounds,
         changed: (items) => {
             changes.push(items);
         },
     });
-    return { world, memory, queue, changes };
+    return { world, memory, queue, changes, city };
 }
 
 /** What `photos.onUpload` writes once it has processed the photo. */
@@ -76,13 +76,19 @@ describe('UploadQueue: a batch', () => {
         expect(world.store.docs.get(photoPath('new-1'))).toMatchObject({ location: { lat: 44.425, lng: 26.15 }, license: 'unknown' });
     });
 
-    it('badPath_withoutTheCityThePinIsTheOrigin', async () => {
-        const { world, queue } = queueWorld({ bounds: null });
+    it('badPath_aFileDroppedBeforeTheCityIsReadWaitsForItsCentre', async () => {
+        const { world, queue, city } = queueWorld({ bounds: null });
 
         queue.add([file('a.jpg')]);
         await settle();
+        const waiting = [world.store.docs.size, queue.items[0]?.phase];
+        city.bounds = BOUNDS;
+        queue.cityKnown();
+        await settle();
 
-        expect(world.store.docs.get(photoPath('new-1'))).toMatchObject({ location: { lat: 0, lng: 0 } });
+        // A photo at no place would be refused by the rules (outside the city): it waits for the city's centre.
+        expect(waiting).toEqual([0, 'queued']);
+        expect(world.store.docs.get(photoPath('new-1'))).toMatchObject({ location: { lat: 44.425, lng: 26.15 } });
     });
 
     it('happyPath_threeUploadRunAtOnceTheRestWait', async () => {

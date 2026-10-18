@@ -15,6 +15,7 @@ describe('the map entries', () => {
                 'MAPBOX_GL_CSS_URL',
                 'MAPBOX_GL_SCRIPT_URL',
                 'MAPBOX_GL_VERSION',
+                'MAPBOX_INTEGRITY_ATTRIBUTE',
                 'PHOTOS_OVERLAY_ID',
                 'browserAdapterEnv',
                 'comparePlugin',

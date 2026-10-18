@@ -76,6 +76,7 @@ class FakeDraw implements PhotoDrawPort {
     readonly calls: string[] = [];
     loaded: readonly DrawnPoint[] = [];
     mode = 'static';
+    selected: string | null = null;
     limits: unknown = null;
     #picked: ((position: [number, number] | null) => void) | null = null;
     readonly #change = new Set<(change: DrawChange) => void>();
@@ -92,6 +93,10 @@ class FakeDraw implements PhotoDrawPort {
 
     load(features: readonly DrawnPoint[]): void {
         this.loaded = features;
+    }
+
+    select(id: string | null): void {
+        this.selected = id;
     }
 
     pick(): Promise<[number, number] | null> {

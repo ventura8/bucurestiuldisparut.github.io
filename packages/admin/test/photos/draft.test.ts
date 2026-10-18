@@ -3,16 +3,25 @@
 import type { PhotoDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { draftIssues, PhotoDraft, patched, sameValue, valueOf, type PhotoDraftState, type PhotoPatch } from '../../src/photos/draft.js';
+import {
+    draftIssues,
+    PhotoDraft,
+    patched,
+    REFUSED_WAIT_MS,
+    sameValue,
+    valueOf,
+    type PhotoDraftState,
+    type PhotoPatch,
+} from '../../src/photos/draft.js';
 import type { Stored } from '../../src/content/services.js';
-import { at, CITY, photoDoc, photoPath, photosWorld, seedPhoto } from './world.js';
+import { at, CITY, photoDoc, photoPath, photosWorld, seedPhoto, settle } from './world.js';
 
 const BOUNDS = [
     [26, 44.3],
     [26.3, 44.55],
 ] as const;
 
-function draftWorld(preset: PhotoPatch = {}) {
+function draftWorld(preset: PhotoPatch = {}, options: { readonly timed?: boolean } = {}) {
     const world = photosWorld();
     const states: PhotoDraftState[] = [];
     const draft = new PhotoDraft('p1', {
@@ -23,6 +32,7 @@ function draftWorld(preset: PhotoPatch = {}) {
         changed: (state) => {
             states.push(state);
         },
+        ...(options.timed === true ? { clock: world.clock } : {}),
     });
     return { world, draft, states };
 }
@@ -181,6 +191,72 @@ describe('PhotoDraft: save', () => {
 
         expect(draft.state.conflict).toMatchObject({ fields: ['author'] });
         await expect(draft.save()).resolves.toEqual({ ok: false, reason: 'conflict' });
+    });
+
+    it('badPath_aSaveRefusedForANewerVersionOfOtherFieldsGoesAgainOnceThatVersionArrives', async () => {
+        const { world, draft } = draftWorld({}, { timed: true });
+        const newer = '2026-10-17T11:00:00.000Z';
+        seedPhoto(world, 'p1', { updatedAt: at(newer), location: { lat: 44.44, lng: 26.11 } });
+        draft.rebase(stored());
+        draft.edit({ author: 'Ion' });
+
+        // Refused: the stored photo is newer than the draft's base; the Save waits for that version, still saving.
+        const saving = draft.save();
+        await settle();
+        expect(draft.state).toMatchObject({ saving: true, conflict: null });
+
+        // It arrives: it changed the place only, so the author goes again, on the newer version.
+        draft.rebase(stored({ location: { lat: 44.44, lng: 26.11 } }, newer));
+        await expect(saving).resolves.toEqual({ ok: true });
+        expect(world.store.writes.at(-1)).toEqual({ kind: 'update', path: photoPath('p1'), fields: { author: 'Ion' }, expected: newer });
+        expect(draft.state).toMatchObject({ conflict: null, saving: false, touched: false });
+    });
+
+    it('badPath_aNewerVersionThatArrivedWhileSavingDecidesAtOnce', async () => {
+        const { world, draft } = draftWorld({ published: true }, { timed: true });
+        const newer = '2026-10-17T11:00:00.000Z';
+        seedPhoto(world, 'p1', { updatedAt: at(newer), title: { ro: 'Teatrul Național' } });
+        draft.rebase(stored());
+
+        // The upload's suggestions land while the preset's Save is on its way: no conflict, the Save goes again.
+        const saving = draft.save();
+        draft.rebase(stored({ title: { ro: 'Teatrul Național' } }, newer));
+
+        await expect(saving).resolves.toEqual({ ok: true });
+        expect(world.store.writes.map((write) => (write.kind === 'update' ? write.expected : null))).toEqual([
+            '2026-10-17T10:00:00.000Z',
+            newer,
+        ]);
+    });
+
+    it('badPath_aNewerVersionOfTheSameFieldIsTheConflict', async () => {
+        const { world, draft } = draftWorld({}, { timed: true });
+        const newer = '2026-10-17T11:00:00.000Z';
+        seedPhoto(world, 'p1', { updatedAt: at(newer), author: 'Ana' });
+        draft.rebase(stored());
+        draft.edit({ author: 'Ion' });
+        const saving = draft.save();
+        await settle();
+
+        draft.rebase(stored({ author: 'Ana' }, newer));
+
+        await expect(saving).resolves.toEqual({ ok: false, reason: 'conflict' });
+        expect(draft.state).toMatchObject({ saving: false, conflict: { fields: ['author'] } });
+        expect(world.store.writes).toHaveLength(1);
+    });
+
+    it('badPath_withoutTheNewerVersionInTimeEveryChangedFieldIsTheConflict', async () => {
+        const { world, draft } = draftWorld({}, { timed: true });
+        seedPhoto(world, 'p1', { updatedAt: at('2026-10-17T11:00:00.000Z') });
+        draft.rebase(stored());
+        draft.edit({ author: 'Ion', year: 1930 });
+        const saving = draft.save();
+        await settle();
+
+        world.clock.advance(REFUSED_WAIT_MS);
+
+        await expect(saving).resolves.toEqual({ ok: false, reason: 'conflict' });
+        expect(draft.state.conflict).toMatchObject({ fields: ['year', 'author'] });
     });
 
     it('badPath_aDeletedPhotoIsGone', async () => {

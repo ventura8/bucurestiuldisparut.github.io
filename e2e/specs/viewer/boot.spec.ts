@@ -2,6 +2,7 @@ import type { Route } from '@playwright/test';
 import { validateManifest } from '@hcm/shared';
 
 import { siteManifestData, type Json } from '../../fixtures/manifest.js';
+import { E2E_CITY_ID } from '../../fixtures/world.js';
 import { mapFacts, renderedFeatureIds } from '../../support/map.js';
 import { sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
@@ -81,7 +82,7 @@ test(
         await expect(timeline).toBeVisible();
         await expect(timeline).toHaveAttribute('aria-valuetext', t(lang, 'timeline.present'));
         const [ready] = await engineEvents(page, 'hcm-ready');
-        expect(ready).toEqual({ cityId: 'bucuresti', engineVersion: expect.any(String) as unknown, layers: 2, photos: 45 });
+        expect(ready).toEqual({ cityId: E2E_CITY_ID, engineVersion: expect.any(String) as unknown, layers: 2, photos: 45 });
         await expect
             .poll(async () => (await mapFacts(page)).visibleLayers)
             .toEqual(expect.arrayContaining(['hcm-photos-marker', 'hcm-photos-cluster']));

@@ -9,10 +9,12 @@
  */
 import { css } from 'lit';
 
+import { visuallyHidden } from '../../components/styles.js';
 import { adminBase } from './admin-styles.js';
 
 export const shellStyles = [
     adminBase,
+    visuallyHidden,
     css`
         :host {
             display: block;
@@ -80,6 +82,19 @@ export const shellStyles = [
             border-radius: var(--md-sys-shape-corner-medium, 12px);
             background: var(--md-sys-color-tertiary-container, Canvas);
             color: var(--md-sys-color-on-tertiary-container, CanvasText);
+        }
+
+        /* A revoked admin's banner (§35e): the error container, its ring in the container's own colour, Sign out beside. */
+        .banner.revoked {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px 16px;
+            background: var(--md-sys-color-error-container, Canvas);
+            color: var(--md-sys-color-on-error-container, CanvasText);
+
+            --hcm-focus-ring-color: var(--md-sys-color-on-error-container, CanvasText);
         }
 
         .content {

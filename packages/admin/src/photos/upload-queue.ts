@@ -189,18 +189,30 @@ export class UploadQueue {
         this.#pump();
     }
 
-    /** Starts queued uploads while fewer than `UPLOAD_CONCURRENCY` run. */
+    /** The city has been read: uploads that waited for its centre start. */
+    cityKnown(): void {
+        this.#pump();
+    }
+
+    /**
+     * Starts queued uploads while fewer than `UPLOAD_CONCURRENCY` run, once a photo can be placed: the last pin, or the
+     * city's centre once the city is read. A file dropped before that waits: a photo at no place is refused by the rules.
+     */
     #pump(): void {
+        const pin = this.#pin();
+        if (pin === null) {
+            return;
+        }
         const running = this.#entries.filter((entry) => entry.item.phase === 'uploading').length;
         const waiting = this.#entries.filter((entry) => entry.item.phase === 'queued').slice(0, Math.max(0, UPLOAD_CONCURRENCY - running));
         for (const entry of waiting) {
             this.#update(entry, { phase: 'uploading', percent: 0 });
-            void this.#run(entry);
+            void this.#run(entry, pin);
         }
     }
 
-    async #run(entry: Entry): Promise<void> {
-        const photoId = entry.item.photoId ?? (await this.#createDocument(entry));
+    async #run(entry: Entry, pin: LngLat): Promise<void> {
+        const photoId = entry.item.photoId ?? (await this.#createDocument(entry, pin));
         if (photoId === null) {
             return;
         }
@@ -212,16 +224,16 @@ export class UploadQueue {
         }
     }
 
-    /** The fallback pin: the last one the admin placed, else the city's centre. */
-    #pin(): LngLat {
+    /** The fallback pin: the last one the admin placed, else the city's centre; null before the city is read. */
+    #pin(): LngLat | null {
         const bounds = this.#deps.bounds();
-        return this.#deps.memory.lastPin() ?? (bounds === null ? [0, 0] : bboxCenter(bounds));
+        return this.#deps.memory.lastPin() ?? (bounds === null ? null : bboxCenter(bounds));
     }
 
-    async #createDocument(entry: Entry): Promise<string | null> {
+    async #createDocument(entry: Entry, pin: LngLat): Promise<string | null> {
         const { store, cityId } = this.#deps.services;
         const photoId = store.newId();
-        const fields = newPhotoFields(entry.file, photoId, this.#deps.memory.sticky(), this.#pin());
+        const fields = newPhotoFields(entry.file, photoId, this.#deps.memory.sticky(), pin);
         const outcome = await store.create(FIRESTORE_PATHS.photo(cityId, photoId), fields, { withCreator: true });
         if (!outcome.ok) {
             if (entry.item.phase === 'uploading') {

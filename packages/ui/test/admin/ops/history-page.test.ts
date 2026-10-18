@@ -219,20 +219,24 @@ describe('<hcm-history-page>: its other states and the values as text', () => {
         expect(describeValue('en', 'x', undefined)).toBe('(none)');
         expect(describeValue('ro', 'published', false)).toBe('nu');
         expect(describeValue('en', 'opacity', 0.75)).toBe('75%');
-        expect(describeValue('en', 'year', 1980)).toBe('1,980');
+        expect(describeValue('en', 'year', 1980)).toBe('1980');
+        expect(describeValue('ro', 'yearEnd', 2001)).toBe('2001');
+        expect(describeValue('en', 'count', 1980)).toBe('1,980');
         expect(describeValue('en', 'description', '<script>x</script>')).toBe('<script>x</script>');
         expect(describeValue('en', 'updatedAt', { seconds: 1_760_000_000, nanoseconds: 0 })).toMatch(/2025/);
-        expect(describeValue('en', 'geometry', { type: 'Point', point: { lat: 1, lng: 2 } })).toBe('Point, 1 positions');
-        expect(describeValue('en', 'geometry', { type: 'LineString', points: [{}, {}, {}] })).toBe('LineString, 3 positions');
+        expect(describeValue('en', 'geometry', { type: 'Point', point: { lat: 1, lng: 2 } })).toBe('Point, positions: 1');
+        expect(describeValue('en', 'geometry', { type: 'LineString', points: [{}, {}, {}] })).toBe('Line, positions: 3');
         expect(describeValue('en', 'geometry', { type: 'Polygon', rings: [{ points: [{}, {}, {}, {}] }, { other: true }] })).toBe(
-            'Polygon, 4 positions',
+            'Area, positions: 4',
         );
-        expect(describeValue('en', 'geometry', { type: 'Polygon' })).toBe('Polygon, 0 positions');
+        expect(describeValue('en', 'geometry', { type: 'Polygon' })).toBe('Area, positions: 0');
+        expect(describeValue('ro', 'geometry', { type: 'LineString', points: [{}, {}] })).toBe('Linie, poziții: 2');
+        expect(describeValue('en', 'geometry', { type: 'MultiPoint' })).toBe('MultiPoint, positions: 0');
         expect(describeValue('en', 'adjustments', { contrast: 0.2, saturation: 'x' })).toBe('contrast 20%, saturation ?');
         expect(describeValue('en', 'adjustments', {})).toBe('(none)');
         expect(describeValue('en', 'theme', { seedColor: '#6750a4' })).toBe('seed colour #6750a4');
         expect(describeValue('en', 'location', { lat: 44.4268, lng: 26.1025 })).toBe('44.4268, 26.1025');
-        expect(describeValue('en', 'links', [1, 2])).toBe('2 items');
+        expect(describeValue('en', 'links', [1, 2])).toBe('items: 2');
         expect(describeValue('en', 'bounds', { south: 1 })).toBe('{"south":1}');
         expect(describeValue('en', 'blob', { text: 'x'.repeat(300) })).toHaveLength(201);
         expect(describeValue('en', 'theme', { other: 1 })).toBe('{"other":1}');

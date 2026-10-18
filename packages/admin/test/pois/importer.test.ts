@@ -94,6 +94,25 @@ describe('the import dialog', () => {
         expect(subject.state?.plan?.uncategorised).toBe(2);
     });
 
+    it('badPath_aFileChosenBeforeTheCategoriesArrivedIsPlannedAgainOnceTheyDo', async () => {
+        const world = poisWorld();
+        let categories: ReadonlySet<string> | null = null;
+        const subject = new Importer({
+            store: world.store,
+            cityId: CITY,
+            context: () => ({ limits: LIMITS, categories, existing: new Map() }),
+            changed: () => undefined,
+        });
+        subject.contextChanged();
+        await subject.choose(file(collection(2)), null);
+        const before = subject.state?.plan?.created.length;
+
+        categories = new Set(['biserici']);
+        subject.contextChanged();
+
+        expect([before, subject.state?.plan?.created.length]).toEqual([0, 2]);
+    });
+
     it('badPath_aFileTooBigNotGeoJsonOrUnreadableIsRefusedBeforeAnyWrite', async () => {
         const world = poisWorld();
         const { importer: subject } = importer(world);
@@ -118,11 +137,14 @@ describe('the import dialog', () => {
         await subject.choose(file(collection(2)), null);
 
         await subject.commit();
+        const refused = subject.state;
         world.store.counts.set(FIRESTORE_PATHS.pois(CITY), null);
         await subject.choose(file(collection(1)), null);
         await subject.commit();
 
-        expect(subject.state).toMatchObject({ status: 'refused', refusal: 'too-many' });
+        // Over the limit: refused with the numbers; uncounted: stopped before any write.
+        expect(refused).toMatchObject({ status: 'refused', refusal: 'too-many', limit: { existing: 4999, adding: 2 } });
+        expect(subject.state).toMatchObject({ status: 'failed', written: 0 });
         expect(world.store.writes).toEqual([]);
     });
 

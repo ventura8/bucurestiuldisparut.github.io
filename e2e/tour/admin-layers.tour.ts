@@ -1,24 +1,27 @@
 import type { Locator, Page } from '@playwright/test';
 
-import { recordLiveRegions } from '../../../support/live-regions.js';
-import { expectStateSound } from '../../../support/state-check.js';
-import { adminVisit } from '../../../tour/states.js';
-import { ADMIN_LOCK, adminPath, expect, test } from '../../support/test.js';
-import { CITY, seedCity, seedLayer, text } from '../settings/world.js';
-
-// One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
-test.describe.configure({ lock: ADMIN_LOCK });
+import { recordLiveRegions } from '../support/live-regions.js';
+import { expectStateSound } from '../support/state-check.js';
+import { adminVisit } from './states.js';
+import { expect, test } from '../admin/support/content-test.js';
+import { adminMapReady } from '../admin/support/map.js';
+import { seedCity, seedLayer, text } from '../admin/specs/settings/world.js';
 
 /**
- * The layers page (docs/research/M2c-interfaces.md §8.1–§8.4; behaviours A35, A33): the owner opens `#/layers` before the
+ * The layers page (docs/research/M2c-interfaces.md §8.1–§8.4; behaviours A35, A33): an admin opens `#/layers` of a city of its own before the
  * raster pipeline made any layer, then sees the layers an earlier run left, top first; tries to link another account's
  * tileset (refused in the dialog, nothing sent); opens a layer, moves its image adjustments from the keyboard only (each
  * stays in its range, the levels never cross, every value is said as a signed percentage), saves them, and asks to
  * delete the layer but keeps it. Every screen and dialog on the way runs the generic layout and accessibility checkers
  * (the layers section of e2e/tour/states.ts).
+ *
+ * Part of the layout and accessibility tour (DECISIONS-for-review.md §34c): it runs at every tour project's viewport,
+ * scheme and language (tier `tour` on every push, `tour-matrix` in `all` and nightly), in a city of its own, so it
+ * needs no lock beside the admin tier.
  */
-test.use({ persona: 'owner', mapOwner: 'owner' });
 
+// The content world's fakes (Mapbox, Google) are forwarded as in the admin projects.
+test.use({ forwardUpstreams: true });
 const AT = new Date('2026-10-17T09:00:00.000Z');
 
 /** An image adjustment's slider in the open layer's editor. */
@@ -37,26 +40,25 @@ async function pressAndRead(target: Locator, steps: readonly (readonly [string, 
 
 test(
     'Image adjustments from the keyboard stay in their ranges, are said as signed percentages and are saved',
-    { tag: ['@S-A35-BAD-KEYBOARD-LIMITS'] },
-    async ({ page, lang, adminWorld }) => {
-        const { emulators } = adminWorld;
+    { tag: ['@S-A35-BAD-KEYBOARD-LIMITS', '@S-A15-BAD-FOREIGN-PRIVATE-TILESET', '@S-A31-HAPPY-EDITORS', '@S-A21-BAD-LEAK-CHECK'] },
+    async ({ page, lang, content }) => {
         await page.context().addInitScript(recordLiveRegions);
-        await seedCity(emulators, AT);
-        await page.goto(adminPath(lang, 'layers'));
+        await seedCity(content, AT);
+        await page.goto(content.address(lang, 'layers'));
 
         // No layer yet: the page says where layers come from.
         await expect(page.getByText(text(lang, 'adminContent.layers.empty'))).toBeVisible();
         await expectStateSound(page, adminVisit('layers.empty', lang));
 
         // The layers of an earlier run, top first (the higher order is drawn on top).
-        await seedLayer(emulators, 'plan-1911', AT, {
+        await seedLayer(content, 'plan-1911', AT, {
             label: { ro: 'Planul 1911' },
             year: 1911,
             order: 1,
             status: 'processing',
             published: false,
         });
-        await seedLayer(emulators, 'corona-1968', AT, { order: 2 });
+        await seedLayer(content, 'corona-1968', AT, { order: 2 });
         const rows = page.locator('hcm-layers-page a.row');
         await expect(rows).toHaveCount(2);
         await expect(rows.first()).toContainText('Corona 1968');
@@ -80,6 +82,8 @@ test(
         // The editor of Corona 1968.
         await rows.first().click();
         await expect(page.getByRole('heading', { level: 2, name: 'Corona 1968' })).toBeVisible();
+        // A settled state: the editor's map opens after its heading (its legal line comes with it).
+        await adminMapReady(page);
         await expectStateSound(page, adminVisit('layers.editor', lang));
 
         // Every slider from the keyboard: the ends, a page, a step; each value stays in its range and is said as a signed
@@ -125,7 +129,7 @@ test(
         // Save writes the adjustments, each within its range, the levels uncrossed.
         await page.getByRole('button', { name: text(lang, 'adminContent.common.save'), exact: true }).click();
         await expect
-            .poll(async () => (await emulators.document(`cities/${CITY}/layers/corona-1968`))?.['adjustments'])
+            .poll(async () => (await content.document(`layers/corona-1968`))?.['adjustments'])
             .toEqual({ brightnessMin: 0.89, brightnessMax: 0.89, contrast: -0.79, saturation: -0.99 });
 
         // Delete asks first; Esc keeps the layer.
@@ -135,6 +139,6 @@ test(
             page.getByRole('dialog', { name: text(lang, 'adminContent.layers.deleteConfirm', { name: 'Corona 1968' }) }),
         ).toBeVisible();
         await expectStateSound(page, adminVisit('layers.delete-confirm', lang, { escape: { opener: deleteName } }));
-        expect(await emulators.document(`cities/${CITY}/layers/corona-1968`)).toBeDefined();
+        expect(await content.document(`layers/corona-1968`)).toBeDefined();
     },
 );

@@ -14,16 +14,41 @@ import { current, listBody, reconnectingStatus } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { categoryName, localized, poiHref, poiText, ROW_SHAPES, SHAPE_KEYS, yearsText } from './poi-text.js';
 import { poiStyles } from './poi-styles.js';
-import type { BulkActionPort, CategoryItemPort, PoiItemPort, PoiShapePort, PoisIntentsPort, PoisViewState } from './pois-port.js';
+import type {
+    BulkActionPort,
+    CategoryItemPort,
+    PlaceEditorPort,
+    PoiItemPort,
+    PoiShapePort,
+    PoisIntentsPort,
+    PoisViewState,
+} from './pois-port.js';
 
 export const HCM_POI_LIST_TAG = 'hcm-poi-list';
 
 const SHAPES: readonly PoiShapePort[] = ['point', 'linestring', 'polygon'];
 
+/**
+ * The open place's row as its draft has it (`docs/research/M2c-interfaces.md` §5.2: the list previews an edit before Save):
+ * its title, category, years and Published as typed; the other rows as stored.
+ */
+export function withDraft(items: readonly PoiItemPort[], editor: PlaceEditorPort | null): readonly PoiItemPort[] {
+    const draft = editor?.draft ?? null;
+    return draft === null ? items : items.map((item) => (item.id === draft.id ? { ...item, ...previewOf(draft.value) } : item));
+}
+
+/** A draft's fields as its list row shows them (an unknown year is `null` in a row). */
+function previewOf(
+    value: NonNullable<PlaceEditorPort['draft']>['value'],
+): Pick<PoiItemPort, 'title' | 'category' | 'yearStart' | 'yearEnd' | 'published'> {
+    const { title, category, yearStart = null, yearEnd = null, published } = value;
+    return { title, category, yearStart, yearEnd, published };
+}
+
 /** The places the filter shows of the loaded page (the store queries one filter; the search and the rest apply here). */
 function visiblePlaces(view: PoisViewState): readonly PoiItemPort[] {
     const search = view.filter.search.trim().toLocaleLowerCase('ro');
-    return view.list.items.filter(
+    return withDraft(view.list.items, view.editor).filter(
         (item) =>
             (!view.filter.unpublished || !item.published) &&
             (search === '' || `${item.title.ro} ${item.title.en ?? ''}`.toLocaleLowerCase('ro').includes(search)),

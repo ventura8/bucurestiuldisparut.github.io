@@ -9,6 +9,7 @@ import type { AdminContentKey, LngLat, Locale } from '@hcm/shared';
 import { LitElement, html, nothing, type TemplateResult } from 'lit';
 
 import { defineOnce, emit } from '../../components/internal.js';
+import { LeftFields } from '../editing/number-fields.js';
 import type { DrawToolPort } from '../map/hcm-draw-toolbar.js';
 import { EMPTY } from '../shell/empty.js';
 import {
@@ -58,6 +59,7 @@ export class HcmPoiEditor extends LitElement {
         photos: { attribute: false },
         intents: { attribute: false },
         locale: { type: String },
+        centreKnown: { attribute: false },
         mode: { state: true },
     };
 
@@ -67,9 +69,17 @@ export class HcmPoiEditor extends LitElement {
     declare categories: readonly CategoryItemPort[];
     declare photos: readonly PhotoChoicePort[];
     declare intents: PoisIntentsPort | null;
+    /** Whether Add at centre has a centre to add (the city is read): the button waits until then. */
+    declare centreKnown: boolean;
     declare locale: Locale;
-    /** The drawing tool the admin picked last. */
+    /** The drawing tool the admin picked last; a place opens drawing when it has no shape yet, else selecting. */
     declare mode: 'draw' | 'select';
+    /** The years left since the place opened (they say their problem from then on). */
+    readonly #left = new LeftFields(() => {
+        this.requestUpdate();
+    });
+    /** The place the tools were last set for, and whether it had a shape then. */
+    #shown: ShownPlace | null = null;
 
     constructor() {
         super();
@@ -77,8 +87,23 @@ export class HcmPoiEditor extends LitElement {
         this.categories = [];
         this.photos = [];
         this.intents = null;
+        this.centreKnown = true;
         this.locale = 'en';
         this.mode = 'select';
+    }
+
+    /**
+     * The tools follow the map's drawing session (`packages/admin/src/pois/map-session.ts`): a place without a shape opens
+     * with Draw pressed, as the map draws its first clicks; one with a shape with Select. A point is finished by its click,
+     * after which the map selects it: Select is pressed then too.
+     */
+    protected override willUpdate(): void {
+        const shown = shownOf(this.editor);
+        const mode = toolsFor(this.#shown, shown, this.editor?.shape);
+        this.#shown = shown;
+        if (mode !== null) {
+            this.mode = mode;
+        }
     }
 
     override render(): TemplateResult {
@@ -116,7 +141,10 @@ export class HcmPoiEditor extends LitElement {
     }
 
     #context(draft: PoiDraftPort): FieldContext {
-        return { locale: this.locale, value: draft.value, issues: draft.issues, edit: (patch) => this.intents?.edit(patch) };
+        const edit = (patch: Parameters<FieldContext['edit']>[0]): void => {
+            this.intents?.edit(patch);
+        };
+        return { locale: this.locale, value: draft.value, issues: draft.issues, edit, left: this.#left.forItem(draft.id) };
     }
 
     #title(draft: PoiDraftPort): string {
@@ -127,11 +155,19 @@ export class HcmPoiEditor extends LitElement {
         return poiText(this.locale, draft.isNew ? 'adminContent.pois.newPlace' : 'adminContent.pois.untitled');
     }
 
+    /** The title, the save state, then Discard and Save at the trailing end, the order of the layers' and settings' save bar. */
     #head(draft: PoiDraftPort): TemplateResult {
         const [issue] = draft.issues;
         return html`<div class="editor-head">
                 <h2 data-detail-heading tabindex="-1">${this.#title(draft)}</h2>
                 <p class="state note" role="status">${poiText(this.locale, stateKey(draft))}</p>
+                <hcm-button
+                    class="discard"
+                    variant="text"
+                    ?disabled=${draft.dirty.length === 0 || draft.saving}
+                    @click=${() => this.intents?.discard()}
+                    >${poiText(this.locale, 'adminContent.common.discard')}</hcm-button
+                >
                 <hcm-button
                     class="save"
                     variant="filled"
@@ -139,13 +175,6 @@ export class HcmPoiEditor extends LitElement {
                     aria-describedby=${issue === undefined ? nothing : 'save-issue'}
                     @click=${() => void this.intents?.save()}
                     >${poiText(this.locale, 'adminContent.common.save')}</hcm-button
-                >
-                <hcm-button
-                    class="discard"
-                    variant="text"
-                    ?disabled=${draft.dirty.length === 0 || draft.saving}
-                    @click=${() => this.intents?.discard()}
-                    >${poiText(this.locale, 'adminContent.common.discard')}</hcm-button
                 >
             </div>
             ${this.#issue(issue)} ${this.#actions(draft)}`;
@@ -173,7 +202,9 @@ export class HcmPoiEditor extends LitElement {
     }
 
     #redrawButton(shape: PoiShapePort): TemplateResult {
-        const label = poiText(this.locale, 'adminContent.pois.redraw', { shape: poiText(this.locale, SHAPE_KEYS[shape]) });
+        const label = poiText(this.locale, 'adminContent.pois.redraw', {
+            shape: poiText(this.locale, SHAPE_KEYS[shape]).toLocaleLowerCase(this.locale),
+        });
         return html`<hcm-button
             variant="text"
             class=${['redraw', shape].join('-')}
@@ -232,6 +263,7 @@ export class HcmPoiEditor extends LitElement {
                 .locale=${this.locale}
                 ?can-delete=${tools.canDelete}
                 ?can-undo=${tools.canUndo}
+                .canAddCentre=${this.centreKnown}
                 @hcm-tool=${(event: CustomEvent<{ readonly tool: DrawToolPort }>) => {
                     this.#tool(event.detail.tool, editor);
                 }}
@@ -266,6 +298,38 @@ export class HcmPoiEditor extends LitElement {
         }
         TOOLS[tool](intents, editor);
     }
+}
+
+/** The open place, and whether it has a shape. */
+interface ShownPlace {
+    readonly id: string;
+    readonly drawn: boolean;
+}
+
+function shownOf(editor: PlaceEditorPort | null): ShownPlace | null {
+    const draft = editor?.draft ?? null;
+    return draft === null ? null : { id: draft.id, drawn: draft.value.geometry !== null };
+}
+
+/** A point placed by its click since the last render: the map selects it then. */
+function pointPlaced(previous: ShownPlace, shown: ShownPlace, shape: PoiShapePort | undefined): boolean {
+    return shape === 'point' && !previous.drawn && shown.drawn;
+}
+
+/** The tool a place opens with: Draw until it has a shape. */
+function openingTool(shown: ShownPlace): 'draw' | 'select' {
+    return shown.drawn ? 'select' : 'draw';
+}
+
+/** The tool to press now: on a newly opened place, or once its point is placed; null keeps the admin's pick. */
+function toolsFor(previous: ShownPlace | null, shown: ShownPlace | null, shape: PoiShapePort | undefined): 'draw' | 'select' | null {
+    if (shown === null) {
+        return null;
+    }
+    if (previous?.id !== shown.id) {
+        return openingTool(shown);
+    }
+    return pointPlaced(previous, shown, shape) ? 'select' : null;
 }
 
 /** What each drawing tool asks of the area. */

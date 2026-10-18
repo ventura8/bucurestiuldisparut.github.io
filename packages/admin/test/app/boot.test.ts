@@ -81,6 +81,7 @@ describe('bootAdmin', () => {
         expect(e.recording.records.find((record) => record.message === 'admin booting')?.data).toEqual({
             projectId: 'demo-hcm',
             release: 'r1',
+            startUp: false,
             appCheck: false,
             project: true,
         });

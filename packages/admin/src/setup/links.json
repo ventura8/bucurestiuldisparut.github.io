@@ -1,5 +1,5 @@
 {
-    "$comment": "Setup Assistant deep links (docs/research/design-review-onboarding.md section 2), verified 2026-10-11. {name} placeholders are filled at run time; `sample` holds the values the weekly contract check (scripts/ci/check_contracts.py, .github/workflows/contract.yml) uses. Only verified links belong here.",
+    "$comment": "Setup Assistant deep links (docs/research/design-review-onboarding.md section 2), verified 2026-10-11; gcp.errorGroup (the crash reports page, CR-M2c-15) added 2026-10-18 in the console's documented errors/detail/{groupId} form, checked by the next weekly run, which opens an issue when it does not resolve. {name} placeholders are filled at run time; `sample` holds the values the weekly contract check (scripts/ci/check_contracts.py, .github/workflows/contract.yml) uses. Only verified links belong here.",
     "links": [
         {
             "id": "gcp.firebaseConsole",
@@ -68,6 +68,13 @@
             "purpose": "Open a scene in EarthExplorer to order its scan",
             "url": "https://earthexplorer.usgs.gov/scene/metadata/full/{datasetId}/{entityId}/",
             "sample": { "datasetId": "5e839febdccb64b3", "entityId": "DS1105-2248DF076" }
+        },
+        {
+            "id": "gcp.errorGroup",
+            "step": "A22",
+            "purpose": "Open a crash report's error group in Error Reporting (the crash reports page's detail)",
+            "url": "https://console.cloud.google.com/errors/detail/{groupId}?project={projectId}",
+            "sample": { "groupId": "CNi8pqm0zP7GVA", "projectId": "demo-hcm" }
         }
     ]
 }

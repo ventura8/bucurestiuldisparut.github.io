@@ -8,7 +8,7 @@
  * `ContentServices` too, each declared by its owner inside its own marked section below and built inside the same
  * section of `../app/content-wiring.ts`; a workstream never edits another's section (§11.2).
  */
-import type { Locale, Logger, Schema, ValidationIssue } from '@hcm/shared';
+import type { Locale, Logger, Schema, ThemeTokens, ValidationIssue } from '@hcm/shared';
 import type { ThemeTokenSet } from '@hcm/ui/dynamic-color';
 
 import type { Clock, KeyValueStore, Unsubscribe } from '../app/ports.js';
@@ -141,6 +141,11 @@ export interface ContentServices {
     readonly notify: (notice: ContentNotice) => void;
     /** A Firestore read or write was refused (`permission-denied`): the shell asks `admin.session` again (M2b §1.5). */
     readonly denied: () => void;
+    /**
+     * The whole admin wears `tokens` until `null` (Settings' seed colour before Save; Save, Discard, leaving Settings and
+     * signing out end it): CR-M2c-28.
+     */
+    readonly previewTheme: (tokens: ThemeTokens | null) => void;
     // [section photos] owner: photos (`readonly uploads: UploadPort`, `../firebase/uploads.ts`)
     /** Resumable uploads to the private bucket (the photos' adapter `../firebase/uploads.ts`, §6.2). */
     readonly uploads: UploadPort;
@@ -152,7 +157,8 @@ export interface ContentServices {
 }
 
 /** The members every area gets from the shell; the rest are the areas' own (`AreaServiceParts`). */
-type CoreServiceKey = 'cityId' | 'store' | 'callables' | 'theme' | 'clock' | 'local' | 'log' | 'user' | 'locale' | 'notify' | 'denied';
+type CoreServiceKey =
+    'cityId' | 'store' | 'callables' | 'theme' | 'clock' | 'local' | 'log' | 'user' | 'locale' | 'notify' | 'denied' | 'previewTheme';
 
 /** What the entry builds for the areas besides the shell's members (`../app/content-wiring.ts`). */
 export type AreaServiceParts = Omit<ContentServices, CoreServiceKey>;

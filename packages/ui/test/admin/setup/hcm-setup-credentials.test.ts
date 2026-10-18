@@ -47,6 +47,23 @@ describe('<hcm-setup-deploy>', () => {
         await expect.poll(() => element.renderRoot.querySelector('.copied')?.textContent).toBe('Copied.');
     });
 
+    it('badPath_theCopyButtonsLineUpWhateverTheValuesLength', async () => {
+        // The M2 final screenshots: space-between put each button midway between its value and the empty status.
+        const variables = [
+            { name: 'GCP_DEPLOY_SA', value: 'gh-deployer@demo-hcm.iam.gserviceaccount.com' },
+            { name: 'GCP_PROJECT_ID', value: 'demo-hcm' },
+        ];
+        const element = await deploy({ deploy: { ...setupView().deploy, variables } });
+        // Wide enough that no value wraps: then the rows' free space differs, and so did the buttons' places.
+        element.style.display = 'block';
+        element.style.inlineSize = '1000px';
+        const rows = [...element.renderRoot.querySelectorAll<HTMLElement>('.copy-row')];
+        const ends = rows.map((row) => Math.round(row.querySelector('hcm-icon-button')?.getBoundingClientRect().right ?? 0));
+
+        expect(rows.length).toBeGreaterThan(1);
+        expect(new Set(ends).size).toBe(1);
+    });
+
     it('badPath_aRefusedClipboardSaysNothing', async () => {
         vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
         const element = await deploy();
@@ -88,24 +105,53 @@ describe('<hcm-setup-mapbox>', () => {
         expect(writeText).toHaveBeenCalledWith('styles:read tokens:write');
     });
 
-    it('happyPath_aPastedSecretIsSavedOnceAndTheBoxCleared', async () => {
+    /** What a paste from the clipboard does to the box: its value, then an `insertFromPaste` input. */
+    function paste(box: HTMLInputElement, value: string): void {
+        box.value = value;
+        box.dispatchEvent(new InputEvent('input', { inputType: 'insertFromPaste', bubbles: true }));
+    }
+
+    it('happyPath_aPastedSecretIsSavedAtOnceAndTheBoxCleared', async () => {
         const { port, element } = await mapbox();
         const box = page.getByLabelText('Tokenul secret (sk.…)');
 
         await expect.element(box).toHaveAttribute('type', 'password');
         await expect.element(box).toHaveAttribute('autocomplete', 'off');
-        await userEvent.fill(box, MAPBOX_TOKENS.bootstrap);
-        box.element().dispatchEvent(new Event('paste', { bubbles: true }));
-        expect(shadowPart(element, '#verdict').textContent).toBe('Pare un token secret.');
-        await page.getByRole('button', { name: 'Salvează' }).click();
+        paste(box.element() as HTMLInputElement, MAPBOX_TOKENS.bootstrap);
 
-        expect(port.calls).toEqual([
-            ['noteInput', 'mapbox'],
-            ['saveMapbox', MAPBOX_TOKENS.bootstrap],
-        ]);
+        expect(port.calls).toEqual([['saveMapbox', MAPBOX_TOKENS.bootstrap]]);
         expect((box.element() as HTMLInputElement).value).toBe('');
         expect(element.verdict).toBe('empty');
         expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('happyPath_aTypedSecretIsSavedWithEnterOrSave', async () => {
+        const { port, element } = await mapbox();
+        const box = page.getByLabelText('Tokenul secret (sk.…)');
+
+        await userEvent.fill(box, MAPBOX_TOKENS.bootstrap);
+        expect(shadowPart(element, '#verdict').textContent).toBe('Pare un token secret.');
+        expect(port.calls).toEqual([]);
+        await userEvent.keyboard('{Enter}');
+        await userEvent.fill(box, MAPBOX_TOKENS.bootstrap);
+        await page.getByRole('button', { name: 'Salvează' }).click();
+        await userEvent.click(box);
+        await userEvent.keyboard('{Enter}');
+
+        expect(port.calls).toEqual([
+            ['saveMapbox', MAPBOX_TOKENS.bootstrap],
+            ['saveMapbox', MAPBOX_TOKENS.bootstrap],
+        ]);
+    });
+
+    it('badPath_aPastedPublicTokenIsCountedAndExplainedButNotSent', async () => {
+        const { port, element } = await mapbox({}, 'en');
+
+        paste(shadowPart(element, '#token') as HTMLInputElement, MAPBOX_TOKENS.defaultPublic);
+        await element.updateComplete;
+
+        expect(port.calls).toEqual([['noteInput', 'mapbox']]);
+        expect(shadowPart(element, '#verdict').textContent).toBe('This is a public token (pk.). Paste the secret token (sk.) you created.');
     });
 
     it('badPath_aPublicTokenIsExplainedBeforeAnyCall', async () => {

@@ -382,6 +382,7 @@ export function shellStateAccess(overrides: Partial<ShellState> = {}): ShellStat
         route: { id: 'setup', params: [] },
         destinations: [],
         leaving: null,
+        revoked: false,
         locale: 'en',
         theme: { mode: 'system', city: null, preview: null },
         consent: 'unknown',

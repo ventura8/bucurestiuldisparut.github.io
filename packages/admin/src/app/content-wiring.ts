@@ -18,6 +18,8 @@ export interface AreaServiceSources {
     readonly handles: FirebaseHandles;
     /** The page's `fetch`. */
     readonly fetch: typeof fetch;
+    /** The `e2e` build's map token for the test's own city (`E2eKit.mapToken`: null for none); undefined in production. */
+    readonly mapToken?: string | null | undefined;
 }
 
 export function areaServices(sources: AreaServiceSources): AreaServiceParts {
@@ -31,6 +33,7 @@ export function areaServices(sources: AreaServiceSources): AreaServiceParts {
             readDoc: (path) => documentsPort(firebaseSdk, sources.handles).get(path),
             terraDraw: null,
             log: createLogger('admin-map'),
+            fixedToken: sources.mapToken,
         }),
         // [end pois]
     };

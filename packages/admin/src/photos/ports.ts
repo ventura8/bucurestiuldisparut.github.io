@@ -57,6 +57,8 @@ export interface PhotoDrawPort {
     ): void;
     setMode(mode: 'static' | 'select'): void;
     load(features: readonly DrawnPoint[]): void;
+    /** Selects the pin (dragged with Terra Draw, moved by a click on the map with the click tools). */
+    select(id: string | null): void;
     pick(): Promise<LngLat | null>;
     cancelPick(): void;
     on(event: 'change', handler: (change: DrawChange) => void): Unsubscribe;

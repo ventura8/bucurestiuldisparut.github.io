@@ -27,14 +27,13 @@ async function mounted(
 }
 
 /**
- * Types into a text field (`input`: the draft follows every key, so Save works without leaving the field), or sets a
- * year or an option (`change`: a half-typed number is not a year).
+ * Types into a text or number field (`input`: the draft follows every key, so Save works without leaving the field,
+ * DECISIONS-for-review.md §35d), or sets an option (`change`).
  */
 function type(element: HTMLElement, selector: string, value: string): void {
     const field = deep(element, selector) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
     field.value = value;
-    const committed = field instanceof HTMLSelectElement || field.type === 'number';
-    field.dispatchEvent(new Event(committed ? 'change' : 'input'));
+    field.dispatchEvent(new Event(field instanceof HTMLSelectElement ? 'change' : 'input'));
 }
 
 function press(element: HTMLElement): void {
@@ -127,7 +126,14 @@ describe('<hcm-poi-editor>: the form', () => {
         expect(deep(element, '#title-ro').getAttribute('aria-invalid')).toBe('true');
         expect(deep(element, '#title-ro').getAttribute('aria-describedby')).toBe('title-ro-error');
         expect(deep(element, '#link-url-1').getAttribute('aria-invalid')).toBe('true');
-        expect(deep(element, '#yearEnd').getAttribute('aria-describedby')).toBe('yearEnd-error years-hint');
+        // A year says its problem once it has been left: until then only the hint describes it.
+        const yearEnd = deep(element, '#yearEnd');
+        expect(yearEnd.getAttribute('aria-describedby')).toBe('years-hint');
+        expect(yearEnd.hasAttribute('aria-invalid')).toBe(false);
+        yearEnd.dispatchEvent(new FocusEvent('focusout', { bubbles: true, composed: true }));
+        await updated(element);
+        expect(yearEnd.getAttribute('aria-describedby')).toBe('yearEnd-error years-hint');
+        expect(yearEnd.getAttribute('aria-invalid')).toBe('true');
         expect(deep(element, '#description-ro').getAttribute('aria-describedby')).toBe('description-ro-error markdown-hint');
         expect(deep(element, 'h2').textContent).toBe('Untitled place');
         press(save);
@@ -191,6 +197,8 @@ describe('<hcm-poi-editor>: actions and banners', () => {
 
         expect(deep(element, 'a.external').getAttribute('href')).toBe('#/history/poi/stavropoleos');
         expect(deepAll(element, 'hcm-button.redraw-point')).toEqual([]);
+        // The shape's name sits inside a sentence, so it is lower case: "Redraw as area", never "Redraw as Area".
+        expect(deep(element, 'hcm-button.redraw-polygon').textContent.trim()).toBe('Redraw as area');
         expect(fired).toEqual([
             'hcm-redraw {"shape":"linestring"}',
             'hcm-redraw {"shape":"polygon"}',
@@ -262,7 +270,9 @@ describe('<hcm-poi-editor>: the shape', () => {
 
         expect(asked(store, 'editVertex')).toEqual(['editVertex {"kind":"remove","index":0}']);
         expect(asked(store, 'selectVertex')).toEqual(['selectVertex 0']);
-        expect(deep(element, '.alert-region').textContent).toBe('That position is outside the city.');
+        expect(deep(element, '.alert-region').textContent).toBe(
+            'That position is outside the city: a place may be at most half a degree beyond it.',
+        );
     });
 
     it('badPath_withoutAChosenPositionDeleteDoesNothingAndASketchIsListed', async () => {
@@ -302,6 +312,30 @@ describe('<hcm-poi-editor>: the shape', () => {
         expect(deepAll(deep(element, 'hcm-vertex-list'), 'li')).toHaveLength(2);
     });
 
+    it('happyPath_aPlaceWithoutAShapeOpensDrawingAndAFinishedPointSelects', async () => {
+        const point = { type: 'Point', coordinates: [26.1, 44.43] } as const;
+        const { element } = await mounted(
+            editor({ shape: 'point', draft: draft({ id: 'new-1', isNew: true, value: { ...VALUE, geometry: null } }) }),
+        );
+        const pressed = (): string | null => (deep(element, 'hcm-draw-toolbar') as HTMLElement & { mode: string }).mode;
+        const opened = pressed();
+
+        element.editor = editor({ shape: 'point', draft: draft({ id: 'new-1', isNew: true, value: { ...VALUE, geometry: point } }) });
+        await updated(element);
+        const finished = pressed();
+        element.editor = editor({ shape: 'linestring', draft: draft({ id: 'new-2', isNew: true, value: { ...VALUE, geometry: null } }) });
+        await updated(element);
+        const line = pressed();
+        element.editor = editor({ shape: 'linestring', draft: draft({ id: 'new-2', isNew: true, value: { ...VALUE, geometry: point } }) });
+        await updated(element);
+
+        // A line goes on drawing after its shape exists; a stored place opens selecting.
+        expect([opened, finished, line, pressed()]).toEqual(['draw', 'select', 'draw', 'draw']);
+        element.editor = editor();
+        await updated(element);
+        expect(pressed()).toBe('select');
+    });
+
     it('badPath_anEditorWithoutIntentsIgnoresTheTools', async () => {
         const { element } = await mounted(editor());
         element.intents = null;
@@ -323,5 +357,17 @@ describe('the editor fields: helpers', () => {
     it('badPath_aYearThatIsNotAWholeNumberIsNone', () => {
         expect(yearOf('')).toBeUndefined();
         expect(yearOf('18.5')).toBeUndefined();
+    });
+});
+
+describe('<hcm-poi-editor>: the save bar', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_discardThenSaveAsInEveryEditor', async () => {
+        // The M2 final screenshots: Save came before Discard changes here, after it in the layers and settings.
+        const { element } = await mounted(editor({ draft: draft({ dirty: ['title'] }) }));
+
+        expect(deepAll(element, '.editor-head hcm-button').map((button) => button.className)).toEqual(['discard', 'save']);
     });
 });

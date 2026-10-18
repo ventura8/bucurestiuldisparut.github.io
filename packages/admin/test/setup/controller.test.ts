@@ -209,6 +209,21 @@ describe('the switch to normal mode', () => {
         expect(readBootstrapRecord(harness.session, PROJECT_ID)).toBeNull();
     });
 
+    it('badPath_aClaimShownBeforeTheSetupStartedKeepsTheStartUpRecord', async () => {
+        // The page was reloaded before the server appeared: normal mode, the map unclaimed, the claim runs first.
+        const { harness, controller } = setup((h) => {
+            writeBootstrapRecord(h.session, RECORD);
+        });
+        controller.setClaim('pending', { key: 'adminShell.auth.claiming' });
+
+        await controller.start('normal', null);
+
+        expect(harness.backend.recordCloud).toHaveBeenCalledWith(
+            expect.objectContaining({ billing: { state: 'ok', budgetId: BUDGET, budgetAmount: 5, currency: 'USD' } }),
+        );
+        expect(harness.session.get(bootstrapRecordKey(PROJECT_ID))).toBeNull();
+    });
+
     it('badPath_aRecordWithNothingToRecordOnlyCreatesTheCity', async () => {
         const { harness, controller } = setup((h) => {
             writeBootstrapRecord(h.session, {
@@ -304,6 +319,22 @@ describe('check again', () => {
         expect(harness.backend.analyticsConfig).toHaveBeenCalledTimes(1);
         expect(harness.importer.detect).toHaveBeenCalledTimes(3);
         expect(controller.getState().steps.mapbox.used.inputs).toBe(1);
+        controller.dispose();
+    });
+
+    it('badPath_theAnalyticsCardChecksNothingWhileAnotherPageShows', async () => {
+        const { harness, controller } = setup();
+        controller.setPageShown(false);
+        await controller.start('normal', 'analytics');
+        await flush();
+        expect(controller.getState().openStep).toBe('analytics');
+        expect(harness.backend.analyticsConfig).not.toHaveBeenCalled();
+
+        // The Setup page shows: its open card checks, once.
+        controller.setPageShown(true);
+        controller.setPageShown(true);
+        await flush();
+        expect(harness.backend.analyticsConfig).toHaveBeenCalledTimes(1);
         controller.dispose();
     });
 

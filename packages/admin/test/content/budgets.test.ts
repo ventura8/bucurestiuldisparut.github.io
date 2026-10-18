@@ -4,7 +4,7 @@ import { CONTENT_INPUT_BUDGETS, contentFlowBudget } from '../../src/content/budg
 
 describe("the editors' input budgets", () => {
     it('happyPath_theContractsTableAsCode', () => {
-        expect([contentFlowBudget('photoBatch'), contentFlowBudget('pointPlace'), contentFlowBudget('category')]).toEqual([3, 5, 4]);
+        expect([contentFlowBudget('photoBatch'), contentFlowBudget('pointPlace'), contentFlowBudget('category')]).toEqual([3, 5, 3]);
         expect(Object.values(CONTENT_INPUT_BUDGETS).every((budget) => budget.inputs > 0 && budget.how.length > 0)).toBe(true);
     });
 

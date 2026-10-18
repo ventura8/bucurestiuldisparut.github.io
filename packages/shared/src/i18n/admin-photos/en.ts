@@ -7,7 +7,7 @@ import type { AdminPhotosKey } from './ro.js';
 export const en: Readonly<Record<AdminPhotosKey, string>> = {
     // [section photos] owner: photos; keys adminContent.photos.*
     'adminContent.photos.title': 'Photos',
-    'adminContent.photos.empty': 'No photos yet. Drop photos here to add them.',
+    'adminContent.photos.empty': 'No photos yet. Add the first ones with Add photos.',
     'adminContent.photos.add': 'Add photos',
     'adminContent.photos.dropHint': 'Drop photos here, or choose them with Add photos.',
     'adminContent.photos.dropActive': 'Drop the photos here to upload them.',
@@ -114,8 +114,8 @@ export const en: Readonly<Record<AdminPhotosKey, string>> = {
     'adminContent.photos.editor.seeHistory': 'See the photo’s history',
     'adminContent.photos.editor.gone': 'The photo was deleted meanwhile. What you wrote is still here, but it cannot be saved.',
     'adminContent.photos.editor.conflict': 'Someone else changed meanwhile: {fields}.',
-    'adminContent.photos.editor.keepMine': 'Keep mine',
-    'adminContent.photos.editor.takeTheirs': 'Take theirs',
+    'adminContent.photos.editor.keepMine': 'Keep my changes',
+    'adminContent.photos.editor.takeTheirs': 'Take the saved version',
     'adminContent.photos.editor.discard': 'Discard changes',
     'adminContent.photos.section.image': 'Image',
     'adminContent.photos.section.texts': 'Texts',

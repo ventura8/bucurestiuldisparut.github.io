@@ -1932,7 +1932,7 @@
             "title": "Closing the sign-in popup offers Retry",
             "asserts": "popup closed (sign-in or the claim consent) -> nothing claimed, Retry offered",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -1943,7 +1943,7 @@
             "title": "A delayed claim is picked up by a token refresh",
             "asserts": "admins/{uid} exists but the ID token has no admin claim yet -> admin.session answers refreshToken -> the app refreshes the token once and opens the dashboard",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -1954,7 +1954,7 @@
             "title": "A Google account that does not own the project cannot claim it",
             "asserts": "testIamPermissions grants nothing -> apiError.claim.notOwner naming the project id; no admins document, no claim",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -1987,7 +1987,7 @@
             "title": "An invited Google account joins as admin",
             "asserts": "admins.invite stores invites/{sha256 of the lowercase address} and returns the admin link -> the invitee signs in with Google -> admin.session shows the pending invitation -> admin.join -> admins/{uid} role admin, admin claim, invitation deleted -> dashboard",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2007,7 +2007,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A revoked admin loses access",
-            "asserts": "Remove access on an admin's detail asks first, naming the admin -> admins.revoke -> admins/{uid} deleted, claim removed, sessions revoked -> listed no more; the revoked admin's Save in an open editor is refused by the rules and writes nothing, and the shell, asking admin.session again, says the account is no longer an admin (keeping the draft on screen meanwhile: S-A20-BAD-REVOKED-WHILE-EDITING)",
+            "asserts": "Remove access on an admin's detail asks first, naming the admin -> admins.revoke -> admins/{uid} deleted, claim removed, sessions revoked -> listed no more; the revoked admin's Save in an open editor is refused by the rules and writes nothing, and the shell, asking admin.session again, says the access was removed (keeping the draft on screen until sign-out: S-A20-BAD-REVOKED-WHILE-EDITING)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.1; owner: ops-screens). e2e/admin/specs/flows/revoke.spec.ts (two browsers: the owner removes the editing admin)."
@@ -2051,9 +2051,9 @@
             "area": "admin",
             "path": "bad",
             "title": "Signing in with an address that was not invited does not join",
-            "asserts": "the invitee signs in with another Google account -> no pending invitation -> apiError.invite.notFound and sign-out; the invitation stays pending",
+            "asserts": "the invitee signs in with another Google account -> admin.session finds no invitation for it -> the not-an-admin panel and sign-out; the invitation stays pending",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2073,7 +2073,7 @@
             "area": "admin",
             "path": "happy",
             "title": "An invitation is created, copied and cancelled",
-            "asserts": "Invite (a dialog, one Google account address) -> the invitation opens with its expiry and its link, Copy copies it -> Cancel invitation (asked first) -> admins.revoke for the invitation -> it is gone",
+            "asserts": "Invite (a dialog, one Google account address) -> the invitation opens with its expiry and its link, already copied (Copy copies it again; three inputs, CONTENT_INPUT_BUDGETS.inviteAdmin) -> Cancel invitation (asked first) -> admins.revoke for the invitation -> it is gone",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.1; owner: ops-screens)."
@@ -2097,7 +2097,7 @@
             "title": "The Setup Assistant shows every area with its status and can re-check it",
             "asserts": "setup.status -> billing, provision, Mapbox, USGS, analytics and crash cards with their state chips and reasons; Re-check runs setup.selfTest and updates each chip; ready once billing, provision, Mapbox and USGS are ok",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2108,7 +2108,7 @@
             "title": "A partial setup opens at the first incomplete step",
             "asserts": "partial setup/status -> the page opens at the first area that is not ok",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2120,7 +2120,7 @@
             "asserts": "the mock Secret Manager refuses access -> the secrets check is invalid with apiError.secrets.unavailable and a link to Provision cloud; every other check still runs and shows its own state",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Still planned (2026-10-18): the page applies the status setup.selfTest returns but lists none of its checks, so a failing check (the secrets) has no place for its reason and its link to Provision cloud (a per-check view for the user, DECISIONS-for-review.md §37e)."
         },
         {
             "id": "S-A03-BAD-NOTHING-SECRET-LEAVES",
@@ -2152,7 +2152,7 @@
             "title": "Billing and the budget are detected and recorded",
             "asserts": "one open billing account -> one click (Link billing and create the budget) and one cloud-billing consent -> billingInfo linked (Blaze) and the budget created (5 in a USD account, its BUDGET_AMOUNTS equivalent in another currency) with 50, 90 and 100 percent and forecast thresholds -> card green; after the claim setup.recordCloud stores billing ok with the budget id",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6), refined in M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -2174,7 +2174,7 @@
             "title": "An API permission error shows an actionable message",
             "asserts": "a 403 from a Google API -> apiError.cloud.permission or apiError.cloud.apiDisabled naming the role or service",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2185,7 +2185,7 @@
             "title": "Provision cloud creates what is missing and the doctor shows each item",
             "asserts": "Prepare the project (one click, one cloud-platform consent) against the mock Google APIs -> every doctor item observed and created once in order (APIs, service accounts, roles, buckets, CORS, lifecycle, secrets, budget topic, workload identity with the numeric ids of infra/project.json, App Check, crash alerts, API key) -> a second run writes nothing; the scheduler item stays pending until the deploy",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6), refined in M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -2194,9 +2194,9 @@
             "area": "admin",
             "path": "bad",
             "title": "An organisation policy that blocks public access is reported with its fix",
-            "asserts": "the mock org policy forbids allUsers -> the public bucket item is invalid with the fallback named; every other item still provisioned",
+            "asserts": "the organisation policy enforces storage.publicAccessPrevention -> the Storage buckets item is invalid and names the constraint (the public read is the part it refuses); the items that do not need the buckets are provisioned, those that do wait",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2207,7 +2207,7 @@
             "title": "Several open billing accounts are offered as a choice",
             "asserts": "two open accounts -> a choice with the first preselected (one more input) -> the chosen account is linked and the budget created on it",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -2218,7 +2218,7 @@
             "title": "A billing account at its project quota is explained",
             "asserts": "linking refused with the billing quota error -> adminSetup.billing.quota; billing stays as it was; Retry",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -2229,7 +2229,7 @@
             "title": "An existing budget of the app is updated, not duplicated",
             "asserts": "a budget with the app's name exists -> it is patched to the spec; the mock still lists one budget",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -2240,7 +2240,7 @@
             "title": "A missing billing role for the budget names the role",
             "asserts": "billing linked but budget creation answers 403 -> apiError.cloud.permission naming roles/billing.costsManager; billing stays linked; Retry creates only the budget",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -2262,7 +2262,7 @@
             "title": "A Google token that expires during provisioning resumes with one consent",
             "asserts": "the access token expires mid-run (clock) -> the run stops with the remaining items pending and Continue -> Continue (one click, one consent) finishes without repeating done items",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -2271,9 +2271,9 @@
             "area": "admin",
             "path": "happy",
             "title": "A Mapbox account with a card on file shows green",
-            "asserts": "an account out of the demo plan: the pasted secret token mints the public tokens (proof of a card on file) -> the plan step is green",
+            "asserts": "an account out of the demo plan: the pasted secret token is saved at once (one input, no Save click) and mints the public tokens (proof of a card on file) -> the plan step is green",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2295,7 +2295,7 @@
             "title": "A missing billing address shows a message",
             "asserts": "an account blocked on 'confirm billing information' (mock 422 on token creation) -> apiError.mapbox.mintRefused and the billing link; the secret token is not kept",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2317,7 +2317,7 @@
             "title": "Missing scopes are listed with a pre-filled link",
             "asserts": "missing scopes -> apiError.mapbox.missingScopes listing them by name, plus the token page link; nothing stored",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2328,7 +2328,7 @@
             "title": "A pasted public token is explained",
             "asserts": "pk pasted -> apiError.mapbox.publicToken explained in the page before any call (classifyMapboxToken)",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2339,7 +2339,7 @@
             "title": "A revoked token is reported",
             "asserts": "revoked token (401) -> apiError.mapbox.tokenInvalid; Mapbox chip invalid",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2348,9 +2348,9 @@
             "area": "admin",
             "path": "bad",
             "title": "A Mapbox server error offers retry",
-            "asserts": "Mapbox 5xx -> apiError.mapbox.unavailable with Retry; nothing half-saved",
+            "asserts": "Mapbox 5xx -> apiError.mapbox.unavailable and the chip unavailable; nothing half-saved; once Mapbox answers, the same token saved again connects it",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2362,7 +2362,7 @@
             "asserts": "setup.rotatePublicToken -> a new URL-restricted token in the city and the next manifest -> ops.tick deletes the old token 10 minutes later (clock)",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Still planned (2026-10-18): setup.rotatePublicToken exists and is unit-tested (functions/test/setup), but the admin has no control that calls it yet (§37e)."
         },
         {
             "id": "S-A06-BAD-SAVED-TWICE",
@@ -2394,7 +2394,7 @@
             "title": "A valid token with an approved role shows green",
             "asserts": "login-token ok and permissions include download -> username and token in Secret Manager only, logout called -> green with the download role",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2405,7 +2405,7 @@
             "title": "An HTML 403 means a bad token",
             "asserts": "HTML 403 from login-token -> apiError.usgs.credentials; nothing stored",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2427,7 +2427,7 @@
             "title": "USGS maintenance shows a banner",
             "asserts": "HTML 503 Application Offline -> apiError.usgs.maintenance banner; the chip is unavailable and ops.tick retries",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2438,7 +2438,7 @@
             "title": "A USGS token close to its expiry shows a reminder",
             "asserts": "saved with an expiry 10 days ahead (clock) -> the USGS card shows the date and the link to create a new token",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -2460,7 +2460,7 @@
             "title": "A countdown that ends with nothing pasted asks for a new token",
             "asserts": "60 s pass (clock) with nothing pasted -> adminSetup.usgs.expired; the box stays open and the button starts again; nothing sent",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -2471,7 +2471,7 @@
             "title": "A multi-file drop creates prefilled photos ready to publish in three inputs",
             "asserts": "three JPEGs dropped -> three unpublished photo documents with the sticky author, source and licence and the last pin as location, uploads with progress -> after photos.onUpload each shows its thumbnail and its EXIF location, year and bearing applied (none moved by hand) -> Select all, Publish -> all three published; inputBudget 3 inputs",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.2; owner: photos)."
         },
         {
@@ -2482,7 +2482,7 @@
             "title": "A photo without EXIF stays at the last pin until its place is confirmed",
             "asserts": "no EXIF position -> the photo keeps the last pin, marked Check the place, and bulk Publish skips it with that reason; one drag of the pin, or Confirm place, makes it publishable",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.2; owner: photos)."
         },
         {
@@ -2493,7 +2493,7 @@
             "title": "A duplicate photo is flagged with the photo it repeats",
             "asserts": "the same file as an existing photo -> the item shows apiError.photo.duplicate with a link to that photo and a Delete action; nothing public is written",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.2; owner: photos)."
         },
         {
@@ -2504,7 +2504,7 @@
             "title": "HEIC or PDF uploads show an actionable error",
             "asserts": "an HEIC file -> apiError.photo.heicUnsupported (how to export a JPEG); a PDF renamed .jpg -> apiError.photo.unsupportedType; both decided by the server's sniffing and shown on the item as text; Delete removes the draft",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.2; owner: photos)."
         },
         {
@@ -2515,7 +2515,7 @@
             "title": "An oversized upload is refused in the page before it starts",
             "asserts": "a file over 60 MiB (the Storage rules' limit, PHOTO_LIMITS.maxUploadBytes) -> refused before any upload with the limit named; no document created",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.2; owner: photos)."
         },
         {
@@ -2592,7 +2592,7 @@
             "title": "An EXIF position outside the city is not applied",
             "asserts": "EXIF GPS beyond the city bounds plus 0.5 degrees -> the pin stays at the last pin, the suggestion is shown with the reason, and applying it is refused",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.2; owner: photos)."
         },
         {
@@ -2603,7 +2603,7 @@
             "title": "An interrupted upload resumes without a second photo",
             "asserts": "the network drops mid-upload -> the item says so and resumes once it is back (or Retry) -> one photo document and one original in the end",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.2; owner: photos)."
         },
         {
@@ -2612,9 +2612,9 @@
             "area": "admin",
             "path": "happy",
             "title": "Editing a photo's texts, place, direction and field of view previews live and publishes on save",
-            "asserts": "title RO and EN, years, author, licence and links edited; the pin dragged; Set direction, then a click where the camera looked, sets the bearing and the view cone turns live; the field-of-view slider widens the cone live; Save -> one stamped update, a history entry, the manifest rebuilt and the viewer shows the cone",
+            "asserts": "title RO and EN, years, author, licence and links edited; the pin moved with a click in Select mode (a drag waits for Terra Draw, DECISIONS-for-review.md §34g); Set direction, then a click where the camera looked, sets the bearing and the view cone turns live; the field-of-view slider widens the cone live; Save -> one stamped update, a history entry, the manifest rebuilt and the viewer shows the cone",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.3; owner: photos). Nominatim title suggestions and AI translations are M4 (the two bad rows below)."
         },
         {
@@ -2647,7 +2647,7 @@
             "title": "The pin and the direction can be set without a pointer",
             "asserts": "latitude and longitude fields move the pin; with the map focused, the arrow keys move the crosshair's view and Point at map centre sets the direction -> the same document as with the pointer; no pointer event used",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.6, §6.3; owner: photos)."
         },
         {
@@ -2656,9 +2656,9 @@
             "area": "admin",
             "path": "bad",
             "title": "A pin moved outside the city snaps back with a message",
-            "asserts": "the pin dragged beyond the city bounds plus 0.5 degrees -> it returns to its last valid place, an alert names the limit, and Save writes nothing outside the city",
+            "asserts": "a place typed beyond the city bounds plus 0.5 degrees -> the pin stays at its last valid place, the fields name the limit, and Save writes nothing outside the city (a dragged pin waits for Terra Draw, §34g)",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.5, §6.3; owner: photos)."
         },
         {
@@ -2669,7 +2669,7 @@
             "title": "Bulk publish rebuilds the manifest and the viewer shows the photos",
             "asserts": "three photos selected -> Publish -> each published, one manifest build (the publish status turns to up to date) -> the viewer served that manifest shows the three markers",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.5; owner: photos)."
         },
         {
@@ -2680,7 +2680,7 @@
             "title": "Unpublishing hides the photo in the viewer",
             "asserts": "Unpublish on a published photo -> published false -> the next manifest lacks it and the viewer no longer shows it; its public files stay until the sweep",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.5; owner: photos)."
         },
         {
@@ -2747,7 +2747,7 @@
             "asserts": "a selection with a photo still processing, one failed and one with the licence unknown -> those three are listed with their reasons and stay unpublished; the rest are published; an English title is not required",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.5; owner: photos). Replaces S-A10-BAD-MISSING-EN-TITLE, which contradicted CR-1 of M1-interfaces.md (DECISIONS-for-review.md §34f). Covered by e2e/admin/specs/photos/photos.spec.ts."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.5; owner: photos). Replaces S-A10-BAD-MISSING-EN-TITLE, which contradicted CR-1 of M1-interfaces.md (DECISIONS-for-review.md §34f). Covered by e2e/tour/admin-photos.tour.ts."
         },
         {
             "id": "S-A10-HAPPY-PUBLISH-ON-SAVE",
@@ -2757,7 +2757,7 @@
             "title": "Saving a new processed photo publishes it",
             "asserts": "the editor of a processed photo with a known licence -> the Published switch starts on -> Save -> published in the same write; the viewer shows the photo",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.4; owner: photos)."
         },
         {
@@ -2768,7 +2768,7 @@
             "title": "Confirming the rights of legacy photos clears the viewer's note",
             "asserts": "the Rights review filter lists the photos with rightsReview -> Confirm rights on a selection -> rightsReview false -> the viewer's rights note is gone for them",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.5; owner: photos)."
         },
         {
@@ -2964,10 +2964,21 @@
             "area": "admin",
             "path": "happy",
             "title": "A valid tileset or XYZ URL previews and saves",
-            "asserts": "valid -> preview -> save",
+            "asserts": "valid -> preview -> save (M3: the live preview of the linked tiles waits for the admin map's mocks, CR-M2c-7; since M2c the Link a layer dialog and layers.link create the layer: S-A15-HAPPY-LINKED)",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3. Refined in M2c (CR-M2c-27): the callable part is S-A15-HAPPY-LINKED on the functions tier."
+        },
+        {
+            "id": "S-A15-HAPPY-LINKED",
+            "behaviour": "A15",
+            "area": "admin",
+            "path": "happy",
+            "title": "Linking the city's own tileset creates a ready, unpublished layer on top",
+            "asserts": "layers.link of a mapbox:// tileset of the city's own Mapbox account (or an https XYZ template) -> a ready layer on top of the others, unpublished, hidden at start, opacity 1, its id clear of the layers', the categories' and the photos overlay's",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2c (CR-M2c-27; owner: layers-settings). functions/test/layers/link.test.ts."
         },
         {
             "id": "S-A15-BAD-INVALID-URL",
@@ -2975,21 +2986,32 @@
             "area": "admin",
             "path": "bad",
             "title": "A 404 or invalid URL shows an error",
-            "asserts": "404 or invalid URL -> error",
+            "asserts": "404 or invalid URL -> error (M2c: an http template or crossed zooms are refused by layers.link as an invalid request, functions/test/layers/link.test.ts; the 404 of a tile source waits for the M3 preview)",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M3."
+            "notes": "Milestone M3. Refined in M2c (CR-M2c-27)."
         },
         {
             "id": "S-A15-BAD-FOREIGN-PRIVATE-TILESET",
             "behaviour": "A15",
             "area": "admin",
             "path": "bad",
-            "title": "Another account's private tileset shows an error",
-            "asserts": "another account's private mapbox:// tileset -> error",
+            "title": "Another account's tileset is refused",
+            "asserts": "Link a layer with a mapbox:// tileset of another Mapbox account (Mapbox's own and the old site's account included) -> refused in the dialog before any call (apiError.layers.foreignTileset), which keeps the address; layers.link refuses it on the server too",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M2c (CR-M2c-27; owner: layers-settings). e2e/tour/admin-layers.tour.ts (the dialog); functions/test/layers/link.test.ts (the callable)."
+        },
+        {
+            "id": "S-A15-BAD-SECRET-IN-ADDRESS",
+            "behaviour": "A15",
+            "area": "admin",
+            "path": "bad",
+            "title": "A tile address carrying a key or token is never published",
+            "asserts": "layers.link of an XYZ template with access_token (or another key) in its address -> apiError.layers.secretInAddress; no layer document written (the dialog refuses it first with the same rule, layerSourceRefusal)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M2c (CR-M2c-27; owner: layers-settings). functions/test/layers/link.test.ts."
         },
         {
             "id": "S-A16-HAPPY",
@@ -3087,7 +3109,7 @@
             "title": "A dropped listener reconnects without duplicate lines",
             "asserts": "the Firestore listener fails (the emulator unreachable for a moment) -> Reconnecting is announced -> it resumes and each log line shows once",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.3; owner: ops-screens)."
         },
         {
@@ -3121,7 +3143,7 @@
             "asserts": "the area drawn as a rectangle, centre and zoom from the current view, the name and About in RO and EN with the formatted preview, two credits, a new seed colour that recolours the admin live -> Save per section -> the manifest carries them and the viewer shows the new name, About and colours",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings)."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Still planned (2026-10-18): the settings page has no map yet: the area drawn as a rectangle and the start view taken from the map wait for it (§37e)."
         },
         {
             "id": "S-A19-BAD-ZERO-AREA-BOUNDS",
@@ -3132,7 +3154,7 @@
             "asserts": "a rectangle with no width or no height, drawn or typed -> a validation message at the bounds; Save stays off; nothing written",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). The typed bounds; the drawn rectangle comes with the settings page's map, once the admin tier mocks the map (CR-M2c-7). Covered by e2e/admin/specs/settings/settings.spec.ts."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). The typed bounds; the drawn rectangle comes with the settings page's map, once the admin tier mocks the map (CR-M2c-7). Covered by e2e/tour/admin-settings.tour.ts."
         },
         {
             "id": "S-A19-BAD-LOW-CONTRAST-SEED",
@@ -3143,7 +3165,7 @@
             "asserts": "a seed whose scheme fails the contrast checks -> the nearest passing tone is applied with a warning; the saved tokens pass contrastIssues",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings)."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Still planned (2026-10-18): no seed colour makes the current tone algorithm adjust the scheme (ten tried, from #ffff00 to #f0f0f0), so the adjustment cannot be reached from the page; it is unit-tested with an injected check."
         },
         {
             "id": "S-A19-BAD-BOUNDS-EXCLUDE-CONTENT",
@@ -3154,7 +3176,7 @@
             "asserts": "a smaller rectangle that leaves two photos and one place beyond the bounds plus 0.5 degrees -> the save is refused and lists them with links; nothing written",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Covered by e2e/admin/specs/settings/settings.spec.ts."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Covered by e2e/tour/admin-settings.tour.ts."
         },
         {
             "id": "S-A19-BAD-MARKDOWN-LINK",
@@ -3164,7 +3186,7 @@
             "title": "A non-https link in About is refused and markup stays text",
             "asserts": "an http link in About -> the line is named and Save refused; HTML typed into About shows as characters in the preview and in the viewer",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings)."
         },
         {
@@ -3175,7 +3197,7 @@
             "title": "Leaving the theme without saving restores the city's colours",
             "asserts": "a previewed seed, then Discard or another page -> the admin returns to the city's colours; nothing written",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings)."
         },
         {
@@ -3186,7 +3208,7 @@
             "title": "The session refreshes its token silently",
             "asserts": "an hour later (clock) the ID token refreshes silently; callables, Firestore and an editor open all that time keep working, and its Save writes",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §2.2; owner: ops-screens)."
         },
         {
@@ -3197,7 +3219,7 @@
             "title": "An admin removed mid-session is denied on the next action",
             "asserts": "admin removed mid-session -> the next Firestore read and callable are denied (apiError.notAdmin) at once, without waiting for the token to expire",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -3208,7 +3230,7 @@
             "title": "A deep link while signed out leads to sign-in",
             "asserts": "deep link while signed out -> sign-in",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2."
         },
         {
@@ -3231,7 +3253,7 @@
             "asserts": "HCM_APP_CHECK=enforce and no App Check token -> the callable is refused and the app shows apiError.appCheck with Reload",
             "tier": "functions",
             "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Still planned (2026-10-18): the Functions emulator does not enforce App Check, so the refusal is not reachable in e2e; the enforcement options are unit-tested (functions/test/api/callable.test.ts)."
         },
         {
             "id": "S-A20-BAD-STALE-ACCOUNT",
@@ -3250,10 +3272,10 @@
             "area": "admin",
             "path": "bad",
             "title": "An admin revoked while editing keeps the draft on screen and writes nothing",
-            "asserts": "the owner removes an admin whose editor holds changes -> that admin's Save is denied, the editor says the access was removed, the draft stays visible until sign-out; nothing written",
+            "asserts": "the owner removes an admin whose editor holds changes -> that admin's Save is denied, the shell asks admin.session again and keeps the page with the draft under the banner 'Your access was removed' (an alert) with Sign out; a second Save is refused at once and nothing is written; Sign out asks to discard the changes, then signs out",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §2.2; owner: ops-screens)."
+            "status": "exists",
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §2.2; owner: ops-screens). Applied 2026-10-18 (DECISIONS-for-review.md §35e): e2e/admin/specs/flows/revoke.spec.ts."
         },
         {
             "id": "S-A21-HAPPY",
@@ -3263,7 +3285,7 @@
             "title": "Every admin screen works in RO and EN and switching keeps form state",
             "asserts": "every screen, dialog and message of the Setup Assistant and of the M2c editors in RO and EN; switching language in an open editor keeps the draft, the map preview and the selection",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §2.4, §10.1; owner: each area for its screens; ops-screens for the shell)."
         },
         {
@@ -3274,7 +3296,7 @@
             "title": "No English-only string or raw message id leaks into Romanian screens",
             "asserts": "the tour's leak check over every admin state, M2b and M2c -> no English-only string or raw key on a Romanian screen and no Romanian on an English one; every POI icon has its label in both",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §10.1, §12.2; owner: each area for its states)."
         },
         {
@@ -3296,7 +3318,7 @@
             "title": "Analytics not enabled shows the deep link",
             "asserts": "a web app config without measurementId -> apiError.analytics.notEnabled with the deep link and explanation",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -3307,7 +3329,7 @@
             "title": "An unavailable Error Reporting API shows an actionable message",
             "asserts": "Error Reporting answers 5xx -> apiError.errorReporting.unavailable with Retry; the rest of the card works",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -3318,7 +3340,7 @@
             "title": "A server account without the Firebase viewer role gets an actionable message",
             "asserts": "Firebase Management answers 403 -> apiError.cloud.permission naming roles/firebase.viewer; nothing written",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
         },
         {
@@ -3340,7 +3362,7 @@
             "title": "Without a GA4 stream the setting explains what to enable first",
             "asserts": "Firebase Management lists no analytics stream -> the card asks to enable Google Analytics first (deep link); nothing patched",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3351,7 +3373,7 @@
             "title": "The crash e-mail switch turns the alert policy on and off",
             "asserts": "switching crash e-mails off (one click, one consent) -> the mock alert policy reads enabled false; on again -> true",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3525,10 +3547,21 @@
             "area": "admin",
             "path": "happy",
             "title": "Before Blaze the owner signs in and sets up without any server",
-            "asserts": "the probe of admin.session gets no answer -> Sign in asks Google for read-only Cloud access with the consent note -> testIamPermissions on the mock proves ownership -> Setup in start-up mode with only the Setup destination; no Firestore, Storage or callable request after the probe",
+            "asserts": "a start-up deploy (runtime.json says startUp: the Hosting-only deploy of a new map) calls nothing of the server, the probe included, and the browser logs no console error -> Sign in asks Google for read-only Cloud access with the consent note -> testIamPermissions on the mock proves ownership -> Setup in start-up mode with only the Setup destination; no Firestore, Storage or callable request until the server's installation",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
+            "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration). Since 2026-10-18 (the live polish of the deployed admin): the start-up deploy, without the probe's CORS error."
+        },
+        {
+            "id": "S-A25-BAD-NO-START-UP-DEPLOY",
+            "behaviour": "A25",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Hosting-only deploy that does not say start-up still starts the setup",
+            "asserts": "runtime.json without startUp and no server -> the anonymous probe of admin-session gets no answer (the browser logs its error) -> the same start-up sign-in with the read-only consent note",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2c follow-ups (2026-10-18). e2e/admin/specs/journey.spec.ts."
         },
         {
             "id": "S-A25-BAD-NOT-OWNER",
@@ -3536,9 +3569,9 @@
             "area": "admin",
             "path": "bad",
             "title": "A Google account that does not own the project cannot start the setup",
-            "asserts": "testIamPermissions grants nothing and Cloud Functions was never enabled -> adminShell.auth.notOwner naming the project id and Sign out; nothing else called",
+            "asserts": "testIamPermissions grants nothing and Cloud Functions was never enabled -> adminShell.auth.notOwner naming the project id and Use another Google account (the sign-out); nothing else called",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3549,7 +3582,7 @@
             "title": "A set-up map whose server does not answer shows a retry, not the setup",
             "asserts": "a non-owner, Cloud Functions enabled, the server not answering -> adminShell.backend.down with Try again; once the server answers Try again opens the normal sign-in flow",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3560,7 +3593,7 @@
             "title": "A reload in start-up mode keeps the detected steps but no token",
             "asserts": "reload after billing -> the steps show their state from sessionStorage, which holds no access token, e-mail address or secret; the next step asks Google again",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3571,7 +3604,7 @@
             "title": "A page that needs the server opens Setup in start-up mode",
             "asserts": "the address #/photos in start-up mode -> Setup with adminShell.route.needsBackend",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3593,7 +3626,7 @@
             "title": "A partial or failed deployment is shown and nothing is claimed",
             "asserts": "some functions missing -> the ready and total counts, no claim; one FAILED function -> adminSetup.deploy.failed naming it",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3604,7 +3637,7 @@
             "title": "Without a live Google token the claim costs one click",
             "asserts": "the page was reloaded before the server appeared -> Confirm with Google (one click, one read-only consent) -> claimed; nothing claimed before the click",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3615,7 +3648,7 @@
             "title": "A refused claim is explained and leaves the account without admin rights",
             "asserts": "admin.claim answers apiError.claim.tokenMismatch or apiError.claim.alreadyClaimed -> its message; no admins document, no claim, Retry or sign-out",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3626,7 +3659,7 @@
             "title": "Each step asks Google for its own scope only",
             "asserts": "the recorded consent requests: read-only Cloud at sign-in in start-up mode, cloud-billing at billing, cloud-platform at provisioning, analytics.edit at the GA4 setting, each with the signed-in account as login hint; daily use after the setup asks for none",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3648,7 +3681,7 @@
             "title": "An unticked scope stops the step before any Google call",
             "asserts": "the scope unticked on the consent page -> adminShell.oauth.scopeDenied naming the permission; no Google API called with the token; Retry asks again",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3659,7 +3692,7 @@
             "title": "A cancelled consent changes nothing",
             "asserts": "Cancel on the consent page of a setup step -> adminShell.oauth.popupClosed; the step is as before",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3670,7 +3703,7 @@
             "title": "Choosing another Google account on the consent page is refused",
             "asserts": "another account chosen -> adminShell.oauth.wrongAccount; the token is dropped and nothing called with it",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3681,7 +3714,7 @@
             "title": "A Google access token is never stored or sent elsewhere",
             "asserts": "after every step no Google access token is found in localStorage, sessionStorage, IndexedDB, cookies or the address, nor in any request other than to Google and admin.claim",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3703,7 +3736,7 @@
             "title": "Importing again creates nothing new",
             "asserts": "a second import -> no new document, no new upload; the city still has 45 legacy photos",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3714,7 +3747,7 @@
             "title": "An interrupted import finishes the missing photos only",
             "asserts": "the page closed after some uploads -> the next import uploads only the photos without an image and finishes",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3725,7 +3758,7 @@
             "title": "A photo that fails processing is listed and the rest are imported",
             "asserts": "one original fails processing -> listed with its apiError.photo reason; the other 44 are imported and published",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3736,7 +3769,7 @@
             "title": "The navigation follows the window class",
             "asserts": "compact: navigation bar with Setup, Photos, Places, Layers and More; medium and expanded: collapsed rail; large: expanded rail; the active route is marked and survives a reload",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3758,7 +3791,7 @@
             "title": "A landscape phone gets a rail instead of the bar",
             "asserts": "915 x 412 (compact height) -> the collapsed rail instead of the bar; no floating control overlaps and none leaves the screen",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3780,8 +3813,19 @@
             "title": "A deep link to an editor on a phone keeps Back inside the admin",
             "asserts": "a place editor's address opened directly at 360 px -> the full-screen editor; Back, the button or the browser's, shows the places list, never the previous site",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §1.2; owner: ops-screens)."
+        },
+        {
+            "id": "S-A29-BAD-ROTATE-MENU-OPEN",
+            "behaviour": "A29",
+            "area": "admin",
+            "path": "bad",
+            "title": "Rotating a phone with the account menu open keeps the focus on the account button",
+            "asserts": "360 x 800, the account menu open -> turned to 800 x 360 (the menu moves from the top bar to the rail's foot) -> the dialog is gone and the account button has the focus; turned back, the same from the rail to the top bar",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2c follow-ups (the hardening review's follow-up, 2026-10-18). e2e/admin/specs/smoke.spec.ts; packages/ui/test/admin/shell/shell-layout.test.ts."
         },
         {
             "id": "S-A31-HAPPY",
@@ -3813,7 +3857,7 @@
             "title": "Every editor state passes the checkers at every tour viewport, light and dark",
             "asserts": "each M2c state of the inventory (lists, editors, map drawing, dialogs, sheets, snackbars, empty, loading and error states) at the 11 tour viewports in light and dark -> the generic layout and accessibility checkers pass; Esc closes each dialog and menu with the focus back on its opener",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §12.2; owner: each area for its states). Runtime: DECISIONS-for-review.md §34c."
         },
         {
@@ -3824,7 +3868,7 @@
             "title": "The map editors keep a sound Tab order and a visible focus",
             "asserts": "an editor with the map: the Tab round reaches the map, the drawing toolbar, the vertex list and the form in visual order, the map's ring is visible and uncut, and nothing under a modal sheet or dialog is reachable",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §3.3, §4.6; owner: pois)."
         },
         {
@@ -3832,8 +3876,8 @@
             "behaviour": "A30",
             "area": "admin",
             "path": "happy",
-            "title": "The whole Setup Assistant takes at most ten inputs and four consents",
-            "asserts": "from sign-in to the legacy import with the mocks: at most 10 in-app inputs and 4 Google consents (setupInputBudget); the human-only work on the providers' pages is not counted",
+            "title": "The whole Setup Assistant takes at most nine inputs and four consents",
+            "asserts": "from sign-in to the legacy import with the mocks: at most 9 in-app inputs and 4 Google consents (setupInputBudget); the human-only work on the providers' pages is not counted",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
@@ -3846,7 +3890,7 @@
             "title": "A failed step costs one more input, never a re-entry",
             "asserts": "a provisioning item fails, then Retry -> one more input; nothing detected is asked again",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
@@ -3855,9 +3899,9 @@
             "area": "admin",
             "path": "happy",
             "title": "The daily flows stay within their input budgets",
-            "asserts": "a batch upload with EXIF 3, a photo without EXIF 4, a photo's direction 3, a point place 5, a category 4, a delete with Undo 3 and a GeoJSON import 3 inputs (CONTENT_INPUT_BUDGETS, inputBudget.flow)",
+            "asserts": "a batch upload with EXIF 3, a photo without EXIF 4, a photo's direction 3, a point place 5, a category 3, a delete with Undo 3, a GeoJSON import 3 and an invitation 3 inputs (CONTENT_INPUT_BUDGETS, inputBudget.flow)",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.6; owner: ops-screens with each area)."
         },
         {
@@ -3868,7 +3912,7 @@
             "title": "Remembered fields are never asked twice",
             "asserts": "after a reload the next upload carries the last author, source and licence and the last pin, and a new place the last category; nothing is typed again",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.6; owner: photos and pois)."
         },
         {
@@ -3877,9 +3921,9 @@
             "area": "admin",
             "path": "happy",
             "title": "A place drawn as a polygon is saved and appears in the viewer",
-            "asserts": "Add place, Area, four clicks and a click on the first vertex -> the polygon previews live in the category colour; the title typed; Save -> the POI document with one closed ring of five positions, published; the manifest's pois carry it and the viewer draws it",
+            "asserts": "Add place, Area, four clicks (the click tools close the ring themselves) -> the polygon previews live; the title typed; Save -> the POI document with one closed ring of five positions, published; the manifest's pois carry it and the viewer draws it",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.4, §7.2; owner: pois)."
         },
         {
@@ -3891,7 +3935,7 @@
             "asserts": "a vertex dragged, a midpoint dragged into a new vertex, a vertex deleted with the Delete key -> the map shows each change live; Save -> the new geometry, and History keeps the previous one",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.4; owner: pois)."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.4; owner: pois). Still planned (2026-10-18): dragging a vertex or a midpoint waits for Terra Draw (§34g); the click tools edit positions through the list (S-A32-HAPPY-KEYBOARD)."
         },
         {
             "id": "S-A32-HAPPY-LINE-AND-POINT",
@@ -3901,7 +3945,7 @@
             "title": "A line and a point are drawn the same way",
             "asserts": "a line of three positions and a point -> saved as LineString points and Point point, and the viewer shows a line and an icon",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.4; owner: pois)."
         },
         {
@@ -3912,7 +3956,7 @@
             "title": "A place can be drawn without a pointer",
             "asserts": "the vertex list: Add at map centre after moving the map with the arrow keys, latitude and longitude typed, a vertex removed -> the same document as with the pointer; no pointer event used",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.6; owner: pois)."
         },
         {
@@ -3923,7 +3967,7 @@
             "title": "A vertex outside the city is refused live",
             "asserts": "a click beyond the city bounds plus 0.5 degrees -> no vertex added and an alert names the limit; a drag outside snaps back; nothing outside the city is written",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.5; owner: pois)."
         },
         {
@@ -3934,7 +3978,7 @@
             "title": "A polygon whose edges cross is refused",
             "asserts": "the closing click of a bow-tie polygon -> refused with a message; the last valid shape stays",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.5; owner: pois)."
         },
         {
@@ -3945,7 +3989,7 @@
             "title": "The 501st vertex is refused",
             "asserts": "a geometry of 500 positions -> the next vertex is refused with the limit named (MAX_GEOMETRY_VERTICES)",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.5; owner: pois)."
         },
         {
@@ -3957,7 +4001,7 @@
             "asserts": "no admin token in setup/status -> the map area explains it with a link to the Mapbox step; the vertex list and every field still work and Save writes",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §1.4, §3.4; owner: pois). Covered by e2e/admin/specs/pois/pois.spec.ts (Add at centre, typed and removed positions, the texts, Save, then Delete after its question)."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §1.4, §3.4; owner: pois). Covered by e2e/tour/admin-places.tour.ts (Add at centre, typed and removed positions, the texts, Save, then Delete after its question)."
         },
         {
             "id": "S-A33-HAPPY",
@@ -3967,7 +4011,7 @@
             "title": "Deleting a photo asks first and Undo restores it",
             "asserts": "Delete -> a dialog naming the photo and saying it leaves the public map within a minute -> Delete -> gone from the list and the map; the snackbar's Undo -> history.revert of the delete entry -> the photo is back as it was; the manifest follows both",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.5; owner: ops-screens with photos)."
         },
         {
@@ -3978,7 +4022,7 @@
             "title": "Bulk delete of places is restored from History",
             "asserts": "five places selected -> Delete (one dialog naming the count) -> gone; History's Deleted filter -> Restore brings each back",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §7.3, §9.5; owner: pois)."
         },
         {
@@ -3989,7 +4033,7 @@
             "title": "Deleting a layer queues its tileset deletion after a grace period",
             "asserts": "Delete on a layer -> layers.delete -> the layer document is gone and a layer-delete job waits until seven days later (shown on Jobs); restoring the layer before then cancels the job; the raster pipeline runs it (M3)",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.4; owner: layers-settings)."
         },
         {
@@ -4000,7 +4044,7 @@
             "title": "Cancel keeps everything",
             "asserts": "Cancel, Esc or the scrim in the delete dialog -> nothing deleted and the focus back on Delete",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.5; owner: ops-screens)."
         },
         {
@@ -4012,7 +4056,7 @@
             "asserts": "Delete on a category used by three places -> the dialog asks where to move them (one choice) -> the places get that category and the category is deleted; without a choice nothing changes",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.5; owner: layers-settings). Covered by e2e/admin/specs/settings/settings.spec.ts."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.5; owner: layers-settings). Covered by e2e/tour/admin-settings.tour.ts."
         },
         {
             "id": "S-A33-BAD-CLIENT-LAYER-DELETE",
@@ -4033,7 +4077,7 @@
             "title": "A GeoJSON file is previewed and imported as places",
             "asserts": "a FeatureCollection chosen -> the preview counts new, updated and refused features and shows them on the map -> one category chosen for the uncategorised -> Import -> batched writes; the list and the map show them; one manifest build; inputBudget 3",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §7.4; owner: pois)."
         },
         {
@@ -4045,7 +4089,7 @@
             "asserts": "Export -> a GeoJSON file of every place (ids, categories, texts, years, links, photos) -> importing it -> 0 new, 0 changed, nothing written",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §7.4; owner: pois). Covered by e2e/admin/specs/pois/pois.spec.ts."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §7.4; owner: pois). Covered by e2e/tour/admin-places.tour.ts."
         },
         {
             "id": "S-A34-BAD-NOT-GEOJSON",
@@ -4056,7 +4100,7 @@
             "asserts": "a JPEG, malformed JSON, or a file over 5 MB -> one message, no preview, nothing written",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §7.4; owner: pois). Covered by e2e/admin/specs/pois/pois.spec.ts (a text file); the JPEG, malformed JSON and over-5-MB cases by packages/admin/test/pois/importer.test.ts and geojson.test.ts."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §7.4; owner: pois). Covered by e2e/tour/admin-places.tour.ts (a text file); the JPEG, malformed JSON and over-5-MB cases by packages/admin/test/pois/importer.test.ts and geojson.test.ts."
         },
         {
             "id": "S-A34-BAD-INVALID-FEATURES",
@@ -4067,7 +4111,7 @@
             "asserts": "a MultiPolygon, a position with altitude, an open ring, a position outside the city and an unknown category -> each refused with its reason; the valid features import",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §7.4; owner: pois). Covered by e2e/admin/specs/pois/pois.spec.ts."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §7.4; owner: pois). Covered by e2e/tour/admin-places.tour.ts."
         },
         {
             "id": "S-A34-BAD-MARKUP-IS-TEXT",
@@ -4077,7 +4121,7 @@
             "title": "Markup in imported properties stays text",
             "asserts": "a title and a description holding HTML -> shown as characters in the preview, stored as text, and the viewer shows the characters, never markup",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §7.4, §10.3; owner: pois)."
         },
         {
@@ -4088,7 +4132,7 @@
             "title": "An import past the 5000-place limit is refused whole",
             "asserts": "existing plus new places above MAX_POIS -> refused before any write with the numbers",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §7.4; owner: pois)."
         },
         {
@@ -4099,7 +4143,7 @@
             "title": "Image adjustments preview live and reach the viewer on save",
             "asserts": "the brightness, contrast and saturation sliders moved -> the admin map's pixel probe changes at once with nothing written -> Save -> adjustments without neutral values; the manifest carries them and the viewer shows the same probe as the admin did",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.2, §8.3; owner: layers-settings)."
         },
         {
@@ -4110,7 +4154,7 @@
             "title": "Reset returns every adjustment to neutral",
             "asserts": "Reset -> all four sliders neutral and the map shows the raw tile live -> Save removes adjustments from the document",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.3; owner: layers-settings)."
         },
         {
@@ -4121,7 +4165,7 @@
             "title": "Brightness minimum never passes the maximum",
             "asserts": "the minimum dragged past the maximum -> it stops at the maximum live, the image is never inverted, and the saved document keeps the minimum at or below the maximum",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.3; owner: layers-settings)."
         },
         {
@@ -4132,7 +4176,7 @@
             "title": "Leaving without saving restores the stored look",
             "asserts": "adjustments moved, then Discard or another page -> the map shows the stored adjustments; nothing written",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.2; owner: layers-settings)."
         },
         {
@@ -4144,7 +4188,7 @@
             "asserts": "arrows, PageUp, PageDown, Home and End on each slider -> values within LAYER_ADJUSTMENT_RANGES, announced as signed percentages",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.3; owner: layers-settings). Covered by e2e/admin/specs/layers/layers.spec.ts."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.3; owner: layers-settings). Covered by e2e/tour/admin-layers.tour.ts."
         },
         {
             "id": "S-A36-HAPPY",
@@ -4155,7 +4199,7 @@
             "asserts": "Overlay defaults: a layer to 40 %, the photos to 60 %, a category to 30 % -> each fades live on the admin map -> Save -> the layer's opacity, photosOverlay.defaultOpacity and the category's defaultOpacity written; the manifest carries them; the viewer opens with those slider values and pixel probes",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings)."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Still planned (2026-10-18): the overlays section sets the default opacities without a map yet, so nothing fades live on an admin map (§37e)."
         },
         {
             "id": "S-A36-HAPPY-SHOWN-AT-START",
@@ -4177,7 +4221,7 @@
             "asserts": "sliders moved, then Discard -> the map returns to the stored opacities; nothing written",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings)."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Still planned (2026-10-18): as S-A36-HAPPY: no admin map in the overlays section yet (§37e)."
         },
         {
             "id": "S-A36-BAD-LINK-STILL-WINS",
@@ -4187,7 +4231,7 @@
             "title": "A visitor's own opacity in the link still wins",
             "asserts": "a viewer address whose op= gives the layer 90 after its default became 40 % -> the layer shows at 90 % (V23)",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings)."
         },
         {
@@ -4198,7 +4242,7 @@
             "title": "Replacing a published photo swaps the image at once and keeps it published",
             "asserts": "Replace image -> upload with progress -> while it is processed the viewer still shows the old image -> photos.onUpload -> image.sha256 changes in one write, the manifest names the new files and the viewer shows the new thumbnail; the old files are swept later",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.4; owner: photos)."
         },
         {
@@ -4209,7 +4253,7 @@
             "title": "A refused replacement keeps the current image",
             "asserts": "an HEIC file, or a duplicate of another photo, as the replacement -> the reason is shown and the photo stays published with its image",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.4; owner: photos)."
         },
         {
@@ -4231,7 +4275,7 @@
             "title": "Cancelling a replacement mid-upload changes nothing",
             "asserts": "Cancel during the upload -> no new object; the photo and the viewer unchanged",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.4; owner: photos)."
         },
         {
@@ -4242,7 +4286,7 @@
             "title": "Replacing with the same file changes nothing",
             "asserts": "the photo's own file again -> the same derivatives, no new public file, and a note says it is the same image",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.4; owner: photos)."
         },
         {
@@ -4253,7 +4297,7 @@
             "title": "An edit previews live and one Save writes it with its history",
             "asserts": "a field changed -> the map and the list preview it with nothing written -> Save -> one stamped update (updatedBy, updatedAt) and a history entry with the previous version; the publish status shows updating, then up to date after the manifest build",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5; owner: ops-screens)."
         },
         {
@@ -4264,7 +4308,7 @@
             "title": "Leaving with unsaved changes asks first",
             "asserts": "another page, Back, closing the editor or signing out with changes -> Keep editing or Discard; Keep editing keeps the draft and the address; a reload gets the browser's leave prompt",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §2.4; owner: ops-screens)."
         },
         {
@@ -4276,7 +4320,7 @@
             "asserts": "another admin saves the same document -> a banner names them and the time; fields only they changed merge in; for a field both changed, Keep mine or Take theirs",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.1, §5.3; owner: ops-screens)."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.1, §5.3; owner: ops-screens). Still planned (2026-10-18): the editors merge the other admin's fields and offer Keep mine or Take theirs, but the banner names neither the admin nor the time (the draft keeps updatedBy; the name lookup is missing, §37e)."
         },
         {
             "id": "S-A38-BAD-INVALID",
@@ -4284,9 +4328,9 @@
             "area": "admin",
             "path": "bad",
             "title": "Invalid fields are shown at the field and nothing is written",
-            "asserts": "a blank Romanian title, an end year before the start, an http link -> each message at its field, the focus on the first; Save writes nothing",
+            "asserts": "a blank Romanian title, an end year before the start, an http link -> each field marked invalid with its message; Save off, its description naming the first problem; nothing written",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §1.6, §5.3; owner: ops-screens)."
         },
         {
@@ -4297,7 +4341,7 @@
             "title": "A save while offline keeps the draft",
             "asserts": "the network gone -> Save says it could not reach the server and keeps every change; Save again once online writes it once",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.3; owner: ops-screens)."
         },
         {
@@ -4308,7 +4352,7 @@
             "title": "A document deleted elsewhere is not recreated by Save",
             "asserts": "another admin deletes the open document -> the editor says so and offers Restore (History) or Close; Save is off",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.1; owner: ops-screens)."
         },
         {
@@ -4320,7 +4364,7 @@
             "asserts": "the manifest build skips a published document -> Not on the public map lists it with its first issue and a link to its editor",
             "tier": "e2e-admin",
             "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.4; owner: ops-screens)."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.4; owner: ops-screens). Still planned (2026-10-18): Home counts the documents the manifest build skipped but lists none of them with its issue and editor link (§37e)."
         },
         {
             "id": "S-A39-HAPPY",
@@ -4328,9 +4372,9 @@
             "area": "admin",
             "path": "happy",
             "title": "A new category with its icon, colour and default opacity reaches the viewer",
-            "asserts": "Add category: label RO and EN, an icon from the picker (POI_ICONS, labelled in both languages), a colour, 80 % -> Save -> the place editor offers it, the manifest lists it and the viewer's Layers panel shows its swatch and slider at 80 %",
+            "asserts": "Add category: label RO and EN (the icon follows the label: Fântâni gives water, no click in the picker; POI_ICONS, labelled in both languages), a colour, 80 % -> Save -> the place editor offers it, the manifest lists it and the viewer's Layers panel shows its swatch and slider at 80 %",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings)."
         },
         {
@@ -4341,7 +4385,7 @@
             "title": "Reordering categories reorders the viewer's list",
             "asserts": "a drag, or Move up and Move down -> the order written for each -> the viewer's Places group follows",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings)."
         },
         {
@@ -4353,7 +4397,7 @@
             "asserts": "a colour under 3:1 against the white glyph -> a warning and the nearest passing tone proposed; Save keeps a passing colour",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Covered by e2e/admin/specs/settings/settings.spec.ts."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Covered by e2e/tour/admin-settings.tour.ts."
         },
         {
             "id": "S-A39-BAD-ID-CLASH",
@@ -4363,7 +4407,7 @@
             "title": "A category named like an overlay gets an id of its own",
             "asserts": "a label that slugifies to photos or to a layer's id -> a suffixed id; the manifest never reports validation.duplicateId",
             "tier": "e2e-admin",
-            "status": "planned",
+            "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings)."
         },
         {
@@ -4375,7 +4419,18 @@
             "asserts": "a category whose icon is not bundled -> the picker says it is drawn as the pin and keeps it until another is chosen",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Covered by e2e/admin/specs/settings/settings.spec.ts."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Covered by e2e/tour/admin-settings.tour.ts."
+        },
+        {
+            "id": "S-A39-BAD-ICON-NOT-GUESSED",
+            "behaviour": "A39",
+            "area": "admin",
+            "path": "bad",
+            "title": "A label the icons do not know keeps the pin, and a picked icon stays",
+            "asserts": "a new category labelled with no word the icons know (Corona 1968) -> the pin (DEFAULT_POI_ICON); an icon picked by hand is kept when the label changes to one that would suggest another (Fântâni) and saved",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5, Addendum 2026-10-18 minimum input; owner: layers-settings). The guess itself: packages/admin/test/settings/icon-guess.test.ts."
         },
         {
             "id": "S-A39-BAD-LIMIT",
@@ -4386,7 +4441,7 @@
             "asserts": "at 50 categories Add category is off with the limit named (MAX_POI_CATEGORIES)",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Covered by e2e/admin/specs/settings/settings.spec.ts."
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Covered by e2e/tour/admin-settings.tour.ts."
         },
         {
             "id": "S-A40-HAPPY",

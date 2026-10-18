@@ -6,7 +6,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { defineEditingElements, EDITING_TAGS } from '../../../src/admin/editing/define.js';
 import type { HcmConfirmDialog } from '../../../src/admin/editing/hcm-confirm-dialog.js';
 import type { HcmEmptyState } from '../../../src/admin/editing/hcm-empty-state.js';
-import type { HcmListDetail, PageChrome } from '../../../src/admin/editing/hcm-list-detail.js';
+import { splitsAt, type HcmListDetail, type PageChrome } from '../../../src/admin/editing/hcm-list-detail.js';
 import { deepActiveElement } from '../../../src/components/focus.js';
 import { installFonts } from '../../../src/fonts/font-faces.js';
 import { applyTheme, clearTheme } from '../../../src/theme/apply.js';
@@ -278,5 +278,32 @@ describe('FakeArea', () => {
         expect([probes['then'], probes['_$litDirective$'], probes[Symbol.iterator]]).toEqual([undefined, undefined, undefined]);
         await expect(Promise.resolve(area.intents)).resolves.toBe(area.intents);
         expect(area.intents.ping()).toBe('pong');
+    });
+});
+
+describe('<hcm-list-detail> on a landscape phone', () => {
+    beforeAll(() => {
+        defineEditingElements();
+    });
+    afterEach(() => {
+        for (const host of hosts.splice(0)) {
+            clearTheme(host);
+        }
+        document.body.replaceChildren();
+    });
+
+    it('badPath_aLandscapePhoneWideEnoughForTwoPanesKeepsOnePane', async () => {
+        const chrome: PageChrome[] = [];
+        const element = await inBox<HcmListDetail>(listDetail(false), 900, 400);
+        element.addEventListener('hcm-chrome', (event) => chrome.push((event as CustomEvent<{ chrome: PageChrome }>).detail.chrome));
+
+        element.detail = true;
+        await settle(element);
+
+        expect(element.split).toBe(false);
+        expect([pane(element, 'list').hidden, pane(element, 'detail').hidden]).toEqual([true, false]);
+        expect(chrome).toEqual(['editor']);
+        expect(splitsAt({ widthClass: 'expanded', heightClass: 'medium' })).toBe(true);
+        expect(splitsAt({ widthClass: 'expanded', heightClass: 'compact' })).toBe(false);
     });
 });

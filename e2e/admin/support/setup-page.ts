@@ -2,7 +2,7 @@ import type { BrowserContext, Locator, Page } from '@playwright/test';
 
 import type { GoogleScope } from '../../../packages/admin/src/google/scopes.js';
 import type { SetupStepId } from '../../../packages/admin/src/setup/steps.js';
-import { shellText } from './i18n.js';
+import { setupText, shellText } from './i18n.js';
 import { expect } from './test.js';
 
 /**
@@ -30,22 +30,38 @@ export class SetupPage {
         return this.page.locator(`hcm-setup-step[data-step="${step}"]:is([mode="detail"], [mode="inline"][open])`);
     }
 
-    /** Opens the step's card (a click on its header) unless it is open already; returns the open card. */
+    /**
+     * Opens the step's card (a click on its header) unless it is open already; returns the open card. Setup may open
+     * another card meanwhile (it moves on once a step is done), so the card is opened again until it stays open.
+     */
     async show(step: SetupStepId): Promise<Locator> {
         const open = this.open(step);
-        if (!(await open.isVisible())) {
-            await this.card(step).getByRole('button').first().click();
-        }
-        await expect(open).toBeVisible();
+        await expect(async () => {
+            if (!(await open.isVisible())) {
+                await this.card(step).getByRole('button').first().click();
+            }
+            await expect(open).toBeVisible({ timeout: 2_000 });
+        }).toPass({ timeout: 15_000 });
         return open;
+    }
+
+    /**
+     * Opens Setup and waits until it has settled: its check is done and the step it opens at (`first`, the first not
+     * done) is open. A card opened before that is replaced under the spec when Setup opens its own.
+     */
+    async visit(first: SetupStepId = 'billing'): Promise<void> {
+        await this.page.goto(`/?lang=${this.lang}#/setup`);
+        await expect(this.open(first)).toBeVisible();
+        await expect(this.page.getByRole('button', { name: setupText(this.lang, 'adminSetup.recheck') }).first()).toBeEnabled();
     }
 
     async expectState(step: SetupStepId, state: string, timeout = 30_000): Promise<void> {
         await expect(this.card(step)).toHaveAttribute('data-state', state, { timeout });
     }
 
-    /** The doctor's items of the provisioning card, their state by id. */
+    /** The doctor's items of the provisioning card (opened first: Setup moves on once the step is done), their state by id. */
     async provisionItems(): Promise<Record<string, string>> {
+        await this.show('provision');
         const pairs = await this.open('provision')
             .locator('[data-item]')
             .evaluateAll((items) =>

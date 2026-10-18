@@ -3,6 +3,7 @@ import { LitElement, css, html, type PropertyValues, type TemplateResult } from 
 import { deepActiveElement, restoreFocus, tabbableElements, trapTab } from './focus.js';
 import { defineHcmIconButton } from './icon-button.js';
 import { defineOnce, emit } from './internal.js';
+import { reportModal } from './modal-registry.js';
 import { baseStyles, focusRing, typeStyles } from './styles.js';
 
 export const HCM_DIALOG_TAG = 'hcm-dialog';
@@ -11,7 +12,8 @@ export const HCM_DIALOG_TAG = 'hcm-dialog';
  * An M3 modal dialog on the native `<dialog>` (top layer, the page behind it inert). Tab and Shift+Tab wrap inside
  * it; Esc, the close button or a click on the scrim close it with `returnValue` `cancel`, `close` or `scrim`, and the
  * focus goes back to the element that had it before. Closing fires `hcm-close` with `{returnValue}`; `close(value)`
- * lets an action close it with its own value. `fullscreen` is the compact-window full-screen dialog. Slots: default
+ * lets an action close it with its own value. `fullscreen` is the compact-window full-screen dialog. While it is open it
+ * counts in the document's open modals (`modal-registry.ts`), which a map under its scrim follows. Slots: default
  * (content), `actions`. The headline row is a plain box, not a `header`: a dialog opened from a top bar put a banner
  * inside the page's banner (axe, the admin's account menu).
  */
@@ -76,12 +78,17 @@ export class HcmDialog extends LitElement {
                 color: var(--md-sys-color-on-surface-variant);
             }
 
+            /*
+             * 4 px above the actions: their 48 px touch targets reach 4 px past a 40 px button, and would otherwise cover
+             * the bottom of the control the scrolling content shows at its edge (CR-M2c-29; the tour's reflow check found
+             * a select of the import preview and a field of the link dialog under them at 320 px).
+             */
             .actions {
                 display: flex;
                 flex-wrap: wrap;
                 gap: 8px;
                 justify-content: flex-end;
-                padding: 0 24px 24px;
+                padding: 4px 24px 24px;
             }
 
             @media (forced-colors: active) {
@@ -118,6 +125,7 @@ export class HcmDialog extends LitElement {
     override disconnectedCallback(): void {
         super.disconnectedCallback();
         this.dialog()?.close();
+        reportModal(this.ownerDocument, this, false);
     }
 
     protected override updated(changed: PropertyValues<this>): void {
@@ -163,11 +171,13 @@ export class HcmDialog extends LitElement {
         }
         this.opener = deepActiveElement(this.ownerDocument);
         dialog.showModal();
+        reportModal(this.ownerDocument, this, true);
         (tabbableElements(dialog)[0] ?? dialog).focus();
     }
 
     private hide(): void {
         this.dialog()?.close();
+        reportModal(this.ownerDocument, this, false);
         restoreFocus(this.opener);
         this.opener = null;
     }

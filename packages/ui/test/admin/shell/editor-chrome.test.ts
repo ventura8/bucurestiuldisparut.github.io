@@ -127,6 +127,8 @@ describe('the page area for the editors', () => {
         expect(whoText('en', 'system:photos', 'u1')).toBe('the server');
         expect(whoText('en', 'u2', null, { u2: 'Ion' })).toBe('Ion');
         expect(whoText('ro', 'u3', null)).toBe('alt administrator');
+        // Said after "de" ("Modificat de tine", "Pornită de server"): the forms that follow a preposition.
+        expect([whoText('ro', 'u1', 'u1'), whoText('ro', 'system:photos', 'u1')]).toEqual(['tine', 'server']);
         expect(failureText('en', null)).toBe('This could not be read (unknown). Try again.');
         expect(formatDay('en', '2026-10-17T10:00:00.000Z')).toBe('Oct 17, 2026');
     });

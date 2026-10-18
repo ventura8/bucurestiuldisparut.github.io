@@ -1,8 +1,9 @@
 /**
  * The Mapbox card's body (step e, `docs/research/M2b-interfaces.md` §3.3 e): the scopes the secret token needs, with a
  * copy button, and the paste box (`type=password`, `autocomplete=off`): what was pasted is classified in the page
- * before any call (a public `pk.` token is explained at once), and Save sends it once to the controller and clears
- * the box. The token never leaves the box otherwise: not in a property, the state or storage.
+ * before any call (a public `pk.` token is explained at once). A pasted secret is sent at once, once, to the controller
+ * and the box cleared (one input, like the USGS paste); a typed one goes with Enter or Save. The token never leaves the
+ * box otherwise: not in a property, the state or storage.
  */
 import { classifyMapboxToken, type AdminSetupKey, type ApiErrorCode } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
@@ -60,7 +61,7 @@ export class HcmSetupMapbox extends SetupBody {
                     autocapitalize="off"
                     aria-describedby="verdict"
                     @input=${this.onInput}
-                    @paste=${this.onPaste}
+                    @keydown=${this.onKey}
                 />
                 <p id="verdict" class="hint" role="status">${this.renderVerdict()}</p>
             </div>
@@ -76,22 +77,33 @@ export class HcmSetupMapbox extends SetupBody {
         return this.verdict === 'empty' ? '' : setupText(this.locale, { key: VERDICTS[this.verdict] });
     }
 
+    /** Classifies the box; a pasted secret is saved at once, any other paste counts as the step's input. */
     private readonly onInput = (event: Event): void => {
         this.box = event.target as HTMLInputElement;
         const value = this.box.value.trim();
         this.verdict = value === '' ? 'empty' : classifyMapboxToken(value);
-    };
-
-    private readonly onPaste = (): void => {
+        if ((event as InputEvent).inputType !== 'insertFromPaste') {
+            return;
+        }
+        if (this.verdict === 'secret') {
+            this.onSave();
+            return;
+        }
         this.act((intents) => {
             intents.noteInput('mapbox');
         });
     };
 
-    /** Sends the token once and clears the box (nothing is sent before something was pasted). */
+    private readonly onKey = (event: KeyboardEvent): void => {
+        if (event.key === 'Enter') {
+            this.onSave();
+        }
+    };
+
+    /** Sends the token once and clears the box (nothing is sent from an empty box). */
     private readonly onSave = (): void => {
         const box = this.box;
-        if (box === null) {
+        if (box === null || box.value.trim() === '') {
             return;
         }
         const token = box.value;

@@ -2,13 +2,12 @@
  * `<hcm-settings-page>`: `#/settings`, `#/settings/<section>` and `#/settings/categories/<id>`
  * (`docs/research/M2c-interfaces.md` §8.5; behaviours A19, A36, A39). The sections in the list pane; the open one in the
  * detail pane (in its place below 840 px), each its own draft with its own Save. While the theme section previews a
- * seed, the page wears the previewed schemes (the whole admin once the shell's preview is wired, CR-M2c-28); Discard,
- * Save or leaving takes them off.
+ * seed, the whole admin wears the previewed schemes: the settings store hands them to the shell (CR-M2c-28), and
+ * Discard, Save, leaving Settings or signing out takes them off.
  */
-import type { Locale, ThemeTokens } from '@hcm/shared';
+import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
-import { clearTheme, applyTheme, type ThemeMode } from '../../theme/apply.js';
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
@@ -68,11 +67,6 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
         return content.settings;
     }
 
-    override disconnectedCallback(): void {
-        super.disconnectedCallback();
-        clearTheme(this);
-    }
-
     override render(): TemplateResult {
         const view = this.view;
         if (view === null) {
@@ -94,24 +88,6 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
                 <div slot="detail">${this.#detail(locale, view)}</div>
             </hcm-list-detail>
             ${announcer(this.announcement)}`;
-    }
-
-    /** The page wears the previewed theme while there is one. */
-    override updated(): void {
-        const preview = this.#preview();
-        if (preview === null) {
-            clearTheme(this);
-        } else {
-            applyTheme(this, preview, this.#mode(), false);
-        }
-    }
-
-    #preview(): ThemeTokens | null {
-        return this.view === null ? null : this.view.citySection.theme.preview;
-    }
-
-    #mode(): ThemeMode {
-        return this.state === null ? 'system' : this.state.theme.mode;
     }
 
     #sections(locale: Locale, view: SettingsViewState): TemplateResult {

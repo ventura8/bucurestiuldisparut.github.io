@@ -220,6 +220,19 @@ export function createBillingBudgetsFake(state: BillingState): ServiceFake {
         budgetsOf(String(params['account']))[index] = updated;
         return jsonResponse(updated);
     };
+    const addAppBudget = (fields: Readonly<Record<string, unknown>>): void => {
+        const budget = fixtureBody('billing-budgets/create.ok', { billingAccountId: DEFAULT_ACCOUNT, budgetId: nextId() }) as Record<
+            string,
+            unknown
+        >;
+        const projectId = String(FIXTURE_VALUES['projectId']);
+        budgetsOf(DEFAULT_ACCOUNT).push({
+            ...budget,
+            displayName: `historic-city-map ${projectId}`,
+            notificationsRule: { disableDefaultIamRecipients: false },
+            ...fields,
+        });
+    };
     const base = 'https://billingbudgets.googleapis.com/v1/billingAccounts/{account}/budgets';
     return {
         name: 'billing-budgets',
@@ -250,6 +263,18 @@ export function createBillingBudgetsFake(state: BillingState): ServiceFake {
         scenarios: {
             budgetForbidden: () => {
                 state.budgetsForbidden = true;
+            },
+            // The app's budget as step (b) creates it (its display name: packages/admin/src/google/billing.ts
+            // budgetDisplayName), on the default account, before the `budget-alerts` item pointed it at its topic.
+            appBudget: () => {
+                addAppBudget({});
+            },
+            // The same budget as an earlier setup left it, out of spec: $3, alerts at 100 % only (S-A04-BAD-BUDGET-EXISTS).
+            staleBudget: () => {
+                addAppBudget({
+                    amount: { specifiedAmount: { currencyCode: 'USD', units: '3' } },
+                    thresholdRules: [{ thresholdPercent: 1, spendBasis: 'CURRENT_SPEND' }],
+                });
             },
         },
         snapshot: () => ({ budgets: Object.fromEntries(state.budgets) }),

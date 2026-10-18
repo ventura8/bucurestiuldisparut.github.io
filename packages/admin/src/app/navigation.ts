@@ -31,6 +31,8 @@ export class Navigation {
     #allowNext = false;
     /** The address of the last page view (one per route shown). */
     #tracked: string | null = null;
+    /** The first address the shell showed has been looked at (an item's: its list put under it). */
+    #seeded = false;
 
     constructor(deps: NavigationDeps) {
         this.#deps = deps;
@@ -48,11 +50,18 @@ export class Navigation {
         this.#shown = shown;
         this.#mode = state.mode;
         if (shown) {
-            // The shell appears (or its mode changes): no page holds an edit yet, so nothing is asked.
-            this.#allowNext = true;
-            this.#apply(this.#returnTo() ?? this.#deps.location.hash());
+            this.#shellShown();
         } else {
             this.#keep(this.#deps.location.hash());
+        }
+    }
+
+    /** The shell appears (or its mode changes): no page holds an edit yet, so nothing is asked. */
+    #shellShown(): void {
+        this.#allowNext = true;
+        const hash = this.#returnTo() ?? this.#deps.location.hash();
+        if (!this.#seedHistory(hash)) {
+            this.#apply(hash);
         }
     }
 
@@ -95,6 +104,25 @@ export class Navigation {
             this.#deps.location.setHash(kept, true);
         }
         return kept;
+    }
+
+    /**
+     * An item's address opened directly (a link, a bookmark, a reload): its list goes under it in the history, so Back shows
+     * the list (on a phone the editor is all there is, `docs/research/M2c-interfaces.md` §1.2) and never the site the admin
+     * came from. Once per page; true when the item's address was pushed (its page then opened through the push).
+     */
+    #seedHistory(hash: string): boolean {
+        if (this.#seeded) {
+            return false;
+        }
+        this.#seeded = true;
+        const route = resolveAdminRoute(hash, this.#context()).route;
+        if (route.params.length === 0) {
+            return false;
+        }
+        this.#deps.location.setHash(adminRouteHash({ id: route.id, params: [] }), true);
+        this.#deps.location.setHash(adminRouteHash(route), false);
+        return true;
     }
 
     /** Keeps a route hash for after sign-in (anything else is not kept). */

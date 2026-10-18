@@ -7,6 +7,8 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 
 import type { AdminAuthStatePort, AdminPageElement } from '../../../src/admin/admin-port.js';
+import type { HcmAccountMenu } from '../../../src/admin/shell/hcm-account-menu.js';
+import { deepActiveElement } from '../../../src/components/focus.js';
 import type { HcmAdminNav } from '../../../src/admin/shell/hcm-admin-nav.js';
 import type { HcmAdminShell } from '../../../src/admin/shell/hcm-admin-shell.js';
 import { adminState, cleanup, deep, deepAll, defineAll, DESTINATIONS, FakeAdminApp, mount, updated } from './fake-app.js';
@@ -240,5 +242,76 @@ describe('<hcm-admin-nav> under text spacing', () => {
         const focused = (deep(nav, 'nav').getRootNode() as ShadowRoot).activeElement as HTMLElement;
         expect(focused.matches(':focus-visible')).toBe(true);
         expect(Number.parseFloat(getComputedStyle(focused).outlineOffset)).toBeLessThan(0);
+    });
+});
+
+describe('<hcm-admin-shell>: a phone turned with the account menu open', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('badPath_rotatingAPhoneWithTheAccountMenuOpenGivesTheNewButtonTheFocus', async () => {
+        // The hardening review's follow-up (S-A29-BAD-ROTATE-MENU-OPEN): the menu moves between the top bar and the rail.
+        const element = await shellWithTallPage(360);
+        const host = element.parentElement;
+        if (host === null) {
+            throw new Error('the shell has no box');
+        }
+        const turn = async (width: number, height: number | null): Promise<void> => {
+            host.style.inlineSize = `${String(width)}px`;
+            element.style.minBlockSize = height === null ? '' : '0';
+            element.style.blockSize = height === null ? '' : `${String(height)}px`;
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            await updated(element);
+            await (deep(element, 'hcm-account-menu') as HcmAccountMenu).updateComplete;
+        };
+        const menu = (): HcmAccountMenu => deep(element, 'hcm-account-menu') as HcmAccountMenu;
+        /** The shadow root of the element whose icon button has the focus (the account menu's, when it is its button). */
+        const focusedButton = (): Node | null => {
+            const root = deepActiveElement()?.getRootNode();
+            return root instanceof ShadowRoot && root.host.localName === 'hcm-icon-button' ? root.host.getRootNode() : null;
+        };
+
+        for (const [width, height, where] of [
+            [800, 360, 'nav'],
+            [360, null, 'header'],
+        ] as const) {
+            const before = menu();
+            deep(before, 'hcm-icon-button').click();
+            await updated(element);
+            expect(before.active).toBe(true);
+            await turn(width, height);
+
+            expect(menu()).not.toBe(before);
+            expect(menu().closest(where === 'nav' ? 'hcm-admin-nav' : 'header')).not.toBeNull();
+            await expect.poll(() => focusedButton()).toBe(menu().shadowRoot);
+            expect(menu().open).toBe(false);
+        }
+    });
+
+    it('badPath_aPhoneHeldSidewaysWithoutTheTopBarKeepsThePagesTitleAsItsHeading', async () => {
+        // S-A29-BAD-LANDSCAPE-PHONE: axe's page-has-heading-one at 915 × 412, where the top bar gives way to the rail.
+        const element = await shellWithTallPage(800);
+        element.style.minBlockSize = '0';
+        element.style.blockSize = '360px';
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        await updated(element);
+
+        const headings = deepAll(element, 'h1');
+        expect(deepAll(element, 'header.top-bar')).toEqual([]);
+        expect(headings.map((heading) => [heading.className, heading.textContent.trim()])).toEqual([['visually-hidden', 'Setup']]);
+        expect(headings[0]?.closest('main')).not.toBeNull();
+    });
+
+    it('happyPath_aRenderWhileTheMenuStaysPutMovesNoFocus', async () => {
+        const element = await shellWithTallPage(1300);
+        const menu = deep(element, 'hcm-account-menu') as HcmAccountMenu;
+        const end = deep(element, 'hcm-test-tall-page button') as HTMLButtonElement;
+        end.focus();
+
+        element.requestUpdate();
+        await updated(element);
+
+        expect(menu.active).toBe(false);
+        expect(deepActiveElement()).toBe(end);
     });
 });

@@ -15,7 +15,7 @@ import { expectStateSound } from '../../support/state-check.js';
 import { adminVisit, type AdminStateId } from '../../tour/states.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../support/test.js';
 import type { UpstreamControl } from '../support/upstream.js';
-import { ADMIN_WEB_CONFIG, emulatorOrigin, E2E_PROJECT_ID } from '../world.js';
+import { ADMIN_RUNTIME, ADMIN_WEB_CONFIG, emulatorOrigin, E2E_PROJECT_ID } from '../world.js';
 
 // One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
 test.describe.configure({ lock: ADMIN_LOCK });
@@ -25,7 +25,8 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * the fake upstreams, from a Google Cloud project with no billing account and no server to a map with Mapbox, USGS,
  * analytics and the 45 legacy photos:
  *
- * 1. start-up mode: the server does not answer; the owner signs in with a read-only Google consent and Google proves
+ * 1. start-up mode, as a new map's Hosting-only deploy serves it (`runtime.json` says `startUp`): the admin calls nothing
+ *    of the server, so the browser logs no error; the owner signs in with a read-only Google consent and Google proves
  *    the ownership;
  * 2. billing: no billing account yet (the deep link), the owner creates one on Google's page, the card links it by itself
  *    and creates the budget;
@@ -47,8 +48,16 @@ test.use({ persona: null, mapOwner: null });
 /** The pages the deep links of this journey open (the human's work there is out of the app). */
 const PROVIDER_ORIGINS = ['https://ers.cr.usgs.gov', 'https://console.firebase.google.com'];
 
-/** The emulators' origins whose requests start-up mode must not make (the probe of `admin-session` aside). */
+/** The emulators' origins whose requests start-up mode must not make (a start-up deploy does not even probe the server). */
 const BACKEND = [emulatorOrigin('firestore'), emulatorOrigin('storage'), emulatorOrigin('functions')];
+
+/**
+ * `/runtime.json` of a new map's Hosting-only deploy (`HCM_ADMIN_START_UP=1`, scripts/site/src/admin/runtime.ts): the
+ * admin starts in start-up mode without probing the server.
+ */
+async function serveStartUpRuntime(page: Page): Promise<void> {
+    await page.route('**/runtime.json', (route) => route.fulfill({ json: { ...ADMIN_RUNTIME, startUp: true } }));
+}
 
 /** Records the path of every request of the page to Firestore, Storage or a callable until `stop()`. */
 function backendRequests(page: Page): { readonly paths: string[]; stop(): void } {
@@ -210,11 +219,9 @@ async function installTheServer({ page, lang, setup, upstream, serverDeployment,
 async function connectMapbox({ page, lang, setup, setupBudget, upstream, consoleErrors, emulators }: Journey): Promise<void> {
     const mapbox = setup.open('mapbox');
     const tokenBox = mapbox.getByLabel(setupText(lang, 'adminSetup.mapbox.token'));
-    const save = mapbox.getByRole('button', { name: setupText(lang, 'adminSetup.mapbox.save') });
-    const mapboxInputs = setupBudget.inputs('mapbox', 2);
+    // A pasted secret token is saved at once (one input); the retry after the upgrade is one more paste.
+    const mapboxInputs = setupBudget.inputs('mapbox', 1);
     await mapboxInputs.paste(tokenBox, MAPBOX_TOKENS.trial);
-    await expect(mapbox.getByText(setupText(lang, 'adminSetup.mapbox.looksRight'))).toBeVisible();
-    await mapboxInputs.click(save);
     await expect(mapbox.getByRole('alert').filter({ hasText: apiText(lang, 'apiError.mapbox.mintRefused') })).toBeVisible();
     await expect(mapbox.getByRole('link', { name: startOf(setupText(lang, 'adminSetup.link.mapbox.console')) })).toBeVisible();
     await expect.poll(() => consoleErrors.takeMatching(/status of 400/).length).toBe(1);
@@ -222,7 +229,6 @@ async function connectMapbox({ page, lang, setup, setupBudget, upstream, console
     await checkpoint(page, lang, '06-mapbox-trial', 'mapbox-trial', [apiText(lang, 'apiError.mapbox.mintRefused')]);
     await upstream.scenario('mapbox.upgraded', 'server');
     await mapboxInputs.paste(tokenBox, MAPBOX_TOKENS.trial);
-    await mapboxInputs.click(save);
     await setup.expectState('mapbox', 'ok');
     const city = await emulators.document('cities/bucharest');
     expect(city).toEqual(
@@ -361,6 +367,7 @@ test(
         // The polls run on the page's clock: time flows, and the spec jumps ahead to the next poll.
         await page.clock.install();
         await page.clock.resume();
+        await serveStartUpRuntime(page);
         const startUp = backendRequests(page);
         await page.goto(adminPath(lang));
 
@@ -368,9 +375,10 @@ test(
         await linkBilling(journey);
         await provisionWithARetry(journey);
         startUp.stop();
-        // Start-up mode called nothing of the server but the probe (refused while the server is hidden).
-        expect(new Set(startUp.paths)).toEqual(new Set([`/${E2E_PROJECT_ID}/us-central1/admin-session`]));
-        serverDeployment.claimErrors();
+        // A start-up deploy calls nothing of the server, not even the probe, so the browser logs no CORS error (the
+        // hidden server would have refused it: the live admin of 2026-10-17 logged one).
+        expect(startUp.paths).toEqual([]);
+        expect(serverDeployment.claimErrors()).toEqual([]);
 
         await installTheServer(journey, adminWorld.accounts.owner.uid);
         await connectMapbox(journey);
@@ -382,5 +390,26 @@ test(
         const used = setupBudget.used();
         expect(used.inputs - setupBudget.allowance()).toBeLessThanOrEqual(used.limit.inputs);
         expect(used.consents).toBeLessThanOrEqual(used.limit.consents);
+    },
+);
+
+test(
+    'A Hosting-only deploy that does not say start-up still finds no server and starts the setup',
+    { tag: ['@S-A25-BAD-NO-START-UP-DEPLOY'] },
+    async ({ page, lang, serverDeployment }) => {
+        await serverDeployment.hide();
+        const probes = backendRequests(page);
+        await page.goto(adminPath(lang));
+
+        // Without `startUp` in runtime.json the admin probes admin-session before sign-in; the hidden server does not
+        // answer, so start-up mode's sign-in shows, as for a start-up deploy, at the cost of the probe's console error.
+        await expect(page.getByRole('button', { name: shellText(lang, 'adminShell.auth.signIn') })).toBeVisible();
+        await new SetupPage(page, lang).expectConsentNote(page.locator('hcm-sign-in'), 'cloudReadOnly', {
+            projectId: E2E_PROJECT_ID,
+            domain: ADMIN_WEB_CONFIG.authDomain,
+        });
+        probes.stop();
+        expect(new Set(probes.paths)).toEqual(new Set([`/${E2E_PROJECT_ID}/us-central1/admin-session`]));
+        expect(serverDeployment.claimErrors().length).toBeGreaterThan(0);
     },
 );

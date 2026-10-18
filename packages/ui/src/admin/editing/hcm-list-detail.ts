@@ -1,7 +1,7 @@
 /**
  * `<hcm-list-detail>`: M3's list-detail canonical layout for the editors (`docs/research/M2c-interfaces.md` §1.2, §1.3),
- * measured on itself (never the viewport). From 840 px the list (360 px; 412 px from 1600) and the detail sit side by
- * side; below, one pane shows: the list, or the detail with a Back button (Close on a compact window) at its top. It
+ * measured on itself (never the viewport). From 840 px (and not at a compact height) the list (360 px; 412 px from 1600)
+ * and the detail sit side by side; below, one pane shows: the list, or the detail with a Back button (Close on a compact window) at its top. It
  * fills the page area it is given and only its panes scroll (fill mode: the page class declares `fillsPage`).
  *
  * `detail` says an item is open. While the detail replaces the list on a phone (a compact width, or a landscape phone's
@@ -27,6 +27,16 @@ export type PageChrome = 'default' | 'editor';
 
 /** Window classes that show the list and the detail side by side. */
 const SPLIT: ReadonlySet<WindowClass> = new Set<WindowClass>(['expanded', 'large', 'extra-large']);
+
+/**
+ * Whether a page of this size shows the list and the detail side by side: from 840 px, but never at a compact height (a
+ * landscape phone keeps one pane, a full-screen editor). The height rule also keeps a phone of about 900 px from
+ * flapping: hiding the navigation for the editor widened the page past 840 px, which split it and brought the
+ * navigation back (found by the admin tour at 915 × 412, DECISIONS-for-review.md §34c).
+ */
+export function splitsAt(size: Pick<WindowSize, 'widthClass' | 'heightClass'>): boolean {
+    return SPLIT.has(size.widthClass) && size.heightClass !== 'compact';
+}
 
 /** The detail's heading: the slotted element itself, or the first `[data-detail-heading]` inside it. */
 function headingIn(element: Element): HTMLElement | null {
@@ -107,7 +117,7 @@ export class HcmListDetail extends LitElement {
 
     /** True while both panes show (none of the chrome is asked for before the first measurement). */
     get split(): boolean {
-        return SPLIT.has(this.#measured.widthClass);
+        return splitsAt(this.#measured);
     }
 
     override connectedCallback(): void {

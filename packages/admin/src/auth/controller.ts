@@ -7,10 +7,15 @@
  * - **Bootstrap mode** (no answer): Google decides with the owner's own token (`ownership.ts`): `bootstrap`, `notOwner`
  *   or `backendDown`. When the Setup Assistant sees the server deployed it calls `serverReady`, which probes again and,
  *   once the server answers, claims with the token the provisioning left in memory (no click).
+ * - **A start-up deploy** (`runtime.json` says `startUp`: the Hosting-only deploy of a new map) starts in bootstrap mode
+ *   without the anonymous probe: the missing function's 404 has no CORS headers, so the probe would only make the
+ *   browser log a CORS error. Google tells the owner when the server is installed (step d), and only then is it probed.
  *
  * Every Google popup is the first await of the intent that opens it (popup blockers). Revocation: a callable answering
- * `apiError.notAdmin` or a denied admin read calls `accessDenied`; a revoked refresh token signs the user out, which ends
- * in `signedOut` with `adminShell.session.expired`.
+ * `apiError.notAdmin` or a denied admin read calls `accessDenied`; when the session then says the account is no admin
+ * while an editor holds unsaved changes, the shell keeps the page read-only under a banner until sign-out (`revoked`,
+ * `DECISIONS-for-review.md` §35e) instead of replacing it; a revoked refresh token signs the user out, which ends in
+ * `signedOut` with `adminShell.session.expired`.
  */
 import { API_ERRORS, apiErrorFromFailure, type ApiErrorDetails, type Logger, type SessionResponse } from '@hcm/shared';
 
@@ -22,11 +27,27 @@ import type { AdminAuthState } from './auth-state.js';
 import type { GoogleAccessService, GoogleOutcome } from './google-service.js';
 import type { OwnershipVerdict } from './ownership.js';
 
-/** The probe's timeout (§1.4): a cold start slower than this corrects itself on the next probe. */
+/** The probe's timeout (§1.4): a cold start slower than this answers the next probe. */
 export const PROBE_TIMEOUT_MS = 10_000;
+
+/**
+ * How many probes one start sends while the server only times out: a server whose cold start (or a busy moment) took
+ * longer than `PROBE_TIMEOUT_MS` answers the next one, and an admin is not sent to the start-up mode for it.
+ */
+export const PROBE_ATTEMPTS = 3;
 
 /** Callable statuses that do not prove a deployed server: a missing function's 404 has no CORS headers. */
 const NO_ANSWER: ReadonlySet<string> = new Set(['internal', 'unavailable', 'deadline-exceeded', 'not-found']);
+
+/** Any answer but the four of `NO_ANSWER` proves a server (a deployed callable refuses an anonymous probe, say). */
+function provesServer(error: unknown): boolean {
+    return error instanceof CallableFailure && !NO_ANSWER.has(error.status);
+}
+
+/** A callable that got no answer in its time (a cold start, or a busy server), not a missing one. */
+function timedOut(error: unknown): boolean {
+    return error instanceof CallableFailure && error.status === 'deadline-exceeded';
+}
 
 /** Every `sessionStorage` key of the admin starts with this; the sign-out removes them all. */
 const SESSION_PREFIX = 'hcm:admin:';
@@ -42,6 +63,15 @@ export interface AuthControllerDeps {
     readonly shell: ShellStateAccess;
     readonly session: KeyValueStore;
     readonly log: Logger;
+    /** The deploy says the map's server is not installed yet (`runtime.json` → `startUp`): no probe before step (d). */
+    readonly startUp?: boolean;
+    /**
+     * Whether this browser has had an answer from the project's server (`localStorage`): then a start-up deploy still
+     * probes it, as its server has been installed since (a functions-only deploy left the start-up page in place).
+     */
+    readonly serverSeen?: { known(): boolean; remember(): void };
+    /** Whether an editor holds unsaved changes (a revoked admin's page then stays, read-only, until sign-out). */
+    readonly unsaved?: () => boolean;
 }
 
 function detailsOf(error: unknown): ApiErrorDetails {
@@ -77,9 +107,14 @@ export class AuthController {
         this.#deps = deps;
     }
 
-    /** Probes the server, then follows Firebase Auth's user. */
+    /** Probes the server (a start-up deploy assumes none), then follows Firebase Auth's user. */
     async start(): Promise<void> {
-        await this.#reprobe();
+        if (this.#deps.startUp === true && this.#deps.serverSeen?.known() !== true) {
+            this.#deps.log.info('start-up deploy: bootstrap mode without probing the server');
+            this.#set({ mode: 'bootstrap' });
+        } else {
+            await this.#reprobe();
+        }
         this.#stopAuth = this.#deps.auth.onUserChanged((user) => {
             void this.#userChanged(user);
         });
@@ -147,7 +182,7 @@ export class AuthController {
         }
         if (this.#deps.auth.currentUser() === null) {
             this.#leaving = false;
-            this.#set({ auth: 'signedOut', user: null, role: null, busy: false, gate: NO_GATE });
+            this.#set({ auth: 'signedOut', user: null, role: null, busy: false, revoked: false, gate: NO_GATE });
             return;
         }
         await this.#deps.auth.signOut();
@@ -172,25 +207,36 @@ export class AuthController {
         return this.#answers;
     }
 
-    /** A callable said `apiError.notAdmin` or an admin read was denied: ask the server who this is now (§1.5). */
+    /** A callable said `apiError.notAdmin` or an admin read was denied: ask the server who this is now (§1.5), once. */
     async accessDenied(): Promise<void> {
-        if (this.#deps.shell.get().auth === 'admin') {
+        const shell = this.#deps.shell.get();
+        if (shell.auth === 'admin' && !shell.revoked) {
             await this.#askSession(false);
         }
     }
 
     async #reprobe(): Promise<void> {
         this.#answers = await this.#probe();
+        if (this.#answers) {
+            this.#deps.serverSeen?.remember();
+        }
         this.#set({ mode: this.#answers ? 'normal' : 'bootstrap' });
     }
 
-    /** An anonymous (or signed-in) `admin-session` call; any answer but the four of `NO_ANSWER` proves a server. */
-    async #probe(): Promise<boolean> {
+    /**
+     * An anonymous (or signed-in) `admin-session` call; any answer but the four of `NO_ANSWER` proves a server. A call
+     * that timed out is sent again, up to `PROBE_ATTEMPTS` in all (`docs/LESSONS.md` 120).
+     */
+    async #probe(attempts: number = PROBE_ATTEMPTS): Promise<boolean> {
         try {
             await this.#deps.callables.call('admin.session', {}, { timeoutMs: PROBE_TIMEOUT_MS });
             return true;
         } catch (error) {
-            return error instanceof CallableFailure && !NO_ANSWER.has(error.status);
+            if (attempts > 1 && timedOut(error)) {
+                this.#deps.log.warn('the server probe timed out: probing again', { attemptsLeft: attempts - 1 });
+                return this.#probe(attempts - 1);
+            }
+            return provesServer(error);
         }
     }
 
@@ -240,7 +286,7 @@ export class AuthController {
         const expired = previous === 'admin' && !this.#leaving;
         this.#leaving = false;
         const issue = expired ? this.#deps.shell.notice({ key: 'adminShell.session.expired' }) : null;
-        this.#set({ auth: 'signedOut', role: null, busy: false, gate: { ...NO_GATE, issue } });
+        this.#set({ auth: 'signedOut', role: null, busy: false, revoked: false, gate: { ...NO_GATE, issue } });
     }
 
     /** After a consent or a retry: the current user's case is decided again (none: signed out). */
@@ -328,8 +374,16 @@ export class AuthController {
         this.#notAdmin(details);
     }
 
-    /** Not an admin (S-A01-BAD-STRANGER): the panel says so and the Firebase session ends at once. */
+    /**
+     * Not an admin (S-A01-BAD-STRANGER): the panel says so and the Firebase session ends at once; an admin whose access
+     * was removed while editing keeps the page, read-only, until sign-out (S-A20-BAD-REVOKED-WHILE-EDITING).
+     */
     #notAdmin(details: ApiErrorDetails | null): void {
+        if (this.#deps.shell.get().auth === 'admin' && this.#deps.unsaved?.() === true) {
+            this.#deps.log.warn('access removed while editing: the page stays read-only until sign-out');
+            this.#set({ revoked: true, busy: false });
+            return;
+        }
         this.#set({ auth: 'notAdmin', role: null, busy: false, gate: details === null ? NO_GATE : this.#gate(details) });
         this.#deps.auth.signOut().catch((error: unknown) => {
             this.#deps.log.warn('sign-out after refusal failed', { error: String(error) });

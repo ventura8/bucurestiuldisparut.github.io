@@ -42,6 +42,15 @@ describe('loadRuntime', () => {
         });
     });
 
+    it('happyPath_aStartUpDeploySaysSo', async () => {
+        const fetcher = serving({ [RUNTIME_URL]: jsonResponse({ release: '0.0.0+5d02329', startUp: true }) });
+
+        await expect(loadRuntime((url) => fetcher.fetch(`https://h.test${url}`))).resolves.toEqual({
+            release: '0.0.0+5d02329',
+            startUp: true,
+        });
+    });
+
     it('badPath_withoutAFileTheReleaseIsDevAndThereIsNoAppCheck', async () => {
         const fetcher = serving({ [RUNTIME_URL]: jsonResponse({ release: '' }) });
 

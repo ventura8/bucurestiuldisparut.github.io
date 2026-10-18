@@ -7,5 +7,7 @@
         "types": ["node"],
         "outDir": "${configDir}/.tsbuild/tools"
     },
-    "include": ["vitest.config.ts", "packages/*/vite.config.ts"]
+    "include": ["vitest.config.ts", "packages/*/vite.config.ts"],
+    // The admin's Vite config imports the site build's CSS-literal minifier (scripts/site/src/css-literals.ts).
+    "references": [{ "path": "scripts/site" }]
 }

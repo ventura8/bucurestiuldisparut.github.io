@@ -1,9 +1,9 @@
 /**
  * Step (e), Mapbox (`docs/research/M2b-interfaces.md` §3.3 e; `M2-interfaces.md` §3.3): the owner pastes the secret
- * token and clicks Save (two inputs). The page explains a public (`pk.`) or malformed paste before any call
- * (`classifyMapboxToken`); a secret goes once to `setup.saveMapbox`, which validates it upstream, stores it in Secret
- * Manager and mints the public tokens. The token is a parameter here and nothing more: it never enters the state, a
- * store or a log line, and the paste box clears itself after the call.
+ * token, which is saved at once (one input; a typed token goes with Enter or Save). The page explains a public (`pk.`)
+ * or malformed paste before any call (`classifyMapboxToken`); a secret goes once to `setup.saveMapbox`, which validates
+ * it upstream, stores it in Secret Manager and mints the public tokens. The token is a parameter here and nothing more:
+ * it never enters the state, a store or a log line, and the paste box clears itself after the call.
  */
 import { classifyMapboxToken, type SaveMapboxResponse } from '@hcm/shared';
 
@@ -31,7 +31,7 @@ class Mapbox implements MapboxFlow {
             const response = await this.ctx.deps.backend.saveMapbox({ cityId: this.ctx.deps.host.cityId, secretToken: secretToken.trim() });
             this.saved(response.mapbox);
         } catch (error) {
-            this.ctx.fail('mapbox', apiFailure(error));
+            await this.ctx.failRecorded('mapbox', apiFailure(error));
         }
     }
 

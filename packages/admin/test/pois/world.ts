@@ -133,7 +133,7 @@ function seedCity(world: Pick<ContentWorld, 'store'>): void {
     });
 }
 
-function seedCategory(world: Pick<ContentWorld, 'store'>, id: string, order: number, color = '#8b5e3c', icon = 'church'): void {
+export function seedCategory(world: Pick<ContentWorld, 'store'>, id: string, order: number, color = '#8b5e3c', icon = 'church'): void {
     world.store.put(FIRESTORE_PATHS.poiCategory(CITY, id), {
         label: { ro: `Categoria ${id}`, en: `Category ${id}` },
         icon,

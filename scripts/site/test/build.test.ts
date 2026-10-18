@@ -54,7 +54,7 @@ describe('buildSite (the committed sites)', () => {
         const photoCount = (seed['photos'] as unknown[]).length;
         expect(report).toEqual({
             outDir: 'dist/site/bucharest',
-            cityId: 'bucuresti',
+            cityId: 'bucharest',
             photos: photoCount,
             files: 4 + photoCount * 2 + ENGINE_FILES.length,
         });
@@ -68,6 +68,9 @@ describe('buildSite (the committed sites)', () => {
         expect(served.ok).toBe(true);
         const photo = served.ok ? served.value.photos[0] : undefined;
         expect(served.ok && served.value.city.mapbox.publicToken).toBe(TOKEN);
+        // The legacy manifest names `bucuresti`; the site serves it as the project's city (site.json → legacyCityId).
+        expect((seed['city'] as Record<string, unknown>)['id']).toBe('bucuresti');
+        expect(served.ok && served.value.city.id).toBe('bucharest');
         expect(dist.readBytes(`dist/site/bucharest/data/${String(photo?.image.web)}`)).toEqual(
             readFileSync(join(ROOT, 'seed/bucharest/derived', String(photo?.id), 'web.webp')),
         );
@@ -156,6 +159,42 @@ describe('buildSite (bad inputs)', () => {
         expect(() => buildSite(options, files)).toThrow(
             'starter-kit/config.js: cityId "bucuresti" does not match the manifest\'s city "exemplu"',
         );
+    });
+
+    it('happyPath_aManifestNamingTheLegacyCityIsServedAsTheConfigsCity', () => {
+        const { files, options } = syntheticRoot();
+        const spec = JSON.parse(files.readText('starter-kit/site.json')) as Record<string, unknown>;
+        files.write('starter-kit/site.json', JSON.stringify({ ...spec, legacyCityId: 'exemplu' }));
+        files.write(
+            'starter-kit/config.js',
+            "globalThis.HistoricCityMapConfig = { cityId: 'orasul-meu', manifestUrl: './data/manifest.json' };",
+        );
+
+        expect(buildSite(options, files).cityId).toBe('orasul-meu');
+        expect(files.readText('dist/site/starter-kit/data/manifest.json')).toContain('"id":"orasul-meu"');
+    });
+
+    it('badPath_aLegacyCityIdDoesNotExcuseAnotherCity', () => {
+        const { files, options } = syntheticRoot();
+        const spec = JSON.parse(files.readText('starter-kit/site.json')) as Record<string, unknown>;
+        files.write('starter-kit/site.json', JSON.stringify({ ...spec, legacyCityId: 'bucuresti' }));
+        files.write(
+            'starter-kit/config.js',
+            "globalThis.HistoricCityMapConfig = { cityId: 'orasul-meu', manifestUrl: './data/manifest.json' };",
+        );
+
+        expect(() => buildSite(options, files)).toThrow(
+            'starter-kit/config.js: cityId "orasul-meu" does not match the manifest\'s city "exemplu"',
+        );
+    });
+
+    it('badPath_aLegacyCityIdWithoutAConfigCityChangesNothing', () => {
+        const { files, options } = syntheticRoot();
+        const spec = JSON.parse(files.readText('starter-kit/site.json')) as Record<string, unknown>;
+        files.write('starter-kit/site.json', JSON.stringify({ ...spec, legacyCityId: 'exemplu' }));
+        files.write('starter-kit/config.js', "globalThis.HistoricCityMapConfig = { manifestUrl: './data/manifest.json' };");
+
+        expect(buildSite(options, files).cityId).toBe('exemplu');
     });
 
     it('badPath_anUnreadableManifestIsReported', () => {

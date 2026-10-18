@@ -72,7 +72,7 @@ export const SETUP_STEP_SPECS: Readonly<Record<SetupStepId, SetupStepSpec>> = {
         after: ['deploy'],
         optional: false,
     },
-    mapbox: { letter: 'e', needsBackend: true, area: 'mapbox', scope: null, inputs: 2, consents: 0, after: ['claim'], optional: false },
+    mapbox: { letter: 'e', needsBackend: true, area: 'mapbox', scope: null, inputs: 1, consents: 0, after: ['claim'], optional: false },
     usgs: { letter: 'f', needsBackend: true, area: 'usgs', scope: null, inputs: 3, consents: 0, after: ['claim'], optional: false },
     analytics: {
         letter: 'g',

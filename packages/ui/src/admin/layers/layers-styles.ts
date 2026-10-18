@@ -97,11 +97,6 @@ export const layersStyles = [
             --md-sys-color-primary: var(--md-sys-color-on-error-container, CanvasText);
         }
 
-        /* The ring of the error container (the base ring is secondary: 2.4:1 on it, the tour found). */
-        .alert :focus-visible {
-            outline-color: var(--hcm-focus-ring-color, var(--md-sys-color-secondary, Highlight));
-        }
-
         .alert-body ul {
             margin: 0;
             padding-inline-start: 20px;
@@ -119,6 +114,24 @@ export const layersStyles = [
             align-items: center;
             gap: 8px;
             border-radius: var(--md-sys-shape-corner-large, 16px);
+        }
+
+        /* A row with a lead (a category's swatch): the swatch beside both lines, centred, as an M3 list item's leading
+           element; inline in the title it pushed the name to a second line on a phone and left its detail under it. */
+        .row[data-lead] {
+            display: grid;
+            grid-template-columns: 40px minmax(0, 1fr);
+            column-gap: 16px;
+            align-items: center;
+        }
+
+        .row[data-lead] > :first-child {
+            grid-row: 1 / span 2;
+        }
+
+        .row[data-lead] > .row-title,
+        .row[data-lead] > .row-detail {
+            grid-column: 2;
         }
 
         .reorder-row[data-drop] {
@@ -143,14 +156,6 @@ export const layersStyles = [
         .moves {
             display: flex;
             gap: 8px;
-        }
-
-        /*
-         * A dialog's actions sit 4 px below its scrolling content, so their 48 px touch targets never cover the field that
-         * the content is scrolled to (the 320 px reflow check found it).
-         */
-        hcm-dialog > hcm-button[slot='actions'] {
-            margin-block-start: 4px;
         }
 
         .swatch {

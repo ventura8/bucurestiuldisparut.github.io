@@ -7,31 +7,33 @@ import type { WorkerOptions } from './support/test.js';
 /**
  * The Playwright projects of the e2e tiers (docs/research/design-review-testability.md §4.3), chosen per run with
  * `E2E_TIER` (comma-separated): unset runs the tiers of every push (all but `tour-matrix`), `all` runs every tier.
- * Every project runs Chromium under SwiftShader behind the host-resolver rules and depends on `setup`, which validates
- * the fixture manifest and the servers once.
+ * Every project runs Chromium under SwiftShader behind the host-resolver rules (but the admin's Firefox and WebKit ones,
+ * behind the firewall alone) and depends on `setup`, which validates the fixture manifest and the servers once.
  *
  * | Tier | Projects | Specs |
  * | --- | --- | --- |
- * | `admin` | `admin-setup`, `admin-harness`, `admin-{c360,m768,l1440}-ro`, `admin-l1440-dark`, `admin-l1440-en` | `admin/{setup,harness,specs}/` |
+ * | `admin` | `admin-setup`, `admin-harness`, `admin-{c360,m768,l1440}-ro`, `admin-l1440-dark`, `admin-l1440-en`, `admin-steps-l1440-en`, `admin-{firefox,webkit}-l1440-ro` | `admin/{setup,harness,specs,steps}/` |
  * | `smoke` | `harness`, `smoke-c360`, `smoke-l1440` | `specs/harness/` (the e2e preconditions), `specs/smoke/` (the viewer boots) |
  * | `a11y` | `a11y-reduced-motion`, `a11y-forced-colors` | `a11y/reduced-motion.spec.ts`, `a11y/forced-colors.spec.ts` |
  * | `nogl` | `nogl` (`--disable-3d-apis`) | `specs/viewer/no-webgl.spec.ts` |
- * | `tour` | the per-push tour: `tour-{x3840,l1440,c915l,c360}-{light,dark}-ro`, `tour-c360-light-en` | `tour/*.tour.ts` (layout, axe, ARIA) |
+ * | `tour` | the per-push tour: `tour-{x3840,l1440,c915l,c360}-{light,dark}-ro`, `tour-c360-light-en` | `tour/*.tour.ts` (layout, axe, ARIA; the viewer and the admin's editors) |
  * | `tour-matrix` | the other 35 `tour-<viewport>-<light|dark>-<ro|en>` of the 11 viewports (`all`, nightly) | `tour/*.tour.ts` |
  * | `fn` | `fn-c360-ro`, `fn-m768-ro`, `fn-l1440-ro`, `fn-l1440-en`, `fn-c360-dark` | `specs/viewer/`, `specs/starter-kit/` |
  *
  * The run order is the order of this table: Playwright queues the projects in it, and an `E2E_SHARD` slice is a
- * contiguous part of that queue. The admin tier comes first, so its tests (one at a time, behind one lock) run beside
- * everything else instead of after it; the few long tests follow, the tour's largest viewports first; the many short
+ * contiguous part of that queue. The admin tier comes first, so its locked chain (see below) runs beside everything
+ * else instead of after it; the few long tests follow, the tour's largest viewports first; the many short
  * functional tests come last and fill the workers to the end.
  *
  * The admin projects (docs/research/M2b-interfaces.md §6.2) open the admin server's origin, forward the fake
  * upstreams' hosts (`forwardUpstreams`) and depend on `admin-setup` (the admin build and the emulators answer) instead
- * of `setup`. The emulators' owner, admins and setup records are per Firebase project, so the admin tests never run
- * at the same time: every admin spec file declares the Playwright lock `ADMIN_LOCK` (e2e/admin/support/test.ts), which
- * the dispatcher honours without holding a worker, and the lease of the mock APIs stays as the guard behind it. A run
- * split between two machines gives each its own part of the admin projects (`E2E_ADMIN_PART`, e2e/split.ts): each
- * machine starts its own emulators, so the two halves of that chain run at the same time.
+ * of `setup`. The emulators' owner, admins and setup records are per Firebase project, so the specs that touch them
+ * (the smoke, the journey, the Setup steps, revoke, operations, the harness) never run at the same time: each declares
+ * the Playwright lock `ADMIN_LOCK` (e2e/admin/support/test.ts), which the dispatcher honours without holding a worker,
+ * and the lease of the mock APIs stays as the guard behind it. The content specs (the editors') take a city and a
+ * Google account of their own (e2e/admin/support/content-test.ts), no lock, and run on every worker. A run split
+ * between two machines gives each its own part of the admin projects (`E2E_ADMIN_PART`, e2e/split.ts): each machine
+ * starts its own emulators, so the two halves of the locked chain run at the same time.
  */
 
 /** Every tier, in run order (the table above). */
@@ -89,6 +91,14 @@ const LOCALES = { ro: 'ro-RO', en: 'en-US' } as const;
 
 function chromium(viewport: ViewportName, lang: 'ro' | 'en' = 'ro', args: readonly string[] = GL_ARGS): Use {
     return { browserName: 'chromium', ...VIEWPORTS[viewport], launchOptions: { args: [...args] }, locale: LOCALES[lang], lang };
+}
+
+/**
+ * Firefox or WebKit at a viewport (both in the quality image): the forms of the admin's editors, whose inputs, dates,
+ * selects and focus differ most between engines. The firewall is Playwright's routing, the same in every browser.
+ */
+function otherBrowser(browserName: 'firefox' | 'webkit', viewport: ViewportName, lang: 'ro' | 'en' = 'ro'): Use {
+    return { browserName, ...VIEWPORTS[viewport], locale: LOCALES[lang], lang };
 }
 
 function project(tier: Tier, name: string, testMatch: string | string[], use: Use, extra: Partial<E2eProject> = {}): E2eProject {
@@ -206,8 +216,12 @@ function noWebGlProjects(): E2eProject[] {
     return [project('nogl', 'nogl', NO_WEBGL_SPEC, chromium('l1440', 'ro', NO_GL_ARGS))];
 }
 
-/** An admin flow waits for the emulators (callables, the Auth and Firestore emulators) besides the page. */
-const ADMIN_TIMEOUT_MS = 90_000;
+/**
+ * An admin flow waits for the emulators (callables, the Auth and Firestore emulators) besides the page, and its states'
+ * checkers share the machine with the tour's admin journeys: a test of five states took 90 s on the loaded laptop
+ * (2026-10-18), so 150 s.
+ */
+const ADMIN_TIMEOUT_MS = 150_000;
 
 function adminProject(name: string, testMatch: string, use: Use): E2eProject {
     return {
@@ -222,11 +236,12 @@ function adminProject(name: string, testMatch: string, use: Use): E2eProject {
 }
 
 /**
- * The admin tier: its setup, the harness of its e2e world, and the functional specs at three window classes, in the dark
- * scheme and in English. With `part` (`E2E_ADMIN_PART`), only those parts of the test projects, dealt round robin in the
- * order below: of three, part 1 is `admin-c360-ro` and `admin-l1440-dark`, part 2 `admin-m768-ro` and `admin-l1440-en`,
- * part 3 `admin-l1440-ro` and `admin-harness` (scripts/ci/e2e-split.sh gives the NUC, about twice as fast, parts 1-2 and
- * this machine part 3).
+ * The admin tier: its setup, the harness of its e2e world, the functional specs at three window classes, in the dark
+ * scheme and in English, the Setup Assistant's steps, and the editors' forms in Firefox and WebKit. With `part`
+ * (`E2E_ADMIN_PART`), only those parts of the test projects, dealt round robin in the order below: of three, part 1 is
+ * `admin-c360-ro`, `admin-l1440-dark` and `admin-steps-l1440-en`, part 2 `admin-m768-ro`, `admin-l1440-en` and
+ * `admin-firefox-l1440-ro`, part 3 `admin-l1440-ro`, `admin-harness` and `admin-webkit-l1440-ro`
+ * (scripts/ci/e2e-split.sh gives the NUC, about twice as fast, parts 1-2 and this machine part 3).
  */
 function adminProjects(part: ShardRange | null): E2eProject[] {
     const setup: E2eProject = {
@@ -237,6 +252,7 @@ function adminProjects(part: ShardRange | null): E2eProject[] {
         metadata: { tier: 'admin' },
     };
     const SPECS_GLOB = 'specs/**/*.spec.ts';
+    const FORMS_GLOB = 'specs/editing/**/*.spec.ts';
     const tests = [
         adminProject('admin-c360-ro', SPECS_GLOB, chromium('c360')),
         adminProject('admin-m768-ro', SPECS_GLOB, chromium('m768')),
@@ -246,6 +262,13 @@ function adminProjects(part: ShardRange | null): E2eProject[] {
         adminProject('admin-l1440-dark', SPECS_GLOB, { ...chromium('l1440'), colorScheme: 'dark' }),
         adminProject('admin-l1440-en', SPECS_GLOB, chromium('l1440', 'en')),
         adminProject('admin-harness', 'harness/**/*.spec.ts', chromium('l1440')),
+        // The Setup Assistant's steps one by one (their bad paths, each from a seeded state): what they check is the
+        // server's answers and the card's words, not the layout, which the journey and the tour check at every window
+        // class; one project, in English (the journey runs in Romanian at three window classes).
+        adminProject('admin-steps-l1440-en', 'steps/**/*.spec.ts', chromium('l1440', 'en')),
+        // The editors' forms (drafts, saving, remembered fields: no map) in Firefox and WebKit.
+        adminProject('admin-firefox-l1440-ro', FORMS_GLOB, otherBrowser('firefox', 'l1440')),
+        adminProject('admin-webkit-l1440-ro', FORMS_GLOB, otherBrowser('webkit', 'l1440')),
     ];
     return [setup, ...tests.filter((_, position) => inPart(position, part))];
 }
@@ -281,6 +304,18 @@ export function tiersFrom(value: string | undefined): readonly Tier[] {
         return TIERS;
     }
     return names.length === 0 ? PUSH_TIERS : TIERS.filter((tier) => names.includes(tier));
+}
+
+/**
+ * The tiers that open the admin: its own, and the tour's, whose admin journeys run in cities of their own
+ * (e2e/tour/admin-*.tour.ts, DECISIONS-for-review.md §34c): such a run starts the admin server and the emulators and
+ * builds the admin's Hosting folder.
+ */
+const ADMIN_TIERS: readonly Tier[] = ['admin', 'tour', 'tour-matrix'];
+
+/** Whether a run of `tiers` needs the admin server and the emulators. */
+export function needsAdmin(tiers: readonly Tier[]): boolean {
+    return tiers.some((tier) => ADMIN_TIERS.includes(tier));
 }
 
 /** `setup`, then the projects of `tiers` (of the admin tier, those of `adminPart` when given). */

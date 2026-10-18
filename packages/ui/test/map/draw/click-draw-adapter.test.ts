@@ -139,16 +139,37 @@ describe('click drawing: shapes', () => {
     });
 
     it('badPath_clicksOutsideADrawingModeOrBeforeAttachDoNothing', () => {
-        const { port, map, changes } = attached();
+        const { port, map, changes, refusals } = attached();
         const detached = createClickDrawPort();
 
         map.clickMap(A);
         port.setMode('select');
         map.clickMap(A);
+        map.clickMap([27, 44.4]);
         detached.setMode('draw-point');
 
         expect(changes).toEqual([]);
+        expect(refusals).toEqual([]);
         expect(detached.snapshot()).toEqual([]);
+    });
+
+    it('happyPath_inSelectAClickMovesTheSelectedPoint', () => {
+        const { port, map, changes, refusals } = attached();
+        port.load([
+            { id: 'pin', geometry: { type: 'Point', coordinates: A } },
+            { id: 'piata', geometry: { type: 'Polygon', coordinates: [[A, B, C, A]] } },
+        ]);
+        port.setMode('select');
+        port.select('pin');
+
+        map.clickMap(D);
+        map.clickMap([27, 44.4]);
+        port.select('piata');
+        map.clickMap(B);
+
+        expect(changes.map((change) => change.features[0]?.geometry)).toEqual([{ type: 'Point', coordinates: D }]);
+        expect(refusals).toEqual([{ kind: 'outside', bounds: CITY }]);
+        expect(port.snapshot()[1]?.geometry).toEqual({ type: 'Polygon', coordinates: [[A, B, C, A]] });
     });
 });
 

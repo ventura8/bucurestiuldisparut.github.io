@@ -13,6 +13,7 @@ import { WindowClassController } from '../../layout/window-class.js';
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
+import { splitsAt } from '../editing/hcm-list-detail.js';
 import { EMPTY } from '../shell/empty.js';
 import { confirmDialog, importDialog, isConfirmed, moveDialog, photoPicker, type ConfirmedDialog, type PageDialog } from './poi-dialogs.js';
 import { localized, poiHistoryHref, poiText } from './poi-text.js';
@@ -28,8 +29,6 @@ import type {
 } from './pois-port.js';
 
 export const HCM_POIS_PAGE_TAG = 'hcm-pois-page';
-
-const SPLIT: ReadonlySet<string> = new Set(['expanded', 'large', 'extra-large']);
 
 /** Saves `text` as a file the browser downloads (a Blob behind a short-lived link). */
 export function saveFile(document: Document, file: { readonly name: string; readonly type: string; readonly text: string }): void {
@@ -68,7 +67,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
     }
 
     get #split(): boolean {
-        return SPLIT.has(this.#size.size.widthClass);
+        return splitsAt(this.#size.size);
     }
 
     /** The map's box shows: side by side, a place is open, or the compact list's Map view. */
@@ -212,6 +211,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
             .photos=${view.photos?.items ?? []}
             .intents=${this.intents}
             .locale=${locale}
+            .centreKnown=${view.frame !== null}
             @hcm-delete=${() => {
                 this.dialog = { kind: 'delete', title: value === null ? '' : localized(locale, value.title) };
             }}

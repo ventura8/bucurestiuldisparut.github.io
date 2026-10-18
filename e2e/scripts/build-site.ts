@@ -3,8 +3,9 @@
 // Bucharest with the e2e fixture manifest (e2e/fixtures/manifest.ts), so its meta CSP names the e2e tile and telemetry
 // hosts exactly as a production build names its own, and the starter kit as committed. Both carry the e2e token.
 // The same build code as production (scripts/site/src/build.ts); only the manifest and the token differ.
-// When the admin tier runs (`E2E_TIER` unset, `all`, or naming `admin`), also the admin's Hosting folder: its page and
-// the legacy import bundle next to the admin's e2e-mode Vite build in packages/admin/dist (scripts/site/src/admin/).
+// When the admin tier or the tour runs (`E2E_TIER` unset, `all`, or naming `admin`, `tour` or `tour-matrix`), also the
+// admin's Hosting folder: its page and the legacy import bundle next to the admin's e2e-mode Vite build in
+// packages/admin/dist (scripts/site/src/admin/).
 import process from 'node:process';
 
 import { createLogger } from '@hcm/shared';
@@ -16,7 +17,7 @@ import { nodeFileSystem } from '../../scripts/site/src/files.js';
 import { ADMIN_DIST_DIR } from '../admin/world.js';
 import { buildFixtureManifest } from '../fixtures/manifest.js';
 import { E2E_SITE_DIR, E2E_TOKEN } from '../fixtures/world.js';
-import { tiersFrom } from '../projects.js';
+import { needsAdmin, tiersFrom } from '../projects.js';
 
 const log = createLogger('e2e-site-build');
 const files = nodeFileSystem(process.cwd());
@@ -31,7 +32,7 @@ try {
     ]) {
         log.info('e2e site built', { ...report });
     }
-    if (tiersFrom(process.env['E2E_TIER']).includes('admin')) {
+    if (needsAdmin(tiersFrom(process.env['E2E_TIER']))) {
         log.info('e2e admin built', { ...buildAdminSite({ outDir: ADMIN_DIST_DIR }, files) });
     }
 } catch (error: unknown) {

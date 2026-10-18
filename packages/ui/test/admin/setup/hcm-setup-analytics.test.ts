@@ -83,7 +83,7 @@ describe('<hcm-crash-groups>', () => {
 
         expect(shadowPart(panel, '.message').textContent).toBe('TypeError: <b>x</b> is undefined');
         expect(panel.renderRoot.querySelector('b')).toBeNull();
-        expect(shadowPart(panel, '[data-group="g1"] .note').textContent.trim()).toBe('3 times, last on 12 Oct 2026, 12:00 (viewer)');
+        expect(shadowPart(panel, '[data-group="g1"] .note').textContent.trim()).toBe('How often: 3; last on 12 Oct 2026, 12:00 (viewer)');
         expect(shadowPart(panel, '.title').getAttribute('aria-level')).toBe('3');
     });
 
@@ -182,7 +182,7 @@ describe('<hcm-setup-import>', () => {
     it('happyPath_oneClickImportsThePhotos', async () => {
         const { port, element } = await legacy();
 
-        await page.getByRole('button', { name: 'Importă cele 45 fotografii' }).click();
+        await page.getByRole('button', { name: 'Importă fotografiile (45)' }).click();
 
         expect(port.calls).toEqual([['importLegacy']]);
         expect(await axeViolations(element)).toEqual([]);
@@ -191,14 +191,14 @@ describe('<hcm-setup-import>', () => {
     it('happyPath_aRunningImportShowsItsProgress', async () => {
         const { element } = await legacy({ legacyImport: { done: 9, total: 45, failed: [], running: true } }, 'en');
 
-        await expect.element(page.getByRole('progressbar', { name: '9 of 45 photos imported' })).toHaveAttribute('aria-valuenow', '20');
+        await expect.element(page.getByRole('progressbar', { name: 'Photos imported: 9 of 45' })).toHaveAttribute('aria-valuenow', '20');
         expect(shadowPart(element, 'hcm-button').hasAttribute('disabled')).toBe(true);
     });
 
     it('happyPath_aCompleteImportSaysSo', async () => {
         const { element } = await legacy({ legacyImport: { done: 45, total: 45, failed: [], running: false } });
 
-        expect(shadowPart(element, '.success').textContent).toBe('Toate cele 45 fotografii sunt pe hartă.');
+        expect(shadowPart(element, '.success').textContent).toBe('Toate fotografiile sunt pe hartă (45).');
         expect(element.renderRoot.querySelector('hcm-progress')).toBeNull();
     });
 

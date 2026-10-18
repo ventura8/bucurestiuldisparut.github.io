@@ -50,7 +50,7 @@ class Usgs implements UsgsFlow {
         try {
             this.saved((await this.ctx.deps.backend.saveUsgs(request)).usgs);
         } catch (error) {
-            this.ctx.fail('usgs', apiFailure(error));
+            await this.ctx.failRecorded('usgs', apiFailure(error));
         }
     }
 

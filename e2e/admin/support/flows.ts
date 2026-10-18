@@ -4,12 +4,13 @@ import { STORAGE_PATHS, translateAdminContent, validateManifest, type AdminConte
 import { expect, type Page } from '@playwright/test';
 
 import { siteManifestData, type Json } from '../../fixtures/manifest.js';
-import { E2E_TOKEN, SITE_ORIGIN } from '../../fixtures/world.js';
+import { E2E_CITY_ID, E2E_TOKEN, SITE_ORIGIN } from '../../fixtures/world.js';
 import { mapIdle } from '../../support/map.js';
 import { sitePath } from '../../support/site.js';
 import { serveManifest, waitForEngineEvent } from '../../support/viewer.js';
 import { E2E_PROJECT_ID } from '../world.js';
-import type { EmulatorWorld } from './emulators.js';
+import type { CityWorld } from './content.js';
+import { FUNCTIONS_TIMEOUT_MS } from './emulators.js';
 
 /**
  * From the admin to the public viewer (behaviour A41, docs/research/M2c-interfaces.md §12.3 "Admin to viewer"): the
@@ -19,14 +20,11 @@ import type { EmulatorWorld } from './emulators.js';
  * server, and asserts what a visitor sees. Every value is a generated test value.
  */
 
-/** The city of `infra/project.json` the admin edits. */
-export const FLOWS_CITY = 'bucharest';
-
 /** The public bucket the manifest build writes (`functions/src/deps.ts`: `<project>-public`). */
 const PUBLIC_BUCKET = `${E2E_PROJECT_ID}-public`;
 
 /** How long a manifest build may take: the trigger, the task and the build in the Functions emulator. */
-const BUILD_TIMEOUT_MS = 60_000;
+const BUILD_TIMEOUT_MS = FUNCTIONS_TIMEOUT_MS;
 
 /** An editor text (`adminContent.*`) in the project's language. */
 export function flowText(lang: 'ro' | 'en', key: AdminContentKey, params: Readonly<Record<string, string>> = {}): string {
@@ -38,9 +36,9 @@ export function flowText(lang: 'ro' | 'en', key: AdminContentKey, params: Readon
  * and the theme of the built site (a manifest needs all three), the viewer's public token (the e2e token the mock Mapbox
  * accepts: without one the build refuses to publish), the photos overlay, published.
  */
-export async function seedPublicCity(emulators: EmulatorWorld, at: Date): Promise<void> {
+export async function seedPublicCity(world: CityWorld, at: Date): Promise<void> {
     const site = siteManifestData()['city'] as Json;
-    await emulators.setDocument(`cities/${FLOWS_CITY}`, {
+    await world.emulators.setDocument(`cities/${world.city}`, {
         about: site['about'],
         privacy: site['privacy'],
         theme: site['theme'],
@@ -57,8 +55,8 @@ export async function seedPublicCity(emulators: EmulatorWorld, at: Date): Promis
 }
 
 /** The manifest the last build published (gzip JSON in the public bucket), or undefined before the first build. */
-async function publicManifest(emulators: EmulatorWorld): Promise<Json | undefined> {
-    const stored = await emulators.storageObject(PUBLIC_BUCKET, STORAGE_PATHS.manifest(FLOWS_CITY));
+async function publicManifest(world: CityWorld): Promise<Json | undefined> {
+    const stored = await world.emulators.storageObject(PUBLIC_BUCKET, STORAGE_PATHS.manifest(world.city));
     if (stored === undefined) {
         return undefined;
     }
@@ -66,18 +64,20 @@ async function publicManifest(emulators: EmulatorWorld): Promise<Json | undefine
     return JSON.parse((gzip ? gunzipSync(stored) : stored).toString('utf8')) as Json;
 }
 
-/** Waits until a build published a manifest for which `check` holds, and returns it. */
-export async function awaitManifest(emulators: EmulatorWorld, what: string, check: (manifest: Json) => boolean): Promise<Json> {
+/**
+ * Waits until a build published a manifest of the world's city for which `check` holds, and returns it. When none comes,
+ * the failure says how the last build ended (`manifests/<city>`: its status, error and skipped documents).
+ */
+export async function awaitManifest(world: CityWorld, what: string, check: (manifest: Json) => boolean): Promise<Json> {
     let found: Json | undefined;
-    await expect
-        .poll(
-            async () => {
-                found = await publicManifest(emulators);
-                return found !== undefined && check(found);
-            },
-            { message: `the public manifest ${what}`, timeout: BUILD_TIMEOUT_MS },
-        )
-        .toBe(true);
+    // On a timeout the poll's last value says how far the build got (its `manifests` record).
+    const built = async (): Promise<string> => {
+        found = await publicManifest(world);
+        const done = found !== undefined && check(found);
+        const record = done ? undefined : await world.emulators.document(`manifests/${world.city}`);
+        return done ? 'built' : `the last build: ${JSON.stringify(record)}`;
+    };
+    await expect.poll(built, { message: `the public manifest ${what}`, timeout: BUILD_TIMEOUT_MS }).toBe('built');
     return found ?? {};
 }
 
@@ -93,9 +93,11 @@ export function entry(manifest: Json, list: 'photos' | 'pois' | 'layers', id: st
 }
 
 /**
- * The built manifest with every photo's derivatives pointed at a picture the site already serves: the public bucket is
- * the Storage emulator's, which the built viewer's Content Security Policy does not list (it lists the real bucket's
- * host). Nothing else changes.
+ * The built manifest as the built Bucharest site can show it: every photo's derivatives pointed at a picture the site
+ * already serves (the public bucket is the Storage emulator's, which the built viewer's Content Security Policy does not
+ * list: it lists the real bucket's host), and a content world's city named as the site's (`bucharest`: the site's
+ * `config.js` names it, `DECISIONS-for-review.md` §35b, and the viewer refuses a manifest of another city). Nothing else
+ * changes.
  */
 function withSiteImages(manifest: Json): Json {
     const [first] = entries(siteManifestData(), 'photos');
@@ -104,21 +106,12 @@ function withSiteImages(manifest: Json): Json {
         ...photo,
         image: { ...(photo['image'] as Json), web: image['web'], thumb: image['thumb'] },
     }));
-    return { ...manifest, photos };
+    return { ...manifest, city: { ...(manifest['city'] as Json), id: E2E_CITY_ID }, photos };
 }
 
 /**
- * The site's `config.js` for the project's city. The built Bucharest site names the legacy manifest's city
- * (`bucuresti`, `sites/bucharest/config.js`), while the project's city, and so every manifest the backend builds, is
- * `bucharest` (`infra/project.json`): the viewer refuses a manifest of another city, so the site must name the project's
- * city once it reads the backend's manifest (docs/research/DECISIONS-for-review.md §35b).
- */
-const PROJECT_CITY_CONFIG = `window.HistoricCityMapConfig = { cityId: '${FLOWS_CITY}', manifestUrl: './data/manifest.json' };\n`;
-
-/**
- * Opens the built Bucharest viewer as a visitor, configured for the project's city and served `manifest` (the one the
- * admin's save published), in `lang` at `hash`, and waits for `hcm-ready` and an idle map. The manifest must pass the
- * viewer's own validation first.
+ * Opens the built Bucharest viewer as a visitor, served `manifest` (the one the admin's save published), in `lang` at
+ * `hash`, and waits for `hcm-ready` and an idle map. The manifest must pass the viewer's own validation first.
  */
 export async function openPublicViewer(
     page: Page,
@@ -128,9 +121,6 @@ export async function openPublicViewer(
     const served = withSiteImages(manifest);
     const validation = validateManifest(served);
     expect(validation.ok ? [] : validation.issues, 'the published manifest passes the viewer validation').toEqual([]);
-    await page.route('**/bucharest/config.js', (route) =>
-        route.fulfill({ status: 200, contentType: 'text/javascript', body: PROJECT_CITY_CONFIG }),
-    );
     await serveManifest(page, served);
     await page.goto(`${SITE_ORIGIN}${sitePath('bucharest', options)}`);
     await waitForEngineEvent(page, 'hcm-ready');

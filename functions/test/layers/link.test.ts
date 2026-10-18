@@ -22,7 +22,7 @@ function link(deps: ContentDeps, overrides: Record<string, unknown> = {}) {
 }
 
 describe('layers.link', () => {
-    it('happyPath_theCitysTilesetBecomesAReadyUnpublishedLayerOnTop', async () => {
+    it('happyPath_theCitysTilesetBecomesAReadyUnpublishedLayerOnTop @S-A15-HAPPY-LINKED', async () => {
         const deps = contentDeps(NOW);
         await seedCity(deps);
         await seedLayer(deps, 'corona-1968', { order: 4 });
@@ -95,7 +95,7 @@ describe('layers.link', () => {
         expect(deps.documents.paths(FIRESTORE_PATHS.layers(CITY))).toEqual([]);
     });
 
-    it('badPath_aCredentialInATileAddressIsNeverPublished', async () => {
+    it('badPath_aCredentialInATileAddressIsNeverPublished @S-A15-BAD-SECRET-IN-ADDRESS', async () => {
         const deps = contentDeps(NOW);
         await seedCity(deps);
         const source = { ...XYZ, tiles: ['https://tiles.example.test/{z}/{x}/{y}.png?access_token=generated-test-value'] };

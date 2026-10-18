@@ -121,7 +121,7 @@ describe('PhotoMapSession', () => {
             [26.8, 45.05],
         ]);
         expect(draw?.loaded).toEqual([{ id: PIN_FEATURE_ID, geometry: { type: 'Point', coordinates: [26.1, 44.43] } }]);
-        expect(draw?.mode).toBe('select');
+        expect([draw?.mode, draw?.selected]).toEqual(['select', PIN_FEATURE_ID]);
         draw?.emitChange({
             features: [{ id: PIN_FEATURE_ID, geometry: { type: 'Point', coordinates: [26.111_111_111, 44.4] } }],
             final: false,

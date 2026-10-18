@@ -58,6 +58,14 @@ export function elementText(element: ElementRef): string {
     return `${name} (${element.selector}) at ${boxText(element.box)}`;
 }
 
+/**
+ * A violation without its coordinates: the same fault seen at another place (a narrower viewport, another scroll
+ * position) has the same shape, so a variant or a sweep reports only what it adds.
+ */
+export function violationShape(violation: Violation): string {
+    return `${violation.check} ${violation.message.replace(/-?\d+(?:\.\d+)?/g, '#')}`;
+}
+
 /** One line per violation, for the assertion message. */
 export function violationLines(state: string, violations: readonly Violation[]): string[] {
     return violations.map((violation) => `${state}: [${violation.check}] ${violation.message}`);

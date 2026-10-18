@@ -1,7 +1,7 @@
 /**
  * The theme section (`docs/research/M2c-interfaces.md` §8.5; behaviour A19): the city's seed colour as a hex field, the
- * browser's colour picker and eight presets; each change makes the four M3 schemes at once and the page wears them
- * (the whole admin once the shell's preview is wired, CR-M2c-28) until Save or Discard. An invalid colour is said at the
+ * browser's colour picker and eight presets; each change makes the four M3 schemes at once and the whole admin wears
+ * them (the shell's preview, CR-M2c-28) until Save or Discard. An invalid colour is said at the
  * field; a seed whose schemes fail the contrast check is moved to the nearest passing tone with a warning
  * (S-A19-BAD-LOW-CONTRAST-SEED). Below, the visitors' basemap: Standard or Standard Satellite (the admin's map always
  * stays Standard).

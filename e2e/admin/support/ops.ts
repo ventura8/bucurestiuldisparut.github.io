@@ -1,16 +1,14 @@
 import { translateAdminContent, type AdminContentKey } from '@hcm/shared';
-import { expect } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
-import type { EmulatorWorld } from './emulators.js';
+import type { CityWorld } from './content.js';
+import { FUNCTIONS_TIMEOUT_MS } from './emulators.js';
 
 /**
  * The operations screens' world for the admin tier (docs/research/M2c-interfaces.md §9; behaviours A02, A18, A22, A23 and
- * the dashboard): the city the admin edits, its jobs and log lines as the raster pipeline would leave them, places whose
- * writes the history triggers record, and the editors' texts. Everything is written past the rules, as the server does.
+ * the dashboard): a city, its jobs and log lines as the raster pipeline would leave them, places whose writes the history
+ * triggers record, and the editors' texts. Everything is written past the rules, as the server does.
  */
-
-/** The city of `infra/project.json` the admin edits (`E2E_PROJECT_CONFIG.cities[0]`). */
-export const OPS_CITY = 'bucharest';
 
 /** An editor text (`adminContent.*`) in the project's language. */
 export function contentText(lang: 'ro' | 'en', key: AdminContentKey, params: Readonly<Record<string, string>> = {}): string {
@@ -18,8 +16,8 @@ export function contentText(lang: 'ro' | 'en', key: AdminContentKey, params: Rea
 }
 
 /** The city document: bounds around Bucharest, published. */
-export async function seedCity(emulators: EmulatorWorld, at: Date): Promise<void> {
-    await emulators.setDocument(`cities/${OPS_CITY}`, {
+export async function seedCity(world: CityWorld, at: Date): Promise<void> {
+    await world.emulators.setDocument(`cities/${world.city}`, {
         name: { ro: 'București', en: 'Bucharest' },
         bounds: { west: 25.9, south: 44.3, east: 26.3, north: 44.6 },
         published: true,
@@ -29,8 +27,8 @@ export async function seedCity(emulators: EmulatorWorld, at: Date): Promise<void
 }
 
 /** A job of the city as the dispatcher and the pipeline keep it (`jobDocSchema`). */
-export async function seedJob(emulators: EmulatorWorld, id: string, fields: Readonly<Record<string, unknown>>, at: Date): Promise<void> {
-    await emulators.setDocument(`cities/${OPS_CITY}/jobs/${id}`, {
+export async function seedJob(world: CityWorld, id: string, fields: Readonly<Record<string, unknown>>, at: Date): Promise<void> {
+    await world.emulators.setDocument(`cities/${world.city}/jobs/${id}`, {
         params: {},
         createdAt: at,
         updatedBy: 'system:pipeline',
@@ -40,8 +38,8 @@ export async function seedJob(emulators: EmulatorWorld, id: string, fields: Read
 }
 
 /** One redacted log line of a job (`jobLogDocSchema`, id: `seq` padded to six digits). */
-export async function seedLogLine(emulators: EmulatorWorld, jobId: string, seq: number, message: string, at: Date): Promise<void> {
-    await emulators.setDocument(`cities/${OPS_CITY}/jobs/${jobId}/logs/${String(seq).padStart(6, '0')}`, {
+export async function seedLogLine(world: CityWorld, jobId: string, seq: number, message: string, at: Date): Promise<void> {
+    await world.emulators.setDocument(`cities/${world.city}/jobs/${jobId}/logs/${String(seq).padStart(6, '0')}`, {
         seq,
         level: 'info',
         step: 'fetch',
@@ -52,8 +50,8 @@ export async function seedLogLine(emulators: EmulatorWorld, jobId: string, seq: 
 }
 
 /** A place (`poiDocSchema`): its creation is recorded by `history.onPoiWrite`. */
-export async function seedPlace(emulators: EmulatorWorld, id: string, title: string, at: Date): Promise<void> {
-    await emulators.setDocument(`cities/${OPS_CITY}/pois/${id}`, {
+export async function seedPlace(world: CityWorld, id: string, title: string, at: Date): Promise<void> {
+    await world.emulators.setDocument(`cities/${world.city}/pois/${id}`, {
         category: 'monuments',
         geometry: { type: 'Point', point: { lat: 44.446, lng: 26.074 } },
         title: { ro: title },
@@ -66,8 +64,37 @@ export async function seedPlace(emulators: EmulatorWorld, id: string, title: str
 }
 
 /** Waits until the history triggers have recorded `count` entries of a place. */
-export async function expectEntries(emulators: EmulatorWorld, placeId: string, count: number): Promise<void> {
+export async function expectEntries(world: CityWorld, placeId: string, count: number): Promise<void> {
     await expect
-        .poll(async () => Object.keys(await emulators.collection(`cities/${OPS_CITY}/pois/${placeId}/history`)).length, { timeout: 30_000 })
+        .poll(async () => Object.keys(await world.emulators.collection(`cities/${world.city}/pois/${placeId}/history`)).length, {
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        })
         .toBe(count);
+}
+
+/**
+ * The list and detail layout of the page: both panes side by side once its own area is 840 px wide (it says so with its
+ * `split` attribute; the rail takes the rest of the window), never at a compact height; one pane otherwise, a phone's
+ * (a compact width, or a landscape phone's compact height) as a full-screen editor without the navigation.
+ */
+export async function layoutOf(page: Page): Promise<{ readonly split: boolean; readonly phone: boolean; readonly closes: boolean }> {
+    const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+    const split = (await page.locator('hcm-list-detail').getAttribute('split')) !== null;
+    // A compact width's single pane has Close, any other's Back.
+    return { split, phone: !split && (width < 600 || height < 480), closes: width < 600 };
+}
+
+/** From an open item back to its list where one pane shows at a time: Back, or Close on a phone (its full-screen editor). */
+export async function backToList(page: Page, lang: 'ro' | 'en'): Promise<void> {
+    const { split, closes } = await layoutOf(page);
+    if (split) {
+        return;
+    }
+    const name = contentText(lang, closes ? 'adminContent.common.close' : 'adminContent.common.back');
+    await page.getByRole('button', { name, exact: true }).click();
+}
+
+/** The open dialog (its content is slotted into the kit's `hcm-dialog`, light DOM, so the element is the scope). */
+export function dialog(page: Page): Locator {
+    return page.locator('hcm-dialog[open]');
 }

@@ -30,7 +30,7 @@ import { windowClassOf } from './layout-rules.js';
 import { takeLiveLog, type LiveEntry } from './live-regions.js';
 import type { PageFunction } from './page-script.js';
 import { reportViolations } from './report.js';
-import { violationLines, type Violation } from './violations.js';
+import { violationLines, violationShape, type Violation } from './violations.js';
 
 /**
  * The accessibility checks of the tour and a11y tiers (docs/research/design-review-testability.md §4.3; the user's
@@ -62,6 +62,8 @@ export interface AxeOptions {
     readonly skipRules?: readonly string[];
     /** The axe tags to run (WCAG 2.0 A and AA, 2.1 AA and 2.2 AA by default). */
     readonly tags?: readonly string[];
+    /** These rules only, instead of the tags (the scroll sweep's colour contrast of what each position shows). */
+    readonly rules?: readonly string[];
 }
 
 export interface AxeViolation {
@@ -70,18 +72,63 @@ export interface AxeViolation {
     readonly targets: readonly string[];
 }
 
-/** The violations on `page` (empty when it passes), optionally limited to `include` selectors. */
-export async function axeViolations(page: Page, options: AxeOptions = {}): Promise<AxeViolation[]> {
-    // `options` replaces the run options, so it comes before the tags and rules that add to them.
-    let builder = new AxeBuilder({ page })
-        .options({ preload: false })
-        .withTags([...(options.tags ?? AXE_TAGS)])
-        .disableRules([...RULES_BLOCKED_BY_THE_PAGE_CSP, ...(options.skipRules ?? [])])
-        .exclude('canvas.mapboxgl-canvas');
-    for (const selector of options.include ?? []) {
+/** Mapbox's canvas: no DOM content (its controls are checked where they sit). */
+const MAP_CANVAS = 'canvas.mapboxgl-canvas';
+
+type AxeRunOptions = Parameters<AxeBuilder['options']>[0];
+type AxeResults = Awaited<ReturnType<AxeBuilder['analyze']>>;
+
+/** One axe run: the context and options `AxeBuilder` would pass to `axe.run` for these `AxeOptions`. */
+interface AxeRun {
+    readonly context: { readonly include: string[]; readonly exclude: string[] };
+    readonly options: AxeRunOptions;
+}
+
+/** The run for `options`, reporting violations only (the passes' nodes are never read, and serialising them is slow). */
+function axeRunOf(options: AxeOptions): AxeRun {
+    const runOnly: AxeRunOptions['runOnly'] =
+        options.rules === undefined
+            ? { type: 'tag', values: [...(options.tags ?? AXE_TAGS)] }
+            : { type: 'rule', values: [...options.rules] };
+    const disabled = [...RULES_BLOCKED_BY_THE_PAGE_CSP, ...(options.skipRules ?? [])];
+    return {
+        context: { include: [...(options.include ?? [])], exclude: [MAP_CANVAS] },
+        options: {
+            preload: false,
+            resultTypes: ['violations'],
+            runOnly,
+            rules: Object.fromEntries(disabled.map((id) => [id, { enabled: false }])),
+        },
+    };
+}
+
+/** Runs in the page: `axe.run` when an earlier check of this document injected axe, else null (a new document). */
+function runInjectedAxe(run: AxeRun): Promise<AxeResults> | null {
+    const axe = (window as unknown as { axe?: { run: (context: AxeRun['context'], options: AxeRunOptions) => Promise<AxeResults> } }).axe;
+    return axe === undefined ? null : axe.run(run.context, run.options);
+}
+
+/** `AxeBuilder` for `run`; in legacy mode it runs `axe.run` in the page (and injects axe into it) instead of per frame. */
+function builderOf(page: Page, run: AxeRun, legacy: boolean): AxeBuilder {
+    let builder = new AxeBuilder({ page }).options(run.options).exclude(MAP_CANVAS).setLegacyMode(legacy);
+    for (const selector of run.context.include) {
         builder = builder.include(selector);
     }
-    const results = await builder.analyze();
+    return builder;
+}
+
+/**
+ * The violations on `page` (empty when it passes), optionally limited to `include` selectors. A page of one frame (every
+ * page of the apps) runs `axe.run` in place: `AxeBuilder` injects axe on the first check of a document (legacy mode: no
+ * per-frame partial runs and no blank page to merge them in), and the later checks of that document (the scroll sweep's
+ * positions) reuse it: the same rules and results in a quarter of the time (docs/research/pipeline-baseline.md → *Addendum:
+ * the quality review*). A page with frames keeps `AxeBuilder`'s frame-by-frame run, which also tests cross-origin frames.
+ */
+export async function axeViolations(page: Page, options: AxeOptions = {}): Promise<AxeViolation[]> {
+    const run = axeRunOf(options);
+    const oneFrame = page.frames().length === 1;
+    const injected = oneFrame ? await page.evaluate(runInjectedAxe, run) : null;
+    const results = injected ?? (await builderOf(page, run, oneFrame).analyze());
     return results.violations.map((violation) => ({
         id: violation.id,
         impact: violation.impact ?? 'unknown',
@@ -172,7 +219,7 @@ async function focusRound(page: Page, modalOpen: boolean): Promise<Violation[]> 
 }
 
 /** Non-text contrast in the page's scheme and, unless colours are forced, in its high-contrast scheme. */
-async function contrastChecks(page: Page): Promise<Violation[]> {
+export async function contrastChecks(page: Page): Promise<Violation[]> {
     const scheme = (await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)) ? 'dark' : 'light';
     const found = contrastViolations(await run<ControlContrast[]>(page, controlContrasts), scheme);
     if (await page.evaluate(() => matchMedia('(forced-colors: active)').matches)) {
@@ -224,9 +271,8 @@ async function layoutUnder(
     await undo();
     await settled(page);
     // The same violation at other coordinates (a narrower viewport moves everything) is the state's own, not a new one.
-    const shape = (violation: Violation): string => `${violation.check} ${violation.message.replace(/-?\d+(?:\.\d+)?/g, '#')}`;
-    const known = new Set(base.map(shape));
-    return violations.filter((violation) => !known.has(shape(violation)));
+    const known = new Set(base.map(violationShape));
+    return violations.filter((violation) => !known.has(violationShape(violation)));
 }
 
 /** A phone held upright and wider than 320 CSS px: the reflow check narrows it to 320 (a 320 px project is there already). */
@@ -258,7 +304,7 @@ async function adaptationChecks(page: Page, base: readonly Violation[]): Promise
 }
 
 /** Axe's findings as violations (its selectors name the elements; boxes are not known). */
-function axeRecords(found: readonly AxeViolation[]): Violation[] {
+export function axeRecords(found: readonly AxeViolation[]): Violation[] {
     return found.map((violation) => ({
         check: 'axe' as const,
         message: `${violation.id} (${violation.impact}): ${violation.targets.join(' | ')}`,

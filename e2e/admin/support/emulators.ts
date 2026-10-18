@@ -2,26 +2,52 @@ import type { APIRequestContext, APIResponse } from '@playwright/test';
 import { inviteIdFor } from '@hcm/shared';
 
 import { ADMIN_ORIGIN, ADMIN_WEB_CONFIG, E2E_PROJECT_ID, emulatorOrigin, PERSONAS, type PersonaName } from '../world.js';
+import { isContentCity, isContentEmail } from './content-ids.js';
 import { decodeFields, encodeFields, type FirestoreFields } from './firestore-rest.js';
+import { resending, type EmulatorApi } from './resend.js';
 
 /**
  * The Firebase emulators of the admin tier, driven over their REST APIs from the test (never from the page): emptied
- * before every test (docs/research/M2b-interfaces.md §6.2), Google accounts signed in to the Auth emulator the way
- * Firebase Auth signs a Google credential in (`signInWithIdp` with the unsigned ID token the emulator accepts), and
- * Firestore documents seeded or read with the emulator's owner credential, which bypasses the security rules.
+ * before every locked admin test (docs/research/M2b-interfaces.md §6.2) except the content worlds that run beside it
+ * (`content-ids.ts`), Google accounts signed in to the Auth emulator the way Firebase Auth signs a Google credential in
+ * (`signInWithIdp` with the unsigned ID token the emulator accepts), and Firestore documents seeded or read with the
+ * emulator's owner credential, which bypasses the security rules.
  */
 
 /** The Auth and Firestore emulators' administrator credential (`Authorization: Bearer owner`). */
 const EMULATOR_ADMIN = { authorization: 'Bearer owner' } as const;
 
 const AUTH = `${emulatorOrigin('auth')}/identitytoolkit.googleapis.com/v1`;
-const FIRESTORE_DOCUMENTS = `${emulatorOrigin('firestore')}/v1/projects/${E2E_PROJECT_ID}/databases/(default)/documents`;
+const FIRESTORE_DATABASE = `projects/${E2E_PROJECT_ID}/databases/(default)`;
+const FIRESTORE_DOCUMENTS = `${emulatorOrigin('firestore')}/v1/${FIRESTORE_DATABASE}/documents`;
+const STORAGE = emulatorOrigin('storage');
+
+/** Every bucket the admin and the functions write (`functions/src/deps.ts`: the private and the public one). */
+const BUCKETS: readonly string[] = [ADMIN_WEB_CONFIG.storageBucket, `${E2E_PROJECT_ID}-public`];
+
+/**
+ * How long work of the Functions emulator may take (a history trigger, a manifest build, a photo's processing): one
+ * emulator serves every test of a run, and a full parallel run (the tour's admin journeys beside the admin tier) keeps it
+ * busy, so a trigger can wait a minute behind the others' (the per-push tour's first run, 2026-10-18).
+ */
+export const FUNCTIONS_TIMEOUT_MS = 120_000;
+
+/** How many deletes one Firestore commit carries (the API's limit is 500). */
+const COMMIT_SIZE = 400;
+
+/** A Google account as the stand-in consent and the Auth emulator know it. */
+export interface GoogleAccount {
+    readonly email: string;
+    /** The Google subject (`sub`): the same account signs in to the same Auth emulator user every time. */
+    readonly sub: string;
+    readonly displayName: string;
+}
 
 /** A Google account signed in to the Auth emulator: what Firebase Auth keeps for its current user. */
-export interface SignedInAccount {
-    readonly persona: PersonaName;
+export interface SignedInAccount extends GoogleAccount {
+    /** The admin tier's persona, or null for a content world's own account. */
+    readonly persona: PersonaName | null;
     readonly uid: string;
-    readonly email: string;
     /** The Firebase ID token (an unsigned JWT in the emulator) and its refresh token. */
     readonly idToken: string;
     readonly refreshToken: string;
@@ -51,37 +77,190 @@ async function ok(response: APIResponse, what: string): Promise<APIResponse> {
     return response;
 }
 
+interface ListedDocument {
+    readonly name: string;
+    readonly fields?: FirestoreFields;
+}
+
+/** A document path (`cities/w-…/photos/p1`) a reset keeps: a content world's city, its manifest state, its admins. */
+function keptByReset(path: string, fields: FirestoreFields | undefined): boolean {
+    const [collection = '', id = '', ...rest] = path.split('/');
+    if (collection === 'cities' || collection === 'manifests') {
+        return isContentCity(id);
+    }
+    return collection === 'admins' && rest.length === 0 && isContentEmail(decodeFields(fields ?? {})['email']);
+}
+
+/** The first segments of the Storage paths (`STORAGE_PATHS`) that name the city second. */
+const CITY_FIRST: ReadonlySet<string> = new Set(['cities', 'photos']);
+
+/**
+ * A Storage object a reset keeps: one of a content world's city. The public derivatives (`photos/<city>/…`) and the
+ * manifest (`cities/<city>/…`) name it second, the upload and the original (`uploads/photos/<city>/…`,
+ * `originals/photos/<city>/…`) third: a reset once read the photo's id as the city of a derivative and deleted every
+ * content world's public photos (`docs/LESSONS.md` 116).
+ */
+function storageKeptByReset(name: string): boolean {
+    const parts = name.split('/');
+    const city = CITY_FIRST.has(parts[0] ?? '') ? parts[1] : parts[2];
+    return parts.length > 2 && isContentCity(city ?? '');
+}
+
 export class EmulatorWorld {
-    readonly #api: APIRequestContext;
+    readonly #api: EmulatorApi;
 
     constructor(api: APIRequestContext) {
-        this.#api = api;
+        this.#api = resending(api);
     }
 
-    /** Empties Firestore, Auth and Storage (the rules stay loaded). */
+    /**
+     * Empties Firestore, Auth and Storage (the rules stay loaded) except the content worlds, which run beside the locked
+     * admin tests (`content-ids.ts`): their cities, manifest states, Storage objects and accounts stay.
+     */
     async reset(): Promise<void> {
         await this.#resetFirestore();
-        await ok(await this.#api.delete(`${emulatorOrigin('auth')}/emulator/v1/projects/${E2E_PROJECT_ID}/accounts`), 'Auth reset');
-        await ok(await this.#api.post(`${emulatorOrigin('storage')}/internal/reset`), 'Storage reset');
+        await this.#resetAuth();
+        for (const bucket of BUCKETS) {
+            await this.#resetBucket(bucket);
+        }
     }
 
-    /** Deletes every document; a 409 (a lock still held by the previous test's background work) is tried again. */
+    /** Deletes every document a content world does not own; a 409 (a lock still held by background work) is tried again. */
     async #resetFirestore(): Promise<void> {
-        const reset = (): Promise<APIResponse> =>
-            this.#api.delete(FIRESTORE_DOCUMENTS.replace('/v1/', '/emulator/v1/'), { timeout: 30_000 });
+        await this.#deleteAll(await this.#documentsBelow('', keptByReset));
+    }
+
+    async #deleteAll(names: readonly string[]): Promise<void> {
+        for (let start = 0; start < names.length; start += COMMIT_SIZE) {
+            await this.#commitDeletes(names.slice(start, start + COMMIT_SIZE));
+        }
+    }
+
+    async #commitDeletes(names: readonly string[]): Promise<void> {
+        const commit = (): Promise<APIResponse> =>
+            this.#api.post(`${FIRESTORE_DOCUMENTS}:commit`, {
+                headers: EMULATOR_ADMIN,
+                data: { writes: names.map((name) => ({ delete: name })) },
+                timeout: 30_000,
+            });
         for (let attempt = 1; attempt < FIRESTORE_RESET_ATTEMPTS; attempt += 1) {
-            const response = await reset();
+            const response = await commit();
             if (response.status() !== 409) {
                 await ok(response, 'Firestore reset');
                 return;
             }
         }
-        await ok(await reset(), 'Firestore reset');
+        await ok(await commit(), 'Firestore reset');
+    }
+
+    /** The full names of the documents below `parent` (`''`: the root) that `kept` does not keep, deepest first. */
+    async #documentsBelow(parent: string, kept: (path: string, fields: FirestoreFields | undefined) => boolean): Promise<string[]> {
+        const collections = await this.#collectionIds(parent);
+        const found = await Promise.all(
+            collections.map(async (collection) => {
+                const path = parent === '' ? collection : `${parent}/${collection}`;
+                const documents = await this.#listDocuments(path);
+                const below = await Promise.all(
+                    documents
+                        .map((document) => ({ document, docPath: document.name.slice(document.name.indexOf('/documents/') + 11) }))
+                        .filter(({ document, docPath }) => !kept(docPath, document.fields))
+                        .map(async ({ document, docPath }) => [...(await this.#documentsBelow(docPath, kept)), document.name]),
+                );
+                return below.flat();
+            }),
+        );
+        return found.flat();
+    }
+
+    async #collectionIds(parent: string): Promise<string[]> {
+        const url = parent === '' ? `${FIRESTORE_DOCUMENTS}:listCollectionIds` : `${FIRESTORE_DOCUMENTS}/${parent}:listCollectionIds`;
+        const ids: string[] = [];
+        let pageToken = '';
+        do {
+            const response = await this.#api.post(url, { headers: EMULATOR_ADMIN, data: { pageSize: 1000, pageToken } });
+            const body = (await (await ok(response, `collections of ${parent || 'the root'}`)).json()) as {
+                readonly collectionIds?: readonly string[];
+                readonly nextPageToken?: string;
+            };
+            ids.push(...(body.collectionIds ?? []));
+            pageToken = body.nextPageToken ?? '';
+        } while (pageToken !== '');
+        return ids;
+    }
+
+    /** Every document of a collection, those that exist only as the parent of a subcollection included. */
+    async #listDocuments(collection: string): Promise<ListedDocument[]> {
+        const documents: ListedDocument[] = [];
+        let pageToken = '';
+        do {
+            const query = new URLSearchParams({ pageSize: '1000', showMissing: 'true', pageToken });
+            const response = await this.#api.get(`${FIRESTORE_DOCUMENTS}/${collection}?${query.toString()}`, { headers: EMULATOR_ADMIN });
+            const body = (await (await ok(response, `list of ${collection}`)).json()) as {
+                readonly documents?: readonly ListedDocument[];
+                readonly nextPageToken?: string;
+            };
+            documents.push(...(body.documents ?? []));
+            pageToken = body.nextPageToken ?? '';
+        } while (pageToken !== '');
+        return documents;
+    }
+
+    /** Deletes every Auth account but the content worlds'. */
+    async #resetAuth(): Promise<void> {
+        const response = await this.#api.post(`${AUTH}/projects/${E2E_PROJECT_ID}/accounts:query`, {
+            headers: EMULATOR_ADMIN,
+            data: { returnUserInfo: true },
+        });
+        const body = (await (await ok(response, 'Auth accounts')).json()) as {
+            readonly userInfo?: readonly { readonly localId: string; readonly email?: string }[];
+        };
+        const localIds = (body.userInfo ?? []).filter((user) => !isContentEmail(user.email)).map((user) => user.localId);
+        if (localIds.length > 0) {
+            const deleted = await this.#api.post(`${AUTH}/projects/${E2E_PROJECT_ID}/accounts:batchDelete`, {
+                headers: EMULATOR_ADMIN,
+                data: { localIds, force: true },
+            });
+            await ok(deleted, 'Auth reset');
+        }
+    }
+
+    /** Deletes every object of `bucket` but the content worlds'. */
+    async #resetBucket(bucket: string): Promise<void> {
+        await this.#deleteObjects(bucket, (name) => !storageKeptByReset(name));
+    }
+
+    /** Deletes the objects of `bucket` whose name `doomed` picks. */
+    async #deleteObjects(bucket: string, doomed: (name: string) => boolean): Promise<void> {
+        const names: string[] = [];
+        let pageToken = '';
+        do {
+            const query = pageToken === '' ? '' : `?pageToken=${encodeURIComponent(pageToken)}`;
+            const response = await this.#api.get(`${STORAGE}/storage/v1/b/${bucket}/o${query}`, { headers: EMULATOR_ADMIN });
+            const body = (await (await ok(response, `objects of ${bucket}`)).json()) as {
+                readonly items?: readonly { readonly name: string }[];
+                readonly nextPageToken?: string;
+            };
+            names.push(...(body.items ?? []).map((item) => item.name).filter(doomed));
+            pageToken = body.nextPageToken ?? '';
+        } while (pageToken !== '');
+        for (const name of names) {
+            const response = await this.#api.delete(`${STORAGE}/storage/v1/b/${bucket}/o/${encodeURIComponent(name)}`, {
+                headers: EMULATOR_ADMIN,
+            });
+            if (response.status() !== 404) {
+                await ok(response, `delete of gs://${bucket}/${name}`);
+            }
+        }
     }
 
     /** Signs `persona` in with Google (creating the account on first use) and returns its fresh tokens. */
     async signIn(persona: PersonaName): Promise<SignedInAccount> {
-        const { email, sub, displayName } = PERSONAS[persona];
+        return this.signInAs(PERSONAS[persona], persona);
+    }
+
+    /** Signs any Google account in (a content world's own: `persona` null) and returns its fresh tokens. */
+    async signInAs(account: GoogleAccount, persona: PersonaName | null = null): Promise<SignedInAccount> {
+        const { email, sub, displayName } = account;
         const idToken = JSON.stringify({ sub, email, email_verified: true, name: displayName });
         const response = await this.#api.post(`${AUTH}/accounts:signInWithIdp?key=${ADMIN_WEB_CONFIG.apiKey}`, {
             data: {
@@ -91,9 +270,11 @@ export class EmulatorWorld {
                 returnSecureToken: true,
             },
         });
-        const body = (await (await ok(response, `sign-in of ${persona}`)).json()) as SignInWithIdpResponse;
+        const body = (await (await ok(response, `sign-in of ${email}`)).json()) as SignInWithIdpResponse;
         return {
             persona,
+            sub,
+            displayName,
             uid: body.localId,
             email: body.email,
             idToken: body.idToken,
@@ -189,6 +370,16 @@ export class EmulatorWorld {
             return undefined;
         }
         return (await ok(response, `read of gs://${bucket}/${path}`)).body();
+    }
+
+    /** The names of the objects of a bucket (the private one by default) below `prefix`, sorted. */
+    async objectNames(prefix: string, bucket: string = ADMIN_WEB_CONFIG.storageBucket): Promise<string[]> {
+        const query = new URLSearchParams({ prefix });
+        const response = await this.#api.get(`${STORAGE}/storage/v1/b/${bucket}/o?${query.toString()}`, { headers: EMULATOR_ADMIN });
+        const body = (await (await ok(response, `objects of ${bucket}`)).json()) as {
+            readonly items?: readonly { readonly name: string }[];
+        };
+        return (body.items ?? []).map((item) => item.name).sort((a, b) => a.localeCompare(b));
     }
 
     /** Every document of a collection (`cities/bucharest/photos`), by id, read past the rules. */

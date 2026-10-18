@@ -2,7 +2,7 @@ import { axeViolations } from '@hcm/test-support/axe';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CrashesIntentsPort, CrashesViewState } from '../../../src/admin/crashes/crashes-port.js';
-import { errorReportingUrl } from '../../../src/admin/crashes/hcm-crashes-list-page.js';
+import { errorGroupUrl } from '../../../src/admin/crashes/hcm-crashes-list-page.js';
 import { publicMapText } from '../../../src/admin/home/hcm-home-page.js';
 import type { HomeIntentsPort, HomeViewState } from '../../../src/admin/home/home-port.js';
 import { FakeArea } from '../editing/fake-area.js';
@@ -26,7 +26,7 @@ describe('<hcm-crashes-list-page>', () => {
         expect(deepText(deep(element, '.facts'))).toContain('admin 1.2.3');
         const link = deep(element, 'a.external');
         expect([link.getAttribute('href'), link.getAttribute('target'), link.getAttribute('rel')]).toEqual([
-            'https://console.cloud.google.com/errors?project=demo-hcm',
+            'https://console.cloud.google.com/errors/detail/g1?project=demo-hcm',
             '_blank',
             'noopener noreferrer',
         ]);
@@ -72,7 +72,7 @@ describe('<hcm-crashes-list-page>', () => {
 
         expect(deepText(element)).toContain('No errors reported in this period.');
         expect(crashes.named('retry')).toEqual(['retry']);
-        expect(errorReportingUrl('a b')).toBe('https://console.cloud.google.com/errors?project=a%20b');
+        expect(errorGroupUrl('a b', 'C/1')).toBe('https://console.cloud.google.com/errors/detail/C%2F1?project=a%20b');
     });
 });
 
@@ -108,7 +108,7 @@ describe('<hcm-home-page>', () => {
             ['error', 'Crash reports: not answering'],
         ]);
         expect(deepText(element)).toContain('The public map is up to date');
-        expect(deepText(element)).toContain('2 items are not on the public map');
+        expect(deepText(element)).toContain('Items not on the public map: 2');
         deep(element, '.pane > .actions hcm-button').click();
         expect(home.named('refresh')).toEqual(['refresh']);
         expect(await axeViolations(element)).toEqual([]);

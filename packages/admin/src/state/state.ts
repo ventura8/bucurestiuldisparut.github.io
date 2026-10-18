@@ -84,6 +84,11 @@ export interface AdminState<Setup = unknown> {
     readonly notice: AdminNotice | null;
     /** The unsaved-changes question while it is asked, else null. */
     readonly leaving: AdminLeaving | null;
+    /**
+     * The admin's access was removed while an editor held unsaved changes (`DECISIONS-for-review.md` §35e): the open page
+     * stays, read-only (every write is refused at once), under a banner until sign-out (S-A20-BAD-REVOKED-WHILE-EDITING).
+     */
+    readonly revoked: boolean;
     /** From the web configuration: the project the texts name, the domain of Google's unverified-app screen. */
     readonly projectId: string;
     readonly authDomain: string;

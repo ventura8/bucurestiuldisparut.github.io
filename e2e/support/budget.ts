@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 /**
  * The admin-input budget (docs/research/design-review-testability.md §4.3, PLAN "minimum admin input"): a flow
@@ -16,6 +16,12 @@ export interface InputFlow {
     /** A paste from the clipboard (Ctrl+V): the field sees a `paste` event and an `insertFromPaste` input, as from a human. */
     paste(locator: Locator, value: string): Promise<void>;
     setInputFiles(locator: Locator, files: string | readonly string[]): Promise<void>;
+    /** A click at a point of the page (a place on the admin map). */
+    clickAt(page: Page, point: { readonly x: number; readonly y: number }): Promise<void>;
+    /** A key that commits (Enter on a button, a slider's step). */
+    press(locator: Locator, key: string): Promise<void>;
+    /** An option chosen in a select. */
+    selectOption(locator: Locator, value: string): Promise<void>;
 }
 
 /** Puts `value` on the browser's clipboard and pastes it into `locator` with the keyboard. */
@@ -57,6 +63,18 @@ export class InputBudget {
             setInputFiles: async (locator, files) => {
                 count();
                 await locator.setInputFiles(typeof files === 'string' ? files : [...files]);
+            },
+            clickAt: async (page, point) => {
+                count();
+                await page.mouse.click(point.x, point.y);
+            },
+            press: async (locator, key) => {
+                count();
+                await locator.press(key);
+            },
+            selectOption: async (locator, value) => {
+                count();
+                await locator.selectOption(value);
             },
         };
         this.#flows.push(flow);

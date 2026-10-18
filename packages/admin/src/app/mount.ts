@@ -134,6 +134,7 @@ function initialState<Setup>(deps: AdminDeps<Setup, unknown>): AdminState<Setup>
         windowClass: 'compact',
         notice: null,
         leaving: null,
+        revoked: false,
         projectId: deps.config.projectId,
         authDomain: deps.config.authDomain,
         setup: deps.setup.initial,
@@ -255,7 +256,35 @@ function shellIntents<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup
     };
 }
 
-/** Builds the app and starts it (the probe, then Firebase Auth's user); returns at once. */
+/** `localStorage`'s note that this browser has had an answer from the project's server (a start-up deploy then probes). */
+export const SERVER_SEEN_KEY = 'hcm:admin:serverSeen';
+
+/** The note of `SERVER_SEEN_KEY` for `projectId`. */
+export function serverMemory(local: KeyValueStore, projectId: string): { known(): boolean; remember(): void } {
+    return {
+        known: () => local.get(SERVER_SEEN_KEY) === projectId,
+        remember: () => {
+            local.set(SERVER_SEEN_KEY, projectId);
+        },
+    };
+}
+
+/** The auth controller of `mount` over the deploy's start-up flag and this browser's memory of the server. */
+function authControllerOf<Setup, SetupIntents>(
+    deps: AdminDeps<Setup, SetupIntents>,
+    parts: { readonly google: GoogleAccessService; readonly shell: ShellStateAccess; readonly unsaved: () => boolean },
+): AuthController {
+    const projectId = deps.config.projectId;
+    return new AuthController({
+        ...{ auth: deps.firebase.auth, callables: deps.firebase.callables, session: deps.session, log: deps.log, ...parts },
+        ownership: (token) => checkOwnership(deps.fetch, projectId, token),
+        enableApi: (token, api) => enableService(deps.fetch, projectId, token, api),
+        startUp: deps.runtime.startUp === true,
+        serverSeen: serverMemory(deps.local, projectId),
+    });
+}
+
+/** Builds the app and starts it (the probe unless a start-up deploy, then Firebase Auth's user); returns at once. */
 export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>): AdminApp<Setup, SetupIntents> {
     const store = new Store<AdminState<Setup>>(initialState(deps), deps.log);
     const shell = shellAccess(store);
@@ -266,12 +295,8 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
         currentUser: () => deps.firebase.auth.currentUser(),
         locale: () => store.state.locale,
     });
-    const projectId = deps.config.projectId;
-    const controller = new AuthController({
-        ...{ auth: deps.firebase.auth, callables: deps.firebase.callables, google, shell, session: deps.session, log: deps.log },
-        ownership: (token) => checkOwnership(deps.fetch, projectId, token),
-        enableApi: (token, api) => enableService(deps.fetch, projectId, token, api),
-    });
+    // The editors' registry is made below (it needs the controller); the controller asks it only once the app runs.
+    const controller = authControllerOf(deps, { google, shell, unsaved: () => content.hasUnsavedChanges() });
     const denied = (): void => {
         void controller.accessDenied();
     };
@@ -282,7 +307,9 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
     const content = contentRegistry(deps, { shell, callables: firebase.callables, denied });
     const unsaved = (): boolean => content.hasUnsavedChanges();
     const navigation = new Navigation({ shell, location: deps.location, session: deps.session, pages: deps.pages, track, unsaved });
-    const cityTheme = new CityTheme({ documents: deps.firebase.documents, shell, cityId: deps.project.cities[0] ?? null, denied });
+    // The city the editors edit: the `e2e` build's own city when the address names one (CR-M2c-7), so the shell wears its theme.
+    const themeCity = deps.content?.cityId ?? deps.project.cities[0] ?? null;
+    const cityTheme = new CityTheme({ documents: deps.firebase.documents, shell, cityId: themeCity, denied });
     const stopWatching = store.subscribe((state) => {
         navigation.stateChanged(state);
         cityTheme.stateChanged(state);

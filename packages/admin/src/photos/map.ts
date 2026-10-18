@@ -1,8 +1,9 @@
 /**
  * The photos page's map (`docs/research/M2c-interfaces.md` §3, §4.4, §5.2, §6.3): one map per page visit from the
  * admin's factory (Standard style, never Satellite), every loaded photo as a marker with its view cone, the edited
- * photo drawn from its draft (place, direction and field of view live, nothing written), the pin dragged with the
- * drawing tools in `select` mode and the camera's target picked with one click (`pick`). Without a factory, a token or
+ * photo drawn from its draft (place, direction and field of view live, nothing written), the pin selected in the drawing
+ * tools' `select` mode (dragged, or moved by a click on the map with the click tools) and the camera's target picked with
+ * one click (`pick`). Without a factory, a token or
  * WebGL the map reports why and every field of the editor still works (§1.4).
  */
 import {
@@ -172,6 +173,8 @@ export class PhotoMapSession {
         }
         draw.load([{ id: PIN_FEATURE_ID, geometry: { type: 'Point', coordinates: [location.lng, location.lat] } }]);
         draw.setMode('select');
+        // Selected: it is dragged (Terra Draw), or a click on the map puts it there (the click tools, WCAG 2.5.7).
+        draw.select(PIN_FEATURE_ID);
     }
 
     /** The next click on the map (null when cancelled or without a map): what the camera looked at. */

@@ -23,6 +23,7 @@ import type { WindowClass } from '../../theme/tokens.js';
 import type { AdminAppPort, AdminAuthStatePort, AdminRouteIdPort, AdminStatePort } from '../admin-port.js';
 import type { PageChrome } from '../editing/hcm-list-detail.js';
 import { EMPTY } from './empty.js';
+import type { HcmAccountMenu } from './hcm-account-menu.js';
 import { contentText, noticeOf, shellText } from './text.js';
 import type { AdminNavVariant } from './hcm-admin-nav.js';
 import { shellStyles } from './shell-styles.js';
@@ -81,6 +82,12 @@ export function themeTokensOf(state: AdminStatePort): ThemeTokens {
     return state.theme.preview ?? state.theme.city ?? BASELINE_THEME;
 }
 
+/** The open page's name: its navigation label (the top bar's title, or the hidden heading without a top bar). */
+function pageName(state: AdminStatePort): string {
+    const key: AdminShellKey = `adminShell.nav.${state.route.id}`;
+    return shellText(state.locale, key);
+}
+
 export class HcmAdminShell extends LitElement {
     static override readonly properties = {
         app: { attribute: false },
@@ -100,6 +107,12 @@ export class HcmAdminShell extends LitElement {
     #theme: { readonly tokens: ThemeTokens; readonly mode: ThemeMode } | null = null;
     /** The chrome the current page asked for, and for which route (a page that is gone cannot ask back). */
     #chrome: { readonly chrome: PageChrome; readonly route: AdminRouteIdPort } | null = null;
+    /**
+     * The account menu was open or held the focus before this update. A phone's rotation moves the menu between the top
+     * bar and the rail's foot: the old one goes with its dialog, and the focus would fall to the page's body, so the new
+     * one's button takes it (the hardening review's follow-up; S-A29-BAD-ROTATE-MENU-OPEN).
+     */
+    #accountWasActive = false;
 
     constructor() {
         super();
@@ -122,6 +135,7 @@ export class HcmAdminShell extends LitElement {
 
     protected override willUpdate(): void {
         this.#follow();
+        this.#accountWasActive = this.#accountMenu()?.active ?? false;
     }
 
     protected override updated(): void {
@@ -130,6 +144,20 @@ export class HcmAdminShell extends LitElement {
             this.#applyTheme(state);
             this.ownerDocument.documentElement.lang = state.locale;
         }
+        this.#keepAccountFocus();
+    }
+
+    #accountMenu(): HcmAccountMenu | null {
+        return this.renderRoot.querySelector('hcm-account-menu');
+    }
+
+    /** The account menu moved (a rotation) while it was in use: its new button takes the focus. */
+    #keepAccountFocus(): void {
+        const menu = this.#accountMenu();
+        if (this.#accountWasActive && menu !== null && !menu.active) {
+            void menu.focusButton();
+        }
+        this.#accountWasActive = false;
     }
 
     override render(): TemplateResult {
@@ -229,8 +257,12 @@ export class HcmAdminShell extends LitElement {
                 <div class="column">
                     ${layout.topBar ? this.#topBar(state) : EMPTY}
                     <main class="content">
+                        ${this.#pageTitle(state, layout)}
                         <div class="scroller">
-                            ${this.#banner(state)}<hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet>
+                            ${this.#revoked(state)}${this.#banner(state)}<hcm-page-outlet
+                                .app=${this.app}
+                                .state=${state}
+                            ></hcm-page-outlet>
                         </div>
                         ${this.#snackbar(state)}
                     </main>
@@ -243,9 +275,31 @@ export class HcmAdminShell extends LitElement {
 
     #topBar(state: AdminStatePort): TemplateResult {
         return html`<header class="top-bar">
-            <h1>${shellText(state.locale, `adminShell.nav.${state.route.id}`)}</h1>
+            <h1>${pageName(state)}</h1>
             <hcm-account-menu .app=${this.app} .state=${state}></hcm-account-menu>
         </header>`;
+    }
+
+    /**
+     * A phone held sideways has no top bar (its height goes to the page): the page's title stays its one level-one heading
+     * for assistive technology, out of sight, in `<main>` (axe's `page-has-heading-one` and `region`).
+     */
+    #pageTitle(state: AdminStatePort, layout: ShellLayout): TemplateResult {
+        return layout.topBar ? EMPTY : html`<h1 class="visually-hidden">${pageName(state)}</h1>`;
+    }
+
+    /** The access was removed while editing: the page stays, read-only, under this until the admin signs out (§35e). */
+    #revoked(state: AdminStatePort): TemplateResult {
+        if (state.revoked !== true) {
+            return EMPTY;
+        }
+        const signOut = (): void => {
+            void this.app?.intents.signOut();
+        };
+        return html`<div class="banner revoked" role="alert">
+            <p>${shellText(state.locale, 'adminShell.session.revoked')}</p>
+            <hcm-button variant="tonal" icon="logout" @click=${signOut}>${shellText(state.locale, 'adminShell.auth.signOut')}</hcm-button>
+        </div>`;
     }
 
     #banner(state: AdminStatePort): TemplateResult {

@@ -2,6 +2,8 @@
 // and callables, a recording snackbar and a counter of refused reads (the shell's `admin.session` probe).
 import { FakeContentStore } from '@hcm/test-support/fake-content-store';
 
+import type { ThemeTokens } from '@hcm/shared';
+
 import type { AreaServiceParts, ContentNotice, ContentServices, ContentStore } from '../../src/content/services.js';
 import { FakeCallables, FakeClock, MemoryStore, testLog } from '../app/fakes.js';
 
@@ -20,6 +22,8 @@ export interface ContentWorld {
     readonly clock: FakeClock;
     readonly notices: ContentNotice[];
     readonly denials: { count: number };
+    /** Every theme the areas asked the shell to preview (null: the preview ended). */
+    readonly previews: (ThemeTokens | null)[];
 }
 
 /** The fake store, as the port it stands for (a compile-time check that the test kit's fake satisfies it). */
@@ -33,6 +37,7 @@ export function contentWorld(overrides: Partial<ContentServices> = {}): ContentW
     const clock = new FakeClock();
     const notices: ContentNotice[] = [];
     const denials = { count: 0 };
+    const previews: (ThemeTokens | null)[] = [];
     const services: ContentServices = {
         ...NO_AREA_SERVICES,
         cityId: CITY,
@@ -50,9 +55,12 @@ export function contentWorld(overrides: Partial<ContentServices> = {}): ContentW
         denied: () => {
             denials.count += 1;
         },
+        previewTheme: (tokens) => {
+            previews.push(tokens);
+        },
         ...overrides,
     };
-    return { services, store, callables, clock, notices, denials };
+    return { services, store, callables, clock, notices, denials, previews };
 }
 
 /** A Firestore timestamp of the ISO time. */

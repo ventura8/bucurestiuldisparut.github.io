@@ -46,7 +46,7 @@ export const en: Readonly<Record<AdminContentKitKey, string>> = {
     'adminContent.map.drawHint.linestring': 'Click the map for each position of the line; the line appears from the second.',
     'adminContent.map.drawHint.polygon': 'Click the map for each corner; the area appears from the third.',
     'adminContent.map.drawHint.select': 'Drag the shape or its positions; the middle of an edge adds a position.',
-    'adminContent.map.refused.outside': 'That position is outside the city.',
+    'adminContent.map.refused.outside': 'That position is outside the city: a place may be at most half a degree beyond it.',
     'adminContent.map.refused.self-intersection': 'The edges of an area may not cross.',
     'adminContent.map.refused.too-many-vertices': 'A shape has at most 500 positions.',
     'adminContent.map.refused.too-many-rings': 'An area has at most 20 rings.',

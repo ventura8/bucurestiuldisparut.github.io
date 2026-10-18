@@ -2,8 +2,8 @@
  * The three settings sections that edit the city document (`docs/research/M2c-interfaces.md` §8.5): `area`, `texts` and
  * `theme`, each its own draft over its own fields with its own Save. The area's Save first reads the photos and places
  * when the bounds shrink and refuses bounds that would leave any of them out (they are listed); the theme's seed is
- * turned into the four schemes at once, previewed on the whole admin by the page, and moved to the nearest passing tone
- * when its schemes fail the contrast check.
+ * turned into the four schemes at once, previewed on the whole admin by the shell (`services.previewTheme`, CR-M2c-28),
+ * and moved to the nearest passing tone when its schemes fail the contrast check.
  */
 import {
     FIRESTORE_PATHS,
@@ -227,7 +227,11 @@ export class CitySections {
     }
 
     #set(state: CitySectionState): void {
+        const previewed = this.#state.theme.preview;
         this.#state = { ...state, linkLines: markdownLinesOf(state.draft.value) };
+        if (this.#state.theme.preview !== previewed) {
+            this.#services.previewTheme(this.#state.theme.preview);
+        }
         this.#changed(this.#state);
     }
 }

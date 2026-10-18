@@ -6,6 +6,13 @@
 import { css } from 'lit';
 
 export const settingsStyles = css`
+    /* A problem several fields share (the city's four edges), said once below them in the fields' error style. */
+    .shared-error {
+        margin: 0;
+        color: var(--md-sys-color-error, CanvasText);
+        font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
+    }
+
     .section-row {
         flex-direction: row;
         align-items: center;

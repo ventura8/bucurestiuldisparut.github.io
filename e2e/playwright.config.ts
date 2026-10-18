@@ -2,7 +2,7 @@ import { defineConfig, type PlaywrightTestConfig } from '@playwright/test';
 
 import { ADMIN_EMULATORS, ADMIN_ORIGIN, E2E_PROJECT_ID, EMULATOR_ENV, emulatorOrigin } from './admin/world.js';
 import { MOCK_API_ORIGIN, SITE_ORIGIN } from './fixtures/world.js';
-import { e2eProjects, tiersFrom } from './projects.js';
+import { e2eProjects, needsAdmin, tiersFrom } from './projects.js';
 import { adminPartFrom, shardRangeFrom, type ShardRange } from './split.js';
 import type { WorkerOptions } from './support/test.js';
 
@@ -13,7 +13,7 @@ import type { WorkerOptions } from './support/test.js';
  * (the e2e/ workspace); reports land in the repository's reports/ folder, where the CI workflow collects them.
  *
  * Two loopback servers start before the tests (`webServer`, e2e/mock-apis/main.ts): the built sites on
- * 127.0.0.1:4310 and the mock APIs on 127.0.0.1:4311. When the admin tier runs, two more (docs/research/M2b-interfaces.md
+ * 127.0.0.1:4310 and the mock APIs on 127.0.0.1:4311. When the admin or the tour runs, two more (docs/research/M2b-interfaces.md
  * §6.2): the admin server on 127.0.0.1:4312 (the e2e build of packages/admin/dist as Hosting serves it) and the Firebase
  * emulators of project demo-hcm (auth, firestore, storage, functions from functions/dist, pubsub, tasks) with the
  * Functions emulator's environment of e2e/admin/world.ts; they count as up once `admin-session` is loaded. The tiers
@@ -65,7 +65,7 @@ const REPORT_SUFFIX = TIERS.length === 1 && TIERS[0] === 'tour-matrix' ? '-tour-
 
 type WebServer = Extract<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>[number];
 
-/** The admin server and the emulators, only for a run that includes the admin tier. */
+/** The admin server and the emulators, only for a run that opens the admin (its tier, or the tour's admin journeys). */
 function adminServers(): WebServer[] {
     const emulators = `npx firebase emulators:start --project ${E2E_PROJECT_ID} --only ${ADMIN_EMULATORS.join(',')}`;
     return [
@@ -108,7 +108,13 @@ export default defineConfig<object, WorkerOptions>({
     },
     use: {
         baseURL: SITE_ORIGIN,
-        trace: 'retain-on-failure',
+        // A failed test keeps its trace (the actions with their timings, the console, the network, the error) and a
+        // screenshot; the trace's DOM snapshot and screencast of every action are off, as recording them took 40 % of the
+        // tour's test time: the checkers' hundreds of probes and Tab presses are actions too (docs/research/
+        // pipeline-baseline.md → *Addendum: the quality review*). To see them, run the failing test again with
+        // `--trace retain-on-failure`, which takes the full trace.
+        trace: { mode: 'retain-on-failure', snapshots: false, screenshots: false },
+        screenshot: 'only-on-failure',
         locale: 'ro-RO',
         timezoneId: 'Europe/Bucharest',
         serviceWorkers: 'block',
@@ -116,7 +122,7 @@ export default defineConfig<object, WorkerOptions>({
     webServer: [
         { command: `${SERVER} mock`, cwd: '..', url: `${MOCK_API_ORIGIN}/__health`, reuseExistingServer: !CI, timeout: 60_000 },
         { command: `${SERVER} site`, cwd: '..', url: `${SITE_ORIGIN}/__health`, reuseExistingServer: !CI, timeout: 60_000 },
-        ...(TIERS.includes('admin') ? adminServers() : []),
+        ...(needsAdmin(TIERS) ? adminServers() : []),
     ],
     projects: e2eProjects(TIERS, ADMIN_PART),
 });

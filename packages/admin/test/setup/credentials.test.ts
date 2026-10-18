@@ -6,7 +6,7 @@ import { createSetupContext, createSetupStore } from '../../src/setup/context.js
 import { createMapboxFlow } from '../../src/setup/mapbox.js';
 import { initialSetupState } from '../../src/setup/state.js';
 import { createUsgsFlow } from '../../src/setup/usgs.js';
-import { START, createHarness, functionsError } from './harness.js';
+import { START, createHarness, functionsError, statusView } from './harness.js';
 
 const CHECKED = '2026-10-12T09:00:00.000Z';
 const MINTED = { tokenId: 'cl0000000000000000000000a', allowedUrls: ['https://ventura8.github.io'] };
@@ -57,6 +57,35 @@ describe('mapbox', () => {
             busy: false,
             error: { key: 'apiError.mapbox.missingScopes', params: { scopes: 'tokens:write' } },
         });
+    });
+
+    it('badPath_aRevokedTokenTurnsTheChipToWhatTheServerRecorded', async () => {
+        const { harness, ctx, mapbox } = setup();
+        harness.backend.saveMapbox.mockRejectedValue(functionsError('apiError.mapbox.tokenInvalid'));
+        harness.backend.status.mockResolvedValue(
+            statusView({ mapbox: { state: 'invalid', checkedAt: CHECKED, detail: 'apiError.mapbox.tokenInvalid' } }),
+        );
+
+        await mapbox.save(MAPBOX_TOKENS.revoked);
+
+        expect(harness.backend.status).toHaveBeenCalledTimes(1);
+        expect(ctx.state().steps.mapbox).toMatchObject({
+            state: 'invalid',
+            busy: false,
+            error: { key: 'apiError.mapbox.tokenInvalid' },
+            detail: { key: 'apiError.mapbox.tokenInvalid' },
+        });
+    });
+
+    it('badPath_aStatusThatCannotBeReadAfterARefusalLeavesTheChipAndLogs', async () => {
+        const { harness, ctx, mapbox } = setup();
+        harness.backend.saveMapbox.mockRejectedValue(functionsError('apiError.mapbox.unavailable'));
+        harness.backend.status.mockRejectedValue(functionsError('apiError.unavailable'));
+
+        await mapbox.save(MAPBOX_TOKENS.bootstrap);
+
+        expect(ctx.state().steps.mapbox).toMatchObject({ state: 'missing', error: { key: 'apiError.mapbox.unavailable' } });
+        expect(JSON.stringify(harness.logs.records)).toContain('setup status not read after a refused save');
     });
 
     it('badPath_aCardStillWaitingShowsItsReason', async () => {

@@ -57,6 +57,7 @@ function missingState(env: MissingEnvironment): AdminState<null> {
         windowClass: 'compact',
         notice: null,
         leaving: null,
+        revoked: false,
         projectId: '',
         authDomain: '',
         setup: null,
@@ -119,6 +120,7 @@ export async function bootAdmin<Setup, SetupIntents>(
     env.log.info('admin booting', {
         projectId: config.projectId,
         release: runtime.release,
+        startUp: runtime.startUp === true,
         appCheck: runtime.appCheckSiteKey !== undefined,
         project: project !== null,
     });

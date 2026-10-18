@@ -28,6 +28,8 @@ export interface ImportState {
     readonly fallbackCategory: string | null;
     /** Places written so far (created and updated). */
     readonly written: number;
+    /** With `too-many`: the places the city has and the ones the file would add. */
+    readonly limit?: { readonly existing: number; readonly adding: number } | null;
 }
 
 export interface ImporterDeps {
@@ -93,6 +95,16 @@ export class Importer {
         }
     }
 
+    /**
+     * The city's places or categories changed (or first arrived: a file chosen right after the page opened was planned
+     * without them): a preview is planned again, so a known category and an existing id count as such.
+     */
+    contextChanged(): void {
+        if (this.#state?.status === 'preview') {
+            this.#plan(this.#state.fallbackCategory);
+        }
+    }
+
     /** Writes the plan; the outcome is the state (`done`, `failed`, or `refused` with `too-many`). */
     async commit(): Promise<void> {
         const plan = this.#state?.status === 'preview' ? this.#state.plan : null;
@@ -100,16 +112,24 @@ export class Importer {
             return;
         }
         this.#update({ status: 'writing' });
-        if (!(await this.#roomFor(plan.created.length))) {
-            this.#update({ status: 'refused', refusal: 'too-many' });
-            return;
+        if (await this.#withinLimit(plan)) {
+            await this.#write(this.#writesOf(plan));
         }
-        await this.#write(this.#writesOf(plan));
     }
 
-    async #roomFor(created: number): Promise<boolean> {
-        const count = await this.#deps.store.count(FIRESTORE_PATHS.pois(this.#deps.cityId), {});
-        return count !== null && count + created <= MAX_POIS;
+    /**
+     * Whether the city may take the plan's new places; otherwise the state says why: `refused` with the numbers, or
+     * `failed` when the places could not be counted (nothing is written: the import stopped before any write).
+     */
+    async #withinLimit(plan: ImportPlan): Promise<boolean> {
+        const existing = await this.#deps.store.count(FIRESTORE_PATHS.pois(this.#deps.cityId), {});
+        const adding = plan.created.length;
+        if (existing === null) {
+            this.#update({ status: 'failed' });
+        } else if (existing + adding > MAX_POIS) {
+            this.#update({ status: 'refused', refusal: 'too-many', limit: { existing, adding } });
+        }
+        return existing !== null && existing + adding <= MAX_POIS;
     }
 
     #writesOf(plan: ImportPlan): BatchWrite[] {

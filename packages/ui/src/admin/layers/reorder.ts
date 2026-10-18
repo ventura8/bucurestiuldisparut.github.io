@@ -108,8 +108,8 @@ function row(item: ReorderRow, context: { labels: ReorderLabels; handlers: Reord
             @pointercancel=${drag.cancel}
             ><hcm-icon name="drag_indicator"></hcm-icon
         ></span>
-        <a class="row" href=${item.href} aria-current=${current(item.selected)}>
-            <span class="row-title">${item.lead ?? nothing}${item.title}</span>
+        <a class="row" href=${item.href} aria-current=${current(item.selected)} ?data-lead=${item.lead !== undefined}>
+            ${item.lead ?? nothing}<span class="row-title">${item.title}</span>
             <span class="row-detail">${item.detail}</span>
         </a>
         <span class="moves">

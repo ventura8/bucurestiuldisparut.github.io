@@ -18,6 +18,7 @@ import {
     scrollsOn,
     selectorOf,
     visibleBoxOf,
+    withinShape,
     type Rect,
 } from './dom-walk.js';
 
@@ -210,11 +211,24 @@ export function sampleElement(registry: Registry, element: Element, centreOnly: 
         return [];
     }
     const own = isPinned(element);
-    return samplePoints(visible, centreOnly).map(({ x, y }) => {
+    // Only the points of the element's own shape: a round control scrolled to a strip has its box corners outside it.
+    const points = samplePoints(visible, centreOnly);
+    const shaped = points.filter(({ x, y }) => withinShape(element, x, y));
+    return (shaped.length > 0 ? shaped : points.slice(0, 1)).map(({ x, y }) => {
         const hit = deepHit(x, y);
         const pinned = hit !== null && !own && isPinned(hit);
-        return { x, y, hit: idOrNull(registry, hit), ok: reaches(element, hit), pinned };
+        return { x, y, hit: idOrNull(registry, hit), ok: reaches(element, hit) || ownMapControl(element, hit), pinned };
     });
+}
+
+/**
+ * Whether `hit` is one of Mapbox's own controls over the map `element` belongs to (its canvas): Mapbox draws its logo,
+ * attribution and buttons over its canvas by design, and the legal rule checks them. A map scrolled to a strip (the
+ * admin tour found one at 915 × 412) has a sample on them.
+ */
+export function ownMapControl(element: Element, hit: Element | null): boolean {
+    const controls = element.closest('.mapboxgl-map')?.querySelector(':scope > .mapboxgl-control-container');
+    return hit !== null && controls?.contains(hit) === true;
 }
 
 /** Whether the element, or a flat-tree ancestor, is fixed or sticky: it stays where it is while the page scrolls. */
@@ -513,6 +527,17 @@ function probeSideways(registry: Registry): SidewaysInfo[] {
 }
 
 /** The drawn elements matching `selector` that a visitor can see, each with its sampled points. */
+/**
+ * Whether a map canvas shows its bottom edge, where Mapbox draws its logo and attribution: a map whose foot a scroller or
+ * the window cuts off (an admin page scrolled past its map) shows them no more than the rest of what is cut. The scroll
+ * sweep checks the same map at the positions that show its foot.
+ */
+function showsItsFoot(canvas: Element): boolean {
+    const visible = visibleBoxOf(canvas);
+    const box = boxOf(canvas);
+    return visible !== null && visible.y + visible.height >= box.y + box.height - 1;
+}
+
 function probeLegal(registry: Registry, selector: string): LegalItem[] {
     return deepQuery(selector)
         .filter((element) => isDrawn(element) && visibleBoxOf(element) !== null)
@@ -545,7 +570,7 @@ export function probeLayout(options: ProbeOptions): LayoutSnapshot {
     const texts = probeTexts(registry);
     const sideways = probeSideways(registry);
     const legal = {
-        map: deepQuery(options.legal.map).some((canvas) => isDrawn(canvas)),
+        map: deepQuery(options.legal.map).some((canvas) => isDrawn(canvas) && showsItsFoot(canvas)),
         logos: probeLegal(registry, options.legal.logo),
         attributions: probeLegal(registry, options.legal.attribution),
     };
@@ -591,6 +616,7 @@ export const LAYOUT_PROBE = [
     cutterOf,
     cutIdOf,
     sampleElement,
+    ownMapControl,
     outside,
     scrolledAway,
     pointReaches,
@@ -607,6 +633,7 @@ export const LAYOUT_PROBE = [
     probeTexts,
     sidewaysCulprits,
     probeSideways,
+    showsItsFoot,
     probeLegal,
     describeNodes,
     probeLayout,

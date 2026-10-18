@@ -230,8 +230,11 @@ export class PoisMap {
         const fresh = this.#shown?.id !== target.id;
         this.#recolour(draw, target.color);
         reloadIfChanged(draw, target);
-        if (fresh || target.geometry === null) {
-            draw.setMode(modeFor(target), target.id);
+        // A shape not drawn yet is set to be drawn again only when the tools are elsewhere: the same target applied again
+        // (a new colour, a category that arrived) wiped the first clicks of a line or an area (lesson 114).
+        const mode = modeFor(target);
+        if (fresh || (target.geometry === null && draw.mode !== mode)) {
+            draw.setMode(mode, target.id);
         }
         this.#shown = { id: target.id, color: target.color };
     }

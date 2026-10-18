@@ -26,3 +26,12 @@ export function setupText(lang: 'ro' | 'en', key: AdminSetupKey, params: Readonl
 export function apiText(lang: 'ro' | 'en', code: ApiErrorCode, params: Readonly<Record<string, string>> = {}): string {
     return translateApiError(lang, code, params);
 }
+
+/**
+ * A catalogue text as a pattern: each `{param}` of the template matches any text (a date, a percentage), the rest
+ * literally. `text` is the template translated with every parameter set to `\u0000`.
+ */
+export function templatePattern(text: string): RegExp {
+    const escape = (part: string): string => part.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`^${text.split('\u0000').map(escape).join('.+')}$`);
+}

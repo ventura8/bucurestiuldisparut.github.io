@@ -23,6 +23,12 @@ export interface AdminMapSources {
     /** Terra Draw's constructors once its packages are installed; null meanwhile. */
     readonly terraDraw: (() => Promise<TerraDrawModules>) | null;
     readonly log: Logger;
+    /**
+     * The `e2e` build's token for its own city (`?mapToken=`, CR-M2c-7): a test's city then needs no `setup/status`, which the
+     * Setup Assistant's specs rewrite; null is no token at all (the city has no map), and a value that is not a public token
+     * is none either. Undefined (always in production: `E2E_KIT` is null there) reads `setup/status`.
+     */
+    readonly fixedToken?: string | null | undefined;
 }
 
 function objectAt(value: unknown, key: string): unknown {
@@ -40,11 +46,21 @@ export async function adminTokenOf(readDoc: AdminMapSources['readDoc'], log: Log
     }
 }
 
+/** Where the map's token comes from: `setup/status` (production), or the `e2e` build's fixed token or none. */
+function tokenSource(sources: AdminMapSources): () => Promise<string | null> {
+    const fixed = sources.fixedToken;
+    if (fixed === undefined) {
+        return () => adminTokenOf(sources.readDoc, sources.log);
+    }
+    const token = fixed !== null && PUBLIC_TOKEN.test(fixed) ? fixed : null;
+    return () => Promise.resolve(token);
+}
+
 export function adminMapFactoryOf(sources: AdminMapSources): AdminMapFactory {
     const { scope, log } = sources;
     return createAdminMapFactory({
         gl: () => loadMapboxGl(scope),
-        token: () => adminTokenOf(sources.readDoc, log),
+        token: tokenSource(sources),
         terraDraw: sources.terraDraw,
         reducedMotion: () => scope.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true,
         env: browserAdapterEnv(scope),

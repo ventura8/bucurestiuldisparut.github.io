@@ -114,6 +114,23 @@ describe('createSetupModule', () => {
         expect(latest()).toMatchObject({ mode: 'normal', openStep: 'analytics' });
     });
 
+    it('badPath_aSessionOpenedOnAnotherPageChecksNoSetupCardUntilTheSetupPageShows', async () => {
+        const { shell, call, move, latest } = fakeShell();
+        createSetupModule(options()).create(shell);
+
+        move({ auth: 'admin', route: { id: 'photos', params: [] } });
+        await flush();
+        expect(latest()?.openStep).toBe('billing');
+        move({ route: { id: 'setup', params: ['analytics'] } });
+        await flush();
+        expect(call).toHaveBeenCalledWith('setup.analyticsConfig', { cityId: 'bucharest' });
+        call.mockClear();
+        move({ route: { id: 'photos', params: [] } });
+        await flush();
+
+        expect(call).not.toHaveBeenCalledWith('setup.analyticsConfig', expect.anything());
+    });
+
     it('badPath_signedOutStartsNothing', async () => {
         const { shell, call, move } = fakeShell();
         createSetupModule(options()).create(shell);

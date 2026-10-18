@@ -31,11 +31,11 @@ export const CONTENT_INPUT_BUDGETS = {
     layerAdjustments: { inputs: 1, how: 'the sliders, Save', per: 'move' },
     // [end layers]
     // [section settings] owner: layers-settings
-    category: { inputs: 4, how: 'Add category, the Romanian label, an icon, Save' },
+    category: { inputs: 3, how: 'Add category, the Romanian label (the icon follows it until one is picked), Save' },
     // [end settings]
     // [section ops] owner: ops-screens
     deleteAndUndo: { inputs: 3, how: 'Delete, confirm, Undo' },
-    inviteAdmin: { inputs: 4, how: 'Invite, the address, Invite in the dialog, Copy the link' },
+    inviteAdmin: { inputs: 3, how: 'Invite, the address, Invite in the dialog (the link is copied at once)' },
     revokeAdmin: { inputs: 3, how: "the admin's row, Remove access, confirm" },
     revertChange: { inputs: 3, how: 'the version, Revert, confirm' },
     cancelJob: { inputs: 3, how: "the job's row, Cancel job, confirm" },

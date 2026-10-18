@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import { defineHcmDialog, type HcmDialog } from '../../src/components/dialog.js';
+import { watchModals } from '../../src/components/modal-registry.js';
 import { cleanup, deepFocus, fixture, part, recordEvents, shadowPart } from '../helpers.js';
 
 defineHcmDialog();
@@ -41,6 +42,21 @@ describe('<hcm-dialog>', () => {
         expect((shadowPart(dialog, 'dialog') as HTMLDialogElement).open).toBe(true);
         expect(deepFocus()).toBe(shadowPart(shadowPart(dialog, 'hcm-icon-button'), 'button'));
         expect(await axeViolations(dialog)).toEqual([]);
+    });
+
+    it('happyPath_whileOpenItCountsAmongTheDocumentsOpenModals', async () => {
+        const { dialog, opener } = await dialogWithOpener();
+        const heard: boolean[] = [];
+        const stop = watchModals(document, (open) => heard.push(open));
+
+        await open(dialog, opener);
+        dialog.close();
+        await dialog.updateComplete;
+        await open(dialog, opener);
+        dialog.remove();
+        stop();
+
+        expect(heard).toEqual([false, true, false, true, false]);
     });
 
     it('badPath_itsHeadlineRowIsNoBanner', async () => {
@@ -130,6 +146,17 @@ describe('<hcm-dialog>', () => {
         dialog.remove();
 
         expect((shadowPart(dialog, 'dialog') as HTMLDialogElement).open).toBe(false);
+    });
+
+    it('badPath_anActionsTouchTargetLeavesTheContentsLastControlUncovered', async () => {
+        // CR-M2c-29: a 48 px target reaches 4 px past a 40 px action; the actions start 4 px below the content.
+        const { dialog, opener } = await dialogWithOpener();
+        await open(dialog, opener);
+
+        const content = shadowPart(dialog, '.content').getBoundingClientRect();
+        const action = part(dialog, 'button[slot="actions"]').getBoundingClientRect();
+        expect(getComputedStyle(shadowPart(dialog, '.actions')).paddingTop).toBe('4px');
+        expect(action.top - content.bottom).toBeGreaterThanOrEqual(4);
     });
 
     it('happyPath_fullscreenFillsTheWindow', async () => {

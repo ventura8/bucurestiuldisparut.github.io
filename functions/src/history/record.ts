@@ -8,6 +8,7 @@ import {
     historyEntryId,
     parseAuditedDocumentPath,
     timestampFromDate,
+    timestampToDate,
     type AuditedDocument,
     type HistoryAction,
     type HistoryEntryDoc,
@@ -78,10 +79,21 @@ function writtenStamp(after: Fields): Stamp | undefined {
     return isWriter(updatedBy) && isTimestampLike(updatedAt) ? { updatedBy, updatedAt } : undefined;
 }
 
+/**
+ * When a delete is recorded: its commit time, never before the version it deleted (a millisecond after that one's
+ * stamp). The Firestore emulator's event times have whole seconds, so a delete in the second of the last write sorted
+ * before it, and the delete's Undo, which looks for the newest entry, did not find it (`docs/LESSONS.md` 121).
+ */
+function deletedAt(change: DocumentChange): Date {
+    const last = change.before?.['updatedAt'];
+    const after = isTimestampLike(last) ? timestampToDate(last).getTime() + 1 : 0;
+    return new Date(Math.max(change.time.getTime(), after));
+}
+
 /** A delete carries no stamp: the event's principal (`authId`, else `system:<authType>`) and its commit time. */
 function principalStamp(change: DocumentChange): Stamp {
     const updatedBy = isWriter(change.authId) ? change.authId : `system:${change.authType}`;
-    return { updatedBy: updatedBy.slice(0, MAX_WRITER), updatedAt: timestampFromDate(change.time) };
+    return { updatedBy: updatedBy.slice(0, MAX_WRITER), updatedAt: timestampFromDate(deletedAt(change)) };
 }
 
 function stampOf(change: DocumentChange): Stamp {

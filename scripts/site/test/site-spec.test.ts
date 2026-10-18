@@ -31,6 +31,11 @@ describe('parseSiteSpec', () => {
         expect(parseSiteSpec(JSON.stringify(VALID))).toEqual(VALID);
     });
 
+    it('happyPath_bucharestNamesTheLegacyManifestsCity', () => {
+        expect(parseSiteSpec(readFileSync(join(ROOT, 'sites/bucharest/site.json'), 'utf8')).legacyCityId).toBe('bucuresti');
+        expect(parseSiteSpec(JSON.stringify({ ...VALID, legacyCityId: 'bucuresti' })).legacyCityId).toBe('bucuresti');
+    });
+
     it('badPath_notJson', () => {
         expect(() => parseSiteSpec('{', 'sites/x/site.json')).toThrow(/^sites\/x\/site\.json: not JSON/);
     });
@@ -43,6 +48,7 @@ describe('parseSiteSpec', () => {
         ['a colour that is not #rrggbb', { themeColor: 'red' }, 'themeColor'],
         ['an empty title', { title: '  ' }, 'title'],
         ['an unknown key', { script: 'alert(1)' }, 'script'],
+        ['a legacy city id that is not an id', { legacyCityId: 'Bucuresti!' }, 'legacyCityId'],
     ])('badPath_refuses %s', (_name, change, path) => {
         expect(() => parseSiteSpec(JSON.stringify({ ...VALID, ...change }))).toThrow(new RegExp(`\\n${path}: `));
     });

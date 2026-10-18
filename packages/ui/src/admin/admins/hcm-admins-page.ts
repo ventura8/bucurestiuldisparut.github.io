@@ -2,8 +2,8 @@
  * `<hcm-admins-page>`: `#/admins`, `#/admins/<uid>` and `#/admins/invite/<inviteId>` (`docs/research/M2c-interfaces.md`
  * §9.1; behaviour A02), in the list and detail layout. The list holds the admins (role, "you") and the pending
  * invitations (expiry); the detail shows an admin (address, role, since when, who invited them) with **Remove access**,
- * or an invitation (created, expiry, the sign-in link with Copy when it was made in this visit) with **Cancel
- * invitation**; both ask first. **Invite** opens a dialog for the Google account's address (checked in the page first).
+ * or an invitation (created, expiry, the sign-in link when it was made in this visit, copied at once and with Copy) with
+ * **Cancel invitation**; both ask first. **Invite** opens a dialog for the Google account's address (checked in the page first).
  * The owner and oneself are never removable: the page offers neither and says why (the server refuses both anyway).
  */
 import { inviteRequestSchema, type AdminsListResponse, type InviteResponse, type Locale, type RevokeRequest } from '@hcm/shared';
@@ -367,6 +367,18 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         this.inviting = false;
         this.copied = false;
         this.go(['invite', outcome.value.inviteId]);
+        void this.#copyAtOnce(outcome.value.signInUrl);
+    }
+
+    /**
+     * The new invitation's link goes to the clipboard at once, from the click that made it (one input less: the owner
+     * pastes it into a message next). A browser that refuses leaves the link with its Copy button, as for any copy.
+     */
+    async #copyAtOnce(url: string): Promise<void> {
+        this.copied = await navigator.clipboard.writeText(url).then(
+            () => true,
+            () => false,
+        );
     }
 
     #closeInvite(): void {

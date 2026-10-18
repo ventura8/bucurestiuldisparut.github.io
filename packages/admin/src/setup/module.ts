@@ -167,11 +167,13 @@ class ShellFollower {
     private mode: SetupMode | null = null;
     private step: SetupStepId | null = null;
     private auth = '';
+    private shown: boolean | null = null;
 
     constructor(private readonly controller: SetupController) {}
 
     /** Every change of the admin's state (the Setup Assistant's own included), so each follow-up acts on a change only. */
     onState(view: ShellView): void {
+        this.followPage(view);
         this.followMode(view);
         this.followAddress(view);
         this.followClaim(view);
@@ -183,6 +185,15 @@ class ShellFollower {
         this.auth = view.auth;
         if (entered) {
             this.controller.setClaim('pending', { key: 'adminShell.auth.claiming' });
+        }
+    }
+
+    /** Which page shows: before the first start too, so a session opened on another page checks nothing of the Setup's. */
+    private followPage(view: ShellView): void {
+        const shown = view.route.id === 'setup';
+        if (shown !== this.shown) {
+            this.shown = shown;
+            this.controller.setPageShown(shown);
         }
     }
 

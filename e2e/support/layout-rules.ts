@@ -1,5 +1,5 @@
 import type { Rect } from './dom-walk.js';
-import type { ChromeInfo, LayoutSnapshot, NodeInfo, Sample } from './layout-probe.js';
+import type { ChromeInfo, InteractiveInfo, LayoutSnapshot, NodeInfo, Sample } from './layout-probe.js';
 import { boxText, elementText, type ElementRef, type Violation } from './violations.js';
 
 /**
@@ -109,14 +109,37 @@ function inSanctionedPopup(snapshot: LayoutSnapshot, sanctioned: readonly Sancti
 }
 
 /**
- * (a) Every usable interactive element is on top where it is drawn (a point under a sanctioned popup aside); outside an
- * open modal, none is usable.
+ * At most this many CSS px of a control shown at the edge of what scrolls: Chromium hit-tests the last fraction of a
+ * pixel at a scroller's clip as the element beyond it (a 4 px sliver of a field at the bottom of a dialog's scrolling
+ * content was "covered" by the dialog's actions: input at 707 px, actions at 707.5 px, the clip at 708 px; CR-M2c-29),
+ * and the visitor scrolls the control into view anyway. The state checker scrolls every scroller through its content
+ * (e2e/support/state-check.ts), so the control is checked whole at another position.
+ */
+const SLIVER_PX = 5;
+
+/** Whether only a sliver of the control shows, cut on an axis it scrolls on (by a scroller or the page). */
+export function scrolledToASliver(control: InteractiveInfo, node: NodeInfo): boolean {
+    const visible = node.visible;
+    if (visible === null) {
+        return false;
+    }
+    const cutY = control.scrolls.y && visible.height <= SLIVER_PX && node.box.height > visible.height + TOLERANCE_PX;
+    const cutX = control.scrolls.x && visible.width <= SLIVER_PX && node.box.width > visible.width + TOLERANCE_PX;
+    return cutY || cutX;
+}
+
+/**
+ * (a) Every usable interactive element is on top where it is drawn (a point under a sanctioned popup aside, a sliver at
+ * a scroller's edge aside: `scrolledToASliver`); outside an open modal, none is usable.
  */
 export function occlusionViolations(snapshot: LayoutSnapshot, sanctioned: readonly Sanctioned[] = []): Violation[] {
     const [modal] = snapshot.modals;
     return snapshot.interactives.flatMap((control): Violation[] => {
         const node = nodeAt(snapshot, control.node);
         if (control.screenReaderOnly || node.visible === null) {
+            return [];
+        }
+        if (control.modal !== 'outside' && scrolledToASliver(control, node)) {
             return [];
         }
         if (control.modal === 'outside') {

@@ -642,3 +642,58 @@ Measured on 2026-10-17 with the laptop otherwise idle and the NUC running the us
   reflow variants 0.3 to 0.9 s, the contrast checks 0.1 to 0.4 s, the layout probe 0.05 to 0.7 s. The probes are
   installed once per page as a library and called by name (`e2e/support/page-script.ts`), so a call sends a few bytes
   instead of the helpers' 60 KB of source, and the trace of a failing test stays small.
+
+## Addendum: the quality review (adversarial reviewer, 2026-10-18)
+
+Measured on 2026-10-18 on the laptop while other agents worked on it (one ran Playwright in a copy of the tree), so
+every comparison below alternates the old and the new way in the same minutes, each in its own container, from a
+private copy of the working tree (no split stage, no build of the shared `dist/`).
+
+| What | Before | After |
+| --- | ---: | --- |
+| `static`, warm | 115 s (baseline) | 67 s; ESLint 63.7 s is its critical path |
+| `tests`, warm | 77 s (baseline) | 76 s (Vitest 66.7 s, 5,168 tests) |
+| `quality`, split `1:2` (the E2E agent's run) | 324 s (2026-10-17) | 1,002 s: the NUC's part 995 s (834 tests), this machine's 613 s (`static` and `tests`, then 339 tests in 446 s) |
+| `all`, split `1:2` (the E2E agent's run) | 398 s (2026-10-17) | 2,374 s |
+| per-push e2e test time | | 9,857 s (tour 4,067 s, admin 3,120 s, functional 2,650 s); `tour-matrix` 19,328 s |
+
+Why `quality` tripled: the admin's editor journeys joined the per-push tour (DECISIONS §34c, §35g) and every tour and
+admin state runs the generic checkers. One state of a 50-category settings page, by phase: axe 1.2 to 1.6 s, the Tab
+round 1.4 to 5.2 s, the contrast checks 0.2 s, the layout probe 0.1 to 0.3 s, and the scroll sweep 0.7 to 1.1 s per
+position (6 to 14 positions), of which axe's colour contrast was 0.45 to 0.65 s.
+
+Two kinds of waste, both removed without dropping a check, a gate or a scenario:
+
+- **`AxeBuilder`'s default mode** injects axe-core (about 550 KB) into the page and every frame, runs it per frame,
+  then opens a blank page, injects axe there as well and merges the partial results in it. On the admin's overlays page,
+  six calls each: one rule 0.39 to 0.66 s against 0.11 to 0.17 s for the page's own `axe.run`; the tour's tags 1.18 to
+  1.60 s against 0.15 to 0.22 s; legacy mode with `resultTypes: ['violations']` 0.21 to 0.35 s. `axeViolations`
+  (`e2e/support/a11y.ts`) now runs a page of one frame in legacy mode on the first check of a document and through the
+  injected `axe.run` after that; a page with frames keeps the default mode. A differential run of both ways on every call
+  (134 tests: `tour-c360-light-ro`, `fn-l1440-ro`, both a11y projects; then a page with a low-contrast text, an unnamed
+  button and an image without `alt`, with `include` and `skipRules`) found no difference, the new way 3.2 to 4.6 times
+  faster per call.
+- **The trace**: `retain-on-failure` recorded a DOM snapshot and a screencast frame at every action of every test, and
+  a checker's probe or Tab press is an action. Four tour tests at 3840 × 2160 and 1440 × 900, four workers: 1.5 min with
+  that trace, 1.1 min without screenshots or without snapshots, 55.5 s without both and 55.7 s with no trace at all.
+  `e2e/playwright.config.ts` keeps a failed test's trace without them (actions, timings, console, network, the error),
+  its screenshot and its error context; a rerun with `--trace retain-on-failure` gives the full trace.
+
+Both together, whole projects, old and new alternated:
+
+| Project | Tests | Before: test time, wall | After: test time, wall |
+| --- | ---: | --- | --- |
+| `tour-c915l-dark-ro` | 26 | 736 s and 965 s; 136 s and 169 s | 450 s and 441 s; 85 s and 86 s |
+| `admin-l1440-dark` | 69 | 984 s; 194 s | 514 s; 114 s |
+| `fn-l1440-ro` | 106 | 729 s; 100 s | 580 s; 80 s |
+
+On the per-push tiers' test times above that is about 3,900 s less (the tour and admin tiers about 45 %, the functional
+tier 20 %), from about 9,860 s to about 6,000 s, and the split `quality` from 1,002 s to an estimated 600 to 650 s
+before the shares are retuned. A split run could not be made while other agents worked in the shared tree; the next
+split `quality` measures it, and `default_parts` in `scripts/ci/e2e-split.sh` follows the measured parts (in the run
+above the NUC's part was the longer by 382 s).
+
+What still stands between `quality` and about 8 minutes, for the user (`docs/research/DECISIONS-for-review.md` §39c, the quality review's
+section): the locked admin chain (the Setup journey at five projects, about 580 s of test time in all, 236 s in one
+project on a loaded laptop), the fifty-category state at every per-push tour project (about 50 s each), and the
+functional tier's five projects of the same 105 specs.

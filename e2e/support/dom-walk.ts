@@ -260,6 +260,43 @@ export function samplePoints(box: Rect, centreOnly: boolean): { x: number; y: nu
     return [centre, ...xs.flatMap((x) => ys.map((y) => ({ x, y })))];
 }
 
+/** A corner's radius along one side, in px: `50%` of a 48 px box is 24; never more than half the side (as CSS scales them). */
+export function cornerRadius(part: string, size: number): number {
+    const value = part.endsWith('%') ? (Number.parseFloat(part) / 100) * size : Number.parseFloat(part);
+    return Math.min(Number.isFinite(value) ? value : 0, size / 2);
+}
+
+/**
+ * Whether (x, y) falls in the corner a rounded border cuts off: `radius` is the computed `border-*-radius`, the corner at
+ * (`cornerX`, `cornerY`) and the box opening towards (`dx`, `dy`).
+ */
+export function cutCorner(radius: string, box: DOMRect, corner: readonly [number, number, number, number], x: number, y: number): boolean {
+    const [cornerX, cornerY, dx, dy] = corner;
+    const [first = '0', second = first] = radius.split(' ');
+    const rx = cornerRadius(first, box.width);
+    const ry = cornerRadius(second, box.height);
+    const cx = cornerX + dx * rx;
+    const cy = cornerY + dy * ry;
+    const inCorner = rx > 0 && ry > 0 && dx * (x - cx) < 0 && dy * (y - cy) < 0;
+    return inCorner && ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 > 1;
+}
+
+/**
+ * Whether (x, y) lies inside the element's own shape: its border box without the corners its rounded border cuts off
+ * (a round button's box corners are not the button, and a hit there lands on what is behind it).
+ */
+export function withinShape(element: Element, x: number, y: number): boolean {
+    const box = element.getBoundingClientRect();
+    const style = getComputedStyle(element);
+    const corners = [
+        [style.borderTopLeftRadius, [box.left, box.top, 1, 1]],
+        [style.borderTopRightRadius, [box.right, box.top, -1, 1]],
+        [style.borderBottomLeftRadius, [box.left, box.bottom, 1, -1]],
+        [style.borderBottomRightRadius, [box.right, box.bottom, -1, -1]],
+    ] as const;
+    return corners.every(([radius, corner]) => !cutCorner(radius, box, corner, x, y));
+}
+
 /** Whether a hit at a point reaches `element`: the hit is the element or inside it (a pass-through element: or around it). */
 export function reaches(element: Element, hit: Element | null): boolean {
     if (hit === null) {
@@ -296,5 +333,8 @@ export const DOM_WALK = [
     selectorOf,
     deepHit,
     samplePoints,
+    cornerRadius,
+    cutCorner,
+    withinShape,
     reaches,
 ] as const;

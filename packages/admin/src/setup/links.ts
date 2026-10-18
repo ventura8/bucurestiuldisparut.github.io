@@ -17,17 +17,22 @@ export const SETUP_LINK_URLS = {
     'usgs.accessRequest': 'https://ers.cr.usgs.gov/profile/access',
     'usgs.applicationToken': 'https://ers.cr.usgs.gov/password/appgenerate',
     'usgs.sceneMetadata': 'https://earthexplorer.usgs.gov/scene/metadata/full/{datasetId}/{entityId}/',
+    // The crash reports page's detail (CR-M2c-15), not a Setup card's: `errorGroupUrl` of @hcm/ui/admin draws it.
+    'gcp.errorGroup': 'https://console.cloud.google.com/errors/detail/{groupId}?project={projectId}',
 } as const;
 
 export type SetupLinkId = keyof typeof SETUP_LINK_URLS;
 
+/** The links a Setup card lists (the error group's page is the crash reports page's own, CR-M2c-15). */
+export type SetupCardLinkId = Exclude<SetupLinkId, 'gcp.errorGroup'>;
+
 export interface SetupLinkView {
-    readonly id: SetupLinkId;
+    readonly id: SetupCardLinkId;
     readonly url: string;
 }
 
 /** The links each card lists, in the order the human follows them (the USGS token page has its own countdown button). */
-export const STEP_LINKS: Readonly<Record<SetupStepId, readonly SetupLinkId[]>> = {
+export const STEP_LINKS: Readonly<Record<SetupStepId, readonly SetupCardLinkId[]>> = {
     signIn: ['gcp.firebaseConsole'],
     billing: ['gcp.billingAccounts', 'gcp.blazeUpgrade'],
     provision: [],
@@ -42,7 +47,10 @@ export const STEP_LINKS: Readonly<Record<SetupStepId, readonly SetupLinkId[]>> =
 const PLACEHOLDER = /\{(\w+)\}/g;
 
 /** The link `id` with its `{name}` placeholders filled (URL-encoded); a missing value is a programming error. */
-export function setupLink(id: SetupLinkId, params: Readonly<Record<string, string>> = {}): SetupLinkView {
+export function setupLink<Id extends SetupLinkId>(
+    id: Id,
+    params: Readonly<Record<string, string>> = {},
+): { readonly id: Id; readonly url: string } {
     const url = SETUP_LINK_URLS[id].replace(PLACEHOLDER, (_placeholder: string, name: string) => {
         const value = params[name];
         if (value === undefined) {

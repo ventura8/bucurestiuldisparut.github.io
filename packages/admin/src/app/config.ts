@@ -1,8 +1,8 @@
 /**
  * The admin's start-up configuration (`docs/research/M2b-interfaces.md` §1.4): the Firebase web configuration Hosting
  * serves at its reserved URL `/__/firebase/init.json` (never committed; the e2e admin server answers it with the
- * `demo-hcm` emulator configuration), and the optional `/runtime.json` the deploy writes (the release and the App Check
- * site key, `DECISIONS-for-review.md` §23b).
+ * `demo-hcm` emulator configuration), and the optional `/runtime.json` the admin's site build writes (the release, a
+ * start-up deploy's `startUp`, and later the App Check site key, `DECISIONS-for-review.md` §23b).
  */
 import { z } from 'zod';
 
@@ -11,7 +11,10 @@ import { parseProjectConfig, type ProjectConfig } from '../provision/project-con
 /** Hosting's reserved URL of the project's web configuration. */
 export const WEB_CONFIG_URL = '/__/firebase/init.json';
 
-/** Written by the deploy next to `index.html`; a 404 means none (bootstrap mode, the e2e build, the first deploys). */
+/**
+ * Written by the admin's site build next to `index.html` (`scripts/site/src/admin/runtime.ts`); without it (a bare Vite
+ * build) the release is `dev`. Hosting's `**` rewrite answers a missing file with the page, which is no JSON: none.
+ */
 export const RUNTIME_URL = '/runtime.json';
 
 /**
@@ -45,7 +48,10 @@ const firebaseWebConfigSchema = z.object({
 export type FirebaseWebConfig = z.infer<typeof firebaseWebConfigSchema>;
 
 const adminRuntimeSchema = z.object({
+    /** `<version>+<short commit>` of the build (`0.0.0+5d02329`): the boot log and every crash report name it. */
     release: z.string().min(1).max(64),
+    /** The Hosting-only deploy of a new map: its server is not installed yet, so the admin does not probe it at start. */
+    startUp: z.boolean().optional(),
     /** The reCAPTCHA Enterprise site key of App Check; without it the admin runs without App Check. */
     appCheckSiteKey: z
         .string()

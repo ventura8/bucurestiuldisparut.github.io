@@ -9,6 +9,7 @@
 import { translate, type Locale } from '@hcm/shared';
 import { LitElement, html, nothing, type TemplateResult } from 'lit';
 
+import { LeftFields } from '../editing/number-fields.js';
 import { errorTemplate, loadingTemplate, reconnectingStatus } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { creditsSection, datesSection, linksSection, publishingSection, textsSection, type SectionInput } from './editor-sections.js';
@@ -49,6 +50,10 @@ export class HcmAdminPhotoEditor extends LitElement {
     declare mapReady: boolean;
     /** The list-detail layout asked for the focus before the heading was there (the photo still loading). */
     #wantsFocus = false;
+    /** The number fields left since the photo opened (they say their problem from then on). */
+    readonly #left = new LeftFields(() => {
+        this.requestUpdate();
+    });
 
     constructor() {
         super();
@@ -101,6 +106,7 @@ export class HcmAdminPhotoEditor extends LitElement {
     }
 
     #form(locale: Locale, editor: PhotoEditorPort, value: PhotoValuePort): TemplateResult {
+        const left = this.#left.forItem(editor.id);
         const input: SectionInput = {
             locale,
             value,
@@ -108,8 +114,9 @@ export class HcmAdminPhotoEditor extends LitElement {
             edit: (patch) => {
                 this.intents?.edit(patch);
             },
+            left,
         };
-        const place = { locale, editor, value, issues: editor.issues, intents: this.intents, mapReady: this.mapReady };
+        const place = { locale, editor, value, issues: editor.issues, intents: this.intents, mapReady: this.mapReady, left };
         return html`<div class="pane form">
             ${this.#head(locale, editor, value)} ${this.#banners(locale, editor)} ${reconnectingStatus(locale, editor.reconnecting)}
             ${imageSection(place, this.#choose)} ${textsSection(input)} ${datesSection(input)} ${creditsSection(input)}

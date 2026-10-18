@@ -180,6 +180,13 @@ export function createServiceUsageFake(state: ServiceUsageState, billing: Billin
         ],
         failure: (mode) => googleFailure(SERVICE_USAGE, mode),
         scenarios: {
+            // The billing APIs, free to enable on Spark, already on (a project whose billing was looked at in the console):
+            // step (b) then asks Google for cloud-billing only (S-A27-HAPPY).
+            billingApisEnabled: () => {
+                const services = enabledOf(String(FIXTURE_VALUES['projectId']));
+                services.add('cloudbilling.googleapis.com');
+                services.add('billingbudgets.googleapis.com');
+            },
             allEnabled: () => {
                 enabledOf(String(FIXTURE_VALUES['projectId']));
                 state.enabled.forEach((services) => {

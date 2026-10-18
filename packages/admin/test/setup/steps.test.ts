@@ -58,8 +58,8 @@ describe('nextSetupStep', () => {
 });
 
 describe('setupInputBudget', () => {
-    it('happyPath_theWholeSetupTakesTenInputsAndFourConsents', () => {
-        expect(setupInputBudget()).toEqual({ inputs: 10, consents: 4 });
+    it('happyPath_theWholeSetupTakesNineInputsAndFourConsents', () => {
+        expect(setupInputBudget()).toEqual({ inputs: 9, consents: 4 });
     });
 
     it('happyPath_theBootstrapTakesThreeInputsAndThreeConsents', () => {

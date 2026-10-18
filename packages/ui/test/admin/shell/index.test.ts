@@ -73,7 +73,7 @@ describe('@hcm/ui/admin', () => {
                 'HcmAdminsPage',
                 'HCM_CRASHES_LIST_PAGE_TAG',
                 'HcmCrashesListPage',
-                'errorReportingUrl',
+                'errorGroupUrl',
                 'HCM_HISTORY_PAGE_TAG',
                 'HcmHistoryPage',
                 'describeValue',

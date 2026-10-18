@@ -13,6 +13,7 @@ import {
     layoutViolations,
     legalViolations,
     occlusionViolations,
+    scrolledToASliver,
     overlapOf,
     overlapViolations,
     pageScrollViolations,
@@ -146,6 +147,26 @@ describe('occlusionViolations', () => {
         expect(violation?.message).toContain('"Meniu"');
         expect(violation?.message).toContain('1 of 2 sampled points (first at 40,40) hit "Timeline"');
         expect(violation?.elements).toHaveLength(2);
+    });
+
+    test('happyPath_aSliverAtTheEdgeOfWhatScrollsIsScrolledIntoView_badPath_aSliverThatCannotScrollIsCovered', () => {
+        // CR-M2c-29: 4 px of a field at the bottom of a dialog's scrolling content hit the actions below the clip.
+        const hidden = [{ x: 10, y: 706, hit: 1, ok: false, pinned: false }];
+        const nodes = [
+            node(0, box(0, 660, 300, 48), { visible: box(0, 704, 300, 4), name: 'Atribuire' }),
+            node(1, box(0, 708, 300, 72), { name: 'Acțiuni' }),
+            node(2, box(0, 0, 4, 300), { visible: box(0, 0, 3, 300), name: 'Bara' }),
+        ];
+        const cut = (scrolls: { x: boolean; y: boolean }, id = 0): InteractiveInfo => control(id, { samples: hidden, scrolls });
+        expect(occlusionViolations(snapshot({ nodes, interactives: [cut({ x: false, y: true })] }))).toEqual([]);
+        // A box that is itself only 3 px wide is no sliver of something larger: it is checked as it is.
+        expect(occlusionViolations(snapshot({ nodes, interactives: [cut({ x: true, y: false }, 2)] }))).toHaveLength(1);
+        const [field = node(9, box(0, 0, 1, 1))] = nodes;
+        expect(scrolledToASliver(cut({ x: true, y: false }), field)).toBe(false);
+        expect(scrolledToASliver(cut({ x: false, y: true }), { ...field, visible: null })).toBe(false);
+        expect(occlusionViolations(snapshot({ nodes, interactives: [cut({ x: false, y: false })] }))[0]?.message).toMatch(
+            /^"Atribuire" .* is covered/,
+        );
     });
 
     test('badPath_aPointOutsideThePageHitsNothing', () => {

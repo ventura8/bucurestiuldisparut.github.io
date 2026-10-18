@@ -39,12 +39,17 @@ test('Choosing a stop shows its layer and the photos of those years', { tag: '@S
     await slider.press('Home');
     await expect(slider).toHaveAttribute('aria-valuetext', t(lang, 'timeline.year', { year: '1966' }));
     await expectColourAt(page, probe, E2E_TILESET_LAYER.colour, 'the 1966 layer');
-    await expect.poll(() => renderedFeatureIds(page, 'hcm-photos-marker')).toContain(NEAR_1966);
-    const shown1966 = await renderedFeatureIds(page, 'hcm-photos-marker');
-    expect(
-        shown1966.filter((id) => !PHOTOS_NEAR_1966.includes(id)),
-        'only photos taken 1956-1976',
-    ).toEqual([]);
+    // One poll for the whole filtered set: today's markers already include NEAR_1966, so waiting for it alone could read
+    // the markers before the filter was drawn (docs/LESSONS.md).
+    await expect
+        .poll(
+            async () => {
+                const shown = await renderedFeatureIds(page, 'hcm-photos-marker');
+                return { near: shown.includes(NEAR_1966), others: shown.filter((id) => !PHOTOS_NEAR_1966.includes(id)) };
+            },
+            { message: 'only photos taken 1956-1976' },
+        )
+        .toEqual({ near: true, others: [] });
     await expect.poll(() => hashParam(page, 'layers')).toBe(E2E_TILESET_LAYER.id);
 
     await slider.press('ArrowRight');

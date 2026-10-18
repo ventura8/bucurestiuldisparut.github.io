@@ -16,6 +16,16 @@ const MAX_TEXT = 200;
 /** Fields stored as a share of one (0–1) and shown as a percentage. */
 const PERCENT_FIELDS = new Set(['opacity', 'defaultOpacity']);
 
+/** Fields holding a year, shown without a thousands separator (1980, never "1,980"). */
+const YEAR_FIELDS = new Set(['year', 'yearEnd', 'yearStart']);
+
+/** A geometry's type in the admin's words (the place editor's shape names); an unknown type as stored. */
+const SHAPE_KEYS: Readonly<Record<string, Parameters<typeof contentText>[1]>> = {
+    Point: 'adminContent.pois.shape.point',
+    LineString: 'adminContent.pois.shape.linestring',
+    Polygon: 'adminContent.pois.shape.polygon',
+};
+
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -38,7 +48,10 @@ const number: Describer = (locale, field, value) => {
     if (typeof value !== 'number') {
         return null;
     }
-    return PERCENT_FIELDS.has(field) ? percent(locale, value) : new Intl.NumberFormat(locale).format(value);
+    if (PERCENT_FIELDS.has(field)) {
+        return percent(locale, value);
+    }
+    return new Intl.NumberFormat(locale, { useGrouping: !YEAR_FIELDS.has(field) }).format(value);
 };
 
 const text: Describer = (_locale, _field, value) => (typeof value === 'string' ? value.slice(0, MAX_TEXT * 5) : null);
@@ -72,7 +85,9 @@ const geometry: Describer = (locale, field, value) => {
     if (field !== 'geometry' || !isRecord(value) || typeof value['type'] !== 'string') {
         return null;
     }
-    return contentText(locale, 'adminContent.history.value.geometry', { type: value['type'], count: String(positionsOf(value)) });
+    const shape = SHAPE_KEYS[value['type']];
+    const type = shape === undefined ? value['type'] : contentText(locale, shape);
+    return contentText(locale, 'adminContent.history.value.geometry', { type, count: String(positionsOf(value)) });
 };
 
 const adjustments: Describer = (locale, field, value) => {

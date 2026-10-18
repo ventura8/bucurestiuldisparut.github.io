@@ -137,8 +137,10 @@ drawer) from large; never a drawer.
    answers an anonymous call with `unauthenticated` (its access rule) through CORS; any `FunctionsError` other than
    `internal`, `unavailable`, `deadline-exceeded` or `not-found` means the server answers. A missing function's 404 has
    no CORS headers, which the SDK reports as `internal`, the same as a network failure: the probe alone cannot tell "not
-   deployed" from "down", so §3.2 asks Google. A cold start slower than the timeout corrects itself: an owner lands in
-   bootstrap mode, whose step (d) finds every function `ACTIVE` and probes again; anyone else sees Try again.
+   deployed" from "down", so §3.2 asks Google. A probe that timed out (`deadline-exceeded`) is sent again, up to three
+   in all (`PROBE_ATTEMPTS`, `docs/LESSONS.md` 120): a cold start slower than the timeout answers the next one. A server
+   that only times out corrects itself later: an owner lands in bootstrap mode, whose step (d) finds every function
+   `ACTIVE` and probes again; anyone else sees Try again.
 5. `onAuthStateChanged`: no user, `signedOut`; a user, `probing`: the server answers, `admin.session` (M2 flows); it
    does not, the bootstrap classification of §3.2.
 6. The route (§1.1).
@@ -838,3 +840,23 @@ a paid one, USGS from a pending role to the approval found by `ops.tick`, analyt
 
 CR-M2b-3, CR-M2b-4,
 CR-M2b-6 and CR-M2b-7 (ask first), CR-M2b-21 a, CR-M2b-25, CR-M2b-29, CR-M2b-30, CR-M2b-32.
+
+## Addendum 2026-10-18: the start-up deploy and the release (follow-ups agent)
+
+- **§1.4 step 2**: `runtime.json` is written by the admin's site build (`scripts/site/src/admin/runtime.ts`, so Hosting's
+  `predeploy` produces it): `release` is `<root package.json version>+<short commit>` (the commit from `HCM_COMMIT`,
+  `GITHUB_SHA` or the checkout's `HEAD`), which the boot log and every crash report name instead of `dev`; `startUp: true`
+  when the deploy sets `HCM_ADMIN_START_UP=1` (a new map's Hosting-only deploy). The App Check site key joins it with the
+  deploy milestone (§23b of `DECISIONS-for-review.md`).
+- **§1.4 step 4**: a start-up deploy skips the anonymous probe: a function that is not deployed answers 404 without CORS
+  headers, which the browser logs as an error whatever the request's mode (a `no-cors` fetch still logs "Failed to load
+  resource"), and the live admin of 2026-10-17 showed it. Bootstrap mode starts at once; step (d) learns from Google that
+  every function is `ACTIVE` and only then probes. A browser that has had the server's answer before
+  (`hcm:admin:serverSeen` in `localStorage`) probes despite `startUp`, as the server has been installed since. Without
+  `startUp` the probe runs as before (`S-A25-BAD-NO-START-UP-DEPLOY`).
+
+## Addendum 2026-10-18: minimum input (adversarial reviewer)
+
+- **Step (e) takes one input**: a pasted secret token is saved at once (no Save click), like the USGS paste; a public or
+  malformed paste is explained and counted, nothing sent; a typed token goes with Enter or Save. `SETUP_STEP_SPECS`
+  mapbox `inputs: 1`, so §3.5's `setupInputBudget()` is 9 inputs and 4 consents (was 10). `DECISIONS-for-review.md` §38a.

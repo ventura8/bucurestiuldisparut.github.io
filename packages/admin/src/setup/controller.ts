@@ -63,6 +63,8 @@ export interface SetupController {
     setMode(mode: SetupMode): Promise<void>;
     /** The claim's progress or refusal (d2), from the shell. */
     setClaim(state: ServiceState, detail: SetupMessage | null): void;
+    /** The Setup page shows (true) or another page does: the analytics card checks Google Analytics only on its page. */
+    setPageShown(shown: boolean): void;
     dispose(): void;
 }
 
@@ -97,6 +99,8 @@ class Controller implements SetupController {
     private readonly ctx: SetupContext;
     private readonly flows: Flows;
     private readonly unsubscribe: () => void;
+    /** Whether the Setup page shows: the shell says so (`module.ts`); a controller without a shell is its own page. */
+    private pageShown = true;
 
     constructor(private readonly deps: SetupDeps) {
         this.store = createSetupStore(initialSetupState(deps.host, 'bootstrap'));
@@ -154,6 +158,14 @@ class Controller implements SetupController {
         this.ctx.patchStep('claim', { state, detail, checkedAt: this.ctx.nowIso() });
     }
 
+    setPageShown(shown: boolean): void {
+        const appeared = shown && !this.pageShown;
+        this.pageShown = shown;
+        if (appeared && this.store.get().openStep === 'analytics') {
+            void this.flows.analytics.open();
+        }
+    }
+
     dispose(): void {
         this.unsubscribe();
         this.flows.billing.dispose();
@@ -162,14 +174,22 @@ class Controller implements SetupController {
         this.flows.analytics.dispose();
     }
 
-    /** Follow-ups of a change: the analytics card loads when it opens; the deployment is watched once provisioning is done. */
+    /**
+     * Follow-ups of a change: the analytics card loads when it opens on the Setup page (the controller runs on every page of
+     * an admin session, and a check there only filled every page's console with Google Analytics' "not enabled"); the
+     * deployment is watched once provisioning is done.
+     */
     private react(before: SetupState, next: SetupState): void {
-        if (before.openStep !== next.openStep && next.openStep === 'analytics') {
+        if (this.analyticsOpened(before, next)) {
             void this.flows.analytics.open();
         }
         if (next.mode === 'bootstrap' && !isDone(before, 'provision')) {
             this.watchDeployment(next);
         }
+    }
+
+    private analyticsOpened(before: SetupState, next: SetupState): boolean {
+        return this.pageShown && before.openStep !== next.openStep && next.openStep === 'analytics';
     }
 
     private watchDeployment(state: SetupState): void {
@@ -183,6 +203,7 @@ class Controller implements SetupController {
         if (record !== null) {
             this.ctx.update((state) => applyBootstrapRecord(state, record));
         }
+        this.ctx.mirrorBootstrap();
         this.ctx.patchStep('signIn', { state: 'ok', detail: null, checkedAt: this.ctx.nowIso() });
         await this.flows.billing.detectApis();
         this.watchDeployment(this.store.get());

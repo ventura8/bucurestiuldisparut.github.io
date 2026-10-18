@@ -130,6 +130,11 @@ export interface E2eKit {
     readonly standInPopup: typeof createStandInPopup;
     /** The address's `?city=` (a test's own city, CR-M2c-7), or null. */
     readonly city: (search: string) => string | null;
+    /**
+     * The address's `?mapToken=`: the admin map's token for that city, so it needs no `setup/status` (CR-M2c-7); `none` (or
+     * anything that is not a public token) is no token at all; undefined without the parameter (the token of `setup/status`).
+     */
+    readonly mapToken: (search: string) => string | null | undefined;
 }
 
 /** The `?city=` of the `e2e` build's address: a valid city id, else null (the project's first city). */
@@ -139,10 +144,23 @@ export function e2eCity(search: string): string | null {
 }
 
 /**
- * The kit of the `e2e` build, null in production: the mode is a constant for the bundler, so the production bundle
- * carries no stand-in and no city override.
+ * The `?mapToken=` of the `e2e` build's address: a Mapbox public token (`pk.`); null for any other value (`none`: the test's
+ * city has no map); undefined without the parameter (the admin map reads `setup/status`, as in production).
  */
-export const E2E_KIT: E2eKit | null = import.meta.env.MODE === 'e2e' ? { standInPopup: createStandInPopup, city: e2eCity } : null;
+export function e2eMapToken(search: string): string | null | undefined {
+    const token = new URLSearchParams(search).get('mapToken');
+    if (token === null) {
+        return undefined;
+    }
+    return /^pk\.[A-Za-z0-9._-]{1,200}$/.test(token) ? token : null;
+}
+
+/**
+ * The kit of the `e2e` build, null in production: the mode is a constant for the bundler, so the production bundle
+ * carries no stand-in, no city override and no map token.
+ */
+export const E2E_KIT: E2eKit | null =
+    import.meta.env.MODE === 'e2e' ? { standInPopup: createStandInPopup, city: e2eCity, mapToken: e2eMapToken } : null;
 
 function popupFor(win: AdminWindow, handles: FirebaseHandles, e2e: E2eKit | null, clock: Clock): PopupSignIn {
     if (e2e === null) {
@@ -279,7 +297,7 @@ export function contentDepsFor(parts: BrowserParts, handles: FirebaseHandles, fe
         modules: CONTENT,
         store: contentStore({ sdk: contentSdk, firestore: handles.firestore, uid: () => handles.auth.currentUser?.uid ?? null }),
         theme: themeFromSeed,
-        areas: areaServices({ handles, fetch: fetcher }),
+        areas: areaServices({ handles, fetch: fetcher, mapToken: parts.e2e?.mapToken(parts.win.location.search) }),
         cityId: parts.e2e?.city(parts.win.location.search) ?? null,
     };
 }

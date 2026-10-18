@@ -29,6 +29,7 @@ import { createCloudTasksFake, type CloudTasksState } from './google-tasks.js';
 import { defaultMapboxState, type MapboxState } from './mapbox-state.js';
 import { createMapboxFake } from './mapbox.js';
 import { createNominatimFake } from './nominatim.js';
+import { createGoogleApisFake } from './google-apis.js';
 import { matchRoute } from './routes.js';
 import { FAILURE_MODES, type FailureMode, type ServiceFake, type UpstreamServiceName } from './service.js';
 import { createUsgsFake, defaultUsgsState, type UsgsState } from './usgs.js';
@@ -150,6 +151,7 @@ function services(state: UpstreamState): readonly ServiceFake[] {
         createMapboxFake(state.mapbox),
         createUsgsFake(state.usgs),
         createNominatimFake(),
+        createGoogleApisFake(),
     ];
 }
 

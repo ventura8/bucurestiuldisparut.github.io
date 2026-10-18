@@ -1,4 +1,4 @@
-import type { CityDoc } from '@hcm/shared';
+import { translate, type CityDoc } from '@hcm/shared';
 import { axeViolations } from '@hcm/test-support/axe';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
@@ -104,12 +104,40 @@ describe('<hcm-settings-page> area', () => {
         const { element } = await page('settings', settings, { params: ['area'] });
 
         expect(deep(element, '#area-west').getAttribute('aria-invalid')).toBe('true');
+        // The four edges are refused together: said once below them, each edge invalid and described by that message.
+        expect(deepAll(element, '.shared-error').map((node) => [node.id, node.textContent])).toEqual([
+            ['area-bounds-error', translate('en', 'validation.bounds')],
+        ]);
+        expect(deepAll(element, '.field .error')).toEqual([]);
+        expect(['west', 'east', 'south', 'north'].map((name) => deep(element, `#area-${name}`).getAttribute('aria-describedby'))).toEqual(
+            Array.from({ length: 4 }, () => 'area-bounds-error'),
+        );
         expect(deepAll(element, '.alert a').map((link) => [link.getAttribute('href'), link.textContent])).toEqual([
             ['#/photos/p1', 'Photo “Colț”'],
             ['#/pois/l1', 'Place “Loc”'],
         ]);
         expect(deepText(element)).toContain('Checking the photos and places…');
         expect(await axeViolations(element)).toEqual([]);
+    });
+});
+
+describe('<hcm-settings-page> an edge of its own', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('badPath_anEdgeThatIsNoNumberIsSaidAtThatEdgeOnly', async () => {
+        const city = cityDoc();
+        const issues = [
+            { path: 'bounds.west', code: 'validation.type' },
+            { path: 'bounds', code: 'validation.bounds' },
+        ] as const;
+        const settings = area(sectionState('area', city, { draft: draftOf(city, { issues, dirty: ['bounds'] }) }));
+        const { element } = await page('settings', settings, { params: ['area'] });
+
+        expect(deep(element, '#area-west').getAttribute('aria-describedby')).toBe('area-west-error');
+        expect(deep(element, '#area-east').getAttribute('aria-describedby')).toBe('area-bounds-error');
+        expect(deepAll(element, '.field .error').map((node) => node.id)).toEqual(['area-west-error']);
+        expect(deepAll(element, '.shared-error')).toHaveLength(1);
     });
 });
 
@@ -165,7 +193,7 @@ describe('<hcm-settings-page> theme', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
 
-    it('happyPath_aPresetPreviewsTheThemeOnThePageAndTheBasemapIsChosen', async () => {
+    it('happyPath_aPresetPreviewsTheThemeAndTheBasemapIsChosen', async () => {
         const city = cityDoc({ theme: { seedColor: '#8B5E3C', tokens: BASELINE_THEME } });
         const settings = area(sectionState('theme', city));
         const { element } = await page('settings', settings, { params: ['theme'] });
@@ -192,14 +220,15 @@ describe('<hcm-settings-page> theme', () => {
         await updated(element);
 
         expect(calls(settings)).toEqual(['setSeed "#00658f"', 'setSeed "#8b5e3c0"', 'setBasemap "standard-satellite"']);
-        expect(primary()).toBe('#00658f');
-        expect(deepText(element)).toContain('The Settings page now shows the new theme.');
+        expect(deepText(element)).toContain('The whole admin now shows the new theme.');
+        // The shell wears the preview for the whole admin (CR-M2c-28): the page sets no theme of its own.
+        expect(primary()).not.toBe('#00658f');
         expect(await axeViolations(element)).toEqual([]);
         settings.set({
             citySection: { ...settings.state.citySection, theme: { typed: '', invalid: false, adjusted: false, preview: null } },
         });
         await updated(element);
-        expect(primary()).not.toBe('#00658f');
+        expect(deepText(element)).not.toContain('The whole admin now shows the new theme.');
     });
 
     it('badPath_anInvalidSeedAndAMovedOneAreSaid', async () => {

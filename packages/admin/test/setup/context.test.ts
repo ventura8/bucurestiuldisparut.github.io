@@ -63,9 +63,12 @@ describe('createSetupStore', () => {
 });
 
 describe('createSetupContext', () => {
-    it('happyPath_bootstrapModeMirrorsEveryChangeIntoTheRecord', () => {
+    it('happyPath_bootstrapModeMirrorsEveryChangeIntoTheRecordOnceItWasRead', () => {
         const { ctx, harness } = setup('bootstrap');
+        ctx.patchStep('claim', { state: 'pending' });
+        expect(harness.session.get(bootstrapRecordKey(PROJECT_ID))).toBeNull();
 
+        ctx.mirrorBootstrap();
         ctx.patchStep('billing', { state: 'ok', checkedAt: ctx.nowIso() });
 
         expect(readBootstrapRecord(harness.session, PROJECT_ID)?.steps.billing).toEqual({

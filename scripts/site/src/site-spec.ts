@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { validate } from '@hcm/shared';
+import { ID_PATTERN, validate } from '@hcm/shared';
 
 import { SiteBuildError, issuesText } from './errors.js';
 
@@ -11,7 +11,7 @@ import { SiteBuildError, issuesText } from './errors.js';
  * ```json
  * { "lang": "ro", "title": "București dispărut", "description": "…", "themeColor": "#8B5E3C",
  *   "noscript": { "ro": "…", "en": "…" },
- *   "manifest": "seed/bucharest/manifest.static.json", "media": "seed/bucharest/derived" }
+ *   "manifest": "seed/bucharest/manifest.static.json", "legacyCityId": "bucuresti", "media": "seed/bucharest/derived" }
  * ```
  */
 
@@ -32,6 +32,13 @@ const siteSpecSchema = z.strictObject({
     noscript: z.strictObject({ ro: text(300), en: text(300) }),
     /** The source manifest (City Manifest v1); written to `data/manifest.json` with its photos rewritten. */
     manifest: repositoryPath,
+    /**
+     * The city id the source manifest names when it is not `config.js`'s: the legacy Bucharest manifest, migrated as it
+     * was (`seed/bucharest/`), names `bucuresti`, while the project's city, and so every manifest the backend builds, is
+     * `bucharest` (`DECISIONS-for-review.md` §35b). The build serves such a manifest under `config.js`'s `cityId`; any
+     * other mismatch still fails the build.
+     */
+    legacyCityId: z.string().regex(ID_PATTERN).optional(),
     /** Where the photo derivatives live, as `<photo id>/<file>` (the migration's `derived/` folder). */
     media: repositoryPath,
 });

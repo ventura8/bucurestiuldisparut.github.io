@@ -156,8 +156,8 @@ describe('<hcm-admin-photo-editor>: fields', () => {
         type(element, '#photo-description-en', 'English');
         type(element, '#photo-description-ro', '');
         type(element, '#photo-dateText-ro', 'Iulie 1936');
-        type(element, '#photo-year', '1937', 'change');
-        type(element, '#photo-yearEnd', '', 'change');
+        type(element, '#photo-year', '1937');
+        type(element, '#photo-yearEnd', '');
 
         expect(photos.calls).toEqual([
             'edit {"title":{"ro":"Calea Victoriei","en":"Avenue"}}',
@@ -214,9 +214,9 @@ describe('<hcm-admin-photo-editor>: place, direction and publishing', () => {
     it('happyPath_thePlaceTheDirectionAndTheFieldOfView', async () => {
         const { element, photos } = await editorOf(editor({ value: { ...VALUE, bearing: 90, fov: 50 } }), { mapReady: true });
 
-        type(element, '#photo-lat', '44.5', 'change');
-        type(element, '#photo-lng', 'x', 'change');
-        type(element, '#photo-bearing', '', 'change');
+        type(element, '#photo-lat', '44.5');
+        type(element, '#photo-lng', 'x');
+        type(element, '#photo-bearing', '');
         const actions = deepAll(deepAll(element, 'fieldset')[5] ?? element, '.actions hcm-button');
         deep(actions[0] ?? element, 'button').click();
         deep(actions[1] ?? element, 'button').click();
@@ -308,7 +308,15 @@ describe('<hcm-admin-photo-editor>: place, direction and publishing', () => {
             }),
         );
 
-        expect(deep(element, '#photo-year').getAttribute('aria-invalid')).toBe('true');
+        // A number says its problem once it has been left (DECISIONS-for-review.md §35d): half a year is no year yet.
+        const year = deep(element, '#photo-year');
+        expect(year.getAttribute('aria-invalid')).toBe('false');
+        expect(deepAll(element, '#photo-year-error')).toEqual([]);
+        year.dispatchEvent(new FocusEvent('focusout', { bubbles: true, composed: true }));
+        await updated(element);
+        expect(year.getAttribute('aria-invalid')).toBe('true');
+        expect(year.getAttribute('aria-describedby')).toBe('photo-year-error');
+        expect(deep(element, '#photo-year-error').textContent).not.toBe('');
         expect(deep(element, '#photo-license').getAttribute('aria-describedby')).toBe('photo-license-error');
         expect(deep(element, '#photo-description-ro').getAttribute('aria-invalid')).toBe('true');
         expect(deep(element, '#photo-title-en').getAttribute('aria-describedby')).toBe('photo-title-en-hint');

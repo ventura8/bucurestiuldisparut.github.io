@@ -5,6 +5,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { HcmAdminMap } from '../../../src/admin/map/hcm-admin-map.js';
 import type { HcmDrawToolbar } from '../../../src/admin/map/hcm-draw-toolbar.js';
 import { coordinateOf, coordinateText, type HcmVertexList } from '../../../src/admin/map/hcm-vertex-list.js';
+import { reportModal } from '../../../src/components/modal-registry.js';
 import { cleanup, deep, deepAll, deepText, defineAll, mount, updated } from '../shell/fake-app.js';
 
 /** Clicks a kit button as a pointer would: its own button (a disabled one fires nothing). */
@@ -65,6 +66,28 @@ describe('<hcm-admin-map>', () => {
         expect(element.renderRoot.querySelector('link')?.getAttribute('href')).toBe(
             'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css',
         );
+    });
+
+    it('badPath_underAModalDialogTheMapHidesWithItsLegalLine', async () => {
+        const element = await mount<HcmAdminMap>(html`<hcm-admin-map css-url=""></hcm-admin-map>`, 600);
+        element.status = 'ready';
+        await updated(element);
+        const owner = {};
+
+        reportModal(document, owner, true);
+        await updated(element);
+        const hidden = [element.container, element.renderRoot.querySelector('.controls')].map(
+            (part) => part !== null && getComputedStyle(part).visibility === 'hidden',
+        );
+        reportModal(document, owner, false);
+        await updated(element);
+
+        expect([hidden, element.hasAttribute('covered')]).toEqual([[true, true], false]);
+        expect(getComputedStyle(element.container ?? element).visibility).toBe('visible');
+        element.remove();
+        reportModal(document, owner, true);
+        expect(element.covered).toBe(false);
+        reportModal(document, owner, false);
     });
 
     it('badPath_withoutATokenTheBoxSaysWhyAndLeadsToSetup', async () => {
@@ -143,6 +166,12 @@ describe('<hcm-draw-toolbar>', () => {
         expect((deep(element, 'hcm-icon-button.draw') as HTMLElement & { icon: string }).icon).toBe('place');
         expect((deep(element, 'hcm-icon-button.select') as HTMLElement & { selected: boolean }).selected).toBe(true);
     });
+
+    it('badPath_withoutACentreAddAtCentreIsOff', async () => {
+        const element = await mount<HcmDrawToolbar>(html`<hcm-draw-toolbar .canAddCentre=${false}></hcm-draw-toolbar>`, 600);
+
+        expect((deep(element, 'hcm-icon-button.add-centre') as HTMLElement & { disabled: boolean }).disabled).toBe(true);
+    });
 });
 
 describe('<hcm-vertex-list>', () => {
@@ -204,6 +233,29 @@ describe('<hcm-vertex-list>', () => {
         expect(edits).toEqual([]);
         expect(latitude.value).toBe('44');
         expect(deepText(element)).toContain('No position yet');
+    });
+
+    it('badPath_aRefusedCoordinateLeavesTheFieldAtTheShapesPosition', async () => {
+        const element = await mount<HcmVertexList>(html`<hcm-vertex-list .positions=${[[26.1, 44.43]]}></hcm-vertex-list>`, 600);
+        const edits = events<unknown>(element, 'hcm-vertex');
+        const longitude = deep(element, '#v0-lng') as HTMLInputElement;
+
+        // The area refuses it (outside the city): its positions do not change, and neither does the field.
+        longitude.value = '28.6625';
+        longitude.dispatchEvent(new Event('change'));
+        await updated(element);
+        const refused = longitude.value;
+        // Accepted, the area renders the new position.
+        longitude.value = '26.2';
+        longitude.dispatchEvent(new Event('change'));
+        element.positions = [[26.2, 44.43]];
+        await updated(element);
+
+        expect(edits).toEqual([
+            { kind: 'set', index: 0, position: [28.6625, 44.43] },
+            { kind: 'set', index: 0, position: [26.2, 44.43] },
+        ]);
+        expect([refused, longitude.value]).toEqual(['26.1', '26.2']);
     });
 
     it('happyPath_coordinatesAreReadAndWrittenWithSevenDecimals', () => {

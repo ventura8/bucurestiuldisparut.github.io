@@ -17,9 +17,20 @@ export const adminBase = css`
         display: none !important;
     }
 
+    /*
+     * The kit's ring (focusRing): secondary, or the colour a surface sets in --hcm-focus-ring-color for what is on it (the
+     * error container's alerts: secondary is 2.38:1 there, CR-M2c-29).
+     */
     :focus-visible {
-        outline: var(--md-sys-state-focus-indicator-thickness, 3px) solid var(--md-sys-color-secondary, Highlight);
+        outline: var(--md-sys-state-focus-indicator-thickness, 3px) solid
+            var(--hcm-focus-ring-color, var(--md-sys-color-secondary, Highlight));
         outline-offset: var(--md-sys-state-focus-indicator-outer-offset, 2px);
+    }
+
+    @media (forced-colors: active) {
+        :focus-visible {
+            outline-color: Highlight;
+        }
     }
 
     h1,

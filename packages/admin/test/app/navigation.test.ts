@@ -38,6 +38,24 @@ describe('Navigation', () => {
         expect(n.track).toHaveBeenCalledWith({ name: 'page_view', route: 'admins' });
     });
 
+    it('badPath_anItemsAddressOpenedDirectlyPutsItsListUnderItSoBackStaysInTheAdmin', () => {
+        const n = navigation('#/photos/p1', ['photos']);
+
+        n.change({ auth: 'admin', mode: 'normal' });
+        const first = [...n.location.writes];
+        const route = n.shell.get().route;
+        // Signed out and in again on the same page: the history is not seeded twice.
+        n.change({ auth: 'signedOut' });
+        n.change({ auth: 'admin' });
+
+        expect(first).toEqual([
+            { hash: '#/photos', replace: true },
+            { hash: '#/photos/p1', replace: false },
+        ]);
+        expect(route).toEqual({ id: 'photos', params: ['p1'] });
+        expect(n.location.writes.filter((write) => write.hash === '#/photos')).toHaveLength(1);
+    });
+
     it('happyPath_aLinkOpensItsPageAndEachRouteIsOnePageView', () => {
         const n = navigation('');
         n.change({ auth: 'admin', mode: 'normal' });

@@ -3,7 +3,8 @@
  * the page's store with `hcm-map-host` once it exists), mapbox-gl.css linked inside the shadow root (the page's copy
  * cannot reach it), the kit's 48 px zoom buttons (never Mapbox's 29 px control), and a crosshair at the centre while the
  * map has the keyboard focus (the keyboard's placement point: the arrow keys pan, Add at centre puts a vertex there).
- * Mapbox's logo and attribution stay visible: the floating controls sit at the top, 8 px apart. The drawing toolbar is
+ * Mapbox's logo and attribution stay visible: the floating controls sit at the top, 8 px apart, and while a modal dialog
+ * is open (its scrim would cover them) the map is hidden instead (`covered`, `modal-registry.ts`). The drawing toolbar is
  * slotted at the top left. Without a map (no token, no WebGL, a failure) the box says why, with the way to Mapbox's
  * setup when the token is missing; every field and the vertex list still work.
  */
@@ -12,6 +13,7 @@ import { LitElement, css, html, type TemplateResult } from 'lit';
 
 import { defineHcmIconButton } from '../../components/icon-button.js';
 import { defineOnce, emit } from '../../components/internal.js';
+import { watchModals } from '../../components/modal-registry.js';
 import { MAPBOX_GL_CSS_URL } from '../../map/mapbox-loader.js';
 import { adminBase } from '../shell/admin-styles.js';
 import { EMPTY } from '../shell/empty.js';
@@ -40,6 +42,7 @@ export class HcmAdminMap extends LitElement {
         locale: { type: String },
         cssUrl: { type: String, attribute: 'css-url' },
         focused: { state: true },
+        covered: { type: Boolean, reflect: true },
     };
 
     static override readonly styles = [
@@ -122,6 +125,13 @@ export class HcmAdminMap extends LitElement {
                 box-shadow: 0 0 0 2px var(--md-sys-color-surface, Canvas);
                 pointer-events: none;
             }
+
+            /* Under a modal dialog's scrim the map is not drawn: its logo and attribution would be covered (Mapbox's terms). */
+            :host([covered]) .canvas,
+            :host([covered]) .controls,
+            :host([covered]) .crosshair {
+                visibility: hidden;
+            }
         `,
     ];
 
@@ -131,7 +141,10 @@ export class HcmAdminMap extends LitElement {
     declare cssUrl: string;
     /** The map has the keyboard focus: the crosshair shows. */
     declare focused: boolean;
+    /** A modal dialog of the page is open: the map hides under its scrim. */
+    declare covered: boolean;
     #announced = false;
+    #unwatch: (() => void) | null = null;
 
     constructor() {
         super();
@@ -139,6 +152,20 @@ export class HcmAdminMap extends LitElement {
         this.locale = 'en';
         this.cssUrl = MAPBOX_GL_CSS_URL;
         this.focused = false;
+        this.covered = false;
+    }
+
+    override connectedCallback(): void {
+        super.connectedCallback();
+        this.#unwatch = watchModals(this.ownerDocument, (open) => {
+            this.covered = open;
+        });
+    }
+
+    override disconnectedCallback(): void {
+        super.disconnectedCallback();
+        this.#unwatch?.();
+        this.#unwatch = null;
     }
 
     /** `no-map` on the host while the box only says why there is no map, so a page sizes it to its note. */

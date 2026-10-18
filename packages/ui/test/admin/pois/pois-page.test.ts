@@ -1,10 +1,11 @@
 import { axeViolations } from '@hcm/test-support/axe';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { withDraft } from '../../../src/admin/pois/hcm-poi-list.js';
 import { saveFile } from '../../../src/admin/pois/hcm-pois-page.js';
 import { categoryName, localized, poiHref, reasonText, refusalText, yearsText } from '../../../src/admin/pois/poi-text.js';
 import { cleanup, deep, deepAll, deepText, defineAll, updated } from '../shell/fake-app.js';
-import { area, asked, CATEGORIES, draft, editor, place, poisPage, poisState, ready, route } from './fixtures.js';
+import { area, asked, CATEGORIES, draft, editor, place, poisPage, poisState, ready, route, VALUE } from './fixtures.js';
 
 function press(element: HTMLElement): void {
     deep(element, 'button').click();
@@ -107,7 +108,7 @@ describe('<hcm-pois-page>: bulk actions and files', () => {
         press(deep(bulk, 'hcm-button.delete'));
         await updated(element);
         const confirm = deep(element, 'hcm-confirm-dialog') as HTMLElement & { open: boolean; headline: string };
-        expect(confirm.headline).toBe('Delete 2 places?');
+        expect(confirm.headline).toBe('Delete the selected places (2)?');
         deep(confirm, '.confirm').click();
         await updated(element);
 
@@ -180,6 +181,22 @@ describe('<hcm-pois-page>: bulk actions and files', () => {
     });
 });
 
+describe('<hcm-pois-page>: the map centre', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('badPath_beforeTheCityIsReadAddAtCentreWaits', async () => {
+        const waiting = await poisPage(area(poisState({ editor: editor(), frame: null })), { params: ['stavropoleos'] });
+        const known = await poisPage(area(poisState({ editor: editor(), frame: { view: { center: [26.1, 44.43] } } })), {
+            params: ['stavropoleos'],
+        });
+
+        const addCentre = (element: HTMLElement): boolean =>
+            (deep(element, 'hcm-icon-button.add-centre') as HTMLElement & { disabled: boolean }).disabled;
+        expect([addCentre(waiting.element), addCentre(known.element)]).toEqual([true, false]);
+    });
+});
+
 describe('<hcm-pois-page>: the open place', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
@@ -193,6 +210,20 @@ describe('<hcm-pois-page>: the open place', () => {
         deep(element, 'hcm-admin-map').dispatchEvent(new CustomEvent('hcm-zoom', { detail: { delta: 1 } }));
         expect(store.named('zoomBy')).toEqual(['zoomBy 1']);
         expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('happyPath_theListPreviewsTheOpenPlacesDraft', async () => {
+        const value = { ...VALUE, title: { ro: 'Stavropoleos', en: 'Stavropoleos Monastery' }, yearStart: 1724, published: false };
+        const store = area(poisState({ editor: editor({ draft: draft({ value, dirty: ['title', 'yearStart', 'published'] }) }) }));
+        const { element } = await poisPage(store, { params: ['stavropoleos'] });
+
+        // The open place's row shows what Save would write; the other row as stored.
+        const rows = deepAll(element, 'a.row').map((row) => row.textContent.replace(/\s+/g, ' ').trim());
+        expect(rows).toEqual([
+            'Stavropoleos Monastery Churches · from 1724 · Point · Unpublished',
+            'Cișmigiu Parcuri · until 1900 · Area · Unpublished',
+        ]);
+        expect(withDraft([], null)).toEqual([]);
     });
 
     it('happyPath_aDeleteAsksFirstThenLeavesTheDeletedPlace', async () => {
@@ -395,12 +426,20 @@ describe('<hcm-pois-page>: the import', () => {
             },
         });
         await updated(element);
-        expect(deepText(dialog)).toContain('The import stopped after 0 places');
+        expect(deepText(dialog)).toContain('The import stopped: a write was refused. Places imported before it: 0.');
         store.set({
             importing: { status: 'refused', fileName: 'a.geojson', refusal: null, plan: null, fallbackCategory: null, written: 0 },
         });
         await updated(element);
         expect(deep(dialog, 'p.alert').textContent).toBe('');
+        store.set({
+            importing: {
+                ...{ status: 'refused', fileName: 'mari.geojson', refusal: 'too-many', plan: null, fallbackCategory: null, written: 0 },
+                limit: { existing: 2, adding: 4999 },
+            },
+        });
+        await updated(element);
+        expect(deep(dialog, 'p.alert').textContent).toBe('Too many places: the city has 2, the file adds 4999 and a city may have 5000.');
     });
 
     it('happyPath_whileWritingAndOnceDoneTheProgressShows', async () => {

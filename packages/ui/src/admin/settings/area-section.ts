@@ -4,7 +4,7 @@
  * link to its editor (S-A19-BAD-BOUNDS-EXCLUDE-CONTENT). The rectangle drawn on the page's map and **Use this view**
  * (the store's `useView`) come with the settings page's `hcm-admin-map`, once the admin tier mocks the map (CR-M2c-7).
  */
-import type { CityDoc } from '@hcm/shared';
+import { translate, type CityDoc, type ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { field, issueAt } from '../layers/form-parts.js';
@@ -46,6 +46,14 @@ function valueOf(city: CityDoc, name: AreaNumberFieldPort): number | undefined {
     return values[name];
 }
 
+/** The id of the one message a problem of the whole bounds (no area, west east of east) is said in. */
+const BOUNDS_ERROR_ID = 'area-bounds-error';
+
+/** A problem of the bounds as a whole (path `bounds`), said once for the four edges, or null. */
+function boundsIssue(context: SectionContext): ValidationIssue | null {
+    return context.view.citySection.draft.issues.find((issue) => issue.path === 'bounds') ?? null;
+}
+
 /** Where an area field's problem sits in the city document. */
 function pathOf(name: AreaNumberFieldPort): string {
     const paths: Readonly<Record<AreaNumberFieldPort, string>> = {
@@ -55,17 +63,31 @@ function pathOf(name: AreaNumberFieldPort): string {
     return paths[name];
 }
 
+/**
+ * A field's problem: an edge's own (a value that is no number) is said at the edge, one of the four edges together is
+ * said once below them (each edge still marked invalid and described by it), any other field's at the field.
+ */
+function issueOf(context: SectionContext, name: AreaNumberFieldPort): { issue: ValidationIssue | null; issueShownAt?: string } {
+    const issues = context.view.citySection.draft.issues;
+    const path = pathOf(name);
+    if (path !== 'bounds') {
+        return { issue: issueAt(issues, path) };
+    }
+    const own = issueAt(issues, `bounds.${name}`);
+    const shared = boundsIssue(context);
+    return own !== null || shared === null ? { issue: own } : { issue: shared, issueShownAt: BOUNDS_ERROR_ID };
+}
+
 function numberField(
     context: SectionContext,
     city: CityDoc,
     spec: { readonly name: AreaNumberFieldPort; readonly key: FieldKey },
 ): TemplateResult {
-    const issues = context.view.citySection.draft.issues;
     return field(context.locale, {
         id: `area-${spec.name}`,
         label: contentText(context.locale, spec.key),
         value: shown(valueOf(city, spec.name)),
-        issue: issueAt(issues, pathOf(spec.name)),
+        ...issueOf(context, spec.name),
         inputMode: 'decimal',
         onInput: (text) => {
             context.intents?.setNumber(spec.name, text);
@@ -94,6 +116,11 @@ function outsideList(context: SectionContext, outside: readonly OutsidePort[]): 
           </div>`;
 }
 
+function boundsError(context: SectionContext): TemplateResult | typeof nothing {
+    const issue = boundsIssue(context);
+    return issue === null ? nothing : html`<p class="shared-error" id=${BOUNDS_ERROR_ID}>${translate(context.locale, issue.code)}</p>`;
+}
+
 export function areaSection(context: SectionContext): TemplateResult {
     const { locale } = context;
     const city = cityOf(context);
@@ -106,6 +133,7 @@ export function areaSection(context: SectionContext): TemplateResult {
             <h3>${contentText(locale, 'adminContent.settings.bounds')}</h3>
             <p class="note">${contentText(locale, 'adminContent.settings.boundsHelp')}</p>
             <div class="fields">${BOUNDS.map((spec) => numberField(context, city, spec))}</div>
+            ${boundsError(context)}
             <p class="note status" role="status">${state.checking ? contentText(locale, 'adminContent.settings.checking') : ''}</p>
             ${outsideList(context, state.outside)}
         </section>

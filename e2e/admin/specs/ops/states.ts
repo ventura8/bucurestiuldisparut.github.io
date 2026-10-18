@@ -1,0 +1,47 @@
+/**
+ * The operations screens' states of the tour inventory (`ADMIN_STATES` of e2e/tour/states.ts spreads them inside its ops
+ * section, which keeps that file within its line limit): ids `<screen>.<state>` (docs/research/M2c-interfaces.md §12.2),
+ * each reached by the spec or tour file named in `visit`.
+ */
+export const OPS_STATES = {
+    'home.dashboard': {
+        title: "Home: the city's counts, what waits, the services' chips and the public map",
+        visit: 'specs/ops/ops.spec.ts, the dashboard',
+    },
+    'jobs.empty': { title: 'Jobs: none yet', visit: 'tour/admin-jobs.tour.ts' },
+    'jobs.list': { title: 'Jobs: the live list with its status chips', visit: 'tour/admin-jobs.tour.ts' },
+    'jobs.detail': {
+        title: "Jobs: a running job's progress, steps and log (full screen on a phone)",
+        visit: 'tour/admin-jobs.tour.ts',
+    },
+    'jobs.cancel-confirm': { title: 'Jobs: "Cancel this job?" (a dialog)', visit: 'tour/admin-jobs.tour.ts' },
+    'history.recent': { title: "History: the city's recent changes with their filters", visit: 'tour/admin-history.tour.ts' },
+    'history.deleted': { title: 'History: the Deleted filter, each with Restore', visit: 'tour/admin-history.tour.ts' },
+    'history.revert-confirm': {
+        title: 'History: "Restore what was deleted?" (a dialog)',
+        visit: 'tour/admin-history.tour.ts',
+    },
+    'history.document': {
+        title: "History: a place's versions and the selected one's fields before and after",
+        visit: 'tour/admin-history.tour.ts',
+    },
+    'history.revert-refused': {
+        title: 'History: a refused revert, with its reason as an alert',
+        visit: 'tour/admin-history.tour.ts',
+    },
+    'admins.list': { title: 'Admins: the admins and the pending invitations', visit: 'specs/ops/ops.spec.ts, admins' },
+    'admins.detail': { title: "Admins: an admin's detail with Remove access", visit: 'specs/ops/ops.spec.ts, admins' },
+    'admins.revoke-confirm': { title: 'Admins: "Remove access for …?" (a dialog)', visit: 'specs/ops/ops.spec.ts, admins' },
+    'admins.invite': { title: 'Admins: the Invite dialog with an address refused at the field', visit: 'specs/ops/ops.spec.ts, admins' },
+    'admins.invite-link': { title: 'Admins: the new invitation with its sign-in link and Copy', visit: 'specs/ops/ops.spec.ts, admins' },
+    'crashes.empty': { title: 'Crash reports: none in the period', visit: 'specs/ops/ops.spec.ts, crash reports' },
+    'crashes.list': { title: "Crash reports: a period's error groups", visit: 'specs/ops/ops.spec.ts, crash reports' },
+    'crashes.detail': {
+        title: "Crash reports: a group's counts, first and last seen, and the console link",
+        visit: 'specs/ops/ops.spec.ts, crash reports',
+    },
+    'crashes.error': {
+        title: 'Crash reports: Error Reporting disabled, with the way to Setup',
+        visit: 'specs/ops/ops.spec.ts, crash reports',
+    },
+} as const;

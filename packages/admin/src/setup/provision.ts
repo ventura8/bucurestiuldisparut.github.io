@@ -23,6 +23,9 @@ export interface ProvisionFlow {
     checkScheduler(): Promise<void>;
 }
 
+/** The reason of an item Google refused with 401: the step's token expired. */
+const EXPIRED = 'adminShell.session.googleExpired';
+
 type Runner = (
     access: GoogleAccess,
     only: readonly ProvisionItem[] | null,
@@ -101,11 +104,24 @@ class Provision implements ProvisionFlow {
                 this.onItem(item);
             });
             this.settle();
+            const expired = this.stoppedExpired();
             await this.record();
+            if (expired) {
+                this.ctx.fail('provision', googleFailure({ kind: 'unauthorized' }));
+            }
         } catch (error) {
             this.settle();
             this.ctx.fail('provision', googleFailure(error));
         }
+    }
+
+    /**
+     * Whether the provisioner stopped at an item Google answered 401 (the token expired mid-run, S-A04-BAD-TOKEN-
+     * EXPIRED-MID-RUN): then the token is dropped and the card offers Continue, which asks Google again and runs what
+     * is not done. Read before the run is recorded (the record keeps API error codes only).
+     */
+    private stoppedExpired(): boolean {
+        return this.ctx.state().provision.items.some((item) => item.detail?.key === EXPIRED);
     }
 
     private onItem(item: ProvisionItemResult): void {

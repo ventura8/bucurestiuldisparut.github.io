@@ -15,8 +15,8 @@ import { UpstreamControl } from './upstream.js';
 /**
  * The fixtures of the admin tier (docs/research/M2b-interfaces.md §6.2), on top of every e2e guard of
  * `e2e/support/test.ts` (the firewall, which in the admin projects also forwards the fake upstreams' hosts; the console
- * guard, which expects the probe's 401 and Google's 404 for a resource not created yet; the placeholder guard; the input
- * budget):
+ * guard, which expects the probe's 401, Google's 404 for a resource not created yet and a transaction commit Firestore's
+ * SDK runs again; the placeholder guard; the input budget):
  *
  * - `adminWorld` (automatic): takes the admin tier's lease (the guard behind `ADMIN_LOCK`, below), so one admin test runs
  *   at a time across projects, workers and even Playwright runs that share the servers; empties the emulators, both
@@ -76,7 +76,7 @@ const LEASE_WAIT_MS = 30 * 60 * 1000;
  * Before sign-in the admin probes `admin-session` anonymously (M2b-interfaces §1.4 step 4): a deployed callable refuses
  * it with 401 through CORS, which is how the admin knows the server answers, and Chromium logs every 401 it loads.
  */
-const PROBE_REFUSED: ExpectedConsoleError = {
+export const PROBE_REFUSED: ExpectedConsoleError = {
     text: /status of 401/,
     url: /\/us-central1\/admin-session$/,
     why: "the anonymous probe of admin-session is refused by the callable's access rule, by design",
@@ -86,11 +86,50 @@ const PROBE_REFUSED: ExpectedConsoleError = {
  * Google's REST APIs have no "does it exist" call: the provisioner and the Setup Assistant's detections read a resource
  * and take Google's 404 for "missing" (docs/research/M2b-interfaces.md §3.4), and Chromium logs every 404 it loads.
  */
-const GOOGLE_RESOURCE_ABSENT: ExpectedConsoleError = {
+export const GOOGLE_RESOURCE_ABSENT: ExpectedConsoleError = {
     text: /status of 404/,
     url: /^https:\/\/[a-z0-9-]+\.googleapis\.com\//,
     why: 'a Google resource the provisioner or a detection reads before creating it does not exist yet, by design',
 };
+
+/**
+ * A transaction's commit Firestore's SDK runs again, which Chromium logs: refused because a document changed between
+ * the transaction's read and its commit (`FAILED_PRECONDITION`, 400: a trigger wrote the photo meanwhile), or, in the
+ * emulator under a full run's contention, applied and answered 409 `ALREADY_EXISTS` (the trace shows the document stamped
+ * by that very commit; `docs/LESSONS.md` 117). The run again succeeds or reports what the editor shows.
+ */
+export const FIRESTORE_COMMIT_RETRIED: ExpectedConsoleError = {
+    text: /status of (400|409)/,
+    url: /\/documents:commit\?/,
+    why: "Firestore's SDK runs a transaction again after its commit was refused (a document changed since its read) or re-answered",
+};
+
+/**
+ * WebKit only: Playwright's WebKit instrumentation (`web-inspector://bootstrap.js`) sets inline styles on the page, which
+ * the admin's CSP refuses (`style-src` has no `'unsafe-inline'`); the admin's own styles are constructed style sheets,
+ * which WebKit applies. The admin is not what logs these (lesson 109).
+ */
+const WEBKIT_INSPECTOR_STYLES: ExpectedConsoleError = {
+    text: /^Refused to apply a stylesheet because its hash, its nonce, or 'unsafe-inline' does not appear in the style-src directive/,
+    url: /.*/,
+    why: "Playwright's WebKit instrumentation sets inline styles the admin's CSP refuses",
+};
+
+/**
+ * WebKit only: Safari applies `Content-Security-Policy-Report-Only: require-trusted-types-for 'script'` and says the
+ * policy has no effect without `report-to`, then reports Firebase Auth's gapi loader (a script URL set as a string).
+ * The header is firebase.json's; whether to give it a report endpoint is for the user (DECISIONS-for-review.md §37g).
+ */
+const WEBKIT_TRUSTED_TYPES_REPORT: ExpectedConsoleError = {
+    text: /require-trusted-types-for 'script'/,
+    url: /.*/,
+    why: "Safari reports the report-only Trusted Types header (no report-to) and Firebase Auth's gapi loader under it",
+};
+
+/** What a test expects in the console beyond its tier's own: WebKit's two (above) in the WebKit projects. */
+export function engineConsoleErrors(browserName: string): readonly ExpectedConsoleError[] {
+    return browserName === 'webkit' ? [WEBKIT_INSPECTOR_STYLES, WEBKIT_TRUSTED_TYPES_REPORT] : [];
+}
 
 /** When a seeded map was claimed: a fixed time, never the wall clock. */
 const SEED_TIME = new Date('2026-10-01T09:00:00Z');
@@ -142,7 +181,7 @@ export const test = base.extend<AdminFixtures>({
     mapOwner: [null, { option: true }],
     invited: [[], { option: true }],
     admins: [[], { option: true }],
-    expectedConsoleErrors: [[PROBE_REFUSED, GOOGLE_RESOURCE_ABSENT], { scope: 'test' }],
+    expectedConsoleErrors: [[PROBE_REFUSED, GOOGLE_RESOURCE_ABSENT, FIRESTORE_COMMIT_RETRIED], { scope: 'test' }],
     adminWorld: [
         async ({ mockApiRequest, mapOwner, invited, admins }, use, testInfo) => {
             const holder = testIdOf(testInfo);

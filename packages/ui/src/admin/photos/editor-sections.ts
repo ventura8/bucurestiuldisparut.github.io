@@ -7,6 +7,7 @@
 import type { FirestoreLicense, Locale, ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
+import type { FieldsLeft } from '../editing/number-fields.js';
 import { areaField, numberField, numberOf, selectField, textField, textOf } from './editor-fields.js';
 import { LICENSE_ORDER, blockText, fieldIssue, licenseText, partId, photoText } from './photo-text.js';
 import type { LocalizedPort, PhotoEditorPort, PhotoPatchPort, PhotoValuePort } from './photos-port.js';
@@ -19,6 +20,8 @@ export interface SectionInput {
     readonly value: PhotoValuePort;
     readonly issues: readonly ValidationIssue[];
     readonly edit: (patch: PhotoPatchPort) => void;
+    /** The number fields left since the photo opened: only they say their problem. */
+    readonly left: FieldsLeft;
 }
 
 /** Romanian and English as stored: absent when both are empty (an optional text). */
@@ -110,6 +113,7 @@ export function datesSection(input: SectionInput): TemplateResult {
             (typed) => {
                 edit({ [field]: numberOf(typed) });
             },
+            input.left,
         );
     return html`<fieldset>
         <legend>${photoText(locale, 'adminContent.photos.section.dates')}</legend>

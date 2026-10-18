@@ -71,20 +71,41 @@ export interface SetupContext {
     count(id: SetupStepId, kind: keyof StepCounts): void;
     /** Records a failed check or action on step `id` (Continue when the Google token expired). */
     fail(id: SetupStepId, failure: StepFailure): void;
+    /**
+     * A save the server refused (Mapbox, USGS): its message, then the status the server recorded with the reason, so the
+     * chip says it too (S-A06-BAD-REVOKED); a status that cannot be read leaves the chip as it was, the message says why.
+     */
+    failRecorded(id: SetupStepId, failure: StepFailure): Promise<void>;
     /** Normal mode: the server's `setup/status` replaces what the cards show. */
     applyStatus(view: SetupStatusView): void;
+    /**
+     * From now on every change in bootstrap mode is mirrored into the bootstrap record: called once the controller has
+     * read it. Before, a change (the claim card's, while the shell claims) would replace the record with an empty one
+     * and lose what the start-up steps found (S-A26-BAD-TOKEN-GONE).
+     */
+    mirrorBootstrap(): void;
     /** ISO 8601 of the clock's now. */
     nowIso(): string;
 }
 
 export function createSetupContext(deps: SetupDeps, store: SetupStore): SetupContext {
     const nowIso = (): string => new Date(deps.clock.now()).toISOString();
+    let mirroring = false;
     const update = (change: (state: SetupState) => SetupState): void => {
         const next = change(store.get());
         store.set(next);
-        if (next.mode === 'bootstrap') {
+        if (next.mode === 'bootstrap' && mirroring) {
             writeBootstrapRecord(deps.session, bootstrapRecordOf(next, nowIso()));
         }
+    };
+    const fail = (id: SetupStepId, failure: StepFailure): void => {
+        if (failure.expired) {
+            deps.google.drop();
+        }
+        update((state) => withStep(state, id, { busy: false, error: failure.message, needsContinue: failure.expired }));
+    };
+    const applyStatus = (view: SetupStatusView): void => {
+        update((state) => applyStatusView(state, view, deps.clock.now()));
     };
     return {
         deps,
@@ -96,14 +117,18 @@ export function createSetupContext(deps: SetupDeps, store: SetupStore): SetupCon
         count(id, kind) {
             update((state) => withCount(state, id, kind));
         },
-        fail(id, failure) {
-            if (failure.expired) {
-                deps.google.drop();
+        fail,
+        async failRecorded(id, failure) {
+            fail(id, failure);
+            try {
+                applyStatus(await deps.backend.status());
+            } catch (error) {
+                deps.log.warn('setup status not read after a refused save', { step: id, error: String(error) });
             }
-            update((state) => withStep(state, id, { busy: false, error: failure.message, needsContinue: failure.expired }));
         },
-        applyStatus(view) {
-            update((state) => applyStatusView(state, view, deps.clock.now()));
+        applyStatus,
+        mirrorBootstrap() {
+            mirroring = true;
         },
         nowIso,
     };

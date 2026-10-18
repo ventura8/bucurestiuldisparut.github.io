@@ -5,7 +5,7 @@ import type { AreaStore } from '../../src/content/areas.js';
 import { LAST_CATEGORY_KEY } from '../../src/pois/actions.js';
 import { POIS_MODULE } from '../../src/pois/pois.js';
 import type { PoisIntents, PoisState } from '../../src/pois/state.js';
-import { AREA, CITY, CONTAINER, POINT, seedPlace, seededWorld, settle, type PoisWorld } from './world.js';
+import { AREA, CITY, CONTAINER, POINT, poisWorld, seedCategory, seedPlace, seededWorld, settle, type PoisWorld } from './world.js';
 
 function opened(world: PoisWorld, params: readonly string[] = []): AreaStore<PoisState, PoisIntents> {
     const store = POIS_MODULE.create(world.services);
@@ -161,6 +161,24 @@ describe('places: adding and editing', () => {
         store.open([store.intents.add('linestring')]);
 
         expect(store.state.editor).toMatchObject({ shape: 'linestring', draft: { value: { category: 'biserici' } } });
+    });
+
+    it('badPath_aPlaceAddedBeforeTheCategoriesArriveGetsTheRememberedOneOnceTheyDo', () => {
+        const world = poisWorld();
+        world.services.local.set(LAST_CATEGORY_KEY, 'parcuri');
+        const store = opened(world);
+        const early = store.intents.add('point');
+        store.open([store.intents.add('point')]);
+        expect(store.state.editor?.draft?.value.category).toBe('');
+
+        // The fake delivers each category as it is written; Firestore's first snapshot has them all.
+        seedCategory(world, 'parcuri', 2);
+        seedCategory(world, 'biserici', 1);
+        expect(store.state.editor?.draft?.value.category).toBe('parcuri');
+        store.open([early]);
+
+        expect(store.state.editor?.draft?.value.category).toBe('parcuri');
+        expect(store.state.editor?.draft?.issues.some((issue) => issue.path === 'category')).toBe(false);
     });
 
     it('badPath_aSaveTheStoreRefusesSaysWhy', async () => {

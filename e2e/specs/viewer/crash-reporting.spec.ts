@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test';
 import { REDACTED } from '@hcm/shared';
 
-import { E2E_TELEMETRY_HOST, E2E_TILESET_LAYER, SITE_ORIGIN } from '../../fixtures/world.js';
+import { E2E_CITY_ID, E2E_TELEMETRY_HOST, E2E_TILESET_LAYER, SITE_ORIGIN } from '../../fixtures/world.js';
 import type { MockApis } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
 import { openLayers, openViewer, visibilitySwitch } from '../../support/viewer.js';
@@ -53,7 +53,7 @@ test('An uncaught error reaches the error endpoint, redacted', { tag: '@S-V20-HA
     const [report] = await reports(mockApis);
     expect(report).toMatchObject({
         message: `Error: e2e crash for visitor ${REDACTED}`,
-        cityId: 'bucuresti',
+        cityId: E2E_CITY_ID,
         page: `${SITE_ORIGIN}/bucharest/`,
         locale: lang,
         fatal: false,

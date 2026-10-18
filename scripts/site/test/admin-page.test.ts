@@ -1,11 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
-import { ADMIN_PAGE, ADMIN_SCRIPT_FILE, ADMIN_SHELL_ELEMENT, ADMIN_STYLESHEET_FILE, renderAdminPage } from '../src/admin/page.js';
+import {
+    ADMIN_PAGE,
+    ADMIN_SCRIPT_FILE,
+    ADMIN_SHELL_ELEMENT,
+    ADMIN_STYLESHEET_FILE,
+    MAPBOX_INTEGRITY_ATTRIBUTE,
+    renderAdminPage,
+} from '../src/admin/page.js';
 import { htmlValidateMessages } from './support.js';
 
 describe('renderAdminPage', () => {
     it('happyPath_passesTheRepositoryHtmlValidateRules', async () => {
         expect(await htmlValidateMessages(renderAdminPage(), 'packages/admin/dist/index.html')).toEqual([]);
+    });
+
+    it('happyPath_namesTheMapboxDigestTheLoaderReads', async () => {
+        const digest = `sha384-${'x'.repeat(64)}`;
+        const html = renderAdminPage(ADMIN_PAGE, { mapboxGlIntegrity: digest });
+
+        // The loader of @hcm/ui/map reads the same attribute (MAPBOX_INTEGRITY_ATTRIBUTE there).
+        expect(MAPBOX_INTEGRITY_ATTRIBUTE).toBe('data-mapbox-integrity');
+        expect(html).toContain(`<html lang="ro" data-mapbox-integrity="${digest}">`);
+        expect(await htmlValidateMessages(html, 'packages/admin/dist/index.html')).toEqual([]);
     });
 
     it('happyPath_loadsTheStylesheetThenTheBundleAndHoldsTheShell', () => {

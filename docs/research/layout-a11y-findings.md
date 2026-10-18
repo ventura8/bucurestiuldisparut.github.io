@@ -346,3 +346,20 @@ layout or accessibility violations at all 44 tour projects and the six admin pro
 first run above and 0 in the verify agent's baseline run before the stricter checks (the hit-tested targets then found
 197 records on 41 tests, and the newer checks 183 lines on samples of about ten projects: 176 cut rings, 5 sideways
 scrolls, 2 stacked rows' targets; all fixed as listed).
+
+## Addendum 2026-10-18: the scroll sweep (follow-ups agent)
+
+The checkers measured what is scrolled into view (lesson 84 of `docs/LESSONS.md`). Since 2026-10-18 `expectStateSound`
+ends with the scroll sweep (`e2e/support/scroll-sweep.ts`): every box a visitor scrolls is scrolled through its content
+three quarters of its height at a time, and the layout checker, the target sizes, the non-text contrast (page scheme and
+high contrast) and axe's `color-contrast` run again at each position; only new violations are reported, and the test's
+`scroll sweep` annotations name what each state swept. With it, a sliver of at most 5 px of a control at the edge of
+what scrolls no longer counts as occluded (CR-M2c-29 c), as the sweep checks the control whole elsewhere.
+
+What it found in its first runs (2026-10-18, laptop and NUC split): nothing new. The `e2e` stage (the per-push tiers and
+the admin's states at its five projects) and the `tour-matrix` stage (the viewer's states at the other 35 viewports,
+1044 swept positions: About's dialog content, the photo, place and layers sheets at every height, the photo list, the
+error cards' status box) both passed. The two failures of the first `e2e` run were no sweep findings: a toast left from
+the previous state that timed out mid-check (lesson 89) and the snackbar of the new revoked state (now held open, as the
+skill says). The admin's states at every tour viewport (§34c of `DECISIONS-for-review.md`) will be swept by the same
+call once the E2E agent adds them.

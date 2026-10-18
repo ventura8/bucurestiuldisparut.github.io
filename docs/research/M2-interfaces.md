@@ -79,7 +79,7 @@ crash), each `{state, checkedAt?, detail?, params?}` plus its area's non-secret 
   (`onDocumentWrittenWithAuthContext`, so a delete knows who deleted) write one entry per change into the document's
   `history` subcollection, id `historyEntryId(eventTime, event.id)` (sorts by time; a redelivered event writes the same
   entry). `previous` is the whole document before the change (none for a create), `changedFields` the top-level keys
-  whose values differ, the stamp the change's own (a delete: `event.authId`, else `system:<authType>`). After writing,
+  whose values differ, the stamp the change's own (a delete: `event.authId`, else `system:<authType>`, at the event's time but never before the version it deleted, `docs/LESSONS.md` 121). After writing,
   the trigger deletes the oldest entries beyond `HISTORY_KEEP` (50).
 - `history.revert` writes the restored document **and** its own `revert` entry (`revertOf` = the restored entry,
   `previous` = the version it replaced, null when it restores a deleted document) in one transaction; the trigger

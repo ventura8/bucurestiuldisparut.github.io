@@ -96,10 +96,22 @@ export function usgsFromView(usgs: UsgsSlice, view: SetupStatusView['usgs'], now
     };
 }
 
+/**
+ * The server's doctor items, each keeping the reason this page knows for the same state: `setup.recordCloud` stores
+ * only API error codes, so a reason of the Setup Assistant's own (an organisation policy, the item it waits for) would
+ * vanish the moment the run is recorded (S-A04-BAD-ORG-POLICY).
+ */
+function withKnownReasons(recorded: readonly ProvisionItemState[], shown: readonly ProvisionItemState[]): readonly ProvisionItemState[] {
+    return recorded.map((item) => {
+        const known = shown.find((candidate) => candidate.id === item.id);
+        return item.detail === null && known?.state === item.state && known.detail !== null ? { ...item, detail: known.detail } : item;
+    });
+}
+
 /** Normal mode: the server's record. The bootstrap steps and the claim are done (the server answers an admin). */
 export function applyStatusView(state: SetupState, view: SetupStatusView, now: number): SetupState {
     const done: StepPatch = { state: 'ok', checkedAt: view.generatedAt, detail: null };
-    const items = mergeItems(view.provision.items);
+    const items = withKnownReasons(mergeItems(view.provision.items), state.provision.items);
     const next = withSteps(state, [
         ['signIn', done],
         ['deploy', done],

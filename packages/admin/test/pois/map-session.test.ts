@@ -188,6 +188,23 @@ describe('the places map: places and the open place', () => {
         expect(maps.draw.callsOf('setMode')).toHaveLength(1);
     });
 
+    it('badPath_aNewPlaceAppliedAgainBeforeItsShapeExistsKeepsItsFirstClicks', async () => {
+        const { map, maps } = await ready();
+        map.edit(NEW_PLACE);
+
+        // Its category arrives (a new colour) while the area has its first corner: the tools keep drawing it.
+        map.edit({ ...NEW_PLACE, color: '#1f6f43' });
+        map.edit({ ...NEW_PLACE, color: '#1f6f43' });
+
+        expect(maps.draw.callsOf('setMode')).toEqual([['draw-polygon', 'nou']]);
+        expect(maps.draw.callsOf('setColor').at(-1)).toEqual(['#1f6f43']);
+
+        // The Select tool, then the target again: its shape is still to draw, so the tools draw it again.
+        map.setMode('select');
+        map.edit({ ...NEW_PLACE, color: '#1f6f43' });
+        expect(maps.draw.mode).toBe('draw-polygon');
+    });
+
     it('happyPath_aStoredPlaceLeavesItsCategoryAndIsLoadedIntoTheTools', async () => {
         const { map, maps } = await ready();
         map.showPlaces([CHURCHES]);

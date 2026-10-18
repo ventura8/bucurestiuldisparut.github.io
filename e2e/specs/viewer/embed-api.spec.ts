@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 
-import { E2E_TILESET_LAYER, E2E_XYZ_LAYER } from '../../fixtures/world.js';
+import { E2E_CITY_ID, E2E_TILESET_LAYER, E2E_XYZ_LAYER } from '../../fixtures/world.js';
 import { readInstrumentation } from '../../support/instrumentation.js';
 import { sitePath } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
@@ -40,7 +40,7 @@ async function openEmbed(page: Page): Promise<unknown> {
     return page.evaluate(async () => {
         const scope = window as unknown as EmbedWindow;
         const controller = scope.HistoricCityMap.mount(document.getElementById('embed') as Element, {
-            cityId: 'bucuresti',
+            cityId: 'bucharest',
             manifestUrl: './data/manifest.json',
         });
         scope.hcmE2eController = controller;
@@ -58,7 +58,7 @@ async function call(page: Page, method: string, ...args: unknown[]): Promise<voi
 }
 
 test('mount() boots a viewer whose controller drives the map, the events and the hash', { tag: '@S-V21-HAPPY' }, async ({ page }) => {
-    expect(await openEmbed(page)).toEqual({ ok: true, cityId: 'bucuresti' });
+    expect(await openEmbed(page)).toEqual({ ok: true, cityId: E2E_CITY_ID });
     await expect(viewer(page).locator('canvas.mapboxgl-canvas')).toBeVisible();
 
     await call(page, 'setYear', 1966);
@@ -96,7 +96,7 @@ test(
         await page.route('**/bucharest/config.js', (route) =>
             route.fulfill({
                 contentType: 'text/javascript; charset=utf-8',
-                body: "globalThis.HistoricCityMapConfig = { cityId: 'bucuresti', manifestUrl: './data/manifest.json', container: '#nope' };",
+                body: "globalThis.HistoricCityMapConfig = { cityId: 'bucharest', manifestUrl: './data/manifest.json', container: '#nope' };",
             }),
         );
         await page.goto(sitePath('bucharest', { lang }));
@@ -113,7 +113,7 @@ test(
 );
 
 test('After destroy() the map is gone and later calls change nothing', { tag: '@S-V21-BAD-AFTER-DESTROY' }, async ({ page }) => {
-    expect(await openEmbed(page)).toEqual({ ok: true, cityId: 'bucuresti' });
+    expect(await openEmbed(page)).toEqual({ ok: true, cityId: E2E_CITY_ID });
     // The viewer writes the city view into the hash shortly after it is ready.
     await expect.poll(() => currentHash(page)).not.toBe('');
     const hashBefore = await currentHash(page);

@@ -14,6 +14,7 @@ import {
     contentDepsFor,
     E2E_KIT,
     e2eCity,
+    e2eMapToken,
     guardUnload,
     loadColourLibrary,
     projectOf,
@@ -98,7 +99,7 @@ function fakeWindow(files: Readonly<Record<string, Response>> = {}) {
 }
 
 /** The `e2e` build's kit, as `E2E_KIT` is in that build. */
-const E2E = { standInPopup: createStandInPopup, city: e2eCity };
+const E2E = { standInPopup: createStandInPopup, city: e2eCity, mapToken: e2eMapToken };
 
 /** One configuration for every test: Firebase keeps one default app per process. */
 const CONFIG = { ...E2E_WEB_CONFIG, measurementId: 'G-E2E0000000' };
@@ -160,6 +161,16 @@ describe('the entry', () => {
 
         expect(deps.content?.cityId).toBe('e2e-photos-1');
         expect([e2eCity('?city=Not_Valid'), e2eCity(''), e2eCity('?city=cluj')]).toEqual([null, null, 'cluj']);
+    });
+
+    it('happyPath_theE2eBuildTakesTheMapTokenOfTheTestsCity', () => {
+        expect([
+            e2eMapToken('?city=cluj&mapToken=pk.e2e-fake-token'),
+            e2eMapToken('?mapToken=none'),
+            e2eMapToken('?mapToken=sk.secret'),
+            e2eMapToken('?mapToken=pk.'),
+            e2eMapToken('?city=cluj'),
+        ]).toEqual(['pk.e2e-fake-token', null, null, null, undefined]);
     });
 
     it('happyPath_theE2eBuildWiresTheEmulatorsAndTheOauthStandIn', async () => {

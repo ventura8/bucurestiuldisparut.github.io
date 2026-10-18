@@ -15,6 +15,7 @@ import { WindowClassController } from '../../layout/window-class.js';
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
+import { splitsAt } from '../editing/hcm-list-detail.js';
 import { EMPTY } from '../shell/empty.js';
 import { deleteDialog, reportDialog, setFieldsDialog } from './photo-dialogs.js';
 import { photoStyles } from './photo-styles.js';
@@ -24,7 +25,6 @@ import type { MapStatusPort, PhotosIntentsPort, PhotosViewState, StickyPort } fr
 export const HCM_PHOTOS_PAGE_TAG = 'hcm-photos-page';
 
 /** Window classes where the list and the detail show side by side (the map then shows without an open photo). */
-const SPLIT: ReadonlySet<string> = new Set(['expanded', 'large', 'extra-large']);
 
 export class HcmPhotosPage extends AreaPage<PhotosViewState, PhotosIntentsPort> {
     static override readonly properties = { ...AreaPage.properties, settingFields: { state: true } };
@@ -57,7 +57,7 @@ export class HcmPhotosPage extends AreaPage<PhotosViewState, PhotosIntentsPort> 
 
     /** The map's pane shows: side by side, or a photo is open. */
     get mapVisible(): boolean {
-        return SPLIT.has(this.#size.size.widthClass) || this.params.length > 0;
+        return splitsAt(this.#size.size) || this.params.length > 0;
     }
 
     protected override updated(changed: PropertyValues<this>): void {

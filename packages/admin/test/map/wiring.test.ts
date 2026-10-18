@@ -79,6 +79,42 @@ describe('the admin map wiring', () => {
         expect(gl.map.options.accessToken).toBe('pk.t');
     });
 
+    it('happyPath_theE2eBuildsFixedTokenIsUsedWithoutReadingSetupStatus', async () => {
+        const page = scope(false);
+        const reads: string[] = [];
+        const { log: logger } = log();
+        const readDoc = (path: string): Promise<null> => {
+            reads.push(path);
+            return Promise.resolve(null);
+        };
+        const fixed = adminMapFactoryOf({ scope: page, readDoc, terraDraw: null, log: logger, fixedToken: 'pk.e2e-fixed' });
+        const secret = adminMapFactoryOf({ scope: page, readDoc, terraDraw: null, log: logger, fixedToken: 'sk.secret' });
+        const none = adminMapFactoryOf({ scope: page, readDoc, terraDraw: null, log: logger, fixedToken: null });
+        const options = {
+            bounds: [
+                [26, 44.3],
+                [26.3, 44.55],
+            ] as const,
+            view: { center: [26.1, 44.43] as const, zoom: 13, bearing: 0 },
+            locale: 'ro' as const,
+        };
+
+        const creating = fixed.create({} as HTMLElement, options);
+        const gl = page.mapboxgl as FakeMapboxGl;
+        for (let round = 0; round < 20 && gl.maps.length === 0; round += 1) {
+            await Promise.resolve();
+        }
+        gl.map.fire('load');
+
+        expect((await creating).ok).toBe(true);
+        expect(gl.map.options.accessToken).toBe('pk.e2e-fixed');
+        expect(reads).toEqual([]);
+        // A value that is not a public token, or none at all, is no token: setup/status is not read either.
+        expect(await secret.create({} as HTMLElement, options)).toEqual({ ok: false, reason: 'no-token' });
+        expect(await none.create({} as HTMLElement, options)).toEqual({ ok: false, reason: 'no-token' });
+        expect(reads).toEqual([]);
+    });
+
     it('badPath_aPageWithoutMatchMediaAnimates', async () => {
         const page = scope(null);
         const { log: logger } = log();

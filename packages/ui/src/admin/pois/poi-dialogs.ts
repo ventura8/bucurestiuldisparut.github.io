@@ -5,7 +5,7 @@
  * the import (the file's preview: new, updated, unchanged and refused with the reasons, the category for features
  * without a known one, Import; then its progress and outcome).
  */
-import { MAX_POI_PHOTOS, type Locale } from '@hcm/shared';
+import { MAX_POI_PHOTOS, MAX_POIS, type Locale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { localized, poiText, reasonText, SHAPE_KEYS } from './poi-text.js';
@@ -44,7 +44,7 @@ const CONFIRM_TEXTS: { readonly [K in PageDialog['kind']]: (locale: Locale, dial
     redraw: (locale, dialog) => ({
         headline: poiText(locale, 'adminContent.pois.redrawTitle'),
         body: poiText(locale, 'adminContent.pois.redrawBody'),
-        action: poiText(locale, 'adminContent.pois.redraw', { shape: poiText(locale, SHAPE_KEYS[dialog.shape]) }),
+        action: poiText(locale, 'adminContent.pois.redraw', { shape: poiText(locale, SHAPE_KEYS[dialog.shape]).toLocaleLowerCase(locale) }),
     }),
     move: () => ({ headline: '', body: '', action: '' }),
     photos: () => ({ headline: '', body: '', action: '' }),
@@ -264,7 +264,14 @@ function importStatus(locale: Locale, state: ImportStatePort): string {
     if (key !== null) {
         return poiText(locale, key, { written: String(state.written), total: String(writes(state.plan)) });
     }
-    return state.refusal === null ? '' : poiText(locale, `adminContent.pois.import.file.${state.refusal}`);
+    return state.refusal === null ? '' : poiText(locale, `adminContent.pois.import.file.${state.refusal}`, limitParams(state.limit));
+}
+
+/** The numbers of a refusal over the city's limit (none for the other refusals). */
+function limitParams(limit: ImportStatePort['limit']): Readonly<Record<string, string>> {
+    return limit === undefined || limit === null
+        ? {}
+        : { count: String(limit.existing), adding: String(limit.adding), limit: String(MAX_POIS) };
 }
 
 /** The body of an open import dialog. */

@@ -188,6 +188,7 @@ export class PhotosArea implements PhotosStore {
         if (city !== null) {
             this.#city = cityPlace(city.data);
             this.#editing.refresh();
+            this.#context.uploads.cityKnown();
             void this.#attachWhenReady();
         }
     }

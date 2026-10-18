@@ -10,7 +10,8 @@ import type { ContentQuery, Stored, WriteOutcome } from '../content/services.js'
 import type { PlaceEditorState } from './editor.js';
 import type { ImportState } from './importer.js';
 import { overlayOf, UNCATEGORISED_COLOR } from './map-session.js';
-import { textIn, textOf, type CategoryItem, type PoiItem } from './model.js';
+import { exportFileName, exportText, GEOJSON_MEDIA_TYPE } from './geojson.js';
+import { textIn, textOf, type CategoryItem, type PoiItem, type PoiValue } from './model.js';
 
 export interface PoisFilter {
     /** One category, or every one. */
@@ -106,3 +107,29 @@ export const WRITE_FAILURES: Readonly<Record<WriteFailure, AdminContentKey>> = {
     offline: 'adminContent.pois.offline',
     invalid: 'adminContent.pois.invalid',
 };
+
+/** A new place's first value: in `category`, without a shape or a title yet, published (Save publishes it). */
+export function newPlaceValue(category: string): PoiValue {
+    return { category, geometry: null, title: { ro: '' }, links: [], photoIds: [], published: true };
+}
+
+/** The category a new place starts in: the last one saved while the city still has it, else the first, else none. */
+export function newPlaceCategory(categories: readonly CategoryItem[], remembered: string | null): string {
+    return categories.find((item) => item.id === remembered)?.id ?? categories[0]?.id ?? '';
+}
+
+/** Whether the open draft is a new place still without a category (added before the categories were listed). */
+export function lacksCategory(draft: PlaceEditorState['draft'] | undefined): boolean {
+    return draft?.isNew === true && draft.value.category === '';
+}
+
+/** The GeoJSON file of `places` of the city (the list's export, or its selection's). */
+export function exportFile(
+    cityId: string,
+    now: number,
+    places: readonly PoiItem[],
+    categories: readonly CategoryItem[],
+): { readonly name: string; readonly type: string; readonly text: string } {
+    const chosen = places.map((item) => ({ id: item.id, value: item.value }));
+    return { name: exportFileName(cityId, new Date(now)), type: GEOJSON_MEDIA_TYPE, text: exportText(cityId, chosen, categories) };
+}

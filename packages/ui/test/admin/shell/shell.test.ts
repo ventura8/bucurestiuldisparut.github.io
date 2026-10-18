@@ -55,6 +55,24 @@ describe('<hcm-admin-shell>', () => {
         expect(document.documentElement.lang).toBe('ro');
     });
 
+    it('badPath_aRevokedAdminKeepsThePageUnderABannerWithSignOut', async () => {
+        // S-A20-BAD-REVOKED-WHILE-EDITING (DECISIONS-for-review.md §35e).
+        const app = new FakeAdminApp(adminState({ destinations: DESTINATIONS, revoked: true }));
+        const element = await shell(app);
+
+        const banner = deep(element, '.banner.revoked');
+        expect(banner.getAttribute('role')).toBe('alert');
+        expect(banner.textContent).toContain('Your access was removed: nothing more can be saved.');
+        expect(deepAll(element, 'hcm-page-outlet')).toHaveLength(1);
+        deep(deep(banner, 'hcm-button'), 'button').click();
+        expect(app.calls).toContain('signOut');
+        expect(await axeViolations(element)).toEqual([]);
+
+        app.set({ revoked: false });
+        await updated(element);
+        expect(deepAll(element, '.banner.revoked')).toEqual([]);
+    });
+
     it.each([
         ['starting', 'Loading…'],
         ['probing', 'Loading…'],

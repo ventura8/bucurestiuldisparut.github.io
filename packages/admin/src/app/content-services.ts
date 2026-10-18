@@ -1,11 +1,13 @@
 /**
  * The editors' services as `mount` builds them (`docs/research/M2c-interfaces.md` §2.2): the entry's `ContentDeps`
  * (Firestore, the theme function, the areas' own services, the city) joined with the shell's (the guarded callables,
- * the clock, `localStorage`, the logger, who is signed in, the language, the snackbar, the revocation check).
+ * the clock, `localStorage`, the logger, who is signed in, the language, the snackbar, the revocation check, the theme
+ * preview the whole admin wears). A revoked admin's writes are refused before they reach Firestore (`../content/revoked.ts`).
  */
 import type { Logger } from '@hcm/shared';
 
 import type { ContentDeps } from '../content/registry.js';
+import { writesRefusedWhen } from '../content/revoked.js';
 import type { ContentServices } from '../content/services.js';
 import type { CallablesPort } from '../firebase/ports.js';
 import type { ShellStateAccess } from '../state/state.js';
@@ -29,7 +31,8 @@ export function contentServices(parts: ContentShell): ContentServices {
     return {
         ...content.areas,
         cityId: content.cityId ?? parts.cities[0] ?? '',
-        ...{ store: content.store, theme: content.theme, callables: parts.callables },
+        store: writesRefusedWhen(content.store, () => shell.get().revoked),
+        ...{ theme: content.theme, callables: parts.callables },
         ...{ clock: parts.clock, local: parts.local, log: parts.log, denied: parts.denied },
         user: () => {
             const user = shell.get().user;
@@ -38,6 +41,9 @@ export function contentServices(parts: ContentShell): ContentServices {
         locale: () => shell.get().locale,
         notify: (notice) => {
             shell.update({ notice: shell.notice(notice) });
+        },
+        previewTheme: (preview) => {
+            shell.update({ theme: { ...shell.get().theme, preview } });
         },
     };
 }

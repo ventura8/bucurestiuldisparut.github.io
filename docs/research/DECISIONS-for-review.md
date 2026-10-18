@@ -2114,7 +2114,7 @@ and three product decisions for the user to see. Nothing here is applied yet: 34
 equal) and is applied, verified and logged by the pois workstream in the change that moves the map; 34b and 34c change
 what a gate measures or how long CI runs, so they wait for the user's answer.
 
-### 34a. `.dependency-cruiser.cjs`: the map's new home and the draw library — APPLIED (2026-10-17, pois workstream; pre-approved kind: stricter or equal)
+### 34a. `.dependency-cruiser.cjs`: the map's new home and the draw library — APPLIED (2026-10-17, pois workstream; pre-approved kind: stricter or equal); its proposal (drop the empty `engine-browser` project) APPLIED 2026-10-18 (orchestrator decision)
 
 The admin may not import the engine (`engine-and-admin-independent`), so `packages/engine/src/map/` moves to
 `packages/ui/src/map/` (M2c-interfaces CR-M2c-1). The rule that guards Mapbox GL follows the file, and two new rules keep
@@ -2165,7 +2165,7 @@ their route opens; the build is minified like the engine's (§17a). `scripts/ci/
 to keep the IIFE and minify it, which keeps everything in one file and the same budget. Verify: `PIPELINE_STAGE=build`
 (`bundle-budget`) and the admin tier.
 
-### 34c. The admin's journeys at the tour projects — PROPOSED (for the user: CI time)
+### 34c. The admin's journeys at the tour projects — APPLIED 2026-10-18 (orchestrator decision; §37b)
 
 Every new admin screen and state must pass the generic checkers at every tour viewport, light and dark (the task's rule;
 M2c-interfaces §12.2), while today the admin's states run at its six admin projects only. Proposal: one tour file per
@@ -2207,7 +2207,7 @@ the pois section of `packages/admin/src/app/content-wiring.ts` (M2c-interfaces C
 vertex or a midpoint on the map comes with it. Verify: `PIPELINE_STAGE=tests` (a browser test with the real Terra Draw),
 then `build` (the bundle budget, §34b).
 
-### 34h. The admin's Mapbox GL JS without Subresource Integrity — PROPOSED (for the user to see; a stricter option offered)
+### 34h. The admin's Mapbox GL JS without Subresource Integrity — APPLIED 2026-10-18 (orchestrator decision): the stricter option
 
 The admin adds `mapbox-gl.js` of the pinned release from `api.mapbox.com` when its first map opens (`loadMapboxGl`,
 `packages/ui/src/map/mapbox-loader.ts`), so the Setup pages never load it. The viewer's page names the script with an
@@ -2244,7 +2244,7 @@ found); the rest wait for the user.
 keys unchanged; `packages/shared/test/i18n-admin.test.ts` checks each folder's sections and prefixes, that no key is in two
 folders and that the merge holds them all. No configuration changed (the `i18n` gate counts 10 catalogue folders now).
 
-### 35b. The Bucharest site names another city than the project — PROPOSED (for the user)
+### 35b. The Bucharest site names another city than the project — APPLIED 2026-10-18 (orchestrator decision): option 1
 
 The built site (`sites/bucharest/config.js`) and the legacy manifest (`seed/bucharest/manifest.static.json`) name the city
 `bucuresti`; the project (`infra/project.json`), the admin and therefore every manifest the backend builds name it
@@ -2273,7 +2273,7 @@ A condition on the path cannot hold for a collection-group query (the emulator t
 stays open to admins: an admin could still list a `history` collection outside `cities/`, where nothing writes one.
 Verified by `firebase/rules-tests` (203 tests, the `rules-coverage` gate) in `PIPELINE_STAGE=tests`.
 
-### 35d. The place editor's texts commit on each key — APPLIED (a product fix the A41 journey found)
+### 35d. The place editor's texts commit on each key — APPLIED (a product fix the A41 journey found); its alternative for numbers APPLIED 2026-10-18 (orchestrator decision)
 
 The place editor's titles, descriptions and links committed on `change`; a new place's Romanian title typed and then a
 click on Save did nothing, because Save was still disabled (the draft had no title yet) and a disabled button takes no
@@ -2282,7 +2282,7 @@ click, so the field was never left. They commit on `input` now, as the photo edi
 number is not a year and would flash an error. A year-only edit therefore still needs the field left (Tab) before Save:
 for the user to see; the alternative is to commit numbers on `input` and show their errors only once the field is left.
 
-### 35e. A revoked admin's open draft is lost — PROPOSED (for the user: a product behaviour)
+### 35e. A revoked admin's open draft is lost — APPLIED 2026-10-18 (orchestrator decision)
 
 When the owner removes an admin who is editing, the admin's next Save is refused (the rules need `admins/{uid}`), the shell
 asks `admin.session` again and replaces the page with "This Google account does not administer this map": the draft goes
@@ -2291,14 +2291,14 @@ transition the shell keeps the open page read-only under a banner ("Your access 
 out") while an area holds unsaved changes; the stores stop their listeners but keep their drafts. `S-A02-BAD-REVOKE` now
 proves the refusal, that nothing is written and the panel (`e2e/admin/specs/flows/revoke.spec.ts`).
 
-### 35f. The admin bundle is at its budget — for the user (§34b is now urgent)
+### 35f. The admin bundle is at its budget — APPLIED 2026-10-18 (orchestrator decision): minified like the engine's (§36d); §34b still waits for the user
 
 `admin.iife.js` measures 448.1 KB gzip of its 450 KB budget with every editor wired (`PIPELINE_STAGE=build`,
 2026-10-18). Terra Draw (§34g) or the next area will not fit. §34b (the admin page loads the ES module build, each area
 and the draw library a lazy chunk, minified as the engine's) or its alternative (minify the IIFE) needs the user's answer
 before M3.
 
-### 35g. The editors' states at every tour viewport (§34c) — still PROPOSED
+### 35g. The editors' states at every tour viewport (§34c) — APPLIED 2026-10-18 (orchestrator decision; §37b)
 
 The M2c states pass the generic checkers at the five admin projects (c360, m768, l1440 in light, dark and English). The
 review screenshots of every state at 360 × 800, 768 × 1024, 1440 × 900 and 2560 × 1440, light and dark
@@ -2314,3 +2314,312 @@ and English texts out of their columns on wide panes, "Configurare" broken acros
 items lost their 4 px inline padding), and the chosen position of the list of positions filled with a colour that left its
 fields at 1.27:1 in high contrast (now ringed). One gap of the checkers is recorded for their owner: a state's checks
 measure only what is scrolled into the window, so a fault below the fold waits for a layout change to be seen (lesson 84).
+
+## 36. M2c follow-ups (follow-ups agent, 2026-10-18) — APPLIED 2026-10-18 (orchestrator decisions and pre-approved kinds, logged)
+
+The orchestrator's decisions of 2026-10-18 (the headings of §34a, §34h, §35b, §35d, §35e and §35f say so), the M2c change
+requests that needed no answer from the user (CR-M2c-15, -27, -28, -29), the state checker's scroll sweep (lesson 84),
+the account menu after a rotation and the two polish items the deployed admin showed on 2026-10-17. Nothing was
+committed, pushed or deployed; no real Google, Mapbox or USGS endpoint was called. The admin's tour at every viewport
+(§34c, §35g) is the E2E agent's.
+
+### 36a. The decisions as applied
+
+- **§35b option 1**: `sites/bucharest/config.js` names `bucharest`; `sites/bucharest/site.json` names the seed's city
+  (`legacyCityId: "bucuresti"`), and the site build serves that manifest under `config.js`'s id (any other mismatch still
+  fails the build, `scripts/site/src/build.ts`). `seed/bucharest/` is untouched. The e2e fixture manifest names
+  `E2E_CITY_ID` (`bucharest`) and `e2e/admin/support/flows.ts` serves the built site as it is (no routed `config.js`). No
+  one-time read of the old `hcm:bucuresti:*` preferences: the new site is not live, so no visitor has any.
+- **§34h stricter option**: the admin's site build writes the digest of the pinned `mapbox-gl.js` into
+  `<html data-mapbox-integrity>`; `loadMapboxGl` sets it as the script's `integrity` with `crossOrigin` (a value that is not
+  a SHA-384 digest is ignored, `pageIntegrity`).
+- **§35d alternative**: the photo editor's numbers and the place editor's years commit on `input`; `numberValue` keeps the
+  admin's own spelling of the same number (`44.40`, an unfinished `44.`), and `LeftFields` shows a number's problem only
+  once the field has been left (`packages/ui/src/admin/editing/number-fields.ts`). A year typed and then a click on Save
+  saves.
+- **§35e**: a denial makes the shell ask `admin.session`; not an admin while an editor holds unsaved changes, the shell
+  sets `revoked` instead of the `notAdmin` panel: the page and its draft stay under an alert banner with Sign out, every
+  editor write is refused at once (`writesRefusedWhen`) and no further denial asks again; Sign out asks to discard first
+  (`S-A20-BAD-REVOKED-WHILE-EDITING`, `exists`; the state `admin.session-revoked` joins the inventory).
+- **§34a proposal**: `vitest.config.ts` drops the empty `engine-browser` project and the `engine` project's `exclude`.
+- **Bundle (§35f)**: §36d.
+
+### 36b. A start-up deploy says so (the live CORS error) — APPLIED; for the user to see
+
+Before the server exists, the anonymous probe of `admin-session` meets a 404 without CORS headers, which the browser
+logs as a CORS error. Tried in Chromium first: a `no-cors` request only trades it for "Failed to load resource: 404";
+every answer of 400 or more is logged whatever the mode. So a new map's Hosting-only deploy now says it has no server:
+`HCM_ADMIN_START_UP=1 npx firebase deploy --only hosting` (the predeploy's `build:admin` writes `runtime.json` with
+`startUp: true`), and the admin calls nothing of the server until step (d) sees every function `ACTIVE` on Google. A
+browser that has had the server's answer probes anyway (`hcm:admin:serverSeen`), so a functions-only deploy that leaves
+the start-up page in place still works. Without the variable the probe runs as before (`S-A25-BAD-NO-START-UP-DEPLOY`).
+**For the user**: the live admin keeps logging the error until it is deployed again that way (ask first).
+
+### 36c. The release — APPLIED (a fix)
+
+`scripts/site/build-admin.ts` writes `runtime.json` itself (§23b's redesign, its first half): `release` is
+`<root package.json version>+<short commit>` (`HCM_COMMIT`, else `GITHUB_SHA`, else the checkout's `HEAD`; the version
+alone outside a checkout). The boot log and the crash reports name it instead of `dev`. The App Check site key joins it
+with the deploy milestone.
+
+### 36d. The admin bundle minified — APPLIED (the orchestrator's decision; no budget changed)
+
+Vite's library mode already minified the IIFE (its JavaScript); what was left was the text of the Lit `css` templates,
+about 77 KB of indentation and comments. `packages/admin/vite.config.ts` now runs `cssLiteralsPlugin`
+(`scripts/site/src/css-literals.ts`: outside strings, comments and indentation go, and the spaces around `{ } ; ,` and
+after `:`; every line break stays, so the source maps hold) and minifies `admin.mjs` like the engine's (§17a). Measured
+in the quality image, production build, 2026-10-18:
+
+| File | Before | After |
+| --- | --- | --- |
+| `admin.iife.js` (the budget, 450 KB) | 1,665,267 B, 448.1 KB gzip | 1,622,593 B, 443.6 KB gzip |
+| `admin.mjs` | 1,841,325 B, 450.2 KB gzip | 1,496,221 B, 408.8 KB gzip |
+
+§34b (the module build with lazy chunks) still waits for the user; it is what makes room for Terra Draw (§34g).
+
+### 36e. Configuration edits — APPLIED (pre-approved kinds: stricter, or keeping the tools working)
+
+- `vitest.config.ts`: `e2e/support/scroll-probe.ts` joins the `e2e-support` coverage list (stricter: one more file at 90 %);
+  the `engine-browser` project went (§34a).
+- `tsconfig.tools.json`: `references` the `scripts/site` project, as the admin's Vite config now imports its minifier
+  (keeps `tsc -b` working).
+
+### 36f. The state checker sees the whole state — APPLIED (gate-tightening; one narrowing it makes safe)
+
+`expectStateSound` ends with the scroll sweep (`e2e/support/scroll-sweep.ts`, `docs/TESTING.md` → *The tour's
+checkers*): every box a visitor scrolls is scrolled through its content and the position-dependent checks (layout, target
+sizes, non-text contrast in both schemes, axe's colour contrast) run at each position; only new violations are reported.
+With it, CR-M2c-29 (c) narrows the occlusion check: a sliver of at most 5 px of a control at the edge of what scrolls is
+not counted (Chromium hit-tests the clip's last fraction of a pixel as the element beyond it), since the sweep checks the
+control whole at another position. The admin base ring (CR-M2c-29 a) and the dialog's 4 px above its actions (b) are kit
+fixes; the layers area's two workarounds went with them. Its first runs (the `e2e` and `tour-matrix` stages, 2026-10-18) found no new fault: the
+viewer's 44 viewports and the admin's five projects passed with the sweep (1044 extra positions in `tour-matrix`
+alone; `docs/research/layout-a11y-findings.md`, its addendum).
+
+### 36g. Information: the error group link (CR-M2c-15)
+
+`gcp.errorGroup` (`https://console.cloud.google.com/errors/detail/{groupId}?project={projectId}`) joined
+`packages/admin/src/setup/links.json` in the console's documented form; the weekly contract run checks it and opens an
+issue if it does not resolve (not dispatched: a workflow run is ask first).
+
+## 37. M2c end-to-end (E2E agent, 2026-10-18) — APPLIED (test infrastructure, product fixes with their tests, orchestrator decisions §34c and §35g); §37e, §37g and §37i for the user
+
+Every admin and cross-app row of `e2e/scenarios.json` that the screens support became a Playwright spec (108 rows from
+`planned` to `exists`; `docs/E2E_SCENARIOS.md` regenerated). Nothing was committed, pushed or deployed; no real Google,
+Mapbox or USGS endpoint was called; no package was installed (Terra Draw waits for §34g).
+
+### 37a. The content world (CR-M2c-7) — APPLIED (test infrastructure)
+
+A content spec gets a city (`w-<10 hex>`) and a Google account (`editor-<hash>@content.e2e.test`) of its own, an admin
+of the map, and takes no lock: `EmulatorWorld.reset` of a locked test now deletes everything but the content worlds
+(Firestore, Auth and Storage alike), so the editors' specs run on every worker beside the locked chain (Setup, the
+session, admins, crash reports, Home). The `e2e` build's kit reads `?city=` (already there) and a new `?mapToken=`
+(`e2eMapToken`, `packages/admin/src/index.ts`: a `pk.` token for the admin map, `none` for no map), so a content spec
+never reads the singleton `setup/status`. The admin map draws in e2e on the mock Mapbox CDN, style and tiles; the e2e
+admin server's CSP adds the e2e tile host to `connect-src` (as an XYZ server's host is added by hand in production).
+
+### 37b. The admin editors in the tour (§34c, §35g) — APPLIED (orchestrator decision)
+
+The editors' states run at every tour project, like the viewer's: `e2e/tour/admin-{photos,places,drawing,layers,
+settings,jobs,history}.tour.ts` (15 tests, each in a city of its own) at the nine per-push `tour` projects and the 35 of
+`tour-matrix`; the run starts the admin server and the emulators for the tour tiers too (`needsAdmin`,
+`e2e/projects.ts`). The singleton screens (Setup, the sign-in, the claim, Admins, Crash reports, Home, a revoked
+session) stay in their locked specs at the five admin projects: a tour of them would hold the lock across 44 projects.
+A part that waits on the viewer (the area the viewer draws) stays in `e2e/admin/specs/`. Measured on the laptop,
+2026-10-18, against fresh emulators: the per-push admin tour, 127 tests, 10.3 minutes of wall time, 126 green at the
+first full run (the one red, the layer editor's map checked before its attribution: fixed, §37d). Its first runs found
+lesson 107 (the editors flapped at 915 × 412). The CI tour jobs are rebalanced from the measured run (§37h).
+
+### 37c. New admin projects — APPLIED (they add checks)
+
+- `admin-steps-l1440-en` (`e2e/admin/steps/`): the Setup Assistant's steps one by one, each from a seeded state
+  (`e2e/admin/support/steps.ts`): billing, provisioning, the server's installation and the claim, Mapbox, USGS,
+  analytics, the page as a whole, sign-in and invitations, start-up mode, Google's consents and the legacy import. One
+  project, in English: they check the server's answers and the cards' words, which do not depend on the window; the
+  layout is the journey's (five projects) and the tour's.
+- `admin-firefox-l1440-ro` and `admin-webkit-l1440-ro` (`e2e/admin/specs/editing/`): the editors' forms in Firefox and
+  WebKit. `E2E_ADMIN_PART` deals them like the others (part 1 gets the steps, part 2 Firefox, part 3 WebKit).
+- The fake upstreams gained `service-usage.billingApisEnabled`, `billing-budgets.appBudget` and `.staleBudget`,
+  `monitoring.crashAlertsProvisioned`, and a gapi loader for Firebase Auth on Safari (`google-apis`, lesson 109).
+
+### 37d. The checkers — APPLIED (refinements; nothing allowlisted)
+
+- The legal rule applies to a map whose foot is in view (a map scrolled past its bottom shows its legal line no more
+  than the rest of what is cut; the scroll sweep checks the positions that show it).
+- A map's own controls over its canvas are the map (`ownMapControl`): a canvas scrolled to a strip had a sample on its
+  own attribution (lesson 108).
+- A state waits up to 60 s for its maps to load and fill their attribution (`MAPS_LOADED_MS`, was 15 s); the layers
+  journey waits for its editor's map before the check.
+- A console error "Failed to load resource" names its address; the waits on the Functions emulator share
+  `FUNCTIONS_TIMEOUT_MS` (120 s).
+- A state also waits while an admin map box is still creating its map (lesson 115).
+- The occlusion check samples a control only inside its own shape, the corners of a rounded border left out (lesson
+  123: the round colour presets of Settings, scrolled to a strip at 320 × 568).
+- Tests without the lock touch only their own world: a content world's admin joins after the personas and leaves at
+  teardown, and a test whose answer depends on `setup/owner` holds the lock (lesson 113); a locked test's reset keeps
+  the content worlds' public photo files, which it deleted by reading a derivative's photo id as its city (lesson 116);
+  the emulator helpers send a request again when the emulator drops the connection (lesson 119); the console guard of
+  the admin projects expects the 400 or 409 of a transaction commit Firestore's SDK runs again, with its reason
+  (lesson 117); Setup's `show` opens a card again when Setup moved on meanwhile.
+
+### 37e. Rows still planned: what the screens lack — for the user
+
+Each row's `notes` says why: the self-test's per-check list (`S-A03-BAD-SELFTEST-FAILURE`: Re-check applies the status
+but no screen lists the checks, so a failing check's reason and its link to Provision have nowhere to show); a control
+for `setup.rotatePublicToken` (`S-A06-HAPPY-ROTATE`); the settings page's map (`S-A19-HAPPY`, `S-A36-HAPPY`,
+`S-A36-BAD-DISCARD`); the conflict banner's name and time (`S-A38-BAD-CONFLICT`: the draft keeps `updatedBy`, nothing
+names it); Home's list of the documents the build skipped (`S-A38-BAD-SKIPPED-SHOWN`); Terra Draw's drags
+(`S-A32-HAPPY-VERTEX-EDIT`, §34g). Two cannot be reached in e2e: `S-A19-BAD-LOW-CONTRAST-SEED` (no seed colour makes the
+tone algorithm adjust; unit-tested) and `S-A20-BAD-NO-APP-CHECK` (the emulator enforces no App Check). The M3 and M4
+rows (A09's assists, A11 to A17, V06) and the pipeline's wait for their milestones.
+
+### 37f. Product fixes — APPLIED (each with its unit test; `docs/LESSONS.md` 90 to 122)
+
+The admin map hidden under a modal dialog (its legal line); Select all before any row is ticked; a click moves the
+selected pin; an upload waits for the city's centre; the shell's theme follows the edited city; the import preview
+planned again when its lists arrive; the list of positions put back after a refusal; the toolbar follows the drawing
+session; the import's limit named with its numbers; the outside-the-city refusal names its limit (RO and EN); Back from
+an item opened by its address stays in the admin; a landscape phone keeps its page heading; the places list previews
+the open draft; a new place gets its remembered category once the categories arrive; a refused Mapbox or USGS save
+shows the chip the server recorded; a provisioning item keeps its reason once recorded; a token expired mid-run offers
+Continue; the start-up record survives a reload before the claim; the list and detail never split at a compact height;
+"Add at centre" waits for the city's view (lesson 111); the Setup's analytics card checks Google Analytics only while the
+Setup page shows, not on every page of a session (lesson 112); a line or an area keeps its first clicks when its place
+is applied again (lesson 114); a create that finds its own landed attempt is no conflict (lesson 117); a photo's Save refused for a newer version of
+other fields goes again once that version is here (lesson 118); a server probe that timed out is sent again before the
+shell decides there is no server (lesson 120); a delete's history entry is never stamped before the version it deleted
+(lesson 121); right after a Save, a settings or layer draft is not unsaved until the next edit (lesson 122).
+
+### 37g. WebKit's report-only Trusted Types header — for the user
+
+Safari applies `Content-Security-Policy-Report-Only: require-trusted-types-for 'script'` (firebase.json) and logs that
+the policy "will have no effect" without `report-to`, then reports Firebase Auth's gapi loader (a script URL set as a
+string), on every page load. Chromium reports the same loader once a Google popup opens. Options: give the header a
+`report-to` endpoint (the crash endpoint could take it), or drop it until Trusted Types are enforced. The WebKit project
+expects these two messages (and the CSP refusals of Playwright's own inspector styles) with their reasons.
+
+### 37h. CI and the split — APPLIED (pre-approved kind: keeps the jobs within their timeouts)
+
+The tour tiers now start the admin server and the emulators. Measured in the split quality run of 2026-10-18 (test
+seconds on the NUC beside every other tier): the per-push tour about 4,150 s (the admin's editor journeys about 2,900 s
+of it, 200 to 480 s a project), the admin tier about 3,100 s. `.github/workflows/ci.yml`: the tour in three count shards
+(was two) and the admin, smoke, a11y and no-WebGL tiers in two (was one): eight e2e jobs, the heaviest about 1,400 to
+1,600 s, within the 40-minute timeout. `nightly.yml`: the same eight, and `tour-matrix` (35 projects, now with the 14
+editor journeys each, about 17,500 s) in ten count shards (was six). `docs/CI_PIPELINE.md` says the same. Pre-approved
+kind (keeps the jobs within their timeouts); nothing else in the workflows changed.
+
+### 37i. Two sliders named "Opacity: Photos" in English — for the user
+
+The viewer's Layers panel names each overlay's slider after its title. A category named "Photos" (its own id,
+`photos-<suffix>`, `S-A39-BAD-ID-CLASH`) gives the English panel two sliders of the same name, the photos' own and the
+category's: a screen reader cannot tell them apart. Options: name the photos' slider by its kind ("Opacity: all
+photos"), or add the overlay's kind to every slider's name. The e2e helper takes the photos' own slider (the first one).
+
+## 38. Minimum admin input (adversarial reviewer, 2026-10-18) — APPLIED (§38a–§38c, each with its tests); §38d for the user
+
+Every Setup step and daily flow was walked and its inputs counted against `SETUP_STEP_SPECS` and
+`CONTENT_INPUT_BUDGETS`. Three inputs went away; the budgets were lowered with them and the flows that had a budget but
+no counted test now have one.
+
+### 38a. A pasted Mapbox secret token saves itself — APPLIED
+
+Step (e) took two inputs (paste, Save) where the USGS paste already took one. A paste (`insertFromPaste`) of a value that
+classifies as a secret (`classifyMapboxToken`) now goes to `setup.saveMapbox` at once and the box clears; a public `pk.`
+or malformed paste is explained and only counted, nothing sent; a typed token goes with Enter or Save. `SETUP_STEP_SPECS`
+mapbox 2 → 1, so `setupInputBudget()` is 9 inputs and 4 consents (was 10). Tests: `hcm-setup-credentials.test.ts`,
+`e2e/admin/steps/mapbox.spec.ts` (`S-A05-HAPPY`: `flow.used` is 1), the journey (one retry paste, allowance 1).
+
+### 38b. A new category's icon follows its label — APPLIED
+
+Adding a category took four inputs (Add, the label, an icon, Save) although the label usually names the icon. Until the
+admin picks one, a new category's icon is `guessCategoryIcon(label)` (`packages/admin/src/settings/icon-guess.ts`:
+Romanian and English word starts, without diacritics, the specific kinds before the generic ones; else the pin). An icon
+picked by hand is never replaced. `CONTENT_INPUT_BUDGETS.category` 4 → 3. Rows: `S-A39-HAPPY` (reworded),
+`S-A39-BAD-ICON-NOT-GUESSED` (new, `exists`).
+
+### 38c. A new invitation's link is copied at once — APPLIED
+
+Inviting an admin took four inputs (Invite, the address, Invite, Copy). The link now goes to the clipboard from the click
+that made the invitation, with "The link was copied." said; a browser that refuses leaves Copy as before.
+`CONTENT_INPUT_BUDGETS.inviteAdmin` 4 → 3, counted in `e2e/admin/specs/ops/ops.spec.ts` (the clipboard holds the link).
+`revertChange` and `revokeAdmin`, declared but not counted, are now counted in `e2e/admin/specs/flows/publish.spec.ts` and
+`revoke.spec.ts`.
+
+### 38d. Not done: what would cut more, and why it waits — for the user
+
+- **Add place in one click per shape** (Add point, Add line, Add area in the list's head instead of Add place, then the
+  shape): a point 5 → 4 inputs, an area 4 + n → 3 + n. It changes the places list's head at every window class (the
+  tour state `pois.add-shape` goes away) and about 30 test call sites the places workstream owns; a reviewer's small fix
+  it is not.
+- **The photos of a batch selected after their upload**, so Publish is one click (3 → 2): the bulk bar then shows on
+  the photos tour states after every upload, and the selection has to survive the list's reloads while the photos are
+  processed. Worth a decision on whether a fresh batch should be the selection.
+- **USGS stays three inputs**: the ERS username cannot be read from anywhere the app may look; the token page and the
+  paste are already one click and one paste.
+- **A place's title from its position** (reverse geocoding) is behaviour A09 with Nominatim, M3.
+- **Billing, provision, analytics and the import** are one input each, consents apart; a single billing account is
+  already chosen without a click.
+
+## 39. Quality review: e2e time, docs (adversarial reviewer — quality, 2026-10-18) — APPLIED (39a, 39b: no check, gate or scenario dropped); 39c for the user
+
+Measured in `docs/research/pipeline-baseline.md` → *Addendum: the quality review*. The split `quality` had grown from
+324 s to 1,002 s with the admin's journeys in the per-push tour and the generic checkers on every state.
+
+### 39a. axe runs in place on a page of one frame — APPLIED (performance; same rules, same results)
+
+`axeViolations` (`e2e/support/a11y.ts`) ran `AxeBuilder`'s default mode for every check: axe-core injected into the
+page and every frame, a per-frame partial run, then a blank page with axe injected again to merge the results; about a
+second per state and half a second per scroll-sweep position on an admin page whose own `axe.run` takes a sixth of
+that. A page of one frame now runs in legacy mode on the first check of a document and through the injected `axe.run`
+afterwards, reporting violations only; a page with frames keeps the default mode (which also tests cross-origin
+frames). A differential run of both ways on every call over 134 tests and a page with planted violations found no
+difference.
+
+### 39b. A failed test's trace without DOM snapshots and screencast — APPLIED (performance; diagnostics, not a gate)
+
+`trace: 'retain-on-failure'` recorded a DOM snapshot and a screenshot at every action of every test, passed or failed,
+and the checkers' probes and Tab presses are hundreds of actions per state: 40 % of a tour project's test time, 20 % of
+a functional one's. `e2e/playwright.config.ts` now keeps the trace of a failed test without them (actions and timings,
+console, network, the error) and adds its screenshot (`screenshot: 'only-on-failure'`) beside Playwright's error
+context; the full trace is one rerun away (`--trace retain-on-failure`). With 39a: −45 % test time on the tour and
+admin projects measured, −20 % on a functional one.
+
+**For the user**: if a failing CI run should carry the full trace anyway, `trace: 'on-first-retry'` in CI (where a
+test is retried once and a pass on the retry still fails the run) would add it at the cost of the retry's time only.
+
+### 39c. What would bring the split `quality` to about 8 minutes — for the user
+
+After 39a and 39b the estimate is 600 to 650 s before the split's shares are retuned (the next split run measures
+it; `default_parts` of `scripts/ci/e2e-split.sh` follows). What remains, each a coverage choice rather than waste:
+
+- **The Setup journey at five admin projects** (`admin-{c360,m768,l1440}-ro`, `admin-l1440-dark`, `admin-l1440-en`): about
+  580 s of test time behind `ADMIN_LOCK`, so it runs one at a time on each machine; at two projects per push (the
+  others nightly) the locked chain would shrink by about 350 s.
+- **The fifty-category state** (`admin-settings.tour.ts`) at all nine per-push tour projects: about 50 s each under
+  load, 26 s idle; the per-push tour could check it at the four viewports and the other five in `tour-matrix`.
+- **The functional tier** runs the same 105 specs at five projects (2,650 s); specs that do not depend on the window
+  class (deep links, consent, language) could run at one.
+- **The admin's per-push tour** could take the viewer's four viewports in light only, the dark and English variants
+  moving to `tour-matrix` (about 1,450 s of the per-push tour's 2,640 s of admin journeys before 39a and 39b).
+
+## 40. M2 final gate (final-gate agent, 2026-10-18) — PROPOSED (for the user)
+
+The state of M2 and the deploy steps are in `docs/research/M2-status.md`. Nothing was committed, pushed or deployed.
+
+### 40a. The Firestore location — PROPOSED (for the user: permanent, a cloud setting)
+
+`firebase.json` names the `(default)` database but no `location`. The first `firebase deploy --only firestore` on a
+project without a database creates one, and firebase-tools 15.33.0 then uses `nam5` (US multi-region;
+`node_modules/firebase-tools/lib/deploy/firestore/prepare.js`, `createDatabase`). A database's location can never be
+changed, and the provisioner does not create the database. The functions, the queue and the buckets are in
+`us-central1` (`infra/project.json`).
+
+Options, before the first rules deploy:
+
+1. Add `"location": "us-central1"` to `firebase.json`'s `firestore` (one region, next to the functions: the cheapest and
+   fastest for the server; the public viewer never reads Firestore, so the visitors' distance does not matter).
+2. Leave it out: `nam5`, the console's default for a US project (multi-region, the same free quota).
+3. A European region (`eur3`, `europe-west1`): nearer the admins in Romania, farther from the functions.
+
+Recommended: option 1. If the project already has a database (check with
+`gcloud firestore databases list --project bucurestiul-disparut`, read-only), its location stays and `firebase.json` names it.

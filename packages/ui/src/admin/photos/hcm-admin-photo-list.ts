@@ -145,7 +145,7 @@ export class HcmAdminPhotoList extends LitElement {
     #bulk(locale: Locale, view: PhotosViewState): TemplateResult {
         const selection = view.list.selection;
         if (selection.length === 0) {
-            return EMPTY;
+            return this.#selectAll(locale, view);
         }
         const intents = this.intents;
         const disabled = view.busy;
@@ -187,6 +187,21 @@ export class HcmAdminPhotoList extends LitElement {
                 >
             </div>
         </section>`;
+    }
+
+    /**
+     * Select all before anything is selected: a batch just added is published in three inputs (the files, Select all,
+     * Publish: `CONTENT_INPUT_BUDGETS.photoBatch`, `S-A30-HAPPY-CONTENT`), never one row's check box first.
+     */
+    #selectAll(locale: Locale, view: PhotosViewState): TemplateResult {
+        if (view.list.rows.length === 0) {
+            return EMPTY;
+        }
+        return html`<div class="actions">
+            <hcm-button variant="text" icon="select_all" @click=${() => this.intents?.selectAll()}
+                >${photoText(locale, 'adminContent.photos.bulk.selectAll')}</hcm-button
+            >
+        </div>`;
     }
 
     #body(locale: Locale, view: PhotosViewState): TemplateResult {

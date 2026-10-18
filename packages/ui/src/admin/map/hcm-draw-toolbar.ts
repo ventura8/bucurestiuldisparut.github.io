@@ -26,6 +26,7 @@ export class HcmDrawToolbar extends LitElement {
         mode: { type: String },
         canDelete: { type: Boolean, attribute: 'can-delete' },
         canUndo: { type: Boolean, attribute: 'can-undo' },
+        canAddCentre: { attribute: false },
         locale: { type: String },
     };
 
@@ -52,6 +53,8 @@ export class HcmDrawToolbar extends LitElement {
     declare mode: 'draw' | 'select';
     declare canDelete: boolean;
     declare canUndo: boolean;
+    /** False until the place's centre is known (the map's, or the city's starting view without a map). */
+    declare canAddCentre: boolean;
     declare locale: Locale;
 
     constructor() {
@@ -60,6 +63,7 @@ export class HcmDrawToolbar extends LitElement {
         this.mode = 'select';
         this.canDelete = false;
         this.canUndo = false;
+        this.canAddCentre = true;
         this.locale = 'en';
     }
 
@@ -88,7 +92,7 @@ export class HcmDrawToolbar extends LitElement {
         return html`<div class="tools" role="group" aria-label=${text('adminContent.map.toolbar')}>
             ${this.#tool('draw', SHAPE_ICONS[this.shape], text('adminContent.map.tool.draw'), { pressed: this.mode === 'draw' })}
             ${this.#tool('select', 'crop_free', text('adminContent.map.tool.select'), { pressed: this.mode === 'select' })}
-            ${this.#tool('add-centre', 'center_focus_strong', text('adminContent.map.tool.addCentre'))}
+            ${this.#tool('add-centre', 'center_focus_strong', text('adminContent.map.tool.addCentre'), { disabled: !this.canAddCentre })}
             ${this.#tool('delete-vertex', 'delete', text('adminContent.map.tool.deleteVertex'), { disabled: !this.canDelete })}
             ${this.#tool('undo-vertex', 'undo', text('adminContent.map.tool.undoVertex'), { disabled: !this.canUndo })}
         </div>`;

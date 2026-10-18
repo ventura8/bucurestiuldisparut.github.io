@@ -108,6 +108,8 @@ export interface ImportStatePort {
     readonly plan: ImportPlanPort | null;
     readonly fallbackCategory: string | null;
     readonly written: number;
+    /** With `too-many`: the places the city has and the ones the file would add. */
+    readonly limit?: { readonly existing: number; readonly adding: number } | null;
 }
 
 export interface PhotoChoicePort {
@@ -134,6 +136,8 @@ export interface PoisViewState {
     readonly photos: ListStatePort<PhotoChoicePort> | null;
     readonly importing: ImportStatePort | null;
     readonly busy: boolean;
+    /** The city's starting view once its document is read (Add at centre without a map needs it); null before. */
+    readonly frame?: { readonly view: { readonly center: LngLat } } | null;
 }
 
 export type VertexEditPort =

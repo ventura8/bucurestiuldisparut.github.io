@@ -9,8 +9,10 @@ import { EXIT_INVALID, EXIT_OK, EXIT_USAGE, runAdminCli } from '../src/admin/cli
 import { LEGACY_FOLDER } from '../src/admin/legacy.js';
 import { ADMIN_SCRIPT_FILE, ADMIN_STYLESHEET_FILE, renderAdminPage } from '../src/admin/page.js';
 import { DEFAULT_PROJECT_FILE, PROJECT_FILE } from '../src/admin/project.js';
+import { RUNTIME_FILE } from '../src/admin/runtime.js';
 import { SiteBuildError } from '../src/errors.js';
 import { nodeFileSystem, type SiteFileSystem } from '../src/files.js';
+import { subresourceIntegrity } from '../src/sri.js';
 import { ROOT, cleanup, recordingLogger, repositoryWithTemporaryDist, temporaryDir } from './support.js';
 
 afterEach(cleanup);
@@ -34,13 +36,17 @@ describe('buildAdminSite', () => {
         expect(report).toEqual({
             outDir: OUT,
             projectId: 'bucurestiul-disparut',
+            release: expect.stringMatching(/^\d+\.\d+\.\d+(?:\+[0-9a-f]{7})?$/) as unknown,
             photos: 45,
             originals: 44,
             warnings: 1,
             fonts: 3,
-            files: 52,
+            files: 53,
         });
-        expect(files.readText(`${OUT}/index.html`)).toBe(renderAdminPage());
+        const integrity = subresourceIntegrity(files.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.js'));
+        expect(files.readText(`${OUT}/index.html`)).toBe(renderAdminPage(undefined, { mapboxGlIntegrity: integrity }));
+        expect(files.readText(`${OUT}/index.html`)).toContain(`<html lang="ro" data-mapbox-integrity="${integrity}">`);
+        expect(JSON.parse(files.readText(`${OUT}/${RUNTIME_FILE}`))).toEqual({ release: report.release });
         expect(JSON.parse(files.readText(`${OUT}/${PROJECT_FILE}`))).toEqual(JSON.parse(files.readText(DEFAULT_PROJECT_FILE)));
         expect(files.readText(`${OUT}/${ADMIN_SCRIPT_FILE}`)).toBe('bundle');
         expect(files.isFile(`${OUT}/${LEGACY_FOLDER}/originals/Ferdinand.png`)).toBe(true);
@@ -110,6 +116,27 @@ describe('buildAdminSite', () => {
         expect(files.isFile(`${OUT}/index.html`)).toBe(false);
     });
 
+    it('happyPath_aStartUpDeployWithItsCommitSaysSoInTheRuntimeFile', () => {
+        const { files } = repositoryWithAdminBundle();
+        const commit = 'ab'.repeat(20);
+
+        const report = buildAdminSite({ outDir: OUT, env: { HCM_ADMIN_START_UP: '1', HCM_COMMIT: commit } }, files);
+
+        expect(report.release).toMatch(/\+abababa$/);
+        expect(JSON.parse(files.readText(`${OUT}/${RUNTIME_FILE}`))).toEqual({ release: report.release, startUp: true });
+    });
+
+    it('badPath_withoutMapboxGlThePageHasNoDigestAndNothingIsWritten', () => {
+        const { files } = repositoryWithAdminBundle();
+
+        expect(() => buildAdminSite({ outDir: OUT, mapboxGlDir: 'vendor/none' }, files)).toThrow(
+            new SiteBuildError(
+                'vendor/none/mapbox-gl.js is missing: install the dependencies (mapbox-gl is a pinned devDependency of @hcm/e2e)',
+            ),
+        );
+        expect(files.isFile(`${OUT}/index.html`)).toBe(false);
+    });
+
     it('badPath_aBrokenSeedLeavesThePreviousBuildAlone', () => {
         const { files } = repositoryWithAdminBundle();
         buildAdminSite({ outDir: OUT }, files);
@@ -124,11 +151,12 @@ describe('runAdminCli', () => {
         const { files } = repositoryWithAdminBundle();
         const { log, records } = recordingLogger();
 
-        expect(runAdminCli(['--out', OUT], { files, log })).toBe(EXIT_OK);
+        expect(runAdminCli(['--out', OUT], { files, log, env: { GITHUB_SHA: 'c0ffee'.repeat(6) + 'c0ff' } })).toBe(EXIT_OK);
 
         expect(records.map((record) => `${record.level} ${record.message} ${String(record.data?.['photos'])}`)).toEqual([
             'info admin site built 45',
         ]);
+        expect(records[0]?.data?.['release']).toMatch(/\+c0ffeec$/);
     });
 
     it('badPath_aMissingBundleIsAnInputError', () => {

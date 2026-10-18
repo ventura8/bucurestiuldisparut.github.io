@@ -65,6 +65,8 @@ export interface AdminStatePort {
     readonly notice: AdminNoticePort | null;
     /** The unsaved-changes question while the shell asks it (`docs/research/M2c-interfaces.md` §2.4). */
     readonly leaving?: { readonly kind: 'route'; readonly route: AdminRoutePort } | { readonly kind: 'signOut' } | null;
+    /** The access was removed while an editor held changes: the page stays read-only under a banner until sign-out (§35e). */
+    readonly revoked?: boolean;
     readonly projectId: string;
     readonly authDomain: string;
     /** The Setup Assistant's state (setup-ui's `SetupViewState`), null before its controller exists or without one. */

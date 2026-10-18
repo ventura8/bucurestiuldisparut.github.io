@@ -36,14 +36,14 @@ The page's body is one `main` landmark headed by a level-one heading (the site's
 ```js
 // config.js
 window.HistoricCityMapConfig = {
-    cityId: 'bucuresti',
-    manifestUrl: 'https://storage.googleapis.com/<project>-public/cities/bucuresti/manifest.json',
+    cityId: 'bucharest',
+    manifestUrl: 'https://storage.googleapis.com/<project>-public/cities/bucharest/manifest.json',
 };
 ```
 
 Bucharest serves the engine from its own origin (the site build copies every file of the engine build next to the page: `engine.mjs` with its lazy `firebase-sdk-<hash>.js` chunk, `engine.iife.js`, `engine.css` and `fonts/`). A module script runs after the deferred classic scripts above it, so `mapboxgl` and the configuration exist when the engine starts; `engine/engine.iife.js` with `defer` works the same way for pages that cannot load modules.
 
-`globalThis.HistoricCityMapConfig = {…}` is the same as `window.HistoricCityMapConfig = {…}` in a classic script; the committed `config.js` files use the `window.` form (ESLint gives them the browser globals). A site build reads `config.js` without running it (`scripts/site/src/config-js.ts`), so the file must be one assignment of literal data: objects, arrays, strings, numbers, booleans and `null`. A third-party city that loads it from jsDelivr pins an exact version with `integrity` and `crossorigin`; SRI is impossible with a range URL such as `@1`.
+`globalThis.HistoricCityMapConfig = {…}` is the same as `window.HistoricCityMapConfig = {…}` in a classic script; the committed `config.js` files use the `window.` form (ESLint gives them the browser globals). A site build reads `config.js` without running it (`scripts/site/src/config-js.ts`), so the file must be one assignment of literal data: objects, arrays, strings, numbers, booleans and `null`. The site build refuses a `config.js` whose `cityId` is not the manifest's city; a site whose source manifest still names an older id says so in its `site.json` (`legacyCityId`: the Bucharest seed, migrated as it was, names `bucuresti`, while the project's city and every manifest the server builds is `bucharest`), and the served manifest takes `config.js`'s id. A third-party city that loads it from jsDelivr pins an exact version with `integrity` and `crossorigin`; SRI is impossible with a range URL such as `@1`.
 
 ## config.js
 
@@ -149,7 +149,7 @@ Unknown parameters are ignored, a repeated one keeps its last valid value, and a
 The only data the viewer reads: a static JSON file (from the public bucket, or inline in `config.js`). Schema: `manifestSchema` in `packages/shared/src/schemas/manifest.ts`; the Bucharest seed is `seed/bucharest/manifest.static.json`. Every object is strict: an unknown key is an error (which also blocks prototype-pollution keys).
 
 ```json
-{ "version": 1, "city": { "id": "bucuresti", "...": "..." }, "layers": [], "photos": [], "photosOverlay": { "defaultOpacity": 1 }, "poiCategories": [], "pois": [] }
+{ "version": 1, "city": { "id": "bucharest", "...": "..." }, "layers": [], "photos": [], "photosOverlay": { "defaultOpacity": 1 }, "poiCategories": [], "pois": [] }
 ```
 
 `photosOverlay`, `poiCategories` and `pois` are optional (the Bucharest seed has none of them yet).

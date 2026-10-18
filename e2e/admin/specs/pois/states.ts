@@ -1,9 +1,10 @@
 /**
  * The places area's states of the tour inventory (`ADMIN_STATES` of e2e/tour/states.ts spreads them inside its pois
  * section, which keeps that file within its line limit): ids `pois.<state>` (docs/research/M2c-interfaces.md §12.2),
- * each reached by the spec named in `visit` and checked there with `expectStateSound` at the admin projects.
+ * each reached by the tour file named in `visit` and checked there with `expectStateSound` at every tour project.
  */
-const VISIT = 'specs/pois/pois.spec.ts';
+const VISIT = 'tour/admin-places.tour.ts';
+const DRAWING = 'tour/admin-drawing.tour.ts';
 
 export const POIS_STATES = {
     'pois.empty': { title: 'Places: none yet, with Add place, Import and Export', visit: VISIT },
@@ -19,5 +20,11 @@ export const POIS_STATES = {
     'pois.import-preview': {
         title: 'Places: the import preview, one new place and five refused with their reasons (a dialog)',
         visit: VISIT,
+    },
+    'pois.drawing': { title: 'Places: an area being drawn on the map, click by click, its positions listed', visit: DRAWING },
+    'pois.draw-refused': { title: 'Places: a position outside the city refused, said at the drawing tools', visit: DRAWING },
+    'pois.vertex-list': {
+        title: 'Places: a line of two positions, the map, its tools and the list of positions in one Tab round',
+        visit: DRAWING,
     },
 } as const;

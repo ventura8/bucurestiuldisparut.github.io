@@ -6,8 +6,8 @@
  * - `E2E_SHARD`: "index/total" is one of `total` equal slices of the queue (Playwright's `--shard`); "first-last/total" is
  *   the slices `first` to `last` together, one contiguous part, so a faster machine takes more of it.
  * - `E2E_ADMIN_PART`: "index/total" (or "first-last/total") keeps those of `total` parts of the admin tier's projects,
- *   dealt round robin. The admin tests run one at a time (one Firebase project per machine), so a split gives each
- *   machine its own share of that chain instead of putting all of it into the head of the queue; the count slice of
+ *   dealt round robin. The locked admin tests run one at a time (one Firebase project per machine), so a split gives
+ *   each machine its own share of that chain instead of putting all of it into the head of the queue; the count slice of
  *   `E2E_SHARD` then applies to the other tiers only.
  */
 

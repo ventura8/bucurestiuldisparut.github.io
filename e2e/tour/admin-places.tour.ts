@@ -2,25 +2,29 @@ import { readFile } from 'node:fs/promises';
 
 import type { Page } from '@playwright/test';
 
-import { recordLiveRegions } from '../../../support/live-regions.js';
-import { expectStateSound } from '../../../support/state-check.js';
-import { adminVisit } from '../../../tour/states.js';
-import { ADMIN_LOCK, adminPath, expect, test } from '../../support/test.js';
-import { chooseImport, feature, POIS_PATH, poisText, seedCategories, seedPlace, seedPoisCity } from './places.js';
-
-// One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
-test.describe.configure({ lock: ADMIN_LOCK });
+import { recordLiveRegions } from '../support/live-regions.js';
+import { expectStateSound } from '../support/state-check.js';
+import { adminVisit } from './states.js';
+import { expect, test } from '../admin/support/content-test.js';
+import { chooseImport, feature, poisText, seedCategories, seedPlace, seedPoisCity } from '../admin/specs/pois/places.js';
 
 /**
- * The places page (docs/research/M2c-interfaces.md §7; behaviours A32, A34) for the owner of a map whose Mapbox step is
- * not done yet: no admin token, so the page's map box says why and links to the step, and every place is edited without
- * a map: Add at centre (the city's view centre), the positions typed in the list, a position removed, the texts, Save;
- * then the GeoJSON export, its import changing nothing, a file that is not GeoJSON, and a file whose invalid features are
- * listed with their reasons while the valid one imports. Every screen and dialog on the way runs the generic layout and
- * accessibility checkers (the pois section of e2e/tour/states.ts). The map's own drawing (S-A32-HAPPY and its rows)
- * needs the admin tier's Mapbox mocks (CR-M2c-7).
+ * The places page (docs/research/M2c-interfaces.md §7; behaviours A32, A34) in a city of the admin's own (the content
+ * world): first a map whose Mapbox step is not done yet (no admin token), so the page's map box says why and links to
+ * the step, and every place is edited without a map: Add at centre (the city's view centre), the positions typed in the
+ * list, a position removed, the texts, Save; then, with the map, the GeoJSON export, its import changing nothing, a file
+ * that is not GeoJSON, and a file whose invalid features are listed with their reasons while the valid one imports. Every
+ * screen and dialog on the way runs the generic layout and accessibility checkers (the pois section of
+ * e2e/tour/states.ts). Drawing on the map: e2e/tour/admin-drawing.tour.ts and
+ * e2e/admin/specs/pois/drawing.spec.ts.
+ *
+ * Part of the layout and accessibility tour (DECISIONS-for-review.md §34c): it runs at every tour project's viewport,
+ * scheme and language (tier `tour` on every push, `tour-matrix` in `all` and nightly), in a city of its own, so it
+ * needs no lock beside the admin tier.
  */
-test.use({ persona: 'owner', mapOwner: 'owner' });
+
+// The content world's fakes (Mapbox, Google) are forwarded as in the admin projects.
+test.use({ forwardUpstreams: true });
 
 const AT = new Date('2026-10-17T09:00:00.000Z');
 
@@ -43,12 +47,12 @@ async function typeCoordinate(page: Page, id: string, value: string): Promise<vo
 
 test(
     'Without the Mapbox token a place is still drawn from its positions, saved, and deleted after a question',
-    { tag: ['@S-A32-BAD-NO-MAP-TOKEN'] },
-    async ({ page, lang, adminWorld }) => {
+    { tag: ['@S-A32-BAD-NO-MAP-TOKEN', '@S-A31-HAPPY-EDITORS', '@S-A21-BAD-LEAK-CHECK'] },
+    async ({ page, lang, content }) => {
         await page.context().addInitScript(recordLiveRegions);
-        await seedPoisCity(adminWorld.emulators, AT);
-        await seedCategories(adminWorld.emulators, AT);
-        await page.goto(adminPath(lang, 'pois'));
+        await seedPoisCity(content, AT);
+        await seedCategories(content, AT);
+        await page.goto(content.address(lang, 'pois', { map: false }));
 
         // No place yet: the empty list says how to add one.
         await expect(page.getByText(poisText(lang, 'adminContent.pois.empty'))).toBeVisible();
@@ -95,8 +99,8 @@ test(
 
         // Save writes the line, published, in the first category.
         await page.getByRole('button', { name: poisText(lang, 'adminContent.common.save'), exact: true }).click();
-        await expect.poll(async () => Object.values(await adminWorld.emulators.collection(POIS_PATH)).length).toBe(1);
-        const [saved] = Object.values(await adminWorld.emulators.collection(POIS_PATH));
+        await expect.poll(async () => Object.values(await content.collection('pois')).length).toBe(1);
+        const [saved] = Object.values(await content.collection('pois'));
         expect(saved).toMatchObject({
             category: 'monuments',
             geometry: {
@@ -111,7 +115,13 @@ test(
             published: true,
         });
         await expect(page.getByText(poisText(lang, 'adminContent.pois.state.saved'), { exact: true })).toBeVisible();
-        await expectStateSound(page, adminVisit('pois.editor', lang));
+        // The snackbar's message, not its live region; the pointer rests on it, which holds it open (its timer waits while
+        // it is pointed at) for the checkers to see it whole (lesson 89).
+        const savedNotice = poisText(lang, 'adminContent.pois.saved');
+        const notice = page.getByText(savedNotice).and(page.locator(':not([aria-live])'));
+        await expect(notice).toBeVisible();
+        await notice.hover();
+        await expectStateSound(page, adminVisit('pois.editor', lang, { announcements: [savedNotice] }));
 
         // Delete asks first; the place leaves the list.
         const remove = poisText(lang, 'adminContent.pois.delete');
@@ -122,21 +132,28 @@ test(
         await expectStateSound(page, adminVisit('pois.delete-confirm', lang, { escape: { opener: remove } }));
         await page.getByRole('button', { name: remove }).click();
         await page.getByRole('button', { name: poisText(lang, 'adminContent.pois.deleteConfirm'), exact: true }).click();
-        await expect.poll(async () => Object.values(await adminWorld.emulators.collection(POIS_PATH)).length).toBe(0);
-        await expect(page.getByText(poisText(lang, 'adminContent.pois.deleted'))).toBeVisible();
+        await expect.poll(async () => Object.values(await content.collection('pois')).length).toBe(0);
+        await expect(page.getByText(poisText(lang, 'adminContent.pois.deleted')).and(page.locator(':not([aria-live])'))).toBeVisible();
     },
 );
 
 test(
     'Exported places import unchanged, a file that is not GeoJSON is refused, and invalid features are listed and left out',
-    { tag: ['@S-A34-HAPPY-ROUND-TRIP', '@S-A34-BAD-NOT-GEOJSON', '@S-A34-BAD-INVALID-FEATURES'] },
-    async ({ page, lang, adminWorld }) => {
-        const owner = adminWorld.accounts.owner.uid;
+    {
+        tag: [
+            '@S-A34-HAPPY-ROUND-TRIP',
+            '@S-A34-BAD-NOT-GEOJSON',
+            '@S-A34-BAD-INVALID-FEATURES',
+            '@S-A31-HAPPY-EDITORS',
+            '@S-A21-BAD-LEAK-CHECK',
+        ],
+    },
+    async ({ page, lang, content }) => {
         await page.context().addInitScript(recordLiveRegions);
-        await seedPoisCity(adminWorld.emulators, AT);
-        await seedCategories(adminWorld.emulators, AT);
+        await seedPoisCity(content, AT);
+        await seedCategories(content, AT);
         await seedPlace(
-            adminWorld.emulators,
+            content,
             {
                 id: 'stavropoleos',
                 title: 'Biserica Stavropoleos',
@@ -144,16 +161,10 @@ test(
                 extra: { yearStart: 1890, links: [{ url: 'https://example.org/stavropoleos', label: 'Istoric' }] },
             },
             AT,
-            owner,
         );
-        await seedPlace(
-            adminWorld.emulators,
-            { id: 'manuc', title: 'Hanul lui Manuc', at: [26.1003, 44.4302], extra: { category: 'markets' } },
-            AT,
-            owner,
-        );
-        const seeded = await adminWorld.emulators.collection(POIS_PATH);
-        await page.goto(adminPath(lang, 'pois'));
+        await seedPlace(content, { id: 'manuc', title: 'Hanul lui Manuc', at: [26.1003, 44.4302], extra: { category: 'markets' } }, AT);
+        const seeded = await content.collection('pois');
+        await page.goto(content.address(lang, 'pois'));
         await expect(placeLink(page, 'Hanul lui Manuc')).toBeVisible();
         await expectStateSound(page, adminVisit('pois.list', lang));
 
@@ -181,7 +192,7 @@ test(
         await expect(page.getByText(poisText(lang, 'adminContent.pois.import.file.not-geojson'))).toBeVisible();
         await expect(page.getByText(poisText(lang, 'adminContent.pois.import.dryRun'))).toHaveCount(0);
         await expectStateSound(page, adminVisit('pois.import-refused', lang, { escape: { opener: null } }));
-        expect(await adminWorld.emulators.collection(POIS_PATH)).toEqual(seeded);
+        expect(await content.collection('pois')).toEqual(seeded);
 
         // Invalid features are listed with their reasons; the valid one is the only one written.
         const features = [
@@ -223,11 +234,11 @@ test(
                 dialog.getByText(poisText(lang, 'adminContent.pois.import.refusedItem', { number, title, reason: poisText(lang, reason) })),
             ).toBeVisible();
         }
-        expect(await adminWorld.emulators.collection(POIS_PATH)).toEqual(seeded);
+        expect(await content.collection('pois')).toEqual(seeded);
         await expectStateSound(page, adminVisit('pois.import-preview', lang));
         await page.getByRole('button', { name: poisText(lang, 'adminContent.pois.import.go'), exact: true }).click();
         await expect(dialog.getByText(poisText(lang, 'adminContent.pois.import.done', { written: '1' }))).toBeVisible();
-        const after = await adminWorld.emulators.collection(POIS_PATH);
+        const after = await content.collection('pois');
         const added = Object.entries(after).filter(([id]) => !(id in seeded));
         expect(added).toHaveLength(1);
         expect(added[0]?.[1]).toMatchObject({

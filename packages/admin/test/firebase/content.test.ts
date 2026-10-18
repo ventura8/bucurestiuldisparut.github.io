@@ -178,6 +178,28 @@ describe('the Firestore ContentStore: writes', () => {
         ]);
     });
 
+    it('badPath_aCreateThatFindsItsOwnLandedAttemptSucceedsAndAnyOtherDocumentIsAConflict', async () => {
+        const mine = { title: { ro: 'Gara de Nord', en: undefined }, location: { lng: 26.1, lat: 44.45 }, tags: ['a', 1], note: undefined };
+        const { store, ops } = world({
+            server: {
+                'cities/b/photos/landed': {
+                    location: { lat: 44.45, lng: 26.1 },
+                    title: { ro: 'Gara de Nord' },
+                    tags: ['a', 1],
+                    updatedBy: 'admin-uid',
+                },
+                'cities/b/photos/theirs': { ...mine, updatedBy: 'someone-else' },
+                'cities/b/photos/changed': { ...mine, tags: ['b'], updatedBy: 'admin-uid' },
+            },
+        });
+
+        // Its commit landed while its answer was an error: the transaction runs again and finds its own document.
+        await expect(store.create('cities/b/photos/landed', mine, { withCreator: true })).resolves.toEqual({ ok: true });
+        await expect(store.create('cities/b/photos/theirs', mine)).resolves.toEqual({ ok: false, reason: 'conflict' });
+        await expect(store.create('cities/b/photos/changed', mine)).resolves.toEqual({ ok: false, reason: 'conflict' });
+        expect(ops).toEqual([]);
+    });
+
     it('happyPath_createAndRemoveRefuseWhatTheyMustNot', async () => {
         const { store, ops } = world({ server: { 'cities/b/pois/x': { name: 'here', updatedAt: UPDATED } } });
 
