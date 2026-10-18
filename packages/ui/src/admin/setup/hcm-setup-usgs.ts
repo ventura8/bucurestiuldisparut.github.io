@@ -2,7 +2,8 @@
  * The USGS card's body (step f, `docs/research/M2b-interfaces.md` §3.3 f): the registration answers and the M2M
  * access request to copy, the ERS username (one fill), "Open the USGS token page" (one click: the paste box is focused
  * and the 60 s countdown starts, then the link opens ERS in a new tab), and the paste box (`type=password`): a paste
- * with the username filled saves at once (no Save click); Enter does the same for a typed token. A countdown that ends
+ * with the username filled saves at once (no Save click); Enter does the same for a typed token. The token's optional
+ * expiry is typed in the admin's language (`zz.ll.aaaa`, `dd/mm/yyyy`). A countdown that ends
  * says so and the box stays open. After saving: the role, the next check of a pending approval, the expiry reminder.
  */
 import type { AdminSetupKey, UsgsRole } from '@hcm/shared';
@@ -11,7 +12,9 @@ import { css, html, nothing, type TemplateResult } from 'lit';
 import { defineOnce } from '../../components/internal.js';
 import { defineHcmProgress } from '../../components/progress.js';
 import { visuallyHidden } from '../../components/styles.js';
+import { formatDateInput, parseDateInput } from '../editing/date-text.js';
 import { EMPTY } from '../shell/empty.js';
+import { contentText } from '../shell/text.js';
 import { SetupBody, defineSetupBodyParts } from './setup-body.js';
 import type { SetupViewState } from './setup-port.js';
 import { copyStyles, fieldStyles, setupTextStyles } from './setup-styles.js';
@@ -28,7 +31,7 @@ function typedFields(view: SetupViewState | null): { readonly username: string; 
 }
 
 export class HcmSetupUsgs extends SetupBody {
-    static override readonly properties = { ...SetupBody.properties, needsUsername: { state: true } };
+    static override readonly properties = { ...SetupBody.properties, needsUsername: { state: true }, expiryUnread: { state: true } };
 
     static override readonly styles = [
         setupTextStyles,
@@ -65,10 +68,13 @@ export class HcmSetupUsgs extends SetupBody {
 
     /** A token was pasted before the username: the hint says to fill it first. */
     declare needsUsername: boolean;
+    /** The expiry date typed does not read as a date: said at the field, nothing kept. */
+    declare expiryUnread: boolean;
 
     constructor() {
         super();
         this.needsUsername = false;
+        this.expiryUnread = false;
     }
 
     protected override renderBody(state: SetupViewState): TemplateResult {
@@ -85,10 +91,7 @@ export class HcmSetupUsgs extends SetupBody {
                     @change=${this.onFilled}
                 />
             </div>
-            <div class="field">
-                <label for="usgs-expires">${this.t('adminSetup.usgs.expiresOn')}</label>
-                <input id="usgs-expires" type="date" .value=${state.usgs.expiresOn} @change=${this.onExpiry} />
-            </div>
+            ${this.renderExpiryField(state)}
             <div class="actions">
                 <a
                     class="link-button"
@@ -100,6 +103,29 @@ export class HcmSetupUsgs extends SetupBody {
                 >
             </div>
             ${this.renderTokenBox(state)} ${this.renderStatus(state)}
+        </div>`;
+    }
+
+    /**
+     * The token's expiry as an M3 date input field in the admin's language (`zz.ll.aaaa`, `dd/mm/yyyy`), never the browser's
+     * date input, whose pattern follows the browser's language (`../editing/date-text.ts`).
+     */
+    private renderExpiryField(state: SetupViewState): TemplateResult {
+        const pattern = contentText(this.locale, 'adminContent.common.datePattern');
+        const hint = this.expiryUnread ? 'adminContent.common.dateUnread' : 'adminContent.common.dateHint';
+        return html`<div class="field">
+            <label for="usgs-expires">${this.t('adminSetup.usgs.expiresOn')}</label>
+            <input
+                id="usgs-expires"
+                type="text"
+                autocomplete="off"
+                placeholder=${pattern}
+                aria-describedby="usgs-expires-hint"
+                aria-invalid=${this.expiryUnread ? 'true' : 'false'}
+                .value=${formatDateInput(this.locale, state.usgs.expiresOn)}
+                @change=${this.onExpiry}
+            />
+            <p id="usgs-expires-hint" class="hint">${contentText(this.locale, hint, { pattern })}</p>
         </div>`;
     }
 
@@ -175,10 +201,13 @@ export class HcmSetupUsgs extends SetupBody {
     };
 
     private readonly onExpiry = (event: Event): void => {
-        const expiresOn = (event.target as HTMLInputElement).value;
-        this.act((intents) => {
-            intents.draftUsgs({ expiresOn });
-        });
+        const expiresOn = parseDateInput((event.target as HTMLInputElement).value);
+        this.expiryUnread = expiresOn === null;
+        if (expiresOn !== null) {
+            this.act((intents) => {
+                intents.draftUsgs({ expiresOn });
+            });
+        }
         this.onFilled();
     };
 

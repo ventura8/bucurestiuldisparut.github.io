@@ -167,6 +167,18 @@ describe('<hcm-draw-toolbar>', () => {
         expect((deep(element, 'hcm-icon-button.select') as HTMLElement & { selected: boolean }).selected).toBe(true);
     });
 
+    it('badPath_aReadOnlyToolbarOffersNoTool', async () => {
+        const element = await mount<HcmDrawToolbar>(html`<hcm-draw-toolbar read-only can-delete can-undo></hcm-draw-toolbar>`, 600);
+
+        expect(deepAll(element, 'hcm-icon-button').map((button) => (button as HTMLElement & { disabled: boolean }).disabled)).toEqual([
+            true,
+            true,
+            true,
+            true,
+            true,
+        ]);
+    });
+
     it('badPath_withoutACentreAddAtCentreIsOff', async () => {
         const element = await mount<HcmDrawToolbar>(html`<hcm-draw-toolbar .canAddCentre=${false}></hcm-draw-toolbar>`, 600);
 
@@ -216,6 +228,22 @@ describe('<hcm-vertex-list>', () => {
         expect(choices).toEqual([{ index: 0 }, { index: null }]);
         expect(second?.getAttribute('aria-pressed')).toBe('true');
         expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_aReadOnlyListShowsThePositionsWithoutChangingThem', async () => {
+        const element = await mount<HcmVertexList>(
+            html`<hcm-vertex-list
+                read-only
+                .positions=${[
+                    [26.1, 44.43],
+                    [26.11, 44.44],
+                ]}
+            ></hcm-vertex-list>`,
+            600,
+        );
+
+        expect(deepAll(element, 'input').every((input) => (input as HTMLInputElement).readOnly)).toBe(true);
+        expect(deepAll(element, 'hcm-icon-button').every((button) => (button as HTMLElement & { disabled: boolean }).disabled)).toBe(true);
     });
 
     it('badPath_aCoordinateThatIsNotOneIsPutBack', async () => {

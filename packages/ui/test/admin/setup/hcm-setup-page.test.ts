@@ -37,6 +37,35 @@ function steps(element: HcmSetupPage): HcmSetupStep[] {
 describe('<hcm-setup-page> one column', () => {
     afterEach(cleanup);
 
+    it('badPath_theSelfTestsChecksAreListedAFailingOneWithItsReasonAndItsStep', async () => {
+        const checks = [
+            { id: 'firestore', state: 'ok', detail: null },
+            { id: 'secrets', state: 'unavailable', detail: { key: 'apiError.secrets.unavailable' } },
+            { id: 'error-reporting', state: 'invalid', detail: { key: 'apiError.errorReporting.unavailable' } },
+        ] as const;
+        const port = new FakeSetupPort(setupView({ selfTest: { checks } }));
+        const element = await render(port, 480, 'en');
+
+        const rows = [...element.renderRoot.querySelectorAll<HTMLElement>('.check')];
+        expect(rows.map((row) => [row.dataset['check'], row.dataset['state']])).toEqual([
+            ['firestore', 'ok'],
+            ['secrets', 'unavailable'],
+            ['error-reporting', 'invalid'],
+        ]);
+        expect(rows[0]?.querySelector('a')).toBeNull();
+        expect(rows[1]?.querySelector('.reason')?.textContent).not.toBe('');
+        expect(rows[1]?.querySelector('a')?.getAttribute('href')).toBe('#/setup/provision');
+        expect(rows[2]?.querySelector('a')?.getAttribute('href')).toBe('#/setup/analytics');
+        await expect.element(page.getByRole('heading', { level: 2, name: 'Server checks' })).toBeVisible();
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('happyPath_noSelfTestYetListsNoCheck', async () => {
+        const element = await render(new FakeSetupPort());
+
+        expect(element.renderRoot.querySelector('.self-test')).toBeNull();
+    });
+
     it('happyPath_theProgressRingAndOneCardPerStepTheOpenOneExpanded', async () => {
         const port = new FakeSetupPort();
         const element = await render(port);

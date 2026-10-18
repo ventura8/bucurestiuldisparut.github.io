@@ -67,6 +67,8 @@ export interface AdminStatePort {
     readonly leaving?: { readonly kind: 'route'; readonly route: AdminRoutePort } | { readonly kind: 'signOut' } | null;
     /** The access was removed while an editor held changes: the page stays read-only under a banner until sign-out (§35e). */
     readonly revoked?: boolean;
+    /** The admins' names by uid, once a conflict asked for them (who saved a change). */
+    readonly people?: Readonly<Record<string, string>>;
     readonly projectId: string;
     readonly authDomain: string;
     /** The Setup Assistant's state (setup-ui's `SetupViewState`), null before its controller exists or without one. */
@@ -99,7 +101,7 @@ export interface AdminAppPort {
     readonly state: AdminStatePort;
     subscribe(listener: (state: AdminStatePort) => void): () => void;
     readonly intents: AdminIntentsPort;
-    /** The tag of a route's page element, once its module is loaded (null: no page). */
+    /** The tag of a route's page element, once its module is loaded (null: no page); rejects when the module does not load. */
     loadPage(id: AdminRouteIdPort): Promise<string | null>;
     /** The editors' area stores (`docs/research/M2c-interfaces.md` §2.3). */
     readonly content: ContentPort;

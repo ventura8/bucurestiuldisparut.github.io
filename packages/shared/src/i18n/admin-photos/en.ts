@@ -55,6 +55,7 @@ export const en: Readonly<Record<AdminPhotosKey, string>> = {
     'adminContent.photos.bulk.setFieldsAction': 'Author, source and licence',
     'adminContent.photos.bulk.confirmRightsAction': 'Confirm rights',
     'adminContent.photos.bulk.deleteAction': 'Delete',
+    'adminContent.photos.bulk.more': 'More actions for the selection',
     'adminContent.photos.bulk.publish': 'Published: {done}. Skipped: {skipped}. The public map updates within about a minute.',
     'adminContent.photos.bulk.unpublish': 'Unpublished: {done}. Skipped: {skipped}.',
     'adminContent.photos.bulk.confirmRights': 'Rights confirmed: {done}. Skipped: {skipped}.',

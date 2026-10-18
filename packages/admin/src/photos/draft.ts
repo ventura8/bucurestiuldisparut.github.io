@@ -73,6 +73,8 @@ export interface PhotoDraftDeps {
     readonly changed: (state: PhotoDraftState) => void;
     /** Times the wait of a Save refused for a newer version (without one, the refusal is decided at once). */
     readonly clock?: Pick<Clock, 'setTimeout' | 'clearTimeout'>;
+    /** True while the admin's access is removed (§35e, `DECISIONS-for-review.md` §42d): `edit` changes nothing. */
+    readonly locked?: () => boolean;
 }
 
 /** How long a Save refused for a newer version waits for that version before every changed field is the conflict. */
@@ -223,7 +225,7 @@ export class PhotoDraft {
     }
 
     edit(patch: PhotoPatch): void {
-        if (this.#state.value !== null) {
+        if (this.#state.value !== null && this.#deps.locked?.() !== true) {
             this.#set({ value: patched(this.#state.value, patch), touched: true });
         }
     }

@@ -58,6 +58,8 @@ function missingState(env: MissingEnvironment): AdminState<null> {
         notice: null,
         leaving: null,
         revoked: false,
+        people: {},
+        setupReady: null,
         projectId: '',
         authDomain: '',
         setup: null,

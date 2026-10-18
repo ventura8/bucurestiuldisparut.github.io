@@ -28,6 +28,7 @@ export class HcmDrawToolbar extends LitElement {
         canUndo: { type: Boolean, attribute: 'can-undo' },
         canAddCentre: { attribute: false },
         locale: { type: String },
+        readOnly: { type: Boolean, attribute: 'read-only' },
     };
 
     static override readonly styles = [
@@ -56,6 +57,8 @@ export class HcmDrawToolbar extends LitElement {
     /** False until the place's centre is known (the map's, or the city's starting view without a map). */
     declare canAddCentre: boolean;
     declare locale: Locale;
+    /** A revoked admin's editor (`DECISIONS-for-review.md` §42d): every tool is off. */
+    declare readOnly: boolean;
 
     constructor() {
         super();
@@ -65,6 +68,7 @@ export class HcmDrawToolbar extends LitElement {
         this.canUndo = false;
         this.canAddCentre = true;
         this.locale = 'en';
+        this.readOnly = false;
     }
 
     #tool(
@@ -82,7 +86,7 @@ export class HcmDrawToolbar extends LitElement {
             .label=${label}
             ?toggle=${options.pressed !== undefined}
             ?selected=${options.pressed === true}
-            ?disabled=${options.disabled === true}
+            ?disabled=${options.disabled === true || this.readOnly}
             @click=${pick}
         ></hcm-icon-button>`;
     }

@@ -4,6 +4,7 @@ import type { Locator, Page } from '@playwright/test';
 import { expect, test } from '../../support/content-test.js';
 import type { ContentWorld } from '../../support/content.js';
 import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
+import { chooseInMenu } from '../../support/menu.js';
 import { awaitManifest, entry, seedPublicCity } from '../../support/flows.js';
 import { templatePattern } from '../../support/i18n.js';
 import { contentText } from '../../support/ops.js';
@@ -189,6 +190,9 @@ test(
         test.setTimeout(150_000);
         await openPlace(page, content, lang);
         await title(page, lang).fill('Gara de Nord');
+        // Save is on once the city's categories have answered too: offline before that, the place's category is unknown
+        // and Save stays off for good (a loaded machine, lesson 146).
+        await expect(saveButton(page, lang)).toBeEnabled();
 
         await page.context().setOffline(true);
         await saveButton(page, lang).click();
@@ -225,9 +229,10 @@ test(
 
         await expect(page.getByRole('alert').filter({ hasText: poisText(lang, 'adminContent.pois.gone') })).toBeVisible();
         await expect(saveButton(page, lang)).toBeDisabled();
-        await expect(
-            page.locator('hcm-poi-editor').getByRole('link', { name: poisText(lang, 'adminContent.pois.history') }),
-        ).toHaveAttribute('href', '#/history/poi/gara');
         expect(await content.document('pois/gara')).toBeUndefined();
+        // History, in the editor's overflow menu (a button of the editor's one style, DECISIONS-for-review.md §42e).
+        const editor = page.locator('hcm-poi-editor');
+        await chooseInMenu(page, editor, poisText(lang, 'adminContent.pois.actions'), poisText(lang, 'adminContent.pois.history'));
+        await expect(page).toHaveURL(/#\/history\/poi\/gara$/);
     },
 );

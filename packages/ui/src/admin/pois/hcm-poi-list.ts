@@ -1,7 +1,7 @@
 /**
  * `<hcm-poi-list>`: the places page's list pane (docs/research/M2c-interfaces.md §1.5, §7.1, §7.4): the title, Add place
  * (it asks which shape: Point, Line, Area), import and export of GeoJSON, the category chips and Unpublished, a search of
- * the loaded page, the bulk bar once a place is selected, and the rows (a check box, the category's swatch, the title,
+ * the loaded page, the selection's bar once a place is selected (`../editing/bulk-bar.ts`), and the rows (a check box, the category's swatch, the title,
  * the years, the shape, Unpublished). Fires `hcm-add` with `{shape}`, `hcm-import` with `{file}`, `hcm-export` with
  * `{selection}` and `hcm-bulk` with `{action}`; filters and the selection go to the area's intents.
  */
@@ -10,6 +10,7 @@ import { LitElement, html, nothing, type TemplateResult } from 'lit';
 
 import { cssProperties } from '../../components/css-properties.js';
 import { defineOnce, emit } from '../../components/internal.js';
+import { bulkBar } from '../editing/bulk-bar.js';
 import { current, listBody, reconnectingStatus } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { categoryName, localized, poiHref, poiText, ROW_SHAPES, SHAPE_KEYS, yearsText } from './poi-text.js';
@@ -61,6 +62,7 @@ export class HcmPoiList extends LitElement {
         intents: { attribute: false },
         locale: { type: String },
         selected: { type: String },
+        readOnly: { type: Boolean, attribute: 'read-only' },
         adding: { state: true },
     };
 
@@ -71,6 +73,8 @@ export class HcmPoiList extends LitElement {
     declare locale: Locale;
     /** The open place's id (its row is the current one). */
     declare selected: string;
+    /** A revoked admin's page (`DECISIONS-for-review.md` §42d): adding, importing and the selection's actions are off. */
+    declare readOnly: boolean;
     /** Add place asks which shape. */
     declare adding: boolean;
 
@@ -80,6 +84,7 @@ export class HcmPoiList extends LitElement {
         this.intents = null;
         this.locale = 'en';
         this.selected = '';
+        this.readOnly = false;
         this.adding = false;
     }
 
@@ -112,6 +117,7 @@ export class HcmPoiList extends LitElement {
                     class="add"
                     variant="filled"
                     icon="add"
+                    ?disabled=${this.readOnly}
                     aria-expanded=${this.adding ? 'true' : 'false'}
                     @click=${() => {
                         this.adding = !this.adding;
@@ -160,6 +166,7 @@ export class HcmPoiList extends LitElement {
                 class="import"
                 variant="outlined"
                 icon="upload"
+                ?disabled=${this.readOnly}
                 @click=${() => {
                     this.renderRoot.querySelector<HTMLInputElement>('.file-input')?.click();
                 }}
@@ -213,29 +220,36 @@ export class HcmPoiList extends LitElement {
     }
 
     #bulk(view: PoisViewState): TemplateResult {
-        const run = (action: BulkActionPort) => (): void => {
-            emit(this, 'hcm-bulk', { action });
-        };
         const text = (key: Parameters<typeof poiText>[1]): string => poiText(this.locale, key);
-        return html`<div class="bulk" role="group" aria-label=${text('adminContent.pois.bulk.actions')}>
-            <p class="count" role="status">
-                ${poiText(this.locale, 'adminContent.pois.bulk.selected', { count: String(view.selection.length) })}
-            </p>
-            <hcm-button variant="text" @click=${() => this.intents?.selectAll()}>${text('adminContent.pois.bulk.selectAll')}</hcm-button>
-            <hcm-button variant="text" @click=${() => this.intents?.clearSelection()}>${text('adminContent.pois.bulk.clear')}</hcm-button>
-            <hcm-button variant="tonal" icon="publish" ?disabled=${view.busy} @click=${run({ kind: 'publish', published: true })}
-                >${text('adminContent.pois.bulk.publish')}</hcm-button
-            >
-            <hcm-button variant="tonal" icon="unpublished" ?disabled=${view.busy} @click=${run({ kind: 'publish', published: false })}
-                >${text('adminContent.pois.bulk.unpublish')}</hcm-button
-            >
-            <hcm-button variant="tonal" class="move" ?disabled=${view.busy} @click=${run({ kind: 'move', category: '' })}
-                >${text('adminContent.pois.bulk.move')}</hcm-button
-            >
-            <hcm-button variant="tonal" icon="delete" class="delete" ?disabled=${view.busy} @click=${run({ kind: 'delete' })}
-                >${text('adminContent.pois.bulk.delete')}</hcm-button
-            >
-        </div>`;
+        const actions: Readonly<Record<string, BulkActionPort>> = {
+            publish: { kind: 'publish', published: true },
+            unpublish: { kind: 'publish', published: false },
+            move: { kind: 'move', category: '' },
+            delete: { kind: 'delete' },
+        };
+        return bulkBar({
+            ...{ label: text('adminContent.pois.bulk.actions'), selectAll: text('adminContent.pois.bulk.selectAll') },
+            count: poiText(this.locale, 'adminContent.pois.bulk.selected', { count: String(view.selection.length) }),
+            clear: text('adminContent.pois.bulk.clear'),
+            buttons: [
+                { id: 'publish', label: text('adminContent.pois.bulk.publish'), icon: 'publish' },
+                { id: 'unpublish', label: text('adminContent.pois.bulk.unpublish'), icon: 'unpublished' },
+            ],
+            more: [
+                { id: 'move', label: text('adminContent.pois.bulk.move'), icon: 'place' },
+                { id: 'delete', label: text('adminContent.pois.bulk.delete'), icon: 'delete' },
+            ],
+            ...{ moreLabel: text('adminContent.pois.bulk.more'), closeLabel: text('adminContent.common.close') },
+            off: view.busy || this.readOnly,
+            onSelectAll: () => this.intents?.selectAll(),
+            onClear: () => this.intents?.clearSelection(),
+            onAction: (id) => {
+                const action = actions[id];
+                if (action !== undefined) {
+                    emit(this, 'hcm-bulk', { action });
+                }
+            },
+        });
     }
 
     #rows(view: PoisViewState): TemplateResult {

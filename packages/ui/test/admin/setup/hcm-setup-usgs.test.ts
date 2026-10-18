@@ -82,7 +82,10 @@ describe('<hcm-setup-usgs> the token', () => {
         const { port, element } = await usgs();
         await userEvent.fill(page.getByLabelText('Numele de utilizator ERS'), 'e2e-ok');
         const expiry = shadowPart(element, '#usgs-expires') as HTMLInputElement;
-        expiry.value = '2027-10-12';
+        // Typed as a Romanian writes a date (the field's pattern), whatever the browser's language.
+        expect(expiry.type).toBe('text');
+        expect(expiry.placeholder).toBe('zz.ll.aaaa');
+        expiry.value = '12.10.2027';
         expiry.dispatchEvent(new Event('change'));
 
         paste(tokenBox(element), 'e2e-usgs-app-token-ok');
@@ -91,6 +94,22 @@ describe('<hcm-setup-usgs> the token', () => {
             'saveUsgs',
             { username: 'e2e-ok', applicationToken: 'e2e-usgs-app-token-ok', expiresOn: '2027-10-12' },
         ]);
+        await element.updateComplete;
+        expect(expiry.value).toBe('12.10.2027');
+    });
+
+    it('badPath_anExpiryThatDoesNotReadAsADateIsSaidAndNotKept', async () => {
+        const { port, element } = await usgs({}, 'en');
+        const expiry = shadowPart(element, '#usgs-expires') as HTMLInputElement;
+
+        expiry.value = '31/02/2027';
+        expiry.dispatchEvent(new Event('change'));
+        await element.updateComplete;
+
+        expect(expiry.getAttribute('aria-invalid')).toBe('true');
+        expect(shadowPart(element, '#usgs-expires-hint').textContent).toBe('This date cannot be read: write it as dd/mm/yyyy.');
+        expect(port.calls.filter(([name, fields]) => name === 'draftUsgs' && 'expiresOn' in (fields as object))).toEqual([]);
+        expect(await axeViolations(element)).toEqual([]);
     });
 
     it('badPath_aPasteBeforeTheUsernameAsksForItAndKeepsTheToken', async () => {
@@ -135,23 +154,16 @@ describe('<hcm-setup-usgs> the token', () => {
         expect(port.calls).toEqual([]);
     });
 
-    it('badPath_theExpiryFieldKeepsItsRingOnEveryStopTabMakesInsideIt', async () => {
+    it('happyPath_theExpiryFieldIsOneStopWithItsRing', async () => {
         const { element } = await usgs();
         const expiry = shadowPart(element, '#usgs-expires') as HTMLInputElement;
         shadowPart(element, '#usgs-username').focus();
-        const stops: { readonly own: boolean; readonly outline: string }[] = [];
 
-        // Tab walks the date's day, month and year, then its calendar button, where the field matches only :focus-within.
-        for (let press = 0; press < 6; press += 1) {
-            await userEvent.keyboard('{Tab}');
-            if (element.shadowRoot?.activeElement === expiry) {
-                stops.push({ own: expiry.matches(':focus'), outline: getComputedStyle(expiry).outlineStyle });
-            }
-        }
+        await userEvent.keyboard('{Tab}');
 
-        expect(stops.length).toBeGreaterThan(1);
-        expect(stops.some((stop) => !stop.own)).toBe(true);
-        expect(stops.map((stop) => stop.outline)).toEqual(stops.map(() => 'solid'));
+        expect(element.shadowRoot?.activeElement).toBe(expiry);
+        expect(getComputedStyle(expiry).outlineStyle).toBe('solid');
+        expect(expiry.getAttribute('aria-describedby')).toBe('usgs-expires-hint');
     });
 });
 

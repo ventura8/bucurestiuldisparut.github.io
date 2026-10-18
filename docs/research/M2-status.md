@@ -124,9 +124,9 @@ or types a credential. Every command names the project explicitly (`.firebaserc`
 
    Check: the admin boots with `release: 0.0.0+<short commit>`, and its console shows no error before sign-in.
 3. __Firestore rules and indexes, Storage rules__ (after the user finished Setup steps b and c, which link billing and
-   create the buckets). Ask first. __Decide the Firestore location before the first rules deploy__ (ask the user): with no
-   `location` in `firebase.json`, firebase-tools 15 creates the `(default)` database in `nam5` (US multi-region) when it
-   does not exist, and a location can never be changed; the functions run in `us-central1`, the visitors are in Romania.
+   create the buckets). Ask first. The `(default)` database already exists in `nam5` (created with the project on
+   2026-10-11; the rules and indexes were deployed to it on 2026-10-12), and `firebase.json` names that location, so a
+   deploy only updates the rules and indexes and never creates a database (DECISIONS §40a, resolved).
 
    ```bash
    npx firebase deploy --only firestore,storage --project bucurestiul-disparut
@@ -173,7 +173,6 @@ and glyphs of the e2e world are what the shots show for the map (labels as boxes
 
 Open, for the user or a later milestone:
 
-- __The Firestore location__ (section 5, step 3): a one-time choice before the first rules deploy (DECISIONS §40).
 - __A revoked admin's Save stays enabled__ (§35e as built: every write is refused at once with a snackbar, the scenario
   row asserts that); a page that is read-only would disable it in each editor. The UX review's other layout points
   (the places editor's overflow menu and landscape layout, the bulk bar, raw field names in History, raw job step
@@ -187,3 +186,48 @@ Open, for the user or a later milestone:
 - __SonarCloud__ runs only with the token (CI has it); the local runs skipped it.
 - __The pipeline milestones__: imagery search, import, georeferencing and MTS publishing are M3; swipe compare, the
   buy-scan flow and the Nominatim and AI assists are M4.
+
+## Addendum 2026-10-18: after the user's decisions §34b, §34g and §34i
+
+- __Bundle__: the admin page loads `admin.mjs`; its entry with its static chunk is 349.8 KB gzip of 450 (was
+  `admin.iife.js`, 446.9), each area, Terra Draw (47.4 KB), the colour library and the analytics SDK are lazy chunks
+  with budgets of their own, 512.0 KB in all of 620 (`DECISIONS-for-review.md` §41a).
+- __Terra Draw__ 1.37.0 is installed and drags shapes, vertices and midpoints (§41b; `S-A32-HAPPY-VERTEX-EDIT` exists).
+- __First screen__: once Setup is complete an empty address opens the dashboard (§41c).
+- __Open for the user__: a third-party notices file for the admin (§41b); `terra-draw` 1.38.0 to evaluate (a `HELD`
+  entry).
+
+## Addendum 2026-10-18: the §37e screens, read-only revoked editors, security, the §39c tiering
+
+- __§40a resolved__: the Firestore `(default)` database exists in `nam5`; `firebase.json` names the location, so a
+  deploy can never create one elsewhere (`firebase/rules-tests/test/firebase-config.test.ts`).
+- __The rows §37e listed exist__ (`DECISIONS-for-review.md` §42a–§42c): the settings page's map (area drawn as a
+  rectangle, Use this view, the overlay defaults previewed live), the self-test's per-check list with each failing
+  check's reason and step, Replace the visitors' or the admin's Mapbox token, the conflict banner naming who and when,
+  Home's list of the documents the public map skipped.
+- __A revoked admin__ sees every editor read-only under the banner (§42d); the UX leftovers are done (§42e).
+- __Security__ (§42f): the public crash endpoint runs as `fn-crash@`, an account with no project role, at 15 reports per
+  instance a minute and 16 KiB per entry (about 22 GiB of logs in a worst-case month, under the 50 GiB free tier); the
+  compare plugin loads only with SHA-384 digests.
+- __Open for the user__ (ask first): installing `mapbox-gl-compare@0.6.0` to compute its digests (a download); a log
+  sink exclusion for the crash endpoint's request log (a cloud change); App Check enforcement after the deploy.
+- __§39c__ (§42g): every scenario row still runs on every push; the repetitions (the Setup journey at three more
+  projects, the window-class-independent functional specs at four more, the admin's tours in dark and English) run in
+  `tour-matrix`. The split `quality` stage measured below eight minutes (`docs/CI_PIPELINE.md`).
+
+## Addendum 2026-10-18: the M2e gate and review screenshots
+
+- __Gate__: the split `all` stage (`scripts/ci/e2e-split.sh`, the full tour and `tour-matrix` included) is the
+  milestone's gate; its verdict is quoted in the task report. Its first run found what the per-push `quality` runs of
+  §41 and §42 never reach (`DECISIONS-for-review.md` §43): the places editor over its "Set up Mapbox" note on a 320 px
+  phone, the bar's "Configurare" broken over two lines there, a legal-line rule that asked for a logo on a 4 px strip
+  of map, and three specs that raced a loaded machine (`docs/LESSONS.md` 143–148).
+- __Review screenshots__ of the dashboard, the places editor half way through a drag, and the photo and layer editors
+  at 360×800, 768×1024, 1440×900 and 2560×1440, light and dark (`docs/TESTING.md` → *Review screenshots*). They found
+  two defects, both fixed: the opened photo or place could lie off its editor's map (the map now centres on it once,
+  `S-A09-HAPPY-OPEN-IN-VIEW`, `S-A32-HAPPY-OPEN-IN-VIEW`, `S-A32-BAD-NEW-PLACE-KEEPS-VIEW`), and the dashboard's tiles
+  in one row differed in height (`docs/LESSONS.md` 141, 142).
+- __Bundle__ after the fixes: the admin entry 353.4 KB gzip of 450, every lazy chunk within its budget, 521.1 KB in all
+  of 620; the engine unchanged (`engine.mjs` 95.9 of 100, `engine.iife.js` 109.3 of 125).
+- __Seen, not changed__: the admin map keeps the day basemap in the dark scheme, as the viewer does; test cities seeded
+  without theme tokens show the fallback purple (the Bucharest theme is brown).

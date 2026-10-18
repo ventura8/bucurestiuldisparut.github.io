@@ -11,6 +11,7 @@ import type { Locale } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
 
 import { emit } from '../../components/internal.js';
+import { bulkBar } from '../editing/bulk-bar.js';
 import { current, errorTemplate, loadingTemplate, reconnectingStatus } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { FILTER_ORDER, bulkActionText, filterText, localized, messageText, partId, photoHref, photoText, yearsText } from './photo-text.js';
@@ -45,6 +46,7 @@ export class HcmAdminPhotoList extends LitElement {
         intents: { attribute: false },
         locale: { type: String },
         selected: { type: String },
+        readOnly: { type: Boolean, attribute: 'read-only' },
         over: { state: true },
     };
 
@@ -55,6 +57,8 @@ export class HcmAdminPhotoList extends LitElement {
     declare locale: Locale;
     /** The photo open in the editor (`aria-current`), or ''. */
     declare selected: string;
+    /** A revoked admin's page (`DECISIONS-for-review.md` §42d): uploads and the selection's actions are off. */
+    declare readOnly: boolean;
     /** Files are dragged over the pane. */
     declare over: boolean;
 
@@ -64,6 +68,7 @@ export class HcmAdminPhotoList extends LitElement {
         this.intents = null;
         this.locale = 'ro';
         this.selected = '';
+        this.readOnly = false;
         this.over = false;
         this.addEventListener('dragover', this.#onDragOver);
         this.addEventListener('dragleave', this.#onDragLeave);
@@ -79,7 +84,7 @@ export class HcmAdminPhotoList extends LitElement {
         return html`<div class="pane">
             <div class="toolbar">
                 <h2>${photoText(locale, 'adminContent.photos.title')}</h2>
-                <hcm-button variant="filled" icon="add_photo_alternate" @click=${this.#choose}
+                <hcm-button variant="filled" icon="add_photo_alternate" ?disabled=${this.readOnly} @click=${this.#choose}
                     >${photoText(locale, 'adminContent.photos.add')}</hcm-button
                 >
                 <input class="file-input" type="file" multiple accept=${PHOTO_ACCEPT} hidden @change=${this.#chosen} />
@@ -148,45 +153,35 @@ export class HcmAdminPhotoList extends LitElement {
             return this.#selectAll(locale, view);
         }
         const intents = this.intents;
-        const disabled = view.busy;
-        return html`<section class="bulk" aria-label=${photoText(locale, 'adminContent.photos.bulk.actions')}>
-            <p role="status">${photoText(locale, 'adminContent.photos.bulk.selected', { count: String(selection.length) })}</p>
-            <div class="actions">
-                <hcm-button variant="text" icon="select_all" @click=${() => intents?.selectAll()}
-                    >${photoText(locale, 'adminContent.photos.bulk.selectAll')}</hcm-button
-                >
-                <hcm-button variant="text" icon="deselect" @click=${() => intents?.clearSelection()}
-                    >${photoText(locale, 'adminContent.photos.bulk.clear')}</hcm-button
-                >
-            </div>
-            <div class="actions">
-                <hcm-button variant="filled" icon="publish" ?disabled=${disabled} @click=${() => void intents?.bulk({ kind: 'publish' })}
-                    >${bulkActionText(locale, 'publish')}</hcm-button
-                >
-                <hcm-button
-                    variant="tonal"
-                    icon="unpublished"
-                    ?disabled=${disabled}
-                    @click=${() => void intents?.bulk({ kind: 'unpublish' })}
-                    >${bulkActionText(locale, 'unpublish')}</hcm-button
-                >
-                <hcm-button
-                    variant="tonal"
-                    icon="edit"
-                    ?disabled=${disabled}
-                    @click=${() => {
-                        emit(this, 'hcm-set-fields');
-                    }}
-                    >${bulkActionText(locale, 'setFields')}</hcm-button
-                >
-                <hcm-button variant="tonal" icon="check" ?disabled=${disabled} @click=${() => void intents?.bulk({ kind: 'confirmRights' })}
-                    >${bulkActionText(locale, 'confirmRights')}</hcm-button
-                >
-                <hcm-button variant="tonal" icon="delete" ?disabled=${disabled} @click=${() => intents?.requestDelete(selection)}
-                    >${photoText(locale, 'adminContent.photos.bulk.deleteAction')}</hcm-button
-                >
-            </div>
-        </section>`;
+        const run: Readonly<Record<string, () => void>> = {
+            publish: () => void intents?.bulk({ kind: 'publish' }),
+            unpublish: () => void intents?.bulk({ kind: 'unpublish' }),
+            setFields: () => {
+                emit(this, 'hcm-set-fields');
+            },
+            confirmRights: () => void intents?.bulk({ kind: 'confirmRights' }),
+            delete: () => intents?.requestDelete(selection),
+        };
+        const text = (key: Parameters<typeof photoText>[1]): string => photoText(locale, key);
+        return bulkBar({
+            ...{ label: text('adminContent.photos.bulk.actions'), selectAll: text('adminContent.photos.bulk.selectAll') },
+            count: photoText(locale, 'adminContent.photos.bulk.selected', { count: String(selection.length) }),
+            clear: text('adminContent.photos.bulk.clear'),
+            buttons: [
+                { id: 'publish', label: bulkActionText(locale, 'publish'), icon: 'publish' },
+                { id: 'unpublish', label: bulkActionText(locale, 'unpublish'), icon: 'unpublished' },
+            ],
+            more: [
+                { id: 'setFields', label: bulkActionText(locale, 'setFields'), icon: 'edit' },
+                { id: 'confirmRights', label: bulkActionText(locale, 'confirmRights'), icon: 'check' },
+                { id: 'delete', label: text('adminContent.photos.bulk.deleteAction'), icon: 'delete' },
+            ],
+            ...{ moreLabel: text('adminContent.photos.bulk.more'), closeLabel: text('adminContent.common.close') },
+            off: view.busy || this.readOnly,
+            onSelectAll: () => intents?.selectAll(),
+            onClear: () => intents?.clearSelection(),
+            onAction: (id) => run[id]?.(),
+        });
     }
 
     /**
@@ -301,14 +296,14 @@ export class HcmAdminPhotoList extends LitElement {
         const actions: TemplateResult[] = [];
         if (row.checkPlace) {
             actions.push(
-                html`<hcm-button variant="text" icon="place" @click=${() => intents?.confirmPlace(row.id)}
+                html`<hcm-button variant="text" icon="place" ?disabled=${this.readOnly} @click=${() => intents?.confirmPlace(row.id)}
                     >${photoText(locale, 'adminContent.photos.confirmPlace')}</hcm-button
                 >`,
             );
         }
         if (row.rightsReview) {
             actions.push(
-                html`<hcm-button variant="text" icon="check" @click=${() => void intents?.confirmRights(row.id)}
+                html`<hcm-button variant="text" icon="check" ?disabled=${this.readOnly} @click=${() => void intents?.confirmRights(row.id)}
                     >${photoText(locale, 'adminContent.photos.confirmRights')}</hcm-button
                 >`,
             );
@@ -327,7 +322,11 @@ export class HcmAdminPhotoList extends LitElement {
         if (row.error !== null) {
             const title = localized(locale, row.title);
             actions.push(
-                html`<hcm-button variant="text" icon="delete" @click=${() => this.intents?.requestDelete([row.id])}
+                html`<hcm-button
+                    variant="text"
+                    icon="delete"
+                    ?disabled=${this.readOnly}
+                    @click=${() => this.intents?.requestDelete([row.id])}
                     >${photoText(locale, 'adminContent.photos.deleteOne', { title })}</hcm-button
                 >`,
             );
@@ -347,7 +346,7 @@ export class HcmAdminPhotoList extends LitElement {
 
     #upload(files: FileList | null): void {
         const chosen = photoFiles(files);
-        if (chosen.length > 0) {
+        if (chosen.length > 0 && !this.readOnly) {
             this.intents?.upload(chosen);
         }
     }

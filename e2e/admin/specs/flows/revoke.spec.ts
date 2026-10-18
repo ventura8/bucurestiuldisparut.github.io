@@ -22,7 +22,8 @@ test.describe.configure({ lock: ADMIN_LOCK });
  * owner, in another browser, removes their access. The removal asks first and names the admin; afterwards the admin is
  * listed no more, their claim is gone and their sessions are revoked; their Save is refused by the rules (an admin must
  * still have `admins/{uid}`), nothing is written, and the shell says the access was removed while it keeps the page and
- * its draft on screen, read-only, until the admin signs out (DECISIONS-for-review.md §35e). An admin whose document goes
+ * its draft on screen, read-only (Save and every action that writes off, the fields read-only: §42d), until the admin
+ * signs out (DECISIONS-for-review.md §35e). An admin whose document goes
  * mid-session is refused at the next read, without waiting for the token to expire.
  */
 test.use({ persona: 'admin', mapOwner: 'owner', admins: ['admin'] });
@@ -107,9 +108,13 @@ test(
         await refused.hover();
         await expectStateSound(page, adminVisit('session-revoked', lang));
 
-        // A second Save is refused at once (nothing is sent: no new 403), and the draft stays.
-        await save.click();
+        // The page is read-only under the banner (DECISIONS-for-review.md §42d): Save and the editor's actions are off, the
+        // fields read-only (what is there can still be selected and copied), the drawing tools off; nothing more is sent.
+        await expect(save).toBeDisabled();
+        await expect(title).not.toBeEditable();
         await expect(title).toHaveValue('Gara de Nord');
+        await expect(page.getByRole('button', { name: flowText(lang, 'adminContent.pois.delete') })).toBeDisabled();
+        await expect(page.getByRole('combobox', { name: flowText(lang, 'adminContent.pois.field.category') })).toBeDisabled();
         expect(consoleErrors.takeMatching(/status of 403/)).toEqual([]);
 
         // Sign out asks to discard the changes first, then signs out.

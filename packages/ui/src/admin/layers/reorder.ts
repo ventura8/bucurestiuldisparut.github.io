@@ -30,6 +30,11 @@ export interface ReorderLabels {
 
 export interface ReorderHandlers {
     readonly move: (id: string, direction: 'up' | 'down') => void;
+    /**
+     * A revoked admin's read-only page (`DECISIONS-for-review.md` §42d): the rows are links only, without the drag handle
+     * and the Move buttons (no order can be written).
+     */
+    readonly readOnly?: boolean;
 }
 
 /**
@@ -94,8 +99,18 @@ export class RowDrag {
     };
 }
 
+function link(item: ReorderRow): TemplateResult {
+    return html`<a class="row" href=${item.href} aria-current=${current(item.selected)} ?data-lead=${item.lead !== undefined}>
+        ${item.lead ?? nothing}<span class="row-title">${item.title}</span>
+        <span class="row-detail">${item.detail}</span>
+    </a>`;
+}
+
 function row(item: ReorderRow, context: { labels: ReorderLabels; handlers: ReorderHandlers; drag: RowDrag }): TemplateResult {
     const { labels, handlers, drag } = context;
+    if (handlers.readOnly === true) {
+        return html`<li class="reorder-row" data-reorder-row=${item.id} data-read-only>${link(item)}</li>`;
+    }
     return html`<li class="reorder-row" data-reorder-row=${item.id}>
         <span
             class="handle"
@@ -108,10 +123,7 @@ function row(item: ReorderRow, context: { labels: ReorderLabels; handlers: Reord
             @pointercancel=${drag.cancel}
             ><hcm-icon name="drag_indicator"></hcm-icon
         ></span>
-        <a class="row" href=${item.href} aria-current=${current(item.selected)} ?data-lead=${item.lead !== undefined}>
-            ${item.lead ?? nothing}<span class="row-title">${item.title}</span>
-            <span class="row-detail">${item.detail}</span>
-        </a>
+        ${link(item)}
         <span class="moves">
             <hcm-icon-button
                 icon="arrow_upward"

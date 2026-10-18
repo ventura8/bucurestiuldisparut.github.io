@@ -40,6 +40,10 @@ export interface PlaceEditorDeps {
     readonly denied: () => void;
     readonly context: () => PoiContext;
     readonly changed: (state: PlaceEditorState) => void;
+    /** The admin's access was removed: the draft takes no edit (`DECISIONS-for-review.md` §42d). */
+    readonly locked?: () => boolean;
+    /** A conflict appeared: the shell learns the admins' names, so the banner names who saved (§42c). */
+    readonly people?: () => void;
 }
 
 /** A new place: its first value and the shape the admin chose. */
@@ -94,10 +98,14 @@ export class PlaceEditor {
     }
 
     #newDraft(start: { readonly base: Stored<PoiDoc> } | { readonly value: PoiValue }): PoiDraft {
-        const { store, cityId, context } = this.#deps;
+        const { store, cityId, context, locked } = this.#deps;
         return new PoiDraft(this.#state.id, start, {
             ...{ store, cityId, context },
+            ...(locked === undefined ? {} : { locked }),
             changed: (draft) => {
+                if (draft.conflict !== null) {
+                    this.#deps.people?.();
+                }
                 this.#set({ draft });
             },
         });

@@ -284,7 +284,11 @@ class LayersStore implements AreaStore<LayersState, LayersIntents> {
             { path, schema: layerDocSchema, editable: LAYER_EDITABLE, check: publishCheck },
             {
                 store: this.#services.store,
+                locked: () => this.#services.readOnly(),
                 changed: (draft) => {
+                    if (draft.conflict !== null) {
+                        this.#services.people();
+                    }
                     this.#draftChanged(id, draft);
                 },
             },

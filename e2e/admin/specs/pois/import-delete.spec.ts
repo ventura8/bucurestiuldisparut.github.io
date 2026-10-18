@@ -9,6 +9,7 @@ import { awaitManifest, entries, entry, openPublicViewer, seedPublicCity } from 
 import { contentText } from '../../support/ops.js';
 import { adminMapReady, overlayFeatureIds } from '../../support/map.js';
 import { chooseImport, feature, poisText, seedCategories, seedPlace } from './places.js';
+import { chooseInMenu } from '../../support/menu.js';
 
 /**
  * Importing places from GeoJSON and deleting them (docs/research/M2c-interfaces.md §7.3, §7.4, §9.5; behaviours A34, A33)
@@ -190,10 +191,13 @@ test(
         // Select all, Delete: one question naming the count, then all five are gone.
         await page.getByRole('checkbox', { name: poisText(lang, 'adminContent.pois.select', { title: 'Gara Obor' }) }).check();
         await page.getByRole('button', { name: poisText(lang, 'adminContent.pois.bulk.selectAll') }).click();
-        await page
-            .locator('hcm-poi-list .bulk')
-            .getByRole('button', { name: poisText(lang, 'adminContent.pois.bulk.delete') })
-            .click();
+        // Delete is among the selection's less frequent actions, in its overflow menu (DECISIONS-for-review.md §42e).
+        await chooseInMenu(
+            page,
+            page.locator('hcm-poi-list .bulk-bar'),
+            poisText(lang, 'adminContent.pois.bulk.more'),
+            poisText(lang, 'adminContent.pois.bulk.delete'),
+        );
         await expect(
             page.getByRole('dialog', { name: poisText(lang, 'adminContent.pois.bulk.deleteTitle', { count: '5' }) }),
         ).toBeVisible();

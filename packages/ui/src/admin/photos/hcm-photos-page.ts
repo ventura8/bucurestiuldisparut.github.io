@@ -102,6 +102,7 @@ export class HcmPhotosPage extends AreaPage<PhotosViewState, PhotosIntentsPort> 
                     .intents=${this.intents}
                     .locale=${locale}
                     .selected=${open}
+                    ?read-only=${this.readOnly}
                     @hcm-set-fields=${() => {
                         this.settingFields = { count: view.list.selection.length };
                     }}
@@ -138,6 +139,11 @@ export class HcmPhotosPage extends AreaPage<PhotosViewState, PhotosIntentsPort> 
             .intents=${this.intents}
             .locale=${locale}
             ?map-ready=${view.map === 'ready'}
+            ?read-only=${this.readOnly}
+            .who=${{ self: this.self, people: this.people }}
+            @hcm-history=${() => {
+                this.app?.intents.navigate({ id: 'history', params: ['photo', open] });
+            }}
         ></hcm-admin-photo-editor>`;
     }
 

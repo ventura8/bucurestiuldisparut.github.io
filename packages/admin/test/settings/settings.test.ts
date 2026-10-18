@@ -29,8 +29,13 @@ const TOKENS = (seed: string): ThemeTokenSet => ({
     highContrastDark: { '--md-sys-color-primary': seed },
 });
 
-function open(params: readonly string[], city: CityDoc | null = cityDoc(), passes: (tokens: ThemeTokenSet) => boolean = () => true) {
-    const world = contentWorld({ theme: TOKENS });
+function open(
+    params: readonly string[],
+    city: CityDoc | null = cityDoc(),
+    passes: (tokens: ThemeTokenSet) => boolean = () => true,
+    readOnly = false,
+) {
+    const world = contentWorld({ theme: TOKENS, readOnly: () => readOnly });
     if (city !== null) {
         world.store.docs.set(CITY_PATH, city);
     }
@@ -154,6 +159,8 @@ describe('the area section', () => {
         store.intents.editCity({ zoom: 14 });
         world.store.put(CITY_PATH, cityDoc({ zoom: 11, updatedBy: 'other', updatedAt: { seconds: 1_791_000_000, nanoseconds: 0 } }));
         expect(store.state.citySection.draft.conflict?.fields).toEqual(['zoom']);
+        // The conflict names who saved: the shell is asked for the admins' names (DECISIONS-for-review.md §42c).
+        expect(world.peopleAsked.count).toBeGreaterThan(0);
 
         store.intents.keepMine();
         expect(store.state.citySection.draft.value?.zoom).toBe(14);
@@ -427,6 +434,24 @@ describe('deleting a category', () => {
         await store.intents.askDeleteCategory();
         store.intents.setDeleteTarget('x');
         expect(store.state.categoryDeletion).toEqual({ phase: 'idle' });
+    });
+});
+
+describe('a revoked admin', () => {
+    it('badPath_aReadOnlyPageTakesNoEditOfTheCityACategoryOrTheOverlays', () => {
+        const city = open(['area'], cityDoc(), () => true, true);
+        city.store.intents.editCity({ zoom: 14 });
+        expect(city.store.state.citySection.draft.dirty).toEqual([]);
+
+        const category = open(['categories', '_new'], cityDoc(), () => true, true);
+        category.store.intents.setCategoryLabel('ro', 'Fântâni');
+        expect(category.store.state.category?.value?.label.ro).toBe('');
+
+        const overlays = open(['overlays'], cityDoc(), () => true, true);
+        overlays.store.intents.setOverlayOpacity('raster', 'corona', 40);
+        overlays.store.intents.setShownAtStart('corona', true);
+        expect(overlays.store.state.overlays.changes).toBe(0);
+        expect(overlays.preview.calls.filter((call) => call[0] === 'preview')).toEqual([]);
     });
 });
 

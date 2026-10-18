@@ -18,7 +18,8 @@ function area(state: SettingsViewState = settingsState()): FakeArea<SettingsView
 }
 
 function calls(store: FakeArea<SettingsViewState, SettingsIntentsPort>): readonly string[] {
-    return store.calls.filter((call) => !call.startsWith('open ['));
+    // `open` and `attachMap` (the page's map hands its box over as it renders) are the page's own, not the admin's.
+    return store.calls.filter((call) => !call.startsWith('open [') && !call.startsWith('attachMap'));
 }
 
 /** The settings state with section `section` open over `city` (dirty fields, issues and the rest overridable). */
@@ -118,6 +119,41 @@ describe('<hcm-settings-page> area', () => {
         ]);
         expect(deepText(element)).toContain('Checking the photos and places…');
         expect(await axeViolations(element)).toEqual([]);
+    });
+});
+
+describe('<hcm-settings-page> the map', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_theAreaDrawsItsRectangleAndTakesTheMapsViewOnceTheMapIsReady', async () => {
+        const settings = area({ ...sectionState('area'), map: { status: 'ready', drawing: null } });
+        const { element } = await page('settings', settings, { params: ['area'] });
+        const box = deep(element, 'hcm-admin-map');
+
+        deep(deep(element, 'hcm-button.draw-area'), 'button').click();
+        deep(deep(element, 'hcm-button.use-view'), 'button').click();
+        box.dispatchEvent(new CustomEvent('hcm-zoom', { detail: { delta: 1 } }));
+        settings.set({ map: { status: 'ready', drawing: 'second' } });
+        await updated(element);
+
+        expect(calls(settings)).toEqual(['drawBounds', 'useMapView', 'zoomBy 1']);
+        expect(settings.named('attachMap')).toHaveLength(1);
+        expect(deep(element, 'hcm-button.draw-area').textContent.trim()).toBe('Stop drawing');
+        expect(deep(deep(element, 'hcm-button.draw-area'), 'button').getAttribute('aria-pressed')).toBe('true');
+        expect(deepText(element)).toContain('Now click the opposite corner.');
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_withoutAReadyMapTheToolsWaitAndTheOtherSectionsShowNoMap', async () => {
+        const settings = area({ ...sectionState('area'), map: { status: 'loading', drawing: null } });
+        const { element } = await page('settings', settings, { params: ['area'] });
+        const off = (selector: string): boolean => (deep(element, selector) as HTMLElement & { disabled: boolean }).disabled;
+
+        expect([off('hcm-button.draw-area'), off('hcm-button.use-view')]).toEqual([true, true]);
+        settings.set({ ...sectionState('texts') });
+        await updated(element);
+        expect(deepAll(element, 'hcm-admin-map')).toEqual([]);
     });
 });
 
@@ -289,6 +325,56 @@ describe('<hcm-settings-page> overlays', () => {
             'saveOverlays',
         ]);
         expect(await axeViolations(element)).toEqual([]);
+    });
+});
+
+describe('<hcm-settings-page> a revoked admin', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    /** Whether a control is off (a kit element's or a native one's `disabled`). */
+    const off = (target: HTMLElement): boolean => (target as HTMLElement & { disabled: boolean }).disabled;
+
+    it.each(['area', 'texts', 'theme'] as const)(
+        'badPath_theSection %s is read-only: fields read-only, nothing writes',
+        async (section) => {
+            const city = cityDoc({ credits: [{ label: { ro: 'Arhiva', en: 'Archive' } }] });
+            const settings = area(sectionState(section, city, { draft: draftOf(city, { dirty: ['zoom'] }) }));
+            const { element } = await page('settings', settings, { params: [section], revoked: true });
+            const detail = deep(element, '[slot="detail"]');
+
+            expect(deepText(detail)).toContain('Read only: your access was removed.');
+            expect(deepAll(detail, '.save-bar hcm-button').map(off)).toEqual([true, true]);
+            expect(
+                deepAll(detail, 'input:not([type="color"]):not([type="radio"]), textarea').every(
+                    (field) => (field as HTMLInputElement).readOnly,
+                ),
+            ).toBe(true);
+            expect(
+                deepAll(detail, 'input[type="color"], input[type="radio"], button.preset, hcm-icon-button, .group hcm-button').every(off),
+            ).toBe(true);
+        },
+    );
+
+    it('badPath_theOverlaysAreReadOnly', async () => {
+        const rows = [{ id: 'corona', kind: 'raster', label: { ro: 'Corona' }, visible: false, opacity: 0.8, toggleable: true }] as const;
+        const settings = area({ ...settingsState(), section: 'overlays', overlays: { rows, changes: 1, saving: false } });
+        const { element } = await page('settings', settings, { params: ['overlays'], revoked: true });
+
+        expect((deep(element, 'hcm-overlay-list') as HTMLElement & { disabled: boolean }).disabled).toBe(true);
+        expect(deepAll(deep(element, 'hcm-overlay-list'), 'hcm-switch, hcm-slider').every(off)).toBe(true);
+        expect(deepAll(element, '.save-bar hcm-button').map(off)).toEqual([true, true]);
+    });
+
+    it('happyPath_aConflictNamesWhoSavedTheCityAndWhen', async () => {
+        const city = cityDoc();
+        const conflict = { by: 'owner-uid', at: '2026-10-02T08:00:00.000Z', fields: ['zoom', 'center'] };
+        const settings = area(sectionState('area', city, { draft: draftOf(city, { conflict, dirty: ['zoom'] }) }));
+        const { element } = await page('settings', settings, { params: ['area'], revoked: true });
+
+        expect(deepText(deep(element, '.alert'))).toContain('Saved by you on');
+        expect(deepText(deep(element, '.alert'))).toContain('Start zoom, Start centre');
+        expect(deepAll(deep(element, '.alert'), 'hcm-button').every(off)).toBe(true);
     });
 });
 

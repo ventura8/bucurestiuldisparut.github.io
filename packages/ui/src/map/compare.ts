@@ -3,6 +3,10 @@
  * a billed map load, so the second map exists only while the visitor compares: `openCompare` creates it (loading
  * the mapbox-gl-compare 0.6.0 plugin from api.mapbox.com the first time, never bundled), and `close` removes the plugin,
  * the second map and its container (one map per view again).
+ *
+ * Subresource Integrity (`DECISIONS-for-review.md` §18b, §42f): the plugin's script and stylesheet load only with the
+ * SHA-384 digests the caller names (`CompareDeps.integrity`, the page's build computes them from the pinned release, as
+ * for mapbox-gl), with CORS, so a changed file on the CDN is refused; without valid digests the plugin is not loaded.
  */
 import type { MapOptions, MapPort, Unsubscribe } from './map-port.js';
 import { nativeMap } from './mapbox-adapter.js';
@@ -16,8 +20,19 @@ const PLUGIN_BASE = `https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-compa
 export const COMPARE_SCRIPT_URL = `${PLUGIN_BASE}/mapbox-gl-compare.js`;
 export const COMPARE_STYLE_URL = `${PLUGIN_BASE}/mapbox-gl-compare.css`;
 
+/** The SHA-384 Subresource Integrity digests of the plugin's two files (`sha384-` and 64 base64 characters each). */
+export interface CompareIntegrity {
+    readonly script: string;
+    readonly style: string;
+}
+
+/** A SHA-384 Subresource Integrity digest, as the site build writes it (`scripts/site/src/sri.ts`). */
+const INTEGRITY = /^sha384-[A-Za-z0-9+/]{64}$/;
+
 export interface CompareDeps {
     readonly gl: MapboxGl;
+    /** The digests the plugin's files must match; a load without them is refused. */
+    readonly integrity: CompareIntegrity;
     /** Creates the second map's port (`createMapboxPort(gl)` in the viewer). */
     readonly createPort: () => MapPort;
     readonly document: Pick<Document, 'createElement' | 'head'>;
@@ -56,13 +71,24 @@ function appendOnce(deps: CompareDeps, element: HTMLLinkElement | HTMLScriptElem
     });
 }
 
+/** True when both digests are SHA-384 digests. */
+function validCompareIntegrity(integrity: CompareIntegrity): boolean {
+    return INTEGRITY.test(integrity.script) && INTEGRITY.test(integrity.style);
+}
+
 async function loadPlugin(deps: CompareDeps): Promise<MapboxCompareConstructor> {
+    if (!validCompareIntegrity(deps.integrity)) {
+        throw new Error('compare plugin needs its integrity digests');
+    }
     const style = deps.document.createElement('link');
     style.rel = 'stylesheet';
+    style.integrity = deps.integrity.style;
+    style.crossOrigin = 'anonymous';
     style.href = COMPARE_STYLE_URL;
     const script = deps.document.createElement('script');
-    script.src = COMPARE_SCRIPT_URL;
+    script.integrity = deps.integrity.script;
     script.crossOrigin = 'anonymous';
+    script.src = COMPARE_SCRIPT_URL;
     await Promise.all([appendOnce(deps, style), appendOnce(deps, script)]);
     const compare = deps.gl.Compare;
     if (compare === undefined) {

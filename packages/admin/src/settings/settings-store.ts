@@ -30,6 +30,7 @@ import { NO_OVERLAY_DEFAULTS, OverlayDefaults } from './overlay-defaults.js';
 import { photosOpacityOf } from './overlays.js';
 import { reportOutcome } from './report.js';
 import { settingsRoute, type SettingsRoute } from './sections.js';
+import { NO_SETTINGS_MAP, SettingsMap } from './settings-map.js';
 import type { SettingsIntents, SettingsState } from './state.js';
 import { editedCredits, movedCredit, withCredit, withoutCredit } from './texts.js';
 import { basemapFor, type ThemeTools } from './theme.js';
@@ -45,6 +46,7 @@ const INITIAL: SettingsState = {
     categoryDeletion: { phase: 'idle' },
     overlays: NO_OVERLAY_DEFAULTS,
     reordering: false,
+    map: NO_SETTINGS_MAP,
 };
 
 function isCitySection(section: SettingsRoute['section']): section is CitySection {
@@ -61,6 +63,7 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
     readonly #sections: CitySections;
     readonly #overlays: OverlayDefaults;
     readonly #categoryArea: CategoryArea;
+    readonly #map: SettingsMap;
     #open = false;
     readonly intents: SettingsIntents;
 
@@ -90,6 +93,16 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
         });
         this.#sections = new CitySections(services, tools, (citySection) => {
             this.#cell.update({ citySection });
+            this.#boundsChanged();
+        });
+        this.#map = new SettingsMap({
+            ...{ services, preview: this.#preview },
+            changed: (map) => {
+                this.#cell.update({ map });
+            },
+            drawn: (bounds) => {
+                this.#sections.edit({ bounds });
+            },
         });
         this.#overlays = new OverlayDefaults(services, this.#preview, (overlays) => {
             this.#cell.update({ overlays });
@@ -102,7 +115,13 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
             categories: () => this.#cell.state.categories.items,
             taken: () => [...this.#cell.state.layers.items, ...this.#cell.state.categories.items].map((item) => item.id),
         });
-        this.intents = { ...this.#cityIntents(), ...this.#creditIntents(), ...this.#categoryArea.intents, ...this.#otherIntents() };
+        this.intents = {
+            ...this.#cityIntents(),
+            ...this.#creditIntents(),
+            ...this.#categoryArea.intents,
+            ...this.#otherIntents(),
+            ...this.#mapIntents(),
+        };
     }
 
     get state(): SettingsState {
@@ -126,6 +145,7 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
     close(): void {
         this.#open = false;
         this.#route({ section: null, category: null });
+        this.#map.detach();
         this.#city.stop();
         this.#layers.stop();
         this.#categories.stop();
@@ -215,11 +235,16 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
             retry: () => {
                 this.#retry();
             },
+            // A revoked admin's page takes no edit (DECISIONS-for-review.md §42d).
             setOverlayOpacity: (kind, id, percent) => {
-                overlays.setOpacity(kind, id, percent);
+                if (!this.#services.readOnly()) {
+                    overlays.setOpacity(kind, id, percent);
+                }
             },
             setShownAtStart: (id, visible) => {
-                overlays.setShownAtStart(id, visible);
+                if (!this.#services.readOnly()) {
+                    overlays.setShownAtStart(id, visible);
+                }
             },
             saveOverlays: () => this.#reported(overlays.save()),
             discardOverlays: () => {
@@ -229,6 +254,33 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
                 this.#preview.attach(sink);
             },
         };
+    }
+
+    #mapIntents(): Pick<SettingsIntents, 'attachMap' | 'zoomBy' | 'drawBounds' | 'useMapView'> {
+        const map = this.#map;
+        return {
+            attachMap: (container) => {
+                map.attach(container);
+            },
+            zoomBy: (delta) => {
+                map.zoomBy(delta);
+            },
+            drawBounds: () => {
+                map.toggleDrawing();
+            },
+            useMapView: () => {
+                const view = map.view();
+                if (view !== null) {
+                    this.#sections.edit(viewFields(view));
+                }
+            },
+        };
+    }
+
+    /** The area section's bounds on the map as its draft holds them; no rectangle in any other section. */
+    #boundsChanged(): void {
+        const { section, draft } = this.#sections.state;
+        this.#map.showBounds(section === 'area' ? (draft.value?.bounds ?? null) : null);
     }
 
     async #reported(write: Promise<WriteOutcome | null>): Promise<WriteOutcome | null> {
@@ -251,6 +303,9 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
         if (city.status === 'ready') {
             this.#sections.load(city.doc);
             this.#listsChanged();
+            if (city.doc !== null) {
+                this.#map.setCity(city.doc.data);
+            }
         }
     }
 

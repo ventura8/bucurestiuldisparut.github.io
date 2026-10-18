@@ -125,6 +125,13 @@ describe('intents: every card', () => {
         harness.backend.saveUsgs.mockResolvedValue({ usgs: { state: 'ok', checkedAt: CHECKED, role: 'download' } });
 
         await controller.intents.saveMapbox(MAPBOX_TOKENS.bootstrap);
+        harness.backend.rotatePublicToken.mockResolvedValue({
+            tokenId: 'cl0000000000000000000000c',
+            retiresOldAt: null,
+            manifestQueued: false,
+        });
+        await controller.intents.rotatePublicToken('admin');
+        expect(controller.getState().mapbox.rotation).toMatchObject({ audience: 'admin', done: true, retiresOldAt: null });
         controller.intents.draftUsgs({ username: 'e2e-ok' });
         controller.intents.draftUsgs({ expiresOn: '2027-10-12' });
         expect(controller.getState().usgs).toMatchObject({ username: 'e2e-ok', expiresOn: '2027-10-12' });

@@ -5,7 +5,7 @@ import { axeViolations } from '@hcm/test-support/axe';
 import { html } from 'lit';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
-import { canSave } from '../../../src/admin/photos/hcm-admin-photo-editor.js';
+import { canSave, type HcmAdminPhotoEditor } from '../../../src/admin/photos/hcm-admin-photo-editor.js';
 import { withLanguage } from '../../../src/admin/photos/editor-sections.js';
 import type { PhotoEditorPort } from '../../../src/admin/photos/photos-port.js';
 import { cleanup, deep, deepAll, deepText, defineAll, mount, updated } from '../shell/fake-app.js';
@@ -14,9 +14,9 @@ import { area, editor, files, photosState, VALUE, type PhotosArea } from './fixt
 async function editorOf(
     state: PhotoEditorPort,
     options: { locale?: 'ro' | 'en'; mapReady?: boolean } = {},
-): Promise<{ element: HTMLElement; photos: PhotosArea }> {
+): Promise<{ element: HcmAdminPhotoEditor; photos: PhotosArea }> {
     const photos = area(photosState({ editor: state }));
-    const element = await mount<HTMLElement>(
+    const element = await mount<HcmAdminPhotoEditor>(
         html`<hcm-admin-photo-editor
             .editor=${state}
             .intents=${photos.intents}
@@ -54,8 +54,28 @@ describe('<hcm-admin-photo-editor>: states', () => {
             'Publishing',
         ]);
         expect(deep(element, 'img.image').getAttribute('alt')).toBe('Image of the photo “Calea Victoriei”');
-        expect(deep(element, 'a.external').getAttribute('href')).toBe('#/history/photo/p1');
+        // History is a button of the same style as the editor's other actions (no link-styled History); the page opens it.
+        const opened: string[] = [];
+        element.addEventListener('hcm-history', () => opened.push('history'));
+        deep(deep(element, 'hcm-button.history'), 'button').click();
+        expect(deepAll(element, 'a.external')).toEqual([]);
+        expect(opened).toEqual(['history']);
         expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_aRevokedAdminsEditorIsReadOnly', async () => {
+        const { element, photos } = await editorOf(editor({ dirty: ['author'], touched: true }), { mapReady: true });
+        element.readOnly = true;
+        await updated(element);
+        const disabled = (target: HTMLElement): boolean => (target as HTMLElement & { disabled: boolean }).disabled;
+
+        expect(deepText(element)).toContain('Read only: your access was removed.');
+        expect(disabled(deep(element, '.editor-head hcm-button'))).toBe(true);
+        expect(deepAll(element, '.form > .actions hcm-button').map(disabled)).toEqual([false, true, true]);
+        expect(deepAll(element, 'input:not([type="file"]), textarea').every((field) => (field as HTMLInputElement).readOnly)).toBe(true);
+        expect(deepAll(element, 'select, hcm-switch, hcm-slider').every(disabled)).toBe(true);
+        expect(deepAll(element, 'fieldset hcm-button').every(disabled)).toBe(true);
+        expect(photos.calls).toEqual([]);
     });
 
     it('happyPath_romanianTexts', async () => {
@@ -94,9 +114,13 @@ describe('<hcm-admin-photo-editor>: states', () => {
         cleanup();
 
         const { element, photos } = await editorOf(
-            editor({ dirty: ['author'], conflict: { by: 'x', at: 'v2', fields: ['author', 'year'] } }),
+            editor({ dirty: ['author'], conflict: { by: 'x', at: '2026-10-17T12:02:00.000Z', fields: ['author', 'year'] } }),
         );
-        expect(deepText(element)).toContain('Someone else changed meanwhile: author, year.');
+        expect(deepText(element)).toContain('Saved by another admin on');
+        expect(deepText(element)).toContain('Someone else changed meanwhile: Author, Year.');
+        element.who = { self: 'x', people: {} };
+        await updated(element);
+        expect(deepText(element)).toContain('Saved by you on');
         const buttons = deepAll(deep(element, '.banner'), 'hcm-button');
         deep(buttons[0] ?? element, 'button').click();
         deep(buttons[1] ?? element, 'button').click();
@@ -125,6 +149,7 @@ describe('<hcm-admin-photo-editor>: states', () => {
         }
         await updated(element);
 
+        // History first: it opens the page's History (an event), no call of the area.
         expect(photos.calls).toEqual(['save', 'discard', 'requestDelete']);
     });
 

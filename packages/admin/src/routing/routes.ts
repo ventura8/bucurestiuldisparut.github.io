@@ -13,25 +13,30 @@ export interface AdminRouteSpec {
     readonly icon: string;
     /** False only for Setup: every other page reads Firestore or calls a function, so it waits for the server. */
     readonly needsBackend: boolean;
-    /** One of the four destinations of the compact navigation bar; the rest sit under "More". */
+    /** One of the four destinations of the compact navigation bar while Setup is not complete; the rest sit under "More". */
     readonly inCompactBar: boolean;
+    /**
+     * One of the four once Setup is complete: the dashboard takes Setup's place, Setup moves under "More"
+     * (`DECISIONS-for-review.md` §34i).
+     */
+    readonly inCompactBarOnceSetUp: boolean;
 }
 
 export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> = {
     /**
-     * The dashboard (M2c, ops-screens): under More on the compact bar until it becomes the first screen
-     * (`DECISIONS-for-review.md` §34i).
+     * The dashboard (M2c, ops-screens): the first screen once Setup is complete, and then on the compact bar in Setup's
+     * place (`DECISIONS-for-review.md` §34i); under More before.
      */
-    home: { icon: 'home', needsBackend: true, inCompactBar: false },
-    setup: { icon: 'checklist', needsBackend: false, inCompactBar: true },
-    photos: { icon: 'photo_library', needsBackend: true, inCompactBar: true },
-    pois: { icon: 'place', needsBackend: true, inCompactBar: true },
-    layers: { icon: 'layers', needsBackend: true, inCompactBar: true },
-    jobs: { icon: 'pending_actions', needsBackend: true, inCompactBar: false },
-    settings: { icon: 'settings', needsBackend: true, inCompactBar: false },
-    admins: { icon: 'group', needsBackend: true, inCompactBar: false },
-    history: { icon: 'history', needsBackend: true, inCompactBar: false },
-    crashes: { icon: 'bug_report', needsBackend: true, inCompactBar: false },
+    home: { icon: 'home', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: true },
+    setup: { icon: 'checklist', needsBackend: false, inCompactBar: true, inCompactBarOnceSetUp: false },
+    photos: { icon: 'photo_library', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true },
+    pois: { icon: 'place', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true },
+    layers: { icon: 'layers', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true },
+    jobs: { icon: 'pending_actions', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
+    settings: { icon: 'settings', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
+    admins: { icon: 'group', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
+    history: { icon: 'history', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
+    crashes: { icon: 'bug_report', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
 };
 
 export interface AdminRoute {
@@ -40,8 +45,11 @@ export interface AdminRoute {
     readonly params: readonly string[];
 }
 
-/** Where an unknown or malformed address lands. */
+/** Where an unknown or malformed address lands, and an empty one before Setup is complete. */
 export const DEFAULT_ADMIN_ROUTE: AdminRoute = { id: 'setup', params: [] };
+
+/** Where an empty address lands once Setup is complete (`DECISIONS-for-review.md` §34i). */
+export const SET_UP_ADMIN_ROUTE: AdminRoute = { id: 'home', params: [] };
 
 const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_PARAMS = 2;

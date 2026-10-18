@@ -5,7 +5,7 @@
  * creates the city, records the bootstrap results with `setup.recordCloud`, deletes the bootstrap record and loads
  * `setup/status`. It satisfies the elements' `SetupPort` (`packages/ui/src/admin/setup/setup-port.ts`).
  */
-import type { SaveUsgsRequest, ServiceState } from '@hcm/shared';
+import type { MapboxTokenAudience, SaveUsgsRequest, SelfTestResponse, ServiceState } from '@hcm/shared';
 
 import { createAnalyticsFlow, type AnalyticsFlow } from './analytics.js';
 import { clearBootstrapRecord, readBootstrapRecord, type BootstrapRecord } from './bootstrap-record.js';
@@ -14,11 +14,11 @@ import { createSetupContext, createSetupStore, type SetupContext, type SetupStor
 import { createDeployFlow, type DeployFlow } from './deploy.js';
 import { createLegacyImportFlow, type LegacyImportFlow } from './legacy-import.js';
 import { createMapboxFlow, type MapboxFlow } from './mapbox.js';
-import { apiFailure, type SetupMessage } from './messages.js';
+import { apiFailure, setupMessage, type SetupMessage } from './messages.js';
 import type { SetupDeps } from './ports.js';
 import { createProvisionFlow, type ProvisionFlow } from './provision.js';
 import { applyBootstrapRecord, recordCloudRequestOf } from './records.js';
-import { initialSetupState, refreshDerived, resumeStep, type SetupMode, type SetupState } from './state.js';
+import { initialSetupState, refreshDerived, resumeStep, type SelfTestCheckState, type SetupMode, type SetupState } from './state.js';
 import type { SetupStepId } from './steps.js';
 import { createUsgsFlow, type UsgsFlow } from './usgs.js';
 
@@ -38,6 +38,8 @@ interface SetupIntents {
     /** Prepare the project, or Retry what failed. */
     provision(): Promise<void>;
     saveMapbox(secretToken: string): Promise<void>;
+    /** Replaces a public Mapbox token, after the card's confirmation (not counted: a daily action, not a Setup input). */
+    rotatePublicToken(audience: MapboxTokenAudience): Promise<void>;
     startUsgsCountdown(): void;
     /** What the USGS card's username and expiry fields hold (not counted: the element counts a filled field). */
     draftUsgs(fields: { readonly username?: string; readonly expiresOn?: string }): void;
@@ -92,6 +94,15 @@ function createFlows(ctx: SetupContext): Flows {
 }
 
 const isDone = (state: SetupState, id: SetupStepId): boolean => state.steps[id].state === 'ok';
+
+/** The self-test's checks as the page lists them: each state, and a failure's reason (S-A03-BAD-SELFTEST-FAILURE). */
+function checksOf(response: SelfTestResponse): readonly SelfTestCheckState[] {
+    return response.checks.map(({ id, state, detail, params }) => ({
+        id,
+        state,
+        detail: detail === undefined ? null : setupMessage(detail, params),
+    }));
+}
 
 class Controller implements SetupController {
     readonly intents: SetupIntents;
@@ -262,8 +273,9 @@ class Controller implements SetupController {
         }
         this.ctx.update((state) => ({ ...state, checking: true }));
         try {
-            this.ctx.applyStatus((await this.deps.backend.selfTest()).status);
-            this.ctx.update((state) => ({ ...state, error: null }));
+            const response = await this.deps.backend.selfTest();
+            this.ctx.applyStatus(response.status);
+            this.ctx.update((state) => ({ ...state, error: null, selfTest: { checks: checksOf(response) } }));
         } catch (error) {
             const { message } = apiFailure(error);
             this.ctx.update((state) => ({ ...state, error: message }));
@@ -333,6 +345,7 @@ class Controller implements SetupController {
             confirmBillingAccount: () => billing.confirm(),
             provision: () => provision.run(),
             saveMapbox: (secretToken) => mapbox.save(secretToken),
+            rotatePublicToken: (audience) => mapbox.rotate(audience),
             startUsgsCountdown: () => {
                 usgs.startCountdown();
             },

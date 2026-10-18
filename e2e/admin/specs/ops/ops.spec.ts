@@ -211,3 +211,65 @@ test(
         await expect(page).toHaveURL(/#\/jobs$/);
     },
 );
+
+/** The navigation (a bar on a phone, a rail on a wider window). */
+function navigation(page: Page, lang: 'ro' | 'en') {
+    return page.getByRole('navigation', { name: shellText(lang, 'adminShell.nav.label') });
+}
+
+/** `setup/status` with billing, provisioning and Mapbox done, and USGS as given. */
+async function seedStatus(emulators: Parameters<typeof projectCity>[0], usgs: 'ok' | 'pending'): Promise<void> {
+    await emulators.setDocument('setup/status', {
+        billing: { state: 'ok' },
+        provision: { state: 'ok' },
+        mapbox: { state: 'ok' },
+        usgs: { state: usgs },
+        updatedBy: 'system:setup',
+        updatedAt: AT,
+    });
+}
+
+test(
+    "Once Setup is complete an empty address opens the dashboard, which takes Setup's place on a phone's bar",
+    { tag: ['@S-A40-HAPPY-FIRST-SCREEN'] },
+    async ({ page, lang, adminWorld }) => {
+        const { emulators } = adminWorld;
+        await seedCity(projectCity(emulators, adminWorld.accounts.owner.uid), AT);
+        await seedStatus(emulators, 'ok');
+
+        await page.goto(adminPath(lang));
+
+        const home = navigation(page, lang).getByRole('link', { name: shellText(lang, 'adminShell.nav.home'), exact: true });
+        await expect(home).toHaveAttribute('aria-current', 'page');
+        await expect(page.locator('hcm-home-page')).toBeVisible();
+        // A phone's bar: Home, Photos, Places, Layers, with Setup under More; a rail lists them all.
+        await expect(home).toBeVisible();
+        await expect(navigation(page, lang).getByRole('link', { name: shellText(lang, 'adminShell.nav.setup'), exact: true })).toBeVisible({
+            visible: !layoutOf(page).phone,
+        });
+        // This browser remembers it: the next empty address opens the dashboard at once.
+        await page.reload();
+        await expect(home).toHaveAttribute('aria-current', 'page');
+    },
+);
+
+test(
+    'While Setup is not complete an empty address still opens Setup, which keeps its place on the bar',
+    { tag: ['@S-A40-BAD-SETUP-INCOMPLETE'] },
+    async ({ page, lang, adminWorld }) => {
+        const { emulators } = adminWorld;
+        await seedCity(projectCity(emulators, adminWorld.accounts.owner.uid), AT);
+        await seedStatus(emulators, 'pending');
+
+        await page.goto(adminPath(lang));
+
+        const setup = navigation(page, lang).getByRole('link', { name: shellText(lang, 'adminShell.nav.setup'), exact: true });
+        await expect(setup).toHaveAttribute('aria-current', 'page');
+        await expect(page.locator('hcm-setup-page')).toBeVisible();
+        // A phone's bar keeps Setup, with Home under More; a rail lists them all.
+        await expect(setup).toBeVisible();
+        await expect(navigation(page, lang).getByRole('link', { name: shellText(lang, 'adminShell.nav.home'), exact: true })).toBeVisible({
+            visible: !layoutOf(page).phone,
+        });
+    },
+);

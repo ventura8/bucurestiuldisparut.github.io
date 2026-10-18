@@ -5,14 +5,15 @@ import { setGlobalOptions, type GlobalOptions } from 'firebase-functions/options
 export type FunctionName = CallableName | keyof typeof HTTP_ENDPOINTS | keyof typeof BACKGROUND_FUNCTIONS;
 
 /** The runtime service accounts of security review §1.1 (created by the bootstrap; never the compute default). */
-type RuntimeAccount = 'fn-admin' | 'fn-events';
+type RuntimeAccount = 'fn-admin' | 'fn-events' | 'fn-crash';
 
 /**
  * Who each function runs as (security review §1.1, `docs/research/M2-interfaces.md` §4.3, CR-M2-8, CR-M2-13,
  * CR-M2-29). `fn-admin@` holds the secrets, Firebase Auth and the Management and Error Reporting viewer roles, so it
  * runs every callable and `ops.*` (`DECISIONS-for-review.md` §19b: the tick retires Mapbox tokens and deletes stale
- * accounts); `fn-events@` runs the Firestore and Storage triggers, the manifest builder and the public crash endpoint
- * (which only writes a log entry). A new registry name fails to compile until it is listed here.
+ * accounts); `fn-events@` runs the Firestore and Storage triggers and the manifest builder; `fn-crash@`, an account with
+ * no role at all, runs the public crash endpoint, which only writes a log entry (Cloud Run collects a function's own
+ * log lines without a role; `DECISIONS-for-review.md` §42f). A new registry name fails to compile until it is listed here.
  */
 export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = {
     'admin.session': 'fn-admin',
@@ -35,7 +36,7 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'photos.reprocess': 'fn-admin',
     'layers.delete': 'fn-admin',
     'layers.link': 'fn-admin',
-    'telemetry.reportError': 'fn-events',
+    'telemetry.reportError': 'fn-crash',
     'history.onCityWrite': 'fn-events',
     'history.onLayerWrite': 'fn-events',
     'history.onPhotoWrite': 'fn-events',

@@ -49,7 +49,7 @@ test(
 
         // A deep link and a source map (never deployed) both get the app, as Hosting's `**` rewrite does.
         expect(await (await request.get('/photos/abc')).text()).toBe(await index.text());
-        expect((await request.get('/admin.iife.js')).headers()['cache-control']).toBe('no-cache');
+        expect((await request.get('/admin.mjs')).headers()['cache-control']).toBe('no-cache');
         expect(await (await request.get('/__/firebase/init.json')).json()).toEqual(ADMIN_WEB_CONFIG);
         expect(await (await request.get('/runtime.json')).json()).toEqual(ADMIN_RUNTIME);
         expect(await (await request.get('/project.json')).json()).toEqual(ADMIN_PROJECT);

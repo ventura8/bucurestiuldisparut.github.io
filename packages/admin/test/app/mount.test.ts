@@ -494,3 +494,64 @@ describe('serverMemory', () => {
         ]);
     });
 });
+
+describe('mount: the names of the admins, for the editors', () => {
+    it('happyPath_theAdminsNamesAreAskedOnceAFailureAsksAgainAndSignOutForgetsThem', async () => {
+        const w = world();
+        w.auth.user = OWNER;
+        deployed(w.callables, w.auth, SESSION.owner);
+        const seen: ContentServices[] = [];
+        const module: AreaModule<null, null> = {
+            area: 'jobs',
+            create: (services) => {
+                seen.push(services);
+                return {
+                    ...{ state: null, subscribe: () => () => undefined, intents: null, open: () => undefined, close: () => undefined },
+                    hasUnsavedChanges: () => false,
+                    destroy: () => undefined,
+                };
+            },
+        };
+        const store = asContentStore(new FakeContentStore());
+        const theme = (): ReturnType<ContentDeps['theme']> => ({ light: {}, dark: {}, highContrastLight: {}, highContrastDark: {} });
+        const app = mount({
+            ...w.deps,
+            content: { modules: { jobs: module as never }, store, theme, areas: NO_AREA_SERVICES, cityId: null },
+        });
+        await settle();
+        expect(app.content.jobs).not.toBeNull();
+        const services = nth(seen);
+
+        // The first ask fails (the shell keeps no names and a later conflict asks again); the second answers.
+        w.callables.fail('admins.list', failure('unavailable', 'apiError.unavailable'));
+        services.people();
+        await settle();
+        const afterFailure = app.state.people;
+        w.callables.answer('admins.list', () => ({
+            admins: [
+                {
+                    uid: 'a1',
+                    role: 'admin',
+                    displayName: 'Ana Pop',
+                    email: 'ana@e2e.test',
+                    createdAt: '2026-10-01T09:00:00.000Z',
+                    self: false,
+                },
+                { uid: 'a2', role: 'admin', email: 'ion@e2e.test', createdAt: '2026-10-01T09:00:00.000Z', self: false },
+                { uid: 'a3', role: 'admin', createdAt: '2026-10-01T09:00:00.000Z', self: false },
+            ],
+            invites: [],
+        }));
+        services.people();
+        services.people();
+        await settle();
+
+        expect(afterFailure).toEqual({});
+        expect(app.state.people).toEqual({ a1: 'Ana Pop', a2: 'ion@e2e.test' });
+        expect(w.callables.named('admins.list')).toBe(2);
+        expect(services.readOnly()).toBe(false);
+        await app.intents.signOut();
+        expect(app.state.people).toEqual({});
+        app.destroy();
+    });
+});

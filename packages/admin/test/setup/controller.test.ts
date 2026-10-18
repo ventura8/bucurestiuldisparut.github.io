@@ -280,6 +280,32 @@ describe('check again', () => {
         expect(controller.getState().steps.billing.state).toBe('ok');
     });
 
+    it('badPath_aFailingCheckIsListedWithItsReasonAndTheOthersWithTheirStates', async () => {
+        const checks = [
+            { id: 'firestore', state: 'ok' },
+            { id: 'secrets', state: 'unavailable', detail: 'apiError.secrets.unavailable' },
+            { id: 'mapbox', state: 'invalid', detail: 'apiError.cloud.permission', params: { role: 'roles/secretmanager.secretAccessor' } },
+        ] as const;
+        const { controller } = setup((h) => {
+            h.backend.selfTest.mockResolvedValue({ checks: [...checks], status: READY_VIEW });
+        });
+        await controller.start('normal', null);
+        expect(controller.getState().selfTest.checks).toEqual([]);
+
+        await controller.intents.recheck();
+        await flush();
+
+        expect(controller.getState().selfTest.checks).toEqual([
+            { id: 'firestore', state: 'ok', detail: null },
+            { id: 'secrets', state: 'unavailable', detail: { key: 'apiError.secrets.unavailable' } },
+            {
+                id: 'mapbox',
+                state: 'invalid',
+                detail: { key: 'apiError.cloud.permission', params: { role: 'roles/secretmanager.secretAccessor' } },
+            },
+        ]);
+    });
+
     it('badPath_aFailedSelfTestIsShownOnThePage', async () => {
         const { controller } = setup((h) => {
             h.backend.selfTest.mockRejectedValue(functionsError('apiError.notAdmin'));

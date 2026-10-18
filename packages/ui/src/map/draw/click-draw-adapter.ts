@@ -1,6 +1,7 @@
 /**
- * `MapDrawPort` on `MapPort` alone: the admin's drawing tools while Terra Draw is not loaded (the packages wait for the
- * user's approval to install them: docs/research/M2c-interfaces.md §4.2) or fails to load. Drawing is by clicks only:
+ * `MapDrawPort` on `MapPort` alone: the admin's drawing tools while Terra Draw is not loaded or fails to load
+ * (docs/research/M2c-interfaces.md §4.2; Terra Draw is installed since DECISIONS-for-review.md §34g). Drawing is by
+ * clicks only, as with the Terra Draw tools (`click-growth.ts`):
  *
  * - a point is one click; a rectangle two corners; both then switch to `select`;
  * - a line exists from its second click, an area from its third; every further click adds a vertex at the end, until the
@@ -26,79 +27,16 @@ import type {
     DrawShape,
     MapDrawPort,
 } from './draw-port.js';
+import { growByClick, shapeOfMode, sketchGeometry, type Position } from './click-growth.js';
 import { checkGeometry, checkPositions, roundGeometry, roundPosition } from './rules.js';
+
+export { drawnPositions, shapeGeometry } from './click-growth.js';
 
 /** The overlay the shapes are drawn in (clicks pass through it). */
 export const CLICK_DRAW_OVERLAY_ID = 'hcm-draw';
 
 /** A subscriber that throws is the subscriber's problem: drawing goes on. */
 const ignore = (): void => undefined;
-
-type Position = [number, number];
-
-/** The positions a line or an area goes on from: a polygon's outer ring without its closing position. */
-export function drawnPositions(geometry: Geometry): Position[] {
-    switch (geometry.type) {
-        case 'Point':
-            return [geometry.coordinates];
-        case 'LineString':
-            return [...geometry.coordinates];
-        case 'Polygon':
-            return (geometry.coordinates[0] ?? []).slice(0, -1);
-    }
-}
-
-/** The rectangle between two corners, as a closed ring (south-west first, counter-clockwise). */
-function rectangle([first, second]: readonly [Position, Position]): Geometry {
-    const [west, east] = [Math.min(first[0], second[0]), Math.max(first[0], second[0])];
-    const [south, north] = [Math.min(first[1], second[1]), Math.max(first[1], second[1])];
-    return {
-        type: 'Polygon',
-        coordinates: [
-            [
-                [west, south],
-                [east, south],
-                [east, north],
-                [west, north],
-                [west, south],
-            ],
-        ],
-    };
-}
-
-/** The shape `positions` make once there are enough of them; null before. */
-export function shapeGeometry(shape: DrawShape, positions: readonly Position[]): Geometry | null {
-    const [first, second] = positions;
-    if (first === undefined) {
-        return null;
-    }
-    if (shape === 'point') {
-        return { type: 'Point', coordinates: first };
-    }
-    if (second === undefined) {
-        return null;
-    }
-    return shapeOfAtLeastTwo(shape, positions, [first, second]);
-}
-
-function shapeOfAtLeastTwo(shape: DrawShape, positions: readonly Position[], corners: readonly [Position, Position]): Geometry | null {
-    if (shape === 'linestring') {
-        return { type: 'LineString', coordinates: [...positions] };
-    }
-    if (shape === 'rectangle') {
-        return rectangle(corners);
-    }
-    return positions.length < 3 ? null : { type: 'Polygon', coordinates: [[...positions, corners[0]]] };
-}
-
-function shapeOfMode(mode: DrawMode): DrawShape | null {
-    return mode.startsWith('draw-') ? (mode.slice('draw-'.length) as DrawShape) : null;
-}
-
-/** A shape that a click finishes (a point, a rectangle's second corner); lines and areas go on. */
-function finishesAtOnce(shape: DrawShape): boolean {
-    return shape === 'point' || shape === 'rectangle';
-}
 
 interface Session {
     readonly map: MapPort;
@@ -178,33 +116,23 @@ class ClickDrawPort implements MapDrawPort {
     #add(session: Session, shape: DrawShape, position: Position): void {
         const id = this.#drawId ?? this.#newId();
         this.#drawId = id;
-        const positions = [...this.#startOf(id, shape), position];
-        const geometry = shapeGeometry(shape, positions);
-        if (geometry === null) {
-            this.#sketch = positions;
+        const growth = growByClick({ id, shape, drawn: this.#good.get(id), sketch: this.#sketch, position, options: session.options });
+        if (growth.kind === 'sketch') {
+            this.#sketch = [...growth.positions];
             this.#render();
-            return;
-        }
-        const refusal = checkGeometry(geometry, session.options);
-        if (refusal === null) {
-            this.#keep({ id, geometry, shape });
+        } else if (growth.kind === 'shape') {
+            this.#keep(growth.feature, growth.finished);
         } else {
-            this.#refusals.emit(refusal);
+            this.#refusals.emit(growth.refusal);
         }
     }
 
-    /** What a click adds to: the line or area drawn so far, else the sketch (a point and a rectangle start afresh). */
-    #startOf(id: string, shape: DrawShape): Position[] {
-        const drawn = finishesAtOnce(shape) ? undefined : this.#good.get(id);
-        return drawn === undefined ? this.#sketch : drawnPositions(drawn.geometry);
-    }
-
-    #keep(feature: DrawnFeature & { readonly shape: DrawShape }): void {
+    #keep(feature: DrawnFeature, finished: boolean): void {
         this.#sketch = [];
         this.#good.set(feature.id, feature);
         this.#render();
         this.#changes.emit({ features: this.snapshot(), final: true });
-        if (finishesAtOnce(feature.shape)) {
+        if (finished) {
             this.setMode('select');
             this.select(feature.id);
         }
@@ -222,7 +150,7 @@ class ClickDrawPort implements MapDrawPort {
             return;
         }
         const features: PoiFeature[] = [...this.#good.values()].map((feature) => this.#feature(feature.id, feature.geometry));
-        const sketch = this.#sketchGeometry();
+        const sketch = sketchGeometry(this.#sketch);
         if (sketch !== null) {
             features.push(this.#feature('sketch', sketch));
         }
@@ -233,14 +161,6 @@ class ClickDrawPort implements MapDrawPort {
             },
             'top',
         );
-    }
-
-    #sketchGeometry(): Geometry | null {
-        const [first] = this.#sketch;
-        if (first === undefined) {
-            return null;
-        }
-        return this.#sketch.length === 1 ? { type: 'Point', coordinates: first } : { type: 'LineString', coordinates: this.#sketch };
     }
 
     #feature(id: string, geometry: Geometry): PoiFeature {

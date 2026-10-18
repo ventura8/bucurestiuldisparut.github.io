@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { colorLibrary, loadColor, themeFromSeed } from '../../src/app/color.js';
+import { colorLibrary, contrastIssuesOf, loadColor, themeFromSeed } from '../../src/app/color.js';
 
 describe('the colour library', () => {
     it('badPath_beforeItLoadsAThemeIsAProgrammingError', () => {
@@ -13,5 +13,6 @@ describe('the colour library', () => {
 
         expect(themeFromSeed('#6750a4')).toBe(theme);
         expect(colorLibrary().contrastIssues({}, 4.5)).toEqual([]);
+        expect(contrastIssuesOf({}, 4.5)).toEqual([]);
     });
 });

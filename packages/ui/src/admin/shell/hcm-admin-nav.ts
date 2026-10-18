@@ -101,6 +101,7 @@ export class HcmAdminNav extends LitElement {
             :host([variant='bar']) .item {
                 flex: 1 1 0;
                 padding-inline: 0;
+                container-type: inline-size;
             }
 
             :host([variant='expanded']) .item {
@@ -114,6 +115,14 @@ export class HcmAdminNav extends LitElement {
 
             .label {
                 overflow-wrap: anywhere;
+            }
+
+            /*
+             * At 320 px a fifth of the bar is 64 px, a few pixels short of "Configurare" at 12 px (the M2e review): below
+             * about 70 px the label follows its item's width, 10.9 px at 64 px, so its words stay whole.
+             */
+            :host([variant='bar']) .label {
+                font-size: min(var(--md-sys-typescale-label-medium-size, 0.75rem), 17cqi);
             }
 
             .indicator {

@@ -1,6 +1,6 @@
 /**
  * Registers the photos page and what it renders (`docs/research/M2c-interfaces.md` §6): the list, the editor and the
- * kit elements they use. Idempotent per registry; `defineAdminElements` calls it.
+ * kit elements they use. Idempotent per registry; its area entry (`../areas/`) hands it to the admin.
  */
 import { defineUiKit } from '../../components/define.js';
 import { defineEditingElements } from '../editing/define.js';

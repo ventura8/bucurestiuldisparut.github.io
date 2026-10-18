@@ -98,6 +98,8 @@ export class PhotoMapSession {
     #stops: Unsubscribe[] = [];
     #photos: readonly MapPhoto[] = [];
     #alive = true;
+    /** The open photo the camera last went to (null: none since the editor closed). */
+    #revealed: string | null = null;
 
     constructor(factory: PhotoMapFactory | null, events: PhotoMapEvents) {
         this.#factory = factory;
@@ -149,6 +151,19 @@ export class PhotoMapSession {
         this.#handle?.port.flyTo({ center: [location.lng, location.lat] });
     }
 
+    /**
+     * Brings the open photo `id` into view once: the first time it is shown on a ready map, the camera centres on it (its
+     * zoom kept, no animation). A photo of the list may lie outside the city's starting view, so its pin was off the map.
+     */
+    reveal(id: string, location: { readonly lat: number; readonly lng: number }): void {
+        const port = this.#handle?.port;
+        if (port === undefined || this.#revealed === id) {
+            return;
+        }
+        this.#revealed = id;
+        port.flyTo({ center: [location.lng, location.lat] }, { animate: false });
+    }
+
     /** One zoom step in (+1) or out (-1), from the map box's buttons. */
     zoomBy(delta: number): void {
         const port = this.#handle?.port;
@@ -162,6 +177,9 @@ export class PhotoMapSession {
 
     /** Shows the edited photo's pin, draggable; null takes it away. */
     async editPin(location: { readonly lat: number; readonly lng: number } | null): Promise<void> {
+        if (location === null) {
+            this.#revealed = null;
+        }
         const draw = await this.#drawing();
         if (draw === null) {
             return;

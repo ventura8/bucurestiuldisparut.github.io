@@ -21,6 +21,8 @@ export interface PoiContext {
 
 interface PoiConflict {
     readonly by: string;
+    /** When the other admin saved (the snapshot's version, ISO). */
+    readonly at: string;
     readonly fields: readonly PoiEditable[];
 }
 
@@ -43,6 +45,8 @@ export interface PoiDraftDeps {
     readonly cityId: string;
     readonly context: () => PoiContext;
     readonly changed: (state: PoiDraftState) => void;
+    /** True while the admin's access is removed (§35e, `DECISIONS-for-review.md` §42d): `edit` changes nothing. */
+    readonly locked?: () => boolean;
 }
 
 /** A stand-in stamp: the schema checks the document as stored, and the store stamps the real write. */
@@ -127,6 +131,9 @@ export class PoiDraft {
     }
 
     edit(patch: PoiPatch): void {
+        if (this.#deps.locked?.() === true) {
+            return;
+        }
         const value = patched(this.#state.value, patch);
         this.#set({ value, dirty: this.#dirtyOf(value) });
     }
@@ -170,7 +177,7 @@ export class PoiDraft {
             ...{ base: remote, isNew: false, gone: false, value: merged },
             ...{
                 dirty: changedFields(merged, theirs),
-                conflict: overlap.length === 0 ? null : { by: remote.data.updatedBy, fields: overlap },
+                conflict: overlap.length === 0 ? null : { by: remote.data.updatedBy, at: remote.version, fields: overlap },
             },
         });
     }

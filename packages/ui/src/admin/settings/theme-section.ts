@@ -37,6 +37,7 @@ function seedFields(context: SectionContext, seed: string): TemplateResult {
                 <input
                     id="seed-hex"
                     type="text"
+                    ?readonly=${context.readOnly}
                     .value=${typed}
                     aria-invalid=${theme.invalid ? 'true' : 'false'}
                     aria-describedby=${theme.invalid ? 'seed-error' : nothing}
@@ -46,7 +47,7 @@ function seedFields(context: SectionContext, seed: string): TemplateResult {
             </div>
             <div class="field">
                 <label for="seed-picker">${contentText(locale, 'adminContent.settings.seedPicker')}</label>
-                <input id="seed-picker" class="color" type="color" .value=${seed} @input=${input} />
+                <input id="seed-picker" class="color" type="color" ?disabled=${context.readOnly} .value=${seed} @input=${input} />
             </div>
         </div>
         <div class="presets" role="group" aria-label=${contentText(locale, 'adminContent.settings.presets')}>
@@ -55,6 +56,7 @@ function seedFields(context: SectionContext, seed: string): TemplateResult {
                     html`<button
                         type="button"
                         class="preset"
+                        ?disabled=${context.readOnly}
                         aria-pressed=${preset === seed ? 'true' : 'false'}
                         aria-label=${contentText(locale, 'adminContent.settings.preset', { hex: preset })}
                         ${cssProperties({ '--preset': preset })}
@@ -92,6 +94,7 @@ function basemap(context: SectionContext, style: string): TemplateResult {
                             class="touch-target"
                             type="radio"
                             name="basemap"
+                            ?disabled=${context.readOnly}
                             .checked=${STYLES[choice] === style}
                             @change=${() => intents?.setBasemap(choice)}
                         />

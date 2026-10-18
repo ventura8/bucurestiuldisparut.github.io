@@ -298,6 +298,36 @@ describe('texts and the legal line', () => {
         expect(checksOf(footInView).filter((check) => check === 'legal')).toHaveLength(2);
     });
 
+    test('happyPath_aStripOfTheMapBelowItsLegalControlsOwesNoLogo', () => {
+        const scroller = h(
+            'div',
+            { style: at(0, 0, 400, 300, 'overflow: auto;') },
+            h(
+                'div',
+                { style: 'position: relative; width: 380px; height: 500px;' },
+                h('canvas', { class: 'map', style: 'display: block; width: 380px; height: 500px;' }),
+                h(
+                    'a',
+                    { href: '#', class: 'logo', style: 'position: absolute; left: 10px; bottom: 6px; width: 80px; height: 20px;' },
+                    'Mapbox',
+                ),
+                h('div', { class: 'attrib', style: 'position: absolute; right: 0; bottom: 10px; width: 80px; height: 20px;' }, '© Mapbox'),
+            ),
+            h('div', { style: 'height: 296px;' }),
+        );
+        stage(scroller);
+
+        // Scrolled to the end: the map's last 4 px show, under its logo (6 px above the foot).
+        scroller.scrollTop = 496;
+        const strip = probeLayout(OPTIONS);
+        // 10 px show: the logo's lowest pixels are on screen, so the rule asks for it (and finds it).
+        scroller.scrollTop = 490;
+        const band = probeLayout(OPTIONS);
+
+        expect([strip.legal.map, band.legal.map]).toEqual([false, true]);
+        expect(checksOf(band).filter((check) => check === 'legal')).toHaveLength(1);
+    });
+
     test('badPath_thePageScrollsSideways', () => {
         stage(h('div', { style: 'position: absolute; left: 0; top: 0; width: 1200px; height: 10px;' }));
         document.body.style.overflowX = 'auto';

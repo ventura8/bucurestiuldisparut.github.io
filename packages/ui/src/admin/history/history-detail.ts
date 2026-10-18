@@ -5,6 +5,7 @@
 import type { Locale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 
+import { fieldName } from '../editing/field-names.js';
 import { contentText } from '../shell/text.js';
 import { describeValue } from './describe.js';
 import type { HistoryItemPort, HistoryViewState } from './history-port.js';
@@ -99,7 +100,7 @@ function changesTemplate(locale: Locale, changes: HistoryViewState['changes']): 
         ${changes.map(
             (change) =>
                 html`<div class="change">
-                    <dt>${change.field}</dt>
+                    <dt>${fieldName(locale, change.field)}</dt>
                     <dd>
                         <span class="label">${contentText(locale, 'adminContent.history.before')}</span>
                         ${describeValue(locale, change.field, change.before)}

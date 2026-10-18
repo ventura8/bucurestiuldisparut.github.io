@@ -59,7 +59,7 @@ describe('applyProvision', () => {
             [...(world.fakes.state.iam.projects.get('demo-hcm')?.accounts.keys() ?? [])].toSorted((left, right) =>
                 left.localeCompare(right),
             ),
-        ).toEqual(['fn-admin', 'fn-events', 'gh-deployer', 'job-raster']);
+        ).toEqual(['fn-admin', 'fn-crash', 'fn-events', 'gh-deployer', 'job-raster']);
         expect(world.fakes.state.cloudStorage.buckets.has('demo-hcm.firebasestorage.app')).toBe(true);
         expect(snapshot).toContain('"roles/storage.legacyObjectReader","members":["allUsers"]');
         expect(snapshot).toContain("assertion.repository_owner_id=='1000001' && assertion.repository_id=='2000002'");
@@ -79,6 +79,8 @@ describe('applyProvision', () => {
             serviceAccount: 'gh-deployer@demo-hcm.iam.gserviceaccount.com',
         });
         expect(stateOf(report.items, 'crash-alerts')?.params).toEqual({ enabled: 'true' });
+        // The crash endpoint's account holds no role: none on the project, the buckets or the secrets (§42f).
+        expect(snapshot.match(/fn-crash@demo-hcm\.iam\.gserviceaccount\.com/g) ?? []).toHaveLength(1);
     });
 
     it('badPath_aFailingItemLeavesItsDependantsWaitingAndARetryRunsOnlyWhatIsNotOk', async () => {

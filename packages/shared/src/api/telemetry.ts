@@ -22,8 +22,16 @@ export const ERROR_REPORT_MAX_BYTES = 16 * 1024;
 /**
  * The rate limits of `telemetry.reportError`, per function instance (no Firestore write per report: the endpoint is
  * public). A client is a salted hash of its IP address that lives in memory only.
+ *
+ * They cap the worst-case logging cost (`DECISIONS-for-review.md` §42f): with `maxInstances: 2`, at most 30 accepted
+ * reports a minute reach Cloud Logging project-wide, each one entry of at most {@link REPORTED_EVENT_MAX_BYTES} of payload
+ * (about 17 KiB with the entry's own fields), so at most about 22 GiB in a 31-day month even under a flood of valid
+ * reports: within Cloud Logging's free 50 GiB a month.
  */
-export const ERROR_REPORT_LIMITS = { perClientPerMinute: 10, perInstancePerMinute: 120 } as const;
+export const ERROR_REPORT_LIMITS = { perClientPerMinute: 10, perInstancePerMinute: 15 } as const;
+
+/** The UTF-8 size of a logged `ReportedErrorEvent` at most: a longer one is logged with its `message` cut to fit. */
+export const REPORTED_EVENT_MAX_BYTES = 16 * 1024;
 
 /** No query and no fragment: the page's origin and path only. */
 const PAGE_URL = /^https?:\/\/[^\s?#]+$/;

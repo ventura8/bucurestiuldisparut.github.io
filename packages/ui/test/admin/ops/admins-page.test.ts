@@ -66,6 +66,17 @@ describe('<hcm-admins-page>', () => {
         expect(app.named('navigate')).toEqual(['navigate {"id":"admins","params":[]}']);
     });
 
+    it('badPath_aReadOnlyPageNeitherInvitesNorRemoves', async () => {
+        const admins = area(adminsState({ selected: { kind: 'admin', uid: 'admin-uid' } }));
+        const { element } = await page('admins', admins, { params: ['admin-uid'], revoked: true });
+        const off = (target: HTMLElement): boolean => (target as HTMLElement & { disabled: boolean }).disabled;
+
+        expect(off(deep(element, '.pane > .actions hcm-button'))).toBe(true);
+        // The list's Invite (the dialog's own Invite cannot open without it).
+        const invite = deepAll(element, 'hcm-button').find((button) => button.textContent.includes('Invite'));
+        expect(invite === undefined ? false : off(invite)).toBe(true);
+    });
+
     it('badPath_cancellingTheQuestionKeepsTheAdmin', async () => {
         const admins = area(adminsState({ selected: { kind: 'admin', uid: 'admin-uid' } }));
         const { element } = await page('admins', admins, { params: ['admin-uid'] });

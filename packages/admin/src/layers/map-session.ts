@@ -3,12 +3,14 @@
  * page shows its map host (`hcm-admin-map`) and the city's frame is known, destroyed when the page goes. It draws the
  * open layer above the Standard basemap as saved, and the editor's draft overrides it live through the map's preview
  * (`PreviewLayer`): opacity and image adjustments, never a write. The admin map is always Standard: Satellite is never
- * loaded (§3.4).
+ * loaded (§3.4). The settings page's map is one too (`../settings/settings-map.ts`): it shows the whole saved content
+ * (`showContent`: the layers, the photos, the places by category) and reads the map itself (`port`: its clicks and view).
  */
 import { bboxCenter, bboxFromRecord, roundTo, type BBox, type CityDoc, type LayerDoc, type Locale, type MapView } from '@hcm/shared';
-import type { RasterLayerSpec } from '@hcm/ui/map';
+import type { MapPort, RasterLayerSpec } from '@hcm/ui/map';
 
 import type { AdminMapFactory, AdminMapHandle, AdminMapResult } from '../map/factory.js';
+import type { MapContent } from '../map/preview.js';
 import type { PreviewLayer } from './preview.js';
 
 export type MapStatus = 'none' | 'loading' | 'ready' | 'no-token' | 'no-webgl' | 'failed';
@@ -56,7 +58,7 @@ export class AreaMap {
     #container: HTMLElement | null = null;
     #frame: CityFrame | null = null;
     #handle: AdminMapHandle | null = null;
-    #layers: readonly RasterLayerSpec[] = [];
+    #content: MapContent = {};
     /** Bumped by every attach and detach: a slower create of an older host is dropped. */
     #generation = 0;
 
@@ -84,8 +86,18 @@ export class AreaMap {
 
     /** The saved layers the map draws (the open one; none on the list alone). */
     show(layers: readonly RasterLayerSpec[]): void {
-        this.#layers = layers;
-        this.#handle?.preview.show({ layers });
+        this.showContent({ layers });
+    }
+
+    /** The saved content the map draws: layers, photos, places by category. */
+    showContent(content: MapContent): void {
+        this.#content = content;
+        this.#handle?.preview.show(content);
+    }
+
+    /** The map itself once it is drawn (its clicks and its view), else null. */
+    get port(): MapPort | null {
+        return this.#handle?.port ?? null;
     }
 
     zoomBy(delta: number): void {
@@ -142,7 +154,7 @@ export class AreaMap {
             return;
         }
         this.#handle = result.map;
-        result.map.preview.show({ layers: this.#layers });
+        result.map.preview.show(this.#content);
         this.#deps.preview.attach(result.map.preview);
         this.#deps.status('ready');
     }

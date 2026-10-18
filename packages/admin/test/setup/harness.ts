@@ -234,6 +234,7 @@ function fakeBackend(): Fake<SetupBackend> {
         createCity: vi.fn<SetupBackend['createCity']>().mockResolvedValue({ created: true }),
         saveMapbox: vi.fn<SetupBackend['saveMapbox']>(),
         saveUsgs: vi.fn<SetupBackend['saveUsgs']>(),
+        rotatePublicToken: vi.fn<SetupBackend['rotatePublicToken']>(),
         analyticsConfig: vi.fn<SetupBackend['analyticsConfig']>(),
         listGroups: vi.fn<SetupBackend['listGroups']>().mockResolvedValue({ groups: [] }),
     };

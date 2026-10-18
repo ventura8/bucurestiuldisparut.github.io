@@ -2,7 +2,8 @@
  * The layer editor's pane (`docs/research/M2c-interfaces.md` §8.2, §8.3; behaviours A35, A36, A38): the save row, the
  * conflict and gone banners, the texts in both languages, the attribution, year and date, Shown at start and Published,
  * the default opacity and the four image adjustments with Reset (every slider previews live; Save writes), a note on the
- * image and geometry tools of the raster pipeline, and Delete with its confirmation.
+ * image and geometry tools of the raster pipeline, and Delete with its confirmation. On a revoked admin's read-only page
+ * (`DECISIONS-for-review.md` §42d) every field is read-only and every control that writes is off.
  */
 import {
     ADJUSTMENT_SLIDERS,
@@ -17,6 +18,7 @@ import {
 } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
+import type { WhoPort } from '../editing/conflict.js';
 import { errorTemplate, loadingTemplate, reconnectingStatus } from '../editing/states.js';
 import { contentText } from '../shell/text.js';
 import { conflictBanner, field, issueAt, saveBar, saveStateOf, sliderRow, type FieldSpec } from './form-parts.js';
@@ -40,6 +42,10 @@ export interface EditorContext {
     readonly deleted: () => void;
     /** The page's map: its state, and mapbox-gl.css's address ('' in tests: no network). */
     readonly map: { readonly status: MapStatusPort; readonly css: string };
+    /** A revoked admin's page: nothing writes. */
+    readonly readOnly: boolean;
+    /** Who reads the page and the admins' names: the conflict banner names who saved. */
+    readonly who: WhoPort;
 }
 
 /** The page's map, with the open layer drawn as saved and the draft's look previewed over it. */
@@ -97,6 +103,7 @@ function fieldSpec(
         id: `layer-${name.replace('.', '-')}`,
         value: textOf(layer, name),
         issue: issueAt(editor.draft.issues, name),
+        readOnly: context.readOnly,
         onInput: (text) => {
             context.intents?.setField(name, text);
         },
@@ -121,11 +128,16 @@ function textsGroup(context: EditorContext, editor: LayerEditorPort, layer: Laye
     </section>`;
 }
 
-function switchRow(label: string, checked: boolean, change: (checked: boolean) => void): TemplateResult {
+function switchRow(
+    label: string,
+    state: { readonly checked: boolean; readonly off: boolean },
+    change: (checked: boolean) => void,
+): TemplateResult {
     return html`<div class="switch-row">
         <span aria-hidden="true">${label}</span>
         <hcm-switch
-            .checked=${checked}
+            .checked=${state.checked}
+            ?disabled=${state.off}
             label=${label}
             @hcm-change=${(event: Event) => {
                 change((event as CustomEvent<{ checked: boolean }>).detail.checked);
@@ -143,12 +155,20 @@ function displayGroup(context: EditorContext, editor: LayerEditorPort, layer: La
     const percent = (value: number): string => contentText(locale, 'adminContent.layers.percent', { percent: String(value) });
     return html`<section class="group">
         <h3>${contentText(locale, 'adminContent.layers.display')}</h3>
-        ${switchRow(contentText(locale, 'adminContent.layers.shownAtStart'), layer.defaultVisible, (checked) => {
-            intents?.edit({ defaultVisible: checked });
-        })}
-        ${switchRow(contentText(locale, 'adminContent.layers.publishedSwitch'), layer.published, (checked) => {
-            intents?.edit({ published: checked });
-        })}
+        ${switchRow(
+            contentText(locale, 'adminContent.layers.shownAtStart'),
+            { checked: layer.defaultVisible, off: context.readOnly },
+            (checked) => {
+                intents?.edit({ defaultVisible: checked });
+            },
+        )}
+        ${switchRow(
+            contentText(locale, 'adminContent.layers.publishedSwitch'),
+            { checked: layer.published, off: context.readOnly },
+            (checked) => {
+                intents?.edit({ published: checked });
+            },
+        )}
         ${
             layer.status === 'ready' && issueAt(editor.draft.issues, 'published') === null
                 ? nothing
@@ -160,6 +180,7 @@ function displayGroup(context: EditorContext, editor: LayerEditorPort, layer: La
             max: 100,
             value: percentOf(layer.opacity),
             valueText: percent(percentOf(layer.opacity)),
+            disabled: context.readOnly,
             onValue: (value) => {
                 intents?.setOpacity(value);
             },
@@ -186,7 +207,7 @@ function adjustmentsGroup(context: EditorContext, layer: LayerDoc): TemplateResu
             const label = contentText(locale, `adminContent.layers.adjust.${slider.name}`);
             const valueText = contentText(locale, 'adminContent.layers.adjustValue', { value: signedPercent(slider.name, value) });
             return sliderRow({
-                ...{ label, min: slider.min, max: slider.max, value, valueText },
+                ...{ label, min: slider.min, max: slider.max, value, valueText, disabled: context.readOnly },
                 onValue: (next) => {
                     intents?.setAdjustment(slider.name, next);
                 },
@@ -197,7 +218,7 @@ function adjustmentsGroup(context: EditorContext, layer: LayerDoc): TemplateResu
             });
         })}
         <div class="actions">
-            <hcm-button variant="outlined" icon="restore" @click=${() => intents?.resetAdjustments()}
+            <hcm-button variant="outlined" icon="restore" ?disabled=${context.readOnly} @click=${() => intents?.resetAdjustments()}
                 >${contentText(locale, 'adminContent.layers.reset')}</hcm-button
             >
         </div>
@@ -228,7 +249,7 @@ function deleteControls(context: EditorContext, layer: LayerDoc, deletion: Layer
     const { locale, intents } = context;
     const name = labelOf(layer.label, locale);
     return html`<div class="actions">
-            <hcm-button variant="outlined" icon="delete" @click=${() => intents?.askDelete()}
+            <hcm-button variant="outlined" icon="delete" ?disabled=${context.readOnly} @click=${() => intents?.askDelete()}
                 >${contentText(locale, deletion.phase === 'running' ? 'adminContent.layers.deleting' : 'adminContent.layers.delete')}</hcm-button
             >
         </div>
@@ -257,7 +278,7 @@ function editorBody(context: EditorContext, editor: LayerEditorPort, layer: Laye
     } as const;
     return html`<div class="pane">
         <h2 tabindex="-1" data-detail-heading>${labelOf(layer.label, locale)}</h2>
-        ${saveBar(locale, texts, saveStateOf({ ...draft, dirty: draft.dirty.length > 0 }), handlers)}
+        ${saveBar(locale, texts, { ...saveStateOf({ ...draft, dirty: draft.dirty.length > 0 }), readOnly: context.readOnly }, handlers)}
         ${reconnectingStatus(locale, editor.doc.reconnecting)}
         ${conflictBanner(
             locale,
@@ -267,7 +288,7 @@ function editorBody(context: EditorContext, editor: LayerEditorPort, layer: Laye
                 takeTheirs: 'adminContent.layers.takeTheirs',
             },
             draft.conflict,
-            { keepMine: () => intents?.keepMine(), takeTheirs: () => intents?.takeTheirs() },
+            { keepMine: () => intents?.keepMine(), takeTheirs: () => intents?.takeTheirs(), who: context.who, readOnly: context.readOnly },
         )}
         ${draft.gone ? html`<p class="alert" role="alert"><span>${contentText(locale, 'adminContent.layers.gone')}</span></p>` : nothing}
         ${mapBox(context)} ${textsGroup(context, editor, layer)} ${displayGroup(context, editor, layer)} ${adjustmentsGroup(context, layer)}

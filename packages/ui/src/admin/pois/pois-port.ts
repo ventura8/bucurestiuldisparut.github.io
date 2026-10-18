@@ -70,7 +70,7 @@ export interface PoiDraftPort {
     readonly dirty: readonly string[];
     readonly issues: readonly ValidationIssue[];
     readonly saving: boolean;
-    readonly conflict: { readonly by: string; readonly fields: readonly string[] } | null;
+    readonly conflict: { readonly by: string; readonly at: string; readonly fields: readonly string[] } | null;
     readonly gone: boolean;
 }
 

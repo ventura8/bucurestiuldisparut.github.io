@@ -1,6 +1,7 @@
 /**
- * Which page an address opens (`docs/research/M2b-interfaces.md` §1.1). Anything that is not exactly a known route opens
- * Setup with `adminShell.route.notFound` (S-A29-BAD-UNKNOWN-ROUTE); a page that needs the server, opened in start-up
+ * Which page an address opens (`docs/research/M2b-interfaces.md` §1.1). An empty address opens Setup, or the dashboard
+ * once Setup is complete (`DECISIONS-for-review.md` §34i, S-A40-HAPPY-FIRST-SCREEN). Anything that is not exactly a known
+ * route opens Setup with `adminShell.route.notFound` (S-A29-BAD-UNKNOWN-ROUTE); a page that needs the server, opened in start-up
  * mode, opens Setup with `adminShell.route.needsBackend` (S-A25-BAD-PAGE-NEEDS-SERVER); a page not built yet opens Setup
  * like an unknown one. Signed out, the address asked for is kept (`hcm:admin:returnTo`) and opened after sign-in
  * (S-A20-BAD-SIGNED-OUT-DEEP-LINK).
@@ -9,15 +10,25 @@ import type { AdminShellKey } from '@hcm/shared';
 
 import type { AdminMode } from '../auth/auth-state.js';
 import type { AdminDestination } from '../state/state.js';
-import { ADMIN_ROUTE_SPECS, ADMIN_ROUTES, DEFAULT_ADMIN_ROUTE, parseAdminRoute, type AdminRoute, type AdminRouteId } from './routes.js';
+import {
+    ADMIN_ROUTE_SPECS,
+    ADMIN_ROUTES,
+    DEFAULT_ADMIN_ROUTE,
+    parseAdminRoute,
+    SET_UP_ADMIN_ROUTE,
+    type AdminRoute,
+    type AdminRouteId,
+} from './routes.js';
 
 /** `sessionStorage`: the route hash a signed-out visitor asked for (a route hash only, never a token). */
 export const RETURN_TO_KEY = 'hcm:admin:returnTo';
 
-/** What decides a route: the mode and which pages exist. */
+/** What decides a route: the mode, which pages exist and whether Setup is complete. */
 export interface RouteContext {
     readonly mode: AdminMode | null;
     readonly hasPage: (id: AdminRouteId) => boolean;
+    /** Setup's required steps are done (`setup/status`, `../app/setup-readiness.ts`); unknown counts as not. */
+    readonly setupReady?: boolean;
 }
 
 export interface ResolvedRoute {
@@ -26,9 +37,19 @@ export interface ResolvedRoute {
     readonly notice: AdminShellKey | null;
 }
 
-/** No route at all (`''`, `#`, `#/`): Setup, without a message. */
-function isBlank(hash: string): boolean {
+/** No route at all (`''`, `#`, `#/`): Setup or the dashboard, without a message. */
+export function isBlankAddress(hash: string): boolean {
     return hash.replace(/^#\/?/, '') === '';
+}
+
+/** Whether the admin is set up: normal mode and Setup's required steps done. */
+function setUp(context: RouteContext): boolean {
+    return context.mode === 'normal' && context.setupReady === true;
+}
+
+/** The first screen: the dashboard once Setup is complete (and its page exists), else Setup. */
+function firstRoute(context: RouteContext): AdminRoute {
+    return setUp(context) && context.hasPage(SET_UP_ADMIN_ROUTE.id) ? SET_UP_ADMIN_ROUTE : DEFAULT_ADMIN_ROUTE;
 }
 
 /** Why an existing route cannot open now, or null. Setup always opens (the shell shows its own placeholder). */
@@ -43,8 +64,8 @@ function refusal(route: AdminRoute, context: RouteContext): AdminShellKey | null
 }
 
 export function resolveAdminRoute(hash: string, context: RouteContext): ResolvedRoute {
-    if (isBlank(hash)) {
-        return { route: DEFAULT_ADMIN_ROUTE, notice: null };
+    if (isBlankAddress(hash)) {
+        return { route: firstRoute(context), notice: null };
     }
     const route = parseAdminRoute(hash);
     const notice = route === null ? 'adminShell.route.notFound' : refusal(route, context);
@@ -54,13 +75,16 @@ export function resolveAdminRoute(hash: string, context: RouteContext): Resolved
 /**
  * The navigation's destinations: Setup alone in start-up mode; in normal mode Setup and every route whose page exists,
  * in `ADMIN_ROUTES` order. History joined once its page existed (M2c, CR-M2c-8): the city's recent changes are a page of
- * their own, and an item's History opens `#/history/<entity>/<id>`.
+ * their own, and an item's History opens `#/history/<entity>/<id>`. Once Setup is complete the dashboard is on the
+ * compact bar in Setup's place, and Setup under More (§34i).
  */
 export function navigationDestinations(context: RouteContext): readonly AdminDestination[] {
     const ids = context.mode === 'normal' ? ADMIN_ROUTES.filter((id) => id === 'setup' || context.hasPage(id)) : ['setup' as const];
-    return ids.map(destinationOf);
+    const done = setUp(context);
+    return ids.map((id) => destinationOf(id, done));
 }
 
-export function destinationOf(id: AdminRouteId): AdminDestination {
-    return { id, icon: ADMIN_ROUTE_SPECS[id].icon, compact: ADMIN_ROUTE_SPECS[id].inCompactBar };
+export function destinationOf(id: AdminRouteId, setUpDone = false): AdminDestination {
+    const spec = ADMIN_ROUTE_SPECS[id];
+    return { id, icon: spec.icon, compact: setUpDone ? spec.inCompactBarOnceSetUp : spec.inCompactBar };
 }

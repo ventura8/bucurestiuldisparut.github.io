@@ -5,7 +5,16 @@
  * controller of `packages/admin/src/setup/controller.ts` is assignable to {@link SetupPort}; the shell hands it to
  * `<hcm-setup-page>`. The elements render the state and call the intents; they never call Google or a function.
  */
-import type { AdminSetupKey, AdminShellKey, ApiErrorCode, ProvisionItem, SaveUsgsRequest, ServiceState, UsgsRole } from '@hcm/shared';
+import type {
+    AdminSetupKey,
+    AdminShellKey,
+    ApiErrorCode,
+    ProvisionItem,
+    SaveUsgsRequest,
+    SelfTestCheck,
+    ServiceState,
+    UsgsRole,
+} from '@hcm/shared';
 
 export type SetupStepId = 'signIn' | 'billing' | 'provision' | 'deploy' | 'claim' | 'mapbox' | 'usgs' | 'analytics' | 'legacyImport';
 
@@ -102,7 +111,18 @@ export interface SetupViewState {
         readonly variables: readonly { readonly name: string; readonly value: string }[];
         readonly watching: boolean;
     };
-    readonly mapbox: { readonly user: string | null; readonly requiredScopes: readonly string[] };
+    readonly mapbox: {
+        readonly user: string | null;
+        readonly requiredScopes: readonly string[];
+        /** The last replacement of a public token (null audience: none yet). */
+        readonly rotation: {
+            readonly audience: 'viewer' | 'admin' | null;
+            readonly busy: boolean;
+            readonly retiresOldAt: string | null;
+            readonly done: boolean;
+            readonly error: SetupMessage | null;
+        };
+    };
     readonly usgs: {
         readonly secondsLeft: number | null;
         readonly expired: boolean;
@@ -142,6 +162,10 @@ export interface SetupViewState {
         readonly failed: readonly { readonly id: string; readonly detail: ApiErrorCode }[];
         readonly running: boolean;
     };
+    /** The last self-test's checks (Check again in normal mode), each with its state and a failure's reason. */
+    readonly selfTest: {
+        readonly checks: readonly { readonly id: SelfTestCheck; readonly state: ServiceState; readonly detail: SetupMessage | null }[];
+    };
 }
 
 /** The controller's intents as the elements call them (fire and forget: the state reports the outcome). */
@@ -155,6 +179,7 @@ export interface SetupIntentsPort {
     confirmBillingAccount(): void;
     provision(): void;
     saveMapbox(secretToken: string): void;
+    rotatePublicToken(audience: 'viewer' | 'admin'): void;
     startUsgsCountdown(): void;
     draftUsgs(fields: { readonly username?: string; readonly expiresOn?: string }): void;
     saveUsgs(request: SaveUsgsRequest): void;

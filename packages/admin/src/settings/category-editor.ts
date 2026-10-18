@@ -90,7 +90,11 @@ export class CategoryEditor {
             const spec = { path, schema: poiCategoryDocSchema, editable: CATEGORY_EDITABLE, check: categoryIssues };
             this.#draft = new EditDraft(spec, {
                 store: deps.services.store,
+                locked: () => deps.services.readOnly(),
                 changed: (draft) => {
+                    if (draft.conflict !== null) {
+                        deps.services.people();
+                    }
                     this.#set(stateOf(id, draft, false));
                 },
             });
@@ -121,6 +125,13 @@ export class CategoryEditor {
             this.#draft.edit(patch);
             return;
         }
+        if (!this.#deps.services.readOnly()) {
+            this.#editNew(patch);
+        }
+    }
+
+    /** A category not saved yet: its value is the editor's own (no draft); a revoked admin's page takes no edit (§42d). */
+    #editNew(patch: CategoryPatch): void {
         const value = this.#state.value;
         if (value !== null) {
             this.#iconPicked ||= patch.icon !== undefined;

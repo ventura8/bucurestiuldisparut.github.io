@@ -602,12 +602,25 @@ const ADMIN_STATES = {
     'account-menu': { title: 'The account menu (a dialog): language, theme, analytics, sign out', visit: 'smoke.spec.ts, the owner' },
     'unknown-route': { title: 'An unknown address: Setup with the "page not found" snackbar', visit: 'smoke.spec.ts, the owner' },
     blocked: { title: 'A stranger: the "not an admin" panel', visit: 'smoke.spec.ts, the stranger' },
+    'setup-self-test': {
+        title: "Setup after Check again: the server's checks, a failing one with its reason and its step",
+        visit: 'steps/status.spec.ts',
+    },
+    'mapbox-rotate-confirm': { title: 'Setup, Mapbox: "Replace the visitors\' token?" (a dialog)', visit: 'steps/mapbox.spec.ts' },
     // The M2c editors (docs/research/M2c-interfaces.md §11.2, §12.2): one marked section per area, ids '<area>.<state>';
     // a workstream appends inside its own section only and never moves the markers.
     // [section common] owner: ops-screens (the editing kit: the unsaved guard, the conflict banner, offline, the map's states)
     'session-revoked': {
         title: 'The access removed while editing: the page and its draft under the banner, with Sign out (§35e)',
         visit: 'specs/flows/revoke.spec.ts',
+    },
+    'page-failed': {
+        title: 'A page whose chunk did not load: why, and Try again (DECISIONS-for-review.md §34b)',
+        visit: 'tour/admin-jobs.tour.ts',
+    },
+    'editing.conflict': {
+        title: 'A change saved meanwhile by another admin: the banner names them, when, and the fields (§42c)',
+        visit: 'specs/pois/conflict.spec.ts',
     },
     // [end common]
     // [section photos] owner: photos
@@ -618,6 +631,7 @@ const ADMIN_STATES = {
         visit: 'tour/admin-photos.tour.ts',
     },
     'photos.bulk': { title: 'Photos: four selected, the bulk actions', visit: 'tour/admin-photos.tour.ts' },
+    'photos.bulk-more': { title: "Photos: the selection's other actions (a dialog)", visit: 'tour/admin-photos.tour.ts' },
     'photos.report': {
         title: 'Photos: the photos a bulk Publish skipped, each with its reason (a dialog)',
         visit: 'tour/admin-photos.tour.ts',
@@ -648,7 +662,11 @@ const ADMIN_STATES = {
     // [end layers]
     // [section settings] owner: layers-settings
     'settings.sections': { title: 'Settings: the sections, none open', visit: 'tour/admin-settings.tour.ts' },
-    'settings.area': { title: "Settings: the city's bounds and start view", visit: 'tour/admin-settings.tour.ts' },
+    'settings.area': { title: "Settings: the city's bounds and start view, the map with the bounds", visit: 'tour/admin-settings.tour.ts' },
+    'settings.area-drawing': {
+        title: 'Settings: the area drawn on the map, its first corner clicked',
+        visit: 'tour/admin-settings.tour.ts',
+    },
     'settings.area-invalid': { title: 'Settings: bounds of no width, Save off', visit: 'tour/admin-settings.tour.ts' },
     'settings.area-refused': { title: 'Settings: bounds refused, what they leave out', visit: 'tour/admin-settings.tour.ts' },
     'settings.texts-link-refused': { title: 'Settings: a non-https link in About', visit: 'tour/admin-settings.tour.ts' },

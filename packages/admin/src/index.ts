@@ -8,7 +8,7 @@ import './admin.css';
 
 import { CITY_ID_PATTERN, createLogger, type Logger } from '@hcm/shared';
 import { installFonts, type FontFaceConstructor } from '@hcm/ui';
-import { EDITOR_PAGE_TAGS, SETUP_PAGE_TAGS, defineAdminElements, defineSetupElements, type HcmAdminShell } from '@hcm/ui/admin';
+import { SETUP_PAGE_TAGS, defineAdminElements, defineSetupElements, type HcmAdminShell } from '@hcm/ui/admin';
 
 import { bootAdmin, type BootEnvironment } from './app/boot.js';
 import { loadColor, themeFromSeed } from './app/color.js';
@@ -23,7 +23,7 @@ import { setupModuleFor } from './app/setup-wiring.js';
 import { AdminTelemetry, expireAnalyticsCookies } from './app/telemetry.js';
 import { createGoogleAuth, type PopupSignIn } from './auth/google-auth.js';
 import { createStandInPopup } from './auth/stand-in.js';
-import type { ContentModules } from './content/areas.js';
+import { CONTENT_AREAS } from './content/areas.js';
 import type { ContentDeps } from './content/registry.js';
 import { createAnalytics, type AnalyticsPort } from './firebase/analytics.js';
 import { contentStore } from './firebase/content.js';
@@ -35,29 +35,8 @@ import type { SetupModule } from './setup/module.js';
 import type { SetupState } from './setup/state.js';
 import { initFirebase, loadAnalyticsSdk, type FirebaseHandles } from './firebase/app.js';
 import { firebaseSdk } from './firebase/sdk.js';
+import { AREA_CHUNKS, areaPageLoader, type ContentModuleSlots } from './routing/area-pages.js';
 import { PageRegistry, type PageLoader } from './routing/pages.js';
-// The editor areas' modules, one marked section per area (§11.2).
-// [section photos] owner: photos
-import { PHOTOS_MODULE } from './photos/module.js';
-// [end photos]
-// [section pois] owner: pois
-import { POIS_MODULE } from './pois/pois.js';
-// [end pois]
-// [section layers] owner: layers-settings
-import { layersModule } from './layers/layers.js';
-// [end layers]
-// [section settings] owner: layers-settings
-import { colorLibrary } from './app/color.js';
-import { settingsModule } from './settings/settings.js';
-import { contrastPasses } from './settings/theme.js';
-// [end settings]
-// [section ops] owner: ops-screens
-import { ADMINS_MODULE } from './admins/admins.js';
-import { CRASHES_MODULE } from './crashes/crashes.js';
-import { HISTORY_MODULE } from './history/history.js';
-import { HOME_MODULE } from './home/home.js';
-import { JOBS_MODULE } from './jobs/jobs.js';
-// [end ops]
 import type { AdminRouteId } from './routing/routes.js';
 
 export type { AdminApp, AdminDeps, AdminIntents } from './app/mount.js';
@@ -69,36 +48,18 @@ PAGES.register('setup', () => {
     defineSetupElements();
     return Promise.resolve(SETUP_PAGE_TAGS.setup);
 });
-/** The editors' area modules (`docs/research/M2c-interfaces.md` §2.1), one per area, set in the sections below. */
-const CONTENT: { -readonly [Area in keyof ContentModules]: ContentModules[Area] } = {};
-// The M2c editors' pages (docs/research/M2c-interfaces.md §11.2): one marked section per area; a workstream registers
-// its pages and its content module inside its own section only and never moves the markers.
-// [section photos] owner: photos
-CONTENT.photos = PHOTOS_MODULE;
-PAGES.register('photos', () => Promise.resolve(EDITOR_PAGE_TAGS.photos));
-// [end photos]
-// [section pois] owner: pois
-CONTENT.pois = POIS_MODULE;
-PAGES.register('pois', () => Promise.resolve(EDITOR_PAGE_TAGS.pois));
-// [end pois]
-// [section layers] owner: layers-settings
-CONTENT.layers = layersModule;
-PAGES.register('layers', () => Promise.resolve(EDITOR_PAGE_TAGS.layers));
-// [end layers]
-// [section settings] owner: layers-settings
-CONTENT.settings = settingsModule({ passes: contrastPasses((tokens, minimum) => colorLibrary().contrastIssues(tokens, minimum)) });
-PAGES.register('settings', () => Promise.resolve(EDITOR_PAGE_TAGS.settings));
-// [end settings]
-// [section ops] owner: ops-screens (admins, history, jobs, crash reports, the dashboard)
-CONTENT.home = HOME_MODULE;
-CONTENT.admins = ADMINS_MODULE;
-CONTENT.history = HISTORY_MODULE;
-CONTENT.jobs = JOBS_MODULE;
-CONTENT.crashes = CRASHES_MODULE;
-for (const id of ['home', 'admins', 'history', 'jobs', 'crashes'] as const) {
-    PAGES.register(id, () => Promise.resolve(EDITOR_PAGE_TAGS[id]));
+/**
+ * The editors' area modules (`docs/research/M2c-interfaces.md` §2.1): each arrives with its area's chunk, which the page
+ * registry loads when the area's route first opens (`DECISIONS-for-review.md` §34b); the content registry creates an
+ * area's store the first time its page reads it, so a module is always there by then.
+ */
+const CONTENT: ContentModuleSlots = {};
+for (const area of CONTENT_AREAS) {
+    PAGES.register(
+        area,
+        areaPageLoader(area, AREA_CHUNKS[area], CONTENT, () => globalThis.customElements),
+    );
 }
-// [end ops]
 
 /** Adds a page to the shell (imported lazily when its route opens). */
 export function registerAdminPage(id: AdminRouteId, load: PageLoader): void {

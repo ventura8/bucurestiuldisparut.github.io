@@ -248,6 +248,43 @@ describe('<hcm-layers-page> editor', () => {
     });
 });
 
+describe('<hcm-layers-page> editor: dates and extra-large pages', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_theExactDateReadsInTheAdminsLanguageAndIsStoredAsAnIsoDate', async () => {
+        const layer = layerDoc({ date: '1968-08-24' });
+        const layers = area(layersState({ editor: editorOf(layer) }));
+        const { element } = await page('layers', layers, { params: ['corona'], locale: 'ro' });
+        const date = deep(element, '#layer-date') as HTMLInputElement;
+
+        // Never the browser's date input, whose pattern follows the browser's language (mm/dd/yyyy in an American one).
+        expect(date.type).toBe('text');
+        expect(date.value).toBe('24.08.1968');
+        expect(date.placeholder).toBe('zz.ll.aaaa');
+        expect(deepText(element)).toContain('Scrie data ca zz.ll.aaaa.');
+        await userEvent.clear(date);
+        await userEvent.type(date, '25.08.1968');
+
+        expect(calls(layers).at(-1)).toBe('setField "date" "1968-08-25"');
+        expect(calls(layers)).toContain('setField "date" "25.08.196"');
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it.each([
+        [1300, false],
+        [2560, true],
+    ])('happyPath_onA %d px page the map sits beside the groups: %s', async (width, beside) => {
+        const layers = area(layersState({ editor: editorOf(layerDoc()), map: 'ready' }));
+        const { element } = await page('layers', layers, { params: ['corona'], width });
+        const map = deep(element, 'hcm-admin-map').getBoundingClientRect();
+        const label = deep(element, '#layer-label-ro').getBoundingClientRect();
+
+        expect(map.left >= label.right).toBe(beside);
+        expect(map.bottom <= label.top).toBe(!beside);
+    });
+});
+
 describe('<hcm-layers-page> editor sliders', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
@@ -388,5 +425,42 @@ describe('<hcm-layers-page> focus and navigation', () => {
         expect(layers.named('attachMap')).toEqual(['attachMap {}', 'attachMap {}']);
         expect(deepAll(map, 'hcm-icon-button')).toHaveLength(2);
         expect(await axeViolations(element)).toEqual([]);
+    });
+});
+
+describe('<hcm-layers-page> editor: a conflict and a revoked admin', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_theConflictNamesWhoSavedAndWhenAndTheFieldsByName', async () => {
+        const conflict = { by: 'other', at: '2026-10-02T08:00:00.000Z', fields: ['opacity', 'defaultVisible'] };
+        const layers = area(
+            layersState({ editor: editorOf(layerDoc(), { draft: draftOf(layerDoc(), { conflict, dirty: ['opacity'] }) }) }),
+        );
+        const { app, element } = await page('layers', layers, { params: ['corona'] });
+        app.set({ people: { other: 'Ana Pop' } });
+        (element as HTMLElement & { state: unknown }).state = app.state;
+        await updated(element);
+
+        expect(deepText(deep(element, '.alert'))).toContain('Saved by Ana Pop on');
+        expect(deepText(deep(element, '.alert'))).toContain('Opacity, Shown at start');
+    });
+
+    it('badPath_aRevokedAdminsLayerIsReadOnly', async () => {
+        const layers = area(layersState({ editor: editorOf(layerDoc(), { draft: draftOf(layerDoc(), { dirty: ['opacity'] }) }) }));
+        const { element } = await page('layers', layers, { params: ['corona'], revoked: true });
+        const off = (target: HTMLElement): boolean => (target as HTMLElement & { disabled: boolean }).disabled;
+
+        expect(element.hasAttribute('read-only')).toBe(true);
+        expect(deepText(element)).toContain('Read only: your access was removed.');
+        expect(deepAll(element, '.save-bar hcm-button').map(off)).toEqual([true, true]);
+        const fields = deepAll(deep(element, '[slot="detail"]'), 'input, textarea');
+        expect(fields.length).toBeGreaterThan(0);
+        expect(fields.every((field) => (field as HTMLInputElement).readOnly)).toBe(true);
+        expect(deepAll(element, 'hcm-switch, hcm-slider').every(off)).toBe(true);
+        expect(deepAll(element, '.group hcm-button, .pane > .actions hcm-button').every(off)).toBe(true);
+        expect(off(deep(deep(element, '.list-head'), 'hcm-button'))).toBe(true);
+        expect(deepAll(element, '.reorder-row .moves, .reorder-row .handle')).toEqual([]);
+        expect(deepAll(element, '.reorder-row a.row')).toHaveLength(2);
     });
 });

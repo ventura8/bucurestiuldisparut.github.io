@@ -75,7 +75,12 @@ describe('the dashboard', () => {
             ['crash', 'missing'],
         ]);
         expect(home.state.health.chips[3]?.detail).toEqual({ key: 'apiError.cloud.permission', params: { role: 'x' } });
-        expect(home.state.publicMap.doc?.data).toEqual({ status: 'idle', builtAt: '2026-10-17T09:00:00.000Z', skipped: 1, error: null });
+        expect(home.state.publicMap.doc?.data).toEqual({
+            status: 'idle',
+            builtAt: '2026-10-17T09:00:00.000Z',
+            skipped: [{ entity: 'photo', id: 'p9', code: 'validation.required', path: 'title' }],
+            error: null,
+        });
         expect([HOME_MODULE.area, home.hasUnsavedChanges()]).toEqual(['home', false]);
     });
 
@@ -99,7 +104,7 @@ describe('the dashboard', () => {
         expect(home.state.publicMap.doc?.data).toEqual({
             status: 'failed',
             builtAt: null,
-            skipped: 0,
+            skipped: [],
             error: { key: 'apiError.internal' },
         });
         expect(home.state.counts?.photos).toBe(3);
@@ -159,7 +164,7 @@ describe('the dashboard', () => {
         expect(publicMapOf({ requestedVersion: 1, builtVersion: 0, status: 'queued', ...STAMP })).toEqual({
             status: 'queued',
             builtAt: null,
-            skipped: 0,
+            skipped: [],
             error: null,
         });
     });

@@ -5,6 +5,7 @@
 import type { CityDoc, Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
+import type { WhoPort } from '../editing/conflict.js';
 import { conflictBanner, saveBar, saveStateOf } from '../layers/form-parts.js';
 import { contentText } from '../shell/text.js';
 import type { SettingsIntentsPort, SettingsViewState } from './settings-port.js';
@@ -19,6 +20,10 @@ export interface SectionContext {
     readonly go: (params: readonly string[]) => void;
     /** Says a settled change in the page's polite region. */
     readonly announce: (text: string) => void;
+    /** A revoked admin's page (`DECISIONS-for-review.md` §42d): every field read-only, every control that writes off. */
+    readonly readOnly: boolean;
+    /** Who reads the page and the admins' names: a conflict names who saved. */
+    readonly who: WhoPort;
 }
 
 export const SETTINGS_SAVE_TEXTS = {
@@ -37,7 +42,7 @@ export const SETTINGS_CONFLICT_TEXTS = {
 export function cityHead(context: SectionContext, title: string): TemplateResult {
     const { locale, intents } = context;
     const draft = context.view.citySection.draft;
-    const state = saveStateOf({ ...draft, dirty: draft.dirty.length > 0 });
+    const state = { ...saveStateOf({ ...draft, dirty: draft.dirty.length > 0 }), readOnly: context.readOnly };
     const handlers = {
         save: () => {
             void intents?.saveSection();
@@ -55,6 +60,8 @@ export function cityHead(context: SectionContext, title: string): TemplateResult
             takeTheirs: () => {
                 intents?.takeTheirs();
             },
+            who: context.who,
+            readOnly: context.readOnly,
         })}`;
 }
 

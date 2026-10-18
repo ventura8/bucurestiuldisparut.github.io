@@ -1,6 +1,7 @@
 // The admin's elements (`@hcm/ui/admin`, docs/research/M2b-interfaces.md §1.7): imported only by @hcm/admin, never by the
 // engine, so the public viewer's bundle carries no admin element or text.
-export { ADMIN_TAGS, EDITOR_PAGE_TAGS, defineAdminElements } from './define.js';
+export { ADMIN_TAGS, defineAdminElements } from './define.js';
+export type { AreaElements } from './areas/area.js';
 export { HCM_BLOCKED_PANEL_TAG, HcmBlockedPanel } from './auth/hcm-blocked-panel.js';
 export { HCM_CLAIM_PANEL_TAG, HcmClaimPanel } from './auth/hcm-claim-panel.js';
 export { HCM_CONSENT_NOTE_TAG, HcmConsentNote } from './auth/hcm-consent-note.js';

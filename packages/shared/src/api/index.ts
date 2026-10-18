@@ -120,6 +120,7 @@ export {
     ERROR_SERVICES,
     ERROR_SOURCES,
     REPORTED_ERROR_EVENT_TYPE,
+    REPORTED_EVENT_MAX_BYTES,
     errorReportSchema,
     listGroupsRequestSchema,
     listGroupsResponseSchema,

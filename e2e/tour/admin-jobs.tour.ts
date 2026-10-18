@@ -110,3 +110,30 @@ test(
         await expect(page.getByText(new RegExp(contentText(lang, 'adminContent.jobs.waiting', { date: '.+' })))).toBeVisible();
     },
 );
+
+test(
+    'A page whose chunk does not load says so, and Try again loads it',
+    { tag: ['@S-A29-BAD-CHUNK-LOAD', '@S-A31-HAPPY-EDITORS', '@S-A21-BAD-LEAK-CHECK'] },
+    async ({ page, lang, content, consoleErrors }) => {
+        await page.context().addInitScript(recordLiveRegions);
+        await seedCity(content, AT);
+        // The jobs page's chunk (DECISIONS-for-review.md §34b) is lost once on the way, as a dropped connection or a deploy
+        // that replaced it would lose it; the next request for it goes through.
+        let lost = 0;
+        await page.route(/\/jobs-[\w-]{8}\.js$/, async (route) => {
+            lost += 1;
+            await (lost === 1 ? route.abort('failed') : route.fallback());
+        });
+        await page.goto(content.address(lang, 'jobs'));
+
+        const failed = page.getByRole('alert').filter({ hasText: shellText(lang, 'adminShell.page.failed') });
+        await expect(failed).toBeVisible();
+        await expectStateSound(page, adminVisit('page-failed', lang));
+        await page.getByRole('button', { name: shellText(lang, 'adminShell.page.retry'), exact: true }).click();
+
+        await expect(page.getByText(contentText(lang, 'adminContent.jobs.empty'))).toBeVisible();
+        await expect(failed).toHaveCount(0);
+        expect(lost).toBe(2);
+        expect(consoleErrors.takeMatching(/jobs-[\w-]{8}\.js/)).toHaveLength(1);
+    },
+);

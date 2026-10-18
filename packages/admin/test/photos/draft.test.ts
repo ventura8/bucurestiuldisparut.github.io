@@ -41,6 +41,24 @@ function stored(overrides: Partial<PhotoDoc> = {}, version = '2026-10-17T10:00:0
     return { id: 'p1', path: photoPath('p1'), data: photoDoc(overrides), version, pending: false };
 }
 
+describe('a photo draft: a revoked admin', () => {
+    it('badPath_aLockedDraftTakesNoEdit', () => {
+        const world = photosWorld();
+        let locked = false;
+        const draft = new PhotoDraft('p1', {
+            ...{ store: world.store, cityId: CITY, bounds: () => BOUNDS, preset: () => ({}) },
+            changed: () => undefined,
+            locked: () => locked,
+        });
+        draft.rebase(stored());
+        draft.edit({ author: 'Ion' });
+        locked = true;
+        draft.edit({ author: 'Ana' });
+
+        expect(draft.state.value?.author).toBe('Ion');
+    });
+});
+
 describe('PhotoDraft: editing', () => {
     it('happyPath_anEditChangesTheDraftAndMarksTheField', () => {
         const { draft } = draftWorld();

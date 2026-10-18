@@ -154,7 +154,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         const head = html`<div class="list-head">
             <p class="note">${shellText(locale, 'adminShell.admins.intro')}</p>
             <div class="actions">
-                <hcm-button variant="filled" icon="person_add" @click=${invite}
+                <hcm-button variant="filled" icon="person_add" ?disabled=${this.readOnly} @click=${invite}
                     >${shellText(locale, 'adminShell.admins.invite')}</hcm-button
                 >
             </div>
@@ -286,7 +286,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
             this.pending = { request: { kind: 'admin', uid: admin.uid }, name };
         };
         return html`<div class="actions">
-            <hcm-button variant="outlined" icon="person_remove" ?disabled=${view.busy} @click=${ask}
+            <hcm-button variant="outlined" icon="person_remove" ?disabled=${view.busy || this.readOnly} @click=${ask}
                 >${contentText(locale, 'adminContent.admins.remove')}</hcm-button
             >
         </div>`;
@@ -309,7 +309,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
             </dl>
             ${this.#link(locale, view.invited, invite)}
             <div class="actions">
-                <hcm-button variant="outlined" icon="cancel" ?disabled=${view.busy} @click=${ask}
+                <hcm-button variant="outlined" icon="cancel" ?disabled=${view.busy || this.readOnly} @click=${ask}
                     >${contentText(locale, 'adminContent.admins.cancelInvite')}</hcm-button
                 >
             </div>

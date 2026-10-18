@@ -3,10 +3,14 @@
  * (`docs/research/M2c-interfaces.md` §8.5; behaviours A19, A36, A39). The sections in the list pane; the open one in the
  * detail pane (in its place below 840 px), each its own draft with its own Save. While the theme section previews a
  * seed, the whole admin wears the previewed schemes: the settings store hands them to the shell (CR-M2c-28), and
- * Discard, Save, leaving Settings or signing out takes them off.
+ * Discard, Save, leaving Settings or signing out takes them off. The area and overlays sections show the page's one map
+ * at the top of the detail (`DECISIONS-for-review.md` §42a): the city's content as the visitors see it, the bounds as a
+ * rectangle, the overlay defaults previewed live; the same map element for both, so moving between them loads no other.
  */
 import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
+
+import { MAPBOX_GL_CSS_URL } from '../../map/mapbox-loader.js';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
@@ -31,6 +35,9 @@ export const HCM_SETTINGS_PAGE_TAG = 'hcm-settings-page';
 
 const SECTIONS: readonly SettingsSectionPort[] = ['area', 'texts', 'theme', 'categories', 'overlays'];
 
+/** The sections that show the page's map. */
+const MAP_SECTIONS: ReadonlySet<SettingsSectionPort> = new Set<SettingsSectionPort>(['area', 'overlays']);
+
 const SECTION_ICONS: Readonly<Record<SettingsSectionPort, string>> = {
     area: 'crop_free',
     texts: 'translate',
@@ -47,12 +54,14 @@ const RENDERERS: Readonly<Record<Exclude<SettingsSectionPort, 'categories'>, (co
 };
 
 export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntentsPort> {
-    static override readonly properties = { ...AreaPage.properties, announcement: { state: true } };
+    static override readonly properties = { ...AreaPage.properties, announcement: { state: true }, mapCss: { attribute: false } };
 
     static override readonly styles = [...layersStyles, settingsStyles];
 
     protected readonly route: AdminRouteIdPort = 'settings';
     declare announcement: string;
+    /** mapbox-gl.css's address for the map's shadow root ('' in tests: no network). */
+    declare mapCss: string;
     readonly #drag = new RowDrag((id, index) => {
         void this.intents?.moveCategoryTo(id, index);
     });
@@ -60,6 +69,7 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
     constructor() {
         super();
         this.announcement = '';
+        this.mapCss = MAPBOX_GL_CSS_URL;
         keepFocus(this);
     }
 
@@ -122,7 +132,26 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
         if (view.city.status === 'loading') {
             return loadingTemplate(locale);
         }
-        return html`<div class="pane">${this.#section(locale, view, section)}</div>`;
+        return html`<div class="pane">${this.#mapBox(locale, view, section)} ${this.#section(locale, view, section)}</div>`;
+    }
+
+    /** The page's map, for the area and overlays sections of a city that exists. */
+    #mapBox(locale: Locale, view: SettingsViewState, section: SettingsSectionPort): TemplateResult {
+        if (!MAP_SECTIONS.has(section) || view.city.doc === null) {
+            return EMPTY;
+        }
+        return html`<hcm-admin-map
+            class="settings-map"
+            .status=${view.map.status}
+            .locale=${locale}
+            .cssUrl=${this.mapCss}
+            @hcm-map-host=${(event: Event) => {
+                this.intents?.attachMap((event as CustomEvent<{ readonly container: HTMLElement }>).detail.container);
+            }}
+            @hcm-zoom=${(event: Event) => {
+                this.intents?.zoomBy((event as CustomEvent<{ readonly delta: number }>).detail.delta);
+            }}
+        ></hcm-admin-map>`;
     }
 
     #section(locale: Locale, view: SettingsViewState, section: SettingsSectionPort): TemplateResult {
@@ -139,6 +168,8 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
             announce: (text) => {
                 this.announcement = text;
             },
+            readOnly: this.readOnly,
+            who: { self: this.self, people: this.people },
         };
         return section === 'categories' ? categoriesSection(context, this.#drag) : RENDERERS[section](context);
     }

@@ -89,8 +89,8 @@ export const fieldStyles = css`
     }
 
     /*
-     * The focused field (M3's 2 px active indicator). A date field is several stops for Tab (its day, month and year,
-     * then its calendar button), and on the calendar button the field itself matches only :focus-within.
+     * The focused field (M3's 2 px active indicator); :focus-within too, for a field whose focus sits on a part of it.
+     * Dates are text fields in the admin's language (../editing/date-text.ts), not the browser's date input.
      */
     .field input:focus-visible,
     .field input:focus-within {

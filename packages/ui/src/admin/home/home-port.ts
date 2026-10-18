@@ -2,6 +2,8 @@
  * The dashboard as its page reads it (`#/home`), mirroring `packages/admin/src/home/home.ts` (checked at compile time by
  * `packages/admin/test/app/admin-port.test.ts`).
  */
+import type { ValidationCode } from '@hcm/shared';
+
 import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { DocStatePort, LoadStatusPort } from '../area-port.js';
 
@@ -18,10 +20,18 @@ export interface HealthChipPort {
     readonly detail: AdminNoticeInputPort | null;
 }
 
+/** A document the public map left out: what it is, its id, its first issue (a validation code at a path). */
+export interface SkippedDocumentPort {
+    readonly entity: 'layer' | 'photo' | 'poi' | 'poiCategory';
+    readonly id: string;
+    readonly code: ValidationCode;
+    readonly path: string;
+}
+
 export interface PublicMapPort {
     readonly status: 'idle' | 'queued' | 'building' | 'failed';
     readonly builtAt: string | null;
-    readonly skipped: number;
+    readonly skipped: readonly SkippedDocumentPort[];
     readonly error: AdminNoticeInputPort | null;
 }
 

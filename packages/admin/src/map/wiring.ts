@@ -1,8 +1,9 @@
 /**
  * The admin map's factory as the entry builds it (`../app/content-wiring.ts`, the pois section): Mapbox GL JS from
  * api.mapbox.com on the first map, the admin's token read from `setup/status` for every new map (Setup may have minted
- * it since the last one), reduced motion from the page, the click-only drawing tools until Terra Draw is installed
- * (`terraDraw`: docs/research/M2c-interfaces.md §4.2), and the page's animation frames, resize observer and canvas.
+ * it since the last one), reduced motion from the page, Terra Draw loaded with the first drawing tools (`terraDraw`:
+ * docs/research/M2c-interfaces.md §4.2, DECISIONS-for-review.md §34g; the click-only tools without it), and the page's
+ * animation frames, resize observer and canvas.
  */
 import { FIRESTORE_PATHS, type Logger } from '@hcm/shared';
 import { browserAdapterEnv, loadMapboxGl, type BrowserScope, type MapboxLoaderScope } from '@hcm/ui/map';
@@ -20,7 +21,7 @@ export interface AdminMapSources {
     readonly scope: AdminMapScope;
     /** A Firestore document's fields, or null (`DocumentsPort.get`). */
     readonly readDoc: (path: string) => Promise<Readonly<Record<string, unknown>> | null>;
-    /** Terra Draw's constructors once its packages are installed; null meanwhile. */
+    /** Terra Draw's lazy loader (`loadTerraDraw` of `@hcm/ui/map/draw`); null: the click-only tools. */
     readonly terraDraw: (() => Promise<TerraDrawModules>) | null;
     readonly log: Logger;
     /**

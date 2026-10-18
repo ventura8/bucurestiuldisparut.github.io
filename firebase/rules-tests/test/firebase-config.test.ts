@@ -12,7 +12,7 @@ interface Header {
 }
 
 interface FirebaseJson {
-    readonly firestore: { readonly rules: string; readonly indexes: string };
+    readonly firestore: { readonly location: string; readonly rules: string; readonly indexes: string };
     readonly storage: { readonly rules: string };
     readonly functions: readonly { readonly source: string; readonly codebase: string; readonly runtime: string }[];
     readonly hosting: {
@@ -75,6 +75,7 @@ describe('deploy targets', () => {
     it('happyPath_rulesIndexesAndFunctionsPointAtTheirSources', () => {
         expect(config.firestore).toEqual({
             database: '(default)',
+            location: 'nam5',
             rules: 'firebase/firestore.rules',
             indexes: 'firebase/firestore.indexes.json',
         });
@@ -82,6 +83,14 @@ describe('deploy targets', () => {
         expect(config.functions).toMatchObject([{ source: 'functions/dist', codebase: 'default', runtime: 'nodejs24' }]);
         expect(config.hosting).toMatchObject({ site: 'bucurestiul-disparut', public: 'packages/admin/dist' });
         expect(repoFile(config.firestore.rules)).toContain("rules_version = '2';");
+    });
+});
+
+describe('the Firestore database', () => {
+    it('badPath_aDeployNeverCreatesADatabaseElsewhere', () => {
+        // The (default) database exists in nam5 since 2026-10-11 (DECISIONS §40a); a location can never change, and
+        // firebase-tools creates a missing database in the named location, so the file names the one that exists.
+        expect(config.firestore.location).toBe('nam5');
     });
 });
 

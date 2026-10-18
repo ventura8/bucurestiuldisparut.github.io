@@ -15,6 +15,7 @@ export const POIS_STATES = {
     },
     'pois.editor': { title: 'Places: a saved line, its positions listed and its description previewed', visit: VISIT },
     'pois.delete-confirm': { title: 'Places: the delete confirmation (a dialog)', visit: VISIT },
+    'pois.more-actions': { title: "Places: the editor's other actions, History and Redraw as… (a dialog)", visit: VISIT },
     'pois.list': { title: 'Places: the list of two places in two categories, with the filters', visit: VISIT },
     'pois.import-refused': { title: 'Places: an import file that is not GeoJSON, refused (a dialog)', visit: VISIT },
     'pois.import-preview': {

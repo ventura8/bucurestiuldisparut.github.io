@@ -671,3 +671,96 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the split `all` run; the spec waited for the write in Firestore (the emulator's REST API), which can hold it before the page has its answer, and a draft still saving holds a new address back (lesson 122).
     - Fix and pin: the spec waits for the page's own "Saved" before it leaves (`e2e/admin/specs/shell/shell.spec.ts`), as `editing/sticky.spec.ts` does.
     - **What the server holds is not what the page knows: leave a page only once the page says so.**
+132. **Terra Draw's selection marks moved the photo's pin back over a place typed in its fields.**
+    - Seen: `S-A09-BAD-PIN-OUTSIDE-CITY` at `admin-c360-ro` and `-l1440-ro`, the first run with Terra Draw (DECISIONS-for-review.md §41b): a longitude typed beyond the city went back to `26.1` before the field could say why.
+    - Found by: the admin tier; the click tools passed it. A debug log of Terra Draw's events showed a `change` of type `update` with `{target: 'properties'}` (the pin's selection mark, as the port removed it) and the port's own updates with `{origin: 'api'}`; the port reported both as drags, and the photo editor took the pin's old place as the admin's.
+    - Fix and pin: the adapter reports only geometry changes that do not come from itself (`packages/ui/src/map/draw/terra-draw-adapter.ts`; `terra-draw-editing.test.ts`: a reload and a click-move emit no echo, a properties change none).
+    - **A library's change events include its own bookkeeping and your own API calls: report only what the user did.**
+133. **A vertex drag released over the map's zoom button never ended.**
+    - Seen: `S-A32-HAPPY-VERTEX-EDIT` at `admin-c360-ro`: the corner moved on the map but the list of positions kept the old one; the release point, 30 px east of the north-east corner, lay on the zoom-out button in the map's corner.
+    - Found by: the admin tier at the phone's size; Terra Draw ends a drag only on a `pointerup` whose target is the map's canvas.
+    - Fix and pin: the spec drags the corner into the map (`e2e/admin/specs/pois/dragging.spec.ts`), and its comment says why.
+    - **A drag on a map ends where the map is: aim a release at the map, never at the controls over it.**
+134. **A spec polled for five saved positions, which the seeded area already had.**
+    - Seen: `S-A32-HAPPY-VERTEX-EDIT` at `admin-l1440-ro`: the poll passed at once, before Save had written, and the next assertion read the seed.
+    - Found by: the failure screenshot (the editor still said "Saving…").
+    - Fix and pin: the spec polls for the moved corner itself (lesson 128's rule again).
+    - **Poll for the change, not for a shape the old value shares.**
+135. **The Deleted filter of History was checked while its list still offered "Show more".**
+    - Seen: `admin.history.deleted` at `tour-x3840-light-ro` on the NUC in the split `e2e` run of 2026-10-18: "Tab never reaches „Arată mai multe”"; twelve runs on the laptop passed.
+    - Found by: the split run under load; the state was checked as soon as its Restore button showed, while the list behind the new filter could still answer from the cache with a further page, whose button then went.
+    - Fix and pin: the tour waits until the filtered list offers no further page before the check (`e2e/tour/admin-history.tour.ts`).
+    - **Check a state once everything it shows has settled, not once the one thing you need appeared.**
+136. **The settings page rendered the admin map its chunk never defined.**
+    - Seen: `S-A19-HAPPY`, `S-A36-HAPPY` and `S-A36-BAD-DISCARD` at `admin-l1440-ro`: "the admin map is created" never held; the area and overlays sections showed an empty box above the form.
+    - Found by: the failure screenshot (the box had its size, nothing inside); the unit tests had passed because the ui test bundle defines every element.
+    - Fix and pin: `defineSettingsElements` defines `<hcm-admin-map>`; `packages/ui/test/admin/editing/areas.test.ts` checks every chunk that shows the map defines it (DECISIONS-for-review.md §42a).
+    - **A lazy chunk defines every element it renders; a test that loads all elements at once cannot see a missing one.**
+137. **A conflict spec rewrote the document it had read back from the emulator.**
+    - Seen: `S-A38-BAD-CONFLICT` at `admin-l1440-ro`: no conflict banner; the places list said there was no place at all.
+    - Found by: the failure screenshot; the emulator's read gives timestamps and nested values in its own form, which the place schema refuses, so the list dropped the document and the editor heard no remote change.
+    - Fix and pin: the other admin's save goes through the spec's own seed helper (`e2e/admin/specs/pois/conflict.spec.ts`).
+    - **Write a document in its schema's shape; never round-trip one through a reader that changes its types.**
+138. **A spec looked for an overflow menu's actions inside its `dialog` role.**
+    - Seen: `S-A33-HAPPY-BULK`, `S-A10-HAPPY-RIGHTS-REVIEW` and `S-A38-BAD-DELETED-WHILE-EDITING` at `admin-l1440-ro`: the action button was never found, the dialog was open and named.
+    - Found by: a diagnostic run listing the dialog's buttons: only Close. The actions are slotted into `hcm-dialog`, so they are children of the host element, not of the native `<dialog>` in its shadow root, which a locator scopes to.
+    - Fix and pin: `menuDialog` and `chooseInMenu` (`e2e/admin/support/menu.ts`) look inside the open `hcm-dialog` host; the photos and places tours use them.
+    - **Scope a locator to the element that holds slotted content, not to the shadow element that renders it.**
+139. **The places' conflict banner put its text beside its two buttons.**
+    - Seen: `admin.editing.conflict` at `admin-c360-ro` in the split `quality` run: Keep mine 76 px wide, covered by Take theirs, its touch target 44 px.
+    - Found by: the generic layout and accessibility checkers on the new state (until then no spec checked the banner at a phone's width).
+    - Fix and pin: the banner stacks its text above the actions (`.alert-body` of the editing kit), as the layers' banner did; the state runs at every admin project.
+    - **On a phone, a banner's actions go under its text, never beside it.**
+140. **A spec clicked "the confirm button of the confirmation dialog" on a page with two.**
+    - Seen: `S-A06-HAPPY-ROTATE` at `admin-steps-l1440-en`: strict mode found Discard changes (the unsaved guard's) and Replace.
+    - Found by: the split run; the laptop's single run had passed by the order the elements happened to come in.
+    - Fix and pin: the spec takes the confirm button of the dialog it opened, by its name (`e2e/admin/steps/mapbox.spec.ts`).
+    - **Locate an action inside the dialog it belongs to, by its name, never by a class every dialog shares.**
+
+141. **An opened photo or place stayed off its editor's map.**
+    - Seen: the 2026-10-18 review screenshots of `admin.photos.editor` at 360×800 to 1440×900: the open photo's pin was below the map's box, because the map opened at the city's starting view (here the bounds' centre) and nothing moved it; the photos area had a `focusPhoto` intent no element called, and the places map had none.
+    - Found by: the review screenshots (`HCM_STATE_SCREENSHOTS`, docs/TESTING.md → *Review screenshots*); no checker can see that the edited item is outside the map.
+    - Fix and pin: the photos map session's `reveal` and the places map's `#reveal` centre the map on the opened item once (its zoom kept, no animation; a new place, with nothing drawn, and an edit of the open item move nothing) (`packages/admin/src/photos/map.ts`, `packages/admin/src/pois/map-session.ts`); `S-A09-HAPPY-OPEN-IN-VIEW` (`e2e/tour/admin-photos.tour.ts`), `S-A32-HAPPY-OPEN-IN-VIEW` and `S-A32-BAD-NEW-PLACE-KEEPS-VIEW` (`e2e/admin/specs/pois/in-view.spec.ts`), and unit tests in `packages/admin/test/photos/map.test.ts` and `packages/admin/test/pois/map-session.test.ts`.
+    - **An editor with a map brings the item it opens into view; an intent no element calls is a missing behaviour, not a finished one.**
+
+142. **The dashboard's tiles in one row had different heights.**
+    - Seen: `admin.home.dashboard` at every size: in "Waiting for you", the tile whose label wraps to two lines was taller than its neighbours.
+    - Found by: the review screenshots; the grid stretched each list item to the row's height, but the link inside it, the visible tile, kept its own height.
+    - Fix and pin: the list item is a flex box and the tile grows to fill it (`packages/ui/src/admin/home/hcm-home-page.ts`); the M2e review's contact sheets of the dashboard show the rows even.
+    - **In a grid of cards, stretch the visible card, not only the grid item that holds it.**
+
+143. **A portrait phone laid the places editor over the "Set up Mapbox" note.**
+    - Seen: `admin.pois.editor` without a map token at the `tour-c320-*` projects (320 × 568): "Configurează Mapbox" covered by Save and Discard changes.
+    - Found by: the tour matrix in the split `all`; the per-push projects (360 px and up) never measured a compact height there.
+    - Fix and pin: the box without a map no longer shrinks (`:host([no-map]) { flex: none }`, `packages/ui/src/admin/map/hcm-admin-map.ts`), and the map-beside-the-form layout of a compact height needs a medium width (`packages/ui/src/admin/editing/wide-layout.ts`); `S-A32-BAD-NO-MAP-TOKEN` at `tour-c320-*`.
+    - **A height class measured on the page area is compact on a portrait phone too while its bar shows; a layout meant for a landscape phone also asks for its width.**
+
+144. **The legal-line rule asked for a logo on a 4 px strip of map.**
+    - Seen: `admin.settings.area-refused` at `tour-m768-*`, the settings pane scrolled to its end: "0 visible Mapbox logos instead of exactly one", the map's last 4.6 px at the pane's top and its controls 6 to 10 px above its foot.
+    - Found by: the scroll sweep of the tour matrix.
+    - Fix and pin: `showsItsFoot` also asks that the visible strip be taller than the band under the lowest legal control (`legalGap`, `e2e/support/layout-probe.ts`; `e2e/test/layout-probe.test.ts`); one pixel of a control on screen and the rule applies (`docs/research/DECISIONS-for-review.md` §43b).
+    - **Make a checker exact where it is wrong, with a unit test of both sides of the edge; never quiet it with an allowlist.**
+
+145. **History's Deleted filter offered "Show more" for good in the shared emulators.**
+    - Seen: `S-A23-HAPPY-RESTORE-DELETED` at `tour-x3840-*-en` on the NUC: the spec of lesson 135 waited 15 s for "Show more" to go.
+    - Found by: the tour matrix; the recent-changes query reads every city's `history` and the page leaves the others' entries out (CR-M2c-14), so a page full of other tests' deletions has more to show.
+    - Fix and pin: the tour waits for the server's answer (no "Reconnecting…" status) and lets "Show more" be (`e2e/tour/admin-history.tour.ts`).
+    - **In shared emulators, wait for the state's own signal of having settled, not for a value other tests can change.**
+
+146. **Offline, the places editor turned Save off: the place's category read as unknown.**
+    - Seen: `S-A38-BAD-OFFLINE` at `admin-l1440-dark`, then at `admin-l1440-en` with Save already on before going offline, on the NUC: "Reconnecting…", the place's row "Unknown category", "Cannot save: the value refers to an item that does not exist", and the click on Save waited out the test.
+    - Found by: the split `all` on a loaded machine; a categories listener answered from the cache offline with no category (Firestore's memory cache keeps nothing for a listener attached again), and the draft's check took that list as the city's.
+    - Fix and pin: the draft checks the category only against a list the server answered (`#context` in `packages/admin/src/pois/pois.ts`; `badPath_offlineAnEmptyCachedListOfCategoriesDoesNotTurnSaveOff` in `packages/admin/test/pois/pois.test.ts`); the spec also waits for Save to be on before `setOffline(true)` (`e2e/admin/specs/editing/drafts.spec.ts`).
+    - **A list answered from the cache is not the truth about what exists: never refuse an edit on it.**
+
+147. **"Configurare" broke over two lines on a 320 px navigation bar.**
+    - Seen: the failure screenshots of the tour matrix at `tour-c320-*`: "Configurar" and "e" (lesson 83 fixed 360 px).
+    - Found by: a person looking at the screenshots; the label test measured 360 px only.
+    - Fix and pin: the bar's labels follow their item's width below about 70 px (`font-size: min(label-medium, 17cqi)`, `packages/ui/src/admin/shell/hcm-admin-nav.ts`); `packages/ui/test/admin/shell/nav-and-menu.test.ts` measures 360 and 320 px.
+    - **Measure a label at the narrowest window the tour visits.**
+
+148. **A spec changed the address while its category's save was still settling.**
+    - Seen: `S-A39-BAD-LOW-CONTRAST-COLOUR` at `tour-x2560-light-ro` on the NUC: "Discard your changes?" stood over the next category's Delete for the rest of the test.
+    - Found by: the second split `all`; the spec waited for the saved colour in the emulator, which the write reaches before the editor hears back, and the snackbar it also waited for was the first save's.
+    - Fix and pin: the spec waits for the editor's own "Saved" status before it goes to another address (`e2e/tour/admin-settings.tour.ts`).
+    - **A document in the database is not the page having saved it: wait for what the page says.**

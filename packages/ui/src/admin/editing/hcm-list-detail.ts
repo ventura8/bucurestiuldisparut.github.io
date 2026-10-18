@@ -86,6 +86,15 @@ export class HcmListDetail extends LitElement {
                 display: flex;
                 padding: 8px 8px 0;
             }
+
+            /*
+             * A landscape phone's editor (a compact height): the detail is a column, so what is slotted can take the height
+             * the Back row leaves (the map-centric editors put their map beside the form there: wide-layout.ts).
+             */
+            :host([height-class='compact']) .pane.detail:not([hidden]) {
+                display: flex;
+                flex-direction: column;
+            }
         `,
     ];
 
@@ -169,6 +178,7 @@ export class HcmListDetail extends LitElement {
         if (before.width === 0 || size.widthClass !== before.widthClass || size.heightClass !== before.heightClass) {
             this.#measured = size;
             this.setAttribute('window-class', size.widthClass);
+            this.setAttribute('height-class', size.heightClass);
             this.requestUpdate();
         }
     }

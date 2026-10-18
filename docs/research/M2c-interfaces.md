@@ -1196,3 +1196,29 @@ layer delete, the replaced `S-A10-BAD-MISSING-EN-TITLE`).
   `guessCategoryIcon`; `S-A39-BAD-ICON-NOT-GUESSED`), `inviteAdmin` 3 (the new invitation's link is copied at once; Copy
   stays). `inviteAdmin`, `revertChange` and `revokeAdmin` are now counted by their e2e flows. What would cut more and
   waits for the user: `DECISIONS-for-review.md` §38d.
+
+## Addendum 2026-10-18: the user's decisions §34b, §34g, §34i and the review polish
+
+`DECISIONS-for-review.md` §41 has the details and the measurements.
+
+- **§4.2, loading**: the admin page loads the ES module `admin.mjs` (no IIFE); each area is a lazy chunk
+  (`packages/admin/src/pages/<area>.ts`: its elements from `@hcm/ui/admin/areas/<area>`, its store module), loaded by
+  `routing/area-pages.ts` when its route first opens; Terra Draw is the `terra-draw` chunk, imported by `loadTerraDraw`
+  on the first drawing tools. §11.2's marked sections of `packages/admin/src/index.ts` and `define.ts` are gone with the
+  eager registration; an area adds its chunk file and its line in `AREA_CHUNKS`. A chunk that does not load shows Try
+  again (`S-A29-BAD-CHUNK-LOAD`).
+- **§4.3–§4.4, Terra Draw installed** (CR-M2c-20 done): a new shape is still drawn by clicks (`click-growth.ts`, both
+  ports), so §5.6's budgets hold and Enter or a click on the first vertex finishes nothing (§4.4's "drawn once ... Enter
+  or a click on the first vertex finishes" is replaced by the click tools' rule: the shape exists from its second or
+  third click and grows until another tool is chosen); Terra Draw shows the shapes and its select mode drags the selected
+  feature, a vertex, or a midpoint (inserting one); `setMode('select', id)` selects `id`; a click moves a selected point;
+  the select mode leaves the keys to the editor's tools (no Delete key: the list removes a vertex, a right click on the
+  map too). §4.7's browser test with the real Terra Draw: `packages/ui/test/map/draw/terra-draw-real.test.ts`.
+- **§1.2, large and extra-large**: on an extra-large page (from 1600 px, the page's own class) the map-centric editors
+  put the map beside the form (photos and places: form 480 px; the layer editor: groups 560 px, the map kept in view);
+  from 1200 px to 1599 px the map stays above the form (the detail pane is under 1,000 px there). The other editors keep
+  the 840 px form.
+- **Dates** are typed in the admin's language (`zz.ll.aaaa`, `dd/mm/yyyy`), never in a native date input
+  (`S-A21-HAPPY-DATES-IN-LANGUAGE`, `S-A21-BAD-DATE-UNREAD`).
+- **CR-M2c-24's open question (§34i)**: once Setup is complete an empty address opens `#/home`, and Home takes Setup's
+  place on the compact bar (`S-A40-HAPPY-FIRST-SCREEN`, `S-A40-BAD-SETUP-INCOMPLETE`).

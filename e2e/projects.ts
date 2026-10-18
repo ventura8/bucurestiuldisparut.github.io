@@ -12,13 +12,16 @@ import type { WorkerOptions } from './support/test.js';
  *
  * | Tier | Projects | Specs |
  * | --- | --- | --- |
- * | `admin` | `admin-setup`, `admin-harness`, `admin-{c360,m768,l1440}-ro`, `admin-l1440-dark`, `admin-l1440-en`, `admin-steps-l1440-en`, `admin-{firefox,webkit}-l1440-ro` | `admin/{setup,harness,specs,steps}/` |
+ * | `admin` | `admin-setup`, `admin-harness`, `admin-{c360,m768,l1440}-ro`, `admin-l1440-dark`, `admin-l1440-en`, `admin-steps-l1440-en`, `admin-{firefox,webkit}-l1440-ro` | `admin/{setup,harness,specs,steps}/` (the Setup journey at `admin-c360-ro` and `admin-l1440-ro` only) |
  * | `smoke` | `harness`, `smoke-c360`, `smoke-l1440` | `specs/harness/` (the e2e preconditions), `specs/smoke/` (the viewer boots) |
  * | `a11y` | `a11y-reduced-motion`, `a11y-forced-colors` | `a11y/reduced-motion.spec.ts`, `a11y/forced-colors.spec.ts` |
  * | `nogl` | `nogl` (`--disable-3d-apis`) | `specs/viewer/no-webgl.spec.ts` |
- * | `tour` | the per-push tour: `tour-{x3840,l1440,c915l,c360}-{light,dark}-ro`, `tour-c360-light-en` | `tour/*.tour.ts` (layout, axe, ARIA; the viewer and the admin's editors) |
- * | `tour-matrix` | the other 35 `tour-<viewport>-<light|dark>-<ro|en>` of the 11 viewports (`all`, nightly) | `tour/*.tour.ts` |
- * | `fn` | `fn-c360-ro`, `fn-m768-ro`, `fn-l1440-ro`, `fn-l1440-en`, `fn-c360-dark` | `specs/viewer/`, `specs/starter-kit/` |
+ * | `tour` | the per-push tour: `tour-{x3840,l1440,c915l,c360}-light-ro` (the viewer's and the admin's journeys), `tour-{x3840,l1440,c915l,c360}-dark-ro` and `tour-c360-light-en` (the viewer's) | `tour/*.tour.ts` (layout, axe, ARIA) |
+ * | `tour-matrix` | the other 35 `tour-<viewport>-<light|dark>-<ro|en>` of the 11 viewports, the admin's journeys of the five per-push projects above that skip them (`tour-<…>-admin`), the Setup journey at `admin-{m768-ro,l1440-dark,l1440-en}-journey` and the window-class-independent functional specs at the other four functional projects (`fn-<…>-matrix`) (`all`, nightly) | `tour/*.tour.ts`, `admin/specs/journey.spec.ts`, `specs/viewer/` |
+ * | `fn` | `fn-c360-ro`, `fn-m768-ro`, `fn-l1440-ro`, `fn-l1440-en`, `fn-c360-dark` | `specs/viewer/`, `specs/starter-kit/` (the window-class-independent ones at `fn-l1440-ro` only) |
+ *
+ * Every scenario row runs on every push: what `tour-matrix` adds are repetitions of rows the push already ran at another
+ * project (`docs/research/DECISIONS-for-review.md` §29a, §39c, §42g).
  *
  * The run order is the order of this table: Playwright queues the projects in it, and an `E2E_SHARD` slice is a
  * contiguous part of that queue. The admin tier comes first, so its locked chain (see below) runs beside everything
@@ -109,6 +112,27 @@ function project(tier: Tier, name: string, testMatch: string | string[], use: Us
 const SPECS = ['viewer/**/*.spec.ts', 'starter-kit/**/*.spec.ts'];
 const NO_WEBGL_SPEC = 'viewer/no-webgl.spec.ts';
 
+/**
+ * The functional specs whose behaviour does not depend on the window class (DECISIONS-for-review.md §39c, §42g): the
+ * boot and its errors, deep links, the analytics consent, the crash reports, the embed API, geolocation, language and
+ * theme, About, the page's policy, no JavaScript, the starter kit. Each push runs them at `fn-l1440-ro`; the other four
+ * functional projects run them in `tour-matrix`. The specs whose panels, sheets or keys change with the window (Layers
+ * and the opacities, photos, places, the timeline, the keyboard, the responsive layouts) run at all five on every push.
+ */
+const ONE_PROJECT_SPECS = [
+    'viewer/about.spec.ts',
+    'viewer/boot.spec.ts',
+    'viewer/consent.spec.ts',
+    'viewer/content-security-policy.spec.ts',
+    'viewer/crash-reporting.spec.ts',
+    'viewer/deep-links.spec.ts',
+    'viewer/embed-api.spec.ts',
+    'viewer/geolocate.spec.ts',
+    'viewer/language-theme.spec.ts',
+    'viewer/no-javascript.spec.ts',
+    'starter-kit/**/*.spec.ts',
+];
+
 function smokeProjects(): E2eProject[] {
     return [
         project('smoke', 'harness', 'harness/**/*.spec.ts', chromium('l1440')),
@@ -123,16 +147,29 @@ function smokeProjects(): E2eProject[] {
  */
 const SCENARIO_TIMEOUT_MS = 60_000;
 
+/** The functional projects; the one that runs the window-class-independent specs on every push is `fn-l1440-ro`. */
+const FUNCTIONAL_VARIANTS: readonly { readonly name: string; readonly use: Use; readonly everySpec: boolean }[] = [
+    { name: 'fn-c360-ro', use: chromium('c360'), everySpec: false },
+    { name: 'fn-m768-ro', use: chromium('m768'), everySpec: false },
+    { name: 'fn-l1440-ro', use: chromium('l1440'), everySpec: true },
+    { name: 'fn-l1440-en', use: chromium('l1440', 'en'), everySpec: false },
+    { name: 'fn-c360-dark', use: { ...chromium('c360'), colorScheme: 'dark' }, everySpec: false },
+];
+
 function functionalProjects(): E2eProject[] {
-    const fn = (name: string, use: Use): E2eProject =>
-        project('fn', name, SPECS, use, { testIgnore: NO_WEBGL_SPEC, timeout: SCENARIO_TIMEOUT_MS });
-    return [
-        fn('fn-c360-ro', chromium('c360')),
-        fn('fn-m768-ro', chromium('m768')),
-        fn('fn-l1440-ro', chromium('l1440')),
-        fn('fn-l1440-en', chromium('l1440', 'en')),
-        fn('fn-c360-dark', { ...chromium('c360'), colorScheme: 'dark' }),
-    ];
+    return FUNCTIONAL_VARIANTS.map(({ name, use, everySpec }) =>
+        project('fn', name, SPECS, use, {
+            testIgnore: everySpec ? NO_WEBGL_SPEC : [NO_WEBGL_SPEC, ...ONE_PROJECT_SPECS],
+            timeout: SCENARIO_TIMEOUT_MS,
+        }),
+    );
+}
+
+/** The window-class-independent specs at the four functional projects that skip them on a push (`tour-matrix`). */
+function functionalMatrixProjects(): E2eProject[] {
+    return FUNCTIONAL_VARIANTS.filter((variant) => !variant.everySpec).map(({ name, use }) =>
+        project('tour-matrix', `${name}-matrix`, ONE_PROJECT_SPECS, use, { timeout: SCENARIO_TIMEOUT_MS }),
+    );
 }
 
 interface TourVariant {
@@ -158,21 +195,36 @@ function tourVariants(): TourVariant[] {
 /**
  * The per-push tour (tier `tour`): a phone, a phone held landscape (compact height), a laptop and a 4K screen, light and
  * dark, in Romanian, plus the phone in English. Every tour test, and so every tour scenario row, runs on every push;
- * the other 35 combinations are the `tour-matrix` tier.
+ * the other 35 combinations are the `tour-matrix` tier. The admin's journeys run on a push in light, in Romanian, at the
+ * four viewports; at the dark and English projects of the push they are `tour-matrix`'s (DECISIONS-for-review.md §39c,
+ * §42g: their states, the fifty categories among them, are the same rows again in another scheme or language).
  */
 const PUSH_TOUR_VIEWPORTS: readonly ViewportName[] = ['c360', 'c915l', 'l1440', 'x3840'];
 const PUSH_TOUR_ENGLISH: TourVariant = { viewport: 'c360', scheme: 'light', lang: 'en' };
+
+const VIEWER_TOUR = 'viewer.tour.ts';
+const ADMIN_TOURS = 'admin-*.tour.ts';
 
 function isPushTour(variant: TourVariant): boolean {
     const english = variant.viewport === PUSH_TOUR_ENGLISH.viewport && variant.scheme === PUSH_TOUR_ENGLISH.scheme;
     return variant.lang === 'ro' ? PUSH_TOUR_VIEWPORTS.includes(variant.viewport) : english;
 }
 
-function tourProject(tier: 'tour' | 'tour-matrix', { viewport, scheme, lang }: TourVariant): E2eProject {
+/** A per-push tour project that runs the admin's journeys too: light, in Romanian. */
+function runsAdminTourOnPush(variant: TourVariant): boolean {
+    return variant.scheme === 'light' && variant.lang === 'ro';
+}
+
+function tourProject(
+    tier: 'tour' | 'tour-matrix',
+    variant: TourVariant,
+    files: { readonly suffix: string; readonly match: string },
+): E2eProject {
+    const { viewport, scheme, lang } = variant;
     return project(
         tier,
-        `tour-${viewport}-${scheme}-${lang}`,
-        '**/*.tour.ts',
+        `tour-${viewport}-${scheme}-${lang}${files.suffix}`,
+        files.match,
         { ...chromium(viewport, lang), colorScheme: scheme },
         // Up to seven states per test, each through both generic checkers (axe, a full Tab round, the text-spacing and
         // reflow variants): a 3840 px frame under SwiftShader took 90 s on a loaded laptop (2026-10-17), so 240 s.
@@ -180,16 +232,22 @@ function tourProject(tier: 'tour' | 'tour-matrix', { viewport, scheme, lang }: T
     );
 }
 
+const EVERY_TOUR = { suffix: '', match: '**/*.tour.ts' } as const;
+
 function tourProjects(): E2eProject[] {
     return tourVariants()
         .filter((variant) => isPushTour(variant))
-        .map((variant) => tourProject('tour', variant));
+        .map((variant) => tourProject('tour', variant, runsAdminTourOnPush(variant) ? EVERY_TOUR : { suffix: '', match: VIEWER_TOUR }));
 }
 
 function tourMatrixProjects(): E2eProject[] {
-    return tourVariants()
+    const others = tourVariants()
         .filter((variant) => !isPushTour(variant))
-        .map((variant) => tourProject('tour-matrix', variant));
+        .map((variant) => tourProject('tour-matrix', variant, EVERY_TOUR));
+    const adminOfPush = tourVariants()
+        .filter((variant) => isPushTour(variant) && !runsAdminTourOnPush(variant))
+        .map((variant) => tourProject('tour-matrix', variant, { suffix: '-admin', match: ADMIN_TOURS }));
+    return [...adminJourneyMatrixProjects(), ...adminOfPush, ...others, ...functionalMatrixProjects()];
 }
 
 /** Each special runs only its own spec (selected by file, never by skip): the emulation is what the spec checks. */
@@ -223,7 +281,7 @@ function noWebGlProjects(): E2eProject[] {
  */
 const ADMIN_TIMEOUT_MS = 150_000;
 
-function adminProject(name: string, testMatch: string, use: Use): E2eProject {
+function adminProject(name: string, testMatch: string, use: Use, extra: Partial<E2eProject> = {}): E2eProject {
     return {
         name,
         testDir: 'admin',
@@ -232,7 +290,32 @@ function adminProject(name: string, testMatch: string, use: Use): E2eProject {
         dependencies: ['admin-setup'],
         timeout: ADMIN_TIMEOUT_MS,
         metadata: { tier: 'admin' },
+        ...extra,
     };
+}
+
+/** The admin tier's own setup: the admin build and the emulators answer. */
+function adminSetupProject(): E2eProject {
+    return { name: 'admin-setup', testDir: 'admin/setup', testMatch: '**/*.setup.ts', use: chromium('l1440'), metadata: { tier: 'admin' } };
+}
+
+/**
+ * The owner's whole Setup journey (about two minutes behind the admin tier's lock) runs on a push at a phone and a laptop
+ * (`admin-c360-ro`, `admin-l1440-ro`); at the tablet, in the dark scheme and in English it is a repetition of the same
+ * rows, run by `tour-matrix` (DECISIONS-for-review.md §39c, §42g).
+ */
+const JOURNEY_SPEC = 'specs/journey.spec.ts';
+const JOURNEY_MATRIX: readonly { readonly name: string; readonly use: Use }[] = [
+    { name: 'admin-m768-ro', use: chromium('m768') },
+    { name: 'admin-l1440-dark', use: { ...chromium('l1440'), colorScheme: 'dark' } },
+    { name: 'admin-l1440-en', use: chromium('l1440', 'en') },
+];
+
+function adminJourneyMatrixProjects(): E2eProject[] {
+    return [
+        adminSetupProject(),
+        ...JOURNEY_MATRIX.map(({ name, use }) => adminProject(`${name}-journey`, JOURNEY_SPEC, use, { metadata: { tier: 'tour-matrix' } })),
+    ];
 }
 
 /**
@@ -244,23 +327,17 @@ function adminProject(name: string, testMatch: string, use: Use): E2eProject {
  * (scripts/ci/e2e-split.sh gives the NUC, about twice as fast, parts 1-2 and this machine part 3).
  */
 function adminProjects(part: ShardRange | null): E2eProject[] {
-    const setup: E2eProject = {
-        name: 'admin-setup',
-        testDir: 'admin/setup',
-        testMatch: '**/*.setup.ts',
-        use: chromium('l1440'),
-        metadata: { tier: 'admin' },
-    };
     const SPECS_GLOB = 'specs/**/*.spec.ts';
     const FORMS_GLOB = 'specs/editing/**/*.spec.ts';
+    const noJourney = { testIgnore: JOURNEY_SPEC };
     const tests = [
         adminProject('admin-c360-ro', SPECS_GLOB, chromium('c360')),
-        adminProject('admin-m768-ro', SPECS_GLOB, chromium('m768')),
+        adminProject('admin-m768-ro', SPECS_GLOB, chromium('m768'), noJourney),
         adminProject('admin-l1440-ro', SPECS_GLOB, chromium('l1440')),
         // The dark scheme: colours, rings and contrast are the scheme's (the visual audit of 2026-10-17 found the admin
         // checked only in light); dealt to part 1 with admin-c360-ro.
-        adminProject('admin-l1440-dark', SPECS_GLOB, { ...chromium('l1440'), colorScheme: 'dark' }),
-        adminProject('admin-l1440-en', SPECS_GLOB, chromium('l1440', 'en')),
+        adminProject('admin-l1440-dark', SPECS_GLOB, { ...chromium('l1440'), colorScheme: 'dark' }, noJourney),
+        adminProject('admin-l1440-en', SPECS_GLOB, chromium('l1440', 'en'), noJourney),
         adminProject('admin-harness', 'harness/**/*.spec.ts', chromium('l1440')),
         // The Setup Assistant's steps one by one (their bad paths, each from a seeded state): what they check is the
         // server's answers and the card's words, not the layout, which the journey and the tour check at every window
@@ -270,7 +347,7 @@ function adminProjects(part: ShardRange | null): E2eProject[] {
         adminProject('admin-firefox-l1440-ro', FORMS_GLOB, otherBrowser('firefox', 'l1440')),
         adminProject('admin-webkit-l1440-ro', FORMS_GLOB, otherBrowser('webkit', 'l1440')),
     ];
-    return [setup, ...tests.filter((_, position) => inPart(position, part))];
+    return [adminSetupProject(), ...tests.filter((_, position) => inPart(position, part))];
 }
 
 const BY_TIER: Readonly<Record<Tier, (adminPart: ShardRange | null) => E2eProject[]>> = {
@@ -318,7 +395,10 @@ export function needsAdmin(tiers: readonly Tier[]): boolean {
     return tiers.some((tier) => ADMIN_TIERS.includes(tier));
 }
 
-/** `setup`, then the projects of `tiers` (of the admin tier, those of `adminPart` when given). */
+/**
+ * `setup`, then the projects of `tiers` (of the admin tier, those of `adminPart` when given); a project two tiers share
+ * (`admin-setup`, which the admin tier and `tour-matrix`'s journeys both need) once.
+ */
 export function e2eProjects(tiers: readonly Tier[], adminPart: ShardRange | null = null): E2eProject[] {
     const setup: E2eProject = {
         name: 'setup',
@@ -327,5 +407,6 @@ export function e2eProjects(tiers: readonly Tier[], adminPart: ShardRange | null
         use: chromium('l1440'),
         metadata: { tier: 'setup' },
     };
-    return [setup, ...tiers.flatMap((tier) => BY_TIER[tier](adminPart))];
+    const projects = [setup, ...tiers.flatMap((tier) => BY_TIER[tier](adminPart))];
+    return projects.filter((candidate, position) => projects.findIndex((other) => other.name === candidate.name) === position);
 }

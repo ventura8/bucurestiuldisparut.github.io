@@ -1,5 +1,5 @@
 /** A crash report as Cloud Error Reporting reads it (`functions/src/telemetry/error-event.ts`). */
-import { REPORTED_ERROR_EVENT_TYPE, reportedErrorEventSchema, type ErrorReport } from '@hcm/shared';
+import { REPORTED_ERROR_EVENT_TYPE, REPORTED_EVENT_MAX_BYTES, reportedErrorEventSchema, type ErrorReport } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { reportLocation, toReportedErrorEvent } from '../../src/telemetry/error-event.js';
@@ -20,6 +20,39 @@ function report(overrides: Partial<ErrorReport> = {}): ErrorReport {
         ...overrides,
     };
 }
+
+/** The UTF-8 size of an event as it is logged. */
+function bytesOf(value: unknown): number {
+    return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+}
+
+describe('toReportedErrorEvent: the size of a logged entry', () => {
+    it('badPath_theLargestReportIsLoggedWithinTheCapItsMessageCut @S-A24-BAD-TOO-LARGE', () => {
+        // Multi-byte characters everywhere the schema allows them, the page named twice (the request and the location).
+        const page = `https://viewer.e2e.test/${'ă'.repeat(2000)}`;
+        const stack = `TypeError: ${'ș'.repeat(1000)}\n${'    at ț (https://viewer.e2e.test/a.js:1:1)\n'.repeat(160)}`.slice(0, 8000);
+        const event = toReportedErrorEvent(report({ message: 'î'.repeat(1000), stack, page }), 'viewer');
+
+        expect(bytesOf(event)).toBeLessThanOrEqual(REPORTED_EVENT_MAX_BYTES);
+        expect(event.message.length).toBeGreaterThan(1000);
+        expect(reportedErrorEventSchema.safeParse(event).success).toBe(true);
+    });
+
+    it('happyPath_aSmallReportIsLoggedWhole', () => {
+        const event = toReportedErrorEvent(
+            report({ stack: 'TypeError: map is undefined\n    at draw (https://viewer.e2e.test/a.js:1:1)' }),
+            'admin',
+        );
+
+        expect(event.message).toBe('TypeError: map is undefined\n    at draw (https://viewer.e2e.test/a.js:1:1)');
+    });
+
+    it('badPath_aLimitBelowTheFixedFieldsKeepsOneCharacterOfTheMessage', () => {
+        const event = toReportedErrorEvent(report(), 'viewer', 100);
+
+        expect(event.message).toBe('T');
+    });
+});
 
 describe('toReportedErrorEvent', () => {
     it('happyPath_aV8StackIsTheMessageAndItsFirstFrameTheLocation', () => {

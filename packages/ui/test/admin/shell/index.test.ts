@@ -42,7 +42,6 @@ describe('@hcm/ui/admin', () => {
                 'shellText',
                 'themeTokensOf',
                 'contentText',
-                'EDITOR_PAGE_TAGS',
             ]),
         );
         expect(admin.ADMIN_TAGS).toContain(admin.HCM_ADMIN_SHELL_TAG);
@@ -83,6 +82,5 @@ describe('@hcm/ui/admin', () => {
                 'HcmJobsPage',
             ]),
         );
-        expect(admin.EDITOR_PAGE_TAGS).toMatchObject({ home: 'hcm-home-page', jobs: 'hcm-jobs-page', crashes: 'hcm-crashes-list-page' });
     });
 });

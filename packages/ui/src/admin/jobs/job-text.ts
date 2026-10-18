@@ -1,6 +1,7 @@
 /**
- * The jobs' words (`docs/research/M2c-interfaces.md` §9.3): a job's type and status, a step's state, a log line's level.
- * A type the admin does not know yet (the raster pipeline's next ones, M3) reads as "Job".
+ * The jobs' words (`docs/research/M2c-interfaces.md` §9.3): a job's type and status, a step's name and state, a log line's
+ * level. A type the admin does not know yet (the raster pipeline's next ones, M3) reads as "Job"; an unknown step keeps
+ * its stored name.
  */
 import type { AdminContentKey, Locale } from '@hcm/shared';
 
@@ -35,6 +36,19 @@ const STEP_STATES: Readonly<Record<string, AdminContentKey>> = {
     skipped: 'adminContent.jobs.step.skipped',
 };
 
+/** The raster pipeline's steps (docs/research/PLAN.md → *Raster pipeline*) by their names in the admin's language. */
+const STEP_NAMES: Readonly<Record<string, AdminContentKey>> = {
+    doctor: 'adminContent.jobs.stepName.doctor',
+    fetch: 'adminContent.jobs.stepName.fetch',
+    locate: 'adminContent.jobs.stepName.locate',
+    crop: 'adminContent.jobs.stepName.crop',
+    georef: 'adminContent.jobs.stepName.georef',
+    warp: 'adminContent.jobs.stepName.warp',
+    export: 'adminContent.jobs.stepName.export',
+    publish: 'adminContent.jobs.stepName.publish',
+    delete: 'adminContent.jobs.stepName.delete',
+};
+
 const LEVELS: Readonly<Record<JobLogLinePort['level'], AdminContentKey>> = {
     info: 'adminContent.jobs.level.info',
     warn: 'adminContent.jobs.level.warn',
@@ -58,6 +72,12 @@ export function jobStatusText(locale: Locale, status: JobStatusPort): string {
 
 export function stepStateText(locale: Locale, state: string): string {
     return contentText(locale, STEP_STATES[state] ?? 'adminContent.jobs.step.pending');
+}
+
+/** A step by its name in the admin's language ("Downloading the scene" for `fetch`); a step the admin does not know as stored. */
+export function stepNameText(locale: Locale, name: string): string {
+    const key = STEP_NAMES[name];
+    return key === undefined ? name : contentText(locale, key);
 }
 
 export function levelText(locale: Locale, level: JobLogLinePort['level']): string {

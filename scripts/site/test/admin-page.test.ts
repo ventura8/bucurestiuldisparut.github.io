@@ -31,7 +31,7 @@ describe('renderAdminPage', () => {
         expect([...html.matchAll(/<(?:script|link) [^>]*>/g)].map(([tag]) => tag)).toEqual([
             '<link rel="icon" href="data:,">',
             `<link rel="stylesheet" href="${ADMIN_STYLESHEET_FILE}">`,
-            `<script src="${ADMIN_SCRIPT_FILE}" defer>`,
+            `<script type="module" src="${ADMIN_SCRIPT_FILE}">`,
         ]);
         expect(html).toContain(`<${ADMIN_SHELL_ELEMENT}></${ADMIN_SHELL_ELEMENT}>`);
         expect(html).toContain('<html lang="ro">');

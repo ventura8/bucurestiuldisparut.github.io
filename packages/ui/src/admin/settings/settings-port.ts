@@ -6,7 +6,14 @@
 import type { CityDoc, Locale, OverlayKind, PoiCategoryDoc, ThemeTokens, ValidationIssue } from '@hcm/shared';
 
 import type { DocStatePort, ListStatePort } from '../area-port.js';
-import type { DraftConflictPort, DraftStatePort, LayerItemPort, PreviewSinkPort, WriteOutcomePort } from '../layers/layers-port.js';
+import type {
+    DraftConflictPort,
+    DraftStatePort,
+    LayerItemPort,
+    MapStatusPort,
+    PreviewSinkPort,
+    WriteOutcomePort,
+} from '../layers/layers-port.js';
 
 export type SettingsSectionPort = 'area' | 'texts' | 'theme' | 'categories' | 'overlays';
 
@@ -100,6 +107,8 @@ export interface SettingsViewState {
     readonly categoryDeletion: CategoryDeletionPort;
     readonly overlays: { readonly rows: readonly OverlayRowPort[]; readonly changes: number; readonly saving: boolean };
     readonly reordering: boolean;
+    /** The page's map (area and overlays): its state, and where a rectangle being drawn is. */
+    readonly map: { readonly status: MapStatusPort; readonly drawing: 'first' | 'second' | null };
 }
 
 export interface SettingsIntentsPort {
@@ -135,4 +144,8 @@ export interface SettingsIntentsPort {
     saveOverlays(): Promise<WriteOutcomePort | null>;
     discardOverlays(): void;
     attachPreview(sink: PreviewSinkPort | null): void;
+    attachMap(container: HTMLElement): void;
+    zoomBy(delta: number): void;
+    drawBounds(): void;
+    useMapView(): void;
 }

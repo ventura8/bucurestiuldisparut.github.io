@@ -7,6 +7,7 @@
 import { css } from 'lit';
 
 import { editingStyles } from '../editing/editing-styles.js';
+import { mapBesideStyles } from '../editing/wide-layout.js';
 
 export const poiStyles = [
     ...editingStyles,
@@ -266,4 +267,5 @@ export const poiStyles = [
             list-style: none;
         }
     `,
+    mapBesideStyles,
 ];

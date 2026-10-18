@@ -1,10 +1,11 @@
 /**
  * The services the editor areas bring for each other (`docs/research/M2c-interfaces.md` §2.2, §11.2): the photos'
- * resumable uploads, the pois' map factory. Each owner declares its member inside its own section of
+ * resumable uploads, the pois' map factory with Terra Draw. Each owner declares its member inside its own section of
  * `../content/services.ts` and builds it inside the same section here, from the entry's browser parts and Firebase
  * handles; nobody edits another's section or moves the markers.
  */
 import { createLogger } from '@hcm/shared';
+import { loadTerraDraw } from '@hcm/ui/map/draw';
 
 import type { AreaServiceParts } from '../content/services.js';
 import { documentsPort } from '../firebase/adapters.js';
@@ -31,7 +32,9 @@ export function areaServices(sources: AreaServiceSources): AreaServiceParts {
         maps: adminMapFactoryOf({
             scope: globalThis,
             readDoc: (path) => documentsPort(firebaseSdk, sources.handles).get(path),
-            terraDraw: null,
+            // Terra Draw's drags, loaded with the first drawing tools (CR-M2c-20, DECISIONS-for-review.md §34g); the click
+            // tools and the vertex list stay the single-pointer and keyboard ways, and the fallback if it fails to load.
+            terraDraw: loadTerraDraw,
             log: createLogger('admin-map'),
             fixedToken: sources.mapToken,
         }),

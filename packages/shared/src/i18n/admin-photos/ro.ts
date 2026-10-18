@@ -57,6 +57,7 @@ export const ro = {
     'adminContent.photos.bulk.setFieldsAction': 'Autor, sursă și licență',
     'adminContent.photos.bulk.confirmRightsAction': 'Confirmă drepturile',
     'adminContent.photos.bulk.deleteAction': 'Șterge',
+    'adminContent.photos.bulk.more': 'Alte acțiuni pentru selecție',
     'adminContent.photos.bulk.publish': 'Publicate: {done}. Sărite: {skipped}. Harta publică se actualizează în aproximativ un minut.',
     'adminContent.photos.bulk.unpublish': 'Retrase: {done}. Sărite: {skipped}.',
     'adminContent.photos.bulk.confirmRights': 'Drepturi confirmate: {done}. Sărite: {skipped}.',

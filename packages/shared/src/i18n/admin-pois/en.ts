@@ -102,6 +102,7 @@ export const en: Readonly<Record<AdminPoisKey, string>> = {
     'adminContent.pois.bulk.moveTitle': 'Move the selected places ({count}) to the category:',
     'adminContent.pois.bulk.moveConfirm': 'Move',
     'adminContent.pois.bulk.delete': 'Delete',
+    'adminContent.pois.bulk.more': 'More actions for the selection',
     'adminContent.pois.bulk.deleteTitle': 'Delete the selected places ({count})?',
     'adminContent.pois.bulk.deleteBody': 'They leave the public map within about a minute. Restore them from History, the Deleted filter.',
     'adminContent.pois.bulkDone': 'Places changed: {changed}; skipped: {skipped}.',

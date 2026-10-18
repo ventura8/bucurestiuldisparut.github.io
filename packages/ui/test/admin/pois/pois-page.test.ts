@@ -4,7 +4,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { withDraft } from '../../../src/admin/pois/hcm-poi-list.js';
 import { saveFile } from '../../../src/admin/pois/hcm-pois-page.js';
 import { categoryName, localized, poiHref, reasonText, refusalText, yearsText } from '../../../src/admin/pois/poi-text.js';
-import { cleanup, deep, deepAll, deepText, defineAll, updated } from '../shell/fake-app.js';
+import { bulkAction, cleanup, deep, deepAll, deepText, defineAll, updated } from '../shell/fake-app.js';
 import { area, asked, CATEGORIES, draft, editor, place, poisPage, poisState, ready, route, VALUE } from './fixtures.js';
 
 function press(element: HTMLElement): void {
@@ -92,21 +92,18 @@ describe('<hcm-pois-page>: bulk actions and files', () => {
         const { element } = await poisPage(store);
         expect(deepText(element)).toContain('Selected: 2');
 
-        const bulk = deep(element, '.bulk');
-        const buttons = deepAll(bulk, 'hcm-button');
-        press(buttons[0] ?? bulk);
-        press(buttons[1] ?? bulk);
-        press(buttons[2] ?? bulk);
-        press(buttons[3] ?? bulk);
-        press(deep(bulk, 'hcm-button.move'));
-        await updated(element);
+        const bulk = deep(element, '.bulk-bar');
+        press(deep(bulk, 'hcm-button.select-all'));
+        press(deep(bulk, 'hcm-icon-button.clear'));
+        await bulkAction(element, 'publish');
+        await bulkAction(element, 'unpublish');
+        await bulkAction(element, 'move');
         const select = deep(element, '#move-category') as HTMLSelectElement;
         select.value = 'parcuri';
         select.dispatchEvent(new Event('change'));
         press(deep(element, 'hcm-button.move-confirm'));
         await updated(element);
-        press(deep(bulk, 'hcm-button.delete'));
-        await updated(element);
+        await bulkAction(element, 'delete');
         const confirm = deep(element, 'hcm-confirm-dialog') as HTMLElement & { open: boolean; headline: string };
         expect(confirm.headline).toBe('Delete the selected places (2)?');
         deep(confirm, '.confirm').click();
@@ -126,12 +123,10 @@ describe('<hcm-pois-page>: bulk actions and files', () => {
         const store = area(poisState({ selection: ['cismigiu'] }));
         const { element } = await poisPage(store);
 
-        press(deep(element, '.bulk hcm-button.move'));
-        await updated(element);
+        await bulkAction(element, 'move');
         deep(element, '.move-dialog').dispatchEvent(new CustomEvent('hcm-close', { detail: { returnValue: 'cancel' } }));
         await updated(element);
-        press(deep(element, '.bulk hcm-button.delete'));
-        await updated(element);
+        await bulkAction(element, 'delete');
         deep(deep(element, 'hcm-confirm-dialog'), '.cancel').click();
         await updated(element);
 

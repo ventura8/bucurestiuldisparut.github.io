@@ -81,19 +81,20 @@ describe('<hcm-setup-deploy>', () => {
     });
 });
 
+/** A Mapbox card over a fake port holding `changes`. */
+async function mapbox(changes: ViewChanges = {}, locale = 'ro') {
+    const port = new FakeSetupPort(setupView(changes));
+    const element = await fixture<HcmSetupMapbox>(
+        html`<hcm-setup-mapbox .view=${port.getState()} .intents=${port.intents} locale=${locale}></hcm-setup-mapbox>`,
+    );
+    return { port, element };
+}
+
 describe('<hcm-setup-mapbox>', () => {
     afterEach(() => {
         vi.restoreAllMocks();
         cleanup();
     });
-
-    async function mapbox(changes: ViewChanges = {}, locale = 'ro') {
-        const port = new FakeSetupPort(setupView(changes));
-        const element = await fixture<HcmSetupMapbox>(
-            html`<hcm-setup-mapbox .view=${port.getState()} .intents=${port.intents} locale=${locale}></hcm-setup-mapbox>`,
-        );
-        return { port, element };
-    }
 
     it('happyPath_theScopesToTickCanBeCopied', async () => {
         const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
@@ -175,8 +176,76 @@ describe('<hcm-setup-mapbox>', () => {
     });
 
     it('happyPath_aSavedTokenNamesItsAccount', async () => {
-        const { element } = await mapbox({ mapbox: { user: 'ventura86', requiredScopes: [] } });
+        const { element } = await mapbox({
+            mapbox: {
+                user: 'ventura86',
+                requiredScopes: [],
+                rotation: { audience: null, busy: false, retiresOldAt: null, done: false, error: null },
+            },
+        });
 
         expect(shadowPart(element, '.success').textContent).toBe('Salvat pentru contul Mapbox ventura86.');
+    });
+});
+
+describe('<hcm-setup-mapbox>: replacing a token', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        cleanup();
+    });
+
+    const NO_ROTATION = { audience: null, busy: false, retiresOldAt: null, done: false, error: null } as const;
+
+    it('happyPath_aPublicTokenIsReplacedAfterTheConfirmation', async () => {
+        const { port, element } = await mapbox({ mapbox: { user: 'ventura86', requiredScopes: [], rotation: NO_ROTATION } }, 'en');
+
+        shadowPart(element, 'hcm-button.rotate-viewer').click();
+        await element.updateComplete;
+        const dialog = shadowPart(element, 'hcm-confirm-dialog') as HTMLElement & { open: boolean; headline: string };
+        expect([dialog.open, dialog.headline]).toEqual([true, "Replace the visitors' token?"]);
+        expect(await axeViolations(element)).toEqual([]);
+        dialog.dispatchEvent(new CustomEvent('hcm-confirm'));
+        await element.updateComplete;
+
+        expect(port.calls).toEqual([['rotatePublicToken', 'viewer']]);
+        expect(dialog.open).toBe(false);
+    });
+
+    it('badPath_cancellingTheReplacementReplacesNothing', async () => {
+        const { port, element } = await mapbox({ mapbox: { user: 'ventura86', requiredScopes: [], rotation: NO_ROTATION } }, 'en');
+
+        shadowPart(element, 'hcm-button.rotate-admin').click();
+        await element.updateComplete;
+        const dialog = shadowPart(element, 'hcm-confirm-dialog') as HTMLElement & { open: boolean; headline: string };
+        expect(dialog.headline).toBe("Replace the admin's token?");
+        dialog.dispatchEvent(new CustomEvent('hcm-cancel'));
+        await element.updateComplete;
+        dialog.dispatchEvent(new CustomEvent('hcm-confirm'));
+
+        expect(port.calls).toEqual([]);
+        expect(dialog.open).toBe(false);
+    });
+
+    it.each([
+        [{ ...NO_ROTATION, audience: 'viewer', busy: true }, 'Replacing the token…'],
+        [
+            { ...NO_ROTATION, audience: 'viewer', done: true, retiresOldAt: '2026-10-12T09:10:00.000Z' },
+            'The new token is in use. The old one is deleted at',
+        ],
+        [{ ...NO_ROTATION, audience: 'admin', done: true }, 'The new token is in use.'],
+    ] as const)('happyPath_theReplacementSaysWhereItIs %#', async (rotation, text) => {
+        const { element } = await mapbox({ mapbox: { user: 'ventura86', requiredScopes: [], rotation } }, 'en');
+
+        expect(shadowPart(element, '.rotation [role="status"]').textContent).toContain(text);
+    });
+
+    it('badPath_aRefusedReplacementSaysWhyAndNoTokenOffersNone', async () => {
+        const error = { key: 'apiError.mapbox.notConfigured' } as const;
+        const { element } = await mapbox({ mapbox: { user: 'ventura86', requiredScopes: [], rotation: { ...NO_ROTATION, error } } }, 'en');
+
+        expect(shadowPart(element, '.rotation [role="alert"]').textContent).not.toBe('');
+        cleanup();
+        const none = await mapbox();
+        expect(none.element.shadowRoot?.querySelector('.rotation')).toBeNull();
     });
 });

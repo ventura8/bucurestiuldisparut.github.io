@@ -6,6 +6,15 @@
 import { css } from 'lit';
 
 export const settingsStyles = css`
+    /* The page's map (area and overlays sections): the layers editor's height; without a map, its note only. */
+    .settings-map {
+        block-size: clamp(240px, 40vh, 420px);
+    }
+
+    .settings-map[no-map] {
+        block-size: auto;
+    }
+
     /* A problem several fields share (the city's four edges), said once below them in the fields' error style. */
     .shared-error {
         margin: 0;

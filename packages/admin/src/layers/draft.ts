@@ -94,6 +94,8 @@ function withFields<T extends object>(value: T, from: T, fields: readonly string
 export interface DraftDeps<T> {
     readonly store: ContentStore;
     readonly changed: (state: DraftState<T>) => void;
+    /** True while the admin's access is removed (§35e, `DECISIONS-for-review.md` §42d): `edit` changes nothing. */
+    readonly locked?: () => boolean;
 }
 
 export class EditDraft<T extends object> {
@@ -140,7 +142,7 @@ export class EditDraft<T extends object> {
 
     edit(patch: Partial<T>): void {
         const value = this.#state.value;
-        if (value === null) {
+        if (value === null || this.#deps.locked?.() === true) {
             return;
         }
         this.#set({ ...this.#state, value: { ...value, ...patch } });

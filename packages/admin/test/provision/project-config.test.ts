@@ -33,7 +33,7 @@ describe('projectNames', () => {
         expect([names.privateBucket, names.publicBucket]).toEqual(['demo-hcm.firebasestorage.app', 'demo-hcm-public']);
         expect(names.adminOrigins).toEqual(['https://demo-hcm.web.app', 'https://demo-hcm.firebaseapp.com']);
         expect(names.member('gh-deployer')).toBe('serviceAccount:gh-deployer@demo-hcm.iam.gserviceaccount.com');
-        expect(SERVICE_ACCOUNT_IDS).toEqual(['fn-admin', 'fn-events', 'job-raster', 'gh-deployer']);
+        expect(SERVICE_ACCOUNT_IDS).toEqual(['fn-admin', 'fn-events', 'fn-crash', 'job-raster', 'gh-deployer']);
     });
 });
 
@@ -51,6 +51,7 @@ describe('the role table', () => {
             ...SECRET_IDS.map((secret) => `secret:${secret}`),
             'serviceAccount:fn-admin@demo-hcm.iam.gserviceaccount.com',
             'serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com',
+            'serviceAccount:fn-crash@demo-hcm.iam.gserviceaccount.com',
             'serviceAccount:job-raster@demo-hcm.iam.gserviceaccount.com',
         ]);
         expect(project?.bindings).toContainEqual({
@@ -62,6 +63,16 @@ describe('the role table', () => {
             'serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com',
         );
         expect(REQUIRED_APIS).toHaveLength(27);
+    });
+
+    it('badPath_theCrashEndpointsAccountHoldsNoRoleOnlyTheDeployerMayActAsIt', () => {
+        const crash = 'serviceAccount:fn-crash@demo-hcm.iam.gserviceaccount.com';
+        const table = roleTable(PROJECT, agents, false);
+
+        expect(table.flatMap((policy) => policy.bindings).filter((binding) => binding.member === crash)).toEqual([]);
+        expect(table.find((policy) => policy.resource === 'fn-crash@demo-hcm.iam.gserviceaccount.com')?.bindings).toEqual([
+            { role: 'roles/iam.serviceAccountUser', member: 'serviceAccount:gh-deployer@demo-hcm.iam.gserviceaccount.com' },
+        ]);
     });
 
     it('badPath_withoutDefaultGrantsTheComputeAccountBuilds', () => {

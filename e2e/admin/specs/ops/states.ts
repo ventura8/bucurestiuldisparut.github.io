@@ -8,6 +8,10 @@ export const OPS_STATES = {
         title: "Home: the city's counts, what waits, the services' chips and the public map",
         visit: 'specs/ops/ops.spec.ts, the dashboard',
     },
+    'home.skipped': {
+        title: 'Home: Not on the public map, a skipped layer with its first issue and its link',
+        visit: 'specs/ops/skipped.spec.ts',
+    },
     'jobs.empty': { title: 'Jobs: none yet', visit: 'tour/admin-jobs.tour.ts' },
     'jobs.list': { title: 'Jobs: the live list with its status chips', visit: 'tour/admin-jobs.tour.ts' },
     'jobs.detail': {

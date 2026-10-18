@@ -55,8 +55,12 @@ export class HcmAdminMap extends LitElement {
                 background: var(--md-sys-color-surface-container, Canvas);
             }
 
-            /* Without a map the box is its note: no empty block above the form (the visual audit of 2026-10-18). */
+            /*
+             * Without a map the box is its note: no empty block above the form (the visual audit of 2026-10-18), and never
+             * less, so a column that runs out of height scrolls instead of laying the form over the note (lesson 143).
+             */
             :host([no-map]) {
+                flex: none;
                 min-block-size: 0;
             }
 

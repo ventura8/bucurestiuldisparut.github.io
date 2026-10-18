@@ -19,6 +19,8 @@ import type {
     Logger,
     ProvisionItem,
     RecordCloudRequest,
+    RotatePublicTokenRequest,
+    RotatePublicTokenResponse,
     SaveMapboxRequest,
     SaveMapboxResponse,
     SaveUsgsRequest,
@@ -160,6 +162,8 @@ export interface SetupBackend {
     createCity(): Promise<{ readonly created: boolean }>;
     saveMapbox(request: SaveMapboxRequest): Promise<SaveMapboxResponse>;
     saveUsgs(request: SaveUsgsRequest): Promise<SaveUsgsResponse>;
+    /** Replaces a public token (the panic button, security review §1.3); the old one is deleted 10 minutes later. */
+    rotatePublicToken(request: RotatePublicTokenRequest): Promise<RotatePublicTokenResponse>;
     analyticsConfig(request: { readonly cityId: string }): Promise<AnalyticsConfigResponse>;
     listGroups(request: ListGroupsRequest): Promise<ListGroupsResponse>;
 }

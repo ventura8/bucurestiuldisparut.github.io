@@ -89,6 +89,17 @@ export interface AdminState<Setup = unknown> {
      * stays, read-only (every write is refused at once), under a banner until sign-out (S-A20-BAD-REVOKED-WHILE-EDITING).
      */
     readonly revoked: boolean;
+    /**
+     * The admins' names by uid (`admins.list`), asked once a session needs them (an editor's conflict names who saved,
+     * `DECISIONS-for-review.md` §42c); forgotten at sign-out.
+     */
+    readonly people: Readonly<Record<string, string>>;
+    /**
+     * Setup's required steps are done (`setup/status`: billing, provisioning, Mapbox, USGS; `../app/setup-readiness.ts`),
+     * null while unknown. Once true the dashboard is the first screen and takes Setup's place on the compact bar
+     * (`DECISIONS-for-review.md` §34i); this browser remembers it, so the next visit opens the dashboard at once.
+     */
+    readonly setupReady: boolean | null;
     /** From the web configuration: the project the texts name, the domain of Google's unverified-app screen. */
     readonly projectId: string;
     readonly authDomain: string;

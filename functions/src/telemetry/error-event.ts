@@ -4,7 +4,7 @@
  * `context.reportLocation` always, so errors whose stack Error Reporting cannot parse (Firefox, Safari) are grouped
  * by their first frame or, without one, by the page.
  */
-import { REPORTED_ERROR_EVENT_TYPE, redactText, type ErrorReport, type ReportedErrorEvent } from '@hcm/shared';
+import { REPORTED_ERROR_EVENT_TYPE, REPORTED_EVENT_MAX_BYTES, redactText, type ErrorReport, type ReportedErrorEvent } from '@hcm/shared';
 
 /**
  * `reportedErrorEventSchema` limits. A redacted value can be longer than the report's (`[redacted]` replaces an
@@ -80,10 +80,41 @@ function stackMessage(message: string, stack: string | undefined): string {
     return stack.includes(message) ? stack : `${message}\n${stack}`;
 }
 
-/** The `ReportedErrorEvent` of a validated report from `service` (decided by the report's origin, never its body). */
-export function toReportedErrorEvent(report: ErrorReport, service: ErrorService): ReportedErrorEvent {
+/** The UTF-8 size of the event as it is logged. */
+function loggedBytes(event: ReportedErrorEvent): number {
+    return new TextEncoder().encode(JSON.stringify(event)).byteLength;
+}
+
+/**
+ * The event within `REPORTED_EVENT_MAX_BYTES` (the worst-case logging cost, `DECISIONS-for-review.md` §42f): redaction can
+ * lengthen a value and the page is named twice, so an event over the limit loses the end of its `message` (each character
+ * cut removes at least one byte; a second pass covers a cut in the middle of an escaped character).
+ */
+function fitted(event: ReportedErrorEvent, limit: number): ReportedErrorEvent {
+    let fitting = event;
+    let excess = loggedBytes(fitting) - limit;
+    while (excess > 0 && fitting.message.length > 1) {
+        fitting = { ...fitting, message: fitting.message.slice(0, Math.max(1, fitting.message.length - excess)) };
+        excess = loggedBytes(fitting) - limit;
+    }
+    return fitting;
+}
+
+/**
+ * The `ReportedErrorEvent` of a validated report from `service` (decided by the report's origin, never its body), at most
+ * `limit` bytes as logged.
+ */
+export function toReportedErrorEvent(
+    report: ErrorReport,
+    service: ErrorService,
+    limit: number = REPORTED_EVENT_MAX_BYTES,
+): ReportedErrorEvent {
     const stack = report.stack === undefined ? undefined : redactText(report.stack);
     const page = redactText(report.page).slice(0, MAX.url);
+    return fitted(eventOf(report, service, stack, page), limit);
+}
+
+function eventOf(report: ErrorReport, service: ErrorService, stack: string | undefined, page: string): ReportedErrorEvent {
     return {
         '@type': REPORTED_ERROR_EVENT_TYPE,
         message: stackMessage(redactText(report.message), stack).slice(0, MAX.message),

@@ -27,3 +27,11 @@ export function colorLibrary(): ColorLibrary {
 export function themeFromSeed(seed: string): DynamicColor.ThemeTokenSet {
     return colorLibrary().themeFromSeed(seed);
 }
+
+/** `contrastIssues` of the loaded library (Settings' check of a seed colour's tokens). */
+export function contrastIssuesOf(
+    tokens: Parameters<ColorLibrary['contrastIssues']>[0],
+    minimum: number,
+): ReturnType<ColorLibrary['contrastIssues']> {
+    return colorLibrary().contrastIssues(tokens, minimum);
+}

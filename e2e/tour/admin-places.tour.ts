@@ -6,6 +6,7 @@ import { recordLiveRegions } from '../support/live-regions.js';
 import { expectStateSound } from '../support/state-check.js';
 import { adminVisit } from './states.js';
 import { expect, test } from '../admin/support/content-test.js';
+import { menuDialog } from '../admin/support/menu.js';
 import { chooseImport, feature, poisText, seedCategories, seedPlace, seedPoisCity } from '../admin/specs/pois/places.js';
 
 /**
@@ -122,6 +123,12 @@ test(
         await expect(notice).toBeVisible();
         await notice.hover();
         await expectStateSound(page, adminVisit('pois.editor', lang, { announcements: [savedNotice] }));
+
+        // History and Redraw as… wait in the editor's overflow menu (a dialog; DECISIONS-for-review.md §42e).
+        const more = poisText(lang, 'adminContent.pois.actions');
+        await page.locator('hcm-poi-editor').getByRole('button', { name: more, exact: true }).click();
+        await expect(menuDialog(page, more).getByRole('button', { name: poisText(lang, 'adminContent.pois.history') })).toBeVisible();
+        await expectStateSound(page, adminVisit('pois.more-actions', lang, { escape: { opener: more } }));
 
         // Delete asks first; the place leaves the list.
         const remove = poisText(lang, 'adminContent.pois.delete');

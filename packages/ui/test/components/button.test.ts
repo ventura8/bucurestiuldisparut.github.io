@@ -47,6 +47,21 @@ describe('<hcm-button>', () => {
         expect(getComputedStyle(shadowPart(button, 'button')).height).toBe('40px');
     });
 
+    it('happyPath_aToggleStatesItsPressedStateOnTheFocusedButton', async () => {
+        const button = await fixture<HcmButton>(html`<hcm-button .pressed=${true}>Draw</hcm-button>`);
+
+        await expect.element(page.getByRole('button', { name: 'Draw', pressed: true })).toBeVisible();
+        button.pressed = false;
+        await button.updateComplete;
+        expect(shadowPart(button, 'button').getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('badPath_aButtonThatIsNoToggleStatesNoPressedState', async () => {
+        const button = await fixture<HcmButton>(html`<hcm-button>Go</hcm-button>`);
+
+        expect(shadowPart(button, 'button').hasAttribute('aria-pressed')).toBe(false);
+    });
+
     it('badPath_aDisabledButtonIgnoresClicks', async () => {
         const button = await fixture<HcmButton>(html`<hcm-button disabled>Nope</hcm-button>`);
         const clicks = recordEvents(button, 'click');

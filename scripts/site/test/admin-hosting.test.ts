@@ -53,9 +53,9 @@ describe('globToRegExp', () => {
     it.each([
         ['**', '/', true],
         ['**', '/a/b/c.js', true],
-        ['**/*.@(html|js|mjs|css|json)', '/admin.iife.js', true],
+        ['**/*.@(html|js|mjs|css|json)', '/admin.mjs', true],
         ['**/*.@(html|js|mjs|css|json)', '/legacy/bucharest/photos.json', true],
-        ['**/*.@(html|js|mjs|css|json)', '/admin.iife.js.map', false],
+        ['**/*.@(html|js|mjs|css|json)', '/admin.mjs.map', false],
         ['**/*.map', '/admin.mjs.map', true],
         ['**/.*', '/legacy/.hidden', true],
         ['**/.*', '/legacy/visible', false],
@@ -72,7 +72,7 @@ describe('hostingHeaders', () => {
     it('happyPath_everyMatchingRuleAddsItsHeadersInFileOrder', () => {
         const hosting = committedHosting();
 
-        expect(Object.keys(hostingHeaders(hosting, '/admin.iife.js'))).toEqual([
+        expect(Object.keys(hostingHeaders(hosting, '/admin.mjs'))).toEqual([
             'Content-Security-Policy',
             'Content-Security-Policy-Report-Only',
             'Cross-Origin-Opener-Policy',
@@ -114,9 +114,9 @@ describe('isIgnored and rewriteOf', () => {
     it('happyPath_sourceMapsAndDotFilesAreNeverDeployedAndEveryPathRewritesToTheApp', () => {
         const hosting = committedHosting();
 
-        expect(isIgnored(hosting, '/admin.iife.js.map')).toBe(true);
+        expect(isIgnored(hosting, '/admin.mjs.map')).toBe(true);
         expect(isIgnored(hosting, '/.env')).toBe(true);
-        expect(isIgnored(hosting, '/admin.iife.js')).toBe(false);
+        expect(isIgnored(hosting, '/admin.mjs')).toBe(false);
         expect(rewriteOf(hosting, '/photos/abc')).toBe('/index.html');
     });
 
@@ -128,8 +128,8 @@ describe('isIgnored and rewriteOf', () => {
 describe('e2eHostingHeaders', () => {
     it('happyPath_onlyTheCspDiffersFromHosting', () => {
         const hosting = committedHosting();
-        const production = hostingHeaders(hosting, '/admin.iife.js');
-        const e2e = e2eHostingHeaders(hosting, '/admin.iife.js', E2E_ORIGINS);
+        const production = hostingHeaders(hosting, '/admin.mjs');
+        const e2e = e2eHostingHeaders(hosting, '/admin.mjs', E2E_ORIGINS);
 
         expect({ ...e2e, [CSP_HEADER]: '' }).toEqual({ ...production, [CSP_HEADER]: '' });
         expect(e2e[CSP_HEADER]).toBe(e2eContentSecurityPolicy(String(production[CSP_HEADER]), E2E_ORIGINS));

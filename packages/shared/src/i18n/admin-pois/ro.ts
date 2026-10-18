@@ -104,6 +104,7 @@ export const ro = {
     'adminContent.pois.bulk.moveTitle': 'Muți locurile selectate ({count}) în categoria:',
     'adminContent.pois.bulk.moveConfirm': 'Mută',
     'adminContent.pois.bulk.delete': 'Șterge',
+    'adminContent.pois.bulk.more': 'Alte acțiuni pentru selecție',
     'adminContent.pois.bulk.deleteTitle': 'Ștergi locurile selectate ({count})?',
     'adminContent.pois.bulk.deleteBody': 'Dispar de pe harta publică în circa un minut. Le poți restaura din Istoric, filtrul Șterse.',
     'adminContent.pois.bulkDone': 'Locuri modificate: {changed}; sărite: {skipped}.',

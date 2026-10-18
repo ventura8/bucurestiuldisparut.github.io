@@ -48,11 +48,19 @@ export interface HealthChip {
     readonly detail: NoticeInput | null;
 }
 
-/** The public map: the build's state, when it last published, how many documents it left out. */
+/** A document the last manifest build left out, with its first issue (`manifests/{city}.skipped`). */
+interface SkippedDocument {
+    readonly entity: NonNullable<ManifestStateDoc['skipped']>[number]['entity'];
+    readonly id: string;
+    readonly code: NonNullable<ManifestStateDoc['skipped']>[number]['code'];
+    readonly path: string;
+}
+
+/** The public map: the build's state, when it last published, the documents it left out (S-A38-BAD-SKIPPED-SHOWN). */
 export interface PublicMapState {
     readonly status: ManifestStateDoc['status'];
     readonly builtAt: string | null;
-    readonly skipped: number;
+    readonly skipped: readonly SkippedDocument[];
     readonly error: NoticeInput | null;
 }
 
@@ -107,7 +115,7 @@ export function publicMapOf(manifest: ManifestStateDoc): PublicMapState {
     return {
         status: manifest.status,
         builtAt: manifest.builtAt === undefined ? null : isoOf(manifest.builtAt),
-        skipped: manifest.skipped?.length ?? 0,
+        skipped: manifest.skipped ?? [],
         error: manifest.error === undefined ? null : { key: manifest.error },
     };
 }

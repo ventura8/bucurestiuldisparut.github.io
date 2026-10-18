@@ -49,6 +49,9 @@ const BROWSER_TEST_DEPS = [
     'lit/directives/repeat.js',
     'zod',
     '@material/material-color-utilities',
+    // The admin's drawing tools (DECISIONS-for-review.md §34g), imported lazily by loadTerraDraw in the ui project's tests.
+    'terra-draw',
+    'terra-draw-mapbox-gl-adapter',
     '@hcm/test-support > axe-core',
 ];
 

@@ -189,7 +189,11 @@ export class CitySections {
         const spec = { path: FIRESTORE_PATHS.city(this.#services.cityId), schema: cityDocSchema, editable: SECTION_FIELDS[section] };
         return new EditDraft<CityDoc>(check === undefined ? spec : { ...spec, check }, {
             store: this.#services.store,
+            locked: () => this.#services.readOnly(),
             changed: (draft) => {
+                if (draft.conflict !== null) {
+                    this.#services.people();
+                }
                 this.#set({ ...this.#state, draft });
             },
         });

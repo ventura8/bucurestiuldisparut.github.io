@@ -5,7 +5,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { PHOTO_ACCEPT, photoFiles, yearOf } from '../../../src/admin/photos/hcm-admin-photo-list.js';
 import { stickyFrom } from '../../../src/admin/photos/photo-dialogs.js';
-import { cleanup, deep, deepAll, deepText, defineAll, updated } from '../shell/fake-app.js';
+import { bulkAction, cleanup, deep, deepAll, deepText, defineAll, updated } from '../shell/fake-app.js';
 import { area, editor, files, PhotosArea, photosPage, photosState, row, upload } from './fixtures.js';
 
 describe('<hcm-photos-page>: the list', () => {
@@ -124,12 +124,13 @@ describe('<hcm-photos-page>: the list', () => {
         const photos = area(photosState({ list: { ...photosState().list, selection: ['p1', 'p2'] } }));
         const { element } = await photosPage(photos);
 
-        const bar = deep(element, '.bulk');
-        expect(bar.textContent).toContain('Selected: 2');
-        for (const button of deepAll(bar, 'hcm-button')) {
-            deep(button, 'button').click();
+        const bar = deep(element, '.bulk-bar');
+        expect(deepText(bar)).toContain('Selected: 2');
+        deep(deep(bar, 'hcm-button.select-all'), 'button').click();
+        deep(deep(bar, 'hcm-icon-button.clear'), 'button').click();
+        for (const id of ['publish', 'unpublish', 'confirmRights', 'delete', 'setFields']) {
+            await bulkAction(element, id);
         }
-        await updated(element);
 
         expect(photos.calls.filter((call) => !call.startsWith('open') && !call.startsWith('attachMap'))).toEqual([
             'selectAll',
@@ -310,6 +311,20 @@ describe('<hcm-photos-page>: the map and the dialogs', () => {
         },
     );
 
+    it.each([
+        [1300, 'ready', false],
+        [2560, 'ready', true],
+        [2560, 'no-token', false],
+    ] as const)('happyPath_onA %d px page with the map %s the editor sits beside it: %s', async (width, map, beside) => {
+        // The review of the 2560 × 1440 screenshots: on an extra-large page the map is a supporting pane beside the form.
+        const { element } = await photosPage(area(photosState({ editor: editor(), map })), { params: ['p1'], width });
+        const box = deep(element, 'hcm-admin-map').getBoundingClientRect();
+        const form = deep(element, 'hcm-admin-photo-editor').getBoundingClientRect();
+
+        expect(form.left >= box.right).toBe(beside);
+        expect(beside ? form.width : 0).toBe(beside ? 480 : 0);
+    });
+
     it('happyPath_theOpenPhotosEditorAndBackToTheList', async () => {
         const photos = area(photosState({ editor: editor(), map: 'ready' }));
         const { element, app } = await photosPage(photos, { params: ['p1'], width: 400 });
@@ -405,8 +420,7 @@ describe('<hcm-photos-page>: the dialogs', () => {
     it('happyPath_authorSourceAndLicenceForTheSelection', async () => {
         const photos = area(photosState({ list: { ...photosState().list, selection: ['p1'] } }));
         const { element } = await photosPage(photos);
-        deep(deepAll(deep(element, '.bulk'), 'hcm-button')[4] ?? element, 'button').click();
-        await updated(element);
+        await bulkAction(element, 'setFields');
         const dialog = deep(element, 'hcm-dialog.set-fields');
 
         (deep(dialog, '#bulk-author') as HTMLInputElement).value = 'Ion';
@@ -422,8 +436,7 @@ describe('<hcm-photos-page>: the dialogs', () => {
     it('badPath_closingTheFieldsDialogChangesNothing', async () => {
         const photos = area(photosState({ list: { ...photosState().list, selection: ['p1'] } }));
         const { element } = await photosPage(photos);
-        deep(deepAll(deep(element, '.bulk'), 'hcm-button')[4] ?? element, 'button').click();
-        await updated(element);
+        await bulkAction(element, 'setFields');
         const dialog = deep(element, 'hcm-dialog.set-fields');
         (deep(dialog, '#bulk-license') as HTMLSelectElement).value = 'keep';
 

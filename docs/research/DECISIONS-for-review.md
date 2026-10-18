@@ -2154,7 +2154,7 @@ a file (its one test, `adapter-env.test.ts`, now runs in the `ui` project, which
 project without failing, so the config stays as it is. **Proposal** (ask-first file, not applied): drop that project and
 the `engine` project's `exclude` of `packages/engine/test/browser/**` in the next change to `vitest.config.ts`.
 
-### 34b. The admin page loads the ES module build — PROPOSED (for the user: it changes what the bundle budget measures)
+### 34b. The admin page loads the ES module build — APPLIED 2026-10-18 (user approved 2026-10-18; §41a)
 
 The admin page loads `admin.iife.js`, and an IIFE build inlines every dynamic import (§13a's finding for the engine), so
 each M2c page and Terra Draw would sit in the one file the budget measures (311 KB gzip of 450 on 2026-10-17, before
@@ -2194,7 +2194,7 @@ The M2 row `S-A10-BAD-MISSING-EN-TITLE` ("A photo without an English title canno
 `M1-interfaces.md` (Romanian required, English optional, the viewer falls back to Romanian). It is replaced by
 `S-A10-BAD-NOT-PUBLISHABLE` (processing not done, failed, or the licence unknown: the rules' publish gate).
 
-### 34g. Installing Terra Draw — PROPOSED (for the user: an npm install downloads files, which AGENTS.md puts under ask first)
+### 34g. Installing Terra Draw — APPLIED 2026-10-18 (user approved 2026-10-18; §41b)
 
 The pois workstream (2026-10-17) built `MapDrawPort` with two implementations: the Terra Draw adapter
 (`packages/ui/src/map/draw/terra-draw-adapter.ts`, written and unit-tested against the structural types of
@@ -2216,7 +2216,7 @@ The admin adds `mapbox-gl.js` of the pinned release from `api.mapbox.com` when i
 hash into the page (a `data-mapbox-integrity` attribute the entry reads) and the loader sets `integrity` and
 `crossOrigin` with it. Verify: `PIPELINE_STAGE=build` and the admin tier.
 
-### 34i. The dashboard as the admin's first screen — PROPOSED (for the user: what an admin sees first)
+### 34i. The dashboard as the admin's first screen — APPLIED 2026-10-18 (user approved 2026-10-18; §41c)
 
 The M2c brief's "dashboard home" is built as `#/home` (behaviour A40, `M2c-interfaces.md` CR-M2c-24): what the city
 holds, what waits for an admin (photos in rights review, unpublished photos, running and failed jobs), each a link to its
@@ -2462,7 +2462,7 @@ lesson 107 (the editors flapped at 915 × 412). The CI tour jobs are rebalanced 
   the admin projects expects the 400 or 409 of a transaction commit Firestore's SDK runs again, with its reason
   (lesson 117); Setup's `show` opens a card again when Setup moved on meanwhile.
 
-### 37e. Rows still planned: what the screens lack — for the user
+### 37e. Rows still planned: what the screens lack — APPLIED 2026-10-18 (§42a–§42c: the screens exist, their rows too; Terra Draw's drags §41b)
 
 Each row's `notes` says why: the self-test's per-check list (`S-A03-BAD-SELFTEST-FAILURE`: Re-check applies the status
 but no screen lists the checks, so a failing check's reason and its link to Provision have nowhere to show); a control
@@ -2587,7 +2587,7 @@ admin projects measured, −20 % on a functional one.
 **For the user**: if a failing CI run should carry the full trace anyway, `trace: 'on-first-retry'` in CI (where a
 test is retried once and a pass on the retry still fails the run) would add it at the cost of the retry's time only.
 
-### 39c. What would bring the split `quality` to about 8 minutes — for the user
+### 39c. What would bring the split `quality` to about 8 minutes — APPLIED 2026-10-18 (§42g)
 
 After 39a and 39b the estimate is 600 to 650 s before the split's shares are retuned (the next split run measures
 it; `default_parts` of `scripts/ci/e2e-split.sh` follows). What remains, each a coverage choice rather than waste:
@@ -2602,11 +2602,11 @@ it; `default_parts` of `scripts/ci/e2e-split.sh` follows). What remains, each a 
 - **The admin's per-push tour** could take the viewer's four viewports in light only, the dark and English variants
   moving to `tour-matrix` (about 1,450 s of the per-push tour's 2,640 s of admin journeys before 39a and 39b).
 
-## 40. M2 final gate (final-gate agent, 2026-10-18) — PROPOSED (for the user)
+## 40. M2 final gate (final-gate agent, 2026-10-18) — RESOLVED 2026-10-18 (§40a: the database exists in nam5)
 
 The state of M2 and the deploy steps are in `docs/research/M2-status.md`. Nothing was committed, pushed or deployed.
 
-### 40a. The Firestore location — PROPOSED (for the user: permanent, a cloud setting)
+### 40a. The Firestore location — RESOLVED: the database exists in nam5
 
 `firebase.json` names the `(default)` database but no `location`. The first `firebase deploy --only firestore` on a
 project without a database creates one, and firebase-tools 15.33.0 then uses `nam5` (US multi-region;
@@ -2623,3 +2623,275 @@ Options, before the first rules deploy:
 
 Recommended: option 1. If the project already has a database (check with
 `gcloud firestore databases list --project bucurestiul-disparut`, read-only), its location stays and `firebase.json` names it.
+
+**Resolved 2026-10-18**: the project's `(default)` database already exists in `nam5`: it was created with the project on
+2026-10-11, and the orchestrator deployed the rules and indexes to it on 2026-10-12. Options 1 and 3 are moot (a location
+never changes). `firebase.json`'s `firestore` now names `"location": "nam5"`, so a deploy to a project that lost its
+database could never create one elsewhere, and `firebase/rules-tests/test/firebase-config.test.ts` pins it.
+
+## 41. The user's decisions §34b, §34g and §34i, and the review polish (M2c follow-ups, 2026-10-18) — APPLIED 2026-10-18 (user approved 2026-10-18; configuration edits of the pre-approved kinds, logged)
+
+The user answered §34b, §34g and §34i in chat on 2026-10-18 (relayed by the orchestrator), and the orchestrator's review
+of the M2c screenshots asked for three polish items. Applied in that order. Nothing was committed, pushed or deployed; no
+real Google, Mapbox or USGS endpoint was called.
+
+### 41a. §34b: the admin page loads `admin.mjs`, each area a lazy chunk
+
+- The admin's Vite build is ES only (`packages/admin/vite.config.ts`): no `admin.iife.js` any more, since an IIFE
+  inlines every dynamic import and no document promises the admin on jsDelivr (only the engine's IIFE is distributed
+  there, and keeps its own budget). The page loads `<script type="module" src="admin.mjs">`
+  (`scripts/site/src/admin/page.ts`); Hosting's `**/*.@(html|js|mjs|css|json)` rule already serves every chunk
+  `no-cache`, and its `**` rewrite answers a chunk a new deploy replaced with the page, which fails the import.
+- Each area (`photos`, `pois`, `layers`, `settings`, `admins`, `history`, `jobs`, `crashes`, `home`) is one chunk:
+  `packages/admin/src/pages/<area>.ts` holds the page's elements (`@hcm/ui/admin/areas/<area>`, a new subpath export
+  of `@hcm/ui`) and the area's store module; `packages/admin/src/routing/area-pages.ts` imports it when the route first
+  opens, adds the store module to the editors' modules (the content registry creates a store the first time its page
+  reads it, so the module is always there by then) and registers the elements. `defineAdminElements` registers the
+  shell, the kit and the editing kit only. Terra Draw is a chunk too (§41b); the colour library and the analytics SDK
+  already were.
+- Rolldown's `codeSplitting` groups name the chunks, so each can have a budget: `admin-core` (everything the entry imports
+  statically; `admin.mjs` is a stub that imports it), `editor-shared` (what two or more areas share and the entry does
+  not), `terra-draw`. Without them Rolldown split the code the entry shares with an area into about thirty small chunks
+  named after one module each, which a refactor renames.
+- A chunk that does not load (the network, or a deploy that replaced it) makes the page registry's loader reject;
+  `<hcm-page-outlet>` then says "The page did not load. Check the internet connection and try again." with **Try again**,
+  which imports it again (Chromium, Firefox and WebKit all fetch a failed dynamic import again: probed 2026-10-18 with
+  Playwright 1.64 in the quality image). Row `S-A29-BAD-CHUNK-LOAD`, state `admin.page-failed` at every tour viewport
+  (`e2e/tour/admin-jobs.tour.ts`).
+- **Budget configuration** (`scripts/ci/check_bundle_budget.py`, the change to what the gate measures that §34b asked
+  the user for): the entry (`admin.mjs` and every chunk it imports statically, read from the files' static imports)
+  keeps the IIFE's 450 KB; every other chunk is measured against its own budget by name (the measurement plus about
+  20 %, rounded up), a chunk without a budget fails, and everything together has a cap of 620 KB. Measured on the
+  production build, quality image, 2026-10-18 (gzip level 9):
+
+| Chunk | gzip KB | Budget KB |
+| --- | --- | --- |
+| `admin.mjs` + `admin-core` (the entry) | 349.8 | 450 |
+| `terra-draw` | 47.4 | 58 |
+| `photos` | 20.3 | 25 |
+| `pois` | 19.6 | 25 |
+| `dynamic-color` | 19.3 | 24 |
+| `settings` | 15.3 | 20 |
+| `editor-shared` | 10.1 | 13 |
+| `layers` | 7.4 | 10 |
+| `analytics-sdk` | 6.3 | 8 |
+| `history` | 5.4 | 8 |
+| `admins` | 3.6 | 6 |
+| `home` | 2.7 | 5 |
+| `jobs` | 2.4 | 5 |
+| `crashes` | 2.4 | 5 |
+| everything | 512.0 | 620 |
+
+  Before: `admin.iife.js` 446.9 KB of 450 (M2-status §1). The entry is 97 KB lighter, Terra Draw included in the whole.
+  Most of the entry is the Firebase SDK, Lit, the kit, Setup and the catalogues: the editors' texts are one module of
+  `@hcm/shared` today, so they load with the shell (a split per area is a later change).
+
+### 41b. §34g: Terra Draw installed and wired
+
+- `terra-draw@1.37.0` and `terra-draw-mapbox-gl-adapter@1.5.0`, exact, dependencies of `@hcm/ui`, installed in the
+  digest-pinned `node:24-bookworm-slim` (`docs/SETUP.md` → *npm in a container*); `npm audit --audit-level=low`: 0
+  vulnerabilities. The published adapter imports nothing of `mapbox-gl` (only `terra-draw`), as §4.2 of M2c-interfaces
+  expected. `terra-draw` 1.38.0 was published on 2026-10-18, after the evaluation: 1.37.0 is a `HELD` entry
+  (`scripts/ci/check_dependency_updates.py`, `docs/CI_PIPELINE.md`) until it is evaluated.
+- Their declarations name `geojson` (a dev dependency of Terra Draw's) and the global `mapboxgl` namespace;
+  `skipLibCheck` stays off, so `packages/ui/src/map/draw/terra-draw-env.d.ts` declares the five GeoJSON types they use
+  (as `@types/geojson` does) and an opaque `mapboxgl.Map`, instead of downloading another package.
+- `loadTerraDraw` (in `terra-draw-adapter.ts`, the only importer, dependency-cruiser) imports both on the first drawing
+  tools; `content-wiring.ts` passes it as `terraDraw` (CR-M2c-20). The real constructors take wider options than the
+  structural `TerraDrawModules` (Mapbox's own map type), so the loader hands them over as those types; the browser test
+  `packages/ui/test/map/draw/terra-draw-real.test.ts` drives the real Terra Draw and its Mapbox adapter through the port
+  on a structural map with a real canvas: a vertex, a midpoint and the whole shape dragged with real pointer events, a
+  drag past the limits refused, a pin dragged and moved by a click, an area drawn by clicks then dragged.
+- **The click tools stay**, as the user asked: a new shape is still drawn by clicks (a point is one click, a line and
+  an area grow with every click, Save works at any time: the input budgets hold), now shown by Terra Draw's own layers
+  (`click-growth.ts`, shared by both ports); `select` is Terra Draw's select mode (drag a feature, a vertex, a midpoint
+  to insert one; a right click on a vertex removes it), which keeps its selection on a click elsewhere, so a click still
+  moves a selected point (WCAG 2.5.7), and leaves the keys to the editor's tools; the vertex list stays the keyboard's
+  way. A polygon with holes, which Terra Draw's modes cannot hold, is shown by its outer ring and edited in the list.
+  The click-only port stays the fallback when Terra Draw does not load.
+- What the e2e found (`docs/LESSONS.md`): Terra Draw reports a selection's marks as an `update` of the feature's
+  properties and the port's own updates as `api` changes; reported as drags, they moved the photo's pin back over a
+  place typed in its fields. Only geometry changes that do not come from the port are reported now.
+- Rows: `S-A32-HAPPY-VERTEX-EDIT` (`planned` → `exists`), `S-A32-HAPPY-DRAG-SHAPE`, `S-A32-BAD-DRAG-CROSSING`
+  (`e2e/admin/specs/pois/dragging.spec.ts`, green at `admin-c360-ro`, `-m768-ro`, `-l1440-ro`, twice each).
+- **Configuration** (pre-approved kind: keeps a tool working): `vitest.config.ts` pre-bundles `terra-draw` and
+  `terra-draw-mapbox-gl-adapter` for the browser projects (`BROWSER_TEST_DEPS`), as every browser-test dependency.
+- **For the user**: the admin bundles MIT code (Terra Draw, Lit) with no third-party notices file; M2c-interfaces §4.2
+  said Terra Draw's licence text joins "the admin's third-party notices", which do not exist yet. Proposal: the admin's
+  site build writes `THIRD-PARTY-NOTICES.txt` next to the page from the bundled packages' licences.
+
+### 41c. §34i: the dashboard is the first screen once Setup is complete
+
+- `packages/admin/src/app/setup-readiness.ts` watches `setup/status` while an admin is signed in with the server and
+  sets `setupReady` once billing, provisioning, Mapbox and USGS are `ok` (the Setup Assistant's required steps); this
+  browser remembers it per project (`localStorage` `hcm:admin:setupReady`), so the next visit's empty address opens the
+  dashboard at once. `resolveAdminRoute` opens `#/home` for an empty address when Setup is complete;
+  `ADMIN_ROUTE_SPECS.inCompactBarOnceSetUp` puts Home on the compact bar in Setup's place (Setup under More).
+- An empty address opened before the readiness is known follows its first answer; a later change moves nobody: finishing
+  Setup's last required step leaves the owner on Setup, where the optional steps (analytics, the legacy import) wait,
+  and only the bar follows.
+- A city of the `e2e` build's own (`?city=`) does not watch the singleton `setup/status`, which the locked Setup specs
+  rewrite meanwhile (as its map token, CR-M2c-7): its first screen is Setup whatever another spec left there.
+- Rows `S-A40-HAPPY-FIRST-SCREEN`, `S-A40-BAD-SETUP-INCOMPLETE` (`e2e/admin/specs/ops/ops.spec.ts`).
+- The owner's journey (`e2e/admin/specs/journey.spec.ts`) reloads its empty address once USGS approves: the dashboard
+  opens there now, and the journey goes back to Setup for the optional steps (its first split run of 2026-10-18 failed on
+  that reload at the five admin projects, as the decision means it to).
+
+### 41d. The review polish
+
+1. **Dates in the admin's language**: the two native `<input type="date">` (the layer's exact date, the USGS token's
+   expiry) showed the browser's pattern (`mm/dd/yyyy` in an American browser, inside a Romanian page). They are M3 date
+   input fields now: a text field with the pattern as its hint, `zz.ll.aaaa` in Romanian and `dd/mm/yyyy` in English
+   (the admin's English dates are British, `setup-text.ts`); a typed date is stored as the ISO date, one that does not
+   exist is marked at its field (`packages/ui/src/admin/editing/date-text.ts`). Rows `S-A21-HAPPY-DATES-IN-LANGUAGE`
+   and `S-A21-BAD-DATE-UNREAD`, under an `en-US` browser with the `America/New_York` time zone
+   (`e2e/admin/specs/layers/dates.spec.ts`).
+2. **Large and extra-large windows**: on an extra-large page (M3, from 1600 px, measured by `hcm-list-detail`) the
+   map-centric editors put the map beside the form as a supporting pane (`packages/ui/src/admin/editing/wide-layout.ts`):
+   photos and places, list 412 px | map | form 480 px, each scrolling on its own; the layer editor, groups 560 px | the
+   map kept in view beside them. A map that does not show keeps the stacked layout. The other editors (texts, theme,
+   categories, admins, history, jobs, crash reports) keep at most 840 px, centred in the detail pane: M3's readable
+   width for forms and text; their wide margins are the cost of not stretching a form across 1,900 px. Below 1600 px
+   the layouts are unchanged (at 1440 the detail pane is about 890 px: a 400 px form beside the map would leave the map
+   under 500 px). Checked by the admin tour at `tour-x3840-light-ro`, `-l1440-`, `-c915l-`, `-c360-` (61 tests green)
+   and the review screenshots at 2560 × 1440 (`reports/screenshots/m2c-review/`).
+3. **The city's theme**: the admin wears its city's colours already (`packages/admin/src/app/city-theme.ts`: while an
+   admin is signed in the shell watches `cities/{city}` and applies its `theme.tokens`; Settings previews a new seed live;
+   M2b-interfaces §1.2 and the PLAN's "seed colour with live M3 preview"). The purple of the reviewed screenshots is the
+   M3 baseline the shell falls back to while the city document holds no `theme.tokens`: the shots were taken at 02:22 on
+   2026-10-18, before the E2E agent's fix "the shell's theme follows the edited city" (§37f; until then a content
+   world's shell watched the project's city, not the test's own), and some tour worlds seed a city without a theme. The
+   e2e journeys whose city carries the Bucharest site's theme (`seedPublicCity`) show the brown city colours.
+
+## 42. The screens §37e asked for, read-only revoked editors, UX leftovers, security, and the §39c tiering (M2 follow-ups, 2026-10-18) — APPLIED 2026-10-18 (orchestrator task; configuration edits of the pre-approved kinds, logged); §42f's two cloud steps and one download for the user
+
+Applied on `feat/engine-rewrite`; nothing committed, pushed or deployed, no real Google, Mapbox or USGS endpoint called.
+The rows §37e listed as planned now exist, each with its e2e test and its states in the tour's inventory.
+
+### 42a. The settings page's map — APPLIED
+
+- The area and overlays sections show the city's map above the section (`packages/admin/src/settings/settings-map.ts`,
+  one map per page visit through `AreaMap`): the saved layers, the published photos and places as the visitors see
+  them, and the area's bounds as a rectangle (overlay `_bounds`, not clickable). **Draw the area on the map** takes two
+  clicks, two opposite corners (the status line says which; the same button stops drawing); **Use this view** takes the
+  map's centre and zoom. The number fields stay the keyboard's way (WCAG 2.1.1). The overlay defaults preview on the
+  same map through the settings' `PreviewLayer`; Discard returns the stored opacities.
+- Found by the new e2e: the settings chunk rendered `<hcm-admin-map>` without defining it (only the layers, places and
+  photos chunks did), so the box stayed empty; `defineSettingsElements` defines it now, and
+  `packages/ui/test/admin/editing/areas.test.ts` checks every map-showing chunk defines it (`docs/LESSONS.md`).
+- Rows `S-A19-HAPPY`, `S-A36-HAPPY`, `S-A36-BAD-DISCARD` (`e2e/admin/specs/settings/map.spec.ts`); state
+  `settings.area-drawing` in the settings tour.
+- **A new named chunk** (the bundle budget's rule for a new chunk): the settings map imports the places' and photos'
+  map modules, which made them shared and pushed `editor-shared` to 13.7 KB gzip, over its 13 KB. Rather than raise that
+  budget, the admin map's box and the content modules it draws are a chunk of their own, `admin-map`
+  (`packages/admin/vite.config.ts`), loaded by the four areas that show the map: 7.4 KB measured, budget 9 KB (plus
+  about 20 %, as `scripts/ci/check_bundle_budget.py` asks); `editor-shared` is 8.8 KB again, every other budget
+  unchanged, the total 620 KB unchanged.
+
+### 42b. The self-test's checks, Rotate the visitors' token, and Home's skipped documents — APPLIED
+
+- **Check again** keeps what `setup.selfTest` found and the Setup page lists every check with its state; a failing
+  check shows its reason in the admin's language and a link to the step that fixes it (cloud checks to Prepare the
+  project, Mapbox and USGS to their cards, Error Reporting to analytics): `packages/ui/src/admin/setup/self-test.ts`,
+  row `S-A03-BAD-SELFTEST-FAILURE`, state `setup-self-test`.
+- The Mapbox card has **Replace the visitors' token** and **Replace the admin's token** (`setup.rotatePublicToken`), each
+  behind a confirmation dialog, saying when the old token goes (ops.tick deletes it ten minutes later, a clock test of
+  the functions): row `S-A06-HAPPY-ROTATE`, state `mapbox-rotate-confirm`.
+- Home's **Not on the public map** lists each document the manifest build skipped with its first issue (the field's
+  human name) and a link to its editor: row `S-A38-BAD-SKIPPED-SHOWN`, state `home.skipped`.
+
+### 42c. The conflict banner names who and when — APPLIED
+
+The editors' banner reads "Saved by {who} on {date}." (who from `admins.list`, loaded once per session as the shell's
+`people`, falling back to the address and then to "another admin"; the date in the admin's language, or the sentence
+without it when the version is not a date) and lists the fields both sides changed by their human names. Row
+`S-A38-BAD-CONFLICT` saves as a second content world's admin; state `editing.conflict`.
+
+### 42d. A revoked admin's editors are read-only — APPLIED
+
+Under the revoked banner every editor (photos, places, layers, every settings section, history, jobs, admins) shows
+its fields read-only, Save and every action disabled, a "Read only" state line; the stores ignore an edit while
+`ContentServices.readOnly()` holds (the drafts' `locked`), so no keyboard path writes either. `S-A20-*` asserts it in
+`e2e/admin/specs/flows/revoke.spec.ts`.
+
+### 42e. UX leftovers — APPLIED
+
+- The places editor: Delete visible, History and the redraw tools in an overflow menu (`<hcm-overflow-menu>`); in a
+  landscape phone window the detail pane stacks map and form in two scrolling rows (`wide-layout.ts`).
+- One bulk bar for photos and places (`bulk-bar.ts`): count, Select all, Clear, the two main actions as buttons, the
+  rest in its overflow menu.
+- History and the jobs page show human field names (`adminContent.field.*`) and step names
+  (`adminContent.jobs.stepName.*`) in RO and EN; History is a button like every other action (no link-styled one).
+
+### 42f. Security — APPLIED in code; three steps for the user
+
+- **The compare plugin's integrity**: `openCompare` refuses to load mapbox-gl-compare 0.6.0 without SHA-384 digests of
+  both files and sets them with `crossOrigin`. The digests themselves come from the pinned npm package, the way
+  mapbox-gl's do; installing `mapbox-gl-compare@0.6.0` is a download, so it waits for the user's yes (the viewer does
+  not use the plugin yet: V06 is a later milestone).
+- **The crash endpoint's account**: `telemetry.reportError` runs as `fn-crash@`, a new service account with no project
+  role (the provisioner creates it and grants only the deployer `actAs` on it). A log entry needs no role, so a flaw in
+  the one public endpoint reaches neither Firestore nor Storage.
+- **Its worst-case logging cost**: 15 reports per instance a minute (was 120), 10 per client, two instances: about 30
+  entries a minute project-wide; each entry cut to 16 KiB (`REPORTED_EVENT_MAX_BYTES`, the message shortened first),
+  about 17 KiB with its envelope: 30 × 17 KiB × 60 × 24 × 31 ≈ 22 GiB in a 31-day month, under Cloud Logging's 50 GiB
+  free tier. Not capped by the handler: Cloud Run's own request log (one short entry per request, refused ones too);
+  **for the user**: a `_Default` sink exclusion for that function's request log (a cloud change, ask first).
+- **App Check enforcement** (`HCM_APP_CHECK=enforce`) stays a later step for the user, after the deploy shows the
+  tokens arriving in monitor mode (ask first).
+
+### 42g. §39c: what each push repeats, and the split retuned — APPLIED (orchestrator decision; no scenario row dropped)
+
+Every scenario row still runs on every push; only repetitions moved to `tour-matrix` (in `all` and nightly):
+
+- the Setup journey at `admin-c360-ro` and `admin-l1440-ro` per push; at `admin-m768-ro`, `admin-l1440-dark` and
+  `admin-l1440-en` in `tour-matrix` (`adminJourneyMatrixProjects`);
+- the window-class-independent functional specs (about, boot, consent, CSP, crash reporting, deep links, embed API,
+  geolocate, language and theme, no JavaScript, starter kit) at `fn-l1440-ro` per push, the other functional projects
+  in `tour-matrix` (`fn-<viewport>-matrix`);
+- the admin's tour journeys (the fifty-category state among them) per push at the viewer's four light RO projects
+  only; their dark and English variants run in `tour-matrix` (`tour-<…>-admin`).
+
+Measured (`docs/research/pipeline-baseline.md`, last addendum): the split `quality` stage in 460 s (482 s in a first run
+whose failures were fixed), 968 tests and about 4,720 s of per-push test time (about 9,860 s before); this machine's part
+ended about 20 s before the NUC's, so `default_parts` keeps `1:2` (its comment records the run). The nightly
+`tour-matrix` gains about 1,700 s of test time over its ten shards, inside the 45-minute job; `ci.yml`'s per-push shards
+only got lighter, so no workflow changed.
+
+## 43. The M2e gate: the full `all` with the tour matrix, and what it found (2026-10-18) — APPLIED 2026-10-18 (orchestrator task; no gate relaxed, no allowlist entry)
+
+The split `all` (`scripts/ci/e2e-split.sh`) ran the tour matrix for the first time since the M2c editors' follow-ups; the
+per-push `quality` runs of §41 and §42 never reach it. What it and the M2e review screenshots found, and the fixes:
+
+### 43a. Product fixes — APPLIED
+
+- An opened photo or place is brought into view on its editor's map (centre, zoom kept, no animation); a new place and
+  an edit of the open item move nothing (`S-A09-HAPPY-OPEN-IN-VIEW`, `S-A32-HAPPY-OPEN-IN-VIEW`,
+  `S-A32-BAD-NEW-PLACE-KEEPS-VIEW`; `docs/LESSONS.md` 141).
+- The dashboard's tiles in one row are as tall as each other (lesson 142).
+- The admin map's box without a map never shrinks below its note (`flex: none`), and the map-beside-the-form layout of a
+  compact height applies only from a medium width: a portrait phone of 320 × 568 measured a compact height and laid the
+  places editor over the "Set up Mapbox" note (lesson 143).
+- The navigation bar's labels follow their item's width below about 70 px (`17cqi`, 10.9 px at 64 px): "Configurare"
+  broke over two lines at 320 px (lesson 147).
+
+### 43b. A checker made exact, not relaxed — APPLIED
+
+The legal-line rule asked for the Mapbox logo and attribution whenever a canvas showed its foot, also when only the last
+4 px of a map scrolled to its end showed, below the band where Mapbox draws them (`admin.settings.area-refused` at 768 ×
+1024). `showsItsFoot` now also asks that the visible strip be taller than the band under the map's lowest legal
+control (`legalGap`, `e2e/support/layout-probe.ts`): one pixel of either control on screen and the rule applies as
+before (`e2e/test/layout-probe.test.ts`; lesson 144). No allowlist entry was added.
+
+### 43c. Three specs synchronised — APPLIED
+
+- History's Deleted filter: the tour waits for the server's answer (no "Reconnecting…") instead of asserting no
+  "Show more", which a full page of other cities' entries in the shared emulators legitimately offers until history
+  entries carry their city (CR-M2c-14; lesson 145).
+- Saving offline: the spec waits for Save to be on before it goes offline. The run after that showed a product bug
+  behind it, fixed in §43a's spirit: offline, a categories listener answered from the cache with no category and the
+  draft read the place's category as unknown, turning Save off; the draft now checks the category only against a list
+  the server answered (lesson 146).
+- A category's colour saved: the settings tour waits for the editor's own "Saved" before it opens another category; the
+  emulator held the new colour before the page heard back, and the new address asked "Discard your changes?" (lesson
+  148).

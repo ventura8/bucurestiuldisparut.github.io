@@ -26,6 +26,32 @@ export interface ContentShell {
     readonly denied: () => void;
 }
 
+/** An admin's name as the lists show it: the Google display name, else the address; none without either. */
+function nameOf(admin: { readonly displayName?: string | undefined; readonly email?: string | undefined }): string {
+    return admin.displayName ?? admin.email ?? '';
+}
+
+/**
+ * Asks `admins.list` once (again after a failure) and gives the shell every admin's name by uid. The names are shown
+ * as text only (who saved a conflicting change); they leave with the session.
+ */
+function peopleOf(parts: ContentShell): () => void {
+    let asked: Promise<void> | null = null;
+    const ask = async (): Promise<void> => {
+        try {
+            const { admins } = await parts.callables.call('admins.list', {});
+            const named = admins.map((admin) => [admin.uid, nameOf(admin)] as const).filter(([, name]) => name !== '');
+            parts.shell.update({ people: Object.fromEntries(named) });
+        } catch (error) {
+            asked = null;
+            parts.log.warn('admins could not be listed for their names', { error: String(error) });
+        }
+    };
+    return () => {
+        asked ??= ask();
+    };
+}
+
 export function contentServices(parts: ContentShell): ContentServices {
     const { content, shell } = parts;
     return {
@@ -39,6 +65,8 @@ export function contentServices(parts: ContentShell): ContentServices {
             return user === null ? null : { uid: user.uid, name: user.displayName ?? user.email };
         },
         locale: () => shell.get().locale,
+        people: peopleOf(parts),
+        readOnly: () => shell.get().revoked,
         notify: (notice) => {
             shell.update({ notice: shell.notice(notice) });
         },

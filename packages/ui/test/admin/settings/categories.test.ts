@@ -161,6 +161,27 @@ describe('<hcm-settings-page> category states', () => {
         deep(element, 'hcm-list-detail').dispatchEvent(new CustomEvent('hcm-back'));
     });
 
+    it('badPath_aRevokedAdminsCategoryIsReadOnly', async () => {
+        const off = (target: HTMLElement): boolean => (target as HTMLElement & { disabled: boolean }).disabled;
+        const settings = area(categoriesState({ category: editor({ dirty: true, proposedColor: '#5a3e2b' }) }));
+        const { element } = await page('settings', settings, { params: ['categories', 'cladiri'], revoked: true });
+        const detail = deep(element, '[slot="detail"]');
+
+        expect(deepAll(detail, '.save-bar hcm-button').map(off)).toEqual([true, true]);
+        expect(deepAll(detail, 'input:not([type="color"])').every((field) => (field as HTMLInputElement).readOnly)).toBe(true);
+        expect(deepAll(detail, 'input[type="color"], hcm-slider, hcm-icon-picker, .alert hcm-button, .actions hcm-button').every(off)).toBe(
+            true,
+        );
+        expect(deepAll(deep(detail, 'hcm-icon-picker'), '[role="radio"]').every((radio) => (radio as HTMLButtonElement).disabled)).toBe(
+            true,
+        );
+
+        settings.set({ category: null });
+        await updated(element);
+        expect(off(deep(deep(element, '[slot="detail"] .actions'), 'hcm-button'))).toBe(true);
+        expect(deepAll(element, '.reorder-row .moves')).toEqual([]);
+    });
+
     it('happyPath_deletingACategoryInUseAsksWhereItsPlacesGo', async () => {
         const deletion = { phase: 'confirm', id: 'cladiri', label: 'Clădiri', inUse: 3, target: null } as const;
         const settings = area(categoriesState({ category: editor(), categoryDeletion: deletion }));
@@ -272,6 +293,17 @@ describe('<hcm-icon-picker>', () => {
 
         expect(changes).toEqual(['domain_disabled', 'domain', 'water', 'account_balance', expect.any(String), 'account_balance']);
         expect(await axeViolations(picker)).toEqual([]);
+    });
+
+    it('badPath_aDisabledPickerChoosesNothing', async () => {
+        const picker = await mount<HcmIconPicker>(html`<hcm-icon-picker disabled value="church" .labels=${{}}></hcm-icon-picker>`);
+        const changes: string[] = [];
+        picker.addEventListener('hcm-change', () => changes.push('change'));
+
+        nth(deepAll(picker, '[role="radio"]'), 0).click();
+
+        expect(changes).toEqual([]);
+        expect(picker.value).toBe('church');
     });
 
     it('badPath_anIconOutsideTheBundleStaysAndIsExplained', async () => {

@@ -35,6 +35,48 @@ describe('mapbox', () => {
         expect(JSON.stringify(harness.logs.records)).not.toContain(MAPBOX_TOKENS.bootstrap);
     });
 
+    it('happyPath_aPublicTokenIsReplacedAndTheCardSaysWhenTheOldOneGoes', async () => {
+        const { harness, ctx, mapbox } = setup();
+        harness.backend.rotatePublicToken.mockResolvedValue({
+            tokenId: 'cl0000000000000000000000b',
+            retiresOldAt: '2026-10-12T09:10:00.000Z',
+            manifestQueued: true,
+        });
+
+        const rotating = mapbox.rotate('viewer');
+        const busy = ctx.state().mapbox.rotation.busy;
+        await mapbox.rotate('admin');
+        await rotating;
+
+        expect(busy).toBe(true);
+        expect(harness.backend.rotatePublicToken).toHaveBeenCalledTimes(1);
+        expect(harness.backend.rotatePublicToken).toHaveBeenCalledWith({ cityId: 'bucharest', audience: 'viewer' });
+        expect(ctx.state().mapbox.rotation).toEqual({
+            audience: 'viewer',
+            busy: false,
+            retiresOldAt: '2026-10-12T09:10:00.000Z',
+            done: true,
+            error: null,
+        });
+        // A replacement is a daily action, not one of the Setup step's counted inputs.
+        expect(ctx.state().steps.mapbox.used.inputs).toBe(0);
+    });
+
+    it('badPath_aRefusedReplacementSaysWhy', async () => {
+        const { harness, ctx, mapbox } = setup();
+        harness.backend.rotatePublicToken.mockRejectedValue(functionsError('apiError.mapbox.notConfigured'));
+
+        await mapbox.rotate('admin');
+
+        expect(ctx.state().mapbox.rotation).toEqual({
+            audience: 'admin',
+            busy: false,
+            retiresOldAt: null,
+            done: false,
+            error: { key: 'apiError.mapbox.notConfigured' },
+        });
+    });
+
     it('badPath_aPublicTokenIsExplainedBeforeAnyCall', async () => {
         const { harness, ctx, mapbox } = setup();
 

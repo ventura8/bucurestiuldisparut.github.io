@@ -17,6 +17,7 @@ import type { CategoryIntents } from './category-area.js';
 import type { CategoryEditorState } from './category-editor.js';
 import type { CitySectionState } from './city-sections.js';
 import type { OverlayDefaultsState } from './overlay-defaults.js';
+import type { SettingsMapState } from './settings-map.js';
 import type { SettingsSection } from './sections.js';
 import type { BasemapChoice, ThemeTools } from './theme.js';
 
@@ -37,6 +38,8 @@ export interface SettingsState {
     readonly overlays: OverlayDefaultsState;
     /** A reorder of the categories is being written. */
     readonly reordering: boolean;
+    /** The page's map (the area and overlays sections): its state and a rectangle being drawn. */
+    readonly map: SettingsMapState;
 }
 
 export interface SettingsIntents extends CategoryIntents {
@@ -66,6 +69,13 @@ export interface SettingsIntents extends CategoryIntents {
     saveOverlays(): Promise<WriteOutcome | null>;
     discardOverlays(): void;
     attachPreview(sink: PreviewSink | null): void;
+    /** The page shows its map host (`hcm-admin-map`'s `hcm-map-host`): the map is created into it. */
+    attachMap(container: HTMLElement): void;
+    zoomBy(delta: number): void;
+    /** **Draw the area**: the next two clicks on the map are two opposite corners of the bounds (again: stop drawing). */
+    drawBounds(): void;
+    /** **Use this view**: the map's centre and zoom become the city's start view. */
+    useMapView(): void;
 }
 
 /** What the settings module needs besides `ContentServices`: the theme's contrast check (`@hcm/ui/dynamic-color`). */

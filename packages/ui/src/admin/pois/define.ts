@@ -1,6 +1,6 @@
 /**
  * Registers the places page and what it renders (docs/research/M2c-interfaces.md §7): the list, the editor, the admin
- * map's elements and the kit elements they use. Idempotent per registry; `defineAdminElements` calls it.
+ * map's elements and the kit elements they use. Idempotent per registry; its area entry (`../areas/`) hands it to the admin.
  */
 import { defineUiKit } from '../../components/define.js';
 import { defineEditingElements } from '../editing/define.js';

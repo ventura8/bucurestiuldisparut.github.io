@@ -45,7 +45,7 @@ describe('<hcm-jobs-page>', () => {
                 (deep(element, 'hcm-progress') as HTMLElement & { label: string }).label,
         ).toBe('Progress: 42 %');
         expect(deepAll(element, '.log li').map((line) => line.textContent.replace(/\s+/g, ' ').trim())).toEqual([
-            expect.stringContaining('Info · fetch: fetching the scene'),
+            expect.stringContaining('Info · Downloading the scene: fetching the scene'),
             expect.stringContaining('Error: <b>not bold</b>'),
         ]);
         expect(deepAll(element, 'b')).toHaveLength(0);
@@ -97,6 +97,19 @@ describe('<hcm-jobs-page>', () => {
         const button = deep(element, '.pane .actions hcm-button') as HTMLElement & { disabled: boolean };
         expect([button.disabled, button.textContent.trim()]).toEqual([true, 'Stopping…']);
         expect(app.named('navigate')).toEqual([]);
+    });
+});
+
+describe('<hcm-jobs-page>: a revoked admin', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('badPath_aReadOnlyPageCannotCancelAJob', async () => {
+        const jobs = area(jobsState({ detail: detail() }));
+        const { element } = await page('jobs', jobs, { params: ['b'], revoked: true });
+
+        expect((deep(element, '.pane .actions hcm-button') as HTMLElement & { disabled: boolean }).disabled).toBe(true);
+        expect(deepText(element)).toContain('Downloading the scene');
     });
 });
 
@@ -193,7 +206,7 @@ describe('<hcm-jobs-page>: waiting, finished and failing jobs', () => {
             jobStatusText('ro', 'waiting_usgs'),
             stepStateText('ro', 'odd'),
             stepStateText('ro', 'done'),
-        ]).toEqual(['Procesare', 'Așteaptă USGS', 'în așteptare', 'gata']);
+        ]).toEqual(['Procesare', 'Așteaptă USGS', 'În așteptare', 'Gata']);
         expect([
             statusTone({ status: 'cancelled', finished: true }),
             statusTone({ status: 'queued', finished: false }),

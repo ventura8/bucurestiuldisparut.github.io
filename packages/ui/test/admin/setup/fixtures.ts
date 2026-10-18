@@ -96,7 +96,11 @@ export function setupView(changes: ViewChanges = {}): SetupViewState {
             ],
             watching: false,
         },
-        mapbox: { user: null, requiredScopes: ['styles:read', 'tokens:write'] },
+        mapbox: {
+            user: null,
+            requiredScopes: ['styles:read', 'tokens:write'],
+            rotation: { audience: null, busy: false, retiresOldAt: null, done: false, error: null },
+        },
         usgs: {
             secondsLeft: null,
             expired: false,
@@ -112,6 +116,7 @@ export function setupView(changes: ViewChanges = {}): SetupViewState {
         analytics: { measurementId: null, pageChangesOff: false, crashEmails: true, watching: false },
         crashes: { loaded: false, busy: false, groups: [], error: null, disabledApi: null, lastReportAt: null },
         legacyImport: { done: 0, total: 45, failed: [], running: false },
+        selfTest: { checks: [] },
         ...rest,
     };
 }
@@ -137,6 +142,7 @@ function recordingIntents(calls: IntentCall[]): SetupIntentsPort {
         'confirmBillingAccount',
         'provision',
         'saveMapbox',
+        'rotatePublicToken',
         'startUsgsCountdown',
         'draftUsgs',
         'saveUsgs',

@@ -2,12 +2,17 @@
  * `<hcm-admin-photo-editor>`: one photo's editor in the detail pane (`docs/research/M2c-interfaces.md` §6.3, §1.3, §5;
  * behaviours A09, A37, A38). Its top row is the photo's title (the heading that takes the focus), where the draft stands
  * (Saved, Unsaved changes, Saving…) and Save, disabled while the draft is clean or invalid (its description names the
- * first problem); History and Delete follow. The conflict and gone banners, then the sections: image, texts, date,
- * author and rights, links, place and direction, publishing. Every change is a draft the page's map previews; Save
- * writes it.
+ * first problem); History, Discard and Delete follow, buttons of one style (History fires `hcm-history`, the page opens
+ * it). The conflict banner names who saved the other version and when, and the fields both changed by their names; then
+ * the gone banner and the sections: image, texts, date, author and rights, links, place and direction, publishing. Every
+ * change is a draft the page's map previews; Save writes it. With `readOnly` (a revoked admin, `DECISIONS-for-review.md`
+ * §42d) nothing on it writes: Save and the actions are off, the fields read-only; History still opens.
  */
 import { translate, type Locale } from '@hcm/shared';
 import { LitElement, html, nothing, type TemplateResult } from 'lit';
+
+import { emit } from '../../components/internal.js';
+import { conflictFields, NOBODY, savedByText, type WhoPort } from '../editing/conflict.js';
 
 import { LeftFields } from '../editing/number-fields.js';
 import { errorTemplate, loadingTemplate, reconnectingStatus } from '../editing/states.js';
@@ -27,11 +32,19 @@ export function canSave(editor: PhotoEditorPort): boolean {
     return !clean && editor.conflict === null && !editor.saving && editor.status === 'ready';
 }
 
-function saveState(locale: Locale, editor: PhotoEditorPort): string {
+function saveState(locale: Locale, editor: PhotoEditorPort, readOnly: boolean): string {
+    if (readOnly) {
+        return photoText(locale, 'adminContent.common.readOnly');
+    }
     if (editor.saving) {
         return photoText(locale, 'adminContent.photos.editor.saving');
     }
     return photoText(locale, editor.dirty.length === 0 ? 'adminContent.photos.editor.saved' : 'adminContent.photos.editor.unsaved');
+}
+
+/** Why Save is off, described by it (nothing while it is on). */
+function saveWhy(why: string | null): TemplateResult | typeof nothing {
+    return why === null ? nothing : html`<p class="note" id="save-why">${why}</p>`;
 }
 
 export class HcmAdminPhotoEditor extends LitElement {
@@ -40,6 +53,8 @@ export class HcmAdminPhotoEditor extends LitElement {
         intents: { attribute: false },
         locale: { type: String },
         mapReady: { type: Boolean, attribute: 'map-ready' },
+        readOnly: { type: Boolean, reflect: true, attribute: 'read-only' },
+        who: { attribute: false },
     };
 
     static override readonly styles = photoStyles;
@@ -48,6 +63,10 @@ export class HcmAdminPhotoEditor extends LitElement {
     declare intents: PhotosIntentsPort | null;
     declare locale: Locale;
     declare mapReady: boolean;
+    /** The admin's access was removed: nothing on the editor writes (§42d). */
+    declare readOnly: boolean;
+    /** Who reads the page and the admins' names: the conflict banner names who saved. */
+    declare who: WhoPort;
     /** The list-detail layout asked for the focus before the heading was there (the photo still loading). */
     #wantsFocus = false;
     /** The number fields left since the photo opened (they say their problem from then on). */
@@ -61,6 +80,8 @@ export class HcmAdminPhotoEditor extends LitElement {
         this.intents = null;
         this.locale = 'ro';
         this.mapReady = false;
+        this.readOnly = false;
+        this.who = NOBODY;
     }
 
     /**
@@ -115,8 +136,12 @@ export class HcmAdminPhotoEditor extends LitElement {
                 this.intents?.edit(patch);
             },
             left,
+            readOnly: this.readOnly,
         };
-        const place = { locale, editor, value, issues: editor.issues, intents: this.intents, mapReady: this.mapReady, left };
+        const place = {
+            ...{ locale, editor, value, issues: editor.issues, intents: this.intents },
+            ...{ mapReady: this.mapReady, left, readOnly: this.readOnly },
+        };
         return html`<div class="pane form">
             ${this.#head(locale, editor, value)} ${this.#banners(locale, editor)} ${reconnectingStatus(locale, editor.reconnecting)}
             ${imageSection(place, this.#choose)} ${textsSection(input)} ${datesSection(input)} ${creditsSection(input)}
@@ -138,26 +163,39 @@ export class HcmAdminPhotoEditor extends LitElement {
                 <h2 tabindex="-1" data-detail-heading>
                     ${photoText(locale, 'adminContent.photos.editor.title', { title: localized(locale, value.title) })}
                 </h2>
-                <span class="note" role="status">${saveState(locale, editor)}</span>
+                <span class="note" role="status">${saveState(locale, editor, this.readOnly)}</span>
                 <hcm-button
                     variant="filled"
                     icon="check"
-                    ?disabled=${!canSave(editor)}
+                    ?disabled=${this.readOnly || !canSave(editor)}
                     aria-describedby=${why === null ? nothing : 'save-why'}
                     @click=${save}
                     >${photoText(locale, 'adminContent.photos.editor.save')}</hcm-button
                 >
             </div>
-            ${why === null ? nothing : html`<p class="note" id="save-why">${why}</p>`}
-            <div class="actions">
-                <a class="external" href=${historyHref(editor.id)}
-                    ><hcm-icon name="history"></hcm-icon>${photoText(locale, 'adminContent.photos.editor.history')}</a
-                >
-                ${editor.touched ? html`<hcm-button variant="text" icon="undo" @click=${() => this.intents?.discard()}>${photoText(locale, 'adminContent.photos.editor.discard')}</hcm-button>` : nothing}
-                <hcm-button variant="text" icon="delete" @click=${() => this.intents?.requestDelete()}
-                    >${photoText(locale, 'adminContent.photos.editor.delete')}</hcm-button
-                >
-            </div>`;
+            ${saveWhy(why)} ${this.#actions(locale, editor)}`;
+    }
+
+    /** History, Discard (once something changed) and Delete: text buttons of one style; only History while read only. */
+    #actions(locale: Locale, editor: PhotoEditorPort): TemplateResult {
+        const discard = html`<hcm-button variant="text" icon="undo" ?disabled=${this.readOnly} @click=${() => this.intents?.discard()}
+            >${photoText(locale, 'adminContent.photos.editor.discard')}</hcm-button
+        >`;
+        return html`<div class="actions">
+            <hcm-button
+                variant="text"
+                icon="history"
+                class="history"
+                @click=${() => {
+                    emit(this, 'hcm-history');
+                }}
+                >${photoText(locale, 'adminContent.photos.editor.history')}</hcm-button
+            >
+            ${editor.touched ? discard : nothing}
+            <hcm-button variant="text" icon="delete" ?disabled=${this.readOnly} @click=${() => this.intents?.requestDelete()}
+                >${photoText(locale, 'adminContent.photos.editor.delete')}</hcm-button
+            >
+        </div>`;
     }
 
     #banners(locale: Locale, editor: PhotoEditorPort): TemplateResult {
@@ -169,12 +207,13 @@ export class HcmAdminPhotoEditor extends LitElement {
             return EMPTY;
         }
         return html`<div class="banner" role="alert">
-            <p>${photoText(locale, 'adminContent.photos.editor.conflict', { fields: conflict.fields.join(', ') })}</p>
+            <p>${savedByText(locale, conflict, this.who)}</p>
+            <p>${photoText(locale, 'adminContent.photos.editor.conflict', { fields: conflictFields(locale, conflict) })}</p>
             <div class="actions">
-                <hcm-button variant="tonal" @click=${() => this.intents?.keepMine()}
+                <hcm-button variant="tonal" ?disabled=${this.readOnly} @click=${() => this.intents?.keepMine()}
                     >${photoText(locale, 'adminContent.photos.editor.keepMine')}</hcm-button
                 >
-                <hcm-button variant="text" @click=${() => this.intents?.takeTheirs()}
+                <hcm-button variant="text" ?disabled=${this.readOnly} @click=${() => this.intents?.takeTheirs()}
                     >${photoText(locale, 'adminContent.photos.editor.takeTheirs')}</hcm-button
                 >
             </div>

@@ -92,7 +92,7 @@ test(
         await page.goto(content.address(lang, 'history/photo/ready', { map: false }));
         const fields = flowText(lang, 'adminContent.history.fields', { fields: '' });
         const revert = inputBudget.flow('revertChange', contentFlowBudget('revertChange'));
-        await revert.click(page.getByRole('button', { name: new RegExp(`${fields}title`) }));
+        await revert.click(page.getByRole('button', { name: new RegExp(`${fields}${flowText(lang, 'adminContent.field.title')}`) }));
         await revert.click(page.getByRole('button', { name: flowText(lang, 'adminContent.history.revert') }));
         await revert.click(dialog(page).getByRole('button', { name: flowText(lang, 'adminContent.history.revert') }));
         await expect.poll(async () => (await content.document('photos/ready'))?.['title']).toEqual({ ro: 'Calea Victoriei' });

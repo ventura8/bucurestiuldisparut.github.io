@@ -166,6 +166,7 @@ describe('setupDepsOf', () => {
         await deps.backend.recordCloud({ billing: { state: 'ok' } });
         await deps.backend.saveMapbox({ cityId: 'bucharest', secretToken: 'sk.x' });
         await deps.backend.saveUsgs({ username: 'u', applicationToken: 't' });
+        await deps.backend.rotatePublicToken({ cityId: 'bucharest', audience: 'viewer' });
         await deps.backend.analyticsConfig({ cityId: 'bucharest' });
         await deps.backend.listGroups({ hours: 168, pageSize: 20 });
         await deps.backend.createCity();
@@ -176,6 +177,7 @@ describe('setupDepsOf', () => {
             'setup.recordCloud',
             'setup.saveMapbox',
             'setup.saveUsgs',
+            'setup.rotatePublicToken',
             'setup.analyticsConfig',
             'telemetry.listGroups',
         ]);

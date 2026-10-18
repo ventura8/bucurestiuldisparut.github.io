@@ -21,6 +21,8 @@ export interface FieldContext {
     readonly edit: (patch: PoiPatchPort) => void;
     /** The number fields left since the place opened: only they say their problem. */
     readonly left: FieldsLeft;
+    /** A revoked admin's editor: the fields are read-only, nothing that writes is on (`DECISIONS-for-review.md` §42d). */
+    readonly readOnly: boolean;
 }
 
 type Language = 'ro' | 'en';
@@ -71,6 +73,7 @@ function textField(context: FieldContext, spec: TextSpec): TemplateResult {
         <input
             id=${spec.id}
             autocomplete="off"
+            ?readonly=${context.readOnly}
             .value=${spec.value}
             aria-invalid=${invalid}
             aria-describedby=${describedBy}
@@ -88,6 +91,7 @@ export function categoryField(context: FieldContext, categories: readonly Catego
         <label for="category">${poiText(context.locale, 'adminContent.pois.field.category')}</label>
         <select
             id="category"
+            ?disabled=${context.readOnly}
             aria-invalid=${invalid}
             aria-describedby=${describedBy}
             @change=${(event: Event) => {
@@ -153,6 +157,7 @@ function descriptionField(context: FieldContext, language: Language): TemplateRe
         <textarea
             id=${id}
             maxlength="5000"
+            ?readonly=${context.readOnly}
             aria-invalid=${invalid}
             aria-describedby=${describedBy}
             .value=${text}
@@ -192,6 +197,7 @@ function yearField(context: FieldContext, field: 'yearStart' | 'yearEnd'): Templ
             inputmode="numeric"
             min="1800"
             max="2100"
+            ?readonly=${context.readOnly}
             .value=${numberValue(String(context.value[field] ?? ''))}
             aria-invalid=${invalid}
             aria-describedby=${describedBy}
@@ -239,6 +245,7 @@ function linkRow(context: FieldContext, link: PoiLinkPort, index: number): Templ
         <hcm-icon-button
             icon="delete"
             .label=${poiText(context.locale, 'adminContent.pois.field.removeLink', { number })}
+            ?disabled=${context.readOnly}
             @click=${() => {
                 context.edit({ links: links.filter((_link, at) => at !== index) });
             }}
@@ -256,7 +263,7 @@ export function linkFields(context: FieldContext): TemplateResult {
                 variant="outlined"
                 icon="link"
                 class="add-link"
-                ?disabled=${full}
+                ?disabled=${full || context.readOnly}
                 @click=${() => {
                     context.edit({ links: [...links, { url: 'https://', label: '' }] });
                 }}
@@ -273,6 +280,7 @@ function chosenPhoto(context: FieldContext, id: string, title: string): Template
         <hcm-icon-button
             icon="close"
             .label=${poiText(context.locale, 'adminContent.pois.field.removePhoto', { title })}
+            ?disabled=${context.readOnly}
             @click=${() => {
                 context.edit({ photoIds: ids.filter((chosen) => chosen !== id) });
             }}
@@ -291,7 +299,7 @@ export function photoFields(context: FieldContext, photos: readonly PhotoChoiceP
             ${ids.map((id) => chosenPhoto(context, id, titleOf(id)))}
         </ul>
         <div class="actions">
-            <hcm-button variant="outlined" icon="photo_library" class="choose-photos" @click=${pick}
+            <hcm-button variant="outlined" icon="photo_library" class="choose-photos" ?disabled=${context.readOnly} @click=${pick}
                 >${poiText(context.locale, 'adminContent.pois.field.choosePhotos')}</hcm-button
             >
         </div>`;
@@ -303,6 +311,7 @@ export function publishedField(context: FieldContext): TemplateResult {
             <hcm-switch
                 class="published"
                 .label=${label}
+                ?disabled=${context.readOnly}
                 ?checked=${context.value.published}
                 @hcm-change=${(event: CustomEvent<{ readonly checked: boolean }>) => {
                     context.edit({ published: event.detail.checked });

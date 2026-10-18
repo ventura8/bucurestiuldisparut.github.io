@@ -1,7 +1,6 @@
 // The entry's wiring, in Node: the real Firebase SDK is initialized (the emulator and the production settings) but never
 // called, and every browser part is a plain object; no request leaves the test.
 import { createFakeFetch, E2E_PROJECT_CONFIG, jsonResponse } from '@hcm/test-support/fakes';
-import { EDITOR_PAGE_TAGS } from '@hcm/ui/admin';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CONSENT_KEY } from '../src/app/telemetry.js';
@@ -24,7 +23,7 @@ import {
     type AdminScope,
     type AdminWindow,
 } from '../src/index.js';
-import { ADMIN_ROUTES } from '../src/routing/routes.js';
+import { ADMIN_ROUTES, type AdminRouteId } from '../src/routing/routes.js';
 import { E2E_WEB_CONFIG, settle, testLog } from './app/fakes.js';
 
 class MemoryStorage implements Storage {
@@ -104,6 +103,19 @@ const E2E = { standInPopup: createStandInPopup, city: e2eCity, mapToken: e2eMapT
 /** One configuration for every test: Firebase keeps one default app per process. */
 const CONFIG = { ...E2E_WEB_CONFIG, measurementId: 'G-E2E0000000' };
 
+/** Each editor route's page element. */
+const PAGE_TAGS: Readonly<Record<Exclude<AdminRouteId, 'setup'>, string>> = {
+    home: 'hcm-home-page',
+    photos: 'hcm-photos-page',
+    pois: 'hcm-pois-page',
+    layers: 'hcm-layers-page',
+    jobs: 'hcm-jobs-page',
+    settings: 'hcm-settings-page',
+    admins: 'hcm-admins-page',
+    history: 'hcm-history-page',
+    crashes: 'hcm-crashes-list-page',
+};
+
 afterEach(() => {
     vi.restoreAllMocks();
 });
@@ -119,7 +131,10 @@ describe('the entry', () => {
         const deps = browserDeps(browserParts(fakeWindow().win, E2E, testLog().log))(CONFIG, { release: 'e2e' }, null);
         const editors = ADMIN_ROUTES.filter((id) => id !== 'setup');
 
-        await expect(Promise.all(editors.map((id) => deps.pages.load(id)))).resolves.toEqual(editors.map((id) => EDITOR_PAGE_TAGS[id]));
+        // Each area's page is a lazy chunk (DECISIONS-for-review.md §34b): loading it registers its store module and its element.
+        await expect(Promise.all(editors.map((id) => deps.pages.load(id)))).resolves.toEqual(editors.map((id) => PAGE_TAGS[id]));
+        expect(new Set(Object.keys(deps.content?.modules ?? {}))).toEqual(new Set(editors));
+        expect(globalThis.customElements.get('hcm-photos-page')).toBeDefined();
     });
 
     it('happyPath_leavingThePageWithAnUnsavedEditAsksTheBrowsersQuestion', () => {

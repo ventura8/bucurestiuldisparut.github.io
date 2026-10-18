@@ -1,7 +1,7 @@
 /**
  * The shell's page registry (`docs/research/M2b-interfaces.md` §1.1): a route shows the custom element its loader
- * resolves, imported lazily, so a later workstream adds a page (`registerAdminPage`) without touching the shell. A route
- * without a page stays out of the navigation and opens Setup.
+ * resolves, imported lazily (each editor area is a chunk of its own, `./area-pages.ts`), so a later workstream adds a page
+ * (`registerAdminPage`) without touching the shell. A route without a page stays out of the navigation and opens Setup.
  */
 import type { AdminRouteId } from './routes.js';
 
@@ -23,14 +23,14 @@ export class PageRegistry {
         return this.#loaders.has(id);
     }
 
-    /** The page's tag; null when no page is registered, its module fails to load or it names no `hcm-` element. */
+    /**
+     * The page's tag; null when no page is registered or it names no `hcm-` element. Rejects when the page's module does
+     * not load (an area's chunk lost on the way, or replaced by a new deploy: `DECISIONS-for-review.md` §34b), so the
+     * shell offers Retry instead of saying the page does not exist.
+     */
     async load(id: AdminRouteId): Promise<string | null> {
         const load = this.#loaders.get(id);
-        try {
-            const tag = load === undefined ? null : await load();
-            return tag !== null && PAGE_TAG.test(tag) ? tag : null;
-        } catch {
-            return null;
-        }
+        const tag = load === undefined ? null : await load();
+        return tag !== null && PAGE_TAG.test(tag) ? tag : null;
     }
 }

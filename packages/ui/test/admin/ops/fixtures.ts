@@ -191,7 +191,15 @@ export function homeState(overrides: Partial<HomeViewState> = {}): HomeViewState
                 path: 'manifests/bucharest',
                 version: '',
                 pending: false,
-                data: { status: 'idle', builtAt: '2026-10-17T09:00:00.000Z', skipped: 2, error: null },
+                data: {
+                    status: 'idle',
+                    builtAt: '2026-10-17T09:00:00.000Z',
+                    skipped: [
+                        { entity: 'layer', id: 'corona-1968', code: 'validation.required', path: 'attribution' },
+                        { entity: 'poiCategory', id: 'piete', code: 'validation.value', path: '' },
+                    ],
+                    error: null,
+                },
             },
         },
         ...overrides,
@@ -220,9 +228,16 @@ const TAGS: Readonly<Record<AreaKey, string>> = {
 export async function page<K extends AreaKey>(
     area: K,
     store: Areas[K] | null,
-    options: { readonly params?: readonly string[]; readonly width?: number; readonly locale?: 'ro' | 'en' } = {},
+    options: {
+        readonly params?: readonly string[];
+        readonly width?: number;
+        readonly locale?: 'ro' | 'en';
+        /** A revoked admin's read-only page (DECISIONS-for-review.md §42d). */
+        readonly revoked?: boolean;
+    } = {},
 ): Promise<{ readonly app: FakeAdminApp; readonly element: HTMLElement }> {
-    const app = new FakeAdminApp(adminState({ route: { id: area, params: options.params ?? [] }, locale: options.locale ?? 'en' }));
+    const route = { id: area, params: options.params ?? [] };
+    const app = new FakeAdminApp(adminState({ route, locale: options.locale ?? 'en', revoked: options.revoked === true }));
     app.areas[area] = store;
     const tag = TAGS[area];
     const element = await mount<HTMLElement>(html`<div class="box">${staticPage(tag, app)}</div>`, options.width ?? 1300);

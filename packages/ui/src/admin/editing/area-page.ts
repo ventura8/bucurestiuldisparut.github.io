@@ -3,6 +3,10 @@
  * `state`; the page follows its own area's store only (`app.content.<area>`), copies the store's state into `view` on
  * every change, opens the store with the route's params when it connects or they change, and closes it when it
  * disconnects. A list and detail page fills the page area (`fillsPage`): only its panes scroll.
+ *
+ * While the shell says the admin's access was removed (`revoked`, `DECISIONS-for-review.md` §35e) the page is read-only
+ * (`readOnly`, the host's `read-only` attribute, §42d): its editors disable Save and every action that writes, and their
+ * fields are read-only, so what is on screen can still be selected and copied until sign-out.
  */
 import { DEFAULT_LOCALE, type Locale } from '@hcm/shared';
 import { LitElement } from 'lit';
@@ -54,6 +58,22 @@ export abstract class AreaPage<State, Intents> extends LitElement {
     protected override willUpdate(): void {
         this.#follow();
         this.#open();
+        this.toggleAttribute('read-only', this.readOnly);
+    }
+
+    /** The admin's access was removed: nothing on the page may write any more (§42d). */
+    protected get readOnly(): boolean {
+        return this.state?.revoked === true;
+    }
+
+    /** The signed-in admin's uid ("you" in who saved what), or null. */
+    protected get self(): string | null {
+        return this.state?.user?.uid ?? null;
+    }
+
+    /** The admins' names by uid, as far as the shell knows them. */
+    protected get people(): Readonly<Record<string, string>> {
+        return this.state?.people ?? {};
     }
 
     /** The store's intents (null without a store). */

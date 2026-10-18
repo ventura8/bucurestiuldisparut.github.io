@@ -90,5 +90,13 @@ function paintInPage(query: { readonly layerId: string; readonly property: strin
 
 /** A paint property of a historical layer on the admin map (`raster-brightness-min` of `hcm-raster-<id>`). */
 export async function rasterPaint(page: Page, layerId: string, property: string): Promise<unknown> {
-    return page.evaluate(paintInPage, { layerId: `hcm-raster-${layerId}`, property });
+    return mapPaint(page, `hcm-raster-${layerId}`, property);
+}
+
+/**
+ * A paint property of any style layer of the admin map, by the layer's own id (`hcm-photos-marker`'s `icon-opacity`,
+ * `hcm-poi-<category>-circle`'s `circle-opacity`): what an overlay's opacity preview changes.
+ */
+export async function mapPaint(page: Page, layerId: string, property: string): Promise<unknown> {
+    return page.evaluate(paintInPage, { layerId, property });
 }

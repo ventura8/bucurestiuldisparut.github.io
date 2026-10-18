@@ -10,7 +10,9 @@ import {
     HTTP_ENDPOINTS,
     MAPBOX_BOOTSTRAP_SCOPES,
     PROVISION_ITEMS,
+    type MapboxTokenAudience,
     type ProvisionItem,
+    type SelfTestCheck,
     type ServiceState,
     type UsgsRole,
 } from '@hcm/shared';
@@ -90,9 +92,27 @@ export interface DeploySlice {
     readonly watching: boolean;
 }
 
+/** The last replacement of a public token (`setup.rotatePublicToken`, the panic button of security review §1.3). */
+export interface RotationState {
+    readonly audience: MapboxTokenAudience | null;
+    readonly busy: boolean;
+    /** When the replaced token is deleted (null: there was none, or nothing was replaced yet). */
+    readonly retiresOldAt: string | null;
+    readonly done: boolean;
+    readonly error: SetupMessage | null;
+}
+
 interface MapboxSlice {
     readonly user: string | null;
     readonly requiredScopes: readonly string[];
+    readonly rotation: RotationState;
+}
+
+/** One check of the last self-test (Check again in normal mode): its state and, when it failed, why. */
+export interface SelfTestCheckState {
+    readonly id: SelfTestCheck;
+    readonly state: ServiceState;
+    readonly detail: SetupMessage | null;
 }
 
 export interface UsgsSlice {
@@ -175,11 +195,16 @@ export interface SetupState {
     readonly analytics: AnalyticsSlice;
     readonly crashes: CrashSlice;
     readonly legacyImport: ImportSlice;
+    /** The checks of the last self-test, in `SELF_TEST_CHECKS` order (none before Check again ran it). */
+    readonly selfTest: { readonly checks: readonly SelfTestCheckState[] };
 }
 
 export type StepPatch = Partial<Pick<SetupStepState, 'state' | 'checkedAt' | 'detail' | 'error' | 'busy' | 'needsContinue' | 'scope'>>;
 
 const REQUIRED_STEPS: readonly SetupStepId[] = ['billing', 'provision', 'mapbox', 'usgs'];
+
+/** No public token replaced yet. */
+const NO_ROTATION: RotationState = { audience: null, busy: false, retiresOldAt: null, done: false, error: null };
 
 /** Every function the deployment step waits for (32 today). */
 export const REGISTRY_FUNCTION_COUNT = [CALLABLES, HTTP_ENDPOINTS, BACKGROUND_FUNCTIONS].reduce(
@@ -276,7 +301,7 @@ export function initialSetupState(host: SetupHost, mode: SetupMode): SetupState 
             variables: deployVariables(host.projectId, host.projectNumber),
             watching: false,
         },
-        mapbox: { user: null, requiredScopes: MAPBOX_BOOTSTRAP_SCOPES },
+        mapbox: { user: null, requiredScopes: MAPBOX_BOOTSTRAP_SCOPES, rotation: NO_ROTATION },
         usgs: {
             secondsLeft: null,
             expired: false,
@@ -292,6 +317,7 @@ export function initialSetupState(host: SetupHost, mode: SetupMode): SetupState 
         analytics: { measurementId: null, pageChangesOff: false, crashEmails: true, watching: false },
         crashes: { loaded: false, busy: false, groups: [], error: null, disabledApi: null, lastReportAt: null },
         legacyImport: { done: 0, total: 0, failed: [], running: false },
+        selfTest: { checks: [] },
     });
 }
 

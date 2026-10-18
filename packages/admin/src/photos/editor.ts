@@ -17,7 +17,7 @@ import type { PhotoEditorState } from './state.js';
 import type { PhotoFile } from './upload-plan.js';
 
 export interface PhotoEditorDeps {
-    readonly services: Pick<PhotosServices, 'cityId' | 'store' | 'uploads' | 'user' | 'clock' | 'denied'>;
+    readonly services: Pick<PhotosServices, 'cityId' | 'store' | 'uploads' | 'user' | 'clock' | 'denied' | 'people' | 'readOnly'>;
     readonly memory: PhotoMemory;
     readonly bounds: () => BBox | null;
     /** Created in this session: Published starts on (publish on save, §5.4). */
@@ -79,7 +79,12 @@ export class PhotoEditor {
             bounds: deps.bounds,
             clock: services.clock,
             preset: (photo) => this.#preset(photo),
-            changed: () => {
+            locked: () => services.readOnly(),
+            changed: (draft) => {
+                // A conflict names who saved: the shell learns the admins' names once (DECISIONS-for-review.md §42c).
+                if (draft.conflict !== null) {
+                    services.people();
+                }
                 this.#emit();
             },
         });

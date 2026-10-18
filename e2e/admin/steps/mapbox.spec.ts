@@ -1,4 +1,7 @@
 import { MAPBOX_TOKENS } from '@hcm/test-support/fakes';
+
+import { expectStateSound } from '../../support/state-check.js';
+import { adminVisit } from '../../tour/states.js';
 import type { Locator, Page } from '@playwright/test';
 
 import { projectCity } from '../support/content.js';
@@ -163,5 +166,48 @@ test(
         await box.fill(MAPBOX_TOKENS.bootstrap);
         await save.click();
         await new SetupPage(page, lang).expectState('mapbox', 'ok');
+    },
+);
+
+test(
+    "Replacing the visitors' token, once confirmed, puts a new URL-restricted token in the city and says when the old one goes",
+    { tag: ['@S-A06-HAPPY-ROTATE'] },
+    async ({ page, lang, adminWorld }) => {
+        const card = await mapboxCard(page, lang);
+        await card.getByLabel(setupText(lang, 'adminSetup.mapbox.token')).fill(MAPBOX_TOKENS.bootstrap);
+        await card.getByRole('button', { name: setupText(lang, 'adminSetup.mapbox.save') }).click();
+        const setup = new SetupPage(page, lang);
+        await setup.expectState('mapbox', 'ok');
+        const before = ((await adminWorld.emulators.document('cities/bucharest'))?.['mapbox'] as { publicToken?: string } | undefined)
+            ?.publicToken;
+        const saved = await setup.show('mapbox');
+
+        // One click and the confirmation (the panic button of security review §1.3).
+        await saved.getByRole('button', { name: setupText(lang, 'adminSetup.mapbox.rotate.viewer') }).click();
+        const dialog = page.getByRole('dialog', { name: setupText(lang, 'adminSetup.mapbox.rotate.confirmViewer') });
+        await expect(dialog).toBeVisible();
+        await expectStateSound(page, adminVisit('mapbox-rotate-confirm', lang));
+        const rotated = page.waitForResponse(`${emulatorOrigin('functions')}/**/setup-rotatePublicToken`);
+        await page
+            .locator('hcm-confirm-dialog')
+            .filter({ has: dialog })
+            .getByRole('button', { name: setupText(lang, 'adminSetup.mapbox.rotate.confirm'), exact: true })
+            .click();
+        expect((await rotated).status()).toBe(200);
+
+        // The card says when the old token goes (ops.tick deletes it ten minutes later: functions/test/ops).
+        await expect(
+            saved.getByRole('status').filter({ hasText: startOf(setupText(lang, 'adminSetup.mapbox.rotate.done')) }),
+        ).toBeVisible();
+        await expect
+            .poll(
+                async () =>
+                    ((await adminWorld.emulators.document('cities/bucharest'))?.['mapbox'] as { publicToken?: string } | undefined)
+                        ?.publicToken,
+            )
+            .toMatch(/^pk\./);
+        const after = ((await adminWorld.emulators.document('cities/bucharest'))?.['mapbox'] as { publicToken?: string } | undefined)
+            ?.publicToken;
+        expect(after).not.toBe(before);
     },
 );

@@ -24,6 +24,8 @@ export interface PlaceInput {
     readonly mapReady: boolean;
     /** The number fields left since the photo opened: only they say their problem. */
     readonly left: FieldsLeft;
+    /** A revoked admin's editor: nothing that writes is on (`DECISIONS-for-review.md` §42d). */
+    readonly readOnly: boolean;
 }
 
 const REPLACE_KEYS = {
@@ -88,7 +90,7 @@ export function imageSection(input: PlaceInput, chooseFile: () => void): Templat
         ${editor.duplicateOf === null ? nothing : html`<p>${duplicateLink(locale, editor.duplicateOf)}</p>`}
         ${editor.replace === null ? nothing : replaceStatus(locale, editor.replace, intents)}
         <div class="actions">
-            <hcm-button variant="tonal" icon="image" ?disabled=${replacing} @click=${chooseFile}
+            <hcm-button variant="tonal" icon="image" ?disabled=${replacing || input.readOnly} @click=${chooseFile}
                 >${photoText(locale, 'adminContent.photos.editor.replace')}</hcm-button
             >
         </div>
@@ -102,14 +104,19 @@ const SUGGESTION_KEYS = {
     title: 'adminContent.photos.suggestion.titleText',
 } as const;
 
-function suggestion(locale: Locale, item: SuggestionPort, intents: PhotosIntentsPort | null): TemplateResult {
+function suggestion(input: PlaceInput, item: SuggestionPort): TemplateResult {
+    const { locale, intents } = input;
     return html`<li class="upload">
         <span>${photoText(locale, SUGGESTION_KEYS[item.field], { value: item.text })}</span>
         ${
             item.outside
                 ? html`<span class="note">${photoText(locale, 'adminContent.photos.suggestion.outside')}</span>`
                 : html`<span class="actions"
-                      ><hcm-button variant="text" icon="check" @click=${() => intents?.applySuggestion(item.field)}
+                      ><hcm-button
+                          variant="text"
+                          icon="check"
+                          ?disabled=${input.readOnly}
+                          @click=${() => intents?.applySuggestion(item.field)}
                           >${photoText(locale, 'adminContent.photos.suggestion.apply')}</hcm-button
                       ></span
                   >`
@@ -118,13 +125,13 @@ function suggestion(locale: Locale, item: SuggestionPort, intents: PhotosIntents
 }
 
 function suggestions(input: PlaceInput): TemplateResult {
-    const { locale, editor, intents } = input;
+    const { locale, editor } = input;
     if (editor.suggestions.length === 0) {
         return html``;
     }
     return html`<h3>${photoText(locale, 'adminContent.photos.suggestion.title')}</h3>
         <ul class="uploads">
-            ${editor.suggestions.map((item) => suggestion(locale, item, intents))}
+            ${editor.suggestions.map((item) => suggestion(input, item))}
         </ul>`;
 }
 
@@ -145,6 +152,7 @@ function placeFields(input: PlaceInput): TemplateResult {
                 min: -90,
                 max: 90,
                 step: 'any',
+                readOnly: input.readOnly,
             },
             (typed) => {
                 set('lat', typed);
@@ -160,6 +168,7 @@ function placeFields(input: PlaceInput): TemplateResult {
                 min: -180,
                 max: 180,
                 step: 'any',
+                readOnly: input.readOnly,
             },
             (typed) => {
                 set('lng', typed);
@@ -170,7 +179,8 @@ function placeFields(input: PlaceInput): TemplateResult {
 }
 
 function direction(input: PlaceInput): TemplateResult {
-    const { locale, editor, intents, mapReady } = input;
+    const { locale, editor, intents } = input;
+    const mapReady = input.mapReady && !input.readOnly;
     if (editor.picking) {
         return html`<div class="banner" role="status">
             <p>${photoText(locale, 'adminContent.photos.direction.picking')}</p>
@@ -203,7 +213,11 @@ export function placeSection(input: PlaceInput): TemplateResult {
                 ? html`<div class="banner">
                       <p>${photoText(locale, 'adminContent.photos.place.check')}</p>
                       <div class="actions">
-                          <hcm-button variant="tonal" icon="place" @click=${() => intents?.confirmPlace(editor.id)}
+                          <hcm-button
+                              variant="tonal"
+                              icon="place"
+                              ?disabled=${input.readOnly}
+                              @click=${() => intents?.confirmPlace(editor.id)}
                               >${photoText(locale, 'adminContent.photos.confirmPlace')}</hcm-button
                           >
                       </div>
@@ -220,6 +234,7 @@ export function placeSection(input: PlaceInput): TemplateResult {
                 min: 0,
                 max: 360,
                 step: 'any',
+                readOnly: input.readOnly,
             },
             (typed) => {
                 intents?.edit({ bearing: numberOf(typed) });
@@ -236,6 +251,7 @@ export function placeSection(input: PlaceInput): TemplateResult {
                 .value=${fov}
                 .label=${photoText(locale, 'adminContent.photos.field.fov')}
                 .valueText=${fovText}
+                ?disabled=${input.readOnly}
                 @hcm-input=${(event: CustomEvent<{ value: number }>) => {
                     intents?.edit({ fov: event.detail.value });
                 }}

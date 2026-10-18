@@ -1,8 +1,10 @@
 /**
  * The area section (`docs/research/M2c-interfaces.md` §8.5; behaviour A19): the four edges of the city's bounds, the
  * start view and the zoom limits as number fields, and the photos and places smaller bounds would leave out, each a
- * link to its editor (S-A19-BAD-BOUNDS-EXCLUDE-CONTENT). The rectangle drawn on the page's map and **Use this view**
- * (the store's `useView`) come with the settings page's `hcm-admin-map`, once the admin tier mocks the map (CR-M2c-7).
+ * link to its editor (S-A19-BAD-BOUNDS-EXCLUDE-CONTENT). The page's map above shows the bounds as a rectangle:
+ * **Draw the area on the map** takes two clicks, two opposite corners (Stop drawing in between), **Use this view** takes
+ * the map's centre and zoom as the start view (`DECISIONS-for-review.md` §42a); both wait for the map, and the number
+ * fields are the keyboard's way to the same (WCAG 2.1.1).
  */
 import { translate, type CityDoc, type ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
@@ -89,6 +91,7 @@ function numberField(
         value: shown(valueOf(city, spec.name)),
         ...issueOf(context, spec.name),
         inputMode: 'decimal',
+        readOnly: context.readOnly,
         onInput: (text) => {
             context.intents?.setNumber(spec.name, text);
         },
@@ -116,6 +119,31 @@ function outsideList(context: SectionContext, outside: readonly OutsidePort[]): 
           </div>`;
 }
 
+/** What the map's tools say while a rectangle is drawn. */
+const DRAWING_KEYS = { first: 'adminContent.settings.drawFirst', second: 'adminContent.settings.drawSecond' } as const;
+
+/** Draw the area and Use this view, and where a rectangle being drawn is. */
+function mapTools(context: SectionContext): TemplateResult {
+    const { locale, intents, view } = context;
+    const off = view.map.status !== 'ready' || context.readOnly;
+    const drawing = view.map.drawing;
+    return html`<div class="actions map-tools">
+            <hcm-button
+                variant="tonal"
+                icon="crop_free"
+                class="draw-area"
+                .pressed=${drawing !== null}
+                ?disabled=${off}
+                @click=${() => intents?.drawBounds()}
+                >${contentText(locale, drawing === null ? 'adminContent.settings.drawArea' : 'adminContent.settings.drawCancel')}</hcm-button
+            >
+            <hcm-button variant="text" icon="my_location" class="use-view" ?disabled=${off} @click=${() => intents?.useMapView()}
+                >${contentText(locale, 'adminContent.settings.useView')}</hcm-button
+            >
+        </div>
+        <p class="note status" role="status">${drawing === null ? '' : contentText(locale, DRAWING_KEYS[drawing])}</p>`;
+}
+
 function boundsError(context: SectionContext): TemplateResult | typeof nothing {
     const issue = boundsIssue(context);
     return issue === null ? nothing : html`<p class="shared-error" id=${BOUNDS_ERROR_ID}>${translate(context.locale, issue.code)}</p>`;
@@ -132,6 +160,7 @@ export function areaSection(context: SectionContext): TemplateResult {
         <section class="group">
             <h3>${contentText(locale, 'adminContent.settings.bounds')}</h3>
             <p class="note">${contentText(locale, 'adminContent.settings.boundsHelp')}</p>
+            ${mapTools(context)}
             <div class="fields">${BOUNDS.map((spec) => numberField(context, city, spec))}</div>
             ${boundsError(context)}
             <p class="note status" role="status">${state.checking ? contentText(locale, 'adminContent.settings.checking') : ''}</p>

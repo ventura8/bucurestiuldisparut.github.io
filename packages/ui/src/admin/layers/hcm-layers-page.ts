@@ -82,7 +82,7 @@ export class HcmLayersPage extends AreaPage<LayersViewState, LayersIntentsPort> 
                 <h2>${contentText(locale, 'adminContent.layers.title')}</h2>
                 <p class="note">${contentText(locale, 'adminContent.layers.dragHint')}</p>
                 <div class="actions">
-                    <hcm-button variant="tonal" icon="link" @click=${() => intents?.openLink()}
+                    <hcm-button variant="tonal" icon="link" ?disabled=${this.readOnly} @click=${() => intents?.openLink()}
                         >${contentText(locale, 'adminContent.layers.link')}</hcm-button
                     >
                 </div>
@@ -118,6 +118,7 @@ export class HcmLayersPage extends AreaPage<LayersViewState, LayersIntentsPort> 
             move: (id: string, direction: 'up' | 'down') => {
                 void this.intents?.move(id, direction);
             },
+            readOnly: this.readOnly,
         };
         return reorderList(rows, labels, handlers, this.#drag);
     }
@@ -145,6 +146,8 @@ export class HcmLayersPage extends AreaPage<LayersViewState, LayersIntentsPort> 
                 this.go([]);
             },
             map: { status: view.map, css: this.mapCss },
+            readOnly: this.readOnly,
+            who: { self: this.self, people: this.people },
         };
         return layerEditor(context, editor, view.deletion);
     }

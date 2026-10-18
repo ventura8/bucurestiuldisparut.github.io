@@ -145,6 +145,22 @@ describe('places: adding and editing', () => {
         expect(store.state.editor?.id).toBe('stavropoleos');
     });
 
+    it('badPath_offlineAnEmptyCachedListOfCategoriesDoesNotTurnSaveOff', () => {
+        const world = seededWorld();
+        const store = opened(world, ['stavropoleos']);
+        store.intents.edit({ title: { ro: 'Stavropoleos, 1724' } });
+        expect(store.state.editor?.draft?.issues).toEqual([]);
+
+        // Offline, the categories answer from a cache that holds none of them.
+        world.store.setOffline(true);
+        world.store.drop(FIRESTORE_PATHS.poiCategory(CITY, 'biserici'));
+        world.store.drop(FIRESTORE_PATHS.poiCategory(CITY, 'parcuri'));
+        store.intents.edit({ title: { ro: 'Stavropoleos, 1725' } });
+
+        expect(store.state.categories).toMatchObject({ items: [], reconnecting: true });
+        expect(store.state.editor?.draft?.issues).toEqual([]);
+    });
+
     it('badPath_withoutAMapFactoryTheMapIsUnavailable', () => {
         const world = seededWorld({ maps: null });
         const store = opened(world);

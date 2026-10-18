@@ -31,6 +31,7 @@ function nameFields(context: SectionContext, city: CityDoc): TemplateResult {
                 label: contentText(locale, lang === 'ro' ? 'adminContent.settings.nameRo' : 'adminContent.settings.nameEn'),
                 value: textValue(city.name, lang),
                 issue: issueAt(issues, `name.${lang}`),
+                readOnly: context.readOnly,
                 ...(lang === 'ro' ? { required: true } : {}),
                 onInput: (text) => {
                     intents?.setText('name', lang, text);
@@ -51,6 +52,7 @@ function markdownField(context: SectionContext, city: CityDoc, name: MarkdownNam
         label,
         value,
         multiline: true,
+        readOnly: context.readOnly,
         help: contentText(locale, 'adminContent.settings.markdownHelp'),
         issue: issueAt(context.view.citySection.draft.issues, `${name}.${lang}`),
         onInput: (text) => {
@@ -77,6 +79,7 @@ function creditRow(context: SectionContext, credit: Credit, row: number, count: 
             label: contentText(locale, key, { n }),
             value,
             issue: issueAt(issues, `credits[${String(row)}].${path}`),
+            readOnly: context.readOnly,
             ...(name === 'url' ? { type: 'url' as const } : {}),
             onInput: (text) => {
                 intents?.editCredit(row, name, text);
@@ -92,16 +95,19 @@ function creditRow(context: SectionContext, credit: Credit, row: number, count: 
             <hcm-icon-button
                 icon="arrow_upward"
                 label=${contentText(locale, 'adminContent.settings.creditUp', { n })}
+                ?disabled=${context.readOnly}
                 @click=${() => intents?.moveCredit(row, -1)}
             ></hcm-icon-button>
             <hcm-icon-button
                 icon="arrow_downward"
                 label=${contentText(locale, 'adminContent.settings.creditDown', { n })}
+                ?disabled=${context.readOnly}
                 @click=${() => intents?.moveCredit(row, 1)}
             ></hcm-icon-button>
             <hcm-icon-button
                 icon="delete"
                 label=${contentText(locale, 'adminContent.settings.removeCredit', { n })}
+                ?disabled=${context.readOnly}
                 @click=${() => intents?.removeCredit(row)}
             ></hcm-icon-button>
         </div>
@@ -121,7 +127,7 @@ function credits(context: SectionContext, city: CityDoc): TemplateResult {
             ${
                 list.length >= MAX_CREDITS
                     ? html`<p class="note">${contentText(locale, 'adminContent.settings.creditsLimit', { max: String(MAX_CREDITS) })}</p>`
-                    : html`<hcm-button variant="tonal" icon="add" @click=${() => intents?.addCredit()}
+                    : html`<hcm-button variant="tonal" icon="add" ?disabled=${context.readOnly} @click=${() => intents?.addCredit()}
                           >${contentText(locale, 'adminContent.settings.addCredit')}</hcm-button
                       >`
             }

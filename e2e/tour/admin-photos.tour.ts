@@ -1,9 +1,12 @@
 import type { Page } from '@playwright/test';
 
 import { recordLiveRegions } from '../support/live-regions.js';
+import { mapFacts } from '../support/map.js';
 import { expectStateSound } from '../support/state-check.js';
 import { adminVisit } from './states.js';
 import { expect, test } from '../admin/support/content-test.js';
+import { adminMapReady } from '../admin/support/map.js';
+import { menuDialog } from '../admin/support/menu.js';
 import { photosText, seedPhoto, seedPhotosCity, servePhotoImages } from '../admin/support/photos.js';
 
 /**
@@ -31,7 +34,7 @@ function photoLink(page: Page, title: string) {
 
 test(
     'Publishing a selection skips the photos that cannot be published, each with its reason',
-    { tag: ['@S-A10-BAD-NOT-PUBLISHABLE', '@S-A31-HAPPY-EDITORS', '@S-A21-BAD-LEAK-CHECK'] },
+    { tag: ['@S-A10-BAD-NOT-PUBLISHABLE', '@S-A09-HAPPY-OPEN-IN-VIEW', '@S-A31-HAPPY-EDITORS', '@S-A21-BAD-LEAK-CHECK'] },
     async ({ page, lang, content }) => {
         await page.context().addInitScript(recordLiveRegions);
         await servePhotoImages(page);
@@ -101,6 +104,15 @@ test(
         await expect(
             page.getByRole('heading', { name: photosText(lang, 'adminContent.photos.editor.title', { title: 'Calea Victoriei' }) }),
         ).toBeFocused();
+        // Its map is brought to it: the city has no start view, so the map opened at its bounds' centre (44.45 N), north
+        // of every photo (S-A09-HAPPY-OPEN-IN-VIEW). A phone creates the map with the editor.
+        await adminMapReady(page);
+        await expect
+            .poll(async () => {
+                const [lng, lat] = (await mapFacts(page)).center;
+                return Math.abs(lng - 26.1) < 1e-4 && Math.abs(lat - 44.43) < 1e-4;
+            })
+            .toBe(true);
         await expectStateSound(page, adminVisit('photos.editor', lang));
     },
 );
@@ -118,10 +130,17 @@ test(
 
         // Author, source and licence for a selection: a dialog.
         await page.getByRole('checkbox', { name: photosText(lang, 'adminContent.photos.select', { title: 'Piața Romană' }) }).check();
-        const setFields = photosText(lang, 'adminContent.photos.bulk.setFieldsAction');
-        await page.getByRole('button', { name: setFields }).click();
+        // Author, source and licence is in the selection's overflow menu (DECISIONS-for-review.md §42e): its dialog first.
+        const more = photosText(lang, 'adminContent.photos.bulk.more');
+        await page.locator('hcm-admin-photo-list .bulk-bar').getByRole('button', { name: more, exact: true }).click();
+        await expect(page.getByRole('dialog', { name: more })).toBeVisible();
+        await expectStateSound(page, adminVisit('photos.bulk-more', lang, { escape: { opener: more } }));
+        await page.locator('hcm-admin-photo-list .bulk-bar').getByRole('button', { name: more, exact: true }).click();
+        await menuDialog(page, more)
+            .getByRole('button', { name: photosText(lang, 'adminContent.photos.bulk.setFieldsAction'), exact: true })
+            .click();
         await expect(page.getByRole('dialog', { name: photosText(lang, 'adminContent.photos.setFields.title') })).toBeVisible();
-        await expectStateSound(page, adminVisit('photos.set-fields', lang, { escape: { opener: setFields } }));
+        await expectStateSound(page, adminVisit('photos.set-fields', lang, { escape: { opener: more } }));
 
         // The editor: a source address that is not https is named, and Save stays off.
         await page.goto(content.address(lang, 'photos/ready'));

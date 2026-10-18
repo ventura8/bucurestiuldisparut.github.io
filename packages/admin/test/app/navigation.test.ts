@@ -6,7 +6,7 @@ import { RETURN_TO_KEY } from '../../src/routing/router.js';
 import type { ShellState } from '../../src/state/state.js';
 import { FakeLocation, MemoryStore, shellStateAccess } from './fakes.js';
 
-function navigation(hash: string, pages: readonly ('admins' | 'photos')[] = ['admins']) {
+function navigation(hash: string, pages: readonly ('admins' | 'photos' | 'home')[] = ['admins']) {
     const location = new FakeLocation(hash);
     const session = new MemoryStore();
     const shell = shellStateAccess();
@@ -176,5 +176,71 @@ describe('Navigation: the unsaved-changes question', () => {
         n.nav.leave();
 
         expect(n.shell.get()).toMatchObject({ leaving: null, route: { id: 'photos' } });
+    });
+});
+
+describe('Navigation: the first screen once Setup is complete (DECISIONS-for-review.md §34i)', () => {
+    it('happyPath_anEmptyAddressFollowsSetupsReadinessAndTheBarFollowsIt', () => {
+        const n = navigation('', ['admins', 'home']);
+        n.change({ auth: 'admin', mode: 'normal' });
+        expect(n.shell.get().route.id).toBe('setup');
+
+        n.change({ setupReady: true });
+        expect(n.shell.get().route.id).toBe('home');
+        expect(
+            n.shell
+                .get()
+                .destinations.filter((destination) => destination.compact)
+                .map((destination) => destination.id),
+        ).toEqual(['home']);
+        // A later change moves nobody: only the bar follows.
+        n.change({ setupReady: false });
+
+        expect(n.shell.get().route.id).toBe('home');
+        expect(n.shell.get().destinations.find((destination) => destination.id === 'setup')?.compact).toBe(true);
+        expect(n.track.mock.calls.map(([event]) => (event as { route: string }).route)).toEqual(['setup', 'home']);
+        expect(n.location.writes).toEqual([]);
+    });
+
+    it('badPath_finishingSetupsLastStepLeavesTheAdminOnSetup', () => {
+        const n = navigation('', ['admins', 'home']);
+        n.change({ auth: 'admin', mode: 'normal' });
+        n.change({ setupReady: false });
+
+        n.change({ setupReady: true });
+
+        expect(n.shell.get().route.id).toBe('setup');
+        expect(n.shell.get().destinations.find((destination) => destination.id === 'home')?.compact).toBe(true);
+    });
+
+    it('happyPath_aBrowserThatRemembersItOpensTheDashboardAtOnce', () => {
+        const n = navigation('', ['home']);
+
+        n.change({ auth: 'admin', mode: 'normal', setupReady: true });
+
+        expect(n.shell.get().route.id).toBe('home');
+        expect(n.track).toHaveBeenCalledTimes(1);
+    });
+
+    it('badPath_anAddressThatNamesAPageStaysWhenSetupBecomesComplete', () => {
+        const n = navigation('#/admins', ['admins', 'home']);
+        n.change({ auth: 'admin', mode: 'normal' });
+
+        n.change({ setupReady: true });
+        n.change({ setupReady: true, busy: true });
+
+        expect(n.shell.get().route.id).toBe('admins');
+        expect(n.shell.get().destinations.find((destination) => destination.id === 'home')?.compact).toBe(true);
+        expect(n.track).toHaveBeenCalledTimes(1);
+    });
+
+    it('badPath_readinessWhileSignedOutChangesNothingUntilTheShellShows', () => {
+        const n = navigation('', ['home']);
+        n.change({ auth: 'signedOut', mode: 'normal' });
+
+        n.change({ setupReady: true });
+
+        expect(n.shell.get().route.id).toBe('setup');
+        expect(n.track).not.toHaveBeenCalled();
     });
 });

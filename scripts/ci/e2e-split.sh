@@ -19,7 +19,9 @@
 #                  tier: the remote takes the head of the queue (the long tour tests), this machine the tail (short
 #                  functional tests). Defaults, measured (docs/research/pipeline-baseline.md): "2:3" for e2e and
 #                  tour-matrix ("1-3/5" there, "4-5/5" here), "1:2" for quality and all, where this machine also runs
-#                  static, tests and build first.
+#                  static, tests and build first. Measured again on 2026-10-18 after the per-push tiering
+#                  (DECISIONS-for-review.md §42g): `quality` in 460 s, this machine's part (static, tests, 228 s of
+#                  Playwright, build) about 20 s shorter than the NUC's 447 s, so "1:2" stays.
 #
 # The admin tier's locked tests run one at a time on each machine (one Firebase project in its emulators; its content
 # tests, a city each, run on every worker), so the admin tier is not counted into those ranges: each machine runs its own part of the admin projects (E2E_ADMIN_PART=1-2/3 on the remote,

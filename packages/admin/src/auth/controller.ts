@@ -182,7 +182,7 @@ export class AuthController {
         }
         if (this.#deps.auth.currentUser() === null) {
             this.#leaving = false;
-            this.#set({ auth: 'signedOut', user: null, role: null, busy: false, revoked: false, gate: NO_GATE });
+            this.#set({ auth: 'signedOut', user: null, role: null, busy: false, revoked: false, people: {}, gate: NO_GATE });
             return;
         }
         await this.#deps.auth.signOut();
@@ -286,7 +286,7 @@ export class AuthController {
         const expired = previous === 'admin' && !this.#leaving;
         this.#leaving = false;
         const issue = expired ? this.#deps.shell.notice({ key: 'adminShell.session.expired' }) : null;
-        this.#set({ auth: 'signedOut', role: null, busy: false, revoked: false, gate: { ...NO_GATE, issue } });
+        this.#set({ auth: 'signedOut', role: null, busy: false, revoked: false, people: {}, gate: { ...NO_GATE, issue } });
     }
 
     /** After a consent or a retry: the current user's case is decided again (none: signed out). */

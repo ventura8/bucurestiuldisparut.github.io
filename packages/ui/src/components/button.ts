@@ -10,7 +10,9 @@ export type ButtonVariant = 'filled' | 'tonal' | 'outlined' | 'text';
 
 /**
  * An M3 Expressive common button (small size: 40 px high in a 48 px target, pill shape that squares off while
- * pressed). The label is the default slot, so it is the accessible name. Fires the native `click`.
+ * pressed). The label is the default slot, so it is the accessible name. Fires the native `click`. A toggle button sets
+ * `pressed` (true or false), which its inner button states as `aria-pressed`: ARIA on the host would name nothing, since
+ * the host is not the focused element (Draw the area, `DECISIONS-for-review.md` §42a); undefined is no toggle.
  */
 export class HcmButton extends LitElement {
     static override readonly shadowRootOptions: ShadowRootInit = { ...LitElement.shadowRootOptions, delegatesFocus: true };
@@ -19,6 +21,7 @@ export class HcmButton extends LitElement {
         variant: { type: String, reflect: true },
         icon: { type: String },
         disabled: { type: Boolean, reflect: true },
+        pressed: { attribute: false },
     };
 
     static override readonly styles = [
@@ -90,6 +93,7 @@ export class HcmButton extends LitElement {
     declare variant: ButtonVariant;
     declare icon: string;
     declare disabled: boolean;
+    declare pressed: boolean | undefined;
 
     constructor() {
         super();
@@ -99,7 +103,12 @@ export class HcmButton extends LitElement {
     }
 
     override render(): TemplateResult {
-        return html`<button class="interactive touch-target label-large" part="button" ?disabled=${this.disabled}>
+        return html`<button
+            class="interactive touch-target label-large"
+            part="button"
+            ?disabled=${this.disabled}
+            aria-pressed=${this.pressed === undefined ? nothing : String(this.pressed)}
+        >
             ${this.icon === '' ? nothing : html`<hcm-icon name=${this.icon}></hcm-icon>`}<slot></slot>
         </button>`;
     }

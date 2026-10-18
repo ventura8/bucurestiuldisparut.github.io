@@ -200,3 +200,22 @@ describe('<hcm-overlay-list>', () => {
         expect(element.shadowRoot?.querySelectorAll('hcm-switch')).toHaveLength(1);
     });
 });
+
+describe('<hcm-overlay-list>: disabled', () => {
+    afterEach(cleanup);
+
+    it('badPath_aDisabledListMovesNothing', async () => {
+        const element = await list('en');
+        element.disabled = true;
+        await element.updateComplete;
+        const opacity = recordEvents(element, 'hcm-overlay-opacity');
+
+        press(shadowPart(sliderOf(element, 'plan-1911'), '.handle'), 'Home');
+
+        expect(opacity).toEqual([]);
+        await expect.element(page.getByRole('slider', { name: 'Opacity: Planul 1911' })).toHaveAttribute('aria-disabled', 'true');
+        expect([...(element.shadowRoot?.querySelectorAll('hcm-switch') ?? [])].every((toggle) => toggle.hasAttribute('disabled'))).toBe(
+            true,
+        );
+    });
+});

@@ -532,10 +532,29 @@ function probeSideways(registry: Registry): SidewaysInfo[] {
  * the window cuts off (an admin page scrolled past its map) shows them no more than the rest of what is cut. The scroll
  * sweep checks the same map at the positions that show its foot.
  */
-function showsItsFoot(canvas: Element): boolean {
+function showsItsFoot(canvas: Element, legal = ''): boolean {
     const visible = visibleBoxOf(canvas);
     const box = boxOf(canvas);
-    return visible !== null && visible.y + visible.height >= box.y + box.height - 1;
+    const gap = legal === '' ? 0 : legalGap(canvas, legal);
+    return visible !== null && visible.y + visible.height >= box.y + box.height - 1 && visible.height > gap;
+}
+
+/**
+ * The band at a map canvas's foot below its lowest legal control (`legal`: the logo's and the attribution's selectors),
+ * 0 without one inside the canvas's box. Mapbox draws them a few pixels above the foot, so a strip of the map no taller
+ * than that band (an admin page scrolled to its end, the map's last 4 px left at the top: lesson 144) cannot show them;
+ * one pixel more of the map and the rule asks for them again.
+ */
+function legalGap(canvas: Element, legal: string): number {
+    const box = boxOf(canvas);
+    const foot = box.y + box.height;
+    const inside = (item: Rect): boolean =>
+        item.x >= box.x && item.x + item.width <= box.x + box.width && item.y >= box.y && item.y + item.height <= foot;
+    const bottoms = deepQuery(legal)
+        .map((element) => boxOf(element))
+        .filter(inside)
+        .map((item) => item.y + item.height);
+    return bottoms.length === 0 ? 0 : foot - Math.max(...bottoms);
 }
 
 function probeLegal(registry: Registry, selector: string): LegalItem[] {
@@ -570,7 +589,9 @@ export function probeLayout(options: ProbeOptions): LayoutSnapshot {
     const texts = probeTexts(registry);
     const sideways = probeSideways(registry);
     const legal = {
-        map: deepQuery(options.legal.map).some((canvas) => isDrawn(canvas) && showsItsFoot(canvas)),
+        map: deepQuery(options.legal.map).some(
+            (canvas) => isDrawn(canvas) && showsItsFoot(canvas, `${options.legal.logo}, ${options.legal.attribution}`),
+        ),
         logos: probeLegal(registry, options.legal.logo),
         attributions: probeLegal(registry, options.legal.attribution),
     };
@@ -634,6 +655,7 @@ export const LAYOUT_PROBE = [
     sidewaysCulprits,
     probeSideways,
     showsItsFoot,
+    legalGap,
     probeLegal,
     describeNodes,
     probeLayout,

@@ -51,6 +51,7 @@ function categoryList(context: SectionContext, drag: RowDrag): TemplateResult {
                 move: (id, direction) => {
                     void intents?.moveCategory(id, direction);
                 },
+                readOnly: context.readOnly,
             },
             drag,
         );
@@ -61,6 +62,7 @@ function categoryList(context: SectionContext, drag: RowDrag): TemplateResult {
                     ? html`<hcm-button
                           variant="tonal"
                           icon="add"
+                          ?disabled=${context.readOnly}
                           @click=${() => {
                               context.go(['categories', NEW_CATEGORY]);
                           }}
@@ -91,6 +93,7 @@ function colourFields(context: SectionContext, category: CategoryEditorPort, val
             label: contentText(locale, 'adminContent.settings.color'),
             value: value.color,
             issue: issueAt(category.issues, 'color'),
+            readOnly: context.readOnly,
             onInput: (text) => {
                 intents?.editCategory({ color: text.trim() });
             },
@@ -101,6 +104,7 @@ function colourFields(context: SectionContext, category: CategoryEditorPort, val
                 id="category-color-picker"
                 class="color"
                 type="color"
+                ?disabled=${context.readOnly}
                 .value=${value.color}
                 @input=${(event: Event) => intents?.editCategory({ color: (event.target as HTMLInputElement).value })}
             />
@@ -114,7 +118,7 @@ function colourFields(context: SectionContext, category: CategoryEditorPort, val
                           <span>${contentText(locale, 'adminContent.settings.colorLowContrast')}</span>
                           <div class="actions">
                               ${swatch(proposed, value.icon)}
-                              <hcm-button variant="text" @click=${() => intents?.useProposedColor()}
+                              <hcm-button variant="text" ?disabled=${context.readOnly} @click=${() => intents?.useProposedColor()}
                                   >${contentText(locale, 'adminContent.settings.useColor', { hex: proposed })}</hcm-button
                               >
                           </div>
@@ -129,6 +133,7 @@ function iconPicker(context: SectionContext, value: CategoryValuePort): Template
     return html`<hcm-icon-picker
         .value=${value.icon}
         .labels=${labels}
+        ?disabled=${context.readOnly}
         label=${contentText(locale, 'adminContent.settings.icon')}
         unbundled-text=${contentText(locale, 'adminContent.settings.iconUnbundled', { icon: value.icon })}
         @hcm-change=${(event: Event) => {
@@ -218,7 +223,7 @@ function deletion(context: SectionContext, category: CategoryEditorPort): Templa
     return category.isNew
         ? nothing
         : html`<div class="actions">
-                  <hcm-button variant="outlined" icon="delete" @click=${ask}
+                  <hcm-button variant="outlined" icon="delete" ?disabled=${context.readOnly} @click=${ask}
                       >${contentText(locale, 'adminContent.settings.deleteCategory')}</hcm-button
                   >
               </div>
@@ -235,6 +240,7 @@ function labelFields(context: SectionContext, category: CategoryEditorPort, valu
                 label: contentText(locale, keys[lang]),
                 value: value.label[lang] ?? '',
                 issue: issueAt(category.issues, `label.${lang}`),
+                readOnly: context.readOnly,
                 ...(lang === 'ro' ? { required: true } : {}),
                 onInput: (text) => {
                     intents?.setCategoryLabel(lang, text);
@@ -254,6 +260,7 @@ function opacitySlider(context: SectionContext, value: CategoryValuePort, title:
             max: 100,
             value: percent,
             valueText: contentText(locale, 'adminContent.layers.percent', { percent: String(percent) }),
+            disabled: context.readOnly,
         },
         onValue: (next) => {
             intents?.setCategoryOpacity(next);
@@ -272,7 +279,7 @@ function editorTop(context: SectionContext, category: CategoryEditorPort, title:
             context.go(['categories', id]);
         }
     };
-    const state = saveStateOf(category);
+    const state = { ...saveStateOf(category), readOnly: context.readOnly };
     const handlers = {
         save: () => {
             void save();
@@ -291,7 +298,7 @@ function editorTop(context: SectionContext, category: CategoryEditorPort, title:
     };
     return html`<h2 tabindex="-1" data-detail-heading>${title}</h2>
         ${saveBar(locale, SETTINGS_SAVE_TEXTS, state, handlers)}
-        ${conflictBanner(locale, SETTINGS_CONFLICT_TEXTS, category.conflict, resolve)}
+        ${conflictBanner(locale, SETTINGS_CONFLICT_TEXTS, category.conflict, { ...resolve, who: context.who, readOnly: context.readOnly })}
         <p><a href=${context.href(['categories'])}>${contentText(locale, 'adminContent.settings.backToCategories')}</a></p>`;
 }
 

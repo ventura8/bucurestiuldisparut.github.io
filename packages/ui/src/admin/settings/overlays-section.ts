@@ -45,7 +45,7 @@ export function overlaysSection(context: SectionContext): TemplateResult {
         ${saveBar(
             locale,
             SETTINGS_SAVE_TEXTS,
-            { dirty: changes > 0, saving: view.overlays.saving, blocked: false },
+            { dirty: changes > 0, saving: view.overlays.saving, blocked: false, readOnly: context.readOnly },
             {
                 save: () => {
                     void intents?.saveOverlays();
@@ -57,6 +57,7 @@ export function overlaysSection(context: SectionContext): TemplateResult {
         )}
         <p class="note">${contentText(locale, 'adminContent.settings.overlaysIntro')}</p>
         <hcm-overlay-list
+            ?disabled=${context.readOnly}
             .items=${items}
             .groups=${[
                 { kind: 'raster', label: translate(locale, 'layers.group.historical') },

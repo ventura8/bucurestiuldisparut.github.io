@@ -2,6 +2,7 @@
     "$schema": "./node_modules/firebase-tools/schema/firebase-config.json",
     "firestore": {
         "database": "(default)",
+        "location": "nam5",
         "rules": "firebase/firestore.rules",
         "indexes": "firebase/firestore.indexes.json"
     },

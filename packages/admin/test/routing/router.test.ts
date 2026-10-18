@@ -22,6 +22,24 @@ describe('resolveAdminRoute', () => {
         }
     });
 
+    it('happyPath_onceSetupIsCompleteNoRouteIsTheDashboard', () => {
+        const done: RouteContext = { mode: 'normal', hasPage: () => true, setupReady: true };
+
+        for (const hash of ['', '#', '#/']) {
+            expect(resolveAdminRoute(hash, done)).toEqual({ route: { id: 'home', params: [] }, notice: null });
+        }
+        // Setup still opens by its own address, and an unknown address still lands on it.
+        expect(resolveAdminRoute('#/setup', done).route.id).toBe('setup');
+        expect(resolveAdminRoute('#/billing', done)).toEqual({ route: { id: 'setup', params: [] }, notice: 'adminShell.route.notFound' });
+    });
+
+    it('badPath_setupNotCompleteOrUnknownOrWithoutTheDashboardOrInStartUpKeepsSetupFirst', () => {
+        expect(resolveAdminRoute('', { mode: 'normal', hasPage: () => true, setupReady: false }).route.id).toBe('setup');
+        expect(resolveAdminRoute('', { mode: 'normal', hasPage: () => true }).route.id).toBe('setup');
+        expect(resolveAdminRoute('', { mode: 'normal', hasPage: (id) => id !== 'home', setupReady: true }).route.id).toBe('setup');
+        expect(resolveAdminRoute('', { mode: 'bootstrap', hasPage: () => true, setupReady: true }).route.id).toBe('setup');
+    });
+
     it('badPath_anUnknownAddressOrAPageNotBuiltOpensSetupWithNotFound', () => {
         expect(resolveAdminRoute('#/billing', NORMAL).notice).toBe('adminShell.route.notFound');
         expect(resolveAdminRoute('#/jobs', NORMAL)).toEqual({ route: { id: 'setup', params: [] }, notice: 'adminShell.route.notFound' });
@@ -43,6 +61,18 @@ describe('navigationDestinations', () => {
         expect(destinationOf('home')).toEqual({ id: 'home', icon: 'home', compact: false });
     });
 
+    it('happyPath_onceSetupIsCompleteTheDashboardTakesSetupsPlaceOnTheCompactBar', () => {
+        const compact = (context: RouteContext): string[] =>
+            navigationDestinations(context)
+                .filter((destination) => destination.compact)
+                .map((destination) => destination.id);
+
+        expect(compact({ mode: 'normal', hasPage: () => true })).toEqual(['setup', 'photos', 'pois', 'layers']);
+        expect(compact({ mode: 'normal', hasPage: () => true, setupReady: true })).toEqual(['home', 'photos', 'pois', 'layers']);
+        expect(destinationOf('setup', true)).toEqual({ id: 'setup', icon: 'checklist', compact: false });
+        expect(destinationOf('home', true)).toEqual({ id: 'home', icon: 'home', compact: true });
+    });
+
     it('badPath_startUpModeListsSetupAlone', () => {
         expect(navigationDestinations(BOOTSTRAP)).toEqual([{ id: 'setup', icon: 'checklist', compact: true }]);
     });
@@ -61,16 +91,28 @@ describe('PageRegistry', () => {
         await expect(pages.load('admins')).resolves.toBe('hcm-admins-page');
     });
 
-    it('badPath_noPageAFailedLoadOrAForeignTagIsNone', async () => {
+    it('badPath_noPageOrAForeignTagIsNone', async () => {
         const pages = new PageRegistry();
-        pages.register('photos', () => Promise.reject(new Error('chunk failed')));
         pages.register('jobs', () => Promise.resolve('script'));
         pages.register('pois', () => Promise.resolve('hcm-'));
 
         expect(pages.has('layers')).toBe(false);
         await expect(pages.load('layers')).resolves.toBeNull();
-        await expect(pages.load('photos')).resolves.toBeNull();
         await expect(pages.load('jobs')).resolves.toBeNull();
         await expect(pages.load('pois')).resolves.toBeNull();
+    });
+
+    it('badPath_aChunkThatDoesNotLoadRejectsSoTheShellOffersRetry', async () => {
+        const pages = new PageRegistry();
+        let attempts = 0;
+        pages.register('photos', () => {
+            attempts += 1;
+            return attempts === 1
+                ? Promise.reject(new Error('Failed to fetch dynamically imported module'))
+                : Promise.resolve('hcm-photos-page');
+        });
+
+        await expect(pages.load('photos')).rejects.toThrow('Failed to fetch dynamically imported module');
+        await expect(pages.load('photos')).resolves.toBe('hcm-photos-page');
     });
 });

@@ -10,9 +10,10 @@ import { defineHcmSegmentedButton } from '../../components/segmented-button.js';
 import { defineHcmConfirmDialog, HCM_CONFIRM_DIALOG_TAG } from './hcm-confirm-dialog.js';
 import { defineHcmEmptyState, HCM_EMPTY_STATE_TAG } from './hcm-empty-state.js';
 import { defineHcmListDetail, HCM_LIST_DETAIL_TAG } from './hcm-list-detail.js';
+import { defineHcmOverflowMenu, HCM_OVERFLOW_MENU_TAG } from './hcm-overflow-menu.js';
 
 /** The editing kit's own tags. */
-export const EDITING_TAGS = [HCM_LIST_DETAIL_TAG, HCM_CONFIRM_DIALOG_TAG, HCM_EMPTY_STATE_TAG] as const;
+export const EDITING_TAGS = [HCM_LIST_DETAIL_TAG, HCM_CONFIRM_DIALOG_TAG, HCM_EMPTY_STATE_TAG, HCM_OVERFLOW_MENU_TAG] as const;
 
 export function defineEditingElements(registry: CustomElementRegistry = customElements): void {
     defineHcmIcon(registry);
@@ -23,4 +24,5 @@ export function defineEditingElements(registry: CustomElementRegistry = customEl
     defineHcmListDetail(registry);
     defineHcmConfirmDialog(registry);
     defineHcmEmptyState(registry);
+    defineHcmOverflowMenu(registry);
 }

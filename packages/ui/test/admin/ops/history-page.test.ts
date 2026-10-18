@@ -90,7 +90,7 @@ describe('<hcm-history-page>', () => {
         expect(deepAll(element, '.tag')).toHaveLength(0);
         const versions = deepAll(element, 'button.row');
         expect(versions.map((version) => version.getAttribute('aria-current'))).toEqual(['true', 'false', 'false']);
-        expect(deepText(deep(element, '.changes'))).toBe('published Before: yes After: no');
+        expect(deepText(deep(element, '.changes'))).toBe('Published Before: yes After: no');
         versions[1]?.click();
         deep(element, '.pane .actions hcm-button').click();
         await updated(element);
@@ -99,6 +99,20 @@ describe('<hcm-history-page>', () => {
         expect(history.named('select')).toEqual(['select "1760690000000-title"']);
         expect(history.named('revert')[0]).toContain('"entryId":"1760700000000-pub"');
         expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_aReadOnlyPageRevertsNothing', async () => {
+        const changes = [{ field: 'published', before: true, after: false }];
+        const history = area(historyState({ document: documentView(), changes }));
+        const { element } = await page('history', history, { params: ['poi', 'gara'], revoked: true });
+
+        expect((deep(element, '.pane .actions hcm-button') as HTMLElement & { disabled: boolean }).disabled).toBe(true);
+    });
+
+    it('badPath_aReadOnlyPageRestoresNothing', async () => {
+        const { element } = await page('history', area(historyState()), { revoked: true });
+
+        expect((deep(element, '.with-action hcm-button') as HTMLElement & { disabled: boolean }).disabled).toBe(true);
     });
 
     it('badPath_aCreationOffersNoRevertAndARefusalShowsAsAnAlert', async () => {

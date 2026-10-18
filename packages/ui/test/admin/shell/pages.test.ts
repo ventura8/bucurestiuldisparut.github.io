@@ -68,6 +68,25 @@ describe('<hcm-page-outlet>', () => {
         expect((deep(outlet, 'hcm-test-page') as TestPage).state?.route.id).toBe('admins');
     });
 
+    it('badPath_aPageWhoseChunkDoesNotLoadSaysSoAndRetryLoadsItAgain', async () => {
+        const app = new FakeAdminApp(adminState({ route: { id: 'photos', params: [] }, locale: 'ro' }));
+        app.pages = { photos: 'hcm-test-page' };
+        vi.spyOn(app, 'loadPage').mockRejectedValueOnce(new TypeError('Failed to fetch dynamically imported module'));
+        const outlet = await mount<HcmPageOutlet>(html`<hcm-page-outlet .app=${app} .state=${app.state}></hcm-page-outlet>`);
+        await updated(outlet);
+
+        expect(deep(outlet, '[role="alert"] p').textContent).toBe(
+            'Pagina nu s-a încărcat. Verifică legătura la internet și încearcă din nou.',
+        );
+        expect(await axeViolations(outlet)).toEqual([]);
+        deep(outlet, 'hcm-button').click();
+        await updated(outlet);
+        await updated(outlet);
+
+        expect(deepAll(outlet, 'hcm-test-page')).toHaveLength(1);
+        expect(deepAll(outlet, '[role="alert"]')).toHaveLength(0);
+    });
+
     it('badPath_withoutAnAppOrStateNothingLoads', async () => {
         const outlet = await mount<HcmPageOutlet>(html`<hcm-page-outlet .state=${adminState()}></hcm-page-outlet>`);
         const blank = await mount<HcmPageOutlet>(html`<hcm-page-outlet></hcm-page-outlet>`);

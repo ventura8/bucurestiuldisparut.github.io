@@ -2,12 +2,17 @@
  * The pieces the layer editor and the settings sections share (`docs/research/M2c-interfaces.md` §1.6, §1.3): a native
  * field with its label, help and error (the problem at the field: `aria-invalid`, `aria-describedby`, the validation
  * key's text), a 0–100 % slider row with its value, the editor's top row (title, save state, Save, Discard) and the
- * conflict and gone banners. Text only: every value is bound as a property or text, never as markup.
+ * conflict and gone banners (who saved the other version and when, the fields both changed by their names). A revoked
+ * admin's page is read-only (`DECISIONS-for-review.md` §42d): a field is `readOnly`, a slider `disabled`, the save row's
+ * `readOnly` turns Save and Discard off. Text only: every value is bound as a property or text, never as markup.
  */
 import { translate, type AdminContentKey, type Locale, type ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 import { live } from 'lit/directives/live.js';
 
+import { conflictFields, NOBODY, savedByText, type ConflictPort, type WhoPort } from '../editing/conflict.js';
+import { formatDateInput, parseDateInput } from '../editing/date-text.js';
+import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 
 export interface FieldSpec {
@@ -23,11 +28,19 @@ export interface FieldSpec {
      */
     readonly issueShownAt?: string;
     readonly help?: string;
+    /**
+     * `date`: an ISO date (`YYYY-MM-DD`) typed in the admin's language (`zz.ll.aaaa`, `dd/mm/yyyy`) in a text field, never
+     * the browser's date input, whose pattern follows the browser's language (`../editing/date-text.ts`).
+     */
     readonly type?: 'text' | 'url' | 'date';
+    /** A short hint inside the empty field (the date pattern). */
+    readonly placeholder?: string;
     /** `decimal` for coordinates and zooms (a numeric keyboard); `numeric` for a year. */
     readonly inputMode?: 'decimal' | 'numeric';
     readonly multiline?: boolean;
     readonly required?: boolean;
+    /** The value can be read and copied, not changed (a revoked admin's page). */
+    readonly readOnly?: boolean;
     readonly onInput: (text: string) => void;
 }
 
@@ -37,36 +50,71 @@ function describedBy(spec: FieldSpec): string | typeof nothing {
     return ids.length === 0 ? nothing : ids.join(' ');
 }
 
-function inputOf(spec: FieldSpec): TemplateResult {
-    const input = (event: Event): void => {
+function inputHandler(spec: FieldSpec): (event: Event) => void {
+    return (event: Event): void => {
         spec.onInput((event.target as HTMLInputElement | HTMLTextAreaElement).value);
     };
-    const invalid = spec.issue === null ? 'false' : 'true';
+}
+
+function textareaOf(spec: FieldSpec): TemplateResult {
+    return html`<textarea
+        id=${spec.id}
+        rows="5"
+        ?readonly=${spec.readOnly === true}
+        .value=${live(spec.value)}
+        ?required=${spec.required === true}
+        aria-invalid=${spec.issue === null ? 'false' : 'true'}
+        aria-describedby=${describedBy(spec)}
+        @input=${inputHandler(spec)}
+    ></textarea>`;
+}
+
+/** The input's optional attributes: `nothing` leaves one out. */
+function optional(spec: FieldSpec): { readonly inputMode: string | typeof nothing; readonly placeholder: string | typeof nothing } {
+    return { inputMode: spec.inputMode ?? nothing, placeholder: spec.placeholder ?? nothing };
+}
+
+function inputOf(spec: FieldSpec): TemplateResult {
     if (spec.multiline === true) {
-        return html`<textarea
-            id=${spec.id}
-            rows="5"
-            .value=${live(spec.value)}
-            ?required=${spec.required === true}
-            aria-invalid=${invalid}
-            aria-describedby=${describedBy(spec)}
-            @input=${input}
-        ></textarea>`;
+        return textareaOf(spec);
     }
+    const { inputMode, placeholder } = optional(spec);
     return html`<input
         id=${spec.id}
         type=${spec.type ?? 'text'}
-        inputmode=${spec.inputMode ?? nothing}
+        inputmode=${inputMode}
+        placeholder=${placeholder}
+        ?readonly=${spec.readOnly === true}
         .value=${live(spec.value)}
         ?required=${spec.required === true}
-        aria-invalid=${invalid}
+        aria-invalid=${spec.issue === null ? 'false' : 'true'}
         aria-describedby=${describedBy(spec)}
-        @input=${input}
+        @input=${inputHandler(spec)}
     />`;
 }
 
+/**
+ * A date field as a text field in the admin's language: the ISO value shown as `18.10.2026` (or `18/10/2026`), the pattern
+ * as its hint, and what is typed handed on as an ISO date once it reads as one (a text that does not stays as typed, so
+ * Save names the problem at the field).
+ */
+function dateSpec(locale: Locale, spec: FieldSpec): FieldSpec {
+    const pattern = contentText(locale, 'adminContent.common.datePattern');
+    return {
+        ...spec,
+        type: 'text',
+        value: formatDateInput(locale, spec.value),
+        placeholder: pattern,
+        help: spec.help ?? contentText(locale, 'adminContent.common.dateHint', { pattern }),
+        onInput: (text) => {
+            spec.onInput(parseDateInput(text) ?? text);
+        },
+    };
+}
+
 /** One labelled field; its problem, when Save found one, is said under it and named to assistive technology. */
-export function field(locale: Locale, spec: FieldSpec): TemplateResult {
+export function field(locale: Locale, given: FieldSpec): TemplateResult {
+    const spec = given.type === 'date' ? dateSpec(locale, given) : given;
     const helpId = `${spec.id}-help`;
     const errorId = `${spec.id}-error`;
     return html`<div class="field" ?data-invalid=${spec.issue !== null}>
@@ -96,6 +144,8 @@ export interface SliderSpec {
     readonly onValue: (value: number) => void;
     /** Once it settles (release, a key press): what to announce. */
     readonly onSettled: (value: number) => void;
+    /** A revoked admin's page: the slider shows its value and does not move. */
+    readonly disabled?: boolean;
 }
 
 function sliderValue(event: Event): number {
@@ -117,6 +167,7 @@ export function sliderRow(spec: SliderSpec): TemplateResult {
             .value=${live(spec.value)}
             label=${spec.label}
             value-text=${spec.valueText}
+            ?disabled=${spec.disabled === true}
             @hcm-input=${(event: Event) => {
                 spec.onValue(sliderValue(event));
             }}
@@ -141,6 +192,8 @@ export interface SaveState {
     readonly saving: boolean;
     /** A conflict to resolve, a deleted document or a problem in a field: Save is off. */
     readonly blocked: boolean;
+    /** A revoked admin's page: Save and Discard are off and the row says the page is read only. */
+    readonly readOnly?: boolean;
 }
 
 /** The save row's state of a draft: Save is off while there is a conflict, the document is gone or a field has a problem. */
@@ -155,6 +208,9 @@ export function saveStateOf(draft: {
 }
 
 function stateKey(texts: SaveTexts, state: SaveState): AdminContentKey {
+    if (state.readOnly === true) {
+        return 'adminContent.common.readOnly';
+    }
     if (state.saving) {
         return texts.saving;
     }
@@ -168,11 +224,12 @@ export interface SaveHandlers {
 }
 
 export function saveBar(locale: Locale, texts: SaveTexts, state: SaveState, handlers: SaveHandlers): TemplateResult {
-    const canSave = state.dirty && !state.saving && !state.blocked;
+    const open = state.readOnly !== true && !state.saving;
+    const canSave = state.dirty && open && !state.blocked;
     return html`<div class="save-bar">
         <p class="note save-state" role="status">${contentText(locale, stateKey(texts, state))}</p>
         <div class="actions">
-            <hcm-button variant="text" ?disabled=${!state.dirty || state.saving} @click=${handlers.discard}
+            <hcm-button variant="text" ?disabled=${!state.dirty || !open} @click=${handlers.discard}
                 >${contentText(locale, 'adminContent.common.discard')}</hcm-button
             >
             <hcm-button variant="filled" ?disabled=${!canSave} @click=${handlers.save}
@@ -188,25 +245,42 @@ export interface ConflictTexts {
     readonly takeTheirs: AdminContentKey;
 }
 
-/** Another admin saved the same fields meanwhile: the admin keeps their own changes or takes the saved version. */
+/** Keep mine and Take theirs; who reads the page, the names the shell knows and whether the page is read only. */
+export interface BannerOptions {
+    readonly keepMine: () => void;
+    readonly takeTheirs: () => void;
+    readonly who?: WhoPort;
+    readonly readOnly?: boolean;
+}
+
+/**
+ * Another admin saved the same fields meanwhile: the banner names who and when, and the fields both changed; the admin
+ * keeps their own changes or takes the saved version (neither on a read-only page).
+ */
 export function conflictBanner(
     locale: Locale,
     texts: ConflictTexts,
-    conflict: { readonly fields: readonly string[] } | null,
-    handlers: { readonly keepMine: () => void; readonly takeTheirs: () => void },
-): TemplateResult | typeof nothing {
-    return conflict === null
-        ? nothing
-        : html`<div class="alert" role="alert">
-              <hcm-icon name="warning"></hcm-icon>
-              <div class="alert-body">
-                  <span>${contentText(locale, texts.conflict, { fields: conflict.fields.join(', ') })}</span>
-                  <div class="actions">
-                      <hcm-button variant="text" @click=${handlers.keepMine}>${contentText(locale, texts.keepMine)}</hcm-button>
-                      <hcm-button variant="text" @click=${handlers.takeTheirs}>${contentText(locale, texts.takeTheirs)}</hcm-button>
-                  </div>
-              </div>
-          </div>`;
+    conflict: ConflictPort | null,
+    options: BannerOptions,
+): TemplateResult {
+    if (conflict === null) {
+        return EMPTY;
+    }
+    const off = options.readOnly === true;
+    const handlers = options;
+    return html`<div class="alert" role="alert">
+        <hcm-icon name="warning"></hcm-icon>
+        <div class="alert-body">
+            <span>${savedByText(locale, conflict, options.who ?? NOBODY)}</span>
+            <span>${contentText(locale, texts.conflict, { fields: conflictFields(locale, conflict) })}</span>
+            <div class="actions">
+                <hcm-button variant="text" ?disabled=${off} @click=${handlers.keepMine}>${contentText(locale, texts.keepMine)}</hcm-button>
+                <hcm-button variant="text" ?disabled=${off} @click=${handlers.takeTheirs}
+                    >${contentText(locale, texts.takeTheirs)}</hcm-button
+                >
+            </div>
+        </div>
+    </div>`;
 }
 
 /** A polite region that exists before its text, so the text is announced (a slider that settled, a reorder). */

@@ -8,6 +8,7 @@
 import { css } from 'lit';
 
 import { adminBase } from '../shell/admin-styles.js';
+import { bulkBarStyles } from './bulk-bar.js';
 
 export const editingStyles = [
     adminBase,
@@ -80,6 +81,23 @@ export const editingStyles = [
 
         .alert a {
             color: inherit;
+        }
+
+        .alert-body {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-inline-size: 0;
+        }
+
+        .alert-body > p {
+            margin: 0;
+        }
+
+        /* A text button on the error container (Take theirs in a conflict banner) reads in the banner's own colour: the
+           primary tone did not reach 4.5:1 there (the generic checkers on editing.conflict, DECISIONS-for-review.md §42c). */
+        .alert hcm-button[variant='text']::part(button) {
+            color: var(--md-sys-color-on-error-container, CanvasText);
         }
 
         .status:empty,
@@ -263,4 +281,5 @@ export const editingStyles = [
             overflow-wrap: anywhere;
         }
     `,
+    bulkBarStyles,
 ];

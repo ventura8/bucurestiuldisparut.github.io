@@ -96,7 +96,7 @@ export interface PhotoMapFactory {
 /** The members of `ContentServices` the photos use. */
 type CoreServices = Pick<
     ContentServices,
-    'cityId' | 'store' | 'callables' | 'clock' | 'local' | 'log' | 'user' | 'locale' | 'notify' | 'denied'
+    'cityId' | 'store' | 'callables' | 'clock' | 'local' | 'log' | 'user' | 'locale' | 'notify' | 'denied' | 'people' | 'readOnly'
 >;
 
 /** The services the photos area is created with: the editors' own, the photos' uploads, and the pois' map factory. */

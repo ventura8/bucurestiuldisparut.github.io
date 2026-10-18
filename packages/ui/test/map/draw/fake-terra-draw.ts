@@ -1,8 +1,9 @@
 /**
  * A stand-in for Terra Draw's constructors (`TerraDrawModules`): a store of features, the four events, the id strategy
- * and the modes' options, with `finishDrawing`, `drag` and `validate` playing the drawing side the way Terra Draw does
- * (a new shape gets an id from the strategy and ends with `finish` `draw`; a drag sends `change` `update` and ends with
- * `finish`).
+ * and the modes' options, with `drag` and `validate` playing the select mode the way Terra Draw 1.37 does (a drag sends
+ * `change` `update` and ends with `finish`; a select-mode move is checked by the `validation` of the select flags). Like
+ * the real store it refuses a polygon with holes (`ValidatePolygonFeature`) and throws on an update of another geometry
+ * type. The real Terra Draw is driven by `terra-draw-real.test.ts`.
  */
 import type {
     TdAddResult,
@@ -12,6 +13,8 @@ import type {
     TdInstance,
     TdModeOptions,
     TdOptions,
+    TdStyles,
+    TdValidation,
     TdValidationResult,
     TerraDrawModules,
 } from '../../../src/map/draw/terra-draw-types.js';
@@ -28,14 +31,25 @@ export class FakeMode {
     }
 }
 
+/** What Terra Draw's own store refuses: a polygon with holes (or without a ring). */
+function refused(feature: TdFeature): boolean {
+    return feature.geometry.type === 'Polygon' && (feature.geometry.coordinates as unknown[]).length !== 1;
+}
+
 export class FakeTerraDraw implements TdInstance {
     readonly options: TdOptions;
     readonly store = new Map<TdFeatureId, TdFeature>();
     readonly modes: string[] = [];
-    readonly removed: (readonly TdFeatureId[])[] = [];
+    readonly removed: TdFeatureId[][] = [];
+    readonly updated: TdFeatureId[] = [];
+    readonly styles = new Map<string, TdStyles>();
     started = false;
     stopped = false;
     selected: TdFeatureId | null = null;
+    /** What `getFeaturesAtLngLat` answers (a test puts the feature under the pointer here). */
+    near: TdFeatureId[] = [];
+    /** Every `updateFeatureGeometry` throws (a mode that refuses the geometry). */
+    failUpdates = false;
     readonly #listeners = new Map<string, Listener[]>();
 
     constructor(options: TdOptions) {
@@ -62,18 +76,32 @@ export class FakeTerraDraw implements TdInstance {
         return [...this.store.values()];
     }
 
-    addFeatures(features: readonly TdFeature[]): readonly TdAddResult[] {
+    addFeatures(features: TdFeature[]): readonly TdAddResult[] {
         return features.map((feature) => {
             const id = feature.id ?? this.options.idStrategy.getId();
-            if (!this.options.idStrategy.isValidId(id)) {
-                return { id, valid: false, reason: 'invalid id' };
+            if (!this.options.idStrategy.isValidId(id) || refused(feature)) {
+                return { id, valid: false, reason: 'invalid' };
             }
             this.store.set(id, { ...feature, id });
             return { id, valid: true };
         });
     }
 
-    removeFeatures(ids: readonly TdFeatureId[]): void {
+    hasFeature(id: TdFeatureId): boolean {
+        return this.store.has(id);
+    }
+
+    updateFeatureGeometry(id: TdFeatureId, geometry: TdFeature['geometry']): void {
+        const feature = this.store.get(id);
+        if (feature?.geometry.type !== geometry.type || this.failUpdates) {
+            throw new Error(`Feature validation failed: ${String(id)}`);
+        }
+        this.store.set(id, { ...feature, geometry });
+        this.updated.push(id);
+        this.#emit('change', [id], 'update', { origin: 'api' });
+    }
+
+    removeFeatures(ids: TdFeatureId[]): void {
         this.removed.push(ids);
         for (const id of ids) {
             this.store.delete(id);
@@ -85,9 +113,20 @@ export class FakeTerraDraw implements TdInstance {
         this.#emit('select', id);
     }
 
-    deselectFeature(): void {
+    deselectFeature(id: TdFeatureId): void {
         this.selected = null;
-        this.#emit('deselect');
+        this.#emit('deselect', id);
+    }
+
+    setModeStyles(mode: string, styles: TdStyles): void {
+        this.styles.set(mode, styles);
+    }
+
+    getFeaturesAtLngLat(): readonly TdFeature[] {
+        return this.near.flatMap((id) => {
+            const feature = this.store.get(id);
+            return feature === undefined ? [] : [feature];
+        });
     }
 
     on(event: string, listener: Listener): void {
@@ -100,20 +139,20 @@ export class FakeTerraDraw implements TdInstance {
         }
     }
 
-    /** The validation of the mode named `mode` (as Terra Draw calls it). */
-    validate(mode: string, geometry: TdFeature['geometry'], updateType?: string): TdValidationResult | undefined {
-        const owner = (this.options.modes as FakeMode[]).find((candidate) => candidate.kind === mode);
-        const context = updateType === undefined ? {} : { updateType };
-        return owner?.options?.validation?.({ type: 'Feature', geometry, properties: { mode } }, context);
+    #mode(kind: string): FakeMode | undefined {
+        return (this.options.modes as FakeMode[]).find((candidate) => candidate.kind === kind);
     }
 
-    /** A shape finished in the current drawing mode: stored under a new id, then `finish` with `draw`. */
-    finishDrawing(geometry: TdFeature['geometry']): TdFeatureId {
-        const id = this.options.idStrategy.getId();
-        this.store.set(id, { id, type: 'Feature', geometry, properties: { mode: this.mode ?? '' } });
-        this.#emit('change', [id], 'create');
-        this.#emit('finish', id, { mode: this.mode ?? '', action: 'draw' } satisfies TdFinishContext);
-        return id;
+    /** The validation of the shape mode named `mode` (as Terra Draw calls it when a feature is added). */
+    validate(mode: string, geometry: TdFeature['geometry'], updateType?: string): TdValidationResult | undefined {
+        const context = updateType === undefined ? {} : { updateType };
+        return this.#mode(mode)?.options?.validation?.({ type: 'Feature', geometry, properties: { mode } }, context);
+    }
+
+    /** The validation the select mode runs on a moved feature of the shape mode `mode` (its `flags`). */
+    validateMove(mode: string, geometry: TdFeature['geometry'], updateType: string): TdValidationResult | undefined {
+        const flags = this.#mode('select')?.options?.flags?.[mode] as { feature?: { validation?: TdValidation } } | undefined;
+        return flags?.feature?.validation?.({ type: 'Feature', geometry, properties: { mode } }, { updateType });
     }
 
     /** A drag of feature `id` to `geometry`: one `change`, then `finish` when `final`. */

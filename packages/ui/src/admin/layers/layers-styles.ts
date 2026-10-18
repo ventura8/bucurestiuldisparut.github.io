@@ -7,6 +7,7 @@ import { css } from 'lit';
 
 import { visuallyHidden } from '../../components/styles.js';
 import { editingStyles } from '../editing/editing-styles.js';
+import { paneMapBesideStyles } from '../editing/wide-layout.js';
 
 export const layersStyles = [
     ...editingStyles,
@@ -134,6 +135,11 @@ export const layersStyles = [
             grid-column: 2;
         }
 
+        /* A read-only page's rows are links only (no handle, no Move buttons). */
+        .reorder-row[data-read-only] {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
         .reorder-row[data-drop] {
             box-shadow: inset 0 3px 0 var(--md-sys-color-primary, Highlight);
         }
@@ -176,4 +182,5 @@ export const layersStyles = [
             }
         }
     `,
+    paneMapBesideStyles,
 ];

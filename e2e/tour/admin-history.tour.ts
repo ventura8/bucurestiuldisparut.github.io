@@ -55,6 +55,11 @@ test(
             .filter({ hasText: 'Depoul de tramvaie' })
             .getByRole('button', { name: contentText(lang, 'adminContent.history.restore') });
         await expect(restore).toBeVisible();
+        // The filtered list has settled: the server answered, so no cached page says "Reconnecting" or offers a further page
+        // for a moment (the Tab round of a loaded machine met that button and then lost it, lesson 135). "Show more" may
+        // stay: the query reads every city's history in the shared emulators and the page leaves the others' entries out
+        // (CR-M2c-14), so a full page of other cities' deletions offers more (lesson 145).
+        await expect(page.getByRole('status').filter({ hasText: contentText(lang, 'adminContent.common.reconnecting') })).toHaveCount(0);
         await expectStateSound(page, adminVisit('history.deleted', lang));
         await restore.click();
         await expect(page.getByRole('dialog')).toBeVisible();
@@ -69,8 +74,13 @@ test(
         await expect(
             page.getByRole('heading', { level: 2, name: contentText(lang, 'adminContent.history.of', { name: 'Gara de Nord' }) }),
         ).toBeVisible();
-        await page.getByRole('button', { name: new RegExp(contentText(lang, 'adminContent.history.fields', { fields: 'title' })) }).click();
+        // The changed fields are named as the editors name them ("Title"), never as stored (`title`).
+        const titleField = contentText(lang, 'adminContent.field.title');
+        await page
+            .getByRole('button', { name: new RegExp(contentText(lang, 'adminContent.history.fields', { fields: titleField })) })
+            .click();
         await expect(page.getByText(/Gara Veche/).first()).toBeVisible();
+        await expect(page.getByRole('term').filter({ hasText: titleField })).toBeVisible();
         await expectStateSound(page, adminVisit('history.document', lang));
         await page.getByRole('button', { name: contentText(lang, 'adminContent.history.revert') }).click();
         await dialog(page)

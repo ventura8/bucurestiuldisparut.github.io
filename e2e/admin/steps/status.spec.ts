@@ -1,6 +1,8 @@
 import { MAPBOX_TOKENS, USGS_CREDENTIALS } from '@hcm/test-support/fakes';
 import type { Page } from '@playwright/test';
 
+import { expectStateSound } from '../../support/state-check.js';
+import { adminVisit } from '../../tour/states.js';
 import { apiText, setupText } from '../support/i18n.js';
 import { followDeepLink, SetupPage, standInProviderPages } from '../support/setup-page.js';
 import { seedClaimedCity, seedSetupStatus, STEPS_AT } from '../support/steps.js';
@@ -104,5 +106,42 @@ test(
         await expect(setup.open('usgs')).toBeVisible();
         await expect(setup.open('billing')).toHaveCount(0);
         expect(await chips(page)).toMatchObject({ billing: 'ok', provision: 'ok', mapbox: 'ok', usgs: 'missing' });
+    },
+);
+
+test(
+    'A failing self-test check names what to fix and links its step; every other check shows its own state',
+    { tag: ['@S-A03-BAD-SELFTEST-FAILURE'] },
+    async ({ page, lang, adminWorld, upstream, consoleErrors }) => {
+        await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid);
+        // The functions' account may not read the secrets: Secret Manager refuses it.
+        await upstream.fail('secret-manager', 'forbidden', 'server');
+        const setup = new SetupPage(page, lang);
+        await setup.visit('mapbox');
+        const selfTest = page.waitForResponse(`${emulatorOrigin('functions')}/**/setup-selfTest`);
+        await page
+            .getByRole('button', { name: setupText(lang, 'adminSetup.recheck') })
+            .first()
+            .click();
+        await selfTest;
+
+        const list = page.getByRole('region', { name: setupText(lang, 'adminSetup.selfTest.title') });
+        await expect(list.locator('[data-check]')).toHaveCount(9);
+        const secrets = list.locator('[data-check="secrets"]');
+        await expect(secrets).toHaveAttribute('data-state', 'invalid');
+        await expect(secrets).toContainText(apiText(lang, 'apiError.secrets.unavailable'));
+        await expect(list.locator('[data-check="firestore"]')).toHaveAttribute('data-state', 'ok');
+        await expect(list.locator('[data-check="private-bucket"]')).toHaveAttribute('data-state', 'ok');
+        await expectStateSound(page, adminVisit('setup-self-test', lang));
+
+        // The fix: the step that grants the role.
+        const fix = secrets.getByRole('link', {
+            name: setupText(lang, 'adminSetup.selfTest.fix', { step: setupText(lang, 'adminSetup.step.provision') }),
+        });
+        await expect(fix).toHaveAttribute('href', '#/setup/provision');
+        await fix.click();
+        await expect(setup.open('provision')).toBeVisible();
+        // A refused secret is a warning of the server's own, not an error the page logs; nothing else failed.
+        consoleErrors.takeMatching(/status of 4\d\d/);
     },
 );

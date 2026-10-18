@@ -28,6 +28,7 @@ export class HcmIconPicker extends LitElement {
         label: { type: String },
         labels: { attribute: false },
         unbundledText: { type: String, attribute: 'unbundled-text' },
+        disabled: { type: Boolean, reflect: true },
     };
 
     static override readonly styles = [
@@ -79,6 +80,8 @@ export class HcmIconPicker extends LitElement {
     declare labels: Readonly<Record<string, string>>;
     /** Shown while `value` is not bundled. */
     declare unbundledText: string;
+    /** A revoked admin's read-only page (`DECISIONS-for-review.md` §42d): the icon shows, no other can be chosen. */
+    declare disabled: boolean;
 
     constructor() {
         super();
@@ -86,6 +89,7 @@ export class HcmIconPicker extends LitElement {
         this.label = '';
         this.labels = {};
         this.unbundledText = '';
+        this.disabled = false;
     }
 
     override render(): TemplateResult {
@@ -110,6 +114,7 @@ export class HcmIconPicker extends LitElement {
             aria-checked=${icon === this.value ? 'true' : 'false'}
             aria-label=${this.labels[icon] ?? icon}
             tabindex=${tabbable ? '0' : '-1'}
+            ?disabled=${this.disabled}
             @click=${() => {
                 this.#choose(icon);
             }}

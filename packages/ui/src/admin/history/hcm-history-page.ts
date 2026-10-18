@@ -158,7 +158,7 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
         const ask = (): void => {
             this.confirming = item;
         };
-        return html`<hcm-button variant="tonal" icon="restore" ?disabled=${view.reverting !== null} @click=${ask}
+        return html`<hcm-button variant="tonal" icon="restore" ?disabled=${view.reverting !== null || this.readOnly} @click=${ask}
             >${contentText(locale, 'adminContent.history.restore')}</hcm-button
         >`;
     }
@@ -226,7 +226,8 @@ export class HcmHistoryPage extends AreaPage<HistoryViewState, HistoryIntentsPor
             changes: view.changes,
             heading: summaryText(locale, entry, this.state?.user?.uid ?? null, view.people),
             refusal: this.#refusal(locale, view),
-            reverting: view.reverting === entry.entryId,
+            // A revoked admin's read-only page reverts nothing (DECISIONS-for-review.md §42d).
+            reverting: view.reverting === entry.entryId || this.readOnly,
             ask,
         });
     }

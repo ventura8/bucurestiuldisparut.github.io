@@ -23,6 +23,23 @@ function draftOf(check?: (value: LayerDoc) => { path: string; code: 'validation.
     return { world, draft, states };
 }
 
+describe('an edit draft: a revoked admin', () => {
+    it('badPath_aLockedDraftTakesNoEdit', () => {
+        const world = contentWorld();
+        let locked = false;
+        const draft = new EditDraft<LayerDoc>(
+            { path: LAYER_PATH('corona'), schema: layerDocSchema, editable: EDITABLE },
+            { store: world.services.store, changed: () => undefined, locked: () => locked },
+        );
+        draft.load(stored(layerDoc()));
+        draft.edit({ opacity: 0.5 });
+        locked = true;
+        draft.edit({ opacity: 0.2 });
+
+        expect(draft.state.value?.opacity).toBe(0.5);
+    });
+});
+
 describe('value comparison', () => {
     it('happyPath_objectsWithTheSameFieldsInAnotherOrderAreTheSame', () => {
         expect(sameValue({ ro: 'a', en: 'b' }, { en: 'b', ro: 'a' })).toBe(true);

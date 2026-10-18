@@ -174,6 +174,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
             .intents=${this.intents}
             .locale=${locale}
             .selected=${open}
+            ?read-only=${this.readOnly}
             @hcm-add=${(event: CustomEvent<{ readonly shape: PoiShapePort }>) => {
                 this.#add(event.detail.shape);
             }}
@@ -212,6 +213,11 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
             .intents=${this.intents}
             .locale=${locale}
             .centreKnown=${view.frame !== null}
+            ?read-only=${this.readOnly}
+            .who=${{ self: this.self, people: this.people }}
+            @hcm-history=${() => {
+                this.app?.intents.navigate({ id: 'history', params: ['poi', editor.id] });
+            }}
             @hcm-delete=${() => {
                 this.dialog = { kind: 'delete', title: value === null ? '' : localized(locale, value.title) };
             }}

@@ -10,6 +10,15 @@ import type {
     AdminStatePort,
 } from '../../../src/admin/admin-port.js';
 import type { ContentPort } from '../../../src/admin/content-port.js';
+import { AREA_ELEMENTS as ADMINS } from '../../../src/admin/areas/admins.js';
+import { AREA_ELEMENTS as CRASHES } from '../../../src/admin/areas/crashes.js';
+import { AREA_ELEMENTS as HISTORY } from '../../../src/admin/areas/history.js';
+import { AREA_ELEMENTS as HOME } from '../../../src/admin/areas/home.js';
+import { AREA_ELEMENTS as JOBS } from '../../../src/admin/areas/jobs.js';
+import { AREA_ELEMENTS as LAYERS } from '../../../src/admin/areas/layers.js';
+import { AREA_ELEMENTS as PHOTOS } from '../../../src/admin/areas/photos.js';
+import { AREA_ELEMENTS as POIS } from '../../../src/admin/areas/pois.js';
+import { AREA_ELEMENTS as SETTINGS } from '../../../src/admin/areas/settings.js';
 import { defineAdminElements } from '../../../src/admin/define.js';
 import { installFonts } from '../../../src/fonts/font-faces.js';
 import { applyTheme, clearTheme } from '../../../src/theme/apply.js';
@@ -126,9 +135,12 @@ export class FakeAdminApp implements AdminAppPort {
 
 const hosts: HTMLElement[] = [];
 
-/** Registers the admin's elements (and the kit) once. */
+/** Registers the admin's elements (and the kit) once, and every area's page, as the admin does once their chunks load. */
 export function defineAll(): void {
     defineAdminElements();
+    for (const area of [PHOTOS, POIS, LAYERS, SETTINGS, HOME, ADMINS, HISTORY, JOBS, CRASHES]) {
+        area.define(customElements);
+    }
 }
 
 /** Renders `template` into a themed host (`width` in CSS px when given) and resolves its first element once rendered. */
@@ -184,6 +196,24 @@ export function deep(root: Element | ShadowRoot | Document, selector: string): H
         throw new Error(`no ${selector}`);
     }
     return found;
+}
+
+/**
+ * Runs one action of the selection's bar (`.bulk-bar`, `packages/ui/src/admin/editing/bulk-bar.ts`): a button of the
+ * bar by its class, else the overflow menu's action of that id (the menu opened first; it fires once it has closed).
+ */
+export async function bulkAction(root: Element, id: string): Promise<void> {
+    const bar = deep(root, '.bulk-bar');
+    const button = deepAll(bar, `hcm-button.${id}`)[0];
+    if (button !== undefined) {
+        deep(button, 'button').click();
+        await updated(root);
+        return;
+    }
+    deep(deep(deep(bar, 'hcm-overflow-menu'), 'hcm-icon-button'), 'button').click();
+    await updated(root);
+    deep(deep(bar, `[data-action="${id}"]`), 'button').click();
+    await updated(root);
 }
 
 /** The visible text below `root`, shadow roots included, whitespace collapsed. */

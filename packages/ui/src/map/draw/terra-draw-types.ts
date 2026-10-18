@@ -1,11 +1,14 @@
 /**
  * The part of Terra Draw 1.37.0 and `terra-draw-mapbox-gl-adapter` 1.5.0 the draw adapter uses, typed structurally
- * (as `mapbox-types.ts` types the global `mapboxgl`): `terra-draw-adapter.ts` takes these constructors from the admin's
- * lazy loader, and its tests take a fake of them. The names and shapes follow Terra Draw's 1.x API as documented
- * (`new TerraDraw({adapter, modes, idStrategy})`, `start`, `setMode`, `getSnapshot`, `addFeatures`, `removeFeatures`,
- * `selectFeature`, the `change`, `finish`, `select` and `deselect` events; modes with `styles`, `validation` and the
- * select mode's per-mode `flags`). **UNVERIFIED** until the packages are installed: the loader's
- * `satisfies TerraDrawModules` then checks the real modules against these types, and a browser test drives them.
+ * (as `mapbox-types.ts` types the global `mapboxgl`): `terra-draw-adapter.ts` takes these constructors from its lazy
+ * loader (`loadTerraDraw`), its Node-free unit tests take a fake of them, and a browser test drives the real ones
+ * (`packages/ui/test/map/draw/terra-draw-real.test.ts`). The names and shapes are the installed 1.x API
+ * (`new TerraDraw({adapter, modes, idStrategy})`, `start`, `setMode`, `getSnapshot`, `addFeatures`,
+ * `updateFeatureGeometry`, `removeFeatures`, `selectFeature`, `setModeStyles`, `getFeaturesAtLngLat`, the `change`,
+ * `finish`, `select` and `deselect` events; modes with `styles` and `validation`, the select mode's per-mode `flags`,
+ * `keyEvents` and `allowManualDeselection`), as read from the installed declarations (DECISIONS-for-review.md §34g). The
+ * real constructors take wider options (Mapbox's own map type), so the loader hands them over as these types and the
+ * browser test with the real Terra Draw is what proves the match.
  */
 
 export type TdFeatureId = string | number;
@@ -48,11 +51,27 @@ export interface TdInstance {
     stop(): void;
     setMode(mode: string): void;
     getSnapshot(): readonly TdFeature[];
-    addFeatures(features: readonly TdFeature[]): readonly TdAddResult[];
-    removeFeatures(ids: readonly TdFeatureId[]): void;
+    addFeatures(features: TdFeature[]): readonly TdAddResult[];
+    hasFeature(id: TdFeatureId): boolean;
+    /** Throws for a geometry of another type or one its mode refuses. */
+    updateFeatureGeometry(id: TdFeatureId, geometry: TdFeature['geometry']): void;
+    removeFeatures(ids: TdFeatureId[]): void;
     selectFeature(id: TdFeatureId): void;
     deselectFeature(id: TdFeatureId): void;
-    on(event: 'change', listener: (ids: readonly TdFeatureId[], type: string) => void): void;
+    setModeStyles(mode: string, styles: TdStyles): void;
+    /** The features drawn within `pointerDistance` CSS px of a position. */
+    getFeaturesAtLngLat(
+        lngLat: { readonly lng: number; readonly lat: number },
+        options: { readonly pointerDistance: number },
+    ): readonly TdFeature[];
+    /**
+     * `context.origin` is `api` for a change the port made itself (`addFeatures`, `updateFeatureGeometry`); `context.target`
+     * is `properties` for a change of a feature's marks (selected or not), `geometry` for a move.
+     */
+    on(
+        event: 'change',
+        listener: (ids: readonly TdFeatureId[], type: string, context?: { readonly origin?: string; readonly target?: string }) => void,
+    ): void;
     on(event: 'finish', listener: (id: TdFeatureId, context: TdFinishContext) => void): void;
     on(event: 'select', listener: (id: TdFeatureId) => void): void;
     on(event: 'deselect', listener: () => void): void;
@@ -72,6 +91,10 @@ export interface TdModeOptions {
     readonly styles?: TdStyles;
     readonly validation?: TdValidation;
     readonly flags?: Readonly<Record<string, unknown>>;
+    /** The select mode's own keys (Delete, Escape): null leaves the keyboard to the editor's tools. */
+    readonly keyEvents?: null;
+    /** The select mode: false keeps the selection when the map is clicked elsewhere (a click then moves a point). */
+    readonly allowManualDeselection?: boolean;
 }
 
 type TdModeConstructor = new (options?: TdModeOptions) => unknown;

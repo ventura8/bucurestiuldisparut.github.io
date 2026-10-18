@@ -155,6 +155,7 @@ export function settingsState(overrides: Partial<SettingsViewState> = {}): Setti
         categoryDeletion: { phase: 'idle' },
         overlays: { rows: [], changes: 0, saving: false },
         reordering: false,
+        map: { status: 'none', drawing: null },
         ...overrides,
     };
 }
@@ -166,9 +167,16 @@ type SettingsArea = FakeArea<SettingsViewState, SettingsIntentsPort>;
 export async function page(
     area: 'layers' | 'settings',
     store: LayersArea | SettingsArea | null,
-    options: { readonly params?: readonly string[]; readonly width?: number; readonly locale?: 'ro' | 'en' } = {},
+    options: {
+        readonly params?: readonly string[];
+        readonly width?: number;
+        readonly locale?: 'ro' | 'en';
+        /** A revoked admin's read-only page (DECISIONS-for-review.md §42d). */
+        readonly revoked?: boolean;
+    } = {},
 ): Promise<{ readonly app: FakeAdminApp; readonly element: HTMLElement }> {
-    const app = new FakeAdminApp(adminState({ route: { id: area, params: options.params ?? [] }, locale: options.locale ?? 'en' }));
+    const route = { id: area, params: options.params ?? [] };
+    const app = new FakeAdminApp(adminState({ route, locale: options.locale ?? 'en', revoked: options.revoked === true }));
     app.areas[area] = store;
     const element = document.createElement(`hcm-${area}-page`) as HTMLElement & { app: unknown; state: unknown };
     element.app = app;

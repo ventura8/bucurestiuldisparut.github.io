@@ -5,7 +5,7 @@
  * colour: drawn once (`draw-<shape>`) for a new place, then moved and edited in `select`. Its category's overlay leaves
  * the open place out meanwhile (`MapPreview`). Nothing here writes: finished shapes go to the editor's draft.
  */
-import { poiIcon, type Geometry, type LngLat, type Locale, type Logger } from '@hcm/shared';
+import { bboxCenter, bboxOf, geometryPositions, poiIcon, type Geometry, type LngLat, type Locale, type Logger } from '@hcm/shared';
 import type { VectorOverlaySpec } from '@hcm/ui/map';
 import type { DrawChange, DrawRefusal, MapDrawPort } from '@hcm/ui/map/draw';
 
@@ -236,7 +236,22 @@ export class PoisMap {
         if (fresh || (target.geometry === null && draw.mode !== mode)) {
             draw.setMode(mode, target.id);
         }
+        this.#reveal(fresh, target.geometry);
         this.#shown = { id: target.id, color: target.color };
+    }
+
+    /**
+     * A place just opened with a shape is brought into view: the camera centres on its bounding box (its zoom kept, no
+     * animation). A place of the list may lie outside the city's starting view; an edit of the open place moves nothing.
+     */
+    #reveal(fresh: boolean, geometry: Geometry | null): void {
+        if (!fresh || geometry === null) {
+            return;
+        }
+        const box = bboxOf(geometryPositions(geometry));
+        if (box !== null) {
+            this.#handle?.port.flyTo({ center: bboxCenter(box) }, { animate: false });
+        }
     }
 
     #recolour(draw: MapDrawPort, color: string): void {

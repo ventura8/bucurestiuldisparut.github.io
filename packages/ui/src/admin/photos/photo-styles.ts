@@ -7,6 +7,7 @@
 import { css } from 'lit';
 
 import { editingStyles } from '../editing/editing-styles.js';
+import { mapBesideStyles } from '../editing/wide-layout.js';
 
 export const photoStyles = [
     ...editingStyles,
@@ -347,4 +348,5 @@ export const photoStyles = [
             gap: 12px;
         }
     `,
+    mapBesideStyles,
 ];

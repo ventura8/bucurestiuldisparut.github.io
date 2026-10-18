@@ -14,6 +14,9 @@ import type { MapOptions, MapPort } from '../../src/map/map-port.js';
 import { createMapboxPort } from '../../src/map/mapbox-adapter.js';
 import { fakeAdapterEnv, settle } from './support.js';
 
+/** Two well-formed SHA-384 digests (the page's build computes the real ones from the pinned release). */
+const INTEGRITY = { script: `sha384-${'A'.repeat(64)}`, style: `sha384-${'B'.repeat(64)}` } as const;
+
 const OPTIONS: MapOptions = {
     style: 'mapbox://styles/mapbox/standard',
     accessToken: 'pk.test',
@@ -30,6 +33,7 @@ class FakeElement {
     rel = '';
     href = '';
     src = '';
+    integrity = '';
     crossOrigin: string | null = null;
     removed = false;
     readonly children: FakeElement[] = [];
@@ -122,6 +126,7 @@ async function setup(
     const ports: MapPort[] = [];
     const deps: CompareDeps = {
         gl,
+        integrity: INTEGRITY,
         createPort: () => {
             const port = createMapboxPort(gl, fakeAdapterEnv());
             ports.push(port);
@@ -175,9 +180,9 @@ describe('swipe compare', () => {
         expect(container).toBe(parts.container);
         expect(settings).toEqual({ orientation: 'vertical', mousemove: false });
         expect(parts.gl.map.options.zoom).toBe(16);
-        expect(parts.head.children.map((child) => [child.tag, child.href || child.src])).toEqual([
-            ['link', COMPARE_STYLE_URL],
-            ['script', COMPARE_SCRIPT_URL],
+        expect(parts.head.children.map((child) => [child.tag, child.href || child.src, child.integrity, child.crossOrigin])).toEqual([
+            ['link', COMPARE_STYLE_URL, INTEGRITY.style, 'anonymous'],
+            ['script', COMPARE_SCRIPT_URL, INTEGRITY.script, 'anonymous'],
         ]);
         expect(COMPARE_PLUGIN_VERSION).toBe('0.6.0');
         expect(parts.container.children[0]?.className).toBe('hcm-compare-map');
@@ -237,6 +242,18 @@ describe('swipe compare', () => {
 
         expect(first).toBe(second);
         expect(parts.head.children.filter((child) => child.tag === 'script')).toHaveLength(1);
+    });
+
+    it.each([
+        ['no digest', { script: '', style: INTEGRITY.style }],
+        ['a SHA-256 digest', { script: `sha256-${'A'.repeat(43)}=`, style: INTEGRITY.style }],
+        ['a stylesheet without one', { script: INTEGRITY.script, style: 'sha384-short' }],
+    ])('badPath_withoutValidIntegrityDigestsThePluginIsNeverRequested: %s', async (_case, integrity) => {
+        const parts = await setup();
+        const deps = { ...parts.deps, integrity };
+
+        await expect(comparePlugin(deps)).rejects.toThrow('integrity');
+        expect(parts.head.children).toEqual([]);
     });
 
     it('badPath_aScriptThatDoesNotRegisterThePluginIsAnError', async () => {

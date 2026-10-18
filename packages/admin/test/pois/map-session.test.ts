@@ -271,6 +271,41 @@ describe('the places map: places and the open place', () => {
         expect(maps.draw.attached?.options.color).toBe('#1f6f43');
         expect(maps.draw.mode).toBe('draw-polygon');
     });
+});
+
+describe('the places map: the camera', () => {
+    it('happyPath_aPlaceOpenedWithAShapeIsBroughtIntoViewOnce', async () => {
+        const { map, maps } = await ready();
+        const antim: EditTarget = {
+            id: 'antim',
+            category: 'biserici',
+            geometry: {
+                type: 'LineString',
+                coordinates: [
+                    [26.08, 44.41],
+                    [26.1, 44.42],
+                ],
+            },
+            shape: 'linestring',
+            color: '#8b5e3c',
+        };
+
+        map.edit(NEW_PLACE);
+        map.edit(antim);
+        map.edit({
+            ...antim,
+            geometry: {
+                type: 'LineString',
+                coordinates: [
+                    [26.08, 44.41],
+                    [26.12, 44.42],
+                ],
+            },
+        });
+
+        // The new place has no shape to show; the line's centre once, not again for an edit of it.
+        expect(maps.map.callsOf('flyTo')).toEqual([[{ center: [26.09, 44.415] }, { animate: false }]]);
+    });
 
     it('happyPath_theCentreAndTheZoomButtons', async () => {
         const { map, maps } = await ready();

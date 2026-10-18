@@ -50,6 +50,31 @@ function draftOf(
     return { draft, states };
 }
 
+describe('a place draft: a revoked admin', () => {
+    it('badPath_aLockedDraftTakesNoEdit', () => {
+        const world = poisWorld();
+        world.store.put(PATH, placeDoc(world));
+        let locked = false;
+        const draft = new PoiDraft(
+            'stavropoleos',
+            { base: stored(world) },
+            {
+                store: world.store,
+                cityId: CITY,
+                context: () => CONTEXT,
+                changed: () => undefined,
+                locked: () => locked,
+            },
+        );
+        draft.edit({ yearStart: 1724 });
+        locked = true;
+        draft.edit({ yearStart: 1800 });
+
+        expect(draft.state.value.yearStart).toBe(1724);
+        expect(draft.state.dirty).toEqual(['yearStart']);
+    });
+});
+
 describe('a place draft: checks', () => {
     it('happyPath_aValidPlaceHasNoIssues', () => {
         expect(draftIssues(FRESH, CONTEXT)).toEqual([]);
@@ -207,7 +232,7 @@ describe('a place draft: stored places', () => {
         world.store.put(PATH, placeDoc(world, { title: { ro: 'Al lor' }, updatedBy: 'other-uid' }));
         draft.rebase(stored(world));
 
-        expect(draft.state.conflict).toEqual({ by: 'other-uid', fields: ['title'] });
+        expect(draft.state.conflict).toEqual({ by: 'other-uid', at: '2026-10-17T12:00:05.000Z', fields: ['title'] });
         draft.keepMine();
         expect(draft.state).toMatchObject({ conflict: null, value: { title: { ro: 'Al meu' } }, dirty: ['title'] });
 

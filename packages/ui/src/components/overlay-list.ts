@@ -60,7 +60,8 @@ function valueOf(event: Event): number {
  * overlay keeps its slider enabled. Fires `hcm-overlay-visibility` with `{id, visible}` and `hcm-overlay-opacity` with
  * `{id, opacity, final}` (`final: false` per frame while dragging or per key press, `true` on release); once a change
  * settles, `changedText` (and `shownText` / `hiddenText` for the switch) is announced in a polite live region. The
- * list is controlled: it shows `items` as given, so the app feeds its new state back.
+ * list is controlled: it shows `items` as given, so the app feeds its new state back. `disabled` (the admin's read-only
+ * page) leaves every switch and slider showing its value without moving.
  */
 export class HcmOverlayList extends LitElement {
     static override readonly properties = {
@@ -72,6 +73,7 @@ export class HcmOverlayList extends LitElement {
         changedText: { type: String, attribute: 'changed-text' },
         shownText: { type: String, attribute: 'shown-text' },
         hiddenText: { type: String, attribute: 'hidden-text' },
+        disabled: { type: Boolean, reflect: true },
         announcement: { state: true },
     };
 
@@ -164,6 +166,8 @@ export class HcmOverlayList extends LitElement {
     declare changedText: string;
     declare shownText: string;
     declare hiddenText: string;
+    /** Every slider and switch shows its value and does not move (the admin's read-only page). */
+    declare disabled: boolean;
     declare announcement: string;
 
     constructor() {
@@ -176,6 +180,7 @@ export class HcmOverlayList extends LitElement {
         this.changedText = '';
         this.shownText = '';
         this.hiddenText = '';
+        this.disabled = false;
         this.announcement = '';
     }
 
@@ -233,6 +238,7 @@ export class HcmOverlayList extends LitElement {
                     .value=${Number(percent)}
                     label=${fillTemplate(this.opacityLabel, { name })}
                     value-text=${valueText}
+                    ?disabled=${this.disabled}
                     @hcm-input=${(event: Event) => {
                         this.onOpacity(item, valueOf(event), false);
                     }}
@@ -250,6 +256,7 @@ export class HcmOverlayList extends LitElement {
             ? nothing
             : html`<hcm-switch
                   .checked=${item.visible}
+                  ?disabled=${this.disabled}
                   label=${fillTemplate(this.toggleLabel, { name: item.label })}
                   @hcm-change=${(event: Event) => {
                       this.onVisibility(item, checkedOf(event));

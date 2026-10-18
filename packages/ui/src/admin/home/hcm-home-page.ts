@@ -2,20 +2,22 @@
  * `<hcm-home-page>`: the dashboard, `#/home` (the M2c brief's "dashboard home"; `docs/research/M2c-interfaces.md`
  * CR-M2c-24). What the city holds (photos, places, categories, layers), what waits for an admin (photos in rights review,
  * unpublished photos, running and failed jobs), each a link to its page; one chip per Setup area with its state (live,
- * from `setup/status`), and the public map's state (live, from `manifests/{city}`). A count that could not be read shows
- * a dash; Refresh counts again.
+ * from `setup/status`), and the public map's state (live, from `manifests/{city}`) with **Not on the public map**: every
+ * document the last build left out, its first issue and a link to its editor (`docs/research/M2c-interfaces.md` §5.4,
+ * S-A38-BAD-SKIPPED-SHOWN). A count that could not be read shows a dash; Refresh counts again.
  */
-import type { Locale } from '@hcm/shared';
+import { translate, type Locale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
 import { editingStyles } from '../editing/editing-styles.js';
+import { fieldName } from '../editing/field-names.js';
 import { errorTemplate, formatWhen, reconnectingStatus } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf, shellText } from '../shell/text.js';
-import type { HealthChipPort, HomeCountPort, HomeIntentsPort, HomeViewState, PublicMapPort } from './home-port.js';
+import type { HealthChipPort, HomeCountPort, HomeIntentsPort, HomeViewState, PublicMapPort, SkippedDocumentPort } from './home-port.js';
 
 export const HCM_HOME_PAGE_TAG = 'hcm-home-page';
 
@@ -64,8 +66,14 @@ const homeStyles = css`
         list-style: none;
     }
 
+    /* The grid stretches each item to its row's height; the tile fills its item, so a row's tiles are as tall. */
+    .tiles > li {
+        display: flex;
+    }
+
     .tile {
         display: flex;
+        flex: 1 1 auto;
         flex-direction: column;
         gap: 4px;
         box-sizing: border-box;
@@ -100,6 +108,22 @@ const homeStyles = css`
         margin: 0;
         padding: 0;
         list-style: none;
+    }
+
+    /* A link in a sentence is still a 48 px target on a touch window (the checker's target sizes). */
+    ul.skipped {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    ul.skipped a {
+        display: inline-flex;
+        align-items: center;
+        min-block-size: 48px;
     }
 `;
 
@@ -192,7 +216,7 @@ export class HcmHomePage extends AreaPage<HomeViewState, HomeIntentsPort> {
             <h2 id="public-map">${shellText(locale, 'adminShell.home.publicMap')}</h2>
             ${reconnectingStatus(locale, view.publicMap.reconnecting)}
             <p>${publicMapText(locale, map)}</p>
-            ${skippedNote(locale, map?.skipped ?? 0)}
+            ${skippedList(locale, map?.skipped ?? [])}
         </section>`;
     }
 }
@@ -222,9 +246,38 @@ function countText(locale: Locale, value: number | null, counting: boolean): str
     return shellText(locale, counting ? 'adminShell.home.counting' : 'adminShell.home.unknown');
 }
 
-/** How many documents the last build left out of the public map (nothing when none). */
-function skippedNote(locale: Locale, skipped: number): TemplateResult {
-    return skipped > 0 ? html`<p class="note">${shellText(locale, 'adminShell.home.skipped', { count: String(skipped) })}</p>` : EMPTY;
+/** Where each kind of document is edited. */
+const EDITORS: Readonly<Record<SkippedDocumentPort['entity'], (id: string) => string>> = {
+    photo: (id) => `#/photos/${id}`,
+    poi: (id) => `#/pois/${id}`,
+    layer: (id) => `#/layers/${id}`,
+    poiCategory: (id) => `#/settings/categories/${id}`,
+};
+
+/** The field a path names (`title.ro`, `links[0].url`: its first segment). */
+function fieldOf(path: string): string {
+    return path.split(/[.[]/)[0] ?? path;
+}
+
+function skippedItem(locale: Locale, item: SkippedDocumentPort): TemplateResult {
+    const kind = contentText(locale, `adminContent.history.one.${item.entity}`);
+    const issue = translate(locale, item.code);
+    const problem = item.path === '' ? issue : `${fieldName(locale, fieldOf(item.path))}: ${issue}`;
+    return html`<li data-skipped=${[item.entity, item.id].join('/')}>
+        <a href=${EDITORS[item.entity](item.id)}>${kind} ${item.id}</a> · ${problem}
+    </li>`;
+}
+
+/** The documents the last build left out of the public map, each with its first issue and its editor (nothing when none). */
+function skippedList(locale: Locale, skipped: readonly SkippedDocumentPort[]): TemplateResult {
+    if (skipped.length === 0) {
+        return EMPTY;
+    }
+    return html`<p class="note">${shellText(locale, 'adminShell.home.skipped', { count: String(skipped.length) })}</p>
+        <h3 id="not-on-map">${shellText(locale, 'adminShell.home.notOnMap')}</h3>
+        <ul class="skipped" aria-labelledby="not-on-map">
+            ${skipped.map((item) => skippedItem(locale, item))}
+        </ul>`;
 }
 
 /** The public map's state in one sentence (undefined: still reading; null: never built). */

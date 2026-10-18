@@ -71,6 +71,20 @@ describe('PhotoMapSession', () => {
         expect(map.centre()).toEqual([26.1, 44.43]);
     });
 
+    it('happyPath_theOpenPhotoIsBroughtIntoViewOnceUntilTheEditorCloses', async () => {
+        const { map, maps } = session();
+        map.reveal('p1', { lat: 44.4, lng: 26.2 });
+        await map.attach(CONTAINER, OPTIONS);
+
+        map.reveal('p1', { lat: 44.4, lng: 26.2 });
+        map.reveal('p1', { lat: 44.41, lng: 26.2 });
+        await map.editPin(null);
+        map.reveal('p1', { lat: 44.41, lng: 26.2 });
+
+        // Nothing before the map exists; then once, and once more after the editor closed and opened it again.
+        expect(maps?.port.flights).toEqual([{ center: [26.2, 44.4] }, { center: [26.2, 44.41] }]);
+    });
+
     it.each(['no-token', 'no-webgl', 'failed'] as const)('badPath_noMapBecause %s', async (reason) => {
         const maps = new FakeMaps();
         maps.result = reason;

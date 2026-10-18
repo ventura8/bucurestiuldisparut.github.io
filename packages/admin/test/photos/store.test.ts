@@ -166,7 +166,9 @@ describe('the photos area: the editor and its map', () => {
         store.intents.focusPhoto('p2');
         store.intents.focusPhoto('ghost');
         store.intents.zoomBy(1);
-        expect(world.maps.port.flights).toHaveLength(2);
+        // The routed photo was brought into view when its map was ready, then the focus and the zoom step.
+        expect(world.maps.port.flights).toHaveLength(3);
+        expect(world.maps.port.flights[0]).toEqual({ center: [26.1, 44.43] });
     });
 
     it('happyPath_editsPreviewLiveAndSaveRemembersTheStickyAndThePin', async () => {

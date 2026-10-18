@@ -14,7 +14,7 @@ import { editingStyles } from '../editing/editing-styles.js';
 import { current, errorTemplate, formatWhen, listBody, loadingTemplate, reconnectingStatus, whoText } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
-import { FILTERS, jobStatusText, jobTypeText, levelText, percentOf, statusTone, stepStateText } from './job-text.js';
+import { FILTERS, jobStatusText, jobTypeText, levelText, percentOf, statusTone, stepNameText, stepStateText } from './job-text.js';
 import type { JobFilterPort, JobItemPort, JobLogLinePort, JobsIntentsPort, JobsViewState } from './jobs-port.js';
 
 export const HCM_JOBS_PAGE_TAG = 'hcm-jobs-page';
@@ -197,7 +197,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
             <dl class="facts">
                 ${job.steps.map(
                     (step) =>
-                        html`<dt>${step.name}</dt>
+                        html`<dt>${stepNameText(locale, step.name)}</dt>
                             <dd>${stepStateText(locale, step.status)}</dd>`,
                 )}
             </dl>`;
@@ -212,7 +212,8 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
                 (line) =>
                     html`<li class="note" data-seq=${line.seq}>
                         ${formatWhen(locale, line.at)} ·
-                        ${levelText(locale, line.level)}${line.step === null ? nothing : html` · ${line.step}`}: ${line.message}
+                        ${levelText(locale, line.level)}${line.step === null ? nothing : html` · ${stepNameText(locale, line.step)}`}:
+                        ${line.message}
                     </li>`,
             )}
         </ol>`;
@@ -234,7 +235,11 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
         };
         const label = job.cancelRequested ? 'adminContent.jobs.stopping' : 'adminContent.jobs.cancel';
         return html`<div class="actions">
-                <hcm-button variant="outlined" icon="cancel" ?disabled=${job.cancelRequested || view.cancelling} @click=${ask}
+                <hcm-button
+                    variant="outlined"
+                    icon="cancel"
+                    ?disabled=${job.cancelRequested || view.cancelling || this.readOnly}
+                    @click=${ask}
                     >${contentText(locale, label)}</hcm-button
                 >
             </div>

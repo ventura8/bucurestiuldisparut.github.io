@@ -193,12 +193,16 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         this.#fresh.clear();
     }
 
-    /** What the draft's checks read: the drawing limits once the city is known, the city's categories once listed. */
+    /**
+     * What the draft's checks read: the drawing limits once the city is known, the city's categories once the server
+     * listed them. A list answered from the cache while offline may be empty (a listener attached again offline finds
+     * nothing cached): it does not count, or the open place's category reads as unknown and Save goes off (lesson 146).
+     */
     #context(): PoiContext {
         const { frame, categories } = this.#cell.state;
         return {
             limits: frame === null ? null : drawLimitsOf(frame),
-            categories: categories.status === 'ready' ? new Set(categories.items.map((category) => category.id)) : null,
+            categories: categories.status === 'ready' && !categories.reconnecting ? new Set(categories.items.map((item) => item.id)) : null,
         };
     }
 
@@ -242,9 +246,9 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
     }
 
     #newEditor(id: string, fresh: { readonly value: PoiValue; readonly shape: PlaceShape } | null): PlaceEditor {
-        const { store, clock, cityId } = this.#services;
+        const { store, clock, cityId, people } = this.#services;
         return new PlaceEditor(id, fresh, {
-            ...{ store, clock, cityId, context: () => this.#context() },
+            ...{ store, clock, cityId, people, context: () => this.#context(), locked: () => this.#services.readOnly() },
             denied: () => {
                 this.#services.denied();
             },

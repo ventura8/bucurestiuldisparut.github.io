@@ -69,11 +69,12 @@ describe('<hcm-admin-nav>', () => {
         expect(await axeViolations(nav)).toEqual([]);
     });
 
-    it('happyPath_onA360PxPhoneEveryRomanianLabelOfTheBarKeepsItsWordsWhole', async () => {
-        // The visual audit of 2026-10-18: "Configurare" broke after its tenth letter, its last "e" on a line of its own.
+    it.each([360, 320])('happyPath_onA %d px phoneEveryRomanianLabelOfTheBarKeepsItsWordsWhole', async (width) => {
+        // The visual audit of 2026-10-18: "Configurare" broke after its tenth letter, its last "e" on a line of its own, at
+        // 360 px, then at 320 px (the smallest tour window, the M2e review).
         const nav = await mount<HcmAdminNav>(
             html`<hcm-admin-nav variant="bar" current="setup" locale="ro" .destinations=${DESTINATIONS}></hcm-admin-nav>`,
-            360,
+            width,
         );
         // Measured in the kit's own font (Roboto Flex), as the admin draws it, not a fallback.
         await document.fonts.load('500 12px "HCM Roboto Flex"', 'Configurare');

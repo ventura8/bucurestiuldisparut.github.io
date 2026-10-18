@@ -36,6 +36,7 @@ describe('the map entries', () => {
                 'checkPositions',
                 'createClickDrawPort',
                 'createTerraDrawPort',
+                'loadTerraDraw',
                 'drawnPositions',
                 'polygonCrossesItself',
                 'ringArea',

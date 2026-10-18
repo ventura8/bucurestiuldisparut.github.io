@@ -22,6 +22,8 @@ export interface SectionInput {
     readonly edit: (patch: PhotoPatchPort) => void;
     /** The number fields left since the photo opened: only they say their problem. */
     readonly left: FieldsLeft;
+    /** A revoked admin's editor: every field read-only, nothing that writes on (`DECISIONS-for-review.md` §42d). */
+    readonly readOnly: boolean;
 }
 
 /** Romanian and English as stored: absent when both are empty (an optional text). */
@@ -55,6 +57,7 @@ function localizedPair(
             value: text?.[language] ?? '',
             error: fieldIssue(locale, issues, `${field}.${language}`),
             maxlength: max,
+            readOnly: input.readOnly,
         };
         const changed = (typed: string): void => {
             edit({ [field]: withLanguage(text, language, typed) });
@@ -75,6 +78,7 @@ export function textsSection(input: SectionInput): TemplateResult {
                 label: photoText(locale, 'adminContent.photos.field.titleRo'),
                 value: title.ro,
                 error: fieldIssue(locale, issues, 'title.ro'),
+                readOnly: input.readOnly,
             },
             (typed) => {
                 edit({ title: title.en === undefined ? { ro: typed } : { ro: typed, en: title.en } });
@@ -87,6 +91,7 @@ export function textsSection(input: SectionInput): TemplateResult {
                 value: title.en ?? '',
                 error: fieldIssue(locale, issues, 'title.en'),
                 hint: photoText(locale, 'adminContent.photos.field.englishFallback'),
+                readOnly: input.readOnly,
             },
             (typed) => {
                 const en = textOf(typed);
@@ -109,6 +114,7 @@ export function datesSection(input: SectionInput): TemplateResult {
                 min: 1800,
                 max: 2100,
                 step: '1',
+                readOnly: input.readOnly,
             },
             (typed) => {
                 edit({ [field]: numberOf(typed) });
@@ -133,6 +139,7 @@ function creditField(input: SectionInput, field: CreditField, type: 'text' | 'ur
         value: value[field] ?? '',
         error: fieldIssue(locale, issues, field),
         maxlength: max,
+        readOnly: input.readOnly,
     };
     const changed = (typed: string): void => {
         edit({ [field]: textOf(typed) });
@@ -153,6 +160,7 @@ export function creditsSection(input: SectionInput): TemplateResult {
                 value: value.license,
                 error: fieldIssue(locale, issues, 'license'),
                 options,
+                readOnly: input.readOnly,
             },
             (chosen) => {
                 edit({ license: chosen as FirestoreLicense });
@@ -184,6 +192,7 @@ function linkRow(input: SectionInput, links: readonly Link[], index: number, set
                 label: photoText(locale, 'adminContent.photos.links.label', n),
                 value: link.label,
                 error: fieldIssue(locale, issues, at('label')),
+                readOnly: input.readOnly,
             },
             (label) => {
                 change({ label });
@@ -197,6 +206,7 @@ function linkRow(input: SectionInput, links: readonly Link[], index: number, set
                 error: fieldIssue(locale, issues, at('url')),
                 type: 'url',
                 maxlength: 2048,
+                readOnly: input.readOnly,
             },
             (url) => {
                 change({ url });
@@ -205,6 +215,7 @@ function linkRow(input: SectionInput, links: readonly Link[], index: number, set
         <hcm-icon-button
             icon="delete"
             .label=${photoText(locale, 'adminContent.photos.links.remove', n)}
+            ?disabled=${input.readOnly}
             @click=${() => {
                 set(links.filter((_link, position) => position !== index));
             }}
@@ -226,7 +237,7 @@ export function linksSection(input: SectionInput): TemplateResult {
             <hcm-button
                 variant="text"
                 icon="add"
-                ?disabled=${full}
+                ?disabled=${full || input.readOnly}
                 @click=${() => {
                     set([...links, { url: 'https://', label: '' }]);
                 }}
@@ -246,7 +257,7 @@ export function publishingSection(input: SectionInput, editor: PhotoEditorPort):
             <span id="published-label">${photoText(locale, 'adminContent.photos.field.published')}</span>
             <hcm-switch
                 .checked=${value.published}
-                ?disabled=${blocked}
+                ?disabled=${blocked || input.readOnly}
                 .label=${photoText(locale, 'adminContent.photos.field.published')}
                 @hcm-change=${(event: CustomEvent<{ checked: boolean }>) => {
                     edit({ published: event.detail.checked });
@@ -258,6 +269,7 @@ export function publishingSection(input: SectionInput, editor: PhotoEditorPort):
             <span>${photoText(locale, 'adminContent.photos.field.rightsReview')}</span>
             <hcm-switch
                 .checked=${value.rightsReview === true}
+                ?disabled=${input.readOnly}
                 .label=${photoText(locale, 'adminContent.photos.field.rightsReview')}
                 @hcm-change=${(event: CustomEvent<{ checked: boolean }>) => {
                     edit({ rightsReview: event.detail.checked });

@@ -142,6 +142,16 @@ export interface ContentServices {
     /** A Firestore read or write was refused (`permission-denied`): the shell asks `admin.session` again (M2b §1.5). */
     readonly denied: () => void;
     /**
+     * The admins' names: asks `admins.list` once a session (again after a failure) and gives them to the shell, whose
+     * pages name who saved a conflicting change (`DECISIONS-for-review.md` §42c). Fire and forget.
+     */
+    readonly people: () => void;
+    /**
+     * The admin's access was removed while editing (`revoked`, §35e): the drafts take no edit any more, so nothing on the
+     * page changes until sign-out (`DECISIONS-for-review.md` §42d).
+     */
+    readonly readOnly: () => boolean;
+    /**
      * The whole admin wears `tokens` until `null` (Settings' seed colour before Save; Save, Discard, leaving Settings and
      * signing out end it): CR-M2c-28.
      */
@@ -158,7 +168,20 @@ export interface ContentServices {
 
 /** The members every area gets from the shell; the rest are the areas' own (`AreaServiceParts`). */
 type CoreServiceKey =
-    'cityId' | 'store' | 'callables' | 'theme' | 'clock' | 'local' | 'log' | 'user' | 'locale' | 'notify' | 'denied' | 'previewTheme';
+    | 'cityId'
+    | 'store'
+    | 'callables'
+    | 'theme'
+    | 'clock'
+    | 'local'
+    | 'log'
+    | 'user'
+    | 'locale'
+    | 'notify'
+    | 'denied'
+    | 'people'
+    | 'readOnly'
+    | 'previewTheme';
 
 /** What the entry builds for the areas besides the shell's members (`../app/content-wiring.ts`). */
 export type AreaServiceParts = Omit<ContentServices, CoreServiceKey>;

@@ -19,6 +19,7 @@ import {
     seedPhoto,
     servePhotoImages,
 } from '../../support/photos.js';
+import { chooseInMenu } from '../../support/menu.js';
 
 /**
  * Publishing, unpublishing, rights review and delete with Undo (docs/research/M2c-interfaces.md §6.5, §6.6, §9.5;
@@ -161,10 +162,13 @@ test(
         await page.getByRole('button', { name: photosText(lang, 'adminContent.photos.filter.rightsReview') }).click();
         await expect(photoRow(page, PLACES.teatru.title)).toBeVisible();
         await selectAll(page, lang).click();
-        await page
-            .locator('hcm-admin-photo-list section.bulk')
-            .getByRole('button', { name: photosText(lang, 'adminContent.photos.bulk.confirmRightsAction'), exact: true })
-            .click();
+        // Confirm rights is among the selection's less frequent actions, in its overflow menu (DECISIONS-for-review.md §42e).
+        await chooseInMenu(
+            page,
+            page.locator('hcm-admin-photo-list .bulk-bar'),
+            photosText(lang, 'adminContent.photos.bulk.more'),
+            photosText(lang, 'adminContent.photos.bulk.confirmRightsAction'),
+        );
         await expect.poll(async () => (await photosBy(content, 'rightsReview')).map(([, review]) => review)).toEqual([false, false, false]);
 
         // The next build drops the note: the viewer's photo no longer says its rights are being checked.

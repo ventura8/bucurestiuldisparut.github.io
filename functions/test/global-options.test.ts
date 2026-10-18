@@ -15,10 +15,17 @@ describe('runAs', () => {
         expect((Object.keys(CALLABLES) as CallableName[]).filter((name) => RUNTIME_ACCOUNTS[name] !== 'fn-admin')).toEqual([]);
     });
 
-    it('happyPath_triggersAndThePublicEndpointRunAsFnEvents', () => {
+    it('happyPath_triggersRunAsFnEvents', () => {
         expect(runAs('photos.onUpload')).toEqual({ serviceAccount: 'fn-events@' });
-        expect(runAs('telemetry.reportError')).toEqual({ serviceAccount: 'fn-events@' });
         expect(runAs('history.onCityWrite')).toEqual({ serviceAccount: 'fn-events@' });
+    });
+
+    it('badPath_thePublicEndpointRunsAsTheAccountWithNoRole', () => {
+        // Anyone on the internet calls telemetry.reportError: its account holds no role (DECISIONS-for-review.md §42f).
+        expect(runAs('telemetry.reportError')).toEqual({ serviceAccount: 'fn-crash@' });
+        expect(Object.entries(RUNTIME_ACCOUNTS).filter(([, account]) => account === 'fn-crash')).toEqual([
+            ['telemetry.reportError', 'fn-crash'],
+        ]);
     });
 
     it('badPath_theSchedulerNeverRunsAsTheTriggerAccount', () => {

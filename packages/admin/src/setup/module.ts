@@ -118,6 +118,7 @@ function backendOf(callables: SetupCallables, createCity: SetupModuleOptions['cr
         createCity,
         saveMapbox: (request) => callables.call('setup.saveMapbox', request),
         saveUsgs: (request) => callables.call('setup.saveUsgs', request),
+        rotatePublicToken: (request) => callables.call('setup.rotatePublicToken', request),
         analyticsConfig: (request) => callables.call('setup.analyticsConfig', request),
         listGroups: (request) => callables.call('telemetry.listGroups', request),
     };

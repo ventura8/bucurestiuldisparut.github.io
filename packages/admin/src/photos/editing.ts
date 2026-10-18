@@ -113,8 +113,23 @@ export class PhotoEditing {
     }
 
     #syncPin(): void {
-        const value = this.#editor?.value ?? null;
-        void this.#context.map()?.editPin(value === null ? null : value.location);
+        const map = this.#context.map();
+        if (map === null) {
+            return;
+        }
+        const open = this.#openPlace();
+        void map.editPin(open === null ? null : open.location);
+        // The open photo is brought into view once (PhotoMapSession.reveal).
+        if (open !== null) {
+            map.reveal(open.id, open.location);
+        }
+    }
+
+    /** The open photo's id and place (its draft's), or null with no photo open or loaded. */
+    #openPlace(): { readonly id: string; readonly location: PhotoValue['location'] } | null {
+        const editor = this.#editor;
+        const value = editor === null ? null : editor.value;
+        return editor === null || value === null ? null : { id: editor.id, location: value.location };
     }
 
     #edit(patch: PhotoPatch): void {

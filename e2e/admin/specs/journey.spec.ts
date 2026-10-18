@@ -270,6 +270,10 @@ async function connectUsgs({ page, lang, setup, setupBudget, upstream, emulators
     await emulators.runOpsTick();
     await expect.poll(async () => (await emulators.document('setup/status'))?.['usgs'], { timeout: 30_000 }).toMatchObject({ state: 'ok' });
     await page.reload();
+    // The four required steps are done, so the empty address now opens the dashboard (DECISIONS-for-review.md §34i,
+    // S-A40-HAPPY-FIRST-SCREEN); the owner goes back to Setup for the optional steps.
+    await expect(page.locator('hcm-home-page')).toBeVisible({ timeout: 60_000 });
+    await setup.visit('analytics');
     await setup.expectState('usgs', 'ok', 60_000);
 }
 

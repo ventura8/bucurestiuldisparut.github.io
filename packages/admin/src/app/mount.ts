@@ -23,6 +23,7 @@ import { CityTheme } from './city-theme.js';
 import type { AdminRuntime, FirebaseWebConfig } from './config.js';
 import { contentServices } from './content-services.js';
 import { Navigation } from './navigation.js';
+import { rememberedSetupReady, SetupReadiness } from './setup-readiness.js';
 import { destinationOf } from '../routing/router.js';
 import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } from './ports.js';
 import { guardCallables, type AdminProject, type SetupModuleSpec, type ShellServices } from './services.js';
@@ -101,7 +102,7 @@ export interface AdminApp<Setup, SetupIntents> {
     readonly state: AdminState<Setup>;
     subscribe(listener: (state: AdminState<Setup>) => void): Unsubscribe;
     readonly intents: AdminIntents<SetupIntents>;
-    /** The tag of a route's page element, once loaded (null: none). */
+    /** The tag of a route's page element, once loaded (null: none); rejects when its chunk does not load (the shell offers Retry). */
     loadPage(id: AdminRouteId): Promise<string | null>;
     /** Crash reporting for the entry's global hooks and the elements' error boundaries. */
     readonly telemetry: AdminTelemetry;
@@ -135,6 +136,8 @@ function initialState<Setup>(deps: AdminDeps<Setup, unknown>): AdminState<Setup>
         notice: null,
         leaving: null,
         revoked: false,
+        people: {},
+        setupReady: rememberedSetupReady(deps.local, deps.config.projectId),
         projectId: deps.config.projectId,
         authDomain: deps.config.authDomain,
         setup: deps.setup.initial,
@@ -284,6 +287,25 @@ function authControllerOf<Setup, SetupIntents>(
     });
 }
 
+/** What the shell watches while an admin is signed in: the city's theme and whether Setup is complete. */
+function shellWatches<Setup>(
+    deps: AdminDeps<Setup, unknown>,
+    shell: ShellStateAccess,
+    denied: () => void,
+): { readonly cityTheme: CityTheme; readonly readiness: SetupReadiness } {
+    const documents = deps.firebase.documents;
+    // The city the editors edit: the `e2e` build's own city when the address names one (CR-M2c-7), so the shell wears its theme.
+    const ownCity = deps.content?.cityId ?? null;
+    const cityId = ownCity ?? deps.project.cities[0] ?? null;
+    return {
+        cityTheme: new CityTheme({ documents, shell, cityId, denied }),
+        readiness: new SetupReadiness({
+            ...{ documents, shell, local: deps.local, projectId: deps.config.projectId, denied },
+            watch: ownCity === null,
+        }),
+    };
+}
+
 /** Builds the app and starts it (the probe unless a start-up deploy, then Firebase Auth's user); returns at once. */
 export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>): AdminApp<Setup, SetupIntents> {
     const store = new Store<AdminState<Setup>>(initialState(deps), deps.log);
@@ -307,10 +329,9 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
     const content = contentRegistry(deps, { shell, callables: firebase.callables, denied });
     const unsaved = (): boolean => content.hasUnsavedChanges();
     const navigation = new Navigation({ shell, location: deps.location, session: deps.session, pages: deps.pages, track, unsaved });
-    // The city the editors edit: the `e2e` build's own city when the address names one (CR-M2c-7), so the shell wears its theme.
-    const themeCity = deps.content?.cityId ?? deps.project.cities[0] ?? null;
-    const cityTheme = new CityTheme({ documents: deps.firebase.documents, shell, cityId: themeCity, denied });
+    const { cityTheme, readiness } = shellWatches(deps, shell, denied);
     const stopWatching = store.subscribe((state) => {
+        readiness.stateChanged(state);
         navigation.stateChanged(state);
         cityTheme.stateChanged(state);
         if (state.auth !== 'admin') {
@@ -337,6 +358,7 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
             controller.stop();
             navigation.stop();
             cityTheme.stop();
+            readiness.stop();
             content.destroyAll();
         },
     };

@@ -44,6 +44,7 @@ export function parseProjectConfig(value: unknown): ProjectConfig | undefined {
 export const SERVICE_ACCOUNTS = {
     'fn-admin': 'Functions: admin, setup, telemetry, ops',
     'fn-events': 'Functions: events (history, publish, photos)',
+    'fn-crash': 'Functions: the public crash endpoint (no role)',
     'job-raster': 'Cloud Run Job: raster pipeline',
     'gh-deployer': 'GitHub Actions deploy (Workload Identity)',
 } as const;

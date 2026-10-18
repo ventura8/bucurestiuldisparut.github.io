@@ -31,6 +31,7 @@ export class HcmVertexList extends LitElement {
         positions: { attribute: false },
         selected: { attribute: false },
         locale: { type: String },
+        readOnly: { type: Boolean, attribute: 'read-only' },
     };
 
     static override readonly styles = [
@@ -86,12 +87,15 @@ export class HcmVertexList extends LitElement {
     declare positions: readonly LngLat[];
     declare selected: number | null;
     declare locale: Locale;
+    /** A revoked admin's editor (`DECISIONS-for-review.md` §42d): the positions are read-only, Move and Remove off. */
+    declare readOnly: boolean;
 
     constructor() {
         super();
         this.positions = [];
         this.selected = null;
         this.locale = 'en';
+        this.readOnly = false;
     }
 
     #edit(edit: VertexEditPort): void {
@@ -121,6 +125,7 @@ export class HcmVertexList extends LitElement {
                 id=${id}
                 inputmode="decimal"
                 autocomplete="off"
+                ?readonly=${this.readOnly}
                 .value=${coordinateText(value)}
                 @change=${(event: Event) => {
                     this.#set(index, axis, event.target as HTMLInputElement);
@@ -157,7 +162,7 @@ export class HcmVertexList extends LitElement {
         return html`<hcm-icon-button
             .icon=${icon}
             .label=${label}
-            ?disabled=${disabled}
+            ?disabled=${disabled || this.readOnly}
             @click=${() => {
                 this.#edit(edit);
             }}

@@ -18,6 +18,8 @@ export interface FieldInput {
     /** The field's problem, as text (null: none). */
     readonly error: string | null;
     readonly hint?: string;
+    /** A revoked admin's editor (`DECISIONS-for-review.md` §42d): the value can be read and copied, not changed. */
+    readonly readOnly?: boolean;
 }
 
 function describedBy(input: FieldInput): string | typeof nothing {
@@ -47,6 +49,7 @@ export function textField(
             id=${input.id}
             type=${input.type ?? 'text'}
             maxlength=${input.maxlength ?? 200}
+            ?readonly=${input.readOnly === true}
             .value=${input.value}
             aria-invalid=${input.error === null ? 'false' : 'true'}
             aria-describedby=${describedBy(input)}
@@ -65,6 +68,7 @@ export function areaField(input: FieldInput & { readonly maxlength: number }, ch
         <textarea
             id=${input.id}
             maxlength=${input.maxlength}
+            ?readonly=${input.readOnly === true}
             .value=${input.value}
             aria-invalid=${input.error === null ? 'false' : 'true'}
             aria-describedby=${describedBy(input)}
@@ -92,6 +96,7 @@ export function numberField(
             min=${input.min}
             max=${input.max}
             step=${input.step}
+            ?readonly=${input.readOnly === true}
             .value=${numberValue(input.value)}
             aria-invalid=${shown.error === null ? 'false' : 'true'}
             aria-describedby=${describedBy(shown)}
@@ -115,6 +120,7 @@ export function selectField(
         <label for=${input.id}>${input.label}</label>
         <select
             id=${input.id}
+            ?disabled=${input.readOnly === true}
             aria-invalid=${input.error === null ? 'false' : 'true'}
             aria-describedby=${describedBy(input)}
             @change=${(event: Event) => {

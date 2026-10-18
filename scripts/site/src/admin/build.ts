@@ -10,7 +10,8 @@ import { planRuntimeFile, type BuildEnvironment } from './runtime.js';
  * Completes the admin's Hosting folder after its Vite build (docs/research/M2b-interfaces.md §4, admin-e2e):
  *
  * ```text
- * <outDir>/admin.iife.js, admin.css, …   the Vite build (production, or the `e2e` mode for the admin tier), required
+ * <outDir>/admin.mjs, admin.css, …       the Vite build (production, or the `e2e` mode for the admin tier), required;
+ *                                        the entry's lazy chunks sit next to it
  * <outDir>/index.html                    generated (page.ts), naming the digest of the pinned mapbox-gl.js
  * <outDir>/runtime.json                  the release and, for a start-up deploy, `startUp` (runtime.ts)
  * <outDir>/project.json                  the committed infra/project.json, checked (project.ts, CR-M2b-26)

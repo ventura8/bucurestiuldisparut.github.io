@@ -64,7 +64,7 @@ describe('admin catalogues', () => {
  * prefix, so no area's text lands in another's folder and the merge of `ADMIN_CONTENT_CATALOGUES` overrides nothing.
  */
 const CONTENT_FOLDERS = {
-    'admin-content': ['common', 'map'],
+    'admin-content': ['common', 'map', 'field'],
     'admin-photos': ['photos'],
     'admin-pois': ['pois'],
     'admin-layers': ['layers'],

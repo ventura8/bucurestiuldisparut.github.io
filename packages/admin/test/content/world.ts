@@ -24,6 +24,8 @@ export interface ContentWorld {
     readonly denials: { count: number };
     /** Every theme the areas asked the shell to preview (null: the preview ended). */
     readonly previews: (ThemeTokens | null)[];
+    /** How often an area asked the shell for the admins' names (a conflict appeared). */
+    readonly peopleAsked: { count: number };
 }
 
 /** The fake store, as the port it stands for (a compile-time check that the test kit's fake satisfies it). */
@@ -38,6 +40,7 @@ export function contentWorld(overrides: Partial<ContentServices> = {}): ContentW
     const notices: ContentNotice[] = [];
     const denials = { count: 0 };
     const previews: (ThemeTokens | null)[] = [];
+    const peopleAsked = { count: 0 };
     const services: ContentServices = {
         ...NO_AREA_SERVICES,
         cityId: CITY,
@@ -58,9 +61,13 @@ export function contentWorld(overrides: Partial<ContentServices> = {}): ContentW
         previewTheme: (tokens) => {
             previews.push(tokens);
         },
+        people: () => {
+            peopleAsked.count += 1;
+        },
+        readOnly: () => false,
         ...overrides,
     };
-    return { services, store, callables, clock, notices, denials, previews };
+    return { services, store, callables, clock, notices, denials, previews, peopleAsked };
 }
 
 /** A Firestore timestamp of the ISO time. */

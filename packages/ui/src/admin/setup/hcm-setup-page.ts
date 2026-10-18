@@ -3,7 +3,8 @@
  * Check again for the whole page, and one card per step of the controller's state. On compact and medium windows the
  * steps are one column of accordion cards, the open step expanded in place; from expanded (840 px) the list sits
  * beside the open step (list and detail, the detail at most 840 px wide). The page opens at the controller's
- * `openStep`: the first incomplete step, or the one the address named.
+ * `openStep`: the first incomplete step, or the one the address named. After Check again, the self-test's checks are
+ * listed under the header, each failing one with its reason and a link to its step (`self-test.ts`).
  */
 import type { Locale } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
@@ -24,6 +25,7 @@ import { defineHcmSetupMapbox } from './hcm-setup-mapbox.js';
 import { defineHcmSetupProvision } from './hcm-setup-provision.js';
 import { defineHcmSetupStep, type ConsentNoteParams } from './hcm-setup-step.js';
 import { defineHcmSetupUsgs } from './hcm-setup-usgs.js';
+import { selfTestList, selfTestStyles } from './self-test.js';
 import { SetupPortHost } from './setup-host.js';
 import type { SetupIntentsPort, SetupStepId, SetupViewState } from './setup-port.js';
 import { setupTextStyles } from './setup-styles.js';
@@ -60,7 +62,7 @@ export class HcmSetupPage extends SetupPortHost {
         windowClass: { type: String, reflect: true, attribute: 'window-class' },
     };
 
-    static override readonly styles = [baseStyles, typeStyles, setupTextStyles, pageStyles()];
+    static override readonly styles = [baseStyles, typeStyles, setupTextStyles, selfTestStyles, pageStyles()];
 
     /**
      * The page's width class. Only the width is followed (the page's height follows its content), and a change is
@@ -100,7 +102,7 @@ export class HcmSetupPage extends SetupPortHost {
         return html`<section class="page" aria-labelledby="setup-title">
             ${this.renderHeader(view)}
             <div role="alert">${view.error === null ? nothing : html`<p class="alert">${setupText(this.language, view.error)}</p>`}</div>
-            ${split ? this.renderSplit(view) : this.renderColumn(view)}
+            ${selfTestList(this.language, view)} ${split ? this.renderSplit(view) : this.renderColumn(view)}
         </section>`;
     }
 

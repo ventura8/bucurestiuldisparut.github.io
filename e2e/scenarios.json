@@ -2119,8 +2119,8 @@
             "title": "A failing self-test check names what to fix",
             "asserts": "the mock Secret Manager refuses access -> the secrets check is invalid with apiError.secrets.unavailable and a link to Provision cloud; every other check still runs and shows its own state",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Still planned (2026-10-18): the page applies the status setup.selfTest returns but lists none of its checks, so a failing check (the secrets) has no place for its reason and its link to Provision cloud (a per-check view for the user, DECISIONS-for-review.md §37e)."
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Since 2026-10-18 (DECISIONS-for-review.md §42b) the page lists every self-test check with its state; e2e/admin/steps/status.spec.ts refuses the secrets in the mock Secret Manager and follows the check's link to Prepare the project."
         },
         {
             "id": "S-A03-BAD-NOTHING-SECRET-LEAVES",
@@ -2359,10 +2359,10 @@
             "area": "admin",
             "path": "happy",
             "title": "Rotating the viewer token publishes the new one and retires the old",
-            "asserts": "setup.rotatePublicToken -> a new URL-restricted token in the city and the next manifest -> ops.tick deletes the old token 10 minutes later (clock)",
+            "asserts": "Replace the visitors' token in the Mapbox card, confirmed -> setup.rotatePublicToken -> a new URL-restricted token in the city and the card says when the old one goes; ops.tick deletes the old token 10 minutes later (functions/test/ops/tick.test.ts with the clock, functions/test/setup/rotate-public-token.test.ts)",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Still planned (2026-10-18): setup.rotatePublicToken exists and is unit-tested (functions/test/setup), but the admin has no control that calls it yet (§37e)."
+            "status": "exists",
+            "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Since 2026-10-18 (§42b) the Mapbox card has the control: e2e/admin/steps/mapbox.spec.ts; the ten-minute retirement is a clock test of the functions, not of the browser."
         },
         {
             "id": "S-A06-BAD-SAVED-TWICE",
@@ -2660,6 +2660,17 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.5, §6.3; owner: photos)."
+        },
+        {
+            "id": "S-A09-HAPPY-OPEN-IN-VIEW",
+            "behaviour": "A09",
+            "area": "admin",
+            "path": "happy",
+            "title": "A photo opened in its editor is brought into view on the map",
+            "asserts": "a city without a start view (the map opens at its bounds' centre, north of every photo) -> opening a photo's editor centres the map on the photo, its zoom kept and without animation, so its pin is on the map at every tour viewport",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2e review (the 2026-10-18 review screenshots showed the open photo's pin off the map; owner: photos). Covered by e2e/tour/admin-photos.tour.ts; packages/admin/test/photos/map.test.ts."
         },
         {
             "id": "S-A10-HAPPY",
@@ -3140,10 +3151,10 @@
             "area": "admin",
             "path": "happy",
             "title": "Settings with a live M3 preview publish to the viewer",
-            "asserts": "the area drawn as a rectangle, centre and zoom from the current view, the name and About in RO and EN with the formatted preview, two credits, a new seed colour that recolours the admin live -> Save per section -> the manifest carries them and the viewer shows the new name, About and colours",
+            "asserts": "the area drawn as a rectangle with two clicks on the settings map, the zoom from the current view, the name and About in RO and EN, two credits, a new seed colour -> Save per section -> the manifest carries them and the viewer opens with the new name, About, credits and colours",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Still planned (2026-10-18): the settings page has no map yet: the area drawn as a rectangle and the start view taken from the map wait for it (§37e)."
+            "status": "exists",
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Since 2026-10-18 (DECISIONS-for-review.md §42a) the area and overlays sections show the city's map: e2e/admin/specs/settings/map.spec.ts; the live recolouring of the admin by a seed is S-A19-BAD-THEME-DISCARDED's."
         },
         {
             "id": "S-A19-BAD-ZERO-AREA-BOUNDS",
@@ -3298,6 +3309,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §10.1, §12.2; owner: each area for its states)."
+        },
+        {
+            "id": "S-A21-HAPPY-DATES-IN-LANGUAGE",
+            "behaviour": "A21",
+            "area": "admin",
+            "path": "happy",
+            "title": "Dates read in the admin's language whatever the browser's",
+            "asserts": "an American browser (en-US) -> a layer's exact date shows as 24.08.1968 (Romanian, hint zz.ll.aaaa) or 24/08/1968 (English, dd/mm/yyyy) in a text field, never the browser's mm/dd/yyyy; a date typed that way is saved as the ISO date 1968-08-25",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2c follow-up (the review of the M2c screenshots, 2026-10-18; owner: layers-settings). e2e/admin/specs/layers/dates.spec.ts; the USGS card's expiry the same way (packages/ui/test/admin/setup/hcm-setup-usgs.test.ts)."
+        },
+        {
+            "id": "S-A21-BAD-DATE-UNREAD",
+            "behaviour": "A21",
+            "area": "admin",
+            "path": "bad",
+            "title": "A date that cannot be read is marked at its field",
+            "asserts": "31.02.1968 typed -> the field is marked invalid, Save stays off and Firestore keeps the stored date; the USGS card's expiry says it cannot be read and keeps nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2c follow-up (owner: layers-settings). e2e/admin/specs/layers/dates.spec.ts; packages/ui/test/admin/setup/hcm-setup-usgs.test.ts."
         },
         {
             "id": "S-A22-HAPPY",
@@ -3828,6 +3861,17 @@
             "notes": "Milestone M2c follow-ups (the hardening review's follow-up, 2026-10-18). e2e/admin/specs/smoke.spec.ts; packages/ui/test/admin/shell/shell-layout.test.ts."
         },
         {
+            "id": "S-A29-BAD-CHUNK-LOAD",
+            "behaviour": "A29",
+            "area": "admin",
+            "path": "bad",
+            "title": "A page whose chunk does not load says so and Try again loads it",
+            "asserts": "the jobs page's chunk lost once on the way -> the shell's page area says the page did not load (an alert) with Try again, which passes the checkers at every tour viewport; Try again -> the page loads and the alert is gone",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2c follow-up (DECISIONS-for-review.md §34b: each area's page is a lazy chunk; owner: ops-screens). e2e/tour/admin-jobs.tour.ts; the state admin.page-failed."
+        },
+        {
             "id": "S-A31-HAPPY",
             "behaviour": "A31",
             "area": "admin",
@@ -3932,10 +3976,10 @@
             "area": "admin",
             "path": "happy",
             "title": "Moving, inserting and deleting vertices previews live and saves the new shape",
-            "asserts": "a vertex dragged, a midpoint dragged into a new vertex, a vertex deleted with the Delete key -> the map shows each change live; Save -> the new geometry, and History keeps the previous one",
+            "asserts": "the open place selected on the map (Terra Draw) -> a vertex dragged moves it and a midpoint dragged inserts a vertex there, the list of positions following each drag; a position removed from the list; Save -> the new geometry",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.4; owner: pois). Still planned (2026-10-18): dragging a vertex or a midpoint waits for Terra Draw (§34g); the click tools edit positions through the list (S-A32-HAPPY-KEYBOARD)."
+            "status": "exists",
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §4.4; owner: pois); Terra Draw since DECISIONS-for-review.md §34g (2026-10-18): e2e/admin/specs/pois/dragging.spec.ts. Deleting a vertex is the list's Remove (the select mode leaves the keys to the editor's tools)."
         },
         {
             "id": "S-A32-HAPPY-LINE-AND-POINT",
@@ -4002,6 +4046,50 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §1.4, §3.4; owner: pois). Covered by e2e/tour/admin-places.tour.ts (Add at centre, typed and removed positions, the texts, Save, then Delete after its question)."
+        },
+        {
+            "id": "S-A32-HAPPY-DRAG-SHAPE",
+            "behaviour": "A32",
+            "area": "admin",
+            "path": "happy",
+            "title": "A whole place is dragged by its inside",
+            "asserts": "the open area pressed inside and moved 40 px east -> every position moved by the same amount, none north or south; Save writes it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2c follow-up (DECISIONS-for-review.md §34g; owner: pois). e2e/admin/specs/pois/dragging.spec.ts."
+        },
+        {
+            "id": "S-A32-BAD-DRAG-CROSSING",
+            "behaviour": "A32",
+            "area": "admin",
+            "path": "bad",
+            "title": "A vertex dragged across the opposite edge stops before the area crosses itself",
+            "asserts": "the south-west corner dragged north past the northern edge -> it stays below that edge (Terra Draw refuses a crossing move), nothing crossing reaches the draft or Firestore",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2c follow-up (DECISIONS-for-review.md §34g; owner: pois). e2e/admin/specs/pois/dragging.spec.ts; a drag past the city's limits is refused and said (packages/ui/test/map/draw/terra-draw-real.test.ts: the limits are half a degree beyond the city, off screen at the city's zoom)."
+        },
+        {
+            "id": "S-A32-HAPPY-OPEN-IN-VIEW",
+            "behaviour": "A32",
+            "area": "admin",
+            "path": "happy",
+            "title": "A place opened in its editor is brought into view on the map",
+            "asserts": "a place about 6 km north of the city's start view, opened by its address on the places page -> the same map centres on the place's bounding box, its zoom kept and without animation",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2e review (owner: pois). e2e/admin/specs/pois/in-view.spec.ts; packages/admin/test/pois/map-session.test.ts."
+        },
+        {
+            "id": "S-A32-BAD-NEW-PLACE-KEEPS-VIEW",
+            "behaviour": "A32",
+            "area": "admin",
+            "path": "bad",
+            "title": "A new place, with nothing drawn yet, leaves the map where it was",
+            "asserts": "Add place, Point -> the map stays at the city's start view (no shape to bring into view); an edit of the open place moves the camera neither",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2e review (owner: pois). e2e/admin/specs/pois/in-view.spec.ts; packages/admin/test/pois/map-session.test.ts."
         },
         {
             "id": "S-A33-HAPPY",
@@ -4196,10 +4284,10 @@
             "area": "admin",
             "path": "happy",
             "title": "Default opacities preview live and the viewer opens with them",
-            "asserts": "Overlay defaults: a layer to 40 %, the photos to 60 %, a category to 30 % -> each fades live on the admin map -> Save -> the layer's opacity, photosOverlay.defaultOpacity and the category's defaultOpacity written; the manifest carries them; the viewer opens with those slider values and pixel probes",
+            "asserts": "Overlay defaults: a layer to 40 %, the photos to 60 %, a category to 30 % -> each fades live on the settings map (its paint) -> Save -> the layer's opacity, photosOverlay.defaultOpacity and the category's defaultOpacity written; the manifest carries them; the viewer opens with those slider values and the layer's pixel probe",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Still planned (2026-10-18): the overlays section sets the default opacities without a map yet, so nothing fades live on an admin map (§37e)."
+            "status": "exists",
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Since 2026-10-18 (§42a): e2e/admin/specs/settings/map.spec.ts."
         },
         {
             "id": "S-A36-HAPPY-SHOWN-AT-START",
@@ -4220,8 +4308,8 @@
             "title": "Unsaved defaults are discarded",
             "asserts": "sliders moved, then Discard -> the map returns to the stored opacities; nothing written",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Still planned (2026-10-18): as S-A36-HAPPY: no admin map in the overlays section yet (§37e)."
+            "status": "exists",
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Since 2026-10-18 (§42a): e2e/admin/specs/settings/map.spec.ts."
         },
         {
             "id": "S-A36-BAD-LINK-STILL-WINS",
@@ -4319,8 +4407,8 @@
             "title": "A change saved by another admin is never overwritten silently",
             "asserts": "another admin saves the same document -> a banner names them and the time; fields only they changed merge in; for a field both changed, Keep mine or Take theirs",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.1, §5.3; owner: ops-screens). Still planned (2026-10-18): the editors merge the other admin's fields and offer Keep mine or Take theirs, but the banner names neither the admin nor the time (the draft keeps updatedBy; the name lookup is missing, §37e)."
+            "status": "exists",
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.1, §5.3; owner: ops-screens). Since 2026-10-18 (DECISIONS-for-review.md §42c) the banner names the other admin (from admins.list) and when they saved, with the fields in words: e2e/admin/specs/pois/conflict.spec.ts saves as a second admin."
         },
         {
             "id": "S-A38-BAD-INVALID",
@@ -4363,8 +4451,8 @@
             "title": "A document the public map skipped is shown with its issue",
             "asserts": "the manifest build skips a published document -> Not on the public map lists it with its first issue and a link to its editor",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.4; owner: ops-screens). Still planned (2026-10-18): Home counts the documents the manifest build skipped but lists none of them with its issue and editor link (§37e)."
+            "status": "exists",
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.4; owner: ops-screens). Since 2026-10-18 (DECISIONS-for-review.md §42b) Home lists each skipped document: e2e/admin/specs/ops/skipped.spec.ts."
         },
         {
             "id": "S-A39-HAPPY",
@@ -4464,6 +4552,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (CR-M2c-24; owner: ops-screens). A count that cannot be read shows a dash, never a wrong number: packages/ui/test/admin/ops/crashes-home.test.ts."
+        },
+        {
+            "id": "S-A40-HAPPY-FIRST-SCREEN",
+            "behaviour": "A40",
+            "area": "admin",
+            "path": "happy",
+            "title": "Once Setup is complete an empty address opens the dashboard",
+            "asserts": "setup/status with billing, provisioning, Mapbox and USGS ok -> the admin's address without a route opens Home, marked in the navigation; on a phone the bar holds Home, Photos, Places and Layers (Setup under More); after a reload the browser remembers it and Home opens at once",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2c follow-up (DECISIONS-for-review.md §34i; owner: ops-screens). e2e/admin/specs/ops/ops.spec.ts; packages/admin/test/app/navigation.test.ts, setup-readiness.test.ts."
+        },
+        {
+            "id": "S-A40-BAD-SETUP-INCOMPLETE",
+            "behaviour": "A40",
+            "area": "admin",
+            "path": "bad",
+            "title": "While Setup is not complete an empty address still opens Setup",
+            "asserts": "setup/status with USGS pending -> the address without a route opens Setup, marked in the navigation; on a phone Setup keeps its place on the bar and Home stays under More; finishing Setup's last required step later leaves the admin on Setup",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2c follow-up (DECISIONS-for-review.md §34i; owner: ops-screens). e2e/admin/specs/ops/ops.spec.ts; the last step's case: packages/admin/test/app/navigation.test.ts."
         },
         {
             "id": "S-A41-HAPPY-PHOTO",

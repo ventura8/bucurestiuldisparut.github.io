@@ -1,8 +1,10 @@
 /**
  * `<hcm-page-outlet>`: where the shell shows the current route's page (`docs/research/M2b-interfaces.md` §1.1). The page
  * registry of the app names the page's element once its module is loaded (`app.loadPage`); the outlet creates it and
- * sets `app` and `state` on it at every change. A route without a page (Setup before setup-ui's page is wired, a page
- * whose module failed to load) shows a short note instead of an empty screen. A page whose class declares
+ * sets `app` and `state` on it at every change. While the page's module loads (each editor area is a chunk of its own,
+ * `DECISIONS-for-review.md` §34b) the outlet says so; a route without a page (Setup before setup-ui's page is wired) shows
+ * a short note instead of an empty screen; a page whose module failed to load (the network, or a deploy that replaced
+ * its chunk) says so with Retry, which loads it again (`S-A29-BAD-CHUNK-LOAD`). A page whose class declares
  * `static fillsPage = true` (the editors' list and detail pages, `docs/research/M2c-interfaces.md` §1.3) is given the
  * page area's whole height: the outlet reflects `fill`, the shell stops scrolling the page area, and the page scrolls
  * its own panes.
@@ -15,7 +17,7 @@ import { shellText } from './text.js';
 
 export const HCM_PAGE_OUTLET_TAG = 'hcm-page-outlet';
 
-type Loaded = { readonly route: AdminRouteIdPort; readonly page: AdminPageElement | null } | null;
+type Loaded = { readonly route: AdminRouteIdPort; readonly page: AdminPageElement | null; readonly failed: boolean } | null;
 
 /** True when the page's class asks for the page area's whole height (CR-M2c-8). */
 export function fillsPage(page: Element | null): boolean {
@@ -51,6 +53,19 @@ export class HcmPageOutlet extends LitElement {
                 padding: 24px;
                 color: var(--md-sys-color-on-surface-variant, CanvasText);
             }
+
+            .failed {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+                padding: 24px;
+            }
+
+            .failed p {
+                margin: 0;
+                color: var(--md-sys-color-on-surface, CanvasText);
+            }
         `,
     ];
 
@@ -85,8 +100,28 @@ export class HcmPageOutlet extends LitElement {
         if (page !== null) {
             return html`${page}`;
         }
+        const state = this.state;
+        if (state === null) {
+            return html`<p class="note" role="status"></p>`;
+        }
+        return this.loaded?.failed === true ? this.#failed(state) : this.#note(state);
+    }
+
+    /** Loading, or no page for this route. */
+    #note(state: AdminStatePort): TemplateResult {
         const key = this.loaded === null ? 'adminShell.loading' : 'adminShell.page.unavailable';
-        return html`<p class="note" role="status">${this.state === null ? '' : shellText(this.state.locale, key)}</p>`;
+        return html`<p class="note" role="status">${shellText(state.locale, key)}</p>`;
+    }
+
+    /** The page's module did not load: why, and Retry. */
+    #failed(state: AdminStatePort): TemplateResult {
+        const retry = (): void => {
+            void this.#load(state.route.id);
+        };
+        return html`<div class="failed" role="alert">
+            <p>${shellText(state.locale, 'adminShell.page.failed')}</p>
+            <hcm-button variant="filled" icon="refresh" @click=${retry}>${shellText(state.locale, 'adminShell.page.retry')}</hcm-button>
+        </div>`;
     }
 
     /** The loaded page of the current route, or null. */
@@ -102,16 +137,20 @@ export class HcmPageOutlet extends LitElement {
         }
         this.#loading = route;
         this.loaded = null;
-        const tag = await app.loadPage(route);
-        if (this.#loading !== route) {
-            return;
+        const tag = await app.loadPage(route).catch(() => undefined);
+        if (this.#loading === route) {
+            this.loaded = tag === undefined ? { route, page: null, failed: true } : { route, page: this.#created(app, tag), failed: false };
         }
+    }
+
+    /** The page element of `tag` (none for null), handed the app and the state. */
+    #created(app: AdminAppPort, tag: string | null): AdminPageElement | null {
         const page = tag === null ? null : (this.ownerDocument.createElement(tag) as AdminPageElement);
         if (page !== null) {
             page.app = app;
             page.state = this.state;
         }
-        this.loaded = { route, page };
+        return page;
     }
 }
 

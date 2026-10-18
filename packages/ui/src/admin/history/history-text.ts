@@ -4,6 +4,7 @@
  */
 import type { AdminContentKey, Locale } from '@hcm/shared';
 
+import { fieldNames } from '../editing/field-names.js';
 import { formatWhen, whoText } from '../editing/states.js';
 import { contentText } from '../shell/text.js';
 import type { HistoryActionFilterPort, HistoryActionPort, HistoryEntityPort, HistoryItemPort } from './history-port.js';
@@ -81,9 +82,9 @@ export function summaryText(locale: Locale, item: HistoryItemPort, self: string 
     return contentText(locale, DONE[item.action], { who: whoText(locale, item.by, self, people), date: formatWhen(locale, item.at) });
 }
 
-/** The changed fields' names, as stored (they are the documents' own field names). */
+/** The changed fields, by their names in the admin's language ("Title, Changed on"; an unknown field as stored). */
 export function fieldsText(locale: Locale, item: HistoryItemPort): string {
     return item.changedFields.length === 0
         ? contentText(locale, 'adminContent.history.noFields')
-        : contentText(locale, 'adminContent.history.fields', { fields: item.changedFields.join(', ') });
+        : contentText(locale, 'adminContent.history.fields', { fields: fieldNames(locale, item.changedFields) });
 }

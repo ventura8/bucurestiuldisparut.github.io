@@ -3,9 +3,11 @@ import type { Locator, Page } from '@playwright/test';
 
 import { contrastRatio, type Rgba } from '../support/colour.js';
 import { recordLiveRegions } from '../support/live-regions.js';
+import { mapFraction } from '../support/map.js';
 import { expectStateSound } from '../support/state-check.js';
 import { adminVisit } from './states.js';
 import { expect, test } from '../admin/support/content-test.js';
+import { adminMapReady } from '../admin/support/map.js';
 import { seedCategory, seedCity, seedLayer, seedPhotoAt, seedPlace, text } from '../admin/specs/settings/world.js';
 
 /**
@@ -68,7 +70,19 @@ test(
 
         await areaLink.click();
         await expect(page.getByRole('heading', { level: 2, name: text(lang, 'adminContent.settings.section.area') })).toBeVisible();
+        await adminMapReady(page);
         await expectStateSound(page, adminVisit('settings.area', lang));
+
+        // Draw the area: one corner clicked, the page says to click the opposite one; Stop drawing leaves the bounds.
+        await page.getByRole('button', { name: text(lang, 'adminContent.settings.drawArea'), exact: true }).click();
+        // The map sits above the section: on a short window the fields scrolled it away, so it comes back into view first.
+        await page.locator('hcm-admin-map').scrollIntoViewIfNeeded();
+        const corner = await mapFraction(page, 0.3, 0.3);
+        await page.mouse.click(corner.x, corner.y);
+        await expect(page.getByText(text(lang, 'adminContent.settings.drawSecond'))).toBeVisible();
+        await expectStateSound(page, adminVisit('settings.area-drawing', lang));
+        await page.getByRole('button', { name: text(lang, 'adminContent.settings.drawCancel'), exact: true }).click();
+        await expect(fieldOf(page, lang, 'adminContent.settings.west')).toHaveValue(String(WIDE.west));
 
         // East on the west edge: no width; the problem is said at the bounds and Save stays off.
         await fieldOf(page, lang, 'adminContent.settings.east').fill('25');
@@ -214,6 +228,11 @@ test(
         await expect.poll(async () => (await content.document(`poiCategories/porturi`))?.['color']).toBe(proposed);
         expect((await content.document(`poiCategories/porturi`))?.['icon']).toBe('water');
         expect(contrastRatio(rgbaOf(proposed), [255, 255, 255, 1])).toBeGreaterThanOrEqual(3);
+        // The editor itself says Saved before the address changes: the document reached the emulator first, and a new
+        // address while the save was still settling asked "Discard your changes?" (a loaded machine, lesson 148).
+        await expect(
+            page.getByRole('status').filter({ hasText: new RegExp(`^${text(lang, 'adminContent.settings.state.saved')}$`) }),
+        ).toBeVisible();
 
         // A category three places use: Delete asks where they go and stays off without a choice; with one, the places
         // move and the category goes.

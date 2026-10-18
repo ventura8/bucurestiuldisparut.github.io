@@ -135,7 +135,11 @@ function secretBindings(project: ProjectConfig): PolicyBindings[] {
     }));
 }
 
-/** `iam.serviceAccountUser` on the function accounts: each for itself (Cloud Tasks OIDC), the deployer for all three. */
+/**
+ * `iam.serviceAccountUser` on the function accounts: each for itself (Cloud Tasks OIDC), the deployer for all of them.
+ * `fn-crash@` runs the public crash endpoint and holds no role anywhere (`DECISIONS-for-review.md` §42f): only the
+ * deployer may act as it, to deploy the function.
+ */
 function serviceAccountBindings(project: ProjectConfig): PolicyBindings[] {
     const names = projectNames(project);
     const user = (member: string): WantedBinding => ({ role: 'roles/iam.serviceAccountUser', member });
@@ -143,6 +147,7 @@ function serviceAccountBindings(project: ProjectConfig): PolicyBindings[] {
     return [
         { kind: 'serviceAccount', resource: names.email('fn-admin'), bindings: [user(names.member('fn-admin')), deployer] },
         { kind: 'serviceAccount', resource: names.email('fn-events'), bindings: [user(names.member('fn-events')), deployer] },
+        { kind: 'serviceAccount', resource: names.email('fn-crash'), bindings: [deployer] },
         { kind: 'serviceAccount', resource: names.email('job-raster'), bindings: [deployer] },
     ];
 }

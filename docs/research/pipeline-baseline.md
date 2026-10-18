@@ -697,3 +697,24 @@ What still stands between `quality` and about 8 minutes, for the user (`docs/res
 section): the locked admin chain (the Setup journey at five projects, about 580 s of test time in all, 236 s in one
 project on a loaded laptop), the fifty-category state at every per-push tour project (about 50 s each), and the
 functional tier's five projects of the same 105 specs.
+
+## Addendum: the per-push tiering of §39c, measured (M2 follow-ups, 2026-10-18)
+
+`DECISIONS-for-review.md` §42g moved the repetitions out of every push (the Setup journey at `admin-m768-ro`,
+`admin-l1440-dark` and `admin-l1440-en`; the eleven window-class-independent functional specs at four of the five `fn`
+projects; the admin's tour journeys in the dark scheme and in English) into `tour-matrix`; every scenario row still runs
+on every push. Two split `quality` runs with the NUC, this machine otherwise idle:
+
+| Run | Wall | This machine | The NUC | Tests |
+| --- | ---: | --- | --- | ---: |
+| first (three spec failures and the bundle budget, fixed before the second) | 482 s | static, tests, Playwright 285 s, build | Playwright 464 s | 973 |
+| second, green | 460 s | static, tests, Playwright 228 s, build | Playwright 447 s | 968 |
+
+Test time of the per-push tiers in the second run (the merged `reports/junit/e2e.xml`): admin 472 tests, about 2,030 s;
+functional 325, about 1,370 s; tour 159, about 1,310 s; the rest under 20 s; about 4,720 s in all (about 9,860 s before
+the tiering, about 6,000 s estimated after §39a and §39b). The two parts ended within about 20 s of each other, so the
+default `1:2` of `scripts/ci/e2e-split.sh` stays.
+
+What moved costs the nightly `tour-matrix` about 1,700 s of test time more (the eleven specs about 160 s a project, the
+journey about 100 s a project, the admin's tours about 150 s a project), on its ten count shards of about 17,500 s: the
+heaviest shard stays well inside the 45-minute job. The per-push CI jobs only got lighter (`ci.yml`'s shards unchanged).

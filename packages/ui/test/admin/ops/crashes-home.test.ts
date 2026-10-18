@@ -109,6 +109,13 @@ describe('<hcm-home-page>', () => {
         ]);
         expect(deepText(element)).toContain('The public map is up to date');
         expect(deepText(element)).toContain('Items not on the public map: 2');
+        // Not on the public map: each document with its first issue, a link to its editor (S-A38-BAD-SKIPPED-SHOWN).
+        expect(
+            deepAll(element, 'ul.skipped li').map((item) => [item.querySelector('a')?.getAttribute('href'), item.textContent.trim()]),
+        ).toEqual([
+            ['#/layers/corona-1968', expect.stringMatching(/^Layer corona-1968 · Attribution: /)],
+            ['#/settings/categories/piete', expect.stringMatching(/^Category piete · /)],
+        ]);
         deep(element, '.pane > .actions hcm-button').click();
         expect(home.named('refresh')).toEqual(['refresh']);
         expect(await axeViolations(element)).toEqual([]);
@@ -132,8 +139,8 @@ describe('<hcm-home-page>', () => {
         expect(home.named('retry')).toEqual(['retry']);
 
         expect(publicMapText('en', null)).toBe('The public map has not been published yet.');
-        expect(publicMapText('en', { status: 'building', builtAt: null, skipped: 0, error: null })).toBe('Updating the public map…');
-        expect(publicMapText('en', { status: 'failed', builtAt: null, skipped: 0, error: { key: 'apiError.internal' } })).toContain(
+        expect(publicMapText('en', { status: 'building', builtAt: null, skipped: [], error: null })).toBe('Updating the public map…');
+        expect(publicMapText('en', { status: 'failed', builtAt: null, skipped: [], error: { key: 'apiError.internal' } })).toContain(
             'The last update of the public map failed: ',
         );
     });

@@ -164,7 +164,7 @@ describe('runAdminCli', () => {
         const { log, records } = recordingLogger();
 
         expect(runAdminCli(['--out', OUT], { files, log })).toBe(EXIT_INVALID);
-        expect(records[0]?.message).toMatch(/admin\.iife\.js is missing/);
+        expect(records[0]?.message).toMatch(/admin\.mjs is missing/);
     });
 
     it('badPath_anUnknownOptionIsAUsageError', () => {
@@ -196,7 +196,7 @@ describe('runAdminCli', () => {
 
         // An empty folder has no admin build: the entry reports it with exit status 1.
         expect(result.status).toBe(EXIT_INVALID);
-        expect(result.stderr + result.stdout).toContain('admin.iife.js is missing');
+        expect(result.stderr + result.stdout).toContain('admin.mjs is missing');
         expect(files.isFile(`${OUT}/index.html`)).toBe(false);
     });
 });

@@ -183,23 +183,33 @@ describe('<hcm-poi-editor>: actions and banners', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
 
+    /** Opens the overflow menu, then chooses `action` in it (the menu fires once its dialog has closed). */
+    async function choose(element: HcmPoiEditor, action: string): Promise<void> {
+        press(deep(deep(element, 'hcm-overflow-menu'), 'hcm-icon-button'));
+        await updated(element);
+        press(deep(element, `[data-action="${action}"]`));
+        await updated(element);
+    }
+
     it('happyPath_historyRedrawAndDeleteAreOffered', async () => {
         const { element } = await mounted(editor());
         const fired: string[] = [];
-        for (const type of ['hcm-redraw', 'hcm-delete', 'hcm-pick-photos']) {
+        for (const type of ['hcm-redraw', 'hcm-delete', 'hcm-pick-photos', 'hcm-history']) {
             element.addEventListener(type, (event) => fired.push(`${type} ${JSON.stringify((event as CustomEvent).detail ?? null)}`));
         }
 
-        press(deep(element, 'hcm-button.redraw-linestring'));
-        press(deep(element, 'hcm-button.redraw-polygon'));
+        await choose(element, 'history');
+        await choose(element, 'redraw-linestring');
+        await choose(element, 'redraw-polygon');
         press(deep(element, 'hcm-button.delete'));
         press(deep(element, 'hcm-button.choose-photos'));
 
-        expect(deep(element, 'a.external').getAttribute('href')).toBe('#/history/poi/stavropoleos');
-        expect(deepAll(element, 'hcm-button.redraw-point')).toEqual([]);
+        expect(deepAll(element, 'a.external')).toEqual([]);
+        expect(deepAll(element, '[data-action="redraw-point"]')).toEqual([]);
         // The shape's name sits inside a sentence, so it is lower case: "Redraw as area", never "Redraw as Area".
-        expect(deep(element, 'hcm-button.redraw-polygon').textContent.trim()).toBe('Redraw as area');
+        expect(deep(element, '[data-action="redraw-polygon"]').textContent.trim()).toBe('Redraw as area');
         expect(fired).toEqual([
+            'hcm-history {}',
             'hcm-redraw {"shape":"linestring"}',
             'hcm-redraw {"shape":"polygon"}',
             'hcm-delete {}',
@@ -207,12 +217,48 @@ describe('<hcm-poi-editor>: actions and banners', () => {
         ]);
     });
 
+    it('badPath_aRevokedAdminsEditorIsReadOnlyButHistoryStillOpens', async () => {
+        const { element, store } = await mounted(
+            editor({
+                draft: draft({ dirty: ['title'], conflict: { by: 'other-uid', at: '2026-10-17T12:02:00.000Z', fields: ['title'] } }),
+            }),
+        );
+        element.readOnly = true;
+        await updated(element);
+        const disabled = (selector: string): boolean => (deep(element, selector) as HTMLElement & { disabled: boolean }).disabled;
+
+        expect(deepText(element)).toContain('Read only: your access was removed.');
+        const controls = [
+            ...['hcm-button.save', 'hcm-button.discard', 'hcm-button.delete', 'hcm-button.keep-mine', 'hcm-button.take-theirs'],
+            ...['hcm-button.add-link', 'hcm-button.choose-photos', 'hcm-switch', '#category'],
+        ];
+        expect(controls.filter((selector) => !disabled(selector))).toEqual([]);
+        expect((deep(element, '#title-ro') as HTMLInputElement).readOnly).toBe(true);
+        expect((deep(element, '#description-ro') as HTMLTextAreaElement).readOnly).toBe(true);
+        expect((deep(element, '#yearStart') as HTMLInputElement).readOnly).toBe(true);
+        expect(
+            deepAll(element, 'hcm-draw-toolbar hcm-icon-button').every((tool) => (tool as HTMLElement & { disabled: boolean }).disabled),
+        ).toBe(true);
+        expect(disabled('[data-action="redraw-linestring"]')).toBe(true);
+        expect(disabled('[data-action="history"]')).toBe(false);
+        expect(store.named('keepMine')).toEqual([]);
+    });
+
     it('badPath_aConflictIsResolvedAndADeletedPlaceCannotBeSaved', async () => {
         const { element, store } = await mounted(
-            editor({ draft: draft({ dirty: ['title'], conflict: { by: 'other-uid', fields: ['title', 'links'] } }) }),
+            editor({
+                draft: draft({
+                    dirty: ['title'],
+                    conflict: { by: 'other-uid', at: '2026-10-17T12:02:00.000Z', fields: ['title', 'links'] },
+                }),
+            }),
         );
 
-        expect(deepText(element)).toContain('Fields you both changed: title, links');
+        expect(deepText(element)).toContain('Saved by another admin on');
+        expect(deepText(element)).toContain('Fields you both changed: Title, Links');
+        element.who = { self: 'me', people: { 'other-uid': 'Ana Pop' } };
+        await updated(element);
+        expect(deepText(element)).toContain('Saved by Ana Pop on');
         press(deep(element, 'hcm-button.keep-mine'));
         press(deep(element, 'hcm-button.take-theirs'));
         element.editor = editor({ draft: draft({ dirty: ['title'], gone: true }) });

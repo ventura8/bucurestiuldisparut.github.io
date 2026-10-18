@@ -15,6 +15,10 @@
             "types": "./src/admin/index.ts",
             "default": "./src/admin/index.ts"
         },
+        "./admin/areas/*": {
+            "types": "./src/admin/areas/*.ts",
+            "default": "./src/admin/areas/*.ts"
+        },
         "./dynamic-color": {
             "types": "./src/theme/dynamic-color.ts",
             "default": "./src/theme/dynamic-color.ts"
@@ -36,7 +40,9 @@
     "dependencies": {
         "@hcm/shared": "0.0.0",
         "@material/material-color-utilities": "0.4.0",
-        "lit": "3.3.3"
+        "lit": "3.3.3",
+        "terra-draw": "1.37.0",
+        "terra-draw-mapbox-gl-adapter": "1.5.0"
     },
     "devDependencies": {
         "@fontsource-variable/roboto-flex": "5.3.0",

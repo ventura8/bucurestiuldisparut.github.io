@@ -6,7 +6,7 @@
  */
 import { showsShell } from '../auth/auth-state.js';
 import type { PageRegistry } from '../routing/pages.js';
-import { navigationDestinations, resolveAdminRoute, RETURN_TO_KEY, type RouteContext } from '../routing/router.js';
+import { isBlankAddress, navigationDestinations, resolveAdminRoute, RETURN_TO_KEY, type RouteContext } from '../routing/router.js';
 import { adminRouteHash, type AdminRoute } from '../routing/routes.js';
 import type { ShellState, ShellStateAccess } from '../state/state.js';
 import type { HashLocation, KeyValueStore, Unsubscribe } from './ports.js';
@@ -27,6 +27,10 @@ export class Navigation {
     readonly #stop: Unsubscribe;
     #shown = false;
     #mode: ShellState['mode'] = null;
+    /** Setup complete as last seen (`ShellState.setupReady`; null: not known yet). */
+    #ready: boolean | null = null;
+    /** An empty address was opened before Setup's readiness was known: its first answer decides the first screen. */
+    #awaitingReadiness = false;
     /** Set by Discard: the address change it makes is not questioned again. */
     #allowNext = false;
     /** The address of the last page view (one per route shown). */
@@ -41,11 +45,25 @@ export class Navigation {
         });
     }
 
-    /** Called on every state change: the shell appearing, or the mode changing, resolves the address again. */
+    /**
+     * Called on every state change: the shell appearing, or the mode changing, resolves the address again; Setup becoming
+     * complete (or not) changes the destinations, and an empty address opened before it was known follows its first answer
+     * (Setup, or the dashboard, §34i). Later changes never move the admin: finishing Setup's last required step leaves the
+     * admin on Setup, where the optional steps wait.
+     */
     stateChanged(state: ShellState): void {
+        const readyChanged = state.setupReady !== this.#ready;
+        this.#ready = state.setupReady;
+        if (!this.#shellChanged(state) && readyChanged && this.#shown) {
+            this.#readinessChanged();
+        }
+    }
+
+    /** The shell appeared or went, or its mode changed: the address is resolved again (or kept). False when nothing did. */
+    #shellChanged(state: ShellState): boolean {
         const shown = showsShell(state.auth);
         if (shown === this.#shown && state.mode === this.#mode) {
-            return;
+            return false;
         }
         this.#shown = shown;
         this.#mode = state.mode;
@@ -54,6 +72,18 @@ export class Navigation {
         } else {
             this.#keep(this.#deps.location.hash());
         }
+        return true;
+    }
+
+    /** Setup's readiness changed while the shell shows: the bar follows; an empty address waiting for it opens its first screen. */
+    #readinessChanged(): void {
+        const hash = this.#deps.location.hash();
+        if (this.#awaitingReadiness && isBlankAddress(hash)) {
+            this.#apply(hash);
+        } else {
+            this.#deps.shell.update({ destinations: navigationDestinations(this.#context()) });
+        }
+        this.#awaitingReadiness = false;
     }
 
     /** The shell appears (or its mode changes): no page holds an edit yet, so nothing is asked. */
@@ -93,7 +123,8 @@ export class Navigation {
     }
 
     #context(): RouteContext {
-        return { mode: this.#deps.shell.get().mode, hasPage: (id) => this.#deps.pages.has(id) };
+        const state = this.#deps.shell.get();
+        return { mode: state.mode, hasPage: (id) => this.#deps.pages.has(id), setupReady: state.setupReady === true };
     }
 
     /** The kept address (removed once read); it replaces the current one. */
@@ -160,6 +191,11 @@ export class Navigation {
         return true;
     }
 
+    /** An empty address opened before Setup's readiness is known waits for its first answer (`#readinessChanged`). */
+    #awaitReadiness(hash: string): void {
+        this.#awaitingReadiness = isBlankAddress(hash) && this.#deps.shell.get().setupReady === null;
+    }
+
     #apply(hash: string): void {
         if (!showsShell(this.#deps.shell.get().auth)) {
             this.#keep(hash);
@@ -170,6 +206,7 @@ export class Navigation {
             return;
         }
         const resolved = resolveAdminRoute(hash, context);
+        this.#awaitReadiness(hash);
         const address = adminRouteHash(resolved.route);
         if (resolved.notice !== null) {
             this.#deps.location.setHash(address, true);
