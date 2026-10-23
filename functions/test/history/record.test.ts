@@ -112,7 +112,9 @@ describe('history.onPoiWrite', () => {
 
         const [created, updated, deleted] = await entries(world);
         expect(created?.id).toBe(historyEntryId(new Date('2026-10-12T08:00:00.100Z'), 'e-create'));
-        expect(created?.data).toMatchObject({ entity: 'poi', entityId: 'p1', action: 'create', previous: null, updatedBy: 'u-creator' });
+        // Each entry names its city, so the admin's recent changes ask one city's entries (CR-M2c-14).
+        expect(created?.data).toMatchObject({ cityId: CITY, entity: 'poi', entityId: 'p1', action: 'create', previous: null });
+        expect(created?.data.updatedBy).toBe('u-creator');
         expect(created?.data.changedFields).toEqual(sorted(Object.keys(poi('Unu', 'u-creator'))));
         expect(updated?.data).toMatchObject({
             action: 'update',
@@ -246,6 +248,8 @@ describe('history.onCityWrite', () => {
             FIRESTORE_PATHS.history({ entity: 'city', cityId: CITY, entityId: CITY }),
             historyEntryDocSchema,
         );
-        expect(history.documents.map((entry) => [entry.data.entity, entry.data.action])).toEqual([['city', 'create']]);
+        expect(history.documents.map((entry) => [entry.data.cityId, entry.data.entity, entry.data.action])).toEqual([
+            [CITY, 'city', 'create'],
+        ]);
     });
 });

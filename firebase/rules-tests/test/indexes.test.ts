@@ -100,12 +100,22 @@ describe('composite indexes', () => {
         expect(config.indexes.filter((index) => index.queryScope === 'COLLECTION').map(signature)).toContain(wanted);
     });
 
+    // The recent changes ask one city's entries (`cityId ==`, CR-M2c-14), then filter by action, by entity or both.
     it.each([
-        'history: action ASCENDING, updatedAt DESCENDING',
-        'history: entity ASCENDING, updatedAt DESCENDING',
-        'history: entity ASCENDING, action ASCENDING, updatedAt DESCENDING',
+        'history: cityId ASCENDING, updatedAt DESCENDING',
+        'history: cityId ASCENDING, action ASCENDING, updatedAt DESCENDING',
+        'history: cityId ASCENDING, entity ASCENDING, updatedAt DESCENDING',
+        'history: cityId ASCENDING, entity ASCENDING, action ASCENDING, updatedAt DESCENDING',
     ])('happyPath_historysRecentChangesHaveTheirCollectionGroupIndex_%s', (wanted) => {
         expect(config.indexes.filter((index) => index.queryScope === 'COLLECTION_GROUP').map(signature)).toContain(wanted);
+    });
+
+    it('badPath_everyCollectionGroupIndexStartsWithTheCity', () => {
+        const unscoped = config.indexes
+            .filter((index) => index.queryScope === 'COLLECTION_GROUP' && index.fields[0]?.fieldPath !== 'cityId')
+            .map(signature);
+
+        expect(unscoped).toEqual([]);
     });
 
     it('badPath_noIndexIsDeclaredTwice', () => {
@@ -115,31 +125,15 @@ describe('composite indexes', () => {
     });
 });
 
-/** The single-field overrides that add an index instead of removing them all. */
-const ADDED_FIELD_INDEXES = new Set(['history.updatedAt']);
-
 describe('single-field exemptions', () => {
-    it.each(
-        config.fieldOverrides
-            .filter((override) => !ADDED_FIELD_INDEXES.has(`${override.collectionGroup}.${override.fieldPath}`))
-            .map((override) => [`${override.collectionGroup}.${override.fieldPath}`, override] as const),
-    )('happyPath_%s_isASchemaFieldWithoutIndexes', (_name, override) => {
-        expect(fieldsOf(override.collectionGroup)).toContain(override.fieldPath);
-        expect(override.indexes).toEqual([]);
-    });
-
-    it('happyPath_historysUpdatedAtKeepsItsDefaultsAndGainsTheCollectionGroupOrder', () => {
-        const override = config.fieldOverrides.find(
-            (candidate) => `${candidate.collectionGroup}.${candidate.fieldPath}` === 'history.updatedAt',
-        );
-
-        expect(override?.indexes).toEqual([
-            { order: 'ASCENDING', queryScope: 'COLLECTION' },
-            { order: 'DESCENDING', queryScope: 'COLLECTION' },
-            { arrayConfig: 'CONTAINS', queryScope: 'COLLECTION' },
-            { order: 'DESCENDING', queryScope: 'COLLECTION_GROUP' },
-        ]);
-    });
+    // No override adds an index: the recent changes, filtered by city, use the composite indexes above (CR-M2c-14).
+    it.each(config.fieldOverrides.map((override) => [`${override.collectionGroup}.${override.fieldPath}`, override] as const))(
+        'happyPath_%s_isASchemaFieldWithoutIndexes',
+        (_name, override) => {
+            expect(fieldsOf(override.collectionGroup)).toContain(override.fieldPath);
+            expect(override.indexes).toEqual([]);
+        },
+    );
 
     it('badPath_noCompositeIndexUsesAnExemptField', () => {
         const exempt = new Set(

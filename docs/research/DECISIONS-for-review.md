@@ -2930,3 +2930,36 @@ allowlist entry, no new `overrides` entry and no other package was added.
 
 Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` and `PIPELINE_STAGE=tests bash
 scripts/ci/run-all-checks.sh`.
+
+## 45. History's recent changes ask one city (CR-M2c-14, 2026-10-23) — APPLIED 2026-10-23 (orchestrator task; no gate relaxed, no config of the ask-first kinds changed)
+
+The split `all` failed once in the tour matrix: `admin.history.recent` at `tour-x3840-dark-ro-admin`, "Tab never
+reaches" the test's own city's creation entry. The recent changes read the newest 50 entries of every city's
+`history` and the page left the others' entries out (§9.2 as built, CR-M2c-14 open for M5). In the shared emulators
+the other tests' cities write entries at the same instants, so they decided which of this city's entries made the
+page, pushed one off it during the Tab round, and kept "Show more" on (the tolerance of §43c; `docs/LESSONS.md` 149).
+
+- **Contract**: `historyEntryDocSchema` gains `cityId` (an id, optional so an entry written before it still parses);
+  `history.on*Write` (`functions/src/history/record.ts`) and `history.revert` (`revert.ts`) write it from the audited
+  document's path. `docs/research/M2-interfaces.md` §2.2 and `M2c-interfaces.md` §9.2 say so; CR-M2c-14 is done.
+- **Query**: `recentQuery(cityId, filter)` asks `cityId ==` the city, then the entity and action filters, ordered by
+  `updatedAt` descending (`packages/admin/src/history/entries.ts`); the page-side `inCity` filter went.
+- **Indexes** (`firebase/firestore.indexes.json`): the three collection-group composites became four that start with
+  `cityId` (alone, with `action`, with `entity`, with both); the `history.updatedAt` override, which only added the
+  collection-group descending order for the unfiltered query, went, so `history` keeps Firestore's default
+  single-field indexes. `firebase/rules-tests/test/indexes.test.ts` asks for the four and refuses a collection-group
+  index that does not start with `cityId`. If an earlier deploy created the old collection-group indexes, `firebase
+  deploy --only firestore` lists them as not in the file; deleting them is part of that ask-first step.
+- **Rules**: unchanged (admins, who edit every city, list the collection group; `get` stays under `cities/`).
+  `firebase/rules-tests/test/history.test.ts` queries one city with and without the filters (admins only) and checks
+  that another city's entry never answers it.
+- **Migration**: none. The live project never had a history trigger deployed (`M2-status.md` §5, step 4 not run), so
+  its Firestore holds no history entry; an entry without `cityId` still validates and shows among its document's
+  versions (the tour's year-2000 entry is one).
+- **Tests**: `S-A23-BAD-OTHER-CITY` (the tour writes a newer deletion of another city: never listed, and the city's
+  few entries offer no "Show more", in the recent changes and the Deleted filter; the tour also waits for the city's
+  own creation entry before its checkers), the admin store's test with a full page of another city's entries, the
+  shared schema's, functions' and rules' tests.
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build` of `bash scripts/ci/run-all-checks.sh`; the history tour and the
+specs that use History at several projects with `--repeat-each`.

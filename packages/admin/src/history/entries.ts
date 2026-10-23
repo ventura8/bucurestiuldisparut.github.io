@@ -91,18 +91,14 @@ export function historyItemOf(doc: Stored<HistoryEntryDoc>): HistoryItem {
     };
 }
 
-/** True when an entry's path lies under the city (`cities/<city>/history/…` or `cities/<city>/<collection>/<id>/history/…`). */
-export function inCity(path: string, cityId: string): boolean {
-    return path.startsWith(`cities/${cityId}/`);
-}
-
 /**
- * The city's recent changes: a collection-group query of `history`, newest first, with the filters as equality
- * conditions (the composite indexes at collection-group scope, CR-M2c-6). Entries of other cities are left out by the
- * page (`inCity`) until history entries carry their city (CR-M2c-14, M5).
+ * The city's recent changes: a collection-group query of `history` kept to the city's entries by the `cityId` each
+ * entry carries (CR-M2c-14), newest first, with the filters as further equality conditions (the composite indexes at
+ * collection-group scope, CR-M2c-6). Other cities' entries never reach the page, so they neither take its rows nor
+ * make it offer Show more.
  */
-export function recentQuery(filter: HistoryFilter): ContentQuery {
-    const where: [string, '==', unknown][] = [];
+export function recentQuery(cityId: string, filter: HistoryFilter): ContentQuery {
+    const where: [string, '==', unknown][] = [['cityId', '==', cityId]];
     if (filter.entity !== 'all') {
         where.push(['entity', '==', filter.entity]);
     }

@@ -110,6 +110,7 @@ describe('history.revert', () => {
         expectDocument(await world.documents.get(POI_PATH, poiDocSchema), poi('Unu', { updatedBy: ADMIN, updatedAt: NOW }));
         const history = (await world.documents.query(FIRESTORE_PATHS.history(POI), historyEntryDocSchema)).documents;
         expect(history.at(-1)?.data).toMatchObject({
+            cityId: CITY,
             action: 'revert',
             revertOf: update,
             previous: { title: { ro: 'Doi' } },

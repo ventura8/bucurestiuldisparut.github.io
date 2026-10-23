@@ -263,10 +263,14 @@ const snapshotSchema = z
  * stamp is the change's own (for a delete, the deleting identity of the event's auth context). `history.revert`
  * writes the restored document and its own `revert` entry (`revertOf`; `previous` is null when it restores a deleted
  * document) in one transaction, and the trigger skips that change. Entry ids sort by time (`historyEntryId`); the
- * newest `HISTORY_KEEP` entries per document are kept.
+ * newest `HISTORY_KEEP` entries per document are kept. `cityId` names the city the audited document belongs to, so the
+ * admin's recent changes ask one city's entries of the collection group (CR-M2c-14); every writer stamps it, and only an
+ * entry written before it (none exists outside the emulators) lacks it, which then shows in its document's versions
+ * alone.
  */
 export const historyEntryDocSchema = z
     .strictObject({
+        cityId: idSchema.optional(),
         entity: z.enum(HISTORY_ENTITIES),
         entityId: idSchema,
         action: z.enum(HISTORY_ACTIONS),

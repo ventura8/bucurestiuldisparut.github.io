@@ -854,10 +854,13 @@ callables are M2's (`admins.list`, `admins.invite`, `admins.revoke`, **done**); 
 
 ### 9.2 History (A23)
 
-- `#/history`: the city's changes newest first, from a collection-group query on `history` ordered by `updatedAt`
-  descending and kept to the city's path (CR-M2c-6: the rules allow admins a collection-group read; the index is a
-  `COLLECTION_GROUP` field override); filters by entity and by action (changed, created, deleted, reverted); the
-  **Deleted** filter lists deleted documents with who and when, each with **Restore**.
+- `#/history`: the city's changes newest first, from a collection-group query on `history` asking `cityId ==` the city
+  (every entry names its city, CR-M2c-14) ordered by `updatedAt` descending (CR-M2c-6: the rules allow admins a
+  collection-group read; the composite indexes at `COLLECTION_GROUP` scope start with `cityId`); filters by entity and
+  by action (changed, created, deleted, reverted); the **Deleted** filter lists deleted documents with who and when,
+  each with **Restore**. Other cities' entries never reach the page, so they neither take its rows nor make it offer
+  Show more (`S-A23-BAD-OTHER-CITY`); an entry written before `cityId` (none outside the emulators) shows only among its
+  document's versions.
 - `#/history/<entity>/<id>`: the document's entries; the selected entry shows each changed field before and after, as
   text (a geometry as its type and position count, adjustments as percentages, a theme as its seed colour).
 - **Revert** (and **Restore**) asks first, then calls `history.revert` (**done**); a refusal shows its code as an alert
@@ -1109,7 +1112,7 @@ owner (or the integrator) applies it. Ids are `CR-M2c-<n>`; status `open`, `acce
 | CR-M2c-11 | contracts | ops-screens (`packages/admin/package.json` `exports`) | `./content/budgets` exported like `./setup/steps` (CR-M2b-10), so the e2e tier reads `CONTENT_INPUT_BUDGETS` | the budgets of §5.6 are code | done (ops-screens, 2026-10-18) |
 | CR-M2c-12 | each workstream | integrator (docs, skills and mirrors, `docs/LESSONS.md`, the admin guides) | What each workstream built and learned, reported as a row here at its end | docs follow the code | done (integrator, 2026-10-18: the four reports, CR-M2c-19, -23, -26 and -30, are in `docs/ADMIN_GUIDE.ro.md` and `.en.md` (daily work, troubleshooting), `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `docs/LESSONS.md` 71–80, the skills and `DECISIONS-for-review.md` §35) |
 | CR-M2c-13 | contracts | M3 (the dispatcher and the raster pipeline) | Run `layer-delete` jobs after `dispatchAt`: skip (`cancelled`) when the layer exists again; else delete the Mapbox tileset and source with tombstone retries, then the layer's objects in our buckets | §8.4 | open |
-| CR-M2c-14 | contracts | M5 (multi-city) | `cityId` on history entries, so the recent changes need no path filter | §9.2 keeps to one city's path in the page meanwhile | open |
+| CR-M2c-14 | contracts | M5 (multi-city) | `cityId` on history entries, so the recent changes need no path filter | §9.2 keeps to one city's path in the page meanwhile | done (2026-10-23, brought forward from M5: the page-side filter let other tests' cities decide which of the city's entries made the page of 50 and removed a row during the tour's Tab round, `docs/LESSONS.md` 149. `historyEntryDocSchema` gains an optional `cityId`, which the history triggers (`functions/src/history/record.ts`) and `history.revert` (`revert.ts`) write; `recentQuery(cityId, filter)` asks `cityId ==` first and the page-side `inCity` went; the collection-group indexes start with `cityId` and the `updatedAt` override's collection-group order went (`firebase/firestore.indexes.json`); the rules are unchanged (admins list the collection group) and `firebase/rules-tests/test/history.test.ts` checks that only the city's entries answer; no migration: no history trigger was ever deployed, so the live project holds no entry; `S-A23-BAD-OTHER-CITY`; `DECISIONS-for-review.md` §45) |
 | CR-M2c-15 | ops-screens | integrator (weekly `contract.yml`, ask first for the probe) | Verify Error Reporting's group page address and add it to `packages/admin/src/setup/links.json` | the crash detail's deep link must be a verified one | done (follow-ups, 2026-10-18: `gcp.errorGroup` = `https://console.cloud.google.com/errors/detail/{groupId}?project={projectId}` in `links.json` and `links.ts`, which the weekly contract run probes (not dispatched: ask first); the crash detail links the group through `errorGroupUrl` of `@hcm/ui/admin`, which `packages/admin/test/setup/links.test.ts` keeps equal to it) |
 | CR-M2c-16 | photos | ops-screens (`ContentStore` in `packages/admin/src/content/services.ts`, `packages/admin/src/firebase/content.ts`) | In `update` and a batch's `update`, a field whose value is `undefined` is removed (`deleteField()`); today the SDK refuses an `undefined` value | the photo editor clears an optional field (the author, a year, every link, the direction) by sending it `undefined` (`PhotoDraft.save`, `packages/admin/src/photos/draft.ts`); the fake store already merges it so | done (ops-screens, 2026-10-18: `cleared()` in `packages/admin/src/firebase/content.ts` sends `deleteField()` for an `undefined` field in `update` and a batch's `update`; `FakeContentStore` removes such a field likewise; `packages/admin/test/firebase/content.test.ts`) |
 | CR-M2c-17 | photos | ops-screens (the kit's `packages/ui/src/components/snackbar.ts`) | The action button takes the kit's `touch-target` ring and keeps its label whole (`flex: none`) | the photos spec measured the Undo of a delete at 68 × 40 px with its label cut on `admin-c360-ro` and 85 × 40 px on `admin-m768-ro`; `photos.deleted-undo` joins the tour inventory with the fix (`e2e/tour/admin-photos.tour.ts` checks the delete and its Undo meanwhile) | done (ops-screens, 2026-10-18: `packages/ui/src/components/snackbar.ts`; the photos spec may now add `photos.deleted-undo` to the tour) |
@@ -1173,8 +1176,8 @@ layer delete, the replaced `S-A10-BAD-MISSING-EN-TITLE`).
   (`S-A20-BAD-REVOKED-WHILE-EDITING`, `exists`); the empty `engine-browser` Vitest project is gone; the admin's CSS
   literals are minified and `admin.mjs` like the engine's.
 - **Change requests closed**: CR-M2c-15, -27, -28, -29 (the table above). Left: CR-M2c-7 (the admin map's Mapbox mocks and
-  the per-test city: the E2E agent's), CR-M2c-13 (M3), CR-M2c-14 (M5), CR-M2c-20 (waits for §34g), CR-M2c-31 (what
-  waits for the user).
+  the per-test city: the E2E agent's), CR-M2c-13 (M3), CR-M2c-14 (M5; done on 2026-10-23, see its row), CR-M2c-20
+  (waits for §34g), CR-M2c-31 (what waits for the user).
 - **The state checker sees the whole state** (lesson 84): every scroller is scrolled through its content and the
   position-dependent checks run at each position (`e2e/support/scroll-sweep.ts`, `docs/TESTING.md` → *The tour's
   checkers*).

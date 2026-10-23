@@ -305,8 +305,10 @@ export function usgsSceneDoc(status = 'candidate'): Data {
     };
 }
 
-export function historyEntryDoc(editor: string): Data {
+/** A history entry as the triggers write it, naming its city (CR-M2c-14). */
+export function historyEntryDoc(editor: string, cityId = 'matrix-city'): Data {
     return {
+        cityId,
         entity: 'photo',
         entityId: 'p1',
         action: 'update',

@@ -231,3 +231,17 @@ Open, for the user or a later milestone:
   of 620; the engine unchanged (`engine.mjs` 95.9 of 100, `engine.iife.js` 109.3 of 125).
 - __Seen, not changed__: the admin map keeps the day basemap in the dark scheme, as the viewer does; test cities seeded
   without theme tokens show the fallback purple (the Bucharest theme is brown).
+
+## Addendum 2026-10-23: History's recent changes ask one city (CR-M2c-14 resolved)
+
+- __Found by__ the split `all` on the NUC: `admin.history.recent` at `tour-x3840-dark-ro-admin` failed its Tab round on
+  the test's own city's creation entry. The recent changes read the newest 50 entries of every city's `history` and the
+  page left the others' out, so other tests' cities decided which of the city's entries made the page, removed one
+  while the checkers ran and kept "Show more" on (`docs/LESSONS.md` 149).
+- __Fixed at the root__ (`DECISIONS-for-review.md` §45; `docs/research/M2c-interfaces.md` §9.2 and its CR-M2c-14 row):
+  every history entry names its city (`cityId`, written by the history triggers and `history.revert`), the query asks
+  `cityId ==` the city, and the collection-group indexes start with it. `S-A23-BAD-OTHER-CITY` (exists) pins it.
+- __Deploy__: the next `firebase deploy --only firestore` (step 3, ask first) creates the four city-scoped
+  collection-group indexes; the functions deploy (step 4) installs the writers. No migration: no history trigger was
+  ever deployed, so the live Firestore holds no history entry, and an entry without `cityId` would still validate and
+  show among its document's versions.

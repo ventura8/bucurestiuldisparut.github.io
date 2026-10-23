@@ -111,6 +111,7 @@ function isRevertWrite(change: DocumentChange, listed: readonly { data: HistoryE
 
 function entryOf(audited: AuditedDocument, action: HistoryAction, change: DocumentChange, stamp: Stamp): HistoryEntryDoc {
     return {
+        cityId: audited.cityId,
         entity: audited.entity,
         entityId: audited.entityId,
         action,
@@ -131,7 +132,8 @@ function stalePaths(listed: readonly ListedEntry[], written: ListedEntry): strin
 /**
  * The `history.on*Write` handler (PLAN Addendum 3; `docs/research/M2-interfaces.md` §2.2; S-A23-*): one entry per
  * change in the document's `history` subcollection, id `historyEntryId(time, eventId)` (a redelivered event writes
- * the same entry), `previous` = the whole version before the change (none for a create), `changedFields` = the
+ * the same entry), `cityId` = the document's city (the admin's recent changes ask one city's entries, CR-M2c-14),
+ * `previous` = the whole version before the change (none for a create), `changedFields` = the
  * top-level keys that differ, the stamp = the change's own. A write `history.revert` made (a `revert` entry with the
  * same `updatedAt` is listed) is skipped; afterwards the entries beyond `HISTORY_KEEP` are deleted.
  */

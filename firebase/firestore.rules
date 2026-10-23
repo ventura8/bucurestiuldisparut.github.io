@@ -354,7 +354,8 @@ service cloud.firestore {
         }
 
         // History's recent changes (M2c, CR-M2c-6): one collection-group query over every audited document's
-        // `history` subcollection, kept to the city's path by the page. Admins list them; a single entry is read only
+        // `history` subcollection, kept to one city by the `cityId` each entry carries (CR-M2c-14; the composite
+        // indexes start with it). Admins, who edit every city of the map, list them; a single entry is read only
         // under cities/ (a `history` document anywhere else stays closed, as every path the contract does not name: a
         // condition on the path cannot hold for a collection-group query, so it guards `get` alone). No client writes
         // an entry.

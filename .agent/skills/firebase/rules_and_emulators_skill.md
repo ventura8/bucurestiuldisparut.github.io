@@ -38,9 +38,10 @@ Firestore and Storage security rules, their tests, and the Firebase emulators ev
 - Isolation: each test namespaces data by city id `e2e-w{workerIndex}-{testId}` and unique Auth users; seeding goes through the Admin SDK pointed at the emulators (`@hcm/test-support`).
 - The admin connects to the emulators only when built with the `e2e` mode; that branch is unit-tested too.
 
-## Rules the M2c integration taught (`docs/LESSONS.md` 77, 78)
+## Rules the M2c integration taught (`docs/LESSONS.md` 77, 78, 149)
 
 - A collection-group rule (`match /{path=**}/history/{entry}`, History's recent changes) matches every collection of that name in the database. A condition on the path (`path[0] == 'cities'`) cannot hold for a collection-group query (the emulator denies the whole query), so it can narrow `get` only: `allow list: if isAdmin(); allow get: if isAdmin() && path[0] == 'cities';` (`docs/research/DECISIONS-for-review.md` §35c). The default-deny matrix (`firebase/rules-tests/test/identity.test.ts`) is what catches a recursive wildcard that opened too much.
+- A collection-group query is kept to its owner on the server: the documents carry the owner's id (`cityId` on every history entry), the query asks `cityId ==` first and the composite indexes start with it (`firebase/rules-tests/test/indexes.test.ts`). Filtering other owners' documents out in the page lets them decide which of the owner's documents make the page's limit, and change it while a test looks (lesson 149).
 - A new server-owned field of a schema needs a value in the rules tests' complete document (`firebase/rules-tests/test/support/documents.ts`), or the generated "a client cannot change or remove it" tests pass for nothing and the create test sends `undefined`.
 
 ## Agent rules

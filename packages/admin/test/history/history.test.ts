@@ -13,6 +13,7 @@ function entry(id: string, overrides: Record<string, unknown>): [string, Record<
     return [
         FIRESTORE_PATHS.historyEntry(POI, id),
         {
+            cityId: CITY,
             entity: 'poi',
             entityId: 'gara',
             action: 'update',
@@ -39,6 +40,7 @@ function world() {
         [
             `cities/${CITY}/photos/foto/history/1760710000000-del`,
             {
+                cityId: CITY,
                 entity: 'photo',
                 entityId: 'foto',
                 action: 'delete',
@@ -51,6 +53,7 @@ function world() {
         [
             'cities/cluj/pois/x/history/1760720000000-elsewhere',
             {
+                cityId: 'cluj',
                 entity: 'poi',
                 entityId: 'x',
                 action: 'update',
@@ -86,8 +89,9 @@ describe('history entries', () => {
         expect(nameOf({ label: { ro: 'Biserici', en: 'Churches' } })).toEqual({ ro: 'Biserici', en: 'Churches' });
         expect(nameOf({ name: { ro: 'București' } })).toEqual({ ro: 'București' });
         expect([nameOf(null), nameOf({ title: 'plain' }), nameOf({ title: { ro: 3 } })]).toEqual([null, null, null]);
-        expect(recentQuery({ entity: 'poi', action: 'delete' })).toEqual({
+        expect(recentQuery(CITY, { entity: 'poi', action: 'delete' })).toEqual({
             where: [
+                ['cityId', '==', CITY],
                 ['entity', '==', 'poi'],
                 ['action', '==', 'delete'],
             ],
@@ -143,6 +147,29 @@ describe('the history area', () => {
         expect(history.state.people).toEqual({ 'other-uid': 'Ion' });
         expect(HISTORY_MODULE.area).toBe('history');
         expect(history.hasUnsavedChanges()).toBe(false);
+    });
+
+    it('badPath_otherCitiesEntriesNeverReachThePageNorOfferShowMore', () => {
+        const { services, store } = world();
+        // A full page of another city's newer entries, and an entry of this city written before entries named their city.
+        for (let index = 0; index < 60; index += 1) {
+            const id = `p${String(index)}`;
+            store.docs.set(`cities/cluj/pois/${id}/history/1760800000000-${id}`, {
+                ...{ cityId: 'cluj', entity: 'poi', entityId: id, action: 'delete', previous: {}, changedFields: [] },
+                ...{ updatedBy: 'u', updatedAt: at('2026-10-18T12:00:00Z') },
+            });
+        }
+        const [olderPath, older] = entry('1760500000000-older', { updatedAt: at('2026-10-15T08:00:00Z') });
+        store.docs.set(olderPath, Object.fromEntries(Object.entries(older).filter(([field]) => field !== 'cityId')));
+        const history = HISTORY_MODULE.create(services);
+
+        history.open([]);
+        history.intents.setFilter({ action: 'delete' });
+
+        expect(history.state.recent.items.map((item) => item.path)).toEqual([`cities/${CITY}/photos/foto/history/1760710000000-del`]);
+        expect(history.state.recent.hasMore).toBe(false);
+        history.open(['poi', 'gara']);
+        expect(history.state.document?.entries.items.map((item) => item.entryId)).toContain('1760500000000-older');
     });
 
     it('happyPath_theDeletedFilterAndRestoreCallsTheRevert', async () => {

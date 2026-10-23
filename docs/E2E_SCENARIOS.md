@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 70 | 383 | 132 | 251 | 344 | 39 | 90 |
+| 70 | 384 | 132 | 252 | 345 | 39 | 90 |
 
 ## Viewer
 
@@ -288,6 +288,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-A23-BAD-CREATION-ENTRY` | A23 | bad | The creation entry has nothing to restore | the entry of a create offers no Revert; history.revert of it answers apiError.history.nothingToRestore | functions | exists | `functions/test/history/revert.test.ts` |
 | `S-A23-BAD-INVALID-SNAPSHOT` | A23 | bad | A version that no longer validates is not restored | history.revert of a snapshot that fails today's schema -> apiError.history.invalidSnapshot with the number of problems; the document is unchanged | functions | exists | `functions/test/history/revert.test.ts` |
 | `S-A23-BAD-LAYER-GONE` | A23 | bad | A layer whose tileset was deleted is not restored | history.revert of a layer's delete entry after its layer-delete job succeeded -> apiError.history.layerGone; nothing written; while the job still waits, the restore cancels it | functions | exists | `functions/test/history/restore.test.ts` |
+| `S-A23-BAD-OTHER-CITY` | A23 | bad | Another city's changes never reach this city's History | a newer deletion in another city of the same project -> History's recent changes and its Deleted filter do not list it, and the city's few entries offer no Show more; the query asks one city's entries by the cityId each entry carries, and only that city's entries answer it (rules test) | e2e-admin | exists | `e2e/tour/admin-history.tour.ts` |
 | `S-A23-BAD-REFUSED-SHOWN` | A23 | bad | A refused revert explains why and changes nothing | a version that today's schema refuses -> Revert answers apiError.history.invalidSnapshot with the count, as an alert; the document is unchanged | e2e-admin | exists | `e2e/tour/admin-history.tour.ts` |
 | `S-A23-BAD-RESTORE-AFTER-SWEEP` | A23 | bad | A photo restored after the sweep is processed again | history.revert of a photo's delete entry whose public files were swept -> the photo comes back with processing pending, off the public map, and is processed again from its kept original, then shows as before | functions | exists | `functions/test/history/restore.test.ts` |
 | `S-A24-HAPPY` | A24 | happy | A crash report from the site reaches Cloud Error Reporting, redacted | POST text/plain from an allowed origin -> 204; one ERROR log entry of type ReportedErrorEvent with service viewer (admin for the admin origin), the release and a report location; no query, token or e-mail address in it | functions | exists | `functions/test/telemetry/report-error.test.ts` |

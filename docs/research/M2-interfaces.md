@@ -78,7 +78,8 @@ crash), each `{state, checkedAt?, detail?, params?}` plus its area's non-secret 
 - **History** (PLAN Addendum 3): the triggers `history.on{City,Layer,Photo,Poi,PoiCategory}Write`
   (`onDocumentWrittenWithAuthContext`, so a delete knows who deleted) write one entry per change into the document's
   `history` subcollection, id `historyEntryId(eventTime, event.id)` (sorts by time; a redelivered event writes the same
-  entry). `previous` is the whole document before the change (none for a create), `changedFields` the top-level keys
+  entry). `cityId` names the document's city (the admin's recent changes ask one city's entries across the collection
+  group, CR-M2c-14), `previous` is the whole document before the change (none for a create), `changedFields` the top-level keys
   whose values differ, the stamp the change's own (a delete: `event.authId`, else `system:<authType>`, at the event's time but never before the version it deleted, `docs/LESSONS.md` 121). After writing,
   the trigger deletes the oldest entries beyond `HISTORY_KEEP` (50).
 - `history.revert` writes the restored document **and** its own `revert` entry (`revertOf` = the restored entry,

@@ -90,6 +90,7 @@ function checkedVersion(entity: HistoryEntity, version: Fields): Fields {
 /** The entry `history.revert` writes with the version: the history triggers skip the write it describes. */
 function revertEntry(revert: Revert, current: Fields | undefined, restored: Fields): HistoryEntryDoc {
     return {
+        cityId: revert.audited.cityId,
         entity: revert.audited.entity,
         entityId: revert.audited.entityId,
         action: 'revert',

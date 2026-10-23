@@ -3498,6 +3498,17 @@
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.2; owner: ops-screens)."
         },
         {
+            "id": "S-A23-BAD-OTHER-CITY",
+            "behaviour": "A23",
+            "area": "admin",
+            "path": "bad",
+            "title": "Another city's changes never reach this city's History",
+            "asserts": "a newer deletion in another city of the same project -> History's recent changes and its Deleted filter do not list it, and the city's few entries offer no Show more; the query asks one city's entries by the cityId each entry carries, and only that city's entries answer it (rules test)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.2, CR-M2c-14; docs/LESSONS.md 149). Also firebase/rules-tests/test/history.test.ts and packages/admin/test/history/history.test.ts."
+        },
+        {
             "id": "S-A23-BAD-LAYER-GONE",
             "behaviour": "A23",
             "area": "admin",

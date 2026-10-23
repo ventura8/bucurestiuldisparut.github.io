@@ -149,6 +149,7 @@ describe('Firestore documents: happy paths', () => {
         ['history', historyEntryDocSchema, docs.history],
         ['history create', historyEntryDocSchema, { ...docs.history, action: 'create', previous: null, changedFields: [] }],
         ['history revert', historyEntryDocSchema, { ...docs.history, action: 'revert', revertOf: 'entry-41' }],
+        ['history entry naming its city (CR-M2c-14)', historyEntryDocSchema, { ...docs.history, cityId: 'bucharest' }],
         [
             'a revert that restores a deleted document',
             historyEntryDocSchema,
@@ -268,6 +269,13 @@ const ADDENDUM_3_BAD = [
         'validation.markdownLink',
     ],
     ['an unknown history entity', historyEntryDocSchema, { ...docs.history, entity: 'job' }, 'entity', 'validation.value'],
+    [
+        'a history entry whose city leaves its segment',
+        historyEntryDocSchema,
+        { ...docs.history, cityId: 'a/b' },
+        'cityId',
+        'validation.format',
+    ],
     ['a create with a previous version', historyEntryDocSchema, { ...docs.history, action: 'create' }, 'previous', 'validation.value'],
     ['an update without a previous version', historyEntryDocSchema, { ...docs.history, previous: null }, 'previous', 'validation.value'],
     [
