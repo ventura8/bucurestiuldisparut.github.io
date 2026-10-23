@@ -123,6 +123,10 @@ or types a credential. Every command names the project explicitly (`.firebaserc`
    ```
 
    Check: the admin boots with `release: 0.0.0+<short commit>`, and its console shows no error before sign-in.
+
+   Done 2026-10-23 (user approved 2026-10-18) from `8f4e43d` after a green split `all` on that commit: the live admin
+   boots with `release: 0.0.0+8f4e43d`, `startUp: true`, and its console shows no error. The Firestore indexes in the
+   project are still the 2026-10-12 set; the `cityId`-first History indexes (DECISIONS §45) arrive with step 3.
 3. __Firestore rules and indexes, Storage rules__ (after the user finished Setup steps b and c, which link billing and
    create the buckets). Ask first. The `(default)` database already exists in `nam5` (created with the project on
    2026-10-11; the rules and indexes were deployed to it on 2026-10-12), and `firebase.json` names that location, so a
