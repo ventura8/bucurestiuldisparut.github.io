@@ -2895,3 +2895,38 @@ before (`e2e/test/layout-probe.test.ts`; lesson 144). No allowlist entry was add
 - A category's colour saved: the settings tour waits for the editor's own "Saved" before it opens another category; the
   emulator held the new colour before the page heard back, and the new address asked "Discard your changes?" (lesson
   148).
+
+## 44. Security patch bumps for new advisories (2026-10-23) — APPLIED 2026-10-23 (user approved the downloads, `virtualenv` in a second approval)
+
+New advisories failed the `static` stage's audit gates. The user approved downloading exactly these patch versions; no
+allowlist entry, no new `overrides` entry and no other package was added.
+
+| Package | From | To | Advisory | Gate |
+| --- | --- | --- | --- | --- |
+| `vitest`, `@vitest/browser-playwright`, `@vitest/coverage-v8` (root `devDependencies`); `@vitest/browser`, `@vitest/ui`, `@vitest/mocker`, `@vitest/spy`, `@vitest/utils`, `@vitest/pretty-format` (transitive) | 5.0.3 | 5.0.5 | GHSA-p458-7748-mcp3 | `npm-audit` |
+| `markdownlint-cli2` (brings `markdown-it` 15.0.1 → 15.0.3 and `markdownlint` 0.41.1 → 0.42.0) | 0.23.3 | 0.24.0 | GHSA-r7fv-28h4-cvq7, GHSA-vfgh-jcmw-g37q, GHSA-gfr2-rv44-r23c (`markdown-it` 15.0.0 to 15.0.2) | `npm-audit` |
+| `ip-address` (transitive: `firebase-tools` → `express-rate-limit`, `socks`; both ranges `^10`) | 10.7.3 | 10.7.4 | GHSA-rxp7-6hxx-x8q5 | `npm-audit` |
+| `certifi` (`scripts/ci/requirements.txt`, `pipeline/requirements-poetry.txt`, `pipeline/poetry.lock`) | 2026.7.22 | 2026.10.19 | PYSEC-2026-4320 | `pip-audit`, `pipeline-pip-audit` |
+| `virtualenv` (`pipeline/requirements-poetry.txt`, Poetry's own venv) | 21.14.6 | 21.14.13 | CVE-2026-113722, CVE-2026-113725 | `pipeline-pip-audit` |
+
+- **npm.** `npm install --save-exact` of the three root packages stopped on `ERESOLVE`: the lockfile's `vitest@5.0.3`
+  peers each `@vitest/*` at exactly 5.0.3, so no single package could move first. The fix was a lockfile refresh of
+  only the affected entries: the 5.0.3 `vitest` and `@vitest/*` entries, `markdownlint-cli2`, `markdown-it` and
+  `ip-address` were removed from `package-lock.json` and `npm install` re-resolved them in the digest-pinned Node
+  image (`docs/SETUP.md` → *npm in a container*). The rest of the tree is unchanged apart from the dependencies of
+  the new versions (`obug` 3.0.0 under Vitest; `micromark` and its extensions, `js-yaml` 5.4.3 and `string-width`
+  8.3.0 under markdownlint, and one new transitive package, `micromark-util-edit-map` 1.0.0). `ip-address` needed no
+  override: both of its dependants accept 10.7.4. `npm audit --audit-level=low` and the `deploy-lock-audit` gate
+  (`functions/deploy-lock`, which holds neither package) report 0 vulnerabilities.
+- **Python.** `certifi` is pinned to the approved 2026.10.19 in both requirements files. `poetry update certifi
+  --lock` (Poetry 2.5.1 from the quality image) picked 2026.10.23, published the same day; the lock entry was set to
+  2026.10.19 with PyPI's two sha256 hashes, so all three files name one version. `pyproject.toml` is unchanged, so
+  the lock's `content-hash` stays valid (`pipeline-lock` gate).
+- **`virtualenv`, approved and applied the same day.** The same `static` run found a further advisory outside the
+  first approval: `virtualenv` 21.14.6 (Poetry's own dependency, `pipeline/requirements-poetry.txt`), CVE-2026-113722
+  and CVE-2026-113725, fixed in 21.14.7 and 21.14.9. The user approved the latest, 21.14.13 (2026-10-23), which is
+  now pinned; its dependencies (`distlib`, `filelock`, `packaging`, `platformdirs`, `python-discovery`) were already
+  pinned at versions it accepts, so no package was added (`pipeline-pip-audit`).
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` and `PIPELINE_STAGE=tests bash
+scripts/ci/run-all-checks.sh`.

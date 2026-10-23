@@ -88,6 +88,7 @@ Every dependency stays on its latest stable release; a deliberate hold is a `HEL
 - Never run a gate with the host's Node 22 or Python: versions differ from the image and results do not count.
 - The GDAL base preloads tcmalloc; the quality image sets `LD_PRELOAD=""` because Chromium aborts under it. Keep it.
 - A browser crash in the container writes `core.<pid>` into the repository root; `.gitignore` covers `core.[0-9]*`.
+- Packages released in lockstep (`vitest` and every `@vitest/*`) peer each other at one exact version, so `npm install --save-exact` of the new version stops on `ERESOLVE` against the lockfile's old entries: set the versions in `package.json`, delete only those packages' entries from `package-lock.json`, then `npm install` (`DECISIONS-for-review.md` §44). `poetry update <pkg> --lock` takes the newest release, not the approved one; pin an approved patch version in `poetry.lock` with PyPI's hashes (`pyproject.toml` unchanged keeps the `content-hash` valid).
 - npm 11 warns that `protobufjs` and `re2` (from `firebase-tools`) run install scripts not yet covered by `allowScripts`; approve those two explicitly if a later npm blocks them.
 - pytest with `-c pipeline/pyproject.toml` makes `pipeline/` the rootdir and then ignores `testpaths`: the `pipeline-pytest` gate passes `--rootdir .`. `testpaths` is rootdir-relative, `pythonpath` relative to the config file.
 - pytest 9's `caplog` captures records even from a logger with `propagate = False`; prove non-propagation with a handler on the root logger instead.

@@ -99,10 +99,10 @@ All npm versions were checked with `npm view` on 2026-10-11 and are pinned exact
 | --- | --- |
 | Node / npm | Node 24.21.0, npm 11.19.0 (from `node:24-bookworm-slim`, by digest) |
 | TypeScript | 6.0.3 (**held**, see below) |
-| Build and test | vite 8.3.4, vitest 5.0.3, @vitest/coverage-v8 5.0.3, @vitest/browser-playwright 5.0.3, playwright 1.64.0, @playwright/test 1.64.0 (`@hcm/e2e`) |
+| Build and test | vite 8.3.4, vitest 5.0.5, @vitest/coverage-v8 5.0.5, @vitest/browser-playwright 5.0.5, playwright 1.64.0, @playwright/test 1.64.0 (`@hcm/e2e`) |
 | Lint | eslint 10.12.0, @eslint/js 10.0.1, typescript-eslint 8.71.1, eslint-plugin-sonarjs 4.2.2, eslint-plugin-no-unsanitized 4.1.5, eslint-plugin-lit 2.3.1, eslint-plugin-wc 3.1.0, @vitest/eslint-plugin 1.6.27, eslint-plugin-playwright 2.12.1, eslint-config-prettier 10.1.8, globals 17.13.0 |
 | Format and style | prettier 3.9.10, stylelint 17.16.0, stylelint-config-standard 40.0.0, postcss-lit 1.4.1 |
-| HTML and Markdown | htmlhint 1.9.2, html-validate 11.16.2, markdownlint-cli2 0.23.3 |
+| HTML and Markdown | htmlhint 1.9.2, html-validate 11.16.2, markdownlint-cli2 0.24.0 |
 | Architecture | knip 6.41.0, dependency-cruiser 18.6.0 |
 | Runtime | lit 3.3.3; Mapbox GL JS 3.32.0 (external, from `api.mapbox.com`) |
 | Firebase | firebase-tools 15.33.0 (emulator JARs baked into the image), JDK 21; functions: firebase-functions 7.4.0, firebase-admin 14.5.0, google-auth-library 11.2.0; rules tests: @firebase/rules-unit-testing 6.0.0, firebase 13.0.0 |

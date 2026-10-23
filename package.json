@@ -38,8 +38,8 @@
     "devDependencies": {
         "@eslint/js": "10.0.1",
         "@types/node": "24.19.2",
-        "@vitest/browser-playwright": "5.0.3",
-        "@vitest/coverage-v8": "5.0.3",
+        "@vitest/browser-playwright": "5.0.5",
+        "@vitest/coverage-v8": "5.0.5",
         "@vitest/eslint-plugin": "1.6.27",
         "braces": "file:vendor/npm/braces",
         "dependency-cruiser": "18.6.0",
@@ -55,7 +55,7 @@
         "html-validate": "11.16.2",
         "htmlhint": "1.9.2",
         "knip": "6.41.0",
-        "markdownlint-cli2": "0.23.3",
+        "markdownlint-cli2": "0.24.0",
         "playwright": "1.64.0",
         "postcss-lit": "1.4.1",
         "prettier": "3.9.10",
@@ -65,7 +65,7 @@
         "typescript": "6.0.3",
         "typescript-eslint": "8.71.1",
         "vite": "8.3.4",
-        "vitest": "5.0.3",
+        "vitest": "5.0.5",
         "zod": "4.6.6"
     },
     "overrides": {

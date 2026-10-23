@@ -26,7 +26,7 @@ It is built from the surveys plus a read-only check of the sibling repos, the np
 | Suppression rules | Ban `per-file-ignores` (Auto-Sub, Fork) vs allow relaxations only in the tool's single config, each with a why-comment (Watch) | Watch. Prefer config formats that allow comments (`.mjs`, `.jsonc`, `.toml`). |
 | Indent | 4 spaces (Watch, Whisper JS) vs 2 (RPi) | **4 spaces, line length 140**. Markdown exempt. `*.sh` uses tabs (shfmt default, Watch). |
 | Badge path | `assets/coverage.svg` (Whisper, Auto-Sub, RPi) vs `.github/badges/` (Watch) | `.github/badges/coverage.svg` and `branches.svg`. `assets/` collides with Vite output and would ship in the site. |
-| Markdown linter | markdownlint-cli2 (Watch, Whisper) vs mdformat + pymarkdown (Auto-Sub, RPi) | markdownlint-cli2 `0.23.3` |
+| Markdown linter | markdownlint-cli2 (Watch, Whisper) vs mdformat + pymarkdown (Auto-Sub, RPi) | markdownlint-cli2 `0.24.0` |
 | Scenario registry | Markdown matrix (Watch) vs machine-checked `scenarios.json` + generated doc (Fork) | Fork's JSON registry, rendered with Watch's columns and happy/bad rule |
 | Sonar scanner image locally | `:latest` (Whisper) vs a numeric pin (Fork, which forbids latest) | `sonarsource/sonar-scanner-cli:12.2.0.4256_8.1.0` |
 | Dependency updates | Dependabot (RPi only) vs a `deps` stage plus a weekly workflow (Watch) | Watch: `deps` stage, `.github/workflows/deps.yml`, no Dependabot or Renovate |
@@ -287,7 +287,7 @@ requests-mock==1.12.1
 
 ## 5. Unit tests
 
-**Vitest** `5.0.3` + `@vitest/coverage-v8` `5.0.3` + `jsdom` `30.1.2`. Use **one root `vitest.config.ts` with `test.projects`**, so coverage is global and produces a single lcov file with repo-relative paths.
+**Vitest** `5.0.5` + `@vitest/coverage-v8` `5.0.5` + `jsdom` `30.1.2`. Use **one root `vitest.config.ts` with `test.projects`**, so coverage is global and produces a single lcov file with repo-relative paths.
 
 ```ts
 export default defineConfig({ test: {
@@ -586,8 +586,8 @@ The user installs them with `git config core.hooksPath scripts/git-hooks`.
 **Root `package.json` devDependencies:**
 
 - Language and build: `typescript 6.0.3` (HELD: typescript-eslint peer `<6.1.0`; latest is 7.0.2), `vite 8.3.4`, `@types/node 24.19.2`, `@types/geojson 7946.0.16`.
-- Lint and format: `typescript-eslint 8.71.1`, `eslint 10.12.0`, `@eslint/js 10.0.1`, `globals 17.13.0`, `eslint-plugin-sonarjs 4.2.2`, `@vitest/eslint-plugin 1.6.27`, `eslint-plugin-playwright 2.12.1`, `eslint-config-prettier 10.1.8`, `prettier 3.9.10`, `stylelint 17.16.0`, `stylelint-config-standard 40.0.0`, `html-validate 11.16.2`, `htmlhint 1.9.2`, `markdownlint-cli2 0.23.3`.
-- Tests: `vitest 5.0.3`, `@vitest/coverage-v8 5.0.3`, `jsdom 30.1.2`, `@playwright/test 1.64.0`, `@axe-core/playwright 4.13.0`, `@firebase/rules-unit-testing 6.0.0`.
+- Lint and format: `typescript-eslint 8.71.1`, `eslint 10.12.0`, `@eslint/js 10.0.1`, `globals 17.13.0`, `eslint-plugin-sonarjs 4.2.2`, `@vitest/eslint-plugin 1.6.27`, `eslint-plugin-playwright 2.12.1`, `eslint-config-prettier 10.1.8`, `prettier 3.9.10`, `stylelint 17.16.0`, `stylelint-config-standard 40.0.0`, `html-validate 11.16.2`, `htmlhint 1.9.2`, `markdownlint-cli2 0.24.0`.
+- Tests: `vitest 5.0.5`, `@vitest/coverage-v8 5.0.5`, `jsdom 30.1.2`, `@playwright/test 1.64.0`, `@axe-core/playwright 4.13.0`, `@firebase/rules-unit-testing 6.0.0`.
 - Firebase CLI: `firebase-tools 15.33.0`.
 
 **Runtime deps:** `mapbox-gl 3.32.0`, `firebase 13.0.0`.

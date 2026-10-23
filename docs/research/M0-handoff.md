@@ -31,10 +31,10 @@ All npm versions were checked with `npm view` on 2026-10-11 and are pinned exact
 | --- | --- |
 | Node / npm | Node 24.21.0, npm 11.19.0 (from `node:24-bookworm-slim`) |
 | TypeScript | `typescript@6.0.3` **HELD**: `typescript-eslint@8.71.1` peers `typescript <6.1.0` (latest is 7.0.2) |
-| Build / test | `vite@8.3.4`, `vitest@5.0.3`, `@vitest/coverage-v8@5.0.3`, `@vitest/browser-playwright@5.0.3`, `playwright@1.64.0`, `@playwright/test@1.64.0` (`@hcm/e2e`) |
+| Build / test | `vite@8.3.4`, `vitest@5.0.5`, `@vitest/coverage-v8@5.0.5`, `@vitest/browser-playwright@5.0.5`, `playwright@1.64.0`, `@playwright/test@1.64.0` (`@hcm/e2e`) |
 | Lint | `eslint@10.12.0`, `@eslint/js@10.0.1`, `typescript-eslint@8.71.1`, `eslint-plugin-sonarjs@4.2.2`, `eslint-plugin-no-unsanitized@4.1.5`, `eslint-plugin-lit@2.3.1`, `eslint-plugin-wc@3.1.0`, `@vitest/eslint-plugin@1.6.27`, `eslint-config-prettier@10.1.8`, `globals@17.13.0` |
 | Format / style | `prettier@3.9.10`, `stylelint@17.16.0`, `stylelint-config-standard@40.0.0`, `postcss-lit@1.4.1` |
-| HTML / Markdown | `htmlhint@1.9.2`, `html-validate@11.16.2`, `markdownlint-cli2@0.23.3` |
+| HTML / Markdown | `htmlhint@1.9.2`, `html-validate@11.16.2`, `markdownlint-cli2@0.24.0` |
 | Architecture | `knip@6.41.0`, `dependency-cruiser@18.5.0` |
 | Runtime | `lit@3.3.3` (in `@hcm/ui`); `zod@4.6.6` (`@hcm/shared`), `@material/material-color-utilities@0.4.0` (`@hcm/ui`), both added by the M1 contracts (§10g); `firebase@13.0.0` (`@hcm/engine`, the lazy analytics chunk, M1) |
 | UI kit build (M1) | devDependencies of `@hcm/ui`: `harfbuzzjs@1.6.3`, `wawoff2@2.0.1`, `material-symbols@0.48.0`, `@fontsource-variable/roboto-flex@5.3.0` (`npm run fonts:build`/`fonts:check`); `axe-core@4.14.0` (`@hcm/test-support`, entry `@hcm/test-support/axe`) |
