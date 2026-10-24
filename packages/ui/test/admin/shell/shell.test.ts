@@ -31,6 +31,7 @@ describe('<hcm-admin-shell>', () => {
         expect(deepAll(element, 'hcm-admins-page')).toHaveLength(1);
         expect(app.calls).toContain('setWindowClass "large"');
         expect(document.documentElement.lang).toBe('en');
+        expect(document.title).toBe('Map administration');
         expect(await axeViolations(element)).toEqual([]);
     });
 
@@ -53,6 +54,7 @@ describe('<hcm-admin-shell>', () => {
             'Mod de pornire: harta nu are încă server, așa că pașii vorbesc direct cu Google.',
         );
         expect(document.documentElement.lang).toBe('ro');
+        expect(document.title).toBe('Administrarea hărții');
     });
 
     it('badPath_aRevokedAdminKeepsThePageUnderABannerWithSignOut', async () => {

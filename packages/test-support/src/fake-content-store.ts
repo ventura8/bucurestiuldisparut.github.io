@@ -111,15 +111,22 @@ function withoutCleared(data: Data): Data {
     return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
 }
 
+/** A field by its path, dotted into maps as Firestore reads it (`rank.score`); undefined when a step is missing. */
+function fieldAt(data: Data, path: string): unknown {
+    return path
+        .split('.')
+        .reduce<unknown>((value, key) => (typeof value === 'object' && value !== null ? (value as Data)[key] : undefined), data);
+}
+
 function matches(data: Data, query: FakeQuery): boolean {
-    return (query.where ?? []).every(([field, operator, value]) => MATCHERS[operator](data[field], value));
+    return (query.where ?? []).every(([field, operator, value]) => MATCHERS[operator](fieldAt(data, field), value));
 }
 
 function ordered(entries: [string, Data][], query: FakeQuery): [string, Data][] {
     const order = query.orderBy ?? [];
     return entries.toSorted(([pathA, a], [pathB, b]) => {
         for (const [field, direction] of order) {
-            const result = compare(a[field], b[field]);
+            const result = compare(fieldAt(a, field), fieldAt(b, field));
             if (result !== 0) {
                 return direction === 'desc' ? -result : result;
             }

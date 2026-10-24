@@ -45,13 +45,24 @@ export async function clickMapAt(page: Page, lngLat: LngLat): Promise<void> {
     await page.mouse.click(point.x, point.y);
 }
 
-/** Runs in the page: the features of a GeoJSON source of the newest map, as its style holds them. */
+/**
+ * Runs in the page: the features of a GeoJSON source of the newest map, as its style holds them; none while the style is
+ * still loading, where Mapbox's `getStyle()` throws ("Style is not done loading"): a poll over this reads "not yet" and
+ * asks again instead of failing on a page that is still opening its map (docs/LESSONS.md 183).
+ */
 function sourceFeaturesInPage(source: string): { properties?: Record<string, unknown>; geometry?: { coordinates?: unknown } }[] {
     interface StyleMap {
         getStyle(): { sources: Record<string, { data?: { features?: unknown[] } }> };
     }
     const map = (window as unknown as { __hcmE2e?: { maps: StyleMap[] } }).__hcmE2e?.maps.at(-1);
-    const data = map?.getStyle().sources[source]?.data;
+    const style = (() => {
+        try {
+            return map?.getStyle();
+        } catch {
+            return undefined;
+        }
+    })();
+    const data = style?.sources[source]?.data;
     return (data?.features ?? []) as { properties?: Record<string, unknown>; geometry?: { coordinates?: unknown } }[];
 }
 

@@ -9,13 +9,14 @@ import {
     type MapboxState,
     type MapboxToken,
 } from './mapbox-state.js';
-import { tilesetRoutes } from './mapbox-tilesets.js';
+import { styleRoutes, tilesetRoutes } from './mapbox-tilesets.js';
+import { tileRoutes } from './mapbox-tiles.js';
 import { jsonResponse, requestObject, route, type Route } from './routes.js';
 import { sequence, type FailureMode, type ServiceFake } from './service.js';
 
 /**
  * Mapbox (`api.mapbox.com`): the Tokens API v2 for `setup.saveMapbox` and `setup.rotatePublicToken` (scenarios A05, A06),
- * plus the Tilesets API v1 and the styles list of mapbox-tilesets.ts. Accounts have a plan: a `demo` account cannot
+ * plus the Tilesets API v1 and the styles list of mapbox-tilesets.ts and the published tiles of mapbox-tiles.ts (M3). Accounts have a plan: a `demo` account cannot
  * create tokens (403), a `billing-pending` one is blocked on its billing information (422). The secret tokens of
  * `MAPBOX_TOKENS` encode their scenario; a token the fake does not know is invalid (401 `TokenInvalid`).
  */
@@ -87,6 +88,55 @@ const MAPBOX_FAILURES: Readonly<Partial<Record<FailureMode, FixtureName>>> = {
     unauthorized: 'mapbox/error.unauthorized',
     forbidden: 'mapbox/error.forbidden',
 };
+
+/** The named state changes of the fake Mapbox (`mapbox.<name>`). */
+function mapboxScenarios(state: MapboxState): Record<string, () => void> {
+    return {
+        upgraded: () => {
+            state.accounts.forEach((candidate) => {
+                candidate.plan = 'paid';
+            });
+        },
+        bootstrapRevoked: () => {
+            state.accounts.forEach((candidate) => {
+                const index = candidate.tokens.findIndex((token) => token.value === MAPBOX_TOKENS.bootstrap);
+                if (index !== -1) {
+                    candidate.tokens.splice(index, 1);
+                }
+            });
+        },
+        jobsFail: () => {
+            state.jobOutcome = 'failed';
+        },
+        internalFailureOnce: () => {
+            state.jobOutcomes.push('failed-internal');
+        },
+    };
+}
+
+/** The fake Mapbox's state as plain JSON. */
+function mapboxSnapshot(state: MapboxState): unknown {
+    return {
+        accounts: Object.fromEntries(
+            [...state.accounts].map(([user, owner]) => [
+                user,
+                {
+                    plan: owner.plan,
+                    tokens: owner.tokens.map((token) => tokenRecord(token, true)),
+                    tilesets: [...owner.tilesets.keys()],
+                    published: Object.fromEntries(
+                        [...owner.tilesets.values()].flatMap((tileset) =>
+                            tileset.published === undefined ? [] : [[tileset.id, tileset.published]],
+                        ),
+                    ),
+                    sources: Object.fromEntries(owner.sources),
+                    jobs: [...owner.jobs.values()],
+                },
+            ]),
+        ),
+        jobOutcome: state.jobOutcome,
+    };
+}
 
 /** The fake Mapbox APIs. */
 export function createMapboxFake(state: MapboxState): ServiceFake {
@@ -163,42 +213,14 @@ export function createMapboxFake(state: MapboxState): ServiceFake {
             route('PATCH', `${base}/{user}/{tokenId}`, 'mapbox.tokens.update', mapboxAuthorized(state, 'tokens:write', update)),
             route('DELETE', `${base}/{user}/{tokenId}`, 'mapbox.tokens.delete', mapboxAuthorized(state, 'tokens:write', remove)),
             ...tilesetRoutes(state),
+            ...styleRoutes(state),
+            ...tileRoutes(state),
         ],
         failure: (mode) => {
             const name = MAPBOX_FAILURES[mode];
             return name === undefined ? undefined : fixtureResponse(name);
         },
-        scenarios: {
-            upgraded: () => {
-                state.accounts.forEach((candidate) => {
-                    candidate.plan = 'paid';
-                });
-            },
-            bootstrapRevoked: () => {
-                state.accounts.forEach((candidate) => {
-                    const index = candidate.tokens.findIndex((token) => token.value === MAPBOX_TOKENS.bootstrap);
-                    if (index !== -1) {
-                        candidate.tokens.splice(index, 1);
-                    }
-                });
-            },
-            jobsFail: () => {
-                state.jobOutcome = 'failed';
-            },
-        },
-        snapshot: () => ({
-            accounts: Object.fromEntries(
-                [...state.accounts].map(([user, owner]) => [
-                    user,
-                    {
-                        plan: owner.plan,
-                        tokens: owner.tokens.map((token) => tokenRecord(token, true)),
-                        tilesets: [...owner.tilesets.keys()],
-                        jobs: [...owner.jobs.values()],
-                    },
-                ]),
-            ),
-            jobOutcome: state.jobOutcome,
-        }),
+        scenarios: mapboxScenarios(state),
+        snapshot: () => mapboxSnapshot(state),
     };
 }

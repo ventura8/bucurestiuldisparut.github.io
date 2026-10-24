@@ -2,9 +2,22 @@
  * The admin's hash routes (`docs/research/M2b-interfaces.md` §1.1): `#/<route>` plus at most two id segments
  * (`#/photos/<photoId>`, `#/history/<entity>/<id>`, `#/setup/<step>`). Hash routing needs no Hosting rewrite and keeps
  * every address on the one `index.html`. `#/home` is the dashboard the M2c editors added (`docs/research/M2c-interfaces.md`
- * CR-M2c-24).
+ * CR-M2c-24); `#/imagery` and `#/georef/<versionId>` are M3's (`docs/research/M3-interfaces.md` §10.1, CR-M3-9).
  */
-export const ADMIN_ROUTES = ['home', 'setup', 'photos', 'pois', 'layers', 'jobs', 'settings', 'admins', 'history', 'crashes'] as const;
+export const ADMIN_ROUTES = [
+    'home',
+    'setup',
+    'photos',
+    'pois',
+    'layers',
+    'imagery',
+    'jobs',
+    'settings',
+    'admins',
+    'history',
+    'crashes',
+    'georef',
+] as const;
 
 export type AdminRouteId = (typeof ADMIN_ROUTES)[number];
 
@@ -20,6 +33,8 @@ export interface AdminRouteSpec {
      * (`DECISIONS-for-review.md` §34i).
      */
     readonly inCompactBarOnceSetUp: boolean;
+    /** False for a page reached only from another (the georeferencer, from a version): never a navigation destination. */
+    readonly inNavigation?: false;
 }
 
 export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> = {
@@ -32,11 +47,15 @@ export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> =
     photos: { icon: 'photo_library', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true },
     pois: { icon: 'place', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true },
     layers: { icon: 'layers', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true },
+    /** M3's Imagery area: after Layers in the rail, under More on the compact bar (`docs/research/M3-interfaces.md` §10.1). */
+    imagery: { icon: 'satellite_alt', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
     jobs: { icon: 'pending_actions', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
     settings: { icon: 'settings', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
     admins: { icon: 'group', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
     history: { icon: 'history', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
     crashes: { icon: 'bug_report', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
+    /** The georeferencer: opened from a version or a layer (`#/georef/<versionId>`), never from the navigation. */
+    georef: { icon: 'add_location_alt', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, inNavigation: false },
 };
 
 export interface AdminRoute {

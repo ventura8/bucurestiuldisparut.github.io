@@ -636,3 +636,28 @@ describe('more edges', () => {
         expect(editor.state.notFound).toBe(false);
     });
 });
+
+describe('the imagery section', () => {
+    it('happyPath_theImagerySettingsAreSavedOnTheirOwn', async () => {
+        const { store, world } = open(['imagery']);
+
+        store.intents.editCity({ imagery: { autoPublish: false, rmseThresholdM: 9, targetYears: [1966, 1977] } });
+        await store.intents.saveSection();
+
+        expect(city(world)).toMatchObject({ imagery: { autoPublish: false, rmseThresholdM: 9, targetYears: [1966, 1977] } });
+        expect(world.store.writes.map((write) => (write.kind === 'update' ? Object.keys(write.fields) : write.kind))).toEqual([
+            ['imagery'],
+        ]);
+    });
+
+    it('badPath_aThresholdOutOfRangeOrRepeatedYearsAreSaidAndNothingIsWritten', async () => {
+        const { store, world } = open(['imagery']);
+
+        store.intents.editCity({ imagery: { rmseThresholdM: 500, targetYears: [1966, 1966] } });
+        const outcome = await store.intents.saveSection();
+
+        expect(outcome).toMatchObject({ ok: false, reason: 'invalid' });
+        expect(store.state.citySection.draft.issues.map((issue) => issue.path)).toEqual(['imagery.rmseThresholdM', 'imagery.targetYears']);
+        expect(world.store.writes).toEqual([]);
+    });
+});

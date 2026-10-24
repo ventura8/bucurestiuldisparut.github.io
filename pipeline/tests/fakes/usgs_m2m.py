@@ -1,7 +1,8 @@
 """A fake USGS M2M API: real HTTP on 127.0.0.1:<random port>, scripted by the test.
 
 Test credentials encode the scenario (docs/research/design-review-testability.md §3.1): login-token
-with the application token `e2e-ok` returns a fresh API key `fake-key-<n>`; any other token is
+with the application token `e2e-usgs-app-token-ok` (the shared fakes' approved user `e2e-ok`) returns a fresh API key
+`fake-key-<n>`; any other token is
 rejected the way USGS does it (HTTP 500 with errorCode AUTH_INVALID). Every other endpoint needs a
 current key in X-Auth-Token, else it answers the HTML 403 page of the USGS front end; `logout`
 revokes the key. `enqueue(endpoint, reply)` makes the next call to that endpoint answer `reply`
@@ -23,8 +24,9 @@ from wsgiref.simple_server import WSGIRequestHandler, WSGIServer, make_server
 from wsgiref.types import StartResponse, WSGIEnvironment
 
 API_ROOT = "/api/api/json/stable/"
+POLL_SECONDS = 0.02
 RESET_PATH = "/__reset"
-GOOD_TOKEN = "e2e-ok"
+GOOD_TOKEN = "e2e-usgs-app-token-ok"
 FORBIDDEN_PAGE = "<html><head><title>403 Forbidden</title></head><body><h1>Forbidden</h1></body></html>"
 MAINTENANCE_PAGE = (
     "<html><head><title>Application Offline</title></head>"
@@ -92,7 +94,10 @@ class FakeM2MServer:
         self._data: dict[str, object] = {}
         self._calls: list[Call] = []
         self._httpd: WSGIServer = make_server("127.0.0.1", 0, self._app, handler_class=_QuietHandler)
-        self._thread = threading.Thread(target=self._httpd.serve_forever, name="fake-usgs-m2m", daemon=True)
+        self._thread = threading.Thread(target=self._serve, name="fake-usgs-m2m", daemon=True)
+
+    def _serve(self) -> None:
+        self._httpd.serve_forever(poll_interval=POLL_SECONDS)
 
     @property
     def base_url(self) -> str:

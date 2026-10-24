@@ -71,6 +71,6 @@ export function cityOf(context: SectionContext): CityDoc | null {
 }
 
 /** A section heading's text. */
-export function sectionTitle(locale: Locale, section: 'area' | 'texts' | 'theme' | 'categories' | 'overlays'): string {
+export function sectionTitle(locale: Locale, section: 'area' | 'texts' | 'theme' | 'imagery' | 'categories' | 'overlays'): string {
     return contentText(locale, `adminContent.settings.section.${section}`);
 }

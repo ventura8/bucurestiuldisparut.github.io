@@ -116,8 +116,12 @@ module.exports = {
             severity: 'error',
             comment:
                 'A feature folder reaches another only through ports/, api/ and @hcm/shared (M2-interfaces §1, §5), so the three workstreams never edit or break each other.',
-            from: { path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops)/' },
-            to: { path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops)/', pathNot: '^functions/src/$1/' },
+            // `layers` (M2c) and `imagery` (M3, docs/research/M3-interfaces.md §9) joined the list (DECISIONS-for-review.md §46c).
+            from: { path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops|layers|imagery)/' },
+            to: {
+                path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops|layers|imagery)/',
+                pathNot: '^functions/src/$1/',
+            },
         },
         {
             name: 'admin-firebase-sdk-only-in-adapters',

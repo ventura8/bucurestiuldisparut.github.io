@@ -85,6 +85,8 @@ function layerOf(request: Request, order: number, caller: VerifiedCaller, now: D
         published: false,
         provenance: undefined,
         mapbox: undefined,
+        currentVersion: undefined,
+        pendingVersion: undefined,
         createdAt: at,
         updatedBy: caller.uid,
         updatedAt: at,

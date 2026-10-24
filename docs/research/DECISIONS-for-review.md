@@ -2963,3 +2963,201 @@ page, pushed one off it during the Tab round, and kept "Show more" on (the toler
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build` of `bash scripts/ci/run-all-checks.sh`; the history tour and the
 specs that use History at several projects with `--repeat-each`.
+
+## 46. The M3 contracts (2026-10-23) — 46c APPLIED (a stricter configuration, the pre-approved kind); 46a, 46b, 46d–46f, 46h–46j recorded for the user; 46g PROPOSED, NOT APPLIED (new dependencies)
+
+The M3 contracts agent wrote `docs/research/M3-interfaces.md` alone before the four M3 workstreams. What it decided that
+the user may want to see, and what it did not do:
+
+- **46a Publishing runs in functions, not in the pipeline.** After approval, `imagery.publish` (a task queue, one at a
+  time, 30 minutes) streams the COG from the private bucket to an MTS tileset source, writes the recipe, publishes and
+  polls (§7.3). The pipeline never holds a Mapbox secret (`job-raster@` loses `mapbox-sk-tiles`, §9.4), an approval does
+  not start a second Cloud Run execution, and the compute-unit guard runs in the same TypeScript as the approval policy.
+  The cost: a 30-minute ceiling per upload, which a city crop (a few hundred MB, in-region read) is far from.
+- **46b Automatic GCPs are part of M3** (PLAN had them in M4): the minimum-input path of the M3 brief is search → Import
+  → automatic georeferencing → auto-publish; the georeferencer is the fallback (§5.6).
+- **46c APPLIED: `.dependency-cruiser.cjs`'s `functions-feature-folders-independent` lists `layers` and `imagery`.**
+  `functions/src/layers/` (M2c) was missing from the rule; `functions/src/imagery/` (M3) joins it, so the new folder can
+  only reach the others through `ports/`, `api/` and `@hcm/shared`. Stricter; verified with `PIPELINE_STAGE=static`.
+- **46d Layer versions; a layer exists only with tiles.** `cities/{city}/layerVersions/{version}` carries the work in
+  progress (§2.2); a replacement keeps the old tiles until the new version is published. **UNVERIFIED**: that Mapbox
+  serves a tileset's previous tiles while it processes a new publish of the same tileset. If not, the fallback is two
+  alternating tilesets per layer (`-a`, `-b`), the inactive one deleted after the switch, which doubles a layer's
+  tileset only while it is republished (the 24-tileset guard counts both).
+- **46e A job status `awaiting_gcps`**, applied with its consumers (the Jobs page's text and active statuses, the rules
+  tests iterate the statuses): an upload without georeference and a scene the matcher could not place wait for the
+  admin's points instead of failing.
+- **46f Jobs are created by callables and triggers only** (CR-M3-2, the rules: stricter): each creator checks the
+  parameters, the budget guard, the daily cap and writes the version in one transaction; the client keeps Cancel.
+- **46g PROPOSED, NOT APPLIED (each a new download, ask first):**
+  - `openseadragon` for the georeferencer's scan pane (deep zoom over DZI tiles of the full scan). M3 instead shows a
+    4,096 px preview in a canvas viewer of its own (`scan-preview.jpg`); a deep-zoom port can take OpenSeadragon later.
+  - `@allmaps/transform` for the transforms (PLAN named it). M3 instead implements affine, second-order polynomial and
+    thin-plate spline in `packages/shared/src/georef/`, held to the pipeline's numpy by golden cases; the module's
+    interface (§6.2) lets the library replace the implementation later.
+  - `google-cloud-secret-manager` and `pystac-client` for the pipeline: not needed; both are a few REST calls through
+    the pinned `httpx`.
+- **46h The compute-unit numbers are UNVERIFIED** (Mapbox's raster MTS precisions and price per km²):
+  `KM2_PER_COMPUTE_UNIT`, `USD_PER_COMPUTE_UNIT` and `MAPBOX_FREE_COMPUTE_UNITS` are conservative constants; each publish
+  records the MTS job's `tileset_precisions` so a later change can calibrate them against the first invoice.
+- **46i A second scheduled function**, `imagery.tick` every 5 minutes (dispatch, lost executions, Mapbox polling,
+  deferred publishes, layer deletions, the monthly harvest): a second Cloud Scheduler job (three are free per billing
+  account) and about 8,600 invocations a month (free tier). `ops.tick`'s `jobs` and `mts` steps stay no-ops.
+- **46j The references' public endpoints**: Sentinel-2 L2A from Element 84's Earth Search STAC (`HCM_STAC_URL`) and OSM
+  features from the Overpass API (`HCM_OVERPASS_URL`), called only by the Cloud Run job, cached 90 days in the private
+  bucket; never Mapbox Satellite. **UNVERIFIED**: their availability and limits for our volume (a few calls per import);
+  both addresses are configuration, so a mirror or a paid endpoint is a deploy-time change.
+- **46k Bundle budgets**: the new chunks `imagery` and `georef` (at most 30 KB each) and `layer-geometry` (at most 8 KB)
+  get their rows in `ADMIN_CHUNK_BUDGETS` from admin-imagery with the measurement (the pre-approved kind, logged then);
+  together they stay within `ADMIN_TOTAL_KB` (521 KB measured on 2026-10-23).
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`; the shared, rules (`documents.test.ts`), functions
+(`support/`, `layers/`), admin (`jobs`) and ui (`admin/jobs`, `admin/ops`) Vitest projects for the edited files.
+
+## 47. admin-imagery: the M3 chunks' budgets and what the screens decided (2026-10-23) — 47a APPLIED (the pre-approved kind §46k names); 47b–47e recorded for the user
+
+- **47a APPLIED: `ADMIN_CHUNK_BUDGETS` gains `imagery` 18 KB, `georef` 17 KB and `layer-geometry` 3 KB**
+  (`scripts/ci/check_bundle_budget.py`): 15.2, 14.0 and 1.9 KB gzip measured on 2026-10-23 plus about 20 %, under the
+  contract's ceilings of 30, 30 and 8 KB. No existing budget changed: `editor-shared` 11.0 of 13, `layers` 7.8 of 10,
+  `settings` 17.8 of 20, `admin-core` 367 of 450, the admin in all 569.8 of 620. New chunks only, each with its own
+  budget, as §46k planned.
+- **47b Replace image is the Imagery area's upload for the layer** (`#/imagery/replace/<layerId>`), not a second upload
+  inside the layer editor: the same resumable upload, checks and progress, and none of its code in the `layers` or
+  `layer-geometry` chunks (it would have moved the upload into `editor-shared`, over its budget).
+- **47c Crop's keyboard way**: pan the map with the arrow keys and add a corner at its centre, three or more; the
+  drawing tools' clicks are the pointer's way. Save sends the outer ring to `imagery.crop`.
+- **47d `fn-events@` runs the raster job's executions with project-level roles** (`roles/run.jobsExecutorWithOverrides`,
+  `roles/run.viewer`): §9.4 asks for them on the two job definitions, which the provisioner cannot bind yet (no Cloud Run
+  resource policy, and the definitions are deployed after it runs). Narrowing them to the two jobs is a follow-up;
+  `job-raster@` lost `mapbox-sk-tiles` as §9.4 says.
+- **47e Not applied, for the owners**: the Bucharest import's target years (CR-M3-28); `mapbox.studioTilesets` in
+  `links.json` waits for the weekly probe (CR-M3-9).
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`, `PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh`;
+the admin, ui and shared Vitest projects.
+
+## 48. e2e-fakes: advisories published during the M3 run, and one CI-time question (2026-10-24) — 48a PROPOSED, NOT APPLIED (downloads); 48b recorded for the user
+
+- **48a PROPOSED, NOT APPLIED: two security bumps.** The `static` stage of 2026-10-24 fails on advisories that appeared
+  after §44, in packages no M3 change touched; this phase may download nothing, so they wait for the user's approval:
+
+  | Package | From | To | Advisory | Gate |
+  | --- | --- | --- | --- | --- |
+  | `body-parser` (transitive: the root's through `@modelcontextprotocol/sdk` and `firebase-functions`; `functions/deploy-lock`'s 2.x) | 2.0.0 to 2.3.0, and below 1.20.9 | 2.4.0 or later (1.20.9 for a 1.x range) | GHSA-27r3-jxmh-p828 | `npm-audit`, `deploy-lock-audit` |
+  | `filelock` (`scripts/ci/requirements.txt`, and the pipeline's tool chain) | 4.1.1 | 4.2.1 | CVE-2026-112906, CVE-2026-112914, CVE-2026-112940 | `pip-audit`, `pipeline-pip-audit` |
+
+  The way §44 took: refresh only the affected lockfile entries in the digest-pinned Node image (an `overrides` entry
+  only if a dependant's range refuses the fixed version), and pin `filelock==4.2.1` in every requirements file that
+  names it.
+- **48b The imagery specs' time behind the admin lock.** The publish flows wait for fn-imagery's first MTS poll (60 s)
+  and the manifest build, so `S-A12-HAPPY`, `S-A12-HAPPY-AUTO-PUBLISHED` and `S-A16-HAPPY-CROP` take two to four
+  minutes each at each of the five admin projects (the imagery specs: about 40 minutes in one run). Like the Setup
+  journey (§39c) they could run per push at `admin-c360-ro` and `admin-l1440-ro` only and at the other three in
+  `tour-matrix` (`e2e/projects.ts`, not changed). For the user and the integrator (CR-M3-36).
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`.
+
+## 49. The M3 integrator: the change requests closed, and what stays for the user (2026-10-24) — 49a–49h, 49k and 49m APPLIED (product and test changes, the e2e tiering of the kind §39c and §42g applied; no configuration of the ask-first kinds); 49i, 49j and 49l recorded for the user
+
+No lint, tool, workflow or gitleaks configuration changed, no gate was relaxed and no checker allowlist entry was added.
+
+- **49a The Imagery area's happy path is one input again.** Each free scene's card has its own **Import** (named after
+  its scene), as §10.2 of the contract says; `CONTENT_INPUT_BUDGETS.importScene` stays 1 and the e2e counts 1
+  (CR-M3-35 d; the e2e had been set to the screen's 2).
+- **49b The kit keeps targets clear** (CR-M3-35 e, j, h, i, l): `hcm-list-detail` keeps 4 px under its Back row (every
+  area's detail on compact and medium windows moves down 4 px); the Imagery filters' rows are 16 px apart; each target
+  year's row in Settings is 48 px; the Jobs page's georeferencer link is a 48 px `a.external`; the georeferencer's radios
+  and checkboxes are drawn like the kit's (2 px border, 48 px ring); the admin map underlines its attribution's links.
+- **49c The georeferencer's table fits its box.** Below a 560 px table the pixel and place columns give way (the panes
+  show where every pair is) and a pair's origin goes under its name; a selected row hands its on-container colours to its
+  controls. No horizontal scroller (WCAG 1.4.10, the `sideways-scroll` check).
+- **49d `imagery.search` may run 300 s** (CR-M3-22): a functions-side table `CALLABLE_TIMEOUT_SECONDS` sets the deploy
+  option; the admin calls it with a 310 s timeout (the SDK's default is 70 s). The shared registry is unchanged.
+- **49e A layer is busy while any job of it runs** (CR-M3-24): `layers.delete` also asks the top-level `layerId` of M3's
+  jobs and refuses a layer with a `pendingVersion`.
+- **49f A replacement upload asks no year**: the layer keeps its own, so `imagery.onRasterUpload` reads none; the upload
+  starts as soon as the file is chosen. Link a layer gains **Check** (`imagery.probeTiles`), optional: Link is off only
+  after a Check found no tiles, until the address changes.
+- **49g The admin's tab title and `<html lang>` follow its language** (the live polish of 2026-10-23;
+  `S-A21-HAPPY-DOCUMENT-TITLE`, `S-A21-BAD-UNSUPPORTED-LANGUAGE`).
+- **49h The legal-line check owes each control only where the map's strip reaches it** (`e2e/support/layout-probe.ts`,
+  `legal.owes`; `docs/LESSONS.md` 163). Lesson 144's rule owed the logo and the attribution together once the strip
+  passed the band under the lowest of them; on the admin map the attribution sits on the foot, so a strip of 1 to 10 px
+  (a pane the Tab round left at its end) asked for a logo drawn 10 px above it, which no visitor could see. Two of a kind
+  are still one too many, and a control the strip reaches must be there and uncovered. This makes the check exact, not
+  looser: every case the old rule could see the logo in is still checked. For the user's review all the same, as a
+  change to a checker.
+- **49i STILL PROPOSED, NOT APPLIED: §48a's security bumps.** The `static` stage fails only on `npm-audit`,
+  `deploy-lock-audit`, `pip-audit` and `pipeline-pip-audit` (body-parser GHSA-27r3-jxmh-p828, filelock 4.1.1 →
+  4.2.1). This task may download nothing. The two body-parser tarballs (2.4.0 and 1.20.9) are already in the host's npm
+  cache since 2026-10-23, so after your yes the lockfile refresh needs no new body-parser download (its packument may
+  still be fetched); filelock 4.2.1 is in no local cache, and pinning it rebuilds the quality image. The final `static`
+  run of 2026-10-24 also reports advisories published that day, in `firebase-tools`' tree only (the emulators and the
+  deploy CLI, nothing shipped): `fast-uri` 3.1.8 (moderate: GHSA-w74x-v6f9-j3xg, GHSA-xhq7-xmqj-769h,
+  GHSA-wjr9-j795-jxcr, GHSA-333x-w4r6-6crp; through `ajv` 8.20.0) and `undici` 6.29.0 and 8.11.2 (high:
+  GHSA-4qv8-2p9j-2685, GHSA-f72v-6w45-q472, GHSA-xjj6-f33q-929c; the second through `node-gyp`). PROPOSED, NOT APPLIED:
+  the patched releases `npm audit` names, as exact `overrides` in the same lockfile refresh (downloads, for your yes).
+- **49j CR-M3-28 (Bucharest's target years) stays open**: the bundled seed (`seed/bucharest/`, ask first) or
+  `createCityRequestSchema` would have to carry `imagery`. The admin guides tell the owner to add the five years once in
+  Settings → Historical imagery (five inputs).
+- **49k APPLIED: §48b, the imagery publishes per push at a phone and a laptop** (`e2e/projects.ts`, the kind of §39c and
+  §42g). The imagery specs took 20 minutes at one admin project (34 tests behind the admin lock, 2026-10-24), most of it
+  in the publishes that wait for the fake MTS and the manifest build; at the five admin projects that is about 100
+  minutes a machine. So `published.spec.ts` (the imports that reach the viewer, split out of `import.spec.ts`) and
+  `layer-geometry.spec.ts` (crop, replace, re-georeference) run per push at `admin-c360-ro` and `admin-l1440-ro`, and at
+  `admin-{m768-ro,l1440-dark,l1440-en}-imagery` in `tour-matrix` (`all`, nightly); the real pipeline's spec, which does not
+  depend on the window class, at `admin-l1440-ro` only. Every scenario row still runs on every push. To revert: drop
+  `IMAGERY_PUBLISH_SPECS` and `PIPELINE_SPEC` from `noJourney` and the `-imagery` projects.
+- **49l The Link dialog's preview of a Mapbox tileset on the admin map (`S-A15-HAPPY-PROBED`'s first wording) is not
+  built**: Check answers with the tile's type, and the layer's editor previews the tiles once linked (S-A15-HAPPY). The
+  row now says so.
+- **49m Two dispatcher rules the quality run corrected** (CR-M3-44, CR-M3-45; `docs/LESSONS.md` 166, 167): the tick's
+  monthly harvest repeats only a harvest older than 30 days (a city never harvested, or with no frame over it, is searched
+  when its Imagery area opens, not every 5 minutes), and `RUNNING_JOBS_MAX` counts the jobs holding an execution
+  (`starting`, or `running` with the lease held; a lapsed lease is a lost run the tick recovers). For review: both read
+  the contract tighter than §3.5 and §4.2 first did.
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`, `PIPELINE_STAGE=tests …`, `PIPELINE_STAGE=build …`,
+`PIPELINE_STAGE=quality bash scripts/ci/e2e-split.sh`.
+
+## 50. The M3 reviews' fixes: what the product now decides for the admin (2026-10-24) — 50a–50g and 50i APPLIED (product and test changes; no configuration of the ask-first kinds, no gate relaxed, no checker allowlist entry); 50h STILL PROPOSED, NOT APPLIED (downloads)
+
+The fixer of the two M3 reviews (ten security and cost findings, fifteen minimum-input ones; CR-M3-47,
+`docs/LESSONS.md` 171–180) applied every finding. These are the choices in it the user may want to change:
+
+- **50a The admin may resume a budget pause** (behaviour A43, `imagery.resumeGuard`, admin, App Check consume). Before,
+  the 5 USD alert turned `ops/guard` red for good and no screen could turn it back. Now the Imagery and Jobs pages show
+  the spend and **Resume processing**: the guard turns green for the rest of that budget period (`resumedFor`; Google's
+  repeated alerts for the same period leave it green, the next period's first alert pauses it again). The public map
+  never paused. To make it stricter: refuse the resume above a second threshold, or let it hold one day only.
+- **50b A publish starts at most 6 times** (`PUBLISH_MAX_ATTEMPTS`), the admin's Try again included, then fails
+  `apiError.imagery.attemptsExhausted` with its reservation freed; `JOB_MAX_ATTEMPTS` (3 executions) is unchanged.
+- **50c A failed harvest waits an hour, then twice as long after each further failure** (`HARVEST_RETRY_HOURS`, at most
+  the 30 days of a harvest that answered), recorded in `ops/harvest-{city}` (a new ops document, written by the
+  functions only; the rules deny every client, as for every `ops/` document).
+- **50d What Try again never offers** (`NOT_RETRYABLE_CODES`, shared by `imagery.retry`, the Jobs page and the version
+  page): a Mapbox token that is invalid, lacks a scope or is missing (the way out is Setup's Mapbox step), out of memory
+  on the large machine, and attempts exhausted; a refused upload offers Upload another file; any failed version may be
+  dismissed. A file too large for MTS is no longer a failure: it goes back with the verdict `too-large`, only the free
+  Studio way left.
+- **50e Two more ops documents read and written in transactions**: `ops/dispatch` (one slot per job holding a Cloud Run
+  execution, the two-runs cap) and the month's `usage/mapbox-YYYY-MM` reservations marked `newTileset` (the 24-tileset
+  cap). Both replace counts read outside the transaction that acted on them.
+- **50f The ranking explains a low rank first** (`RANKING_VERSION` 2, `reason.noLayers` for a city with no layers): the
+  stored scenes keep their version 1 ranks until the next harvest or the next `notScanned` ranks them again.
+- **50g The Mapbox "list a tileset's jobs" answer is a recorded fixture, UNVERIFIED** (`mapbox/tilesets.jobs.list`): only
+  a lost publish answer uses it (`MapboxTilesets.listJobs`); the weekly contract probe should cover it once it runs
+  (ask first, as CR-M3-9).
+- **50h STILL PROPOSED, NOT APPLIED: §48a and §49i's security bumps.** The four audit gates still fail the `static`
+  stage, and so `all`; this task could download nothing.
+- **50i Two screen defects the first full `all` found** (`docs/LESSONS.md` 181, 182): the georeferencer's pairs table on
+  a phone now applies its narrow rules (they sat before the cells' own rule and never applied), and a cell wraps when the
+  table would not fit otherwise; the
+  admin map's attribution gives a layer's plain-text credit Mapbox's link colour (it read white on white in the dark
+  scheme). The second is a style on Mapbox's own control, for your review as such; it makes the credit legible, it hides
+  nothing.
+
+No bundle budget changed: every admin chunk and the entry stayed within their budgets (`check_bundle_budget.py`, §47a's
+tables).
+
+Verify: `PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh`, `PIPELINE_STAGE=build …`, `bash scripts/ci/e2e-split.sh`.

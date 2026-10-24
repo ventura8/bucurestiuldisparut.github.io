@@ -170,6 +170,47 @@ service cloud.firestore {
                 && basemap.get('config', {}).size() <= 30;
         }
 
+        // At most MAX_TARGET_YEARS (20) target years, each a year (`isYear`), distinct (zod `cityImagerySchema`).
+        // Rules have no loops, so each place is checked like the links are. Every reference to `years` evaluates
+        // its argument again, so the city's other settings are not validated in the same request when only the
+        // imagery settings change (the Settings section saves them on their own; see the `cities/{city}` match).
+        function validYears(years) {
+            return years is list
+                && years.size() <= 20
+                && years.toSet().size() == years.size()
+                && (years.size() < 1 || isYear(years[0]))
+                && (years.size() < 2 || isYear(years[1]))
+                && (years.size() < 3 || isYear(years[2]))
+                && (years.size() < 4 || isYear(years[3]))
+                && (years.size() < 5 || isYear(years[4]))
+                && (years.size() < 6 || isYear(years[5]))
+                && (years.size() < 7 || isYear(years[6]))
+                && (years.size() < 8 || isYear(years[7]))
+                && (years.size() < 9 || isYear(years[8]))
+                && (years.size() < 10 || isYear(years[9]))
+                && (years.size() < 11 || isYear(years[10]))
+                && (years.size() < 12 || isYear(years[11]))
+                && (years.size() < 13 || isYear(years[12]))
+                && (years.size() < 14 || isYear(years[13]))
+                && (years.size() < 15 || isYear(years[14]))
+                && (years.size() < 16 || isYear(years[15]))
+                && (years.size() < 17 || isYear(years[16]))
+                && (years.size() < 18 || isYear(years[17]))
+                && (years.size() < 19 || isYear(years[18]))
+                && (years.size() < 20 || isYear(years[19]));
+        }
+
+        // M3 imagery settings (`cityImagerySchema`, CR-M3-2): auto-publish, its RMSE threshold in metres (1-200) and
+        // the target years; every field optional.
+        function validImagery(imagery) {
+            return imagery.keys().hasOnly(['autoPublish', 'rmseThresholdM', 'targetYears'])
+                && imagery.get('autoPublish', true) is bool
+                && imagery.get('rmseThresholdM', 15) is number
+                && imagery.get('rmseThresholdM', 15) >= 1
+                && imagery.get('rmseThresholdM', 15) <= 200
+                && validYears(imagery.get('targetYears', []));
+        }
+
         // The settings an admin edits; id, mapbox, analytics, engine and createdAt are server-owned.
         function validCity(data) {
             return titled(data.name, '[\\s\\S]{1,100}')
@@ -343,7 +384,8 @@ service cloud.firestore {
             allow read: if isAdmin();
         }
 
-        // The budget guard and the last ops.tick (ops/guard).
+        // The budget guard and the last ops.tick (ops/guard), the dispatcher's execution slots (ops/dispatch) and each
+        // city's last USGS harvest attempt (ops/harvest-{city}): written by the functions only (CR-M3-47).
         match /ops/{doc} {
             allow read: if isAdmin();
         }
@@ -367,10 +409,14 @@ service cloud.firestore {
         // Cities are created and deleted by callables; admins edit the settings.
         match /cities/{city} {
             allow read: if isAdmin();
+            // The imagery settings (M3) are saved on their own and checked on their own: a request has room for twenty
+            // target years or for the rest of the settings, not for both (the 1000 expressions of a request).
             allow update: if isAdmin()
                 && changedKeys().hasOnly(['name', 'bounds', 'center', 'zoom', 'minZoom', 'maxZoom', 'about', 'privacy', 'credits',
-                    'theme', 'basemap', 'photosOverlay', 'published', 'updatedBy', 'updatedAt'])
-                && validCity(request.resource.data);
+                    'theme', 'basemap', 'photosOverlay', 'imagery', 'published', 'updatedBy', 'updatedAt'])
+                && (changedKeys().hasOnly(['imagery', 'updatedBy', 'updatedAt'])
+                    ? (!('imagery' in request.resource.data) || validImagery(request.resource.data.imagery)) && stamped(request.resource.data)
+                    : !('imagery' in changedKeys()) && validCity(request.resource.data));
 
             // Every audited document keeps a `history` subcollection written by the history.*
             // triggers and history.revert only: admins read it, nobody writes it from a client.
@@ -458,18 +504,11 @@ service cloud.firestore {
                 }
             }
 
-            // Admins queue jobs and may ask an unfinished one to stop; the job runner owns every other
-            // field and validates `params` per type.
+            // Jobs are created by the callables and triggers that check them (the budget guard, the daily cap, the
+            // version, M3-interfaces §2.8); admins may ask an unfinished one to stop. The dispatcher, the pipeline and
+            // the publisher own every other field.
             match /jobs/{job} {
                 allow read: if isAdmin();
-                allow create: if isAdmin()
-                    && isId(job)
-                    && request.resource.data.keys().hasOnly(['type', 'status', 'params', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
-                    && request.resource.data.type in ['usgs-import', 'geotiff-import', 'regeoref', 'republish']
-                    && request.resource.data.status == 'queued'
-                    && request.resource.data.params is map
-                    && created(request.resource.data)
-                    && stamped(request.resource.data);
                 allow update: if isAdmin()
                     && changedKeys().hasOnly(['cancelRequested', 'updatedBy', 'updatedAt'])
                     && request.resource.data.cancelRequested == true
@@ -480,6 +519,12 @@ service cloud.firestore {
                 match /logs/{line} {
                     allow read: if isAdmin();
                 }
+            }
+
+            // Layer versions (M3): a georeferenced rendition on its way to a layer, written by the imagery
+            // functions and the raster pipeline only; admins read them (the Imagery area, the georeferencer).
+            match /layerVersions/{version} {
+                allow read: if isAdmin();
             }
 
             // USGS scenes are harvested server-side; admins triage them (candidate, ordered, rejected)

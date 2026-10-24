@@ -63,6 +63,8 @@ class Handle implements AdminMapHandle {
     readonly preview: MapPreview;
     readonly #deps: AdminMapDeps;
     #draw: Promise<MapDrawPort> | null = null;
+    /** The drawing tools once made: they leave the map before it is removed. */
+    #tools: MapDrawPort | null = null;
 
     constructor(port: MapPort, deps: AdminMapDeps) {
         this.port = port;
@@ -76,6 +78,12 @@ class Handle implements AdminMapHandle {
     }
 
     async #makeDraw(): Promise<MapDrawPort> {
+        const tools = await this.#loadDraw();
+        this.#tools = tools;
+        return tools;
+    }
+
+    async #loadDraw(): Promise<MapDrawPort> {
         const load = this.#deps.terraDraw;
         if (load === null) {
             return createClickDrawPort();
@@ -88,12 +96,23 @@ class Handle implements AdminMapHandle {
         }
     }
 
+    /**
+     * The drawing tools leave the map first, while it still has its canvas: Terra Draw's adapter removes its listeners
+     * from it, and after `map.remove()` that threw `Cannot read properties of undefined (reading 'removeEventListener')`
+     * (CR-M3-34). Tools still loading are detached once they arrive (they were never attached).
+     */
     destroy(): void {
         const draw = this.#draw;
+        const tools = this.#tools;
         this.#draw = null;
-        void draw?.then((tools) => {
+        this.#tools = null;
+        if (tools === null) {
+            void draw?.then((late) => {
+                late.detach();
+            });
+        } else {
             tools.detach();
-        });
+        }
         this.port.destroy();
     }
 }

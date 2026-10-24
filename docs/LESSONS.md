@@ -770,3 +770,195 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the split `all`'s tour matrix; the recent-changes query read the newest 50 entries of every city's `history` and the page left the others' out (CR-M2c-14), so the shared emulators' other tests, writing entries at the same instants, decided which of this city's entries made the page, and changed it while the checkers ran.
     - Fix and pin: every history entry names its city (`cityId`, written by the history triggers and `history.revert`; `historyEntryDocSchema`), the query asks `cityId ==` the city first (`recentQuery`, `packages/admin/src/history/entries.ts`) with collection-group indexes that start with it (`firebase/firestore.indexes.json`, `firebase/rules-tests/test/indexes.test.ts`), and the rules test checks that only the city's entries answer (`firebase/rules-tests/test/history.test.ts`); the tour writes a newer deletion of another city and asserts it is never listed and that the city's few entries offer no "Show more" (`S-A23-BAD-OTHER-CITY`), and waits for the city's own creation entry before its checkers. Lesson 145's tolerance went.
     - **Filter a shared collection on the server by what the page owns; a page that drops other owners' rows still lets them decide its limit.**
+
+150. **Every GeoTIFF upload was refused, whatever was in it.**
+    - Seen: in the e2e admin tier (2026-10-23), each Upload ended as a failed `geotiff-import` job with `apiError.invalidRequest`, no version, and the file deleted.
+    - Found by: the S-A14 specs of e2e-fakes; the functions tests built the object's metadata from what the upload dialog writes, while Storage (the emulator as production) adds the SDK's own `firebaseStorageDownloadTokens`, which the strict `rasterUploadMetadataSchema` refused (CR-M3-32).
+    - Fix and pin: `imagery.onRasterUpload` validates only the dialog's three keys (`uploadMetadataOf`, `functions/src/imagery/on-raster-upload.ts`), with a functions test that carries the token; `S-A14-HAPPY`, `S-A14-BAD-NOT-GEOREFERENCED`, `S-A14-BAD-LARGE-RESUMABLE`.
+    - **Validate what you own out of a map that others also write: a strict schema over a shared document refuses their keys, and the fakes that build it from your own writer never show it.**
+
+151. **Leaving the georeferencer threw an uncaught error and reported a crash.**
+    - Seen: Save in the georeferencer (or any navigation away) logged `Cannot read properties of undefined (reading 'removeEventListener')`, which the crash reporter then posted.
+    - Found by: the e2e console guard (CR-M3-34); the factory's unit tests destroyed a handle whose fake map had nothing to remove, and every M2c editor that draws had left its tools before its page went.
+    - Fix and pin: the admin map's handle detaches its drawing tools synchronously, while the map still has its canvas, then removes the map; tools still loading are detached when they arrive (`packages/admin/src/map/factory.ts`, `packages/admin/test/map/factory.test.ts`); `S-A16-HAPPY`, `S-A12-BAD-AUTOGCP-FAILS`.
+    - **Tear down in the reverse order of setting up, and synchronously: a promise's `then` runs after the thing it needs is gone.**
+
+152. **An import the policy approved, but this month's Mapbox budget stopped, offered no way out.**
+    - Seen: the version said "Does not fit this month's Mapbox budget: choose how to go on" and showed no choice.
+    - Found by: e2e-fakes' over-budget spec (CR-M3-33): the version page drew the approval card for `awaiting_approval` only, and a version the policy approved is `approved` with the guard's verdict `over`; the unit tests had only reached the card through a manual Approve.
+    - Fix and pin: the page shows the card for an approved version whose guard stopped it (`awaitsDecision`, `packages/ui/src/admin/imagery/version-detail.ts`); `S-A42-BAD-OVER-BUDGET`, `S-A14-BAD-REPLACE-OVER-GUARD`.
+    - **A state that says "choose" must draw its choices however it was reached: test every way into a waiting state, the automatic one too.**
+
+153. **A refused upload's message read "problems found: {count}".**
+    - Seen: the version page of an upload with a bad year.
+    - Found by: the e2e placeholder guard (CR-M3-35 f); the trigger recorded the code `apiError.invalidRequest` without the parameter its text names.
+    - Fix and pin: the trigger records a refusal's parameters on the job (`{ count }`, the schema's issues, or 1 for a missing year); `functions/test/imagery/upload.test.ts`.
+    - **An error code whose text has a placeholder is incomplete without its parameters: store them where the code is written.**
+
+154. **The georeferencer's radios and checkboxes could not be seen in high contrast, and its table scrolled sideways.**
+    - Seen: at every admin project the native 20 px inputs' borders reached 1:1, a selected row's checkbox and Delete 2:1 in light high contrast, the targets were 20 px on phones and tablets, and the pairs' table scrolled sideways below 840 px.
+    - Found by: the generic checkers at the georeferencer's states (CR-M3-35 i); the unit tests ran axe, which does not measure non-text contrast or targets.
+    - Fix and pin: the inputs are drawn like the kit's (a 2 px border, a 48 px `::after` target, `class="touch-target"`); a selected row hands its own on-container colours to its controls; the table fits its box: the origin goes under the pair's name, and a container query drops the pixel and place columns under 560 px (`packages/ui/src/admin/georef/`); `S-A16-*`.
+    - **In a selected row every control takes the row's on-container colours (high-contrast containers are dark), and a data table must fit the narrowest box it is shown in.**
+
+155. **Importing a free scene took two clicks where the contract promised one.**
+    - Seen: open the scene, then Import; the list's cards had no Import (`docs/research/M3-interfaces.md` §10.2).
+    - Found by: the e2e input budget (CR-M3-35 d), which e2e-fakes had set to the screen's two clicks rather than the contract's one.
+    - Fix and pin: each free scene's card has its own Import, named after the scene; `importScene` is one input again (`S-A12-HAPPY`, `S-A12-HAPPY-AUTO-PUBLISHED`).
+    - **When a screen and its input budget disagree, fix the screen; a budget raised to match a screen measures nothing.**
+
+156. **A 40 px button's touch target was 44 px wherever the page put something right under it.**
+    - Seen: the detail pane's Close and Back to list on the Imagery area (its map starts the pane), each target year's Remove in Settings, the filter chips' wrapped rows.
+    - Found by: the generic checkers' target sizes on compact and medium windows (CR-M3-35 e, j); the M2c areas had padding under their Back row by chance.
+    - Fix and pin: `hcm-list-detail` keeps 4 px under its Back row, each target year's row is 48 px, the filters' rows are 16 px apart (lesson 83's chips).
+    - **A 40 px control's 48 px target needs 4 px clear on every side from whatever a page puts next to it: make the container keep it, not each page.**
+
+157. **The layer editor's map attribution read as one block of text.**
+    - Seen: an imagery layer's attribution ("USGS EarthExplorer", then © Mapbox © OpenStreetMap) left Mapbox's links distinguishable by colour only (axe `link-in-text-block`, serious).
+    - Found by: the generic checkers at the layer editor with an imagery layer (CR-M3-35 l); the M2c layers had no attribution of their own.
+    - Fix and pin: the admin map underlines the attribution's links (`packages/ui/src/admin/map/hcm-admin-map.ts`); `S-A16-HAPPY-CROP`.
+    - **Links that run into text need a cue besides colour, inside a third-party control too.**
+
+158. **A layer could be deleted while its new image was being made.**
+    - Seen: `layers.delete` looked for busy jobs by `params.layerId`, which M2's jobs carry and M3's raster jobs do not (they name the layer at the top level).
+    - Found by: fn-imagery's review (CR-M3-24).
+    - Fix and pin: the check asks both fields and refuses a layer with a `pendingVersion` (`functions/src/layers/delete.ts`, `functions/test/layers/delete.test.ts`).
+    - **When a new kind of record names its subject in a new place, every query that guards that subject must learn the new place.**
+
+159. **The admin's tab title stayed Romanian while its screens followed an English browser.**
+    - Seen: on the deployed admin (2026-10-23), "Administrarea hărții" in the tab of an English page.
+    - Found by: a person; the tour checks `lang` through axe but never the title, which the static page sets once.
+    - Fix and pin: the shell sets `document.title` (the app's name in the admin's language) with `<html lang>` (`packages/ui/src/admin/shell/hcm-admin-shell.ts`); `S-A21-HAPPY-DOCUMENT-TITLE`, `S-A21-BAD-UNSUPPORTED-LANGUAGE`.
+    - **What a language switch changes includes what the browser shows outside the page: the title and the `lang` attribute.**
+
+160. **The stitch matched the wrong place, and a later step read a stale step record.**
+    - Seen: on the synthetic frames, a 256 px template over a 300 px segment overlap matched off by a strip; `extract` read the `steps.fetch` of the job it was started with.
+    - Found by: the pipeline's integration tests on the synthetic scenes with a known transform (CR-M3-20).
+    - Fix and pin: the template is narrower than the overlap, and every step re-reads the job before it starts (`pipeline/src/hcm_pipeline/steps/`); `S-P01-HAPPY`, `S-P01-BAD-SIGTERM-RESUME`.
+    - **A resumable step reads the state it resumes from at its own start, never from the run that launched it.**
+
+161. **A city's imagery settings passed the rules' expression limit only at their largest.**
+    - Seen: a city write with 20 target years, checked element by element inside the city validator, was refused while every smaller one passed.
+    - Found by: `firebase/rules-tests/test/limits.test.ts` at the limits (CR-M3-25): the 1000-expression budget counts each use of a function argument again.
+    - Fix and pin: the `imagery` settings are written alone, in a write that changes nothing else but the stamp (CR-M3-23), and validated there; the Settings section saves on its own.
+    - **Test a security rule at its largest legal document: expression budgets fail only at the edge.**
+
+162. **The e2e world's own runs leaked between tests.**
+    - Seen: a run held and then cancelled stayed in the held set (the next Release counted two); a stand-in run without its version left its job `starting`, using one of the server's two running slots (`RUNNING_JOBS_MAX` counts every city); a content world's USGS wait set in the past let another spec's `imagery.tick` start runs in it.
+    - Found by: e2e-fakes while building the imagery world (CR-M3-36).
+    - Fix and pin: cancelled runs leave the held set, a run without its version fails its job as the pipeline does, seeded waits end in 2100 (`e2e/admin/support/imagery-runner.ts`, `imagery-run.ts`); `S-A00-*-IMAGERY-*`.
+    - **A fake that counts shared capacity must release it on every way a run ends, as the real thing does.**
+
+163. **A map scrolled to its last few pixels was said to hide its Mapbox logo.**
+    - Seen: `admin.imagery.version-usgs-wait + text spacing` at the three large admin projects: "0 visible Mapbox logos instead of exactly one". The Tab round had left the version's pane scrolled to its end, with 1 to 10 px of the Imagery map's foot showing: Mapbox's attribution sits on the foot, its logo 10 px above it.
+    - Found by: the generic checkers (CR-M3-35 k). Lesson 144's rule owed both controls as soon as the strip passed the band under the *lowest* one, which on the admin map (the attribution on the foot) is any strip at all.
+    - Fix and pin: the probe asks about each control on its own (`legal.owes` in `e2e/support/layout-probe.ts`): a strip owes the controls it reaches, and two of a kind are still one too many; `e2e/test/layout-probe.test.ts`, `layout-rules.test.ts`; `S-A12-BAD-USGS-MAINTENANCE`.
+    - **A rule about what must be visible owes each thing only where it could be seen: measure the reach per element, not per group.**
+
+164. **The real pipeline's first run under the admin tier reached the real USGS delivery host.**
+    - Seen: the first `S-P01-HAPPY-ADMIN` run (2026-10-24) logged in to the fake M2M but then fetched the signed address the fake had issued, `https://dds.cr.usgs.gov/e2e/download/…`, from inside the quality container, and the real host answered 404. (One GET of a made-up path with a fake signature: no credential, no data.)
+    - Found by: the admin tier's real-pipeline spec; the pipeline's own tests serve their deliveries on loopback, and the e2e fakes signed theirs on the real host, which only the browser's firewall and the Functions emulator's forward had kept away from the internet so far. A Python process has neither.
+    - Fix and pin: the fake signs its addresses on a configurable origin, the e2e mock APIs' loopback forward (`delivery.origin`, `e2e/mock-apis/main.ts`); and the pipeline is sealed under the emulators: every service root must be on loopback (`config_problems`) and every address from data must be this machine's by name, never resolved (`check_emulated_url`, the delivery client's hook, the STAC assets); `pipeline/tests/unit/test_urlguard.py`, `test_config.py`, `test_run_command.py`, `test_steps_edges.py`.
+    - **A test process outside the browser has no firewall: seal it in its own code (loopback only under the emulators), and make every fake hand out addresses on the machine.**
+
+165. **The real pipeline's documents and the shared fakes disagreed where only a real run meets them.**
+    - Seen: under the admin tier the pipeline logged in as `e2e-user` with the token `e2e-ok`, which the shared USGS fake does not know (its users are `e2e-ok` with `e2e-usgs-app-token-ok`); then a version waiting for points carried `error.params.pairs` as a number, which the admin refused to read (`invalid-document`: error parameters are texts); then a published job kept its `tiles` step `running`.
+    - Found by: `S-P01-HAPPY-ADMIN`; each side's tests used its own fakes (the pipeline's loopback M2M accepted `e2e-ok`; the golden version waiting for points has no error), and fn-imagery's publish test asserted the job's status, not its steps.
+    - Fix and pin: `EmulatorSecrets` answers the shared fakes' user and token of the scenario; the pipeline writes `{ pairs: "<n>" }`; finalize marks a running `tiles` step done (`functions/test/imagery/publish.test.ts`).
+    - **Run each side against the other's fakes once before calling a contract kept: golden documents prove the shapes you thought of, not the ones a real run writes.**
+
+166. **The tick's monthly harvest searched USGS for every city that had never been harvested, every five minutes.**
+    - Seen: `S-A12-BAD-USGS-MAINTENANCE` timed out on `imagery.tick` (the e2e helper's 60 s) late in the quality run of 2026-10-24: the emulators held 79 cities by then (the content worlds, kept by the reset), and the tick harvested each, three datasets and the browse copies apiece. In production the same rule would search every 5 minutes for a city whose area holds no frame, since "never harvested" is read off the newest scene.
+    - Found by: the split quality run; the unit test `happyPath_aCityNeverHarvestedIsHarvested` had written the rule down as intended.
+    - Fix and pin: the tick repeats only a harvest older than `HARVEST_EVERY_DAYS`; a city never harvested waits for its first visit (CR-M3-44, `tick.test.ts`); the e2e tick waits `FUNCTIONS_TIMEOUT_MS`.
+    - **A periodic job keyed on "the newest record is old or missing" runs forever when the answer is legitimately empty: key it on something the job itself writes, or leave the empty case to the user's visit.**
+
+167. **The content worlds' seeded running jobs filled the project's two pipeline places.**
+    - Seen: at `admin-c360-ro` on the NUC every import after `S-A18-BAD-STREAM-DROP` and the jobs tour stayed "Waiting for other jobs to finish" (cancel, retry, maintenance, the georeferencer's degenerate pairs, crop, replace, the guard), each failing after two minutes; on this machine the same specs passed, the content specs having run in another order.
+    - Found by: the split quality run; the dispatcher counted every city's `starting` and `running` jobs, and those specs seed a `running` job without a lease in a content world the reset keeps.
+    - Fix and pin: the cap counts the jobs holding an execution, `starting` or `running` with its lease held; a lapsed lease is a lost run the tick recovers (CR-M3-45, `dispatch.test.ts` `happyPath_aRunWhoseLeaseLapsedHoldsNoCapacity`).
+    - **Every project-wide counter is shared state between test worlds that never reset: count what really holds the resource (a live lease), so a world's seeded display state cannot take another's place.**
+
+168. **A navigation label that is a prefix of another's matched both.**
+    - Seen: `S-A35-BAD-DISCARD` failed at every project in 2 s: `getByRole('link', { name: 'Istoric' })` matched "Imagini istorice" too, once M3 added the Imagery entry; the crop's notice text matched the snackbar and its live region.
+    - Found by: the quality run after the integration of the imagery area.
+    - Fix and pin: `exact: true` on the History link; the notice asserted on `hcm-snackbar`.
+    - **Name a navigation link with `exact: true`, and a notice by its component: a new entry or an announcer copy turns a substring match into two.**
+
+169. **Retired content worlds still counted against the project's Mapbox tileset limit.**
+    - Seen: run on this machine alone (2026-10-24), `S-A16-HAPPY-CROP`, `S-A14-HAPPY-REPLACE-SOURCE`, `S-A16-HAPPY-REGEOREF-LAYER` and `S-A42-BAD-OVER-BUDGET` at `admin-c360-ro` stopped at Approved with "Mapbox already holds 24 tilesets": the guard counts every city's layers carrying `mapbox.tilesetId`, and 72 of them were in the cities of content worlds whose tests had ended (the settings world seeds a published layer).
+    - Found by: the quality stage without the NUC: one emulator held twice the worlds of a split run.
+    - Fix and pin: a content world retires its city's document at teardown with its `admins` document (`ContentWorld.retire`), so every walk over `cities` (the tileset limit, the running cap, the tick) sees only the worlds still running; what lies below stays for the reports.
+    - **A test world that outlives its test is still part of every aggregate the product computes: end it when the test ends, not when the run does.**
+
+170. **The stand-in runner's own bookkeeping lagged behind what the page showed.**
+    - Seen: `S-A16-HAPPY-REGEOREF-LAYER` at `admin-l1440-en-imagery` (the M3 screenshot run on the NUC): `imagery.release()` answered 0, the re-georeference run still dispatching while the spec had already checked the layer's pending version; `S-A12-BAD-RETRY` at `admin-l1440-dark` (the split run): `imagery.runs()` still listed the second run `running`, the page already showing Awaiting approval from the run's last write.
+    - Found by: the screenshot run, whose resizing slowed the page side, and the split quality run.
+    - Fix and pin: the specs poll `release()` until it lets one run go (`layer-geometry.spec.ts`, `published.spec.ts`) and poll `runs()` until both runs ended (`import.spec.ts`).
+    - **A fake's record of its own work is one more eventually consistent view: poll it like the page, never read it once after the page moved.**
+
+171. **A publish could reach Mapbox twice while the compute-unit guard counted it once.**
+    - Seen: `imagery.publish`'s start task never asked whether its publish had already reached Mapbox: a job `mts_processing` with its version `publishing` passed the guard as "go on", so a redelivered start task, or the tick's recovery of an upload slower than 20 minutes, uploaded the COG again (replacing the source an MTS job was reading) and published again. The unit test `happyPath_aRetriedStartGoesOnFromWhereItIs` expected exactly that.
+    - Found by: the M3 security and cost review (2026-10-24), reading the code against the contract (§7.3: "a retry with a matching source goes straight to finalize"); every test that made a second start had asserted the second publish.
+    - Fix and pin: a start with an MTS job recorded polls it; the upload is skipped when this publish uploaded the same file (`steps.upload.sha256`); the publish call is marked (`steps.publish: running`) in a transaction before it, and a retry that finds the mark without a job id lists the tileset's jobs (`MapboxTilesets.listJobs`) and follows the one Mapbox started; the tick names its recovery after the job's last write (`stale-<ms>`), so a job that stays stale is queued once (CR-M3-47; `S-A42-BAD-DUPLICATE-PUBLISH`, `publish.test.ts`, `tick.test.ts`).
+    - **Before a paid call, write down in a transaction that you are about to make it; after a retry, look for what the call left before calling again. "Already reserved" is not "not sent yet".**
+172. **A publish that never got its Mapbox job looped for good, and nothing could stop it.**
+    - Seen: a Mapbox timeout or a missing COG is retried by Cloud Tasks, and a failed attempt wrote nothing on the job, so its stamp stayed old and every tick queued another start (`retry-<now>`, five deliveries each): 12 an hour, each streaming the COG again, while Cancel on `mts_processing` only logged a line, Reject refused it, the budget guard did not reach the publisher and the reservation stayed held all month. `imagery.retry` after a publish failure was unlimited too (the publisher never counted).
+    - Found by: the M3 security and cost review; no test made a start fail more than once.
+    - Fix and pin: every start counts `publishAttempts` in a transaction and the job fails `apiError.imagery.attemptsExhausted` past `PUBLISH_MAX_ATTEMPTS` (6), freeing its reservation; `imagery.retry` refuses a publish out of attempts; a red budget guard holds the publish before anything reaches Mapbox and the tick queues it again once green; Cancel ends a publish that has not asked Mapbox yet (`S-A42-BAD-PUBLISH-ATTEMPTS`, `S-A12-BAD-CANCEL-BEFORE-MAPBOX`, `S-A12-BAD-GUARD-PAUSED`).
+    - **Every retry loop needs a counter written on each attempt, and every recovery a task id that stays the same while nothing changed: an attempt that writes nothing looks new to every recovery, forever.**
+173. **A layer's deletion job could destroy a newer version that took the deleted layer's id.**
+    - Seen: `reserveLayerId` left out existing layers and unfinished versions but not queued `layer-delete` jobs, so during the 7-day grace an import of another frame of the same pass (same label, same id), a re-import of the scene or a re-upload of the same file name got the deleted layer's id; when the deletion fell due it deleted the deterministic tileset, its source and the whole `rasters/{city}/{layer}/` prefix, the newer version's scan and COG included.
+    - Found by: the M3 security and cost review; the layer-delete tests never had a version of the same id.
+    - Fix and pin: a queued deletion's layer id stays taken; a due deletion waits while an unfinished version holds the id, and deletes only the files of the versions made before the deletion (`S-A33-BAD-ID-REUSED`, `layer-delete.test.ts`, `import.test.ts`).
+    - **A deferred clean-up keyed by a name keeps the name reserved until it runs, and checks again when it runs that nothing new answers to that name.**
+174. **The tileset cap could be passed by two first publishes at once, and missed deleted layers' tilesets.**
+    - Seen: the guard counted only layers with `mapbox.tilesetId`, read outside its transaction; a first version's layer is created at finalize, so publishes under way and the tilesets of deleted layers still in their grace were invisible, and two first publishes on the 1st of the month (every deferred publish at once) each saw 23 and both passed.
+    - Found by: the M3 security and cost review.
+    - Fix and pin: the count adds the queued deletions that name a tileset and the versions `publishing` for a layer without one, and, read in the guard's own transaction on the month's counter, the reservations marked `newTileset` (`S-A42-BAD-RACING-TILESETS`).
+    - **A cap counts what will exist as well as what exists (work in flight, things waiting to be deleted), and reads the part that can race in the same transaction as the decision.**
+175. **The monthly harvest still ran every five minutes for a city whose harvest wrote nothing.**
+    - Seen: CR-M3-44 had stopped the tick for cities never harvested, but for a city harvested once, "due" was still read off the newest scene's `harvestedAt`: when every dataset failed (M2M access withdrawn, maintenance), every record was refused or the area moved, nothing got a new `harvestedAt` and each tick logged in and searched three datasets again, 288 times a day; revoked credentials meant a refused login every five minutes. The page said "USGS found no scene over the city's area" when no dataset had answered.
+    - Found by: the M3 security and cost review and the minimum-input review, both from the code.
+    - Fix and pin: every attempt is recorded in `ops/harvest-{city}` (outcome, failures, `nextAt`): a month after a harvest that answered, an hour after a failure, doubled after each further one; a search no dataset answered fails `apiError.usgs.unavailable` (or `maintenance`) with Try again; a refused login marks the USGS card, which stops the tick (`S-A11-BAD-HARVEST-BACKOFF`, `S-A11-BAD-USGS-UNAVAILABLE`).
+    - **Key a periodic job on a record the job writes on every attempt, success or failure, and back off after a failure; lesson 166 fixed the case that never ran, not the one that ran and wrote nothing.**
+176. **The two-runs cap could be passed by dispatchers racing for the last place.**
+    - Seen: `busyExecutions` ran a query before the transaction that moves a job to `starting`, so up to five trigger instances and the tick could each see one place free and each start a Cloud Run execution (possibly on 8 vCPU machines).
+    - Found by: the M3 security and cost review; the fake document store runs transactions as they come, so no unit test could see the race.
+    - Fix and pin: the transaction reads and writes `ops/dispatch`, one slot per job holding an execution, each slot's job read again (a slot of a run that ended, or of a city that is gone, is dropped); the test queues the transactions as Firestore does (`S-A12-BAD-RACING-DISPATCH`, `dispatch.test.ts` `serialiseTransactions`).
+    - **A count read outside the transaction that acts on it is advice, not a guard: keep a document both read and written in that transaction, and make a test fake serialise transactions where the real database would.**
+177. **Cancel, Reject, re-georeference and Replace acted on what they had read before their transaction.**
+    - Seen: a Reject or Cancel that read `awaiting_approval` could commit after the guard moved the job to `mts_processing`, releasing the reservation and marking the version rejected while Mapbox published it; `replaceBase` could cancel a base the guard had just taken, and two Replace uploads could both pass the busy check. Re-georeferencing a first import awaiting approval cancelled its job, and the dispatcher's release then freed its scene while the new version kept the layer id (Find offered Import again).
+    - Found by: the two M3 reviews; `save-gcps.test.ts` never ran the trigger after the save.
+    - Fix and pin: `endWork` takes the job and version it accepts (`accept`), checked in its transaction; the re-georeference reads the base and the layer again in its transaction; the upload reads the layer before writing its pending version; the release spares a scene whose layer id another unfinished version holds (`S-A12-BAD-CANCEL-BEFORE-MAPBOX`, `S-A14-BAD-REPLACE-RACE`, `S-A16-BAD-REGEOREF-KEEPS-SCENE`, which runs the trigger).
+    - **Check every precondition again inside the transaction that acts on it, and run the triggers a write sets off in the test of that write.**
+178. **"I uploaded it" found the layer's own MTS tileset and published its old tiles.**
+    - Seen: `imagery.studioDone` matched a tileset by the layer's name or id, which is exactly what the layer's MTS tileset is called: a Replace, a re-georeference or a crop over budget that chose Studio was "published" with no upload at all, and the earlier version superseded.
+    - Found by: the M3 security and cost review.
+    - Fix and pin: the layer's current tileset is never the upload, and neither is one Mapbox says it created before the choice (`S-A42-BAD-STUDIO-NOT-UPLOADED`; the HTTP fake now reports when it created a tileset).
+    - **When finding "the thing the user just made", leave out what existed before the request and what is already in use.**
+179. **A budget pause had no way out, and the publish failures only offered Try again.**
+    - Seen: once the 5 USD alert turned `ops/guard` red, Import, Retry, Save points and Crop were refused for good ("Processing is paused…") with no screen to turn it back on; a source too large for Mapbox, a revoked token or a missing scope failed the version with Retry forever (each retry streaming the COG again), the scope message showed a literal `{scopes}`, an upload the server refused offered a Retry that started a run for a deleted file, and a failed version stayed in "Waiting for you" for good.
+    - Found by: the minimum-input review (2026-10-24), counting what an admin can do from each screen.
+    - Fix and pin: `imagery.resumeGuard` and the Imagery and Jobs banner with the spend and Resume processing (behaviour A43, `S-A43-*`); a file too large goes back with the free Studio way (`S-A42-BAD-SOURCE-TOO-LARGE`); `jobRetryable` and `imagery.retry` agree on what a retry cannot cure, with Setup's Mapbox step, Upload another file or Dismiss instead (`S-A12-BAD-NOT-RETRYABLE`, `S-A12-BAD-FAILED-DISMISSED`).
+    - **Every error the product shows names its way out, and a state an admin cannot leave from the screen is a defect, not an edge case.**
+180. **The georeferencer by keyboard could not place a second pair.**
+    - Seen: a pair added with Add at the centres became the selected one, the arrow keys then moved it instead of panning, and no key let it go (Esc only dropped a half pair, the table's pair button only selected): a keyboard user could not reach the next place. `S-A16-HAPPY-KEYBOARD` placed one pair. On a phone, Add at the centres with the Map pane showing read the hidden scan pane's zero size and made a pair at NaN.
+    - Found by: the minimum-input review.
+    - Fix and pin: a keyboard pair is not selected, Esc lets the selected pair go, the pair button toggles, a hidden scan pane keeps its last view and half a pair opens the other pane; the spec now places two pairs, chooses, moves, lets go and deletes by keyboard (`S-A16-HAPPY-KEYBOARD`).
+    - **A keyboard path is proved only when it does the task twice in a row: the first pair works with any selection rule.**
+181. **The georeferencer's pairs table scrolled sideways on a phone once six pairs were a kilometre off.**
+    - Seen: at 320 px, and at 360 px and 768 px under a reader's text spacing, the residual table of six pairs in Romanian reached 12 to 68 px past its box in the unit test's measure (the e2e checker's `sideways-scroll` on `georef.pairs` at `admin-c360-ro` and `admin-m768-ro`). Every cell was kept on one line, and the narrow table's 4 px cell padding (CR-M3-35 i) sat in a container query written before the cells' own rule of the same specificity, so it never applied: only the hidden pixel and place columns had kept the phone's table in its box, with four pairs of small residuals.
+    - Found by: the e2e tier at `admin-c360-ro` and `admin-m768-ro`, once `S-A16-HAPPY-KEYBOARD` placed two pairs by keyboard (CR-M3-47); the unit tests never measured the table, and the e2e had only ever drawn it with residuals of a few metres.
+    - Fix and pin: the container query follows the cells' rule, and a cell wraps when the table would not fit otherwise (a place over two lines after its comma, "Perechea" over its number, "m" under a long residual) (`packages/ui/test/admin/georef/residual-fit.test.ts`, which measures the table at 320 px, and at 360 px and 672 px with the checker's text-spacing sheet; `S-A16-HAPPY-KEYBOARD`).
+    - **A responsive rule placed before a base rule of the same specificity is dead code that looks applied: put overrides after what they override, and test a layout with the longest data it can hold, not the fixture's.**
+182. **A layer's credit in the admin map's attribution read white on white in the dark scheme.**
+    - Seen: Mapbox draws its attribution on a half-white box in every scheme and colours only its links (`mapbox-gl.css`); an imagery layer's credit is plain text, so it inherited the admin's text colour, light in the dark scheme (axe color-contrast on `.mapboxgl-ctrl-attrib-inner` in `admin.layers.crop-refused`, `crop-drawn` and `pending-version` at `admin-l1440-dark-imagery`).
+    - Found by: the `tour-matrix` stage's first full run with the M3 imagery projects (CR-M3-47's `all`); the publishes that draw a credited layer run per push only at `admin-c360-ro` and `admin-l1440-ro`, both light (DECISIONS-for-review.md §49k), and the editors' own dark states draw layers without a credit.
+    - Fix and pin: the admin map gives `.mapboxgl-ctrl-attrib-inner` the links' colour (`packages/ui/test/admin/map/attribution-colour.test.ts`; `S-A16-HAPPY-CROP`, `S-A14-HAPPY-REPLACE-SOURCE` at `admin-l1440-dark-imagery`).
+    - **A third-party control that colours only part of its content leaves the rest to inherit the page's scheme: pin the whole control's colours, and when a tier moves to a nightly matrix, check which scheme still runs per push.**
+183. **A footprints poll failed the Imagery filters test in under a second while the admin map was still opening.**
+    - Seen: `S-A11-HAPPY-FILTERS` at `admin-m768-ro` failed at 0.8 s with Mapbox's "Style is not done loading": the e2e helper that reads a GeoJSON source of the admin map called `getStyle()`, which throws until the style has loaded, and `expect.poll` does not ask again after its callback throws.
+    - Found by: the second full `all` of 2026-10-24 on the NUC (CR-M3-47); every earlier run had reached the poll after the style loaded.
+    - Fix and pin: `sourceFeaturesInPage` (`e2e/admin/support/map.ts`) reads no features while the style is loading, so the poll reads "not yet" and asks again (`S-A11-HAPPY-FILTERS`, and every photo cone, marker and overlay probe that shares it).
+    - **A probe that a poll calls answers "not yet" while the page is still getting there; one that throws turns a wait into a race.**

@@ -30,6 +30,32 @@ import {
     reprocessPhotoResponseSchema,
 } from './content.js';
 import { revertRequestSchema, revertResponseSchema } from './history.js';
+import {
+    IMAGERY_PUBLISH_QUEUE,
+    IMAGERY_TICK_SCHEDULE,
+    imageryApproveResponseSchema,
+    imageryBrowseRequestSchema,
+    imageryBrowseResponseSchema,
+    imageryChooseRequestSchema,
+    imageryChooseResponseSchema,
+    imageryCropRequestSchema,
+    imageryCropResponseSchema,
+    imageryImportRequestSchema,
+    imageryImportResponseSchema,
+    imageryProbeRequestSchema,
+    imageryProbeResponseSchema,
+    imageryRejectResponseSchema,
+    imageryResumeGuardRequestSchema,
+    imageryResumeGuardResponseSchema,
+    imageryRetryRequestSchema,
+    imageryRetryResponseSchema,
+    imagerySaveGcpsRequestSchema,
+    imagerySaveGcpsResponseSchema,
+    imagerySearchRequestSchema,
+    imagerySearchResponseSchema,
+    imageryStudioDoneResponseSchema,
+    imageryVersionRequestSchema,
+} from './imagery.js';
 import { layerDeleteRequestSchema, layerDeleteResponseSchema, layerLinkRequestSchema, layerLinkResponseSchema } from './layers.js';
 import {
     analyticsConfigRequestSchema,
@@ -51,8 +77,11 @@ import {
 } from './setup.js';
 import { ERROR_REPORT_MAX_BYTES, errorReportSchema, listGroupsRequestSchema, listGroupsResponseSchema } from './telemetry.js';
 
-/** The parallel M2 workstreams that implement the functions (`docs/research/M2-interfaces.md` §5). */
-export const FUNCTION_OWNERS = ['fn-admin', 'fn-setup', 'fn-content'] as const;
+/**
+ * The workstreams that implement the functions (`docs/research/M2-interfaces.md` §5; `fn-imagery`:
+ * `docs/research/M3-interfaces.md` §9, the M3 raster backend).
+ */
+export const FUNCTION_OWNERS = ['fn-admin', 'fn-setup', 'fn-content', 'fn-imagery'] as const;
 export type FunctionOwner = (typeof FUNCTION_OWNERS)[number];
 
 /**
@@ -125,6 +154,18 @@ export const CALLABLES = {
     'photos.reprocess': adminCallable('fn-content', reprocessPhotoRequestSchema, reprocessPhotoResponseSchema),
     'layers.delete': adminCallable('fn-content', layerDeleteRequestSchema, layerDeleteResponseSchema, 'consume'),
     'layers.link': adminCallable('fn-content', layerLinkRequestSchema, layerLinkResponseSchema),
+    'imagery.search': adminCallable('fn-imagery', imagerySearchRequestSchema, imagerySearchResponseSchema),
+    'imagery.browse': adminCallable('fn-imagery', imageryBrowseRequestSchema, imageryBrowseResponseSchema),
+    'imagery.import': adminCallable('fn-imagery', imageryImportRequestSchema, imageryImportResponseSchema),
+    'imagery.approve': adminCallable('fn-imagery', imageryVersionRequestSchema, imageryApproveResponseSchema),
+    'imagery.reject': adminCallable('fn-imagery', imageryVersionRequestSchema, imageryRejectResponseSchema),
+    'imagery.choose': adminCallable('fn-imagery', imageryChooseRequestSchema, imageryChooseResponseSchema, 'consume'),
+    'imagery.studioDone': adminCallable('fn-imagery', imageryVersionRequestSchema, imageryStudioDoneResponseSchema),
+    'imagery.saveGcps': adminCallable('fn-imagery', imagerySaveGcpsRequestSchema, imagerySaveGcpsResponseSchema),
+    'imagery.crop': adminCallable('fn-imagery', imageryCropRequestSchema, imageryCropResponseSchema),
+    'imagery.retry': adminCallable('fn-imagery', imageryRetryRequestSchema, imageryRetryResponseSchema),
+    'imagery.probeTiles': adminCallable('fn-imagery', imageryProbeRequestSchema, imageryProbeResponseSchema),
+    'imagery.resumeGuard': adminCallable('fn-imagery', imageryResumeGuardRequestSchema, imageryResumeGuardResponseSchema, 'consume'),
 } as const satisfies Readonly<Record<string, CallableSpec>>;
 
 export type CallableName = keyof typeof CALLABLES;
@@ -160,6 +201,10 @@ export const BACKGROUND_FUNCTIONS = {
     'photos.onUpload': { trigger: 'storage', source: 'uploads/photos/{city}/{uid}/{photo}/{file}', owner: 'fn-content' },
     'ops.tick': { trigger: 'schedule', source: OPS_TICK_SCHEDULE, owner: 'fn-content' },
     'ops.onBudget': { trigger: 'pubsub', source: 'budget', owner: 'fn-content' },
+    'imagery.onJobWrite': { trigger: 'firestore', source: 'cities/{city}/jobs/{id}', owner: 'fn-imagery' },
+    'imagery.onRasterUpload': { trigger: 'storage', source: 'uploads/rasters/{city}/{uid}/{upload}/{file}', owner: 'fn-imagery' },
+    'imagery.publish': { trigger: 'taskQueue', source: IMAGERY_PUBLISH_QUEUE, owner: 'fn-imagery' },
+    'imagery.tick': { trigger: 'schedule', source: IMAGERY_TICK_SCHEDULE, owner: 'fn-imagery' },
 } as const satisfies Readonly<Record<string, { trigger: BackgroundTrigger; source: string; owner: FunctionOwner }>>;
 
 /** Firebase names a function after its export path: the namespace `admin` and the export `claim` deploy as `admin-claim`. */

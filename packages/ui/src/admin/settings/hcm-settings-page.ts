@@ -23,6 +23,7 @@ import { RowDrag } from '../layers/reorder.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import { areaSection } from './area-section.js';
+import { imagerySection } from './imagery-section.js';
 import { categoriesSection } from './categories-section.js';
 import { overlaysSection } from './overlays-section.js';
 import { sectionTitle, type SectionContext } from './section-parts.js';
@@ -33,7 +34,7 @@ import { themeSection } from './theme-section.js';
 
 export const HCM_SETTINGS_PAGE_TAG = 'hcm-settings-page';
 
-const SECTIONS: readonly SettingsSectionPort[] = ['area', 'texts', 'theme', 'categories', 'overlays'];
+const SECTIONS: readonly SettingsSectionPort[] = ['area', 'texts', 'theme', 'imagery', 'categories', 'overlays'];
 
 /** The sections that show the page's map. */
 const MAP_SECTIONS: ReadonlySet<SettingsSectionPort> = new Set<SettingsSectionPort>(['area', 'overlays']);
@@ -42,6 +43,7 @@ const SECTION_ICONS: Readonly<Record<SettingsSectionPort, string>> = {
     area: 'crop_free',
     texts: 'translate',
     theme: 'palette',
+    imagery: 'satellite_alt',
     categories: 'place',
     overlays: 'opacity',
 };
@@ -50,6 +52,7 @@ const RENDERERS: Readonly<Record<Exclude<SettingsSectionPort, 'categories'>, (co
     area: areaSection,
     texts: textsSection,
     theme: themeSection,
+    imagery: imagerySection,
     overlays: overlaysSection,
 };
 

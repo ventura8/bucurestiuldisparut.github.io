@@ -155,4 +155,15 @@ export const settingsStyles = css`
         flex-direction: column;
         gap: 12px;
     }
+
+    /* A target year and its Remove: a 48 px row keeps the 40 px button's 48 px target clear of the next year's
+       (the rows' 4 px gap left 44 px, CR-M3-35 j). */
+    .year-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-block-size: 48px;
+        padding-inline: 16px 4px;
+    }
 `;

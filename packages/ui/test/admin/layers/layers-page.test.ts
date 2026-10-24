@@ -93,7 +93,9 @@ describe('<hcm-layers-page> list', () => {
     it('badPath_noLayersYetLoadingAnErrorAndNoStore', async () => {
         const layers = area(layersState({ list: ready([]) }));
         const { element } = await page('layers', layers, { locale: 'ro' });
-        expect(deepText(element)).toContain('Straturile istorice apar odată cu procesarea imaginilor USGS.');
+        expect(deepText(element)).toContain(
+            'Straturile istorice vin din Imagini istorice: importă acolo o scenă USGS sau încarcă un GeoTIFF.',
+        );
 
         layers.set({ list: LOADING });
         await updated(element);
@@ -335,6 +337,7 @@ describe('<hcm-layers-page> link dialog', () => {
         origins: ['https://tiles.example.test'],
         tried: true,
         sending: false,
+        probe: { status: 'idle' },
     } as const;
 
     it('happyPath_theFormItsRefusalAndTheOriginsToAllow', async () => {
@@ -390,6 +393,63 @@ describe('<hcm-layers-page> link dialog', () => {
 
         expect(calls(layers)).toEqual(['submitLink', 'closeLink']);
         expect(app.named('navigate')).toEqual([]);
+    });
+});
+
+describe('<hcm-layers-page> link dialog: Check (M3)', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    const READY = {
+        form: {
+            address: 'https://tiles.example.test/{z}/{x}/{y}.png',
+            tileSize: 256,
+            labelRo: 'Plan',
+            labelEn: '',
+            year: '1911',
+            kind: 'map',
+            attribution: '',
+        },
+        issues: [],
+        refusal: null,
+        origins: ['https://tiles.example.test'],
+        tried: false,
+        sending: false,
+    } as const;
+
+    function linkButton(element: HTMLElement): HTMLElement & { disabled: boolean } {
+        return nth(deepAll(element, 'hcm-dialog > hcm-button'), 1) as HTMLElement & { disabled: boolean };
+    }
+
+    it('happyPath_checkAsksOneTileAndSaysWhatAnswered', async () => {
+        const layers = area(layersState({ link: { ...READY, probe: { status: 'idle' } } }));
+        const { element } = await page('layers', layers);
+
+        deep(deep(deep(element, '.dialog-body'), '.actions hcm-button'), 'button').click();
+        layers.set({ link: { ...READY, probe: { status: 'checking' } } });
+        await updated(element);
+        const checking = [
+            deepText(element),
+            (deep(deep(element, '.dialog-body'), '.actions hcm-button') as HTMLElement & { disabled: boolean }).disabled,
+        ];
+        layers.set({ link: { ...READY, probe: { status: 'ok', contentType: 'image/png' } } });
+        await updated(element);
+
+        expect(calls(layers)).toEqual(['checkLink']);
+        expect(checking).toEqual([expect.stringContaining('Asking for one tile…'), true]);
+        expect(deep(element, '[data-probe="ok"]').textContent).toContain('Tiles answer (image/png).');
+        expect(linkButton(element).disabled).toBe(false);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_aSourceWithoutTilesKeepsLinkOff', async () => {
+        const failed = { status: 'failed', refusal: { code: 'apiError.imagery.tilesNotFound' } } as const;
+        const layers = area(layersState({ link: { ...READY, probe: failed } }));
+        const { element } = await page('layers', layers);
+
+        expect(deep(element, '[data-probe="failed"]').getAttribute('role')).toBe('alert');
+        expect(deep(element, '[data-probe="failed"]').textContent).toContain('The source has no tiles at this address (404).');
+        expect(linkButton(element).disabled).toBe(true);
     });
 });
 

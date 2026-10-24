@@ -12,8 +12,23 @@ import type { AreaPort, ContentPort } from '@hcm/ui/admin';
 import type { Unsubscribe } from '../app/ports.js';
 import type { ContentServices } from './services.js';
 
-/** The areas; `home` is the dashboard (ops-screens, the M2c brief's "dashboard home"). */
-export const CONTENT_AREAS = ['photos', 'pois', 'layers', 'settings', 'admins', 'history', 'jobs', 'crashes', 'home'] as const;
+/**
+ * The areas; `home` is the dashboard (ops-screens, the M2c brief's "dashboard home"); `imagery` and `georef` are M3's
+ * (admin-imagery, `docs/research/M3-interfaces.md` §10).
+ */
+export const CONTENT_AREAS = [
+    'photos',
+    'pois',
+    'layers',
+    'settings',
+    'admins',
+    'history',
+    'jobs',
+    'crashes',
+    'home',
+    'imagery',
+    'georef',
+] as const;
 
 export type ContentArea = (typeof CONTENT_AREAS)[number];
 

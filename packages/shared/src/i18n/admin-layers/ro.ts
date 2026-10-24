@@ -8,7 +8,7 @@
  */
 export const ro = {
     // [section layers] owner: layers-settings; keys adminContent.layers.*
-    'adminContent.layers.empty': 'Straturile istorice apar odată cu procesarea imaginilor USGS.',
+    'adminContent.layers.empty': 'Straturile istorice vin din Imagini istorice: importă acolo o scenă USGS sau încarcă un GeoTIFF.',
     'adminContent.layers.title': 'Straturi istorice',
     'adminContent.layers.listLabel': 'Lista straturilor',
     'adminContent.layers.detailLabel': 'Stratul ales',
@@ -70,7 +70,7 @@ export const ro = {
     'adminContent.layers.adjusted': '{name}: {value} %',
     'adminContent.layers.reset': 'Resetează ajustările',
     'adminContent.layers.geometry': 'Imagine și geometrie',
-    'adminContent.layers.geometryNote': 'Înlocuirea imaginii, decuparea și o nouă georeferențiere vin odată cu procesarea imaginilor USGS.',
+    'adminContent.layers.geometryNote': 'Fiecare schimbare face o versiune nouă a imaginii; stratul își păstrează dalele până o aprobi.',
     'adminContent.layers.delete': 'Șterge stratul',
     'adminContent.layers.deleteConfirm': 'Ștergi stratul „{name}”?',
     'adminContent.layers.deleteBody': 'Dispare de pe harta publică în aproximativ un minut. Îl poți restaura din Istoric.',
@@ -93,6 +93,9 @@ export const ro = {
     'adminContent.layers.kind.map': 'Hartă',
     'adminContent.layers.linkAction': 'Leagă',
     'adminContent.layers.linking': 'Se leagă…',
+    'adminContent.layers.check': 'Verifică',
+    'adminContent.layers.checking': 'Se cere o dală…',
+    'adminContent.layers.tilesAnswer': 'Dalele răspund ({type}).',
     'adminContent.layers.linked': 'Stratul „{name}” a fost legat. Verifică-l pe hartă, apoi publică-l.',
     'adminContent.layers.cspNote': 'Dalele de la {origins} apar public după ce site-ul orașului permite aceste adrese.',
     'adminContent.layers.fieldInvalid': 'Valoarea trebuie corectată.',

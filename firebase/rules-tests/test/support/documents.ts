@@ -87,6 +87,7 @@ export function cityDoc(cityId: string): Data {
         },
         engine: { minVersion: '1.0.0' },
         photosOverlay: { defaultOpacity: 0.9 },
+        imagery: { autoPublish: true, rmseThresholdM: 15, targetYears: [1966, 1976, 1977, 1978, 1980] },
         published: true,
         createdAt: past(),
         ...systemStamp('setup'),
@@ -181,9 +182,11 @@ export function layerDoc(): Data {
             usgsDataset: 'corona2',
             georef: { method: 'gcps', gcpCount: 12, checkpointRmseM: 4.5 },
         },
-        mapbox: { tilesetId: 'hcm-test.corona-1966', publishedSourceSha: SHA },
+        mapbox: { tilesetId: 'hcm-test.corona-1966', publishedSourceSha: SHA, sourceId: 'corona-1966', origin: 'mts' },
+        currentVersion: 'v-1966',
+        pendingVersion: 'v-1966-crop',
         createdAt: past(),
-        ...systemStamp('pipeline'),
+        ...systemStamp('imagery'),
     };
 }
 
@@ -262,14 +265,21 @@ export function jobDoc(creator: string, status = 'running'): Data {
         executionName: 'projects/demo-hcm/locations/us-central1/jobs/raster-std/executions/raster-std-abc',
         machine: 'std',
         attempt: 1,
+        publishAttempts: 1,
         lease: { owner: 'raster-std-abc', until: later() },
         steps: { fetch: { status: 'running', gcsPath: 'usgs-raw/rules/frame.tgz', generation: '1700000000000000', sha256: SHA } },
         mapboxJobId: 'mts-job-1',
-        error: { code: 'usgs.unavailable', message: 'USGS did not answer.' },
+        error: { code: 'apiError.usgs.unavailable', message: 'USGS did not answer.', params: { attempt: '1' } },
+        layerId: 'corona-1966',
+        versionId: 'job-1966',
+        waitReason: 'usgs-preparing',
+        startedAt: past(),
+        finishedAt: later(),
         ...systemStamp('pipeline'),
     };
 }
 
+/** What a client would send to queue a job itself (M2's create, refused since M3: CR-M3-2). */
 export function newJob(uid: string): Data {
     return {
         type: 'usgs-import',
@@ -290,18 +300,36 @@ export function usgsSceneDoc(status = 'candidate'): Data {
         entityId: 'DS1034-1057DA024',
         dataset: 'corona2',
         acquisitionDate: '1966-08-20',
+        displayId: 'DS1034-1057DA024',
+        sensor: 'KH-4A',
         status,
         note: 'Acoperire bună.',
         downloadAvailable: true,
-        browseUrl: 'https://example.org/browse/DS1034-1057DA024.jpg',
         footprint: [
             { lat: 44.2, lng: 25.8 },
             { lat: 44.7, lng: 25.8 },
             { lat: 44.7, lng: 26.4 },
         ],
-        rank: 0.92,
+        corners: {
+            nw: { lat: 44.7, lng: 25.8 },
+            ne: { lat: 44.7, lng: 26.4 },
+            se: { lat: 44.2, lng: 26.4 },
+            sw: { lat: 44.2, lng: 25.8 },
+        },
+        cloudCover: 5,
+        resolutionM: 2.75,
+        coverage: 0.92,
+        browse: {
+            state: 'copied',
+            sourceUrl: 'https://ims.cr.usgs.gov/browse/declass1/DS1034-1057DA024.jpg',
+            path: 'usgs-browse/corona2/DS1034-1057DA024.jpg',
+            checkedAt: past(),
+        },
+        rank: { score: 92, reasons: [{ code: 'free' }, { code: 'coverage', params: { percent: '92' } }], version: 1 },
+        layerId: 'corona-1966',
+        harvestedAt: past(),
         createdAt: past(),
-        ...systemStamp('pipeline'),
+        ...systemStamp('imagery'),
     };
 }
 
@@ -374,6 +402,26 @@ export function usageDoc(): Data {
         uploadedMb: 300,
         publishes: 2,
         studioUploads: 0,
+        reservations: { 'job-1966': { computeUnits: 4.2, at: past(), newTileset: true } },
+        overageComputeUnits: 0,
+        ...systemStamp('imagery'),
+    };
+}
+
+/** A layer version (M3) its pipeline is still working on: written by the imagery functions and the pipeline only. */
+export function layerVersionDoc(): Data {
+    return {
+        layerId: 'corona-1966',
+        jobId: 'job-1966',
+        origin: 'usgs',
+        state: 'processing',
+        source: { kind: 'usgs', entityId: 'DS1034-1057DA024', dataset: 'corona2', sensor: 'KH-4A', acquisitionDate: '1966-08-20' },
+        label: { ro: 'KH-4A Corona, 20 august 1966', en: 'KH-4A Corona, 20 August 1966' },
+        year: 1966,
+        date: '1966-08-20',
+        sensor: 'KH-4A',
+        createdBy: 'uid-owner',
+        createdAt: past(),
         ...systemStamp('pipeline'),
     };
 }
@@ -382,9 +430,30 @@ export function opsGuardDoc(): Data {
     return {
         state: 'green',
         since: past(),
+        spend: { costAmount: 5.37, budgetAmount: 5, currency: 'USD', interval: '2026-10-01T07:00:00Z' },
+        resumedBy: 'uid-owner',
+        resumedAt: past(),
+        resumedFor: '2026-10-01T07:00:00Z',
         lastTick: { ranAt: past(), steps: [{ step: 'guard', ok: true }] },
         lastNightlyAt: past(),
         ...systemStamp('ops'),
+    };
+}
+
+/** The dispatcher's execution slots (CR-M3-47). */
+export function opsDispatchDoc(): Data {
+    return { slots: { 'rules-city/job-1966': { at: past() } }, ...systemStamp('imagery') };
+}
+
+/** A city's last USGS harvest attempt (CR-M3-47). */
+export function harvestStateDoc(): Data {
+    return {
+        attemptedAt: past(),
+        outcome: 'failed',
+        failures: 2,
+        nextAt: later(),
+        error: 'apiError.usgs.unavailable',
+        ...systemStamp('imagery'),
     };
 }
 
@@ -418,6 +487,7 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
         theme: theme('#336699'),
         basemap: { style: 'https://example.org/styles/historic.json' },
         photosOverlay: { defaultOpacity: 0.5 },
+        imagery: { autoPublish: false, rmseThresholdM: 25, targetYears: [1911, 1966] },
         published: false,
     },
     photo: {

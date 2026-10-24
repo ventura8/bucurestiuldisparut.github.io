@@ -109,11 +109,13 @@ const PAGE_TAGS: Readonly<Record<Exclude<AdminRouteId, 'setup'>, string>> = {
     photos: 'hcm-photos-page',
     pois: 'hcm-pois-page',
     layers: 'hcm-layers-page',
+    imagery: 'hcm-imagery-page',
     jobs: 'hcm-jobs-page',
     settings: 'hcm-settings-page',
     admins: 'hcm-admins-page',
     history: 'hcm-history-page',
     crashes: 'hcm-crashes-list-page',
+    georef: 'hcm-georef-page',
 };
 
 afterEach(() => {

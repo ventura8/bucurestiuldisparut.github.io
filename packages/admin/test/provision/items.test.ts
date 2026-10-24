@@ -352,6 +352,26 @@ describe('the less travelled paths', () => {
             },
         ]);
     });
+});
+
+describe('the private bucket lifecycle', () => {
+    it('happyPath_thePrivateBucketsLifecycleIsTheRasterPipelinesFivePrefixes', async () => {
+        // PRIVATE_BUCKET_LIFECYCLE of @hcm/shared (docs/research/M3-interfaces.md §2.7, CR-M3-6).
+        const world = provisionWorld();
+        await applyProvision(planProvision(null, ['apis', 'org-policies', 'buckets', 'bucket-lifecycle']), world.deps);
+        const lifecycle = world.fakes.state.cloudStorage.buckets.get('demo-hcm.firebasestorage.app')?.settings['lifecycle'] as {
+            rule: { condition: { age: number; matchesPrefix: string[] } }[];
+        };
+
+        expect(lifecycle.rule.map((rule) => [rule.condition.matchesPrefix[0], rule.condition.age])).toEqual([
+            ['tmp/', 1],
+            ['uploads/', 7],
+            ['work/', 14],
+            ['usgs-raw/', 30],
+            ['reference/', 90],
+        ]);
+        expect((await doctorProvision(world.deps, ['bucket-lifecycle'])).items).toEqual([{ id: 'bucket-lifecycle', state: 'ok' }]);
+    });
 
     it('badPath_aLifecycleWithoutTheSoftDeleteSettingIsMissing', async () => {
         const world = provisionWorld();

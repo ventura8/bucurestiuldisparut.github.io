@@ -5,16 +5,22 @@
  */
 import { css } from 'lit';
 
-import { visuallyHidden } from '../../components/styles.js';
+import { touchTarget, visuallyHidden } from '../../components/styles.js';
 import { editingStyles } from '../editing/editing-styles.js';
 import { paneMapBesideStyles } from '../editing/wide-layout.js';
 
 export const layersStyles = [
     ...editingStyles,
     visuallyHidden,
+    touchTarget,
     css`
         .layer-map {
             block-size: clamp(240px, 40vh, 420px);
+        }
+
+        /* The pending version's chip is a link: its 48 px target reaches past the 32 px chip (CR-M3-7, M3's targets). */
+        a.tag.touch-target {
+            position: relative;
         }
 
         /* Without a map (no token, no WebGL, a failure) the box is its note only. */

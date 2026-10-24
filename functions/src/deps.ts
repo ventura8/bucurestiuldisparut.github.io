@@ -8,6 +8,7 @@ import { write } from 'firebase-functions/logger';
 import { GoogleAuth } from 'google-auth-library';
 
 import { createAuthAdmin } from './adapters/auth-admin.js';
+import { createCloudRunJobs } from './adapters/cloud-run.js';
 import { createCloudTaskQueue } from './adapters/cloud-tasks.js';
 import { createDocumentStore } from './adapters/documents.js';
 import { createEmulatorFetch } from './adapters/emulator-fetch.js';
@@ -17,22 +18,26 @@ import { firestoreAdminDirectory, firestoreSetupRecords } from './adapters/fires
 import { createFunctionsLogSink } from './adapters/functions-log-sink.js';
 import { createGoogleTokenProvider } from './adapters/google-token-provider.js';
 import { createSharpImageProcessor } from './adapters/image.js';
+import { createMapboxTilesets } from './adapters/mapbox-tilesets.js';
 import { createMapboxApi } from './adapters/mapbox.js';
+import { createRemoteFiles, fetchPinnedGet, httpsPinnedGet, systemResolver } from './adapters/remote-files.js';
 import { createGoogleIam } from './adapters/resource-manager.js';
 import { createSecretManagerStore, secretsRevision } from './adapters/secret-manager.js';
 import { createMemorySecretStore } from './adapters/secret-store-memory.js';
+import { createStorageBlobReader } from './adapters/storage-reader.js';
 import { createStorageBlobStore } from './adapters/storage.js';
 import { systemClock } from './adapters/system-clock.js';
 import type { Fetch } from './adapters/upstream-http.js';
-import { createUsgsApi } from './adapters/usgs.js';
+import { createUsgsApi, createUsgsScenes } from './adapters/usgs.js';
 import type { Ports } from './ports/index.js';
+import type { RemoteFiles } from './ports/remote-files.js';
 import type { RuntimeConfig } from './ports/runtime-config.js';
 import type { SecretStore } from './ports/secret-store.js';
 import type { SetupRecords } from './ports/setup-records.js';
 import type { TokenProvider } from './ports/token-provider.js';
 
-/** Every port of `docs/research/M2-interfaces.md` §4 but `jobs` (`CloudRunJobs` and its adapter arrive with M3). */
-export type Deps = Omit<Ports, 'jobs'>;
+/** Every port of `docs/research/M2-interfaces.md` §4 and `docs/research/M3-interfaces.md` §9.3. */
+export type Deps = Ports;
 
 export type Env = Readonly<Record<string, string | undefined>>;
 
@@ -150,6 +155,17 @@ function secretStoreOf(env: Env, context: SecretContext): SecretStore {
     });
 }
 
+/**
+ * The address guard (`RemoteFiles`): in production it resolves the host itself and connects to the address it checked;
+ * in the Functions emulator it keeps its address rules and sends the request to the fake upstreams, without DNS.
+ */
+function remoteFilesOf(env: Env, upstream: Upstream): RemoteFiles {
+    if (env['FUNCTIONS_EMULATOR'] === 'true') {
+        return createRemoteFiles({ get: fetchPinnedGet(upstream.fetch), resolve: undefined });
+    }
+    return createRemoteFiles({ get: httpsPinnedGet(), resolve: systemResolver });
+}
+
 /** The composition root: the only place that picks adapters (tests build their ports from fakes instead). */
 export function createDeps(env: Env, app: App): Deps {
     const config = runtimeConfig(env);
@@ -172,6 +188,11 @@ export function createDeps(env: Env, app: App): Deps {
         images: createSharpImageProcessor(),
         mapbox: createMapboxApi({ fetch: upstream.fetch }),
         usgs: createUsgsApi({ fetch: upstream.fetch, log }),
+        jobs: createCloudRunJobs({ fetch: upstream.fetch, tokens: upstream.tokens, projectId: config.projectId, region: config.region }),
+        tilesets: createMapboxTilesets({ fetch: upstream.fetch }),
+        scenes: createUsgsScenes({ fetch: upstream.fetch, log }),
+        remote: remoteFilesOf(env, upstream),
+        reader: createStorageBlobReader(getStorage(app), config.buckets),
         admins: firestoreAdminDirectory(db),
         setup,
     };

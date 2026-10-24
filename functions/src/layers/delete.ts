@@ -38,13 +38,25 @@ function jobIdFor(layerId: string, now: Date): string {
     return `ld-${now.getTime().toString(36)}-${layerId.slice(0, 26)}`;
 }
 
+/**
+ * Where a job names its layer: M2's jobs in their parameters, M3's raster jobs (`usgs-import`, `geotiff-import`,
+ * `regeoref`, `republish`) at the top level (`docs/research/M3-interfaces.md` §2.3; CR-M3-24).
+ */
+const LAYER_FIELDS = ['params.layerId', 'layerId'] as const;
+
+async function unfinishedJobOf(deps: LayerDeleteDeps, request: Request, field: (typeof LAYER_FIELDS)[number]): Promise<boolean> {
+    const jobs = await deps.documents.query(FIRESTORE_PATHS.jobs(request.cityId), jobDocSchema, {
+        where: [[field, '==', request.layerId]],
+    });
+    return jobs.documents.some((job) => !FINISHED.has(job.data.status));
+}
+
 /** A layer whose pipeline job is not finished, or which the pipeline is processing, is not deleted (`layers.busy`). */
 async function refuseWhileBusy(deps: LayerDeleteDeps, request: Request): Promise<void> {
-    const jobs = await deps.documents.query(FIRESTORE_PATHS.jobs(request.cityId), jobDocSchema, {
-        where: [['params.layerId', '==', request.layerId]],
-    });
-    if (jobs.documents.some((job) => !FINISHED.has(job.data.status))) {
-        throw new ApiError('apiError.layers.busy');
+    for (const field of LAYER_FIELDS) {
+        if (await unfinishedJobOf(deps, request, field)) {
+            throw new ApiError('apiError.layers.busy');
+        }
     }
 }
 
@@ -91,7 +103,8 @@ async function deleteAndQueue(transaction: DocumentTransaction, deletion: Deleti
     if (layer === undefined) {
         throw new ApiError('apiError.notFound');
     }
-    if (PROCESSING.has(layer.status)) {
+    // A new version on its way (a replacement, a re-georeference or a crop) is the pipeline working on the layer too.
+    if (PROCESSING.has(layer.status) || layer.pendingVersion !== undefined) {
         throw new ApiError('apiError.layers.busy');
     }
     await transaction.delete(path);

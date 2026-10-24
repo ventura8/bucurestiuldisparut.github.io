@@ -7,7 +7,9 @@ import { describe, expect, it } from 'vitest';
 import type { ADMINS_MODULE } from '../../src/admins/admins.js';
 import type { CRASHES_MODULE } from '../../src/crashes/crashes.js';
 import type { HISTORY_MODULE } from '../../src/history/history.js';
+import type { GEOREF_MODULE } from '../../src/georef/georef.js';
 import type { HOME_MODULE } from '../../src/home/home.js';
+import type { IMAGERY_MODULE } from '../../src/imagery/imagery.js';
 import type { JOBS_MODULE } from '../../src/jobs/jobs.js';
 import type { layersModule } from '../../src/layers/layers.js';
 import type { PHOTOS_MODULE } from '../../src/photos/module.js';
@@ -68,6 +70,18 @@ const OPS_PORTS: readonly true[] = [
     true satisfies Assignable<StoreOf<typeof HOME_MODULE>, NonNullable<ContentPort['home']>>,
 ];
 // [end ops]
+// [section imagery] owner: admin-imagery
+const IMAGERY_PORTS: readonly true[] = [
+    true satisfies Assignable<StoreOf<typeof IMAGERY_MODULE>, NonNullable<ContentPort['imagery']>>,
+    true satisfies Assignable<StoreOf<typeof GEOREF_MODULE>, NonNullable<ContentPort['georef']>>,
+];
+
+describe('the imagery ports', () => {
+    it('happyPath_theImageryAndGeoreferencerStoresSatisfyTheirPagesPorts', () => {
+        expect(IMAGERY_PORTS).toEqual([true, true]);
+    });
+});
+// [end imagery]
 
 describe('the admin ports', () => {
     it('happyPath_theAppAndItsStateSatisfyTheElementsPorts', () => {
@@ -79,7 +93,7 @@ describe('the admin ports', () => {
             true,
         ]);
         expect(ADMIN_AUTH_STATES).toHaveLength(13);
-        expect(ADMIN_ROUTES).toHaveLength(10);
+        expect(ADMIN_ROUTES).toHaveLength(12);
         expect(OPS_PORTS).toHaveLength(5);
     });
 });

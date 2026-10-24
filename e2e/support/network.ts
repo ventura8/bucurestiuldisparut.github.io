@@ -1,7 +1,7 @@
 import type { APIRequestContext, BrowserContext, Route, WebSocketRoute } from '@playwright/test';
 
 import { MOCK_API_ORIGIN, TEST_HEADER } from '../fixtures/world.js';
-import { isLoopback, isUpstreamHost, mockedHostKind } from '../mock-apis/hosts.js';
+import { isLoopback, isUpstreamHost, mockedHostKind, refusedAddress } from '../mock-apis/hosts.js';
 
 /**
  * The browser context's network, decided per request (docs/research/design-review-testability.md §4.2):
@@ -11,7 +11,9 @@ import { isLoopback, isUpstreamHost, mockedHostKind } from '../mock-apis/hosts.j
  * - a mocked host (Mapbox, analytics, the CDN, the e2e tile and telemetry hosts), and in the admin projects
  *   (`upstream`) a host of the fake upstreams: forwarded to the mock APIs as `/h/<host><path>`, tagged with the test's
  *   id, and answered from there; nothing reaches the real host;
- * - anything else: aborted (`blockedbyclient`) and recorded, and the test fails at teardown (the firewall).
+ * - anything else, and a refused address of any host (`refusedAddress`: USGS, STAC, Overpass, OpenStreetMap tiles,
+ *   Mapbox Satellite; docs/research/M3-interfaces.md §13): aborted (`blockedbyclient`) and recorded, and the test fails at
+ *   teardown (the firewall).
  *
  * WebSockets get the same rule through `routeWebSocket` (route handlers never see them). A page-level `page.route`
  * a spec registers wins over these context routes, which is how a bad path scripts one response.
@@ -100,7 +102,7 @@ async function decide(route: Route, decision: Decision): Promise<void> {
     const host = new URL(url).hostname;
     if (isLoopback(host)) {
         await passLoopback(route, testId);
-    } else if (!isForwarded(host, options)) {
+    } else if (refusedAddress(new URL(url)) !== null || !isForwarded(host, options)) {
         blocked.record(url);
         await route.abort('blockedbyclient');
     } else {

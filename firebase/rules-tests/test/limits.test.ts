@@ -1,8 +1,9 @@
 /**
  * Firestore evaluates at most 1000 rule expressions per request and denies the request past that (found by these
  * tests: validating a whole photo with five links went over it). The heaviest legitimate writes, every client field
- * at its largest list, must still be allowed: a create of a photo and of a POI, and an update that changes every
- * editable field of a city, a photo, a layer and a POI at once.
+ * at its largest list, must still be allowed: a create of a photo and of a POI, an update that changes every editable
+ * field of a city (but its imagery settings, saved on their own), a photo, a layer and a POI at once, and the imagery
+ * settings with their twenty target years.
  */
 import { FIRESTORE_PATHS, MAX_GEOMETRY_VERTICES, MAX_POI_PHOTOS, MAX_POLYGON_RINGS } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -43,9 +44,18 @@ describe('creates', () => {
     });
 });
 
+/** The city's settings but its imagery ones, which are saved and checked on their own (M3, CR-M3-2). */
+const CITY_SETTINGS: Data = Object.fromEntries(Object.entries(EDITS.city).filter(([field]) => field !== 'imagery'));
+
 describe('updates of every editable field at once', () => {
     it.each([
-        ['city', FIRESTORE_PATHS.city(`${CITY_ID}-edit`), () => cityDoc(CITY_ID), EDITS.city],
+        ['city', FIRESTORE_PATHS.city(`${CITY_ID}-edit`), () => cityDoc(CITY_ID), CITY_SETTINGS],
+        [
+            'city imagery',
+            FIRESTORE_PATHS.city(`${CITY_ID}-imagery`),
+            () => cityDoc(CITY_ID),
+            { imagery: { autoPublish: false, rmseThresholdM: 200, targetYears: Array.from({ length: 20 }, (_, index) => 2000 + index) } },
+        ],
         ['photo', FIRESTORE_PATHS.photo(CITY_ID, 'edit'), () => photoDoc(CITY_ID, 'edit', world.uid('admin')), EDITS.photo],
         ['layer', FIRESTORE_PATHS.layer(CITY_ID, 'edit'), layerDoc, EDITS.layer],
         ['poi', FIRESTORE_PATHS.poi(CITY_ID, 'edit'), () => poiDoc(world.uid('admin')), EDITS.poi],

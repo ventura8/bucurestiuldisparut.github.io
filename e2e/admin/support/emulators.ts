@@ -91,19 +91,26 @@ function keptByReset(path: string, fields: FirestoreFields | undefined): boolean
     return collection === 'admins' && rest.length === 0 && isContentEmail(decodeFields(fields ?? {})['email']);
 }
 
-/** The first segments of the Storage paths (`STORAGE_PATHS`) that name the city second. */
-const CITY_FIRST: ReadonlySet<string> = new Set(['cities', 'photos']);
+/**
+ * The first segments of the Storage paths that name the city second: `STORAGE_PATHS`' public derivatives and manifest,
+ * and `RASTER_PATHS`' version files, scratch files and reference cache (M3).
+ */
+const CITY_FIRST: ReadonlySet<string> = new Set(['cities', 'photos', 'rasters', 'work', 'reference']);
+
+/** USGS browse copies are shared by every city (`usgs-browse/<dataset>/<entity>.jpg`): the same image, kept. */
+const SHARED_PREFIXES: readonly string[] = ['usgs-browse/'];
 
 /**
- * A Storage object a reset keeps: one of a content world's city. The public derivatives (`photos/<city>/…`) and the
- * manifest (`cities/<city>/…`) name it second, the upload and the original (`uploads/photos/<city>/…`,
- * `originals/photos/<city>/…`) third: a reset once read the photo's id as the city of a derivative and deleted every
- * content world's public photos (`docs/LESSONS.md` 116).
+ * A Storage object a reset keeps: one of a content world's city, or a shared browse copy. The public derivatives
+ * (`photos/<city>/…`), the manifest (`cities/<city>/…`) and the raster files (`rasters/<city>/…`, `work/<city>/…`,
+ * `reference/<city>/…`) name it second, the uploads and the originals (`uploads/photos/<city>/…`,
+ * `uploads/rasters/<city>/…`, `originals/photos/<city>/…`) third: a reset once read the photo's id as the city of a
+ * derivative and deleted every content world's public photos (`docs/LESSONS.md` 116).
  */
 function storageKeptByReset(name: string): boolean {
     const parts = name.split('/');
     const city = CITY_FIRST.has(parts[0] ?? '') ? parts[1] : parts[2];
-    return parts.length > 2 && isContentCity(city ?? '');
+    return SHARED_PREFIXES.some((prefix) => name.startsWith(prefix)) || (parts.length > 2 && isContentCity(city ?? ''));
 }
 
 export class EmulatorWorld {

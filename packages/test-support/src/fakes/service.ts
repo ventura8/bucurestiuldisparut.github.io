@@ -31,6 +31,9 @@ export const UPSTREAM_SERVICES = [
     'analytics-admin',
     'mapbox',
     'usgs',
+    'usgs-browse',
+    'stac',
+    'overpass',
     'nominatim',
     'google-apis',
 ] as const;

@@ -1,7 +1,8 @@
 /**
  * firebase/storage.rules (the PRIVATE bucket): own-uid uploads only (STORAGE_PATHS.photoUpload, into the folder of an
- * existing photo document), type, size and name limits, no SVG, no overwrite, admin-only reads, nothing public, and
- * every other object written by service accounts only. The Storage emulator has no rule-coverage report, so every
+ * existing photo document; RASTER_PATHS.upload with exactly `rasterUploadMetadataSchema`'s metadata), type, size and
+ * name limits, no SVG, no overwrite, admin-only reads, nothing public, and every other object written by service
+ * accounts only. The Storage emulator has no rule-coverage report, so every
  * condition has an explicit allow and deny case here.
  */
 import { FIRESTORE_PATHS, PHOTO_CONTENT_TYPES, STORAGE_PATHS } from '@hcm/shared';
@@ -26,20 +27,23 @@ function photoUpload(persona: Persona, file = `${nonce()}.jpg`): string {
     return STORAGE_PATHS.photoUpload(CITY_ID, world.uid(persona), PHOTO_ID, file);
 }
 
-function rasterUpload(persona: Persona, city = CITY_ID, upload = nonce()): string {
-    return `uploads/rasters/${city}/${world.uid(persona)}/${upload}/scan.tif`;
+function rasterUpload(persona: Persona, city = CITY_ID, upload = nonce(), file = `${nonce()}.tif`): string {
+    return `uploads/rasters/${city}/${world.uid(persona)}/${upload}/${file}`;
 }
 
 interface Upload {
     readonly contentType?: string;
     readonly size?: number;
     readonly originalName?: string;
+    /** Custom metadata beyond the original name (a raster upload's `year` and `layerId`). */
+    readonly metadata?: Readonly<Record<string, string>>;
 }
 
 /** The upload request itself (for `verdicts`). */
 function send(persona: Persona, path: string, upload: Upload = {}): Promise<unknown> {
-    const { contentType = 'image/jpeg', size = 1024, originalName } = upload;
-    const customMetadata = originalName === undefined ? {} : { customMetadata: { originalName } };
+    const { contentType = 'image/jpeg', size = 1024, originalName, metadata = {} } = upload;
+    const custom = originalName === undefined ? metadata : { ...metadata, originalName };
+    const customMetadata = Object.keys(custom).length === 0 ? {} : { customMetadata: custom };
     return world
         .storage(persona)
         .ref(path)
@@ -150,6 +154,27 @@ describe('photo uploads', () => {
 describe('raster uploads', () => {
     it.each(['image/tiff', 'application/octet-stream'])('happyPath_adminUploadsGeoTiffAs_%s', async (contentType) => {
         expect(await put('admin', rasterUpload('admin'), { contentType })).toBe('allow');
+    });
+
+    it('happyPath_aReplacementCarriesItsNameYearAndLayer', async () => {
+        const metadata = { year: '1911', layerId: 'planul-bucurestilor-1911' };
+        const path = rasterUpload('admin', CITY_ID, nonce(), `${nonce()}.tiff`);
+
+        expect(await put('admin', path, { contentType: 'image/tiff', originalName: 'Planul Bucureștilor 1911.tif', metadata })).toBe(
+            'allow',
+        );
+    });
+
+    it.each([
+        ['a name that is no nonce', () => rasterUpload('admin', CITY_ID, nonce(), 'scan.tif'), {}],
+        ['a name that is not a TIFF', () => rasterUpload('admin', CITY_ID, nonce(), `${nonce()}.png`), {}],
+        ['an original name over 255 characters', () => rasterUpload('admin'), { originalName: `${'x'.repeat(252)}.tif` }],
+        ['a year of two digits', () => rasterUpload('admin'), { metadata: { year: '19' } }],
+        ['a year after 2099', () => rasterUpload('admin'), { metadata: { year: '2100' } }],
+        ['a layer id that leaves its folder', () => rasterUpload('admin'), { metadata: { layerId: '../plan' } }],
+        ['metadata the schema does not know', () => rasterUpload('admin'), { metadata: { note: 'x' } }],
+    ] as const)('badPath_rasterUploadMetadataAndNamesFollowTheContract_%s', async (_label, path, upload) => {
+        expect(await put('admin', path(), { contentType: 'image/tiff', ...upload })).toBe('deny');
     });
 
     it('badPath_onlyAdminsUploadRasters', async () => {

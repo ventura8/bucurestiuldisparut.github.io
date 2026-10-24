@@ -322,14 +322,16 @@ export function legalViolations(snapshot: LayoutSnapshot): Violation[] {
     if (!snapshot.legal.map) {
         return [];
     }
+    const { owes } = snapshot.legal;
     const kinds = [
-        ['Mapbox logo', snapshot.legal.logos],
-        ['map attribution', snapshot.legal.attributions],
+        ['Mapbox logo', snapshot.legal.logos, owes.logo],
+        ['map attribution', snapshot.legal.attributions, owes.attribution],
     ] as const;
-    return kinds.flatMap(([label, items]): Violation[] => {
+    return kinds.flatMap(([label, items, owed]): Violation[] => {
         const nodes = items.map((item) => refOf(nodeAt(snapshot, item.node)));
+        // Owed or not, two of a kind are one too many; none is wrong only where the strip of the map reaches it.
         const counted: Violation[] =
-            items.length === 1
+            items.length === 1 || (items.length === 0 && !owed)
                 ? []
                 : [
                       {

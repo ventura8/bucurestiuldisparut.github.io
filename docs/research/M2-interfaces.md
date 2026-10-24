@@ -601,3 +601,12 @@ admin's e2e tier), CR-M2-22 (the `x-hcm-test` forwarding), CR-M2-37 (the GA4 str
 admin origins) and CR-M2-40 (the admin shows the integration's error codes) are assigned to the M2b workstreams in
 `M2b-interfaces.md` → *Change requests*. `PROVISION_ITEMS` gained `crash-alerts` and `api-key` (`M2b-interfaces.md`
 §0, §3.4); `setup.recordCloud` and `setup.status` accept them unchanged.
+
+## Addendum C: handed over to M3 (2026-10-23)
+
+Added by the M3 contracts agent. CR-M2-7 (the pipeline writes `jobDocSchema` and `jobLogDocSchema` documents) is
+answered by `M3-interfaces.md` §2.3 (who writes which field in which status) and the golden documents of
+`pipeline/tests/contracts/`; the pipeline workstream implements it. CR-M2-15 (a) (`MapboxApi.listTilesets` for the
+publisher) becomes the `MapboxTilesets` port of `functions/src/ports/mapbox-tilesets.ts` (CR-M3-4: fn-setup's
+`MapboxTilesetsApi` moves into its adapter). The `CloudRunJobs` port gained `get` and run options; `Deps` leaves out the
+five M3 ports until fn-imagery wires them.

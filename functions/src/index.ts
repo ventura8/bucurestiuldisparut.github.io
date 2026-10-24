@@ -8,6 +8,7 @@
 import { adminFunctions, adminsFunctions } from './admin/index.js';
 import { getDeps, privateBucket } from './deps.js';
 import { historyFunctions } from './history/index.js';
+import { imageryFunctions } from './imagery/index.js';
 import { layersFunctions } from './layers/index.js';
 import { opsFunctions } from './ops/index.js';
 import { photosFunctions } from './photos/index.js';
@@ -26,3 +27,5 @@ export const photos = photosFunctions(getDeps, privateBucket(process.env));
 export const ops = opsFunctions(getDeps);
 /** `layers.delete` and `layers.link` (M2c layers-settings, CR-M2c-3, CR-M2c-27). */
 export const layers = layersFunctions(getDeps);
+/** The M3 raster backend (`docs/research/M3-interfaces.md` §9): the raster upload trigger watches the same private bucket. */
+export const imagery = imageryFunctions(getDeps, privateBucket(process.env));

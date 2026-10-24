@@ -89,6 +89,19 @@ export class HcmAdminMap extends LitElement {
                 outline-offset: -3px;
             }
 
+            /* A layer's own attribution text runs into Mapbox's links: underlined, they read as links without colour
+               (axe link-in-text-block, CR-M3-35 l). */
+            .mapboxgl-ctrl-attrib a {
+                text-decoration: underline;
+            }
+
+            /* Mapbox's attribution is white in every scheme and colours only its links: a layer's own credit is plain
+               text, which inherited the dark scheme's light text and read white on white (axe color-contrast; the
+               published imagery layers at admin-l1440-dark, CR-M3-47). It takes the links' colour. */
+            .mapboxgl-ctrl-attrib-inner {
+                color: rgb(0 0 0 / 75%);
+            }
+
             .mapboxgl-ctrl-attrib :focus-visible {
                 outline-color: light-dark(var(--md-sys-color-primary, Highlight), var(--md-sys-color-inverse-primary, Highlight));
             }

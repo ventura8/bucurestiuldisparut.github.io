@@ -61,11 +61,20 @@ service firebase.storage {
             allow read, delete: if isAdmin();
         }
 
-        // Historical rasters (GeoTIFF) for the georeferencing pipeline (M3), under 8 GiB.
+        // Historical rasters (GeoTIFF) for the georeferencing pipeline (M3, RASTER_PATHS.upload), under 8 GiB:
+        // `{upload}` becomes the `geotiff-import` job's id, `{file}` a fresh nonce with a TIFF extension
+        // (RASTER_UPLOAD_FILE_PATTERN). The custom metadata is exactly `rasterUploadMetadataSchema`: the original
+        // name (at most 255 characters), the year it shows and, for Replace image, the layer it replaces.
+        // imagery.onRasterUpload sniffs the bytes; a file that is not a TIFF fails its job.
         match /uploads/rasters/{city}/{uid}/{upload}/{file} {
             allow create: if ownUpload(city, uid, upload)
+                && file.matches('[A-Za-z0-9_-]{8,64}[.]tiff?')
                 && request.resource.size < 8 * 1024 * 1024 * 1024
-                && request.resource.contentType.matches('image/tiff|application/octet-stream');
+                && request.resource.contentType.matches('image/tiff|application/octet-stream')
+                && request.resource.metadata.keys().hasOnly(['originalName', 'year', 'layerId'])
+                && request.resource.metadata.get('originalName', '').size() <= 255
+                && request.resource.metadata.get('year', '1900').matches('(18|19|20)[0-9][0-9]')
+                && request.resource.metadata.get('layerId', 'x').matches('[A-Za-z0-9_-]{1,40}');
             allow read, delete: if isAdmin();
         }
 

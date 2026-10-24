@@ -341,6 +341,98 @@ describe('linking a layer', () => {
     });
 });
 
+describe('linking a layer: Check (M3, imagery.probeTiles)', () => {
+    const XYZ = 'https://tiles.example.test/{z}/{x}/{y}.png';
+
+    it('happyPath_checkAsksOneTileAndANewAddressForgetsTheAnswer', async () => {
+        const { store, world } = open();
+        world.callables.answer('imagery.probeTiles', () => ({ contentType: 'image/png', tile: { z: 12, x: 2337, y: 1489 } }));
+        store.intents.openLink();
+        store.intents.editLink({ address: XYZ, tileSize: 512 });
+
+        const checking = store.intents.checkLink();
+        const during = store.state.link?.probe;
+        await store.intents.checkLink();
+        await checking;
+
+        expect(during).toEqual({ status: 'checking' });
+        expect(world.callables.calls.map((call) => [call.name, call.request])).toEqual([
+            ['imagery.probeTiles', { cityId: CITY, source: { type: 'xyz', tiles: [XYZ], tileSize: 512 } }],
+        ]);
+        expect(store.state.link?.probe).toEqual({ status: 'ok', contentType: 'image/png' });
+        store.intents.editLink({ labelRo: 'Plan' });
+        expect(store.state.link?.probe.status).toBe('ok');
+        store.intents.editLink({ tileSize: 256 });
+        expect(store.state.link?.probe).toEqual({ status: 'idle' });
+    });
+
+    it('badPath_aFailedCheckKeepsLinkOffUntilTheAddressChanges', async () => {
+        const { store, world } = open();
+        world.callables.fail('imagery.probeTiles', failure('failed-precondition', 'apiError.imagery.tilesNotImage'));
+        world.callables.answer('layers.link', () => ({ layerId: 'plan' }));
+        store.intents.openLink();
+        store.intents.editLink({ address: XYZ, labelRo: 'Plan', year: '1911' });
+
+        await store.intents.checkLink();
+        const refused = store.state.link?.probe;
+        const linked = await store.intents.submitLink();
+        world.callables.fail('imagery.probeTiles', failure('unavailable', 'apiError.imagery.tilesUnreachable', { status: '503' }));
+        await store.intents.checkLink();
+        const unreachable = store.state.link?.probe;
+        world.callables.fail('imagery.probeTiles', new Error('network'));
+        await store.intents.checkLink();
+
+        expect(refused).toEqual({ status: 'failed', refusal: { code: 'apiError.imagery.tilesNotImage' } });
+        expect(linked).toBeNull();
+        expect(unreachable).toEqual({
+            status: 'failed',
+            refusal: { code: 'apiError.imagery.tilesUnreachable', params: { status: '503' } },
+        });
+        expect(store.state.link?.probe).toEqual({ status: 'failed', refusal: { code: 'apiError.unavailable' } });
+        expect(world.callables.calls.map((call) => call.name)).not.toContain('layers.link');
+        store.intents.editLink({ address: `${XYZ}?v=2` });
+        expect(await store.intents.submitLink()).toBe('plan');
+    });
+
+    it('badPath_anAddressItsOwnChecksRefuseIsNeverAsked', async () => {
+        const { store, world } = open();
+        store.intents.openLink();
+        store.intents.editLink({ address: 'http://tiles.example.test/{z}/{x}/{y}.png' });
+        await store.intents.checkLink();
+        const invalid = store.state.link;
+        store.intents.editLink({ address: 'mapbox.satellite' });
+        await store.intents.checkLink();
+        const foreign = store.state.link?.probe;
+        store.intents.closeLink();
+        await store.intents.checkLink();
+
+        expect(invalid?.probe).toEqual({ status: 'idle' });
+        expect(invalid?.issues.map((issue) => issue.path)).toContain('address');
+        expect(foreign).toEqual({ status: 'failed', refusal: { code: 'apiError.layers.foreignTileset', params: { owner: 'mapbox' } } });
+        expect(world.callables.calls).toEqual([]);
+    });
+
+    it('badPath_anAnswerForAnAddressChangedMeanwhileIsDropped', async () => {
+        const { store, world } = open();
+        const pending: { resolve?: (value: { contentType: 'image/png'; tile: { z: number; x: number; y: number } }) => void } = {};
+        world.callables.answer(
+            'imagery.probeTiles',
+            () =>
+                new Promise((done) => {
+                    pending.resolve = done;
+                }),
+        );
+        store.intents.openLink();
+        store.intents.editLink({ address: XYZ });
+        const checking = store.intents.checkLink();
+        store.intents.editLink({ address: `${XYZ}?v=2` });
+        pending.resolve?.({ contentType: 'image/png', tile: { z: 12, x: 1, y: 1 } });
+        await checking;
+
+        expect(store.state.link?.probe).toEqual({ status: 'idle' });
+    });
+});
+
 describe('the area store', () => {
     it('happyPath_closeDetachesEveryListenerAndDestroyLeavesTheMap', async () => {
         const { store, world, preview } = open(undefined, ['corona']);

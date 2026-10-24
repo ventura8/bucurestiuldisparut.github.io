@@ -3,8 +3,9 @@ import { projectNames, type ProjectConfig, type ServiceAccountId } from './proje
 
 /**
  * What the provisioner creates and binds (`docs/research/M2b-interfaces.md` §3.4, §3.4.1; security review §1.1, M2
- * §4.3, `DECISIONS-for-review.md` §19b, CR-M2-5): the APIs, the secret shells, and the M2b rows of the role table. The
- * M3 rows (Cloud Run jobs, Artifact Registry, the public bucket's `previews/`) join with the raster pipeline.
+ * §4.3, `DECISIONS-for-review.md` §19b, CR-M2-5): the APIs, the secret shells, and the role table, with the M3 rows of
+ * `docs/research/M3-interfaces.md` §9.4 (CR-M3-6): the event functions run the raster job's executions, and the raster
+ * job reads the USGS secrets only (publishing, and so the Mapbox secret, stays in the functions).
  */
 
 /** The APIs the `apis` item enables (`<name>.googleapis.com`). */
@@ -43,8 +44,11 @@ export const SECRET_IDS = ['usgs-username', 'usgs-app-token', 'mapbox-sk-bootstr
 
 type SecretId = (typeof SECRET_IDS)[number];
 
-/** The secrets the event functions and the raster job read. */
-const READER_SECRETS: readonly SecretId[] = ['usgs-username', 'usgs-app-token', 'mapbox-sk-tiles'];
+/** The secrets the event functions read (the dispatcher, the publisher, the tick, the upload trigger). */
+const EVENTS_SECRETS: readonly SecretId[] = ['usgs-username', 'usgs-app-token', 'mapbox-sk-tiles'];
+
+/** The secrets the raster job reads: USGS only, never a Mapbox secret (M3 §9.4). */
+const RASTER_SECRETS: readonly SecretId[] = ['usgs-username', 'usgs-app-token'];
 
 /** One IAM policy and the bindings it must hold. */
 export interface PolicyBindings {
@@ -73,7 +77,14 @@ const FN_ADMIN_PROJECT_ROLES = [
     'roles/errorreporting.viewer',
     'roles/cloudtasks.enqueuer',
 ];
-const FN_EVENTS_PROJECT_ROLES = ['roles/datastore.user', 'roles/eventarc.eventReceiver', 'roles/cloudtasks.enqueuer'];
+/** M3: the dispatcher starts and follows the raster job's executions (`run.jobs.runWithOverrides`, `run.executions.get`). */
+const FN_EVENTS_PROJECT_ROLES = [
+    'roles/datastore.user',
+    'roles/eventarc.eventReceiver',
+    'roles/cloudtasks.enqueuer',
+    'roles/run.jobsExecutorWithOverrides',
+    'roles/run.viewer',
+];
 const DEPLOYER_PROJECT_ROLES = [
     'roles/firebasehosting.admin',
     'roles/firebaserules.admin',
@@ -119,19 +130,22 @@ function bucketBindings(project: ProjectConfig): PolicyBindings[] {
     ];
 }
 
+/** Who reads `secret` besides the admin functions: the event functions, the raster job (USGS only). */
+function secretReaders(project: ProjectConfig, secret: SecretId): WantedBinding[] {
+    const names = projectNames(project);
+    const readers = [
+        ...(EVENTS_SECRETS.includes(secret) ? [names.member('fn-events')] : []),
+        ...(RASTER_SECRETS.includes(secret) ? [names.member('job-raster')] : []),
+    ];
+    return readers.flatMap((member) => grants(member, ['roles/secretmanager.secretAccessor']));
+}
+
 function secretBindings(project: ProjectConfig): PolicyBindings[] {
     const names = projectNames(project);
     return SECRET_IDS.map((secret) => ({
         kind: 'secret' as const,
         resource: secret,
-        bindings: [
-            ...grants(names.member('fn-admin'), FN_ADMIN_SECRET_ROLES),
-            ...(READER_SECRETS.includes(secret)
-                ? [names.member('fn-events'), names.member('job-raster')].flatMap((member) =>
-                      grants(member, ['roles/secretmanager.secretAccessor']),
-                  )
-                : []),
-        ],
+        bindings: [...grants(names.member('fn-admin'), FN_ADMIN_SECRET_ROLES), ...secretReaders(project, secret)],
     }));
 }
 

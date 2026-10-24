@@ -104,15 +104,22 @@ function headersOf(headers: ForwardedRequest['headers']): Headers {
     return result;
 }
 
+/**
+ * The headers the server writes itself are left out (the type is `type`; the length is the body's), but a body-less
+ * answer keeps its declared length: a HEAD answer's is the file's size, which a client such as GDAL's `/vsicurl/` reads.
+ */
+function keptHeader(name: string, body: Uint8Array): boolean {
+    return name !== 'content-type' && (name !== 'content-length' || body.length === 0);
+}
+
 async function forwardedResponse(response: Response): Promise<ForwardedResponse> {
-    const headers = Object.fromEntries(
-        [...response.headers.entries()].filter(([name]) => name !== 'content-type' && name !== 'content-length'),
-    );
+    const body = new Uint8Array(await response.arrayBuffer());
+    const headers = Object.fromEntries([...response.headers.entries()].filter(([name]) => keptHeader(name, body)));
     const type = response.headers.get('content-type');
     return {
         status: response.status,
         ...(type === null ? {} : { type }),
-        body: new Uint8Array(await response.arrayBuffer()),
+        body,
         headers,
     };
 }

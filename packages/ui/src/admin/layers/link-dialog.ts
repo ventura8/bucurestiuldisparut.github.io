@@ -79,6 +79,37 @@ function notes(locale: Locale, link: LinkStatePort): TemplateResult {
     return html`${refusalNote(locale, link)} ${originsNote(locale, link)}`;
 }
 
+/** Check's answer: checking, the tile's type, or why no tile came (S-A15-HAPPY-PROBED, S-A15-BAD-INVALID-URL). */
+function probeNote(locale: Locale, probe: LinkStatePort['probe']): TemplateResult {
+    if (probe.status === 'checking') {
+        return html`<p class="note" role="status">${contentText(locale, 'adminContent.layers.checking')}</p>`;
+    }
+    if (probe.status === 'ok') {
+        return html`<p class="note" role="status" data-probe="ok">
+            ${contentText(locale, 'adminContent.layers.tilesAnswer', { type: probe.contentType })}
+        </p>`;
+    }
+    return probe.status === 'failed'
+        ? html`<p class="alert" role="alert" data-probe="failed">
+              <span>${translateApiError(locale, probe.refusal.code, probe.refusal.params)}</span>
+          </p>`
+        : html``;
+}
+
+/** Check, under the address: one tile asked by the server before the layer is linked. */
+function checkRow(locale: Locale, link: LinkStatePort, intents: LayersIntentsPort | null): TemplateResult {
+    return html`<div class="actions">
+            <hcm-button
+                variant="tonal"
+                icon="travel_explore"
+                ?disabled=${link.probe.status === 'checking'}
+                @click=${() => void intents?.checkLink()}
+                >${contentText(locale, 'adminContent.layers.check')}</hcm-button
+            >
+        </div>
+        ${probeNote(locale, link.probe)}`;
+}
+
 /**
  * The dialog while it is open (nothing otherwise: the page shows the Link button). The refusal and the origins to allow
  * come first, under the intro: on a phone the form scrolls, and a reason below the fields would be out of sight.
@@ -106,6 +137,7 @@ export function linkDialog(
         origins: [],
         tried: false,
         sending: false,
+        probe: { status: 'idle' as const },
     };
     return html`<hcm-dialog
         .open=${link !== null}
@@ -117,6 +149,7 @@ export function linkDialog(
             <p>${contentText(locale, 'adminContent.layers.linkIntro')}</p>
             ${notes(locale, current)}
             ${textField(locale, current, intents, { name: 'address', path: 'address', key: 'adminContent.layers.address', help: contentText(locale, 'adminContent.layers.addressHelp'), required: true })}
+            ${link === null ? nothing : checkRow(locale, link, intents)}
             ${textField(locale, current, intents, { name: 'labelRo', path: 'label.ro', key: 'adminContent.layers.labelRo', required: true })}
             ${textField(locale, current, intents, { name: 'labelEn', path: 'label.en', key: 'adminContent.layers.labelEn' })}
             ${textField(locale, current, intents, { name: 'year', path: 'year', key: 'adminContent.layers.year', required: true })}
@@ -126,7 +159,7 @@ export function linkDialog(
         <hcm-button slot="actions" variant="text" @click=${() => intents?.closeLink()}
             >${contentText(locale, 'adminContent.common.cancel')}</hcm-button
         >
-        <hcm-button slot="actions" variant="filled" @click=${() => void send()}
+        <hcm-button slot="actions" variant="filled" ?disabled=${current.probe.status === 'failed'} @click=${() => void send()}
             >${contentText(locale, current.sending ? 'adminContent.layers.linking' : 'adminContent.layers.linkAction')}</hcm-button
         >
     </hcm-dialog>`;

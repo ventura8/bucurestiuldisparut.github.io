@@ -12,8 +12,10 @@
 import type { AreaPort } from './area-port.js';
 import type { AdminsIntentsPort, AdminsViewState } from './admins/admins-port.js';
 import type { CrashesIntentsPort, CrashesViewState } from './crashes/crashes-port.js';
+import type { GeorefIntentsPort, GeorefViewState } from './georef/georef-port.js';
 import type { HistoryIntentsPort, HistoryViewState } from './history/history-port.js';
 import type { HomeIntentsPort, HomeViewState } from './home/home-port.js';
+import type { ImageryIntentsPort, ImageryViewState } from './imagery/imagery-port.js';
 import type { JobsIntentsPort, JobsViewState } from './jobs/jobs-port.js';
 import type { LayersIntentsPort, LayersViewState } from './layers/layers-port.js';
 import type { PhotosIntentsPort, PhotosViewState } from './photos/photos-port.js';
@@ -42,4 +44,8 @@ export interface ContentPort {
     readonly crashes: AreaPort<CrashesViewState, CrashesIntentsPort> | null;
     readonly home: AreaPort<HomeViewState, HomeIntentsPort> | null;
     // [end ops]
+    // [section imagery] owner: admin-imagery (docs/research/M3-interfaces.md §10)
+    readonly imagery: AreaPort<ImageryViewState, ImageryIntentsPort> | null;
+    readonly georef: AreaPort<GeorefViewState, GeorefIntentsPort> | null;
+    // [end imagery]
 }

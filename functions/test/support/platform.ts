@@ -1,6 +1,6 @@
 import type { AuthAdmin } from '../../src/ports/auth-admin.js';
 import type { BlobStore } from '../../src/ports/blob-store.js';
-import type { CloudRunJobs } from '../../src/ports/cloud-run-jobs.js';
+import type { CloudRunJobs, ExecutionStatus, JobRunOptions } from '../../src/ports/cloud-run-jobs.js';
 import { UpstreamError } from '../../src/ports/errors.js';
 import type { SecretName, SecretStore } from '../../src/ports/secret-store.js';
 import type { TaskQueue } from '../../src/ports/task-queue.js';
@@ -210,17 +210,26 @@ export function createFakeSecretStore(initial: Partial<Readonly<Record<SecretNam
     return { secrets, versions, recorder };
 }
 
-/** `CloudRunJobs` (M3) that records the executions it starts and the ones it cancels. */
+/**
+ * `CloudRunJobs` (M3) that records the executions it starts (their options when given) and the ones it cancels; `get`
+ * answers an execution's scripted status (`statuses`), `running` until a test sets another.
+ */
 export function createFakeCloudRunJobs() {
-    const runs: { readonly job: string; readonly env: Readonly<Record<string, string>>; readonly name: string }[] = [];
+    const runs: {
+        readonly job: string;
+        readonly env: Readonly<Record<string, string>>;
+        readonly name: string;
+        readonly options?: JobRunOptions;
+    }[] = [];
     const cancelled: string[] = [];
-    const recorder = new PortRecorder<'run' | 'cancel'>();
+    const statuses = new Map<string, ExecutionStatus>();
+    const recorder = new PortRecorder<'run' | 'cancel' | 'get'>();
     const jobs: CloudRunJobs = {
-        run: (job, env) =>
+        run: (job, env, options) =>
             promised(() => {
-                recorder.enter('run', [job, env]);
+                recorder.enter('run', [job, env, options]);
                 const name = `projects/demo-hcm/locations/us-central1/jobs/${job}/executions/${job}-e2e${String(runs.length + 1).padStart(2, '0')}`;
-                runs.push({ job, env, name });
+                runs.push(options === undefined ? { job, env, name } : { job, env, name, options });
                 return { name };
             }),
         cancel: (execution) =>
@@ -228,6 +237,11 @@ export function createFakeCloudRunJobs() {
                 recorder.enter('cancel', [execution]);
                 cancelled.push(execution);
             }),
+        get: (execution) =>
+            promised(() => {
+                recorder.enter('get', [execution]);
+                return statuses.get(execution) ?? { state: 'running' };
+            }),
     };
-    return { jobs, runs, cancelled, recorder };
+    return { jobs, runs, cancelled, statuses, recorder };
 }

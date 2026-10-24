@@ -23,4 +23,11 @@ describe('the areas services', () => {
         expect(result).toEqual({ ok: false, reason: 'no-token' });
         expect(services.uploads).toBeDefined();
     });
+
+    it('happyPath_theLayerEditorsCropLoadsItsChunkAndRegistersItsElement', async () => {
+        const services = areaServices({ handles: { firestore: {}, storage: {} } as never, fetch });
+
+        await expect(services.layerCrop?.()).resolves.toBeTypeOf('function');
+        expect(globalThis.customElements.get('hcm-layer-crop')).toBeDefined();
+    });
 });

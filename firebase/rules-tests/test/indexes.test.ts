@@ -12,6 +12,7 @@ import {
     jobDocSchema,
     jobLogDocSchema,
     layerDocSchema,
+    layerVersionDocSchema,
     manifestStateDocSchema,
     photoDocSchema,
     poiCategoryDocSchema,
@@ -54,6 +55,7 @@ const SCHEMAS: Readonly<Record<string, { readonly shape: object }>> = {
     poiCategories: poiCategoryDocSchema,
     jobs: jobDocSchema,
     logs: jobLogDocSchema,
+    layerVersions: layerVersionDocSchema,
     usgsScenes: usgsSceneDocSchema,
     history: historyEntryDocSchema,
     manifests: manifestStateDocSchema,
@@ -96,6 +98,13 @@ describe('composite indexes', () => {
         'jobs: status ASCENDING, createdAt DESCENDING',
         'jobs: status ASCENDING, createdAt ASCENDING',
         'history: action ASCENDING, updatedAt DESCENDING',
+        // M3 (docs/research/M3-interfaces.md §2.8): the tick's due jobs, a layer's jobs and versions, the Imagery area's lists.
+        'jobs: status ASCENDING, retryAt ASCENDING',
+        'jobs: layerId ASCENDING, createdAt DESCENDING',
+        'layerVersions: layerId ASCENDING, createdAt DESCENDING',
+        'layerVersions: state ASCENDING, updatedAt DESCENDING',
+        'usgsScenes: downloadAvailable ASCENDING, rank.score DESCENDING',
+        'usgsScenes: status ASCENDING, rank.score DESCENDING',
     ])('happyPath_theAdminQueryHasItsIndex_%s', (wanted) => {
         expect(config.indexes.filter((index) => index.queryScope === 'COLLECTION').map(signature)).toContain(wanted);
     });

@@ -40,6 +40,14 @@ export const CONTENT_INPUT_BUDGETS = {
     revertChange: { inputs: 3, how: 'the version, Revert, confirm' },
     cancelJob: { inputs: 3, how: "the job's row, Cancel job, confirm" },
     // [end ops]
+    // [section imagery] owner: admin-imagery (docs/research/M3-interfaces.md §1)
+    importScene: { inputs: 1, how: 'Import on a free scene (the search ran when the page opened; Search adds one)' },
+    approveVersion: { inputs: 1, how: 'Approve on the approval card' },
+    uploadGeotiff: { inputs: 3, how: 'Upload, choose the georeferenced file, Approve' },
+    chooseStudio: { inputs: 3, how: 'Free: Studio, Download, I uploaded it (plus the upload in Mapbox Studio)' },
+    georeferencePair: { inputs: 2, how: 'a click on the scan, a click on the same place on the map (per pair)' },
+    cropLayer: { inputs: 2, how: 'Crop, n clicks (the last on the first corner), Save the crop', per: 'vertex' },
+    // [end imagery]
 } as const satisfies Readonly<Record<string, ContentFlowBudget>>;
 
 export type ContentFlow = keyof typeof CONTENT_INPUT_BUDGETS;

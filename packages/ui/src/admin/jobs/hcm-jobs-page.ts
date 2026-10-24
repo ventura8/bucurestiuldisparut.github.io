@@ -2,7 +2,10 @@
  * `<hcm-jobs-page>`: `#/jobs` and `#/jobs/<jobId>` (`docs/research/M2c-interfaces.md` §9.3; behaviour A18). The list of
  * the city's jobs, live, newest first, filtered by status chips; the open job's status, progress, steps, error and log
  * lines (text only), with **Cancel** while it runs (asked first). A job waiting for its date says when it may run. The
- * list and the job say "Reconnecting…" while their listener lost the server, and keep what they showed.
+ * list and the job say "Reconnecting…" while their listener lost the server, and keep what they showed. From M3
+ * (CR-M3-5, `raster-parts.ts`): why a raster job waits, Run it again on a failed one, the georeferencer on one awaiting
+ * its points; while the budget guard pauses the raster work, the list pane says so with the spend and offers Resume
+ * processing, asked first (CR-M3-47, `../imagery/guard-banner.ts`).
  */
 import type { Locale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
@@ -12,10 +15,12 @@ import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
 import { editingStyles } from '../editing/editing-styles.js';
 import { current, errorTemplate, formatWhen, listBody, loadingTemplate, reconnectingStatus, whoText } from '../editing/states.js';
+import { guardBanner } from '../imagery/guard-banner.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import { FILTERS, jobStatusText, jobTypeText, levelText, percentOf, statusTone, stepNameText, stepStateText } from './job-text.js';
 import type { JobFilterPort, JobItemPort, JobLogLinePort, JobsIntentsPort, JobsViewState } from './jobs-port.js';
+import { rasterActions, waitLine } from './raster-parts.js';
 
 export const HCM_JOBS_PAGE_TAG = 'hcm-jobs-page';
 
@@ -27,17 +32,20 @@ function isReconnecting(detail: JobsViewState['detail']): boolean {
 }
 
 export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
-    static override readonly properties = { ...AreaPage.properties, confirming: { state: true } };
+    static override readonly properties = { ...AreaPage.properties, confirming: { state: true }, resumeAsked: { state: true } };
 
     static override readonly styles = editingStyles;
 
     protected readonly route: AdminRouteIdPort = 'jobs';
     /** The Cancel question is open. */
     declare confirming: boolean;
+    /** The Resume processing question is open. */
+    declare resumeAsked: boolean;
 
     constructor() {
         super();
         this.confirming = false;
+        this.resumeAsked = false;
     }
 
     protected storeOf(content: ContentPort): AreaPort<JobsViewState, JobsIntentsPort> | null {
@@ -54,17 +62,38 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
             this.go([]);
         };
         return html`<hcm-list-detail
-            ?detail=${view.detail !== null}
-            .detailKey=${view.detail?.id ?? ''}
-            .listLabel=${contentText(locale, 'adminContent.jobs.listLabel')}
-            .detailLabel=${contentText(locale, 'adminContent.jobs.detailLabel')}
-            .backLabel=${contentText(locale, 'adminContent.common.back')}
+                ?detail=${view.detail !== null}
+                .detailKey=${view.detail?.id ?? ''}
+                .listLabel=${contentText(locale, 'adminContent.jobs.listLabel')}
+                .detailLabel=${contentText(locale, 'adminContent.jobs.detailLabel')}
+                .backLabel=${contentText(locale, 'adminContent.common.back')}
+                .closeLabel=${contentText(locale, 'adminContent.common.close')}
+                @hcm-back=${back}
+            >
+                <div slot="list">${this.#list(locale, view)}</div>
+                <div slot="detail">${this.#detail(locale, view)}</div>
+            </hcm-list-detail>
+            ${this.#resumeQuestion(locale)}`;
+    }
+
+    /** Resume processing, asked first (it lets the raster work spend again this month). */
+    #resumeQuestion(locale: Locale): TemplateResult {
+        const close = (): void => {
+            this.resumeAsked = false;
+        };
+        return html`<hcm-confirm-dialog
+            .open=${this.resumeAsked}
+            .headline=${contentText(locale, 'adminContent.imagery.confirm.resume')}
+            .body=${contentText(locale, 'adminContent.imagery.confirm.resumeBody')}
+            .confirmLabel=${contentText(locale, 'adminContent.imagery.guard.resume')}
+            .cancelLabel=${contentText(locale, 'adminContent.common.cancel')}
             .closeLabel=${contentText(locale, 'adminContent.common.close')}
-            @hcm-back=${back}
-        >
-            <div slot="list">${this.#list(locale, view)}</div>
-            <div slot="detail">${this.#detail(locale, view)}</div>
-        </hcm-list-detail>`;
+            @hcm-confirm=${() => {
+                close();
+                void this.intents?.resumeGuard();
+            }}
+            @hcm-cancel=${close}
+        ></hcm-confirm-dialog>`;
     }
 
     #list(locale: Locale, view: JobsViewState): TemplateResult {
@@ -75,6 +104,12 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
                 </div>
                 ${reconnectingStatus(locale, view.list.reconnecting)}
             </div>
+            ${guardBanner(locale, view.guard, {
+                off: view.resuming || this.readOnly,
+                resume: () => {
+                    this.resumeAsked = true;
+                },
+            })}
             ${listBody(
                 locale,
                 view.list,
@@ -152,11 +187,18 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
             <h2 tabindex="-1" data-detail-heading>${jobTypeText(locale, job.type)}</h2>
             <div class="chips"><span class="tag" data-tone=${statusTone(job)}>${jobStatusText(locale, job.status)}</span></div>
             <p class="note">${started}</p>
-            ${this.#waiting(locale, job)} ${this.#progress(locale, job)} ${this.#error(locale, job)} ${this.#steps(locale, job)}
-            ${reconnectingStatus(locale, isReconnecting(view.detail))}
+            ${this.#waiting(locale, job)} ${waitLine(locale, job)} ${this.#progress(locale, job)} ${this.#error(locale, job)}
+            ${this.#raster(locale, view, job)} ${this.#steps(locale, job)} ${reconnectingStatus(locale, isReconnecting(view.detail))}
             <h3>${contentText(locale, 'adminContent.jobs.log')}</h3>
             ${this.#logs(locale, logs.items)} ${this.#cancel(locale, view, job)}
         </div>`;
+    }
+
+    #raster(locale: Locale, view: JobsViewState, job: JobItemPort): TemplateResult {
+        const retry = (): void => {
+            void this.intents?.retryJob();
+        };
+        return rasterActions(locale, job, { retrying: view.retrying, readOnly: this.readOnly, retry });
     }
 
     #self(): string | null {

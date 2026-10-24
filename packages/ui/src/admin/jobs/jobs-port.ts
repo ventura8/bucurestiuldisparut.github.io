@@ -2,12 +2,24 @@
  * The jobs area as its page reads it (`docs/research/M2c-interfaces.md` §9.3), mirroring `packages/admin/src/jobs/jobs.ts`
  * (checked at compile time by `packages/admin/test/app/admin-port.test.ts`).
  */
+import type { JobWaitReason } from '@hcm/shared';
+
 import type { DocStatePort, ListStatePort } from '../area-port.js';
+import type { GuardPort } from '../imagery/guard-port.js';
 
 export type JobFilterPort = 'all' | 'active' | 'failed' | 'done';
 
 export type JobStatusPort =
-    'queued' | 'starting' | 'running' | 'waiting_usgs' | 'mts_processing' | 'awaiting_approval' | 'succeeded' | 'failed' | 'cancelled';
+    | 'queued'
+    | 'starting'
+    | 'running'
+    | 'waiting_usgs'
+    | 'mts_processing'
+    | 'awaiting_approval'
+    | 'awaiting_gcps'
+    | 'succeeded'
+    | 'failed'
+    | 'cancelled';
 
 export interface JobItemPort {
     readonly id: string;
@@ -22,6 +34,11 @@ export interface JobItemPort {
     readonly dispatchAt: string | null;
     readonly cancelRequested: boolean;
     readonly error: { readonly code: string; readonly message: string } | null;
+    // M3 (CR-M3-5): why it waits and until when, its layer version, and whether Retry is offered.
+    readonly waitReason: JobWaitReason | null;
+    readonly retryAt: string | null;
+    readonly versionId: string | null;
+    readonly retryable: boolean;
 }
 
 export interface JobLogLinePort {
@@ -37,6 +54,10 @@ export interface JobsViewState {
     readonly list: ListStatePort<JobItemPort>;
     readonly detail: { readonly id: string; readonly job: DocStatePort<JobItemPort>; readonly logs: ListStatePort<JobLogLinePort> } | null;
     readonly cancelling: boolean;
+    readonly retrying: boolean;
+    /** The budget guard (null while reading; CR-M3-47). */
+    readonly guard: GuardPort | null;
+    readonly resuming: boolean;
 }
 
 export interface JobsIntentsPort {
@@ -44,4 +65,6 @@ export interface JobsIntentsPort {
     more(): void;
     retry(): void;
     cancel(): Promise<unknown>;
+    retryJob(): Promise<unknown>;
+    resumeGuard(): Promise<unknown>;
 }

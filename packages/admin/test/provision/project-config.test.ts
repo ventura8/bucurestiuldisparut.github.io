@@ -65,6 +65,30 @@ describe('the role table', () => {
         expect(REQUIRED_APIS).toHaveLength(27);
     });
 
+    it('happyPath_theRasterJobReadsTheUsgsSecretsOnlyAndTheEventFunctionsRunItsExecutions', () => {
+        // docs/research/M3-interfaces.md §9.4 (CR-M3-6): publishing stays in the functions, so no Mapbox secret for the job.
+        const table = roleTable(PROJECT, agents, false);
+        const raster = 'serviceAccount:job-raster@demo-hcm.iam.gserviceaccount.com';
+        const events = 'serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com';
+        const readers = (secret: string): string[] =>
+            (table.find((policy) => policy.resource === secret)?.bindings ?? [])
+                .filter((binding) => binding.role === 'roles/secretmanager.secretAccessor')
+                .map((binding) => binding.member);
+        const projectRoles = (member: string): string[] =>
+            (table.find((policy) => policy.kind === 'project')?.bindings ?? [])
+                .filter((binding) => binding.member === member)
+                .map((binding) => binding.role);
+
+        expect(readers('mapbox-sk-tiles')).not.toContain(raster);
+        expect(readers('mapbox-sk-tiles')).toContain(events);
+        expect(
+            [readers('usgs-username'), readers('usgs-app-token')].every((members) => members.includes(raster) && members.includes(events)),
+        ).toBe(true);
+        expect(projectRoles(events)).toEqual(expect.arrayContaining(['roles/run.jobsExecutorWithOverrides', 'roles/run.viewer']));
+        expect(projectRoles(raster)).toEqual(['roles/datastore.user']);
+        expect(REQUIRED_APIS).toEqual(expect.arrayContaining(['run.googleapis.com', 'artifactregistry.googleapis.com']));
+    });
+
     it('badPath_theCrashEndpointsAccountHoldsNoRoleOnlyTheDeployerMayActAsIt', () => {
         const crash = 'serviceAccount:fn-crash@demo-hcm.iam.gserviceaccount.com';
         const table = roleTable(PROJECT, agents, false);

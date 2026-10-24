@@ -30,7 +30,7 @@ describe('the function registry', () => {
         expect(open).toEqual(['admin.session', 'admin.claim', 'admin.join']);
     });
 
-    it('badPath_everySecretPasteAndLayerDeleteConsumesItsAppCheckToken', () => {
+    it('badPath_everySecretPasteLayerDeletePaidOverageAndGuardResumeConsumesItsAppCheckToken', () => {
         const consuming = Object.entries(CALLABLES)
             .filter(([, spec]) => spec.appCheck === 'consume')
             .map(([name]) => name);
@@ -42,6 +42,8 @@ describe('the function registry', () => {
             'setup.saveUsgs',
             'setup.rotatePublicToken',
             'layers.delete',
+            'imagery.choose',
+            'imagery.resumeGuard',
         ]);
     });
 

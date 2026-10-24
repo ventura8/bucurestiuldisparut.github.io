@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { apiErrorCodeSchema } from '../api/errors.js';
 import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import { geometryDocSchema } from './geometry.js';
+import { cityImagerySchema } from './imagery-settings.js';
 import {
     analyticsSchema,
     basemapSchema,
@@ -55,7 +56,10 @@ export const FIRESTORE_LICENSES = [...LICENSES, 'unknown'] as const;
 export const PROCESSING_STATES = ['pending', 'done', 'failed'] as const;
 export const LAYER_STATUSES = ['draft', 'processing', 'awaiting_approval', 'ready', 'failed'] as const;
 export const USGS_DATASETS = ['corona2', 'declassii', 'declassiii'] as const;
-export const GEOREF_METHODS = ['corners', 'gcps', 'auto'] as const;
+/** How a layer was georeferenced: the scene's corners, the admin's points, the automatic matcher, or an upload's own (M3). */
+export const GEOREF_METHODS = ['corners', 'gcps', 'auto', 'embedded'] as const;
+/** How a layer's tiles reached Mapbox (M3): our MTS publish, the admin's free Studio upload, or `layers.link`. */
+export const LAYER_TILESET_ORIGINS = ['mts', 'studio', 'linked'] as const;
 /** The audited, admin-editable documents (PLAN Addendum 3): each keeps a `history` subcollection. */
 export const HISTORY_ENTITIES = ['city', 'layer', 'photo', 'poi', 'poiCategory'] as const;
 export const HISTORY_ACTIONS = ['create', 'update', 'delete', 'revert'] as const;
@@ -98,6 +102,8 @@ export const cityDocSchema = z.strictObject({
     engine: z.strictObject({ minVersion: versionSchema.optional() }).optional(),
     /** Defaults of the photos overlay (PLAN Addendum 3), copied into the manifest. */
     photosOverlay: photosOverlaySchema.optional(),
+    /** M3: auto-publish, its RMSE threshold, the target years (`imagery-settings.ts`). */
+    imagery: cityImagerySchema.optional(),
     published: z.boolean(),
     createdAt: timestampSchema.optional(),
     ...stamp,
@@ -183,8 +189,9 @@ export const photoDocSchema = z
     .refine(validYearRange, coded('validation.yearRange', ['yearEnd']));
 
 /**
- * `cities/{city}/layers/{layer}`: created by the pipeline (stamped `system:pipeline`); admins edit the presentation
- * fields, the default opacity and the image adjustments.
+ * `cities/{city}/layers/{layer}`: a layer that has tiles. Created by `layers.link` or, in M3, by the publish of its first
+ * layer version (`layerVersions`, stamped `system:imagery`); admins edit the presentation fields, the default opacity and
+ * the image adjustments.
  */
 export const layerDocSchema = z.strictObject({
     year: yearSchema,
@@ -217,7 +224,19 @@ export const layerDocSchema = z.strictObject({
                 .optional(),
         })
         .optional(),
-    mapbox: z.strictObject({ tilesetId: z.string().max(100), publishedSourceSha: sha256Schema.optional() }).optional(),
+    mapbox: z
+        .strictObject({
+            tilesetId: z.string().max(100),
+            publishedSourceSha: sha256Schema.optional(),
+            /** M3: the MTS tileset source (`<user>/<id>`'s id), deleted with the tileset. */
+            sourceId: z.string().max(100).optional(),
+            origin: z.enum(LAYER_TILESET_ORIGINS).optional(),
+        })
+        .optional(),
+    /** M3: the layer version whose tiles the layer shows (its scan and points are the georeferencer's start). */
+    currentVersion: idSchema.optional(),
+    /** M3: a newer version under way or waiting for approval; the layer keeps its tiles until that one is published. */
+    pendingVersion: idSchema.optional(),
     createdAt: timestampSchema.optional(),
     ...stamp,
 });
@@ -296,3 +315,4 @@ export type HistoryEntity = (typeof HISTORY_ENTITIES)[number];
 export type HistoryAction = (typeof HISTORY_ACTIONS)[number];
 export type FirestoreLicense = (typeof FIRESTORE_LICENSES)[number];
 export type PhotoContentType = (typeof PHOTO_CONTENT_TYPES)[number];
+export type GeorefMethod = (typeof GEOREF_METHODS)[number];

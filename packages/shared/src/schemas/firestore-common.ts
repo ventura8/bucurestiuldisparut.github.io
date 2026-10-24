@@ -49,7 +49,18 @@ export const uidSchema = z.string().min(1).max(128);
 export const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 
 /** The server writers that stamp documents: functions families, the raster pipeline, the bootstrap script. */
-export const SYSTEM_WRITERS = ['admins', 'bootstrap', 'history', 'ops', 'photos', 'pipeline', 'publish', 'setup', 'telemetry'] as const;
+export const SYSTEM_WRITERS = [
+    'admins',
+    'bootstrap',
+    'history',
+    'imagery',
+    'ops',
+    'photos',
+    'pipeline',
+    'publish',
+    'setup',
+    'telemetry',
+] as const;
 
 export type SystemWriter = (typeof SYSTEM_WRITERS)[number];
 

@@ -77,7 +77,7 @@ function snapshot(extra: Partial<LayoutSnapshot>): LayoutSnapshot {
         chrome: [],
         texts: [],
         sideways: [],
-        legal: { map: false, logos: [], attributions: [] },
+        legal: { map: false, owes: { logo: false, attribution: false }, logos: [], attributions: [] },
         modals: [],
         ...extra,
     };
@@ -407,15 +407,40 @@ describe('legalViolations', () => {
         node(2, box(0, 700, 360, 100), { name: 'sheet' }),
     ];
 
+    const OWES_BOTH = { logo: true, attribution: true };
+
     test('happyPath_oneOfEachUncovered_orNoMap', () => {
-        const legal = { map: true, logos: [{ node: 0, samples: [HIT_OK] }], attributions: [{ node: 1, samples: [HIT_OK] }] };
+        const legal = {
+            map: true,
+            owes: OWES_BOTH,
+            logos: [{ node: 0, samples: [HIT_OK] }],
+            attributions: [{ node: 1, samples: [HIT_OK] }],
+        };
         expect(legalViolations(snapshot({ nodes, legal }))).toEqual([]);
         expect(legalViolations(snapshot({ nodes, legal: { ...legal, map: false, logos: [] } }))).toEqual([]);
+    });
+
+    test('happyPath_aStripThatReachesTheAttributionOnlyOwesNoLogo_badPath_twoLogosStillTooMany', () => {
+        // The map's last few pixels show the attribution on its foot, not the logo 10 px above it (lesson 163).
+        const legal = { map: true, owes: { logo: false, attribution: true }, logos: [], attributions: [{ node: 1, samples: [HIT_OK] }] };
+        const twice = {
+            ...legal,
+            logos: [
+                { node: 0, samples: [HIT_OK] },
+                { node: 0, samples: [HIT_OK] },
+            ],
+        };
+
+        expect(legalViolations(snapshot({ nodes, legal }))).toEqual([]);
+        expect(legalViolations(snapshot({ nodes, legal: twice })).map((violation) => violation.message)).toEqual([
+            '2 visible Mapbox logos instead of exactly one (Mapbox terms)',
+        ]);
     });
 
     test('badPath_aMissingLogoAndACoveredAttribution', () => {
         const legal = {
             map: true,
+            owes: OWES_BOTH,
             logos: [],
             attributions: [{ node: 1, samples: [{ x: 310, y: 780, hit: 2, ok: false, pinned: false }] }],
         };

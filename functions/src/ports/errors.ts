@@ -14,7 +14,11 @@ export type UpstreamService =
     | 'firestore'
     | 'firebase-auth'
     /** The image processor (sharp): bytes it cannot read (CR-M2-23). */
-    | 'image';
+    | 'image'
+    /** M3: Cloud Run Admin (the pipeline's executions). */
+    | 'cloud-run'
+    /** M3: an outside address from data (`RemoteFiles`: a browse image, a probed tile). */
+    | 'remote';
 
 /**
  * How an outside call failed, as far as a handler needs to know (docs/research/M2-interfaces.md §4.1):

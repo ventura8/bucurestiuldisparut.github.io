@@ -76,6 +76,21 @@ describe('layers.delete', () => {
         expect(deps.documents.paths(FIRESTORE_PATHS.jobs(CITY))).toEqual([FIRESTORE_PATHS.job(CITY, 'j1')]);
     });
 
+    it.each([
+        ['an import of a new version (CR-M3-24)', { status: 'running' as const }, {}],
+        ['a re-georeference waiting for points', { status: 'awaiting_gcps' as const }, {}],
+        ['a new version waiting for approval', { status: 'succeeded' as const }, { pendingVersion: 'v2' }],
+    ])('badPath_aLayerAnM3JobIsWorkingOnStays_%s', async (_case, state, layer) => {
+        const deps = contentDeps(NOW);
+        await seedLayer(deps, 'corona-1968', layer);
+        await seedJob(deps, 'j2', { type: 'regeoref', params: { basedOn: 'v1' }, layerId: 'corona-1968', ...state });
+
+        const failure = await failureOf(remove(deps, { cityId: CITY, layerId: 'corona-1968' }));
+
+        expect(failure).toMatchObject({ code: 'failed-precondition', details: { code: 'apiError.layers.busy' } });
+        expect(deps.documents.peek(FIRESTORE_PATHS.layer(CITY, 'corona-1968'))).toBeDefined();
+    });
+
     it('badPath_aNonAdminOrABadIdIsRefusedBeforeAnyRead', async () => {
         const deps = contentDeps(NOW);
         await seedLayer(deps, 'corona-1968');

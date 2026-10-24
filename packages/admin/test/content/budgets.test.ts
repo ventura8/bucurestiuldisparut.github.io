@@ -13,4 +13,15 @@ describe("the editors' input budgets", () => {
             [9, 4, 3],
         );
     });
+
+    it('happyPath_theImageryFlowsOfTheM3Contract', () => {
+        expect([
+            contentFlowBudget('importScene'),
+            contentFlowBudget('approveVersion'),
+            contentFlowBudget('uploadGeotiff'),
+            contentFlowBudget('chooseStudio'),
+            contentFlowBudget('georeferencePair'),
+        ]).toEqual([1, 1, 3, 3, 2]);
+        expect(contentFlowBudget('cropLayer', 4)).toBe(6);
+    });
 });

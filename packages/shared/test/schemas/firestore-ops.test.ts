@@ -42,6 +42,7 @@ const docs = {
     scene: {
         entityId: 'DS1035-1057DA023',
         dataset: 'corona2',
+        sensor: 'KH-4A',
         acquisitionDate: '1966-07-12',
         status: 'candidate',
         downloadAvailable: true,
@@ -50,6 +51,11 @@ const docs = {
             { lat: 44.5, lng: 26 },
             { lat: 44.5, lng: 26.5 },
         ],
+        resolutionM: 2.75,
+        coverage: 0.8,
+        browse: { state: 'none', sourceUrl: 'https://ims.cr.usgs.gov/browse/declass1/DS1035-1057DA023.jpg' },
+        rank: { score: 81, reasons: [{ code: 'free' }, { code: 'targetYear', params: { year: '1966' } }], version: 1 },
+        harvestedAt: now,
         ...stamp,
     },
     setup: {
@@ -230,5 +236,46 @@ describe('Firestore operational documents: bad paths', () => {
         const result = check(schema, doc);
 
         expect(result.ok ? [] : result.issues).toContainEqual({ path, code });
+    });
+});
+
+describe('Firestore operational documents: the M3 fields', () => {
+    it.each([
+        [
+            'a browse address outside USGS',
+            usgsSceneDocSchema,
+            { ...docs.scene, browse: { state: 'none', sourceUrl: 'https://example.org/browse/a.jpg' } },
+            'browse.sourceUrl',
+            'validation.format',
+        ],
+        [
+            'a browse address that climbs out of its folder',
+            usgsSceneDocSchema,
+            { ...docs.scene, browse: { state: 'none', sourceUrl: 'https://ims.cr.usgs.gov/browse/../secret.jpg' } },
+            'browse.sourceUrl',
+            'validation.format',
+        ],
+        [
+            'a score over 100',
+            usgsSceneDocSchema,
+            { ...docs.scene, rank: { ...docs.scene.rank, score: 101 } },
+            'rank.score',
+            'validation.tooBig',
+        ],
+        ['a wait reason nobody knows', jobDocSchema, { ...docs.job, waitReason: 'coffee' }, 'waitReason', 'validation.value'],
+        [
+            'a reservation map past 50 publishes',
+            usageDocSchema,
+            {
+                ...docs.usage,
+                reservations: Object.fromEntries(
+                    Array.from({ length: 51 }, (_, index) => [`v${String(index)}`, { computeUnits: 1, at: now }]),
+                ),
+            },
+            'reservations',
+            'validation.tooBig',
+        ],
+    ] as const)('badPath_%s', (_name, schema, doc, path, code) => {
+        expect(check(schema, doc)).toEqual({ ok: false, issues: [{ path, code }] });
     });
 });

@@ -1,3 +1,5 @@
+import { PRIVATE_BUCKET_LIFECYCLE } from '@hcm/shared';
+
 import { ensureBindings, type WantedBinding } from '../google/iam-policy.js';
 import type { Bucket } from '../google/storage.js';
 import { isGoogleFailure } from '../google/failure.js';
@@ -26,12 +28,15 @@ function corsRule(origins: readonly string[]): JsonObject[] {
     return [{ origin: origins, method: ['GET', 'HEAD'], responseHeader: CORS_HEADERS, maxAgeSeconds: 3600 }];
 }
 
-/** The private bucket's lifecycle: `tmp/` after a day, `uploads/` after a week (M3 adds `usgs-raw/`). */
+/**
+ * The private bucket's lifecycle, `PRIVATE_BUCKET_LIFECYCLE` of `@hcm/shared` (CR-M3-6): `tmp/` after a day, `uploads/`
+ * after a week, the raster pipeline's `work/` after two, `usgs-raw/` after a month and the cached `reference/` after 90 days.
+ */
 const LIFECYCLE: JsonObject = {
-    rule: [
-        { action: { type: 'Delete' }, condition: { age: 1, matchesPrefix: ['tmp/'] } },
-        { action: { type: 'Delete' }, condition: { age: 7, matchesPrefix: ['uploads/'] } },
-    ],
+    rule: PRIVATE_BUCKET_LIFECYCLE.map(({ prefix, days }) => ({
+        action: { type: 'Delete' },
+        condition: { age: days, matchesPrefix: [prefix] },
+    })),
 };
 
 /** The CORS rules of a bucket: the public one for every origin, the private one for the admin only. */

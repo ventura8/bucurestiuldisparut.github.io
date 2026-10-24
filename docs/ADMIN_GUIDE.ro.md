@@ -2,7 +2,7 @@
 
 Ghid pentru administratorul unui oraș din **Historic City Map** (primul oraș: **București dispărut**). Acesta este scheletul ghidului: secțiunile se completează odată cu funcțiile, în etapele M2–M5. Versiunea în engleză: [ADMIN_GUIDE.en.md](ADMIN_GUIDE.en.md); cele două versiuni se actualizează împreună.
 
-> Stare (M2c): conectarea, Asistentul de configurare și editoarele de zi cu zi de mai jos (Acasă, fotografii, locuri, straturi, setări, istoric, procesări, administratori și erori) funcționează cap-coadă cu emulatoarele Firebase și serviciile Google, Mapbox și USGS simulate din teste, iar ce salvează un editor ajunge în harta publică prin manifestul construit de server. Previzualizările pe hartă ale editoarelor au nevoie de un token Mapbox (testele cap-coadă le rulează fără); imaginile din satelit și georeferențierea urmează în M3. Primul proiect real se configurează cu Claude, cu acordul tău la fiecare pas.
+> Stare (M3): conectarea, Asistentul de configurare, editoarele de zi cu zi de mai jos (Acasă, fotografii, locuri, straturi, setări, istoric, procesări, administratori și erori) și imaginile istorice (căutarea la USGS, importul unui cadru gratuit, georeferențierea automată, Aprobă, paza unităților de calcul, încărcarea gratuită prin Studio, încărcarea unui GeoTIFF, georeferențiatorul, decuparea, înlocuirea) funcționează cap-coadă cu emulatoarele Firebase și serviciile Google, Mapbox și USGS simulate din teste, iar ce se publică ajunge în harta publică prin manifestul construit de server; procesarea imaginilor însăși a rulat cu aceleași servicii simulate, pe un cadru sintetic. Imaginile pe cloudul real așteaptă instalarea serverului (funcțiile, imaginea procesării și jobul ei Cloud Run), aprobarea descărcărilor M2M de către USGS și tokenul secret Mapbox (`docs/research/M3-status.md`). Primul proiect real se configurează cu Claude, cu acordul tău la fiecare pas.
 
 ## Ce faci tu și ce face aplicația
 
@@ -103,7 +103,7 @@ Tot asistentul cere cam zece clicuri sau câmpuri și patru permisiuni Google; c
 | „Mapbox a refuzat tokenul: nu este valid sau a fost revocat.” | token greșit, șters sau revocat | creează tokenul din nou și lipește-l |
 | „Tokenului îi lipsesc permisiunile: …” | permisiuni nebifate | creează tokenul din nou cu toate permisiunile din card |
 | „USGS a refuzat utilizatorul sau tokenul. …” | utilizator greșit sau token expirat | creează un token nou și lipește-l în 60 de secunde |
-| „USGS este în mentenanță. Reîncercăm automat.” | mentenanță USGS | nimic: tokenul este păstrat |
+| „USGS este în mentenanță. Încearcă din nou mai târziu.” | mentenanță USGS | nimic: tokenul este păstrat și verificat din nou mai târziu |
 | „Google Analytics nu este activat pentru proiect. …” | Analytics este oprit | activează-l în consola Firebase (linkul cardului) |
 | „Fotografii neprocesate: N. Motivul apare lângă fiecare.” | o fotografie din pachet nu a putut fi procesată | **Verifică din nou** sau deschide fotografia în pagina Fotografii |
 
@@ -145,9 +145,9 @@ Ce conține orașul și ce te așteaptă (fotografii cu drepturi de verificat, f
 
 - Straturile sunt create de procesarea imaginilor (M3); până atunci pagina spune asta. Lista le arată în ordinea desenării (primul este desenat deasupra), cu starea lor și Publicat; tragi unul sau folosești **Mută mai sus** și **Mută mai jos**.
 - **Editorul stratului**: eticheta și descrierea (româna, engleza opțională), atribuirea, anul și data, **Afișat la deschiderea hărții**, **Opacitate implicită** și patru ajustări ale imaginii, **Nivel de negru**, **Nivel de alb**, **Contrast** și **Saturație**, fiecare citită ca procent cu semn, cu **Resetează ajustările**. Fiecare glisor schimbă imediat harta paginii; Salvează publică valorile, iar vizitatorii văd exact ce ai văzut tu. Nivelul de negru nu trece niciodată de nivelul de alb.
-- **Leagă un strat**: un tileset al contului Mapbox al orașului sau adresa https a unui server de dale. Tilesetul altui cont (inclusiv cele ale Mapbox) și o adresă care conține o cheie sunt refuzate înainte să se trimită ceva. Un strat legat pornește nepublicat și ascuns la deschidere. Adresa unui server de dale trebuie permisă și în politica de securitate a conținutului a site-ului și a aplicației de administrare: dialogul o numește.
+- **Leagă un strat**: un tileset al contului Mapbox al orașului sau adresa https a unui server de dale. Tilesetul altui cont (inclusiv cele ale Mapbox) și o adresă care conține o cheie sunt refuzate înainte să se trimită ceva. **Verifică** cere serverului o dală din centrul orașului și spune ce a răspuns („Dalele răspund (image/png).”) sau de ce nu a răspuns nimic (nicio dală la această adresă, nu e o imagine, serverul nu răspunde); după o verificare eșuată, Leagă rămâne oprit până schimbi adresa. Un strat legat pornește nepublicat și ascuns la deschidere. Adresa unui server de dale trebuie permisă și în politica de securitate a conținutului a site-ului și a aplicației de administrare: dialogul o numește.
 - **Șterge stratul** întreabă întâi: stratul dispare de pe harta publică în aproximativ un minut, iar tilesetul lui Mapbox este șters după șapte zile, dacă nu restaurezi stratul din Istoric între timp (procesarea care așteaptă se vede în pagina Procesări).
-- Înlocuirea imaginii unui strat, decuparea și georeferențierea din nou vin odată cu procesarea imaginilor (M3).
+- **Imagine și geometrie** (un strat făcut din imagini): **Înlocuiește imaginea** deschide încărcarea din Imagini istorice pentru acest strat (alegi un GeoTIFF; nu ți se mai cere nimic, stratul își păstrează anul); **Georeferențiază din nou** deschide georeferențiatorul pe imaginea de acum a stratului; **Decupează** desenează pe harta stratului zona de păstrat, un clic pentru fiecare colț (de la tastatură: **Adaugă un colț în centrul hărții**), apoi **Salvează decuparea**; o zonă din afara stratului este refuzată. Fiecare face o versiune nouă: stratul își păstrează dalele până când versiunea este publicată, iar editorul arată între timp **O versiune nouă e în lucru: deschide-o**. Un strat pentru care se lucrează ceva nu poate fi șters până se termină.
 
 ### Setări
 
@@ -157,6 +157,7 @@ Fiecare secțiune are propriul Salvează.
 - **Texte**: numele, „Despre” și textul despre confidențialitate, în română și engleză (subsetul Markdown, previzualizat cum îl vor vedea vizitatorii; un link care nu e https este refuzat la rândul lui) și mențiunile (până la 50, în ordinea aleasă de tine).
 - **Temă și hartă de bază**: culoarea de bază (o valoare hex, selectorul de culoare sau una din opt propuneri), previzualizată pe loc în toată aplicația de administrare până o salvezi sau renunți la ea (ori pleci din Setări); o culoare care ar face textul greu de citit este mutată la cea mai apropiată nuanță lizibilă, cu o notă. Harta de bază pe care o văd vizitatorii (Standard sau Standard Satellite); harta aplicației de administrare este mereu Standard.
 - **Categorii de locuri**: adaugi una (eticheta în română; pictograma urmează cuvintele etichetei, „Fântâni” apă, „Biserici” o biserică, până alegi tu una; culoarea, opacitatea și eticheta în engleză au valori implicite), o editezi, le reordonezi, o ștergi. Selectorul oferă 30 de pictograme, prin care te miști cu săgețile; o culoare pe care pictograma albă s-ar vedea greu este mutată la o nuanță lizibilă. Ștergerea unei categorii folosite încă de locuri te întreabă întâi unde merg ele. Pagina spune când ai ajuns la limită.
+- **Imagini istorice**: dacă un cadru georeferențiat se publică fără niciun clic când eroarea la punctele de control este sub prag (pornit implicit), pragul acesta în metri (1–200, implicit 15) și anii pe care căutarea îi pune primii (cel mult 20, fiecare cu **Scoate**; ai Bucureștiului sunt 1966, 1976, 1977, 1978 și 1980: îi adaugi aici o dată). Se salvează separat.
 - **Opacități implicite**: opacitatea cu care pornește fiecare strat suprapus (fiecare strat istoric, fotografiile, fiecare categorie de locuri) și, pentru straturi, dacă apar la deschidere, fiecare schimbare văzută pe harta de deasupra; un singur Salvează le scrie pe toate, Renunță la modificări le aduce înapoi pe cele salvate. Linkul unui vizitator care fixează o opacitate are în continuare prioritate.
 
 ### Istoric
@@ -166,7 +167,7 @@ Fiecare secțiune are propriul Salvează.
 
 ### Procesări
 
-Lista procesărilor, actualizată pe loc (În lucru, Eșuate, Încheiate), cu progresul lor; pașii și jurnalul unei procesări pe măsură ce apar; **Anulează procesarea** (după ce te întreabă) cât timp rulează. Ștergerea unui strat așteaptă cu data ei („Rulează după …, odată cu procesarea imaginilor.”).
+Lista procesărilor, actualizată pe loc (În lucru, Eșuate, Încheiate), cu progresul lor; pașii și jurnalul unei procesări pe măsură ce apar; **Anulează procesarea** (după ce te întreabă) cât timp rulează. Ștergerea unui strat așteaptă cu data ei („Rulează după …, odată cu procesarea imaginilor.”). O procesare de imagini își numește fiecare pas, spune de ce așteaptă și până când (USGS pregătește descărcarea sau e în mentenanță, bugetul Mapbox al lunii, punctele tale), oferă **Rulează din nou** când a eșuat (cel mult trei încercări; pașii deja făcuți nu se mai fac) și **Deschide georeferențiatorul** când așteaptă punctele tale.
 
 ### Administratori
 
@@ -181,14 +182,27 @@ Erorile întâlnite de vizitatori și de administratori, grupate, pe 24 de ore, 
 
 Fiecare salvare a ceva publicat cere serverului să refacă datele hărții publice (manifestul), cel mult o dată pe minut; vizitatorii văd schimbarea la următoarea vizită. Testele cap-coadă verifică tot lanțul pe emulatoare: o fotografie publicată, redenumită, adusă înapoi și retrasă; un loc adăugat de la tastatură; opacitatea implicită, afișarea la deschidere și ajustările unui strat; fiecare ajunge în harta construită exact cum a fost salvat (scenariile S-A41-*).
 
-### Imagini din satelit și georeferențiere (M3)
+### Imagini istorice (M3)
 
-Căutarea scenelor USGS, importul cadrelor scanate, încărcarea unui GeoTIFF și editorul de puncte de control (pe OpenStreetMap și Sentinel-2, niciodată pe Mapbox Satellite) vin odată cu procesarea imaginilor în M3, cu costul estimat afișat înainte de fiecare import.
+Cadrele de satelit declasificate ale USGS (Corona, Gambit, Hexagon; 1960–1984) devin straturi istorice ale hărții. De obicei e un singur clic: **Importă (gratuit)**, iar serverul face restul.
+
+- **Găsește**: prima dată când deschizi **Imagini istorice** (și apoi o dată pe lună), aplicația caută în cele trei colecții declasificate ale USGS peste zona orașului și ordonează scenele de la 0 la 100, întâi cele gratuite (scanate deja); fiecare spune de ce, în cuvinte simple (cât acoperă din oraș, gratuită sau de comandat, un an pe care orașul îl vrea, nori, detaliu, un an care are deja un strat). Filtre: **Doar gratuite** (pornit), **Ascunde respinsele**, cele trei colecții, din anul și până în anul; harta desenează conturul fiecărei scene din listă. **Caută din nou la USGS** caută iar. Când nu găsește nimic, pagina propune toți anii, toate cele trei colecții, și scenele de comandat, și zona orașului din Setări (căutarea acoperă doar zona aceea).
+- **Importă (gratuit)** pe cardul unei scene sau în pagina ei (previzualizarea USGS, datele ei și fiecare motiv al scorului). Serverul descarcă cadrul, îl despachetează și îi unește părțile, găsește orașul pe el, pregătește referința (OpenStreetMap și Sentinel-2, niciodată Mapbox Satellite), potrivește singur puncte de control, îl proiectează pe hartă și îl exportă. Pagina versiunii arată fiecare pas pe măsură ce rulează, jurnalul și **Anulează** (după ce te întreabă; procesarea Mapbox nu se poate opri). Mentenanța USGS face importul să aștepte, nu să eșueze.
+- **Publicarea**: când eroarea la punctele de control (punctele lăsate în afara potrivirii) este sub pragul orașului, implicit 15 m, se publică fără alt clic. Altfel, cardul de aprobare arată eroarea potrivirii și pe cea la punctele de control, perechile, unitățile de calcul Mapbox pe care le costă și pe cele rămase luna aceasta, cu **Aprobă și publică** și **Respinge** (după ce te întreabă). Un GeoTIFF încărcat care își are propria georeferențiere așteaptă mereu Aprobă: eroarea lui nu se poate măsura.
+- **Peste unitățile de calcul gratuite ale lunii** (20 pe lună; o publicare costă după suprafață și zoom): cardul oferă trei căi, fiecare spunând ce înseamnă: **Gratuit: încarcă fișierul în Mapbox Studio** (1. **Descarcă fișierul**, 2. deschide Mapbox Studio și încarcă-l ca set de dale, 3. **L-am încărcat**: aplicația găsește setul după nume), **Așteaptă luna viitoare** sau **Publică acum, cu un cost de circa X USD** (după ce te întreabă; niciodată peste cele 24 de seturi de dale ale Mapbox).
+- **Prea puține puncte potrivite**: importul așteaptă punctele tale („Puncte sigure găsite de georeferențierea automată: N, prea puține”): **Deschide georeferențiatorul**.
+- **Un fișier prea mare pentru Mapbox**: cardul de aprobare spune asta și oferă singura cale care merge, încărcarea gratuită în Mapbox Studio a copiei mai mici. **La cele 24 de seturi de dale ale Mapbox**: nici plata, nici așteptarea nu eliberează un loc; ștergi un strat de care nu mai ai nevoie (**Deschide Straturile**) sau folosești Studio.
+- **Când ceva eșuează**, pagina versiunii oferă ce îl rezolvă: **Încearcă din nou** când o nouă rulare poate ajuta (cel mult trei rulări și șase porniri ale publicării), **Deschide pasul Mapbox din Configurare** când Mapbox a refuzat tokenul sau permisiunile lui, **Încarcă alt fișier** când serverul a refuzat încărcarea ta și **Renunță la versiune** (cu întrebare) ca să scoți o versiune eșuată din **Așteaptă după tine**. **Anulează** merge până când Mapbox este rugat să publice.
+- **Georeferențiatorul**: scanarea și harta de referință una lângă alta (pe telefon pe rând, cu **Scanare** și **Hartă**; o jumătate de pereche arată singură celălalt panou). Dai clic pe un loc pe scanare, apoi pe același loc pe hartă, sau de la tastatură: muți scanarea cu săgețile și harta la același loc, apoi **Adaugă la centre**, și tot așa pentru perechea următoare; o pereche aleasă în tabel se mută cu săgețile (Shift: de zece ori mai departe), **Esc** o lasă și **Delete** o șterge; fiecare pereche recalculează pe loc: tabelul perechilor (fiecare cu de unde vine, **în potrivire** sau păstrată ca punct de control, și eroarea ei în metri; ordonat după pereche sau după eroare), eroarea potrivirii și cea la punctele de control, cu un avertisment peste prag, transformările pe care le permit perechile (afină de la 3, polinom de gradul doi de la 6, spline cu plăci subțiri) și previzualizarea proiectată pe hartă. Perechile așezate pe o linie sunt refuzate. **Salvează și georeferențiază** continuă importul care așteaptă sau face o versiune nouă a unui strat publicat.
+- **Încărcare**: **Încarcă un GeoTIFF** (până la 8 GB; pagina îi citește primii octeți și refuză orice nu este TIFF înainte să-l trimită). Un nume cu un an („Plan 1911.tif”) pornește încărcarea imediat, altfel pagina cere anul. O încărcare mare continuă după ce conexiunea cade. Un GeoTIFF cu propria georeferențiere ajunge la cardul de aprobare; o scanare fără ea așteaptă punctele în georeferențiator.
+- **Până când USGS îți aprobă descărcările** (24–48 de ore lucrătoare după cererea M2M): rezultatele apar, Importă este oprit, iar pagina spune de ce, cu drumul spre pasul USGS din Configurare. Un token refuzat de USGS duce la același pas.
+- Limite: 10 importuri pe zi și 2 în lucru deodată, pe proiect.
+- **Oprită de protecția bugetului**: când costul Google Cloud al lunii ajunge la buget, importurile, reîncercările, salvările georeferențiatorului, decupările și publicările se opresc (harta publică niciodată). **Imagini istorice** și **Procesări** spun asta, cu costul și bugetul, iar **Reia procesarea** (cu întrebare) le pornește din nou pentru restul lunii; alerta lunii viitoare le oprește iar.
 
 ## Costuri
 
-- Google Cloud: aproximativ 0,5–2 $ pe lună; bugetul de 5 $ oprește automat procesarea imaginilor (niciodată site-ul).
-- Mapbox: gratuit până la 50.000 de încărcări de hartă pe lună; publicarea straturilor folosește doar bugetul gratuit, altfel îți oferă încărcarea gratuită prin Studio, amânarea sau plata.
+- Google Cloud: aproximativ 0,5–2 $ pe lună; bugetul de 5 $ oprește automat procesarea imaginilor (niciodată site-ul), iar **Reia procesarea** din Imagini istorice sau Procesări o pornește din nou pentru restul lunii.
+- Mapbox: gratuit până la 50.000 de încărcări de hartă pe lună; publicarea unui strat istoric costă unități de calcul după suprafața și zoomul lui, iar aplicația rămâne în cele 20 gratuite ale lunii, altfel îți oferă încărcarea gratuită prin Studio, așteptarea lunii viitoare sau plata sumei pe care o numește.
 - USGS: cadrele scanate sunt gratuite; o scanare nouă costă 30 $ pe cadru plus 5 $ pe comandă.
 
 ## Probleme frecvente
@@ -207,6 +221,23 @@ Mesajul afișat, cauza și ce trebuie făcut, pentru fiecare ecran.
 | „Imaginea nouă a fost refuzată, iar cea veche rămâne publicată.” | fișierul de înlocuire nu a trecut verificarea serverului | alegi alt fișier (motivul apare lângă mesaj) |
 | tilesetul aparține altui cont Mapbox | **Leagă un strat** cu tilesetul altui cont | legi un tileset al contului Mapbox al orașului |
 | o categorie nu se poate șterge | locuri o folosesc încă | alegi categoria în care se mută locurile, apoi Șterge |
+
+### Imagini istorice (din M3)
+
+| Mesaj | Cauză | Ce faci |
+| --- | --- | --- |
+| „USGS este în mentenanță. Încearcă din nou mai târziu.” | mentenanța programată a USGS | un import așteaptă și continuă singur; pentru căutare, **Încearcă din nou** mai târziu |
+| „USGS nu răspunde. Încearcă din nou mai târziu.” | USGS nu a răspuns la căutare | **Încearcă din nou** |
+| „USGS a refuzat utilizatorul sau tokenul. …” | tokenul aplicației USGS a expirat sau a fost înlocuit | **Deschide pasul USGS din Configurare** și lipești un token nou în 60 de secunde |
+| „USGS nu a aprobat încă accesul M2M pentru acest cont. …” | rolul de descărcare M2M este încă în analiză | aștepți; aplicația verifică la fiecare 6 ore, iar Importă revine singur |
+| „USGS nu a găsit nicio scenă peste zona orașului.” | filtrele sau zona nu lasă nimic | încerci toți anii, toate cele trei colecții, și scenele de comandat, sau verifici zona orașului în Setări |
+| „Puncte sigure găsite de georeferențierea automată: N, prea puține. …” | cadrul are prea puține repere în care potrivirea are încredere | **Deschide georeferențiatorul** și împerechezi câteva repere |
+| „Procesarea e oprită: costul Google Cloud al lunii a ajuns la … din bugetul de ….” | alerta de buget a oprit procesarea imaginilor | **Reia procesarea** (poate costa în plus luna aceasta) sau aștepți luna viitoare |
+| „Imaginea nu a putut fi procesată. …” | un pas al procesării a eșuat pe fișierele serverului | **Încearcă din nou**; dacă eșuează iar, deschide jurnalul lucrării |
+| „Mapbox a refuzat tokenul: …” / „Tokenului îi lipsesc permisiunile: …” | tokenul secret Mapbox s-a schimbat | **Deschide pasul Mapbox din Configurare** și lipește un token cu permisiunile numite |
+| „Nu încape în bugetul Mapbox al lunii: alege cum continuăm” | publicarea costă mai multe unități de calcul decât au rămas | încărcarea gratuită prin Studio, luna viitoare sau plata |
+| „Fișierul nu este un GeoTIFF. Încarcă un fișier .tif.” | fișierul ales este alt fel de imagine | îl exporți întâi ca GeoTIFF |
+| „Sursa nu are dale la această adresă (404).” / „Adresa nu răspunde cu o imagine.” / „Serverul de dale nu răspunde.” | **Verifică** pe adresa unor dale în **Leagă un strat** | corectezi adresa (trebuie să conțină `{z}`, `{x}`, `{y}`) sau încerci mai târziu |
 
 ### Harta publică (din M1)
 

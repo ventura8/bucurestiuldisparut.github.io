@@ -3,8 +3,8 @@ import type { MapboxApi } from '../ports/mapbox-api.js';
 import { at, readJson, send, stringAt, strings, upstreamError, type Fetch } from './upstream-http.js';
 
 /**
- * The Mapbox Tokens API (`/tokens/v2`, onboarding review §2B) and the tilesets list (`/tilesets/v1`) over REST with
- * `fetch`. The token travels as the `access_token` query parameter, as Mapbox requires, so no URL is ever logged or
+ * The Mapbox Tokens API (`/tokens/v2`, onboarding review §2B) over REST with `fetch` (the tilesets list and the rest of
+ * MTS live in `mapbox-tilesets.ts` since M3, CR-M3-4). The token travels as the `access_token` query parameter, as Mapbox requires, so no URL is ever logged or
  * put in an error; a pagination link is followed only on `api.mapbox.com`.
  *
  * Failures (`UpstreamError('mapbox', …)`): 401 or a `code` other than `TokenValid` → `unauthorized`; 403 (a missing
@@ -19,20 +19,6 @@ type TokenRecord = Awaited<ReturnType<MapboxApi['listTokens']>>[number];
 type TokenRequest = Parameters<MapboxApi['createToken']>[2];
 type MintedToken = Awaited<ReturnType<MapboxApi['createToken']>>;
 type Usage = TokenRecord['usage'];
-
-/** A tileset of the account (`GET /tilesets/v1/{user}`), as far as the Setup Assistant and the publisher need it. */
-interface MapboxTileset {
-    readonly id: string;
-    readonly name?: string;
-}
-
-/**
- * The tilesets call the publisher of M3 needs (CR-M2-15 adds it to the `MapboxApi` port); it also proves that a secret
- * token may list the account's tilesets (onboarding review §2B, step B5.3).
- */
-interface MapboxTilesetsApi {
-    listTilesets(user: string, token: string, limit: number): Promise<readonly MapboxTileset[]>;
-}
 
 const SERVICE = 'mapbox';
 const USAGES: readonly Usage[] = ['pk', 'sk', 'tk'];
@@ -112,21 +98,12 @@ function toMinted(body: unknown): MintedToken {
     return { id, token };
 }
 
-function toTileset(entry: unknown): MapboxTileset[] {
-    const id = stringAt(entry, 'id');
-    const name = stringAt(entry, 'name');
-    if (id === undefined) {
-        return [];
-    }
-    return [name === undefined ? { id } : { id, name }];
-}
-
 function tokenBody(request: TokenRequest): string {
     const body = { note: request.note, scopes: [...request.scopes] };
     return JSON.stringify(request.allowedUrls === undefined ? body : { ...body, allowedUrls: [...request.allowedUrls] });
 }
 
-export function createMapboxApi(options: { readonly fetch: Fetch }): MapboxApi & MapboxTilesetsApi {
+export function createMapboxApi(options: { readonly fetch: Fetch }): MapboxApi {
     async function call(method: string, url: string, body?: string): Promise<Response> {
         const init: RequestInit = body === undefined ? { method } : { method, body, headers: { 'content-type': 'application/json' } };
         const response = await send(options.fetch, SERVICE, url, init);
@@ -174,15 +151,6 @@ export function createMapboxApi(options: { readonly fetch: Fetch }): MapboxApi &
             if (!response.ok && response.status !== 404) {
                 throw upstreamError(SERVICE, response);
             }
-        },
-        listTilesets: async (user, token, limit) => {
-            const body = await readJson(
-                await call('GET', apiUrl(`/tilesets/v1/${encodeURIComponent(user)}`, token, { limit: String(limit) })),
-            );
-            if (!Array.isArray(body)) {
-                throw invalid();
-            }
-            return body.flatMap(toTileset);
         },
     };
 }

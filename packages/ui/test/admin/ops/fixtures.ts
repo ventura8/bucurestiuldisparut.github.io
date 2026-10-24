@@ -41,6 +41,7 @@ export function jobItem(overrides: Partial<JobItemPort> = {}): JobItemPort {
         dispatchAt: null,
         cancelRequested: false,
         error: null,
+        ...{ waitReason: null, retryAt: null, versionId: null, retryable: false },
         ...overrides,
     };
 }
@@ -51,6 +52,9 @@ export function jobsState(overrides: Partial<JobsViewState> = {}): JobsViewState
         list: ready([jobItem(), jobItem({ id: 'a', status: 'succeeded', finished: true, progress: 1 })]),
         detail: null,
         cancelling: false,
+        retrying: false,
+        guard: null,
+        resuming: false,
         ...overrides,
     };
 }
@@ -169,7 +173,18 @@ export function crashesState(overrides: Partial<CrashesViewState> = {}): Crashes
 export function homeState(overrides: Partial<HomeViewState> = {}): HomeViewState {
     return {
         countsStatus: 'ready',
-        counts: { photos: 45, pois: 3, categories: 2, layers: 0, rightsReviews: 4, unpublishedPhotos: 0, activeJobs: 1, failedJobs: null },
+        counts: {
+            photos: 45,
+            pois: 3,
+            categories: 2,
+            layers: 0,
+            rightsReviews: 4,
+            unpublishedPhotos: 0,
+            activeJobs: 1,
+            failedJobs: null,
+            versionsToApprove: 2,
+            versionsNeedingPoints: 0,
+        },
         health: {
             status: 'ready',
             reconnecting: false,

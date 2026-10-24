@@ -88,7 +88,7 @@ describe('privateBucket', () => {
 });
 
 describe('createDeps', () => {
-    it('happyPath_wiresEveryPortButTheM3Jobs', () => {
+    it('happyPath_wiresEveryPort', () => {
         const deps = createDeps(EMULATOR, app);
 
         expect(Object.keys(deps).sort((a, b) => a.localeCompare(b))).toEqual(
@@ -103,11 +103,16 @@ describe('createDeps', () => {
                 'firebase',
                 'iam',
                 'images',
+                'jobs',
                 'log',
                 'mapbox',
+                'reader',
+                'remote',
+                'scenes',
                 'secrets',
                 'setup',
                 'tasks',
+                'tilesets',
                 'usgs',
             ].sort((a, b) => a.localeCompare(b)),
         );
@@ -163,6 +168,48 @@ describe('createDeps', () => {
             failure: 'unavailable',
         });
         await expect(deps.mapbox.retrieveToken('sk.emulator')).rejects.toBeInstanceOf(UpstreamError);
+        expect(fetch).not.toHaveBeenCalled();
+    });
+});
+
+describe('createDeps: the M3 ports', () => {
+    it('happyPath_theEmulatorSendsCloudRunAndRemoteFilesToTheFakes', async () => {
+        const fetch = answering(200, {
+            name: 'projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/e1',
+            succeededCount: 1,
+        });
+        vi.stubGlobal('fetch', fetch);
+        const deps = createDeps({ ...EMULATOR, HCM_UPSTREAM_BASE: FAKES }, app);
+
+        await expect(deps.jobs.get('projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/e1')).resolves.toEqual({
+            state: 'succeeded',
+        });
+        await expect(
+            deps.remote.get('https://api.mapbox.com/v4/e2e.tiles/1/0/0.png', { maxBytes: 10_000, timeoutMs: 1000 }),
+        ).resolves.toMatchObject({
+            status: 200,
+        });
+        expect(fetch).toHaveBeenNthCalledWith(
+            1,
+            `${FAKES}/h/run.googleapis.com/v2/projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/e1`,
+            expect.objectContaining({ method: 'GET' }),
+        );
+        expect(fetch).toHaveBeenNthCalledWith(
+            2,
+            `${FAKES}/h/api.mapbox.com/v4/e2e.tiles/1/0/0.png`,
+            expect.objectContaining({ method: 'GET' }),
+        );
+    });
+
+    it('badPath_productionRemoteFilesRefuseALoopbackHostBeforeAnyRequest', async () => {
+        const fetch = vi.fn();
+        vi.stubGlobal('fetch', fetch);
+        const deps = createDeps(PROJECT, app);
+
+        await expect(deps.remote.get('https://localhost/tile.png', { maxBytes: 100, timeoutMs: 1000 })).rejects.toMatchObject({
+            service: 'remote',
+            failure: 'forbidden',
+        });
         expect(fetch).not.toHaveBeenCalled();
     });
 

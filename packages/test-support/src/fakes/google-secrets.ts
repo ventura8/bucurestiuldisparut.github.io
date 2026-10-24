@@ -2,7 +2,9 @@ import { FIXTURE_VALUES, fixtureBody } from '../api-fixtures/index.js';
 import { authenticated, googleError, googleFailure, type GoogleApi, type GoogleProjects } from './google-common.js';
 import { bodyField, jsonResponse, route, type Route, type RouteParams } from './routes.js';
 import type { PolicyStore } from './google-policies.js';
+import { MAPBOX_TOKENS } from './mapbox-state.js';
 import type { ServiceFake } from './service.js';
+import { USGS_CREDENTIALS } from './usgs.js';
 
 /**
  * Secret Manager v1 (security review §1.2): secrets, versions added by `setup.saveMapbox` / `setup.saveUsgs`, read with
@@ -13,6 +15,18 @@ import type { ServiceFake } from './service.js';
 
 /** The secrets the provisioner creates (`SecretName` of functions/src/ports/secret-store.ts). */
 export const PROVISIONED_SECRETS = ['mapbox-sk-bootstrap', 'mapbox-sk-tiles', 'usgs-username', 'usgs-app-token'] as const;
+
+/**
+ * What a project whose USGS and Mapbox cards are green holds (`secret-manager.imagerySecrets`, M3): the approved USGS
+ * account's credentials (search and downloads) and the tiles token the M3 publisher uses (`docs/research/M3-interfaces.md`
+ * §3.1, §7.3), so the Functions emulator's harvest, import and publish run without the Setup Assistant first.
+ */
+export const IMAGERY_SECRET_VALUES: Readonly<Record<(typeof PROVISIONED_SECRETS)[number], string>> = {
+    'mapbox-sk-bootstrap': MAPBOX_TOKENS.bootstrap,
+    'mapbox-sk-tiles': MAPBOX_TOKENS.tiles,
+    'usgs-username': USGS_CREDENTIALS.approved.username,
+    'usgs-app-token': USGS_CREDENTIALS.approved.applicationToken,
+};
 
 interface SecretVersion {
     readonly number: number;
@@ -201,6 +215,14 @@ export function createSecretManagerFake(state: SecretsState, projects: GooglePro
             provisioned: () => {
                 const { secrets } = secretsOf(String(FIXTURE_VALUES['projectId']));
                 PROVISIONED_SECRETS.filter((secretId) => !secrets.has(secretId)).forEach((secretId) => secrets.set(secretId, []));
+            },
+            imagerySecrets: () => {
+                const { secrets } = secretsOf(String(FIXTURE_VALUES['projectId']));
+                Object.entries(IMAGERY_SECRET_VALUES).forEach(([secretId, value]) => {
+                    const versions = secrets.get(secretId) ?? [];
+                    versions.push({ number: versions.length + 1, value, state: 'ENABLED' });
+                    secrets.set(secretId, versions);
+                });
             },
         },
         snapshot: () => ({

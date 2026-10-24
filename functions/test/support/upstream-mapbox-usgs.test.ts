@@ -295,7 +295,7 @@ describe('USGS M2M', () => {
         expect(await keyed('dataset-search', { datasetName: 'declass' })).toMatchObject({
             body: { data: [{ datasetAlias: 'corona2' }, { datasetAlias: 'declassii' }] },
         });
-        expect(await keyed('scene-search', { datasetName: 'corona2' })).toMatchObject({ body: { data: { totalHits: 2 } } });
+        expect(await keyed('scene-search', { datasetName: 'corona2' })).toMatchObject({ body: { data: { totalHits: 3 } } });
         expect(await keyed('scene-search', { datasetName: 'other' })).toMatchObject({ body: { data: { totalHits: 0 } } });
         const options = (await keyed('download-options', { datasetName: 'corona2', entityIds: ['DS1105-1071DF075', 'DS1105-1071DF076'] }))
             .body as { data: { entityId: string; available: boolean }[] };
@@ -303,11 +303,12 @@ describe('USGS M2M', () => {
             ['DS1105-1071DF075', true],
             ['DS1105-1071DF076', false],
         ]);
-        const requested = (await keyed('download-request', { downloads: [{ entityId: 'DS1105-1071DF075' }] })).body as {
+        const requested = (await keyed('download-request', { downloads: [{ entityId: 'DS1105-1071DF075' }], label: 'e2e' })).body as {
             data: { availableDownloads: { url: string }[] };
         };
         const url = String(requested.data.availableDownloads[0]?.url);
-        expect(await keyed('download-retrieve', { label: 'e2e' })).toMatchObject({ body: { data: { available: [{ url }] } } });
+        const retrieved = (await keyed('download-retrieve', { label: 'e2e' })).body as { data: { available: { url: string }[] } };
+        expect(new URL(String(retrieved.data.available[0]?.url)).pathname).toBe(new URL(url).pathname);
         expect((await call(fakes, 'GET', url)).text).toBe('E2E-SCAN-300000001');
         expect(await call(fakes, 'POST', `${M2M}/scene-search`, {}, { 'X-Auth-Token': 'unknown' })).toMatchObject({
             body: { errorCode: 'AUTH_KEY_INVALID' },

@@ -71,6 +71,12 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     "home": 5,
     "jobs": 5,
     "crashes": 5,
+    # M3 (docs/research/M3-interfaces.md §10.1, DECISIONS-for-review.md §47): the Imagery area (15.2 KB measured on
+    # 2026-10-23), the georeferencer (14.0 KB) and the layer editor's Crop (`layer-geometry`, 1.9 KB), each the measurement
+    # plus about 20 %, under the contract's ceilings of 30, 30 and 8 KB.
+    "imagery": 18,
+    "georef": 17,
+    "layer-geometry": 3,
     # What two or more areas share and the entry does not (the codeSplitting group `editor-shared`).
     "editor-shared": 13,
     # The admin map's box and the content it draws (the group `admin-map`): 7.4 KB measured on 2026-10-18, when the

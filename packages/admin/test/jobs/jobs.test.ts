@@ -180,7 +180,8 @@ describe('the jobs area: refusals and failures', () => {
         const { services, store } = world();
         const jobs = JOBS_MODULE.create(services);
         jobs.open(['b']);
-        expect(store.listeners()).toBe(3);
+        // The list, the open job, its log lines and the budget guard (CR-M3-47).
+        expect(store.listeners()).toBe(4);
 
         jobs.destroy();
 

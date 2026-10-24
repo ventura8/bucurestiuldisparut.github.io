@@ -34,7 +34,11 @@ function published(data: string) {
 describe('parseBudgetNotification', () => {
     it.each([
         [
-            { costAmount: 5.2, budgetAmount: 5, currencyCode: 'USD' },
+            { costAmount: 5.2, budgetAmount: 5, currencyCode: 'USD', costIntervalStart: '2026-10-01T07:00:00Z' },
+            { costAmount: 5.2, budgetAmount: 5, currencyCode: 'USD', costIntervalStart: '2026-10-01T07:00:00Z' },
+        ],
+        [
+            { costAmount: 5.2, budgetAmount: 5, currencyCode: 'dollars', costIntervalStart: 'x'.repeat(41) },
             { costAmount: 5.2, budgetAmount: 5 },
         ],
         [{ costAmount: '5', budgetAmount: 5 }, undefined],
@@ -62,6 +66,7 @@ describe('onBudgetAlert', () => {
             state: 'red',
             reason: 'budget',
             since: timestampFromDate(new Date(NOW)),
+            spend: { costAmount: 5, budgetAmount: 5 },
             lastNightlyAt: timestampFromDate(new Date('2026-10-12T02:15:00.000Z')),
             updatedBy: 'system:ops',
             updatedAt: timestampFromDate(new Date(NOW)),
@@ -82,6 +87,41 @@ describe('onBudgetAlert', () => {
 
         await expect(onBudgetAlert(deps, { costAmount: 4.99, budgetAmount: 5 })).resolves.toBe(false);
         expect(await guard(deps)).toBeUndefined();
+    });
+
+    it('happyPath_theRedGuardRecordsTheSpendTheBannerShows @S-A43-HAPPY-RESUME', async () => {
+        const deps = opsDeps(NOW);
+
+        await onBudgetAlert(deps, { costAmount: 5.37, budgetAmount: 5, currencyCode: 'USD', costIntervalStart: '2026-10-01T07:00:00Z' });
+
+        expect((await guard(deps))?.spend).toEqual({
+            costAmount: 5.37,
+            budgetAmount: 5,
+            currency: 'USD',
+            interval: '2026-10-01T07:00:00Z',
+        });
+    });
+
+    it('badPath_aPeriodTheAdminAcceptedIsNotPausedAgainButTheNextOneIs @S-A43-HAPPY-RESUME', async () => {
+        const deps = opsDeps(NOW);
+        await deps.documents.set(FIRESTORE_PATHS.opsGuard, opsGuardDocSchema, {
+            state: 'green',
+            resumedBy: 'u-owner',
+            resumedAt: timestampFromDate(new Date('2026-10-12T08:00:00.000Z')),
+            resumedFor: '2026-10-01T07:00:00Z',
+            updatedBy: 'u-owner',
+            updatedAt: timestampFromDate(new Date('2026-10-12T08:00:00.000Z')),
+        });
+
+        await expect(onBudgetAlert(deps, { costAmount: 5.9, budgetAmount: 5, costIntervalStart: '2026-10-01T07:00:00Z' })).resolves.toBe(
+            false,
+        );
+        expect((await guard(deps))?.state).toBe('green');
+
+        await expect(onBudgetAlert(deps, { costAmount: 5.1, budgetAmount: 5, costIntervalStart: '2026-11-01T08:00:00Z' })).resolves.toBe(
+            true,
+        );
+        expect((await guard(deps))?.state).toBe('red');
     });
 
     it('badPath_anAlreadyRedGuardKeepsItsReasonAndTime', async () => {

@@ -25,7 +25,7 @@ import { Store } from '../state/store.js';
 import { viewFields } from './area.js';
 import { canAdd, categoryItemOf, inOrder, type CategoryItem } from './categories.js';
 import { CategoryArea } from './category-area.js';
-import { CitySections, NO_CITY_SECTION, type CitySection } from './city-sections.js';
+import { CITY_SECTIONS, CitySections, NO_CITY_SECTION, type CitySection } from './city-sections.js';
 import { NO_OVERLAY_DEFAULTS, OverlayDefaults } from './overlay-defaults.js';
 import { photosOpacityOf } from './overlays.js';
 import { reportOutcome } from './report.js';
@@ -50,7 +50,7 @@ const INITIAL: SettingsState = {
 };
 
 function isCitySection(section: SettingsRoute['section']): section is CitySection {
-    return section === 'area' || section === 'texts' || section === 'theme';
+    return (CITY_SECTIONS as readonly (string | null)[]).includes(section);
 }
 
 export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> {

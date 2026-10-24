@@ -25,6 +25,8 @@ const CITY_EDITABLE = [
     'theme',
     'basemap',
     'photosOverlay',
+    /** M3: auto-publish, its RMSE threshold and the target years (`cityImagerySchema`; CR-M3-2). */
+    'imagery',
     'published',
     ...STAMP,
 ] as const;
@@ -94,8 +96,11 @@ export const CLIENT_WRITES = {
     layer: { create: [], update: LAYER_EDITABLE },
     poi: { create: [...POI_EDITABLE, 'createdAt', 'createdBy'], update: POI_EDITABLE },
     poiCategory: { create: [...POI_CATEGORY_EDITABLE, 'createdAt'], update: POI_CATEGORY_EDITABLE },
-    /** A `queued` request; afterwards only the cancellation flag. */
-    job: { create: ['type', 'status', 'params', 'createdBy', 'createdAt', ...STAMP], update: ['cancelRequested', ...STAMP] },
+    /**
+     * Jobs are created by the callables and triggers that check their parameters, the budget guard, the daily cap and
+     * their version in one transaction (`docs/research/M3-interfaces.md` §2.8, CR-M3-2); admins only ask one to stop.
+     */
+    job: { create: [], update: ['cancelRequested', ...STAMP] },
     usgsScene: { create: [], update: ['status', 'note', ...STAMP] },
 } as const satisfies Readonly<Record<string, ClientWrites>>;
 

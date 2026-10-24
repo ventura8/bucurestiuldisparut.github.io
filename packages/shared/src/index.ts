@@ -92,6 +92,7 @@ export type { SystemWriter, TimestampLike } from './schemas/firestore-common.js'
 export {
     FIRESTORE_LICENSES,
     GEOREF_METHODS,
+    LAYER_TILESET_ORIGINS,
     HISTORY_ACTIONS,
     HISTORY_ENTITIES,
     LAYER_STATUSES,
@@ -110,6 +111,7 @@ export {
 export type {
     CityDoc,
     FirestoreLicense,
+    GeorefMethod,
     HistoryAction,
     HistoryEntity,
     HistoryEntryDoc,
@@ -122,13 +124,16 @@ export type {
 export {
     ADMIN_ROLES,
     CLIENT_JOB_TYPES,
+    FINISHED_JOB_STATUSES,
     GUARD_REASONS,
     GUARD_STATES,
+    HARVEST_OUTCOMES,
     JOB_LOG_LEVELS,
     JOB_MACHINES,
     JOB_STATUSES,
     JOB_STEP_STATES,
     JOB_TYPES,
+    JOB_WAIT_REASONS,
     MANIFEST_BUILD_STATES,
     MANIFEST_ENTITIES,
     OPS_STEPS,
@@ -138,10 +143,12 @@ export {
     USGS_ROLES,
     USGS_SCENE_STATUSES,
     adminDocSchema,
+    harvestStateDocSchema,
     inviteDocSchema,
     jobDocSchema,
     jobLogDocSchema,
     manifestStateDocSchema,
+    opsDispatchDocSchema,
     opsGuardDocSchema,
     ownerDocSchema,
     setupStatusDocSchema,
@@ -151,12 +158,15 @@ export {
 export type {
     AdminDoc,
     AdminRole,
+    HarvestStateDoc,
     InviteDoc,
     JobDoc,
     JobLogDoc,
     JobStatus,
     JobType,
+    JobWaitReason,
     ManifestStateDoc,
+    OpsDispatchDoc,
     OpsGuardDoc,
     OpsStep,
     OwnerDoc,
@@ -168,6 +178,97 @@ export type {
     UsgsRole,
     UsgsSceneDoc,
 } from './schemas/firestore-ops.js';
+export {
+    BROWSE_STATES,
+    RANKING_VERSION,
+    RANKING_WEIGHTS,
+    RANK_REASONS,
+    SENSORS,
+    SENSOR_SPECS,
+    USGS_ATTRIBUTION,
+    rankReasonSchema,
+    usgsBrowseUrlSchema,
+} from './schemas/usgs-scene.js';
+export type { RankReason, RankReasonEntry, Sensor, SensorSpec, UsgsDataset } from './schemas/usgs-scene.js';
+export {
+    DEFAULT_RMSE_THRESHOLD_M,
+    MAX_TARGET_YEARS,
+    RMSE_THRESHOLD_RANGE,
+    cityImagerySchema,
+    imagerySettingsOf,
+} from './schemas/imagery-settings.js';
+export type { CityImagery, ImagerySettings } from './schemas/imagery-settings.js';
+export {
+    GCP_ORIGINS,
+    GEOREF_TRANSFORMS,
+    MAX_GCPS,
+    MAX_SCAN_PIXELS,
+    MIN_GCPS,
+    cropRingSchema,
+    enabledGcps,
+    gcpSchema,
+    georefSchema,
+    pixelSchema,
+} from './schemas/georef.js';
+export type { CropRing, Gcp, GcpOrigin, Georef, GeorefTransform } from './schemas/georef.js';
+export {
+    ENDED_VERSION_STATES,
+    GUARD_VERDICTS,
+    JOB_PARAMS_SCHEMAS,
+    JOB_STEPS,
+    LAYER_VERSION_STATES,
+    MTS_PRECISIONS,
+    PIPELINE_STEPS,
+    PUBLISH_CHOICES,
+    PUBLISH_STEPS,
+    SCAN_PREVIEW_MAX_PX,
+    VERSION_ORIGINS,
+    geotiffImportParamsSchema,
+    layerVersionDocSchema,
+    regeorefParamsSchema,
+    republishParamsSchema,
+    runsOnPipeline,
+    usgsImportParamsSchema,
+} from './schemas/imagery.js';
+export type {
+    JobStep,
+    LayerVersionDoc,
+    LayerVersionState,
+    MtsPrecision,
+    PipelineStep,
+    PublishChoice,
+    PublishStep,
+} from './schemas/imagery.js';
+export {
+    KM2_PER_COMPUTE_UNIT,
+    MAPBOX_FREE_COMPUTE_UNITS,
+    MAX_TILESETS,
+    STUDIO_MAX_BYTES,
+    USD_PER_COMPUTE_UNIT,
+    availableComputeUnits,
+    estimateComputeUnits,
+    fnv1a32,
+    guardVerdict,
+    nextMonthStart,
+    precisionOf,
+    rasterRecipe,
+    tilesetIdFor,
+    tilesetName,
+    usageMonth,
+} from './schemas/imagery-publish.js';
+export type { GuardInput, GuardOutcome, UsageCounters } from './schemas/imagery-publish.js';
+export {
+    PRIVATE_BUCKET_LIFECYCLE,
+    RASTER_PATHS,
+    RASTER_UPLOAD_FILE_PATTERN,
+    RASTER_UPLOAD_MAX_BYTES,
+    REFERENCE_KINDS,
+    VERSION_FILES,
+    parseRasterUploadPath,
+} from './schemas/imagery-paths.js';
+export type { RasterUpload, ReferenceKind, VersionFile } from './schemas/imagery-paths.js';
+export * from './imagery/index.js';
+export * from './georef/index.js';
 export { CLIENT_WRITES } from './schemas/client-writes.js';
 export type { ClientCollection, ClientWrites } from './schemas/client-writes.js';
 export {

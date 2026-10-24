@@ -30,8 +30,11 @@ import { defaultMapboxState, type MapboxState } from './mapbox-state.js';
 import { createMapboxFake } from './mapbox.js';
 import { createNominatimFake } from './nominatim.js';
 import { createGoogleApisFake } from './google-apis.js';
+import { createOverpassFake, type OverpassState } from './overpass.js';
 import { matchRoute } from './routes.js';
 import { FAILURE_MODES, type FailureMode, type ServiceFake, type UpstreamServiceName } from './service.js';
+import { createStacFake, defaultStacState, type StacState } from './stac.js';
+import { createUsgsBrowseFake } from './usgs-browse.js';
 import { createUsgsFake, defaultUsgsState, type UsgsState } from './usgs.js';
 
 /**
@@ -39,7 +42,8 @@ import { createUsgsFake, defaultUsgsState, type UsgsState } from './usgs.js';
  * tokeninfo, Resource Manager, IAM, Cloud Billing, Billing Budgets, Service Usage, Firebase Management, Secret Manager,
  * Cloud Run Admin, Cloud Tasks, the Cloud Storage bucket API, Error Reporting, and for the admin's provisioner Cloud
  * Functions, Cloud Scheduler, Pub/Sub, Org Policy, Firebase Storage, reCAPTCHA Enterprise, App Check, Monitoring, API
- * Keys and Analytics Admin), Mapbox, USGS M2M and Nominatim, answering from the shared fixtures
+ * Keys and Analytics Admin), Mapbox, USGS M2M and Nominatim, and for the M3 pipeline USGS's browse images, a STAC
+ * catalogue of Sentinel-2 with its COGs and the Overpass API (docs/research/M3-interfaces.md §13), answering from the shared fixtures
  * with state a test can read and change. One instance is one world: a fresh Firebase project on Spark (one open
  * billing account, not linked; one web app; nothing provisioned), the Mapbox accounts of `MAPBOX_TOKENS`, the USGS
  * users of `USGS_CREDENTIALS`. Tests change it through `scenario(name)`, `fail(service, mode)` or `state` directly.
@@ -67,6 +71,8 @@ export interface UpstreamState {
     readonly analyticsAdmin: AnalyticsAdminState;
     readonly mapbox: MapboxState;
     readonly usgs: UsgsState;
+    readonly stac: StacState;
+    readonly overpass: OverpassState;
 }
 
 export interface UpstreamFakes extends FakeFetch {
@@ -96,6 +102,11 @@ const PRESETS: Readonly<Record<string, readonly string[]>> = {
         'cloud-tasks.queueProvisioned',
         'cloud-run.jobProvisioned',
     ],
+    /**
+     * The M3 imagery world on the server's side (docs/research/M3-interfaces.md §13): the secrets the harvest, the import
+     * and the publisher read (the approved USGS account, the Mapbox tiles token) and both raster pipeline jobs.
+     */
+    'imagery.ready': ['secret-manager.provisioned', 'secret-manager.imagerySecrets', 'cloud-run.pipelineJobsProvisioned'],
 };
 
 function initialState(): UpstreamState {
@@ -120,6 +131,8 @@ function initialState(): UpstreamState {
         analyticsAdmin: { settings: new Map() },
         mapbox: defaultMapboxState(),
         usgs: defaultUsgsState(),
+        stac: defaultStacState(),
+        overpass: { answer: undefined },
     };
 }
 
@@ -150,6 +163,9 @@ function services(state: UpstreamState): readonly ServiceFake[] {
         createAnalyticsAdminFake(state.analyticsAdmin, state.firebase),
         createMapboxFake(state.mapbox),
         createUsgsFake(state.usgs),
+        createUsgsBrowseFake(),
+        createStacFake(state.stac),
+        createOverpassFake(state.overpass),
         createNominatimFake(),
         createGoogleApisFake(),
     ];
@@ -181,7 +197,21 @@ function checkFailure(fakes: readonly ServiceFake[], service: UpstreamServiceNam
     }
 }
 
-/** Every host a fake answers (the e2e admin tier forwards these to the mock APIs). */
+/**
+ * The hosts only servers call (the Functions emulator, the raster pipeline): USGS (M2M has no CORS; browse images are
+ * copied server-side; deliveries are signed), the STAC catalogue, its COG bucket and Overpass. The e2e admin pages may
+ * never reach them (docs/research/M3-interfaces.md §3.4, §13): their firewall blocks them although a fake answers them.
+ */
+export const SERVER_ONLY_HOSTS: readonly string[] = [
+    'm2m.cr.usgs.gov',
+    'dds.cr.usgs.gov',
+    'ims.cr.usgs.gov',
+    'earth-search.aws.element84.com',
+    'sentinel-cogs.s3.us-west-2.amazonaws.com',
+    'overpass-api.de',
+];
+
+/** Every host a fake answers (the e2e admin tier forwards these to the mock APIs, but `SERVER_ONLY_HOSTS`). */
 export function upstreamHosts(): readonly string[] {
     return [...new Set(services(initialState()).flatMap((fake) => fake.routes.map((candidate) => candidate.host)))].sort((left, right) =>
         left.localeCompare(right),

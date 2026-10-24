@@ -32,6 +32,8 @@ describe('createEmulatorFetch', () => {
             'https://firebase.googleapis.com/v1beta1/projects/demo-hcm/webApps',
             `${FAKES}/h/firebase.googleapis.com/v1beta1/projects/demo-hcm/webApps`,
         ],
+        ['https://ims.cr.usgs.gov/browse/declass1/DS1105-1071DF075.jpg', `${FAKES}/h/ims.cr.usgs.gov/browse/declass1/DS1105-1071DF075.jpg`],
+        ['https://tiles.e2e.test/xyz/e2e-1980/12/2344/1482.png', `${FAKES}/h/tiles.e2e.test/xyz/e2e-1980/12/2344/1482.png`],
     ])('happyPath_everyServedHostIsForwarded %s', async (input, forwarded) => {
         const fetch = upstream();
 
@@ -53,6 +55,7 @@ describe('createEmulatorFetch', () => {
         ['an unknown host', new URL('https://www.example.com/')],
         ['plain http', plainHttp('https://api.mapbox.com/tokens/v2')],
         ['a look-alike host', new URL('https://api.mapbox.com.example.net/tokens/v2')],
+        ['a look-alike browse host', new URL('https://ims.cr.usgs.gov.example.net/browse/x.jpg')],
         ['the metadata server', plainHttp('https://metadata.google.internal/computeMetadata/v1/')],
     ])('badPath_%sIsRefusedLikeANetworkError', async (_case, url) => {
         const fetch = upstream();

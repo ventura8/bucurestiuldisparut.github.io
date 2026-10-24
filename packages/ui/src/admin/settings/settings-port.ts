@@ -15,7 +15,7 @@ import type {
     WriteOutcomePort,
 } from '../layers/layers-port.js';
 
-export type SettingsSectionPort = 'area' | 'texts' | 'theme' | 'categories' | 'overlays';
+export type SettingsSectionPort = 'area' | 'texts' | 'theme' | 'imagery' | 'categories' | 'overlays';
 
 export type AreaNumberFieldPort = 'west' | 'south' | 'east' | 'north' | 'lat' | 'lng' | 'zoom' | 'minZoom' | 'maxZoom';
 
@@ -40,7 +40,7 @@ interface Lines {
 }
 
 interface CitySectionPort {
-    readonly section: 'area' | 'texts' | 'theme' | null;
+    readonly section: 'area' | 'texts' | 'theme' | 'imagery' | null;
     readonly draft: DraftStatePort<CityDoc>;
     readonly outside: readonly OutsidePort[];
     readonly checking: boolean;

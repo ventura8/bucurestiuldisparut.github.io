@@ -70,6 +70,7 @@ const CONTENT_FOLDERS = {
     'admin-layers': ['layers'],
     'admin-settings': ['settings'],
     'admin-ops': ['admins', 'history', 'jobs', 'crashes'],
+    'admin-imagery': ['imagery', 'georef'],
 } as const;
 const SECTION_START = /^\s*\/\/ \[section ([a-z]+)\]/;
 const SECTION_END = /^\s*\/\/ \[end ([a-z]+)\]/;

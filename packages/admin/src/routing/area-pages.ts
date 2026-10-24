@@ -22,6 +22,8 @@ export const AREA_CHUNKS: AreaChunkLoaders = {
     jobs: async () => (await import('../pages/jobs.js')).AREA,
     crashes: async () => (await import('../pages/crashes.js')).AREA,
     home: async () => (await import('../pages/home.js')).AREA,
+    imagery: async () => (await import('../pages/imagery.js')).AREA,
+    georef: async () => (await import('../pages/georef.js')).AREA,
 };
 
 /** The editors' modules the entry hands the content registry, filled as each area's chunk arrives. */

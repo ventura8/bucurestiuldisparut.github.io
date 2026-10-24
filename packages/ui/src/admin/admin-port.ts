@@ -28,7 +28,8 @@ export type AdminAuthStatePort =
     | 'notAdmin'
     | 'admin';
 
-export type AdminRouteIdPort = 'home' | 'setup' | 'photos' | 'pois' | 'layers' | 'jobs' | 'settings' | 'admins' | 'history' | 'crashes';
+export type AdminRouteIdPort =
+    'home' | 'setup' | 'photos' | 'pois' | 'layers' | 'imagery' | 'jobs' | 'settings' | 'admins' | 'history' | 'crashes' | 'georef';
 
 export interface AdminRoutePort {
     readonly id: AdminRouteIdPort;

@@ -8,8 +8,17 @@ import type { Fetch } from './upstream-http.js';
  * is unset or not a loopback address, fails like a network error, which the adapters report as `unavailable`.
  */
 
-/** The upstreams the adapters call: Mapbox, USGS M2M and the Google REST APIs (OAuth tokeninfo included). */
-const UPSTREAM_HOSTS: readonly RegExp[] = [/^api\.mapbox\.com$/, /^m2m\.cr\.usgs\.gov$/, /^[a-z0-9-]+\.googleapis\.com$/];
+/**
+ * The upstreams the adapters call: Mapbox, USGS M2M and the Google REST APIs (OAuth tokeninfo included); USGS's browse
+ * images and the e2e tile server `tiles.e2e.test` (an XYZ source to probe), which `RemoteFiles` fetches (CR-M3-14).
+ */
+const UPSTREAM_HOSTS: readonly RegExp[] = [
+    /^api\.mapbox\.com$/,
+    /^m2m\.cr\.usgs\.gov$/,
+    /^[a-z0-9-]+\.googleapis\.com$/,
+    /^ims\.cr\.usgs\.gov$/,
+    /^tiles\.e2e\.test$/,
+];
 
 /** Only a fake on this machine: `http://127.0.0.1:<port>` or `http://localhost:<port>`, no path. */
 const LOOPBACK_BASE = /^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d{1,5})?$/;

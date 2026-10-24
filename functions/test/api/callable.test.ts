@@ -243,6 +243,12 @@ describe('callableOptions', () => {
         });
     });
 
+    it('happyPath_theImagerySearchMayRunFiveMinutes', () => {
+        // Three datasets, up to five pages each, and the browse copies (CR-M3-22); every other callable keeps 60 s.
+        expect(callableOptions('imagery.search', {})).toMatchObject({ timeoutSeconds: 300 });
+        expect(callableOptions('imagery.import', {})).not.toHaveProperty('timeoutSeconds');
+    });
+
     it('badPath_monitorModeEnforcesNothingYet', () => {
         expect(callableOptions('admin.claim', {})).toEqual({
             maxInstances: 2,

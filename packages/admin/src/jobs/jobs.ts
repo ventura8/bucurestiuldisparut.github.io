@@ -3,7 +3,9 @@
  * newest first, filtered by status; `#/jobs/<jobId>` adds the job itself and its log lines (`jobs/{id}/logs` by `seq`,
  * live). A listener that drops attaches again by itself and the page says "Reconnecting…"; log lines are keyed by
  * `seq`, so a re-read never shows one twice. **Cancel** sets `cancelRequested` (stamped) on an unfinished job; the rules
- * refuse it on a finished one. Retry and the pipeline's own steps arrive with the raster pipeline (M3).
+ * refuse it on a finished one. From M3 (CR-M3-5, `raster.ts`): a job says why it waits, an `awaiting_gcps` one names its
+ * version for the georeferencer, and **Retry** runs a failed raster job again (`imagery.retry`); while the budget guard
+ * pauses the raster work the page says so, with the spend, and offers **Resume processing** (CR-M3-47).
  */
 import {
     FIRESTORE_PATHS,
@@ -20,7 +22,9 @@ import type { AreaModule, AreaStore } from '../content/areas.js';
 import { LiveDoc, LOADING_DOC, type DocState } from '../content/doc.js';
 import { isoOf, LiveList, LOADING_LIST, type ListState } from '../content/list.js';
 import type { ContentQuery, ContentServices, Stored, WriteOutcome } from '../content/services.js';
+import { GuardFeed, resumeGuard, type GuardView } from '../imagery/guard.js';
 import { Store } from '../state/store.js';
+import { rasterFieldsOf, retryRasterJob, type RasterJobFields } from './raster.js';
 
 /** The list's status chips: every job, the unfinished ones, the failed ones, the others that ended. */
 export type JobFilter = 'all' | 'active' | 'failed' | 'done';
@@ -33,6 +37,7 @@ export const ACTIVE_JOB_STATUSES: readonly JobStatus[] = [
     'waiting_usgs',
     'mts_processing',
     'awaiting_approval',
+    'awaiting_gcps',
 ];
 
 const FILTER_STATUSES: Readonly<Record<Exclude<JobFilter, 'all'>, readonly JobStatus[]>> = {
@@ -44,7 +49,7 @@ const FILTER_STATUSES: Readonly<Record<Exclude<JobFilter, 'all'>, readonly JobSt
 /** A job's log keeps at most this many lines (`jobLogDocSchema`: 500 per job). */
 const MAX_JOB_LOG_LINES = 500;
 
-interface JobItem {
+interface JobItem extends RasterJobFields {
     readonly id: string;
     readonly type: string;
     readonly status: JobStatus;
@@ -83,6 +88,12 @@ export interface JobsState {
     /** `#/jobs/<jobId>`, or null on the list alone. */
     readonly detail: JobDetail | null;
     readonly cancelling: boolean;
+    /** Retry is on its way (`imagery.retry`). */
+    readonly retrying: boolean;
+    /** The budget guard (null while reading). */
+    readonly guard: GuardView | null;
+    /** Resume processing is on its way (`imagery.resumeGuard`). */
+    readonly resuming: boolean;
 }
 
 export interface JobsIntents {
@@ -93,9 +104,16 @@ export interface JobsIntents {
     retry(): void;
     /** Asks the open job to stop (`cancelRequested: true`). */
     cancel(): Promise<WriteOutcome | null>;
+    /** Runs the open failed raster job again; true once it is queued again. */
+    retryJob(): Promise<boolean>;
+    /** Turns the budget guard green again; true once it is. */
+    resumeGuard(): Promise<boolean>;
 }
 
-const INITIAL: JobsState = { filter: 'all', list: LOADING_LIST, detail: null, cancelling: false };
+const INITIAL: JobsState = {
+    ...{ filter: 'all', list: LOADING_LIST, detail: null, cancelling: false, retrying: false },
+    ...{ guard: null, resuming: false },
+};
 
 function optionalIso(timestamp: TimestampLike | undefined): string | null {
     return timestamp === undefined ? null : isoOf(timestamp);
@@ -113,6 +131,7 @@ function jobItemOf(doc: Stored<JobDoc>): JobItem {
         ...{ progress: job.progress ?? null, step: job.step ?? null, steps: stepsOf(job) },
         ...{ createdBy: job.createdBy, createdAt: isoOf(job.createdAt), dispatchAt: optionalIso(job.dispatchAt) },
         ...{ cancelRequested: job.cancelRequested === true, error: job.error ?? null },
+        ...rasterFieldsOf(job),
     };
 }
 
@@ -158,6 +177,7 @@ class JobsStore implements AreaStore<JobsState, JobsIntents> {
     readonly #list: LiveList<JobDoc, JobItem>;
     readonly #job: LiveDoc<JobDoc>;
     readonly #logs: LiveList<JobLogDoc, JobLogLine>;
+    readonly #guard: GuardFeed;
     readonly intents: JobsIntents;
 
     constructor(services: ContentServices) {
@@ -181,6 +201,9 @@ class JobsStore implements AreaStore<JobsState, JobsIntents> {
             ...{ store, clock, denied, collection: '', schema: jobLogDocSchema, map: jobLogLineOf, pageSize: MAX_JOB_LOG_LINES },
             changed,
         });
+        this.#guard = new GuardFeed(services, (guard) => {
+            this.#cell.update({ guard });
+        });
         this.intents = {
             setFilter: (filter) => {
                 this.#setFilter(filter);
@@ -192,6 +215,8 @@ class JobsStore implements AreaStore<JobsState, JobsIntents> {
                 this.#retry();
             },
             cancel: () => this.#cancel(),
+            retryJob: () => this.#retryJob(),
+            resumeGuard: () => this.#resumeGuard(),
         };
     }
 
@@ -206,12 +231,14 @@ class JobsStore implements AreaStore<JobsState, JobsIntents> {
     open(params: readonly string[]): void {
         if (!this.#list.active) {
             this.#list.show(jobsQuery(this.#cell.state.filter));
+            this.#guard.start();
         }
         this.#select(params[0] ?? null);
     }
 
     close(): void {
         this.#list.stop();
+        this.#guard.stop();
         this.#select(null);
     }
 
@@ -258,8 +285,19 @@ class JobsStore implements AreaStore<JobsState, JobsIntents> {
         this.#cell.update({ detail: { id: detail.id, job, logs: this.#logs.list } });
     }
 
+    async #resumeGuard(): Promise<boolean> {
+        if (this.#cell.state.resuming) {
+            return false;
+        }
+        this.#cell.update({ resuming: true });
+        const resumed = await resumeGuard(this.#services);
+        this.#cell.update({ resuming: false });
+        return resumed;
+    }
+
     #retry(): void {
         this.#list.retry();
+        this.#guard.retry();
         if (this.#cell.state.detail !== null && this.#job.path !== '') {
             this.#job.retry();
             this.#logs.retry();
@@ -280,6 +318,17 @@ class JobsStore implements AreaStore<JobsState, JobsIntents> {
         this.#cell.update({ cancelling: false });
         this.#report(outcome);
         return outcome;
+    }
+
+    async #retryJob(): Promise<boolean> {
+        const job = openJob(this.#cell.state.detail);
+        if (job?.retryable !== true || this.#cell.state.retrying) {
+            return false;
+        }
+        this.#cell.update({ retrying: true });
+        const queued = await retryRasterJob(this.#services, job.id);
+        this.#cell.update({ retrying: false });
+        return queued;
     }
 
     #report(outcome: WriteOutcome): void {

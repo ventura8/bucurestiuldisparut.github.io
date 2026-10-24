@@ -19,7 +19,7 @@ class Outcome(enum.Enum):
     DONE = "done"
     """The step's work is complete (or was already complete)."""
     WAITING = "waiting"
-    """Blocked on USGS or Mapbox: the job state records why, and the scheduled ops.tick resumes it."""
+    """Blocked on USGS or the admin: the job state records why, and the scheduled imagery.tick resumes it."""
 
 
 class StepError(Exception):

@@ -1,0 +1,138 @@
+{
+    "comment": "The constants the pipeline shares with @hcm/shared (docs/research/M3-interfaces.md §2, §4, §5): packages/shared/test/schemas/pipeline-contract.test.ts keeps this file equal to the TypeScript constants, and hcm_pipeline reads its own copies from here in its tests, so a change on either side fails until both agree.",
+    "JOB_STATUSES": [
+        "queued",
+        "starting",
+        "running",
+        "waiting_usgs",
+        "mts_processing",
+        "awaiting_approval",
+        "awaiting_gcps",
+        "succeeded",
+        "failed",
+        "cancelled"
+    ],
+    "JOB_WAIT_REASONS": [
+        "usgs-preparing",
+        "usgs-maintenance",
+        "rate-limited",
+        "capacity",
+        "guard",
+        "gcps",
+        "approval",
+        "compute-units",
+        "deferred",
+        "mapbox"
+    ],
+    "JOB_STEP_STATES": ["pending", "running", "done", "failed", "skipped"],
+    "PIPELINE_STEPS": ["fetch", "extract", "stitch", "inspect", "locate", "reference", "georef", "warp", "export", "register"],
+    "JOB_STEPS": {
+        "usgs-import": [
+            "fetch",
+            "extract",
+            "stitch",
+            "locate",
+            "reference",
+            "georef",
+            "warp",
+            "export",
+            "register",
+            "guard",
+            "upload",
+            "publish",
+            "tiles",
+            "finalize"
+        ],
+        "geotiff-import": [
+            "inspect",
+            "reference",
+            "georef",
+            "warp",
+            "export",
+            "register",
+            "guard",
+            "upload",
+            "publish",
+            "tiles",
+            "finalize"
+        ],
+        "regeoref": ["georef", "warp", "export", "register", "guard", "upload", "publish", "tiles", "finalize"],
+        "republish": ["guard", "upload", "publish", "tiles", "finalize"],
+        "layer-delete": ["delete"]
+    },
+    "LAYER_VERSION_STATES": [
+        "processing",
+        "needs_gcps",
+        "awaiting_approval",
+        "approved",
+        "publishing",
+        "published",
+        "rejected",
+        "superseded",
+        "failed",
+        "cancelled"
+    ],
+    "GEOREF_TRANSFORMS": ["affine", "poly2", "tps"],
+    "MIN_GCPS": {
+        "affine": 3,
+        "poly2": 6,
+        "tps": 10
+    },
+    "GCP_ORIGINS": ["corner", "auto", "manual"],
+    "VERSION_FILES": ["scan.tif", "scan-preview.jpg", "reference-osm.png", "reference-s2.jpg", "cog.tif", "preview.png", "studio.tif"],
+    "LEASE_SECONDS": 600,
+    "HEARTBEAT_SECONDS": 60,
+    "USGS_BACKOFF_MINUTES": [30, 60, 120, 240, 480, 720],
+    "SCAN_PREVIEW_MAX_PX": 4096,
+    "STUDIO_MAX_BYTES": 300000000,
+    "SENSOR_SPECS": {
+        "KH-4": {
+            "dataset": "corona2",
+            "name": "KH-4 Corona",
+            "resolutionM": 7.5,
+            "minzoom": 10,
+            "maxzoom": 15,
+            "machine": "std"
+        },
+        "KH-4A": {
+            "dataset": "corona2",
+            "name": "KH-4A Corona",
+            "resolutionM": 2.75,
+            "minzoom": 10,
+            "maxzoom": 16,
+            "machine": "std"
+        },
+        "KH-4B": {
+            "dataset": "corona2",
+            "name": "KH-4B Corona",
+            "resolutionM": 1.8,
+            "minzoom": 10,
+            "maxzoom": 16,
+            "machine": "std"
+        },
+        "KH-7": {
+            "dataset": "declassii",
+            "name": "KH-7 Gambit",
+            "resolutionM": 1.2,
+            "minzoom": 10,
+            "maxzoom": 17,
+            "machine": "std"
+        },
+        "KH-9-mapping": {
+            "dataset": "declassii",
+            "name": "KH-9 Hexagon (mapping camera)",
+            "resolutionM": 7.5,
+            "minzoom": 10,
+            "maxzoom": 15,
+            "machine": "std"
+        },
+        "KH-9-pan": {
+            "dataset": "declassiii",
+            "name": "KH-9 Hexagon",
+            "resolutionM": 1,
+            "minzoom": 10,
+            "maxzoom": 17,
+            "machine": "xl"
+        }
+    }
+}

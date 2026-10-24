@@ -72,8 +72,21 @@ def test_happy_path_environment_defaults_to_the_process_environment(monkeypatch:
     assert (code, step.seen_job_id) == (ExitCode.OK, VALID_ENV["JOB_ID"])
 
 
-def test_happy_path_default_registry_offers_doctor() -> None:
-    assert default_registry().names() == ("doctor",)
+def test_happy_path_default_registry_offers_doctor_run_and_each_pipeline_step() -> None:
+    assert default_registry().names() == (
+        "doctor",
+        "run",
+        "fetch",
+        "extract",
+        "stitch",
+        "inspect",
+        "locate",
+        "reference",
+        "georef",
+        "warp",
+        "export",
+        "register",
+    )
 
 
 @pytest.mark.parametrize("argv", [[], ["warp"], ["--bogus"]])

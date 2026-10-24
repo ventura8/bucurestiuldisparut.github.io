@@ -2,6 +2,7 @@ import type { Logger } from '@hcm/shared';
 
 import type { AdminDirectory } from './admin-directory.js';
 import type { AuthAdmin } from './auth-admin.js';
+import type { BlobReader } from './blob-reader.js';
 import type { BlobStore } from './blob-store.js';
 import type { Clock } from './clock.js';
 import type { CloudRunJobs } from './cloud-run-jobs.js';
@@ -11,11 +12,14 @@ import type { FirebaseManagement } from './firebase-management.js';
 import type { GoogleIam } from './google-iam.js';
 import type { ImageProcessor } from './image-processor.js';
 import type { MapboxApi } from './mapbox-api.js';
+import type { MapboxTilesets } from './mapbox-tilesets.js';
+import type { RemoteFiles } from './remote-files.js';
 import type { RuntimeConfig } from './runtime-config.js';
 import type { SecretStore } from './secret-store.js';
 import type { SetupRecords } from './setup-records.js';
 import type { TaskQueue } from './task-queue.js';
 import type { UsgsApi } from './usgs-api.js';
+import type { UsgsScenes } from './usgs-scenes.js';
 
 /**
  * Every outside dependency of the handlers (docs/research/M2-interfaces.md §4). A handler declares the ports it uses
@@ -41,6 +45,11 @@ export interface Ports {
     readonly mapbox: MapboxApi;
     readonly usgs: UsgsApi;
     readonly jobs: CloudRunJobs;
+    /** M3 (docs/research/M3-interfaces.md §9): MTS publishing, USGS scenes, outside addresses from data, large reads. */
+    readonly tilesets: MapboxTilesets;
+    readonly scenes: UsgsScenes;
+    readonly remote: RemoteFiles;
+    readonly reader: BlobReader;
     readonly admins: AdminDirectory;
     readonly setup: SetupRecords;
 }

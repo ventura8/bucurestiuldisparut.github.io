@@ -7,6 +7,7 @@
 import type { ApiErrorCode, LayerAdjustmentName, LayerAdjustments, LayerDoc, LayerSource, Locale, ValidationIssue } from '@hcm/shared';
 
 import type { ListStatePort, LoadStatusPort, StoredPort, StoreFailurePort } from '../area-port.js';
+import type { CropStatePort } from './geometry/crop-port.js';
 
 export interface DraftConflictPort {
     readonly by: string;
@@ -98,6 +99,14 @@ export interface LinkStatePort {
     readonly origins: readonly string[];
     readonly tried: boolean;
     readonly sending: boolean;
+    /** M3: Check's answer (`imagery.probeTiles`) for the address as it stands. */
+    readonly probe:
+        | { readonly status: 'idle' | 'checking' }
+        | { readonly status: 'ok'; readonly contentType: string }
+        | {
+              readonly status: 'failed';
+              readonly refusal: { readonly code: ApiErrorCode; readonly params?: Readonly<Record<string, string>> };
+          };
 }
 
 /** The page's map: none yet, loading, ready, or why there is none (as `hcm-admin-map` shows it). */
@@ -110,6 +119,8 @@ export interface LayersViewState {
     readonly deletion: LayerDeletionPort;
     readonly link: LinkStatePort | null;
     readonly map: MapStatusPort;
+    /** M3 (CR-M3-7): the open Crop, or null. */
+    readonly crop: CropStatePort | null;
 }
 
 export type LayerTextFieldPort = 'label.ro' | 'label.en' | 'description.ro' | 'description.en' | 'attribution' | 'year' | 'date';
@@ -134,9 +145,17 @@ export interface LayersIntentsPort {
     editLink(patch: Partial<LinkFormPort>): void;
     closeLink(): void;
     submitLink(): Promise<string | null>;
+    /** M3: Check, one tile of the address asked by the server. */
+    checkLink(): Promise<void>;
     attachPreview(sink: PreviewSinkPort | null): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;
+    // M3 (CR-M3-7): the layer editor's Crop.
+    crop(): Promise<void>;
+    redrawCrop(): void;
+    addCropCorner(): void;
+    saveCrop(): Promise<boolean>;
+    closeCrop(): void;
 }
 
 /** The text of a layer's label in the admin's language (English falls back to Romanian). */

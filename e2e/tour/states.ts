@@ -1,6 +1,7 @@
 import type { Locale } from '@hcm/shared';
 import { expect, type BrowserContext, type Locator, type Page, type Route } from '@playwright/test';
 
+import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
 import { SITE_ORIGIN } from '../fixtures/world.js';
@@ -682,6 +683,12 @@ const ADMIN_STATES = {
     // [section ops] owner: ops-screens (admins, history, jobs, crash reports)
     ...OPS_STATES,
     // [end ops]
+    // M3 (docs/research/M3-interfaces.md §10.9, §12.2): the Imagery area, the georeferencer, the layer geometry tools and
+    // the imagery settings, ids 'imagery.<state>', 'georef.<state>', 'layers.<state>', 'settings.<state>'; e2e-fakes
+    // appends here as each state's journey lands.
+    // [section imagery] owner: e2e-fakes (with admin-imagery's screens)
+    ...IMAGERY_STATES,
+    // [end imagery]
 } as const;
 
 export type AdminStateId = keyof typeof ADMIN_STATES;

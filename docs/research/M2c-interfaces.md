@@ -1225,3 +1225,11 @@ layer delete, the replaced `S-A10-BAD-MISSING-EN-TITLE`).
   (`S-A21-HAPPY-DATES-IN-LANGUAGE`, `S-A21-BAD-DATE-UNREAD`).
 - **CR-M2c-24's open question (§34i)**: once Setup is complete an empty address opens `#/home`, and Home takes Setup's
   place on the compact bar (`S-A40-HAPPY-FIRST-SCREEN`, `S-A40-BAD-SETUP-INCOMPLETE`).
+
+## Addendum 2026-10-23: handed over to M3 (contracts)
+
+Added by the M3 contracts agent. CR-M2c-13 (run `layer-delete` jobs after their grace) is `imagery.tick`'s step 5 in
+`M3-interfaces.md` §4.6, owned by fn-imagery (`S-A33-HAPPY-TILESET-DELETED`). The layer editor's Replace image,
+Re-georeference and Crop (§8.2's M3 placeholders) are `M3-interfaces.md` §10.5 (CR-M3-7, admin-imagery, through the lazy
+`layer-geometry` chunk); the Jobs page learns the raster steps and `awaiting_gcps` (CR-M3-5; the status and its text are
+done); the tour inventory gained an `imagery` section in `e2e/tour/states.ts`.

@@ -8,6 +8,7 @@
  */
 import { bboxCenter, bboxFromRecord, roundTo, type BBox, type CityDoc, type LayerDoc, type Locale, type MapView } from '@hcm/shared';
 import type { MapPort, RasterLayerSpec } from '@hcm/ui/map';
+import type { MapDrawPort } from '@hcm/ui/map/draw';
 
 import type { AdminMapFactory, AdminMapHandle, AdminMapResult } from '../map/factory.js';
 import type { MapContent } from '../map/preview.js';
@@ -93,6 +94,19 @@ export class AreaMap {
     showContent(content: MapContent): void {
         this.#content = content;
         this.#handle?.preview.show(content);
+    }
+
+    /**
+     * The drawing tools on the drawn map, with the map and the city's bounds (their limits), else null: the layer
+     * editor's Crop (M3, CR-M3-7) draws its polygon with them.
+     */
+    async drawing(): Promise<{ readonly draw: MapDrawPort; readonly port: MapPort; readonly bounds: BBox } | null> {
+        const handle = this.#handle;
+        const frame = this.#frame;
+        if (handle === null || frame === null) {
+            return null;
+        }
+        return { draw: await handle.draw(), port: handle.port, bounds: frame.bounds };
     }
 
     /** The map itself once it is drawn (its clicks and its view), else null. */

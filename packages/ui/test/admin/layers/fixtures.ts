@@ -96,6 +96,7 @@ export function layersState(overrides: Partial<LayersViewState> = {}): LayersVie
         deletion: { phase: 'idle' },
         link: null,
         map: 'none',
+        crop: null,
         ...overrides,
     };
 }

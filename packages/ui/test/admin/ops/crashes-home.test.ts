@@ -98,6 +98,8 @@ describe('<hcm-home-page>', () => {
             ['#/photos', '0 Unpublished photos', false],
             ['#/jobs', '1 Jobs running', true],
             ['#/jobs', '— Failed jobs', false],
+            ['#/imagery', '2 Historical images to approve', true],
+            ['#/imagery', '0 Scans waiting for georeferencing points', false],
         ]);
         expect(deepAll(element, 'li.tag').map((chip) => [chip.dataset['tone'], chip.textContent.trim()])).toEqual([
             ['good', 'Billing: working'],

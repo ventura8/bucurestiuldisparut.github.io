@@ -1,7 +1,7 @@
 /**
  * The dashboard (`#/home`, the M2c brief's "dashboard home"; `docs/research/M2c-interfaces.md` §13, CR-M2c-24): what
  * the city holds (photos, places, categories, layers), what waits for an admin (photos in rights review, unpublished
- * photos, unfinished and failed jobs), the integrations' health from `setup/status` (one chip per Setup area, live) and
+ * photos, unfinished and failed jobs, from M3 the layer versions to approve or to georeference), the integrations' health from `setup/status` (one chip per Setup area, live) and
  * the public map's state from `manifests/{city}` (live). Counts are Firestore aggregations (one read per thousand
  * documents), counted when the page opens and on Refresh.
  */
@@ -25,7 +25,11 @@ import type { NoticeInput } from '../state/state.js';
 import { Store } from '../state/store.js';
 
 /** What the dashboard counts, in the order it shows them. */
-const HOME_COUNTS = ['photos', 'pois', 'categories', 'layers', 'rightsReviews', 'unpublishedPhotos', 'activeJobs', 'failedJobs'] as const;
+const HOME_COUNTS = [
+    ...['photos', 'pois', 'categories', 'layers', 'rightsReviews', 'unpublishedPhotos', 'activeJobs', 'failedJobs'],
+    // M3 (admin-imagery): the layer versions waiting for an admin, an approval or georeferencing points.
+    ...['versionsToApprove', 'versionsNeedingPoints'],
+] as const;
 
 type HomeCount = (typeof HOME_COUNTS)[number];
 
@@ -39,6 +43,8 @@ const COUNT_QUERIES: Readonly<Record<HomeCount, { readonly collection: (cityId: 
     unpublishedPhotos: { collection: FIRESTORE_PATHS.photos, query: { where: [['published', '==', false]] } },
     activeJobs: { collection: FIRESTORE_PATHS.jobs, query: { where: [['status', 'in', ACTIVE_JOB_STATUSES]] } },
     failedJobs: { collection: FIRESTORE_PATHS.jobs, query: { where: [['status', '==', 'failed']] } },
+    versionsToApprove: { collection: FIRESTORE_PATHS.layerVersions, query: { where: [['state', '==', 'awaiting_approval']] } },
+    versionsNeedingPoints: { collection: FIRESTORE_PATHS.layerVersions, query: { where: [['state', '==', 'needs_gcps']] } },
 };
 
 /** One integration's chip: its Setup area, its state (`missing` until it was ever checked) and why. */

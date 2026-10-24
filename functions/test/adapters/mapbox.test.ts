@@ -1,9 +1,9 @@
 /**
  * The Mapbox adapter against the fake Mapbox of `@hcm/test-support/fakes` (accounts with a plan, their tokens, the
- * Tokens API's scope checks): token checks, the token list, minting and updating, deleting, the tilesets list, and
+ * Tokens API's scope checks): token checks, the token list, minting and updating, deleting, and
  * every failure shape the Setup Assistant explains (a revoked token, a demo account, unconfirmed billing, an outage).
  */
-import { FIXTURE_VALUES, fixtureBody, fixtureResponse } from '@hcm/test-support/api-fixtures';
+import { FIXTURE_VALUES } from '@hcm/test-support/api-fixtures';
 import { createFakeFetch, createUpstreamFakes, jsonResponse, MAPBOX_TOKENS, route, routeTable } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
@@ -239,38 +239,5 @@ describe('deleteToken', () => {
 
     it('badPath_aRevokedBootstrapTokenCannotDelete', async () => {
         await expect(world().mapbox.deleteToken(USER, MAPBOX_TOKENS.revoked, 'x')).rejects.toMatchObject({ failure: 'unauthorized' });
-    });
-});
-
-describe('listTilesets', () => {
-    it('happyPath_listsTheAccountsTilesets', async () => {
-        const upstream = createFakeFetch(
-            routeTable([
-                route('GET', `${MAPBOX_API}/tilesets/v1/{user}`, 'mapbox.tilesets.list', () =>
-                    jsonResponse([
-                        ...(fixtureBody('mapbox/tilesets.list.one') as unknown[]),
-                        { id: 'e2e-mapbox.unnamed' },
-                        { name: 'no id' },
-                    ]),
-                ),
-            ]),
-        );
-
-        const tilesets = await createMapboxApi({ fetch: upstream.fetch }).listTilesets(USER, MAPBOX_TOKENS.bootstrap, 1);
-
-        expect(tilesets).toEqual([{ id: String(FIXTURE_VALUES['tilesetId']), name: 'e2e-1966' }, { id: 'e2e-mapbox.unnamed' }]);
-        expect(new URL(String(upstream.calls[0]?.url)).searchParams.get('limit')).toBe('1');
-    });
-
-    it('badPath_anAnswerThatIsNotAListIsInvalid', async () => {
-        const mapbox = createMapboxApi({ fetch: () => Promise.resolve(fixtureResponse('mapbox/error.not-found', { status: 200 })) });
-
-        await expect(mapbox.listTilesets(USER, MAPBOX_TOKENS.bootstrap, 1)).rejects.toEqual(new UpstreamError('mapbox', 'invalid'));
-    });
-
-    it('badPath_aMissingScopeIsForbidden', async () => {
-        const mapbox = createMapboxApi({ fetch: () => Promise.resolve(fixtureResponse('mapbox/error.forbidden')) });
-
-        await expect(mapbox.listTilesets(USER, MAPBOX_TOKENS.bootstrap, 1)).rejects.toMatchObject({ failure: 'forbidden' });
     });
 });

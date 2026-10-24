@@ -50,5 +50,7 @@ describe('CLIENT_WRITES', () => {
         expect(CLIENT_WRITES.poi.update.filter((field) => ['createdAt', 'createdBy'].includes(field))).toEqual([]);
         expect(CLIENT_WRITES.city.create).toEqual([]);
         expect(CLIENT_WRITES.layer.create).toEqual([]);
+        // M3: every job is created by a callable or a trigger that checks it (CR-M3-2).
+        expect(CLIENT_WRITES.job.create).toEqual([]);
     });
 });

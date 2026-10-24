@@ -51,6 +51,22 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'photos.onUpload': 'fn-events',
     'ops.tick': 'fn-admin',
     'ops.onBudget': 'fn-admin',
+    'imagery.search': 'fn-admin',
+    'imagery.browse': 'fn-admin',
+    'imagery.import': 'fn-admin',
+    'imagery.approve': 'fn-admin',
+    'imagery.reject': 'fn-admin',
+    'imagery.choose': 'fn-admin',
+    'imagery.studioDone': 'fn-admin',
+    'imagery.saveGcps': 'fn-admin',
+    'imagery.crop': 'fn-admin',
+    'imagery.retry': 'fn-admin',
+    'imagery.probeTiles': 'fn-admin',
+    'imagery.resumeGuard': 'fn-admin',
+    'imagery.onJobWrite': 'fn-events',
+    'imagery.onRasterUpload': 'fn-events',
+    'imagery.publish': 'fn-events',
+    'imagery.tick': 'fn-events',
 };
 
 /**

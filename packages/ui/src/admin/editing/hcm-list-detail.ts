@@ -82,9 +82,11 @@ export class HcmListDetail extends LitElement {
                 border-inline-end: 1px solid var(--md-sys-color-outline-variant, CanvasText);
             }
 
+            /* 4 px under the 40 px button keep its 48 px target clear of a detail that starts at once (the Imagery
+               area's map: the generic checkers measured 44 px, CR-M3-35 e). */
             .back {
                 display: flex;
-                padding: 8px 8px 0;
+                padding: 8px 8px 4px;
             }
 
             /*

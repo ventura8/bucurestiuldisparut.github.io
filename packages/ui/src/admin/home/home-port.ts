@@ -8,7 +8,16 @@ import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { DocStatePort, LoadStatusPort } from '../area-port.js';
 
 export type HomeCountPort =
-    'photos' | 'pois' | 'categories' | 'layers' | 'rightsReviews' | 'unpublishedPhotos' | 'activeJobs' | 'failedJobs';
+    | 'photos'
+    | 'pois'
+    | 'categories'
+    | 'layers'
+    | 'rightsReviews'
+    | 'unpublishedPhotos'
+    | 'activeJobs'
+    | 'failedJobs'
+    | 'versionsToApprove'
+    | 'versionsNeedingPoints';
 
 type SetupAreaPort = 'billing' | 'provision' | 'mapbox' | 'usgs' | 'analytics' | 'crash';
 

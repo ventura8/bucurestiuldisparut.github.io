@@ -22,16 +22,25 @@ export type CallableHandler<N extends CallableName, D> = (
 type Env = Readonly<Record<string, string | undefined>>;
 
 /**
- * The deploy options of a callable: its `maxInstances`, its runtime service account (`runAs`: `fn-admin@` for every
- * callable), and App Check from `HCM_APP_CHECK` (security review §1.6: one week of `monitor`, which leaves enforcement
+ * Callables that may run longer than the default 60 s (`docs/research/M3-interfaces.md` §3.5, CR-M3-22): the first
+ * harvest searches three datasets, up to five pages each, and copies the best browse images ahead. The admin asks with
+ * a timeout just over it (`IMAGERY_SEARCH_TIMEOUT_MS` of `packages/admin/src/imagery/search.ts`).
+ */
+const CALLABLE_TIMEOUT_SECONDS: Readonly<Partial<Record<CallableName, number>>> = { 'imagery.search': 300 };
+
+/**
+ * The deploy options of a callable: its `maxInstances`, a longer timeout where `CALLABLE_TIMEOUT_SECONDS` names one,
+ * its runtime service account (`runAs`: `fn-admin@` for every callable), and App Check from `HCM_APP_CHECK` (security review §1.6: one week of `monitor`, which leaves enforcement
  * off, then `enforce`); `consume` callables then also consume the token (replay protection for ownership and secret
  * pastes).
  */
 export function callableOptions(name: CallableName, env: Env): CallableOptions {
     const spec = CALLABLES[name];
     const enforce = env['HCM_APP_CHECK'] === 'enforce';
+    const timeoutSeconds = CALLABLE_TIMEOUT_SECONDS[name];
     return {
         maxInstances: spec.maxInstances,
+        ...(timeoutSeconds === undefined ? {} : { timeoutSeconds }),
         ...runAs(name),
         enforceAppCheck: enforce,
         consumeAppCheckToken: enforce && spec.appCheck === 'consume',

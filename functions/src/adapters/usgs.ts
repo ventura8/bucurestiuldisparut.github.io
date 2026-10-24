@@ -2,7 +2,8 @@ import type { Logger } from '@hcm/shared';
 
 import { UpstreamError, type UpstreamFailure } from '../ports/errors.js';
 import type { UsgsApi } from '../ports/usgs-api.js';
-import { at, failureOfStatus, readJson, send, strings, upstreamError, type Fetch } from './upstream-http.js';
+import type { UsgsScenes } from '../ports/usgs-scenes.js';
+import { at, failureOfStatus, list, readJson, send, stringAt, strings, upstreamError, type Fetch } from './upstream-http.js';
 
 /**
  * USGS M2M (EarthExplorer machine-to-machine) over REST with `fetch` (`.agent/skills/pipeline/usgs_m2m_skill.md`,
@@ -57,29 +58,31 @@ function m2mFailure(response: Response, answer: unknown): UpstreamFailure | unde
     return response.ok ? undefined : failureOfStatus(response.status);
 }
 
-interface UsgsOptions {
+export interface UsgsOptions {
     readonly fetch: Fetch;
     readonly log: Logger;
 }
 
-export function createUsgsApi(options: UsgsOptions): UsgsApi {
-    /** One M2M call: the `data` of a successful answer, else the failure of the table above. */
-    async function m2m(endpoint: string, body: unknown, apiKey?: string): Promise<unknown> {
-        const json = { 'content-type': 'application/json' };
-        const headers = apiKey === undefined ? json : { ...json, 'x-auth-token': apiKey };
-        const response = await send(options.fetch, SERVICE, `${USGS_M2M_API}/${endpoint}`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-        });
-        const answer = await readJson(response);
-        const failure = m2mFailure(response, answer);
-        if (failure !== undefined) {
-            options.log.warn('usgs m2m call failed', { endpoint, status: response.status, errorCode: errorCodeOf(answer) });
-            throw upstreamError(SERVICE, response, failure);
-        }
-        return at(answer, 'data');
+/** One M2M call: the `data` of a successful answer, else the failure of the table above. */
+async function m2mCall(options: UsgsOptions, endpoint: string, body: unknown, apiKey?: string): Promise<unknown> {
+    const json = { 'content-type': 'application/json' };
+    const headers = apiKey === undefined ? json : { ...json, 'x-auth-token': apiKey };
+    const response = await send(options.fetch, SERVICE, `${USGS_M2M_API}/${endpoint}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body),
+    });
+    const answer = await readJson(response);
+    const failure = m2mFailure(response, answer);
+    if (failure !== undefined) {
+        options.log.warn('usgs m2m call failed', { endpoint, status: response.status, errorCode: errorCodeOf(answer) });
+        throw upstreamError(SERVICE, response, failure);
     }
+    return at(answer, 'data');
+}
+
+export function createUsgsApi(options: UsgsOptions): UsgsApi {
+    const m2m = (endpoint: string, body: unknown, apiKey?: string): Promise<unknown> => m2mCall(options, endpoint, body, apiKey);
 
     return {
         login: async (username, applicationToken) => {
@@ -103,5 +106,131 @@ export function createUsgsApi(options: UsgsOptions): UsgsApi {
                 options.log.debug('usgs logout failed (the key expires by itself)', { error: String(error) });
             }
         },
+    };
+}
+
+type SceneSearch = Parameters<UsgsScenes['search']>[1];
+type SceneRecord = Awaited<ReturnType<UsgsScenes['search']>>['records'][number];
+type DownloadOption = Awaited<ReturnType<UsgsScenes['downloadOptions']>>[number];
+
+/** The outer ring of a `spatialCoverage` polygon: its `[lng, lat]` positions (anything else dropped). */
+function ringOf(coordinates: unknown): (readonly [number, number])[] {
+    const [outer] = list(coordinates);
+    return list(outer).flatMap((position) => {
+        const [lng, lat] = list(position);
+        return typeof lng === 'number' && typeof lat === 'number' ? [[lng, lat] as const] : [];
+    });
+}
+
+/** M2M's cloud cover: a number or a numeric string; `-1` (none recorded) and anything unreadable are null. */
+function cloudOf(value: unknown): number | null {
+    const cover = typeof value === 'string' || typeof value === 'number' ? Number(value) : Number.NaN;
+    return Number.isFinite(cover) && cover >= 0 ? cover : null;
+}
+
+/** A metadata value as text: strings, numbers and booleans; anything else (null, a structure) is none. */
+function fieldText(value: unknown): string | undefined {
+    return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : undefined;
+}
+
+/** The full metadata's `[{fieldName, value}]` as a record of strings (empty values dropped). */
+function metadataOf(value: unknown): Record<string, string> {
+    return Object.fromEntries(
+        list(value).flatMap((field) => {
+            const name = stringAt(field, 'fieldName');
+            const text = fieldText(at(field, 'value'));
+            return name === undefined || text === undefined ? [] : [[name, text]];
+        }),
+    );
+}
+
+/** The first browse image's address, when the result has one. */
+function browseOf(entry: unknown): { browseUrl?: string } {
+    const browseUrl = stringAt(list(at(entry, 'browse'))[0], 'browsePath');
+    return browseUrl === undefined || browseUrl === '' ? {} : { browseUrl };
+}
+
+/** One `scene-search` result; one without an entity id or a start date is dropped. */
+function toSceneRecord(entry: unknown): SceneRecord[] {
+    const entityId = stringAt(entry, 'entityId');
+    const startDate = stringAt(entry, 'temporalCoverage', 'startDate');
+    if (entityId === undefined || startDate === undefined) {
+        return [];
+    }
+    const record: SceneRecord = {
+        entityId,
+        displayId: stringAt(entry, 'displayId') ?? entityId,
+        acquisitionDate: startDate.slice(0, 10),
+        footprint: ringOf(at(entry, 'spatialCoverage', 'coordinates')),
+        cloudCover: cloudOf(at(entry, 'cloudCover')),
+        downloadAvailable: at(entry, 'options', 'download') === true,
+        metadata: metadataOf(at(entry, 'metadata')),
+        ...browseOf(entry),
+    };
+    return [record];
+}
+
+/** The acquisition window of a search, when it has one (M2M wants both ends). */
+function acquisitionFilter(request: SceneSearch): { acquisitionFilter?: { start: string; end: string } } {
+    if (request.from === undefined && request.to === undefined) {
+        return {};
+    }
+    return { acquisitionFilter: { start: request.from ?? '1950-01-01', end: request.to ?? '2100-12-31' } };
+}
+
+function sceneSearchBody(request: SceneSearch): unknown {
+    const { west, south, east, north } = request.bounds;
+    return {
+        datasetName: request.dataset,
+        sceneFilter: {
+            spatialFilter: {
+                filterType: 'mbr',
+                lowerLeft: { latitude: south, longitude: west },
+                upperRight: { latitude: north, longitude: east },
+            },
+            ...acquisitionFilter(request),
+        },
+        metadataType: 'full',
+        maxResults: request.maxResults,
+        startingNumber: request.startingNumber ?? 1,
+    };
+}
+
+/** The next page's first record, while there is one. */
+function nextOf(data: unknown, returned: number): number | undefined {
+    const [next, total] = [at(data, 'nextRecord'), at(data, 'totalHits')];
+    return typeof next === 'number' && typeof total === 'number' && returned > 0 && next <= total ? next : undefined;
+}
+
+/** `download-options` per scene: available when any product of it is, its size the largest available product's. */
+function toDownloadOptions(data: unknown, entityIds: readonly string[]): DownloadOption[] {
+    const products = list(data);
+    return entityIds.map((entityId) => {
+        const available = products.filter((product) => at(product, 'entityId') === entityId && at(product, 'available') === true);
+        const bytes = Math.max(0, ...available.map((product) => Number(at(product, 'filesize') ?? 0)));
+        return { entityId, available: available.length > 0, bytes };
+    });
+}
+
+/**
+ * M2M scene search and download availability (`docs/research/M3-interfaces.md` §3.1–§3.2): `scene-search` over the
+ * city's bounds (`mbr`), with the full metadata, a page at a time; `download-options` for whether a frame is already
+ * scanned. The same failures as `createUsgsApi`'s; the API key goes in the `X-Auth-Token` header only.
+ */
+export function createUsgsScenes(options: UsgsOptions): UsgsScenes {
+    return {
+        search: async (apiKey, request) => {
+            const data = await m2mCall(options, 'scene-search', sceneSearchBody(request), apiKey);
+            const records = list(at(data, 'results')).flatMap(toSceneRecord);
+            const totalHits = at(data, 'totalHits');
+            const next = nextOf(data, records.length);
+            const page = { records, totalHits: typeof totalHits === 'number' ? totalHits : records.length };
+            return next === undefined ? page : { ...page, next };
+        },
+        downloadOptions: async (apiKey, dataset, entityIds) =>
+            toDownloadOptions(
+                await m2mCall(options, 'download-options', { datasetName: dataset, entityIds: [...entityIds] }, apiKey),
+                entityIds,
+            ),
     };
 }

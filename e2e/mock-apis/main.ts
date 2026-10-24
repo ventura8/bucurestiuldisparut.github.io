@@ -11,7 +11,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { createLogger } from '@hcm/shared';
-import { createUpstreamExtension } from '@hcm/test-support/fakes/http';
+import { createUpstreamExtension, UpstreamPartitions } from '@hcm/test-support/fakes/http';
 
 import { parseHostingConfig } from '../../scripts/site/src/admin/hosting.js';
 import {
@@ -23,8 +23,10 @@ import {
     ADMIN_RUNTIME,
     ADMIN_WEB_CONFIG,
 } from '../admin/world.js';
-import { E2E_SITE_DIR, MOCK_API_PORT, SITE_ORIGIN, SITE_PORT } from '../fixtures/world.js';
+import { ImageryRunner, useSyntheticScenes } from '../admin/support/imagery-runner.js';
+import { E2E_SITE_DIR, MOCK_API_ORIGIN, MOCK_API_PORT, SITE_ORIGIN, SITE_PORT } from '../fixtures/world.js';
 import { startAdminServer } from './admin-server.js';
+import { createImageryExtension } from './imagery.js';
 import { createLeases } from './lease.js';
 import { createOAuthStandIn } from './oauth.js';
 import { startMockApis, startSiteServer } from './server.js';
@@ -35,11 +37,29 @@ const role = process.argv[2];
 if (role === 'mock') {
     // The pinned devDependency of @hcm/e2e, byte for byte what api.mapbox.com serves for v3.32.0.
     const mapboxGlDist = dirname(fileURLToPath(import.meta.resolve('mapbox-gl/dist/mapbox-gl.js')));
-    // The fake upstreams (Google Cloud, Mapbox's Tokens and Tilesets APIs, USGS M2M, Nominatim) answer first, one world
-    // per test; Google's consent stand-in issues its grants into the same worlds; the leases serialize the admin tier.
-    const upstream = createUpstreamExtension();
+    // The fake upstreams (Google Cloud, Mapbox's Tokens and Tilesets APIs, USGS M2M, Nominatim, and for M3 USGS's browse
+    // images and downloads, STAC and Overpass) answer first, one world per test; every world's Cloud Run hands its pipeline
+    // runs to the imagery runner, and its STAC search and USGS's signed downloads point at this server (the pipeline tier
+    // reads them over loopback); Google's consent stand-in issues its grants into the same worlds; the leases serialize
+    // the admin tier.
+    const runner = new ImageryRunner();
+    const upstream = createUpstreamExtension(
+        new UpstreamPartitions((fakes) => {
+            fakes.state.cloudRun.runner = runner;
+            fakes.state.stac.cogOrigin = `${MOCK_API_ORIGIN}/h/sentinel-cogs.s3.us-west-2.amazonaws.com`;
+            // The signed delivery addresses too: the real pipeline under the emulators reaches nothing off this machine.
+            fakes.state.usgs.delivery.origin = `${MOCK_API_ORIGIN}/h/dds.cr.usgs.gov`;
+            useSyntheticScenes(fakes);
+        }),
+    );
     const consent = createOAuthStandIn(upstream.partitions, { openers: [ADMIN_ORIGIN, SITE_ORIGIN] });
-    await startMockApis(MOCK_API_PORT, { mapboxGlDist, engineDist: resolve('packages/engine/dist') }, [upstream, consent, createLeases()]);
+    const imagery = createImageryExtension(runner, upstream);
+    await startMockApis(MOCK_API_PORT, { mapboxGlDist, engineDist: resolve('packages/engine/dist') }, [
+        imagery,
+        upstream,
+        consent,
+        createLeases(),
+    ]);
     log.info('mock APIs listening', { port: MOCK_API_PORT });
 } else if (role === 'site') {
     await startSiteServer(SITE_PORT, E2E_SITE_DIR);

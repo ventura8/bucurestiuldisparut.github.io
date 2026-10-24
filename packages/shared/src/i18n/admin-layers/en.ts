@@ -6,7 +6,7 @@ import type { AdminLayersKey } from './ro.js';
  */
 export const en: Readonly<Record<AdminLayersKey, string>> = {
     // [section layers] owner: layers-settings; keys adminContent.layers.*
-    'adminContent.layers.empty': 'Historical layers arrive with the processing of the USGS imagery.',
+    'adminContent.layers.empty': 'Historical layers arrive from Historical imagery: import a USGS scene or upload a GeoTIFF there.',
     'adminContent.layers.title': 'Historical layers',
     'adminContent.layers.listLabel': 'Layer list',
     'adminContent.layers.detailLabel': 'Selected layer',
@@ -68,7 +68,7 @@ export const en: Readonly<Record<AdminLayersKey, string>> = {
     'adminContent.layers.adjusted': '{name}: {value} %',
     'adminContent.layers.reset': 'Reset the adjustments',
     'adminContent.layers.geometry': 'Image and geometry',
-    'adminContent.layers.geometryNote': 'Replacing the image, cropping and georeferencing again arrive with the USGS imagery processing.',
+    'adminContent.layers.geometryNote': 'Each change makes a new version of the image; the layer keeps its tiles until you approve it.',
     'adminContent.layers.delete': 'Delete the layer',
     'adminContent.layers.deleteConfirm': 'Delete the layer “{name}”?',
     'adminContent.layers.deleteBody': 'It leaves the public map within about a minute. You can restore it from History.',
@@ -91,6 +91,9 @@ export const en: Readonly<Record<AdminLayersKey, string>> = {
     'adminContent.layers.kind.map': 'Map',
     'adminContent.layers.linkAction': 'Link',
     'adminContent.layers.linking': 'Linking…',
+    'adminContent.layers.check': 'Check',
+    'adminContent.layers.checking': 'Asking for one tile…',
+    'adminContent.layers.tilesAnswer': 'Tiles answer ({type}).',
     'adminContent.layers.linked': 'The layer “{name}” is linked. Check it on the map, then publish it.',
     'adminContent.layers.cspNote': 'Tiles from {origins} show publicly once the city site allows these addresses.',
     'adminContent.layers.fieldInvalid': 'This value needs correcting.',

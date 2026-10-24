@@ -13,8 +13,10 @@ import type { ThemeTokenSet } from '@hcm/ui/dynamic-color';
 
 import type { Clock, KeyValueStore, Unsubscribe } from '../app/ports.js';
 import type { CallablesPort } from '../firebase/ports.js';
+import type { FilePort, PicturePort } from '../imagery/files.js';
 import type { AdminMapFactory } from '../map/factory.js';
 import type { UploadPort } from '../firebase/uploads.js';
+import type { CropToolFactory } from '../layers/geometry/types.js';
 import type { NoticeInput } from '../state/state.js';
 
 /** A page of a list: 50 documents; More asks for the next 50 (`ContentQuery.limit`). */
@@ -164,6 +166,14 @@ export interface ContentServices {
     /** The admin's map: one per page visit, Standard style, the admin's token, the drawing tools (`../map/factory.ts`, §3). */
     readonly maps?: AdminMapFactory | null;
     // [end pois]
+    // [section imagery] owner: admin-imagery (`files`, `pictures`: `../imagery/files.ts`, docs/research/M3-interfaces.md §10)
+    /** The private bucket's files the imagery screens read with the Storage SDK (`../firebase/files.ts`). */
+    readonly files?: FilePort | null;
+    /** Decodes an image into a canvas the admin map shows as a canvas source (`../imagery/pictures.ts`). */
+    readonly pictures?: PicturePort | null;
+    /** The layer editor's Crop: loads the `layer-geometry` chunk (`../layers/crop-chunk.ts`, CR-M3-7). */
+    readonly layerCrop?: (() => Promise<CropToolFactory>) | null;
+    // [end imagery]
 }
 
 /** The members every area gets from the shell; the rest are the areas' own (`AreaServiceParts`). */

@@ -23,6 +23,7 @@ const STATUSES: Readonly<Record<JobStatusPort, AdminContentKey>> = {
     waiting_usgs: 'adminContent.jobs.status.waitingUsgs',
     mts_processing: 'adminContent.jobs.status.mtsProcessing',
     awaiting_approval: 'adminContent.jobs.status.awaitingApproval',
+    awaiting_gcps: 'adminContent.jobs.status.awaitingGcps',
     succeeded: 'adminContent.jobs.status.succeeded',
     failed: 'adminContent.jobs.status.failed',
     cancelled: 'adminContent.jobs.status.cancelled',
@@ -47,6 +48,16 @@ const STEP_NAMES: Readonly<Record<string, AdminContentKey>> = {
     export: 'adminContent.jobs.stepName.export',
     publish: 'adminContent.jobs.stepName.publish',
     delete: 'adminContent.jobs.stepName.delete',
+    // M3 (CR-M3-5): the pipeline's other steps and the publisher's (`JOB_STEPS` in @hcm/shared).
+    extract: 'adminContent.jobs.stepName.extract',
+    stitch: 'adminContent.jobs.stepName.stitch',
+    inspect: 'adminContent.jobs.stepName.inspect',
+    reference: 'adminContent.jobs.stepName.reference',
+    register: 'adminContent.jobs.stepName.register',
+    guard: 'adminContent.jobs.stepName.guard',
+    upload: 'adminContent.jobs.stepName.upload',
+    tiles: 'adminContent.jobs.stepName.tiles',
+    finalize: 'adminContent.jobs.stepName.finalize',
 };
 
 const LEVELS: Readonly<Record<JobLogLinePort['level'], AdminContentKey>> = {

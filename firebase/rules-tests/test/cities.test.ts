@@ -1,6 +1,7 @@
 /**
- * cities/{city}: admins edit the settings (`CLIENT_WRITES.city.update`), validated like `cityDocSchema`; id, mapbox,
- * analytics, engine and createdAt are server-owned (client-writes.test.ts), cities are created and deleted by callables.
+ * cities/{city}: admins edit the settings (`CLIENT_WRITES.city.update`, M3's imagery settings included), validated like
+ * `cityDocSchema`; id, mapbox, analytics, engine and createdAt are server-owned (client-writes.test.ts), cities are created
+ * and deleted by callables.
  */
 import { FIRESTORE_PATHS } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -50,6 +51,10 @@ describe('update', () => {
         ['50 credits', { credits: Array.from({ length: 50 }, () => ({ label: { ro: 'A', en: 'A' } })) }],
         ['a fully transparent photos overlay', { photosOverlay: { defaultOpacity: 0 } }],
         ['bounds around the globe', { bounds: { west: -180, south: -90, east: 180, north: 90 } }],
+        ['imagery settings with every default', { imagery: {} }],
+        ['imagery settings at their limits', { imagery: { autoPublish: false, rmseThresholdM: 200, targetYears: yearsOf(20) } }],
+        ['a threshold of one metre and a fraction', { imagery: { rmseThresholdM: 1.5 } }],
+        ['no imagery settings', { imagery: deleted() }],
     ])('happyPath_adminSaves_%s', async (_label, changes) => {
         expect(await edit(changes)).toBe('allow');
     });
@@ -102,6 +107,20 @@ describe('update', () => {
         ['a published flag that is not a boolean', { published: 'yes' }],
         ['a missing published flag', { published: deleted() }],
         ['an unknown field', { html: '<script>alert(1)</script>' }],
+        ['imagery settings that are not a map', { imagery: 'auto' }],
+        ['an imagery setting the schema does not know', { imagery: { autoPublish: true, publishAll: true } }],
+        ['an auto-publish flag that is not a boolean', { imagery: { autoPublish: 'yes' } }],
+        ['a threshold under one metre', { imagery: { rmseThresholdM: 0.5 } }],
+        ['a threshold over 200 metres', { imagery: { rmseThresholdM: 201 } }],
+        ['a threshold that is text', { imagery: { rmseThresholdM: '15' } }],
+        ['target years that are not a list', { imagery: { targetYears: 1966 } }],
+        ['21 target years', { imagery: { targetYears: yearsOf(21) } }],
+        ['a target year twice', { imagery: { targetYears: [1966, 1966] } }],
+        ['a target year before 1800', { imagery: { targetYears: [1966, 1799] } }],
+        ['a target year that is text', { imagery: { targetYears: ['1966'] } }],
+        ['a fraction of a year last of twenty', { imagery: { targetYears: [...yearsOf(19), 1966.5] } }],
+        ['imagery settings saved with other settings', { imagery: { autoPublish: false }, published: false }],
+        ['imagery settings saved with a client clock', { imagery: { autoPublish: false }, updatedAt: past() }],
     ])('badPath_adminCannotSave_%s', async (_label, changes) => {
         expect(await edit(changes)).toBe('deny');
     });
@@ -134,4 +153,9 @@ function tokenSchemes(count: number): Data {
 
 function configOf(count: number): Data {
     return Object.fromEntries(Array.from({ length: count }, (_, index) => [`option${String(index)}`, index]));
+}
+
+/** `count` distinct years from 1900. */
+function yearsOf(count: number): number[] {
+    return Array.from({ length: count }, (_, index) => 1900 + index);
 }

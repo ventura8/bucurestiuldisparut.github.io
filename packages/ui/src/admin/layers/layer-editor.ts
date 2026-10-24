@@ -1,8 +1,8 @@
 /**
  * The layer editor's pane (`docs/research/M2c-interfaces.md` §8.2, §8.3; behaviours A35, A36, A38): the save row, the
  * conflict and gone banners, the texts in both languages, the attribution, year and date, Shown at start and Published,
- * the default opacity and the four image adjustments with Reset (every slider previews live; Save writes), a note on the
- * image and geometry tools of the raster pipeline, and Delete with its confirmation. On a revoked admin's read-only page
+ * the default opacity and the four image adjustments with Reset (every slider previews live; Save writes), the image and
+ * geometry tools of the raster pipeline (M3, `./geometry-group.ts`), and Delete with its confirmation. On a revoked admin's read-only page
  * (`DECISIONS-for-review.md` §42d) every field is read-only and every control that writes is off.
  */
 import {
@@ -22,6 +22,8 @@ import type { WhoPort } from '../editing/conflict.js';
 import { errorTemplate, loadingTemplate, reconnectingStatus } from '../editing/states.js';
 import { contentText } from '../shell/text.js';
 import { conflictBanner, field, issueAt, saveBar, saveStateOf, sliderRow, type FieldSpec } from './form-parts.js';
+import type { CropStatePort } from './geometry/crop-port.js';
+import { geometryGroup } from './geometry-group.js';
 import {
     labelOf,
     type LayerDeletionPort,
@@ -46,6 +48,8 @@ export interface EditorContext {
     readonly readOnly: boolean;
     /** Who reads the page and the admins' names: the conflict banner names who saved. */
     readonly who: WhoPort;
+    /** M3 (CR-M3-7): the open Crop, or null. */
+    readonly crop: CropStatePort | null;
 }
 
 /** The page's map, with the open layer drawn as saved and the draft's look previewed over it. */
@@ -225,13 +229,6 @@ function adjustmentsGroup(context: EditorContext, layer: LayerDoc): TemplateResu
     </section>`;
 }
 
-function geometryGroup(locale: Locale): TemplateResult {
-    return html`<section class="group">
-        <h3>${contentText(locale, 'adminContent.layers.geometry')}</h3>
-        <p class="note">${contentText(locale, 'adminContent.layers.geometryNote')}</p>
-    </section>`;
-}
-
 function deleteBody(locale: Locale, linked: boolean): string {
     const lasting = linked
         ? contentText(locale, 'adminContent.layers.deleteBodyLinked')
@@ -292,7 +289,7 @@ function editorBody(context: EditorContext, editor: LayerEditorPort, layer: Laye
         )}
         ${draft.gone ? html`<p class="alert" role="alert"><span>${contentText(locale, 'adminContent.layers.gone')}</span></p>` : nothing}
         ${mapBox(context)} ${textsGroup(context, editor, layer)} ${displayGroup(context, editor, layer)} ${adjustmentsGroup(context, layer)}
-        ${geometryGroup(locale)} ${draft.gone ? nothing : deleteControls(context, layer, deletion)}
+        ${geometryGroup(context, editor.id, layer)} ${draft.gone ? nothing : deleteControls(context, layer, deletion)}
     </div>`;
 }
 

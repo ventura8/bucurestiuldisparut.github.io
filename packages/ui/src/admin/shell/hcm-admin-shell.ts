@@ -142,7 +142,9 @@ export class HcmAdminShell extends LitElement {
         const state = this.state;
         if (state !== null) {
             this.#applyTheme(state);
+            // The page's language and its tab's title follow the admin's (the static page is Romanian).
             this.ownerDocument.documentElement.lang = state.locale;
+            this.ownerDocument.title = shellText(state.locale, 'adminShell.appName');
         }
         this.#keepAccountFocus();
     }

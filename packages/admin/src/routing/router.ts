@@ -76,12 +76,17 @@ export function resolveAdminRoute(hash: string, context: RouteContext): Resolved
  * The navigation's destinations: Setup alone in start-up mode; in normal mode Setup and every route whose page exists,
  * in `ADMIN_ROUTES` order. History joined once its page existed (M2c, CR-M2c-8): the city's recent changes are a page of
  * their own, and an item's History opens `#/history/<entity>/<id>`. Once Setup is complete the dashboard is on the
- * compact bar in Setup's place, and Setup under More (§34i).
+ * compact bar in Setup's place, and Setup under More (§34i). The georeferencer is no destination (M3, `inNavigation: false`).
  */
 export function navigationDestinations(context: RouteContext): readonly AdminDestination[] {
-    const ids = context.mode === 'normal' ? ADMIN_ROUTES.filter((id) => id === 'setup' || context.hasPage(id)) : ['setup' as const];
+    const ids = context.mode === 'normal' ? ADMIN_ROUTES.filter((id) => id === 'setup' || navigable(id, context)) : ['setup' as const];
     const done = setUp(context);
     return ids.map((id) => destinationOf(id, done));
+}
+
+/** A page of the navigation: built, and not one reached only from another page (the georeferencer). */
+function navigable(id: AdminRouteId, context: RouteContext): boolean {
+    return ADMIN_ROUTE_SPECS[id].inNavigation !== false && context.hasPage(id);
 }
 
 export function destinationOf(id: AdminRouteId, setUpDone = false): AdminDestination {

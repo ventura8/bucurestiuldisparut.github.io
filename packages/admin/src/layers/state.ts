@@ -9,6 +9,7 @@ import { LOADING_LIST, type ListState } from '../content/list.js';
 import type { WriteOutcome } from '../content/services.js';
 import type { DraftState } from './draft.js';
 import type { DeletionState } from './deletion.js';
+import type { CropState } from './geometry/types.js';
 import type { LayerTextField } from './fields.js';
 import type { LinkState } from './linker.js';
 import type { LinkForm } from './link.js';
@@ -54,6 +55,8 @@ export interface LayersState {
     readonly link: LinkState | null;
     /** The page's map: none yet, loading, ready, or why there is none. */
     readonly map: MapStatus;
+    /** M3 (CR-M3-7): the open layer's Crop, while it is open. */
+    readonly crop: CropState | null;
 }
 
 export interface LayersIntents {
@@ -85,12 +88,23 @@ export interface LayersIntents {
     closeLink(): void;
     /** `layers.link`: the new layer's id (the page opens its editor), or null when refused. */
     submitLink(): Promise<string | null>;
+    /** M3: Check, one tile of the address asked by the server (`imagery.probeTiles`). */
+    checkLink(): Promise<void>;
     /** The page's map preview, once its map exists (null when it goes). */
     attachPreview(sink: PreviewSink | null): void;
     /** The page shows its map's host (`hcm-admin-map`'s `hcm-map-host`): the map is created into it. */
     attachMap(container: HTMLElement): void;
     /** The map's zoom buttons. */
     zoomBy(delta: number): void;
+    /** M3 (CR-M3-7): Crop on the open layer (loads the `layer-geometry` chunk once). */
+    crop(): Promise<void>;
+    /** The crop polygon again from nothing. */
+    redrawCrop(): void;
+    /** The keyboard's way: a corner at the map's centre. */
+    addCropCorner(): void;
+    /** `imagery.crop` of the drawn polygon: true once its job is queued (the tool closes). */
+    saveCrop(): Promise<boolean>;
+    closeCrop(): void;
 }
 
 export const INITIAL: LayersState = {
@@ -100,6 +114,7 @@ export const INITIAL: LayersState = {
     deletion: { phase: 'idle' },
     link: null,
     map: 'none',
+    crop: null,
 };
 
 type WriteFailure = Extract<WriteOutcome, { readonly ok: false }>['reason'];

@@ -17,6 +17,8 @@ export const en: Readonly<Record<AdminSettingsKey, string>> = {
     'adminContent.settings.section.textsHint': 'Name, About, privacy, credits',
     'adminContent.settings.section.theme': 'Theme and basemap',
     'adminContent.settings.section.themeHint': 'The city colour, the visitors’ basemap',
+    'adminContent.settings.section.imagery': 'Historical imagery',
+    'adminContent.settings.section.imageryHint': 'Publishing on its own, the error threshold, the target years',
     'adminContent.settings.section.categories': 'Place categories',
     'adminContent.settings.section.categoriesHint': 'Icon, colour, opacity, order',
     'adminContent.settings.section.overlays': 'Default opacities',

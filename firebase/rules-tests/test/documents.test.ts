@@ -11,9 +11,12 @@ import {
     historyEntryDocSchema,
     inviteDocSchema,
     jobDocSchema,
+    harvestStateDocSchema,
     jobLogDocSchema,
     layerDocSchema,
+    layerVersionDocSchema,
     manifestStateDocSchema,
+    opsDispatchDocSchema,
     opsGuardDocSchema,
     ownerDocSchema,
     photoDocSchema,
@@ -32,16 +35,18 @@ import {
     adminDoc,
     cityDoc,
     editableFields,
+    harvestStateDoc,
     historyEntryDoc,
     inviteDoc,
     jobDoc,
     jobLogDoc,
     layerDoc,
+    layerVersionDoc,
     manifestStateDoc,
-    newJob,
     newPhoto,
     newPoi,
     newPoiCategory,
+    opsDispatchDoc,
     opsGuardDoc,
     ownerDoc,
     photoDoc,
@@ -73,17 +78,17 @@ const COMPLETE: readonly (readonly [ClientCollection, DocumentSchema, () => Data
     ['usgsScene', usgsSceneDocSchema, () => usgsSceneDoc()],
 ];
 
-/** The client creates, by collection. */
+/** The client creates, by collection (jobs are created by the imagery functions since M3, CR-M3-2). */
 const CREATES: readonly (readonly [ClientCollection, DocumentSchema, (uid: string) => Data])[] = [
     ['photo', photoDocSchema, newPhoto],
     ['poi', poiDocSchema, newPoi],
     ['poiCategory', poiCategoryDocSchema, newPoiCategory],
-    ['job', jobDocSchema, newJob],
 ];
 
 /** The server-owned documents the tests seed. */
 const SERVER_ONLY: readonly (readonly [string, DocumentSchema, () => Data])[] = [
     ['job log', jobLogDocSchema, jobLogDoc],
+    ['layer version', layerVersionDocSchema, layerVersionDoc],
     ['history entry', historyEntryDocSchema, () => historyEntryDoc(UID)],
     ['admin', adminDocSchema, adminDoc],
     ['invite', inviteDocSchema, () => inviteDoc(UID)],
@@ -91,6 +96,8 @@ const SERVER_ONLY: readonly (readonly [string, DocumentSchema, () => Data])[] = 
     ['setup status', setupStatusDocSchema, setupStatusDoc],
     ['usage', usageDocSchema, usageDoc],
     ['ops guard', opsGuardDocSchema, opsGuardDoc],
+    ['dispatch slots', opsDispatchDocSchema, opsDispatchDoc],
+    ['harvest state', harvestStateDocSchema, harvestStateDoc],
     ['manifest state', manifestStateDocSchema, () => manifestStateDoc(CITY_ID)],
 ];
 
@@ -141,7 +148,7 @@ describe('client creates', () => {
             writes.create.length === 0 ? [collection] : [],
         );
 
-        expect(sorted(serverCreated)).toEqual(['city', 'layer', 'usgsScene']);
+        expect(sorted(serverCreated)).toEqual(['city', 'job', 'layer', 'usgsScene']);
     });
 });
 

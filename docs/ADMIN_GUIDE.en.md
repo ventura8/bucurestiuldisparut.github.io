@@ -2,7 +2,7 @@
 
 Guide for the administrator of a city in **Historic City Map** (first city: **București dispărut**, Bucharest). This is the outline of the guide: sections are filled in together with the features, in milestones M2–M5. Romanian version: [ADMIN_GUIDE.ro.md](ADMIN_GUIDE.ro.md); both versions change together.
 
-> Status (M2c): sign-in, the Setup Assistant and the daily editors below (Home, photos, places, layers, settings, history, jobs, admins and crash reports) work end to end against the Firebase emulators and the fake Google, Mapbox and USGS services of the tests, and what an editor saves reaches the public viewer through the manifest the server builds. The editors' map previews wait for a Mapbox token (the e2e tests run them without one); satellite imagery and georeferencing follow in M3. The first real project is set up with Claude, with your yes at each step.
+> Status (M3): sign-in, the Setup Assistant, the daily editors below (Home, photos, places, layers, settings, history, jobs, admins and crash reports) and the historical imagery (search USGS, import a free frame, the automatic georeferencing, Approve, the compute-unit guard, the free Studio upload, a GeoTIFF upload, the georeferencer, crop, replace) work end to end against the Firebase emulators and the fake Google, Mapbox and USGS services of the tests, and what is published reaches the public viewer through the manifest the server builds; the raster pipeline itself was run against the same fakes on a synthetic frame. Imagery on the real cloud waits for the server's deploy (the functions, the pipeline's image and its Cloud Run Job), USGS's approval of your M2M downloads and the Mapbox secret token (`docs/research/M3-status.md`). The first real project is set up with Claude, with your yes at each step.
 
 ## What you do and what the app does
 
@@ -103,7 +103,7 @@ The whole assistant takes about ten clicks or fields and four Google permissions
 | "Mapbox refused the token: it is invalid or has been revoked." | a wrong, deleted or revoked token | create the token again and paste it |
 | "The token lacks these scopes: …" | scopes were not ticked | create the token again with every scope the card lists |
 | "USGS refused the username or the token. …" | a wrong username or an expired token | create a new token and paste it within 60 seconds |
-| "USGS is under maintenance. We will retry automatically." | USGS maintenance | nothing: the token is kept |
+| "USGS is under maintenance. Try again later." | USGS maintenance | nothing: the token is kept and checked again later |
 | "Google Analytics is not enabled for the project. …" | Analytics is off | enable it in the Firebase console (the card's link) |
 | "Photos not processed: N. The reason is shown next to each." | a photo of the bundle could not be processed | **Check again**, or open the photo on the Photos page |
 
@@ -145,9 +145,9 @@ What the city holds and what waits for you (photos whose rights are to be checke
 
 - Layers are made by the raster pipeline (M3); until then the page says so. The list shows them in drawing order (the first is drawn on top), with their state and Published; drag one, or use **Move up** and **Move down**.
 - **The layer editor**: the label and description (Romanian, English optional), the attribution, year and date, **Shown when the map opens**, **Default opacity**, and four image adjustments, **Black level**, **White level**, **Contrast** and **Saturation**, each read as a signed percentage, with **Reset the adjustments**. Every slider changes the page's map at once; Save publishes the values, and visitors see exactly what you saw. The black level never passes the white level.
-- **Link a layer**: a tileset of the city's own Mapbox account, or the https address of a tile server. Another account's tileset (Mapbox's own included) and an address with a key in it are refused before anything is sent. A linked layer starts unpublished and hidden at start. A tile server's address must also be allowed in the site's and the admin's content security policy: the dialog names it.
+- **Link a layer**: a tileset of the city's own Mapbox account, or the https address of a tile server. Another account's tileset (Mapbox's own included) and an address with a key in it are refused before anything is sent. **Check** asks the server for one tile of the city's centre and says what answered ("Tiles answer (image/png)."), or why nothing did (no tiles at this address, not an image, the server not responding); after a failed Check, Link stays off until the address changes. A linked layer starts unpublished and hidden at start. A tile server's address must also be allowed in the site's and the admin's content security policy: the dialog names it.
 - **Delete the layer** asks first: the layer leaves the public map within a minute, and its Mapbox tileset is deleted seven days later unless you restore the layer from History meanwhile (the waiting job is on the Jobs page).
-- Replacing a layer's image, cropping and georeferencing again arrive with the raster pipeline (M3).
+- **Image and geometry** (a layer made from imagery): **Replace the image** opens the Imagery upload for this layer (choose a GeoTIFF; nothing else is asked, the layer keeps its year); **Georeference again** opens the georeferencer on the layer's current image; **Crop** draws the area to keep on the layer's map, a click per corner (from the keyboard: **Add a corner at the map's centre**), then **Save the crop**; an area off the layer is refused. Each makes a new version: the layer keeps its tiles until that version is published, and the editor shows **A new version is under way: open it** meanwhile. A layer something is being made for cannot be deleted until it is done.
 
 ### Settings
 
@@ -157,6 +157,7 @@ Each section has its own Save.
 - **Texts**: the name, About and the privacy text in Romanian and English (the Markdown subset, previewed as visitors will see it; a link that is not https is refused at its line), and the credits (up to 50, in the order you choose).
 - **Theme and basemap**: the seed colour (a hex value, the colour picker or one of eight presets), previewed live on the whole admin until you save or discard it (or leave Settings); a colour that would leave text unreadable is moved to the nearest readable tone, with a note. The basemap the visitors see (Standard or Standard Satellite); the admin's own map is always Standard.
 - **Place categories**: add one (the Romanian label; its icon follows the label's words, "Fântâni" water, "Biserici" a church, until you pick one; the colour, the opacity and the English label have defaults), edit, reorder, delete. The icon picker offers 30 icons, and the arrow keys move through them; a colour on which the white icon would be hard to see is moved to a readable tone. Deleting a category that places still use asks where they go first. The page says when the limit is reached.
+- **Historical imagery**: whether a georeferenced frame is published without a click when its checkpoint error is under the threshold (on by default), that threshold in metres (1–200, 15 by default), and the years the search ranks first (at most 20, each with **Remove**; Bucharest's are 1966, 1976, 1977, 1978 and 1980: add them here once). Saved on its own.
 - **Default opacities**: the opacity every overlay starts with (each layer, the photos, each place category) and, for layers, whether they show at start, each change previewed on the map above; one Save writes them all, Discard brings the stored ones back. A visitor's own link that sets an opacity still wins.
 
 ### History
@@ -166,7 +167,7 @@ Each section has its own Save.
 
 ### Jobs
 
-The live list of jobs (Running, Failed, Finished) with their progress; a job's steps and log as they arrive; **Cancel job** (asked first) while it runs. A layer deletion waits with its date ("Runs after …, with the raster pipeline").
+The live list of jobs (Running, Failed, Finished) with their progress; a job's steps and log as they arrive; **Cancel job** (asked first) while it runs. A layer deletion waits with its date ("Runs after …, with the raster pipeline"). An imagery job names each of its steps, says why it waits and until when (USGS preparing the download or under maintenance, this month's Mapbox budget, your points), offers **Run it again** when it failed (three tries at most; the steps already done are not done again) and **Open the georeferencer** when it waits for your points.
 
 ### Admins
 
@@ -181,14 +182,27 @@ The errors visitors and admins ran into, grouped, over 24 hours, 7 days or 30 da
 
 Every Save of something published asks the server to rebuild the public map's data (the manifest), at most once a minute; visitors see the change on their next visit. The end-to-end tests check the whole chain on the emulators: a photo published, renamed, reverted and unpublished; a place added from the keyboard; a layer's default opacity, shown-at-start switch and adjustments; each reaches the built viewer exactly as saved (scenarios S-A41-*).
 
-### Satellite imagery and georeferencing (M3)
+### Historical imagery (M3)
 
-Searching USGS scenes, importing scanned frames, uploading a GeoTIFF and the control-point editor (on OpenStreetMap and Sentinel-2, never Mapbox Satellite) arrive with the raster pipeline in M3, with the estimated cost shown before each import.
+Declassified USGS satellite frames (Corona, Gambit, Hexagon; 1960–1984) become historical layers of the map. The usual way is one click: **Import (free)**, and the server does the rest.
+
+- **Find**: the first time you open **Historical imagery** (and once a month after that), the app searches USGS's three declassified collections over the city's area and ranks the scenes from 0 to 100, the free ones (already scanned) first; each says why in plain words (how much of the city it covers, free or to order, a year the city wants, clouds, detail, a year that already has a layer). Filters: **Free only** (on), **Hide rejected**, the three collections, from and to a year; the map draws every listed scene's outline. **Search USGS again** searches again. When nothing is found, the page suggests every year, all three collections, the scenes to order too, and the city's area in Settings (the search covers only that area).
+- **Import (free)** on a scene's card, or on its page (its USGS preview, its facts and every reason of its rank). The server downloads the frame, unpacks and stitches it, finds the city on it, prepares the reference (OpenStreetMap and Sentinel-2, never Mapbox Satellite), matches control points on its own, warps and exports it. The version's page shows each step as it runs, the log, and **Cancel** (asked first; Mapbox's own processing cannot be stopped). USGS under maintenance makes it wait, not fail.
+- **Publishing**: when the checkpoint error (control points left out of the fit) is under the city's threshold, 15 m by default, it is published without another click. Otherwise the approval card shows the fit and checkpoint errors, the pairs, the Mapbox compute units it costs and those left this month, with **Approve and publish** and **Reject** (asked first). An uploaded GeoTIFF that carries its own georeference always waits for Approve: its error cannot be measured.
+- **Over the month's free compute units** (20 a month; a publish costs by area and zoom): the card offers three ways out, each saying what it means: **Free: upload the file in Mapbox Studio** (1. **Download the file**, 2. open Mapbox Studio and upload it as a tileset, 3. **I uploaded it**: the app finds the tileset by its name), **Wait for next month**, or **Publish now, at a cost of about X USD** (asked first; never past Mapbox's 24 tilesets).
+- **Too few matching points**: the import waits for yours ("Reliable points the automatic georeferencing found: N, too few"): **Open the georeferencer**.
+- **A file too large for Mapbox**: the approval card says so and offers the one way that works, the free Studio upload of the smaller copy. **At Mapbox's 24 tilesets**: neither paying nor waiting frees a place; delete a layer you no longer need (**Open Layers**) or use Studio.
+- **When something fails**, the version's page offers what cures it: **Try again** when another run can help (three runs and six publish starts at most), **Open the Mapbox step of Setup** when Mapbox refused the token or its scopes, **Upload another file** when the server refused your upload, and **Dismiss** (asked first) to take a failed version out of **Waiting for you**. **Cancel** works until Mapbox is asked to publish.
+- **The georeferencer**: the scan and the reference map side by side (on a phone one at a time, with **Scan** and **Map**; half a pair shows the other pane by itself). Click a place on the scan, then the same place on the map, or by keyboard: move the scan with the arrow keys and the map to the same place, then **Add at the centres**, and again for the next pair; a pair chosen in the table moves with the arrow keys (Shift: ten times further), **Esc** lets it go and **Delete** removes it; every pair refits at once: the table of pairs (each with where it came from, **in the fit** or kept as a checkpoint, and its error in metres; sorted by pair or by error), the fit and checkpoint errors with a warning over the threshold, the transforms the pairs allow (affine from 3, second-order polynomial from 6, thin-plate spline), and the warped preview on the map. Pairs that lie on one line are refused. **Save and georeference** continues the waiting import, or makes a new version of a published layer.
+- **Upload**: **Upload a GeoTIFF** (up to 8 GB; the page reads its first bytes and refuses anything that is not a TIFF before sending it). A name with a year ("Plan 1911.tif") starts the upload at once, otherwise the page asks for the year. A large upload goes on after the connection drops. A GeoTIFF with its own georeference goes to the approval card; a scan without one waits for points in the georeferencer.
+- **Before USGS approves your downloads** (24–48 business hours after the M2M request): the ranked results show, Import is off, and the page says why with the way to Setup's USGS step. A token USGS refuses links to the same step.
+- Limits: 10 imports a day and 2 running at once, per project.
+- **Paused by the budget guard**: when the month's Google Cloud cost reaches the budget, imports, retries, the georeferencer's saves, crops and publishes stop (the public map never does). **Historical imagery** and **Jobs** say so with the cost and the budget, and **Resume processing** (asked first) starts them again for the rest of the month; next month's alert pauses them again.
 
 ## Costs
 
-- Google Cloud: about $0.5–2 per month; the $5 budget automatically pauses image processing (never the site).
-- Mapbox: free up to 50,000 map loads per month; publishing layers uses only the free allowance, otherwise the app offers the free Studio upload, deferring, or paying.
+- Google Cloud: about $0.5–2 per month; the $5 budget automatically pauses image processing (never the site), and **Resume processing** in Historical imagery or Jobs starts it again for the rest of the month.
+- Mapbox: free up to 50,000 map loads per month; publishing a historical layer costs compute units by its area and zoom, and the app keeps to the month's free 20, otherwise it offers the free Studio upload, waiting for next month, or paying about the amount it names.
 - USGS: scanned frames are free; a new scan costs $30 per frame plus $5 per order.
 
 ## Troubleshooting
@@ -207,6 +221,23 @@ The message shown, its cause and what to do, screen by screen.
 | "The new image was refused; the old one stays published." | the replacement file failed the server's checks | choose another file (the reason is shown with the message) |
 | the tileset belongs to another Mapbox account | **Link a layer** with another account's tileset | link a tileset of the city's own Mapbox account |
 | a category cannot be deleted | places still use it | choose the category its places move to, then Delete |
+
+### Historical imagery (since M3)
+
+| Message | Cause | What to do |
+| --- | --- | --- |
+| "USGS is under maintenance. Try again later." | USGS's scheduled maintenance | an import waits and goes on by itself; for a search, **Try again** later |
+| "USGS is not responding. Try again later." | USGS did not answer the search | **Try again** |
+| "USGS refused the username or the token. …" | the USGS application token expired or was replaced | **Open the USGS step of Setup** and paste a new token within 60 seconds |
+| "USGS has not approved M2M access for this account yet. …" | the M2M download role is still being reviewed | wait; the app checks every 6 hours, and Import comes back by itself |
+| "USGS found no scene over the city's area." | the filters or the area leave nothing | try every year, all three collections, the scenes to order too, or check the city's area in Settings |
+| "Reliable points the automatic georeferencing found: N, too few. …" | the frame has too few features the matcher trusts | **Open the georeferencer** and pair a few landmarks |
+| "Processing is paused: this month's Google Cloud cost reached … of the … budget." | the budget alert paused the raster work | **Resume processing** (it may cost more this month), or wait for next month |
+| "The image could not be processed. …" | a processing step failed on the server's own files | **Try again**; if it fails again, open the job's log |
+| "Mapbox refused the token: it is invalid or has been revoked." / "The token lacks these scopes: …" | the Mapbox secret token changed | **Open the Mapbox step of Setup** and paste a token with the named scopes |
+| "Does not fit this month's Mapbox budget: choose how to go on" | the publish costs more compute units than are left | the free Studio upload, next month, or pay |
+| "The file is not a GeoTIFF. Upload a .tif file." | the chosen file is another kind of image | export it as a GeoTIFF first |
+| "The source has no tiles at this address (404)." / "The address does not answer with an image." / "The tile server is not responding." | **Check** of a tile address in **Link a layer** | correct the address (it must hold `{z}`, `{x}`, `{y}`) or try again later |
 
 ### The public map (since M1)
 

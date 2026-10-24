@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.27.1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 #
 # Raster pipeline image: the Cloud Run Jobs `raster-pipeline` (4 vCPU, 16 GiB) and `raster-pipeline-xl`
-# (8 vCPU, 32 GiB) run its `runtime` target. The build context is pipeline/:
+# (8 vCPU, 32 GiB) run its `runtime` target; each execution passes the argument `run` (the job's remaining steps,
+# docs/research/M3-interfaces.md §4.3, §5.7). The build context is pipeline/:
 #
 #   docker build -f pipeline/Dockerfile --target runtime -t hcm-pipeline:local pipeline
 #   docker run --rm hcm-pipeline:local                    # `doctor`: GDAL drivers, numpy, OpenCV
@@ -11,8 +12,9 @@
 # Stages: base (the pinned GDAL image) -> deps (Poetry, and the locked runtime dependencies in /opt/venv) ->
 # test (+ dev dependencies and the tests) | runtime (non-root: the venv and the package, nothing else).
 # GDAL comes from the base image (`osgeo`, Python 3.14), visible through --system-site-packages; it is
-# never pip-installed (a GDAL wheel would load a second GDAL into the process). No secret is baked in:
-# the job reads its configuration from environment variables and Secret Manager (--set-secrets).
+# never pip-installed (a GDAL wheel would load a second GDAL into the process). No secret is baked in or
+# mapped: the job reads its configuration from environment variables and its two USGS secrets from Secret
+# Manager over REST at run time, with its own service account (never --set-secrets, never an argument).
 # The quality gates run the same suite in docker/Dockerfile.quality (same base digest, same lock).
 
 # ghcr.io/osgeo/gdal:ubuntu-small-3.13.3 (Ubuntu 26.04, Python 3.14.4 with matching osgeo bindings)
@@ -74,12 +76,14 @@ FROM base AS runtime
 COPY --from=deps /opt/venv /opt/venv
 COPY src/hcm_pipeline /opt/app/hcm_pipeline
 
-# The base image's tcmalloc preload stays: it serves GDAL's large warps (docs/research/M0-handoff.md).
+# The base image's tcmalloc preload stays: it serves GDAL's large warps (docs/research/M0-handoff.md). The scratch
+# folder is the instance's memory-backed /tmp; GDAL's cache and threads are set by the run itself (rasters.py).
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONPATH=/opt/app \
-    HOME=/tmp
+    HOME=/tmp \
+    TMPDIR=/tmp
 
 WORKDIR /tmp
 USER 10001:10001
-ENTRYPOINT ["python", "-m", "hcm_pipeline"]
+ENTRYPOINT ["/opt/venv/bin/python", "-m", "hcm_pipeline"]
 CMD ["doctor"]

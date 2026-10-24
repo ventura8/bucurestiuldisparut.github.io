@@ -11,7 +11,10 @@ import type { AreaServiceParts } from '../content/services.js';
 import { documentsPort } from '../firebase/adapters.js';
 import type { FirebaseHandles } from '../firebase/app.js';
 import { firebaseSdk } from '../firebase/sdk.js';
+import { FILES_SDK, firebaseFiles } from '../firebase/files.js';
 import { firebaseUploads, UPLOAD_SDK } from '../firebase/uploads.js';
+import { browserPictures } from '../imagery/pictures.js';
+import { cropChunkLoader } from '../layers/crop-chunk.js';
 import { adminMapFactoryOf } from '../map/wiring.js';
 
 /** What the areas' services are built from. */
@@ -39,5 +42,10 @@ export function areaServices(sources: AreaServiceSources): AreaServiceParts {
             fixedToken: sources.mapToken,
         }),
         // [end pois]
+        // [section imagery] owner: admin-imagery
+        files: firebaseFiles(FILES_SDK, sources.handles.storage, globalThis, createLogger('admin-files')),
+        pictures: browserPictures(globalThis),
+        layerCrop: cropChunkLoader(() => globalThis.customElements),
+        // [end imagery]
     };
 }

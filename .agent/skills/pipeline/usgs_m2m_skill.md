@@ -20,8 +20,9 @@ Facts about the USGS Machine-to-Machine (M2M) API and EarthExplorer that the fun
 
 ## Imagery
 
-- Harvest on city creation and monthly: `scene-search` over the city bbox × `corona2` / `declassii` / `declassiii`; browse JPEGs are copied to our private bucket.
-- Ranking: coverage of the city, the city's position near the frame centre, camera resolution, free (already scanned) versus paid. Pre-seeded suggestions for Bucharest: 1966-07-12 KH-4A, 1976-02-20, 1977-09-13, 1980-07-16 KH-9, 1978-03-30 KH-9 mapping.
+- Harvest when the Imagery area opens and the city's newest scene is over 30 days old, and monthly (`imagery.search`, `imagery.tick`): `scene-search` over the city bbox × `corona2` / `declassii` / `declassiii`; browse JPEGs are copied server-side to our private bucket (`imagery.browse`), never fetched by the browser (`docs/research/M3-interfaces.md` §3).
+- Every harvest attempt is recorded in `ops/harvest-{city}` and the tick's monthly harvest is keyed on its `nextAt` (a month after an answer, `HARVEST_RETRY_HOURS` after a failure, doubled): a harvest that writes no scene never repeats every tick (`docs/LESSONS.md` 166, 175). A search no dataset answered is `apiError.usgs.unavailable` (or `maintenance`), never "nothing over the area"; a tick harvest USGS refuses for the credentials or the access marks `setup/status.usgs`, which stops the tick until Setup. A USGS record `unavailable` with its role kept (the daily check met maintenance) still searches and imports, and the admin's Imagery area reads it as its role allows.
+- Ranking (0–100, `RANKING_WEIGHTS` of `@hcm/shared`): free (already scanned) 30, coverage of the city 25, the city's target years 15, the gap to existing layers 10, clouds 10, resolution 10, each explained to the admin in plain words; the reasons that explain a low rank come first (a card shows three), a city without layers says so (`noLayers`), counts take their plural form. An Import USGS answers "not scanned" marks the scene not free and ranks it again. Target years for Bucharest: 1966 (1966-07-12 KH-4A), 1976 (1976-02-20), 1977 (1977-09-13), 1978 (1978-03-30 KH-9 mapping), 1980 (1980-07-16 KH-9).
 - Labels: acquisition date plus camera ("KH-4A Corona, 1966-07-12"); attribution "USGS EROS, declassified (public domain)".
 
 ## Buying a scan (human pays)

@@ -293,6 +293,18 @@ describe('platform fakes', () => {
         expect(cancelled).toEqual([execution.name]);
     });
 
+    it('happyPath_jobsRecordTheirOptionsAndAnswerScriptedStatuses', async () => {
+        const { jobs, runs, statuses } = createFakeCloudRunJobs();
+
+        const execution = await jobs.run('raster-pipeline-xl', { JOB_ID: 'j2', CITY_ID: 'bucharest' }, { args: ['run'] });
+        const before = await jobs.get(execution.name);
+        statuses.set(execution.name, { state: 'failed', failure: 'oom', exitCode: 137 });
+
+        expect(runs[0]?.options).toEqual({ args: ['run'] });
+        expect(before).toEqual({ state: 'running' });
+        await expect(jobs.get(execution.name)).resolves.toEqual({ state: 'failed', failure: 'oom', exitCode: 137 });
+    });
+
     it('happyPath_fakeImagesAreInspectedAndScaled', async () => {
         const { images } = createFakeImageProcessor();
 

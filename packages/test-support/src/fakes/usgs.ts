@@ -1,13 +1,25 @@
-import { fixtureBody, fixtureResponse, type FixtureName } from '../api-fixtures/index.js';
+import { fixtureResponse, type FixtureName } from '../api-fixtures/index.js';
 import { bodyField, route, type Route } from './routes.js';
 import { sequence, type FailureMode, type ServiceFake } from './service.js';
+import { sceneSearch, type SceneSearchState } from './usgs-catalogue.js';
+import {
+    defaultDownloadState,
+    deliveryRoutes,
+    downloadOptions,
+    downloadOrderRemove,
+    downloadRequest,
+    downloadRetrieve,
+    downloadScenarios,
+    type DownloadState,
+} from './usgs-downloads.js';
 
 /**
  * USGS M2M (`m2m.cr.usgs.gov/api/api/json/stable/`, scenario A07; scene search and downloads for M3): `login-token`
  * trades an ERS username and application token for a two-hour API key (`X-Auth-Token`), `permissions` lists the
  * M2M roles, `logout` ends the key. The credentials of `USGS_CREDENTIALS` encode their scenario: approved, awaiting
  * the M2M approval (no `download` until `usgs.m2mApproved`), an expired token (HTML 403); anything else is
- * `AUTH_INVALID`. JSON errors arrive as HTTP 500 with an `errorCode`, as M2M sends them.
+ * `AUTH_INVALID`. JSON errors arrive as HTTP 500 with an `errorCode`, as M2M sends them. The scenes over Bucharest and
+ * their search are usgs-catalogue.ts, the download flow and the delivery host usgs-downloads.ts (M3).
  */
 
 /** ERS usernames and application tokens (generated test values, never JWT-shaped). */
@@ -34,7 +46,7 @@ interface UsgsUser {
     m2mAccess: boolean;
 }
 
-export interface UsgsState {
+export interface UsgsState extends SceneSearchState, DownloadState {
     /** ERS username → account. */
     readonly users: Map<string, UsgsUser>;
     /** API key → username, while the key is logged in. */
@@ -72,6 +84,9 @@ export function defaultUsgsState(): UsgsState {
             ],
         ]),
         sessions: new Map(),
+        noScenes: false,
+        failingDatasets: new Set(),
+        ...defaultDownloadState(),
     };
 }
 
@@ -98,32 +113,19 @@ const FAILURES: Readonly<Partial<Record<FailureMode, FixtureName>>> = {
     unauthorized: 'usgs/login-token.html-403',
 };
 
-/** The scene the fixtures make downloadable at once; any other scene must be ordered (bought) first. */
-const SCANNED_SCENE = 'DS1105-1071DF075';
 const BASE = 'https://m2m.cr.usgs.gov/api/api/json/stable';
 
-type KeyedAnswer = (request: Parameters<Route['answer']>[0], user: UsgsUser, apiKey: string) => Response;
+type KeyedAnswer = (request: Parameters<Route['answer']>[0], user: UsgsUser, apiKey: string) => Promise<Response> | Response;
 type Keyed = (answer: KeyedAnswer) => Route['answer'];
 
-/** Scene search and downloads (M3's harvest and scan downloads): search works with any key, downloads need `download`. */
-function sceneRoutes(keyed: Keyed): Route[] {
-    const downloadOptions = keyed((request) => {
-        const ids = bodyField(request, 'entityIds');
-        const entityIds = Array.isArray(ids) ? ids.map(String) : [];
-        const available = (fixtureBody('usgs/download-options.available') as { data: unknown[] }).data;
-        const orderOnly = (fixtureBody('usgs/download-options.order-only') as { data: Record<string, unknown>[] }).data;
-        return m2m(
-            entityIds.flatMap((entityId) =>
-                entityId === SCANNED_SCENE ? available : orderOnly.map((option) => ({ ...option, entityId, displayId: entityId })),
-            ),
-        );
-    });
-    const downloadRequest = keyed((_request, user) => {
-        if (user.permissions.includes('download')) {
-            return fixtureResponse('usgs/download-request.available');
-        }
-        return fixtureResponse('usgs/login-token.no-m2m-access');
-    });
+/**
+ * Scene search and downloads (M3's harvest and scan downloads, usgs-catalogue.ts and usgs-downloads.ts): search works
+ * with any key, a download request needs the `download` role.
+ */
+function sceneRoutes(state: UsgsState, keyed: Keyed): Route[] {
+    const downloadRequested = keyed((request, user) =>
+        user.permissions.includes('download') ? m2m(downloadRequest(request, state)) : fixtureResponse('usgs/login-token.no-m2m-access'),
+    );
     return [
         route(
             'POST',
@@ -135,30 +137,31 @@ function sceneRoutes(keyed: Keyed): Route[] {
             'POST',
             `${BASE}/scene-search`,
             'usgs.scene-search',
-            keyed((request) =>
-                fixtureResponse(
-                    bodyField(request, 'datasetName') === 'corona2' ? 'usgs/scene-search.two-scenes' : 'usgs/scene-search.empty',
-                ),
-            ),
+            keyed((request) => sceneSearch(request, state)),
         ),
-        route('POST', `${BASE}/download-options`, 'usgs.download-options', downloadOptions),
-        route('POST', `${BASE}/download-request`, 'usgs.download-request', downloadRequest),
+        route(
+            'POST',
+            `${BASE}/download-options`,
+            'usgs.download-options',
+            keyed(async (request) => m2m(await downloadOptions(request, state))),
+        ),
+        route('POST', `${BASE}/download-request`, 'usgs.download-request', downloadRequested),
         route(
             'POST',
             `${BASE}/download-retrieve`,
             'usgs.download-retrieve',
-            keyed(() => fixtureResponse('usgs/download-retrieve.available')),
+            keyed((request) => m2m(downloadRetrieve(request, state))),
         ),
         route(
-            'GET',
-            'https://dds.cr.usgs.gov/e2e/download/{download}',
-            'usgs.download',
-            (_request, params) =>
-                new Response(new TextEncoder().encode(`E2E-SCAN-${String(params['download'])}`), {
-                    status: 200,
-                    headers: { 'content-type': 'application/octet-stream' },
-                }),
+            'POST',
+            `${BASE}/download-order-remove`,
+            'usgs.download-order-remove',
+            keyed((request) => {
+                downloadOrderRemove(request, state);
+                return fixtureResponse('usgs/download-order-remove.ok');
+            }),
         ),
+        ...deliveryRoutes(state),
     ];
 }
 
@@ -200,7 +203,7 @@ export function createUsgsFake(state: UsgsState): ServiceFake {
                     return m2m(null);
                 }),
             ),
-            ...sceneRoutes(keyed),
+            ...sceneRoutes(state, keyed),
         ],
         failure: (mode) => {
             const name = FAILURES[mode];
@@ -218,12 +221,21 @@ export function createUsgsFake(state: UsgsState): ServiceFake {
                     user.expired = true;
                 });
             },
+            noScenes: () => {
+                state.noScenes = true;
+            },
+            declassiiiUnavailable: () => {
+                state.failingDatasets.add('declassiii');
+            },
+            ...downloadScenarios(state),
         },
         snapshot: () => ({
             users: Object.fromEntries(
                 [...state.users].map(([name, user]) => [name, { permissions: user.permissions, expired: user.expired }]),
             ),
             sessions: state.sessions.size,
+            downloads: [...state.downloads.values()],
+            signatures: state.signatures.next,
         }),
     };
 }

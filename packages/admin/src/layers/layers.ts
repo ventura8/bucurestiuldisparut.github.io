@@ -23,6 +23,7 @@ import { LiveDoc, type DocState } from '../content/doc.js';
 import { LiveList } from '../content/list.js';
 import type { ContentServices, WriteOutcome } from '../content/services.js';
 import { Store } from '../state/store.js';
+import { CropSlot } from './crop-slot.js';
 import { EditDraft, EMPTY_DRAFT, type DraftState } from './draft.js';
 import { LayerDeletion } from './deletion.js';
 import { layerFieldPatch, type LayerTextField } from './fields.js';
@@ -53,6 +54,7 @@ class LayersStore implements AreaStore<LayersState, LayersIntents> {
     readonly #map: AreaMap;
     readonly #deletion: LayerDeletion;
     readonly #linker: LayerLinker;
+    readonly #crop: CropSlot;
     #draft: EditDraft<LayerDoc> | null = null;
     /** The saved version the map shows (`<id>@<version>`, '' for none). */
     #shown = '';
@@ -99,7 +101,13 @@ class LayersStore implements AreaStore<LayersState, LayersIntents> {
         this.#linker = new LayerLinker(services, (link) => {
             this.#cell.update({ link });
         });
-        this.intents = this.#intents();
+        this.#crop = new CropSlot({
+            ...{ services, map: this.#map },
+            changed: (crop) => {
+                this.#cell.update({ crop });
+            },
+        });
+        this.intents = { ...this.#intents(), ...this.#cropIntents() };
     }
 
     get state(): LayersState {
@@ -135,7 +143,7 @@ class LayersStore implements AreaStore<LayersState, LayersIntents> {
         this.#preview.attach(null);
     }
 
-    #intents(): LayersIntents {
+    #intents(): Omit<LayersIntents, 'crop' | 'redrawCrop' | 'addCropCorner' | 'saveCrop' | 'closeCrop'> {
         return {
             ...{
                 retry: () => {
@@ -181,6 +189,7 @@ class LayersStore implements AreaStore<LayersState, LayersIntents> {
                     this.#linker.close();
                 },
                 submitLink: () => this.#linker.submit(),
+                checkLink: () => this.#linker.check(),
             },
             attachPreview: (sink) => {
                 this.#preview.attach(sink);
@@ -190,6 +199,27 @@ class LayersStore implements AreaStore<LayersState, LayersIntents> {
             },
             zoomBy: (delta) => {
                 this.#map.zoomBy(delta);
+            },
+        };
+    }
+
+    /** M3 (CR-M3-7): the open layer's Crop, through its slot. */
+    #cropIntents(): Pick<LayersIntents, 'crop' | 'redrawCrop' | 'addCropCorner' | 'saveCrop' | 'closeCrop'> {
+        const slot = this.#crop;
+        return {
+            crop: async () => {
+                const id = this.#editorId();
+                await (id === null ? Promise.resolve() : slot.open(id));
+            },
+            redrawCrop: () => {
+                slot.redraw();
+            },
+            addCropCorner: () => {
+                slot.addCorner();
+            },
+            saveCrop: () => slot.save(),
+            closeCrop: () => {
+                slot.close();
             },
         };
     }
@@ -263,6 +293,7 @@ class LayersStore implements AreaStore<LayersState, LayersIntents> {
         this.#doc.stop();
         this.#preview.clear();
         this.#deletion.cancel();
+        this.#crop.close();
         this.#draft = null;
         this.#shown = '';
         this.#map.show([]);

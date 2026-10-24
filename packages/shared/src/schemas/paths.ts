@@ -110,6 +110,9 @@ export const FIRESTORE_PATHS = {
     jobLogs: (cityId: string, jobId: string) => `${child(cityId, 'jobs', jobId)}/logs`,
     usgsScenes: (cityId: string) => `${cityPath(cityId)}/usgsScenes`,
     usgsScene: (cityId: string, entityId: string) => child(cityId, 'usgsScenes', entityId),
+    /** M3: the layer versions (drafts on their way to a layer; `docs/research/M3-interfaces.md` §4.4). */
+    layerVersions: (cityId: string) => `${cityPath(cityId)}/layerVersions`,
+    layerVersion: (cityId: string, versionId: string) => child(cityId, 'layerVersions', versionId),
     /** The `history` subcollection of an audited document (`auditedDocumentPath`). */
     history: (document: AuditedDocument) => `${auditedDocumentPath(document)}/history`,
     historyEntry: (document: AuditedDocument, entryId: string) =>
@@ -122,6 +125,10 @@ export const FIRESTORE_PATHS = {
     setupOwner: 'setup/owner',
     usage: (month: string) => `usage/mapbox-${segment(month, matching(MONTH_PATTERN))}`,
     opsGuard: 'ops/guard',
+    /** M3: the dispatcher's execution slots (CR-M3-47). */
+    opsDispatch: 'ops/dispatch',
+    /** M3: a city's last USGS harvest attempt (CR-M3-47). */
+    harvestState: (cityId: string) => `ops/harvest-${segment(cityId, isCityId)}`,
     manifestStates: 'manifests',
     manifestState: (cityId: string) => `manifests/${segment(cityId, isCityId)}`,
 } as const;

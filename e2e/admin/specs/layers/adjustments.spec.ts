@@ -193,7 +193,7 @@ test(
         await saturation.press('Home');
         await page
             .getByRole('navigation')
-            .getByRole('link', { name: translateAdminShell(lang, 'adminShell.nav.history') })
+            .getByRole('link', { name: translateAdminShell(lang, 'adminShell.nav.history'), exact: true })
             .click();
         await page
             .locator('hcm-dialog[open]')

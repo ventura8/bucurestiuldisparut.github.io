@@ -19,6 +19,8 @@ export const ro = {
     'adminContent.settings.section.textsHint': 'Numele, Despre, confidențialitate, mulțumiri',
     'adminContent.settings.section.theme': 'Temă și hartă de bază',
     'adminContent.settings.section.themeHint': 'Culoarea orașului, harta vizitatorilor',
+    'adminContent.settings.section.imagery': 'Imagini istorice',
+    'adminContent.settings.section.imageryHint': 'Publicarea automată, pragul de eroare, anii doriți',
     'adminContent.settings.section.categories': 'Categorii de locuri',
     'adminContent.settings.section.categoriesHint': 'Pictogramă, culoare, opacitate, ordine',
     'adminContent.settings.section.overlays': 'Opacități implicite',

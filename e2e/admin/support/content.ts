@@ -118,10 +118,13 @@ export class ContentWorld implements CityWorld {
     }
 
     /**
-     * Ends the world's membership: its `admins` document goes, so the locked specs' Admins page lists only the worlds of
-     * the tests still running (their city and account stay for the reports; a run's emulators start empty).
+     * Ends the world: its `admins` document goes, so the locked specs' Admins page lists only the worlds of the tests still
+     * running, and so does its city's document, so the functions' project-wide walks over the `cities` collection (the
+     * pipeline's running places, the Mapbox tileset limit, the tick) see only those worlds too (`docs/LESSONS.md` 169).
+     * What lies below the city, its account and its Storage files stay for the reports (a run's emulators start empty).
      */
     async retire(): Promise<void> {
         await this.emulators.deleteDocument(`admins/${this.uid}`);
+        await this.emulators.deleteDocument(this.path());
     }
 }

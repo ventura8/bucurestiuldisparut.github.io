@@ -18,6 +18,7 @@ import cloudFunctionsFunctionGet from './cloud-functions/function.get.json' with
 import cloudRunExecutionCancelOperation from './cloud-run/execution.cancel.operation.json' with { type: 'json' };
 import cloudRunExecutionCancelled from './cloud-run/execution.cancelled.json' with { type: 'json' };
 import cloudRunExecutionFailed from './cloud-run/execution.failed.json' with { type: 'json' };
+import cloudRunExecutionFailedOom from './cloud-run/execution.failed-oom.json' with { type: 'json' };
 import cloudRunExecutionRunning from './cloud-run/execution.running.json' with { type: 'json' };
 import cloudRunExecutionSucceeded from './cloud-run/execution.succeeded.json' with { type: 'json' };
 import cloudRunJobNotFound from './cloud-run/job.not-found.json' with { type: 'json' };
@@ -81,17 +82,22 @@ import mapboxErrorUnavailable from './mapbox/error.unavailable.json' with { type
 import mapboxStylesCreateOk from './mapbox/styles.create.ok.json' with { type: 'json' };
 import mapboxStylesListNone from './mapbox/styles.list.none.json' with { type: 'json' };
 import mapboxStylesListOne from './mapbox/styles.list.one.json' with { type: 'json' };
+import mapboxTilejsonPublished from './mapbox/tilejson.published.json' with { type: 'json' };
 import mapboxTilesetsCreateExists from './mapbox/tilesets.create.exists.json' with { type: 'json' };
 import mapboxTilesetsCreateOk from './mapbox/tilesets.create.ok.json' with { type: 'json' };
 import mapboxTilesetsDeleteOk from './mapbox/tilesets.delete.ok.json' with { type: 'json' };
 import mapboxTilesetsJobFailed from './mapbox/tilesets.job.failed.json' with { type: 'json' };
+import mapboxTilesetsJobFailedInternal from './mapbox/tilesets.job.failed-internal.json' with { type: 'json' };
 import mapboxTilesetsJobProcessing from './mapbox/tilesets.job.processing.json' with { type: 'json' };
 import mapboxTilesetsJobQueued from './mapbox/tilesets.job.queued.json' with { type: 'json' };
 import mapboxTilesetsJobSuccess from './mapbox/tilesets.job.success.json' with { type: 'json' };
+import mapboxTilesetsJobsList from './mapbox/tilesets.jobs.list.json' with { type: 'json' };
 import mapboxTilesetsListNone from './mapbox/tilesets.list.none.json' with { type: 'json' };
 import mapboxTilesetsListOne from './mapbox/tilesets.list.one.json' with { type: 'json' };
 import mapboxTilesetsPublishOk from './mapbox/tilesets.publish.ok.json' with { type: 'json' };
+import mapboxTilesetsRecipeInvalid from './mapbox/tilesets.recipe.invalid.json' with { type: 'json' };
 import mapboxTilesetsSourceCreated from './mapbox/tilesets.source.created.json' with { type: 'json' };
+import mapboxTilesetsSourceGet from './mapbox/tilesets.source.get.json' with { type: 'json' };
 import mapboxTokensCreateBilling from './mapbox/tokens.create.billing.json' with { type: 'json' };
 import mapboxTokensCreateDemoAccount from './mapbox/tokens.create.demo-account.json' with { type: 'json' };
 import mapboxTokensCreatePublic from './mapbox/tokens.create.public.json' with { type: 'json' };
@@ -112,6 +118,9 @@ import nominatimReverseUnable from './nominatim/reverse.unable.json' with { type
 import orgPolicyEffectivePolicyBooleanEnforced from './org-policy/effective-policy.boolean-enforced.json' with { type: 'json' };
 import orgPolicyEffectivePolicyListRestricted from './org-policy/effective-policy.list-restricted.json' with { type: 'json' };
 import orgPolicyEffectivePolicyNotEnforced from './org-policy/effective-policy.not-enforced.json' with { type: 'json' };
+import overpassErrorRateLimited from './overpass/error.rate-limited.json' with { type: 'json' };
+import overpassErrorUnavailable from './overpass/error.unavailable.json' with { type: 'json' };
+import overpassInterpreterBucharest from './overpass/interpreter.bucharest.json' with { type: 'json' };
 import pubsubTopicGet from './pubsub/topic.get.json' with { type: 'json' };
 import recaptchaEnterpriseKeyGet from './recaptcha-enterprise/key.get.json' with { type: 'json' };
 import resourceManagerGetIamPolicyOk from './resource-manager/get-iam-policy.ok.json' with { type: 'json' };
@@ -137,11 +146,19 @@ import serviceUsageGenerateServiceIdentityOperation from './service-usage/genera
 import serviceUsageOperationDone from './service-usage/operation.done.json' with { type: 'json' };
 import serviceUsageServiceDisabled from './service-usage/service.disabled.json' with { type: 'json' };
 import serviceUsageServiceEnabled from './service-usage/service.enabled.json' with { type: 'json' };
+import stacErrorUnavailable from './stac/error.unavailable.json' with { type: 'json' };
+import stacSearchEmpty from './stac/search.empty.json' with { type: 'json' };
+import stacSearchOneItem from './stac/search.one-item.json' with { type: 'json' };
+import usgsBrowseUnavailable from './usgs/browse.unavailable.json' with { type: 'json' };
 import usgsDatasetSearchDeclass from './usgs/dataset-search.declass.json' with { type: 'json' };
+import usgsDeliveryExpired from './usgs/delivery.expired.json' with { type: 'json' };
 import usgsDownloadOptionsAvailable from './usgs/download-options.available.json' with { type: 'json' };
 import usgsDownloadOptionsOrderOnly from './usgs/download-options.order-only.json' with { type: 'json' };
+import usgsDownloadOrderRemoveOk from './usgs/download-order-remove.ok.json' with { type: 'json' };
 import usgsDownloadRequestAvailable from './usgs/download-request.available.json' with { type: 'json' };
+import usgsDownloadRequestPreparing from './usgs/download-request.preparing.json' with { type: 'json' };
 import usgsDownloadRetrieveAvailable from './usgs/download-retrieve.available.json' with { type: 'json' };
+import usgsDownloadRetrievePreparing from './usgs/download-retrieve.preparing.json' with { type: 'json' };
 import usgsErrorApiKeyInvalid from './usgs/error.api-key-invalid.json' with { type: 'json' };
 import usgsErrorRateLimit from './usgs/error.rate-limit.json' with { type: 'json' };
 import usgsErrorUnavailable from './usgs/error.unavailable.json' with { type: 'json' };
@@ -153,6 +170,9 @@ import usgsLogoutOk from './usgs/logout.ok.json' with { type: 'json' };
 import usgsMaintenanceHtml503 from './usgs/maintenance.html-503.json' with { type: 'json' };
 import usgsPermissionsDownload from './usgs/permissions.download.json' with { type: 'json' };
 import usgsPermissionsSearchOnly from './usgs/permissions.search-only.json' with { type: 'json' };
+import usgsSceneSearchCorona2 from './usgs/scene-search.corona2.json' with { type: 'json' };
+import usgsSceneSearchDeclassii from './usgs/scene-search.declassii.json' with { type: 'json' };
+import usgsSceneSearchDeclassiii from './usgs/scene-search.declassiii.json' with { type: 'json' };
 import usgsSceneSearchEmpty from './usgs/scene-search.empty.json' with { type: 'json' };
 import usgsSceneSearchTwoScenes from './usgs/scene-search.two-scenes.json' with { type: 'json' };
 
@@ -181,6 +201,7 @@ export const RAW_FIXTURES = catalogue({
     'cloud-run/execution.cancel.operation': cloudRunExecutionCancelOperation,
     'cloud-run/execution.cancelled': cloudRunExecutionCancelled,
     'cloud-run/execution.failed': cloudRunExecutionFailed,
+    'cloud-run/execution.failed-oom': cloudRunExecutionFailedOom,
     'cloud-run/execution.running': cloudRunExecutionRunning,
     'cloud-run/execution.succeeded': cloudRunExecutionSucceeded,
     'cloud-run/job.not-found': cloudRunJobNotFound,
@@ -244,17 +265,22 @@ export const RAW_FIXTURES = catalogue({
     'mapbox/styles.create.ok': mapboxStylesCreateOk,
     'mapbox/styles.list.none': mapboxStylesListNone,
     'mapbox/styles.list.one': mapboxStylesListOne,
+    'mapbox/tilejson.published': mapboxTilejsonPublished,
     'mapbox/tilesets.create.exists': mapboxTilesetsCreateExists,
     'mapbox/tilesets.create.ok': mapboxTilesetsCreateOk,
     'mapbox/tilesets.delete.ok': mapboxTilesetsDeleteOk,
     'mapbox/tilesets.job.failed': mapboxTilesetsJobFailed,
+    'mapbox/tilesets.job.failed-internal': mapboxTilesetsJobFailedInternal,
     'mapbox/tilesets.job.processing': mapboxTilesetsJobProcessing,
     'mapbox/tilesets.job.queued': mapboxTilesetsJobQueued,
     'mapbox/tilesets.job.success': mapboxTilesetsJobSuccess,
+    'mapbox/tilesets.jobs.list': mapboxTilesetsJobsList,
     'mapbox/tilesets.list.none': mapboxTilesetsListNone,
     'mapbox/tilesets.list.one': mapboxTilesetsListOne,
     'mapbox/tilesets.publish.ok': mapboxTilesetsPublishOk,
+    'mapbox/tilesets.recipe.invalid': mapboxTilesetsRecipeInvalid,
     'mapbox/tilesets.source.created': mapboxTilesetsSourceCreated,
+    'mapbox/tilesets.source.get': mapboxTilesetsSourceGet,
     'mapbox/tokens.create.billing': mapboxTokensCreateBilling,
     'mapbox/tokens.create.demo-account': mapboxTokensCreateDemoAccount,
     'mapbox/tokens.create.public': mapboxTokensCreatePublic,
@@ -275,6 +301,9 @@ export const RAW_FIXTURES = catalogue({
     'org-policy/effective-policy.boolean-enforced': orgPolicyEffectivePolicyBooleanEnforced,
     'org-policy/effective-policy.list-restricted': orgPolicyEffectivePolicyListRestricted,
     'org-policy/effective-policy.not-enforced': orgPolicyEffectivePolicyNotEnforced,
+    'overpass/error.rate-limited': overpassErrorRateLimited,
+    'overpass/error.unavailable': overpassErrorUnavailable,
+    'overpass/interpreter.bucharest': overpassInterpreterBucharest,
     'pubsub/topic.get': pubsubTopicGet,
     'recaptcha-enterprise/key.get': recaptchaEnterpriseKeyGet,
     'resource-manager/get-iam-policy.ok': resourceManagerGetIamPolicyOk,
@@ -300,11 +329,19 @@ export const RAW_FIXTURES = catalogue({
     'service-usage/operation.done': serviceUsageOperationDone,
     'service-usage/service.disabled': serviceUsageServiceDisabled,
     'service-usage/service.enabled': serviceUsageServiceEnabled,
+    'stac/error.unavailable': stacErrorUnavailable,
+    'stac/search.empty': stacSearchEmpty,
+    'stac/search.one-item': stacSearchOneItem,
+    'usgs/browse.unavailable': usgsBrowseUnavailable,
     'usgs/dataset-search.declass': usgsDatasetSearchDeclass,
+    'usgs/delivery.expired': usgsDeliveryExpired,
     'usgs/download-options.available': usgsDownloadOptionsAvailable,
     'usgs/download-options.order-only': usgsDownloadOptionsOrderOnly,
+    'usgs/download-order-remove.ok': usgsDownloadOrderRemoveOk,
     'usgs/download-request.available': usgsDownloadRequestAvailable,
+    'usgs/download-request.preparing': usgsDownloadRequestPreparing,
     'usgs/download-retrieve.available': usgsDownloadRetrieveAvailable,
+    'usgs/download-retrieve.preparing': usgsDownloadRetrievePreparing,
     'usgs/error.api-key-invalid': usgsErrorApiKeyInvalid,
     'usgs/error.rate-limit': usgsErrorRateLimit,
     'usgs/error.unavailable': usgsErrorUnavailable,
@@ -316,6 +353,9 @@ export const RAW_FIXTURES = catalogue({
     'usgs/maintenance.html-503': usgsMaintenanceHtml503,
     'usgs/permissions.download': usgsPermissionsDownload,
     'usgs/permissions.search-only': usgsPermissionsSearchOnly,
+    'usgs/scene-search.corona2': usgsSceneSearchCorona2,
+    'usgs/scene-search.declassii': usgsSceneSearchDeclassii,
+    'usgs/scene-search.declassiii': usgsSceneSearchDeclassiii,
     'usgs/scene-search.empty': usgsSceneSearchEmpty,
     'usgs/scene-search.two-scenes': usgsSceneSearchTwoScenes,
 });

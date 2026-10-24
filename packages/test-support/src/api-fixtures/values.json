@@ -48,5 +48,8 @@
     "alertPolicyId": "20000000000000000001",
     "keyId": "0e2e0000-0000-4000-8000-0000000000a1",
     "streamId": "500000001",
-    "serviceAgent": "firebasestorage"
+    "serviceAgent": "firebasestorage",
+    "cogOrigin": "https://sentinel-cogs.s3.us-west-2.amazonaws.com",
+    "tilesetName": "hcm-bucharest-kh-4a-corona-1966",
+    "recipeError": "sources[0].uri must name an existing tileset source of the account"
 }

@@ -266,14 +266,14 @@
             "area": "admin",
             "name": "Imagery search",
             "milestone": "M3",
-            "source": "docs/research/design-review-testability.md §4.5"
+            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M3-interfaces.md §11"
         },
         {
             "id": "A12",
             "area": "admin",
             "name": "Import free scene",
             "milestone": "M3",
-            "source": "docs/research/design-review-testability.md §4.5"
+            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M3-interfaces.md §11"
         },
         {
             "id": "A13",
@@ -287,35 +287,35 @@
             "area": "admin",
             "name": "Upload GeoTIFF",
             "milestone": "M3",
-            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M2c-interfaces.md §12.1"
+            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M2c-interfaces.md §12.1; refined by docs/research/M3-interfaces.md §11"
         },
         {
             "id": "A15",
             "area": "admin",
             "name": "Link tileset or XYZ",
             "milestone": "M3",
-            "source": "docs/research/design-review-testability.md §4.5"
+            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M3-interfaces.md §11"
         },
         {
             "id": "A16",
             "area": "admin",
             "name": "Georeferencer",
             "milestone": "M3",
-            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M2c-interfaces.md §12.1"
+            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M2c-interfaces.md §12.1; refined by docs/research/M3-interfaces.md §11"
         },
         {
             "id": "A17",
             "area": "admin",
             "name": "Auto-publish policy",
             "milestone": "M3",
-            "source": "docs/research/design-review-testability.md §4.5"
+            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M3-interfaces.md §11"
         },
         {
             "id": "A18",
             "area": "admin",
             "name": "Jobs",
             "milestone": "M3",
-            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M2c-interfaces.md §12.1"
+            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M2c-interfaces.md §12.1; M3 rows: docs/research/M3-interfaces.md §11"
         },
         {
             "id": "A19",
@@ -420,7 +420,7 @@
             "area": "admin",
             "name": "Delete with confirmation and undo",
             "milestone": "M2c",
-            "source": "docs/research/PLAN.md Addendum 3; docs/research/M2c-interfaces.md §12.1"
+            "source": "docs/research/PLAN.md Addendum 3; docs/research/M2c-interfaces.md §12.1; M3 rows: docs/research/M3-interfaces.md §11"
         },
         {
             "id": "A34",
@@ -479,18 +479,32 @@
             "source": "the M2c integration brief (edit, publish, manifest, viewer; revert); docs/research/M2c-interfaces.md §5.3, §12.3"
         },
         {
+            "id": "A42",
+            "area": "admin",
+            "name": "Compute-unit guard",
+            "milestone": "M3",
+            "source": "docs/research/design-review-security-cost.md §3.3; docs/research/M3-interfaces.md §7.2"
+        },
+        {
+            "id": "A43",
+            "area": "admin",
+            "name": "Budget guard pause and resume",
+            "milestone": "M3",
+            "source": "docs/research/design-review-security-cost.md §3.4; docs/research/M3-interfaces.md CR-M3-47"
+        },
+        {
             "id": "P01",
             "area": "pipeline",
             "name": "Import job end to end",
             "milestone": "M3",
-            "source": "docs/research/design-review-testability.md §4.5"
+            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M3-interfaces.md §11"
         },
         {
             "id": "P02",
             "area": "pipeline",
             "name": "Re-georeference",
             "milestone": "M3",
-            "source": "docs/research/design-review-testability.md §4.5"
+            "source": "docs/research/design-review-testability.md §4.5; refined by docs/research/M3-interfaces.md §11"
         }
     ],
     "scenarios": [
@@ -1903,6 +1917,61 @@
             "notes": "Milestone M2b. 'Not deployed yet' at the network edge for the bootstrap specs (e2e/admin/support/deployment.ts; e2e/admin/harness/world.spec.ts)."
         },
         {
+            "id": "S-A00-HAPPY-IMAGERY-RUNNER",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "happy",
+            "title": "The fake Cloud Run hands a pipeline run to the stand-in, which writes what the pipeline writes",
+            "asserts": "jobs:run of raster-pipeline -> the stand-in runner takes the lease, records each step, holds at the scripted step until released, then leaves the job and its version awaiting approval with the version's seven files, its automatic pairs (checkpoint RMSE 6.2 m) and its output (zooms 10-16); the job's scratch files are gone and the execution succeeded",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §13; owner: e2e-fakes). The imagery world of the admin tier, before the screens and the backend that use it: e2e/admin/harness/imagery.spec.ts over e2e/admin/support/imagery*.ts, e2e/mock-apis/imagery.ts and the M3 fakes of @hcm/test-support (functions/test/support/upstream-imagery.test.ts)."
+        },
+        {
+            "id": "S-A00-BAD-IMAGERY-RUNNER-ENDS",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "bad",
+            "title": "A scripted failure, a USGS maintenance, too few pairs and an out-of-memory kill end the run as the pipeline would",
+            "asserts": "a failure at warp -> the job and its version failed with apiError.imagery.unreadableRaster and the execution failed; USGS maintenance -> waiting_usgs (usgs-maintenance) with fetch pending; too few pairs -> awaiting_gcps and the version needs_gcps with apiError.imagery.noMatch and its corner pairs; an out-of-memory kill -> the execution failed with exit 137 and the job left running for the tick",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §13; owner: e2e-fakes). The imagery world of the admin tier, before the screens and the backend that use it: e2e/admin/harness/imagery.spec.ts over e2e/admin/support/imagery*.ts, e2e/mock-apis/imagery.ts and the M3 fakes of @hcm/test-support (functions/test/support/upstream-imagery.test.ts)."
+        },
+        {
+            "id": "S-A00-BAD-IMAGERY-RUNNER-CANCEL",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "bad",
+            "title": "The admin's cancel reaches the run as SIGTERM; without a cancel the job goes back to the queue",
+            "asserts": "cancelRequested then the execution's cancel -> the held run stops, the job and its version are cancelled, the scratch files deleted, the execution cancelled; a cancel without cancelRequested (a task timeout) -> the job queued again with retryAt and its step pending",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §13; owner: e2e-fakes). The imagery world of the admin tier, before the screens and the backend that use it: e2e/admin/harness/imagery.spec.ts over e2e/admin/support/imagery*.ts, e2e/mock-apis/imagery.ts and the M3 fakes of @hcm/test-support (functions/test/support/upstream-imagery.test.ts)."
+        },
+        {
+            "id": "S-A00-HAPPY-PUBLISHED-TILES",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "happy",
+            "title": "A tileset the fake MTS published serves its own colour to every page",
+            "asserts": "a source uploaded, a tileset created with the raster recipe and published in the server's world -> from an admin page its TileJSON answers zooms 10-16 and a tile is painted in the tileset's own colour",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §13; owner: e2e-fakes). The imagery world of the admin tier, before the screens and the backend that use it: e2e/admin/harness/imagery.spec.ts over e2e/admin/support/imagery*.ts, e2e/mock-apis/imagery.ts and the M3 fakes of @hcm/test-support (functions/test/support/upstream-imagery.test.ts)."
+        },
+        {
+            "id": "S-A00-BAD-SERVER-ONLY-HOSTS",
+            "behaviour": "A00",
+            "area": "admin",
+            "path": "bad",
+            "title": "USGS, STAC, Overpass, OpenStreetMap tiles and Mapbox Satellite stay blocked for every admin page",
+            "asserts": "an admin page that loads a USGS browse image, M2M, the STAC catalogue or its COG, Overpass, an OpenStreetMap tile, the Mapbox Satellite style or a Mapbox Satellite tile -> blocked by the firewall, each address recorded; only servers reach their fakes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §13; owner: e2e-fakes). The imagery world of the admin tier, before the screens and the backend that use it: e2e/admin/harness/imagery.spec.ts over e2e/admin/support/imagery*.ts, e2e/mock-apis/imagery.ts and the M3 fakes of @hcm/test-support (functions/test/support/upstream-imagery.test.ts)."
+        },
+        {
             "id": "S-A01-HAPPY",
             "behaviour": "A01",
             "area": "admin",
@@ -2788,10 +2857,10 @@
             "area": "admin",
             "path": "happy",
             "title": "Ranked scenes with footprints and browse previews",
-            "asserts": "ranked scenes, footprints, browse previews (Storage copies)",
+            "asserts": "Search -> ranked scenes (free first, then by score) with their footprints on the admin map and browse previews (copies in our bucket read with the Storage SDK, never a USGS address from the browser); for Bucharest the 1966, 1976, 1977, 1978 and 1980 frames rank on top",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/search.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
         },
         {
             "id": "S-A11-BAD-ZERO-RESULTS",
@@ -2799,10 +2868,10 @@
             "area": "admin",
             "path": "bad",
             "title": "Zero results show guidance",
-            "asserts": "zero results -> guidance",
+            "asserts": "zero results -> guidance (widen the years, all three datasets, the city's area in Settings)",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/search.spec.ts. The guidance answers CR-M3-35 (a): every year, all three collections, the scenes to order too, and the city's area in Settings."
         },
         {
             "id": "S-A11-BAD-M2M-ERROR",
@@ -2810,10 +2879,10 @@
             "area": "admin",
             "path": "bad",
             "title": "An M2M error shows an actionable message",
-            "asserts": "M2M error -> actionable message",
+            "asserts": "M2M error -> actionable message (apiError.usgs.maintenance retried later, apiError.usgs.unavailable with Try again, apiError.usgs.credentials with the link to Setup)",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/search.spec.ts. Maintenance says it retries, unavailable offers Try again, and the refused token links Setup's USGS step (CR-M3-35 b)."
         },
         {
             "id": "S-A11-BAD-USGS-NOT-SET-UP",
@@ -2823,8 +2892,107 @@
             "title": "Without USGS setup a link to setup is shown",
             "asserts": "USGS not set up -> link to setup",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes). Test: e2e/admin/specs/imagery/search.spec.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-RANKING-EXPLAINED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "Every result says why it ranks where it does, in plain words",
+            "asserts": "each result lists its reasons (free, covers 92 % of the city, a target year, no layer within 8 years, no clouds recorded, about 2.75 m detail) in RO and EN; a scene of a year a layer already has ranks below one of a new year",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes). Test: e2e/admin/specs/imagery/search.spec.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-FILTERS",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "Filters narrow the results and the map together",
+            "asserts": "free only, a year range and a dataset narrow the list and the footprints on the map; clearing them restores both",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes). Test: e2e/admin/specs/imagery/search.spec.ts."
+        },
+        {
+            "id": "S-A11-BAD-BROWSE-UNAVAILABLE",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A browse image that cannot be fetched shows a placeholder with Try again",
+            "asserts": "the USGS browse host answers 503 -> 'Preview unavailable' with Try again on the card; the rest of the results work; the browser never requests a USGS address (firewall)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/search.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
+        },
+        {
+            "id": "S-A11-BAD-DOWNLOAD-NOT-APPROVED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "Before USGS approves downloads, results show but Import waits",
+            "asserts": "an account with the search role only -> the ranked results show, Import is off with apiError.usgs.accessPending and the link to Setup",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/search.spec.ts. Import off with apiError.usgs.accessPending and the link to Setup (CR-M3-35 c); the cards offer no Import."
+        },
+        {
+            "id": "S-A11-HAPPY-HARVEST",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "The harvest stores and ranks every scene over the city",
+            "asserts": "imagery.search over corona2, declassii and declassiii -> usgsScenes documents with sensor, footprint, coverage, rank and reasons, the top 20 browse images copied; a second search updates and never duplicates; logout always runs",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/search.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A11-BAD-PARTIAL-DATASETS",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "One dataset in maintenance does not stop the others",
+            "asserts": "declassiii answers the HTML 503 -> the other datasets are harvested and failedDatasets names declassiii",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/search.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A11-BAD-BROWSE-HOST-REFUSED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A browse address outside USGS is never fetched",
+            "asserts": "a scene whose browse address is not on ims.cr.usgs.gov -> no request is made (RemoteFiles allowedHosts) and browse.state stays failed",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/search.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A11-BAD-HARVEST-BACKOFF",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A harvest USGS does not answer backs off instead of repeating every tick",
+            "asserts": "every dataset failing records a failed attempt (ops/harvest-{city}) and the tick waits an hour, then two; a harvest that found nothing waits a month; refused credentials mark the USGS card invalid and stop the tick's harvests",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A11-BAD-USGS-UNAVAILABLE",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "USGS not answering is said, never an empty area, and a check that found USGS down leaves search and import on",
+            "asserts": "every dataset failing answers apiError.usgs.unavailable (or maintenance when every one was), no scene written; a USGS record unavailable with its role kept still searches and imports",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
             "id": "S-A12-HAPPY",
@@ -2832,10 +3000,10 @@
             "area": "admin",
             "path": "happy",
             "title": "A free scene imports to a draft, is approved and appears in the viewer",
-            "asserts": "queued -> steps -> draft with RMSE report -> approve -> viewer shows the layer",
+            "asserts": "search -> one click Import (input budget <= 2) -> the job's steps advance live -> a draft whose checkpoint RMSE is over the threshold waits with its RMSE and compute-unit estimate -> Approve -> MTS mock -> the viewer shows the layer",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/published.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes. Per push at admin-c360-ro and admin-l1440-ro, at the other three admin projects in tour-matrix (DECISIONS-for-review.md §49k)."
         },
         {
             "id": "S-A12-BAD-AUTOGCP-FAILS",
@@ -2843,10 +3011,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A georeferencing failure offers the georeferencer",
-            "asserts": "fails at autogcp -> error and 'Open georeferencer'",
+            "asserts": "the automatic georeferencing finds too few pairs -> the job waits for points (awaiting_gcps) with apiError.imagery.noMatch and 'Open georeferencer'; saving points continues the same job",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts (with S-A16-HAPPY: saving the points continues the same job). Leaving the georeferencer no longer throws (CR-M3-34: the drawing tools leave the map before it is removed)."
         },
         {
             "id": "S-A12-BAD-CANCEL",
@@ -2854,10 +3022,10 @@
             "area": "admin",
             "path": "bad",
             "title": "An import can be cancelled",
-            "asserts": "cancel -> job cancelled",
+            "asserts": "Cancel while running -> the Cloud Run execution cancelled, the job and its version cancelled, the reserved layer id free again",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes). Test: e2e/admin/specs/imagery/import.spec.ts."
         },
         {
             "id": "S-A12-BAD-RETRY",
@@ -2865,10 +3033,142 @@
             "area": "admin",
             "path": "bad",
             "title": "A failed import can be retried successfully",
-            "asserts": "retry -> succeeds",
+            "asserts": "a failed job -> Retry -> it resumes from its first unfinished step (the done ones skipped) and succeeds",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/import.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
+        },
+        {
+            "id": "S-A12-HAPPY-AUTO-PUBLISHED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "Under the threshold, Import is the only click",
+            "asserts": "a scene whose checkpoint RMSE is under the city's threshold -> Import (input budget: search and import) -> the layer appears in Layers, published, and in the viewer",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/published.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes. Per push at admin-c360-ro and admin-l1440-ro, at the other three admin projects in tour-matrix (DECISIONS-for-review.md §49k)."
+        },
+        {
+            "id": "S-A12-BAD-USGS-MAINTENANCE",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "USGS maintenance makes the import wait, not fail",
+            "asserts": "the HTML 503 while the download is prepared -> 'USGS is under maintenance; it is retried automatically' (waiting_usgs) -> the next tick resumes it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/import.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
+        },
+        {
+            "id": "S-A12-BAD-NOT-SCANNED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A scene that is not scanned cannot be imported",
+            "asserts": "imagery.import of a scene whose download is not available -> apiError.imagery.notScanned; no job, version or layer id written",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/import.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A12-BAD-ALREADY-IMPORTED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A scene is imported once",
+            "asserts": "a second imagery.import of the same scene -> apiError.imagery.alreadyImported naming the layer",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/import.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A12-BAD-GUARD-PAUSED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "The budget guard pauses imports, never the site",
+            "asserts": "ops/guard red -> imagery.import answers apiError.guardPaused and queued jobs wait (waitReason guard); the manifest and the viewer are untouched",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/import.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A12-BAD-DAILY-LIMIT",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "At most ten raster jobs a day",
+            "asserts": "the 11th raster job of a day -> apiError.imagery.dailyLimit with the limit",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/import.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A12-HAPPY-DISPATCH",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A queued job starts exactly one execution",
+            "asserts": "a queued job -> one Cloud Run execution (raster-pipeline, raster-pipeline-xl for a KH-9 panoramic frame) with JOB_ID, CITY_ID and the args run; a redelivered trigger starts nothing more; a third running job waits (capacity)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/dispatch.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A12-BAD-LOST-EXECUTION",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A lost or out-of-memory execution runs again, then gives up",
+            "asserts": "a running job whose lease lapsed and whose execution failed out of memory -> dispatched again on raster-pipeline-xl (attempt 2); past JOB_MAX_ATTEMPTS -> failed with apiError.imagery.attemptsExhausted",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/tick.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A12-BAD-CANCEL-BEFORE-MAPBOX",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A publish not yet at Mapbox can be cancelled; one at Mapbox is never ended by a stale reject",
+            "asserts": "Cancel on a publish before its publish call ends the job and its version and frees the reservation, and a start after it sends Mapbox nothing; a job Mapbox works on stays; a rejection that read a waiting job refuses once the guard sent it to Mapbox",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A12-BAD-RACING-DISPATCH",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "Dispatchers racing for the last place start one run",
+            "asserts": "two dispatches that both counted one run before either transaction start exactly one execution (ops/dispatch slots); a slot whose run ended or whose city is gone is freed",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A12-BAD-NOT-RETRYABLE",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failure no retry cures offers no Try again",
+            "asserts": "an import failed out of memory on the large machine shows its error without Try again; imagery.retry refuses a token, scope or memory failure and an upload refused before any version",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A12-BAD-FAILED-DISMISSED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failed version is dismissed, asked first",
+            "asserts": "Dismiss asks first; confirmed, the version is rejected (its job stays failed) and leaves Waiting for you; a version that left failed meanwhile is not dismissed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
             "id": "S-A13-HAPPY",
@@ -2909,10 +3209,10 @@
             "area": "admin",
             "path": "happy",
             "title": "A georeferenced GeoTIFF goes straight to the publish path",
-            "asserts": "georeferenced GeoTIFF -> publish path",
+            "asserts": "a georeferenced GeoTIFF uploaded -> inspect finds its georeference -> warp, export -> the approval card (never automatic: no measured error)",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/upload.spec.ts. Needs CR-M3-32 (imagery.onRasterUpload reads only the dialog's metadata keys)."
         },
         {
             "id": "S-A14-BAD-NOT-GEOREFERENCED",
@@ -2920,10 +3220,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A GeoTIFF without georeference opens the georeferencer",
-            "asserts": "not georeferenced -> georeferencer",
+            "asserts": "a TIFF without georeference -> the job waits for points (awaiting_gcps) -> the georeferencer opens on its scan",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/upload.spec.ts."
         },
         {
             "id": "S-A14-BAD-NON-TIFF",
@@ -2931,10 +3231,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A non-TIFF upload shows an error",
-            "asserts": "non-TIFF -> error",
+            "asserts": "a non-TIFF file -> refused in the page before upload (magic bytes) with apiError.imagery.notTiff; nothing uploaded",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes). Test: e2e/admin/specs/imagery/upload.spec.ts."
         },
         {
             "id": "S-A14-BAD-LARGE-RESUMABLE",
@@ -2942,10 +3242,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A large upload resumes after an interruption",
-            "asserts": "large file -> resumable upload completes after interruption",
+            "asserts": "a large file -> the resumable upload continues after the network drops and completes; one job",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/upload.spec.ts. The second chunk the SDK sends is answered 503 once, and the upload goes on."
         },
         {
             "id": "S-A14-HAPPY-REPLACE-SOURCE",
@@ -2955,8 +3255,8 @@
             "title": "Replacing a layer's source image re-runs the pipeline and keeps the old tiles until approval",
             "asserts": "Replace image on a layer -> a geotiff-import job for that layer -> the published tiles stay until the new tileset is approved, then the layer points to it",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3 (docs/research/M2c-interfaces.md §8.2; owner: M3). PLAN Addendum 3's layer geometry edits; not shown by the M2c layer editor."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/layer-geometry.spec.ts (with S-A14-BAD-REPLACE-OVER-GUARD: Pay publishes the replacement). Was owned by M3 in docs/research/M2c-interfaces.md §8.2. A replacement asks no year (the layer keeps its own). Per push at admin-c360-ro and admin-l1440-ro, at the other three admin projects in tour-matrix (DECISIONS-for-review.md §49k)."
         },
         {
             "id": "S-A14-BAD-REPLACE-OVER-GUARD",
@@ -2966,8 +3266,30 @@
             "title": "A replacement over the compute-unit guard waits with the guard's choices",
             "asserts": "the estimate exceeds the month's guard -> the job waits with the three choices (the free Studio upload, next month, pay); the layer keeps its tiles",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3 (docs/research/M2c-interfaces.md §8.2; owner: M3)."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/layer-geometry.spec.ts. The approved version the guard stopped shows the three choices (CR-M3-33). Per push at admin-c360-ro and admin-l1440-ro, at the other three admin projects in tour-matrix (DECISIONS-for-review.md §49k)."
+        },
+        {
+            "id": "S-A14-BAD-SNIFFED-NOT-TIFF",
+            "behaviour": "A14",
+            "area": "admin",
+            "path": "bad",
+            "title": "The server sniffs an upload's bytes, not its name",
+            "asserts": "an upload named .tif whose bytes are not TIFF -> imagery.onRasterUpload fails its job with apiError.imagery.notTiff and deletes the upload",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/upload.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A14-BAD-REPLACE-RACE",
+            "behaviour": "A14",
+            "area": "admin",
+            "path": "bad",
+            "title": "Two Replace uploads racing past the busy check are told apart",
+            "asserts": "the second upload's transaction finds the layer's pending version and fails its job with apiError.layers.busy; no version is made and the first keeps the layer",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
             "id": "S-A15-HAPPY",
@@ -2975,10 +3297,21 @@
             "area": "admin",
             "path": "happy",
             "title": "A valid tileset or XYZ URL previews and saves",
-            "asserts": "valid -> preview -> save (M3: the live preview of the linked tiles waits for the admin map's mocks, CR-M2c-7; since M2c the Link a layer dialog and layers.link create the layer: S-A15-HAPPY-LINKED)",
+            "asserts": "valid -> preview on the admin map -> save (layers.link creates the layer: S-A15-HAPPY-LINKED; the server-side probe before Save is M3's S-A15-HAPPY-PROBED)",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M3. Refined in M2c (CR-M2c-27): the callable part is S-A15-HAPPY-LINKED on the functions tier."
+            "notes": "Milestone M3, refined in M2c (CR-M2c-27): e2e/admin/specs/layers/adjustments.spec.ts previews a linked XYZ layer and saves it; the callable part is S-A15-HAPPY-LINKED on the functions tier."
+        },
+        {
+            "id": "S-A15-HAPPY-PROBED",
+            "behaviour": "A15",
+            "area": "admin",
+            "path": "happy",
+            "title": "A source is probed server-side before it is linked",
+            "asserts": "Check in the Link a layer dialog -> imagery.probeTiles asks one tile -> 'Tiles answer' with its type; Link links it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/link-probe.spec.ts. Check in the dialog (CR-M3-35 g), against the e2e tile host through the Functions emulator (CR-M3-14). The preview of a Mapbox tileset in the dialog is not built: the layer's editor previews it once linked (S-A15-HAPPY)."
         },
         {
             "id": "S-A15-HAPPY-LINKED",
@@ -2997,10 +3330,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A 404 or invalid URL shows an error",
-            "asserts": "404 or invalid URL -> error (M2c: an http template or crossed zooms are refused by layers.link as an invalid request, functions/test/layers/link.test.ts; the 404 of a tile source waits for the M3 preview)",
+            "asserts": "a tile answering 404 -> apiError.imagery.tilesNotFound, not an image -> apiError.imagery.tilesNotImage, no answer -> apiError.imagery.tilesUnreachable; Save stays off (an http template or crossed zooms: layers.link refuses them, functions/test/layers/link.test.ts)",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3. Refined in M2c (CR-M2c-27)."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/link-probe.spec.ts. Refined in M2c (CR-M2c-27); Check is CR-M3-35 (g)."
         },
         {
             "id": "S-A15-BAD-FOREIGN-PRIVATE-TILESET",
@@ -3025,15 +3358,26 @@
             "notes": "Milestone M2c (CR-M2c-27; owner: layers-settings). functions/test/layers/link.test.ts."
         },
         {
+            "id": "S-A15-BAD-PRIVATE-ADDRESS",
+            "behaviour": "A15",
+            "area": "admin",
+            "path": "bad",
+            "title": "A probe never reaches a private address",
+            "asserts": "imagery.probeTiles of a loopback, private, link-local or metadata address, a port other than 443, or a redirect to another host -> apiError.imagery.addressRefused; nothing fetched there",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/probe.test.ts and functions/test/adapters/remote-files.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
             "id": "S-A16-HAPPY",
             "behaviour": "A16",
             "area": "admin",
             "path": "happy",
             "title": "GCP editing updates residuals, transform and preview, and saving queues a job",
-            "asserts": "GCPs coloured by confidence; drag updates residuals; toggle a GCP; switch transform; overlay preview; save -> regeoref job",
+            "asserts": "the scan and the reference map side by side; pairs added, moved, disabled and deleted update the residual table, the RMSE and the live warped preview; the transform switches; Save -> a regeoref job (or the waiting job continues)",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts. Leaving the georeferencer no longer throws (CR-M3-34)."
         },
         {
             "id": "S-A16-BAD-TOO-FEW-GCPS",
@@ -3041,10 +3385,10 @@
             "area": "admin",
             "path": "bad",
             "title": "Too few GCPs disable the transform",
-            "asserts": "too few GCPs -> transform disabled",
+            "asserts": "fewer enabled pairs than the transform needs (affine 3, polynomial 6, thin-plate spline 10) -> that transform disabled with how many are missing; Save off",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
         },
         {
             "id": "S-A16-BAD-RMSE-OVER-THRESHOLD",
@@ -3052,10 +3396,10 @@
             "area": "admin",
             "path": "bad",
             "title": "An RMSE over the threshold shows a warning",
-            "asserts": "RMSE over threshold -> warning",
+            "asserts": "checkpoint RMSE over the city's threshold -> a warning naming both numbers; Save still allowed (the version then waits for Approve)",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
         },
         {
             "id": "S-A16-HAPPY-CROP",
@@ -3065,8 +3409,8 @@
             "title": "A crop polygon drawn on a layer queues its reprocessing",
             "asserts": "Crop draws a polygon with the map's drawing tools over the layer -> a regeoref job with the cutline -> after approval the layer's tiles end at the polygon",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3 (docs/research/M2c-interfaces.md §4.4; owner: M3). Drawn through MapDrawPort."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/layer-geometry.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes. Drawn through MapDrawPort (docs/research/M2c-interfaces.md §4.4). Per push at admin-c360-ro and admin-l1440-ro, at the other three admin projects in tour-matrix (DECISIONS-for-review.md §49k)."
         },
         {
             "id": "S-A16-BAD-CROP-OUTSIDE-LAYER",
@@ -3074,10 +3418,65 @@
             "area": "admin",
             "path": "bad",
             "title": "A crop polygon outside the layer is refused before any job",
-            "asserts": "a polygon that does not intersect the layer's bounds -> refused with a message; no job",
+            "asserts": "a polygon that does not intersect the layer's bounds -> refused in the page with apiError.imagery.cropOutsideLayer; no job (imagery.crop refuses it too)",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3 (docs/research/M2c-interfaces.md §4.4; owner: M3)."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/layer-geometry.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes. Per push at admin-c360-ro and admin-l1440-ro, at the other three admin projects in tour-matrix (DECISIONS-for-review.md §49k)."
+        },
+        {
+            "id": "S-A16-HAPPY-KEYBOARD",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "Pairs can be placed without a pointer, one after another",
+            "asserts": "a pair placed, moved and deleted with the keyboard only: the crosshairs of both panes, Add at the centres, the arrow keys move the selected point, Delete removes it; a keyboard pair is not chosen, so the arrows pan to the next place; a pair chosen in the table moves with the arrows, Esc lets it go and Delete removes a chosen one (CR-M3-47)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
+        },
+        {
+            "id": "S-A16-BAD-DEGENERATE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Points in a line are refused",
+            "asserts": "pairs almost on a line -> the transform refused with 'spread them across the image' (apiError.imagery.degenerateGcps); Save off",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/georeferencer.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
+        },
+        {
+            "id": "S-A16-HAPPY-REGEOREF-LAYER",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "A published layer is re-georeferenced without losing its tiles",
+            "asserts": "Re-georeference on a published layer -> new points -> a regeoref job; the layer keeps its tiles and shows 'New version awaiting approval' until the new one is published",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/layer-geometry.spec.ts. The new points' run is held before warping while the layer is looked at. Per push at admin-c360-ro and admin-l1440-ro, at the other three admin projects in tour-matrix (DECISIONS-for-review.md §49k)."
+        },
+        {
+            "id": "S-A16-BAD-GCP-OUTSIDE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Points outside the scan or the city are refused",
+            "asserts": "imagery.saveGcps with a pixel outside the scan or a place outside the city's bounds plus 0.5 degree -> apiError.imagery.gcpOutside; no job",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/save-gcps.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A16-BAD-REGEOREF-KEEPS-SCENE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "Re-georeferencing a first import keeps its scene; a base sent to Mapbox meanwhile is not replaced",
+            "asserts": "after the trigger releases the replaced base the scene stays imported with its layer id (the new version holds it); a base the guard moved to mts_processing refuses the save with apiError.imagery.versionState and nothing is written",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
             "id": "S-A17-HAPPY",
@@ -3085,10 +3484,10 @@
             "area": "admin",
             "path": "happy",
             "title": "A layer under the RMSE threshold is published automatically",
-            "asserts": "RMSE < X -> published automatically",
+            "asserts": "a version whose checkpoint RMSE is under the city's threshold (default 15 m) and fits the compute-unit guard -> approved by system:imagery and published without a click",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/published.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes. Per push at admin-c360-ro and admin-l1440-ro, at the other three admin projects in tour-matrix (DECISIONS-for-review.md §49k)."
         },
         {
             "id": "S-A17-BAD-RMSE-ABOVE-THRESHOLD",
@@ -3096,10 +3495,32 @@
             "area": "admin",
             "path": "bad",
             "title": "A layer above the RMSE threshold stays a draft",
-            "asserts": "RMSE > X -> stays draft",
+            "asserts": "RMSE over the threshold -> the version waits for Approve with both numbers; nothing reaches Mapbox",
             "tier": "e2e-admin",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/published.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes. Per push at admin-c360-ro and admin-l1440-ro, at the other three admin projects in tour-matrix (DECISIONS-for-review.md §49k)."
+        },
+        {
+            "id": "S-A17-BAD-AUTO-PUBLISH-OFF",
+            "behaviour": "A17",
+            "area": "admin",
+            "path": "bad",
+            "title": "With auto-publish off, every version waits for Approve",
+            "asserts": "the city's auto-publish switched off in Settings -> a version under the threshold waits for Approve",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/publish.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
+        },
+        {
+            "id": "S-A17-BAD-EMBEDDED-GEOREF",
+            "behaviour": "A17",
+            "area": "admin",
+            "path": "bad",
+            "title": "An upload's own georeference is never approved automatically",
+            "asserts": "an uploaded georeferenced GeoTIFF has no measured error -> it waits for Approve whatever the threshold",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/publish.test.ts (fn-imagery, 2026-10-23)."
         },
         {
             "id": "S-A18-HAPPY",
@@ -3144,6 +3565,17 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.3; owner: ops-screens). A forged cancelRequested on a finished job is denied by the rules: firebase/rules-tests/test/jobs.test.ts."
+        },
+        {
+            "id": "S-A18-HAPPY-RASTER-STEPS",
+            "behaviour": "A18",
+            "area": "admin",
+            "path": "happy",
+            "title": "A raster job reads in the admin's words",
+            "asserts": "a raster job lists the pipeline's and the publisher's steps by name in RO and EN, why it waits (USGS, points, approval, compute units, next month), and Retry on a failed one",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/jobs.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes. The M3 refinement of the M2c Jobs page (docs/research/M2c-interfaces.md §9.3)."
         },
         {
             "id": "S-A19-HAPPY",
@@ -3331,6 +3763,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c follow-up (owner: layers-settings). e2e/admin/specs/layers/dates.spec.ts; packages/ui/test/admin/setup/hcm-setup-usgs.test.ts."
+        },
+        {
+            "id": "S-A21-HAPPY-DOCUMENT-TITLE",
+            "behaviour": "A21",
+            "area": "admin",
+            "path": "happy",
+            "title": "The tab's title and the page's language follow the admin's language",
+            "asserts": "an English browser, no language chosen -> the tab is titled 'Map administration' and <html lang> is en; Română from the account menu -> 'Administrarea hărții' and ro at once",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (the integrator, 2026-10-24: the live polish of the deployed admin, 2026-10-23, where the title stayed Romanian under an English UI). Test: e2e/admin/specs/shell/title.spec.ts; packages/ui/test/admin/shell/shell.test.ts."
+        },
+        {
+            "id": "S-A21-BAD-UNSUPPORTED-LANGUAGE",
+            "behaviour": "A21",
+            "area": "admin",
+            "path": "bad",
+            "title": "A browser language the admin does not have keeps the Romanian title and language",
+            "asserts": "a German browser (de-DE) -> the Romanian screens, the tab titled 'Administrarea hărții' and <html lang> ro (never de, never the English title)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (the integrator, 2026-10-24). Test: e2e/admin/specs/shell/title.spec.ts."
         },
         {
             "id": "S-A22-HAPPY",
@@ -4169,6 +4623,28 @@
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.4, CR-M2c-3, CR-M2c-6; owner: ops-screens)."
         },
         {
+            "id": "S-A33-HAPPY-TILESET-DELETED",
+            "behaviour": "A33",
+            "area": "admin",
+            "path": "happy",
+            "title": "A deleted layer's tileset goes after the grace",
+            "asserts": "a layer-delete job past its seven days -> the tileset and its source deleted at Mapbox (fake) with retries, the layer's objects in our bucket deleted, the job succeeded; a layer restored meanwhile -> the job cancelled",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/layer-delete.test.ts (fn-imagery, 2026-10-23). CR-M2c-13 of docs/research/M2c-interfaces.md."
+        },
+        {
+            "id": "S-A33-BAD-ID-REUSED",
+            "behaviour": "A33",
+            "area": "admin",
+            "path": "bad",
+            "title": "A deleted layer's id stays taken until its deletion runs, which spares any newer version",
+            "asserts": "an import of the same label during the grace gets another id; a due deletion waits while an unfinished version holds the id and deletes only the files of the deleted layer's own versions",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
             "id": "S-A34-HAPPY",
             "behaviour": "A34",
             "area": "admin",
@@ -4642,15 +5118,191 @@
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §12.3 \"Admin to viewer\"; owner: integrator). e2e/admin/specs/flows/publish.spec.ts"
         },
         {
+            "id": "S-A42-HAPPY",
+            "behaviour": "A42",
+            "area": "admin",
+            "path": "happy",
+            "title": "A publish within the month's compute units is counted",
+            "asserts": "a publish that fits -> its estimate reserved in usage/mapbox-YYYY-MM, counted when the MTS job succeeds (the reservation released), publishes + 1",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/publish.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A42-BAD-OVER-BUDGET",
+            "behaviour": "A42",
+            "area": "admin",
+            "path": "bad",
+            "title": "A publish over the month's compute units waits with three choices",
+            "asserts": "the estimate exceeds what is left -> the approval card shows the estimate, what is left and three choices (free Studio upload, next month, pay about $X); nothing reaches Mapbox",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/publish.spec.ts. A version the policy approved and the guard stopped shows the choices (CR-M3-33)."
+        },
+        {
+            "id": "S-A42-HAPPY-STUDIO",
+            "behaviour": "A42",
+            "area": "admin",
+            "path": "happy",
+            "title": "The free Studio upload replaces the MTS publish",
+            "asserts": "Free: Studio -> download the Studio file, open Mapbox Studio, 'I uploaded it' -> the tileset found by its name becomes the layer's source; studioUploads + 1",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/publish.spec.ts."
+        },
+        {
+            "id": "S-A42-HAPPY-DEFER",
+            "behaviour": "A42",
+            "area": "admin",
+            "path": "happy",
+            "title": "A deferred publish runs next month",
+            "asserts": "Defer -> the version waits until the 1st of next month (UTC); imagery.tick publishes it then, after checking the guard again",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/approve.test.ts and functions/test/imagery/tick.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A42-BAD-TILESET-LIMIT",
+            "behaviour": "A42",
+            "area": "admin",
+            "path": "bad",
+            "title": "The 25th tileset needs the owner",
+            "asserts": "24 published tilesets -> apiError.imagery.tilesetLimit and no Pay choice",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/publish.test.ts and functions/test/imagery/approve.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A42-BAD-RACING-PUBLISHES",
+            "behaviour": "A42",
+            "area": "admin",
+            "path": "bad",
+            "title": "Two publishes never share the same remaining units",
+            "asserts": "two approvals at once whose estimates fit only one -> the second waits with the choices (the reservations are one transaction)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/publish.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A42-BAD-DUPLICATE-PUBLISH",
+            "behaviour": "A42",
+            "area": "admin",
+            "path": "bad",
+            "title": "A redelivered or recovered start never publishes twice",
+            "asserts": "a second start of a publish with its MTS job polls it; one whose answer was lost follows the job Mapbox lists instead of publishing again; the tick queues a stale job once (stale-<ms>), not every five minutes",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A42-BAD-PUBLISH-ATTEMPTS",
+            "behaviour": "A42",
+            "area": "admin",
+            "path": "bad",
+            "title": "A publish that keeps failing stops at its attempts",
+            "asserts": "after PUBLISH_MAX_ATTEMPTS starts the job fails apiError.imagery.attemptsExhausted and frees its reservation, and imagery.retry refuses it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A42-BAD-RACING-TILESETS",
+            "behaviour": "A42",
+            "area": "admin",
+            "path": "bad",
+            "title": "Two first publishes never both take the last tileset place",
+            "asserts": "the reservation of a first publish, read in the guard's transaction, and a deleted layer's tileset waiting for its deletion count against the cap",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A42-BAD-SOURCE-TOO-LARGE",
+            "behaviour": "A42",
+            "area": "admin",
+            "path": "bad",
+            "title": "A file too large for Mapbox goes back to the admin with the free Studio way",
+            "asserts": "a 413 on the source upload sets the version approved with the guard's verdict too-large, frees the reservation and uploads nothing more; only Studio may be chosen; without a Studio copy the job fails",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A42-BAD-STUDIO-NOT-UPLOADED",
+            "behaviour": "A42",
+            "area": "admin",
+            "path": "bad",
+            "title": "The layer's own tileset, or one older than the choice, is not a Studio upload",
+            "asserts": "I uploaded it answers apiError.imagery.studioNotFound for the layer's MTS tileset and for a tileset created before the choice; a newer one is linked",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A43-HAPPY",
+            "behaviour": "A43",
+            "area": "admin",
+            "path": "happy",
+            "title": "A budget pause shows the spend and Resume processing turns the guard green",
+            "asserts": "the Imagery and Jobs pages show the paused guard with the cost and the budget; Resume processing asks first, then the banner goes, ops/guard is green with who resumed it, and an Import starts",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A43-BAD-PAUSED",
+            "behaviour": "A43",
+            "area": "admin",
+            "path": "bad",
+            "title": "While the guard is paused an import is refused with why",
+            "asserts": "Import on a free scene shows apiError.guardPaused and starts no run while the banner says processing is paused",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A43-HAPPY-RESUME",
+            "behaviour": "A43",
+            "area": "admin",
+            "path": "happy",
+            "title": "The resume accepts the budget period's spend",
+            "asserts": "imagery.resumeGuard turns the guard green with resumedBy and resumedFor; the same period's alerts leave it green, the next period's turn it red with their spend; a paused publish is queued once the guard is green",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A43-BAD-NOT-PAUSED",
+            "behaviour": "A43",
+            "area": "admin",
+            "path": "bad",
+            "title": "A resume of a guard that is not paused changes nothing",
+            "asserts": "a green or missing guard is left as it is and the call answers green",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
             "id": "S-P01-HAPPY",
             "behaviour": "P01",
             "area": "pipeline",
             "path": "happy",
             "title": "A queued job produces a draft layer within tolerance",
-            "asserts": "queued job -> worker (synthetic tgz from mock M2M) -> MTS mock -> draft layer within tolerance",
+            "asserts": "a queued usgs-import -> the pipeline (fake M2M serving the synthetic tgz, fake STAC with a Sentinel-2 COG, fake Overpass) runs fetch to register -> the version awaits approval with a checkpoint RMSE within tolerance of the known transform, a valid 8-bit COG with overviews, the preview and the Studio file; every step done",
             "tier": "e2e-pipeline",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_job.py against the loopback fakes (pipeline-pytest)."
+        },
+        {
+            "id": "S-P01-HAPPY-ADMIN",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The real pipeline imports a free scene from the admin, and the viewer shows the published layer",
+            "asserts": "Import on the 1966 frame's card -> python -m hcm_pipeline run (the quality image's pipeline venv) against the emulators and the mock USGS, STAC and Overpass answering a synthetic scene -> every step done, automatic points, checkpoint RMSE under the city's 15 m -> approved by the policy and published -> the manifest lists it, the viewer paints its tiles and its opacity slider fades them",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M3 (the integrator, 2026-10-24; CR-M3-16, CR-M3-19). Test: e2e/admin/specs/imagery/pipeline.spec.ts; the scene is pipeline/tests/synthetic/scenes.py, generated into the test's folder. Per push at admin-l1440-ro only (it does not depend on the window class)."
         },
         {
             "id": "S-P01-BAD-CORRUPT-ARCHIVE",
@@ -4658,10 +5310,10 @@
             "area": "pipeline",
             "path": "bad",
             "title": "A corrupt archive fails the job with a clear error",
-            "asserts": "corrupt archive -> job failed with CorruptArchive",
+            "asserts": "a corrupt archive -> the job failed at extract with apiError.imagery.archiveCorrupt; the delivery deleted so a retry downloads it again",
             "tier": "e2e-pipeline",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_job.py against the loopback fakes (pipeline-pytest)."
         },
         {
             "id": "S-P01-BAD-NO-REFERENCE",
@@ -4669,10 +5321,10 @@
             "area": "pipeline",
             "path": "bad",
             "title": "Missing reference coverage fails the job with a clear error",
-            "asserts": "no reference coverage -> ReferenceUnavailable",
+            "asserts": "no Sentinel-2 item over the window -> the job failed at locate (the corner guess scores against Sentinel-2) with apiError.imagery.referenceUnavailable; Overpass down after three tries -> failed at reference with the same code",
             "tier": "e2e-pipeline",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_job.py against the loopback fakes (pipeline-pytest)."
         },
         {
             "id": "S-P01-BAD-MTS-FAILURE",
@@ -4680,10 +5332,10 @@
             "area": "pipeline",
             "path": "bad",
             "title": "An MTS job failure is retried",
-            "asserts": "MTS job failure -> retry",
-            "tier": "e2e-pipeline",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "asserts": "the MTS job fails with an internal error -> published again once; a recipe error -> the job failed with apiError.imagery.mtsRefused, the reservation released, the layer's tiles unchanged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/publish.test.ts (fn-imagery, 2026-10-23). The publish runs in functions since M3 (docs/research/M3-interfaces.md §7)."
         },
         {
             "id": "S-P01-BAD-SIGTERM",
@@ -4691,10 +5343,98 @@
             "area": "pipeline",
             "path": "bad",
             "title": "SIGTERM cancels the job and cleans up",
-            "asserts": "SIGTERM -> status cancelled, temp files removed",
+            "asserts": "SIGTERM while cancel is requested -> the job cancelled, the job's work/ objects and the local temp files removed, exit 0",
             "tier": "e2e-pipeline",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_resume.py against the loopback fakes (pipeline-pytest)."
+        },
+        {
+            "id": "S-P01-BAD-SIGTERM-RESUME",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "SIGTERM without a cancel keeps the work for a resume",
+            "asserts": "SIGTERM during fetch -> the checkpoint (offset, hash state) kept, the lease released, the job queued again; the resume skips the finished steps and continues the download where it stopped",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_resume.py against the loopback fakes (pipeline-pytest)."
+        },
+        {
+            "id": "S-P01-BAD-USGS-MAINTENANCE",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "USGS maintenance makes the pipeline wait and exit",
+            "asserts": "the HTML 503 from M2M -> waiting_usgs with retryAt 30 minutes later (then doubling, at most 12 hours), exit 0, no failure",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_resume.py against the loopback fakes (pipeline-pytest)."
+        },
+        {
+            "id": "S-P01-BAD-SIGNED-URL-EXPIRED",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An expired download address is retrieved again, never logged",
+            "asserts": "the download address answers 403 -> download-retrieve again and the stream resumes; the signed address appears in no log line and no Firestore field",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_resume.py against the loopback fakes (pipeline-pytest)."
+        },
+        {
+            "id": "S-P01-BAD-SIZE-MISMATCH",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A short delivery is discarded",
+            "asserts": "the delivered size differs from download-options -> apiError.imagery.downloadIncomplete, the object discarded, fetched again on the next attempt",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_resume.py against the loopback fakes (pipeline-pytest)."
+        },
+        {
+            "id": "S-P01-BAD-DUPLICATE-EXECUTION",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A second execution of a leased job does nothing",
+            "asserts": "a second execution while the lease is held -> exit 0 without touching the job",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_job.py against the loopback fakes (pipeline-pytest)."
+        },
+        {
+            "id": "S-P01-HAPPY-UPLOAD-GEOREFERENCED",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A georeferenced upload is warped with its own georeference",
+            "asserts": "geotiff-import of a georeferenced GeoTIFF -> inspect finds its georeference (embedded) -> warp, export, register; the version awaits approval",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_upload_job.py against the loopback fakes (pipeline-pytest)."
+        },
+        {
+            "id": "S-P01-BAD-UPLOAD-NO-GEOREF",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A plain TIFF waits for points",
+            "asserts": "geotiff-import of a TIFF without georeference -> the scan, its preview and the reference written; the job awaiting_gcps, the version needs_gcps",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_upload_job.py against the loopback fakes (pipeline-pytest)."
+        },
+        {
+            "id": "S-P01-BAD-PROCESSING-FAILED",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A GDAL failure on the pipeline's own files is a processing failure; only an unreadable upload asks for the file again",
+            "asserts": "a corrupt USGS segment fails apiError.imagery.processingFailed; an upload GDAL cannot read fails apiError.imagery.unreadableRaster",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
             "id": "S-P02-HAPPY",
@@ -4702,10 +5442,10 @@
             "area": "pipeline",
             "path": "happy",
             "title": "Re-georeferencing with manual GCPs produces a new version",
-            "asserts": "regeoref with manual GCPs -> new layer version",
+            "asserts": "regeoref with the admin's points -> a new version whose residuals and checkpoint RMSE are those of the exact golden cases (0 within 0.01 m, pipeline/tests/contracts/georef-cases.json), awaiting approval; the base version's scan reused unchanged, no USGS call",
             "tier": "e2e-pipeline",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_regeoref_job.py against the loopback fakes (pipeline-pytest)."
         },
         {
             "id": "S-P02-BAD-DEGENERATE-GCPS",
@@ -4713,10 +5453,21 @@
             "area": "pipeline",
             "path": "bad",
             "title": "A degenerate GCP set fails with an error",
-            "asserts": "degenerate GCP set -> error",
+            "asserts": "collinear or coincident pairs -> the job failed at georef with apiError.imagery.degenerateGcps (imagery.saveGcps refuses them first)",
             "tier": "e2e-pipeline",
-            "status": "planned",
-            "notes": "Milestone M3."
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_regeoref_job.py against the loopback fakes (pipeline-pytest)."
+        },
+        {
+            "id": "S-P02-HAPPY-CROP",
+            "behaviour": "P02",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A crop ring cuts the layer",
+            "asserts": "regeoref with a crop ring -> gdalwarp -cutline; the COG is transparent (nodata) outside the ring",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_regeoref_job.py against the loopback fakes (pipeline-pytest)."
         }
     ]
 }

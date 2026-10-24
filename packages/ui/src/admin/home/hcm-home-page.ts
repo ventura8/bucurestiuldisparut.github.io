@@ -38,6 +38,9 @@ const WAITING: readonly Tile[] = [
     { count: 'unpublishedPhotos', href: '#/photos' },
     { count: 'activeJobs', href: '#/jobs' },
     { count: 'failedJobs', href: '#/jobs' },
+    // M3 (admin-imagery): the layer versions to approve and the scans waiting for points, on the Imagery page.
+    { count: 'versionsToApprove', href: '#/imagery' },
+    { count: 'versionsNeedingPoints', href: '#/imagery' },
 ];
 
 const TONES: Readonly<Record<HealthChipPort['state'], 'good' | 'wait' | 'error' | 'none'>> = {

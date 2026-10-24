@@ -65,6 +65,8 @@ describe('the dashboard', () => {
             unpublishedPhotos: 1,
             activeJobs: 1,
             failedJobs: 1,
+            versionsToApprove: 0,
+            versionsNeedingPoints: 0,
         });
         expect(home.state.health.chips.map((chip) => [chip.area, chip.state])).toEqual([
             ['billing', 'ok'],
@@ -124,6 +126,7 @@ describe('the dashboard', () => {
             FIRESTORE_PATHS.pois(CITY),
             FIRESTORE_PATHS.poiCategories(CITY),
             FIRESTORE_PATHS.jobs(CITY),
+            FIRESTORE_PATHS.layerVersions(CITY),
         ]) {
             store.counts.set(path, null);
         }

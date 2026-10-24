@@ -138,7 +138,16 @@ export interface LayoutSnapshot {
     readonly chrome: readonly ChromeInfo[];
     readonly texts: readonly TextInfo[];
     readonly sideways: readonly SidewaysInfo[];
-    readonly legal: { readonly map: boolean; readonly logos: readonly LegalItem[]; readonly attributions: readonly LegalItem[] };
+    /**
+     * `map`: a drawn map shows a strip of its foot that reaches a legal control; `owes`: which of the two the strip reaches
+     * (a control drawn above the strip cannot show, so it is not owed); the visible logos and attributions.
+     */
+    readonly legal: {
+        readonly map: boolean;
+        readonly owes: { readonly logo: boolean; readonly attribution: boolean };
+        readonly logos: readonly LegalItem[];
+        readonly attributions: readonly LegalItem[];
+    };
     /** The open modal surfaces (`aria-modal="true"` boxes and modal `<dialog>`s). */
     readonly modals: readonly number[];
 }
@@ -540,10 +549,11 @@ function showsItsFoot(canvas: Element, legal = ''): boolean {
 }
 
 /**
- * The band at a map canvas's foot below its lowest legal control (`legal`: the logo's and the attribution's selectors),
+ * The band at a map canvas's foot below its lowest legal control (`legal`: the selectors of the controls asked about),
  * 0 without one inside the canvas's box. Mapbox draws them a few pixels above the foot, so a strip of the map no taller
  * than that band (an admin page scrolled to its end, the map's last 4 px left at the top: lesson 144) cannot show them;
- * one pixel more of the map and the rule asks for them again.
+ * one pixel more of the map and the rule asks for them again. Asked about each control on its own, a strip that reaches
+ * the attribution (on the foot) but not the logo (10 px above it) owes the attribution only (lesson 163).
  */
 function legalGap(canvas: Element, legal: string): number {
     const box = boxOf(canvas);
@@ -588,10 +598,11 @@ export function probeLayout(options: ProbeOptions): LayoutSnapshot {
     const chrome = probeChrome(registry, options, context);
     const texts = probeTexts(registry);
     const sideways = probeSideways(registry);
+    const reaches = (legalSelector: string): boolean =>
+        deepQuery(options.legal.map).some((canvas) => isDrawn(canvas) && showsItsFoot(canvas, legalSelector));
     const legal = {
-        map: deepQuery(options.legal.map).some(
-            (canvas) => isDrawn(canvas) && showsItsFoot(canvas, `${options.legal.logo}, ${options.legal.attribution}`),
-        ),
+        map: reaches(`${options.legal.logo}, ${options.legal.attribution}`),
+        owes: { logo: reaches(options.legal.logo), attribution: reaches(options.legal.attribution) },
         logos: probeLegal(registry, options.legal.logo),
         attributions: probeLegal(registry, options.legal.attribution),
     };

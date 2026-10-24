@@ -13,10 +13,13 @@ from collections.abc import Mapping, Sequence
 from typing import NoReturn, TextIO
 
 from hcm_pipeline.config import ConfigError, load_config
+from hcm_pipeline.contract import PIPELINE_STEPS
 from hcm_pipeline.exit_codes import ExitCode
 from hcm_pipeline.log import configure
+from hcm_pipeline.services import build, default_steps
 from hcm_pipeline.steps import Step, StepContext, StepError, StepRegistry
 from hcm_pipeline.steps.doctor import DoctorStep
+from hcm_pipeline.steps.run import RunCommand
 
 
 class UsageError(Exception):
@@ -31,7 +34,9 @@ class _Parser(argparse.ArgumentParser):
 
 
 def default_registry() -> StepRegistry:
-    return StepRegistry((DoctorStep(),))
+    """`doctor`, `run` and one debugging command per pipeline step."""
+    commands = [RunCommand("run", build, default_steps), *(RunCommand(step, build, default_steps, step) for step in PIPELINE_STEPS)]
+    return StepRegistry((DoctorStep(), *commands))
 
 
 def parse_args(argv: Sequence[str] | None, registry: StepRegistry) -> argparse.Namespace:

@@ -538,6 +538,14 @@ fake server's `download-*` endpoints and scripted corrupt payloads, Firestore an
 (`--target runtime`, context `pipeline`). pylint and vulture from the conventions list are not
 wired for any Python yet.
 
+Done in M3 (2026-10-24, `docs/research/M3-interfaces.md` §5 and CR-M3-19, `docs/research/M3-status.md`): every
+step but publish (which moved to functions, `imagery.publish`), the lease and heartbeat in `hcm_pipeline/lease.py`, the
+loopback fakes in `pipeline/tests/fakes/` (documents, Cloud Storage's JSON API, M2M and its delivery host, STAC,
+Overpass) instead of a poller and a compose tier: P01 and P02 run in `pipeline/tests/integration/`, and the real
+pipeline runs once under the admin e2e tier (`e2e/admin/specs/imagery/pipeline.spec.ts`). The runtime image's entry point
+is `python -m hcm_pipeline`; building and pushing it, and the Cloud Run Job definitions, wait for the user's deploy.
+pylint and vulture are still not wired.
+
 ## 10d. Integration pass and the e2e harness
 
 Added by the M0 integrator on 2026-10-12, after the parallel agents of §10, §10b and §10c finished.

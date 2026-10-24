@@ -1,29 +1,16 @@
 /**
- * cities/{city}/jobs/{job} (+ logs) and cities/{city}/usgsScenes/{scene}: admins queue jobs (exactly
- * `CLIENT_WRITES.job.create`, `queued`, stamped) and ask an unfinished one to stop; they triage harvested USGS scenes.
- * The job runner and the harvest own every other field.
+ * cities/{city}/jobs/{job} (+ logs), cities/{city}/layerVersions/{version} and cities/{city}/usgsScenes/{scene}: since M3
+ * no client queues a job (`CLIENT_WRITES.job.create` is empty: the imagery callables and triggers create every job with
+ * its checks, CR-M3-2); admins ask an unfinished job to stop, read the layer versions and triage harvested USGS scenes.
+ * The dispatcher, the pipeline, the publisher and the harvest own every other field.
  */
 import { FIRESTORE_PATHS, JOB_STATUSES, JOB_TYPES, USGS_SCENE_STATUSES } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { jobDoc, layerDoc, newJob, usgsSceneDoc } from './support/documents.js';
-import {
-    createWorld,
-    deleted,
-    past,
-    serverTime,
-    stampedBy,
-    verdict,
-    withChanges,
-    type Data,
-    type Verdict,
-    type World,
-} from './support/world.js';
+import { jobDoc, layerDoc, layerVersionDoc, newJob, usgsSceneDoc } from './support/documents.js';
+import { createWorld, deleted, serverTime, stampedBy, verdict, withChanges, type Data, type Verdict, type World } from './support/world.js';
 
 const CITY_ID = 'rules-jobs';
-/** A deleted layer's tileset clean-up is queued by `layers.delete` only (CR-M2c-3): never a client's job. */
-const SERVER_ONLY_JOBS: readonly string[] = ['layer-delete'];
-const CLIENT_JOBS = JOB_TYPES.filter((type) => !SERVER_ONLY_JOBS.includes(type));
 const FINISHED = ['succeeded', 'failed', 'cancelled'];
 const TRIAGE = ['candidate', 'ordered', 'rejected'];
 
@@ -79,8 +66,8 @@ afterAll(async () => {
 });
 
 describe('queue a job', () => {
-    it.each(CLIENT_JOBS)('happyPath_adminQueues_%s', async (type) => {
-        expect(await queue({ type })).toBe('allow');
+    it.each(JOB_TYPES)('badPath_noClientQueuesAJob_%s', async (type) => {
+        expect(await queue({ type })).toBe('deny');
     });
 
     it('badPath_noClientDeletesALayerOrQueuesItsTilesetDeletion @S-A33-BAD-CLIENT-LAYER-DELETE', async () => {
@@ -97,21 +84,26 @@ describe('queue a job', () => {
     it.each([
         ['an unknown type', { type: 'shell' }],
         ['a status other than queued', { status: 'running' }],
-        ['params that are not a map', { params: 'entityId=DS1' }],
-        ['no params', { params: deleted() }],
         ['a runner-owned field', { step: 'publish' }],
-        ['a cancellation flag', { cancelRequested: false }],
-        ['another creator', { createdBy: 'someone-else' }],
-        ['a client createdAt', { createdAt: past() }],
-        ['no stamp', { updatedBy: deleted(), updatedAt: deleted() }],
-        ['another editor', { updatedBy: 'someone-else' }],
-        ['a client clock', { updatedAt: past() }],
     ])('badPath_adminCannotQueueWith_%s', async (_label, changes) => {
         expect(await queue(changes)).toBe('deny');
     });
+});
 
-    it('badPath_jobIdsFollowTheIdPattern', async () => {
-        expect(await queue({}, 'job 1')).toBe('deny');
+describe('layer versions', () => {
+    it('happyPath_adminReadsALayerVersionAndNoClientWritesOne', async () => {
+        const path = await seeded(FIRESTORE_PATHS.layerVersion(CITY_ID, 'v1'), layerVersionDoc());
+        const read = await verdict(world.db('admin').doc(path).get());
+        const edit = await verdict(
+            world
+                .db('admin')
+                .doc(path)
+                .update({ state: 'approved', ...stampedBy(world.uid('admin')) }),
+        );
+        const create = await verdict(world.db('admin').doc(FIRESTORE_PATHS.layerVersion(CITY_ID, 'v2')).set(layerVersionDoc()));
+        const removal = await verdict(world.db('admin').doc(path).delete());
+
+        expect({ read, edit, create, removal }).toEqual({ read: 'allow', edit: 'deny', create: 'deny', removal: 'deny' });
     });
 });
 

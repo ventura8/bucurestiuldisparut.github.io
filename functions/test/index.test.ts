@@ -71,4 +71,8 @@ describe('deployed functions', () => {
     it('happyPath_photoUploadsAreWatchedOnTheProjectsDefaultBucket', () => {
         expect(endpointOf('photos.onUpload').eventTrigger?.eventFilters).toEqual({ bucket: BUCKET });
     });
+
+    it('happyPath_rasterUploadsAreWatchedOnTheSameBucket', () => {
+        expect(endpointOf('imagery.onRasterUpload').eventTrigger?.eventFilters).toEqual({ bucket: BUCKET });
+    });
 });

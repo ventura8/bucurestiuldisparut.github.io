@@ -44,6 +44,7 @@ describe('<hcm-settings-page> sections', () => {
             '#/settings/area',
             '#/settings/texts',
             '#/settings/theme',
+            '#/settings/imagery',
             '#/settings/categories',
             '#/settings/overlays',
         ]);

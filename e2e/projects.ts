@@ -12,12 +12,12 @@ import type { WorkerOptions } from './support/test.js';
  *
  * | Tier | Projects | Specs |
  * | --- | --- | --- |
- * | `admin` | `admin-setup`, `admin-harness`, `admin-{c360,m768,l1440}-ro`, `admin-l1440-dark`, `admin-l1440-en`, `admin-steps-l1440-en`, `admin-{firefox,webkit}-l1440-ro` | `admin/{setup,harness,specs,steps}/` (the Setup journey at `admin-c360-ro` and `admin-l1440-ro` only) |
+ * | `admin` | `admin-setup`, `admin-harness`, `admin-{c360,m768,l1440}-ro`, `admin-l1440-dark`, `admin-l1440-en`, `admin-steps-l1440-en`, `admin-{firefox,webkit}-l1440-ro` | `admin/{setup,harness,specs,steps}/` (the Setup journey and the imagery publishes at `admin-c360-ro` and `admin-l1440-ro` only, the real pipeline at `admin-l1440-ro`) |
  * | `smoke` | `harness`, `smoke-c360`, `smoke-l1440` | `specs/harness/` (the e2e preconditions), `specs/smoke/` (the viewer boots) |
  * | `a11y` | `a11y-reduced-motion`, `a11y-forced-colors` | `a11y/reduced-motion.spec.ts`, `a11y/forced-colors.spec.ts` |
  * | `nogl` | `nogl` (`--disable-3d-apis`) | `specs/viewer/no-webgl.spec.ts` |
  * | `tour` | the per-push tour: `tour-{x3840,l1440,c915l,c360}-light-ro` (the viewer's and the admin's journeys), `tour-{x3840,l1440,c915l,c360}-dark-ro` and `tour-c360-light-en` (the viewer's) | `tour/*.tour.ts` (layout, axe, ARIA) |
- * | `tour-matrix` | the other 35 `tour-<viewport>-<light|dark>-<ro|en>` of the 11 viewports, the admin's journeys of the five per-push projects above that skip them (`tour-<…>-admin`), the Setup journey at `admin-{m768-ro,l1440-dark,l1440-en}-journey` and the window-class-independent functional specs at the other four functional projects (`fn-<…>-matrix`) (`all`, nightly) | `tour/*.tour.ts`, `admin/specs/journey.spec.ts`, `specs/viewer/` |
+ * | `tour-matrix` | the other 35 `tour-<viewport>-<light|dark>-<ro|en>` of the 11 viewports, the admin's journeys of the five per-push projects above that skip them (`tour-<…>-admin`), the Setup journey at `admin-{m768-ro,l1440-dark,l1440-en}-journey`, the imagery publishes at `admin-{m768-ro,l1440-dark,l1440-en}-imagery` and the window-class-independent functional specs at the other four functional projects (`fn-<…>-matrix`) (`all`, nightly) | `tour/*.tour.ts`, `admin/specs/journey.spec.ts`, `specs/viewer/` |
  * | `fn` | `fn-c360-ro`, `fn-m768-ro`, `fn-l1440-ro`, `fn-l1440-en`, `fn-c360-dark` | `specs/viewer/`, `specs/starter-kit/` (the window-class-independent ones at `fn-l1440-ro` only) |
  *
  * Every scenario row runs on every push: what `tour-matrix` adds are repetitions of rows the push already ran at another
@@ -281,7 +281,7 @@ function noWebGlProjects(): E2eProject[] {
  */
 const ADMIN_TIMEOUT_MS = 150_000;
 
-function adminProject(name: string, testMatch: string, use: Use, extra: Partial<E2eProject> = {}): E2eProject {
+function adminProject(name: string, testMatch: string | string[], use: Use, extra: Partial<E2eProject> = {}): E2eProject {
     return {
         name,
         testDir: 'admin',
@@ -311,10 +311,22 @@ const JOURNEY_MATRIX: readonly { readonly name: string; readonly use: Use }[] = 
     { name: 'admin-l1440-en', use: chromium('l1440', 'en') },
 ];
 
+/**
+ * The imagery specs whose publishes wait for the fake MTS and the manifest build (two to six minutes a test behind the
+ * admin lock: the imports that reach the public map, crop, replace and re-georeference) run on a push at a phone and a
+ * laptop, like the Setup journey; at the tablet, in the dark scheme and in English they repeat the same rows in
+ * `tour-matrix` (DECISIONS-for-review.md §48b, §49k). The real pipeline's run does not depend on the window class: on a
+ * push at the laptop only.
+ */
+const IMAGERY_PUBLISH_SPECS = ['specs/imagery/published.spec.ts', 'specs/imagery/layer-geometry.spec.ts'];
+const PIPELINE_SPEC = 'specs/imagery/pipeline.spec.ts';
+
 function adminJourneyMatrixProjects(): E2eProject[] {
+    const matrix = { metadata: { tier: 'tour-matrix' } };
     return [
         adminSetupProject(),
-        ...JOURNEY_MATRIX.map(({ name, use }) => adminProject(`${name}-journey`, JOURNEY_SPEC, use, { metadata: { tier: 'tour-matrix' } })),
+        ...JOURNEY_MATRIX.map(({ name, use }) => adminProject(`${name}-journey`, JOURNEY_SPEC, use, matrix)),
+        ...JOURNEY_MATRIX.map(({ name, use }) => adminProject(`${name}-imagery`, IMAGERY_PUBLISH_SPECS, use, matrix)),
     ];
 }
 
@@ -329,9 +341,10 @@ function adminJourneyMatrixProjects(): E2eProject[] {
 function adminProjects(part: ShardRange | null): E2eProject[] {
     const SPECS_GLOB = 'specs/**/*.spec.ts';
     const FORMS_GLOB = 'specs/editing/**/*.spec.ts';
-    const noJourney = { testIgnore: JOURNEY_SPEC };
+    // At the tablet, in the dark scheme and in English the journey and the slow imagery specs run in `tour-matrix`.
+    const noJourney = { testIgnore: [JOURNEY_SPEC, ...IMAGERY_PUBLISH_SPECS, PIPELINE_SPEC] };
     const tests = [
-        adminProject('admin-c360-ro', SPECS_GLOB, chromium('c360')),
+        adminProject('admin-c360-ro', SPECS_GLOB, chromium('c360'), { testIgnore: PIPELINE_SPEC }),
         adminProject('admin-m768-ro', SPECS_GLOB, chromium('m768'), noJourney),
         adminProject('admin-l1440-ro', SPECS_GLOB, chromium('l1440')),
         // The dark scheme: colours, rings and contrast are the scheme's (the visual audit of 2026-10-17 found the admin

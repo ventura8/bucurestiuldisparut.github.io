@@ -129,6 +129,31 @@ describe('the admin map factory', () => {
         expect(tools.mode).toBe('static');
     });
 
+    it('badPath_theDrawingToolsLeaveTheMapBeforeItIsRemoved', async () => {
+        const target = world();
+        const handle = handleOf(await created(target));
+        const tools = await handle.draw();
+        tools.attach(handle.port, { limits: CITY, color: '#8b5e3c', maxVertices: 500, maxRings: 20 });
+        tools.setMode('draw-point', 'casa');
+
+        // Synchronously, while the map still has its canvas (CR-M3-34).
+        handle.destroy();
+
+        expect([tools.mode, target.gl.map.removed]).toEqual(['static', true]);
+    });
+
+    it('badPath_toolsStillLoadingWhenTheMapGoesAreDetachedOnArrival', async () => {
+        const target = world();
+        const handle = handleOf(await created(target));
+        const loading = handle.draw();
+
+        handle.destroy();
+        const tools = await loading;
+        await Promise.resolve();
+
+        expect([tools.mode, target.gl.map.removed]).toEqual(['static', true]);
+    });
+
     it('badPath_terraDrawThatFailsToLoadFallsBackToClickDrawing', async () => {
         const target = world({ terraDraw: () => Promise.reject(new Error('chunk 404')) });
         const handle = handleOf(await created(target));

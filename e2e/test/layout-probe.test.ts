@@ -320,12 +320,21 @@ describe('texts and the legal line', () => {
         // Scrolled to the end: the map's last 4 px show, under its logo (6 px above the foot).
         scroller.scrollTop = 496;
         const strip = probeLayout(OPTIONS);
-        // 10 px show: the logo's lowest pixels are on screen, so the rule asks for it (and finds it).
+        // 10 px show: the logo's lowest pixels are on screen, so the rule asks for it (and finds it); the attribution,
+        // 10 px above the foot, is not reached yet, so it is not owed (lesson 163).
         scroller.scrollTop = 490;
         const band = probeLayout(OPTIONS);
+        // 14 px show: both are reached, and both found.
+        scroller.scrollTop = 486;
+        const both = probeLayout(OPTIONS);
 
-        expect([strip.legal.map, band.legal.map]).toEqual([false, true]);
-        expect(checksOf(band).filter((check) => check === 'legal')).toHaveLength(1);
+        expect([strip.legal.map, band.legal.map, both.legal.map]).toEqual([false, true, true]);
+        expect([band.legal.owes, both.legal.owes]).toEqual([
+            { logo: true, attribution: false },
+            { logo: true, attribution: true },
+        ]);
+        expect(checksOf(band).filter((check) => check === 'legal')).toEqual([]);
+        expect(checksOf(both).filter((check) => check === 'legal')).toEqual([]);
     });
 
     test('badPath_thePageScrollsSideways', () => {
