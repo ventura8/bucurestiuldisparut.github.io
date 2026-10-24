@@ -47,6 +47,16 @@ E2E does **not** count toward the per-file coverage gate; unit and browser tests
 5. A user-visible behaviour also gets its happy and bad rows in `e2e/scenarios.json` (`quality/e2e_scenario_matrix_skill.md`).
 6. A bug the test found goes into `docs/LESSONS.md`.
 
+## The local stack (manual testing)
+
+`npm run dev:stack` (`scripts/dev/dev-stack.sh`, `e2e/stack/`) is the e2e world for a person's browser: the admin and site servers of the e2e tiers behind the stack's routes, the mock APIs, the admin tier's emulators, a world seeded through the specs' own helpers. What it established (2026-10-24):
+
+- **The Claude browser pane cannot register a service worker** ("An unknown error occurred when fetching the script": its network layer refuses the worker's script), **opens a `window.open` popup in place of its page** (the opener, which Google's consent answers, is lost) and, on this machine, **has no WebGL**. So the stack rewrites addresses with an in-page shim, not a worker (`e2e/stack/browser.ts`: `fetch`, `XMLHttpRequest`, `sendBeacon`, the loaders' `src`/`href`/`srcset` as properties and attributes, a prelude prepended to every script blob for Mapbox GL's worker; the servers rewrite the loading tags of the HTML they serve), opens the consent stand-in in a frame over the page (its CSP's `frame-src` gets the mock APIs' origin; the stand-in posts to its parent when it has no opener), and the map items of the manual plan run in Chrome.
+- **One partition**: the browser's forwarded requests carry no `x-hcm-test`, so the browser and the Functions emulator share the fake upstreams' partition `''`, and the consent stand-in's grants land there.
+- **Signals**: `npm run` does not pass SIGTERM through its shell, so the container runs `e2e/stack/main.ts` directly (`scripts/dev/in-stack.sh` execs it), which stops the emulators with SIGINT and waits for their clean shutdown. Like `run-all-checks.sh`, never edit `scripts/dev/dev-stack.sh` while a stack started from it runs (bash reads it as it goes: a syntax error at its end on stop).
+- **Order**: the stack opens its admin and site ports only after the seed, so a browser opened as soon as a port answers (the Claude preview) finds the world ready; `--network host` puts the ports on the host's loopback, while a Playwright run of the pipeline has its own network.
+- **The proof** is `bash scripts/dev/dev-stack.sh check` (`e2e/stack/check.ts`): headless Chromium with service workers blocked, like the pane, and a route that aborts and reports every request for a host off the machine.
+
 ## Coverage rules
 
 - **90 % or more per file**, lines and branches (Vitest also functions and statements), scored the Sonar way: `(covered lines + covered conditions) / (lines + conditions)`.

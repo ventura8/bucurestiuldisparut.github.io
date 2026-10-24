@@ -19,7 +19,10 @@ PIPELINE_STAGE=tour-matrix bash scripts/ci/run-all-checks.sh   # the tour's othe
 E2E_TIER=smoke,fn PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh   # some tiers: admin, smoke, a11y, nogl, tour, tour-matrix, fn
 $IMG bash -c 'mkdir -p $HOME && npm run --silent build:site:e2e'   # rebuild the e2e sites after an engine change
 $IMG bash -c 'mkdir -p $HOME && cd e2e && npx playwright test --grep @S-V00-HAPPY'   # one scenario by its tag
+npm run dev:stack                                      # the same world for a person: seeded, on the e2e ports (docs/SETUP.md)
 ```
+
+The local stack (`e2e/stack/`) reuses the mock APIs, the admin and site servers and the admin specs' seed helpers: a change there keeps `bash scripts/dev/dev-stack.sh check` passing (`.agent/skills/quality/testing_strategy_skill.md` → *The local stack*).
 
 ## Adding or changing a scenario
 

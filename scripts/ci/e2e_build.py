@@ -35,11 +35,12 @@ STAMP = Path("node_modules", ".cache", "hcm", "e2e-build.json")
 BUILD = ("npm", "run", "--silent", "build:site:e2e")
 OUTPUTS = ("dist/e2e-site", "packages/engine/dist", "functions/dist", "packages/admin/dist")
 # Files the build never reads: documentation, CI and agent assets, the raster pipeline, the tests and the e2e specs,
-# fixtures of the run and servers (they run from source when Playwright starts, not from the build).
+# fixtures of the run and servers (they run from source when Playwright starts, not from the build), and the local stack
+# for manual testing (e2e/stack/, run from source by scripts/dev/dev-stack.sh after this build).
 NOT_INPUTS = re.compile(
     r"^(?:(?:docs|pipeline|docker|\.agents?|\.claude|\.github)/"
-    r"|scripts/(?:ci|git-hooks)/"
-    r"|e2e/(?:specs|tour|a11y|setup|support|mock-apis|admin/(?:specs|harness|setup|support))/"
+    r"|scripts/(?:ci|dev|git-hooks)/"
+    r"|e2e/(?:specs|tour|a11y|setup|support|mock-apis|stack|admin/(?:specs|harness|setup|support))/"
     r"|e2e/(?:scenarios\.json|playwright\.config\.ts)$"
     r"|(?:firebase/rules-tests|functions/test|scripts/site/test)/"
     r"|packages/[^/]+/(?:scripts/)?test/"

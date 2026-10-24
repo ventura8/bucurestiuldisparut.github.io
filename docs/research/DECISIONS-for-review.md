@@ -3161,3 +3161,39 @@ No bundle budget changed: every admin chunk and the entry stayed within their bu
 tables).
 
 Verify: `PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh`, `PIPELINE_STAGE=build …`, `bash scripts/ci/e2e-split.sh`.
+
+## 51. The local stack for manual testing and the manual test plan (2026-10-24) — 51a–51d APPLIED (tooling and test-world changes; no configuration of the ask-first kinds, no gate relaxed); 51e recorded for the user
+
+Before the owner and Claude test the product by hand "from the top", one command now starts the e2e world for a
+person's browser (`npm run dev:stack`, `docs/SETUP.md` → *Local stack for manual testing*), and
+`docs/MANUAL_TEST_PLAN.md` lists what to check, where (LIVE or LOCAL) and after which deploy, with the ask-first
+commands. These are the choices in it the user may want to change:
+
+- **51a An in-page shim, not a service worker.** In the specs Playwright's routes keep every request on the machine; a
+  person's browser has none. A service worker was the first design (it worked in Chromium), but the Claude browser pane
+  refuses to register one ("An unknown error occurred when fetching the script"), so the stack's admin and site servers
+  put `e2e/stack/browser.ts` first into every page: it rewrites every address of a host off the machine to
+  `/__stack/h/<host>/<path>` (in the page and in Mapbox GL's blob worker), and the server decides with the e2e firewall's
+  own host table (`e2e/mock-apis/hosts.ts`): the mock APIs, the Storage emulator, or 403. `e2e/stack/check.ts` proves no
+  request of the main screens reaches the network for a host off the machine. The rewrite exists only in the stack's
+  servers; the admin's and the viewer's builds are the e2e ones, unchanged.
+- **51b Google's consent stand-in opens in a frame over the page** in the stack (the pane opens a popup in place of its
+  page, losing the opener the answer goes to); `e2e/mock-apis/oauth-page.ts` posts to its parent when it has no opener,
+  which leaves every e2e spec's popup path as it was (the harness's consent specs pass), and the stack adds the mock APIs'
+  origin to the served CSP's `frame-src`.
+- **51c The container shares the host's network** (`--network host`), so the stack's ports are the e2e ports on the
+  host's loopback, and the stack is seeded through the real flows where they exist: the owner's `imagery.search` and four
+  `imagery.import` runs played by the stand-in runner (a draft over the threshold, a scan waiting for points, a run failed
+  at warp, a frame the fake MTS publishes), and the legacy photos' real derivatives. `scripts/ci/e2e_build.py` counts
+  `e2e/stack/` and `scripts/dev/` as not read by the e2e build (no rebuild for a stack change).
+- **51d The admin's tab title follows its language**: already applied in `921088f` (A21's `S-A21-HAPPY-DOCUMENT-TITLE`
+  and `S-A21-BAD-UNSUPPORTED-LANGUAGE`, `packages/ui/test/admin/shell/shell.test.ts`); run again on 2026-10-24 at
+  `admin-l1440-ro` and `admin-c360-ro` (8 passed with the harness's consent specs). The live admin shows it after the
+  next Hosting deploy (the plan's D1, ask first).
+- **51e For the user**: the public site's `config.js` reads the manifest the site build bundles from
+  `seed/bucharest/manifest.static.json`, not the public bucket's `cities/bucharest/manifest.json` the admin publishes;
+  until that changes (with the page's CSP), the Pages go-live shows the legacy snapshot (the plan's V0). And the Claude
+  browser pane on this machine has no WebGL: the plan runs its map items in Chrome.
+
+Verify: `bash scripts/dev/dev-stack.sh` then `bash scripts/dev/dev-stack.sh check` (`[SUCCESS] the local stack works`),
+`PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`, `PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh`.

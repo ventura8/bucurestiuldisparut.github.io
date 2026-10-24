@@ -145,3 +145,15 @@ and opens the exact pages; nothing is done without you.
   `google-cloud-storage` dropped from the pipeline's lock (CR-M3-19 c); OpenStreetMap as a matching channel and the
   georeferencer's automatic suggestions (M4).
 - __M4 rows stay planned__: buying scans (A13), swipe compare (V06) and the Nominatim and AI assists (A09).
+
+## Addendum 2026-10-24: the local stack and the manual test plan
+
+- __Manual testing__ before the go-live follows `docs/MANUAL_TEST_PLAN.md`: each item LIVE or LOCAL, now or after which
+  deploy, with the ask-first deploy commands (the admin's Hosting in start-up and normal mode built in the quality image
+  and deployed from a copy of `firebase.json` without its `predeploy` steps, the rules and indexes, the functions, the
+  pipeline's image and its two Cloud Run Jobs, the Pages go-live).
+- __LOCAL__ is `npm run dev:stack` (`docs/SETUP.md` → *Local stack for manual testing*): the admin and the viewer on the
+  emulators and the e2e fakes, seeded with a Bucharest city whose imagery went through the real search and import flows;
+  `bash scripts/dev/dev-stack.sh check` ends `[SUCCESS] the local stack works` (2026-10-24), and the stack stops with the
+  emulators' clean shutdown (`DECISIONS-for-review.md` §51).
+- __The admin's English title__ (A21, in `921088f`) reaches the live admin with the next Hosting deploy (the plan's D1).

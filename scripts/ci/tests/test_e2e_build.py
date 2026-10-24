@@ -84,6 +84,8 @@ def test_happy_path_documentation_specs_and_ci_files_are_not_inputs(repo: Path) 
         (".agents/skills/x/SKILL.md", False),
         ("e2e/tour/viewer.tour.ts", False),
         ("e2e/admin/specs/journey.spec.ts", False),
+        ("e2e/stack/main.ts", False),
+        ("scripts/dev/dev-stack.sh", False),
         ("e2e/playwright.config.ts", False),
         ("packages/ui/test/sheet.test.ts", False),
         ("packages/ui/scripts/test/fonts.test.ts", False),

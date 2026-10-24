@@ -88,6 +88,36 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
 
 In the emulator the functions keep secrets in memory and reach Google, Mapbox and USGS only through the fake upstreams at `HCM_UPSTREAM_BASE` (unset: every such call fails like a network error), so a local run can never touch a real service.
 
+## Local stack for manual testing
+
+One command starts the whole product on this machine, seeded with a Bucharest city, without touching the cloud: the admin (its `e2e` build), the viewer (the e2e Bucharest site), the Firebase emulators of project `demo-hcm` (auth, firestore, storage, functions from `functions/dist`, pubsub, tasks) and the mock APIs of the e2e world (fake Google Cloud, Mapbox, USGS, STAC, Nominatim, Google's consent stand-in, the raster pipeline's stand-in runner). It runs inside the quality image like every gate (no host-home mount); the walk-through that uses it is [MANUAL_TEST_PLAN.md](MANUAL_TEST_PLAN.md).
+
+```bash
+npm run dev:stack                        # or: bash scripts/dev/dev-stack.sh; Ctrl+C stops it (the emulators shut down cleanly)
+HCM_STACK_SEED=fresh npm run dev:stack   # a new map instead: start-up mode, Setup from the first sign-in
+HCM_STACK_TICKS=0 npm run dev:stack      # without the scheduler clock (imagery.tick every 5 min, ops.tick every 15)
+bash scripts/dev/dev-stack.sh tick       # run imagery.tick and ops.tick once, now (from another terminal)
+bash scripts/dev/dev-stack.sh check      # the stack's own check (below)
+bash scripts/dev/dev-stack.sh stop       # stop it from another terminal
+```
+
+The first start builds the e2e sites and the admin's e2e bundle (a few minutes; later starts skip the build when no input changed, `scripts/ci/e2e_build.py`), starts the emulators (a minute or two), seeds the world and prints the addresses. Always open them with `127.0.0.1`, never `localhost` (the functions' CORS and the consent stand-in name exactly these origins):
+
+| What | Address |
+| --- | --- |
+| Admin | `http://127.0.0.1:4312` |
+| Viewer | `http://127.0.0.1:4310/bucharest/` (`/` redirects there) |
+| Mock APIs (control: `/__upstream/scenarios`, `/__calls`) | `http://127.0.0.1:4311` |
+| Emulators (`firebase.json`) | auth 9099, firestore 8080, storage 9199, functions 5001, pubsub 8085, tasks 9499, hub 4400 |
+
+- **Sign in**: Sign in with Google (Conectează-te cu Google) opens Google's consent stand-in in a frame over the page; `owner@e2e.test` is preselected, Allow. The other generated test accounts: `admin@e2e.test` (an admin who joined), `editor@e2e.test` (a pending invitation: the join panel), `stranger@e2e.test` (not an admin: the blocked panel). No password exists anywhere; the stand-in is the only "Google".
+- **The seeded city** (`HCM_STACK_SEED=city`, the default; `e2e/stack/seed.ts`): Setup's required steps green (`setup/status`, and the fake upstreams in the same state: provisioned, deployed, M2M downloads approved, Analytics linked, two crash groups), the budget guard green; 13 photos (twelve legacy Bucharest photos with their real derivatives, two of them unpublished, and one upload whose processing failed), four place categories and seven places (points, a street, two areas, one draft), two linked layers (`plan-1911` on the e2e tile host, `corona-1968` on the e2e Mapbox account), an edited place (History has an update to revert), the USGS harvest of the fake catalogue, and four imports: a draft over the RMSE threshold waiting for Approve, one waiting for georeferencing points, one failed at warp (Retry), and the 1980 frame, published by the fake MTS about two minutes after the start. The viewer shows the manifest the emulators published (the e2e fixture manifest before the first build).
+- **Nothing leaves the machine**: the admin and site servers put a shim first into every page (`e2e/stack/browser.ts`) that points every address of a host off this machine at the same origin's `/__stack/h/<host>/<path>`, where the server forwards it to the mock APIs, reads it from the Storage emulator or refuses it (403, logged) with the e2e firewall's own host table (`e2e/mock-apis/hosts.ts`). The map's basemap is the mock style (a plain background and tile labels), the historical layers are solid colours: the real Mapbox, Google and USGS answers are LIVE only.
+- **Logs**: `reports/dev-stack/emulators.log` (every function's log) and `reports/dev-stack/mock-apis.log`.
+- **The Claude browser pane** opens the stack through `.claude/launch.json`: `dev-stack` starts it (or follows one already running), `dev-stack-admin` and `dev-stack-viewer` open a running one. The pane cannot register a service worker (hence the shim, not a worker), opens a popup in place of its page (hence the consent frame) and, on this machine (2026-10-24), has no WebGL: its maps show their no-WebGL state, so the map items of the test plan run in Chrome (Claude in Chrome, or your own) at the same addresses.
+- **The stack's check**, `bash scripts/dev/dev-stack.sh check` (`e2e/stack/check.ts`, headless Chromium like the pane, every request off the machine aborted and reported): the owner signs in with the stand-in and lands on the dashboard, Photos lists the seeded photos, Historical imagery lists the harvested scenes, a layer's editor draws its tiles through the mock Mapbox, the viewer shows the emulators' manifest, and no request reached the network for a host off this machine. It ends with `[SUCCESS] the local stack works`.
+- **Limits**: the data start again at every start (the emulators keep nothing); the stack and a Playwright run of the pipeline coexist (the pipeline's container has its own network), but two stacks do not (the start refuses busy ports); the admin's start-up deploy differs from `fresh` only in that the stack's server exists from the start, so step (d) turns green once the fake lists the functions: `curl -X POST 'http://127.0.0.1:4311/__upstream/scenario?test=' -H 'content-type: application/json' -d '{"name":"google.deployed"}'`.
+
 ## SonarQube Cloud token (the user, once)
 
 1. Sign in to SonarCloud (organisation `ventura8`) and create a token; make sure Automatic Analysis is off for the project.

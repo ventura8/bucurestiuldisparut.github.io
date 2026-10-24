@@ -6,7 +6,9 @@ import { element, renderDocument, type HtmlElement } from '../../scripts/site/sr
  * lists the accounts to sign in with (the request's `login_hint` preselected) and the requested scopes as ticked
  * checkboxes; Allow posts `{idToken, accessToken, scope, expiresIn}` to the opener and closes, Cancel posts
  * `{cancelled: true}` and closes (the admin's stand-in client also reads a popup closed without a message as a
- * cancel). Built from elements and text only (`scripts/site/src/html.ts`), with its script in a file of its own.
+ * cancel). In the local stack the page opens in a frame over the admin instead (e2e/stack/browser.ts: the Claude browser
+ * pane opens a popup in place of its page), and posts to its parent. Built from elements and text only
+ * (`scripts/site/src/html.ts`), with its script in a file of its own.
  */
 
 /** Where the page's script is served (`oauth.ts`). */
@@ -94,7 +96,8 @@ function standInConsent(config: StandInScriptConfig): void {
         return (await response.json()) as unknown;
     };
     const tell = (message: unknown): void => {
-        const opener = window.opener as Window | null;
+        // A popup tells its opener; the local stack's overlay (e2e/stack/browser.ts) is a frame and tells its parent.
+        const opener = (window.opener as Window | null) ?? (window.parent === window ? null : window.parent);
         for (const origin of config.openers) {
             opener?.postMessage(message, origin);
         }

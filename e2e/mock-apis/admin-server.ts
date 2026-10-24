@@ -111,13 +111,20 @@ async function handle(options: AdminServerOptions, request: IncomingMessage, res
     response.end(request.method === 'HEAD' ? undefined : result.body);
 }
 
-/** Serves the admin's Hosting folder on 127.0.0.1:`port`. */
-export function startAdminServer(port: number, options: AdminServerOptions): Promise<Server> {
+/** A request handler of a loopback server (the local stack, e2e/stack/servers.ts, puts its own routes in front). */
+export type RequestHandler = (request: IncomingMessage, response: ServerResponse) => void;
+
+/** The admin server's handler: the admin's Hosting folder as Hosting serves it. */
+export function adminRequestHandler(options: AdminServerOptions): RequestHandler {
     const resolved: AdminServerOptions = { ...options, distDir: resolve(options.distDir) };
-    const server = createServer((request, response) => {
+    return (request, response) => {
         handle(resolved, request, response).catch((error: unknown) => {
             failed(response, error);
         });
-    });
-    return listen(server, port);
+    };
+}
+
+/** Serves the admin's Hosting folder on 127.0.0.1:`port`. */
+export function startAdminServer(port: number, options: AdminServerOptions): Promise<Server> {
+    return listen(createServer(adminRequestHandler(options)), port);
 }

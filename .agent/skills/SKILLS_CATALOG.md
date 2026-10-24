@@ -36,7 +36,7 @@ Subagents (`.claude/agents/`): `pipeline-runner` (runs one stage, returns the ve
 
 - `quality/pipeline_skill.md`: the single entry point `scripts/ci/run-all-checks.sh`, the **canonical stage table** (`static`, `tests`, `e2e`, `build`, `sonar`, `deps`, `release`, `quality`, `all`), how to add a gate, the CI mapping, tool pins, holds and local tooling quirks.
 - `quality/ci_quality_gates_skill.md`: every gate in run order, its command, configuration, what it fails on and how to fix it without a suppression.
-- `quality/testing_strategy_skill.md`: the test tiers (node, Vitest browser mode, the static site build, functions, rules, pytest, Playwright), fakes and seams (`MapPort` + FakeMap, msw, the mock APIs, the emulators), network isolation, naming, per-file coverage.
+- `quality/testing_strategy_skill.md`: the test tiers (node, Vitest browser mode, the static site build, functions, rules, pytest, Playwright), fakes and seams (`MapPort` + FakeMap, msw, the mock APIs, the emulators), network isolation, naming, per-file coverage, and the local stack for manual testing (`npm run dev:stack`: the e2e world for a person's browser, the Claude browser pane's limits).
 - `quality/e2e_scenario_matrix_skill.md`: the scenario registry `e2e/scenarios.json` (V viewer, A admin, P pipeline), its id scheme, statuses, the test tags and the cross-check in both directions; the e2e world: tiers and projects (`E2E_TIER`, the admin tier), the site server, the admin server and mock APIs, the fixture manifest, the fixtures every spec gets, the pitfalls the M1 and M2b specs met.
 - `quality/sonarqube_skill.md`: SonarQube Cloud (org `ventura8`), the CI job and the local `sonar` stage, the strict verdict, the token rules and the pitfalls inherited from the sibling repos.
 - `quality/prepare_release_skill.md`: versions, the two release-note files per tag, the engine `dist` and jsDelivr, the release checks.
@@ -96,5 +96,6 @@ Subagents (`.claude/agents/`): `pipeline-runner` (runs one stage, returns the ve
 | **CI, tooling or a dependency bump** | `quality/pipeline_skill.md` | `quality/ci_quality_gates_skill.md`, `governance/doc_update_skill.md` |
 | **SonarQube** | `quality/sonarqube_skill.md` | `quality/ci_quality_gates_skill.md` |
 | **Release** | `quality/prepare_release_skill.md` | `governance/doc_update_skill.md`, `workflow/git_and_pr_skill.md` |
+| **Manual testing, the local stack** | `quality/testing_strategy_skill.md` → *The local stack* | `docs/MANUAL_TEST_PLAN.md`, `docs/SETUP.md`, `quality/e2e_scenario_matrix_skill.md` |
 | **Browser work in a console (Mapbox, Google Cloud, USGS, SonarCloud)** | `workflow/human_steps_and_consent_skill.md` | `web/admin_setup_assistant_skill.md` |
 | **PR review wave** | `.agents/skills/coderabbit-review-waves/SKILL.md` | `.agents/skills/resolve-pr-comments/SKILL.md`, `workflow/git_and_pr_skill.md` |

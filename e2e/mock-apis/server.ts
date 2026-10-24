@@ -292,13 +292,17 @@ async function handleSite(request: IncomingMessage, response: ServerResponse, di
     }
 }
 
-/** Serves the built sites in `dir` on 127.0.0.1:`port`. */
-export function startSiteServer(port: number, dir: string): Promise<Server> {
+/** The site server's handler: the built sites in `dir` (the local stack, e2e/stack/servers.ts, puts its routes in front). */
+export function siteRequestHandler(dir: string): (request: IncomingMessage, response: ServerResponse) => void {
     const root = resolve(dir);
-    const server = createServer((request, response) => {
+    return (request, response) => {
         handleSite(request, response, root).catch((error: unknown) => {
             failed(response, error);
         });
-    });
-    return listen(server, port);
+    };
+}
+
+/** Serves the built sites in `dir` on 127.0.0.1:`port`. */
+export function startSiteServer(port: number, dir: string): Promise<Server> {
+    return listen(createServer(siteRequestHandler(dir)), port);
 }

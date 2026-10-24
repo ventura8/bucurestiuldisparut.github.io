@@ -24,6 +24,8 @@ test-results/
 
 # Firebase CLI / emulator logs and state
 .firebase/
+# The temporary deploy configuration without predeploy steps (docs/MANUAL_TEST_PLAN.md → "The deploys")
+firebase.deploy.json
 firebase-debug.log
 firebase-debug.*.log
 firestore-debug.log

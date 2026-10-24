@@ -171,6 +171,10 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -e E2E_TIER=tour,to
 montage -label '%t' reports/screenshots/layout-final/home/*.png -tile 6x -geometry 320x320+4+4 home.png
 ```
 
+## The local stack
+
+`npm run dev:stack` runs the e2e world without Playwright for people: the admin's `e2e` build and the e2e Bucharest site behind the stack's servers (`e2e/stack/servers.ts`), the mock APIs (`e2e/mock-apis/main.ts mock`) and the emulators of the admin tier, seeded through the same helpers as the admin specs (`e2e/stack/seed.ts`: `EmulatorWorld`, `ImageryWorld`, the real `imagery.search` and `imagery.import` with the stand-in runner scripted per import). Where Playwright's routes forward a page's requests in the specs, the stack's servers put a shim first into every page (`e2e/stack/browser.ts`): every address off the machine is rewritten to the same origin's `/__stack/h/<host>/<path>`, decided with the firewall's own table (`e2e/mock-apis/hosts.ts`), in the page and in Mapbox GL's blob worker; Google's consent stand-in opens in a frame over the page. The browser and the server share the fake upstreams' partition `''`. `bash scripts/dev/dev-stack.sh check` (`e2e/stack/check.ts`) proves it in headless Chromium with every request off the machine aborted and reported. Usage: [SETUP.md](SETUP.md) → *Local stack for manual testing*; the walk: [MANUAL_TEST_PLAN.md](MANUAL_TEST_PLAN.md).
+
 ## Static site build
 
 - `scripts/site/` builds a city site from its folder (`sites/bucharest/`, `starter-kit/`: `site.json`, `config.js`, `site.css`): the page is generated (`scripts/site/src/page.ts`; it stays generated now that `.htmlvalidate.json` accepts Prettier's output, because a committed copy would drift from the manifest's CSP and the pinned release's integrity) with a meta CSP from the site's manifest and configuration and Subresource Integrity for Mapbox GL JS; `config.js` is parsed, never run; the manifest gets the build's token and its photos under `data/media/`.

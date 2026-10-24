@@ -53,6 +53,16 @@ PIPELINE_STAGE=e2e bash scripts/ci/run-all-checks.sh
 
 The emulator JARs and Playwright browsers are baked into the image; the `demo-hcm` project needs no credentials. E2E details: `docs/TESTING.md`.
 
+## The local stack (manual testing)
+
+```bash
+npm run dev:stack                        # admin 127.0.0.1:4312, viewer 127.0.0.1:4310, emulators, fakes, a seeded city
+bash scripts/dev/dev-stack.sh check      # its own check: sign-in, the main screens, no request off the machine
+bash scripts/dev/dev-stack.sh stop       # from another terminal; Ctrl+C in its own
+```
+
+The e2e world without Playwright, in the quality image on the host's network (`scripts/dev/dev-stack.sh`, `e2e/stack/`); seeds, levers and limits: `docs/SETUP.md` → *Local stack for manual testing*; the walk-through: `docs/MANUAL_TEST_PLAN.md`.
+
 ## Reports (git-ignored `reports/`)
 
 - `reports/pipeline/green-<stage>.json`, `reports/pipeline/run.log`

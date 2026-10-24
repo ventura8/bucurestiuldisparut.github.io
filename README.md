@@ -54,6 +54,7 @@ PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh    # engine and admin bun
 - [Engine API](docs/ENGINE_API.md) (config.js, the element, the JavaScript API, the URL hash, City Manifest v1)
 - [CI pipeline](docs/CI_PIPELINE.md)
 - [Testing](docs/TESTING.md)
+- [Manual test plan and the local stack](docs/MANUAL_TEST_PLAN.md)
 - [Developer setup](docs/SETUP.md)
 - [Admin guide (RO)](docs/ADMIN_GUIDE.ro.md) · [Admin guide (EN)](docs/ADMIN_GUIDE.en.md)
 - [Lessons](docs/LESSONS.md)

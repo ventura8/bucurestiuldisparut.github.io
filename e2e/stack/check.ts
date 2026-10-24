@@ -1,0 +1,130 @@
+// The local stack's own check (docs/SETUP.md → *Local stack for manual testing*), run against a running stack inside its
+// container (`bash scripts/dev/dev-stack.sh check`, which runs `npm run stack:check` there):
+//
+//     node --import ./scripts/site/register-ts.mjs e2e/stack/check.ts
+//
+// Drives a headless Chromium as the Claude browser pane is (no service worker, no Playwright route in the way but the
+// guard below) through the admin and the viewer: the owner signs in with Google's consent stand-in and lands on the
+// dashboard; the photos, the harvested scenes and a layer's editor (with the admin map and its tiles) show the seeded
+// city; the viewer shows the manifest the emulators published. A request that reached the network for a host off this
+// machine fails the check: it is recorded and aborted at the browser's network layer, so even a leak never leaves. Exit
+// status 1 when a step fails.
+import process from 'node:process';
+
+import { createLogger, translateAdminContent, translateAdminShell } from '@hcm/shared';
+import { chromium, type Page } from '@playwright/test';
+
+import { ADMIN_ORIGIN, PERSONAS } from '../admin/world.js';
+import { E2E_CITY_ID, MOCK_API_ORIGIN, SITE_ORIGIN } from '../fixtures/world.js';
+
+const log = createLogger('dev-stack-check');
+
+const TIMEOUT_MS = 60_000;
+const LOOPBACK = new Set(['127.0.0.1', 'localhost']);
+
+function pause(ms: number): Promise<void> {
+    return new Promise((done) => {
+        setTimeout(done, ms);
+    });
+}
+
+interface Step {
+    readonly name: string;
+    readonly run: (page: Page) => Promise<void>;
+}
+
+async function signIn(page: Page): Promise<void> {
+    await page.goto(ADMIN_ORIGIN);
+    const signInButton = page.getByRole('button', { name: translateAdminShell('ro', 'adminShell.auth.signIn') });
+    await signInButton.waitFor({ timeout: TIMEOUT_MS });
+    await signInButton.click();
+    // The stack opens Google's consent stand-in in a frame over the page (e2e/stack/browser.ts), as in the Claude pane.
+    const consent = page.frameLocator('iframe[title="Sign in with Google (e2e stand-in)"]');
+    await consent.getByRole('radio', { name: PERSONAS.owner.email }).check();
+    await consent.getByRole('button', { name: 'Allow' }).click();
+    await page.getByRole('heading', { level: 1, name: translateAdminShell('ro', 'adminShell.nav.home') }).waitFor({ timeout: TIMEOUT_MS });
+}
+
+async function photos(page: Page): Promise<void> {
+    await page.goto(`${ADMIN_ORIGIN}/#/photos`);
+    await page.locator('hcm-admin-photo-list li.photo-row').nth(12).waitFor({ timeout: TIMEOUT_MS });
+}
+
+async function imagery(page: Page): Promise<void> {
+    await page.goto(`${ADMIN_ORIGIN}/#/imagery`);
+    const scenes = page.getByRole('list', { name: translateAdminContent('ro', 'adminContent.imagery.scenesLabel') });
+    await scenes.getByRole('link').nth(5).waitFor({ timeout: TIMEOUT_MS });
+}
+
+async function layersMap(page: Page): Promise<void> {
+    await page.goto(`${ADMIN_ORIGIN}/#/layers/corona-1968`);
+    await page.getByRole('heading', { level: 2, name: 'Corona 1968' }).waitFor({ timeout: TIMEOUT_MS });
+    await page.locator('hcm-admin-map canvas.mapboxgl-canvas').first().waitFor({ timeout: TIMEOUT_MS });
+    const deadline = Date.now() + TIMEOUT_MS;
+    // The layer's tiles came through the stack to the mock Mapbox (the e2e account's tilesets are one solid colour).
+    while (Date.now() < deadline) {
+        const calls = (await (await fetch(`${MOCK_API_ORIGIN}/__calls?host=api.mapbox.com`)).json()) as { path: string }[];
+        if (calls.some((call) => call.path.startsWith('/v4/e2e-user.corona-1968'))) {
+            return;
+        }
+        await pause(1000);
+    }
+    throw new Error('the admin map asked the mock Mapbox for no tile of the layer');
+}
+
+async function viewer(page: Page): Promise<void> {
+    const manifest = await fetch(`${SITE_ORIGIN}/${E2E_CITY_ID}/data/manifest.json`);
+    if (manifest.headers.get('x-hcm-stack-manifest') !== 'emulators') {
+        throw new Error('the viewer is served the fixture manifest: the emulators published none yet');
+    }
+    await page.goto(`${SITE_ORIGIN}/${E2E_CITY_ID}/`);
+    await page.locator('canvas.mapboxgl-canvas').first().waitFor({ timeout: TIMEOUT_MS });
+}
+
+const STEPS: readonly Step[] = [
+    { name: 'the owner signs in with the consent stand-in and lands on the dashboard', run: signIn },
+    { name: 'Photos lists the seeded photos', run: photos },
+    { name: 'Historical imagery lists the harvested scenes', run: imagery },
+    { name: "a layer's editor draws its tiles on the admin map through the mock Mapbox", run: layersMap },
+    { name: "the viewer shows the emulators' published manifest", run: viewer },
+];
+
+async function check(): Promise<boolean> {
+    const browser = await chromium.launch();
+    const context = await browser.newContext({ locale: 'ro-RO', timezoneId: 'Europe/Bucharest', serviceWorkers: 'block' });
+    const leaks: string[] = [];
+    await context.route('**/*', async (route) => {
+        const url = new URL(route.request().url());
+        if (LOOPBACK.has(url.hostname) || !url.protocol.startsWith('http')) {
+            await route.fallback();
+            return;
+        }
+        leaks.push(`${url.host}${url.pathname}`);
+        await route.abort('blockedbyclient');
+    });
+    const page = await context.newPage();
+    let passed = true;
+    for (const step of STEPS) {
+        try {
+            await step.run(page);
+            log.info(`[PASS] ${step.name}`);
+        } catch (error: unknown) {
+            passed = false;
+            log.error(`[FAIL] ${step.name}`, { error: String(error).slice(0, 500) });
+        }
+    }
+    await browser.close();
+    if (leaks.length > 0) {
+        log.error('[FAIL] requests reached the network for hosts off this machine (aborted)', { leaks: leaks.slice(0, 20) });
+        return false;
+    }
+    log.info('[PASS] no request reached the network for a host off this machine');
+    return passed;
+}
+
+if (await check()) {
+    log.info('[SUCCESS] the local stack works');
+} else {
+    log.error('[FAILURE] the local stack check failed');
+    process.exitCode = 1;
+}

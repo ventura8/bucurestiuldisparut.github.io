@@ -21,6 +21,10 @@ Claude Code and every other agent read the same contract.
 - Subagents for delegation are in `.claude/agents/`: `pipeline-runner` (runs one stage, returns the
   verdict), `e2e-matrix-auditor` (`e2e/scenarios.json` against the tests), `docs-sync-checker`
   (docs and agent assets a diff must touch) and `golden-reviewer` (Playwright screenshot diffs).
+- Manual testing: `npm run dev:stack` starts the local stack (admin `http://127.0.0.1:4312`, viewer
+  `http://127.0.0.1:4310`, the emulators and the fakes, a seeded Bucharest city; `docs/SETUP.md` → *Local stack for
+  manual testing*); `.claude/launch.json` opens it in the browser pane (`dev-stack`, `dev-stack-admin`,
+  `dev-stack-viewer`). The checklist is `docs/MANUAL_TEST_PLAN.md`.
 - Browser work (Mapbox, Google Cloud, USGS, SonarCloud consoles) happens in the user's own signed-in
   browser: never type a credential, and confirm every accept, submit, publish or payment with the
   user in chat first, one at a time.
