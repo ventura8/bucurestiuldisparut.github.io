@@ -19,6 +19,7 @@ import type { MapStatus } from '../layers/map-session.js';
 import type { NoticeInput } from '../state/state.js';
 import type { FitView } from './fit-view.js';
 import type { GeoPosition, HalfPair, PixelPosition } from './pairs.js';
+import { NO_SUGGESTIONS, type SuggestionsView } from './suggestions.js';
 
 export type ReferenceKind = 'osm' | 's2';
 
@@ -94,6 +95,8 @@ export interface GeorefState {
     readonly map: MapStatus;
     /** On compact windows, the pane shown: the scan or the map. */
     readonly pane: 'scan' | 'map';
+    /** The matcher's suggestions still to decide (M4 §2.5). */
+    readonly suggestions: SuggestionsView;
 }
 
 const EMPTY_FIT: FitView = {
@@ -105,7 +108,7 @@ export const INITIAL_GEOREF: GeorefState = {
     ...{ versionId: null, doc: { status: 'loading', reconnecting: false, failure: null }, notFound: false, version: null },
     ...{ scan: { status: 'none' }, reference: null, pairs: [], adding: false, half: null, selected: null, transform: 'affine' },
     ...{ fit: EMPTY_FIT, thresholdM: imagerySettingsOf(undefined).rmseThresholdM, dirty: false, saving: false, refusal: null },
-    ...{ saved: null, showPreview: true, previewOpacity: 0.7, map: 'none', pane: 'scan' },
+    ...{ saved: null, showPreview: true, previewOpacity: 0.7, map: 'none', pane: 'scan', suggestions: NO_SUGGESTIONS },
 };
 
 export interface GeorefIntents {
@@ -124,6 +127,14 @@ export interface GeorefIntents {
     toggle(id: string): void;
     /** Esc: the half pair is dropped. */
     cancelHalf(): void;
+    /** Accept: the suggestion joins the pairs (enabled, `auto`); saved only with Save. */
+    acceptSuggestion(id: string): void;
+    /** Accept all: every suggestion still to decide joins the pairs. */
+    acceptAllSuggestions(): void;
+    /** Reject: the suggestion is hidden for this visit of the page. */
+    rejectSuggestion(id: string): void;
+    /** The suggestion the panes show larger (null: none). */
+    selectSuggestion(id: string | null): void;
     setTransform(kind: GeorefTransform): void;
     setReference(kind: ReferenceKind): void;
     setPreviewOpacity(percent: number): void;

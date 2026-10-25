@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import {
     cityDocSchema,
     historyEntryDocSchema,
+    inboxItemDocSchema,
     jobDocSchema,
     jobLogDocSchema,
     layerDocSchema,
@@ -59,6 +60,8 @@ const SCHEMAS: Readonly<Record<string, { readonly shape: object }>> = {
     usgsScenes: usgsSceneDocSchema,
     history: historyEntryDocSchema,
     manifests: manifestStateDocSchema,
+    /** M4: each admin's inbox (docs/research/M4-interfaces.md §5.6). */
+    inbox: inboxItemDocSchema,
 };
 
 function fieldsOf(collection: string): string[] {
@@ -105,6 +108,8 @@ describe('composite indexes', () => {
         'layerVersions: state ASCENDING, updatedAt DESCENDING',
         'usgsScenes: downloadAvailable ASCENDING, rank.score DESCENDING',
         'usgsScenes: status ASCENDING, rank.score DESCENDING',
+        // M4 (docs/research/M4-interfaces.md §5.6): an admin's unread items, newest first.
+        'inbox: read ASCENDING, createdAt DESCENDING',
     ])('happyPath_theAdminQueryHasItsIndex_%s', (wanted) => {
         expect(config.indexes.filter((index) => index.queryScope === 'COLLECTION').map(signature)).toContain(wanted);
     });

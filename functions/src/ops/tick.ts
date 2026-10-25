@@ -19,10 +19,14 @@ import { ApiError } from '../api/api-error.js';
 import { UpstreamError } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
 import { expireInvites, removeStaleUsers } from './accounts.js';
+import { checkCrashSpike } from './crash-spike.js';
 import { nightlyManifests } from './manifests.js';
 import { checkServices, retireTokens } from './services.js';
 
-export type OpsDeps = Pick<Ports, 'log' | 'clock' | 'config' | 'documents' | 'blobs' | 'tasks' | 'auth' | 'secrets' | 'mapbox' | 'usgs'>;
+export type OpsDeps = Pick<
+    Ports,
+    'log' | 'clock' | 'config' | 'documents' | 'blobs' | 'tasks' | 'auth' | 'secrets' | 'mapbox' | 'usgs' | 'errors'
+>;
 
 type TickStep = NonNullable<OpsGuardDoc['lastTick']>['steps'][number];
 
@@ -73,6 +77,8 @@ const STEPS: Readonly<Record<OpsStep, Step>> = {
     manifests,
     health: async (deps, context) => {
         await checkServices(deps, context.now);
+        // M4 (docs/research/M4-interfaces.md §5.1, assists-notify): many new crash reports within the hour.
+        await checkCrashSpike(deps, context.now);
         return {};
     },
     tokens: async (deps, context) => {

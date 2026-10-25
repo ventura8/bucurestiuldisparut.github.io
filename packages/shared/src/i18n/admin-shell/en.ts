@@ -11,6 +11,7 @@ export const en: AdminShellMessages = {
     'adminShell.nav.layers': 'Layers',
     'adminShell.nav.imagery': 'Historical imagery',
     'adminShell.nav.jobs': 'Jobs',
+    'adminShell.nav.inbox': 'Notifications',
     'adminShell.nav.settings': 'Settings',
     'adminShell.nav.admins': 'Admins',
     'adminShell.nav.history': 'History',

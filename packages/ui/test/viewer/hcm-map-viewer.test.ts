@@ -17,6 +17,9 @@ const CONTROLLER: ViewerController = {
     openPhoto: () => undefined,
     openPoi: () => undefined,
     setLang: () => undefined,
+    openCompare: () => undefined,
+    setComparePosition: () => undefined,
+    closeCompare: () => undefined,
     destroy: () => undefined,
 };
 

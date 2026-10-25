@@ -121,9 +121,10 @@ describe('createSetupCloud', () => {
         const deployed = await cloud.deployment(ACCESS);
 
         expect(nothing).toMatchObject({ kind: 'forbidden', api: 'cloudfunctions.googleapis.com' });
-        expect(partial).toEqual({ ready: 17, total: 51, failed: [] });
-        expect(failed).toEqual({ ready: 50, total: 51, failed: ['admin-session'] });
-        expect(deployed).toEqual({ ready: 51, total: 51, failed: [] });
+        // The registry's 61 functions (M4: orders' 3, assists' and notifications' 7); the fake deploys a third of them.
+        expect(partial).toEqual({ ready: 20, total: 61, failed: [] });
+        expect(failed).toEqual({ ready: 60, total: 61, failed: ['admin-session'] });
+        expect(deployed).toEqual({ ready: 61, total: 61, failed: [] });
     });
 
     it('happyPath_theStreamsHistoryPageViewsAreTurnedOff', async () => {

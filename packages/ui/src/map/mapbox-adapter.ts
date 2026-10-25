@@ -117,7 +117,7 @@ class MapboxPort implements MapPort {
         this.#prepare(session);
     }
 
-    /** The Mapbox map of the current mount, for the compare view (`compare.ts`); null without one. */
+    /** The Mapbox map of the current mount (the drawing tools, the admin's image sources); null without one. */
     get native(): MapboxMap | null {
         return this.#session?.map ?? null;
     }
@@ -140,6 +140,9 @@ class MapboxPort implements MapPort {
         if (this.#padding !== null) {
             map.setPadding(this.#padding);
         }
+        this.#forward(session, 'move', () => {
+            this.#events.emit('move', this.getView());
+        });
         this.#forward(session, 'moveend', () => {
             this.#events.emit('moveend', this.getView());
         });
@@ -406,7 +409,7 @@ export function nativeMap(port: MapPort): MapboxMap | null {
 }
 
 /**
- * The MapPort of the viewer (and of the compare view's second map). `env` defaults to the page's `window`; the node
+ * The MapPort of the viewer (and, from M4, of swipe compare's second map). `env` defaults to the page's `window`; the node
  * tests pass fakes (`@hcm/test-support`).
  */
 export function createMapboxPort(gl: MapboxGl, env?: AdapterEnv): MapPort {

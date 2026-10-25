@@ -313,6 +313,10 @@ export const photoStyles = [
             object-fit: contain;
         }
 
+        /*
+         * The editor's notes (the place to check, a replacement): the tertiary container, its ring in the container's own
+         * colour, as the alerts on the error container (secondary falls under 3:1 there in the dark scheme, LESSONS 216).
+         */
         .banner {
             display: flex;
             flex-direction: column;
@@ -321,6 +325,8 @@ export const photoStyles = [
             border-radius: var(--md-sys-shape-corner-medium, 12px);
             background: var(--md-sys-color-tertiary-container, Canvas);
             color: var(--md-sys-color-on-tertiary-container, CanvasText);
+
+            --hcm-focus-ring-color: var(--md-sys-color-on-tertiary-container, CanvasText);
         }
 
         .link-row {

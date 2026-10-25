@@ -16,6 +16,7 @@ import type { GeorefIntentsPort, GeorefViewState } from './georef/georef-port.js
 import type { HistoryIntentsPort, HistoryViewState } from './history/history-port.js';
 import type { HomeIntentsPort, HomeViewState } from './home/home-port.js';
 import type { ImageryIntentsPort, ImageryViewState } from './imagery/imagery-port.js';
+import type { InboxIntentsPort, InboxViewState } from './inbox/inbox-port.js';
 import type { JobsIntentsPort, JobsViewState } from './jobs/jobs-port.js';
 import type { LayersIntentsPort, LayersViewState } from './layers/layers-port.js';
 import type { PhotosIntentsPort, PhotosViewState } from './photos/photos-port.js';
@@ -48,4 +49,7 @@ export interface ContentPort {
     readonly imagery: AreaPort<ImageryViewState, ImageryIntentsPort> | null;
     readonly georef: AreaPort<GeorefViewState, GeorefIntentsPort> | null;
     // [end imagery]
+    // [section inbox] owner: assists-notify (docs/research/M4-interfaces.md §5.5)
+    readonly inbox: AreaPort<InboxViewState, InboxIntentsPort> | null;
+    // [end inbox]
 }

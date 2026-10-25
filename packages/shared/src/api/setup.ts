@@ -51,6 +51,8 @@ export const SELF_TEST_CHECKS = [
     'usgs',
     'firebase-management',
     'error-reporting',
+    /** M4 (`docs/research/M4-interfaces.md` §4.4): Vertex AI's `countTokens` on the pinned model, which costs nothing. */
+    'ai',
 ] as const;
 
 export type MapboxTokenKind = 'secret' | 'public' | 'unknown';

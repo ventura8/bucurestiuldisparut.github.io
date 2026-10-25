@@ -4,6 +4,8 @@
  * `harvestedAt`, for the automatic search), the scenes by score (free only while the filter says so: the
  * `downloadAvailable, rank.score` index), the unfinished versions (`state, updatedAt`), the unfinished jobs (`status,
  * createdAt`) and the budget guard (`ops/guard`, CR-M3-47), each attached again by itself after a dropped connection.
+ * M4 (`docs/research/M4-interfaces.md` §1.7): the scenes that have an order, whatever the filters (Work's orders, and a
+ * notification's link to an ordered scene while Free only hides it).
  */
 import {
     cityDocSchema,
@@ -29,6 +31,7 @@ import type { ContentQuery, ContentServices, Stored } from '../content/services.
 import { ACTIVE_JOB_STATUSES } from '../jobs/jobs.js';
 import { frameOf, type CityFrame } from '../layers/map-session.js';
 import { GuardFeed, type GuardView } from './guard.js';
+import { ORDERS_QUERY, ordersList } from './orders/feed.js';
 import {
     jobProgressOf,
     OPEN_VERSION_STATES,
@@ -49,6 +52,8 @@ export interface FeedsPatch {
     /** The newest harvest (ISO), null for none. */
     readonly newest?: string | null;
     readonly scenes?: ListState<SceneItem>;
+    /** M4: the scenes that have an order. */
+    readonly orders?: ListState<SceneItem>;
     readonly versions?: ListState<VersionItem>;
     readonly jobs?: Readonly<Record<string, JobProgress>>;
     readonly guard?: GuardView | null;
@@ -87,6 +92,7 @@ export class ImageryFeeds {
     readonly #city: LiveDoc<CityDoc>;
     readonly #newest: LiveList<UsgsSceneDoc, string>;
     readonly #scenes: LiveList<UsgsSceneDoc, SceneItem>;
+    readonly #orders: LiveList<UsgsSceneDoc, SceneItem>;
     readonly #versions: LiveList<LayerVersionDoc, VersionItem>;
     readonly #jobs: LiveList<JobDoc, JobProgress>;
     readonly #guard: GuardFeed;
@@ -130,6 +136,9 @@ export class ImageryFeeds {
                 changed({ scenes: list });
             },
         });
+        this.#orders = ordersList({ ...scenes, pageSize: SCENE_PAGE }, (orders) => {
+            changed({ orders });
+        });
         this.#versions = new LiveList({
             ...{ ...base, collection: FIRESTORE_PATHS.layerVersions(cityId), schema: layerVersionDocSchema, map: versionItemOf },
             changed: (list) => {
@@ -156,6 +165,7 @@ export class ImageryFeeds {
         this.#city.show(FIRESTORE_PATHS.city(this.#services.cityId));
         this.#newest.show({ orderBy: [['harvestedAt', 'desc']] });
         this.#scenes.show(scenesQuery(freeOnly));
+        this.#orders.show(ORDERS_QUERY);
         this.#versions.show({ where: [['state', 'in', OPEN_VERSION_STATES]], orderBy: [['updatedAt', 'desc']] });
         this.#jobs.show({ where: [['status', 'in', ACTIVE_JOB_STATUSES]], orderBy: [['createdAt', 'desc']] });
         this.#guard.start();
@@ -171,13 +181,13 @@ export class ImageryFeeds {
     }
 
     retry(): void {
-        for (const feed of [this.#setup, this.#city, this.#newest, this.#scenes, this.#versions, this.#jobs, this.#guard]) {
+        for (const feed of [this.#setup, this.#city, this.#newest, this.#scenes, this.#orders, this.#versions, this.#jobs, this.#guard]) {
             feed.retry();
         }
     }
 
     stop(): void {
-        for (const feed of [this.#setup, this.#city, this.#newest, this.#scenes, this.#versions, this.#jobs, this.#guard]) {
+        for (const feed of [this.#setup, this.#city, this.#newest, this.#scenes, this.#orders, this.#versions, this.#jobs, this.#guard]) {
             feed.stop();
         }
     }

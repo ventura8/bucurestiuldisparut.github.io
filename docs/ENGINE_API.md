@@ -41,9 +41,11 @@ window.HistoricCityMapConfig = {
 };
 ```
 
-Bucharest serves the engine from its own origin (the site build copies every file of the engine build next to the page: `engine.mjs` with its lazy `firebase-sdk-<hash>.js` chunk, `engine.iife.js`, `engine.css` and `fonts/`). A module script runs after the deferred classic scripts above it, so `mapboxgl` and the configuration exist when the engine starts; `engine/engine.iife.js` with `defer` works the same way for pages that cannot load modules.
+Bucharest serves the engine from its own origin (the site build copies every file of the engine build next to the page: `engine.mjs` with its lazy chunks, `compare-<hash>.js` for swipe compare and `firebase-sdk-<hash>.js` after consent, `engine.iife.js`, `engine.css`, `fonts/` and `THIRD_PARTY_NOTICES.txt`, the licences of the packages and fonts it carries). The chunks import what they share with the entry from `engine.mjs`, which may export such internal bindings besides the names of the [JavaScript API](#javascript-api); only those names are the API.
 
-`globalThis.HistoricCityMapConfig = {…}` is the same as `window.HistoricCityMapConfig = {…}` in a classic script; the committed `config.js` files use the `window.` form (ESLint gives them the browser globals). A site build reads `config.js` without running it (`scripts/site/src/config-js.ts`), so the file must be one assignment of literal data: objects, arrays, strings, numbers, booleans and `null`. The site build refuses a `config.js` whose `cityId` is not the manifest's city; a site whose source manifest still names an older id says so in its `site.json` (`legacyCityId`: the Bucharest seed, migrated as it was, names `bucuresti`, while the project's city and every manifest the server builds is `bucharest`), and the served manifest takes `config.js`'s id. A third-party city that loads it from jsDelivr pins an exact version with `integrity` and `crossorigin`; SRI is impossible with a range URL such as `@1`.
+The manifest is the one the admin publishes to the project's public bucket. A site whose `site.json` says `publicManifest: true` (Bucharest) gets the `config.js` above from a site build that names the bucket (`HCM_PUBLIC_BUCKET`, a repository variable in CI; `scripts/site/src/public-manifest.ts`): its `manifestUrl` is the bucket's `cities/<cityId>/manifest.json`, nothing is bundled, and the page's CSP names the bucket and the project's crash-report endpoint. A build without the bucket bundles the site's own manifest (Bucharest's seed snapshot, `data/manifest.json`) and serves the committed `config.js`, which names it; the starter kit always does. The viewer never reads Firestore. A module script runs after the deferred classic scripts above it, so `mapboxgl` and the configuration exist when the engine starts; `engine/engine.iife.js` with `defer` works the same way for pages that cannot load modules.
+
+`globalThis.HistoricCityMapConfig = {…}` is the same as `window.HistoricCityMapConfig = {…}` in a classic script; the committed `config.js` files use the `window.` form (ESLint gives them the browser globals). A site build reads `config.js` without running it (`scripts/site/src/config-js.ts`), so the file must be one assignment of literal data: objects, arrays, strings, numbers, booleans and `null`. The site build refuses a `config.js` whose `cityId` is not the manifest's city; a site whose source manifest still names an older id says so in its `site.json` (`legacyCityId`: the Bucharest seed, migrated as it was, names `bucuresti`, while the project's city and every manifest the server builds is `bucharest`), and the served manifest takes `config.js`'s id. A third-party city that loads it from jsDelivr pins an exact version with `integrity` and `crossorigin`; SRI is impossible with a range URL such as `@1`. SRI covers only the file it is written on: `engine.mjs` fetches its lazy chunks (`compare-<hash>.js` for swipe compare, `firebase-sdk-<hash>.js` after the analytics consent) with dynamic imports that carry no integrity, so a page that relies on SRI loads `engine.iife.js` (with `defer`), which carries both inline and needs one `integrity` (the 2026-10-24 security review; an import map with `integrity` entries for the chunks is the module build's alternative, `DECISIONS-for-review.md` §57i).
 
 ## config.js
 
@@ -93,6 +95,7 @@ Events are `CustomEvent`s that bubble and cross shadow roots (`composed: true`):
 | `hcm-overlay-change` | `{ overlayId, kind, visible, opacity }` | Any overlay (a historical layer, `photos`, a POI category) was shown, hidden or faded; fired once per change, after a slider is released. |
 | `hcm-photo-open` | `{ photoId }` | A photo's sheet opened. |
 | `hcm-poi-open` | `{ poiId }` | A POI's details opened (in the same sheet as photos). |
+| `hcm-compare-change` | `{ open, mode, layerId, position }` | M4: swipe compare opened, closed, switched between `swipe` and `toggle` (the window class), changed its compared side or settled its divider (a drag once, on release; a key each time) ([Compare](#compare)); closed, `mode`, `layerId` and `position` are `null`. A compare the URL hash opens fires it after `hcm-ready`. |
 
 ## JavaScript API
 
@@ -120,6 +123,12 @@ interface HistoricCityMapController {
     /** Opens a POI's details (null closes them); an unknown id is ignored. */
     openPoi(poiId: string | null): void;
     setLang(lang: 'ro' | 'en'): void;
+    /** M4: compares the map with `layerId` (null: today, no historical layer); an unknown or non-raster id is ignored. */
+    openCompare(layerId: string | null, options?: { readonly position?: number }): void;
+    /** M4: moves the divider (0: the compared side fills the map, 1: the main side does; clamped). */
+    setComparePosition(position: number): void;
+    /** M4: closes compare and destroys its second map; nothing happens when it is closed. */
+    closeCompare(): void;
     /** Removes the map (one map per view), every listener and the rendered content; later calls do nothing. */
     destroy(): void;
 }
@@ -130,7 +139,7 @@ interface HistoricCityMapController {
 ## URL hash v1
 
 ```text
-#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&photo=<id>][&lang=ro|en]
+#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>][&photo=<id>][&lang=ro|en]
 ```
 
 | Part | Rule when read |
@@ -139,10 +148,28 @@ interface HistoricCityMapController {
 | `layers` | Visible historical layers; ids must match `^[A-Za-z0-9_-]{1,40}$`, others are dropped; duplicates removed; `layers=` (empty) means none. |
 | `opacity` | Opacity of the visible historical layers, clamped to `[0, 1]`. |
 | `op` | Per-overlay opacity (PLAN Addendum 3) in percent, clamped to `[0, 100]`; at most 50 entries (the encoder never writes more); wins over `opacity`. Overlays are the layer ids, `photos` and the POI category ids ([Overlays](#overlays)). An entry for an id the manifest does not have is dropped (`decodeHash` with `overlayIds`), and the viewer writes only the overlays whose opacity differs from the manifest default. |
+| `cmp` | M4: swipe compare is open with this historical layer on the compared side; empty (`cmp=`) means today, no historical layer. An id that is not a layer of the manifest opens nothing and the viewer rewrites the hash without `cmp` and `sw` (scenario V06). |
+| `sw` | M4: the divider in percent of the map's width, clamped to `[0, 100]`; 50 when absent, ignored without `cmp`; on a compact window 0 shows the compared side and anything else the main one. Either of `cmp` and `sw` may come first. |
 | `photo` | The open photo; an id that is not in the manifest shows a toast (scenario V09). |
 | `lang` | `ro` or `en`; anything else is ignored. |
 
 Unknown parameters are ignored, a repeated one keeps its last valid value, and a hash longer than 2,048 characters is ignored as a whole. Ids are only ever looked up in a `Map`, never used in a selector. The legacy hash of the 2015–2022 site, `#zoom/lat/lng/rotation/!a3!p2`, still opens the same view: its `!…` layer codes are ignored and the viewer rewrites the hash in the v1 form. Codec: `encodeHash` and `decodeHash` in `packages/shared/src/url/hash.ts`.
+
+## Compare
+
+Status (2026-10-24): built by the M4 compare workstream (scenario rows V06; `e2e/specs/viewer/compare.spec.ts`, the tour's journey `compare` at every viewer viewport).
+
+Swipe compare (M4, scenario V06; the contract is [research/M4-interfaces.md](research/M4-interfaces.md) §3) shows the map beside the same map with another historical layer, or with none (today), split by a divider the visitor drags or moves from the keyboard. It is the engine's own: no plugin is loaded.
+
+- **Where it starts.** The Layers panel's Compare (today while the map shows a historical layer, else the newest layer; the button closes compare while it is open), the URL hash, or `openCompare`. The compare bar at the top of the map names the main side, chooses the compared side (today or another historical layer; what the main side shows already is no choice, since a side compared with itself shows nothing, unless it is the side compared now) and closes.
+- **One map per view.** The second map exists only while the visitor compares: it is created the first time compare is open on a window 600 px wide or more and destroyed when compare closes (Close, Esc on the divider, the map going away, the controller's `destroy()`). A window that becomes compact hides it instead, for a minute (`COMPARE_PARK_MS`), and destroys it then: a phone turned back and forth, or a window dragged across 600 px, shows the same map again instead of paying a new map load each time (the 2026-10-24 cost review). Every Mapbox map is a billed map load, and the e2e map-instance counter checks both. The second map takes no pointer or keyboard input: the viewer's map takes every gesture on either side and the second follows its camera.
+- **A lazy part of the engine.** The ES module build fetches compare's code as its own chunk, `compare-<hash>.js` (budget: 5 KB gzip), the first time it opens (the site build copies it with the engine); the IIFE build includes it. A page that pins the engine with Subresource Integrity covers the file its `integrity` is on, and `engine.mjs` fetches its chunks (`compare-<hash>.js`, `firebase-sdk-<hash>.js`) with plain dynamic imports that carry no integrity: such a page loads `engine.iife.js`, which carries both chunks inline (see *config.js* below).
+- **Both sides move together**: dragging, zooming or rotating either keeps both maps on the same centre, zoom and bearing.
+- **Each side keeps its overlays' opacity.** The main side is the map as it was; the compared side shows the same basemap, photos and places with the same visibility and opacity, and only the compared historical layer, with its own opacity and image adjustments. An opacity slider moved while comparing changes both maps.
+- **The divider** is a slider for assistive technology (its value is the main side's share in percent, its text names both sides and their shares): the arrow keys move it by 1 %, Shift and Page Up/Down by 10 %, Home and End to the edges, Esc closes compare; a pointer drags its 48 px handle (below the map's centre), and the divider settles on the whole percent.
+- **Compact windows** (below 600 px) get a toggle between the two sides on the one map instead of a second map (one made on a wider window waits hidden for a minute, as above).
+- **The legal line**: one Mapbox logo and one attribution, the viewer map's, stay visible above both sides at every divider position (the second map's own are hidden); the compare bar credits the compared layer's source ("Sursa: …"), and the viewer map's attribution the main side's.
+- **The URL hash** carries `cmp=` and `sw=` ([URL hash v1](#url-hash-v1)); a shared link reopens compare where it was. Codec: `CompareState` in `packages/shared/src/url/hash.ts`.
 
 ## City Manifest v1
 
@@ -274,6 +301,7 @@ A fetch that returns 404 shows `error.manifest.notFound`, a network failure `err
 - **Removing, renaming or changing the meaning of a field** makes manifest v2 and engine 2.0; the builder can then write both generations side by side during the transition.
 - **`config.js`, the element and the JavaScript API** change additively in minor releases; a deprecated name keeps working for at least one minor release and is removed only in a major one.
 - **The URL hash** keeps v1's grammar for the whole 1.x line; new parameters are additive and old readers ignore them. The legacy hash stays readable.
+- **Additions before 1.0.0 (M4, 2026-10-24)**: the hash's `cmp=` and `sw=`, the controller's `openCompare`, `setComparePosition` and `closeCompare`, and the event `hcm-compare-change` are part of the v1 baseline too; the manifest does not change.
 - **Additions before 1.0.0** (PLAN Addendum 3, 2026-10-12): `photosOverlay`, `poiCategories[]`, `pois[]`, the overlay namespace rule and the `op=` overlay ids. They are part of the v1 baseline that every 1.x engine reads, so a manifest that uses them needs no `minVersion`. A Material Symbols name outside the bundled set falls back to the default pin instead of failing validation, so new icons never need a new manifest generation.
 
 ## Security

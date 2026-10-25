@@ -52,6 +52,11 @@ export interface ViewerState {
     readonly theme: ThemeMode;
     readonly consent: ConsentState;
     readonly toast: ViewerToast | null;
+    /**
+     * Swipe compare (M4, V06): the compared side's historical layer (null: today) and the divider's settled place (0..1,
+     * the main side's share); null when the visitor does not compare.
+     */
+    readonly compare: { readonly layerId: string | null; readonly position: number } | null;
 }
 
 /** The store actions the viewer elements call (a subset of the engine's `ViewerActions`). */
@@ -77,6 +82,10 @@ export interface ViewerStorePort {
     setConsent(consent: 'granted' | 'denied'): void;
     showToast(key: MessageKey, params?: MessageParams): void;
     dismissToast(): void;
+    /** M4: compares the map with `layerId` (null: today). */
+    openCompare(layerId: string | null, position?: number): void;
+    setComparePosition(position: number): void;
+    closeCompare(): void;
 }
 
 /** How `ready` settles (docs/ENGINE_API.md → JavaScript API). */
@@ -92,5 +101,11 @@ export interface ViewerController {
     openPhoto(photoId: string | null): void;
     openPoi(poiId: string | null): void;
     setLang(lang: Locale): void;
+    /** M4: compares the map with `layerId` (null: today, no historical layer); an unknown id is ignored. */
+    openCompare(layerId: string | null, options?: { readonly position?: number }): void;
+    /** M4: moves compare's divider (0: the compared side fills the map, 1: the main side does; clamped). */
+    setComparePosition(position: number): void;
+    /** M4: closes compare and destroys its second map. */
+    closeCompare(): void;
     destroy(): void;
 }

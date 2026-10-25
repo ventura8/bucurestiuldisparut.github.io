@@ -37,6 +37,8 @@ interface Options {
     readonly unsaved?: () => boolean;
     /** This browser has had an answer from the server before. */
     readonly seen?: boolean;
+    /** M4: what this browser forgets before sign-out (the uids it was called with are recorded). */
+    readonly leaving?: boolean;
 }
 
 function harness(options: Options = {}) {
@@ -69,6 +71,11 @@ function harness(options: Options = {}) {
             memory.seen = true;
         },
     };
+    const left: string[] = [];
+    const leaving = (uid: string): Promise<void> => {
+        left.push(uid);
+        return Promise.resolve();
+    };
     const controller = new AuthController({
         auth,
         callables,
@@ -81,8 +88,12 @@ function harness(options: Options = {}) {
         startUp,
         unsaved,
         serverSeen,
+        ...(options.leaving === true ? { leaving } : {}),
     });
-    return { auth, callables, port, google, ownership, enableApi, shell, session, recording, controller, memory, state: () => shell.get() };
+    return {
+        ...{ auth, callables, port, google, ownership, enableApi, shell, session, recording, controller, memory, left },
+        state: () => shell.get(),
+    };
 }
 
 async function started(h: ReturnType<typeof harness>): Promise<void> {
@@ -624,6 +635,29 @@ describe('AuthController: sessions ending', () => {
 
         expect(h.session.keys()).toEqual(['other-app']);
         expect(h.state()).toMatchObject({ auth: 'signedOut', gate: { issue: null } });
+    });
+
+    it('happyPath_signingOutForgetsThisBrowsersPushRegistrationOfTheAdminFirst', async () => {
+        const h = harness({ user: OWNER, leaving: true });
+        deployed(h.callables, h.auth, SESSION.owner);
+        await started(h);
+
+        await h.controller.signOut();
+        await settle();
+
+        expect(h.left).toEqual([OWNER.uid]);
+        expect(h.auth.signOuts).toBe(1);
+    });
+
+    it('badPath_signingOutWithNobodySignedInForgetsNothing', async () => {
+        const h = harness({ leaving: true });
+        deployed(h.callables, h.auth, SESSION.owner);
+        await started(h);
+
+        await h.controller.signOut();
+
+        expect(h.left).toEqual([]);
+        expect(h.state().auth).toBe('signedOut');
     });
 
     it('badPath_aRemovedAdminIsDeniedOnTheNextAction', async () => {

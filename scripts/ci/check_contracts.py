@@ -14,7 +14,10 @@ and API shapes the product depends on still look the way the code assumes.
      the very bytes of that npm release (node_modules/mapbox-gl/dist): the city pages carry the npm files'
      Subresource Integrity (scripts/site/src/sri.ts), so a CDN file that differed would be refused by every
      browser and the map would not load (DECISIONS-for-review.md §12f);
-   - Earth Search still publishes the sentinel-2-c1-l2a collection (the georeferencing reference).
+   - Earth Search still publishes the sentinel-2-c1-l2a collection (the georeferencing reference);
+   - EarthExplorer's scene page, the order card's deep link (M4, docs/research/M4-interfaces.md §1.6), still
+     answers 200 for the scene verified on 2026-10-11 and still names it (a page that resolves without the
+     scene would send every admin who buys a scan to the wrong place).
 
 Only https is spoken, through scripts/ci/cihttp.py (http.client, no extra dependency). A network
 error gets one retry so a blip does not open an issue. Usage: check_contracts.py [--root DIR]
@@ -51,6 +54,10 @@ M2M_API = "https://m2m.cr.usgs.gov/api/api/json/stable"
 PAGES_ORIGIN = "https://ventura8.github.io"
 EARTH_SEARCH = "https://earth-search.aws.element84.com/v1/collections"
 REFERENCE_COLLECTION = "sentinel-2-c1-l2a"
+# The order card's deep link (links.json `usgs.sceneMetadata`, `earthExplorerSceneUrl` of @hcm/shared) with the
+# Corona scene opened on 2026-10-11 (design-review-onboarding.md §0.6: HTTP 200, "Full Display of DS009013039DV181").
+EARTH_EXPLORER_SAMPLE_ENTITY = "DS009013039DV181"
+EARTH_EXPLORER_SCENE = f"https://earthexplorer.usgs.gov/scene/metadata/full/5e839febdccb64b3/{EARTH_EXPLORER_SAMPLE_ENTITY}/"
 # Servers that reject HEAD outright; the link is then checked with GET.
 HEAD_REFUSED = frozenset({HTTPStatus.FORBIDDEN, HTTPStatus.METHOD_NOT_ALLOWED, HTTPStatus.NOT_IMPLEMENTED})
 PLACEHOLDER = re.compile(r"\{([A-Za-z][A-Za-z0-9]*)\}")
@@ -202,6 +209,19 @@ def stac_collection(collection_id: str) -> Expectation:
     return expect
 
 
+def page_names(text: str) -> Expectation:
+    """HTTP 200 with a body that names `text` (a scene page that resolves but shows no scene is drift)."""
+
+    def expect(response: Response) -> str | None:
+        if response.status != HTTPStatus.OK:
+            return f"expected HTTP 200, got HTTP {response.status}"
+        if text.encode("ascii") in response.body:
+            return None
+        return f"the page no longer names {text}: the scene's deep link may have moved"
+
+    return expect
+
+
 def sri_digest(data: bytes) -> str:
     """The Subresource Integrity value of `data`, as scripts/site/src/sri.ts writes it into the page."""
     return "sha384-" + base64.b64encode(hashlib.sha384(data).digest()).decode("ascii")
@@ -245,6 +265,7 @@ def build_probes(mapbox_version: str, npm_digests: Mapping[str, str]) -> list[Pr
             Request("GET", f"{EARTH_SEARCH}/{REFERENCE_COLLECTION}"),
             stac_collection(REFERENCE_COLLECTION),
         ),
+        Probe("usgs.earthExplorerScene", Request("GET", EARTH_EXPLORER_SCENE), page_names(EARTH_EXPLORER_SAMPLE_ENTITY)),
     ]
 
 

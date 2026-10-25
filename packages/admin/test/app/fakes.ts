@@ -384,6 +384,7 @@ export function shellStateAccess(overrides: Partial<ShellState> = {}): ShellStat
         leaving: null,
         revoked: false,
         people: {},
+        unread: null,
         setupReady: null,
         locale: 'en',
         theme: { mode: 'system', city: null, preview: null },

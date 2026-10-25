@@ -132,3 +132,31 @@ def test_happy_path_script_entry_point_exits_with_main_status(tmp_path: Path, mo
         runpy.run_path(str(SCRIPT), run_name="__main__")
 
     assert exit_info.value.code == 0
+
+
+def test_happy_path_the_engines_lazy_chunks_have_their_own_budgets(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    default_bundles(tmp_path)
+    admin_build(tmp_path)
+    bundle(tmp_path, "packages/engine/dist/compare-D8pm_j3P.js", b'import{a}from"./engine.mjs";export const c=a;')
+    bundle(tmp_path, "packages/engine/dist/firebase-sdk-B_TOjIQg.js", b"export const f=1;")
+    bundle(tmp_path, "packages/engine/dist/engine.mjs.map", b"{}")
+
+    assert bundles.main(["--root", str(tmp_path)]) == 0
+    lines = caplog.messages[0].splitlines()
+    assert lines[3].startswith("  packages/engine/dist/compare-D8pm_j3P.js: 0.")
+    assert lines[3].endswith("(budget 5 KB)")
+    assert lines[4].endswith("(budget 16 KB)")
+
+
+def test_bad_path_an_engine_chunk_without_a_budget_or_over_it_fails(tmp_path: Path) -> None:
+    bundle(tmp_path, "packages/engine/dist/engine.iife.js", b"x")
+    bundle(tmp_path, "packages/engine/dist/compare-D8pm_j3P.js", os.urandom(3000))
+    bundle(tmp_path, "packages/engine/dist/map-sync-COl7ap_a.js", b"export const m=1;")
+
+    problems, lines = bundles.check_engine_chunks(tmp_path, {"compare": 2})
+
+    assert problems == [
+        "packages/engine/dist/compare-D8pm_j3P.js: 3.0 KB gzip (budget 2 KB)",
+        "packages/engine/dist/map-sync-COl7ap_a.js: 0.0 KB gzip, a chunk without a budget (add `map-sync` to ENGINE_CHUNK_BUDGETS)",
+    ]
+    assert len(lines) == 2

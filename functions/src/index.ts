@@ -6,10 +6,13 @@
  * that the exports are exactly the registry's functions, each with its region, instance cap and service account.
  */
 import { adminFunctions, adminsFunctions } from './admin/index.js';
+import { assistFunctions } from './assist/index.js';
 import { getDeps, privateBucket } from './deps.js';
 import { historyFunctions } from './history/index.js';
 import { imageryFunctions } from './imagery/index.js';
+import { usgsFunctions } from './imagery/orders/index.js';
 import { layersFunctions } from './layers/index.js';
+import { notifyFunctions } from './notify/index.js';
 import { opsFunctions } from './ops/index.js';
 import { photosFunctions } from './photos/index.js';
 import { publishFunctions } from './publish/index.js';
@@ -29,3 +32,9 @@ export const ops = opsFunctions(getDeps);
 export const layers = layersFunctions(getDeps);
 /** The M3 raster backend (`docs/research/M3-interfaces.md` §9): the raster upload trigger watches the same private bucket. */
 export const imagery = imageryFunctions(getDeps, privateBucket(process.env));
+/** M4 orders (`docs/research/M4-interfaces.md` §1.4): the buy flow's callables; the daily watch is a step of `imagery.tick`. */
+export const usgs = usgsFunctions(getDeps);
+/** The M4 assists (`docs/research/M4-interfaces.md` §4): title suggestions through the Nominatim queue, AI drafts. */
+export const assist = assistFunctions(getDeps);
+/** The M4 notifications (§5): the fan-out of every event to the admins' inboxes and devices, the push callables. */
+export const notify = notifyFunctions(getDeps);

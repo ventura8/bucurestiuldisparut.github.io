@@ -1,13 +1,16 @@
 /**
  * URL-hash codec v1 of the public viewer (docs/ENGINE_API.md → URL hash).
  *
- *     #<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&photo=<id>][&lang=ro|en]
+ *     #<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>]
+ *         [&photo=<id>][&lang=ro|en]
  *
  * Decoding is defensive: the hash is visitor input. Numbers must be plain decimals, every range is
  * clamped, ids must match `ID_PATTERN` (anything else is dropped, never put into a selector), unknown
  * parameters are ignored and a hash longer than `MAX_HASH_LENGTH` is ignored as a whole. `op=` carries the opacity
  * of each overlay in percent (PLAN Addendum 3: historical layers, `photos`, POI categories); given the manifest's
- * overlay ids, the decoder also drops the entries of unknown overlays. The legacy
+ * overlay ids, the decoder also drops the entries of unknown overlays. `cmp=` opens swipe compare (M4, scenario V06) with
+ * the layer the second side shows (empty: today, no historical layer) and `sw=` places its divider in percent of the
+ * map's width; `sw=` without `cmp=` is ignored, and either may come first. The legacy
  * hash of the 2015–2022 site, `#zoom/lat/lng/rotation/!a3!p2`, decodes to its map view; its layer
  * codes (`!…`) are ignored and `legacy` tells the viewer to rewrite the hash in the v1 form.
  */
@@ -29,6 +32,19 @@ export interface MapView {
     readonly bearing: number;
 }
 
+/**
+ * Swipe compare (M4, scenario V06; docs/ENGINE_API.md → *Compare*): the layer the compared side shows (`null`: today, no
+ * historical layer) and where the divider stands, from 0 (the compared side fills the map) to 1 (the main side fills it).
+ * On a compact window the same state is a toggle: 0 shows the compared side, anything else the main one.
+ */
+export interface CompareState {
+    readonly layer: string | null;
+    readonly position: number;
+}
+
+/** The divider's place when the hash opens compare without `sw=`: the middle of the map. */
+export const DEFAULT_COMPARE_POSITION = 0.5;
+
 /** Everything the hash can carry; an absent field means "not in the hash", so the viewer keeps its default. */
 export interface HashState {
     readonly view?: MapView;
@@ -38,6 +54,8 @@ export interface HashState {
     readonly opacity?: number;
     /** Per-overlay opacity, `[0, 1]`, keyed by overlay id (PLAN Addendum 3); wins over `opacity`. */
     readonly overlayOpacity?: Readonly<Record<string, number>>;
+    /** M4: swipe compare is open (V06); absent when it is not. */
+    readonly compare?: CompareState;
     readonly photo?: string;
     readonly lang?: Locale;
 }
@@ -86,6 +104,16 @@ function encodeOverlays(overlays: Readonly<Record<string, number>>): string | nu
     return entries.length === 0 ? null : `op=${entries.join(',')}`;
 }
 
+/** `cmp=<id>` (empty for today) and, when the divider is not in the middle, `sw=<percent>`; an invalid id writes nothing. */
+function encodeCompare(compare: CompareState): string | null {
+    if (compare.layer !== null && !isId(compare.layer)) {
+        return null;
+    }
+    const percent = Math.round(clamp(compare.position, 0, 1) * 100);
+    const layer = `cmp=${compare.layer ?? ''}`;
+    return percent === DEFAULT_COMPARE_POSITION * 100 ? layer : `${layer}&sw=${String(percent)}`;
+}
+
 type Encoder = (state: HashState) => string | null;
 
 /** One encoder per field, in the order the parameters appear in the hash. */
@@ -94,6 +122,7 @@ const ENCODERS: readonly Encoder[] = [
     (state) => (state.layers === undefined ? null : `layers=${state.layers.filter((id) => isId(id)).join(',')}`),
     (state) => (state.opacity === undefined ? null : `opacity=${String(roundTo(clamp(state.opacity, 0, 1), 2))}`),
     (state) => (state.overlayOpacity === undefined ? null : encodeOverlays(state.overlayOpacity)),
+    (state) => (state.compare === undefined ? null : encodeCompare(state.compare)),
     (state) => (state.photo !== undefined && isId(state.photo) ? `photo=${state.photo}` : null),
     (state) => (state.lang === undefined ? null : `lang=${state.lang}`),
 ];
@@ -156,12 +185,40 @@ function decodeOverlays(value: string, limits: HashLimits): Partial<HashState> {
     return entries.length === 0 ? {} : { overlayOpacity: Object.fromEntries(entries) };
 }
 
+/** What the parameters decode to before `cmp=` and `sw=` are put together into `compare` (either may come first). */
+interface Decoding extends DecodedHash {
+    readonly compareLayer?: string | null;
+    readonly comparePosition?: number;
+}
+
+/** `cmp=`: a layer id, or empty for today; anything else is ignored. */
+function decodeCompareLayer(value: string): Partial<Decoding> {
+    if (value === '') {
+        return { compareLayer: null };
+    }
+    return isId(value) ? { compareLayer: value } : {};
+}
+
+/** `sw=`: the divider in percent of the map's width, clamped to `[0, 100]`. */
+function decodeComparePosition(value: string): Partial<Decoding> {
+    const percent = parseDecimal(value);
+    return percent === null ? {} : { comparePosition: clamp(percent, 0, 100) / 100 };
+}
+
+/** `compare` from `cmp=` and `sw=`; without `cmp=` there is no compare, whatever `sw=` says. */
+function withCompare({ compareLayer, comparePosition, ...state }: Decoding): DecodedHash {
+    if (compareLayer === undefined) {
+        return state;
+    }
+    return { ...state, compare: { layer: compareLayer, position: comparePosition ?? DEFAULT_COMPARE_POSITION } };
+}
+
 function decodeOpacity(value: string): Partial<HashState> {
     const opacity = parseDecimal(value);
     return opacity === null ? {} : { opacity: clamp(opacity, 0, 1) };
 }
 
-type ParamDecoder = (value: string, limits: HashLimits) => Partial<HashState>;
+type ParamDecoder = (value: string, limits: HashLimits) => Partial<Decoding>;
 
 function decodeLang(value: string): Partial<HashState> {
     const lang = LOCALES.find((locale) => locale === value);
@@ -173,18 +230,20 @@ const PARAM_DECODERS: ReadonlyMap<string, ParamDecoder> = new Map<string, ParamD
     ['layers', (value) => ({ layers: decodeIds(value) })],
     ['opacity', decodeOpacity],
     ['op', decodeOverlays],
+    ['cmp', decodeCompareLayer],
+    ['sw', decodeComparePosition],
     ['photo', (value) => (isId(value) ? { photo: value } : {})],
     ['lang', decodeLang],
 ]);
 
-function decodeParam(segment: string, limits: HashLimits): Partial<HashState> {
+function decodeParam(segment: string, limits: HashLimits): Partial<Decoding> {
     const separator = segment.indexOf('=');
     const decoder = separator < 0 ? undefined : PARAM_DECODERS.get(segment.slice(0, separator));
     return decoder === undefined ? {} : decoder(segment.slice(separator + 1), limits);
 }
 
 /** The first segment: the map view, or already a parameter (`#photo=x`). */
-function decodeHead(first: string, limits: HashLimits): DecodedHash {
+function decodeHead(first: string, limits: HashLimits): Decoding {
     return first.includes('=') ? { legacy: false, ...decodeParam(first, limits) } : decodeView(first, limits);
 }
 
@@ -199,5 +258,7 @@ export function decodeHash(raw: string, limits: HashLimits = DEFAULT_HASH_LIMITS
     }
     // String.split always returns at least one element.
     const [first, ...rest] = text.split('&') as [string, ...string[]];
-    return rest.reduce<DecodedHash>((state, segment) => ({ ...state, ...decodeParam(segment, limits) }), decodeHead(first, limits));
+    return withCompare(
+        rest.reduce<Decoding>((state, segment) => ({ ...state, ...decodeParam(segment, limits) }), decodeHead(first, limits)),
+    );
 }

@@ -129,3 +129,35 @@ describe('viewerEvents: overlays', () => {
         expect(overlayEvents(changed, null)).toEqual(overlayOnly);
     });
 });
+
+describe('viewerEvents: swipe compare (M4, V06)', () => {
+    const tracker = new OverlayChangeTracker();
+    const ready = { ...readyState(), windowClass: 'large' as const };
+    const open = { ...ready, compare: { layerId: 'kh9-1977', position: 0.5 } };
+
+    it('happyPath_openingMovingSwitchingModeAndClosingAreAnnounced', () => {
+        const moved = { ...open, compare: { layerId: 'kh9-1977', position: 0.3 } };
+        const compact = { ...moved, windowClass: 'compact' as const };
+
+        expect(viewerEvents(ready, open, tracker, '1.0.0')).toEqual([
+            { type: 'hcm-compare-change', detail: { open: true, mode: 'swipe', layerId: 'kh9-1977', position: 0.5 } },
+        ]);
+        expect(viewerEvents(open, moved, tracker, '1.0.0').map((event) => event.detail)).toEqual([
+            { open: true, mode: 'swipe', layerId: 'kh9-1977', position: 0.3 },
+        ]);
+        expect(viewerEvents(moved, compact, tracker, '1.0.0').map((event) => event.detail)).toEqual([
+            { open: true, mode: 'toggle', layerId: 'kh9-1977', position: 0.3 },
+        ]);
+        expect(viewerEvents(compact, ready, tracker, '1.0.0').map((event) => event.detail)).toEqual([
+            { open: false, mode: null, layerId: null, position: null },
+        ]);
+    });
+
+    it('badPath_aCompareFromTheHashWaitsForReadyAndAnUnchangedOneIsSilent', () => {
+        const loading = { ...open, status: 'loading' as const };
+
+        expect(viewerEvents(idleState(), loading, tracker, '1.0.0')).toEqual([]);
+        expect(viewerEvents(open, { ...open, compare: { ...open.compare } }, tracker, '1.0.0')).toEqual([]);
+        expect(viewerEvents(loading, open, tracker, '1.0.0').map((event) => event.type)).toEqual(['hcm-ready', 'hcm-compare-change']);
+    });
+});

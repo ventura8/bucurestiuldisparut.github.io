@@ -9,6 +9,7 @@ import { applyApprovalPolicy } from './approval.js';
 import { cancelJob } from './cancel.js';
 import { dispatchJob } from './dispatch.js';
 import { releaseCancelled } from './end.js';
+import { noticeJobChange } from './job-notices.js';
 
 /**
  * `imagery.onJobWrite` (Firestore trigger on `cities/{city}/jobs/{job}`; `docs/research/M3-interfaces.md` §4.2): the
@@ -61,10 +62,13 @@ export async function onJobWrite(deps: JobWriteDeps, cityId: string, jobId: stri
     if (after === undefined || !CITY_ID_PATTERN.test(cityId)) {
         return 'none';
     }
-    const transition = transitionOf(parsed(change.before), after);
+    const before = parsed(change.before);
+    const transition = transitionOf(before, after);
     if (transition !== 'none') {
         await ACTIONS[transition](deps, cityId, jobId);
     }
+    // M4 (docs/research/M4-interfaces.md §5.1, assists-notify): a failed job, a version waiting for Approve or for points.
+    await noticeJobChange(deps, { cityId, jobId, job: after }, before);
     return transition;
 }
 

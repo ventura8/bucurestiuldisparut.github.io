@@ -84,7 +84,8 @@ describe('<hcm-imagery-page>: a scene', () => {
         area.set({ detail: SCENE, usgs: 'pending', scenes: { ...imageryState().scenes, items: [scene()] } });
         await updated(element);
 
-        expect(order).toContain('must be ordered from USGS');
+        // M4: the scene to buy has its order card (packages/ui/test/admin/imagery/orders.test.ts has the rest).
+        expect(order).toContain('Must be ordered from USGS');
         expect([version, layer]).toEqual(['#/imagery/version/job-1966', '#/layers/kh-4a-1966']);
         // Downloads not approved yet: Import is there but off, with why and the way to Setup (S-A11-BAD-DOWNLOAD-NOT-APPROVED).
         const pending = deep(element, '.pane[data-scene] [data-state="downloads-pending"]');

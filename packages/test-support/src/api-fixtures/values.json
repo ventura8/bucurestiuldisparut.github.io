@@ -14,6 +14,7 @@
     "accountId": "fn-admin",
     "displayName": "Functions: admin",
     "poolId": "github",
+    "roleId": "hcmVertexDrafts",
     "providerId": "github-actions",
     "operationId": "e2e-operation-0001",
     "operationName": "operations/e2e-operation-0001",

@@ -1,0 +1,68 @@
+import type { AdminNotifyKey } from './ro.js';
+
+/**
+ * English texts of the admin's M4 notifications and assists.
+ * Typed against the Romanian source of truth (`ro.ts`): a missing or extra key is a type error.
+ */
+export const en: Readonly<Record<AdminNotifyKey, string>> = {
+    // [section notify] owner: assists-notify; keys adminContent.notify.*
+    'adminContent.notify.title': 'Notifications',
+    'adminContent.notify.unread': 'Unread: {count}',
+    'adminContent.notify.empty': 'No notifications yet.',
+    'adminContent.notify.markAllRead': 'Mark all as read',
+    'adminContent.notify.event.usgs.approved': 'USGS approved downloads: imports can start.',
+    'adminContent.notify.event.order.delivered': 'USGS delivered the scan of {scene}: the import has started.',
+    'adminContent.notify.event.order.imported': 'The scan of {scene} is imported: open it to see if it is published or waits for you.',
+    'adminContent.notify.event.order.reminder': 'The order for {scene} has waited {days} days: have you paid? USGS deletes unpaid orders.',
+    'adminContent.notify.event.order.expired': 'The order for {scene} was not delivered within {days} days.',
+    'adminContent.notify.event.job.failed': 'Processing “{label}” failed. Open it to see why.',
+    'adminContent.notify.event.layer.readyToApprove': '“{label}” is waiting for your approval.',
+    'adminContent.notify.event.layer.needsPoints': '“{label}” needs a few points in the georeferencer.',
+    'adminContent.notify.event.budget.paused': 'Budget reached ({cost} of {budget} {currency}): image processing paused; the map works.',
+    'adminContent.notify.event.crash.spike': 'New crash reports in the last hour: {count}.',
+    'adminContent.notify.push.turnOn': 'Notifications on this device',
+    'adminContent.notify.push.denied': 'The browser refused notifications (the site settings can allow them). The inbox still works.',
+    'adminContent.notify.push.test': 'Send a test notification',
+    'adminContent.notify.push.testMessage': 'Test notification: notifications work on this device.',
+    'adminContent.notify.push.testSent.one': 'The test notification went to {count} device.',
+    'adminContent.notify.push.testSent.few': 'The test notification went to {count} devices.',
+    'adminContent.notify.push.testSent.other': 'The test notification went to {count} devices.',
+    'adminContent.notify.push.on': 'Notifications are on for this device.',
+    'adminContent.notify.push.working': 'Turning notifications on…',
+    'adminContent.notify.push.unsupported': 'This browser cannot show notifications. The inbox still works.',
+    'adminContent.notify.push.failed': 'Notifications did not start: {reason}',
+    'adminContent.notify.settings.title': 'Notifications on devices',
+    'adminContent.notify.settings.intro': 'The inbox gets everything. Choose what also shows on your devices with notifications on.',
+    'adminContent.notify.settings.kinds': 'What your devices show',
+    'adminContent.notify.settings.saved': 'The notification settings are saved.',
+    'adminContent.notify.list': 'Your notifications',
+    'adminContent.notify.unreadMark': 'unread',
+    'adminContent.notify.badge': '{count} unread',
+    'adminContent.notify.severity.info': 'Information',
+    'adminContent.notify.severity.warning': 'Warning',
+    'adminContent.notify.severity.error': 'Problem',
+    'adminContent.notify.kind.usgs.approved': 'USGS approved downloads',
+    'adminContent.notify.kind.order.delivered': 'An ordered scan arrived',
+    'adminContent.notify.kind.order.imported': 'An ordered scan was imported',
+    'adminContent.notify.kind.order.reminder': 'Payment reminders for orders',
+    'adminContent.notify.kind.order.expired': 'An order never came',
+    'adminContent.notify.kind.job.failed': 'Processing failed',
+    'adminContent.notify.kind.layer.readyToApprove': 'A layer is waiting for approval',
+    'adminContent.notify.kind.layer.needsPoints': 'A layer needs points',
+    'adminContent.notify.kind.budget.paused': 'The budget paused processing',
+    'adminContent.notify.kind.crash.spike': 'Many new crash reports',
+    // [end notify]
+    // [section assist] owner: assists-notify; keys adminContent.assist.*
+    'adminContent.assist.suggestTitle': 'Suggest a title',
+    'adminContent.assist.attribution': 'Suggestions from OpenStreetMap (© OpenStreetMap contributors, ODbL)',
+    'adminContent.assist.draftToEn': 'English draft',
+    'adminContent.assist.draftToRo': 'Romanian draft',
+    'adminContent.assist.draftNote': 'Draft proposed by {model}: check it before you save.',
+    'adminContent.assist.suggestions': 'Suggested titles for the place',
+    'adminContent.assist.waiting': 'Looking for titles in OpenStreetMap…',
+    'adminContent.assist.none': 'OpenStreetMap has no name for this place.',
+    'adminContent.assist.use': 'Use the title “{title}”',
+    'adminContent.assist.drafting': 'Writing the draft…',
+    'adminContent.assist.truncated': 'The draft was shortened to fit the field.',
+    // [end assist]
+};

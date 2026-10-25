@@ -145,6 +145,7 @@ class Errors:
     DOWNLOAD_INCOMPLETE: Final = "apiError.imagery.downloadIncomplete"
     REFERENCE_UNAVAILABLE: Final = "apiError.imagery.referenceUnavailable"
     NO_MATCH: Final = "apiError.imagery.noMatch"
+    NO_SPREAD: Final = "apiError.imagery.noSpread"
     TOO_FEW_GCPS: Final = "apiError.imagery.tooFewGcps"
     DEGENERATE_GCPS: Final = "apiError.imagery.degenerateGcps"
     GCP_OUTSIDE: Final = "apiError.imagery.gcpOutside"

@@ -16,7 +16,7 @@ import { PortRecorder, promised } from './recorder.js';
 type QueryOptions = NonNullable<Parameters<DocumentStore['query']>[2]>;
 type WhereClause = NonNullable<QueryOptions['where']>[number];
 type Transaction = Parameters<Parameters<DocumentStore['transaction']>[0]>[0];
-type Method = 'get' | 'create' | 'set' | 'delete' | 'query' | 'transaction';
+type Method = 'get' | 'create' | 'set' | 'delete' | 'query' | 'count' | 'transaction';
 
 type Write =
     { readonly kind: 'create' | 'set'; readonly path: string; readonly data: unknown } | { readonly kind: 'delete'; readonly path: string };
@@ -198,6 +198,11 @@ export function createFakeDocumentStore(): FakeDocumentStore {
                     documents: results.flatMap(({ path, id, result }) => (result.ok ? [{ id, path, data: result.value }] : [])),
                     invalid: results.flatMap(({ path, id, result }) => (result.ok ? [] : [{ id, path, issues: result.issues }])),
                 };
+            }),
+        count: (collectionPath: string, where?: QueryOptions['where']) =>
+            promised(() => {
+                recorder.enter('count', [collectionPath, where ?? []]);
+                return [...docs.entries()].filter(([path, data]) => isChildOf(path, collectionPath) && matches(data, where)).length;
             }),
         transaction: async <R>(work: (transaction: Transaction) => Promise<R>) => {
             recorder.enter('transaction', []);

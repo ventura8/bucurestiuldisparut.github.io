@@ -115,9 +115,11 @@ const NO_WEBGL_SPEC = 'viewer/no-webgl.spec.ts';
 /**
  * The functional specs whose behaviour does not depend on the window class (DECISIONS-for-review.md §39c, §42g): the
  * boot and its errors, deep links, the analytics consent, the crash reports, the embed API, geolocation, language and
- * theme, About, the page's policy, no JavaScript, the starter kit. Each push runs them at `fn-l1440-ro`; the other four
- * functional projects run them in `tour-matrix`. The specs whose panels, sheets or keys change with the window (Layers
- * and the opacities, photos, places, the timeline, the keyboard, the responsive layouts) run at all five on every push.
+ * theme, About, the page's policy, no JavaScript, swipe compare (each of its tests sets its own window), the manifest of
+ * the public bucket, the starter kit.
+ * Each push runs them at `fn-l1440-ro`; the other four functional projects run them in `tour-matrix`. The specs whose
+ * panels, sheets or keys change with the window (Layers and the opacities, photos, places, the timeline, the keyboard,
+ * the responsive layouts) run at all five on every push.
  */
 const ONE_PROJECT_SPECS = [
     'viewer/about.spec.ts',
@@ -130,6 +132,9 @@ const ONE_PROJECT_SPECS = [
     'viewer/geolocate.spec.ts',
     'viewer/language-theme.spec.ts',
     'viewer/no-javascript.spec.ts',
+    // Swipe compare sets the window each test needs (a second map from 600 px wide, a toggle below: M4, V06).
+    'viewer/compare.spec.ts',
+    'viewer/public-manifest.spec.ts',
     'starter-kit/**/*.spec.ts',
 ];
 
@@ -318,7 +323,12 @@ const JOURNEY_MATRIX: readonly { readonly name: string; readonly use: Use }[] = 
  * `tour-matrix` (DECISIONS-for-review.md §48b, §49k). The real pipeline's run does not depend on the window class: on a
  * push at the laptop only.
  */
-const IMAGERY_PUBLISH_SPECS = ['specs/imagery/published.spec.ts', 'specs/imagery/layer-geometry.spec.ts'];
+const IMAGERY_PUBLISH_SPECS = [
+    'specs/imagery/published.spec.ts',
+    'specs/imagery/layer-geometry.spec.ts',
+    // M4's automation from a bought scan to the viewer's compare (two publishes in its happy path).
+    'specs/imagery/automation.spec.ts',
+];
 const PIPELINE_SPEC = 'specs/imagery/pipeline.spec.ts';
 
 function adminJourneyMatrixProjects(): E2eProject[] {

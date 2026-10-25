@@ -249,3 +249,11 @@ Open, for the user or a later milestone:
   collection-group indexes; the functions deploy (step 4) installs the writers. No migration: no history trigger was
   ever deployed, so the live Firestore holds no history entry, and an entry without `cityId` would still validate and
   show among its document's versions.
+
+## Addendum 2026-10-24: the open items the user decided for M4
+
+- __Swipe compare__ is the project's own (`DECISIONS-for-review.md` §52a): the `mapbox-gl-compare` loader is removed, so
+  installing `mapbox-gl-compare@0.6.0` to compute its digests, and its Subresource Integrity (§18b), are no longer open.
+- __Third-party notices__ for the admin (and the engine) are generated at build with a gate (§52d), and `terra-draw`
+  1.38.0 replaces 1.37.0 with its `HELD` entry removed (§52c): both are the M4 tooling workstream's
+  (`docs/research/M4-interfaces.md` §6).

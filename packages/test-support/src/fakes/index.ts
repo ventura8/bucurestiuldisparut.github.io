@@ -28,3 +28,5 @@ export { USGS_CREDENTIALS } from './usgs.js';
 export { browseJpeg, UNAVAILABLE_BROWSE_SCENE } from './usgs-browse.js';
 export { acquisitionDate, catalogueScene, catalogueScenes, type CatalogueScene, type SceneResult } from './usgs-catalogue.js';
 export { type DeliverySource } from './usgs-downloads.js';
+export { INJECTED_LINK, VERTEX_OUTCOMES, type VertexOutcome, type VertexRequest } from './vertex-ai.js';
+export { type PushedMessage } from './fcm.js';

@@ -16,6 +16,7 @@ import type {
     VersionPagePort,
     VersionViewPort,
 } from '../../../src/admin/imagery/imagery-port.js';
+import { ORDER_CARD_CHUNK } from '../../../src/admin/imagery/orders/lazy-card.js';
 import { FakeArea } from '../editing/fake-area.js';
 import { adminState, deep, deepAll, defineAll, FakeAdminApp, mount, updated } from '../shell/fake-app.js';
 
@@ -23,10 +24,12 @@ export function ready<Item>(items: readonly Item[], more: Partial<ListStatePort<
     return { status: 'ready', items, hasMore: false, reconnecting: false, failure: null, ...more };
 }
 
-export function defineImagery(): void {
+/** Registers the pages and fetches the order card's chunk first, so a page renders the card at once (`lazy-card.test.ts` waits). */
+export async function defineImagery(): Promise<void> {
     defineAll();
     IMAGERY.define(customElements);
     GEOREF.define(customElements);
+    await ORDER_CARD_CHUNK.load();
 }
 
 export function scene(overrides: Partial<SceneItemPort> = {}): SceneItemPort {
@@ -56,6 +59,10 @@ export function scene(overrides: Partial<SceneItemPort> = {}): SceneItemPort {
         corners: null,
         browse: { state: 'copied', path: 'usgs-browse/corona2/DS1035-1057DA023.jpg', error: null },
         layerId: null,
+        // M4: the acquisition state follows `free` unless a test says otherwise; no order; the verified EarthExplorer page.
+        acquisition: overrides.free === false ? 'needsOrder' : 'available',
+        order: null,
+        earthExplorerUrl: `https://earthexplorer.usgs.gov/scene/metadata/full/5e839febdccb64b3/${overrides.id ?? 'DS1035-1057DA023'}/`,
         ...overrides,
     };
 }
@@ -158,6 +165,7 @@ export function imageryState(overrides: Partial<ImageryViewState> = {}): Imagery
             layerId: null,
         },
         ...{ map: 'none', previewOpacity: 0.8, pickedScene: null, replaceLayer: null },
+        ...{ orders: ready([]), ordering: null, orderRefusal: null },
         ...overrides,
     };
 }
@@ -240,6 +248,7 @@ export function georefState(overrides: Partial<GeorefViewState> = {}): GeorefVie
             previewOpacity: 0.7,
             map: 'none',
             pane: 'scan',
+            suggestions: { matched: false, total: 0, pending: [], selected: null, confident: null, noSpread: false },
         },
         ...overrides,
     };

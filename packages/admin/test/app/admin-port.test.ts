@@ -10,6 +10,7 @@ import type { HISTORY_MODULE } from '../../src/history/history.js';
 import type { GEOREF_MODULE } from '../../src/georef/georef.js';
 import type { HOME_MODULE } from '../../src/home/home.js';
 import type { IMAGERY_MODULE } from '../../src/imagery/imagery.js';
+import type { INBOX_MODULE } from '../../src/inbox/inbox.js';
 import type { JOBS_MODULE } from '../../src/jobs/jobs.js';
 import type { layersModule } from '../../src/layers/layers.js';
 import type { PHOTOS_MODULE } from '../../src/photos/module.js';
@@ -82,6 +83,15 @@ describe('the imagery ports', () => {
     });
 });
 // [end imagery]
+// [section inbox] owner: assists-notify (docs/research/M4-interfaces.md §5.5)
+const INBOX_PORT: Assignable<StoreOf<typeof INBOX_MODULE>, NonNullable<ContentPort['inbox']>> = true;
+
+describe('the inbox port', () => {
+    it('happyPath_theInboxStoreSatisfiesItsPagesPort', () => {
+        expect([INBOX_PORT]).toEqual([true]);
+    });
+});
+// [end inbox]
 
 describe('the admin ports', () => {
     it('happyPath_theAppAndItsStateSatisfyTheElementsPorts', () => {
@@ -93,7 +103,7 @@ describe('the admin ports', () => {
             true,
         ]);
         expect(ADMIN_AUTH_STATES).toHaveLength(13);
-        expect(ADMIN_ROUTES).toHaveLength(12);
+        expect(ADMIN_ROUTES).toHaveLength(13);
         expect(OPS_PORTS).toHaveLength(5);
     });
 });

@@ -1,8 +1,10 @@
 /**
  * A scene's page (`#/imagery/scene/<entityId>`, `docs/research/M3-interfaces.md` §3.2–§3.4, §10.2; behaviours A11,
  * A12): its browse image (copied into our bucket first; unavailable says so with Try again), what USGS says of it, every
- * reason of its rank in plain words, and **Import** in one click for a free scene. A scene that must be bought, one
- * imported already, and a city whose USGS downloads are not approved yet each say why Import is not offered.
+ * reason of its rank in plain words, and **Import** in one click for a free scene. A scene imported already, and a city
+ * whose USGS downloads are not approved yet each say why Import is not offered. M4 (A13): a scene that must be bought has
+ * the order card instead (`orders/order-card.ts`, a chunk fetched on first need: `orders/lazy-card.ts`), and so has one
+ * USGS just delivered (the server imports it).
  */
 import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
@@ -12,7 +14,9 @@ import { contentText, noticeOf } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
 import type { SceneItemPort } from './imagery-port.js';
 import { datasetText, dayText, numberText, reasonText } from './imagery-text.js';
-import { when, withValue } from './when.js';
+import { lazyOrderCard } from './orders/lazy-card.js';
+import { sceneRefusal, USGS_SETUP_HREF } from './scene-refusal.js';
+import { when } from './when.js';
 
 function browseImage(context: ImageryContext, scene: SceneItemPort): TemplateResult {
     const { locale, intents } = context;
@@ -70,9 +74,6 @@ function importedLink(context: ImageryContext, scene: SceneItemPort): TemplateRe
     return html`<p><a href=${href}>${contentText(context.locale, 'adminContent.imagery.importedOpen')}</a></p>`;
 }
 
-/** Setup's USGS step, where the credentials are pasted and the M2M access is watched. */
-export const USGS_SETUP_HREF = '#/setup/usgs';
-
 /**
  * USGS has not approved the account's downloads yet: Import stays off, with why (`apiError.usgs.accessPending`) and the
  * way to Setup's USGS step (S-A11-BAD-DOWNLOAD-NOT-APPROVED).
@@ -96,15 +97,20 @@ function noImport(context: ImageryContext, scene: SceneItemPort): TemplateResult
     if (scene.status === 'imported') {
         return importedLink(context, scene);
     }
-    if (!scene.free) {
-        return html`<p class="note" data-state="needs-order">${contentText(context.locale, 'adminContent.imagery.needsOrderNote')}</p>`;
-    }
     return context.view.usgs === 'ok' ? null : downloadsPending(context);
+}
+
+/** M4: an order USGS delivered is imported by the server, and its card says so and links to the import. */
+const ORDER_IMPORTS: readonly SceneItemPort['acquisition'][] = ['delivered', 'importing'];
+
+/** M4: a free scene, or an imported one, whose order (if any) is not the server's to import; one to buy has its card. */
+function importShown(scene: SceneItemPort): boolean {
+    return (scene.free || scene.status === 'imported') && !ORDER_IMPORTS.includes(scene.acquisition);
 }
 
 /** Import offered: a free scene not imported yet, once USGS lets the city download (the list's cards and the scene). */
 export function importable(context: ImageryContext, scene: SceneItemPort): boolean {
-    return scene.free && scene.status !== 'imported' && context.view.usgs === 'ok';
+    return importShown(scene) && scene.status !== 'imported' && context.view.usgs === 'ok';
 }
 
 async function importScene(context: ImageryContext, id: string): Promise<void> {
@@ -130,12 +136,7 @@ export function importButton(context: ImageryContext, scene: SceneItemPort, name
 }
 
 export function importRefusal(context: ImageryContext, scene: SceneItemPort): TemplateResult {
-    const refusal = context.view.importRefusal;
-    return withValue(
-        refusal?.id === scene.id ? refusal.notice : null,
-        (notice) =>
-            html`<p class="alert" role="alert"><hcm-icon name="error"></hcm-icon><span>${noticeOf(context.locale, notice)}</span></p>`,
-    );
+    return sceneRefusal(context, context.view.importRefusal, scene);
 }
 
 function notFound(context: ImageryContext): TemplateResult {
@@ -150,7 +151,8 @@ function sceneBody(context: ImageryContext, scene: SceneItemPort): TemplateResul
     return html`<div class="pane" data-scene=${scene.id}>
         <h2 tabindex="-1" data-detail-heading>${scene.sensorName} · ${dayText(locale, scene.date)}</h2>
         <p>${contentText(locale, 'adminContent.imagery.score', { score: String(scene.score) })}</p>
-        ${browseImage(context, scene)} ${noImport(context, scene) ?? importButton(context, scene)} ${importRefusal(context, scene)}
+        ${browseImage(context, scene)} ${lazyOrderCard(context, scene)}
+        ${when(importShown(scene), () => noImport(context, scene) ?? importButton(context, scene))} ${importRefusal(context, scene)}
         <h3>${contentText(locale, 'adminContent.imagery.why')}</h3>
         <ul class="reasons">
             ${scene.reasons.map((reason) => html`<li>${reasonText(locale, reason)}</li>`)}

@@ -28,6 +28,8 @@ export const CONTENT_AREAS = [
     'home',
     'imagery',
     'georef',
+    /** M4 (`docs/research/M4-interfaces.md` §5.5): the admin's notifications and push settings. */
+    'inbox',
 ] as const;
 
 export type ContentArea = (typeof CONTENT_AREAS)[number];

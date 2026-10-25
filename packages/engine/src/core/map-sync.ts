@@ -3,13 +3,14 @@
  * `update` applies what changed between two states. Raster layers in the `middle` slot with their adjustments, the
  * photos (filtered by the timeline), one vector overlay per POI category in the `top` slot; visibility and opacity
  * whenever an overlay changes (the adapter coalesces opacity to one paint per animation frame); a language switch
- * also reaches Mapbox's own labels and the basemap's (`setLocale`).
+ * also reaches Mapbox's own labels and the basemap's (`setLocale`). The overlays drawn are `displayedOverlays`: on a
+ * compact window, swipe compare's toggle may show the compared side's historical layer instead (M4, V06).
  */
 import { findOverlay, PHOTOS_OVERLAY_ID, rasterAdjustmentPaint, type Manifest, type Overlay } from '@hcm/shared';
 import type { MapPort } from '@hcm/ui/map';
 
 import { photoFeatures, poiSpecs, rasterSpec } from './map-specs.js';
-import type { ViewerState } from './state.js';
+import { displayedOverlays, type ViewerState } from './state.js';
 
 export class MapSync {
     readonly #map: MapPort;
@@ -27,8 +28,9 @@ export class MapSync {
         if (manifest === null) {
             return;
         }
+        const overlays = displayedOverlays(state);
         for (const layer of manifest.layers) {
-            this.#map.addRasterLayer(rasterSpec(layer, findOverlay(state.overlays, layer.id), this.#assetBase), 'middle');
+            this.#map.addRasterLayer(rasterSpec(layer, findOverlay(overlays, layer.id), this.#assetBase), 'middle');
             this.#map.setLayerPaint(layer.id, rasterAdjustmentPaint(layer.adjustments));
         }
         const photos = findOverlay(state.overlays, PHOTOS_OVERLAY_ID);
@@ -45,7 +47,7 @@ export class MapSync {
         if (manifest === null || manifest !== previous.manifest) {
             return;
         }
-        this.#overlays(previous.overlays, next.overlays);
+        this.#overlays(displayedOverlays(previous), displayedOverlays(next));
         this.#yearAndLanguage(previous, next, manifest);
     }
 

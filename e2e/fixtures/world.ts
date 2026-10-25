@@ -26,6 +26,12 @@ export const E2E_SITE_DIR = 'dist/e2e-site';
  */
 export const E2E_CITY_ID = 'bucharest';
 
+/**
+ * The public bucket the e2e site `bucharest-bucket` reads its manifest from (`HCM_PUBLIC_BUCKET` of the site build,
+ * DECISIONS-for-review.md §51e): a generated name no project has; the specs answer its requests themselves.
+ */
+export const E2E_PUBLIC_BUCKET = 'e2e-hcm-public';
+
 /** Generated test values that encode the scenario, never real ones (`quality/testing_strategy_skill.md`). */
 export const E2E_TOKEN = 'pk.e2e-fake-token';
 export const E2E_MEASUREMENT_ID = 'G-E2E0000000';

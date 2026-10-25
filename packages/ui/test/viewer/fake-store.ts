@@ -44,6 +44,7 @@ export function idleState(): ViewerState {
         theme: 'system',
         consent: 'unknown',
         toast: null,
+        compare: null,
     };
 }
 
@@ -179,5 +180,23 @@ export class FakeStore implements ViewerStorePort {
     dismissToast(): void {
         this.#record('dismissToast');
         this.set({ toast: null });
+    }
+
+    openCompare(layerId: string | null, position?: number): void {
+        this.#record('openCompare', layerId, position);
+        this.set({ compare: { layerId, position: position ?? this.#state.compare?.position ?? 0.5 } });
+    }
+
+    setComparePosition(position: number): void {
+        this.#record('setComparePosition', position);
+        const compare = this.#state.compare;
+        if (compare !== null) {
+            this.set({ compare: { ...compare, position } });
+        }
+    }
+
+    closeCompare(): void {
+        this.#record('closeCompare');
+        this.set({ compare: null });
     }
 }

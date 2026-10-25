@@ -30,6 +30,10 @@
         "./map/draw": {
             "types": "./src/map/draw/index.ts",
             "default": "./src/map/draw/index.ts"
+        },
+        "./viewer/compare": {
+            "types": "./src/viewer/compare/index.ts",
+            "default": "./src/viewer/compare/index.ts"
         }
     },
     "scripts": {
@@ -41,7 +45,7 @@
         "@hcm/shared": "0.0.0",
         "@material/material-color-utilities": "0.4.0",
         "lit": "3.3.3",
-        "terra-draw": "1.37.0",
+        "terra-draw": "1.38.0",
         "terra-draw-mapbox-gl-adapter": "1.5.0"
     },
     "devDependencies": {

@@ -5,6 +5,7 @@ import { createApiKeysFake, type ApiKeysState } from './google-api-keys.js';
 import { createAppCheckFake, createRecaptchaFake, type AppCheckState } from './google-app-check.js';
 import { createBillingBudgetsFake, createCloudBillingFake, defaultBillingState, type BillingState } from './google-billing.js';
 import { GoogleProjects } from './google-common.js';
+import { createFcmFake, defaultFcmState, type FcmState } from './fcm.js';
 import { createErrorReportingFake, type ErrorReportingState } from './google-errors.js';
 import { createFirebaseStorageFake } from './google-firebase-storage.js';
 import { createFirebaseManagementFake, type FirebaseState } from './google-firebase.js';
@@ -36,6 +37,7 @@ import { FAILURE_MODES, type FailureMode, type ServiceFake, type UpstreamService
 import { createStacFake, defaultStacState, type StacState } from './stac.js';
 import { createUsgsBrowseFake } from './usgs-browse.js';
 import { createUsgsFake, defaultUsgsState, type UsgsState } from './usgs.js';
+import { createVertexAiFake, defaultVertexAiState, type VertexAiState } from './vertex-ai.js';
 
 /**
  * Every fake upstream in one place (docs/research/M2-interfaces.md §7, M2b-interfaces.md §6.1): Google Cloud (OAuth
@@ -73,6 +75,9 @@ export interface UpstreamState {
     readonly usgs: UsgsState;
     readonly stac: StacState;
     readonly overpass: OverpassState;
+    /** M4: Vertex AI Gemini's scripted drafts and FCM's pushed messages (`docs/research/M4-interfaces.md` §8). */
+    readonly vertexAi: VertexAiState;
+    readonly fcm: FcmState;
 }
 
 export interface UpstreamFakes extends FakeFetch {
@@ -133,6 +138,8 @@ function initialState(): UpstreamState {
         usgs: defaultUsgsState(),
         stac: defaultStacState(),
         overpass: { answer: undefined },
+        vertexAi: defaultVertexAiState(),
+        fcm: defaultFcmState(),
     };
 }
 
@@ -168,6 +175,8 @@ function services(state: UpstreamState): readonly ServiceFake[] {
         createOverpassFake(state.overpass),
         createNominatimFake(),
         createGoogleApisFake(),
+        createVertexAiFake(state.vertexAi),
+        createFcmFake(state.fcm),
     ];
 }
 
@@ -199,8 +208,10 @@ function checkFailure(fakes: readonly ServiceFake[], service: UpstreamServiceNam
 
 /**
  * The hosts only servers call (the Functions emulator, the raster pipeline): USGS (M2M has no CORS; browse images are
- * copied server-side; deliveries are signed), the STAC catalogue, its COG bucket and Overpass. The e2e admin pages may
- * never reach them (docs/research/M3-interfaces.md §3.4, §13): their firewall blocks them although a fake answers them.
+ * copied server-side; deliveries are signed), the STAC catalogue, its COG bucket and Overpass; since M4 Nominatim (one
+ * request a second through the server's queue), Vertex AI (server-side only, security review §0.9) and FCM's send API.
+ * The e2e admin pages may never reach them (docs/research/M3-interfaces.md §3.4, §13, M4-interfaces.md §8): their
+ * firewall blocks them although a fake answers them.
  */
 export const SERVER_ONLY_HOSTS: readonly string[] = [
     'm2m.cr.usgs.gov',
@@ -209,6 +220,9 @@ export const SERVER_ONLY_HOSTS: readonly string[] = [
     'earth-search.aws.element84.com',
     'sentinel-cogs.s3.us-west-2.amazonaws.com',
     'overpass-api.de',
+    'nominatim.openstreetmap.org',
+    'us-central1-aiplatform.googleapis.com',
+    'fcm.googleapis.com',
 ];
 
 /** Every host a fake answers (the e2e admin tier forwards these to the mock APIs, but `SERVER_ONLY_HOSTS`). */

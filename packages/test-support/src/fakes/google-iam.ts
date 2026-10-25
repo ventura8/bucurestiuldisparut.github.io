@@ -5,8 +5,9 @@ import { sequence, type ServiceFake } from './service.js';
 
 /**
  * IAM v1 for the Provision cloud step (`service-accounts`, `iam`, `workload-identity` items): service accounts and
- * their own IAM policies, and the Workload Identity Federation pool and provider CI deploys through. Creates are
- * idempotent the Google way (409 `ALREADY_EXISTS` for the second), long-running operations are done at once.
+ * their own IAM policies, the project's custom roles (M4), and the Workload Identity Federation pool and provider CI
+ * deploys through. Creates are idempotent the Google way (409 `ALREADY_EXISTS` for the second), a deleted custom role
+ * answers with `deleted: true` until it is undeleted, long-running operations are done at once.
  */
 
 interface Binding {
@@ -25,6 +26,8 @@ interface ProjectIam {
     readonly providers: Map<string, Readonly<Record<string, unknown>>>;
     /** Deleted pools (`<pool>`) and providers (`<pool>/<provider>`): readable with state `DELETED` for 30 days. */
     readonly deleted: Set<string>;
+    /** Custom role id → its permissions and whether it is deleted (undeletable). */
+    readonly roles: Map<string, Role>;
 }
 
 export interface IamState {
@@ -39,7 +42,14 @@ const IAM: GoogleApi = {
 };
 
 function emptyIam(): ProjectIam {
-    return { accounts: new Map(), accountPolicies: new Map(), pools: new Map(), providers: new Map(), deleted: new Set() };
+    return {
+        accounts: new Map(),
+        accountPolicies: new Map(),
+        pools: new Map(),
+        providers: new Map(),
+        deleted: new Set(),
+        roles: new Map(),
+    };
 }
 
 function bindingsOf(value: unknown): readonly Binding[] {
@@ -61,6 +71,7 @@ function displayNameOf(details: unknown): string {
 type ProjectOf = (segment: string) => { readonly id: string; readonly number: string; readonly iam: ProjectIam };
 
 const ACCOUNTS = 'https://iam.googleapis.com/v1/projects/{project}/serviceAccounts';
+const ROLES = 'https://iam.googleapis.com/v1/projects/{project}/roles';
 const POOLS = 'https://iam.googleapis.com/v1/projects/{project}/locations/global/workloadIdentityPools';
 
 function auth(answer: Route['answer']): Route['answer'] {
@@ -140,6 +151,86 @@ function accountRoutes(iamOf: ProjectOf): Route[] {
                     jsonResponse(accountBody(id, accountId, iam.accounts.get(accountId) ?? '')),
                 ),
             ),
+        ),
+    ];
+}
+
+interface Role {
+    includedPermissions: readonly string[];
+    deleted: boolean;
+}
+
+function permissionsOf(value: unknown): readonly string[] {
+    return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+}
+
+/** The custom role routes: get, create, patch (its permissions) and undelete. */
+function roleRoutes(iamOf: ProjectOf): Route[] {
+    const body = (projectId: string, roleId: string, role: Role): Response =>
+        jsonResponse({
+            ...(fixtureBody('iam/roles.get.ok', { projectId, roleId }) as Record<string, unknown>),
+            includedPermissions: role.includedPermissions,
+            ...(role.deleted ? { deleted: true } : {}),
+        });
+    /** Runs `answer` for an existing role (`{role}` of the path), else answers 404. */
+    const existing = (params: RouteParams, answer: (projectId: string, roleId: string, role: Role) => Response): Response => {
+        const { id, iam } = iamOf(String(params['project']));
+        const roleId = String(params['role']);
+        const role = iam.roles.get(roleId);
+        return role === undefined ? googleError('google/error.not-found', IAM) : answer(id, roleId, role);
+    };
+    const create: Route['answer'] = (request, params) => {
+        const { id, iam } = iamOf(String(params['project']));
+        const roleId = bodyField(request, 'roleId');
+        if (typeof roleId !== 'string') {
+            return googleError('google/error.invalid-argument', IAM);
+        }
+        if (iam.roles.has(roleId)) {
+            return googleError('google/error.already-exists', IAM);
+        }
+        const fields = bodyField(request, 'role');
+        const role = {
+            includedPermissions: permissionsOf((fields as { includedPermissions?: unknown } | undefined)?.includedPermissions),
+            deleted: false,
+        };
+        iam.roles.set(roleId, role);
+        return body(id, roleId, role);
+    };
+    return [
+        route('POST', ROLES, 'iam.roles.create', auth(create)),
+        route(
+            'POST',
+            `${ROLES}/{role}:undelete`,
+            'iam.roles.undelete',
+            auth((_request, params) =>
+                existing(params, (id, roleId, role) => {
+                    if (!role.deleted) {
+                        return googleError('google/error.invalid-argument', IAM);
+                    }
+                    role.deleted = false;
+                    return body(id, roleId, role);
+                }),
+            ),
+        ),
+        route(
+            'PATCH',
+            `${ROLES}/{role}`,
+            'iam.roles.patch',
+            auth((request, params) =>
+                existing(params, (id, roleId, role) => {
+                    if (role.deleted || request.url.searchParams.get('updateMask') !== 'includedPermissions') {
+                        return googleError('google/error.invalid-argument', IAM);
+                    }
+                    role.includedPermissions = permissionsOf(bodyField(request, 'includedPermissions'));
+                    return body(id, roleId, role);
+                }),
+            ),
+        ),
+        route(
+            'GET',
+            `${ROLES}/{role}`,
+            'iam.roles.get',
+            auth((_request, params) => existing(params, (id, roleId, role) => body(id, roleId, role))),
         ),
     ];
 }
@@ -265,7 +356,7 @@ export function createIamFake(state: IamState, projects: GoogleProjects): Servic
     };
     return {
         name: 'iam',
-        routes: [...poolRoutes(iamOf), ...accountRoutes(iamOf)],
+        routes: [...poolRoutes(iamOf), ...accountRoutes(iamOf), ...roleRoutes(iamOf)],
         failure: (mode) => googleFailure(IAM, mode),
         scenarios: {
             /** The `github` pool of the e2e project was deleted (an earlier setup removed): it must be undeleted. */
@@ -273,6 +364,11 @@ export function createIamFake(state: IamState, projects: GoogleProjects): Servic
                 const { iam } = iamOf(String(FIXTURE_VALUES['projectId']));
                 iam.pools.set('github', 'GitHub Actions');
                 iam.deleted.add('github');
+            },
+            /** M4: the drafts' custom role was deleted with older permissions: it must be undeleted and corrected. */
+            roleDeleted: () => {
+                const { iam } = iamOf(String(FIXTURE_VALUES['projectId']));
+                iam.roles.set('hcmVertexDrafts', { includedPermissions: ['aiplatform.endpoints.get'], deleted: true });
             },
         },
         snapshot: () => ({
@@ -285,6 +381,7 @@ export function createIamFake(state: IamState, projects: GoogleProjects): Servic
                         pools: Object.fromEntries(iam.pools),
                         providers: Object.fromEntries(iam.providers),
                         deleted: [...iam.deleted],
+                        roles: Object.fromEntries(iam.roles),
                     },
                 ]),
             ),

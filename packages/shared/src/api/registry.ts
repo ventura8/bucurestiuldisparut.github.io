@@ -30,6 +30,7 @@ import {
     reprocessPhotoResponseSchema,
 } from './content.js';
 import { revertRequestSchema, revertResponseSchema } from './history.js';
+import { ASSIST_GEOCODE_QUEUE } from '../schemas/assist.js';
 import {
     IMAGERY_PUBLISH_QUEUE,
     IMAGERY_TICK_SCHEDULE,
@@ -56,7 +57,29 @@ import {
     imageryStudioDoneResponseSchema,
     imageryVersionRequestSchema,
 } from './imagery.js';
+import {
+    assistSuggestTitleRequestSchema,
+    assistSuggestTitleResponseSchema,
+    assistTranslateDraftRequestSchema,
+    assistTranslateDraftResponseSchema,
+} from './assist.js';
+import {
+    notifyRegisterDeviceRequestSchema,
+    notifyRegisterDeviceResponseSchema,
+    notifySendTestRequestSchema,
+    notifySendTestResponseSchema,
+    notifyUnregisterDeviceRequestSchema,
+    notifyUnregisterDeviceResponseSchema,
+} from './notify.js';
 import { layerDeleteRequestSchema, layerDeleteResponseSchema, layerLinkRequestSchema, layerLinkResponseSchema } from './layers.js';
+import {
+    usgsCancelOrderRequestSchema,
+    usgsCancelOrderResponseSchema,
+    usgsCheckOrderRequestSchema,
+    usgsCheckOrderResponseSchema,
+    usgsMarkOrderedRequestSchema,
+    usgsMarkOrderedResponseSchema,
+} from './orders.js';
 import {
     analyticsConfigRequestSchema,
     analyticsConfigResponseSchema,
@@ -79,9 +102,10 @@ import { ERROR_REPORT_MAX_BYTES, errorReportSchema, listGroupsRequestSchema, lis
 
 /**
  * The workstreams that implement the functions (`docs/research/M2-interfaces.md` §5; `fn-imagery`:
- * `docs/research/M3-interfaces.md` §9, the M3 raster backend).
+ * `docs/research/M3-interfaces.md` §9, the M3 raster backend; `fn-orders` and `fn-assist-notify`:
+ * `docs/research/M4-interfaces.md` §6, the M4 orders, assists and notifications).
  */
-export const FUNCTION_OWNERS = ['fn-admin', 'fn-setup', 'fn-content', 'fn-imagery'] as const;
+export const FUNCTION_OWNERS = ['fn-admin', 'fn-setup', 'fn-content', 'fn-imagery', 'fn-orders', 'fn-assist-notify'] as const;
 export type FunctionOwner = (typeof FUNCTION_OWNERS)[number];
 
 /**
@@ -166,6 +190,16 @@ export const CALLABLES = {
     'imagery.retry': adminCallable('fn-imagery', imageryRetryRequestSchema, imageryRetryResponseSchema),
     'imagery.probeTiles': adminCallable('fn-imagery', imageryProbeRequestSchema, imageryProbeResponseSchema),
     'imagery.resumeGuard': adminCallable('fn-imagery', imageryResumeGuardRequestSchema, imageryResumeGuardResponseSchema, 'consume'),
+    // M4 orders (owner fn-orders, docs/research/M4-interfaces.md §1.4): "I ordered it", "Check now", "Take the mark back".
+    'usgs.markOrdered': adminCallable('fn-orders', usgsMarkOrderedRequestSchema, usgsMarkOrderedResponseSchema),
+    'usgs.checkOrder': adminCallable('fn-orders', usgsCheckOrderRequestSchema, usgsCheckOrderResponseSchema),
+    'usgs.cancelOrder': adminCallable('fn-orders', usgsCancelOrderRequestSchema, usgsCancelOrderResponseSchema),
+    // M4 assists and notifications (owner fn-assist-notify, docs/research/M4-interfaces.md §4, §5).
+    'assist.suggestTitle': adminCallable('fn-assist-notify', assistSuggestTitleRequestSchema, assistSuggestTitleResponseSchema),
+    'assist.translateDraft': adminCallable('fn-assist-notify', assistTranslateDraftRequestSchema, assistTranslateDraftResponseSchema),
+    'notify.registerDevice': adminCallable('fn-assist-notify', notifyRegisterDeviceRequestSchema, notifyRegisterDeviceResponseSchema),
+    'notify.unregisterDevice': adminCallable('fn-assist-notify', notifyUnregisterDeviceRequestSchema, notifyUnregisterDeviceResponseSchema),
+    'notify.sendTest': adminCallable('fn-assist-notify', notifySendTestRequestSchema, notifySendTestResponseSchema),
 } as const satisfies Readonly<Record<string, CallableSpec>>;
 
 export type CallableName = keyof typeof CALLABLES;
@@ -205,6 +239,9 @@ export const BACKGROUND_FUNCTIONS = {
     'imagery.onRasterUpload': { trigger: 'storage', source: 'uploads/rasters/{city}/{uid}/{upload}/{file}', owner: 'fn-imagery' },
     'imagery.publish': { trigger: 'taskQueue', source: IMAGERY_PUBLISH_QUEUE, owner: 'fn-imagery' },
     'imagery.tick': { trigger: 'schedule', source: IMAGERY_TICK_SCHEDULE, owner: 'fn-imagery' },
+    // M4 assists and notifications (owner fn-assist-notify).
+    'assist.geocode': { trigger: 'taskQueue', source: ASSIST_GEOCODE_QUEUE, owner: 'fn-assist-notify' },
+    'notify.onEvent': { trigger: 'firestore', source: 'notificationEvents/{eventId}', owner: 'fn-assist-notify' },
 } as const satisfies Readonly<Record<string, { trigger: BackgroundTrigger; source: string; owner: FunctionOwner }>>;
 
 /** Firebase names a function after its export path: the namespace `admin` and the export `claim` deploy as `admin-claim`. */

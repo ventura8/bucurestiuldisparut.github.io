@@ -21,6 +21,7 @@ import { createFirebaseManagement } from '../../src/adapters/firebase-management
 import { createMapboxApi } from '../../src/adapters/mapbox.js';
 import { createSecretManagerStore } from '../../src/adapters/secret-manager.js';
 import { createUsgsApi } from '../../src/adapters/usgs.js';
+import { createVertexAi } from '../../src/adapters/vertex-ai.js';
 import type { Caller, CallerToken, VerifiedCaller } from '../../src/api/access.js';
 import type { ErrorReporter } from '../../src/ports/error-reporter.js';
 import type { RuntimeConfig } from '../../src/ports/runtime-config.js';
@@ -144,6 +145,8 @@ export function createWorld(options: WorldOptions = {}): World {
         blobs: blobs.blobs,
         tasks: tasks.queue,
         errors,
+        // M4 (CR-M4-5): the self-test's `ai` check asks the fake Vertex AI's `countTokens`.
+        translator: createVertexAi({ projectId: CONFIG.projectId, tokens, fetch: intercepted }),
     };
     const world: World = {
         deps,

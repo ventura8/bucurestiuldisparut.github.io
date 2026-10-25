@@ -34,6 +34,15 @@ describe('createEmulatorFetch', () => {
         ],
         ['https://ims.cr.usgs.gov/browse/declass1/DS1105-1071DF075.jpg', `${FAKES}/h/ims.cr.usgs.gov/browse/declass1/DS1105-1071DF075.jpg`],
         ['https://tiles.e2e.test/xyz/e2e-1980/12/2344/1482.png', `${FAKES}/h/tiles.e2e.test/xyz/e2e-1980/12/2344/1482.png`],
+        // M4: Nominatim (the title suggestions' queue), Vertex AI and FCM (googleapis.com hosts).
+        [
+            'https://nominatim.openstreetmap.org/reverse?lat=44.4&lon=26.1',
+            `${FAKES}/h/nominatim.openstreetmap.org/reverse?lat=44.4&lon=26.1`,
+        ],
+        [
+            'https://fcm.googleapis.com/v1/projects/demo-hcm/messages:send',
+            `${FAKES}/h/fcm.googleapis.com/v1/projects/demo-hcm/messages:send`,
+        ],
     ])('happyPath_everyServedHostIsForwarded %s', async (input, forwarded) => {
         const fetch = upstream();
 

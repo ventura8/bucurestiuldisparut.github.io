@@ -25,8 +25,6 @@ export type {
 } from './map-port.js';
 export type {
     MapboxCameraOptions,
-    MapboxCompare,
-    MapboxCompareConstructor,
     MapboxEvent,
     MapboxFeature,
     MapboxGeoJsonSource,
@@ -43,5 +41,3 @@ export type { MapboxLoaderScope } from './mapbox-loader.js';
 export type { FrameScheduler } from './overlay-registry.js';
 export { browserAdapterEnv } from './env.js';
 export type { AdapterEnv, BrowserScope } from './env.js';
-export { COMPARE_PLUGIN_VERSION, COMPARE_SCRIPT_URL, COMPARE_STYLE_URL, comparePlugin, openCompare } from './compare.js';
-export type { CompareDeps, CompareIntegrity, CompareOptions, CompareSession } from './compare.js';

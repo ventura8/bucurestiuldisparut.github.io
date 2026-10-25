@@ -97,6 +97,7 @@ export function layersState(overrides: Partial<LayersViewState> = {}): LayersVie
         link: null,
         map: 'none',
         crop: null,
+        assist: { titles: { status: 'idle', suggestions: [], attribution: null, error: null }, drafts: {} },
         ...overrides,
     };
 }

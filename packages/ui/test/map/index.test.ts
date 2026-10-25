@@ -7,9 +7,6 @@ describe('the map entries', () => {
     it('happyPath_mapExportsThePortsAdapterAndHelpers', () => {
         expect(new Set(Object.keys(map))).toEqual(
             new Set([
-                'COMPARE_PLUGIN_VERSION',
-                'COMPARE_SCRIPT_URL',
-                'COMPARE_STYLE_URL',
                 'EventListeners',
                 'Listeners',
                 'MAPBOX_GL_CSS_URL',
@@ -18,11 +15,9 @@ describe('the map entries', () => {
                 'MAPBOX_INTEGRITY_ATTRIBUTE',
                 'PHOTOS_OVERLAY_ID',
                 'browserAdapterEnv',
-                'comparePlugin',
                 'createMapboxPort',
                 'nativeMap',
                 'loadMapboxGl',
-                'openCompare',
             ]),
         );
     });

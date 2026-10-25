@@ -21,8 +21,10 @@ import {
 
 import { isoOf } from '../content/list.js';
 import type { Stored } from '../content/services.js';
+import { orderFieldsOf, type OrderFields } from './orders/model.js';
 
-export interface SceneItem {
+/** M4 (`docs/research/M4-interfaces.md` §1.7): with its acquisition state, its order and its EarthExplorer page. */
+export interface SceneItem extends OrderFields {
     readonly id: string;
     readonly displayId: string;
     readonly dataset: UsgsDataset;
@@ -71,6 +73,7 @@ export function sceneItemOf(doc: Stored<UsgsSceneDoc>): SceneItem {
         ...{ status: scene.status, free: scene.downloadAvailable, cloudCover: orNull(scene.cloudCover), resolutionM: scene.resolutionM },
         ...{ coverage: scene.coverage, score: scene.rank.score, reasons: scene.rank.reasons, footprint: scene.footprint.map(lngLat) },
         ...{ corners: cornersOf(scene), browse: browseOf(scene.browse), layerId: orNull(scene.layerId) },
+        ...orderFieldsOf(scene),
     };
 }
 

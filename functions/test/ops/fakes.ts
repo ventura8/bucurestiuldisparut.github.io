@@ -7,11 +7,13 @@ import { timestampFromDate } from '@hcm/shared';
 
 import { createMemorySecretStore } from '../../src/adapters/secret-store-memory.js';
 import type { AuthAdmin, AuthUser } from '../../src/ports/auth-admin.js';
+import type { ErrorReporter } from '../../src/ports/error-reporter.js';
 import type { MapboxApi } from '../../src/ports/mapbox-api.js';
 import type { SecretStore } from '../../src/ports/secret-store.js';
 import type { UsgsApi } from '../../src/ports/usgs-api.js';
 import { contentDeps, type ContentDeps } from '../publish/fakes.js';
 import { PortRecorder } from '../support/recorder.js';
+import { createFakeErrorReporter } from '../support/services.js';
 
 interface FakeAuth extends AuthAdmin {
     readonly recorder: PortRecorder<'listUsers' | 'deleteUser'>;
@@ -108,11 +110,17 @@ function fakeUsgs(permissions: readonly string[]): FakeUsgs {
     };
 }
 
+type CrashGroup = Awaited<ReturnType<ErrorReporter['listGroups']>>['groups'][number];
+
 export interface OpsTestDeps extends ContentDeps {
     readonly auth: FakeAuth;
     readonly secrets: SecretStore;
     readonly mapbox: FakeMapbox;
     readonly usgs: FakeUsgs;
+    /** M4's crash-spike check reads Error Reporting's groups: `crashGroups` is what it lists (none by default). */
+    readonly errors: ReturnType<typeof createFakeErrorReporter>['errors'];
+    readonly errorsRecorder: ReturnType<typeof createFakeErrorReporter>['recorder'];
+    readonly crashGroups: CrashGroup[];
 }
 
 export function opsDeps(now: string, options: { users?: readonly AuthUser[]; permissions?: readonly string[] } = {}): OpsTestDeps {
@@ -122,7 +130,15 @@ export function opsDeps(now: string, options: { users?: readonly AuthUser[]; per
         secrets: createMemorySecretStore(),
         mapbox: fakeMapbox(),
         usgs: fakeUsgs(options.permissions ?? ['search', 'download']),
+        ...crashReporting(),
     };
+}
+
+/** An Error Reporting whose groups a test sets (`crashGroups`), for the crash-spike check. */
+function crashReporting(): Pick<OpsTestDeps, 'errors' | 'errorsRecorder' | 'crashGroups'> {
+    const crashGroups: CrashGroup[] = [];
+    const { errors, recorder } = createFakeErrorReporter(crashGroups);
+    return { errors, errorsRecorder: recorder, crashGroups };
 }
 
 /** A timestamp `hours` before `iso`. */

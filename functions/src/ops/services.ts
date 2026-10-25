@@ -20,11 +20,12 @@ import {
 } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
+import { emitNotification } from '../api/notification-event.js';
 import { UpstreamError, type UpstreamFailure } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
 import { omit } from '../api/objects.js';
 
-export type ServicesDeps = Pick<Ports, 'log' | 'documents' | 'secrets' | 'mapbox' | 'usgs'>;
+export type ServicesDeps = Pick<Ports, 'log' | 'clock' | 'documents' | 'secrets' | 'mapbox' | 'usgs'>;
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
@@ -186,9 +187,25 @@ function stateOf(health: Health | undefined): string {
     return health?.state ?? 'skipped';
 }
 
+/**
+ * M4 (`docs/research/M4-interfaces.md` §5.1, assists-notify): USGS granting downloads is news for every admin, emitted once
+ * (`usgs.approved~download`) when a check turns the role `download`.
+ */
+async function noticeApproval(deps: ServicesDeps, before: SetupStatusDoc | undefined, usgs: UsgsHealth | undefined): Promise<void> {
+    if (approvedNow(before, usgs)) {
+        await emitNotification(deps, 'ops', { kind: 'usgs.approved', parts: ['download'], link: '#/imagery' });
+    }
+}
+
+/** This check found the download role, which `setup/status` did not record before. */
+function approvedNow(before: SetupStatusDoc | undefined, usgs: UsgsHealth | undefined): boolean {
+    return usgs?.role === 'download' && before?.usgs?.role !== 'download';
+}
+
 /** The `health` step: checks what is due and records each result on its area. */
 export async function checkServices(deps: ServicesDeps, now: Date): Promise<void> {
-    const checks = await runDueChecks(deps, await deps.documents.get(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema), now);
+    const status = await deps.documents.get(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema);
+    const checks = await runDueChecks(deps, status, now);
     if (checks.mapbox === undefined && checks.usgs === undefined) {
         return;
     }
@@ -197,6 +214,7 @@ export async function checkServices(deps: ServicesDeps, now: Date): Promise<void
         ...withUsgs(current.usgs, checks.usgs, now),
     }));
     deps.log.info('services checked', { mapbox: stateOf(checks.mapbox), usgs: stateOf(checks.usgs) });
+    await noticeApproval(deps, status, checks.usgs);
 }
 
 /** Deletes each token; the ones Mapbox could not delete stay listed for the next tick. */

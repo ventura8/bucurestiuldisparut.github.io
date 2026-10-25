@@ -10,7 +10,9 @@ import type { SiteFileSystem } from './files.js';
  * `node --import ./scripts/site/register-ts.mjs scripts/site/build-site.ts [--out dist/site] [--site <dir> ...]`
  * (`npm run build:site`): builds every site into `<out>/<site folder name>` (`dist/site/bucharest`,
  * `dist/site/starter-kit`). The Mapbox public token comes from the environment variable `MAPBOX_PUBLIC_TOKEN`, never
- * from argv; without it the sites get the e2e placeholder token, which Mapbox refuses (a warning says so).
+ * from argv; without it the sites get the e2e placeholder token, which Mapbox refuses (a warning says so). The public
+ * bucket comes from `HCM_PUBLIC_BUCKET` (a repository variable in CI): a site whose `site.json` says `publicManifest` then
+ * reads the manifest the admin publishes there; without it every site bundles its manifest (DECISIONS-for-review.md §51e).
  *
  * Exit status: 0 built, 1 an input is missing or invalid, 2 usage.
  */
@@ -59,10 +61,22 @@ function tokenFrom(context: CliContext): string {
     return PLACEHOLDER_TOKEN;
 }
 
+/** The public bucket the sites may read their manifest from (`HCM_PUBLIC_BUCKET`), or nothing. */
+function bucketFrom(context: CliContext): { readonly publicBucket?: string } {
+    const bucket = context.env['HCM_PUBLIC_BUCKET'] ?? '';
+    if (bucket === '') {
+        context.log.info('HCM_PUBLIC_BUCKET is not set: every site bundles its manifest (the seed snapshot)');
+        return {};
+    }
+    context.log.info('the sites that read the public bucket use its manifest', { bucket });
+    return { publicBucket: bucket };
+}
+
 function build(options: CliOptions, context: CliContext): number {
     const token = tokenFrom(context);
+    const bucket = bucketFrom(context);
     for (const siteDir of options.sites) {
-        const report = buildSite({ siteDir, outDir: `${options.out}/${siteName(siteDir)}`, token }, context.files);
+        const report = buildSite({ siteDir, outDir: `${options.out}/${siteName(siteDir)}`, token, ...bucket }, context.files);
         context.log.info('site built', { ...report });
     }
     return EXIT_OK;

@@ -59,6 +59,11 @@ export interface DocumentTransaction extends DocumentReader, DocumentWriter {}
 export interface DocumentStore extends DocumentReader, DocumentWriter {
     /** One collection (`FIRESTORE_PATHS.photos(city)`, ...), not a collection group. */
     query<T>(collectionPath: string, schema: Schema<T>, options?: QueryOptions): Promise<QueryResult<T>>;
+    /**
+     * How many documents of one collection match `where`: an aggregation, billed one read per thousand documents and
+     * reading none of them (the inbox's pruning counts before it reads the few it deletes).
+     */
+    count(collectionPath: string, where?: QueryOptions['where']): Promise<number>;
     /** Runs `work` in a Firestore transaction, retried by the SDK on contention (so `work` must have no side effects). */
     transaction<R>(work: (transaction: DocumentTransaction) => Promise<R>): Promise<R>;
 }

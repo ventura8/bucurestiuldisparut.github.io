@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parseManifestJson } from '@hcm/shared';
 
 import { buildSite, type SiteBuildOptions } from '../src/build.js';
+import { readConfigJs } from '../src/config-js.js';
 import { nodeFileSystem, type SiteFileSystem } from '../src/files.js';
 import { subresourceIntegrity } from '../src/sri.js';
 import { readRepositoryJson } from './manifests.js';
@@ -221,5 +222,92 @@ describe('buildSite (bad inputs)', () => {
         expect(() => buildSite({ ...options, mapboxGlDir: 'vendor/none' }, files)).toThrow(
             'vendor/none/mapbox-gl.js is missing: install the dependencies',
         );
+    });
+});
+
+describe('buildSite (the manifest the admin publishes, DECISIONS-for-review.md §51e)', () => {
+    const BUCKET = 'bucurestiul-disparut-public';
+
+    /** The synthetic starter kit, reading the public bucket (`publicManifest`), in a project of the given file. */
+    function readingTheBucket(
+        project: string | null = '{"projectId":"exemplu-proiect","region":"europe-west1"}',
+    ): ReturnType<typeof syntheticRoot> {
+        const root = syntheticRoot();
+        const spec = JSON.parse(root.files.readText('starter-kit/site.json')) as Record<string, unknown>;
+        root.files.write('starter-kit/site.json', JSON.stringify({ ...spec, publicManifest: true }));
+        if (project !== null) {
+            root.files.write('infra/project.json', project);
+        }
+        return root;
+    }
+
+    it('happyPath_bucharestReadsTheBucketsManifestAndBundlesNoSnapshot', () => {
+        const { files, dist } = repositoryWithTemporaryDist();
+        fakeEngine(files, 'dist/engine');
+
+        const report = buildSite(
+            { siteDir: 'sites/bucharest', outDir: 'dist/site/bucharest', token: TOKEN, engineDir: 'dist/engine', publicBucket: BUCKET },
+            files,
+        );
+
+        const config = readConfigJs(dist.readText('dist/site/bucharest/config.js'));
+        expect(config).toEqual({
+            cityId: 'bucharest',
+            manifestUrl: `https://storage.googleapis.com/${BUCKET}/cities/bucharest/manifest.json`,
+        });
+        expect(dist.listFiles('dist/site/bucharest').filter((name) => name.startsWith('data/'))).toEqual([]);
+        expect(report).toMatchObject({ cityId: 'bucharest', photos: 0, files: 3 + ENGINE_FILES.length });
+        const html = dist.readText('dist/site/bucharest/index.html');
+        expect(html).toMatch(
+            /connect-src [^;]*https:\/\/storage\.googleapis\.com[^;]*https:\/\/us-central1-bucurestiul-disparut\.cloudfunctions\.net/,
+        );
+        expect(html).toMatch(/img-src [^;]*https:\/\/storage\.googleapis\.com/);
+    });
+
+    it('badPath_withoutABucketOrWithoutTheSitesConsentTheSnapshotIsBundled', () => {
+        const plain = syntheticRoot();
+        const optedIn = readingTheBucket();
+
+        buildSite({ ...plain.options, publicBucket: BUCKET }, plain.files);
+        buildSite(optedIn.options, optedIn.files);
+
+        for (const { files } of [plain, optedIn]) {
+            expect(readConfigJs(files.readText('dist/site/starter-kit/config.js')).manifestUrl).toBe('./data/manifest.json');
+            expect(files.isFile('dist/site/starter-kit/data/manifest.json')).toBe(true);
+        }
+    });
+
+    it('happyPath_anotherProjectsBucketAndEndpoint', () => {
+        const { files, options } = readingTheBucket();
+
+        buildSite({ ...options, publicBucket: 'exemplu-proiect-public' }, files);
+
+        expect(files.readText('dist/site/starter-kit/config.js')).toContain('/exemplu-proiect-public/cities/exemplu/manifest.json');
+        expect(files.readText('dist/site/starter-kit/index.html')).toContain('https://europe-west1-exemplu-proiect.cloudfunctions.net');
+    });
+
+    it.each([
+        [
+            'an invalid bucket',
+            'Not_A.Bucket!',
+            '{"projectId":"exemplu-proiect","region":"europe-west1"}',
+            'HCM_PUBLIC_BUCKET "Not_A.Bucket!"',
+        ],
+        ['no project file', BUCKET, null, 'infra/project.json is missing'],
+        ['a project file that is not JSON', BUCKET, '{', 'infra/project.json: not JSON'],
+        ['a project file without a region', BUCKET, '{"projectId":"exemplu-proiect"}', 'infra/project.json: invalid project file'],
+    ])('badPath_%s_failsTheBuildAndKeepsThePreviousOne', (_case, bucket, project, message) => {
+        const { files, options } = readingTheBucket(project);
+        files.write('dist/site/starter-kit/previous.txt', 'previous');
+
+        expect(() => buildSite({ ...options, publicBucket: bucket }, files)).toThrow(message);
+        expect(files.readText('dist/site/starter-kit/previous.txt')).toBe('previous');
+    });
+
+    it('badPath_aConfigWithoutACityNamesNoObject', () => {
+        const { files, options } = readingTheBucket();
+        files.write('starter-kit/config.js', "window.HistoricCityMapConfig = { manifestUrl: './data/manifest.json' };");
+
+        expect(() => buildSite({ ...options, publicBucket: BUCKET }, files)).toThrow('starter-kit/config.js names no cityId');
     });
 });

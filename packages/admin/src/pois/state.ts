@@ -2,6 +2,8 @@
  * The places area's state and intents (docs/research/M2c-interfaces.md §2.1, §7): what `hcm-pois-page` renders and calls
  * (mirrored structurally by `@hcm/ui/admin`'s `pois-port.ts`), and the services the area is created with.
  */
+import { NO_ASSIST, type AssistState } from '../assist/assist.js';
+import type { AssistIntents } from '../assist/editor-assists.js';
 import type { ListState } from '../content/list.js';
 import type { ContentServices, WriteOutcome } from '../content/services.js';
 import { LOADING_LIST } from '../content/list.js';
@@ -31,6 +33,8 @@ export interface PoisState {
     readonly importing: ImportState | null;
     /** A delete or a bulk action is being written. */
     readonly busy: boolean;
+    /** M4 (CR-M4-4): the open place's title suggestions and translation drafts. */
+    readonly assist: AssistState;
 }
 
 /** A file for the browser to save (the export). */
@@ -40,7 +44,7 @@ export interface SavedFile {
     readonly text: string;
 }
 
-export interface PoisIntents {
+export interface PoisIntents extends AssistIntents {
     setFilter(filter: Partial<PoisFilter>): void;
     more(): void;
     retry(): void;
@@ -86,5 +90,5 @@ export type PoisServices = ContentServices & { readonly maps?: AdminMapFactory |
 
 export const INITIAL_POIS_STATE: PoisState = {
     ...{ filter: { category: null, unpublished: false, search: '' }, list: LOADING_LIST, categories: LOADING_LIST, frame: null },
-    ...{ selection: [], editor: null, map: 'none', clicked: null, photos: null, importing: null, busy: false },
+    ...{ selection: [], editor: null, map: 'none', clicked: null, photos: null, importing: null, busy: false, assist: NO_ASSIST },
 };

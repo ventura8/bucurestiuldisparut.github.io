@@ -7,6 +7,7 @@ import type { EngineConfig, Logger } from '@hcm/shared';
 import type { MapPort, Unsubscribe } from '@hcm/ui/map';
 
 import type { TelemetryPort } from '../telemetry/telemetry-port.js';
+import type { CompareDeps } from './compare-port.js';
 import type { PreferenceStorage } from './preferences.js';
 
 export interface ViewerLocation {
@@ -37,4 +38,9 @@ export interface ViewerDeps {
     readonly mapContainer: () => HTMLElement | null;
     /** engine-core addition (CR-8): `prefers-reduced-motion: reduce` (default false). */
     readonly reducedMotion?: () => boolean;
+    /**
+     * M4 (swipe compare, docs/research/M4-interfaces.md §3): the lazy chunk, a factory of the second map and mapbox-gl.css;
+     * without it compare still lives in the state and the hash, but nothing is drawn (the node tests of the store).
+     */
+    readonly compare?: CompareDeps;
 }

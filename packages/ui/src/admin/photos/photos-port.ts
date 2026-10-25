@@ -7,6 +7,8 @@
  */
 import type { AdminContentKey, ApiErrorCode, FirestoreLicense, ValidationIssue } from '@hcm/shared';
 
+import type { AssistActionsPort, AssistViewPort } from '../assist/assist-port.js';
+
 /** A live list's or document's status (`LoadStatusPort` of `content-port.ts`, which imports this file). */
 type PhotosLoadStatusPort = 'loading' | 'ready' | 'error';
 
@@ -161,6 +163,8 @@ export interface PhotosViewState {
     readonly confirm: { readonly ids: readonly string[]; readonly title: string | null } | null;
     readonly report: BulkReportPort | null;
     readonly busy: boolean;
+    /** M4 (CR-M4-4): the open photo's title suggestions and translation drafts. */
+    readonly assist: AssistViewPort;
 }
 
 /** A chosen file, as the page hands it to the area (a `File`). */
@@ -176,7 +180,7 @@ type PhotoBulkActionPort =
     | { readonly kind: 'confirmRights' }
     | { readonly kind: 'setFields'; readonly fields: StickyPort };
 
-export interface PhotosIntentsPort {
+export interface PhotosIntentsPort extends AssistActionsPort {
     setFilter(filter: PhotoFilterPort): void;
     search(search: PhotoSearchPort): void;
     more(): void;

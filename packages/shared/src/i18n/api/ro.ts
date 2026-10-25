@@ -43,6 +43,8 @@ export const ro = {
     'apiError.usgs.notConfigured': 'Conectează mai întâi USGS.',
     'apiError.usgs.unavailable': 'USGS nu răspunde. Încearcă din nou mai târziu.',
     'apiError.usgs.accessPending': 'USGS nu a aprobat încă accesul M2M pentru acest cont. Verificăm din nou la fiecare 6 ore.',
+    'apiError.usgs.alreadyAvailable': 'Cadrul este deja scanat: importă-l gratuit, fără comandă.',
+    'apiError.usgs.orderState': 'Comanda nu mai este în starea potrivită pentru acest pas. Reîncarcă pagina.',
     'apiError.analytics.notEnabled': 'Google Analytics nu este activat pentru proiect. Activează-l, apoi verifică din nou.',
     'apiError.analytics.noWebApp': 'Proiectul nu are o aplicație web Firebase.',
     'apiError.cloud.permission': 'Contul serverului nu are rolul {role} în proiect.',
@@ -69,6 +71,7 @@ export const ro = {
     'apiError.imagery.downloadIncomplete': 'Descărcarea de la USGS nu a ajuns întreagă. Reîncercăm automat.',
     'apiError.imagery.referenceUnavailable': 'Imaginile de referință (OpenStreetMap, Sentinel-2) nu sunt disponibile acum pentru zonă.',
     'apiError.imagery.noMatch': 'Puncte sigure găsite automat: {pairs}, prea puține. Așază câteva puncte în georeferențiator.',
+    'apiError.imagery.noSpread': 'Puncte sigure găsite automat: {pairs}, dar aproape în linie. Așază câteva puncte pe toată imaginea.',
     'apiError.imagery.tooFewGcps': 'Transformarea aleasă are nevoie de cel puțin {min} perechi de puncte active.',
     'apiError.imagery.degenerateGcps': 'Punctele sunt prea apropiate sau aproape în linie: răspândește-le pe toată imaginea.',
     'apiError.imagery.gcpOutside': 'Un punct este în afara scanării sau a orașului.',
@@ -89,6 +92,13 @@ export const ro = {
     'apiError.imagery.mapboxFinishing': 'Mapbox procesează deja stratul: nu mai poate fi anulat.',
     'apiError.telemetry.origin': 'Raportul vine de pe un site necunoscut.',
     'apiError.telemetry.tooLarge': 'Raportul este prea mare.',
+    'apiError.assist.rateLimited': 'Sugestiile OpenStreetMap nu sunt disponibile acum. Scrie titlul; reîncercăm peste câteva minute.',
+    'apiError.assist.unavailable': 'Asistentul nu răspunde acum. Câmpul rămâne cum l-ai scris.',
+    'apiError.assist.monthlyCap': 'Limita lunară a traducerilor automate a fost atinsă; revin luna viitoare. Până atunci, scrie textul.',
+    'apiError.assist.noDraft': 'Asistentul nu a propus nicio traducere pentru acest text.',
+    'apiError.assist.linksChanged': 'Traducerea propusă schimba linkurile textului și nu a fost folosită. Scrie textul sau reîncearcă.',
+    'apiError.assist.dailyCap': 'Sugestiile de titlu de azi s-au terminat; revin mâine. Până atunci, scrie titlul.',
+    'apiError.notify.deviceInvalid': 'Acest browser nu a putut fi înregistrat pentru notificări. Încearcă din nou sau folosește inboxul.',
 } as const;
 
 export type ApiErrorCode = keyof typeof ro;

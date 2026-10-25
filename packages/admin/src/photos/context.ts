@@ -29,4 +29,8 @@ export interface AreaContext {
     map(): PhotoMapSession | null;
     /** Draws the photos again (the list or a draft changed). */
     showMap(): void;
+    /** M4 (CR-M4-4): the pin was set on the map (the assists suggest titles for an untitled photo). */
+    placeSet(location: { readonly lat: number; readonly lng: number }): void;
+    /** M4: the open photo changed (the assists forget the last one's suggestions and drafts). */
+    photoChanged(): void;
 }

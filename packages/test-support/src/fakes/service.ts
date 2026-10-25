@@ -36,6 +36,9 @@ export const UPSTREAM_SERVICES = [
     'overpass',
     'nominatim',
     'google-apis',
+    /** M4: the AI drafts and web push (`docs/research/M4-interfaces.md` §8). */
+    'vertex-ai',
+    'fcm',
 ] as const;
 
 export type UpstreamServiceName = (typeof UPSTREAM_SERVICES)[number];

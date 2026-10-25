@@ -19,8 +19,16 @@ export interface E2eInstrumentation {
     readonly events: readonly { readonly type: string; readonly detail: unknown }[];
 }
 
-/** The engine's public events (docs/ENGINE_API.md → `<hcm-map-viewer>`). */
-export const ENGINE_EVENTS = ['hcm-ready', 'hcm-error', 'hcm-layer-change', 'hcm-overlay-change', 'hcm-photo-open', 'hcm-poi-open'];
+/** The engine's public events (docs/ENGINE_API.md → `<hcm-map-viewer>`; `hcm-compare-change` since M4's swipe compare). */
+export const ENGINE_EVENTS = [
+    'hcm-ready',
+    'hcm-error',
+    'hcm-layer-change',
+    'hcm-overlay-change',
+    'hcm-photo-open',
+    'hcm-poi-open',
+    'hcm-compare-change',
+];
 
 /** Runs in the page, serialized by Playwright: it must not reference anything outside its own body. */
 export function instrumentPage(eventTypes: readonly string[]): void {

@@ -33,6 +33,7 @@ async function runChecks(deps: SelfTestDeps, context: CheckContext): Promise<Res
         usgs: await runCheck(deps, 'usgs', context),
         'firebase-management': await runCheck(deps, 'firebase-management', context),
         'error-reporting': await runCheck(deps, 'error-reporting', context),
+        ai: await runCheck(deps, 'ai', context),
     };
 }
 

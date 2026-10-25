@@ -107,6 +107,7 @@ async function seedImagery(api: APIRequestContext, world: CityWorld, owner: Sign
     const imagery = new StackImagery(api, world, owner);
     try {
         await imagery.harvest();
+        await imagery.orders();
         return await imagery.imports();
     } catch (error: unknown) {
         log.error('the imagery seed failed; the rest of the city is seeded', { error: String(error) });

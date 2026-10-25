@@ -100,6 +100,15 @@ describe('browserEnvironment', () => {
         expect(page.fonts.length).toBeGreaterThan(0);
     });
 
+    it('happyPath_compareIsTheLazyChunk', async () => {
+        const env = browserEnvironment(fakePage().window, RELEASE, createLogger('test'));
+
+        const chunk = await env.loadCompare();
+
+        expect(typeof chunk.startCompare).toBe('function');
+        expect(typeof chunk.createCompareUi).toBe('function');
+    });
+
     it('happyPath_theMapComesFromThePagesMapboxGl', () => {
         const page = fakePage({ mapboxgl: new FakeMapboxGl() });
         const map = browserEnvironment(page.window, RELEASE, createLogger('test')).createMap();

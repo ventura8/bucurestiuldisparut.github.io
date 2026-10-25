@@ -1,7 +1,7 @@
 /**
  * The Imagery area's work (`docs/research/M3-interfaces.md` §10.2): the unfinished versions, live, those that wait for
  * the admin (points, an approval, a compute-unit choice, a failure to retry) apart from those in progress, each with its
- * job's progress or wait in words.
+ * job's progress or wait in words. M4: the scans bought and not imported yet come first (`orders/order-list.ts`).
  */
 import { html, type TemplateResult } from 'lit';
 
@@ -11,6 +11,7 @@ import { contentText } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
 import type { VersionItemPort } from './imagery-port.js';
 import { labelText, versionDetail } from './imagery-text.js';
+import { hasOpenOrders, ordersGroup } from './orders/order-list.js';
 
 function versionRow(context: ImageryContext, version: VersionItemPort): TemplateResult {
     const { locale, view } = context;
@@ -46,12 +47,13 @@ export function workView(context: ImageryContext): TemplateResult {
     if (list.status === 'error') {
         return errorTemplate(locale, list.failure, () => intents?.retry());
     }
-    if (list.items.length === 0) {
+    if (list.items.length === 0 && !hasOpenOrders(view)) {
         return list.status === 'loading'
             ? loadingTemplate(locale)
             : html`<hcm-empty-state icon="pending" .text=${contentText(locale, 'adminContent.imagery.noWork')}></hcm-empty-state>`;
     }
-    return html`${group(
+    return html`${ordersGroup(context)}
+    ${group(
         context,
         'adminContent.imagery.needsYou',
         list.items.filter((version) => version.needsYou),

@@ -3,6 +3,7 @@ import { runAs } from '../global-options.js';
 import { BACKGROUND_FUNCTIONS, FIRESTORE_PATHS, opsGuardDocSchema, systemWriter, timestampFromDate, type OpsGuardDoc } from '@hcm/shared';
 import { onMessagePublished } from 'firebase-functions/pubsub';
 
+import { emitNotification } from '../api/notification-event.js';
 import type { Ports } from '../ports/index.js';
 
 export type BudgetDeps = Pick<Ports, 'log' | 'clock' | 'documents'>;
@@ -86,8 +87,29 @@ export async function onBudgetAlert(deps: BudgetDeps, notification: BudgetNotifi
     });
     if (turned) {
         deps.log.warn('budget reached: the guard is red', { ...notification });
+        await noticeBudget(deps, notification);
     }
     return turned;
+}
+
+/** Two decimals, as the admin reads money (`4.80`). */
+function money(amount: number): string {
+    return Math.max(0, amount).toFixed(2);
+}
+
+/**
+ * M4 (`docs/research/M4-interfaces.md` §5.1, assists-notify): the pause is news for every admin, once per budget period
+ * (the event's id is the period's first day, or today's when the alert names none).
+ */
+async function noticeBudget(deps: BudgetDeps, notification: BudgetNotification): Promise<void> {
+    const start = Date.parse(notification.costIntervalStart ?? '');
+    const day = (Number.isNaN(start) ? deps.clock.now() : new Date(start)).toISOString().slice(0, 10);
+    const params = {
+        cost: money(notification.costAmount),
+        budget: money(notification.budgetAmount),
+        currency: notification.currencyCode ?? 'USD',
+    };
+    await emitNotification(deps, 'ops', { kind: 'budget.paused', parts: [day], params, link: '#/imagery' });
 }
 
 /** The message's JSON; undefined when its data is not JSON (`Message.json` throws then). */

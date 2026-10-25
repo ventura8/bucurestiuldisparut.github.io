@@ -56,6 +56,11 @@ export interface DownloadState {
     };
     /** Signatures issued so far, and those that expired. */
     readonly signatures: { next: number; readonly expired: Set<string> };
+    /**
+     * M4 (docs/research/M4-interfaces.md §1, §8): USGS delivered the scans bought in EarthExplorer (`usgs.ordersDelivered`):
+     * every scene that had to be ordered is downloadable from then on.
+     */
+    ordersDelivered: boolean;
 }
 
 export function defaultDownloadState(): DownloadState {
@@ -65,7 +70,20 @@ export function defaultDownloadState(): DownloadState {
         deliveries: new Map(),
         delivery: { origin: DELIVERY_ORIGIN, rangeSupported: true, expireNext: 0, truncated: false, corrupt: false },
         signatures: { next: 0, expired: new Set() },
+        ordersDelivered: false,
     };
+}
+
+/** True when the scene can be downloaded: scanned already, or (M4) bought and delivered. */
+function scanned(state: DownloadState, entityId: string): boolean {
+    const scene = catalogueScene(entityId);
+    return scene !== undefined && (scene.result.options.download || state.ordersDelivered);
+}
+
+/** EarthExplorer's own id of each dataset, as `dataset-search` names them (Declass 3's is not recorded: null). */
+function earthExplorerId(dataset: string | undefined): string | null {
+    const datasets = (fixtureBody('usgs/dataset-search.declass') as { data: { datasetAlias: string; datasetId: string }[] }).data;
+    return datasets.find((entry) => entry.datasetAlias === dataset)?.datasetId ?? null;
 }
 
 /** The first download id (`download-request.available.json`). */
@@ -124,11 +142,12 @@ export async function downloadOptions(request: UpstreamRequest, state: DownloadS
     return Promise.all(
         entityIdsOf(request).map(async (entityId) => {
             const scene = catalogueScene(entityId);
-            const available = scene?.result.options.download === true;
+            const available = scanned(state, entityId);
             return {
                 ...template,
                 entityId,
                 displayId: entityId,
+                datasetId: earthExplorerId(scene?.dataset),
                 available,
                 bulkAvailable: available,
                 filesize: await sizeOf(state, entityId, available),
@@ -169,8 +188,8 @@ function downloadFor(state: DownloadState, entityId: string, label: string): Usg
 export function downloadRequest(request: UpstreamRequest, state: DownloadState): unknown {
     const label = labelOf(bodyField(request, 'label'));
     const asked = requestedDownloads(request);
-    const scanned = asked.filter((item) => catalogueScene(item.entityId)?.result.options.download === true);
-    const downloads = scanned.map((item) => downloadFor(state, item.entityId, label));
+    const ready = asked.filter((item) => scanned(state, item.entityId));
+    const downloads = ready.map((item) => downloadFor(state, item.entityId, label));
     return {
         availableDownloads: downloads
             .filter((download) => download.pollsLeft === 0)
@@ -180,10 +199,10 @@ export function downloadRequest(request: UpstreamRequest, state: DownloadState):
             .filter((download) => download.pollsLeft > 0)
             .map((download) => ({ downloadId: download.id, eulaCode: null, url: null })),
         failed: asked
-            .filter((item) => !scanned.includes(item))
+            .filter((item) => !ready.includes(item))
             .map((item) => ({ entityId: item.entityId, errorMessage: 'The product is not available for download' })),
         newRecords: Object.fromEntries(downloads.map((download) => [String(download.id), download.entityId])),
-        numInvalidScenes: asked.length - scanned.length,
+        numInvalidScenes: asked.length - ready.length,
     };
 }
 
@@ -283,6 +302,9 @@ export function downloadScenarios(state: DownloadState): Record<string, () => vo
         },
         corruptArchive: () => {
             state.delivery.corrupt = true;
+        },
+        ordersDelivered: () => {
+            state.ordersDelivered = true;
         },
     };
 }

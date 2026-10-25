@@ -1,11 +1,14 @@
+import type { EngineConfig } from '@hcm/shared';
+
 import { readConfigJs } from './config-js.js';
-import { contentSecurityPolicy } from './csp.js';
+import { contentSecurityPolicy, type ExtraSources } from './csp.js';
 import { SiteBuildError } from './errors.js';
 import type { SiteFileSystem } from './files.js';
-import { prepareManifest } from './manifest.js';
+import { prepareManifest, type PreparedManifest } from './manifest.js';
 import { manifestOrigins } from './origins.js';
 import { ENGINE_FOLDER, ENGINE_MODULE_FILE, ENGINE_STYLESHEET_FILE, renderSitePage } from './page.js';
-import { parseSiteSpec } from './site-spec.js';
+import { publicManifest } from './public-manifest.js';
+import { parseSiteSpec, type SiteSpec } from './site-spec.js';
 import { subresourceIntegrity } from './sri.js';
 
 /**
@@ -18,8 +21,13 @@ import { subresourceIntegrity } from './sri.js';
  * <outDir>/data/manifest.json  the source manifest, photos moved to data/media/, the build's Mapbox token, the city
  *                              renamed to config.js's when the source names the site's `legacyCityId`
  * <outDir>/data/media/<id>/…   the photo derivatives
- * <outDir>/engine/…            packages/engine/dist (engine.mjs, engine.iife.js, engine.css, source maps)
+ * <outDir>/engine/…            packages/engine/dist (engine.mjs, its chunks, engine.iife.js, engine.css, source maps)
  * ```
+ *
+ * A site whose `site.json` has `publicManifest: true`, built with the public bucket named (`publicBucket`, from
+ * `HCM_PUBLIC_BUCKET`), reads the manifest the admin publishes instead (`public-manifest.ts`, DECISIONS-for-review.md §51e):
+ * its `config.js` is generated with the bucket's `cities/<city>/manifest.json`, and no `data/` is written; the CSP is still
+ * shaped by the source manifest, plus the bucket's origin and the project's crash-report endpoint.
  *
  * Every input is read and validated before `outDir` is replaced, so a failed build leaves the previous one alone.
  */
@@ -37,6 +45,11 @@ export interface SiteBuildOptions {
     readonly mapboxGlDir?: string;
     /** A manifest object instead of the one `site.json` names (the e2e fixture manifest). */
     readonly manifest?: unknown;
+    /**
+     * The project's public bucket (`HCM_PUBLIC_BUCKET`): a site with `publicManifest: true` then reads the manifest the admin
+     * publishes there instead of a bundled snapshot. Unset (the default), every site bundles its manifest.
+     */
+    readonly publicBucket?: string;
 }
 
 export interface SiteBuildReport {
@@ -120,6 +133,37 @@ function checkCity(configCityId: string | undefined, manifestCityId: string, sit
     }
 }
 
+/** The configuration a page is served and the CSP origins it adds: the site's own, or the public bucket's (§51e). */
+interface ServedConfig {
+    readonly source: string;
+    readonly config: EngineConfig;
+    readonly connect: readonly string[];
+}
+
+function servedConfig(options: SiteBuildOptions, spec: SiteSpec, own: Omit<ServedConfig, 'connect'>, files: SiteFileSystem): ServedConfig {
+    if (spec.publicManifest !== true || options.publicBucket === undefined) {
+        return { ...own, connect: [] };
+    }
+    const remote = publicManifest(options.publicBucket, own.config, options.siteDir, files);
+    return { source: remote.configSource, config: remote.config, connect: remote.connect };
+}
+
+function withConnect(sources: ExtraSources, connect: readonly string[]): ExtraSources {
+    return { connect: [...new Set([...sources.connect, ...connect])].sort((a, b) => a.localeCompare(b)), images: sources.images };
+}
+
+/** The bundled manifest and its photos; none for a page that reads the public bucket. */
+function dataFiles(bundled: boolean, prepared: PreparedManifest, spec: SiteSpec, files: SiteFileSystem): PlannedFile[] {
+    if (!bundled) {
+        return [];
+    }
+    const photos = prepared.media.map((copy) => ({
+        from: requireFile(files, `${spec.media}/${copy.from}`, `a photo derivative of ${spec.manifest}`),
+        to: `data/${copy.to}`,
+    }));
+    return [{ to: 'data/manifest.json', content: `${JSON.stringify(prepared.manifest)}\n` }, ...photos];
+}
+
 function plan(options: SiteBuildOptions, files: SiteFileSystem): { files: PlannedFile[]; cityId: string; photos: number } {
     const { siteDir, token } = options;
     const specFile = requireFile(files, `${siteDir}/site.json`, 'every site has one (scripts/site/src/site-spec.ts)');
@@ -127,23 +171,21 @@ function plan(options: SiteBuildOptions, files: SiteFileSystem): { files: Planne
     const configSource = files.readText(requireFile(files, `${siteDir}/config.js`, 'every site has one (docs/ENGINE_API.md → config.js)'));
     const config = readConfigJs(configSource, `${siteDir}/config.js`);
     const source = withSiteCity(options.manifest ?? readJson(files, spec.manifest), cityRename(spec.legacyCityId, config.cityId));
-    const { manifest, media } = prepareManifest(source, token, spec.manifest);
+    const prepared = prepareManifest(source, token, spec.manifest);
+    const { manifest } = prepared;
     checkCity(config.cityId, manifest.city.id, siteDir);
-    const csp = contentSecurityPolicy(manifestOrigins(manifest, config));
+    const served = servedConfig(options, spec, { source: configSource, config }, files);
+    const bundled = served.config === config;
+    const csp = contentSecurityPolicy(withConnect(manifestOrigins(manifest, served.config), served.connect));
     const page = renderSitePage({ spec, csp, mapboxGlIntegrity: integrity(files, options.mapboxGlDir ?? DEFAULT_MAPBOX_GL_DIR) });
-    const photoFiles = media.map((copy) => ({
-        from: requireFile(files, `${spec.media}/${copy.from}`, `a photo derivative of ${spec.manifest}`),
-        to: `data/${copy.to}`,
-    }));
     const planned: PlannedFile[] = [
         { to: 'index.html', content: page },
-        { to: 'config.js', content: configSource },
+        { to: 'config.js', content: served.source },
         { to: 'site.css', from: requireFile(files, `${siteDir}/site.css`, 'every site has its page styles') },
-        { to: 'data/manifest.json', content: `${JSON.stringify(manifest)}\n` },
-        ...photoFiles,
+        ...dataFiles(bundled, prepared, spec, files),
         ...engineFiles(files, options.engineDir ?? DEFAULT_ENGINE_DIR),
     ];
-    return { files: planned, cityId: manifest.city.id, photos: manifest.photos.length };
+    return { files: planned, cityId: manifest.city.id, photos: bundled ? manifest.photos.length : 0 };
 }
 
 function write(files: SiteFileSystem, outDir: string, file: PlannedFile): void {

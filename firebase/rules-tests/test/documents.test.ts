@@ -7,6 +7,12 @@
 import {
     CLIENT_WRITES,
     adminDocSchema,
+    aiUsageDocSchema,
+    geocodeCellDocSchema,
+    inboxItemDocSchema,
+    notificationEventDocSchema,
+    notifySettingsDocSchema,
+    pushDeviceDocSchema,
     cityDocSchema,
     historyEntryDocSchema,
     inviteDocSchema,
@@ -33,6 +39,13 @@ import { describe, expect, it } from 'vitest';
 import {
     EDITS,
     adminDoc,
+    aiUsageDoc,
+    geocodeCellDoc,
+    inboxItemDoc,
+    newNotifySettings,
+    notificationEventDoc,
+    notifySettingsDoc,
+    pushDeviceDoc,
     cityDoc,
     editableFields,
     harvestStateDoc,
@@ -76,6 +89,8 @@ const COMPLETE: readonly (readonly [ClientCollection, DocumentSchema, () => Data
     ['poiCategory', poiCategoryDocSchema, poiCategoryDoc],
     ['job', jobDocSchema, () => jobDoc(UID)],
     ['usgsScene', usgsSceneDocSchema, () => usgsSceneDoc()],
+    ['inboxItem', inboxItemDocSchema, inboxItemDoc],
+    ['notifySettings', notifySettingsDocSchema, () => notifySettingsDoc(UID)],
 ];
 
 /** The client creates, by collection (jobs are created by the imagery functions since M3, CR-M3-2). */
@@ -83,6 +98,7 @@ const CREATES: readonly (readonly [ClientCollection, DocumentSchema, (uid: strin
     ['photo', photoDocSchema, newPhoto],
     ['poi', poiDocSchema, newPoi],
     ['poiCategory', poiCategoryDocSchema, newPoiCategory],
+    ['notifySettings', notifySettingsDocSchema, newNotifySettings],
 ];
 
 /** The server-owned documents the tests seed. */
@@ -99,6 +115,10 @@ const SERVER_ONLY: readonly (readonly [string, DocumentSchema, () => Data])[] = 
     ['dispatch slots', opsDispatchDocSchema, opsDispatchDoc],
     ['harvest state', harvestStateDocSchema, harvestStateDoc],
     ['manifest state', manifestStateDocSchema, () => manifestStateDoc(CITY_ID)],
+    ['push device', pushDeviceDocSchema, () => pushDeviceDoc(UID)],
+    ['notification event', notificationEventDocSchema, notificationEventDoc],
+    ['geocode cell', geocodeCellDocSchema, geocodeCellDoc],
+    ['AI usage', aiUsageDocSchema, aiUsageDoc],
 ];
 
 /** A client document as Firestore stores it: `serverTimestamp()` becomes a timestamp. */
@@ -148,7 +168,7 @@ describe('client creates', () => {
             writes.create.length === 0 ? [collection] : [],
         );
 
-        expect(sorted(serverCreated)).toEqual(['city', 'job', 'layer', 'usgsScene']);
+        expect(sorted(serverCreated)).toEqual(['city', 'inboxItem', 'job', 'layer', 'usgsScene']);
     });
 });
 
@@ -158,8 +178,9 @@ describe('client edits', () => {
     });
 
     it.each(COMPLETE)('happyPath_every%sEditKeepsTheDocumentValid', (collection, schema, document) => {
+        // An edit to the server's time (`serverTimestamp()`, M4's `readAt`) is checked as the timestamp Firestore stores.
         const failures = Object.entries(EDITS[collection]).filter(
-            ([field, value]: [string, unknown]) => issues(schema, { ...document(), [field]: value }).length > 0,
+            ([field, value]: [string, unknown]) => issues(schema, stored({ ...document(), [field]: value })).length > 0,
         );
 
         expect(failures).toEqual([]);

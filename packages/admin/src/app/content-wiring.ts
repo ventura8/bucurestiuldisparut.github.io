@@ -12,6 +12,7 @@ import { documentsPort } from '../firebase/adapters.js';
 import type { FirebaseHandles } from '../firebase/app.js';
 import { firebaseSdk } from '../firebase/sdk.js';
 import { FILES_SDK, firebaseFiles } from '../firebase/files.js';
+import { firebasePush, loadMessagingSdk, standInPush, type PushScope } from '../firebase/messaging.js';
 import { firebaseUploads, UPLOAD_SDK } from '../firebase/uploads.js';
 import { browserPictures } from '../imagery/pictures.js';
 import { cropChunkLoader } from '../layers/crop-chunk.js';
@@ -24,6 +25,16 @@ export interface AreaServiceSources {
     readonly fetch: typeof fetch;
     /** The `e2e` build's map token for the test's own city (`E2eKit.mapToken`: null for none); undefined in production. */
     readonly mapToken?: string | null | undefined;
+    /** The `e2e` build's test id (`?test=`): push through the stand-in registrar, never FCM; undefined in production. */
+    readonly pushTest?: string | undefined;
+}
+
+/** This browser's push: FCM in production, the stand-in in the `e2e` build (M4, `../firebase/messaging.ts`). */
+function pushOf(sources: AreaServiceSources) {
+    const scope = globalThis as unknown as PushScope;
+    return sources.pushTest === undefined
+        ? firebasePush({ scope, app: sources.handles.app, load: loadMessagingSdk })
+        : standInPush(scope, sources.pushTest);
 }
 
 export function areaServices(sources: AreaServiceSources): AreaServiceParts {
@@ -47,5 +58,8 @@ export function areaServices(sources: AreaServiceSources): AreaServiceParts {
         pictures: browserPictures(globalThis),
         layerCrop: cropChunkLoader(() => globalThis.customElements),
         // [end imagery]
+        // [section inbox] owner: assists-notify
+        push: pushOf(sources),
+        // [end inbox]
     };
 }

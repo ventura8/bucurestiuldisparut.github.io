@@ -62,7 +62,26 @@ describe('the role table', () => {
         expect(table.find((policy) => policy.resource === 'mapbox-sk-bootstrap')?.bindings.map((binding) => binding.member)).not.toContain(
             'serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com',
         );
-        expect(REQUIRED_APIS).toHaveLength(27);
+        expect(REQUIRED_APIS).toHaveLength(30);
+    });
+
+    it('happyPath_theM4AssistsAndPushHaveTheirApisAndRoles', () => {
+        // docs/research/M4-interfaces.md §4.4 (CR-M4-5): Vertex AI for the drafts, FCM for web push.
+        const project = roleTable(PROJECT, agents, false).find((policy) => policy.kind === 'project');
+        const rolesOf = (account: string): string[] =>
+            (project?.bindings ?? [])
+                .filter((binding) => binding.member === `serviceAccount:${account}@demo-hcm.iam.gserviceaccount.com`)
+                .map((binding) => binding.role);
+
+        expect(REQUIRED_APIS).toEqual(
+            expect.arrayContaining(['aiplatform.googleapis.com', 'fcm.googleapis.com', 'fcmregistrations.googleapis.com']),
+        );
+        expect(rolesOf('fn-admin')).toEqual(
+            expect.arrayContaining([`projects/${PROJECT.projectId}/roles/hcmVertexDrafts`, 'roles/firebasecloudmessaging.admin']),
+        );
+        expect(rolesOf('fn-admin')).not.toContain('roles/aiplatform.user');
+        expect(rolesOf('fn-events')).toContain('roles/firebasecloudmessaging.admin');
+        expect(rolesOf('fn-events')).not.toContain(`projects/${PROJECT.projectId}/roles/hcmVertexDrafts`);
     });
 
     it('happyPath_theRasterJobReadsTheUsgsSecretsOnlyAndTheEventFunctionsRunItsExecutions', () => {

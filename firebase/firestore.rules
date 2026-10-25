@@ -369,6 +369,64 @@ service cloud.firestore {
             allow read: if isAdmin() || (authed() && request.auth.uid == uid);
         }
 
+        // ---- M4 notifications and assists (docs/research/M4-interfaces.md §4.2, §5.6; owner: assists-notify) ------------
+        //
+        // Each admin reads only their own inbox, settings and devices. notify.onEvent creates the inbox items (one per
+        // notification event) and notify.registerDevice the devices; a client only marks its own item read (the read
+        // time is the server's) and writes its own push settings (CLIENT_WRITES.inboxItem, .notifySettings).
+        // notificationEvents/* has no client rule at all: the producers create them, the fan-out reads them.
+
+        // The kinds an admin may have pushed (`NOTIFICATION_KINDS`), each at most once.
+        function validPushKinds(kinds) {
+            return kinds is list
+                && kinds.size() <= 10
+                && kinds.toSet().size() == kinds.size()
+                && kinds.hasOnly(['usgs.approved', 'order.delivered', 'order.imported', 'order.reminder', 'order.expired', 'job.failed',
+                    'layer.readyToApprove', 'layer.needsPoints', 'budget.paused', 'crash.spike']);
+        }
+
+        function ownAdmin(uid) {
+            return isAdmin() && request.auth.uid == uid;
+        }
+
+        match /admins/{uid}/inbox/{item} {
+            allow read: if ownAdmin(uid);
+            allow update: if ownAdmin(uid)
+                && changedKeys().hasOnly(['read', 'readAt', 'updatedBy', 'updatedAt'])
+                && request.resource.data.read == true
+                && (!('readAt' in changedKeys()) || request.resource.data.readAt == request.time)
+                && stamped(request.resource.data);
+        }
+
+        // The one settings document: created by the admin's first change (or by notify.registerDevice), then updated.
+        function validNotifySettings(data) {
+            return data.push is bool && validPushKinds(data.pushKinds) && stamped(data);
+        }
+
+        match /admins/{uid}/notify/{doc} {
+            allow read: if ownAdmin(uid);
+            allow create: if ownAdmin(uid)
+                && doc == 'settings'
+                && request.resource.data.keys().hasOnly(['push', 'pushKinds', 'createdAt', 'updatedBy', 'updatedAt'])
+                && request.resource.data.createdAt == request.time
+                && validNotifySettings(request.resource.data);
+            allow update: if ownAdmin(uid)
+                && doc == 'settings'
+                && changedKeys().hasOnly(['push', 'pushKinds', 'updatedBy', 'updatedAt'])
+                && validNotifySettings(request.resource.data);
+        }
+
+        match /admins/{uid}/pushDevices/{device} {
+            allow read: if ownAdmin(uid);
+        }
+
+        // The reverse-geocoding cache of assist.suggestTitle: the editors listen to a cell until the queue answers.
+        match /assistGeocodes/{cell} {
+            allow read: if isAdmin();
+        }
+
+        // ---- end of M4 notifications and assists --------------------------------------------------------------------
+
         // setup/status (non-secret health: secrets live in Secret Manager, never here) and setup/owner.
         match /setup/{doc} {
             allow read: if isAdmin();
@@ -379,13 +437,14 @@ service cloud.firestore {
             allow read: if isAdmin();
         }
 
-        // Mapbox usage counters (usage/mapbox-YYYY-MM).
+        // Mapbox usage counters (usage/mapbox-YYYY-MM) and, since M4, the AI drafts' monthly counters (usage/ai-YYYY-MM).
         match /usage/{doc} {
             allow read: if isAdmin();
         }
 
         // The budget guard and the last ops.tick (ops/guard), the dispatcher's execution slots (ops/dispatch) and each
-        // city's last USGS harvest attempt (ops/harvest-{city}): written by the functions only (CR-M3-47).
+        // city's last USGS harvest attempt (ops/harvest-{city}): written by the functions only (CR-M3-47). M4: the
+        // Nominatim cool-down (ops/assist) and the crash-spike baseline (ops/crashes).
         match /ops/{doc} {
             allow read: if isAdmin();
         }
@@ -527,13 +586,15 @@ service cloud.firestore {
                 allow read: if isAdmin();
             }
 
-            // USGS scenes are harvested server-side; admins triage them (candidate, ordered, rejected)
-            // and annotate them, whatever state the harvest left them in.
+            // USGS scenes are harvested server-side; admins triage them (candidate, rejected) and annotate
+            // them, whatever state the harvest left them in. M4 (docs/research/M4-interfaces.md §1.8): an
+            // order is usgs.markOrdered's, which asks USGS first, so no client writes `ordered` or `available`,
+            // and `order` and `eeDatasetId` are server-owned like every field outside the list below.
             match /usgsScenes/{scene} {
                 allow read: if isAdmin();
                 allow update: if isAdmin()
                     && changedKeys().hasOnly(['status', 'note', 'updatedBy', 'updatedAt'])
-                    && (!('status' in changedKeys()) || request.resource.data.status in ['candidate', 'ordered', 'rejected'])
+                    && (!('status' in changedKeys()) || request.resource.data.status in ['candidate', 'rejected'])
                     && request.resource.data.get('note', 'x').matches('[\\s\\S]{1,1000}')
                     && stamped(request.resource.data);
             }

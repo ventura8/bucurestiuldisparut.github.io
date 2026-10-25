@@ -200,8 +200,9 @@ describe('the deployment', () => {
         const expected = expectedFunctions();
         const active = expected.map((id) => ({ id, state: 'ACTIVE' }));
 
-        expect(expected).toHaveLength(51);
-        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 51, total: 51, failed: [] });
+        // M3's 51, M4's orders (3 callables) and assists and notifications (5 callables, 2 background functions).
+        expect(expected).toHaveLength(61);
+        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 61, total: 61, failed: [] });
     });
 
     it('badPath_someMissingIsPendingAndOneFailedIsInvalid', () => {

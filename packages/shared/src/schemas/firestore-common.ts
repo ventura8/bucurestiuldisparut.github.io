@@ -51,9 +51,13 @@ export const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 /** The server writers that stamp documents: functions families, the raster pipeline, the bootstrap script. */
 export const SYSTEM_WRITERS = [
     'admins',
+    /** M4: the assists (the geocoding cache, the AI usage counters). */
+    'assist',
     'bootstrap',
     'history',
     'imagery',
+    /** M4: the notification fan-out (inbox items, push records). */
+    'notify',
     'ops',
     'photos',
     'pipeline',

@@ -9,6 +9,16 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { HEARTBEAT_SECONDS, LEASE_SECONDS, USGS_BACKOFF_MINUTES } from '../../src/api/imagery.js';
+import {
+    AUTO_GCP_CHECKPOINT_SHARE,
+    AUTO_GCP_METHODS,
+    AUTO_GCP_MIN_CONFIDENCE,
+    AUTO_GCP_SUGGEST_MIN,
+    AUTO_GCP_TILE_PX,
+    CHECKPOINT_MIN_PAIRS,
+    MATCH_CHANNELS,
+    MAX_SUGGESTIONS,
+} from '../../src/schemas/autogcp.js';
 import { JOB_STATUSES, JOB_STEP_STATES, JOB_WAIT_REASONS, jobDocSchema } from '../../src/schemas/firestore-ops.js';
 import { enabledGcps, GCP_ORIGINS, gcpSchema, GEOREF_TRANSFORMS, MIN_GCPS, type GeorefTransform } from '../../src/schemas/georef.js';
 import { RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
@@ -87,10 +97,39 @@ describe('the pipeline contract', () => {
         expect(Object.keys(job.steps).every((step) => (JOB_STEPS['usgs-import'] as readonly string[]).includes(step))).toBe(true);
     });
 
-    it.each(['version.awaiting-approval.json', 'version.needs-gcps.json'])('happyPath_%s passes the version schema', (name) => {
-        const result = validate(layerVersionDocSchema, golden(name));
+    it('happyPath_theAutomaticGcpConstantsEqualThePipelinesCopy', () => {
+        const { comment, ...constants } = golden('autogcp.json') as Readonly<Record<string, unknown>>;
 
-        expect(result.ok ? [] : result.issues).toEqual([]);
+        expect(typeof comment).toBe('string');
+        expect(constants).toEqual({
+            AUTO_GCP_METHODS,
+            MATCH_CHANNELS,
+            AUTO_GCP_MIN_CONFIDENCE,
+            AUTO_GCP_SUGGEST_MIN,
+            AUTO_GCP_CHECKPOINT_SHARE,
+            CHECKPOINT_MIN_PAIRS,
+            MAX_SUGGESTIONS,
+            AUTO_GCP_TILE_PX,
+        });
+    });
+
+    it.each(['version.awaiting-approval.json', 'version.needs-gcps.json', 'version.needs-gcps.suggestions.json'])(
+        'happyPath_%s passes the version schema',
+        (name) => {
+            const result = validate(layerVersionDocSchema, golden(name));
+
+            expect(result.ok ? [] : result.issues).toEqual([]);
+        },
+    );
+
+    it('happyPath_suggestionsStayBelowTheConfidenceTheFitTakes', () => {
+        const version = golden('version.needs-gcps.suggestions.json') as {
+            readonly suggestions: { readonly pairs: readonly { readonly score: number }[] };
+        };
+
+        expect(version.suggestions.pairs.every((pair) => pair.score >= AUTO_GCP_SUGGEST_MIN && pair.score < AUTO_GCP_MIN_CONFIDENCE)).toBe(
+            true,
+        );
     });
 
     it.each(paths.built)('happyPath_$builder builds $path', (pathCase) => {

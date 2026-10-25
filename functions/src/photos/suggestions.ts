@@ -3,7 +3,7 @@
  * values (`exif`), and the suggestions the admin accepts with one click (`suggested`): the GPS position and direction,
  * a year and a title from the original file name. EXIF text is untrusted: it is stored and shown as text only.
  */
-import { MAX_YEAR, MIN_YEAR, fileStem, yearIn, type PhotoDoc } from '@hcm/shared';
+import { MAX_YEAR, MIN_YEAR, fileStem, isCameraName, yearIn, type PhotoDoc } from '@hcm/shared';
 
 import type { ExifSummary } from '../ports/image-processor.js';
 import { compact } from '../api/objects.js';
@@ -14,9 +14,6 @@ type ExifRecord = NonNullable<PhotoDoc['exif']>;
 const COORDINATE_DECIMALS = 6;
 const BEARING_DECIMALS = 1;
 const MAX_TITLE = 200;
-
-/** Camera and scanner file names say nothing about the place (`IMG_1234`, `DSC00042`, `PXL_2026…`, `Scan 3`). */
-const CAMERA_NAME = /^(?:img|dsc[fn]?|pxl|dcim|mvimg|photo|image|scan|dji)[\s_-]*\d/i;
 
 const EXIF_DATE = /^(\d{4}):\d{2}:\d{2}/;
 
@@ -68,7 +65,7 @@ export function suggestedTitle(originalName: string | undefined): string | undef
         .replaceAll('_', ' ')
         .replaceAll(/\s+/gu, ' ')
         .trim();
-    return stem === '' || CAMERA_NAME.test(stem) ? undefined : stem.slice(0, MAX_TITLE).trim();
+    return stem === '' || isCameraName(stem) ? undefined : stem.slice(0, MAX_TITLE).trim();
 }
 
 /** The suggestions of one upload, or undefined when the file suggests nothing. */

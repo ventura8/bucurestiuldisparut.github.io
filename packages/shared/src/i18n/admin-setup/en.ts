@@ -152,6 +152,7 @@ export const en: AdminSetupMessages = {
     'adminSetup.selfTest.check.usgs': 'USGS account',
     'adminSetup.selfTest.check.firebase-management': 'Firebase configuration',
     'adminSetup.selfTest.check.error-reporting': 'Crash reports (Error Reporting)',
+    'adminSetup.selfTest.check.ai': 'Translation drafts (Vertex AI)',
     'adminSetup.selfTest.fix': 'Open the step "{step}"',
     'adminSetup.mapbox.rotate.title': 'Public tokens',
     'adminSetup.mapbox.rotate.why': 'A public token used elsewhere? Replace it: the old one works 10 more minutes, then goes.',

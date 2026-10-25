@@ -2,7 +2,17 @@
  * `admins.revoke` (`functions/src/admin/revoke.ts`, M2-interfaces §3.1) through its callable's `.run()` on the
  * Firestore and Auth emulators: an admin loses access at once; the owner and oneself are never revocable.
  */
-import { FIRESTORE_PATHS, adminDocSchema, inviteDocSchema, ownerDocSchema, timestampFromDate, type AdminRole } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    adminDocSchema,
+    inboxItemDocSchema,
+    inviteDocSchema,
+    notifySettingsDocSchema,
+    ownerDocSchema,
+    pushDeviceDocSchema,
+    timestampFromDate,
+    type AdminRole,
+} from '@hcm/shared';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { revokeFunction } from '../../src/admin/revoke.js';
@@ -51,6 +61,39 @@ describe('admins.revoke', () => {
         expect(account.tokensValidAfterTime).toBeDefined();
         const staleToken = { uid: admin, token: googleToken(`${admin}@example.test`, { admin: true }) };
         await expect(requireAccess('admin', staleToken, world.admins)).rejects.toMatchObject({ code: 'apiError.notAdmin' });
+    });
+
+    it('happyPath_aRevokedAdminsPushDevicesInboxAndNotificationSettingsGoToo @S-A47-BAD-SHARED-BROWSER', async () => {
+        const world = emulators.newWorld();
+        const owner = await seedAdmin(world, 'owner');
+        const admin = await seedAdmin(world);
+        const stamp = { updatedBy: admin, updatedAt: AT };
+        await world.documents.set(FIRESTORE_PATHS.pushDevice(admin, 'a'.repeat(32)), pushDeviceDocSchema, {
+            ...{ token: 'e2e-fcm-token:revoked-browser-0001', lang: 'ro', createdAt: AT },
+            ...stamp,
+        });
+        await world.documents.set(FIRESTORE_PATHS.notifySettings(admin), notifySettingsDocSchema, {
+            ...{ push: true, pushKinds: ['job.failed'] },
+            ...stamp,
+        });
+        // More items than one page of deletes: the inbox goes page by page.
+        for (let index = 0; index < 101; index += 1) {
+            await world.documents.set(FIRESTORE_PATHS.inboxItem(admin, `job.failed~c~j${String(index)}~0`), inboxItemDocSchema, {
+                ...{ kind: 'job.failed', severity: 'error', params: { label: 'Corona' }, link: '#/jobs', createdAt: AT, read: false },
+                ...stamp,
+            });
+        }
+        await world.documents.set(FIRESTORE_PATHS.pushDevice(owner, 'b'.repeat(32)), pushDeviceDocSchema, {
+            ...{ token: 'e2e-fcm-token:owner-browser-0001', lang: 'en', createdAt: AT },
+            ...{ updatedBy: owner, updatedAt: AT },
+        });
+
+        await expect(revoke(world, owner, { kind: 'admin', uid: admin })).resolves.toEqual({ revoked: true });
+
+        await expect(world.documents.count(FIRESTORE_PATHS.pushDevices(admin))).resolves.toBe(0);
+        await expect(world.documents.count(FIRESTORE_PATHS.inbox(admin))).resolves.toBe(0);
+        await expect(world.documents.get(FIRESTORE_PATHS.notifySettings(admin), notifySettingsDocSchema)).resolves.toBeUndefined();
+        await expect(world.documents.count(FIRESTORE_PATHS.pushDevices(owner))).resolves.toBe(1);
     });
 
     it('badPath_theOwnerCannotBeRevoked', async () => {

@@ -1,0 +1,149 @@
+import '../global-options.js';
+
+import {
+    FIRESTORE_PATHS,
+    VERTEX_DRAFTS_ROLE_ID,
+    VERTEX_MODEL_ID,
+    aiCostUsd,
+    aiUsageDocSchema,
+    draftKeepsLinks,
+    estimateTokens,
+    overAiCap,
+    sanitizeDraft,
+    translationPrompt,
+    usageMonth,
+    type AiUsageDoc,
+    type AssistTranslateDraftRequest,
+    type CallableResponse,
+    type TranslationPrompt,
+} from '@hcm/shared';
+
+import { ApiError } from '../api/api-error.js';
+import { defineCallable, type CallableDeps } from '../api/callable.js';
+import { UpstreamError } from '../ports/errors.js';
+import type { Ports } from '../ports/index.js';
+import { guardIsRed, requireCity, stampOf } from './records.js';
+
+/**
+ * `assist.translateDraft` (admin, App Check enforced; `docs/research/M4-interfaces.md` §4.3; S-A45-HAPPY-TRANSLATE,
+ * S-A45-BAD-MARKUP-AND-LENGTH, S-A45-BAD-MONTHLY-CAP, S-A45-BAD-GUARD-PAUSED, S-A45-BAD-API-DISABLED, S-A09-BAD-AI-
+ * UNAVAILABLE): a draft of one field's text in the other language from Vertex AI Gemini, server-side only, the model and
+ * the prompt pinned. A red budget guard refuses it first; then, in one transaction on `usage/ai-YYYY-MM`, the month's
+ * cap (`AI_MONTHLY_CAP`) refuses it or one request and its estimated cost are reserved; after the call the counters take
+ * the tokens Vertex AI reports. The answer is sanitized plain text within the field's limit (`sanitizeDraft`), and a
+ * draft that adds or changes a link address of the source is no draft (`apiError.assist.linksChanged`: text pasted into
+ * the source may tell the model to add one, and the viewer renders a description's links); nothing is written to the
+ * entity: the editor puts the draft into its own draft, and only the admin's Save publishes.
+ */
+export type TranslateDraftDeps = CallableDeps & Pick<Ports, 'documents' | 'clock' | 'translator'>;
+
+type Response = CallableResponse<'assist.translateDraft'>;
+type Generation = Awaited<ReturnType<Ports['translator']['generate']>>;
+
+/** Answers that are no draft whatever their text: the model stopped for safety or recitation. */
+const REFUSED_FINISH = new Set(['SAFETY', 'RECITATION', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII']);
+
+type Counters = Pick<AiUsageDoc, 'requests' | 'inputTokens' | 'outputTokens' | 'usd'>;
+
+/** A month nothing was asked in yet. */
+const EMPTY_USAGE: Counters = { requests: 0, inputTokens: 0, outputTokens: 0, usd: 0 };
+
+/** What a call of `prompt` may cost at most: its whole text in, every output token it allows out. */
+export function estimateUsd(prompt: TranslationPrompt): number {
+    return aiCostUsd({ inputTokens: estimateTokens(prompt.systemInstruction + prompt.userText), outputTokens: prompt.maxOutputTokens });
+}
+
+/** Changes the month's counters in one transaction; `change` may refuse (throw) after reading them. */
+async function updateUsage(deps: TranslateDraftDeps, month: string, change: (spent: Counters) => Counters): Promise<void> {
+    const path = FIRESTORE_PATHS.aiUsage(month);
+    await deps.documents.transaction(async (transaction) => {
+        const spent = (await transaction.get(path, aiUsageDocSchema)) ?? EMPTY_USAGE;
+        await transaction.set(path, aiUsageDocSchema, { month, ...change(spent), ...stampOf(deps.clock.now()) });
+    });
+}
+
+/** Reserves one request and its estimate, or refuses with `apiError.assist.monthlyCap`. */
+async function reserve(deps: TranslateDraftDeps, month: string, estimate: number): Promise<void> {
+    await updateUsage(deps, month, (spent) => {
+        if (overAiCap(spent, estimate)) {
+            throw new ApiError('apiError.assist.monthlyCap');
+        }
+        return {
+            requests: spent.requests + 1,
+            inputTokens: spent.inputTokens,
+            outputTokens: spent.outputTokens,
+            usd: spent.usd + estimate,
+        };
+    });
+}
+
+/** Replaces the reservation by what the call reported (a failed call costs nothing: only its request stays counted). */
+async function settle(deps: TranslateDraftDeps, month: string, estimate: number, generation: Generation | undefined): Promise<void> {
+    const inputTokens = generation?.inputTokens ?? 0;
+    const outputTokens = generation?.outputTokens ?? 0;
+    await updateUsage(deps, month, (spent) => ({
+        requests: spent.requests,
+        inputTokens: spent.inputTokens + inputTokens,
+        outputTokens: spent.outputTokens + outputTokens,
+        usd: Math.max(0, spent.usd - estimate + aiCostUsd({ inputTokens, outputTokens })),
+    }));
+}
+
+/** How a failed Vertex AI call reaches the admin; the field stays as it was in every case. */
+export function draftFailure(error: unknown): unknown {
+    if (!(error instanceof UpstreamError)) {
+        return error;
+    }
+    if (error.failure === 'forbidden') {
+        return error.api === undefined
+            ? new ApiError('apiError.cloud.permission', { role: VERTEX_DRAFTS_ROLE_ID })
+            : new ApiError('apiError.cloud.apiDisabled', { api: error.api });
+    }
+    return new ApiError(error.failure === 'rateLimited' ? 'apiError.rateLimited' : 'apiError.assist.unavailable');
+}
+
+async function generate(deps: TranslateDraftDeps, prompt: TranslationPrompt): Promise<Generation> {
+    try {
+        return await deps.translator.generate(VERTEX_MODEL_ID, prompt);
+    } catch (error) {
+        throw draftFailure(error);
+    }
+}
+
+/**
+ * The draft of a generation: `apiError.assist.noDraft` for a refused or empty answer, `apiError.assist.linksChanged` for
+ * one with a link address the source does not have.
+ */
+function draftOf(generation: Generation, data: Pick<AssistTranslateDraftRequest, 'field' | 'text'>): Response {
+    const draft = REFUSED_FINISH.has(generation.finishReason) ? null : sanitizeDraft(generation.text, data.field);
+    if (draft === null) {
+        throw new ApiError('apiError.assist.noDraft');
+    }
+    if (!draftKeepsLinks(data.text, draft.text)) {
+        throw new ApiError('apiError.assist.linksChanged');
+    }
+    return { draft: draft.text, truncated: draft.truncated, model: VERTEX_MODEL_ID };
+}
+
+async function translateDraft(deps: TranslateDraftDeps, data: AssistTranslateDraftRequest): Promise<Response> {
+    if (await guardIsRed(deps.documents)) {
+        throw new ApiError('apiError.guardPaused');
+    }
+    const city = await requireCity(deps.documents, data.cityId);
+    const prompt = translationPrompt({ ...data, cityName: city.name[data.to] ?? city.name.ro });
+    const month = usageMonth(deps.clock.now());
+    const estimate = estimateUsd(prompt);
+    await reserve(deps, month, estimate);
+    let generation: Generation | undefined;
+    try {
+        generation = await generate(deps, prompt);
+    } finally {
+        await settle(deps, month, estimate, generation);
+    }
+    deps.log.info('translation draft', { cityId: data.cityId, field: data.field, to: data.to, finish: generation.finishReason });
+    return draftOf(generation, data);
+}
+
+export function translateDraftFunction(getDeps: () => TranslateDraftDeps) {
+    return defineCallable('assist.translateDraft', (deps: TranslateDraftDeps, _caller, data) => translateDraft(deps, data), getDeps);
+}

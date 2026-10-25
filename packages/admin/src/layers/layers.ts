@@ -18,11 +18,13 @@ import {
     type LayerDoc,
 } from '@hcm/shared';
 
+import type { EditorAssists } from '../assist/editor-assists.js';
 import type { AreaModule, AreaStore } from '../content/areas.js';
 import { LiveDoc, type DocState } from '../content/doc.js';
 import { LiveList } from '../content/list.js';
 import type { ContentServices, WriteOutcome } from '../content/services.js';
 import { Store } from '../state/store.js';
+import { layerAssists } from './assists.js';
 import { CropSlot } from './crop-slot.js';
 import { EditDraft, EMPTY_DRAFT, type DraftState } from './draft.js';
 import { LayerDeletion } from './deletion.js';
@@ -55,6 +57,7 @@ class LayersStore implements AreaStore<LayersState, LayersIntents> {
     readonly #deletion: LayerDeletion;
     readonly #linker: LayerLinker;
     readonly #crop: CropSlot;
+    readonly #assists: EditorAssists;
     #draft: EditDraft<LayerDoc> | null = null;
     /** The saved version the map shows (`<id>@<version>`, '' for none). */
     #shown = '';
@@ -107,7 +110,15 @@ class LayersStore implements AreaStore<LayersState, LayersIntents> {
                 this.#cell.update({ crop });
             },
         });
-        this.intents = { ...this.#intents(), ...this.#cropIntents() };
+        this.#assists = layerAssists({
+            services,
+            value: () => this.#value(),
+            edit: (patch) => this.#draft?.edit(patch),
+            changed: (assist) => {
+                this.#cell.update({ assist });
+            },
+        });
+        this.intents = { ...this.#intents(), ...this.#cropIntents(), ...this.#assists.intents };
     }
 
     get state(): LayersState {
@@ -143,7 +154,7 @@ class LayersStore implements AreaStore<LayersState, LayersIntents> {
         this.#preview.attach(null);
     }
 
-    #intents(): Omit<LayersIntents, 'crop' | 'redrawCrop' | 'addCropCorner' | 'saveCrop' | 'closeCrop'> {
+    #intents(): Omit<LayersIntents, 'crop' | 'redrawCrop' | 'addCropCorner' | 'saveCrop' | 'closeCrop' | keyof EditorAssists['intents']> {
         return {
             ...{
                 retry: () => {
@@ -294,6 +305,7 @@ class LayersStore implements AreaStore<LayersState, LayersIntents> {
         this.#preview.clear();
         this.#deletion.cancel();
         this.#crop.close();
+        this.#assists.reset();
         this.#draft = null;
         this.#shown = '';
         this.#map.show([]);

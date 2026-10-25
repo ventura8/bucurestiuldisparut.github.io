@@ -96,10 +96,6 @@ HELD: dict[str, Held] = {
     "npm:@types/node": Held("24.19.2", "follows the Node 24 runtime (engines >=24.12.0), not the newest Node line"),
     "docker:node": Held("24-bookworm-slim", "Node 24 is the runtime line (engines >=24.12.0); it moves together with engines"),
     "pypi:mando": Held("0.7.1", "radon 6.0.1 (the latest radon) requires mando >=0.6,<0.8"),
-    "npm:terra-draw": Held(
-        "1.37.0",
-        "the version the user approved after its evaluation (DECISIONS-for-review.md §34g, §41b); 1.38.0 waits for its own",
-    ),
 }
 
 

@@ -5,12 +5,14 @@ import type { ViewerServices } from '../../src/viewer/services.js';
 import {
     LOCATE_ZOOM,
     closeSheet,
+    defaultCompareLayer,
     locateViewer,
     menuAction,
     selectPhoto,
     shareTitle,
     shareViewer,
     syncLocale,
+    toggleCompare,
 } from '../../src/viewer/viewer-actions.js';
 import { FakeStore, idleState, readyState } from './fake-store.js';
 import { testManifest } from './fixtures.js';
@@ -180,5 +182,30 @@ describe('menuAction', () => {
             expect(store.callsOf('flyTo')).toHaveLength(1);
         });
         expect(store.callsOf('showToast').map((args) => args[0])).toEqual(['geolocate.locating', 'share.copied']);
+    });
+});
+
+describe('toggleCompare (M4, V06)', () => {
+    it('happyPath_compareOpensWithTodayOrTheNewestLayerAndClosesAModalLayersSheet', () => {
+        const store = new FakeStore(readyState(testManifest(), { sheet: 'layers' }));
+        toggleCompare(store);
+        const today = store.getState().compare;
+        store.closeCompare();
+        store.set({ overlays: store.getState().overlays.map((overlay) => ({ ...overlay, visible: false })) });
+        toggleCompare(store);
+
+        expect(today).toEqual({ layerId: null, position: 0.5 });
+        expect(store.getState().compare?.layerId).toBe('kh9-1977');
+        expect(store.callsOf('openSheet')).toEqual([['none']]);
+    });
+
+    it('badPath_whileComparingTheButtonClosesAndADockedPanelStays', () => {
+        const store = new FakeStore(readyState(testManifest(), { sheet: 'layers', windowClass: 'large' }));
+        toggleCompare(store);
+        toggleCompare(store);
+
+        expect(store.getState().compare).toBeNull();
+        expect(store.getState().sheet).toBe('layers');
+        expect(defaultCompareLayer({ overlays: [], manifest: null })).toBeNull();
     });
 });

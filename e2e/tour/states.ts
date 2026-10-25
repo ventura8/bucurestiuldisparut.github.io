@@ -1,7 +1,11 @@
 import type { Locale } from '@hcm/shared';
 import { expect, type BrowserContext, type Locator, type Page, type Route } from '@playwright/test';
 
+import { ORDERS_STATES } from '../admin/specs/imagery/orders-states.js';
 import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
+import { SUGGESTIONS_STATES } from '../admin/specs/imagery/suggestions-states.js';
+import { NOTIFY_STATES } from '../admin/specs/notify/states.js';
+import { COMPARE_STATES, openComparing } from './compare-states.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
 import { SITE_ORIGIN } from '../fixtures/world.js';
@@ -36,8 +40,8 @@ import {
  * admin's singleton screens (Setup, Admins, Crash reports, Home, the sign-in, the claim, a revoked session), which
  * need the admin tier's lock, at its five projects (e2e/admin/specs/). A state that does not exist at a window size (a
  * bottom sheet's heights on anything but a phone held upright, the Layers item of a menu whose panel is always docked)
- * is left out there by `exists`, never skipped. The landscape variants are the `c915l` projects; swipe compare (V06)
- * joins in M4.
+ * is left out there by `exists`, never skipped. The landscape variants are the `c915l` projects; swipe compare (V06,
+ * M4) has its states in e2e/tour/compare-states.ts and its journey `compare` here.
  */
 
 /** What a state's steps drive and read. */
@@ -347,6 +351,8 @@ const VIEWER_STATES = {
             await expect(page.getByText(t(lang, 'error.webgl'))).toBeVisible();
         },
     },
+    // Swipe compare (M4, V06): the second map behind its divider, the toggle of a compact window, the chooser.
+    ...COMPARE_STATES,
 } as const satisfies Record<string, Omit<ViewerState, 'id'>>;
 
 type ViewerStateId = keyof typeof VIEWER_STATES;
@@ -456,6 +462,12 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         id: 'poi-about',
         boot: ({ page, lang }) => openViewer(page, { lang, hash: '16/44.42680/26.08720' }),
         states: ['poi', 'poi-peek', 'poi-full', 'about', 'about-end'],
+    },
+    {
+        title: 'Swipe compare: the divider at 50 % and at both edges, from the keyboard; the toggle of a compact window; the chooser',
+        id: 'compare',
+        boot: openComparing,
+        states: ['compare-swipe', 'compare-toggle', 'compare-keyboard', 'compare-swipe-edge', 'compare-swipe-edge-end', 'compare-menu'],
     },
     {
         title: 'Bucharest today: no layers yet and the consent banner',
@@ -689,6 +701,18 @@ const ADMIN_STATES = {
     // [section imagery] owner: e2e-fakes (with admin-imagery's screens)
     ...IMAGERY_STATES,
     // [end imagery]
+    // M4 (docs/research/M4-interfaces.md §7.3): ids 'orders.<state>', 'georef.<state>' (the suggestions), 'notify.<state>'
+    // and 'assist.<state>'; each workstream appends inside its own section as each state's journey lands (a spread from a
+    // file of its own once a section grows, as the imagery section did).
+    // [section orders] owner: orders
+    ...ORDERS_STATES,
+    // [end orders]
+    // [section autogcp] owner: autogcp
+    ...SUGGESTIONS_STATES,
+    // [end autogcp]
+    // [section notify] owner: assists-notify (the inbox, push on a device, the editors' assists)
+    ...NOTIFY_STATES,
+    // [end notify]
 } as const;
 
 export type AdminStateId = keyof typeof ADMIN_STATES;

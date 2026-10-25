@@ -7,6 +7,9 @@ property, measured the way a CDN serves it (gzip, level 9). Mapbox GL is not par
 loaded from api.mapbox.com as the global `mapboxgl`, never bundled), which is exactly what a
 sudden jump here would reveal.
 
+The engine's ES module build has lazy chunks too (swipe compare, the consented Firebase SDK): each has its own budget
+in `ENGINE_CHUNK_BUDGETS`, and a chunk without one fails.
+
 The admin is an ES module entry with lazy chunks (DECISIONS-for-review.md §34b): each editor area,
 Terra Draw, the colour library and the analytics SDK are fetched when first needed. Its budget has
 three parts:
@@ -52,6 +55,19 @@ BUDGETS: Mapping[str, int] = {
     "packages/engine/dist/engine.iife.js": 125,
 }
 
+# The engine's build folder, its two entries (BUDGETS above) and its lazy chunks of the ES module build, each by its name
+# without the content hash -> gzip budget in KB, the measurement plus about 20 %; a chunk without a budget fails, as the
+# admin's do (a new chunk is a reviewed decision). The IIFE inlines them (DECISIONS-for-review.md §13a), within its budget.
+ENGINE_DIR = "packages/engine/dist"
+ENGINE_ENTRIES = frozenset({"engine.mjs", "engine.iife.js"})
+ENGINE_CHUNK_BUDGETS: Mapping[str, int] = {
+    # Swipe compare (M4, docs/research/M4-interfaces.md §3.2): the second map's session and <hcm-compare>, 4.2 KB measured
+    # on 2026-10-24, fetched the first time a visitor compares (the contract's ceiling: 12 KB; DECISIONS-for-review.md §55b).
+    "compare": 5,
+    # firebase/app and firebase/analytics, fetched only after the visitor's consent: 13.3 KB on 2026-10-24.
+    "firebase-sdk": 16,
+}
+
 # The admin's build folder and its entry (packages/admin/vite.config.ts).
 ADMIN_DIR = "packages/admin/dist"
 ADMIN_ENTRY = "admin.mjs"
@@ -77,17 +93,34 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     "imagery": 18,
     "georef": 17,
     "layer-geometry": 3,
+    # M4's order card (`packages/ui/src/admin/imagery/orders/lazy-card.ts`), fetched the first time a scene that must be
+    # bought opens, so the Imagery area stays within its budget with the buy flow: 1.7 KB measured on 2026-10-24 plus about
+    # 20 % (DECISIONS-for-review.md §56b).
+    "order-card": 2,
     # What two or more areas share and the entry does not (the codeSplitting group `editor-shared`).
     "editor-shared": 13,
     # The admin map's box and the content it draws (the group `admin-map`): 7.4 KB measured on 2026-10-18, when the
     # settings page's map made the places' and photos' map modules shared (DECISIONS-for-review.md §42a).
     "admin-map": 9,
-    # Terra Draw 1.37.0 and its Mapbox GL adapter (the group `terra-draw`), on the first drawing tools.
+    # Terra Draw and its Mapbox GL adapter (the group `terra-draw`), on the first drawing tools: 47.4 KB with 1.37.0 on
+    # 2026-10-18, 47.7 KB with 1.38.0 on 2026-10-24 (DECISIONS-for-review.md §53a), so the budget stays.
     "terra-draw": 58,
     # @material/material-color-utilities (`@hcm/ui/dynamic-color`), for the city's theme.
     "dynamic-color": 24,
     # Firebase Analytics, only after consent.
     "analytics-sdk": 8,
+    # M4 (docs/research/M4-interfaces.md §5.4, §5.5; DECISIONS-for-review.md §54b), each the measurement of 2026-10-24 plus
+    # about 20 %: the inbox (3.4 KB), Firebase Messaging, fetched when an admin turns notifications on for a browser
+    # (5.6 KB), and the Firebase Installations SDK that it and Analytics share (2.9 KB, the codeSplitting group
+    # `firebase-installations`).
+    "inbox": 5,
+    "messaging-sdk": 7,
+    "firebase-installations": 4,
+    # The editors' assists (the group `assist`: the title suggestions and translation drafts the photo, place and layer
+    # editors share, 2.2 KB), and the admin's web push service worker, which the admin page build writes beside the
+    # chunks (`scripts/site/src/admin/service-worker.ts`, 0.7 KB).
+    "assist": 3,
+    "firebase-messaging-sw.js": 1,
 }
 # The entry and every chunk together.
 ADMIN_TOTAL_KB = 620
@@ -163,15 +196,37 @@ def within(line: str, size: int, budget: int) -> list[str]:
     return [line] if size > budget * KB else []
 
 
-def chunk_report(file: str, size: int, budgets: Mapping[str, int]) -> tuple[list[str], str]:
+@dataclass(frozen=True)
+class ChunkTable:
+    """Where a build's lazy chunks are and the table that budgets them (its name for the message)."""
+
+    folder: str
+    name: str
+    budgets: Mapping[str, int]
+
+
+def chunk_report(file: str, size: int, table: ChunkTable) -> tuple[list[str], str]:
     """(problems, the report line) of one lazy chunk."""
     name = chunk_name(file)
-    budget = budgets.get(name)
+    budget = table.budgets.get(name)
     if budget is None:
-        line = f"{ADMIN_DIR}/{file}: {size / KB:.1f} KB gzip, a chunk without a budget (add `{name}` to ADMIN_CHUNK_BUDGETS)"
+        line = f"{table.folder}/{file}: {size / KB:.1f} KB gzip, a chunk without a budget (add `{name}` to {table.name})"
         return [line], line
-    line = report_line(f"{ADMIN_DIR}/{file}", size, budget)
+    line = report_line(f"{table.folder}/{file}", size, budget)
     return within(line, size, budget), line
+
+
+def check_engine_chunks(root: Path, budgets: Mapping[str, int] = ENGINE_CHUNK_BUDGETS) -> tuple[list[str], list[str]]:
+    """(problems, report lines) of every lazy chunk of the engine's ES module build (its entries are in BUDGETS)."""
+    table = ChunkTable(ENGINE_DIR, "ENGINE_CHUNK_BUDGETS", budgets)
+    problems: list[str] = []
+    lines: list[str] = []
+    for path in sorted((root / ENGINE_DIR).glob("*.js")):
+        if path.name not in ENGINE_ENTRIES:
+            chunk_problems, line = chunk_report(path.name, gzip_size(path.read_bytes()), table)
+            problems += chunk_problems
+            lines.append(line)
+    return problems, lines
 
 
 def admin_sizes(folder: Path) -> dict[str, int]:
@@ -194,8 +249,9 @@ def check_admin(root: Path, budgets: AdminBudgets = ADMIN_BUDGETS) -> tuple[list
     sizes = admin_sizes(folder)
     entry = [file for file in entry_files(folder, ADMIN_ENTRY) if file in sizes]
     problems, lines = entry_report(entry, sizes, budgets.entry_kb)
+    table = ChunkTable(ADMIN_DIR, "ADMIN_CHUNK_BUDGETS", budgets.chunks)
     for file in sorted(set(sizes) - set(entry)):
-        chunk_problems, line = chunk_report(file, sizes[file], budgets.chunks)
+        chunk_problems, line = chunk_report(file, sizes[file], table)
         problems += chunk_problems
         lines.append(line)
     total = sum(sizes.values())
@@ -209,9 +265,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--budget", action="append", type=budget_arg, default=[], metavar="FILE=KB", help="override or add a budget")
     args = parser.parse_args(argv)
     problems, lines = check(args.root, {**BUDGETS, **dict(args.budget)})
-    admin_problems, admin_lines = check_admin(args.root)
-    problems += admin_problems
-    lines += admin_lines
+    for more_problems, more_lines in (check_engine_chunks(args.root), check_admin(args.root)):
+        problems += more_problems
+        lines += more_lines
     if problems:
         LOG.error("[bundle-budget] FAILED:\n%s", "\n".join(f"  - {problem}" for problem in problems))
         return 1

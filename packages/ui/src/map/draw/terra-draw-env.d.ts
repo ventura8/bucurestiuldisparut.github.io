@@ -1,5 +1,5 @@
 /**
- * What the declarations of `terra-draw` 1.37.0 and `terra-draw-mapbox-gl-adapter` 1.5.0 name without shipping it
+ * What the declarations of `terra-draw` 1.38.0 and `terra-draw-mapbox-gl-adapter` 1.5.0 name without shipping it
  * (`skipLibCheck` is off, DECISIONS-for-review.md §34g): five GeoJSON types of the `geojson` module (RFC 7946, as
  * `@types/geojson` declares them; Terra Draw has that package as a dev dependency only), and the global namespace
  * `mapboxgl` of Mapbox GL JS's own declarations, whose `Map` the adapter takes. The Mapbox map reaches the adapter through

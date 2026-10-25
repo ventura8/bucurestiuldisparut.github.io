@@ -158,6 +158,38 @@ describe('the controller', () => {
         expect(world.viewer).toMatchObject({ detached: 1, removed: 1 });
     });
 
+    it('happyPath_compareOpensMovesAndClosesThroughTheController', async () => {
+        const world = testEnvironment();
+        const controller = mount(new FakeContainer().element, config(), world.env);
+
+        controller.openCompare('kh9-1980', { position: 0.3 });
+        await controller.ready;
+        const opened = world.viewer.store?.getState().compare;
+        controller.setComparePosition(0.6);
+        const moved = world.viewer.store?.getState().compare;
+        controller.closeCompare();
+
+        expect(opened).toEqual({ layerId: 'kh9-1980', position: 0.3 });
+        expect(moved).toEqual({ layerId: 'kh9-1980', position: 0.6 });
+        expect(world.viewer.store?.getState().compare).toBeNull();
+    });
+
+    it('badPath_compareIgnoresAnUnknownLayerAndAFailedViewer', async () => {
+        const world = testEnvironment();
+        const controller = mount(new FakeContainer().element, config(), world.env);
+        await controller.ready;
+        const failed = mount(new FakeContainer().element, { cityId: 'x' }, testEnvironment().env);
+
+        controller.openCompare('no-such-layer');
+        controller.openCompare(null);
+        failed.openCompare(null);
+        failed.setComparePosition(0.2);
+        failed.closeCompare();
+
+        expect(world.viewer.store?.getState().compare).toEqual({ layerId: null, position: 0.5 });
+        await expect(failed.ready).resolves.toMatchObject({ ok: false });
+    });
+
     it('badPath_destroyBeforeReadySettlesReadyAndDropsTheQueue', async () => {
         const world = testEnvironment();
         const controller = mount(new FakeContainer().element, config(), world.env);

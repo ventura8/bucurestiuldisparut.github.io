@@ -4,6 +4,7 @@
  * `packages/admin/test/app/admin-port.test.ts` checks that the real store satisfies it.
  */
 import type {
+    ApiErrorCode,
     BBox,
     GeorefTransform,
     JobStatus,
@@ -11,8 +12,10 @@ import type {
     JobWaitReason,
     LayerVersionState,
     LngLat,
+    OrderState,
     PublishChoice,
     RankReasonEntry,
+    SceneAcquisitionState,
     Sensor,
     ServiceState,
     UsgsDataset,
@@ -24,6 +27,17 @@ import type { GuardPort } from './guard-port.js';
 
 export type ImageryTabPort = 'find' | 'work' | 'upload';
 export type MapStatusPort = 'none' | 'loading' | 'ready' | 'no-token' | 'no-webgl' | 'failed';
+
+/** M4 (`docs/research/M4-interfaces.md` §1.3): a scene's order as its card and page show it. */
+export interface SceneOrderPort {
+    readonly state: OrderState;
+    readonly orderedAt: string;
+    readonly nextCheckAt: string;
+    readonly lastCheckedAt: string | null;
+    /** The last failed check, as an `apiError.*` code. */
+    readonly lastError: ApiErrorCode | null;
+    readonly importJobId: string | null;
+}
 
 export interface SceneItemPort {
     readonly id: string;
@@ -44,6 +58,10 @@ export interface SceneItemPort {
     readonly corners: readonly [LngLat, LngLat, LngLat, LngLat] | null;
     readonly browse: { readonly state: 'none' | 'copied' | 'failed'; readonly path: string | null; readonly error: string | null };
     readonly layerId: string | null;
+    /** M4: the chip's one state, the order, the scene's EarthExplorer page (null: unknown, the card names the entity id). */
+    readonly acquisition: SceneAcquisitionState;
+    readonly order: SceneOrderPort | null;
+    readonly earthExplorerUrl: string | null;
 }
 
 interface SceneFiltersPort {
@@ -215,6 +233,11 @@ export interface ImageryViewState {
     /** The budget guard (null while reading; CR-M3-47). */
     readonly guard: GuardPort | null;
     readonly resuming: boolean;
+    /** M4: the scenes that have an order, whatever the filters (Work's orders; a routed scene Free only hides). */
+    readonly orders: ListStatePort<SceneItemPort>;
+    /** M4: the order card's action running, for which scene, and the last refusal on its card. */
+    readonly ordering: { readonly id: string; readonly action: 'mark' | 'check' | 'cancel' } | null;
+    readonly orderRefusal: { readonly id: string; readonly notice: AdminNoticeInputPort } | null;
 }
 
 /** A chosen file (a `File`). */
@@ -248,4 +271,8 @@ export interface ImageryIntentsPort {
     setPreviewOpacity(percent: number): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;
+    /** M4: "I ordered it", "Check now", "Take the mark back". */
+    markOrdered(id: string): Promise<boolean>;
+    checkOrder(id: string): Promise<boolean>;
+    cancelOrder(id: string): Promise<boolean>;
 }

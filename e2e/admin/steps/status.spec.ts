@@ -1,3 +1,4 @@
+import { SELF_TEST_CHECKS } from '@hcm/shared';
 import { MAPBOX_TOKENS, USGS_CREDENTIALS } from '@hcm/test-support/fakes';
 import type { Page } from '@playwright/test';
 
@@ -126,7 +127,8 @@ test(
         await selfTest;
 
         const list = page.getByRole('region', { name: setupText(lang, 'adminSetup.selfTest.title') });
-        await expect(list.locator('[data-check]')).toHaveCount(9);
+        // Every check of the server's list, the `ai` check (M4: Vertex AI's free `countTokens`) among them.
+        await expect(list.locator('[data-check]')).toHaveCount(SELF_TEST_CHECKS.length);
         const secrets = list.locator('[data-check="secrets"]');
         await expect(secrets).toHaveAttribute('data-state', 'invalid');
         await expect(secrets).toContainText(apiText(lang, 'apiError.secrets.unavailable'));

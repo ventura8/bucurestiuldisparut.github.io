@@ -13,6 +13,8 @@ const AREAS: Readonly<Record<string, () => Promise<{ readonly AREA_ELEMENTS: Are
     history: () => import('../../../src/admin/areas/history.js'),
     jobs: () => import('../../../src/admin/areas/jobs.js'),
     crashes: () => import('../../../src/admin/areas/crashes.js'),
+    // M4 (docs/research/M4-interfaces.md §5.5): the inbox.
+    inbox: () => import('../../../src/admin/areas/inbox.js'),
 };
 
 describe('the areas entries', () => {

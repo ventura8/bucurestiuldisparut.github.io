@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 import { apiErrorCodeSchema, apiErrorParamsSchema } from '../api/errors.js';
 import { layerDeleteParamsSchema } from '../api/layers.js';
+import { gcpSuggestionsSchema } from './autogcp.js';
 import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import type { JobType } from './firestore-ops.js';
 import { LAYER_TILESET_ORIGINS, USGS_DATASETS } from './firestore.js';
@@ -197,6 +198,8 @@ export const layerVersionDocSchema = z
         scan: scanSchema.optional(),
         reference: referenceSchema.optional(),
         georef: georefSchema.optional(),
+        /** M4: the matcher's pairs below the confidence, for the georeferencer's Accept (never in the fit until saved). */
+        suggestions: gcpSuggestionsSchema.optional(),
         crop: cropRingSchema.optional(),
         output: outputSchema.optional(),
         estimate: estimateSchema.optional(),

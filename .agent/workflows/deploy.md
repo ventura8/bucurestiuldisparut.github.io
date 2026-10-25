@@ -10,7 +10,7 @@ Nothing in this workflow runs without the user's explicit yes **for that action*
 
 | Target | What | How | Trigger |
 | --- | --- | --- | --- |
-| Public site | `dist/site/bucharest` (the `site-build` gate: `sites/bucharest/` plus the engine `dist` copied same-origin; the URL-restricted token from the repository variable `MAPBOX_PUBLIC_TOKEN`) | `actions/deploy-pages` in `ci.yml` (the `build` job uploads `dist/site/bucharest` as the Pages artifact) | push to `master` after every job is green |
+| Public site | `dist/site/bucharest` (the `site-build` gate: `sites/bucharest/` plus the engine `dist` copied same-origin; the URL-restricted token from the repository variable `MAPBOX_PUBLIC_TOKEN`; the public bucket from `HCM_PUBLIC_BUCKET` once the admin published the city's manifest and the `ci.yml` line of `DECISIONS-for-review.md` §55e is approved, until then the seed snapshot) | `actions/deploy-pages` in `ci.yml` (the `build` job uploads `dist/site/bucharest` as the Pages artifact) | push to `master` after every job is green |
 | Admin | `packages/admin/dist` on Firebase Hosting (`<proj>.web.app`, own origin, CSP headers in `firebase.json`) | `firebase deploy --only hosting` in the `deploy-firebase` job of `ci.yml` through WIF | green CI on `master` |
 | Rules and indexes | Firestore and Storage rules, Firestore indexes | `firebase deploy --only firestore,storage` through WIF | green CI on `master` |
 | Functions | `functions/dist/` (the same artifact the e2e emulator ran, with the locked tree of `functions/deploy-lock/` and `.env.<project>` from `functions/deploy-env.json`) | `firebase deploy --only functions` through WIF (the job installs before it authenticates) | green CI on `master` |

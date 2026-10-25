@@ -11,6 +11,14 @@ export function fileStem(fileName: string): string {
     return dot > 0 && /^\.[A-Za-z0-9]{1,5}$/.test(fileName.slice(dot)) ? fileName.slice(0, dot) : fileName;
 }
 
+/** Camera and scanner file names say nothing about the place (`IMG_1234`, `DSC00042`, `PXL_2026…`, `Scan 3`). */
+const CAMERA_NAME = /^(?:img|dsc[fn]?|pxl|dcim|mvimg|photo|image|scan|dji)[\s_-]*\d/i;
+
+/** Whether a file name's stem (or a title made from it) is a camera's or a scanner's own naming, not a title. */
+export function isCameraName(stem: string): boolean {
+    return CAMERA_NAME.test(stem.trim());
+}
+
 /** Lower-case ASCII words joined by `-`: diacritics folded, everything else a separator. */
 export function slugify(text: string): string {
     return text

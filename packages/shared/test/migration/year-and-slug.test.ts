@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createIdAllocator, fileStem, MAX_ID_LENGTH, slugify, truncateSlug, uniqueIds } from '../../src/migration/slug.js';
+import { createIdAllocator, fileStem, isCameraName, MAX_ID_LENGTH, slugify, truncateSlug, uniqueIds } from '../../src/migration/slug.js';
 import { parseLegacyYear, yearIn } from '../../src/migration/year.js';
 
 describe('parseLegacyYear', () => {
@@ -86,5 +86,15 @@ describe('slugs and ids', () => {
         const second = createIdAllocator();
 
         expect([first('x'), first('x'), second('x')]).toEqual(['x', 'x-2', 'x']);
+    });
+});
+
+describe('isCameraName', () => {
+    it.each(['IMG_0412', 'IMG 0412', 'DSC00042', 'PXL_20261024', ' Scan 3', 'dji-0007'])('happyPath_%j_isACamerasNaming', (stem) => {
+        expect(isCameraName(stem)).toBe(true);
+    });
+
+    it.each(['Ateneul Român', 'Calea Victoriei 1977', 'Imagine veche', ''])('badPath_%j_isATitle', (stem) => {
+        expect(isCameraName(stem)).toBe(false);
     });
 });

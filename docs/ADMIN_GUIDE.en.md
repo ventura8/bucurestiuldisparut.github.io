@@ -2,7 +2,7 @@
 
 Guide for the administrator of a city in **Historic City Map** (first city: **București dispărut**, Bucharest). This is the outline of the guide: sections are filled in together with the features, in milestones M2–M5. Romanian version: [ADMIN_GUIDE.ro.md](ADMIN_GUIDE.ro.md); both versions change together.
 
-> Status (M3): sign-in, the Setup Assistant, the daily editors below (Home, photos, places, layers, settings, history, jobs, admins and crash reports) and the historical imagery (search USGS, import a free frame, the automatic georeferencing, Approve, the compute-unit guard, the free Studio upload, a GeoTIFF upload, the georeferencer, crop, replace) work end to end against the Firebase emulators and the fake Google, Mapbox and USGS services of the tests, and what is published reaches the public viewer through the manifest the server builds; the raster pipeline itself was run against the same fakes on a synthetic frame. Imagery on the real cloud waits for the server's deploy (the functions, the pipeline's image and its Cloud Run Job), USGS's approval of your M2M downloads and the Mapbox secret token (`docs/research/M3-status.md`). The first real project is set up with Claude, with your yes at each step.
+> Status (M4): sign-in, the Setup Assistant, the daily editors below (Home, photos, places, layers, settings, history, jobs, admins and crash reports), the historical imagery (search USGS, import a free frame, the automatic georeferencing with its suggested pairs, Approve, the compute-unit guard, the free Studio upload, a GeoTIFF upload, the georeferencer, crop, replace), buying a scan (the order card, I ordered it, the daily watch, the reminders and the import on delivery), the notifications (the inbox, and push on a device you turn it on for) and the editors' assists (title suggestions from OpenStreetMap, Romanian and English drafts) work end to end against the Firebase emulators and the fake Google, Mapbox, USGS, OpenStreetMap and Vertex AI services of the tests, and what is published reaches the public viewer, whose swipe compare shows two layers side by side; the raster pipeline itself was run against the same fakes on a synthetic frame. On the real cloud it waits for the server's deploy, Provision turning on the Vertex AI and FCM APIs, and your first real scan purchase (`docs/research/M4-status.md`). The first real project is set up with Claude, with your yes at each step.
 
 ## What you do and what the app does
 
@@ -11,7 +11,7 @@ The app does almost everything automatically. Only you can:
 - create accounts and enter billing or card details (Google Cloud, Mapbox, USGS);
 - accept terms and approve Google sign-in consents;
 - paste the two secret keys, once: the Mapbox secret token and the USGS application token;
-- pay for USGS scan orders, if you want frames that are not scanned yet.
+- pay for USGS scan orders, if you want frames that are not scanned yet: the app opens the scene's own EarthExplorer page, you buy the scan there, come back and click **I ordered it**; the rest is automatic.
 
 The app opens the exact page (deep link), shows you the button, verifies the result and moves on by itself. Secret keys go straight to Secret Manager; they are not kept in the browser and never shown again after saving.
 
@@ -109,7 +109,7 @@ The whole assistant takes about ten clicks or fields and four Google permissions
 
 ## Daily work
 
-The navigation holds Home, Setup, Photos, Places, Layers, Jobs, Settings, Admins, History and Crashes (on a phone the bar keeps Setup, Photos, Places and Layers, the rest is under **More**). Every editor works the same way:
+The navigation holds Home, Setup, Photos, Places, Layers, Historical imagery, Jobs, Notifications, Settings, Admins, History and Crashes (on a phone the bar keeps Setup, Photos, Places and Layers, the rest is under **More**; Notifications, or More when it holds it, carries the number of unread notifications). Every editor works the same way:
 
 - **Lists and editors.** From 840 px wide the list sits on the left and the open item beside it; on a tablet the item replaces the list, with **Back**; on a phone it fills the page, with **Close**. An item's address (`#/photos/<id>`) can be bookmarked or sent to another admin.
 - **Drafts.** What you change is a draft: the page's map previews it at once and nothing is written until **Save**. Save writes one change, stamped with your account; the public map follows within about a minute. **Discard changes** puts the saved version back. Leaving the page, signing out or reloading with unsaved changes asks first (**Keep editing** or **Discard**); switching the language keeps the draft. A field with a problem says so under it, and Save stays off until it is corrected (and says why); a number (a year, a latitude) counts as you type it and says its problem once you leave the field, so a half-typed year does not flash an error.
@@ -199,11 +199,23 @@ Declassified USGS satellite frames (Corona, Gambit, Hexagon; 1960–1984) become
 - Limits: 10 imports a day and 2 running at once, per project.
 - **Paused by the budget guard**: when the month's Google Cloud cost reaches the budget, imports, retries, the georeferencer's saves, crops and publishes stop (the public map never does). **Historical imagery** and **Jobs** say so with the cost and the budget, and **Resume processing** (asked first) starts them again for the rest of the month; next month's alert pauses them again.
 
+### Buying a scan, suggestions, assists and notifications (M4)
+
+- **A frame USGS has not scanned yet** (Free only off, chip **Must be ordered from USGS**) has the **Buy this scan** card on its page: the cost (35 USD for one frame: 30 USD a frame and 5 USD an order, paid to USGS directly, never through this app), the four steps in EarthExplorer and **Order in EarthExplorer**, which opens the scene's own page there in a new tab. Buy it there (USGS asks for payment by card or by phone), come back and click **I ordered it**: that is the flow's second and last input (the message after it offers **Take the mark back**). A frame USGS already offers cannot be marked ("This frame is already scanned: import it for free, no order needed."); one USGS scanned while you were buying turns free on its page, and a message says so. Until USGS approves your account's downloads, both cards say the daily check waits for that approval, with a link to Setup's USGS step.
+- **After I ordered it, nothing is asked of you**: the server asks USGS once a day (**Check now** asks at once, at most once a minute), reminds you on days 7 and 12 to pay if you have not (USGS deletes unpaid orders after 14 days), imports the scan the moment USGS delivers it (delivery takes three to four weeks after payment), georeferences it and publishes it under the city's threshold, exactly like a free import. An order not delivered within 90 days becomes **Never delivered**, with **Order it again** and **Take the mark back** (if you no longer want it). **Take the mark back** also undoes a mark made by mistake. The times of the checks are in your own time zone. The scene's card shows a short chip (Ordered, Ordered: paid?, Delivered, Importing, Never delivered), and **Work** lists the open orders, the one that needs you first: only an order never delivered counts there (a reminder to pay, once sent, asks nothing more of you if you have paid).
+- **Suggested pairs in the georeferencer**: when the automatic georeferencing finds too few pairs it trusts, the less sure ones it found wait in **Suggested pairs**, each with its confidence in words and as a bar, and how far it is from the current fit. **Accept** or **Reject** each (on a suggestion, Enter accepts and Delete rejects, and the next one takes the focus), or **Accept all**; accepted pairs join the table and refit at once. Nothing is saved without **Save and georeference**. On the scan the suggestions are dashed rings; on the map they are flags in their own colour.
+- **Title suggestions** (places and photos): under the title, **Suggest a title** asks OpenStreetMap what is at the point (a point you draw on the map, or a photo's pin while its title is still the file's name, such as `IMG 0412`, asks by itself), and each answer is a button **Use the title "…"**. At most 300 places a day are asked for the whole project (OpenStreetMap's rules forbid bulk use). OpenStreetMap is asked at most once a second for the whole project, and every answer is kept for 90 days; the suggestions name their source (© OpenStreetMap contributors, ODbL). The title stays as you typed it until you choose one, and Save writes it.
+- **Romanian and English drafts** (the titles, descriptions and labels of photos, places and layers): **English draft** beside a Romanian text while the English one is empty (or **Romanian draft** beside an English one while the Romanian one is empty; a draft never replaces what you typed) asks Google's Gemini model, on the server, for a translation into the other field, marked "Draft proposed by …: check it before you save." The draft is plain text, cut to the field's length (the page says so), and is never published by itself: only your Save writes it. At most 500 drafts or 0.50 USD a month for the whole project; past that, the page says so until next month. A draft that adds a link the text did not have, or changes an address, is not used (the page says so).
+- **Notifications**: what the server did that concerns you (a scan delivered, imported, an order to pay or never delivered, a failed processing, a layer waiting for approval or for points, the budget pausing the processing, a burst of crash reports, USGS approving downloads) reaches every admin's **Notifications** page, newest first, unread ones marked; a click opens the page it is about and marks it read; **Mark all as read** marks the rest. **Notifications on this device** turns on push notifications for this browser (the browser asks you first; refused, the inbox still works); on a computer you share, it belongs to whoever turned it on last, and signing out turns it off for you (so does being removed as an admin). Turning it off when the server cannot be reached leaves it on and says why. **Send a test notification** tries it, and **Notifications on devices** chooses which kinds also show on your devices. No e-mail is sent (it would need a new provider: `docs/research/DECISIONS-for-review.md` §54i).
+- **The visitors' swipe compare** (on the public map): the Layers panel's **Compare** opens a second map beside the first, with a divider to drag (or move with the arrow keys); **Compare with** chooses the other side (another historical layer or today's map), and each side keeps its layer's opacity. On a window narrower than 600 px a toggle switches between the two sides of one map. A link copied while comparing reopens the comparison.
+
 ## Costs
 
 - Google Cloud: about $0.5–2 per month; the $5 budget automatically pauses image processing (never the site), and **Resume processing** in Historical imagery or Jobs starts it again for the rest of the month.
 - Mapbox: free up to 50,000 map loads per month; publishing a historical layer costs compute units by its area and zoom, and the app keeps to the month's free 20, otherwise it offers the free Studio upload, waiting for next month, or paying about the amount it names.
-- USGS: scanned frames are free; a new scan costs $30 per frame plus $5 per order.
+- USGS: scanned frames are free; a new scan costs $30 per frame plus $5 per order, paid by you to USGS in EarthExplorer.
+- Vertex AI (the Romanian and English drafts): under $0.05 a month at the expected use, and never more than 0.50 USD a month (the app's cap); the budget guard pauses it with the image processing.
+- OpenStreetMap's Nominatim (title suggestions) and the notifications: free.
 
 ## Troubleshooting
 
@@ -238,6 +250,23 @@ The message shown, its cause and what to do, screen by screen.
 | "Does not fit this month's Mapbox budget: choose how to go on" | the publish costs more compute units than are left | the free Studio upload, next month, or pay |
 | "The file is not a GeoTIFF. Upload a .tif file." | the chosen file is another kind of image | export it as a GeoTIFF first |
 | "The source has no tiles at this address (404)." / "The address does not answer with an image." / "The tile server is not responding." | **Check** of a tile address in **Link a layer** | correct the address (it must hold `{z}`, `{x}`, `{y}`) or try again later |
+
+### Orders, assists and notifications (since M4)
+
+| Message | Cause | What to do |
+| --- | --- | --- |
+| "This frame is already scanned: import it for free, no order needed." | **I ordered it** on a frame USGS already offers | **Import (free)** |
+| "The order is no longer in the right state for this step. Reload the page." | another admin or the daily watch moved the order meanwhile | reload the page |
+| "Ordered: have you paid? USGS deletes unpaid orders after 14 days" | the order is 7 or 12 days old and not delivered | pay the order (reply to USGS's e-mail), or **Take the mark back** if you did not order |
+| "Never delivered" | USGS delivered nothing within 90 days | **Order it again** if you still want it |
+| "The last check of USGS failed:" and the reason | USGS was in maintenance or refused the token at the last check | nothing for maintenance (the next check retries); for the token, **Open the USGS step of Setup** |
+| "OpenStreetMap suggestions are not available right now. …" | OpenStreetMap asked us to slow down; the project waits 10 minutes | type the title, or try **Suggest a title** later |
+| "Today's title suggestions are used up; …" | the project asked 300 places today | type the title; suggestions return tomorrow |
+| "The proposed translation changed the text's links, …" | the draft added a link or changed an address | type the text, or ask for a draft again |
+| "The assistant is not answering right now. …" | Vertex AI is not reachable or its API is off in the project | type the text; Setup's self-test checks the AI and says what is missing |
+| "This month's limit for automatic translations is reached; …" | 500 drafts or 0.50 USD this month | type the text; the drafts return next month |
+| "The browser refused notifications (the site settings can allow them). …" | the browser's own prompt was refused | allow notifications for the admin's site in the browser's settings, or use the inbox |
+| "This browser could not be registered for notifications. …" | the browser's push registration failed | try again, or use the inbox |
 
 ### The public map (since M1)
 

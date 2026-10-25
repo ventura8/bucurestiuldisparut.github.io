@@ -97,6 +97,16 @@ function missBy(fitted: Fitted, gcp: Gcp): number {
     return groundMetres(target.x - at.x, target.y - at.y, gcp.geo.lat);
 }
 
+/**
+ * Ground metres between a pair's place and where `transform` puts its pixel: how far a suggestion the admin has not
+ * accepted lies from the page's current fit; it is not part of that fit, so this is a true check.
+ */
+export function distanceFromFit(transform: FittedTransform, gcp: Pick<Gcp, 'pixel' | 'geo'>): number {
+    const target = geoToMercator(gcp.geo);
+    const at = geoToMercator(transform.toGeo(gcp.pixel));
+    return groundMetres(target.x - at.x, target.y - at.y, gcp.geo.lat);
+}
+
 /** The enabled pairs' leave-one-out residuals in ground metres, by id (pairs without one left out). */
 function enabledResiduals(fitted: Fitted, enabled: readonly Gcp[]): [string, number][] {
     return enabled.flatMap((gcp, index) => {

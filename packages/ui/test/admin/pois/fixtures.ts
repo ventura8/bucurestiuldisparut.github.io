@@ -97,6 +97,7 @@ export function poisState(overrides: Partial<PoisViewState> = {}): PoisViewState
         photos: null,
         importing: null,
         busy: false,
+        assist: { titles: { status: 'idle', suggestions: [], attribution: null, error: null }, drafts: {} },
         ...overrides,
     };
 }

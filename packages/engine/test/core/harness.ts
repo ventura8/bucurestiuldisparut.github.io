@@ -4,6 +4,7 @@ import { FakeMap, type FakeMapOptions } from '@hcm/test-support/fake-map';
 import { vi } from 'vitest';
 
 import { createViewerStore, type ViewerStore } from '../../src/core/store.js';
+import type { FakeCompare } from '../compare/support.js';
 import { FakeTelemetry, jsonResponse, memoryStorage, recordingLog, settle, type MemoryStorage, type RecordingLog } from './support.js';
 import { manifest as defaultManifest } from './fixtures.js';
 
@@ -61,6 +62,8 @@ export interface HarnessOptions {
     readonly inline?: boolean;
     /** The page address (default `https://site.example.org/bucuresti/`; null: the location has none). */
     readonly href?: string | null;
+    /** Swipe compare's chunk (M4); without it the store keeps compare in its state only. */
+    readonly compare?: FakeCompare;
 }
 
 export interface Harness {
@@ -97,6 +100,7 @@ export function harness(options: HarnessOptions = {}): Harness {
         engineVersion: '1.0.0',
         mapContainer: () => container,
         ...(options.reducedMotion === undefined ? {} : { reducedMotion: () => options.reducedMotion === true }),
+        ...(options.compare === undefined ? {} : { compare: options.compare.deps }),
     });
     return { store, map, telemetry, storage, location, fetch, log, container };
 }

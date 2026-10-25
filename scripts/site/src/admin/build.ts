@@ -5,6 +5,7 @@ import { subresourceIntegrity } from '../sri.js';
 import { ADMIN_SCRIPT_FILE, ADMIN_STYLESHEET_FILE, renderAdminPage } from './page.js';
 import { DEFAULT_PROJECT_FILE, planProjectFile } from './project.js';
 import { planRuntimeFile, type BuildEnvironment } from './runtime.js';
+import { PUSH_SERVICE_WORKER_FILE, PUSH_SERVICE_WORKER_SOURCE } from './service-worker.js';
 
 /**
  * Completes the admin's Hosting folder after its Vite build (docs/research/M2b-interfaces.md §4, admin-e2e):
@@ -15,13 +16,14 @@ import { planRuntimeFile, type BuildEnvironment } from './runtime.js';
  * <outDir>/index.html                    generated (page.ts), naming the digest of the pinned mapbox-gl.js
  * <outDir>/runtime.json                  the release and, for a start-up deploy, `startUp` (runtime.ts)
  * <outDir>/project.json                  the committed infra/project.json, checked (project.ts, CR-M2b-26)
+ * <outDir>/firebase-messaging-sw.js      M4's web push service worker (service-worker.ts)
  * <outDir>/fonts/…                       the kit's self-hosted fonts and their licences (packages/ui/fonts), which the
  *                                        admin loads from `fonts/` next to the page, as the engine's site pages do
  * <outDir>/legacy/bucharest/…            the legacy import bundle (legacy.ts)
  * ```
  *
  * Every input is read and validated before anything is written, and only `index.html`, `runtime.json`, `project.json`,
- * `fonts/` and `legacy/` are replaced: the Vite output stays. The production folder is `packages/admin/dist` (`firebase.json` → `hosting.public`); a test
+ * the service worker, `fonts/` and `legacy/` are replaced: the Vite output stays. The production folder is `packages/admin/dist` (`firebase.json` → `hosting.public`); a test
  * writes below `dist/`.
  */
 
@@ -135,7 +137,8 @@ export function buildAdminSite(options: AdminBuildOptions, files: SiteFileSystem
     const project = planProjectFile(files, inputs.projectFile);
     const runtime = planRuntimeFile(files, inputs.env);
     const page = renderAdminPage(undefined, { mapboxGlIntegrity: mapboxGlIntegrity(files, inputs.mapboxGlDir) });
-    const planned: AdminFile[] = [{ to: 'index.html', content: page }, runtime.file, project.file, ...fonts, ...legacy.files];
+    const worker: AdminFile = { to: PUSH_SERVICE_WORKER_FILE, content: PUSH_SERVICE_WORKER_SOURCE };
+    const planned: AdminFile[] = [{ to: 'index.html', content: page }, runtime.file, project.file, worker, ...fonts, ...legacy.files];
     files.remove(`${outDir}/${FONTS_FOLDER}`);
     files.remove(`${outDir}/${LEGACY_FOLDER}`);
     for (const file of planned) {

@@ -8,10 +8,11 @@ import { E2E_TELEMETRY_HOST, E2E_TILE_HOST } from '../fixtures/world.js';
  * - loopback (`127.0.0.1`, `localhost`): the site server and the mock APIs themselves;
  * - the mocked hosts below: every request is forwarded to the mock APIs, recorded, and answered there;
  * - in the admin projects only, also the hosts of the fake upstreams (`upstreamHosts()` of `@hcm/test-support/fakes`:
- *   Google Cloud's REST APIs and OAuth tokeninfo, Mapbox, Nominatim; CR-M2-21), which the admin calls from the browser
- *   (PLAN Addendum 1); a viewer page that reached one of them is still blocked;
+ *   Google Cloud's REST APIs and OAuth tokeninfo, Mapbox; CR-M2-21), which the admin calls from the browser (PLAN
+ *   Addendum 1); a viewer page that reached one of them is still blocked;
  * - never, in any project: the hosts only servers call (`SERVER_ONLY_HOSTS`: USGS, the STAC catalogue and its COGs,
- *   Overpass; the Functions emulator and the pipeline reach their fakes), an OpenStreetMap tile server, and Mapbox
+ *   Overpass, and since M4 Nominatim, Vertex AI and FCM, which only the functions' assists and notifications reach; the
+ *   Functions emulator and the pipeline reach their fakes), an OpenStreetMap tile server, and Mapbox
  *   Satellite (never a georeferencing reference, docs/research/M3-interfaces.md §5.5, §13): `refusedAddress` names them;
  * - anything else (Firestore, real Google, an unknown CDN): aborted by the firewall, and the test fails.
  */

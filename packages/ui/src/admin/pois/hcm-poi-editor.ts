@@ -11,6 +11,8 @@ import type { AdminContentKey, LngLat, Locale } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
 
 import { defineOnce, emit } from '../../components/internal.js';
+import type { AssistViewPort } from '../assist/assist-port.js';
+import { assistStyles, draftAssist, titleAssist } from '../assist/assist-parts.js';
 import { NOBODY, type WhoPort } from '../editing/conflict.js';
 import { LeftFields } from '../editing/number-fields.js';
 import type { DrawToolPort } from '../map/hcm-draw-toolbar.js';
@@ -35,6 +37,7 @@ import type {
     PoiDraftPort,
     PoiShapePort,
     PoisIntentsPort,
+    PoiValuePort,
     VertexEditPort,
 } from './pois-port.js';
 
@@ -54,9 +57,10 @@ export class HcmPoiEditor extends LitElement {
         readOnly: { type: Boolean, reflect: true, attribute: 'read-only' },
         who: { attribute: false },
         mode: { state: true },
+        assist: { attribute: false },
     };
 
-    static override readonly styles = poiStyles;
+    static override readonly styles = [...poiStyles, ...assistStyles];
 
     declare editor: PlaceEditorPort | null;
     declare categories: readonly CategoryItemPort[];
@@ -71,6 +75,8 @@ export class HcmPoiEditor extends LitElement {
     declare who: WhoPort;
     /** The drawing tool the admin picked last; a place opens drawing when it has no shape yet, else selecting. */
     declare mode: 'draw' | 'select';
+    /** M4 (CR-M4-4): the title suggestions and translation drafts of the open place (none: no assist slots). */
+    declare assist: AssistViewPort | null;
     /** The years left since the place opened (they say their problem from then on). */
     readonly #left = new LeftFields(() => {
         this.requestUpdate();
@@ -89,6 +95,7 @@ export class HcmPoiEditor extends LitElement {
         this.readOnly = false;
         this.who = NOBODY;
         this.mode = 'select';
+        this.assist = null;
     }
 
     /**
@@ -117,7 +124,8 @@ export class HcmPoiEditor extends LitElement {
             <fieldset>
                 <legend>${poiText(this.locale, 'adminContent.pois.section.texts')}</legend>
                 ${categoryField(this.#context(draft), this.categories)} ${titleFields(this.#context(draft))}
-                ${descriptionFields(this.#context(draft))}
+                ${this.#assists(draft.value, 'title')} ${descriptionFields(this.#context(draft))}
+                ${this.#assists(draft.value, 'description')}
             </fieldset>
             <fieldset>
                 <legend>${poiText(this.locale, 'adminContent.pois.section.years')}</legend>
@@ -138,6 +146,19 @@ export class HcmPoiEditor extends LitElement {
                 ${publishedField(this.#context(draft))}
             </fieldset>
         </div>`;
+    }
+
+    /** M4 (CR-M4-4): the title's suggestions and its draft button, or the description's draft button. */
+    #assists(value: PoiValuePort, field: 'title' | 'description'): TemplateResult {
+        const view = this.assist;
+        const actions = this.intents;
+        if (view === null || actions === null) {
+            return EMPTY;
+        }
+        const draft = draftAssist({ locale: this.locale, view, actions, field, text: value[field], readOnly: this.readOnly });
+        return field === 'title'
+            ? html`${titleAssist({ locale: this.locale, view, actions, id: 'place-title', readOnly: this.readOnly })} ${draft}`
+            : draft;
     }
 
     #context(draft: PoiDraftPort): FieldContext {

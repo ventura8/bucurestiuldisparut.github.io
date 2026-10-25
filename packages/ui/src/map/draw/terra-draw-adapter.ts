@@ -480,7 +480,7 @@ export function createTerraDrawPort(modules: TerraDrawModules): MapDrawPort {
 }
 
 /**
- * Terra Draw 1.37.0 and its Mapbox GL adapter 1.5.0, imported on first use: the admin's bundler makes them a chunk of
+ * Terra Draw 1.38.0 and its Mapbox GL adapter 1.5.0, imported on first use: the admin's bundler makes them a chunk of
  * their own (DECISIONS-for-review.md §34b), which the public viewer never loads. The port is written to the structural
  * types of `terra-draw-types.ts`, which the real constructors' options are wider than (the adapter takes Mapbox's own
  * map type), so they are handed over as those types; the browser test drives the real ones through the port

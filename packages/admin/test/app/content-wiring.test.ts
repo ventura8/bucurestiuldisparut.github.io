@@ -30,4 +30,12 @@ describe('the areas services', () => {
         await expect(services.layerCrop?.()).resolves.toBeTypeOf('function');
         expect(globalThis.customElements.get('hcm-layer-crop')).toBeDefined();
     });
+
+    it('happyPath_theE2eBuildPushesThroughTheStandInWithTheTestsToken', async () => {
+        const services = areaServices({ handles: { firestore: {}, storage: {} } as never, fetch, pushTest: 'S-A47' });
+        const production = areaServices({ handles: { firestore: {}, storage: {}, app: {} } as never, fetch });
+
+        await expect(services.push?.token()).resolves.toBe('e2e-fcm-token:S-A47-browser-0001');
+        expect(production.push).toBeDefined();
+    });
 });

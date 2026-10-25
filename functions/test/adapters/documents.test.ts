@@ -148,6 +148,32 @@ describe('query', () => {
         expect(sorted(filtered.documents.map((document) => document.id))).toEqual([INVITE_B, INVITE_C]);
     });
 
+    it('happyPath_aTimestampOperandMatchesStoredTimestampsInARangeAndInAList', async () => {
+        const { documents } = emulators.newWorld();
+        await documents.set(FIRESTORE_PATHS.invite(INVITE_A), inviteDocSchema, invite('u-one'));
+        await documents.set(FIRESTORE_PATHS.invite(INVITE_B), inviteDocSchema, { ...invite('u-two'), createdAt: LATER });
+
+        const since = await documents.query(FIRESTORE_PATHS.invites, inviteDocSchema, { where: [['createdAt', '>=', AT]] });
+        const later = await documents.query(FIRESTORE_PATHS.invites, inviteDocSchema, { where: [['createdAt', '>', AT]] });
+        const listed = await documents.query(FIRESTORE_PATHS.invites, inviteDocSchema, { where: [['createdAt', 'in', [LATER]]] });
+
+        expect(sorted(since.documents.map((document) => document.id))).toEqual([INVITE_A, INVITE_B]);
+        expect(later.documents.map((document) => document.id)).toEqual([INVITE_B]);
+        expect(listed.documents.map((document) => document.id)).toEqual([INVITE_B]);
+    });
+
+    it('happyPath_countsTheMatchingDocumentsWithoutReadingThem', async () => {
+        const { db, documents } = emulators.newWorld();
+        await documents.set(FIRESTORE_PATHS.invite(INVITE_A), inviteDocSchema, invite('u-one'));
+        await documents.set(FIRESTORE_PATHS.invite(INVITE_B), inviteDocSchema, invite('u-two'));
+        // A document its schema would refuse is counted too: the count reads no document.
+        await db.doc(FIRESTORE_PATHS.invite(INVITE_C)).set({ role: 'admin', invitedBy: 'u-two' });
+
+        expect(await documents.count(FIRESTORE_PATHS.invites)).toBe(3);
+        expect(await documents.count(FIRESTORE_PATHS.invites, [['invitedBy', '==', 'u-two']])).toBe(2);
+        expect(await documents.count(FIRESTORE_PATHS.inbox('u-nobody'))).toBe(0);
+    });
+
     it('badPath_documentsTheSchemaRefusesAreListedApart', async () => {
         const { db, documents } = emulators.newWorld();
         await documents.set(FIRESTORE_PATHS.invite(INVITE_A), inviteDocSchema, invite('u-one'));

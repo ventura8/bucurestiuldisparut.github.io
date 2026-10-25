@@ -22,7 +22,6 @@ import type {
 } from '../../ui/src/map/map-port.js';
 import type {
     MapboxCameraOptions,
-    MapboxCompareConstructor,
     MapboxEvent,
     MapboxFeature,
     MapboxGeoJsonSource,
@@ -59,7 +58,13 @@ export class FakeMap implements MapPort {
     readonly #photoHandlers = new Set<(photoId: string) => void>();
     readonly #poiHandlers = new Set<(poiId: string) => void>();
     readonly #mapClickHandlers = new Set<(position: LngLat) => void>();
-    readonly #handlers: Handlers = { moveend: new Set(), error: new Set(), webglcontextlost: new Set(), webglcontextrestored: new Set() };
+    readonly #handlers: Handlers = {
+        move: new Set(),
+        moveend: new Set(),
+        error: new Set(),
+        webglcontextlost: new Set(),
+        webglcontextrestored: new Set(),
+    };
 
     constructor(options: FakeMapOptions = {}) {
         this.webgl = options.webgl ?? true;
@@ -138,9 +143,11 @@ export class FakeMap implements MapPort {
         return () => this.#mapClickHandlers.delete(handler);
     }
 
+    /** Moves the fake's view and plays `move` with it (M4: swipe compare's camera sync follows it). */
     flyTo(view: Partial<MapView>, options?: { readonly animate?: boolean }): void {
         this.#record('flyTo', view, options);
         this.view = { ...this.view, ...view };
+        this.emit('move', this.view);
     }
 
     fitBounds(bounds: BBox, options?: { readonly padding?: number; readonly animate?: boolean }): void {
@@ -180,9 +187,9 @@ export class FakeMap implements MapPort {
         }
     }
 
-    /** Plays a map event to the subscribers (a `moveend` also moves the fake's view). */
+    /** Plays a map event to the subscribers (a `move` or `moveend` also moves the fake's view). */
     emit<E extends keyof MapEventMap>(event: E, payload: MapEventMap[E]): void {
-        if (event === 'moveend') {
+        if (event === 'moveend' || event === 'move') {
             this.view = payload as MapView;
         }
         for (const handler of this.#handlers[event] as Set<(payload: MapEventMap[E]) => void>) {
@@ -509,7 +516,6 @@ export class FakeMapboxGl implements MapboxGl {
     readonly maps: FakeMapboxMap[] = [];
     readonly Map: new (options: MapboxMapOptions) => MapboxMap;
     supported?: (failIfMajorPerformanceCaveat?: boolean) => boolean;
-    Compare?: MapboxCompareConstructor;
     /** When set, `new Map` throws it (WebGL context creation failed). */
     constructError: Error | null = null;
 

@@ -8,7 +8,8 @@ import { POI_ICONS } from '@hcm/shared';
 /**
  * Icons of the kit, the viewer and the admin (its navigation, the Setup Assistant's cards: `docs/research/M2b-interfaces.md`
  * §1.6; the M2c editors': `docs/research/M2c-interfaces.md` §10.2, CR-M2c-9; the M3 Imagery area and georeferencer:
- * `docs/research/M3-interfaces.md` §10.8, CR-M3-9); POI category icons are `POI_ICONS` of `@hcm/shared`.
+ * `docs/research/M3-interfaces.md` §10.8, CR-M3-9; the M4 inbox and assists: `docs/research/M4-interfaces.md` §4, §5); POI
+ * category icons are `POI_ICONS` of `@hcm/shared`.
  */
 export const UI_ICONS = [
     'account_circle',
@@ -43,6 +44,7 @@ export const UI_ICONS = [
     'dark_mode',
     'delete',
     'deselect',
+    'done_all',
     'download',
     'drag_indicator',
     'edit',
@@ -69,6 +71,7 @@ export const UI_ICONS = [
     'menu',
     'more_vert',
     'my_location',
+    'notifications',
     'opacity',
     'open_in_new',
     'palette',
@@ -91,6 +94,7 @@ export const UI_ICONS = [
     'schedule',
     'search',
     'select_all',
+    'send',
     'settings',
     'share',
     'timeline',

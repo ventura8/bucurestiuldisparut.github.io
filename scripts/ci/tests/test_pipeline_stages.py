@@ -106,9 +106,14 @@ def test_bad_path_stage_keeps_going_after_a_failure(tmp_path: Path) -> None:
 
 
 def test_bad_path_failures_are_listed_in_registry_order(tmp_path: Path) -> None:
-    shell = FakeShell(tmp_path, failing=["check_bundle_budget.py", "npm run --silent build"])
+    shell = FakeShell(tmp_path, failing=["check_bundle_budget.py", "check_notices.py", "npm run --silent build"])
 
-    assert pipeline.run_stage("build", shell.context(jobs=3)) == ["build/vite-build", "build/bundle-budget", "build/site-build"]
+    assert pipeline.run_stage("build", shell.context(jobs=3)) == [
+        "build/vite-build",
+        "build/bundle-budget",
+        "build/notices",
+        "build/site-build",
+    ]
 
 
 def test_bad_path_empty_stage_fails(shell: FakeShell, log: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -165,7 +170,7 @@ def test_bad_path_composite_stage_reports_every_failed_part(tmp_path: Path, log:
     assert log.messages[-1] == "[FAILURE] stage 'all' failed: build/bundle-budget, sonar/sonar"
     assert [" ".join(call) for call in shell.calls].count(" ".join(GATES["e2e-build"].command)) == 1
     assert "e2e 3/3 playwright" in log.messages
-    assert "build 1/3 vite-build" in log.messages
+    assert "build 1/4 vite-build" in log.messages
     assert "sonar 1/1 sonar" in log.messages
 
 

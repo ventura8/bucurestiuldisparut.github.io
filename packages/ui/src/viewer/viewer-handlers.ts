@@ -5,7 +5,7 @@
  */
 import type { ViewerServices } from './services.js';
 import type { ViewerStorePort } from './store-port.js';
-import { closeSheet, isMenuAction, menuAction, selectPhoto } from './viewer-actions.js';
+import { closeSheet, isMenuAction, menuAction, selectPhoto, toggleCompare } from './viewer-actions.js';
 import type { OverlayOpacityDetail, ViewerHandlers } from './viewer-render.js';
 
 /** What the handlers need from the element. */
@@ -64,6 +64,7 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
         onRetry: on((store) => {
             void store.retry();
         }),
+        onCompareToggle: on(toggleCompare),
         onToastDismiss: on((store) => {
             store.dismissToast();
         }),

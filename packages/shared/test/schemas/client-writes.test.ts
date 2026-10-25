@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CLIENT_WRITES, type ClientCollection } from '../../src/schemas/client-writes.js';
 import { jobDocSchema, usgsSceneDocSchema } from '../../src/schemas/firestore-ops.js';
 import { cityDocSchema, layerDocSchema, photoDocSchema, poiCategoryDocSchema, poiDocSchema } from '../../src/schemas/firestore.js';
+import { inboxItemDocSchema, notifySettingsDocSchema } from '../../src/schemas/notifications.js';
 
 const SHAPES: Readonly<Record<ClientCollection, readonly string[]>> = {
     city: Object.keys(cityDocSchema.shape),
@@ -12,6 +13,8 @@ const SHAPES: Readonly<Record<ClientCollection, readonly string[]>> = {
     poiCategory: Object.keys(poiCategoryDocSchema.shape),
     job: Object.keys(jobDocSchema.shape),
     usgsScene: Object.keys(usgsSceneDocSchema.shape),
+    inboxItem: Object.keys(inboxItemDocSchema.shape),
+    notifySettings: Object.keys(notifySettingsDocSchema.shape),
 };
 
 const COLLECTIONS = Object.keys(CLIENT_WRITES) as ClientCollection[];
@@ -52,5 +55,8 @@ describe('CLIENT_WRITES', () => {
         expect(CLIENT_WRITES.layer.create).toEqual([]);
         // M3: every job is created by a callable or a trigger that checks it (CR-M3-2).
         expect(CLIENT_WRITES.job.create).toEqual([]);
+        // M4: only `notify.onEvent` writes an inbox item; an admin only marks one read, and never re-dates the settings.
+        expect(CLIENT_WRITES.inboxItem.create).toEqual([]);
+        expect(CLIENT_WRITES.notifySettings.update).not.toContain('createdAt');
     });
 });

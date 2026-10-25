@@ -12,7 +12,7 @@ import type { BlobStore, BucketRole } from '../../src/ports/blob-store.js';
 import { UpstreamError } from '../../src/ports/errors.js';
 import type { MapboxTilesets, MtsJob, MtsJobSummary } from '../../src/ports/mapbox-tilesets.js';
 import type { RemoteFile, RemoteFiles } from '../../src/ports/remote-files.js';
-import type { DownloadOption, UsgsScenes } from '../../src/ports/usgs-scenes.js';
+import type { DatasetIds, DownloadOption, UsgsScenes } from '../../src/ports/usgs-scenes.js';
 import { PortRecorder, promised } from './recorder.js';
 
 export type SceneRecord = Awaited<ReturnType<UsgsScenes['search']>>['records'][number];
@@ -38,15 +38,22 @@ export function sceneRecord(entityId: string, overrides: Partial<SceneRecord> = 
     };
 }
 
+/** What `dataset-search` answers by default (M4): the two ids the shared fixture records; `declassiii` has none. */
+const EE_DATASETS: readonly DatasetIds[] = [
+    { alias: 'corona2', datasetId: '5e839febdccb64b3' },
+    { alias: 'declassii', datasetId: '5e839ff7d71d4811' },
+];
+
 /**
  * `UsgsScenes` answering `records[dataset]` in pages of the request's `maxResults`; a dataset without records answers
  * none, a dataset in `failing` throws its error. `options` holds `download-options` answers by entity id (an unknown
- * entity is not available).
+ * entity is not available); `datasetIds` is what `dataset-search` answers (M4).
  */
 export function createFakeUsgsScenes(records: Readonly<Record<string, readonly SceneRecord[]>> = {}) {
-    const recorder = new PortRecorder<'search' | 'downloadOptions'>();
+    const recorder = new PortRecorder<'search' | 'downloadOptions' | 'datasets'>();
     const options = new Map<string, DownloadOption>();
     const failing = new Map<string, UpstreamError>();
+    const datasetIds: DatasetIds[] = [...EE_DATASETS];
     const scenes: UsgsScenes = {
         search: (apiKey, request) =>
             promised(() => {
@@ -68,8 +75,13 @@ export function createFakeUsgsScenes(records: Readonly<Record<string, readonly S
                 recorder.enter('downloadOptions', [apiKey, dataset, entityIds]);
                 return entityIds.map((entityId) => options.get(entityId) ?? { entityId, available: false, bytes: 0 });
             }),
+        datasets: (apiKey) =>
+            promised(() => {
+                recorder.enter('datasets', [apiKey]);
+                return [...datasetIds];
+            }),
     };
-    return { scenes, options, failing, recorder };
+    return { scenes, options, failing, datasetIds, recorder };
 }
 
 /** The JPEG and PNG magic bytes the browse proxy and the tile probe check. */

@@ -14,16 +14,17 @@ import { checkOwnership, enableService } from '../auth/ownership.js';
 import type { ContentStores } from '../content/areas.js';
 import { ContentRegistry, type ContentDeps } from '../content/registry.js';
 import type { FirebasePorts } from '../firebase/ports.js';
+import { unregisterOnSignOut } from '../inbox/push-device.js';
 import type { PageRegistry } from '../routing/pages.js';
 import type { AdminRoute, AdminRouteId } from '../routing/routes.js';
 import { LANGUAGE_KEY, resolveAdminLocale } from '../state/locale.js';
 import { NO_GATE, type AdminState, type NoticeInput, type ShellStateAccess, type ThemeMode } from '../state/state.js';
 import { Store } from '../state/store.js';
-import { CityTheme } from './city-theme.js';
 import type { AdminRuntime, FirebaseWebConfig } from './config.js';
 import { contentServices } from './content-services.js';
 import { Navigation } from './navigation.js';
-import { rememberedSetupReady, SetupReadiness } from './setup-readiness.js';
+import { rememberedSetupReady } from './setup-readiness.js';
+import { shellWatches } from './shell-watches.js';
 import { destinationOf } from '../routing/router.js';
 import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } from './ports.js';
 import { guardCallables, type AdminProject, type SetupModuleSpec, type ShellServices } from './services.js';
@@ -137,6 +138,7 @@ function initialState<Setup>(deps: AdminDeps<Setup, unknown>): AdminState<Setup>
         leaving: null,
         revoked: false,
         people: {},
+        unread: null,
         setupReady: rememberedSetupReady(deps.local, deps.config.projectId),
         projectId: deps.config.projectId,
         authDomain: deps.config.authDomain,
@@ -284,26 +286,8 @@ function authControllerOf<Setup, SetupIntents>(
         enableApi: (token, api) => enableService(deps.fetch, projectId, token, api),
         startUp: deps.runtime.startUp === true,
         serverSeen: serverMemory(deps.local, projectId),
+        leaving: (uid) => unregisterOnSignOut({ local: deps.local, callables: deps.firebase.callables, uid }),
     });
-}
-
-/** What the shell watches while an admin is signed in: the city's theme and whether Setup is complete. */
-function shellWatches<Setup>(
-    deps: AdminDeps<Setup, unknown>,
-    shell: ShellStateAccess,
-    denied: () => void,
-): { readonly cityTheme: CityTheme; readonly readiness: SetupReadiness } {
-    const documents = deps.firebase.documents;
-    // The city the editors edit: the `e2e` build's own city when the address names one (CR-M2c-7), so the shell wears its theme.
-    const ownCity = deps.content?.cityId ?? null;
-    const cityId = ownCity ?? deps.project.cities[0] ?? null;
-    return {
-        cityTheme: new CityTheme({ documents, shell, cityId, denied }),
-        readiness: new SetupReadiness({
-            ...{ documents, shell, local: deps.local, projectId: deps.config.projectId, denied },
-            watch: ownCity === null,
-        }),
-    };
 }
 
 /** Builds the app and starts it (the probe unless a start-up deploy, then Firebase Auth's user); returns at once. */
@@ -329,11 +313,10 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
     const content = contentRegistry(deps, { shell, callables: firebase.callables, denied });
     const unsaved = (): boolean => content.hasUnsavedChanges();
     const navigation = new Navigation({ shell, location: deps.location, session: deps.session, pages: deps.pages, track, unsaved });
-    const { cityTheme, readiness } = shellWatches(deps, shell, denied);
+    const watches = shellWatches({ ...deps, store: deps.content?.store ?? null }, shell, denied);
     const stopWatching = store.subscribe((state) => {
-        readiness.stateChanged(state);
+        watches.stateChanged(state);
         navigation.stateChanged(state);
-        cityTheme.stateChanged(state);
         if (state.auth !== 'admin') {
             content.destroyAll();
         }
@@ -357,8 +340,7 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
             stopWatching();
             controller.stop();
             navigation.stop();
-            cityTheme.stop();
-            readiness.stop();
+            watches.stop();
             content.destroyAll();
         },
     };

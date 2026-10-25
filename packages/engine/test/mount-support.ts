@@ -9,6 +9,7 @@ import type { HcmMapViewer, ViewerController, ViewerError, ViewerStorePort } fro
 
 import { createViewerStore, type ViewerStore } from '../src/core/store.js';
 import type { MountEnvironment } from '../src/mount.js';
+import { FakeCompare } from './compare/support.js';
 import { manifest } from './core/fixtures.js';
 import { FakeTelemetry, jsonResponse, memoryStorage, recordingLog, type RecordingLog } from './core/support.js';
 
@@ -83,6 +84,8 @@ export interface TestEnvironment {
     readonly fonts: (string | undefined)[];
     readonly containers: Map<string, FakeContainer>;
     readonly created: string[];
+    /** Swipe compare's chunk (M4): the second maps and surfaces the store's compare made. */
+    readonly compare: FakeCompare;
 }
 
 export interface TestEnvironmentOptions {
@@ -107,6 +110,8 @@ export function testEnvironment(options: TestEnvironmentOptions = {}): TestEnvir
     const fonts: (string | undefined)[] = [];
     const containers = new Map<string, FakeContainer>();
     const created: string[] = [];
+    const compare = new FakeCompare();
+    let mapsMade = 0;
     const body = options.manifest ?? manifest();
     const env: MountEnvironment = {
         document: {
@@ -121,11 +126,13 @@ export function testEnvironment(options: TestEnvironmentOptions = {}): TestEnvir
                 return containers.get(selector)?.element ?? null;
             },
         },
+        // The viewer's map first; every later map is swipe compare's second map (M4), kept by `compare`.
         createMap: () => {
             if (options.noMapbox === true) {
                 throw new Error('mapboxgl is not defined');
             }
-            return map;
+            mapsMade += 1;
+            return mapsMade === 1 ? map : compare.deps.createMap();
         },
         createTelemetry: () => telemetry,
         createStore: (deps) => {
@@ -143,8 +150,9 @@ export function testEnvironment(options: TestEnvironmentOptions = {}): TestEnvir
         installFonts: (engineBase) => {
             fonts.push(engineBase);
         },
+        loadCompare: () => compare.deps.load(),
     };
-    return { env, viewer, map, telemetry, log, stores, fonts, containers, created };
+    return { env, viewer, map, telemetry, log, stores, fonts, containers, created, compare };
 }
 
 /** A valid embed configuration. */

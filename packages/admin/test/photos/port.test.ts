@@ -14,7 +14,7 @@ const MODULE_IS_AN_AREA_MODULE: Assignable<typeof PHOTOS_MODULE, NonNullable<Con
 const SERVICES_SUFFICE: Assignable<ContentServices, PhotosServices> = true;
 const MODULE_TYPED: Assignable<
     AreaModule<PhotosState, PhotosIntents>['area'],
-    'photos' | 'pois' | 'layers' | 'settings' | 'admins' | 'history' | 'jobs' | 'crashes' | 'home' | 'imagery' | 'georef'
+    'photos' | 'pois' | 'layers' | 'settings' | 'admins' | 'history' | 'jobs' | 'crashes' | 'home' | 'imagery' | 'georef' | 'inbox'
 > = true;
 
 describe('the photos ports', () => {

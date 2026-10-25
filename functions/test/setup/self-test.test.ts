@@ -294,3 +294,30 @@ describe('setup.selfTest Google Cloud', () => {
         expect(check(response, 'task-queue')).toEqual({ id: 'task-queue', state: 'unavailable', detail: 'apiError.internal' });
     });
 });
+
+describe('setup.selfTest Vertex AI (M4, CR-M4-5)', () => {
+    it('happyPath_theAiCheckCountsTokensOnThePinnedModelWithoutACharge @S-A45-HAPPY-SELF-TEST', async () => {
+        const world = createWorld();
+
+        const response = await selfTest(world.deps, ADMIN);
+
+        expect(check(response, 'ai')).toEqual({ id: 'ai', state: 'ok' });
+        expect(world.upstream.callsTo('vertex-ai.countTokens').map((call) => new URL(call.url).pathname)).toEqual([
+            '/v1/projects/demo-hcm/locations/us-central1/publishers/google/models/gemini-2.5-flash-lite:countTokens',
+        ]);
+        expect(world.upstream.callsTo('vertex-ai.generateContent')).toEqual([]);
+    });
+
+    it.each([
+        ['apiDisabled', { state: 'invalid', detail: 'apiError.cloud.apiDisabled', params: { api: 'aiplatform.googleapis.com' } }],
+        ['forbidden', { state: 'invalid', detail: 'apiError.cloud.permission', params: { role: 'hcmVertexDrafts' } }],
+        ['unavailable', { state: 'unavailable', detail: 'apiError.unavailable' }],
+    ] as const)('badPath_vertexAi_%s_sendsTheOwnerToPrepareTheProject @S-A45-BAD-API-DISABLED', async (mode, expected) => {
+        const world = createWorld();
+        world.upstream.fail('vertex-ai', mode);
+
+        const response = await selfTest(world.deps, ADMIN);
+
+        expect(check(response, 'ai')).toEqual({ id: 'ai', ...expected });
+    });
+});

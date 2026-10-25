@@ -88,6 +88,7 @@ def test_happy_path_gates_that_read_other_gates_output_wait_for_them() -> None:
     assert GATES["coverage"].needs == ("vitest", "pytest", "pipeline-pytest")
     assert GATES["rules-coverage"].needs == ("vitest",)
     assert GATES["bundle-budget"].needs == ("vite-build",)
+    assert GATES["notices"].needs == ("vite-build",)
     assert GATES["site-build"].needs == ("vite-build",)
     assert GATES["playwright"].needs == ("e2e-build",)
     assert GATES["playwright-tour-matrix"].needs == ("e2e-build",)
@@ -347,7 +348,12 @@ def test_happy_path_main_runs_the_stage_inside_the_image(monkeypatch: pytest.Mon
     monkeypatch.setenv(pipeline.IMAGE_MARKER, "1")
 
     assert pipeline.main(["--stage", "build"], shell.context()) == 0
-    assert gate_commands(shell) == ["npm run --silent build", "python3 scripts/ci/check_bundle_budget.py", "npm run --silent build:site"]
+    assert gate_commands(shell) == [
+        "npm run --silent build",
+        "python3 scripts/ci/check_bundle_budget.py",
+        "python3 scripts/ci/check_notices.py",
+        "npm run --silent build:site",
+    ]
 
 
 def test_happy_path_main_defaults_to_the_real_repository(monkeypatch: pytest.MonkeyPatch) -> None:

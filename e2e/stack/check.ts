@@ -56,6 +56,28 @@ async function imagery(page: Page): Promise<void> {
     await scenes.getByRole('link').nth(5).waitFor({ timeout: TIMEOUT_MS });
 }
 
+/**
+ * M4: the frame to buy has its order card (Free only off: the filter hides a scene not ordered yet), and the one marked
+ * as ordered says it is watched (an ordered scene opens whatever the filters).
+ */
+async function orders(page: Page): Promise<void> {
+    await page.goto(`${ADMIN_ORIGIN}/#/imagery`);
+    const scenes = page.getByRole('list', { name: translateAdminContent('ro', 'adminContent.imagery.scenesLabel') });
+    await scenes.getByRole('link').first().waitFor({ timeout: TIMEOUT_MS });
+    await page.getByRole('button', { name: translateAdminContent('ro', 'adminContent.imagery.filter.freeOnly') }).click();
+    await scenes.locator('a[href$="/imagery/scene/DS1105-1071DF076"]').click();
+    const card = page.locator('hcm-imagery-page .order-card');
+    await card.getByText(translateAdminContent('ro', 'adminContent.orders.state.needsOrder')).waitFor({ timeout: TIMEOUT_MS });
+    await page.goto(`${ADMIN_ORIGIN}/#/imagery/scene/D3C1209-100055F012`);
+    await card.getByText(translateAdminContent('ro', 'adminContent.orders.state.ordered')).waitFor({ timeout: TIMEOUT_MS });
+}
+
+/** M4: the server's own events (a failed import, a draft over the threshold, a version waiting for points) in the inbox. */
+async function inbox(page: Page): Promise<void> {
+    await page.goto(`${ADMIN_ORIGIN}/#/inbox`);
+    await page.locator('hcm-inbox-page a.row').nth(2).waitFor({ timeout: TIMEOUT_MS });
+}
+
 async function layersMap(page: Page): Promise<void> {
     await page.goto(`${ADMIN_ORIGIN}/#/layers/corona-1968`);
     await page.getByRole('heading', { level: 2, name: 'Corona 1968' }).waitFor({ timeout: TIMEOUT_MS });
@@ -85,6 +107,8 @@ const STEPS: readonly Step[] = [
     { name: 'the owner signs in with the consent stand-in and lands on the dashboard', run: signIn },
     { name: 'Photos lists the seeded photos', run: photos },
     { name: 'Historical imagery lists the harvested scenes', run: imagery },
+    { name: 'a frame to buy has its order card, and an ordered one is watched', run: orders },
+    { name: 'the inbox lists what the server did', run: inbox },
     { name: "a layer's editor draws its tiles on the admin map through the mock Mapbox", run: layersMap },
     { name: "the viewer shows the emulators' published manifest", run: viewer },
 ];

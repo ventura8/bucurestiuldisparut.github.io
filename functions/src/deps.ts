@@ -13,6 +13,7 @@ import { createCloudTaskQueue } from './adapters/cloud-tasks.js';
 import { createDocumentStore } from './adapters/documents.js';
 import { createEmulatorFetch } from './adapters/emulator-fetch.js';
 import { createErrorReporter } from './adapters/error-reporting.js';
+import { createFcm } from './adapters/fcm.js';
 import { createFirebaseManagement } from './adapters/firebase-management.js';
 import { firestoreAdminDirectory, firestoreSetupRecords } from './adapters/firestore.js';
 import { createFunctionsLogSink } from './adapters/functions-log-sink.js';
@@ -20,6 +21,7 @@ import { createGoogleTokenProvider } from './adapters/google-token-provider.js';
 import { createSharpImageProcessor } from './adapters/image.js';
 import { createMapboxTilesets } from './adapters/mapbox-tilesets.js';
 import { createMapboxApi } from './adapters/mapbox.js';
+import { createNominatim } from './adapters/nominatim.js';
 import { createRemoteFiles, fetchPinnedGet, httpsPinnedGet, systemResolver } from './adapters/remote-files.js';
 import { createGoogleIam } from './adapters/resource-manager.js';
 import { createSecretManagerStore, secretsRevision } from './adapters/secret-manager.js';
@@ -29,6 +31,7 @@ import { createStorageBlobStore } from './adapters/storage.js';
 import { systemClock } from './adapters/system-clock.js';
 import type { Fetch } from './adapters/upstream-http.js';
 import { createUsgsApi, createUsgsScenes } from './adapters/usgs.js';
+import { createVertexAi } from './adapters/vertex-ai.js';
 import type { Ports } from './ports/index.js';
 import type { RemoteFiles } from './ports/remote-files.js';
 import type { RuntimeConfig } from './ports/runtime-config.js';
@@ -36,7 +39,10 @@ import type { SecretStore } from './ports/secret-store.js';
 import type { SetupRecords } from './ports/setup-records.js';
 import type { TokenProvider } from './ports/token-provider.js';
 
-/** Every port of `docs/research/M2-interfaces.md` §4 and `docs/research/M3-interfaces.md` §9.3. */
+/**
+ * Every port of `docs/research/M2-interfaces.md` §4, `docs/research/M3-interfaces.md` §9.3 and the three of
+ * `docs/research/M4-interfaces.md` §4, §5 (Nominatim, Vertex AI Gemini, FCM web push).
+ */
 export type Deps = Ports;
 
 export type Env = Readonly<Record<string, string | undefined>>;
@@ -166,6 +172,15 @@ function remoteFilesOf(env: Env, upstream: Upstream): RemoteFiles {
     return createRemoteFiles({ get: httpsPinnedGet(), resolve: systemResolver });
 }
 
+/**
+ * Nominatim at `HCM_NOMINATIM_URL` (a mirror, set at deploy time) or its own address. In the Functions emulator only the
+ * fake's address is reachable (`createEmulatorFetch`), so a configured mirror is ignored there.
+ */
+function nominatimOptions(env: Env, upstream: Upstream): { readonly fetch: Fetch; readonly url?: string } {
+    const mirror = env['FUNCTIONS_EMULATOR'] === 'true' ? undefined : env['HCM_NOMINATIM_URL'];
+    return mirror === undefined || mirror === '' ? { fetch: upstream.fetch } : { fetch: upstream.fetch, url: mirror };
+}
+
 /** The composition root: the only place that picks adapters (tests build their ports from fakes instead). */
 export function createDeps(env: Env, app: App): Deps {
     const config = runtimeConfig(env);
@@ -193,6 +208,9 @@ export function createDeps(env: Env, app: App): Deps {
         scenes: createUsgsScenes({ fetch: upstream.fetch, log }),
         remote: remoteFilesOf(env, upstream),
         reader: createStorageBlobReader(getStorage(app), config.buckets),
+        geocoder: createNominatim(nominatimOptions(env, upstream)),
+        translator: createVertexAi({ projectId: config.projectId, tokens: upstream.tokens, fetch: upstream.fetch }),
+        push: createFcm({ projectId: config.projectId, tokens: upstream.tokens, fetch: upstream.fetch }),
         admins: firestoreAdminDirectory(db),
         setup,
     };

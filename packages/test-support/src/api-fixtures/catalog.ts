@@ -38,6 +38,9 @@ import cloudTasksTaskCreated from './cloud-tasks/task.created.json' with { type:
 import cloudTasksTaskExists from './cloud-tasks/task.exists.json' with { type: 'json' };
 import errorReportingGroupStatsEmpty from './error-reporting/group-stats.empty.json' with { type: 'json' };
 import errorReportingGroupStatsTwoGroups from './error-reporting/group-stats.two-groups.json' with { type: 'json' };
+import fcmSendInvalidToken from './fcm/send.invalid-token.json' with { type: 'json' };
+import fcmSendOk from './fcm/send.ok.json' with { type: 'json' };
+import fcmSendUnregistered from './fcm/send.unregistered.json' with { type: 'json' };
 import firebaseManagementAddGoogleAnalyticsOperation from './firebase-management/add-google-analytics.operation.json' with { type: 'json' };
 import firebaseManagementAnalyticsDetailsLinked from './firebase-management/analytics-details.linked.json' with { type: 'json' };
 import firebaseManagementAnalyticsDetailsNotLinked from './firebase-management/analytics-details.not-linked.json' with { type: 'json' };
@@ -74,6 +77,7 @@ import iamPoolsCreateOperation from './iam/pools.create.operation.json' with { t
 import iamPoolsGetOk from './iam/pools.get.ok.json' with { type: 'json' };
 import iamProvidersCreateOperation from './iam/providers.create.operation.json' with { type: 'json' };
 import iamProvidersGetOk from './iam/providers.get.ok.json' with { type: 'json' };
+import iamRolesGetOk from './iam/roles.get.ok.json' with { type: 'json' };
 import mapboxErrorForbidden from './mapbox/error.forbidden.json' with { type: 'json' };
 import mapboxErrorNotFound from './mapbox/error.not-found.json' with { type: 'json' };
 import mapboxErrorRateLimited from './mapbox/error.rate-limited.json' with { type: 'json' };
@@ -113,7 +117,9 @@ import monitoringAlertPolicyGet from './monitoring/alert-policy.get.json' with {
 import monitoringNotificationChannelGet from './monitoring/notification-channel.get.json' with { type: 'json' };
 import nominatimErrorRateLimited from './nominatim/error.rate-limited.json' with { type: 'json' };
 import nominatimErrorUnavailable from './nominatim/error.unavailable.json' with { type: 'json' };
+import nominatimReverseBuilding from './nominatim/reverse.building.json' with { type: 'json' };
 import nominatimReverseOk from './nominatim/reverse.ok.json' with { type: 'json' };
+import nominatimReverseQuarter from './nominatim/reverse.quarter.json' with { type: 'json' };
 import nominatimReverseUnable from './nominatim/reverse.unable.json' with { type: 'json' };
 import orgPolicyEffectivePolicyBooleanEnforced from './org-policy/effective-policy.boolean-enforced.json' with { type: 'json' };
 import orgPolicyEffectivePolicyListRestricted from './org-policy/effective-policy.list-restricted.json' with { type: 'json' };
@@ -175,6 +181,9 @@ import usgsSceneSearchDeclassii from './usgs/scene-search.declassii.json' with {
 import usgsSceneSearchDeclassiii from './usgs/scene-search.declassiii.json' with { type: 'json' };
 import usgsSceneSearchEmpty from './usgs/scene-search.empty.json' with { type: 'json' };
 import usgsSceneSearchTwoScenes from './usgs/scene-search.two-scenes.json' with { type: 'json' };
+import vertexAiCountTokensOk from './vertex-ai/count-tokens.ok.json' with { type: 'json' };
+import vertexAiGenerateOk from './vertex-ai/generate.ok.json' with { type: 'json' };
+import vertexAiGenerateSafety from './vertex-ai/generate.safety.json' with { type: 'json' };
 
 /** Keeps the names as a literal union and the JSON types out of the declaration output. */
 function catalogue<Name extends string>(entries: Readonly<Record<Name, unknown>>): Readonly<Record<Name, unknown>> {
@@ -221,6 +230,9 @@ export const RAW_FIXTURES = catalogue({
     'cloud-tasks/task.exists': cloudTasksTaskExists,
     'error-reporting/group-stats.empty': errorReportingGroupStatsEmpty,
     'error-reporting/group-stats.two-groups': errorReportingGroupStatsTwoGroups,
+    'fcm/send.invalid-token': fcmSendInvalidToken,
+    'fcm/send.ok': fcmSendOk,
+    'fcm/send.unregistered': fcmSendUnregistered,
     'firebase-management/add-google-analytics.operation': firebaseManagementAddGoogleAnalyticsOperation,
     'firebase-management/analytics-details.linked': firebaseManagementAnalyticsDetailsLinked,
     'firebase-management/analytics-details.not-linked': firebaseManagementAnalyticsDetailsNotLinked,
@@ -257,6 +269,7 @@ export const RAW_FIXTURES = catalogue({
     'iam/pools.get.ok': iamPoolsGetOk,
     'iam/providers.create.operation': iamProvidersCreateOperation,
     'iam/providers.get.ok': iamProvidersGetOk,
+    'iam/roles.get.ok': iamRolesGetOk,
     'mapbox/error.forbidden': mapboxErrorForbidden,
     'mapbox/error.not-found': mapboxErrorNotFound,
     'mapbox/error.rate-limited': mapboxErrorRateLimited,
@@ -296,7 +309,9 @@ export const RAW_FIXTURES = catalogue({
     'monitoring/notification-channel.get': monitoringNotificationChannelGet,
     'nominatim/error.rate-limited': nominatimErrorRateLimited,
     'nominatim/error.unavailable': nominatimErrorUnavailable,
+    'nominatim/reverse.building': nominatimReverseBuilding,
     'nominatim/reverse.ok': nominatimReverseOk,
+    'nominatim/reverse.quarter': nominatimReverseQuarter,
     'nominatim/reverse.unable': nominatimReverseUnable,
     'org-policy/effective-policy.boolean-enforced': orgPolicyEffectivePolicyBooleanEnforced,
     'org-policy/effective-policy.list-restricted': orgPolicyEffectivePolicyListRestricted,
@@ -358,4 +373,7 @@ export const RAW_FIXTURES = catalogue({
     'usgs/scene-search.declassiii': usgsSceneSearchDeclassiii,
     'usgs/scene-search.empty': usgsSceneSearchEmpty,
     'usgs/scene-search.two-scenes': usgsSceneSearchTwoScenes,
+    'vertex-ai/count-tokens.ok': vertexAiCountTokensOk,
+    'vertex-ai/generate.ok': vertexAiGenerateOk,
+    'vertex-ai/generate.safety': vertexAiGenerateSafety,
 });

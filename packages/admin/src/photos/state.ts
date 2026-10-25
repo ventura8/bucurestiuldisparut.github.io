@@ -5,6 +5,7 @@
  */
 import type { ApiErrorCode, PhotoDoc, ValidationIssue } from '@hcm/shared';
 
+import { NO_ASSIST, type AssistState } from '../assist/assist.js';
 import type { LoadStatus } from '../content/list.js';
 import type { StoreFailure } from '../content/services.js';
 import type { Suggestion } from './autofill.js';
@@ -78,6 +79,8 @@ export interface PhotosState {
     readonly report: BulkReport | null;
     /** A bulk action or a delete is being written. */
     readonly busy: boolean;
+    /** M4 (CR-M4-4): the open photo's title suggestions and translation drafts. */
+    readonly assist: AssistState;
 }
 
 export const INITIAL_LIST: PhotosListState = {
@@ -93,5 +96,15 @@ export const INITIAL_LIST: PhotosListState = {
 };
 
 export function initialPhotosState(sticky: StickyFields): PhotosState {
-    return { list: INITIAL_LIST, uploads: [], sticky, editor: null, map: 'none', confirm: null, report: null, busy: false };
+    return {
+        list: INITIAL_LIST,
+        uploads: [],
+        sticky,
+        editor: null,
+        map: 'none',
+        confirm: null,
+        report: null,
+        busy: false,
+        assist: NO_ASSIST,
+    };
 }

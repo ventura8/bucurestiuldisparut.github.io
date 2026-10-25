@@ -20,6 +20,8 @@ import { guardBanner } from './guard-banner.js';
 import type { ImageryIntentsPort, ImageryTabPort, ImageryViewState } from './imagery-port.js';
 import { imageryStyles } from './imagery-styles.js';
 import { numberText } from './imagery-text.js';
+import { ordersNeedingYou } from './orders/order-list.js';
+import { orderStyles } from './orders/order-styles.js';
 import { sceneDetail } from './scene-detail.js';
 import { findView } from './scene-list.js';
 import { uploadPanel } from './upload-panel.js';
@@ -57,7 +59,7 @@ const QUESTIONS = {
 class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     static override readonly properties = { ...AreaPage.properties, question: { state: true }, mapCss: { attribute: false } };
 
-    static override readonly styles = imageryStyles;
+    static override readonly styles = [...imageryStyles, orderStyles];
 
     protected readonly route: AdminRouteIdPort = 'imagery';
     /** The open question (Reject, Pay, Cancel), or null. */
@@ -142,12 +144,18 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
             ask: (question) => {
                 this.question = question;
             },
+            refresh: () => {
+                this.requestUpdate();
+            },
+            focusDetail: () => {
+                void this.updateComplete.then(() => this.renderRoot.querySelector<HTMLElement>('[data-detail-heading]')?.focus());
+            },
         };
     }
 
     #list(context: ImageryContext): TemplateResult {
         const { locale, view, intents } = context;
-        const waiting = view.versions.items.filter((version) => version.needsYou).length;
+        const waiting = view.versions.items.filter((version) => version.needsYou).length + ordersNeedingYou(view);
         const options = TABS.map((tab) => ({
             value: tab,
             label: contentText(locale, `adminContent.imagery.tab.${tab}`, { count: String(waiting) }),
@@ -216,7 +224,9 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
             ></hcm-empty-state>`;
         }
         if (detail.kind === 'scene') {
-            return sceneDetail(context, view.scenes.items.find((scene) => scene.id === detail.id) ?? null);
+            // M4: an ordered scene the filters hide (Free only) opens too, from Work's orders or a notification's link.
+            const scenes = [...view.scenes.items, ...view.orders.items];
+            return sceneDetail(context, scenes.find((scene) => scene.id === detail.id) ?? null);
         }
         return versionDetail(context, view.version);
     }

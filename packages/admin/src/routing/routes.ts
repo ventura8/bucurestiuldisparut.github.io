@@ -2,7 +2,8 @@
  * The admin's hash routes (`docs/research/M2b-interfaces.md` §1.1): `#/<route>` plus at most two id segments
  * (`#/photos/<photoId>`, `#/history/<entity>/<id>`, `#/setup/<step>`). Hash routing needs no Hosting rewrite and keeps
  * every address on the one `index.html`. `#/home` is the dashboard the M2c editors added (`docs/research/M2c-interfaces.md`
- * CR-M2c-24); `#/imagery` and `#/georef/<versionId>` are M3's (`docs/research/M3-interfaces.md` §10.1, CR-M3-9).
+ * CR-M2c-24); `#/imagery` and `#/georef/<versionId>` are M3's (`docs/research/M3-interfaces.md` §10.1, CR-M3-9);
+ * `#/inbox` is M4's (`docs/research/M4-interfaces.md` §5.5).
  */
 export const ADMIN_ROUTES = [
     'home',
@@ -12,6 +13,7 @@ export const ADMIN_ROUTES = [
     'layers',
     'imagery',
     'jobs',
+    'inbox',
     'settings',
     'admins',
     'history',
@@ -50,6 +52,8 @@ export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> =
     /** M3's Imagery area: after Layers in the rail, under More on the compact bar (`docs/research/M3-interfaces.md` §10.1). */
     imagery: { icon: 'satellite_alt', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
     jobs: { icon: 'pending_actions', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
+    /** M4's inbox (`docs/research/M4-interfaces.md` §5.5): after Jobs in the rail, under More on the compact bar. */
+    inbox: { icon: 'notifications', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
     settings: { icon: 'settings', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
     admins: { icon: 'group', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
     history: { icon: 'history', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },

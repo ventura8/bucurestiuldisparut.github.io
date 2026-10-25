@@ -1,10 +1,12 @@
-import type { BuildManifestTask, PublishTask } from '@hcm/shared';
+import type { BuildManifestTask, GeocodeTask, PublishTask } from '@hcm/shared';
 
 /** Every task queue of the backend and the payload its function takes (validated again on dispatch). */
 interface TaskPayloads {
     readonly 'publish-buildManifest': BuildManifestTask;
     /** M3: the publisher of `docs/research/M3-interfaces.md` §7.3 (`IMAGERY_PUBLISH_QUEUE`), one dispatch at a time. */
     readonly 'imagery-publish': PublishTask;
+    /** M4: Nominatim reverse geocoding, one a second for the whole project (`ASSIST_GEOCODE_QUEUE`; task id = the cell). */
+    readonly 'assist-geocode': GeocodeTask;
 }
 
 type QueueName = keyof TaskPayloads;

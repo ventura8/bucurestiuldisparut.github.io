@@ -3,13 +3,25 @@ import { route, type Route } from './routes.js';
 import type { FailureMode, ServiceFake } from './service.js';
 
 /**
- * Nominatim reverse geocoding (`nominatim.openstreetmap.org/reverse`, the admin's address suggestion for a pin): a
- * point inside Romania answers the fixture's street with the point's own coordinates; anywhere else answers
- * `{"error": "Unable to geocode"}` with HTTP 200, as Nominatim does over the open sea.
+ * Nominatim reverse geocoding (`nominatim.openstreetmap.org/reverse`), which only the server calls (the `assist-geocode`
+ * queue's worker, `docs/research/M4-interfaces.md` §4.2, §8): a few Bucharest places answer as Nominatim does at zoom 18
+ * (a named building with its English name, a quarter with no named object or road), every other point inside Romania
+ * answers the fixture's road in its sector with the point's own coordinates, and anywhere else answers
+ * `{"error": "Unable to geocode"}` with HTTP 200, as Nominatim does over the open sea. `fail('nominatim', 'rateLimited')`
+ * answers 429 and `'unavailable'` 503; the recording `fetch` counts the calls (`callsTo('nominatim.reverse')`).
  */
 
 /** Romania's bounding box, generously: inside it the fake knows an address. */
 const KNOWN_AREA = { south: 43.5, north: 48.3, west: 20.2, east: 29.8 } as const;
+
+/** The places with an answer of their own, and how near (in degrees) a point must be to get it. */
+const KNOWN_PLACES: readonly { readonly lat: number; readonly lon: number; readonly fixture: FixtureName }[] = [
+    /** Ateneul Român (Romanian Athenaeum): a named building. */
+    { lat: 44.4413, lon: 26.0973, fixture: 'nominatim/reverse.building' },
+    /** Cotroceni: a quarter, nothing named nearer. */
+    { lat: 44.4325, lon: 26.07, fixture: 'nominatim/reverse.quarter' },
+];
+const NEAR_DEG = 0.0015;
 
 const FAILURES: Readonly<Partial<Record<FailureMode, FixtureName>>> = {
     unavailable: 'nominatim/error.unavailable',
@@ -28,16 +40,22 @@ function pointOf(query: URLSearchParams): { readonly lat: number; readonly lon: 
     return Number.isFinite(lat) && Number.isFinite(lon) ? { lat: Number(lat), lon: Number(lon) } : undefined;
 }
 
+/** The answer of a known place near the point, or the road every other point in Romania gets. */
+function answerAt(point: { readonly lat: number; readonly lon: number }): Response {
+    const known = KNOWN_PLACES.find((place) => Math.abs(place.lat - point.lat) <= NEAR_DEG && Math.abs(place.lon - point.lon) <= NEAR_DEG);
+    if (known !== undefined) {
+        return fixtureResponse(known.fixture);
+    }
+    return inKnownArea(point.lat, point.lon)
+        ? fixtureResponse('nominatim/reverse.ok', { merge: { lat: String(point.lat), lon: String(point.lon) } })
+        : fixtureResponse('nominatim/reverse.unable');
+}
+
 /** The fake Nominatim (stateless). */
 export function createNominatimFake(): ServiceFake {
     const reverse: Route['answer'] = (request) => {
         const point = pointOf(request.url.searchParams);
-        if (point === undefined) {
-            return fixtureResponse('nominatim/reverse.unable', { status: 400 });
-        }
-        return inKnownArea(point.lat, point.lon)
-            ? fixtureResponse('nominatim/reverse.ok', { merge: { lat: String(point.lat), lon: String(point.lon) } })
-            : fixtureResponse('nominatim/reverse.unable');
+        return point === undefined ? fixtureResponse('nominatim/reverse.unable', { status: 400 }) : answerAt(point);
     };
     return {
         name: 'nominatim',

@@ -327,6 +327,22 @@ export function usgsSceneDoc(status = 'candidate'): Data {
         },
         rank: { score: 92, reasons: [{ code: 'free' }, { code: 'coverage', params: { percent: '92' } }], version: 1 },
         layerId: 'corona-1966',
+        // M4 (docs/research/M4-interfaces.md §1): EarthExplorer's dataset id and the order, written by the functions only.
+        eeDatasetId: '5e839febdccb64b3',
+        order: {
+            state: 'imported',
+            orderedAt: past(),
+            orderedBy: 'uid-owner',
+            checks: 9,
+            lastCheckedAt: past(),
+            nextCheckAt: later(),
+            remindersSent: [7],
+            deliveredAt: past(),
+            importJobId: 'job-1966',
+            importedAt: past(),
+            expiredAt: past(),
+            lastError: 'apiError.usgs.maintenance',
+        },
         harvestedAt: past(),
         createdAt: past(),
         ...systemStamp('imagery'),
@@ -473,6 +489,73 @@ export function manifestStateDoc(cityId: string): Data {
 }
 
 /** One valid new value for every field an admin may update (the stamp aside), per collection. */
+// ---- M4 notifications and assists (docs/research/M4-interfaces.md §4.2, §5.6; owner: assists-notify) ----------------
+
+/** What every notification event and inbox item says. */
+function notice(): Data {
+    return {
+        kind: 'job.failed',
+        severity: 'error',
+        cityId: 'matrix-city',
+        params: { label: 'Corona 1966', labelEn: 'Corona 1966 (EN)' },
+        link: '#/imagery/version/job-1966',
+        createdAt: past(),
+    };
+}
+
+/** An inbox item as `notify.onEvent` writes it, then pushed and read (`unread` for a fresh one): every field of `inboxItemDocSchema`. */
+export function inboxItemDoc(): Data {
+    return { ...notice(), read: true, readAt: past(), pushedAt: past(), ...systemStamp('notify') };
+}
+
+/** An admin's push settings, as the admin's client saves them. */
+export function notifySettingsDoc(uid: string): Data {
+    return { push: true, pushKinds: ['job.failed', 'budget.paused'], createdAt: past(), updatedBy: uid, updatedAt: past() };
+}
+
+/** The admin's first save of their push settings: exactly `CLIENT_WRITES.notifySettings.create`. */
+export function newNotifySettings(uid: string): Data {
+    return { push: false, pushKinds: ['order.reminder'], createdAt: serverTime(), ...stampedBy(uid) };
+}
+
+/** A browser registered by `notify.registerDevice` (a generated test token). */
+export function pushDeviceDoc(uid: string): Data {
+    return {
+        token: 'rules-fcm-token:abcdefghijklmnopqrstuvwxyz',
+        lang: 'ro',
+        createdAt: past(),
+        lastPushedAt: past(),
+        updatedBy: uid,
+        updatedAt: past(),
+    };
+}
+
+/** A notification event as a producer creates it and the fan-out completes it. */
+export function notificationEventDoc(): Data {
+    return { ...notice(), fannedOutAt: past(), recipients: 2, ...systemStamp('imagery') };
+}
+
+/** A cached reverse-geocoding cell (`assistGeocodes/{key}`). */
+export function geocodeCellDoc(): Data {
+    return {
+        state: 'failed',
+        suggestions: [{ ro: 'Ateneul Român', en: 'Romanian Athenaeum' }],
+        attribution: 'Data © OpenStreetMap contributors, ODbL 1.0. https://osm.org/copyright',
+        error: 'apiError.assist.rateLimited',
+        requestedAt: past(),
+        answeredAt: past(),
+        expiresAt: later(),
+        ...systemStamp('assist'),
+    };
+}
+
+/** The AI drafts' monthly counters (`usage/ai-YYYY-MM`). */
+export function aiUsageDoc(): Data {
+    return { month: '2026-10', requests: 3, inputTokens: 300, outputTokens: 30, usd: 0.0001, ...systemStamp('assist') };
+}
+
+// ---- end of M4 ---------------------------------------------------------------------------------------------------------
+
 export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
     city: {
         name: { ro: 'Bucureștiul dispărut' },
@@ -536,6 +619,8 @@ export const EDITS: Readonly<Record<ClientCollection, Readonly<Data>>> = {
     poiCategory: { label: { ro: 'Biserici', en: 'Churches' }, icon: 'mosque', color: '#aa00ff', defaultOpacity: 0, order: -1 },
     job: { cancelRequested: true },
     usgsScene: { status: 'rejected', note: 'Nori peste oraș.' },
+    inboxItem: { read: true, readAt: serverTime() },
+    notifySettings: { push: false, pushKinds: [] },
 };
 
 /** The fields of a collection's client update other than the stamp (what `EDITS` must cover). */

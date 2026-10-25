@@ -1,5 +1,5 @@
 /**
- * The real Terra Draw 1.37.0 and its Mapbox GL adapter 1.5.0 (`loadTerraDraw`) through `MapDrawPort`, on a structural
+ * The real Terra Draw 1.38.0 and its Mapbox GL adapter 1.5.0 (`loadTerraDraw`) through `MapDrawPort`, on a structural
  * Mapbox map in Chromium (DECISIONS-for-review.md §34g, docs/research/M2c-interfaces.md §4.7): the map is the test kit's
  * `FakeMapboxMap` with a real canvas in the page, a fixed linear projection and the handlers Terra Draw switches, so real
  * pointer events drag a whole shape, a vertex and a midpoint as an admin does, and a drag past the limits snaps back.

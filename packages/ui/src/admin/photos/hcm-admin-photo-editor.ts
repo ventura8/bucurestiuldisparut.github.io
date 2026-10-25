@@ -12,6 +12,8 @@ import { translate, type Locale } from '@hcm/shared';
 import { LitElement, html, nothing, type TemplateResult } from 'lit';
 
 import { emit } from '../../components/internal.js';
+import type { AssistViewPort } from '../assist/assist-port.js';
+import { assistStyles } from '../assist/assist-parts.js';
 import { conflictFields, NOBODY, savedByText, type WhoPort } from '../editing/conflict.js';
 
 import { LeftFields } from '../editing/number-fields.js';
@@ -55,9 +57,10 @@ export class HcmAdminPhotoEditor extends LitElement {
         mapReady: { type: Boolean, attribute: 'map-ready' },
         readOnly: { type: Boolean, reflect: true, attribute: 'read-only' },
         who: { attribute: false },
+        assist: { attribute: false },
     };
 
-    static override readonly styles = photoStyles;
+    static override readonly styles = [...photoStyles, ...assistStyles];
 
     declare editor: PhotoEditorPort | null;
     declare intents: PhotosIntentsPort | null;
@@ -67,6 +70,8 @@ export class HcmAdminPhotoEditor extends LitElement {
     declare readOnly: boolean;
     /** Who reads the page and the admins' names: the conflict banner names who saved. */
     declare who: WhoPort;
+    /** M4 (CR-M4-4): the title suggestions and translation drafts of the open photo (none: no assist slots). */
+    declare assist: AssistViewPort | null;
     /** The list-detail layout asked for the focus before the heading was there (the photo still loading). */
     #wantsFocus = false;
     /** The number fields left since the photo opened (they say their problem from then on). */
@@ -82,6 +87,7 @@ export class HcmAdminPhotoEditor extends LitElement {
         this.mapReady = false;
         this.readOnly = false;
         this.who = NOBODY;
+        this.assist = null;
     }
 
     /**
@@ -137,6 +143,7 @@ export class HcmAdminPhotoEditor extends LitElement {
             },
             left,
             readOnly: this.readOnly,
+            assist: this.assist === null || this.intents === null ? null : { view: this.assist, actions: this.intents },
         };
         const place = {
             ...{ locale, editor, value, issues: editor.issues, intents: this.intents },

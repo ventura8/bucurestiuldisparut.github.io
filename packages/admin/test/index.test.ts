@@ -111,6 +111,7 @@ const PAGE_TAGS: Readonly<Record<Exclude<AdminRouteId, 'setup'>, string>> = {
     layers: 'hcm-layers-page',
     imagery: 'hcm-imagery-page',
     jobs: 'hcm-jobs-page',
+    inbox: 'hcm-inbox-page',
     settings: 'hcm-settings-page',
     admins: 'hcm-admins-page',
     history: 'hcm-history-page',

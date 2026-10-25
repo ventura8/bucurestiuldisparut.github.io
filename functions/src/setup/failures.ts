@@ -1,4 +1,4 @@
-import { API_ERRORS, type ApiErrorCode } from '@hcm/shared';
+import { API_ERRORS, VERTEX_DRAFTS_ROLE_ID, type ApiErrorCode } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
 import { UpstreamError, type UpstreamFailure } from '../ports/errors.js';
@@ -44,6 +44,11 @@ export const ROLES = {
     storageObjectAdmin: 'roles/storage.objectAdmin',
     cloudTasksEnqueuer: 'roles/cloudtasks.enqueuer',
     datastoreUser: 'roles/datastore.user',
+    /**
+     * M4: Vertex AI Gemini for the translation drafts (`docs/research/M4-interfaces.md` §4.4): the project's custom role
+     * Provision makes (`generateContent` and `countTokens` only), not `roles/aiplatform.user` (DECISIONS §57g).
+     */
+    vertexDrafts: VERTEX_DRAFTS_ROLE_ID,
 } as const;
 
 /** Failures that clear up by themselves: the area reads `unavailable` and is checked again later. */

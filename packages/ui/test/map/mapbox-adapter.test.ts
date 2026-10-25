@@ -434,11 +434,14 @@ describe('Mapbox adapter: events and lifecycle', () => {
     it('happyPath_mapEventsReachTheSubscribers', async () => {
         const { port, map } = await mounted();
         const heard: string[] = [];
+        port.on('move', (view) => heard.push(`move ${String(view.zoom)}`));
         port.on('moveend', (view) => heard.push(`moveend ${String(view.zoom)}`));
         port.on('error', (event) => heard.push(`error ${event.kind} ${event.layerId ?? ''}`));
         port.on('webglcontextlost', () => heard.push('lost'));
         port.on('webglcontextrestored', () => heard.push('restored'));
 
+        map.zoom = 14;
+        map.fire('move');
         map.zoom = 15;
         map.fire('moveend');
         map.fire('error', { error: new Error('404'), sourceId: 'hcm-source-kh4-1966', tile: {} });
@@ -446,7 +449,7 @@ describe('Mapbox adapter: events and lifecycle', () => {
         map.fire('webglcontextlost');
         map.fire('webglcontextrestored');
 
-        expect(heard).toEqual(['moveend 15', 'error tile kh4-1966', 'error unknown ', 'lost', 'restored']);
+        expect(heard).toEqual(['move 14', 'moveend 15', 'error tile kh4-1966', 'error unknown ', 'lost', 'restored']);
     });
 
     it('badPath_aThrowingSubscriberDoesNotStopTheOthers', async () => {

@@ -10,7 +10,13 @@ import { apiErrorCodeSchema } from '../api/errors.js';
 import { stamp, timestampSchema } from './firestore-common.js';
 import { USGS_DATASETS } from './firestore.js';
 import { coded, idSchema, isoDateSchema, latLngSchema, plainText } from './primitives.js';
+import { EE_DATASET_ID_PATTERN, usgsOrderSchema } from './usgs-order.js';
 
+/**
+ * The admin's triage of a scene. `ordered` and `available` were reserved for M4's buy flow; from M4 the order is its own
+ * record (`order`, written by the functions only: `docs/research/M4-interfaces.md` §1) and these two are never written
+ * (`acquisitionState` reads a stored legacy `ordered` without an order as `needsOrder`).
+ */
 export const USGS_SCENE_STATUSES = ['candidate', 'ordered', 'available', 'imported', 'rejected'] as const;
 
 /**
@@ -148,6 +154,13 @@ export const usgsSceneDocSchema = z.strictObject({
     }),
     /** The layer its import created (reserved at Import, kept after). */
     layerId: idSchema.optional(),
+    /**
+     * M4: EarthExplorer's id of the scene's dataset (M2M `dataset-search` or `download-options`), which the scene's
+     * EarthExplorer page needs (`earthExplorerSceneUrl`); absent until the harvest or an order read it.
+     */
+    eeDatasetId: z.string().regex(EE_DATASET_ID_PATTERN).optional(),
+    /** M4: the scan the admin bought for this frame, watched until USGS delivers it (`usgs.markOrdered`). */
+    order: usgsOrderSchema.optional(),
     harvestedAt: timestampSchema,
     createdAt: timestampSchema.optional(),
     ...stamp,

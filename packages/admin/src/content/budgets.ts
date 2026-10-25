@@ -48,6 +48,19 @@ export const CONTENT_INPUT_BUDGETS = {
     georeferencePair: { inputs: 2, how: 'a click on the scan, a click on the same place on the map (per pair)' },
     cropLayer: { inputs: 2, how: 'Crop, n clicks (the last on the first corner), Save the crop', per: 'vertex' },
     // [end imagery]
+    // [section orders] owner: orders (docs/research/M4-interfaces.md §1.6)
+    buyScan: { inputs: 2, how: 'Order in EarthExplorer (the purchase there is the admin’s own step), then I ordered it' },
+    checkOrderNow: { inputs: 1, how: 'Check now on an ordered scene (the daily watch needs none)' },
+    // [end orders]
+    // [section autogcp] owner: autogcp (docs/research/M4-interfaces.md §2.5)
+    acceptSuggestions: { inputs: 2, how: 'Accept all on the suggestions, Save' },
+    // [end autogcp]
+    // [section assists-notify] owner: assists-notify (docs/research/M4-interfaces.md §4.5, §5.6)
+    suggestTitle: { inputs: 1, how: 'a suggested title (the suggestions come as soon as the place is set)' },
+    translateDraft: { inputs: 2, how: 'the draft button of the other language, Save' },
+    readNotification: { inputs: 1, how: 'the item in the inbox (it opens its page and is marked read)' },
+    pushOn: { inputs: 2, how: 'Notifications on this device, Allow in the browser’s own prompt' },
+    // [end assists-notify]
 } as const satisfies Readonly<Record<string, ContentFlowBudget>>;
 
 export type ContentFlow = keyof typeof CONTENT_INPUT_BUDGETS;

@@ -57,6 +57,8 @@ export interface ViewerHandlers {
     readonly onThemeChange: (event: CustomEvent<{ readonly theme: ViewerState['theme'] }>) => void;
     readonly onConsent: (event: CustomEvent<{ readonly decision: 'granted' | 'denied' }>) => void;
     readonly onRetry: (event: Event) => void;
+    /** The Layers panel's Compare button (M4, V06). */
+    readonly onCompareToggle: (event: Event) => void;
     readonly onToastDismiss: (event: Event) => void;
     readonly onSkip: () => void;
     readonly onNearYear: () => void;
@@ -351,10 +353,13 @@ function layerPanel(view: ViewerView, ready: Ready, placement: Placement, handle
         .mode=${placement.mode}
         .open=${placement.open}
         .closable=${placement.closable !== false}
+        .canCompare=${ready.state.webgl && ready.manifest.layers.length > 0}
+        .comparing=${ready.state.compare !== null}
         ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
         @hcm-overlay-visibility=${handlers.onOverlayVisibility}
         @hcm-overlay-opacity=${handlers.onOverlayOpacity}
+        @hcm-compare-toggle=${handlers.onCompareToggle}
     ></hcm-layer-panel>`;
 }
 

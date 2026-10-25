@@ -86,9 +86,14 @@ function rethrowConflict(error: unknown): never {
     throw error;
 }
 
+/**
+ * A filter's operand is converted as a stored value is (a `TimestampLike` becomes a Firestore `Timestamp`): Firestore
+ * compares a range only within one type, so a plain `{seconds, nanoseconds}` map never matched a stored timestamp
+ * (CR-M4-11: M3's daily job cap counted nothing on the emulator).
+ */
 function buildQuery(collection: Query, options: QueryOptions): Query {
     const filtered = (options.where ?? []).reduce<Query>(
-        (query, [field, operator, value]) => query.where(field, operator, value),
+        (query, [field, operator, value]) => query.where(field, operator, toFirestoreValue(value)),
         collection,
     );
     const ordered = options.orderBy === undefined ? filtered : filtered.orderBy(options.orderBy[0], options.orderBy[1]);
@@ -145,6 +150,10 @@ export function createDocumentStore(db: Firestore): DocumentStore {
                     result.ok ? [] : [{ id: document.id, path: document.ref.path, issues: result.issues }],
                 ),
             };
+        },
+        count: async (collectionPath, where = []) => {
+            const snapshot = await buildQuery(db.collection(collectionPath), { where }).count().get();
+            return snapshot.data().count;
         },
         transaction: (work) => db.runTransaction((transaction) => work(transactionOf(db, transaction))).catch(rethrowConflict),
     };

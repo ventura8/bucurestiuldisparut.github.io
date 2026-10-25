@@ -8,9 +8,11 @@
 import { bboxCenter, bboxFromRecord, cityDocSchema, FIRESTORE_PATHS, type CityDoc, type LngLat } from '@hcm/shared';
 
 import type { Unsubscribe } from '../app/ports.js';
+import type { EditorAssists } from '../assist/editor-assists.js';
 import { LiveDoc } from '../content/doc.js';
 import type { Stored } from '../content/services.js';
 import { PhotoActions, type ActionIntents } from './actions.js';
+import { photoAssists, type PhotoAssistIntents } from './assists.js';
 import type { AreaContext, CityPlace } from './context.js';
 import { PhotoEditing, type EditingIntents } from './editing.js';
 import { PhotoList } from './list.js';
@@ -53,7 +55,7 @@ export interface MapIntents {
     zoomBy(delta: number): void;
 }
 
-export type PhotosIntents = ListIntents & UploadIntents & EditingIntents & ActionIntents & MapIntents;
+export type PhotosIntents = ListIntents & UploadIntents & EditingIntents & ActionIntents & MapIntents & PhotoAssistIntents;
 
 /** The area store of the contract (`AreaStore<PhotosState, PhotosIntents>`, §2.1). */
 export interface PhotosStore {
@@ -80,6 +82,7 @@ export class PhotosArea implements PhotosStore {
     readonly #listeners = new Set<(state: PhotosState) => void>();
     readonly #context: AreaContext;
     readonly #editing: PhotoEditing;
+    readonly #assists: EditorAssists;
     readonly intents: PhotosIntents;
     #state: PhotosState;
     #city: CityPlace | null = null;
@@ -128,8 +131,15 @@ export class PhotosArea implements PhotosStore {
             showMap: () => {
                 this.#showMap();
             },
+            placeSet: (location) => {
+                this.#assists.placeSet(location);
+            },
+            photoChanged: () => {
+                this.#assists.reset();
+            },
         };
         this.#editing = new PhotoEditing(this.#context);
+        this.#assists = this.#newAssists();
         const actions = new PhotoActions(this.#context, this.#editing);
         this.intents = {
             ...this.#listIntents(),
@@ -137,11 +147,27 @@ export class PhotosArea implements PhotosStore {
             ...this.#editing.intents,
             ...actions.intents,
             ...this.#mapIntents(),
+            ...this.#assists.intents,
         };
     }
 
     get state(): PhotosState {
         return this.#state;
+    }
+
+    /** M4 (CR-M4-4): the editor's assists over the open photo's draft. */
+    #newAssists(): EditorAssists {
+        return photoAssists({
+            services: this.#services,
+            value: () => this.#editing.editor?.value ?? null,
+            fileTitle: () => this.#editing.editor?.stored?.data.suggested?.title,
+            edit: (patch) => {
+                this.#editing.intents.edit(patch);
+            },
+            changed: (assist) => {
+                this.#set({ assist });
+            },
+        });
     }
 
     subscribe(listener: (state: PhotosState) => void): Unsubscribe {

@@ -8,6 +8,7 @@
 import type { LngLat, ValidationIssue } from '@hcm/shared';
 
 import type { AreaPort, ListStatePort, StoredPort } from '../area-port.js';
+import type { AssistActionsPort, AssistViewPort } from '../assist/assist-port.js';
 
 export type PoiShapePort = 'point' | 'linestring' | 'polygon';
 
@@ -136,6 +137,8 @@ export interface PoisViewState {
     readonly photos: ListStatePort<PhotoChoicePort> | null;
     readonly importing: ImportStatePort | null;
     readonly busy: boolean;
+    /** M4 (CR-M4-4): the open place's title suggestions and translation drafts. */
+    readonly assist: AssistViewPort;
     /** The city's starting view once its document is read (Add at centre without a map needs it); null before. */
     readonly frame?: { readonly view: { readonly center: LngLat } } | null;
 }
@@ -158,7 +161,7 @@ export interface ImportFilePort {
     text(): Promise<string>;
 }
 
-export interface PoisIntentsPort {
+export interface PoisIntentsPort extends AssistActionsPort {
     setFilter(filter: Partial<PoisFilterPort>): void;
     more(): void;
     retry(): void;

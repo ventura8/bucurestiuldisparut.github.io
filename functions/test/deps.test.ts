@@ -101,11 +101,13 @@ describe('createDeps', () => {
                 'documents',
                 'errors',
                 'firebase',
+                'geocoder',
                 'iam',
                 'images',
                 'jobs',
                 'log',
                 'mapbox',
+                'push',
                 'reader',
                 'remote',
                 'scenes',
@@ -113,6 +115,7 @@ describe('createDeps', () => {
                 'setup',
                 'tasks',
                 'tilesets',
+                'translator',
                 'usgs',
             ].sort((a, b) => a.localeCompare(b)),
         );
@@ -239,6 +242,46 @@ describe('createDeps: the M3 ports', () => {
             scope: 'functions',
             token: '[redacted]',
         });
+    });
+});
+
+describe('createDeps: the M4 ports (docs/research/M4-interfaces.md §4, §5)', () => {
+    it('happyPath_theEmulatorSendsNominatimVertexAiAndFcmToTheFakes', async () => {
+        const fetch = vi.fn((input: string) =>
+            Promise.resolve(
+                new Response(JSON.stringify(input.includes('countTokens') ? { totalTokens: 1 } : { name: 'Piața Romană', licence: 'l' }), {
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                }),
+            ),
+        );
+        vi.stubGlobal('fetch', fetch);
+        const deps = createDeps({ ...EMULATOR, HCM_UPSTREAM_BASE: FAKES, HCM_NOMINATIM_URL: 'https://mirror.example/reverse' }, app);
+
+        await expect(deps.geocoder.reverse({ lat: 44.4, lng: 26.1, lang: 'ro' })).resolves.toMatchObject({ name: 'Piața Romană' });
+        await expect(deps.translator.countTokens('gemini-2.5-flash-lite', 'test')).resolves.toBe(1);
+        await expect(deps.push.validate('e2e-fcm-token:laptop-xxxxxxxxxxxxxxxxxxxx')).resolves.toBe(true);
+        const urls = fetch.mock.calls.map(([url]) => url.split('?')[0]);
+        expect(urls).toEqual([
+            `${FAKES}/h/nominatim.openstreetmap.org/reverse`,
+            `${FAKES}/h/us-central1-aiplatform.googleapis.com/v1/projects/demo-hcm/locations/us-central1/publishers/google/models/gemini-2.5-flash-lite:countTokens`,
+            `${FAKES}/h/fcm.googleapis.com/v1/projects/demo-hcm/messages:send`,
+        ]);
+    });
+
+    it('happyPath_productionAsksAConfiguredNominatimMirror', async () => {
+        const fetch = answering(200, { error: 'Unable to geocode' });
+        vi.stubGlobal('fetch', fetch);
+
+        const mirrored = createDeps({ ...PROJECT, HCM_NOMINATIM_URL: 'https://mirror.example/reverse' }, app);
+        await expect(mirrored.geocoder.reverse({ lat: 44.4, lng: 26.1, lang: 'ro' })).resolves.toBeUndefined();
+        await createDeps({ ...PROJECT, HCM_NOMINATIM_URL: '' }, app).geocoder.reverse({ lat: 44.4, lng: 26.1, lang: 'en' });
+
+        const calls = fetch.mock.calls as unknown as [string][];
+        expect(calls.map(([url]) => url.split('?')[0])).toEqual([
+            'https://mirror.example/reverse',
+            'https://nominatim.openstreetmap.org/reverse',
+        ]);
     });
 });
 

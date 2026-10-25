@@ -95,6 +95,11 @@ export interface AdminState<Setup = unknown> {
      */
     readonly people: Readonly<Record<string, string>>;
     /**
+     * M4 (`docs/research/M4-interfaces.md` §5.5): the signed-in admin's unread notifications, up to `INBOX_BADGE_MAX` + 1
+     * (`../inbox/badge.ts`), null while unknown or signed out.
+     */
+    readonly unread: number | null;
+    /**
      * Setup's required steps are done (`setup/status`: billing, provisioning, Mapbox, USGS; `../app/setup-readiness.ts`),
      * null while unknown. Once true the dashboard is the first screen and takes Setup's place on the compact bar
      * (`DECISIONS-for-review.md` §34i); this browser remembers it, so the next visit opens the dashboard at once.

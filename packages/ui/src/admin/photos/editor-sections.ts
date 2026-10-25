@@ -7,7 +7,10 @@
 import type { FirestoreLicense, Locale, ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
+import type { AssistActionsPort, AssistViewPort } from '../assist/assist-port.js';
+import { draftAssist, titleAssist } from '../assist/assist-parts.js';
 import type { FieldsLeft } from '../editing/number-fields.js';
+import { EMPTY } from '../shell/empty.js';
 import { areaField, numberField, numberOf, selectField, textField, textOf } from './editor-fields.js';
 import { LICENSE_ORDER, blockText, fieldIssue, licenseText, partId, photoText } from './photo-text.js';
 import type { LocalizedPort, PhotoEditorPort, PhotoPatchPort, PhotoValuePort } from './photos-port.js';
@@ -24,6 +27,23 @@ export interface SectionInput {
     readonly left: FieldsLeft;
     /** A revoked admin's editor: every field read-only, nothing that writes on (`DECISIONS-for-review.md` §42d). */
     readonly readOnly: boolean;
+    /** M4 (CR-M4-4): the assists' state and intents; null: no assist slots. */
+    readonly assist?: { readonly view: AssistViewPort; readonly actions: AssistActionsPort } | null;
+}
+
+/** The draft button of a Romanian and English pair, when the editor has assists. */
+function pairDraft(input: SectionInput, field: 'title' | 'description' | 'dateText', text: LocalizedPort | undefined): TemplateResult {
+    const assist = input.assist ?? null;
+    if (assist === null) {
+        return EMPTY;
+    }
+    return draftAssist({ ...assist, locale: input.locale, field, text, readOnly: input.readOnly });
+}
+
+/** The title's suggestions, when the editor has assists. */
+function titleSuggestions(input: SectionInput): TemplateResult {
+    const assist = input.assist ?? null;
+    return assist === null ? EMPTY : titleAssist({ ...assist, locale: input.locale, id: 'photo-title', readOnly: input.readOnly });
 }
 
 /** Romanian and English as stored: absent when both are empty (an optional text). */
@@ -64,7 +84,7 @@ function localizedPair(
         };
         return max > 200 ? areaField(options, changed) : textField(options, changed);
     };
-    return html`${make('ro', keys.ro)} ${make('en', keys.en)}`;
+    return html`${make('ro', keys.ro)} ${make('en', keys.en)} ${pairDraft(input, field, text)}`;
 }
 
 export function textsSection(input: SectionInput): TemplateResult {
@@ -84,6 +104,7 @@ export function textsSection(input: SectionInput): TemplateResult {
                 edit({ title: title.en === undefined ? { ro: typed } : { ro: typed, en: title.en } });
             },
         )}
+        ${titleSuggestions(input)}
         ${textField(
             {
                 id: 'photo-title-en',
@@ -98,7 +119,7 @@ export function textsSection(input: SectionInput): TemplateResult {
                 edit({ title: en === undefined ? { ro: title.ro } : { ro: title.ro, en } });
             },
         )}
-        ${localizedPair(input, 'description', { ro: 'descriptionRo', en: 'descriptionEn' }, 5000)}
+        ${pairDraft(input, 'title', title)} ${localizedPair(input, 'description', { ro: 'descriptionRo', en: 'descriptionEn' }, 5000)}
     </fieldset>`;
 }
 

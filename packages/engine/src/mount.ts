@@ -20,6 +20,7 @@ import { createMapboxPort, type MapboxGl, type MapPort, type Unsubscribe } from 
 
 import { configFromAttributes, readConfig, type Result } from './config/load.js';
 import { urlLocaleOf } from './core/boot.js';
+import type { CompareModule } from './core/compare-port.js';
 import type { ViewerDeps, ViewerLocation } from './core/deps.js';
 import type { PreferenceStorage } from './core/preferences.js';
 import { createViewerStore, type ViewerState, type ViewerStore } from './core/store.js';
@@ -110,6 +111,24 @@ class Controller implements HistoricCityMapController {
         });
     }
 
+    openCompare(layerId: string | null, options?: { readonly position?: number }): void {
+        this.#run(() => {
+            this.#store.openCompare(layerId, options?.position);
+        });
+    }
+
+    setComparePosition(position: number): void {
+        this.#run(() => {
+            this.#store.setComparePosition(position);
+        });
+    }
+
+    closeCompare(): void {
+        this.#run(() => {
+            this.#store.closeCompare();
+        });
+    }
+
     destroy(): void {
         if (this.#destroyed) {
             return;
@@ -159,6 +178,9 @@ function failedController(code: ViewerError['code'], teardown: () => void): Hist
         openPhoto: ignore,
         openPoi: ignore,
         setLang: ignore,
+        openCompare: ignore,
+        setComparePosition: ignore,
+        closeCompare: ignore,
         destroy: () => {
             if (!removed) {
                 removed = true;
@@ -185,6 +207,8 @@ export interface MountEnvironment {
     readonly reducedMotion: () => boolean;
     /** Registers the kit's fonts, loaded from `<engineBase>fonts/` (`config.engineBase`, else next to the engine). */
     readonly installFonts: (engineBase: string | undefined) => void;
+    /** M4: swipe compare's lazy chunk (`compare-<hash>.js` of the ES module build, inlined in the IIFE). */
+    readonly loadCompare: () => Promise<CompareModule>;
 }
 
 /** What `window.HistoricCityMapConfig` may name before it is validated: only its container is read early. */
@@ -251,6 +275,7 @@ function start(viewer: HcmMapViewer, config: EngineConfig, env: MountEnvironment
         engineVersion: env.engineVersion,
         mapContainer: () => viewer.mapContainer,
         reducedMotion: env.reducedMotion,
+        compare: { load: env.loadCompare, createMap: env.createMap, mapboxCssUrl: env.mapboxCssUrl },
     });
     const controller = new Controller(store, () => {
         viewer.detach();
@@ -464,5 +489,6 @@ export function browserEnvironment(
         installFonts: (engineBase) => {
             installFonts(win.document, `${engineBase ?? release.engineBase}fonts/`, win.FontFace);
         },
+        loadCompare: () => import('./compare/compare.js').then((chunk) => chunk.compareModule),
     };
 }

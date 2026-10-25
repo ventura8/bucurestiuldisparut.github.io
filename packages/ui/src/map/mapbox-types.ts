@@ -107,24 +107,8 @@ export interface MapboxMap {
     remove(): void;
 }
 
-/** mapbox-gl-compare (v0.6.0): `new mapboxgl.Compare(before, after, container, options)`. */
-export interface MapboxCompare {
-    setSlider(position: number): void;
-    on(type: 'slideend', listener: (event: { readonly currentPosition: number }) => void): unknown;
-    remove(): void;
-}
-
-export type MapboxCompareConstructor = new (
-    before: MapboxMap,
-    after: MapboxMap,
-    container: HTMLElement,
-    options: { readonly orientation: 'vertical' | 'horizontal'; readonly mousemove: boolean },
-) => MapboxCompare;
-
 /** The global `mapboxgl`. */
 export interface MapboxGl {
     readonly Map: new (options: MapboxMapOptions) => MapboxMap;
     readonly supported?: (failIfMajorPerformanceCaveat?: boolean) => boolean;
-    /** Set by the compare plugin's script once it has loaded. */
-    readonly Compare?: MapboxCompareConstructor;
 }

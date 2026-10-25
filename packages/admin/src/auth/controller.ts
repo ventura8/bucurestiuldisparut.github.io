@@ -72,6 +72,12 @@ export interface AuthControllerDeps {
     readonly serverSeen?: { known(): boolean; remember(): void };
     /** Whether an editor holds unsaved changes (a revoked admin's page then stays, read-only, until sign-out). */
     readonly unsaved?: () => boolean;
+    /**
+     * What this browser forgets before the account goes, while it may still call the server: the admin's push
+     * registration (M4, `inbox/push-device.ts`), so a shared computer stops showing their notifications. Best effort:
+     * it never rejects.
+     */
+    readonly leaving?: (uid: string) => Promise<void>;
 }
 
 function detailsOf(error: unknown): ApiErrorDetails {
@@ -173,19 +179,31 @@ export class AuthController {
         await this.#continueWithUser();
     }
 
-    /** Signs out: every Google token and every `hcm:admin:*` session key goes too (§1.5). */
+    /**
+     * Signs out: every Google token and every `hcm:admin:*` session key goes too (§1.5), and, first, this browser's push
+     * registration of the admin (M4).
+     */
     async signOut(): Promise<void> {
         this.#leaving = true;
         this.#deps.google.drop();
         for (const key of this.#deps.session.keys().filter((name) => name.startsWith(SESSION_PREFIX))) {
             this.#deps.session.remove(key);
         }
-        if (this.#deps.auth.currentUser() === null) {
+        const user = this.#deps.auth.currentUser();
+        await this.#forget(user);
+        if (user === null) {
             this.#leaving = false;
             this.#set({ auth: 'signedOut', user: null, role: null, busy: false, revoked: false, people: {}, gate: NO_GATE });
             return;
         }
         await this.#deps.auth.signOut();
+    }
+
+    /** M4: this browser's push registration of `user` goes first, while the server still answers them (never throws). */
+    async #forget(user: AuthUser | null): Promise<void> {
+        if (user !== null && this.#deps.leaving !== undefined) {
+            await this.#deps.leaving(user.uid);
+        }
     }
 
     /** Try again (`backendDown`): probes, then decides for the current user. */

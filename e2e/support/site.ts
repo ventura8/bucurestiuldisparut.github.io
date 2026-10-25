@@ -10,7 +10,8 @@ import type { RecordedCall } from '../mock-apis/server.js';
  * probes on known synthetic colours, never screenshots of Mapbox).
  */
 
-export type SiteName = 'bucharest' | 'starter-kit';
+/** The e2e sites (e2e/scripts/build-site.ts); `bucharest-bucket` reads its manifest from the public bucket (§51e). */
+export type SiteName = 'bucharest' | 'bucharest-bucket' | 'starter-kit';
 
 export interface OpenOptions {
     /** `?lang=` (docs/ENGINE_API.md → Language: the URL wins over the stored choice and config.js). */

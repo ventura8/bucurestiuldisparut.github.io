@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { markdownToPlainText, parseMarkdown } from '../../src/text/markdown.js';
+import { linkTargets, markdownToPlainText, parseMarkdown } from '../../src/text/markdown.js';
 
 describe('parseMarkdown', () => {
     it('happyPath_paragraphsEmphasisAndLinks', () => {
@@ -101,5 +101,23 @@ describe('parseMarkdown', () => {
 describe('markdownToPlainText', () => {
     it('happyPath_dropsMarkersKeepsLabelsAndBreaks', () => {
         expect(markdownToPlainText('**A** _b_ [c](https://c.example)\nd\n\ne')).toBe('A b c\nd\n\ne');
+    });
+});
+
+describe('linkTargets', () => {
+    it('happyPath_everyAddressInOrderNestedOrKeptAsText', () => {
+        expect(linkTargets('[a](https://a.example/) and **_[b](https://b.example/)_**\n\n[c](javascript:void)')).toEqual([
+            'https://a.example/',
+            'https://b.example/',
+            'javascript:void',
+        ]);
+        expect(linkTargets('See [old](http://old.example/) and [new](https://new.example/).')).toEqual([
+            'https://new.example/',
+            'http://old.example/',
+        ]);
+    });
+
+    it('badPath_plainTextHasNone', () => {
+        expect(linkTargets('Ateneul Român, 1888')).toEqual([]);
     });
 });

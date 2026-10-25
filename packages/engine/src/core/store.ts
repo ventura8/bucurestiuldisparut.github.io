@@ -5,6 +5,8 @@
  * `boot.ts`. Every action ignores what it cannot apply (an unknown id, a call before the manifest) instead of throwing.
  */
 import {
+    clamp,
+    DEFAULT_COMPARE_POSITION,
     findOverlay,
     withOverlayOpacity,
     withOverlayVisibility,
@@ -17,9 +19,11 @@ import { isCompactHeight, windowClassFor } from '@hcm/ui';
 import { Listeners, type Unsubscribe } from '@hcm/ui/map';
 
 import { Boot, type BootHost } from './boot.js';
+import { CompareDriver, type CompareDriverHost } from './compare-driver.js';
+import type { MountedMap } from './compare-port.js';
 import type { ViewerDeps } from './deps.js';
 import { Preferences } from './preferences.js';
-import { withYear, type SheetName, type ThemeMode, type ViewerState } from './state.js';
+import { isCompareLayer, withYear, type SheetName, type ThemeMode, type ViewerState } from './state.js';
 import { encodeViewerHash, HashWriter } from './url-sync.js';
 
 export type { ViewerDeps, ViewerLocation } from './deps.js';
@@ -57,6 +61,15 @@ export interface ViewerActions {
      * `overlayIds`); opacities through `withHashOpacity`; unknown ids are ignored, an unknown photo shows a toast.
      */
     applyHash(hash: DecodedHash): void;
+    /**
+     * M4 (V06): compares the map with `layerId` (null: today) as the main side; a layer the manifest does not have is
+     * ignored; `position` places the divider (default: where it was, else the middle). While open it changes the side.
+     */
+    openCompare(layerId: string | null, position?: number): void;
+    /** M4: the divider's settled place (0 to 1, clamped); nothing while compare is closed. */
+    setComparePosition(position: number): void;
+    /** M4: closes compare; its second map goes with it. */
+    closeCompare(): void;
 }
 
 export interface ViewerStore extends ViewerActions {
@@ -73,12 +86,18 @@ function sheetAfterClosing(sheet: SheetName, closed: SheetName): SheetName {
     return sheet === closed ? 'none' : sheet;
 }
 
-class Store implements ViewerStore, BootHost {
+/** Where compare's divider settles: `position` (clamped), else where it was, else the middle. */
+function comparePosition(state: ViewerState, position: number | undefined): number {
+    return clamp(position ?? state.compare?.position ?? DEFAULT_COMPARE_POSITION, 0, 1);
+}
+
+class Store implements ViewerStore, BootHost, CompareDriverHost {
     readonly deps: ViewerDeps;
     readonly preferences: Preferences;
     readonly hash: HashWriter;
     readonly #listeners: Listeners<[ViewerState, ViewerState]>;
     readonly #boot: Boot;
+    readonly #compare: CompareDriver;
     readonly #unsubscribe: Unsubscribe[] = [];
     #state: ViewerState;
     #destroyed = false;
@@ -90,6 +109,7 @@ class Store implements ViewerStore, BootHost {
             deps.log.error('state listener failed', { error: String(error) });
         });
         this.#boot = new Boot(this);
+        this.#compare = new CompareDriver(this);
         this.#state = this.#boot.initialState();
         this.hash = new HashWriter(deps.location, () => encodeViewerHash(this.#state, this.#boot.defaultLocale));
         this.#unsubscribe.push(
@@ -121,7 +141,12 @@ class Store implements ViewerStore, BootHost {
         }
         this.#state = next;
         this.#boot.followState(previous, next);
+        this.#compare.follow(next);
         this.#listeners.emit(next, previous);
+    }
+
+    mountedMap(): MountedMap | null {
+        return this.#boot.mountedMap();
     }
 
     subscribe(listener: (state: ViewerState, previous: ViewerState) => void): Unsubscribe {
@@ -272,12 +297,41 @@ class Store implements ViewerStore, BootHost {
         this.#boot.applyHash(hash);
     }
 
+    openCompare(layerId: string | null, position?: number): void {
+        const state = this.#state;
+        if (state.manifest === null || !isCompareLayer(state.manifest, layerId)) {
+            return;
+        }
+        this.set({ ...state, compare: { layerId, position: comparePosition(state, position) } });
+        if (state.compare === null) {
+            this.deps.telemetry.logEvent({ name: 'compare_open' });
+        }
+        this.hash.schedule();
+    }
+
+    setComparePosition(position: number): void {
+        const compare = this.#state.compare;
+        const settled = clamp(position, 0, 1);
+        if (compare !== null && settled !== compare.position) {
+            this.set({ ...this.#state, compare: { ...compare, position: settled } });
+            this.hash.schedule();
+        }
+    }
+
+    closeCompare(): void {
+        if (this.#state.compare !== null) {
+            this.set({ ...this.#state, compare: null });
+            this.hash.schedule();
+        }
+    }
+
     destroy(): void {
         if (this.#destroyed) {
             return;
         }
         this.#destroyed = true;
         this.hash.cancel();
+        this.#compare.destroy();
         this.#boot.destroy();
         for (const unsubscribe of this.#unsubscribe) {
             unsubscribe();

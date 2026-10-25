@@ -200,6 +200,9 @@ GATES: dict[str, Gate] = {
         # build
         Gate("vite-build", (*NPM_RUN, "build")),
         Gate("bundle-budget", ("python3", "scripts/ci/check_bundle_budget.py"), needs=("vite-build",)),
+        # Each build's THIRD_PARTY_NOTICES.txt against its source maps: every bundled package (and the fonts' packages)
+        # with its licence text, nothing else, permissive licences only (DECISIONS-for-review.md §52d)
+        Gate("notices", ("python3", "scripts/ci/check_notices.py"), needs=("vite-build",)),
         # The static city sites for GitHub Pages (dist/site/bucharest, dist/site/starter-kit) from the engine build
         Gate("site-build", (*NPM_RUN, "build:site"), needs=("vite-build",)),
         # release: the tag agrees with every package version and both release-notes files
@@ -277,13 +280,13 @@ STAGES: dict[str, tuple[str, ...]] = {
     # The rest of the tour matrix (e2e/projects.ts, tier `tour-matrix`): every scenario row already ran in `e2e`; these
     # projects repeat the tour at the other viewport, theme and language combinations before a push to master or a tag.
     "tour-matrix": ("e2e-matrix", "e2e-build", "playwright-tour-matrix"),
-    "build": ("vite-build", "bundle-budget", "site-build"),
+    "build": ("vite-build", "bundle-budget", "notices", "site-build"),
     # Needs the reports of `tests` (`all` runs it last). A stage left empty would FAIL:
     # it must never report green for work that does not exist yet.
     "sonar": ("sonar",),
     # Weekly drift (.github/workflows/deps.yml); like contract, never part of quality or all.
     "deps": ("dependency-updates",),
-    "release": ("release-check", "vite-build", "bundle-budget"),
+    "release": ("release-check", "vite-build", "bundle-budget", "notices"),
     # Weekly third-party drift (.github/workflows/contract.yml); like deps, never part of quality or all.
     "contract": ("contracts",),
 }

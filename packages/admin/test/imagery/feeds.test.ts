@@ -95,6 +95,7 @@ describe('a refused read', () => {
         store.fail(FIRESTORE_PATHS.setupStatus, { kind: 'denied', code: 'permission-denied' });
         store.fail(FIRESTORE_PATHS.usgsScenes(CITY), { kind: 'denied', code: 'permission-denied' });
 
-        expect(denials.count).toBe(3);
+        // setup/status, then the scenes' three listeners: the newest harvest, the scenes and (M4) the orders.
+        expect(denials.count).toBe(4);
     });
 });

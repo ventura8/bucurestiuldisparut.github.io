@@ -245,6 +245,7 @@ export class HcmAdminShell extends LitElement {
             .current=${state.route.id}
             .variant=${layout.nav}
             .locale=${state.locale}
+            .unread=${state.unread ?? null}
             data-layout-check="nav"
         >
             ${layout.topBar ? EMPTY : html`<hcm-account-menu slot="foot" .app=${this.app} .state=${state}></hcm-account-menu>`}

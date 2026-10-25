@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { en } from '../src/i18n/en.js';
 import { DEFAULT_LOCALE, LOCALES, resolveLocale, translate } from '../src/i18n/index.js';
+import { pluralOf } from '../src/i18n/plural.js';
 import { ro } from '../src/i18n/ro.js';
 
 const byText = (a: string, b: string): number => a.localeCompare(b);
@@ -51,5 +52,20 @@ describe('translate', () => {
 
     it('badPath_missingParameterLeavesThePlaceholderVisible', () => {
         expect(translate('en', 'hello.greeting')).toBe('Hello, {name}!');
+    });
+});
+
+describe('pluralOf', () => {
+    it.each([
+        ['ro', 1, 'one'],
+        ['ro', 0, 'few'],
+        ['ro', 2, 'few'],
+        ['ro', 19, 'few'],
+        ['ro', 20, 'other'],
+        ['en', 1, 'one'],
+        ['en', 0, 'other'],
+        ['en', 2, 'other'],
+    ] as const)('happyPath_%s_%i_is_%s', (locale, count, form) => {
+        expect(pluralOf(locale, count)).toBe(form);
     });
 });

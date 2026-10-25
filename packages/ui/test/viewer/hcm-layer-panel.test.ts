@@ -167,4 +167,22 @@ describe('<hcm-layer-panel>', () => {
 
         expect(customElements.get(HCM_LAYER_PANEL_TAG)).toBe(HcmLayerPanel);
     });
+
+    it('happyPath_theCompareButtonOpensAndClosesCompare', async () => {
+        const element = await panel({ mode: 'docked', canCompare: true });
+        const events = recordEvents(element, 'hcm-compare-toggle');
+
+        await page.getByRole('button', { name: 'Compară' }).click();
+        element.comparing = true;
+        await element.updateComplete;
+        await page.getByRole('button', { name: 'Închide comparația' }).click();
+
+        expect(events).toHaveLength(2);
+    });
+
+    it('badPath_noCompareButtonWithoutHistoricalLayersOrAMap', async () => {
+        await panel({ mode: 'docked' });
+
+        await expect.element(page.getByRole('button', { name: 'Compară' })).not.toBeInTheDocument();
+    });
 });

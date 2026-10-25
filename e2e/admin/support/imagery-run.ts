@@ -23,8 +23,11 @@ import { deleteObjects, readDocument, updateDocument } from './imagery-store.js'
  * the lease, progress, log lines, waits, failures and the cancellation. The steps themselves are imagery-standin.ts.
  */
 
-/** What a run of one attempt does (the spec's script, imagery-runner.ts). */
-type StandinOutcome = 'under' | 'over' | 'no-match' | 'embedded' | 'scan' | 'maintenance' | 'fail' | 'oom';
+/**
+ * What a run of one attempt does (the spec's script, imagery-runner.ts); `suggestions` (M4, docs/research/M4-interfaces.md
+ * §2.6): the matcher found too few confident pairs and suggests four, the version waits for points.
+ */
+type StandinOutcome = 'under' | 'over' | 'no-match' | 'suggestions' | 'embedded' | 'scan' | 'maintenance' | 'fail' | 'oom';
 
 export interface StandinAttempt {
     readonly outcome: StandinOutcome;

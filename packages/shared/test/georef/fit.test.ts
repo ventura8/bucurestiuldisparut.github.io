@@ -8,7 +8,7 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { fitTransform, type FitResult } from '../../src/georef/fit.js';
+import { distanceFromFit, fitTransform, type FitResult } from '../../src/georef/fit.js';
 import { geoToMercator, groundMetres, mercatorToGeo, type GeoPoint } from '../../src/georef/mercator.js';
 import { gcpSchema, type Gcp, type GeorefTransform } from '../../src/schemas/georef.js';
 
@@ -191,5 +191,14 @@ describe('fitTransform: refusals', () => {
 
         expect(fitTransform('poly2', pairs)).toEqual({ ok: false, reason: 'degenerate' });
         expect(fitTransform('affine', pairs).ok).toBe(true);
+    });
+});
+
+describe('distanceFromFit', () => {
+    it('happyPath_aPairTheFitAgreesWithIsCloseAndAShiftedOneIsAsFarAsItsShift', () => {
+        const { transform } = ok(fitTransform('affine', grid()));
+
+        expect(distanceFromFit(transform, gcp('s1', 7000, 5000))).toBeLessThan(0.01);
+        expect(distanceFromFit(transform, shifted(gcp('s2', 7000, 5000), 40))).toBeCloseTo(40, 1);
     });
 });

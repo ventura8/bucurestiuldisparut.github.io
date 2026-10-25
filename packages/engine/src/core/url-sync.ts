@@ -9,6 +9,7 @@ import {
     hashOverlayOpacity,
     PHOTOS_OVERLAY_ID,
     withHashOpacity,
+    type CompareState,
     type DecodedHash,
     type HashLimits,
     type HashState,
@@ -17,7 +18,7 @@ import {
     type Overlay,
 } from '@hcm/shared';
 
-import { withVisibleLayers, type ViewerState } from './state.js';
+import { isCompareLayer, withVisibleLayers, type CompareView, type ViewerState } from './state.js';
 import { yearOfLayers } from './timeline.js';
 
 /** How long the hash waits for the map to settle before it is written. */
@@ -54,10 +55,26 @@ function withHashPhoto(state: ViewerState, photo: string | undefined): AppliedHa
         : { state, unknownPhoto: photo };
 }
 
-/** `hash` applied to `state`: the view, the visible layers (and their year), the opacities, the photo, the language. */
+/**
+ * Compare as the hash has it (M4, V06): `cmp=` naming today or a layer of the manifest opens it; without `cmp=`, or with
+ * a layer the manifest does not have, compare is closed (the next hash write then drops `cmp` and `sw`).
+ */
+function hashCompare(state: ViewerState, compare: CompareState | undefined): CompareView | null {
+    if (compare === undefined || state.manifest === null || !isCompareLayer(state.manifest, compare.layer)) {
+        return null;
+    }
+    return { layerId: compare.layer, position: compare.position };
+}
+
+function withHashCompare(state: ViewerState, compare: CompareState | undefined): ViewerState {
+    const next = hashCompare(state, compare);
+    return next === null && state.compare === null ? state : { ...state, compare: next };
+}
+
+/** `hash` applied to `state`: the view, the visible layers (and their year), the opacities, compare, the photo, the language. */
 export function applyDecodedHash(state: ViewerState, hash: DecodedHash): AppliedHash {
     const withView = hash.view === undefined ? state : { ...state, view: hash.view };
-    const withLayers = withHashLayers(withView, hash.layers);
+    const withLayers = withHashCompare(withHashLayers(withView, hash.layers), hash.compare);
     const overlays = withHashOpacity(withLayers.overlays, hash);
     const withLang = hash.lang === undefined ? withLayers : { ...withLayers, locale: hash.lang };
     return withHashPhoto(overlays === withLang.overlays ? withLang : { ...withLang, overlays }, hash.photo);
@@ -82,6 +99,7 @@ export function hashStateOf(state: ViewerState, defaultLocale: Locale): HashStat
         view: state.view,
         ...hashLayers(state.overlays),
         ...(overlayOpacity === undefined ? {} : { overlayOpacity }),
+        ...(state.compare === null ? {} : { compare: { layer: state.compare.layerId, position: state.compare.position } }),
         ...(state.selectedPhotoId === null ? {} : { photo: state.selectedPhotoId }),
         ...(state.locale === defaultLocale ? {} : { lang: state.locale }),
     };

@@ -1,5 +1,5 @@
 /**
- * The part of Terra Draw 1.37.0 and `terra-draw-mapbox-gl-adapter` 1.5.0 the draw adapter uses, typed structurally
+ * The part of Terra Draw 1.38.0 and `terra-draw-mapbox-gl-adapter` 1.5.0 the draw adapter uses, typed structurally
  * (as `mapbox-types.ts` types the global `mapboxgl`): `terra-draw-adapter.ts` takes these constructors from its lazy
  * loader (`loadTerraDraw`), its Node-free unit tests take a fake of them, and a browser test drives the real ones
  * (`packages/ui/test/map/draw/terra-draw-real.test.ts`). The names and shapes are the installed 1.x API

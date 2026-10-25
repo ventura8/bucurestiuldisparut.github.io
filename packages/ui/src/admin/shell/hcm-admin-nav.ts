@@ -8,13 +8,22 @@
  * its own (a landscape phone), and a label wider than its item wraps inside it (a long translation, or a reader's wider
  * text spacing, WCAG 1.4.12) instead of leaving the rail.
  */
-import { DEFAULT_LOCALE, type Locale } from '@hcm/shared';
+import { DEFAULT_LOCALE, INBOX_BADGE_MAX, type Locale } from '@hcm/shared';
 import { LitElement, css, html, type TemplateResult } from 'lit';
 
+import { visuallyHidden } from '../../components/styles.js';
 import type { AdminDestinationPort, AdminRouteIdPort } from '../admin-port.js';
 import { adminBase } from './admin-styles.js';
 import { EMPTY } from './empty.js';
-import { shellText } from './text.js';
+import { contentText, shellText } from './text.js';
+
+/** M4: the unread count as the badge shows it (`99+` above `INBOX_BADGE_MAX`), or null for none. */
+export function badgeText(unread: number | null): string | null {
+    if (unread === null || unread <= 0) {
+        return null;
+    }
+    return unread > INBOX_BADGE_MAX ? `${String(INBOX_BADGE_MAX)}+` : String(unread);
+}
 
 export const HCM_ADMIN_NAV_TAG = 'hcm-admin-nav';
 
@@ -25,12 +34,14 @@ export class HcmAdminNav extends LitElement {
         destinations: { attribute: false },
         current: { type: String },
         variant: { type: String, reflect: true },
+        unread: { attribute: false },
         locale: { type: String },
         moreOpen: { state: true },
     };
 
     static override readonly styles = [
         adminBase,
+        visuallyHidden,
         css`
             :host {
                 display: block;
@@ -69,6 +80,7 @@ export class HcmAdminNav extends LitElement {
             }
 
             .item {
+                position: relative;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -152,6 +164,32 @@ export class HcmAdminNav extends LitElement {
                 margin-block-start: auto;
             }
 
+            /*
+             * M4: the unread notifications (M3's large badge). Beside the icon in the rail and the bar, clear of its glyph;
+             * at the end of the row where the label is beside the icon (the expanded rail, the More sheet).
+             */
+            .badge {
+                position: absolute;
+                inset-block-start: 4px;
+                inset-inline-start: calc(50% + 14px);
+                box-sizing: border-box;
+                min-inline-size: 16px;
+                block-size: 16px;
+                padding-inline: 4px;
+                border-radius: var(--md-sys-shape-corner-full, 8px);
+                background: var(--md-sys-color-error, CanvasText);
+                color: var(--md-sys-color-on-error, Canvas);
+                font-size: var(--md-sys-typescale-label-small-size, 0.6875rem);
+                line-height: 16px;
+                text-align: center;
+            }
+
+            .more-list .badge,
+            :host([variant='expanded']) .badge {
+                position: static;
+                margin-inline-start: auto;
+            }
+
             .more-list {
                 display: flex;
                 flex-direction: column;
@@ -171,6 +209,8 @@ export class HcmAdminNav extends LitElement {
     declare variant: AdminNavVariant;
     declare locale: Locale;
     declare moreOpen: boolean;
+    /** M4: the signed-in admin's unread notifications, shown on the Notifications item (null: unknown or none). */
+    declare unread: number | null;
 
     constructor() {
         super();
@@ -179,6 +219,7 @@ export class HcmAdminNav extends LitElement {
         this.variant = 'rail';
         this.locale = DEFAULT_LOCALE;
         this.moreOpen = false;
+        this.unread = null;
     }
 
     override render(): TemplateResult {
@@ -202,7 +243,18 @@ export class HcmAdminNav extends LitElement {
         return html`<a class="item" href=${['#', destination.id].join('/')} aria-current=${current ? 'page' : 'false'} @click=${close}>
             <span class="indicator"><hcm-icon name=${destination.icon} ?filled=${current}></hcm-icon></span>
             <span class="label">${shellText(this.locale, `adminShell.nav.${destination.id}`)}</span>
+            ${destination.id === 'inbox' ? this.#badge() : EMPTY}
         </a>`;
+    }
+
+    /** The unread count, read with the item's name (`Notificări, necitite: 3`; `Notifications, 3 unread`). */
+    #badge(): TemplateResult {
+        const text = badgeText(this.unread);
+        if (text === null) {
+            return EMPTY;
+        }
+        return html`<span class="badge" aria-hidden="true" data-badge>${text}</span
+            ><span class="visually-hidden">, ${contentText(this.locale, 'adminContent.notify.badge', { count: text })}</span>`;
     }
 
     /** "More" and its modal bottom sheet, when the bar cannot hold every destination. */
@@ -221,6 +273,7 @@ export class HcmAdminNav extends LitElement {
         return html`<button class="item" type="button" aria-haspopup="dialog" aria-expanded=${String(this.moreOpen)} @click=${open}>
                 <span class="indicator"><hcm-icon name="menu" ?filled=${current}></hcm-icon></span>
                 <span class="label">${label}</span>
+                ${more.some((destination) => destination.id === 'inbox') ? this.#badge() : EMPTY}
             </button>
             <hcm-sheet
                 modal

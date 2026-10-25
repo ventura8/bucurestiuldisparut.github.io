@@ -18,6 +18,7 @@ import { NO_FILES } from './files.js';
 import { BROWSE_PICTURE, ImageryMap, PREVIEW_PICTURE, sceneCorners } from './imagery-map.js';
 import { visibleScenes, type SceneFilters, type SceneItem } from './model.js';
 import { cornersOfBox } from './overlay.js';
+import { OrderActions } from './orders/actions.js';
 import { HarvestSearch } from './search.js';
 import { INITIAL_IMAGERY, type ImageryDetail, type ImageryIntents, type ImageryState } from './state.js';
 import { RasterUploader } from './upload.js';
@@ -63,6 +64,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     readonly #uploader: RasterUploader;
     readonly #version: VersionPage;
     readonly #map: ImageryMap;
+    readonly #orders: OrderActions;
     #newest: string | null | undefined = undefined;
     /** The preview on the map now (`<version>@<path>`), '' for none. */
     #previewShown = '';
@@ -95,6 +97,9 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             picked: (id) => {
                 this.#picked(id);
             },
+        });
+        this.#orders = new OrderActions(services, (orders) => {
+            this.#cell.update(orders);
         });
         this.intents = this.#intents();
     }
@@ -134,7 +139,17 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
 
     #intents(): ImageryIntents {
         const resumeGuard = (): Promise<boolean> => this.#resumeGuard();
-        return { ...this.#findIntents(), ...this.#versionIntents(), ...this.#uploadIntents(), resumeGuard };
+        return { ...this.#findIntents(), ...this.#versionIntents(), ...this.#uploadIntents(), ...this.#orderIntents(), resumeGuard };
+    }
+
+    /** M4: the order card (`docs/research/M4-interfaces.md` §1.7). */
+    #orderIntents(): Pick<ImageryIntents, 'markOrdered' | 'checkOrder' | 'cancelOrder'> {
+        const orders = this.#orders;
+        return {
+            markOrdered: (id) => orders.markOrdered(id),
+            checkOrder: (id) => orders.checkOrder(id),
+            cancelOrder: (id) => orders.cancelOrder(id),
+        };
     }
 
     /** Find: the tabs, the filters, the search, the scenes and their import. */
@@ -224,7 +239,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             this.#newest = newest;
         }
         this.#cell.update(rest);
-        if (rest.scenes !== undefined) {
+        if (rest.scenes !== undefined || rest.orders !== undefined) {
             this.#scenesChanged();
         }
         this.#search.known(this.#cell.state.usgs, this.#newest);
@@ -260,10 +275,10 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         this.#showFind();
     }
 
-    /** The scene the route names, once the list has it. */
+    /** The scene the route names, once the list (or, M4, the orders) has it. */
     #selectedScene(): SceneItem | null {
-        const detail = this.#cell.state.detail;
-        return detail?.kind === 'scene' ? (this.#cell.state.scenes.items.find((scene) => scene.id === detail.id) ?? null) : null;
+        const { detail, scenes, orders } = this.#cell.state;
+        return detail?.kind === 'scene' ? ([...scenes.items, ...orders.items].find((scene) => scene.id === detail.id) ?? null) : null;
     }
 
     /** Find's map: the footprints, the selected scene and its browse image. */

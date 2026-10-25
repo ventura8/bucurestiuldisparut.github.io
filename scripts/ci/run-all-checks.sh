@@ -9,8 +9,9 @@
 # mounted at the SAME absolute path (coverage report paths match Sonar's) and a throwaway HOME.
 # Variables forwarded by name only (`--env NAME`, never NAME=value, so no value is in argv): CI,
 # the commit ranges CI computes (GITLEAKS_LOG_OPTS, COMMIT_RANGE), E2E_SHARD, E2E_TIER and E2E_ADMIN_PART (the e2e run),
-# MAPBOX_PUBLIC_TOKEN (the site build's URL-restricted pk. token), SONAR_TOKEN and PIPELINE_JOBS (how many gates
-# run at once; unset is the CPU count, 1 runs them one at a time).
+# MAPBOX_PUBLIC_TOKEN (the site build's URL-restricted pk. token), HCM_PUBLIC_BUCKET (the public bucket whose manifest
+# the Bucharest site reads; unset, it bundles the seed snapshot), SONAR_TOKEN and PIPELINE_JOBS (how many gates run at
+# once; unset is the CPU count, 1 runs them one at a time).
 set -euo pipefail
 
 main() {
@@ -33,6 +34,7 @@ main() {
 		--env E2E_TIER \
 		--env E2E_ADMIN_PART \
 		--env MAPBOX_PUBLIC_TOKEN \
+		--env HCM_PUBLIC_BUCKET \
 		--env SONAR_TOKEN \
 		--env PIPELINE_JOBS \
 		--volume "$root:$root" \

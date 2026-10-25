@@ -61,6 +61,7 @@ def healthy_probe_answers() -> dict[tuple[str, str], Answer | list[Answer]]:
         ("GET", f"{CDN}/mapbox-gl.js"): Response(200, {}, NPM_FILES["mapbox-gl.js"]),
         ("GET", f"{CDN}/mapbox-gl.css"): Response(200, {}, NPM_FILES["mapbox-gl.css"]),
         ("GET", COLLECTION_URL): Response(200, {"content-type": "application/json"}, b'{"type": "Collection", "id": "sentinel-2-c1-l2a"}'),
+        ("GET", check_contracts.EARTH_EXPLORER_SCENE): Response(200, {}, b"<title>Full Display of DS009013039DV181</title>"),
     }
 
 
@@ -98,7 +99,7 @@ def test_happy_path_every_contract_holds(tmp_path: Path, log: pytest.LogCaptureF
     web = FakeWeb({**healthy_probe_answers(), ("HEAD", LINK_URL): Response(200)})
 
     assert check_contracts.main(["--root", str(tmp_path)], web) == 0
-    assert "[contract] OK: 9 checks, every link resolves and every API keeps its shape" in log.text
+    assert "[contract] OK: 10 checks, every link resolves and every API keeps its shape" in log.text
     assert "  ok    link gcp.billing" in log.text
 
 
@@ -109,7 +110,7 @@ def test_bad_path_drift_is_listed_and_exits_1(tmp_path: Path, log: pytest.LogCap
     web = FakeWeb({**answers, ("HEAD", LINK_URL): Response(404)})
 
     assert check_contracts.main(["--root", str(tmp_path)], web) == check_contracts.EXIT_DRIFT
-    assert "[contract] 2 of 9 checks drifted:" in log.text
+    assert "[contract] 2 of 10 checks drifted:" in log.text
     assert f"  - link gcp.billing: {LINK_URL} answers HTTP 404" in log.text
     assert (
         "  - probe usgs.m2m.passwordLoginRemoved: expected HTTP 404 with errorCode NOT_FOUND, got HTTP 200 with errorCode None" in log.text
@@ -228,6 +229,12 @@ def probe_named(name: str) -> Probe:
             "earthSearch.referenceCollection",
             Response(200, {}, b'{"id": "sentinel-2-l2a"}'),
             "expected the STAC collection 'sentinel-2-c1-l2a', got HTTP 200 with id 'sentinel-2-l2a'",
+        ),
+        ("usgs.earthExplorerScene", Response(404, {}, b"Not Found"), "expected HTTP 200, got HTTP 404"),
+        (
+            "usgs.earthExplorerScene",
+            Response(200, {}, b"<title>EarthExplorer</title>"),
+            "the page no longer names DS009013039DV181: the scene's deep link may have moved",
         ),
     ],
 )

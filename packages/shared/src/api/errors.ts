@@ -96,6 +96,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.usgs.notConfigured': spec('failed-precondition'),
     'apiError.usgs.unavailable': spec('unavailable'),
     'apiError.usgs.accessPending': spec('failed-precondition'),
+    'apiError.usgs.alreadyAvailable': spec('failed-precondition'),
+    'apiError.usgs.orderState': spec('failed-precondition'),
     'apiError.analytics.notEnabled': spec('failed-precondition'),
     'apiError.analytics.noWebApp': spec('failed-precondition'),
     'apiError.cloud.permission': spec('failed-precondition'),
@@ -122,6 +124,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.downloadIncomplete': spec('unavailable'),
     'apiError.imagery.referenceUnavailable': spec('unavailable'),
     'apiError.imagery.noMatch': spec('failed-precondition'),
+    'apiError.imagery.noSpread': spec('failed-precondition'),
     'apiError.imagery.tooFewGcps': spec('invalid-argument'),
     'apiError.imagery.degenerateGcps': spec('invalid-argument'),
     'apiError.imagery.gcpOutside': spec('invalid-argument'),
@@ -142,6 +145,13 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.mapboxFinishing': spec('failed-precondition'),
     'apiError.telemetry.origin': spec('permission-denied'),
     'apiError.telemetry.tooLarge': spec('invalid-argument', 413),
+    'apiError.assist.rateLimited': spec('resource-exhausted'),
+    'apiError.assist.unavailable': spec('unavailable'),
+    'apiError.assist.monthlyCap': spec('failed-precondition'),
+    'apiError.assist.noDraft': spec('failed-precondition'),
+    'apiError.assist.linksChanged': spec('failed-precondition'),
+    'apiError.assist.dailyCap': spec('resource-exhausted'),
+    'apiError.notify.deviceInvalid': spec('invalid-argument'),
 };
 
 export const apiErrorCodeSchema = z.custom<ApiErrorCode>(isApiErrorCode, coded('validation.value'));

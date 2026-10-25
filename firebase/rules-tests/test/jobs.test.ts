@@ -12,7 +12,8 @@ import { createWorld, deleted, serverTime, stampedBy, verdict, withChanges, type
 
 const CITY_ID = 'rules-jobs';
 const FINISHED = ['succeeded', 'failed', 'cancelled'];
-const TRIAGE = ['candidate', 'ordered', 'rejected'];
+/** What an admin's client may set (M4: `ordered` and `available` are the order callables' and the harvest's). */
+const TRIAGE = ['candidate', 'rejected'];
 
 let world: World;
 let sequence = 0;
@@ -148,6 +149,16 @@ describe('triage a USGS scene', () => {
 
     it.each(USGS_SCENE_STATUSES.filter((status) => !TRIAGE.includes(status)))('badPath_onlyTheHarvestSetsStatus_%s', async (status) => {
         expect(await triage({ status })).toBe('deny');
+    });
+
+    it.each([
+        ['the status ordered', { status: 'ordered', note: 'Comandat pe 2026-10-11.' }],
+        ['the status available', { status: 'available' }],
+        ['an order', { order: { state: 'ordered' } }],
+        ['an order taken back', { order: deleted() }],
+        ['an EarthExplorer id', { eeDatasetId: 'abc123def4567890' }],
+    ])('badPath_onlyTheOrderCallablesMarkAnOrder_%s @S-A13-BAD-CLIENT-ORDERED-STATUS', async (_label, changes) => {
+        expect(await triage(changes)).toBe('deny');
     });
 
     it.each([

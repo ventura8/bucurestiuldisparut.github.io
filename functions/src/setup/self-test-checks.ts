@@ -2,6 +2,7 @@ import {
     FIRESTORE_PATHS,
     MANIFEST_DEBOUNCE_SECONDS,
     MANIFEST_QUEUE,
+    VERTEX_MODEL_ID,
     cityDocSchema,
     manifestStateDocSchema,
     manifestTaskId,
@@ -27,7 +28,7 @@ import { checkUsgs, type UsgsOutcome } from './usgs-check.js';
  */
 export type SelfTestDeps = Pick<
     Ports,
-    'documents' | 'secrets' | 'blobs' | 'tasks' | 'mapbox' | 'usgs' | 'firebase' | 'errors' | 'clock' | 'config' | 'log'
+    'documents' | 'secrets' | 'blobs' | 'tasks' | 'mapbox' | 'usgs' | 'firebase' | 'errors' | 'clock' | 'config' | 'log' | 'translator'
 >;
 
 export interface CheckResult {
@@ -150,6 +151,16 @@ async function checkErrorReporting(deps: SelfTestDeps): Promise<CheckResult> {
     return OK;
 }
 
+/**
+ * M4 (`docs/research/M4-interfaces.md` §4.4, CR-M4-5; S-A45-HAPPY-SELF-TEST, S-A45-BAD-API-DISABLED): `countTokens` of a
+ * word on the pinned model proves the Vertex AI API, `fn-admin@`'s custom role `hcmVertexDrafts` and that Google still serves
+ * the model, without a charge (never `generateContent`).
+ */
+async function checkAi(deps: SelfTestDeps): Promise<CheckResult> {
+    await viaCloud(deps.translator.countTokens(VERTEX_MODEL_ID, 'test'), ROLES.vertexDrafts, TRANSIENT);
+    return OK;
+}
+
 /** Every check, in the order the card lists them. */
 export const CHECKS: Readonly<Record<SelfTestCheck, Check>> = {
     firestore: checkFirestore,
@@ -161,4 +172,5 @@ export const CHECKS: Readonly<Record<SelfTestCheck, Check>> = {
     usgs: checkUsgsAccount,
     'firebase-management': checkFirebaseManagement,
     'error-reporting': checkErrorReporting,
+    ai: checkAi,
 };

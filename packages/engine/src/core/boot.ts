@@ -9,6 +9,7 @@ import type { MapEventMap, Unsubscribe } from '@hcm/ui/map';
 
 import { loadManifest } from '../config/load.js';
 import type { TelemetryContext } from '../telemetry/telemetry-port.js';
+import type { MountedMap } from './compare-port.js';
 import { mapOptions } from './map-specs.js';
 import { MapSync } from './map-sync.js';
 import type { ViewerDeps } from './deps.js';
@@ -69,6 +70,8 @@ export class Boot {
     readonly #urlLocale: Locale | null;
     #loadId = 0;
     #sync: MapSync | null = null;
+    /** The mounted map's container and asset base (swipe compare's anchor), null without a mounted map. */
+    #mounted: MountedMap | null = null;
     #mapEvents: Unsubscribe[] = [];
 
     constructor(host: BootHost) {
@@ -157,13 +160,20 @@ export class Boot {
             this.#mountFailed(id, error);
             return;
         }
-        this.#mounted(id);
+        this.#onMounted(id, container);
     }
 
-    #mounted(id: number): void {
+    /** The mounted map's container and asset base (M4: swipe compare starts beside it), or null without a mounted map. */
+    mountedMap(): MountedMap | null {
+        return this.#mounted;
+    }
+
+    #onMounted(id: number, container: HTMLElement): void {
         const { deps } = this.#host;
         if (this.#current(id)) {
-            this.#sync = new MapSync(deps.map, assetBase(deps.config.manifestUrl, deps.location.href));
+            const base = assetBase(deps.config.manifestUrl, deps.location.href);
+            this.#sync = new MapSync(deps.map, base);
+            this.#mounted = { anchor: container, assetBase: base };
             this.#listenToMap();
             this.#sync.render(this.#host.getState());
             this.#ready(true);
@@ -289,6 +299,7 @@ export class Boot {
             unsubscribe();
         }
         this.#mapEvents = [];
+        this.#mounted = null;
         if (this.#sync !== null) {
             this.#sync = null;
             this.#host.deps.map.destroy();

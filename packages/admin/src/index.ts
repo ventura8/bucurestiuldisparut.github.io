@@ -258,7 +258,10 @@ export function contentDepsFor(parts: BrowserParts, handles: FirebaseHandles, fe
         modules: CONTENT,
         store: contentStore({ sdk: contentSdk, firestore: handles.firestore, uid: () => handles.auth.currentUser?.uid ?? null }),
         theme: themeFromSeed,
-        areas: areaServices({ handles, fetch: fetcher, mapToken: parts.e2e?.mapToken(parts.win.location.search) }),
+        areas: areaServices({
+            ...{ handles, fetch: fetcher, mapToken: parts.e2e?.mapToken(parts.win.location.search) },
+            pushTest: parts.e2e === null ? undefined : testIdOf(parts.win),
+        }),
         cityId: parts.e2e?.city(parts.win.location.search) ?? null,
     };
 }

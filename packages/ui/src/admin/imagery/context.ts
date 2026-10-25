@@ -20,4 +20,11 @@ export interface ImageryContext {
     /** A revoked admin's page: nothing writes. */
     readonly readOnly: boolean;
     readonly ask: (question: ImageryQuestion) => void;
+    /** Renders the page again: a chunk it fetched on first need settled (`orders/lazy-card.ts`). */
+    readonly refresh: () => void;
+    /**
+     * The keyboard goes to the open scene's or version's heading once the page has rendered: an action refused while its
+     * own control may go with it (I ordered it on a frame scanned meanwhile: the card goes with the order).
+     */
+    readonly focusDetail: () => void;
 }

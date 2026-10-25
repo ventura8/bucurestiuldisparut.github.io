@@ -63,10 +63,23 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'imagery.retry': 'fn-admin',
     'imagery.probeTiles': 'fn-admin',
     'imagery.resumeGuard': 'fn-admin',
+    // M4 orders (docs/research/M4-interfaces.md §1.4): the order card's callables, as every callable, fn-admin@ (USGS secrets).
+    'usgs.markOrdered': 'fn-admin',
+    'usgs.checkOrder': 'fn-admin',
+    'usgs.cancelOrder': 'fn-admin',
     'imagery.onJobWrite': 'fn-events',
     'imagery.onRasterUpload': 'fn-events',
     'imagery.publish': 'fn-events',
     'imagery.tick': 'fn-events',
+    // M4 assists and notifications (docs/research/M4-interfaces.md §4.4): the callables as fn-admin@ (Vertex AI, FCM's
+    // dry run), the Nominatim queue's worker and the fan-out (FCM sends) as fn-events@.
+    'assist.suggestTitle': 'fn-admin',
+    'assist.translateDraft': 'fn-admin',
+    'notify.registerDevice': 'fn-admin',
+    'notify.unregisterDevice': 'fn-admin',
+    'notify.sendTest': 'fn-admin',
+    'assist.geocode': 'fn-events',
+    'notify.onEvent': 'fn-events',
 };
 
 /**

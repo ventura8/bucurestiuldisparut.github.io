@@ -127,6 +127,7 @@ function processingVersion(work: NewWork, fields: VersionFields): LayerVersionDo
         scan: fields.scan,
         reference: fields.reference,
         georef: fields.georef,
+        suggestions: undefined,
         crop: fields.crop,
         output: undefined,
         estimate: undefined,

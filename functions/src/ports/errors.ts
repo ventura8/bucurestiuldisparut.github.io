@@ -18,7 +18,11 @@ export type UpstreamService =
     /** M3: Cloud Run Admin (the pipeline's executions). */
     | 'cloud-run'
     /** M3: an outside address from data (`RemoteFiles`: a browse image, a probed tile). */
-    | 'remote';
+    | 'remote'
+    /** M4: OpenStreetMap's Nominatim (`Geocoder`), Vertex AI Gemini (`Translator`), FCM web push (`PushSender`). */
+    | 'nominatim'
+    | 'vertex-ai'
+    | 'fcm';
 
 /**
  * How an outside call failed, as far as a handler needs to know (docs/research/M2-interfaces.md §4.1):

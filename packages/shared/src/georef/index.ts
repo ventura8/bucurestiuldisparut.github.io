@@ -2,7 +2,7 @@
  * The georeferencing mathematics the admin's georeferencer and `imagery.saveGcps` share (`docs/research/M3-interfaces.md`
  * §6): the fits, their residuals and the warped preview's mesh, held to the pipeline's numpy answers by the golden cases.
  */
-export { fitTransform } from './fit.js';
+export { distanceFromFit, fitTransform } from './fit.js';
 export type { FitRefusal, FitResult, FittedTransform, PixelPoint } from './fit.js';
 export { geoToMercator, groundMetres, mercatorToGeo, WEB_MERCATOR_RADIUS_M } from './mercator.js';
 export type { GeoPoint, PlanePoint } from './mercator.js';

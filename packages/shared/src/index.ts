@@ -1,4 +1,5 @@
 export { DEFAULT_LOCALE, LOCALES, resolveLocale, translate } from './i18n/index.js';
+export { pluralOf } from './i18n/plural.js';
 export type { Locale, MessageKey, Messages } from './i18n/index.js';
 export type { Translator } from './i18n/catalogue.js';
 // The admin's own texts (docs/research/M2b-interfaces.md §1.6): separate catalogues the viewer never imports.
@@ -19,11 +20,11 @@ export type { MeasuredCone, ViewCone } from './geo/cone.js';
 export { bboxCenter, bboxContains, bboxExpand, bboxFromRecord, bboxIntersects, bboxOf, bboxToRecord, clampToBBox } from './geo/bbox.js';
 export type { BBox, BoundsRecord } from './geo/bbox.js';
 
-export { DEFAULT_HASH_LIMITS, MAX_HASH_LENGTH, MAX_OVERLAY_ENTRIES, decodeHash, encodeHash } from './url/hash.js';
-export type { DecodedHash, HashLimits, HashState, MapView } from './url/hash.js';
+export { DEFAULT_COMPARE_POSITION, DEFAULT_HASH_LIMITS, MAX_HASH_LENGTH, MAX_OVERLAY_ENTRIES, decodeHash, encodeHash } from './url/hash.js';
+export type { CompareState, DecodedHash, HashLimits, HashState, MapView } from './url/hash.js';
 
 export { MAX_URL_LENGTH, isHostOf, isHttpsUrl, isRelativeUrl, toHttpsUrl } from './text/urls.js';
-export { markdownToPlainText, parseMarkdown } from './text/markdown.js';
+export { linkTargets, markdownToPlainText, parseMarkdown } from './text/markdown.js';
 export { redactText } from './text/redact.js';
 export type { InlineNode, MarkdownDocument, MarkdownParagraph } from './text/markdown.js';
 
@@ -267,6 +268,12 @@ export {
     parseRasterUploadPath,
 } from './schemas/imagery-paths.js';
 export type { RasterUpload, ReferenceKind, VersionFile } from './schemas/imagery-paths.js';
+// M4 (docs/research/M4-interfaces.md): buying a scan, automatic GCP suggestions, the assists, notifications (every export
+// of these modules is public; `test/index.test.ts` lists them).
+export * from './schemas/usgs-order.js';
+export * from './schemas/autogcp.js';
+export * from './schemas/assist.js';
+export * from './schemas/notifications.js';
 export * from './imagery/index.js';
 export * from './georef/index.js';
 export { CLIENT_WRITES } from './schemas/client-writes.js';
@@ -274,6 +281,9 @@ export type { ClientCollection, ClientWrites } from './schemas/client-writes.js'
 export {
     CITY_ID_PATTERN,
     FIRESTORE_PATHS,
+    GEOCODE_KEY_PATTERN,
+    NOTIFICATION_ID_PATTERN,
+    PUSH_DEVICE_ID_PATTERN,
     PHOTO_EXTENSIONS,
     PHOTO_VARIANTS,
     STORAGE_PATHS,

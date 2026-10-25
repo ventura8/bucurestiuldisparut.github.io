@@ -116,10 +116,11 @@ module.exports = {
             severity: 'error',
             comment:
                 'A feature folder reaches another only through ports/, api/ and @hcm/shared (M2-interfaces §1, §5), so the three workstreams never edit or break each other.',
-            // `layers` (M2c) and `imagery` (M3, docs/research/M3-interfaces.md §9) joined the list (DECISIONS-for-review.md §46c).
-            from: { path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops|layers|imagery)/' },
+            // `layers` (M2c) and `imagery` (M3, docs/research/M3-interfaces.md §9) joined the list (DECISIONS-for-review.md §46c);
+            // `assist` and `notify` (M4, docs/research/M4-interfaces.md §6.1) too (DECISIONS-for-review.md §54a).
+            from: { path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops|layers|imagery|assist|notify)/' },
             to: {
-                path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops|layers|imagery)/',
+                path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops|layers|imagery|assist|notify)/',
                 pathNot: '^functions/src/$1/',
             },
         },

@@ -4,6 +4,8 @@
  */
 import type { AdminContentKey, LayerAdjustmentName, LayerDoc } from '@hcm/shared';
 
+import { NO_ASSIST, type AssistState } from '../assist/assist.js';
+import type { AssistIntents } from '../assist/editor-assists.js';
 import type { DocState } from '../content/doc.js';
 import { LOADING_LIST, type ListState } from '../content/list.js';
 import type { WriteOutcome } from '../content/services.js';
@@ -57,9 +59,12 @@ export interface LayersState {
     readonly map: MapStatus;
     /** M3 (CR-M3-7): the open layer's Crop, while it is open. */
     readonly crop: CropState | null;
+    /** M4 (CR-M4-4): the open layer's translation drafts. */
+    readonly assist: AssistState;
 }
 
-export interface LayersIntents {
+/** M4 (CR-M4-4): the layer editor's draft buttons (`assist.translateDraft`) ride with the area's intents. */
+export interface LayersIntents extends AssistIntents {
     /** Try again after a listener's failure (the list and the open layer). */
     retry(): void;
     edit(patch: LayerPatch): void;
@@ -115,6 +120,7 @@ export const INITIAL: LayersState = {
     link: null,
     map: 'none',
     crop: null,
+    assist: NO_ASSIST,
 };
 
 type WriteFailure = Extract<WriteOutcome, { readonly ok: false }>['reason'];

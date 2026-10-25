@@ -41,7 +41,7 @@ describe('buildAdminSite', () => {
             originals: 44,
             warnings: 1,
             fonts: 3,
-            files: 53,
+            files: 54,
         });
         const integrity = subresourceIntegrity(files.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.js'));
         expect(files.readText(`${OUT}/index.html`)).toBe(renderAdminPage(undefined, { mapboxGlIntegrity: integrity }));

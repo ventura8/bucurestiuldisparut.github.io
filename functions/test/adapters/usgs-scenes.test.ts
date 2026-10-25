@@ -161,8 +161,8 @@ describe('downloadOptions', () => {
         const options = await usgs.downloadOptions(KEY, 'corona2', ['DS1105-1071DF075', 'DS1105-1071DF076', 'DS-UNKNOWN']);
 
         expect(options).toEqual([
-            { entityId: 'DS1105-1071DF075', available: true, bytes: 734_003_200 },
-            { entityId: 'DS1105-1071DF076', available: false, bytes: 0 },
+            { entityId: 'DS1105-1071DF075', available: true, bytes: 734_003_200, datasetId: '5e839febdccb64b3' },
+            { entityId: 'DS1105-1071DF076', available: false, bytes: 0, datasetId: '5e839febdccb64b3' },
             { entityId: 'DS-UNKNOWN', available: false, bytes: 0 },
         ]);
         expect(JSON.parse(String(upstream.calls[0]?.body))).toEqual({
@@ -181,5 +181,38 @@ describe('downloadOptions', () => {
         const { scenes: usgs } = scenes('download-options', () => m2m([{ entityId: 'DS1', available: true }]));
 
         await expect(usgs.downloadOptions(KEY, 'corona2', ['DS1'])).resolves.toEqual([{ entityId: 'DS1', available: true, bytes: 0 }]);
+    });
+});
+
+describe('datasets', () => {
+    it('happyPath_eachDeclassifiedDatasetHasItsEarthExplorerId', async () => {
+        const { upstream, scenes: usgs } = scenes('dataset-search', () => fixtureResponse('usgs/dataset-search.declass'));
+
+        const datasets = await usgs.datasets(KEY);
+
+        expect(datasets).toEqual([
+            { alias: 'corona2', datasetId: '5e839febdccb64b3' },
+            { alias: 'declassii', datasetId: '5e839ff7d71d4811' },
+        ]);
+        expect(upstream.calls[0]?.headers['x-auth-token']).toBe(KEY);
+        expect(JSON.parse(String(upstream.calls[0]?.body))).toEqual({ datasetName: 'declass' });
+    });
+
+    it('badPath_anEntryWithoutItsAliasOrIdIsDropped', async () => {
+        const { scenes: usgs } = scenes('dataset-search', () =>
+            m2m([
+                { datasetAlias: 'corona2' },
+                { datasetId: '5e839ff7d71d4811' },
+                { datasetAlias: 'declassiii', datasetId: 'abc123def4567890' },
+            ]),
+        );
+
+        await expect(usgs.datasets(KEY)).resolves.toEqual([{ alias: 'declassiii', datasetId: 'abc123def4567890' }]);
+    });
+
+    it('badPath_theMaintenancePageIsMaintenance', async () => {
+        const { scenes: usgs } = scenes('dataset-search', () => fixtureResponse('usgs/maintenance.html-503'));
+
+        await expect(usgs.datasets(KEY)).rejects.toMatchObject({ service: 'usgs', failure: 'maintenance' });
     });
 });

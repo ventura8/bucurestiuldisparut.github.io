@@ -23,6 +23,8 @@ const STEP_OF: Readonly<Record<SelfTestCheck, SetupStepId>> = {
     usgs: 'usgs',
     'firebase-management': 'provision',
     'error-reporting': 'analytics',
+    /** M4: Vertex AI is enabled, and its role granted, by Prepare the project (`docs/research/M4-interfaces.md` §4.4). */
+    ai: 'provision',
 };
 
 const ICONS: Readonly<Record<ServiceState, string>> = {

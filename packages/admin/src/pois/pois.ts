@@ -18,6 +18,7 @@ import {
     type PoiDoc,
 } from '@hcm/shared';
 
+import type { EditorAssists } from '../assist/editor-assists.js';
 import type { AreaModule, AreaStore } from '../content/areas.js';
 import { LiveDoc } from '../content/doc.js';
 import { LiveList, type ListState, type LiveListDeps } from '../content/list.js';
@@ -26,6 +27,7 @@ import { Store } from '../state/store.js';
 import { LAST_CATEGORY_KEY, PlaceActions } from './actions.js';
 import type { BulkAction } from './bulk.js';
 import type { PoiContext } from './draft.js';
+import { placeAssists, pointDrawn } from './assists.js';
 import { PlaceEditor, type PlaceEditorState } from './editor.js';
 import { Importer } from './importer.js';
 import { PoisMap, UNCATEGORISED_COLOR, type EditTarget } from './map-session.js';
@@ -65,6 +67,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
     readonly #map: PoisMap;
     readonly #importer: Importer;
     readonly #actions: PlaceActions;
+    readonly #assists: EditorAssists;
     /** New places not opened yet (Add place, then the page opens its address). */
     readonly #fresh = new Map<string, PlaceEditor>();
     #editor: PlaceEditor | null = null;
@@ -113,6 +116,12 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         this.#actions = new PlaceActions(services, (busy) => {
             this.#cell.update({ busy });
         });
+        this.#assists = placeAssists({
+            ...{ services, value: () => this.#cell.state.editor?.draft?.value ?? null, edit: (patch) => this.#editor?.edit(patch) },
+            changed: (assist) => {
+                this.#cell.update({ assist });
+            },
+        });
         this.intents = this.#intents();
     }
 
@@ -148,6 +157,8 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
             },
             drawn: (geometry) => {
                 this.#editor?.setGeometry(geometry);
+                // M4 (CR-M4-4): a point drawn on an untitled place asks for title suggestions.
+                pointDrawn(this.#assists, geometry);
             },
             refused: (kind) => {
                 this.#editor?.refused(kind);
@@ -221,6 +232,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
             return;
         }
         this.#editor?.close();
+        this.#assists.reset();
         this.#editor = id !== null && isId(id) ? this.#editorFor(id) : null;
         this.#categoryArrived();
         this.#cell.update({ editor: this.#editorState(id) });
@@ -361,7 +373,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
     }
 
     #intents(): PoisIntents {
-        return { ...this.#listIntents(), ...this.#editorIntents(), ...this.#fileIntents() };
+        return { ...this.#listIntents(), ...this.#editorIntents(), ...this.#fileIntents(), ...this.#assists.intents };
     }
 
     #listIntents(): Pick<PoisIntents, ListIntent> {
@@ -396,33 +408,21 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         };
     }
 
-    #editorIntents(): Omit<PoisIntents, ListIntent | FileIntent> {
+    #editorIntents(): Omit<PoisIntents, ListIntent | FileIntent | keyof EditorAssists['intents']> {
         return {
-            edit: (patch) => {
-                this.#editor?.edit(patch);
-            },
+            edit: (patch) => this.#editor?.edit(patch),
             setTool: (tool) => {
                 this.#map.setMode(tool);
             },
-            redraw: (shape) => {
-                this.#editor?.redraw(shape);
-            },
-            selectVertex: (index) => {
-                this.#editor?.selectVertex(index);
-            },
+            redraw: (shape) => this.#editor?.redraw(shape),
+            selectVertex: (index) => this.#editor?.selectVertex(index),
             editVertex: (edit) => this.#editor?.editVertex(edit) === true,
             addAtCentre: () => this.#addAtCentre(),
             undoLastVertex: () => this.#editor?.undoLastVertex() === true,
             save: () => this.#save(),
-            discard: () => {
-                this.#editor?.discard();
-            },
-            keepMine: () => {
-                this.#editor?.keepMine();
-            },
-            takeTheirs: () => {
-                this.#editor?.takeTheirs();
-            },
+            discard: () => this.#editor?.discard(),
+            keepMine: () => this.#editor?.keepMine(),
+            takeTheirs: () => this.#editor?.takeTheirs(),
             remove: () => this.#remove(),
         };
     }

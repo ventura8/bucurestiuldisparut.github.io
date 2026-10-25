@@ -8,7 +8,7 @@ from hcm_pipeline.config import Config
 from hcm_pipeline.contract import Errors
 from hcm_pipeline.geo import Grid, MercatorBox, to_lnglat, to_mercator
 from hcm_pipeline.georef.corners import corner_transform
-from hcm_pipeline.georef.matcher import Scan, match, transform_kind
+from hcm_pipeline.georef.matcher import References, Scan, match
 from hcm_pipeline.georef.transforms import Gcp
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.runner import JobRunner, RunOutcome, RunSettings
@@ -114,11 +114,13 @@ def test_bad_path_a_featureless_scan_finds_no_automatic_pairs(world: PipelineWor
     corners = [Gcp(f"c{i}", x, y, lat, lng, True, "corner") for i, (x, y, (lng, lat)) in enumerate(_corners(grid), start=1)]
 
     found = match(
-        Scan(numpy.full((900, 1200), 128, numpy.uint8), 6.0), corner_transform(corners).to_pixel, world.scene.world.pixels[:480, :600], grid
+        Scan(numpy.full((900, 1200), 128, numpy.uint8), 6.0),
+        corner_transform(corners).to_pixel,
+        References(grid, world.scene.world.pixels[:480, :600]),
     )
 
-    assert found == []
-    assert transform_kind(found) is None
+    assert found.tiles.total[0] == 0
+    assert found.pairs == ()
 
 
 def _corners(grid: Grid) -> list[tuple[float, float, tuple[float, float]]]:

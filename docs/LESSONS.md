@@ -962,3 +962,178 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the second full `all` of 2026-10-24 on the NUC (CR-M3-47); every earlier run had reached the poll after the style loaded.
     - Fix and pin: `sourceFeaturesInPage` (`e2e/admin/support/map.ts`) reads no features while the style is loading, so the poll reads "not yet" and asks again (`S-A11-HAPPY-FILTERS`, and every photo cone, marker and overlay probe that shares it).
     - **A probe that a poll calls answers "not yet" while the page is still getting there; one that throws turns a wait into a race.**
+184. **A notification pushed while its admin opened it came back unread.**
+    - Seen: the fan-out wrote the inbox item, pushed it, then wrote the item again as delivered with `pushedAt`; an admin who opened it while FCM was answering had their `read: true` replaced by the delivered copy.
+    - Found by: writing the inbox's e2e (`S-A46-HAPPY`), which opens an item seconds after it arrives.
+    - Fix and pin: the fan-out records `pushedAt` on the item as it is now, in a transaction, and leaves a pruned item alone (`functions/test/notify/fan-out.test.ts`, `badPath_anItemOpenedOrPrunedWhilePushingStaysAsTheAdminLeftIt`).
+    - **A server write that adds a field to a document a person also writes must read it first: writing back the copy it started with undoes what they did meanwhile.**
+185. **`getToken` was deprecated in the installed Firebase SDK, and with it the token the contract named.**
+    - Seen: `firebase@13`'s messaging marks `getToken` deprecated in favour of `register` and `onRegistered` (the Firebase installation ID); ESLint's `no-deprecated` refused the registrar, and no suppression is allowed.
+    - Found by: the lint gate on the first build of the push registrar.
+    - Fix and pin: the admin registers the installation ID and the functions send to it as `message.fid`, as firebase-admin 14.5's `FidMessage` does; the fake FCM refuses a message without a `fid` (`packages/admin/test/firebase/messaging.test.ts`, `functions/test/adapters/fcm.test.ts`; DECISIONS-for-review.md §54c, CR-M4-24).
+    - **Read the installed SDK's own types before following a contract written from older docs: a deprecation on the client usually changes what the server must send too.**
+186. **A photo seeded without a title never opened in its editor.**
+    - Seen: the first title-suggestion spec seeded a photo whose Romanian title was empty, to get suggestions on its own; the editor said "Could not read (invalid-document)", since a stored photo always has a title.
+    - Found by: the first admin-tier run of `S-A09-HAPPY-TITLE-SUGGESTION`.
+    - Fix and pin: the spec seeds the title a file name gives and clears it in the editor, as an admin does before choosing a suggestion (`e2e/admin/specs/assists/title.spec.ts`).
+    - **Seed only what the product itself can store; a state the product reaches only while editing is reached by editing.**
+187. **A history entry of the previous test appeared below a photo of the next one.**
+    - Seen: two specs used the same photo id; the history trigger of the first test's Save ran after the admin tier's reset, so "nothing written" found an entry the refused test never made.
+    - Found by: `S-A09-BAD-AI-UNAVAILABLE` at `admin-l1440-ro`.
+    - Fix and pin: each test of `e2e/admin/specs/assists/drafts.spec.ts` has its own photo id, and "nothing written" is the document as seeded and the 503 the page logged.
+    - **The emulators' triggers outlive the test that caused them: a locked test's reset does not stop a trigger already queued, so give each test ids of its own.**
+188. **Headless Chromium refuses notifications before anyone asks, and reads a hidden count with a space before its comma.**
+    - Seen: the inbox showed "The browser refused notifications" in every e2e test that did not grant them, and the Notifications item's name was `Notificări , 1 necitite` (a positioned, visually hidden span is a block, so Chromium joins it with a space).
+    - Found by: the first admin-tier run of `S-A46-HAPPY`.
+    - Fix and pin: the push specs grant the permission (Playwright) or deny it (`Browser.setPermission` with the page's `browserContextId`), and the badge's name is matched with an optional space (`e2e/admin/specs/notify/`).
+    - **A browser's defaults and its accessible-name joins are part of what a spec observes: set the permission a test depends on, and match names the way the browser computes them.**
+189. **OpenStreetMap's licence link under the title suggestions was a 24 px target on a tablet.**
+    - Seen: at `admin-m768-ro` the generic checker's scroll sweep found `osm.org/copyright` 112 × 24 px, under M3's 48 × 48 on a medium window; the unit test had only asked for WCAG's 24 px.
+    - Found by: `S-A09-HAPPY-TITLE-SUGGESTION`'s state `assist.suggestions` at the admin tier's five projects; the same spec at `admin-c360-ro` also showed that a place 1.3 km from the photo is off a phone's map at the editor's zoom.
+    - Fix and pin: the link is 48 px tall (`packages/ui/src/admin/assist/assist-parts.ts`), and the title specs start their photo 500 m from the place they click (`e2e/admin/specs/assists/world.ts`).
+    - **A link inside running text is still a touch target: size it for the smallest window the checker runs, and pick the points a spec clicks so they are on the smallest map.**
+190. **M3's daily cap of raster jobs never counted a job outside the unit tests.**
+    - Seen: `rasterJobsToday` asks for jobs with `createdAt >= <start of day>`; the Firestore adapter passed the `TimestampLike` operand to the Admin SDK as a plain `{seconds, nanoseconds}` map, and Firestore compares a range only within one type, so the emulator found 0 of 1 matching jobs. The unit tests used the in-memory fake, which compares timestamps.
+    - Found by: the orders workstream's throwaway emulator probe while it built the daily order watch (CR-M4-11); every tier was green because no emulator test filtered on a timestamp.
+    - Fix and pin: `buildQuery` converts every operand as it converts a stored value (`toFirestoreValue`); `functions/test/adapters/documents.test.ts` `happyPath_aTimestampOperandMatchesStoredTimestampsInARangeAndInAList` runs on the emulator.
+    - **A fake that is more forgiving than the real store hides a whole class of query bugs: every adapter's filter needs one test against the emulator with each operand type it accepts.**
+191. **The monthly USGS harvest erased every order an admin had marked.**
+    - Seen: the harvest rebuilt each scene from a fixed list of fields to keep (status, note, layer id, creation); M4's `order` and `eeDatasetId` were not on it, so the next harvest dropped them.
+    - Found by: the orders workstream's functions tests of a harvest after a mark (M4, CR-M4-12).
+    - Fix and pin: `functions/src/imagery/harvest.ts` keeps the order and the dataset id (`functions/test/imagery/orders-edits.test.ts`).
+    - **A rewrite that copies a keep-list of fields silently drops every field added later: merge into the stored document, or test the list against the schema's fields.**
+192. **The engine's third-party notices lost `lit` once swipe compare shipped.**
+    - Seen: the `notices` gate failed with "lit@3.3.3: bundled but not in THIRD_PARTY_NOTICES.txt": Vite's library build starts one build per format, the notices plugin cleared its list at each `buildStart`, and the file written last held only the ES build's packages, while the IIFE (which inlines the compare chunk) carried `lit/index.js`.
+    - Found by: the `build` stage after the compare workstream's chunk (CR-M4-19).
+    - Fix and pin: the plugin gathers across the formats of one `vite build` and never clears (`scripts/site/src/notices.ts`, `scripts/site/test/notices.test.ts`); `[notices] OK` lists 13 engine packages.
+    - **A build plugin that keeps state must know how many builds one command runs: Vite's library mode calls `buildStart` once per format.**
+193. **Swipe compare's lazy chunk made the engine load a 44.6 KB chunk at once.**
+    - Seen: with Vite's library default (`preserveEntrySignatures: 'strict'`), what `compare-<hash>.js` shared with the entry moved into a third chunk, `map-sync-<hash>.js`, which `engine.mjs` imported on every page.
+    - Found by: the compare workstream reading the build's output before the budget gate (DECISIONS-for-review.md §55c).
+    - Fix and pin: `preserveEntrySignatures: 'allow-extension'` in `packages/engine/vite.config.ts`; `ENGINE_CHUNK_BUDGETS` fails any engine chunk without a budget.
+    - **A lazy chunk is only lazy if the entry stays whole: read the build's chunk list whenever a dynamic import is added.**
+194. **The automatic georeferencing's OpenStreetMap channel matched the ground, not the roads.**
+    - Seen: Canny's edges of the synthetic scan followed the ground's texture as much as the roads; the OSM channel was 155 m off at the median.
+    - Found by: the autogcp workstream's pipeline tests on the synthetic world drawn through an exact affine map (`pipeline/tests/integration/test_autogcp.py`, P03).
+    - Fix and pin: the scan side is the white and black top-hat of the CLAHE'd pre-warped scan (lines up to 150 m wide) against OSM's proximity field: 13 m off (CR-M4-18).
+    - **Pick a matcher's features for what the reference draws: a line map is matched with line features, never with every edge of the image.**
+195. **The buy flow pushed the Imagery area's chunk over its budget by 0.2 KB.**
+    - Seen: the `build` stage's `bundle-budget` failed on `imagery` (18.2 KB of 18) once the order card, Work's orders and the chips joined M3's screens.
+    - Found by: the build stage of the M4 integrator.
+    - Fix and pin: the order card, which only a scene to buy or with an order shows, is a chunk of its own fetched on first need (`packages/ui/src/admin/imagery/orders/lazy-card.ts`, `order-card` 2 KB; `imagery` 17.6 KB), with Loading, a failed fetch's Try again and the page's re-render pinned by `packages/ui/test/admin/imagery/lazy-card.test.ts` (DECISIONS-for-review.md §56b).
+    - **When a feature spends a chunk's headroom, split off what only some visits need instead of raising the budget.**
+196. **A journey spec that seeded the scenes never saw the ranking it waited for.**
+    - Seen: the cross-app automation spec seeded the harvested scenes and then imported through `importFromList`, whose `awaitHarvest` waits for the page's own ranked search; seeded scenes are ranked otherwise, and the poll timed out.
+    - Found by: the first run of `S-A48-HAPPY` at `admin-l1440-ro`.
+    - Fix and pin: the happy journey lets the page harvest and seeds only the bought scene's preview afterwards; the bad path, which never imports from the list, seeds the scenes (`e2e/admin/specs/imagery/automation.spec.ts`).
+    - **A helper that waits for a server flow needs that flow: seed what a spec skips, never what its helpers wait for.**
+197. **A spec that opened the paid Corona frame failed at teardown on a 503.**
+    - Seen: the fake browse host never serves `DS1105-1071DF076` (it is `S-A11-BAD-BROWSE-UNAVAILABLE`'s scene), so a spec opening that scene logged the 503 console error the fixtures fail on.
+    - Found by: the orders workstream's first `orders.spec.ts` runs.
+    - Fix and pin: every spec that opens that scene seeds its preview in our bucket first (`ImageryWorld.seedBrowse`; orders and automation specs, the local stack's seed).
+    - **A fake's bad-path fixture is shared state: a new spec that reuses its id inherits its failure.**
+198. **Swipe compare's chooser ran past the map's edge at 320 px.**
+    - Seen: a native `<select>` keeps the width of its widest option unless it may shrink; with the tour's text spacing at 320 px the compare bar's chooser ended past the map's edge.
+    - Found by: the tour's layout checker on `viewer.compare-menu` (V06).
+    - Fix and pin: `min-inline-size: 0` on the chooser (`packages/ui/src/viewer/compare/compare-styles.ts`), the tour state at every viewer viewport.
+    - **Native form controls size themselves from their content: give each one in a flexible row a minimum it may shrink to.**
+199. **The divider's handle sat on the map's centre, which the occlusion check reads as the map's own.**
+    - Seen: the generic checker samples a map canvas at its centre; a handle there made the map look covered in every compare state.
+    - Found by: the tour's occlusion check on `viewer.compare-swipe` (CR-M4-16 (b)).
+    - Fix and pin: the handle sits below the centre and, on a phone held landscape, ends before the vertical timeline (`packages/ui/src/viewer/compare/hcm-compare.ts`).
+    - **No control may sit at a map's centre: that point is the map's, for the checker and for the visitor.**
+200. **Focus was lost after Accept in the georeferencer's suggestions.**
+    - Seen: accepting or rejecting a suggestion re-rendered the list; without keys Lit reused the rows in place, so the focus stayed on a row that now showed the next suggestion's buttons, or fell to the page.
+    - Found by: the autogcp workstream's keyboard test (`S-A44-HAPPY-KEYBOARD`).
+    - Fix and pin: the rows are a keyed `repeat` and the next row takes the focus (`packages/ui/src/admin/georef/suggestions-panel.ts`).
+    - **A list whose rows leave on a keypress needs keyed rows, or the focus follows the position instead of the item.**
+201. **The title-suggestion spec counted a Nominatim request it never made.**
+    - Seen: in the split `quality` run `S-A09-HAPPY-TITLE-SUGGESTION` found two server requests to Nominatim where it expected one: its own cell and the city's centre, asked by a content spec drawing a place at the map's centre beside it (a point drawn asks for titles by itself, and every city's request lands in the server's one world).
+    - Found by: the M4 integrator's split `quality` run, at `admin-c360-ro` and `admin-l1440-ro`; the assists specs had passed alone, with no content spec running beside them.
+    - Fix and pin: the spec counts the requests of its own cell, and during the cool-down it checks that no request of anyone's reached Nominatim (`e2e/admin/specs/assists/title.spec.ts`).
+    - **A locked spec owns the project's singletons, not the server's fakes: count only what names the test's own data, or what nobody can add while it runs.**
+202. **The Setup steps' self-test spec still counted nine checks after M4 added the tenth.**
+    - Seen: `S-A03-BAD-SELFTEST-FAILURE` found 10 `[data-check]` rows where it expected 9: assists-notify had added the `ai` check (Vertex AI's free `countTokens`) to `SELF_TEST_CHECKS`, and its own runs never included the `admin-steps-l1440-en` project.
+    - Found by: the M4 integrator's split `quality` run, on the NUC's part of the admin tier.
+    - Fix and pin: the spec counts `SELF_TEST_CHECKS.length` (`e2e/admin/steps/status.spec.ts`).
+    - **Count a list from the constant that defines it; and a change to a shared list runs every project whose specs read it, the Setup steps' included.**
+203. **A translation draft asked for one photo filled the next photo's title.**
+    - Seen: English draft on photo A, then photo B opened before Vertex AI answered (up to 20 s): A's translation and the model's note landed in B's draft, and B's Save would have published it. The place and layer editors had the same gap.
+    - Found by: both M4 reviews (2026-10-24); the unit tests reset only the title suggestions mid-flight, and every e2e draft waited for its answer on the same item.
+    - Fix and pin: the assist session counts the open item and drops a draft answered for another (`badPath_aDraftAnsweredAfterAnotherItemOpenedIsDropped`, `badPath_aDraftThatArrivesAfterAnotherPhotoOpenedLandsNowhere`).
+    - **An answer that lands in "whatever is open now" must carry what it was asked for: guard every await that writes into shared editor state, not only the first one written.**
+204. **Every notification read up to 250 items of every admin's inbox.**
+    - Seen: `notify.onEvent` pruned each inbox by reading its newest 250 items to delete those past 200: once inboxes were full, about 200 reads per admin per event, a quarter of Firestore's free reads at three admins and twenty events a day, while the contract promised "a few documents".
+    - Found by: the M4 security and cost review; the fan-out test seeded a full inbox once and checked only what was left.
+    - Fix and pin: `DocumentStore.count` (an aggregation) first, then only the oldest items over the limit are read (`happyPath_anInboxUnderItsLimitIsCountedAndNeverRead`, and the read query asserted in the full-inbox test).
+    - **A cost claim in a contract is a test: assert the reads a handler makes, not only the documents it leaves.**
+205. **A browser kept showing an admin's notifications after sign-out, after removal, and for the next admin.**
+    - Seen: sign-out cleared only session keys; the push device id in `localStorage` named no admin, so another admin saw push on for someone else's registration, and their Off unregistered nothing; `admins.revoke` left the removed admin's devices, inbox and settings, so a re-invited account got its old browsers back; an Off that failed offline still said off.
+    - Found by: both M4 reviews; every push test signed in one admin on one browser.
+    - Fix and pin: the record is `{uid, deviceId}` (`push-device.ts`), sign-out unregisters and forgets it, `notify.registerDevice` takes the browser from every other admin, revoke deletes the three collections, a failed Off keeps push on and says why (`S-A47-BAD-SHARED-BROWSER`; `push-device.test.ts`, `inbox.test.ts`, `controller.test.ts`).
+    - **Anything a browser remembers for an account names that account, and leaving the account (sign-out, removal) undoes what it registered elsewhere.**
+206. **A model's draft could add a link the public viewer would render.**
+    - Seen: a description's draft keeps Markdown links (the prompt asks the model to), and nothing compared them with the source's: text pasted into the source could ask for `[More](https://…)` and a 5,000-character draft saved without a careful read would publish it.
+    - Found by: the M4 security review; the markup tests covered HTML and control characters, which the viewer never renders anyway, not the one markup it does.
+    - Fix and pin: `draftKeepsLinks` refuses a draft with a link address the source lacks (`apiError.assist.linksChanged`; `S-A45-BAD-LINKS-CHANGED`, the fake Vertex AI's `injected` outcome).
+    - **Sanitise model output against what the renderer turns into behaviour (links here), and check it against the input, not only for shape.**
+207. **Title suggestions had no daily limit, and a lost task left the editor waiting for ever.**
+    - Seen: any cell in the city's reach was queued on a cache miss, so a scripted session walking 11 m cells kept Nominatim at one request a second indefinitely (the bulk use its policy forbids); a cell claimed whose task was never queued answered `queued` and the editor's "Looking for titles…" never ended.
+    - Found by: both M4 reviews; the queue tests covered the cache, the cool-down and the rate, never volume or a refused enqueue.
+    - Fix and pin: `GEOCODE_DAILY_CAP` counted in `ops/assist` within the claim's transaction, a refused enqueue deletes its cell, and the editor stops listening after `GEOCODE_QUEUED_MINUTES` (`S-A45-BAD-DAILY-CAP`; `badPath_aQueuedCellNoAnswerReachesEndsTheWaitSoSuggestATitleWorksAgain`).
+    - **A free third-party service's policy is a cap the code enforces, and every wait on a background job has an end the user sees.**
+208. **Swipe compare paid a new map load each time the window crossed 600 px.**
+    - Seen: a phone turned between portrait and landscape, or a window dragged across 600 px, destroyed the second map and created a new billed one at each crossing; the chooser also offered the main side's own layer.
+    - Found by: the M4 cost review; the counter tests checked that no map leaked, not how many loads a session paid.
+    - Fix and pin: a compact window hides the second map for `COMPARE_PARK_MS` and a wider one reuses it (`badPath_aCompactWindowHidesTheSecondMapAWiderOneReusesItAndAMinuteDestroysIt`, `S-V06-BAD-COMPACT-WIDTH`); `compareChoices` leaves out the main side's layers.
+    - **For a billed resource, test the count of creations across a session's ordinary motions, not only that each creation is destroyed.**
+209. **An uploaded photo never got its title suggestions by itself.**
+    - Seen: suggestions came by themselves only for an empty Romanian title, but every upload starts titled after its file (`IMG 0412`), so a real upload always needed Suggest a title first; the e2e met the one-input budget only because it cleared the title, an input it did not count.
+    - Found by: the M4 minimum-input review; the spec seeded its photo instead of uploading one.
+    - Fix and pin: a title nobody chose (empty, a camera's naming, the file's title) asks by itself (`photoUntitled`); the spec starts from a real upload (`S-A09-HAPPY-TITLE-SUGGESTION`).
+    - **Measure an input budget from the state a real user reaches (an upload, not a seed), and count every step the test takes to get there.**
+210. **The orders' screens counted what the admin could not clear and promised checks that could not run.**
+    - Seen: Work counted an expired order (no Take the mark back on its card) and a sent reminder (nothing to click to say "I paid"); before USGS approved downloads the card said "checked daily" while the watch skipped it; the refusal of a frame scanned meanwhile vanished with its card; the card's times were UTC, the inbox's local.
+    - Found by: the M4 minimum-input review; the UI tests asserted each state alone, never which action leaves it.
+    - Fix and pin: Take the mark back on the expired card, reminders out of the count, the approval note and its Setup link, the refusal outside the card, local times (`S-A13-BAD-SCANNED-WHILE-MARKING`, `S-A13-BAD-WAITS-FOR-APPROVAL`, `S-A13-BAD-NEVER-DELIVERED`).
+    - **Every "needs you" count needs an action on screen that clears it, and every promise a card makes ("checked daily") needs the condition that keeps it.**
+211. **The automatic georeference was measured in its middle only.**
+    - Seen: the tests asserted the median distance from the truth (3.7, 2.8 and 9.9 m) while the largest, at a corner outside the matched pairs where `poly2` extrapolates, was 14.1, 11.7 and 23.4 m; enough confident pairs in a line were reported as "too few".
+    - Found by: the M4 minimum-input review, recording the largest error the helper already computed and discarded.
+    - Fix and pin: the tests assert the largest distance too (`EDGE_ERROR_M`); a degenerate fit waits with `apiError.imagery.noSpread` (`S-P03-BAD-NO-SPREAD`); the approval-policy guard is proposed (`DECISIONS-for-review.md` §57d).
+    - **A tolerance claimed for a map is for its whole extent: assert the worst point, and keep the reason a fit failed apart from its count.**
+212. **The suggestions' distances were stale, and Accept all dropped the keyboard.**
+    - Seen: each suggestion showed the matcher's stored residual as "from the current fit", which never changed as pairs were accepted (and read "No fit" on a version waiting for points even with a live fit); after Accept all the focused button vanished with the list and the focus fell to the page.
+    - Found by: the M4 minimum-input review; the panel tests passed fixed residuals, and the keyboard spec decided rows one by one.
+    - Fix and pin: `offsetM` from `distanceFromFit` on every refit, and Accept all focuses the panel's heading (`S-A44-HAPPY`; `happyPath_eachSuggestionsDistanceIsFromThePagesCurrentFitAndFollowsIt`).
+    - **A number labelled "current" is computed from the page's state, never read from a stored snapshot; and every action that removes its own control moves the focus somewhere named.**
+213. **A translation draft could replace what the admin had typed.**
+    - Seen: English draft was offered whenever the Romanian side had text, so with both filled it replaced the admin's English, and only Discard (which drops every other edit too) brought it back.
+    - Found by: the M4 minimum-input review.
+    - Fix and pin: a draft is offered only for an empty side, its note stays once it filled it (`draftTarget`, `badPath_textTheAdminTypedInBothLanguagesIsNeverOfferedADraft`, `S-A09-HAPPY-TRANSLATE-DRAFT`).
+    - **An assist fills what is empty; replacing the user's own text needs their explicit say.**
+214. **Small gaps in the notifications: points needed reached no device, "imported" said too much, and "1 devices".**
+    - Seen: `layer.needsPoints` was not pushed by default, so a bought scan whose automatic points failed reached only the inbox; "The scan of X is imported" also went out for a version waiting for points; the test notification said "1 devices" and the Romanian badge "1 necitite".
+    - Found by: the M4 minimum-input review.
+    - Fix and pin: `layer.needsPoints` pushed by default, `order.imported` worded for a version published or waiting, `pluralOf` in `@hcm/shared` with one, few and other forms, the Romanian badge "necitite: 3" (`notifications.test.ts`, `inbox.test.ts`, `nav-badge.test.ts`).
+    - **A text with a count has its plural forms in both languages from the start, and a default that hides a stalled automation is a bug, not a preference.**
+215. **The functions' account could run any Vertex AI job to make a translation draft.**
+    - Seen: Provision granted `fn-admin@` `roles/aiplatform.user`, which also allows billable custom jobs and endpoint deploys, while the drafts and the self-test only call `generateContent` and `countTokens`.
+    - Found by: the M4 security review; the role table's test checked that the role was there, not what else it allowed.
+    - Fix and pin: Provision's `iam` item makes the custom role `hcmVertexDrafts` (`aiplatform.endpoints.predict`) before binding it (`the custom role of the translation drafts (M4)` in `packages/admin/test/provision/items.test.ts`).
+    - **Grant the permission a call needs, not the predefined role that contains it: a cost guard on one call is no guard on the others the role opens.**
+216. **In the dark scheme the focus ring of Confirm the place could not be seen, and a refused I ordered it dropped the keyboard.**
+    - Seen: the title-suggestion spec, rewritten to start from a real upload (lesson 209), reached the photo editor's "check the place" banner for the first time in a tour state: at `admin-l1440-dark` the Tab round's contrast check found the ring of **Confirmă locul** (the kit's secondary) under 3:1 against the banner's tertiary container. On the scene page, the order card of a frame scanned while it was being marked disappeared with the button just clicked and the focus fell to the page's body; the refusal then shown inline above Import made the page just tall enough that, scrolled to its end at `admin-m768-ro`, the map's attribution was a 6 px sliver under the app bar (a 14 px link 11 px from the account button).
+    - Found by: the 2026-10-24 review fixes' split `all` run (`admin-l1440-dark`, `admin-m768-ro`, both in `tour-matrix`); every earlier state seeded its photos (no banner) and every per-push project passed.
+    - Fix and pin: the photo editor's `.banner` sets `--hcm-focus-ring-color` to its container's own colour, as the alerts on the error container do; a refused mark moves the keyboard to the scene's heading (`ImageryContext.focusDetail`; `badPath_aRefusedMarkLeavesTheKeyboardOnTheScenesHeading`), and the frame scanned meanwhile says why in the snackbar, the reviewer's other option, so the page keeps its free-scene layout (`S-A13-BAD-SCANNED-WHILE-MARKING`).
+    - **Every coloured container that holds a control sets the ring's colour for itself; and a state reached the way a user reaches it (a real upload, a real refusal) finds what seeded states hide.**
+217. **The jobs tour's running and waiting jobs were run under it by another test's tick.**
+    - Seen: `tour/admin-jobs.tour.ts` at `tour-c360-light-ro` and `tour-x1920-light-ro` lost its seeded running import mid-test: the progress bar vanished, then the Cancel dialog's button kept re-rendering until the test timed out; the job read "failed: the layer version does not exist (e2e stand-in)". A later run at `tour-x1920-dark-en` found its job "waiting for its date" done: the date, 2026-10-24 09:00, had passed on the wall clock the server uses.
+    - Found by: the 2026-10-24 review fixes' split `all` run on the NUC, whose admin and tour projects ran beside the imagery specs; the same test passed at every other viewport.
+    - Fix and pin: `imagery.tick` (which the orders and automation specs run, over every city) took the seeded job, which had no lease, for a lost execution, ran it again, and the stand-in runner failed it for its missing version; and it dispatched the waiting job once its date came. `seedJob` gives a seeded running job a lease held far ahead (`e2e/admin/support/ops.ts`), as a live pipeline's heartbeat would, and the waiting job's date is in 2100.
+    - **A seeded record must be complete enough for every background process that may meet it (a lease, a heartbeat), not only for the page the test looks at; shared emulators run other tests' schedulers, on the wall clock, so a "later" date is far later.**
+218. **The revoke-while-editing spec hung: removing the admin's inbox told its page before its Save.**
+    - Seen: `S-A20-BAD-REVOKED-WHILE-EDITING` at `admin-c360-ro` timed out clicking Save: the page was already read-only under the "access removed" banner, so Save stayed disabled. `admins.revoke` (since the 2026-10-24 review, lesson 205) deleted the removed admin's inbox after their `admins/{uid}`; the unread badge listens to that inbox, so when the inbox held an item (another test's event fanned out to every admin), the deletion reached the open page as a denied listener before the Save the spec makes.
+    - Found by: the review fixes' third split `all` run; two earlier runs passed, their admin's inbox empty at the time.
+    - Fix and pin: the notifications go first, while the account is still an admin's (`functions/src/admin/revoke.ts`): the open page sees its inbox emptied, and the removed admin's next write is refused by the rules as the scenario says.
+    - **A cleanup that writes under a revoked account reaches its open listeners: order it so they see what they are still allowed to see, and test the scenario with the shared world's background traffic, not only an idle one.**

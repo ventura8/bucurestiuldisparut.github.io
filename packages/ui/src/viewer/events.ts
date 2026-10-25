@@ -5,13 +5,17 @@
  * - `hcm-ready` once the manifest is valid and the map is ready, `hcm-error` when boot fails;
  * - `hcm-overlay-change` (and `hcm-layer-change` for a historical layer) once per settled change of an overlay: while a
  *   slider is dragged the change is held back, and released as one event when the slider lets go;
- * - `hcm-photo-open` and `hcm-poi-open` when a photo's or a POI's details open.
+ * - `hcm-photo-open` and `hcm-poi-open` when a photo's or a POI's details open;
+ * - `hcm-compare-change` (M4, V06) when swipe compare opens, closes, switches between `swipe` and `toggle` (the window
+ *   class), changes its compared side or settles its divider (a drag fires it once, on release); a compare the URL hash
+ *   opens fires it after `hcm-ready`.
  */
 import type { Manifest, Overlay } from '@hcm/shared';
 
 import type { ViewerError, ViewerState } from './store-port.js';
 
-type PublicEventType = 'hcm-ready' | 'hcm-error' | 'hcm-layer-change' | 'hcm-overlay-change' | 'hcm-photo-open' | 'hcm-poi-open';
+type PublicEventType =
+    'hcm-ready' | 'hcm-error' | 'hcm-layer-change' | 'hcm-overlay-change' | 'hcm-photo-open' | 'hcm-poi-open' | 'hcm-compare-change';
 
 export interface PublicEvent {
     readonly type: PublicEventType;
@@ -131,6 +135,32 @@ function changeEvents(previous: ViewerState, state: ViewerState, tracker: Overla
     return overlayEvents(tracker.changes(state.overlays), state.manifest);
 }
 
+interface CompareDetail {
+    readonly open: boolean;
+    readonly mode: 'swipe' | 'toggle' | null;
+    readonly layerId: string | null;
+    readonly position: number | null;
+}
+
+const CLOSED: CompareDetail = { open: false, mode: null, layerId: null, position: null };
+
+/** Compare as `hcm-compare-change` states it; closed before the viewer is ready (a hash's compare waits for `hcm-ready`). */
+function compareDetail(state: ViewerState): CompareDetail {
+    const compare = state.compare;
+    if (compare === null || state.status !== 'ready') {
+        return CLOSED;
+    }
+    const mode = state.windowClass === 'compact' ? 'toggle' : 'swipe';
+    return { open: true, mode, layerId: compare.layerId, position: compare.position };
+}
+
+function compareEvents(previous: ViewerState, state: ViewerState): PublicEvent[] {
+    const before = compareDetail(previous);
+    const after = compareDetail(state);
+    const same = (Object.keys(after) as (keyof CompareDetail)[]).every((key) => before[key] === after[key]);
+    return same ? [] : [{ type: 'hcm-compare-change', detail: { ...after } }];
+}
+
 /** Every public event a store transition from `previous` to `state` causes, in order. */
 export function viewerEvents(
     previous: ViewerState,
@@ -142,5 +172,6 @@ export function viewerEvents(
         ...statusEvents(previous, state, tracker, engineVersion),
         ...changeEvents(previous, state, tracker),
         ...selectionEvents(previous, state),
+        ...compareEvents(previous, state),
     ];
 }

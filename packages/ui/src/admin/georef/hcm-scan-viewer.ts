@@ -58,6 +58,8 @@ export class HcmScanViewer extends LitElement {
         previewScale: { type: Number, attribute: 'preview-scale' },
         markers: { attribute: false },
         selected: { attribute: false },
+        suggestions: { attribute: false },
+        selectedSuggestion: { attribute: false },
         half: { attribute: false },
         adding: { type: Boolean },
         label: { type: String },
@@ -99,6 +101,9 @@ export class HcmScanViewer extends LitElement {
     declare previewScale: number;
     declare markers: readonly ScanMarker[];
     declare selected: string | null;
+    /** M4: the matcher's suggestions, drawn dashed under the pairs (they are not dragged or selected here). */
+    declare suggestions: readonly ScanMarker[];
+    declare selectedSuggestion: string | null;
     declare half: Point | null;
     declare adding: boolean;
     declare label: string;
@@ -118,6 +123,8 @@ export class HcmScanViewer extends LitElement {
         this.previewScale = 1;
         this.markers = [];
         this.selected = null;
+        this.suggestions = [];
+        this.selectedSuggestion = null;
         this.half = null;
         this.adding = false;
         this.label = '';
@@ -234,6 +241,7 @@ export class HcmScanViewer extends LitElement {
             drawScan(canvas, {
                 ...{ image: this.#image, view: this.#currentView(), previewScale: this.previewScale, markers: this.markers },
                 ...{ selected: this.selected, half: this.half, crosshair: this.focused, dragged: this.#dragged() },
+                ...{ suggestions: this.suggestions, selectedSuggestion: this.selectedSuggestion },
             });
         }
     }

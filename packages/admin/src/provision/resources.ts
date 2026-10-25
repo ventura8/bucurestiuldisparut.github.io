@@ -1,3 +1,6 @@
+import { VERTEX_DRAFTS_PERMISSIONS, VERTEX_DRAFTS_ROLE_ID } from '@hcm/shared';
+
+import { customRoleName, type CustomRoleSpec } from '../google/iam.js';
 import type { WantedBinding } from '../google/iam-policy.js';
 import { projectNames, type ProjectConfig, type ServiceAccountId } from './project-config.js';
 
@@ -37,6 +40,11 @@ export const REQUIRED_APIS: readonly string[] = [
     'orgpolicy',
     'apikeys',
     'analyticsadmin',
+    // M4 (docs/research/M4-interfaces.md §4.4, CR-M4-5): Vertex AI for the translation drafts, FCM's sends and the browser's
+    // token registration for web push.
+    'aiplatform',
+    'fcm',
+    'fcmregistrations',
 ].map((name) => `${name}.googleapis.com`);
 
 /** The Secret Manager shells; the values arrive through `setup.saveUsgs` and `setup.saveMapbox`. */
@@ -70,20 +78,52 @@ function grants(member: string, roles: readonly string[]): WantedBinding[] {
     return roles.map((role) => ({ role, member }));
 }
 
+/**
+ * M4 (`docs/research/M4-interfaces.md` §4.4, CR-M4-5): `assist.translateDraft` and the setup self-test call Vertex AI;
+ * `notify.registerDevice` and `notify.sendTest` send through FCM. UNVERIFIED (§10): that `firebasecloudmessaging.admin` is
+ * the narrowest role holding `cloudmessaging.messages.create`.
+ */
+
+/**
+ * The project's custom roles, made by the `iam` item before the role table binds them (`DECISIONS-for-review.md` §57g):
+ * Vertex AI's predefined `roles/aiplatform.user` would also let the functions' account start billable custom jobs and
+ * deploy endpoints; the drafts and the self-test only call `generateContent` and `countTokens` of a publisher model.
+ */
+export interface CustomRoleEntry {
+    readonly id: string;
+    readonly spec: CustomRoleSpec;
+}
+
+export const CUSTOM_ROLES: readonly CustomRoleEntry[] = [
+    {
+        id: VERTEX_DRAFTS_ROLE_ID,
+        spec: {
+            title: 'Historic City Map: Vertex AI drafts',
+            description: 'generateContent and countTokens of the pinned Gemini model, for the RO-EN translation drafts',
+            includedPermissions: VERTEX_DRAFTS_PERMISSIONS,
+        },
+    },
+];
+const FCM_SENDER_ROLE = 'roles/firebasecloudmessaging.admin';
 const FN_ADMIN_PROJECT_ROLES = [
     'roles/datastore.user',
     'roles/firebaseauth.admin',
     'roles/firebase.viewer',
     'roles/errorreporting.viewer',
     'roles/cloudtasks.enqueuer',
+    FCM_SENDER_ROLE,
 ];
-/** M3: the dispatcher starts and follows the raster job's executions (`run.jobs.runWithOverrides`, `run.executions.get`). */
+/**
+ * M3: the dispatcher starts and follows the raster job's executions (`run.jobs.runWithOverrides`, `run.executions.get`).
+ * M4: `notify.onEvent` pushes the notifications through FCM.
+ */
 const FN_EVENTS_PROJECT_ROLES = [
     'roles/datastore.user',
     'roles/eventarc.eventReceiver',
     'roles/cloudtasks.enqueuer',
     'roles/run.jobsExecutorWithOverrides',
     'roles/run.viewer',
+    FCM_SENDER_ROLE,
 ];
 const DEPLOYER_PROJECT_ROLES = [
     'roles/firebasehosting.admin',
@@ -109,7 +149,7 @@ function projectBindings(project: ProjectConfig, agents: ServiceAgents, noDefaul
         kind: 'project',
         resource: project.projectId,
         bindings: [
-            ...grants(names.member('fn-admin'), FN_ADMIN_PROJECT_ROLES),
+            ...grants(names.member('fn-admin'), [...FN_ADMIN_PROJECT_ROLES, customRoleName(project.projectId, VERTEX_DRAFTS_ROLE_ID)]),
             ...grants(names.member('fn-events'), FN_EVENTS_PROJECT_ROLES),
             ...grants(names.member('job-raster'), ['roles/datastore.user']),
             ...grants(names.member('gh-deployer'), DEPLOYER_PROJECT_ROLES),

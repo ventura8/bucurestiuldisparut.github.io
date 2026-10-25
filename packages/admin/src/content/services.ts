@@ -16,6 +16,7 @@ import type { CallablesPort } from '../firebase/ports.js';
 import type { FilePort, PicturePort } from '../imagery/files.js';
 import type { AdminMapFactory } from '../map/factory.js';
 import type { UploadPort } from '../firebase/uploads.js';
+import type { PushRegistrar } from '../inbox/push.js';
 import type { CropToolFactory } from '../layers/geometry/types.js';
 import type { NoticeInput } from '../state/state.js';
 
@@ -174,6 +175,10 @@ export interface ContentServices {
     /** The layer editor's Crop: loads the `layer-geometry` chunk (`../layers/crop-chunk.ts`, CR-M3-7). */
     readonly layerCrop?: (() => Promise<CropToolFactory>) | null;
     // [end imagery]
+    // [section inbox] owner: assists-notify (`push`: `../firebase/messaging.ts`, docs/research/M4-interfaces.md §5.4)
+    /** This browser's web push: the browser's own permission prompt and its FCM token (none without push). */
+    readonly push?: PushRegistrar | null;
+    // [end inbox]
 }
 
 /** The members every area gets from the shell; the rest are the areas' own (`AreaServiceParts`). */

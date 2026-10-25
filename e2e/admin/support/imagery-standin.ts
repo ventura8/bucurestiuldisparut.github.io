@@ -108,6 +108,49 @@ function automaticGcps(run: Run): Gcp[] {
     });
 }
 
+/** The suggestions' confidences (best first): one at the fit's confidence, three below it (M4 §2.3's "fewer" case). */
+const SUGGESTED_SCORES = [0.66, 0.58, 0.47, 0.35] as const;
+
+/** The landmark nearest each quarter of the scan: four places spread over it, none of the georeferencer specs' own. */
+function spreadLandmarks(run: Run): LatLng[] {
+    const { width, height } = SCAN_SIZE;
+    const targets = [
+        { x: width / 4, y: height / 4 },
+        { x: (3 * width) / 4, y: height / 4 },
+        { x: (3 * width) / 4, y: (3 * height) / 4 },
+        { x: width / 4, y: (3 * height) / 4 },
+    ];
+    const places = landmarks(run.bounds);
+    return targets.map((target) => {
+        const distance = (place: LatLng): number => {
+            const pixel = scanPixelOf(place, run.bounds);
+            return Math.hypot(pixel.x - target.x, pixel.y - target.y);
+        };
+        return places.reduce((best, place) => (distance(place) < distance(best) ? place : best));
+    });
+}
+
+/**
+ * The matcher's suggestions as the pipeline writes them when it found too few confident pairs (the golden shape of
+ * `pipeline/tests/contracts/version.needs-gcps.suggestions.json`): four landmarks of the synthetic world on their exact
+ * pixels, best first, without residuals (there is no fit to measure them against).
+ */
+function suggestedPairs(run: Run): Record<string, unknown> {
+    const pairs = spreadLandmarks(run).map((geo, index) => {
+        const pixel = scanPixelOf(geo, run.bounds);
+        return {
+            id: `a${String(index + 1).padStart(3, '0')}`,
+            pixel: { x: Math.round(pixel.x * 100) / 100, y: Math.round(pixel.y * 100) / 100 },
+            geo: { lat: round(geo.lat), lng: round(geo.lng) },
+            enabled: true,
+            origin: 'auto',
+            score: SUGGESTED_SCORES[index] ?? 0.3,
+        };
+    });
+    const generatedAt = { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 };
+    return { method: 'orb', channels: ['s2', 'osm'], generatedAt, minConfidence: 0.6, tiles: { matched: 9, total: 64 }, pairs };
+}
+
 function hasManualPoints(run: Run): boolean {
     const georef = run.version['georef'] as { method?: string } | undefined;
     return georef?.method === 'gcps';
@@ -201,6 +244,7 @@ async function georeference(run: Run): Promise<StepResult> {
     if (hasManualPoints(run) || (run.type === 'regeoref' && run.version['georef'] !== undefined)) {
         const georef = run.version['georef'] as Record<string, unknown> & { gcps: Gcp[] };
         const disabled = georef.gcps.filter((gcp) => !gcp.enabled).length;
+        // The admin's points are fitted and the matcher's suggestions are done with (M4 §2.5), as the pipeline does.
         await run.writeVersion({
             georef: {
                 ...georef,
@@ -208,7 +252,12 @@ async function georeference(run: Run): Promise<StepResult> {
                 checkpointRmseM: rmse,
                 checkpointCount: disabled > 0 ? disabled : georef.gcps.length,
             },
+            suggestions: undefined,
         });
+    } else if (run.attempt.outcome === 'suggestions') {
+        await run.writeVersion({ suggestions: suggestedPairs(run) });
+        await run.waitForPoints({ pairs: '1' });
+        return 'stop';
     } else if (run.attempt.outcome === 'no-match' || run.attempt.outcome === 'scan') {
         await run.waitForPoints(run.attempt.outcome === 'no-match' ? { pairs: '3' } : undefined);
         return 'stop';

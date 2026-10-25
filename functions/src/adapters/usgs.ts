@@ -112,6 +112,7 @@ export function createUsgsApi(options: UsgsOptions): UsgsApi {
 type SceneSearch = Parameters<UsgsScenes['search']>[1];
 type SceneRecord = Awaited<ReturnType<UsgsScenes['search']>>['records'][number];
 type DownloadOption = Awaited<ReturnType<UsgsScenes['downloadOptions']>>[number];
+type DatasetIds = Awaited<ReturnType<UsgsScenes['datasets']>>[number];
 
 /** The outer ring of a `spatialCoverage` polygon: its `[lng, lat]` positions (anything else dropped). */
 function ringOf(coordinates: unknown): (readonly [number, number])[] {
@@ -202,20 +203,40 @@ function nextOf(data: unknown, returned: number): number | undefined {
     return typeof next === 'number' && typeof total === 'number' && returned > 0 && next <= total ? next : undefined;
 }
 
-/** `download-options` per scene: available when any product of it is, its size the largest available product's. */
+/** The first product's `datasetId` (EarthExplorer's id of the dataset, M4; checked where it is stored), when one names it. */
+function datasetIdOf(products: readonly unknown[]): { datasetId?: string } {
+    const datasetId = products.map((product) => stringAt(product, 'datasetId')).find((id) => id !== undefined);
+    return datasetId === undefined ? {} : { datasetId };
+}
+
+/**
+ * `download-options` per scene: available when any product of it is, its size the largest available product's, and the
+ * dataset's EarthExplorer id its products carry.
+ */
 function toDownloadOptions(data: unknown, entityIds: readonly string[]): DownloadOption[] {
     const products = list(data);
     return entityIds.map((entityId) => {
-        const available = products.filter((product) => at(product, 'entityId') === entityId && at(product, 'available') === true);
+        const own = products.filter((product) => at(product, 'entityId') === entityId);
+        const available = own.filter((product) => at(product, 'available') === true);
         const bytes = Math.max(0, ...available.map((product) => Number(at(product, 'filesize') ?? 0)));
-        return { entityId, available: available.length > 0, bytes };
+        return { entityId, available: available.length > 0, bytes, ...datasetIdOf(own) };
+    });
+}
+
+/** `dataset-search`'s datasets as alias and EarthExplorer id (an entry without either is dropped). */
+function toDatasets(data: unknown): DatasetIds[] {
+    return list(data).flatMap((entry) => {
+        const alias = stringAt(entry, 'datasetAlias');
+        const datasetId = stringAt(entry, 'datasetId');
+        return alias === undefined || datasetId === undefined ? [] : [{ alias, datasetId }];
     });
 }
 
 /**
  * M2M scene search and download availability (`docs/research/M3-interfaces.md` §3.1–§3.2): `scene-search` over the
  * city's bounds (`mbr`), with the full metadata, a page at a time; `download-options` for whether a frame is already
- * scanned. The same failures as `createUsgsApi`'s; the API key goes in the `X-Auth-Token` header only.
+ * scanned; `dataset-search` for EarthExplorer's ids of the declassified datasets (M4: the order card's deep link). The
+ * same failures as `createUsgsApi`'s; the API key goes in the `X-Auth-Token` header only.
  */
 export function createUsgsScenes(options: UsgsOptions): UsgsScenes {
     return {
@@ -232,5 +253,6 @@ export function createUsgsScenes(options: UsgsOptions): UsgsScenes {
                 await m2mCall(options, 'download-options', { datasetName: dataset, entityIds: [...entityIds] }, apiKey),
                 entityIds,
             ),
+        datasets: async (apiKey) => toDatasets(await m2mCall(options, 'dataset-search', { datasetName: 'declass' }, apiKey)),
     };
 }

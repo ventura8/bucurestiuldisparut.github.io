@@ -19,6 +19,18 @@ const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 const MONTH_PATTERN = /^\d{4}-(?:0[1-9]|1[0-2])$/;
 const HISTORY_ENTRY_PATTERN = /^\d{13}-[A-Za-z0-9_-]{1,64}$/;
 
+/**
+ * M4: a notification event's id (`notificationEventId`): its kind, then one to four id parts separated by `~`
+ * (`order.reminder~bucharest~DS1105-1071DF076~7`), so the same event always gets the same id and is written once.
+ */
+export const NOTIFICATION_ID_PATTERN = /^[a-z][A-Za-z.]{2,30}(?:~[A-Za-z0-9_-]{1,64}){1,4}$/;
+
+/** M4: a push device's id: the first 32 hex digits of the SHA-256 of its FCM registration token. */
+export const PUSH_DEVICE_ID_PATTERN = /^[a-f0-9]{32}$/;
+
+/** M4: a reverse-geocoding cache cell (`geocodeCellKey`: the place rounded to 4 decimals, about 11 m). */
+export const GEOCODE_KEY_PATTERN = /^[ns]\d{1,6}_[ew]\d{1,7}$/;
+
 function isCityId(value: string): boolean {
     return CITY_ID_PATTERN.test(value);
 }
@@ -33,6 +45,7 @@ function segment(value: string, valid: (candidate: string) => boolean): string {
 const matching = (pattern: RegExp) => (value: string) => pattern.test(value);
 
 const cityPath = (cityId: string): string => `cities/${segment(cityId, isCityId)}`;
+const adminPath = (uid: string): string => `admins/${segment(uid, matching(UID_PATTERN))}`;
 const child = (cityId: string, collection: string, id: string): string => `${cityPath(cityId)}/${collection}/${segment(id, isId)}`;
 
 /** The subcollection of each audited entity under its city (the city itself is the `cities/{city}` document). */
@@ -118,12 +131,30 @@ export const FIRESTORE_PATHS = {
     historyEntry: (document: AuditedDocument, entryId: string) =>
         `${auditedDocumentPath(document)}/history/${segment(entryId, matching(HISTORY_ENTRY_PATTERN))}`,
     admins: 'admins',
-    admin: (uid: string) => `admins/${segment(uid, matching(UID_PATTERN))}`,
+    admin: adminPath,
+    /** M4 (docs/research/M4-interfaces.md §5): each admin's inbox, one item per notification event. */
+    inbox: (uid: string) => `${adminPath(uid)}/inbox`,
+    inboxItem: (uid: string, eventId: string) => `${adminPath(uid)}/inbox/${segment(eventId, matching(NOTIFICATION_ID_PATTERN))}`,
+    /** M4: what each admin wants pushed to their devices. */
+    notifySettings: (uid: string) => `${adminPath(uid)}/notify/settings`,
+    /** M4: the browsers an admin allowed to show notifications (their FCM registration tokens). */
+    pushDevices: (uid: string) => `${adminPath(uid)}/pushDevices`,
+    pushDevice: (uid: string, deviceId: string) => `${adminPath(uid)}/pushDevices/${segment(deviceId, matching(PUSH_DEVICE_ID_PATTERN))}`,
+    /** M4: the notification events the producers write once each, fanned out to every admin's inbox. */
+    notificationEvents: 'notificationEvents',
+    notificationEvent: (eventId: string) => `notificationEvents/${segment(eventId, matching(NOTIFICATION_ID_PATTERN))}`,
+    /** M4 (§4): the reverse-geocoding cache of `assist.suggestTitle`, one cell of about 11 m each. */
+    geocodeCells: 'assistGeocodes',
+    geocodeCell: (key: string) => `assistGeocodes/${segment(key, matching(GEOCODE_KEY_PATTERN))}`,
+    /** M4: the Nominatim cool-down after a refusal (`ops/assist`). */
+    assistState: 'ops/assist',
     invites: 'invites',
     invite: (inviteId: string) => `invites/${segment(inviteId, matching(SHA256_PATTERN))}`,
     setupStatus: 'setup/status',
     setupOwner: 'setup/owner',
     usage: (month: string) => `usage/mapbox-${segment(month, matching(MONTH_PATTERN))}`,
+    /** M4: the month's Vertex AI requests, tokens and cost (`assist.translateDraft`'s monthly cap). */
+    aiUsage: (month: string) => `usage/ai-${segment(month, matching(MONTH_PATTERN))}`,
     opsGuard: 'ops/guard',
     /** M3: the dispatcher's execution slots (CR-M3-47). */
     opsDispatch: 'ops/dispatch',

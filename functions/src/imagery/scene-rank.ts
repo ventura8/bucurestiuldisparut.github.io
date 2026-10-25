@@ -12,8 +12,11 @@ import { shownYears } from './versions.js';
 
 type RankDeps = Pick<Ports, 'documents' | 'clock'>;
 
-/** The scene's rank now: the city's target years, the years its layers and unfinished versions show (its own left out). */
-async function rankNow(deps: RankDeps, cityId: string, scene: UsgsSceneDoc): Promise<UsgsSceneDoc['rank']> {
+/**
+ * The scene's rank now: the city's target years, the years its layers and unfinished versions show (its own left out).
+ * M4: the order watch and `usgs.markOrdered` rank a scene again when USGS lists its download.
+ */
+export async function rankNow(deps: RankDeps, cityId: string, scene: UsgsSceneDoc): Promise<UsgsSceneDoc['rank']> {
     const city = await deps.documents.get(FIRESTORE_PATHS.city(cityId), cityDocSchema);
     const shown = await shownYears(deps.documents, cityId, scene.layerId);
     return rankScene(scene, { targetYears: imagerySettingsOf(city?.imagery).targetYears, layerYears: shown.map((each) => each.year) });

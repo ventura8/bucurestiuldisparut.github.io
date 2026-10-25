@@ -45,10 +45,22 @@ export interface DownloadOption {
     readonly entityId: string;
     readonly available: boolean;
     readonly bytes: number;
+    /** M4: EarthExplorer's own id of the scene's dataset (the products' `datasetId`), when M2M sends one. */
+    readonly datasetId?: string;
+}
+
+/** M4 (`docs/research/M4-interfaces.md` §1.6): a declassified dataset's M2M alias and EarthExplorer's own id of it. */
+export interface DatasetIds {
+    /** `corona2`, `declassii` or `declassiii`. */
+    readonly alias: string;
+    /** `5e839febdccb64b3`: what a scene's EarthExplorer page names. */
+    readonly datasetId: string;
 }
 
 export interface UsgsScenes {
     search(apiKey: string, request: SceneSearchRequest): Promise<SceneSearchPage>;
     /** `download-options`: whether each scene can be downloaded now, and its size. */
     downloadOptions(apiKey: string, dataset: string, entityIds: readonly string[]): Promise<readonly DownloadOption[]>;
+    /** M4: `dataset-search` for the declassified datasets (`declass`): each one's EarthExplorer id, read once per harvest. */
+    datasets(apiKey: string): Promise<readonly DatasetIds[]>;
 }

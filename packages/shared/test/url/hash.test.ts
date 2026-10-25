@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import type { BBox } from '../../src/geo/bbox.js';
-import { decodeHash, encodeHash, MAX_HASH_LENGTH, MAX_OVERLAY_ENTRIES, type HashState } from '../../src/url/hash.js';
+import {
+    decodeHash,
+    DEFAULT_COMPARE_POSITION,
+    encodeHash,
+    MAX_HASH_LENGTH,
+    MAX_OVERLAY_ENTRIES,
+    type HashState,
+} from '../../src/url/hash.js';
 
 const BUCHAREST: BBox = [
     [25.93, 44.33],
@@ -162,5 +169,47 @@ describe('decodeHash', () => {
 
     it.each([[''], ['#'], [`#14/44/26&layers=${'a,'.repeat(MAX_HASH_LENGTH)}`]])('badPath_emptyOrOversizedHash_isIgnored', (hash) => {
         expect(decodeHash(hash)).toEqual({ legacy: false });
+    });
+});
+
+/** Swipe compare in the hash (M4, scenario V06; docs/research/M4-interfaces.md §4.4). */
+describe('compare in the hash', () => {
+    it('happyPath_encodesTheComparedLayerAndTheDivider', () => {
+        expect(encodeHash({ layers: ['kh4-1966'], compare: { layer: 'kh9-1980', position: 0.25 }, lang: 'en' })).toBe(
+            '#layers=kh4-1966&cmp=kh9-1980&sw=25&lang=en',
+        );
+    });
+
+    it('happyPath_todayIsAnEmptyLayerAndTheMiddleNeedsNoDivider', () => {
+        expect(encodeHash({ compare: { layer: null, position: DEFAULT_COMPARE_POSITION } })).toBe('#cmp=');
+    });
+
+    it('badPath_anInvalidComparedLayerIsNeverEncoded', () => {
+        expect(encodeHash({ compare: { layer: '<b>', position: 0.3 }, lang: 'ro' })).toBe('#lang=ro');
+    });
+
+    it('happyPath_roundTripsTheEncoder', () => {
+        const state: HashState = { compare: { layer: 'kh4-1966', position: 1 } };
+
+        expect(decodeHash(encodeHash(state))).toEqual({ legacy: false, ...state });
+    });
+
+    it('happyPath_theDividerMayComeFirst', () => {
+        expect(decodeHash('#14/44.4/26.1&sw=10&cmp=').compare).toEqual({ layer: null, position: 0.1 });
+    });
+
+    it('happyPath_withoutTheDividerCompareOpensInTheMiddle', () => {
+        expect(decodeHash('#cmp=kh9-1980').compare).toEqual({ layer: 'kh9-1980', position: DEFAULT_COMPARE_POSITION });
+    });
+
+    it.each([
+        ['#sw=30', undefined],
+        ['#cmp=../x&sw=30', undefined],
+        ['#cmp=kh4&sw=250', { layer: 'kh4', position: 1 }],
+        ['#cmp=kh4&sw=-5', { layer: 'kh4', position: 0 }],
+        ['#cmp=kh4&sw=1e2', { layer: 'kh4', position: DEFAULT_COMPARE_POSITION }],
+        ['#cmp=kh4&cmp=bad layer', { layer: 'kh4', position: DEFAULT_COMPARE_POSITION }],
+    ])('badPath_%s_decodesToItsValidPartsOnly', (hash, compare) => {
+        expect(decodeHash(hash).compare).toEqual(compare);
     });
 });

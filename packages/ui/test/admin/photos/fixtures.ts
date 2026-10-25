@@ -98,6 +98,7 @@ export function photosState(overrides: Partial<PhotosViewState> = {}): PhotosVie
         confirm: null,
         report: null,
         busy: false,
+        assist: { titles: { status: 'idle', suggestions: [], attribution: null, error: null }, drafts: {} },
         ...overrides,
     };
 }

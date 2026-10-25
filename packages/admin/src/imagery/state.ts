@@ -11,6 +11,7 @@ import type { NoticeInput } from '../state/state.js';
 import type { BrowseImage } from './browse.js';
 import type { GuardView } from './guard.js';
 import { DEFAULT_FILTERS, type JobProgress, type SceneFilters, type SceneItem, type VersionItem } from './model.js';
+import { IDLE_ORDERS, type OrderActionsState } from './orders/actions.js';
 import { IDLE_SEARCH, type SearchState } from './search.js';
 import { IDLE_UPLOAD, type ChosenFile, type UploadState } from './upload.js';
 import type { VersionPageState } from './version.js';
@@ -24,7 +25,8 @@ export interface ImageryDetail {
     readonly id: string;
 }
 
-export interface ImageryState {
+/** M4 (`docs/research/M4-interfaces.md` §1.7): the order card's action and refusal (`OrderActionsState`). */
+export interface ImageryState extends OrderActionsState {
     readonly tab: ImageryTab;
     /** `setup/status.usgs.state` (null while reading): `missing` or `invalid` is the "set up USGS" state. */
     readonly usgs: ServiceState | null;
@@ -35,6 +37,8 @@ export interface ImageryState {
     readonly scenes: ListState<SceneItem>;
     /** The scenes the filters keep, in the list's order. */
     readonly visible: readonly SceneItem[];
+    /** M4: the scenes that have an order, whatever the filters. */
+    readonly orders: ListState<SceneItem>;
     readonly browse: Readonly<Record<string, BrowseImage>>;
     readonly versions: ListState<VersionItem>;
     /** The unfinished jobs by id (a version's job has the version's id). */
@@ -63,7 +67,7 @@ export const INITIAL_IMAGERY: ImageryState = {
     ...{ tab: 'find', usgs: null, settings: imagerySettingsOf(undefined), search: IDLE_SEARCH, filters: DEFAULT_FILTERS },
     ...{ scenes: LOADING_LIST, visible: [], browse: {}, versions: LOADING_LIST, jobs: {}, detail: null, version: null },
     ...{ importing: null, importRefusal: null, upload: IDLE_UPLOAD, map: 'none', previewOpacity: 0.8, pickedScene: null },
-    ...{ replaceLayer: null, guard: null, resuming: false },
+    ...{ replaceLayer: null, guard: null, resuming: false, orders: LOADING_LIST, ...IDLE_ORDERS },
 };
 
 export interface ImageryIntents {
@@ -99,4 +103,10 @@ export interface ImageryIntents {
     setPreviewOpacity(percent: number): void;
     attachMap(container: HTMLElement): void;
     zoomBy(delta: number): void;
+    /** M4: "I ordered it" (`usgs.markOrdered`); true once recorded. */
+    markOrdered(id: string): Promise<boolean>;
+    /** M4: "Check now" (`usgs.checkOrder`). */
+    checkOrder(id: string): Promise<boolean>;
+    /** M4: "Take the mark back" (`usgs.cancelOrder`). */
+    cancelOrder(id: string): Promise<boolean>;
 }

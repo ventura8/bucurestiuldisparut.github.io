@@ -22,9 +22,14 @@ import { PictureOverlays } from '../imagery/overlay.js';
 import type { CityFrame, MapStatus } from '../layers/map-session.js';
 import type { AdminMapFactory, AdminMapHandle, AdminMapResult } from '../map/factory.js';
 import type { GeoPosition } from './pairs.js';
+import type { SuggestionRow } from './suggestions.js';
 
 /** The pairs' colour on the map. */
 export const PAIR_COLOR = '#d81b60';
+
+/** The matcher's suggestions on the map (M4 §2.5): flags in their own colour, labelled `a1`, `a2`, … from zoom 16. */
+export const SUGGESTION_COLOR = '#8a5a00';
+export const SUGGESTIONS_OVERLAY_ID = 'georef-suggestions';
 
 export interface GeorefMapDeps {
     readonly maps: AdminMapFactory | null;
@@ -49,6 +54,7 @@ export class GeorefMap {
     #listeners: Unsubscribe[] = [];
     #pairs: readonly Gcp[] = [];
     #selected: string | null = null;
+    #suggestions: readonly SuggestionRow[] = [];
     #adding = false;
     /** Bumped by every attach and detach: a slower create of an older host is dropped. */
     #generation = 0;
@@ -95,6 +101,12 @@ export class GeorefMap {
         this.#loadPairs();
     }
 
+    /** The suggestions still to decide, the selected one first so its label is drawn on top. */
+    showSuggestions(rows: readonly SuggestionRow[], selected: string | null): void {
+        this.#suggestions = rows.toSorted((a, b) => Number(b.pair.id === selected) - Number(a.pair.id === selected));
+        this.#loadSuggestions();
+    }
+
     /** While adding pairs a click on the map is a place, not a selection: the points stand still. */
     setAdding(adding: boolean): void {
         this.#adding = adding;
@@ -112,6 +124,35 @@ export class GeorefMap {
         this.#handle?.destroy();
         this.#handle = null;
         this.#deps.status('none');
+    }
+
+    /** The suggestions as a POI-like overlay that clicks pass through (a click on the map stays a place). */
+    #loadSuggestions(): void {
+        const port = this.#handle?.port;
+        if (port === undefined) {
+            return;
+        }
+        const features = this.#suggestions.map((row) => {
+            const coordinates: [number, number] = [row.pair.geo.lng, row.pair.geo.lat];
+            return {
+                type: 'Feature' as const,
+                geometry: { type: 'Point' as const, coordinates },
+                properties: { id: row.pair.id, title: row.label },
+            };
+        });
+        port.addVectorOverlay(
+            {
+                id: SUGGESTIONS_OVERLAY_ID,
+                kind: 'poi',
+                features,
+                color: SUGGESTION_COLOR,
+                icon: 'flag',
+                visible: true,
+                opacity: 1,
+                clickable: false,
+            },
+            'top',
+        );
     }
 
     #loadPairs(): void {
@@ -189,6 +230,7 @@ export class GeorefMap {
         );
         draw.setMode(this.#adding ? 'static' : 'select');
         this.#loadPairs();
+        this.#loadSuggestions();
     }
 
     #changed(change: DrawChange): void {

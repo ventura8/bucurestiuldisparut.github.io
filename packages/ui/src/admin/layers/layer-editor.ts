@@ -18,8 +18,11 @@ import {
 } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
+import type { AssistViewPort } from '../assist/assist-port.js';
+import { draftAssist } from '../assist/assist-parts.js';
 import type { WhoPort } from '../editing/conflict.js';
 import { errorTemplate, loadingTemplate, reconnectingStatus } from '../editing/states.js';
+import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import { conflictBanner, field, issueAt, saveBar, saveStateOf, sliderRow, type FieldSpec } from './form-parts.js';
 import type { CropStatePort } from './geometry/crop-port.js';
@@ -50,6 +53,8 @@ export interface EditorContext {
     readonly who: WhoPort;
     /** M3 (CR-M3-7): the open Crop, or null. */
     readonly crop: CropStatePort | null;
+    /** M4 (CR-M4-4): the translation drafts of the open layer (null: no draft buttons). */
+    readonly assist: AssistViewPort | null;
 }
 
 /** The page's map, with the open layer drawn as saved and the draft's look previewed over it. */
@@ -69,15 +74,27 @@ function mapBox(context: EditorContext): TemplateResult {
     ></hcm-admin-map>`;
 }
 
-const TEXT_FIELDS: readonly {
-    readonly field: LayerTextFieldPort;
-    readonly key: Parameters<typeof contentText>[1];
-    readonly multiline?: boolean;
-}[] = [
-    { field: 'label.ro', key: 'adminContent.layers.labelRo' },
-    { field: 'label.en', key: 'adminContent.layers.labelEn' },
-    { field: 'description.ro', key: 'adminContent.layers.descriptionRo', multiline: true },
-    { field: 'description.en', key: 'adminContent.layers.descriptionEn', multiline: true },
+interface TextPair {
+    /** The pair's document field, also the field its draft fills. */
+    readonly field: 'label' | 'description';
+    readonly ro: { readonly name: LayerTextFieldPort; readonly key: Parameters<typeof contentText>[1] };
+    readonly en: { readonly name: LayerTextFieldPort; readonly key: Parameters<typeof contentText>[1] };
+    readonly multiline: boolean;
+}
+
+const TEXT_PAIRS: readonly TextPair[] = [
+    {
+        field: 'label',
+        ro: { name: 'label.ro', key: 'adminContent.layers.labelRo' },
+        en: { name: 'label.en', key: 'adminContent.layers.labelEn' },
+        multiline: false,
+    },
+    {
+        field: 'description',
+        ro: { name: 'description.ro', key: 'adminContent.layers.descriptionRo' },
+        en: { name: 'description.en', key: 'adminContent.layers.descriptionEn' },
+        multiline: true,
+    },
 ];
 
 /** The text a field shows: its value in the draft ('' when absent). */
@@ -114,16 +131,29 @@ function fieldSpec(
     };
 }
 
+/** M4 (CR-M4-4): the draft button of a pair, when the page has assists and intents. */
+function pairDraft(context: EditorContext, layer: LayerDoc, pair: TextPair): TemplateResult {
+    const { assist, intents } = context;
+    if (assist === null || intents === null) {
+        return EMPTY;
+    }
+    const text = { ro: textOf(layer, pair.ro.name), en: textOf(layer, pair.en.name) };
+    return draftAssist({ locale: context.locale, view: assist, actions: intents, field: pair.field, text, readOnly: context.readOnly });
+}
+
 function textsGroup(context: EditorContext, editor: LayerEditorPort, layer: LayerDoc): TemplateResult {
     const { locale } = context;
     const text = (name: LayerTextFieldPort, key: Parameters<typeof contentText>[1], extra: Partial<FieldSpec> = {}): TemplateResult =>
         field(locale, fieldSpec(context, editor, layer, { name, label: contentText(locale, key), ...extra }));
+    const pair = (spec: TextPair): TemplateResult => {
+        const extra = spec.multiline ? { multiline: true } : {};
+        return html`<div class="fields pairs">${text(spec.ro.name, spec.ro.key, extra)} ${text(spec.en.name, spec.en.key, extra)}</div>
+            ${pairDraft(context, layer, spec)}`;
+    };
     return html`<section class="group">
         <h3>${contentText(locale, 'adminContent.layers.texts')}</h3>
         <p class="note">${contentText(locale, 'adminContent.layers.englishFallback')}</p>
-        <div class="fields pairs">
-            ${TEXT_FIELDS.map((spec) => text(spec.field, spec.key, spec.multiline === true ? { multiline: true } : {}))}
-        </div>
+        ${TEXT_PAIRS.map(pair)}
         <div class="fields">
             ${text('attribution', 'adminContent.layers.attribution', { help: contentText(locale, 'adminContent.layers.attributionHelp') })}
             ${text('year', 'adminContent.layers.year', { inputMode: 'numeric', required: true })}

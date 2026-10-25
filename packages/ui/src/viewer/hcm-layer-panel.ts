@@ -5,6 +5,8 @@
  * layer. It is presentational: the list's `hcm-overlay-visibility` and `hcm-overlay-opacity` events bubble to
  * `<hcm-map-viewer>`, which updates the store (the map follows live, the hash on release). A city without historical
  * layers yet gets a note at the top, where the layers will be (below the photos and places it read as a footnote).
+ * With historical layers and a map, a Compare button below the list opens swipe compare (M4, V06), or closes it while
+ * the visitor compares: it fires `hcm-compare-toggle`, which the viewer turns into the store's compare action.
  */
 import { DEFAULT_LOCALE, overlayLabel, poiIcon, translate, type Locale, type Manifest, type Overlay } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
@@ -59,6 +61,8 @@ export class HcmLayerPanel extends LitElement {
         mode: { type: String },
         open: { type: Boolean },
         closable: { type: Boolean },
+        canCompare: { type: Boolean, attribute: 'can-compare' },
+        comparing: { type: Boolean },
     };
 
     static override readonly styles = [
@@ -91,6 +95,10 @@ export class HcmLayerPanel extends LitElement {
                 font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
                 color: var(--md-sys-color-on-surface-variant, GrayText);
             }
+
+            .compare {
+                align-self: flex-start;
+            }
         `,
     ];
 
@@ -101,6 +109,10 @@ export class HcmLayerPanel extends LitElement {
     declare open: boolean;
     /** False when the panel is always docked (extra-large): it has no close button. */
     declare closable: boolean;
+    /** The city has historical layers and the map is drawn: the Compare button shows (M4). */
+    declare canCompare: boolean;
+    /** The visitor compares: the button closes compare. */
+    declare comparing: boolean;
 
     constructor() {
         super();
@@ -110,6 +122,8 @@ export class HcmLayerPanel extends LitElement {
         this.mode = 'bottom';
         this.open = false;
         this.closable = true;
+        this.canCompare = false;
+        this.comparing = false;
     }
 
     override render(): TemplateResult {
@@ -142,10 +156,23 @@ export class HcmLayerPanel extends LitElement {
                 .shownText=${translate(locale, 'layers.shown')}
                 .hiddenText=${translate(locale, 'layers.hidden')}
             ></hcm-overlay-list>
+            ${this.#compareButton(locale)}
             <ul class="attribution">
                 ${attributionLines(this.overlays, manifest, locale).map((line) => html`<li>${line}</li>`)}
             </ul>
         </div>`;
+    }
+
+    #compareButton(locale: Locale): TemplateResult {
+        if (!this.canCompare) {
+            return EMPTY;
+        }
+        const onClick = (): void => {
+            this.dispatchEvent(new CustomEvent('hcm-compare-toggle', { bubbles: true, composed: true }));
+        };
+        return html`<hcm-button class="compare" variant="tonal" icon=${this.comparing ? 'close' : 'compare'} @click=${onClick}
+            >${translate(locale, this.comparing ? 'compare.close' : 'compare.open')}</hcm-button
+        >`;
     }
 }
 

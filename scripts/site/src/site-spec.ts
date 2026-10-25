@@ -11,7 +11,8 @@ import { SiteBuildError, issuesText } from './errors.js';
  * ```json
  * { "lang": "ro", "title": "București dispărut", "description": "…", "themeColor": "#8B5E3C",
  *   "noscript": { "ro": "…", "en": "…" },
- *   "manifest": "seed/bucharest/manifest.static.json", "legacyCityId": "bucuresti", "media": "seed/bucharest/derived" }
+ *   "manifest": "seed/bucharest/manifest.static.json", "legacyCityId": "bucuresti", "media": "seed/bucharest/derived",
+ *   "publicManifest": true }
  * ```
  */
 
@@ -41,6 +42,11 @@ const siteSpecSchema = z.strictObject({
     legacyCityId: z.string().regex(ID_PATTERN).optional(),
     /** Where the photo derivatives live, as `<photo id>/<file>` (the migration's `derived/` folder). */
     media: repositoryPath,
+    /**
+     * The page reads the manifest the admin publishes to the project's public bucket when the build names it
+     * (`HCM_PUBLIC_BUCKET`), and bundles `manifest` only without one (`public-manifest.ts`, DECISIONS-for-review.md §51e).
+     */
+    publicManifest: z.boolean().optional(),
 });
 
 export type SiteSpec = z.infer<typeof siteSpecSchema>;

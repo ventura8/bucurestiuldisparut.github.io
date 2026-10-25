@@ -34,6 +34,19 @@ export interface Toast {
     readonly params?: Readonly<Record<string, string>>;
 }
 
+/**
+ * Swipe compare (M4, scenario V06; docs/ENGINE_API.md → Compare): the historical layer the compared side shows (null:
+ * today) and the divider's settled place, from 0 (the compared side fills the map) to 1 (the main side does). A compact
+ * window shows it as a toggle on the one map: 0 shows the compared side, anything else the main one.
+ */
+export interface CompareView {
+    readonly layerId: string | null;
+    readonly position: number;
+}
+
+/** How compare shows: a second map behind a divider from 600 px wide, a toggle on the one map below. */
+export type CompareMode = 'swipe' | 'toggle';
+
 export interface ViewerState {
     readonly status: ViewerStatus;
     readonly error: ViewerError | null;
@@ -57,6 +70,8 @@ export interface ViewerState {
     readonly theme: ThemeMode;
     readonly consent: ConsentState;
     readonly toast: Toast | null;
+    /** Swipe compare, or null when the visitor does not compare (M4). */
+    readonly compare: CompareView | null;
 }
 
 const NO_VIEW: MapView = { center: [0, 0], zoom: 0, bearing: 0 };
@@ -80,6 +95,7 @@ export function initialState(locale: Locale, theme: ThemeMode, consent: ConsentS
         theme,
         consent,
         toast: null,
+        compare: null,
     };
 }
 
@@ -102,6 +118,7 @@ export function withManifest(state: ViewerState, manifest: Manifest): ViewerStat
         selectedPoiId: null,
         lightbox: false,
         sheet: 'none',
+        compare: null,
     };
 }
 
@@ -123,4 +140,31 @@ export function withYear(state: ViewerState, year: number | null): ViewerState {
 /** The overlay's label in the current language (`id` when the overlay is unknown). */
 export function overlayName(state: ViewerState, id: string): string {
     return findOverlay(state.overlays, id)?.label[state.locale] ?? id;
+}
+
+/** Compare's mode at the state's window class: a compact window toggles on its one map. */
+export function compareModeOf(state: Pick<ViewerState, 'windowClass'>): CompareMode {
+    return state.windowClass === 'compact' ? 'toggle' : 'swipe';
+}
+
+/** Whether `layerId` can be the compared side: today (null) or a historical layer of the manifest. */
+export function isCompareLayer(manifest: Manifest, layerId: string | null): boolean {
+    return layerId === null || manifest.layers.some((layer) => layer.id === layerId);
+}
+
+/** The overlays as the compared side shows them: the same photos and places, of the historical layers only `layerId`. */
+export function comparedOverlays(overlays: readonly Overlay[], layerId: string | null): readonly Overlay[] {
+    return withVisibleLayers(overlays, new Set(layerId === null ? [] : [layerId]));
+}
+
+/**
+ * What the viewer's map shows: the overlays, except while a compact window's toggle shows the compared side (position
+ * 0), when its historical layers are the compared side's.
+ */
+export function displayedOverlays(state: Pick<ViewerState, 'overlays' | 'compare' | 'windowClass'>): readonly Overlay[] {
+    const compare = state.compare;
+    if (compare === null || compare.position > 0 || compareModeOf(state) === 'swipe') {
+        return state.overlays;
+    }
+    return comparedOverlays(state.overlays, compare.layerId);
 }

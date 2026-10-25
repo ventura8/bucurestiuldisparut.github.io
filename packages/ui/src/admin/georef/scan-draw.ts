@@ -24,6 +24,9 @@ export interface ScanScene {
     readonly crosshair: boolean;
     /** The marker being dragged, at its pointer's place. */
     readonly dragged: ScanMarker | null;
+    /** M4: the matcher's suggestions, dashed and hollow, the selected one larger (`docs/research/M4-interfaces.md` §2.5). */
+    readonly suggestions?: readonly ScanMarker[];
+    readonly selectedSuggestion?: string | null;
 }
 
 interface Colours {
@@ -35,6 +38,7 @@ interface Colours {
 const RADIUS = 11;
 const SELECTED_RADIUS = 15;
 const CROSS = 12;
+const DASH: readonly number[] = [4, 3];
 
 function colours(canvas: HTMLCanvasElement): Colours {
     const style = getComputedStyle(canvas);
@@ -88,6 +92,24 @@ function marker(context: CanvasRenderingContext2D, scene: ScanScene, item: ScanM
     context.fillText(item.label, at.x, at.y);
 }
 
+/** A suggestion: a dashed ring in the outline colour with its label (`a1`), larger when it is selected. */
+function suggestion(context: CanvasRenderingContext2D, scene: ScanScene, item: ScanMarker, palette: Colours): void {
+    const at = scanToPane(scene.view, item.pixel, scene.previewScale);
+    const selected = item.id === scene.selectedSuggestion;
+    context.beginPath();
+    context.arc(at.x, at.y, selected ? SELECTED_RADIUS : RADIUS, 0, Math.PI * 2);
+    context.setLineDash([...DASH]);
+    context.lineWidth = selected ? 3 : 2;
+    context.strokeStyle = palette.outline;
+    context.stroke();
+    context.setLineDash([]);
+    context.fillStyle = palette.outline;
+    context.font = '600 11px sans-serif';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(item.label, at.x, at.y);
+}
+
 function cross(context: CanvasRenderingContext2D, at: Point, colour: string): void {
     context.beginPath();
     context.moveTo(at.x - CROSS, at.y);
@@ -116,6 +138,16 @@ function image(context: CanvasRenderingContext2D, scene: ScanScene, ratio: numbe
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
 }
 
+/** The suggestions (dashed, under) and the pairs (over them), the dragged one at its pointer. */
+function markers(context: CanvasRenderingContext2D, scene: ScanScene, palette: Colours): void {
+    for (const item of scene.suggestions ?? []) {
+        suggestion(context, scene, item, palette);
+    }
+    for (const item of placed(scene)) {
+        marker(context, scene, item, palette);
+    }
+}
+
 export function drawScan(canvas: HTMLCanvasElement, scene: ScanScene): void {
     const ratio = Math.max(globalThis.devicePixelRatio, 1);
     const context = sized(canvas, ratio);
@@ -124,9 +156,7 @@ export function drawScan(canvas: HTMLCanvasElement, scene: ScanScene): void {
     }
     const palette = colours(canvas);
     image(context, scene, ratio);
-    for (const item of placed(scene)) {
-        marker(context, scene, item, palette);
-    }
+    markers(context, scene, palette);
     if (scene.half !== null) {
         cross(context, scanToPane(scene.view, scene.half, scene.previewScale), palette.marker);
     }

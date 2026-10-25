@@ -105,6 +105,12 @@ export interface MapOptions {
 export type MapErrorKind = 'style' | 'source' | 'tile' | 'webgl' | 'unknown';
 
 export interface MapEventMap {
+    /**
+     * The camera moved (M4, swipe compare's camera sync; docs/research/M4-interfaces.md §3.4): Mapbox's own `move`, which
+     * it fires once per rendered frame while the camera moves, with the view of that frame. Forwarded at once, not a frame
+     * later, so a map that follows another draws the same camera in the same frame.
+     */
+    move: MapView;
     moveend: MapView;
     error: { readonly kind: MapErrorKind; readonly layerId?: string; readonly message: string };
     webglcontextlost: undefined;

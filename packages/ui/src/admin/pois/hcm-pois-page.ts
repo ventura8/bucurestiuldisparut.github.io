@@ -208,6 +208,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         const value = editor.draft?.value ?? null;
         return html`<hcm-poi-editor
             .editor=${editor}
+            .assist=${view.assist}
             .categories=${view.categories.items}
             .photos=${view.photos?.items ?? []}
             .intents=${this.intents}

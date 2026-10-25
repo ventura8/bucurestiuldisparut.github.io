@@ -1,56 +1,38 @@
-"""Automatic GCPs (docs/research/M3-interfaces.md §5.6): the scan matched against the Sentinel-2 reference.
+"""Automatic GCPs (docs/research/M4-interfaces.md §2.1; M3-interfaces.md §5.6): the scan against Sentinel-2 and OSM.
 
 1. The scan is pre-warped with the current transform onto the reference grid, so scale and rotation are mostly gone.
-2. Both are enhanced with CLAHE.
-3. Coarse to fine over three levels (1/4, 1/2, 1 of the reference's 10 m): the pre-warped scan is cut into an 8 x 8
-   grid; per cell, SIFT features are matched against the reference's within a search window (± 400 m at the
-   coarsest level, halved per level) with Lowe's ratio 0.75; a cell without one falls back to the normalized
-   cross-correlation of its centre patch.
-4. RANSAC (`cv2.estimateAffine2D`, 3 px, confidence 0.999, 5,000 iterations, seeded) keeps the inliers, at most
-   two per cell so the pairs spread; each level's pairs refit the transform the next level pre-warps with.
-5. Each kept pair goes back to scan pixels through the pre-warp's inverse: a GCP with `origin: 'auto'` and a
-   `score` (the ratio margin, or the correlation peak, times the RANSAC inlier share).
+2. Two channels (`MATCH_CHANNELS`): `s2`, the Sentinel-2 window in grey, and `osm`, OpenStreetMap's lines as a
+   proximity field (`tiles.py`); a window without one runs on the other.
+3. Coarse to fine over three levels (1/4, 1/2, 1 of the reference's 10 m), the pre-warped scan cut into an 8 x 8 grid:
+   on `s2`, SIFT features (or ORB, `features.py`) matched per cell within the search window (± 400 m at the coarsest
+   level, halved per level), a cell without a match falling back to its tile's correlation; on `osm`, every cell's
+   tile of the scan's lines correlated with the proximity field.
+4. RANSAC over both channels keeps the inliers, scored and at most two per cell (`consensus.py`); each level's pairs
+   refit the transform the next level pre-warps with.
+5. Each kept pair goes back to scan pixels through the pre-warp's inverse: a GCP with `origin: 'auto'` and its
+   confidence as `score`; `autogcp.decide` then splits them into the fit and the suggestions.
 """
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Final
 
 import cv2
 import numpy
-from numpy.typing import NDArray
 
-from hcm_pipeline.geo import FloatArray, Grid, to_lnglat_arrays
-from hcm_pipeline.georef.transforms import Gcp, fit_transform, spread_share
+from hcm_pipeline.geo import FloatArray, Grid, ground_scale, to_lnglat, to_lnglat_arrays
+from hcm_pipeline.georef.autogcp import MATCH_CHANNELS, AutoPair, transform_kind
+from hcm_pipeline.georef.consensus import Candidate, Scored, consensus
+from hcm_pipeline.georef.features import CELLS, BoolArray, CellMatcher, Method, choose, detect
+from hcm_pipeline.georef.tiles import TileMatcher, lines, lines_at, proximity
+from hcm_pipeline.georef.transforms import Gcp, fit_transform
 from hcm_pipeline.images import UInt8Array, as_uint8, enhance, resize
 
 PixelMap = Callable[[FloatArray, FloatArray], tuple[FloatArray, FloatArray]]
-BoolArray = NDArray[numpy.bool_]
 
 LEVELS: Final = ((4, 400.0), (2, 200.0), (1, 100.0))
-CELLS: Final = 8
-RATIO: Final = 0.75
-RANSAC_PX: Final = 3.0
-RANSAC_CONFIDENCE: Final = 0.999
-RANSAC_ITERATIONS: Final = 5000
-PER_CELL: Final = 2
-PATCH_PX: Final = 24
-MIN_CORRELATION: Final = 0.6
-MIN_RANSAC: Final = 3
 MAX_AUTO_GCPS: Final = 200
-MIN_AFFINE_PAIRS: Final = 6
-MIN_POLY2_PAIRS: Final = 12
-WELL_SPREAD: Final = 0.25
-
-
-@dataclass(frozen=True)
-class Candidate:
-    """A match on one level: a point of the pre-warped scan and its point in the reference (grid pixels)."""
-
-    cell: int
-    scan: tuple[float, float]
-    reference: tuple[float, float]
-    score: float
+ERODE_PX: Final = 5
 
 
 @dataclass(frozen=True)
@@ -59,6 +41,47 @@ class Scan:
 
     pixels: UInt8Array
     resolution: float
+
+
+@dataclass(frozen=True)
+class References:
+    """What the scan is matched against, on the 10 m reference grid: Sentinel-2 in grey and the drawn OSM lines."""
+
+    grid: Grid
+    s2: UInt8Array | None = None
+    osm: UInt8Array | None = None
+
+    @property
+    def channels(self) -> tuple[str, ...]:
+        """The channels that can run: `s2` with an image, `osm` with at least one line."""
+        present = {"s2": self.s2 is not None, "osm": self.osm is not None and bool(self.osm.any())}
+        return tuple(channel for channel in MATCH_CHANNELS if present[channel])
+
+
+@dataclass
+class Tiles:
+    """Matching tiles that gave a candidate, of the tiles tried, per channel."""
+
+    matched: dict[str, int] = field(default_factory=dict)
+    tried: dict[str, int] = field(default_factory=dict)
+
+    def count(self, channel: str, found: bool) -> None:
+        self.tried[channel] = self.tried.get(channel, 0) + 1
+        self.matched[channel] = self.matched.get(channel, 0) + int(found)
+
+    @property
+    def total(self) -> tuple[int, int]:
+        return sum(self.matched.values()), sum(self.tried.values())
+
+
+@dataclass(frozen=True)
+class MatchResult:
+    """The pairs of the finest level that could refit the transform (else of the finest level), and how they came."""
+
+    method: str
+    channels: tuple[str, ...]
+    pairs: tuple[AutoPair, ...]
+    tiles: Tiles
 
 
 def _shrunk(scan: Scan, resolution: float) -> tuple[UInt8Array, float]:
@@ -83,161 +106,142 @@ def prewarp(scan: Scan, to_pixel: PixelMap, grid: Grid) -> tuple[UInt8Array, Boo
     return as_uint8(warped), inside
 
 
-def _keypoints(image: UInt8Array, mask: BoolArray | None) -> tuple[FloatArray, NDArray[numpy.float32]]:
-    sift = cv2.SIFT.create()
-    found, descriptors = sift.detectAndCompute(image, None if mask is None else mask.astype(numpy.uint8))
-    points = numpy.array([point.pt for point in found], numpy.float64).reshape(-1, 2) + 0.5
-    return points, numpy.asarray(descriptors if descriptors is not None else numpy.zeros((0, 128)), numpy.float32)
-
-
-def _cell_of(points: FloatArray, width: int, height: int) -> NDArray[numpy.int64]:
-    cx = numpy.clip((points[:, 0] / width * CELLS).astype(numpy.int64), 0, CELLS - 1)
-    cy = numpy.clip((points[:, 1] / height * CELLS).astype(numpy.int64), 0, CELLS - 1)
-    return cy * CELLS + cx
+def _eroded(inside: BoolArray) -> BoolArray:
+    """The covered mask without its rim (the pre-warp's edge is not a feature)."""
+    return numpy.asarray(cv2.erode(inside.astype(numpy.uint8), numpy.ones((ERODE_PX, ERODE_PX), numpy.uint8)).astype(bool))
 
 
 @dataclass(frozen=True)
-class _Features:
-    points: FloatArray
-    descriptors: NDArray[numpy.float32]
+class _LevelImages:
+    """One level: its grid, the CLAHE'd pre-warped scan and its mask, the references and the search reach."""
+
+    grid: Grid
+    scan: UInt8Array
+    mask: BoolArray
+    s2: UInt8Array | None
+    osm: UInt8Array | None
+    search_px: float
+
+    def tiles(self, channel: str, scan: UInt8Array, reference: UInt8Array) -> TileMatcher:
+        return TileMatcher(channel, scan, reference, self.mask, self.search_px, self.grid.resolution)
 
 
-def _passing(pair: Sequence[cv2.DMatch], scan: _Features, reference: _Features, search_px: float) -> tuple[int, int, float] | None:
-    """The pair's best match when it passes Lowe's ratio and lies within the search window."""
-    best, second = pair[0], pair[1]
-    shift = float(numpy.hypot(*(scan.points[best.queryIdx] - reference.points[best.trainIdx])))
-    passes = best.distance < RATIO * second.distance and shift <= search_px
-    return (best.queryIdx, best.trainIdx, 1.0 - best.distance / max(second.distance, 1e-9)) if passes else None
-
-
-def _enough(scan: _Features, reference: _Features) -> bool:
-    return len(scan.points) > 0 and len(reference.points) >= PER_CELL
-
-
-def _ratio_matches(scan: _Features, reference: _Features, search_px: float) -> list[tuple[int, int, float]]:
-    """(scan index, reference index, ratio margin) of the matches that pass Lowe's ratio within the search window."""
-    pairs = cv2.BFMatcher(cv2.NORM_L2).knnMatch(scan.descriptors, reference.descriptors, k=PER_CELL) if _enough(scan, reference) else []
-    return [found for found in (_passing(pair, scan, reference, search_px) for pair in pairs) if found is not None]
-
-
-def _near(points: FloatArray, centre: tuple[float, float], radius: float) -> BoolArray:
-    return (numpy.abs(points[:, 0] - centre[0]) <= radius) & (numpy.abs(points[:, 1] - centre[1]) <= radius)
-
-
-def _cell_box(cell: int, width: int, height: int) -> tuple[float, float, float]:
-    """A cell's centre and half size (the larger side), in grid pixels."""
-    row, column = divmod(cell, CELLS)
-    cell_w, cell_h = width / CELLS, height / CELLS
-    return (column + 0.5) * cell_w, (row + 0.5) * cell_h, max(cell_w, cell_h) / 2
-
-
-def _sift_cell(cell: int, scan: _Features, reference: _Features, size: tuple[int, int], search_px: float) -> list[Candidate]:
-    cx, cy, half = _cell_box(cell, *size)
-    mine = numpy.flatnonzero(_cell_of(scan.points, *size) == cell)
-    theirs = numpy.flatnonzero(_near(reference.points, (cx, cy), half + search_px))
-    local_scan = _Features(scan.points[mine], scan.descriptors[mine])
-    local_reference = _Features(reference.points[theirs], reference.descriptors[theirs])
-    return [
-        Candidate(cell, tuple(local_scan.points[i]), tuple(local_reference.points[j]), margin)
-        for i, j, margin in _ratio_matches(local_scan, local_reference, search_px)
-    ]
-
-
-def _correlate_cell(cell: int, warped: UInt8Array, reference: UInt8Array, search_px: float) -> list[Candidate]:
-    """The cell's centre patch found in the reference by normalized cross-correlation (the SIFT fallback)."""
-    height, width = warped.shape
-    cx, cy, _ = _cell_box(cell, width, height)
-    x0, y0 = int(cx) - PATCH_PX // 2, int(cy) - PATCH_PX // 2
-    reach = int(search_px)
-    if min(x0 - reach, y0 - reach) < 0 or max(x0 + PATCH_PX + reach - width, y0 + PATCH_PX + reach - height) > 0:
+def _tile(matcher: TileMatcher, cell: int, tiles: Tiles) -> list[Candidate]:
+    """The cell's tile in one channel, counted when it was tried."""
+    if not matcher.tried(cell):
         return []
-    patch = warped[y0 : y0 + PATCH_PX, x0 : x0 + PATCH_PX]
-    area = reference[y0 - reach : y0 + PATCH_PX + reach, x0 - reach : x0 + PATCH_PX + reach]
-    _, peak, _, (best_x, best_y) = cv2.minMaxLoc(cv2.matchTemplate(area, patch, cv2.TM_CCOEFF_NORMED))
-    if peak < MIN_CORRELATION or float(patch.std()) == 0.0:
+    found = matcher.match(cell)
+    tiles.count(matcher.channel, found is not None)
+    return [] if found is None else [Candidate(cell, found.scan, found.reference, found.margin, matcher.channel)]
+
+
+def _s2_candidates(images: _LevelImages, method: Method, tiles: Tiles) -> list[Candidate]:
+    """Feature matches per cell on `s2`; a cell without one falls back to its tile."""
+    if images.s2 is None:
         return []
-    centre = (x0 + PATCH_PX / 2, y0 + PATCH_PX / 2)
-    return [Candidate(cell, centre, (centre[0] + best_x - reach, centre[1] + best_y - reach), float(peak))]
-
-
-def _level_candidates(warped: UInt8Array, inside: BoolArray, reference: UInt8Array, search_px: float) -> list[Candidate]:
-    mask = cv2.erode(inside.astype(numpy.uint8), numpy.ones((5, 5), numpy.uint8)).astype(bool)
-    scan_features, reference_features = _Features(*_keypoints(warped, mask)), _Features(*_keypoints(reference, None))
-    size = (warped.shape[1], warped.shape[0])
+    size = (images.grid.width, images.grid.height)
+    cells = CellMatcher(method, detect(method, images.scan, images.mask), detect(method, images.s2, None), size, images.search_px)
+    fallback = images.tiles("s2", images.scan, images.s2)
     found: list[Candidate] = []
     for cell in range(CELLS * CELLS):
-        found += _sift_cell(cell, scan_features, reference_features, size, search_px) or _correlate_cell(cell, warped, reference, search_px)
+        matches = [Candidate(cell, match.scan, match.reference, match.margin, "s2") for match in cells.matches(cell)]
+        found += matches or _tile(fallback, cell, tiles)
     return found
 
 
-def _points(candidates: list[Candidate]) -> tuple[NDArray[numpy.float32], NDArray[numpy.float32]]:
-    source = numpy.array([candidate.scan for candidate in candidates], numpy.float32)
-    return source, numpy.array([candidate.reference for candidate in candidates], numpy.float32)
-
-
-def _inliers(candidates: list[Candidate]) -> list[Candidate]:
-    """The candidates RANSAC keeps under one affine map (none when there are too few to try)."""
-    if len(candidates) < MIN_RANSAC:
+def _osm_candidates(images: _LevelImages, tiles: Tiles) -> list[Candidate]:
+    """Every cell's tile of the scan's lines against the OSM proximity field."""
+    if images.osm is None:
         return []
-    _, inliers = cv2.estimateAffine2D(
-        *_points(candidates), method=cv2.RANSAC, ransacReprojThreshold=RANSAC_PX, maxIters=RANSAC_ITERATIONS, confidence=RANSAC_CONFIDENCE
-    )
-    flags = numpy.ravel(inliers).astype(bool).tolist() if inliers is not None else [False] * len(candidates)
-    return [candidate for candidate, kept in zip(candidates, flags, strict=True) if kept]
+    matcher = images.tiles("osm", lines(images.scan, images.grid.resolution), images.osm)
+    return [candidate for cell in range(CELLS * CELLS) for candidate in _tile(matcher, cell, tiles)]
 
 
-def _consensus(candidates: list[Candidate]) -> list[Candidate]:
-    """The RANSAC inliers, at most two per cell (the best scores), each scored times the inlier share."""
-    kept = _inliers(candidates)
-    share = len(kept) / max(1, len(candidates))
-    best: dict[int, list[Candidate]] = {}
-    for candidate in sorted(kept, key=lambda entry: -entry.score):
-        best.setdefault(candidate.cell, []).append(Candidate(candidate.cell, candidate.scan, candidate.reference, candidate.score * share))
-    return [candidate for cell in sorted(best) for candidate in best[cell][:PER_CELL]]
+def _level_images(scan: Scan, to_pixel: PixelMap, references: References, level: tuple[Grid, float]) -> _LevelImages:
+    grid, search_m = level
+    warped, inside = prewarp(scan, to_pixel, grid)
+    size = (grid.width, grid.height)
+    s2 = None if "s2" not in references.channels or references.s2 is None else enhance(resize(references.s2, size))
+    osm = None if "osm" not in references.channels or references.osm is None else proximity(lines_at(references.osm, size), grid.resolution)
+    return _LevelImages(grid, enhance(warped), _eroded(inside), s2, osm, search_m / grid.resolution)
 
 
-def _to_gcps(pairs: list[Candidate], to_pixel: PixelMap, grid: Grid) -> list[Gcp]:
+def metres_per_px(grid: Grid) -> float:
+    """Ground metres per pixel of `grid` at its centre."""
+    _, lat = to_lnglat(grid.left + grid.width * grid.resolution / 2, grid.top - grid.height * grid.resolution / 2)
+    return grid.resolution * ground_scale(lat)
+
+
+def _to_pairs(kept: Sequence[Scored], to_pixel: PixelMap, grid: Grid) -> list[AutoPair]:
     """The pairs as GCPs: the pre-warped point back to scan pixels, the reference point to WGS84."""
-    if not pairs:
+    if not kept:
         return []
-    scan_u, scan_v = numpy.array([pair.scan for pair in pairs]).T
-    ref_u, ref_v = numpy.array([pair.reference for pair in pairs]).T
+    scan_u, scan_v = numpy.array([pair.candidate.scan for pair in kept]).T
+    ref_u, ref_v = numpy.array([pair.candidate.reference for pair in kept]).T
     px, py = to_pixel(*grid.to_mercator(scan_u, scan_v))
     lng, lat = to_lnglat_arrays(*grid.to_mercator(ref_u, ref_v))
     return [
-        Gcp(f"a{index:03d}", float(x), float(y), float(la), float(lo), True, "auto", min(1.0, max(0.0, pair.score)))
-        for index, (pair, x, y, la, lo) in enumerate(zip(pairs, px, py, lat, lng, strict=True), start=1)
+        AutoPair(
+            Gcp(f"t{index}", float(x), float(y), float(la), float(lo), True, "auto", pair.score),
+            pair.candidate.cell,
+            pair.candidate.channel,
+        )
+        for index, (pair, x, y, la, lo) in enumerate(zip(kept, px, py, lat, lng, strict=True), start=1)
     ]
 
 
-def _spread(gcps: list[Gcp]) -> float:
-    return spread_share(numpy.array([gcp.x for gcp in gcps]), numpy.array([gcp.y for gcp in gcps])) if gcps else 0.0
+def _inside_scan(pairs: list[AutoPair], width: int, height: int) -> list[AutoPair]:
+    return [pair for pair in pairs if 0 <= pair.gcp.x <= width and 0 <= pair.gcp.y <= height]
 
 
-def transform_kind(gcps: list[Gcp]) -> str | None:
-    """`poly2` from 12 well-spread pairs, `affine` from 6, None below (the thin-plate spline is never chosen here)."""
-    if len(gcps) >= MIN_POLY2_PAIRS and _spread(gcps) >= WELL_SPREAD:
-        return "poly2"
-    return "affine" if len(gcps) >= MIN_AFFINE_PAIRS else None
+@dataclass(frozen=True)
+class _Matching:
+    scan: Scan
+    references: References
+    method: Method
 
 
-def _inside_scan(gcps: list[Gcp], width: int, height: int) -> list[Gcp]:
-    return [gcp for gcp in gcps if 0 <= gcp.x <= width and 0 <= gcp.y <= height]
+def _level(matching: _Matching, to_pixel: PixelMap, factor: int, search_m: float) -> tuple[list[AutoPair], Tiles]:
+    """One level's pairs (inside the scan) and its tiles."""
+    grid = matching.references.grid.scaled(factor)
+    images = _level_images(matching.scan, to_pixel, matching.references, (grid, search_m))
+    tiles = Tiles()
+    candidates = _s2_candidates(images, matching.method, tiles) + _osm_candidates(images, tiles)
+    height, width = matching.scan.pixels.shape
+    return _inside_scan(_to_pairs(consensus(candidates, metres_per_px(grid)), to_pixel, grid), width, height), tiles
 
 
-def match(scan: Scan, initial: PixelMap, reference: UInt8Array, grid: Grid) -> list[Gcp]:
-    """Automatic GCPs of the scan against the reference on `grid`, coarse to fine; fewer than 6 when it fails."""
-    to_pixel, gcps = initial, []
-    height, width = scan.pixels.shape
+def _method(scan: Scan, initial: PixelMap, references: References) -> Method:
+    """SIFT, or ORB when SIFT finds too few keypoints on the scan pre-warped onto the finest grid."""
+    warped, inside = prewarp(scan, initial, references.grid)
+    return choose(enhance(warped), _eroded(inside))
+
+
+def _refit(pairs: Sequence[AutoPair]) -> PixelMap | None:
+    """The transform a level's pairs give for the next pre-warp (None when they are too few or degenerate)."""
+    gcps = [pair.gcp for pair in pairs]
+    kind = transform_kind(gcps)
+    refit = fit_transform(kind, gcps) if kind is not None else None
+    return None if refit is None else refit.to_pixel
+
+
+def _coarse_to_fine(matching: _Matching, initial: PixelMap) -> tuple[list[AutoPair], Tiles]:
+    """The pairs of the finest level that refit the transform, else those of the finest level."""
+    to_pixel, best = initial, None
+    last: tuple[list[AutoPair], Tiles] = ([], Tiles())
     for factor, search_m in LEVELS:
-        level = grid.scaled(factor)
-        warped, inside = prewarp(scan, to_pixel, level)
-        pairs = _consensus(
-            _level_candidates(enhance(warped), inside, enhance(resize(reference, (level.width, level.height))), search_m / level.resolution)
-        )
-        found = _inside_scan(_to_gcps(pairs, to_pixel, level), width, height)
-        kind = transform_kind(found)
-        refit = fit_transform(kind, found) if kind is not None else None
+        last = _level(matching, to_pixel, factor, search_m)
+        refit = _refit(last[0])
         if refit is not None:
-            to_pixel, gcps = refit.to_pixel, found
-    return sorted(gcps, key=lambda gcp: -(gcp.score or 0.0))[:MAX_AUTO_GCPS]
+            to_pixel, best = refit, last
+    return best or last
+
+
+def match(scan: Scan, initial: PixelMap, references: References) -> MatchResult:
+    """Automatic pairs of the scan against the references, coarse to fine (none when nothing matches)."""
+    if not references.channels:
+        raise ValueError("the matcher needs a Sentinel-2 image or OpenStreetMap lines")
+    matching = _Matching(scan, references, _method(scan, initial, references))
+    pairs, tiles = _coarse_to_fine(matching, initial)
+    strongest = sorted(pairs, key=lambda pair: -(pair.gcp.score or 0.0))[:MAX_AUTO_GCPS]
+    return MatchResult(matching.method.name, references.channels, tuple(strongest), tiles)

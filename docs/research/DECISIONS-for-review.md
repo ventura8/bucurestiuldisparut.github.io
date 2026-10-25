@@ -915,7 +915,7 @@ promise of the consent banner ("Anonymous statistics") and of `analytics.ts` ("n
 - Verify (option 1): `PIPELINE_STAGE=tests` (the analytics unit tests), `PIPELINE_STAGE=e2e` with
   `S-V19-HAPPY` (no `firebaselogging` request after consent), then `PIPELINE_STAGE=build` (bundle budget).
 
-### 18b. Subresource Integrity for the swipe-compare plugin (M4) — NOT APPLIED: waits for V06 (M4) by its own text
+### 18b. Subresource Integrity for the swipe-compare plugin (M4) — SUPERSEDED 2026-10-24: the user decided on an own swipe compare, no plugin to load (§52a)
 
 `packages/engine/src/map/compare.ts` loads `mapbox-gl-compare` 0.6.0 from `api.mapbox.com` with `crossorigin` but no
 `integrity`, while the page loads Mapbox GL JS itself with one. Nothing calls it before V06 (M4). When V06 lands, give
@@ -3162,7 +3162,7 @@ tables).
 
 Verify: `PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh`, `PIPELINE_STAGE=build …`, `bash scripts/ci/e2e-split.sh`.
 
-## 51. The local stack for manual testing and the manual test plan (2026-10-24) — 51a–51d APPLIED (tooling and test-world changes; no configuration of the ask-first kinds, no gate relaxed); 51e recorded for the user
+## 51. The local stack for manual testing and the manual test plan (2026-10-24) — 51a–51d APPLIED (tooling and test-world changes; no configuration of the ask-first kinds, no gate relaxed); 51e APPLIED 2026-10-24 as a PLAN alignment (§55a)
 
 Before the owner and Claude test the product by hand "from the top", one command now starts the e2e world for a
 person's browser (`npm run dev:stack`, `docs/SETUP.md` → *Local stack for manual testing*), and
@@ -3190,10 +3190,419 @@ commands. These are the choices in it the user may want to change:
   and `S-A21-BAD-UNSUPPORTED-LANGUAGE`, `packages/ui/test/admin/shell/shell.test.ts`); run again on 2026-10-24 at
   `admin-l1440-ro` and `admin-c360-ro` (8 passed with the harness's consent specs). The live admin shows it after the
   next Hosting deploy (the plan's D1, ask first).
-- **51e For the user**: the public site's `config.js` reads the manifest the site build bundles from
-  `seed/bucharest/manifest.static.json`, not the public bucket's `cities/bucharest/manifest.json` the admin publishes;
-  until that changes (with the page's CSP), the Pages go-live shows the legacy snapshot (the plan's V0). And the Claude
-  browser pane on this machine has no WebGL: the plan runs its map items in Chrome.
+- **51e APPLIED 2026-10-24 (a PLAN alignment, §55a)**: the public site's `config.js` read the manifest the site build
+  bundled from `seed/bucharest/manifest.static.json`, not the public bucket's `cities/bucharest/manifest.json` the admin
+  publishes; a build that names the bucket (`HCM_PUBLIC_BUCKET`) now serves the bucket's, with the page's CSP, and the
+  seed snapshot stays only for a build without one. The Claude browser pane on this machine has no WebGL: the plan runs
+  its map items in Chrome.
 
 Verify: `bash scripts/dev/dev-stack.sh` then `bash scripts/dev/dev-stack.sh check` (`[SUCCESS] the local stack works`),
 `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`, `PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh`.
+
+## 52. The M4 contracts and the user's decisions of 2026-10-23 (2026-10-24) — 52a–52d APPLIED (the user's decisions: 52a in this change, 52b in the contract, 52c and 52d by the tooling workstream); 52e recorded for the user; 52f and 52g PROPOSED, NOT APPLIED
+
+The M4 contracts agent wrote `docs/research/M4-interfaces.md` alone before the five M4 workstreams (orders, autogcp,
+compare, assists-notify, tooling). No lint, tool, workflow or gitleaks configuration changed, no gate was relaxed, no
+checker allowlist entry was added, and nothing was downloaded.
+
+- **52a APPLIED: swipe compare is our own implementation, not `mapbox-gl-compare`** (the user, 2026-10-23). Removed in
+  this change: `packages/ui/src/map/compare.ts` (the plugin loader with its integrity check), its test, its five exports
+  from `@hcm/ui/map`, the `MapboxCompare` types and `mapboxgl.Compare` (`packages/ui/src/map/mapbox-types.ts`, the
+  `FakeMapboxGl` of `@hcm/test-support`). Superseded with it: §18b (Subresource Integrity for the plugin), the plugin
+  part of §42f and of §13d's CSP note, and the open item of `docs/research/M2-status.md` (installing
+  `mapbox-gl-compare@0.6.0` to compute its digests: no download is needed any more). The contract: M4-interfaces §3 (a
+  lazy chunk of the engine with its own budget, the second map created on demand and destroyed on exit, a MapPort `move`
+  event for the camera sync, a keyboard and screen-reader divider, each side's overlay opacity, a toggle on compact
+  windows, `cmp=` and `sw=` in the hash, which this change built in `packages/shared/src/url/hash.ts`).
+- **52b APPLIED: Romanian ↔ English drafts through Vertex AI Gemini, server-side, as PLAN says** (the user, 2026-10-23:
+  the paid EEA tier, under 0.05 USD a month; the API turned on by the app's Provision step; drafts never published
+  automatically). The contract: M4-interfaces §4.3 and §4.4: `assist.translateDraft` (admin, App Check `enforce`) calls
+  `generateContent` on the pinned `VERTEX_MODEL_ID` (`gemini-2.5-flash-lite`, **UNVERIFIED** that Google still serves it
+  until the setup self-test's free `countTokens` check runs) with the pinned prompt (`TRANSLATION_PROMPT_VERSION` 1), the
+  answer is plain text (`sanitizeDraft`) within the field's limit, a monthly cap (`AI_MONTHLY_CAP`: 500 requests or
+  0.50 USD) in a transaction, paused by a red budget guard; Provision enables `aiplatform.googleapis.com` and grants
+  `fn-admin@` `roles/aiplatform.user`; a draft fills the editor's draft only, and only the admin's Save writes.
+- **52c APPLIED (the decision; the bump is the tooling workstream's): `terra-draw` 1.37.0 → 1.38.0** (the user,
+  2026-10-23; the one download M4 may make). The `HELD` entry (`scripts/ci/check_dependency_updates.py`,
+  `docs/CI_PIPELINE.md` → *Held dependencies*) goes in the same change as the bump, because the `deps` gate fails a hold
+  that no longer matches its pin; `terra-draw-mapbox-gl-adapter` moves only if 1.38.0 requires it, else that is a NOT
+  APPLIED proposal here. Verify: the drawing tests (`packages/ui/test/map/draw/`, the admin's drawing specs), `static`,
+  `tests`, `build`.
+- **52d APPLIED (the decision; built by the tooling workstream): a third-party notices file generated at build** for the
+  engine and the admin from the installed packages' licences, with a gate that checks it is complete (the user,
+  2026-10-23; §41b's open proposal). The contract: M4-interfaces §6.4 (`THIRD_PARTY_NOTICES.txt` beside `engine.mjs` and
+  `admin.mjs`, every bundled package with its licence text, a permissive-licence allowlist in the gate's own config; a
+  new gate of the pre-approved kind, logged by tooling).
+- **52e Recorded: what the contract decided that the user may want to see.**
+  - The order watch is a step of the five-minute `imagery.tick`, each order asked once a day: no third Cloud Scheduler
+    job (two of the three free ones are used).
+  - An order is a record on its scene (`usgsScenes/{entityId}.order`), written by the functions only; from M4 the rules
+    refuse a client's `status: 'ordered'` (an admin could set it with the Firestore SDK in M3), because
+    `usgs.markOrdered` checks USGS first and refuses a scene already downloadable.
+  - Reminders on days 7 and 12 (USGS deletes an unpaid order after two weeks); an order not delivered in 90 days is
+    `expired` (USGS quotes three to four weeks after payment); Order again restarts it.
+  - Automatic GCPs: a pair joins the fit on its own from a confidence of 0.6; between 0.3 and 0.6 it is only a
+    suggestion the admin accepts and saves. From 15 confident pairs a fifth is held out as true checkpoints, which
+    measures the checkpoint RMSE more strictly than M3's leave-one-out, so a borderline frame may now wait for Approve
+    instead of publishing on its own.
+  - Notifications: an in-app inbox per admin with a badge, and FCM web push only after the admin turns it on and the
+    browser's own prompt is allowed; **UNVERIFIED** that FCM accepts tokens made with the SDK's default VAPID key (else
+    Setup gains one console click). `fn-admin@` and `fn-events@` gain `roles/firebasecloudmessaging.admin`
+    (**UNVERIFIED** as the narrowest role); Provision enables `fcm.googleapis.com` and `fcmregistrations.googleapis.com`.
+  - Swipe compare makes a second Mapbox map load only on a window 600 px or wider; a phone gets a toggle on its one map.
+  - New budgets, each logged by its owner when measured: the engine's `compare` chunk (a new `ENGINE_CHUNK_BUDGETS`
+    table, at most 12 KB gzip) and the admin's `inbox` chunk.
+- **52f PROPOSED, NOT APPLIED: e-mail notifications without a new provider.** A log-based alert policy per notification
+  kind on the fan-out's structured log entry, sending through the Cloud Monitoring e-mail channel the `crash-alerts`
+  provision item already creates for the owner. Not applied: alert conditions may be billed (**UNVERIFIED** at the time
+  of the decision), one policy per kind is ten more cloud resources, and the in-app inbox and push cover the need. For
+  the user's yes or no.
+- **52g PROPOSED, NOT APPLIED: detect an order without the I ordered it click** through M2M `tram-order-search` and
+  `tram-order-status` (`docs/research/design-review-onboarding.md` §0.4, **UNVERIFIED** for on-demand scans). Needs the
+  first real order to see what they answer; until then the click is the one input after the purchase.
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`; the shared, admin and ui (`map`) Vitest projects for
+the edited files.
+
+## 53. The M4 tooling workstream: Terra Draw 1.38.0 and the third-party notices (2026-10-24) — 53a and 53b APPLIED (the user's decisions §52c and §52d; a new gate and a stricter `release` stage, the pre-approved kind); 53c recorded for the user; 53d PROPOSED, NOT APPLIED
+
+No gate was relaxed, no checker allowlist entry was added, and the only download was the approved `terra-draw@1.38.0`.
+Configuration edits, each of the pre-approved kind (a stricter gate, or keeping a tool working): the `notices` gate in
+`scripts/ci/pipeline.py` (stages `build` and `release`), and a project reference to `packages/ui` in
+`tsconfig.tools.json` (the Vite configs read the kit's font table).
+
+- **53a APPLIED: `terra-draw` 1.37.0 → 1.38.0** (§52c). `npm view terra-draw@1.38.0` (MIT, no dependencies, no peer
+  dependencies, published 2026-10-18), then `npm install --save-exact terra-draw@1.38.0 --workspace @hcm/ui` in the
+  digest-pinned `node:24-bookworm-slim` (`docs/SETUP.md` → *npm in a container*): one package changed
+  (`packages/ui/package.json` and its two lockfile lines; the lockfile's integrity is the registry's). The `HELD` entry
+  went in the same change (`scripts/ci/check_dependency_updates.py`, `docs/CI_PIPELINE.md` → *Held dependencies*).
+  `terra-draw-mapbox-gl-adapter` stays at 1.5.0: it is the adapter's latest release and peers `terra-draw ^1.0.0`, so
+  1.38.0 needs nothing of it and there is nothing to propose. Verified: the drawing unit tests
+  (`packages/ui/test/map/draw/`, 67 tests, the real Terra Draw on a canvas among them), the admin's drawing and dragging
+  specs (`e2e/admin/specs/pois/drawing.spec.ts`, `dragging.spec.ts` at `admin-c360-ro` and `admin-l1440-ro` with the
+  tier's setup: 17 passed), and `tsc -b` of `packages/ui` (the declarations of 1.38.0 still need only what
+  `terra-draw-env.d.ts` declares). The `terra-draw` chunk measures 47.7 KB gzip (47.4 KB with 1.37.0), under its 58 KB
+  budget, which stays. With the other M4 workstreams running gates in the same tree, the new lockfile's digest was
+  written to `node_modules/.hcm-install-stamp` (`npm install` had already brought `node_modules` to it), so the next
+  pipeline run does not `npm ci` under their tests; the quality image still rebuilds its npm layer on the next
+  `run-all-checks.sh`, as after §44 (the lockfile is one of its inputs).
+- **53b APPLIED: the third-party notices** (§52d; contract M4-interfaces §6.4).
+  - **The generator** is the Vite plugin `thirdPartyNoticesPlugin` (`scripts/site/src/notices.ts`) in both Vite
+    configs, not the contract's `scripts/build/notices.mjs` (CR-M4-10): it reads Rolldown's own module list of each
+    output, and `scripts/site` is the build tooling with its own Vitest project, measured at 90 % per file (this file
+    and `licence-texts.ts` at 100 %). A package is bundled when one of its modules renders code into a chunk
+    (`renderedLength` above zero); it is the folder under the last `node_modules/` of the module's path, named by its own
+    `package.json`. The fonts' two packages join through the kit's font table (`FONT_FILES`), each with the files copied
+    from it (`File:` lines). It writes `THIRD_PARTY_NOTICES.txt` beside `engine.mjs` and `admin.mjs`, sorted, without a
+    date: on 2026-10-24 the engine's lists 14 packages (98 KB), the admin's 25 (178 KB).
+  - **Packages without a licence file.** The npm packages of the Firebase JS SDK (`firebase` and every `@firebase/*`
+    bundled, 13 in the admin), `terra-draw` and `terra-draw-mapbox-gl-adapter` ship no `LICENSE`. Their entry carries
+    the copyright lines of their bundled files (`Copyright 2019 Google LLC`, `Copyright The Closure Library Authors`,
+    …), or, when there is none, their `author` (Terra Draw and its adapter: James Milner), then the standard text of
+    the licence they declare, from `scripts/site/src/licence-texts.ts`: the Apache License 2.0's terms as
+    `material-symbols` 0.48.0 ships them (the appendix on applying the licence left out), and the MIT License as `zod`
+    4.6.6 ships it, without its copyright line. A package without a licence file whose licence has no text there stops
+    the build.
+  - **The gate** `notices` (`scripts/ci/check_notices.py`, 100 % of its lines and branches in `scripts/ci/tests`), in
+    `build` after `vite-build` and in `release` (so the bundles a release attaches carry complete notices), checks each
+    file against evidence the plugin does not write: the build's source maps (`sourcemap: true` in both configs) and
+    the installed packages. Every package a source map names has its entry with the same version, the licence id its
+    `package.json` declares and a licence text; an entry naming copied files names files the build ships, from the
+    installed package at that version; no other entry; every font file shipped is named; every licence is on
+    `ALLOWED_LICENCES`, the contract's list (MIT, ISC, BSD-2-Clause, BSD-3-Clause, Apache-2.0, OFL-1.1, 0BSD, CC0-1.0).
+    The source maps and the plugin agree on both builds today (no entry missing, none extra).
+  - **Where the files go**: the site build copies every file of the engine build, the notices with them; the release
+    attaches `packages/engine/dist/*` and `packages/admin/dist/*`; Hosting serves `packages/admin/dist` (it ignores only
+    dotfiles and source maps), so the admin's notices are at `/THIRD_PARTY_NOTICES.txt`.
+- **53c Recorded: what the notices leave out, for the user's review.** The bundler's own helpers (Rolldown's runtime,
+  Vite's preload helper: generated code, not a package's files) and Mapbox GL JS (external, loaded from Mapbox's CDN
+  under Mapbox's terms). For the packages that ship no licence file, the entry is the best the installed package gives:
+  Terra Draw and its adapter name their author but ship no copyright line; comparing those two entries once with the
+  `LICENSE` of their upstream repository (`JamesLMilner/terra-draw`) is a reading the user may want (nothing was
+  downloaded for it).
+- **53d PROPOSED, NOT APPLIED: a visible link to the notices.** The viewer's attribution control and the admin's menu
+  could link `THIRD_PARTY_NOTICES.txt` ("Licențe" / "Licences"). Not applied here: it is a user-visible behaviour (two
+  strings in both languages, a scenario row per surface, tour states), outside the tooling workstream's files, and the
+  file is reachable without it (beside the engine, on Hosting, in the release).
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`; the `tools` Vitest project
+(`scripts/site/test/notices.test.ts`), the ui project's `packages/ui/test/map/draw/`, `scripts/ci/tests` in the image,
+`npm run build` then `python3 scripts/ci/check_notices.py`.
+
+## 54. The M4 assists-notify workstream: title suggestions, translation drafts, the inbox and push (2026-10-24) — 54a and 54b APPLIED (a stricter configuration and stricter budgets, the pre-approved kinds); 54c–54h decided within the contract and recorded for the user; 54i PROPOSED, NOT APPLIED
+
+Written by the assists-notify workstream (`docs/research/M4-interfaces.md` §4, §5, §6.1). Nothing was deployed, no
+download was made and no real Nominatim, Vertex AI or FCM endpoint was called: the functions run against the shared fake
+upstreams (`@hcm/test-support/fakes`: `nominatim`, `vertex-ai`, `fcm`) and the Firebase emulators.
+
+- **54a APPLIED: the M4 feature folders join `functions-feature-folders-independent`** (`.dependency-cruiser.cjs`): `assist`
+  and `notify` reach the rest of the backend only through `ports/`, `api/` and `@hcm/shared`, as the M2 and M3 folders do
+  (a stricter rule, the pre-approved kind §46c names).
+- **54b APPLIED (stricter budgets and a build group, the pre-approved kinds): the inbox's chunks have budgets.**
+  `scripts/ci/check_bundle_budget.py` `ADMIN_CHUNK_BUDGETS` gains `inbox` 5 KB, `messaging-sdk` 7 KB and
+  `firebase-installations` 4 KB, `assist` 3 KB and `firebase-messaging-sw.js` 1 KB (the push service worker the admin
+  page build writes beside the chunks, which the gate counts); `packages/admin/vite.config.ts` gains the code-splitting
+  groups `firebase-installations` (`@firebase/installations`, priority 2), without which Rolldown put it into
+  `editor-shared` (14.3 KB of 13; at priority 4 it pulled modules of the first load with it), and `assist` (the editors'
+  assists, which the photo, place and layer editors share: in `editor-shared` they made it 13.2 KB of 13). Measured on
+  2026-10-24: `inbox` 3.4 KB, `messaging-sdk` 5.7 KB, `firebase-installations` 2.9 KB, `assist` 2.2 KB, the worker
+  0.7 KB, `editor-shared` 11.6 KB. The remaining over-budget chunk of that build, `imagery` (18.2 KB of 18), is the
+  orders workstream's.
+- **54c DECIDED: FCM over its REST API, and the browser's registration is its Firebase installation ID.** The functions
+  send with FCM HTTP v1 over REST (`functions/src/adapters/fcm.ts`, the functions' own token, one `messages:send` per
+  device, a `validate_only` dry run before a device is stored), not firebase-admin's `getMessaging()`, so the Functions
+  emulator reaches the fake FCM through `createEmulatorFetch` like every other Google API and no local run can push to a
+  real browser. The installed `firebase@13` deprecates `getToken` (ESLint's `no-deprecated` refuses it, and no suppression
+  is allowed): the admin registers with `register` and reads the installation ID (FID) from `onRegistered`
+  (`packages/admin/src/firebase/messaging.ts`), and the functions target it as `message.fid`, exactly as firebase-admin
+  14.5's `FidMessage` sends it. The shared schemas keep the field's name `token` (`notify.registerDevice {token}`,
+  `pushDeviceDocSchema.token`): an FID matches its pattern. UNVERIFIED (CR-M4-24 asks §10 of the contract to list it): that FCM's REST API
+  accepts `fid` from our REST call as it does from firebase-admin; proof: the first `notify.sendTest` after Provision. An
+  FID that rotates later (the SDK registers it again only while an `onRegistered` handler is set, and ours is removed once
+  the registration is read) makes FCM answer `UNREGISTERED`: the device is forgotten and the admin turns push on again.
+- **54d DECIDED: an admin's settings document records its creation, and a read item's time is its stamp.** The settings
+  (`admins/{uid}/notify/settings`) are created by the admin's first Settings change through the content store, which
+  stamps `createdAt`: `notifySettingsDocSchema` gains `createdAt` (optional, create only), as do `CLIENT_WRITES` and the
+  rules (`createdAt == request.time` on create, never changed by an update), and `notify.registerDevice` keeps it. Marking
+  an item read writes `read: true` with the stamp (`updatedAt` is when); the rules still allow `readAt` only as
+  `request.time` for a client that sends it.
+- **54e DECIDED: the admin's push service worker is plain JavaScript, and the `e2e` build has a stand-in registrar.**
+  The site build writes `firebase-messaging-sw.js` next to the admin's page (`scripts/site/src/admin/service-worker.ts`):
+  no Firebase SDK and no `importScripts` from a CDN (the CSP, and no third-party code in the worker); it shows a push's
+  `notification` (title, text, tag) as text and opens its `fcm_options.link` on the admin's own origin only. UNVERIFIED:
+  the payload's field names on a real push (proof: the first `notify.sendTest`). The `e2e` build's registrar keeps the
+  browser's real permission (Playwright grants it, or the Chrome DevTools Protocol denies it) and hands out a fixed
+  registration per `?test=` (`e2e-fcm-token:<test>-browser-0001`), since no browser test may reach FCM; the server side
+  is the fake FCM.
+- **54f DECIDED: what Provision adds.** `REQUIRED_APIS` gains `aiplatform`, `fcm` and `fcmregistrations`; `fn-admin@`
+  gains `roles/aiplatform.user` (the drafts and the self-test's `countTokens`) and `roles/firebasecloudmessaging.admin`
+  (the test push and the device's dry run); `fn-events@` gains `roles/firebasecloudmessaging.admin` (the fan-out's pushes).
+  The narrowest FCM role stays UNVERIFIED (contract §10).
+- **54g DECIDED: shared pieces the producers use.** One emit helper for every producer
+  (`functions/src/api/notification-event.ts`: the event's id from its parts, `create` so a redelivery writes nothing, a
+  failure logged and never thrown into the producer); the admin shell's watchers (the session, the unread badge) moved out
+  of `packages/admin/src/app/mount.ts` into `app/shell-watches.ts` to keep `mount.ts` within its size. The fan-out records
+  a push on the item as it is now (a transaction), so an item the admin opened while FCM was sending stays read.
+- **54h DECIDED: the notification and assist specs hold the admin tier's lock.** The geocoding queue's cool-down
+  (`ops/assist`) and cache (`assistGeocodes/*`), the month's AI counters (`usage/ai-*`), the inboxes, the events and the
+  server's fake upstreams are one per project, so `e2e/admin/specs/{assists,notify}/` run as the owner on the project's
+  city under `ADMIN_LOCK`, whose reset empties them. An event fans out to every admin, and an unlocked content spec may
+  fail a job of its own city meanwhile (`specs/imagery/jobs.spec.ts`): the specs look for their own items and never count
+  an inbox exactly.
+- **54i PROPOSED, NOT APPLIED: e-mail.** No e-mail is sent: the stack has no mail provider and adding one is a new
+  account. The path without a new provider (a log-based alert policy on the fan-out's structured log, through the
+  Cloud Monitoring e-mail channel the `crash-alerts` item creates) stays the contract's proposal (§52f, contract §5.7),
+  for the user to decide.
+
+## 55. The M4 compare workstream: our own swipe compare, and the public site reading the bucket's manifest (2026-10-24) — 55a–55d APPLIED (product and test changes; 55b a stricter gate and 55c a build setting, the pre-approved kinds; no gate relaxed, no checker allowlist entry); 55e PROPOSED, NOT APPLIED (a workflow line, ask first)
+
+The compare workstream built swipe compare as the user decided (§52a; `docs/research/M4-interfaces.md` §3) and aligned
+the public site with the PLAN (§51e). Nothing was downloaded and no real endpoint was called.
+
+- **55a APPLIED: the public site reads the manifest the admin publishes** (§51e; PLAN → *Architecture*: the public viewer
+  GETs `gs://<project>-public/cities/{city}/manifest.json`). `sites/bucharest/site.json` says `publicManifest: true`; a
+  site build that names the public bucket (`HCM_PUBLIC_BUCKET`, forwarded by `scripts/ci/run-all-checks.sh` by name like
+  `MAPBOX_PUBLIC_TOKEN`) writes a generated `config.js` whose `manifestUrl` is
+  `https://storage.googleapis.com/<bucket>/cities/bucharest/manifest.json`, bundles no `data/` snapshot, and adds the
+  bucket's origin and the project's crash-report endpoint (`https://<region>-<projectId>.cloudfunctions.net`, from
+  `infra/project.json`, the functions' own formula) to the page's CSP (`scripts/site/src/public-manifest.ts`). Without a
+  bucket every site bundles its manifest as before (the starter kit always does). The viewer never reads Firestore. Rows
+  `S-V01-HAPPY-PUBLIC-BUCKET` and `S-V01-BAD-PUBLIC-BUCKET-404` (`e2e/specs/viewer/public-manifest.spec.ts`, the e2e site
+  `bucharest-bucket`; a bucket without the manifest shows the not-found card, never a stale snapshot). For the go-live
+  the user sets the repository variable and approves 55e; until then Pages keeps the seed snapshot.
+- **55b APPLIED (a stricter gate, the pre-approved kind): the engine's lazy chunks have budgets.**
+  `scripts/ci/check_bundle_budget.py` gains `ENGINE_CHUNK_BUDGETS`: `compare` 5 KB (4.2 KB measured, the contract's
+  ceiling 12 KB) and `firebase-sdk` 16 KB (13.3 KB measured, unbudgeted until now); a chunk of the engine without a
+  budget fails, as the admin's do. Measured on 2026-10-24: `engine.mjs` 97.5 KB of 100 (96.0 before compare),
+  `engine.iife.js` 116.6 KB of 125.
+- **55c APPLIED (a build setting that keeps the entry whole): `preserveEntrySignatures: 'allow-extension'`** in
+  `packages/engine/vite.config.ts`. Vite's library default (`strict`) moved everything the compare chunk shares with the
+  entry into a third chunk, `map-sync-<hash>.js` (44.6 KB), which `engine.mjs` imported at once; now the chunks import what
+  they share from `engine.mjs`, which may carry those internal exports besides the documented ones (only the names of
+  `docs/ENGINE_API.md` are the API). The IIFE is one file as before.
+- **55d APPLIED: what the build decided within the contract** (`docs/research/M4-interfaces.md` → *Change requests*,
+  CR-M4-10):
+  - The legal line is the viewer map's: its Mapbox logo and attribution (z-index 2 in mapbox-gl.css) stay above the
+    second map at every divider position, the second map's own are hidden, and the compare bar credits the compared
+    layer's source ("Sursa: …"); the contract had the second map's attribution on the right, which a divider at 100 %
+    clips away. The legal mirror of a modal sheet keeps reading the viewer map, as before.
+  - The second map is inert and lets every pointer through: the viewer's map takes every gesture and the second follows
+    its camera, so either side drags, zooms and clicks alike, and no second canvas is a keyboard stop. The divider's
+    handle is the only drag target; it sits below the map's centre (the centre stays the map's) and, on a phone held
+    landscape, ends before the vertical timeline.
+  - MapPort's `move` is forwarded at once (Mapbox fires it once per rendered frame), not a frame later as the contract
+    said, so the followed map draws the same camera in the same frame.
+  - The chunk's entry is `packages/engine/src/compare/compare.ts` (Rolldown names a chunk after its entry file:
+    `compare-<hash>.js`), reached through `import('./compare/compare.js')` in `mount.ts`'s browser environment.
+  - The chooser of the compared side is a native `<select>` (the browser's own list on every device, no popup to keep
+    clear of the controls); the tour's `viewer.compare-menu` is the state after choosing. The edge states are
+    `viewer.compare-swipe-edge` (0 %) and `viewer.compare-swipe-edge-end` (100 %).
+  - A drag settles the divider on the whole percent, as the keys and the hash do.
+- **55e PROPOSED, NOT APPLIED (a workflow edit, ask first): the CI build reads the bucket.** One line in
+  `.github/workflows/ci.yml`, job `build`, step `Build stage`, `env:` beside `MAPBOX_PUBLIC_TOKEN`:
+  `HCM_PUBLIC_BUCKET: ${{ vars.HCM_PUBLIC_BUCKET }}`, and the repository variable itself
+  (`gh variable set HCM_PUBLIC_BUCKET --body bucurestiul-disparut-public`, a settings change: ask first) once the admin has
+  published the city's manifest. Unset, the Pages site keeps bundling the seed snapshot.
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`; the engine, ui and tools Vitest projects; the build
+and `scripts/ci/check_bundle_budget.py`; `E2E_TIER=fn npx playwright test specs/viewer/compare.spec.ts
+specs/viewer/public-manifest.spec.ts --project fn-l1440-ro` and the tour's compare journey at every viewer viewport.
+
+## 56. The M4 integrator: the change requests closed, the cross-app journey, and what waits for the user (2026-10-24) — 56a–56e APPLIED (product, test and documentation changes; 56b a new lazy chunk with its own budget, the pre-approved kind; no gate relaxed, no budget raised, no checker allowlist entry); 56f recorded for the user
+
+The M4 integrator worked alone after the five workstreams (orders, autogcp, compare, assists-notify, tooling), resolved
+their open change requests and checked the flows across the apps against the emulators and the fakes. Nothing was
+downloaded, committed, pushed or deployed, and no real Google, Mapbox, USGS, STAC, Nominatim, Vertex AI or OpenStreetMap
+endpoint was called. The user's decisions of 2026-10-23 stand as §52a–§52d record them, all four APPLIED: swipe compare
+is the engine's own (the plugin loader, its Subresource Integrity plan §18b and the M2 open item are superseded; no
+source names `mapbox-gl-compare` any more), the Romanian and English drafts go through Vertex AI Gemini on the server
+(turned on by Provision, never published by themselves), `terra-draw` is 1.38.0 with its hold removed, and both builds
+write a complete `THIRD_PARTY_NOTICES.txt` that the `notices` gate checks (complete for the engine since 56a).
+
+- **56a APPLIED: the open change requests.**
+  - CR-M4-11: the Firestore adapter's `buildQuery` converts every filter operand as it converts a stored value
+    (`toFirestoreValue`), so a timestamp range matches; M3's daily cap of raster jobs (`JOBS_PER_DAY`) now counts the day's
+    jobs in production. Pinned on the emulator (`functions/test/adapters/documents.test.ts`).
+  - CR-M4-19: the notices plugin no longer clears what it gathered at each `buildStart`; one plugin instance lives for
+    one `vite build`, whose library mode starts one build per format, so the file written last lists both formats'
+    packages (`lit` from the IIFE's inlined compare chunk). `[notices] OK`, 13 engine packages.
+  - CR-M4-14: the obsolete `adminContent.imagery.needsOrderNote` is gone from both catalogues.
+  - CR-M4-24: `docs/research/M4-interfaces.md` §5.4 and §10 describe the push registration as built (the installation
+    ID, `message.fid`), with its proof by the first `notify.sendTest`.
+  - CR-M4-25: the public bucket's address in `S-V01-HAPPY-PUBLIC-BUCKET` is in backticks; `docs/E2E_SCENARIOS.md`
+    regenerated, `markdownlint` passes.
+  - CR-M4-9: the docs, the skills and their mirrors, `docs/LESSONS.md` 190–202, `docs/research/M4-status.md`.
+  - Two specs the split `quality` run found (test changes only): the title-suggestion spec counts the Nominatim
+    requests of its own cell, since a content spec drawing a place beside it asks for the city's centre in the same
+    server world (`docs/LESSONS.md` 201); the Setup steps' self-test spec counts `SELF_TEST_CHECKS.length`, which M4's
+    `ai` check made ten (`docs/LESSONS.md` 202).
+- **56b APPLIED (a new chunk with its own budget, the pre-approved kind): the order card is a lazy chunk.** With M4's buy
+  flow the Imagery area's chunk measured 18.2 KB against its 18 KB budget (§47a). The budget was not raised: the order
+  card, which only a scene to buy or with an order shows, is fetched the first time such a scene opens
+  (`packages/ui/src/admin/imagery/orders/lazy-card.ts`: Loading until it is in, a failed fetch says so with Try again,
+  `ImageryContext.refresh` re-renders the page once it is in). `ADMIN_CHUNK_BUDGETS` gains `order-card` 2 KB (1.7 KB
+  measured on 2026-10-24 plus about 20 %); `imagery` measures 17.6 KB. A codeSplitting group was tried first and
+  dropped: Rolldown's groups take what their modules import along, and every area then imported the group
+  (`.agent/skills/quality/pipeline_skill.md` → *Local tooling quirks*).
+- **56c APPLIED: behaviour A48, the cross-app journey** (`e2e/admin/specs/imagery/automation.spec.ts`; rows
+  `S-A48-HAPPY`, `S-A48-BAD-OVER-THRESHOLD`). Happy: the free 1966 frame imported with one click and published; the
+  1968 frame to buy through its order card (EarthExplorer, then I ordered it: the `buyScan` budget); the fake USGS
+  delivers and a day passes (`order.nextCheckAt` written in the past); `imagery.tick`'s watch imports it (the job created
+  by the admin who ordered); the stand-in pipeline's automatic points under the threshold; approved by `system:imagery`
+  and published by the fake MTS with no click; the next tick marks the order imported; the inbox lists
+  `order.delivered` and `order.imported`, whose item opens the published version; the manifest lists both layers, and
+  the public viewer at a wide window compares the bought scan with the 1966 layer on two maps (the divider names both
+  sides, each side's tiles in its colour; Close leaves one map: created 2, removed 1). Bad: over the threshold the
+  version waits for Approve, the inbox's `layer.readyToApprove` item opens it, nothing reaches Mapbox. The spec is tiered
+  with M3's publish specs (`IMAGERY_PUBLISH_SPECS` in `e2e/projects.ts`: per push at `admin-c360-ro` and
+  `admin-l1440-ro`, at the other three admin projects in `tour-matrix`).
+- **56d APPLIED: the local stack's M4 world** (`npm run dev:stack`): the 1968 Corona frame stays one to buy (its preview
+  seeded), the Declass 3 frame is marked as ordered through `usgs.markOrdered`, the 1976 import waits for points with the
+  matcher's suggestions (the stand-in's `suggestions` outcome instead of `no-match`), and the failed import, the draft
+  over the threshold and the version waiting for points reach every admin's inbox through the server's own events. The
+  stack's check gains the order card and the inbox (`e2e/stack/check.ts`). `docs/MANUAL_TEST_PLAN.md` gains section F
+  (O1–O5, G1, A1, A2, N1, N2), V11 (compare) and the go-live's bucket variable (V0, D7).
+- **56e APPLIED: the documentation** of M4: both admin guides (buying a scan, suggested pairs, title suggestions, drafts,
+  notifications, the visitors' compare, costs, troubleshooting), `docs/ARCHITECTURE.md` (the M4 functions, 61 in all),
+  `docs/TESTING.md`, `docs/CI_PIPELINE.md`, the build and deploy workflows (`HCM_PUBLIC_BUCKET`), the quality skills
+  (`ENGINE_CHUNK_BUDGETS`, `order-card`, the M4 tooling quirks) and the e2e skills with their mirror.
+- **56f Recorded: what waits for the user** (each ask first; `docs/research/M4-status.md` §3): the deploys (functions,
+  rules and indexes, the admin, the pipeline image with the new matcher), Provision turning on Vertex AI (the paid EEA
+  tier, under 0.05 USD a month, capped at 0.50 USD), FCM and FCM registrations, the first real scan purchase in
+  EarthExplorer (35 USD for one frame; Claude never pays), the CI line of §55e with the `HCM_PUBLIC_BUCKET` variable,
+  the proposals §52f (e-mail through a log-based alert), §52g (detecting an order without the click), §53d (a visible
+  licences link) and §54i (e-mail), and the advisories of §48a and §49i that keep the four audit gates red.
+
+Verify: `PIPELINE_STAGE=static`, `tests`, `build` (`bash scripts/ci/run-all-checks.sh`) and `PIPELINE_STAGE=quality bash
+scripts/ci/e2e-split.sh`; `E2E_TIER=admin npx playwright test specs/imagery/automation.spec.ts --project admin-l1440-ro`.
+
+## 57. The M4 reviews' fixes: security, cost and minimum input (2026-10-24) — 57a–57i and 57k–57o APPLIED (product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry); 57d's approval-policy guard, 57h's probe, 57i's import map and 57j PROPOSED, NOT APPLIED
+
+Two reviews of the M4 working tree (security and cost; minimum input and UX) found 24 problems, two of them the same.
+Every one was applied as below or is proposed for the user's decision; none was wrong. Rows:
+`S-A13-BAD-SCANNED-WHILE-MARKING`, `S-A13-BAD-WAITS-FOR-APPROVAL`, `S-A45-BAD-DAILY-CAP`, `S-A45-BAD-LINKS-CHANGED`,
+`S-A47-BAD-SHARED-BROWSER`, `S-P03-BAD-NO-SPREAD` (new) and the asserts of `S-V06-BAD-COMPACT-WIDTH`, `S-A09-HAPPY-TITLE-SUGGESTION`,
+`S-A09-HAPPY-TRANSLATE-DRAFT`, `S-A13-BAD-NEVER-DELIVERED`, `S-A44-HAPPY`, `S-A46-HAPPY-FAN-OUT`; the defects in
+`docs/LESSONS.md` 203–218.
+
+- **57a APPLIED: the editors' assists.** A translation draft answered after another item opened is dropped (the session
+  counts the open item; it filled the next photo's title before). A queued title cell no answer reaches within
+  `GEOCODE_QUEUED_MINUTES` ends the wait with `apiError.assist.unavailable`, so Suggest a title works again. A photo's
+  pin asks for suggestions by itself while nobody chose its title: empty, a camera's naming (`isCameraName`, shared with
+  `photos.onUpload`) or the title its file gave it (`suggested.title`); every upload starts titled after its file, so a
+  real upload never asked before. A draft is offered only for an empty side (it replaced typed text), its note stays
+  once it filled the field.
+- **57b APPLIED: the inbox's pruning costs a few reads.** `notify.onEvent` read the newest 250 items of every admin's
+  inbox on every event (about 200 reads each once full). `DocumentStore` gains `count` (an aggregation: one read per
+  thousand documents); the inbox is counted and only its items over `INBOX_MAX_ITEMS`, oldest first, are read and
+  deleted.
+- **57c APPLIED: compare reuses its second map across window changes.** A compact window hides the second map (its
+  container stays, `visibility: hidden`, so Mapbox is never sized to nothing) for `COMPARE_PARK_MS` (60 s) and destroys
+  it then; a wider window within the minute shows the same map (a phone turned back and forth, a window dragged across
+  600 px paid a map load each time). Close, Esc, a lost map and `destroy()` destroy it at once. The chooser leaves out
+  what the main side shows, unless it is the side compared now (both sides could show the same layer).
+- **57d APPLIED in part: the automatic georeference's edges are measured.** The integration tests asserted the median
+  distance from the truth only; the largest (a corner, outside the matched pairs' hull, where `poly2` extrapolates) was
+  14.1, 11.7 and 23.4 m. They now assert both: the median within `EXPECTED_RMSE_M` (15 m) and the largest within
+  `EDGE_ERROR_M` (30 m); `M4-status.md` says so instead of "within 15 m". **PROPOSED, NOT APPLIED:** an edge guard in the
+  approval policy (checkpoints chosen near the hull, or `poly2` refused when it bends more than the threshold outside
+  the hull) would hold such a version for Approve; it changes when bought scans publish by themselves, so it waits for
+  the `real-data` measurement on a real Corona frame and your decision.
+- **57e APPLIED: a daily cap on title suggestions.** `ops/assist` counts the cells queued on the UTC day
+  (`queuedDay`, `queuedToday`); past `GEOCODE_DAILY_CAP` (300, far above an admin's real use) the answer is
+  `apiError.assist.dailyCap` and nothing is queued, so no scripted session can keep Nominatim busy (its policy forbids
+  bulk use). The cool-down's write keeps the count (a transaction). A task the queue refuses takes its cell back.
+- **57f APPLIED: a browser stops getting an admin's notifications when it should.** The push record in `localStorage`
+  names its admin (`{uid, deviceId}`, `packages/admin/src/inbox/push-device.ts`): another admin signed in sees push off;
+  sign-out unregisters this browser for the admin (best effort) and forgets it; `notify.registerDevice` removes the same
+  browser from every other admin (one browser, one admin); `admins.revoke` deletes the removed admin's push devices,
+  inbox and notification settings first, while the account is still an admin's (its open page then sees its inbox
+  emptied, not a listener denied mid-edit, LESSONS 218), then the access document; turning push off when the server
+  cannot be reached leaves it on and says why.
+- **57g APPLIED (a cloud change on the next Provision, ask first as always): a custom role for Vertex AI.**
+  `roles/aiplatform.user` also lets `fn-admin@` start billable custom jobs and deploy endpoints. The `iam` item now
+  makes the project's custom role `hcmVertexDrafts` (`aiplatform.endpoints.predict` only) before the role table binds
+  it to `fn-admin@`, undeletes and corrects a deleted or changed one, and leaves a right one alone; the permission
+  messages name it. UNVERIFIED until the first real call (M4-interfaces §10): that `aiplatform.endpoints.predict` is all
+  `generateContent` and `countTokens` of a publisher model need; the setup self-test's `ai` check proves it for free,
+  and if it does not, adding the missing permission to `VERTEX_DRAFTS_PERMISSIONS` and running Provision again repairs
+  the role.
+- **57h APPLIED: the EarthExplorer guide no longer claims an unverified button.** Only the scene's page was verified
+  (`design-review-onboarding.md` §0.6); step one now says to add the scene to the basket from the search results.
+  **PROPOSED, NOT APPLIED:** checking the basket control in `check_contracts.py`'s weekly probe: EarthExplorer draws its
+  controls with JavaScript, so a plain HTTP probe cannot see them; the first real order confirms the steps.
+- **57i APPLIED (documentation): SRI and the lazy chunks.** `docs/ENGINE_API.md` says that `integrity` covers only the
+  file it is on, that `engine.mjs` fetches `compare-<hash>.js` and `firebase-sdk-<hash>.js` without one, and that a page
+  relying on SRI loads `engine.iife.js`, which carries both. **PROPOSED, NOT APPLIED:** publishing an import map with
+  `integrity` entries for the module build's chunks with each release.
+- **57j PROPOSED, NOT APPLIED: how a shared compare link opens.** A `cmp=` link opens the second map (a map load) for
+  everyone it is shared with and on every reload; opening it as the one-map toggle, or with a prompt, would spare that
+  load but changes behaviour V06's deep link (`S-V06-HAPPY-DEEP-LINK`), which the plan asked for.
+- **57k APPLIED: the orders' screens.** The expired card offers Take the mark back (`usgs.cancelOrder` accepted it, but
+  nothing offered it, so Work's count could never go down); a reminder already sent no longer counts in Work and wears
+  the waiting tone, and its note tells an admin who paid there is nothing to do; before USGS approves downloads both
+  cards say the daily check waits for it, with the link to Setup's USGS step, and the next check reads "after USGS
+  approves downloads"; the refusal of I ordered it on a frame scanned meanwhile is also the snackbar's (the card it was
+  shown in disappears with the order; an inline alert on the page left the map's attribution a sliver under the app bar
+  at 768 px, LESSONS 216), and a refused mark moves the keyboard to the scene's heading
+  (`ImageryContext.focusDetail`: the clicked button may go with its card); the checks' times are in the admin's own time
+  zone, as the inbox's. The photo editor's banner (the place to check) sets its ring's colour, which fell under 3:1 in
+  the dark scheme (LESSONS 216).
+- **57l APPLIED: the georeferencer's suggestions.** Each pending suggestion's distance is computed from the page's live
+  fit (`distanceFromFit`), not the matcher's stored residual; Accept all leaves the keyboard on the panel's heading; a
+  version whose confident pairs lie in a line waits with `apiError.imagery.noSpread {pairs}` (the pipeline's
+  `Decision.degenerate`), not `noMatch`'s "too few".
+- **57m APPLIED: the notifications.** `layer.needsPoints` is pushed by default (a bought scan whose automatic points
+  failed reached only the inbox); `order.imported` says the scan is imported into a layer version that is published or
+  waits; "1 devices" and "1 necitite" are gone (`pluralOf` in `@hcm/shared`; the Romanian badge reads "necitite: 3").
+- **57n APPLIED: a draft keeps the source's links.** A description's draft may carry Markdown links, and the viewer
+  renders them; text pasted into the source could tell the model to add one. A draft with a link address the source
+  lacks (added, changed, or kept as text) is no draft: `apiError.assist.linksChanged` (`draftKeepsLinks`).
+- **57o APPLIED (the test world): a seeded running job holds a lease.** The fixes' first split `all` run lost the jobs
+  tour's running import at two viewports: another spec's `imagery.tick` (over every city) took it, lease-less, for a lost
+  execution and ran it again, and the stand-in runner failed it; a third run found its waiting job dispatched once its
+  date (2026-10-24) had passed on the server's wall clock. `seedJob` (`e2e/admin/support/ops.ts`) gives a seeded running
+  job a lease held far ahead, as a live pipeline's heartbeat would, and the waiting job's date is in 2100
+  (`docs/LESSONS.md` 217).
+
+Verify: `bash scripts/ci/e2e-split.sh` (stage `all`; the four audit gates stay red on §48a and §49i).

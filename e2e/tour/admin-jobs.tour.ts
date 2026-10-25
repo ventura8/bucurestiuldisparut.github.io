@@ -20,7 +20,12 @@ import { contentText, dialog, layoutOf, seedCity, seedJob, seedLogLine } from '.
 // The content world's fakes (Mapbox, Google) are forwarded as in the admin projects.
 test.use({ forwardUpstreams: true });
 const AT = new Date('2026-10-17T09:00:00.000Z');
-const LATER = new Date('2026-10-24T09:00:00.000Z');
+/**
+ * When the waiting job may run: far ahead of the server's own clock, which is the wall clock's. A date of the test's own
+ * week fell due as the week went on, and any test's `imagery.tick` then dispatched the job under the check that it
+ * waits (`docs/LESSONS.md` 217).
+ */
+const LATER = new Date('2100-01-01T09:00:00.000Z');
 
 test(
     'Jobs show live progress and logs, and a running job can be cancelled',

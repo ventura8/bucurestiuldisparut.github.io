@@ -3,8 +3,9 @@
  * locate) and the language. Plain functions over `ViewerStorePort` and `ViewerServices`, so each is tested without
  * the element.
  */
-import type { Locale, Manifest, MapView } from '@hcm/shared';
+import type { Layer, Locale, Manifest, MapView } from '@hcm/shared';
 
+import { layoutFor } from './layout.js';
 import { locateVisitor, shareMessage, sharePage, type ViewerServices } from './services.js';
 import type { ViewerState, ViewerStorePort } from './store-port.js';
 import { localizedText } from './text.js';
@@ -92,6 +93,34 @@ export async function locateViewer(store: ViewerStorePort, services: ViewerServi
     store.dismissToast();
     const view: MapView = store.getState().view;
     store.flyTo({ ...view, center: result.center, zoom: Math.max(view.zoom, LOCATE_ZOOM) });
+}
+
+/** The newest of `layers`, or null without any. */
+function newestLayer(layers: readonly Pick<Layer, 'id' | 'year'>[]): string | null {
+    const [newest] = [...layers].sort((a, b) => b.year - a.year);
+    return newest === undefined ? null : newest.id;
+}
+
+/** The side the Layers panel's Compare opens with (V06): today while the map shows a historical layer, else the newest layer. */
+export function defaultCompareLayer(state: Pick<ViewerState, 'overlays' | 'manifest'>): string | null {
+    const shown = state.overlays.some((overlay) => overlay.kind === 'raster' && overlay.visible);
+    return shown ? null : newestLayer(state.manifest?.layers ?? []);
+}
+
+/**
+ * The Layers panel's Compare button: opens compare (a modal Layers sheet closes, so the map shows both sides) or, while
+ * the visitor compares, closes it.
+ */
+export function toggleCompare(store: ViewerStorePort): void {
+    const state = store.getState();
+    if (state.compare !== null) {
+        store.closeCompare();
+        return;
+    }
+    store.openCompare(defaultCompareLayer(state));
+    if (state.sheet === 'layers' && layoutFor(state.windowClass, state.compactHeight).sheetMode !== 'docked') {
+        store.openSheet('none');
+    }
 }
 
 /** One FAB menu choice. */

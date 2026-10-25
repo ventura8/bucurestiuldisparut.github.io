@@ -87,6 +87,48 @@ describe('Firestore paths', () => {
     });
 });
 
+/** M4 (docs/research/M4-interfaces.md §4, §5): the inbox, push devices, notification events, the assists' documents. */
+describe('the M4 paths', () => {
+    const DEVICE = 'a1b2c3d4'.repeat(4);
+
+    it('happyPath_everyBuilderSpellsItsPath', () => {
+        expect([
+            FIRESTORE_PATHS.inbox('uid-1'),
+            FIRESTORE_PATHS.inboxItem('uid-1', 'order.reminder~bucharest~DS1105-1071DF076~7'),
+            FIRESTORE_PATHS.notifySettings('uid-1'),
+            FIRESTORE_PATHS.pushDevices('uid-1'),
+            FIRESTORE_PATHS.pushDevice('uid-1', DEVICE),
+            FIRESTORE_PATHS.notificationEvent('budget.paused~2026-10-01'),
+            FIRESTORE_PATHS.geocodeCell('n444268_e261025'),
+            FIRESTORE_PATHS.aiUsage('2026-10'),
+        ]).toEqual([
+            'admins/uid-1/inbox',
+            'admins/uid-1/inbox/order.reminder~bucharest~DS1105-1071DF076~7',
+            'admins/uid-1/notify/settings',
+            'admins/uid-1/pushDevices',
+            `admins/uid-1/pushDevices/${DEVICE}`,
+            'notificationEvents/budget.paused~2026-10-01',
+            'assistGeocodes/n444268_e261025',
+            'usage/ai-2026-10',
+        ]);
+        expect([FIRESTORE_PATHS.notificationEvents, FIRESTORE_PATHS.geocodeCells, FIRESTORE_PATHS.assistState]).toEqual([
+            'notificationEvents',
+            'assistGeocodes',
+            'ops/assist',
+        ]);
+    });
+
+    it.each([
+        ['an event id without its parts', () => FIRESTORE_PATHS.notificationEvent('budget.paused')],
+        ['an event id with a slash', () => FIRESTORE_PATHS.inboxItem('uid-1', 'job.failed~a/b')],
+        ['a device id that is a token', () => FIRESTORE_PATHS.pushDevice('uid-1', 'fcm-token:abc')],
+        ['a cell with too many decimals', () => FIRESTORE_PATHS.geocodeCell('n44426812_e261025')],
+        ['an AI month 00', () => FIRESTORE_PATHS.aiUsage('2026-00')],
+    ])('badPath_%s_throws', (_name, build) => {
+        expect(build).toThrow(RangeError);
+    });
+});
+
 describe('audited documents', () => {
     it.each([
         ['cities/bucuresti', { entity: 'city', cityId: 'bucuresti', entityId: 'bucuresti' }],

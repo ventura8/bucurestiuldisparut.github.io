@@ -46,6 +46,7 @@ describe('runCli', () => {
         expect(files.readText('dist/site/bucharest/data/manifest.json')).toContain('"publicToken":"pk.from-env"');
         expect(files.isFile('dist/site/starter-kit/index.html')).toBe(true);
         expect(records.map((record) => `${record.level} ${record.message} ${String(record.data?.['outDir'])}`)).toEqual([
+            'info HCM_PUBLIC_BUCKET is not set: every site bundles its manifest (the seed snapshot) undefined',
             'info site built dist/site/bucharest',
             'info site built dist/site/starter-kit',
         ]);
@@ -61,6 +62,26 @@ describe('runCli', () => {
         expect(files.readText('dist/e2e/starter-kit/data/manifest.json')).toContain(`"publicToken":"${PLACEHOLDER_TOKEN}"`);
         expect(records[0]?.level).toBe('warn');
         expect(records[0]?.message).toContain('MAPBOX_PUBLIC_TOKEN is not set');
+    });
+
+    it('happyPath_theBucketFromTheEnvironmentReachesTheSitesThatReadIt', () => {
+        const { files } = syntheticRepository();
+        const spec = JSON.parse(files.readText('sites/bucharest/site.json')) as Record<string, unknown>;
+        files.write('sites/bucharest/site.json', JSON.stringify({ ...spec, publicManifest: true }));
+        files.write('infra/project.json', JSON.stringify({ projectId: 'exemplu-proiect', region: 'europe-west1' }));
+        const { log, records } = recordingLogger();
+
+        expect(runCli([], { env: { MAPBOX_PUBLIC_TOKEN: 'pk.x', HCM_PUBLIC_BUCKET: 'exemplu-proiect-public' }, files, log })).toBe(EXIT_OK);
+
+        expect(files.readText('dist/site/bucharest/config.js')).toContain(
+            '"manifestUrl":"https://storage.googleapis.com/exemplu-proiect-public/cities/exemplu/manifest.json"',
+        );
+        expect(files.isFile('dist/site/bucharest/data/manifest.json')).toBe(false);
+        expect(files.isFile('dist/site/starter-kit/data/manifest.json')).toBe(true);
+        expect(records[0]).toMatchObject({
+            message: 'the sites that read the public bucket use its manifest',
+            data: { bucket: 'exemplu-proiect-public' },
+        });
     });
 
     it('badPath_anInputProblemExitsWithOne', () => {

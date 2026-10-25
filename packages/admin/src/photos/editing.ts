@@ -56,6 +56,7 @@ export class PhotoEditing {
         open?.close();
         this.#editor = null;
         this.#pinFromMap = false;
+        this.#context.photoChanged();
         if (photoId === null) {
             this.#context.set({ editor: null });
             this.#changed();
@@ -100,7 +101,9 @@ export class PhotoEditing {
         }
         this.#pinFromMap = true;
         this.#context.uploads.touched(editor.id);
-        editor.edit({ location: { lat: position[1], lng: position[0] } });
+        const location = { lat: position[1], lng: position[0] };
+        editor.edit({ location });
+        this.#context.placeSet(location);
     }
 
     /** The draft changed: the map shows it, and the pin follows a place typed in the fields. */

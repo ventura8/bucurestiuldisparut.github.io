@@ -9,6 +9,7 @@ import { html, type TemplateResult } from 'lit';
 
 import { MAPBOX_GL_CSS_URL } from '../../map/mapbox-loader.js';
 import type { AdminRouteIdPort } from '../admin-port.js';
+import { assistStyles } from '../assist/assist-parts.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
 import { listBody, reconnectingStatus } from '../editing/states.js';
@@ -27,7 +28,7 @@ export const HCM_LAYERS_PAGE_TAG = 'hcm-layers-page';
 export class HcmLayersPage extends AreaPage<LayersViewState, LayersIntentsPort> {
     static override readonly properties = { ...AreaPage.properties, announcement: { state: true }, mapCss: { attribute: false } };
 
-    static override readonly styles = layersStyles;
+    static override readonly styles = [...layersStyles, ...assistStyles];
 
     protected readonly route: AdminRouteIdPort = 'layers';
     /** The last settled change, said in the page's polite region. */
@@ -149,6 +150,7 @@ export class HcmLayersPage extends AreaPage<LayersViewState, LayersIntentsPort> 
             readOnly: this.readOnly,
             who: { self: this.self, people: this.people },
             crop: view.crop,
+            assist: view.assist,
         };
         return layerEditor(context, editor, view.deletion);
     }

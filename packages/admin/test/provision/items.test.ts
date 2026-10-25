@@ -182,6 +182,71 @@ describe('workload identity', () => {
     });
 });
 
+describe('the custom role of the translation drafts (M4)', () => {
+    const IAM_PREFIX = ['apis', 'service-accounts', 'buckets', 'secrets', 'org-policies', 'iam'] as const;
+
+    it('happyPath_theRoleIsMadeWithItsPermissionsBeforeTheBindingThatNamesIt', async () => {
+        const world = provisionWorld();
+
+        const report = await applyProvision(planProvision(null, [...IAM_PREFIX]), world.deps);
+
+        expect(only(report.items, 'iam')).toEqual([{ id: 'iam', state: 'ok' }]);
+        const operations = world.fakes.calls.map((call) => call.operation);
+        expect(operations.indexOf('iam.roles.create')).toBeGreaterThan(-1);
+        expect(operations.indexOf('iam.roles.create')).toBeLessThan(operations.indexOf('resource-manager.setIamPolicy'));
+        expect(world.fakes.state.iam.projects.get('demo-hcm')?.roles.get('hcmVertexDrafts')).toEqual({
+            includedPermissions: ['aiplatform.endpoints.predict'],
+            deleted: false,
+        });
+        expect(JSON.stringify(world.fakes.snapshot()['resource-manager'])).toContain('projects/demo-hcm/roles/hcmVertexDrafts');
+        expect(JSON.stringify(world.fakes.snapshot()['resource-manager'])).not.toContain('roles/aiplatform.user');
+    });
+
+    it('badPath_aDeletedRoleWithOtherPermissionsIsUndeletedAndCorrectedNotRecreated', async () => {
+        const world = provisionWorld();
+        world.fakes.scenario('iam.roleDeleted');
+
+        const doctor = await doctorProvision(world.deps, ['iam']);
+        const report = await applyProvision(planProvision(null, [...IAM_PREFIX]), world.deps);
+
+        expect(doctor.items[0]).toMatchObject({ id: 'iam', state: 'missing' });
+        expect(only(report.items, 'iam')).toEqual([{ id: 'iam', state: 'ok' }]);
+        expect(world.fakes.callsTo('iam.roles.undelete')).toHaveLength(1);
+        expect(world.fakes.callsTo('iam.roles.patch')).toHaveLength(1);
+        expect(world.fakes.callsTo('iam.roles.create')).toEqual([]);
+        expect(world.fakes.state.iam.projects.get('demo-hcm')?.roles.get('hcmVertexDrafts')).toEqual({
+            includedPermissions: ['aiplatform.endpoints.predict'],
+            deleted: false,
+        });
+    });
+
+    it('badPath_aRoleWhosePermissionsChangedIsPatchedOnly', async () => {
+        const world = provisionWorld();
+        world.fakes.scenario('iam.roleDeleted');
+        const role = must(world.fakes.state.iam.projects.get('demo-hcm')?.roles.get('hcmVertexDrafts'));
+        role.deleted = false;
+
+        const report = await applyProvision(planProvision(null, [...IAM_PREFIX]), world.deps);
+
+        expect(only(report.items, 'iam')).toEqual([{ id: 'iam', state: 'ok' }]);
+        expect(world.fakes.callsTo('iam.roles.undelete')).toEqual([]);
+        expect(world.fakes.callsTo('iam.roles.patch')).toHaveLength(1);
+        expect(role.includedPermissions).toEqual(['aiplatform.endpoints.predict']);
+    });
+
+    it('happyPath_aRoleThatIsRightIsLeftAsItIs', async () => {
+        const world = provisionWorld();
+        await applyProvision(planProvision(null, [...IAM_PREFIX]), world.deps);
+        const before = world.fakes.calls.length;
+
+        const report = await applyProvision(planProvision(null, ['iam']), world.deps);
+
+        expect(report.items).toEqual([{ id: 'iam', state: 'ok' }]);
+        expect(world.fakes.calls.slice(before).map((call) => call.operation)).not.toContain('iam.roles.create');
+        expect(world.fakes.calls.slice(before).filter((call) => /iam\.roles\.(patch|undelete)/.test(call.operation))).toEqual([]);
+    });
+});
+
 describe('edges of the project', () => {
     it('badPath_aBrowserKeyThatIsNotTheWebConfigurationsIsNotFound', async () => {
         const world = provisionWorld();

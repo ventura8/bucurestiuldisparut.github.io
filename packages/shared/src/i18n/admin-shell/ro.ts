@@ -14,6 +14,7 @@ export const ro = {
     'adminShell.nav.layers': 'Straturi',
     'adminShell.nav.imagery': 'Imagini istorice',
     'adminShell.nav.jobs': 'Procesări',
+    'adminShell.nav.inbox': 'Notificări',
     'adminShell.nav.settings': 'Setări',
     'adminShell.nav.admins': 'Administratori',
     'adminShell.nav.history': 'Istoric',

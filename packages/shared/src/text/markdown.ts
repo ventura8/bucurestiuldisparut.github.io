@@ -183,6 +183,22 @@ export function parseMarkdown(source: string): MarkdownDocument {
     return { paragraphs, rejectedLinks };
 }
 
+function nodeLinks(node: InlineNode): string[] {
+    if (node.type === 'link') {
+        return [node.href];
+    }
+    return node.type === 'strong' || node.type === 'em' ? node.children.flatMap(nodeLinks) : [];
+}
+
+/**
+ * Every link address of a Markdown-subset string, the https ones it renders as links and the others it keeps as text (a
+ * translation draft may neither add nor change one: `draftKeepsLinks`).
+ */
+export function linkTargets(source: string): readonly string[] {
+    const document = parseMarkdown(source);
+    return [...document.paragraphs.flatMap((paragraph) => paragraph.children.flatMap(nodeLinks)), ...document.rejectedLinks];
+}
+
 /** The plain text of a Markdown-subset string (markers removed, link labels kept). */
 export function markdownToPlainText(source: string): string {
     const text = (nodes: readonly InlineNode[]): string => nodes.map((node) => nodeText(node, text)).join('');

@@ -6,10 +6,13 @@
  * search says so (`apiError.usgs.maintenance` when every failure was maintenance, else `apiError.usgs.unavailable`)
  * instead of "nothing found". An existing document keeps the admin's status and note, its layer and its browse copy. The
  * best `BROWSE_PREFETCH` frames get their browse copy at once. Every attempt is recorded (`ops/harvest-{city}`,
- * CR-M3-47): the tick's monthly harvest is keyed on it, and backs off after a failure.
+ * CR-M3-47): the tick's monthly harvest is keyed on it, and backs off after a failure. M4 (`docs/research/M4-interfaces.md`
+ * §1.6): a known scene also keeps its order (the buy flow's record), and every scene records EarthExplorer's id of its
+ * dataset (`dataset-search`, once a run), which the order card's deep link needs.
  */
 import {
     BROWSE_PREFETCH,
+    EE_DATASET_ID_PATTERN,
     FIRESTORE_PATHS,
     USGS_DATASETS,
     imagerySettingsOf,
@@ -117,6 +120,8 @@ interface RankWorld {
     readonly targetYears: readonly number[];
     readonly shown: readonly { readonly layerId: string; readonly year: number }[];
     readonly bounds: CityDoc['bounds'];
+    /** M4: EarthExplorer's id of each dataset by its alias, as this run's `dataset-search` read them (none when it failed). */
+    readonly eeIds: ReadonlyMap<string, string>;
 }
 
 /** A scene's rank against the city's target years and the years its layers show (its own import left out). */
@@ -130,14 +135,24 @@ interface Harvested {
     readonly sourceUrl: string | undefined;
 }
 
-type Kept = Pick<UsgsSceneDoc, 'status' | 'createdAt' | 'note' | 'layerId'>;
+type Kept = Pick<UsgsSceneDoc, 'status' | 'createdAt' | 'note' | 'layerId' | 'order' | 'eeDatasetId'>;
 
-/** What a harvest keeps of a scene it knew: the admin's triage and note, the layer of its import, its creation. */
+/**
+ * What a harvest keeps of a scene it knew: the admin's triage and note, the layer of its import, its creation, and (M4)
+ * its order, which only the order callables and the watch write, and the EarthExplorer id an earlier run or order read.
+ */
 function keptOf(existing: UsgsSceneDoc | undefined, at: UsgsSceneDoc['harvestedAt']): Kept {
     if (existing === undefined) {
         return { status: 'candidate', createdAt: at };
     }
-    return compact<Kept>({ status: existing.status, note: existing.note, layerId: existing.layerId, createdAt: existing.createdAt ?? at });
+    const { status, note, layerId, order, eeDatasetId } = existing;
+    return compact<Kept>({ status, note, layerId, order, eeDatasetId, createdAt: existing.createdAt ?? at });
+}
+
+/** The scene's EarthExplorer dataset id: this run's for its dataset, else the one it kept. */
+function eeDatasetIdOf(dataset: UsgsDataset, kept: Kept, world: RankWorld): Pick<UsgsSceneDoc, 'eeDatasetId'> {
+    const eeDatasetId = world.eeIds.get(dataset) ?? kept.eeDatasetId;
+    return eeDatasetId === undefined ? {} : { eeDatasetId };
 }
 
 function sceneDoc(harvested: Harvested, existing: UsgsSceneDoc | undefined, world: RankWorld, now: Date): UsgsSceneDoc {
@@ -146,6 +161,7 @@ function sceneDoc(harvested: Harvested, existing: UsgsSceneDoc | undefined, worl
     return {
         ...harvested.fields,
         ...kept,
+        ...eeDatasetIdOf(harvested.fields.dataset, kept, world),
         browse: browseFor(existing, harvested.sourceUrl, now),
         rank: rankOf(harvested.fields, kept.layerId, world),
         harvestedAt: at,
@@ -216,11 +232,28 @@ async function prefetchBrowse(deps: HarvestDeps, cityId: string, scenes: readonl
     }
 }
 
+/**
+ * M4 (`docs/research/M4-interfaces.md` §1.6): EarthExplorer's id of each declassified dataset (`dataset-search`), kept
+ * when it has the id's shape; a failure only leaves them unknown (the card then names the entity id to search for).
+ */
+async function earthExplorerIds(deps: HarvestDeps, apiKey: string): Promise<ReadonlyMap<string, string>> {
+    try {
+        const datasets = await deps.scenes.datasets(apiKey);
+        return new Map(datasets.filter((each) => EE_DATASET_ID_PATTERN.test(each.datasetId)).map((each) => [each.alias, each.datasetId]));
+    } catch (error) {
+        deps.log.warn('usgs dataset ids not read', { error: String(error) });
+        return new Map();
+    }
+}
+
 async function harvestIn(deps: HarvestDeps, request: ImagerySearchRequest, city: CityDoc): Promise<ImagerySearchResponse> {
     const searchedAt = deps.clock.now();
-    const { found, failedDatasets } = await withUsgs(deps, (apiKey) => searchAll(deps, apiKey, { request, bounds: city.bounds }));
+    const { found, failedDatasets, eeIds } = await withUsgs(deps, async (apiKey) => ({
+        ...(await searchAll(deps, apiKey, { request, bounds: city.bounds })),
+        eeIds: await earthExplorerIds(deps, apiKey),
+    }));
     const shown = await shownYears(deps.documents, request.cityId);
-    const world: RankWorld = { targetYears: imagerySettingsOf(city.imagery).targetYears, shown, bounds: city.bounds };
+    const world: RankWorld = { targetYears: imagerySettingsOf(city.imagery).targetYears, shown, bounds: city.bounds, eeIds };
     const stored = await storeScenes(deps, request.cityId, found, world);
     await prefetchBrowse(deps, request.cityId, stored.written);
     deps.log.info('usgs harvest finished', { cityId: request.cityId, found: found.length, added: stored.added, failedDatasets });

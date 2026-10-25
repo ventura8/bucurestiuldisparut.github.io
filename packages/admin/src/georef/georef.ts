@@ -42,9 +42,13 @@ import {
     type PixelPosition,
 } from './pairs.js';
 import { georefVersionOf, INITIAL_GEOREF, type GeorefIntents, type GeorefState, type GeorefVersion, type ReferenceKind } from './state.js';
+import { Suggestions } from './suggestions.js';
 
 /** The intents that edit the pairs. */
 type PairIntent = 'setAdding' | 'pickScan' | 'addAtCentres' | 'movePixel' | 'moveGeo' | 'select' | 'remove' | 'toggle' | 'cancelHalf';
+
+/** The intents of the matcher's suggestions (M4 §2.5). */
+type SuggestionIntent = 'acceptSuggestion' | 'acceptAllSuggestions' | 'rejectSuggestion' | 'selectSuggestion';
 
 /** No scan read yet: a pixel is only rounded. */
 const UNBOUNDED = { width: Number.MAX_SAFE_INTEGER, height: Number.MAX_SAFE_INTEGER } as const;
@@ -73,6 +77,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     readonly #city: LiveDoc<CityDoc>;
     readonly #map: GeorefMap;
     readonly #pictures: GeorefPictures;
+    readonly #suggestions = new Suggestions();
     /** The version's own pairs and transform: what Discard returns to and the unsaved guard compares with. */
     #base: { readonly pairs: readonly Gcp[]; readonly transform: GeorefTransform } = { pairs: [], transform: 'affine' };
     #transform: FittedTransform | null = null;
@@ -156,6 +161,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#city.stop();
         this.#map.detach();
         this.#pictures.clear();
+        this.#suggestions.reset();
         this.#base = { pairs: [], transform: 'affine' };
         this.#transform = null;
         this.#cell.update({ ...INITIAL_GEOREF, thresholdM: this.#cell.state.thresholdM });
@@ -170,7 +176,27 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     }
 
     #intents(): GeorefIntents {
-        return { ...this.#pairIntents(), ...this.#pageIntents() };
+        return { ...this.#pairIntents(), ...this.#suggestionIntents(), ...this.#pageIntents() };
+    }
+
+    /** The matcher's suggestions: accepted into the pairs (unsaved until Save), rejected for this visit, selected. */
+    #suggestionIntents(): Pick<GeorefIntents, SuggestionIntent> {
+        return {
+            acceptSuggestion: (id) => {
+                this.#edit(this.#suggestions.accepted(this.#cell.state.pairs, id));
+            },
+            acceptAllSuggestions: () => {
+                this.#edit(this.#suggestions.accepted(this.#cell.state.pairs));
+            },
+            rejectSuggestion: (id) => {
+                this.#suggestions.reject(id);
+                this.#showSuggestions();
+            },
+            selectSuggestion: (id) => {
+                this.#suggestions.select(id);
+                this.#showSuggestions();
+            },
+        };
     }
 
     /** The pairs: made, moved, selected, removed, kept as checkpoints. */
@@ -208,7 +234,7 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     }
 
     /** The rest of the page: the transform, the reference, the preview, the panes, Save and the map. */
-    #pageIntents(): Omit<GeorefIntents, PairIntent> {
+    #pageIntents(): Omit<GeorefIntents, PairIntent | SuggestionIntent> {
         return {
             retry: () => {
                 this.#doc.retry();
@@ -254,10 +280,13 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
     /** A new snapshot of the version: its pairs become the base (an edit in progress is kept). */
     #loaded(doc: LayerVersionDoc, version: GeorefVersion): void {
         this.#base = baseOf(doc);
+        this.#suggestions.load(doc);
         this.#frame();
         this.#pictures.load(version, this.#cell.state.reference);
         this.#cell.update({ reference: this.#pictures.reference });
-        if (!this.#cell.state.dirty) {
+        if (this.#cell.state.dirty) {
+            this.#showSuggestions();
+        } else {
             this.#refit(this.#base.pairs, this.#base.transform);
         }
     }
@@ -369,7 +398,15 @@ class GeorefStore implements AreaStore<GeorefState, GeorefIntents> {
         this.#transform = fitted.transform;
         this.#cell.update({ pairs, transform, fit: fitted.view, dirty, refusal: null });
         this.#map.showPairs(pairs, this.#cell.state.selected);
+        this.#showSuggestions();
         this.#warp();
+    }
+
+    /** The suggestions still to decide, on the panel and the map (the scan pane reads them from the state). */
+    #showSuggestions(): void {
+        const suggestions = this.#suggestions.view(this.#cell.state.pairs, this.#transform);
+        this.#cell.update({ suggestions });
+        this.#map.showSuggestions(suggestions.pending, suggestions.selected);
     }
 
     #warp(): void {

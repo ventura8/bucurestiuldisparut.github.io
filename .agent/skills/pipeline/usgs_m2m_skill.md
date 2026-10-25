@@ -29,6 +29,7 @@ Facts about the USGS Machine-to-Machine (M2M) API and EarthExplorer that the fun
 
 - EarthExplorer deep link per scene: `https://earthexplorer.usgs.gov/scene/metadata/full/{datasetId}/{entityId}/`; Item Basket → On-Demand → Start Order; recommended 7 µm; $30 per frame plus $5 per order. **Claude never pays.**
 - Clicking "Buy" records the order intent; a daily `download-options` check per watched scene auto-creates the import job when the scene becomes available and notifies the admin. Reminders on days 7 and 12 (USGS deletes unpaid orders after two weeks).
+- M4 contract (`docs/research/M4-interfaces.md` §1): the order is a record on its scene (`usgsOrderSchema`, the states of `SCENE_ACQUISITION_STATES`), written only by `usgs.markOrdered` (which refuses a scene USGS already offers), `usgs.checkOrder`, `usgs.cancelOrder` and the watch, a step of `imagery.tick` that asks each order once a day (no new scheduler); `expired` after 90 days. The deep link's `datasetId` is EarthExplorer's own id, not the M2M alias: `corona2`'s `5e839febdccb64b3` was verified on 2026-10-11 (`EARTH_EXPLORER_DATASET_IDS`), the other two datasets' are read at run time (`eeDatasetId` on each scene); `earthExplorerSceneUrl` builds it.
 
 ## Tests
 

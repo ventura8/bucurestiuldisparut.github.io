@@ -9,16 +9,22 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
     adminDoc,
+    aiUsageDoc,
     cityDoc,
+    geocodeCellDoc,
     harvestStateDoc,
     historyEntryDoc,
+    inboxItemDoc,
     inviteDoc,
     jobDoc,
     jobLogDoc,
     layerDoc,
     layerVersionDoc,
     manifestStateDoc,
+    notificationEventDoc,
+    notifySettingsDoc,
     newJob,
+    newNotifySettings,
     newPhoto,
     newPoi,
     newPoiCategory,
@@ -28,6 +34,7 @@ import {
     photoDoc,
     poiCategoryDoc,
     poiDoc,
+    pushDeviceDoc,
     setupStatusDoc,
     usageDoc,
     usgsSceneDoc,
@@ -38,6 +45,7 @@ import {
     NOBODY,
     createWorld,
     expected,
+    serverTime,
     stampedBy,
     verdicts,
     type Data,
@@ -87,6 +95,9 @@ function serverOwned(collection: string, id: string, seed: () => Data): Row {
 function history(collection: string): Row {
     return serverOwned(collection, '1767225600000-event1', () => historyEntryDoc(admin()));
 }
+
+/** The admin persona's uid in this world (`createWorld('matrix')`): its own inbox, settings and devices (M4). */
+const OWN = 'matrix-admin';
 
 const ROWS: Readonly<Record<string, Row>> = {
     'admins/{uid}': serverOwned(FIRESTORE_PATHS.admins, 'someone-else', adminDoc),
@@ -153,7 +164,8 @@ const ROWS: Readonly<Record<string, Row>> = {
         id: 'DS1034-1057DA024',
         seed: () => usgsSceneDoc(),
         create: (uid) => ({ ...usgsSceneDoc(), ...stampedBy(uid) }),
-        update: stamped({ status: 'ordered' }),
+        // M4: the client's triage is candidate or rejected; an order is usgs.markOrdered's (docs/research/M4-interfaces.md §1.8).
+        update: stamped({ status: 'rejected' }),
         allowed: { ...readOnly, update: ADMIN_ONLY },
     },
     'cities/{city}/history/{entry}': history(audited('city', CITY_ID)),
@@ -164,6 +176,32 @@ const ROWS: Readonly<Record<string, Row>> = {
     // Ground control points return with their schema in M3; until then the default deny holds.
     'cities/{city}/gcps/{layer}': { ...serverOwned(`cities/${CITY_ID}/gcps`, 'corona-1966', layerDoc), allowed: {} },
     'secrets/{name}': { ...serverOwned('secrets', 'mapbox-sk-bootstrap', usageDoc), allowed: {} },
+    // M4 (docs/research/M4-interfaces.md §4.2, §5.6; assists-notify): the admin's own inbox (marked read), settings (one
+    // document, `settings`, written in its own tests: a copy under another id is refused) and devices; the events have no
+    // client rule; the geocoding cache, the AI counters and the M4 ops documents are read-only.
+    'admins/{uid}/inbox/{item}': {
+        collection: FIRESTORE_PATHS.inbox(OWN),
+        id: 'job.failed~matrix-city~j1~0',
+        seed: () => ({ ...inboxItemDoc(), read: false }),
+        create: (uid) => ({ ...inboxItemDoc(), ...stampedBy(uid) }),
+        update: stamped({ read: true, readAt: serverTime() }),
+        allowed: { ...readOnly, update: ADMIN_ONLY },
+    },
+    'admins/{uid}/notify/{doc}': {
+        collection: `admins/${OWN}/notify`,
+        id: 'settings',
+        seed: () => notifySettingsDoc(OWN),
+        create: newNotifySettings,
+        update: stamped({ push: false }),
+        allowed: readOnly,
+    },
+    'admins/{uid}/pushDevices/{device}': serverOwned(FIRESTORE_PATHS.pushDevices(OWN), 'ab'.repeat(16), () => pushDeviceDoc(OWN)),
+    'notificationEvents/{event}': {
+        ...serverOwned(FIRESTORE_PATHS.notificationEvents, 'job.failed~matrix-city~j1~0', notificationEventDoc),
+        allowed: {},
+    },
+    'assistGeocodes/{cell}': serverOwned(FIRESTORE_PATHS.geocodeCells, 'n444413_e260973', geocodeCellDoc),
+    'usage/ai-{month}': serverOwned('usage', 'ai-2026-10', aiUsageDoc),
 };
 
 function request(row: Row, operation: Operation, persona: Persona): Promise<unknown> {

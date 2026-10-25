@@ -156,6 +156,7 @@ export const ro = {
     'adminSetup.selfTest.check.usgs': 'Contul USGS',
     'adminSetup.selfTest.check.firebase-management': 'Configurația Firebase',
     'adminSetup.selfTest.check.error-reporting': 'Rapoartele de erori (Error Reporting)',
+    'adminSetup.selfTest.check.ai': 'Ciornele de traducere (Vertex AI)',
     'adminSetup.selfTest.fix': 'Deschide pasul „{step}”',
     'adminSetup.mapbox.rotate.title': 'Tokenurile publice',
     'adminSetup.mapbox.rotate.why': 'Un token public folosit în altă parte? Înlocuiește-l: cel vechi mai merge 10 minute.',

@@ -102,6 +102,13 @@ export const CLIENT_WRITES = {
      */
     job: { create: [], update: ['cancelRequested', ...STAMP] },
     usgsScene: { create: [], update: ['status', 'note', ...STAMP] },
+    /**
+     * M4 (`docs/research/M4-interfaces.md` §5.6): `notify.onEvent` creates each admin's inbox items; the admin marks their
+     * own read (`read` true, `readAt` the server's time).
+     */
+    inboxItem: { create: [], update: ['read', 'readAt', ...STAMP] },
+    /** M4: each admin's own push settings (`admins/{uid}/notify/settings`); the devices are `notify.registerDevice`'s. */
+    notifySettings: { create: ['push', 'pushKinds', 'createdAt', ...STAMP], update: ['push', 'pushKinds', ...STAMP] },
 } as const satisfies Readonly<Record<string, ClientWrites>>;
 
 export type ClientCollection = keyof typeof CLIENT_WRITES;

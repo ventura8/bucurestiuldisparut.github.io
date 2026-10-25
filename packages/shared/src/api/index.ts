@@ -204,6 +204,33 @@ export type {
     PublishTask,
     RasterUploadMetadata,
 } from './imagery.js';
+// M4 (docs/research/M4-interfaces.md): buying a scan, the assists, push notifications.
+export {
+    usgsCancelOrderRequestSchema,
+    usgsCancelOrderResponseSchema,
+    usgsCheckOrderRequestSchema,
+    usgsCheckOrderResponseSchema,
+    usgsMarkOrderedRequestSchema,
+    usgsMarkOrderedResponseSchema,
+} from './orders.js';
+export type { UsgsCheckOrderResponse, UsgsMarkOrderedRequest } from './orders.js';
+export {
+    assistSuggestTitleRequestSchema,
+    assistSuggestTitleResponseSchema,
+    assistTranslateDraftRequestSchema,
+    assistTranslateDraftResponseSchema,
+    geocodeTaskSchema,
+} from './assist.js';
+export type { AssistSuggestTitleResponse, AssistTranslateDraftRequest, GeocodeTask } from './assist.js';
+export {
+    notifyRegisterDeviceRequestSchema,
+    notifyRegisterDeviceResponseSchema,
+    notifySendTestRequestSchema,
+    notifySendTestResponseSchema,
+    notifyUnregisterDeviceRequestSchema,
+    notifyUnregisterDeviceResponseSchema,
+} from './notify.js';
+export type { NotifyRegisterDeviceRequest } from './notify.js';
 export { BACKGROUND_FUNCTIONS, CALLABLES, FUNCTION_OWNERS, HTTP_ENDPOINTS, deployedName } from './registry.js';
 export type {
     AppCheckMode,

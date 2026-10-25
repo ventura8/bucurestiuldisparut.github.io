@@ -29,7 +29,19 @@ export type AdminAuthStatePort =
     | 'admin';
 
 export type AdminRouteIdPort =
-    'home' | 'setup' | 'photos' | 'pois' | 'layers' | 'imagery' | 'jobs' | 'settings' | 'admins' | 'history' | 'crashes' | 'georef';
+    | 'home'
+    | 'setup'
+    | 'photos'
+    | 'pois'
+    | 'layers'
+    | 'imagery'
+    | 'jobs'
+    | 'inbox'
+    | 'settings'
+    | 'admins'
+    | 'history'
+    | 'crashes'
+    | 'georef';
 
 export interface AdminRoutePort {
     readonly id: AdminRouteIdPort;
@@ -70,6 +82,8 @@ export interface AdminStatePort {
     readonly revoked?: boolean;
     /** The admins' names by uid, once a conflict asked for them (who saved a change). */
     readonly people?: Readonly<Record<string, string>>;
+    /** M4: the signed-in admin's unread notifications (up to `INBOX_BADGE_MAX` + 1), null while unknown. */
+    readonly unread?: number | null;
     readonly projectId: string;
     readonly authDomain: string;
     /** The Setup Assistant's state (setup-ui's `SetupViewState`), null before its controller exists or without one. */

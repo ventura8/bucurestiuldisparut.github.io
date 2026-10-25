@@ -41,9 +41,17 @@ function idleInPage(): Promise<boolean> {
     });
 }
 
-/** Waits until the viewer's map is idle (its tiles, sprites and paint updates drawn). */
-export async function mapIdle(page: Page): Promise<void> {
-    await expect.poll(() => page.evaluate(idleInPage), { message: 'the map renders and becomes idle' }).toBe(true);
+/**
+ * Waits until the viewer's map is idle (its tiles, sprites and paint updates drawn); `timeout` beyond the default for a
+ * page drawing two maps (swipe compare at 3840 px under SwiftShader on a loaded machine took longer than 15 s).
+ */
+export async function mapIdle(page: Page, timeout?: number): Promise<void> {
+    await expect
+        .poll(() => page.evaluate(idleInPage), {
+            message: 'the map renders and becomes idle',
+            ...(timeout === undefined ? {} : { timeout }),
+        })
+        .toBe(true);
 }
 
 /** Runs in the page: the page position of each coordinate on the newest map (null without a map). */

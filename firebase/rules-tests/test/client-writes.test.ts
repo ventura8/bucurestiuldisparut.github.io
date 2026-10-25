@@ -8,7 +8,9 @@ import {
     CLIENT_WRITES,
     FIRESTORE_PATHS,
     cityDocSchema,
+    inboxItemDocSchema,
     jobDocSchema,
+    notifySettingsDocSchema,
     layerDocSchema,
     photoDocSchema,
     poiCategoryDocSchema,
@@ -21,14 +23,17 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
     EDITS,
     cityDoc,
+    inboxItemDoc,
     jobDoc,
     layerDoc,
     newJob,
+    newNotifySettings,
     newPhoto,
     newPoi,
     newPoiCategory,
     photoDoc,
     poiCategoryDoc,
+    notifySettingsDoc,
     poiDoc,
     usgsSceneDoc,
 } from './support/documents.js';
@@ -48,6 +53,8 @@ interface Collection {
     complete(): Data;
     /** The admin's create, when clients create this collection. */
     create?: (uid: string) => Data;
+    /** A collection of one document per admin (M4's push settings): the create test removes what an update test left. */
+    readonly single?: boolean;
 }
 
 const CITY_ID = 'rules-client-writes';
@@ -75,6 +82,19 @@ const COLLECTIONS: Readonly<Record<ClientCollection, Collection>> = {
     },
     job: { schema: jobDocSchema, path: (id) => FIRESTORE_PATHS.job(CITY_ID, id), complete: () => jobDoc(admin()), create: newJob },
     usgsScene: { schema: usgsSceneDocSchema, path: (id) => FIRESTORE_PATHS.usgsScene(CITY_ID, id), complete: () => usgsSceneDoc() },
+    // M4: an admin's own inbox and push settings (docs/research/M4-interfaces.md §5.6).
+    inboxItem: {
+        schema: inboxItemDocSchema,
+        path: (id) => FIRESTORE_PATHS.inboxItem(admin(), `job.failed~writes~${id}~0`),
+        complete: inboxItemDoc,
+    },
+    notifySettings: {
+        schema: notifySettingsDocSchema,
+        path: () => FIRESTORE_PATHS.notifySettings(admin()),
+        complete: () => notifySettingsDoc(admin()),
+        create: newNotifySettings,
+        single: true,
+    },
 };
 
 const NAMES = Object.keys(CLIENT_WRITES) as ClientCollection[];
@@ -147,6 +167,9 @@ describe('create', () => {
     it.each(creatable)('happyPath_an%sCreateWithEveryClientFieldIsAllowedAndSchemaValid', async (name) => {
         const collection = COLLECTIONS[name];
         const path = collection.path(`c${name}`);
+        if (collection.single === true) {
+            await world.env.withSecurityRulesDisabled((owner) => owner.firestore().doc(path).delete());
+        }
 
         const result = await verdict(
             world

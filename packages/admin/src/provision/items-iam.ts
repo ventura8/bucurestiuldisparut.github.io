@@ -1,13 +1,13 @@
 import { isGoogleFailure } from '../google/failure.js';
 import { ensureBindings, missingBindings, type PolicyAccess, type WantedBinding } from '../google/iam-policy.js';
-import type { IdentityResource } from '../google/iam.js';
-import { matchesSpec, type JsonObject } from '../google/json.js';
+import type { CustomRole, IdentityResource } from '../google/iam.js';
+import { matchesSpec, sameSet, type JsonObject } from '../google/json.js';
 import { eachInTurn, lacking, type ProvisionContext, type ProvisionItemSpec } from './item.js';
-import { roleTable, type PolicyBindings, type ServiceAgents } from './resources.js';
+import { CUSTOM_ROLES, roleTable, type CustomRoleEntry, type PolicyBindings, type ServiceAgents } from './resources.js';
 
 /**
- * The `iam` item (the role table of `docs/research/M2b-interfaces.md` §3.4.1 on the project, the buckets, the secrets
- * and the service accounts) and the `workload-identity` item (the GitHub pool and its `site-master` provider, whose
+ * The `iam` item (the project's custom roles first, M4; then the role table of `docs/research/M2b-interfaces.md` §3.4.1
+ * on the project, the buckets, the secrets and the service accounts) and the `workload-identity` item (the GitHub pool and its `site-master` provider, whose
  * condition admits only the repository's `master` branch in the `deploy` environment, and the deployer's binding).
  */
 
@@ -56,20 +56,58 @@ async function bindAll(context: ProvisionContext): Promise<void> {
     await eachInTurn(table, (policy) => ensureBindings(policyAccess(context, policy), policy.bindings));
 }
 
+/** A custom role as it is and what it lacks: nothing, to be made, or to be undeleted or given its permissions. */
+interface RoleFinding {
+    readonly entry: CustomRoleEntry;
+    readonly found: CustomRole | undefined;
+}
+
+function roleRight(role: CustomRole, entry: CustomRoleEntry): boolean {
+    return !role.deleted && sameSet(role.includedPermissions, entry.spec.includedPermissions);
+}
+
+/** `role:<id>` for each custom role that is missing, deleted or holds other permissions. */
+function rolesLacking(findings: readonly RoleFinding[]): string[] {
+    return findings.filter(({ entry, found }) => found === undefined || !roleRight(found, entry)).map(({ entry }) => `role:${entry.id}`);
+}
+
+/** Makes or repairs every custom role that lacks something, before any binding names it. */
+async function fixRoles(context: ProvisionContext, findings: readonly RoleFinding[]): Promise<void> {
+    const { clients, project } = context;
+    await eachInTurn(findings, async ({ entry, found }) => {
+        if (found === undefined) {
+            await clients.iam.createRole(project.projectId, entry.id, entry.spec);
+        } else if (!roleRight(found, entry)) {
+            await clients.iam.repairRole(found, entry.spec);
+        }
+    });
+}
+
+async function bindingsLacking(context: ProvisionContext): Promise<string[]> {
+    const findings = await context.findings();
+    const table = roleTable(context.project, conventionalAgents(context.project.projectNumber), findings.noDefaultGrants);
+    const lacks = await Promise.all(
+        table.map(async (policy) =>
+            (await lackingBindings(policyAccess(context, policy), policy.bindings)).length === 0
+                ? []
+                : [`${policy.kind}:${policy.resource}`],
+        ),
+    );
+    return lacks.flat();
+}
+
 const iam: ProvisionItemSpec = {
     id: 'iam',
     after: ['service-accounts', 'buckets', 'secrets', 'org-policies'],
     observe: async (context) => {
-        const findings = await context.findings();
-        const table = roleTable(context.project, conventionalAgents(context.project.projectNumber), findings.noDefaultGrants);
-        const lacks = await Promise.all(
-            table.map(async (policy) =>
-                (await lackingBindings(policyAccess(context, policy), policy.bindings)).length === 0
-                    ? []
-                    : [`${policy.kind}:${policy.resource}`],
-            ),
+        const roles = await Promise.all(
+            CUSTOM_ROLES.map(async (entry) => ({ entry, found: await context.clients.iam.getRole(context.project.projectId, entry.id) })),
         );
-        return lacking(lacks.flat(), () => bindAll(context));
+        const lacks = [...rolesLacking(roles), ...(await bindingsLacking(context))];
+        return lacking(lacks, async () => {
+            await fixRoles(context, roles);
+            await bindAll(context);
+        });
     },
 };
 

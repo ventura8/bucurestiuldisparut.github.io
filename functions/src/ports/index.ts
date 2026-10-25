@@ -9,15 +9,18 @@ import type { CloudRunJobs } from './cloud-run-jobs.js';
 import type { DocumentStore } from './documents.js';
 import type { ErrorReporter } from './error-reporter.js';
 import type { FirebaseManagement } from './firebase-management.js';
+import type { Geocoder } from './geocoder.js';
 import type { GoogleIam } from './google-iam.js';
 import type { ImageProcessor } from './image-processor.js';
 import type { MapboxApi } from './mapbox-api.js';
 import type { MapboxTilesets } from './mapbox-tilesets.js';
+import type { PushSender } from './push-sender.js';
 import type { RemoteFiles } from './remote-files.js';
 import type { RuntimeConfig } from './runtime-config.js';
 import type { SecretStore } from './secret-store.js';
 import type { SetupRecords } from './setup-records.js';
 import type { TaskQueue } from './task-queue.js';
+import type { Translator } from './translator.js';
 import type { UsgsApi } from './usgs-api.js';
 import type { UsgsScenes } from './usgs-scenes.js';
 
@@ -50,6 +53,10 @@ export interface Ports {
     readonly scenes: UsgsScenes;
     readonly remote: RemoteFiles;
     readonly reader: BlobReader;
+    /** M4 (docs/research/M4-interfaces.md §4, §5): Nominatim, Vertex AI Gemini, FCM web push. */
+    readonly geocoder: Geocoder;
+    readonly translator: Translator;
+    readonly push: PushSender;
     readonly admins: AdminDirectory;
     readonly setup: SetupRecords;
 }

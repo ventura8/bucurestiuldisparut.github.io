@@ -23,6 +23,11 @@ function markersOf(view: GeorefViewState): readonly ScanMarker[] {
     return view.pairs.map((pair, index) => ({ id: pair.id, label: String(index + 1), pixel: pair.pixel, enabled: pair.enabled }));
 }
 
+/** The matcher's suggestions still to decide, labelled `a1`, `a2`, … as in their list (drawn dashed, M4 §2.5). */
+function suggestionMarkersOf(view: GeorefViewState): readonly ScanMarker[] {
+    return view.suggestions.pending.map((row) => ({ id: row.pair.id, label: row.label, pixel: row.pair.pixel, enabled: true }));
+}
+
 /** The half pair's scan end, when it began on the scan. */
 function halfPixel(half: HalfPairPort | null): PixelPositionPort | null {
     return half !== null && 'pixel' in half ? half.pixel : null;
@@ -39,6 +44,8 @@ function scanViewer(context: GeorefContext, scan: NonNullable<NonNullable<Georef
             .previewScale=${scan.previewScale}
             .markers=${markersOf(view)}
             .selected=${view.selected}
+            .suggestions=${suggestionMarkersOf(view)}
+            .selectedSuggestion=${view.suggestions.selected}
             .half=${halfPixel(view.half)}
             ?adding=${view.adding}
             .label=${contentText(locale, 'adminContent.georef.scanLabel')}

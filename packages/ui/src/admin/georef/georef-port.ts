@@ -8,6 +8,7 @@ import type { BBox, Gcp, GeorefTransform, LayerVersionState } from '@hcm/shared'
 import type { LoadStatusPort, StoreFailurePort } from '../area-port.js';
 import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { MapStatusPort } from '../imagery/imagery-port.js';
+import type { SuggestionsViewPort } from './suggestions-port.js';
 
 export type ReferenceKindPort = 'osm' | 's2';
 
@@ -72,6 +73,8 @@ export interface GeorefViewState {
     readonly previewOpacity: number;
     readonly map: MapStatusPort;
     readonly pane: 'scan' | 'map';
+    /** M4: the matcher's suggestions still to decide. */
+    readonly suggestions: SuggestionsViewPort;
 }
 
 export interface GeorefIntentsPort {
@@ -85,6 +88,10 @@ export interface GeorefIntentsPort {
     remove(id: string): void;
     toggle(id: string): void;
     cancelHalf(): void;
+    acceptSuggestion(id: string): void;
+    acceptAllSuggestions(): void;
+    rejectSuggestion(id: string): void;
+    selectSuggestion(id: string | null): void;
     setTransform(kind: GeorefTransform): void;
     setReference(kind: ReferenceKindPort): void;
     setPreviewOpacity(percent: number): void;
