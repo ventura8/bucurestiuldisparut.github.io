@@ -276,8 +276,8 @@ must follow the same rules, or the static stage fails.
 ## 9. Caveats noticed
 
 - npm 11.19 prints "install scripts not yet covered by allowScripts" for `protobufjs` and `re2`
-  (firebase-tools). The scripts still run today; if a future npm blocks them, approve those two
-  explicitly.
+  (firebase-tools) and, by 2026-10-25, `@firebase/util` (the Firebase JS SDK's postinstall). The scripts
+  still run today; if a future npm blocks them, approve those three explicitly.
 - `firebase-tools` pulls ~800 packages. Overrides cover today's advisories; expect new ones.
 - Lit logs "Lit is in dev mode" in Node tests (Vite resolves the `development` condition). Harmless.
 - Re-export-only files (`packages/*/src/index.ts`) have no executable statements: v8 reports

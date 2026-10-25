@@ -3036,9 +3036,10 @@ Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`; the shared, r
 Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`, `PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh`;
 the admin, ui and shared Vitest projects.
 
-## 48. e2e-fakes: advisories published during the M3 run, and one CI-time question (2026-10-24) — 48a PROPOSED, NOT APPLIED (downloads); 48b recorded for the user
+## 48. e2e-fakes: advisories published during the M3 run, and one CI-time question (2026-10-24) — 48a APPLIED 2026-10-25 (user approved the downloads; §58); 48b recorded for the user
 
-- **48a PROPOSED, NOT APPLIED: two security bumps.** The `static` stage of 2026-10-24 fails on advisories that appeared
+- **48a APPLIED 2026-10-25 (user approved the downloads; the versions in §58): two security bumps.**
+  The `static` stage of 2026-10-24 fails on advisories that appeared
   after §44, in packages no M3 change touched; this phase may download nothing, so they wait for the user's approval:
 
   | Package | From | To | Advisory | Gate |
@@ -3057,7 +3058,7 @@ the admin, ui and shared Vitest projects.
 
 Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`.
 
-## 49. The M3 integrator: the change requests closed, and what stays for the user (2026-10-24) — 49a–49h, 49k and 49m APPLIED (product and test changes, the e2e tiering of the kind §39c and §42g applied; no configuration of the ask-first kinds); 49i, 49j and 49l recorded for the user
+## 49. The M3 integrator: the change requests closed, and what stays for the user (2026-10-24) — 49a–49h, 49k and 49m APPLIED (product and test changes, the e2e tiering of the kind §39c and §42g applied; no configuration of the ask-first kinds); 49i APPLIED 2026-10-25 (user approved the downloads; §58); 49j and 49l recorded for the user
 
 No lint, tool, workflow or gitleaks configuration changed, no gate was relaxed and no checker allowlist entry was added.
 
@@ -3087,7 +3088,8 @@ No lint, tool, workflow or gitleaks configuration changed, no gate was relaxed a
   are still one too many, and a control the strip reaches must be there and uncovered. This makes the check exact, not
   looser: every case the old rule could see the logo in is still checked. For the user's review all the same, as a
   change to a checker.
-- **49i STILL PROPOSED, NOT APPLIED: §48a's security bumps.** The `static` stage fails only on `npm-audit`,
+- **49i APPLIED 2026-10-25 (user approved the downloads; the versions in §58): §48a's security bumps.**
+  The `static` stage fails only on `npm-audit`,
   `deploy-lock-audit`, `pip-audit` and `pipeline-pip-audit` (body-parser GHSA-27r3-jxmh-p828, filelock 4.1.1 →
   4.2.1). This task may download nothing. The two body-parser tarballs (2.4.0 and 1.20.9) are already in the host's npm
   cache since 2026-10-23, so after your yes the lockfile refresh needs no new body-parser download (its packument may
@@ -3120,7 +3122,7 @@ No lint, tool, workflow or gitleaks configuration changed, no gate was relaxed a
 Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`, `PIPELINE_STAGE=tests …`, `PIPELINE_STAGE=build …`,
 `PIPELINE_STAGE=quality bash scripts/ci/e2e-split.sh`.
 
-## 50. The M3 reviews' fixes: what the product now decides for the admin (2026-10-24) — 50a–50g and 50i APPLIED (product and test changes; no configuration of the ask-first kinds, no gate relaxed, no checker allowlist entry); 50h STILL PROPOSED, NOT APPLIED (downloads)
+## 50. The M3 reviews' fixes: what the product now decides for the admin (2026-10-24) — 50a–50g and 50i APPLIED (product and test changes; no configuration of the ask-first kinds, no gate relaxed, no checker allowlist entry); 50h APPLIED 2026-10-25 (user approved the downloads; §58)
 
 The fixer of the two M3 reviews (ten security and cost findings, fifteen minimum-input ones; CR-M3-47,
 `docs/LESSONS.md` 171–180) applied every finding. These are the choices in it the user may want to change:
@@ -3148,7 +3150,8 @@ The fixer of the two M3 reviews (ten security and cost findings, fifteen minimum
 - **50g The Mapbox "list a tileset's jobs" answer is a recorded fixture, UNVERIFIED** (`mapbox/tilesets.jobs.list`): only
   a lost publish answer uses it (`MapboxTilesets.listJobs`); the weekly contract probe should cover it once it runs
   (ask first, as CR-M3-9).
-- **50h STILL PROPOSED, NOT APPLIED: §48a and §49i's security bumps.** The four audit gates still fail the `static`
+- **50h APPLIED 2026-10-25 (user approved the downloads; §58): §48a and §49i's security bumps.** The four audit
+  gates still fail the `static`
   stage, and so `all`; this task could download nothing.
 - **50i Two screen defects the first full `all` found** (`docs/LESSONS.md` 181, 182): the georeferencer's pairs table on
   a phone now applies its narrow rules (they sat before the cells' own rule and never applied), and a cell wraps when the
@@ -3511,7 +3514,8 @@ write a complete `THIRD_PARTY_NOTICES.txt` that the `notices` gate checks (compl
   tier, under 0.05 USD a month, capped at 0.50 USD), FCM and FCM registrations, the first real scan purchase in
   EarthExplorer (35 USD for one frame; Claude never pays), the CI line of §55e with the `HCM_PUBLIC_BUCKET` variable,
   the proposals §52f (e-mail through a log-based alert), §52g (detecting an order without the click), §53d (a visible
-  licences link) and §54i (e-mail), and the advisories of §48a and §49i that keep the four audit gates red.
+  licences link) and §54i (e-mail), and the advisories of §48a and §49i that keep the four audit gates red (bumps
+  applied 2026-10-25, §58).
 
 Verify: `PIPELINE_STAGE=static`, `tests`, `build` (`bash scripts/ci/run-all-checks.sh`) and `PIPELINE_STAGE=quality bash
 scripts/ci/e2e-split.sh`; `E2E_TIER=admin npx playwright test specs/imagery/automation.spec.ts --project admin-l1440-ro`.
@@ -3605,4 +3609,38 @@ Every one was applied as below or is proposed for the user's decision; none was 
   job a lease held far ahead, as a live pipeline's heartbeat would, and the waiting job's date is in 2100
   (`docs/LESSONS.md` 217).
 
-Verify: `bash scripts/ci/e2e-split.sh` (stage `all`; the four audit gates stay red on §48a and §49i).
+Verify: `bash scripts/ci/e2e-split.sh` (stage `all`; the four audit gates stayed red on §48a and §49i until their bumps of
+2026-10-25, §58).
+
+## 58. Security bumps for §48a and §49i (2026-10-25) — APPLIED 2026-10-25 (user approved the downloads: "yes, install the security bumps")
+
+The four audit gates of the `static` stage (`npm-audit`, `deploy-lock-audit`, `pip-audit`, `pipeline-pip-audit`) failed
+on the advisories §48a and §49i name; the `static` run of 2026-10-25 listed the same packages, with three more filelock
+CVEs than §48a's (all fixed in the same release). The user approved the security patch and minor bumps of packages
+already in the tree; no package was added or removed, no major version changed, and no allowlist or `overrides` entry
+was added (every dependant's range already accepts the fixed version).
+
+| Package | From | To | Advisory | Gate |
+| --- | --- | --- | --- | --- |
+| `body-parser` 2.x (transitive: `firebase-functions` → `express` 5.3.0, `@modelcontextprotocol/sdk` → `express` 5.3.0; `functions/deploy-lock`) | 2.3.0 | 2.4.0 | GHSA-27r3-jxmh-p828 | `npm-audit`, `deploy-lock-audit` |
+| `body-parser` 1.x (transitive: `firebase-tools`, `express` 4.22.3, `exegesis`) | 1.20.8 | 1.20.9 | GHSA-27r3-jxmh-p828 | `npm-audit` |
+| `qs` (transitive; `body-parser` 2.4.0 requires `^6.16.1`; root and `functions/deploy-lock`) | 6.16.0 | 6.16.1 | none (a dependency of the fix) | `npm-audit`, `deploy-lock-audit` |
+| `fast-uri` (transitive: `ajv` 8.20.0 under `firebase-tools`, `html-validate`, `table` and others) | 3.1.8 | 3.1.9 | GHSA-w74x-v6f9-j3xg, GHSA-xhq7-xmqj-769h, GHSA-wjr9-j795-jxcr, GHSA-333x-w4r6-6crp | `npm-audit` |
+| `undici` 6.x (transitive: `firebase-tools`, `^6.19.0`) | 6.29.0 | 6.29.1 | GHSA-4qv8-2p9j-2685, GHSA-f72v-6w45-q472, GHSA-xjj6-f33q-929c | `npm-audit` |
+| `undici` 8.x (transitive: `firebase-tools` → `re2` → `node-gyp` 13.1.0, `^8.4.1`) | 8.11.2 | 8.12.3 | the same three (affected: 8.0.0 to 8.12.1) | `npm-audit` |
+| `filelock` (`scripts/ci/requirements.txt`, `pipeline/requirements-poetry.txt`) | 4.1.1 | 4.2.1 | CVE-2026-112906, CVE-2026-112907, CVE-2026-112913, CVE-2026-112914, CVE-2026-112937, CVE-2026-112940 | `pip-audit`, `pipeline-pip-audit` |
+
+- **npm.** The way §44 took: the affected entries (the three `body-parser` entries with their nested dependencies,
+  `qs`, `fast-uri` and both `undici` entries) were removed from `package-lock.json` and `npm install
+  --package-lock-only --ignore-scripts` re-resolved them in the digest-pinned Node image (`docs/SETUP.md` → *npm in a
+  container*); npm takes the newest release a range accepts, so `undici` 8.x went to 8.12.3, not the first fixed 8.12.2.
+  The nested dependencies came back at the versions they had. `functions/deploy-lock/package-lock.json` lost its
+  `body-parser` and `qs` entries and was refreshed with `node functions/deploy-lock.mjs` in the same image; its
+  `package.json` is unchanged (the root `overrides` did not change). Nothing that ships changes: the viewer and the
+  admin bundle none of these, and the functions artifact gets `body-parser` 2.4.0 and `qs` 6.16.1 at its next deploy.
+- **Python.** `filelock==4.2.1` in both requirements files, the release the advisories name as fixed (4.2.4 is the
+  latest). `pipeline/poetry.lock` does not hold `filelock`, so it is unchanged. Both venvs of the quality image are
+  rebuilt by the next `run-all-checks.sh`.
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` and `PIPELINE_STAGE=tests bash
+scripts/ci/run-all-checks.sh`.

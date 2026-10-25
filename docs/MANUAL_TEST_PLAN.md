@@ -33,7 +33,7 @@ The automated suites already prove each behaviour against the emulators ([E2E_SC
 
 ## The deploys and their commands (each ask first)
 
-Every deploy needs your yes for that deploy, a clean tree on a commit whose default stage is green (`bash scripts/ci/e2e-split.sh`; today it can say SUCCESS only after the audit bumps of [research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §48a and §49i, which wait for your yes), and your own `npx -y firebase-tools@15.33.0 login` in your terminal. Builds run in the quality image; the deploy itself runs on the host with your login, from a temporary copy of `firebase.json` without its `predeploy` steps (the host's Node 22 and npm 9 do not build this repository). Every command names the project.
+Every deploy needs your yes for that deploy, a clean tree on a commit whose default stage is green (`bash scripts/ci/e2e-split.sh`; the audit bumps of [research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §48a and §49i were applied on 2026-10-25, §58), and your own `npx -y firebase-tools@15.33.0 login` in your terminal. Builds run in the quality image; the deploy itself runs on the host with your login, from a temporary copy of `firebase.json` without its `predeploy` steps (the host's Node 22 and npm 9 do not build this repository). Every command names the project.
 
 The temporary configuration `firebase.deploy.json` (`firebase.json` without its two `predeploy` steps; same folder, so every path in it still resolves), written in the image after the build and deleted after the deploy:
 

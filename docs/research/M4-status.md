@@ -144,15 +144,17 @@ the exact pages; nothing is done without you.
    FCM takes `message.fid` from our call and accepts the SDK's default VAPID key (§54c, CR-M4-24).
 6. __Your decisions on the proposals__: e-mail notifications through a log-based alert (§52f) or not at all (§54i), the
    order detection without the click (§52g), a visible licences link in the viewer and the admin (§53d), the Terra Draw
-   copyright lines (§53c), the advisories that keep the four audit gates red (§48a, §49i: their bumps are downloads),
+   copyright lines (§53c), the advisories that kept the four audit gates red (§48a, §49i: their bumps were applied
+   on 2026-10-25, §58),
    and the reviews' proposals: an edge guard in the approval policy (§57d), the EarthExplorer basket in the weekly
    probe (§57h), an import map with `integrity` for the module build's chunks (§57i), and a shared compare link opening
    as the one-map toggle (§57j).
 
 ## 4. Open items
 
-- The four audit gates (`npm-audit`, `deploy-lock-audit`, `pip-audit`, `pipeline-pip-audit`) fail on advisories whose
-  fixes are downloads awaiting the user's yes (§48a, §49i); every other gate passes.
+- Closed 2026-10-25: the four audit gates (`npm-audit`, `deploy-lock-audit`, `pip-audit`, `pipeline-pip-audit`) failed
+  on advisories whose fixes were downloads awaiting the user's yes (§48a, §49i); the user approved them and the bumps
+  are in (§58).
 - `real-data` (ask first, local only): the matcher's checkpoint RMSE on a real Corona frame against Sentinel-2 and
   OpenStreetMap, and whether more than 15 confident pairs come out of a 1960s scan.
 - The order watch filters the due orders in memory (CR-M4-13 (b)); with CR-M4-11 fixed, a composite index on

@@ -122,11 +122,12 @@ and opens the exact pages; nothing is done without you.
 
 ## 4. Open items
 
-- __Four audit gates__ fail the `static` stage (and so `quality` and `all`): `npm-audit` and `deploy-lock-audit`
+- __Four audit gates__ failed the `static` stage (and so `quality` and `all`): `npm-audit` and `deploy-lock-audit`
   (body-parser, GHSA-27r3-jxmh-p828; since 2026-10-24 also `fast-uri` 3.1.8 and `undici` 6.29.0 and 8.11.2 in
-  `firebase-tools`' tree) and `pip-audit` and `pipeline-pip-audit` (filelock 4.1.1, fixed in 4.2.1). The bumps need
-  downloads, which this phase could not make: `DECISIONS-for-review.md` §48a and §49i, for your yes. Every other gate
-  passes.
+  `firebase-tools`' tree) and `pip-audit` and `pipeline-pip-audit` (filelock 4.1.1, fixed in 4.2.1). The bumps needed
+  downloads, which this phase could not make: `DECISIONS-for-review.md` §48a and §49i. __Closed 2026-10-25__: the user
+  approved them, and `body-parser` 2.4.0 and 1.20.9, `qs` 6.16.1, `fast-uri` 3.1.9, `undici` 6.29.1 and 8.12.3 and
+  `filelock` 4.2.1 are in (`DECISIONS-for-review.md` §58).
 - __For your review__ (`DECISIONS-for-review.md` §50, the reviews' fixes): the admin may resume a budget pause for the
   rest of that budget period (§50a); a publish starts at most 6 times (§50b); a failed harvest backs off from an hour
   (§50c); what Try again never offers (§50d); the Mapbox jobs list a lost publish relies on is an UNVERIFIED recorded

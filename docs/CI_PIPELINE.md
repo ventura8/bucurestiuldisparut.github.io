@@ -126,7 +126,7 @@ Every dependency stays on its latest stable release; a deliberate hold is a `HEL
 
 ## Security advisories
 
-Since 2026-10-24 the `static` stage fails on four audit gates (`npm-audit`, `deploy-lock-audit`, `pip-audit`, `pipeline-pip-audit`): advisories published after §44 (body-parser GHSA-27r3-jxmh-p828; filelock 4.1.1, fixed in 4.2.1). The bumps need downloads and wait for the user's approval ([research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §48a, §49i); every other gate passes.
+The four audit gates (`npm-audit`, `deploy-lock-audit`, `pip-audit`, `pipeline-pip-audit`) failed the `static` stage from 2026-10-24 to 2026-10-25 on advisories published after §44 (body-parser GHSA-27r3-jxmh-p828, `fast-uri` and `undici` in `firebase-tools`' tree, filelock). The user approved the bumps on 2026-10-25: `body-parser` 2.4.0 and 1.20.9 (with `qs` 6.16.1), `fast-uri` 3.1.9, `undici` 6.29.1 and 8.12.3 through a lockfile refresh of those entries (no new `overrides`), `filelock` 4.2.1 in both requirements files ([research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §58).
 
 `npm audit --audit-level=low` reports zero vulnerabilities through `overrides` in the root `package.json` (`@grpc/grpc-js` under `@firebase/firestore@4.18.0`, `@opentelemetry/core`, `basic-ftp`, `uuid` under `gaxios@6.7.1`, `katex`, `smol-toml`), and `braces`, which has no fixed release, through the patched copy in `vendor/npm/braces` (its README explains the patch). Delete an override when upstream ships the fix. Reasons for each: [research/M0-handoff.md](research/M0-handoff.md) → *npm audit fixes (no allowlist)*.
 
