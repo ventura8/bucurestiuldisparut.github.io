@@ -40,3 +40,13 @@ export function manifestOrigins(manifest: Manifest, config: EngineConfig): Extra
         images: sorted([...manifestHost, ...tiles, ...photos]),
     };
 }
+
+/**
+ * M5: the extra CSP sources of a site without a seed manifest, which reads the public bucket's only: the bucket (the
+ * manifest and its photos) and the origins the bucket's configuration adds (the crash endpoint). Its layers are the
+ * project's Mapbox tilesets, which the fixed Mapbox sources cover.
+ */
+export function bucketOrigins(config: EngineConfig, connect: readonly string[]): ExtraSources {
+    const bucket = originOf(config.manifestUrl ?? '');
+    return { connect: sorted([...bucket, ...connect]), images: sorted(bucket) };
+}

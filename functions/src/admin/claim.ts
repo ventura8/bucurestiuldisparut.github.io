@@ -85,13 +85,26 @@ async function checkOwner(deps: ClaimDeps, accessToken: string): Promise<void> {
     }
 }
 
-/** The owner's `admins/{uid}`, unless it already says `owner` (a repeat claim changes nothing). */
+/**
+ * The owner's `admins/{uid}`, unless it already says `owner` (a repeat claim changes nothing). A new document is made
+ * with no cities (M5, `docs/research/M5-interfaces.md` §1.2): `setup.createCity` then makes the owner the bundled city's
+ * owner, and `cities.create` of every city they create. Without `cities` it read as a document from before M5, which
+ * the next session gave every city of the project (`docs/LESSONS.md` 258). An invited admin who claims keeps theirs.
+ */
 async function ensureOwnerAdmin(transaction: DocumentTransaction, existing: AdminDoc | undefined, owner: OwnerAccount): Promise<void> {
     if (existing?.role === 'owner') {
         return;
     }
     const record = adminRecord({ ...owner, role: 'owner', createdAt: existing?.createdAt });
-    await transaction.set(FIRESTORE_PATHS.admin(owner.uid), adminDocSchema, record);
+    await transaction.set(FIRESTORE_PATHS.admin(owner.uid), adminDocSchema, { ...record, ...citiesKept(existing) });
+}
+
+/** The cities of the owner's document: none for a new one, an existing one's own (none written for one from before M5). */
+function citiesKept(existing: AdminDoc | undefined): Pick<AdminDoc, 'cities'> {
+    if (existing === undefined) {
+        return { cities: {} };
+    }
+    return existing.cities === undefined ? {} : { cities: existing.cities };
 }
 
 /**

@@ -1,10 +1,8 @@
 import type { Locale } from '@hcm/shared';
 import { expect, type BrowserContext, type Locator, type Page, type Route } from '@playwright/test';
 
-import { ORDERS_STATES } from '../admin/specs/imagery/orders-states.js';
 import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
-import { SUGGESTIONS_STATES } from '../admin/specs/imagery/suggestions-states.js';
-import { NOTIFY_STATES } from '../admin/specs/notify/states.js';
+import { ADMIN_SECTION_STATES } from './admin-sections.js';
 import { COMPARE_STATES, openComparing } from './compare-states.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
@@ -701,21 +699,19 @@ const ADMIN_STATES = {
     // [section imagery] owner: e2e-fakes (with admin-imagery's screens)
     ...IMAGERY_STATES,
     // [end imagery]
-    // M4 (docs/research/M4-interfaces.md §7.3): ids 'orders.<state>', 'georef.<state>' (the suggestions), 'notify.<state>'
-    // and 'assist.<state>'; each workstream appends inside its own section as each state's journey lands (a spread from a
-    // file of its own once a section grows, as the imagery section did).
-    // [section orders] owner: orders
-    ...ORDERS_STATES,
-    // [end orders]
-    // [section autogcp] owner: autogcp
-    ...SUGGESTIONS_STATES,
-    // [end autogcp]
-    // [section notify] owner: assists-notify (the inbox, push on a device, the editors' assists)
-    ...NOTIFY_STATES,
-    // [end notify]
+    // M4 and M5 (docs/research/M4-interfaces.md §7.3, docs/research/M5-interfaces.md §7.3): the sections of the M4 and M5
+    // workstreams, each a spread from a file of its own, are in ./admin-sections.ts (this file was at its 600-line limit).
+    ...ADMIN_SECTION_STATES,
 } as const;
 
 export type AdminStateId = keyof typeof ADMIN_STATES;
+
+// M5 kit-cli (docs/research/M5-interfaces.md §7.3): the starter kit's template, ids 'kit.<state>' (`KIT_STATES` of
+// ./kit-states.ts), with the journey that visits them over the page the site server serves at /kit/
+// (e2e/tour/viewer.tour.ts runs it at every tour project).
+// [section kit] owner: kit-cli
+export { expectKitJourneySound } from './kit-states.js';
+// [end kit]
 
 /** The visit of an admin state, in the project's language. */
 export function adminVisit(id: AdminStateId, lang: Locale, extra: Partial<StateVisit> = {}): StateVisit {

@@ -15,7 +15,7 @@ import type { Clock, KeyValueStore } from './ports.js';
 
 export interface ContentShell {
     readonly content: ContentDeps;
-    /** `infra/project.json`'s cities: the first is edited unless the `e2e` build names another. */
+    /** `infra/project.json`'s cities: the first is edited before the shell knows the admin's own (M5). */
     readonly cities: readonly string[];
     readonly callables: CallablesPort;
     readonly clock: Clock;
@@ -35,11 +35,11 @@ function nameOf(admin: { readonly displayName?: string | undefined; readonly ema
  * Asks `admins.list` once (again after a failure) and gives the shell every admin's name by uid. The names are shown
  * as text only (who saved a conflicting change); they leave with the session.
  */
-function peopleOf(parts: ContentShell): () => void {
+function peopleOf(parts: ContentShell, cityId: () => string): () => void {
     let asked: Promise<void> | null = null;
     const ask = async (): Promise<void> => {
         try {
-            const { admins } = await parts.callables.call('admins.list', {});
+            const { admins } = await parts.callables.call('admins.list', { cityId: cityId() });
             const named = admins.map((admin) => [admin.uid, nameOf(admin)] as const).filter(([, name]) => name !== '');
             parts.shell.update({ people: Object.fromEntries(named) });
         } catch (error) {
@@ -52,11 +52,22 @@ function peopleOf(parts: ContentShell): () => void {
     };
 }
 
+/**
+ * The city the areas edit: the shell's current city (M5, `docs/research/M5-interfaces.md` §1.5: decided once
+ * `admin.session` answers, before any area opens), else the `e2e` build's own city, else the project's first.
+ */
+function currentCityOf(parts: ContentShell): () => string {
+    return () => parts.shell.get().cityId ?? parts.content.cityId ?? parts.cities[0] ?? '';
+}
+
 export function contentServices(parts: ContentShell): ContentServices {
     const { content, shell } = parts;
+    const cityId = currentCityOf(parts);
     return {
         ...content.areas,
-        cityId: content.cityId ?? parts.cities[0] ?? '',
+        get cityId() {
+            return cityId();
+        },
         store: writesRefusedWhen(content.store, () => shell.get().revoked),
         ...{ theme: content.theme, callables: parts.callables },
         ...{ clock: parts.clock, local: parts.local, log: parts.log, denied: parts.denied },
@@ -65,7 +76,7 @@ export function contentServices(parts: ContentShell): ContentServices {
             return user === null ? null : { uid: user.uid, name: user.displayName ?? user.email };
         },
         locale: () => shell.get().locale,
-        people: peopleOf(parts),
+        people: peopleOf(parts, cityId),
         readOnly: () => shell.get().revoked,
         notify: (notice) => {
             shell.update({ notice: shell.notice(notice) });

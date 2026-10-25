@@ -1,10 +1,13 @@
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 import { inviteIdFor } from '@hcm/shared';
 
-import { ADMIN_ORIGIN, ADMIN_WEB_CONFIG, E2E_PROJECT_ID, emulatorOrigin, PERSONAS, type PersonaName } from '../world.js';
+import { ADMIN_ORIGIN, ADMIN_PROJECT, ADMIN_WEB_CONFIG, E2E_PROJECT_ID, emulatorOrigin, PERSONAS, type PersonaName } from '../world.js';
 import { isContentCity, isContentEmail } from './content-ids.js';
 import { decodeFields, encodeFields, type FirestoreFields } from './firestore-rest.js';
 import { resending, type EmulatorApi } from './resend.js';
+
+/** The city of `infra/project.json` the locked admin specs edit, whose memberships the personas' documents carry (M5). */
+const BUNDLED_CITY = ADMIN_PROJECT.cities[0];
 
 /**
  * The Firebase emulators of the admin tier, driven over their REST APIs from the test (never from the page): emptied
@@ -95,17 +98,18 @@ function keptByReset(path: string, fields: FirestoreFields | undefined): boolean
  * The first segments of the Storage paths that name the city second: `STORAGE_PATHS`' public derivatives and manifest,
  * and `RASTER_PATHS`' version files, scratch files and reference cache (M3).
  */
-const CITY_FIRST: ReadonlySet<string> = new Set(['cities', 'photos', 'rasters', 'work', 'reference']);
+const CITY_FIRST: ReadonlySet<string> = new Set(['cities', 'photos', 'rasters', 'work', 'reference', 'exports']);
 
 /** USGS browse copies are shared by every city (`usgs-browse/<dataset>/<entity>.jpg`): the same image, kept. */
 const SHARED_PREFIXES: readonly string[] = ['usgs-browse/'];
 
 /**
  * A Storage object a reset keeps: one of a content world's city, or a shared browse copy. The public derivatives
- * (`photos/<city>/…`), the manifest (`cities/<city>/…`) and the raster files (`rasters/<city>/…`, `work/<city>/…`,
- * `reference/<city>/…`) name it second, the uploads and the originals (`uploads/photos/<city>/…`,
- * `uploads/rasters/<city>/…`, `originals/photos/<city>/…`) third: a reset once read the photo's id as the city of a
- * derivative and deleted every content world's public photos (`docs/LESSONS.md` 116).
+ * (`photos/<city>/…`), the manifest (`cities/<city>/…`), the raster files (`rasters/<city>/…`, `work/<city>/…`,
+ * `reference/<city>/…`) and the static exports (`exports/<city>/<id>.zip`) name it second, the uploads and the originals
+ * (`uploads/photos/<city>/…`, `uploads/rasters/<city>/…`, `originals/photos/<city>/…`) third: a reset once read the
+ * photo's id as the city of a derivative and deleted every content world's public photos (`docs/LESSONS.md` 116), and
+ * an export's file name as its city, deleting a content world's zip while its test downloaded it (CR-M5-25).
  */
 function storageKeptByReset(name: string): boolean {
     const parts = name.split('/');
@@ -410,7 +414,9 @@ export class EmulatorWorld {
     async claimFor(account: SignedInAccount, at: Date): Promise<void> {
         const stamp = { updatedBy: account.uid, updatedAt: at };
         await this.setDocument('setup/owner', { uid: account.uid, claimedAt: at, ...stamp });
-        await this.setDocument(`admins/${account.uid}`, { role: 'owner', email: account.email, createdAt: at, ...stamp });
+        // M5 (CR-M5-3): the project's owner owns the bundled city, as `setup.createCity` or the migration leave them.
+        const cities = { [BUNDLED_CITY]: 'owner' };
+        await this.setDocument(`admins/${account.uid}`, { role: 'owner', cities, email: account.email, createdAt: at, ...stamp });
         await this.setClaims(account.uid, { admin: true });
     }
 
@@ -419,6 +425,8 @@ export class EmulatorWorld {
         const stamp = { updatedBy: inviter.uid, updatedAt: at };
         await this.setDocument(`invites/${await inviteIdFor(email)}`, {
             role: 'admin',
+            // M5 (CR-M5-3): an invitation names its city and role, as `admins.invite` stores it.
+            cities: { [BUNDLED_CITY]: 'editor' },
             invitedBy: inviter.uid,
             createdAt: at,
             expiresAt,
@@ -430,6 +438,8 @@ export class EmulatorWorld {
     async addAdmin(account: SignedInAccount, inviter: SignedInAccount, at: Date): Promise<void> {
         const record = {
             role: 'admin',
+            // M5 (CR-M5-3): an editor of the bundled city, as `admin.join` of its invitation leaves them.
+            cities: { [BUNDLED_CITY]: 'editor' },
             email: account.email,
             invitedBy: inviter.uid,
             createdAt: at,

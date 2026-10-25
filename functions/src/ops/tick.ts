@@ -20,7 +20,9 @@ import { UpstreamError } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
 import { expireInvites, removeStaleUsers } from './accounts.js';
 import { checkCrashSpike } from './crash-spike.js';
+import { expireExports } from './exports.js';
 import { nightlyManifests } from './manifests.js';
+import { migrateMemberships } from './memberships.js';
 import { checkServices, retireTokens } from './services.js';
 
 export type OpsDeps = Pick<
@@ -91,6 +93,16 @@ const STEPS: Readonly<Record<OpsStep, Step>> = {
     },
     users: async (deps, context) => {
         deps.log.info('stale accounts deleted', { count: await removeStaleUsers(deps, context.now) });
+        return {};
+    },
+    // M5 (docs/research/M5-interfaces.md §1.2; owner: multi-city): the admins from before M5 get their cities.
+    memberships: async (deps) => {
+        deps.log.info('admin memberships migrated', { count: await migrateMemberships(deps) });
+        return {};
+    },
+    // M5 (docs/research/M5-interfaces.md §5.3; owner: export): the static exports past their time.
+    exports: async (deps, context) => {
+        deps.log.info('exports expired or failed', { count: await expireExports(deps, context.now) });
         return {};
     },
 };

@@ -23,7 +23,7 @@ export type { BBox, BoundsRecord } from './geo/bbox.js';
 export { DEFAULT_COMPARE_POSITION, DEFAULT_HASH_LIMITS, MAX_HASH_LENGTH, MAX_OVERLAY_ENTRIES, decodeHash, encodeHash } from './url/hash.js';
 export type { CompareState, DecodedHash, HashLimits, HashState, MapView } from './url/hash.js';
 
-export { MAX_URL_LENGTH, isHostOf, isHttpsUrl, isRelativeUrl, toHttpsUrl } from './text/urls.js';
+export { MAX_URL_LENGTH, isCspOrigin, isHostOf, isHttpsUrl, isRelativeUrl, toHttpsUrl } from './text/urls.js';
 export { linkTargets, markdownToPlainText, parseMarkdown } from './text/markdown.js';
 export { redactText } from './text/redact.js';
 export type { InlineNode, MarkdownDocument, MarkdownParagraph } from './text/markdown.js';
@@ -274,6 +274,14 @@ export * from './schemas/usgs-order.js';
 export * from './schemas/autogcp.js';
 export * from './schemas/assist.js';
 export * from './schemas/notifications.js';
+// M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases on jsDelivr (every
+// export of these modules is public; `test/index.test.ts` lists them).
+export * from './schemas/cities.js';
+export * from './schemas/city-export.js';
+export * from './schemas/engine-release.js';
+// M5 kit-cli (§3.2): the one CSP table of every engine page, and the starter kit's page (`fillKitPage`).
+export * from './kit/csp.js';
+export * from './kit/page.js';
 export * from './imagery/index.js';
 export * from './georef/index.js';
 export { CLIENT_WRITES } from './schemas/client-writes.js';

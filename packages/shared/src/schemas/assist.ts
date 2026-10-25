@@ -16,6 +16,8 @@ import { plainText } from './primitives.js';
 
 /** Nominatim's reverse geocoder (usage policy: https://operations.osmfoundation.org/policies/nominatim/). */
 export const NOMINATIM_REVERSE_URL = 'https://nominatim.openstreetmap.org/reverse';
+/** Nominatim's search, beside the reverse geocoder (M5: New city finds a city by its name, `cities.locate`). */
+export const NOMINATIM_SEARCH_URL = 'https://nominatim.openstreetmap.org/search';
 /** The policy asks for an application's own User-Agent; a library's default is refused. */
 export const NOMINATIM_USER_AGENT = 'historic-city-map/1 (+https://github.com/ventura8/bucurestiuldisparut.github.io)';
 /** Shown under every suggestion (the ODbL): Nominatim's own licence line. */

@@ -2,7 +2,7 @@
  * `admin.join` (`functions/src/admin/join.ts`, M2-interfaces §3.1) through its callable's `.run()` on the Firestore
  * and Auth emulators: an invited Google account becomes an admin once, before its invitation expires.
  */
-import { FIRESTORE_PATHS, adminDocSchema, inviteDocSchema, inviteIdFor, timestampFromDate } from '@hcm/shared';
+import { FIRESTORE_PATHS, adminDocSchema, inviteDocSchema, inviteIdFor, timestampFromDate, type CityRoles } from '@hcm/shared';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { joinFunction } from '../../src/admin/join.js';
@@ -27,16 +27,17 @@ async function newAccount(world: World): Promise<{ readonly uid: string; readonl
     return { uid, email };
 }
 
-async function invite(world: World, email: string): Promise<string> {
+async function invite(world: World, email: string, cities?: CityRoles): Promise<string> {
     const inviteId = await inviteIdFor(email);
-    await world.documents.set(FIRESTORE_PATHS.invite(inviteId), inviteDocSchema, {
+    const stored = {
         role: 'admin',
         invitedBy: 'u-owner',
         createdAt: AT,
         expiresAt: timestampFromDate(EXPIRES),
         updatedBy: 'u-owner',
         updatedAt: AT,
-    });
+    } as const;
+    await world.documents.set(FIRESTORE_PATHS.invite(inviteId), inviteDocSchema, cities === undefined ? stored : { ...stored, cities });
     return inviteId;
 }
 
@@ -82,6 +83,32 @@ describe('admin.join', () => {
         await expect(world.documents.get(FIRESTORE_PATHS.admin(uid), adminDocSchema)).resolves.toMatchObject({
             role: 'owner',
             createdAt: AT,
+        });
+    });
+
+    it('happyPath_anInvitationToCitiesMakesTheAccountAnAdminOfThoseCitiesOnly @S-A51-HAPPY', async () => {
+        const world = emulators.newWorld();
+        const { uid, email } = await newAccount(world);
+        await invite(world, email, { cluj: 'editor' });
+
+        await expect(join(world, uid, email)).resolves.toEqual({ role: 'admin', refreshToken: true });
+
+        await expect(world.documents.get(FIRESTORE_PATHS.admin(uid), adminDocSchema)).resolves.toMatchObject({
+            cities: { cluj: 'editor' },
+        });
+    });
+
+    it('happyPath_anOwnerOfACityInvitedAsItsEditorStaysItsOwner', async () => {
+        const world = emulators.newWorld();
+        const { uid, email } = await newAccount(world);
+        const stamp = { createdAt: AT, updatedBy: uid, updatedAt: AT };
+        await world.documents.set(FIRESTORE_PATHS.admin(uid), adminDocSchema, { role: 'owner', cities: { cluj: 'owner' }, ...stamp });
+        await invite(world, email, { cluj: 'editor', iasi: 'editor' });
+
+        await join(world, uid, email);
+
+        await expect(world.documents.get(FIRESTORE_PATHS.admin(uid), adminDocSchema)).resolves.toMatchObject({
+            cities: { cluj: 'owner', iasi: 'editor' },
         });
     });
 

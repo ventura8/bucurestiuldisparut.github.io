@@ -8,7 +8,8 @@ import { at, readJson, send, stringAt, upstreamError, type Fetch } from './upstr
  * OpenStreetMap's Nominatim reverse geocoder (`docs/research/M4-interfaces.md` §4.2) over REST with `fetch`: one
  * `GET /reverse` of a cache cell's centre with the application's own User-Agent (the usage policy refuses a library's
  * default), no credential. Called only by the `assist-geocode` queue's worker, which keeps the whole project at one
- * request a second. The address is configuration (`HCM_NOMINATIM_URL`), so a mirror is a deploy-time change.
+ * request a second. The address is configuration (`HCM_NOMINATIM_URL`), so a mirror is a deploy-time change. M5: one
+ * `GET /search` of a name (`cities.locate`), at the same mirror; its answer is a list, empty when nothing is found.
  *
  * Failures (`UpstreamError('nominatim', …)`): 429 or 403 (the policy's refusal) → `rateLimited`; 5xx, a timeout or the
  * network → `unavailable`; any other status or an answer that is not a JSON object → `invalid`. Nominatim answers a
@@ -67,23 +68,66 @@ function requestUrl(base: string, request: Parameters<Geocoder['reverse']>[0]): 
     return url.toString();
 }
 
+/** The search endpoint beside the reverse one (`…/reverse` → `…/search`), so a mirror serves both. */
+function searchUrl(reverse: string, request: Parameters<Geocoder['search']>[0]): string {
+    const url = new URL(reverse.replace(/\/reverse$/, '/search'));
+    url.search = new URLSearchParams({ q: request.q, format: 'jsonv2', limit: '1', 'accept-language': request.lang }).toString();
+    return url.toString();
+}
+
+type FoundPlace = NonNullable<Awaited<ReturnType<Geocoder['search']>>>;
+
+/** `boundingbox` (`[south, north, west, east]`, four numbers as strings) as a box, or null when it is not one. */
+function boxOf(value: unknown): FoundPlace['bounds'] | null {
+    if (!Array.isArray(value) || value.length !== 4) {
+        return null;
+    }
+    const [south, north, west, east] = value.map(Number) as [number, number, number, number];
+    return [south, north, west, east].every(Number.isFinite) ? { west, south, east, north } : null;
+}
+
+/** The first place of a search answer; an empty list is none, anything else unreadable. */
+function foundOf(body: unknown, status: number): FoundPlace | undefined {
+    if (!Array.isArray(body)) {
+        throw new UpstreamError(SERVICE, 'invalid', { status });
+    }
+    const first: unknown = body[0];
+    if (first === undefined) {
+        return undefined;
+    }
+    const bounds = boxOf(at(first, 'boundingbox'));
+    if (bounds === null) {
+        throw new UpstreamError(SERVICE, 'invalid', { status });
+    }
+    return { bounds, name: named(stringAt(first, 'display_name')) ?? '' };
+}
+
+/** One GET with the policy's headers; a refusal or a failure throws as the module says. */
+async function nominatimGet(options: NominatimOptions, url: string): Promise<{ readonly body: unknown; readonly status: number }> {
+    const headers = { 'user-agent': NOMINATIM_USER_AGENT, accept: 'application/json' };
+    const response = await send(options.fetch, SERVICE, url, { method: 'GET', headers });
+    if (REFUSED.has(response.status)) {
+        throw upstreamError(SERVICE, response, 'rateLimited');
+    }
+    if (!response.ok) {
+        throw upstreamError(SERVICE, response);
+    }
+    return { body: await readJson(response), status: response.status };
+}
+
 export function createNominatim(options: NominatimOptions): Geocoder {
     const base = options.url ?? NOMINATIM_REVERSE_URL;
     return {
         reverse: async (request) => {
-            const headers = { 'user-agent': NOMINATIM_USER_AGENT, accept: 'application/json' };
-            const response = await send(options.fetch, SERVICE, requestUrl(base, request), { method: 'GET', headers });
-            if (REFUSED.has(response.status)) {
-                throw upstreamError(SERVICE, response, 'rateLimited');
-            }
-            if (!response.ok) {
-                throw upstreamError(SERVICE, response);
-            }
-            const body = await readJson(response);
+            const { body, status } = await nominatimGet(options, requestUrl(base, request));
             if (!isObject(body)) {
-                throw new UpstreamError(SERVICE, 'invalid', { status: response.status });
+                throw new UpstreamError(SERVICE, 'invalid', { status });
             }
             return stringAt(body, 'error') === undefined ? placeOf(body) : undefined;
+        },
+        search: async (request) => {
+            const { body, status } = await nominatimGet(options, searchUrl(base, request));
+            return foundOf(body, status);
         },
     };
 }

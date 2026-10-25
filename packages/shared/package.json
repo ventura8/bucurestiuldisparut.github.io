@@ -1,6 +1,6 @@
 {
     "name": "@hcm/shared",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "private": true,
     "description": "Environment-neutral code shared by the engine, admin and functions: logging, i18n catalogues (RO default, EN) and, from M1, zod schemas.",
     "license": "UNLICENSED",

@@ -5,7 +5,7 @@
 //     node --import ./scripts/site/register-ts.mjs e2e/mock-apis/main.ts admin   # packages/admin/dist on 127.0.0.1:4312
 //
 // It runs until Playwright stops it. Exit status 2 on a usage error.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -54,7 +54,9 @@ if (role === 'mock') {
     );
     const consent = createOAuthStandIn(upstream.partitions, { openers: [ADMIN_ORIGIN, SITE_ORIGIN] });
     const imagery = createImageryExtension(runner, upstream);
-    await startMockApis(MOCK_API_PORT, { mapboxGlDist, engineDist: resolve('packages/engine/dist') }, [
+    // The pinned jsDelivr folder of a release (M5): the committed cdn/engine/ once a release made it, else the engine build.
+    const cdnEngine = existsSync('cdn/engine/release.json') ? resolve('cdn/engine') : resolve('packages/engine/dist');
+    await startMockApis(MOCK_API_PORT, { mapboxGlDist, engineDist: resolve('packages/engine/dist'), cdnEngine }, [
         imagery,
         upstream,
         consent,

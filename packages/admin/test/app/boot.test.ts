@@ -138,6 +138,8 @@ describe('configMissingApp', () => {
         await app.intents.retry();
         await app.intents.enableApi();
         app.intents.navigate({ id: 'admins', params: [] });
+        app.intents.switchCity('cluj');
+        await app.intents.refreshCities();
         app.intents.previewTheme(null);
         app.intents.setConsent('granted');
         app.intents.dismissNotice();
@@ -149,5 +151,6 @@ describe('configMissingApp', () => {
 
         expect([app.content.jobs, app.content.admins, app.hasUnsavedChanges()]).toEqual([null, null, false]);
         expect(app.state.auth).toBe('configMissing');
+        expect([app.state.cities, app.state.cityId, app.state.projectOwner]).toEqual([[], null, false]);
     });
 });

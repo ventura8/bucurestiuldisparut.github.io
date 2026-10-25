@@ -3,10 +3,11 @@
  * Firestore and Auth adapters on the emulators, Google's tokeninfo and Resource Manager scripted (`fakeIam`). The
  * access token is a generated value and must never reach a log line or a document.
  */
-import { CLAIM_OAUTH_SCOPE, FIRESTORE_PATHS, OWNER_PERMISSION, adminDocSchema, ownerDocSchema } from '@hcm/shared';
+import { CLAIM_OAUTH_SCOPE, FIRESTORE_PATHS, OWNER_PERMISSION, adminDocSchema, cityDocSchema, ownerDocSchema } from '@hcm/shared';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { claimFunction } from '../../src/admin/claim.js';
+import { sessionFunction } from '../../src/admin/session.js';
 import { UpstreamError } from '../../src/ports/errors.js';
 import { createFakeFirebaseManagement } from '../support/services.js';
 import type { GoogleIam } from '../../src/ports/google-iam.js';
@@ -59,6 +60,7 @@ describe('admin.claim', () => {
             role: 'owner',
             email,
             displayName: `Owner ${String(accounts)}`,
+            cities: {},
             updatedBy: uid,
         });
         expect((await world.sdkAuth.getUser(uid)).customClaims).toEqual({ admin: true });
@@ -238,5 +240,43 @@ describe('admin.claim refusals', () => {
             { code: 'permission-denied', details: { code: 'apiError.accountNotAllowed' } },
         ]);
         expect(iam.calls).toEqual([]);
+    });
+});
+
+describe('admin.claim and the cities', () => {
+    it('badPath_aClaimInAProjectWithCitiesMakesTheOwnerAMemberOfNone', async () => {
+        // docs/LESSONS.md 258: the claim's document had no cities, so the next session gave the owner every city there
+        // was (in the e2e, the cities of the content worlds running beside the Setup journey).
+        const world = emulators.newWorld();
+        const { uid, email } = await newAccount(world);
+        const at = { seconds: 1_760_000_000, nanoseconds: 0 };
+        await world.documents.set(FIRESTORE_PATHS.city('w-0123456789'), cityDocSchema, {
+            name: { ro: 'Alt oraș' },
+            bounds: { west: 25.9, south: 44.3, east: 26.3, north: 44.6 },
+            published: false,
+            updatedBy: 'u-other',
+            updatedAt: at,
+        });
+
+        await claim(world, fakeIam(tokenInfo(email), [OWNER_PERMISSION]), uid, email);
+        const session = await sessionFunction(() => world).run(callableRequest({}, { uid, token: googleToken(email, { admin: true }) }));
+
+        expect(session).toMatchObject({ admin: true, projectOwner: true, cities: [] });
+        await expect(world.documents.get(FIRESTORE_PATHS.admin(uid), adminDocSchema)).resolves.toMatchObject({ cities: {} });
+    });
+
+    it('happyPath_anAdminWhoClaimsKeepsTheirCities', async () => {
+        const world = emulators.newWorld();
+        const { uid, email } = await newAccount(world);
+        const at = { seconds: 1_760_000_000, nanoseconds: 0 };
+        const record = { role: 'admin', cities: { cluj: 'editor' }, createdAt: at, updatedBy: uid, updatedAt: at } as const;
+        await world.documents.set(FIRESTORE_PATHS.admin(uid), adminDocSchema, record);
+
+        await claim(world, fakeIam(tokenInfo(email), [OWNER_PERMISSION]), uid, email);
+
+        await expect(world.documents.get(FIRESTORE_PATHS.admin(uid), adminDocSchema)).resolves.toMatchObject({
+            role: 'owner',
+            cities: { cluj: 'editor' },
+        });
     });
 });

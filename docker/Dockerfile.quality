@@ -21,12 +21,16 @@ FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca92
 # sonarsource/sonar-scanner-cli:12.2.0.4256_8.1.0 (SonarScanner CLI 8.1.0.6389, as in scripts/ci/sonar_scan.sh)
 FROM sonarsource/sonar-scanner-cli@sha256:a3f4215076706c95a17a68c19322ee916e40a3acd081a8c1a1e839e0194afa57 AS sonar-scanner
 
-# --- npm manifests without their scripts ------------------------------------------------------
+# --- npm manifests without their scripts or their own versions -------------------------------
 # The npm layer of the quality image fills the npm cache and installs the browsers and the emulator JARs: it depends
-# on the manifests' dependency fields and the lockfile, not on their scripts. Copying the manifests with the scripts
-# dropped (all but `emulators:setup`, which that layer runs) keeps an npm script edit from rebuilding about four and a
-# half minutes of layers; BuildKit keys the COPY below on the files' content (DECISIONS-for-review.md §31e). No
-# manifest has an install lifecycle script, and the pipeline's own `npm ci` installs from the real manifests.
+# on the registry packages the manifests and the lockfile name, not on their scripts or on the workspaces' own
+# versions. Copying the manifests with the scripts dropped (all but `emulators:setup`, which that layer runs) keeps an
+# npm script edit from rebuilding about four and a half minutes of layers; BuildKit keys the COPY below on the files'
+# content (DECISIONS-for-review.md §31e). The workspaces' versions and their dependencies on one another read 0.0.0
+# here, so a release's bump (scripts/release/bump.ts) rebuilds nothing either, and the lockfile's entries of a workspace
+# this stage does not copy are dropped: a workspace whose dependencies are all workspaces (create-historic-city) adds
+# no registry package, so it needs no line here (DECISIONS-for-review.md §63b). No manifest has an install lifecycle
+# script, and the pipeline's own `npm ci` installs from the real manifests and lockfile.
 FROM node AS manifests
 WORKDIR /m
 COPY package.json package-lock.json .npmrc ./
@@ -39,13 +43,41 @@ COPY functions/package.json functions/
 COPY firebase/rules-tests/package.json firebase/rules-tests/
 COPY e2e/package.json e2e/
 RUN node -e "const fs = require('node:fs'); \
-        for (const file of process.argv.slice(1)) { \
-            const manifest = JSON.parse(fs.readFileSync(file, 'utf8')); \
+        const files = process.argv.slice(1); \
+        const read = (file) => JSON.parse(fs.readFileSync(file, 'utf8')); \
+        const manifests = files.map(read); \
+        const ours = new Set(manifests.map((manifest) => manifest.name)); \
+        const steady = (entry) => { \
+            if ('version' in entry) { entry.version = '0.0.0'; } \
+            for (const field of ['dependencies', 'devDependencies']) { \
+                for (const name of Object.keys(entry[field] ?? {})) { \
+                    if (ours.has(name)) { entry[field][name] = '0.0.0'; } \
+                } \
+            } \
+        }; \
+        files.forEach((file, index) => { \
+            const manifest = manifests[index]; \
             const setup = manifest.scripts?.['emulators:setup']; \
             delete manifest.scripts; \
             if (setup) { manifest.scripts = { 'emulators:setup': setup }; } \
+            steady(manifest); \
             fs.writeFileSync(file, JSON.stringify(manifest, null, 4)); \
-        }" \
+        }); \
+        const lock = read('package-lock.json'); \
+        const globs = lock.packages[''].workspaces; \
+        const workspace = (folder) => globs.some((glob) => (glob.endsWith('/*') \
+            ? folder.startsWith(glob.slice(0, -1)) && !folder.slice(glob.length - 1).includes('/') \
+            : folder === glob)); \
+        steady(lock); \
+        for (const [path, entry] of Object.entries(lock.packages)) { \
+            const folder = entry.link ? entry.resolved : path; \
+            if (workspace(folder) && !fs.existsSync(folder + '/package.json')) { \
+                delete lock.packages[path]; \
+            } else if (path === '' || workspace(path)) { \
+                steady(entry); \
+            } \
+        } \
+        fs.writeFileSync('package-lock.json', JSON.stringify(lock, null, 4) + '\n');" \
         package.json packages/*/package.json functions/package.json firebase/rules-tests/package.json e2e/package.json
 
 # --- quality image ----------------------------------------------------------------------------
@@ -106,7 +138,8 @@ RUN --mount=type=cache,id=hcm-pip,target=/root/.cache/pip,sharing=locked \
 # bind-mounted at run time). This fills the baked npm cache that the pipeline's runtime
 # `npm ci --prefer-offline` installs from, then installs the Playwright browsers and the Firebase
 # emulator JARs at versions locked here. The build-time node_modules is dropped afterwards; nothing at
-# run time uses it. A new workspace needs its line in the `manifests` stage (and in .dockerignore).
+# run time uses it. A new workspace with registry dependencies of its own needs its line in the `manifests` stage (and
+# in .dockerignore).
 WORKDIR /opt/hcm/workspace
 COPY --from=manifests /m/ ./
 COPY vendor/npm/braces vendor/npm/braces

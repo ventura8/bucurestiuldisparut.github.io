@@ -1,4 +1,4 @@
-import type { BuildManifestTask, GeocodeTask, PublishTask } from '@hcm/shared';
+import type { BuildManifestTask, ExportTask, GeocodeTask, PublishTask } from '@hcm/shared';
 
 /** Every task queue of the backend and the payload its function takes (validated again on dispatch). */
 interface TaskPayloads {
@@ -7,6 +7,8 @@ interface TaskPayloads {
     readonly 'imagery-publish': PublishTask;
     /** M4: Nominatim reverse geocoding, one a second for the whole project (`ASSIST_GEOCODE_QUEUE`; task id = the cell). */
     readonly 'assist-geocode': GeocodeTask;
+    /** M5: a city's static export (`EXPORT_QUEUE`; task id = the city and the export, `docs/research/M5-interfaces.md` §5.3). */
+    readonly 'export-build': ExportTask;
 }
 
 type QueueName = keyof TaskPayloads;

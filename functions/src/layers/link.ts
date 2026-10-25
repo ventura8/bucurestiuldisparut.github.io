@@ -51,6 +51,25 @@ async function checkSource(deps: LayerLinkDeps, request: Request): Promise<void>
     }
 }
 
+/** The name the pipeline gives every tileset it makes (`tilesetName`: `hcm-<city>-<layer>`, one layer of one city). */
+const PIPELINE_TILESET = /^[^.]+\.hcm-/;
+
+/**
+ * A tileset the pipeline made belongs to one layer of one city: only a layer of the request's city that records it
+ * (`mapbox.tilesetId`) may name it. Every city shares the project's Mapbox account, so the owner check alone would let
+ * an editor of one city publish another city's unpublished imagery, or its uploaded scans that the export leaves out for
+ * their unknown rights, whose names follow from public USGS metadata (`docs/LESSONS.md` 244). Every city's public token
+ * still reads every tileset of that account; the limit is recorded in `docs/ARCHITECTURE.md`.
+ */
+function refuseOtherCitysTileset(layers: readonly StoredDocument<LayerDoc>[], source: LayerSource): void {
+    if (source.type !== 'mapbox' || !PIPELINE_TILESET.test(source.tilesetId)) {
+        return;
+    }
+    if (!layers.some((layer) => layer.data.mapbox?.tilesetId === source.tilesetId)) {
+        throw new ApiError('apiError.layers.otherCityTileset');
+    }
+}
+
 function refuseDuplicate(layers: readonly StoredDocument<LayerDoc>[], source: LayerSource): void {
     const linked = layers.find((layer) => sameSource(layer.data.source, source));
     if (linked !== undefined) {
@@ -97,13 +116,15 @@ function layerOf(request: Request, order: number, caller: VerifiedCaller, now: D
  * `layers.link` (admins; `docs/research/M2c-interfaces.md` §8.1, CR-M2c-27; S-A15-*): a ready, unpublished layer over
  * a Mapbox tileset of the city's own account or a tile server's https template, on top of the others, its id taken
  * from its Romanian label in the overlay namespace. Refused: a tileset of another Mapbox account (Mapbox's own and
- * the old site's account included: `apiError.layers.foreignTileset`), a credential in a tile address (it would be
- * published: `apiError.layers.secretInAddress`), a source another layer already shows (`apiError.layers.alreadyLinked`).
+ * the old site's account included: `apiError.layers.foreignTileset`), a tileset the pipeline made for a layer this city
+ * does not have (`apiError.layers.otherCityTileset`), a credential in a tile address (it would be published:
+ * `apiError.layers.secretInAddress`), a source another layer already shows (`apiError.layers.alreadyLinked`).
  * The admin publishes it from the layer editor once its preview looks right.
  */
 async function layersLink(deps: LayerLinkDeps, caller: VerifiedCaller, request: Request): Promise<CallableResponse<'layers.link'>> {
     await checkSource(deps, request);
     const layers = (await deps.documents.query(FIRESTORE_PATHS.layers(request.cityId), layerDocSchema)).documents;
+    refuseOtherCitysTileset(layers, request.source);
     refuseDuplicate(layers, request.source);
     const categories = await deps.documents.query(FIRESTORE_PATHS.poiCategories(request.cityId), poiCategoryDocSchema);
     const taken = new Set([...layers, ...categories.documents, ...categories.invalid].map((document) => document.id));

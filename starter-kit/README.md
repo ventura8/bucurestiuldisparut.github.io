@@ -22,7 +22,7 @@ The `index.html` page is generated, not hand-written: its Content Security Polic
 
 ## Pași (română)
 
-1. **Copiază trusa.** Din milestone-ul M5 trusa este un depozit șablon pe GitHub („Use this template”). Până atunci, construiește-o aici (`npm run build:site`, în imaginea Docker a depozitului) și copiază conținutul lui `dist/site/starter-kit/` într-un depozit nou.
+1. **Copiază trusa.** Pentru un oraș nou folosește trusa din M5, `templates/starter-kit/` ([README](../templates/starter-kit/README.md)): trei fișiere, motorul de la jsDelivr la o versiune fixă, sau `npx create-historic-city@1.0.0 orasul-meu`. Această trusă (M1) rămâne varianta pe care o construiește site-ul din acest depozit (`npm run build:site`, în imaginea Docker a depozitului, scrie `dist/site/starter-kit/`).
 2. **Tokenul Mapbox.** În contul tău Mapbox creează un token **public** (`pk.…`) cu permisiunile `styles:read`, `styles:tiles`, `fonts:read` și restricționează-l la adresa site-ului tău (`https://<utilizator>.github.io`). Pune-l în `data/manifest.json`, la `city.mapbox.publicToken`. Nu folosi niciodată un token secret (`sk.…`): manifestul îl refuză. Crearea contului și a tokenului le faci tu, în contul tău.
 3. **Editează manifestul.** Schimbă `city` (id, nume RO/EN, centru, limite, zoom, Despre, confidențialitate, credite, culoarea temei), apoi lista `photos`: fiecare fotografie are un `id`, un titlu, licența, locul (`location`), opțional direcția (`bearing`) și imaginile din `data/media/<id>/`. Păstrează `cityId` din `config.js` egal cu `city.id`.
 4. **Înlocuiește fotografiile de exemplu.** Cele două fotografii de exemplu vin din arhiva București dispărut, sunt publicate cu permisiune doar acolo și nu pot fi republicate pe alt site: pune fotografiile tale în locul lor.
@@ -31,7 +31,7 @@ The `index.html` page is generated, not hand-written: its Content Security Polic
 
 ## Steps (English)
 
-1. **Copy the kit.** From milestone M5 the kit is a GitHub template repository ("Use this template"). Until then, build it here (`npm run build:site`, in the repository's Docker image) and copy the contents of `dist/site/starter-kit/` into a new repository.
+1. **Copy the kit.** For a new city use the M5 kit, `templates/starter-kit/` ([README](../templates/starter-kit/README.md)): three files, the engine from jsDelivr at a pinned version, or `npx create-historic-city@1.0.0 my-city`. This kit (M1) stays the variant this repository's site build makes (`npm run build:site`, in the repository's Docker image, writes `dist/site/starter-kit/`).
 2. **The Mapbox token.** In your Mapbox account, create a **public** token (`pk.…`) with the scopes `styles:read`, `styles:tiles`, `fonts:read` and restrict it to your site's address (`https://<user>.github.io`). Put it in `data/manifest.json` at `city.mapbox.publicToken`. Never use a secret token (`sk.…`): the manifest refuses it. Creating the account and the token are your own steps, in your own account.
 3. **Edit the manifest.** Change `city` (id, RO/EN name, centre, bounds, zoom, About, privacy, credits, theme colour), then the `photos` list: each photo has an `id`, a title, its licence, its place (`location`), optionally the direction it looks in (`bearing`) and its images in `data/media/<id>/`. Keep `cityId` in `config.js` equal to `city.id`.
 4. **Replace the example photos.** The two example photos come from the Lost Bucharest archive, are published there with permission only and may not be republished on another site: put your own photos in their place.
@@ -41,5 +41,5 @@ The `index.html` page is generated, not hand-written: its Content Security Polic
 ## Notes
 
 - A manifest hosted elsewhere (`manifestUrl` set to an https address) needs its origin in the page's CSP: rebuild the page after the change, the build adds it.
-- The engine is copied next to the page (`engine/`). Loading it from jsDelivr instead, with a pinned version and `integrity`, comes with the engine releases of M5.
+- The engine is copied next to the page (`engine/`). The M5 template (`templates/starter-kit/`) loads it from jsDelivr instead, at a pinned version with `integrity`.
 - No cookies and no analytics unless the manifest has a GA4 measurement id and the visitor accepts; Mapbox sees each visitor's IP address (say so in your privacy text).

@@ -158,6 +158,20 @@ export function settingsState(overrides: Partial<SettingsViewState> = {}): Setti
         overlays: { rows: [], changes: 0, saving: false },
         reordering: false,
         map: { status: 'none', drawing: null },
+        // M5 (CR-M5-10): Export the city, as the export section starts (`../export/fixtures.ts` holds its states).
+        export: {
+            status: 'loading',
+            failure: null,
+            owner: false,
+            published: false,
+            latest: null,
+            scans: { count: 0, bytes: 0 },
+            includeScans: false,
+            starting: false,
+            downloading: false,
+        },
+        // M5 (owner: multi-city): the city's budget, as its section starts.
+        budget: { status: 'loading', failure: null, owner: false, limits: null, draft: {}, used: {}, saving: false, error: null },
         ...overrides,
     };
 }

@@ -3,7 +3,7 @@ import { onCall, type CallableFunction, type CallableOptions } from 'firebase-fu
 
 import { runAs } from '../global-options.js';
 import type { AdminDirectory } from '../ports/admin-directory.js';
-import { requireAccess, type Caller, type VerifiedCaller } from './access.js';
+import { requireAccess, requireCityRole, type Caller, type VerifiedCaller } from './access.js';
 import { ApiError, toHttpsError } from './api-error.js';
 
 /** What every callable needs from the composition root, besides the ports its handler picks. */
@@ -49,8 +49,8 @@ export function callableOptions(name: CallableName, env: Env): CallableOptions {
 
 /**
  * One callable call without firebase-functions: access rule, request validation (`apiError.invalidRequest` with the
- * field issues), the handler, then the response checked against its schema (a mismatch is a server bug: logged,
- * answered `apiError.internal`, never sent).
+ * field issues), the city role of an M5 city callable, the handler, then the response checked against its schema (a
+ * mismatch is a server bug: logged, answered `apiError.internal`, never sent).
  */
 export async function runCallable<N extends CallableName, D extends CallableDeps>(
     name: N,
@@ -64,6 +64,7 @@ export async function runCallable<N extends CallableName, D extends CallableDeps
     if (!input.ok) {
         throw new ApiError('apiError.invalidRequest', undefined, input.issues);
     }
+    requireCityRole(spec.access, caller, input.value);
     // The registry pairs each name with its schemas; TypeScript cannot narrow `CALLABLES[N]` for a generic N.
     const output = validate<unknown>(spec.response, await handler(deps, caller, input.value as CallableRequest<N>));
     if (!output.ok) {

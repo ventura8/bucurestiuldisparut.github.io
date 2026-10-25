@@ -1,3 +1,7 @@
+import { en as citiesEn } from '../admin-cities/en.js';
+import { ro as citiesRo, type AdminCitiesKey } from '../admin-cities/ro.js';
+import { en as exportEn } from '../admin-export/en.js';
+import { ro as exportRo, type AdminExportKey } from '../admin-export/ro.js';
 import { en as imageryEn } from '../admin-imagery/en.js';
 import { ro as imageryRo, type AdminImageryKey } from '../admin-imagery/ro.js';
 import { en as layersEn } from '../admin-layers/en.js';
@@ -18,18 +22,29 @@ import { ro as kitRo, type AdminContentKitKey } from './ro.js';
 
 /** Every text of the admin's editors: the kit's and the map's (this folder) and one catalogue folder per area (CR-M2c-25). */
 export type AdminContentKey =
-    AdminContentKitKey | AdminPhotosKey | AdminPoisKey | AdminLayersKey | AdminSettingsKey | AdminOpsKey | AdminImageryKey | AdminNotifyKey;
+    | AdminContentKitKey
+    | AdminPhotosKey
+    | AdminPoisKey
+    | AdminLayersKey
+    | AdminSettingsKey
+    | AdminOpsKey
+    | AdminImageryKey
+    | AdminNotifyKey
+    | AdminCitiesKey
+    | AdminExportKey;
 
 export type AdminContentMessages = Readonly<Record<AdminContentKey, string>>;
 
 /**
  * The area catalogues merged per language, in the order of `docs/research/M2c-interfaces.md` §10.1, then M3's imagery
- * (`docs/research/M3-interfaces.md` §10) and M4's notifications and assists (`docs/research/M4-interfaces.md` §4, §5). The areas' key prefixes are disjoint (`packages/shared/test/i18n-admin.test.ts`
- * checks every key against its folder's prefixes), so no spread overrides another area's text.
+ * (`docs/research/M3-interfaces.md` §10), M4's notifications and assists (`docs/research/M4-interfaces.md` §4, §5) and
+ * M5's cities and static export (`docs/research/M5-interfaces.md` §1.6, §1.8, §5.6). The areas' key prefixes are disjoint
+ * (`packages/shared/test/i18n-admin.test.ts` checks every key against its folder's prefixes), so no spread overrides
+ * another area's text.
  */
 export const ADMIN_CONTENT_CATALOGUES: Readonly<Record<'ro' | 'en', AdminContentMessages>> = {
-    ro: { ...kitRo, ...photosRo, ...poisRo, ...layersRo, ...settingsRo, ...opsRo, ...imageryRo, ...notifyRo },
-    en: { ...kitEn, ...photosEn, ...poisEn, ...layersEn, ...settingsEn, ...opsEn, ...imageryEn, ...notifyEn },
+    ro: { ...kitRo, ...photosRo, ...poisRo, ...layersRo, ...settingsRo, ...opsRo, ...imageryRo, ...notifyRo, ...citiesRo, ...exportRo },
+    en: { ...kitEn, ...photosEn, ...poisEn, ...layersEn, ...settingsEn, ...opsEn, ...imageryEn, ...notifyEn, ...citiesEn, ...exportEn },
 };
 
 /** The admin editors' texts (`docs/research/M2c-interfaces.md` §10.1). */

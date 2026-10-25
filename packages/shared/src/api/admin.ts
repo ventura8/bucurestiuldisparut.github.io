@@ -3,13 +3,14 @@
  * verified Google account that is not necessarily an admin yet: `admin.session`, `admin.claim` (the project owner
  * becomes the map's owner, proved with Google's IAM and the owner's own OAuth token, so no e-mail address is ever
  * configured or committed), `admin.join` (an invited account becomes an admin). Admin-only: `admins.invite`,
- * `admins.revoke`, `admins.list`.
+ * `admins.revoke`, `admins.list` (their M5 requests, one city each, are in `cities.ts`).
  */
 import { z } from 'zod';
 
-import { sha256Schema, uidSchema } from '../schemas/firestore-common.js';
+import { sha256Schema } from '../schemas/firestore-common.js';
 import { ADMIN_ROLES } from '../schemas/firestore-ops.js';
-import { httpsUrlSchema, plainText } from '../schemas/primitives.js';
+import { httpsUrlSchema } from '../schemas/primitives.js';
+import { sessionCitiesSchema } from './cities.js';
 import { emptyRequestSchema, googleAccessTokenSchema, isoTimeSchema } from './common.js';
 
 /** The OAuth scope the claim popup asks for (incremental consent, read-only): enough for `testIamPermissions`. */
@@ -51,6 +52,12 @@ export const sessionResponseSchema = z.strictObject({
     ownerClaimed: z.boolean(),
     /** An invitation for the caller's address waits: the app offers "Join". */
     invitePending: z.boolean(),
+    /**
+     * M5 (`docs/research/M5-interfaces.md` §1.3, §1.5): the caller's cities with their role and name, for the switcher
+     * (none for a non-admin), and whether the caller is the project's owner (who creates cities and sets their budgets).
+     */
+    cities: sessionCitiesSchema,
+    projectOwner: z.boolean(),
 });
 
 /** `admin.claim`: the project owner's token, granted with `CLAIM_OAUTH_SCOPE` in the sign-in popup. */
@@ -61,8 +68,10 @@ export const claimResponseSchema = z.strictObject({ role: z.literal('owner'), re
 export const joinRequestSchema = emptyRequestSchema;
 export const joinResponseSchema = z.strictObject({ role: roleSchema, refreshToken: z.literal(true) });
 
-/** `admins.invite`: any admin invites an address; the response names the link the inviter sends themselves. */
-export const inviteRequestSchema = z.strictObject({ email: z.email().max(254) });
+/**
+ * `admins.invite` (its M5 request is `cityInviteRequestSchema`: a city's owner invites an address to that city); the
+ * response names the link the inviter sends themselves.
+ */
 export const inviteResponseSchema = z.strictObject({
     inviteId: sha256Schema,
     expiresAt: isoTimeSchema,
@@ -70,48 +79,11 @@ export const inviteResponseSchema = z.strictObject({
     signInUrl: httpsUrlSchema,
 });
 
-/** `admins.revoke`: an admin (never the owner, never oneself) or a pending invitation. */
-export const revokeRequestSchema = z.discriminatedUnion('kind', [
-    z.strictObject({ kind: z.literal('admin'), uid: uidSchema }),
-    z.strictObject({ kind: z.literal('invite'), inviteId: sha256Schema }),
-]);
+/** `admins.revoke` (its M5 request is `cityRevokeRequestSchema`: an admin or an invitation of one city). */
 export const revokeResponseSchema = z.strictObject({ revoked: z.literal(true) });
-
-/** `admins.list`: the admins and the pending invitations (an invitation shows no address: only its hash is kept). */
-export const adminsListRequestSchema = emptyRequestSchema;
-export const adminsListResponseSchema = z.strictObject({
-    admins: z
-        .array(
-            z.strictObject({
-                uid: uidSchema,
-                role: roleSchema,
-                email: z.email().max(254).optional(),
-                displayName: plainText(200).optional(),
-                invitedBy: uidSchema.optional(),
-                createdAt: isoTimeSchema,
-                /** The caller (the app hides Remove on this row). */
-                self: z.boolean(),
-            }),
-        )
-        .max(100),
-    invites: z
-        .array(
-            z.strictObject({
-                inviteId: sha256Schema,
-                role: z.literal('admin'),
-                invitedBy: uidSchema,
-                createdAt: isoTimeSchema,
-                expiresAt: isoTimeSchema,
-            }),
-        )
-        .max(100),
-});
 
 export type SessionResponse = z.infer<typeof sessionResponseSchema>;
 export type ClaimRequest = z.infer<typeof claimRequestSchema>;
 export type ClaimResponse = z.infer<typeof claimResponseSchema>;
 export type JoinResponse = z.infer<typeof joinResponseSchema>;
-export type InviteRequest = z.infer<typeof inviteRequestSchema>;
 export type InviteResponse = z.infer<typeof inviteResponseSchema>;
-export type RevokeRequest = z.infer<typeof revokeRequestSchema>;
-export type AdminsListResponse = z.infer<typeof adminsListResponseSchema>;

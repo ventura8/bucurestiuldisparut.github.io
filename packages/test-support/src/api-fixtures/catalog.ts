@@ -121,6 +121,8 @@ import nominatimReverseBuilding from './nominatim/reverse.building.json' with { 
 import nominatimReverseOk from './nominatim/reverse.ok.json' with { type: 'json' };
 import nominatimReverseQuarter from './nominatim/reverse.quarter.json' with { type: 'json' };
 import nominatimReverseUnable from './nominatim/reverse.unable.json' with { type: 'json' };
+import nominatimSearchCity from './nominatim/search.city.json' with { type: 'json' };
+import nominatimSearchNone from './nominatim/search.none.json' with { type: 'json' };
 import orgPolicyEffectivePolicyBooleanEnforced from './org-policy/effective-policy.boolean-enforced.json' with { type: 'json' };
 import orgPolicyEffectivePolicyListRestricted from './org-policy/effective-policy.list-restricted.json' with { type: 'json' };
 import orgPolicyEffectivePolicyNotEnforced from './org-policy/effective-policy.not-enforced.json' with { type: 'json' };
@@ -313,6 +315,8 @@ export const RAW_FIXTURES = catalogue({
     'nominatim/reverse.ok': nominatimReverseOk,
     'nominatim/reverse.quarter': nominatimReverseQuarter,
     'nominatim/reverse.unable': nominatimReverseUnable,
+    'nominatim/search.city': nominatimSearchCity,
+    'nominatim/search.none': nominatimSearchNone,
     'org-policy/effective-policy.boolean-enforced': orgPolicyEffectivePolicyBooleanEnforced,
     'org-policy/effective-policy.list-restricted': orgPolicyEffectivePolicyListRestricted,
     'org-policy/effective-policy.not-enforced': orgPolicyEffectivePolicyNotEnforced,

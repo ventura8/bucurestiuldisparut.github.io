@@ -1,6 +1,6 @@
 {
     "name": "@hcm/ui",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "private": true,
     "description": "Material 3 (Expressive) Lit 3 component kit: hcm-* custom elements, theme tokens and window classes.",
     "license": "UNLICENSED",
@@ -42,7 +42,7 @@
         "fonts:check": "node scripts/build-fonts.mjs --check"
     },
     "dependencies": {
-        "@hcm/shared": "0.0.0",
+        "@hcm/shared": "1.0.0",
         "@material/material-color-utilities": "0.4.0",
         "lit": "3.3.3",
         "terra-draw": "1.38.0",
@@ -50,7 +50,7 @@
     },
     "devDependencies": {
         "@fontsource-variable/roboto-flex": "5.3.0",
-        "@hcm/test-support": "0.0.0",
+        "@hcm/test-support": "1.0.0",
         "harfbuzzjs": "1.6.3",
         "material-symbols": "0.48.0",
         "wawoff2": "2.0.1"

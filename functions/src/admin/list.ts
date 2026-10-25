@@ -1,9 +1,19 @@
 import '../global-options.js';
 
-import { FIRESTORE_PATHS, adminDocSchema, inviteDocSchema, type AdminDoc, type CallableResponse, type InviteDoc } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    cityRoleOf,
+    inviteDocSchema,
+    timestampToDate,
+    type CallableRequest,
+    type CallableResponse,
+    type CityRole,
+    type InviteDoc,
+} from '@hcm/shared';
 
 import type { VerifiedCaller } from '../api/access.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
+import { cityMembers, type AdminEntry } from '../api/memberships.js';
 import type { Ports } from '../ports/index.js';
 import { isBefore, isoTime } from './records.js';
 
@@ -11,50 +21,57 @@ export type ListDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
 type AdminsList = CallableResponse<'admins.list'>;
 
-/** `adminsListResponseSchema` lists at most this many admins and as many invitations. */
+/** `cityAdminsListResponseSchema` lists at most this many admins and as many invitations. */
 const MAX_ROWS = 100;
 
-function adminRow(uid: string, admin: AdminDoc, caller: VerifiedCaller): AdminsList['admins'][number] {
+function adminRow(entry: AdminEntry & { readonly role: CityRole }, caller: VerifiedCaller): AdminsList['admins'][number] {
+    const { admin } = entry;
     return {
-        uid,
-        role: admin.role,
+        uid: entry.uid,
+        role: entry.role,
+        projectOwner: admin.role === 'owner',
         ...(admin.email === undefined ? {} : { email: admin.email }),
         ...(admin.displayName === undefined ? {} : { displayName: admin.displayName }),
-        ...(admin.invitedBy === undefined ? {} : { invitedBy: admin.invitedBy }),
         createdAt: isoTime(admin.createdAt),
-        self: uid === caller.uid,
+        self: entry.uid === caller.uid,
     };
 }
 
-function inviteRow(inviteId: string, invite: InviteDoc): AdminsList['invites'][number] {
+function inviteRow(inviteId: string, invite: InviteDoc, role: CityRole): AdminsList['invites'][number] {
     return {
         inviteId,
-        role: invite.role,
+        role,
         invitedBy: invite.invitedBy,
         createdAt: isoTime(invite.createdAt),
         expiresAt: isoTime(invite.expiresAt),
     };
 }
 
-/**
- * `admins.list` (admins; S-A02-*): the admins, oldest first, and the pending invitations (only their hash: an
- * invitation never stores its address); expired invitations wait for `ops.tick` and are not shown. A document its
- * schema refuses is left out and logged by id.
- */
-async function adminsList(deps: ListDeps, caller: VerifiedCaller): Promise<AdminsList> {
-    const options = { orderBy: ['createdAt', 'asc'], limit: MAX_ROWS } as const;
-    const admins = await deps.documents.query(FIRESTORE_PATHS.admins, adminDocSchema, options);
-    const invites = await deps.documents.query(FIRESTORE_PATHS.invites, inviteDocSchema, options);
-    const invalid = [...admins.invalid, ...invites.invalid].map((document) => document.path);
-    if (invalid.length > 0) {
-        deps.log.warn('admin documents left out of the list', { paths: invalid });
+/** The city's pending invitations (each by its hash only: an invitation never stores its address), oldest first. */
+async function cityInvites(deps: ListDeps, cityId: string): Promise<AdminsList['invites']> {
+    const invites = await deps.documents.query(FIRESTORE_PATHS.invites, inviteDocSchema, { orderBy: ['createdAt', 'asc'] });
+    if (invites.invalid.length > 0) {
+        deps.log.warn('invitations left out of the list', { paths: invites.invalid.map((document) => document.path) });
     }
     const now = deps.clock.now();
+    return invites.documents.flatMap((document) => {
+        const role = cityRoleOf(document.data.cities, cityId);
+        return role === null || !isBefore(now, document.data.expiresAt) ? [] : [inviteRow(document.id, document.data, role)];
+    });
+}
+
+/**
+ * `admins.list` (a city's members; S-A02-*, S-A51-HAPPY): the city's admins with their role in it, oldest first, the
+ * project's owner marked, and the invitations to the city; expired invitations wait for `ops.tick` and are not shown.
+ * An admin of other cities only is never listed (S-A51-BAD-OTHER-CITY-CALLABLE).
+ */
+async function adminsList(deps: ListDeps, caller: VerifiedCaller, data: CallableRequest<'admins.list'>): Promise<AdminsList> {
+    const members = (await cityMembers(deps.documents, data.cityId)).sort(
+        (a, b) => timestampToDate(a.admin.createdAt).getTime() - timestampToDate(b.admin.createdAt).getTime(),
+    );
     return {
-        admins: admins.documents.map((document) => adminRow(document.id, document.data, caller)),
-        invites: invites.documents
-            .filter((document) => isBefore(now, document.data.expiresAt))
-            .map((document) => inviteRow(document.id, document.data)),
+        admins: members.slice(0, MAX_ROWS).map((entry) => adminRow(entry, caller)),
+        invites: (await cityInvites(deps, data.cityId)).slice(0, MAX_ROWS),
     };
 }
 

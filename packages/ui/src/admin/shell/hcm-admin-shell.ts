@@ -24,6 +24,7 @@ import type { AdminAppPort, AdminAuthStatePort, AdminRouteIdPort, AdminStatePort
 import type { PageChrome } from '../editing/hcm-list-detail.js';
 import { EMPTY } from './empty.js';
 import type { HcmAccountMenu } from './hcm-account-menu.js';
+import { cityTitle } from './hcm-city-menu.js';
 import { contentText, noticeOf, shellText } from './text.js';
 import type { AdminNavVariant } from './hcm-admin-nav.js';
 import { shellStyles } from './shell-styles.js';
@@ -144,7 +145,7 @@ export class HcmAdminShell extends LitElement {
             this.#applyTheme(state);
             // The page's language and its tab's title follow the admin's (the static page is Romanian).
             this.ownerDocument.documentElement.lang = state.locale;
-            this.ownerDocument.title = shellText(state.locale, 'adminShell.appName');
+            this.ownerDocument.title = `${shellText(state.locale, 'adminShell.appName')}${cityTitle(state)}`;
         }
         this.#keepAccountFocus();
     }
@@ -248,7 +249,7 @@ export class HcmAdminShell extends LitElement {
             .unread=${state.unread ?? null}
             data-layout-check="nav"
         >
-            ${layout.topBar ? EMPTY : html`<hcm-account-menu slot="foot" .app=${this.app} .state=${state}></hcm-account-menu>`}
+            ${layout.topBar ? EMPTY : html`<hcm-account-menu slot="foot" .app=${this.app} .state=${state} cities></hcm-account-menu>`}
         </hcm-admin-nav>`;
     }
 
@@ -258,7 +259,7 @@ export class HcmAdminShell extends LitElement {
         return html`<div class="frame" data-nav=${this.#hidesNav(state, layout) ? 'none' : layout.nav}>
                 ${layout.nav === 'bar' ? EMPTY : shown}
                 <div class="column">
-                    ${layout.topBar ? this.#topBar(state) : EMPTY}
+                    ${layout.topBar ? this.#topBar(state, layout) : EMPTY}
                     <main class="content">
                         ${this.#pageTitle(state, layout)}
                         <div class="scroller">
@@ -276,10 +277,16 @@ export class HcmAdminShell extends LitElement {
             ${this.#leaving(state)}`;
     }
 
-    #topBar(state: AdminStatePort): TemplateResult {
+    /**
+     * M5: from the medium window class the top bar names the open city (its menu switches); compact puts the menu in the
+     * account menu and the city's name in the title.
+     */
+    #topBar(state: AdminStatePort, layout: ShellLayout): TemplateResult {
+        const compact = layout.nav === 'bar';
         return html`<header class="top-bar">
-            <h1>${pageName(state)}</h1>
-            <hcm-account-menu .app=${this.app} .state=${state}></hcm-account-menu>
+            <h1>${pageName(state)}${compact ? cityTitle(state) : ''}</h1>
+            ${compact ? EMPTY : html`<hcm-city-menu .app=${this.app} .state=${state}></hcm-city-menu>`}
+            <hcm-account-menu .app=${this.app} .state=${state} ?cities=${compact}></hcm-account-menu>
         </header>`;
     }
 
@@ -288,7 +295,7 @@ export class HcmAdminShell extends LitElement {
      * for assistive technology, out of sight, in `<main>` (axe's `page-has-heading-one` and `region`).
      */
     #pageTitle(state: AdminStatePort, layout: ShellLayout): TemplateResult {
-        return layout.topBar ? EMPTY : html`<h1 class="visually-hidden">${pageName(state)}</h1>`;
+        return layout.topBar ? EMPTY : html`<h1 class="visually-hidden">${pageName(state)}${cityTitle(state)}</h1>`;
     }
 
     /** The access was removed while editing: the page stays, read-only, under this until the admin signs out (§35e). */

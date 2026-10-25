@@ -57,7 +57,7 @@ export interface VersionView {
     } | null;
     readonly estimate: number | null;
     readonly guard: {
-        readonly verdict: 'within' | 'over' | 'tileset-limit' | 'too-large';
+        readonly verdict: 'within' | 'over' | 'tileset-limit' | 'too-large' | 'city-over';
         readonly available: number;
         readonly overageUsd: number | null;
         readonly choice: PublishChoice | null;

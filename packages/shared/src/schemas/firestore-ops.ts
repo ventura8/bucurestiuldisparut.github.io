@@ -8,6 +8,7 @@
 import { z } from 'zod';
 
 import { apiErrorCodeSchema, apiErrorParamsSchema } from '../api/errors.js';
+import { cityRolesSchema } from './city-roles.js';
 import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import { httpsOriginSchema, mapboxTokenIdSchema } from './firestore.js';
 import {
@@ -100,8 +101,12 @@ export const USGS_ROLES = ['search', 'download'] as const;
 export const ADMIN_ROLES = ['owner', 'admin'] as const;
 export const GUARD_STATES = ['green', 'red'] as const;
 export const GUARD_REASONS = ['budget', 'manual'] as const;
-/** The steps of `ops.tick`, in the order it runs them (`docs/research/M2-interfaces.md` → `ops.tick`). */
-export const OPS_STEPS = ['guard', 'jobs', 'mts', 'manifests', 'health', 'tokens', 'invites', 'users'] as const;
+/**
+ * The steps of `ops.tick`, in the order it runs them (`docs/research/M2-interfaces.md` → `ops.tick`); M5's `memberships`
+ * gives every admin document from before M5 its cities (`docs/research/M5-interfaces.md` §1.2), `exports` expires the
+ * static exports past their time (§5.3).
+ */
+export const OPS_STEPS = ['guard', 'jobs', 'mts', 'manifests', 'health', 'tokens', 'invites', 'users', 'memberships', 'exports'] as const;
 export const MANIFEST_BUILD_STATES = ['idle', 'queued', 'building', 'failed'] as const;
 /** Entities a manifest build may skip (an invalid document is skipped and flagged, never fails the manifest). */
 export const MANIFEST_ENTITIES = ['layer', 'photo', 'poi', 'poiCategory'] as const;
@@ -256,9 +261,19 @@ export const setupStatusDocSchema = z.strictObject({
     ...stamp,
 });
 
-/** `admins/{uid}`: written by `admin.claim`, `admin.join`, `admins.revoke` and the bootstrap script only. */
+/**
+ * `admins/{uid}`: written by `admin.claim`, `admin.join`, `admins.revoke` and the bootstrap script only; M5 adds the
+ * cities callables (`cities.create`, `admins.setRole`), `admin.session` and `ops.tick` (the migration of `cities`).
+ */
 export const adminDocSchema = z.strictObject({
+    /** `owner`: the account that claimed the project (it creates cities and sets their budgets); `admin`: any other. */
     role: z.enum(ADMIN_ROLES),
+    /**
+     * M5 (`docs/research/M5-interfaces.md` §1.2): the cities this admin belongs to and the role in each; written by the
+     * functions only. A document without it is from before M5: `admin.session` and `ops.tick` give it every existing city
+     * (`legacyCityRoles`), and until then the rules and the callables treat it as no membership (fail closed).
+     */
+    cities: cityRolesSchema.optional(),
     /** From the verified Google ID token, shown in the admins list; deleted with the document (GDPR). */
     email: z.email().max(254).optional(),
     displayName: plainText(200).optional(),
@@ -283,6 +298,11 @@ export const ownerDocSchema = z.strictObject({
  */
 export const inviteDocSchema = z.strictObject({
     role: z.literal('admin'),
+    /**
+     * M5: the cities the invitation grants, each with its role (`admins.invite` of a second city adds it here);
+     * `admin.join` grants every one. An invitation from before M5 names none and grants the project's role alone.
+     */
+    cities: cityRolesSchema.optional(),
     invitedBy: uidSchema,
     createdAt: timestampSchema,
     expiresAt: timestampSchema,

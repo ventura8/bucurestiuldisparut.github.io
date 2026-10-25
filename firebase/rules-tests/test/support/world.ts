@@ -26,7 +26,9 @@ vi.setConfig({ testTimeout: 60_000, hookTimeout: 60_000 });
 
 /**
  * Who is asking. Every persona but `admin` misses at least one admin condition (docs/research/M2-interfaces.md §3.1):
- * a verified Google account, the `admin` claim and an admins/{uid} document.
+ * a verified Google account, the `admin` claim and an admins/{uid} document; M5 (docs/research/M5-interfaces.md §1.4)
+ * adds `outsider`, a full admin of another city only, and makes `admin` the project's owner and a member of every city
+ * its world seeds (the personas with an admins document are members, so their denials come from what they miss).
  */
 export type Persona =
     | 'anonymous' // no Firebase Auth user
@@ -36,7 +38,8 @@ export type Persona =
     | 'otherProvider' // claim + admins doc, but signed in with a password, not Google
     | 'revoked' // claim but no admins doc: admins.revoke deleted it and the ID token still carries the claim
     | 'pending' // admins doc but no claim yet: admin.join or admin.claim ran, the ID token is not refreshed
-    | 'admin'; // verified Google account with the claim and the admins doc
+    | 'outsider' // M5: claim + admins doc, an editor of another city only (`<scope>-elsewhere`)
+    | 'admin'; // verified Google account with the claim and the admins doc: the project's owner, a member of every city
 
 /** Every persona, `admin` last: a test that lets the admin write runs it after the denials. */
 export const EVERYONE: readonly Persona[] = [
@@ -47,17 +50,25 @@ export const EVERYONE: readonly Persona[] = [
     'otherProvider',
     'revoked',
     'pending',
+    'outsider',
     'admin',
 ];
 /** The personas `authed()` accepts: a verified Google sign-in, whatever else they hold. */
-export const GOOGLE_ACCOUNTS: readonly Persona[] = ['stranger', 'invited', 'revoked', 'pending', 'admin'];
+export const GOOGLE_ACCOUNTS: readonly Persona[] = ['stranger', 'invited', 'revoked', 'pending', 'outsider', 'admin'];
+/** The city's member: what a city path allows. */
 export const ADMIN_ONLY: readonly Persona[] = ['admin'];
+/** Every admin, whatever their cities: what a project path (setup, the budget guard, the project's usage) allows. */
+export const ANY_ADMIN: readonly Persona[] = ['outsider', 'admin'];
 export const NOBODY: readonly Persona[] = [];
 
 interface PersonaSpec {
     readonly claims: TokenOptions | null;
     readonly adminDoc: boolean;
     readonly invite: boolean;
+    /** The persona's admins/{uid}.role. */
+    readonly role?: 'owner' | 'admin';
+    /** Gets a role in every city its world seeds (`World.seed` of a path under `cities/`). */
+    readonly member?: boolean;
 }
 
 const GOOGLE: TokenOptions = { email_verified: true, firebase: { sign_in_provider: 'google.com' } };
@@ -66,16 +77,21 @@ const PERSONAS: Readonly<Record<Persona, PersonaSpec>> = {
     anonymous: { claims: null, adminDoc: false, invite: false },
     stranger: { claims: GOOGLE, adminDoc: false, invite: false },
     invited: { claims: GOOGLE, adminDoc: false, invite: true },
-    unverified: { claims: { ...GOOGLE, email_verified: false, admin: true }, adminDoc: true, invite: false },
+    unverified: { claims: { ...GOOGLE, email_verified: false, admin: true }, adminDoc: true, invite: false, member: true },
     otherProvider: {
         claims: { email_verified: true, firebase: { sign_in_provider: 'password' }, admin: true },
         adminDoc: true,
         invite: false,
+        member: true,
     },
     revoked: { claims: { ...GOOGLE, admin: true }, adminDoc: false, invite: false },
-    pending: { claims: GOOGLE, adminDoc: true, invite: false },
-    admin: { claims: { ...GOOGLE, admin: true }, adminDoc: true, invite: false },
+    pending: { claims: GOOGLE, adminDoc: true, invite: false, member: true },
+    outsider: { claims: { ...GOOGLE, admin: true }, adminDoc: true, invite: false },
+    admin: { claims: { ...GOOGLE, admin: true }, adminDoc: true, invite: false, role: 'owner', member: true },
 };
+
+/** The personas that get a role in every city their world seeds. */
+const MEMBERS = (Object.keys(PERSONAS) as Persona[]).filter((persona) => PERSONAS[persona].member === true);
 
 type Context = ReturnType<RulesTestEnvironment['unauthenticatedContext']>;
 type Db = firebase.firestore.Firestore;
@@ -90,9 +106,16 @@ export interface World {
     readonly env: RulesTestEnvironment;
     uid(persona: Persona): string;
     email(persona: Persona): string;
+    /** M5: the city the `outsider` persona edits (`<scope>-elsewhere`), seeded with every world. */
+    readonly elsewhere: string;
+    /** The persona's admins/{uid} document as the world seeded it (to put it back after a test removed it). */
+    adminDocOf(persona: Persona): Data;
     db(persona: Persona): Db;
     storage(persona: Persona): Storage;
-    /** Writes a Firestore document with rules disabled (the Admin SDK's view). */
+    /**
+     * Writes a Firestore document with rules disabled (the Admin SDK's view). A path under `cities/{city}` first gives the
+     * member personas a role in that city (M5), so the M2 to M4 tests keep testing what they did.
+     */
     seed(path: string, data: Data): Promise<void>;
     /** Uploads an object with rules disabled (what Cloud Functions or the Cloud Run job would write). */
     seedObject(path: string, contentType: string): Promise<void>;
@@ -143,13 +166,26 @@ export function systemStamp(writer: string): Data {
     return { updatedBy: `system:${writer}`, updatedAt: past() };
 }
 
+/** The persona's cities: the outsider's one city, or (for a member) every city granted so far. */
+function citiesOf(persona: Persona, elsewhere: string, granted: Iterable<string>): Data {
+    if (persona === 'outsider') {
+        return { [elsewhere]: 'editor' };
+    }
+    return PERSONAS[persona].member === true ? Object.fromEntries([...granted].map((city) => [city, 'editor'])) : {};
+}
+
+/** The admins/{uid} document of a persona: its project role and its cities. */
+function adminDocFor(persona: Persona, account: { readonly email: string; readonly cities: Data }): Data {
+    const role = PERSONAS[persona].role ?? 'admin';
+    return { role, cities: account.cities, email: account.email, createdAt: past(), updatedBy: 'system:bootstrap', updatedAt: past() };
+}
+
 function seedPersonas(world: World): Promise<unknown> {
     const seeds = EVERYONE.flatMap((persona) => {
         const spec = PERSONAS[persona];
         const writes: Promise<void>[] = [];
         if (spec.adminDoc) {
-            const admin = { role: 'admin', email: world.email(persona), createdAt: past(), ...systemStamp('bootstrap') };
-            writes.push(world.seed(FIRESTORE_PATHS.admin(world.uid(persona)), admin));
+            writes.push(world.seed(FIRESTORE_PATHS.admin(world.uid(persona)), world.adminDocOf(persona)));
         }
         if (spec.invite) {
             const invite = {
@@ -218,7 +254,35 @@ export async function createWorld(scope: string): Promise<World> {
         return created;
     };
     const owner = holdOwner(env);
+    const elsewhere = `${scope}-elsewhere`;
+    const granted = new Map<string, Promise<void>>();
+    const adminDocOf = (persona: Persona): Data =>
+        adminDocFor(persona, { email: email(persona), cities: citiesOf(persona, elsewhere, granted.keys()) });
+    // M5: the member personas get a role in a city before anything of it is seeded, once per city.
+    const grant = (city: string): Promise<void> => {
+        const known = granted.get(city);
+        if (known !== undefined) {
+            return known;
+        }
+        const granting = owner.context.then(async (context) => {
+            const role = new firebase.firestore.FieldPath('cities', city);
+            await Promise.all(
+                MEMBERS.map((persona) =>
+                    context
+                        .firestore()
+                        .doc(FIRESTORE_PATHS.admin(uid(persona)))
+                        .update(role, 'editor'),
+                ),
+            );
+        });
+        granted.set(city, granting);
+        return granting;
+    };
     const seed = async (path: string, data: Data): Promise<void> => {
+        const city = CITY_PATH.exec(path)?.[1];
+        if (city !== undefined && city !== elsewhere) {
+            await grant(city);
+        }
         await (await owner.context).firestore().doc(path).set(data);
     };
     const seedObject = async (path: string, contentType: string): Promise<void> => {
@@ -232,6 +296,8 @@ export async function createWorld(scope: string): Promise<World> {
         env,
         uid,
         email,
+        elsewhere,
+        adminDocOf,
         db: (persona) => context(persona).firestore(),
         storage: (persona) => context(persona).storage(),
         seed,
@@ -239,8 +305,20 @@ export async function createWorld(scope: string): Promise<World> {
         close,
     };
     await seedPersonas(world);
+    await seed(FIRESTORE_PATHS.city(elsewhere), {
+        name: { ro: elsewhere },
+        bounds: ELSEWHERE_BOUNDS,
+        published: false,
+        ...systemStamp('cities'),
+    });
     return world;
 }
+
+/** `cities/{city}` and every path below it. */
+const CITY_PATH = /^cities\/([^/]+)/;
+
+/** The outsider's city: somewhere far from every test city. */
+const ELSEWHERE_BOUNDS = { west: 23.5, south: 46.72, east: 23.7, north: 46.82 };
 
 export function bytes(size: number): Uint8Array {
     return new Uint8Array(size);

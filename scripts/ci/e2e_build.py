@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """The stamped e2e build: gate `e2e-build` of the `e2e` and `tour-matrix` stages.
 
-Runs `npm run build:site:e2e` (the engine, the Cloud Functions artifact the emulators load, the admin's e2e bundle,
-then the e2e sites and the admin's Hosting folder: e2e/scripts/build-site.ts) unless its stamp shows that nothing the
-build reads changed and nothing it wrote was touched since the last build on this machine. The stamp,
+Runs `npm run build:site:e2e` (the engine, the create-historic-city CLI the starter-kit specs run, the Cloud Functions
+artifact the emulators load, the admin's e2e bundle, then the e2e sites and the admin's Hosting folder:
+e2e/scripts/build-site.ts) unless its stamp shows that nothing the build reads changed and nothing it wrote was touched
+since the last build on this machine. The stamp,
 node_modules/.cache/hcm/e2e-build.json (so `npm ci` drops it), holds two digests:
 
 * the inputs: git's blob id and path of every file of the working tree (tracked, and untracked but not ignored) that
@@ -33,7 +34,7 @@ LOG = get_logger("e2e-build")
 STAMP = Path("node_modules", ".cache", "hcm", "e2e-build.json")
 # The build itself (package.json stays the one place of its steps).
 BUILD = ("npm", "run", "--silent", "build:site:e2e")
-OUTPUTS = ("dist/e2e-site", "packages/engine/dist", "functions/dist", "packages/admin/dist")
+OUTPUTS = ("dist/e2e-site", "packages/engine/dist", "packages/create-historic-city/dist", "functions/dist", "packages/admin/dist")
 # Files the build never reads: documentation, CI and agent assets, the raster pipeline, the tests and the e2e specs,
 # fixtures of the run and servers (they run from source when Playwright starts, not from the build), and the local stack
 # for manual testing (e2e/stack/, run from source by scripts/dev/dev-stack.sh after this build).

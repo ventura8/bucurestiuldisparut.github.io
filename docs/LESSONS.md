@@ -1137,3 +1137,208 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the review fixes' third split `all` run; two earlier runs passed, their admin's inbox empty at the time.
     - Fix and pin: the notifications go first, while the account is still an admin's (`functions/src/admin/revoke.ts`): the open page sees its inbox emptied, and the removed admin's next write is refused by the rules as the scenario says.
     - **A cleanup that writes under a revoked account reaches its open listeners: order it so they see what they are still allowed to see, and test the scenario with the shared world's background traffic, not only an idle one.**
+219. **The built engine could not be committed as it was: two of its lines end in a space and a tab, and its stylesheet has no final newline.**
+    - Seen: M5's release folder `cdn/engine/` (the engine build jsDelivr serves from a tag) failed `editorconfig` on a scratch copy: `engine.css` without a final newline, and line 58 of `engine.iife.js` and 114 of `engine.mjs` with trailing whitespace. The whitespace is lit-html's `[ \t\n\f\r]`, which the minifier writes as a template literal whose `\n` became a real line break; it belongs to the string. A first order of `release.json`'s files by `localeCompare` would also have put `THIRD_PARTY_NOTICES.txt` where the machine's locale says.
+    - Found by: the release workstream's measurement of every static gate on a scratch copy of the folder before anything was committed (`docs/research/M5-interfaces.md` §2.3); no gate reads build output, which `dist/` keeps out of the tree.
+    - Fix and pin: the release transform ends every text file with a newline and lists files in code-point order (`releasedBytes` and `releasedFiles` in `scripts/release/test/cdn.test.ts`); the trailing whitespace stays as it is, and the one-line EditorConfig exception for `cdn/engine/*.{js,mjs}` waits for the user (`docs/research/DECISIONS-for-review.md` §59c).
+    - **Committed build output is data: measure every gate on it before the commit that adds it, never "fix" whitespace inside minified code, and keep locale out of anything compared byte for byte.**
+220. **The admin's theme watched the city twice, then forever.**
+    - Seen: in M5's multi-city shell, a synchronous store (the unit tests' fake, and the emulator's cached snapshot) answered inside `CityTheme`'s `watch` call; the answer found no watch started yet and started a second one, whose answer did the same.
+    - Found by: the multi-city workstream's unit tests of the mount (`packages/admin/test/app/mount.test.ts`); every earlier store answered on a later turn.
+    - Fix and pin: the watch is marked started before it is called (CR-M5-24 (1)).
+    - **Mark a subscription as started before you subscribe: a source may answer inside the call.**
+221. **A role dialog the user saw was "hidden" to the test.**
+    - Seen: `hcm-dialog`'s host element has no box while its native `<dialog>` is open in the top layer, so `toBeVisible()` on the host failed with the dialog on screen (Admins → the role question).
+    - Found by: `S-A51-HAPPY-ROLE` at the admin projects.
+    - Fix and pin: the spec asserts the dialog through its role (`getByRole('dialog')`), as a user's assistive technology finds it.
+    - **Assert a modal by its role, never by its custom element's host: the top layer has no layout box under the host.**
+222. **"Discard" for another city's address asked a second time, and brought the old city back.**
+    - Seen: an unsaved edit, then the city menu's other city, then Discard: the navigation guard restored the old address before the page load, and `beforeunload` asked again.
+    - Found by: `S-A49-BAD-UNSAVED`.
+    - Fix and pin: once the admin discards, the app stops counting the discarded edit while the other city opens (CR-M5-24 (3)).
+    - **A guard that asked and was answered must stand down for the navigation it allowed.**
+223. **The New city drag spanned a hundredth of the area the spec expected.**
+    - Seen: a 240 px drag at zoom 13 was computed with 256 px tiles; Mapbox's zoom levels are 512 px tiles, so N px at zoom z span N·360/(512·2^z) degrees.
+    - Found by: `S-A50-HAPPY`, whose rectangle came out too small for `CITY_SPAN_LIMITS`.
+    - Fix and pin: the spec's comment and its sizes use 512 px tiles (CR-M5-24 (4)).
+    - **Mapbox GL's zoom is in 512 px tiles: convert pixels to degrees with 512, not the 256 of raster tile schemes.**
+224. **An overlay for the New city rectangle hid the map from the checkers and broke the admin's CSP.**
+    - Seen: a transparent layer over the map to catch the drag made the map's zoom buttons "occluded" and its focus "obscured" for the layout checker; positioning it with an inline `style` was refused by the admin's Content Security Policy.
+    - Found by: `S-A50-HAPPY`'s `expectStateSound` and the console guard.
+    - Fix and pin: the gesture listens on the element Mapbox draws into, in the capture phase; nothing covers the map (CR-M5-24 (5)).
+    - **Draw on a map through its own element's events, never through a layer on top of it.**
+225. **The bundled city's owner could not invite anyone before Setup wrote the city.**
+    - Seen: `admin.session` listed a member's cities from their documents, and the bundled city has none until Setup's `setup.createCity`, so its owner had no city to invite into.
+    - Found by: `S-A02-HAPPY-INVITE-AND-CANCEL` after the memberships landed.
+    - Fix and pin: the session lists a member's city by its id while it has no document (CR-M5-22 (2), CR-M5-24 (6)).
+    - **A membership is the source of truth for access; a document's existence is not.**
+226. **The city menu's buttons lost their 48 px targets.**
+    - Seen: 40 px buttons in a scrolling list, packed edge to edge, failed the target-size check at the list's ends and between rows (`cities.switcher-menu`).
+    - Found by: the tour's target-size checker at the admin projects.
+    - Fix and pin: 8 px between them and 4 px inside the list's edges (CR-M5-24 (7)).
+    - **A 40 px control keeps a 48 px target only with 8 px around it, including inside a scroller's padding.**
+227. **A page opened from the disk could not be reached by the e2e at all.**
+    - Seen: `S-V28-BAD-FILE-URL` (an export opened by double-click) was blocked by the e2e firewall, which refuses every address that is not a mocked host, `file://` included.
+    - Found by: the export workstream's first run of the spec.
+    - Fix and pin: the spec answers `file://` itself from the unpacked folder (`page.route(/^file:\/\//, …)`); Chromium's own refusal of a `file://` fetch, the point of the test, still happens before any route.
+    - **A firewall in the test harness covers every scheme: a spec that needs one opens it explicitly, and says why.**
+228. **The tour inventory could not take another section.**
+    - Seen: `e2e/tour/states.ts` reached the 600-line limit of a test file, so any section's spread failed `max-lines`.
+    - Found by: ESLint on the export workstream's first state.
+    - Fix and pin: the M4 and M5 sections moved with their markers into `e2e/tour/admin-sections.ts` (CR-M5-15).
+    - **An inventory that every workstream appends to is split by section before it fills, not by the one who hits the limit.**
+229. **A click on a Material button reached nothing.**
+    - Seen: `hcm-button` renders its inner `<button>` on its first update, after the element is in the page; the export card's spec clicked before it existed.
+    - Found by: the export workstream's admin spec at `admin-c360-ro`.
+    - Fix and pin: the spec waits for the button by its role before clicking (`e2e/admin/specs/export/export.spec.ts`).
+    - **Wait for a custom element's control by its role: its host exists before its shadow content.**
+230. **A locked test's reset deleted a content world's export while it downloaded.**
+    - Seen: `S-A53-HAPPY` downloaded "No such object." when a locked spec reset the emulators during its build: the reset reads `exports/<city>/<id>.zip`'s second segment as the city only for the prefixes it knows, and `exports` was not one, so it read the zip's name as the city and deleted the object.
+    - Found by: a whole admin-tier run at `admin-l1440-ro` (the multi-city workstream, 2026-10-25); alone the spec passed.
+    - Fix and pin: `exports` joins `CITY_FIRST` in `e2e/admin/support/emulators.ts` (CR-M5-25).
+    - **Every new storage prefix joins the reset's table in the change that adds it (lesson 116 again).**
+231. **A city made in the admin could never become public.**
+    - Seen: New city made the city unpublished and its done screen said "publish it from Settings when it is ready", but no screen wrote `cities/{city}.published`: the city could get no public manifest, so no public site and no export (`apiError.export.noManifest`). Each workstream's own specs seeded `published: true` and passed.
+    - Found by: the M5 integrator's cross-app journey, the first test to take a city from New city to its public site.
+    - Fix and pin: Settings → Publishing (one switch and Save; `S-A54-HAPPY`, `S-A54-BAD-UNPUBLISHED`; `docs/research/DECISIONS-for-review.md` §63a).
+    - **A flow is done when a test walks it from its first screen to what the visitor sees, with nothing seeded in between.**
+232. **A version bump would have downloaded every npm package, the browsers and the emulators again.**
+    - Seen: the quality image's npm layer depended on the lockfile's and the manifests' bytes, so the CLI's workspace link and the release's version bump (versions only) re-ran `npm ci` from the registry, the Playwright browser install and the Firebase emulator download.
+    - Found by: the kit-cli workstream, which left the lockfile unchanged for that reason (§61d), so a fresh `npm ci` stopped with `Missing: create-historic-city@0.0.0 from lock file`.
+    - Fix and pin: the image's `manifests` stage writes the workspaces' versions as 0.0.0 and drops a workspace without registry dependencies; checked by building that stage alone and comparing its output byte for byte with the baked one (§63b).
+    - **A cache layer should depend on what it caches: normalise the inputs that cannot change its output, and prove the cache hit before the build that would miss it.**
+233. **A photo seeded for a new city vanished from its manifest.**
+    - Seen: the journey's photo of Turda was skipped by the manifest build with `validation.outsideCity`: the seeding helper's default location is Bucharest's.
+    - Found by: `S-A54-HAPPY`'s first run, whose manifest record named the skipped photo.
+    - Fix and pin: the spec places the photo inside the rectangle it gave New city (`IN_TURDA`).
+    - **A seeded world for a second city must put its content inside that city: defaults belong to the first one.**
+234. **A count of one read as a plural, and a limit an owner sets can be one.**
+    - Seen: the export card said "1 fotografii, 0 straturi" and "1 photos"; the daily limits of imagery jobs and exports, which M5 lets the project's owner set per city down to 1, said "deja 1 exporturi" and "1 exports … were already made"; the city's compute-unit message put `{estimate}` before its noun the same way.
+    - Found by: the M5 integrator's visual audit of the review screenshots (`reports/screenshots/m5/`), which the checkers pass: the text is contrasted, in place and in the right language.
+    - Fix and pin: each message puts the number after a label or in brackets ("fotografii: 1, straturi: 0", "au atins limita zilnică (1)"), in both languages; `packages/ui/test/admin/export/export-card.test.ts` asserts the Romanian and English summaries. The same review made Export tonal beside a ready export's Download, the card's one filled button.
+    - **Lesson 124 again: a count before a noun needs plural forms, and "it is always more than one" stops holding once a person can set the number.**
+235. **An offline build said nothing about the cache.**
+    - Seen: to prove the NUC's quality image would build without downloads before a split run, `docker build --network=none` ran the apt layer again from its cache mounts and failed at the CI tools' venv, though the split's own build minutes later found every layer `CACHED`; on this machine, where a normal build was fully cached, the offline build re-ran the apt layer too.
+    - Found by: the M5 integrator's check of the NUC before `PIPELINE_STAGE=quality bash scripts/ci/e2e-split.sh` (2026-10-25).
+    - Fix and pin: the check is the split's own build log (`[nuc] #… CACHED` for the apt, venv and npm layers, the run stopped if one starts) and the NUC's cache records (`docker buildx du --builder default --verbose`, their last use); `.agent/skills/quality/pipeline_skill.md` → *Local tooling quirks*.
+    - **BuildKit keys a `RUN` step on its network mode: a build with another network mode is another build, so it cannot tell whether the real one is cached.**
+236. **A route did not drop the connection already open.**
+    - Seen: `S-A18-BAD-STREAM-DROP` at `admin-l1440-en` on the NUC: "Reconnecting…" never showed within 60 s; the trace's first aborted listen request came 45 s after the route was installed, because Firestore's WebChannel long poll, opened before the route, stayed open, and a route reaches only the requests that start after it. It passed at the other four admin projects of the same run.
+    - Found by: the M5 integrator's split `quality` run (2026-10-25), on the loaded NUC.
+    - Fix and pin: the spec also takes the browser offline (`page.context().setOffline(true)`) until the page says it is reconnecting, which fails the open request too, then goes online with the route still cutting the channel, so the line written meanwhile arrives only after `unroute` (`e2e/admin/specs/ops/stream.spec.ts`; 15 of 15 at the five admin projects, 3 to 8 s each, against 9 to 14 s before).
+    - **To cut a connection, cut the request already open too: a long poll or a stream outlives a route that starts after it.**
+237. **The self-host CLI read the owner's Google tokens to learn whether they were signed in.**
+    - Seen: `self-host`'s sign-in step ran `firebase login:list --json`, whose answer in firebase-tools 15.33.0 is every signed-in account with its OAuth refresh and access tokens (`auth.getAllAccounts()` printed by `--json`); the CLI kept them in memory, one log of a parse failure away from printing them, against its own rule of never reading a credential.
+    - Found by: the M5 security review (finding 1), reading firebase-tools' `login-list.js` and `command.js`.
+    - Fix and pin: the probe is `firebase login:list` as plain text (`Logged in as …`); the fakes answer `--json` with tokens, and the unit and e2e tests assert the CLI never runs it and nothing it captured holds them (`packages/create-historic-city/test/self-host.test.ts`, `S-V29-HAPPY-SELF-HOST`).
+    - **Check what a `--json` flag really prints before reading it: a listing of accounts can be a listing of their secrets.**
+238. **A guide's `npx create-historic-city@1` would run whatever owned the name that day.**
+    - Seen: the READMEs, `docs/SELF_HOST.md` and the CLI's own messages told readers to run `npx create-historic-city@1` (a major line), and the npm publish came after the merge that makes those guides public; the name was not yet ours.
+    - Found by: the M5 security review (finding 5).
+    - Fix and pin: every guide names the exact release (`@1.0.0`), the CLI prints its own (`NPX_COMMAND`), `release:bump` rewrites `PINNED_DOCS` and `release-check` refuses a tag whose guides name another version (`scripts/release/test/versions.test.ts`, `scripts/ci/tests/test_check_release.py`); the release order now checks and publishes the name before the merge (`docs/research/M5-status.md` §3).
+    - **A command a guide prints is code its readers run: pin it exactly, and own the name before the guide is public.**
+239. **`self-host` walked an owner onto Blaze toward a setup that could not finish.**
+    - Seen: the admin refuses the `project.json` `self-host` writes (no `github`, CR-M5-7), so Setup's Provision never runs; step 8 still opened billing, waited for Blaze and deployed functions whose service accounts only Provision creates, leaving the owner on Blaze without the 5 USD budget the step's own text promised; the scaffold advertised the command after every run.
+    - Found by: the M5 UX review (finding 1).
+    - Fix and pin: `self-host` and `deploy` refuse without `--experimental` (nothing runs; a dry run needs no flag), say what does not work yet when given it, the scaffold no longer advertises them and the guides say so (`S-V29-BAD-NOT-AVAILABLE`).
+    - **A command that cannot finish should refuse at its first step, not after the payment step.**
+240. **Every failure of `firebase projects:create` was taken for Google's terms.**
+    - Seen: project ids are unique across Google, so a taken id is the usual failure; the CLI said to accept the terms, opened the console, retried the same id and stopped with only an exit status.
+    - Found by: the M5 UX review (finding 14).
+    - Fix and pin: firebase's own message stays on the owner's terminal, the CLI names another id (`otherProjectId`: `cluj-harta-2`) and opens the console for the terms only after a yes (`S-V29-BAD-PROJECT-TAKEN`).
+    - **When a tool's failure has several causes, show its own message and offer the way out of the likeliest one.**
+241. **A city editor's basemap address could add directives to the export's Content Security Policy.**
+    - Seen: a WHATWG URL allows `;` and `'` in a host, so `new URL('https://a.com;connect-src/x').origin` is `https://a.com;connect-src`; the export page wrote that origin into `connect-src` (escaped as an attribute, but splitting the policy), and the rules' `httpsUrl()` and `isHttpsUrl` accept such a host.
+    - Found by: the M5 security review (finding 7), checked in Node.
+    - Fix and pin: `isCspOrigin` (CSP's host-source grammar) filters the export's origins and `contentSecurityPolicy` throws on any other; the manifest schema and the rules (`httpsHostUrl()`) refuse such a style; the export's policy names no telemetry host (`S-A53-BAD-STYLE-HOST`).
+    - **An origin parsed from a URL is not a CSP source: check it against the grammar it is written into.**
+242. **`create-historic-city upgrade` dropped the sources a page had added to its policy.**
+    - Seen: `upgrade` refilled the page with the engine alone, so the tile and photo hosts the kit's README tells an owner to add (and an export's own origins) left `img-src` and `connect-src`; after the "easiest" upgrade the historical layers were blocked.
+    - Found by: the M5 UX review (finding 4).
+    - Fix and pin: `policyExtras(readKitPolicy(page))` carries every origin the page added and its telemetry's presence into the new policy (`packages/create-historic-city/test/upgrade-doctor.test.ts`; `theme` does the same).
+    - **A rewrite that owns part of a file must read back what the rest of the file says.**
+243. **Two owners could leave a city without one, and no account could repair it.**
+    - Seen: the last-owner check counted owners outside any transaction; `admins.setRole` and `admins.revoke` read the target, then wrote the whole document; `revokeAdmin` had no last-owner check; the project's owner could be removed from a city, and nothing but the Firestore console could then reach it.
+    - Found by: the M5 security review (finding 3).
+    - Fix and pin: `changeCityRole` reads the caller, the target and every owner of the city through one transaction before it writes, and the project's owner stays an owner of every city they belong to (`apiError.city.projectOwnerStays`); the emulator tests run two owners against each other at once (`S-A51-BAD-ROLE-RACE`, `S-A51-BAD-PROJECT-OWNER-STAYS`).
+    - **An invariant over several documents needs every one of them read in the transaction that could break it.**
+244. **An editor of one city could publish another city's imagery.**
+    - Seen: `layers.link` only compared a tileset's owner with the project's Mapbox account, which every city shares; the pipeline names tilesets `<user>.hcm-<city>-<layer>`, and the layer ids follow from public USGS metadata.
+    - Found by: the M5 security review (finding 2).
+    - Fix and pin: a pipeline tileset is linkable only by a layer of the same city that records it (`apiError.layers.otherCityTileset`, `S-A15-BAD-OTHER-CITY-TILESET`); the remaining limit, every city's public token reading every tileset of the account, is recorded in `docs/ARCHITECTURE.md`.
+    - **When cities share an account, "the account owns it" is not "this city owns it".**
+245. **A pending invitation from before M5 would grant every city, a later one too.**
+    - Seen: an invitation without `cities` joined its account to every current city at its first session, a city made after the invitation included, and `admins.list` and `revokeInvite` could not see it.
+    - Found by: the M5 security review (finding 4).
+    - Fix and pin: the `memberships` tick step and `cities.create` (before it writes) give such an invitation the cities of now, as an editor of each (`S-A51-HAPPY-LEGACY-INVITE`).
+    - **A migration of grants must convert the pending ones too, before anything can widen what they mean.**
+246. **Anyone with an export's address could download it all day, on the project's egress.**
+    - Seen: `export.download` signed a 15-minute address of a zip up to 2 GB on every call, even while the budget guard was red.
+    - Found by: the M5 security review (finding 6).
+    - Fix and pin: at most `EXPORT_LIMITS.downloadsPerDay` (10) signings per export a UTC day, counted in a transaction on its record, none while the guard is red, and the count logged (`S-A53-BAD-DOWNLOAD-LIMIT`).
+    - **A signed address is a cost the project pays per use: count its signings and stop them when the budget says so.**
+247. **The CLI's package could ship an e2e admin, or none.**
+    - Seen: no gated stage built `dist/self-host/`, the CLI's own vite build empties `dist/`, and `buildSelfHostBundle` copied `packages/admin/dist`, which the e2e build (`vite --mode e2e`, with the OAuth stand-in) writes too.
+    - Found by: the M5 security review (finding 8).
+    - Fix and pin: `build:self-host` builds the admin and the functions for production first, the bundle refuses an admin carrying the stand-in's `/__oauth/authorize`, and the `release` stage's `self-host-bundle` gate assembles it between `vite-build` and `release-pack` (`packages/create-historic-city/test/bundle.test.ts`, `scripts/ci/tests/test_pipeline_stages.py`).
+    - **A build that publishes must make its inputs itself, or check that they are the right build.**
+248. **Every visitor read maintainer instructions while the map loaded.**
+    - Seen: the kit's note ("check the version and the integrity in index.html") showed on every load until the engine ran, not only when it failed.
+    - Found by: the M5 UX review (finding 16).
+    - Fix and pin: the note first says only that the map is loading; the troubleshooting (`.hcm-note-late`) shows after 4 s through the engine's stylesheet, and the e2e finishes the animations from outside instead of waiting (`S-V27-BAD-INTEGRITY`, the tour state `kit.loading-note`).
+    - **A fallback message shown on every load is read by everyone: say the neutral part first and the fix only when it is due.**
+249. **ARIA set on a custom button's host named nothing.**
+    - Seen: the city menu set `aria-haspopup` and `aria-current` on `hcm-button`'s host, but focus goes to its inner button; the tests asserted the host attribute, so a screen reader heard neither the popup nor the current city.
+    - Found by: the M5 UX review (finding 10).
+    - Fix and pin: `hcm-button` takes `popup`, `current` and `label` as properties for its inner button (as `pressed` already was); the switcher is named "City: …" and the tests read the inner button (`packages/ui/test/components/button.test.ts`, `S-A49-HAPPY`).
+    - **Lesson 229 again: test the element that has the focus, never the host around it.**
+250. **On a phone the open city was named nowhere.**
+    - Seen: compact windows showed only the page's name; the city list sat inside the account menu, so an admin of two cities could edit the wrong one, and that list never refreshed.
+    - Found by: the M5 UX review (finding 8), from the 360 px switcher screenshots.
+    - Fix and pin: a phone's top bar, a sideways phone's heading and the tab's title end with a middle dot and the open city's name for an admin of two cities or more (`cityTitle`); opening the account menu asks for the cities again.
+    - **What a layout drops at a small size must still be said somewhere the person looks.**
+251. **A city just made could be missing from the city menu for a minute.**
+    - Seen: opening the menu to reach New city refreshed the cities, and a second opening within 60 s was throttled.
+    - Found by: the M5 UX review (finding 17).
+    - Fix and pin: Create calls `refreshCities(true)`, which skips the minute (`S-A50-HAPPY`).
+    - **A throttle must give way to the action that made its data stale.**
+252. **New city took three inputs only for a city already on screen.**
+    - Seen: the map opened on the current city (or Europe), drawing mode blocked panning, and the budget test dragged over the current city's own view; drawing Cluj from Bucharest took six to ten inputs.
+    - Found by: the M5 UX review (finding 3).
+    - Fix and pin: `cities.locate` (one Nominatim search under the title suggestions' cool-down) finds the named city once typing rests; its rectangle is drawn, named and the map flies there, never over one the admin drew; the budget is two inputs, measured from Bucharest's view (`S-A50-HAPPY`, `S-A50-HAPPY-DRAWN`, `S-A50-BAD-NOT-FOUND`).
+    - **Measure an input budget from where a person really starts, not from where the test happens to be.**
+253. **A pinch on the New city map drew a rectangle between two fingers.**
+    - Seen: the gesture ignored `pointerId`, so the second finger overwrote the press and lifting the first drew from one finger to the other; `touchstart` was always stopped, so pinch-zoom was dead while drawing.
+    - Found by: the M5 UX review (finding 5).
+    - Fix and pin: only the primary pointer draws, a second one cancels the drag, two-finger touches reach the map, and a dashed band shows the rectangle under way and the first click's corner (`packages/ui/test/admin/cities/area-gesture.test.ts`).
+    - **A pointer gesture must follow one pointer by its id; every other pointer is someone else's gesture.**
+254. **Typing the rectangle's edges judged an impossible rectangle at each edge.**
+    - Seen: each edge before the fourth made a rectangle with zeros, and an alert told a keyboard user to drag on the map, up to three times; clearing one edge cleared all four.
+    - Found by: the M5 UX review (finding 12).
+    - Fix and pin: the edges stay a draft until all four are numbers (`area-edges.ts`), clearing one keeps the others, and the keyboard path has its own messages (`S-A50-BAD-EDGES-PARTIAL`).
+    - **A form built from several fields should be judged when it is whole.**
+255. **The focus fell to the page when New city and Export replaced their buttons.**
+    - Seen: Create the city replaced the form and Export removed both buttons while the export ran; each `role="status"` was inserted already filled, which screen readers often skip.
+    - Found by: the M5 UX review (finding 11).
+    - Fix and pin: one live region per page, there from the start, says what happened; the done screen's heading takes the focus, and Export moves it to the card's heading before its button goes (`S-A50-HAPPY`, `S-A53-HAPPY`).
+    - **When an action removes the control that had the focus, decide where the focus goes, and announce from a region that was already there.**
+256. **The city budget showed limits that did not apply, and saving one imposed five.**
+    - Seen: a city without limits (Bucharest) showed the new-city defaults as its limits, "used X of Y" used them as Y, and saving one field saved all five defaults with it.
+    - Found by: the M5 UX review (finding 7).
+    - Fix and pin: such a city says the project's caps alone hold it and shows empty fields; a field left empty saves at its maximum (`MAX_CITY_LIMITS`), so the limit typed is the only one set (`S-A52-HAPPY`).
+    - **A form for optional limits must not show defaults as if they were in force, nor save them as a side effect.**
+257. **An admin of two cities never reached the dashboard from an empty address.**
+    - Seen: the full split run's Setup journey at three `tour-matrix` projects reloaded an empty address after Setup was complete and stayed on Setup; the owner administered two cities there (lesson 258), and an empty address was rewritten to `#/setup` as soon as it opened, before Setup's readiness was known, so its answer no longer found an empty address to send to the dashboard.
+    - Found by: `bash scripts/ci/e2e-split.sh` (stage `all`), the M5 fixer's first full run.
+    - Fix and pin: an empty address stays empty unless the page it opens names a city (a city page of an admin of two cities or more); Setup keeps it empty until readiness decides (`S-A49-HAPPY-FIRST-SCREEN`, `S-A49-BAD-FIRST-SCREEN-INCOMPLETE`).
+    - **A rule that waits for an asynchronous answer must not destroy the input it waits on: rewrite the address only once the page it names is final.**
+258. **The project's new owner was given every city of the project, other tests' cities included.**
+    - Seen: `admin.claim` wrote the owner's `admins/{uid}` without `cities`, the mark of a document from before M5, so the next `admin.session` migrated it with every city that existed; in the e2e, the cities of the content worlds running beside the Setup journey, which then administered two cities (lesson 257).
+    - Found by: the same run, from the city menu of the failure's snapshot naming a content world's city.
+    - Fix and pin: the claim writes `cities: {}` for a new document and keeps an existing admin's own; `setup.createCity` then makes the owner the bundled city's owner (`functions/test/admin/claim.test.ts`).
+    - **A missing field that means "migrate me" must never be written by the new code: write the new shape explicitly, even when it is empty.**
+259. **The local stack's export Download, and any link followed in it, would have reached the real Google and USGS.**
+    - Seen: the stack's shim forwards a page's requests and what its elements load, and leaves every `<a href>` alone; the export's **Download** is an `<a download>` the page clicks itself, pointed at a signed address on `storage.googleapis.com`, so in a person's browser it would have left the machine (the e2e tiers answer it with a Playwright route, which the stack has not). The manual plan also said the stack's firewall blocks **Comandă în EarthExplorer**; no firewall stands between a person and a link they follow.
+    - Found by: the M4/M5 walk of `docs/MANUAL_TEST_PLAN.md`, a headless probe of the export through the stack that printed the download's address.
+    - Fix and pin: the shim forwards an anchor with `download` when the page clicks it (`e2e/stack/browser.ts`), never a link a person follows; the stack's check gained "a file the page saves itself stays on the machine" (`e2e/stack/check.ts`); the plan says LOCAL links open the real site, so check their address instead.
+    - **A stand-in for a firewall covers what the page does by itself, and the docs say exactly where it stops: test the claim the way a person would use it before writing it down.**

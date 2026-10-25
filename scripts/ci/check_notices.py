@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Build-stage gate: each build's THIRD_PARTY_NOTICES.txt lists exactly what the build ships, under a permissive licence.
 
-The engine and the admin builds write THIRD_PARTY_NOTICES.txt beside their entry (scripts/site/src/notices.ts, a
-Vite plugin; the user's decision of 2026-10-23, docs/research/DECISIONS-for-review.md §52d). This gate checks the file
-against evidence the generator does not write, the build's source maps (`sourcemap: true` in both Vite configs) and
-the installed packages:
+The engine, the admin and the create-historic-city CLI builds write THIRD_PARTY_NOTICES.txt beside their entry
+(scripts/site/src/notices.ts, a Vite plugin; the user's decision of 2026-10-23, docs/research/DECISIONS-for-review.md
+§52d). This gate checks the file against evidence the generator does not write, the build's source maps
+(`sourcemap: true` in every Vite config) and the installed packages:
 
 - every npm package a source map names (a source under `node_modules/`; the package is the folder under the last one,
   named by its own package.json) has an entry with its exact version, the licence id its package.json declares and a
@@ -33,8 +33,9 @@ from cirepo import ROOT
 
 LOG = get_logger("notices")
 
-# The builds whose output ships, repository-relative (packages/*/vite.config.ts); each holds its notices file.
-BUILDS = ("packages/engine/dist", "packages/admin/dist")
+# The builds whose output ships, repository-relative (packages/*/vite.config.ts); each holds its notices file. The
+# create-historic-city CLI bundles @hcm/shared, zod and the colour library into dist/cli.mjs (M5-interfaces §4.1).
+BUILDS = ("packages/engine/dist", "packages/admin/dist", "packages/create-historic-city/dist")
 NOTICES = "THIRD_PARTY_NOTICES.txt"
 # Files a build copies from npm packages rather than bundling them (the kit's fonts, packages/ui/fonts): each must be
 # named by an entry's `File:` line.

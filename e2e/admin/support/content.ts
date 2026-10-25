@@ -61,6 +61,8 @@ export class ContentWorld implements CityWorld {
         const stamp = { updatedBy: first.uid, updatedAt: JOINED };
         await emulators.setDocument(`admins/${first.uid}`, {
             role: 'admin',
+            // M5 (docs/research/M5-interfaces.md §8, CR-M5-3): the owner of the world's own city, and of no other.
+            cities: { [ids.city]: 'owner' },
             email: first.email,
             invitedBy: first.uid,
             createdAt: JOINED,

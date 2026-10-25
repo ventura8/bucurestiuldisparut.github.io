@@ -279,6 +279,26 @@ describe('<hcm-imagery-page>: a version', () => {
     });
 });
 
+/** M5 (`docs/research/M5-interfaces.md` §1.8): the city's own share of the month's compute units. */
+describe('<hcm-imagery-page>: a version over the city’s share', () => {
+    beforeAll(defineImagery);
+    afterEach(cleanup);
+
+    it('badPath_overTheCitysShareStudioOrNextMonthButNoPayment @S-A52-BAD-CITY-SHARE', async () => {
+        // M5: paying the project's overage would not raise the city's share of the month.
+        const guard = { verdict: 'city-over' as const, available: 0.5, overageUsd: 0, choice: null, deferUntil: null };
+        const { element, area } = await imageryPage(imageryState({ detail: VERSION, version: versionPage({}, versionView({ guard })) }));
+
+        expect(deep(element, '[data-state="city-over"]').textContent).toContain('the city has 0.5 left this month');
+        click(nth(element, '.choices hcm-button', 1));
+
+        expect(deepAll(element, '.choices hcm-button')).toHaveLength(2);
+        expect(deepAll(element, '.choices hcm-button').some((choice) => choice.textContent.includes('USD'))).toBe(false);
+        expect(calls(area)).toEqual(['choose "defer"']);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+});
+
 describe('<hcm-imagery-page>: a job and an upload', () => {
     beforeAll(defineImagery);
     afterEach(cleanup);

@@ -58,9 +58,19 @@ export interface AdminDestination {
 
 /**
  * Leaving an edit that is not saved (`docs/research/M2c-interfaces.md` §2.4): the shell asks "Discard your changes?"
- * before it opens `route`, or before it signs out.
+ * before it opens `route`, before it signs out, or (M5) before it opens another city (a page load).
  */
-type AdminLeaving = { readonly kind: 'route'; readonly route: AdminRoute } | { readonly kind: 'signOut' };
+type AdminLeaving =
+    | { readonly kind: 'route'; readonly route: AdminRoute }
+    | { readonly kind: 'signOut' }
+    | { readonly kind: 'city'; readonly cityId: string };
+
+/** M5 (`docs/research/M5-interfaces.md` §1.5): one of the signed-in admin's cities, as `admin.session` lists it. */
+export interface AdminCity {
+    readonly id: string;
+    readonly role: 'owner' | 'editor';
+    readonly name: { readonly ro: string; readonly en?: string | undefined };
+}
 
 export interface AdminState<Setup = unknown> {
     readonly auth: AdminAuthState;
@@ -105,6 +115,15 @@ export interface AdminState<Setup = unknown> {
      * (`DECISIONS-for-review.md` §34i); this browser remembers it, so the next visit opens the dashboard at once.
      */
     readonly setupReady: boolean | null;
+    /**
+     * M5 (`docs/research/M5-interfaces.md` §1.5): the admin's cities (`admin.session`), by name in the admin's language;
+     * empty before the session answers.
+     */
+    readonly cities: readonly AdminCity[];
+    /** M5: the city every city page shows and edits, one per page load (`../app/current-city.ts`); null without one. */
+    readonly cityId: string | null;
+    /** M5: the admin is the project's owner (who creates cities and sets their budgets). */
+    readonly projectOwner: boolean;
     /** From the web configuration: the project the texts name, the domain of Google's unverified-app screen. */
     readonly projectId: string;
     readonly authDomain: string;

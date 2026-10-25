@@ -3,7 +3,7 @@
     "workspaces": {
         ".": {
             "entry": ["scripts/*/test/**/*.test.ts"],
-            "project": ["*.{js,cjs,ts}", "scripts/site/**/*.ts", "scripts/*/test/**/*.ts"]
+            "project": ["*.{js,cjs,ts}", "scripts/site/**/*.ts", "scripts/release/**/*.ts", "scripts/*/test/**/*.ts"]
         },
         "packages/test-support": {
             "project": ["src/**/*.ts"]
@@ -11,6 +11,10 @@
         "packages/ui": {
             "entry": ["test/**/*.test.ts", "scripts/test/**/*.test.ts"],
             "project": ["src/**/*.ts", "test/**/*.ts", "scripts/test/**/*.ts"]
+        },
+        "packages/create-historic-city": {
+            "entry": ["cli.ts", "test/**/*.test.ts"],
+            "project": ["*.ts", "src/**/*.ts", "test/**/*.ts"]
         },
         "packages/*": {
             "entry": ["test/**/*.test.ts"],

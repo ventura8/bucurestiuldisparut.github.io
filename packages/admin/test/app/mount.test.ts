@@ -106,6 +106,8 @@ describe('mount', () => {
 
         expect(app.state).toMatchObject({ auth: 'admin', mode: 'normal', locale: 'ro', analytics: true, consent: 'unknown' });
         expect(app.state.theme.city).toEqual(BASELINE_THEME);
+        // A store that answers in the call itself never starts the city's watch twice (no listener failed).
+        expect(w.recording.records.filter((record) => record.level === 'error')).toEqual([]);
         expect(app.state.destinations.map((destination) => destination.id)).toEqual(['setup', 'admins']);
         await expect(app.loadPage('admins')).resolves.toBe('hcm-admins-page');
         app.destroy();
@@ -169,7 +171,9 @@ describe('mount: the editor areas', () => {
     it('happyPath_theEditorAreasGetTheShellsServicesAndLoseTheirStoresOnSignOut', async () => {
         const w = world();
         w.auth.user = OWNER;
-        deployed(w.callables, w.auth, SESSION.owner);
+        // M5: the e2e build's own city is the session's (a content world's admin owns it).
+        const cities = [...SESSION.owner.cities, { id: 'e2e-city', role: 'owner' as const, name: { ro: 'Orașul e2e' } }];
+        deployed(w.callables, w.auth, { ...SESSION.owner, cities });
         const store = new FakeContentStore();
         const seen: ContentServices[] = [];
         let destroyed = 0;
@@ -531,14 +535,22 @@ describe('mount: the names of the admins, for the editors', () => {
             admins: [
                 {
                     uid: 'a1',
-                    role: 'admin',
+                    role: 'editor',
+                    projectOwner: false,
                     displayName: 'Ana Pop',
                     email: 'ana@e2e.test',
                     createdAt: '2026-10-01T09:00:00.000Z',
                     self: false,
                 },
-                { uid: 'a2', role: 'admin', email: 'ion@e2e.test', createdAt: '2026-10-01T09:00:00.000Z', self: false },
-                { uid: 'a3', role: 'admin', createdAt: '2026-10-01T09:00:00.000Z', self: false },
+                {
+                    uid: 'a2',
+                    role: 'editor',
+                    projectOwner: false,
+                    email: 'ion@e2e.test',
+                    createdAt: '2026-10-01T09:00:00.000Z',
+                    self: false,
+                },
+                { uid: 'a3', role: 'editor', projectOwner: false, createdAt: '2026-10-01T09:00:00.000Z', self: false },
             ],
             invites: [],
         }));
@@ -552,6 +564,84 @@ describe('mount: the names of the admins, for the editors', () => {
         expect(services.readOnly()).toBe(false);
         await app.intents.signOut();
         expect(app.state.people).toEqual({});
+        app.destroy();
+    });
+});
+
+describe('mount: many cities (M5, docs/research/M5-interfaces.md §1.5)', () => {
+    const CLUJ = { id: 'cluj', role: 'editor' as const, name: { ro: 'Cluj-Napoca' } };
+
+    it('happyPath_theSessionsCitiesAndTheOpenOneReachTheShell @S-A49-HAPPY', async () => {
+        const w = world({ hash: '#/c/cluj/admins' });
+        w.auth.user = OWNER;
+        deployed(w.callables, w.auth, { ...SESSION.owner, cities: [...SESSION.owner.cities, CLUJ] });
+
+        const app = mount(w.deps);
+        await settle();
+
+        expect(w.recording.records.filter((record) => record.level === 'error')).toEqual([]);
+        expect(app.state).toMatchObject({ cityId: 'cluj', projectOwner: true, route: { id: 'admins' } });
+        expect(app.state.cities.map((city) => city.id)).toEqual(['bucharest', 'cluj']);
+        expect(w.local.get(`hcm:admin:city:${OWNER.uid}`)).toBe('cluj');
+        app.destroy();
+    });
+
+    it('happyPath_switchingIsAPageLoadAndTheCityMenuAsksForTheCitiesAgain', async () => {
+        const w = world();
+        w.auth.user = OWNER;
+        deployed(w.callables, w.auth, { ...SESSION.owner, cities: [...SESSION.owner.cities, CLUJ] });
+        const app = mount(w.deps);
+        await settle();
+
+        await app.intents.refreshCities();
+        app.intents.switchCity('cluj', { id: 'photos', params: [] });
+        app.intents.switchCity('bucharest');
+
+        expect(w.callables.named('admin.session')).toBe(3);
+        expect(w.location.writes.filter((write) => write.hash.startsWith('#/c/')).at(-1)).toEqual({
+            hash: '#/c/cluj/photos',
+            replace: false,
+        });
+        expect(w.location.reloads).toBe(1);
+        app.destroy();
+    });
+
+    it('badPath_anUnsavedEditAsksBeforeAnotherCityAndDiscardOpensIt @S-A49-BAD-UNSAVED', async () => {
+        const w = world();
+        w.auth.user = OWNER;
+        deployed(w.callables, w.auth, { ...SESSION.owner, cities: [...SESSION.owner.cities, CLUJ] });
+        let unsaved = true;
+        const module: AreaModule<null, null> = {
+            area: 'jobs',
+            create: () => ({
+                ...{ state: null, subscribe: () => () => undefined, intents: null, open: () => undefined, close: () => undefined },
+                hasUnsavedChanges: () => unsaved,
+                destroy: () => undefined,
+            }),
+        };
+        const content: ContentDeps = {
+            modules: { jobs: module as never },
+            store: asContentStore(new FakeContentStore()),
+            theme: () => ({ light: {}, dark: {}, highContrastLight: {}, highContrastDark: {} }),
+            areas: NO_AREA_SERVICES,
+            cityId: null,
+        };
+        const app = mount({ ...w.deps, content });
+        await settle();
+        expect(app.content.jobs).not.toBeNull();
+
+        app.intents.switchCity('cluj');
+        expect([app.state.leaving, w.location.reloads, app.hasUnsavedChanges()]).toEqual([{ kind: 'city', cityId: 'cluj' }, 0, true]);
+        await app.intents.leavePage();
+
+        // Discarded: the reload into the other city asks nothing more (the entry's `beforeunload` asks the app).
+        expect([app.state.leaving, w.location.reloads, w.location.current, app.hasUnsavedChanges()]).toEqual([
+            null,
+            1,
+            '#/c/cluj/home',
+            false,
+        ]);
+        unsaved = false;
         app.destroy();
     });
 });

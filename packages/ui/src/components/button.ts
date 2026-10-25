@@ -1,4 +1,5 @@
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
+import { ifDefined } from 'lit/directives/if-defined.js';
 
 import { defineHcmIcon } from './icon.js';
 import { defineOnce } from './internal.js';
@@ -12,7 +13,9 @@ export type ButtonVariant = 'filled' | 'tonal' | 'outlined' | 'text';
  * An M3 Expressive common button (small size: 40 px high in a 48 px target, pill shape that squares off while
  * pressed). The label is the default slot, so it is the accessible name. Fires the native `click`. A toggle button sets
  * `pressed` (true or false), which its inner button states as `aria-pressed`: ARIA on the host would name nothing, since
- * the host is not the focused element (Draw the area, `DECISIONS-for-review.md` §42a); undefined is no toggle.
+ * the host is not the focused element (Draw the area, `DECISIONS-for-review.md` §42a); undefined is no toggle. For the
+ * same reason `popup` (`aria-haspopup`), `current` (`aria-current`) and `label` (`aria-label`, a name that holds the
+ * visible text) reach the inner button (the city menu: `docs/LESSONS.md` 249).
  */
 export class HcmButton extends LitElement {
     static override readonly shadowRootOptions: ShadowRootInit = { ...LitElement.shadowRootOptions, delegatesFocus: true };
@@ -22,6 +25,9 @@ export class HcmButton extends LitElement {
         icon: { type: String },
         disabled: { type: Boolean, reflect: true },
         pressed: { attribute: false },
+        popup: { attribute: false },
+        current: { attribute: false },
+        label: { attribute: false },
     };
 
     static override readonly styles = [
@@ -94,6 +100,9 @@ export class HcmButton extends LitElement {
     declare icon: string;
     declare disabled: boolean;
     declare pressed: boolean | undefined;
+    declare popup: 'dialog' | undefined;
+    declare current: boolean | undefined;
+    declare label: string | undefined;
 
     constructor() {
         super();
@@ -108,6 +117,9 @@ export class HcmButton extends LitElement {
             part="button"
             ?disabled=${this.disabled}
             aria-pressed=${this.pressed === undefined ? nothing : String(this.pressed)}
+            aria-haspopup=${ifDefined(this.popup)}
+            aria-current=${ifDefined(this.current === true ? 'true' : undefined)}
+            aria-label=${ifDefined(this.label)}
         >
             ${this.icon === '' ? nothing : html`<hcm-icon name=${this.icon}></hcm-icon>`}<slot></slot>
         </button>`;

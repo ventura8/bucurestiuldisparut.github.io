@@ -6,7 +6,7 @@ import { FIRESTORE_PATHS } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { createCity } from '../../src/setup/create-city.js';
-import { ADMIN, CITY, NOW, createWorld } from './world.js';
+import { ADMIN, CITY, NOW, cityDoc, createWorld } from './world.js';
 
 const CREATED = { seconds: Date.parse(NOW) / 1000, nanoseconds: 0 };
 
@@ -37,6 +37,32 @@ describe('setup.createCity', () => {
             updatedAt: CREATED,
         });
         expect(world.logged()).toContain('city created');
+    });
+
+    it('happyPath_theProjectsOwnerBecomesTheCitysOwnerKeepingTheirOtherCities', async () => {
+        const world = createWorld({ city: false });
+        const stamp = { createdAt: CREATED, updatedBy: ADMIN.uid, updatedAt: CREATED };
+        world.documents.seed(FIRESTORE_PATHS.admin(ADMIN.uid), { role: 'owner', cities: { cluj: 'editor' }, ...stamp });
+        world.documents.seed(FIRESTORE_PATHS.city('cluj'), cityDoc());
+
+        await createCity(world.deps, ADMIN, { cityId: CITY, city: SEED });
+
+        expect(world.documents.peek(FIRESTORE_PATHS.admin(ADMIN.uid))).toMatchObject({ cities: { cluj: 'editor', [CITY]: 'owner' } });
+    });
+
+    it('happyPath_anOwnerFromBeforeM5GetsEveryCityAndTheNewOne', async () => {
+        const world = createWorld({ city: false });
+        world.documents.seed(FIRESTORE_PATHS.admin(ADMIN.uid), {
+            role: 'owner',
+            createdAt: CREATED,
+            updatedBy: ADMIN.uid,
+            updatedAt: CREATED,
+        });
+        world.documents.seed(FIRESTORE_PATHS.city('cluj'), cityDoc());
+
+        await createCity(world.deps, ADMIN, { cityId: CITY, city: SEED });
+
+        expect(world.documents.peek(FIRESTORE_PATHS.admin(ADMIN.uid))).toMatchObject({ cities: { cluj: 'owner', [CITY]: 'owner' } });
     });
 
     it('badPath_anExistingCityIsLeftAsItIs', async () => {

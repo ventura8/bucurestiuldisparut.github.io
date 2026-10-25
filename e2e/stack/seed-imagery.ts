@@ -6,7 +6,7 @@ import type { SignedInAccount } from '../admin/support/emulators.js';
 import { ImageryWorld } from '../admin/support/imagery.js';
 import type { ImageryScript } from '../admin/support/imagery-runner.js';
 import { UpstreamControl } from '../admin/support/upstream.js';
-import { E2E_PROJECT_ID, emulatorOrigin } from '../admin/world.js';
+import { callable } from './callable.js';
 
 /**
  * The local stack's M3 and M4 imagery (docs/SETUP.md → *Local stack for manual testing*), made through the real flows:
@@ -61,20 +61,6 @@ async function until<T>(what: string, read: () => Promise<T>, done: (value: T) =
         value = await read();
     }
     return value;
-}
-
-/** Calls an admin callable of the Functions emulator as `account` (`imagery.search` is `imagery-search`). */
-async function callable(api: APIRequestContext, account: SignedInAccount, name: string, data: unknown): Promise<Record<string, unknown>> {
-    const response = await api.post(`${emulatorOrigin('functions')}/${E2E_PROJECT_ID}/us-central1/${name.replace('.', '-')}`, {
-        headers: { authorization: `Bearer ${account.idToken}`, 'content-type': 'application/json' },
-        data: { data },
-        timeout: IMPORT_TIMEOUT_MS,
-    });
-    const body = (await response.json()) as { result?: Record<string, unknown>; error?: unknown };
-    if (!response.ok() || body.result === undefined) {
-        throw new Error(`${name}: ${String(response.status())} ${JSON.stringify(body.error ?? body)}`);
-    }
-    return body.result;
 }
 
 export interface ImagerySeed {

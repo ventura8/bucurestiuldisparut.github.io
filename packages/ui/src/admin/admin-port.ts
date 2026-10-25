@@ -41,7 +41,8 @@ export type AdminRouteIdPort =
     | 'admins'
     | 'history'
     | 'crashes'
-    | 'georef';
+    | 'georef'
+    | 'cities';
 
 export interface AdminRoutePort {
     readonly id: AdminRouteIdPort;
@@ -61,6 +62,13 @@ export interface AdminNoticePort extends AdminNoticeInputPort {
     readonly id: number;
 }
 
+/** M5 (`docs/research/M5-interfaces.md` §1.5): one of the signed-in admin's cities. */
+export interface AdminCityPort {
+    readonly id: string;
+    readonly role: 'owner' | 'editor';
+    readonly name: { readonly ro: string; readonly en?: string | undefined };
+}
+
 export interface AdminStatePort {
     readonly auth: AdminAuthStatePort;
     readonly mode: 'bootstrap' | 'normal' | null;
@@ -76,14 +84,22 @@ export interface AdminStatePort {
     readonly analytics: boolean;
     readonly windowClass: string;
     readonly notice: AdminNoticePort | null;
-    /** The unsaved-changes question while the shell asks it (`docs/research/M2c-interfaces.md` §2.4). */
-    readonly leaving?: { readonly kind: 'route'; readonly route: AdminRoutePort } | { readonly kind: 'signOut' } | null;
+    /** The unsaved-changes question while the shell asks it (`docs/research/M2c-interfaces.md` §2.4; M5: another city). */
+    readonly leaving?:
+        | { readonly kind: 'route'; readonly route: AdminRoutePort }
+        | { readonly kind: 'signOut' }
+        | { readonly kind: 'city'; readonly cityId: string }
+        | null;
     /** The access was removed while an editor held changes: the page stays read-only under a banner until sign-out (§35e). */
     readonly revoked?: boolean;
     /** The admins' names by uid, once a conflict asked for them (who saved a change). */
     readonly people?: Readonly<Record<string, string>>;
     /** M4: the signed-in admin's unread notifications (up to `INBOX_BADGE_MAX` + 1), null while unknown. */
     readonly unread?: number | null;
+    /** M5: the admin's cities, by name; the current one; whether the admin owns the project. */
+    readonly cities?: readonly AdminCityPort[];
+    readonly cityId?: string | null;
+    readonly projectOwner?: boolean;
     readonly projectId: string;
     readonly authDomain: string;
     /** The Setup Assistant's state (setup-ui's `SetupViewState`), null before its controller exists or without one. */
@@ -103,6 +119,10 @@ export interface AdminIntentsPort {
     enableApi(): Promise<void>;
     reload(): void;
     navigate(route: AdminRoutePort): void;
+    /** M5: opens another of the admin's cities (a page load; an unsaved edit is asked about first). */
+    switchCity?(cityId: string, route?: AdminRoutePort): void;
+    /** M5: asks the server for the admin's cities again (the city menu opening: at most once a minute; `now`: at once). */
+    refreshCities?(now?: boolean): Promise<void>;
     setLocale(locale: Locale): void;
     setTheme(mode: ThemeMode): void;
     setConsent(consent: 'granted' | 'denied'): void;

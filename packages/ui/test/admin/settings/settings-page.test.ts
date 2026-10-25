@@ -47,8 +47,12 @@ describe('<hcm-settings-page> sections', () => {
             '#/settings/imagery',
             '#/settings/categories',
             '#/settings/overlays',
+            '#/settings/publish',
+            '#/settings/budget',
+            '#/settings/export',
         ]);
         expect(deepText(element)).toContain('Name, About, privacy, credits');
+        expect(deepText(element)).toContain('Whether visitors see the city');
         expect(deepText(element)).toContain('Choose a section.');
         expect(await axeViolations(element)).toEqual([]);
     });

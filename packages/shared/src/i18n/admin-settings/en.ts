@@ -23,6 +23,13 @@ export const en: Readonly<Record<AdminSettingsKey, string>> = {
     'adminContent.settings.section.categoriesHint': 'Icon, colour, opacity, order',
     'adminContent.settings.section.overlays': 'Default opacities',
     'adminContent.settings.section.overlaysHint': 'How the map opens for visitors',
+    // M5 (the integrator, DECISIONS-for-review.md §63a): whether visitors see the city; a new city starts unpublished.
+    'adminContent.settings.section.publish': 'Publishing',
+    'adminContent.settings.section.publishHint': 'Whether visitors see the city',
+    'adminContent.settings.publish.label': 'The city is public',
+    'adminContent.settings.publish.on': 'Visitors see the city’s map. Switched off and saved, its public map goes within about a minute.',
+    'adminContent.settings.publish.off': 'The city is not public yet. Switched on and saved, its public map appears within about a minute.',
+    'adminContent.settings.publish.site': 'A developer adds its public site (npm run site:add); Export the city works either way.',
     'adminContent.settings.saved': 'The settings are saved. The public map updates within about a minute.',
     'adminContent.settings.refused.conflict': 'Someone else changed these settings meanwhile. Choose what to keep, then save again.',
     'adminContent.settings.refused.gone': 'It was deleted meanwhile. Nothing was saved.',

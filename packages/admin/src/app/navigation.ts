@@ -7,8 +7,9 @@
 import { showsShell } from '../auth/auth-state.js';
 import type { PageRegistry } from '../routing/pages.js';
 import { isBlankAddress, navigationDestinations, resolveAdminRoute, RETURN_TO_KEY, type RouteContext } from '../routing/router.js';
-import { adminRouteHash, type AdminRoute } from '../routing/routes.js';
-import type { ShellState, ShellStateAccess } from '../state/state.js';
+import { ADMIN_ROUTE_SPECS, adminRouteHash, parseAdminRoute, type AdminRoute } from '../routing/routes.js';
+import type { NoticeInput, ShellState, ShellStateAccess } from '../state/state.js';
+import { cityName } from './current-city.js';
 import type { HashLocation, KeyValueStore, Unsubscribe } from './ports.js';
 import type { AdminEvent } from './telemetry.js';
 
@@ -20,6 +21,16 @@ export interface NavigationDeps {
     readonly track: (event: AdminEvent) => void;
     /** Whether an editor area holds an edit leaving would lose (`docs/research/M2c-interfaces.md` §2.4). */
     readonly unsaved?: () => boolean;
+    /** M5: opens another of the admin's cities (a page load, `./current-city.ts` → `switchTo`). */
+    readonly switchCity?: (cityId: string) => void;
+}
+
+/** M5 (`docs/research/M5-interfaces.md` §1.5): what an address naming a city means for the open one. */
+type OtherCity = 'switch' | 'refused' | null;
+
+/** A route without the city its address named (the shell's routes are the current city's). */
+function bare(route: AdminRoute): AdminRoute {
+    return { id: route.id, params: route.params };
 }
 
 export class Navigation {
@@ -100,7 +111,7 @@ export class Navigation {
         if (this.#guarded(route)) {
             return;
         }
-        this.#deps.location.setHash(adminRouteHash(route), false);
+        this.#deps.location.setHash(this.#address(route), false);
     }
 
     /** Discard: the next address change goes through unasked (the page then closes its store, which forgets the edit). */
@@ -109,7 +120,7 @@ export class Navigation {
         this.#deps.shell.update({ leaving: null });
         if (leaving?.kind === 'route') {
             this.#allowNext = true;
-            this.#deps.location.setHash(adminRouteHash(leaving.route), false);
+            this.#deps.location.setHash(this.#address(leaving.route), false);
         }
     }
 
@@ -148,11 +159,11 @@ export class Navigation {
         }
         this.#seeded = true;
         const route = resolveAdminRoute(hash, this.#context()).route;
-        if (route.params.length === 0) {
+        if (route.params.length === 0 || this.#otherCity(route) !== null) {
             return false;
         }
-        this.#deps.location.setHash(adminRouteHash({ id: route.id, params: [] }), true);
-        this.#deps.location.setHash(adminRouteHash(route), false);
+        this.#deps.location.setHash(this.#address({ id: route.id, params: [] }), true);
+        this.#deps.location.setHash(this.#address(route), false);
         return true;
     }
 
@@ -167,10 +178,10 @@ export class Navigation {
     #guarded(route: AdminRoute): boolean {
         const current = this.#deps.shell.get().route;
         const unsaved = this.#deps.unsaved?.() ?? false;
-        if (!unsaved || adminRouteHash(route) === adminRouteHash(current)) {
+        if (!unsaved || adminRouteHash(bare(route)) === adminRouteHash(bare(current))) {
             return false;
         }
-        this.#deps.shell.update({ leaving: { kind: 'route', route } });
+        this.#deps.shell.update({ leaving: { kind: 'route', route: bare(route) } });
         return true;
     }
 
@@ -187,7 +198,7 @@ export class Navigation {
         if (!this.#guarded(route)) {
             return false;
         }
-        this.#deps.location.setHash(adminRouteHash(this.#deps.shell.get().route), true);
+        this.#deps.location.setHash(this.#address(this.#deps.shell.get().route), true);
         return true;
     }
 
@@ -196,26 +207,100 @@ export class Navigation {
         this.#awaitingReadiness = isBlankAddress(hash) && this.#deps.shell.get().setupReady === null;
     }
 
+    /**
+     * M5: an address naming another city on a city page. One of the admin's opens with a page load; one they do not
+     * administer is refused (the page opens in the current city, nothing of the other is read: S-A49-BAD-NOT-MEMBER).
+     */
+    #otherCity(route: AdminRoute): OtherCity {
+        const state = this.#deps.shell.get();
+        if (route.cityId === undefined || route.cityId === state.cityId || ADMIN_ROUTE_SPECS[route.id].scope !== 'city') {
+            return null;
+        }
+        return state.cities.some((city) => city.id === route.cityId) ? 'switch' : 'refused';
+    }
+
+    /** Whether the admin's addresses name their city: an admin of two cities or more, on a city page (S-A49-HAPPY). */
+    #prefixed(route: AdminRoute): boolean {
+        const state = this.#deps.shell.get();
+        return state.cityId !== null && state.cities.length >= 2 && ADMIN_ROUTE_SPECS[route.id].scope === 'city';
+    }
+
+    /** The address of `route` as the admin's cities write it (`#/c/<city>/...` or `#/...`, S-A49-HAPPY-ONE-CITY). */
+    #address(route: AdminRoute): string {
+        const cityId = this.#deps.shell.get().cityId;
+        const base = { id: route.id, params: route.params };
+        return adminRouteHash(cityId !== null && this.#prefixed(route) ? { ...base, cityId } : base);
+    }
+
+    /** Why the address is not opened as asked: the route's own reason, or (M5) a city the admin does not administer. */
+    #noticeOf(resolved: ReturnType<typeof resolveAdminRoute>, asked: AdminRoute | null): NoticeInput | null {
+        if (resolved.notice !== null) {
+            return { key: resolved.notice };
+        }
+        return asked === null ? null : this.#refusedCity(asked);
+    }
+
+    /** An address of a city the admin does not belong to opens the current city's page instead, saying why (S-A49-BAD). */
+    #refusedCity(asked: AdminRoute): NoticeInput | null {
+        const state = this.#deps.shell.get();
+        const open = state.cities.find((city) => city.id === state.cityId);
+        if (this.#otherCity(asked) !== 'refused' || open === undefined) {
+            return null;
+        }
+        return { key: 'adminShell.city.notMember', params: { cityId: asked.cityId ?? '', city: cityName(open, state.locale) } };
+    }
+
+    /**
+     * The address is rewritten (no history entry) when the page opened is not the one it names, or when its city prefix
+     * is not the one the admin's cities write. An empty address stays empty unless the page it opens names a city (a city
+     * page of an admin of two cities or more): Setup, opened before its readiness is known, keeps it empty, so the first
+     * answer can still open the dashboard (§34i; `docs/LESSONS.md` 257).
+     */
+    #rewrites(hash: string, route: AdminRoute, address: string, notice: NoticeInput | null): boolean {
+        if (notice !== null) {
+            return true;
+        }
+        return isBlankAddress(hash) ? this.#prefixed(route) : address !== hash;
+    }
+
     #apply(hash: string): void {
         if (!showsShell(this.#deps.shell.get().auth)) {
             this.#keep(hash);
             return;
         }
         const context = this.#context();
-        if (this.#heldBack(hash, context)) {
+        if (this.#heldBack(hash, context) || this.#switched(hash)) {
             return;
         }
         const resolved = resolveAdminRoute(hash, context);
         this.#awaitReadiness(hash);
-        const address = adminRouteHash(resolved.route);
-        if (resolved.notice !== null) {
-            this.#deps.location.setHash(address, true);
-            this.#deps.shell.update({ notice: this.#deps.shell.notice({ key: resolved.notice }) });
+        this.#show(hash, bare(resolved.route), this.#noticeOf(resolved, parseAdminRoute(hash)));
+    }
+
+    /** An address of another of the admin's cities opens that city (a page load, `switchCity`); true when it did. */
+    #switched(hash: string): boolean {
+        const asked = parseAdminRoute(hash);
+        if (asked === null || this.#otherCity(asked) !== 'switch') {
+            return false;
         }
-        this.#deps.shell.update({ route: resolved.route, destinations: navigationDestinations(context) });
+        this.#deps.switchCity?.(asked.cityId ?? '');
+        return true;
+    }
+
+    /** Shows `route` (its address rewritten when it must be) and counts one page view per address. */
+    #show(hash: string, route: AdminRoute, notice: NoticeInput | null): void {
+        const context = this.#context();
+        const address = this.#address(route);
+        if (this.#rewrites(hash, route, address, notice)) {
+            this.#deps.location.setHash(address, true);
+        }
+        if (notice !== null) {
+            this.#deps.shell.update({ notice: this.#deps.shell.notice(notice) });
+        }
+        this.#deps.shell.update({ route, destinations: navigationDestinations(context) });
         if (address !== this.#tracked) {
             this.#tracked = address;
-            this.#deps.track({ name: 'page_view', route: resolved.route.id });
+            this.#deps.track({ name: 'page_view', route: route.id });
         }
     }
 }

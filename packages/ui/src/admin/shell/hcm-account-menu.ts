@@ -13,6 +13,7 @@ import type { ThemeMode } from '../../theme/apply.js';
 import type { AdminAppPort, AdminStatePort } from '../admin-port.js';
 import { adminBase } from './admin-styles.js';
 import { EMPTY } from './empty.js';
+import { showsCityMenu } from './hcm-city-menu.js';
 import { shellText } from './text.js';
 
 export const HCM_ACCOUNT_MENU_TAG = 'hcm-account-menu';
@@ -38,6 +39,8 @@ export class HcmAccountMenu extends LitElement {
     static override readonly properties = {
         app: { attribute: false },
         state: { attribute: false },
+        /** M5: the city switcher sits here (a compact window, or a phone held sideways: no top bar to hold it). */
+        cities: { type: Boolean },
         open: { state: true },
     };
 
@@ -77,13 +80,18 @@ export class HcmAccountMenu extends LitElement {
 
     declare app: AdminAppPort | null;
     declare state: AdminStatePort | null;
+    declare cities: boolean;
     declare open: boolean;
 
     constructor() {
         super();
         this.app = null;
         this.state = null;
+        this.cities = false;
         this.open = false;
+        this.addEventListener('hcm-city-chosen', () => {
+            this.open = false;
+        });
     }
 
     /** The dialog is open, or the focus is on the button or in the dialog. */
@@ -108,6 +116,10 @@ export class HcmAccountMenu extends LitElement {
         const label = shellText(locale, 'adminShell.account.label');
         const show = (): void => {
             this.open = true;
+            // A phone's city list is here: opening asks for the admin's cities again, as the bar's menu does (S-A49-HAPPY).
+            if (this.cities) {
+                void this.app?.intents.refreshCities?.();
+            }
         };
         const hide = (): void => {
             this.open = false;
@@ -120,7 +132,8 @@ export class HcmAccountMenu extends LitElement {
                 @hcm-close=${hide}
             >
                 <div class="content">
-                    ${this.#who(state)} ${this.#language(state)} ${this.#theme(state)} ${this.#consent(state)} ${this.#signOut(state)}
+                    ${this.#who(state)} ${this.#city(state)} ${this.#language(state)} ${this.#theme(state)} ${this.#consent(state)}
+                    ${this.#signOut(state)}
                 </div>
             </hcm-dialog>`;
     }
@@ -128,6 +141,11 @@ export class HcmAccountMenu extends LitElement {
     #who(state: AdminStatePort): TemplateResult {
         const email = state.user?.email ?? null;
         return email === null ? EMPTY : html`<p class="who">${shellText(state.locale, 'adminShell.auth.signedInAs', { email })}</p>`;
+    }
+
+    /** M5: the city switcher, when the shell puts it here (`cities`). */
+    #city(state: AdminStatePort): TemplateResult {
+        return this.cities && showsCityMenu(state) ? html`<hcm-city-menu inline .app=${this.app} .state=${state}></hcm-city-menu>` : EMPTY;
     }
 
     #language(state: AdminStatePort): TemplateResult {

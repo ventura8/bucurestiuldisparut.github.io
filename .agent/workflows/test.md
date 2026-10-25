@@ -56,8 +56,8 @@ The emulator JARs and Playwright browsers are baked into the image; the `demo-hc
 ## The local stack (manual testing)
 
 ```bash
-npm run dev:stack                        # admin 127.0.0.1:4312, viewer 127.0.0.1:4310, emulators, fakes, a seeded city
-bash scripts/dev/dev-stack.sh check      # its own check: sign-in, the main screens, no request off the machine
+npm run dev:stack                        # admin 127.0.0.1:4312, viewer 127.0.0.1:4310, emulators, fakes, two seeded cities
+bash scripts/dev/dev-stack.sh check      # its own check: sign-in, the main screens, the second city, no request off the machine
 bash scripts/dev/dev-stack.sh stop       # from another terminal; Ctrl+C in its own
 ```
 

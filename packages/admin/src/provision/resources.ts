@@ -198,8 +198,10 @@ function serviceAccountBindings(project: ProjectConfig): PolicyBindings[] {
     const names = projectNames(project);
     const user = (member: string): WantedBinding => ({ role: 'roles/iam.serviceAccountUser', member });
     const deployer = user(names.member('gh-deployer'));
+    // M5 (CR-M5-8): `export.download` signs its address as `fn-admin` itself (IAM signBlob), which needs this role on itself.
+    const signer: WantedBinding = { role: 'roles/iam.serviceAccountTokenCreator', member: names.member('fn-admin') };
     return [
-        { kind: 'serviceAccount', resource: names.email('fn-admin'), bindings: [user(names.member('fn-admin')), deployer] },
+        { kind: 'serviceAccount', resource: names.email('fn-admin'), bindings: [user(names.member('fn-admin')), signer, deployer] },
         { kind: 'serviceAccount', resource: names.email('fn-events'), bindings: [user(names.member('fn-events')), deployer] },
         { kind: 'serviceAccount', resource: names.email('fn-crash'), bindings: [deployer] },
         { kind: 'serviceAccount', resource: names.email('job-raster'), bindings: [deployer] },

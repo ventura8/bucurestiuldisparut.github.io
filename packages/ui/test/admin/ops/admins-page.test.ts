@@ -6,6 +6,11 @@ import { FakeArea } from '../editing/fake-area.js';
 import { cleanup, deep, deepAll, deepText, defineAll, updated } from '../shell/fake-app.js';
 import { adminsState, page } from './fixtures.js';
 
+/** What the shell hands the page after the state changed (the page reads its `state` property, not the app). */
+function shellState(element: HTMLElement, state: unknown): void {
+    (element as HTMLElement & { state: unknown }).state = state;
+}
+
 const INVITED = { inviteId: 'a'.repeat(64), expiresAt: '2026-10-24T10:00:00.000Z', signInUrl: 'https://demo-hcm.web.app/' };
 
 function area(
@@ -15,6 +20,7 @@ function area(
     return new FakeArea<AdminsViewState, AdminsIntentsPort>(state, {
         invite: Promise.resolve({ ok: true, value: INVITED }),
         revoke: Promise.resolve({ ok: true, value: { revoked: true } }),
+        setRole: Promise.resolve({ ok: true, value: { role: 'owner' } }),
         refresh: Promise.resolve(),
         ...answers,
     });
@@ -41,7 +47,8 @@ describe('<hcm-admins-page>', () => {
             '#/admins/quiet-uid',
             `#/admins/invite/${'a'.repeat(64)}`,
         ]);
-        expect(rows[0]?.textContent).toContain('Owner · You');
+        expect(rows[0]?.textContent).toContain('Owner · The project’s owner · You');
+        expect(rows[1]?.textContent).toContain('Editor');
         expect(rows[2]?.textContent).toContain('Google account without an address');
         expect(rows[3]?.textContent).toContain('Expires on Oct 24, 2026');
         expect(deepText(element)).toContain('Choose an admin or an invitation to see its details.');
@@ -53,7 +60,7 @@ describe('<hcm-admins-page>', () => {
         const { element, app } = await page('admins', admins, { params: ['admin-uid'] });
 
         expect(deep(element, 'h2[data-detail-heading]').textContent).toBe('ana@e2e.test');
-        expect(deepText(deep(element, '.facts'))).toContain('Invited by you');
+        expect(deepText(deep(element, '.facts'))).toContain('Editor');
         deep(element, '.pane > .actions hcm-button').click();
         await updated(element);
         const dialog = deep(element, 'hcm-confirm-dialog') as HTMLElement & { headline: string; open: boolean };
@@ -89,23 +96,37 @@ describe('<hcm-admins-page>', () => {
         expect(admins.named('revoke')).toEqual([]);
     });
 
-    it('badPath_theOwnerAndOneselfOfferNoRemovalAndSayWhy', async () => {
+    it('badPath_oneselfOffersNoRemovalAndSaysWhy', async () => {
+        // The project's owner, oneself here: the map always keeps its owner.
         const admins = area(adminsState({ selected: { kind: 'admin', uid: 'owner-uid' } }));
-        const { element, app } = await page('admins', admins, { params: ['owner-uid'] });
+        const { element } = await page('admins', admins, { params: ['owner-uid'] });
+
         expect(deepText(element)).toContain("The owner's access cannot be removed");
         expect(deepAll(element, '.pane > .actions hcm-button')).toHaveLength(0);
 
-        admins.set({ selected: { kind: 'admin', uid: 'quiet-uid' } });
-        app.set({ route: { id: 'admins', params: ['quiet-uid'] } });
-        await updated(element);
-        expect(deepText(deep(element, '.facts'))).toContain('Invited by another admin');
-
-        admins.set({
-            list: { admins: [{ uid: 'owner-uid', role: 'admin', createdAt: '2026-10-01T10:00:00.000Z', self: true }], invites: [] },
-            selected: { kind: 'admin', uid: 'owner-uid' },
-        });
+        // Any other admin, oneself: not one's own access, editor or owner of the city alike.
+        const list = adminsState().list;
+        const others = list === null ? [] : list.admins.map((admin) => ({ ...admin, self: admin.uid === 'quiet-uid' }));
+        admins.set({ selected: { kind: 'admin', uid: 'quiet-uid' }, list: list === null ? null : { ...list, admins: others } });
         await updated(element);
         expect(deepText(element)).toContain('You cannot remove your own access');
+    });
+
+    it('badPath_theProjectsOwnerSeenByAnotherOwnerHasNoRemovalAndNoRoleChange @S-A51-BAD-PROJECT-OWNER-STAYS', async () => {
+        // docs/LESSONS.md 243: the server keeps the project's owner an owner of every city they belong to.
+        const list = adminsState().list;
+        const seenByAnother = list === null ? [] : list.admins.map((admin) => ({ ...admin, self: admin.uid === 'admin-uid' }));
+        const admins = area(
+            adminsState({
+                selected: { kind: 'admin', uid: 'owner-uid' },
+                list: list === null ? null : { ...list, admins: seenByAnother },
+            }),
+        );
+        const { element } = await page('admins', admins, { params: ['owner-uid'] });
+
+        expect(deepText(element)).toContain("The owner's access cannot be removed");
+        expect(deepAll(element, '.pane > .actions hcm-button')).toHaveLength(0);
+        expect((deep(element, '.pane select#role') as HTMLSelectElement).disabled).toBe(true);
     });
 
     it('badPath_aRefusedRemovalShowsTheServersReason', async () => {
@@ -124,6 +145,69 @@ describe('<hcm-admins-page>', () => {
     });
 });
 
+/** M5 (docs/research/M5-interfaces.md §1.7): each admin's role in the city, which only the city's owners change. */
+describe('<hcm-admins-page>: roles in the city', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_anOwnerMakesAnEditorAnOwnerAfterTheQuestion @S-A51-HAPPY-ROLE', async () => {
+        const admins = area(adminsState({ selected: { kind: 'admin', uid: 'admin-uid' } }));
+        const { element } = await page('admins', admins, { params: ['admin-uid'] });
+        const select = deep(element, '#role') as HTMLSelectElement;
+        expect(deepText(element)).toContain('Role of ana@e2e.test in Bucharest');
+
+        select.value = 'editor';
+        select.dispatchEvent(new Event('change'));
+        await updated(element);
+        expect((deep(element, 'hcm-confirm-dialog') as HTMLElement & { open: boolean }).open).toBe(false);
+        select.value = 'owner';
+        select.dispatchEvent(new Event('change'));
+        await updated(element);
+        const dialog = deep(element, 'hcm-confirm-dialog') as HTMLElement & { headline: string; open: boolean };
+        expect([dialog.open, dialog.headline]).toEqual([true, 'Make ana@e2e.test owner of Bucharest?']);
+        deep(dialog, '.confirm').click();
+        await updated(element);
+
+        expect(admins.named('setRole')).toEqual(['setRole "admin-uid" "owner"']);
+        expect(admins.named('revoke')).toEqual([]);
+    });
+
+    it('badPath_aRefusedRoleChangeShowsWhy @S-A51-BAD-LAST-OWNER', async () => {
+        const admins = area(adminsState({ selected: { kind: 'admin', uid: 'admin-uid' } }), {
+            setRole: Promise.resolve({ ok: false, error: { key: 'apiError.city.lastOwner' } }),
+        });
+        const { element } = await page('admins', admins, { params: ['admin-uid'] });
+        const select = deep(element, '#role') as HTMLSelectElement;
+
+        select.value = 'owner';
+        select.dispatchEvent(new Event('change'));
+        await updated(element);
+        deep(deep(element, 'hcm-confirm-dialog'), '.confirm').click();
+        await updated(element);
+
+        expect(deep(element, '.pane [role="alert"]').textContent).toContain('at least one owner');
+    });
+
+    it('badPath_anEditorOfTheCitySeesTheListOnly @S-A51-BAD-EDITOR-INVITES', async () => {
+        const admins = area(adminsState({ selected: { kind: 'invite', inviteId: 'a'.repeat(64) } }));
+        const { element, app } = await page('admins', admins, { params: ['invite', 'a'.repeat(64)] });
+        app.set({ cities: [{ id: 'bucharest', role: 'editor', name: { ro: 'București' } }], projectOwner: false });
+        shellState(element, app.state);
+        await updated(element);
+
+        expect(deepText(element)).toContain('Only the city’s owners invite, remove and change roles.');
+        expect(deepAll(element, '.list-head hcm-button')).toHaveLength(0);
+        expect(deepAll(element, '.pane > .actions hcm-button')).toHaveLength(0);
+
+        admins.set({ selected: { kind: 'admin', uid: 'admin-uid' } });
+        app.set({ route: { id: 'admins', params: ['admin-uid'] } });
+        shellState(element, app.state);
+        await updated(element);
+        expect(deepAll(element, '#role')).toHaveLength(0);
+        expect(deepAll(element, '.pane > .actions hcm-button')).toHaveLength(0);
+    });
+});
+
 describe('<hcm-admins-page>: invitations and failures', () => {
     beforeAll(defineAll);
     afterEach(cleanup);
@@ -137,7 +221,7 @@ describe('<hcm-admins-page>: invitations and failures', () => {
         deep(element, 'hcm-dialog hcm-button[icon="person_add"]').click();
         await updated(element);
 
-        expect(admins.named('invite')).toEqual(['invite "new.admin@e2e.test"']);
+        expect(admins.named('invite')).toEqual(['invite "new.admin@e2e.test" "editor"']);
         expect(app.named('navigate')).toEqual([`navigate {"id":"admins","params":["invite","${'a'.repeat(64)}"]}`]);
         await vi.waitFor(() => {
             expect(writeText.mock.calls).toEqual([['https://demo-hcm.web.app/']]);
@@ -172,7 +256,12 @@ describe('<hcm-admins-page>: invitations and failures', () => {
         input.value = 'ana@e2e.test';
         input.closest('form')?.requestSubmit();
         await updated(element);
-        expect(deep(element, '#email-error').textContent).toBe('This person already administers the map.');
+        expect(deep(element, '#email-error').textContent).toContain('already');
+        const role = deep(element, '#invite-role') as HTMLSelectElement;
+        role.value = 'owner';
+        input.closest('form')?.requestSubmit();
+        await updated(element);
+        expect(admins.named('invite').at(-1)).toBe('invite "ana@e2e.test" "owner"');
         deep(element, 'hcm-dialog hcm-button[variant="text"]').click();
         await updated(element);
         expect((deep(element, 'hcm-dialog') as HTMLElement & { open: boolean }).open).toBe(false);
@@ -223,7 +312,7 @@ describe('<hcm-admins-page>: invitations and failures', () => {
         input.closest('form')?.requestSubmit();
         await updated(second.element);
 
-        expect(silent.named('invite')).toEqual(['invite "new.admin@e2e.test"']);
+        expect(silent.named('invite')).toEqual(['invite "new.admin@e2e.test" "editor"']);
         expect((deep(second.element, 'hcm-dialog') as HTMLElement & { open: boolean }).open).toBe(true);
     });
 

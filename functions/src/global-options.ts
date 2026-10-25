@@ -80,6 +80,16 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'notify.sendTest': 'fn-admin',
     'assist.geocode': 'fn-events',
     'notify.onEvent': 'fn-events',
+    // M5 many cities (docs/research/M5-interfaces.md §1.3): the project owner's cities callables and a city owner's roles.
+    'cities.create': 'fn-admin',
+    'cities.locate': 'fn-admin',
+    'cities.setLimits': 'fn-admin',
+    'admins.setRole': 'fn-admin',
+    // M5 static export (docs/research/M5-interfaces.md §5.3, §5.5): the callables as fn-admin@, which signs the download
+    // address with its own signBlob; the build as fn-events@, which reads the public bucket and writes the private one.
+    'export.start': 'fn-admin',
+    'export.download': 'fn-admin',
+    'export.build': 'fn-events',
 };
 
 /**

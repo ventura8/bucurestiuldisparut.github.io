@@ -7,6 +7,6 @@
         "types": ["node"],
         "erasableSyntaxOnly": true
     },
-    "include": ["src", "build-site.ts", "build-admin.ts"],
+    "include": ["src", "build-site.ts", "build-admin.ts", "add-site.ts"],
     "references": [{ "path": "../../packages/shared" }]
 }

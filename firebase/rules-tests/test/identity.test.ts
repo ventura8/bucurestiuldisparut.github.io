@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { adminDoc, cityDoc, inviteDoc, setupStatusDoc } from './support/documents.js';
 import {
+    ANY_ADMIN,
     EVERYONE,
     GOOGLE_ACCOUNTS,
     createWorld,
@@ -38,7 +39,7 @@ describe('admin identity', () => {
     it('happyPath_onlyAVerifiedGoogleAccountWithClaimAndDocumentIsAnAdmin', async () => {
         const result = await verdicts(EVERYONE, (persona) => world.db(persona).doc(FIRESTORE_PATHS.setupStatus).get());
 
-        expect(result).toEqual(expected(EVERYONE, ['admin']));
+        expect(result).toEqual(expected(EVERYONE, ANY_ADMIN));
     });
 
     it('badPath_removingTheDocumentRevokesAccessAtOnceDespiteTheClaim', async () => {
@@ -50,7 +51,7 @@ describe('admin identity', () => {
             await context.firestore().doc(path).delete();
         });
         const after = await verdict(admins.doc(FIRESTORE_PATHS.city(CITY_ID)).get());
-        await world.seed(path, { ...adminDoc(), role: 'admin' });
+        await world.seed(path, world.adminDocOf('admin'));
 
         expect({ before, after }).toEqual({ before: 'allow', after: 'deny' });
     });
@@ -68,7 +69,7 @@ describe('admins/{uid}', () => {
         expect(result).toEqual(expected(EVERYONE, GOOGLE_ACCOUNTS));
     });
 
-    it('badPath_onlyAdminsReadAnotherAccountsDocument', async () => {
+    it('badPath_onlyTheProjectsOwnerReadsAnotherAccountsDocument', async () => {
         const result = await verdicts(EVERYONE, (persona) =>
             world
                 .db(persona)
@@ -88,6 +89,24 @@ describe('admins/{uid}', () => {
         );
 
         expect(result).toEqual(expected(EVERYONE, []));
+    });
+
+    it('badPath_noClientWritesAMembershipItsOwnIncluded @S-A51-BAD-CLIENT-MEMBERSHIP', async () => {
+        const own = await verdicts(EVERYONE, (persona) =>
+            world
+                .db(persona)
+                .doc(FIRESTORE_PATHS.admin(world.uid(persona)))
+                .update({ cities: { [world.elsewhere]: 'owner', [CITY_ID]: 'owner' }, ...stampedBy(world.uid(persona)) }),
+        );
+        const anothers = await verdicts(EVERYONE, (persona) =>
+            world
+                .db(persona)
+                .doc(FIRESTORE_PATHS.admin(world.uid('outsider')))
+                .update({ [`cities.${CITY_ID}`]: 'editor', ...stampedBy(world.uid(persona)) }),
+        );
+
+        expect({ own, anothers }).toEqual({ own: expected(EVERYONE, []), anothers: expected(EVERYONE, []) });
+        expect(await verdict(world.db('outsider').doc(FIRESTORE_PATHS.city(CITY_ID)).get())).toBe('deny');
     });
 
     it('badPath_nobodyChangesARoleOrRemovesAnAdmin', async () => {

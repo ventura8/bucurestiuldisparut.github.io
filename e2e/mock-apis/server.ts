@@ -15,7 +15,8 @@ import { answer, type MockFiles, type MockResponse } from './router.js';
  *   their `/__upstream/…` control endpoints, Google's consent stand-in (`/__oauth/…`, oauth.ts) and the admin tier's
  *   lease (`/__lease/…`, lease.ts); whatever an extension leaves unanswered falls through to router.ts.
  * - **site**: the built sites (`dist/e2e-site`) as GitHub Pages serves them: `index.html` for a folder, a redirect to
- *   the folder with its trailing slash, `cache-control: max-age=600` and `access-control-allow-origin: *`.
+ *   the folder with its trailing slash, `cache-control: max-age=600` and `access-control-allow-origin: *`; and, at
+ *   `/kit/`, the starter kit's template as committed (`templates/starter-kit/`, M5).
  */
 
 /** A forwarded request as an extension sees it: the router's fields plus the raw query, the headers and the test id. */
@@ -261,7 +262,7 @@ export async function isFile(path: string): Promise<boolean> {
 }
 
 /** The file a site URL names below `dir`, or null outside `dir` or when missing; a folder means its index.html. */
-async function siteFile(dir: string, pathname: string): Promise<{ file: string } | { redirect: string } | null> {
+async function siteFile(dir: string, pathname: string): Promise<{ file: string } | { redirect: true } | null> {
     const target = normalize(join(dir, decodeURIComponent(pathname)));
     if (target !== dir && !target.startsWith(`${dir}${sep}`)) {
         return null;
@@ -272,7 +273,19 @@ async function siteFile(dir: string, pathname: string): Promise<{ file: string }
     if (!(await isFile(join(target, 'index.html')))) {
         return null;
     }
-    return pathname.endsWith('/') ? { file: join(target, 'index.html') } : { redirect: `${pathname}/` };
+    return pathname.endsWith('/') ? { file: join(target, 'index.html') } : { redirect: true };
+}
+
+/**
+ * Folders served beside the built sites, by path prefix: the starter kit's template as committed, at `/kit/`
+ * (M5-interfaces §3.6, behaviour V27), from the repository's root (the servers run there).
+ */
+const SITE_MOUNTS: readonly (readonly [prefix: string, folder: string])[] = [['/kit/', 'templates/starter-kit']];
+
+/** The folder and the path below it that serve `pathname`: a mount's, else the built sites'. */
+function servedFrom(dir: string, pathname: string): { readonly dir: string; readonly pathname: string } {
+    const mount = SITE_MOUNTS.find(([prefix]) => pathname.startsWith(prefix));
+    return mount === undefined ? { dir, pathname } : { dir: resolve(mount[1]), pathname: pathname.slice(mount[0].length - 1) };
 }
 
 async function handleSite(request: IncomingMessage, response: ServerResponse, dir: string): Promise<void> {
@@ -281,11 +294,12 @@ async function handleSite(request: IncomingMessage, response: ServerResponse, di
         send(response, { status: 200, type: 'text/plain', body: 'ok' });
         return;
     }
-    const found = await siteFile(dir, url.pathname);
+    const served = servedFrom(dir, url.pathname);
+    const found = await siteFile(served.dir, served.pathname);
     if (found === null) {
         send(response, { status: 404, type: 'text/plain', body: 'Not found' }, { 'cache-control': 'max-age=600' });
     } else if ('redirect' in found) {
-        send(response, { status: 301 }, { location: `${found.redirect}${url.search}` });
+        send(response, { status: 301 }, { location: `${url.pathname}/${url.search}` });
     } else {
         const type = SITE_TYPES[extname(found.file)] ?? 'application/octet-stream';
         send(response, { status: 200, type, body: await readFile(found.file) }, { 'cache-control': 'max-age=600' });

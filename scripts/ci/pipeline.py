@@ -122,6 +122,11 @@ SONAR = ("bash", "scripts/ci/sonar_scan.sh")
 # Latest stable of every npm, PyPI, Docker and GitHub Actions pin (HELD entries aside); network-bound, so only in
 # the weekly `deps` stage, never in `quality` or `all`.
 DEPENDENCY_UPDATES = ("python3", "scripts/ci/check_dependency_updates.py")
+# The release stage's outputs (docs/research/M5-interfaces.md §2.5, §4.6): the pinned addresses with their integrity, and
+# the create-historic-city package the user publishes from their own terminal. Nothing here publishes anything.
+RELEASE_ADDRESSES = "reports/release/engine-addresses.md"
+RELEASE_PACK = "mkdir -p reports/release && npm pack --workspace create-historic-city --pack-destination reports/release"
+SELF_HOST_BUNDLE = ("node", "--import", "./scripts/site/register-ts.mjs", "packages/create-historic-city/build-self-host.ts")
 
 GATES: dict[str, Gate] = {
     gate.name: gate
@@ -131,6 +136,9 @@ GATES: dict[str, Gate] = {
         Gate("skill-mirrors", ("python3", "scripts/ci/check_skill_mirrors.py")),
         Gate("agent-assets", ("python3", "scripts/ci/check_agent_assets.py")),
         Gate("data-files", ("python3", "scripts/ci/check_data_files.py")),
+        # The released engine (cdn/engine/ and its release.json: every file's size and SHA-384) and the starter kit's page
+        # (templates/starter-kit/index.html) pin each other exactly; before the first release, the page's pins in shape.
+        Gate("kit-pins", ("python3", "scripts/ci/check_kit_pins.py")),
         Gate("firebase-schema", FIREBASE_SCHEMA, files=(":(glob)**/firebase.json",)),
         Gate("editorconfig", ("python3", "scripts/ci/check_editorconfig.py")),
         Gate("e2e-matrix", ("python3", "scripts/ci/check_e2e_matrix.py", "check")),
@@ -205,8 +213,17 @@ GATES: dict[str, Gate] = {
         Gate("notices", ("python3", "scripts/ci/check_notices.py"), needs=("vite-build",)),
         # The static city sites for GitHub Pages (dist/site/bucharest, dist/site/starter-kit) from the engine build
         Gate("site-build", (*NPM_RUN, "build:site"), needs=("vite-build",)),
-        # release: the tag agrees with every package version and both release-notes files
+        # release: the tag agrees with every version (workspace dependencies and ENGINE_VERSION included), the released
+        # engine's release.json, the kit's pinned folder, both release-notes files and the description's pinned addresses
         Gate("release-check", ("python3", "scripts/ci/check_release.py")),
+        # cdn/engine/ is byte for byte the release folder of the fresh engine build (docs/research/M5-interfaces.md §2.3);
+        # the check also writes the pinned addresses and their integrity, which release.yml shows in its job summary
+        Gate("release-cdn", (*NPM_RUN, "release:cdn", "--", "--check", "--summary", RELEASE_ADDRESSES), needs=("vite-build",)),
+        # create-historic-city's self-host bundle (dist/self-host/) from that production build: the vite build of the CLI
+        # empties its dist/, and the admin's e2e build writes the same folder, which the bundle refuses (docs/LESSONS.md 247)
+        Gate("self-host-bundle", SELF_HOST_BUNDLE, needs=("vite-build",)),
+        # create-historic-city's package from that build, its self-host bundle in it, for the publish (M5-interfaces §4.6)
+        Gate("release-pack", ("bash", "-c", RELEASE_PACK), needs=("vite-build", "self-host-bundle")),
         # contract (weekly, network): Setup Assistant deep links and third-party API shapes
         Gate("contracts", ("python3", "scripts/ci/check_contracts.py")),
         # sonar (part of `all`): SonarQube Cloud analysis and the strict verdict; skipped without a token
@@ -222,6 +239,7 @@ STAGES: dict[str, tuple[str, ...]] = {
         "skill-mirrors",
         "agent-assets",
         "data-files",
+        "kit-pins",
         "firebase-schema",
         "editorconfig",
         "e2e-matrix",
@@ -286,7 +304,16 @@ STAGES: dict[str, tuple[str, ...]] = {
     "sonar": ("sonar",),
     # Weekly drift (.github/workflows/deps.yml); like contract, never part of quality or all.
     "deps": ("dependency-updates",),
-    "release": ("release-check", "vite-build", "bundle-budget", "notices"),
+    "release": (
+        "release-check",
+        "kit-pins",
+        "vite-build",
+        "release-cdn",
+        "bundle-budget",
+        "notices",
+        "self-host-bundle",
+        "release-pack",
+    ),
     # Weekly third-party drift (.github/workflows/contract.yml); like deps, never part of quality or all.
     "contract": ("contracts",),
 }

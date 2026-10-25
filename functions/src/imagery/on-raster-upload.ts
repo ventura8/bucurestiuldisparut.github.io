@@ -115,7 +115,7 @@ async function planOf(deps: RasterUploadDeps, upload: RasterUpload, metadata: Ra
     if ((await deps.documents.get(FIRESTORE_PATHS.city(upload.cityId), cityDocSchema)) === undefined) {
         throw new ApiError('apiError.notFound');
     }
-    await refuseNewRasterJob(deps.documents, deps.clock.now());
+    await refuseNewRasterJob(deps.documents, deps.clock.now(), upload.cityId);
     return metadata.layerId === undefined ? newLayerPlan(deps, upload, metadata) : replacementPlan(deps, upload, metadata.layerId);
 }
 

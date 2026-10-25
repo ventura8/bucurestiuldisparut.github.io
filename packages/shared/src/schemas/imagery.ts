@@ -49,10 +49,11 @@ export const PUBLISH_CHOICES = ['studio', 'defer', 'pay'] as const;
 export type PublishChoice = (typeof PUBLISH_CHOICES)[number];
 
 /**
- * The guard's verdict on a version: it fits, it does not fit the month's compute units, the tileset cap is reached, or
- * Mapbox refused its file as too large (`apiError.imagery.sourceTooLarge`: only the free Studio upload is left).
+ * The guard's verdict on a version: it fits, it does not fit the month's compute units, the tileset cap is reached,
+ * Mapbox refused its file as too large (`apiError.imagery.sourceTooLarge`: only the free Studio upload is left), or (M5,
+ * `docs/research/M5-interfaces.md` §1.8) it fits the project's month but not its city's share (`city-over`).
  */
-export const GUARD_VERDICTS = ['within', 'over', 'tileset-limit', 'too-large'] as const;
+export const GUARD_VERDICTS = ['within', 'over', 'tileset-limit', 'too-large', 'city-over'] as const;
 
 /** Mapbox's processing precisions, by the tiles' maximum zoom (z ≤ 5, ≤ 10, ≤ 16, above). */
 export const MTS_PRECISIONS = ['10m', '1m', '30cm', '1cm'] as const;

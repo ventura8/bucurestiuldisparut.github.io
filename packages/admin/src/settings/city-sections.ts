@@ -27,8 +27,11 @@ import { readOnce } from './read-once.js';
 import { markdownLinesOf, NO_LINK_LINES, TEXT_FIELDS, type MarkdownLines } from './texts.js';
 import { seedTheme, type ThemeTools } from './theme.js';
 
-/** `imagery` (M3, CR-M3-8): auto-publish, its RMSE threshold and the target years, saved on their own. */
-export const CITY_SECTIONS = ['area', 'texts', 'theme', 'imagery'] as const;
+/**
+ * `imagery` (M3, CR-M3-8): auto-publish, its RMSE threshold and the target years, saved on their own; `publish` (M5, the
+ * integrator, DECISIONS-for-review.md §63a): whether visitors see the city, which New city leaves off.
+ */
+export const CITY_SECTIONS = ['area', 'texts', 'theme', 'imagery', 'publish'] as const;
 
 export type CitySection = (typeof CITY_SECTIONS)[number];
 
@@ -37,6 +40,7 @@ const SECTION_FIELDS: Readonly<Record<CitySection, readonly (keyof CityDoc)[]>> 
     texts: TEXT_FIELDS,
     theme: ['theme', 'basemap'],
     imagery: ['imagery'],
+    publish: ['published'],
 };
 
 interface ThemeDraft {

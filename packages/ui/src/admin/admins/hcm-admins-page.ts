@@ -1,12 +1,14 @@
 /**
  * `<hcm-admins-page>`: `#/admins`, `#/admins/<uid>` and `#/admins/invite/<inviteId>` (`docs/research/M2c-interfaces.md`
- * §9.1; behaviour A02), in the list and detail layout. The list holds the admins (role, "you") and the pending
- * invitations (expiry); the detail shows an admin (address, role, since when, who invited them) with **Remove access**,
+ * §9.1; behaviour A02; M5 `docs/research/M5-interfaces.md` §1.7, behaviour A51: the current city's admins), in the list and
+ * detail layout. The list holds the city's admins (role in the city, the project's owner, "you") and the city's pending
+ * invitations (expiry); the detail shows an admin (address, role, since when) with the role field and **Remove access**,
  * or an invitation (created, expiry, the sign-in link when it was made in this visit, copied at once and with Copy) with
- * **Cancel invitation**; both ask first. **Invite** opens a dialog for the Google account's address (checked in the page first).
- * The owner and oneself are never removable: the page offers neither and says why (the server refuses both anyway).
+ * **Cancel invitation**; each asks first. **Invite** opens a dialog for the Google account's address (checked in the page
+ * first) and the role (Editor unless changed). Only the city's owners invite, change roles and remove; an editor sees the
+ * list and why. Oneself is never removable: the page says why (the server refuses it anyway).
  */
-import { inviteRequestSchema, type AdminsListResponse, type InviteResponse, type Locale, type RevokeRequest } from '@hcm/shared';
+import { cityInviteRequestSchema, type CityAdminsListResponse, type CityRole, type InviteResponse, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { AdminNoticeInputPort, AdminRouteIdPort } from '../admin-port.js';
@@ -16,19 +18,15 @@ import { editingStyles } from '../editing/editing-styles.js';
 import { current, formatDay, loadingTemplate, whoText } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf, shellText } from '../shell/text.js';
-import type { AdminsIntentsPort, AdminsViewState } from './admins-port.js';
+import type { AdminsIntentsPort, AdminsViewState, RevokeInputPort } from './admins-port.js';
 import { adminsStyles, inviteDialog } from './invite-dialog.js';
+import { questionOf, type Pending } from './questions.js';
+import { currentCityName, ownsCurrentCity, roleField, roleText, rowDetail } from './roles.js';
 
 export const HCM_ADMINS_PAGE_TAG = 'hcm-admins-page';
 
-type Admin = AdminsListResponse['admins'][number];
-type Invite = AdminsListResponse['invites'][number];
-
-/** A removal or a cancellation being asked about. */
-interface Pending {
-    readonly request: RevokeRequest;
-    readonly name: string;
-}
+type Admin = CityAdminsListResponse['admins'][number];
+type Invite = CityAdminsListResponse['invites'][number];
 
 /** How an admin is named: the Google display name, else the address. */
 function nameOf(locale: Locale, admin: Admin): string {
@@ -43,40 +41,27 @@ function keyOf(selected: AdminsViewState['selected']): string {
     return selected.kind === 'admin' ? selected.uid : selected.inviteId;
 }
 
-/** What the question before a removal or a cancellation says. */
-function questionOf(
-    locale: Locale,
-    pending: Pending | null,
-): { readonly headline: string; readonly body: string; readonly confirm: string; readonly cancel: string } {
-    if (pending?.request.kind === 'admin') {
-        return {
-            headline: contentText(locale, 'adminContent.admins.revokeConfirm', { name: pending.name }),
-            body: contentText(locale, 'adminContent.admins.revokeBody'),
-            confirm: contentText(locale, 'adminContent.admins.remove'),
-            cancel: contentText(locale, 'adminContent.admins.keep'),
-        };
-    }
-    return {
-        headline: contentText(locale, 'adminContent.admins.cancelConfirm'),
-        body: contentText(locale, 'adminContent.admins.cancelBody'),
-        confirm: contentText(locale, 'adminContent.admins.cancelInvite'),
-        cancel: contentText(locale, 'adminContent.admins.keepInvite'),
-    };
-}
-
 /** The admin or the invitation the selection names, if the list holds it. */
-function selectedItem(list: AdminsListResponse, selected: NonNullable<AdminsViewState['selected']>): Admin | Invite | undefined {
+function selectedItem(list: CityAdminsListResponse, selected: NonNullable<AdminsViewState['selected']>): Admin | Invite | undefined {
     if (selected.kind === 'admin') {
         return list.admins.find((candidate) => candidate.uid === selected.uid);
     }
     return list.invites.find((candidate) => candidate.inviteId === selected.inviteId);
 }
 
+/** Why an admin's access has no Remove: the project's owner stays an owner, and nobody removes oneself; else null. */
+function removalNote(admin: Admin): 'adminContent.admins.ownerNote' | 'adminContent.admins.selfNote' | null {
+    if (admin.projectOwner) {
+        return 'adminContent.admins.ownerNote';
+    }
+    return admin.self ? 'adminContent.admins.selfNote' : null;
+}
+
 function isAdmin(item: Admin | Invite): item is Admin {
     return 'uid' in item;
 }
 
-function namesOf(list: AdminsListResponse | null): Readonly<Record<string, string>> {
+function namesOf(list: CityAdminsListResponse | null): Readonly<Record<string, string>> {
     return Object.fromEntries((list?.admins ?? []).map((admin) => [admin.uid, admin.displayName ?? admin.email ?? admin.uid]));
 }
 
@@ -125,8 +110,8 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
             this.go([]);
         };
         const dialog = {
-            ...{ locale, open: this.inviting, busy: view.busy, issue: this.inviteIssue },
-            submit: (email: string) => this.#sendInvite(email),
+            ...{ locale, open: this.inviting, busy: view.busy, issue: this.inviteIssue, city: currentCityName(this.state, locale) },
+            submit: (email: string, role: CityRole) => this.#sendInvite(email, role),
             close: () => {
                 this.#closeInvite();
             },
@@ -151,14 +136,16 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
             this.inviteIssue = null;
             this.inviting = true;
         };
-        const head = html`<div class="list-head">
-            <p class="note">${shellText(locale, 'adminShell.admins.intro')}</p>
-            <div class="actions">
-                <hcm-button variant="filled" icon="person_add" ?disabled=${this.readOnly} @click=${invite}
-                    >${shellText(locale, 'adminShell.admins.invite')}</hcm-button
-                >
-            </div>
-        </div>`;
+        const head = ownsCurrentCity(this.state)
+            ? html`<div class="list-head">
+                  <p class="note">${shellText(locale, 'adminShell.admins.intro')}</p>
+                  <div class="actions">
+                      <hcm-button variant="filled" icon="person_add" ?disabled=${this.readOnly} @click=${invite}
+                          >${shellText(locale, 'adminShell.admins.invite')}</hcm-button
+                      >
+                  </div>
+              </div>`
+            : html`<div class="list-head"><p class="note">${shellText(locale, 'adminShell.admins.ownerOnly')}</p></div>`;
         return html`${head}${this.#listBody(locale, view)}`;
     }
 
@@ -196,8 +183,7 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
     }
 
     #adminRow(locale: Locale, admin: Admin, selected: boolean): TemplateResult {
-        const role = shellText(locale, `adminShell.admins.role.${admin.role}`);
-        const detail = admin.self ? `${role} · ${shellText(locale, 'adminShell.admins.you')}` : role;
+        const detail = rowDetail(locale, admin);
         return html`<li>
             <a class="row" href=${this.href([admin.uid])} aria-current=${current(selected)}>
                 <span class="row-title">${nameOf(locale, admin)}</span>
@@ -244,14 +230,6 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         </div>`;
     }
 
-    #invitedBy(locale: Locale, view: AdminsViewState, invitedBy: string | undefined): TemplateResult {
-        if (invitedBy === undefined) {
-            return EMPTY;
-        }
-        return html`<dt>${contentText(locale, 'adminContent.admins.invitedBy')}</dt>
-            <dd>${whoText(locale, invitedBy, this.#self(), namesOf(view.list))}</dd>`;
-    }
-
     #self(): string | null {
         return this.state?.user?.uid ?? null;
     }
@@ -265,21 +243,42 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
                 <dt>${contentText(locale, 'adminContent.admins.address')}</dt>
                 <dd>${admin.email ?? shellText(locale, 'adminShell.admins.unnamed')}</dd>
                 <dt>${contentText(locale, 'adminContent.admins.role')}</dt>
-                <dd>${shellText(locale, `adminShell.admins.role.${admin.role}`)}</dd>
+                <dd>${rowDetail(locale, { ...admin, self: false })}</dd>
                 <dt>${contentText(locale, 'adminContent.admins.since')}</dt>
                 <dd>${formatDay(locale, admin.createdAt)}</dd>
-                ${this.#invitedBy(locale, view, admin.invitedBy)}
             </dl>
-            ${this.#removeAccess(locale, view, admin, name)}
+            ${this.#roleChange(locale, view, admin, name)} ${this.#removeAccess(locale, view, admin, name)}
         </div>`;
     }
 
-    /** Remove access, unless the admin is the owner or oneself (then why not). */
+    /** M5: the city's owners change an admin's role (asked first); editors see it only (S-A51-HAPPY-ROLE). */
+    #roleChange(locale: Locale, view: AdminsViewState, admin: Admin, name: string): TemplateResult {
+        if (!ownsCurrentCity(this.state)) {
+            return EMPTY;
+        }
+        const city = currentCityName(this.state, locale);
+        const change = (role: CityRole): void => {
+            this.issue = null;
+            this.pending = role === admin.role ? null : { request: { kind: 'role', uid: admin.uid, role }, name };
+        };
+        return roleField({
+            ...{ locale, id: 'role', value: admin.role, change },
+            label: shellText(locale, 'adminShell.admins.roleOf', { name, city }),
+            disabled: view.busy || this.readOnly || admin.projectOwner,
+        });
+    }
+
+    /**
+     * Remove access, for the city's owners; oneself and the project's owner never, and the page says why (the project's
+     * owner: the map always has an owner, `apiError.city.projectOwnerStays`; anyone else: not one's own access).
+     */
     #removeAccess(locale: Locale, view: AdminsViewState, admin: Admin, name: string): TemplateResult {
-        if (admin.role === 'owner' || admin.self) {
-            return html`<p class="note">
-                ${contentText(locale, admin.role === 'owner' ? 'adminContent.admins.ownerNote' : 'adminContent.admins.selfNote')}
-            </p>`;
+        const note = removalNote(admin);
+        if (note !== null) {
+            return html`<p class="note">${contentText(locale, note)}</p>`;
+        }
+        if (!ownsCurrentCity(this.state)) {
+            return EMPTY;
         }
         const ask = (): void => {
             this.issue = null;
@@ -302,17 +301,26 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
             <h2 tabindex="-1" data-detail-heading>${contentText(locale, 'adminContent.admins.inviteTitle', { date: created })}</h2>
             ${this.#issue(locale)}
             <dl class="facts">
+                <dt>${contentText(locale, 'adminContent.admins.role')}</dt>
+                <dd>${roleText(locale, invite.role)}</dd>
                 <dt>${contentText(locale, 'adminContent.admins.expiresLabel')}</dt>
                 <dd>${formatDay(locale, invite.expiresAt)}</dd>
                 <dt>${contentText(locale, 'adminContent.admins.invitedBy')}</dt>
                 <dd>${whoText(locale, invite.invitedBy, this.#self(), namesOf(view.list))}</dd>
             </dl>
-            ${this.#link(locale, view.invited, invite)}
-            <div class="actions">
-                <hcm-button variant="outlined" icon="cancel" ?disabled=${view.busy || this.readOnly} @click=${ask}
-                    >${contentText(locale, 'adminContent.admins.cancelInvite')}</hcm-button
-                >
-            </div>
+            ${this.#link(locale, view.invited, invite)} ${this.#cancelInvite(locale, view, ask)}
+        </div>`;
+    }
+
+    /** Cancel the invitation, for the city's owners. */
+    #cancelInvite(locale: Locale, view: AdminsViewState, ask: () => void): TemplateResult {
+        if (!ownsCurrentCity(this.state)) {
+            return EMPTY;
+        }
+        return html`<div class="actions">
+            <hcm-button variant="outlined" icon="cancel" ?disabled=${view.busy || this.readOnly} @click=${ask}
+                >${contentText(locale, 'adminContent.admins.cancelInvite')}</hcm-button
+            >
         </div>`;
     }
 
@@ -350,13 +358,22 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         }
     }
 
-    async #sendInvite(email: string): Promise<void> {
-        const parsed = inviteRequestSchema.safeParse({ email: email.trim() });
+    async #sendInvite(email: string, role: CityRole): Promise<void> {
+        const parsed = cityInviteRequestSchema.safeParse({ cityId: this.#cityId(), email: email.trim(), role });
         if (!parsed.success) {
             this.inviteIssue = { key: 'adminShell.admins.invalidEmail' };
             return;
         }
-        const outcome = await this.intents?.invite(parsed.data.email);
+        this.#invited(await this.intents?.invite(parsed.data.email, role));
+    }
+
+    /** The open city (M5): the invitation is to it. */
+    #cityId(): string {
+        return this.state?.cityId ?? '';
+    }
+
+    /** The invitation made (its link copied at once) or refused (why, at the dialog); no store, nothing. */
+    #invited(outcome: Awaited<ReturnType<AdminsIntentsPort['invite']>> | undefined): void {
         if (outcome === undefined) {
             return;
         }
@@ -388,18 +405,18 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
 
     #confirm(locale: Locale): TemplateResult {
         const pending = this.pending;
-        const question = questionOf(locale, pending);
+        const question = questionOf(locale, pending, currentCityName(this.state, locale));
         const confirm = (): void => {
             this.pending = null;
             if (pending !== null) {
-                void this.#revoke(pending.request);
+                void this.#confirmed(pending.request);
             }
         };
         const dismiss = (): void => {
             this.pending = null;
         };
         return html`<hcm-confirm-dialog
-            destructive
+            ?destructive=${question.destructive}
             .open=${pending !== null}
             .headline=${question.headline}
             .body=${question.body}
@@ -411,7 +428,17 @@ export class HcmAdminsPage extends AreaPage<AdminsViewState, AdminsIntentsPort> 
         ></hcm-confirm-dialog>`;
     }
 
-    async #revoke(request: RevokeRequest): Promise<void> {
+    /** A confirmed role change (the admin stays open) or removal (back to the list). */
+    async #confirmed(request: Pending['request']): Promise<void> {
+        await (request.kind === 'role' ? this.#changeRole(request.uid, request.role) : this.#remove(request));
+    }
+
+    async #changeRole(uid: string, role: CityRole): Promise<void> {
+        const changed = await this.intents?.setRole(uid, role);
+        this.issue = changed?.ok === false ? changed.error : null;
+    }
+
+    async #remove(request: RevokeInputPort): Promise<void> {
         const outcome = await this.intents?.revoke(request);
         if (outcome?.ok === false) {
             this.issue = outcome.error;

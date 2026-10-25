@@ -1,6 +1,6 @@
 {
     "name": "@hcm/test-support",
-    "version": "0.0.0",
+    "version": "1.0.0",
     "private": true,
     "description": "Test-only helpers shared by every TS test project: the recording log sink, FakeMap, FakeMapDraw, axe, the upstream API fixtures (Google, Mapbox, USGS M2M, Nominatim) and the fake upstreams with their HTTP server. Never imported by product code.",
     "license": "UNLICENSED",
@@ -41,7 +41,7 @@
         }
     },
     "dependencies": {
-        "@hcm/shared": "0.0.0",
+        "@hcm/shared": "1.0.0",
         "axe-core": "4.14.0"
     }
 }

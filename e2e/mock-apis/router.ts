@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { KIT_PLACEHOLDER_TOKEN } from '@hcm/shared';
+
 import { E2E_BROKEN_TILESET, E2E_MEASUREMENT_ID, tilesetColour, XYZ_COLOURS, type Rgb } from '../fixtures/world.js';
 import { glyphRange, RANGE_SIZE } from './glyphs.js';
 import { firebaseWebConfig, GTAG_SCRIPT } from './gtag.js';
@@ -36,6 +38,11 @@ export interface MockFiles {
     readonly mapboxGlDist: string;
     /** `packages/engine/dist` (the CDN routes). */
     readonly engineDist: string;
+    /**
+     * What the pinned jsDelivr folder of a release (`@v<version>/cdn/engine/`, M5-interfaces §2.4, §3.6) serves: the
+     * committed `cdn/engine/` once a release made it, else `packages/engine/dist` (main.ts decides).
+     */
+    readonly cdnEngine: string;
 }
 
 /** The only Mapbox GL JS release the mock serves (the pinned devDependency). */
@@ -49,6 +56,9 @@ const TILEJSON_PATH = /^\/v4\/([\w-]+\.[\w-]+)\.json$/;
 const TILE_PATH = /^\/v4\/([\w-]+\.[\w-]+)\/(\d+)\/(\d+)\/(\d+)(@2x)?\.(png|webp)$/;
 const XYZ_PATH = /^\/xyz\/([\w-]+)\/(\d+)\/(\d+)\/(\d+)\.png$/;
 const ENGINE_CDN_PATH = /^\/(?:npm\/@hcm\/engine@[\w.-]+\/dist|gh\/[\w.-]+\/[\w.-]+@[\w.-]+\/packages\/engine\/dist)\/([\w.-]+)$/;
+/** M5: a release's folder on jsDelivr, pinned (`@v1.0.0`) or following a major line (`@1`); one folder level (`fonts/`). */
+const RELEASE_CDN_PATH =
+    /^\/gh\/ventura8\/bucurestiuldisparut\.github\.io@(?:v\d+\.\d+\.\d+|\d+)\/cdn\/engine\/((?:[\w-][\w.-]*\/)?[\w-][\w.-]*)$/;
 
 const NOT_FOUND: MockResponse = { status: 404, type: 'text/plain', body: 'not mocked' };
 const NO_CONTENT: MockResponse = { status: 204 };
@@ -59,6 +69,9 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
     '.css': 'text/css',
     '.map': 'application/json',
     '.json': 'application/json',
+    '.woff2': 'font/woff2',
+    '.txt': 'text/plain',
+    '.md': 'text/markdown',
 };
 
 function json(value: unknown): MockResponse {
@@ -169,7 +182,24 @@ const TILE_HOST_ROUTES: readonly Route[] = [
     ],
 ];
 
-const CDN_ROUTES: readonly Route[] = [[ENGINE_CDN_PATH, (match, files) => fileResponse(join(files.engineDist, String(match[1])))]];
+const CDN_ROUTES: readonly Route[] = [
+    [ENGINE_CDN_PATH, (match, files) => fileResponse(join(files.engineDist, String(match[1])))],
+    [RELEASE_CDN_PATH, (match, files) => fileResponse(join(files.cdnEngine, String(match[1])))],
+];
+
+/**
+ * Mapbox's answer to the starter kit's placeholder token (`pk.replace-with-your-token`, valid by the schema): refused, as
+ * Mapbox refuses any token it did not issue (M5-interfaces §3.3; S-V27-BAD-PLACEHOLDER-TOKEN).
+ */
+const TOKEN_REFUSED: MockResponse = {
+    status: 401,
+    type: 'application/json',
+    body: JSON.stringify({ message: 'Not Authorized - Invalid Token' }),
+};
+
+function mapbox(request: MockRequest, files: MockFiles): Promise<MockResponse> | MockResponse {
+    return request.query.get('access_token') === KIT_PLACEHOLDER_TOKEN ? TOKEN_REFUSED : routed(MAPBOX_ROUTES, request, files);
+}
 
 function routed(routes: readonly Route[], request: MockRequest, files: MockFiles): Promise<MockResponse> | MockResponse {
     for (const [pattern, answer] of routes) {
@@ -213,7 +243,7 @@ export function answer(request: MockRequest, files: MockFiles): Promise<MockResp
     const kind: HostKind | null = mockedHostKind(request.host);
     switch (kind) {
         case 'mapbox':
-            return routed(MAPBOX_ROUTES, request, files);
+            return mapbox(request, files);
         case 'tiles':
             return routed(TILE_HOST_ROUTES, request, files);
         case 'cdn':

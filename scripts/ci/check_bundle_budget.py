@@ -121,6 +121,15 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # chunks (`scripts/site/src/admin/service-worker.ts`, 0.7 KB).
     "assist": 3,
     "firebase-messaging-sw.js": 1,
+    # M5's Export the city card (`packages/ui/src/admin/export/export-card.ts`), fetched the first time its Settings section
+    # opens: 1.7 KB measured on 2026-10-25 plus about 20 % (docs/research/M5-interfaces.md §5.6; DECISIONS-for-review.md §60e).
+    "export-card": 2,
+    # M5's New city page (`packages/admin/src/pages/cities.ts`: the flow's store, its map and `<hcm-new-city-page>`, 4.6 KB)
+    # and the city's budget card in Settings (`packages/ui/src/admin/cities/city-budget.ts`, 1.0 KB, fetched the first time
+    # its section opens), measured on 2026-10-25 plus about 20 % (docs/research/M5-interfaces.md §1.6, §1.8;
+    # DECISIONS-for-review.md §62c).
+    "cities": 6,
+    "city-budget": 2,
 }
 # The entry and every chunk together.
 ADMIN_TOTAL_KB = 620

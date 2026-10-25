@@ -132,6 +132,15 @@ def test_happy_path_a_task_waits_only_for_the_needs_of_its_own_stage(shell: Fake
     assert pipeline._task(Step(gate, gate.command), shell.context(), ("bundle-budget",)).needs == ()
 
 
+def test_happy_path_the_cli_is_packed_after_its_self_host_bundle(shell: FakeShell) -> None:
+    # docs/LESSONS.md 247: the CLI's vite build empties dist/, so the bundle is assembled after it and before the pack.
+    gate = GATES["release-pack"]
+    release = STAGES["release"]
+
+    assert pipeline._task(Step(gate, gate.command), shell.context(), release).needs == ("vite-build", "self-host-bundle")
+    assert release.index("vite-build") < release.index("self-host-bundle") < release.index("release-pack")
+
+
 def test_happy_path_playwright_runs_as_an_exclusive_task(shell: FakeShell) -> None:
     gate = GATES["playwright"]
 

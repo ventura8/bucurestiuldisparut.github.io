@@ -6,8 +6,20 @@
 import { FIRESTORE_PATHS } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { cityDoc, theme } from './support/documents.js';
-import { createWorld, deleted, past, serverTime, stampedBy, verdict, type Data, type Verdict, type World } from './support/world.js';
+import { cityDoc, harvestStateDoc, historyEntryDoc, manifestStateDoc, photoDoc, theme } from './support/documents.js';
+import {
+    createWorld,
+    deleted,
+    past,
+    serverTime,
+    stampedBy,
+    systemStamp,
+    verdict,
+    type Data,
+    type Persona,
+    type Verdict,
+    type World,
+} from './support/world.js';
 
 const CITY_ID = 'rules-cities';
 
@@ -46,6 +58,7 @@ describe('update', () => {
         ['an English name', { name: { ro: 'București', en: 'Bucharest' } }],
         ['zooms at their limits', { zoom: 0, minZoom: 0, maxZoom: 24 }],
         ['a Mapbox style', { basemap: { style: 'mapbox://styles/hcm-test/historic-1' } }],
+        ['an https style on a port', { basemap: { style: 'https://styles.example.org:8443/v1/style.json?key=a#b' } }],
         ['a basemap with 30 config properties', { basemap: { style: 'mapbox://styles/mapbox/standard', config: configOf(30) } }],
         ['200 tokens per scheme', { theme: { ...theme('#000000'), tokens: tokenSchemes(200) } }],
         ['50 credits', { credits: Array.from({ length: 50 }, () => ({ label: { ro: 'A', en: 'A' } })) }],
@@ -99,6 +112,12 @@ describe('update', () => {
         ['a basemap without a style', { basemap: { config: {} } }],
         ['a basemap with an extra key', { basemap: { style: 'mapbox://styles/mapbox/standard', sprite: 'x' } }],
         ['an http basemap style', { basemap: { style: 'http://example.org/style.json' } }],
+        // docs/LESSONS.md 241: a host with `;` or a quote would end the directive of the export's policy and add others.
+        [
+            'a basemap style whose host ends a policy directive @S-A53-BAD-STYLE-HOST',
+            { basemap: { style: 'https://a.example.org;connect-src/x' } },
+        ],
+        ['a basemap style whose host holds a quote', { basemap: { style: "https://a.example.org'unsafe-inline'/x" } }],
         ['a basemap style that is not text', { basemap: { style: 42 } }],
         ['a basemap with 31 config properties', { basemap: { style: 'mapbox://styles/mapbox/standard', config: configOf(31) } }],
         ['a basemap config that is a list', { basemap: { style: 'mapbox://styles/mapbox/standard', config: ['a'] } }],
@@ -142,6 +161,151 @@ describe('update', () => {
         ).toBe('deny');
     });
 });
+
+describe('many cities (M5, docs/research/M5-interfaces.md §1.4)', () => {
+    const OTHER_STAMP = (persona: Persona) => stampedBy(world.uid(persona));
+
+    it('badPath_anEditorOfAnotherCityReadsAndWritesNothingOfThisOne @S-A51-BAD-OTHER-CITY-RULES', async () => {
+        const path = await seededCity();
+        const city = path.slice('cities/'.length);
+        await world.seed(FIRESTORE_PATHS.photo(city, 'p1'), photoDoc(city, 'p1', world.uid('admin')));
+        await world.seed(FIRESTORE_PATHS.manifestState(city), manifestStateDoc(city));
+        await world.seed(FIRESTORE_PATHS.harvestState(city), harvestStateDoc());
+        const db = world.db('outsider');
+
+        const requests = {
+            city: await verdict(db.doc(path).get()),
+            update: await verdict(db.doc(path).update({ published: false, ...OTHER_STAMP('outsider') })),
+            photos: await verdict(db.collection(FIRESTORE_PATHS.photos(city)).get()),
+            photo: await verdict(db.doc(FIRESTORE_PATHS.photo(city, 'p1')).get()),
+            manifest: await verdict(db.doc(FIRESTORE_PATHS.manifestState(city)).get()),
+            harvest: await verdict(db.doc(FIRESTORE_PATHS.harvestState(city)).get()),
+        };
+
+        expect(requests).toEqual({ city: 'deny', update: 'deny', photos: 'deny', photo: 'deny', manifest: 'deny', harvest: 'deny' });
+    });
+
+    it('happyPath_theSameRequestsOnTheirOwnCityAreAllowed @S-A51-BAD-OTHER-CITY-RULES', async () => {
+        const own = FIRESTORE_PATHS.city(world.elsewhere);
+        await world.seed(FIRESTORE_PATHS.harvestState(world.elsewhere), harvestStateDoc());
+        const db = world.db('outsider');
+
+        const requests = {
+            city: await verdict(db.doc(own).get()),
+            update: await verdict(db.doc(own).update({ published: true, ...OTHER_STAMP('outsider') })),
+            photos: await verdict(db.collection(FIRESTORE_PATHS.photos(world.elsewhere)).get()),
+            harvest: await verdict(db.doc(FIRESTORE_PATHS.harvestState(world.elsewhere)).get()),
+            notMine: await verdict(world.db('admin').doc(own).get()),
+        };
+
+        expect(requests).toEqual({ city: 'allow', update: 'allow', photos: 'allow', harvest: 'allow', notMine: 'deny' });
+    });
+
+    it('badPath_historysQueryIsKeptToTheAdminsCities @S-A51-BAD-HISTORY-QUERY', async () => {
+        const path = await seededCity();
+        const city = path.slice('cities/'.length);
+        const entry = (cityId: string) => `${FIRESTORE_PATHS.history({ entity: 'photo', cityId, entityId: 'p1' })}/1767225600000-event1`;
+        await world.seed(entry(city), historyEntryDoc(world.uid('admin'), city));
+        await world.seed(entry(world.elsewhere), historyEntryDoc(world.uid('outsider'), world.elsewhere));
+        const recent = (persona: Persona, cityId: string) =>
+            verdict(
+                world.db(persona).collectionGroup('history').where('cityId', '==', cityId).orderBy('updatedAt', 'desc').limit(50).get(),
+            );
+
+        const verdicts = {
+            othersByOutsider: await recent('outsider', city),
+            ownByOutsider: await recent('outsider', world.elsewhere),
+            ownByAdmin: await recent('admin', city),
+            entryByOutsider: await verdict(world.db('outsider').doc(entry(city)).get()),
+            ownEntryByOutsider: await verdict(world.db('outsider').doc(entry(world.elsewhere)).get()),
+            unfiltered: await verdict(world.db('outsider').collectionGroup('history').limit(5).get()),
+        };
+
+        expect(verdicts).toEqual({
+            othersByOutsider: 'deny',
+            ownByOutsider: 'allow',
+            ownByAdmin: 'allow',
+            entryByOutsider: 'deny',
+            ownEntryByOutsider: 'allow',
+            unfiltered: 'deny',
+        });
+    });
+
+    it('badPath_noClientWritesACitysLimitsOrUsage @S-A52-BAD-CLIENT-LIMITS', async () => {
+        const path = await seededCity();
+        const city = path.slice('cities/'.length);
+        const limits = {
+            computeUnitsPerMonth: 1000,
+            rasterJobsPerDay: 10,
+            aiRequestsPerMonth: 500,
+            geocodeCellsPerDay: 300,
+            exportsPerDay: 10,
+        };
+        const usage = `${path}/usage/2026-10`;
+        await world.seed(usage, { month: '2026-10', computeUnits: 1, aiRequests: 0, updatedBy: 'system:cities', updatedAt: past() });
+
+        const results = {
+            limits: await verdict(
+                world
+                    .db('admin')
+                    .doc(path)
+                    .update({ limits, ...OTHER_STAMP('admin') }),
+            ),
+            usage: await verdict(
+                world
+                    .db('admin')
+                    .doc(usage)
+                    .update({ computeUnits: 0, ...OTHER_STAMP('admin') }),
+            ),
+            newUsage: await verdict(
+                world.db('admin').doc(`${path}/usage/2026-11`).set({ month: '2026-11', computeUnits: 0, aiRequests: 0 }),
+            ),
+            readUsage: await verdict(world.db('admin').doc(usage).get()),
+            outsiderReadsUsage: await verdict(world.db('outsider').doc(FIRESTORE_PATHS.cityUsage(city, '2026-10')).get()),
+        };
+
+        expect(results).toEqual({ limits: 'deny', usage: 'deny', newUsage: 'deny', readUsage: 'allow', outsiderReadsUsage: 'deny' });
+    });
+});
+
+describe('static exports (M5, docs/research/M5-interfaces.md §5.3, CR-M5-11)', () => {
+    it('badPath_exportsAreTheServersAndOnlyTheCitysMembersReadThem @S-A53-BAD-CLIENT-EXPORTS', async () => {
+        const path = await seededCity();
+        const city = path.slice('cities/'.length);
+        const record = FIRESTORE_PATHS.cityExport(city, 'x-20261017-1');
+        await world.seed(record, exportRecord(world.uid('admin'), 'ready'));
+        const member = world.db('admin');
+
+        const results = {
+            memberReads: await verdict(member.doc(record).get()),
+            memberListsTheLatest: await verdict(
+                member.collection(FIRESTORE_PATHS.cityExports(city)).orderBy('createdAt', 'desc').limit(1).get(),
+            ),
+            memberCreates: await verdict(
+                member.doc(FIRESTORE_PATHS.cityExport(city, 'x-20261017-2')).set(exportRecord(world.uid('admin'), 'queued')),
+            ),
+            memberMarksReady: await verdict(member.doc(record).update({ state: 'ready', ...stampedBy(world.uid('admin')) })),
+            memberDeletes: await verdict(member.doc(record).delete()),
+            outsiderReads: await verdict(world.db('outsider').doc(record).get()),
+            outsiderLists: await verdict(world.db('outsider').collection(FIRESTORE_PATHS.cityExports(city)).get()),
+        };
+
+        expect(results).toEqual({
+            memberReads: 'allow',
+            memberListsTheLatest: 'allow',
+            memberCreates: 'deny',
+            memberMarksReady: 'deny',
+            memberDeletes: 'deny',
+            outsiderReads: 'deny',
+            outsiderLists: 'deny',
+        });
+    });
+});
+
+/** An export's record as `export.start` and `export.build` leave it (`cityExportDocSchema`). */
+function exportRecord(requestedBy: string, state: 'queued' | 'ready'): Data {
+    return { state, requestedBy, rasters: false, engineVersion: '1.0.0', createdAt: past(), ...systemStamp('export') };
+}
 
 function tokensOf(count: number): Data {
     return Object.fromEntries(Array.from({ length: count }, (_, index) => [`--md-sys-color-token-${String(index)}`, '#000000']));

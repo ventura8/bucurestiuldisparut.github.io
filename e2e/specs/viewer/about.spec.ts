@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { siteManifestData, type Json } from '../../fixtures/manifest.js';
 import { expect, test } from '../../support/test.js';
 import { chooseMenuItem, openViewer, serveManifest, t, viewer } from '../../support/viewer.js';
@@ -13,6 +16,8 @@ interface Credit {
 }
 
 const CITY = siteManifestData()['city'] as { name: { ro: string; en: string }; credits: Credit[] };
+/** The engine's release is the repository's version: `ENGINE_VERSION` follows the root package.json (docs/releases/README.md). */
+const ROOT_PACKAGE = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../package.json'), 'utf8')) as { version: string };
 
 test('About shows the city, its credits and privacy notice in the visitor language', { tag: '@S-V13-HAPPY' }, async ({ page, lang }) => {
     await openViewer(page, { lang });
@@ -31,7 +36,7 @@ test('About shows the city, its credits and privacy notice in the visitor langua
         'rel',
         'noopener noreferrer nofollow ugc',
     );
-    await expect(dialog.getByText(t(lang, 'about.engine', { version: '0.0.0' }))).toBeAttached();
+    await expect(dialog.getByText(t(lang, 'about.engine', { version: ROOT_PACKAGE.version }))).toBeAttached();
     await expect(viewer(page).locator('hcm-about-dialog strong').first()).toHaveText(CITY.name[lang]);
 });
 

@@ -18,6 +18,8 @@ import {
 import type { AreaStore } from '../content/areas.js';
 import { LiveDoc, LOADING_DOC, type DocState } from '../content/doc.js';
 import { LiveList, LOADING_LIST } from '../content/list.js';
+import { BudgetSection, NO_BUDGET_SECTION, type BudgetSectionState } from '../cities/budget-section.js';
+import { ExportSection, NO_EXPORT_SECTION, type ExportSectionState } from '../export/export-section.js';
 import type { ContentServices, WriteOutcome } from '../content/services.js';
 import { layerItemOf, type LayerItem } from '../layers/model.js';
 import { PreviewLayer } from '../layers/preview.js';
@@ -47,6 +49,8 @@ const INITIAL: SettingsState = {
     overlays: NO_OVERLAY_DEFAULTS,
     reordering: false,
     map: NO_SETTINGS_MAP,
+    export: NO_EXPORT_SECTION,
+    budget: NO_BUDGET_SECTION,
 };
 
 function isCitySection(section: SettingsRoute['section']): section is CitySection {
@@ -64,6 +68,17 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
     readonly #overlays: OverlayDefaults;
     readonly #categoryArea: CategoryArea;
     readonly #map: SettingsMap;
+    /** M5 (CR-M5-10; owner: export): the export section's listeners, attached while it shows. */
+    readonly #export: ExportSection;
+    /** M5 (owner: multi-city): the budget section's listeners, attached while it shows. */
+    readonly #budget: BudgetSection;
+    /** What the M5 sections report goes into the page's state (fields, so the constructor stays within its 60 lines). */
+    readonly #exportChanged = (state: ExportSectionState): void => {
+        this.#cell.update({ export: state });
+    };
+    readonly #budgetChanged = (budget: BudgetSectionState): void => {
+        this.#cell.update({ budget });
+    };
     #open = false;
     readonly intents: SettingsIntents;
 
@@ -115,7 +130,11 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
             categories: () => this.#cell.state.categories.items,
             taken: () => [...this.#cell.state.layers.items, ...this.#cell.state.categories.items].map((item) => item.id),
         });
+        this.#export = new ExportSection(services, this.#exportChanged);
+        this.#budget = new BudgetSection(services, this.#budgetChanged);
         this.intents = {
+            ...this.#export.intents,
+            ...this.#budget.intents,
             ...this.#cityIntents(),
             ...this.#creditIntents(),
             ...this.#categoryArea.intents,
@@ -290,12 +309,38 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
     }
 
     #route(route: SettingsRoute): void {
+        this.#routeExport(route.section === 'export');
+        this.#routeBudget(route.section === 'budget');
         this.#cell.update({ section: route.section });
         this.#sections.open(isCitySection(route.section) ? route.section : null);
         if (route.section !== 'overlays') {
             this.#overlays.discard();
         }
         this.#categoryArea.open(route.category);
+    }
+
+    /** The export section's listeners follow its route: attached when it opens, detached when it closes. */
+    #routeExport(shows: boolean): void {
+        if (shows === (this.#cell.state.section === 'export')) {
+            return;
+        }
+        if (shows) {
+            this.#export.open();
+        } else {
+            this.#export.close();
+        }
+    }
+
+    /** M5: the budget section's listeners follow its route, as the export's do. */
+    #routeBudget(shows: boolean): void {
+        if (shows === (this.#cell.state.section === 'budget')) {
+            return;
+        }
+        if (shows) {
+            this.#budget.open();
+        } else {
+            this.#budget.close();
+        }
     }
 
     #cityChanged(city: DocState<CityDoc>): void {

@@ -20,6 +20,14 @@ beforeAll(async () => {
     app = initializeApp({ projectId: 'demo-hcm' }, 'functions-firestore-adapter');
     db = getFirestore(app, 'functions-adapters');
     await db.collection('admins').doc('functions-adapter-admin').set({ addedBy: 'bootstrap' });
+    await db
+        .collection('admins')
+        .doc('functions-adapter-owner')
+        .set({ role: 'owner', cities: { bucharest: 'owner', cluj: 'editor' } });
+    await db
+        .collection('admins')
+        .doc('functions-adapter-broken')
+        .set({ role: 'admin', cities: { cluj: 'viewer' } });
 });
 
 afterAll(async () => {
@@ -33,6 +41,22 @@ describe('firestoreAdminDirectory', () => {
 
     it('badPath_anyoneElseHasNone', async () => {
         await expect(firestoreAdminDirectory(db).isAdmin('functions-adapter-stranger')).resolves.toBe(false);
+        await expect(firestoreAdminDirectory(db).membership('functions-adapter-stranger')).resolves.toBeNull();
+    });
+
+    it('happyPath_oneReadTellsTheProjectRoleAndEachCitysRole', async () => {
+        const membership = await firestoreAdminDirectory(db).membership('functions-adapter-owner');
+
+        expect(membership?.projectRole).toBe('owner');
+        expect(['bucharest', 'cluj', 'iasi'].map((city) => membership?.roleIn(city))).toEqual(['owner', 'editor', null]);
+    });
+
+    it('badPath_aDocumentFromBeforeM5OrWithAnInvalidMembershipBelongsToNoCity', async () => {
+        const legacy = await firestoreAdminDirectory(db).membership('functions-adapter-admin');
+        const broken = await firestoreAdminDirectory(db).membership('functions-adapter-broken');
+
+        expect([legacy?.projectRole, legacy?.roleIn('bucharest')]).toEqual(['admin', null]);
+        expect([broken?.projectRole, broken?.roleIn('cluj')]).toEqual(['admin', null]);
     });
 });
 

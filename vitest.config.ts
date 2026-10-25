@@ -173,8 +173,9 @@ const SUITES: readonly Suite[] = [
         ],
     },
     {
-        // The Node tooling: JavaScript CLIs driven as child processes (their logic is TypeScript measured in its own package)
-        // and the static site build, which is product code: it writes the page, its CSP and the served manifest.
+        // The Node tooling: JavaScript CLIs driven as child processes (their logic is TypeScript measured in its own package),
+        // the static site build, which is product code: it writes the page, its CSP and the served manifest, and the release
+        // scripts (scripts/release: every version, the released engine in cdn/engine/ and its integrity).
         dir: '.',
         project: {
             extends: true,
@@ -187,7 +188,25 @@ const SUITES: readonly Suite[] = [
                 testTimeout: 30_000,
             },
         },
-        coverage: ['scripts/site/src/**/*.ts'],
+        coverage: ['scripts/site/src/**/*.ts', 'scripts/release/src/**/*.ts'],
+    },
+    {
+        // M5 kit-cli: the `create-historic-city` CLI (docs/research/M5-interfaces.md §4.5), every command over the fakes of
+        // its ports; its real ports run real child processes (`node`) and real files in temporary folders.
+        dir: 'packages/create-historic-city',
+        project: {
+            extends: true,
+            test: {
+                name: 'create-historic-city',
+                environment: 'node',
+                include: ['packages/create-historic-city/test/**/*.test.ts'],
+                // The colour library's ES modules import without file extensions, which Node refuses: Vite transforms it
+                // as it does for the CLI's bundle.
+                server: { deps: { inline: ['@material/material-color-utilities'] } },
+                testTimeout: 30_000,
+            },
+        },
+        coverage: ['packages/create-historic-city/src/**/*.ts'],
     },
 ];
 

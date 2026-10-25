@@ -27,7 +27,7 @@ import type { ErrorReporter } from '../../src/ports/error-reporter.js';
 import type { RuntimeConfig } from '../../src/ports/runtime-config.js';
 import type { SetupDeps } from '../../src/setup/index.js';
 import { createFakeDocumentStore } from '../support/documents.js';
-import { NOW } from '../support/fakes.js';
+import { NOW, fakeAdmins } from '../support/fakes.js';
 import { createFakeBlobStore, createFakeTaskQueue } from '../support/platform.js';
 
 export { NOW };
@@ -134,7 +134,7 @@ export function createWorld(options: WorldOptions = {}): World {
         clock,
         config: CONFIG,
         documents,
-        admins: { isAdmin: (uid) => Promise.resolve(uid === ADMIN_UID) },
+        admins: fakeAdmins([ADMIN_UID]),
         setup: {
             readStatus: () => Promise.resolve(documents.peek(FIRESTORE_PATHS.setupStatus) as Readonly<Record<string, unknown>> | undefined),
         },

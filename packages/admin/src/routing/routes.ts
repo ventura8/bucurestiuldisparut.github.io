@@ -3,8 +3,11 @@
  * (`#/photos/<photoId>`, `#/history/<entity>/<id>`, `#/setup/<step>`). Hash routing needs no Hosting rewrite and keeps
  * every address on the one `index.html`. `#/home` is the dashboard the M2c editors added (`docs/research/M2c-interfaces.md`
  * CR-M2c-24); `#/imagery` and `#/georef/<versionId>` are M3's (`docs/research/M3-interfaces.md` §10.1, CR-M3-9);
- * `#/inbox` is M4's (`docs/research/M4-interfaces.md` §5.5).
+ * `#/inbox` is M4's (`docs/research/M4-interfaces.md` §5.5). M5 (`docs/research/M5-interfaces.md` §1.5): an optional
+ * `#/c/<city>/` prefix names the city of a city page (`#/c/cluj/photos/abc`), and `#/cities/new` is the New city flow.
  */
+import { ADMIN_CITY_SEGMENT, CITY_ID_PATTERN } from '@hcm/shared';
+
 export const ADMIN_ROUTES = [
     'home',
     'setup',
@@ -19,6 +22,7 @@ export const ADMIN_ROUTES = [
     'history',
     'crashes',
     'georef',
+    'cities',
 ] as const;
 
 export type AdminRouteId = (typeof ADMIN_ROUTES)[number];
@@ -37,6 +41,11 @@ export interface AdminRouteSpec {
     readonly inCompactBarOnceSetUp: boolean;
     /** False for a page reached only from another (the georeferencer, from a version): never a navigation destination. */
     readonly inNavigation?: false;
+    /**
+     * M5: `city` pages show and edit the current city (their address may name it, `#/c/<city>/...`); `project` pages are
+     * the project's (Setup, the crash reports, the inbox, New city), whatever city is open.
+     */
+    readonly scope: 'city' | 'project';
 }
 
 export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> = {
@@ -44,28 +53,46 @@ export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> =
      * The dashboard (M2c, ops-screens): the first screen once Setup is complete, and then on the compact bar in Setup's
      * place (`DECISIONS-for-review.md` §34i); under More before.
      */
-    home: { icon: 'home', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: true },
-    setup: { icon: 'checklist', needsBackend: false, inCompactBar: true, inCompactBarOnceSetUp: false },
-    photos: { icon: 'photo_library', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true },
-    pois: { icon: 'place', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true },
-    layers: { icon: 'layers', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true },
+    home: { icon: 'home', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: true, scope: 'city' },
+    setup: { icon: 'checklist', needsBackend: false, inCompactBar: true, inCompactBarOnceSetUp: false, scope: 'project' },
+    photos: { icon: 'photo_library', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true, scope: 'city' },
+    pois: { icon: 'place', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true, scope: 'city' },
+    layers: { icon: 'layers', needsBackend: true, inCompactBar: true, inCompactBarOnceSetUp: true, scope: 'city' },
     /** M3's Imagery area: after Layers in the rail, under More on the compact bar (`docs/research/M3-interfaces.md` §10.1). */
-    imagery: { icon: 'satellite_alt', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
-    jobs: { icon: 'pending_actions', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
+    imagery: { icon: 'satellite_alt', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, scope: 'city' },
+    jobs: { icon: 'pending_actions', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, scope: 'city' },
     /** M4's inbox (`docs/research/M4-interfaces.md` §5.5): after Jobs in the rail, under More on the compact bar. */
-    inbox: { icon: 'notifications', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
-    settings: { icon: 'settings', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
-    admins: { icon: 'group', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
-    history: { icon: 'history', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
-    crashes: { icon: 'bug_report', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false },
+    inbox: { icon: 'notifications', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, scope: 'project' },
+    settings: { icon: 'settings', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, scope: 'city' },
+    admins: { icon: 'group', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, scope: 'city' },
+    history: { icon: 'history', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, scope: 'city' },
+    crashes: { icon: 'bug_report', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, scope: 'project' },
     /** The georeferencer: opened from a version or a layer (`#/georef/<versionId>`), never from the navigation. */
-    georef: { icon: 'add_location_alt', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, inNavigation: false },
+    georef: {
+        icon: 'add_location_alt',
+        needsBackend: true,
+        inCompactBar: false,
+        inCompactBarOnceSetUp: false,
+        inNavigation: false,
+        scope: 'city',
+    },
+    /** M5's New city flow (`#/cities/new`): opened from the city menu by the project's owner, never from the navigation. */
+    cities: {
+        icon: 'add_location_alt',
+        needsBackend: true,
+        inCompactBar: false,
+        inCompactBarOnceSetUp: false,
+        inNavigation: false,
+        scope: 'project',
+    },
 };
 
 export interface AdminRoute {
     readonly id: AdminRouteId;
     /** The id segments after the route, each `^[A-Za-z0-9_-]{1,64}$`; at most two. */
     readonly params: readonly string[];
+    /** M5: the city the address names (`#/c/<city>/...`); absent, the current city. */
+    readonly cityId?: string;
 }
 
 /** Where an unknown or malformed address lands, and an empty one before Setup is complete. */
@@ -81,14 +108,35 @@ function isRouteId(value: string): value is AdminRouteId {
     return (ADMIN_ROUTES as readonly string[]).includes(value);
 }
 
-/** Reads `#/photos/abc` as `{id: 'photos', params: ['abc']}`; null for anything that is not exactly a known route. */
+/** A route's segments without the address's city prefix, and that city (null: no prefix; undefined: a malformed one). */
+function withoutCity(segments: readonly string[]): { readonly segments: readonly string[]; readonly cityId: string | null | undefined } {
+    if (segments[0] !== ADMIN_CITY_SEGMENT) {
+        return { segments, cityId: null };
+    }
+    const cityId = segments[1] ?? '';
+    return { segments: segments.slice(2), cityId: CITY_ID_PATTERN.test(cityId) ? cityId : undefined };
+}
+
+/**
+ * Reads `#/photos/abc` as `{id: 'photos', params: ['abc']}` and `#/c/cluj/photos` as `{id: 'photos', params: [],
+ * cityId: 'cluj'}`; null for anything that is not exactly a known route (a malformed city among them).
+ */
 export function parseAdminRoute(hash: string): AdminRoute | null {
-    const [first = '', ...params] = hash.replace(/^#\/?/, '').split('/');
-    const valid = isRouteId(first) && params.length <= MAX_PARAMS && params.every((param) => SEGMENT.test(param));
-    return valid ? { id: first, params } : null;
+    const { segments, cityId } = withoutCity(hash.replace(/^#\/?/, '').split('/'));
+    const [first = '', ...params] = segments;
+    if (cityId === undefined || !isRoute(first, params)) {
+        return null;
+    }
+    return cityId === null ? { id: first, params } : { id: first, params, cityId };
+}
+
+/** A known route with at most two well-formed id segments. */
+function isRoute(first: string, params: readonly string[]): first is AdminRouteId {
+    return isRouteId(first) && params.length <= MAX_PARAMS && params.every((param) => SEGMENT.test(param));
 }
 
 /** The address of a route, the inverse of `parseAdminRoute`. */
 export function adminRouteHash(route: AdminRoute): string {
-    return ['#', route.id, ...route.params].join('/');
+    const city = route.cityId === undefined ? [] : [ADMIN_CITY_SEGMENT, route.cityId];
+    return ['#', ...city, route.id, ...route.params].join('/');
 }

@@ -41,12 +41,14 @@ import {
 } from './support/documents.js';
 import {
     ADMIN_ONLY,
+    ANY_ADMIN,
     EVERYONE,
     NOBODY,
     createWorld,
     expected,
     serverTime,
     stampedBy,
+    systemStamp,
     verdicts,
     type Data,
     type Persona,
@@ -92,6 +94,11 @@ function serverOwned(collection: string, id: string, seed: () => Data): Row {
     };
 }
 
+/** A server-written document of the project, not of a city (M5): every admin reads it, whatever their cities. */
+function projectOwned(collection: string, id: string, seed: () => Data): Row {
+    return { ...serverOwned(collection, id, seed), allowed: { get: ANY_ADMIN, list: ANY_ADMIN } };
+}
+
 function history(collection: string): Row {
     return serverOwned(collection, '1767225600000-event1', () => historyEntryDoc(admin()));
 }
@@ -101,21 +108,27 @@ const OWN = 'matrix-admin';
 
 const ROWS: Readonly<Record<string, Row>> = {
     'admins/{uid}': serverOwned(FIRESTORE_PATHS.admins, 'someone-else', adminDoc),
-    'setup/status': serverOwned('setup', 'status', setupStatusDoc),
-    'setup/owner': serverOwned('setup', 'owner', () => ownerDoc(admin())),
+    'setup/status': projectOwned('setup', 'status', setupStatusDoc),
+    'setup/owner': projectOwned('setup', 'owner', () => ownerDoc(admin())),
     'invites/{sha256}': serverOwned(FIRESTORE_PATHS.invites, INVITE_ID, () => inviteDoc(admin())),
-    'usage/{month}': serverOwned('usage', 'mapbox-2026-10', usageDoc),
-    'ops/guard': serverOwned('ops', 'guard', opsGuardDoc),
-    'ops/dispatch': serverOwned('ops', 'dispatch', opsDispatchDoc),
-    'ops/harvest-{city}': serverOwned('ops', `harvest-${CITY_ID}`, harvestStateDoc),
-    'manifests/{city}': serverOwned(FIRESTORE_PATHS.manifestStates, CITY_ID, () => manifestStateDoc(CITY_ID)),
+    'usage/{month}': projectOwned('usage', 'mapbox-2026-10', usageDoc),
+    // M5: the ops documents are read one by one (their rule names the document), never listed.
+    'ops/guard': { ...projectOwned('ops', 'guard', opsGuardDoc), allowed: { get: ANY_ADMIN } },
+    'ops/dispatch': { ...projectOwned('ops', 'dispatch', opsDispatchDoc), allowed: { get: ANY_ADMIN } },
+    // M5: a city's harvest state and manifest state are its admins' (get only: the rule names the city).
+    'ops/harvest-{city}': { ...serverOwned('ops', `harvest-${CITY_ID}`, harvestStateDoc), allowed: { get: ADMIN_ONLY } },
+    'manifests/{city}': {
+        ...serverOwned(FIRESTORE_PATHS.manifestStates, CITY_ID, () => manifestStateDoc(CITY_ID)),
+        allowed: { get: ADMIN_ONLY },
+    },
     'cities/{city}': {
         collection: 'cities',
         id: CITY_ID,
         seed: () => cityDoc(CITY_ID),
         create: (uid) => ({ ...cityDoc(CITY_ID), ...stampedBy(uid) }),
         update: stamped({ published: false }),
-        allowed: { ...readOnly, update: ADMIN_ONLY },
+        // M5: a city is read and updated by its own admins; the cities are never listed (the rule names the city).
+        allowed: { get: ADMIN_ONLY, update: ADMIN_ONLY },
     },
     'cities/{city}/photos/{photo}': {
         collection: FIRESTORE_PATHS.photos(CITY_ID),
@@ -168,6 +181,17 @@ const ROWS: Readonly<Record<string, Row>> = {
         update: stamped({ status: 'rejected' }),
         allowed: { ...readOnly, update: ADMIN_ONLY },
     },
+    // M5 (docs/research/M5-interfaces.md §1.8, §5.3): the city's counters and its exports' records, server-written.
+    'cities/{city}/usage/{month}': serverOwned(`${FIRESTORE_PATHS.city(CITY_ID)}/usage`, '2026-10', () => ({
+        month: '2026-10',
+        computeUnits: 1,
+        aiRequests: 2,
+        ...systemStamp('cities'),
+    })),
+    'cities/{city}/exports/{export}': serverOwned(FIRESTORE_PATHS.cityExports(CITY_ID), 'export-1', () => ({
+        status: 'queued',
+        ...systemStamp('export'),
+    })),
     'cities/{city}/history/{entry}': history(audited('city', CITY_ID)),
     'cities/{city}/photos/{photo}/history/{entry}': history(audited('photo', 'p1')),
     'cities/{city}/layers/{layer}/history/{entry}': history(audited('layer', 'corona-1966')),
@@ -200,8 +224,8 @@ const ROWS: Readonly<Record<string, Row>> = {
         ...serverOwned(FIRESTORE_PATHS.notificationEvents, 'job.failed~matrix-city~j1~0', notificationEventDoc),
         allowed: {},
     },
-    'assistGeocodes/{cell}': serverOwned(FIRESTORE_PATHS.geocodeCells, 'n444413_e260973', geocodeCellDoc),
-    'usage/ai-{month}': serverOwned('usage', 'ai-2026-10', aiUsageDoc),
+    'assistGeocodes/{cell}': projectOwned(FIRESTORE_PATHS.geocodeCells, 'n444413_e260973', geocodeCellDoc),
+    'usage/ai-{month}': projectOwned('usage', 'ai-2026-10', aiUsageDoc),
 };
 
 function request(row: Row, operation: Operation, persona: Persona): Promise<unknown> {

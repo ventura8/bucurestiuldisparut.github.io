@@ -51,6 +51,10 @@ export function adminState(overrides: Partial<AdminStatePort> = {}): AdminStateP
         notice: null,
         projectId: 'demo-hcm',
         authDomain: 'demo-hcm.firebaseapp.com',
+        // M5: the owner of the one bundled city, who owns the project.
+        cities: [{ id: 'bucharest', role: 'owner', name: { ro: 'București', en: 'Bucharest' } }],
+        cityId: 'bucharest',
+        projectOwner: true,
         setup: null,
         ...overrides,
     };
@@ -91,6 +95,8 @@ export class FakeAdminApp implements AdminAppPort {
             enableApi: record('enableApi'),
             reload: sync('reload'),
             navigate: sync('navigate'),
+            switchCity: sync('switchCity'),
+            refreshCities: record('refreshCities'),
             setLocale: sync('setLocale'),
             setTheme: sync('setTheme'),
             setConsent: sync('setConsent'),

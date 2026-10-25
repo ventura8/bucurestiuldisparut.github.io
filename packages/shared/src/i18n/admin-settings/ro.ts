@@ -25,6 +25,13 @@ export const ro = {
     'adminContent.settings.section.categoriesHint': 'Pictogramă, culoare, opacitate, ordine',
     'adminContent.settings.section.overlays': 'Opacități implicite',
     'adminContent.settings.section.overlaysHint': 'Cum se deschide harta pentru vizitatori',
+    // M5 (the integrator, DECISIONS-for-review.md §63a): whether visitors see the city; a new city starts unpublished.
+    'adminContent.settings.section.publish': 'Publicare',
+    'adminContent.settings.section.publishHint': 'Dacă vizitatorii văd orașul',
+    'adminContent.settings.publish.label': 'Orașul este public',
+    'adminContent.settings.publish.on': 'Vizitatorii văd harta orașului. Oprit și salvat, harta publică dispare în circa un minut.',
+    'adminContent.settings.publish.off': 'Orașul nu este public încă. Pornit și salvat, harta publică apare în circa un minut.',
+    'adminContent.settings.publish.site': 'Site-ul public îl adaugă un dezvoltator (npm run site:add); Exportă orașul merge oricum.',
     'adminContent.settings.saved': 'Setările au fost salvate. Harta publică se actualizează în aproximativ un minut.',
     'adminContent.settings.refused.conflict': 'Altcineva a modificat aceste setări între timp. Alege ce păstrezi, apoi salvează din nou.',
     'adminContent.settings.refused.gone': 'Elementul a fost șters între timp. Nimic nu a fost salvat.',

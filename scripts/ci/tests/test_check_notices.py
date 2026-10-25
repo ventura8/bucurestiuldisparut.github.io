@@ -14,6 +14,7 @@ SCRIPT = Path(notices.__file__)
 
 ENGINE = "packages/engine/dist"
 ADMIN = "packages/admin/dist"
+CLI = "packages/create-historic-city/dist"
 MIT_TEXT = "MIT License\n\nPermission is hereby granted, free of charge, ..."
 
 
@@ -76,6 +77,13 @@ def admin_build(root: Path) -> None:
     notices_file(root, ADMIN, [entry("idb", "7.1.1", "ISC")])
 
 
+def cli_build(root: Path) -> None:
+    """The create-historic-city CLI: zod bundled into dist/cli.mjs (M5), its notices complete."""
+    install(root, "node_modules/zod", "zod", "4.6.6", "MIT")
+    source_map(root, CLI, "cli.mjs.map", ["../../../node_modules/zod/v4/core/core.js", "../src/main.ts"])
+    notices_file(root, CLI, [entry("zod", "4.6.6", "MIT")])
+
+
 def problems_of(root: Path) -> list[str]:
     problems, _ = notices.check(root)
     return problems
@@ -84,17 +92,20 @@ def problems_of(root: Path) -> list[str]:
 def test_happy_path_complete_notices_pass_with_one_line_per_build(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
     engine_build(tmp_path)
     admin_build(tmp_path)
+    cli_build(tmp_path)
 
     assert notices.main(["--root", str(tmp_path)]) == 0
     assert caplog.messages == [
         "[notices] OK:\n"
         f"  {ENGINE}/{notices.NOTICES}: 2 bundled package(s) and 1 for copied files, each with its licence\n"
-        f"  {ADMIN}/{notices.NOTICES}: 1 bundled package(s) and 0 for copied files, each with its licence"
+        f"  {ADMIN}/{notices.NOTICES}: 1 bundled package(s) and 0 for copied files, each with its licence\n"
+        f"  {CLI}/{notices.NOTICES}: 1 bundled package(s) and 0 for copied files, each with its licence"
     ]
 
 
 def test_bad_path_a_missing_notices_file_fails_the_build_it_belongs_to(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
     engine_build(tmp_path)
+    cli_build(tmp_path)
 
     assert notices.main(["--root", str(tmp_path)]) == 1
     assert caplog.messages == [f"[notices] FAILED:\n  - {ADMIN}/{notices.NOTICES}: missing (run the build stage first)"]
@@ -256,6 +267,7 @@ def test_happy_path_header_lines_may_repeat_and_values_are_trimmed() -> None:
 def test_happy_path_script_entry_point_exits_with_main_status(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     engine_build(tmp_path)
     admin_build(tmp_path)
+    cli_build(tmp_path)
     monkeypatch.setattr(sys, "argv", [str(SCRIPT), "--root", str(tmp_path)])
 
     with pytest.raises(SystemExit) as exit_info:

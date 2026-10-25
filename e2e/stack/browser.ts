@@ -124,6 +124,13 @@ function stackShim(config: ShimConfig): void {
         }
     }
 
+    // A link the page clicks itself to save a file (`<a download>`: the export's Download) is the page's own request, not a
+    // person's choice of where to go, so it is forwarded too.
+    scope.HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement): void {
+        setAttribute?.call(this, 'href', this.hasAttribute('download') ? rewrite(this.href) : this.href);
+        scope.HTMLElement.prototype.click.call(this);
+    };
+
     // Google's consent stand-in opens in a frame over the page instead of a popup (the Claude browser pane opens a popup in
     // place of its page, and the opener is lost): the frame's window is the "popup" the admin waits on, the stand-in posts
     // its answer to its parent, and the frame goes once it has (its window then reads as closed).

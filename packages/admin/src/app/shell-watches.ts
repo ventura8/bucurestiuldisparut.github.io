@@ -32,6 +32,7 @@ export function shellWatches(sources: ShellWatchSources, shell: ShellStateAccess
     // The city the editors edit: the `e2e` build's own city when the address names one (CR-M2c-7), so the shell wears its theme.
     const ownCity = sources.content?.cityId ?? null;
     const cityId = ownCity ?? sources.project.cities[0] ?? null;
+    // M5: the shell's current city once the session chose it (`./current-city.ts`); the fallback before.
     const cityTheme = new CityTheme({ documents, shell, cityId, denied });
     const readiness = new SetupReadiness({
         ...{ documents, shell, local: sources.local, projectId: sources.config.projectId, denied },

@@ -32,12 +32,22 @@ service firebase.storage {
                 && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
         }
 
-        // An admin uploading a NEW, non-empty object into their own folder of a well-formed city id
+        // M5 (docs/research/M5-interfaces.md §1.4; owner: multi-city): a role in the path's city, read from the same
+        // admins/{uid} document (`cities`, written by the functions only; a document without it belongs to no city).
+        function memberships() {
+            return firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.get('cities', {});
+        }
+
+        function isCityMember(city) {
+            return isAdmin() && memberships().get(city, '') in ['owner', 'editor'];
+        }
+
+        // An admin of the city uploading a NEW, non-empty object into their own folder of a well-formed city id
         // (CITY_ID_PATTERN) and upload id (ID_PATTERN). Storage treats overwriting an existing object
         // as `create` too, hence `resource == null`: every upload gets its own name, and
         // photos.onUpload never sees an object change under it.
         function ownUpload(city, uid, upload) {
-            return isAdmin()
+            return isCityMember(city)
                 && request.auth.uid == uid
                 && city.matches('[a-z0-9-]{2,32}')
                 && upload.matches('[A-Za-z0-9_-]{1,40}')
@@ -58,7 +68,7 @@ service firebase.storage {
                 && request.resource.contentType.matches('image/(jpeg|png|webp|tiff|heic|heif)')
                 && request.resource.metadata.get('originalName', '').size() <= 255
                 && firestore.exists(/databases/(default)/documents/cities/$(city)/photos/$(photo));
-            allow read, delete: if isAdmin();
+            allow read, delete: if isCityMember(city);
         }
 
         // Historical rasters (GeoTIFF) for the georeferencing pipeline (M3, RASTER_PATHS.upload), under 8 GiB:
@@ -75,13 +85,33 @@ service firebase.storage {
                 && request.resource.metadata.get('originalName', '').size() <= 255
                 && request.resource.metadata.get('year', '1900').matches('(18|19|20)[0-9][0-9]')
                 && request.resource.metadata.get('layerId', 'x').matches('[A-Za-z0-9_-]{1,40}');
-            allow read, delete: if isAdmin();
+            allow read, delete: if isCityMember(city);
         }
 
-        // Everything else (originals/, rasters/, raster-seg/, usgs-raw/, previews/, tmp/): admins
-        // read it, only service accounts write it. No path is readable without signing in.
-        match /{path=**} {
+        // M5: what the functions and the pipeline write under a city (photo originals, a job's scratch files, the layer
+        // versions' files, the reference cache) is read by that city's admins only (the georeferencer, the Imagery area).
+        match /originals/photos/{city}/{path=**} {
+            allow read: if isCityMember(city);
+        }
+
+        match /work/{city}/{path=**} {
+            allow read: if isCityMember(city);
+        }
+
+        match /rasters/{city}/{path=**} {
+            allow read: if isCityMember(city);
+        }
+
+        match /reference/{city}/{path=**} {
+            allow read: if isCityMember(city);
+        }
+
+        // A USGS scene's browse copy is the project's (every city that has the scene shares it, and it is public domain).
+        match /usgs-browse/{path=**} {
             allow read: if isAdmin();
         }
+
+        // Everything else (usgs-raw/, exports/, tmp/, any path with no city): only service accounts read or write it;
+        // an export leaves through its signed address alone (§5.5). No path is readable without signing in.
     }
 }

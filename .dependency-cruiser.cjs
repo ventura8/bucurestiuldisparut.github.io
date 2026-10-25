@@ -1,6 +1,7 @@
 // Architecture rules for the TypeScript workspaces, the e2e suite, the rules tests and the site build (`npm run
 // lint:deps`). Layering, bottom-up: shared <- ui <- {engine, admin}; test-support is test-only; functions/ keeps its
-// SDKs in adapters/ and its feature folders independent (M2-interfaces §1, §5).
+// SDKs in adapters/ and its feature folders independent (M2-interfaces §1, §5); the create-historic-city CLI bundles only Node,
+// @hcm/shared and the colour library (M5-interfaces §4.1).
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
     forbidden: [
@@ -117,10 +118,11 @@ module.exports = {
             comment:
                 'A feature folder reaches another only through ports/, api/ and @hcm/shared (M2-interfaces §1, §5), so the three workstreams never edit or break each other.',
             // `layers` (M2c) and `imagery` (M3, docs/research/M3-interfaces.md §9) joined the list (DECISIONS-for-review.md §46c);
-            // `assist` and `notify` (M4, docs/research/M4-interfaces.md §6.1) too (DECISIONS-for-review.md §54a).
-            from: { path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops|layers|imagery|assist|notify)/' },
+            // `assist` and `notify` (M4, docs/research/M4-interfaces.md §6.1) too (DECISIONS-for-review.md §54a); `cities` (M5,
+            // docs/research/M5-interfaces.md §6.2) too (DECISIONS-for-review.md §62d).
+            from: { path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops|layers|imagery|assist|notify|cities)/' },
             to: {
-                path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops|layers|imagery|assist|notify)/',
+                path: '^functions/src/(admin|history|telemetry|setup|photos|publish|ops|layers|imagery|assist|notify|cities)/',
                 pathNot: '^functions/src/$1/',
             },
         },
@@ -147,6 +149,21 @@ module.exports = {
                 'The engine and the viewer elements never import the admin elements, so no admin code or text reaches the public bundle.',
             from: { path: ['^packages/engine/', '^packages/ui/src/(viewer|components|layout|theme|fonts)/'] },
             to: { path: '^packages/ui/src/admin/' },
+        },
+        {
+            name: 'create-historic-city-bundles-only-what-it-needs',
+            severity: 'error',
+            comment:
+                'The CLI is one bundled file without a runtime dependency (M5-interfaces §4.1): its source imports Node built-ins, @hcm/shared and the colour library of @hcm/ui/dynamic-color only (DECISIONS-for-review.md §61).',
+            from: { path: '^packages/create-historic-city/src/' },
+            to: {
+                dependencyTypesNot: ['core'],
+                pathNot: [
+                    '^packages/create-historic-city/(src/|package\\.json$)',
+                    '^packages/shared/src/',
+                    '^packages/ui/src/theme/dynamic-color\\.ts$',
+                ],
+            },
         },
     ],
     options: {

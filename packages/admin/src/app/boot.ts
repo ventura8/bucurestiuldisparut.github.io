@@ -60,6 +60,9 @@ function missingState(env: MissingEnvironment): AdminState<null> {
         revoked: false,
         people: {},
         unread: null,
+        cities: [],
+        cityId: null,
+        projectOwner: false,
         setupReady: null,
         projectId: '',
         authDomain: '',
@@ -78,6 +81,8 @@ export function configMissingApp(env: MissingEnvironment): AdminApp<null, null> 
             env.location.reload();
         },
         navigate: () => undefined,
+        switchCity: () => undefined,
+        refreshCities: NOTHING,
         setLocale: (locale) => {
             env.local.set(LANGUAGE_KEY, locale);
             store.update({ locale });

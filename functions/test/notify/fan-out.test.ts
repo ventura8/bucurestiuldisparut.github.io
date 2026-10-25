@@ -83,7 +83,7 @@ describe('notify.onEvent', () => {
             severity: 'error',
             cityId: 'assist-city',
             params: { label: 'Corona 1968', labelEn: 'Corona 1968 (EN)' },
-            link: '#/imagery/version/job-1',
+            link: '#/c/assist-city/imagery/version/job-1',
             createdAt: timestampFromDate(new Date(NOW)),
             read: false,
             updatedBy: 'system:notify',
@@ -161,12 +161,12 @@ describe('notify.onEvent: the pushes', () => {
                     body: 'Procesarea „Corona 1968” a eșuat. Deschide-o ca să vezi de ce.',
                     tag: EVENT_ID,
                 },
-                link: 'https://demo-hcm.web.app/#/imagery/version/job-1',
+                link: 'https://demo-hcm.web.app/#/c/assist-city/imagery/version/job-1',
             },
             {
                 token: enToken,
                 notification: { title: 'Notifications', body: 'Processing “Corona 1968 (EN)” failed. Open it to see why.', tag: EVENT_ID },
-                link: 'https://demo-hcm.web.app/#/imagery/version/job-1',
+                link: 'https://demo-hcm.web.app/#/c/assist-city/imagery/version/job-1',
             },
         ]);
         await expect(item(deps, 'u-admin')).resolves.toMatchObject({ pushedAt: timestampFromDate(new Date(NOW)) });
@@ -248,6 +248,33 @@ describe('notify.onEvent: the pushes', () => {
         await fanOut(deps, 'usgs.approved~download', approved);
 
         await expect(item(deps, 'u-admin', 'usgs.approved~download')).resolves.not.toHaveProperty('cityId');
+        await expect(item(deps, 'u-admin', 'usgs.approved~download')).resolves.toMatchObject({ link: '#/imagery' });
+    });
+
+    it('happyPath_aCitysEventReachesOnlyItsAdminsAndAProjectEventEveryone @S-A51-HAPPY-INBOX', async () => {
+        const deps = await world();
+        await seedAdmin(deps, 'u-other-city', { cities: { cluj: 'owner' } });
+        await seedAdmin(deps, 'u-before-m5', { cities: undefined });
+        const paused = notificationEvent({ kind: 'budget.paused', parts: ['2026-10-24'], link: '#/imagery' }, 'ops', new Date(NOW));
+
+        await expect(fanOut(deps, EVENT_ID, failedJob())).resolves.toBe(2);
+        await expect(fanOut(deps, 'budget.paused~2026-10-24', paused)).resolves.toBe(4);
+
+        await expect(item(deps, 'u-other-city')).resolves.toBeUndefined();
+        await expect(item(deps, 'u-before-m5')).resolves.toBeUndefined();
+        await expect(item(deps, 'u-other-city', 'budget.paused~2026-10-24')).resolves.toMatchObject({ link: '#/imagery' });
+    });
+
+    it.each([
+        ['already a city link', '#/c/assist-city/jobs', '#/c/assist-city/jobs'],
+        ['a link the router would not take as a route', '#/', '#/'],
+    ])('badPath_aCityEventWhoseLinkIs%sKeepsIt', async (_name, link, kept) => {
+        const deps = await world();
+        const event = { ...failedJob(), link };
+
+        await fanOut(deps, EVENT_ID, event);
+
+        await expect(item(deps, 'u-admin')).resolves.toMatchObject({ link: kept });
     });
 
     it('badPath_aFailedInboxWriteIsTheTriggersToRetry', async () => {

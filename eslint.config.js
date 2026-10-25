@@ -13,13 +13,18 @@ import wc from 'eslint-plugin-wc';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-/** Product source: every workspace package, the Cloud Functions and the static site build (it writes the page, its CSP and the served manifest). */
+/**
+ * Product source: every workspace package, the Cloud Functions, the static site build (it writes the page, its CSP and the
+ * served manifest) and the release scripts (they write every version, the released engine and its integrity).
+ */
 const PRODUCT = [
     'packages/*/src/**/*.ts',
     'functions/src/**/*.ts',
     'scripts/site/src/**/*.ts',
     'scripts/site/build-site.ts',
     'scripts/site/build-admin.ts',
+    'scripts/release/src/**/*.ts',
+    'scripts/release/*.ts',
 ];
 /** Vitest suites and the test kit, the JavaScript CLIs' tests included (the `tools` project of vitest.config.ts). */
 const TESTS = [
@@ -108,6 +113,10 @@ export default defineConfig(
             'seed/**',
             // Third-party code vendored only to patch an advisory (vendor/npm/braces/README.md); not ours to lint.
             'vendor/**',
+            // The released engine (docs/research/M5-interfaces.md §2.3): the minified build a release commits for jsDelivr,
+            // written by `npm run release:cdn` and held byte for byte to a fresh build by the release-cdn gate. Its sources
+            // are linted in packages/; the bundle is no source.
+            'cdn/engine/**',
         ],
     },
     {
@@ -193,8 +202,9 @@ export default defineConfig(
         },
     },
     {
-        // A city's config.js is a classic script that assigns window.HistoricCityMapConfig (docs/ENGINE_API.md).
-        files: ['sites/*/config.js', 'starter-kit/config.js'],
+        // A city's config.js is a classic script that assigns window.HistoricCityMapConfig (docs/ENGINE_API.md); the e2e
+        // world's fixture cities are city sites too (M5, DECISIONS-for-review.md §62d).
+        files: ['sites/*/config.js', 'starter-kit/config.js', 'e2e/fixtures/sites/*/config.js'],
         languageOptions: { sourceType: 'script', globals: globals.browser },
     },
     {

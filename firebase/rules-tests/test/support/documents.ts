@@ -88,6 +88,8 @@ export function cityDoc(cityId: string): Data {
         engine: { minVersion: '1.0.0' },
         photosOverlay: { defaultOpacity: 0.9 },
         imagery: { autoPublish: true, rmseThresholdM: 15, targetYears: [1966, 1976, 1977, 1978, 1980] },
+        // M5 (docs/research/M5-interfaces.md §1.8): the city's share of the budgets, server-owned.
+        limits: { computeUnitsPerMonth: 5, rasterJobsPerDay: 3, aiRequestsPerMonth: 100, geocodeCellsPerDay: 100, exportsPerDay: 3 },
         published: true,
         createdAt: past(),
         ...systemStamp('setup'),

@@ -6,7 +6,7 @@
 import { z } from 'zod';
 
 import { bboxContains } from '../geo/bbox.js';
-import { isHttpsUrl } from '../text/urls.js';
+import { isCspOrigin, isHttpsUrl } from '../text/urls.js';
 import { manifestRuleIssues } from './manifest-rules.js';
 import { photosOverlaySchema, poiCategorySchema, poiSchema, MAX_POI_CATEGORIES, MAX_POIS } from './poi.js';
 import {
@@ -68,12 +68,17 @@ export const themeSchema = z.strictObject({
     }),
 });
 
+/** An https style address whose origin a page's policy can name: a host with `;` or `'` is refused (`isCspOrigin`). */
+function isHttpsStyle(style: string): boolean {
+    return isHttpsUrl(style) && isCspOrigin(new URL(style).origin);
+}
+
 export const basemapSchema = z.strictObject({
     /** `mapbox://styles/<owner>/<style>` or an https style URL. */
     style: z
         .string()
         .max(2048)
-        .refine((style) => MAPBOX_STYLE.test(style) || isHttpsUrl(style), coded('validation.format')),
+        .refine((style) => MAPBOX_STYLE.test(style) || isHttpsStyle(style), coded('validation.format')),
     /** Mapbox Standard configuration properties (`lightPreset`, `show3dObjects`, ...), set on the `basemap` import. */
     config: z
         .record(z.string().regex(STYLE_CONFIG_KEY), z.union([z.string().max(64), z.number(), z.boolean()]))

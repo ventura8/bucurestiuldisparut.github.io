@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { FIRESTORE_PATHS } from '../../src/schemas/paths.js';
+import { EXPORT_LIMITS } from '../../src/schemas/city-export.js';
 import { parseRasterUploadPath, PRIVATE_BUCKET_LIFECYCLE, RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
 
 describe('raster paths', () => {
@@ -25,7 +26,16 @@ describe('raster paths', () => {
             'cities/bucharest/layerVersions/job1',
         ]);
         expect(VERSION_FILES).toContain('studio.tif');
-        expect(PRIVATE_BUCKET_LIFECYCLE.map((rule) => rule.prefix)).toEqual(['tmp/', 'uploads/', 'work/', 'usgs-raw/', 'reference/']);
+        expect(PRIVATE_BUCKET_LIFECYCLE.map((rule) => rule.prefix)).toEqual([
+            'tmp/',
+            'uploads/',
+            'work/',
+            'usgs-raw/',
+            'reference/',
+            'exports/',
+        ]);
+        // M5 (CR-M5-8): the exports go when their records say they expired.
+        expect(PRIVATE_BUCKET_LIFECYCLE.find((rule) => rule.prefix === 'exports/')?.days).toBe(EXPORT_LIMITS.ttlDays);
     });
 
     it.each([

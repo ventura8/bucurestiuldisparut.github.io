@@ -62,6 +62,19 @@ describe('the compute-unit guard', () => {
         expect(guardVerdict({ estimate: 1, usage: undefined, tilesets: MAX_TILESETS, versionId: 'v1' }).verdict).toBe('tileset-limit');
     });
 
+    it('badPath_aPublishWithinTheMonthButOverItsCitysShareWaits', () => {
+        expect(guardVerdict({ estimate: 5, usage: undefined, tilesets: 3, versionId: 'v1', cityAvailable: 4.5 })).toEqual({
+            verdict: 'city-over',
+            available: 4.5,
+            overageUsd: 0,
+        });
+    });
+
+    it('happyPath_aPublishWithinItsCitysShareGoesThroughAndTheMonthComesFirst', () => {
+        expect(guardVerdict({ estimate: 5, usage: undefined, tilesets: 3, versionId: 'v1', cityAvailable: 5 }).verdict).toBe('within');
+        expect(guardVerdict({ estimate: 25, usage: undefined, tilesets: 3, versionId: 'v1', cityAvailable: 1 }).verdict).toBe('over');
+    });
+
     it('happyPath_monthsAreUtc', () => {
         expect(usageMonth(new Date('2026-10-31T23:30:00Z'))).toBe('2026-10');
         expect(nextMonthStart(new Date('2026-12-15T10:00:00Z')).toISOString()).toBe('2027-01-01T00:00:00.000Z');

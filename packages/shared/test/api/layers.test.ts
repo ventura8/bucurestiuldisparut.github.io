@@ -41,7 +41,7 @@ describe('layers.delete', () => {
     it('badPath_onlyTheServerQueuesALayerDelete', () => {
         expect(JOB_TYPES).toContain('layer-delete');
         expect(CLIENT_JOB_TYPES).not.toContain('layer-delete');
-        expect(CALLABLES['layers.delete']).toMatchObject({ access: 'admin', appCheck: 'consume' });
+        expect(CALLABLES['layers.delete']).toMatchObject({ access: 'cityEditor', appCheck: 'consume' });
     });
 });
 

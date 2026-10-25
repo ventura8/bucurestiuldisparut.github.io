@@ -1,26 +1,19 @@
-import type { AdminsListResponse } from '@hcm/shared';
+import type { CityAdminsListResponse } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { ADMINS_MODULE, selectionOf } from '../../src/admins/admins.js';
 import { failure } from '../app/fakes.js';
-import { contentWorld } from '../content/world.js';
+import { CITY, contentWorld } from '../content/world.js';
 
-const LIST: AdminsListResponse = {
+const LIST: CityAdminsListResponse = {
     admins: [
-        { uid: 'owner-uid', role: 'owner', email: 'owner@e2e.test', createdAt: '2026-10-01T10:00:00.000Z', self: true },
-        {
-            uid: 'ana-uid',
-            role: 'admin',
-            email: 'ana@e2e.test',
-            invitedBy: 'owner-uid',
-            createdAt: '2026-10-02T10:00:00.000Z',
-            self: false,
-        },
+        { uid: 'owner-uid', role: 'owner', projectOwner: true, email: 'owner@e2e.test', createdAt: '2026-10-01T10:00:00.000Z', self: true },
+        { uid: 'ana-uid', role: 'editor', projectOwner: false, email: 'ana@e2e.test', createdAt: '2026-10-02T10:00:00.000Z', self: false },
     ],
     invites: [
         {
             inviteId: 'a'.repeat(64),
-            role: 'admin',
+            role: 'editor',
             invitedBy: 'owner-uid',
             createdAt: '2026-10-10T10:00:00.000Z',
             expiresAt: '2026-10-24T10:00:00.000Z',
@@ -66,7 +59,12 @@ describe('the admins area', () => {
         const outcome = await admins.intents.invite('  New.Admin@e2e.test ');
 
         expect(outcome).toEqual({ ok: true, value: INVITED });
-        expect(callables.calls.find((call) => call.name === 'admins.invite')?.request).toEqual({ email: 'New.Admin@e2e.test' });
+        expect(callables.calls.find((call) => call.name === 'admins.invite')?.request).toEqual({
+            cityId: CITY,
+            email: 'New.Admin@e2e.test',
+            role: 'editor',
+        });
+        expect(callables.calls.find((call) => call.name === 'admins.list')?.request).toEqual({ cityId: CITY });
         expect(admins.state.invited).toEqual(INVITED);
         expect(notices).toEqual([{ key: 'adminContent.admins.invitedNotice' }]);
         expect(callables.named('admins.list')).toBe(2);
@@ -101,21 +99,10 @@ describe('the admins area', () => {
 
         expect(notices.map((notice) => notice.key)).toEqual(['adminShell.admins.removed', 'adminShell.admins.cancelled']);
         expect(callables.named('admins.list')).toBe(2);
-    });
-
-    it('badPath_theOwnerAndOneselfAreRefusedByTheServerAndNothingChanges', async () => {
-        const { services, callables, notices } = contentWorld();
-        callables.answer('admins.list', () => LIST);
-        callables.fail('admins.revoke', failure('failed-precondition', 'apiError.revoke.owner'));
-        const admins = ADMINS_MODULE.create(services);
-
-        await expect(admins.intents.revoke({ kind: 'admin', uid: 'owner-uid' })).resolves.toEqual({
-            ok: false,
-            error: { key: 'apiError.revoke.owner' },
-        });
-
-        expect(notices).toEqual([]);
-        expect(callables.named('admins.list')).toBe(0);
+        expect(callables.calls.filter((call) => call.name === 'admins.revoke').map((call) => call.request)).toEqual([
+            { kind: 'admin', uid: 'ana-uid', cityId: CITY },
+            { kind: 'invite', inviteId: 'a'.repeat(64), cityId: CITY },
+        ]);
     });
 
     it('badPath_aFailedListIsAnErrorUntilItIsReadAgainAndALaterFailureKeepsTheList', async () => {
@@ -143,5 +130,57 @@ describe('the admins area', () => {
             heard += 1;
         })();
         expect(heard).toBe(0);
+    });
+});
+
+/** M5 (`docs/research/M5-interfaces.md` §1.7): an invitation names a role; the city’s owners change roles. */
+describe('the admins area: roles in the city', () => {
+    it('happyPath_anOwnerInvitesAnOwnerAndChangesARole @S-A51-HAPPY-ROLE', async () => {
+        const { services, callables, notices } = contentWorld();
+        callables.answer('admins.list', () => LIST);
+        callables.answer('admins.invite', () => INVITED);
+        callables.answer('admins.setRole', () => ({ role: 'owner' }));
+        const admins = ADMINS_MODULE.create(services);
+
+        await admins.intents.invite('ion@e2e.test', 'owner');
+        await expect(admins.intents.setRole('ana-uid', 'owner')).resolves.toEqual({ ok: true, value: { role: 'owner' } });
+
+        expect(callables.calls.find((call) => call.name === 'admins.invite')?.request).toMatchObject({ role: 'owner' });
+        expect(callables.calls.find((call) => call.name === 'admins.setRole')?.request).toEqual({
+            cityId: CITY,
+            uid: 'ana-uid',
+            role: 'owner',
+        });
+        expect(notices.map((notice) => notice.key)).toContain('adminShell.admins.roleChanged');
+        expect(admins.state.busy).toBe(false);
+    });
+
+    it('badPath_theCitysLastOwnerKeepsTheRoleAndTheListIsNotReadAgain', async () => {
+        const { services, callables, notices } = contentWorld();
+        callables.fail('admins.setRole', failure('failed-precondition', 'apiError.city.lastOwner'));
+        const admins = ADMINS_MODULE.create(services);
+
+        await expect(admins.intents.setRole('owner-uid', 'editor')).resolves.toEqual({
+            ok: false,
+            error: { key: 'apiError.city.lastOwner' },
+        });
+
+        expect(notices).toEqual([]);
+        expect(callables.named('admins.list')).toBe(0);
+    });
+
+    it('badPath_oneselfIsRefusedByTheServerAndNothingChanges', async () => {
+        const { services, callables, notices } = contentWorld();
+        callables.answer('admins.list', () => LIST);
+        callables.fail('admins.revoke', failure('failed-precondition', 'apiError.revoke.self'));
+        const admins = ADMINS_MODULE.create(services);
+
+        await expect(admins.intents.revoke({ kind: 'admin', uid: 'owner-uid' })).resolves.toEqual({
+            ok: false,
+            error: { key: 'apiError.revoke.self' },
+        });
+
+        expect(notices).toEqual([]);
+        expect(callables.named('admins.list')).toBe(0);
     });
 });

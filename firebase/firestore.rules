@@ -51,6 +51,25 @@ service cloud.firestore {
                 && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
         }
 
+        // ---- M5: which city (docs/research/M5-interfaces.md §1.2, §1.4; owner: multi-city) ----------------------------
+        //
+        // Membership lives on the admin's own document (`admins/{uid}.cities`: city id -> 'owner' | 'editor', written by
+        // the functions only); the `exists` of isAdmin() and this `get` of the same document are one read. A document
+        // without `cities` (from before M5, until admin.session or ops.tick migrates it) belongs to no city: fail closed.
+        function cityRole(city) {
+            return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('cities', {}).get(city, '');
+        }
+
+        // Every city path: an admin with a role in that city; the admins of other cities read and write nothing of it.
+        function isCityMember(city) {
+            return isAdmin() && cityRole(city) in ['owner', 'editor'];
+        }
+
+        // The account that claimed the project: it reads every admin and every invitation.
+        function isProjectOwner() {
+            return isAdmin() && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', '') == 'owner';
+        }
+
         // ---- Value checks ------------------------------------------------------------------
         //
         // A check reads every key it needs: a missing key is an error, and an error denies.
@@ -73,6 +92,13 @@ service cloud.firestore {
         // javascript:, data: or http:): what zod `httpsUrlSchema` accepts, a little stricter.
         function httpsUrl() {
             return 'https://[^\\s/?#@]{1,253}([/?#][^\\s]{0,999}[^\\s]{0,786})?';
+        }
+
+        // `httpsUrl()` whose host has only letters, digits, dots and hyphens (and a port): an address whose origin a
+        // page's Content Security Policy names, where a `;` or a quote in the host would end the directive (zod
+        // `basemapSchema`, `isCspOrigin`; docs/LESSONS.md 241).
+        function httpsHostUrl() {
+            return 'https://[A-Za-z0-9.-]{1,253}(:[0-9]{1,5})?([/?#][^\\s]{0,999}[^\\s]{0,786})?';
         }
 
         // {ro, en?}: Romanian required, English optional (zod `localizedPartial`), `pattern` bounds both.
@@ -165,7 +191,7 @@ service cloud.firestore {
         // `mapbox://styles/<owner>/<style>` or an https style URL, plus at most 30 Standard config properties.
         function validBasemap(basemap) {
             return basemap.keys().hasOnly(['style', 'config'])
-                && basemap.style.matches('mapbox://styles/[A-Za-z0-9_-]{1,64}/[A-Za-z0-9_-]{1,64}|' + httpsUrl())
+                && basemap.style.matches('mapbox://styles/[A-Za-z0-9_-]{1,64}/[A-Za-z0-9_-]{1,64}|' + httpsHostUrl())
                 && basemap.get('config', {}) is map
                 && basemap.get('config', {}).size() <= 30;
         }
@@ -363,10 +389,11 @@ service cloud.firestore {
             allow read, write: if false;
         }
 
-        // Written by admin.claim, admin.join, admins.revoke and the bootstrap script only. A signed-in
-        // Google account reads its own document (admin.session tells the app the rest).
+        // Written by admin.claim, admin.join, admins.revoke and the bootstrap script only (M5: the cities callables and
+        // the migration too). A signed-in Google account reads its own document (admin.session tells the app the rest);
+        // M5: the project's owner reads every one, and a city's admins list theirs through admins.list.
         match /admins/{uid} {
-            allow read: if isAdmin() || (authed() && request.auth.uid == uid);
+            allow read: if (authed() && request.auth.uid == uid) || isProjectOwner();
         }
 
         // ---- M4 notifications and assists (docs/research/M4-interfaces.md §4.2, §5.6; owner: assists-notify) ------------
@@ -432,9 +459,10 @@ service cloud.firestore {
             allow read: if isAdmin();
         }
 
-        // Invitations, keyed by the SHA-256 of the invited address (the address itself is never stored).
+        // Invitations, keyed by the SHA-256 of the invited address (the address itself is never stored). M5: the project's
+        // owner reads them; a city's owners list their city's through admins.list.
         match /invites/{invite} {
-            allow read: if isAdmin();
+            allow read: if isProjectOwner();
         }
 
         // Mapbox usage counters (usage/mapbox-YYYY-MM) and, since M4, the AI drafts' monthly counters (usage/ai-YYYY-MM).
@@ -445,32 +473,38 @@ service cloud.firestore {
         // The budget guard and the last ops.tick (ops/guard), the dispatcher's execution slots (ops/dispatch) and each
         // city's last USGS harvest attempt (ops/harvest-{city}): written by the functions only (CR-M3-47). M4: the
         // Nominatim cool-down (ops/assist) and the crash-spike baseline (ops/crashes).
+        // M5: a city's harvest state is its admins'; the other documents are project state every city's screens show,
+        // and an ops id the contract does not name stays closed.
         match /ops/{doc} {
-            allow read: if isAdmin();
+            allow read: if doc.matches('harvest-.+')
+                ? isCityMember(doc.replace('^harvest-', ''))
+                : (doc in ['guard', 'dispatch', 'assist', 'crashes'] && isAdmin());
         }
 
-        // Each city's manifest builds (the admin's "Published" chip); publish.* writes them.
+        // Each city's manifest builds (the admin's "Published" chip); publish.* writes them. M5: the city's admins only.
         match /manifests/{city} {
-            allow read: if isAdmin();
+            allow read: if isCityMember(city);
         }
 
         // History's recent changes (M2c, CR-M2c-6): one collection-group query over every audited document's
         // `history` subcollection, kept to one city by the `cityId` each entry carries (CR-M2c-14; the composite
-        // indexes start with it). Admins, who edit every city of the map, list them; a single entry is read only
-        // under cities/ (a `history` document anywhere else stays closed, as every path the contract does not name: a
-        // condition on the path cannot hold for a collection-group query, so it guards `get` alone). No client writes
+        // indexes start with it). M5: the query's own `where('cityId', '==', <city>)` lets the rules prove the entries
+        // are of a city the admin belongs to; a single entry is read only under cities/ and only by that city's admins
+        // (a `history` document anywhere else stays closed, as every path the contract does not name). No client writes
         // an entry.
         match /{path=**}/history/{entry} {
-            allow list: if isAdmin();
-            allow get: if isAdmin() && path[0] == 'cities';
+            allow list: if isCityMember(resource.data.cityId);
+            allow get: if path[0] == 'cities' && isCityMember(path[1]);
         }
 
-        // Cities are created and deleted by callables; admins edit the settings.
+        // Cities are created and deleted by callables; admins edit the settings. M5: every rule of the city and of its
+        // subcollections asks for a role in that city (isCityMember), so an admin of another city is denied all of it;
+        // `limits` (cities.setLimits) is in no client write list.
         match /cities/{city} {
-            allow read: if isAdmin();
+            allow read: if isCityMember(city);
             // The imagery settings (M3) are saved on their own and checked on their own: a request has room for twenty
             // target years or for the rest of the settings, not for both (the 1000 expressions of a request).
-            allow update: if isAdmin()
+            allow update: if isCityMember(city)
                 && changedKeys().hasOnly(['name', 'bounds', 'center', 'zoom', 'minZoom', 'maxZoom', 'about', 'privacy', 'credits',
                     'theme', 'basemap', 'photosOverlay', 'imagery', 'published', 'updatedBy', 'updatedAt'])
                 && (changedKeys().hasOnly(['imagery', 'updatedBy', 'updatedAt'])
@@ -480,13 +514,13 @@ service cloud.firestore {
             // Every audited document keeps a `history` subcollection written by the history.*
             // triggers and history.revert only: admins read it, nobody writes it from a client.
             match /history/{entry} {
-                allow read: if isAdmin();
+                allow read: if isCityMember(city);
             }
 
             // New photos start unpublished and unprocessed; photos.onUpload owns the image fields.
             match /photos/{photo} {
-                allow read: if isAdmin();
-                allow create: if isAdmin()
+                allow read: if isCityMember(city);
+                allow create: if isCityMember(city)
                     && isId(photo)
                     && request.resource.data.keys().hasOnly(['title', 'description', 'year', 'yearEnd', 'dateText', 'author', 'license',
                         'rightsHolder', 'sourceUrl', 'sourceLabel', 'permissionNote', 'legacyId', 'links', 'location', 'bearing', 'fov',
@@ -496,70 +530,70 @@ service cloud.firestore {
                     && request.resource.data.processing == 'pending'
                     && request.resource.data.published == false
                     && created(request.resource.data);
-                allow update: if isAdmin()
+                allow update: if isCityMember(city)
                     && changedKeys().hasOnly(['title', 'description', 'year', 'yearEnd', 'dateText', 'author', 'license', 'rightsHolder',
                         'sourceUrl', 'sourceLabel', 'permissionNote', 'legacyId', 'links', 'location', 'bearing', 'fov', 'published',
                         'rightsReview', 'updatedBy', 'updatedAt'])
                     && validPhoto(request.resource.data)
                     && (!('location' in changedKeys()) || inCity(request.resource.data.location, city))
                     && (!changedKeys().hasAny(['published', 'license']) || publishable(request.resource.data));
-                allow delete: if isAdmin();
+                allow delete: if isCityMember(city);
 
                 match /history/{entry} {
-                    allow read: if isAdmin();
+                    allow read: if isCityMember(city);
                 }
             }
 
             // Layers are created by the pipeline; admins edit presentation, opacity and adjustments.
             match /layers/{layer} {
-                allow read: if isAdmin();
-                allow update: if isAdmin()
+                allow read: if isCityMember(city);
+                allow update: if isCityMember(city)
                     && changedKeys().hasOnly(['label', 'description', 'attribution', 'year', 'date', 'order', 'opacity', 'defaultVisible',
                         'adjustments', 'published', 'updatedBy', 'updatedAt'])
                     && validLayer(request.resource.data);
 
                 match /history/{entry} {
-                    allow read: if isAdmin();
+                    allow read: if isCityMember(city);
                 }
             }
 
             // Points of interest, drawn and edited by admins.
             match /pois/{poi} {
-                allow read: if isAdmin();
-                allow create: if isAdmin()
+                allow read: if isCityMember(city);
+                allow create: if isCityMember(city)
                     && isId(poi)
                     && request.resource.data.keys().hasOnly(['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd',
                         'links', 'photoIds', 'published', 'createdAt', 'createdBy', 'updatedBy', 'updatedAt'])
                     && validPoi(request.resource.data)
                     && created(request.resource.data);
-                allow update: if isAdmin()
+                allow update: if isCityMember(city)
                     && changedKeys().hasOnly(['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd', 'links', 'photoIds',
                         'published', 'updatedBy', 'updatedAt'])
                     && validPoi(request.resource.data);
-                allow delete: if isAdmin();
+                allow delete: if isCityMember(city);
 
                 match /history/{entry} {
-                    allow read: if isAdmin();
+                    allow read: if isCityMember(city);
                 }
             }
 
             // POI categories share the overlay namespace with layer ids and `photos` (PHOTOS_OVERLAY_ID).
             match /poiCategories/{category} {
-                allow read: if isAdmin();
-                allow create: if isAdmin()
+                allow read: if isCityMember(city);
+                allow create: if isCityMember(city)
                     && isId(category)
                     && category != 'photos'
                     && request.resource.data.keys().hasOnly(['label', 'icon', 'color', 'defaultOpacity', 'order', 'createdAt', 'updatedBy',
                         'updatedAt'])
                     && validCategory(request.resource.data)
                     && request.resource.data.createdAt == request.time;
-                allow update: if isAdmin()
+                allow update: if isCityMember(city)
                     && changedKeys().hasOnly(['label', 'icon', 'color', 'defaultOpacity', 'order', 'updatedBy', 'updatedAt'])
                     && validCategory(request.resource.data);
-                allow delete: if isAdmin();
+                allow delete: if isCityMember(city);
 
                 match /history/{entry} {
-                    allow read: if isAdmin();
+                    allow read: if isCityMember(city);
                 }
             }
 
@@ -567,8 +601,8 @@ service cloud.firestore {
             // version, M3-interfaces §2.8); admins may ask an unfinished one to stop. The dispatcher, the pipeline and
             // the publisher own every other field.
             match /jobs/{job} {
-                allow read: if isAdmin();
-                allow update: if isAdmin()
+                allow read: if isCityMember(city);
+                allow update: if isCityMember(city)
                     && changedKeys().hasOnly(['cancelRequested', 'updatedBy', 'updatedAt'])
                     && request.resource.data.cancelRequested == true
                     && stamped(request.resource.data)
@@ -576,14 +610,26 @@ service cloud.firestore {
 
                 // Redacted job log lines, written by the job runner only.
                 match /logs/{line} {
-                    allow read: if isAdmin();
+                    allow read: if isCityMember(city);
                 }
             }
 
             // Layer versions (M3): a georeferenced rendition on its way to a layer, written by the imagery
             // functions and the raster pipeline only; admins read them (the Imagery area, the georeferencer).
             match /layerVersions/{version} {
-                allow read: if isAdmin();
+                allow read: if isCityMember(city);
+            }
+
+            // M5 (docs/research/M5-interfaces.md §1.8): the city's month-to-date counters beside the project's, written by
+            // the functions only; the city's budget section reads them.
+            match /usage/{month} {
+                allow read: if isCityMember(city);
+            }
+
+            // M5 (docs/research/M5-interfaces.md §5.3, CR-M5-11): the static exports' records, written by export.start and
+            // export.build only; the Settings card follows them live.
+            match /exports/{exportId} {
+                allow read: if isCityMember(city);
             }
 
             // USGS scenes are harvested server-side; admins triage them (candidate, rejected) and annotate
@@ -591,8 +637,8 @@ service cloud.firestore {
             // order is usgs.markOrdered's, which asks USGS first, so no client writes `ordered` or `available`,
             // and `order` and `eeDatasetId` are server-owned like every field outside the list below.
             match /usgsScenes/{scene} {
-                allow read: if isAdmin();
-                allow update: if isAdmin()
+                allow read: if isCityMember(city);
+                allow update: if isCityMember(city)
                     && changedKeys().hasOnly(['status', 'note', 'updatedBy', 'updatedAt'])
                     && (!('status' in changedKeys()) || request.resource.data.status in ['candidate', 'rejected'])
                     && request.resource.data.get('note', 'x').matches('[\\s\\S]{1,1000}')

@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vite';
 
 import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
@@ -34,7 +36,14 @@ const ADMIN_MAP_MODULES =
 /** M4: the editors' assists, their state and intents (`packages/admin/src/assist/`) and their slots (`packages/ui/src/admin/assist/`). */
 const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]assist[\\/]/;
 
+/**
+ * `re2js` resolves to the admin's stand-in (`src/vendor/re2js-unsupported.ts`): the Firestore SDK needs it only for the
+ * regular expressions of Firestore Pipelines, which the admin never evaluates (DECISIONS-for-review.md §65k).
+ */
+const RE2JS_STAND_IN = fileURLToPath(new URL('src/vendor/re2js-unsupported.ts', import.meta.url));
+
 export default defineConfig({
+    resolve: { alias: [{ find: /^re2js$/, replacement: RE2JS_STAND_IN }] },
     plugins: [
         cssLiteralsPlugin(),
         thirdPartyNoticesPlugin({

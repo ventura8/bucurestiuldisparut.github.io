@@ -273,3 +273,47 @@ test(
         });
     },
 );
+
+/** A second city of the project, owned by the map's owner too (a reset removes it: not a content world's). */
+const SECOND_CITY = 'iasi';
+
+/** The map's owner as an owner of the project's city and of `SECOND_CITY`. */
+async function ownTwoCities(emulators: Parameters<typeof projectCity>[0], uid: string): Promise<void> {
+    await seedCity(projectCity(emulators, uid), AT);
+    await seedCity({ emulators, city: SECOND_CITY, uid }, AT);
+    await emulators.updateFields(`admins/${uid}`, { cities: { [PROJECT_CITY]: 'owner', [SECOND_CITY]: 'owner' } }, ['cities']);
+}
+
+test(
+    "An admin of two cities: once Setup is complete an empty address opens their city's dashboard, its address naming the city",
+    { tag: ['@S-A49-HAPPY-FIRST-SCREEN'] },
+    async ({ page, lang, adminWorld }) => {
+        // docs/LESSONS.md 257: the empty address became #/setup before Setup's readiness was known, and stayed on Setup.
+        const { emulators } = adminWorld;
+        await ownTwoCities(emulators, adminWorld.accounts.owner.uid);
+        await seedStatus(emulators, 'ok');
+
+        await page.goto(adminPath(lang));
+
+        await expect(page.locator('hcm-home-page')).toBeVisible();
+        await expect(page).toHaveURL(new RegExp(`#/c/${PROJECT_CITY}/home$`));
+    },
+);
+
+test(
+    'An admin of two cities: while Setup is not complete an empty address opens Setup and stays empty',
+    { tag: ['@S-A49-BAD-FIRST-SCREEN-INCOMPLETE'] },
+    async ({ page, lang, adminWorld }) => {
+        const { emulators } = adminWorld;
+        await ownTwoCities(emulators, adminWorld.accounts.owner.uid);
+        await seedStatus(emulators, 'pending');
+
+        await page.goto(adminPath(lang));
+
+        await expect(page.locator('hcm-setup-page')).toBeVisible();
+        await expect(
+            navigation(page, lang).getByRole('link', { name: shellText(lang, 'adminShell.nav.setup'), exact: true }),
+        ).toHaveAttribute('aria-current', 'page');
+        expect(new URL(page.url()).hash).toBe('');
+    },
+);

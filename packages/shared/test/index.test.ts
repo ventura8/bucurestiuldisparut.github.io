@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import * as shared from '../src/index.js';
+import { M5_EXPORTS } from './fixtures/exports-m5.js';
 
 /** The public API, by module: a removed or renamed export breaks the engine, the admin and the functions. */
 const EXPORTS = {
@@ -48,6 +49,7 @@ const EXPORTS = {
     urlHash: ['DEFAULT_COMPARE_POSITION', 'DEFAULT_HASH_LIMITS', 'MAX_HASH_LENGTH', 'MAX_OVERLAY_ENTRIES', 'decodeHash', 'encodeHash'],
     text: [
         'MAX_URL_LENGTH',
+        'isCspOrigin',
         'isHostOf',
         'isHttpsUrl',
         'isRelativeUrl',
@@ -219,17 +221,13 @@ const EXPORTS = {
         'CLAIM_OAUTH_SCOPE',
         'INVITE_TTL_DAYS',
         'OWNER_PERMISSION',
-        'adminsListRequestSchema',
-        'adminsListResponseSchema',
         'claimRequestSchema',
         'claimResponseSchema',
         'inviteIdFor',
-        'inviteRequestSchema',
         'inviteResponseSchema',
         'joinRequestSchema',
         'joinResponseSchema',
         'normalizeEmail',
-        'revokeRequestSchema',
         'revokeResponseSchema',
         'sessionRequestSchema',
         'sessionResponseSchema',
@@ -309,6 +307,7 @@ const EXPORTS = {
         'reprocessPhotoResponseSchema',
         'BACKGROUND_FUNCTIONS',
         'CALLABLES',
+        'CITY_ACCESSES',
         'FUNCTION_OWNERS',
         'HTTP_ENDPOINTS',
         'deployedName',
@@ -493,6 +492,7 @@ const EXPORTS = {
         'VERTEX_DRAFTS_ROLE_ID',
         'VERTEX_DRAFTS_PERMISSIONS',
         'NOMINATIM_REVERSE_URL',
+        'NOMINATIM_SEARCH_URL',
         'NOMINATIM_USER_AGENT',
         'TRANSLATION_PROMPT_VERSION',
         'VERTEX_LOCATION',
@@ -553,6 +553,8 @@ const EXPORTS = {
         'notifyUnregisterDeviceRequestSchema',
         'notifyUnregisterDeviceResponseSchema',
     ],
+    /** M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases. */
+    m5: M5_EXPORTS,
     migration: [
         'KNOWN_HTTPS_HOSTS',
         'decodeEntities',

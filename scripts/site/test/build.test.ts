@@ -311,3 +311,52 @@ describe('buildSite (the manifest the admin publishes, DECISIONS-for-review.md ย
         expect(() => buildSite({ ...options, publicBucket: BUCKET }, files)).toThrow('starter-kit/config.js names no cityId');
     });
 });
+
+describe('buildSite (a city without a seed manifest, M5-interfaces ยง1.10)', () => {
+    const BUCKET = 'exemplu-proiect-public';
+
+    /** The synthetic starter kit as `npm run site:add` leaves a city: no seed manifest, the public bucket's only. */
+    function bucketOnly(): ReturnType<typeof syntheticRoot> {
+        const root = syntheticRoot();
+        const spec = JSON.parse(root.files.readText('starter-kit/site.json')) as Record<string, unknown>;
+        const rest = Object.fromEntries(Object.entries(spec).filter(([key]) => key !== 'manifest' && key !== 'media'));
+        root.files.write('starter-kit/site.json', JSON.stringify({ ...rest, publicManifest: true }));
+        root.files.write('infra/project.json', '{"projectId":"exemplu-proiect","region":"europe-west1"}');
+        return root;
+    }
+
+    it('happyPath_thePageReadsTheBucketAndItsPolicyNamesOnlyTheBucketAndTheCrashEndpoint', async () => {
+        const { files, options } = bucketOnly();
+
+        const report = buildSite({ ...options, publicBucket: BUCKET }, files);
+
+        expect(report).toMatchObject({ cityId: 'exemplu', photos: 0, files: 3 + ENGINE_FILES.length });
+        expect(readConfigJs(files.readText('dist/site/starter-kit/config.js')).manifestUrl).toBe(
+            `https://storage.googleapis.com/${BUCKET}/cities/exemplu/manifest.json`,
+        );
+        const html = files.readText('dist/site/starter-kit/index.html');
+        expect(html).toMatch(
+            /connect-src [^;]*https:\/\/europe-west1-exemplu-proiect\.cloudfunctions\.net[^;]*https:\/\/storage\.googleapis\.com;/,
+        );
+        expect(html).toMatch(/img-src [^;]*https:\/\/storage\.googleapis\.com;/);
+        expect(files.listFiles('dist/site/starter-kit').filter((name) => name.startsWith('data/'))).toEqual([]);
+        expect(await htmlValidateMessages(html)).toEqual([]);
+    });
+
+    it('badPath_withoutABucketThereIsNothingToServe', () => {
+        const { files, options } = bucketOnly();
+
+        expect(() => buildSite(options, files)).toThrow('names no seed manifest and the build names no public bucket');
+        expect(files.isFile('dist/site/starter-kit/index.html')).toBe(false);
+    });
+
+    it('happyPath_theBuildsOwnManifestStillServesIt_asTheE2eFixtureSiteDoes', () => {
+        const { files, options } = bucketOnly();
+        const spec = JSON.parse(files.readText('starter-kit/site.json')) as Record<string, unknown>;
+        files.write('starter-kit/site.json', JSON.stringify({ ...spec, media: 'seed/bucharest/derived' }));
+        const manifest = JSON.parse(files.readText('starter-kit/data/manifest.json')) as unknown;
+
+        expect(buildSite({ ...options, manifest }, files)).toMatchObject({ cityId: 'exemplu', photos: 2 });
+        expect(files.isFile('dist/site/starter-kit/data/media/mihai-voda-1978/web.webp')).toBe(true);
+    });
+});

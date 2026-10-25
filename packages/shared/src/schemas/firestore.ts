@@ -104,6 +104,20 @@ export const cityDocSchema = z.strictObject({
     photosOverlay: photosOverlaySchema.optional(),
     /** M3: auto-publish, its RMSE threshold, the target years (`imagery-settings.ts`). */
     imagery: cityImagerySchema.optional(),
+    /**
+     * M5 (`docs/research/M5-interfaces.md` §1.8): the city's share of the project's budgets, server-owned (written by
+     * `cities.create` and `cities.setLimits`, whose `cityLimitsSchema` holds the upper bounds); absent, the project's own
+     * caps alone hold the city.
+     */
+    limits: z
+        .strictObject({
+            computeUnitsPerMonth: z.number().min(0),
+            rasterJobsPerDay: z.number().int().min(0),
+            aiRequestsPerMonth: z.number().int().min(0),
+            geocodeCellsPerDay: z.number().int().min(0),
+            exportsPerDay: z.number().int().min(0),
+        })
+        .optional(),
     published: z.boolean(),
     createdAt: timestampSchema.optional(),
     ...stamp,

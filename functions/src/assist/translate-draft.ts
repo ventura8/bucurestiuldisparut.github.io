@@ -15,11 +15,14 @@ import {
     type AiUsageDoc,
     type AssistTranslateDraftRequest,
     type CallableResponse,
+    type CityUsageDoc,
     type TranslationPrompt,
 } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
+import { readCityUsage, shareOf, writeCityUsage, type CityShare } from '../api/city-usage.js';
+import type { DocumentTransaction } from '../ports/documents.js';
 import { UpstreamError } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
 import { guardIsRed, requireCity, stampOf } from './records.js';
@@ -27,7 +30,7 @@ import { guardIsRed, requireCity, stampOf } from './records.js';
 /**
  * `assist.translateDraft` (admin, App Check enforced; `docs/research/M4-interfaces.md` §4.3; S-A45-HAPPY-TRANSLATE,
  * S-A45-BAD-MARKUP-AND-LENGTH, S-A45-BAD-MONTHLY-CAP, S-A45-BAD-GUARD-PAUSED, S-A45-BAD-API-DISABLED, S-A09-BAD-AI-
- * UNAVAILABLE): a draft of one field's text in the other language from Vertex AI Gemini, server-side only, the model and
+ * UNAVAILABLE; M5: the city's share of AI requests, `docs/research/M5-interfaces.md` §1.8): a draft of one field's text in the other language from Vertex AI Gemini, server-side only, the model and
  * the prompt pinned. A red budget guard refuses it first; then, in one transaction on `usage/ai-YYYY-MM`, the month's
  * cap (`AI_MONTHLY_CAP`) refuses it or one request and its estimated cost are reserved; after the call the counters take
  * the tokens Vertex AI reports. The answer is sanitized plain text within the field's limit (`sanitizeDraft`), and a
@@ -62,18 +65,45 @@ async function updateUsage(deps: TranslateDraftDeps, month: string, change: (spe
     });
 }
 
-/** Reserves one request and its estimate, or refuses with `apiError.assist.monthlyCap`. */
-async function reserve(deps: TranslateDraftDeps, month: string, estimate: number): Promise<void> {
-    await updateUsage(deps, month, (spent) => {
+/** The city's counters when its share of AI requests has room left; `apiError.assist.monthlyCap` when it has none. */
+async function cityRoom(
+    transaction: DocumentTransaction,
+    share: CityShare | undefined,
+    month: string,
+): Promise<{ readonly share: CityShare; readonly usage: CityUsageDoc } | undefined> {
+    if (share === undefined) {
+        return undefined;
+    }
+    const usage = await readCityUsage(transaction, share, month);
+    if (usage.aiRequests >= share.limits.aiRequestsPerMonth) {
+        throw new ApiError('apiError.assist.monthlyCap');
+    }
+    return { share, usage };
+}
+
+/**
+ * Reserves one request and its estimate, or refuses with `apiError.assist.monthlyCap`: the project's cap, and (M5) the
+ * city's share of AI requests counted in `cities/{city}/usage/{month}` in the same transaction.
+ */
+async function reserve(deps: TranslateDraftDeps, month: string, estimate: number, share: CityShare | undefined): Promise<void> {
+    const path = FIRESTORE_PATHS.aiUsage(month);
+    await deps.documents.transaction(async (transaction) => {
+        const spent = (await transaction.get(path, aiUsageDocSchema)) ?? EMPTY_USAGE;
         if (overAiCap(spent, estimate)) {
             throw new ApiError('apiError.assist.monthlyCap');
         }
-        return {
+        const city = await cityRoom(transaction, share, month);
+        const stamp = stampOf(deps.clock.now());
+        await transaction.set(path, aiUsageDocSchema, {
+            month,
+            ...spent,
             requests: spent.requests + 1,
-            inputTokens: spent.inputTokens,
-            outputTokens: spent.outputTokens,
             usd: spent.usd + estimate,
-        };
+            ...stamp,
+        });
+        if (city !== undefined) {
+            await writeCityUsage(transaction, city.share, { ...city.usage, aiRequests: city.usage.aiRequests + 1 }, stamp);
+        }
     });
 }
 
@@ -133,7 +163,7 @@ async function translateDraft(deps: TranslateDraftDeps, data: AssistTranslateDra
     const prompt = translationPrompt({ ...data, cityName: city.name[data.to] ?? city.name.ro });
     const month = usageMonth(deps.clock.now());
     const estimate = estimateUsd(prompt);
-    await reserve(deps, month, estimate);
+    await reserve(deps, month, estimate, shareOf(data.cityId, city));
     let generation: Generation | undefined;
     try {
         generation = await generate(deps, prompt);

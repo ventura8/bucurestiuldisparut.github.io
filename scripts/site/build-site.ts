@@ -1,4 +1,5 @@
-// Builds the static city sites into dist/site/ (`npm run build:site`, the `site-build` gate of the build stage).
+// Builds the static city sites into dist/site/ and their GitHub Pages tree into dist/pages/ (`npm run build:site`, the
+// `site-build` gate of the build stage).
 // The logic and its documentation are in src/cli.ts and src/build.ts; this entry only wires Node to them.
 import process from 'node:process';
 

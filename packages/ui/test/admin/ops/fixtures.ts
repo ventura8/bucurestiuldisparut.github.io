@@ -1,6 +1,6 @@
 // The ops pages' fixtures: their area states as the admin's stores would hold them, and mounting a page over a fake app
 // whose area is a `FakeArea`.
-import type { AdminsListResponse } from '@hcm/shared';
+import type { CityAdminsListResponse } from '@hcm/shared';
 import { html } from 'lit';
 
 import type { AdminsIntentsPort, AdminsViewState } from '../../../src/admin/admins/admins-port.js';
@@ -101,11 +101,12 @@ export function historyState(overrides: Partial<HistoryViewState> = {}): History
     };
 }
 
-const ADMINS_LIST: AdminsListResponse = {
+const ADMINS_LIST: CityAdminsListResponse = {
     admins: [
         {
             uid: 'owner-uid',
             role: 'owner',
+            projectOwner: true,
             email: 'owner@e2e.test',
             displayName: 'Owner',
             createdAt: '2026-10-01T10:00:00.000Z',
@@ -113,18 +114,18 @@ const ADMINS_LIST: AdminsListResponse = {
         },
         {
             uid: 'admin-uid',
-            role: 'admin',
+            role: 'editor',
+            projectOwner: false,
             email: 'ana@e2e.test',
-            invitedBy: 'owner-uid',
             createdAt: '2026-10-02T10:00:00.000Z',
             self: false,
         },
-        { uid: 'quiet-uid', role: 'admin', invitedBy: 'gone-uid', createdAt: '2026-10-03T10:00:00.000Z', self: false },
+        { uid: 'quiet-uid', role: 'editor', projectOwner: false, createdAt: '2026-10-03T10:00:00.000Z', self: false },
     ],
     invites: [
         {
             inviteId: 'a'.repeat(64),
-            role: 'admin',
+            role: 'editor',
             invitedBy: 'owner-uid',
             createdAt: '2026-10-10T10:00:00.000Z',
             expiresAt: '2026-10-24T10:00:00.000Z',

@@ -8,7 +8,7 @@ import { html, type TemplateResult } from 'lit';
 import type { WhoPort } from '../editing/conflict.js';
 import { conflictBanner, saveBar, saveStateOf } from '../layers/form-parts.js';
 import { contentText } from '../shell/text.js';
-import type { SettingsIntentsPort, SettingsViewState } from './settings-port.js';
+import type { SettingsIntentsPort, SettingsSectionPort, SettingsViewState } from './settings-port.js';
 
 export interface SectionContext {
     readonly locale: Locale;
@@ -24,6 +24,8 @@ export interface SectionContext {
     readonly readOnly: boolean;
     /** Who reads the page and the admins' names: a conflict names who saved. */
     readonly who: WhoPort;
+    /** Renders the page again (a lazy section's chunk arrived: M5's export card). */
+    readonly refresh: () => void;
 }
 
 export const SETTINGS_SAVE_TEXTS = {
@@ -71,6 +73,20 @@ export function cityOf(context: SectionContext): CityDoc | null {
 }
 
 /** A section heading's text. */
-export function sectionTitle(locale: Locale, section: 'area' | 'texts' | 'theme' | 'imagery' | 'categories' | 'overlays'): string {
+export function sectionTitle(
+    locale: Locale,
+    section: 'area' | 'texts' | 'theme' | 'imagery' | 'publish' | 'categories' | 'overlays',
+): string {
     return contentText(locale, `adminContent.settings.section.${section}`);
+}
+
+/** A section row's title and hint (M5's export names itself in its own catalogue, `adminContent.export.*`). */
+export function sectionRowTexts(locale: Locale, section: SettingsSectionPort): { readonly title: string; readonly hint: string } {
+    if (section === 'export') {
+        return { title: contentText(locale, 'adminContent.export.title'), hint: contentText(locale, 'adminContent.export.intro') };
+    }
+    if (section === 'budget') {
+        return { title: contentText(locale, 'adminContent.budgets.title'), hint: contentText(locale, 'adminContent.budgets.intro') };
+    }
+    return { title: sectionTitle(locale, section), hint: contentText(locale, `adminContent.settings.section.${section}Hint`) };
 }

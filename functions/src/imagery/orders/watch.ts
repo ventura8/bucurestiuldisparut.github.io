@@ -85,10 +85,10 @@ async function remindOrExpire(deps: OrderWatchDeps, cityId: string, scene: Order
     }
 }
 
-/** True when a new raster job may start now (the budget guard green, today's jobs under the cap); else it waits. */
-async function importAllowed(deps: OrderWatchDeps, now: Date): Promise<boolean> {
+/** True when a new raster job may start now (the budget guard green, today's jobs under the caps); else it waits. */
+async function importAllowed(deps: OrderWatchDeps, now: Date, cityId: string): Promise<boolean> {
     try {
-        await refuseNewRasterJob(deps.documents, now);
+        await refuseNewRasterJob(deps.documents, now, cityId);
         return true;
     } catch (error) {
         deps.log.info('a delivered order waits for its import', { reason: String(error) });
@@ -101,7 +101,7 @@ async function importAllowed(deps: OrderWatchDeps, now: Date): Promise<boolean> 
  * order becomes `importing` in the same transaction. Returns the import's job id, or undefined while it waits.
  */
 export async function importDelivered(deps: OrderWatchDeps, cityId: string, scene: OrderedScene, now: Date): Promise<string | undefined> {
-    if (!(await importAllowed(deps, now))) {
+    if (!(await importAllowed(deps, now, cityId))) {
         return undefined;
     }
     const { jobId } = await startImport(deps, { cityId, scene, createdBy: scene.order.orderedBy, now });

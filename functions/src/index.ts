@@ -7,7 +7,9 @@
  */
 import { adminFunctions, adminsFunctions } from './admin/index.js';
 import { assistFunctions } from './assist/index.js';
+import { citiesFunctions } from './cities/index.js';
 import { getDeps, privateBucket } from './deps.js';
+import { exportFunctions } from './export/index.js';
 import { historyFunctions } from './history/index.js';
 import { imageryFunctions } from './imagery/index.js';
 import { usgsFunctions } from './imagery/orders/index.js';
@@ -38,3 +40,10 @@ export const usgs = usgsFunctions(getDeps);
 export const assist = assistFunctions(getDeps);
 /** The M4 notifications (§5): the fan-out of every event to the admins' inboxes and devices, the push callables. */
 export const notify = notifyFunctions(getDeps);
+export const cities = citiesFunctions(getDeps);
+/**
+ * The M5 static export (`docs/research/M5-interfaces.md` §5): `export` is a reserved word, so the group is named in an
+ * export clause; it deploys `export-start`, `export-download` and `export-build`.
+ */
+const exportGroup = exportFunctions(getDeps);
+export { exportGroup as export };

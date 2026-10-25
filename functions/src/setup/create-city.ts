@@ -1,6 +1,15 @@
-import { FIRESTORE_PATHS, cityDocSchema, timestampFromDate, type CallableRequest, type CallableResponse, type CityDoc } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    adminDocSchema,
+    cityDocSchema,
+    timestampFromDate,
+    type CallableRequest,
+    type CallableResponse,
+    type CityDoc,
+} from '@hcm/shared';
 
 import type { VerifiedCaller } from '../api/access.js';
+import { projectCityIds, rolesWithOwnedCity } from '../api/memberships.js';
 import type { Ports } from '../ports/index.js';
 import { stampOf } from './records.js';
 
@@ -15,11 +24,12 @@ function newCity(request: Request, caller: VerifiedCaller, deps: CreateCityDeps)
 }
 
 /**
- * `setup.createCity` (admin; docs/research/M2b-interfaces.md §3.3 d2, CR-M2b-1): right after the owner claim, the
+ * `setup.createCity` (the project's owner; docs/research/M2b-interfaces.md §3.3 d2, CR-M2b-1): right after the owner claim, the
  * Setup Assistant creates the city from the bundled seed (`legacy/<city>/city.json`), because the rules never let a
  * client create a city and `setup.saveMapbox` needs one. Idempotent: in one transaction, an existing city is left as it
  * is and answered `{created: false}`. The bundled city is public today (the static site), so it is created published:
- * its manifest appears once `setup.saveMapbox` writes the viewer token (the builder publishes nothing before).
+ * its manifest appears once `setup.saveMapbox` writes the viewer token (the builder publishes nothing before). M5
+ * (`docs/research/M5-interfaces.md` §1.1): the same transaction makes the caller, the project's owner, the city's owner.
  */
 export async function createCity(
     deps: CreateCityDeps,
@@ -27,11 +37,20 @@ export async function createCity(
     request: Request,
 ): Promise<CallableResponse<'setup.createCity'>> {
     const path = FIRESTORE_PATHS.city(request.cityId);
+    const adminPath = FIRESTORE_PATHS.admin(caller.uid);
+    const cityIds = await projectCityIds(deps.documents);
     const created = await deps.documents.transaction(async (transaction) => {
-        if ((await transaction.get(path, cityDocSchema)) !== undefined) {
+        const existing = await transaction.get(path, cityDocSchema);
+        const admin = await transaction.get(adminPath, adminDocSchema);
+        if (existing !== undefined) {
             return false;
         }
-        await transaction.create(path, cityDocSchema, newCity(request, caller, deps));
+        const city = newCity(request, caller, deps);
+        await transaction.create(path, cityDocSchema, city);
+        if (admin !== undefined) {
+            const cities = rolesWithOwnedCity(admin, cityIds, request.cityId);
+            await transaction.set(adminPath, adminDocSchema, { ...admin, cities, updatedBy: city.updatedBy, updatedAt: city.updatedAt });
+        }
         return true;
     });
     deps.log.info('city created', { uid: caller.uid, cityId: request.cityId, created });

@@ -53,6 +53,8 @@ function poi(title: string, overrides: Partial<PoiDoc> = {}): PoiDoc {
 async function seedAdmin(world: World): Promise<void> {
     await world.documents.set(FIRESTORE_PATHS.admin(ADMIN), adminDocSchema, {
         role: 'admin',
+        // M5: an editor of the city whose history is reverted (history.revert is a city callable).
+        cities: { [CITY]: 'editor' },
         createdAt: T1,
         updatedBy: ADMIN,
         updatedAt: T1,

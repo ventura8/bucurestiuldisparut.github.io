@@ -109,6 +109,21 @@ Pitfalls the M3 imagery specs met (`docs/LESSONS.md` 150–165; CR-M3-36):
 - The admin map opens at the city's zoom 13: a crop ring is brought into view with Zoom out and the arrow keys (`bringIntoView`, `layer.ts`).
 - A publish waits for the fake MTS's job and the manifest build behind the lock: two to six minutes per publish (`PUBLISH_TIMEOUT_MS`); keep a spec to one or two publishes. A spec that publishes joins `IMAGERY_PUBLISH_SPECS` of `e2e/projects.ts` (per push at `admin-c360-ro` and `admin-l1440-ro`, the other three in `tour-matrix`; `DECISIONS-for-review.md` §49k).
 
+Pitfalls the M5 integrator's cross-app journey met (A54; `docs/research/DECISIONS-for-review.md` §63, `docs/LESSONS.md` 231–233):
+
+- A city made with New city is unpublished: nothing reaches its manifest until Settings → Publishing is switched on and saved, so a journey walks that step instead of seeding `published: true` (seeding it hid the missing screen from every M5 spec).
+- `seedPhoto` and `seedPublicCity` place content and bounds around Bucharest: a second city's photo outside its own rectangle is skipped by the manifest build (`validation.outsideCity`, named in `manifests/<city>.skipped`).
+- The admin tier's console guard already claims a `storage.googleapis.com` 404 (`GOOGLE_RESOURCE_ABSENT`): a spec of a missing manifest asserts the page and the engine's `hcm-error`, not the console line.
+- The content worlds' cities live in the same project as the locked tests: anything that reads every city of the project (a migration, a project-wide count, the owner's real `admin.claim`) sees the worlds running at that moment, so a journey that claims for real must not depend on the project's city list (`docs/LESSONS.md` 257–258: the claimed owner was once given two content cities and stayed on Setup).
+- Another admin's view of the rules and the callables is proved from outside with their own ID token (`ContentWorld.prepare` for a second world, then the Firestore emulator's REST with `Bearer <idToken>`, the Storage emulator's `/v0/` with `Firebase <idToken>`, the Functions emulator's callable URL); `Bearer owner` bypasses the rules and proves nothing.
+
+Pitfalls the M5 kit specs met (V27, V29; `docs/research/DECISIONS-for-review.md` §61):
+
+- A fake command-line tool a spec writes into a temporary folder is an extensionless script; under the repository's `"type": "module"` Node runs it as an ES module, so a CommonJS fake crashes and the CLI reports the tool as failed with no output of its own: `FakeTools` writes `{ "type": "commonjs" }` beside the fakes.
+- `page.route` with a glob does not match an address with a query (`/kit/?lang=en`): route by a predicate on `url.pathname`.
+- `page.route` reaches only the requests that start after it: to drop a connection already open (Firestore's listen long poll), take the context offline too (`page.context().setOffline(true)`) until the page says so, then online with the route still cutting (`S-A18-BAD-STREAM-DROP`, `docs/LESSONS.md` 236).
+- A prompt the CLI asks several times (its `y/N`) is answered by count (`CliRun.answer`): the spec waits until the prompt was asked once more than it was answered, never writes the answers ahead.
+
 Pitfalls the M1 specs met:
 
 - Playwright's text locators skip `<noscript>` content: locate those paragraphs with CSS (`noscript p[lang="ro"]`).

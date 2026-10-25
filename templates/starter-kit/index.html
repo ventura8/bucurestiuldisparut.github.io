@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ro">
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'none'; script-src https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v1.0.0/cdn/engine/ https://api.mapbox.com/mapbox-gl-js/ 'wasm-unsafe-eval' https://www.googletagmanager.com; style-src https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v1.0.0/cdn/engine/ https://api.mapbox.com/mapbox-gl-js/; img-src 'self' data: blob: https://api.mapbox.com https://*.google-analytics.com https://*.googletagmanager.com; connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://firebaseremoteconfig.googleapis.com; font-src https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v1.0.0/cdn/engine/; worker-src blob:; child-src blob:; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"
+        />
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="description" content="O hartă istorică a orașului meu: fotografii vechi și locuri dispărute pe harta de azi." />
+        <meta name="color-scheme" content="light dark" />
+        <meta name="theme-color" content="#8B5E3C" />
+        <title>Orașul meu</title>
+        <link rel="icon" href="data:," />
+        <link
+            rel="stylesheet"
+            href="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css"
+            integrity="sha384-WR3U1V0+1MbG/yqoN2/UUbE92aMWypbO0XZyEPFDxl2zZgg3ppqJGUq3gqgaEZbX"
+            crossorigin="anonymous"
+        />
+        <script
+            src="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js"
+            integrity="sha384-acS2vHk2htvkMzGXnu5MTQNaFwFexCnoKasF90zPaHihi5xhWMsTcvVvTAJHXuHH"
+            crossorigin="anonymous"
+            defer
+        ></script>
+        <!-- hcm:engine -->
+        <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v1.0.0/cdn/engine/engine.css"
+            integrity="sha384-0000000000000000000000000000000000000000000000000000000000000000"
+            crossorigin="anonymous"
+        />
+        <script
+            src="https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v1.0.0/cdn/engine/engine.iife.js"
+            integrity="sha384-0000000000000000000000000000000000000000000000000000000000000000"
+            crossorigin="anonymous"
+            defer
+        ></script>
+        <!-- /hcm:engine -->
+    </head>
+    <body class="hcm-fullpage">
+        <main>
+            <h1 class="hcm-visually-hidden">Orașul meu</h1>
+            <hcm-map-viewer manifest-url="city.json" lang="ro">
+                <p class="hcm-note" lang="ro">
+                    Harta se încarcă.
+                    <span class="hcm-note-late"
+                        >Dacă acest mesaj rămâne pe ecran, motorul hărții nu s-a putut încărca: verifică versiunea și integritatea din
+                        index.html (pașii din README.md).</span
+                    >
+                </p>
+                <p class="hcm-note" lang="en">
+                    The map is loading.
+                    <span class="hcm-note-late"
+                        >If this message stays on screen, the map engine could not load: check the version and the integrity in index.html
+                        (the steps in README.md).</span
+                    >
+                </p>
+            </hcm-map-viewer>
+            <noscript>
+                <p class="hcm-note" lang="ro">
+                    Harta are nevoie de JavaScript. Activează JavaScript în browser ca să vezi harta istorică a orașului.
+                </p>
+                <p class="hcm-note" lang="en">
+                    The map needs JavaScript. Turn JavaScript on in your browser to see the historical map of the city.
+                </p>
+            </noscript>
+        </main>
+    </body>
+</html>

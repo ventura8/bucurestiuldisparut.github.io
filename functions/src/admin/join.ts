@@ -8,6 +8,7 @@ import {
     type AdminDoc,
     type AdminRole,
     type CallableResponse,
+    type CityRoles,
     type InviteDoc,
 } from '@hcm/shared';
 
@@ -15,6 +16,7 @@ import type { VerifiedCaller } from '../api/access.js';
 import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import type { Ports } from '../ports/index.js';
+import { mergedRoles } from './memberships.js';
 import { adminRecord, displayNameOf, isBefore } from './records.js';
 
 export type JoinDeps = Pick<Ports, 'documents' | 'auth' | 'clock' | 'log'>;
@@ -26,11 +28,29 @@ interface Joining {
     readonly now: Date;
 }
 
-/** The joining account's `admins/{uid}`: an owner who also had an invitation stays the owner. */
+/**
+ * The joining account's `admins/{uid}`: an owner who also had an invitation stays the owner; M5: the invitation's cities
+ * join the account's own (an invitation from before M5 names none, and `admin.session` then gives the account every
+ * city, as every admin had before M5).
+ */
 function joinedAdmin(joining: Joining, invite: InviteDoc, existing: AdminDoc | undefined): AdminDoc {
     const { caller, email, displayName, now } = joining;
     const role = existing?.role ?? invite.role;
-    return adminRecord({ uid: caller.uid, email, displayName, now, role, invitedBy: invite.invitedBy, createdAt: existing?.createdAt });
+    const record = adminRecord({
+        uid: caller.uid,
+        email,
+        displayName,
+        now,
+        role,
+        invitedBy: invite.invitedBy,
+        createdAt: existing?.createdAt,
+    });
+    const cities = joinedCities(invite, existing);
+    return cities === undefined ? record : { ...record, cities };
+}
+
+function joinedCities(invite: InviteDoc, existing: AdminDoc | undefined): CityRoles | undefined {
+    return invite.cities === undefined ? existing?.cities : mergedRoles(existing?.cities, invite.cities);
 }
 
 /**
@@ -57,7 +77,7 @@ async function acceptInvitation(deps: JoinDeps, joining: Joining): Promise<Admin
 
 /**
  * `admin.join` (any verified Google account, App Check consumed; S-A02-HAPPY, S-A02-BAD-EXPIRED-INVITE,
- * S-A02-BAD-OTHER-ADDRESS): an invited account becomes an admin. The caller's verified address is hashed to find the
+ * S-A02-BAD-OTHER-ADDRESS, S-A51-HAPPY): an invited account becomes an admin of the cities its invitation names. The caller's verified address is hashed to find the
  * invitation (missing → `invite.notFound`, expired → `invite.expired`); the claim is set after the transaction and the
  * app refreshes its ID token.
  */

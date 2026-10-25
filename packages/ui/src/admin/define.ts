@@ -11,6 +11,7 @@ import { defineHcmSignIn, HCM_SIGN_IN_TAG } from './auth/hcm-sign-in.js';
 import { defineHcmAccountMenu, HCM_ACCOUNT_MENU_TAG } from './shell/hcm-account-menu.js';
 import { defineHcmAdminNav, HCM_ADMIN_NAV_TAG } from './shell/hcm-admin-nav.js';
 import { defineHcmAdminShell, HCM_ADMIN_SHELL_TAG } from './shell/hcm-admin-shell.js';
+import { defineHcmCityMenu, HCM_CITY_MENU_TAG } from './shell/hcm-city-menu.js';
 import { defineHcmPageOutlet, HCM_PAGE_OUTLET_TAG } from './shell/hcm-page-outlet.js';
 import { defineEditingElements } from './editing/define.js';
 
@@ -19,6 +20,7 @@ export const ADMIN_TAGS = [
     HCM_ADMIN_SHELL_TAG,
     HCM_ADMIN_NAV_TAG,
     HCM_ACCOUNT_MENU_TAG,
+    HCM_CITY_MENU_TAG,
     HCM_PAGE_OUTLET_TAG,
     HCM_SIGN_IN_TAG,
     HCM_CONSENT_NOTE_TAG,
@@ -31,6 +33,7 @@ const DEFINERS: readonly ((registry: CustomElementRegistry) => void)[] = [
     defineHcmAdminShell,
     defineHcmAdminNav,
     defineHcmAccountMenu,
+    defineHcmCityMenu,
     defineHcmPageOutlet,
     defineHcmSignIn,
     defineHcmConsentNote,

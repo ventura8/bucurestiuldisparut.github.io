@@ -6,7 +6,7 @@
  * pay about $X now (asked first). At the tileset cap neither money nor a month frees a place: the card says to delete a
  * layer (with the way to Layers) or use Studio; a file Mapbox refused as too large has only the Studio way (CR-M3-47).
  */
-import { availableComputeUnits, MAX_TILESETS, nextMonthStart, type Locale } from '@hcm/shared';
+import { availableComputeUnits, MAX_TILESETS, nextMonthStart, translateApiError, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { contentText } from '../shell/text.js';
@@ -110,8 +110,17 @@ function megabytesOf(version: VersionViewPort): string {
     return String(Math.ceil((version.output?.cogBytes ?? 0) / 1e6));
 }
 
-/** Why the publish waits: the month's compute units, the tileset cap, or a file Mapbox refused as too large. */
+/** M5: the city's share of the month is what stops the publish (`apiError.city.budgetReached`). */
+function cityOverText(locale: Locale, guard: Guard, version: VersionViewPort): string {
+    const params = { estimate: numberText(locale, version.estimate ?? 0), available: numberText(locale, Math.max(0, guard.available)) };
+    return translateApiError(locale, 'apiError.city.budgetReached', params);
+}
+
+/** Why the publish waits: the month's compute units, the tileset cap, a file Mapbox refused as too large, or the city's share. */
 function overText(locale: Locale, guard: Guard, version: VersionViewPort): string {
+    if (guard.verdict === 'city-over') {
+        return cityOverText(locale, guard, version);
+    }
     if (guard.verdict === 'tileset-limit') {
         return contentText(locale, 'adminContent.imagery.approval.tilesetLimit', { limit: String(MAX_TILESETS) });
     }
@@ -121,18 +130,25 @@ function overText(locale: Locale, guard: Guard, version: VersionViewPort): strin
     return contentText(locale, 'adminContent.imagery.approval.over', { available: numberText(locale, Math.max(0, guard.available)) });
 }
 
-/** Next month and paying: only when the month's compute units are what stops the publish. */
+/**
+ * Next month and paying: only when the month's compute units are what stops the publish; over the city's share (M5) next
+ * month alone, since paying the project's overage would not raise the city's share.
+ */
 function laterOrPay(context: ImageryContext, page: VersionPagePort, guard: Guard): TemplateResult {
     const { locale, intents } = context;
     const off = busy(context, page);
     const next = dayText(locale, nextMonthStart(new Date()).toISOString());
+    const later = html`<hcm-button variant="tonal" icon="pending" ?disabled=${off} @click=${() => void intents?.choose('defer')}
+        >${contentText(locale, 'adminContent.imagery.choice.defer', { date: next })}</hcm-button
+    >`;
+    if (guard.verdict === 'city-over') {
+        return later;
+    }
     const usd = numberText(locale, guard.overageUsd ?? 0, 2);
     return when(
         guard.verdict === 'over',
         () =>
-            html`<hcm-button variant="tonal" icon="pending" ?disabled=${off} @click=${() => void intents?.choose('defer')}
-                    >${contentText(locale, 'adminContent.imagery.choice.defer', { date: next })}</hcm-button
-                >
+            html`${later}
                 <hcm-button
                     variant="outlined"
                     icon="credit_card"
@@ -157,6 +173,7 @@ const CHOICE_STATES: Readonly<Record<Exclude<Guard['verdict'], 'within'>, string
     over: 'over-budget',
     'tileset-limit': 'tileset-limit',
     'too-large': 'too-large',
+    'city-over': 'city-over',
 };
 
 /** The ways out of a publish the guard stopped: Studio always; next month or paying only over the month's units. */

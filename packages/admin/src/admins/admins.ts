@@ -1,11 +1,19 @@
 /**
- * The admins area (`docs/research/M2c-interfaces.md` §9.1; behaviour A02): the admins and the pending invitations
- * (`admins.list`), an invitation (`admins.invite`: the server keeps only the address's hash and answers the sign-in
- * link, which the inviter sends), and removing an admin or cancelling an invitation (`admins.revoke`). The owner and
- * oneself are never removable (the server refuses both, `revoke.owner` and `revoke.self`, so a map always keeps an admin;
- * the page offers neither). `#/admins/<uid>` selects an admin, `#/admins/invite/<inviteId>` an invitation.
+ * The admins area (`docs/research/M2c-interfaces.md` §9.1; behaviour A02; M5 `docs/research/M5-interfaces.md` §1.7,
+ * behaviour A51): the current city's admins with their role in it and the city's pending invitations (`admins.list`), an
+ * invitation to the city with a role (`admins.invite`: the server keeps only the address's hash and answers the sign-in
+ * link, which the inviter sends), a role changed (`admins.setRole`), and removing an admin from the city or cancelling
+ * the city's invitation (`admins.revoke`). Only the city's owners invite, change roles and remove (the server refuses an
+ * editor, `city.notOwner`; the page shows an editor the list only); oneself is never removable (`revoke.self`) and the
+ * city keeps one owner (`city.lastOwner`). `#/admins/<uid>` selects an admin, `#/admins/invite/<inviteId>` an invitation.
  */
-import { inviteRequestSchema, type AdminsListResponse, type InviteResponse, type RevokeRequest } from '@hcm/shared';
+import {
+    cityInviteRequestSchema,
+    type CallableRequest,
+    type CityAdminsListResponse,
+    type CityRole,
+    type InviteResponse,
+} from '@hcm/shared';
 
 import { outcomeOf, type Outcome } from '../app/services.js';
 import type { AreaModule, AreaStore } from '../content/areas.js';
@@ -14,12 +22,17 @@ import type { ContentServices } from '../content/services.js';
 import type { NoticeInput } from '../state/state.js';
 import { Store } from '../state/store.js';
 
+/** A removal (an admin from the city, or the city's invitation), without the city: the store adds the current one. */
+type RevokeInput = { readonly kind: 'admin'; readonly uid: string } | { readonly kind: 'invite'; readonly inviteId: string };
+
+type RevokeRequest = CallableRequest<'admins.revoke'>;
+
 export type AdminSelection =
     { readonly kind: 'admin'; readonly uid: string } | { readonly kind: 'invite'; readonly inviteId: string } | null;
 
 export interface AdminsState {
     readonly status: LoadStatus;
-    readonly list: AdminsListResponse | null;
+    readonly list: CityAdminsListResponse | null;
     /** Why the list could not be read (shown with Try again). */
     readonly failure: NoticeInput | null;
     /** From the route; the page shows "not found" when the list has no such admin or invitation. */
@@ -32,9 +45,11 @@ export interface AdminsState {
 
 export interface AdminsIntents {
     refresh(): Promise<void>;
-    /** Invites an address (validated first: `apiError.invalidRequest` without a call). */
-    invite(email: string): Promise<Outcome<InviteResponse>>;
-    revoke(request: RevokeRequest): Promise<Outcome<{ readonly revoked: true }>>;
+    /** Invites an address to the city with a role, `editor` unless given (validated first: no call for a bad address). */
+    invite(email: string, role?: CityRole): Promise<Outcome<InviteResponse>>;
+    revoke(request: RevokeInput): Promise<Outcome<{ readonly revoked: true }>>;
+    /** M5: an admin's role in the city (`admins.setRole`). */
+    setRole(uid: string, role: CityRole): Promise<Outcome<{ readonly role: CityRole }>>;
     /** Forgets the link shown after an invitation. */
     dismissInvited(): void;
 }
@@ -61,8 +76,9 @@ class AdminsStore implements AreaStore<AdminsState, AdminsIntents> {
         this.#cell = new Store<AdminsState>(INITIAL, services.log);
         this.intents = {
             refresh: () => this.#refresh(),
-            invite: (email) => this.#invite(email),
+            invite: (email, role) => this.#invite(email, role ?? 'editor'),
             revoke: (request) => this.#revoke(request),
+            setRole: (uid, role) => this.#setRole(uid, role),
             dismissInvited: () => {
                 this.#cell.update({ invited: null });
             },
@@ -100,7 +116,7 @@ class AdminsStore implements AreaStore<AdminsState, AdminsIntents> {
 
     async #refresh(): Promise<void> {
         this.#cell.update({ status: this.#cell.state.list === null ? 'loading' : 'ready' });
-        const outcome = await outcomeOf(() => this.#services.callables.call('admins.list', {}));
+        const outcome = await outcomeOf(() => this.#services.callables.call('admins.list', { cityId: this.#services.cityId }));
         if (outcome.ok) {
             this.#cell.update({ status: 'ready', list: outcome.value, failure: null });
             return;
@@ -108,8 +124,8 @@ class AdminsStore implements AreaStore<AdminsState, AdminsIntents> {
         this.#cell.update({ status: this.#cell.state.list === null ? 'error' : 'ready', failure: outcome.error });
     }
 
-    async #invite(email: string): Promise<Outcome<InviteResponse>> {
-        const parsed = inviteRequestSchema.safeParse({ email: email.trim() });
+    async #invite(email: string, role: CityRole): Promise<Outcome<InviteResponse>> {
+        const parsed = cityInviteRequestSchema.safeParse({ cityId: this.#services.cityId, email: email.trim(), role });
         if (!parsed.success) {
             return { ok: false, error: { key: 'adminShell.admins.invalidEmail' } };
         }
@@ -123,7 +139,22 @@ class AdminsStore implements AreaStore<AdminsState, AdminsIntents> {
         return outcome;
     }
 
-    async #revoke(request: RevokeRequest): Promise<Outcome<{ readonly revoked: true }>> {
+    /** M5's `admins.setRole`, then the list again. */
+    async #setRole(uid: string, role: CityRole): Promise<Outcome<{ readonly role: CityRole }>> {
+        this.#cell.update({ busy: true });
+        const outcome = await outcomeOf(() =>
+            this.#services.callables.call('admins.setRole', { cityId: this.#services.cityId, uid, role }),
+        );
+        this.#cell.update({ busy: false });
+        if (outcome.ok) {
+            this.#services.notify({ key: 'adminShell.admins.roleChanged' });
+            await this.#refresh();
+        }
+        return outcome;
+    }
+
+    async #revoke(input: RevokeInput): Promise<Outcome<{ readonly revoked: true }>> {
+        const request: RevokeRequest = { ...input, cityId: this.#services.cityId };
         this.#cell.update({ busy: true });
         const outcome = await outcomeOf(() => this.#services.callables.call('admins.revoke', request));
         this.#cell.update({ busy: false });

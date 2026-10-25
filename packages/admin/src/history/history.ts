@@ -259,7 +259,7 @@ class HistoryStore implements AreaStore<HistoryState, HistoryIntents> {
             return;
         }
         this.#peopleAsked = true;
-        const outcome = await outcomeOf(() => this.#services.callables.call('admins.list', {}));
+        const outcome = await outcomeOf(() => this.#services.callables.call('admins.list', { cityId: this.#services.cityId }));
         if (outcome.ok) {
             const people = Object.fromEntries(outcome.value.admins.map((admin) => [admin.uid, admin.displayName ?? admin.email ?? '']));
             this.#cell.update({ people: Object.fromEntries(Object.entries(people).filter(([, name]) => name !== '')) });

@@ -70,8 +70,15 @@ function world() {
     }
     base.callables.answer('admins.list', () => ({
         admins: [
-            { uid: 'other-uid', role: 'admin', displayName: 'Ion', createdAt: '2026-10-01T00:00:00.000Z', self: false },
-            { uid: 'quiet-uid', role: 'admin', createdAt: '2026-10-01T00:00:00.000Z', self: false },
+            {
+                uid: 'other-uid',
+                role: 'editor',
+                projectOwner: false,
+                displayName: 'Ion',
+                createdAt: '2026-10-01T00:00:00.000Z',
+                self: false,
+            },
+            { uid: 'quiet-uid', role: 'editor', projectOwner: false, createdAt: '2026-10-01T00:00:00.000Z', self: false },
         ],
         invites: [],
     }));

@@ -24,4 +24,18 @@ describe("the editors' input budgets", () => {
         ]).toEqual([1, 1, 3, 3, 2]);
         expect(contentFlowBudget('cropLayer', 4)).toBe(6);
     });
+
+    it('happyPath_theCityAndExportFlowsOfTheM5Contract', () => {
+        expect([
+            contentFlowBudget('newCity'),
+            contentFlowBudget('newCityDrawn'),
+            contentFlowBudget('switchCity'),
+            contentFlowBudget('inviteToCity'),
+            contentFlowBudget('setCityRole'),
+            contentFlowBudget('exportCity'),
+            contentFlowBudget('exportWithRasters'),
+            contentFlowBudget('publishCity'),
+        ]).toEqual([2, 3, 2, 3, 3, 2, 3, 2]);
+        expect(contentFlowBudget('setCityLimits', 2)).toBe(3);
+    });
 });

@@ -22,6 +22,7 @@ import { NO_GATE, type AdminState, type NoticeInput, type ShellStateAccess, type
 import { Store } from '../state/store.js';
 import type { AdminRuntime, FirebaseWebConfig } from './config.js';
 import { contentServices } from './content-services.js';
+import { chooseCity, cityRefresher, switchTo, type CityChoiceDeps } from './current-city.js';
 import { Navigation } from './navigation.js';
 import { rememberedSetupReady } from './setup-readiness.js';
 import { shellWatches } from './shell-watches.js';
@@ -89,6 +90,16 @@ export interface AdminIntents<SetupIntents> {
     enableApi(): Promise<void>;
     reload(): void;
     navigate(route: AdminRoute): void;
+    /**
+     * M5 (`docs/research/M5-interfaces.md` §1.5): opens another of the admin's cities, a page load at its Home (or at
+     * `route`: the New city flow's done screen); with an unsaved edit on screen the shell asks first (`leaving`).
+     */
+    switchCity(cityId: string, route?: AdminRoute): void;
+    /**
+     * M5: the city menu asks the server for the admin's cities again (at most once a minute); `now` asks at once (New city
+     * just made one, which the menu lists without waiting out the minute).
+     */
+    refreshCities(now?: boolean): Promise<void>;
     setLocale(locale: Locale): void;
     setTheme(mode: ThemeMode): void;
     /** Settings' live preview of a seed colour's tokens; null returns to the city's. */
@@ -139,6 +150,9 @@ function initialState<Setup>(deps: AdminDeps<Setup, unknown>): AdminState<Setup>
         revoked: false,
         people: {},
         unread: null,
+        cities: [],
+        cityId: null,
+        projectOwner: false,
         setupReady: rememberedSetupReady(deps.local, deps.config.projectId),
         projectId: deps.config.projectId,
         authDomain: deps.config.authDomain,
@@ -170,6 +184,10 @@ interface Parts<Setup> {
     readonly firebase: FirebasePorts;
     /** Whether an editor area holds an edit leaving would lose. */
     readonly unsaved: () => boolean;
+    /** M5: opens another city (a page load). */
+    readonly openCity: (cityId: string, route?: AdminRoute) => void;
+    /** M5: the admin's cities asked again (`now`: whatever the last time was). */
+    readonly refreshCities: (now?: boolean) => Promise<void>;
 }
 
 function servicesFor<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup>): ShellServices<Setup> {
@@ -205,6 +223,23 @@ function servicesFor<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup>
     };
 }
 
+/** M5: another of the admin's cities (an unsaved edit is asked about first), and the cities read again. */
+function cityIntents<Setup>(
+    parts: Parts<Setup>,
+    update: (patch: Partial<AdminState<Setup>>) => void,
+): Pick<AdminIntents<never>, 'switchCity' | 'refreshCities'> {
+    return {
+        switchCity: (cityId, route) => {
+            if (parts.unsaved()) {
+                update({ leaving: { kind: 'city', cityId } });
+                return;
+            }
+            parts.openCity(cityId, route);
+        },
+        refreshCities: (now) => parts.refreshCities(now),
+    };
+}
+
 function shellIntents<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup>): Omit<AdminIntents<never>, 'setup'> {
     const { controller, store } = parts;
     const update = (patch: Partial<AdminState<Setup>>): void => {
@@ -223,9 +258,12 @@ function shellIntents<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup
             parts.navigation.stay();
         },
         leavePage: () => {
-            const signingOut = store.state.leaving?.kind === 'signOut';
+            const leaving = store.state.leaving;
             parts.navigation.leave();
-            return signingOut ? controller.signOut() : Promise.resolve();
+            if (leaving?.kind === 'city') {
+                parts.openCity(leaving.cityId);
+            }
+            return leaving?.kind === 'signOut' ? controller.signOut() : Promise.resolve();
         },
         claim: () => controller.claim(),
         join: () => controller.join(),
@@ -237,6 +275,7 @@ function shellIntents<Setup>(deps: AdminDeps<Setup, unknown>, parts: Parts<Setup
         navigate: (route) => {
             parts.navigation.navigate(route);
         },
+        ...cityIntents(parts, update),
         setLocale: (locale) => {
             deps.local.set(LANGUAGE_KEY, locale);
             update({ locale });
@@ -287,7 +326,38 @@ function authControllerOf<Setup, SetupIntents>(
         startUp: deps.runtime.startUp === true,
         serverSeen: serverMemory(deps.local, projectId),
         leaving: (uid) => unregisterOnSignOut({ local: deps.local, callables: deps.firebase.callables, uid }),
+        cities: (session) => chooseCity(session, cityChoiceDeps(deps, parts.shell)),
     });
+}
+
+/** What the city choice reads: the address, the kept deep link, this browser's memory, the `e2e` build's own city. */
+function cityChoiceDeps<Setup>(deps: AdminDeps<Setup, unknown>, shell: ShellStateAccess): CityChoiceDeps {
+    return {
+        ...{ location: deps.location, session: deps.session, local: deps.local, preferred: deps.content?.cityId ?? null },
+        uid: () => deps.firebase.auth.currentUser()?.uid ?? null,
+        locale: () => shell.get().locale,
+    };
+}
+
+interface CityOpener {
+    readonly open: (cityId: string, route?: AdminRoute) => void;
+    /** Another city is opening: the page reloads, and an edit the admin chose to discard asks nothing more. */
+    readonly opening: () => boolean;
+}
+
+/** M5: opens another city once (a page load: the address changes, then the page reloads). */
+function cityOpener<Setup>(deps: AdminDeps<Setup, unknown>): CityOpener {
+    let opening = false;
+    return {
+        open: (cityId, route) => {
+            if (opening) {
+                return;
+            }
+            opening = true;
+            switchTo(deps.location, deps.local, { uid: deps.firebase.auth.currentUser()?.uid ?? null, cityId, route });
+        },
+        opening: () => opening,
+    };
 }
 
 /** Builds the app and starts it (the probe unless a start-up deploy, then Firebase Auth's user); returns at once. */
@@ -311,8 +381,13 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
         telemetry.track(event);
     };
     const content = contentRegistry(deps, { shell, callables: firebase.callables, denied });
-    const unsaved = (): boolean => content.hasUnsavedChanges();
-    const navigation = new Navigation({ shell, location: deps.location, session: deps.session, pages: deps.pages, track, unsaved });
+    const { open: openCity, opening } = cityOpener(deps);
+    // Once another city opens (its address set, the page reloading), an edit the admin chose to discard holds nothing back.
+    const unsaved = (): boolean => !opening() && content.hasUnsavedChanges();
+    const navigation = new Navigation({
+        ...{ shell, location: deps.location, session: deps.session, pages: deps.pages },
+        ...{ track, unsaved, switchCity: openCity },
+    });
     const watches = shellWatches({ ...deps, store: deps.content?.store ?? null }, shell, denied);
     const stopWatching = store.subscribe((state) => {
         watches.stateChanged(state);
@@ -321,7 +396,8 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
             content.destroyAll();
         }
     });
-    const parts: Parts<Setup> = { store, shell, controller, google, navigation, telemetry, firebase, unsaved };
+    const refreshCities = cityRefresher({ callables: firebase.callables, shell, clock: deps.clock, log: deps.log });
+    const parts: Parts<Setup> = { store, shell, controller, google, navigation, telemetry, firebase, unsaved, openCity, refreshCities };
     const intents: AdminIntents<SetupIntents> = { ...shellIntents(deps, parts), setup: deps.setup.create(servicesFor(deps, parts)) };
     controller.start().catch((error: unknown) => {
         deps.log.error('admin start failed', { error: String(error) });
@@ -335,7 +411,7 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
         loadPage: (id) => deps.pages.load(id),
         telemetry,
         content: content.stores,
-        hasUnsavedChanges: () => content.hasUnsavedChanges(),
+        hasUnsavedChanges: unsaved,
         destroy: () => {
             stopWatching();
             controller.stop();

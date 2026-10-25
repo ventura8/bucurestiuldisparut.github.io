@@ -9,7 +9,19 @@ import { FIRESTORE_PATHS, PHOTO_CONTENT_TYPES, STORAGE_PATHS } from '@hcm/shared
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { photoDoc } from './support/documents.js';
-import { EVERYONE, bytes, createWorld, expected, verdict, verdicts, type Persona, type Verdict, type World } from './support/world.js';
+import {
+    ANY_ADMIN,
+    EVERYONE,
+    NOBODY,
+    bytes,
+    createWorld,
+    expected,
+    verdict,
+    verdicts,
+    type Persona,
+    type Verdict,
+    type World,
+} from './support/world.js';
 
 const MIB = 1024 * 1024;
 const CITY_ID = 'storage-city';
@@ -205,23 +217,29 @@ describe('raster uploads', () => {
 });
 
 describe('server-written objects', () => {
-    const objects = [
-        STORAGE_PATHS.photoOriginal(CITY_ID, PHOTO_ID, 'ab'.repeat(32), 'image/jpeg'),
-        'rasters/storage-1966/cog.tif',
-        'usgs-raw/storage/frame.tgz',
-        'previews/storage/browse.jpg',
-        'tmp/selftest',
-        // Paths of the PUBLIC bucket's layout: in this bucket they are as private as everything else.
-        STORAGE_PATHS.photoDerivative(CITY_ID, PHOTO_ID, 'ab'.repeat(32), 'web'),
-        STORAGE_PATHS.manifest(CITY_ID),
+    // M5 (docs/research/M5-interfaces.md §1.4): what lies under a city is read by that city's admins only; a USGS browse
+    // copy by every admin; anything else (USGS deliveries, exports, scratch, paths with no city) by nobody.
+    const objects: readonly (readonly [string, readonly Persona[]])[] = [
+        [STORAGE_PATHS.photoOriginal(CITY_ID, PHOTO_ID, 'ab'.repeat(32), 'image/jpeg'), ['admin']],
+        [`rasters/${CITY_ID}/corona-1966/v1/cog.tif`, ['admin']],
+        [`work/${CITY_ID}/job-1/frame.tif`, ['admin']],
+        [`reference/${CITY_ID}/osm/k1.geojson`, ['admin']],
+        ['usgs-browse/corona2/DS1034-1057DA024.jpg', ANY_ADMIN],
+        ['usgs-raw/storage/frame.tgz', NOBODY],
+        ['previews/storage/browse.jpg', NOBODY],
+        ['tmp/selftest', NOBODY],
+        [STORAGE_PATHS.cityExport(CITY_ID, 'export-1'), NOBODY],
+        // Paths of the PUBLIC bucket's layout: in this bucket they are server-only.
+        [STORAGE_PATHS.photoDerivative(CITY_ID, PHOTO_ID, 'ab'.repeat(32), 'web'), NOBODY],
+        [STORAGE_PATHS.manifest(CITY_ID), NOBODY],
     ];
 
-    it.each(objects)('happyPath_onlyAdminsRead_%s', async (path) => {
+    it.each(objects)('happyPath_theRightAdminsRead_%s', async (path, readers) => {
         await world.seedObject(path, 'application/octet-stream');
 
         const result = await verdicts(EVERYONE, (persona) => world.storage(persona).ref(path).getMetadata());
 
-        expect(result).toEqual(expected(EVERYONE, ['admin']));
+        expect(result).toEqual(expected(EVERYONE, readers));
     });
 
     it.each(objects)('badPath_nobodyWritesOrDeletes_%s', async (path) => {
@@ -233,9 +251,38 @@ describe('server-written objects', () => {
         expect({ writes, deletes }).toEqual({ writes: expected(EVERYONE, []), deletes: expected(EVERYONE, []) });
     });
 
-    it('badPath_nobodyListsTheBucketWithoutBeingAnAdmin', async () => {
-        const result = await verdicts(EVERYONE, (persona) => world.storage(persona).ref('tmp').listAll());
+    it('badPath_onlyTheCitysAdminsListItsFolders', async () => {
+        await world.seedObject(`rasters/${CITY_ID}/corona-1966/v1/preview.png`, 'image/png');
 
-        expect(result).toEqual(expected(EVERYONE, ['admin']));
+        const city = await verdicts(EVERYONE, (persona) => world.storage(persona).ref(`rasters/${CITY_ID}`).listAll());
+        const scratch = await verdicts(EVERYONE, (persona) => world.storage(persona).ref('tmp').listAll());
+
+        expect({ city, scratch }).toEqual({ city: expected(EVERYONE, ['admin']), scratch: expected(EVERYONE, []) });
+    });
+});
+
+describe('another city (M5)', () => {
+    it('badPath_anAdminOfAnotherCityReadsAndUploadsNothingOfThisOne @S-A51-BAD-OTHER-CITY-RULES', async () => {
+        const original = STORAGE_PATHS.photoOriginal(CITY_ID, PHOTO_ID, 'cd'.repeat(32), 'image/jpeg');
+        await world.seedObject(original, 'image/jpeg');
+
+        const reads = await verdict(world.storage('outsider').ref(original).getMetadata());
+        const upload = await put('outsider', photoUpload('outsider'));
+        const raster = await put('outsider', rasterUpload('outsider'), { contentType: 'image/tiff' });
+
+        expect({ reads, upload, raster }).toEqual({ reads: 'deny', upload: 'deny', raster: 'deny' });
+    });
+
+    it('happyPath_theSameRequestsInTheirOwnCityAreAllowed', async () => {
+        await world.seed(FIRESTORE_PATHS.photo(world.elsewhere, PHOTO_ID), photoDoc(world.elsewhere, PHOTO_ID, world.uid('outsider')));
+        const original = STORAGE_PATHS.photoOriginal(world.elsewhere, PHOTO_ID, 'cd'.repeat(32), 'image/jpeg');
+        await world.seedObject(original, 'image/jpeg');
+        const own = STORAGE_PATHS.photoUpload(world.elsewhere, world.uid('outsider'), PHOTO_ID, `${nonce()}.jpg`);
+
+        const reads = await verdicts(EVERYONE, (persona) => world.storage(persona).ref(original).getMetadata());
+        const upload = await put('outsider', own);
+        const raster = await put('outsider', rasterUpload('outsider', world.elsewhere), { contentType: 'image/tiff' });
+
+        expect({ reads, upload, raster }).toEqual({ reads: expected(EVERYONE, ['outsider']), upload: 'allow', raster: 'allow' });
     });
 });

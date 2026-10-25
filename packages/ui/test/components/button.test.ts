@@ -59,7 +59,22 @@ describe('<hcm-button>', () => {
     it('badPath_aButtonThatIsNoToggleStatesNoPressedState', async () => {
         const button = await fixture<HcmButton>(html`<hcm-button>Go</hcm-button>`);
 
-        expect(shadowPart(button, 'button').hasAttribute('aria-pressed')).toBe(false);
+        const inner = shadowPart(button, 'button');
+        expect(['aria-pressed', 'aria-haspopup', 'aria-current', 'aria-label'].filter((name) => inner.hasAttribute(name))).toEqual([]);
+    });
+
+    it('happyPath_itsPopupItsCurrentStateAndItsNameReachTheFocusedButton', async () => {
+        // docs/LESSONS.md 249: ARIA on the host names nothing, since the host is not the focused element.
+        const button = await fixture<HcmButton>(
+            html`<hcm-button .popup=${'dialog'} .current=${true} .label=${'City: Cluj'}>Cluj</hcm-button>`,
+        );
+
+        await expect.element(page.getByRole('button', { name: 'City: Cluj' })).toBeVisible();
+        const inner = shadowPart(button, 'button');
+        expect([inner.getAttribute('aria-haspopup'), inner.getAttribute('aria-current')]).toEqual(['dialog', 'true']);
+        button.current = false;
+        await button.updateComplete;
+        expect(inner.hasAttribute('aria-current')).toBe(false);
     });
 
     it('badPath_aDisabledButtonIgnoresClicks', async () => {

@@ -8,6 +8,8 @@ import type { CityDoc, Locale, OverlayKind } from '@hcm/shared';
 import type { DocState } from '../content/doc.js';
 import type { ListState } from '../content/list.js';
 import type { WriteOutcome } from '../content/services.js';
+import type { BudgetIntents, BudgetSectionState } from '../cities/budget-section.js';
+import type { ExportIntents, ExportSectionState } from '../export/export-section.js';
 import type { LayerItem } from '../layers/model.js';
 import type { PreviewSink } from '../layers/preview.js';
 import type { AreaNumberField } from './area.js';
@@ -40,9 +42,13 @@ export interface SettingsState {
     readonly reordering: boolean;
     /** The page's map (the area and overlays sections): its state and a rectangle being drawn. */
     readonly map: SettingsMapState;
+    /** M5 (CR-M5-10; owner: export): Export the city, followed while its section shows. */
+    readonly export: ExportSectionState;
+    /** M5 (owner: multi-city): the city's budget, followed while its section shows. */
+    readonly budget: BudgetSectionState;
 }
 
-export interface SettingsIntents extends CategoryIntents {
+export interface SettingsIntents extends CategoryIntents, ExportIntents, BudgetIntents {
     retry(): void;
     /** A field of the open city section (`bounds`, `center`, `zoom`, `minZoom`, `maxZoom`, `basemap`, ...). */
     editCity(patch: Partial<CityDoc>): void;

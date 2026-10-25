@@ -173,6 +173,14 @@ const RULES = [
         'validation.required',
     ],
     ['a malformed style', ['city', 'basemap', 'style'], 'mapbox://styles/only-owner', 'city.basemap.style', 'validation.format'],
+    // docs/LESSONS.md 241: the origin `https://a.example.org;connect-src` would end a policy's directive.
+    [
+        'a style whose host ends a policy directive',
+        ['city', 'basemap', 'style'],
+        'https://a.example.org;connect-src/x',
+        'city.basemap.style',
+        'validation.format',
+    ],
     ['a secret Mapbox token', ['city', 'mapbox', 'publicToken'], 'sk.secret-scenario', 'city.mapbox.publicToken', 'validation.format'],
     ['a Universal Analytics id', ['city', 'analytics', 'measurementId'], 'UA-1234-1', 'city.analytics.measurementId', 'validation.format'],
     [

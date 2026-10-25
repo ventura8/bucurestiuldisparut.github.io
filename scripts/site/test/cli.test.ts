@@ -4,19 +4,22 @@ import process from 'node:process';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { DEFAULT_SITES, EXIT_INVALID, EXIT_OK, EXIT_USAGE, PLACEHOLDER_TOKEN, runCli } from '../src/cli.js';
+import { EXIT_INVALID, EXIT_OK, EXIT_USAGE, PLACEHOLDER_TOKEN, defaultSites, runCli } from '../src/cli.js';
 import { nodeFileSystem, type SiteFileSystem } from '../src/files.js';
 import { ROOT, cleanup, recordingLogger, temporaryDir } from './support.js';
 
 const ENTRY = join(ROOT, 'scripts/site/build-site.ts');
 const HOOK = join(ROOT, 'scripts/site/register-ts.mjs');
 
+/** The sites of the synthetic repository, in build order. */
+const SYNTHETIC_SITES = ['sites/bucharest', 'starter-kit'];
+
 /** Both default sites in a temporary root: the starter kit's inputs twice, small media, a fake engine and Mapbox GL. */
 function syntheticRepository(): { root: string; files: SiteFileSystem } {
     const root = temporaryDir();
     const files = nodeFileSystem(root);
     const repository = nodeFileSystem(ROOT);
-    for (const site of DEFAULT_SITES) {
+    for (const site of SYNTHETIC_SITES) {
         for (const name of ['site.json', 'config.js', 'site.css']) {
             files.write(`${site}/${name}`, repository.readText(`starter-kit/${name}`));
         }
@@ -135,5 +138,81 @@ describe('build-site.ts (the Node entry)', () => {
 
         expect(result.status).toBe(EXIT_USAGE);
         expect(result.stderr).toContain('usage: build-site.ts');
+    });
+});
+
+/** A second city's site as `npm run site:add` writes it: no seed manifest, the public bucket's only. */
+function addBucketCity(files: SiteFileSystem, cityId: string, pagesPath?: string): void {
+    const spec = JSON.parse(files.readText('sites/bucharest/site.json')) as Record<string, unknown>;
+    const rest = Object.fromEntries(Object.entries(spec).filter(([key]) => !['manifest', 'media', 'pagesPath'].includes(key)));
+    files.write(
+        `sites/${cityId}/site.json`,
+        JSON.stringify({ ...rest, publicManifest: true, ...(pagesPath === undefined ? {} : { pagesPath }) }),
+    );
+    files.write(
+        `sites/${cityId}/config.js`,
+        `window.HistoricCityMapConfig = { cityId: '${cityId}', manifestUrl: './data/manifest.json' };\n`,
+    );
+    files.write(`sites/${cityId}/site.css`, 'body {}\n');
+}
+
+/** The synthetic Bucharest at the root of the Pages tree, as the committed one is. */
+function bucharestAtTheRoot(files: SiteFileSystem): void {
+    const spec = JSON.parse(files.readText('sites/bucharest/site.json')) as Record<string, unknown>;
+    files.write('sites/bucharest/site.json', JSON.stringify({ ...spec, pagesPath: '' }));
+}
+
+describe('runCli: every city (M5)', () => {
+    it('happyPath_theDefaultSitesAreEveryCityFolderSortedThenTheStarterKit', () => {
+        const { files } = syntheticRepository();
+        addBucketCity(files, 'cluj');
+        files.write('sites/README.md', 'not a site');
+
+        expect(defaultSites(files)).toEqual(['sites/bucharest', 'sites/cluj', 'starter-kit']);
+    });
+
+    it('happyPath_aCityWithoutASeedManifestWaitsForTheBucketAndSaysSo', () => {
+        const { files } = syntheticRepository();
+        addBucketCity(files, 'cluj');
+        const { log, records } = recordingLogger();
+
+        expect(runCli([], { env: { MAPBOX_PUBLIC_TOKEN: 'pk.x' }, files, log })).toBe(EXIT_OK);
+
+        expect(files.isFile('dist/site/cluj/index.html')).toBe(false);
+        expect(records.map((record) => record.message)).toContain(
+            'site not built: it reads the public bucket and HCM_PUBLIC_BUCKET is not set',
+        );
+    });
+
+    it('happyPath_thePagesTreeHoldsBucharestAtTheRootAndEachCityInItsFolder', () => {
+        const { files } = syntheticRepository();
+        bucharestAtTheRoot(files);
+        addBucketCity(files, 'cluj');
+        files.write('infra/project.json', JSON.stringify({ projectId: 'exemplu-proiect', region: 'europe-west1' }));
+        const env = { MAPBOX_PUBLIC_TOKEN: 'pk.x', HCM_PUBLIC_BUCKET: 'exemplu-proiect-public' };
+        const { log, records } = recordingLogger();
+
+        const status = runCli(['--pages', 'dist/pages'], { env, files, log });
+
+        expect(records.filter((record) => record.level === 'error')).toEqual([]);
+        expect(status).toBe(EXIT_OK);
+        expect(files.isFile('dist/pages/index.html')).toBe(true);
+        expect(files.isFile('dist/pages/engine/engine.mjs')).toBe(true);
+        expect(files.readText('dist/pages/cluj/config.js')).toContain('cities/cluj/manifest.json');
+        expect(files.readText('dist/pages/cluj/index.html')).toContain('https://storage.googleapis.com');
+        expect(files.listFiles('dist/pages').some((path) => path.startsWith('starter-kit/'))).toBe(false);
+        expect(records.at(-1)).toMatchObject({ message: 'pages assembled', data: { pagesDir: 'dist/pages', paths: ['/', '/cluj/'] } });
+    });
+
+    it('badPath_twoSitesOnOnePathRefuseTheTree', () => {
+        const { files } = syntheticRepository();
+        addBucketCity(files, 'cluj', 'bucharest/');
+        files.write('infra/project.json', JSON.stringify({ projectId: 'exemplu-proiect', region: 'europe-west1' }));
+        const { log, records } = recordingLogger();
+
+        expect(runCli(['--pages', 'dist/pages'], { env: { HCM_PUBLIC_BUCKET: 'exemplu-proiect-public' }, files, log })).toBe(EXIT_INVALID);
+
+        expect(records.at(-1)?.message).toContain('two sites ask for the Pages path "/bucharest/"');
+        expect(files.isFile('dist/pages/index.html')).toBe(false);
     });
 });

@@ -5,7 +5,8 @@ import { contentSecurityPolicy, type ExtraSources } from './csp.js';
 import { SiteBuildError } from './errors.js';
 import type { SiteFileSystem } from './files.js';
 import { prepareManifest, type PreparedManifest } from './manifest.js';
-import { manifestOrigins } from './origins.js';
+import { bucketOrigins, manifestOrigins } from './origins.js';
+import { isOutputDir } from './output-dir.js';
 import { ENGINE_FOLDER, ENGINE_MODULE_FILE, ENGINE_STYLESHEET_FILE, renderSitePage } from './page.js';
 import { publicManifest } from './public-manifest.js';
 import { parseSiteSpec, type SiteSpec } from './site-spec.js';
@@ -28,6 +29,10 @@ import { subresourceIntegrity } from './sri.js';
  * `HCM_PUBLIC_BUCKET`), reads the manifest the admin publishes instead (`public-manifest.ts`, DECISIONS-for-review.md §51e):
  * its `config.js` is generated with the bucket's `cities/<city>/manifest.json`, and no `data/` is written; the CSP is still
  * shaped by the source manifest, plus the bucket's origin and the project's crash-report endpoint.
+ *
+ * M5 (`docs/research/M5-interfaces.md` §1.10): a city without a seed manifest (`npm run site:add`) is built only with the
+ * public bucket named, and serves the page, `config.js` (the bucket's manifest) and the engine; its CSP names the bucket
+ * and the crash endpoint (`origins.ts` → `bucketOrigins`). The Pages tree of every city is assembled by `pages.ts`.
  *
  * Every input is read and validated before `outDir` is replaced, so a failed build leaves the previous one alone.
  */
@@ -61,15 +66,6 @@ export interface SiteBuildReport {
 
 const DEFAULT_ENGINE_DIR = 'packages/engine/dist';
 const DEFAULT_MAPBOX_GL_DIR = 'node_modules/mapbox-gl/dist';
-
-/** A folder name: letters, digits, `_`, `.`, `-`, but never `.` or `..` themselves. */
-const SEGMENT = /^(?!\.{1,2}$)[\w.-]+$/;
-
-/** Below `dist/` and nothing else: the folder is deleted before it is written. */
-function isOutputDir(path: string): boolean {
-    const [first, ...rest] = path.split('/');
-    return first === 'dist' && rest.length > 0 && rest.every((segment) => SEGMENT.test(segment));
-}
 
 /** One output file, relative to `outDir`: generated text, or a copy of a repository file. */
 type PlannedFile = { readonly to: string; readonly content: string } | { readonly to: string; readonly from: string };
@@ -152,40 +148,113 @@ function withConnect(sources: ExtraSources, connect: readonly string[]): ExtraSo
     return { connect: [...new Set([...sources.connect, ...connect])].sort((a, b) => a.localeCompare(b)), images: sources.images };
 }
 
+/** What every site's folder holds: `site.json`, `config.js` (validated) and `site.css`. */
+interface SiteInputs {
+    readonly spec: SiteSpec;
+    readonly configSource: string;
+    readonly config: EngineConfig;
+}
+
+function readInputs(siteDir: string, files: SiteFileSystem): SiteInputs {
+    const specFile = requireFile(files, `${siteDir}/site.json`, 'every site has one (scripts/site/src/site-spec.ts)');
+    const spec = parseSiteSpec(files.readText(specFile), specFile);
+    const configSource = files.readText(requireFile(files, `${siteDir}/config.js`, 'every site has one (docs/ENGINE_API.md → config.js)'));
+    return { spec, configSource, config: readConfigJs(configSource, `${siteDir}/config.js`) };
+}
+
+/** Where the bundled manifest came from, for the build's messages. */
+function manifestLabel(spec: SiteSpec): string {
+    return spec.manifest ?? 'the manifest the build was given';
+}
+
 /** The bundled manifest and its photos; none for a page that reads the public bucket. */
 function dataFiles(bundled: boolean, prepared: PreparedManifest, spec: SiteSpec, files: SiteFileSystem): PlannedFile[] {
     if (!bundled) {
         return [];
     }
     const photos = prepared.media.map((copy) => ({
-        from: requireFile(files, `${spec.media}/${copy.from}`, `a photo derivative of ${spec.manifest}`),
+        from: requireFile(files, `${spec.media ?? ''}/${copy.from}`, `a photo derivative of ${manifestLabel(spec)} (site.json → media)`),
         to: `data/${copy.to}`,
     }));
     return [{ to: 'data/manifest.json', content: `${JSON.stringify(prepared.manifest)}\n` }, ...photos];
 }
 
-function plan(options: SiteBuildOptions, files: SiteFileSystem): { files: PlannedFile[]; cityId: string; photos: number } {
-    const { siteDir, token } = options;
-    const specFile = requireFile(files, `${siteDir}/site.json`, 'every site has one (scripts/site/src/site-spec.ts)');
-    const spec = parseSiteSpec(files.readText(specFile), specFile);
-    const configSource = files.readText(requireFile(files, `${siteDir}/config.js`, 'every site has one (docs/ENGINE_API.md → config.js)'));
-    const config = readConfigJs(configSource, `${siteDir}/config.js`);
-    const source = withSiteCity(options.manifest ?? readJson(files, spec.manifest), cityRename(spec.legacyCityId, config.cityId));
-    const prepared = prepareManifest(source, token, spec.manifest);
+/** What a site's page is made of: its spec, its policy and the configuration it is served. */
+interface PageParts {
+    readonly spec: SiteSpec;
+    readonly csp: string;
+    readonly configSource: string;
+}
+
+/** The page, its configuration and its styles: what every site serves first. */
+function pageFiles(options: SiteBuildOptions, parts: PageParts, files: SiteFileSystem): PlannedFile[] {
+    const integrityOf = integrity(files, options.mapboxGlDir ?? DEFAULT_MAPBOX_GL_DIR);
+    return [
+        { to: 'index.html', content: renderSitePage({ spec: parts.spec, csp: parts.csp, mapboxGlIntegrity: integrityOf }) },
+        { to: 'config.js', content: parts.configSource },
+        { to: 'site.css', from: requireFile(files, `${options.siteDir}/site.css`, 'every site has its page styles') },
+    ];
+}
+
+interface Plan {
+    readonly files: PlannedFile[];
+    readonly cityId: string;
+    readonly photos: number;
+}
+
+/** A site with a manifest: bundled as `data/`, or read from the public bucket with the manifest shaping the CSP (§51e). */
+function manifestPlan(options: SiteBuildOptions, inputs: SiteInputs, source: unknown, files: SiteFileSystem): Plan {
+    const { spec, config } = inputs;
+    const prepared = prepareManifest(
+        withSiteCity(source, cityRename(spec.legacyCityId, config.cityId)),
+        options.token,
+        manifestLabel(spec),
+    );
     const { manifest } = prepared;
-    checkCity(config.cityId, manifest.city.id, siteDir);
-    const served = servedConfig(options, spec, { source: configSource, config }, files);
+    checkCity(config.cityId, manifest.city.id, options.siteDir);
+    const served = servedConfig(options, spec, { source: inputs.configSource, config }, files);
     const bundled = served.config === config;
     const csp = contentSecurityPolicy(withConnect(manifestOrigins(manifest, served.config), served.connect));
-    const page = renderSitePage({ spec, csp, mapboxGlIntegrity: integrity(files, options.mapboxGlDir ?? DEFAULT_MAPBOX_GL_DIR) });
-    const planned: PlannedFile[] = [
-        { to: 'index.html', content: page },
-        { to: 'config.js', content: served.source },
-        { to: 'site.css', from: requireFile(files, `${siteDir}/site.css`, 'every site has its page styles') },
+    const planned = [
+        ...pageFiles(options, { spec, csp, configSource: served.source }, files),
         ...dataFiles(bundled, prepared, spec, files),
         ...engineFiles(files, options.engineDir ?? DEFAULT_ENGINE_DIR),
     ];
     return { files: planned, cityId: manifest.city.id, photos: bundled ? manifest.photos.length : 0 };
+}
+
+/**
+ * M5 (`docs/research/M5-interfaces.md` §1.10): a city without a seed manifest reads the one the admin publishes to the
+ * public bucket, and only that; its CSP names the bucket and the project's crash endpoint. Without a bucket there is
+ * nothing to serve (the CLI passes such a site over with a notice).
+ */
+function bucketPlan(options: SiteBuildOptions, inputs: SiteInputs, files: SiteFileSystem): Plan {
+    if (options.publicBucket === undefined) {
+        throw new SiteBuildError(
+            `${options.siteDir}/site.json names no seed manifest and the build names no public bucket (HCM_PUBLIC_BUCKET)`,
+        );
+    }
+    const remote = publicManifest(options.publicBucket, inputs.config, options.siteDir, files);
+    const csp = contentSecurityPolicy(bucketOrigins(remote.config, remote.connect));
+    const planned = [
+        ...pageFiles(options, { spec: inputs.spec, csp, configSource: remote.configSource }, files),
+        ...engineFiles(files, options.engineDir ?? DEFAULT_ENGINE_DIR),
+    ];
+    return { files: planned, cityId: remote.config.cityId ?? '', photos: 0 };
+}
+
+/** The manifest the site bundles or shapes its CSP from: the build's (the e2e fixture), the seed one, or none. */
+function sourceManifest(options: SiteBuildOptions, spec: SiteSpec, files: SiteFileSystem): unknown {
+    if (options.manifest !== undefined) {
+        return options.manifest;
+    }
+    return spec.manifest === undefined ? undefined : readJson(files, spec.manifest);
+}
+
+function plan(options: SiteBuildOptions, files: SiteFileSystem): Plan {
+    const inputs = readInputs(options.siteDir, files);
+    const source = sourceManifest(options, inputs.spec, files);
+    return source === undefined ? bucketPlan(options, inputs, files) : manifestPlan(options, inputs, source, files);
 }
 
 function write(files: SiteFileSystem, outDir: string, file: PlannedFile): void {

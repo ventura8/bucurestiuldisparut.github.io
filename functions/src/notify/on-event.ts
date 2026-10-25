@@ -1,12 +1,15 @@
 import '../global-options.js';
 
 import {
+    ADMIN_CITY_SEGMENT,
     BACKGROUND_FUNCTIONS,
     FIRESTORE_PATHS,
     INBOX_MAX_ITEMS,
     NOTIFICATION_EVENT_DAYS,
     NOTIFICATION_ID_PATTERN,
+    adminCityLink,
     adminDocSchema,
+    cityRoleOf,
     inboxItemDocSchema,
     notificationEventDocSchema,
     notifySettingsDocSchema,
@@ -14,6 +17,7 @@ import {
     timestampFromDate,
     validate,
     wantsPush,
+    type AdminDoc,
     type InboxItemDoc,
     type NotificationEventDoc,
 } from '@hcm/shared';
@@ -26,7 +30,8 @@ import { NOTIFY_WRITER, adminAddress, devicesOf, notificationText, pushToDevices
 
 /**
  * `notify.onEvent` (Firestore trigger on `notificationEvents/{eventId}`, `fn-events@`; `docs/research/M4-interfaces.md`
- * §5.3; S-A46-HAPPY-FAN-OUT, S-A47-HAPPY, S-A47-BAD-TOKEN-UNREGISTERED): every admin gets the event as an unread inbox
+ * §5.3; S-A46-HAPPY-FAN-OUT, S-A47-HAPPY, S-A47-BAD-TOKEN-UNREGISTERED; M5: S-A51-HAPPY-INBOX, only a city's admins get its
+ * events, linked into that city): every admin gets the event as an unread inbox
  * item (`admins/{uid}/inbox/{eventId}`, created: a redelivery finds it and writes nothing); an admin whose settings push
  * the event's kind (`wantsPush`) gets it on every device they allowed, in each device's language, and the devices FCM no
  * longer knows are forgotten. Each inbox keeps its newest `INBOX_MAX_ITEMS`: an aggregation counts the inbox (one read)
@@ -44,13 +49,33 @@ function stampOf(now: Date) {
     return { updatedBy: systemWriter(NOTIFY_WRITER), updatedAt: timestampFromDate(now) };
 }
 
+/**
+ * M5 (`docs/research/M5-interfaces.md` §1.9): a city's event opens in its city (`#/c/<city>/<route>`), whatever city the
+ * admin's page shows; a project event, or a link the router would not take as a route, is kept as it is.
+ */
+function itemLink(event: Pick<NotificationEventDoc, 'cityId' | 'link'>): string {
+    if (event.cityId === undefined || event.link.startsWith(`#/${ADMIN_CITY_SEGMENT}/`)) {
+        return event.link;
+    }
+    try {
+        return adminCityLink(event.cityId, event.link.slice(2));
+    } catch {
+        return event.link;
+    }
+}
+
+/** M5: a city's event goes to that city's admins only; a project event (no city) to every admin. */
+function concerns(event: NotificationEventDoc, admin: AdminDoc): boolean {
+    return event.cityId === undefined || cityRoleOf(admin.cities, event.cityId) !== null;
+}
+
 function itemOf(event: NotificationEventDoc, now: Date): InboxItemDoc {
     return {
         kind: event.kind,
         severity: event.severity,
         ...(event.cityId === undefined ? {} : { cityId: event.cityId }),
         params: event.params,
-        link: event.link,
+        link: itemLink(event),
         createdAt: event.createdAt,
         read: false,
         ...stampOf(now),
@@ -138,16 +163,18 @@ async function pruneEvents(deps: FanOutDeps, now: Date): Promise<number> {
 /** Fans one event out; returns how many admins have it. */
 export async function fanOut(deps: FanOutDeps, eventId: string, event: NotificationEventDoc): Promise<number> {
     const now = deps.clock.now();
-    const admins = await deps.documents.query(FIRESTORE_PATHS.admins, adminDocSchema);
+    const admins = (await deps.documents.query(FIRESTORE_PATHS.admins, adminDocSchema)).documents.filter((admin) =>
+        concerns(event, admin.data),
+    );
     const item = itemOf(event, now);
-    for (const admin of admins.documents) {
+    for (const admin of admins) {
         if (await deliver(deps, admin.id, eventId, item)) {
             await push(deps, admin.id, eventId, item);
         }
         await pruneInbox(deps, admin.id);
     }
     const pruned = await pruneEvents(deps, now);
-    const recipients = admins.documents.length;
+    const recipients = admins.length;
     await deps.documents.set(FIRESTORE_PATHS.notificationEvent(eventId), notificationEventDocSchema, {
         ...event,
         fannedOutAt: timestampFromDate(now),

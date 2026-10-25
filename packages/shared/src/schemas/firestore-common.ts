@@ -54,6 +54,10 @@ export const SYSTEM_WRITERS = [
     /** M4: the assists (the geocoding cache, the AI usage counters). */
     'assist',
     'bootstrap',
+    /** M5: `cities.create`, `cities.setLimits`, the memberships on the admins' documents. */
+    'cities',
+    /** M5: the static export's records (`export.start`, `export.build`). */
+    'export',
     'history',
     'imagery',
     /** M4: the notification fan-out (inbox items, push records). */

@@ -26,6 +26,8 @@ export interface AdminMapOptions {
     readonly bounds: BBox;
     readonly view: MapView;
     readonly locale: Locale;
+    /** M5 (`docs/research/M5-interfaces.md` §1.6): the New city map zooms out further; 9 by default. */
+    readonly minZoom?: number;
 }
 
 export interface AdminMapHandle {
@@ -142,7 +144,7 @@ async function mount(port: MapPort, mounting: Mounting, deps: AdminMapDeps): Pro
             config: ADMIN_MAP_CONFIG,
             accessToken: token,
             view: options.view,
-            minZoom: ADMIN_MAP_MIN_ZOOM,
+            minZoom: options.minZoom ?? ADMIN_MAP_MIN_ZOOM,
             maxZoom: ADMIN_MAP_MAX_ZOOM,
             maxBounds: bboxExpand(options.bounds, PHOTO_LOCATION_SLACK_DEG),
             locale: options.locale,

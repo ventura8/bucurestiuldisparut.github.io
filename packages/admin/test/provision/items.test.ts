@@ -420,8 +420,8 @@ describe('the less travelled paths', () => {
 });
 
 describe('the private bucket lifecycle', () => {
-    it('happyPath_thePrivateBucketsLifecycleIsTheRasterPipelinesFivePrefixes', async () => {
-        // PRIVATE_BUCKET_LIFECYCLE of @hcm/shared (docs/research/M3-interfaces.md §2.7, CR-M3-6).
+    it('happyPath_thePrivateBucketsLifecycleIsTheRasterPipelinesFivePrefixesAndTheExports', async () => {
+        // PRIVATE_BUCKET_LIFECYCLE of @hcm/shared (docs/research/M3-interfaces.md §2.7, CR-M3-6; M5's exports, CR-M5-8).
         const world = provisionWorld();
         await applyProvision(planProvision(null, ['apis', 'org-policies', 'buckets', 'bucket-lifecycle']), world.deps);
         const lifecycle = world.fakes.state.cloudStorage.buckets.get('demo-hcm.firebasestorage.app')?.settings['lifecycle'] as {
@@ -434,6 +434,7 @@ describe('the private bucket lifecycle', () => {
             ['work/', 14],
             ['usgs-raw/', 30],
             ['reference/', 90],
+            ['exports/', 7],
         ]);
         expect((await doctorProvision(world.deps, ['bucket-lifecycle'])).items).toEqual([{ id: 'bucket-lifecycle', state: 'ok' }]);
     });

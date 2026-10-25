@@ -176,7 +176,7 @@ describe('<hcm-admin-shell> layout', () => {
         deep(deep(element, 'hcm-account-menu'), 'hcm-icon-button').click();
         await updated(element);
 
-        expect(deep(element, 'hcm-dialog').hasAttribute('open')).toBe(true);
+        expect(deep(deep(element, 'hcm-account-menu'), 'hcm-dialog').hasAttribute('open')).toBe(true);
         expect(await landmarkViolations()).toEqual([]);
     });
 

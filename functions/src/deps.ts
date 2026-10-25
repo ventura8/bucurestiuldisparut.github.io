@@ -13,6 +13,7 @@ import { createCloudTaskQueue } from './adapters/cloud-tasks.js';
 import { createDocumentStore } from './adapters/documents.js';
 import { createEmulatorFetch } from './adapters/emulator-fetch.js';
 import { createErrorReporter } from './adapters/error-reporting.js';
+import { createDiskExportKit } from './adapters/export-kit.js';
 import { createFcm } from './adapters/fcm.js';
 import { createFirebaseManagement } from './adapters/firebase-management.js';
 import { firestoreAdminDirectory, firestoreSetupRecords } from './adapters/firestore.js';
@@ -28,8 +29,10 @@ import { createSecretManagerStore, secretsRevision } from './adapters/secret-man
 import { createMemorySecretStore } from './adapters/secret-store-memory.js';
 import { createStorageBlobReader } from './adapters/storage-reader.js';
 import { createStorageBlobStore } from './adapters/storage.js';
+import { createStorageBlobWriter } from './adapters/storage-writer.js';
 import { systemClock } from './adapters/system-clock.js';
 import type { Fetch } from './adapters/upstream-http.js';
+import { createStandInUrlSigner, createStorageUrlSigner } from './adapters/url-signer.js';
 import { createUsgsApi, createUsgsScenes } from './adapters/usgs.js';
 import { createVertexAi } from './adapters/vertex-ai.js';
 import type { Ports } from './ports/index.js';
@@ -38,6 +41,7 @@ import type { RuntimeConfig } from './ports/runtime-config.js';
 import type { SecretStore } from './ports/secret-store.js';
 import type { SetupRecords } from './ports/setup-records.js';
 import type { TokenProvider } from './ports/token-provider.js';
+import type { UrlSigner } from './ports/url-signer.js';
 
 /**
  * Every port of `docs/research/M2-interfaces.md` §4, `docs/research/M3-interfaces.md` §9.3 and the three of
@@ -181,6 +185,19 @@ function nominatimOptions(env: Env, upstream: Upstream): { readonly fetch: Fetch
     return mirror === undefined || mirror === '' ? { fetch: upstream.fetch } : { fetch: upstream.fetch, url: mirror };
 }
 
+/**
+ * The static export's signer (M5, `docs/research/M5-interfaces.md` §5.5): V4 signing with the runtime account in
+ * production; in the Functions emulator, which has no account to sign with, the e2e stand-in.
+ */
+function urlSignerOf(env: Env, storage: ReturnType<typeof getStorage>, buckets: RuntimeConfig['buckets']): UrlSigner {
+    return env['FUNCTIONS_EMULATOR'] === 'true'
+        ? createStandInUrlSigner(buckets, () => systemClock.now())
+        : createStorageUrlSigner(storage, buckets);
+}
+
+/** The export kit `functions/build.mjs` copies beside the bundle (`dist/export-kit/`, M5 §5.3). */
+const EXPORT_KIT_FOLDER = new URL('./export-kit/', import.meta.url);
+
 /** The composition root: the only place that picks adapters (tests build their ports from fakes instead). */
 export function createDeps(env: Env, app: App): Deps {
     const config = runtimeConfig(env);
@@ -213,6 +230,9 @@ export function createDeps(env: Env, app: App): Deps {
         push: createFcm({ projectId: config.projectId, tokens: upstream.tokens, fetch: upstream.fetch }),
         admins: firestoreAdminDirectory(db),
         setup,
+        writer: createStorageBlobWriter(getStorage(app), config.buckets),
+        signer: urlSignerOf(env, getStorage(app), config.buckets),
+        kit: createDiskExportKit(EXPORT_KIT_FOLDER),
     };
 }
 

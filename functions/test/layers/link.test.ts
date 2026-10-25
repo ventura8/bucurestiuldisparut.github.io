@@ -95,6 +95,30 @@ describe('layers.link', () => {
         expect(deps.documents.paths(FIRESTORE_PATHS.layers(CITY))).toEqual([]);
     });
 
+    it('badPath_anotherCitysPipelineTilesetIsRefused @S-A15-BAD-OTHER-CITY-TILESET', async () => {
+        // docs/LESSONS.md 244: every city shares the project's Mapbox account, and a pipeline tileset's name follows from
+        // public USGS metadata (`hcm-<city>-<layer>`); only a layer of the same city may name it.
+        const deps = contentDeps(NOW);
+        await seedCity(deps);
+        const otherCitys = { type: 'mapbox', tilesetId: `${MAPBOX_USER}.hcm-cluj-kh-4-1965` } as const;
+
+        const failure = await failureOf(link(deps, { source: otherCitys }));
+
+        expect(failure).toMatchObject({ code: 'permission-denied', details: { code: 'apiError.layers.otherCityTileset' } });
+        expect(deps.documents.paths(FIRESTORE_PATHS.layers(CITY))).toEqual([]);
+    });
+
+    it('badPath_theCitysOwnPipelineTilesetIsItsLayersAlready', async () => {
+        const deps = contentDeps(NOW);
+        await seedCity(deps);
+        const own = { type: 'mapbox', tilesetId: `${MAPBOX_USER}.hcm-${CITY}-kh-4-1965` } as const;
+        await seedLayer(deps, 'kh-4-1965', { label: { ro: 'KH-4 1965' }, source: own, mapbox: { tilesetId: own.tilesetId } });
+
+        const failure = await failureOf(link(deps, { source: own }));
+
+        expect(failure).toMatchObject({ details: { code: 'apiError.layers.alreadyLinked', params: { layer: 'KH-4 1965' } } });
+    });
+
     it('badPath_aCredentialInATileAddressIsNeverPublished @S-A15-BAD-SECRET-IN-ADDRESS', async () => {
         const deps = contentDeps(NOW);
         await seedCity(deps);

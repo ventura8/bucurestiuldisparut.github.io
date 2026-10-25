@@ -11,6 +11,7 @@
  */
 import type { AreaPort } from './area-port.js';
 import type { AdminsIntentsPort, AdminsViewState } from './admins/admins-port.js';
+import type { NewCityIntentsPort, NewCityViewState } from './cities/cities-port.js';
 import type { CrashesIntentsPort, CrashesViewState } from './crashes/crashes-port.js';
 import type { GeorefIntentsPort, GeorefViewState } from './georef/georef-port.js';
 import type { HistoryIntentsPort, HistoryViewState } from './history/history-port.js';
@@ -52,4 +53,7 @@ export interface ContentPort {
     // [section inbox] owner: assists-notify (docs/research/M4-interfaces.md §5.5)
     readonly inbox: AreaPort<InboxViewState, InboxIntentsPort> | null;
     // [end inbox]
+    // [section cities] owner: multi-city (docs/research/M5-interfaces.md §1.6)
+    readonly cities: AreaPort<NewCityViewState, NewCityIntentsPort> | null;
+    // [end cities]
 }

@@ -4,7 +4,7 @@
  * transaction, after every check: the scene exists, is not imported yet and is already scanned (USGS confirms it), the
  * download role is approved, the budget guard is green and today's raster jobs are under the cap.
  */
-import { FIRESTORE_PATHS, JOBS_PER_DAY, jobDocSchema, timestampFromDate } from '@hcm/shared';
+import { DEFAULT_NEW_CITY_LIMITS, FIRESTORE_PATHS, JOBS_PER_DAY, cityDocSchema, jobDocSchema, timestampFromDate } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { dispatchJob } from '../../src/imagery/dispatch.js';
@@ -29,6 +29,7 @@ import {
 } from './world.js';
 
 const ENTITY = 'DS1035-1057DA023';
+const SECOND = 'DS1035-1057DA024';
 const JOB_ID = `im-${Date.parse(NOW).toString(36)}-${ENTITY}`;
 
 function importScene(world: ImageryWorld, entityId = ENTITY) {
@@ -274,5 +275,46 @@ describe('imagery.import: the limits', () => {
         await world.deps.documents.delete(FIRESTORE_PATHS.city(CITY));
 
         expect(await failureOf(importScene(world))).toMatchObject({ code: 'not-found', details: { code: 'apiError.notFound' } });
+    });
+});
+
+/** M5 (`docs/research/M5-interfaces.md` §1.8): a city's own share of the project's daily jobs. */
+describe('imagery.import: the city’s share', () => {
+    it('badPath_aCitysOwnDailyShareCapsItsImportsAndOtherCitiesJobsDoNotCount @S-A52-BAD-DAILY-JOBS', async () => {
+        const world = await scannedWorld();
+        const city = await world.deps.documents.get(FIRESTORE_PATHS.city(CITY), cityDocSchema);
+        if (city === undefined) {
+            throw new Error('the scanned world has its city');
+        }
+        await world.deps.documents.set(FIRESTORE_PATHS.city(CITY), cityDocSchema, {
+            ...city,
+            limits: { ...DEFAULT_NEW_CITY_LIMITS, rasterJobsPerDay: 3 },
+        });
+        await world.deps.documents.set(FIRESTORE_PATHS.city('other-city'), cityDocSchema, { ...city, id: 'other-city' });
+        const job = {
+            type: 'regeoref' as const,
+            status: 'succeeded' as const,
+            params: { basedOn: 'v0' },
+            createdBy: 'u-admin',
+            createdAt: timestampFromDate(new Date('2026-10-23T01:00:00.000Z')),
+            updatedBy: 'u-admin',
+            updatedAt: at(NOW),
+        };
+        for (let index = 0; index < 3; index += 1) {
+            await world.deps.documents.set(FIRESTORE_PATHS.job('other-city', `elsewhere-${String(index)}`), jobDocSchema, job);
+        }
+        for (let index = 0; index < 2; index += 1) {
+            await world.deps.documents.set(FIRESTORE_PATHS.job(CITY, `today-${String(index)}`), jobDocSchema, job);
+        }
+        await expect(importScene(world)).resolves.toMatchObject({ jobId: JOB_ID });
+        await seedScene(world, SECOND);
+        world.scenes.options.set(SECOND, { entityId: SECOND, available: true, bytes: 734_003_200 });
+
+        const failure = await failureOf(importScene(world, SECOND));
+
+        expect(failure).toMatchObject({
+            code: 'resource-exhausted',
+            details: { code: 'apiError.imagery.dailyLimit', params: { limit: '3' } },
+        });
     });
 });

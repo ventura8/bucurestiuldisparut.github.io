@@ -25,8 +25,11 @@ import { contentText } from '../shell/text.js';
 import { areaSection } from './area-section.js';
 import { imagerySection } from './imagery-section.js';
 import { categoriesSection } from './categories-section.js';
+import { lazyBudgetCard } from '../cities/lazy-budget.js';
+import { lazyExportCard } from '../export/lazy-card.js';
 import { overlaysSection } from './overlays-section.js';
-import { sectionTitle, type SectionContext } from './section-parts.js';
+import { publishSection } from './publish-section.js';
+import { sectionRowTexts, type SectionContext } from './section-parts.js';
 import type { SettingsIntentsPort, SettingsSectionPort, SettingsViewState } from './settings-port.js';
 import { settingsStyles } from './settings-styles.js';
 import { textsSection } from './texts-section.js';
@@ -34,7 +37,17 @@ import { themeSection } from './theme-section.js';
 
 export const HCM_SETTINGS_PAGE_TAG = 'hcm-settings-page';
 
-const SECTIONS: readonly SettingsSectionPort[] = ['area', 'texts', 'theme', 'imagery', 'categories', 'overlays'];
+const SECTIONS: readonly SettingsSectionPort[] = [
+    'area',
+    'texts',
+    'theme',
+    'imagery',
+    'categories',
+    'overlays',
+    'publish',
+    'budget',
+    'export',
+];
 
 /** The sections that show the page's map. */
 const MAP_SECTIONS: ReadonlySet<SettingsSectionPort> = new Set<SettingsSectionPort>(['area', 'overlays']);
@@ -46,6 +59,9 @@ const SECTION_ICONS: Readonly<Record<SettingsSectionPort, string>> = {
     imagery: 'satellite_alt',
     categories: 'place',
     overlays: 'opacity',
+    publish: 'publish',
+    export: 'download',
+    budget: 'tune',
 };
 
 const RENDERERS: Readonly<Record<Exclude<SettingsSectionPort, 'categories'>, (context: SectionContext) => TemplateResult>> = {
@@ -54,6 +70,12 @@ const RENDERERS: Readonly<Record<Exclude<SettingsSectionPort, 'categories'>, (co
     theme: themeSection,
     imagery: imagerySection,
     overlays: overlaysSection,
+    // M5 (the integrator, DECISIONS-for-review.md §63a): whether visitors see the city.
+    publish: publishSection,
+    // M5 (CR-M5-10; owner: export): the card is a chunk of its own, fetched when the section first opens.
+    export: (context) => lazyExportCard({ ...context, view: context.view.export }),
+    // M5 (owner: multi-city): the city's budget, a chunk of its own too.
+    budget: (context) => lazyBudgetCard({ ...context, view: context.view.budget }),
 };
 
 export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntentsPort> {
@@ -115,8 +137,8 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
                             <a class="row section-row" href=${this.href([section])} aria-current=${current(section === view.section)}>
                                 <hcm-icon name=${SECTION_ICONS[section]}></hcm-icon>
                                 <span class="row-text">
-                                    <span class="row-title">${sectionTitle(locale, section)}</span>
-                                    <span class="row-detail">${contentText(locale, `adminContent.settings.section.${section}Hint`)}</span>
+                                    <span class="row-title">${sectionRowTexts(locale, section).title}</span>
+                                    <span class="row-detail">${sectionRowTexts(locale, section).hint}</span>
                                 </span>
                             </a>
                         </li>`,
@@ -159,7 +181,7 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
 
     #section(locale: Locale, view: SettingsViewState, section: SettingsSectionPort): TemplateResult {
         if (view.city.doc === null && section !== 'categories' && section !== 'overlays') {
-            return html`<h2 tabindex="-1" data-detail-heading>${sectionTitle(locale, section)}</h2>
+            return html`<h2 tabindex="-1" data-detail-heading>${sectionRowTexts(locale, section).title}</h2>
                 <p class="alert" role="alert"><span>${contentText(locale, 'adminContent.settings.cityMissing')}</span></p>`;
         }
         const context: SectionContext = {
@@ -173,6 +195,9 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
             },
             readOnly: this.readOnly,
             who: { self: this.self, people: this.people },
+            refresh: () => {
+                this.requestUpdate();
+            },
         };
         return section === 'categories' ? categoriesSection(context, this.#drag) : RENDERERS[section](context);
     }

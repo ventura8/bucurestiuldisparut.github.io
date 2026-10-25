@@ -87,6 +87,7 @@ PATH_ROOTS = (
     "seed/",
     "sites/",
     "starter-kit/",
+    "templates/",
     "typings/",
     "vendor/",
 )

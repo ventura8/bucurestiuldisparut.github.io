@@ -6,9 +6,10 @@
 // Drives a headless Chromium as the Claude browser pane is (no service worker, no Playwright route in the way but the
 // guard below) through the admin and the viewer: the owner signs in with Google's consent stand-in and lands on the
 // dashboard; the photos, the harvested scenes and a layer's editor (with the admin map and its tiles) show the seeded
-// city; the viewer shows the manifest the emulators published. A request that reached the network for a host off this
-// machine fails the check: it is recorded and aborted at the browser's network layer, so even a leak never leaves. Exit
-// status 1 when a step fails.
+// city; the second city opens from the city menu's address and has its page on the site; a file the page saves itself
+// goes through the stack's forward; the viewer shows the manifest the emulators published. A request that reached the
+// network for a host off this machine fails the check: it is recorded and aborted at the browser's network layer, so even
+// a leak never leaves. Exit status 1 when a step fails.
 import process from 'node:process';
 
 import { createLogger, translateAdminContent, translateAdminShell } from '@hcm/shared';
@@ -16,6 +17,7 @@ import { chromium, type Page } from '@playwright/test';
 
 import { ADMIN_ORIGIN, PERSONAS } from '../admin/world.js';
 import { E2E_CITY_ID, MOCK_API_ORIGIN, SITE_ORIGIN } from '../fixtures/world.js';
+import { STACK_SECOND_CITY, STACK_SECOND_CITY_NAME } from './seed-cities.js';
 
 const log = createLogger('dev-stack-check');
 
@@ -94,6 +96,43 @@ async function layersMap(page: Page): Promise<void> {
     throw new Error('the admin map asked the mock Mapbox for no tile of the layer');
 }
 
+/**
+ * M5: the owner administers two cities: the second one's address opens it (the admin reloads into it by itself, so the
+ * check waits for its name on the city button), and the site serves its page.
+ */
+async function secondCity(page: Page): Promise<void> {
+    await page.goto(`${ADMIN_ORIGIN}/#/c/${STACK_SECOND_CITY}/home`);
+    await page
+        .locator('hcm-city-menu:not([inline]) [data-city-menu]', { hasText: STACK_SECOND_CITY_NAME })
+        .waitFor({ timeout: TIMEOUT_MS });
+    const config = await (await fetch(`${SITE_ORIGIN}/${STACK_SECOND_CITY}/config.js`)).text();
+    const site = await fetch(`${SITE_ORIGIN}/${STACK_SECOND_CITY}/`);
+    if (!config.includes(`"cityId":"${STACK_SECOND_CITY}"`) || !site.ok) {
+        throw new Error(`the second city's page on the site: ${String(site.status)} ${config.slice(0, 200)}`);
+    }
+}
+
+/**
+ * A file the page saves itself (an `<a download>` it clicks: the export's Download, whose signed address is on Google's
+ * storage host) goes through the stack's forward like every other request of the page, never to the network.
+ */
+async function savedFile(page: Page): Promise<void> {
+    await page.goto(`${ADMIN_ORIGIN}/#/home`);
+    const href = await page.evaluate(() => {
+        const link = document.createElement('a');
+        link.href = 'https://storage.googleapis.com/demo-hcm.firebasestorage.app/exports/none.zip';
+        link.download = 'none.zip';
+        link.hidden = true;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        return link.href;
+    });
+    if (!href.startsWith(`${ADMIN_ORIGIN}/__stack/h/storage.googleapis.com/`)) {
+        throw new Error(`a download link the page clicked kept its address: ${href}`);
+    }
+}
+
 async function viewer(page: Page): Promise<void> {
     const manifest = await fetch(`${SITE_ORIGIN}/${E2E_CITY_ID}/data/manifest.json`);
     if (manifest.headers.get('x-hcm-stack-manifest') !== 'emulators') {
@@ -110,6 +149,8 @@ const STEPS: readonly Step[] = [
     { name: 'a frame to buy has its order card, and an ordered one is watched', run: orders },
     { name: 'the inbox lists what the server did', run: inbox },
     { name: "a layer's editor draws its tiles on the admin map through the mock Mapbox", run: layersMap },
+    { name: 'the second city opens from its address, and its page is on the site', run: secondCity },
+    { name: 'a file the page saves itself stays on the machine', run: savedFile },
     { name: "the viewer shows the emulators' published manifest", run: viewer },
 ];
 

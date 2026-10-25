@@ -117,6 +117,7 @@ const PAGE_TAGS: Readonly<Record<Exclude<AdminRouteId, 'setup'>, string>> = {
     history: 'hcm-history-page',
     crashes: 'hcm-crashes-list-page',
     georef: 'hcm-georef-page',
+    cities: 'hcm-new-city-page',
 };
 
 afterEach(() => {

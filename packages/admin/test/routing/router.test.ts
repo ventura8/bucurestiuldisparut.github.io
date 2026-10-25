@@ -58,7 +58,7 @@ describe('navigationDestinations', () => {
     it('happyPath_normalModeListsSetupAndEveryBuiltPageHistoryIncluded', () => {
         expect(navigationDestinations(NORMAL).map((destination) => destination.id)).toEqual(['setup', 'photos', 'admins', 'history']);
         expect(navigationDestinations({ mode: 'normal', hasPage: () => true }).map((destination) => destination.id)).toEqual(
-            ADMIN_ROUTES.filter((id) => id !== 'georef'),
+            ADMIN_ROUTES.filter((id) => id !== 'georef' && id !== 'cities'),
         );
         expect(destinationOf('home')).toEqual({ id: 'home', icon: 'home', compact: false });
     });

@@ -124,3 +124,68 @@ describe('reverse', () => {
         });
     });
 });
+
+/** M5 (`cities.locate`): New city finds the named city's box. */
+describe('search', () => {
+    it('happyPath_aCityIsFoundWithItsBoxAndName', async () => {
+        const { fakes, geocoder } = nominatim();
+
+        await expect(geocoder.search({ q: 'Cluj-Napoca', lang: 'ro' })).resolves.toEqual({
+            bounds: { west: 23.4846, south: 46.7181, east: 23.6919, north: 46.8167 },
+            name: 'Cluj-Napoca, Cluj, România',
+        });
+        const [call] = fakes.callsTo('nominatim.search');
+        expect(Object.fromEntries(new URL(String(call?.url)).searchParams)).toEqual({
+            q: 'Cluj-Napoca',
+            format: 'jsonv2',
+            limit: '1',
+            'accept-language': 'ro',
+        });
+        expect(call?.headers['user-agent']).toBe(NOMINATIM_USER_AGENT);
+    });
+
+    it('badPath_aNameNothingHasIsNone', async () => {
+        const { geocoder } = nominatim();
+
+        await expect(geocoder.search({ q: 'Turda E2E', lang: 'ro' })).resolves.toBeUndefined();
+        await expect(geocoder.search({ q: '', lang: 'ro' })).resolves.toBeUndefined();
+    });
+
+    it('happyPath_aMirrorsSearchSitsBesideItsReverseAndAPlaceWithoutANameHasNone', async () => {
+        const place = { boundingbox: ['44.3', '44.6', '25.9', '26.3'] };
+        const upstream = createFakeFetch(
+            routeTable([route('GET', 'https://mirror.e2e.test/nominatim/search', 'mirror.search', () => jsonResponse([place]))]),
+        );
+        const geocoder = createNominatim({ fetch: upstream.fetch, url: 'https://mirror.e2e.test/nominatim/reverse' });
+
+        await expect(geocoder.search({ q: 'București', lang: 'en' })).resolves.toEqual({
+            bounds: { west: 25.9, south: 44.3, east: 26.3, north: 44.6 },
+            name: '',
+        });
+    });
+
+    it.each([
+        ['an object', () => jsonResponse({ error: 'x' })],
+        ['a place without a box', () => jsonResponse([{ display_name: 'x' }])],
+        ['a box of three', () => jsonResponse([{ boundingbox: ['1', '2', '3'] }])],
+        ['a box that is not numbers', () => jsonResponse([{ boundingbox: ['a', '2', '3', '4'] }])],
+    ])('badPath_%s_isInvalid', async (_name, answer) => {
+        const upstream = createFakeFetch(
+            routeTable([route('GET', 'https://nominatim.openstreetmap.org/search', 'nominatim.search', answer)]),
+        );
+
+        await expect(createNominatim({ fetch: upstream.fetch }).search({ q: 'x', lang: 'ro' })).rejects.toMatchObject({
+            service: 'nominatim',
+            failure: 'invalid',
+        });
+    });
+
+    it('badPath_aRefusalIsARateLimit', async () => {
+        const { fakes, geocoder } = nominatim();
+        fakes.fail('nominatim', 'rateLimited');
+
+        await expect(geocoder.search({ q: 'Cluj', lang: 'ro' })).rejects.toEqual(
+            new UpstreamError('nominatim', 'rateLimited', { status: 429 }),
+        );
+    });
+});

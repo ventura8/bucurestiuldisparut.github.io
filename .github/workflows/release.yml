@@ -1,13 +1,19 @@
 name: Release
 
-# Publishes a v* tag (.agent/skills/quality/prepare_release_skill.md). The `build` job runs the pipeline's
-# `release` stage in the quality image with read-only access: the tag is vMAJOR.MINOR.PATCH and matches every
-# package.json and ENGINE_VERSION, both docs/releases notes files exist (scripts/ci/check_release.py), and the
-# engine and admin bundles are rebuilt. Only then the `publish` job, the one holding `contents: write`, creates the
-# GitHub Release from the uploaded files without running any repository code: titled by the H1 of the description
-# file, with that file as its body and the bundles attached. The pre-push hook already
-# required PIPELINE_STAGE=all green on the tagged commit. Planned with M5: the SonarQube gate of the
-# default-branch analysis of the same commit and the jsDelivr purge.
+# Publishes a v* tag (.agent/skills/quality/prepare_release_skill.md, docs/research/M5-interfaces.md §2.5). The
+# `build` job runs the pipeline's `release` stage in the quality image with read-only access: the tag is
+# vMAJOR.MINOR.PATCH and matches every package.json, every workspace dependency, ENGINE_VERSION, the released
+# engine's cdn/engine/release.json and the starter kit's pinned folder, and both docs/releases notes files exist with
+# the description's pinned addresses equal to release.json's (scripts/ci/check_release.py); release.json lists every
+# committed engine file with its SHA-384 integrity and the kit pins exactly those (kit-pins); the engine and admin
+# bundles are rebuilt, and cdn/engine/ must equal the fresh engine build byte for byte (release-cdn), which jsDelivr
+# then serves from the tag at https://cdn.jsdelivr.net/gh/<repo>@vX.Y.Z/cdn/engine/; create-historic-city is packed.
+# The job summary shows the pinned addresses and their integrity. Only then the `publish` job, the one holding
+# `contents: write`, creates the GitHub Release from the uploaded files without running any repository code: titled
+# by the H1 of the description file, with that file as its body and the bundles attached. The pre-push hook already
+# required PIPELINE_STAGE=all green on the tagged commit. Proposed, not applied (DECISIONS-for-review.md §58c): the
+# SonarQube gate of the same commit, release.json and the CLI's package on the GitHub Release, the purge of jsDelivr's
+# @1 alias.
 
 on:
     push:
@@ -39,6 +45,11 @@ jobs:
                   PIPELINE_STAGE: release
                   HCM_DOCKER_BUILD_FLAGS: --load --cache-from type=gha,scope=hcm-quality
               run: bash scripts/ci/run-all-checks.sh
+
+            # The pinned jsDelivr addresses and the SHA-384 integrity of this release, as the release-cdn gate wrote them
+            # from cdn/engine/release.json (the same block as the description file's), on the run's summary page.
+            - name: Engine addresses and integrity
+              run: cat reports/release/engine-addresses.md >>"$GITHUB_STEP_SUMMARY"
 
             - name: Upload the release files
               uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

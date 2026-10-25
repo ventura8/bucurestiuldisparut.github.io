@@ -44,8 +44,12 @@ test(
     { tag: ['@S-A38-BAD-CONFLICT'] },
     async ({ page, lang, content, mockApiRequest }, testInfo) => {
         test.setTimeout(150_000);
-        // Another admin of the map, with an account and a city of their own (their address is their name).
+        // Another admin of the map, with an account and a city of their own (their address is their name), and an editor of
+        // this city too: the banner names the admins of the city only (M5, docs/research/M5-interfaces.md §1.7).
         const other = await ContentWorld.prepare(new EmulatorWorld(mockApiRequest), `${testIdOf(testInfo)}-other`);
+        await other.emulators.updateFields(`admins/${other.uid}`, { cities: { [other.city]: 'owner', [content.city]: 'editor' } }, [
+            'cities',
+        ]);
         try {
             await openPlace(page, content, lang);
             await title(page, lang).fill('Gara de Nord');

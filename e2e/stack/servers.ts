@@ -1,8 +1,8 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { gunzipSync } from 'node:zlib';
 
-import { createLogger, STORAGE_PATHS } from '@hcm/shared';
+import { createLogger, isUsableCityId, STORAGE_PATHS } from '@hcm/shared';
 
 import { parseHostingConfig } from '../../scripts/site/src/admin/hosting.js';
 import {
@@ -33,9 +33,13 @@ import { FORWARD_PREFIX, SHIM_PATH, shimScript, withShim } from './browser.js';
  *   `storage.googleapis.com` is read from the Storage emulator; a mocked host or a fake upstream's host goes to the mock
  *   APIs, in the shared partition `''` that the Functions emulator also reaches, so the browser and the server see one
  *   fake Google, Mapbox and USGS;
- * - on the site: `/` redirects to the Bucharest site, and `/<site>/data/manifest.json` is the manifest the emulators'
+ * - on the site: `/` redirects to the Bucharest site, and `/bucharest/data/manifest.json` is the manifest the emulators'
  *   build published for the city (`cities/bucharest/manifest.json` of the public bucket, its storage addresses made
- *   same-origin under `data/stack-storage/`, which the site's CSP allows), else the built fixture manifest.
+ *   same-origin under `data/stack-storage/`, which the site's CSP allows), else the built fixture manifest;
+ * - every other city of the emulators has its page at `/<city>/` (M5: what `site:add` and `build:site` make for a city
+ *   made in the admin): the Bucharest site's built page and engine, a `config.js` naming the city, and the manifest the
+ *   emulators published for it, else 404 (the page then says the map could not be found, as a site whose city is not
+ *   published does). A first segment that is no usable city id, or a folder of the built sites, is the built sites'.
  */
 
 const log = createLogger('dev-stack');
@@ -187,9 +191,9 @@ function siteAddresses(value: unknown): unknown {
     return value;
 }
 
-/** The manifest the emulators' build published for the Bucharest site's city, or undefined before the first build. */
-async function publishedManifest(): Promise<Answer | undefined> {
-    const stored = await storageObject(PUBLIC_BUCKET, STORAGE_PATHS.manifest(E2E_CITY_ID));
+/** The manifest the emulators' build published for `city`, or undefined before its first build. */
+async function publishedManifest(city: string): Promise<Answer | undefined> {
+    const stored = await storageObject(PUBLIC_BUCKET, STORAGE_PATHS.manifest(city));
     if (stored.status !== 200 || stored.body === undefined) {
         return undefined;
     }
@@ -203,20 +207,74 @@ async function publishedManifest(): Promise<Answer | undefined> {
     };
 }
 
-/** The site's own routes: `/` to the Bucharest site, the published manifest and the public bucket's objects. */
-async function siteRoute(request: IncomingMessage, target: Target): Promise<Answer | undefined> {
+/** A city's page on the site: `/<city>/<rest>` (`rest` empty for its folder); `bare` for `/<city>` without the slash. */
+interface CityPage {
+    readonly city: string;
+    readonly rest: string;
+    readonly bare: boolean;
+}
+
+/** The first segments the built sites and the servers own (`dist/e2e-site/<folder>`, the kit's mount, the stack's routes). */
+function builtFolders(): ReadonlySet<string> {
+    return new Set([...readdirSync(E2E_SITE_DIR), 'kit', '__stack', '__health']);
+}
+
+/** The city page `pathname` names: Bucharest's, or a usable city id no built site holds; else null. */
+function cityPageOf(pathname: string, built: ReadonlySet<string>): CityPage | null {
+    const [, city = '', ...rest] = pathname.split('/');
+    const isCity = city === E2E_CITY_ID || (!built.has(city) && isUsableCityId(city));
+    return isCity ? { city, rest: rest.join('/'), bare: rest.length === 0 } : null;
+}
+
+/** The `config.js` of a city's page, as `site:add` writes it: its id and the manifest beside the page. */
+function cityConfig(city: string): Answer {
+    const config = JSON.stringify({ cityId: city, manifestUrl: './data/manifest.json' });
+    return {
+        status: 200,
+        headers: { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store' },
+        body: `window.HistoricCityMapConfig = ${config};\n`,
+    };
+}
+
+/** An object of the public bucket the published manifest names (`data/stack-storage/<bucket>/<path>`). */
+function storageRoute(request: IncomingMessage, rest: string): Promise<Answer> | undefined {
+    const prefix = `data/${SITE_STORAGE}/`;
+    if (!rest.startsWith(prefix) || (request.method !== 'GET' && request.method !== 'HEAD')) {
+        return undefined;
+    }
+    const [bucket = '', ...path] = rest.slice(prefix.length).split('/');
+    return BUCKETS.includes(bucket) ? storageObject(bucket, decodeURIComponent(path.join('/'))) : Promise.resolve(text(404, 'Not found'));
+}
+
+/**
+ * A city's page: its published manifest and its objects; Bucharest's other files are its built site's; another city's
+ * `config.js` is made here and every other file is the Bucharest site's (the request is pointed there for the fallback).
+ */
+async function cityRoute(request: IncomingMessage, target: Target, page: CityPage): Promise<Answer | undefined> {
+    if (page.rest === 'data/manifest.json') {
+        return (await publishedManifest(page.city)) ?? (page.city === E2E_CITY_ID ? undefined : text(404, 'Not found'));
+    }
+    const stored = storageRoute(request, page.rest);
+    if (stored !== undefined || page.city === E2E_CITY_ID) {
+        return stored;
+    }
+    if (page.bare) {
+        return { status: 301, headers: { location: `/${page.city}/${target.search}`, 'cache-control': 'no-store' } };
+    }
+    if (page.rest === 'config.js') {
+        return cityConfig(page.city);
+    }
+    request.url = `/${E2E_CITY_ID}/${page.rest}${target.search}`;
+    return undefined;
+}
+
+/** The site's own routes: `/` to the Bucharest site, then the cities' pages (`built`: the first segments never a city). */
+async function siteRoute(request: IncomingMessage, target: Target, built: ReadonlySet<string>): Promise<Answer | undefined> {
     if (target.pathname === '/') {
         return { status: 302, headers: { location: `/${E2E_CITY_ID}/`, 'cache-control': 'no-store' } };
     }
-    if (target.pathname === `/${E2E_CITY_ID}/data/manifest.json`) {
-        return publishedManifest();
-    }
-    const storagePrefix = `/${E2E_CITY_ID}/data/${SITE_STORAGE}/`;
-    if (target.pathname.startsWith(storagePrefix) && (request.method === 'GET' || request.method === 'HEAD')) {
-        const [bucket = '', ...rest] = target.pathname.slice(storagePrefix.length).split('/');
-        return BUCKETS.includes(bucket) ? storageObject(bucket, decodeURIComponent(rest.join('/'))) : text(404, 'Not found');
-    }
-    return undefined;
+    const page = cityPageOf(target.pathname, built);
+    return page === null ? undefined : cityRoute(request, target, page);
 }
 
 function write(response: ServerResponse, request: IncomingMessage, answer: Answer): void {
@@ -301,7 +359,9 @@ export function startStackAdmin(options: StackServerOptions): Promise<Server> {
     return listen(stackServer([commonRoute], admin), ADMIN_PORT);
 }
 
-/** The site server of the stack on 127.0.0.1:4310: the e2e sites, behind the stack's routes. */
+/** The site server of the stack on 127.0.0.1:4310: the e2e sites and every city's page, behind the stack's routes. */
 export function startStackSite(): Promise<Server> {
-    return listen(stackServer([commonRoute, siteRoute], siteRequestHandler(E2E_SITE_DIR)), SITE_PORT);
+    const built = builtFolders();
+    const route: StackRoute = (request, target) => siteRoute(request, target, built);
+    return listen(stackServer([commonRoute, route], siteRequestHandler(E2E_SITE_DIR)), SITE_PORT);
 }

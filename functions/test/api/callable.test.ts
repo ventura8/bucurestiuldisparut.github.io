@@ -6,11 +6,11 @@ import { apiErrorDetailsSchema, type SetupStatusView } from '@hcm/shared';
 import { HttpsError, type CallableRequest } from 'firebase-functions/https';
 import { describe, expect, it } from 'vitest';
 
-import { requireAccess, type Caller, type CallerToken } from '../../src/api/access.js';
+import { requireAccess, requireCityRole, type Caller, type CallerToken } from '../../src/api/access.js';
 import { ApiError, toHttpsError } from '../../src/api/api-error.js';
 import { callableOptions, defineCallable, runCallable, type CallableDeps } from '../../src/api/callable.js';
 import { InvalidDocumentError, UpstreamError } from '../../src/ports/errors.js';
-import { fakeAdmins, recordingLogger } from '../support/fakes.js';
+import { fakeAdmins, fakeMembership, recordingLogger, type FakeStanding } from '../support/fakes.js';
 
 const ISO = '2026-10-12T08:30:00.000Z';
 
@@ -36,9 +36,9 @@ const VIEW: SetupStatusView = {
     generatedAt: ISO,
 };
 
-function deps(admins: readonly string[] = ['u-admin']): CallableDeps & ReturnType<typeof recordingLogger> {
+function deps(admins: readonly string[] = ['u-admin'], standing: FakeStanding = {}): CallableDeps & ReturnType<typeof recordingLogger> {
     const logged = recordingLogger();
-    return { ...logged, admins: fakeAdmins(admins) };
+    return { ...logged, admins: fakeAdmins(admins, standing) };
 }
 
 /** What firebase-functions hands a callable (its `.run()` takes the same). */
@@ -68,7 +68,16 @@ describe('runCallable', () => {
     });
 
     it('happyPath_aSignedInNonAdminMayAskForItsSession', async () => {
-        const session = { admin: false, role: null, claim: false, refreshToken: false, ownerClaimed: true, invitePending: false };
+        const session = {
+            admin: false,
+            role: null,
+            claim: false,
+            refreshToken: false,
+            ownerClaimed: true,
+            invitePending: false,
+            cities: [],
+            projectOwner: false,
+        };
 
         const result = await runCallable(
             'admin.session',
@@ -87,7 +96,7 @@ describe('runCallable', () => {
         const error = await rejection(
             runCallable('admins.invite', () => Promise.reject(new Error('never')), deps(), {
                 auth: caller('u-admin'),
-                data: { email: 'nope' },
+                data: { cityId: 'bucharest', email: 'nope', role: 'editor' },
             }),
         );
 
@@ -137,6 +146,84 @@ describe('requireAccess', () => {
             claim: true,
         });
         expect(admins.lookups).toEqual(['u-admin']);
+    });
+});
+
+describe('the M5 accesses (docs/research/M5-interfaces.md §1.3)', () => {
+    const EDITOR: FakeStanding = { projectRole: 'admin', cities: { bucharest: 'editor' } };
+    const never = () => Promise.reject(new Error('the handler never runs'));
+    const list = { cityId: 'cluj' };
+
+    it('happyPath_aCityEditorCallsTheCitysCallables', async () => {
+        const answer = { admins: [], invites: [] };
+
+        await expect(
+            runCallable('admins.list', () => Promise.resolve(answer), deps(['u-admin'], EDITOR), {
+                auth: caller('u-admin'),
+                data: { cityId: 'bucharest' },
+            }),
+        ).resolves.toEqual(answer);
+    });
+
+    it.each([
+        ['a city the caller does not administer', 'admins.list', list, EDITOR, 'apiError.city.notMember'],
+        [
+            'an owner callable called by an editor',
+            'admins.invite',
+            { cityId: 'bucharest', email: 'ion@example.test', role: 'editor' },
+            EDITOR,
+            'apiError.city.notOwner',
+        ],
+        [
+            'a project callable called by a city owner',
+            'cities.setLimits',
+            { cityId: 'bucharest', limits: {} },
+            { projectRole: 'admin' },
+            'apiError.city.notProjectOwner',
+        ],
+        [
+            'an admin document from before M5',
+            'admins.list',
+            { cityId: 'bucharest' },
+            { projectRole: 'admin', cities: {} },
+            'apiError.city.notMember',
+        ],
+    ] as const)('badPath_%s_isRefusedBeforeTheHandler @S-A51-BAD-OTHER-CITY-CALLABLE', async (_name, name, data, standing, code) => {
+        const error = await rejection(runCallable(name, never, deps(['u-admin'], standing), { auth: caller('u-admin'), data }));
+
+        expect(error).toMatchObject({ code });
+    });
+
+    it('badPath_aNonMembersInvalidRequestIsStillAFieldIssue', async () => {
+        const error = await rejection(
+            runCallable('admins.list', never, deps(['u-admin'], EDITOR), { auth: caller('u-admin'), data: { cityId: 'Cluj' } }),
+        );
+
+        expect(error).toMatchObject({ code: 'apiError.invalidRequest' });
+    });
+
+    it.each([
+        ['a claim without its document', caller('u-revoked')],
+        ['a document without the claim', caller('u-admin', adminToken({ admin: undefined }))],
+    ])('badPath_%s_isNoAdminOfAnyCity', async (_name, who) => {
+        await expect(requireAccess('cityEditor', who, fakeAdmins(['u-admin']))).rejects.toMatchObject({ code: 'apiError.notAdmin' });
+    });
+
+    it('happyPath_theProjectOwnerPassesAndTheMembershipIsKeptForTheCityCheck', async () => {
+        const verified = await requireAccess('projectOwner', caller('u-admin'), fakeAdmins(['u-admin']));
+
+        expect([verified.membership?.projectRole, verified.membership?.roleIn('anywhere')]).toEqual(['owner', 'owner']);
+    });
+
+    it('badPath_aCityCallableWithoutACityIsAServerBug', () => {
+        const verified = { uid: 'u-admin', email: undefined, claim: true, membership: fakeMembership() };
+
+        expect(() => {
+            requireCityRole('cityEditor', verified, {});
+        }).toThrow(ApiError);
+        expect(() => {
+            requireCityRole('admin', verified, {});
+        }).not.toThrow();
     });
 });
 

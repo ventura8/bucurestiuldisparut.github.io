@@ -15,7 +15,7 @@ Nothing in this workflow runs without the user's explicit yes **for that action*
 | Rules and indexes | Firestore and Storage rules, Firestore indexes | `firebase deploy --only firestore,storage` through WIF | green CI on `master` |
 | Functions | `functions/dist/` (the same artifact the e2e emulator ran, with the locked tree of `functions/deploy-lock/` and `.env.<project>` from `functions/deploy-env.json`) | `firebase deploy --only functions` through WIF (the job installs before it authenticates) | green CI on `master` |
 | Raster pipeline | the `pipeline/Dockerfile` `runtime` image | the `deploy-pipeline-image` job pushes it to Artifact Registry; `gcloud run jobs update` joins with M3 | green CI on `master` |
-| Engine release | GitHub Release for `vX.Y.Z`, jsDelivr `@1` | `release.yml` on the tag | a tag, after `all` (`.agent/skills/quality/prepare_release_skill.md`) |
+| Engine release | GitHub Release for `vX.Y.Z`; jsDelivr serves the tag's `cdn/engine/` (`@vX.Y.Z` pinned with SRI, `@1` floating) | `release.yml` on the tag (read-only checks and rebuild, then the Release from the uploaded files) | a tag, after `all` (`.agent/skills/quality/prepare_release_skill.md`) |
 
 After a deploy: `setup.selfTest` all green (IAM, secrets, Cloud Run, MTS); the live site loads with exactly one map load, photos render, the layer toggles work; the admin sign-in creates the owner claim.
 

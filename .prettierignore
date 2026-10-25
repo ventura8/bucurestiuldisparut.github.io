@@ -9,3 +9,6 @@ seed/
 docs/research/*.json
 # Third-party code vendored only to patch an advisory (vendor/npm/braces/README.md).
 vendor/
+# The released engine (docs/research/M5-interfaces.md §2.3): the minified engine build a release commits for jsDelivr,
+# written by `npm run release:cdn` and held byte for byte to a fresh build by the release-cdn gate; never hand-formatted.
+cdn/engine/

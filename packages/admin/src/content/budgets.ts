@@ -61,6 +61,21 @@ export const CONTENT_INPUT_BUDGETS = {
     readNotification: { inputs: 1, how: 'the item in the inbox (it opens its page and is marked read)' },
     pushOn: { inputs: 2, how: 'Notifications on this device, Allow in the browser’s own prompt' },
     // [end assists-notify]
+    // [section cities] owner: multi-city (docs/research/M5-interfaces.md §1.5 to §1.8)
+    // The M5 UX review (docs/LESSONS.md 252): the name finds the city on OpenStreetMap and its rectangle is drawn for it.
+    newCity: { inputs: 2, how: 'the Romanian name (the id and the rectangle follow it), Create the city' },
+    newCityDrawn: { inputs: 3, how: 'a name OpenStreetMap does not know, one drag of the rectangle on the map, Create the city' },
+    switchCity: { inputs: 2, how: 'the city in the bar, the other city in its menu' },
+    inviteToCity: { inputs: 3, how: 'Invite, the address (the role is editor unless changed), Invite in the dialog' },
+    setCityRole: { inputs: 3, how: "the admin's row, the role, confirm" },
+    setCityLimits: { inputs: 1, how: 'the fields of the city’s budget, Save', per: 'move' },
+    // The integrator (DECISIONS-for-review.md §63a): Settings → Publishing.
+    publishCity: { inputs: 2, how: 'the switch The city is public, Save' },
+    // [end cities]
+    // [section export] owner: export (docs/research/M5-interfaces.md §5.6)
+    exportCity: { inputs: 2, how: 'Export, then Download once the archive is ready' },
+    exportWithRasters: { inputs: 3, how: 'Include the USGS scans, Export, Download' },
+    // [end export]
 } as const satisfies Readonly<Record<string, ContentFlowBudget>>;
 
 export type ContentFlow = keyof typeof CONTENT_INPUT_BUDGETS;

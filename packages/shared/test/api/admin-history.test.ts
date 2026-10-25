@@ -1,16 +1,8 @@
 import type { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 
-import {
-    adminsListResponseSchema,
-    claimRequestSchema,
-    inviteIdFor,
-    inviteRequestSchema,
-    inviteResponseSchema,
-    normalizeEmail,
-    revokeRequestSchema,
-    sessionResponseSchema,
-} from '../../src/api/admin.js';
+import { claimRequestSchema, inviteIdFor, inviteResponseSchema, normalizeEmail, sessionResponseSchema } from '../../src/api/admin.js';
+import { cityAdminsListResponseSchema, cityInviteRequestSchema, cityRevokeRequestSchema } from '../../src/api/cities.js';
 import { historyEntryId, historyEntryIdSchema, revertRequestSchema } from '../../src/api/history.js';
 import { validate } from '../../src/schemas/validation.js';
 
@@ -33,7 +25,9 @@ describe('invitations', () => {
     });
 
     it('happyPath_anInviteRequestAndResponse', () => {
-        expect(validate(inviteRequestSchema, { email: 'ion@example.test' })).toMatchObject({ ok: true });
+        expect(validate(cityInviteRequestSchema, { cityId: 'bucharest', email: 'ion@example.test', role: 'editor' })).toMatchObject({
+            ok: true,
+        });
         expect(
             validate(inviteResponseSchema, {
                 inviteId: 'a'.repeat(64),
@@ -44,7 +38,7 @@ describe('invitations', () => {
     });
 
     it('badPath_anInvalidAddressIsAFieldIssue', () => {
-        expect(validate(inviteRequestSchema, { email: 'not-an-address' })).toEqual({
+        expect(validate(cityInviteRequestSchema, { cityId: 'bucharest', email: 'not-an-address', role: 'editor' })).toEqual({
             ok: false,
             issues: [{ path: 'email', code: 'validation.format' }],
         });
@@ -53,29 +47,71 @@ describe('invitations', () => {
 
 describe('admin callables', () => {
     it('happyPath_sessionClaimRevokeAndList', () => {
-        const session = { admin: false, role: null, claim: false, refreshToken: false, ownerClaimed: false, invitePending: true };
+        const session = {
+            admin: false,
+            role: null,
+            claim: false,
+            refreshToken: false,
+            ownerClaimed: false,
+            invitePending: true,
+            cities: [],
+            projectOwner: false,
+        };
+        const owner = {
+            ...session,
+            admin: true,
+            role: 'owner',
+            claim: true,
+            ownerClaimed: true,
+            invitePending: false,
+            cities: [{ id: 'bucharest', role: 'owner', name: { ro: 'București', en: 'Bucharest' } }],
+            projectOwner: true,
+        };
         const list = {
-            admins: [{ uid: 'u1', role: 'owner', email: 'o@example.test', createdAt: ISO, self: true }],
-            invites: [{ inviteId: 'b'.repeat(64), role: 'admin', invitedBy: 'u1', createdAt: ISO, expiresAt: ISO }],
+            admins: [{ uid: 'u1', role: 'owner', projectOwner: true, email: 'o@example.test', createdAt: ISO, self: true }],
+            invites: [{ inviteId: 'b'.repeat(64), role: 'editor', invitedBy: 'u1', createdAt: ISO, expiresAt: ISO }],
         };
 
         expect(validate(sessionResponseSchema, session)).toMatchObject({ ok: true });
+        expect(validate(sessionResponseSchema, owner)).toMatchObject({ ok: true });
         expect(validate(claimRequestSchema, { googleAccessToken: ACCESS_TOKEN })).toMatchObject({ ok: true });
-        expect(validate(revokeRequestSchema, { kind: 'admin', uid: 'u2' })).toMatchObject({ ok: true });
-        expect(validate(revokeRequestSchema, { kind: 'invite', inviteId: 'c'.repeat(64) })).toMatchObject({ ok: true });
-        expect(validate(adminsListResponseSchema, list)).toMatchObject({ ok: true });
+        expect(validate(cityRevokeRequestSchema, { kind: 'admin', cityId: 'bucharest', uid: 'u2' })).toMatchObject({ ok: true });
+        expect(validate(cityRevokeRequestSchema, { kind: 'invite', cityId: 'bucharest', inviteId: 'c'.repeat(64) })).toMatchObject({
+            ok: true,
+        });
+        expect(validate(cityAdminsListResponseSchema, list)).toMatchObject({ ok: true });
     });
 
     it.each([
         ['a token with spaces', claimRequestSchema, { googleAccessToken: 'ya29 has spaces in it, oh no' }, 'googleAccessToken'],
         ['a short token', claimRequestSchema, { googleAccessToken: 'ya29.x' }, 'googleAccessToken'],
-        ['an e-mail address as the invitation id', revokeRequestSchema, { kind: 'invite', inviteId: 'a@example.test' }, 'inviteId'],
-        ['an unknown revocation kind', revokeRequestSchema, { kind: 'everyone' }, 'kind'],
+        [
+            'an e-mail address as the invitation id',
+            cityRevokeRequestSchema,
+            { kind: 'invite', cityId: 'bucharest', inviteId: 'a@example.test' },
+            'inviteId',
+        ],
+        ['an unknown revocation kind', cityRevokeRequestSchema, { kind: 'everyone' }, 'kind'],
         [
             'a session with an unknown role',
             sessionResponseSchema,
-            { admin: true, role: 'root', claim: true, refreshToken: false, ownerClaimed: true, invitePending: false },
+            {
+                admin: true,
+                role: 'root',
+                claim: true,
+                refreshToken: false,
+                ownerClaimed: true,
+                invitePending: false,
+                cities: [],
+                projectOwner: false,
+            },
             'role',
+        ],
+        [
+            'a session without its cities',
+            sessionResponseSchema,
+            { admin: true, role: 'admin', claim: true, refreshToken: false, ownerClaimed: true, invitePending: false, projectOwner: false },
+            'cities',
         ],
     ])('badPath_%s', (_name, schema: z.ZodType, input, path) => {
         const result = validate(schema, input);

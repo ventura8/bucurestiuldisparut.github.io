@@ -105,6 +105,7 @@ describe('createDeps', () => {
                 'iam',
                 'images',
                 'jobs',
+                'kit',
                 'log',
                 'mapbox',
                 'push',
@@ -113,10 +114,12 @@ describe('createDeps', () => {
                 'scenes',
                 'secrets',
                 'setup',
+                'signer',
                 'tasks',
                 'tilesets',
                 'translator',
                 'usgs',
+                'writer',
             ].sort((a, b) => a.localeCompare(b)),
         );
         expect(deps.clock).toBe(systemClock);
@@ -302,5 +305,28 @@ describe('getDeps', () => {
         const first = getDeps();
 
         expect(getDeps()).toBe(first);
+    });
+});
+
+describe('createDeps: the M5 export ports (docs/research/M5-interfaces.md §5)', () => {
+    it('happyPath_theEmulatorSignsDownloadsWithTheStandIn', async () => {
+        const deps = createDeps(EMULATOR, app);
+
+        const url = new URL(
+            await deps.signer.signedDownload('private', {
+                path: 'exports/cluj/x-1.zip',
+                expiresAt: new Date('2030-01-01T00:00:00Z'),
+                fileName: 'cluj-2026-11-02.zip',
+            }),
+        );
+
+        expect(`${url.origin}${url.pathname}`).toBe('https://storage.googleapis.com/demo-hcm.firebasestorage.app/exports/cluj/x-1.zip');
+        expect(url.searchParams.get('X-Goog-Algorithm')).toBe('hcm-emulator-stand-in');
+    });
+
+    it('badPath_theKitIsReadFromBesideTheBundle_soTheSourceTreeHasNone', async () => {
+        const deps = createDeps(PROJECT, app);
+
+        await expect(deps.kit.engineVersion()).rejects.toThrow();
     });
 });

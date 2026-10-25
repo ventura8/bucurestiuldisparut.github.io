@@ -70,10 +70,15 @@ export interface GuardInput {
     readonly tilesets: number;
     /** The version itself holds a reservation already (a retried publish): it is not counted twice. */
     readonly versionId: string;
+    /**
+     * M5 (`docs/research/M5-interfaces.md` §1.8): what the version's city may still spend this month
+     * (`cityComputeUnitsAvailable`); absent for a city without limits, which the project's month alone holds.
+     */
+    readonly cityAvailable?: number;
 }
 
 export interface GuardOutcome {
-    readonly verdict: 'within' | 'over' | 'tileset-limit';
+    readonly verdict: 'within' | 'over' | 'tileset-limit' | 'city-over';
     /** Compute units left before this publish. */
     readonly available: number;
     /** About what the overage costs, when over. */
@@ -93,7 +98,10 @@ export function availableComputeUnits(usage: UsageCounters | undefined, versionI
     return budget - (counters.computeUnits ?? 0) - reserved(counters, versionId);
 }
 
-/** The guard's verdict on publishing one version now. */
+/**
+ * The guard's verdict on publishing one version now: the tileset cap first, then the project's month, then (M5) the
+ * city's share; `city-over` gives what the city has left as `available`.
+ */
 export function guardVerdict(input: GuardInput): GuardOutcome {
     const available = availableComputeUnits(input.usage, input.versionId);
     const overage = Math.max(0, input.estimate - available);
@@ -101,7 +109,13 @@ export function guardVerdict(input: GuardInput): GuardOutcome {
     if (input.tilesets >= MAX_TILESETS) {
         return { verdict: 'tileset-limit', available, overageUsd };
     }
-    return { verdict: overage > 0 ? 'over' : 'within', available, overageUsd };
+    if (overage > 0) {
+        return { verdict: 'over', available, overageUsd };
+    }
+    const cityAvailable = input.cityAvailable ?? Number.POSITIVE_INFINITY;
+    return input.estimate > cityAvailable
+        ? { verdict: 'city-over', available: cityAvailable, overageUsd: 0 }
+        : { verdict: 'within', available, overageUsd };
 }
 
 /** Mapbox allows 32 characters in a tileset's (and a source's) own name. */

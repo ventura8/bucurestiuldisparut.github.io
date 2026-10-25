@@ -72,6 +72,8 @@ export interface AuthControllerDeps {
     readonly serverSeen?: { known(): boolean; remember(): void };
     /** Whether an editor holds unsaved changes (a revoked admin's page then stays, read-only, until sign-out). */
     readonly unsaved?: () => boolean;
+    /** M5: what the session's cities make of the shell (`../app/current-city.ts`: the cities, the current one). */
+    readonly cities?: (session: SessionResponse) => Partial<ShellState>;
     /**
      * What this browser forgets before the account goes, while it may still call the server: the admin's push
      * registration (M4, `inbox/push-device.ts`), so a shared computer stops showing their notifications. Best effort:
@@ -342,7 +344,7 @@ export class AuthController {
 
     async #applySession(session: SessionResponse): Promise<void> {
         if (session.admin) {
-            this.#set({ auth: 'admin', mode: 'normal', role: session.role, busy: false, gate: NO_GATE });
+            this.#set({ auth: 'admin', mode: 'normal', role: session.role, busy: false, gate: NO_GATE, ...this.#deps.cities?.(session) });
         } else if (!session.ownerClaimed) {
             await this.#claimOrWait();
         } else if (session.invitePending) {

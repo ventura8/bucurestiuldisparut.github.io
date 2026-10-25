@@ -60,6 +60,8 @@ export async function seedGuard(deps: M4Deps, state: 'green' | 'red'): Promise<v
 export async function seedAdmin(deps: M4Deps, uid: string, overrides: Partial<AdminDoc> = {}): Promise<void> {
     await deps.documents.set(FIRESTORE_PATHS.admin(uid), adminDocSchema, {
         role: 'admin',
+        // M5: an admin of the world's city (a city's notifications reach its own admins only).
+        cities: { [CITY]: 'editor' },
         createdAt: T0,
         updatedBy: 'system:admins',
         updatedAt: T0,

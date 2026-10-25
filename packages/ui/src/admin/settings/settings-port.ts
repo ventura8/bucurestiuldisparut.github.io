@@ -6,6 +6,8 @@
 import type { CityDoc, Locale, OverlayKind, PoiCategoryDoc, ThemeTokens, ValidationIssue } from '@hcm/shared';
 
 import type { DocStatePort, ListStatePort } from '../area-port.js';
+import type { BudgetIntentsPort, BudgetSectionPort } from '../cities/budget-port.js';
+import type { ExportIntentsPort, ExportSectionPort } from '../export/export-port.js';
 import type {
     DraftConflictPort,
     DraftStatePort,
@@ -15,7 +17,11 @@ import type {
     WriteOutcomePort,
 } from '../layers/layers-port.js';
 
-export type SettingsSectionPort = 'area' | 'texts' | 'theme' | 'imagery' | 'categories' | 'overlays';
+/**
+ * M5 (CR-M5-10; owner: export): `export`, the city's static export (`../export/`); (owner: multi-city) `budget`; (the
+ * integrator, DECISIONS-for-review.md §63a) `publish`, whether visitors see the city.
+ */
+export type SettingsSectionPort = 'area' | 'texts' | 'theme' | 'imagery' | 'publish' | 'categories' | 'overlays' | 'export' | 'budget';
 
 export type AreaNumberFieldPort = 'west' | 'south' | 'east' | 'north' | 'lat' | 'lng' | 'zoom' | 'minZoom' | 'maxZoom';
 
@@ -40,7 +46,7 @@ interface Lines {
 }
 
 interface CitySectionPort {
-    readonly section: 'area' | 'texts' | 'theme' | 'imagery' | null;
+    readonly section: 'area' | 'texts' | 'theme' | 'imagery' | 'publish' | null;
     readonly draft: DraftStatePort<CityDoc>;
     readonly outside: readonly OutsidePort[];
     readonly checking: boolean;
@@ -109,9 +115,13 @@ export interface SettingsViewState {
     readonly reordering: boolean;
     /** The page's map (area and overlays): its state, and where a rectangle being drawn is. */
     readonly map: { readonly status: MapStatusPort; readonly drawing: 'first' | 'second' | null };
+    /** M5: Export the city (`../export/export-port.ts`). */
+    readonly export: ExportSectionPort;
+    /** M5: the city's budget (`../cities/budget-port.ts`). */
+    readonly budget: BudgetSectionPort;
 }
 
-export interface SettingsIntentsPort {
+export interface SettingsIntentsPort extends ExportIntentsPort, BudgetIntentsPort {
     retry(): void;
     editCity(patch: Partial<CityDoc>): void;
     setNumber(field: AreaNumberFieldPort, text: string): void;

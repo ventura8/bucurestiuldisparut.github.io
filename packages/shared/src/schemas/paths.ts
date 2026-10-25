@@ -162,6 +162,11 @@ export const FIRESTORE_PATHS = {
     harvestState: (cityId: string) => `ops/harvest-${segment(cityId, isCityId)}`,
     manifestStates: 'manifests',
     manifestState: (cityId: string) => `manifests/${segment(cityId, isCityId)}`,
+    /** M5 (docs/research/M5-interfaces.md §1.8): a city's month-to-date counters beside the project's. */
+    cityUsage: (cityId: string, month: string) => `${cityPath(cityId)}/usage/${segment(month, matching(MONTH_PATTERN))}`,
+    /** M5 (§5): a city's static exports, written by `export.start` and `export.build`. */
+    cityExports: (cityId: string) => `${cityPath(cityId)}/exports`,
+    cityExport: (cityId: string, exportId: string) => child(cityId, 'exports', exportId),
 } as const;
 
 /** The file extension each accepted photo type is stored with. */
@@ -203,6 +208,8 @@ export const STORAGE_PATHS = {
         ['photos', citySegment(cityId), idSegment(photoId), shaSegment(sha256).slice(0, 8), `${variant}.webp`].join('/'),
     /** public, `Cache-Control: public, max-age=60`. */
     manifest: (cityId: string) => `cities/${citySegment(cityId)}/manifest.json`,
+    /** private, written by `export.build` (M5 §5), deleted by the bucket's lifecycle after `EXPORT_LIMITS.ttlDays`. */
+    cityExport: (cityId: string, exportId: string) => ['exports', citySegment(cityId), `${idSegment(exportId)}.zip`].join('/'),
 } as const;
 
 /** The parts of a photo upload's path (the `photos.onUpload` trigger reads them from the finalized object's name). */

@@ -1,5 +1,5 @@
 import { expect, test } from '../support/test.js';
-import { expectJourneySound, journey } from './states.js';
+import { expectJourneySound, expectKitJourneySound, journey } from './states.js';
 
 /**
  * The layout and accessibility tour (docs/research/design-review-testability.md §4.3; behaviours V14, V15 and V18; the
@@ -109,3 +109,15 @@ for (const id of ['error-not-found', 'error-network', 'error-invalid', 'no-webgl
         },
     );
 }
+
+test(
+    'The starter kit with its engine refused: the bilingual note',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE'] },
+    async ({ page, consoleErrors }, testInfo) => {
+        await expectKitJourneySound({ page }, testInfo);
+        expect(
+            consoleErrors.take().filter((error) => !error.includes('404')),
+            'only the engine refused',
+        ).toEqual([]);
+    },
+);

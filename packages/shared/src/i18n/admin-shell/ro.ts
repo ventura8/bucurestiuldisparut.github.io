@@ -95,6 +95,14 @@ export const ro = {
     'adminShell.admins.inviteRow': 'Invitație din {created}, expiră pe {expires}',
     'adminShell.admins.cancel': 'Anulează invitația din {created}',
     'adminShell.admins.cancelled': 'Invitația a fost anulată.',
+    // M5 (docs/research/M5-interfaces.md §1.7): the city's admins and their roles; owner: multi-city.
+    'adminShell.admins.roleChanged': 'Rolul a fost schimbat.',
+    'adminShell.admins.roleOf': 'Rolul lui {name} în {city}',
+    'adminShell.admins.roleConfirm': 'Faci din {name} {role} pentru {city}?',
+    'adminShell.admins.roleConfirmAction': 'Schimbă rolul',
+    'adminShell.admins.projectOwner': 'Proprietarul proiectului',
+    'adminShell.admins.inviteAs': 'Rolul în {city}',
+    'adminShell.admins.ownerOnly': 'Doar proprietarii orașului invită, elimină și schimbă roluri.',
     'adminShell.home.refresh': 'Numără din nou',
     'adminShell.home.holdings': 'Harta ta',
     'adminShell.home.waiting': 'Te așteaptă',
@@ -130,6 +138,17 @@ export const ro = {
     'adminShell.home.map.updating': 'Harta publică se actualizează…',
     'adminShell.home.map.failed': 'Ultima actualizare a hărții publice a eșuat: {error}',
     'adminShell.home.map.never': 'Harta publică nu a fost publicată încă.',
+    // M5 (docs/research/M5-interfaces.md §1.5): the city switcher; owner: multi-city.
+    'adminShell.nav.cities': 'Oraș nou',
+    'adminShell.city.label': 'Oraș',
+    'adminShell.city.current': 'Orașul: {city}',
+    'adminShell.city.switch': 'Schimbă orașul',
+    'adminShell.city.new': 'Oraș nou',
+    'adminShell.city.role.owner': 'Proprietar',
+    'adminShell.city.role.editor': 'Editor',
+    'adminShell.city.opening': 'Se deschide {city}…',
+    'adminShell.city.notMember': 'Nu administrezi orașul {cityId}; s-a deschis {city}.',
+    'adminShell.city.none': 'Contul tău nu administrează niciun oraș încă. Cere o invitație proprietarului unui oraș.',
 } as const;
 
 export type AdminShellKey = keyof typeof ro;

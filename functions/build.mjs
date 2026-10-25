@@ -9,6 +9,11 @@
 // artifact lives in dist/ because every tool (git, ESLint, Prettier, dependency-cruiser, Sonar) already
 // ignores dist/ directories.
 //
+// The static export's kit (M5, docs/research/M5-interfaces.md §5.3, CR-M5-9) is copied beside the bundle into
+// dist/export-kit/: the starter kit's index.html and README.md (templates/starter-kit/), the engine's files without
+// source maps (packages/engine/dist: engine.iife.js, engine.css, fonts/, THIRD_PARTY_NOTICES.txt, so the engine is built
+// first, as `npm run build` does) and kit.json, the engine's ENGINE_VERSION and every copied file with its size.
+//
 // Four checks run on the result, because a broken artifact would only show at deploy time:
 // 1. every bare import left in dist/index.js, static or dynamic, is a Node built-in or a dependency dist/package.json
 //    pins (a dependency of @hcm/shared left external would install nothing and crash at cold start);
@@ -17,7 +22,7 @@
 // 3. deploy-env.json holds only public `HCM_*` values (DECISIONS-for-review.md §22a; secrets live in Secret Manager);
 // 4. dist/index.js loads the way firebase-tools loads it for discovery, and every export is a group of
 //    functions that each carry a deploy manifest (`__endpoint`).
-import { copyFile, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { builtinModules } from 'node:module';
 import process from 'node:process';
 import { URL, fileURLToPath } from 'node:url';
@@ -46,6 +51,35 @@ await build({
     },
     ssr: { target: 'node', noExternal: true, external },
 });
+
+// The export kit: the page and README of the starter kit, and the engine the export carries beside its page.
+const KIT_DIR = here('dist/export-kit/');
+const ENGINE_DIST = here('../packages/engine/dist/');
+const ENGINE_FILES = ['engine.iife.js', 'engine.css', 'THIRD_PARTY_NOTICES.txt'];
+const ENGINE_VERSION = /^export const ENGINE_VERSION = '(\d{1,4}\.\d{1,4}\.\d{1,6})';$/m;
+const engineVersion = ENGINE_VERSION.exec(await readFile(here('../packages/engine/src/index.ts'), 'utf8'))?.[1];
+if (engineVersion === undefined) {
+    throw new Error('packages/engine/src/index.ts declares no ENGINE_VERSION the export kit can record');
+}
+await mkdir(`${KIT_DIR}engine`, { recursive: true });
+for (const file of ['index.html', 'README.md']) {
+    await copyFile(here(`../templates/starter-kit/${file}`), `${KIT_DIR}${file}`);
+}
+try {
+    for (const file of ENGINE_FILES) {
+        await copyFile(`${ENGINE_DIST}${file}`, `${KIT_DIR}engine/${file}`);
+    }
+    await cp(`${ENGINE_DIST}fonts`, `${KIT_DIR}engine/fonts`, { recursive: true });
+} catch (error) {
+    throw new Error(`the export kit needs the engine's build (npm run build --workspace @hcm/engine first): ${String(error)}`, {
+        cause: error,
+    });
+}
+const fonts = (await readdir(`${KIT_DIR}engine/fonts`)).sort().map((file) => `fonts/${file}`);
+const engine = await Promise.all(
+    [...ENGINE_FILES, ...fonts].sort().map(async (path) => ({ path, bytes: (await stat(`${KIT_DIR}engine/${path}`)).size })),
+);
+await writeFile(`${KIT_DIR}kit.json`, `${JSON.stringify({ engineVersion, engine }, null, 4)}\n`);
 
 const artifactManifest = manifestText(deployManifest(manifest, await readJson(here('../package.json'))));
 await writeFile(here('dist/package.json'), artifactManifest);

@@ -3036,9 +3036,9 @@ Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`; the shared, r
 Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`, `PIPELINE_STAGE=build bash scripts/ci/run-all-checks.sh`;
 the admin, ui and shared Vitest projects.
 
-## 48. e2e-fakes: advisories published during the M3 run, and one CI-time question (2026-10-24) — 48a APPLIED 2026-10-25 (user approved the downloads; §58); 48b recorded for the user
+## 48. e2e-fakes: advisories published during the M3 run, and one CI-time question (2026-10-24) — 48a APPLIED 2026-10-25 (user approved the downloads; §64); 48b recorded for the user
 
-- **48a APPLIED 2026-10-25 (user approved the downloads; the versions in §58): two security bumps.**
+- **48a APPLIED 2026-10-25 (user approved the downloads; the versions in §64): two security bumps.**
   The `static` stage of 2026-10-24 fails on advisories that appeared
   after §44, in packages no M3 change touched; this phase may download nothing, so they wait for the user's approval:
 
@@ -3088,7 +3088,7 @@ No lint, tool, workflow or gitleaks configuration changed, no gate was relaxed a
   are still one too many, and a control the strip reaches must be there and uncovered. This makes the check exact, not
   looser: every case the old rule could see the logo in is still checked. For the user's review all the same, as a
   change to a checker.
-- **49i APPLIED 2026-10-25 (user approved the downloads; the versions in §58): §48a's security bumps.**
+- **49i APPLIED 2026-10-25 (user approved the downloads; the versions in §64): §48a's security bumps.**
   The `static` stage fails only on `npm-audit`,
   `deploy-lock-audit`, `pip-audit` and `pipeline-pip-audit` (body-parser GHSA-27r3-jxmh-p828, filelock 4.1.1 →
   4.2.1). This task may download nothing. The two body-parser tarballs (2.4.0 and 1.20.9) are already in the host's npm
@@ -3150,7 +3150,7 @@ The fixer of the two M3 reviews (ten security and cost findings, fifteen minimum
 - **50g The Mapbox "list a tileset's jobs" answer is a recorded fixture, UNVERIFIED** (`mapbox/tilesets.jobs.list`): only
   a lost publish answer uses it (`MapboxTilesets.listJobs`); the weekly contract probe should cover it once it runs
   (ask first, as CR-M3-9).
-- **50h APPLIED 2026-10-25 (user approved the downloads; §58): §48a and §49i's security bumps.** The four audit
+- **50h APPLIED 2026-10-25 (user approved the downloads; §64): §48a and §49i's security bumps.** The four audit
   gates still fail the `static`
   stage, and so `all`; this task could download nothing.
 - **50i Two screen defects the first full `all` found** (`docs/LESSONS.md` 181, 182): the georeferencer's pairs table on
@@ -3515,7 +3515,7 @@ write a complete `THIRD_PARTY_NOTICES.txt` that the `notices` gate checks (compl
   EarthExplorer (35 USD for one frame; Claude never pays), the CI line of §55e with the `HCM_PUBLIC_BUCKET` variable,
   the proposals §52f (e-mail through a log-based alert), §52g (detecting an order without the click), §53d (a visible
   licences link) and §54i (e-mail), and the advisories of §48a and §49i that keep the four audit gates red (bumps
-  applied 2026-10-25, §58).
+  applied 2026-10-25, §64).
 
 Verify: `PIPELINE_STAGE=static`, `tests`, `build` (`bash scripts/ci/run-all-checks.sh`) and `PIPELINE_STAGE=quality bash
 scripts/ci/e2e-split.sh`; `E2E_TIER=admin npx playwright test specs/imagery/automation.spec.ts --project admin-l1440-ro`.
@@ -3610,9 +3610,594 @@ Every one was applied as below or is proposed for the user's decision; none was 
   (`docs/LESSONS.md` 217).
 
 Verify: `bash scripts/ci/e2e-split.sh` (stage `all`; the four audit gates stayed red on §48a and §49i until their bumps of
-2026-10-25, §58).
+2026-10-25, §64).
 
-## 58. Security bumps for §48a and §49i (2026-10-25) — APPLIED 2026-10-25 (user approved the downloads: "yes, install the security bumps")
+## 58. The M5 contracts (2026-10-25) — 58a recorded for the user; 58b–58f PROPOSED, NOT APPLIED (workflow edits, possible gate exclusions, the template repository, the npm publish); 58g and 58h for the user's decision; 58i recorded
+
+The M5 contracts agent wrote `docs/research/M5-interfaces.md` alone before the four M5 workstreams (multi-city, release,
+kit-cli, export), with the shared schemas, API schemas, error codes, catalogues, input budgets, tour sections and the
+56 planned scenario rows it names (CR-M5-1). No lint, tool, workflow or gitleaks configuration changed, no gate was
+relaxed, no checker allowlist entry was added, and nothing was downloaded, pushed, tagged, published or deployed.
+
+- **58a Recorded: what the contract decided that the user may want to see.**
+  - Membership lives on the admin's own document (`admins/{uid}.cities`: city id to `owner` or `editor`), written by the
+    functions only; the custom claim stays `admin: true`. The project's owner creates cities and sets their budgets; a
+    city's owner invites and removes that city's admins and exports it; an editor edits its content. Admins from before
+    M5 keep every city (the project owner as owner, every other admin as editor), migrated at their first session and by
+    `ops.tick`. Resuming the project's budget guard (`imagery.resumeGuard`) becomes the project owner's, since it
+    resumes every city's imagery.
+  - Switching city reloads the admin page (one city per page load, so no listener of another city survives); an admin of
+    one city sees no switcher and no address change. New city takes three inputs (the name, one rectangle, Create); the
+    city starts unpublished, with no legacy import, and its first USGS harvest runs at the next five-minute tick.
+  - Per-city budgets: a new city gets a quarter of the free Mapbox compute units a month, three raster jobs a day, 100 AI
+    drafts a month, 100 title suggestions a day and three exports a day; Bucharest, with no limits, is held by the
+    project's caps only, as today. At most 20 cities a project.
+  - GitHub Pages: Bucharest stays at the root (its old links keep working), every other city at `/<city>/`; a city's
+    site is a committed `sites/<city>/` folder, because the admin holds no GitHub credential.
+  - The first engine release is v1.0.0; the release commit holds the built engine in `cdn/engine/` (about 1 MB, no
+    source maps) with `release.json` (the SRI of every file), because jsDelivr's GitHub route serves only what a tag
+    holds and `dist/` is ignored.
+  - The starter kit's template ships no photos (the M1 kit's examples are licensed for București dispărut only) and no
+    `config.js`: `<hcm-map-viewer manifest-url="city.json">` is the configuration; its page frame moves into
+    `engine.css` (`.hcm-fullpage`, `.hcm-note`), so the kit stays three files.
+  - `create-historic-city` has no runtime dependency (one bundled file, the template and the self-host files inside the
+    package), runs only the owner's own `firebase` and `gcloud` after a `y/N` per step, and fetches nothing.
+  - The export's download is a V4 signed address that lives 15 minutes; the zip stays seven days.
+- **58b PROPOSED, NOT APPLIED: GitHub Pages serves the assembled tree** (`.github/workflows/ci.yml`, a workflow edit that
+  changes what is deployed: ask first). Once the site build's `--pages` lands (multi-city), the `Upload the GitHub Pages
+  artifact` step's `path: dist/site/bucharest` becomes `path: dist/pages`. With only Bucharest's site both trees are
+  identical. Verify: `PIPELINE_STAGE=build` (the site build writes `dist/pages`), the V26 rows.
+- **58c PROPOSED, NOT APPLIED: the release workflow publishes the engine's release file, its source maps and the CLI's
+  package, and purges the `@1` alias** (`.github/workflows/release.yml`; ask first: it publishes more). The `build`
+  job's upload adds `cdn/engine/release.json` and `reports/release/create-historic-city-*.tgz`; the `publish` job's
+  `files` add them beside the bundles (the maps are already in `packages/engine/dist/*`); a last step, with no
+  repository code, requests `https://purge.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@1/cdn/engine/<file>`
+  for each file `release.json` lists (best effort; the exact tag needs no purge). The SonarQube gate of the same commit,
+  planned since M2, is the pre-approved kind (a stricter check) only if it reuses the SHA-pinned actions `ci.yml`
+  already pins; the release workstream applies it then and logs it, else it joins this proposal. Verify:
+  `PIPELINE_STAGE=static` (actionlint, the workflow policy and the action pins), then the first tag.
+- **58d PROPOSED, NOT APPLIED (only if measured): static gates and the committed `cdn/engine/`.** Minified third-party
+  code may trip the suppression scan (a bundled library's comment), EditorConfig (no final newline) or gitleaks (a
+  false positive). The release workstream first measures; ignoring the generated folder in Prettier's or ESLint's own
+  ignore file keeps a tool working (pre-approved, logged); any exclusion from the suppression scan, EditorConfig or
+  gitleaks is a relaxation and waits here with its exact line and the finding that needs it. The preferred way out is
+  the `cdn` transform itself (it already removes the source-map line), where a finding allows it.
+- **58e PROPOSED, NOT APPLIED (ask first): the starter kit's GitHub template repository**, after v1.0.0 is tagged:
+  `gh repo create ventura8/historic-city-map-starter --public`, push the three files of `templates/starter-kit/`, then
+  `gh api -X PATCH repos/ventura8/historic-city-map-starter -F is_template=true` (the name is the user's choice).
+- **58f PROPOSED, NOT APPLIED (the user's own steps): publishing `create-historic-city` to npm**, after the tag:
+  `npm view create-historic-city` (is the name free), `npm login` (the user's account and 2FA), then
+  `npm publish reports/release/create-historic-city-1.0.0.tgz --access public`. Claude never types the password or the
+  one-time code.
+- **58g For the user: whether jsDelivr serves this repository at a tag.** The release skill records jsDelivr's limits as
+  150 MB a package and 20 MB a file; the tree is about 76 MB, but this was not probed (no request leaves the machine).
+  The probe: open `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@legacy-2022/README.md` once. If
+  it is refused, the alternatives are (1) a small repository holding only `cdn/engine/` per tag, which the release
+  pushes to (a new secret: ask first), or (2) the engine on npm and `cdn.jsdelivr.net/npm/...` pins (an npm account
+  step). Either changes only `engineCdnBase` and the release scripts.
+- **58h For the user's decision: the photos licensed for this map only in an export.** The contract includes them (an
+  export is the owner's archive, and Bucharest's 45 photos are all `permission-legacy`) and names them in `RIGHTS.md`
+  and on the export card. The alternative leaves them out by default, with a box to include them (one more input).
+- **58i Recorded: configuration edits the workstreams will make, each of the pre-approved kind and logged by its
+  owner**: the CLI's Vitest project in `vitest.config.ts`, its dependency-cruiser rule and the `cities` and `export`
+  feature folders in the `functions-feature-folders-independent` rule (`.dependency-cruiser.cjs`), the CLI's entry in
+  `knip.json`, its scope in `sonar-project.properties`, the `templates/` root of the agent-asset checker, new
+  `ADMIN_CHUNK_BUDGETS` rows (`cities`, `city-budget`, `export-card`), the `notices` gate over the CLI's bundle, and the
+  `release` stage's `kit-pins` and `release-cdn` gates.
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`; the shared and admin Vitest projects for the edited
+files.
+
+## 59. The M5 release workstream: the release scripts and gates, what committing `cdn/engine/` trips, the first release prepared (2026-10-25) — 59a, 59b and 59d APPLIED (stricter gates and configurations, and ignore entries that keep two tools working: the pre-approved kinds); 59c and 59j PROPOSED, NOT APPLIED (an EditorConfig relaxation; the exact publishing lines of §58c); 59e–59g and 59i recorded; 59h for the user, ask first
+
+The release workstream of `docs/research/M5-interfaces.md` (§2, §6.1) built the scripts that write one version
+everywhere, the released engine's folder, the starter kit's pins and the notes' pinned addresses, the gates that hold them
+together, and measured which static gates read a committed `cdn/engine/`. Nothing was bumped, tagged, pushed, published
+or downloaded, and no request left the machine: the bump, `cdn/engine/`, the kit's pins and the notes' block are the last
+steps of M5 (§2.6), after the other workstreams' engine changes (kit-cli's `engine.css` frame, CR-M5-5) have landed.
+
+- **59a APPLIED (stricter gates): `kit-pins`, `release-cdn`, `release-pack`, and `release-check` extended.**
+  - `kit-pins` (`scripts/ci/check_kit_pins.py`, `static` and `release`): `cdn/engine/release.json` has the shape of
+    `engineReleaseSchema` and lists every committed file of `cdn/engine/` with its size and SHA-384; the kit page
+    (`templates/starter-kit/index.html`) pins Mapbox GL JS and, in its engine block, `engine.css` and a deferred
+    `engine.iife.js` from one pinned jsDelivr folder, each with `integrity` and `crossorigin="anonymous"`, its CSP's
+    `script-src`, `style-src` and `font-src` name that folder, and nothing loads from jsDelivr outside the block; with a
+    release, every pinned address and integrity is `release.json`'s. Before the first release only the page's shape is
+    checked (kit-cli's template passes today, with its placeholder integrity).
+  - `release-check` (`scripts/ci/check_release.py`) also requires every dependency of a workspace on another workspace,
+    `cdn/engine/release.json` and the kit's pinned folder at the tag's version, and the description's pinned addresses
+    (and every `sha384-` value it names) to be `release.json`'s.
+  - `release-cdn` (`npm run release:cdn -- --check`, after `vite-build`): `cdn/engine/` is byte for byte the release
+    folder of the fresh engine build; it writes `reports/release/engine-addresses.md` for the job summary.
+  - `release-pack`: `npm pack --workspace create-historic-city` into `reports/release/` (nothing is published).
+  - The `release` stage is now `release-check`, `kit-pins`, `vite-build`, `release-cdn`, `bundle-budget`, `notices`,
+    `release-pack`; `static` gains `kit-pins` (69 gates in all). The shared readers are `scripts/ci/release_pins.py`.
+- **59b APPLIED (configurations of the pre-approved kinds).**
+  - Stricter: `vitest.config.ts` (the `tools` project's coverage scope gains `scripts/release/src/**/*.ts`, so the
+    release scripts are held to 90 % per file); `eslint.config.js` (`scripts/release` joins `PRODUCT` and its limits);
+    `knip.json` (the root workspace's `project` gains `scripts/release/**/*.ts`); `npm run lint:deps` (over
+    `scripts/release` too); `sonar-project.properties` (`scripts/release/src` a source, `scripts/release/test` tests,
+    their two tsconfig projects); the root `tsconfig.json` references both projects.
+  - Keeping two tools working (measured on a scratch copy of the folder, never in the tree): ESLint reports 7,716
+    errors on the minified engine and Prettier 5 unformatted files, so `eslint.config.js` ignores `cdn/engine/**` and
+    `.prettierignore` lists `cdn/engine/`, each with its why-comment. The engine's sources stay linted in `packages/`.
+- **59c PROPOSED, NOT APPLIED (a relaxation, ask first): EditorConfig on the committed engine.** Measured on the
+  release folder `npm run release:cdn` writes from the current build: `cdn/engine/engine.iife.js: line 58: trailing
+  whitespace` and `cdn/engine/engine.mjs: line 114: trailing whitespace`. Both are lit-html's
+  `` `[ \t\n\f\r]` `` written by the minifier as a template literal whose `\n` became a real line break, so the line
+  ends with a space and a tab that belong to the string: stripping them would change lit-html's whitespace pattern, and
+  Rolldown's minifier has no option to keep the escape. (The other finding, `engine.css` without a final newline, the
+  transform already fixes: every text file of the release ends in a newline.) The narrowest exception, verified on the
+  scratch copy (`[editorconfig] OK: 13 files follow .editorconfig`), appended to `.editorconfig`:
+
+  ```ini
+  # The released engine (cdn/engine/, docs/research/M5-interfaces.md §2.3): minified third-party code committed byte for
+  # byte as jsDelivr serves it, where a template literal of lit-html holds a space and a tab before a line break.
+  [cdn/engine/*.{js,mjs}]
+  trim_trailing_whitespace = false
+  ```
+
+  Alternatives: excluding `cdn` from `cirepo.EXCLUDED_DIRS` (it would also hide the folder from the suppression scan,
+  `data-files` and `repo-policy`, which pass on it as it is), or not committing the engine (the npm route of §58g). Without
+  one of them the release commit's `static` stage fails on `editorconfig`, so the answer is needed before v1.0.0.
+  Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` on the release commit.
+- **59d APPLIED: `release.yml` shows the pinned addresses and their integrity.** The `build` job gains one step after the
+  release stage, `cat reports/release/engine-addresses.md >>"$GITHUB_STEP_SUMMARY"` (the `release-cdn` gate wrote it
+  from `cdn/engine/release.json`: the table of the four pinned addresses with their SHA-384, the `release.json` and `@1`
+  addresses, the tags to paste), and its header comment names the new gates. It runs no repository code, needs no
+  permission and publishes nothing the tag does not already hold; the stricter checks themselves come from the `release`
+  stage (59a). Checked: `actionlint`, `workflow-schema`, `workflow-timeouts`, `workflow-policy`, `action-pins`, yamllint
+  and Prettier on the workflow. The artifact upload and the `publish` job are unchanged (§58c stays a proposal).
+- **59e Recorded: the rest of the measurement of §2.3.** On the same scratch copy, the suppression scan, gitleaks with
+  `.gitleaks.toml` and with `.gitleaks-history.toml` (which has no path allowlist), `data-files`, `repo-policy` (no banned
+  account, no secret file) and markdownlint (`fonts/LICENSES.md` is byte for byte `packages/ui/fonts/LICENSES.md`) pass;
+  `repo-budget` stays far inside its 60 MB (16.7 MB without `seed/` today, plus about 1.04 MB). No other static gate
+  reads the folder (`knip`, `dependency-cruiser`, stylelint, the i18n and scenario checks, Sonar's sources).
+- **59f Recorded: what the release scripts decided (`scripts/release/`, `npm run release:{bump,cdn,pin-kit,notes}`).**
+  - The bump rewrites the lockfile's workspace entries itself (versions only, four-space JSON as npm writes it), so no
+    `npm install` and no download is needed; it also rewrites `functions/deploy-lock/` (`package.json` and its lock),
+    whose version `functions/build.mjs` compares with the functions'. A Vitest test runs the bump over the real tree
+    read-only and requires no change: every version is aligned today and every file round-trips byte for byte.
+  - The release folder keeps every built file but the maps, removes the last source-map line, ends every text file
+    with a newline, lists the files in code-point order (no locale in the bytes), takes Mapbox GL JS's integrity from the
+    installed npm release and refuses another installed version.
+  - The kit is pinned through `fillKitPage` (kit-cli's `packages/shared/src/kit/page.ts`), which rewrites the engine
+    block and the CSP; the template's Mapbox GL JS tags must already be the release's, or the pinning stops.
+  - The description's block lies between `<!-- hcm:sri -->` and `<!-- /hcm:sri -->` (plain HTML comments, invisible on
+    GitHub); `check_release.py` compares its table rows and every `sha384-` value with `release.json`.
+  - The About dialog's spec (`e2e/specs/viewer/about.spec.ts`, S-V13-HAPPY) read `'0.0.0'`; it now reads the root
+    `package.json`'s version, so the bump changes no test.
+- **59g Recorded: v1.0.0 prepared, not tagged.** `docs/releases/v1.0.0.md` and `docs/releases/v1.0.0_github_description.md`
+  are written (between the description's markers a sentence says the block comes with `cdn/engine/`), and `docs/ENGINE_API.md` → *Versioning and compatibility* says
+  what a release holds and how a page pins it. `python3 scripts/ci/check_release.py --tag v1.0.0` lists what remains,
+  the integrator's last steps of M5 (§2.6): `npm run release:bump -- 1.0.0`; `npm run build --workspace @hcm/engine &&
+  npm run release:cdn`; `npm run release:pin-kit`; `npm run release:notes -- --write
+  docs/releases/v1.0.0_github_description.md`; the notes re-read against what M5 shipped; `all` split with the NUC.
+- **59h For the user, ask first, one at a time (after 59c is answered and `all` is green on the release commit):**
+  1. the jsDelivr probe of §58g (open its address once in a browser), since the pinned addresses depend on it;
+  2. `git push origin feat/engine-rewrite`
+  3. `gh pr create --base master --head feat/engine-rewrite --title "feat: M5 multi-city and engine v1.0.0"`, its
+     review, then the merge;
+  4. on the merged `master` commit, once `all` is green there: `git tag -a v1.0.0 -m "v1.0.0"`;
+  5. `git push origin v1.0.0` (CI's `release.yml` then checks, rebuilds and publishes the GitHub Release);
+  6. then the template repository (§58e) and the npm publish (§58f).
+
+- **59i Recorded: the SonarQube gate of the tagged commit stays in §58c's proposal.** Reusing `ci.yml`'s pinned scan and
+  quality-gate actions in `release.yml` needs the commit's coverage reports there: either the whole `tests` stage again
+  on the tag (about 20 minutes more) or the CI run's `coverage` artifact (a cross-workflow download with `actions: read`
+  and the run's id). Neither is a stricter check of what the release job already has, so it waits with the publishing
+  additions; the lighter design for the user's yes is a step that asks SonarCloud's API for the quality gate of the
+  `master` analysis whose revision is the tagged commit (`api/project_analyses/search`, then
+  `api/qualitygates/project_status`), with `SONAR_TOKEN` passed by name.
+
+- **59j PROPOSED, NOT APPLIED (ask first: it publishes more): the exact lines of §58c's publishing additions.** The
+  `build` job uploads `cdn/engine/release.json` and the CLI's package with the release files; the `publish` job (still
+  no checkout, no repository code) names the release file `engine-release.json`, attaches it and the package beside the
+  bundles (the engine's source maps already are), then asks jsDelivr to refresh the major alias, best effort. Checked on
+  a scratch copy of the workflow: `actionlint`, the GitHub workflow schema, `workflow-policy`, yamllint and Prettier pass.
+
+  ```diff
+  --- a/.github/workflows/release.yml
+  +++ b/.github/workflows/release.yml
+  @@ -59,6 +59,8 @@ jobs:
+                         packages/engine/dist/
+                         packages/admin/dist/
+                         docs/releases/
+  +                      cdn/engine/release.json
+  +                      reports/release/create-historic-city-*.tgz
+                     if-no-files-found: error
+                     retention-days: 7
+   
+  @@ -86,6 +88,10 @@ jobs:
+                     title="$(sed -n 's/^# //p' "release/docs/releases/${TAG}_github_description.md" | head -n 1)"
+                     echo "title=${title:-$TAG}" >>"$GITHUB_OUTPUT"
+   
+  +            # The engine's release file under a name that says what it is, beside the bundles on the GitHub Release.
+  +            - name: Name the engine's release file
+  +              run: cp release/cdn/engine/release.json release/engine-release.json
+  +
+               - name: GitHub Release
+                 uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+                 with:
+  @@ -95,3 +101,20 @@ jobs:
+                     files: |
+                         release/packages/engine/dist/*
+                         release/packages/admin/dist/*
+  +                      release/engine-release.json
+  +                      release/reports/release/create-historic-city-*.tgz
+  +
+  +            # jsDelivr keeps a tag's files for good, but caches what the floating major alias (@1) resolves to: ask it to
+  +            # look again for each file of the release (best effort; the exact tag needs no purge).
+  +            - name: Purge the major alias on jsDelivr
+  +              continue-on-error: true
+  +              env:
+  +                  TAG: ${{ github.ref_name }}
+  +                  REPOSITORY: ${{ github.repository }}
+  +              run: |
+  +                  major="${TAG#v}"
+  +                  major="${major%%.*}"
+  +                  jq -r '.files[].path' release/engine-release.json | while read -r file; do
+  +                      curl -fsS --max-time 30 "https://purge.jsdelivr.net/gh/${REPOSITORY}@${major}/cdn/engine/${file}" >/dev/null ||
+  +                          echo "::warning title=jsDelivr purge::${file} was not purged"
+  +                  done
+  ```
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` (the four audit gates stay red on §48a and §49i);
+the `tools` Vitest project (`scripts/release/test`, 100 % lines and branches per file) and `pytest`
+(`test_check_kit_pins.py`, `test_check_release.py`, 100 % per file).
+
+## 60. The M5 export workstream: the static export of a city (2026-10-25) — 60a–60e APPLIED (product, test and documentation changes within the contract, its change requests CR-M5-9, CR-M5-10 and CR-M5-15 to CR-M5-18; 60e a new lazy chunk with its own budget, the pre-approved kind; no gate relaxed, no budget raised, no checker allowlist entry); 60f recorded for the user; 60g waits on multi-city (CR-M5-8, CR-M5-11)
+
+The export workstream built behaviour A53 (a city owner exports the city from Settings) and V28 (the viewer boots from
+the export) as `docs/research/M5-interfaces.md` §5 says. Nothing was downloaded, committed, pushed or deployed, and no
+real Google, Mapbox, USGS, STAC, Nominatim, Vertex AI or OpenStreetMap endpoint was called: the functions run against
+the fakes and the Storage emulator, the admin against the emulators, the V28 page against the mock APIs.
+
+- **60a APPLIED: the server side** (`functions/src/export/`, deployed as `export-start`, `export-download`,
+  `export-build`; the group is exported as `export { exportGroup as export }` since `export` is a reserved word).
+  `export.start` (a city's owners: the registry's `cityOwner`) refuses a city never published, a red guard, an export
+  under way and the day's exports used up (the city's `limits.exportsPerDay`, else three), records the export and queues
+  its task. The export id is `x-<YYYYMMDD>-<n>`, the day's `n`-th, so two owners racing compute the same id and the second
+  create is `apiError.export.busy`; the task id is `<city>--<export>` (CR-M5-17). `export.build` (`fn-events@`, one
+  attempt, two at a time, 1 GiB, 30 minutes) reads the published manifest from the public bucket, plans the files, sums
+  their sizes first and streams the zip into `exports/<city>/<export>.zip` through a writer of its own over Node's `zlib`
+  (data descriptors, DEFLATE for text, STORE for WebP, GeoTIFF and WOFF2, entries in name order, the export's day as their
+  time, no ZIP64), counting and hashing as it streams; anything that fails leaves `failed` with its code and the
+  message's parameters (`errorParams`, a schema field the export owns) and no object. `export.download` answers a V4
+  signed address of fifteen minutes with the file name as its disposition; the address is never logged. `ops.tick`'s
+  new step `exports` expires ready exports past their seven days (deleting the zip) and fails one stuck queued or
+  building 40 minutes after it began, which `export.start` no longer counts as busy (CR-M5-17).
+- **60b APPLIED: what travels** (§5.1, §5.2). The zip holds the starter kit's page filled by `fillKitPage` (the city's
+  name and colour, Romanian first, the engine from `engine/`, a CSP that names only the outside origins the manifest still
+  points at), `city.json` (the photos' files beside it, `analytics` empty: no GA4 or Firebase id and no crash endpoint,
+  the viewer token kept), a README in both languages before the kit's own, `RIGHTS.md` naming the photos licensed for this
+  map only, the engine (`engine.iife.js`, `engine.css`, `fonts/`, `THIRD_PARTY_NOTICES.txt`, copied into
+  `functions/dist/export-kit/` by `functions/build.mjs` with `kit.json`, CR-M5-9) and, when asked, the COG of each USGS
+  layer's current version. Only what the city publishes travels: a photo without a licence or not published is not in
+  the manifest, so its files are never read (row `S-A53-BAD-UNLICENSED`, added). The photos licensed for this map only
+  travel and are named (§58g, the contract's default, stays the user's decision).
+- **60c APPLIED: the card** (Settings → Export the city, CR-M5-10): the intro, Include the USGS scans with their size
+  (only when the city has USGS scans), Export; the latest export live (waiting, being prepared, ready with its size,
+  counts, SHA-256 and expiry, failed with its reason, expired), Download, which saves the signed address through a link
+  the page follows once and drops; an editor sees it read-only, a city never published says to publish it first. A ready
+  export whose time is up reads expired before the tick marks it. Inputs: `exportCity` 2, `exportWithRasters` 3.
+- **60d APPLIED: the tests.** Functions (fakes and the Storage emulator): `functions/test/export/*` and the adapters'
+  (`url-signer`, `storage-writer`, `export-kit`), `functions/test/ops/exports.test.ts`; rows `S-A53-HAPPY-RASTERS`,
+  `-HAPPY-RIGHTS`, `-BAD-TOO-LARGE`, `-BAD-EDITOR`, `-BAD-DAILY-LIMIT`, `-BAD-UNLICENSED`. Admin (`e2e/admin/specs/export/`,
+  content worlds): `S-A53-HAPPY` (two inputs, the downloaded zip is the object the task wrote, unpacked by
+  `e2e/support/unzip.ts`), `-BAD-BUSY`, `-BAD-EXPIRED`, `-BAD-NEVER-PUBLISHED`, and the tour states `export.card`,
+  `export.building`, `export.ready`, `export.failed`, `export.expired`, `export.readonly`. Starter kit
+  (`e2e/specs/starter-kit/export.spec.ts`): `S-V28-HAPPY`, `-HAPPY-CONSENT-SENDS-NOTHING` (a city published with a GA4 id
+  exports none: no banner asks, nothing loads), `-BAD-FILE-URL`. V28 builds its own export with the export's planner and
+  writer over the fixture city (CR-M5-18): the starter-kit tier runs without the emulators, and on the other machine in a
+  split run. `e2e/tour/states.ts` had reached its 600-line limit: the M4 and M5 sections moved to
+  `e2e/tour/admin-sections.ts` (CR-M5-15).
+- **60e APPLIED (a new chunk with its own budget, the pre-approved kind): the card is the lazy chunk `export-card`**
+  (`packages/ui/src/admin/export/export-card.ts`, fetched the first time the section opens; `lazy-card.ts` shows Loading,
+  or the failure with Try again). `ADMIN_CHUNK_BUDGETS` gains `export-card` 2 KB (1.7 KB measured by the gate on
+  2026-10-25 plus about 20 %). Measured with it: `editor-shared` 12.8 KB of 13 (the order card's `chunkLoader`, which the
+  export card reuses, is now shared by two areas), `settings` 19.5 KB of 20 with both M5 sections' stores and chunk loaders (18.6 KB with the export's alone): the
+  next Settings section needs a chunk of its own.
+  No budget was raised; `PIPELINE_STAGE=build` passes.
+- **60f recorded for the user: the signing permission and the lifecycle rule are provisioner items** (CR-M5-8, the
+  multi-city workstream's provisioner): until Provision runs again with them, `export.download` fails on the real
+  project (V4 signing needs `roles/iam.serviceAccountTokenCreator` of `fn-admin@` on itself; **UNVERIFIED** until then),
+  and exports past seven days are removed by the tick only.
+- **60g waits on multi-city:** the Firestore match `cities/{city}/exports/{id}` (read by the city's members, no client
+  write; CR-M5-11) and its rules row `S-A53-BAD-CLIENT-EXPORTS` (planned); without the match the card's listener is
+  refused and `e2e/admin/specs/export/export.spec.ts` cannot pass.
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` (the four audit gates stay red on §48a and §49i);
+the functions, admin and ui Vitest projects for the files above (100 % lines per file but `build.ts`, `start.ts` and
+`zip.ts`, each above 98 %); `E2E_TIER=fn npx playwright test specs/starter-kit/export.spec.ts`; the admin tier's
+`specs/export/export.spec.ts` once CR-M5-11 is in.
+
+## 61. The M5 kit-cli workstream: the starter kit's template, `create-historic-city` and the kit's e2e (2026-10-25) — 61a–61c APPLIED (product, test and documentation changes within the contract; configuration edits that make a gate stricter or keep a tool working, the pre-approved kinds; no gate relaxed, no checker allowlist entry); 61d PROPOSED, NOT APPLIED (the lockfile's workspace link and the quality image's manifest line: rebuilding the image downloads); 61e–61g recorded for the user
+
+The kit-cli workstream of `docs/research/M5-interfaces.md` (§3, §4, §6.1) built the shared kit helpers, the starter
+kit's template, the `create-historic-city` CLI and behaviours V27 and V29 with the kit's tour state. Nothing was
+committed, pushed, tagged, published or deployed, nothing was downloaded, and no request left the machine: the CLI's
+tests run over fakes of its ports, its e2e rows run the built CLI with fake `firebase`, `gcloud` and `xdg-open` as the
+only commands on its `PATH`, and the kit's page boots against the mock CDN and the mock Mapbox.
+
+- **61a APPLIED: what landed.**
+  - `packages/shared/src/kit/csp.ts` (the one CSP table of every engine page: the site's policy unchanged with the
+    engine at `'self'`, the kit's with the pinned jsDelivr folder in `script-src`, `style-src` and `font-src`) and
+    `packages/shared/src/kit/page.ts` (`fillKitPage`, `readKitEngine`, `kitContentSecurityPolicy`, `kitResult`,
+    `isUnpinned`), exported from `@hcm/shared` (one export line in its index and a `KIT_EXPORTS` list in the exports
+    fixture: CR-M5-19).
+  - `templates/starter-kit/` (`index.html` committed Prettier-clean and a fixed point of `fillKitPage`, `city.json`, a
+    Romanian and English `README.md`); `engine.css` gains `.hcm-fullpage` and `.hcm-note` (CR-M5-5, done); the M1 kit's
+    README points to the template.
+  - `packages/create-historic-city/` (the scaffold, `self-host`, `deploy`, `upgrade`, `doctor`, `--dry-run`, its own
+    Romanian and English catalogue, the ports and their Node implementations, the self-host bundle's builder, 100 %
+    lines per file and at least 96 % branches).
+  - The e2e: the site server's `/kit/` route, the mock CDN's release folder (`@v<version>` and `@1`, from `cdn/engine/`
+    once a release made it, else `packages/engine/dist`), the mock Mapbox's 401 for the template's placeholder token,
+    `e2e/support/kit.ts`, `e2e/support/cli.ts`, `e2e/specs/starter-kit/{template,create-city}.spec.ts` (rows V27 and
+    V29, now `exists`) and the tour state `kit.loading-note` (`e2e/tour/kit-states.ts`, its journey in
+    `e2e/tour/viewer.tour.ts`, so it runs at every tour project).
+  - Docs: `docs/SELF_HOST.md` (Romanian and English), `docs/ENGINE_API.md` → *The starter kit*, `docs/SETUP.md` → *The
+    starter kit and create-historic-city*, `README.md`.
+- **61b APPLIED (the pre-approved kinds): configuration edits.**
+  - `vitest.config.ts`: the `create-historic-city` project (Node; the colour library inlined by Vite, as its ES modules
+    import without file extensions, which Node refuses) and its coverage scope; `sonar-project.properties`: its `src`
+    as sources, its `test` as tests (stricter).
+  - `.dependency-cruiser.cjs`: the new rule `create-historic-city-bundles-only-what-it-needs` (the CLI's source imports
+    Node's built-ins, `@hcm/shared` and `@hcm/ui/dynamic-color` only; stricter). The workspace links `@hcm/shared` and
+    `@hcm/ui` are the CLI's `devDependencies` (its build bundles them, so the published package has no `dependencies`):
+    dependency-cruiser resolves them to the packages' own sources, so `src-not-to-dev-dependencies` is untouched.
+  - `knip.json`: the CLI's entries (`cli.ts`, `build-self-host.ts`, its tests); `tsconfig.json` and `e2e/tsconfig.json`:
+    the CLI's projects as references (keeps `tsc -b` and the e2e's import of the CLI's catalogue working).
+  - `scripts/ci/check_agent_assets.py`: `templates/` joins `PATH_ROOTS` (stricter); `scripts/ci/check_notices.py`: the
+    CLI's `dist` joins `BUILDS` (stricter; its tests gained the CLI's build); `scripts/ci/e2e_build.py`: the CLI's `dist`
+    joins `OUTPUTS` (the stamp sees a rebuilt CLI).
+  - The root `package.json`: `build:self-host`, and the CLI's build in `build:site:e2e` (the V29 rows run `cli.mjs`).
+- **61c APPLIED: what the workstream decided within the contract** (each in CR-M5-19 to CR-M5-21).
+  - `fillKitPage`'s text values are optional (a slot left out keeps the template's value, but every slot must still be
+    there once): the release's pinning passes the engine alone. The `lang` value sets the viewer element's `lang` with
+    `<html lang>`. `kitResult` turns a `KitPageError` into a value, so the CLI names a page an owner broke instead of
+    failing.
+  - Until a release pins it, the template's engine block names `@v1.0.0` with the integrity `sha384-` and 64 zeros
+    (`KIT_UNPINNED_INTEGRITY`, valid in form, the digest of no file); `upgrade` and `doctor` treat it as "no release
+    yet", and the e2e serves the page with the digests of what the mock CDN serves, said in the annotation `kit-pins`.
+  - The CLI: the deploy files go to `server/` inside the city folder (added to its `.gitignore`: they are no part of the
+    site); `--bundle` deploys another self-host bundle, `--viewer-origin` names the city's public site for the
+    functions (default the project's `web.app`), `--billing-wait` bounds step 8's wait (default 20 minutes, 0 checks
+    once more); when billing is not linked, step 8 opens the billing page and waits for Enter before it polls, so the
+    owner's own link needs no clock; step 1 (the versions) runs without a question, as it changes nothing; a new city's
+    example places move with its rectangle, so the scaffolded `city.json` still validates and still shows them.
+- **61d PROPOSED, NOT APPLIED: the lockfile's workspace link and the quality image's manifest line.** A workspace needs
+  its link in `package-lock.json` (made offline in the pinned Node image, no network: `npm install --package-lock-only
+  --offline --ignore-scripts` in a scratch copy of the manifests) and its `package.json` in the image's `manifests` stage:
+
+  ```text
+  package-lock.json, beside the other node_modules/<workspace> links:
+      "node_modules/create-historic-city": { "resolved": "packages/create-historic-city", "link": true },
+  and beside the other packages/<workspace> entries:
+      "packages/create-historic-city": { "version": "0.0.0", "license": "UNLICENSED",
+          "bin": { "create-historic-city": "dist/cli.mjs" },
+          "devDependencies": { "@hcm/shared": "0.0.0", "@hcm/ui": "0.0.0" },
+          "engines": { "node": ">=24.12.0" } },
+  docker/Dockerfile.quality, stage manifests, after packages/admin:
+      COPY packages/create-historic-city/package.json packages/create-historic-city/
+  ```
+
+  Not applied tonight: a changed lockfile rebuilds the quality image's npm layer at the next `run-all-checks.sh` (every
+  npm package from the registry, the Playwright browsers and the Firebase emulator JARs: downloads), and the pipeline's
+  `npm ci` would replace the shared `node_modules` under the other workstreams' running checks. Until it lands, every
+  gate passes (nothing runs `npm ci` while the lockfile is unchanged), but a fresh `npm ci` (CI, a new clone, a lockfile
+  change) stops with `Missing: create-historic-city@0.0.0 from lock file`: the release's bump (CR-M5-12, which rewrites
+  the lockfile's workspace versions) must add these lines in the same change, at the release's version (CR-M5-20).
+  Verify: `npm ci --dry-run --offline` in the pinned Node image, then `PIPELINE_STAGE=static`.
+- **61e For the user: the licence of `create-historic-city` and of the template.** Both say `UNLICENSED`, like every
+  package of the repository. A CLI that others run with `npx`, and a template they copy, usually carry a licence (MIT
+  is common); choosing one is the user's decision before `npm publish` (§58f) and the template repository (§58e).
+- **61f Recorded: what only a real run proves (also in `docs/research/M5-interfaces.md` §10).** The JSON the Firebase CLI
+  15.33.0 prints for `login:list`, `projects:list`, `apps:list WEB` and `hosting:sites:list` (the CLI reads `result`, an
+  account's presence, a project's `projectNumber`, a web app's presence, a site whose `name` ends with
+  `/sites/<project>`; a listing it cannot read counts as "not there", so the step offers to create it and the owner's
+  tool says what is wrong); `firebase projects:create` failing until Google's terms are accepted (the CLI opens the
+  console and tries once more). A self-hosted admin's provisioner needs CR-M5-7 (`project.json` without `github`) before
+  its Provision step works; the functions of a self-hosted project run without `HCM_OAUTH_CLIENT_IDS` (the claim's
+  fallback of `functions/src/admin/claim.ts`).
+- **61g Recorded: sizes.** `cli.mjs` is about 550 KB (zod, `@hcm/shared` and the colour library bundled; its source map
+  stays out of the npm package's `files`); the template's page is 4 KB, its `city.json` 18 KB (the theme's four token
+  sets).
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` (the four audit gates stay red on §48a and §49i), the
+`create-historic-city` and `shared` Vitest projects, `E2E_TIER=fn npx playwright test specs/starter-kit/template.spec.ts
+specs/starter-kit/create-city.spec.ts --project=fn-l1440-ro`, and the tour's kit state
+(`E2E_TIER=tour npx playwright test tour/viewer.tour.ts -g "starter kit"`).
+
+## 62. The M5 multi-city workstream: memberships, rules isolation, the switcher, New city, per-city admins and budgets, the Pages tree (2026-10-25) — 62a–62f APPLIED (product, test and documentation changes within the contract and its change requests CR-M5-2 to CR-M5-4, CR-M5-6, CR-M5-8, CR-M5-11, CR-M5-22 to CR-M5-24; 62c new lazy chunks with their own budgets and 62d configuration edits that make a gate stricter or keep a tool working, the pre-approved kinds; no gate relaxed, no budget raised, no checker allowlist entry); 62g PROPOSED, NOT APPLIED (a workflow line, ask first); 62h recorded for the user
+
+The multi-city workstream of `docs/research/M5-interfaces.md` (§1, §6.1, §7, §8) made the map one of many cities. Nothing
+was committed, pushed, tagged, deployed or downloaded, and no request left the machine: the functions ran against the
+Firebase emulators (`demo-hcm`), the rules against the Firestore and Storage emulators, the admin and the viewer against
+the e2e mock servers.
+
+- **62a APPLIED: memberships and access** (§1.2, §1.3; CR-M5-2, CR-M5-4).
+  - `admins/{uid}.cities` names each city and the role in it (`owner` or `editor`); the project's owner is the admin
+    whose `role` is `owner`. A document from before M5 gets every existing city at its first `admin.session` (the
+    project's owner as owner, every other admin as editor) or at `ops.tick`'s new `memberships` step; until then the
+    rules and the callables treat it as no membership (fail closed). `admin.session` also accepts an invitation to more
+    cities for an admin who already joined (no second "Join"), lists a member's city by its id while the city has no
+    document (the bundled city before Setup writes it, so its owner can still invite), and answers `projectOwner`.
+  - `CallableAccess` gains `cityEditor`, `cityOwner` and `projectOwner`; every city callable checks the role in the
+    request's `cityId` after the request is validated and before any read (`requireCityRole`). `AdminDirectory.membership`
+    replaces the contract's two lookups (one read).
+  - New callables: `cities.create`, `cities.setLimits` (`fn-cities`), `admins.setRole`; `admins.invite`, `.revoke` and
+    `.list` work on one city (an admin removed from their last city stops being an admin; the project's owner keeps
+    their document; a city keeps at least one owner: `apiError.city.lastOwner` on a demotion).
+  - `notify.onEvent` fans a city's events out to that city's members only, with a link into the city.
+- **62b APPLIED: every city closed to the others** (§1.4; CR-M5-3, CR-M5-11).
+  - `firebase/firestore.rules`: a city's subtree, its manifest state, its harvest state, its usage and exports are its
+    members' only; History's collection-group list is allowed only with `where('cityId', '==', <a city of the admin>)`
+    (proved on the emulator); `admins/*` is its own reader's or the project owner's; invitations the project owner's;
+    the ops documents are read by name only (no list). `firebase/storage.rules`: a city's originals, uploads, photos,
+    rasters, work and reference files are its members'; the USGS browse copies any admin's (shared by every city);
+    everything else server-only (the catch-all read is gone). The allow/deny matrix tests a member of city A against
+    city B (`firebase/rules-tests/test/{cities,identity,storage,matrix}.test.ts`), and the rule coverage gate holds.
+  - The e2e worlds seed memberships: the personas are members of the bundled city, each content world's account the
+    owner of its own city.
+- **62c APPLIED (the pre-approved kind): two new lazy chunks with their budgets.** `cities` (the New city page: its store,
+  its map and `<hcm-new-city-page>`, 4.6 KB measured) gets 6 KB and `city-budget` (Settings → the city's budget, 1.0 KB)
+  2 KB, the measurement plus about 20 % (`scripts/ci/check_bundle_budget.py`). The admin in all now measures 619.6 KB of
+  its 620 KB (the build stage of 2026-10-25, with the other M5 workstreams' chunks) and `settings` 19.5 KB of 20 KB: the
+  next workstream that adds to the admin needs a reviewed raise.
+- **62d APPLIED (the pre-approved kinds): configuration edits.** `.dependency-cruiser.cjs`'s
+  `functions-feature-folders-independent` gains `cities` (stricter); `scripts/site/tsconfig.json` includes the new entry
+  `add-site.ts` (keeps `tsc -b` and ESLint working); `eslint.config.js`'s block for a city's `config.js` (a classic
+  script with the browser's globals) names the e2e fixture cities' too (`e2e/fixtures/sites/*/config.js`, keeps ESLint
+  working); the root `package.json` gains `site:add`, and `build:site` assembles the Pages tree (`--pages dist/pages`).
+- **62e APPLIED: what the workstream decided within the contract** (each in CR-M5-22 to CR-M5-24).
+  - The city switcher (§1.5): the top bar's button from the medium window class, the account menu's list on a phone,
+    shown to an admin of two cities or more, or to the project's owner (New city). Switching is a page load into
+    `#/c/<city>/home`, remembered per account in `localStorage` (`hcm:admin:city:<uid>`); an unsaved edit is asked about
+    first, and once the admin discards it nothing holds the page load back (the navigation guard and `beforeunload`
+    ask the app, which stops counting a discarded edit while another city opens).
+  - New city (§1.6): the rectangle is dragged on the map itself (a capture-phase gesture on the element Mapbox draws
+    into, so nothing covers the map or its zoom buttons and the admin's CSP needs no inline style), or clicked corner to
+    corner, or typed edge by edge. `cities.create` writes the new city's harvest state due at once: the contract's "a
+    city without a harvest state is due" would undo CR-M3-44 (the e2e content worlds' cities would all be harvested), so
+    only a created city is harvested by the next tick. The viewer's token is minted by the flow's follow-up
+    `setup.rotatePublicToken` (best effort: a project without Mapbox yet answers 400 and Setup's Mapbox card mints it);
+    the project's analytics ids are copied from another city.
+  - Per-city budgets (§1.8): a city's compute units count its publishes under way as reserved until the month ends (a
+    failed publish keeps its share until then: conservative, never over); a city without `limits` (Bucharest) is held
+    by the project's caps only; the approval card's `city-over` offers Studio or next month, never paying (paying the
+    project's overage would not raise the city's share).
+  - The admins page shows each admin's role in the city; its owners change roles after a question and invite with a
+    role (editor unless changed); oneself is never removable (the project's owner: the map always keeps its owner).
+- **62f APPLIED: the GitHub Pages layout** (§1.10; CR-M5-6). `site.json` gains `pagesPath` (`""` for Bucharest at the
+  root, so the old links keep working); a city without a seed manifest reads the public bucket only and is built only
+  when the build names it; `npm run build:site` assembles `dist/pages` (two sites on one path, or a city folder the root
+  site uses, refuse the tree); `npm run site:add -- --city <id> --name-ro <name> --theme <#rrggbb>` writes `sites/<id>/`
+  (a repository step: the admin holds no GitHub credential). `scripts/site/src/csp.ts` re-exports the shared table of
+  `packages/shared/src/kit/csp.ts`. The e2e build assembles the same tree under `dist/e2e-site/pages/` with the fixture
+  cities of `e2e/fixtures/sites/` (never `sites/`, which a production build would publish).
+- **62g PROPOSED, NOT APPLIED (a workflow edit, ask first): the Pages deploy uploads the tree.** In
+  `.github/workflows/ci.yml`, the step "Upload the GitHub Pages artifact" changes `path: dist/site/bucharest` to
+  `path: dist/pages` (and its comment to "Every city's site, built and assembled by the site-build gate"). Until a second
+  city's site is committed both trees serve the same files.
+- **62h recorded for the user.** CR-M5-7 (a `project.json` without `github`: the provisioner without the Workload
+  Identity pool and `gh-deployer`) is not applied: it changes the Setup's repository variables and the provisioner's
+  service accounts, bindings and items, and no M5 flow needs it yet (`create-historic-city` deploys from the owner's
+  terminal). Deploying the new functions (`cities-create`, `cities-setLimits`, `admins-setRole`) and the rules is the
+  user's (ask first). The integrator's lessons for `docs/LESSONS.md` are in CR-M5-24.
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` (the four audit gates stay red on §48a and §49i),
+`PIPELINE_STAGE=tests bash scripts/ci/run-all-checks.sh`, and the admin and viewer rows
+(`E2E_TIER=admin npx playwright test admin/specs/cities/ --project=admin-l1440-ro`,
+`E2E_TIER=fn npx playwright test specs/viewer/multi-city.spec.ts --project=fn-l1440-ro`).
+
+## 63. The M5 integrator: the change requests closed, Settings → Publishing, the image blind to versions, the cross-app journey, v1.0.0's versions, and what waits for the user (2026-10-25) — 63a–63f APPLIED (product, test, tooling and documentation changes; 63b a Dockerfile edit that keeps the quality image's npm layer cached, the "keeps a tool working" kind; no gate relaxed, no budget raised, no checker allowlist entry); 63g recorded (downloads on the NUC; since §64 the NUC's image is current); 63h–63i for the user, ask first; 63j APPLIED (the integrator's second run: the visual audit's fixes, the review screenshots and every stage green, the split `quality` included)
+
+The release workstream's integrator role (`docs/research/M5-interfaces.md` §6.3 step 4), after the other three
+workstreams reported. Nothing was committed, pushed, tagged, published or deployed; no request went to a real Google,
+Mapbox, USGS, STAC, Nominatim, Vertex AI, OpenStreetMap, npm or jsDelivr endpoint from a test; the targeted runs ran in
+the quality image with `--network=none`. One split run started rebuilding the NUC's image (63g).
+
+- **63a APPLIED: Settings → Publishing (a gap between the contract and the screens).** New city makes a city
+  unpublished (§58a, §1.6) and its done screen says "publish it from Settings when it is ready", but no screen wrote
+  `cities/{city}.published` (`CLIENT_WRITES.city.update` and the rules allowed it): a city made in the admin could never
+  get a public manifest, so never a public site nor an export (`apiError.export.noManifest`). The integrator's cross-app
+  journey found it. Settings gains the city section `publish` (`packages/admin/src/settings/city-sections.ts`,
+  `packages/ui/src/admin/settings/publish-section.ts`): one switch, **The city is public**, what switching it does, and
+  the section's Save, with the draft, the conflict banner and the read-only state every city section has; the input
+  budget `publishCity` (2: the switch, Save); the tour state `cities.publish`; five texts in both languages. Who may
+  switch it: a member of the city, as the rules already allow for the city's settings (63i asks whether owners only).
+  Measured by the `build` stage: `settings` 19.6 KB of its 20 KB, the admin in all 619.9 KB of its 620 KB (no budget
+  raised; the next addition to the admin needs one, 63i).
+- **63b APPLIED (keeps a tool working): the quality image's npm layer ignores the workspaces' own versions and a
+  workspace without registry dependencies (CR-M5-20).** A changed lockfile or workspace version re-ran the image's npm
+  layer (`npm ci` from the registry, the Playwright browsers, the Firebase emulator JARs: downloads), so the CLI's
+  lockfile entries (§61d) and the release's bump could not land. The `manifests` stage of `docker/Dockerfile.quality`
+  now also writes every workspace's `version`, and every dependency of a workspace on another, as `0.0.0`, and drops
+  the lockfile's entries of a workspace it does not copy: `create-historic-city`, whose only dependencies are
+  workspaces, needs no `COPY` line (the comment says when one does). Verified: `docker build --target manifests` gives
+  `/m/` byte for byte equal to the files baked into the current image, before and after the bump; the full build then
+  reports the npm layer `CACHED`; `npm ci --offline` with `--network=none` in the image installs the new lockfile in 7 s.
+  The lockfile's two entries were generated offline (`npm install --package-lock-only --offline --ignore-scripts` in a
+  scratch copy, pinned Node image, `--network=none`).
+- **63c APPLIED: v1.0.0's versions (§2.6 step 1, first half).** `npm run release:bump -- 1.0.0` (offline, in the image)
+  rewrote the ten `package.json`, every workspace dependency, the lockfile, `functions/deploy-lock/` and
+  `ENGINE_VERSION`; the bump's read-only test over the real tree passes at 1.0.0. Not run: `release:cdn`,
+  `release:pin-kit` and `release:notes`, because the committed `cdn/engine/` fails EditorConfig until §59c (CR-M5-14) is
+  answered; the kit keeps its placeholder digests until then and `kit-pins` checks its shape only (63h, step 1).
+- **63d APPLIED: the cross-app journey (behaviour A54).** `e2e/admin/specs/cities/city-journey.spec.ts`:
+  `S-A54-HAPPY` (New city, Publishing, the server's manifest, the site `site:add` and `build:site` make for the city with
+  the public bucket named, booted with one map; Export and Download, the zip booted on a plain static server with no
+  Firebase, Google or jsDelivr request), `S-A54-BAD-UNPUBLISHED` (switched off, the manifest leaves the bucket and the
+  site says `error.manifest.notFound`) and `S-A54-BAD-OTHER-CITY` (another city's owner, with their own ID token on the
+  emulators' REST: 403 on the city's documents, its export's zip and an upload into it, `apiError.city.notMember` from
+  `export.start`, `export.download` and `admins.invite`). Helpers: `e2e/support/city-site.ts` (the repository's own
+  `addSite` and `buildSite` into `dist/e2e-city-sites/<test>/`, served at `/city-sites/`),
+  `e2e/admin/specs/cities/journey-world.ts` (the public bucket answered from the Storage emulator, the outsider), and
+  `unpackExport` in `e2e/support/export-site.ts`. Content specs: parallel, no lock; 16 of 16 at the five admin projects
+  in 59 s.
+- **63e APPLIED: the change requests left open.** CR-M5-11's rules row `S-A53-BAD-CLIENT-EXPORTS`
+  (`firebase/rules-tests/test/cities.test.ts`: members read and list, nobody writes, another city's admin reads
+  nothing); CR-M5-25 (`exports` in the reset's city-first prefixes, `e2e/admin/support/emulators.ts`); the per-file
+  coverage of `functions/src/adapters/storage-writer.ts` (a source failing with something other than an Error, now
+  tested: 100 % branches); CR-M5-20 (63b); CR-M5-24 (the lessons 220–233 of `docs/LESSONS.md`, the guides, ARCHITECTURE,
+  TESTING, CI_PIPELINE, SETUP, MANUAL_TEST_PLAN, README, the skills and their mirrors, `M5-status.md`).
+- **63f Recorded: CR-M5-7 stays accepted, not applied.** A `project.json` without `github` (what `create-historic-city
+  self-host` writes) is refused by the admin's `parseProjectConfig`, and without a project file the admin's Setup is
+  unavailable: a self-hosted admin cannot run its Setup Assistant at all yet (step 7 of `docs/SELF_HOST.md`).
+  Applying it changes the provisioner's service accounts and IAM bindings (no `gh-deployer` and no Workload Identity
+  pool without GitHub), the `workload-identity` item, the deploy card's repository variables and its texts (a deploy
+  from the owner's terminal instead), and would need bytes the admin's budget no longer has (63a): a reviewed change of
+  its own, with the work list in CR-M5-7.
+- **63g Recorded: the NUC rebuilt the quality image from scratch, with downloads, and the run was stopped.** The first
+  split `quality` run found the NUC's BuildKit cache evicted (the machine builds other projects; its cache records of
+  this image were gone, though the tagged image remained): it pulled the pinned base images (Docker Hub, GHCR), the
+  apt packages (Ubuntu's mirrors), the CI venv (PyPI) and `npm ci` (the npm registry), and was stopped while apt fetched
+  the browsers' system libraries, before the Playwright browsers' CDN and before the emulator JARs (Google's storage);
+  nothing it fetched reached the tree. Every later run used this machine only (`PIPELINE_STAGE=quality bash
+  scripts/ci/run-all-checks.sh`, the split's own fallback). A split run needs that rebuild on the NUC once: ask first
+  (63h).
+- **63h For the user, ask first, one at a time** (exact commands in `docs/research/M5-status.md` §3):
+  1. §59c / CR-M5-14: the `.editorconfig` exception for `cdn/engine/*.{js,mjs}`; then, in the image, `npm run build
+     --workspace @hcm/engine && npm run release:cdn`, `npm run release:pin-kit`, `npm run release:notes -- --write
+     docs/releases/v1.0.0_github_description.md`, `python3 scripts/ci/check_release.py --tag v1.0.0`;
+  2. ~~the NUC's image rebuild (downloads) for the split runs~~: done by §64's approved run (the NUC's image of 09:10
+     on 2026-10-25); the second run's split `quality` built there with every layer `CACHED` (63j);
+  3. §62g / §58b: `ci.yml`'s Pages artifact `dist/pages`;
+  4. §58g: the jsDelivr probe;
+  5. the push of `feat/engine-rewrite`, the pull request, its review and the merge into `master` (the overwrite of the
+     legacy site and the Pages go-live);
+  6. `git tag -a v1.0.0 -m "v1.0.0"` on the merged commit and `git push origin v1.0.0`; then §59j's publishing lines;
+  7. §58e: the template repository; §58f: `npm publish` of `create-historic-city` (after §61e's licence);
+  8. the deploys: functions (67), Firestore and Storage rules and indexes, the admin's Hosting; then Provision again
+     (CR-M5-8's lifecycle rule and signing binding).
+- **63i For the user's decision.** Whether only a city's owners may publish it (today any member may, as for the city's
+  settings: a rules change and the section's read-only state for editors); a raise of the admin's budget in all (620 KB,
+  0.1 KB left) before the next admin feature; §58h, §61e and §61f stay open.
+
+- **63j APPLIED: the integrator's second run (a tooling outage cut the first one after 63i).** The four audit gates pass
+  since §64, so every gate of every stage is green (the verdicts below). The visual audit of the M5 review screenshots
+  (`reports/screenshots/m5/`: the 19 admin states at 360 × 800, 768 × 1024, 1440 × 900 and 2560 × 1440, light and dark
+  in Romanian and light in English, and the kit's `kit.loading-note`; 235 files, one contact sheet per state in
+  `reports/screenshots/m5/sheets/`) found what the checkers pass, fixed as CR-M5-29: the ready export said "1
+  fotografii" / "1 photos" (now "fotografii: 1, straturi: 0"), its Export was a second filled button beside Download
+  (now tonal), and the per-city daily limits of imagery jobs and exports and the city's compute-unit message put a
+  number an owner can set to 1 before a plural noun (now in brackets or after a label; the guides' tables follow;
+  `docs/LESSONS.md` 234). The admin in all is now 619,971 bytes of its 620,000 (the budget passes with 29 bytes left;
+  63i's raise is due before any addition). The NUC: its BuildKit cache held §64's build, and the split's own build log
+  showed every layer `CACHED`, so nothing was downloaded; an offline `docker build --network=none` is no probe (the
+  network mode keys every `RUN` step; `docs/LESSONS.md` 235). The first split `quality` failed one test on the NUC,
+  M2c's `S-A18-BAD-STREAM-DROP` at `admin-l1440-en`: a route reaches only new requests, and Firestore's long poll opened
+  before it stayed open 45 s on the loaded machine; the spec now also takes the browser offline until the page says it is
+  reconnecting (CR-M5-30, `docs/LESSONS.md` 236). No change of the ask-first kinds, no gate relaxed, no budget raised, no
+  checker allowlist entry; CR-M5-7 and CR-M5-14 stay as 63f and 63h say.
+
+Verify: `PIPELINE_STAGE=static`, `tests`, `build` and `quality` (`PIPELINE_STAGE=quality bash scripts/ci/e2e-split.sh`, split
+with the NUC); the journey alone:
+`E2E_TIER=admin npx playwright test specs/cities/city-journey.spec.ts --project=admin-l1440-ro` in the image.
+
+## 64. Security bumps for §48a and §49i (2026-10-25) — APPLIED 2026-10-25 (user approved the downloads: "yes, install the security bumps")
 
 The four audit gates of the `static` stage (`npm-audit`, `deploy-lock-audit`, `pip-audit`, `pipeline-pip-audit`) failed
 on the advisories §48a and §49i name; the `static` run of 2026-10-25 listed the same packages, with three more filelock
@@ -3644,3 +4229,119 @@ was added (every dependant's range already accepts the fixed version).
 
 Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` and `PIPELINE_STAGE=tests bash
 scripts/ci/run-all-checks.sh`.
+
+## 65. The M5 reviews' fixes: security, supply chain, minimum input and accessibility (2026-10-25) — 65a–65j and 65l APPLIED (product, test, tooling and documentation changes; 65l a stricter `release` stage, the pre-approved kind); 65k APPLIED for review (a build change that shrinks the admin, reversible in one line); 65e's publishing step PROPOSED, NOT APPLIED (a workflow edit); 65m–65o recorded for the user
+
+The fixer's pass over the two M5 reviews (security and supply chain: nine findings; minimum input, UX and correctness:
+seventeen). Nothing was committed, pushed, tagged, published or deployed, nothing was downloaded, and no test called a
+real Google, Mapbox, USGS, Nominatim or npm endpoint (the new Nominatim search is answered by the shared fake and the
+mock APIs). Every finding is applied, or answered below with why not; each fix has its tests and a lesson
+(`docs/LESSONS.md` 237–256).
+
+- **65a APPLIED (security 1): the CLI never reads the owner's tokens.** `firebase login:list` is read as plain text
+  (`Logged in as …`); its `--json` answer lists the accounts with their OAuth tokens. The fakes answer `--json` with
+  tokens and the tests prove it is never run (lesson 237).
+- **65b APPLIED (security 2): `layers.link` keeps each city's pipeline tilesets to that city.** A tileset named
+  `<user>.hcm-*` (`tilesetName`) is linkable only when a layer of the request's city records it
+  (`apiError.layers.otherCityTileset`; `S-A15-BAD-OTHER-CITY-TILESET`). Recorded limit (`docs/ARCHITECTURE.md`): every
+  city's public token belongs to the project's one Mapbox account and reads all of its tilesets.
+- **65c APPLIED (security 3): a role change is one transaction, and the project's owner stays.** `changeCityRole`
+  (`functions/src/admin/memberships.ts`) reads the caller (still an owner), the target and every owner a query found
+  before it, then writes; `admins.setRole` and `admins.revoke` go through it. Of the review's two recovery options, the
+  project's owner is never removed from or demoted in a city they own (`apiError.city.projectOwnerStays`; the Admins
+  page offers neither on their row), which with `legacyCityRoles` and `cities.create` keeps every city an owner who can
+  always reach it. Tested on the Firestore emulator with two owners at once (`S-A51-BAD-ROLE-RACE`,
+  `S-A51-BAD-PROJECT-OWNER-STAYS`; lesson 243). `packages/shared/src/api/cities.ts`'s comment now says what the code does.
+- **65d APPLIED (security 4): pre-M5 invitations get the cities of now.** `migrateLegacyInvites` (the `memberships`
+  tick step, and `cities.create` before it writes) gives each pending invitation without `cities` every existing city
+  as an editor, in a transaction per invitation; `admins.list` then shows it and `revokeInvite` finds it
+  (`S-A51-HAPPY-LEGACY-INVITE`; lesson 245).
+- **65e APPLIED (security 5) in the tree; the publishing step PROPOSED, NOT APPLIED.** Every guide and every command the
+  CLI prints names the exact release (`npx create-historic-city@1.0.0`, `NPX_COMMAND`); `release:bump` rewrites the
+  guides of `PINNED_DOCS` and `release-check` refuses a tag whose guides name another version. `docs/research/M5-status.md`
+  §3 now checks and publishes (or reserves) the npm name before the merge. Proposed for the user (a workflow edit, ask
+  first): after the release job, publish `reports/release/create-historic-city-X.Y.Z.tgz` from `release.yml` with
+  `npm publish --provenance --access public` in a job with `id-token: write` and the `NPM_TOKEN` secret the user sets,
+  so the published tarball is the one CI built and checked.
+- **65f APPLIED (security 6): `export.download` has a daily cap and obeys the guard.** At most
+  `EXPORT_LIMITS.downloadsPerDay` (10) signings per export a UTC day, counted in `cities/{city}/exports/{id}.downloads`
+  in a transaction, none while the guard is red, the day's count logged (`S-A53-BAD-DOWNLOAD-LIMIT`; lesson 246).
+- **65g APPLIED (security 7): a CSP source is an origin of CSP's grammar.** `isCspOrigin` (`text/urls.ts`) filters the
+  export's origins and `contentSecurityPolicy` throws on anything else; the basemap style's schema and rule
+  (`httpsHostUrl()`) refuse a host with `;` or `'`; the export's policy names no telemetry host
+  (`S-A53-BAD-STYLE-HOST`; lesson 241). `isHttpsUrl` itself is unchanged: links and photo sources never reach a policy.
+- **65h APPLIED (security 8): the self-host bundle is built and checked.** `npm run build:self-host` builds the admin and
+  the functions for production first; the bundle refuses an admin that carries the OAuth stand-in; see 65l.
+- **65i Recorded (security 9, §58h): still the user's.** Exports still carry the photos licensed for this map only and
+  name them in `RIGHTS.md`. The review suggests leaving them out by default behind an opt-in switch, as for the scans;
+  it is a rights policy, so it waits for the user's answer (no change made).
+- **65j APPLIED (UX 1–17).** 1: `self-host` and `deploy` refuse without `--experimental` (no tool runs; a dry run needs
+  no flag), the scaffold no longer advertises them, and `SELF_HOST.md` and the npm README say why (CR-M5-7). 2: New
+  city's map answers its zoom buttons. 3: `cities.locate` (new callable, `projectOwner`, as `fn-admin@`: one Nominatim
+  `/search` at the mirror beside `HCM_NOMINATIM_URL`, under the title suggestions' cool-down, a refusal starting it)
+  draws the named city's rectangle and flies the map there once typing rests; New city is two inputs from any view
+  (`newCity` 2, `newCityDrawn` 3; the functions now number 68). 4: `upgrade` keeps the page's own policy sources. 5:
+  the gesture follows the primary pointer only, lets a pinch through, and shows a band. 6: an id no city may take is
+  said at its field and keeps Create off; an emptied field takes the suggestion again. 7: a city without limits says the
+  project's caps alone hold it, its fields empty; a field left empty saves at its maximum (`MAX_CITY_LIMITS`), so
+  setting one limit never imposes five (65o). 8: a phone's top bar, a sideways phone's heading and the tab's title name
+  the open city (two cities or more); the account menu asks for the cities again when it opens. 9: the done screen and
+  Publishing say how a new city gets a public site (`npm run site:add`, or Export), and the imagery line depends on
+  USGS being set up. 10: `hcm-button`'s `popup`, `current` and `label` reach its inner button; the switcher is named
+  "City: …". 11: one live region per page (New city, the export card), the focus to the heading. 12: the typed edges
+  are a draft until all four are there. 13: `theme` recolours a kit from one colour; the kit README gives a photo
+  example in both languages (validated by a test), the bbox question says where to find the numbers and labels its
+  default, step 1 names every question. 14: a failed `projects:create` names another id. 15: `SELF_HOST.md` says to
+  create the city first. 16: the kit's note says only "loading" for 4 s. 17: Create refreshes the city menu at once.
+- **65k APPLIED for review (the admin's bundle): `re2js` resolves to a stand-in in the admin's build.** The fixes above
+  took the admin from 619,971 to 622,563 bytes gzip, over its 620 KB, and §63i left a raise to the user. Instead of a
+  raise: the Firestore SDK imports `re2js` (144 KB minified in `admin-core`) only to evaluate the `like`,
+  `regex_contains` and `regex_match` functions of Firestore Pipelines in the browser, which the admin never runs; its
+  three call sites catch what `compile` throws and answer an error value. `packages/admin/vite.config.ts` aliases
+  `re2js` to `packages/admin/src/vendor/re2js-unsupported.ts` (its `compile` throws, unit-tested). The admin is now
+  579.3 KB of 620 (−43 KB); every admin unit and e2e test passes on it; the notices gate no longer lists `re2js` for the
+  admin. To revert: delete the `resolve.alias` line (the budget then needs §63i's raise). No gate, threshold or budget
+  changed.
+- **65l APPLIED (pre-approved kind: a stricter `release` stage): the `self-host-bundle` gate.** `scripts/ci/pipeline.py`
+  runs `build-self-host.ts` after `vite-build` and before `release-pack`, which now needs it; the stage's test
+  (`scripts/ci/tests/test_pipeline_stages.py`) pins the order. The skills, `docs/CI_PIPELINE.md` and `docs/SETUP.md`
+  follow.
+- **65m Recorded (UX 5, last item): drawing on a phone stays on by default.** The review suggests drawing only after
+  **Draw the area** on compact windows. With 65j's located rectangle a phone rarely needs to draw at all, and switching
+  the default would add an input to the drawn path on every touch window (the c360 and m768 projects); the swipe that
+  scrolls past the map is the trade-off, left for the user.
+- **65n Recorded (UX 3): the located rectangle is the place's own box.** Nominatim's box of a city's administrative area
+  (fitted to 0.02°–2°) can be larger than the built-up city; the admin adjusts it, and the done screen's Settings change
+  it later. A different default (a fixed size around the centre) is the user's call.
+- **65o Recorded (UX 7, last item): no question before a city's first limits.** The review suggests confirming before
+  setting limits on a city that had none; since a field left empty now saves at its maximum, saving one limit sets only
+  that one, so no question is needed.
+
+Verify: `bash scripts/ci/e2e-split.sh` (the stage `all`, split with the NUC); the release stage's new gate alone:
+`node --import ./scripts/site/register-ts.mjs packages/create-historic-city/build-self-host.ts` after `npm run build` in
+the image.
+
+## 66. The manual test plan for M4 and M5, and the local stack's second city (2026-10-25) — 66a–66d APPLIED (test-world and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no download)
+
+`docs/MANUAL_TEST_PLAN.md` now walks every M4 and M5 behaviour, each LIVE or LOCAL, and lists every ask-first command
+in one table (D1–D8 deploys, R1–R9 release and repository steps). The local stack seeds what those screens need. Choices
+the user may want to change:
+
+- **66a A second city, Iași, in the `city` seed** (`e2e/stack/seed-cities.ts`): made through the server's own
+  `cities.create` and `setup.rotatePublicToken`, unpublished, with a category and two places, the project owner's alone
+  (`admin@e2e.test` stays an editor of București only). Not Cluj-Napoca: the fake Nominatim finds only that name, which
+  New city's LOCAL walk uses.
+- **66b Mapbox connected through `setup.saveMapbox`** with the fake's generated bootstrap token (`MAPBOX_TOKENS.bootstrap`
+  of `@hcm/test-support`), replacing the seeded `setup/status.mapbox` record with the server's own: the Functions
+  emulator keeps secrets in memory, so without it no city made in the stack had a viewer token and its manifest was
+  refused when published.
+- **66c Every city's page on the stack's site server**: `http://127.0.0.1:4310/<city>/` serves the Bucharest site's page
+  and engine with a `config.js` naming the city and the manifest the emulators published (404 before), standing in for
+  `site:add` and `build:site` (the tab's title stays Bucharest's).
+- **66d The shim forwards an `<a download>` the page clicks itself** (the export's Download), never a link a person
+  follows (`docs/LESSONS.md` 259); the stack's check gained that step and the second city's.
+- The plan's item ids are now unique (the M5 items were `M1`–`M7` beside M3's `M1`–`M10`, and M4's title suggestions
+  `A1` beside the start-up page's): M4 is `O`, `S`, `N`; M5 `T`, `X`, `K`; the swipe compare `V11`.
+
+Verify: `bash scripts/dev/dev-stack.sh` then `bash scripts/dev/dev-stack.sh check` (`[SUCCESS] the local stack works`);
+`PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`.

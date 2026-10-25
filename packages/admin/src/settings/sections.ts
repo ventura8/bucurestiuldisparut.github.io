@@ -7,7 +7,11 @@ import { isId } from '@hcm/shared';
 import { CITY_SECTIONS } from './city-sections.js';
 import { NEW_CATEGORY } from './categories.js';
 
-const SETTINGS_SECTIONS = [...CITY_SECTIONS, 'categories', 'overlays'] as const;
+/**
+ * M5 (docs/research/M5-interfaces.md §5.6, CR-M5-10; owner: export): `export`, the city's static export; (§1.8; owner:
+ * multi-city) `budget`, the city's share of the project's budgets.
+ */
+const SETTINGS_SECTIONS = [...CITY_SECTIONS, 'categories', 'overlays', 'export', 'budget'] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
 

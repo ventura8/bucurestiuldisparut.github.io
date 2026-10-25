@@ -21,8 +21,12 @@ describe('guardCallables', () => {
         const denied = vi.fn();
         const guarded = guardCallables(callables, denied);
 
-        await expect(guarded.call('admins.list', {})).rejects.toMatchObject({ details: { code: 'apiError.notAdmin' } });
-        await expect(guarded.call('admins.invite', { email: 'a@e2e.test' })).rejects.toThrow('network');
+        await expect(guarded.call('admins.list', { cityId: 'bucharest' })).rejects.toMatchObject({
+            details: { code: 'apiError.notAdmin' },
+        });
+        await expect(guarded.call('admins.invite', { cityId: 'bucharest', email: 'a@e2e.test', role: 'editor' })).rejects.toThrow(
+            'network',
+        );
         expect(denied).toHaveBeenCalledTimes(1);
     });
 });

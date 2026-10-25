@@ -7,6 +7,7 @@ import {
     type CallableName,
     type CallableRequest,
     type CallableResponse,
+    type SessionResponse,
 } from '@hcm/shared';
 import { createRecordingSink, type RecordingSink } from '@hcm/test-support';
 import { FIXTURE_VALUES } from '@hcm/test-support/api-fixtures';
@@ -273,14 +274,47 @@ export function undeployed(callables: FakeCallables): void {
     }
 }
 
-export const SESSION = {
-    stranger: { admin: false, role: null, claim: false, refreshToken: false, ownerClaimed: true, invitePending: false },
-    unclaimed: { admin: false, role: null, claim: false, refreshToken: false, ownerClaimed: false, invitePending: false },
-    invited: { admin: false, role: null, claim: false, refreshToken: false, ownerClaimed: true, invitePending: true },
-    owner: { admin: true, role: 'owner', claim: true, refreshToken: false, ownerClaimed: true, invitePending: false },
-    admin: { admin: true, role: 'admin', claim: true, refreshToken: false, ownerClaimed: true, invitePending: false },
-    delayed: { admin: true, role: 'owner', claim: false, refreshToken: true, ownerClaimed: true, invitePending: false },
-} as const;
+/** M5: the bundled city, as `admin.session` lists it for its owner and its editors. */
+function bucharest(role: 'owner' | 'editor'): Pick<SessionResponse, 'cities' | 'projectOwner'> {
+    return { cities: [{ id: 'bucharest', role, name: { ro: 'București', en: 'Bucharest' } }], projectOwner: role === 'owner' };
+}
+
+const NO_CITIES = (): Pick<SessionResponse, 'cities' | 'projectOwner'> => ({ cities: [], projectOwner: false });
+
+type SessionName = 'stranger' | 'unclaimed' | 'invited' | 'owner' | 'admin' | 'delayed';
+
+export const SESSION: Readonly<Record<SessionName, SessionResponse>> = {
+    stranger: { admin: false, role: null, claim: false, refreshToken: false, ownerClaimed: true, invitePending: false, ...NO_CITIES() },
+    unclaimed: { admin: false, role: null, claim: false, refreshToken: false, ownerClaimed: false, invitePending: false, ...NO_CITIES() },
+    invited: { admin: false, role: null, claim: false, refreshToken: false, ownerClaimed: true, invitePending: true, ...NO_CITIES() },
+    owner: {
+        admin: true,
+        role: 'owner',
+        claim: true,
+        refreshToken: false,
+        ownerClaimed: true,
+        invitePending: false,
+        ...bucharest('owner'),
+    },
+    admin: {
+        admin: true,
+        role: 'admin',
+        claim: true,
+        refreshToken: false,
+        ownerClaimed: true,
+        invitePending: false,
+        ...bucharest('editor'),
+    },
+    delayed: {
+        admin: true,
+        role: 'owner',
+        claim: false,
+        refreshToken: true,
+        ownerClaimed: true,
+        invitePending: false,
+        ...bucharest('owner'),
+    },
+};
 
 /** The server answers: an anonymous probe gets `unauthenticated`, a signed-in session gets `session`. */
 export function deployed(callables: FakeCallables, auth: FakeAuth, session: CallableResponse<'admin.session'>): void {
@@ -385,6 +419,9 @@ export function shellStateAccess(overrides: Partial<ShellState> = {}): ShellStat
         revoked: false,
         people: {},
         unread: null,
+        cities: [],
+        cityId: null,
+        projectOwner: false,
         setupReady: null,
         locale: 'en',
         theme: { mode: 'system', city: null, preview: null },

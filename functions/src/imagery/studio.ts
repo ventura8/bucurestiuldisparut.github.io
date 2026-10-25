@@ -90,6 +90,8 @@ const CHOICES: Readonly<Record<Exclude<Guard['verdict'], 'within'>, readonly Pub
     over: ['studio', 'defer', 'pay'],
     'tileset-limit': ['studio'],
     'too-large': ['studio'],
+    // M5 (docs/research/M5-interfaces.md §1.8): over the city's share, paying the project's overage would not help.
+    'city-over': ['studio', 'defer'],
 };
 
 /** A version waiting for this choice; paying or waiting is refused at the tileset cap (that needs the owner). */

@@ -155,7 +155,7 @@ async function imageryImport(deps: ImportDeps, caller: VerifiedCaller, request: 
     await requireCity(deps.documents, request.cityId);
     const scene = await importableScene(deps, request);
     const now = deps.clock.now();
-    await refuseNewRasterJob(deps.documents, now);
+    await refuseNewRasterJob(deps.documents, now, request.cityId);
     await confirmScanned(deps, request.cityId, scene);
     const { jobId, layerId } = await startImport(deps, { cityId: request.cityId, scene, createdBy: caller.uid, now });
     deps.log.info('usgs scene imported', { uid: caller.uid, cityId: request.cityId, entityId: scene.entityId, jobId, layerId });

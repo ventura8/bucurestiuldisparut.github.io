@@ -20,6 +20,8 @@ export type MapStatus = 'none' | 'loading' | 'ready' | 'no-token' | 'no-webgl' |
 export interface CityFrame {
     readonly bounds: BBox;
     readonly view: MapView;
+    /** M5's New city map zooms further out than a city's pages (the factory's own minimum otherwise). */
+    readonly minZoom?: number;
 }
 
 /** The manifest's default start zoom for a city without one. */
@@ -140,7 +142,11 @@ export class AreaMap {
         const generation = this.#generation;
         this.#deps.status('loading');
         const { container, frame, maps } = request;
-        this.#created(await maps.create(container, { bounds: frame.bounds, view: frame.view, locale: this.#deps.locale() }), generation);
+        const options = { bounds: frame.bounds, view: frame.view, locale: this.#deps.locale() };
+        this.#created(
+            await maps.create(container, frame.minZoom === undefined ? options : { ...options, minZoom: frame.minZoom }),
+            generation,
+        );
     }
 
     /** What a new map needs, once the page shows the host and the city is known; null before (or with a map already). */

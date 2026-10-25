@@ -661,3 +661,29 @@ describe('the imagery section', () => {
         expect(world.store.writes).toEqual([]);
     });
 });
+
+describe('the publishing section (M5, DECISIONS-for-review.md §63a)', () => {
+    it('happyPath_aNewCityIsPublishedWithItsFlagAlone', async () => {
+        const { store, world } = open(['publish'], cityDoc({ published: false }));
+
+        store.intents.editCity({ published: true });
+        const outcome = await store.intents.saveSection();
+
+        expect(outcome).toMatchObject({ ok: true });
+        expect(store.state.citySection.section).toBe('publish');
+        expect(city(world)).toMatchObject({ published: true });
+        expect(world.store.writes.map((write) => (write.kind === 'update' ? Object.keys(write.fields) : write.kind))).toEqual([
+            ['published'],
+        ]);
+    });
+
+    it('badPath_aRevokedAdminPublishesNothing', async () => {
+        const { store, world } = open(['publish'], cityDoc({ published: false }), () => true, true);
+
+        store.intents.editCity({ published: true });
+        await store.intents.saveSection();
+
+        expect(world.store.writes).toEqual([]);
+        expect(city(world)).toMatchObject({ published: false });
+    });
+});

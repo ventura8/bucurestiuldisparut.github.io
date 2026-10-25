@@ -1,4 +1,5 @@
-"""check_release.py: the tag, every package version, ENGINE_VERSION and the release notes agree.
+"""check_release.py: the tag, every package version (workspace dependencies included), ENGINE_VERSION, the
+released engine, the starter kit's pins and the release notes agree.
 
 Repositories are built under tmp_path; the tag lookup gets a fake `git` answer except in the tests
 that run the real git (the default capture) in a throwaway repository.
@@ -10,11 +11,13 @@ import os
 import runpy
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import check_release
 import pytest
+from release_pins import expected_pins
+from releaseutil import MAPBOX_CSS_URL, base_of, kit_page, release_document, write_kit_page, write_release_folder, write_release_json
 
 RELEASE_PY = Path(check_release.__file__)
 GIT_ENV = {
@@ -31,19 +34,30 @@ def write_json(path: Path, document: object) -> None:
     path.write_text(json.dumps(document), encoding="utf-8")
 
 
+def sri_rows(version: str) -> str:
+    """The description's table of pinned addresses for `version`, as `npm run release:notes` writes it."""
+    pins = expected_pins(release_document(version)).pins
+    return "".join(f"| File | `{url}` | `{integrity}` |\n" for url, integrity in pins.items())
+
+
 def write_release(root: Path, version: str = "1.2.3", *, notes: bool = True) -> None:
-    """A consistent repository for `version`: root + two workspaces, engine constant, both notes files."""
+    """A consistent repository for `version`: root + two workspaces (one on the other), engine constant, the
+    released engine, the kit's page and both notes files."""
     write_json(root / "package.json", {"name": "historic-city-map", "version": version, "workspaces": ["packages/*", "functions"]})
-    write_json(root / "packages" / "engine" / "package.json", {"name": "@hcm/engine", "version": version})
-    write_json(root / "functions" / "package.json", {"name": "@hcm/functions", "version": version})
+    write_json(root / "packages" / "engine" / "package.json", {"name": "@hcm/engine", "version": version, "dependencies": {"zod": "4"}})
+    functions = {"name": "@hcm/functions", "version": version, "devDependencies": {"@hcm/engine": version}, "dependencies": []}
+    write_json(root / "functions" / "package.json", functions)
     (root / "packages" / "notes-only").mkdir(parents=True)
     engine = root / check_release.ENGINE_INDEX
     engine.parent.mkdir(parents=True, exist_ok=True)
     engine.write_text(f"export const ENGINE_VERSION = '{version}';\n", encoding="utf-8")
+    write_release_folder(root, version)
+    write_kit_page(root, kit_page(version))
     if notes:
         (root / "docs" / "releases").mkdir(parents=True)
         (root / "docs" / "releases" / f"v{version}.md").write_text("# v1.2.3\n\nNotes.\n", encoding="utf-8")
-        (root / "docs" / "releases" / f"v{version}_github_description.md").write_text("# Release\n", encoding="utf-8")
+        description = f"# Release v{version} - Title\n\n<!-- hcm:sri -->\n\n{sri_rows(version)}\n<!-- /hcm:sri -->\n"
+        (root / "docs" / "releases" / f"v{version}_github_description.md").write_text(description, encoding="utf-8")
 
 
 def tags(*names: str) -> check_release.Capture:
@@ -64,7 +78,9 @@ def test_happy_path_consistent_release_passes(tmp_path: Path, log: pytest.LogCap
     write_release(tmp_path)
 
     assert check_release.main(["--root", str(tmp_path)], tags("v1.2.3")) == 0
-    assert "[release] OK: v1.2.3 matches every package version, ENGINE_VERSION and both release-notes files" in log.text
+    assert (
+        "[release] OK: v1.2.3 matches every version, ENGINE_VERSION, the released engine, the kit's pins and both notes files" in log.text
+    )
 
 
 def test_happy_path_explicit_tag_checks_before_tagging(tmp_path: Path) -> None:
@@ -160,3 +176,85 @@ def test_bad_path_script_entry_point_exits_with_main_status(monkeypatch: pytest.
         runpy.run_path(str(RELEASE_PY), run_name="__main__")
 
     assert exit_info.value.code == 1
+
+
+def test_bad_path_a_workspace_dependency_on_another_version_fails(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
+    write_release(tmp_path)
+    write_json(
+        tmp_path / "functions" / "package.json",
+        {"name": "@hcm/functions", "version": "1.2.3", "peerDependencies": {"@hcm/engine": "1.2.2"}},
+    )
+
+    assert check_release.main(["--root", str(tmp_path), "--tag", "v1.2.3"]) == 1
+    assert "  - functions/package.json: depends on @hcm/engine '1.2.2', the tag says '1.2.3'" in log.text
+
+
+def test_bad_path_without_the_released_engine_and_the_kit_page_the_tag_fails(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
+    write_release(tmp_path)
+    (tmp_path / "cdn" / "engine" / "release.json").unlink()
+    (tmp_path / "templates" / "starter-kit" / "index.html").unlink()
+
+    assert check_release.main(["--root", str(tmp_path), "--tag", "v1.2.3"]) == 1
+    assert "cdn/engine/release.json is missing: npm run release:cdn on the release commit" in log.text
+    assert "templates/starter-kit/index.html is missing: a release pins the starter kit's page" in log.text
+
+
+def test_bad_path_a_released_engine_and_a_kit_of_another_version_fail(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
+    write_release(tmp_path)
+    write_release_json(tmp_path, release_document("1.2.2"))
+    write_kit_page(tmp_path, kit_page("1.2.2"))
+
+    assert check_release.main(["--root", str(tmp_path), "--tag", "v1.2.3"]) == 1
+    assert "cdn/engine/release.json: version '1.2.2', the tag says '1.2.3'" in log.text
+    assert "templates/starter-kit/index.html: pins engine '1.2.2', the tag says '1.2.3'" in log.text
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda text: text.replace(f"| File | `{MAPBOX_CSS_URL}`", "| File | `https://example.invalid/x.css`"),
+        lambda text: text + "\n" + 'integrity="sha384-' + "B" * 64 + '"\n',
+        lambda text: text.replace(f"{base_of('1.2.3')}engine.css", f"{base_of('1.2.2')}engine.css"),
+    ],
+)
+def test_bad_path_a_description_whose_pins_are_not_the_release_files_fails(
+    tmp_path: Path, log: pytest.LogCaptureFixture, change: Callable[[str], str]
+) -> None:
+    write_release(tmp_path)
+    description = tmp_path / "docs" / "releases" / "v1.2.3_github_description.md"
+    description.write_text(change(description.read_text(encoding="utf-8")), encoding="utf-8")
+
+    assert check_release.main(["--root", str(tmp_path), "--tag", "v1.2.3"]) == 1
+    expected = "docs/releases/v1.2.3_github_description.md: its pinned addresses and integrity are not cdn/engine/release.json's"
+    assert expected in log.text
+    assert "npm run release:notes -- --write docs/releases/v1.2.3_github_description.md" in log.text
+
+
+def test_bad_path_an_unreadable_release_file_is_reported(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
+    write_release(tmp_path)
+    (tmp_path / "cdn" / "engine" / "release.json").write_text("{broken", encoding="utf-8")
+
+    assert check_release.main(["--root", str(tmp_path), "--tag", "v1.2.3"]) == 1
+    assert "cdn/engine/release.json: cannot read it as JSON" in log.text
+
+
+def test_bad_path_a_guide_naming_another_release_of_the_cli_fails(tmp_path: Path, log: pytest.LogCaptureFixture) -> None:
+    # docs/LESSONS.md 238: a guide's `npx create-historic-city@1` runs whatever the name resolves to on the day it is read.
+    write_release(tmp_path)
+    guide = "`npx create-historic-city@1.2.3 x`, `npm create historic-city@1.0.0`\n"
+    (tmp_path / "docs" / "SELF_HOST.md").write_text(guide, encoding="utf-8")
+    (tmp_path / "README.md").write_text("`npx create-historic-city@1.2.3 my-city` and `@<version>`\n", encoding="utf-8")
+
+    assert check_release.main(["--root", str(tmp_path), "--tag", "v1.2.3"], capture=tags()) == 1
+    expected = "docs/SELF_HOST.md: names create-historic-city@1.0.0, the tag says '1.2.3'"
+    assert check_release.doc_pin_problems(tmp_path, "1.2.3") == [expected]
+    assert "docs/SELF_HOST.md: names create-historic-city@1.0.0" in log.text
+
+
+def test_happy_path_the_pinned_guides_are_the_bumps_list() -> None:
+    versions = (RELEASE_PY.parents[2] / "scripts" / "release" / "src" / "versions.ts").read_text(encoding="utf-8")
+    block = versions.split("export const PINNED_DOCS = [", 1)[1].split("]", 1)[0]
+
+    assert tuple(line.strip().strip("',") for line in block.strip().splitlines()) == check_release.PINNED_DOCS
+    for name in check_release.PINNED_DOCS:
+        assert (RELEASE_PY.parents[2] / name).is_file(), name

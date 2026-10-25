@@ -4,10 +4,12 @@ import type { AdminDirectory } from './admin-directory.js';
 import type { AuthAdmin } from './auth-admin.js';
 import type { BlobReader } from './blob-reader.js';
 import type { BlobStore } from './blob-store.js';
+import type { BlobWriter } from './blob-writer.js';
 import type { Clock } from './clock.js';
 import type { CloudRunJobs } from './cloud-run-jobs.js';
 import type { DocumentStore } from './documents.js';
 import type { ErrorReporter } from './error-reporter.js';
+import type { ExportKit } from './export-kit.js';
 import type { FirebaseManagement } from './firebase-management.js';
 import type { Geocoder } from './geocoder.js';
 import type { GoogleIam } from './google-iam.js';
@@ -22,6 +24,7 @@ import type { SetupRecords } from './setup-records.js';
 import type { TaskQueue } from './task-queue.js';
 import type { Translator } from './translator.js';
 import type { UsgsApi } from './usgs-api.js';
+import type { UrlSigner } from './url-signer.js';
 import type { UsgsScenes } from './usgs-scenes.js';
 
 /**
@@ -57,6 +60,10 @@ export interface Ports {
     readonly geocoder: Geocoder;
     readonly translator: Translator;
     readonly push: PushSender;
+    /** M5 (docs/research/M5-interfaces.md §5): the static export's streamed zip, its signed download, the kit it carries. */
+    readonly writer: BlobWriter;
+    readonly signer: UrlSigner;
+    readonly kit: ExportKit;
     readonly admins: AdminDirectory;
     readonly setup: SetupRecords;
 }

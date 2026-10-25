@@ -5,11 +5,16 @@ import type { Logger } from '@hcm/shared';
 import { buildSite } from './build.js';
 import { SiteBuildError } from './errors.js';
 import type { SiteFileSystem } from './files.js';
+import { assemblePages, type PagesSite } from './pages.js';
+import { pagesPathOf, parseSiteSpec } from './site-spec.js';
 
 /**
- * `node --import ./scripts/site/register-ts.mjs scripts/site/build-site.ts [--out dist/site] [--site <dir> ...]`
- * (`npm run build:site`): builds every site into `<out>/<site folder name>` (`dist/site/bucharest`,
- * `dist/site/starter-kit`). The Mapbox public token comes from the environment variable `MAPBOX_PUBLIC_TOKEN`, never
+ * `node --import ./scripts/site/register-ts.mjs scripts/site/build-site.ts [--out dist/site] [--site <dir> ...]
+ * [--pages dist/pages]` (`npm run build:site`): builds every site into `<out>/<site folder name>` (`dist/site/bucharest`,
+ * `dist/site/starter-kit`). Without `--site`, every `sites/<city>/` with a `site.json` (sorted), then the starter kit
+ * (M5, `docs/research/M5-interfaces.md` §1.10). `--pages` then assembles the GitHub Pages tree of every city site there
+ * (`pages.ts`: Bucharest at the root, each other city at its `pagesPath`); the starter kit is never in it. A city without
+ * a seed manifest reads the public bucket's only, and is passed over with a notice when the build names no bucket. The Mapbox public token comes from the environment variable `MAPBOX_PUBLIC_TOKEN`, never
  * from argv; without it the sites get the e2e placeholder token, which Mapbox refuses (a warning says so). The public
  * bucket comes from `HCM_PUBLIC_BUCKET` (a repository variable in CI): a site whose `site.json` says `publicManifest` then
  * reads the manifest the admin publishes there; without it every site bundles its manifest (DECISIONS-for-review.md §51e).
@@ -17,8 +22,9 @@ import type { SiteFileSystem } from './files.js';
  * Exit status: 0 built, 1 an input is missing or invalid, 2 usage.
  */
 
-/** The committed sites, in build order. */
-export const DEFAULT_SITES: readonly string[] = ['sites/bucharest', 'starter-kit'];
+/** The folder of the cities' sites, and the starter kit's site, built last and never part of the Pages tree. */
+const SITES_DIR = 'sites';
+const KIT_SITE = 'starter-kit';
 const DEFAULT_OUT = 'dist/site';
 /** A generated test value that encodes the scenario (`quality/testing_strategy_skill.md`), never a real token. */
 export const PLACEHOLDER_TOKEN = 'pk.e2e-fake-token';
@@ -35,17 +41,28 @@ export interface CliContext {
 
 interface CliOptions {
     readonly out: string;
-    readonly sites: readonly string[];
+    /** The sites named on the command line; none: every committed one (`defaultSites`). */
+    readonly sites: readonly string[] | undefined;
+    readonly pages: string | undefined;
 }
 
 function readOptions(argv: readonly string[]): CliOptions {
     const { values } = parseArgs({
         args: [...argv],
-        options: { out: { type: 'string', default: DEFAULT_OUT }, site: { type: 'string', multiple: true } },
+        options: { out: { type: 'string', default: DEFAULT_OUT }, site: { type: 'string', multiple: true }, pages: { type: 'string' } },
         strict: true,
         allowPositionals: false,
     });
-    return { out: values.out, sites: values.site ?? DEFAULT_SITES };
+    return { out: values.out, sites: values.site, pages: values.pages };
+}
+
+/** Every `sites/<city>/` with a `site.json`, sorted, then the starter kit: the committed sites in build order. */
+export function defaultSites(files: SiteFileSystem): string[] {
+    const cities = files
+        .listFiles(SITES_DIR)
+        .filter((path) => /^[^/]+\/site\.json$/.test(path))
+        .map((path) => `${SITES_DIR}/${path.slice(0, path.indexOf('/'))}`);
+    return [...cities, KIT_SITE];
 }
 
 function siteName(siteDir: string): string {
@@ -72,12 +89,40 @@ function bucketFrom(context: CliContext): { readonly publicBucket?: string } {
     return { publicBucket: bucket };
 }
 
+/** A city without a seed manifest needs the public bucket: without one the build passes it over and says so. */
+function waitsForBucket(siteDir: string, bucket: { readonly publicBucket?: string }, context: CliContext): boolean {
+    const specFile = `${siteDir}/site.json`;
+    if (bucket.publicBucket !== undefined || !context.files.isFile(specFile)) {
+        return false;
+    }
+    if (parseSiteSpec(context.files.readText(specFile), specFile).manifest !== undefined) {
+        return false;
+    }
+    context.log.info('site not built: it reads the public bucket and HCM_PUBLIC_BUCKET is not set', { siteDir });
+    return true;
+}
+
+/** The built city sites (never the starter kit) and their Pages paths. */
+function pagesSiteOf(siteDir: string, outDir: string, files: SiteFileSystem): PagesSite[] {
+    if (siteDir === KIT_SITE) {
+        return [];
+    }
+    const spec = parseSiteSpec(files.readText(`${siteDir}/site.json`), `${siteDir}/site.json`);
+    return [{ outDir, pagesPath: pagesPathOf(spec, siteName(siteDir)) }];
+}
+
 function build(options: CliOptions, context: CliContext): number {
     const token = tokenFrom(context);
     const bucket = bucketFrom(context);
-    for (const siteDir of options.sites) {
-        const report = buildSite({ siteDir, outDir: `${options.out}/${siteName(siteDir)}`, token, ...bucket }, context.files);
+    const pages: PagesSite[] = [];
+    for (const siteDir of (options.sites ?? defaultSites(context.files)).filter((site) => !waitsForBucket(site, bucket, context))) {
+        const outDir = `${options.out}/${siteName(siteDir)}`;
+        const report = buildSite({ siteDir, outDir, token, ...bucket }, context.files);
         context.log.info('site built', { ...report });
+        pages.push(...pagesSiteOf(siteDir, outDir, context.files));
+    }
+    if (options.pages !== undefined) {
+        context.log.info('pages assembled', { ...assemblePages(pages, options.pages, context.files) });
     }
     return EXIT_OK;
 }
@@ -88,7 +133,7 @@ export function runCli(argv: readonly string[], context: CliContext): number {
     try {
         options = readOptions(argv);
     } catch (error: unknown) {
-        context.log.error('usage: build-site.ts [--out dist/site] [--site <dir> ...]', { reason: String(error) });
+        context.log.error('usage: build-site.ts [--out dist/site] [--site <dir> ...] [--pages dist/pages]', { reason: String(error) });
         return EXIT_USAGE;
     }
     try {

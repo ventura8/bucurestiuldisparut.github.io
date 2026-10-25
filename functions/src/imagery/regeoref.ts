@@ -118,7 +118,7 @@ async function regeorefIn(transaction: DocumentTransaction, regeoref: Regeoref, 
 export async function startRegeoref(deps: RegeorefDeps, regeoref: Regeoref): Promise<{ jobId: string; versionId: string }> {
     const now = deps.clock.now();
     const { cityId, base } = regeoref;
-    await refuseNewRasterJob(deps.documents, now);
+    await refuseNewRasterJob(deps.documents, now, cityId);
     await refuseBusyLayer(deps.documents, cityId, base.layerId, base.state === 'awaiting_approval' ? base.jobId : undefined);
     const jobId = jobIdFor(regeoref.origin === 'crop' ? 'cr' : 'rg', now, base.layerId);
     const work: NewWork = {

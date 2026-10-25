@@ -18,6 +18,8 @@ export interface InputFlow {
     setInputFiles(locator: Locator, files: string | readonly string[]): Promise<void>;
     /** A click at a point of the page (a place on the admin map). */
     clickAt(page: Page, point: { readonly x: number; readonly y: number }): Promise<void>;
+    /** One drag from a point of the page to another, the button held (M5: the New city's rectangle on the map). */
+    drag(page: Page, from: { readonly x: number; readonly y: number }, to: { readonly x: number; readonly y: number }): Promise<void>;
     /** A key that commits (Enter on a button, a slider's step). */
     press(locator: Locator, key: string): Promise<void>;
     /** An option chosen in a select. */
@@ -67,6 +69,13 @@ export class InputBudget {
             clickAt: async (page, point) => {
                 count();
                 await page.mouse.click(point.x, point.y);
+            },
+            drag: async (page, from, to) => {
+                count();
+                await page.mouse.move(from.x, from.y);
+                await page.mouse.down();
+                await page.mouse.move(to.x, to.y, { steps: 8 });
+                await page.mouse.up();
             },
             press: async (locator, key) => {
                 count();

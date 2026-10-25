@@ -268,6 +268,7 @@ describe('assist.suggestTitle and the geocoding queue: the edges', () => {
         const racing: M4Deps = {
             ...deps,
             geocoder: {
+                ...deps.geocoder,
                 reverse: async (request) => {
                     await deps.documents.set(FIRESTORE_PATHS.geocodeCell(ATHENAEUM_KEY), geocodeCellDocSchema, answered);
                     return deps.geocoder.reverse(request);

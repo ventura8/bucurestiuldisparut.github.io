@@ -30,6 +30,8 @@ export const CONTENT_AREAS = [
     'georef',
     /** M4 (`docs/research/M4-interfaces.md` §5.5): the admin's notifications and push settings. */
     'inbox',
+    /** M5 (`docs/research/M5-interfaces.md` §1.6): the project owner's New city flow. */
+    'cities',
 ] as const;
 
 export type ContentArea = (typeof CONTENT_AREAS)[number];

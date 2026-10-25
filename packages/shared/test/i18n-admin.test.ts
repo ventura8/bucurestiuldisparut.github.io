@@ -72,6 +72,8 @@ const CONTENT_FOLDERS = {
     'admin-ops': ['admins', 'history', 'jobs', 'crashes'],
     'admin-imagery': ['imagery', 'georef', 'orders'],
     'admin-notify': ['notify', 'assist'],
+    'admin-cities': ['cities', 'budgets'],
+    'admin-export': ['export'],
 } as const;
 const SECTION_START = /^\s*\/\/ \[section ([a-z]+)\]/;
 const SECTION_END = /^\s*\/\/ \[end ([a-z]+)\]/;

@@ -90,6 +90,8 @@ export const PRIVATE_BUCKET_LIFECYCLE: readonly { readonly prefix: string; reado
     { prefix: 'work/', days: 14 },
     { prefix: 'usgs-raw/', days: 30 },
     { prefix: 'reference/', days: 90 },
+    // M5 (CR-M5-8): a city's static export, `EXPORT_LIMITS.ttlDays` after it was built (its record says expired by then).
+    { prefix: 'exports/', days: 7 },
 ];
 
 /** The parts of a raster upload's path (the `imagery.onRasterUpload` trigger reads them from the object's name). */

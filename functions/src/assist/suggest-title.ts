@@ -15,14 +15,19 @@ import {
     queuedOn,
     timestampFromDate,
     timestampToDate,
+    usageMonth,
     utcDay,
     type ApiErrorCode,
     type CallableResponse,
+    type CityDoc,
+    type CityUsageDoc,
     type GeocodeCellDoc,
 } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
+import { geocodedOn, readCityUsage, shareOf, writeCityUsage, type CityShare } from '../api/city-usage.js';
+import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { QUEUED_FRESH_MS, nominatimCoolUntil, requireCity, stampOf } from './records.js';
 
@@ -32,7 +37,8 @@ import { QUEUED_FRESH_MS, nominatimCoolUntil, requireCity, stampOf } from './rec
  * rounded to its cache cell (`geocodeCellKey`, about 11 m); a cell answered and not expired answers at once, one asked
  * less than two minutes ago answers `queued`, one refused or failed answers `failed` until it expires. Otherwise, while
  * Nominatim cools down after a refusal, the answer is `failed` with `apiError.assist.rateLimited` and nothing is queued;
- * past `GEOCODE_DAILY_CAP` cells queued today (UTC, the project's), `failed` with `apiError.assist.dailyCap` (Nominatim's
+ * past `GEOCODE_DAILY_CAP` cells queued today (UTC, the project's) or (M5) the city's daily share, `failed` with
+ * `apiError.assist.dailyCap` (Nominatim's
  * policy forbids bulk use); else the cell is set `queued` and the day's count raised in one transaction (two admins asking
  * at once queue one task) and one task goes to the `assist-geocode` queue, whose worker asks Nominatim one request a
  * second. A task that cannot be queued takes its cell back, so asking again queues anew. The editor listens to the cell.
@@ -87,8 +93,24 @@ function queuedCell(now: Date): GeocodeCellDoc {
 /** What the claim found: the cell answers by itself, today's cap is reached, or the cell is now `queued` (queue it). */
 type Claim = { readonly kind: 'answers'; readonly cell: GeocodeCellDoc } | { readonly kind: 'capped' } | { readonly kind: 'queued' };
 
-/** In one transaction: the cell as stored when it still answers; else, under today's cap, the cell set `queued` and counted. */
-async function claimCell(deps: SuggestTitleDeps, key: string, now: Date): Promise<Claim> {
+/** M5: the city's counters while its daily share of cells has room, `capped` once it has none, undefined without a share. */
+async function cityGeocodeRoom(
+    transaction: DocumentTransaction,
+    share: CityShare | undefined,
+    now: Date,
+): Promise<{ readonly share: CityShare; readonly usage: CityUsageDoc } | 'capped' | undefined> {
+    if (share === undefined) {
+        return undefined;
+    }
+    const usage = await readCityUsage(transaction, share, usageMonth(now));
+    return geocodedOn(usage, utcDay(now)) >= share.limits.geocodeCellsPerDay ? 'capped' : { share, usage };
+}
+
+/**
+ * In one transaction: the cell as stored when it still answers; else, under today's caps (the project's and, M5, the
+ * city's share), the cell set `queued` and counted.
+ */
+async function claimCell(deps: SuggestTitleDeps, key: string, now: Date, share: CityShare | undefined): Promise<Claim> {
     const path = FIRESTORE_PATHS.geocodeCell(key);
     return deps.documents.transaction(async (transaction): Promise<Claim> => {
         const cell = await transaction.get(path, geocodeCellDocSchema);
@@ -98,7 +120,8 @@ async function claimCell(deps: SuggestTitleDeps, key: string, now: Date): Promis
         const state = await transaction.get(FIRESTORE_PATHS.assistState, assistStateDocSchema);
         const day = utcDay(now);
         const queued = queuedOn(state, day);
-        if (queued >= GEOCODE_DAILY_CAP) {
+        const city = queued >= GEOCODE_DAILY_CAP ? 'capped' : await cityGeocodeRoom(transaction, share, now);
+        if (city === 'capped') {
             return { kind: 'capped' };
         }
         await transaction.set(path, geocodeCellDocSchema, queuedCell(now));
@@ -108,6 +131,10 @@ async function claimCell(deps: SuggestTitleDeps, key: string, now: Date): Promis
             queuedToday: queued + 1,
             ...stampOf(now),
         });
+        if (city !== undefined) {
+            const counted = { ...city.usage, geocodeDay: day, geocodeToday: geocodedOn(city.usage, day) + 1 };
+            await writeCityUsage(transaction, city.share, counted, stampOf(now));
+        }
         return { kind: 'queued' };
     });
 }
@@ -130,12 +157,18 @@ async function enqueue(deps: SuggestTitleDeps, key: string, now: Date): Promise<
     }
 }
 
-/** A cell that does not answer by itself: refused while Nominatim cools down or past today's cap, else queued. */
-async function queueCell(deps: SuggestTitleDeps, key: string, now: Date, cityId: string): Promise<Response> {
+/** A cell that does not answer by itself: refused while Nominatim cools down or past today's caps, else queued. */
+async function queueCell(
+    deps: SuggestTitleDeps,
+    key: string,
+    now: Date,
+    city: { readonly id: string; readonly doc: CityDoc },
+): Promise<Response> {
+    const cityId = city.id;
     if ((await nominatimCoolUntil(deps.documents, now)) !== undefined) {
         return refused(key, 'apiError.assist.rateLimited');
     }
-    const claim = await claimCell(deps, key, now);
+    const claim = await claimCell(deps, key, now, shareOf(cityId, city.doc));
     if (claim.kind !== 'queued') {
         return claim.kind === 'answers' ? answerOf(key, claim.cell) : refused(key, 'apiError.assist.dailyCap');
     }
@@ -152,7 +185,7 @@ async function suggestTitle(deps: SuggestTitleDeps, data: { readonly cityId: str
     const now = deps.clock.now();
     const key = geocodeCellKey(data.location.lat, data.location.lng);
     const stored = await deps.documents.get(FIRESTORE_PATHS.geocodeCell(key), geocodeCellDocSchema);
-    return cellAnswers(stored, now) ? answerOf(key, stored) : queueCell(deps, key, now, data.cityId);
+    return cellAnswers(stored, now) ? answerOf(key, stored) : queueCell(deps, key, now, { id: data.cityId, doc: city });
 }
 
 export function suggestTitleFunction(getDeps: () => SuggestTitleDeps) {

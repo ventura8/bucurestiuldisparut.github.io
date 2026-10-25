@@ -19,7 +19,7 @@ export function cityThemeOf(data: DocumentData | null): ThemeTokens | null {
 export interface CityThemeDeps {
     readonly documents: DocumentsPort;
     readonly shell: ShellStateAccess;
-    /** The city the admin edits (`infra/project.json`'s first), or null before one exists. */
+    /** The city the admin edits before the session names the current one (`infra/project.json`'s first), or null. */
     readonly cityId: string | null;
     /** An admin read was denied. */
     readonly denied: () => void;
@@ -33,9 +33,9 @@ export class CityTheme {
         this.#deps = deps;
     }
 
-    /** Starts the watch when the admin is signed in, stops it otherwise. */
+    /** Starts the watch of the current city (M5: the shell's, else `deps.cityId`) when the admin is signed in, stops it otherwise. */
     stateChanged(state: ShellState): void {
-        const cityId = state.auth === 'admin' ? this.#deps.cityId : null;
+        const cityId = state.auth === 'admin' ? (state.cityId ?? this.#deps.cityId) : null;
         if ((cityId !== null) === (this.#stop !== null)) {
             return;
         }
@@ -51,8 +51,17 @@ export class CityTheme {
         this.#stop = null;
     }
 
+    /**
+     * The watch is marked started before it is asked for: a store that answers at once (in the call itself) updates the
+     * shell's theme, whose listeners ask this again, and an unmarked watch was started again without end (the M5 tests'
+     * stack overflow: the first snapshot of the Firebase SDK comes later, so only a synchronous store showed it).
+     */
     #start(path: string): void {
-        this.#stop = this.#deps.documents.watch(
+        let stop: Unsubscribe | null = null;
+        this.#stop = () => {
+            stop?.();
+        };
+        stop = this.#deps.documents.watch(
             path,
             (data) => {
                 const city = cityThemeOf(data);

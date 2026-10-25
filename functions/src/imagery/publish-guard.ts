@@ -8,11 +8,15 @@
  * tileset the account has or is about to have: the layers' tilesets, those of deleted layers still in their grace, the
  * first publishes under way (a version `publishing` for a layer without a tileset) and, read in the same transaction, the
  * reservations of first publishes, so two first publishes at once never both take the last place
- * (`S-A42-BAD-RACING-TILESETS`).
+ * (`S-A42-BAD-RACING-TILESETS`). M5 (`docs/research/M5-interfaces.md` §1.8; S-A52-BAD-CITY-OVER): a city with limits is
+ * also held by its share of the month (`cities/{city}/usage/{month}`, in the same transaction): over it, the version
+ * waits with the verdict `city-over` while the other cities' publishes go on.
  */
 import {
     FIRESTORE_PATHS,
     MAPBOX_FREE_COMPUTE_UNITS,
+    cityComputeUnitsAvailable,
+    cityDocSchema,
     guardVerdict,
     jobDocSchema,
     layerDeleteParamsSchema,
@@ -23,12 +27,14 @@ import {
     usageDocSchema,
     usageMonth,
     validate,
+    type CityUsageDoc,
     type GuardOutcome,
     type JobDoc,
     type LayerVersionDoc,
     type UsageDoc,
 } from '@hcm/shared';
 
+import { readCityUsage, shareOf, writeCityUsage, type CityShare } from '../api/city-usage.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { estimateOf } from './approval.js';
@@ -127,11 +133,18 @@ interface Paths {
     readonly usage: string;
 }
 
+/** M5: the version's city's share and its month's counters, when the city has limits. */
+interface CityAccount {
+    readonly share: CityShare;
+    readonly usage: CityUsageDoc;
+}
+
 interface Loaded {
     readonly job: JobDoc | undefined;
     readonly version: LayerVersionDoc | undefined;
     readonly versionId: string;
     readonly usage: UsageDoc;
+    readonly city: CityAccount | undefined;
     readonly paths: Paths;
 }
 
@@ -141,6 +154,7 @@ interface Checked {
     readonly versionId: string;
     readonly estimate: number;
     readonly usage: UsageDoc;
+    readonly city: CityAccount | undefined;
     readonly paths: Paths;
     /** The publish makes a tileset its layer does not have yet. */
     readonly newTileset: boolean;
@@ -156,7 +170,14 @@ async function load(transaction: DocumentTransaction, cityId: string, jobId: str
     };
     const version = await transaction.get(paths.version, layerVersionDocSchema);
     const usage = (await transaction.get(paths.usage, usageDocSchema)) ?? emptyUsage(usageMonth(now), now);
-    return { job, version, versionId, usage, paths };
+    return { job, version, versionId, usage, city: await loadCity(transaction, cityId, now), paths };
+}
+
+/** M5 (`docs/research/M5-interfaces.md` §1.8): the city's share and counters, read in the guard's transaction. */
+async function loadCity(transaction: DocumentTransaction, cityId: string, now: Date): Promise<CityAccount | undefined> {
+    const city = await transaction.get(FIRESTORE_PATHS.city(cityId), cityDocSchema);
+    const share = city === undefined ? undefined : shareOf(cityId, city);
+    return share === undefined ? undefined : { share, usage: await readCityUsage(transaction, share, usageMonth(now)) };
 }
 
 /** A deferral that has not come due yet. */
@@ -238,6 +259,7 @@ async function reserve(transaction: DocumentTransaction, checked: Checked, outco
     const held = { computeUnits: checked.estimate, at: stamp.updatedAt, ...(checked.newTileset ? { newTileset: true } : {}) };
     const reservations = { ...checked.usage.reservations, [checked.versionId]: held };
     await transaction.set(checked.paths.usage, usageDocSchema, { ...checked.usage, reservations, ...stamp });
+    await reserveForCity(transaction, checked, stamp);
     const version: LayerVersionDoc = {
         ...checked.version,
         state: 'publishing',
@@ -247,6 +269,19 @@ async function reserve(transaction: DocumentTransaction, checked: Checked, outco
     await transaction.set(checked.paths.version, layerVersionDocSchema, version);
     const job = withStep({ ...checked.job, status: 'mts_processing', waitReason: 'mapbox', ...stamp }, 'guard', 'done', stamp.updatedAt);
     await transaction.set(checked.paths.job, jobDocSchema, job);
+}
+
+/**
+ * M5: the city's share holds the estimate as soon as the publish goes on (the project's counter keeps the exact spend); a
+ * publish that fails later stays counted against the city until the month ends, which errs on the side of the budget.
+ */
+async function reserveForCity(transaction: DocumentTransaction, checked: Checked, stamp: ReturnType<typeof stampOf>): Promise<void> {
+    if (checked.city === undefined) {
+        return;
+    }
+    const { share, usage } = checked.city;
+    const reservations = { ...usage.reservations, [checked.versionId]: { computeUnits: checked.estimate, at: stamp.updatedAt } };
+    await writeCityUsage(transaction, share, { ...usage, reservations }, stamp);
 }
 
 /** Over the month, or at the tileset cap: the verdict is recorded and the job waits for the admin's choice. */
@@ -263,6 +298,7 @@ async function decide(transaction: DocumentTransaction, checked: Checked, tilese
         usage: countersOf(checked.usage),
         tilesets: tilesetCount(tilesets, checked.usage, checked.versionId),
         versionId: checked.versionId,
+        cityAvailable: cityComputeUnitsAvailable(checked.city?.share.limits, checked.city?.usage, checked.versionId),
     });
     if (outcome.verdict === 'within') {
         await reserve(transaction, checked, outcome, now);

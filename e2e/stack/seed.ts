@@ -1,10 +1,13 @@
 import { createLogger, opsGuardDocSchema, PROVISION_ITEMS, setupStatusDocSchema } from '@hcm/shared';
+import { MAPBOX_TOKENS } from '@hcm/test-support/fakes';
 import { request, type APIRequestContext } from '@playwright/test';
 
-import { projectCity, type CityWorld } from '../admin/support/content.js';
+import { PROJECT_CITY, projectCity, type CityWorld } from '../admin/support/content.js';
 import { EmulatorWorld, type SignedInAccount } from '../admin/support/emulators.js';
 import { PERSONAS } from '../admin/world.js';
 import { E2E_TOKEN, MOCK_API_ORIGIN } from '../fixtures/world.js';
+import { callable } from './callable.js';
+import { seedSecondCity } from './seed-cities.js';
 import { editPlace, firestoreShape, seedCategories, seedCity, seedLayers, seedPhotos, seedPlaces } from './seed-content.js';
 import { StackImagery, type ImagerySeed } from './seed-imagery.js';
 
@@ -15,8 +18,10 @@ import { StackImagery, type ImagerySeed } from './seed-imagery.js';
  * - `city` (the default): the project as the owner left it after Setup and a season of editing. `owner@e2e.test` claimed
  *   the map; `admin@e2e.test` joined as an admin; `editor@e2e.test` has a pending invitation; `stranger@e2e.test` is
  *   nobody. Setup's required steps are green (`setup/status`, and the fake Google, Mapbox and USGS in the same state: the
- *   project provisioned and deployed, M2M downloads approved, Analytics linked, two crash groups), the budget guard is
- *   green, and the city `bucharest` has its content (seed-content.ts) and its imagery (seed-imagery.ts).
+ *   project provisioned and deployed, M2M downloads approved, Analytics linked, two crash groups; Mapbox connected through
+ *   the server's own `setup.saveMapbox` with the fake's generated bootstrap token), the budget guard is green, the city
+ *   `bucharest` has its content (seed-content.ts) and its imagery (seed-imagery.ts), and a second city, `iasi`,
+ *   unpublished, is the owner's alone (seed-cities.ts: M5's city menu, per-city admins and budgets).
  * - `fresh`: nothing but the fake's one open billing account: a new map, its admin in start-up mode, for the Setup
  *   Assistant from the first sign-in.
  *
@@ -93,6 +98,21 @@ async function seedAdmins(emulators: EmulatorWorld): Promise<SignedInAccount> {
     return emulators.signIn('owner');
 }
 
+/**
+ * Setup's Mapbox card through the server's own `setup.saveMapbox`, with the fake Mapbox's generated bootstrap token
+ * (`MAPBOX_TOKENS.bootstrap`, never a real one): the Functions emulator's in-memory secret store then holds it, so a city
+ * made with New city gets its viewer token from `setup.rotatePublicToken` and can be published, as in production. A
+ * failure is logged; the rest of the world is seeded.
+ */
+async function connectMapbox(api: APIRequestContext, owner: SignedInAccount): Promise<void> {
+    try {
+        await callable(api, owner, 'setup.saveMapbox', { cityId: PROJECT_CITY, secretToken: MAPBOX_TOKENS.bootstrap });
+        log.info('Mapbox connected with the fake bootstrap token: new cities get their viewer token');
+    } catch (error: unknown) {
+        log.error('Mapbox could not be connected; a new city will have no viewer token', { error: String(error) });
+    }
+}
+
 async function seedContent(world: CityWorld, api: APIRequestContext): Promise<void> {
     await seedCity(world);
     await seedCategories(world);
@@ -138,6 +158,8 @@ export async function seedStack(profile: SeedProfile): Promise<StackSeed> {
     const world = projectCity(emulators, owner.uid);
     await seedContent(world, api);
     log.info('city seeded: photos, places, categories, layers, admins, Setup green');
+    await connectMapbox(api, owner);
+    await seedSecondCity(api, emulators, owner);
     const imagery = await seedImagery(api, world, owner);
     return { settled: imagery?.published ?? Promise.resolve(), close: () => api.dispose() };
 }

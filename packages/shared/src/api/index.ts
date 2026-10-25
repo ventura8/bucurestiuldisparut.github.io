@@ -18,31 +18,18 @@ export {
     CLAIM_OAUTH_SCOPE,
     INVITE_TTL_DAYS,
     OWNER_PERMISSION,
-    adminsListRequestSchema,
-    adminsListResponseSchema,
     claimRequestSchema,
     claimResponseSchema,
     inviteIdFor,
-    inviteRequestSchema,
     inviteResponseSchema,
     joinRequestSchema,
     joinResponseSchema,
     normalizeEmail,
-    revokeRequestSchema,
     revokeResponseSchema,
     sessionRequestSchema,
     sessionResponseSchema,
 } from './admin.js';
-export type {
-    AdminsListResponse,
-    ClaimRequest,
-    ClaimResponse,
-    InviteRequest,
-    InviteResponse,
-    JoinResponse,
-    RevokeRequest,
-    SessionResponse,
-} from './admin.js';
+export type { ClaimRequest, ClaimResponse, InviteResponse, JoinResponse, SessionResponse } from './admin.js';
 export { HISTORY_KEEP, historyEntryId, historyEntryIdSchema, revertRequestSchema, revertResponseSchema } from './history.js';
 export type { RevertRequest, RevertResponse } from './history.js';
 export {
@@ -231,7 +218,34 @@ export {
     notifyUnregisterDeviceResponseSchema,
 } from './notify.js';
 export type { NotifyRegisterDeviceRequest } from './notify.js';
-export { BACKGROUND_FUNCTIONS, CALLABLES, FUNCTION_OWNERS, HTTP_ENDPOINTS, deployedName } from './registry.js';
+// M5 (docs/research/M5-interfaces.md): many cities in one project, the static export.
+export {
+    cityAdminsListRequestSchema,
+    cityAdminsListResponseSchema,
+    cityInviteRequestSchema,
+    cityRevokeRequestSchema,
+    citySetRoleRequestSchema,
+    citySetRoleResponseSchema,
+    citiesCreateRequestSchema,
+    citiesCreateResponseSchema,
+    citiesLocateRequestSchema,
+    citiesLocateResponseSchema,
+    citiesSetLimitsRequestSchema,
+    citiesSetLimitsResponseSchema,
+    sessionCitiesSchema,
+    sessionCitySchema,
+} from './cities.js';
+export type { CitiesCreateRequest, CityAdminsListResponse, SessionCity } from './cities.js';
+export {
+    EXPORT_QUEUE,
+    exportDownloadRequestSchema,
+    exportDownloadResponseSchema,
+    exportStartRequestSchema,
+    exportStartResponseSchema,
+    exportTaskSchema,
+} from './city-export.js';
+export type { ExportDownloadResponse, ExportStartRequest, ExportTask } from './city-export.js';
+export { BACKGROUND_FUNCTIONS, CALLABLES, CITY_ACCESSES, FUNCTION_OWNERS, HTTP_ENDPOINTS, deployedName } from './registry.js';
 export type {
     AppCheckMode,
     BackgroundTrigger,

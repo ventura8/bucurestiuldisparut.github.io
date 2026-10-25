@@ -6,7 +6,7 @@
 import { FIRESTORE_PATHS, MAX_GEOMETRY_VERTICES, MAX_POI_PHOTOS, MAX_POLYGON_RINGS, PHOTOS_OVERLAY_ID } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { closedRing, line, links, newPoi, newPoiCategory, poiCategoryDoc, poiDoc } from './support/documents.js';
+import { cityDoc, closedRing, line, links, newPoi, newPoiCategory, poiCategoryDoc, poiDoc } from './support/documents.js';
 import { createWorld, deleted, past, stampedBy, verdict, withChanges, type Data, type Verdict, type World } from './support/world.js';
 
 const CITY_ID = 'rules-pois';
@@ -54,6 +54,8 @@ const polygon = (...rings: Data[][]): Data => ({ geometry: { type: 'Polygon', ri
 
 beforeAll(async () => {
     world = await createWorld('pois');
+    // M5: the city the POIs are drawn in, so the admin persona is its member (the world grants it on seeding).
+    await world.seed(FIRESTORE_PATHS.city(CITY_ID), cityDoc(CITY_ID));
 });
 
 afterAll(async () => {

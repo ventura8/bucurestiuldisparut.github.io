@@ -216,3 +216,28 @@ describe('Storage paths', () => {
         expect(cityIdSchema.safeParse('Bucuresti').success).toBe(false);
     });
 });
+
+describe('M5 paths (docs/research/M5-interfaces.md §1.8, §5)', () => {
+    it('happyPath_aCitysUsageAndExportsLiveUnderTheCity', () => {
+        expect([
+            FIRESTORE_PATHS.cityUsage('cluj', '2026-11'),
+            FIRESTORE_PATHS.cityExports('cluj'),
+            FIRESTORE_PATHS.cityExport('cluj', 'e1761400000000-ab12cd'),
+            STORAGE_PATHS.cityExport('cluj', 'e1761400000000-ab12cd'),
+        ]).toEqual([
+            'cities/cluj/usage/2026-11',
+            'cities/cluj/exports',
+            'cities/cluj/exports/e1761400000000-ab12cd',
+            'exports/cluj/e1761400000000-ab12cd.zip',
+        ]);
+    });
+
+    it.each([
+        ['a usage month 13', () => FIRESTORE_PATHS.cityUsage('cluj', '2026-13')],
+        ['an export id with a slash', () => FIRESTORE_PATHS.cityExport('cluj', 'a/b')],
+        ['an export object of a city id with capitals', () => STORAGE_PATHS.cityExport('Cluj', 'e1')],
+        ['an export object whose id climbs up', () => STORAGE_PATHS.cityExport('cluj', '..')],
+    ])('badPath_%s_throws', (_name, build) => {
+        expect(build).toThrow(RangeError);
+    });
+});

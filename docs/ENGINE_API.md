@@ -6,7 +6,7 @@ Status (M1): the manifest (with the POIs and overlay defaults of PLAN Addendum 3
 
 ## The three files of a city
 
-A city site is a page, its `config.js` and the engine. Mapbox GL JS **3.32.0** is loaded from `api.mapbox.com` and is never bundled; the engine finds it as the global `mapboxgl`.
+A city site is a page, its `config.js` and the engine (a new city's kit has its own three files, the page, `city.json` and a README: [The starter kit](#the-starter-kit)). Mapbox GL JS **3.32.0** is loaded from `api.mapbox.com` and is never bundled; the engine finds it as the global `mapboxgl`.
 
 ```html
 <!doctype html>
@@ -46,6 +46,34 @@ Bucharest serves the engine from its own origin (the site build copies every fil
 The manifest is the one the admin publishes to the project's public bucket. A site whose `site.json` says `publicManifest: true` (Bucharest) gets the `config.js` above from a site build that names the bucket (`HCM_PUBLIC_BUCKET`, a repository variable in CI; `scripts/site/src/public-manifest.ts`): its `manifestUrl` is the bucket's `cities/<cityId>/manifest.json`, nothing is bundled, and the page's CSP names the bucket and the project's crash-report endpoint. A build without the bucket bundles the site's own manifest (Bucharest's seed snapshot, `data/manifest.json`) and serves the committed `config.js`, which names it; the starter kit always does. The viewer never reads Firestore. A module script runs after the deferred classic scripts above it, so `mapboxgl` and the configuration exist when the engine starts; `engine/engine.iife.js` with `defer` works the same way for pages that cannot load modules.
 
 `globalThis.HistoricCityMapConfig = {…}` is the same as `window.HistoricCityMapConfig = {…}` in a classic script; the committed `config.js` files use the `window.` form (ESLint gives them the browser globals). A site build reads `config.js` without running it (`scripts/site/src/config-js.ts`), so the file must be one assignment of literal data: objects, arrays, strings, numbers, booleans and `null`. The site build refuses a `config.js` whose `cityId` is not the manifest's city; a site whose source manifest still names an older id says so in its `site.json` (`legacyCityId`: the Bucharest seed, migrated as it was, names `bucuresti`, while the project's city and every manifest the server builds is `bucharest`), and the served manifest takes `config.js`'s id. A third-party city that loads it from jsDelivr pins an exact version with `integrity` and `crossorigin`; SRI is impossible with a range URL such as `@1`. SRI covers only the file it is written on: `engine.mjs` fetches its lazy chunks (`compare-<hash>.js` for swipe compare, `firebase-sdk-<hash>.js` after the analytics consent) with dynamic imports that carry no integrity, so a page that relies on SRI loads `engine.iife.js` (with `defer`), which carries both inline and needs one `integrity` (the 2026-10-24 security review; an import map with `integrity` entries for the chunks is the module build's alternative, `DECISIONS-for-review.md` §57i).
+
+## The starter kit
+
+A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](research/M5-interfaces.md) §3), or runs `npx create-historic-city@1.0.0 <folder>`, which writes the same three files with its name, rectangle, start view and theme ([SELF_HOST.md](SELF_HOST.md)). There is no `config.js`: the element's attributes are the configuration.
+
+| File | Role |
+| --- | --- |
+| `index.html` | the page: the meta CSP first, Mapbox GL JS 3.32.0 from `api.mapbox.com` and the engine's `engine.css` and `engine.iife.js` from a pinned jsDelivr folder, each with `integrity` and `crossorigin`, and `<hcm-map-viewer manifest-url="city.json" lang="ro">` |
+| `city.json` | a City Manifest v1: an example city with one place category and three places (a point, a line, an area), no photos and no layers, and the placeholder token `pk.replace-with-your-token`, which Mapbox refuses until the owner puts their own URL-restricted public token in |
+| `README.md` | the steps, in Romanian then English |
+
+```html
+<body class="hcm-fullpage">
+    <main>
+        <h1 class="hcm-visually-hidden">Orașul meu</h1>
+        <hcm-map-viewer manifest-url="city.json" lang="ro">
+            <p class="hcm-note" lang="ro">Harta se încarcă. …</p>
+            <p class="hcm-note" lang="en">The map is loading. …</p>
+        </hcm-map-viewer>
+    </main>
+</body>
+```
+
+- **The page frame lives in `engine.css`**, since the kit has no fourth file: `.hcm-fullpage` (on `<body>`: no margin, the system's background and text colours, the viewer filling the window in `dvh`) and `.hcm-note` (a readable line length and size for the notes). A page of its own may use them too.
+- **The note**: an element the engine has not defined shows its children; once the engine defines `<hcm-map-viewer>`, its shadow root (which has no slot) hides them. The bilingual note therefore stays only when the engine was refused (a wrong `integrity`, a version that does not exist) or never came, and it names the README's check. Without JavaScript, `<noscript>` says the map needs it.
+- **The engine block** sits between `<!-- hcm:engine -->` and `<!-- /hcm:engine -->`. `fillKitPage(template, values)` (`@hcm/shared`, `packages/shared/src/kit/page.ts`) replaces only the page's slots: the `lang` of `<html>` and of the element, the title, the description and theme-colour metas, the level-one heading, the element's `manifest-url`, the CSP (always recomputed from the engine's source: `kitContentSecurityPolicy`) and the engine block, either `{kind: 'cdn', release}` (the release's folder, with the integrity `release.json` publishes) or `{kind: 'local'}` (`engine/` beside the page, the static export's). A template without one of these slots, or with one twice, throws `KitPageError`. The release pins the committed template this way; `create-historic-city upgrade` carries a newer release's pins into an existing page.
+- **The CSP** is the one table of every engine page (`packages/shared/src/kit/csp.ts`): with the engine from jsDelivr, `script-src`, `style-src` and `font-src` name the pinned folder instead of `'self'`; `connect-src` and `img-src` keep `'self'` for `city.json` and the photos beside it. A manifest that names tiles or photos on another host needs that origin in `img-src` and `connect-src` (the README says so).
+- **Updating the engine** changes the version and both `integrity` values of the engine block together (the new release's `release.json`); a page pinned with integrity never follows a range such as `@1`.
 
 ## config.js
 
@@ -295,7 +323,8 @@ A fetch that returns 404 shows `error.manifest.notFound`, a network failure `err
 
 ## Versioning and compatibility
 
-- **Engine releases follow SemVer.** jsDelivr's `@1` follows every 1.x release; Bucharest ships the exact build of its commit.
+- **Engine releases follow SemVer.** jsDelivr's `@1` follows every 1.x release; Bucharest ships the exact build of its commit. The first release is **v1.0.0**: everything this document describes, the M4 compare additions included, is its baseline ([Releases on jsDelivr](#releases-on-jsdelivr)).
+- **What a level means for a city.** A patch fixes behaviour behind the same surface; a minor adds an optional manifest field or a new name of the API, element or hash (a manifest that uses it sets `city.engine.minVersion`); a major (manifest v2, a removed name) documents its migration in its release notes.
 - **The manifest has its own generation number** (`version: 1`). Engine 1.x reads only manifest v1.
 - **Within v1 a field is only ever added, and only as optional**, in a minor engine release. A manifest that uses a new field sets `city.engine.minVersion` to that release, so an older engine shows "this map needs engine X" instead of rejecting the unknown key. The manifest builder sets `minVersion` automatically.
 - **Removing, renaming or changing the meaning of a field** makes manifest v2 and engine 2.0; the builder can then write both generations side by side during the transition.
@@ -303,6 +332,22 @@ A fetch that returns 404 shows `error.manifest.notFound`, a network failure `err
 - **The URL hash** keeps v1's grammar for the whole 1.x line; new parameters are additive and old readers ignore them. The legacy hash stays readable.
 - **Additions before 1.0.0 (M4, 2026-10-24)**: the hash's `cmp=` and `sw=`, the controller's `openCompare`, `setComparePosition` and `closeCompare`, and the event `hcm-compare-change` are part of the v1 baseline too; the manifest does not change.
 - **Additions before 1.0.0** (PLAN Addendum 3, 2026-10-12): `photosOverlay`, `poiCategories[]`, `pois[]`, the overlay namespace rule and the `op=` overlay ids. They are part of the v1 baseline that every 1.x engine reads, so a manifest that uses them needs no `minVersion`. A Material Symbols name outside the bundled set falls back to the default pin instead of failing validation, so new icons never need a new manifest generation.
+
+### Releases on jsDelivr
+
+A release is a tag `vX.Y.Z` of this repository ([releases/README.md](releases/README.md)); the root and every workspace `package.json`, `ENGINE_VERSION` and the release's `release.json` carry its version. jsDelivr's GitHub route serves only what a tag holds, so the release commit carries the built engine in `cdn/engine/`: `engine.iife.js`, `engine.mjs` and its lazy chunks (`compare-<hash>.js`, `firebase-sdk-<hash>.js`), `engine.css`, `fonts/` and `THIRD_PARTY_NOTICES.txt`, each exactly as `npm run build --workspace @hcm/engine` makes it but for the source-map line (the maps are attached to the GitHub Release), and `release.json`. Each tag keeps its own folder; the tree holds one release at a time.
+
+| Use | Address | Integrity |
+| --- | --- | --- |
+| A page that pins the release (the starter kit, and every city that copies it) | `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@vX.Y.Z/cdn/engine/engine.iife.js` and `engine.css` | yes: the values of that release's `release.json`, also in the GitHub Release body |
+| The engine's fonts and chunks | the same folder: `engineBase` defaults to the folder of the engine script | not needed: the IIFE carries the chunks inline, and fonts are not scripts |
+| A page that follows the 1.x line | `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@1/cdn/engine/engine.iife.js` | never: the files change under it with every 1.x release |
+
+- **`release.json`** (`engineReleaseSchema` in `packages/shared/src/schemas/engine-release.ts`): `version`; `repository`; `base`, the pinned folder above; `mapboxGl`, the Mapbox GL JS release the engine is written against with the address and integrity of its script and stylesheet on api.mapbox.com; `files`, every file of the folder (never `release.json` itself) with its size in bytes and its `sha384-` integrity. Its address is `<base>release.json`.
+- **Pinning a page.** Load Mapbox GL JS's stylesheet and deferred script, then the engine's `engine.css` and deferred `engine.iife.js` from the pinned folder, each with `integrity` and `crossorigin="anonymous"`, and let the page's Content Security Policy name the folder in `script-src`, `style-src` and `font-src`. Pin the IIFE, not `engine.mjs`: the module build fetches its chunks with dynamic imports that carry no integrity.
+- **Upgrading a pinned page** changes the folder's version and the two engine integrity values (`npx create-historic-city@<version> upgrade` rewrites them in a kit's `index.html`); Mapbox GL JS's tags change only when a release names another Mapbox GL JS.
+- **Where v1.0.0 stands** (2026-10-25): every version of the repository is 1.0.0 and the release notes are written; `cdn/engine/`, the kit's pinned digests and the notes' table of addresses come with the release commit, after the user's answer on the committed engine's EditorConfig exception ([research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §59c, §63c). Until the tag exists, the starter kit's engine block carries placeholder digests and no page can load the pinned addresses ([research/M5-status.md](research/M5-status.md)).
+- **How a release is checked**: every version, `release.json` against the committed files, the starter kit's pins, the notes and a byte-for-byte rebuild of `cdn/engine/` from the tagged sources run before the GitHub Release is made ([CI_PIPELINE.md](CI_PIPELINE.md), stage `release`); preparing one is `.agent/skills/quality/prepare_release_skill.md`.
 
 ## Security
 

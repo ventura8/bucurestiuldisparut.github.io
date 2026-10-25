@@ -65,7 +65,8 @@ test(
             fid: REGISTRATION,
             webpush: {
                 notification: { body: notifyText(lang, 'adminContent.notify.event.job.failed', { label: 'usgs-import' }) },
-                fcm_options: { link: 'https://demo-hcm.web.app/#/jobs' },
+                // M5 (docs/research/M5-interfaces.md §1.9): a city's event opens that city's page.
+                fcm_options: { link: `https://demo-hcm.web.app/#/c/${city.city}/jobs` },
             },
         });
 

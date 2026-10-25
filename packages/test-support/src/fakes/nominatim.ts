@@ -3,8 +3,9 @@ import { route, type Route } from './routes.js';
 import type { FailureMode, ServiceFake } from './service.js';
 
 /**
- * Nominatim reverse geocoding (`nominatim.openstreetmap.org/reverse`), which only the server calls (the `assist-geocode`
- * queue's worker, `docs/research/M4-interfaces.md` §4.2, §8): a few Bucharest places answer as Nominatim does at zoom 18
+ * Nominatim reverse geocoding (`nominatim.openstreetmap.org/reverse`) and, for M5's New city (`cities.locate`), its search
+ * (`/search`: Cluj-Napoca is found, any other name answers an empty list), which only the server calls (the
+ * `assist-geocode` queue's worker, `docs/research/M4-interfaces.md` §4.2, §8): a few Bucharest places answer as Nominatim does at zoom 18
  * (a named building with its English name, a quarter with no named object or road), every other point inside Romania
  * answers the fixture's road in its sector with the point's own coordinates, and anywhere else answers
  * `{"error": "Unable to geocode"}` with HTTP 200, as Nominatim does over the open sea. `fail('nominatim', 'rateLimited')`
@@ -51,15 +52,29 @@ function answerAt(point: { readonly lat: number; readonly lon: number }): Respon
         : fixtureResponse('nominatim/reverse.unable');
 }
 
+/** The names a search finds (M5 New city, `cities.locate`), lower case without diacritics; any other finds nothing. */
+const KNOWN_NAMES: ReadonlySet<string> = new Set(['cluj', 'cluj-napoca']);
+
+function plainName(text: string): string {
+    return text.normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
+}
+
 /** The fake Nominatim (stateless). */
 export function createNominatimFake(): ServiceFake {
     const reverse: Route['answer'] = (request) => {
         const point = pointOf(request.url.searchParams);
         return point === undefined ? fixtureResponse('nominatim/reverse.unable', { status: 400 }) : answerAt(point);
     };
+    const search: Route['answer'] = (request) =>
+        fixtureResponse(
+            KNOWN_NAMES.has(plainName(request.url.searchParams.get('q') ?? '')) ? 'nominatim/search.city' : 'nominatim/search.none',
+        );
     return {
         name: 'nominatim',
-        routes: [route('GET', 'https://nominatim.openstreetmap.org/reverse', 'nominatim.reverse', reverse)],
+        routes: [
+            route('GET', 'https://nominatim.openstreetmap.org/reverse', 'nominatim.reverse', reverse),
+            route('GET', 'https://nominatim.openstreetmap.org/search', 'nominatim.search', search),
+        ],
         failure: (mode) => {
             const name = FAILURES[mode];
             return name === undefined ? undefined : fixtureResponse(name);

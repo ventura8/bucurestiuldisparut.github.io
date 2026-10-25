@@ -10,6 +10,7 @@ import type { ErrorReporter } from '../../src/ports/error-reporter.js';
 import { UpstreamError } from '../../src/ports/errors.js';
 import { ERROR_REPORTING_VIEWER_ROLE, listGroupsFunction } from '../../src/telemetry/list-groups.js';
 import { callableRequest, failureOf, fakeErrors, googleToken } from '../admin/world.js';
+import { fakeAdmins } from '../support/fakes.js';
 
 const PAGE: ListGroupsResponse = {
     groups: [
@@ -29,7 +30,7 @@ const PAGE: ListGroupsResponse = {
 
 function listGroups(errors: ErrorReporter) {
     const recording = createRecordingSink();
-    const deps = { errors, log: createLogger('functions', { sink: recording.sink }), admins: { isAdmin: () => Promise.resolve(true) } };
+    const deps = { errors, log: createLogger('functions', { sink: recording.sink }), admins: fakeAdmins(['u-admin']) };
     const auth = { uid: 'u-admin', token: googleToken('admin@example.test', { admin: true }) };
     const call = listGroupsFunction(() => deps).run(callableRequest({ hours: 24, pageSize: 20 }, auth));
     return { call, recording };
