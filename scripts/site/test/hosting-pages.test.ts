@@ -29,16 +29,30 @@ import { ROOT, cleanup, htmlValidateMessages, temporaryDir } from './support.js'
 afterEach(cleanup);
 
 /** A page's `location` that records where it was sent. */
-function locationOf(hash: string, search = ''): RedirectScope & { readonly sent: string[] } {
+function locationOf(
+    hash: string,
+    search = '',
+): RedirectScope & { readonly sent: string[]; readonly location: { hash: string }; hashChanged(next: string): void } {
     const sent: string[] = [];
+    const listeners: (() => void)[] = [];
+    const location = {
+        hash,
+        search,
+        replace: (url: string) => {
+            sent.push(url);
+        },
+    };
     return {
         sent,
-        location: {
-            hash,
-            search,
-            replace: (url: string) => {
-                sent.push(url);
-            },
+        location,
+        addEventListener: (_type, listener) => {
+            listeners.push(listener);
+        },
+        hashChanged: (next) => {
+            location.hash = next;
+            listeners.forEach((listener) => {
+                listener();
+            });
         },
     };
 }
@@ -123,6 +137,17 @@ describe('admin-redirect.js', () => {
             expect(scope.sent).toEqual([]);
         },
     );
+
+    it('happyPath_anOldAddressTypedWhileTheRootIsOpenGoesToTheAdminOnTheHashChange @S-A58-HAPPY-OLD-LINK-HASH-CHANGE', () => {
+        // Finding 25 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31): only the hash changes, the page does not load again.
+        const scope = locationOf('');
+
+        expect(forwardOldAdminAddress(scope, ADMIN_PATH)).toBe(false);
+        scope.hashChanged('#17/44.42955/26.09560');
+        expect(scope.sent).toEqual([]);
+        scope.hashChanged('#/setup');
+        expect(scope.sent).toEqual(['/admin/#/setup']);
+    });
 
     it('happyPath_underTheSiteBuildsLoaderItIsPlainJavaScriptCalledOnWindow', () => {
         const result = strippedSource('admin-redirect.ts', 'ADMIN_REDIRECT_SOURCE');

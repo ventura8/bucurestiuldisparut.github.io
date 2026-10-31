@@ -16,6 +16,7 @@ export const ro = {
     'apiError.rateLimited': 'Prea multe cereri. Încearcă din nou peste un minut.',
     'apiError.unavailable': 'Serviciul nu este disponibil acum. Încearcă din nou.',
     'apiError.internal': 'A apărut o eroare pe server.',
+    'apiError.serverOutdated': 'Serverul hărții este mai vechi decât această administrare: actualizează serverul (pasul d).',
     'apiError.guardPaused': 'Procesarea este oprită de protecția bugetului. Harta publică funcționează în continuare.',
     'apiError.claim.tokenInvalid': 'Autorizarea Google a expirat sau nu este validă. Conectează-te din nou.',
     'apiError.claim.tokenMismatch': 'Autorizarea Google aparține altui cont sau altei aplicații.',

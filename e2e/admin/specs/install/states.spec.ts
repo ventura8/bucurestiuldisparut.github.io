@@ -8,6 +8,7 @@ import type { GoogleConsent } from '../../support/consent.js';
 import type { EmulatorWorld } from '../../support/emulators.js';
 import { setupText } from '../../support/i18n.js';
 import {
+    answerAsOlderServer,
     installState,
     recordsSettled,
     seedPublishedMap,
@@ -229,6 +230,36 @@ test('Publish the map: off while nothing is published, ready once the city is, t
     await expect(published.getByRole('link', { name: new RegExp(setupText(lang, 'adminSetup.install.site.open')) })).toBeVisible();
     await expectStateSound(page, adminVisit('setup.site-published', lang));
     await recorded(adminWorld.emulators, { site: { state: 'installed' } });
+});
+
+test('Install the server stopped at a permission of step c: the fix and the link to step c', async ({
+    page,
+    lang,
+    consent,
+    inputBudget,
+    upstream,
+    adminWorld,
+}) => {
+    // Finding 28 of 2026-10-31: a map prepared before the installer could act as the App Engine default account.
+    await upstream.scenario('iam.appEngineActAsMissing', 'browser');
+    const inputs = { clicks: inputBudget.flow('tour', 2), consents: inputBudget.flow('tourConsents', 1) };
+    const { card } = await lookedAt(page, lang, consent, 'deploy', inputs);
+    await inputs.clicks.click(card.getByRole('button', { name: setupText(lang, 'adminSetup.install.server.action') }));
+    await expect.poll(() => buildCount(upstream, 'server')).toBe(1);
+
+    await play(page, upstream, 'finish');
+    await expect(card.locator('[data-fix="provision"]')).toBeVisible();
+    await expectStateSound(page, adminVisit('setup.install-failed-provision', lang));
+    await recorded(adminWorld.emulators, { server: { state: 'failed' } });
+});
+
+test('A setup.status older than the admin: the steps it records say Update the server to check', async ({ page, lang }) => {
+    // Finding 27 of 2026-10-31: an answer the admin cannot read is never "To do".
+    await answerAsOlderServer(page, 'setup-status', () => ({ format: 0 }));
+    await page.goto(adminPath(lang, 'setup'));
+
+    await expect(new SetupPage(page, lang).card('mapbox').locator('.status[data-unknown]')).toBeVisible();
+    await expectStateSound(page, adminVisit('setup.older-server-status', lang));
 });
 
 test('Home: an update of the map is ready, with the link to its step', async ({ page, lang, adminWorld }) => {

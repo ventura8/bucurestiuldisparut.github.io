@@ -330,18 +330,33 @@ export class HcmSetupStep extends LitElement {
         </h2>`;
     }
 
-    /** The state's icon and label; busy: the indicator in the icon's place and Working…; postponed: Later. */
+    /**
+     * The state's icon and label; busy: the indicator in the icon's place and Working…; postponed: Later; a state the
+     * older server cannot say (finding 27 of 2026-10-31): Update the server to check.
+     */
     private renderChip(step: SetupStepView): TemplateResult {
-        const later = step.postponed && step.state !== 'ok';
         if (step.busy) {
             return html`<span class="status label-large" data-state=${step.state} data-busy
                 ><hcm-loading-indicator label=${this.t('adminSetup.busy')}></hcm-loading-indicator
                 ><hcm-icon class="still" name="pending"></hcm-icon>${this.t('adminSetup.busy')}</span
             >`;
         }
+        return step.unknown ? this.renderUnknownChip(step) : this.renderStateChip(step);
+    }
+
+    /** The state's icon and label, or Later for a postponed step not done. */
+    private renderStateChip(step: SetupStepView): TemplateResult {
+        const later = step.postponed && step.state !== 'ok';
         return html`<span class="status label-large" data-state=${step.state} ?data-later=${later}
             ><hcm-icon name=${later ? 'pending_actions' : STATE_ICONS[step.state]}></hcm-icon
             >${this.t(later ? 'adminSetup.state.later' : stateKey(step.state))}</span
+        >`;
+    }
+
+    /** Finding 27 of 2026-10-31: a step the older server cannot say, never "To do". */
+    private renderUnknownChip(step: SetupStepView): TemplateResult {
+        return html`<span class="status label-large" data-state=${step.state} data-unknown
+            ><hcm-icon name="arrow_upward"></hcm-icon>${this.t('adminSetup.state.unknown')}</span
         >`;
     }
 

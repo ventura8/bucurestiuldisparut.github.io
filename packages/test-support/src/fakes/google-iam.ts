@@ -18,6 +18,12 @@ interface Binding {
 interface ProjectIam {
     /** Account id (`fn-admin`) → display name. */
     readonly accounts: Map<string, string>;
+    /**
+     * The accounts Google made in the project (e-mail → display name), outside `<project>.iam.gserviceaccount.com`: the App
+     * Engine default account `<project>@appspot.gserviceaccount.com`, which every e2e project has, as the live one does.
+     * `firebase deploy --only functions` requires `iam.serviceAccounts.actAs` on it (finding 28 of 2026-10-31).
+     */
+    readonly googleAccounts: Map<string, string>;
     /** Account e-mail → its IAM policy bindings. */
     readonly accountPolicies: Map<string, readonly Binding[]>;
     /** Pool id → display name. */
@@ -41,9 +47,15 @@ const IAM: GoogleApi = {
     permission: 'iam.serviceAccounts.create',
 };
 
-function emptyIam(): ProjectIam {
+/** `<project>@appspot.gserviceaccount.com`: the App Engine default account (finding 28 of 2026-10-31). */
+export function appEngineAccount(projectId: string): string {
+    return `${projectId}@appspot.gserviceaccount.com`;
+}
+
+function emptyIam(projectId: string): ProjectIam {
     return {
         accounts: new Map(),
+        googleAccounts: new Map([[appEngineAccount(projectId), 'App Engine default service account']]),
         accountPolicies: new Map(),
         pools: new Map(),
         providers: new Map(),
@@ -82,6 +94,31 @@ function accountBody(projectId: string, accountId: string, displayName: string):
     return fixtureBody('iam/accounts.get.ok', { projectId, accountId, displayName });
 }
 
+/** An account Google made, as Google answers it: its own address, not one of `<project>.iam.gserviceaccount.com`. */
+function googleAccountBody(projectId: string, email: string, displayName: string): unknown {
+    const body = accountBody(projectId, email.split('@')[0] ?? '', displayName) as Record<string, unknown>;
+    return { ...body, name: `projects/${projectId}/serviceAccounts/${email}`, email };
+}
+
+/** Every account of the project, ours and Google's, as the list answers them. */
+function allAccounts(projectId: string, iam: ProjectIam): unknown[] {
+    return [
+        ...[...iam.accounts].map(([accountId, displayName]) => accountBody(projectId, accountId, displayName)),
+        ...[...iam.googleAccounts].map(([email, displayName]) => googleAccountBody(projectId, email, displayName)),
+    ];
+}
+
+/** The account's body when it exists (Google's by its address, ours by its id), else undefined. */
+function knownAccount(projectId: string, iam: ProjectIam, email: string): unknown {
+    const google = iam.googleAccounts.get(email);
+    if (google !== undefined) {
+        return googleAccountBody(projectId, email, google);
+    }
+    const accountId = email.split('@')[0] ?? '';
+    const displayName = iam.accounts.get(accountId);
+    return displayName === undefined ? undefined : accountBody(projectId, accountId, displayName);
+}
+
 /** The service account routes: create, list, get, and the account's own IAM policy. */
 function accountRoutes(iamOf: ProjectOf): Route[] {
     const create: Route['answer'] = (request, params) => {
@@ -97,15 +134,15 @@ function accountRoutes(iamOf: ProjectOf): Route[] {
         iam.accounts.set(accountId, displayName);
         return jsonResponse(accountBody(id, accountId, displayName));
     };
-    /** Runs `answer` for an existing account (`{email}` of the path), else answers 404. */
+    /** Runs `answer` for an existing account (`{email}` of the path: ours or Google's), else answers 404. */
     const existing = (
         params: RouteParams,
-        answer: (project: { id: string; iam: ProjectIam }, email: string, accountId: string) => Response,
+        answer: (project: { id: string; iam: ProjectIam }, email: string, body: unknown) => Response,
     ): Response => {
         const project = iamOf(String(params['project']));
         const email = String(params['email']);
-        const accountId = email.split('@')[0] ?? '';
-        return project.iam.accounts.has(accountId) ? answer(project, email, accountId) : googleError('iam/accounts.get.not-found', IAM);
+        const body = knownAccount(project.id, project.iam, email);
+        return body === undefined ? googleError('iam/accounts.get.not-found', IAM) : answer(project, email, body);
     };
     return [
         route('POST', ACCOUNTS, 'iam.serviceAccounts.create', auth(create)),
@@ -115,9 +152,7 @@ function accountRoutes(iamOf: ProjectOf): Route[] {
             'iam.serviceAccounts.list',
             auth((_request, params) => {
                 const { id, iam } = iamOf(String(params['project']));
-                return jsonResponse({
-                    accounts: [...iam.accounts].map(([accountId, displayName]) => accountBody(id, accountId, displayName)),
-                });
+                return jsonResponse({ accounts: allAccounts(id, iam) });
             }),
         ),
         route(
@@ -146,11 +181,7 @@ function accountRoutes(iamOf: ProjectOf): Route[] {
             'GET',
             `${ACCOUNTS}/{email}`,
             'iam.serviceAccounts.get',
-            auth((_request, params) =>
-                existing(params, ({ id, iam }, _email, accountId) =>
-                    jsonResponse(accountBody(id, accountId, iam.accounts.get(accountId) ?? '')),
-                ),
-            ),
+            auth((_request, params) => existing(params, (_project, _email, body) => jsonResponse(body))),
         ),
     ];
 }
@@ -343,17 +374,36 @@ function poolRoutes(iamOf: ProjectOf): Route[] {
     ];
 }
 
+/** The project's IAM resources, made empty (with Google's own accounts) on first use. */
+export function projectIam(state: IamState, projectId: string): ProjectIam {
+    const existing = state.projects.get(projectId);
+    if (existing !== undefined) {
+        return existing;
+    }
+    const iam = emptyIam(projectId);
+    state.projects.set(projectId, iam);
+    return iam;
+}
+
+/** Whether `member` holds `role` on the service account `email` (its own policy). */
+export function holdsAccountRole(iam: ProjectIam, email: string, role: string, member: string): boolean {
+    return (iam.accountPolicies.get(email) ?? []).some((binding) => binding.role === role && binding.members.includes(member));
+}
+
+/** Grants `member` `role` on the service account `email`, as a `setIamPolicy` merging it in would. */
+export function grantAccountRole(iam: ProjectIam, email: string, role: string, member: string): void {
+    const policy = iam.accountPolicies.get(email) ?? [];
+    const members = new Set([...(policy.find((binding) => binding.role === role)?.members ?? []), member]);
+    iam.accountPolicies.set(email, [...policy.filter((binding) => binding.role !== role), { role, members: [...members] }]);
+}
+
 /** The fake IAM API. */
 export function createIamFake(state: IamState, projects: GoogleProjects): ServiceFake {
     const iamOf: ProjectOf = (segment) => {
         const project = projects.resolve(segment);
-        const existing = state.projects.get(project.id);
-        const iam = existing ?? emptyIam();
-        if (existing === undefined) {
-            state.projects.set(project.id, iam);
-        }
-        return { ...project, iam };
+        return { ...project, iam: projectIam(state, project.id) };
     };
+    const demo = (): ProjectIam => projectIam(state, String(FIXTURE_VALUES['projectId']));
     return {
         name: 'iam',
         routes: [...poolRoutes(iamOf), ...accountRoutes(iamOf), ...roleRoutes(iamOf)],
@@ -361,14 +411,25 @@ export function createIamFake(state: IamState, projects: GoogleProjects): Servic
         scenarios: {
             /** The `github` pool of the e2e project was deleted (an earlier setup removed): it must be undeleted. */
             poolDeleted: () => {
-                const { iam } = iamOf(String(FIXTURE_VALUES['projectId']));
+                const iam = demo();
                 iam.pools.set('github', 'GitHub Actions');
                 iam.deleted.add('github');
             },
             /** M4: the drafts' custom role was deleted with older permissions: it must be undeleted and corrected. */
             roleDeleted: () => {
-                const { iam } = iamOf(String(FIXTURE_VALUES['projectId']));
-                iam.roles.set('hcmVertexDrafts', { includedPermissions: ['aiplatform.endpoints.get'], deleted: true });
+                demo().roles.set('hcmVertexDrafts', { includedPermissions: ['aiplatform.endpoints.get'], deleted: true });
+            },
+            /** Finding 28: a project with no App Engine default account (no App Engine app): Provision has nothing to grant. */
+            noAppEngineAccount: () => {
+                demo().googleAccounts.clear();
+            },
+            /**
+             * Finding 28: a project provisioned before the fix: the installer may not act as the App Engine default account,
+             * so `firebase deploy --only functions` stops before it deploys anything (the Cloud Build fake's server step).
+             */
+            appEngineActAsMissing: () => {
+                const iam = demo();
+                iam.accountPolicies.delete(appEngineAccount(String(FIXTURE_VALUES['projectId'])));
             },
         },
         snapshot: () => ({
@@ -377,6 +438,7 @@ export function createIamFake(state: IamState, projects: GoogleProjects): Servic
                     id,
                     {
                         accounts: Object.fromEntries(iam.accounts),
+                        googleAccounts: Object.fromEntries(iam.googleAccounts),
                         accountPolicies: Object.fromEntries(iam.accountPolicies),
                         pools: Object.fromEntries(iam.pools),
                         providers: Object.fromEntries(iam.providers),

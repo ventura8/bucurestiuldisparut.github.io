@@ -2782,6 +2782,28 @@
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.8, §3.1; owner: setup-ux). Finding 7 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/status.spec.ts (setup-ux)."
         },
         {
+            "id": "S-A03-HAPPY-OLDER-SERVER",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "happy",
+            "title": "An admin newer than its server reads the server's own answers, and the steps it recorded stay Done",
+            "asserts": "the start-up admin of M6, a server from before M5 (61 functions, admin.session without cities and projectOwner), setup/status with Mapbox and USGS done -> the admin leaves start-up mode, Setup shows the claim, Mapbox and USGS Done, no step reads Update the server to check",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live test of 2026-10-31, finding 27 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/older-server.spec.ts."
+        },
+        {
+            "id": "S-A03-BAD-OLDER-SERVER-STATUS",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "bad",
+            "title": "A setup.status the admin cannot read says Update the server to check, never To do",
+            "asserts": "setup.status answers in a shape the admin does not know -> the page says the server is older than the admin (update it in step d); sign-in, server and claim are Done (it answered this admin); Mapbox and USGS read Update the server to check, never To do",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live test of 2026-10-31, finding 27 of docs/research/manual-test-2026-10-25.md. Tests: e2e/admin/steps/older-server.spec.ts, packages/admin/test/setup/controller.test.ts; tour state setup.older-server-status."
+        },
+        {
             "id": "S-A03-HAPPY-OPTIONAL-CHECK-QUIET",
             "behaviour": "A03",
             "area": "admin",
@@ -3011,6 +3033,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 2 of the min-input review. Test: e2e/admin/steps/provision.spec.ts."
+        },
+        {
+            "id": "S-A04-HAPPY-APPENGINE-ACTAS",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "happy",
+            "title": "Prepare the project lets the installer act as the App Engine default account, on that account only",
+            "asserts": "Prepare the project on a project with <project>@appspot.gserviceaccount.com -> hcm-installer@ holds roles/iam.serviceAccountUser in that account's own policy and nowhere project-wide; the custom role hcmInstaller holds cloudfunctions.functions.setIamPolicy -> Install the server passes firebase-tools' actAs check and installs",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live test of 2026-10-31, finding 28 of docs/research/manual-test-2026-10-25.md (DECISIONS-for-review.md §75). Tests: e2e/admin/steps/install/server.spec.ts (with S-A55-HAPPY), packages/admin/test/provision/m6-items.test.ts, project-config.test.ts."
+        },
+        {
+            "id": "S-A04-BAD-NO-APPENGINE-ACCOUNT",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "A project without the App Engine default account has nothing to grant, and that is no failure",
+            "asserts": "the GET of <project>@appspot.gserviceaccount.com answers 404 -> the iam item is ok, its doctor ok, and no policy of that account is read or written",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live test of 2026-10-31, finding 28 of docs/research/manual-test-2026-10-25.md (DECISIONS-for-review.md §75). Test: packages/admin/test/provision/m6-items.test.ts."
         },
         {
             "id": "S-A05-HAPPY",
@@ -7281,6 +7325,17 @@
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.7; owner: installer). Finding 10 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/server.spec.ts (installer)."
         },
         {
+            "id": "S-A55-BAD-NO-ACTAS",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "A project prepared before the actAs grant stops at firebase-tools' check, and step c fixes it",
+            "asserts": "the installer lacks Service Account User on the App Engine default account -> the server build stops at its functions step with firebase-tools' 'Missing permissions required for functions deploy ... iam.serviceAccounts.ActAs' -> the card says to choose Retry what failed in step c, then Try again, and offers that button (step c's iam item names the reason; c's chip stays, so the card stays open) -> Retry what failed in step c (one click, no consent within the hour) reruns the iam item and grants it on that account only -> Try again installs the server",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live test of 2026-10-31, finding 28 of docs/research/manual-test-2026-10-25.md (DECISIONS-for-review.md §75). Tests: e2e/admin/steps/install/server.spec.ts, packages/admin/test/setup/install.test.ts; tour state setup.install-failed-provision."
+        },
+        {
             "id": "S-A55-BAD-RETRIES-EXHAUSTED",
             "behaviour": "A55",
             "area": "admin",
@@ -7543,6 +7598,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.7; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/admin-path.spec.ts."
+        },
+        {
+            "id": "S-A58-HAPPY-OLD-LINK-HASH-CHANGE",
+            "behaviour": "A58",
+            "area": "admin",
+            "path": "happy",
+            "title": "An old admin address typed while the root is open forwards on the hash change",
+            "asserts": "the start-up root at / open, then /#/setup typed (only the hash changes, no page load) -> /admin/ with the same query and hash",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live test of 2026-10-31, finding 25 of docs/research/manual-test-2026-10-25.md. Tests: e2e/admin/specs/shell/admin-path.spec.ts, scripts/site/test/hosting-pages.test.ts."
+        },
+        {
+            "id": "S-A58-BAD-VIEWER-HASH-CHANGE",
+            "behaviour": "A58",
+            "area": "admin",
+            "path": "bad",
+            "title": "A viewer hash typed while the root is open stays on the root",
+            "asserts": "the start-up root at / open, then /#17/44.42955/26.09560 typed -> the page stays on / with that hash",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live test of 2026-10-31, finding 25 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/admin-path.spec.ts."
         },
         {
             "id": "S-A58-BAD-CSP-PER-PATH",

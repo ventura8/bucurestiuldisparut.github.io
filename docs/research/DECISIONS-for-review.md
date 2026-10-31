@@ -4772,3 +4772,83 @@ Breakages fixed (lessons 288–290): an order-dependent `functions/test/index.te
 Verify: `PIPELINE_STAGE=deps` (holds only), `static` (all but 74f; with 74f, all), `tests`, `build`; the split `all` is the orchestrator's.
 
 - **74g APPLIED 2026-10-31: `@axe-core/playwright` held at 4.13.0** (part of 74a undone, no download: the lockfile's three axe entries are those of before §74, which `npm install --package-lock-only --offline` in the pinned Node image leaves unchanged, and `node_modules` took the two 4.13.0 packages from a checkout installed before §74). The split `all` after §74 failed 46 Playwright tests on axe's `target-size` and `color-contrast` with nothing on the page changed: `axe-core` 4.14.0 leaves slotted content of a scrolling shadow-root pane out of that pane's grid, so its hidden part "covers" what lies under the pane (lesson 294, with the ten-line page that fails on 4.14.0 and passes on 4.13.0). A `HELD` entry and the *Held dependencies* row name it; `@hcm/test-support`'s own `axe-core` stays 4.14.0 (its component tests never scroll a slotted pane). The image's npm layer rebuilds from the new lockfile on its next build. Lift the hold when an `@axe-core/playwright` release brings an `axe-core` whose `findScrollRegionParent` follows the flattened tree again: the ten-line page of lesson 294 passing is the check.
+
+## 75. The live test of 2026-10-31: the installer's actAs on the App Engine default account, an admin newer than its server, the old links on a hash change, and the per-tab sign-in (2026-10-31) — 75a and 75d–75f APPLIED (product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download); 75b PROPOSED, NOT APPLIED (a cloud change: the user decides); 75c PROPOSED, NOT APPLIED (a product decision)
+
+The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *Live test 2026-10-31 (M6 admin)*.
+
+- **75a APPLIED (the user's decision, 2026-10-31: "Code fix first, live later"): the installer may act as the App Engine
+  default account, on that account only** (finding 28). `firebase-tools` 15.34.2 checks before any functions deploy that
+  the deploying account holds `iam.serviceAccounts.actAs` on `<project>@appspot.gserviceaccount.com`
+  (`checkServiceAccountIam`, `lib/deploy/functions/checkIam.js`, called from `lib/commands/deploy.js`; a check that
+  errors, as for a missing account, is skipped), and the live install stopped there. Provision's `iam` item
+  (`packages/admin/src/provision/resources.ts` `appEngineBindings`, `items-iam.ts` `appEngineDefault`) now reads the
+  account (`IamClient.serviceAccountExists`, a GET; 404: nothing to grant, not a failure) and binds
+  `roles/iam.serviceAccountUser` for `hcm-installer@` in that account's own policy, never in the project's. The custom
+  role `hcmInstaller` gains `cloudfunctions.functions.setIamPolicy`, which `checkHttpIam` (`lib/deploy/functions/deploy.js`)
+  requires on the project before a deploy creates an HTTPS function (`roles/cloudfunctions.developer` lacks it; gen 2's
+  invoker itself goes through `run.services.setIamPolicy`, already in the role, so the installer gains no new power over
+  who may call a function), and the read-only `datastore.databases.getMetadata` and `storage.buckets.get`, which
+  `ensureTriggerRegions` (`lib/deploy/functions/triggerRegionHelper.js`) needs before every functions deploy to read the
+  Firestore database's and each Storage trigger's bucket's region (a refused bucket read stops the deploy). A stopped
+  server build whose log names either check marks step c's `iam` item to run again (its row names the reason), and its
+  card offers **Retry what failed in step c** (that item only), then Try again; step c's chip is left as it is, since
+  steps d onwards wait for it and the card that explains must stay open. The e2e fakes model the account and
+  its policy, and the fake Cloud Build's server build stops at `functions` with `firebase-tools`' own lines without the
+  grant. The full list of what `firebase-tools` checks before a deploy, against the installer's roles: lesson 298.
+  - **The security trade-off**: on most projects the App Engine default account holds `roles/editor` on the project
+    (Google grants it when the App Engine app is made, as it grants the Compute Engine default account its own). Acting as
+    it, the installer could reach Editor indirectly: a build or a function deployed to run as that account would run with
+    Editor. The grant is the narrowest that satisfies `firebase-tools` (one account, one role), and nothing of ours runs
+    as that account: every function names its own account (`fn-admin@`, `fn-events@`, `fn-crash@`), the raster job runs
+    as `job-raster@`, and the builds as `hcm-installer@`.
+- **75b PROPOSED, NOT APPLIED (a change to the live project's IAM: ask first): remove `roles/editor` from the App Engine
+  default account in Provision.** Since nothing of ours runs as it, a Provision item (or a step of `iam`) could remove
+  that one binding from the project's policy (and Re-check would report it back if someone added it again), so 75a's
+  actAs reaches nothing. Risks: an App Engine app or another tool of the owner's that runs as that account would lose its
+  access; Google's own guidance recommends it for production projects. The user decides; until then 75a stands as
+  written.
+- **75c PROPOSED, NOT APPLIED (a product decision; finding 26): the admin on its own Hosting site, instead of the sign-in
+  per tab of §73a.** Today the admin keeps Firebase Auth in the tab's `sessionStorage`, so the public viewer on the same
+  origin can never read the owner's sign-in (the M6 security review's finding 1); the cost is a sign-in for every new tab,
+  every notification link and Claude's own tab. The alternative: Firebase Hosting's multi-site, the admin at
+  `https://<project>-admin.web.app/` with the normal local persistence (`indexedDB`), the public map alone at the root
+  of `https://<project>.web.app/`. Its trade-offs:
+  - **One more site**: `firebase.json` and `firebase.deploy.json` gain a second `hosting` target, `.firebaserc` a target
+    map; Provision creates the site (`firebasehosting.sites.create`, the installer already holds
+    `roles/firebasehosting.admin`); the site build makes two trees; the free tier is per project, so no new cost.
+  - **The auth domain**: the web configuration's `authDomain` stays `<project>.firebaseapp.com` (the `/__/auth/handler`
+    of the default site); the popup sign-in keeps working across sites, but the redirect flow would need the admin's own
+    domain as `authDomain`, served by the admin site's `/__/` paths.
+  - **OAuth redirect URIs and authorized domains**: Firebase Auth's authorized domains gain `<project>-admin.web.app`
+    (and `-admin.firebaseapp.com`); the Google sign-in client's JavaScript origins the same; the consent stand-in of e2e
+    and the local stack need a second origin.
+  - **The CSP**: the admin's policy moves from a per-path header (`/admin/**`) to the admin site's whole site, and the
+    viewer's root loses the `/admin/` exception; simpler, with one policy per site.
+  - **App Check**: the reCAPTCHA Enterprise site key's allowed domains gain the admin site's domains (Provision's
+    `app-check` item), or the admin gets its own key.
+  - **The install bundle path**: `_ORIGIN` becomes the admin site's origin, and `hostingOrigins()` (the admin's check
+    that its origin is one of the project's) gains the admin site's two; the site build's `hcm-site` target publishes the
+    public site only, the admin site needing its own target (or one build publishing both).
+  - **Old links**: `/admin/` on the public site and the root's `/#/…` addresses forward to the admin site (the root's
+    `admin-redirect.js` gains the new origin); invitation and notification links already sent keep working through
+    those forwards; the admin's push worker scope moves with it, so devices register again once.
+  - **The viewer's isolation** stays: two origins share no storage, so the owner's sign-in is out of the viewer's reach
+    by construction, which is what §73a buys today with the sign-in per tab. Effort: a contract change of
+    `M6-interfaces.md` §2 and a new tier of the hosting tests; reversible.
+- **75d APPLIED: an admin newer than its server** (finding 27). `sessionResponseSchema` reads a pre-M5 answer
+  (`cities` defaults to none, `projectOwner` to false); a callable's answer the admin cannot parse is
+  `apiError.serverOutdated` (`failed-precondition`, `packages/admin/src/firebase/adapters.ts`), which proves a server
+  (the probe) and, for `admin.session`, leaves the decision to Google's ownership check as in start-up mode
+  (`packages/admin/src/auth/controller.ts`); a `setup.status` the admin cannot read marks sign-in, server and claim done and
+  every unchecked step **Update the server to check** (`adminSetup.state.unknown`, `SetupState.serverOutdated`), as do
+  the steps only the record knows in start-up mode while the server reads as an update. The new API error code is the
+  admin's own (no function throws it).
+- **75e APPLIED: old admin links on a hash change** (finding 25): `admin-redirect.js` also forwards on `hashchange`.
+- **75f Recorded: the admin's language with no saved choice** (the user's question of 2026-10-31). The admin follows
+  `?lang=`, the stored choice, the browser's first language, then Romanian (`M2b-interfaces.md` §1.6), so an English
+  Chrome sees English; PLAN's "default RO" is the fallback. Making Romanian win over the browser would be a one-line
+  change of `resolveAdminLocale` and its tests: the user decides.
+
+Verify: `static`, `tests` and `build`, and the touched Playwright specs in the quality image
+(`docs/research/M6-status.md` §6).

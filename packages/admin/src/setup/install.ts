@@ -15,6 +15,7 @@ import type { SetupContext } from './context.js';
 import { googleAccess, liveAccess } from './google-access.js';
 import { installRecordOf } from './install-records.js';
 import { INSTALL_CHIP, INSTALL_STEP_OF } from './install-steps.js';
+import type { ProvisionItemState, SetupState } from './state.js';
 import type { SetupStepId } from './steps.js';
 
 export interface InstallCards {
@@ -54,6 +55,19 @@ function updates(view: InstallTargetView): boolean {
  */
 const UNRECORDED: ReadonlySet<InstallState> = new Set<InstallState>(['unavailable']);
 
+/**
+ * Finding 28 of 2026-10-31: a server build stopped at a permission Prepare the project grants (firebase-tools' actAs check
+ * on the App Engine default account): step c's `iam` item is not done after all, so Retry what failed (offered on the
+ * server's card) runs that item only. The step's own chip is left as it is: steps (d) onwards wait for (c), and the server
+ * card, which says what to do, must stay open.
+ */
+function needsInstallerPermission(state: SetupState): SetupState {
+    const items = state.provision.items.map((item): ProvisionItemState =>
+        item.id === 'iam' ? { id: item.id, state: 'invalid', detail: { key: 'adminSetup.provision.installerPermission' } } : item,
+    );
+    return { ...state, provision: { items } };
+}
+
 class Cards implements InstallCards {
     readonly #ctx: SetupContext;
     readonly #flows: Readonly<Record<InstallTarget, InstallFlow>>;
@@ -63,6 +77,8 @@ class Cards implements InstallCards {
     readonly #recorded = new Map<InstallTarget, string>();
     /** The records under way, one after another: concurrent ones contend for `setup/status` and may land out of order. */
     #recording: Promise<void> = Promise.resolve();
+    /** The stopped server build whose missing permission step c was told of (once: a Retry what failed may follow). */
+    #permissionFor: string | null = null;
 
     constructor(ctx: SetupContext) {
         this.#ctx = ctx;
@@ -156,6 +172,7 @@ class Cards implements InstallCards {
         const step = INSTALL_STEP_OF[view.target];
         if (view.target === 'server') {
             this.#ctx.patchStep(step, { busy: view.busy });
+            this.#permissionToProvision(view);
             this.#afterServer(view);
             return;
         }
@@ -185,6 +202,15 @@ class Cards implements InstallCards {
     #records(view: InstallTargetView): boolean {
         const changed = view.checkedAt !== null && this.#recorded.get(view.target) !== view.state;
         return this.#ctx.state().mode === 'normal' && changed && !UNRECORDED.has(view.state);
+    }
+
+    /** A stopped server build that lacks a permission of step c marks c's `iam` item to run again, once per build. */
+    #permissionToProvision(view: InstallTargetView): void {
+        if (!view.fixInProvision || view.buildId === this.#permissionFor) {
+            return;
+        }
+        this.#permissionFor = view.buildId;
+        this.#ctx.update(needsInstallerPermission);
     }
 
     /** Update the map waits for the server, whose build has settled. */

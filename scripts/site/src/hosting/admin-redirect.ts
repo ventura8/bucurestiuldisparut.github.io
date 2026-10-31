@@ -6,6 +6,8 @@
  * engine: an address whose hash starts with `#/` (an admin route) is sent to `/admin/` with the same query and hash
  * (`location.replace`, so Back does not come back to it). A viewer hash (`#15.5/44.4271/26.0853/90/!a3!p2`, the old
  * site's; `#17/44.43/26.1&photo=…`, the engine's; `#photo=…`) never starts with `#/` and is left alone, so the map opens.
+ * Finding 25 of `docs/research/manual-test-2026-10-25.md (live test 2026-10-31)`: an old address typed while the root is already open changes
+ * only the hash (no page load), so the script also forwards on `hashchange`.
  *
  * Written like the admin's push service worker (`../admin/service-worker.ts`): `forwardOldAdminAddress` is typed, linted
  * and tested, and the file is its source text called on the page's `window` (Node strips the types when the build runs).
@@ -20,16 +22,26 @@ export const ADMIN_PATH = '/admin/';
 /** What the script uses of the page's `window`. */
 export interface RedirectScope {
     readonly location: { readonly hash: string; readonly search: string; replace(url: string): void };
+    addEventListener(type: 'hashchange', listener: () => void): void;
 }
 
-/** Sends an admin route on the root to `adminPath` with the same query and hash; true when it did. Self-contained. */
+/**
+ * Sends an admin route on the root to `adminPath` with the same query and hash, now and on every later hash change;
+ * true when it did now. Self-contained (its source is the script).
+ */
 export function forwardOldAdminAddress(scope: RedirectScope, adminPath: string): boolean {
-    const { hash, search } = scope.location;
-    if (!hash.startsWith('#/')) {
-        return false;
-    }
-    scope.location.replace(`${adminPath}${search}${hash}`);
-    return true;
+    const forward = (): boolean => {
+        const { hash, search } = scope.location;
+        if (!hash.startsWith('#/')) {
+            return false;
+        }
+        scope.location.replace(`${adminPath}${search}${hash}`);
+        return true;
+    };
+    scope.addEventListener('hashchange', () => {
+        forward();
+    });
+    return forward();
 }
 
 /** `admin-redirect.js`: `forwardOldAdminAddress`'s source called on the page's `window`. */

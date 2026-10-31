@@ -299,10 +299,25 @@ class Controller implements SetupController {
     private async refreshStatus(): Promise<void> {
         try {
             this.ctx.applyStatus(await this.deps.backend.status());
-            this.ctx.update((state) => ({ ...state, error: null }));
+            this.ctx.update((state) => refreshDerived({ ...state, error: null, serverOutdated: false }));
         } catch (error) {
             const { message } = apiFailure(error);
-            this.ctx.update((state) => ({ ...state, error: message }));
+            const serverOutdated = message.key === 'apiError.serverOutdated';
+            this.ctx.update((state) => refreshDerived({ ...state, error: message, serverOutdated }));
+            if (serverOutdated) {
+                this.serverAnswers();
+            }
+        }
+    }
+
+    /**
+     * Finding 27: a server that answered in an older shape is there, and it answers this admin, so the sign-in, the
+     * server and the claim are done, as `setup/status` would have said; what it recorded of the rest stays unknown.
+     */
+    private serverAnswers(): void {
+        const done = { state: 'ok' as const, detail: null, checkedAt: this.ctx.nowIso() };
+        for (const step of ['signIn', 'deploy', 'claim'] as const) {
+            this.ctx.patchStep(step, done);
         }
     }
 

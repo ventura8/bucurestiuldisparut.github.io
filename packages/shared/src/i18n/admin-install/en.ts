@@ -66,6 +66,8 @@ export const en: AdminInstallMessages = {
     'adminSetup.install.logEmpty': 'The log has no lines yet.',
     'adminSetup.install.openBuild': 'Open the installation in the Google Cloud console',
     'adminSetup.install.tryAgain': 'Try again',
+    'adminSetup.install.fixInProvision': 'A permission step c gives is missing: retry what failed there, then try again.',
+    'adminSetup.install.retryProvision': 'Retry what failed in step c',
     'adminSetup.install.github': 'Optional: install from GitHub Actions instead',
     'adminSetup.install.githubExplain': 'To install the server with every release from GitHub, put these variables in the repository.',
     'adminSetup.install.tileUpdate': 'An update of the map is ready to install.',

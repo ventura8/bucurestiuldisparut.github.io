@@ -97,6 +97,27 @@ describe('availability', () => {
         expect(done(base, 'billing', 'provision', 'mapbox', 'usgs').ready).toBe(true);
     });
 
+    it('badPath_inStartUpModeAnOlderServerLeavesTheStepsItRecordsUnknown', () => {
+        // Finding 27 of 2026-10-31: the install card reads the server as an update; what it recorded is not "To do".
+        const base = done(initialSetupState(createHarness().host, 'bootstrap'), 'signIn', 'billing', 'provision');
+        const older = refreshDerived({
+            ...base,
+            install: { ...base.install, server: { ...base.install.server, state: 'updateAvailable' } },
+        });
+
+        expect(SETUP_STEPS.filter((id) => older.steps[id].unknown)).toEqual([
+            'deploy',
+            'claim',
+            'mapbox',
+            'usgs',
+            'analytics',
+            'legacyImport',
+        ]);
+        expect(SETUP_STEPS.some((id) => base.steps[id].unknown)).toBe(false);
+        // A step a check has seen is what the check said.
+        expect(withStep(older, 'deploy', { state: 'pending', checkedAt: '2026-10-31T10:00:00.000Z' }).steps.deploy.unknown).toBe(false);
+    });
+
     it('badPath_aServerOrSiteSeenNotInstalledHoldsReadyBack', () => {
         // M6 §4.1 (CR-M6-13): Setup is done with the server and the public map installed; a target nothing has looked at
         // yet (a map from before M6) does not hold it back, as `setupDone` reads a `setup/status` without `install`.

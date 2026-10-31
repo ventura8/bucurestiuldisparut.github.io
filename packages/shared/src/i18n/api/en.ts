@@ -12,6 +12,7 @@ export const en: ApiMessages = {
     'apiError.rateLimited': 'Too many requests. Try again in a minute.',
     'apiError.unavailable': 'The service is unavailable right now. Try again.',
     'apiError.internal': 'Something went wrong on the server.',
+    'apiError.serverOutdated': "The map's server is older than this admin: update the server (step d).",
     'apiError.guardPaused': 'Processing is paused by the budget guard. The public map keeps working.',
     'apiError.claim.tokenInvalid': 'The Google authorization has expired or is invalid. Sign in again.',
     'apiError.claim.tokenMismatch': 'The Google authorization belongs to another account or app.',

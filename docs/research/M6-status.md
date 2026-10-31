@@ -168,3 +168,22 @@ The 24 findings of the live test of 2026-10-25, after these fixes:
 | 21 | no change needed (G is Google's own step; the USGS wait was right) |
 | 23 | a pass |
 | 4 | fixed with its rows (trusted to them, not re-verified by the reviews) |
+
+## 6. The live test of 2026-10-31 (findings 25–28)
+
+The user's second live walk, on the admin `1.0.0+18977f0` at `/admin/` (start-up variant) against the server of
+`90b31be`: [manual-test-2026-10-25.md](manual-test-2026-10-25.md) → *Live test 2026-10-31 (M6 admin)*; decisions
+`DECISIONS-for-review.md` §75; lessons 296–298. Nothing was committed, pushed or deployed; no test called a real Google
+endpoint.
+
+| Finding | Outcome | Rows |
+| --- | --- | --- |
+| 25: an old admin hash typed on the open start-up root stayed there | fixed: `admin-redirect.js` also forwards on `hashchange` | S-A58-HAPPY-OLD-LINK-HASH-CHANGE, S-A58-BAD-VIEWER-HASH-CHANGE |
+| 26: the sign-in per tab is tiring | proposal only: the admin on its own Hosting site (§75c) | — |
+| 27: Setup read the older server's recorded steps as To do | fixed: a pre-M5 session parses, an unreadable answer is `apiError.serverOutdated` (a server, never "none"), a browser that had seen the server leaves start-up mode by itself again, a step it cannot say reads Update the server to check | S-A03-HAPPY-OLDER-SERVER, S-A03-BAD-OLDER-SERVER-STATUS; tour `setup.older-server-status` |
+| 28: the install stopped at `firebase-tools`' actAs check | fixed in code (the user: "code fix first, live later"): Service Account User on the App Engine default account only, `hcmInstaller` gains three permissions, the fakes enforce the check, the server's card offers step c's Retry what failed | S-A04-HAPPY-APPENGINE-ACTAS, S-A04-BAD-NO-APPENGINE-ACCOUNT, S-A55-BAD-NO-ACTAS; tour `setup.install-failed-provision` |
+
+What waits for you: the next admin redeploy (D1, ask first), then on Setup (d) **Reia ce nu a reușit în pasul c** (step
+c's Retry what failed) and **Încearcă din nou** (`docs/MANUAL_TEST_PLAN.md` → D1 step 4); the decisions §75b (the App Engine account's Editor role), §75c (the
+admin's own site) and §75f (the admin's language with no saved choice). The verdicts of `static`, `tests` and `build`
+are in the integrator's report; the full split `all` is the orchestrator's.

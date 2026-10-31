@@ -58,7 +58,9 @@ export function callablesPort(sdk: FirebaseSdk, handles: Pick<FirebaseHandles, '
             }
             const parsed = CALLABLES[name].response.safeParse(data);
             if (!parsed.success) {
-                throw new CallableFailure('internal', { code: 'apiError.internal' });
+                // An answer, in a shape older than this admin reads (finding 27 of 2026-10-31): a server is there, and
+                // it is outdated, not down.
+                throw new CallableFailure('failed-precondition', { code: 'apiError.serverOutdated' });
             }
             return parsed.data as CallableResponse<N>;
         },

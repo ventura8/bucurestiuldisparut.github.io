@@ -53,6 +53,11 @@ interface SetupStepState {
     readonly needsContinue: boolean;
     /** M6 setup-ux (`docs/research/M6-interfaces.md` §4.1): the owner chose Do it later (USGS); the chip reads Later. */
     readonly postponed: boolean;
+    /**
+     * Finding 27 of 2026-10-31: the server's record of the step is unknown because the server is older than the admin; the
+     * chip reads "Update the server to check", never "To do" (derived: `refreshDerived`).
+     */
+    readonly unknown: boolean;
     /** The scope the step's next Google popup asks for (the consent note explains it), or null. */
     readonly scope: GoogleScope | null;
     readonly links: readonly SetupLinkView[];
@@ -207,6 +212,8 @@ export interface SetupState {
     readonly checking: boolean;
     /** Why the page could not load or record `setup/status` (normal mode), or null. */
     readonly error: SetupMessage | null;
+    /** Finding 27: `setup/status` answered in a shape older than the admin reads (`apiError.serverOutdated`). */
+    readonly serverOutdated: boolean;
     readonly used: StepCounts;
     readonly billing: BillingSlice;
     readonly provision: { readonly items: readonly ProvisionItemState[] };
@@ -284,6 +291,7 @@ function initialStep(id: SetupStepId, projectId: string): SetupStepState {
         busy: false,
         needsContinue: false,
         postponed: false,
+        unknown: false,
         scope: CARD_POPUP_STEPS.has(id) ? spec.scope : null,
         links: stepLinks(id, projectId),
         used: { inputs: 0, consents: 0 },
@@ -311,8 +319,7 @@ export function initialSetupState(host: SetupHost, mode: SetupMode): SetupState 
         later: 0,
         doneNote: null,
         liveScopes: [],
-        checking: false,
-        error: null,
+        ...{ checking: false, serverOutdated: false, error: null },
         used: { inputs: 0, consents: 0 },
         billing: {
             amount: budgetAmountFor(DEFAULT_BUDGET_CURRENCY),
@@ -413,11 +420,36 @@ function installDone(state: SetupState): boolean {
     });
 }
 
+/** The steps whose state, in start-up mode, only the server's record (`setup/status`) knows. */
+const STATUS_STEPS: ReadonlySet<SetupStepId> = new Set(['deploy', 'claim', 'mapbox', 'usgs', 'analytics', 'legacyImport']);
+
+/**
+ * Finding 27 of 2026-10-31: the server in place is older than the admin, so what it recorded is unknown. Its record was
+ * unreadable (`all`: in an admin session every step's state comes from it), or, in start-up mode, the install card reads
+ * the server as an update (`status`: the steps only its record knows); null: the server can say.
+ */
+function serverBehind(state: SetupState): 'all' | 'status' | null {
+    if (state.serverOutdated) {
+        return 'all';
+    }
+    return state.mode === 'bootstrap' && state.install.server.state === 'updateAvailable' ? 'status' : null;
+}
+
+/** A step no check has seen while the server is too old to say what it recorded (never "To do"). */
+function unknownStep(step: SetupStepState, behind: 'all' | 'status' | null): boolean {
+    const decided = behind === 'all' || (behind === 'status' && STATUS_STEPS.has(step.id));
+    return decided && step.state === 'missing' && step.checkedAt === null;
+}
+
 /** Recomputes what follows from the steps: availability, the progress, `ready` and the totals. */
 export function refreshDerived(state: SetupState): SetupState {
     const done = doneSteps(state);
+    const behind = serverBehind(state);
     const steps = Object.fromEntries(
-        state.order.map((id) => [id, { ...state.steps[id], available: isAvailable(id, state.mode, done) }]),
+        state.order.map((id) => {
+            const step = state.steps[id];
+            return [id, { ...step, available: isAvailable(id, state.mode, done), unknown: unknownStep(step, behind) }];
+        }),
     ) as Record<SetupStepId, SetupStepState>;
     const usgs = usgsPart(state);
     const ready = REQUIRED_STEPS.every((id) => done.has(id)) && usgs !== 'toDo' && installDone(state);

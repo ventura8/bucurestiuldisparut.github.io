@@ -325,7 +325,19 @@ describe('the edges', () => {
         await clients.iam.createServiceAccount('demo-hcm', 'fn-admin', 'Functions: admin');
         await clients.iam.createServiceAccount('demo-hcm', 'fn-admin', 'Functions: admin');
 
-        await expect(clients.iam.listServiceAccounts('demo-hcm')).resolves.toEqual(['fn-admin']);
+        // Google's own App Engine default account is listed too, by the part of its address before the @.
+        await expect(clients.iam.listServiceAccounts('demo-hcm')).resolves.toEqual(['fn-admin', 'demo-hcm']);
         await expect(clients.iam.getPool('123456789012', 'github')).resolves.toBeUndefined();
+    });
+
+    it('happyPath_anAccountIsFoundByItsAddressAndAMissingOneIsNotAFailure', async () => {
+        const { clients, fakes } = provisionWorld();
+        await clients.iam.createServiceAccount('demo-hcm', 'fn-admin', 'Functions: admin');
+
+        await expect(clients.iam.serviceAccountExists('demo-hcm', 'demo-hcm@appspot.gserviceaccount.com')).resolves.toBe(true);
+        await expect(clients.iam.serviceAccountExists('demo-hcm', 'fn-admin@demo-hcm.iam.gserviceaccount.com')).resolves.toBe(true);
+        fakes.scenario('iam.noAppEngineAccount');
+        await expect(clients.iam.serviceAccountExists('demo-hcm', 'demo-hcm@appspot.gserviceaccount.com')).resolves.toBe(false);
+        await expect(clients.iam.serviceAccountExists('demo-hcm', 'nobody@demo-hcm.iam.gserviceaccount.com')).resolves.toBe(false);
     });
 });

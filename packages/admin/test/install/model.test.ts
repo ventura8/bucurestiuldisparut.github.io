@@ -6,6 +6,7 @@ import {
     deriveInstallState,
     endedByGoogle,
     failedStepOf,
+    fixedInProvision,
     hasEnded,
     initialInstallSlice,
     initialTargetView,
@@ -161,6 +162,21 @@ describe('the log events', () => {
                 { event: 'image', digest: `sha256:${'a'.repeat(64)}` },
             ]),
         ).toEqual(['ops-tick', 'admin-session']);
+    });
+});
+
+describe('a permission Prepare the project grants (finding 28 of 2026-10-31)', () => {
+    it.each([
+        'Error: Missing permissions required for functions deploy. You must have permission iam.serviceAccounts.ActAs on service account p@appspot.gserviceaccount.com.',
+        'Error: Missing required permission on project p to deploy new HTTPS functions. The permission cloudfunctions.functions.setIamPolicy is required',
+    ])('happyPath_firebaseToolsOwnCheck_%s_isFixedInStepC', (line) => {
+        expect(fixedInProvision(['i  functions: preparing', line])).toBe(true);
+    });
+
+    it('badPath_anyOtherFailureIsTryAgainOnly', () => {
+        expect(fixedInProvision(['Error: functions failed', 'The functions step exited with status 1.'])).toBe(false);
+        expect(fixedInProvision([])).toBe(false);
+        expect(initialTargetView('server').fixInProvision).toBe(false);
     });
 });
 

@@ -37,10 +37,27 @@ async function serverBuilds(upstream: UpstreamControl) {
     return (await submittedBuilds(upstream)).filter((build) => build.target === 'server');
 }
 
+const INSTALLER = `serviceAccount:hcm-installer@${E2E_PROJECT_ID}.iam.gserviceaccount.com`;
+const APP_ENGINE = `${E2E_PROJECT_ID}@appspot.gserviceaccount.com`;
+
+/** Who holds Service Account User on the App Engine default account, in the browser's world of the IAM fake. */
+async function appEngineUsers(upstream: UpstreamControl): Promise<readonly string[]> {
+    const iam = (await upstream.snapshot('browser'))['iam'] as {
+        readonly projects: Readonly<Record<string, { readonly accountPolicies: Readonly<Record<string, readonly Binding[]>> }>>;
+    };
+    const policy = iam.projects[E2E_PROJECT_ID]?.accountPolicies[APP_ENGINE] ?? [];
+    return policy.find((binding) => binding.role === 'roles/iam.serviceAccountUser')?.members ?? [];
+}
+
+interface Binding {
+    readonly role: string;
+    readonly members: readonly string[];
+}
+
 test.describe('Install the server', () => {
     test(
         'One click installs the server through Cloud Build, the card follows it and the claim follows',
-        { tag: ['@S-A55-HAPPY'] },
+        { tag: ['@S-A55-HAPPY', '@S-A04-HAPPY-APPENGINE-ACTAS'] },
         async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment, adminWorld }) => {
             await serverDeployment.hide();
             const signInBudget = inputBudget.flow('signIn', 1);
@@ -73,6 +90,9 @@ test.describe('Install the server', () => {
             await expect(installState(deploy)).toContainText(setupText(lang, 'adminSetup.install.state.working'));
             await expect(deploy.locator('[aria-current="step"]')).toContainText(setupText(lang, 'adminSetup.install.step.fetch'));
 
+            // Finding 28 of 2026-10-31: Prepare the project let the installer act as the App Engine default account, on that
+            // account only, so firebase-tools' check before the functions deploy passes and the build succeeds.
+            expect(await appEngineUsers(upstream)).toEqual([INSTALLER]);
             await upstream.scenario('cloud-build.finish', 'browser');
             await upstream.scenario('secret-manager.provisioned', 'server');
             await nextLook(
@@ -239,6 +259,45 @@ test.describe('Install the server: a build that stops', () => {
             await expect(installState(deploy)).toContainText(setupText(lang, 'adminSetup.install.state.queued'));
             await expect(installButton(deploy, lang)).toHaveCount(0);
             expect(await serverBuilds(upstream)).toHaveLength(1);
+            serverDeployment.claimErrors();
+        },
+    );
+});
+
+test.describe('Install the server: a permission of step c (finding 28 of 2026-10-31)', () => {
+    test(
+        'A project prepared before the actAs grant stops at firebase-tools check, and Retry what failed in step c fixes it',
+        { tag: ['@S-A55-BAD-NO-ACTAS'] },
+        async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment }) => {
+            // Finding 28 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31): the live install stopped at step "functions".
+            await serverDeployment.hide();
+            const retry = setupBudget.inputs('provision', 1);
+            const { setup, deploy } = await preparedProject({
+                ...{ page, lang, consent, setupBudget, upstream, signInBudget: inputBudget.flow('signIn', 1) },
+                signInConsent: inputBudget.flow('signInConsent', 1),
+            });
+            await upstream.scenario('iam.appEngineActAsMissing', 'browser');
+            const inputs = setupBudget.inputs('deploy', 1);
+
+            await inputs.click(installButton(deploy, lang));
+            await expect.poll(async () => (await serverBuilds(upstream)).length).toBe(1);
+            await upstream.scenario('cloud-build.finish', 'browser');
+            await page.clock.fastForward(10_000);
+
+            const step = setupText(lang, 'adminSetup.install.step.functions');
+            await expect(deploy.getByText(setupText(lang, 'adminSetup.install.failedAt', { step }))).toBeVisible();
+            await expect(deploy.locator('pre.log')).toContainText('You must have permission iam.serviceAccounts.ActAs on service account');
+            const fix = deploy.locator('[data-fix="provision"]');
+            await expect(fix).toContainText(setupText(lang, 'adminSetup.install.fixInProvision'));
+            // Within the hour of Prepare the project: one click, no consent; only step c's iam item runs again.
+            await retry.click(fix.getByRole('button', { name: setupText(lang, 'adminSetup.install.retryProvision') }));
+            await expect.poll(() => appEngineUsers(upstream), { timeout: 60_000 }).toEqual([INSTALLER]);
+            await setup.expectState('provision', 'ok');
+
+            await inputs.click(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.tryAgain') }));
+            await expect.poll(async () => (await serverBuilds(upstream)).length).toBe(2);
+            await upstream.scenario('cloud-build.finish', 'browser');
+            await nextLook(page, installState(deploy).getByText(setupText(lang, 'adminSetup.install.state.installed')));
             serverDeployment.claimErrors();
         },
     );

@@ -69,6 +69,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.rateLimited': spec('resource-exhausted'),
     'apiError.unavailable': spec('unavailable'),
     'apiError.internal': spec('internal'),
+    // The admin's own code (finding 27 of 2026-10-31): a server answered in a shape older than the admin reads.
+    'apiError.serverOutdated': spec('failed-precondition'),
     'apiError.guardPaused': spec('failed-precondition'),
     'apiError.claim.tokenInvalid': spec('unauthenticated'),
     'apiError.claim.tokenMismatch': spec('permission-denied'),

@@ -6,6 +6,7 @@ import { createRecordingSink, type RecordingSink } from '@hcm/test-support';
 import { createUpstreamFakes, GOOGLE_TOKENS, jsonResponse, type UpstreamFakes } from '@hcm/test-support/fakes';
 
 import { createIamClient } from '../../src/google/iam.js';
+import { ensureBindings } from '../../src/google/iam-policy.js';
 import { createGoogleTransport } from '../../src/google/transport.js';
 import { bundleOnce, hostingOrigins, loadInstallBundle, sha256Hex } from '../../src/install/bundle.js';
 import { createCloudBuildInstaller } from '../../src/install/cloud-build-installer.js';
@@ -95,6 +96,10 @@ export async function installWorld(options: { readonly provisioned?: boolean } =
             createGoogleTransport({ fetch: fakes.fetch, token: () => ACCESS.token, sleep: () => Promise.resolve(), log }),
         );
         await iam.createServiceAccount('demo-hcm', 'hcm-installer', 'Cloud Build: the in-app installer');
+        // Its `iam` item lets it act as the App Engine default account, which firebase-tools requires (finding 28).
+        await ensureBindings(iam.serviceAccountPolicy('demo-hcm', 'demo-hcm@appspot.gserviceaccount.com'), [
+            { role: 'roles/iam.serviceAccountUser', member: 'serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com' },
+        ]);
     }
     return Object.assign(world, { installer });
 }

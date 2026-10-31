@@ -260,7 +260,29 @@ function stopped(input: InstallStatusInput, view: InstallTargetViewPort): Templa
     }
     const step = view.failedStep === null ? '' : label(input, `adminSetup.install.step.${view.failedStep}`);
     return html`<p class="failed-at">${label(input, 'adminSetup.install.failedAt', { step })}</p>
-        ${missingLine(input, view)} ${logLines(input, view)} ${consoleLink(input, view)}`;
+        ${fixLine(input, view)} ${missingLine(input, view)} ${logLines(input, view)} ${consoleLink(input, view)}`;
+}
+
+/**
+ * A build that stopped because the installer lacks a permission Prepare the project grants (finding 28 of 2026-10-31,
+ * firebase-tools' actAs check): Try again alone would stop the same way, so the card offers step c's Retry what failed
+ * first, from here (it reruns the `iam` item only), then Try again.
+ */
+function fixLine(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
+    if (!view.fixInProvision) {
+        return EMPTY;
+    }
+    return html`<p class="blocker fix" data-fix="provision">
+        <span>${label(input, 'adminSetup.install.fixInProvision')}</span>
+        <hcm-button
+            variant="outlined"
+            icon="cloud"
+            @click=${() => {
+                input.intents?.provision();
+            }}
+            >${label(input, 'adminSetup.install.retryProvision')}</hcm-button
+        >
+    </p>`;
 }
 
 function updateLine(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {

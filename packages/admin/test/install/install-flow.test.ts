@@ -200,6 +200,21 @@ describe('what the build says', () => {
         flow.dispose();
     });
 
+    it('badPath_aProjectWhoseInstallerMayNotActAsTheAppEngineAccountStopsAtFunctionsWithTheFixInStepC', async () => {
+        // Finding 28 of 2026-10-31: the fake's server step enforces firebase-tools' checkServiceAccountIam as the live one.
+        const { install, clock, flow, latest } = await world();
+        install.fakes.scenario('iam.appEngineActAsMissing');
+        await flow.install();
+        install.fakes.scenario('cloud-build.finish');
+
+        await clock.advance(RUNNING_LOOK_MS);
+
+        expect(latest()).toMatchObject({ state: 'failed', failedStep: 'functions', fixInProvision: true });
+        // The address is redacted as every e-mail address of a log is; the permission stays.
+        expect(latest().log.join('\n')).toContain('You must have permission iam.serviceAccounts.ActAs on service account [redacted].');
+        flow.dispose();
+    });
+
     it('badPath_aStoppedBuildNamesItsStepAndShowsItsRedactedLog', async () => {
         const { install, clock, flow, latest } = await world();
         install.fakes.scenario('cloud-build.serverFailsAtFunctions');
@@ -208,7 +223,7 @@ describe('what the build says', () => {
 
         await clock.advance(RUNNING_LOOK_MS);
 
-        expect(latest()).toMatchObject({ state: 'failed', failedStep: 'functions' });
+        expect(latest()).toMatchObject({ state: 'failed', failedStep: 'functions', fixInProvision: false });
         expect(latest().log.length).toBeGreaterThan(0);
         expect(latest().log.join('\n')).not.toContain(PLANTED_LOG_SECRETS[0]);
         const reads = install.fakes.callsTo('logging.entries.list').length;

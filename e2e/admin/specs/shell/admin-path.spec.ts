@@ -6,7 +6,7 @@ import { ADMIN_SHELL_ELEMENT } from '../../../../scripts/site/src/admin/page.js'
 import { E2E_CITY_ID } from '../../../fixtures/world.js';
 import { OLD_PUSH_WORKER_PATH } from '../../../mock-apis/admin-server.js';
 import type { InputBudget } from '../../../support/budget.js';
-import { hostingUrl, policyHeaders, serveBucketCity } from '../../../support/hosting.js';
+import { hostingUrl, policyHeaders, serveBucketCity, useStartUpVariant } from '../../../support/hosting.js';
 import { mapFacts } from '../../../support/map.js';
 import { waitForEngineEvent } from '../../../support/viewer.js';
 import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
@@ -136,6 +136,38 @@ test(
         }
         expect(engine).toEqual([]);
         expect(await mockApis.mapLoadEvents()).toBe(0);
+    },
+);
+
+test(
+    'An old admin address typed while the start-up root is open forwards on the hash change alone',
+    { tag: '@S-A58-HAPPY-OLD-LINK-HASH-CHANGE' },
+    async ({ page, context, lang }) => {
+        // Finding 25 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31): a fresh load forwarded, a hash change did not.
+        await useStartUpVariant(context);
+        await page.goto(hostingUrl('/', { lang }));
+        await expect(page.getByRole('heading', { level: 1, name: 'Harta este în pregătire' })).toBeVisible();
+
+        await page.goto(hostingUrl('/', { lang, hash: '/setup' }));
+        await page.waitForURL(`${ADMIN_URL}**`);
+
+        expect(page.url()).toBe(`${ADMIN_URL}?lang=${lang}#/setup`);
+    },
+);
+
+test(
+    'A viewer hash typed while the start-up root is open stays on the root',
+    { tag: '@S-A58-BAD-VIEWER-HASH-CHANGE' },
+    async ({ page, context, lang }) => {
+        await useStartUpVariant(context);
+        await page.goto(hostingUrl('/', { lang }));
+        const heading = page.getByRole('heading', { level: 1, name: 'Harta este în pregătire' });
+        await expect(heading).toBeVisible();
+
+        await page.goto(hostingUrl('/', { lang, hash: '17/44.42955/26.09560' }));
+
+        await expect(heading).toBeVisible();
+        expect(page.url()).toBe(hostingUrl('/', { lang, hash: '17/44.42955/26.09560' }));
     },
 );
 

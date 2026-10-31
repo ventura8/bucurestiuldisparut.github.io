@@ -145,3 +145,49 @@ Provision (M6-interfaces.md §1.6, `DECISIONS-for-review.md` §67b).
 24. \[ux]\[setup] "Setup 8 of 9, not done" only because f waits on USGS's M2M approval (days): the user read it as "Setup is
    broken". With #16 the header should say "Setup done — USGS approval pending" and the dashboard-first rule should open Home.
    The Vertex AI check failing is not a step but sits in the same card with an alarming icon (#20).
+
+## Live test 2026-10-31 (M6 admin)
+
+The user's second live walk, on the same project: the admin `1.0.0+18977f0` deployed to `/admin/` in its start-up
+variant (D1), the server still the 61 functions of `90b31be` (2026-10-25). The numbering continues the list above.
+What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–298, `DECISIONS-for-review.md` §75 and
+[M6-status.md](M6-status.md) §6.
+
+- **25.** \[bug, minor]\[hosting] On the start-up root (`/`, "the map is being set up"), an old admin address typed as a hash
+  change only (`/#/setup` while already on `/`) did not forward to `/admin/#/setup`; a fresh load did. Cause:
+  `scripts/site/src/hosting/admin-redirect.ts` read `location.hash` once, at load. FIXED: it also forwards on
+  `hashchange` (S-A58-HAPPY-OLD-LINK-HASH-CHANGE, S-A58-BAD-VIEWER-HASH-CHANGE).
+- **26.** \[DECISION for the user] The per-tab sign-in (`DECISIONS-for-review.md` §73a) is tiring live: every new tab, every
+  notification link and Claude's own tab ask to sign in again. The alternative, the admin on its own Hosting site with
+  the normal local persistence, is written up as a proposal in §75c; nothing changed.
+- **27.** \[bug]\[setup] After the redeploy Setup read 3 of 11: d2 "Take over the map", e Mapbox, f USGS, g Analytics and h old
+  photos "To do", which the old admin against the same server showed Done (USGS "Waiting"). Causes, from the code:
+  (1) the M6 admin's `admin.session` schema requires M5's `cities` and `projectOwner`, which the pre-M5 server does not
+  return; the adapter turned the mismatch into `internal`, which the probe reads as "no server", so the admin stayed in
+  start-up mode (or showed "the server is down" after a sign-in) and never asked `setup.status`; (2) in start-up mode
+  step d waited for all 69 functions of the M6 registry, so the 61 of `90b31be` never led to the probe and the claim
+  that had taken the old admin out of start-up mode by itself (finding 14); (3) a step nothing had checked read
+  "To do". Stored state was not the cause: `localStorage` and `sessionStorage` belong to the origin, not the path.
+  FIXED: the session schema reads a pre-M5 answer (no city, not the project's owner); an answer in a shape the admin
+  cannot read is `apiError.serverOutdated` (a server that answered, never "no server"), so a browser that had seen the
+  server (`hcm:admin:serverSeen`) leaves start-up mode by itself again; in a browser that had not, step d waits for the
+  whole M6 registry and Update the map installs it; a step the older server cannot say reads **Update the server to check**
+  (`adminSetup.state.unknown`), never "To do" (S-A03-HAPPY-OLDER-SERVER, S-A03-BAD-OLDER-SERVER-STATUS).
+- **28.** \[BUG, blocks Setup d] The in-app server install (Cloud Build, `hcm-installer@`) stopped at step #3, `functions`:
+  `firebase-tools` 15.34.2 runs `checkServiceAccountIam` (`lib/deploy/functions/checkIam.js`, from
+  `lib/commands/deploy.js` for any functions target) before it deploys anything, and it requires
+  `iam.serviceAccounts.actAs` on `<project>@appspot.gserviceaccount.com`, the App Engine default account:
+  "Missing permissions required for functions deploy. You must have permission iam.serviceAccounts.ActAs on service
+  account …". The user's decision (2026-10-31): "Code fix first, live later". FIXED: Provision's `iam` item grants
+  `hcm-installer@` `roles/iam.serviceAccountUser` on that one account (its own policy, never project-wide) when the
+  account exists (a GET; a 404 grants nothing and is no failure); the custom role `hcmInstaller` also gains
+  `cloudfunctions.functions.setIamPolicy`, which `checkHttpIam` requires before a deploy creates an HTTPS function. A
+  stopped build whose log names one of these checks offers step c's **Retry what failed** on the server's card (it
+  reruns the `iam` item, whose row names the reason), then **Try again**. The fakes now enforce the check
+  (S-A04-HAPPY-APPENGINE-ACTAS, S-A04-BAD-NO-APPENGINE-ACCOUNT, S-A55-BAD-NO-ACTAS). Live, after the next admin
+  redeploy: Setup c **Retry what failed**, then d **Try again** (`docs/MANUAL_TEST_PLAN.md`).
+
+Also checked: the sign-in card showed in English in an English Chrome with no saved choice. That is the admin's rule:
+`?lang=`, then the stored choice (`hcm:admin:lang`), then the browser's first language (`resolveLocale`: English for
+any `en*`), then Romanian (`packages/admin/src/state/locale.ts`; `M2b-interfaces.md` §1.6; the i18n skill). PLAN's
+"default RO" holds only when the browser's first language is not English; nothing changed (the user decides).

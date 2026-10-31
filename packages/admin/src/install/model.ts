@@ -67,6 +67,11 @@ export interface InstallTargetView {
     readonly failedStep: InstallStepId | null;
     /** A failed build's step's last lines (redacted, as text). */
     readonly log: readonly string[];
+    /**
+     * The failed build's log says the installer lacks a permission Prepare the project grants (finding 28 of 2026-10-31,
+     * `fixedInProvision`): the card sends the owner to step c's Retry what failed before Try again.
+     */
+    readonly fixInProvision: boolean;
     /** `verify`'s missing or failed functions. */
     readonly missing: readonly string[];
     /** `retrying`: why, and when the build tries again (ISO 8601). */
@@ -95,6 +100,7 @@ export function initialTargetView(target: InstallTarget): InstallTargetView {
         steps: INSTALL_STEPS[target].map((id) => ({ id, state: 'waiting' })),
         failedStep: null,
         log: [],
+        fixInProvision: false,
         missing: [],
         retryReason: null,
         retryAt: null,
@@ -229,6 +235,22 @@ export function stepsOf(target: InstallTarget, build: CloudBuild | null): readon
 export function failedStepOf(target: InstallTarget, build: CloudBuild): InstallStepId | null {
     const steps = stepsOf(target, build);
     return (steps.find((step) => step.state === 'failed') ?? steps.find((step) => step.state !== 'done'))?.id ?? null;
+}
+
+/**
+ * What firebase-tools prints when one of its own checks before a deploy refuses the installer a permission that Prepare
+ * the project's `iam` item grants (finding 28 of 2026-10-31): `checkServiceAccountIam` (actAs on the App Engine default
+ * account) and `checkHttpIam` (`cloudfunctions.functions.setIamPolicy` for a new HTTPS function). Each pattern is linear.
+ */
+const PROVISION_FIX_PATTERNS: readonly RegExp[] = [
+    /Missing permissions required for functions deploy/i,
+    /iam\.serviceAccounts\.actAs/i,
+    /to deploy new HTTPS functions/i,
+];
+
+/** Whether a stopped step's last lines name a permission Prepare the project grants (Retry what failed in step c). */
+export function fixedInProvision(log: readonly string[]): boolean {
+    return log.some((line) => PROVISION_FIX_PATTERNS.some((pattern) => pattern.test(line)));
 }
 
 /** The last retry the log names, if it is the build's last event (a later event means the build moved on). */

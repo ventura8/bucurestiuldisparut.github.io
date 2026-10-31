@@ -40,6 +40,11 @@ export interface CustomRoleSpec {
 export interface IamClient {
     /** The account ids (`fn-admin`) of the project's service accounts. */
     listServiceAccounts(projectId: string): Promise<string[]>;
+    /**
+     * Whether the account `email` exists in the project (a 404 is false). Finding 28 of 2026-10-31: the App Engine default
+     * account, outside the project's own accounts' domain, is looked up by its address.
+     */
+    serviceAccountExists(projectId: string, email: string): Promise<boolean>;
     /** Creates the account; an existing one is success. */
     createServiceAccount(projectId: string, accountId: string, displayName: string): Promise<void>;
     serviceAccountPolicy(projectId: string, email: string): PolicyAccess;
@@ -156,6 +161,11 @@ export function createIamClient(transport: GoogleTransport): IamClient {
             );
             return records(accounts).map((account) => String(account['email']).split('@', 1).join(''));
         },
+        serviceAccountExists: async (projectId, email) =>
+            (await transport.find({
+                operation: 'iam.serviceAccounts.get',
+                url: `${IAM}/projects/${projectId}/serviceAccounts/${email}`,
+            })) !== undefined,
         createServiceAccount: (projectId, accountId, displayName) => createServiceAccount(transport, projectId, accountId, displayName),
         serviceAccountPolicy: (projectId, email) => serviceAccountPolicy(transport, projectId, email),
         getPool: async (projectNumber, poolId) =>

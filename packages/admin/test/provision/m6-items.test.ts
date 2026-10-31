@@ -87,6 +87,9 @@ describe('the installer, the invokers and the service agents (the iam item)', ()
         expect(report.items).toHaveLength(16);
         expect(world.fakes.state.iam.projects.get('demo-hcm')?.accounts.has('hcm-installer')).toBe(true);
         expect(world.fakes.state.iam.projects.get('demo-hcm')?.roles.get('hcmInstaller')?.includedPermissions).toEqual([
+            'cloudfunctions.functions.setIamPolicy',
+            'datastore.databases.getMetadata',
+            'storage.buckets.get',
             'run.services.get',
             'run.services.getIamPolicy',
             'run.services.setIamPolicy',
@@ -158,6 +161,54 @@ describe('the installer, the invokers and the service agents (the iam item)', ()
         expect(doctor.items).toEqual([{ id: 'iam', state: 'missing' }]);
         expect(report.items).toEqual([{ id: 'iam', state: 'ok' }]);
         expect(computeRoles()).toEqual(['roles/editor', 'roles/run.invoker', 'roles/eventarc.eventReceiver']);
+    });
+});
+
+/** Finding 28 of `docs/research/manual-test-2026-10-25.md (live test 2026-10-31)`: firebase-tools' actAs check on the App Engine default account. */
+describe('the installer acts as the App Engine default account (the iam item)', () => {
+    const APP_ENGINE = 'demo-hcm@appspot.gserviceaccount.com';
+    const INSTALLER = 'serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com';
+    const BEFORE_IAM = ['apis', 'service-accounts', 'buckets', 'artifact-registry', 'secrets', 'org-policies', 'iam'] as const;
+
+    function appEngineUsers(world: ProvisionWorld): readonly string[] {
+        const policy = world.fakes.state.iam.projects.get('demo-hcm')?.accountPolicies.get(APP_ENGINE) ?? [];
+        return policy.find((binding) => binding.role === 'roles/iam.serviceAccountUser')?.members ?? [];
+    }
+
+    it('happyPath_provisionGrantsServiceAccountUserOnThatOneAccountNeverProjectWide @S-A04-HAPPY-APPENGINE-ACTAS', async () => {
+        const world = provisionWorld();
+
+        const report = await applyProvision(planProvision(null, BEFORE_IAM), world.deps);
+
+        expect(only(report.items, 'iam')).toEqual([{ id: 'iam', state: 'ok' }]);
+        expect(appEngineUsers(world)).toEqual([INSTALLER]);
+        const project = world.fakes.state.resourceManager.policies.get('demo-hcm')?.bindings ?? [];
+        expect(project.filter((binding) => binding.role === 'roles/iam.serviceAccountUser')).toEqual([]);
+    });
+
+    it('badPath_aProjectWithoutTheAccountHasNothingToGrantAndIsNotAFailure @S-A04-BAD-NO-APPENGINE-ACCOUNT', async () => {
+        const world = provisionWorld();
+        world.fakes.scenario('iam.noAppEngineAccount');
+
+        const report = await applyProvision(planProvision(null, BEFORE_IAM), world.deps);
+        const doctor = await doctorProvision(world.deps, ['iam']);
+
+        expect(only(report.items, 'iam')).toEqual([{ id: 'iam', state: 'ok' }]);
+        expect(doctor.items).toEqual([{ id: 'iam', state: 'ok' }]);
+        expect(world.fakes.calls.filter((call) => call.url.includes(`${APP_ENGINE}:`))).toEqual([]);
+    });
+
+    it('badPath_aProjectProvisionedBeforeTheFixLacksTheGrantAndARunOfTheIamItemAddsIt @S-A55-BAD-NO-ACTAS', async () => {
+        const world = provisionWorld();
+        await applyProvision(planProvision(null, BEFORE_IAM), world.deps);
+        world.fakes.scenario('iam.appEngineActAsMissing');
+
+        const doctor = await doctorProvision(world.deps, ['iam']);
+        const report = await applyProvision(planProvision(null, ['iam']), world.deps);
+
+        expect(doctor.items).toEqual([{ id: 'iam', state: 'missing' }]);
+        expect(report.items).toEqual([{ id: 'iam', state: 'ok' }]);
+        expect(appEngineUsers(world)).toEqual([INSTALLER]);
     });
 });
 

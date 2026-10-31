@@ -71,6 +71,8 @@ export const ro = {
     'adminSetup.install.logEmpty': 'Jurnalul nu are încă rânduri.',
     'adminSetup.install.openBuild': 'Deschide instalarea în consola Google Cloud',
     'adminSetup.install.tryAgain': 'Încearcă din nou',
+    'adminSetup.install.fixInProvision': 'Lipsește o permisiune dată de pasul c: reia ce nu a reușit acolo, apoi încearcă din nou.',
+    'adminSetup.install.retryProvision': 'Reia ce nu a reușit în pasul c',
     'adminSetup.install.github': 'Opțional: instalează din GitHub Actions',
     'adminSetup.install.githubExplain': 'Ca serverul să se instaleze la fiecare versiune din GitHub, pune aceste variabile în depozit.',
     'adminSetup.install.tileUpdate': 'O actualizare a hărții este gata de instalat.',

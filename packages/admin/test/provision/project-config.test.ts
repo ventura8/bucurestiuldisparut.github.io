@@ -43,6 +43,7 @@ describe('the role table', () => {
         cloudStorage: 'gcs-agent@example.test',
         pubsub: 'pubsub-agent@example.test',
         computeDefault: undefined,
+        appEngineDefault: undefined,
     };
 
     it('happyPath_everyM2bRowIsBoundOnItsResource', () => {
@@ -141,6 +142,7 @@ describe('the role table of M6 (docs/research/M6-interfaces.md §1.2, §1.6)', (
         cloudStorage: 'gcs-agent@example.test',
         pubsub: 'pubsub-agent@example.test',
         computeDefault: undefined,
+        appEngineDefault: undefined,
     };
 
     it('happyPath_theM6InstallerHasExactlyTheContractsRolesAndActsOnlyAsTheRuntimeAccounts @S-A04-HAPPY-INSTALLER-ACCOUNT', () => {
@@ -218,5 +220,29 @@ describe('the role table of M6 (docs/research/M6-interfaces.md §1.2, §1.6)', (
             { role: 'roles/run.invoker', member: compute },
             { role: 'roles/eventarc.eventReceiver', member: compute },
         ]);
+    });
+
+    it('happyPath_theInstallerActsAsTheAppEngineDefaultAccountOnThatAccountOnly @S-A04-HAPPY-APPENGINE-ACTAS', () => {
+        // Finding 28 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31): firebase-tools' checkServiceAccountIam wants actAs on it.
+        const appEngine = 'demo-hcm@appspot.gserviceaccount.com';
+        const installer = 'serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com';
+        const table = roleTable(PROJECT, { ...agents, appEngineDefault: appEngine }, false);
+
+        expect(table.find((policy) => policy.resource === appEngine)).toEqual({
+            kind: 'serviceAccount',
+            resource: appEngine,
+            bindings: [{ role: 'roles/iam.serviceAccountUser', member: installer }],
+        });
+        expect(table.at(-1)?.kind).toBe('repository');
+        // Never project-wide: the project's policy gives the installer no Service Account User role.
+        expect(
+            table[0]?.bindings.filter((binding) => binding.member === installer && binding.role === 'roles/iam.serviceAccountUser'),
+        ).toEqual([]);
+    });
+
+    it('badPath_aProjectWithoutTheAppEngineDefaultAccountGetsNoBindingForIt', () => {
+        const table = roleTable(PROJECT, agents, false);
+
+        expect(table.some((policy) => policy.resource.endsWith('@appspot.gserviceaccount.com'))).toBe(false);
     });
 });

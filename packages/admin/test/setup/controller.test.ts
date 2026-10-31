@@ -172,6 +172,25 @@ describe('start', () => {
         await controller.start('normal', null);
 
         expect(controller.getState().error).toEqual({ key: 'apiError.unavailable' });
+        expect(controller.getState().steps.mapbox.unknown).toBe(false);
+    });
+});
+
+describe('a server older than the admin (finding 27 of 2026-10-31)', () => {
+    it('badPath_aRecordOlderThanTheAdminLeavesItsStepsUnknownNotToDo @S-A03-BAD-OLDER-SERVER-STATUS', async () => {
+        // Finding 27 of 2026-10-31: the server answered, in a shape the admin cannot read.
+        const { controller } = setup((h) => {
+            h.backend.status.mockRejectedValue(functionsError('apiError.serverOutdated'));
+        });
+
+        await controller.start('normal', null);
+
+        const state = controller.getState();
+        expect(state).toMatchObject({ error: { key: 'apiError.serverOutdated' }, serverOutdated: true });
+        expect(['signIn', 'deploy', 'claim'].map((id) => state.steps[id as 'claim'].state)).toEqual(['ok', 'ok', 'ok']);
+        expect(state.steps.mapbox).toMatchObject({ state: 'missing', unknown: true });
+        expect(state.steps.usgs.unknown).toBe(true);
+        expect(state.steps.claim.unknown).toBe(false);
     });
 });
 

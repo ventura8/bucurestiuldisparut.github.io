@@ -3,7 +3,7 @@ import { CLOUD_RUN_JOBS, INSTALLER_ACCOUNT, installLogLine, type InstallTarget }
 import { FIXTURE_VALUES } from '../api-fixtures/index.js';
 import { authenticated, googleError, googleFailure, type GoogleApi, type GoogleProjects } from './google-common.js';
 import { registryFunctions, type DeploymentState } from './google-functions.js';
-import type { IamState } from './google-iam.js';
+import { appEngineAccount, grantAccountRole, holdsAccountRole, projectIam, type IamState } from './google-iam.js';
 import { setJobSpec, type CloudRunState } from './google-run.js';
 import { enableService, serviceEnabled, type ServiceUsageState } from './google-services.js';
 import { jsonResponse, requestObject, route, type Route } from './routes.js';
@@ -29,6 +29,9 @@ export const BUILD_OUTCOMES = [
     'failsAtFunctions',
     'failsAtBuild',
     'failsAtHosting',
+    // Finding 28 of 2026-10-31: firebase-tools' own check before a functions deploy, the installer's actAs on the App
+    // Engine default account; a server build that would succeed plays it when the IAM fake says the grant is missing.
+    'failsAtActAs',
     'retriesExhausted',
     'internalError',
 ] as const;
@@ -52,7 +55,7 @@ export interface FakeBuild {
     readonly stepIds: readonly string[];
     readonly tags: readonly string[];
     readonly substitutions: Readonly<Record<string, string>>;
-    readonly outcome: BuildOutcome;
+    outcome: BuildOutcome;
     status: BuildStatus;
     /** Index of the step under way (WORKING), or of the step a stopped build stopped at. */
     current: number;
@@ -90,17 +93,38 @@ export interface BuildWorld {
     readonly iam: IamState;
 }
 
-type ProjectIam = IamState['projects'] extends Map<string, infer Project> ? Project : never;
+const SERVICE_ACCOUNT_USER = 'roles/iam.serviceAccountUser';
 
-/** The installer's account in `projectId`, as Provision's `service-accounts` item creates it (a map set up before M6). */
+function installerMember(projectId: string): string {
+    return `serviceAccount:${INSTALLER_ACCOUNT}@${projectId}.iam.gserviceaccount.com`;
+}
+
+/**
+ * The installer's account in `projectId`, as Provision's `service-accounts` and `iam` items make it (a map set up in an
+ * earlier session): with its Service Account User role on the App Engine default account when the project has one.
+ */
 function addInstallerAccount(iam: IamState, projectId: string): void {
-    const existing = iam.projects.get(projectId);
-    const project: ProjectIam = existing ?? {
-        ...{ accounts: new Map(), accountPolicies: new Map(), pools: new Map() },
-        ...{ providers: new Map(), deleted: new Set(), roles: new Map() },
-    };
+    const project = projectIam(iam, projectId);
     project.accounts.set(INSTALLER_ACCOUNT, 'Cloud Build: the in-app installer');
-    iam.projects.set(projectId, project);
+    const appEngine = appEngineAccount(projectId);
+    if (project.googleAccounts.has(appEngine)) {
+        grantAccountRole(project, appEngine, SERVICE_ACCOUNT_USER, installerMember(projectId));
+    }
+}
+
+/**
+ * firebase-tools' `checkServiceAccountIam` (`lib/deploy/functions/checkIam.js`, run before any functions deploy): the
+ * deploying account must hold `iam.serviceAccounts.actAs` on `<project>@appspot.gserviceaccount.com` when that account
+ * exists (a check that errors, as for a missing account, is skipped). Provision never grants it project-wide, so the
+ * account's own policy decides. A world with no IAM state of the project had no Prepare the project: nothing to check.
+ */
+function lacksActAs(iam: IamState, projectId: string): boolean {
+    const project = iam.projects.get(projectId);
+    const appEngine = appEngineAccount(projectId);
+    if (project?.googleAccounts.has(appEngine) !== true) {
+        return false;
+    }
+    return !holdsAccountRole(project, appEngine, SERVICE_ACCOUNT_USER, installerMember(projectId));
 }
 
 /** A token and a secret planted in a stopped step's log: the admin must redact both (S-A55-BAD-BUILD-FAILED). */
@@ -145,6 +169,7 @@ function stopStep(build: FakeBuild): number {
         failsAtFunctions: 'functions',
         failsAtBuild: 'build',
         failsAtHosting: 'hosting',
+        failsAtActAs: 'functions',
         retriesExhausted: 'verify',
     };
     const step = stops[build.outcome];
@@ -160,6 +185,16 @@ function retryLines(attempt: number): FakeLogLine[] {
         { step: 'functions', text: 'Error: Permission denied while using the Eventarc Service Agent. This may take a few minutes.' },
         { step: 'functions', text: installLogLine({ event: 'retry', attempt, waitSeconds: 60 * attempt, reason: 'eventarcAgent' }) },
     ];
+}
+
+/** What firebase-tools prints when the installer may not act as the App Engine default account (finding 28). */
+function actAsLines(projectId: string): FakeLogLine[] {
+    const lines = [
+        `Error: Missing permissions required for functions deploy. You must have permission iam.serviceAccounts.ActAs on service account ${appEngineAccount(projectId)}.`,
+        'To address this error, ask a project Owner to assign your account the "Service Account User" role from this URL:',
+        `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`,
+    ];
+    return lines.map((text) => ({ step: 'functions', text }));
 }
 
 function failureLines(step: string): FakeLogLine[] {
@@ -197,6 +232,9 @@ function stopLines(build: FakeBuild): FakeLogLine[] {
     if (build.outcome === 'retriesExhausted') {
         return [...retryLines(2), ...retryLines(3), ...missingLines()];
     }
+    if (build.outcome === 'failsAtActAs') {
+        return actAsLines(build.projectId);
+    }
     return build.outcome.startsWith('failsAt') ? failureLines(build.stepIds[stopStep(build)] ?? 'fetch') : [];
 }
 
@@ -207,12 +245,20 @@ function finalStatus(outcome: BuildOutcome): BuildStatus {
     return outcome === 'succeeds' || outcome === 'retries' ? 'SUCCESS' : 'FAILURE';
 }
 
+/** A server build that would succeed stops at firebase-tools' actAs check when the grant is missing (finding 28). */
+function checkPreconditions(build: FakeBuild, world: BuildWorld): void {
+    if (build.target === 'server' && finalStatus(build.outcome) === 'SUCCESS' && lacksActAs(world.iam, build.projectId)) {
+        build.outcome = 'failsAtActAs';
+    }
+}
+
 /** The build ends as its outcome says, and a success changes the world. */
 function finish(build: FakeBuild, state: CloudBuildState, world: BuildWorld): void {
     start(build);
     if (build.status !== 'WORKING') {
         return;
     }
+    checkPreconditions(build, world);
     build.status = finalStatus(build.outcome);
     build.current = stopStep(build);
     build.finishTime = now();

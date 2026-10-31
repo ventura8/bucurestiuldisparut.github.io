@@ -124,6 +124,7 @@ describe('<hcm-setup-deploy>: Install the server', () => {
         expect(shadowPart(element, '.failed-at').textContent).toBe("Stopped at the step: The server's functions.");
         expect(shadowPart(element, '.log').textContent).toBe('Error: functions failed\nAuthorization: Bearer [redacted]');
         expect(shadowPart(element, '.missing').textContent).toBe('Missing functions: ops-tick.');
+        expect(element.renderRoot.querySelector('[data-fix]')).toBeNull();
         await expect
             .element(page.getByRole('link', { name: /Open the installation in the Google Cloud console/ }))
             .toHaveAttribute('href', server.consoleUrl);
@@ -181,6 +182,27 @@ describe('<hcm-setup-deploy>: Install the server', () => {
         });
 
         expect(shadowPart(element, '[role="alert"]').textContent).toContain('unavailable');
+    });
+});
+
+describe('<hcm-setup-deploy>: a permission of step c (finding 28 of 2026-10-31)', () => {
+    afterEach(cleanup);
+
+    it('badPath_aBuildStoppedAtAPermissionOfStepCSaysToRetryThereFirst', async () => {
+        // Finding 28 of 2026-10-31: firebase-tools' actAs check; Try again alone would stop the same way.
+        const server = {
+            state: 'failed',
+            failedStep: 'functions',
+            log: ['Error: Missing permissions required for functions deploy.'],
+            fixInProvision: true,
+        } as const;
+        const { port, element } = await card('deploy', { server }, { steps: { deploy: { state: 'pending' } } }, 'ro');
+
+        expect(shadowPart(element, '[data-fix="provision"]').textContent).toContain('Lipsește o permisiune dată de pasul c');
+        await page.getByRole('button', { name: 'Reia ce nu a reușit în pasul c' }).click();
+        expect(port.calls).toEqual([['provision']]);
+        await expect.element(page.getByRole('button', { name: 'Încearcă din nou' })).toBeEnabled();
+        expect(await axeViolations(element)).toEqual([]);
     });
 });
 

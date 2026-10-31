@@ -89,6 +89,13 @@ export interface ServiceAgents {
      * installer may read the project's policy but never write it. Undefined: nothing is bound to it.
      */
     readonly computeDefault: string | undefined;
+    /**
+     * Finding 28 of `docs/research/manual-test-2026-10-25.md (live test 2026-10-31)`: the App Engine default account
+     * (`<project>@appspot.gserviceaccount.com`) when the project has one. firebase-tools checks, before any functions
+     * deploy, that the deploying account may act as it (`checkServiceAccountIam`), so the installer gets Service Account
+     * User on that one account, never project-wide (`DECISIONS-for-review.md` §75). Undefined: nothing to grant.
+     */
+    readonly appEngineDefault: string | undefined;
 }
 
 function grants(member: string, roles: readonly string[]): WantedBinding[] {
@@ -118,6 +125,14 @@ export interface CustomRoleEntry {
  */
 const INSTALLER_ROLE_ID = 'hcmInstaller';
 const INSTALLER_PERMISSIONS: readonly string[] = [
+    // Finding 28: firebase-tools' `checkHttpIam` refuses a deploy that creates an HTTPS function without this permission
+    // on the project (roles/cloudfunctions.developer lacks it; gen 2's invoker itself goes through run.services.setIamPolicy).
+    'cloudfunctions.functions.setIamPolicy',
+    // Finding 28: before every functions deploy firebase-tools reads the region of each event trigger's source
+    // (`ensureTriggerRegions`): the Firestore database's metadata and each Storage trigger's bucket; a refused read stops
+    // the deploy ("Can't find the storage bucket region"). Read-only metadata, the narrowest permissions holding them.
+    'datastore.databases.getMetadata',
+    'storage.buckets.get',
     'run.services.get',
     'run.services.getIamPolicy',
     'run.services.setIamPolicy',
@@ -303,6 +318,18 @@ function serviceAccountBindings(project: ProjectConfig): PolicyBindings[] {
     ];
 }
 
+/**
+ * Finding 28: the installer may act as the App Engine default account, which firebase-tools requires before a functions
+ * deploy; a resource-level binding on that one account, and none when the project has no such account.
+ */
+function appEngineBindings(project: ProjectConfig, agents: ServiceAgents): PolicyBindings[] {
+    if (agents.appEngineDefault === undefined) {
+        return [];
+    }
+    const binding: WantedBinding = { role: 'roles/iam.serviceAccountUser', member: projectNames(project).member(INSTALLER_ACCOUNT) };
+    return [{ kind: 'serviceAccount', resource: agents.appEngineDefault, bindings: [binding] }];
+}
+
 /** Every policy the `iam` item keeps (§3.4.1), project first. */
 export function roleTable(project: ProjectConfig, agents: ServiceAgents, noDefaultGrants: boolean): PolicyBindings[] {
     return [
@@ -310,6 +337,7 @@ export function roleTable(project: ProjectConfig, agents: ServiceAgents, noDefau
         ...bucketBindings(project),
         ...secretBindings(project),
         ...serviceAccountBindings(project),
+        ...appEngineBindings(project, agents),
         repositoryBindings(project),
     ];
 }

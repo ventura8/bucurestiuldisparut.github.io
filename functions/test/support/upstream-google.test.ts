@@ -21,6 +21,49 @@ async function call(
     return { status: response.status, body: text === '' ? undefined : (JSON.parse(text) as unknown) };
 }
 
+/** A server build of the in-app installer, as the admin submits it, ended by the fake; its final status. */
+async function serverBuild(fakes: UpstreamFakes): Promise<string> {
+    const builds = 'https://cloudbuild.googleapis.com/v1/projects/demo-hcm/locations/us-central1/builds';
+    const request = { tags: ['hcm-install', 'hcm-server', 'hcm-r-1-0-0-abc1234'], steps: [{ id: 'fetch' }, { id: 'functions' }] };
+    expect((await call(fakes, 'POST', builds, request)).status).toBe(200);
+    fakes.scenario('cloud-build.finish');
+    const [build] = (fakes.snapshot()['cloud-build'] as { readonly builds: readonly { readonly status: string }[] }).builds;
+    return build?.status ?? 'none';
+}
+
+describe("Cloud Build: firebase-tools' actAs check (finding 28 of 2026-10-31)", () => {
+    it('happyPath_anInstallerMadeByPrepareTheProjectActsAsTheAppEngineAccountAndTheServerInstalls', async () => {
+        const fakes = createUpstreamFakes();
+        fakes.scenario('google.provisioned');
+        fakes.scenario('cloud-build.installerAccount');
+
+        expect(await serverBuild(fakes)).toBe('SUCCESS');
+    });
+
+    it('badPath_withoutTheGrantTheServerBuildStopsAtFunctionsWithFirebaseToolsLines', async () => {
+        const fakes = createUpstreamFakes();
+        fakes.scenario('google.provisioned');
+        fakes.scenario('cloud-build.installerAccount');
+        fakes.scenario('iam.appEngineActAsMissing');
+
+        expect(await serverBuild(fakes)).toBe('FAILURE');
+        expect(JSON.stringify(fakes.snapshot()['cloud-build'])).toContain('"id":"functions","status":"FAILURE"');
+    });
+
+    it.each([
+        ['a project without the App Engine default account', ['iam.noAppEngineAccount', 'cloud-build.installerAccount']],
+        ['a world whose IAM nothing prepared', []],
+    ])('happyPath_%s_hasNoCheckToFail', async (_name, scenarios) => {
+        const fakes = createUpstreamFakes();
+        fakes.scenario('google.provisioned');
+        scenarios.forEach((scenario) => {
+            fakes.scenario(scenario);
+        });
+
+        expect(await serverBuild(fakes)).toBe('SUCCESS');
+    });
+});
+
 describe('Google identity: tokeninfo and Resource Manager', () => {
     it('happyPath_theOwnerTokenNamesTheOwnerAndProvesOwnership', async () => {
         const fakes = createUpstreamFakes();
@@ -228,7 +271,29 @@ describe('IAM', () => {
         });
         expect(await call(fakes, 'POST', `${IAM}/serviceAccounts/${email}:getIamPolicy`, {})).toMatchObject({ body: policy });
         expect(await call(fakes, 'GET', `${IAM}/serviceAccounts/${email}`)).toMatchObject({ status: 200, body: { email } });
-        expect((await call(fakes, 'GET', `${IAM}/serviceAccounts`)).body).toMatchObject({ accounts: [{ email }] });
+        // Google's own App Engine default account is listed too (finding 28 of 2026-10-31).
+        expect((await call(fakes, 'GET', `${IAM}/serviceAccounts`)).body).toMatchObject({
+            accounts: [{ email }, { email: 'demo-hcm@appspot.gserviceaccount.com' }],
+        });
+    });
+
+    it('happyPath_theAppEngineDefaultAccountIsGooglesOwn_badPath_aProjectWithoutItAnswers404', async () => {
+        const fakes = createUpstreamFakes();
+        const appEngine = 'demo-hcm@appspot.gserviceaccount.com';
+        const user = {
+            bindings: [{ role: 'roles/iam.serviceAccountUser', members: ['serviceAccount:x@demo-hcm.iam.gserviceaccount.com'] }],
+        };
+
+        expect(await call(fakes, 'GET', `${IAM}/serviceAccounts/${appEngine}`)).toMatchObject({
+            status: 200,
+            body: { email: appEngine, name: `projects/demo-hcm/serviceAccounts/${appEngine}` },
+        });
+        expect((await call(fakes, 'POST', `${IAM}/serviceAccounts/${appEngine}:setIamPolicy`, { policy: user })).status).toBe(200);
+        fakes.scenario('iam.appEngineActAsMissing');
+        expect(await call(fakes, 'POST', `${IAM}/serviceAccounts/${appEngine}:getIamPolicy`, {})).toMatchObject({ body: { bindings: [] } });
+        fakes.scenario('iam.noAppEngineAccount');
+        expect((await call(fakes, 'GET', `${IAM}/serviceAccounts/${appEngine}`)).status).toBe(404);
+        expect((await call(fakes, 'GET', `${IAM}/serviceAccounts`)).body).toEqual({ accounts: [] });
     });
 
     it('badPath_anUnknownAccountOrAnInvalidIdIsRefused', async () => {

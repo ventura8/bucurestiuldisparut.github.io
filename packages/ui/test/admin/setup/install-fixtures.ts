@@ -16,6 +16,7 @@ function installTargetView(target: InstallTarget, changes: Partial<InstallTarget
         steps: INSTALL_STEPS[target].map((id) => ({ id, state: 'waiting' })),
         failedStep: null,
         log: [],
+        fixInProvision: false,
         missing: [],
         retryReason: null,
         retryAt: null,

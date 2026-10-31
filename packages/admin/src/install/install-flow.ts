@@ -27,6 +27,7 @@ import {
     deriveInstallState,
     endedByGoogle,
     failedStepOf,
+    fixedInProvision,
     hasEnded,
     initialTargetView,
     isRunning,
@@ -120,8 +121,10 @@ function shownRelease(observation: TargetObservation, state: InstallState): stri
 }
 
 /** A failed build's step and its last lines; nothing for any other state. */
-function failureFields(summary: LogSummary, state: InstallState): Pick<InstallTargetView, 'failedStep' | 'log'> {
-    return state === 'failed' ? { failedStep: summary.failedStep, log: summary.tail } : { failedStep: null, log: [] };
+function failureFields(summary: LogSummary, state: InstallState): Pick<InstallTargetView, 'failedStep' | 'log' | 'fixInProvision'> {
+    return state === 'failed'
+        ? { failedStep: summary.failedStep, log: summary.tail, fixInProvision: fixedInProvision(summary.tail) }
+        : { failedStep: null, log: [], fixInProvision: false };
 }
 
 /** When a retry that `waitSeconds` after `writtenAt` tries again, or null without a time. */
@@ -363,6 +366,7 @@ class TargetFlow implements InstallFlow {
                 ...this.#buildFields(build),
                 failedStep: null,
                 log: [],
+                fixInProvision: false,
                 missing: [],
                 retryReason: null,
                 retryAt: null,

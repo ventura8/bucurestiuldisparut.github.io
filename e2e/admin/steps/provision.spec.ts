@@ -297,9 +297,33 @@ test(
     },
 );
 
+/** The App Engine default account's own IAM policy in the browser's world of the IAM fake (none: no policy). */
+function appEnginePolicy(snapshot: Readonly<Record<string, unknown>>): unknown {
+    const iam = snapshot['iam'] as { readonly projects: Record<string, { readonly accountPolicies: Record<string, unknown> }> };
+    return iam.projects[ADMIN_PROJECT.projectId]?.accountPolicies[`${ADMIN_PROJECT.projectId}@appspot.gserviceaccount.com`];
+}
+
+test(
+    'A project without the App Engine default account is prepared in full, with nothing to grant on it',
+    { tag: ['@S-A04-BAD-NO-APPENGINE-ACCOUNT'] },
+    async ({ page, lang, consent, setupBudget, upstream }) => {
+        // Finding 28 of 2026-10-31: the account comes with an App Engine app, which a project may lack (a GET answers 404).
+        test.setTimeout(150_000);
+        await upstream.scenario('iam.noAppEngineAccount', 'browser');
+        const { run } = await provisionCard(page, lang);
+        await withConsent(page, consent, run, setupBudget.inputs('provision'), setupBudget.consents('provision'));
+        const setup = new SetupPage(page, lang);
+
+        await expect.poll(() => setup.provisionItems(), { timeout: 60_000 }).toEqual(PROVISIONED);
+        expect(appEnginePolicy(await upstream.snapshot('browser'))).toBeUndefined();
+        const appEngineCalls = (await upstream.calls('browser')).filter((call) => call.url.includes('@appspot.gserviceaccount.com:'));
+        expect(appEngineCalls).toEqual([]);
+    },
+);
+
 test(
     "Prepare the project makes the installer's account with the contract's roles, the repository, the invokers and the service agents",
-    { tag: ['@S-A04-HAPPY-INSTALLER-ACCOUNT'] },
+    { tag: ['@S-A04-HAPPY-INSTALLER-ACCOUNT', '@S-A04-HAPPY-APPENGINE-ACTAS'] },
     async ({ page, lang, consent, setupBudget, upstream }) => {
         test.setTimeout(150_000);
         const { run } = await provisionCard(page, lang);
@@ -332,6 +356,11 @@ test(
         expect(project['roles/run.invoker']).toEqual([account('fn-admin'), account('fn-events')]);
         expect(JSON.stringify(snapshot['artifact-registry'])).toContain(`"roles/artifactregistry.writer","members":["${installer}"]`);
         expect(JSON.stringify(snapshot['iam'])).toContain('hcm-installer');
+        // Finding 28 of 2026-10-31: Service Account User on the App Engine default account, in its own policy only.
+        expect(appEnginePolicy(snapshot)).toEqual([
+            expect.objectContaining({ role: 'roles/iam.serviceAccountUser', members: [installer] }),
+        ]);
+        expect(project['roles/iam.serviceAccountUser'] ?? []).not.toContain(installer);
         // The service identities are generated before any policy is written (finding 12).
         const calls = await upstream.calls('browser');
         const index = (match: (call: UpstreamCall) => boolean): number => calls.findIndex(match);

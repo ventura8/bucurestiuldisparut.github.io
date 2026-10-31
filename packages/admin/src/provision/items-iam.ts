@@ -20,6 +20,15 @@ async function computeDefault({ clients, project }: ProvisionContext): Promise<s
     return (await clients.iam.listServiceAccounts(project.projectId)).includes(id) ? `${id}@developer.gserviceaccount.com` : undefined;
 }
 
+/**
+ * The App Engine default account's address when the project has it (finding 28 of 2026-10-31: a GET, and a 404 means
+ * nothing to grant, not a failure). Google makes it with the project's App Engine app, so a project may lack it.
+ */
+async function appEngineDefault({ clients, project }: ProvisionContext): Promise<string | undefined> {
+    const email = `${project.projectId}@appspot.gserviceaccount.com`;
+    return (await clients.iam.serviceAccountExists(project.projectId, email)) ? email : undefined;
+}
+
 /** The service agents by their documented names: the doctor never creates them, the fix does first. */
 async function conventionalAgents(context: ProvisionContext): Promise<ServiceAgents> {
     const { projectNumber } = context.project;
@@ -28,6 +37,7 @@ async function conventionalAgents(context: ProvisionContext): Promise<ServiceAge
         cloudStorage: `service-${projectNumber}@gs-project-accounts.iam.gserviceaccount.com`,
         pubsub: `service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
         computeDefault: await computeDefault(context),
+        appEngineDefault: await appEngineDefault(context),
     };
 }
 
@@ -70,6 +80,7 @@ async function bindAll(context: ProvisionContext): Promise<void> {
         cloudStorage: await clients.storage.serviceAgent(project.projectId),
         pubsub: await identity('pubsub.googleapis.com'),
         computeDefault: await computeDefault(context),
+        appEngineDefault: await appEngineDefault(context),
     };
     const table = roleTable(project, agents, (await context.findings()).noDefaultGrants);
     await eachInTurn(table, (policy) => ensureBindings(policyAccess(context, policy), policy.bindings));

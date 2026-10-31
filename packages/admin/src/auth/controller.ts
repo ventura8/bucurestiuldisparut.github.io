@@ -331,7 +331,7 @@ export class AuthController {
         try {
             session = await this.#deps.callables.call('admin.session', {});
         } catch (error) {
-            this.#sessionFailed(detailsOf(error));
+            await this.#sessionFailed(detailsOf(error));
             return;
         }
         if (session.refreshToken && !refreshed) {
@@ -385,8 +385,16 @@ export class AuthController {
         this.#set({ auth: 'claimPending', gate: this.#gate(details) });
     }
 
-    /** A session the server did not give: a retryable failure is a server problem, anything else a refusal. */
-    #sessionFailed(details: ApiErrorDetails): void {
+    /**
+     * A session the server did not give: a retryable failure is a server problem, anything else a refusal. A server older
+     * than the admin (its answer in an older shape, finding 27 of 2026-10-31) cannot say who is an admin: Google's verdict
+     * decides, as in start-up mode, so its owner reaches Setup and Update the map.
+     */
+    async #sessionFailed(details: ApiErrorDetails): Promise<void> {
+        if (details.code === 'apiError.serverOutdated') {
+            await this.#classify();
+            return;
+        }
         if (API_ERRORS[details.code].retryable) {
             this.#set({ auth: 'backendDown', busy: false, gate: this.#gate(details) });
             return;

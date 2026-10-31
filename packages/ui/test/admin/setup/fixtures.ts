@@ -49,6 +49,7 @@ export function stepView(id: SetupStepId, changes: Partial<SetupStepView> = {}):
         busy: false,
         needsContinue: false,
         postponed: false,
+        unknown: false,
         scope: null,
         links: [],
         used: { inputs: 0, consents: 0 },

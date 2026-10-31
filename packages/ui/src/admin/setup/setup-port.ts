@@ -76,6 +76,8 @@ export interface SetupStepView {
     readonly needsContinue: boolean;
     /** M6 setup-ux (A59): the owner chose Do it later; the chip reads Later. */
     readonly postponed: boolean;
+    /** Finding 27 of 2026-10-31: the server is too old to say; the chip reads "Update the server to check", not "To do". */
+    readonly unknown: boolean;
     readonly scope: GoogleScopeName | null;
     readonly links: readonly SetupLinkView[];
     readonly used: StepCounts;
@@ -211,6 +213,8 @@ export interface InstallTargetViewPort {
     readonly failedStep: InstallStepId | null;
     /** A failed build's step's last lines: redacted, shown as text only. */
     readonly log: readonly string[];
+    /** The log names a permission step c's Retry what failed grants (finding 28 of 2026-10-31). */
+    readonly fixInProvision: boolean;
     readonly missing: readonly string[];
     readonly retryReason: TransientDeployReason | null;
     readonly retryAt: string | null;

@@ -116,6 +116,22 @@ export async function preparedProject(options: StartOptions): Promise<Started> {
     return { setup, bundle, deploy: await setup.show('deploy') };
 }
 
+/**
+ * Answers the callable `name` with the emulated server's own answer changed by `older`: the shape of a server older than
+ * the admin (finding 27 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31)). A refusal passes as it is.
+ */
+export async function answerAsOlderServer(page: Page, name: string, older: (result: Record<string, unknown>) => unknown): Promise<void> {
+    await page.route(`**/us-central1/${name}`, async (route: Route) => {
+        const response = await route.fetch();
+        if (!response.ok()) {
+            await route.fulfill({ response });
+            return;
+        }
+        const body = (await response.json()) as { readonly result: Record<string, unknown> };
+        await route.fulfill({ response, json: { result: older(body.result) } });
+    });
+}
+
 /** A card's install state line (`p.install-state`: its icon's name and the state's words). */
 export function installState(card: Locator): Locator {
     return card.locator('p.install-state');

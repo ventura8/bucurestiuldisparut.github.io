@@ -378,6 +378,23 @@ describe('AuthController: the owner claim and invitations', () => {
     });
 });
 
+describe('AuthController against a server older than the admin (finding 27 of 2026-10-31)', () => {
+    it('badPath_anAnswerInAnOlderShapeProvesTheServerAndGooglesVerdictDecides', async () => {
+        const h = harness();
+        h.callables.fail('admin.session', failure('failed-precondition', 'apiError.serverOutdated'));
+        await started(h);
+        expect(h.state()).toMatchObject({ auth: 'signedOut', mode: 'normal' });
+
+        h.port.outcomes.push(access(READ_ONLY));
+        await h.controller.signIn();
+        await settle();
+
+        // Not "not an admin", not "the server is down": the owner reaches Setup, where Update the map replaces the server.
+        expect(h.ownership).toHaveBeenCalledTimes(1);
+        expect(h.state()).toMatchObject({ auth: 'bootstrap', mode: 'bootstrap', user: OWNER });
+    });
+});
+
 describe('AuthController in bootstrap mode (no server yet)', () => {
     it('happyPath_theOwnerSignsInWithTheReadOnlyScopeAndStartsTheSetup', async () => {
         const h = harness();

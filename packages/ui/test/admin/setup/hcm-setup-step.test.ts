@@ -49,6 +49,16 @@ describe('<hcm-setup-step> header', () => {
         expect(element.renderRoot.querySelector('#body')).toBeNull();
     });
 
+    it('badPath_aStepTheOlderServerCannotSayReadsUpdateTheServerNotToDo', async () => {
+        // Finding 27 of 2026-10-31.
+        const { element } = await render(stepView('mapbox', { unknown: true }), { open: false, locale: 'en' });
+
+        const chip = shadowPart(element, '.status');
+        expect(chip.hasAttribute('data-unknown')).toBe(true);
+        expect(chip.textContent).toContain('Update the server to check');
+        expect(chip.textContent).not.toContain('To do');
+    });
+
     it('happyPath_anOpenInlineCardCollapsesOnItsHeader', async () => {
         const { port } = await render(BILLING, { open: true });
 

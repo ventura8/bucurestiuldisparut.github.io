@@ -240,6 +240,39 @@ describe('records', () => {
         cards.dispose();
     });
 
+    it('badPath_aServerStoppedAtAPermissionOfStepCMarksItsIamItemOnce @S-A55-BAD-NO-ACTAS', async () => {
+        // Finding 28 of 2026-10-31: firebase-tools' actAs check on the App Engine default account stopped the install.
+        const { harness, ctx, cards } = setup();
+        harness.google.grant('cloudPlatform');
+        const stopped = { ...build('server', 'FAILURE'), steps: [{ id: 'functions', status: 'FAILURE' as const }] };
+        harness.installer.observe.mockResolvedValue(observed({ build: stopped }));
+        const text = 'Error: Missing permissions required for functions deploy. You must have permission iam.serviceAccounts.ActAs';
+        harness.installer.buildLog.mockResolvedValue([{ step: 'functions', text, time: '' }]);
+
+        cards.watch(['server']);
+        await flush();
+
+        expect(ctx.state().install.server).toMatchObject({ state: 'failed', failedStep: 'functions', fixInProvision: true });
+        expect(ctx.state().provision.items.find((item) => item.id === 'iam')).toEqual({
+            id: 'iam',
+            state: 'invalid',
+            detail: { key: 'adminSetup.provision.installerPermission' },
+        });
+        // Steps (d) onwards wait for (c): its chip stays, so the server card that says what to do stays open.
+        expect(ctx.state().steps.provision.state).toBe('ok');
+        expect(ctx.state().steps.deploy.available).toBe(true);
+
+        // Retry what failed made the item right; later looks at the same stopped build leave it alone.
+        ctx.update((state) => ({
+            ...state,
+            provision: { items: state.provision.items.map((item) => ({ ...item, state: 'ok' as const })) },
+        }));
+        await harness.clock.advance(60_000);
+        await flush();
+        expect(ctx.state().provision.items.find((item) => item.id === 'iam')?.state).toBe('ok');
+        cards.dispose();
+    });
+
     it('badPath_inStartUpModeNothingIsSentToTheServer', async () => {
         const { harness, cards } = setup('bootstrap');
         harness.google.grant('cloudPlatform');

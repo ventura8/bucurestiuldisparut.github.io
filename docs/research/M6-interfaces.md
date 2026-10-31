@@ -101,6 +101,7 @@ builds the owner submits; nothing impersonates it otherwise (no key, no Workload
 | --- | --- | --- |
 | `roles/cloudfunctions.developer` | project | create and update the functions (gen 2) |
 | `roles/iam.serviceAccountUser` | `fn-admin@`, `fn-events@`, `fn-crash@` (server), `job-raster@` (pipeline); never project-wide | deploy a function or job that runs as that account |
+| `roles/iam.serviceAccountUser` | `<project>@appspot.gserviceaccount.com` (the App Engine default account), only when it exists; never project-wide | added 2026-10-31 (finding 28): `firebase-tools`' `checkServiceAccountIam` refuses any functions deploy without `iam.serviceAccounts.actAs` on it (`DECISIONS-for-review.md` §75a, the trade-off and §75b) |
 | `roles/firebaserules.admin` | project | release the Firestore and Storage rules |
 | `roles/datastore.indexAdmin` | project | the Firestore indexes |
 | `roles/cloudscheduler.admin` | project | the jobs of `ops.tick` and `imagery.tick` |
@@ -110,8 +111,12 @@ builds the owner submits; nothing impersonates it otherwise (no key, no Workload
 | `roles/firebasehosting.admin` | project | the Hosting release and the site's `maxVersions` |
 | `roles/artifactregistry.writer` | repository `hcm` | push the pipeline image |
 | `roles/logging.logWriter` | project | a build with a user-specified account writes its log to Cloud Logging only |
-| `projects/<project>/roles/hcmInstaller` (custom, made by the `iam` item) | project | `run.services.get`, `run.services.getIamPolicy`, `run.services.setIamPolicy` (the public invoker of the callables and HTTPS functions), `run.jobs.create`, `run.jobs.get`, `run.jobs.update`, `run.operations.get` (the pipeline's two jobs), `resourcemanager.projects.getIamPolicy` (`firebase-tools` reads the service agents' bindings that Provision made), `artifactregistry.repositories.get`, `artifactregistry.repositories.update` (the cleanup policy `--force` sets on `gcf-artifacts`) |
+| `projects/<project>/roles/hcmInstaller` (custom, made by the `iam` item) | project | added 2026-10-31 (finding 28, lesson 298): `cloudfunctions.functions.setIamPolicy` (`firebase-tools`' `checkHttpIam` before a new HTTPS function), `datastore.databases.getMetadata` and `storage.buckets.get` (its trigger-region lookups before every functions deploy); `run.services.get`, `run.services.getIamPolicy`, `run.services.setIamPolicy` (the public invoker of the callables and HTTPS functions), `run.jobs.create`, `run.jobs.get`, `run.jobs.update`, `run.operations.get` (the pipeline's two jobs), `resourcemanager.projects.getIamPolicy` (`firebase-tools` reads the service agents' bindings that Provision made), `artifactregistry.repositories.get`, `artifactregistry.repositories.update` (the cleanup policy `--force` sets on `gcf-artifacts`) |
 
+- **Addendum (2026-10-31, the live test's finding 28)**: the table now holds what `firebase-tools` checks before it
+  deploys, not only what the deploy's calls need; the full list against these roles is lesson 298 of `docs/LESSONS.md`.
+  Which permission Service Usage's `generateServiceIdentity` (called by `firebase-tools` on every gen 2 deploy) checks
+  stays UNVERIFIED; the e2e fakes enforce the actAs check (S-A55-BAD-NO-ACTAS).
 - Why a custom role (as `hcmVertexDrafts`, `DECISIONS-for-review.md` §57g): `roles/run.admin` and `roles/run.developer`
   would also let the installer replace any Cloud Run service's code, `roles/resourcemanager.projectIamAdmin` would let it
   grant anything, and `roles/artifactregistry.repoAdmin` at the project would let it delete repositories.

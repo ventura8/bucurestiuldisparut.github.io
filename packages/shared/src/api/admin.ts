@@ -56,8 +56,10 @@ export const sessionResponseSchema = z.strictObject({
      * M5 (`docs/research/M5-interfaces.md` §1.3, §1.5): the caller's cities with their role and name, for the switcher
      * (none for a non-admin), and whether the caller is the project's owner (who creates cities and sets their budgets).
      */
-    cities: sessionCitiesSchema,
-    projectOwner: z.boolean(),
+    // Finding 27 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31): a server from before M5 answers without them; the admin reads
+    // it as no city and not the project's owner (Setup still opens for its owner role, and Update the map replaces it).
+    cities: sessionCitiesSchema.default([]),
+    projectOwner: z.boolean().default(false),
 });
 
 /** `admin.claim`: the project owner's token, granted with `CLAIM_OAUTH_SCOPE` in the sign-in popup. */

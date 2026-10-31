@@ -134,13 +134,14 @@ describe('callablesPort', () => {
         ]);
     });
 
-    it('badPath_anAnswerThatFailsItsSchemaIsInternal', async () => {
+    it('badPath_anAnswerThatFailsItsSchemaIsAnOutdatedServerNotAnOutage', async () => {
+        // Finding 27 of 2026-10-31: a server answered, in a shape older than the admin reads.
         const w = world();
         w.answers.set('admin-session', () => Promise.resolve({ data: { admin: 'yes' } }));
 
         await expect(callablesPort(w.typed, w.handles).call('admin.session', {})).rejects.toMatchObject({
-            status: 'internal',
-            details: { code: 'apiError.internal' },
+            status: 'failed-precondition',
+            details: { code: 'apiError.serverOutdated' },
         });
     });
 

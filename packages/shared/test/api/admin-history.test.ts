@@ -108,15 +108,26 @@ describe('admin callables', () => {
             'role',
         ],
         [
-            'a session without its cities',
+            'a session whose cities are not a list',
             sessionResponseSchema,
-            { admin: true, role: 'admin', claim: true, refreshToken: false, ownerClaimed: true, invitePending: false, projectOwner: false },
+            {
+                ...{ admin: true, role: 'admin', claim: true, refreshToken: false, ownerClaimed: true, invitePending: false },
+                ...{ cities: 'bucharest', projectOwner: false },
+            },
             'cities',
         ],
     ])('badPath_%s', (_name, schema: z.ZodType, input, path) => {
         const result = validate(schema, input);
 
         expect(result.ok ? [] : result.issues.map((issue) => issue.path)).toContain(path);
+    });
+});
+
+describe('a server from before M5 (finding 27 of 2026-10-31)', () => {
+    it('happyPath_aSessionWithoutCitiesAndProjectOwnerReadsAsNoCityAndNotTheOwner', () => {
+        const old = { admin: true, role: 'owner', claim: true, refreshToken: false, ownerClaimed: true, invitePending: false };
+
+        expect(sessionResponseSchema.parse(old)).toEqual({ ...old, cities: [], projectOwner: false });
     });
 });
 
