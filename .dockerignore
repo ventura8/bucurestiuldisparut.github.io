@@ -9,6 +9,7 @@
 !firebase/rules-tests/package.json
 !e2e/package.json
 !vendor/npm/braces/**
+!vendor/npm/minimatch/**
 !scripts/ci/requirements.txt
 !pipeline/requirements-poetry.txt
 !pipeline/pyproject.toml

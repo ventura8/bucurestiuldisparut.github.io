@@ -6,7 +6,7 @@
  * - `server.tgz`: `functions/dist/` (the bundle, its `package.json`, its deploy lock, `.env.<project>` with `HCM_RELEASE`,
  *   the export kit; an allowlist, so nothing else, a local secret file least of all, is ever published),
  *   a `firebase.json` of the server's parts (no `predeploy`), the Firestore and Storage rules and indexes, `.firebaserc`,
- *   `tools/` (the locked `firebase-tools`) and `steps/`;
+ *   `tools/` (the locked `firebase-tools`, with the vendored copies its lock links to) and `steps/`;
  * - `pipeline.tgz`: the raster pipeline's Docker context (no tests) and `steps/`;
  * - `hosting.tgz`: the public Hosting tree under `public/` without `admin/install/**`, a `firebase.json` of Hosting
  *   only, `.firebaserc`, `tools/` and `steps/`;
@@ -38,7 +38,7 @@ import { adminRelease, type BuildEnvironment } from '../admin/runtime.js';
 import { SiteBuildError } from '../errors.js';
 import type { SiteFileSystem } from '../files.js';
 import { tgz, type TarEntry } from './tar.js';
-import { toolsFolder, type Lockfile } from './tools-lock.js';
+import { toolsFolder, type Lockfile, type RootManifest } from './tools-lock.js';
 
 /** The Node image of every Node step, by digest: the quality image's own pin (`docker/Dockerfile.quality`, a test keeps them equal). */
 export const NODE_STEP_IMAGE = 'node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20';
@@ -156,12 +156,18 @@ function sharedEntries(files: SiteFileSystem, projectId: string, steps: StepFile
     if (!tools) {
         return step;
     }
-    const folder = toolsFolder(JSON.parse(files.readText('package-lock.json')) as Lockfile);
+    const folder = toolsFolder(
+        JSON.parse(files.readText('package-lock.json')) as Lockfile,
+        JSON.parse(files.readText('package.json')) as RootManifest,
+    );
+    // A vendored copy's own install folder, if npm ever made one, is not part of the copy.
+    const nested = (path: string): boolean => path.split('/').includes('node_modules');
     return [
         ...step,
         { path: '.firebaserc', content: json({ projects: { default: projectId } }) },
         { path: 'tools/package.json', content: encoder.encode(folder.packageJson) },
         { path: 'tools/package-lock.json', content: encoder.encode(folder.packageLock) },
+        ...folder.vendored.flatMap((dir) => folderEntries(files, dir, `tools/${dir}/`, nested)),
     ];
 }
 

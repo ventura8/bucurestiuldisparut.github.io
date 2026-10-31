@@ -60,7 +60,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
 
 ## Fixing a gate
 
-Never suppress: no inline directive of any tool, no `.skip`/`.only`/`xfail`, no lowered threshold, no exclusion to pass. Split the function, type the value, render with Lit or `textContent`, log through `createLogger` or `scripts/ci/cilog.py`, drive the uncovered branch from outside. A genuine relaxation goes into the tool's single config with a why-comment, and editing a lint config is ask first. An advisory is fixed with `overrides` (or a vendored patch such as `vendor/npm/braces`), never an allowlist; a transitive one whose fix every dependant's range accepts is a lockfile refresh of its entries instead (`.agent/skills/quality/pipeline_skill.md` → *Local tooling quirks*), and a Python one a new exact pin in every requirements file that names the package.
+Never suppress: no inline directive of any tool, no `.skip`/`.only`/`xfail`, no lowered threshold, no exclusion to pass. Split the function, type the value, render with Lit or `textContent`, log through `createLogger` or `scripts/ci/cilog.py`, drive the uncovered branch from outside. A genuine relaxation goes into the tool's single config with a why-comment, and editing a lint config is ask first. An advisory is fixed with `overrides` (or a vendored copy such as `vendor/npm/braces` or `vendor/npm/minimatch`), never an allowlist; a transitive one whose fix every dependant's range accepts is a lockfile refresh of its entries instead (`.agent/skills/quality/pipeline_skill.md` → *Local tooling quirks*), and a Python one a new exact pin in every requirements file that names the package.
 
 ## Hard-won rules
 

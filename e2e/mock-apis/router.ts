@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { KIT_PLACEHOLDER_TOKEN } from '@hcm/shared';
 
@@ -45,8 +47,21 @@ export interface MockFiles {
     readonly cdnEngine: string;
 }
 
-/** The only Mapbox GL JS release the mock serves (the pinned devDependency). */
-const MAPBOX_GL_PATH = /^\/mapbox-gl-js\/v3\.32\.0\/(mapbox-gl(?:-csp|-csp-worker)?\.(?:js|css)(?:\.map)?)$/;
+/** The release a package.json names; a file without one stops the mock at start, before any test runs. */
+function packageRelease(text: string): string {
+    const version = /"version":\s*"(\d+\.\d+\.\d+)"/.exec(text)?.[1];
+    if (version === undefined) throw new Error('mapbox-gl/package.json names no release');
+    return version;
+}
+
+/**
+ * The only Mapbox GL JS release the mock serves: the pinned devDependency's own version, read from its package.json so a
+ * bump cannot leave the route behind (the 3.34.1 update did once: every page then failed on a 404 for the library).
+ */
+const MAPBOX_GL_RELEASE = packageRelease(readFileSync(fileURLToPath(import.meta.resolve('mapbox-gl/package.json')), 'utf8'));
+const MAPBOX_GL_PATH = new RegExp(
+    `^/mapbox-gl-js/v${MAPBOX_GL_RELEASE.replaceAll('.', '\\.')}/(mapbox-gl(?:-csp|-csp-worker)?\\.(?:js|css)(?:\\.map)?)$`,
+);
 const STYLE_PATH = /^\/styles\/v1\/([\w.-]+)\/([\w.-]+)$/;
 const SPRITE_PATH = /^\/styles\/v1\/[\w.-]+\/[\w.-]+\/sprite(?:@2x)?\.(json|png)$/;
 /** Mapbox GL 3.32 also asks a `mapbox://sprites/…` sprite for its vector icon set; an empty message has no icons. */

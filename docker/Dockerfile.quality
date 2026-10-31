@@ -143,6 +143,7 @@ RUN --mount=type=cache,id=hcm-pip,target=/root/.cache/pip,sharing=locked \
 WORKDIR /opt/hcm/workspace
 COPY --from=manifests /m/ ./
 COPY vendor/npm/braces vendor/npm/braces
+COPY vendor/npm/minimatch vendor/npm/minimatch
 RUN --mount=type=cache,id=hcm-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=hcm-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     npm ci --no-audit --no-fund \

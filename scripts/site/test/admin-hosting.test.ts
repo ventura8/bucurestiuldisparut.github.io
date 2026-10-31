@@ -76,7 +76,7 @@ describe('parseHostingConfig', () => {
 
         expect(hosting.public).toBe('dist/hosting');
         expect([hosting.cleanUrls, hosting.trailingSlash]).toEqual([true, true]);
-        expect(hosting.redirects).toEqual([{ source: '/admin', destination: '/admin/', type: 301 }]);
+        expect(hosting.redirects).toEqual([{ regex: '^/admin$', destination: '/admin/', type: 301 }]);
         expect(hosting.rewrites).toEqual([
             { source: '/admin/**', destination: '/admin/index.html' },
             { regex: CITY_PATH_REGEX, destination: '/city/index.html' },
@@ -209,6 +209,16 @@ describe('resolveHostingPath over the committed rules', () => {
 
         expect(redirectOf(hosting, '/old/x', '?a=1')).toEqual({ kind: 'redirect', status: 302, location: '/?a=1' });
         expect(redirectOf(hosting, '/new/x')).toBeUndefined();
+    });
+
+    it('badPath_theAdminRedirectNeverMatchesItsOwnDestination', () => {
+        // A `source: "/admin"` glob also matches `/admin/` in superstatic (the emulator answered 301 to itself): the rule
+        // is an anchored regex, so the destination is never redirected again.
+        const hosting = committedHosting();
+
+        expect(redirectOf(hosting, '/admin', '?lang=en')).toEqual({ kind: 'redirect', status: 301, location: '/admin/?lang=en' });
+        expect(redirectOf(hosting, '/admin/')).toBeUndefined();
+        expect(redirectOf(hosting, '/admin/photos')).toBeUndefined();
     });
 });
 

@@ -84,6 +84,8 @@ describe('buildInstallBundle', () => {
                 'firebase/storage.rules',
                 '.firebaserc',
                 'tools/package-lock.json',
+                'tools/vendor/npm/minimatch/index.cjs',
+                'tools/vendor/npm/minimatch/commonjs/index.js',
                 'steps/steps.mjs',
             ]),
         );
@@ -92,7 +94,15 @@ describe('buildInstallBundle', () => {
         );
         expect(at('pipeline.tgz').some((path) => path.includes('tests/') || path.includes('__pycache__'))).toBe(false);
         const hosting = at('hosting.tgz');
-        expect(hosting).toEqual(expect.arrayContaining(['public/index.html', 'public/admin/index.html', 'firebase.json']));
+        expect(hosting).toEqual(
+            expect.arrayContaining([
+                'public/index.html',
+                'public/admin/index.html',
+                'firebase.json',
+                'tools/vendor/npm/minimatch/package.json',
+            ]),
+        );
+        expect(hosting.some((path) => path.startsWith('tools/vendor/npm/braces/'))).toBe(false);
         expect(hosting.some((path) => path.startsWith('public/admin/install/'))).toBe(false);
     });
 

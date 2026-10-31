@@ -68,6 +68,7 @@
         "htmlhint": "1.9.2",
         "knip": "6.44.0",
         "markdownlint-cli2": "0.24.0",
+        "minimatch": "file:vendor/npm/minimatch",
         "playwright": "1.64.1",
         "postcss-lit": "1.4.1",
         "prettier": "3.9.10",
@@ -92,6 +93,7 @@
         },
         "glob": "14.0.3",
         "katex": "0.19.1",
+        "minimatch": "$minimatch",
         "re2js": "2.9.1",
         "smol-toml": "1.9.1"
     }

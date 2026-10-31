@@ -28,7 +28,7 @@
         "ignore": ["**/.*", "**/*.map"],
         "redirects": [
             {
-                "source": "/admin",
+                "regex": "^/admin$",
                 "destination": "/admin/",
                 "type": 301
             }

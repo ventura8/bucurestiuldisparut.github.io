@@ -66,10 +66,11 @@ adopted (`packages/ui/README.md` → *Decisions*). (`firebase`,
 | `katex` → 0.19.1 | GHSA-238p-pmpm-9mq7 (markdownlint math extension) |
 | `re2js` → 2.9.1 | GHSA-gg6h-894w-4m9c (2.2.0–2.8.6): `markdownlint@0.42.0` pins 2.8.6, `@firebase/firestore` takes `^2.8.3` (§72c, §74) |
 | `smol-toml` → 1.9.1 | GHSA-r4xh-jqrq-34v2 (markdownlint-cli2, knip) |
+| `minimatch` → `$minimatch` = `file:vendor/npm/minimatch` | GHSA-g3hv-75wg-m249 (below 11.0.1); 11 is a rewrite whose CommonJS entry is not callable, and `firebase-tools` (`fsAsync`) and `superstatic` call `require('minimatch')(...)`, so `vendor/npm/minimatch` is 11.0.3 unchanged plus a callable `index.cjs` (see its README; §74f). The install bundle's `tools/` carries it. Delete it when those dependants move to 11 |
 | `braces` → `$braces` = `file:vendor/npm/braces` | GHSA-vfj7-8cjw-p6xm has **no** fixed release; `vendor/npm/braces` is 3.0.3 with the depth-limit patch the sibling Whisper-Pro-ASR repo carries (see its README). Delete it when upstream ships a fix |
 
 `vendor/` is third-party code: it is excluded from ESLint, Prettier, markdownlint, yamllint,
-taplo, ruff and the suppression scan, and knip ignores the `braces` dependency.
+taplo, ruff and the suppression scan, and knip ignores the `braces` and `minimatch` dependencies.
 
 ## 3. Docker images and digests
 
@@ -107,7 +108,7 @@ What the image contains, and where:
 - BuildKit cache mounts: `hcm-apt-cache`, `hcm-apt-lists`, `hcm-pip`, `hcm-poetry`.
 
 `.dockerignore` is an allowlist (root manifests, `packages/*/package.json`, `functions/package.json`,
-`firebase/rules-tests/package.json`, `e2e/package.json`, `vendor/npm/braces`, `scripts/ci/requirements.txt`
+`firebase/rules-tests/package.json`, `e2e/package.json`, `vendor/npm/braces`, `vendor/npm/minimatch`, `scripts/ci/requirements.txt`
 and the three pipeline dependency files), so the image only rebuilds when a manifest changes.
 **When you add a workspace, add its `COPY <dir>/package.json <dir>/` line to the Dockerfile**
 (and a `!<dir>/package.json` line to `.dockerignore` if it is outside `packages/*`); `npm ci`
@@ -244,7 +245,7 @@ per-file thresholds 90/90/90/90. The tests' `conftest.py` blocks every non-loopb
 | `.markdownlint-cli2.jsonc` | `MD013`, `MD033`, `MD041` off; `MD024` siblings only (sibling-repo config) |
 | `.prettierignore` | `*.md` (markdownlint owns Markdown), `package-lock.json`, `seed/`, `docs/research/*.json` (verbatim research artifacts), `vendor/` |
 | `.gitleaks.toml` | path allowlist for gitignored caches and outputs only (scope, not tolerance) |
-| `knip.json` | `ignoreDependencies: ["braces"]` (it is used through `overrides` only) |
+| `knip.json` | `ignoreDependencies: ["braces", "minimatch"]` (they are used through `overrides` only) |
 | `.editorconfig` | `*.sh` and `scripts/git-hooks/*` use tabs, in two sections (shfmt does not match a mixed brace list) |
 
 To get `markdownlint` green, the research Markdown under `docs/research/` was reformatted

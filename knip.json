@@ -25,5 +25,5 @@
             "project": ["**/*.ts"]
         }
     },
-    "ignoreDependencies": ["braces"]
+    "ignoreDependencies": ["braces", "minimatch"]
 }

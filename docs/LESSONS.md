@@ -1522,3 +1522,24 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: `deploy-shape.test.ts` (M6) also loads `src/index.ts`, with `demo-hcm.firebasestorage.app` in `FIREBASE_CONFIG`; the shared graph evaluates `index.ts` once and firebase-functions caches the first configuration it reads (`firebaseConfig()`), so the value depended on which file ran first.
     - Fix and pin: every test that loads `src/index.ts` sets the same bucket; the assertion still tells it from the `GCLOUD_PROJECT` fallback (`<project>.appspot.com`).
     - **In a shared module graph a module-level value is fixed by the first file that loads the module: tests that load it must agree on every input it reads at load time.**
+
+291. **The e2e mock kept serving Mapbox GL JS 3.32.0 after the bump to 3.34.1, and almost every browser test failed.**
+    - Seen: 2,300 failures in the split `all` of 2026-10-31 (`console errors or uncaught page errors`: 404 for `https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js` and `.css`; then `the page receives hcm-ready` and `the admin map is created`).
+    - Found by: the e2e and tour-matrix tiers; `static`, `tests` and `build` were green.
+    - Cause: `e2e/mock-apis/router.ts` matched the library path with a regular expression that spelled the version escaped (`v3\.32\.0`), so the bump's search for `3.32.0` missed it.
+    - Fix and pin: the route is built from the version in the installed `mapbox-gl/package.json`, so the mock always serves the pinned devDependency; a package.json without a release stops the mock at start.
+    - **A version that must follow a pin is read from the pin, never repeated, and a search for a version also looks for its escaped spelling.**
+
+292. **The install bundle's `tools/` lock could not be installed by `npm ci`: its `package.json` lacked the root `overrides`.**
+    - Seen: `npm ci --offline` of the generated `tools/` folder stopped with `ENOTCACHED` for `@opentelemetry/core` (2026-10-31); npm re-resolves every dependency whose locked version lies outside its dependant's range, and the overridden `@opentelemetry/core`, `basic-ftp`, `glob` and `uuid` all do. Online, the re-resolved tree would not match the lock.
+    - Found by: vendoring `minimatch` (§74f), whose link the folder had to follow; no test installed the folder, and the unit tests only read the lock's paths.
+    - Cause: `tools-lock.ts` cut the tree out of the root lockfile, which npm had resolved under the root `overrides`, but wrote a `tools/package.json` with `firebase-tools` alone.
+    - Fix and pin: `tools/package.json` carries the root `overrides` (a `$name` only when `tools/` has that dependency) and the `file:` link of each vendored copy the tree reaches, whose folder the bundle carries; `install-tools-lock.test.ts` asserts both on the repository's own lockfile.
+    - **A lock cut out of another installs only with the manifest that produced it (its `overrides` and links): check such a lock with `npm ci`, not by reading its paths.**
+
+293. **The `/admin` → `/admin/` redirect matched its own destination in the Hosting emulator.**
+    - Seen: `GET /admin/` answered `301 Location: /admin/` in the Hosting emulator on 2026-10-31 (a redirect loop), while the repository's own Hosting model served the admin.
+    - Found by: the minimatch vendoring check, which ran superstatic over the built tree.
+    - Cause: a redirect `source` is a glob, and superstatic's glob matching lets `/admin` match `/admin/` as well.
+    - Fix and pin: the rule is `"regex": "^/admin$"` in `firebase.json`; `admin-hosting.test.ts` asserts that `/admin/` and the admin's routes never redirect.
+    - **A redirect to the same path with a slash added is written as an anchored regex, never as a glob.**
