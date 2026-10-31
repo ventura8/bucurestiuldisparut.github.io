@@ -342,5 +342,37 @@ export {
 } from './overlays/adjustments.js';
 export type { AdjustmentSlider } from './overlays/adjustments.js';
 
+// Field measurements (DECISIONS-for-review.md §76): GA4's event schemas and guards, Core Web Vitals as GA4 parameters;
+// imported only by the apps' consented lazy chunks (each its own app's table).
+export {
+    COMMON_EVENT_PARAMS,
+    FIELD_EVENT_BUDGET,
+    GA_LIMITS,
+    MAP_ERROR_KINDS,
+    VIEWER_PHASES,
+    VITAL_DEBUG_NUMBERS,
+    WEB_VITAL_NAMES,
+    WINDOW_CLASS_NAMES,
+    createFieldGuard,
+    eventProblem,
+    eventSchemas,
+} from './telemetry/field-events.js';
+export type {
+    DropReason,
+    EventShapes,
+    FieldEventName,
+    FieldGuard,
+    GaParamValue,
+    GaParams,
+    GuardResult,
+    ViewerPhase,
+    WebVitalName,
+} from './telemetry/field-events.js';
+export { VIEWER_EVENT_PARAMS, createViewerGuard } from './telemetry/viewer-events.js';
+export type { ViewerEventName } from './telemetry/viewer-events.js';
+export { ADMIN_EVENT_PARAMS, createAdminGuard } from './telemetry/admin-events.js';
+export type { AdminEventName } from './telemetry/admin-events.js';
+export { observeWebVitals, sanitizeTarget, shortTarget, vitalParams } from './telemetry/web-vitals.js';
+export type { FieldChunk, VitalAttribution, VitalMetric, VitalObserver, VitalOptions } from './telemetry/web-vitals.js';
 export * from './migration/index.js';
 export * from './api/index.js';

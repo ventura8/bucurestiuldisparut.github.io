@@ -70,7 +70,7 @@ export const ro = {
     'adminShell.auth.signedInAs': 'Conectat ca {email}',
     'adminShell.account.label': 'Contul și preferințele',
     'adminShell.account.close': 'Închide',
-    'adminShell.account.analytics': 'Statistici anonime ale administrării (Google Analytics)',
+    'adminShell.account.analytics': 'Statistici anonime de utilizare și performanță ale administrării (Google Analytics)',
     'adminShell.notice.close': 'Închide mesajul',
     'adminShell.nav.close': 'Închide',
     'adminShell.page.unavailable': 'Pagina nu este încă disponibilă.',

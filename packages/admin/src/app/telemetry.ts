@@ -2,9 +2,11 @@
  * The admin's analytics and crash reporting (PLAN Addendum 2, `docs/research/M2b-interfaces.md` §1.4): the admin's
  * consent (stored in `localStorage` `hcm:admin:consent`, withdrawable in the account menu), GA4 behind it
  * (`../firebase/analytics.ts`) and the crash reporter (`errors.ts`). Events carry ids and states only, never an address,
- * a token or free text: page views by route, Setup Assistant steps, the legacy import.
+ * a token or free text: page views by route, Setup Assistant steps, the legacy import, and the field measurements of
+ * `field.ts` (§76), which wait in memory while the admin has not answered (at most {@link MAX_PENDING}) and are sent once
+ * the admin consents; a refusal or a withdrawal forgets them.
  */
-import type { Logger } from '@hcm/shared';
+import type { FieldEventName, GaParams, Logger } from '@hcm/shared';
 
 import type { AnalyticsPort, EventParams } from '../firebase/analytics.js';
 import type { AdminRouteId } from '../routing/routes.js';
@@ -13,6 +15,17 @@ import type { AdminErrorReporter, ErrorSource } from './errors.js';
 import type { KeyValueStore } from './ports.js';
 
 export const CONSENT_KEY = 'hcm:admin:consent';
+
+/** A field measurement of the admin (`field.ts`): its parameters without the context `analytics.field` adds. */
+export interface AdminFieldEvent {
+    readonly name: FieldEventName;
+    readonly params: GaParams;
+}
+
+export type Measure = (event: AdminFieldEvent) => void;
+
+/** Field measurements held before the admin answers, at most. */
+export const MAX_PENDING = 30;
 
 /** The admin's GA4 events (no PII). */
 export type AdminEvent =
@@ -65,6 +78,7 @@ export interface AdminTelemetryDeps {
 export class AdminTelemetry {
     readonly #deps: AdminTelemetryDeps;
     #consent: ConsentState;
+    #pending: AdminFieldEvent[] = [];
 
     constructor(deps: AdminTelemetryDeps) {
         this.#deps = deps;
@@ -90,7 +104,32 @@ export class AdminTelemetry {
         if (withdrawn) {
             this.#deps.clearCookies();
         }
+        this.#release();
         this.#deps.log.info('analytics consent', { consent });
+    }
+
+    /** The held measurements: sent after a grant, forgotten after a refusal. */
+    #release(): void {
+        const pending = this.#pending;
+        this.#pending = [];
+        for (const event of pending) {
+            this.measure(event);
+        }
+    }
+
+    /** A field measurement (§76): sent with consent, held while the admin has not answered, dropped after a refusal. */
+    measure(event: AdminFieldEvent): void {
+        if (this.#consent === 'granted') {
+            this.#deps.analytics?.field(event.name, event.params);
+        } else if (this.#consent === 'unknown') {
+            this.#hold(event);
+        }
+    }
+
+    #hold(event: AdminFieldEvent): void {
+        if (this.#deps.analytics !== null && this.#pending.length < MAX_PENDING) {
+            this.#pending.push(event);
+        }
     }
 
     /** Dropped without consent or configuration. */

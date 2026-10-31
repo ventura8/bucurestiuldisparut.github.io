@@ -11,7 +11,10 @@
             },
             {
                 "role": "roles/editor",
-                "members": ["serviceAccount:{{projectNumber}}-compute@developer.gserviceaccount.com"]
+                "members": [
+                    "serviceAccount:{{projectNumber}}-compute@developer.gserviceaccount.com",
+                    "serviceAccount:{{projectId}}@appspot.gserviceaccount.com"
+                ]
             }
         ]
     }

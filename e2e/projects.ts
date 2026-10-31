@@ -114,7 +114,7 @@ const NO_WEBGL_SPEC = 'viewer/no-webgl.spec.ts';
 
 /**
  * The functional specs whose behaviour does not depend on the window class (DECISIONS-for-review.md §39c, §42g): the
- * boot and its errors, deep links, the analytics consent, the crash reports, the embed API, geolocation, language and
+ * boot and its errors, deep links, the analytics consent, the crash reports, the field measurements, the embed API, geolocation, language and
  * theme, About, the page's policy, no JavaScript, swipe compare (each of its tests sets its own window), the manifest of
  * the public bucket, the starter kit.
  * Each push runs them at `fn-l1440-ro`; the other four functional projects run them in `tour-matrix`. The specs whose
@@ -128,6 +128,7 @@ const ONE_PROJECT_SPECS = [
     'viewer/content-security-policy.spec.ts',
     'viewer/crash-reporting.spec.ts',
     'viewer/deep-links.spec.ts',
+    'viewer/field-measurements.spec.ts',
     'viewer/embed-api.spec.ts',
     'viewer/geolocate.spec.ts',
     'viewer/language-theme.spec.ts',

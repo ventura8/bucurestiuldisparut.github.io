@@ -8,13 +8,19 @@
  *
  * Firebase Performance Monitoring is not part of the public viewer: it sends `location.href` up to the first `?`, so
  * the whole hash, and cannot be told otherwise (docs/research/DECISIONS-for-review.md §18a; the admin may use it).
+ *
+ * Field measurements (§76): with the SDK comes a second lazy chunk (`field-sdk.ts`: Google's `web-vitals` and the
+ * event guard of `@hcm/shared`). Every event is checked by that guard before GA4 sees it (its schema, GA4's limits,
+ * no position or PII, the page's budget), and the Core Web Vitals observers start. Field measurements made before
+ * consent (the boot's timings) wait in memory, at most {@link MAX_PENDING}, and are sent once consent is granted;
+ * a refusal or a withdrawal forgets them.
  */
-import type { Logger } from '@hcm/shared';
+import type { FieldChunk, FieldGuard, GaParams, Logger } from '@hcm/shared';
 import type { FirebaseApp, FirebaseOptions } from 'firebase/app';
 import type { Analytics as GaAnalytics, AnalyticsSettings, ConsentSettings } from 'firebase/analytics';
 
 import { CONSENT_DENIED, CONSENT_GRANTED } from './consent.js';
-import type { ConsentState, FirebaseAppIds, TelemetryEvent } from './telemetry-port.js';
+import type { ConsentState, FieldEvent, FirebaseAppIds, TelemetryEvent } from './telemetry-port.js';
 
 /** The Firebase functions the viewer uses; `firebase-sdk.ts` (a lazy chunk) provides the real ones. */
 export interface FirebaseSdk {
@@ -46,16 +52,26 @@ export interface AnalyticsDeps {
     readonly pagePath: () => string;
     /** Expires GA4's cookies (`cookies.ts`); never throws. */
     readonly clearCookies: () => void;
+    /** Loads the field chunk (`field-sdk.ts`: web-vitals and the event guard). */
+    readonly loadField: () => Promise<FieldChunk>;
+    /** What every field measurement carries when it is sent: `app`, `window_class`, `release`. */
+    readonly fieldContext: () => GaParams;
 }
+
+/** Field measurements held before consent (or before the manifest's ids) at most. */
+export const MAX_PENDING = 30;
 
 interface Loaded {
     readonly sdk: FirebaseSdk;
     readonly analytics: GaAnalytics;
+    readonly guard: FieldGuard;
 }
 
 type GaEvent = TelemetryEvent | { readonly name: 'exception'; readonly description: string; readonly fatal: boolean };
 
-type GaParams = Readonly<Record<string, string | number | boolean>>;
+function isField(event: GaEvent | FieldEvent): event is FieldEvent {
+    return 'params' in event;
+}
 
 /** Per event name, its GA4 parameters; an event without parameters is absent. */
 const GA_PARAMS: { readonly [N in GaEvent['name']]?: (event: Extract<GaEvent, { readonly name: N }>) => GaParams } = {
@@ -82,6 +98,7 @@ export class AnalyticsLoader {
     #config: AnalyticsConfig | null = null;
     #consent: ConsentState = 'unknown';
     #loading: Promise<Loaded | null> | null = null;
+    #pending: FieldEvent[] = [];
 
     constructor(deps: AnalyticsDeps) {
         this.#deps = deps;
@@ -97,6 +114,7 @@ export class AnalyticsLoader {
             return;
         }
         this.#config = { measurementId, firebase };
+        this.#flush();
     }
 
     /**
@@ -112,6 +130,10 @@ export class AnalyticsLoader {
         if (withdrawn) {
             this.#deps.clearCookies();
         }
+        if (consent === 'denied') {
+            this.#pending = [];
+        }
+        this.#flush();
         this.#whenLoaded((loaded) => {
             toggleCollection(loaded, consent === 'granted');
             if (withdrawn) {
@@ -120,18 +142,51 @@ export class AnalyticsLoader {
         });
     }
 
-    /** Sends `event` once the SDK is ready; dropped without configuration or consent (also if consent goes in between). */
-    send(event: GaEvent): void {
+    /**
+     * Sends `event` once the SDK is ready, if the guard lets it; dropped without configuration or consent (also if consent
+     * goes in between), except a field measurement, which waits for both unless consent was refused.
+     */
+    send(event: GaEvent | FieldEvent): void {
         const config = this.#config;
         if (config === null || this.#consent !== 'granted') {
+            this.#hold(event);
             return;
         }
         this.#loading ??= this.#start(config);
         this.#whenLoaded((loaded) => {
             if (this.#consent === 'granted') {
-                loaded.sdk.logEvent(loaded.analytics, event.name, { ...gaParams(event), page_location: this.#deps.pageLocation() });
+                this.#log(loaded, event);
             }
         });
+    }
+
+    #hold(event: GaEvent | FieldEvent): void {
+        if (isField(event) && this.#consent !== 'denied' && this.#pending.length < MAX_PENDING) {
+            this.#pending.push(event);
+        }
+    }
+
+    /** The held field measurements, once the ids are known and consent is granted. */
+    #flush(): void {
+        if (this.#config === null || this.#consent !== 'granted') {
+            return;
+        }
+        const pending = this.#pending;
+        this.#pending = [];
+        for (const event of pending) {
+            this.send(event);
+        }
+    }
+
+    /** The event checked by the guard (`@hcm/shared`), then logged; a dropped one is logged once per reason. */
+    #log(loaded: Loaded, event: GaEvent | FieldEvent): void {
+        const params = isField(event) ? { ...event.params, ...this.#deps.fieldContext() } : gaParams(event);
+        const checked = loaded.guard.check(event.name, { ...params, page_location: this.#deps.pageLocation() });
+        if (checked.ok) {
+            loaded.sdk.logEvent(loaded.analytics, event.name, checked.params);
+        } else if (checked.first) {
+            this.#deps.log.warn('analytics event dropped', { name: event.name, reason: checked.reason });
+        }
     }
 
     /** Runs `action` once the SDK has loaded (never if it is not loading or failed); a throwing SDK call is logged. */
@@ -147,14 +202,19 @@ export class AnalyticsLoader {
             });
     }
 
+    /** Both chunks, GA4 initialised, then the Core Web Vitals observers (once per page). */
     async #start(config: AnalyticsConfig): Promise<Loaded | null> {
         try {
-            const sdk = await this.#deps.loadSdk();
+            const [sdk, field] = await Promise.all([this.#deps.loadSdk(), this.#deps.loadField()]);
             if (!(await sdk.isSupported())) {
                 this.#deps.log.info('analytics unsupported in this browser');
                 return null;
             }
-            return initialize(sdk, config, this.#deps, this.#consent === 'granted');
+            const loaded = { ...initialize(sdk, config, this.#deps, this.#consent === 'granted'), guard: field.createGuard() };
+            field.observeVitals((params) => {
+                this.send({ name: 'web_vitals', params });
+            });
+            return loaded;
         } catch (error) {
             this.#deps.log.warn('analytics failed to load', { error: String(error) });
             return null;
@@ -169,7 +229,7 @@ const NO_ADVERTISING = { allow_google_signals: false, allow_ad_personalization_s
  * Consent first (Consent Mode v2, as it stands now: the visitor may have withdrawn while the chunk loaded), then GA4
  * on the viewer's named app with the hash-free page location and without the automatic page view.
  */
-function initialize(sdk: FirebaseSdk, config: AnalyticsConfig, deps: AnalyticsDeps, granted: boolean): Loaded {
+function initialize(sdk: FirebaseSdk, config: AnalyticsConfig, deps: AnalyticsDeps, granted: boolean): Omit<Loaded, 'guard'> {
     const app = sdk.initializeApp({ ...config.firebase, measurementId: config.measurementId }, FIREBASE_APP_NAME);
     sdk.setConsent(granted ? CONSENT_GRANTED : CONSENT_DENIED);
     const page = { page_location: deps.pageLocation(), page_path: deps.pagePath() };
@@ -179,7 +239,7 @@ function initialize(sdk: FirebaseSdk, config: AnalyticsConfig, deps: AnalyticsDe
 }
 
 /** Consent Mode v2 and GA4 collection on or off. */
-function toggleCollection(loaded: Loaded, enabled: boolean): void {
+function toggleCollection(loaded: Omit<Loaded, 'guard'>, enabled: boolean): void {
     loaded.sdk.setConsent(enabled ? CONSENT_GRANTED : CONSENT_DENIED);
     loaded.sdk.setAnalyticsCollectionEnabled(loaded.analytics, enabled);
 }

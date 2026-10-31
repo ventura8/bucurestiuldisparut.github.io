@@ -57,7 +57,7 @@ Subagents (`.claude/agents/`): `pipeline-runner` (runs one stage, returns the ve
 
 - `firebase/functions_skill.md`: Cloud Functions v2 (`@hcm/functions`): the function registry and the callable plumbing (access rule, validation, error codes), family factories, pure handlers and thin triggers, per-function service accounts and caps (`global-options.ts`), ports and REST adapters, the composition root and the emulator's fake upstreams, `.run()` tests, secrets read at runtime, the checked deploy artifact `functions/dist/`.
 - `firebase/rules_and_emulators_skill.md`: default-deny Firestore and Storage rules mirroring `CLIENT_WRITES`, the 1000-expression budget, the indexes, the rules-test personas and matrix, rule coverage, the emulators under the `demo-hcm` project (the real project is `.firebaserc`'s default), seeding and isolation.
-- `firebase/analytics_and_crash_skill.md`: GA4 behind consent (never the URL hash; Performance Monitoring only in the admin), cookies expired on withdrawal, the error reporter and Cloud Error Reporting, the event taxonomy, no PII.
+- `firebase/analytics_and_crash_skill.md`: GA4 behind consent (never the URL hash; Performance Monitoring only in the admin), cookies expired on withdrawal, the error reporter and Cloud Error Reporting, the event taxonomy, no PII; the field measurements (Core Web Vitals through `web-vitals` in the lazy field chunks, the apps' own timings, the shared event guard and its budget).
 
 ---
 
@@ -88,7 +88,7 @@ Subagents (`.claude/agents/`): `pipeline-runner` (runs one stage, returns the ve
 | **Rendering data, URLs, CSP, tokens** | `web/web_security_skill.md` | `firebase/rules_and_emulators_skill.md` |
 | **Cloud Function** | `firebase/functions_skill.md` | `firebase/rules_and_emulators_skill.md`, `quality/testing_strategy_skill.md` |
 | **Firestore or Storage rules** | `firebase/rules_and_emulators_skill.md` | `web/web_security_skill.md` |
-| **Analytics, consent, crash reports** | `firebase/analytics_and_crash_skill.md` | `web/web_security_skill.md`, `web/i18n_skill.md` |
+| **Analytics, consent, crash reports, field measurements** | `firebase/analytics_and_crash_skill.md` | `web/web_security_skill.md`, `web/i18n_skill.md` |
 | **Raster pipeline, georeferencing** | `pipeline/raster_pipeline_skill.md` | `pipeline/usgs_m2m_skill.md`, `pipeline/mapbox_publishing_skill.md` |
 | **USGS or Mapbox integration** | `pipeline/usgs_m2m_skill.md`, `pipeline/mapbox_publishing_skill.md` | `firebase/functions_skill.md`, `workflow/human_steps_and_consent_skill.md` |
 | **A gate fails** | `quality/ci_quality_gates_skill.md` | `quality/pipeline_skill.md` |

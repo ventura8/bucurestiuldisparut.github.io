@@ -4,6 +4,8 @@
  * sheet from expanded. A photo shows its lazy WebP thumbnail (a button that opens the lightbox), its date, author,
  * licence, rights note, description and links, all rendered as text and anchors; a POI renders `<hcm-poi-detail>`.
  * A missing image shows a placeholder that keeps the photo's title as its accessible name (S-V07-BAD-IMAGE404).
+ * Once the thumbnail is decoded (or failed) the sheet fires `hcm-photo-shown` (`{ ok }`), which the viewer turns into
+ * the `photo_timing` field measurement (docs/ARCHITECTURE.md → *Field measurements*).
  */
 import { DEFAULT_LOCALE, translate, type Locale, type Photo, type Poi, type PoiCategory } from '@hcm/shared';
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
@@ -158,13 +160,34 @@ export class HcmPhotoSheet extends LitElement {
         }
         const onError = (): void => {
             this.imageFailed = true;
+            this.#shown(false);
+        };
+        const onLoad = (event: Event): void => {
+            const shown = (): void => {
+                this.#shown(true);
+            };
+            void (event.currentTarget as HTMLImageElement).decode().then(shown, shown);
         };
         const openLightbox = (): void => {
             this.dispatchEvent(new CustomEvent('hcm-lightbox-open', { bubbles: true, detail: { photoId: photo.id } }));
         };
         return html`<button type="button" class="image" aria-label=${translate(this.locale, 'photo.openLightbox')} @click=${openLightbox}>
-            <img src=${src} alt=${title} width=${photo.image.w} height=${photo.image.h} loading="lazy" decoding="async" @error=${onError} />
+            <img
+                src=${src}
+                alt=${title}
+                width=${photo.image.w}
+                height=${photo.image.h}
+                loading="lazy"
+                decoding="async"
+                @load=${onLoad}
+                @error=${onError}
+            />
         </button>`;
+    }
+
+    /** The thumbnail is on screen (decoded) or failed: the viewer times the photo's opening. */
+    #shown(ok: boolean): void {
+        this.dispatchEvent(new CustomEvent('hcm-photo-shown', { bubbles: true, detail: { ok } }));
     }
 
     #links(photo: Photo): TemplateResult {

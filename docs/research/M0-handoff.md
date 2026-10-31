@@ -36,7 +36,7 @@ All npm versions were checked with `npm view` on 2026-10-11 and are pinned exact
 | Format / style | `prettier@3.9.10`, `stylelint@17.16.0`, `stylelint-config-standard@40.0.0`, `postcss-lit@1.4.1` |
 | HTML / Markdown | `htmlhint@1.9.2`, `html-validate@11.17.0`, `markdownlint-cli2@0.24.0` |
 | Architecture | `knip@6.44.0`, `dependency-cruiser@18.7.0` |
-| Runtime | `lit@3.3.3` (in `@hcm/ui`); `zod@4.6.7` (`@hcm/shared`), `@material/material-color-utilities@0.4.0` (`@hcm/ui`), both added by the M1 contracts (§10g); `firebase@13.1.0` (`@hcm/engine`, the lazy analytics chunk, M1) |
+| Runtime | `lit@3.3.3` (in `@hcm/ui`); `zod@4.6.7` (`@hcm/shared`), `@material/material-color-utilities@0.4.0` (`@hcm/ui`), both added by the M1 contracts (§10g); `firebase@13.1.0` (`@hcm/engine`, the lazy analytics chunk, M1); `web-vitals@6.2.3` (`@hcm/engine`, `@hcm/admin`: the lazy field chunks after consent, `DECISIONS-for-review.md` §76) |
 | UI kit build (M1) | devDependencies of `@hcm/ui`: `harfbuzzjs@1.6.4`, `wawoff2@2.0.1`, `material-symbols@0.48.2`, `@fontsource-variable/roboto-flex@5.3.0` (`npm run fonts:build`/`fonts:check`); `axe-core@4.14.0` (`@hcm/test-support`, entry `@hcm/test-support/axe`) |
 | E2E (M1) | devDependencies of `@hcm/e2e`: `@axe-core/playwright@4.13.0` (held, lesson 294), `mapbox-gl@3.34.1` (served by the mock APIs, never bundled), `sharp@0.35.5` |
 | Seed tooling | `sharp@0.35.5` (root devDependency, the legacy migration CLI; prebuilt `@img/sharp-linux-x64`) |

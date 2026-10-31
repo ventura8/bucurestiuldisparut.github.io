@@ -298,8 +298,11 @@ describe('the entry: sign-in, telemetry and start', () => {
         telemetry.reportError(new Error('without GA4'), { fatal: false, source: 'window' });
 
         expect(telemetry.available).toBe(false);
-        expect(analyticsFor(undefined, {} as never, parts)).toBeNull();
-        expect(analyticsFor('G-E2E0000000', {} as never, parts)).not.toBeNull();
+        expect(analyticsFor(undefined, {} as never, parts, '1.2.0')).toBeNull();
+        const ga4 = analyticsFor('G-E2E0000000', {} as never, parts, '1.2.0');
+        expect(ga4).not.toBeNull();
+        // Without consent a field measurement goes nowhere (its context is still the window's class and the release).
+        ga4?.field('admin_ready', { duration_ms: 1, restored: true });
         expect(browserDeps(parts)(CONFIG, { release: 'e2e' }, null).setup.create({} as never)).toBeNull();
         expect(parts.session.get('hcm:admin:returnTo')).toBe('#/admins');
     });

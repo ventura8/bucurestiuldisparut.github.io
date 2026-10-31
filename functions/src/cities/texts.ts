@@ -22,10 +22,23 @@ export function aboutText(name: Name): NonNullable<CityDoc['about']> {
     };
 }
 
-/** The privacy notice of a new city: no cookies without consent, and what Mapbox receives. */
+/**
+ * The privacy notice of a new city: no cookies without consent, what the consented statistics measure (usage and
+ * performance, `docs/research/DECISIONS-for-review.md` §76), and what Mapbox receives.
+ */
 export function privacyText(): NonNullable<CityDoc['privacy']> {
     return {
-        ro: 'Această hartă nu folosește cookie-uri fără acordul tău. Harta este afișată cu **Mapbox**: browserul tău trimite adresa IP către Mapbox.',
-        en: 'This map uses no cookies without your consent. The map is drawn by **Mapbox**: your browser sends your IP address to Mapbox.',
+        ro: [
+            'Această hartă nu folosește cookie-uri fără acordul tău.',
+            'Cu acordul tău, statistici anonime de utilizare și performanță (Google Analytics) ne arată ce funcții folosești',
+            'și cât de repede se încarcă harta, fără poziția ta.',
+            'Harta este afișată cu **Mapbox**: browserul tău trimite adresa IP către Mapbox.',
+        ].join(' '),
+        en: [
+            'This map uses no cookies without your consent.',
+            'With your consent, anonymous usage and performance statistics (Google Analytics) show us which features you use',
+            'and how fast the map loads, never your position.',
+            'The map is drawn by **Mapbox**: your browser sends your IP address to Mapbox.',
+        ].join(' '),
     };
 }

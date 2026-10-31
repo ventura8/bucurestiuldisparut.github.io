@@ -439,6 +439,7 @@ describe('Mapbox adapter: events and lifecycle', () => {
         port.on('error', (event) => heard.push(`error ${event.kind} ${event.layerId ?? ''}`));
         port.on('webglcontextlost', () => heard.push('lost'));
         port.on('webglcontextrestored', () => heard.push('restored'));
+        port.on('idle', () => heard.push('idle'));
 
         map.zoom = 14;
         map.fire('move');
@@ -448,8 +449,9 @@ describe('Mapbox adapter: events and lifecycle', () => {
         map.fire('error', { error: new Error('odd') });
         map.fire('webglcontextlost');
         map.fire('webglcontextrestored');
+        map.fire('idle');
 
-        expect(heard).toEqual(['move 14', 'moveend 15', 'error tile kh4-1966', 'error unknown ', 'lost', 'restored']);
+        expect(heard).toEqual(['move 14', 'moveend 15', 'error tile kh4-1966', 'error unknown ', 'lost', 'restored', 'idle']);
     });
 
     it('badPath_aThrowingSubscriberDoesNotStopTheOthers', async () => {

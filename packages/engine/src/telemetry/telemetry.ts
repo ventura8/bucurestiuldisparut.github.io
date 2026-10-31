@@ -1,10 +1,11 @@
 /**
  * The viewer's `TelemetryPort`: consent (`consent.ts`), the consent-gated Firebase analytics (`analytics.ts`, its SDK
- * a lazy chunk; GA4's cookies expired on withdrawal by `cookies.ts`) and crash reporting (`errors.ts`) behind one
- * object. The store passes it the manifest's ids with `setContext`; `destroy` removes the global error hooks and every
+ * a lazy chunk; GA4's cookies expired on withdrawal by `cookies.ts`), crash reporting (`errors.ts`) and the field
+ * measurements (`field.ts`, sent through analytics; their web-vitals chunk `field-sdk.ts`) behind one object. The store
+ * passes it the manifest's ids with `setContext`; `destroy` removes the global error and page-hide hooks and every
  * listener.
  */
-import type { Logger } from '@hcm/shared';
+import type { FieldChunk, Logger } from '@hcm/shared';
 import type { Unsubscribe } from '@hcm/ui/map';
 
 import type { PreferenceStorage } from '../core/preferences.js';
@@ -12,7 +13,8 @@ import { AnalyticsLoader, type FirebaseSdk } from './analytics.js';
 import { ConsentStore, type ConsentValue } from './consent.js';
 import { expireAnalyticsCookies, type CookieJar } from './cookies.js';
 import { ErrorReporter, installErrorHooks } from './errors.js';
-import type { ConsentState, ErrorSource, TelemetryContext, TelemetryEvent, TelemetryPort } from './telemetry-port.js';
+import { FieldRecorder, type FieldClock } from './field.js';
+import type { ConsentState, ErrorSource, Measurement, TelemetryContext, TelemetryEvent, TelemetryPort } from './telemetry-port.js';
 
 /** The parts of `window` telemetry uses: the page's address without its hash, and its cookies (GA4's, on withdrawal). */
 export interface TelemetryWindow extends Pick<Window, 'addEventListener' | 'removeEventListener' | 'innerWidth' | 'innerHeight'> {
@@ -32,13 +34,23 @@ export interface TelemetryDeps {
     readonly cityId?: string;
     /** Loads the Firebase SDK chunk; the default is the dynamic import of `firebase-sdk.ts`. */
     readonly loadSdk?: () => Promise<FirebaseSdk>;
+    /** Loads the field chunk (web-vitals and the event guard); the default is the dynamic import of `field-sdk.ts`. */
+    readonly loadField?: () => Promise<FieldChunk>;
     readonly now?: () => number;
+    /** `performance`: the field measurements' clock (milliseconds since the navigation started) and marks. */
+    readonly performance?: FieldClock;
 }
 
 /** The lazy chunk with firebase/app and firebase/analytics (docs/research/M1-interfaces.md CR-10). */
 export async function loadFirebaseSdk(): Promise<FirebaseSdk> {
     const chunk = await import('./firebase-sdk.js');
     return chunk.firebaseSdk;
+}
+
+/** The lazy chunk with web-vitals and the event guard (§76), fetched with the Firebase SDK after consent. */
+export async function loadFieldSdk(): Promise<FieldChunk> {
+    const chunk = await import('./field-sdk.js');
+    return chunk.fieldSdk;
 }
 
 /** Expires GA4's cookies; a page whose cookies cannot be read (a sandboxed frame) only logs it. */
@@ -56,6 +68,8 @@ class Telemetry implements TelemetryPort {
     readonly #analytics: AnalyticsLoader;
     readonly #errors: ErrorReporter;
     readonly #uninstall: () => void;
+    readonly #field: FieldRecorder;
+    #windowClass = 'compact';
     #pageViewed = false;
     #destroyed = false;
 
@@ -70,6 +84,11 @@ class Telemetry implements TelemetryPort {
             clearCookies: () => {
                 clearAnalyticsCookies(deps.window, deps.log);
             },
+            loadField: deps.loadField ?? loadFieldSdk,
+            fieldContext: () => ({ app: 'viewer', window_class: this.#windowClass, release: deps.release }),
+        });
+        this.#field = new FieldRecorder(deps.performance ?? globalThis.performance, (event) => {
+            this.#analytics.send(event);
         });
         this.#analytics.setConsent(this.#consent.state);
         this.#errors = new ErrorReporter({
@@ -84,7 +103,17 @@ class Telemetry implements TelemetryPort {
                 this.#analytics.send({ name: 'exception', description, fatal });
             },
         });
-        this.#uninstall = installErrorHooks(deps.window, this.#errors);
+        const uninstallErrors = installErrorHooks(deps.window, this.#errors);
+        const flush = (): void => {
+            this.#field.flush();
+        };
+        deps.window.addEventListener('pagehide', flush);
+        deps.window.addEventListener('visibilitychange', flush);
+        this.#uninstall = () => {
+            uninstallErrors();
+            deps.window.removeEventListener('pagehide', flush);
+            deps.window.removeEventListener('visibilitychange', flush);
+        };
         this.#consent.onChange((consent) => {
             this.#consentChanged(consent);
         });
@@ -112,6 +141,12 @@ class Telemetry implements TelemetryPort {
         this.#analytics.send(event);
     }
 
+    measure(measurement: Measurement): void {
+        if (!this.#destroyed) {
+            this.#field.record(measurement);
+        }
+    }
+
     reportError(error: unknown, context: { readonly fatal: boolean; readonly source: ErrorSource }): void {
         if (!this.#destroyed) {
             this.#errors.report(error, context);
@@ -120,6 +155,7 @@ class Telemetry implements TelemetryPort {
 
     /** Analytics is configured before the city's stored consent is read, so a stored "granted" applies at once. */
     setContext(context: TelemetryContext): void {
+        this.#windowClass = context.windowClass;
         this.#analytics.configure(context.measurementId, context.firebase);
         this.#consent.setCity(context.cityId);
         this.#errors.setContext({

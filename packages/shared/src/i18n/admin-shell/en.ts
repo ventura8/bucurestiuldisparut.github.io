@@ -67,7 +67,7 @@ export const en: AdminShellMessages = {
     'adminShell.auth.signedInAs': 'Signed in as {email}',
     'adminShell.account.label': 'Account and preferences',
     'adminShell.account.close': 'Close',
-    'adminShell.account.analytics': 'Anonymous statistics of the administration (Google Analytics)',
+    'adminShell.account.analytics': 'Anonymous usage and performance statistics of the administration (Google Analytics)',
     'adminShell.notice.close': 'Close the message',
     'adminShell.nav.close': 'Close',
     'adminShell.page.unavailable': 'This page is not available yet.',

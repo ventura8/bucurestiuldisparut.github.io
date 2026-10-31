@@ -1,8 +1,15 @@
 import { isGoogleFailure } from '../google/failure.js';
-import { ensureBindings, missingBindings, type PolicyAccess, type WantedBinding } from '../google/iam-policy.js';
+import {
+    ensureBindings,
+    heldBindings,
+    missingBindings,
+    removeBindings,
+    type PolicyAccess,
+    type WantedBinding,
+} from '../google/iam-policy.js';
 import type { CustomRole, IdentityResource } from '../google/iam.js';
 import { matchesSpec, sameSet, type JsonObject } from '../google/json.js';
-import { eachInTurn, lacking, type ProvisionContext, type ProvisionItemSpec } from './item.js';
+import { eachInTurn, lacking, type Observation, type ProvisionContext, type ProvisionItemSpec } from './item.js';
 import { CUSTOM_ROLES, roleTable, type CustomRoleEntry, type PolicyBindings, type ServiceAgents } from './resources.js';
 
 /**
@@ -11,7 +18,8 @@ import { CUSTOM_ROLES, roleTable, type CustomRoleEntry, type PolicyBindings, typ
  * condition admits only the repository's `master` branch in the `deploy` environment, and the deployer's binding).
  * M6 (`docs/research/M6-interfaces.md` §1.6, CR-M6-2): the Eventarc and Pub/Sub service identities are generated before
  * the table (finding 12), which gains `roles/run.invoker` for the function accounts (finding 17), the installer's rows and
- * the pipeline repository's policy.
+ * the pipeline repository's policy. Since 2026-10-31 (`DECISIONS-for-review.md` §75b) it also takes `roles/editor` away
+ * from the App Engine default account on the project's policy, last.
  */
 
 /** The Compute Engine default account's id and address, when the project has one (§1.2: a first deploy binds it). */
@@ -126,6 +134,37 @@ async function bindingsLacking(context: ProvisionContext): Promise<string[]> {
     return lacks.flat();
 }
 
+/**
+ * `DECISIONS-for-review.md` §75b (the user's decision, 2026-10-31): the App Engine default account loses `roles/editor`
+ * on the project. Nothing of ours runs as it (every function names its own account, the raster job runs as `job-raster@`,
+ * the builds as `hcm-installer@`), and since §75a the installer may act as it, which would reach Editor through it. Only
+ * that member of only that binding (an unconditional one); nothing when the account is absent. The Compute Engine
+ * default account keeps its Editor role: the functions' source builds may run as it (out of scope, §75b).
+ */
+const EDITOR_ROLE = 'roles/editor';
+
+/** The App Engine default account's Editor binding while the project's policy holds it; none otherwise. */
+async function appEngineEditorHeld(context: ProvisionContext): Promise<readonly WantedBinding[]> {
+    const account = await appEngineDefault(context);
+    if (account === undefined) {
+        return [];
+    }
+    const policy = await context.clients.resourceManager.projectPolicy(context.project.projectId).read();
+    return heldBindings(policy, [{ role: EDITOR_ROLE, member: `serviceAccount:${account}` }]);
+}
+
+/** Read again before the write: the role table's own write comes first, and someone may have changed the policy. */
+async function dropAppEngineEditor(context: ProvisionContext, held: readonly WantedBinding[]): Promise<void> {
+    if (held.length > 0) {
+        await removeBindings(context.clients.resourceManager.projectPolicy(context.project.projectId), held);
+    }
+}
+
+/** The doctor's reason when the Editor role is all the item lacks: a project prepared before §75b. */
+function editorReason(observation: Observation, onlyEditor: boolean): Observation {
+    return onlyEditor ? { ...observation, detail: 'adminSetup.provision.appEngineEditor' } : observation;
+}
+
 const iam: ProvisionItemSpec = {
     id: 'iam',
     after: ['service-accounts', 'buckets', 'artifact-registry', 'secrets', 'org-policies'],
@@ -133,11 +172,15 @@ const iam: ProvisionItemSpec = {
         const roles = await Promise.all(
             CUSTOM_ROLES.map(async (entry) => ({ entry, found: await context.clients.iam.getRole(context.project.projectId, entry.id) })),
         );
-        const lacks = [...rolesLacking(roles), ...(await bindingsLacking(context))];
-        return lacking(lacks, async () => {
+        const granting = [...rolesLacking(roles), ...(await bindingsLacking(context))];
+        const editor = await appEngineEditorHeld(context);
+        const lacks = [...granting, ...editor.map((binding) => `editor:${binding.member}`)];
+        const observation = lacking(lacks, async () => {
             await fixRoles(context, roles);
             await bindAll(context);
+            await dropAppEngineEditor(context, editor);
         });
+        return editorReason(observation, granting.length === 0 && editor.length > 0);
     },
 };
 

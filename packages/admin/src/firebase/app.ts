@@ -10,6 +10,7 @@
  * `sessionStorage` belongs to the one tab (a link opened with `noopener` gets none), so only the admin's own tab holds
  * it; the price is one sign-in per tab (`DECISIONS-for-review.md` §73a, for the user).
  */
+import type { FieldChunk } from '@hcm/shared';
 import type { FirebaseApp, FirebaseOptions } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
@@ -82,6 +83,12 @@ export function initFirebase(sdk: FirebaseSdk, config: FirebaseWebConfig, runtim
         return created;
     });
     return { app, auth, functions, firestore, storage };
+}
+
+/** The lazily imported field chunk (§76: web-vitals and the event guard), fetched with the analytics module. */
+export async function loadFieldSdk(): Promise<FieldChunk> {
+    const module = await import('./field-sdk.js');
+    return module.fieldSdk;
 }
 
 /** The lazily imported analytics module. */

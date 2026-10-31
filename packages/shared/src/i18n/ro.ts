@@ -143,7 +143,7 @@ export const ro = {
     'language.ro': 'Română',
     'language.en': 'English',
     'consent.title': 'Statistici anonime',
-    'consent.body': 'Permiți statistici anonime de utilizare (Google Analytics)? Fără acordul tău nu folosim cookie-uri.',
+    'consent.body': 'Permiți statistici anonime de utilizare și performanță (Google Analytics)? Altfel, fără cookie-uri.',
     'consent.accept': 'Accept',
     'consent.decline': 'Refuz',
     'consent.withdraw': 'Retrage acordul pentru statistici',

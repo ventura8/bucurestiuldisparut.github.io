@@ -126,6 +126,18 @@ builds the owner submits; nothing impersonates it otherwise (no key, no Workload
   bindings in place it only reads them.
 - The compute default account keeps its `roles/cloudbuild.builds.builder` only when the organisation withholds the
   default grants (unchanged, `M2b-interfaces.md` §3.4.2): the functions' own image builds use it, not the installer.
+- **What Provision changes on the project's own policy beyond the table (2026-10-31, `DECISIONS-for-review.md` §75b, the
+  user's decision)**: the `iam` item removes `serviceAccount:<project>@appspot.gserviceaccount.com` from the project's
+  unconditional `roles/editor` binding, last, after the role table: that member of that binding only (every other member
+  and every other binding as read, a conditional binding never touched, a binding left with no member dropped), written
+  with the etag read and read again on a 409 `ABORTED`, at most three writes (`removeBindings`,
+  `packages/admin/src/google/iam-policy.ts`). Nothing to do when the account is absent or holds no such binding. While the
+  Editor role is all the item lacks, the doctor's result carries the reason `adminSetup.provision.appEngineEditor`
+  (shown on the row as the run reports it; a doctor's `missing` is not recorded, so the server's earlier state of the item
+  comes back once the run is recorded, an older behaviour of every item), and Retry what failed (step c's, or the server card's **Retry what failed in step c**, which reruns `iam`) removes it; a refused write
+  fails the row with the role it needs (S-A04-HAPPY-APPENGINE-NO-EDITOR, S-A04-BAD-APPENGINE-EDITOR-REFUSED). Why: since
+  §75a the installer may act as that account, and nothing of ours runs as it. The Compute Engine default account keeps
+  its Editor role (the functions' source builds may run as it; out of scope, §75b).
 
 ### 1.3 The install bundle: format, versioning, integrity
 

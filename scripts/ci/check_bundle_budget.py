@@ -70,6 +70,9 @@ ENGINE_CHUNK_BUDGETS: Mapping[str, int] = {
     "compare": 5,
     # firebase/app and firebase/analytics, fetched only after the visitor's consent: 13.3 KB on 2026-10-24.
     "firebase-sdk": 16,
+    # The field chunk (DECISIONS-for-review.md §76): Google's web-vitals (attribution build, 5.4 KB of it) and the event
+    # guard of @hcm/shared, fetched with the Firebase SDK after the visitor's consent: 7.3 KB on 2026-10-31.
+    "field-sdk": 9,
 }
 
 # The admin's build folder and its entry (packages/admin/vite.config.ts).
@@ -113,6 +116,9 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     "dynamic-color": 24,
     # Firebase Analytics, only after consent.
     "analytics-sdk": 8,
+    # The field chunk (DECISIONS-for-review.md §76): web-vitals and the admin's event guard, with Analytics after
+    # consent: 7.6 KB on 2026-10-31.
+    "field-sdk": 9,
     # M4 (docs/research/M4-interfaces.md §5.4, §5.5; DECISIONS-for-review.md §54b), each the measurement of 2026-10-24 plus
     # about 20 %: the inbox (3.4 KB), Firebase Messaging, fetched when an admin turns notifications on for a browser
     # (5.6 KB), and the Firebase Installations SDK that it and Analytics share (2.9 KB, the codeSplitting group

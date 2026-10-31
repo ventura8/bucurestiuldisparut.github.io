@@ -4773,7 +4773,7 @@ Verify: `PIPELINE_STAGE=deps` (holds only), `static` (all but 74f; with 74f, all
 
 - **74g APPLIED 2026-10-31: `@axe-core/playwright` held at 4.13.0** (part of 74a undone, no download: the lockfile's three axe entries are those of before §74, which `npm install --package-lock-only --offline` in the pinned Node image leaves unchanged, and `node_modules` took the two 4.13.0 packages from a checkout installed before §74). The split `all` after §74 failed 46 Playwright tests on axe's `target-size` and `color-contrast` with nothing on the page changed: `axe-core` 4.14.0 leaves slotted content of a scrolling shadow-root pane out of that pane's grid, so its hidden part "covers" what lies under the pane (lesson 294, with the ten-line page that fails on 4.14.0 and passes on 4.13.0). A `HELD` entry and the *Held dependencies* row name it; `@hcm/test-support`'s own `axe-core` stays 4.14.0 (its component tests never scroll a slotted pane). The image's npm layer rebuilds from the new lockfile on its next build. Lift the hold when an `@axe-core/playwright` release brings an `axe-core` whose `findScrollRegionParent` follows the flattened tree again: the ten-line page of lesson 294 passing is the check.
 
-## 75. The live test of 2026-10-31: the installer's actAs on the App Engine default account, an admin newer than its server, the old links on a hash change, and the per-tab sign-in (2026-10-31) — 75a and 75d–75f APPLIED (product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download); 75b PROPOSED, NOT APPLIED (a cloud change: the user decides); 75c PROPOSED, NOT APPLIED (a product decision)
+## 75. The live test of 2026-10-31: the installer's actAs on the App Engine default account, an admin newer than its server, the old links on a hash change, and the per-tab sign-in (2026-10-31) — 75a, 75b (the user's decision, 2026-10-31) and 75d–75f APPLIED (product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; 75b changes the live project only when the owner runs step c again); 75c PROPOSED, NOT APPLIED (a product decision)
 
 The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *Live test 2026-10-31 (M6 admin)*.
 
@@ -4801,13 +4801,50 @@ The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *L
     it, the installer could reach Editor indirectly: a build or a function deployed to run as that account would run with
     Editor. The grant is the narrowest that satisfies `firebase-tools` (one account, one role), and nothing of ours runs
     as that account: every function names its own account (`fn-admin@`, `fn-events@`, `fn-crash@`), the raster job runs
-    as `job-raster@`, and the builds as `hcm-installer@`.
-- **75b PROPOSED, NOT APPLIED (a change to the live project's IAM: ask first): remove `roles/editor` from the App Engine
-  default account in Provision.** Since nothing of ours runs as it, a Provision item (or a step of `iam`) could remove
-  that one binding from the project's policy (and Re-check would report it back if someone added it again), so 75a's
-  actAs reaches nothing. Risks: an App Engine app or another tool of the owner's that runs as that account would lose its
-  access; Google's own guidance recommends it for production projects. The user decides; until then 75a stands as
-  written.
+    as `job-raster@`, and the builds as `hcm-installer@`. Since §75b Provision takes that Editor role away, so the actAs
+    reaches no project role.
+- **75b APPLIED 2026-10-31 (the user's decision: "do 75b"): Provision removes `roles/editor` from the App Engine default
+  account on the project's policy.** Proposed as: since nothing of ours runs as it, a step of `iam` could remove that one
+  binding, so 75a's actAs reaches nothing; risks: an App
+  Engine app or another tool of the owner's that runs as that account would lose its access (Google's own guidance
+  recommends it for production projects).
+  - **What changed**: the `iam` item (`packages/admin/src/provision/items-iam.ts` `appEngineEditorHeld`,
+    `dropAppEngineEditor`) reads the project's policy and, while `serviceAccount:<project>@appspot.gserviceaccount.com`
+    is a member of its unconditional `roles/editor` binding, lacks `editor:<that member>`; its fix runs last, after the
+    role table, and calls `removeBindings` (`packages/admin/src/google/iam-policy.ts`, sharing `ensureBindings`' loop:
+    read, change, write with the etag read, read again on a 409 `ABORTED`, at most three writes). It removes that member
+    from that binding only: every other member and every other binding as read, a conditional binding never touched, a
+    binding left empty dropped. Nothing to do when the account is absent (the same GET as 75a) or the binding is. It is a
+    part of `iam`, not a 17th item: step c's **Retry what failed** and the server card's **Retry what failed in step c**
+    (75a: `iam` only) both cover it, and an older server, whose `setup.recordCloud` accepts the 16 ids of
+    `PROVISION_ITEMS` only, keeps recording step c (75d's case). While the Editor role is all the item lacks, the doctor's
+    result carries the reason `adminSetup.provision.appEngineEditor` (RO and EN: Retry what failed takes it away), shown
+    on the row as the run reports it. Found on the way, not changed: a doctor's `missing` is never recorded
+    (`provisionRequest` in `packages/admin/src/setup/provision.ts` drops every `missing` item, to skip the never-reported
+    ones), so once Re-check's run is recorded the server's earlier state of such an item comes back (`ok`, or a failure's
+    `invalid`): Re-check cannot show an item that regressed, for this part as for any item. A refused write fails
+    the row with the role it needs (`apiError.cloud.permission`, `roles/resourcemanager.projectIamAdmin`). The fake
+    project's policy gives Editor to both default accounts, as Google does, and the scenario
+    `resource-manager.appEngineEditorLocked` refuses the removal (S-A04-HAPPY-APPENGINE-NO-EDITOR,
+    S-A04-BAD-APPENGINE-EDITOR-REFUSED).
+  - **The check that nothing of ours needs that account's Editor role** (the tree searched on 2026-10-31 for
+    `appspot`, `appengine`, `app.yaml`, `serviceAccount`, `firebase-functions/v1`, `onSchedule`, `exportDocuments`):
+    no App Engine service is deployed (no `app.yaml`; the App Engine app exists only as the project's legacy default
+    bucket and location). Every function is gen 2 and names its account (`runAs` and `GLOBAL_OPTIONS.serviceAccount`
+    = `fn-events@` in `functions/src/global-options.ts`; no `firebase-functions/v1`, whose default runtime account would be
+    this one). Cloud Scheduler's jobs of `ops.tick` and `imagery.tick` carry the function's own account as their OIDC
+    token (finding 11) and Cloud Tasks the enqueuer's (`fn-admin@`). No Firestore export exists. The raster jobs run as
+    `job-raster@` (`scripts/site/src/install/steps/run-jobs.ts`). The in-app builds run as `hcm-installer@`
+    (`packages/admin/src/install/build-spec.ts` `installerServiceAccount`), GitHub's deploys as `gh-deployer@` through
+    Workload Identity Federation (`.github/workflows/ci.yml`), never as a default account. `firebase-tools`' own check
+    (75a) asks for actAs on the account, not for any role of it, so the removal leaves the install as it is.
+  - **Not the other default accounts**: the Compute Engine default account `<number>-compute@developer.gserviceaccount.com`
+    keeps its Editor role. Cloud Functions gen 2 and Cloud Run build the functions' images from source with it (or the
+    legacy Cloud Build account) when the deploy names no build account, and Provision already binds its invoker and
+    event-receiver roles (and the builder role when the organisation withholds the default grants); taking Editor away from
+    it needs those builds' exact permissions first: out of scope, a later proposal if wanted. Nothing else is removed.
+  - **The live project**: unchanged until the owner, after the next admin redeploy, runs step c again (its Retry what
+    failed, or the server card's Retry what failed in step c); `docs/MANUAL_TEST_PLAN.md` says so.
 - **75c PROPOSED, NOT APPLIED (a product decision; finding 26): the admin on its own Hosting site, instead of the sign-in
   per tab of §73a.** Today the admin keeps Firebase Auth in the tab's `sessionStorage`, so the public viewer on the same
   origin can never read the owner's sign-in (the M6 security review's finding 1); the cost is a sign-in for every new tab,
@@ -4852,3 +4889,75 @@ The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *L
 
 Verify: `static`, `tests` and `build`, and the touched Playwright specs in the quality image
 (`docs/research/M6-status.md` §6).
+
+## 76. Field measurements: Core Web Vitals and the apps' own timings in GA4, after consent (2026-10-31) — 76a–76e APPLIED (the user's request and decisions of 2026-10-31, the download of `web-vitals` approved; 76d a stricter dependency rule and new budget rows, 76e a build setting that keeps a gate green without raising its budget: the pre-approved kinds; no gate relaxed, no budget raised, no checker allowlist entry); 76f recorded for the user
+
+The user's request (2026-10-31): "make sure we get all measurements from the field for improvements", in this release.
+The full list of events, parameters, moments and reasons: `docs/ARCHITECTURE.md` → *Field measurements*.
+
+- **76a APPLIED: the user's decisions.** (1) Core Web Vitals through Google's `web-vitals`, its attribution build,
+  exact-pinned at the latest stable release, `6.2.3` (Apache-2.0; installed in the digest-pinned Node image as a
+  dependency of `@hcm/engine` and `@hcm/admin`; `@firebase/performance` keeps its own `web-vitals@4.2.4` at the root,
+  so npm nests ours under each workspace). (2) GA4 events only, after consent only, exactly like the events before: the
+  hash-free `page_location`, Consent Mode v2, collection off at once on a withdrawal; no URL hash, no coordinates, no
+  photo or place id beyond the unchanged `photo_open` and `poi_open`, no PII; the attribution's element as a short
+  selector of the app's own elements only. (3) It ships in the same redeploy.
+- **76b APPLIED: what is measured, and what is not.** The viewer: LCP, INP, CLS, FCP and TTFB (`web_vitals`) with
+  their attribution's element, load state, interaction type and parts; the boot from the engine's start to the
+  manifest, to the map's first render and to its first idle (`viewer_timing`, `performance.mark` and `measure` as
+  `hcm:<phase>`); a failed manifest (`manifest_error`); no map, by reason (`map_unavailable`: no WebGL, a lost context,
+  a failed style or WebGL, no container); the map's errors by kind (`map_errors`: the first at once, then the count at
+  most every 30 s and at page hide, never one event per tile); a photo's click to its decoded thumbnail
+  (`photo_timing`, through a new `hcm-photo-shown` event of `<hcm-photo-sheet>`); Compare to its second map
+  (`compare_timing`); the `idle` event joined `MapPort` for it (one map per view unchanged). The admin: the same Core
+  Web Vitals; the time to the signed-in shell (`admin_ready`); each Setup step's check (`setup_check`, `busy` on then
+  off) and Check again (`step: all`); Provision per item (`provision_item`); each install build the admin saw running
+  end (`install_build`: target, outcome, Cloud Build's own duration, the failing step's name, never a log line); every
+  editor write (`editor_save`: area, operation, outcome, latency; `measuredStore` wraps the editors' Firestore, so no
+  editor changed); a job seen unfinished that ends (`job_done`: from its `createdAt` to the admin seeing it). Every
+  field measurement carries `app`, `window_class` and `release`. Sampled at 100 %: a page sends a few dozen events at
+  most. **Deliberately not measured**: the hash, a coordinate, the map's view or zoom, LCP's resource URL (a photo's
+  address), the URL of a soft navigation (it carries the hash; soft navigations stay off), script sources, element text
+  or ids, e-mail addresses, user ids, a build's log, Firebase Performance Monitoring (still out of the viewer, §18a).
+- **76c APPLIED: the privacy reasoning.** Every event of both apps (the old ones too) passes the guard of `@hcm/shared`
+  (`packages/shared/src/telemetry/field-events.ts`, each app's own table: the viewer's guard knows no admin event and
+  the other way round) in the consented chunk before `logEvent`: the name must be one of the app's events (GA4's 40
+  characters), at most 25 parameters, each text at most 100 characters and without `?`, `#`, `@`, a number with four
+  decimals or more or a `/z/x/y` tile path, the event's strict zod schema (an unknown parameter is refused), and the
+  page's budget (300 events, 100 per name, `web_vitals` 15, `map_errors` 30, `exception` 10, …). A crash message that
+  names coordinates still reaches Error Reporting redacted, but never GA4 (`S-V19-BAD-POSITION-NEVER-MEASURED`). The
+  element of a metric is `shortTarget`: the nearest `hcm-` element (across shadow roots), then at most three inner tags
+  with one class of the app's own form each; `page` for an element of an embedding page. Measurements made before
+  consent (the boot's) wait in memory, at most 30, and leave only after a grant; a refusal or a withdrawal forgets them;
+  web-vitals itself reads the page's buffered entries once it starts after consent. The consent texts say so: the
+  banner's `consent.body` and the admin's account switch now name "usage and performance statistics" (RO and EN), and a
+  new city's privacy text (`functions/src/cities/texts.ts`) says what is measured and that the position is not; the
+  existing cities' texts are their owners' (Settings), `ADMIN_GUIDE.*.md` asks them to update theirs.
+- **76d APPLIED: where the code lives, and the gates.** `web-vitals` is imported only by the lazy field chunks
+  (`packages/engine/src/telemetry/field-sdk.ts`, `packages/admin/src/firebase/field-sdk.ts`), fetched with the Firebase
+  SDK after consent; the new `.dependency-cruiser.cjs` rule `web-vitals-only-in-the-consented-chunks` makes that a gate
+  (stricter: the pre-approved kind). `check_bundle_budget.py` has a `field-sdk` row for each app (9 KB; 7.3 KB and
+  7.2 KB measured). The CSP needs nothing new: web-vitals reads the page's own Performance API and sends nothing itself;
+  the chunk is served beside `engine.mjs` (`script-src` already names the engine's origin); GA4's hosts are unchanged.
+  e2e: `e2e/specs/viewer/field-measurements.spec.ts` (`S-V19-HAPPY-FIELD-MEASUREMENTS` and four bad rows: nothing
+  before consent or after Decline, nothing after a withdrawal, a position never sent, a tile-error storm capped), each
+  received event validated with the viewer's own schema (`e2e/support/ga4.ts`). The admin's GA4 has no e2e world (the
+  e2e web configuration names no measurement id), so its measurements are covered by the node tests
+  (`packages/admin/test/app/field.test.ts`, `telemetry.test.ts`, `firebase/analytics.test.ts`).
+- **76e APPLIED: the engine's CSS literals minified, so the IIFE keeps its budget.** The IIFE inlines every lazy chunk
+  (§13a), so the field chunk (7.3 KB, 5.4 KB of it web-vitals) took `engine.iife.js` to 125.4 KB, over its 125 KB. The
+  admin has minified the CSS of its Lit `css` templates since §36d (`cssLiteralsPlugin`, `scripts/site/src/css-literals.ts`,
+  comments and indentation only, every line break kept); the engine's build now uses the same plugin, which takes about
+  6 KB gzip out of the engine. Measured on 2026-10-31 (gzip, level 9), before → after: `engine.mjs` 97.7 → 93.9 KB
+  (budget 100), `engine.iife.js` 117.2 → 120.1 KB (125), `compare` 4.6 → 4.2 KB, `firebase-sdk` 13.4 KB, `field-sdk`
+  7.3 KB (new, 9); the admin's entry 362.7 → 364.5 KB (450), its `field-sdk` 7.2 KB (new, 9), all of it 601.3 →
+  609.6 KB (620). No budget was raised.
+- **76f recorded for the user: how to analyse, and later options.** GA4 shows the events by name after a day; the
+  parameters need registering once as custom dimensions and metrics (`ADMIN_GUIDE.*.md` lists them), then Explore's
+  free form gives `web_vitals` by `metric_name`, `window_class` and `release`. Later options, each its own decision: the
+  provisioner could register the custom definitions itself (Analytics Admin `customDimensions.create`, a change to the
+  owner's GA4 property: ask first); a BigQuery export of the GA4 property gives exact percentiles over long periods
+  (free tier, a cloud change: ask first); sampling below 100 % if a city's traffic ever needs it.
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build`, and the touched Playwright specs in the quality image
+(`e2e/specs/viewer/field-measurements.spec.ts`, `consent.spec.ts`).

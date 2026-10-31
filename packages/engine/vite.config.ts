@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 
+import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
 import { thirdPartyNoticesPlugin } from '../../scripts/site/src/notices.js';
 import { FONT_FILES } from '../ui/src/fonts/font-files.js';
 
@@ -12,9 +13,13 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
  * from https://api.mapbox.com/mapbox-gl-js/v3.34.1/ (Mapbox terms, CDN caching, bundle budget).
  * - dist/THIRD_PARTY_NOTICES.txt lists every bundled npm package and the fonts' packages (the `fonts:copy` script copies
  *   the fonts next to it) with their licences (scripts/site/src/notices.ts; checked by the `notices` gate).
+ * - The CSS of the Lit `css` templates is minified by `cssLiteralsPlugin` (scripts/site/src/css-literals.ts), as the admin's
+ *   has been since DECISIONS-for-review.md §36: the bundler's minifier leaves a template literal's comments and indentation,
+ *   about 6 KB gzip of the engine; with it the IIFE carries the consented field chunk (web-vitals, §76) within its budget.
  */
 export default defineConfig({
     plugins: [
+        cssLiteralsPlugin(),
         thirdPartyNoticesPlugin({
             product: 'the Historic City Map engine (engine.mjs, engine.iife.js, their chunks and fonts)',
             assets: FONT_FILES.map((font) => ({ package: font.source.package, file: `fonts/${font.file}` })),

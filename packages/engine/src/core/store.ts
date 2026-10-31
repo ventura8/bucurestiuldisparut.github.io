@@ -18,6 +18,7 @@ import {
 import { isCompactHeight, windowClassFor } from '@hcm/ui';
 import { Listeners, type Unsubscribe } from '@hcm/ui/map';
 
+import type { Measurement } from '../telemetry/telemetry-port.js';
 import { Boot, type BootHost } from './boot.js';
 import { CompareDriver, type CompareDriverHost } from './compare-driver.js';
 import type { MountedMap } from './compare-port.js';
@@ -41,6 +42,8 @@ export interface ViewerActions {
     /** Live: the map follows on the next animation frame; `final` (slider released) also writes the hash. */
     setOverlayOpacity(overlayId: string, opacity: number, final?: boolean): void;
     openPhoto(photoId: string | null): void;
+    /** The open photo's thumbnail was decoded (`ok`) or failed (§76: `photo_timing`). */
+    photoShown(ok: boolean): void;
     /** Opens the POI's details in the detail sheet (`sheet: 'poi'`); null closes; an unknown id is ignored. */
     openPoi(poiId: string | null): void;
     setLightbox(open: boolean): void;
@@ -212,10 +215,21 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
             this.showToast('error.unknownPhoto');
             return;
         } else if (photoId !== state.selectedPhotoId) {
+            this.#measure({ kind: 'start', what: 'photo' });
             this.set({ ...state, selectedPhotoId: photoId, selectedPoiId: null, lightbox: false, sheet: 'photo' });
             this.deps.telemetry.logEvent({ name: 'photo_open', photoId });
         }
         this.hash.schedule();
+    }
+
+    /** A field measurement for telemetry (§76; a telemetry without `measure` takes none). */
+    #measure(measurement: Measurement): void {
+        this.deps.telemetry.measure?.(measurement);
+    }
+
+    /** The photo sheet's thumbnail was decoded or failed: the `photo_timing` field measurement ends. */
+    photoShown(ok: boolean): void {
+        this.#measure({ kind: 'end', what: 'photo', ok });
     }
 
     openPoi(poiId: string | null): void {
@@ -302,6 +316,9 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
         if (state.manifest === null || !isCompareLayer(state.manifest, layerId)) {
             return;
         }
+        if (state.compare === null) {
+            this.#measure({ kind: 'start', what: 'compare' });
+        }
         this.set({ ...state, compare: { layerId, position: comparePosition(state, position) } });
         if (state.compare === null) {
             this.deps.telemetry.logEvent({ name: 'compare_open' });
@@ -316,6 +333,11 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
             this.set({ ...this.#state, compare: { ...compare, position: settled } });
             this.hash.schedule();
         }
+    }
+
+    /** Swipe compare's second map is ready (or failed): the `compare_timing` field measurement ends. */
+    compareReady(ok: boolean): void {
+        this.#measure({ kind: 'end', what: 'compare', ok });
     }
 
     closeCompare(): void {

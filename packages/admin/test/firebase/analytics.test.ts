@@ -1,7 +1,16 @@
+import { createAdminGuard, type GaParams } from '@hcm/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CONSENT_DENIED, CONSENT_GRANTED, createAnalytics, type AnalyticsSdk } from '../../src/firebase/analytics.js';
 import { settle, testLog } from '../app/fakes.js';
+
+const CONTEXT = { app: 'admin', window_class: 'large', release: '1.2.0' } as const;
+
+/** The real guard of `@hcm/shared`; Core Web Vitals observers that only record their reporter. */
+function fakeField() {
+    const reporters: ((params: GaParams) => void)[] = [];
+    return { reporters, createGuard: createAdminGuard, observeVitals: (report: (params: GaParams) => void) => reporters.push(report) };
+}
 
 function fakeSdk(supported = true) {
     const sdk = {
@@ -17,10 +26,17 @@ function fakeSdk(supported = true) {
     return sdk;
 }
 
-function analytics(sdk: ReturnType<typeof fakeSdk>, load = vi.fn(() => Promise.resolve(sdk))) {
+function analytics(sdk: ReturnType<typeof fakeSdk>, load = vi.fn(() => Promise.resolve(sdk)), field = fakeField()) {
     const { log, recording } = testLog();
-    const port = createAnalytics({ app: { app: true }, load, log, pageLocation: () => 'https://demo-hcm.web.app/' });
-    return { port, load, recording };
+    const port = createAnalytics({
+        app: { app: true },
+        load,
+        loadField: () => Promise.resolve(field),
+        fieldContext: () => CONTEXT,
+        log,
+        pageLocation: () => 'https://demo-hcm.web.app/',
+    });
+    return { port, load, recording, field };
 }
 
 describe('createAnalytics', () => {
@@ -147,5 +163,64 @@ describe('createAnalytics', () => {
         await settle();
 
         expect(a.recording.records.map((record) => record.message)).toContain('analytics call failed');
+    });
+});
+
+describe('createAnalytics: field measurements', () => {
+    it('happyPath_aFieldMeasurementCarriesItsContextAndTheVitalsReport', async () => {
+        const sdk = fakeSdk();
+        const a = analytics(sdk);
+        a.port.setConsent(true);
+        a.port.field('admin_ready', { duration_ms: 1800, restored: true });
+        await settle();
+        a.field.reporters[0]?.({
+            metric_name: 'INP',
+            metric_value: 180,
+            metric_delta: 180,
+            metric_id: 'v6-1-2',
+            metric_rating: 'good',
+            navigation_type: 'navigate',
+            value: 180,
+        });
+        await settle();
+
+        expect(a.field.reporters).toHaveLength(1);
+        expect(sdk.logEvent.mock.calls.map(([, name, params]) => [name, params])).toEqual([
+            ['admin_ready', { duration_ms: 1800, restored: true, ...CONTEXT, page_location: 'https://demo-hcm.web.app/' }],
+            [
+                'web_vitals',
+                expect.objectContaining({ metric_name: 'INP', window_class: 'large', page_location: 'https://demo-hcm.web.app/' }),
+            ],
+        ]);
+    });
+
+    it('badPath_anEventTheGuardRefusesIsDroppedAndSaidOnce', async () => {
+        const sdk = fakeSdk();
+        const a = analytics(sdk);
+        a.port.setConsent(true);
+
+        a.port.log('exception', { description: 'mail owner@example.org', fatal: false });
+        a.port.log('exception', { description: 'at #/photos?x=1', fatal: false });
+        a.port.field('editor_save', { area: 'photos', operation: 'update', outcome: 'ok', duration_ms: -5 });
+        await settle();
+
+        expect(sdk.logEvent).not.toHaveBeenCalled();
+        expect(a.recording.records.filter((record) => record.message === 'analytics event dropped').map((record) => record.data)).toEqual([
+            { name: 'exception', reason: 'privacy' },
+            { name: 'editor_save', reason: 'schema' },
+        ]);
+    });
+
+    it('badPath_aFloodOfOneMeasurementIsCapped', async () => {
+        const sdk = fakeSdk();
+        const a = analytics(sdk);
+        a.port.setConsent(true);
+
+        for (let index = 0; index < 50; index += 1) {
+            a.port.field('install_build', { target: 'server', outcome: 'failed' });
+        }
+        await settle();
+
+        expect(sdk.logEvent).toHaveBeenCalledTimes(20);
     });
 });

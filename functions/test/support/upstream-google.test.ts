@@ -161,6 +161,41 @@ describe('Google identity: tokeninfo and Resource Manager', () => {
         expect(JSON.stringify(refused.body)).toContain('user:someone@elsewhere.test');
         expect(invalid.status).toBe(400);
     });
+
+    it('happyPath_aNewProjectHoldsEditorForBothDefaultAccountsAsGoogleGrantsIt', async () => {
+        const fakes = createUpstreamFakes();
+
+        const policy = (await call(fakes, 'POST', `${P}:getIamPolicy`, {})).body as { bindings: { role: string; members: string[] }[] };
+
+        expect(policy.bindings.find((binding) => binding.role === 'roles/editor')?.members).toEqual([
+            'serviceAccount:123456789012-compute@developer.gserviceaccount.com',
+            'serviceAccount:demo-hcm@appspot.gserviceaccount.com',
+        ]);
+    });
+
+    it('badPath_aDenyPolicyKeepsTheAppEngineEditorAndRefusesOnlyAWriteThatDropsIt', async () => {
+        const fakes = createUpstreamFakes();
+        fakes.scenario('resource-manager.appEngineEditorLocked');
+        const read = async (): Promise<{ etag: string; bindings: { role: string; members: string[] }[] }> =>
+            (await call(fakes, 'POST', `${P}:getIamPolicy`, {})).body as { etag: string; bindings: { role: string; members: string[] }[] };
+        const policy = await read();
+        const added = { role: 'roles/firebase.viewer', members: ['serviceAccount:fn-admin@demo-hcm.iam.gserviceaccount.com'] };
+        const dropped = policy.bindings.map((binding) =>
+            binding.role === 'roles/editor'
+                ? { ...binding, members: binding.members.filter((member) => !member.includes('appspot')) }
+                : binding,
+        );
+
+        const refused = await call(fakes, 'POST', `${P}:setIamPolicy`, { policy: { ...policy, bindings: dropped } });
+        const kept = await call(fakes, 'POST', `${P}:setIamPolicy`, { policy: { ...policy, bindings: [...policy.bindings, added] } });
+
+        expect(refused).toMatchObject({ status: 403, body: { error: { status: 'PERMISSION_DENIED' } } });
+        expect(JSON.stringify(refused.body)).toContain('resourcemanager.projects.setIamPolicy');
+        expect(kept.status).toBe(200);
+        // A policy that no longer holds the binding (someone removed it before the deny policy) is written freely.
+        fakes.state.resourceManager.policies.set('demo-hcm', { version: 1, etag: (await read()).etag, bindings: dropped });
+        expect((await call(fakes, 'POST', `${P}:setIamPolicy`, { policy: { bindings: [added] } })).status).toBe(200);
+    });
 });
 
 describe('Cloud Billing, Budgets and Service Usage', () => {

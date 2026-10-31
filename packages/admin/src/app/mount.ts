@@ -22,6 +22,7 @@ import { NO_GATE, type AdminState, type NoticeInput, type ShellStateAccess, type
 import { Store } from '../state/store.js';
 import type { AdminRuntime, FirebaseWebConfig } from './config.js';
 import { contentServices } from './content-services.js';
+import { FieldWatch, measuredStore } from './field.js';
 import { chooseCity, cityRefresher, switchTo, type CityChoiceDeps } from './current-city.js';
 import { Navigation } from './navigation.js';
 import { rememberedSetupReady } from './setup-readiness.js';
@@ -29,7 +30,7 @@ import { shellWatches } from './shell-watches.js';
 import { destinationOf } from '../routing/router.js';
 import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } from './ports.js';
 import { guardCallables, type AdminProject, type SetupModuleSpec, type ShellServices } from './services.js';
-import type { AdminEvent, AdminTelemetry } from './telemetry.js';
+import type { AdminEvent, AdminTelemetry, Measure } from './telemetry.js';
 
 /** `localStorage`: the theme the admin chose (`system` by default). */
 export const THEME_KEY = 'hcm:admin:theme';
@@ -380,7 +381,7 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
     const track = (event: AdminEvent): void => {
         telemetry.track(event);
     };
-    const content = contentRegistry(deps, { shell, callables: firebase.callables, denied });
+    const content = contentRegistry(deps, { shell, callables: firebase.callables, denied, measure: measureOf(telemetry) });
     const { open: openCity, opening } = cityOpener(deps);
     // Once another city opens (its address set, the page reloading), an edit the admin chose to discard holds nothing back.
     const unsaved = (): boolean => !opening() && content.hasUnsavedChanges();
@@ -422,7 +423,17 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
     };
 }
 
-/** Telemetry over the app's state: the language, the window class, whether the server answers. */
+/** The field measurements of `field.ts`, through telemetry (§76). */
+function measureOf(telemetry: AdminTelemetry): Measure {
+    return (event) => {
+        telemetry.measure(event);
+    };
+}
+
+/**
+ * Telemetry over the app's state: the language, the window class, whether the server answers; the field measurements of
+ * the state (`field.ts`, §76) follow it for as long as the store lives.
+ */
 function telemetryOf<Setup>(deps: AdminDeps<Setup, unknown>, store: Store<AdminState<Setup>>): AdminTelemetry {
     const telemetry = deps.telemetry({
         locale: () => store.state.locale,
@@ -430,13 +441,24 @@ function telemetryOf<Setup>(deps: AdminDeps<Setup, unknown>, store: Store<AdminS
         serverAnswers: () => store.state.mode === 'normal',
     });
     store.update({ consent: telemetry.consent, analytics: telemetry.available });
+    const field = new FieldWatch(measureOf(telemetry), () => globalThis.performance.now());
+    field.observe(store.state);
+    store.subscribe((state) => {
+        field.observe(state);
+    });
     return telemetry;
 }
 
 /** The editors' stores over the entry's `ContentDeps` and the shell's services (none without `deps.content`). */
 function contentRegistry<Setup>(
     deps: AdminDeps<Setup, unknown>,
-    parts: { readonly shell: ShellStateAccess; readonly callables: FirebasePorts['callables']; readonly denied: () => void },
+    parts: {
+        readonly shell: ShellStateAccess;
+        readonly callables: FirebasePorts['callables'];
+        readonly denied: () => void;
+        /** §76: the editors' writes and the jobs' ends are measured (`field.ts`). */
+        readonly measure: Measure;
+    },
 ): ContentRegistry {
     const content = deps.content;
     if (content === undefined) {
@@ -444,9 +466,11 @@ function contentRegistry<Setup>(
             throw new Error('no content services');
         });
     }
+    const { measure, ...shellParts } = parts;
+    const store = measuredStore(content.store, { measure, now: () => globalThis.performance.now(), epoch: () => deps.clock.now() });
     const services = contentServices({
-        ...parts,
-        content,
+        ...shellParts,
+        content: { ...content, store },
         cities: deps.project.cities,
         clock: deps.clock,
         local: deps.local,

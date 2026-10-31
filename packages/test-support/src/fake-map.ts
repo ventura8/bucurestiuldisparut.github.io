@@ -64,6 +64,7 @@ export class FakeMap implements MapPort {
         error: new Set(),
         webglcontextlost: new Set(),
         webglcontextrestored: new Set(),
+        idle: new Set(),
     };
 
     constructor(options: FakeMapOptions = {}) {

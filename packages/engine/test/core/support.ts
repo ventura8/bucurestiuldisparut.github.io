@@ -3,7 +3,7 @@ import { createLogger, type Logger, type LogRecord } from '@hcm/shared';
 import { createRecordingSink } from '@hcm/test-support';
 import type { Unsubscribe } from '@hcm/ui/map';
 
-import type { ConsentState, TelemetryContext, TelemetryEvent, TelemetryPort } from '../../src/telemetry/telemetry-port.js';
+import type { ConsentState, Measurement, TelemetryContext, TelemetryEvent, TelemetryPort } from '../../src/telemetry/telemetry-port.js';
 
 export type MemoryStorage = Map<string, string> & Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
@@ -49,12 +49,14 @@ export function recordingLog(): RecordingLog {
     };
 }
 
-/** A `TelemetryPort` that records events, consent and contexts. */
+/** A `TelemetryPort` that records events, consent, contexts and field measurements. */
 export class FakeTelemetry implements TelemetryPort {
     consent: ConsentState;
     readonly events: TelemetryEvent[] = [];
     readonly errors: unknown[] = [];
     readonly contexts: TelemetryContext[] = [];
+    /** The field measurements reported (§76), in order. */
+    readonly measures: Measurement[] = [];
     destroyed = false;
     readonly #listeners = new Set<(consent: ConsentState) => void>();
 
@@ -84,6 +86,10 @@ export class FakeTelemetry implements TelemetryPort {
 
     setContext(context: TelemetryContext): void {
         this.contexts.push(context);
+    }
+
+    measure(measurement: Measurement): void {
+        this.measures.push(measurement);
     }
 
     destroy(): void {

@@ -130,6 +130,16 @@ describe('<hcm-map-viewer>: boot', () => {
         expect(items.map((item) => item.value)).toEqual(['photos', 'share', 'language', 'about']);
     });
 
+    it('happyPath_theSheetsDecodedThumbnailEndsThePhotoMeasurement', async () => {
+        const { element, store } = await mountViewer(readyState(testManifest(), { selectedPhotoId: 'uranus-1984', sheet: 'photo' }));
+
+        part({ element, store }, 'hcm-photo-sheet').dispatchEvent(
+            new CustomEvent('hcm-photo-shown', { bubbles: true, detail: { ok: false } }),
+        );
+
+        expect(store.callsOf('photoShown')).toEqual([[false]]);
+    });
+
     it('happyPath_aDeclarativeElementAsksTheEngineToBootIt', () => {
         const boot = vi.fn();
         setViewerBootstrap(boot);

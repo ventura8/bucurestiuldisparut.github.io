@@ -18,14 +18,19 @@ export interface HandlerHost {
     focusTimeline(): void;
 }
 
+/** A handler that stops its event and runs `action` on the store. */
+type On = <E extends Event>(action: (store: ViewerStorePort, event: E) => void) => (event: E) => void;
+
+function actingOn(host: HandlerHost): On {
+    return (action) => (event) => {
+        host.act(event, (store) => {
+            action(store, event);
+        });
+    };
+}
+
 export function createHandlers(host: HandlerHost): ViewerHandlers {
-    const on =
-        <E extends Event>(action: (store: ViewerStorePort, event: E) => void) =>
-        (event: E): void => {
-            host.act(event, (store) => {
-                action(store, event);
-            });
-        };
+    const on = actingOn(host);
     return {
         onYearChange: on((store, event) => {
             store.setYear(event.detail.year);
@@ -42,6 +47,9 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
         }),
         onLightboxOpen: on((store) => {
             store.setLightbox(true);
+        }),
+        onPhotoShown: on((store, event) => {
+            store.photoShown?.(event.detail.ok);
         }),
         onLightboxClose: on((store) => {
             store.setLightbox(false);

@@ -128,6 +128,10 @@ export class FakeStore implements ViewerStorePort {
         this.set({ selectedPhotoId: photoId, sheet: photoId === null ? 'none' : 'photo', lightbox: false });
     }
 
+    photoShown(ok: boolean): void {
+        this.#record('photoShown', ok);
+    }
+
     openPoi(poiId: string | null): void {
         this.#record('openPoi', poiId);
         this.set({ selectedPoiId: poiId, sheet: poiId === null ? 'none' : 'poi' });

@@ -151,6 +151,7 @@ class Session implements CompareSession {
         this.#abandon(map);
         if (current) {
             this.#deps.log.warn('the compared map failed to load', { error: String(error) });
+            this.#deps.host.compareReady?.(false);
             this.#deps.host.closeCompare();
             this.#deps.host.showToast('error.mapLoad');
         }
@@ -175,6 +176,7 @@ class Session implements CompareSession {
             }),
         ];
         this.#second = { map, sync, unlink };
+        this.#deps.host.compareReady?.(true);
     }
 
     /** The compared layer failing names itself in a toast, as the main map's layers do (V03). */

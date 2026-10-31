@@ -2,13 +2,14 @@
  * The store's boot sequence and its links to the outside (docs/ENGINE_API.md → Errors and validation, URL hash):
  * the first language (URL, stored choice, `config.lang`, Romanian), the manifest (`config/load.ts`), the URL hash and
  * the stored preferences of the city, telemetry's context, then the map (unless WebGL is missing: the photo list
- * still works, scenario V02) and its events. A newer `load` (Retry) supersedes an older one still in flight.
+ * still works, scenario V02) and its events. A newer `load` (Retry) supersedes an older one still in flight. Each
+ * step is a field measurement for telemetry (`telemetry.measure`, docs/ARCHITECTURE.md → *Field measurements*).
  */
 import { decodeHash, resolveLocale, type DecodedHash, type Locale, type Manifest, type MapView, type MessageKey } from '@hcm/shared';
 import type { MapEventMap, Unsubscribe } from '@hcm/ui/map';
 
 import { loadManifest } from '../config/load.js';
-import type { TelemetryContext } from '../telemetry/telemetry-port.js';
+import type { Measurement, TelemetryContext } from '../telemetry/telemetry-port.js';
 import type { MountedMap } from './compare-port.js';
 import { mapOptions } from './map-specs.js';
 import { MapSync } from './map-sync.js';
@@ -102,11 +103,17 @@ export class Boot {
             return;
         }
         if (!result.ok) {
+            this.#measure({ kind: 'manifest_error', code: result.error.code, retryable: result.error.retryable });
             this.#fail(result.error);
             return;
         }
         this.#enter(result.value);
+        this.#measure({ kind: 'phase', phase: 'manifest' });
         await this.#mount(id, result.value);
+    }
+
+    #measure(measurement: Measurement): void {
+        this.#host.deps.telemetry.measure?.(measurement);
     }
 
     #current(id: number): boolean {
@@ -144,11 +151,13 @@ export class Boot {
     async #mount(id: number, manifest: Manifest): Promise<void> {
         const { deps } = this.#host;
         if (!deps.map.isWebGLSupported()) {
+            this.#measure({ kind: 'map_unavailable', reason: 'unsupported' });
             this.#ready(false);
             return;
         }
         const container = deps.mapContainer();
         if (container === null) {
+            this.#measure({ kind: 'map_unavailable', reason: 'container' });
             this.#ready(null);
             return;
         }
@@ -175,6 +184,7 @@ export class Boot {
             this.#sync = new MapSync(deps.map, base);
             this.#mounted = { anchor: container, assetBase: base };
             this.#listenToMap();
+            this.#measure({ kind: 'phase', phase: 'map_render' });
             this.#sync.render(this.#host.getState());
             this.#ready(true);
         }
@@ -186,6 +196,7 @@ export class Boot {
         }
         const webgl = error instanceof Error && error.message === 'webgl';
         this.#host.deps.log.warn('map failed to load', { error: String(error) });
+        this.#measure({ kind: 'map_unavailable', reason: webgl ? 'webgl' : 'style' });
         // A map whose style failed still holds a WebGL context and a canvas: it goes now, Retry makes a new one.
         this.#host.deps.map.destroy();
         this.#ready(webgl ? false : null);
@@ -220,7 +231,11 @@ export class Boot {
                 this.#mapError(event);
             }),
             map.on('webglcontextlost', () => {
+                this.#measure({ kind: 'map_unavailable', reason: 'context_lost' });
                 host.set({ ...host.getState(), webgl: false });
+            }),
+            map.on('idle', () => {
+                this.#measure({ kind: 'phase', phase: 'map_idle' });
             }),
             map.on('webglcontextrestored', () => {
                 host.set({ ...host.getState(), webgl: true });
@@ -232,6 +247,7 @@ export class Boot {
     #mapError(event: MapEventMap['error']): void {
         const host = this.#host;
         host.deps.log.warn('map error', { kind: event.kind, layerId: event.layerId, message: event.message });
+        this.#measure({ kind: 'map_error', errorKind: event.kind });
         const toast = host.getState().toast;
         if (event.layerId !== undefined && toast === null) {
             host.showToast('error.layer', { name: overlayName(host.getState(), event.layerId) });

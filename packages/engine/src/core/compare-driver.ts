@@ -45,6 +45,7 @@ export class CompareDriver {
             this.#begin(await compare.load(), compare);
         } catch (error: unknown) {
             this.#host.deps.log.warn('compare could not start', { error: String(error) });
+            this.#host.compareReady?.(false);
             this.#host.closeCompare();
             this.#host.showToast('error.mapLoad');
         } finally {

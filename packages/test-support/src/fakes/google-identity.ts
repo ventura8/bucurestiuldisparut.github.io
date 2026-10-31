@@ -137,7 +137,10 @@ interface Policy {
 }
 
 export interface ResourceManagerState {
-    /** Project id → its IAM policy (created from the fixture on first use). */
+    /**
+     * Project id → its IAM policy (created from the fixture on first use: the owner, and `roles/editor` for the Compute
+     * Engine and App Engine default accounts, as Google grants them; `DECISIONS-for-review.md` §75b takes the latter away).
+     */
     readonly policies: Map<string, Policy>;
     /**
      * Domain-restricted sharing (`constraints/iam.allowedPolicyMemberDomains`): when set, `setIamPolicy` refuses
@@ -146,6 +149,11 @@ export interface ResourceManagerState {
     allowedMemberDomains: readonly string[] | undefined;
     /** The project's parent (`organizations/<id>`); a project outside any organisation has none (the default). */
     parent: string | undefined;
+    /**
+     * A binding an IAM deny policy of the owner's organisation keeps (scenario `appEngineEditorLocked`): a write that drops
+     * it answers 403 `PERMISSION_DENIED`, as Google does for a denied `resourcemanager.projects.setIamPolicy`.
+     */
+    locked?: { readonly role: string; readonly member: string };
 }
 
 /** The organisation of the scenarios that put the project inside one. */
@@ -182,6 +190,15 @@ function refusedMember(policy: PolicyInput, domains: readonly string[] | undefin
     );
 }
 
+function holdsBinding(policy: { readonly bindings: readonly Binding[] }, role: string, member: string): boolean {
+    return policy.bindings.some((binding) => binding.role === role && binding.members.includes(member));
+}
+
+/** Whether `policy` drops the binding the state keeps from `current`. */
+function dropsLocked(policy: PolicyInput, current: Policy, locked: ResourceManagerState['locked']): boolean {
+    return locked !== undefined && holdsBinding(current, locked.role, locked.member) && !holdsBinding(policy, locked.role, locked.member);
+}
+
 /** The subset of the asked permissions an owner (all) or an editor (`EDITOR_PERMISSIONS`) holds. */
 function heldPermissions(access: ProjectAccess, asked: unknown): string[] {
     const wanted = Array.isArray(asked) ? asked.filter((item): item is string => typeof item === 'string') : [];
@@ -215,10 +232,13 @@ export function createResourceManagerFake(identity: IdentityState, state: Resour
         const held = heldPermissions(grant.access, bodyField(request, 'permissions'));
         return jsonResponse(held.length === 0 ? {} : { permissions: held });
     };
-    /** Why `policy` cannot replace `current`: a stale etag (409) or a member the organization refuses (400). */
+    /** Why `policy` cannot replace `current`: a stale etag (409), a denied removal (403) or a member the organization refuses (400). */
     const refusal = (policy: PolicyInput, current: Policy): Response | undefined => {
         if (policy.etag !== undefined && policy.etag !== current.etag) {
             return googleError('google/error.aborted', RESOURCE_MANAGER);
+        }
+        if (dropsLocked(policy, current, state.locked)) {
+            return googleError('google/error.permission-denied', RESOURCE_MANAGER, { permission: 'resourcemanager.projects.setIamPolicy' });
         }
         const refused = refusedMember(policy, state.allowedMemberDomains);
         return refused === undefined
@@ -281,6 +301,14 @@ export function createResourceManagerFake(identity: IdentityState, state: Resour
             },
             inOrganization: () => {
                 state.parent = E2E_ORGANIZATION;
+            },
+            /**
+             * `DECISIONS-for-review.md` §75b: the organisation's IAM deny policy keeps the App Engine default account's
+             * Editor role on the project, so Provision's removal of it is refused (the role table's own writes go through).
+             */
+            appEngineEditorLocked: () => {
+                const projectId = String(FIXTURE_VALUES['projectId']);
+                state.locked = { role: 'roles/editor', member: `serviceAccount:${projectId}@appspot.gserviceaccount.com` };
             },
         },
         snapshot: () => ({

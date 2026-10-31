@@ -7,7 +7,7 @@
 import './admin.css';
 
 import { CITY_ID_PATTERN, createLogger, type Logger } from '@hcm/shared';
-import { installFonts, type FontFaceConstructor } from '@hcm/ui';
+import { installFonts, windowClassFor, type FontFaceConstructor } from '@hcm/ui';
 import { SETUP_PAGE_TAGS, defineAdminElements, defineSetupElements, type HcmAdminShell } from '@hcm/ui/admin';
 
 import { bootAdmin, type BootEnvironment } from './app/boot.js';
@@ -25,7 +25,7 @@ import { createGoogleAuth, type PopupSignIn } from './auth/google-auth.js';
 import { createStandInPopup } from './auth/stand-in.js';
 import { CONTENT_AREAS } from './content/areas.js';
 import type { ContentDeps } from './content/registry.js';
-import { createAnalytics, type AnalyticsPort } from './firebase/analytics.js';
+import { createAnalytics, type AnalyticsPort, type EventParams } from './firebase/analytics.js';
 import { contentStore } from './firebase/content.js';
 import { contentSdk } from './firebase/content-sdk.js';
 import { credentialSignIn, firebasePopup, firebasePorts } from './firebase/adapters.js';
@@ -33,7 +33,7 @@ import type { FirebasePorts } from './firebase/ports.js';
 import type { ProjectConfig } from './provision/project-config.js';
 import type { SetupModule } from './setup/module.js';
 import type { SetupState } from './setup/state.js';
-import { initFirebase, loadAnalyticsSdk, type FirebaseHandles } from './firebase/app.js';
+import { initFirebase, loadAnalyticsSdk, loadFieldSdk, type FirebaseHandles } from './firebase/app.js';
 import { firebaseSdk } from './firebase/sdk.js';
 import { hostingOrigins } from './install/bundle.js';
 import { AREA_CHUNKS, areaPageLoader, type ContentModuleSlots } from './routing/area-pages.js';
@@ -145,12 +145,28 @@ function popupFor(win: AdminWindow, handles: FirebaseHandles, e2e: E2eKit | null
     });
 }
 
-/** GA4 of the admin's own Firebase app, when the web configuration names a measurement id (else none, and no banner). */
-export function analyticsFor(measurementId: string | undefined, app: FirebaseHandles['app'], parts: BrowserParts): AnalyticsPort | null {
+/**
+ * GA4 of the admin's own Firebase app, when the web configuration names a measurement id (else none, and no banner); its
+ * field measurements carry the window class of the moment and the admin's release (§76).
+ */
+export function analyticsFor(
+    measurementId: string | undefined,
+    app: FirebaseHandles['app'],
+    parts: BrowserParts,
+    release: string,
+): AnalyticsPort | null {
     const location = parts.location;
+    const fieldContext = (): EventParams => ({ app: 'admin', window_class: windowClassFor(parts.win.innerWidth), release });
     return measurementId === undefined
         ? null
-        : createAnalytics({ app, load: loadAnalyticsSdk, log: parts.log, pageLocation: location.page.bind(location) });
+        : createAnalytics({
+              app,
+              load: loadAnalyticsSdk,
+              loadField: loadFieldSdk,
+              fieldContext,
+              log: parts.log,
+              pageLocation: location.page.bind(location),
+          });
 }
 
 /** The admin's telemetry: crash reports to the project's endpoint once the server answers, GA4 behind consent. */
@@ -161,7 +177,7 @@ export function telemetryFor(
     release: string,
 ): AdminDeps<null, null>['telemetry'] {
     const { win, log, location, local } = parts;
-    const analytics = analyticsFor(config.measurementId, handles.app, parts);
+    const analytics = analyticsFor(config.measurementId, handles.app, parts, release);
     return (view: TelemetryView): AdminTelemetry => {
         const endpoint = errorEndpointFor(config.projectId, parts.e2e !== null);
         const errors = new AdminErrorReporter({

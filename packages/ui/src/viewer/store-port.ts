@@ -69,6 +69,8 @@ export interface ViewerStorePort {
     toggleOverlay(overlayId: string, visible?: boolean): void;
     setOverlayOpacity(overlayId: string, opacity: number, final?: boolean): void;
     openPhoto(photoId: string | null): void;
+    /** The open photo's thumbnail was decoded (`ok`) or failed: ends the `photo_timing` field measurement. */
+    photoShown?(ok: boolean): void;
     openPoi(poiId: string | null): void;
     setLightbox(open: boolean): void;
     openSheet(sheet: SheetName): void;

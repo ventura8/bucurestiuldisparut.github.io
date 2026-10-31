@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { AdminTelemetry, CONSENT_KEY, eventParams, expireAnalyticsCookies, parseConsent } from '../../src/app/telemetry.js';
+import { AdminTelemetry, CONSENT_KEY, MAX_PENDING, eventParams, expireAnalyticsCookies, parseConsent } from '../../src/app/telemetry.js';
 import type { AnalyticsPort } from '../../src/firebase/analytics.js';
 import { MemoryStore, testLog } from './fakes.js';
 
@@ -11,7 +11,8 @@ function telemetry(stored: string | null, configured = true) {
     }
     const setConsent = vi.fn<(granted: boolean) => void>();
     const logEvent = vi.fn<AnalyticsPort['log']>();
-    const analytics: AnalyticsPort = { setConsent, log: logEvent };
+    const field = vi.fn<AnalyticsPort['field']>();
+    const analytics: AnalyticsPort = { setConsent, log: logEvent, field };
     const report = vi.fn();
     const clearCookies = vi.fn();
     const subject = new AdminTelemetry({
@@ -21,7 +22,7 @@ function telemetry(stored: string | null, configured = true) {
         clearCookies,
         log: testLog().log,
     });
-    return { local, setConsent, logEvent, report, clearCookies, subject };
+    return { local, setConsent, logEvent, field, report, clearCookies, subject };
 }
 
 describe('AdminTelemetry', () => {
@@ -57,6 +58,41 @@ describe('AdminTelemetry', () => {
 
         expect(t.subject.available).toBe(false);
         expect(t.logEvent).not.toHaveBeenCalled();
+    });
+
+    it('happyPath_aMeasurementBeforeTheAnswerIsSentOnceTheAdminConsents', () => {
+        const t = telemetry(null);
+        t.subject.measure({ name: 'admin_ready', params: { duration_ms: 900, restored: true } });
+        expect(t.field).not.toHaveBeenCalled();
+
+        t.subject.setConsent('granted');
+        t.subject.measure({ name: 'setup_check', params: { step: 'billing', outcome: 'ok', duration_ms: 40 } });
+
+        expect(t.field.mock.calls.map(([name]) => name)).toEqual(['admin_ready', 'setup_check']);
+    });
+
+    it('badPath_aRefusalForgetsTheHeldMeasurementsAndAtMost30AreHeld', () => {
+        const refused = telemetry(null);
+        refused.subject.measure({ name: 'admin_ready', params: { duration_ms: 900, restored: true } });
+        refused.subject.setConsent('denied');
+        refused.subject.measure({ name: 'admin_ready', params: { duration_ms: 900, restored: true } });
+        refused.subject.setConsent('granted');
+        expect(refused.field).not.toHaveBeenCalled();
+
+        const many = telemetry(null);
+        for (let index = 0; index < MAX_PENDING + 5; index += 1) {
+            many.subject.measure({
+                name: 'editor_save',
+                params: { area: 'photos', operation: 'update', outcome: 'ok', duration_ms: index },
+            });
+        }
+        many.subject.setConsent('granted');
+        expect(many.field).toHaveBeenCalledTimes(MAX_PENDING);
+
+        const unconfigured = telemetry(null, false);
+        unconfigured.subject.measure({ name: 'admin_ready', params: { duration_ms: 1, restored: false } });
+        unconfigured.subject.setConsent('granted');
+        expect(unconfigured.field).not.toHaveBeenCalled();
     });
 
     it('happyPath_errorsGoToTheReporter', () => {

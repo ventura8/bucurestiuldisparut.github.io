@@ -115,6 +115,11 @@ export interface MapEventMap {
     error: { readonly kind: MapErrorKind; readonly layerId?: string; readonly message: string };
     webglcontextlost: undefined;
     webglcontextrestored: undefined;
+    /**
+     * Mapbox's `idle`: the map rendered everything its style and the view need (tiles loaded, no transition running).
+     * The viewer times its first one (`viewer_timing` `map_idle`, docs/ARCHITECTURE.md → *Field measurements*).
+     */
+    idle: undefined;
 }
 
 export type Unsubscribe = () => void;

@@ -98,6 +98,17 @@ module.exports = {
             to: { path: 'node_modules/(firebase|@firebase)/', pathNot: 'node_modules/firebase/(app|analytics)/' },
         },
         {
+            name: 'web-vitals-only-in-the-consented-chunks',
+            severity: 'error',
+            comment:
+                "Google's web-vitals is fetched only after consent: only the lazy field chunks import it (DECISIONS-for-review.md §76).",
+            from: {
+                path: '^(packages|functions|e2e|scripts)/',
+                pathNot: '^packages/(engine/src/telemetry|admin/src/firebase)/field-sdk\\.ts$',
+            },
+            to: { path: 'node_modules/web-vitals/' },
+        },
+        {
             name: 'no-firebase-data-sdk-in-public-code',
             severity: 'error',
             comment: 'engine and shared (bundled into the viewer) never load Firestore, Auth, Storage or Realtime Database.',

@@ -323,7 +323,7 @@ test(
 
 test(
     "Prepare the project makes the installer's account with the contract's roles, the repository, the invokers and the service agents",
-    { tag: ['@S-A04-HAPPY-INSTALLER-ACCOUNT', '@S-A04-HAPPY-APPENGINE-ACTAS'] },
+    { tag: ['@S-A04-HAPPY-INSTALLER-ACCOUNT', '@S-A04-HAPPY-APPENGINE-ACTAS', '@S-A04-HAPPY-APPENGINE-NO-EDITOR'] },
     async ({ page, lang, consent, setupBudget, upstream }) => {
         test.setTimeout(150_000);
         const { run } = await provisionCard(page, lang);
@@ -361,6 +361,10 @@ test(
             expect.objectContaining({ role: 'roles/iam.serviceAccountUser', members: [installer] }),
         ]);
         expect(project['roles/iam.serviceAccountUser'] ?? []).not.toContain(installer);
+        // DECISIONS §75b: the App Engine default account no longer holds Editor; every other member and binding is kept.
+        expect(project['roles/editor']).toEqual([`serviceAccount:${ADMIN_PROJECT.projectNumber}-compute@developer.gserviceaccount.com`]);
+        expect(project['roles/owner']).toHaveLength(1);
+        expect(JSON.stringify(project)).not.toContain('@appspot.gserviceaccount.com');
         // The service identities are generated before any policy is written (finding 12).
         const calls = await upstream.calls('browser');
         const index = (match: (call: UpstreamCall) => boolean): number => calls.findIndex(match);
@@ -477,5 +481,35 @@ test(
         await expect(failed).not.toContainText(setupText(lang, 'adminSetup.provision.run'));
         await expect(retry).toBeVisible();
         await expect(run).toHaveCount(0);
+    },
+);
+
+test(
+    "A refused removal of the App Engine account's Editor role fails the permissions' row with the role it needs and keeps the binding",
+    { tag: ['@S-A04-BAD-APPENGINE-EDITOR-REFUSED'] },
+    async ({ page, lang, consent, setupBudget, upstream, consoleErrors }) => {
+        // DECISIONS §75b: an IAM deny policy of the owner's organisation keeps the binding; the role table is written anyway.
+        test.setTimeout(150_000);
+        await upstream.scenario('resource-manager.appEngineEditorLocked', 'browser');
+        const { card, run, retry } = await provisionCard(page, lang);
+        const inputs = setupBudget.inputs('provision', 1);
+        await withConsent(page, consent, run, inputs, setupBudget.consents('provision'));
+
+        await expect(retry).toBeEnabled({ timeout: 60_000 });
+        const setup = new SetupPage(page, lang);
+        expect(await setup.provisionItems()).toMatchObject({ iam: 'invalid', apis: 'ok', 'service-accounts': 'ok', secrets: 'ok' });
+        const row = card.locator('[data-item="iam"]');
+        await expect(row).toContainText(apiText(lang, 'apiError.cloud.permission', { role: 'roles/resourcemanager.projectIamAdmin' }));
+        const project = bindingsIn(
+            ((await upstream.snapshot('browser'))['resource-manager'] as { policies: Record<string, unknown> }).policies[
+                ADMIN_PROJECT.projectId
+            ],
+        );
+        expect(project['roles/editor']).toContain(`serviceAccount:${ADMIN_PROJECT.projectId}@appspot.gserviceaccount.com`);
+        expect(project['roles/run.invoker']).toHaveLength(2);
+        expect(project['roles/owner']).toHaveLength(1);
+        await expect(row).toHaveAttribute('data-state', 'invalid');
+        expect(inputs.used).toBe(1);
+        consoleErrors.takeMatching(/status of 403/);
     },
 );

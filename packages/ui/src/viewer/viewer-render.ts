@@ -51,6 +51,8 @@ export interface ViewerHandlers {
     readonly onSheetClose: (event: Event) => void;
     readonly onPhotoSelect: (event: CustomEvent<{ readonly photoId: string }>) => void;
     readonly onLightboxOpen: (event: Event) => void;
+    /** The photo sheet's thumbnail was decoded (or failed): the `photo_timing` field measurement. */
+    readonly onPhotoShown: (event: CustomEvent<{ readonly ok: boolean }>) => void;
     readonly onLightboxClose: (event: Event) => void;
     readonly onMenuSelect: (event: CustomEvent<{ readonly value: string }>) => void;
     readonly onLocaleChange: (event: CustomEvent<{ readonly locale: Locale }>) => void;
@@ -401,6 +403,7 @@ function photoSheet(view: ViewerView, ready: Ready, placement: Placement, handle
         @hcm-close=${handlers.onSheetClose}
         @hcm-photo-select=${handlers.onPhotoSelect}
         @hcm-lightbox-open=${handlers.onLightboxOpen}
+        @hcm-photo-shown=${handlers.onPhotoShown}
     ></hcm-photo-sheet>`;
 }
 

@@ -1,0 +1,22 @@
+/** The field measurements' part of the public API (DECISIONS-for-review.md §76), listed apart as the M6 parts are. */
+export const FIELD_EXPORTS: readonly string[] = [
+    'ADMIN_EVENT_PARAMS',
+    'COMMON_EVENT_PARAMS',
+    'FIELD_EVENT_BUDGET',
+    'GA_LIMITS',
+    'MAP_ERROR_KINDS',
+    'VIEWER_EVENT_PARAMS',
+    'VIEWER_PHASES',
+    'VITAL_DEBUG_NUMBERS',
+    'WEB_VITAL_NAMES',
+    'WINDOW_CLASS_NAMES',
+    'createAdminGuard',
+    'createFieldGuard',
+    'createViewerGuard',
+    'eventProblem',
+    'eventSchemas',
+    'observeWebVitals',
+    'sanitizeTarget',
+    'shortTarget',
+    'vitalParams',
+];

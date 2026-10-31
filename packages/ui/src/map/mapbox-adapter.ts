@@ -155,6 +155,9 @@ class MapboxPort implements MapPort {
         this.#forward(session, 'webglcontextrestored', () => {
             this.#events.emit('webglcontextrestored', undefined);
         });
+        this.#forward(session, 'idle', () => {
+            this.#events.emit('idle', undefined);
+        });
         // At once, in the observer's callback (after layout, before paint, at most once a frame): resized a frame later,
         // the canvas kept its old width while a pane opened, which the tour caught at 2560 and 3840 px.
         session.cleanups.push(

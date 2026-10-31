@@ -17,6 +17,8 @@ export interface CompareHost {
     setComparePosition(position: number): void;
     closeCompare(): void;
     showToast(key: MessageKey, params?: Readonly<Record<string, string>>): void;
+    /** The second map is ready (`ok`) or failed: the `compare_timing` field measurement (§76). */
+    compareReady?(ok: boolean): void;
 }
 
 /** Everything a session is started with. */

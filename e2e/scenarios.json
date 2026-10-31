@@ -1792,6 +1792,61 @@
             "notes": "M1 follow-up, delivered with M2 (the viewer fixes of the M1 reviews, docs/research/M0-handoff.md §10o). Only a withdrawal (granted, then denied) expires cookies: an embedding page may run its own GA4."
         },
         {
+            "id": "S-V19-HAPPY-FIELD-MEASUREMENTS",
+            "behaviour": "V19",
+            "area": "viewer",
+            "path": "happy",
+            "title": "After Accept GA4 receives the Core Web Vitals and the boot timings as valid events without the hash",
+            "asserts": "no field chunk before the answer; Accept -> the field chunk (web-vitals) is fetched, GA4 receives viewer_timing for manifest, map_render and map_idle and web_vitals for TTFB and FCP, then LCP after a click and CLS once the page is hidden; every event is a valid event of the viewer's schema (shared zod) with the page's origin and path only, and no request carries the view",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §76 (the user's request of 2026-10-31: field measurements). docs/ARCHITECTURE.md → Field measurements; packages/engine/src/telemetry/field.ts, field-sdk.ts, packages/shared/src/telemetry/."
+        },
+        {
+            "id": "S-V19-BAD-NO-MEASUREMENT-BEFORE-CONSENT",
+            "behaviour": "V19",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Before an answer and after Decline nothing is measured out loud: no field chunk, no event",
+            "asserts": "before an answer and after Decline, a click and a hidden page: no request to Google or Firebase and the field chunk (web-vitals) never fetched",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §76 (the user's request of 2026-10-31: field measurements). docs/ARCHITECTURE.md → Field measurements; packages/engine/src/telemetry/field.ts, field-sdk.ts, packages/shared/src/telemetry/."
+        },
+        {
+            "id": "S-V19-BAD-NO-MEASUREMENT-AFTER-WITHDRAWAL",
+            "behaviour": "V19",
+            "area": "viewer",
+            "path": "bad",
+            "title": "After a withdrawal in About no measurement is sent, the hidden page included",
+            "asserts": "Accept -> the boot timings arrive; withdrawing in About, then a click, a hidden page and a reload -> GA4 receives nothing more",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §76 (the user's request of 2026-10-31: field measurements). docs/ARCHITECTURE.md → Field measurements; packages/engine/src/telemetry/field.ts, field-sdk.ts, packages/shared/src/telemetry/."
+        },
+        {
+            "id": "S-V19-BAD-POSITION-NEVER-MEASURED",
+            "behaviour": "V19",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An exception whose message holds a position never reaches GA4; a plain one does",
+            "asserts": "after Accept two uncaught errors, one naming coordinates -> GA4 receives only the plain exception (the guard drops the other); no request carries the coordinates",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §76 (the user's request of 2026-10-31: field measurements). docs/ARCHITECTURE.md → Field measurements; packages/engine/src/telemetry/field.ts, field-sdk.ts, packages/shared/src/telemetry/."
+        },
+        {
+            "id": "S-V19-BAD-ERROR-FLOOD-CAPPED",
+            "behaviour": "V19",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A layer whose tiles all fail reaches GA4 as a count of tile errors, not one event per tile",
+            "asserts": "a layer whose tiles all answer 503, Accept -> one map_errors event (tile, count 1), then once the page is hidden one more with the count of every tile that failed since; never one event per tile",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §76 (the user's request of 2026-10-31: field measurements). docs/ARCHITECTURE.md → Field measurements; packages/engine/src/telemetry/field.ts, field-sdk.ts, packages/shared/src/telemetry/."
+        },
+        {
             "id": "S-V20-HAPPY",
             "behaviour": "V20",
             "area": "viewer",
@@ -3055,6 +3110,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Live test of 2026-10-31, finding 28 of docs/research/manual-test-2026-10-25.md (DECISIONS-for-review.md §75). Test: packages/admin/test/provision/m6-items.test.ts."
+        },
+        {
+            "id": "S-A04-HAPPY-APPENGINE-NO-EDITOR",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "happy",
+            "title": "Prepare the project takes Editor away from the App Engine default account, and only that",
+            "asserts": "a new project whose policy gives roles/editor to the Compute Engine and App Engine default accounts -> Prepare the project -> the project's roles/editor holds the Compute Engine account only, roles/owner and every other binding kept -> Re-check reads the permissions done and writes nothing; a project prepared before has the Editor role as all its permissions lack, with its reason, and Retry what failed removes it in one write; a concurrent change of the policy (409) is read again and removed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §75b (the user's decision, 2026-10-31). Tests: e2e/admin/steps/provision.spec.ts (with S-A04-HAPPY-INSTALLER-ACCOUNT), packages/admin/test/provision/app-engine-editor.test.ts, packages/admin/test/google/iam-policy.test.ts."
+        },
+        {
+            "id": "S-A04-BAD-APPENGINE-EDITOR-REFUSED",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused removal of the App Engine account's Editor role fails the permissions' row with what it needs",
+            "asserts": "an IAM deny policy keeps the App Engine default account's roles/editor -> Prepare the project writes the role table, the removal's setIamPolicy answers 403 -> the permissions' row is failed and names roles/resourcemanager.projectIamAdmin, Retry what failed is offered, the Editor binding and every other binding are unchanged -> Retry what failed tries the removal alone and fails the same way; without the App Engine account nothing is removed and the item is done",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §75b. Tests: e2e/admin/steps/provision.spec.ts, packages/admin/test/provision/app-engine-editor.test.ts."
         },
         {
             "id": "S-A05-HAPPY",

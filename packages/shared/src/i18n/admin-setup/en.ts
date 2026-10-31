@@ -185,6 +185,7 @@ export const en: AdminSetupMessages = {
     'adminSetup.billing.markTrial': 'This account is a free trial',
     'adminSetup.provision.apiDisabled': 'The {api} service is not switched on yet. Retry what failed switches it on.',
     'adminSetup.provision.installerPermission': 'The installer needs one more permission: Retry what failed grants it.',
+    'adminSetup.provision.appEngineEditor': 'The App Engine default account still has Editor on the project: Retry what failed removes it.',
     'adminSetup.usgs.later': 'Do it later',
     'adminSetup.usgs.laterWhy': 'USGS only brings the historical imagery: the map works without it, and this step can wait.',
     'adminSetup.usgs.postponed': 'Postponed: the historical imagery search stays off until you set up USGS.',

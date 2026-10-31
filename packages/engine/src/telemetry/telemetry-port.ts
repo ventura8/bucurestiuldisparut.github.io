@@ -3,8 +3,8 @@
  * `createTelemetry` (`telemetry.ts`) implements it: consent (`consent.ts`), the consent-gated Firebase loader
  * (`analytics.ts`) and the error reporter (`errors.ts`).
  */
-import type { ErrorReport } from '@hcm/shared';
-import type { Unsubscribe } from '@hcm/ui/map';
+import type { ErrorReport, FieldEventName, GaParams, ViewerPhase } from '@hcm/shared';
+import type { MapErrorKind, Unsubscribe } from '@hcm/ui/map';
 
 export type ConsentState = 'unknown' | 'granted' | 'denied';
 
@@ -16,6 +16,31 @@ export type TelemetryEvent =
     | { readonly name: 'poi_open'; readonly poiId: string }
     | { readonly name: 'share' }
     | { readonly name: 'compare_open' };
+
+/**
+ * A field measurement as GA4 receives it (docs/ARCHITECTURE.md → *Field measurements*): its parameters without the
+ * context (`app`, `window_class`, `release`), which telemetry adds when it is sent.
+ */
+export interface FieldEvent {
+    readonly name: FieldEventName;
+    readonly params: GaParams;
+}
+
+/** Why the viewer has no map: WebGL `unsupported` or `context_lost`, or the map failed (`webgl`, `style`, `container`). */
+type MapUnavailable = 'unsupported' | 'context_lost' | 'webgl' | 'style' | 'container';
+
+/**
+ * What the boot and the store report of the viewer's own performance (`FieldRecorder` of `field.ts` times them): the
+ * boot's phases, a failed manifest, a map that is unavailable, the map's errors by kind, and the two waits of the visitor
+ * (`start` and `end` of `photo`: the click to the decoded thumbnail; of `compare`: the click to the second map).
+ */
+export type Measurement =
+    | { readonly kind: 'phase'; readonly phase: ViewerPhase }
+    | { readonly kind: 'manifest_error'; readonly code: string; readonly retryable: boolean }
+    | { readonly kind: 'map_unavailable'; readonly reason: MapUnavailable }
+    | { readonly kind: 'map_error'; readonly errorKind: MapErrorKind }
+    | { readonly kind: 'start'; readonly what: 'photo' | 'compare' }
+    | { readonly kind: 'end'; readonly what: 'photo' | 'compare'; readonly ok: boolean };
 
 /** Where an error was caught: `window`, `promise` or `boundary` (`ERROR_SOURCES` of `@hcm/shared`). */
 export type ErrorSource = ErrorReport['source'];
@@ -54,6 +79,8 @@ export interface TelemetryPort {
     reportError(error: unknown, context: { readonly fatal: boolean; readonly source: ErrorSource }): void;
     /** engine-core addition (CR-8): the store passes the manifest's ids and the live locale and window class. */
     setContext?(context: TelemetryContext): void;
+    /** §76: a field measurement, timed now and sent only after consent (held in memory until then, never stored). */
+    measure?(measurement: Measurement): void;
     destroy(): void;
 }
 

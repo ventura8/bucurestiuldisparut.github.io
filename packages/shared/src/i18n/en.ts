@@ -138,7 +138,7 @@ export const en: Messages = {
     'language.ro': 'Română',
     'language.en': 'English',
     'consent.title': 'Anonymous statistics',
-    'consent.body': 'Allow anonymous usage statistics (Google Analytics)? Without your consent we use no cookies.',
+    'consent.body': 'Allow anonymous usage and performance statistics (Google Analytics)? Otherwise, no cookies.',
     'consent.accept': 'Accept',
     'consent.decline': 'Decline',
     'consent.withdraw': 'Withdraw consent for statistics',

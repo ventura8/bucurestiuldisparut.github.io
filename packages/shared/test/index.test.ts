@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import * as shared from '../src/index.js';
 import { M5_EXPORTS } from './fixtures/exports-m5.js';
 import { M6_INSTALL_EXPORTS } from './fixtures/exports-m6-install.js';
+import { FIELD_EXPORTS } from './fixtures/exports-field.js';
 import { M6_SETUP_UX_EXPORTS } from './fixtures/exports-m6-setup-ux.js';
 
 /** The public API, by module: a removed or renamed export breaks the engine, the admin and the functions. */
@@ -562,6 +563,8 @@ const EXPORTS = {
     m6Install: M6_INSTALL_EXPORTS,
     /** M6 setup-ux (docs/research/M6-interfaces.md §4.1): when Setup is done, USGS postponed or waiting. */
     m6SetupUx: M6_SETUP_UX_EXPORTS,
+    /** Field measurements (DECISIONS-for-review.md §76): GA4's event schemas and guards, Core Web Vitals as parameters. */
+    fieldMeasurements: FIELD_EXPORTS,
     migration: [
         'KNOWN_HTTPS_HOSTS',
         'decodeEntities',

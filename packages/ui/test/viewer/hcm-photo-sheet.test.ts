@@ -97,6 +97,27 @@ describe('<hcm-photo-sheet>', () => {
         expect(element.shadowRoot?.querySelector('.details section')).toBeNull();
     });
 
+    it('happyPath_aDecodedThumbnailSaysItIsShown', async () => {
+        const element = await sheet({ photo: photo('mihai-voda-1978') });
+        const events = recordEvents(element, 'hcm-photo-shown');
+
+        const image = shadowQuery(element, 'img') as HTMLImageElement;
+        // The decode of a lazy image the test never scrolls to: settled at once, as a browser does once it decoded.
+        image.decode = () => Promise.reject(new DOMException('not decodable', 'EncodingError'));
+        image.dispatchEvent(new Event('load'));
+
+        await expect.poll(() => events).toEqual([{ type: 'hcm-photo-shown', detail: { ok: true } }]);
+    });
+
+    it('badPath_aThumbnailThatFailsSaysSo', async () => {
+        const element = await sheet({ photo: photo('fara-an') });
+        const events = recordEvents(element, 'hcm-photo-shown');
+
+        shadowQuery(element, 'img').dispatchEvent(new Event('error'));
+
+        expect(events).toEqual([{ type: 'hcm-photo-shown', detail: { ok: false } }]);
+    });
+
     it('badPath_anUnresolvableImageAddressIsAPlaceholderToo', async () => {
         const element = await sheet({ photo: photo('fara-an'), manifestUrl: 'https://[bad' });
 

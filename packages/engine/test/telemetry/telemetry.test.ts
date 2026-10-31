@@ -3,8 +3,11 @@ import type { Analytics } from 'firebase/analytics';
 import { describe, expect, it } from 'vitest';
 
 import type { FirebaseSdk } from '../../src/telemetry/analytics.js';
-import { createTelemetry, loadFirebaseSdk, type TelemetryDeps } from '../../src/telemetry/telemetry.js';
+import { createTelemetry, loadFieldSdk, loadFirebaseSdk, type TelemetryDeps } from '../../src/telemetry/telemetry.js';
 import { memoryStorage, recordingLog, settle } from '../core/support.js';
+import { fakeField } from './support.js';
+// Imported up front, so `loadFieldSdk` finds the module loaded (a cold transform of web-vitals is slow under load).
+import { fieldSdk } from '../../src/telemetry/field-sdk.js';
 
 const CONTEXT = {
     cityId: 'bucuresti',
@@ -39,14 +42,18 @@ function fakeWindow(cookies: readonly string[] = []): TelemetryDeps['window'] & 
     });
 }
 
-function sdk(events: string[]): FirebaseSdk {
+/** A `performance` that stands still at 500 ms. */
+const STILL = { now: () => 500, mark: () => ({}) as PerformanceMark, measure: () => ({}) as PerformanceMeasure };
+
+function sdk(events: string[], params: unknown[] = []): FirebaseSdk {
     return {
         initializeApp: () => ({}) as FirebaseApp,
         isSupported: () => Promise.resolve(true),
         setConsent: () => undefined,
         initializeAnalytics: () => ({}) as Analytics,
-        logEvent: (_analytics, name) => {
+        logEvent: (_analytics, name, sent) => {
             events.push(name);
+            params.push(sent);
         },
         setAnalyticsCollectionEnabled: () => undefined,
     };
@@ -62,8 +69,10 @@ function setup(
     page: ReturnType<typeof fakeWindow>;
     storage: ReturnType<typeof memoryStorage>;
     log: ReturnType<typeof recordingLog>;
+    params: unknown[];
 } {
     const events: string[] = [];
+    const params: unknown[] = [];
     const posts: [string, RequestInit][] = [];
     const storage = memoryStorage(stored);
     const log = recordingLog();
@@ -76,10 +85,12 @@ function setup(
         },
         log: log.log,
         release: '1.0.0',
-        loadSdk: () => Promise.resolve(sdk(events)),
+        loadSdk: () => Promise.resolve(sdk(events, params)),
+        loadField: () => Promise.resolve(fakeField()),
         now: () => 0,
+        performance: STILL,
     });
-    return { telemetry, events, posts, page, storage, log };
+    return { telemetry, events, posts, page, storage, log, params };
 }
 
 describe('telemetry', () => {
@@ -202,6 +213,67 @@ describe('telemetry', () => {
             'setConsent',
         ]);
         expect(await firebase.isSupported()).toBe(false);
+    });
+});
+
+describe('telemetry: field measurements', () => {
+    it('happyPath_aBootPhaseMeasuredBeforeConsentIsSentAfterItWithTheWindowClassAndRelease', async () => {
+        const { telemetry, events, params } = setup();
+        telemetry.setContext?.({ ...CONTEXT, windowClass: 'expanded' });
+        telemetry.measure?.({ kind: 'phase', phase: 'manifest' });
+        await settle();
+        expect(events).toEqual([]);
+
+        telemetry.setConsent('granted');
+        await settle();
+
+        expect(events).toEqual(['viewer_timing']);
+        expect(params[0]).toEqual({
+            phase: 'manifest',
+            duration_ms: 0,
+            since_start_ms: 500,
+            app: 'viewer',
+            window_class: 'expanded',
+            release: '1.0.0',
+            page_location: 'https://site.example.org/bucuresti/',
+        });
+    });
+
+    it('badPath_mapErrorsAreSummedUntilThePageIsHidden', async () => {
+        const { telemetry, events, page, params } = setup({ 'hcm:bucuresti:consent': 'granted' });
+        telemetry.setContext?.(CONTEXT);
+        for (let tile = 0; tile < 25; tile += 1) {
+            telemetry.measure?.({ kind: 'map_error', errorKind: 'tile' });
+        }
+        page.dispatchEvent(new Event('visibilitychange'));
+        page.dispatchEvent(new Event('pagehide'));
+        await settle();
+
+        expect(events).toEqual(['map_errors', 'map_errors']);
+        expect(params.map((sent) => (sent as Record<string, unknown>)['error_count'])).toEqual([1, 24]);
+    });
+
+    it('badPath_afterDestroyNothingIsMeasuredOrFlushed', async () => {
+        const { telemetry, events, page } = setup({ 'hcm:bucuresti:consent': 'granted' });
+        telemetry.setContext?.(CONTEXT);
+        telemetry.measure?.({ kind: 'map_error', errorKind: 'tile' });
+        telemetry.measure?.({ kind: 'map_error', errorKind: 'tile' });
+        await settle();
+        telemetry.destroy();
+
+        telemetry.measure?.({ kind: 'phase', phase: 'map_idle' });
+        page.dispatchEvent(new Event('pagehide'));
+        await settle();
+
+        expect(events).toEqual(['map_errors']);
+    });
+
+    it('happyPath_theFieldChunkHasTheGuardAndTheVitals', async () => {
+        const field = await loadFieldSdk();
+
+        expect(field).toBe(fieldSdk);
+        expect(Object.keys(field).sort((a, b) => a.localeCompare(b))).toEqual(['createGuard', 'observeVitals']);
+        expect(field.createGuard().check('share', { page_location: 'https://site.example.org/' })).toMatchObject({ ok: true });
     });
 });
 

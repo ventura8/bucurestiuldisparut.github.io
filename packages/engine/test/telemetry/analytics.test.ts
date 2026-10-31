@@ -1,88 +1,9 @@
-import type { FirebaseApp } from 'firebase/app';
-import type { Analytics, ConsentSettings } from 'firebase/analytics';
 import { describe, expect, it } from 'vitest';
 
-import { AnalyticsLoader, FIREBASE_APP_NAME, gaParams, type FirebaseSdk } from '../../src/telemetry/analytics.js';
+import { gaParams } from '../../src/telemetry/analytics.js';
 import { CONSENT_DENIED, CONSENT_GRANTED, ConsentStore, parseConsent } from '../../src/telemetry/consent.js';
 import { brokenStorage, memoryStorage, recordingLog, settle } from '../core/support.js';
-
-const IDS = { apiKey: 'test-api-key', appId: '1:2:web:3', projectId: 'demo-hcm' };
-const PAGE = 'https://site.example.org/bucuresti/';
-
-interface FakeSdk extends FirebaseSdk {
-    readonly log: string[];
-    readonly consents: ConsentSettings[];
-    readonly events: [string, unknown][];
-}
-
-interface FakeSdkOptions {
-    readonly supported?: boolean;
-    readonly throwOnLog?: boolean;
-}
-
-function fakeSdk(options: FakeSdkOptions = {}): FakeSdk {
-    const log: string[] = [];
-    const consents: ConsentSettings[] = [];
-    const events: [string, unknown][] = [];
-    const app: FirebaseApp = { name: FIREBASE_APP_NAME, options: {}, automaticDataCollectionEnabled: false };
-    const analytics: Analytics = { app };
-    return {
-        log,
-        consents,
-        events,
-        initializeApp: (appOptions, name) => {
-            log.push(`initializeApp ${name} ${JSON.stringify(appOptions)}`);
-            return app;
-        },
-        isSupported: () => Promise.resolve(options.supported ?? true),
-        setConsent: (settings) => {
-            consents.push(settings);
-        },
-        initializeAnalytics: (_app, settings) => {
-            log.push(`initializeAnalytics ${JSON.stringify(settings)}`);
-            return analytics;
-        },
-        logEvent: (_analytics, name, params) => {
-            if (options.throwOnLog === true) {
-                throw new Error('gtag missing');
-            }
-            events.push([name, params]);
-        },
-        setAnalyticsCollectionEnabled: (_analytics, enabled) => {
-            log.push(`collection ${String(enabled)}`);
-        },
-    };
-}
-
-interface Loader {
-    readonly analytics: AnalyticsLoader;
-    readonly loads: () => number;
-    /** How often the loader asked for GA4's cookies to be expired. */
-    readonly cookieClears: () => number;
-}
-
-function loader(sdk: FirebaseSdk | Error, log = recordingLog()): Loader {
-    let loads = 0;
-    let clears = 0;
-    const analytics = new AnalyticsLoader({
-        loadSdk: () => {
-            loads += 1;
-            return sdk instanceof Error ? Promise.reject(sdk) : Promise.resolve(sdk);
-        },
-        log: log.log,
-        pageLocation: () => PAGE,
-        pagePath: () => '/bucuresti/',
-        clearCookies: () => {
-            clears += 1;
-        },
-    });
-    return { analytics, loads: () => loads, cookieClears: () => clears };
-}
-
-/** What GA4 receives with every event: the page without its hash. */
-function withPage(params: Readonly<Record<string, unknown>> = {}): Readonly<Record<string, unknown>> {
-    return { ...params, page_location: PAGE };
-}
+import { IDS, PAGE, fakeSdk, loader, withPage } from './support.js';
 
 describe('analytics', () => {
     it('happyPath_eventsMapToGa4ParametersWithoutPii', () => {

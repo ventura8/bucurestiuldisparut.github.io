@@ -1,10 +1,7 @@
 import type { BrowserContext, Page } from '@playwright/test';
 
-import { siteManifestData, type Json } from '../../fixtures/manifest.js';
-import { E2E_FIREBASE_APP, E2E_MEASUREMENT_ID, E2E_TILESET_LAYER, SITE_ORIGIN } from '../../fixtures/world.js';
-import { mockedHostKind } from '../../mock-apis/hosts.js';
-import type { RecordedCall } from '../../mock-apis/server.js';
-import type { MockApis } from '../../support/site.js';
+import { E2E_MEASUREMENT_ID, E2E_TILESET_LAYER, SITE_ORIGIN } from '../../fixtures/world.js';
+import { analyticsCalls, analyticsManifest, gaEvents } from '../../support/ga4.js';
 import { expect, test } from '../../support/test.js';
 import { chooseMenuItem, openLayers, openViewer, serveManifest, t, viewer, visibilitySwitch } from '../../support/viewer.js';
 
@@ -18,28 +15,6 @@ import { chooseMenuItem, openLayers, openViewer, serveManifest, t, viewer, visib
  */
 
 const LAYER_LABEL = 'Corona 1966 (e2e)';
-
-/** The fixture with analytics configured: the measurement id and the Firebase web app ids (CR-9). */
-function analyticsManifest(): Json {
-    const manifest = siteManifestData({ analytics: true });
-    const city = manifest['city'] as Json;
-    city['analytics'] = { ...(city['analytics'] as Json), firebase: { ...E2E_FIREBASE_APP } };
-    return manifest;
-}
-
-async function analyticsCalls(mockApis: MockApis): Promise<RecordedCall[]> {
-    return (await mockApis.calls()).filter((call) => mockedHostKind(call.host) === 'analytics');
-}
-
-/** The GA4 events the mock received, by name, with their parameters. */
-async function gaEvents(mockApis: MockApis): Promise<{ name: string; params: URLSearchParams }[]> {
-    return (await analyticsCalls(mockApis))
-        .filter((call) => call.path === '/g/collect')
-        .map((call) => {
-            const params = new URLSearchParams(call.query);
-            return { name: params.get('en') ?? '', params };
-        });
-}
 
 /** Performance Monitoring's hosts: the public viewer never contacts them. */
 const PERFORMANCE_HOSTS = ['firebaselogging.googleapis.com', 'firebaselogging-pa.googleapis.com'];
