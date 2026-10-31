@@ -12,12 +12,12 @@ import type { WorkerOptions } from './support/test.js';
  * which builds the engine and the e2e sites into dist/e2e-site, then `playwright`). Paths are relative to this file
  * (the e2e/ workspace); reports land in the repository's reports/ folder, where the CI workflow collects them.
  *
- * Two loopback servers start before the tests (`webServer`, e2e/mock-apis/main.ts): the built sites on
- * 127.0.0.1:4310 and the mock APIs on 127.0.0.1:4311. When the admin or the tour runs, two more (docs/research/M2b-interfaces.md
- * §6.2): the admin server on 127.0.0.1:4312 (the e2e build of packages/admin/dist as Hosting serves it) and the Firebase
- * emulators of project demo-hcm (auth, firestore, storage, functions from functions/dist, pubsub, tasks) with the
- * Functions emulator's environment of e2e/admin/world.ts; they count as up once `admin-session` is loaded. The tiers
- * and their projects are e2e/projects.ts; `E2E_TIER` picks them (`smoke,fn`; unset is every push's tiers, `all` adds
+ * Three loopback servers start before the tests (`webServer`, e2e/mock-apis/main.ts): the built sites on
+ * 127.0.0.1:4310, the mock APIs on 127.0.0.1:4311 and the e2e Hosting server on 127.0.0.1:4312 (M6: the e2e build's Hosting
+ * tree, the public map at its root and the admin's e2e build under /admin/, as Hosting serves it). When the admin or the
+ * tour runs, the Firebase emulators too (docs/research/M2b-interfaces.md §6.2) of project demo-hcm (auth, firestore,
+ * storage, functions from functions/dist, pubsub, tasks) with the Functions emulator's environment of e2e/admin/world.ts;
+ * they count as up once `admin-session` is loaded. The tiers and their projects are e2e/projects.ts; `E2E_TIER` picks them (`smoke,fn`; unset is every push's tiers, `all` adds
  * `tour-matrix`), `E2E_SHARD` splits a run across CI jobs or machines and `E2E_ADMIN_PART` gives a machine its part of
  * the admin projects (scripts/ci/e2e-split.sh, e2e/split.ts).
  */
@@ -65,11 +65,22 @@ const REPORT_SUFFIX = TIERS.length === 1 && TIERS[0] === 'tour-matrix' ? '-tour-
 
 type WebServer = Extract<NonNullable<PlaywrightTestConfig['webServer']>, unknown[]>[number];
 
-/** The admin server and the emulators, only for a run that opens the admin (its tier, or the tour's admin journeys). */
+/**
+ * The e2e Hosting server (the public map at its root, the admin under `/admin/`: M6, docs/research/M6-interfaces.md §2), for
+ * every run: the viewer tier's Hosting scenarios (V30) open it as the admin tier does.
+ */
+const HOSTING_SERVER: WebServer = {
+    command: `${SERVER} admin`,
+    cwd: '..',
+    url: `${ADMIN_ORIGIN}/__health`,
+    reuseExistingServer: !CI,
+    timeout: 60_000,
+};
+
+/** The emulators, only for a run that opens the admin (its tier, or the tour's admin journeys). */
 function adminServers(): WebServer[] {
     const emulators = `npx firebase emulators:start --project ${E2E_PROJECT_ID} --only ${ADMIN_EMULATORS.join(',')}`;
     return [
-        { command: `${SERVER} admin`, cwd: '..', url: `${ADMIN_ORIGIN}/__health`, reuseExistingServer: !CI, timeout: 60_000 },
         {
             command: emulators,
             cwd: '..',
@@ -122,6 +133,7 @@ export default defineConfig<object, WorkerOptions>({
     webServer: [
         { command: `${SERVER} mock`, cwd: '..', url: `${MOCK_API_ORIGIN}/__health`, reuseExistingServer: !CI, timeout: 60_000 },
         { command: `${SERVER} site`, cwd: '..', url: `${SITE_ORIGIN}/__health`, reuseExistingServer: !CI, timeout: 60_000 },
+        HOSTING_SERVER,
         ...(needsAdmin(TIERS) ? adminServers() : []),
     ],
     projects: e2eProjects(TIERS, ADMIN_PART),

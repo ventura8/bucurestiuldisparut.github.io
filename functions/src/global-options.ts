@@ -5,7 +5,7 @@ import { setGlobalOptions, type GlobalOptions } from 'firebase-functions/options
 export type FunctionName = CallableName | keyof typeof HTTP_ENDPOINTS | keyof typeof BACKGROUND_FUNCTIONS;
 
 /** The runtime service accounts of security review §1.1 (created by the bootstrap; never the compute default). */
-type RuntimeAccount = 'fn-admin' | 'fn-events' | 'fn-crash';
+export type RuntimeAccount = 'fn-admin' | 'fn-events' | 'fn-crash';
 
 /**
  * Who each function runs as (security review §1.1, `docs/research/M2-interfaces.md` §4.3, CR-M2-8, CR-M2-13,
@@ -51,6 +51,8 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'photos.onUpload': 'fn-events',
     'ops.tick': 'fn-admin',
     'ops.onBudget': 'fn-admin',
+    // M6 (docs/research/M6-interfaces.md §3.2): the events probe is delivered by Eventarc, so it runs as the trigger account.
+    'ops.onProbe': 'fn-events',
     'imagery.search': 'fn-admin',
     'imagery.browse': 'fn-admin',
     'imagery.import': 'fn-admin',
@@ -92,12 +94,37 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'export.build': 'fn-events',
 };
 
+/** What firebase-tools and Cloud Run set to the project while the code loads (discovery, the emulator, a cold start). */
+type Environment = Readonly<Record<string, string | undefined>>;
+
+const PROJECT_ID = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
+
 /**
- * The deploy option that makes function `name` run as its account. `fn-admin@` is firebase-tools' shorthand for
- * `fn-admin@<project>.iam.gserviceaccount.com`, so the code names no project. Every trigger spreads it into its options.
+ * The project the code is loaded for: `GCLOUD_PROJECT` (firebase-tools sets it for discovery, in Cloud Build as on a
+ * terminal, and the emulator sets `demo-hcm`), else `GOOGLE_CLOUD_PROJECT`. Neither is a refusal naming both, never a
+ * shorthand account (docs/research/M6-interfaces.md §3.2, S-A55-BAD-NO-PROJECT).
  */
-export function runAs(name: FunctionName): { readonly serviceAccount: string } {
-    return { serviceAccount: `${RUNTIME_ACCOUNTS[name]}@` };
+function projectOf(env: Environment): string {
+    const project = env['GCLOUD_PROJECT'] ?? env['GOOGLE_CLOUD_PROJECT'] ?? '';
+    if (!PROJECT_ID.test(project)) {
+        throw new Error('runAs: neither GCLOUD_PROJECT nor GOOGLE_CLOUD_PROJECT names the project the functions are loaded for');
+    }
+    return project;
+}
+
+/**
+ * The full e-mail address of a runtime account in the project the code is loaded for. Never firebase-tools' shorthand
+ * `fn-admin@`: the function itself accepts it, but firebase-tools 15.33.0 copies it unexpanded into the Cloud Scheduler
+ * job's `oidcToken.serviceAccountEmail`, which Scheduler refuses with 400 `INVALID_ARGUMENT`, so the jobs of `ops.tick`
+ * and `imagery.tick` were never made (finding 11 of `docs/research/manual-test-2026-10-25.md`; S-A55-HAPPY-SCHEDULER-ACCOUNT).
+ */
+export function serviceAccountEmail(account: RuntimeAccount, env: Environment = process.env): string {
+    return `${account}@${projectOf(env)}.iam.gserviceaccount.com`;
+}
+
+/** The deploy option that makes function `name` run as its account. Every trigger spreads it into its options. */
+export function runAs(name: FunctionName, env: Environment = process.env): { readonly serviceAccount: string } {
+    return { serviceAccount: serviceAccountEmail(RUNTIME_ACCOUNTS[name], env) };
 }
 
 /**
@@ -108,6 +135,11 @@ export function runAs(name: FunctionName): { readonly serviceAccount: string } {
  * function that forgot `runAs`, never the compute default account. Every trigger module imports this file first,
  * because firebase-functions reads the global options when a function is declared.
  */
-export const GLOBAL_OPTIONS: GlobalOptions = { region: 'us-central1', maxInstances: 5, concurrency: 80, serviceAccount: 'fn-events@' };
+export const GLOBAL_OPTIONS: GlobalOptions = {
+    region: 'us-central1',
+    maxInstances: 5,
+    concurrency: 80,
+    serviceAccount: serviceAccountEmail('fn-events'),
+};
 
 setGlobalOptions(GLOBAL_OPTIONS);

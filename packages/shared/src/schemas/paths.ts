@@ -158,6 +158,8 @@ export const FIRESTORE_PATHS = {
     opsGuard: 'ops/guard',
     /** M3: the dispatcher's execution slots (CR-M3-47). */
     opsDispatch: 'ops/dispatch',
+    /** M6: the self-test's events probe, answered by `ops.onProbe` (`docs/research/M6-interfaces.md` §3.2). */
+    opsProbe: 'ops/probe',
     /** M3: a city's last USGS harvest attempt (CR-M3-47). */
     harvestState: (cityId: string) => `ops/harvest-${segment(cityId, isCityId)}`,
     manifestStates: 'manifests',

@@ -8,7 +8,8 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
 
 /**
  * Library build of the admin app: the ES module entry `dist/admin.mjs`, its lazy chunks next to it and `dist/admin.css`.
- * The page Hosting serves (scripts/site's admin target) holds `<hcm-admin-shell>` and loads `admin.mjs` as a module
+ * Hosting serves it under `/admin/` (the base; M6) and the public map at the root (`npm run build:hosting` copies this
+ * folder to `dist/hosting/admin/`). The page (scripts/site's admin target) holds `<hcm-admin-shell>` and loads `admin.mjs` as a module
  * script, which starts itself (`src/index.ts`). Each editor area's page and store (`src/pages/<area>.ts`), Terra Draw
  * (`@hcm/ui/map/draw`'s loader), the colour library and the analytics SDK are chunks fetched when first needed
  * (DECISIONS-for-review.md §34b); `scripts/ci/check_bundle_budget.py` measures the entry and every chunk. There is no IIFE:
@@ -43,6 +44,9 @@ const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]
 const RE2JS_STAND_IN = fileURLToPath(new URL('src/vendor/re2js-unsupported.ts', import.meta.url));
 
 export default defineConfig({
+    // M6 (docs/research/M6-interfaces.md §2.3): Hosting serves the admin under /admin/ (the public map is at the root);
+    // `import.meta.env.BASE_URL` names it for the files the admin fetches by absolute path (src/app/config.ts).
+    base: '/admin/',
     resolve: { alias: [{ find: /^re2js$/, replacement: RE2JS_STAND_IN }] },
     plugins: [
         cssLiteralsPlugin(),

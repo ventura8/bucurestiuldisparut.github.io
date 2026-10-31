@@ -53,7 +53,9 @@ describe('deployed functions', () => {
     it('happyPath_everyFunctionRunsInUsCentral1AsItsOwnServiceAccount', () => {
         const placed = REGISTRY.map((name) => [name, endpointOf(name).region, endpointOf(name).serviceAccountEmail]);
 
-        expect(placed).toEqual(REGISTRY.map((name) => [name, ['us-central1'], `${RUNTIME_ACCOUNTS[name]}@`]));
+        expect(placed).toEqual(
+            REGISTRY.map((name) => [name, ['us-central1'], `${RUNTIME_ACCOUNTS[name]}@demo-hcm.iam.gserviceaccount.com`]),
+        );
     });
 
     it('happyPath_callablesAndTheCrashEndpointKeepTheirRegistryInstanceCaps', () => {

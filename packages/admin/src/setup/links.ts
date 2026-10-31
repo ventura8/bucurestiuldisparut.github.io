@@ -8,6 +8,8 @@ import type { SetupStepId } from './steps.js';
 export const SETUP_LINK_URLS = {
     'gcp.firebaseConsole': 'https://console.firebase.google.com/',
     'gcp.billingAccounts': 'https://console.cloud.google.com/billing',
+    // The billing card's primary Create a billing account while it waits for one (M6 setup-ux, finding 3).
+    'gcp.billingCreate': 'https://console.cloud.google.com/billing/create',
     'gcp.blazeUpgrade': 'https://console.firebase.google.com/project/{projectId}/usage/details',
     'mapbox.signup': 'https://account.mapbox.com/auth/signup/',
     'mapbox.console': 'https://console.mapbox.com/',
@@ -38,10 +40,16 @@ export const STEP_LINKS: Readonly<Record<SetupStepId, readonly SetupCardLinkId[]
     provision: [],
     deploy: [],
     claim: [],
+    // [section install] owner: installer (M6, CR-M6-6): the install cards link no console page.
+    pipeline: [],
+    // [end install]
     mapbox: ['mapbox.signup', 'mapbox.console', 'mapbox.usageThresholds', 'mapbox.accessTokens'],
     usgs: ['usgs.register', 'usgs.accessRequest'],
     analytics: ['gcp.firebaseConsole'],
     legacyImport: [],
+    // [section install] owner: installer (M6, CR-M6-6)
+    site: [],
+    // [end install]
 };
 
 const PLACEHOLDER = /\{(\w+)\}/g;

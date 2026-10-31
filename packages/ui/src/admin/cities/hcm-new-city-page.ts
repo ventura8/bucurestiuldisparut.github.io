@@ -24,6 +24,7 @@ import { contentText, noticeOf } from '../shell/text.js';
 import { completeBounds, EDGES, nextDraft, type Edge, type EdgeDraft } from './area-edges.js';
 import { AreaGesture } from './area-gesture.js';
 import type { NewCityIntentsPort, NewCityViewState } from './cities-port.js';
+import { publicAddressLink, publicAddressStyles } from './public-address.js';
 
 export const HCM_NEW_CITY_PAGE_TAG = 'hcm-new-city-page';
 
@@ -94,7 +95,7 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
     /** A form, not a list and detail page: the shell's page area scrolls it (the map sits below the names). */
     static override readonly fillsPage: boolean = false;
 
-    static override readonly styles = [...editingStyles, visuallyHidden, newCityStyles];
+    static override readonly styles = [...editingStyles, visuallyHidden, newCityStyles, publicAddressStyles];
 
     protected readonly route: AdminRouteIdPort = 'cities';
     readonly #gesture = new AreaGesture((from, to, size) => {
@@ -343,6 +344,7 @@ export class HcmNewCityPage extends AreaPage<NewCityViewState, NewCityIntentsPor
                 ${contentText(locale, usgs ? 'adminContent.cities.created.harvest' : 'adminContent.cities.created.harvestLater')}
             </p>
             <p class="note">${contentText(locale, 'adminContent.cities.created.siteLater')}</p>
+            ${publicAddressLink(locale, created.cityId)}
             <p class="note">${contentText(locale, 'adminContent.cities.created.exportInstead')}</p>
             <h3>${contentText(locale, 'adminContent.cities.created.next')}</h3>
             <div class="actions">

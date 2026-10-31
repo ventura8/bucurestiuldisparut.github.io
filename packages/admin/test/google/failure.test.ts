@@ -172,6 +172,11 @@ describe('failureMessage', () => {
             key: 'apiError.cloud.apiDisabled',
             params: { api: 'iam.googleapis.com' },
         });
+        // M6 (finding 4): an API the transport waited for and Google still refused is still switching on.
+        expect(failureMessage({ kind: 'forbidden', status: 403, api: 'iam.googleapis.com', reason: 'API_PROPAGATING' })).toEqual({
+            key: 'apiError.cloud.apiPropagation',
+            params: { api: 'iam.googleapis.com' },
+        });
         expect(failureMessage({ kind: 'forbidden', status: 403, reason: 'ACCESS_TOKEN_SCOPE_INSUFFICIENT' }, 'cloudBilling')).toEqual({
             key: 'adminShell.oauth.scopeDenied',
             params: { scope: 'adminShell.oauth.scope.cloudBilling' },

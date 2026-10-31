@@ -7,6 +7,12 @@ import { bundleUrl, isLegacyRecord, legacyRecord, uploadType, type LegacyPhotoFi
  * record and uploads its original through the normal upload path, so `photos.onUpload` makes the WebP files; each photo
  * is published once processed. Three at a time; idempotent by document id and `legacyId`, so a rerun or a closed tab
  * resumes where it stopped and never writes a photo twice. The store is admin-shell's Firestore and Storage adapter.
+ *
+ * M6 (finding 17 of `docs/research/manual-test-2026-10-25.md`; S-A28-HAPPY-STUCK-REPROCESSED, S-A28-BAD-STUCK-AGAIN): an
+ * upload whose event never reaches the server (Eventarc refused, the event functions' account lacked `roles/run.invoker`)
+ * leaves its photo `pending`. After {@link STUCK_PHOTO_MS} the photo is sent to `photos.reprocess` once, which uploads it
+ * again (a new event); still `pending` as long again, it is listed as not received (`apiError.photo.notReceived`, which
+ * names the role) and the import goes on with the others: no photo waits ten minutes any more.
  */
 
 /** What the import reads of a photo document. */
@@ -46,11 +52,16 @@ export interface LegacyImportDeps {
     readonly nonce: () => string;
     readonly sleep: (ms: number) => Promise<void>;
     readonly log: Logger;
+    /** `photos.reprocess` for a photo of the city (M6: a photo whose upload event never arrived). */
+    readonly reprocess: (cityId: string, photoId: string) => Promise<void>;
     /** Photos in flight at once (default 3). */
     readonly concurrency?: number;
-    /** How long one photo's processing may take before it counts as unavailable (default 10 minutes). */
-    readonly processingTimeoutMs?: number;
+    /** How long a photo may stay `pending` after its upload before it counts as stuck (default {@link STUCK_PHOTO_MS}). */
+    readonly stuckAfterMs?: number;
 }
+
+/** M6: two minutes without the upload's event; `photos.onUpload` takes seconds, a cold start well under a minute. */
+export const STUCK_PHOTO_MS = 120_000;
 
 interface LegacyImportFailure {
     readonly id: string;
@@ -78,6 +89,8 @@ interface Outcome {
 }
 
 const TIMEOUT = Symbol('timeout');
+/** Still `pending` after `photos.reprocess`: the server never received either upload. */
+const STUCK = Symbol('stuck');
 
 /** Whether the photo is processed and has its image. */
 function processed(state: PhotoState): boolean {
@@ -260,14 +273,26 @@ class Importer implements LegacyImport {
 
     /** Waits for `photos.onUpload`, then publishes; a failed processing is listed with its reason. */
     async #finish(record: LegacyRecord): Promise<Outcome> {
-        const state = await this.#processing(record.id);
-        if (state === TIMEOUT) {
-            return failure(record.id, 'apiError.unavailable');
+        const state = await this.#settled(record);
+        if (state === STUCK) {
+            return failure(record.id, 'apiError.photo.notReceived');
         }
         if (state === null) {
             return failure(record.id, 'apiError.notFound');
         }
         return state.processing === 'failed' ? failedProcessing(record.id, state) : this.#publish(record, state);
+    }
+
+    /** The photo once processed or failed; a photo still `pending` after its wait is reprocessed once, then stuck. */
+    async #settled(record: LegacyRecord): Promise<PhotoState | null | typeof STUCK> {
+        const first = await this.#processing(record.id);
+        if (first !== TIMEOUT) {
+            return first;
+        }
+        this.#deps.log.warn('legacy import: the upload event never arrived, reprocessing the photo', { photo: record.id });
+        await this.#deps.reprocess(this.#deps.cityId, record.id);
+        const second = await this.#processing(record.id);
+        return second === TIMEOUT ? STUCK : second;
     }
 
     async #publish(record: LegacyRecord, state: PhotoState): Promise<Outcome> {
@@ -297,7 +322,7 @@ class Importer implements LegacyImport {
             if (watching.settled) {
                 stop();
             }
-            void this.#deps.sleep(this.#deps.processingTimeoutMs ?? 600_000).then(() => {
+            void this.#deps.sleep(this.#deps.stuckAfterMs ?? STUCK_PHOTO_MS).then(() => {
                 settle(TIMEOUT);
             });
         });

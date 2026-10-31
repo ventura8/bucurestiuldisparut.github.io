@@ -21,7 +21,21 @@ export interface DeploymentState {
     deployment: Deployment;
     /** firebase-tools created the `ops.tick` Scheduler job (set by every scenario that deploys). */
     schedulerJob: boolean;
+    /** M6: the release the deployed functions run (their `HCM_RELEASE`); unset for a deploy from before M6. */
+    release?: string;
+    /**
+     * M6 review: how many of the registry's last functions the deploy lacks (unset: none), as a server from before M6
+     * lacks the functions M6 added.
+     */
+    lacking?: number;
 }
+
+/** The functions M6 added to the registry, which a server deployed before M6 lacks (`preM6`). */
+export const PRE_M6_LACKING = 8;
+
+/** M6: an older and a newer release than the e2e admin's (S-A55-HAPPY-UPDATE, S-A55-BAD-DOWNGRADE). */
+export const OLDER_SERVER_RELEASE = '0.9.0+e2e0000';
+export const NEWER_SERVER_RELEASE = '99.0.0+e2e9999';
 
 const FUNCTIONS: GoogleApi = {
     service: 'cloudfunctions.googleapis.com',
@@ -39,9 +53,14 @@ export function registryFunctions(): string[] {
     return [...Object.keys(CALLABLES), ...Object.keys(HTTP_ENDPOINTS), ...Object.keys(BACKGROUND_FUNCTIONS)].map(deployedName);
 }
 
+/** The registry's functions a deploy made: all of them, or all but the last `lacking` (a server from before M6). */
+function deployedNames(lacking: number | undefined): string[] {
+    const all = registryFunctions();
+    return all.slice(0, all.length - (lacking ?? 0));
+}
+
 /** The deployed functions and their states: `partial` has a third of them, `failed` all but one `FAILED`. */
-function deployedFunctions(deployment: Deployment): readonly (readonly [string, string])[] {
-    const names = registryFunctions();
+function deployedFunctions(deployment: Deployment, names: readonly string[]): readonly (readonly [string, string])[] {
     switch (deployment) {
         case 'none':
             return [];
@@ -52,6 +71,19 @@ function deployedFunctions(deployment: Deployment): readonly (readonly [string, 
         case 'failed':
             return names.map((name, index) => [name, index === 0 ? 'FAILED' : 'ACTIVE'] as const);
     }
+}
+
+/** A function's answer with its `HCM_RELEASE` (M6), when the deploy set one. */
+function withRelease(body: unknown, release: string | undefined): unknown {
+    if (release === undefined || typeof body !== 'object' || body === null) {
+        return body;
+    }
+    const fn = body as Record<string, unknown>;
+    const serviceConfig = {
+        ...(fn['serviceConfig'] as Record<string, unknown> | undefined),
+        environmentVariables: { HCM_RELEASE: release },
+    };
+    return { ...fn, serviceConfig };
 }
 
 /** One page of `items` for the request's `pageSize` and `pageToken` (the index of the page's first item). */
@@ -69,21 +101,35 @@ export function createCloudFunctionsFake(state: DeploymentState, services: Servi
         if (!serviceEnabled(services, project.id, FUNCTIONS.service)) {
             return googleError('google/error.service-disabled', FUNCTIONS, { projectNumber: project.number });
         }
-        const functions = deployedFunctions(state.deployment).map(([functionId, functionState]) =>
-            fixtureBody('cloud-functions/function.get', {
-                projectId: project.id,
-                region: String(params['region']),
-                functionId,
-                functionState,
-            }),
+        const functions = deployedFunctions(state.deployment, deployedNames(state.lacking)).map(([functionId, functionState]) =>
+            withRelease(
+                fixtureBody('cloud-functions/function.get', {
+                    projectId: project.id,
+                    region: String(params['region']),
+                    functionId,
+                    functionState,
+                }),
+                state.release,
+            ),
         );
         return jsonResponse(page(functions, request.url.searchParams, 'functions'));
     };
+    const deployedWith =
+        (release: string | undefined, deployment: Deployment = 'deployed', lacking?: number) =>
+        () => {
+            state.deployment = deployment;
+            state.schedulerJob = true;
+            delete state.release;
+            delete state.lacking;
+            Object.assign(state, release === undefined ? {} : { release }, lacking === undefined ? {} : { lacking });
+            enableService(services, String(FIXTURE_VALUES['projectId']), FUNCTIONS.service);
+        };
     const scenarios = Object.fromEntries(
         DEPLOYMENTS.map((deployment) => [
             deployment,
             () => {
                 state.deployment = deployment;
+                delete state.lacking;
                 state.schedulerJob = deployment === 'deployed' || deployment === 'failed';
                 // A deploy enables the API; `none` leaves it as it is (off in a fresh project: 403 SERVICE_DISABLED).
                 if (deployment !== 'none') {
@@ -103,8 +149,17 @@ export function createCloudFunctionsFake(state: DeploymentState, services: Servi
             ),
         ],
         failure: (mode) => googleFailure(FUNCTIONS, mode),
-        scenarios,
-        snapshot: () => ({ deployment: state.deployment }),
+        scenarios: {
+            ...scenarios,
+            // M6: a server installed by an older and by a newer release than the e2e admin's.
+            deployedOlderRelease: deployedWith(OLDER_SERVER_RELEASE),
+            deployedNewerRelease: deployedWith(NEWER_SERVER_RELEASE),
+            // The M6 review: a server deployed before M6 (no release, M6's functions missing: an update, never a first
+            // install), and a newer server one of whose functions is gone (never replaced: --force would delete it).
+            preM6: deployedWith(undefined, 'deployed', PRE_M6_LACKING),
+            partialNewerRelease: deployedWith(NEWER_SERVER_RELEASE, 'partial'),
+        },
+        snapshot: () => ({ deployment: state.deployment, release: state.release ?? null }),
     };
 }
 

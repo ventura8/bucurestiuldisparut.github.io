@@ -318,13 +318,13 @@ describe('callableOptions', () => {
     it('happyPath_enforcedAppCheckConsumesTokensForSecretPastes', () => {
         expect(callableOptions('setup.saveMapbox', { HCM_APP_CHECK: 'enforce' })).toEqual({
             maxInstances: 3,
-            serviceAccount: 'fn-admin@',
+            serviceAccount: 'fn-admin@demo-hcm.iam.gserviceaccount.com',
             enforceAppCheck: true,
             consumeAppCheckToken: true,
         });
         expect(callableOptions('setup.status', { HCM_APP_CHECK: 'enforce' })).toEqual({
             maxInstances: 3,
-            serviceAccount: 'fn-admin@',
+            serviceAccount: 'fn-admin@demo-hcm.iam.gserviceaccount.com',
             enforceAppCheck: true,
             consumeAppCheckToken: false,
         });
@@ -339,7 +339,7 @@ describe('callableOptions', () => {
     it('badPath_monitorModeEnforcesNothingYet', () => {
         expect(callableOptions('admin.claim', {})).toEqual({
             maxInstances: 2,
-            serviceAccount: 'fn-admin@',
+            serviceAccount: 'fn-admin@demo-hcm.iam.gserviceaccount.com',
             enforceAppCheck: false,
             consumeAppCheckToken: false,
         });

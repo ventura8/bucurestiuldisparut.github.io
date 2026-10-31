@@ -21,6 +21,8 @@ import {
 import { ROOT, cleanup, repositoryWithTemporaryDist } from './support.js';
 
 const ORIGIN = 'https://demo-hcm.web.app';
+/** The worker's scope since M6: the admin's folder, its start page (docs/research/M6-interfaces.md §2.3). */
+const START = `${ORIGIN}/admin/`;
 
 interface Shown {
     readonly title: string;
@@ -30,7 +32,7 @@ interface Shown {
 type Listener = (event: never) => void;
 
 /** The worker installed on a scope of its own: its listeners, what it showed and what it opened. */
-function worker() {
+function worker(registrationScope = START) {
     const listeners = new Map<string, Listener>();
     const shown: Shown[] = [];
     const opened: string[] = [];
@@ -40,6 +42,7 @@ function worker() {
             listeners.set(type, listener);
         },
         registration: {
+            scope: registrationScope,
             showNotification: (title: string, options: Shown['options']) => {
                 shown.push({ title, options });
                 return Promise.resolve();
@@ -91,11 +94,12 @@ describe('the push service worker', () => {
     });
 
     it.each([
-        ['another origin', { notification: { title: 'x' }, fcmOptions: { link: 'https://elsewhere.example/#/x' } }, `${ORIGIN}/`],
+        ['another origin', { notification: { title: 'x' }, fcmOptions: { link: 'https://elsewhere.example/#/x' } }, START],
         ['an older click action', { notification: { title: 'x', click_action: '/#/jobs' } }, `${ORIGIN}/#/jobs`],
-        ['no link', { notification: {} }, `${ORIGIN}/`],
-        ['a link that is no address', { notification: { title: 'x' }, fcmOptions: { link: 'https://[' } }, `${ORIGIN}/`],
-        ['a link that is not text', { notification: { title: 'x' }, fcmOptions: { link: 42 } }, `${ORIGIN}/`],
+        ['a link relative to the admin', { notification: { title: 'x', click_action: '#/jobs' } }, `${START}#/jobs`],
+        ['no link', { notification: {} }, START],
+        ['a link that is no address', { notification: { title: 'x' }, fcmOptions: { link: 'https://[' } }, START],
+        ['a link that is not text', { notification: { title: 'x' }, fcmOptions: { link: 42 } }, START],
     ])('badPath_%s_opensTheAdminsOwnPage', async (_name, message, link) => {
         const { fire, shown } = worker();
 
@@ -114,8 +118,16 @@ describe('the push service worker', () => {
         await fire('push', event);
         await fire('notificationclick', { notification: { close: () => undefined } });
 
-        expect(shown).toEqual([{ title: '', options: { body: '', tag: '', data: { link: `${ORIGIN}/` } } }]);
-        expect(opened).toEqual([`${ORIGIN}/`]);
+        expect(shown).toEqual([{ title: '', options: { body: '', tag: '', data: { link: START } } }]);
+        expect(opened).toEqual([START]);
+    });
+
+    it('badPath_aScopeOffTheWorkersOriginFallsBackToTheSitesRoot', async () => {
+        const { fire, shown } = worker('https://elsewhere.example/admin/');
+
+        await fire('push', push({ notification: {} }));
+
+        expect(shown[0]?.options.data.link).toBe(`${ORIGIN}/`);
     });
 });
 

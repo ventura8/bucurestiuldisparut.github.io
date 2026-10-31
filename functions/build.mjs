@@ -22,6 +22,7 @@
 // 3. deploy-env.json holds only public `HCM_*` values (DECISIONS-for-review.md §22a; secrets live in Secret Manager);
 // 4. dist/index.js loads the way firebase-tools loads it for discovery, and every export is a group of
 //    functions that each carry a deploy manifest (`__endpoint`).
+import { readFileSync, statSync } from 'node:fs';
 import { copyFile, cp, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { builtinModules } from 'node:module';
 import process from 'node:process';
@@ -96,15 +97,46 @@ if (JSON.stringify(lockRoot.dependencies) !== JSON.stringify(JSON.parse(artifact
 await copyFile(here('deploy-lock/package-lock.json'), here('dist/package-lock.json'));
 
 // The deploy-time configuration: firebase-tools loads dist/.env.<project> for that project only. Public values only.
+// M6 (docs/research/M6-interfaces.md §1.4.1): every function also says which release it is, HCM_RELEASE, the admin's
+// own release of the same checkout (scripts/site/src/admin/runtime.ts, loaded through Node's type stripping: it imports
+// types only), so the in-app installer can tell an installed server from the admin's bundle.
 const PROJECT_ID = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
 const PUBLIC_KEY = /^HCM_[A-Z0-9_]+$/;
+// HCM_VIEWER_ORIGINS becomes each city's mapbox.allowedUrls, whose schema (httpsOriginSchema of @hcm/shared, at most
+// 10) refuses anything else: a value it refuses would mint a Mapbox token per tick that is never recorded (finding 3 of
+// the M6 security review). functions/src/deps.ts refuses it at run time too; functions/test/deploy-env.test.ts pins both.
+const HTTPS_ORIGIN = /^https:\/\/[a-z0-9.-]{1,253}(?::\d{1,5})?$/;
+const MAX_VIEWER_ORIGINS = 10;
+
+function viewerOriginsValid(value) {
+    const origins = value
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter((origin) => origin !== '');
+    return origins.length <= MAX_VIEWER_ORIGINS && origins.every((origin) => HTTPS_ORIGIN.test(origin));
+}
+
+const { adminRelease } = await import('../scripts/site/src/admin/runtime.ts');
+const repository = {
+    readText: (path) => readFileSync(here(`../${path}`), 'utf8'),
+    isFile: (path) => statSync(here(`../${path}`), { throwIfNoEntry: false })?.isFile() === true,
+};
+const release = adminRelease(repository, process.env);
 for (const [project, values] of Object.entries(await readJson(here('deploy-env.json')))) {
     const lines = Object.entries(values).map(([key, value]) => {
-        if (!PROJECT_ID.test(project) || !PUBLIC_KEY.test(key) || typeof value !== 'string' || /[\r\n]/.test(value)) {
+        if (
+            !PROJECT_ID.test(project) ||
+            !PUBLIC_KEY.test(key) ||
+            key === 'HCM_RELEASE' ||
+            typeof value !== 'string' ||
+            /[\r\n]/.test(value) ||
+            (key === 'HCM_VIEWER_ORIGINS' && !viewerOriginsValid(value))
+        ) {
             throw new Error(`deploy-env.json: ${project} ${key} must be a project id with HCM_* keys and one-line string values`);
         }
         return `${key}=${value}`;
     });
+    lines.push(`HCM_RELEASE=${release}`);
     await writeFile(here(`dist/.env.${project}`), `${lines.join('\n')}\n`);
 }
 

@@ -6,7 +6,7 @@ import type { InputFlow } from '../../../support/budget.js';
 import { contentIdsOf } from '../../support/content-ids.js';
 import type { ContentWorld } from '../../support/content.js';
 import type { EmulatorWorld } from '../../support/emulators.js';
-import { ADMIN_ORIGIN } from '../../world.js';
+import { ADMIN_PATH, ADMIN_URL } from '../../world.js';
 
 /**
  * The M5 multi-city world of the admin tier (docs/research/M5-interfaces.md §1.5 to §1.8, §8; behaviours A49 to A52):
@@ -67,13 +67,13 @@ export async function retireCities(emulators: EmulatorWorld, cityIds: readonly s
 export function addressWithoutCity(lang: 'ro' | 'en', route?: string): string {
     const query = new URLSearchParams({ lang, mapToken: 'none' });
     const hash = route === undefined ? '' : `#/${route}`;
-    return `${ADMIN_ORIGIN}/?${query.toString()}${hash}`;
+    return `${ADMIN_URL}?${query.toString()}${hash}`;
 }
 
 /** The project's admin address with the admin map's e2e token (a locked spec's `adminPath` names none). */
 export function addressWithMap(lang: 'ro' | 'en', route: string): string {
     const query = new URLSearchParams({ lang, mapToken: E2E_TOKEN });
-    return `/?${query.toString()}#/${route}`;
+    return `${ADMIN_PATH}?${query.toString()}#/${route}`;
 }
 
 /** The top bar's city button, from the medium window class (the account menu holds the cities below it). */

@@ -1,6 +1,6 @@
 import { fixtureBody, fixtureResponse } from '../api-fixtures/index.js';
 import type { UpstreamRequest } from './fetch.js';
-import { authenticated, googleFailure, type GoogleApi } from './google-common.js';
+import { authenticated, googleError, googleFailure, type GoogleApi } from './google-common.js';
 import { jsonResponse, requestObject, route } from './routes.js';
 import type { ServiceFake } from './service.js';
 
@@ -12,7 +12,8 @@ import type { ServiceFake } from './service.js';
  * character and a wrapping fence the server must strip to plain text), `.injected` (the draft plus a link the source does
  * not have, as text pasted into the source might ask for), `.empty` (blank text) or `.safety` (stopped by the safety
  * filters); `fail('vertex-ai', 'unavailable' | 'rateLimited' | 'apiDisabled' | 'forbidden')` answers Google's
- * error envelopes (`SERVICE_DISABLED` names `aiplatform.googleapis.com`).
+ * error envelopes (`SERVICE_DISABLED` names `aiplatform.googleapis.com`). M6 (finding 20): `vertex-ai.modelUnavailable`
+ * answers both verbs 404 `NOT_FOUND`, as Google does for a publisher model it retired or does not offer to the project.
  */
 
 export const VERTEX_OUTCOMES = ['ok', 'markup', 'injected', 'empty', 'safety'] as const;
@@ -28,13 +29,15 @@ export interface VertexRequest {
 
 export interface VertexAiState {
     outcome: VertexOutcome;
+    /** M6: the pinned model is not served to the project (every call answers 404). */
+    modelGone: boolean;
     readonly requests: VertexRequest[];
     /** How many `countTokens` calls (the self-test's) were answered. */
     countTokens: number;
 }
 
 export function defaultVertexAiState(): VertexAiState {
-    return { outcome: 'ok', requests: [], countTokens: 0 };
+    return { outcome: 'ok', modelGone: false, requests: [], countTokens: 0 };
 }
 
 const API: GoogleApi = { service: 'aiplatform.googleapis.com', title: 'Vertex AI API', permission: 'aiplatform.endpoints.predict' };
@@ -94,6 +97,11 @@ function generated(state: VertexAiState, asked: VertexRequest): Response {
     return fixtureResponse('vertex-ai/generate.ok', { merge: { candidates: [candidate] } });
 }
 
+/** Google's answer for a publisher model it does not serve to the project (M6, finding 20). */
+function modelNotFound(): Response {
+    return googleError('google/error.not-found', API);
+}
+
 /** The model named by a `{model}:{verb}` segment. */
 function modelOf(segment: string | undefined): string {
     return (segment ?? '').split(':')[0] ?? '';
@@ -110,7 +118,7 @@ export function createVertexAiFake(state: VertexAiState): ServiceFake {
                 authenticated(API, (request, params) => {
                     const asked = requestOf(request, modelOf(params['model']));
                     state.requests.push(asked);
-                    return generated(state, asked);
+                    return state.modelGone ? modelNotFound() : generated(state, asked);
                 }),
             ),
             route(
@@ -119,19 +127,24 @@ export function createVertexAiFake(state: VertexAiState): ServiceFake {
                 'vertex-ai.countTokens',
                 authenticated(API, () => {
                     state.countTokens += 1;
-                    return jsonResponse(fixtureBody('vertex-ai/count-tokens.ok'));
+                    return state.modelGone ? modelNotFound() : jsonResponse(fixtureBody('vertex-ai/count-tokens.ok'));
                 }),
             ),
         ],
         failure: (mode) => googleFailure(API, mode),
-        scenarios: Object.fromEntries(
-            VERTEX_OUTCOMES.map((outcome) => [
-                outcome,
-                () => {
-                    state.outcome = outcome;
-                },
-            ]),
-        ),
-        snapshot: () => ({ outcome: state.outcome, requests: state.requests, countTokens: state.countTokens }),
+        scenarios: {
+            ...Object.fromEntries(
+                VERTEX_OUTCOMES.map((outcome) => [
+                    outcome,
+                    () => {
+                        state.outcome = outcome;
+                    },
+                ]),
+            ),
+            modelUnavailable: () => {
+                state.modelGone = true;
+            },
+        },
+        snapshot: () => ({ outcome: state.outcome, modelGone: state.modelGone, requests: state.requests, countTokens: state.countTokens }),
     };
 }

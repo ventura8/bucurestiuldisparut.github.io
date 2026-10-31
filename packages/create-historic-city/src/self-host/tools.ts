@@ -68,7 +68,8 @@ export function commandLine(command: string, args: readonly string[]): string {
 export const pages = {
     console: 'https://console.firebase.google.com/',
     providers: (project: string) => `https://console.firebase.google.com/project/${project}/authentication/providers`,
-    admin: (project: string) => `https://${project}.web.app/`,
+    // M6 (docs/research/M6-interfaces.md §2.3): the admin's folder on the project's Hosting site.
+    admin: (project: string) => `https://${project}.web.app/admin/`,
     billing: (project: string) => `https://console.cloud.google.com/billing/linkedaccount?project=${project}`,
 } as const;
 

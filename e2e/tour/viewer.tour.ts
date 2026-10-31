@@ -1,4 +1,5 @@
 import { expect, test } from '../support/test.js';
+import { expectSiteJourneySound, SITE_STATES, type SiteStateId } from './site-states.js';
 import { expectJourneySound, expectKitJourneySound, journey } from './states.js';
 
 /**
@@ -121,3 +122,18 @@ test(
         ).toEqual([]);
     },
 );
+
+// M6 (docs/research/M6-interfaces.md §6.3): the Firebase Hosting site's own states (e2e/tour/site-states.ts).
+for (const id of Object.keys(SITE_STATES) as SiteStateId[]) {
+    test(
+        SITE_STATES[id].title,
+        { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE'] },
+        async ({ page, context, lang, consoleErrors }) => {
+            await expectSiteJourneySound({ page, context, lang }, id);
+            expect(
+                consoleErrors.take().filter((error) => !error.includes('404')),
+                'only the not-found page’s own status',
+            ).toEqual([]);
+        },
+    );
+}

@@ -76,6 +76,8 @@ describe('imagery.resumeGuard', () => {
     });
 
     it('happyPath_consumesAppCheck', () => {
-        expect(resumeGuardFunction(() => imageryWorld().deps).__endpoint).toMatchObject({ serviceAccountEmail: 'fn-admin@' });
+        expect(resumeGuardFunction(() => imageryWorld().deps).__endpoint).toMatchObject({
+            serviceAccountEmail: 'fn-admin@demo-hcm.iam.gserviceaccount.com',
+        });
     });
 });

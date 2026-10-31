@@ -15,6 +15,9 @@ import { FakeSetupPort, setupView, type ViewChanges } from './fixtures.js';
 defineHcmSetupDeploy();
 defineHcmSetupMapbox();
 
+/** When the deployment's watch last looked: the count shows only after a look (finding 9 of the M6 review). */
+const LOOKED = '2026-10-12T13:05:00.000Z';
+
 describe('<hcm-setup-deploy>', () => {
     afterEach(() => {
         vi.restoreAllMocks();
@@ -29,10 +32,13 @@ describe('<hcm-setup-deploy>', () => {
     }
 
     it('happyPath_explainsTheInstallationAndCountsTheFunctions', async () => {
-        const element = await deploy({ deploy: { ...setupView().deploy, ready: 8, watching: true } });
+        const element = await deploy({
+            deploy: { ...setupView().deploy, ready: 8, watching: true },
+            steps: { deploy: { state: 'pending', checkedAt: LOOKED } },
+        });
 
         await expect.element(page.getByRole('progressbar', { name: '8 of 32 functions installed' })).toHaveAttribute('aria-valuenow', '25');
-        expect(shadowPart(element, '[role="status"]').textContent).toBe('Checking every 30 seconds…');
+        expect(shadowPart(element, '.watching').textContent).toBe('Checking every 30 seconds…');
         expect(shadowPart(element, '.copy-list').textContent).toContain('GCP_PROJECT_ID');
         expect(await axeViolations(element)).toEqual([]);
     });
@@ -41,6 +47,8 @@ describe('<hcm-setup-deploy>', () => {
         const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
         const element = await deploy();
 
+        // M6: the GitHub variables are the optional path, collapsed under their summary.
+        await page.getByText('Optional: install from GitHub Actions instead').click();
         await page.getByRole('button', { name: 'Copy GCP_PROJECT_ID' }).click();
 
         expect(writeText).toHaveBeenCalledWith('demo-hcm');
@@ -57,6 +65,7 @@ describe('<hcm-setup-deploy>', () => {
         // Wide enough that no value wraps: then the rows' free space differs, and so did the buttons' places.
         element.style.display = 'block';
         element.style.inlineSize = '1000px';
+        element.renderRoot.querySelector('details')?.setAttribute('open', '');
         const rows = [...element.renderRoot.querySelectorAll<HTMLElement>('.copy-row')];
         const ends = rows.map((row) => Math.round(row.querySelector('hcm-icon-button')?.getBoundingClientRect().right ?? 0));
 
@@ -68,6 +77,7 @@ describe('<hcm-setup-deploy>', () => {
         vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
         const element = await deploy();
 
+        await page.getByText('Optional: install from GitHub Actions instead').click();
         await page.getByRole('button', { name: 'Copy DEPLOY_ENABLED' }).click();
 
         await expect.poll(() => element.copied).toBeNull();
@@ -75,7 +85,7 @@ describe('<hcm-setup-deploy>', () => {
     });
 
     it('badPath_noFunctionCountShowsAnEmptyBar', async () => {
-        await deploy({ deploy: { ...setupView().deploy, total: 0 } });
+        await deploy({ deploy: { ...setupView().deploy, total: 0 }, steps: { deploy: { state: 'pending', checkedAt: LOOKED } } });
 
         await expect.element(page.getByRole('progressbar', { name: '0 of 0 functions installed' })).toHaveAttribute('aria-valuenow', '0');
     });

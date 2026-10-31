@@ -67,6 +67,27 @@ describe('provision: run', () => {
         expect(ctx.state().steps.provision).toMatchObject({ state: 'ok', used: { inputs: 2, consents: 1 } });
     });
 
+    it('badPath_aRecordFromBeforeAnItemExistedRetriesEveryItem', async () => {
+        // Finding 2 of the M6 review: a map prepared before M6 has 15 items ok and Artifact Registry never reported;
+        // running that item alone would never create the installer's account nor its roles (service-accounts, iam).
+        const { harness, ctx, flow } = setup();
+        const before = ALL_OK.filter((item) => item.id !== 'artifact-registry');
+        ctx.update((state) => ({
+            ...state,
+            provision: {
+                items: state.provision.items.map((item) =>
+                    before.some((done) => done.id === item.id) ? { ...item, state: 'ok' as const } : item,
+                ),
+            },
+        }));
+        harness.cloud.provision.mockImplementation(reporting(ALL_OK));
+
+        await flow.run();
+
+        expect(harness.cloud.provision.mock.calls[0]?.[1]).toBeNull();
+        expect(ctx.state().steps.provision.state).toBe('ok');
+    });
+
     it('badPath_aTokenThatExpiresMidRunStopsWithContinue', async () => {
         const { harness, ctx, flow } = setup();
         harness.cloud.provision.mockImplementationOnce((_access, _only, onItem) => {
@@ -159,6 +180,29 @@ describe('provision: normal mode', () => {
         await flow.run();
 
         expect(ctx.state().steps.provision.error).toEqual({ key: 'apiError.notAdmin' });
+    });
+
+    // M6 server-bugs: a Retry what failed clicked while the previous run's record was on its way lost to it (the server
+    // applied the older run last), so the card stays busy until the record is back (S-A04-BAD-API-STILL-DISABLED).
+    it('badPath_retryWaitsUntilTheRunIsRecorded', async () => {
+        const { harness, ctx, flow } = setup('normal');
+        harness.cloud.provision.mockImplementation(reporting(ALL_OK));
+        const answers: ((value: { status: ReturnType<typeof statusView> }) => void)[] = [];
+        harness.backend.recordCloud.mockReturnValue(
+            new Promise((resolve) => {
+                answers.push(resolve);
+            }),
+        );
+
+        const running = flow.run();
+        await expect.poll(() => harness.backend.recordCloud.mock.calls.length).toBe(1);
+        expect(ctx.state().steps.provision).toMatchObject({ state: 'ok', busy: true });
+
+        answers.forEach((answer) => {
+            answer({ status: statusView({ provision: { state: 'ok', checkedAt: null, items: provisionedItems() } }) });
+        });
+        await running;
+        expect(ctx.state().steps.provision).toMatchObject({ state: 'ok', busy: false });
     });
 
     it('badPath_nothingReportedIsNotRecorded', async () => {

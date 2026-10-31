@@ -2,7 +2,9 @@
  * The provisioning card's body (step c, `docs/research/M2b-interfaces.md` §3.3 c, §3.4): the doctor list, one row per
  * `PROVISION_ITEMS` item with its state (icon and text) and reason, and one button: "Prepare the project" before
  * anything is in place, "Retry what failed" once some items are (one click, one consent each). The scheduler, which
- * only the first deploy creates, says so while it waits.
+ * only the first deploy creates, says so while it waits. A disabled Google service names the button the card shows,
+ * Retry what failed (M6 setup-ux, finding 5 of 2026-10-25: the API catalogue's text names the Setup step instead, for
+ * the server checks that link to it).
  */
 import type { ServiceState } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
@@ -31,7 +33,17 @@ const ITEM_ICONS: Readonly<Record<ServiceState, string>> = {
 /** The scheduler waits for the first deploy; it says so even when the provisioner gave no reason. */
 function reasonOf(item: DoctorItem): SetupMessage | null {
     const waitsForDeploy = item.id === 'scheduler' && item.state === 'pending' && item.detail === null;
-    return waitsForDeploy ? { key: 'adminSetup.provision.afterDeploy' } : item.detail;
+    return waitsForDeploy ? { key: 'adminSetup.provision.afterDeploy' } : onThisCard(item.detail);
+}
+
+/** A disabled service on this card: Retry what failed (the button beside it) switches it on. */
+function onThisCard(detail: SetupMessage | null): SetupMessage | null {
+    if (detail?.key !== 'apiError.cloud.apiDisabled') {
+        return detail;
+    }
+    return detail.params === undefined
+        ? { key: 'adminSetup.provision.apiDisabled' }
+        : { key: 'adminSetup.provision.apiDisabled', params: detail.params };
 }
 
 export class HcmSetupProvision extends SetupBody {

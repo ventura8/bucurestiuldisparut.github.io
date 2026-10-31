@@ -4345,3 +4345,409 @@ the user may want to change:
 
 Verify: `bash scripts/dev/dev-stack.sh` then `bash scripts/dev/dev-stack.sh check` (`[SUCCESS] the local stack works`);
 `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`.
+
+## 67. The M6 contract: Setup with no terminal, the in-app installer on Cloud Build, the public map on Firebase Hosting (2026-10-25) — 67a, 67b, 67h, 67i and 67k DECIDED by the contract (`docs/research/M6-interfaces.md`), each applied by its workstream; 67c, 67e and 67j PROPOSED, NOT APPLIED (two workflow lines and a registry read: ask first); 67d, 67f, 67g and 67l for the user
+
+The contract answers the user's live manual test of 2026-10-25 (`docs/research/manual-test-2026-10-25.md`, findings
+1–24) and the user's four requirements of that day: install the server from step (d) with a button; no Claude and no
+terminal in the rest of Setup; the public map on Firebase Hosting at `https://bucurestiul-disparut.web.app/` with the
+admin under `/admin/`; USGS can be done later. Nothing was built, deployed, pushed or downloaded by the contract; only
+the IAM grant of finding 17 was applied live, by hand and with the user's approval, before it (67b).
+
+- **67a DECIDED: the installer runs in Google Cloud Build as its own account, `hcm-installer@`.** The admin submits
+  regional builds from the browser with the owner's `cloud-platform` token (the pattern of Provision; the token stays in
+  the tab and never enters a build); the builds run `firebase-tools` 15.33.0 (from a lockfile in the bundle), Docker and
+  small Node step scripts, authenticated through the metadata server. The account gets, least privilege: on the project
+  `roles/cloudfunctions.developer`, `roles/firebaserules.admin`, `roles/datastore.indexAdmin`,
+  `roles/cloudscheduler.admin`, `roles/cloudtasks.queueAdmin`, `roles/serviceusage.serviceUsageConsumer`,
+  `roles/firebase.viewer`, `roles/firebasehosting.admin`, `roles/logging.logWriter` and a custom role `hcmInstaller`
+  (Cloud Run services' get and IAM policy, Cloud Run jobs' create, get and update and their operations,
+  `resourcemanager.projects.getIamPolicy`, Artifact Registry repositories' get and update); `roles/iam.serviceAccountUser`
+  on `fn-admin@`, `fn-events@`, `fn-crash@` and `job-raster@` only; `roles/artifactregistry.writer` on the repository
+  `hcm` only. Rejected: `roles/run.admin` or `roles/run.developer` (would let it replace any Cloud Run service),
+  `roles/resourcemanager.projectIamAdmin` (would let it grant anything), `roles/artifactregistry.repoAdmin` at the
+  project, `roles/editor`; reusing `gh-deployer@` (it is GitHub's, through Workload Identity, which stays optional). The
+  set is UNVERIFIED as complete: the first real install's 403s name what is missing, and each addition is logged here.
+  Why Cloud Build and not REST calls from the browser per function (finding 10's first sketch): the same
+  `firebase-tools` that CI and the terminal use, so one deploy logic, and its first-deploy behaviour is what the live
+  test already exercised.
+- **67b DECIDED (applied by hand on 2026-10-25 with the user's approval; Provision adds it in M6): `roles/run.invoker`
+  for `fn-events@` and `fn-admin@` on the project.** Eventarc delivers the Firestore, Storage and Pub/Sub events with
+  the function's own account, Cloud Scheduler's OIDC calls as `fn-admin@`, a task queue's tasks as the enqueuer; without
+  the role the import stopped at 0 of 45. Project-wide because both accounts only ever call this project's functions and
+  the grant must exist before the functions do. The narrower alternative, the role on each function's Cloud Run service
+  after every install (the installer's `verify` step would grant it), is the user's to choose; it adds a step to every
+  install and leaves a window after a new function appears.
+- **67c PROPOSED, NOT APPLIED (two workflow edits, ask first): GitHub Pages becomes optional.** The public map's home is
+  Hosting. To retire the Pages site without breaking the 2015–2022 links, `ci.yml`'s "Upload the GitHub Pages
+  artifact" would upload `dist/pages-redirect` (each page sends its visitor to the Hosting address with the same hash)
+  instead of `dist/site/bucharest`; to keep Pages as a second public address, nothing changes. Either way a push to
+  `master` publishes it (ask first).
+- **67d For the user: the viewer's origins.** `infra/project.json` `viewerOrigins` and `HCM_VIEWER_ORIGINS` become the
+  two Hosting origins; the contract keeps `https://ventura8.github.io` beside them while the Pages site exists (its
+  token keeps working there). Dropping it once 67c's redirect is live tightens the token.
+- **67e PROPOSED, NOT APPLIED (a network read, ask first): the digest of `gcr.io/cloud-builders/docker`.** The pipeline
+  build's Docker steps must name their image by digest (the repository's rule). Reading the current digest is a request
+  to Google's registry (no image is pulled), so it waits for the user's yes; until then the pipeline target is complete
+  and tested against the fakes, and the live card says it is not available in this release. The command, for the yes:
+  `docker buildx imagetools inspect gcr.io/cloud-builders/docker:<version>` for the builder's current version tag (its
+  digest written into the build definition, the version in a comment, never a moving tag).
+- **67f For the user: a likely free trial is guessed, not read.** The Cloud Billing API v1 says nothing of a free trial
+  (UNVERIFIED at the time of writing; checked again by setup-ux). An account that appeared while Setup's billing card
+  waited (a new account, which Google opens as a trial for a new customer) is recorded as a likely trial, and Home
+  reminds 14 days before its 90th day, with the link to upgrade and "It is a paid account" to dismiss it for good. An
+  account that existed before is never flagged.
+- **67g For the user, after the probe: the Vertex AI model.** The `ai` check's `apiError.internal` means Vertex AI
+  answered with a failure the check did not map (a 404, a 400 or 422, a 401, or no `totalTokens`); the leading
+  hypothesis is a 404 for `gemini-2.5-flash-lite` in `us-central1` (retired, or not offered to this project), UNVERIFIED.
+  M6 logs the status and Google's reason and names them on the card; if the probe shows a retired model, changing
+  `VERTEX_MODEL_ID` (and its price constant) is a reviewed change for the user's yes. The `ai` check becomes optional: it
+  never keeps Setup from "done".
+- **67h DECIDED: a 69th function, `ops.onProbe`.** The self-test's new `events` check needs a real event to travel
+  through Eventarc to a function running as `fn-events@`; no existing trigger is harmless to provoke (each publishes,
+  processes or records history). It costs one more function to build and deploy and nothing at rest.
+- **67i DECIDED: the Setup input budget grows from 9 inputs to 11** (4 consents unchanged): Install the server and
+  Publish the map are a button each, as the user asked; the imagery pipeline's install rides on the server's click.
+  With USGS postponed the whole assistant takes 9 inputs, the required steps alone 7. In exchange D2–D5 and D7 leave the
+  terminal.
+- **67j PROPOSED, NOT APPLIED (a workflow edit, ask first): `--force` in `ci.yml`'s `deploy-firebase`.** `firebase-tools`
+  refuses, non-interactively, to deploy a function with a failure policy (`notify.onEvent`) and to set the image cleanup
+  policy without it (finding 9). It also deletes functions missing from the source, which is right for a deploy of
+  `master`. The in-app installer passes it and refuses to install a bundle older than the installed server.
+- **67k DECIDED: Cloud Build downloads at install time, in the owner's project.** The builds install `firebase-tools`
+  from npm (each package checked against the bundle's lockfile integrity) and pull the step images by digest, and Google's
+  own function builds install the functions' locked dependencies, as every deploy already did. None of this runs on the
+  developer machine or the NUC, and nothing is downloaded by the gates.
+- **67l For the user, later: an update channel for owners without CI.** The admin installs its own bundle; a newer
+  admin reaches Hosting by a CI deploy, a terminal deploy, or a future "a new release exists" check (for example the
+  release workflow attaching the bundle to the GitHub Release and the admin reading the latest release). Not in M6.
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh` (the registry's 69 new planned rows, the regenerated
+`docs/E2E_SCENARIOS.md`, the Markdown).
+
+## 68. The M6 hosting workstream: the public map on Firebase Hosting, the admin under `/admin/` (2026-10-25) — 68a–68h APPLIED (product, test, tooling and documentation changes within `docs/research/M6-interfaces.md` §2 and its change requests CR-M6-15 to CR-M6-19; 68g a new gate of the build stage, the pre-approved kind; no gate relaxed, no budget raised, no checker allowlist entry, no download); 68i UNVERIFIED until the first deploy; 68j for the user, ask first
+
+- **68a APPLIED: the Hosting tree and `firebase.json`'s Hosting block.** `npm run build:hosting`
+  (`scripts/site/build-hosting.ts`, `scripts/site/src/hosting/`) builds every committed city site for Hosting (each
+  reading the public bucket `<projectId>-public` or `HCM_PUBLIC_BUCKET`; the root one, `pagesPath` `""`, with
+  `admin-redirect.js` first), the generic city page (`/city/`: its `config.js` takes the city id from the address and
+  reads `cities/<id>/manifest.json` of the bucket, so a city made in the admin needs no repository step), and assembles
+  two trees: `dist/hosting-public/`, always the public variant (the installer's `hosting.tgz`, CR-M6-5), and
+  `dist/hosting/` (`hosting.public`), the variant this deploy publishes: start-up with `HCM_ADMIN_START_UP=1` (a
+  bilingual "being set up" page, no engine, the admin's `runtime.json` `startUp: true`), else public. The release is the
+  admin build's own (`runtime.json`), written to `/release.json` with the variant; `admin/install/` is never copied from
+  the admin's build. `firebase.json`: `public` `dist/hosting`, `predeploy` `build:hosting`, `cleanUrls`,
+  `trailingSlash: true`, `/admin` → `/admin/` (301), rewrites `/admin/**` → the admin's page and
+  `^/[a-z0-9-]{2,32}/?$` → `/city/index.html`, the admin's CSP, Trusted Types report-only and COOP on `/admin/**` only,
+  `Referrer-Policy`, `nosniff` and the Permissions-Policy everywhere, no CSP outside the admin (every viewer page keeps
+  its meta policy: a probe-path test pins one policy per page), pages `no-cache`, `/admin/legacy/**` a day,
+  `/admin/install/**` a year and immutable with its `manifest.json` `no-cache`. `scripts/site/src/admin/hosting.ts`
+  now reads redirects, regex rules and `trailingSlash` in superstatic's order (the Hosting emulator's engine), with
+  superstatic's trailing-slash and clean-URL moves as tables (complexity 5). The Hosting build is a CLI of its own,
+  not the `--hosting` flag of `build:site` that §2.1 sketched: it needs the admin's build and the bucket for every site,
+  which the Pages build does not, and Hosting's `predeploy` runs it alone.
+- **68b APPLIED: the e2e Hosting server.** `e2e/mock-apis/admin-server.ts` serves the e2e build's Hosting tree
+  (`dist/e2e-hosting`, built by `e2e/scripts/build-site.ts` with the production assembler) through
+  `resolveHostingPath`; the admin's reserved files moved to `/admin/runtime.json` and `/admin/project.json`; the
+  start-up tree (`dist/e2e-hosting-start-up`) answers a browser with the cookie `hcm-e2e-variant=start-up` (per browser
+  context, so parallel tests never see each other's variant); `/__old-push-sw.js` is a root push worker for the
+  old-worker scenario. It starts for every e2e run (`e2e/playwright.config.ts`: the viewer tier's V30 opens it; the
+  emulators stay the admin tiers' only), and every e2e build now builds the admin's Hosting folder (a few seconds:
+  the tree holds it; `scripts/ci/e2e_build.py` counts the two trees among its outputs). Every admin spec's address
+  moved under `/admin/` in one change (`adminPath`, `ADMIN_URL`, the helpers of the specs' worlds); the local stack's
+  root sends to `/admin/` so `.claude/launch.json` keeps opening the admin. `create-historic-city`'s self-host bundle
+  follows the base too: its Hosting folder is `hosting/` with the admin in `hosting/admin/`, its template redirects the
+  root to `/admin/` (302) until the map is published, and the CLI opens `https://<id>.web.app/admin/`.
+- **68c APPLIED: the admin under `/admin/`.** `packages/admin/vite.config.ts` `base: '/admin/'`; the admin fetches
+  `runtime.json` and `project.json` at `import.meta.env.BASE_URL` (`/admin/` in the builds, `/` under the unit tests);
+  everything else it loads is relative to its page (chunks, fonts, `legacy/`, `install/`) or Hosting's reserved
+  `/__/` paths (unchanged, same origin, same authorised domains). The push worker's start page is its own scope
+  (`/admin/`), and both registrars (FCM and the `e2e` stand-in) unregister a registration of the site's root scope
+  (`retireRootWorker`) before registering their own, so no worker of a pre-M6 admin controls the public map; the
+  stand-in registers the real worker where the browser lets it (the e2e projects block service workers unless a spec
+  allows them). The functions' `adminUrl` is `https://<project>.web.app/admin/` (invitations, the inbox's and push's
+  links); with no `HCM_VIEWER_ORIGINS` the viewer's origins default to the project's Hosting origins.
+- **68d APPLIED: one origin, two apps' traces kept apart.** The admin's GA4 runs with `cookie_prefix: 'hcm_admin'`
+  and its withdrawal expires only `hcm_admin_ga*`, never the viewer's `_ga` (cookies a pre-M6 admin wrote as `_ga` stay:
+  nothing tells them from the viewer's). `telemetry.reportError` decides the Error Reporting service by the report's
+  page (under `/admin/` on an admin origin the admin's, else on a viewer origin the viewer's, else on an admin origin
+  the admin's: a pre-M6 admin at the root) and refuses, 403 `apiError.telemetry.origin`, a report whose page is not on
+  its request's `Origin` (S-A24-HAPPY-SAME-ORIGIN, S-A24-BAD-PAGE-ORIGIN-MISMATCH).
+- **68e APPLIED: the viewer's token follows the server's origins** (`functions/src/ops/viewer-tokens.ts`, run by
+  `ops.tick`'s `tokens` step after the retirement). A city whose recorded `mapbox.allowedUrls` differ from
+  `viewerOrigins` gets a token minted for them as `setup.rotatePublicToken` mints one, written to the city (its manifest
+  republishes when the city is published) and the old one queued for retirement after `TOKEN_RETIRE_MINUTES`; at most
+  the retirement queue's room per tick. A refused mint keeps the old token and records `setup/status.mapbox.detail`
+  (`apiError.mapbox.mintRefused`, the area's state unchanged) and fails the step with that code; the next successful
+  re-mint clears it. Deviation from §2.6 (CR-M6-19): the contract's `viewerAllowedUrls` is the existing
+  `cities/{city}.mapbox.allowedUrls`, which `setup.saveMapbox` and `setup.rotatePublicToken` already write; a token
+  without recorded addresses is left alone (what it allows is not known). The feature folders reach each other only
+  through `api/` (dependency-cruiser's `functions-feature-folders-independent`), so the re-mint has its own small mint
+  and transaction instead of `setup/`'s, and `tokenNote` moved to `functions/src/api/mapbox-token-note.ts` (re-exported
+  by `functions/src/setup/mapbox-tokens.ts`), so a token's note stays one formula.
+- **68f APPLIED: the viewer's origins** (§67d's default, the user's to change): `infra/project.json` `viewerOrigins`
+  and `functions/deploy-env.json` `HCM_VIEWER_ORIGINS` are `https://bucurestiul-disparut.web.app`,
+  `https://bucurestiul-disparut.firebaseapp.com` and `https://ventura8.github.io` (kept while the Pages site exists).
+  `city` joins `RESERVED_CITY_IDS` (the generic city page's folder); the New city flow's suggestion for a name with no
+  letter or digit becomes `my-city`.
+- **68g APPLIED (the pre-approved kind: a stricter gate): `hosting-build`** in the build stage
+  (`scripts/ci/pipeline.py`, after `vite-build`; `node --import ./scripts/site/register-ts.mjs
+  scripts/site/build-hosting.ts`, so the stage's own builds are reused), with its line in `test_pipeline.py`.
+- **68h APPLIED: the GitHub Pages redirect tree** (`npm run build:site -- --pages-redirect <dir>`,
+  `scripts/site/src/hosting/pages-redirect.ts`): a page for the root and each city's Pages path, each sending the
+  visitor to the same page on `https://<projectId>.web.app/` with the same query and hash (the target is a build value
+  in `<html data-target>`, never the address's), the root's `404.html` to Hosting's root; without script each says the
+  map moved, in Romanian and English. `npm run build:site` builds it beside the Pages tree (`dist/pages-redirect`, so
+  the build stage's `site-build` proves it), which makes §67c, when the user says yes, the one workflow line
+  `path: dist/site/bucharest` → `path: dist/pages-redirect` of `ci.yml`'s "Upload the GitHub Pages artifact" step.
+  Publishing it stays §67c (ask first).
+- **68i UNVERIFIED until the first deploy:** that the live Hosting CDN applies `trailingSlash` and `cleanUrls` as
+  superstatic does (the e2e resolver and the probe-path tests implement superstatic's moves); that GA4's `cookie_prefix`
+  names the cookies `hcm_admin_ga` and `hcm_admin_ga_<container>` (the withdrawal matches one or more underscores).
+- **68j For the user, ask first: D1 with the M6 tree** (`docs/MANUAL_TEST_PLAN.md` → D1): `npm run build:hosting` in
+  the image (with `HCM_ADMIN_START_UP=1` for the start-up page, or without it for the public map directly: this
+  project's server and published manifest exist), then `firebase deploy --only hosting`. After it the admin is at
+  `https://bucurestiul-disparut.web.app/admin/` and every old `/#/…` address forwards there.
+
+Verify: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`; the `tools`, `admin`, `shared` and `functions`
+Vitest projects; Playwright `specs/viewer/hosting.spec.ts` at `fn-l1440-ro`, the site states at the 44 tour projects,
+`admin/specs/shell/admin-path.spec.ts` and the admin specs whose addresses moved at `admin-l1440-ro`.
+
+## 69. The M6 server-bugs workstream: the Scheduler's account, the events probe, the API propagation wait, Provision's M6 rows and the Vertex AI failures (2026-10-25) — 69a–69f, 69h and 69i APPLIED (product, test and documentation changes within `docs/research/M6-interfaces.md` §1.2, §1.5, §1.6 and §3.2 and CR-M6-2, with CR-M6-6 to CR-M6-8, CR-M6-14 and CR-M6-20; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download); 69g for the user
+
+Findings 4, 11, 12, 17 and 20 of the user's live manual test (`docs/research/manual-test-2026-10-25.md`). Every change is
+tested against the emulators, the fakes and the e2e mock servers; nothing reached a real Google, Vertex AI or Mapbox
+endpoint, and nothing was deployed. The lessons are `docs/LESSONS.md` 260–265.
+
+- **69a APPLIED: every function names its runtime account in full (finding 11).** `runAs` and the global default
+  return `<account>@<project>.iam.gserviceaccount.com`, the project read from `GCLOUD_PROJECT` (firebase-tools sets it
+  for discovery; the emulators set `demo-hcm`), else `GOOGLE_CLOUD_PROJECT`; neither set is a refusal naming both, never
+  the shorthand. `functions/test/deploy-shape.test.ts` loads `src/index.ts` with firebase-tools' discovery environment
+  (as `index.test.ts` does: the `tests` stage runs before any build, and the bundle is the same code; a deviation from
+  §3.2's "the built `functions/dist/index.js`", CR-M6-8) and builds each scheduled function's Cloud Scheduler job with
+  firebase-tools 15.33.0's own `jobFromEndpoint`, which reproduces the bug with the shorthand and passes with the full
+  address. On the live project the next server install creates both jobs.
+- **69b APPLIED: the self-test's `events` check and `ops.onProbe`, the registry's 69th function (finding 17, §67h).**
+  The check writes `ops/probe` with a fresh nonce (system writer `ops`) and polls it once a second for at most 20 s
+  (`EVENTS_PROBE_WAIT_MS`); `ops.onProbe` (`fn-events@`, one instance, no retry) copies the nonce back in a transaction,
+  so it never overwrites a newer probe and its own write answers nothing. No answer is `apiError.setup.eventsUnreached`
+  naming `roles/run.invoker`. The `Clock` port gains an optional `sleep` for the poll (the system clock's is Node's
+  timers; a test clock without it polls its rounds at once). The probe's document needs no rule: no client reads it,
+  and `ops/{doc}` stays closed for ids the rules do not name.
+- **69c APPLIED: an API Google is still switching on is waited for (finding 4, §1.5).** The admin's transport, given
+  `withApiPropagation`, waits out a 403 `SERVICE_DISABLED` of an API that Service Usage reports enabled (asked once, at the
+  first refusal) after 10, 20, 40, 60 and 60 s on the injected clock, the running item reading "Waiting for Google to
+  switch on {api}…"; still refused, the item is `missing` with `apiError.cloud.apiPropagation`. An API Service Usage
+  reports off fails at once, as before. Every client of the Setup Assistant's Cloud port has it, so the installer's
+  submit can share it.
+- **69d APPLIED: Provision's M6 rows (findings 12 and 17, CR-M6-2).** `hcm-installer@` with exactly §1.2's roles and the
+  custom role `hcmInstaller`; `roles/iam.serviceAccountUser` for it on the four runtime accounts only;
+  `roles/artifactregistry.writer` on the repository `hcm` only; the item `artifact-registry` (the Docker repository with
+  its cleanup policy keeping two images; 16 items); `roles/run.invoker` for `fn-events@` and `fn-admin@` on the project
+  (§67b, as granted by hand); the Eventarc and Pub/Sub service identities generated before the role table; the APIs
+  `firebasehosting`, `firebaserules`, `firestore`. Beyond §1.2, recorded for review (CR-M6-8): firebase-tools'
+  `ensureServiceAgentRoles` wants, on a project with no event function yet, the Pub/Sub agent's
+  `roles/iam.serviceAccountTokenCreator` and the Compute Engine default account's `roles/run.invoker` and
+  `roles/eventarc.eventReceiver`, and writes the project's policy when they are missing, which `hcm-installer@` may only
+  read; Provision binds them so the first install only reads them, the compute account's only when the project has that
+  account (a binding naming a missing account would make Google refuse the whole policy).
+- **69e APPLIED: the Vertex AI failures are named and logged (finding 20).** `UpstreamError` keeps Google's
+  `error.status` and the first `ErrorInfo` reason (`[A-Z_]{1,64}` or dropped, never the message); the self-test logs
+  `{check, code, service, failure, status, googleStatus, reason}`; a 404 is `apiError.assist.modelUnavailable {model}`
+  in the check and on the drafts button; any other refusal is `apiError.cloud.refused {api, reason}`, never
+  `apiError.internal`. On the live project the owner's Check again after the next server install names the cause
+  (§67g).
+- **69f APPLIED: the import re-sends a photo whose upload event was lost (finding 17).** A photo still `pending` two
+  minutes after its upload (`STUCK_PHOTO_MS`, the injected clock) goes to `photos.reprocess` once; still `pending` two
+  minutes later it is listed as `apiError.photo.notReceived` (a new code: the import's line takes no parameter) with a
+  link to Prepare the project, and the import goes on. The e2e loses the first event by sending the upload, with the
+  Storage emulator's admin token, to a name in the same folder that `photos.onUpload` ignores (`photos.reprocess` still
+  finds it, and runs for real in S-A28-HAPPY-STUCK-REPROCESSED); for the second loss (S-A28-BAD-STUCK-AGAIN) the test
+  answers the page's `photos.reprocess` call as the callable does, without the copy, because the emulators always
+  deliver the event of a copy the server makes. That one answered callable is a judgement for review: the alternative
+  is a test-only switch in the functions, which the repository's rules forbid.
+- **69g For the user (UNVERIFIED until the first in-app install, ask first): the Compute Engine API.** firebase-tools
+  reads the Compute Engine default account on a first functions deploy (`gce.getDefaultServiceAccount`). Provision does
+  not enable `compute.googleapis.com` (enabling it creates that account, with Editor on the project unless the
+  organisation withholds the default grants); the live project already has it from D3. If a fresh project's first install
+  fails there, adding `compute` to `REQUIRED_APIS` is the user's decision.
+- **69h APPLIED: CR-M6-14 (setup-ux's request, 2026-10-30).** A Check again keeps `setup/status.usgs.pendingSince`
+  (S-A59-HAPPY-APPROVAL-PENDING's date survives the self-test), and `apiError.cloud.apiPropagation` ends "Wait a
+  minute, then retry what failed" instead of "Try again in a minute", so it names the provisioning card's button
+  (finding 5) without a mapping on the card.
+- **69i APPLIED: Retry what failed waits for the run's record (CR-M6-20).** In normal mode the Provision card recorded a
+  run with `setup.recordCloud` after it had already re-enabled Retry what failed; a Retry clicked meanwhile ran and
+  recorded first, and the older record, applied last, put the items back (13 of 16, `service-accounts` missing). The
+  card now stays busy until the record is back; S-A04-BAD-API-STILL-DISABLED failed about one run in two before.
+
+Verify: `PIPELINE_STAGE=static` and the workstream's targeted Vitest projects and Playwright specs inside the image (the
+workstream's report quotes them); the split stage is the integrator's.
+
+## 70. The M6 setup-ux workstream: the frame's rules, the billing wait, USGS later, the likely free trial and the shell's fit (2026-10-25) — 70a–70i and 70k APPLIED (product, test and documentation changes within `docs/research/M6-interfaces.md` §3.1 and §4.1, CR-M6-3, CR-M6-4 and the self-applied CR-M6-12; 70h a stricter tour check, the pre-approved kind; no gate relaxed, no budget raised, no checker allowlist entry, no download); 70j and 70l for the user (70l a download: ask first)
+
+The workstream answers findings 1, 2, 3, 5, 6, 7, 15, 16, 18, 19, 22 and 24 of the live test of 2026-10-25
+(`docs/research/manual-test-2026-10-25.md`) and the quiet part of finding 20.
+
+- **70a APPLIED: when Setup is done is one rule, `setupDone` (`packages/shared/src/api/setup-done.ts`).** Billing, the
+  project's preparation and Mapbox `ok`; USGS `ok`, postponed (`usgs.postponedAt`) or waiting for USGS's approval of a
+  saved token (`pending` with `apiError.usgs.accessPending`, which takes days); and, once Setup records the installer's
+  targets (`setup/status.install`), the server and the site installed (`installed`, `updateAvailable`, `newerInstalled`).
+  A `setup/status` without `install` is a map set up before M6, whose server answers: it is not held back. The Setup
+  page's header ("Setup done", "— USGS later", "— approval pending"), the dashboard-first rule (`setup-readiness.ts`) and
+  Home's reminders read it; the server's own `setupReady` (the view's `ready`) is unchanged. The admin state's `ready`
+  reads the areas and USGS; the install part there is the installer's (CR-M6-13).
+- **70b APPLIED: Do it later is a record, not a state.** `setup.recordCloud`'s `postponed: {usgs}` sets or clears
+  `usgs.postponedAt` and keeps the area's own state and reason (a refused token stays `invalid` with its reason, later);
+  a saved token replaces the record whole, which ends the postponement. The chip reads Later (`step.postponed`), the
+  progress counts it apart, the next step to open treats it as settled (CR-M6-4). One input (`skipUsgs`).
+- **70c APPLIED: since when the approval is awaited is the server's (`usgs.pendingSince`).** Set by the first `pending`
+  check (`usgsRecord`), kept while USGS does not answer and by a re-saved token, gone once approved. `ops.tick` keeps it
+  (it rewrites the record field by field); the self-test's `usgsAfter` does not pass it on yet, so a Check again restarts
+  the date (CR-M6-14 to server-bugs, one line).
+- **70d APPLIED (implements 67f): a likely free trial.** An account the billing card's wait finds (never one listed at the
+  first look) records `billing.trialSince` (the day it appeared, through the bootstrap record before the claim, kept by
+  later billing reports, never moved, never in the future); Home reminds from 14 days before its 90th day with the
+  billing page (`gcp.billingAccounts`, verified) until "It is a paid account" records `billing.trialPaidAt` (one input,
+  `dismissTrial`). Whether the Cloud Billing API can tell a trial apart is still UNVERIFIED: checking Google's reference
+  is a network read this workstream does not make.
+- **70e APPLIED: the billing card's wait (finding 3).** A primary **Create a billing account** opens
+  `https://console.cloud.google.com/billing/create` (`gcp.billingCreate`, added to `links.json` in the console's
+  documented form and checked by the next weekly contract run, as `gcp.errorGroup` was); while the card waits it offers
+  no Link button, says what it does by itself, and when it last looked (outside the status region, which announces the
+  wait once).
+- **70f APPLIED: the frame's rules (findings 6, 7, 15).** A busy chip shows the loading indicator in place of its icon,
+  its shape sized to the 18 px box through `::part(indicator)`, and says Working… (a still icon with reduced motion); the
+  consent note shows only while no live token holds the card's scope (`liveScopes`, read on every change), and beside
+  Continue when that is the button; a `*.progress` reason is the body's count and is not repeated; a deep link's advice
+  is a hint beside it (`LINK_HINTS`). `apiError.cloud.apiDisabled` names the Setup step (the server checks link it); the
+  provisioning card says Retry what failed instead (`adminSetup.provision.apiDisabled`).
+- **70g APPLIED: the shell fits (findings 1, 2, 22).** The loading screen's padding is inside its `100dvh`; it has a
+  visually hidden page heading (axe's `page-has-heading-one` on the new tour state); the sign-in, claim, join and blocked
+  panels are centred from 600 × 480 and start at the top below; the page's root wears the shell's theme and surface (a
+  constructed sheet, `root-surface.ts`: no inline style), so the canvas under a scroll past the end or an overscroll is
+  the surface. The self-test list's focus ring is its container's on colour (the tour measured secondary at 2.16:1 there).
+- **70h APPLIED (the pre-approved kind: a stricter check): `graphic-overlap` in the tour's layout checker.** A loading
+  indicator's shape (`[part="indicator"][role="progressbar"]`) must not cover any text but its own; the occlusion check
+  samples a text's centre only and the overlap check floating chrome only, so finding 6 passed both. Limited to the
+  indicators (their shapes turn and morph past their box); icons are next.
+- **70i APPLIED: the import's end in the snackbar (finding 19).** All on the map, or how many with Open (ten seconds),
+  which opens the card's list; a notice's action may now be a Setup text (`NoticeInput.action.key`).
+- **70j For the user: the Vertex AI check stays listed, apart.** The translation drafts' check is under Optional
+  features, off with its reason and a neutral icon, never holding Setup back (finding 20's quiet part); the model choice
+  is still 67g.
+
+- **70k APPLIED (the workstream's second run, 2026-10-30): what the first run's verification left.** The Setup page wears
+  the kit's focus ring (`focusRing` in `hcm-setup-page`'s styles): its server checks' fix links had the browser's own
+  ring, which the tour measured at 2.16:1 on the list's container at `admin-c360-ro` only (Android's orange ring; the
+  desktop's near-black one passes the contrast check, so the other projects could not see it); a unit test pins the
+  ring's style and colour. S-A03-HAPPY opens the analytics card itself: since the installer's imagery pipeline step
+  (d3, optional) the next step not done after USGS is the pipeline's, not analytics. Four test files' types fixed for
+  `tsc -b` (`renderRoot` on an `HTMLElement`, a status view in the reminders' fake answer, the bootstrap record's type,
+  `apiError.photo.unreadable`).
+
+- **70l PROPOSED, NOT APPLIED (a download: ask first): the `npm-audit` gate's new advisory.** On 2026-10-30 the static
+  stage's `npm-audit` fails on GHSA-gg6h-894w-4m9c (high: quadratic-time lookbehind matching in `re2js` 2.2.0–2.8.6),
+  reached through `markdownlint-cli2@0.24.0` → `markdownlint@0.42.0`, which pins `re2js` 2.8.6 exactly (the Firebase
+  SDK's `^2.8.3` resolves to the same copy; the admin's build already replaces it, §65k). No M6 change brought it: the
+  advisory is new. The fix is an `overrides` entry for `re2js` at its first patched release (or, if none is out yet,
+  `markdownlint-cli2` held at 0.23.3, the downgrade `npm audit` offers, as a `HELD` entry with this reason), applied
+  with `npm install` in the digest-pinned `node:24-bookworm-slim` image (`docs/SETUP.md` → *npm in a container*): a
+  download, so it waits for the user's yes; never an allowlist. Until then `PIPELINE_STAGE=static` stops at
+  `npm-audit` for every workstream.
+
+Verify: `PIPELINE_STAGE=static`; Vitest `shared`, `admin`, `ui`, `e2e-support` and the setup tests of `functions`;
+Playwright `admin/steps` at `admin-steps-l1440-en` and `admin/specs/shell/setup-*.spec.ts` at the five admin projects,
+inside the image (the workstream's report quotes them); the split stage is the integrator's.
+
+## 71. The M6 installer workstream: Cloud Build from the browser, the install bundle, the three cards and Home's tile (2026-10-30) — 71a–71g APPLIED (product, test, tooling and documentation changes within `docs/research/M6-interfaces.md` §1, §4.1, §6 and the accepted CR-M6-3, CR-M6-4, CR-M6-5 and CR-M6-16, with the self-applied CR-M6-21; 71e two new gates of the build stage and new rows of `check_bundle_budget.py`, the pre-approved kind; no gate relaxed, no budget raised, no checker allowlist entry, no download); 71h for the user; 71i PROPOSED, NOT APPLIED (a download)
+
+The workstream answers the user's requests (1) "a button" in step d, (2) no terminal in the rest of Setup, and the
+installer's part of (3), the public map published from the admin (findings 9, 10, 12, 13 and 14 of
+`docs/research/manual-test-2026-10-25.md`).
+
+- **71a APPLIED: the installer's port and its Cloud Build adapter** (`packages/admin/src/install/`, the REST clients
+  `packages/admin/src/google/{cloud-build,logging,run-jobs,artifact-registry}.ts`). The admin submits each target's
+  build of its own bundle with the owner's `cloud-platform` token (memory only, as Provision), as `hcm-installer@`, and
+  reads the builds by tag, each step's state, the failing step's last 20 log lines (Cloud Logging, redacted, shown as
+  text) and what is installed (the functions' `HCM_RELEASE`, the jobs' `hcm-release` label, the site's `/release.json`).
+  The build definitions are data (`build-spec.ts`) checked against golden JSON; the first step (`fetch`) is an inline
+  Node program that refuses any file whose SHA-256 is not the one the admin read.
+- **71b APPLIED: the install bundle** (`npm run build:install`, `scripts/site/src/install/`): `server.tgz`,
+  `pipeline.tgz`, `hosting.tgz` and `manifest.json` at `admin/install/<slug>/` of the deployed Hosting tree,
+  deterministic (sorted ustar entries, fixed modes and owner, `SOURCE_DATE_EPOCH`, gzip without name or time: two builds
+  of one commit give the same bytes), `firebase-tools` cut from the root lockfile offline, the step scripts bundled from
+  `scripts/site/src/install/steps/` (the contract's `scripts/install/` lives there, CR-M6-21). `HCM_RELEASE` joins the
+  functions' `.env.<project>` (`functions/build.mjs`).
+- **71c APPLIED: the cards.** Install the server (d, one click, which also starts the imagery pipeline), the imagery
+  pipeline (d3, no input of its own; Try again on a failure) and Publish the map (i, one click; off with the reason while
+  the first city has no published manifest), each with its steps, the server's functions' count once, the retry Google
+  is waiting on, a stopped build's step, log and console link, the build minutes against the free tier, and **Update the
+  map** when what is installed is older than the admin. A click restarts the card's watch (its next look one running
+  interval later, whatever wait an earlier failed look had set), and Update the map counts what the cards show,
+  recorded states included, so a target Setup recorded behind is updated before its card looked (both found by the
+  e2e). A release recorded or installed elsewhere is shown undated ("Installed: {release}."). The cards send their
+  records one after another, and `setup.recordCloud` keeps a stored target record checked later than the reported one
+  (two records of one card had landed out of order; `functions/src/setup/record-install.ts`, the installer's marked
+  part). The cards' links and the GitHub disclosure are 48 px targets (the tour's checker at the compact and medium
+  windows).
+- **71d APPLIED: Home's installation tile** (`home.update-tile`): a target recorded `failed` first, else one recorded
+  `updateAvailable`, with the link to its Setup step (`adminSetup.install.tileOpen`). The tile names no release: Home
+  has no token and no bundle to compare with; the card does.
+- **71e APPLIED (the pre-approved kind: stricter): two gates of the build stage.** `install-build` (after
+  `hosting-build`: the bundle from the stage's own builds) and `install-budget` (`check_bundle_budget.py --install`:
+  each tarball as served against the contract's ceilings, `server.tgz` 8,000 KB, `pipeline.tgz` 1,000 KB, `hosting.tgz`
+  80,000 KB).
+- **71f APPLIED: the e2e world.** The fake Cloud Build plays each build by scenario (no step runs) and changes the world
+  as a real build would; new scenarios `cloud-build.installerAccount` (the installer's account of a map prepared in an
+  earlier session), `cloud-build.siteOlderRelease`, and the preset `install.provisioned`. The specs wait for the
+  submitted build before they move it on (a scenario applied before the browser's POST found no build), reopen a card
+  after its step turns done (the page moves on), write the published manifest only once the seeded city's own build
+  has ended and with the publisher's stamp (`seedPublishedMap`: an unstamped record made the publish trigger's
+  retries hold `manifests/{city}`, and every later reset failed), and end only when no `setup.recordCloud` is under way
+  (`recordsSettled`). Lessons 266–270.
+- **71g APPLIED: the input budget.** `updateMap` (1 input; one consent in daily use) joins `CONTENT_INPUT_BUDGETS`; the
+  steps' budgets are those of §6.2.
+- **71h For the user (UNVERIFIED until the first real install, §9 of the contract):** that Cloud Build and Cloud
+  Logging answer a browser's bearer request (CORS), the installer's role set, the build minutes, and the docker
+  builder's digest (§67e: until then the live pipeline card says it is not available in this release). `setup.status`
+  does not answer `serverRelease` (contract §1.7): Home reads the records, and Setup reads the functions' release from
+  Cloud Functions; adding it needs no new input.
+
+- **71i PROPOSED, NOT APPLIED (a download; ask first): the `npm-audit` gate fails on a new advisory.** GHSA-gg6h-894w-4m9c
+  (high: quadratic-time matching in `re2js` 2.2.0–2.8.6, which `markdownlint` ≥ 0.42 and so `markdownlint-cli2` ≥ 0.24
+  pull in) appeared after the M6 contract's run; the image's npm cache holds only `re2js` 2.8.6. The fix is an `overrides`
+  entry pinning the first patched `re2js` release (exact version from the advisory at the time), installed with the
+  digest-pinned `node:24-bookworm-slim` as `docs/SETUP.md` → *npm in a container* says, then `npm audit --audit-level=low`
+  clean; `npm audit fix --force` would instead downgrade `markdownlint-cli2` (a breaking change) and is not the fix. No
+  workstream code is involved; every stage's other gates were green on the installer's tree.
+
+Verify: Vitest `shared`, `admin`, `ui` and `tools` for the installer's files; pytest `scripts/ci/tests`; Playwright
+`admin/steps/install` at `admin-steps-l1440-en` and `admin/specs/install` at the admin projects, inside the image; the
+split stage is the integrator's.
+
+## 72. The M6 integrator: the change requests closed, the whole Setup with no terminal, the local stack's bundle, and what waits for the user (2026-10-30) — 72a and 72b APPLIED (product, test, tooling and documentation changes within `docs/research/M6-interfaces.md`, closing CR-M6-11, CR-M6-13, CR-M6-17, CR-M6-18 and CR-M6-22; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download); 72c PROPOSED, NOT APPLIED (a download); 72d for the user, ask first
+
+- **72a APPLIED: the whole Setup with no terminal** (`e2e/admin/specs/journey.spec.ts`, S-A30-HAPPY-NO-TERMINAL and S-A30-BAD-TOKEN-EXPIRED, rows `exists`; S-A30-HAPPY's count is 11 inputs since M6). From sign-in in start-up mode to the public map at the e2e Hosting root showing the 45 photos the emulated server published (`servePublishedMap`), against the fakes, with USGS done later. It found two product bugs, fixed with their unit tests (and the split run a spec of A60 that read Home's live list once, lesson 275): Publish the map stayed off once the tab's Google token no longer granted Google Cloud (`InstallerPort.localBlocker`, lesson 273), and the admin's `ready` ignored the install part `setupDone` has (lesson 274). The bad row publishes two hours after Prepare the project: one consent from the same click, nothing asked again. The first split `quality` also failed A60's two specs (`e2e/admin/steps/billing-trial.spec.ts`: Home's list read once, with the installer's update tile of another behaviour in it); the spec now polls the list and counts its own kinds (lesson 275).
+- **72b APPLIED: the change requests the integrator held.** CR-M6-17's second part: New city's done screen and Settings → Publishing show the city's public address, `https://<origin>/<id>/` from the admin's own origin (the same Hosting site; `packages/ui/src/admin/cities/public-address.ts`), and their texts no longer name `npm run site:add`. CR-M6-22: `firebase/rules-tests/test/firebase-config.test.ts` reads the admin's headers from `**` and `/admin/**`, pins `public: dist/hosting` and that no CSP goes to every path. The local stack serves its admin's install manifest for the e2e tree's release (`e2e/stack/servers.ts`, the manifest from `e2e/fixtures/install-bundle.ts`), so `HCM_STACK_SEED=fresh` rehearses Install the server and Publish the map, a build ending on the fake's `cloud-build.finish`. The documents and agent assets of CR-M6-11, CR-M6-13 and CR-M6-18: `docs/MANUAL_TEST_PLAN.md` (Setup lists no terminal command; D1 is the one terminal deploy, with `build:install`; D2, D3, D5, D7 the terminal fallback; how the Bucharest project moves the admin to `/admin/`), the admin guides, ARCHITECTURE (the installer), TESTING, CI_PIPELINE, the skills and their mirrors, lessons 271–274, `docs/research/M6-status.md`.
+- **72c PROPOSED, NOT APPLIED (a download; ask first): the `npm-audit` advisory of §70l and §71i.** GHSA-gg6h-894w-4m9c (`re2js` 2.2.0–2.8.6 through `markdownlint-cli2@0.24.0` → `markdownlint@0.42.0`). The image's npm cache holds only `re2js` 2.8.6 (checked offline, 2026-10-30), so neither an override nor the hold of `markdownlint-cli2` at 0.23.3 is possible without a download. The fix: an `overrides` entry `"re2js": "<first patched version>"` in the root `package.json`, installed with `npm install` in the digest-pinned `node:24-bookworm-slim` image (`docs/SETUP.md` → *npm in a container*), then the quality image rebuilt and `PIPELINE_STAGE=static` green; never an allowlist. It is the only failing gate of `static`, `quality` and `all`.
+- **72d For the user, ask first, one at a time** (`docs/research/M6-status.md` §3): D1 with the M6 tree (the one terminal deploy: the admin at `/admin/` with its install bundle), then in the app Prepare the project again, Update the map, Replace the visitors' token (or the next tick), Publish the map and Check again.
+
+Verify: `PIPELINE_STAGE=static`, `tests`, `build`, then `PIPELINE_STAGE=quality bash scripts/ci/e2e-split.sh` (quoted in `docs/research/M6-status.md` §1).
+
+## 73. The M6 reviews' fixes: the admin's sign-in kept in its tab, the installer's guards, the live map's upgrade path and minimum input (2026-10-30) — 73a APPLIED for review (a product choice, reversible in one line: the user decides); 73b–73i APPLIED (product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download); 73j PROPOSED, NOT APPLIED (a product decision); 73k recorded
+
+- **73a APPLIED for review: the admin's Firebase sign-in lives in its tab's `sessionStorage`** (security-cost finding 1). Since M6 the public map and the admin share one origin, and `getAuth` kept the owner's refresh token in the origin's IndexedDB (`firebaseLocalStorageDb`), which any script on a viewer page could read and use to call the owner-only callables. `packages/admin/src/firebase/app.ts` now creates Auth with `initializeAuth(app, { persistence: browserSessionPersistence })`, the popup's resolver passed with each popup (`adapters.ts`; Node's build of `firebase/auth`, which the entry's tests load, has none). The trade-off, for the user: one sign-in per tab (a reload keeps it; a new tab, or a notification's link, asks once more: one click on an already signed-in Google account). Reverting is one line (`browserLocalPersistence`), with the risk above. The admin's `hcm:admin:*` `localStorage` keys hold no secret and no authority: each is a preference read through a fixed parser (the language, the theme, the analytics consent, the city last chosen), so a same-origin script forging one gains nothing it could not do itself. The e2e tier signs a persona in through an init script that fills the admin tab's `sessionStorage` (`e2e/admin/support/session.ts`), only under `/admin/` and the harness page, so a viewer page of the same context starts with nothing (S-A58-HAPPY-SIGN-IN-IN-TAB, S-A58-BAD-VIEWER-READS-NO-SIGN-IN); the content specs take an option `signedIn` for a signed-out tab, and S-A25-BAD-RELOAD-KEEPS-STEPS checks the app's own `sessionStorage` record apart from Firebase's session (lessons 284, 285). A header CSP with enforced Trusted Types on the viewer's paths stays a possible next step (the viewer's meta CSP and Mapbox's SRI already apply).
+- **73b APPLIED: an older admin never replaces a newer server, complete or not** (security-cost finding 2). `InstalledInfo` carries the newest release any deployed function or job names (`newest`) and whether part of the target is there (`partial`); `deriveInstallState` says `newerInstalled` whenever `newest` is newer than the bundle, before completeness, so the `--force` deploy of an older release can no longer delete a newer one's functions (S-A55-BAD-DOWNGRADE-INCOMPLETE, unit tests in `model.test.ts` and `cloud-build-installer.test.ts`).
+- **73c APPLIED: viewer origins checked before a token is minted, and a minted token the city cannot hold deleted** (security-cost finding 3). `runtimeConfig` refuses `HCM_VIEWER_ORIGINS` that are not at most 10 https origins without a path (`viewerOriginsOf`), `functions/build.mjs` refuses to build them (the same pattern as `httpsOriginSchema`, pinned by `functions/test/deploy-env.test.ts`), and `ops.tick`'s re-mint deletes the new token at Mapbox when the city's write fails (S-A06-BAD-ORIGINS-REFUSED, S-A06-BAD-UNRECORDED-TOKEN-DELETED).
+- **73d APPLIED: the Hosting transfer of a publish is shown, and `server.tgz` is an allowlist** (security-cost findings 4 and 5). Publish the map's cost line says each publish moves about 52 MB of Hosting's free 360 MB a day (`SITE_PUBLISH_TRANSFER_MB`, UNVERIFIED like the build minutes; `M6-interfaces.md` §1.9's table counts it). The server's tarball carries only `index.js`, `package.json`, `package-lock.json`, `.env.<project>` and `export-kit/**` of `functions/dist`; anything else (a `.secret.local`, a `.env.local`) fails `build:install` (`scripts/site/test/install-bundle.test.ts`).
+- **73e APPLIED: the live map's upgrade path** (min-input findings 1–5). The server card decides its button from the install's state, not from step (d)'s chip: Try again after a stopped update in an admin session; a server with functions present but incomplete (the live map's 61 of 69, no release) is `updateAvailable`, so Update the map and Home's tile appear after one look. A look on step (d) in an admin session leaves the claim (d2) done. Retry what failed runs every item when one was never reported (a record from before M6), so it makes `hcm-installer@` and its roles. The pipeline card has its own **Install the pipeline** once the server is there, and Update the map includes a pipeline not installed with nothing in its way. `setupDone` and the admin's `ready` count a target as installed while a release of it is recorded, whatever its build does; a passing `unavailable` is never recorded. Rows S-A55-HAPPY-PRE-M6-UPGRADE, S-A55-BAD-UPDATE-FAILED-ADMIN, S-A55-HAPPY-DONE-WHILE-UPDATING, S-A04-BAD-PRE-M6-RECORD, S-A56-HAPPY-INSTALL-ALONE; the tour's `setup.install-update` checks the claim, and `setup.pipeline-install` is a new state.
+- **73f APPLIED: "This account is a free trial"** (min-input finding 6, finding 18 of 2026-10-25 for the live map). One click on the linked billing card, no consent: `setup.recordCloud` records the trial from today (in start-up mode the bootstrap record carries it to the claim), and a trial said after "It is a paid account" starts again from that day. It is an optional input outside the happy path's budget (S-A60-HAPPY-SAID-TRIAL; tour state `setup.billing-mark-trial`).
+- **73g APPLIED: the copy and the cards' clutter** (min-input findings 7–10). The Mapbox console's link reads **Open the Mapbox console** with the payment advice in its hint; Do it later is not offered while a USGS token waits for approval (S-A59-BAD-NO-LATER-WHILE-PENDING); step (d) shows no function count before its first look nor beside a Done chip; "The button is off:" reads **Not available yet:** / **Încă indisponibil:**; the unused `adminSetup.install.site.needsServer` is gone; each install card has one cost line (the frame leaves an available install step's cost to its body); the not-available pipeline says the map works without it meanwhile; the not-provisioned blocker names Check again, then Retry what failed.
+- **73h APPLIED (documentation): the consents the whole assistant asks** (min-input finding 11). The tab keeps one Google token, so Analytics' consent replaces Google Cloud's and Publish the map asks Google once more: `docs/MANUAL_TEST_PLAN.md` and `docs/research/M6-status.md` now say at most 11 inputs and 5 consents. Keeping one token per scope would save that consent; it is 73j.
+- **73i APPLIED (documentation): the imagery pipeline is not installable from the app in this release** (min-input finding 3). The install bundle names no Docker builder digest (§67e, the user's decision), so requirement 2 holds for the server and the public map and waits on §67e for the pipeline; the plan and the status say so, with D5 as the pipeline's way in meanwhile.
+- **73j PROPOSED, NOT APPLIED (a product decision): one Google token per scope in the tab**, so the analytics consent no longer costs Publish the map a consent within the hour. It changes `packages/admin/src/auth/google-access.ts`'s single-token rule (memory only either way) and the journey's counts; for the user.
+- **73l PROPOSED, NOT APPLIED (a `.gitleaks.toml` edit; the fixer's session could not make it): the emulators' logs out of `gitleaks dir`'s scope.** The fixer's second split `all` failed `static/gitleaks` on 3,200 findings in `firebase-debug.log`, the gitignored log the Firebase CLI writes at the root when an e2e run's emulators are stopped by Playwright rather than exiting by themselves; it holds the Auth emulator's generated test tokens, and the next run's `static` scans it. The fixer deleted the stray logs (`firebase-debug.log`, `firestore-debug.log`, `pubsub-debug.log`, all gitignored) before the third run. The proposed diff adds, to the scope allowlist of gitignored pipeline output that already lists `reports/` and `dist/`: `'''^(firebase|firestore|database|pubsub|storage|ui)-debug(\.[^/]*)?\.log$'''` (the names `.gitignore` ignores); `gitleaks-history` keeps no path allowlist. Ask first (it changes a gate's scope). Lesson 287.
+- **73m PROPOSED, NOT APPLIED (a download): `pyasn1` 0.6.5 for the pipeline.** Published during the fixer's third run: CVE-2026-119194 to CVE-2026-119197 in `pyasn1` 0.6.4 (a transitive dependency of the raster pipeline, `pipeline/poetry.lock`), fixed in 0.6.5; `static/pipeline-pip-audit` fails on it. The fix is `poetry update pyasn1` in the image (a download), then the quality image rebuilt and `PIPELINE_STAGE=static` green; never an allowlist. Like §72c, for the orchestrator's approved dependency update. A later `static` run (2026-10-31) also found GHSA-3g3m-2fjr-6pw4 (`glob` 3.0.0–14.0.1, through `rimraf` and `gaxios`), which fails `npm-audit` beside §72c and now `deploy-lock-audit` (`functions/deploy-lock`): the same kind of fix, `overrides` and a lock refresh, a download.
+- **73k Recorded: the legacy originals in every Hosting release.** `hosting.tgz` is mostly `/admin/legacy/` (45 MB of the old photos' originals, which step (h) imports). Keeping them out of the published site once the import is done would shrink each publish's transfer to a few MB; it changes what a later import can read, so it waits for the user.
+
+Verify: `bash scripts/ci/e2e-split.sh` (stage `all`), quoted in `docs/research/M6-status.md` §1.

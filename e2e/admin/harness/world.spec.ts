@@ -4,11 +4,12 @@ import { resolve } from 'node:path';
 import { adminContentSecurityPolicy, e2eContentSecurityPolicy } from '../../../scripts/site/src/admin/csp.js';
 import { LEGACY_FOLDER } from '../../../scripts/site/src/admin/legacy.js';
 import { ADMIN_SHELL_ELEMENT } from '../../../scripts/site/src/admin/page.js';
-import { FIREBASE_AUTH_DB, FIREBASE_USER_KEY } from '../support/session.js';
+import { FIREBASE_USER_KEY } from '../support/session.js';
 import { fetchOutcome, openHarnessPage } from '../support/harness.js';
 import { ADMIN_LOCK, expect, test } from '../support/test.js';
 import {
     ADMIN_CONNECT_ORIGINS,
+    ADMIN_PATH,
     ADMIN_PROJECT,
     ADMIN_RUNTIME,
     ADMIN_WEB_CONFIG,
@@ -22,8 +23,8 @@ import {
 test.describe.configure({ lock: ADMIN_LOCK });
 
 /**
- * Harness (behaviour A00): the rest of the admin's e2e world (docs/research/M2b-interfaces.md §6.2): the admin server
- * serves the built admin as Hosting does, with the e2e CSP; the admin projects' firewall forwards the fake upstreams'
+ * Harness (behaviour A00): the rest of the admin's e2e world (docs/research/M2b-interfaces.md §6.2): the e2e Hosting
+ * server serves the built admin under `/admin/` as Hosting does (M6), with the e2e CSP; the admin projects' firewall forwards the fake upstreams'
  * hosts and still blocks every other Google host; a persona's storage state is a Firebase Auth session the Auth
  * emulator accepts; a hidden server is unreachable until shown.
  */
@@ -37,7 +38,7 @@ test(
     'The admin server serves the e2e build as Hosting does, with the emulators in its CSP',
     { tag: '@S-A00-HAPPY-ADMIN-SERVER' },
     async ({ request }) => {
-        const index = await request.get('/');
+        const index = await request.get(ADMIN_PATH);
         expect(index.status()).toBe(200);
         expect(await index.text()).toContain(`<${ADMIN_SHELL_ELEMENT}></${ADMIN_SHELL_ELEMENT}>`);
         const headers = index.headers();
@@ -47,16 +48,17 @@ test(
         expect(headers['content-security-policy']).not.toContain('upgrade-insecure-requests');
         expect(headers['cross-origin-opener-policy']).toBe('same-origin-allow-popups');
 
-        // A deep link and a source map (never deployed) both get the app, as Hosting's `**` rewrite does.
-        expect(await (await request.get('/photos/abc')).text()).toBe(await index.text());
-        expect((await request.get('/admin.mjs')).headers()['cache-control']).toBe('no-cache');
+        // A deep link and a source map (never deployed) both get the app, as Hosting's `/admin/**` rewrite does.
+        expect(await (await request.get(`${ADMIN_PATH}photos/abc`)).text()).toBe(await index.text());
+        expect((await request.get(`${ADMIN_PATH}admin.mjs`)).headers()['cache-control']).toBe('no-cache');
         expect(await (await request.get('/__/firebase/init.json')).json()).toEqual(ADMIN_WEB_CONFIG);
-        expect(await (await request.get('/runtime.json')).json()).toEqual(ADMIN_RUNTIME);
-        expect(await (await request.get('/project.json')).json()).toEqual(ADMIN_PROJECT);
-        expect(await (await request.get(`/${LEGACY_FOLDER}/photos.json`)).json()).toHaveLength(45);
-        const original = await request.get(`/${LEGACY_FOLDER}/originals/Ferdinand.png`);
+        expect(await (await request.get(`${ADMIN_PATH}runtime.json`)).json()).toEqual(ADMIN_RUNTIME);
+        expect(await (await request.get(`${ADMIN_PATH}project.json`)).json()).toEqual(ADMIN_PROJECT);
+        expect(await (await request.get(`${ADMIN_PATH}${LEGACY_FOLDER}/photos.json`)).json()).toHaveLength(45);
+        const original = await request.get(`${ADMIN_PATH}${LEGACY_FOLDER}/originals/Ferdinand.png`);
         expect(original.headers()['content-type']).toBe('image/png');
-        expect((await request.get('/fonts/material-symbols-rounded.woff2')).headers()['content-type']).toBe('font/woff2');
+        expect(original.headers()['cache-control']).toBe('public, max-age=86400');
+        expect((await request.get(`${ADMIN_PATH}fonts/material-symbols-rounded.woff2`)).headers()['content-type']).toBe('font/woff2');
     },
 );
 
@@ -73,35 +75,21 @@ test(
     },
 );
 
-/** Runs in the page: Firebase Auth's persisted user, or null. */
-function persistedUser(db: { readonly name: string; readonly store: string; readonly key: string }): Promise<unknown> {
-    return new Promise((resolveUser) => {
-        const open = indexedDB.open(db.name);
-        open.onsuccess = () => {
-            const database = open.result;
-            if (!database.objectStoreNames.contains(db.store)) {
-                resolveUser(null);
-                return;
-            }
-            const read = database.transaction(db.store).objectStore(db.store).get(db.key);
-            read.onsuccess = () => {
-                resolveUser((read.result as { value?: unknown } | undefined)?.value ?? null);
-            };
-        };
-    });
+/** Runs in the page: Firebase Auth's persisted user in the tab's sessionStorage (since M6), or null. */
+function persistedUser(key: string): unknown {
+    const json = sessionStorage.getItem(key);
+    return json === null ? null : (JSON.parse(json) as unknown);
 }
 
-const AUTH_DB = { name: FIREBASE_AUTH_DB.name, store: FIREBASE_AUTH_DB.store, key: FIREBASE_USER_KEY };
-
-test.describe('a persona signed in through its storage state', () => {
+test.describe('a persona signed in through its session', () => {
     test.use({ persona: 'admin' });
 
     test(
-        "A persona's storage state is a Firebase Auth session the Auth emulator accepts",
+        "A persona's session is a Firebase Auth session the Auth emulator accepts",
         { tag: '@S-A00-HAPPY-SIGNED-IN-PERSONA' },
         async ({ page, adminWorld }) => {
             await openHarnessPage(page);
-            const user = (await page.evaluate(persistedUser, AUTH_DB)) as {
+            const user = (await page.evaluate(persistedUser, FIREBASE_USER_KEY)) as {
                 uid: string;
                 email: string;
                 stsTokenManager: { accessToken: string };
@@ -130,7 +118,7 @@ test.describe('a persona signed in through its storage state', () => {
 test('Without a persona the admin opens signed out', { tag: '@S-A00-BAD-SIGNED-OUT' }, async ({ page }) => {
     await openHarnessPage(page);
 
-    expect(await page.evaluate(persistedUser, AUTH_DB)).toBeNull();
+    expect(await page.evaluate(persistedUser, FIREBASE_USER_KEY)).toBeNull();
 });
 
 test(

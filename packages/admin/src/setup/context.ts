@@ -5,6 +5,7 @@
  */
 import type { SetupStatusView } from '@hcm/shared';
 
+import { GOOGLE_SCOPES, type GoogleScope } from '../google/scopes.js';
 import { writeBootstrapRecord } from './bootstrap-record.js';
 import type { StepFailure } from './messages.js';
 import type { SetupDeps } from './ports.js';
@@ -88,11 +89,30 @@ export interface SetupContext {
     nowIso(): string;
 }
 
+/** A step's token must live this much longer to count as live (`MIN_TOKEN_LIFE_MS` of `google-access.ts`). */
+const LIVE_TOKEN_MS = 5 * 60_000;
+
+const SCOPE_NAMES = Object.keys(GOOGLE_SCOPES) as readonly GoogleScope[];
+
+/**
+ * M6 setup-ux (finding 7 of 2026-10-25): the scopes a live token holds now, so a card shows the consent note only when its
+ * button will open Google's popup; read again with every change (a poll's, a click's, an expiry's `Continue`).
+ */
+function withLiveScopes(state: SetupState, deps: SetupDeps): SetupState {
+    const now = deps.clock.now();
+    const live = SCOPE_NAMES.filter((scope) => {
+        const access = deps.google.live(scope);
+        return access !== null && access.expiresAt - now >= LIVE_TOKEN_MS;
+    });
+    const same = live.length === state.liveScopes.length && live.every((scope) => state.liveScopes.includes(scope));
+    return same ? state : { ...state, liveScopes: live };
+}
+
 export function createSetupContext(deps: SetupDeps, store: SetupStore): SetupContext {
     const nowIso = (): string => new Date(deps.clock.now()).toISOString();
     let mirroring = false;
     const update = (change: (state: SetupState) => SetupState): void => {
-        const next = change(store.get());
+        const next = withLiveScopes(change(store.get()), deps);
         store.set(next);
         if (next.mode === 'bootstrap' && mirroring) {
             writeBootstrapRecord(deps.session, bootstrapRecordOf(next, nowIso()));

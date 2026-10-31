@@ -31,20 +31,48 @@ const CONTAINER_ID = 'historic-city-map';
 /** engine.css: text for screen readers only (the page's heading over the full-window map). */
 const VISUALLY_HIDDEN_CLASS = 'hcm-visually-hidden';
 
+/**
+ * Where the page finds its files: relative to the page by default (a city site served from any folder), absolute for
+ * the Hosting site's generic city page, which every city's address is rewritten to (`/iasi/` serves
+ * `/city/index.html`, so a relative `config.js` would be `/iasi/config.js`: docs/research/M6-interfaces.md §2.4).
+ */
+export interface PageAssets {
+    /** The engine's folder, ending with `/` (`engine/`, `/engine/`). */
+    readonly engineFolder: string;
+    readonly config: string;
+    readonly stylesheet: string;
+    /**
+     * M6: a script that runs first, before Mapbox GL and the engine load (`admin-redirect.js` of the Hosting site's root:
+     * an old admin address `/#/<route>` goes to `/admin/`, §2.7). None by default.
+     */
+    readonly redirect?: string;
+}
+
+/** A city site's own files, next to its page. */
+export const RELATIVE_ASSETS: PageAssets = { engineFolder: `${ENGINE_FOLDER}/`, config: 'config.js', stylesheet: 'site.css' };
+
 export interface PageInputs {
     readonly spec: SiteSpec;
     /** The `content` of the meta CSP (`contentSecurityPolicy`). */
     readonly csp: string;
     /** `sha384-…` of the pinned mapbox-gl.js and mapbox-gl.css (`subresourceIntegrity`). */
     readonly mapboxGlIntegrity: { readonly script: string; readonly stylesheet: string };
+    /** Where the page's files are; `RELATIVE_ASSETS` by default. */
+    readonly assets?: PageAssets;
 }
 
 function crossOrigin(integrity: string): Readonly<Record<string, string>> {
     return { integrity, crossorigin: 'anonymous' };
 }
 
+/** The first script of the page, before anything else loads (a blocking classic script: it may leave the page). */
+function redirectScript(assets: PageAssets): HtmlElement[] {
+    return assets.redirect === undefined ? [] : [element('script', { src: assets.redirect })];
+}
+
 function head(inputs: PageInputs): HtmlElement {
     const { spec, csp, mapboxGlIntegrity } = inputs;
+    const assets = inputs.assets ?? RELATIVE_ASSETS;
     return element('head', {}, [
         element('meta', { charset: 'utf-8' }),
         // First, so that it governs every resource below it.
@@ -57,13 +85,14 @@ function head(inputs: PageInputs): HtmlElement {
         element('meta', { name: 'theme-color', content: spec.themeColor }),
         element('title', {}, [spec.title]),
         element('link', { rel: 'icon', href: 'data:,' }),
+        ...redirectScript(assets),
         element('link', { rel: 'stylesheet', href: MAPBOX_GL_STYLESHEET, ...crossOrigin(mapboxGlIntegrity.stylesheet) }),
-        element('link', { rel: 'stylesheet', href: `${ENGINE_FOLDER}/${ENGINE_STYLESHEET_FILE}` }),
-        element('link', { rel: 'stylesheet', href: 'site.css' }),
+        element('link', { rel: 'stylesheet', href: `${assets.engineFolder}${ENGINE_STYLESHEET_FILE}` }),
+        element('link', { rel: 'stylesheet', href: assets.stylesheet }),
         element('script', { src: MAPBOX_GL_SCRIPT, defer: true, ...crossOrigin(mapboxGlIntegrity.script) }),
-        element('script', { src: 'config.js', defer: true }),
+        element('script', { src: assets.config, defer: true }),
         // Module scripts run after the deferred classic scripts above, in document order.
-        element('script', { type: 'module', src: `${ENGINE_FOLDER}/${ENGINE_MODULE_FILE}` }),
+        element('script', { type: 'module', src: `${assets.engineFolder}${ENGINE_MODULE_FILE}` }),
     ]);
 }
 

@@ -41,6 +41,7 @@ describe('createAnalytics', () => {
                 config: {
                     send_page_view: false,
                     page_location: 'https://demo-hcm.web.app/',
+                    cookie_prefix: 'hcm_admin',
                     allow_google_signals: false,
                     allow_ad_personalization_signals: false,
                 },

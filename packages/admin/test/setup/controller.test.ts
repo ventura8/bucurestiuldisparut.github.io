@@ -147,8 +147,10 @@ describe('start', () => {
 
     it('badPath_whenOnlyTheImportIsLeftItsDetectionDecidesWhatOpens', async () => {
         const ok = { state: 'ok' as const, checkedAt: CHECKED };
+        // M6: the imagery pipeline (an optional step before the import) recorded installed; the site comes last anyway.
+        const install = { pipeline: { state: 'installed', checkedAt: CHECKED } } as const;
         const { harness, controller, detection } = slowDetection(
-            statusView({ ...READY_VIEW, mapbox: ok, usgs: ok, analytics: ok, crash: ok }),
+            statusView({ ...READY_VIEW, mapbox: ok, usgs: ok, analytics: ok, crash: ok, install }),
         );
 
         const starting = controller.start('normal', null);

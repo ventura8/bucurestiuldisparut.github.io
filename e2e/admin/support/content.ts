@@ -1,13 +1,11 @@
-import { writeFile } from 'node:fs/promises';
-
 import type { Locale } from '@hcm/shared';
-import type { TestInfo } from '@playwright/test';
+import type { BrowserContext } from '@playwright/test';
 
 import { E2E_TOKEN } from '../../fixtures/world.js';
-import { ADMIN_ORIGIN } from '../world.js';
+import { ADMIN_URL } from '../world.js';
 import { contentIdsOf, type ContentIds } from './content-ids.js';
 import type { EmulatorWorld, SignedInAccount } from './emulators.js';
-import { signedInStorageState } from './session.js';
+import { signInContext } from './session.js';
 
 /**
  * A content world (docs/research/M2c-interfaces.md §12.3, CR-M2c-7): one test's own city and its own Google account, an
@@ -109,14 +107,12 @@ export class ContentWorld implements CityWorld {
         // `none`: no map, whatever `setup/status` holds (a locked Setup spec may have written a token there meanwhile).
         const query = new URLSearchParams({ lang, city: this.city, mapToken: options.map === false ? 'none' : E2E_TOKEN });
         const hash = route === undefined ? '' : `#/${route}`;
-        return `${ADMIN_ORIGIN}/?${query.toString()}${hash}`;
+        return `${ADMIN_URL}?${query.toString()}${hash}`;
     }
 
-    /** A storage state file of this world's account, signed in (the token's expiry is the browser's wall clock). */
-    async storageState(testInfo: TestInfo): Promise<string> {
-        const file = testInfo.outputPath('content-storage-state.json');
-        await writeFile(file, JSON.stringify(signedInStorageState(this.account, Date.now())));
-        return file;
+    /** Every admin tab of `context` opens signed in as this world's account (the token's expiry is the browser's wall clock). */
+    async signIn(context: BrowserContext): Promise<void> {
+        await signInContext(context, this.account, Date.now());
     }
 
     /**

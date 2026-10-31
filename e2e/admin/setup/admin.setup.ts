@@ -2,7 +2,7 @@ import { expect, test as setup } from '@playwright/test';
 
 import { MOCK_API_ORIGIN } from '../../fixtures/world.js';
 import { ADMIN_SCRIPT_FILE, ADMIN_SHELL_ELEMENT } from '../../../scripts/site/src/admin/page.js';
-import { ADMIN_EMULATORS, ADMIN_ORIGIN, ADMIN_WEB_CONFIG, E2E_PROJECT_ID, emulatorOrigin } from '../world.js';
+import { ADMIN_EMULATORS, ADMIN_ORIGIN, ADMIN_URL, ADMIN_WEB_CONFIG, E2E_PROJECT_ID, emulatorOrigin } from '../world.js';
 
 /**
  * The `admin-setup` project every admin project depends on (e2e/projects.ts): the admin server serves a built admin
@@ -18,10 +18,10 @@ interface RunningEmulator {
 
 setup('the admin build, the mock APIs and the emulators of the admin tier answer', async ({ request }) => {
     expect((await request.get(`${MOCK_API_ORIGIN}/__health`)).ok()).toBe(true);
-    const page = await request.get(`${ADMIN_ORIGIN}/`);
-    expect(page.status(), 'the admin is built (npm run build:site:e2e with E2E_TIER including admin)').toBe(200);
+    const page = await request.get(ADMIN_URL);
+    expect(page.status(), 'the admin is built into the e2e Hosting tree (npm run build:site:e2e)').toBe(200);
     expect(await page.text()).toContain(`<${ADMIN_SHELL_ELEMENT}></${ADMIN_SHELL_ELEMENT}>`);
-    expect((await request.get(`${ADMIN_ORIGIN}/${ADMIN_SCRIPT_FILE}`)).status(), 'the admin bundle is built').toBe(200);
+    expect((await request.get(`${ADMIN_URL}${ADMIN_SCRIPT_FILE}`)).status(), 'the admin bundle is built').toBe(200);
     expect(await (await request.get(`${ADMIN_ORIGIN}/__/firebase/init.json`)).json()).toEqual(ADMIN_WEB_CONFIG);
 
     const running = (await (await request.get(`${emulatorOrigin('hub')}/emulators`)).json()) as Readonly<Record<string, RunningEmulator>>;

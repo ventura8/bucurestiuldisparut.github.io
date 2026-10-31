@@ -75,6 +75,30 @@ describe('renderSitePage', () => {
         expect(html).not.toMatch(/<style|\sstyle=|\son[a-z]+=/);
     });
 
+    it('happyPath_theHostingRootRunsItsRedirectFirstAndTheCityPageLoadsItsFilesFromTheRoot', () => {
+        // M6 (docs/research/M6-interfaces.md §2.4, §2.7): the root's admin-redirect.js before anything loads; the generic
+        // city page served at /<city>/ with absolute addresses.
+        const spec = parseSiteSpec(readFileSync(join(ROOT, 'sites/bucharest/site.json'), 'utf8'));
+        const integrity = { script: 'sha384-script', stylesheet: 'sha384-style' };
+        const assets = { engineFolder: '/engine/', config: '/city/config.js', stylesheet: '/site.css', redirect: 'admin-redirect.js' };
+
+        const html = renderSitePage({
+            spec,
+            csp: contentSecurityPolicy({ connect: [], images: [] }),
+            mapboxGlIntegrity: integrity,
+            assets,
+        });
+
+        expect([...html.matchAll(/<script [^>]*>/g)].map(([tag]) => tag)).toEqual([
+            '<script src="admin-redirect.js">',
+            `<script src="${MAPBOX_GL_SCRIPT}" defer integrity="sha384-script" crossorigin="anonymous">`,
+            '<script src="/city/config.js" defer>',
+            '<script type="module" src="/engine/engine.mjs">',
+        ]);
+        expect(html).toContain('<link rel="stylesheet" href="/engine/engine.css">');
+        expect(html).toContain('<link rel="stylesheet" href="/site.css">');
+    });
+
     it('happyPath_theMapboxVersionIsThePinnedPackage', () => {
         const pinned = JSON.parse(readFileSync(join(ROOT, 'node_modules/mapbox-gl/package.json'), 'utf8')) as { version: string };
 

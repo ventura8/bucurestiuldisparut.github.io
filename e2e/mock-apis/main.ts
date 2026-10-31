@@ -2,7 +2,7 @@
 //
 //     node --import ./scripts/site/register-ts.mjs e2e/mock-apis/main.ts mock    # the mock APIs on 127.0.0.1:4311
 //     node --import ./scripts/site/register-ts.mjs e2e/mock-apis/main.ts site    # dist/e2e-site on 127.0.0.1:4310
-//     node --import ./scripts/site/register-ts.mjs e2e/mock-apis/main.ts admin   # packages/admin/dist on 127.0.0.1:4312
+//     node --import ./scripts/site/register-ts.mjs e2e/mock-apis/main.ts admin   # dist/e2e-hosting (the admin at /admin/) on 127.0.0.1:4312
 //
 // It runs until Playwright stops it. Exit status 2 on a usage error.
 import { existsSync, readFileSync } from 'node:fs';
@@ -16,12 +16,13 @@ import { createUpstreamExtension, UpstreamPartitions } from '@hcm/test-support/f
 import { parseHostingConfig } from '../../scripts/site/src/admin/hosting.js';
 import {
     ADMIN_CONNECT_ORIGINS,
-    ADMIN_DIST_DIR,
     ADMIN_ORIGIN,
     ADMIN_PORT,
     ADMIN_PROJECT,
     ADMIN_RUNTIME,
     ADMIN_WEB_CONFIG,
+    E2E_HOSTING_DIR,
+    E2E_HOSTING_START_UP_DIR,
 } from '../admin/world.js';
 import { ImageryRunner, useSyntheticScenes } from '../admin/support/imagery-runner.js';
 import { E2E_SITE_DIR, MOCK_API_ORIGIN, MOCK_API_PORT, SITE_ORIGIN, SITE_PORT } from '../fixtures/world.js';
@@ -68,14 +69,15 @@ if (role === 'mock') {
     log.info('site server listening', { port: SITE_PORT, dir: E2E_SITE_DIR });
 } else if (role === 'admin') {
     await startAdminServer(ADMIN_PORT, {
-        distDir: ADMIN_DIST_DIR,
+        hostingDir: E2E_HOSTING_DIR,
+        startUpDir: E2E_HOSTING_START_UP_DIR,
         hosting: parseHostingConfig(readFileSync('firebase.json', 'utf8')),
         connect: ADMIN_CONNECT_ORIGINS,
         webConfig: ADMIN_WEB_CONFIG,
         runtime: ADMIN_RUNTIME,
         project: ADMIN_PROJECT,
     });
-    log.info('admin server listening', { port: ADMIN_PORT, dir: ADMIN_DIST_DIR });
+    log.info('e2e Hosting server listening', { port: ADMIN_PORT, dir: E2E_HOSTING_DIR });
 } else {
     log.error('usage: main.ts mock|site|admin', { role });
     process.exitCode = 2;

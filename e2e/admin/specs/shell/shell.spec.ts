@@ -195,7 +195,7 @@ test(
 );
 
 test.describe('signed out', () => {
-    test.use({ storageState: { cookies: [], origins: [] } });
+    test.use({ signedIn: false });
 
     test(
         'An address of an editor opened signed out leads to the sign-in, and keeps the address',

@@ -47,6 +47,8 @@ export const SERVICE_ACCOUNTS = {
     'fn-crash': 'Functions: the public crash endpoint (no role)',
     'job-raster': 'Cloud Run Job: raster pipeline',
     'gh-deployer': 'GitHub Actions deploy (Workload Identity)',
+    // M6 (docs/research/M6-interfaces.md §1.2): the account the in-app installer's Cloud Build builds run as.
+    'hcm-installer': 'Cloud Build: the in-app installer',
 } as const;
 
 export type ServiceAccountId = keyof typeof SERVICE_ACCOUNTS;

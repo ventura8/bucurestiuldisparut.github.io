@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createSetupContext, createSetupStore } from '../../src/setup/context.js';
 import { createDeployFlow } from '../../src/setup/deploy.js';
-import { initialSetupState, withStep } from '../../src/setup/state.js';
+import { initialSetupState, withStep, type SetupMode } from '../../src/setup/state.js';
 import { access, createHarness, flush, googleError } from './harness.js';
 
-function setup() {
+function setup(mode: SetupMode = 'bootstrap') {
     const harness = createHarness();
     const base = ['signIn', 'billing', 'provision'].reduce(
         (state, id) => withStep(state, id as 'signIn', { state: 'ok' }),
-        initialSetupState(harness.host, 'bootstrap'),
+        initialSetupState(harness.host, mode),
     );
     const ctx = createSetupContext(harness.deps, createSetupStore({ ...base, openStep: 'deploy' }));
     const onDeployed = vi.fn(() => Promise.resolve());
@@ -25,10 +25,8 @@ describe('deploy: watching', () => {
 
         flow.watch();
         await flush();
-        expect(ctx.state().steps.deploy).toMatchObject({
-            state: 'pending',
-            detail: { key: 'adminSetup.deploy.progress', params: { ready: '10', total: '32' } },
-        });
+        // The count is the card body's, said once (finding 7 of 2026-10-25): the step itself names no reason.
+        expect(ctx.state().steps.deploy).toMatchObject({ state: 'pending', detail: null });
         expect(ctx.state().deploy).toMatchObject({ ready: 10, total: 32, watching: true });
 
         await harness.clock.advance(30_000);
@@ -40,6 +38,22 @@ describe('deploy: watching', () => {
         expect(onDeployed).toHaveBeenCalledTimes(1);
         expect(harness.clock.pending()).toBe(0);
         expect(ctx.state().steps.deploy.used).toEqual({ inputs: 0, consents: 0 });
+    });
+
+    it('badPath_inAnAdminSessionALookLeavesTheClaimDone', async () => {
+        // Finding 4 of the M6 review: Check again or Install the server on step (d) put the claim back to waiting, and
+        // closed steps (e) to (i), which wait for it.
+        const { harness, ctx, flow } = setup('normal');
+        ctx.patchStep('claim', { state: 'ok' });
+        harness.google.grant('cloudPlatform');
+        harness.cloud.deployment.mockResolvedValue({ ready: 32, total: 32, failed: [] });
+
+        flow.watch();
+        await flush();
+
+        expect(ctx.state().steps.deploy.state).toBe('ok');
+        expect(ctx.state().steps.claim.state).toBe('ok');
+        expect(ctx.state().steps.mapbox.available).toBe(true);
     });
 
     it('badPath_aFailedFunctionIsNamedAndTheWatchGoesOn', async () => {

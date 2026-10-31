@@ -5,7 +5,8 @@
  * ```text
  * server/.firebaserc                 the project
  * server/firebase.json               the bundle's firebase.template.json for this project (its Hosting site and CSP)
- * server/admin/                      the admin's Hosting build, with project.json (CR-M5-7: no GitHub) and runtime.json
+ * server/hosting/admin/              the admin's Hosting build, with project.json (CR-M5-7: no GitHub) and runtime.json
+ *                                    (M6: the admin under `/admin/` of the project's Hosting folder `server/hosting/`)
  * server/functions/                  the functions' deploy artifact, with .env.<project> (public values only)
  * server/rules/                      the Firestore and Storage rules and indexes
  * ```
@@ -18,10 +19,13 @@ import { SERVER_FOLDER, type Session } from './session.js';
 
 /** The bundle's files (`dist/self-host/`). */
 export const BUNDLE = {
-    folders: ['admin', 'functions', 'rules'],
+    folders: ['hosting', 'functions', 'rules'],
     firebaseTemplate: 'firebase.template.json',
     release: 'bundle.json',
 } as const;
+
+/** The admin's folder in `server/` (the Hosting folder's `admin/`, M6). */
+const ADMIN_FOLDER = 'hosting/admin';
 
 /** The token the bundle's `firebase.template.json` holds where the project id goes. */
 export const PROJECT_TOKEN = '__PROJECT_ID__';
@@ -44,7 +48,7 @@ function bundleRelease(session: Session): string {
 /** The admin's `runtime.json`: start-up mode until the server is deployed (`scripts/site/src/admin/runtime.ts`). */
 export function writeRuntime(session: Session, startUp: boolean): void {
     const release = bundleRelease(session);
-    session.project.files.write(`${SERVER_FOLDER}/admin/runtime.json`, json(startUp ? { release, startUp: true } : { release }));
+    session.project.files.write(`${SERVER_FOLDER}/${ADMIN_FOLDER}/runtime.json`, json(startUp ? { release, startUp: true } : { release }));
 }
 
 function gitignored(session: Session): void {
@@ -70,7 +74,7 @@ export function writeServerFiles(session: Session, projectNumber: string, startU
     files.write(`${SERVER_FOLDER}/firebase.json`, firebase);
     files.write(`${SERVER_FOLDER}/.firebaserc`, json({ projects: { default: project.id } }));
     files.write(
-        `${SERVER_FOLDER}/admin/project.json`,
+        `${SERVER_FOLDER}/${ADMIN_FOLDER}/project.json`,
         json({ projectId: project.id, projectNumber, region: REGION, cities: [project.cityId], viewerOrigins: [project.viewerOrigin] }),
     );
     writeRuntime(session, startUp);

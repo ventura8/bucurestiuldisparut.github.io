@@ -48,6 +48,18 @@ describe('functions/deploy-env.json', () => {
         expect(config.appCheck).toBe(values['HCM_APP_CHECK']);
     });
 
+    it('badPath_theBuildRefusesTheViewerOriginsTheCitySchemaRefuses @S-A06-BAD-ORIGINS-REFUSED', () => {
+        // functions/build.mjs checks HCM_VIEWER_ORIGINS with the same pattern as httpsOriginSchema (@hcm/shared), so a
+        // deploy never carries origins the runtime would refuse (finding 3 of the M6 security review).
+        const pattern = /\/\^https:[^\n]*\$\//;
+        const build = pattern.exec(readFileSync(resolve(ROOT, 'functions/build.mjs'), 'utf8'))?.[0];
+        const schema = pattern.exec(readFileSync(resolve(ROOT, 'packages/shared/src/schemas/firestore.ts'), 'utf8'))?.[0];
+
+        expect(build).toBeDefined();
+        expect(build).toBe(schema);
+        expect(build).toContain('{1,253}');
+    });
+
     it('badPath_anUnknownAppCheckModeWouldSilentlyMeanMonitor', () => {
         // Why the value is pinned above: any other spelling than `enforce` reads as `monitor`.
         expect(runtimeConfig({ GCLOUD_PROJECT: 'bucurestiul-disparut', HCM_APP_CHECK: 'Enforce' }).appCheck).toBe('monitor');

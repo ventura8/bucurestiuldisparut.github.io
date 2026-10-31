@@ -6,11 +6,12 @@ import { nextSetupStep, SETUP_STEP_SPECS, SETUP_STEPS, setupInputBudget, type Se
 const BOOTSTRAP: readonly SetupStepId[] = ['signIn', 'billing', 'provision', 'deploy'];
 
 describe('SETUP_STEP_SPECS', () => {
-    it('happyPath_theBootstrapStepsComeFirstAndNeedNoBackend', () => {
+    it('happyPath_theBootstrapStepsComeFirst_theImageryPipelineAlsoNeedsNoServer', () => {
         const withoutBackend = SETUP_STEPS.filter((id) => !SETUP_STEP_SPECS[id].needsBackend);
 
-        expect(withoutBackend).toEqual(BOOTSTRAP);
+        expect(withoutBackend).toEqual([...BOOTSTRAP, 'pipeline']);
         expect(SETUP_STEPS.slice(0, BOOTSTRAP.length)).toEqual(BOOTSTRAP);
+        expect(SETUP_STEPS.at(-1)).toBe('site');
     });
 
     it('happyPath_everyPrerequisiteComesEarlierOnTheScreen', () => {
@@ -36,6 +37,16 @@ describe('SETUP_STEP_SPECS', () => {
         expect(consenting).toEqual(['signIn', 'billing', 'provision', 'analytics']);
         expect(consenting.every((id) => SETUP_STEP_SPECS[id].scope !== null)).toBe(true);
     });
+
+    it('happyPath_onlyUsgsCanWait_badPath_noOtherRequiredStepIsPostponable', () => {
+        expect(SETUP_STEPS.filter((id) => SETUP_STEP_SPECS[id].postponable)).toEqual(['usgs']);
+        expect(SETUP_STEP_SPECS.usgs.optional).toBe(false);
+    });
+
+    it('happyPath_theInstallCardsLetters', () => {
+        expect([SETUP_STEP_SPECS.deploy.letter, SETUP_STEP_SPECS.pipeline.letter, SETUP_STEP_SPECS.site.letter]).toEqual(['d', 'd3', 'i']);
+        expect([SETUP_STEP_SPECS.pipeline.inputs, SETUP_STEP_SPECS.pipeline.optional]).toEqual([0, true]);
+    });
 });
 
 describe('nextSetupStep', () => {
@@ -45,6 +56,20 @@ describe('nextSetupStep', () => {
 
     it('happyPath_afterTheBootstrapStepsTheClaimIsNext', () => {
         expect(nextSetupStep(new Set(BOOTSTRAP))).toBe('claim');
+    });
+
+    it('happyPath_afterMapboxComesUsgs_thenTheOptionalOnes_thenTheSite', () => {
+        const claimed = new Set<SetupStepId>([...BOOTSTRAP, 'claim', 'mapbox']);
+
+        expect(nextSetupStep(claimed)).toBe('usgs');
+        expect(nextSetupStep(new Set<SetupStepId>([...claimed, 'usgs']))).toBe('pipeline');
+        expect(nextSetupStep(new Set<SetupStepId>([...claimed, 'usgs', 'pipeline', 'analytics']))).toBe('legacyImport');
+        expect(nextSetupStep(new Set<SetupStepId>([...claimed, 'usgs', 'pipeline', 'analytics', 'legacyImport']))).toBe('site');
+    });
+
+    it('happyPath_aPostponedStepCountsAsSettled', () => {
+        // CR-M6-4: the caller passes the postponed steps with the done ones (`settledSteps` of state.ts).
+        expect(nextSetupStep(new Set<SetupStepId>([...BOOTSTRAP, 'claim', 'mapbox', 'usgs', 'pipeline']))).toBe('analytics');
     });
 
     it('badPath_aStepWhosePrerequisiteIsMissingIsSkipped', () => {
@@ -58,12 +83,21 @@ describe('nextSetupStep', () => {
 });
 
 describe('setupInputBudget', () => {
-    it('happyPath_theWholeSetupTakesNineInputsAndFourConsents', () => {
-        expect(setupInputBudget()).toEqual({ inputs: 9, consents: 4 });
+    it('happyPath_theWholeSetupTakesElevenInputsAndFourConsents', () => {
+        // M6 §4.2: a 1, b 1, c 1, d 1, e 1, f 3, g 1, h 1, i 1; consents a, b, c, g.
+        expect(setupInputBudget()).toEqual({ inputs: 11, consents: 4 });
     });
 
-    it('happyPath_theBootstrapTakesThreeInputsAndThreeConsents', () => {
-        expect(setupInputBudget(BOOTSTRAP)).toEqual({ inputs: 3, consents: 3 });
+    it('happyPath_theBootstrapTakesFourInputsAndThreeConsents', () => {
+        expect(setupInputBudget(BOOTSTRAP)).toEqual({ inputs: 4, consents: 3 });
+    });
+
+    it('happyPath_theRequiredStepsWithUsgsLaterTakeSevenInputs', () => {
+        const required: readonly SetupStepId[] = ['signIn', 'billing', 'provision', 'deploy', 'mapbox', 'site'];
+
+        // Do it later is USGS's one input (setup-ux's skipUsgs budget).
+        expect(setupInputBudget(required).inputs + 1).toBe(7);
+        expect(setupInputBudget(required).consents).toBe(3);
     });
 
     it('badPath_noStepsTakeNoInput', () => {

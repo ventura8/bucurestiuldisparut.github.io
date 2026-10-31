@@ -7,6 +7,7 @@ import { GOOGLE_TOKENS } from '@hcm/test-support/fakes';
 import { vi, type Mock } from 'vitest';
 
 import { GOOGLE_SCOPES, unsatisfiedScopes, type GoogleScope } from '../../src/google/scopes.js';
+import type { InstallerPort } from '../../src/install/ports.js';
 import type {
     GoogleAccess,
     SetupBackend,
@@ -207,6 +208,35 @@ export interface Harness {
     readonly importer: Fake<SetupLegacyImport>;
     readonly host: Fake<SetupHost>;
     readonly logs: RecordingSink;
+    /** The shell's snackbar (M6 setup-ux). */
+    readonly notify: Mock<SetupDeps['notify']>;
+    /** M6 installer: the Cloud Build port (nothing installed, no build, unless a test says otherwise). */
+    readonly installer: Fake<InstallerPort>;
+}
+
+/** The release the harness's admin runs (M6 installer). */
+export const ADMIN_RELEASE = '1.0.0+abc1234';
+
+function fakeInstaller(): Fake<InstallerPort> {
+    return {
+        observe: vi
+            .fn<InstallerPort['observe']>()
+            .mockResolvedValue({ installed: { complete: false, release: null }, build: null, progress: null, blocker: null }),
+        submit: vi.fn<InstallerPort['submit']>().mockImplementation((target) =>
+            Promise.resolve({
+                id: `build-${target}-0001`,
+                status: 'QUEUED',
+                steps: [],
+                tags: ['hcm-install', `hcm-${target}`, 'hcm-r-1-0-0-abc1234'],
+                substitutions: {},
+            }),
+        ),
+        buildLog: vi.fn<InstallerPort['buildLog']>().mockResolvedValue([]),
+        localBlocker: vi.fn<InstallerPort['localBlocker']>().mockResolvedValue(null),
+        consoleUrl: vi
+            .fn<InstallerPort['consoleUrl']>()
+            .mockImplementation((id) => `https://console.cloud.google.com/cloud-build/builds/${id}`),
+    };
 }
 
 function fakeCloud(): Fake<SetupCloud> {
@@ -258,9 +288,13 @@ export function createHarness(): Harness {
         cityId: 'bucharest',
         cityBBox: [25.96, 44.33, 26.23, 44.54],
         serverDeployed: vi.fn<SetupHost['serverDeployed']>().mockResolvedValue(true),
+        release: ADMIN_RELEASE,
+        siteAddress: `https://${PROJECT_ID}.web.app/`,
     };
     const logs = createRecordingSink();
     const log = createLogger('admin', { sink: logs.sink, minLevel: 'debug' }).child('setup');
-    const deps: SetupDeps = { host, google, cloud, backend, importer, clock, visibility, session, log };
-    return { deps, clock, visibility, session, google, cloud, backend, importer, host, logs };
+    const notify = vi.fn<SetupDeps['notify']>();
+    const installer = fakeInstaller();
+    const deps: SetupDeps = { host, google, cloud, backend, importer, clock, visibility, session, log, notify, installer };
+    return { deps, clock, visibility, session, google, cloud, backend, importer, host, logs, notify, installer };
 }

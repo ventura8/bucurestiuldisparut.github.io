@@ -64,32 +64,13 @@ describe('telemetry.reportError', () => {
 
     it('happyPath_theAdminOriginReportsAsTheAdminService', () => {
         const { deps, errors } = world();
+        const limiter = createRateLimiter('e2e-salt');
 
-        handleErrorReport(deps, createRateLimiter('e2e-salt'), post(REPORT, ADMIN));
+        handleErrorReport(deps, limiter, post({ ...REPORT, page: `${ADMIN}/admin/` }, ADMIN));
+        // A pre-M6 admin at the root of an origin that serves no viewer.
+        handleErrorReport(deps, limiter, post({ ...REPORT, page: `${ADMIN}/` }, ADMIN));
 
-        expect(errors.reports[0]?.serviceContext.service).toBe('admin');
-    });
-
-    it('happyPath_aPreflightFromAnAllowedOriginIsAnswered', () => {
-        const { deps } = world();
-
-        const answer = handleErrorReport(deps, createRateLimiter('e2e-salt'), {
-            method: 'OPTIONS',
-            origin: ADMIN,
-            client: 'x',
-            body: undefined,
-        });
-
-        expect(answer).toEqual({
-            status: 204,
-            headers: {
-                'access-control-allow-origin': ADMIN,
-                'access-control-allow-methods': 'POST',
-                'access-control-allow-headers': 'content-type',
-                'access-control-max-age': '3600',
-                vary: 'Origin',
-            },
-        });
+        expect(errors.reports.map((report) => report.serviceContext.service)).toEqual(['admin', 'admin']);
     });
 
     it('badPath_anyOtherMethodIsNotAllowed', () => {
@@ -269,5 +250,60 @@ describe('reportErrorFunction', () => {
         });
 
         expect(fn.__endpoint).toMatchObject({ maxInstances: 2, httpsTrigger: { invoker: ['public'] } });
+    });
+});
+
+// M6 (docs/research/M6-interfaces.md §2.3): the public map at the Hosting root and the admin under /admin/ share an origin.
+describe('telemetry.reportError on one origin', () => {
+    it('happyPath_onOneOriginThePagesPathTellsTheAdminFromTheViewer @S-A24-HAPPY-SAME-ORIGIN', () => {
+        // M6 (docs/research/M6-interfaces.md §2.3): the public map at the Hosting root, the admin under /admin/.
+        const { deps, errors } = world();
+        const shared = { ...deps, config: { ...deps.config, viewerOrigins: [...deps.config.viewerOrigins, ADMIN] } };
+        const limiter = createRateLimiter('e2e-salt');
+
+        for (const path of ['/admin/', '/admin', '/', '/iasi/', '/administration/']) {
+            expect(handleErrorReport(shared, limiter, post({ ...REPORT, page: `${ADMIN}${path}` }, ADMIN)).status).toBe(204);
+        }
+
+        expect(errors.reports.map((report) => report.serviceContext.service)).toEqual(['admin', 'admin', 'viewer', 'viewer', 'viewer']);
+    });
+
+    it('badPath_aReportWhosePageIsNotOnItsOwnOriginIsRefused @S-A24-BAD-PAGE-ORIGIN-MISMATCH', () => {
+        const { deps, errors, logged } = world();
+        const limiter = createRateLimiter('e2e-salt');
+
+        const elsewhere = handleErrorReport(deps, limiter, post({ ...REPORT, page: 'https://evil.example/admin/' }, VIEWER));
+        const adminPageFromTheViewer = handleErrorReport(deps, limiter, post({ ...REPORT, page: `${ADMIN}/admin/` }, VIEWER));
+        const noAddress = handleErrorReport(deps, limiter, post({ ...REPORT, page: 'https://[' }, VIEWER));
+
+        expect(elsewhere).toEqual({
+            status: 403,
+            headers: { 'access-control-allow-origin': VIEWER, vary: 'Origin' },
+            body: { code: 'apiError.telemetry.origin' },
+        });
+        expect([adminPageFromTheViewer.status, noAddress.status]).toEqual([403, 403]);
+        expect([errors.reports.length, logged()]).toEqual([0, 0]);
+    });
+
+    it('happyPath_aPreflightFromAnAllowedOriginIsAnswered', () => {
+        const { deps } = world();
+
+        const answer = handleErrorReport(deps, createRateLimiter('e2e-salt'), {
+            method: 'OPTIONS',
+            origin: ADMIN,
+            client: 'x',
+            body: undefined,
+        });
+
+        expect(answer).toEqual({
+            status: 204,
+            headers: {
+                'access-control-allow-origin': ADMIN,
+                'access-control-allow-methods': 'POST',
+                'access-control-allow-headers': 'content-type',
+                'access-control-max-age': '3600',
+                vary: 'Origin',
+            },
+        });
     });
 });

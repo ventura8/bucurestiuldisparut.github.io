@@ -1,6 +1,7 @@
 /**
  * firebase.json and .firebaserc: the emulator layout every test tier relies on, and the admin's
- * Hosting security headers (docs/research/design-review-security-cost.md §1.8). No emulator needed.
+ * Hosting security headers (docs/research/design-review-security-cost.md §1.8), which since M6 apply under `/admin/`
+ * only: the public map at the root keeps its pages' own policy (docs/research/M6-interfaces.md §2.2). No emulator needed.
  */
 import { readFileSync } from 'node:fs';
 
@@ -18,7 +19,7 @@ interface FirebaseJson {
     readonly hosting: {
         readonly site: string;
         readonly public: string;
-        readonly headers: readonly { readonly source: string; readonly headers: readonly Header[] }[];
+        readonly headers: readonly { readonly source?: string; readonly regex?: string; readonly headers: readonly Header[] }[];
     };
     readonly emulators: Readonly<Record<string, unknown>>;
 }
@@ -29,9 +30,18 @@ function repoFile(path: string): string {
 
 const config = JSON.parse(repoFile('firebase.json')) as FirebaseJson;
 
+/** The blocks whose glob names every path, and those of the admin's path (`/admin/**`). */
+const EVERY_PATH = '**';
+const ADMIN_PATHS = '/admin/**';
+
+/** The headers of the blocks whose glob is one of `sources`. */
+function headersOf(sources: readonly string[]): readonly Header[] {
+    return config.hosting.headers.flatMap((block) => (block.source !== undefined && sources.includes(block.source) ? block.headers : []));
+}
+
+/** A header the admin's pages are sent (the catch-all's and the admin path's). */
 function header(key: string): string {
-    const all = config.hosting.headers.flatMap((block) => (block.source === '**' ? block.headers : []));
-    return all.find((entry) => entry.key === key)?.value ?? '';
+    return headersOf([EVERY_PATH, ADMIN_PATHS]).find((entry) => entry.key === key)?.value ?? '';
 }
 
 function directive(name: string): string[] {
@@ -81,7 +91,8 @@ describe('deploy targets', () => {
         });
         expect(config.storage.rules).toBe('firebase/storage.rules');
         expect(config.functions).toMatchObject([{ source: 'functions/dist', codebase: 'default', runtime: 'nodejs24' }]);
-        expect(config.hosting).toMatchObject({ site: 'bucurestiul-disparut', public: 'packages/admin/dist' });
+        // The Hosting tree `npm run build:hosting` assembles: the public map at the root, the admin under /admin/.
+        expect(config.hosting).toMatchObject({ site: 'bucurestiul-disparut', public: 'dist/hosting' });
         expect(repoFile(config.firestore.rules)).toContain("rules_version = '2';");
     });
 });
@@ -120,6 +131,16 @@ describe('admin security headers', () => {
                 'https://accounts.google.com',
             ]),
         );
+    });
+
+    it('badPath_theAdminsPolicyIsNeverSentToEveryPath', () => {
+        // The viewer's pages carry their own policy (a meta tag of the site build); a second one on `**` would apply both.
+        const everyPath = headersOf([EVERY_PATH]).map((entry) => entry.key);
+
+        expect(everyPath).not.toContain('Content-Security-Policy');
+        expect(everyPath).not.toContain('Content-Security-Policy-Report-Only');
+        expect(everyPath).not.toContain('Cross-Origin-Opener-Policy');
+        expect(headersOf([ADMIN_PATHS]).filter((entry) => entry.key === 'Content-Security-Policy')).toHaveLength(1);
     });
 
     it('badPath_mapboxGlLoadsOnlyFromItsVersionedCdnPath', () => {

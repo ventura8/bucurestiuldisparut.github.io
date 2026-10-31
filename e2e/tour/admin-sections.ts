@@ -2,7 +2,9 @@ import { CITIES_STATES } from '../admin/specs/cities/states.js';
 import { EXPORT_STATES } from '../admin/specs/export/states.js';
 import { ORDERS_STATES } from '../admin/specs/imagery/orders-states.js';
 import { SUGGESTIONS_STATES } from '../admin/specs/imagery/suggestions-states.js';
+import { INSTALL_STATES } from '../admin/specs/install/states.js';
 import { NOTIFY_STATES } from '../admin/specs/notify/states.js';
+import { SETUP_UX_STATES } from '../admin/specs/shell/setup-ux-states.js';
 
 /**
  * The admin states of the M4 and M5 workstreams in the tour inventory (`ADMIN_STATES` of ./states.ts spreads them; moved
@@ -31,4 +33,11 @@ export const ADMIN_SECTION_STATES = {
     // [section export] owner: export (Settings → Export the city: docs/research/M5-interfaces.md §5.6)
     ...EXPORT_STATES,
     // [end export]
+    // M6 (docs/research/M6-interfaces.md §6.3): one section per workstream (`install`, `site`, `setupUx`), each a spread.
+    // [section setupUx] owner: setup-ux (the shell, the sign-in, the billing wait, USGS later, Home's reminders)
+    ...SETUP_UX_STATES,
+    // [end setupUx]
+    // [section install] owner: installer (Install the server, the imagery pipeline, Publish the map, Home's update tile)
+    ...INSTALL_STATES,
+    // [end install]
 } as const;

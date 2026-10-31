@@ -59,7 +59,7 @@ describe('applyProvision', () => {
             [...(world.fakes.state.iam.projects.get('demo-hcm')?.accounts.keys() ?? [])].toSorted((left, right) =>
                 left.localeCompare(right),
             ),
-        ).toEqual(['fn-admin', 'fn-crash', 'fn-events', 'gh-deployer', 'job-raster']);
+        ).toEqual(['fn-admin', 'fn-crash', 'fn-events', 'gh-deployer', 'hcm-installer', 'job-raster']);
         expect(world.fakes.state.cloudStorage.buckets.has('demo-hcm.firebasestorage.app')).toBe(true);
         expect(snapshot).toContain('"roles/storage.legacyObjectReader","members":["allUsers"]');
         expect(snapshot).toContain("assertion.repository_owner_id=='1000001' && assertion.repository_id=='2000002'");

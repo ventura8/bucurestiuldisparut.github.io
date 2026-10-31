@@ -4,7 +4,14 @@ import { fixtureResponse } from '@hcm/test-support/api-fixtures';
 import { createFakeFetch, jsonResponse, route, routeTable, type FakeFetch, type Route } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
-import { createGoogleTransport, createOnce, type GoogleTransport } from '../../src/google/transport.js';
+import {
+    API_PROPAGATION_RETRY_MS,
+    createApiWaits,
+    createGoogleTransport,
+    createOnce,
+    withApiPropagation,
+    type GoogleTransport,
+} from '../../src/google/transport.js';
 
 /** The one way the admin calls Google (M2b §3.4): bearer token, JSON, retries with backoff, pages, long-running operations. */
 
@@ -240,5 +247,83 @@ describe('createOnce', () => {
         await expect(createOnce(transport, { operation: 'bad.create', method: 'POST', url: `${URL_BASE}/bad` })).rejects.toMatchObject({
             kind: 'invalid',
         });
+    });
+});
+
+describe('an API Google is still switching on (M6, finding 4)', () => {
+    const SERVICE = 'https://serviceusage.googleapis.com/v1/projects/123456789012/services/iam.googleapis.com';
+    const disabled = (): Response =>
+        fixtureResponse('google/error.service-disabled', { values: { service: 'iam.googleapis.com', serviceTitle: 'IAM API' } });
+
+    function propagating(routes: readonly Route[]) {
+        const fake = createFakeFetch(routeTable(routes));
+        const slept: number[] = [];
+        const heard: string[] = [];
+        const waits = createApiWaits();
+        waits.listen((api) => heard.push(api));
+        const transport = createGoogleTransport(
+            withApiPropagation(
+                {
+                    fetch: fake.fetch,
+                    token: () => TOKEN,
+                    sleep: (ms) => {
+                        slept.push(ms);
+                        return Promise.resolve();
+                    },
+                    log: createLogger('google', { sink: createRecordingSink().sink }),
+                },
+                '123456789012',
+                waits,
+            ),
+        );
+        return { transport, slept, heard, waits };
+    }
+
+    it('happyPath_aRefusalOfAnEnabledApiIsWaitedOutAndEachWaitHeard', async () => {
+        const { transport, slept, heard } = propagating([
+            route('GET', SERVICE, 'service-usage.get', () => jsonResponse({ state: 'ENABLED' })),
+            inTurn('GET', `${URL_BASE}/accounts`, 'accounts.list', [disabled, disabled, () => jsonResponse({ accounts: [] })]),
+        ]);
+
+        await expect(transport.call({ operation: 'accounts.list', url: `${URL_BASE}/accounts` })).resolves.toEqual({ accounts: [] });
+        expect(slept).toEqual([10_000, 20_000]);
+        expect(heard).toEqual(['iam.googleapis.com', 'iam.googleapis.com']);
+    });
+
+    it('badPath_afterTheLastWaitTheFailureSaysTheApiIsStillPropagating', async () => {
+        const { transport, slept, waits, heard } = propagating([
+            route('GET', SERVICE, 'service-usage.get', () => jsonResponse({ state: 'ENABLED' })),
+            route('GET', `${URL_BASE}/accounts`, 'accounts.list', disabled),
+        ]);
+        waits.listen(undefined);
+
+        const failure = await transport.call({ operation: 'accounts.list', url: `${URL_BASE}/accounts` }).catch((error: unknown) => error);
+
+        expect(failure).toMatchObject({ kind: 'forbidden', api: 'iam.googleapis.com', reason: 'API_PROPAGATING' });
+        expect(slept).toEqual(API_PROPAGATION_RETRY_MS);
+        expect(heard).toEqual([]);
+    });
+
+    it('badPath_aServiceUsageThatCannotBeReadCountsAsOffAndNothingIsWaited', async () => {
+        const { transport, slept } = propagating([
+            route('GET', SERVICE, 'service-usage.get', () => fixtureResponse('google/error.permission-denied')),
+            route('GET', `${URL_BASE}/accounts`, 'accounts.list', disabled),
+        ]);
+
+        const failure = await transport.call({ operation: 'accounts.list', url: `${URL_BASE}/accounts` }).catch((error: unknown) => error);
+
+        expect(failure).toMatchObject({ kind: 'forbidden', api: 'iam.googleapis.com', reason: 'SERVICE_DISABLED' });
+        expect(slept).toEqual([]);
+    });
+
+    it('badPath_anotherRefusalIsNeverWaitedFor', async () => {
+        const { transport, slept } = propagating([
+            route('GET', `${URL_BASE}/accounts`, 'accounts.list', () => fixtureResponse('google/error.permission-denied')),
+        ]);
+
+        await expect(transport.call({ operation: 'accounts.list', url: `${URL_BASE}/accounts` })).rejects.toMatchObject({
+            kind: 'forbidden',
+        });
+        expect(slept).toEqual([]);
     });
 });

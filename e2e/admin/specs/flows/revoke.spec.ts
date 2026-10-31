@@ -7,7 +7,7 @@ import { testIdOf } from '../../../support/test.js';
 import { projectCity } from '../../support/content.js';
 import type { EmulatorWorld } from '../../support/emulators.js';
 import { flowText, seedPublicCity } from '../../support/flows.js';
-import { signedInStorageState } from '../../support/session.js';
+import { signInContext } from '../../support/session.js';
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../../support/test.js';
@@ -36,11 +36,8 @@ async function ownersBrowser(
     emulators: EmulatorWorld,
     network: { readonly api: Parameters<typeof installNetwork>[1]; readonly testId: string; readonly blocked: Recorder },
 ): Promise<BrowserContext> {
-    const context = await browser.newContext({
-        baseURL: ADMIN_ORIGIN,
-        viewport: { width: 1440, height: 900 },
-        storageState: signedInStorageState(await emulators.signIn('owner'), Date.now()) as never,
-    });
+    const context = await browser.newContext({ baseURL: ADMIN_ORIGIN, viewport: { width: 1440, height: 900 } });
+    await signInContext(context, await emulators.signIn('owner'), Date.now());
     await installNetwork(context, network.api, network.testId, network.blocked, { upstream: true });
     return context;
 }

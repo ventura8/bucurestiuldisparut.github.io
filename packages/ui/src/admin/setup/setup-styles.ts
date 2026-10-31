@@ -157,3 +157,32 @@ export const copyStyles = css`
         min-inline-size: 0;
     }
 `;
+
+/**
+ * A deep link drawn as a filled button (it opens a provider's page in a new tab): the USGS token page, and Google's
+ * page that creates a billing account (M6 setup-ux, finding 3).
+ */
+export const linkButtonStyles = css`
+    .link-button {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        box-sizing: border-box;
+        min-block-size: 48px;
+        padding-inline: 24px;
+        border-radius: var(--md-sys-shape-corner-full);
+        background: var(--md-sys-color-primary);
+        color: var(--md-sys-color-on-primary);
+        font-family: var(--md-sys-typescale-label-large-font);
+        font-size: var(--md-sys-typescale-label-large-size);
+        font-weight: var(--md-sys-typescale-label-large-weight);
+        text-decoration: none;
+
+        --hcm-icon-size: 18px;
+    }
+
+    .link-button:focus-visible {
+        outline: 3px solid var(--md-sys-color-secondary);
+        outline-offset: 2px;
+    }
+`;

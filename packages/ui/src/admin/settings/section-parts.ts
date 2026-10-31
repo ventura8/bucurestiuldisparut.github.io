@@ -26,6 +26,8 @@ export interface SectionContext {
     readonly who: WhoPort;
     /** Renders the page again (a lazy section's chunk arrived: M5's export card). */
     readonly refresh: () => void;
+    /** M6: the city the page edits (its public address on the project's Hosting site), when the shell knows it. */
+    readonly cityId?: string | null;
 }
 
 export const SETTINGS_SAVE_TEXTS = {

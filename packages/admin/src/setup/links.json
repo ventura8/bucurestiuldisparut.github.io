@@ -1,5 +1,5 @@
 {
-    "$comment": "Setup Assistant deep links (docs/research/design-review-onboarding.md section 2), verified 2026-10-11; gcp.errorGroup (the crash reports page, CR-M2c-15) added 2026-10-18 in the console's documented errors/detail/{groupId} form, checked by the next weekly run, which opens an issue when it does not resolve. {name} placeholders are filled at run time; `sample` holds the values the weekly contract check (scripts/ci/check_contracts.py, .github/workflows/contract.yml) uses. Only verified links belong here.",
+    "$comment": "Setup Assistant deep links (docs/research/design-review-onboarding.md section 2), verified 2026-10-11; gcp.errorGroup (the crash reports page, CR-M2c-15) added 2026-10-18 in the console's documented errors/detail/{groupId} form, and gcp.billingCreate (the billing card's Create a billing account, M6 finding 3) added 2026-10-25 in the console's documented billing/create form, each checked by the next weekly run, which opens an issue when it does not resolve. {name} placeholders are filled at run time; `sample` holds the values the weekly contract check (scripts/ci/check_contracts.py, .github/workflows/contract.yml) uses. Only verified links belong here.",
     "links": [
         {
             "id": "gcp.firebaseConsole",
@@ -12,6 +12,12 @@
             "step": "A3",
             "purpose": "Create or pick a Cloud Billing account (the card is entered on Google's page)",
             "url": "https://console.cloud.google.com/billing"
+        },
+        {
+            "id": "gcp.billingCreate",
+            "step": "A3",
+            "purpose": "Create a Cloud Billing account (the card is entered on Google's page; the billing card waits for it)",
+            "url": "https://console.cloud.google.com/billing/create"
         },
         {
             "id": "gcp.blazeUpgrade",
@@ -29,7 +35,7 @@
         {
             "id": "mapbox.console",
             "step": "B2",
-            "purpose": "Leave demo access: add the payment method (choose Rotate token)",
+            "purpose": "Leave demo access: the console, where the payment method is added (the hint beside the link says so, and to choose Rotate token if Mapbox asks)",
             "url": "https://console.mapbox.com/"
         },
         {

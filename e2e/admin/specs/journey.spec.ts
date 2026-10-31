@@ -1,46 +1,68 @@
 import { MAPBOX_TOKENS, USGS_CREDENTIALS } from '@hcm/test-support/fakes';
 import type { Locator, Page, Request } from '@playwright/test';
 
+import { contentFlowBudget } from '../../../packages/admin/src/content/budgets.js';
 import { GOOGLE_SCOPES } from '../../../packages/admin/src/google/scopes.js';
+import { E2E_CITY_ID } from '../../fixtures/world.js';
+import { hostingUrl } from '../../support/hosting.js';
+import type { InputFlow } from '../../support/budget.js';
 import type { TestFixtures } from '../../support/test.js';
+import { engineEvents, waitForEngineEvent } from '../../support/viewer.js';
 import type { SetupBudget } from '../support/budget.js';
 import { capture } from '../support/capture.js';
 import type { GoogleConsent } from '../support/consent.js';
 import type { ServerDeployment } from '../support/deployment.js';
 import type { EmulatorWorld } from '../support/emulators.js';
 import { apiText, setupText, shellText } from '../support/i18n.js';
+import {
+    followSiteRelease,
+    INSTALL_RELEASE,
+    installState,
+    nextLook,
+    preparedProject,
+    recordsSettled,
+    seedPublishedMap,
+    serveInstallBundle,
+    servePublishedMap,
+    submittedBuilds,
+    trackRecords,
+} from '../support/install.js';
 import { followDeepLink, SetupPage, standInProviderPages } from '../support/setup-page.js';
+import { STEPS_AT, withConsent } from '../support/steps.js';
 import { recordLiveRegions } from '../../support/live-regions.js';
 import { expectStateSound } from '../../support/state-check.js';
 import { adminVisit, type AdminStateId } from '../../tour/states.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../support/test.js';
 import type { UpstreamControl } from '../support/upstream.js';
-import { ADMIN_RUNTIME, ADMIN_WEB_CONFIG, emulatorOrigin, E2E_PROJECT_ID } from '../world.js';
+import { ADMIN_WEB_CONFIG, emulatorOrigin, E2E_PROJECT_ID } from '../world.js';
 
 // One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
 test.describe.configure({ lock: ADMIN_LOCK });
 
 /**
- * The owner's whole journey through the Setup Assistant (docs/research/M2b-interfaces.md §3), against the emulators and
- * the fake upstreams, from a Google Cloud project with no billing account and no server to a map with Mapbox, USGS,
- * analytics and the 45 legacy photos:
+ * The owner's whole journey through the Setup Assistant (docs/research/M2b-interfaces.md §3; since M6 with no terminal
+ * step, docs/research/M6-interfaces.md §4), against the emulators and the fake upstreams, from a Google Cloud project
+ * with no billing account and no server to the public map at the root of the project's Hosting site:
  *
- * 1. start-up mode, as a new map's Hosting-only deploy serves it (`runtime.json` says `startUp`): the admin calls nothing
- *    of the server, so the browser logs no error; the owner signs in with a read-only Google consent and Google proves
- *    the ownership;
+ * 1. start-up mode, as a new map's Hosting-only deploy serves it (`runtime.json` says `startUp`, with the admin's
+ *    release, whose install bundle Hosting serves beside it): the admin calls nothing of the server, so the browser
+ *    logs no error; the owner signs in with a read-only Google consent and Google proves the ownership;
  * 2. billing: no billing account yet (the deep link), the owner creates one on Google's page, the card links it by itself
  *    and creates the budget;
  * 3. provisioning: Secret Manager is down at first, so the secrets and what needs them wait; Retry what failed;
- * 4. the server's installation: the card watches the Cloud Functions list; once every function is there and the server
- *    answers, the claim runs without a click, the city is created and the start-up results are recorded;
+ * 4. Install the server: one click submits the server's and the imagery pipeline's Cloud Build builds (the fake plays
+ *    them); once every function is there and the server answers, the claim runs without a click;
  * 5. Mapbox: a demo account is refused, the owner adds a card on Mapbox's page and pastes the token again;
- * 6. USGS: the paste box opens before the token page, with the countdown; the M2M role waits for USGS's approval, which
- *    the server's six-hourly check (`ops.tick`) finds;
+ * 6. USGS: Do it later (the owner has no USGS account yet), so Setup goes on;
  * 7. analytics: detected once Google Analytics is linked to the project; the GA4 stream setting; the crash reports;
- * 8. the legacy import: one click, 45 photos through the photo pipeline, published and in the city's manifest.
+ * 8. the legacy import: one click, 45 photos through the photo pipeline, published and in the city's manifest;
+ * 9. the imagery pipeline the server's click installed, then Publish the map: one click, the viewer at the Hosting
+ *    root shows the 45 photos the server published, the admin stays at `/admin/`, and Setup is done with USGS later;
+ * 10. USGS after all: the paste box opens before the token page, with the countdown; the M2M role waits for USGS's
+ *     approval, which the server's six-hourly check (`ops.tick`) finds, and Home's reminder goes.
  *
- * Every in-app input and every Google consent is counted against `SETUP_STEP_SPECS` (§3.5), each bad path with its
- * declared allowance; what the human does on the providers' pages is not counted.
+ * Every in-app input and every Google consent is counted against `SETUP_STEP_SPECS` (§3.5, M6 §4.2), each bad path with
+ * its declared allowance; what the human does on the providers' pages is not counted, and no Setup text names a command.
  */
 
 test.use({ persona: null, mapOwner: null });
@@ -50,14 +72,6 @@ const PROVIDER_ORIGINS = ['https://ers.cr.usgs.gov', 'https://console.firebase.g
 
 /** The emulators' origins whose requests start-up mode must not make (a start-up deploy does not even probe the server). */
 const BACKEND = [emulatorOrigin('firestore'), emulatorOrigin('storage'), emulatorOrigin('functions')];
-
-/**
- * `/runtime.json` of a new map's Hosting-only deploy (`HCM_ADMIN_START_UP=1`, scripts/site/src/admin/runtime.ts): the
- * admin starts in start-up mode without probing the server.
- */
-async function serveStartUpRuntime(page: Page): Promise<void> {
-    await page.route('**/runtime.json', (route) => route.fulfill({ json: { ...ADMIN_RUNTIME, startUp: true } }));
-}
 
 /** Records the path of every request of the page to Firestore, Storage or a callable until `stop()`. */
 function backendRequests(page: Page): { readonly paths: string[]; stop(): void } {
@@ -122,6 +136,7 @@ interface Journey {
     readonly setup: SetupPage;
     readonly consent: GoogleConsent;
     readonly setupBudget: SetupBudget;
+    readonly skipUsgs: InputFlow;
     readonly upstream: UpstreamControl;
     readonly serverDeployment: ServerDeployment;
     readonly consoleErrors: TestFixtures['consoleErrors'];
@@ -189,14 +204,33 @@ async function provisionWithARetry({ page, lang, setup, setupBudget, upstream, c
     await setup.expectState('provision', 'ok');
 }
 
-/** 4. The server's installation, then the claim without a click. */
-async function installTheServer({ page, lang, setup, upstream, serverDeployment, emulators }: Journey, owner: string): Promise<void> {
-    await expect(setup.open('deploy').getByText(setupText(lang, 'adminSetup.deploy.watching'))).toBeVisible();
+/** No Setup text names a command: what is left of the install is a button (finding 13, S-A30-HAPPY-NO-TERMINAL). */
+const COMMAND = /\b(?:firebase (?:deploy|login|use)|gcloud [a-z]|gsutil |npm (?:run|install|ci)|npx |gh (?:secret|variable|workflow))/;
+
+async function expectNoCommand(page: Page): Promise<void> {
+    expect(await page.locator('hcm-setup-page').innerText()).not.toMatch(COMMAND);
+}
+
+/** The builds of `target` the fake Cloud Build received. */
+async function buildsOf(upstream: UpstreamControl, target: string): Promise<number> {
+    return (await submittedBuilds(upstream)).filter((build) => build.target === target).length;
+}
+
+/** 4. Install the server: one click, no consent within the hour of Prepare the project; the claim without a click. */
+async function installTheServer(journey: Journey, owner: string): Promise<void> {
+    const { page, lang, setup, setupBudget, upstream, serverDeployment, emulators } = journey;
+    const deploy = await setup.show('deploy');
+    await expect(deploy.getByText(setupText(lang, 'adminSetup.deploy.watching'))).toBeVisible();
+    await expectNoCommand(page);
     await checkpoint(page, lang, '04-deploy-waiting', 'deploy-waiting');
-    await upstream.scenario('cloud-functions.deployed', 'browser');
+    await setupBudget.inputs('deploy').click(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.server.action') }));
+    // The same click starts the imagery pipeline's build (step d3, no input of its own).
+    await expect.poll(async () => [await buildsOf(upstream, 'server'), await buildsOf(upstream, 'pipeline')]).toEqual([1, 1]);
+    await upstream.scenario('cloud-build.finish', 'browser');
     // The functions reach the server's world of the fake upstreams until CR-M2b-3 forwards the test's: it holds the
     // secrets the browser's provisioning created in the test's world.
     await upstream.scenario('secret-manager.provisioned', 'server');
+    await nextLook(page, installState(setup.open('deploy')).filter({ hasText: setupText(lang, 'adminSetup.install.state.installed') }));
     await serverDeployment.show();
     await page.clock.fastForward(30_000);
     await expect(page.getByText(shellText(lang, 'adminShell.bootstrap.banner'))).toBeHidden({ timeout: 60_000 });
@@ -240,9 +274,17 @@ async function connectMapbox({ page, lang, setup, setupBudget, upstream, console
     expect(JSON.stringify([city, await emulators.document('setup/status')])).not.toContain(MAPBOX_TOKENS.trial);
 }
 
-/** 6. USGS: the username, the token page (the paste box first, then the 60 s countdown), the paste saves at once. */
+/** 6. USGS can wait: Do it later (one input of its own budget); the chip says Later and Setup goes on. */
+async function postponeUsgs({ lang, setup, skipUsgs, page }: Journey): Promise<void> {
+    const usgs = await setup.show('usgs');
+    await skipUsgs.click(usgs.getByRole('button', { name: setupText(lang, 'adminSetup.usgs.later') }));
+    await expect(setup.card('usgs').locator('.status[data-later]')).toContainText(setupText(lang, 'adminSetup.state.later'));
+    await expectNoCommand(page);
+}
+
+/** 10. USGS after all: the username, the token page (the paste box first, then the 60 s countdown), the paste saves at once. */
 async function connectUsgs({ page, lang, setup, setupBudget, upstream, emulators }: Journey): Promise<void> {
-    const usgs = setup.open('usgs');
+    const usgs = await setup.show('usgs');
     const usgsInputs = setupBudget.inputs('usgs');
     await usgsInputs.fill(usgs.getByLabel(setupText(lang, 'adminSetup.usgs.username')), USGS_CREDENTIALS.pending.username);
     const tokenPage = usgs.getByRole('link', { name: startOf(setupText(lang, 'adminSetup.usgs.openTokenPage')) });
@@ -261,19 +303,20 @@ async function connectUsgs({ page, lang, setup, setupBudget, upstream, emulators
     await checkpoint(page, lang, '07-usgs-countdown', 'usgs-countdown');
     await usgsInputs.paste(usgsBox, USGS_CREDENTIALS.pending.applicationToken);
     await setup.expectState('usgs', 'pending');
-    await expect(usgs.getByText(apiText(lang, 'apiError.usgs.accessPending'))).toBeVisible();
-    await expect(usgs.getByText(startOf(setupText(lang, 'adminSetup.usgs.nextCheck')))).toBeVisible();
+    const pending = await setup.show('usgs');
+    await expect(pending.getByText(apiText(lang, 'apiError.usgs.accessPending'))).toBeVisible();
+    await expect(pending.getByText(startOf(setupText(lang, 'adminSetup.usgs.nextCheck')))).toBeVisible();
     await checkpoint(page, lang, '08-usgs-pending', 'usgs-pending');
     // USGS approves. Six hours later the server's tick checks again: its clock cannot move, so the check's time does.
     await upstream.scenario('usgs.m2mApproved', 'server');
     await emulators.updateFields('setup/status', { usgs: { nextCheckAt: new Date('2026-01-01T00:00:00Z') } }, ['usgs.nextCheckAt']);
     await emulators.runOpsTick();
     await expect.poll(async () => (await emulators.document('setup/status'))?.['usgs'], { timeout: 30_000 }).toMatchObject({ state: 'ok' });
-    await page.reload();
-    // The four required steps are done, so the empty address now opens the dashboard (DECISIONS-for-review.md §34i,
-    // S-A40-HAPPY-FIRST-SCREEN); the owner goes back to Setup for the optional steps.
+    // Every step is done: the empty address opens the dashboard (DECISIONS-for-review.md §34i), with no USGS reminder.
+    await page.goto(adminPath(lang));
     await expect(page.locator('hcm-home-page')).toBeVisible({ timeout: 60_000 });
-    await setup.visit('analytics');
+    await expect(page.locator('li[data-reminder^="usgs"]')).toHaveCount(0);
+    await page.goto(adminPath(lang, 'setup'));
     await setup.expectState('usgs', 'ok', 60_000);
 }
 
@@ -334,11 +377,67 @@ async function importLegacyPhotos({ page, lang, setup, setupBudget, emulators }:
         .toMatchObject({ photos: 45 });
 }
 
+/** 9a. The imagery pipeline: installed by the server's click, with no input of its own. */
+async function expectPipelineInstalled({ setup, lang }: Journey): Promise<void> {
+    await setup.expectState('pipeline', 'ok', 60_000);
+    const pipeline = await setup.show('pipeline');
+    await expect(installState(pipeline)).toContainText(setupText(lang, 'adminSetup.install.state.installed'));
+}
+
+/**
+ * 9b. Publish the map: one click. The steps since Prepare the project asked Google for other scopes (the analytics
+ * stream), so the tab's token no longer grants Google Cloud: the same click asks once (M6 §4.2's allowance).
+ */
+async function publishTheMap({ page, lang, setup, consent, setupBudget, upstream, emulators }: Journey): Promise<void> {
+    const site = await setup.show('site');
+    await expectNoCommand(page);
+    const publish = site.getByRole('button', { name: setupText(lang, 'adminSetup.install.site.action') });
+    // The first city's manifest was published while the tab held no Google Cloud token: the card saw it all the same.
+    await expect(publish).toBeEnabled({ timeout: 90_000 });
+    const scopes = await withConsent(page, consent, publish, setupBudget.inputs('site'), setupBudget.consents('site', 1));
+    expect(scopes).toEqual([GOOGLE_SCOPES.cloudPlatform]);
+    await expect.poll(() => buildsOf(upstream, 'site')).toBe(1);
+    await upstream.scenario('cloud-build.finish', 'browser');
+    await page.clock.fastForward(10_000);
+    await setup.expectState('site', 'ok');
+    const published = await setup.show('site');
+    await expect(published.getByRole('link', { name: new RegExp(setupText(lang, 'adminSetup.install.site.open')) })).toHaveAttribute(
+        'href',
+        `https://${E2E_PROJECT_ID}.web.app/`,
+    );
+    await checkpoint(page, lang, '11-site-published', 'setup.site-published');
+    await expect
+        .poll(async () => (await emulators.document('setup/status'))?.['install'])
+        .toMatchObject({ server: { state: 'installed' }, site: { state: 'installed', release: INSTALL_RELEASE } });
+    // The admin stays under /admin/ on the same origin as the public map (§2.3).
+    expect(new URL(page.url()).pathname).toMatch(/^\/admin\//);
+}
+
+/** 9c. The public map at the Hosting root boots the city with the 45 photos the server published, on one map. */
+async function viewTheMapAtTheRoot({ page, lang, emulators }: Journey): Promise<void> {
+    const viewer = await page.context().newPage();
+    await servePublishedMap(viewer, emulators, E2E_CITY_ID);
+    await viewer.goto(hostingUrl('/', { lang }));
+    await waitForEngineEvent(viewer, 'hcm-ready');
+    expect(await engineEvents(viewer, 'hcm-ready')).toEqual([expect.objectContaining({ cityId: E2E_CITY_ID, photos: 45 })]);
+    await viewer.close();
+}
+
+/** 9d. Setup is done with USGS for later: the empty address opens Home, whose reminder offers Set up USGS. */
+async function expectDoneWithUsgsLater({ page, lang }: Journey): Promise<void> {
+    await page.goto(adminPath(lang));
+    await expect(page.locator('hcm-home-page')).toBeVisible({ timeout: 60_000 });
+    const reminder = page.locator('li[data-reminder="usgsLater"]');
+    await expect(reminder).toContainText(setupText(lang, 'adminSetup.reminder.usgsLater'));
+    await reminder.getByRole('link', { name: setupText(lang, 'adminSetup.reminder.setUpUsgs') }).click();
+}
+
 test(
-    'The owner sets up a new map from sign-in to the legacy import within the input budget',
+    'The owner sets up a new map from sign-in to the public map with no terminal, within the input budget',
     {
         tag: [
             '@S-A30-HAPPY',
+            '@S-A30-HAPPY-NO-TERMINAL',
             '@S-A25-HAPPY',
             '@S-A27-HAPPY-UNVERIFIED-NOTICE',
             '@S-A04-BAD-NOT-ENABLED',
@@ -355,23 +454,30 @@ test(
             '@S-A31-BAD-ALERTS',
         ],
     },
-    async ({ page, lang, consent, setupBudget, upstream, serverDeployment, consoleErrors, adminWorld }) => {
-        // Eight steps, three polls, 45 photos through photos.onUpload on the emulators, and both generic checkers at ten
-        // states (about 6 minutes beside the viewer tiers on a loaded laptop, 2026-10-17).
-        test.setTimeout(600_000);
+    async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment, consoleErrors, adminWorld }) => {
+        // Ten steps, four polls, three builds, 45 photos through photos.onUpload on the emulators, and both generic
+        // checkers at a dozen states (about 6 minutes beside the viewer tiers on a loaded laptop, 2026-10-17).
+        test.setTimeout(900_000);
         const setup = new SetupPage(page, lang);
         const emulators = adminWorld.emulators;
         const notes = { projectId: E2E_PROJECT_ID, domain: ADMIN_WEB_CONFIG.authDomain };
-        const journey: Journey = { page, lang, setup, consent, setupBudget, upstream, serverDeployment, consoleErrors, emulators, notes };
+        const skipUsgs = inputBudget.flow('skipUsgs', contentFlowBudget('skipUsgs'));
+        const journey: Journey = {
+            ...{ page, lang, setup, consent, setupBudget, skipUsgs, upstream, serverDeployment, consoleErrors, emulators },
+            notes,
+        };
         await upstream.scenario('cloud-billing.noAccount', 'browser');
         await upstream.scenario('error-reporting.twoGroups', 'server');
         await standInProviderPages(page.context(), PROVIDER_ORIGINS);
         await serverDeployment.hide();
         await page.context().addInitScript(recordLiveRegions);
+        trackRecords(page);
         // The polls run on the page's clock: time flows, and the spec jumps ahead to the next poll.
         await page.clock.install();
         await page.clock.resume();
-        await serveStartUpRuntime(page);
+        // A new map's start-up deploy: `runtime.json` says start-up and names the admin's release, whose bundle it serves.
+        await serveInstallBundle(page, { startUp: true });
+        await followSiteRelease(page, upstream);
         const startUp = backendRequests(page);
         await page.goto(adminPath(lang));
 
@@ -386,14 +492,25 @@ test(
 
         await installTheServer(journey, adminWorld.accounts.owner.uid);
         await connectMapbox(journey);
-        await connectUsgs(journey);
+        await postponeUsgs(journey);
         await enableAnalytics(journey);
         await importLegacyPhotos(journey);
+        await expectPipelineInstalled(journey);
+        await publishTheMap(journey);
+        // The required steps with USGS postponed: within 9 inputs (Do it later counted for USGS's three) and 4 consents
+        // beside the one Publish the map was allowed once the token was gone.
+        const required = setupBudget.used();
+        expect(required.inputs - setupBudget.allowance() + skipUsgs.used).toBeLessThanOrEqual(required.limit.inputs - 2);
+        expect(required.consents - 1).toBeLessThanOrEqual(required.limit.consents);
+        await viewTheMapAtTheRoot(journey);
+        await expectDoneWithUsgsLater(journey);
+        await connectUsgs(journey);
 
-        // The whole assistant: within its budget once the bad paths' declared allowances are taken off (§3.5).
+        // The whole assistant: within its budget once the bad paths' declared allowances are taken off (§3.5, M6 §4.2).
         const used = setupBudget.used();
         expect(used.inputs - setupBudget.allowance()).toBeLessThanOrEqual(used.limit.inputs);
-        expect(used.consents).toBeLessThanOrEqual(used.limit.consents);
+        expect(used.consents - 1).toBeLessThanOrEqual(used.limit.consents);
+        await recordsSettled(page);
     },
 );
 
@@ -415,5 +532,64 @@ test(
         probes.stop();
         expect(new Set(probes.paths)).toEqual(new Set([`/${E2E_PROJECT_ID}/us-central1/admin-session`]));
         expect(serverDeployment.claimErrors().length).toBeGreaterThan(0);
+    },
+);
+
+test(
+    'Publishing the map hours after Prepare the project costs one consent from the same click; nothing is asked again',
+    { tag: ['@S-A30-BAD-TOKEN-EXPIRED'] },
+    async ({ page, lang, consent, setupBudget, upstream, serverDeployment, consoleErrors, adminWorld }) => {
+        test.setTimeout(300_000);
+        await serverDeployment.hide();
+        trackRecords(page);
+        const { setup, deploy } = await preparedProject({
+            ...{ page, lang, consent, setupBudget, upstream, signInBudget: setupBudget.inputs('signIn') },
+            signInConsent: setupBudget.consents('signIn'),
+        });
+        await followSiteRelease(page, upstream);
+        // Within the hour of Prepare the project: Install the server is one click and no consent.
+        await setupBudget.inputs('deploy').click(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.server.action') }));
+        await expect.poll(() => buildsOf(upstream, 'server')).toBe(1);
+        await upstream.scenario('cloud-build.finish', 'browser');
+        await upstream.scenario('secret-manager.provisioned', 'server');
+        await nextLook(page, installState(deploy).filter({ hasText: setupText(lang, 'adminSetup.install.state.installed') }));
+        await serverDeployment.show();
+        await page.clock.fastForward(30_000);
+        await setup.expectState('claim', 'ok', 60_000);
+        // The steps between (Mapbox, the photos) leave the first city published; they took longer than the token's hour.
+        await adminWorld.emulators.updateFields('setup/status', { mapbox: { state: 'ok', checkedAt: STEPS_AT, user: 'e2e-mapbox' } }, [
+            'mapbox',
+        ]);
+        await seedPublishedMap(adminWorld.emulators, adminWorld.accounts.owner.uid);
+        await page.clock.fastForward('02:00:00');
+
+        const site = await setup.show('site');
+        const publish = setupBudget.inputs('site');
+        const consents = setupBudget.consents('site', 1);
+        const scopes = await withConsent(
+            page,
+            consent,
+            site.getByRole('button', { name: setupText(lang, 'adminSetup.install.site.action') }),
+            publish,
+            consents,
+        );
+
+        expect(scopes).toEqual([GOOGLE_SCOPES.cloudPlatform]);
+        await expect.poll(() => buildsOf(upstream, 'site')).toBe(1);
+        await upstream.scenario('cloud-build.finish', 'browser');
+        await page.clock.fastForward(10_000);
+        await setup.expectState('site', 'ok');
+        expect([publish.used, consents.used]).toEqual([1, 1]);
+        // Nothing detected is asked again: the steps done stay done, and the server is not installed a second time.
+        for (const step of ['signIn', 'billing', 'provision', 'deploy', 'claim'] as const) {
+            await setup.expectState(step, 'ok');
+        }
+        expect(await buildsOf(upstream, 'server')).toBe(1);
+        const used = setupBudget.used();
+        expect(used.inputs - setupBudget.allowance()).toBeLessThanOrEqual(used.limit.inputs);
+        // The hours the clock jumped make Firestore's channel check its connection (an image the admin's CSP refuses).
+        consoleErrors.takeMatching(/cleardot\.gif/);
+        serverDeployment.claimErrors();
+        await recordsSettled(page);
     },
 );

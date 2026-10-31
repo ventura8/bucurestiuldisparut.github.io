@@ -5,13 +5,14 @@
  * creates the city, records the bootstrap results with `setup.recordCloud`, deletes the bootstrap record and loads
  * `setup/status`. It satisfies the elements' `SetupPort` (`packages/ui/src/admin/setup/setup-port.ts`).
  */
-import type { MapboxTokenAudience, SaveUsgsRequest, SelfTestResponse, ServiceState } from '@hcm/shared';
+import type { InstallTarget, MapboxTokenAudience, SaveUsgsRequest, SelfTestResponse, ServiceState } from '@hcm/shared';
 
 import { createAnalyticsFlow, type AnalyticsFlow } from './analytics.js';
 import { clearBootstrapRecord, readBootstrapRecord, type BootstrapRecord } from './bootstrap-record.js';
 import { createBillingFlow, type BillingFlow } from './billing.js';
 import { createSetupContext, createSetupStore, type SetupContext, type SetupStore } from './context.js';
 import { createDeployFlow, type DeployFlow } from './deploy.js';
+import { createInstallCards, type InstallCards } from './install.js';
 import { createLegacyImportFlow, type LegacyImportFlow } from './legacy-import.js';
 import { createMapboxFlow, type MapboxFlow } from './mapbox.js';
 import { apiFailure, setupMessage, type SetupMessage } from './messages.js';
@@ -35,6 +36,8 @@ interface SetupIntents {
     linkBilling(): Promise<void>;
     chooseBillingAccount(accountName: string): void;
     confirmBillingAccount(): Promise<void>;
+    /** M6 (A60): "This account is a free trial" on the billing card (one input, no consent). */
+    markTrial(): Promise<void>;
     /** Prepare the project, or Retry what failed. */
     provision(): Promise<void>;
     saveMapbox(secretToken: string): Promise<void>;
@@ -45,6 +48,8 @@ interface SetupIntents {
     draftUsgs(fields: { readonly username?: string; readonly expiresOn?: string }): void;
     /** The paste of the USGS token (not counted: the element counted the paste). */
     saveUsgs(request: SaveUsgsRequest): Promise<void>;
+    /** M6 setup-ux (A59): Do it later on the USGS card (one input). */
+    postponeUsgs(): Promise<void>;
     /** The owner followed one of the step's deep links (not counted); the analytics card then watches for Google Analytics. */
     followLink(step: SetupStepId): void;
     disableHistoryPageViews(): Promise<void>;
@@ -53,6 +58,14 @@ interface SetupIntents {
     /** Lists the crash groups again (the panel's Retry and the `#/crashes` page). */
     loadCrashGroups(): Promise<void>;
     importLegacy(): Promise<void>;
+    // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.8, §4.1)
+    /** Install the server (d): one click; it also starts the imagery pipeline (d3). */
+    installServer(): Promise<void>;
+    /** Publish the map (i), or Try again on an install card: one click. */
+    install(target: InstallTarget): Promise<void>;
+    /** Update the map: one click (one consent without a live token), counted on `step`'s card. */
+    updateMap(step: SetupStepId): Promise<void>;
+    // [end install]
 }
 
 export interface SetupController {
@@ -78,6 +91,7 @@ interface Flows {
     readonly usgs: UsgsFlow;
     readonly analytics: AnalyticsFlow;
     readonly legacyImport: LegacyImportFlow;
+    readonly install: InstallCards;
 }
 
 function createFlows(ctx: SetupContext): Flows {
@@ -90,10 +104,18 @@ function createFlows(ctx: SetupContext): Flows {
         usgs: createUsgsFlow(ctx),
         analytics: createAnalyticsFlow(ctx),
         legacyImport: createLegacyImportFlow(ctx),
+        install: createInstallCards(ctx),
     };
 }
 
 const isDone = (state: SetupState, id: SetupStepId): boolean => state.steps[id].state === 'ok';
+
+/** A change after which the install cards look again: the project just prepared, the mode switched, a token appeared. */
+function installWatchable(before: SetupState, next: SetupState): boolean {
+    const prepared = !isDone(before, 'provision') && isDone(next, 'provision');
+    const token = !before.liveScopes.includes('cloudPlatform') && next.liveScopes.includes('cloudPlatform');
+    return prepared || token || before.mode !== next.mode;
+}
 
 /** The self-test's checks as the page lists them: each state, and a failure's reason (S-A03-BAD-SELFTEST-FAILURE). */
 function checksOf(response: SelfTestResponse): readonly SelfTestCheckState[] {
@@ -175,6 +197,9 @@ class Controller implements SetupController {
         if (appeared && this.store.get().openStep === 'analytics') {
             void this.flows.analytics.open();
         }
+        if (appeared) {
+            this.watchInstall(this.store.get());
+        }
     }
 
     dispose(): void {
@@ -183,6 +208,7 @@ class Controller implements SetupController {
         this.flows.deploy.dispose();
         this.flows.usgs.dispose();
         this.flows.analytics.dispose();
+        this.flows.install.dispose();
     }
 
     /**
@@ -197,6 +223,20 @@ class Controller implements SetupController {
         if (next.mode === 'bootstrap' && !isDone(before, 'provision')) {
             this.watchDeployment(next);
         }
+        if (installWatchable(before, next)) {
+            this.watchInstall(next);
+        }
+    }
+
+    /**
+     * M6: the install cards follow their targets once the project is prepared, with the live token only: in start-up
+     * mode the server and the pipeline, in an admin session also the site, and only on the Setup page.
+     */
+    private watchInstall(state: SetupState): void {
+        if (!isDone(state, 'provision') || (state.mode === 'normal' && !this.pageShown)) {
+            return;
+        }
+        this.flows.install.watch(state.mode === 'normal' ? ['server', 'pipeline', 'site'] : ['server', 'pipeline']);
     }
 
     private analyticsOpened(before: SetupState, next: SetupState): boolean {
@@ -291,6 +331,8 @@ class Controller implements SetupController {
             billing: () => this.flows.billing.link(),
             provision: () => (normal ? this.flows.provision.recheck() : this.flows.provision.run()),
             deploy: () => this.flows.deploy.recheck(),
+            pipeline: () => this.flows.install.recheck('pipeline'),
+            site: () => this.flows.install.recheck('site'),
         };
         const action = own[step];
         if (action !== undefined) {
@@ -318,6 +360,8 @@ class Controller implements SetupController {
             billing: () => this.flows.billing.link(),
             provision: () => this.flows.provision.run(),
             deploy: () => this.flows.deploy.recheck(),
+            pipeline: () => this.flows.install.recheck('pipeline'),
+            site: () => this.flows.install.recheck('site'),
         };
         const action = resume[step];
         if (action === undefined) {
@@ -343,6 +387,7 @@ class Controller implements SetupController {
                 billing.choose(accountName);
             },
             confirmBillingAccount: () => billing.confirm(),
+            markTrial: () => billing.markTrial(),
             provision: () => provision.run(),
             saveMapbox: (secretToken) => mapbox.save(secretToken),
             rotatePublicToken: (audience) => mapbox.rotate(audience),
@@ -353,6 +398,7 @@ class Controller implements SetupController {
                 this.ctx.update((state) => ({ ...state, usgs: { ...state.usgs, ...fields } }));
             },
             saveUsgs: (request) => usgs.save(request),
+            postponeUsgs: () => usgs.postpone(),
             followLink: (step) => {
                 if (step === 'analytics') {
                     analytics.followLink();
@@ -363,6 +409,12 @@ class Controller implements SetupController {
             enableApi: (api) => analytics.enableApi(api),
             loadCrashGroups: () => analytics.loadCrashGroups(),
             importLegacy: () => legacyImport.run(),
+            installServer: async () => {
+                await this.flows.install.installServer();
+                this.flows.deploy.watch();
+            },
+            install: (target) => this.flows.install.install(target),
+            updateMap: (step) => this.flows.install.updateMap(step),
         };
     }
 }

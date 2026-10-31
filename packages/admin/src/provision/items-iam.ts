@@ -9,28 +9,40 @@ import { CUSTOM_ROLES, roleTable, type CustomRoleEntry, type PolicyBindings, typ
  * The `iam` item (the project's custom roles first, M4; then the role table of `docs/research/M2b-interfaces.md` §3.4.1
  * on the project, the buckets, the secrets and the service accounts) and the `workload-identity` item (the GitHub pool and its `site-master` provider, whose
  * condition admits only the repository's `master` branch in the `deploy` environment, and the deployer's binding).
+ * M6 (`docs/research/M6-interfaces.md` §1.6, CR-M6-2): the Eventarc and Pub/Sub service identities are generated before
+ * the table (finding 12), which gains `roles/run.invoker` for the function accounts (finding 17), the installer's rows and
+ * the pipeline repository's policy.
  */
 
+/** The Compute Engine default account's id and address, when the project has one (§1.2: a first deploy binds it). */
+async function computeDefault({ clients, project }: ProvisionContext): Promise<string | undefined> {
+    const id = `${project.projectNumber}-compute`;
+    return (await clients.iam.listServiceAccounts(project.projectId)).includes(id) ? `${id}@developer.gserviceaccount.com` : undefined;
+}
+
 /** The service agents by their documented names: the doctor never creates them, the fix does first. */
-function conventionalAgents(projectNumber: string): ServiceAgents {
+async function conventionalAgents(context: ProvisionContext): Promise<ServiceAgents> {
+    const { projectNumber } = context.project;
     return {
         firebaseStorage: `service-${projectNumber}@gcp-sa-firebasestorage.iam.gserviceaccount.com`,
         cloudStorage: `service-${projectNumber}@gs-project-accounts.iam.gserviceaccount.com`,
+        pubsub: `service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
+        computeDefault: await computeDefault(context),
     };
 }
 
+/** How each kind of policy of the role table is read and written. */
+const POLICY_ACCESS: Readonly<Record<PolicyBindings['kind'], (context: ProvisionContext, resource: string) => PolicyAccess>> = {
+    project: ({ clients, project }) => clients.resourceManager.projectPolicy(project.projectId),
+    bucket: ({ clients }, resource) => clients.storage.bucketPolicy(resource),
+    secret: ({ clients, project }, resource) => clients.secretManager.secretPolicy(project.projectId, resource),
+    serviceAccount: ({ clients, project }, resource) => clients.iam.serviceAccountPolicy(project.projectId, resource),
+    // M6 (§1.2): the installer's writer role on the pipeline's repository only.
+    repository: ({ clients, project }, resource) => clients.artifactRegistry.repositoryPolicy(project.projectId, project.region, resource),
+};
+
 function policyAccess(context: ProvisionContext, policy: PolicyBindings): PolicyAccess {
-    const { clients, project } = context;
-    switch (policy.kind) {
-        case 'project':
-            return clients.resourceManager.projectPolicy(project.projectId);
-        case 'bucket':
-            return clients.storage.bucketPolicy(policy.resource);
-        case 'secret':
-            return clients.secretManager.secretPolicy(project.projectId, policy.resource);
-        case 'serviceAccount':
-            return clients.iam.serviceAccountPolicy(project.projectId, policy.resource);
-    }
+    return POLICY_ACCESS[policy.kind](context, policy.resource);
 }
 
 /** The bindings a policy lacks; a resource that does not exist yet lacks them all. */
@@ -45,12 +57,19 @@ async function lackingBindings(access: PolicyAccess, wanted: readonly WantedBind
     }
 }
 
-/** Creates the service agents first (their bindings name them), then merges every policy's bindings in. */
+/**
+ * Creates the service agents first (their bindings name them; Eventarc's has no binding of ours, Google grants it its
+ * role when it is made, minutes before a first deploy needs it), then merges every policy's bindings in.
+ */
 async function bindAll(context: ProvisionContext): Promise<void> {
     const { clients, project } = context;
+    const identity = (service: string): Promise<string> => clients.serviceUsage.serviceIdentity(project.projectNumber, service);
+    await identity('eventarc.googleapis.com');
     const agents: ServiceAgents = {
-        firebaseStorage: await clients.serviceUsage.serviceIdentity(project.projectNumber, 'firebasestorage.googleapis.com'),
+        firebaseStorage: await identity('firebasestorage.googleapis.com'),
         cloudStorage: await clients.storage.serviceAgent(project.projectId),
+        pubsub: await identity('pubsub.googleapis.com'),
+        computeDefault: await computeDefault(context),
     };
     const table = roleTable(project, agents, (await context.findings()).noDefaultGrants);
     await eachInTurn(table, (policy) => ensureBindings(policyAccess(context, policy), policy.bindings));
@@ -85,7 +104,7 @@ async function fixRoles(context: ProvisionContext, findings: readonly RoleFindin
 
 async function bindingsLacking(context: ProvisionContext): Promise<string[]> {
     const findings = await context.findings();
-    const table = roleTable(context.project, conventionalAgents(context.project.projectNumber), findings.noDefaultGrants);
+    const table = roleTable(context.project, await conventionalAgents(context), findings.noDefaultGrants);
     const lacks = await Promise.all(
         table.map(async (policy) =>
             (await lackingBindings(policyAccess(context, policy), policy.bindings)).length === 0
@@ -98,7 +117,7 @@ async function bindingsLacking(context: ProvisionContext): Promise<string[]> {
 
 const iam: ProvisionItemSpec = {
     id: 'iam',
-    after: ['service-accounts', 'buckets', 'secrets', 'org-policies'],
+    after: ['service-accounts', 'buckets', 'artifact-registry', 'secrets', 'org-policies'],
     observe: async (context) => {
         const roles = await Promise.all(
             CUSTOM_ROLES.map(async (entry) => ({ entry, found: await context.clients.iam.getRole(context.project.projectId, entry.id) })),

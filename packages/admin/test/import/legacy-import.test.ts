@@ -4,6 +4,7 @@ import { createFakeFetch, jsonResponse, route, routeTable, type FakeFetch } from
 import { describe, expect, it } from 'vitest';
 
 import {
+    STUCK_PHOTO_MS,
     createLegacyImport,
     type LegacyImportDeps,
     type LegacyImportProgress,
@@ -73,6 +74,10 @@ function importWorld(records: readonly unknown[] = RECORDS, options: MemoryStore
             },
             sleep: () => new Promise(() => undefined),
             log: createLogger('import', { sink: sink.sink }),
+            reprocess: (_cityId, photoId) => {
+                store.reprocess(photoId);
+                return Promise.resolve();
+            },
             ...overrides,
         }),
     };
@@ -199,14 +204,14 @@ describe('run when something fails', () => {
             },
         };
 
-        const result = await createLegacyImport(world.deps({ store, sleep: () => Promise.resolve(), processingTimeoutMs: 1 })).run(
+        const result = await createLegacyImport(world.deps({ store, sleep: () => Promise.resolve(), stuckAfterMs: 1 })).run(
             () => undefined,
         );
 
         expect(result.failed).toEqual([
             { id: 'arionoaia-1980', detail: 'apiError.photo.unreadable' },
             { id: 'ferdinand', detail: 'apiError.notFound' },
-            { id: 'bateriilor', detail: 'apiError.unavailable' },
+            { id: 'bateriilor', detail: 'apiError.photo.notReceived' },
         ]);
     });
 
@@ -308,5 +313,60 @@ describe('detect', () => {
         world.store.docs.set('arionoaia-1980', { processing: 'done', hasImage: true, published: false });
 
         await expect(createLegacyImport(world.deps({ concurrency: 1 })).detect()).resolves.toEqual({ done: 1, total: 3, failed: [] });
+    });
+});
+
+describe('run when an upload event never reaches the server (M6, finding 17)', () => {
+    /** Each photo's uploads in turn: the first event is lost, then `then` decides (lost again, or processed). */
+    function lostFirst(then: 'done' | 'never'): (photoId: string) => 'done' | 'never' {
+        const seen = new Map<string, number>();
+        return (photoId) => {
+            if (photoId !== 'ferdinand') {
+                return 'done';
+            }
+            const count = (seen.get(photoId) ?? 0) + 1;
+            seen.set(photoId, count);
+            return count === 1 ? 'never' : then;
+        };
+    }
+
+    it('happyPath_aPhotoWhoseUploadEventWasLostIsReprocessedAfterTwoMinutesAndPublished @S-A28-HAPPY-STUCK-REPROCESSED', async () => {
+        const world = importWorld(RECORDS, { outcome: lostFirst('done') });
+        const slept: number[] = [];
+        const sleep = (ms: number): Promise<void> => {
+            slept.push(ms);
+            return Promise.resolve();
+        };
+
+        const result = await createLegacyImport(world.deps({ sleep })).run(() => undefined);
+
+        expect(result).toEqual({ done: 3, total: 3, failed: [] });
+        expect(world.store.reprocessed).toEqual(['ferdinand']);
+        expect(world.store.published).toContain('ferdinand');
+        // Two minutes, never the ten of before.
+        expect(new Set(slept)).toEqual(new Set([STUCK_PHOTO_MS]));
+        expect(STUCK_PHOTO_MS).toBe(120_000);
+        expect(world.sink.records).toContainEqual(expect.objectContaining({ level: 'warn', data: { photo: 'ferdinand' } }) as unknown);
+    });
+
+    it('badPath_aPhotoStillPendingAfterTheReprocessIsListedAsNotReceivedAndTheOthersAreImported @S-A28-BAD-STUCK-AGAIN', async () => {
+        const world = importWorld(RECORDS, { outcome: lostFirst('never') });
+
+        const result = await createLegacyImport(world.deps({ sleep: () => Promise.resolve() })).run(() => undefined);
+
+        expect(result).toEqual({ done: 2, total: 3, failed: [{ id: 'ferdinand', detail: 'apiError.photo.notReceived' }] });
+        expect(world.store.reprocessed).toEqual(['ferdinand']);
+        expect(world.store.published).not.toContain('ferdinand');
+        expect(world.store.watchers()).toBe(0);
+    });
+
+    it('badPath_aReprocessTheServerRefusesListsThePhotoAsUnavailable', async () => {
+        const world = importWorld(RECORDS, { outcome: lostFirst('done') });
+        const reprocess = (): Promise<void> => Promise.reject(new Error('functions/unavailable'));
+
+        const result = await createLegacyImport(world.deps({ sleep: () => Promise.resolve(), reprocess })).run(() => undefined);
+
+        expect(result.failed).toEqual([{ id: 'ferdinand', detail: 'apiError.unavailable' }]);
+        expect(result.done).toBe(2);
     });
 });

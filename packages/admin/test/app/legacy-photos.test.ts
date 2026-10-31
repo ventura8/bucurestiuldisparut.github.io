@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { legacyPhotoStore, photoStateOf } from '../../src/app/legacy-photos.js';
+import { legacyPhotoStore, legacyReprocess, photoStateOf } from '../../src/app/legacy-photos.js';
 import type { LegacyPhotoFields } from '../../src/import/bundle.js';
-import { FakeDocuments } from './fakes.js';
+import { FakeCallables, FakeDocuments } from './fakes.js';
 
 const FIELDS = { title: { ro: 'Gara de Nord' }, published: false, processing: 'pending' } as unknown as LegacyPhotoFields;
 
@@ -74,5 +74,16 @@ describe('photoStateOf', () => {
             hasImage: false,
             published: false,
         });
+    });
+});
+
+describe('legacyReprocess (M6, finding 17)', () => {
+    it('happyPath_aStuckPhotoIsSentToPhotosReprocess', async () => {
+        const callables = new FakeCallables();
+        callables.answer('photos.reprocess', () => ({ processing: 'pending' }));
+
+        await legacyReprocess({ callables })('bucharest', 'gara-de-nord');
+
+        expect(callables.calls).toEqual([{ name: 'photos.reprocess', request: { cityId: 'bucharest', photoId: 'gara-de-nord' } }]);
     });
 });

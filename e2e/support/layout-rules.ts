@@ -1,5 +1,5 @@
 import type { Rect } from './dom-walk.js';
-import type { ChromeInfo, InteractiveInfo, LayoutSnapshot, NodeInfo, Sample } from './layout-probe.js';
+import type { ChromeInfo, InteractiveInfo, LayoutSnapshot, NodeInfo, Sample, TextInfo } from './layout-probe.js';
 import { boxText, elementText, type ElementRef, type Violation } from './violations.js';
 
 /**
@@ -390,6 +390,34 @@ export function textOverlapViolations(snapshot: LayoutSnapshot): Violation[] {
     });
 }
 
+/** The part of a text's lines a box covers beyond the tolerance, or null. */
+function coveredLine(text: TextInfo, box: Rect): Rect | null {
+    return text.lines.map((line) => overlapOf(line, box)).find((overlap) => overlap !== null) ?? null;
+}
+
+/**
+ * (e) No loading indicator is drawn over a text but its own (M6, finding 6 of 2026-10-25: a busy step's indicator, an
+ * 18 px box whose 38 px shape turned over the chip's label). The shape's box as drawn now is compared with every text's
+ * lines; a text inside the indicator is its own.
+ */
+export function graphicOverlapViolations(snapshot: LayoutSnapshot): Violation[] {
+    return snapshot.graphics.flatMap((graphic) => {
+        const shape = nodeAt(snapshot, graphic.node);
+        const box = shape.visible ?? shape.box;
+        return snapshot.texts
+            .filter((text) => !nodeAt(snapshot, text.node).ancestors.includes(graphic.node))
+            .flatMap((text): Violation[] => {
+                const covered = coveredLine(text, box);
+                if (covered === null) {
+                    return [];
+                }
+                const [a, b] = [refOf(shape), refOf(nodeAt(snapshot, text.node))];
+                const message = `the loading indicator ${elementText(a)} is drawn over the text of ${elementText(b)} at ${boxText(covered)}`;
+                return [{ check: 'graphic-overlap', message, elements: [a, b] }];
+            });
+    });
+}
+
 /** Every layout violation of the snapshot. */
 export function layoutViolations(snapshot: LayoutSnapshot, context: LayoutContext): Violation[] {
     return [
@@ -402,5 +430,6 @@ export function layoutViolations(snapshot: LayoutSnapshot, context: LayoutContex
         ...legalViolations(snapshot),
         ...clippedTextViolations(snapshot),
         ...textOverlapViolations(snapshot),
+        ...graphicOverlapViolations(snapshot),
     ];
 }

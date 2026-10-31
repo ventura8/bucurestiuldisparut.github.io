@@ -452,7 +452,7 @@ describe('runImageryTick', () => {
         await tick.run({ scheduleTime: NOW, jobName: 'firebase-schedule-imagery-tick-us-central1' });
 
         expect(tick.__endpoint).toMatchObject({
-            serviceAccountEmail: 'fn-events@',
+            serviceAccountEmail: 'fn-events@demo-hcm.iam.gserviceaccount.com',
             maxInstances: 1,
             scheduleTrigger: { schedule: 'every 5 minutes' },
         });

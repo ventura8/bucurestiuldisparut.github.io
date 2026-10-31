@@ -217,4 +217,29 @@ describe('<hcm-setup-import>', () => {
 
         expect(shadowPart(element, 'hcm-button').hasAttribute('disabled')).toBe(true);
     });
+
+    it('badPath_aPhotoTheServerNeverReceivedLinksTheStepThatGrantsItsRole', async () => {
+        // M6 (finding 17): the upload's events never reached the server, even after photos.reprocess.
+        const { element } = await legacy(
+            {
+                legacyImport: {
+                    done: 44,
+                    total: 45,
+                    failed: [
+                        { id: 'ferdinand', detail: 'apiError.photo.notReceived' },
+                        { id: 'bateriilor', detail: 'apiError.photo.tooLarge' },
+                    ],
+                    running: false,
+                },
+            },
+            'en',
+        );
+
+        const stuck = shadowPart(element, '[data-photo="ferdinand"]');
+        expect(stuck.textContent).toContain('Not processed: the server did not receive the upload');
+        expect(stuck.querySelector('a')?.getAttribute('href')).toBe('#/setup/provision');
+        expect(stuck.querySelector('a')?.textContent).toBe('Open the step "Prepare the Google Cloud project"');
+        expect(shadowPart(element, '[data-photo="bateriilor"]').querySelector('a')).toBeNull();
+        expect(await axeViolations(element)).toEqual([]);
+    });
 });

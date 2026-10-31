@@ -160,3 +160,35 @@ def test_bad_path_an_engine_chunk_without_a_budget_or_over_it_fails(tmp_path: Pa
         "packages/engine/dist/map-sync-COl7ap_a.js: 0.0 KB gzip, a chunk without a budget (add `map-sync` to ENGINE_CHUNK_BUDGETS)",
     ]
     assert len(lines) == 2
+
+
+def install_bundle(root: Path, slug: str, sizes: dict[str, int]) -> None:
+    for name, size in sizes.items():
+        bundle(root, f"{bundles.INSTALL_DIR}/{slug}/{name}", b"x" * size)
+
+
+def test_happy_path_the_install_bundle_is_measured_as_served(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    install_bundle(tmp_path, "1-0-0-abc1234", {"server.tgz": 2000, "pipeline.tgz": 1500, "hosting.tgz": 5000})
+
+    assert bundles.main(["--root", str(tmp_path), "--install"]) == 0
+    lines = caplog.messages[0].splitlines()
+    assert lines[0] == "[bundle-budget] OK:"
+    assert lines[1:] == [
+        f"  {bundles.INSTALL_DIR}/1-0-0-abc1234/hosting.tgz: 5.0 KB as served (budget 80000 KB)",
+        f"  {bundles.INSTALL_DIR}/1-0-0-abc1234/pipeline.tgz: 1.5 KB as served (budget 1000 KB)",
+        f"  {bundles.INSTALL_DIR}/1-0-0-abc1234/server.tgz: 2.0 KB as served (budget 8000 KB)",
+    ]
+
+
+def test_bad_path_an_install_bundle_missing_a_file_over_budget_or_absent_fails(tmp_path: Path) -> None:
+    assert bundles.check_install(tmp_path) == ([f"{bundles.INSTALL_DIR}: no install bundle (run build:install first)"], [])
+
+    install_bundle(tmp_path, "1-0-0-abc1234", {"server.tgz": 3000, "hosting.tgz": 10})
+    problems, lines = bundles.check_install(tmp_path, {"server.tgz": 2, "pipeline.tgz": 1, "hosting.tgz": 1})
+
+    assert problems == [
+        f"{bundles.INSTALL_DIR}/1-0-0-abc1234/pipeline.tgz: missing (run build:install first)",
+        f"{bundles.INSTALL_DIR}/1-0-0-abc1234/server.tgz: 3.0 KB as served (budget 2 KB)",
+    ]
+    assert len(lines) == 2
+    assert bundles.main(["--root", str(tmp_path), "--install"]) == 1

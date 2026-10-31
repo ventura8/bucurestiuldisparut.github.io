@@ -16,6 +16,8 @@ export interface DeployedFunction {
     readonly id: string;
     /** `ACTIVE`, `DEPLOYING`, `FAILED`, ... */
     readonly state: string;
+    /** M6: the release the function runs (its `HCM_RELEASE` environment variable), or null for a deploy without one. */
+    readonly release: string | null;
 }
 
 export interface FunctionsClient {
@@ -44,7 +46,7 @@ function deploymentState(ready: number, total: number, failed: number): Deployme
 
 /** Every expected function `ACTIVE`: `ok`; one `FAILED`: `invalid`; otherwise `pending` with the count of ready ones. */
 export function deploymentStatus(
-    functions: readonly DeployedFunction[],
+    functions: readonly Pick<DeployedFunction, 'id' | 'state'>[],
     expected: readonly string[] = expectedFunctions(),
 ): DeploymentStatus {
     const states = new Map(functions.map((item) => [item.id, item.state]));
@@ -65,6 +67,10 @@ export function createFunctionsClient(transport: GoogleTransport): FunctionsClie
                     },
                     'functions',
                 ),
-            ).map((item) => ({ id: lastSegment(String(item['name'])), state: stringAt(item, 'state') ?? 'STATE_UNSPECIFIED' })),
+            ).map((item) => ({
+                id: lastSegment(String(item['name'])),
+                state: stringAt(item, 'state') ?? 'STATE_UNSPECIFIED',
+                release: stringAt(item, 'serviceConfig', 'environmentVariables', 'HCM_RELEASE') ?? null,
+            })),
     };
 }

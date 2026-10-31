@@ -124,11 +124,13 @@ export const shellStyles = [
             min-block-size: 0;
         }
 
+        /* The loading screen is as tall as the window, its padding inside: no page scrollbar (M6, finding 1). */
         .loading {
             display: grid;
             place-content: center;
             justify-items: center;
             gap: 16px;
+            box-sizing: border-box;
             min-block-size: 100dvh;
             padding: 24px;
             text-align: center;

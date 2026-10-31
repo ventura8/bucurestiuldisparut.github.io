@@ -4,6 +4,7 @@ import type { Locator, Page } from '@playwright/test';
 import { E2E_TOKEN } from '../../../fixtures/world.js';
 import { PROJECT_CITY, projectCity, type CityWorld } from '../../support/content.js';
 import type { EmulatorWorld } from '../../support/emulators.js';
+import { ADMIN_PATH } from '../../world.js';
 
 /**
  * The editors' assists in the admin tier (behaviours A09, A45; docs/research/M4-interfaces.md §4): the project's own city
@@ -44,7 +45,7 @@ export function ownerCity(world: {
 /** The admin's address at `route` in `lang`, with the city and the e2e map token (and the test's id, when given). */
 export function cityAddress(lang: 'ro' | 'en', route: string, test?: string): string {
     const query = new URLSearchParams({ lang, city: PROJECT_CITY, mapToken: E2E_TOKEN, ...(test === undefined ? {} : { test }) });
-    return `/?${query.toString()}#/${route}`;
+    return `${ADMIN_PATH}?${query.toString()}#/${route}`;
 }
 
 /** One assist slot of an editor (`title`, `draft-title`, `draft-description`, `draft-label`). */

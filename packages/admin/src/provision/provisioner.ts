@@ -2,6 +2,7 @@ import { PROVISION_ITEMS, type Logger, type ProvisionItem, type ServiceState } f
 
 import type { GoogleClients } from '../google/clients.js';
 import { failureMessage, googleFailureOf, type AdminMessageKey, type GoogleFailure } from '../google/failure.js';
+import type { ApiWaits } from '../google/transport.js';
 import type { Observation, OrgFindings, ProvisionContext, ProvisionItemSpec, WebAppIdentity } from './item.js';
 import { CORE_ITEMS, readOrgFindings } from './items-core.js';
 import { EXTRA_ITEMS } from './items-extra.js';
@@ -24,6 +25,7 @@ export const PROVISION_ORDER: readonly ProvisionItem[] = [
     'org-policies',
     'service-accounts',
     'buckets',
+    'artifact-registry',
     'bucket-cors',
     'bucket-lifecycle',
     'secrets',
@@ -70,6 +72,11 @@ export interface ProvisionDeps {
     readonly ownerEmail: string | null;
     readonly clients: GoogleClients;
     readonly log: Logger;
+    /**
+     * M6 (§1.5, finding 4): where the clients' transport reports an API Google is still switching on; the run says it on
+     * the item it is running ("Waiting for Google to switch on {api}…") until the item settles.
+     */
+    readonly waits?: ApiWaits;
 }
 
 export type OnProvisionItem = (item: ProvisionItemResult) => void;
@@ -184,18 +191,21 @@ async function runItem(
     }
 }
 
-async function run(deps: ProvisionDeps, items: readonly ProvisionItem[], onItem: OnProvisionItem, fix: boolean): Promise<ProvisionReport> {
-    const refusedRun = wrongProject(deps, items);
-    if (refusedRun !== undefined) {
-        refusedRun.items.forEach(onItem);
-        return refusedRun;
-    }
+/** The line of an item whose call waits for an API Google is still switching on (it settles as usual afterwards). */
+function waitingResult(id: ProvisionItem, api: string): ProvisionItemResult {
+    return { id, state: 'pending', detail: 'adminSetup.provision.apiWaiting', params: { api } };
+}
+
+async function runItems(deps: ProvisionDeps, items: readonly ProvisionItem[], onItem: OnProvisionItem, fix: boolean): Promise<RunState> {
     const runContext = context(deps);
     const state: RunState = { results: [], notOk: new Set(), stopped: false };
     for (const id of PROVISION_ORDER.filter((item) => items.includes(item))) {
         if (state.stopped) {
             break;
         }
+        deps.waits?.listen((api) => {
+            onItem(waitingResult(id, api));
+        });
         const itemResult = await runItem(SPECS[id], runContext, state, { ...deps, fix });
         state.results.push(itemResult);
         if (itemResult.state !== 'ok') {
@@ -203,7 +213,21 @@ async function run(deps: ProvisionDeps, items: readonly ProvisionItem[], onItem:
         }
         onItem(itemResult);
     }
-    return { items: inScreenOrder(state.results), stopped: state.stopped };
+    return state;
+}
+
+async function run(deps: ProvisionDeps, items: readonly ProvisionItem[], onItem: OnProvisionItem, fix: boolean): Promise<ProvisionReport> {
+    const refusedRun = wrongProject(deps, items);
+    if (refusedRun !== undefined) {
+        refusedRun.items.forEach(onItem);
+        return refusedRun;
+    }
+    try {
+        const state = await runItems(deps, items, onItem, fix);
+        return { items: inScreenOrder(state.results), stopped: state.stopped };
+    } finally {
+        deps.waits?.listen(undefined);
+    }
 }
 
 /** Runs the plan: each item observed, fixed when it lacks something, observed again; `onItem` hears each as it settles. */

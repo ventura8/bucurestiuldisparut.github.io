@@ -135,6 +135,8 @@ const ONE_PROJECT_SPECS = [
     // Swipe compare sets the window each test needs (a second map from 600 px wide, a toggle below: M4, V06).
     'viewer/compare.spec.ts',
     'viewer/public-manifest.spec.ts',
+    // M6 (docs/research/M6-interfaces.md §2): the public map on the e2e Hosting site; its pages are the viewer's own.
+    'viewer/hosting.spec.ts',
     'starter-kit/**/*.spec.ts',
 ];
 

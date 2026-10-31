@@ -75,7 +75,7 @@ export const joinResponseSchema = z.strictObject({ role: roleSchema, refreshToke
 export const inviteResponseSchema = z.strictObject({
     inviteId: sha256Schema,
     expiresAt: isoTimeSchema,
-    /** The admin's address (`https://<project>.web.app/`): the invitee signs in there with Google and joins. */
+    /** The admin's address (`https://<project>.web.app/admin/` since M6): the invitee signs in there with Google and joins. */
     signInUrl: httpsUrlSchema,
 });
 

@@ -76,6 +76,13 @@ export const CONTENT_INPUT_BUDGETS = {
     exportCity: { inputs: 2, how: 'Export, then Download once the archive is ready' },
     exportWithRasters: { inputs: 3, how: 'Include the USGS scans, Export, Download' },
     // [end export]
+    // [section setup-ux] owner: setup-ux (docs/research/M6-interfaces.md §4.2, §6.2)
+    skipUsgs: { inputs: 1, how: 'Do it later on the USGS card (the next step opens)' },
+    dismissTrial: { inputs: 1, how: 'It is a paid account on the free-trial reminder of Home' },
+    // [end setup-ux]
+    // [section install] owner: installer (docs/research/M6-interfaces.md §1.7, §4.2; plus one Google consent in daily use)
+    updateMap: { inputs: 1, how: 'Update the map on the card of a target behind the admin (every target behind, one build each)' },
+    // [end install]
 } as const satisfies Readonly<Record<string, ContentFlowBudget>>;
 
 export type ContentFlow = keyof typeof CONTENT_INPUT_BUDGETS;

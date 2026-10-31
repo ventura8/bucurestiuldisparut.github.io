@@ -3,18 +3,31 @@ import type { SetupArea } from '@hcm/shared';
 import type { GoogleScope } from '../google/scopes.js';
 
 /**
- * The Setup Assistant's steps in screen order (`docs/research/M2b-interfaces.md` §3.3): (a) sign-in and ownership,
- * (b) billing and budget, (c) provisioning, (d) the server's deployment, (d2) the automatic owner claim, (e) Mapbox,
- * (f) USGS, (g) analytics and crash reports, (h) the legacy Bucharest import.
+ * The Setup Assistant's steps in screen order (`docs/research/M2b-interfaces.md` §3.3, `docs/research/M6-interfaces.md`
+ * §4.1): (a) sign-in and ownership, (b) billing and budget, (c) provisioning, (d) Install the server, (d2) the automatic
+ * owner claim, (d3) the imagery pipeline (it starts with d), (e) Mapbox, (f) USGS, (g) analytics and crash reports,
+ * (h) the legacy Bucharest import, (i) Publish the map. No step names a terminal command (M6).
  */
-export const SETUP_STEPS = ['signIn', 'billing', 'provision', 'deploy', 'claim', 'mapbox', 'usgs', 'analytics', 'legacyImport'] as const;
+export const SETUP_STEPS = [
+    'signIn',
+    'billing',
+    'provision',
+    'deploy',
+    'claim',
+    'pipeline',
+    'mapbox',
+    'usgs',
+    'analytics',
+    'legacyImport',
+    'site',
+] as const;
 
 export type SetupStepId = (typeof SETUP_STEPS)[number];
 
 export interface SetupStepSpec {
     /** The step's letter in the contract. */
-    readonly letter: 'a' | 'b' | 'c' | 'd' | 'd2' | 'e' | 'f' | 'g' | 'h';
-    /** False for the bootstrap steps: they work with no deployed function and no Firestore access (Google REST only). */
+    readonly letter: 'a' | 'b' | 'c' | 'd' | 'd2' | 'd3' | 'e' | 'f' | 'g' | 'h' | 'i';
+    /** False for the steps that work with no deployed function and no Firestore access (Google REST only). */
     readonly needsBackend: boolean;
     /** The `setup/status` area that records the step's result, if any. */
     readonly area: SetupArea | null;
@@ -26,11 +39,18 @@ export interface SetupStepSpec {
     readonly consents: number;
     /** The steps that must be done first. */
     readonly after: readonly SetupStepId[];
-    /** An optional step never holds back `ready` (`SETUP_REQUIRED_AREAS`). */
+    /** An optional step never holds back `ready` (`setupDone`). */
     readonly optional: boolean;
+    /**
+     * M6 (CR-M6-4): a required step the owner may leave for later (Do it later, A59); a postponed step counts as settled
+     * when the next one to open is chosen. Only USGS: billing, provisioning, the server, Mapbox and the site never wait.
+     */
+    readonly postponable: boolean;
 }
 
-export const SETUP_STEP_SPECS: Readonly<Record<SetupStepId, SetupStepSpec>> = {
+type Spec = Omit<SetupStepSpec, 'postponable'> & { readonly postponable?: boolean };
+
+const SPECS: Readonly<Record<SetupStepId, Spec>> = {
     signIn: { letter: 'a', needsBackend: false, area: null, scope: 'cloudReadOnly', inputs: 1, consents: 1, after: [], optional: false },
     billing: {
         letter: 'b',
@@ -52,12 +72,13 @@ export const SETUP_STEP_SPECS: Readonly<Record<SetupStepId, SetupStepSpec>> = {
         after: ['billing'],
         optional: false,
     },
+    // M6: Install the server is one click; its consent is (c)'s while that token lives (§4.2: +1 once it is gone).
     deploy: {
         letter: 'd',
         needsBackend: false,
         area: null,
         scope: 'cloudPlatform',
-        inputs: 0,
+        inputs: 1,
         consents: 0,
         after: ['provision'],
         optional: false,
@@ -72,8 +93,29 @@ export const SETUP_STEP_SPECS: Readonly<Record<SetupStepId, SetupStepSpec>> = {
         after: ['deploy'],
         optional: false,
     },
+    // M6: the imagery pipeline starts with Install the server; no input of its own (Try again only on a failure).
+    pipeline: {
+        letter: 'd3',
+        needsBackend: false,
+        area: null,
+        scope: 'cloudPlatform',
+        inputs: 0,
+        consents: 0,
+        after: ['provision'],
+        optional: true,
+    },
     mapbox: { letter: 'e', needsBackend: true, area: 'mapbox', scope: null, inputs: 1, consents: 0, after: ['claim'], optional: false },
-    usgs: { letter: 'f', needsBackend: true, area: 'usgs', scope: null, inputs: 3, consents: 0, after: ['claim'], optional: false },
+    usgs: {
+        letter: 'f',
+        needsBackend: true,
+        area: 'usgs',
+        scope: null,
+        inputs: 3,
+        consents: 0,
+        after: ['claim'],
+        optional: false,
+        postponable: true,
+    },
     analytics: {
         letter: 'g',
         needsBackend: true,
@@ -85,14 +127,47 @@ export const SETUP_STEP_SPECS: Readonly<Record<SetupStepId, SetupStepSpec>> = {
         optional: true,
     },
     legacyImport: { letter: 'h', needsBackend: true, area: null, scope: null, inputs: 1, consents: 0, after: ['claim'], optional: true },
+    // M6: Publish the map, once the server is installed; one click (its consent once the token from (c) is gone).
+    site: {
+        letter: 'i',
+        needsBackend: true,
+        area: null,
+        scope: 'cloudPlatform',
+        inputs: 1,
+        consents: 0,
+        after: ['claim'],
+        optional: false,
+    },
 };
 
-/** The first step not done whose prerequisites are all done, in screen order; null once every step is done. */
-export function nextSetupStep(done: ReadonlySet<SetupStepId>): SetupStepId | null {
-    return SETUP_STEPS.find((id) => !done.has(id) && SETUP_STEP_SPECS[id].after.every((before) => done.has(before))) ?? null;
+export const SETUP_STEP_SPECS: Readonly<Record<SetupStepId, SetupStepSpec>> = Object.fromEntries(
+    SETUP_STEPS.map((id) => [id, { ...SPECS[id], postponable: SPECS[id].postponable === true }]),
+) as Record<SetupStepId, SetupStepSpec>;
+
+/** The step the assistant ends with: published once everything before it that the owner wants is done (§4.1). */
+const LAST_STEP: SetupStepId = 'site';
+
+/** Which steps the page opens first: the required ones in screen order, then the optional ones, then the site. */
+function openingRank(id: SetupStepId): number {
+    if (id === LAST_STEP) {
+        return 2;
+    }
+    return SETUP_STEP_SPECS[id].optional ? 1 : 0;
 }
 
-/** The happy-path input budget of a run through `steps` (the e2e `inputBudget` limits, §3.5). */
+/** Screen order sorted by {@link openingRank} (stable: the screen order within each rank). */
+const OPENING_ORDER: readonly SetupStepId[] = [...SETUP_STEPS].sort((left, right) => openingRank(left) - openingRank(right));
+
+/**
+ * The first step not settled whose prerequisites are all settled, in opening order (the required steps, then the
+ * optional ones, then Publish the map); null once every step is settled. `settled` is the steps done and, since M6, the
+ * ones postponed (CR-M6-4).
+ */
+export function nextSetupStep(settled: ReadonlySet<SetupStepId>): SetupStepId | null {
+    return OPENING_ORDER.find((id) => !settled.has(id) && SETUP_STEP_SPECS[id].after.every((before) => settled.has(before))) ?? null;
+}
+
+/** The happy-path input budget of a run through `steps` (the e2e `inputBudget` limits, §3.5; M6 §4.2). */
 export function setupInputBudget(steps: readonly SetupStepId[] = SETUP_STEPS): { readonly inputs: number; readonly consents: number } {
     return steps.reduce(
         (total, id) => ({ inputs: total.inputs + SETUP_STEP_SPECS[id].inputs, consents: total.consents + SETUP_STEP_SPECS[id].consents }),

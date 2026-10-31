@@ -12,16 +12,22 @@ import { parseProjectConfig, type ProjectConfig } from '../provision/project-con
 export const WEB_CONFIG_URL = '/__/firebase/init.json';
 
 /**
- * Written by the admin's site build next to `index.html` (`scripts/site/src/admin/runtime.ts`); without it (a bare Vite
- * build) the release is `dev`. Hosting's `**` rewrite answers a missing file with the page, which is no JSON: none.
+ * The admin's folder on Hosting: the Vite build's base (`packages/admin/vite.config.ts`, `/admin/` since M6:
+ * `docs/research/M6-interfaces.md` §2.3), `/` under the unit tests.
  */
-export const RUNTIME_URL = '/runtime.json';
+const ADMIN_BASE = import.meta.env.BASE_URL;
+
+/**
+ * Written by the admin's site build next to `index.html` (`scripts/site/src/admin/runtime.ts`); without it (a bare Vite
+ * build) the release is `dev`. Hosting's `/admin/**` rewrite answers a missing file with the page, which is no JSON: none.
+ */
+export const RUNTIME_URL = `${ADMIN_BASE}runtime.json`;
 
 /**
  * `infra/project.json` as the page serves it (the admin's site build copies it next to `index.html`; the e2e admin server
  * answers the e2e world's): the project the provisioner works on (§3.7).
  */
-export const PROJECT_URL = '/project.json';
+export const PROJECT_URL = `${ADMIN_BASE}project.json`;
 
 /** The release a crash belongs to when no `runtime.json` names one. */
 export const UNKNOWN_RELEASE = 'dev';

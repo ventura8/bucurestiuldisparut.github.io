@@ -33,8 +33,9 @@ export const en: Readonly<Record<AdminCitiesKey, string>> = {
     'adminContent.cities.created.photos': 'Add photos',
     'adminContent.cities.created.places': 'Draw places',
     'adminContent.cities.created.imagery': 'See the historical imagery',
-    'adminContent.cities.created.siteLater': 'A developer adds its public site to the repository (npm run site:add, then a push).',
-    'adminContent.cities.created.exportInstead': 'Until then, Export the city in Settings makes a copy for any static host.',
+    'adminContent.cities.created.siteLater': 'Once it is published, visitors find its map at this address:',
+    'adminContent.cities.created.exportInstead': 'Export the city in Settings also makes a copy for any static host.',
+    'adminContent.cities.newTab': '(opens in a new tab)',
     // [end cities]
     // [section budgets] owner: multi-city; keys adminContent.budgets.*
     'adminContent.budgets.title': 'The city’s budget',

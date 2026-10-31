@@ -68,6 +68,14 @@ export class UpstreamControl {
         return (await (await ok(await this.#api.get(this.#url('calls', partition, extra)), 'calls')).json()) as UpstreamCall[];
     }
 
+    /** One world's state of every fake service (`GET /__upstream/snapshot`), as plain JSON by service name (M6). */
+    async snapshot(world: Exclude<UpstreamWorld, 'both'>): Promise<Readonly<Record<string, unknown>>> {
+        const [partition = ''] = this.#partitions(world);
+        return (await (await ok(await this.#api.get(this.#url('snapshot', partition)), 'snapshot')).json()) as Readonly<
+            Record<string, unknown>
+        >;
+    }
+
     /**
      * Forgets both worlds before a test starts: the server's (the shared partition) and the test's own, which a mock
      * server reused across runs (`reuseExistingServer` outside CI) would otherwise still hold from an earlier run.

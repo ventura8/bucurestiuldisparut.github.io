@@ -130,6 +130,15 @@ interface LegalItem {
     readonly samples: readonly Sample[];
 }
 
+/**
+ * A loading indicator's shape, which turns and morphs without end: it must stay clear of every text but its own (M6,
+ * finding 6 of 2026-10-25: a step's busy indicator was drawn over its chip's label, and no check saw it, since the
+ * occlusion samples only a text's centre and the overlap check only floating chrome).
+ */
+interface GraphicInfo {
+    readonly node: number;
+}
+
 export interface LayoutSnapshot {
     readonly viewport: { readonly width: number; readonly height: number };
     readonly page: { readonly scrollWidth: number; readonly scrollsX: boolean; readonly scrollsY: boolean };
@@ -138,6 +147,8 @@ export interface LayoutSnapshot {
     readonly chrome: readonly ChromeInfo[];
     readonly texts: readonly TextInfo[];
     readonly sideways: readonly SidewaysInfo[];
+    /** The animated graphics drawn in the page (the loading indicators' shapes). */
+    readonly graphics: readonly GraphicInfo[];
     /**
      * `map`: a drawn map shows a strip of its foot that reaches a legal control; `owes`: which of the two the strip reaches
      * (a control drawn above the strip cannot show, so it is not owed); the visible logos and attributions.
@@ -535,6 +546,17 @@ function probeSideways(registry: Registry): SidewaysInfo[] {
         }));
 }
 
+/**
+ * The loading indicators' shapes a visitor can see (their box as drawn now, turned or not): the kit's
+ * `hcm-loading-indicator` draws its shape in the part `indicator`, a progress bar without a value. The selector is
+ * inline: a page helper may reference only browser globals and the other helpers.
+ */
+function probeGraphics(registry: Registry): GraphicInfo[] {
+    return deepQuery('[part="indicator"][role="progressbar"]')
+        .filter((element) => isDrawn(element) && visibleBoxOf(element) !== null)
+        .map((element) => ({ node: idOf(registry, element) }));
+}
+
 /** The drawn elements matching `selector` that a visitor can see, each with its sampled points. */
 /**
  * Whether a map canvas shows its bottom edge, where Mapbox draws its logo and attribution: a map whose foot a scroller or
@@ -598,6 +620,7 @@ export function probeLayout(options: ProbeOptions): LayoutSnapshot {
     const chrome = probeChrome(registry, options, context);
     const texts = probeTexts(registry);
     const sideways = probeSideways(registry);
+    const graphics = probeGraphics(registry);
     const reaches = (legalSelector: string): boolean =>
         deepQuery(options.legal.map).some((canvas) => isDrawn(canvas) && showsItsFoot(canvas, legalSelector));
     const legal = {
@@ -618,6 +641,7 @@ export function probeLayout(options: ProbeOptions): LayoutSnapshot {
         chrome,
         texts,
         sideways,
+        graphics,
         legal,
         modals: modals.map((modal) => idOf(registry, modal)),
         nodes: describeNodes(registry),
@@ -665,6 +689,7 @@ export const LAYOUT_PROBE = [
     probeTexts,
     sidewaysCulprits,
     probeSideways,
+    probeGraphics,
     showsItsFoot,
     legalGap,
     probeLegal,

@@ -10,6 +10,8 @@ import {
 import type { VerifiedCaller } from '../api/access.js';
 import type { Ports } from '../ports/index.js';
 import { commitStatus, stampOf, type SetupStatusFields } from './records.js';
+import { applyInstallReport } from './record-install.js';
+import { applyLaterParts } from './record-later.js';
 import { toSetupStatusView } from './view.js';
 
 export type RecordCloudDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
@@ -60,10 +62,14 @@ function provisionRecord(
 }
 
 function applyReport(current: SetupStatusFields, request: Request, checkedAt: Timestamp): SetupStatusFields {
-    const billing = request.billing === undefined ? {} : { billing: { ...request.billing, checkedAt } };
     const provision =
         request.provision === undefined ? {} : { provision: provisionRecord(current.provision, request.provision, checkedAt) };
-    return { ...current, ...billing, ...provision };
+    // [section setup-ux] M6 (docs/research/M6-interfaces.md §4.1, §3.1): billing (its likely trial kept), USGS later.
+    const reported = applyLaterParts(current, request, checkedAt);
+    // [end setup-ux]
+    // [section install] owner: installer (M6, §1.7): each install target's last known state.
+    return applyInstallReport({ ...reported, ...provision }, request);
+    // [end install]
 }
 
 /**

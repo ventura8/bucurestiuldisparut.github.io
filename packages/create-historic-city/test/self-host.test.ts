@@ -83,24 +83,24 @@ describe('self-host', () => {
         ]);
         expect(opener.opened).toEqual([
             `https://console.firebase.google.com/project/${PROJECT}/authentication/providers`,
-            `https://${PROJECT}.web.app/`,
+            `https://${PROJECT}.web.app/admin/`,
             `https://console.cloud.google.com/billing/linkedaccount?project=${PROJECT}`,
-            `https://${PROJECT}.web.app/`,
+            `https://${PROJECT}.web.app/admin/`,
         ]);
         // Only y/N, Enter and nothing else: no credential is ever asked for.
         expect(new Set(terminal.questions)).toEqual(new Set([ro('cli.ask.consent'), ro('cli.ask.enter')]));
         expect(terminal.lines).toContain(ro('cli.billing.notLinked', { project: PROJECT }));
-        expect(terminal.lines.at(-1)).toBe(ro('cli.selfHost.done', { url: `https://${PROJECT}.web.app/` }));
+        expect(terminal.lines.at(-1)).toBe(ro('cli.selfHost.done', { url: `https://${PROJECT}.web.app/admin/` }));
         expect(JSON.parse(read(join(server, '.firebaserc')))).toEqual({ projects: { default: PROJECT } });
         expect(read(join(server, 'firebase.json'))).toContain(`"site": "${PROJECT}"`);
-        expect(JSON.parse(read(join(server, 'admin/project.json')))).toEqual({
+        expect(JSON.parse(read(join(server, 'hosting/admin/project.json')))).toEqual({
             projectId: PROJECT,
             projectNumber: '123456789012',
             region: 'us-central1',
             cities: ['cluj'],
             viewerOrigins: [`https://${PROJECT}.web.app`],
         });
-        expect(JSON.parse(read(join(server, 'admin/runtime.json')))).toEqual({ release: '1.0.0+abc1234' });
+        expect(JSON.parse(read(join(server, 'hosting/admin/runtime.json')))).toEqual({ release: '1.0.0+abc1234' });
         expect(read(join(server, `functions/.env.${PROJECT}`))).toBe(
             `HCM_VIEWER_ORIGINS=https://${PROJECT}.web.app\nHCM_APP_CHECK=monitor\n`,
         );
@@ -159,7 +159,7 @@ describe('self-host', () => {
                 ro('cli.dryRun.runs', { command: `firebase projects:create ${PROJECT} --display-name Cluj` }),
                 ro('cli.dryRun.runs', { command: `firebase deploy --only hosting --project ${PROJECT}` }),
                 ro('cli.dryRun.runs', { command: `gcloud billing projects describe ${PROJECT} --format=json` }),
-                ro('cli.dryRun.opens', { url: `https://${PROJECT}.web.app/` }),
+                ro('cli.dryRun.opens', { url: `https://${PROJECT}.web.app/admin/` }),
                 ro('cli.step.header', { n: 9, total: 9, title: ro('cli.step.rest.title') }),
             ]),
         );
@@ -361,8 +361,10 @@ describe('self-host: what the run cannot use', () => {
         );
 
         expect(code).toBe(0);
-        expect(JSON.parse(read(join(cwd, 'cluj/server/admin/project.json')))).toMatchObject({ viewerOrigins: ['https://owner.github.io'] });
-        expect(JSON.parse(read(join(cwd, 'cluj/server/admin/runtime.json')))).toEqual({ release: '1.0.0+abc1234', startUp: true });
+        expect(JSON.parse(read(join(cwd, 'cluj/server/hosting/admin/project.json')))).toMatchObject({
+            viewerOrigins: ['https://owner.github.io'],
+        });
+        expect(JSON.parse(read(join(cwd, 'cluj/server/hosting/admin/runtime.json')))).toEqual({ release: '1.0.0+abc1234', startUp: true });
     });
 
     it('badPath_whatTheRunCannotUseIsRefused', async () => {
@@ -445,7 +447,7 @@ describe('self-host details', () => {
         const { ports, cwd } = await withCity(newAccount(), ['y', 'y', 'y', 'y', '', 'y', 'n']);
 
         expect(await runCli(['--experimental', 'self-host', 'cluj', '--project', PROJECT, '--bundle', bundle], ports)).toBe(0);
-        expect(JSON.parse(read(join(cwd, 'cluj/server/admin/runtime.json')))).toEqual({ release: '0.0.0', startUp: true });
+        expect(JSON.parse(read(join(cwd, 'cluj/server/hosting/admin/runtime.json')))).toEqual({ release: '0.0.0', startUp: true });
     });
 
     it('badPath_aBrokenBundleIsABugNotAStep', async () => {
@@ -471,7 +473,7 @@ describe('deploy', () => {
         expect(await runCli(['--experimental', 'deploy', 'cluj'], ports)).toBe(0);
 
         expect(runner.lines('interactive')).toEqual([`firebase deploy --only functions,firestore,storage,hosting --project ${PROJECT}`]);
-        expect(terminal.lines.at(-1)).toBe(ro('cli.selfHost.done', { url: `https://${PROJECT}.web.app/` }));
+        expect(terminal.lines.at(-1)).toBe(ro('cli.selfHost.done', { url: `https://${PROJECT}.web.app/admin/` }));
     });
 
     it('happyPath_aDeployWithoutAnEarlierRunWritesTheServerFirst', async () => {
@@ -483,7 +485,7 @@ describe('deploy', () => {
 
         expect(await runCli(['--experimental', 'deploy', 'cluj', '--project', PROJECT], ports)).toBe(0);
 
-        expect(JSON.parse(read(join(cwd, 'cluj/server/admin/runtime.json')))).toEqual({ release: '1.0.0+abc1234' });
+        expect(JSON.parse(read(join(cwd, 'cluj/server/hosting/admin/runtime.json')))).toEqual({ release: '1.0.0+abc1234' });
     });
 
     it('happyPath_theCityFolderTheCliRunsIn', async () => {

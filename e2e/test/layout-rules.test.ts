@@ -21,6 +21,7 @@ import {
     refOf,
     related,
     textOverlapViolations,
+    graphicOverlapViolations,
     usableChrome,
     windowClassOf,
     type LayoutContext,
@@ -77,6 +78,7 @@ function snapshot(extra: Partial<LayoutSnapshot>): LayoutSnapshot {
         chrome: [],
         texts: [],
         sideways: [],
+        graphics: [],
         legal: { map: false, owes: { logo: false, attribution: false }, logos: [], attributions: [] },
         modals: [],
         ...extra,
@@ -475,6 +477,25 @@ describe('text rules', () => {
         ]);
         const hidden = texts.map((entry) => (entry.node === 1 ? { ...entry, shown: false } : entry));
         expect(textOverlapViolations(snapshot({ nodes, texts: hidden }))).toEqual([]);
+    });
+});
+
+describe('graphicOverlapViolations (M6, finding 6)', () => {
+    test('badPath_anIndicatorDrawnOverALabel_happyPath_clearOfItOrItsOwnText', () => {
+        const nodes = [
+            node(0, box(0, 0, 38, 38), { name: 'Working' }),
+            node(1, box(22, 10, 60, 20), { name: 'To do' }),
+            node(2, box(100, 0, 14, 14), { name: 'Working' }),
+            node(3, box(4, 4, 10, 10), { ancestors: [0] }),
+        ];
+        const texts = [text(1, [box(22, 10, 60, 20)]), text(3, [box(4, 4, 10, 10)])];
+        const found = graphicOverlapViolations(snapshot({ nodes, texts, graphics: [{ node: 0 }, { node: 2 }] }));
+        expect(found.map((violation) => violation.message)).toEqual([
+            'the loading indicator "Working" (div.n0) at 0,0 38x38 is drawn over the text of "To do" (div.n1) at 22,10 60x20 at 22,10 16x20',
+        ]);
+        expect(found[0]?.check).toBe('graphic-overlap');
+        const hidden = nodes.map((entry) => (entry.id === 0 ? { ...entry, visible: null } : entry));
+        expect(graphicOverlapViolations(snapshot({ nodes: hidden, texts, graphics: [{ node: 0 }] }))).toHaveLength(1);
     });
 });
 

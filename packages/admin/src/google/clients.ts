@@ -1,4 +1,5 @@
 import { createApiKeysClient, type ApiKeysClient } from './api-keys.js';
+import { createArtifactRegistryClient, type ArtifactRegistryClient } from './artifact-registry.js';
 import { createAppCheckClient, type AppCheckClient } from './app-check.js';
 import { createBillingClient, type BillingClient } from './billing.js';
 import { createAnalyticsClient, type AnalyticsClient } from './firebase.js';
@@ -32,6 +33,8 @@ export interface GoogleClients {
     readonly apiKeys: ApiKeysClient;
     readonly functions: FunctionsClient;
     readonly analytics: AnalyticsClient;
+    /** M6: the imagery pipeline's Docker repository (`docs/research/M6-interfaces.md` §1.6, §1.10). */
+    readonly artifactRegistry: ArtifactRegistryClient;
 }
 
 export function createGoogleClients(options: GoogleTransportOptions): GoogleClients {
@@ -50,5 +53,6 @@ export function createGoogleClients(options: GoogleTransportOptions): GoogleClie
         apiKeys: createApiKeysClient(transport),
         functions: createFunctionsClient(transport),
         analytics: createAnalyticsClient(transport),
+        artifactRegistry: createArtifactRegistryClient(transport),
     };
 }

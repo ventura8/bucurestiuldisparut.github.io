@@ -53,7 +53,9 @@ export function legacyCityRoles(projectRole: 'owner' | 'admin', cityIds: readonl
 
 /**
  * Ids no city may take: the folders of a public site, the starter kit and the export (`engine/`, `photos/`, ...) and
- * the admin's own words, so `/<city>/` on GitHub Pages and `#/c/<city>/` in the admin never collide with them.
+ * the admin's own words, so `/<city>/` on GitHub Pages and on Firebase Hosting and `#/c/<city>/` in the admin never collide
+ * with them. M6 (`docs/research/M6-interfaces.md` §2.1, hosting): `city`, the folder of the Hosting site's generic city page
+ * (`/city/`), which every other city's address is rewritten to; `admin` is the admin's folder there.
  */
 export const RESERVED_CITY_IDS = [
     'admin',
@@ -61,6 +63,7 @@ export const RESERVED_CITY_IDS = [
     'assets',
     'cdn',
     'cities',
+    'city',
     'data',
     'engine',
     'export',
@@ -85,13 +88,16 @@ function unavailable(cityId: string, taken: ReadonlySet<string>): boolean {
 
 /**
  * The id the New city flow suggests for a name (`Cluj-Napoca` → `cluj-napoca`, `Iași` → `iasi`): the slug cut to
- * `MAX_CITY_ID_LENGTH` at a word boundary, `city` when the name has no letter or digit, then `-2`, `-3`, ... while it
- * is taken or reserved.
+ * `MAX_CITY_ID_LENGTH` at a word boundary, `my-city` when the name has no letter or digit (`city` is reserved since M6),
+ * then `-2`, `-3`, ... while it is taken or reserved.
  */
+/** The suggestion for a name without a letter or a digit. */
+const FALLBACK_CITY_ID = 'my-city';
+
 export function suggestCityId(name: string, taken: readonly string[] = []): string {
     const used = new Set(taken);
     const slug = truncateSlug(slugify(name), MAX_CITY_ID_LENGTH);
-    const root = slug.length >= 2 ? slug : 'city';
+    const root = slug.length >= 2 ? slug : FALLBACK_CITY_ID;
     let id = root;
     let suffix = 1;
     while (unavailable(id, used)) {

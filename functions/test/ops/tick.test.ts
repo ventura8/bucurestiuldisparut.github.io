@@ -119,6 +119,6 @@ describe('ops-tick', () => {
     });
 
     it('happyPath_theGroupHasTheRegistryNames', () => {
-        expect(Object.keys(opsFunctions(() => opsDeps(DAY))).sort((a, b) => a.localeCompare(b))).toEqual(['onBudget', 'tick']);
+        expect(Object.keys(opsFunctions(() => opsDeps(DAY))).sort((a, b) => a.localeCompare(b))).toEqual(['onBudget', 'onProbe', 'tick']);
     });
 });

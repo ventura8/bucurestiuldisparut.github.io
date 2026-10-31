@@ -3,7 +3,7 @@
  * Bucharest photos (one click), a progress bar counts them, the photos that failed processing are listed with their
  * reason, and the card says when all of them are on the map. Importing again is safe: nothing is created twice.
  */
-import { html, nothing, type TemplateResult } from 'lit';
+import { css, html, nothing, type TemplateResult } from 'lit';
 
 import { defineHcmButton } from '../../components/button.js';
 import { defineOnce } from '../../components/internal.js';
@@ -27,8 +27,18 @@ function showsProgress(imported: ImportSlice): boolean {
     return imported.running || (imported.done > 0 && !isComplete(imported));
 }
 
+/** The link of a photo the server never received: the primary colour and a full target, as the server checks' fix. */
+const fixStyles = css`
+    .fix {
+        display: inline-flex;
+        align-items: center;
+        min-block-size: 48px;
+        color: var(--md-sys-color-primary);
+    }
+`;
+
 export class HcmSetupImport extends SetupBody {
-    static override readonly styles = [setupTextStyles];
+    static override readonly styles = [setupTextStyles, fixStyles];
 
     protected override renderBody(state: SetupViewState): TemplateResult {
         const imported = state.legacyImport;
@@ -72,9 +82,23 @@ export class HcmSetupImport extends SetupBody {
         return html`<ul class="failed">
             ${imported.failed.map(
                 (failure) =>
-                    html`<li data-photo=${failure.id}><code>${failure.id}</code>: ${setupText(this.locale, { key: failure.detail })}</li>`,
+                    html`<li data-photo=${failure.id}>
+                        <code>${failure.id}</code>: ${setupText(this.locale, { key: failure.detail })} ${this.renderFix(failure.detail)}
+                    </li>`,
             )}
         </ul>`;
+    }
+
+    /**
+     * M6 (server-bugs, finding 17 of 2026-10-25; S-A28-BAD-STUCK-AGAIN): a photo whose upload the server never received
+     * links the step that grants the role its events need, as the server checks' list does for the events check.
+     */
+    private renderFix(detail: ImportSlice['failed'][number]['detail']): TemplateResult {
+        if (detail !== 'apiError.photo.notReceived') {
+            return EMPTY;
+        }
+        const step = this.t('adminSetup.step.provision');
+        return html`<a class="fix" href="#/setup/provision">${this.t('adminSetup.selfTest.fix', { step })}</a>`;
     }
 }
 

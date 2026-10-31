@@ -1,4 +1,4 @@
-import { createLogger, type Logger } from '@hcm/shared';
+import { createLogger, httpsOriginSchema, type Logger } from '@hcm/shared';
 import { initializeApp, type App, type AppOptions } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -58,8 +58,13 @@ const CLOUD_PLATFORM_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
 
 const REGION = 'us-central1';
 
-/** The city sites when `HCM_VIEWER_ORIGINS` is unset: the GitHub Pages origin of București dispărut. */
-const DEFAULT_VIEWER_ORIGINS: readonly string[] = ['https://ventura8.github.io'];
+/**
+ * The project's Firebase Hosting origins: the admin's, and since M6 the public map's too (the viewer at the root, the
+ * admin under `/admin/`: `docs/research/M6-interfaces.md` §2). They are the city sites' when `HCM_VIEWER_ORIGINS` is unset.
+ */
+function hostingOrigins(projectId: string): string[] {
+    return [`https://${projectId}.web.app`, `https://${projectId}.firebaseapp.com`];
+}
 
 /** The Functions emulator's stand-in for Application Default Credentials: the fake upstreams accept any bearer token. */
 const EMULATOR_TOKENS: TokenProvider = { accessToken: () => Promise.resolve('emulator-access-token') };
@@ -104,17 +109,37 @@ export function privateBucket(env: Env): string {
     return configuredBucket(env['FIREBASE_CONFIG']) ?? `${requireProjectId(env)}.firebasestorage.app`;
 }
 
+/** A URL-restricted Mapbox token allows at most this many addresses (the city's `mapbox.allowedUrls`). */
+const MAX_VIEWER_ORIGINS = 10;
+
+/**
+ * `HCM_VIEWER_ORIGINS` as the city's `mapbox.allowedUrls` holds them (https origins, no path, at most 10): anything else
+ * is refused here, before a token is minted for addresses the city's schema would refuse to record (finding 3 of the M6
+ * security review). `functions/build.mjs` refuses to build the same values, so a deploy never carries them.
+ */
+function viewerOriginsOf(value: string | undefined): string[] {
+    const origins = listOf(value);
+    const invalid = origins.filter((origin) => !httpsOriginSchema.safeParse(origin).success);
+    if (invalid.length > 0 || origins.length > MAX_VIEWER_ORIGINS) {
+        throw new Error(
+            `HCM_VIEWER_ORIGINS must be at most ${String(MAX_VIEWER_ORIGINS)} https origins without a path: ${invalid.join(', ')}`,
+        );
+    }
+    return origins;
+}
+
 /** `RuntimeConfig` (M2-interfaces §4.2) from the environment: values only, nothing secret. */
 export function runtimeConfig(env: Env): RuntimeConfig {
     const projectId = requireProjectId(env);
-    const viewerOrigins = listOf(env['HCM_VIEWER_ORIGINS']);
+    const viewerOrigins = viewerOriginsOf(env['HCM_VIEWER_ORIGINS']);
     return {
         projectId,
         region: REGION,
         buckets: { private: privateBucket(env), public: `${projectId}-public` },
-        viewerOrigins: viewerOrigins.length > 0 ? viewerOrigins : DEFAULT_VIEWER_ORIGINS,
-        adminOrigins: [`https://${projectId}.web.app`, `https://${projectId}.firebaseapp.com`],
-        adminUrl: `https://${projectId}.web.app/`,
+        viewerOrigins: viewerOrigins.length > 0 ? viewerOrigins : hostingOrigins(projectId),
+        adminOrigins: hostingOrigins(projectId),
+        // M6 (§2.3): the admin's folder on Hosting; invitations and the inbox's and push's links (`adminUrl + #/…`) open it.
+        adminUrl: `https://${projectId}.web.app/admin/`,
         oauthClientIds: listOf(env['HCM_OAUTH_CLIENT_IDS']),
         errorEndpoint: `https://${REGION}-${projectId}.cloudfunctions.net/telemetry-reportError`,
         appCheck: env['HCM_APP_CHECK'] === 'enforce' ? 'enforce' : 'monitor',

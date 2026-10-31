@@ -19,6 +19,7 @@ type Check =
     | 'legal'
     | 'clipped-text'
     | 'text-overlap'
+    | 'graphic-overlap'
     | 'axe'
     | 'target-size'
     | 'focus-order'

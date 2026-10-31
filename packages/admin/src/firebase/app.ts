@@ -3,6 +3,12 @@
  * App Check (reCAPTCHA Enterprise) only when `runtime.json` names a site key (never in start-up mode, the e2e build or
  * the first deploys), and in the `e2e` build Auth, Firestore, Storage and Functions on the emulators. Firestore and
  * Storage are created on first use, so start-up mode touches neither.
+ *
+ * Auth keeps the signed-in owner in the tab's `sessionStorage` only (M6, finding 1 of the security review): since M6
+ * the public map and the admin share one origin (`https://<project>.web.app/` and `/admin/`), and IndexedDB or
+ * `localStorage` are the whole origin's, so a script on any viewer page could read the owner's refresh token there.
+ * `sessionStorage` belongs to the one tab (a link opened with `noopener` gets none), so only the admin's own tab holds
+ * it; the price is one sign-in per tab (`DECISIONS-for-review.md` §73a, for the user).
  */
 import type { FirebaseApp, FirebaseOptions } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
@@ -54,7 +60,8 @@ export function initFirebase(sdk: FirebaseSdk, config: FirebaseWebConfig, runtim
     if (siteKey !== undefined && !emulators) {
         sdk.initializeAppCheck(app, { provider: new sdk.ReCaptchaEnterpriseProvider(siteKey), isTokenAutoRefreshEnabled: true });
     }
-    const auth = sdk.getAuth(app);
+    // The popup's resolver goes with each popup (`adapters.ts` `firebasePopup`).
+    const auth = sdk.initializeAuth(app, { persistence: sdk.browserSessionPersistence });
     const functions = sdk.getFunctions(app, FUNCTIONS_REGION);
     if (emulators) {
         sdk.connectAuthEmulator(auth, `http://${EMULATOR_HOST}:${String(EMULATOR_PORTS.auth)}`, { disableWarnings: true });

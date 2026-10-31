@@ -3,7 +3,15 @@ import { readFileSync } from 'node:fs';
 import { createFakeFetch, E2E_PROJECT_CONFIG, jsonResponse } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
-import { setupModuleFor, setupOptionsFor, wiringHelpers, type SetupWiringDeps } from '../../src/app/setup-wiring.js';
+import {
+    installBundleLoader,
+    publishedMapCheck,
+    setupModuleFor,
+    setupOptionsFor,
+    wiringHelpers,
+    type SetupWiringDeps,
+} from '../../src/app/setup-wiring.js';
+import { InstallBundleError } from '../../src/install/bundle.js';
 import type { ProjectConfig } from '../../src/provision/project-config.js';
 import { E2E_WEB_CONFIG, FakeAuth, FakeCallables, FakeClock, FakeDocuments, NO_STORAGE, OWNER, testLog } from './fakes.js';
 
@@ -38,6 +46,8 @@ function wiring(city: unknown = SEED_CITY, project: ProjectConfig = PROJECT) {
         log: testLog().log,
         baseUrl: 'https://demo-hcm.web.app/',
         nonce: () => 'nonce-1',
+        release: '1.0.0+abc1234',
+        installOrigins: ['https://demo-hcm.web.app'],
     };
     return { deps, fetcher, callables };
 }
@@ -91,3 +101,31 @@ describe('wiringHelpers', () => {
         expect([helpers.uid(), helpers.ownerEmail()]).toEqual([OWNER.uid, OWNER.email]);
     });
 });
+
+// [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.3, §1.8)
+describe('the installer wiring', () => {
+    it('happyPath_aPublishedManifestIsSomethingToShow_badPath_noneOrAnUnreadableOneIsNot', async () => {
+        const documents = new FakeDocuments();
+        const check = publishedMapCheck({ documents }, 'bucharest');
+
+        await expect(check()).resolves.toBe(false);
+        await documents.set('manifests/bucharest', {
+            url: 'https://storage.googleapis.com/demo-hcm-public/cities/bucharest/manifest.json',
+        });
+        await expect(check()).resolves.toBe(true);
+        const refusing = { get: () => Promise.reject(new Error('permission-denied')) } as unknown as FakeDocuments;
+        await expect(publishedMapCheck({ documents: refusing }, 'bucharest')()).resolves.toBe(false);
+    });
+
+    it('badPath_theAdminsBundleIsReadFromItsOwnBase_aMissingOneCannotInstall', async () => {
+        const w = wiring();
+
+        const error = await installBundleLoader(w.deps)().catch((caught: unknown) => caught);
+
+        expect(error).toBeInstanceOf(InstallBundleError);
+        expect((error as InstallBundleError).code).toBe('apiError.unavailable');
+        expect(w.fetcher.unhandled[0]?.url).toBe('https://demo-hcm.web.app/install/1-0-0-abc1234/manifest.json');
+        expect(setupOptionsFor(w.deps)).toMatchObject({ release: '1.0.0+abc1234', siteAddress: 'https://demo-hcm.web.app/' });
+    });
+});
+// [end install]

@@ -34,6 +34,20 @@ describe('setupReadyOf', () => {
         expect(setupReadyOf({ billing: OK, provision: OK, mapbox: OK })).toBe(false);
         expect(setupReadyOf({ ...COMPLETE, usgs: { state: 'pending' } })).toBe(false);
         expect(setupReadyOf({ ...COMPLETE, mapbox: 'ok' })).toBe(false);
+        expect(setupReadyOf({ ...COMPLETE, provision: { state: 'unknown' } })).toBe(false);
+    });
+
+    it('happyPath_usgsPostponedOrWaitingForItsApprovalIsComplete', () => {
+        const postponedAt = { seconds: 1, nanoseconds: 0 };
+        expect(setupReadyOf({ ...COMPLETE, usgs: { state: 'missing', postponedAt } })).toBe(true);
+        expect(setupReadyOf({ ...COMPLETE, usgs: { state: 'pending', detail: 'apiError.usgs.accessPending' } })).toBe(true);
+    });
+
+    it('badPath_theInstallerTargetsOnceRecordedMustBeInstalled', () => {
+        const installed = { server: { state: 'installed' }, site: { state: 'installed' } };
+        expect(setupReadyOf({ ...COMPLETE, install: installed })).toBe(true);
+        expect(setupReadyOf({ ...COMPLETE, install: { server: { state: 'installed' } } })).toBe(false);
+        expect(setupReadyOf({ ...COMPLETE, install: { ...installed, site: { state: 1 } } })).toBe(false);
     });
 });
 

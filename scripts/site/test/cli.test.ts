@@ -204,6 +204,23 @@ describe('runCli: every city (M5)', () => {
         expect(records.at(-1)).toMatchObject({ message: 'pages assembled', data: { pagesDir: 'dist/pages', paths: ['/', '/cluj/'] } });
     });
 
+    it('happyPath_thePagesRedirectTreeSendsEveryCitysPagesToHosting', () => {
+        // M6 (docs/research/M6-interfaces.md §2.7): the old Pages site's replacement, every page to Firebase Hosting.
+        const { files } = syntheticRepository();
+        bucharestAtTheRoot(files);
+        addBucketCity(files, 'cluj');
+        const project = { projectId: 'exemplu-proiect', region: 'europe-west1', github: { owner: 'exemplu', repo: 'harta' } };
+        files.write('infra/project.json', JSON.stringify(project));
+        const env = { MAPBOX_PUBLIC_TOKEN: 'pk.x', HCM_PUBLIC_BUCKET: 'exemplu-proiect-public' };
+        const { log, records } = recordingLogger();
+
+        expect(runCli(['--pages-redirect', 'dist/pages-redirect'], { env, files, log })).toBe(EXIT_OK);
+
+        expect(files.readText('dist/pages-redirect/cluj/index.html')).toContain('data-target="https://exemplu-proiect.web.app/cluj/"');
+        expect(files.readText('dist/pages-redirect/index.html')).toContain('<script src="/harta/pages-redirect.js">');
+        expect(records.at(-1)).toMatchObject({ message: 'pages redirect written', data: { target: 'https://exemplu-proiect.web.app/' } });
+    });
+
     it('badPath_twoSitesOnOnePathRefuseTheTree', () => {
         const { files } = syntheticRepository();
         addBucketCity(files, 'cluj', 'bucharest/');

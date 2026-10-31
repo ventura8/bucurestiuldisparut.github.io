@@ -5,10 +5,13 @@
  * with the username filled saves at once (no Save click); Enter does the same for a typed token. The token's optional
  * expiry is typed in the admin's language (`zz.ll.aaaa`, `dd/mm/yyyy`). A countdown that ends
  * says so and the box stays open. After saving: the role, the next check of a pending approval, the expiry reminder.
+ * M6 (setup-ux, finding 16 of 2026-10-25): **Do it later** (one input) postpones the step, which then says so; a token
+ * waiting for USGS's approval says since when.
  */
-import type { AdminSetupKey, UsgsRole } from '@hcm/shared';
+import { USGS_ACCESS_PENDING, type AdminSetupKey, type UsgsRole } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
+import { defineHcmButton } from '../../components/button.js';
 import { defineOnce } from '../../components/internal.js';
 import { defineHcmProgress } from '../../components/progress.js';
 import { visuallyHidden } from '../../components/styles.js';
@@ -17,7 +20,7 @@ import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 import { SetupBody, defineSetupBodyParts } from './setup-body.js';
 import type { SetupViewState } from './setup-port.js';
-import { copyStyles, fieldStyles, setupTextStyles } from './setup-styles.js';
+import { copyStyles, fieldStyles, linkButtonStyles, setupTextStyles } from './setup-styles.js';
 import { formatDate, formatDateTime } from './setup-text.js';
 
 const HCM_SETUP_USGS_TAG = 'hcm-setup-usgs';
@@ -38,27 +41,8 @@ export class HcmSetupUsgs extends SetupBody {
         fieldStyles,
         copyStyles,
         visuallyHidden,
+        linkButtonStyles,
         css`
-            .link-button {
-                display: inline-flex;
-                align-items: center;
-                box-sizing: border-box;
-                min-block-size: 48px;
-                padding-inline: 24px;
-                border-radius: var(--md-sys-shape-corner-full);
-                background: var(--md-sys-color-primary);
-                color: var(--md-sys-color-on-primary);
-                font-family: var(--md-sys-typescale-label-large-font);
-                font-size: var(--md-sys-typescale-label-large-size);
-                font-weight: var(--md-sys-typescale-label-large-weight);
-                text-decoration: none;
-            }
-
-            .link-button:focus-visible {
-                outline: 3px solid var(--md-sys-color-secondary);
-                outline-offset: 2px;
-            }
-
             .countdown {
                 font-family: var(--md-sys-typescale-title-medium-font);
                 font-size: var(--md-sys-typescale-title-medium-size);
@@ -79,7 +63,7 @@ export class HcmSetupUsgs extends SetupBody {
 
     protected override renderBody(state: SetupViewState): TemplateResult {
         return html`<div class="body">
-            ${this.renderRequest(state)}
+            ${this.renderLater(state)} ${this.renderRequest(state)}
             <div class="field">
                 <label for="usgs-username">${this.t('adminSetup.usgs.username')}</label>
                 <input
@@ -129,6 +113,37 @@ export class HcmSetupUsgs extends SetupBody {
         </div>`;
     }
 
+    /**
+     * Do it later while the step is to do; once postponed, what that means. Not while a saved token waits for USGS's
+     * approval: Setup is done already, and postponing would only turn Home's "waiting since" into "not set up" (finding 8
+     * of the M6 review).
+     */
+    private renderLater(state: SetupViewState): TemplateResult {
+        const step = this.step(state, 'usgs');
+        if (step.state === 'ok' || step.detail?.key === USGS_ACCESS_PENDING) {
+            return EMPTY;
+        }
+        if (state.usgs.postponedAt !== null) {
+            return html`<p class="note postponed">${this.t('adminSetup.usgs.postponed')}</p>`;
+        }
+        return html`<div class="later">
+            <p class="note">${this.t('adminSetup.usgs.laterWhy')}</p>
+            <div class="actions">
+                <hcm-button
+                    variant="outlined"
+                    icon="pending_actions"
+                    ?disabled=${step.busy}
+                    @click=${() => {
+                        this.act((intents) => {
+                            intents.postponeUsgs();
+                        });
+                    }}
+                    >${this.t('adminSetup.usgs.later')}</hcm-button
+                >
+            </div>
+        </div>`;
+    }
+
     private renderRequest(state: SetupViewState): TemplateResult {
         const area = state.usgs.area === null ? '' : this.t('adminSetup.usgs.area', { area: state.usgs.area });
         const request = [this.t('adminSetup.usgs.justification'), this.t('adminSetup.usgs.datasets'), area].filter((line) => line !== '');
@@ -167,9 +182,17 @@ export class HcmSetupUsgs extends SetupBody {
 
     private renderStatus(state: SetupViewState): TemplateResult {
         const { role, nextCheckAt, expiresSoon, tokenExpiresAt } = state.usgs;
-        return html`${this.renderRole(role)}
+        return html`${this.renderRole(role)} ${this.renderSince(state)}
         ${nextCheckAt === null ? nothing : html`<p class="note">${this.t('adminSetup.usgs.nextCheck', { time: formatDateTime(this.locale, nextCheckAt) })}</p>`}
         ${expiresSoon && tokenExpiresAt !== null ? this.renderExpiry(tokenExpiresAt) : nothing}`;
+    }
+
+    /** M6 (A59): a token waiting for USGS's approval says since when. */
+    private renderSince(state: SetupViewState): TemplateResult {
+        const since = this.step(state, 'usgs').state === 'pending' ? state.usgs.pendingSince : null;
+        return since === null
+            ? EMPTY
+            : html`<p class="note since">${this.t('adminSetup.usgs.pendingSince', { date: formatDate(this.locale, since) })}</p>`;
     }
 
     private renderRole(role: UsgsRole | null): TemplateResult {
@@ -257,6 +280,7 @@ export class HcmSetupUsgs extends SetupBody {
 /** Registers `<hcm-setup-usgs>` and what it renders. */
 export function defineHcmSetupUsgs(registry: CustomElementRegistry = customElements): void {
     defineSetupBodyParts(registry);
+    defineHcmButton(registry);
     defineHcmProgress(registry);
     defineOnce(registry, HCM_SETUP_USGS_TAG, HcmSetupUsgs);
 }

@@ -51,20 +51,46 @@ const PREFLIGHT_MAX_AGE_SECONDS = '3600';
 /** `Retry-After` of a 429: the limits count per minute. */
 const RETRY_AFTER_SECONDS = '60';
 
-/** An allowed origin and the Error Reporting service it decides: a city site is the viewer, the admin's hosting the admin. */
-interface AllowedOrigin {
-    readonly origin: string;
-    readonly service: ErrorService;
+/** An origin the endpoint answers: a city site's (`viewerOrigins`) or the admin's Hosting (`adminOrigins`). */
+function allowedOrigin(deps: ReportErrorDeps, origin: string | undefined): string | undefined {
+    const known = origin !== undefined && [...deps.config.viewerOrigins, ...deps.config.adminOrigins].includes(origin);
+    return known ? origin : undefined;
 }
 
-function allowedOrigin(deps: ReportErrorDeps, origin: string | undefined): AllowedOrigin | undefined {
-    if (origin === undefined) {
+/** The admin's folder on Hosting since M6 (`docs/research/M6-interfaces.md` §2.3): the public map is at the root. */
+function isAdminPath(pathname: string): boolean {
+    return pathname === '/admin' || pathname.startsWith('/admin/');
+}
+
+/** The page's address, or undefined when it is none (the schema keeps it an http(s) address already). */
+function pageUrl(page: string): URL | undefined {
+    try {
+        return new URL(page);
+    } catch {
         return undefined;
     }
-    if (deps.config.viewerOrigins.includes(origin)) {
-        return { origin, service: 'viewer' };
+}
+
+/**
+ * The Error Reporting service of a report from `origin`: since M6 the viewer and the admin share the Hosting origins, so
+ * the page decides (S-A24-HAPPY-SAME-ORIGIN): under `/admin/` on an admin origin the admin, else on a viewer origin the
+ * viewer, else on an admin origin the admin (a pre-M6 admin at the root). A page that is not on its request's `Origin`
+ * is no report of that site: none (S-A24-BAD-PAGE-ORIGIN-MISMATCH).
+ */
+function serviceOf(config: ReportErrorDeps['config'], origin: string, page: string): ErrorService | undefined {
+    const url = pageUrl(page);
+    if (url?.origin !== origin) {
+        return undefined;
     }
-    return deps.config.adminOrigins.includes(origin) ? { origin, service: 'admin' } : undefined;
+    if (isAdminReport(config, origin, url.pathname)) {
+        return 'admin';
+    }
+    return config.viewerOrigins.includes(origin) ? 'viewer' : undefined;
+}
+
+/** An admin origin's page under `/admin/`, or any page of an admin origin that serves no viewer. */
+function isAdminReport(config: ReportErrorDeps['config'], origin: string, pathname: string): boolean {
+    return config.adminOrigins.includes(origin) && (isAdminPath(pathname) || !config.viewerOrigins.includes(origin));
 }
 
 function refusal(code: ApiErrorCode, headers: Headers, issues?: readonly ValidationIssue[]): ReportResponse {
@@ -81,9 +107,9 @@ function parseReport(body: Uint8Array): ValidationResult<ErrorReport> {
     return validate(errorReportSchema, input);
 }
 
-/** A POST from an allowed origin: size, then rate, then shape; one structured log entry when all three pass. */
-function accept(deps: ReportErrorDeps, limiter: RateLimiter, request: ReportRequest, allowed: AllowedOrigin): ReportResponse {
-    const cors: Headers = { 'access-control-allow-origin': allowed.origin, vary: 'Origin' };
+/** A POST from an allowed origin: size, then rate, then shape, then its page; one structured log entry when all pass. */
+function accept(deps: ReportErrorDeps, limiter: RateLimiter, request: ReportRequest, origin: string): ReportResponse {
+    const cors: Headers = { 'access-control-allow-origin': origin, vary: 'Origin' };
     const body = request.body ?? new Uint8Array();
     if (body.byteLength > ERROR_REPORT_MAX_BYTES) {
         return refusal('apiError.telemetry.tooLarge', cors);
@@ -92,10 +118,16 @@ function accept(deps: ReportErrorDeps, limiter: RateLimiter, request: ReportRequ
         return refusal('apiError.rateLimited', { ...cors, 'retry-after': RETRY_AFTER_SECONDS });
     }
     const report = parseReport(body);
-    if (!report.ok) {
-        return refusal('apiError.invalidRequest', cors, report.issues);
+    return report.ok ? deliver(deps, report.value, origin, cors) : refusal('apiError.invalidRequest', cors, report.issues);
+}
+
+/** A valid report: logged for Error Reporting as its page's service, or refused when its page is not on its origin. */
+function deliver(deps: ReportErrorDeps, report: ErrorReport, origin: string, cors: Headers): ReportResponse {
+    const service = serviceOf(deps.config, origin, report.page);
+    if (service === undefined) {
+        return refusal('apiError.telemetry.origin', cors);
     }
-    deps.errors.report(toReportedErrorEvent(report.value, allowed.service));
+    deps.errors.report(toReportedErrorEvent(report, service));
     return { status: 204, headers: cors };
 }
 
@@ -104,8 +136,9 @@ function accept(deps: ReportErrorDeps, limiter: RateLimiter, request: ReportRequ
  * viewer and the admin. A preflight from an allowed origin → 204 with the CORS headers; any other method but POST →
  * 405; an origin outside `viewerOrigins` and `adminOrigins` → 403 `telemetry.origin` without CORS headers; a body over
  * 16 KiB → 413 before parsing; over the rate limits → 429 with `Retry-After`; a body `errorReportSchema` refuses →
- * 400 with the issues; otherwise the redacted `ReportedErrorEvent` is logged for Cloud Error Reporting → 204. Nothing
- * is written to Firestore and nothing but the accepted report is logged.
+ * 400 with the issues; a report whose page is not on its `Origin` → 403 `telemetry.origin` (M6); otherwise the redacted
+ * `ReportedErrorEvent` is logged for Cloud Error Reporting, as the viewer's or the admin's by its page (`serviceOf`) → 204.
+ * Nothing is written to Firestore and nothing but the accepted report is logged.
  */
 export function handleErrorReport(deps: ReportErrorDeps, limiter: RateLimiter, request: ReportRequest): ReportResponse {
     const allowed = allowedOrigin(deps, request.origin);
@@ -113,7 +146,7 @@ export function handleErrorReport(deps: ReportErrorDeps, limiter: RateLimiter, r
         return {
             status: 204,
             headers: {
-                'access-control-allow-origin': allowed.origin,
+                'access-control-allow-origin': allowed,
                 'access-control-allow-methods': 'POST',
                 'access-control-allow-headers': 'content-type',
                 'access-control-max-age': PREFLIGHT_MAX_AGE_SECONDS,

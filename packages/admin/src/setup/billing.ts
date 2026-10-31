@@ -1,10 +1,12 @@
 /**
  * Step (b), billing and the budget (`docs/research/M2b-interfaces.md` §3.3 b): one click and one consent link the
  * project to an open billing account (the Blaze plan) and create the monthly budget in the account's currency. With
- * no open account the card links Google's billing page and lists the accounts every 10 s for 30 minutes (the click
- * that started the step named the action, so the link proceeds by itself); several accounts are a choice with the
- * first preselected (one more input). Retry after a refusal repeats only what is missing. In normal mode the result
- * is recorded at once with `setup.recordCloud`.
+ * no open account the card offers Google's page that creates one and lists the accounts every 10 s for 30 minutes (the
+ * click that started the step named the action, so the link proceeds by itself), saying when it last looked (M6,
+ * finding 3); several accounts are a choice with the first preselected (one more input). An account that appears while
+ * the card waits is a new one, which Google opens as a free trial for a new customer: it is remembered as a likely trial
+ * from that day (M6, A60; no Google API says so, `DECISIONS-for-review.md` §67f). Retry after a refusal repeats only what
+ * is missing. In normal mode the result is recorded at once with `setup.recordCloud`.
  */
 import { budgetAmountFor } from './budget.js';
 import type { SetupContext } from './context.js';
@@ -26,6 +28,12 @@ export interface BillingFlow {
     choose(accountName: string): void;
     /** Links the chosen account (several were open). */
     confirm(): Promise<void>;
+    /**
+     * "This account is a free trial": one click, no consent. The owner says what the card could not infer (an account that
+     * existed before Setup, finding 18 of 2026-10-25 and finding 6 of the M6 review): a trial from today, whose end Home
+     * announces (A60).
+     */
+    markTrial(): Promise<void>;
     dispose(): void;
 }
 
@@ -208,11 +216,34 @@ class Billing implements BillingFlow {
         }
         const observed = await this.ctx.deps.cloud.observeBilling(access);
         if (observed.accounts.length === 0 && observed.linkedAccount === null) {
+            this.ctx.patchStep('billing', { checkedAt: this.ctx.nowIso() });
             return 'next';
         }
         this.setWaiting(false);
+        this.likelyTrial();
         await this.decide(access, observed);
         return 'stop';
+    }
+
+    async markTrial(): Promise<void> {
+        this.ctx.count('billing', 'inputs');
+        const trialSince = this.ctx.state().billing.trialSince ?? this.ctx.nowIso();
+        this.ctx.update((state) => ({ ...state, billing: { ...state.billing, trialSince } }));
+        // Start-up mode keeps it in the bootstrap record, sent with the claim; an admin session records it at once.
+        if (this.ctx.state().mode !== 'normal') {
+            return;
+        }
+        try {
+            this.ctx.applyStatus((await this.ctx.deps.backend.recordCloud({ trial: { since: trialSince } })).status);
+        } catch (error) {
+            this.ctx.fail('billing', apiFailure(error));
+        }
+    }
+
+    /** An account appeared while the card waited: a new customer's, so a likely free trial from today (A60). */
+    private likelyTrial(): void {
+        const trialSince = this.ctx.state().billing.trialSince ?? this.ctx.nowIso();
+        this.ctx.update((state) => ({ ...state, billing: { ...state.billing, trialSince } }));
     }
 
     private waitExpired(): void {
@@ -243,13 +274,14 @@ class Billing implements BillingFlow {
     /** Normal mode: `setup/status` is the record, so the result is stored at once. */
     private async record(): Promise<void> {
         const state = this.ctx.state();
-        const { budgetId, amount, currency } = state.billing;
+        const { budgetId, amount, currency, trialSince } = state.billing;
         if (state.mode !== 'normal' || budgetId === null) {
             return;
         }
         try {
             const { status } = await this.ctx.deps.backend.recordCloud({
                 billing: { state: 'ok', budgetId, budgetAmount: amount, currency },
+                ...(trialSince === null ? {} : { trial: { since: trialSince } }),
             });
             this.ctx.applyStatus(status);
         } catch (error) {

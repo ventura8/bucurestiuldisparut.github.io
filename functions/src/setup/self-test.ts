@@ -1,7 +1,7 @@
 import { SELF_TEST_CHECKS, timestampFromDate, type CallableResponse, type SelfTestCheck, type TimestampLike } from '@hcm/shared';
 
 import type { VerifiedCaller } from '../api/access.js';
-import { failureRecord } from './failures.js';
+import { failureRecord, upstreamFields } from './failures.js';
 import { commitStatus, defined, stampOf, withoutReason, type SetupStatusFields } from './records.js';
 import { CHECKS, type CheckContext, type CheckResult, type SelfTestDeps } from './self-test-checks.js';
 import { usgsRecord } from './usgs-check.js';
@@ -10,13 +10,17 @@ import { toSetupStatusView } from './view.js';
 type Response = CallableResponse<'setup.selfTest'>;
 type Results = Readonly<Record<SelfTestCheck, CheckResult>>;
 
-/** One check, isolated: a failure becomes its result (and a log line), and the next check still runs. */
+/**
+ * One check, isolated: a failure becomes its result (and a log line), and the next check still runs. The line names
+ * what the upstream answered (service, failure, HTTP status, Google's status and reason; never a body, an address or a
+ * token), so a failing check on the real project says why (finding 20).
+ */
 async function runCheck(deps: SelfTestDeps, id: SelfTestCheck, context: CheckContext): Promise<CheckResult> {
     try {
         return await CHECKS[id](deps, context);
     } catch (error) {
         const failure = failureRecord(error);
-        deps.log.warn('self-test check failed', { check: id, code: failure.detail });
+        deps.log.warn('self-test check failed', { check: id, code: failure.detail, ...upstreamFields(error) });
         return failure;
     }
 }
@@ -29,6 +33,7 @@ async function runChecks(deps: SelfTestDeps, context: CheckContext): Promise<Res
         'private-bucket': await runCheck(deps, 'private-bucket', context),
         'public-bucket': await runCheck(deps, 'public-bucket', context),
         'task-queue': await runCheck(deps, 'task-queue', context),
+        events: await runCheck(deps, 'events', context),
         mapbox: await runCheck(deps, 'mapbox', context),
         usgs: await runCheck(deps, 'usgs', context),
         'firebase-management': await runCheck(deps, 'firebase-management', context),
@@ -48,9 +53,16 @@ function checked(current: object | undefined, result: CheckResult, checkedAt: Ti
     return current === undefined ? fresh : { ...withoutReason(current), ...fresh };
 }
 
-/** USGS keeps its role while unreachable and its token's expiry always; an outcome brings the next check. */
+/**
+ * USGS keeps its role while unreachable, its token's expiry always and since when its approval is awaited (CR-M6-14,
+ * S-A59-HAPPY-APPROVAL-PENDING); an outcome brings the next check.
+ */
 function usgsAfter(current: SetupStatusFields['usgs'], result: CheckResult, now: Date): SetupStatusFields['usgs'] {
-    const kept = { ...defined('role', current?.role), ...defined('tokenExpiresAt', current?.tokenExpiresAt) };
+    const kept = {
+        ...defined('role', current?.role),
+        ...defined('tokenExpiresAt', current?.tokenExpiresAt),
+        ...defined('pendingSince', current?.pendingSince),
+    };
     return result.usgs === undefined ? checked(current, result, timestampFromDate(now)) : usgsRecord(result.usgs, now, kept);
 }
 

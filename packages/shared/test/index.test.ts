@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import * as shared from '../src/index.js';
 import { M5_EXPORTS } from './fixtures/exports-m5.js';
+import { M6_INSTALL_EXPORTS } from './fixtures/exports-m6-install.js';
+import { M6_SETUP_UX_EXPORTS } from './fixtures/exports-m6-setup-ux.js';
 
 /** The public API, by module: a removed or renamed export breaks the engine, the admin and the functions. */
 const EXPORTS = {
@@ -147,6 +149,7 @@ const EXPORTS = {
         'manifestStateDocSchema',
         'opsDispatchDocSchema',
         'opsGuardDocSchema',
+        'opsProbeDocSchema',
         'ownerDocSchema',
         'usageDocSchema',
         'CLIENT_WRITES',
@@ -555,6 +558,10 @@ const EXPORTS = {
     ],
     /** M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases. */
     m5: M5_EXPORTS,
+    /** M6 installer (docs/research/M6-interfaces.md §1.10): the install bundle, its log events, each target's state. */
+    m6Install: M6_INSTALL_EXPORTS,
+    /** M6 setup-ux (docs/research/M6-interfaces.md §4.1): when Setup is done, USGS postponed or waiting. */
+    m6SetupUx: M6_SETUP_UX_EXPORTS,
     migration: [
         'KNOWN_HTTPS_HOSTS',
         'decodeEntities',

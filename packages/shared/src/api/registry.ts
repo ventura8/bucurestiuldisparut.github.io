@@ -295,6 +295,8 @@ export const BACKGROUND_FUNCTIONS = {
     'photos.onUpload': { trigger: 'storage', source: 'uploads/photos/{city}/{uid}/{photo}/{file}', owner: 'fn-content' },
     'ops.tick': { trigger: 'schedule', source: OPS_TICK_SCHEDULE, owner: 'fn-content' },
     'ops.onBudget': { trigger: 'pubsub', source: 'budget', owner: 'fn-content' },
+    // M6 (docs/research/M6-interfaces.md §3.2): answers the self-test's events probe, so a missing run.invoker shows.
+    'ops.onProbe': { trigger: 'firestore', source: 'ops/probe', owner: 'fn-content' },
     'imagery.onJobWrite': { trigger: 'firestore', source: 'cities/{city}/jobs/{id}', owner: 'fn-imagery' },
     'imagery.onRasterUpload': { trigger: 'storage', source: 'uploads/rasters/{city}/{uid}/{upload}/{file}', owner: 'fn-imagery' },
     'imagery.publish': { trigger: 'taskQueue', source: IMAGERY_PUBLISH_QUEUE, owner: 'fn-imagery' },

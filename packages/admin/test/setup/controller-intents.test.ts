@@ -119,6 +119,15 @@ describe('intents: every card', () => {
         expect(harness.cloud.linkBilling).toHaveBeenCalledWith(harness.google.current, 'billingAccounts/DDDDDD-EEEEEE-FFFFFF');
     });
 
+    it('happyPath_aFreeTrialSaidOnTheBillingCardReachesTheBillingFlow', async () => {
+        const { controller } = await started('bootstrap');
+
+        await controller.intents.markTrial();
+
+        expect(controller.getState().billing.trialSince).not.toBeNull();
+        expect(controller.getState().steps.billing.used.inputs).toBe(1);
+    });
+
     it('happyPath_credentialIntentsReachTheirCallables', async () => {
         const { harness, controller } = await started('normal');
         harness.backend.saveMapbox.mockResolvedValue({ mapbox: { state: 'ok', checkedAt: CHECKED }, viewer: MINTED, admin: MINTED });
@@ -196,6 +205,8 @@ describe('follow-ups of a change', () => {
                 'service-accounts',
                 'iam',
                 'buckets',
+                // M6 (CR-M6-2): the pipeline's repository.
+                'artifact-registry',
                 'bucket-cors',
                 'bucket-lifecycle',
                 'secrets',

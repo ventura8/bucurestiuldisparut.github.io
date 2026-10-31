@@ -28,6 +28,26 @@ export interface GoogleCall {
     readonly role?: string;
 }
 
+/**
+ * M6 (finding 4 of `docs/research/manual-test-2026-10-25.md`; `docs/research/M6-interfaces.md` §1.5): an API that
+ * `services:batchEnable` reports on still answers 403 `SERVICE_DISABLED` for a few minutes. With this option the
+ * transport waits that out (after 10, 20, 40, 60 and 60 s, about three minutes, on the injected clock) when Service
+ * Usage says the API is enabled, telling `onWait` before each wait; a truly disabled API fails at once as before, and an
+ * API still refused after the last wait fails as {@link API_PROPAGATING} (`apiError.cloud.apiPropagation`).
+ */
+interface ApiPropagation {
+    /** The project (number or id) whose Service Usage says whether a refused API is on. */
+    readonly project: string;
+    /** Heard before each wait for `api` (the doctor line says "Waiting for Google to switch on {api}…"). */
+    readonly onWait: (api: string) => void;
+}
+
+/** The waits of an API Google is still switching on, in order. */
+export const API_PROPAGATION_RETRY_MS: readonly number[] = [10_000, 20_000, 40_000, 60_000, 60_000];
+
+/** The failure reason of an API still refused after every wait (`failureMessage` names `apiError.cloud.apiPropagation`). */
+const API_PROPAGATING = 'API_PROPAGATING';
+
 export interface GoogleTransportOptions {
     readonly fetch: typeof fetch;
     /** The current access token (memory only, §2.3); null once it was dropped: the call fails `unauthorized`. */
@@ -39,6 +59,8 @@ export interface GoogleTransportOptions {
     readonly retries?: number;
     /** Polls of an unfinished long-running operation before it counts as unavailable (default 60). */
     readonly operationPolls?: number;
+    /** M6: wait out an API Google is still switching on (§1.5); without it a `SERVICE_DISABLED` fails at once. */
+    readonly propagation?: ApiPropagation;
 }
 
 export interface GoogleTransport {
@@ -52,6 +74,7 @@ export interface GoogleTransport {
     operation(apiBase: string, started: unknown, call: Pick<GoogleCall, 'operation' | 'role'>): Promise<unknown>;
 }
 
+const SERVICE_USAGE = 'https://serviceusage.googleapis.com/v1';
 const FIRST_RETRY_MS = 1000;
 const MAX_BACKOFF_MS = 8000;
 const MAX_DELAY_MS = 30_000;
@@ -99,6 +122,13 @@ function delayOf(failure: GoogleFailure, attempt: number): number {
     return Math.min(failure.retryAfterSeconds === undefined ? backoff : failure.retryAfterSeconds * 1000, MAX_DELAY_MS);
 }
 
+/** An API Google refused as disabled, with what the transport needs to wait for it. */
+interface Propagating {
+    readonly api: string;
+    readonly failure: GoogleFailure;
+    readonly propagation: ApiPropagation;
+}
+
 class Transport implements GoogleTransport {
     readonly #options: GoogleTransportOptions;
 
@@ -107,11 +137,11 @@ class Transport implements GoogleTransport {
     }
 
     readonly call = async (request: GoogleCall): Promise<unknown> => {
-        for (let tried = 0; ; tried += 1) {
+        for (let waited = 0; ; waited += 1) {
             try {
-                return await this.#attempt(request);
+                return await this.#retried(request);
             } catch (error) {
-                await this.#backoff(request, error, tried);
+                await this.#waitForPropagation(request, error, waited);
             }
         }
     };
@@ -155,6 +185,66 @@ class Transport implements GoogleTransport {
         }
         return at(current, 'response');
     };
+
+    /** One call with its retries of 429, 5xx and network failures. */
+    async #retried(request: GoogleCall): Promise<unknown> {
+        for (let tried = 0; ; tried += 1) {
+            try {
+                return await this.#attempt(request);
+            } catch (error) {
+                await this.#backoff(request, error, tried);
+            }
+        }
+    }
+
+    /**
+     * Waits before the next try of an API Google is still switching on (§1.5); rethrows any other failure, a
+     * `SERVICE_DISABLED` for an API Service Usage reports off, and, after the last wait, the failure as still propagating.
+     */
+    async #waitForPropagation(request: GoogleCall, error: unknown, waited: number): Promise<void> {
+        const found = this.#propagating(error);
+        if (found === undefined) {
+            throw error;
+        }
+        const delay = API_PROPAGATION_RETRY_MS[waited];
+        if (delay === undefined) {
+            throw new GoogleApiError(request.operation, { ...found.failure, reason: API_PROPAGATING });
+        }
+        if (!(await this.#mayWait(found, waited))) {
+            throw error;
+        }
+        found.propagation.onWait(found.api);
+        this.#options.log.warn('google api still switching on', { operation: request.operation, api: found.api, attempt: waited + 1 });
+        await this.#options.sleep(delay);
+    }
+
+    /** A `SERVICE_DISABLED` failure naming its API, when this transport waits out propagation. */
+    #propagating(error: unknown): Propagating | undefined {
+        const failure = googleFailureOf(error);
+        const { propagation } = this.#options;
+        if (propagation === undefined || failure?.reason !== 'SERVICE_DISABLED' || failure.api === undefined) {
+            return undefined;
+        }
+        return { api: failure.api, failure, propagation };
+    }
+
+    /** The first wait asks Service Usage whether the API is on at all; the later ones only wait. */
+    #mayWait(found: Propagating, waited: number): Promise<boolean> {
+        return waited > 0 ? Promise.resolve(true) : this.#enabled(found.propagation.project, found.api);
+    }
+
+    /** Whether Service Usage reports `api` enabled in the project (a failed read counts as off: the call fails as before). */
+    async #enabled(project: string, api: string): Promise<boolean> {
+        try {
+            const body = await this.#retried({
+                operation: 'service-usage.get',
+                url: `${SERVICE_USAGE}/projects/${project}/services/${api}`,
+            });
+            return stringAt(body, 'state') === 'ENABLED';
+        } catch {
+            return false;
+        }
+    }
 
     /** Waits before the next try of a retryable failure; rethrows anything else, and the last failure. */
     async #backoff(request: GoogleCall, error: unknown, tried: number): Promise<void> {
@@ -212,4 +302,30 @@ export async function createOnce(transport: GoogleTransport, call: GoogleCall): 
 /** A transport over `fetch`. */
 export function createGoogleTransport(options: GoogleTransportOptions): GoogleTransport {
     return new Transport(options);
+}
+
+/**
+ * Where a run hears the APIs the transport waits for (M6, §1.5): `onWait` goes into the transport's options, `listen`
+ * to the provisioner, which names the item it was running (S-A04-HAPPY-API-PROPAGATION).
+ */
+export interface ApiWaits {
+    readonly onWait: (api: string) => void;
+    listen(listener: ((api: string) => void) | undefined): void;
+}
+
+export function createApiWaits(): ApiWaits {
+    let current: ((api: string) => void) | undefined;
+    return {
+        onWait: (api) => {
+            current?.(api);
+        },
+        listen: (listener) => {
+            current = listener;
+        },
+    };
+}
+
+/** `options` that wait out the APIs Google is still switching on in `project` (the installer's submit shares it). */
+export function withApiPropagation(options: GoogleTransportOptions, project: string, waits: ApiWaits): GoogleTransportOptions {
+    return { ...options, propagation: { project, onWait: waits.onWait } };
 }

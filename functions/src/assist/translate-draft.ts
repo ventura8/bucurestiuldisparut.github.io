@@ -23,7 +23,7 @@ import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { readCityUsage, shareOf, writeCityUsage, type CityShare } from '../api/city-usage.js';
 import type { DocumentTransaction } from '../ports/documents.js';
-import { UpstreamError } from '../ports/errors.js';
+import { UpstreamError, type UpstreamFailure } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
 import { guardIsRed, requireCity, stampOf } from './records.js';
 
@@ -119,17 +119,29 @@ async function settle(deps: TranslateDraftDeps, month: string, estimate: number,
     }));
 }
 
-/** How a failed Vertex AI call reaches the admin; the field stays as it was in every case. */
+/** A refused call: the disabled API when Google named it, else the custom role the drafts need. */
+function refusedDraft(error: UpstreamError): ApiError {
+    return error.api === undefined
+        ? new ApiError('apiError.cloud.permission', { role: VERTEX_DRAFTS_ROLE_ID })
+        : new ApiError('apiError.cloud.apiDisabled', { api: error.api });
+}
+
+/** The failures with a message of their own; any other is `apiError.assist.unavailable`. */
+const DRAFT_FAILURES: Partial<Readonly<Record<UpstreamFailure, (error: UpstreamError) => ApiError>>> = {
+    forbidden: refusedDraft,
+    rateLimited: () => new ApiError('apiError.rateLimited'),
+    notFound: () => new ApiError('apiError.assist.modelUnavailable', { model: VERTEX_MODEL_ID }),
+};
+
+/**
+ * How a failed Vertex AI call reaches the admin; the field stays as it was in every case. M6 (finding 20,
+ * S-A45-BAD-MODEL-UNAVAILABLE): a 404 is the pinned model Google does not offer to the project, said as the self-test says it.
+ */
 export function draftFailure(error: unknown): unknown {
     if (!(error instanceof UpstreamError)) {
         return error;
     }
-    if (error.failure === 'forbidden') {
-        return error.api === undefined
-            ? new ApiError('apiError.cloud.permission', { role: VERTEX_DRAFTS_ROLE_ID })
-            : new ApiError('apiError.cloud.apiDisabled', { api: error.api });
-    }
-    return new ApiError(error.failure === 'rateLimited' ? 'apiError.rateLimited' : 'apiError.assist.unavailable');
+    return DRAFT_FAILURES[error.failure]?.(error) ?? new ApiError('apiError.assist.unavailable');
 }
 
 async function generate(deps: TranslateDraftDeps, prompt: TranslationPrompt): Promise<Generation> {

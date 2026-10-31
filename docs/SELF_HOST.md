@@ -38,7 +38,7 @@ Fiecare pas spune ce face, de ce și cât costă, apoi întreabă `y/N`; `--yes`
 | 4 | Aplicația web și Hosting | `firebase apps:create WEB …`, site-ul de Hosting (fiecare doar dacă lipsește) | nimic | gratuit |
 | 5 | Conectarea cu Google pentru admin | deschide consola: Authentication, Sign-in method | Google, Enable, Save | gratuit |
 | 6 | Adminul, în modul de pornire | scrie `server/` în folderul orașului, apoi `firebase deploy --only hosting` | nimic | gratuit (Spark) |
-| 7 | Setup în admin | deschide `https://<id>.web.app/` | conectarea, revendicarea hărții, plata și bugetul de 5 USD, Provision | gratuit până la Blaze |
+| 7 | Setup în admin | deschide `https://<id>.web.app/admin/` (M6: administrarea în dosarul ei; rădăcina trimite acolo până la publicarea hărții) | conectarea, revendicarea hărții, plata și bugetul de 5 USD, Provision | gratuit până la Blaze |
 | 8 | Serverul | verifică plata (`gcloud billing projects describe`), apoi `firebase deploy --only functions,firestore,storage,hosting` | legarea plății, dacă nu ai făcut-o | Blaze; bugetul oprește imaginile, nu site-ul |
 | 9 | Restul Setup | deschide adminul din nou | Mapbox, USGS, statisticile, primul tău oraș (Oraș nou) | după cum alegi |
 
@@ -101,7 +101,7 @@ Each step says what it does, why and what it costs, then asks `y/N`; `--yes` nev
 | 4 | The web app and Hosting | `firebase apps:create WEB …`, the Hosting site (each only when missing) | nothing | free |
 | 5 | Google sign-in for the admin | opens the console: Authentication, Sign-in method | Google, Enable, Save | free |
 | 6 | The admin, in start-up mode | writes `server/` into the city folder, then `firebase deploy --only hosting` | nothing | free (Spark) |
-| 7 | Setup in the admin | opens `https://<id>.web.app/` | signing in, claiming the map, billing and the 5 USD budget, Provision | free until Blaze |
+| 7 | Setup in the admin | opens `https://<id>.web.app/admin/` (M6: the admin in its folder; the root sends there until the map is published) | signing in, claiming the map, billing and the 5 USD budget, Provision | free until Blaze |
 | 8 | The server | checks billing (`gcloud billing projects describe`), then `firebase deploy --only functions,firestore,storage,hosting` | linking billing, if you have not | Blaze; the budget pauses the imagery, never the site |
 | 9 | The rest of Setup | opens the admin again | Mapbox, USGS, analytics, your first city (New city) | as you choose |
 

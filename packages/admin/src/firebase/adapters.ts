@@ -115,7 +115,8 @@ export function firebasePorts(sdk: FirebaseSdk, handles: FirebaseHandles): Fireb
 /**
  * Google's popup through Firebase Auth (`docs/research/M2b-interfaces.md` §2.2): the scope added, Google's custom
  * parameters set; `signInWithPopup` when nobody is signed in, else `reauthenticateWithPopup` (a different account is
- * refused with `auth/user-mismatch`). Firebase never persists the OAuth access token.
+ * refused with `auth/user-mismatch`). Firebase never persists the OAuth access token. The popup's resolver is given
+ * here, not to `initializeAuth` (`app.ts`): Node's build of `firebase/auth`, which the entry's tests load, has none.
  */
 export function firebasePopup(sdk: FirebaseSdk, handles: Pick<FirebaseHandles, 'auth'>): PopupSignIn {
     return async (scopeUrl, parameters) => {
@@ -126,7 +127,9 @@ export function firebasePopup(sdk: FirebaseSdk, handles: Pick<FirebaseHandles, '
         provider.setCustomParameters({ ...parameters });
         const user = handles.auth.currentUser;
         const result =
-            user === null ? await sdk.signInWithPopup(handles.auth, provider) : await sdk.reauthenticateWithPopup(user, provider);
+            user === null
+                ? await sdk.signInWithPopup(handles.auth, provider, sdk.browserPopupRedirectResolver)
+                : await sdk.reauthenticateWithPopup(user, provider, sdk.browserPopupRedirectResolver);
         return { accessToken: sdk.GoogleAuthProvider.credentialFromResult(result)?.accessToken ?? null, email: result.user.email };
     };
 }

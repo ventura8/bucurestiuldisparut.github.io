@@ -86,23 +86,39 @@ describe('eventParams and parseConsent', () => {
 });
 
 describe('expireAnalyticsCookies', () => {
-    it('happyPath_expiresGa4CookiesHostOnlyAndForTheHost', () => {
+    it('happyPath_expiresTheAdminsGa4CookiesHostOnlyAndForTheHost', () => {
         const writes: string[] = [];
         const jar = {
             get cookie(): string {
-                return '_ga=GA1.1.1; theme=dark; _ga_E2E0000000=GS1; _gac_x=1; _ga=again';
+                return 'hcm_admin_ga=GA1.1.1; theme=dark; hcm_admin_ga_E2E0000000=GS1; _gac_x=1; hcm_admin_ga=again';
             },
             set cookie(value: string) {
                 writes.push(value);
             },
         };
 
-        expect(expireAnalyticsCookies(jar, 'demo-hcm.web.app')).toEqual(['_ga', '_ga_E2E0000000']);
+        expect(expireAnalyticsCookies(jar, 'demo-hcm.web.app')).toEqual(['hcm_admin_ga', 'hcm_admin_ga_E2E0000000']);
         expect(writes).toEqual([
-            '_ga=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/',
-            '_ga=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Domain=demo-hcm.web.app',
-            '_ga_E2E0000000=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/',
-            '_ga_E2E0000000=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Domain=demo-hcm.web.app',
+            'hcm_admin_ga=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/',
+            'hcm_admin_ga=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Domain=demo-hcm.web.app',
+            'hcm_admin_ga_E2E0000000=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/',
+            'hcm_admin_ga_E2E0000000=; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Domain=demo-hcm.web.app',
         ]);
+    });
+
+    it('badPath_theViewersGa4CookiesOnTheSameOriginAreNeverTouched', () => {
+        // M6 (docs/research/M6-interfaces.md §2.3): the public map at the root shares the admin's origin and its cookies.
+        const writes: string[] = [];
+        const jar = {
+            get cookie(): string {
+                return '_ga=GA1.1.2; _ga_VIEWER0001=GS1; hcm:bucharest:theme=dark';
+            },
+            set cookie(value: string) {
+                writes.push(value);
+            },
+        };
+
+        expect(expireAnalyticsCookies(jar, 'demo-hcm.web.app')).toEqual([]);
+        expect(writes).toEqual([]);
     });
 });

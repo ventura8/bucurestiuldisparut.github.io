@@ -10,11 +10,13 @@ import {
     type ApiErrorCode,
     type RecordCloudRequest,
     type ServiceState,
+    type SetupInstall,
     type SetupStatusView,
 } from '@hcm/shared';
 
 import { BOOTSTRAP_STEPS, type BootstrapRecord, type StepHealth } from './bootstrap-record.js';
 import { isSetupMessageKey, setupMessage, type MessageParams, type SetupMessage, type SetupMessageKey } from './messages.js';
+import { observedInstall, withRecordedInstall } from './install-records.js';
 import type { ProvisionItemResult } from './ports.js';
 import {
     provisionHealth,
@@ -71,17 +73,28 @@ function withSteps(state: SetupState, patches: readonly (readonly [SetupStepId, 
     return patches.reduce((current, [id, patch]) => withStep(current, id, patch), state);
 }
 
+/** M6 setup-ux (A60): a likely trial the owner has not called paid yet. */
+function trialOfView(view: SetupStatusView['billing'], known: string | null): string | null {
+    return view.trialPaidAt === undefined ? (view.trialSince ?? known) : null;
+}
+
 function billingFromView(billing: BillingSlice, view: SetupStatusView['billing']): BillingSlice {
     return {
         ...billing,
         budgetId: view.budgetId ?? billing.budgetId,
         amount: view.budgetAmount ?? billing.amount,
         currency: view.currency ?? billing.currency,
+        trialSince: trialOfView(view, billing.trialSince),
     };
 }
 
 function expiresSoon(tokenExpiresAt: string | null, now: number): boolean {
     return tokenExpiresAt !== null && Date.parse(tokenExpiresAt) - now <= USGS_EXPIRY_REMINDER_DAYS * DAY_MS;
+}
+
+/** M6 setup-ux (A59): when USGS was postponed and since when its approval is awaited, from the view. */
+function laterOfView(view: SetupStatusView['usgs']): Pick<UsgsSlice, 'postponedAt' | 'pendingSince'> {
+    return { postponedAt: view.postponedAt ?? null, pendingSince: view.pendingSince ?? null };
 }
 
 /** The USGS slice from a `setup/status` or `setup.saveUsgs` view (the expiry reminder from `now`). */
@@ -93,6 +106,7 @@ export function usgsFromView(usgs: UsgsSlice, view: SetupStatusView['usgs'], now
         nextCheckAt: view.nextCheckAt ?? null,
         tokenExpiresAt,
         expiresSoon: expiresSoon(tokenExpiresAt, now),
+        ...laterOfView(view),
     };
 }
 
@@ -119,10 +133,10 @@ export function applyStatusView(state: SetupState, view: SetupStatusView, now: n
         ['billing', healthPatch(view.billing)],
         ['provision', { ...healthPatch(view.provision), state: provisionHealth(items) }],
         ['mapbox', healthPatch(view.mapbox)],
-        ['usgs', healthPatch(view.usgs)],
+        ['usgs', { ...healthPatch(view.usgs), postponed: view.usgs.postponedAt !== undefined }],
         ['analytics', healthPatch(view.analytics)],
     ]);
-    return {
+    const applied = {
         ...next,
         billing: billingFromView(next.billing, view.billing),
         provision: { items },
@@ -131,6 +145,9 @@ export function applyStatusView(state: SetupState, view: SetupStatusView, now: n
         analytics: { ...next.analytics, measurementId: view.analytics.measurementId ?? next.analytics.measurementId },
         crashes: { ...next.crashes, lastReportAt: view.crash.lastReportAt ?? null },
     };
+    // [section install] owner: installer (M6): the install targets `setup.recordCloud` recorded.
+    return withRecordedInstall(applied, view.install);
+    // [end install]
 }
 
 function savedBudget(billing: BillingSlice, saved: NonNullable<BootstrapRecord['billing']>): Pick<BillingSlice, 'amount' | 'currency'> {
@@ -141,7 +158,14 @@ function billingFromRecord(billing: BillingSlice, saved: BootstrapRecord['billin
     if (saved === undefined) {
         return billing;
     }
-    return { ...billing, accountName: saved.accountName ?? null, budgetId: saved.budgetId ?? null, ...savedBudget(billing, saved) };
+    const trialSince = saved.trialSince ?? billing.trialSince;
+    return {
+        ...billing,
+        accountName: saved.accountName ?? null,
+        budgetId: saved.budgetId ?? null,
+        trialSince,
+        ...savedBudget(billing, saved),
+    };
 }
 
 function deployFromRecord(deploy: DeploySlice, saved: BootstrapRecord['deploy']): DeploySlice {
@@ -155,12 +179,15 @@ export function applyBootstrapRecord(state: SetupState, record: BootstrapRecord)
         return health === undefined ? [] : [[id, healthPatch(health)] as const];
     });
     const next = withSteps(state, patches);
-    return {
+    const applied = {
         ...next,
         billing: billingFromRecord(next.billing, record.billing),
         provision: { items: mergeItems(record.provision?.items ?? []) },
         deploy: deployFromRecord(next.deploy, record.deploy),
     };
+    // [section install] owner: installer (M6): what the install cards saw before the reload.
+    return withRecordedInstall(applied, record.install);
+    // [end install]
 }
 
 /** A recordable reason: only keys `isSetupMessageKey` reads back, with their parameters. */
@@ -182,10 +209,11 @@ function checkedSteps(state: SetupState): BootstrapRecord['steps'] {
 }
 
 function billingRecord(billing: BillingSlice): NonNullable<BootstrapRecord['billing']> {
-    const { accountName, budgetId, amount, currency } = billing;
+    const { accountName, budgetId, amount, currency, trialSince } = billing;
     return {
         ...(accountName === null ? {} : { accountName }),
         ...(budgetId === null ? {} : { budgetId, budgetAmount: amount, currency }),
+        ...(trialSince === null ? {} : { trialSince }),
     };
 }
 
@@ -201,7 +229,15 @@ export function bootstrapRecordOf(state: SetupState, nowIso: string): BootstrapR
         billing: billingRecord(state.billing),
         provision: { items: items.map((item) => ({ id: item.id, state: item.state, ...reason(item.detail) })) },
         deploy: { ready, total, failed },
+        // [section install] owner: installer (M6)
+        ...installField(observedInstall(state, nowIso)),
+        // [end install]
     };
+}
+
+/** The bootstrap record's `install`, when the cards observed something (M6 installer). */
+function installField(install: SetupInstall | undefined): Pick<BootstrapRecord, 'install'> {
+    return install === undefined ? {} : { install };
 }
 
 /** A recorded reason that `setup.recordCloud` accepts (an API error code); admin texts stay on the card only. */
@@ -243,8 +279,21 @@ function provisionRequest(record: BootstrapRecord): Pick<RecordCloudRequest, 'pr
     return { provision: { items: items.map((item) => ({ id: item.id, state: item.state, ...apiReason(item.detail, item.params) })) } };
 }
 
+/** M6 setup-ux (A60): the likely trial the billing step saw begin. */
+function trialRequest(record: BootstrapRecord): Pick<RecordCloudRequest, 'trial'> {
+    const since = record.billing?.trialSince;
+    return since === undefined ? {} : { trial: { since } };
+}
+
 /** `setup.recordCloud`'s request from the bootstrap record (null when it found nothing to record). */
 export function recordCloudRequestOf(record: BootstrapRecord): RecordCloudRequest | null {
-    const request: RecordCloudRequest = { ...billingRequest(record), ...provisionRequest(record) };
-    return request.billing === undefined && request.provision === undefined ? null : request;
+    const request: RecordCloudRequest = {
+        ...billingRequest(record),
+        ...provisionRequest(record),
+        ...trialRequest(record),
+        // [section install] owner: installer (M6): what the install cards saw before the claim.
+        ...(record.install === undefined ? {} : { install: record.install }),
+        // [end install]
+    };
+    return Object.keys(request).length === 0 ? null : request;
 }

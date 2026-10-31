@@ -213,6 +213,13 @@
             "source": "docs/research/PLAN.md (M5: create-historic-city bootstrap, self-host); docs/research/M5-interfaces.md §4"
         },
         {
+            "id": "V30",
+            "area": "viewer",
+            "name": "The public map on Firebase Hosting: the viewer at the root, cities at their paths, old links",
+            "milestone": "M6",
+            "source": "docs/research/manual-test-2026-10-25.md findings 13, 14 (the user's decision); docs/research/M6-interfaces.md §2"
+        },
+        {
             "id": "A00",
             "area": "admin",
             "name": "Admin e2e harness",
@@ -596,6 +603,48 @@
             "name": "Multi-city end to end: a new city's public site and export, and its isolation",
             "milestone": "M5",
             "source": "docs/research/PLAN.md (M5, multi-city); docs/research/M5-interfaces.md §1.4, §1.6, §1.10, §5; the M5 integrator (DECISIONS-for-review.md §63)"
+        },
+        {
+            "id": "A55",
+            "area": "admin",
+            "name": "Install and update the map's server from the admin (Cloud Build)",
+            "milestone": "M6",
+            "source": "docs/research/manual-test-2026-10-25.md findings 9-13 (the user's request: a button in step d); docs/research/M6-interfaces.md §1.1-§1.5, §1.7-§1.8, §3.2"
+        },
+        {
+            "id": "A56",
+            "area": "admin",
+            "name": "Install and update the imagery pipeline from the admin",
+            "milestone": "M6",
+            "source": "docs/research/manual-test-2026-10-25.md finding 13 (c); docs/research/M6-interfaces.md §1.4.2, §1.7"
+        },
+        {
+            "id": "A57",
+            "area": "admin",
+            "name": "Publish and update the public map on Firebase Hosting from the admin",
+            "milestone": "M6",
+            "source": "docs/research/manual-test-2026-10-25.md findings 13 (d), 14; docs/research/M6-interfaces.md §1.4.3, §1.8, §2.5"
+        },
+        {
+            "id": "A58",
+            "area": "admin",
+            "name": "The admin under /admin/ on the map's own address",
+            "milestone": "M6",
+            "source": "docs/research/manual-test-2026-10-25.md finding 14; docs/research/M6-interfaces.md §2.2, §2.3, §2.7"
+        },
+        {
+            "id": "A59",
+            "area": "admin",
+            "name": "USGS later: a postponed step, Setup done and the reminder",
+            "milestone": "M6",
+            "source": "docs/research/manual-test-2026-10-25.md findings 16, 24 (the user's request); docs/research/M6-interfaces.md §4.1"
+        },
+        {
+            "id": "A60",
+            "area": "admin",
+            "name": "A free-trial billing account is remembered and its end announced",
+            "milestone": "M6",
+            "source": "docs/research/manual-test-2026-10-25.md finding 18; docs/research/M6-interfaces.md §3.1, DECISIONS-for-review.md §67f"
         },
         {
             "id": "P01",
@@ -2249,6 +2298,50 @@
             "notes": "Milestone M5, the reviews' fixes (docs/research/DECISIONS-for-review.md §65; owner: the fixer). The UX review's finding 13. Test: e2e/specs/starter-kit/create-city.spec.ts."
         },
         {
+            "id": "S-V30-HAPPY",
+            "behaviour": "V30",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The public map opens at the Hosting root and every city at its path",
+            "asserts": "the e2e Hosting tree -> / boots the first city from the public bucket's manifest with one map load and its own meta policy, asking nothing of Firestore or Firebase; /iasi/ (a city made in the admin, no committed site) boots that city through the generic city page with one map; /admin/ serves the admin",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.1, §2.4; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/specs/viewer/hosting.spec.ts (tour states site.city-generic in e2e/tour/site-states.ts)."
+        },
+        {
+            "id": "S-V30-HAPPY-OLD-PAGES-LINK",
+            "behaviour": "V30",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A 2015-2022 link through the Pages redirect page opens the same view on Hosting",
+            "asserts": "the Pages redirect tree with the hash 15.5/44.4271/26.0853/90/!a3!p2 -> the Hosting root with the same hash, the same view and photo open; without script the page says the map moved, in Romanian and English",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.7; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/specs/viewer/hosting.spec.ts (with and without JavaScript)."
+        },
+        {
+            "id": "S-V30-BAD-START-UP",
+            "behaviour": "V30",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Before Publish the map the root says the map is being set up",
+            "asserts": "the start-up variant -> / shows the bilingual being-set-up page with a link to the admin, loads no engine and no Mapbox, and release.json says start-up",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.5; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/specs/viewer/hosting.spec.ts (tour state site.start-up)."
+        },
+        {
+            "id": "S-V30-BAD-UNKNOWN-CITY",
+            "behaviour": "V30",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A city that is not published, or a path that is no city, is said plainly",
+            "asserts": "/e2e-unpublished/ -> the viewer's map-not-found card with no map load; /Not_A_City/ -> the bilingual 404 page with links to the map and the admin",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.2, §2.4; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/specs/viewer/hosting.spec.ts (tour state site.not-found)."
+        },
+        {
             "id": "S-A00-HAPPY",
             "behaviour": "A00",
             "area": "admin",
@@ -2645,6 +2738,61 @@
             "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/ops/services.test.ts."
         },
         {
+            "id": "S-A03-HAPPY-EVENTS-REACH",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "happy",
+            "title": "The server check proves that events reach the server",
+            "asserts": "Check again -> the events check writes the probe and ops.onProbe's answer comes back -> ok among the server checks",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.2; owner: server-bugs). Finding 17 of docs/research/manual-test-2026-10-25.md. Covered by e2e/admin/steps/status.spec.ts (the Functions emulator delivers ops/probe to ops.onProbe; the probe sent back)."
+        },
+        {
+            "id": "S-A03-BAD-EVENTS-REFUSED",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "bad",
+            "title": "Events that never arrive are named with the missing role",
+            "asserts": "no answer to the probe within its wait (clock) -> invalid with apiError.setup.eventsUnreached naming roles/run.invoker and Prepare the project",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.2; owner: server-bugs). Finding 17 of docs/research/manual-test-2026-10-25.md. Covered by functions/test/setup/self-test.test.ts (the emulators skip IAM, so the refusal is the functions tier's: no delivery within EVENTS_PROBE_WAIT_MS)."
+        },
+        {
+            "id": "S-A03-HAPPY-CONSENT-NOTE-WHERE-ASKED",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "happy",
+            "title": "A consent note appears only where its button asks Google",
+            "asserts": "start-up mode, only the sign-in's read-only token -> the consent note beside Prepare the project; after its consent the server's card has no note while the token lives, and its functions' count shows at most once",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.8, §3.1; owner: setup-ux). Finding 7 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/status.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A03-BAD-ONE-COUNT",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "bad",
+            "title": "A partial install shows its count once and the note only when needed",
+            "asserts": "a third of the functions installed and only the sign-in's token -> one consent note on the server's card beside the button that will ask, the count at most once, no line said twice",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.8, §3.1; owner: setup-ux). Finding 7 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/status.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A03-HAPPY-OPTIONAL-CHECK-QUIET",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "happy",
+            "title": "A failing optional check is said quietly and Setup stays done",
+            "asserts": "the AI check refused -> listed apart as Translation drafts are off with its reason and a neutral icon; the header still says Setup done",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1, §3.2; owner: setup-ux). Finding 20, 24 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/status.spec.ts (setup-ux)."
+        },
+        {
             "id": "S-A04-HAPPY",
             "behaviour": "A04",
             "area": "admin",
@@ -2766,6 +2914,105 @@
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
+            "id": "S-A04-HAPPY-CREATE-ACCOUNT",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "happy",
+            "title": "With no billing account the card offers to create one and waits in plain words",
+            "asserts": "no open account -> a primary Create a billing account opening Google's create page in a new tab, the card saying it waits and continues by itself with the last check's time -> the new account is linked and the budget made with no click",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 3 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/billing.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A04-BAD-WAITING-NO-LINK",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "While it waits for an account the card offers nothing to click but the create page",
+            "asserts": "waiting for a new account -> no Link button, the waiting state busy and named; after 30 minutes (clock) Check again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 3 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/billing.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A04-HAPPY-RETRY-NAMES-BUTTON",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "happy",
+            "title": "A provisioning failure names the button on the card",
+            "asserts": "an item fails -> its message says to use Retry what failed, never to run Prepare the project, which the card does not show then",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 5 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/provision.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A04-BAD-CHECK-NAMES-STEP",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "A server check's disabled API names the Setup step to open",
+            "asserts": "a server check answers apiError.cloud.apiDisabled -> the message names the Prepare the project step with its link, in both languages",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 5 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/status.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A04-HAPPY-API-PROPAGATION",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "happy",
+            "title": "An API Google is still switching on is waited for, not failed",
+            "asserts": "the fake answers SERVICE_DISABLED for iam three times after enabling it -> the item says it waits for Google and retries on the clock -> 16 of 16 with no click",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.5, §1.6; owner: server-bugs). Finding 4 of docs/research/manual-test-2026-10-25.md. Covered by e2e/admin/steps/provision.spec.ts (the fake's scenario service-usage.propagation; the page's clock)."
+        },
+        {
+            "id": "S-A04-BAD-API-STILL-DISABLED",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "An API still off after the wait asks for one retry",
+            "asserts": "SERVICE_DISABLED for about three minutes (clock) -> the item missing with apiError.cloud.apiPropagation naming the API and its dependants waiting -> Retry what failed (one input) finishes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.5; owner: server-bugs). Finding 4 of docs/research/manual-test-2026-10-25.md. Covered by e2e/admin/steps/provision.spec.ts (the fake's scenario service-usage.propagationSlow)."
+        },
+        {
+            "id": "S-A04-HAPPY-INSTALLER-ACCOUNT",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "happy",
+            "title": "Provision prepares the installer, the repository, the invoker role and the service agents",
+            "asserts": "Prepare the project -> hcm-installer@ with exactly the roles of the contract and the custom role hcmInstaller, the hcm repository, roles/run.invoker for fn-events@ and fn-admin@ on the project, the Eventarc and Pub/Sub service identities generated before the role table; a second run writes nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.2, §1.6; owner: server-bugs). Finding 12, 17 of docs/research/manual-test-2026-10-25.md. Covered by e2e/admin/steps/provision.spec.ts."
+        },
+        {
+            "id": "S-A04-BAD-IDENTITY-REFUSED",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused service identity is named and the rest goes on",
+            "asserts": "generateServiceIdentity for eventarc answers 403 -> the roles item names the refusal with its role; the items that do not need it are provisioned",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.6; owner: server-bugs). Finding 12 of docs/research/manual-test-2026-10-25.md. Covered by e2e/admin/steps/provision.spec.ts (the fake's scenario service-usage.identityRefused)."
+        },
+        {
+            "id": "S-A04-BAD-PRE-M6-RECORD",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "A record from before M6 retries every item, so the installer's account is made",
+            "asserts": "setup/status holds 15 items ok and Artifact Registry never reported (the live map) -> Retry what failed (one click, one consent) runs every item, not only the missing one -> 16 of 16, hcm-installer@ created with its roles",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 2 of the min-input review. Test: e2e/admin/steps/provision.spec.ts."
+        },
+        {
             "id": "S-A05-HAPPY",
             "behaviour": "A05",
             "area": "admin",
@@ -2797,6 +3044,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6)."
+        },
+        {
+            "id": "S-A05-HAPPY-LINK-LABELS",
+            "behaviour": "A05",
+            "area": "admin",
+            "path": "happy",
+            "title": "Every deep link's label says what its page does",
+            "asserts": "the Mapbox card -> each link's text names its page's purpose from links.json; the console link reads Open the Mapbox console, the payment advice in its hint",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 15 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/mapbox.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A05-BAD-HINT-APART",
+            "behaviour": "A05",
+            "area": "admin",
+            "path": "bad",
+            "title": "A hint for another page sits beside its link, not in it",
+            "asserts": "the Mapbox card -> the Rotate token advice is a hint line next to the console link and no link text holds a parenthesis",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 15 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/mapbox.spec.ts (setup-ux)."
         },
         {
             "id": "S-A06-HAPPY",
@@ -2885,6 +3154,50 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M2 (docs/research/M2-interfaces.md CR-M2-33). Covered by functions/test/ops/services.test.ts (the functions half of S-A06-HAPPY-ROTATE)."
+        },
+        {
+            "id": "S-A06-HAPPY-VIEWER-ORIGIN",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "happy",
+            "title": "The viewer's token follows the server's viewer origins without an input",
+            "asserts": "a city whose viewer token allows only the GitHub Pages origin and a server whose viewer origins are the Hosting ones -> the tokens step of ops.tick mints a token for them, retires the old one after 10 minutes and the manifest republishes with it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.6; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: functions/test/ops/viewer-tokens.test.ts."
+        },
+        {
+            "id": "S-A06-BAD-REMINT-REFUSED",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused re-mint keeps the old token and says why",
+            "asserts": "Mapbox refuses the mint (demo account) -> the old token stays in the manifest and setup/status.mapbox names apiError.mapbox.mintRefused",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.6; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: functions/test/ops/viewer-tokens.test.ts."
+        },
+        {
+            "id": "S-A06-BAD-ORIGINS-REFUSED",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "bad",
+            "title": "Viewer origins a city cannot record are refused before any token is minted",
+            "asserts": "HCM_VIEWER_ORIGINS with a trailing slash, a path, plain http or eleven origins -> runtimeConfig throws and functions/build.mjs uses the same pattern as httpsOriginSchema, so no deploy carries them",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 3 of the security-cost review. Tests: functions/test/deps.test.ts, functions/test/deploy-env.test.ts."
+        },
+        {
+            "id": "S-A06-BAD-UNRECORDED-TOKEN-DELETED",
+            "behaviour": "A06",
+            "area": "admin",
+            "path": "bad",
+            "title": "A minted viewer token the city cannot hold is deleted at once",
+            "asserts": "the city write after a re-mint fails -> the new token is deleted at Mapbox, the old one stays in the city, the step fails; a failed deletion is logged and the write's failure goes on",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 3 of the security-cost review (one orphaned live token per tick before). Test: functions/test/ops/viewer-tokens.test.ts."
         },
         {
             "id": "S-A07-HAPPY",
@@ -4614,6 +4927,28 @@
             "notes": "Milestone M2 (docs/research/M2-interfaces.md §6). Covered by functions/test/telemetry/report-error.test.ts."
         },
         {
+            "id": "S-A24-HAPPY-SAME-ORIGIN",
+            "behaviour": "A24",
+            "area": "admin",
+            "path": "happy",
+            "title": "On one origin the page's path tells the admin's crash from the viewer's",
+            "asserts": "a report from a page under /admin/ -> logged as the admin's; from / or a city path -> the viewer's",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.3; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: functions/test/telemetry/report-error.test.ts."
+        },
+        {
+            "id": "S-A24-BAD-PAGE-ORIGIN-MISMATCH",
+            "behaviour": "A24",
+            "area": "admin",
+            "path": "bad",
+            "title": "A report whose page is not on its own origin is refused",
+            "asserts": "a report whose page names another origin than its Origin header -> refused, nothing logged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.3; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: functions/test/telemetry/report-error.test.ts."
+        },
+        {
             "id": "S-A25-HAPPY",
             "behaviour": "A25",
             "area": "admin",
@@ -4663,7 +4998,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A reload in start-up mode keeps the detected steps but no token",
-            "asserts": "reload after billing -> the steps show their state from sessionStorage, which holds no access token, e-mail address or secret; the next step asks Google again",
+            "asserts": "reload after billing -> the steps show their state from the app's sessionStorage record, which holds no access token, e-mail address or secret (beside it only Firebase Auth's own session of the tab, never a Google token); the next step asks Google again",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
@@ -4834,6 +5169,50 @@
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5)."
         },
         {
+            "id": "S-A28-HAPPY-STUCK-REPROCESSED",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "happy",
+            "title": "A photo whose upload event was lost is processed again after two minutes",
+            "asserts": "an upload whose event never arrives -> after two minutes (clock) the import asks photos.reprocess once -> the photo is processed and published; the import does not wait ten minutes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.2; owner: server-bugs). Finding 17 of docs/research/manual-test-2026-10-25.md. Covered by e2e/admin/steps/legacy.spec.ts (the first upload sent to a name photos.onUpload ignores; photos.reprocess runs for real)."
+        },
+        {
+            "id": "S-A28-BAD-STUCK-AGAIN",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "bad",
+            "title": "A photo still stuck after the second try is listed with the server check",
+            "asserts": "the second event lost too -> listed as not processed because the server did not receive the upload, with a link to the server checks; the other photos imported",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.2; owner: server-bugs). Finding 17 of docs/research/manual-test-2026-10-25.md. Covered by e2e/admin/steps/legacy.spec.ts (the second event lost too: the page's photos.reprocess call is answered without a copy, as the emulators always deliver a server-side copy's event); the failure links the step that grants roles/run.invoker."
+        },
+        {
+            "id": "S-A28-HAPPY-DONE-SNACKBAR",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "happy",
+            "title": "The end of the import is said in a snackbar",
+            "asserts": "the last photo published -> a snackbar All 45 photos are on the map, announced, while Setup moves to the next step",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 19 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/legacy.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A28-BAD-PARTIAL-SNACKBAR",
+            "behaviour": "A28",
+            "area": "admin",
+            "path": "bad",
+            "title": "An import that ends with failures says how many and where",
+            "asserts": "a photo failed processing -> a snackbar 44 of 45 photos are on the map with Open, which opens the import card with its list",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 19 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/legacy.spec.ts (setup-ux)."
+        },
+        {
             "id": "S-A29-HAPPY",
             "behaviour": "A29",
             "area": "admin",
@@ -4955,12 +5334,100 @@
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §3.3, §4.6; owner: pois)."
         },
         {
+            "id": "S-A31-HAPPY-LOADING-FITS",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "happy",
+            "title": "The loading screen fits the window without a scrollbar",
+            "asserts": "the admin loading at every tour viewport -> no page scrollbar, the indicator centred; tour state shell.loading",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 1 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/setup-layout.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A31-BAD-LOADING-SLOW",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "bad",
+            "title": "A boot that turns into its error card still fits",
+            "asserts": "the web configuration answers late, then fails -> the error card at 320 by 568 and 915 by 412 scrolls only if its own text is taller than the window",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 1 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/setup-layout.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A31-HAPPY-SIGN-IN-CENTRED",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "happy",
+            "title": "The start-up sign-in card is centred",
+            "asserts": "start-up mode at the medium window class and wider -> the card centred on both axes; on a compact-height window it starts at the top without clipping",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 2 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/setup-layout.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A31-BAD-SIGN-IN-REFUSAL",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused account's longer card stays centred and whole",
+            "asserts": "a non-owner signs in -> the refusal card centred, its text whole at 320 by 568, in both languages",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 2 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/setup-layout.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A31-HAPPY-BUSY-CHIP",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "happy",
+            "title": "A busy step's chip shows the indicator in place of its icon",
+            "asserts": "a step running -> the chip's icon replaced by the loading indicator and its label Working kept readable, in the list and the card's header; tour state setup.provision-busy passes the overlap checker",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 6 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/setup-layout.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A31-BAD-BUSY-REDUCED-MOTION",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "bad",
+            "title": "With reduced motion the busy chip is still whole",
+            "asserts": "reduced motion while a step runs -> a static busy icon and the label, nothing overlapping, the overlap checker run on the busy state",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 6 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/setup-layout.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A31-HAPPY-SURFACE-FILLS",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "happy",
+            "title": "The shell's surface fills the window when the content is short",
+            "asserts": "a short Setup page scrolled to its end -> the page's background is the shell's surface to the bottom edge, light and dark",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 22 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/setup-layout.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A31-BAD-OVERSCROLL-BAND",
+            "behaviour": "A31",
+            "area": "admin",
+            "path": "bad",
+            "title": "Scrolling past the end shows no band of another colour",
+            "asserts": "a long page scrolled past its end -> the colour below the content equals the surface; the tour's edge check sees no band",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 22 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/setup-layout.spec.ts (setup-ux)."
+        },
+        {
             "id": "S-A30-HAPPY",
             "behaviour": "A30",
             "area": "admin",
             "path": "happy",
-            "title": "The whole Setup Assistant takes at most nine inputs and four consents",
-            "asserts": "from sign-in to the legacy import with the mocks: at most 9 in-app inputs and 4 Google consents (setupInputBudget); the human-only work on the providers' pages is not counted",
+            "title": "The whole Setup Assistant takes at most eleven inputs and four consents",
+            "asserts": "from sign-in to the legacy import with the mocks, since M6 to Publish the map: at most 11 in-app inputs and 4 Google consents (setupInputBudget; 9 before M6 left the server, the pipeline and the site to a terminal); the human-only work on the providers' pages is not counted",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
@@ -4997,6 +5464,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.6; owner: photos and pois)."
+        },
+        {
+            "id": "S-A30-HAPPY-NO-TERMINAL",
+            "behaviour": "A30",
+            "area": "admin",
+            "path": "happy",
+            "title": "The whole Setup, server and public map included, takes no terminal",
+            "asserts": "from sign-in to Publish the map with the mocks: at most 11 in-app inputs and 4 Google consents (9 with USGS postponed); no Setup text names a command; the public map at / shows the city's photos",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §4.1, §4.2; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/journey.spec.ts (M6 integrator)."
+        },
+        {
+            "id": "S-A30-BAD-TOKEN-EXPIRED",
+            "behaviour": "A30",
+            "area": "admin",
+            "path": "bad",
+            "title": "An hour between steps costs one consent, never a re-entry",
+            "asserts": "Publish the map more than an hour after Prepare the project -> one consent from the same click; nothing detected is asked again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §4.2; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/journey.spec.ts (M6 integrator)."
         },
         {
             "id": "S-A32-HAPPY",
@@ -6022,6 +6511,28 @@
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §4.4; owner: assists-notify). In functions/test/setup/self-test.test.ts."
         },
         {
+            "id": "S-A45-BAD-MODEL-UNAVAILABLE",
+            "behaviour": "A45",
+            "area": "admin",
+            "path": "bad",
+            "title": "A model Vertex AI does not serve is named, not reported as a server error",
+            "asserts": "the mock Vertex AI answers 404 for the pinned model -> the AI check says the model is not available to the project (apiError.assist.modelUnavailable with the model) and the drafts button explains the same",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.2; owner: server-bugs). Finding 20 of docs/research/manual-test-2026-10-25.md. Covered by e2e/admin/specs/assists/drafts.spec.ts (the drafts button) and functions/test/setup/self-test.test.ts (the AI check)."
+        },
+        {
+            "id": "S-A45-BAD-UPSTREAM-LOGGED",
+            "behaviour": "A45",
+            "area": "admin",
+            "path": "bad",
+            "title": "Every unmapped Vertex AI failure is logged with its status and reason",
+            "asserts": "Vertex AI answers 400, 401 or a body without totalTokens -> one log line with the check, the code, the service, the failure, the HTTP status and Google's status and reason, no body and no token; the code is never apiError.internal",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.2; owner: server-bugs). Finding 20 of docs/research/manual-test-2026-10-25.md. Covered by functions/test/setup/self-test.test.ts."
+        },
+        {
             "id": "S-A46-HAPPY",
             "behaviour": "A46",
             "area": "admin",
@@ -6724,6 +7235,435 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M5 (the integrator's cross-app check; DECISIONS-for-review.md §63). Test: e2e/admin/specs/cities/city-journey.spec.ts."
+        },
+        {
+            "id": "S-A55-HAPPY",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "One click installs the map's server through Cloud Build",
+            "asserts": "Install the server (one click, no consent within the hour of Prepare the project) -> the mock Cloud Build gets one build as hcm-installer@ tagged hcm-install and the release, with the steps fetch (the manifest's SHA-256 the page computed), tools, rules, functions (--force) and verify -> the card shows queued, the step under way, the functions' count once, then installed with the release -> the claim follows with no click; input budget 1",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.4.1, §1.7, §1.8; owner: installer). Finding 9, 10 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/server.spec.ts (installer)."
+        },
+        {
+            "id": "S-A55-HAPPY-RETRIED",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "A first-deploy race is retried inside the build without a click",
+            "asserts": "the fake build logs an HCM_INSTALL retry line for Eventarc's service agent -> the card says Google is still preparing it and when it tries again -> installed; nothing asked of the owner",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.5; owner: installer). Finding 12 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/server.spec.ts (installer)."
+        },
+        {
+            "id": "S-A55-HAPPY-UPDATE",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "A server older than the admin's bundle offers Update",
+            "asserts": "functions whose HCM_RELEASE is older than the admin's release -> Setup's card and Home's tile say an update is ready -> Update the map (one click and one consent in daily use) -> a server build of the admin's release -> installed and the tile gone",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.7; owner: installer). Finding 10 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/update.spec.ts (installer)."
+        },
+        {
+            "id": "S-A55-BAD-BUILD-FAILED",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failed install names its step and shows the end of its log",
+            "asserts": "the build fails at the functions step -> the card names the step, shows the step's last log lines as text with a planted ya29 token and sk token redacted, links the build in the Google Cloud console -> Try again (one input) submits one new build of the same release",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.7; owner: installer). Finding 10 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/server.spec.ts (installer)."
+        },
+        {
+            "id": "S-A55-BAD-RETRIES-EXHAUSTED",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "A race that outlasts the retries fails with the functions it left",
+            "asserts": "the fake build's last retry fails and verify prints two missing functions -> failed, naming them and the step; the claim waits; Try again costs one input",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.5, §1.7; owner: installer). Finding 12 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/server.spec.ts (installer)."
+        },
+        {
+            "id": "S-A55-BAD-NOT-PROVISIONED",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without the installer's account the install asks for Prepare the project first",
+            "asserts": "Provision from before M6 (no hcm-installer@, no repository) -> Install the server is off with the reason and a link to Prepare the project; no build submitted",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.6; owner: installer). Finding 10 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/server.spec.ts (installer)."
+        },
+        {
+            "id": "S-A55-BAD-DOWNGRADE",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "An admin older than the installed server never installs over it",
+            "asserts": "functions with a newer HCM_RELEASE than the admin's -> the card says the server is newer and asks to reload the admin; no build submitted (--force would delete the newer functions)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.4.1, §1.7; owner: installer). Finding 9 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/server.spec.ts (installer)."
+        },
+        {
+            "id": "S-A55-BAD-SECOND-BUILD",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "A build already under way is followed, not doubled",
+            "asserts": "a server build queued from another tab -> the card shows its progress and Install the server submits nothing more",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.7; owner: installer). Finding 10 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/server.spec.ts (installer)."
+        },
+        {
+            "id": "S-A55-HAPPY-SCHEDULER-ACCOUNT",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "Every function names its full service account, so Scheduler jobs can be made",
+            "asserts": "the built functions loaded with GCLOUD_PROJECT demo-hcm -> every endpoint's service account is fn-admin, fn-events or fn-crash at demo-hcm.iam.gserviceaccount.com as RUNTIME_ACCOUNTS says, the two schedule triggers among them; runAs returns the full e-mail address",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.2; owner: server-bugs). Finding 11 of docs/research/manual-test-2026-10-25.md. Covered by functions/test/deploy-shape.test.ts (src/index.ts loaded as firebase-tools loads it, the Scheduler jobs built with firebase-tools' own jobFromEndpoint)."
+        },
+        {
+            "id": "S-A55-BAD-NO-PROJECT",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without a project id runAs refuses instead of writing the shorthand",
+            "asserts": "neither GCLOUD_PROJECT nor GOOGLE_CLOUD_PROJECT set -> runAs throws naming both variables; no option ends in a bare at sign",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.2; owner: server-bugs). Finding 11 of docs/research/manual-test-2026-10-25.md. Covered by functions/test/global-options.test.ts."
+        },
+        {
+            "id": "S-A55-HAPPY-PRE-M6-UPGRADE",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "A server from before M6 offers Update the map, and the claim stays done",
+            "asserts": "61 of the registry's functions, no release, nothing recorded (the live map) -> Check again on (d) -> An update is ready with Update the map, no Install the server; the claim (d2) stays Done -> one click -> a server build -> installed and recorded",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): findings 1 and 4 of the min-input review. Test: e2e/admin/steps/install/update.spec.ts."
+        },
+        {
+            "id": "S-A55-HAPPY-DONE-WHILE-UPDATING",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "Setup stays done while an update runs or after it stopped",
+            "asserts": "a recorded older server, Update the map -> while the build works and after it stops, Setup's header still says done (the installed release serves); a passing Google error is never recorded",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 5 of the min-input review. Test: e2e/admin/steps/install/update.spec.ts."
+        },
+        {
+            "id": "S-A55-BAD-UPDATE-FAILED-ADMIN",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "An update that stopped in an admin session offers Try again on step d",
+            "asserts": "Update the map fails at the functions step on a claimed map -> step d stays Done, its card says Stopped with Try again; one click with the live token submits a second build; the claim stays Done",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the min-input review. Test: e2e/admin/steps/install/update.spec.ts."
+        },
+        {
+            "id": "S-A55-BAD-DOWNGRADE-INCOMPLETE",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "A newer server missing a function is still never replaced",
+            "asserts": "a third of the functions with a newer HCM_RELEASE -> the card says the server is newer; no Install, no Update, no build submitted (--force would delete the newer functions)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 2 of the security-cost review. Test: e2e/admin/steps/install/server.spec.ts."
+        },
+        {
+            "id": "S-A56-HAPPY",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "happy",
+            "title": "Install the server also installs the imagery pipeline",
+            "asserts": "the same click -> a pipeline build (docker build of the bundled context, push to the hcm repository, the jobs step) -> the Run fake holds raster-pipeline (4 CPU, 16 GiB) and raster-pipeline-xl (8 CPU, 32 GiB) as job-raster@ on the pushed digest with the release label -> the pipeline card installed; an import then dispatches to the job; no input of its own",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.4.2, §4.1; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/pipeline.spec.ts (installer)."
+        },
+        {
+            "id": "S-A56-HAPPY-UPDATE",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "happy",
+            "title": "Jobs on an older release are updated with the map",
+            "asserts": "jobs labelled with an older release -> Update the map -> both jobs on the new digest and label",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.7; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/update.spec.ts (installer)."
+        },
+        {
+            "id": "S-A56-BAD-FAILED",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failed pipeline build stops only the pipeline",
+            "asserts": "the pipeline build fails at build -> only its card fails with its step and log; the server and the claim go on; Imagery says the pipeline is not installed with a link to its card; Try again costs one input",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.7; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/pipeline.spec.ts (installer)."
+        },
+        {
+            "id": "S-A56-BAD-NO-REPOSITORY",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "bad",
+            "title": "Without the hcm repository the pipeline waits for Prepare the project",
+            "asserts": "the Artifact Registry fake has no hcm repository -> the pipeline card asks for Prepare the project (Retry what failed) and submits nothing",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.6; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/update.spec.ts (installer)."
+        },
+        {
+            "id": "S-A56-HAPPY-INSTALL-ALONE",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "happy",
+            "title": "A pipeline missing beside an installed server installs from its own card",
+            "asserts": "installer's account but no hcm repository, a server in place -> Check again: Install the pipeline is off with the reason -> the repository appears, Check again -> the button is on -> one click -> a pipeline build -> installed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 3 of the min-input review. Test: e2e/admin/steps/install/update.spec.ts."
+        },
+        {
+            "id": "S-A57-HAPPY",
+            "behaviour": "A57",
+            "area": "admin",
+            "path": "happy",
+            "title": "Publish the map puts the viewer at the root and keeps the admin at /admin/",
+            "asserts": "Publish the map (one click) -> a site build that fetches the bundle's Hosting tree and puts the bundle back under admin/install -> release.json says public with the release -> the card links the project's Hosting address and / boots the city with one map",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.4.3, §1.8, §2.5; owner: installer). Finding 13, 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/site.spec.ts (installer)."
+        },
+        {
+            "id": "S-A57-HAPPY-UPDATE",
+            "behaviour": "A57",
+            "area": "admin",
+            "path": "happy",
+            "title": "A site older than the admin's bundle is republished by Update",
+            "asserts": "release.json with an older release -> Update the map republishes the site; old links still work",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.7; owner: installer). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/site.spec.ts (installer)."
+        },
+        {
+            "id": "S-A57-BAD-NOTHING-TO-SHOW",
+            "behaviour": "A57",
+            "area": "admin",
+            "path": "bad",
+            "title": "With no published manifest Publish the map is off and says why",
+            "asserts": "Mapbox not set up, so the first city has no manifest -> Publish the map is off with the reason and the step to do first; no build submitted",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.8; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/site.spec.ts (installer)."
+        },
+        {
+            "id": "S-A57-BAD-TOKEN-EXPIRED",
+            "behaviour": "A57",
+            "area": "admin",
+            "path": "bad",
+            "title": "An expired Google token costs one consent, not a second click",
+            "asserts": "more than an hour after Prepare the project (clock) -> Publish the map opens Google's consent from the same click, then the build; one input, one consent",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §4.2; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/site.spec.ts (installer)."
+        },
+        {
+            "id": "S-A57-BAD-FAILED",
+            "behaviour": "A57",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failed site build leaves the previous site serving",
+            "asserts": "the site build fails at hosting -> release.json and the root unchanged; the card names the step with its log; Try again costs one input",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.4.3, §1.7; owner: installer). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/site.spec.ts (installer)."
+        },
+        {
+            "id": "S-A58-HAPPY",
+            "behaviour": "A58",
+            "area": "admin",
+            "path": "happy",
+            "title": "The admin boots from /admin/ with everything it needs on the same origin",
+            "asserts": "/admin/ -> the admin's files, runtime.json, the web configuration at /__/firebase/init.json and the sign-in on the same origin, /admin answering 301 to /admin/; the push service worker registered with the scope /admin/ and no other; an inbox row's link and an invitation's link name the address under /admin/",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.3; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/admin-path.spec.ts."
+        },
+        {
+            "id": "S-A58-HAPPY-OLD-LINK",
+            "behaviour": "A58",
+            "area": "admin",
+            "path": "happy",
+            "title": "An old admin address on the root forwards to the admin with the same route",
+            "asserts": "/#/setup and /#/c/iasi/photos on the root -> /admin/ with the same hash before any map loads (no map load counted)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.7; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/admin-path.spec.ts."
+        },
+        {
+            "id": "S-A58-BAD-OLD-SERVICE-WORKER",
+            "behaviour": "A58",
+            "area": "admin",
+            "path": "bad",
+            "title": "A push service worker left at the root by an older admin is replaced",
+            "asserts": "a service worker registered with the scope / -> the admin unregisters it, registers its own under /admin/ and registers the device again; the viewer at / is controlled by none",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.3; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/admin-path.spec.ts."
+        },
+        {
+            "id": "S-A58-BAD-VIEWER-HASH",
+            "behaviour": "A58",
+            "area": "admin",
+            "path": "bad",
+            "title": "A viewer link on the root is never sent to the admin",
+            "asserts": "/#15.5/44.4271/26.0853/90/!a3!p2 and /#photo=strandul-opereta-1976 -> the map opens at that view and photo; the address stays on /",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.7; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/admin-path.spec.ts."
+        },
+        {
+            "id": "S-A58-BAD-CSP-PER-PATH",
+            "behaviour": "A58",
+            "area": "admin",
+            "path": "bad",
+            "title": "No page gets two security policies, and the admin's never reaches the viewer",
+            "asserts": "the probe paths through the Hosting rules -> each admin response carries the admin's policy header, each viewer page only its own meta policy, none two Content-Security-Policy headers; a viewer page cannot frame Google's sign-in",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.2; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/admin-path.spec.ts."
+        },
+        {
+            "id": "S-A58-HAPPY-SIGN-IN-IN-TAB",
+            "behaviour": "A58",
+            "area": "admin",
+            "path": "happy",
+            "title": "The owner's sign-in lives in the admin's tab and survives a reload",
+            "asserts": "the owner signed in on /admin/ -> a reload keeps the session; Firebase Auth's user is in the tab's sessionStorage only, never in localStorage or IndexedDB",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review (DECISIONS-for-review.md §73a). Test: e2e/admin/specs/shell/admin-path.spec.ts."
+        },
+        {
+            "id": "S-A58-BAD-VIEWER-READS-NO-SIGN-IN",
+            "behaviour": "A58",
+            "area": "admin",
+            "path": "bad",
+            "title": "A public map page on the admin's origin finds no sign-in to read",
+            "asserts": "the owner signed in on /admin/ -> the viewer opened at / in another tab of the same browser boots, and its localStorage, sessionStorage and IndexedDB hold no Firebase Auth user",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 1 of the security-cost review. Test: e2e/admin/specs/shell/admin-path.spec.ts."
+        },
+        {
+            "id": "S-A59-HAPPY",
+            "behaviour": "A59",
+            "area": "admin",
+            "path": "happy",
+            "title": "Do it later postpones USGS and Setup is done",
+            "asserts": "Do it later on the USGS card (one input) -> the chip says Later, the header says Setup done with USGS later, an empty address opens Home with the tile USGS is not set up yet and Set up USGS -> finishing USGS later removes the tile",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §4.1; owner: setup-ux). Finding 16, 24 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/usgs-later.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A59-HAPPY-APPROVAL-PENDING",
+            "behaviour": "A59",
+            "area": "admin",
+            "path": "happy",
+            "title": "A token waiting for USGS's approval does not hold Setup back",
+            "asserts": "the token saved, M2M pending -> Setup done with USGS approval pending, Home opens, its tile says the date the request has waited since",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §4.1; owner: setup-ux). Finding 24 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/usgs-later.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A59-BAD-IMAGERY-WHILE-LATER",
+            "behaviour": "A59",
+            "area": "admin",
+            "path": "bad",
+            "title": "Imagery while USGS is postponed asks for USGS first",
+            "asserts": "USGS postponed -> Imagery shows set up USGS first with Set up USGS and asks the server for no search",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §4.1; owner: setup-ux). Finding 16 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/usgs-later.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A59-BAD-REQUIRED-NOT-SKIPPABLE",
+            "behaviour": "A59",
+            "area": "admin",
+            "path": "bad",
+            "title": "Only a step that can wait offers Do it later",
+            "asserts": "the billing, Prepare the project, server, Mapbox and site cards -> no Do it later on any of them",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §4.1; owner: setup-ux). Finding 16 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/usgs-later.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A59-BAD-NO-LATER-WHILE-PENDING",
+            "behaviour": "A59",
+            "area": "admin",
+            "path": "bad",
+            "title": "A USGS token waiting for approval offers no Do it later",
+            "asserts": "the token saved, M2M approval pending (Setup done) -> the USGS card shows since when and no Do it later button",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 8 of the min-input review. Test: e2e/admin/steps/usgs-later.spec.ts."
+        },
+        {
+            "id": "S-A60-HAPPY",
+            "behaviour": "A60",
+            "area": "admin",
+            "path": "happy",
+            "title": "A billing account made during Setup is remembered as a likely trial and its end announced",
+            "asserts": "the card waited and a new account appeared -> setup/status records a likely trial and its day -> 76 days later (clock) Home shows the reminder with the link to upgrade it in Google Cloud -> It is a paid account (one input) removes it for good",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 18 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/billing-trial.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A60-BAD-EXISTING-ACCOUNT",
+            "behaviour": "A60",
+            "area": "admin",
+            "path": "bad",
+            "title": "An account that existed before Setup gets no trial reminder",
+            "asserts": "an open account already listed at the first look -> nothing recorded as a trial, no reminder at any date",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1; owner: setup-ux). Finding 18 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/billing-trial.spec.ts (setup-ux)."
+        },
+        {
+            "id": "S-A60-HAPPY-SAID-TRIAL",
+            "behaviour": "A60",
+            "area": "admin",
+            "path": "happy",
+            "title": "An account that existed before Setup can be said to be a free trial",
+            "asserts": "billing linked to an existing account -> This account is a free trial (one input, no consent) -> the card says so, setup/status records the trial from today -> 77 days later Home shows the trial reminder",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 6 of the min-input review (finding 18 of 2026-10-25 for the live map). Test: e2e/admin/steps/billing-trial.spec.ts."
         },
         {
             "id": "S-P01-HAPPY",

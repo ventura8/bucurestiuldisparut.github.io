@@ -1,10 +1,12 @@
 /**
- * Step (d), the server's deployment (`docs/research/M2b-interfaces.md` §3.3 d): no input. With the (c) token the card
- * lists the Cloud Functions every 30 s while the tab is visible, for two hours, against the registry: some missing is
- * `pending` with the count, one `FAILED` is `invalid` with its name, Cloud Functions still disabled is `missing`. Once
- * every function is `ACTIVE` the shell probes the server (§1.4); when it answers, the step is done and the claim (d2)
- * follows; a deployed server that does not answer is `invalid` (an organisation policy, §23c) and the poll goes on.
- * A token that expired meanwhile costs Continue (one click, one consent).
+ * Step (d), the server's deployment (`docs/research/M2b-interfaces.md` §3.3 d): with the (c) token the card lists the
+ * Cloud Functions every 30 s while the tab is visible, for two hours, against the registry: some missing is `pending`
+ * (the card's body shows the count, once: finding 7 of 2026-10-25), one `FAILED` is `invalid` with its name, Cloud
+ * Functions still disabled is `missing`. Once every function is `ACTIVE` the shell probes the server (§1.4); when it
+ * answers, the step is done and the claim (d2) follows; a deployed server that does not answer is `invalid` (an
+ * organisation policy, §23c) and the poll goes on. A token that expired meanwhile costs Continue (one click, one
+ * consent). Since M6 the card installs the server itself (Install the server, `install.ts`, one click); this flow
+ * still decides when the server is there and claims.
  */
 import type { SetupContext } from './context.js';
 import { googleAccess } from './google-access.js';
@@ -86,7 +88,7 @@ class Deploy implements DeployFlow {
             return 'next';
         }
         if (observed.ready < observed.total) {
-            this.health('pending', 'adminSetup.deploy.progress', { ready: String(observed.ready), total: String(observed.total) });
+            this.health('pending', null);
             return 'next';
         }
         return this.probe();
@@ -98,10 +100,21 @@ class Deploy implements DeployFlow {
             return 'next';
         }
         this.ctx.patchStep('deploy', { state: 'ok', detail: null, error: null, checkedAt: this.ctx.nowIso() });
-        this.ctx.patchStep('claim', { state: 'pending', detail: setupMessage('adminSetup.claim.automatic') });
+        this.claimNext();
         this.setWatching(false);
         await this.onDeployed();
         return 'stop';
+    }
+
+    /**
+     * Start-up mode: the claim (d2) follows the server. An admin session has claimed already: a look on step (d), an
+     * update's among them, leaves the claim done, or steps (e) to (i), which wait for it, would close (finding 4 of the
+     * M6 review).
+     */
+    private claimNext(): void {
+        if (this.ctx.state().mode !== 'normal') {
+            this.ctx.patchStep('claim', { state: 'pending', detail: setupMessage('adminSetup.claim.automatic') });
+        }
     }
 
     private failure(error: unknown): PollOutcome {
@@ -125,10 +138,11 @@ class Deploy implements DeployFlow {
 
     private health(
         state: 'pending' | 'invalid' | 'missing',
-        key: Parameters<typeof setupMessage>[0],
+        key: Parameters<typeof setupMessage>[0] | null,
         params?: Readonly<Record<string, string>>,
     ): void {
-        this.ctx.patchStep('deploy', { state, detail: setupMessage(key, params), error: null, checkedAt: this.ctx.nowIso() });
+        const detail = key === null ? null : setupMessage(key, params);
+        this.ctx.patchStep('deploy', { state, detail, error: null, checkedAt: this.ctx.nowIso() });
     }
 
     private record(observed: DeploymentObservation): void {

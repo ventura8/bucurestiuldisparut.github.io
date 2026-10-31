@@ -2,6 +2,7 @@ import { FIXTURE_VALUES } from '../api-fixtures/index.js';
 import { createFakeFetch, type FakeAnswer, type FakeFetch, type UpstreamRequest } from './fetch.js';
 import { createAnalyticsAdminFake, type AnalyticsAdminState } from './google-analytics-admin.js';
 import { createApiKeysFake, type ApiKeysState } from './google-api-keys.js';
+import { createArtifactRegistryFake, defaultArtifactRegistryState, type ArtifactRegistryState } from './google-artifact-registry.js';
 import { createAppCheckFake, createRecaptchaFake, type AppCheckState } from './google-app-check.js';
 import { createBillingBudgetsFake, createCloudBillingFake, defaultBillingState, type BillingState } from './google-billing.js';
 import { GoogleProjects } from './google-common.js';
@@ -9,6 +10,7 @@ import { createFcmFake, defaultFcmState, type FcmState } from './fcm.js';
 import { createErrorReportingFake, type ErrorReportingState } from './google-errors.js';
 import { createFirebaseStorageFake } from './google-firebase-storage.js';
 import { createFirebaseManagementFake, type FirebaseState } from './google-firebase.js';
+import { createCloudBuildFake, defaultCloudBuildState, type CloudBuildState } from './google-cloudbuild.js';
 import { createCloudFunctionsFake, createCloudSchedulerFake, type DeploymentState } from './google-functions.js';
 import { createIamFake, type IamState } from './google-iam.js';
 import {
@@ -20,11 +22,12 @@ import {
 } from './google-identity.js';
 import { createMonitoringFake, type MonitoringState } from './google-monitoring.js';
 import { createOrgPolicyFake, type OrgPolicyState } from './google-org-policy.js';
+import { createLoggingFake } from './google-logging.js';
 import { PolicyStore } from './google-policies.js';
 import { createPubSubFake, type PubSubState } from './google-pubsub.js';
 import { createCloudRunFake, type CloudRunState } from './google-run.js';
 import { createSecretManagerFake, latestSecretValue, type SecretsState } from './google-secrets.js';
-import { createServiceUsageFake, type ServiceUsageState } from './google-services.js';
+import { createServiceUsageFake, defaultServiceUsageState, propagationAnswer, type ServiceUsageState } from './google-services.js';
 import { createCloudStorageFake, type CloudStorageState } from './google-storage.js';
 import { createCloudTasksFake, type CloudTasksState } from './google-tasks.js';
 import { defaultMapboxState, type MapboxState } from './mapbox-state.js';
@@ -78,6 +81,10 @@ export interface UpstreamState {
     /** M4: Vertex AI Gemini's scripted drafts and FCM's pushed messages (`docs/research/M4-interfaces.md` §8). */
     readonly vertexAi: VertexAiState;
     readonly fcm: FcmState;
+    /** M6: the pipeline's Docker repository and its policy (`docs/research/M6-interfaces.md` §1.6). */
+    readonly artifactRegistry: ArtifactRegistryState;
+    /** M6 installer: the install builds, their outcomes and the public site they published (`docs/research/M6-interfaces.md` §1.10). */
+    readonly cloudBuild: CloudBuildState;
 }
 
 export interface UpstreamFakes extends FakeFetch {
@@ -112,6 +119,8 @@ const PRESETS: Readonly<Record<string, readonly string[]>> = {
      * and the publisher read (the approved USGS account, the Mapbox tiles token) and both raster pipeline jobs.
      */
     'imagery.ready': ['secret-manager.provisioned', 'secret-manager.imagerySecrets', 'cloud-run.pipelineJobsProvisioned'],
+    /** M6 installer: what Prepare the project made for the in-app installer (its account and the pipeline's repository). */
+    'install.provisioned': ['artifact-registry.provisioned', 'cloud-build.installerAccount'],
 };
 
 function initialState(): UpstreamState {
@@ -120,7 +129,7 @@ function initialState(): UpstreamState {
         resourceManager: { policies: new Map(), allowedMemberDomains: undefined, parent: undefined },
         iam: { projects: new Map() },
         billing: defaultBillingState(),
-        serviceUsage: { enabled: new Map() },
+        serviceUsage: defaultServiceUsageState(),
         firebase: { projects: new Map() },
         secrets: { projects: new Map(), policies: new PolicyStore() },
         cloudRun: { jobs: new Set(), executions: new Map() },
@@ -140,6 +149,8 @@ function initialState(): UpstreamState {
         overpass: { answer: undefined },
         vertexAi: defaultVertexAiState(),
         fcm: defaultFcmState(),
+        artifactRegistry: defaultArtifactRegistryState(),
+        cloudBuild: defaultCloudBuildState(),
     };
 }
 
@@ -177,6 +188,13 @@ function services(state: UpstreamState): readonly ServiceFake[] {
         createGoogleApisFake(),
         createVertexAiFake(state.vertexAi),
         createFcmFake(state.fcm),
+        createArtifactRegistryFake(state.artifactRegistry, projects),
+        createCloudBuildFake(
+            state.cloudBuild,
+            { deployment: state.deployment, serviceUsage: state.serviceUsage, cloudRun: state.cloudRun, iam: state.iam },
+            projects,
+        ),
+        createLoggingFake(state.cloudBuild),
     ];
 }
 
@@ -238,13 +256,19 @@ export function createUpstreamFakes(): UpstreamFakes {
     const fakes = services(state);
     const failures = new Map<UpstreamServiceName, FailureMode>();
     const scenarios = scenarioTable(fakes);
+    // A failure mode on, else (M6, finding 4) an API Google is still switching on (the propagation scenarios), refuses first.
+    const refusal = (fake: ServiceFake, request: UpstreamRequest): Response | undefined => {
+        const mode = failures.get(fake.name);
+        return (mode === undefined ? undefined : fake.failure(mode)) ?? propagationAnswer(state.serviceUsage, request);
+    };
     const handle = async (request: UpstreamRequest): Promise<FakeAnswer | undefined> => {
         for (const fake of fakes) {
             const found = matchRoute(fake.routes, request);
             if (found !== undefined) {
-                const mode = failures.get(fake.name);
-                const failed = mode === undefined ? undefined : fake.failure(mode);
-                return { operation: found.route.operation, response: failed ?? (await found.route.answer(request, found.params)) };
+                return {
+                    operation: found.route.operation,
+                    response: refusal(fake, request) ?? (await found.route.answer(request, found.params)),
+                };
             }
         }
         return undefined;

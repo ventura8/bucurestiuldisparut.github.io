@@ -62,9 +62,6 @@ describe('buildSelfHostBundle', () => {
 
         const out = join(root, DEFAULT_LAYOUT.out);
         expect(list(out)).toEqual([
-            'admin',
-            'admin/admin.mjs',
-            'admin/index.html',
             'bundle.json',
             'firebase.template.json',
             'functions',
@@ -73,6 +70,10 @@ describe('buildSelfHostBundle', () => {
             'functions/index.js',
             'functions/package-lock.json',
             'functions/package.json',
+            'hosting',
+            'hosting/admin',
+            'hosting/admin/admin.mjs',
+            'hosting/admin/index.html',
             'rules',
             'rules/firestore.indexes.json',
             'rules/firestore.rules',
@@ -84,14 +85,16 @@ describe('buildSelfHostBundle', () => {
         expect(template).not.toContain('predeploy');
         expect(template).not.toContain('emulators');
         const config = JSON.parse(template) as {
-            hosting: { site: string; public: string; headers: { headers: { key: string; value: string }[] }[] };
+            hosting: { site: string; public: string; redirects: unknown[]; headers: { headers: { key: string; value: string }[] }[] };
             functions: { source: string }[];
             firestore: { rules: string; indexes: string; location: string };
             storage: { rules: string };
         };
         expect(config.hosting.site).toBe('__PROJECT_ID__');
-        expect(config.hosting.public).toBe('admin');
-        expect(config.hosting.headers[0]?.headers[0]?.value).toContain('https://__PROJECT_ID__.web.app');
+        expect(config.hosting.public).toBe('hosting');
+        expect(config.hosting.redirects.at(-1)).toEqual({ source: '/', destination: '/admin/', type: 302 });
+        const policy = config.hosting.headers.flatMap((rule) => rule.headers).find((header) => header.key === 'Content-Security-Policy');
+        expect(policy?.value).toContain('https://__PROJECT_ID__.web.app');
         expect(config.functions[0]?.source).toBe('functions');
         expect(config.firestore).toMatchObject({
             rules: 'rules/firestore.rules',
@@ -122,6 +125,10 @@ describe('selfHostFirebaseConfig', () => {
         ) as { functions: unknown[]; hosting: unknown };
 
         expect(config.functions).toEqual([{ source: 'functions' }]);
-        expect(config.hosting).toEqual({ site: '__PROJECT_ID__', public: 'admin' });
+        expect(config.hosting).toEqual({
+            site: '__PROJECT_ID__',
+            public: 'hosting',
+            redirects: [{ source: '/', destination: '/admin/', type: 302 }],
+        });
     });
 });

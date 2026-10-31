@@ -13,10 +13,26 @@ type Params = Readonly<Record<string, string>>;
 /** The error code (and its message parameters) each expected failure becomes. */
 export type FailureMap = Readonly<Partial<Record<UpstreamFailure, readonly [ApiErrorCode, Params?]>>>;
 
+/**
+ * The `ApiError` an upstream failure was mapped to, keeping that failure so a log line can say what the service
+ * answered (M6, finding 20: the self-test logged only the code and lost Google's status and reason).
+ */
+export class MappedUpstreamError extends ApiError {
+    readonly upstream: UpstreamError;
+
+    constructor(code: ApiErrorCode, params: Params | undefined, upstream: UpstreamError) {
+        super(code, params);
+        this.upstream = upstream;
+    }
+}
+
 /** `error` as the `ApiError` its failure maps to, or unchanged. */
 export function mapFailure(error: unknown, map: FailureMap): unknown {
-    const mapped = error instanceof UpstreamError ? map[error.failure] : undefined;
-    return mapped === undefined ? error : new ApiError(mapped[0], mapped[1]);
+    if (!(error instanceof UpstreamError)) {
+        return error;
+    }
+    const mapped = map[error.failure];
+    return mapped === undefined ? error : new MappedUpstreamError(mapped[0], mapped[1], error);
 }
 
 /** Awaits `work`, mapping its upstream failure (anything else passes through). */
@@ -89,8 +105,40 @@ function cloudFailure(error: unknown, role: string, transient: FailureMap): unkn
         return mapFailure(error, transient);
     }
     return error.api === undefined
-        ? new ApiError('apiError.cloud.permission', { role })
-        : new ApiError('apiError.cloud.apiDisabled', { api: error.api });
+        ? new MappedUpstreamError('apiError.cloud.permission', { role }, error)
+        : new MappedUpstreamError('apiError.cloud.apiDisabled', { api: error.api }, error);
+}
+
+/** Why Google refused: its `ErrorInfo` reason, else its status, else the HTTP status, else the failure. */
+function refusalReason(error: UpstreamError): string {
+    const answered = error.status === undefined ? error.failure : `HTTP ${String(error.status)}`;
+    return error.reason ?? error.googleStatus ?? answered;
+}
+
+/**
+ * An upstream failure no map named becomes Google's refusal of `api` with its reason (`apiError.cloud.refused`), never
+ * the plumbing's `apiError.internal` (finding 20 of `docs/research/manual-test-2026-10-25.md`); anything else passes.
+ */
+export function refusal(error: unknown, api: string): unknown {
+    return error instanceof UpstreamError
+        ? new MappedUpstreamError('apiError.cloud.refused', { api, reason: refusalReason(error) }, error)
+        : error;
+}
+
+/** What a log line may say about the upstream answer behind a failure: names and the HTTP status, never a body. */
+export function upstreamFields(error: unknown): Readonly<Record<string, string | number>> {
+    const upstreamError = error instanceof MappedUpstreamError ? error.upstream : error;
+    if (!(upstreamError instanceof UpstreamError)) {
+        return {};
+    }
+    const fields = {
+        service: upstreamError.service,
+        failure: upstreamError.failure,
+        status: upstreamError.status,
+        googleStatus: upstreamError.googleStatus,
+        reason: upstreamError.reason,
+    };
+    return Object.fromEntries(Object.entries(fields).filter((entry): entry is [string, string | number] => entry[1] !== undefined));
 }
 
 /** A failure's code and parameters as a `setup/status` area records them. */

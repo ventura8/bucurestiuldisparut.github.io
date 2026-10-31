@@ -15,7 +15,7 @@ import process from 'node:process';
 import { createLogger, translateAdminContent, translateAdminShell } from '@hcm/shared';
 import { chromium, type Page } from '@playwright/test';
 
-import { ADMIN_ORIGIN, PERSONAS } from '../admin/world.js';
+import { ADMIN_ORIGIN, ADMIN_URL, PERSONAS } from '../admin/world.js';
 import { E2E_CITY_ID, MOCK_API_ORIGIN, SITE_ORIGIN } from '../fixtures/world.js';
 import { STACK_SECOND_CITY, STACK_SECOND_CITY_NAME } from './seed-cities.js';
 
@@ -36,7 +36,7 @@ interface Step {
 }
 
 async function signIn(page: Page): Promise<void> {
-    await page.goto(ADMIN_ORIGIN);
+    await page.goto(ADMIN_URL);
     const signInButton = page.getByRole('button', { name: translateAdminShell('ro', 'adminShell.auth.signIn') });
     await signInButton.waitFor({ timeout: TIMEOUT_MS });
     await signInButton.click();
@@ -48,12 +48,12 @@ async function signIn(page: Page): Promise<void> {
 }
 
 async function photos(page: Page): Promise<void> {
-    await page.goto(`${ADMIN_ORIGIN}/#/photos`);
+    await page.goto(`${ADMIN_URL}#/photos`);
     await page.locator('hcm-admin-photo-list li.photo-row').nth(12).waitFor({ timeout: TIMEOUT_MS });
 }
 
 async function imagery(page: Page): Promise<void> {
-    await page.goto(`${ADMIN_ORIGIN}/#/imagery`);
+    await page.goto(`${ADMIN_URL}#/imagery`);
     const scenes = page.getByRole('list', { name: translateAdminContent('ro', 'adminContent.imagery.scenesLabel') });
     await scenes.getByRole('link').nth(5).waitFor({ timeout: TIMEOUT_MS });
 }
@@ -63,25 +63,25 @@ async function imagery(page: Page): Promise<void> {
  * as ordered says it is watched (an ordered scene opens whatever the filters).
  */
 async function orders(page: Page): Promise<void> {
-    await page.goto(`${ADMIN_ORIGIN}/#/imagery`);
+    await page.goto(`${ADMIN_URL}#/imagery`);
     const scenes = page.getByRole('list', { name: translateAdminContent('ro', 'adminContent.imagery.scenesLabel') });
     await scenes.getByRole('link').first().waitFor({ timeout: TIMEOUT_MS });
     await page.getByRole('button', { name: translateAdminContent('ro', 'adminContent.imagery.filter.freeOnly') }).click();
     await scenes.locator('a[href$="/imagery/scene/DS1105-1071DF076"]').click();
     const card = page.locator('hcm-imagery-page .order-card');
     await card.getByText(translateAdminContent('ro', 'adminContent.orders.state.needsOrder')).waitFor({ timeout: TIMEOUT_MS });
-    await page.goto(`${ADMIN_ORIGIN}/#/imagery/scene/D3C1209-100055F012`);
+    await page.goto(`${ADMIN_URL}#/imagery/scene/D3C1209-100055F012`);
     await card.getByText(translateAdminContent('ro', 'adminContent.orders.state.ordered')).waitFor({ timeout: TIMEOUT_MS });
 }
 
 /** M4: the server's own events (a failed import, a draft over the threshold, a version waiting for points) in the inbox. */
 async function inbox(page: Page): Promise<void> {
-    await page.goto(`${ADMIN_ORIGIN}/#/inbox`);
+    await page.goto(`${ADMIN_URL}#/inbox`);
     await page.locator('hcm-inbox-page a.row').nth(2).waitFor({ timeout: TIMEOUT_MS });
 }
 
 async function layersMap(page: Page): Promise<void> {
-    await page.goto(`${ADMIN_ORIGIN}/#/layers/corona-1968`);
+    await page.goto(`${ADMIN_URL}#/layers/corona-1968`);
     await page.getByRole('heading', { level: 2, name: 'Corona 1968' }).waitFor({ timeout: TIMEOUT_MS });
     await page.locator('hcm-admin-map canvas.mapboxgl-canvas').first().waitFor({ timeout: TIMEOUT_MS });
     const deadline = Date.now() + TIMEOUT_MS;
@@ -101,7 +101,7 @@ async function layersMap(page: Page): Promise<void> {
  * check waits for its name on the city button), and the site serves its page.
  */
 async function secondCity(page: Page): Promise<void> {
-    await page.goto(`${ADMIN_ORIGIN}/#/c/${STACK_SECOND_CITY}/home`);
+    await page.goto(`${ADMIN_URL}#/c/${STACK_SECOND_CITY}/home`);
     await page
         .locator('hcm-city-menu:not([inline]) [data-city-menu]', { hasText: STACK_SECOND_CITY_NAME })
         .waitFor({ timeout: TIMEOUT_MS });
@@ -117,7 +117,7 @@ async function secondCity(page: Page): Promise<void> {
  * storage host) goes through the stack's forward like every other request of the page, never to the network.
  */
 async function savedFile(page: Page): Promise<void> {
-    await page.goto(`${ADMIN_ORIGIN}/#/home`);
+    await page.goto(`${ADMIN_URL}#/home`);
     const href = await page.evaluate(() => {
         const link = document.createElement('a');
         link.href = 'https://storage.googleapis.com/demo-hcm.firebasestorage.app/exports/none.zip';

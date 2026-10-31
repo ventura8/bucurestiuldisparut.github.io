@@ -20,8 +20,8 @@ export type NoticeKey = AdminShellKey | AdminSetupKey | AdminContentKey | ApiErr
 export interface NoticeInput {
     readonly key: NoticeKey;
     readonly params?: Readonly<Record<string, string>>;
-    /** The snackbar's action (an editor's Undo for ten seconds, `docs/research/M2c-interfaces.md` §9.5). */
-    readonly action?: { readonly key: AdminContentKey; run(): void };
+    /** The snackbar's action (an editor's Undo for ten seconds, `docs/research/M2c-interfaces.md` §9.5; M6: the import's Open). */
+    readonly action?: { readonly key: AdminContentKey | AdminSetupKey; run(): void };
 }
 
 /** A message the snackbar (or a panel) shows; `id` changes with every notice, so the same text shows again. */

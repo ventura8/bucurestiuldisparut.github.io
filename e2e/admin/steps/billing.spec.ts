@@ -1,8 +1,8 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { GOOGLE_SCOPES } from '../../../packages/admin/src/google/scopes.js';
-import { setupText, apiText } from '../support/i18n.js';
-import { SetupPage } from '../support/setup-page.js';
+import { setupText, apiText, templatePattern } from '../support/i18n.js';
+import { followDeepLink, SetupPage, standInProviderPages } from '../support/setup-page.js';
 import { openStep, seedClaimedCity, withConsent } from '../support/steps.js';
 import type { UpstreamCall, UpstreamControl } from '../support/upstream.js';
 import { ADMIN_LOCK, expect, test } from '../support/test.js';
@@ -162,5 +162,67 @@ test(
         await expect(card.getByRole('alert')).toHaveText(apiText(lang, 'apiError.cloud.permission', { role: 'roles/billing.viewer' }));
         expect(await calls(upstream, 'cloud-billing.updateBillingInfo')).toEqual([]);
         expect(consoleErrors.takeMatching(/status of 403/).length).toBeGreaterThan(0);
+    },
+);
+
+// M6 setup-ux (docs/research/M6-interfaces.md §3.1; finding 3 of docs/research/manual-test-2026-10-25.md, "stuck at
+// step b"): with no account the card's primary action is Google's page that creates one, the wait is said in words with
+// its last check, and nothing else offers a click until the account appears.
+
+test(
+    'With no billing account the card offers to create one and waits in plain words; the new account is linked with no click',
+    { tag: ['@S-A04-HAPPY-CREATE-ACCOUNT'] },
+    async ({ page, lang, consent, setupBudget, upstream, adminWorld }) => {
+        await upstream.scenario('cloud-billing.noAccount', 'browser');
+        await standInProviderPages(page.context(), ['https://console.cloud.google.com']);
+        await page.clock.install();
+        await page.clock.resume();
+        const { card, link } = await billingCard(page, lang);
+        await withConsent(page, consent, link, setupBudget.inputs('billing'), setupBudget.consents('billing'));
+
+        const create = card.getByRole('link', { name: new RegExp(`^${setupText(lang, 'adminSetup.billing.create')}`) });
+        await expect(create).toHaveAttribute('href', 'https://console.cloud.google.com/billing/create');
+        await expect(create).toHaveAttribute('target', '_blank');
+        await expect(card.getByText(setupText(lang, 'adminSetup.billing.waitingHow'))).toBeVisible();
+        await expect(card.getByText(templatePattern(setupText(lang, 'adminSetup.billing.lastCheck', { time: '\u0000' })))).toBeVisible();
+        // Following the link is no in-app input: the owner's work is on Google's page.
+        await followDeepLink(page, () => create.click());
+
+        // The account appears: the next look links it and makes the budget, with no click.
+        await upstream.scenario('cloud-billing.accountOpen', 'browser');
+        await page.clock.fastForward(10_000);
+        await new SetupPage(page, lang).expectState('billing', 'ok');
+        expect(await calls(upstream, 'cloud-billing.updateBillingInfo')).toHaveLength(1);
+        expect(await calls(upstream, 'billing-budgets', 'POST')).toHaveLength(1);
+        await expect
+            .poll(async () => (await adminWorld.emulators.document('setup/status'))?.['billing'])
+            .toMatchObject({ state: 'ok', budgetAmount: 5 });
+    },
+);
+
+test(
+    'While it waits for an account the card offers nothing to click but the create page; after 30 minutes, Check again',
+    { tag: ['@S-A04-BAD-WAITING-NO-LINK'] },
+    async ({ page, lang, consent, setupBudget, upstream }) => {
+        await upstream.scenario('cloud-billing.noAccount', 'browser');
+        await page.clock.install();
+        await page.clock.resume();
+        const { card, link } = await billingCard(page, lang);
+        await withConsent(page, consent, link, setupBudget.inputs('billing'), setupBudget.consents('billing'));
+
+        // Waiting: busy and named; no Link button, which would read as "click me" with nothing to link.
+        await expect(card.getByRole('progressbar', { name: setupText(lang, 'adminSetup.billing.waiting') })).toBeVisible();
+        await expect(card.getByRole('status').filter({ hasText: setupText(lang, 'adminSetup.billing.waiting') })).toBeVisible();
+        await expect(link).toHaveCount(0);
+        await page.clock.fastForward(20_000);
+        await expect(link).toHaveCount(0);
+
+        // Thirty minutes and no account: the wait ends and says so; Check again (and Link) are offered.
+        await page.clock.fastForward('31:00');
+        await expect(card.getByText(setupText(lang, 'adminSetup.billing.waitTimeout'))).toBeVisible();
+        await expect(card.getByRole('progressbar', { name: setupText(lang, 'adminSetup.billing.waiting') })).toHaveCount(0);
+        await expect(card.getByRole('button', { name: setupText(lang, 'adminSetup.recheck') })).toBeEnabled();
+        await expect(link).toBeEnabled();
+        await expect(card.getByRole('link', { name: new RegExp(`^${setupText(lang, 'adminSetup.billing.create')}`) })).toBeVisible();
     },
 );

@@ -44,13 +44,25 @@ export const adminBase = css`
     }
 `;
 
-/** A centred panel (sign-in, claim, join, blocked): title, text, an optional message, actions. */
+/**
+ * A centred panel (sign-in, claim, join, blocked): title, text, an optional message, actions. The panel is the whole
+ * screen: from the medium window class (600 px wide) and 480 px tall it sits in the middle of the window, a compact
+ * window starts it at the top so a long panel is never cut (M6 setup-ux, finding 2 of 2026-10-25).
+ */
 export const panelStyles = css`
     :host {
-        display: block;
+        display: grid;
+        align-content: start;
         box-sizing: border-box;
+        min-block-size: 100dvh;
         padding-block: max(24px, env(safe-area-inset-top));
         padding-inline: max(16px, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
+    }
+
+    @media (width >= 600px) and (height >= 480px) {
+        :host {
+            align-content: center;
+        }
     }
 
     .panel {

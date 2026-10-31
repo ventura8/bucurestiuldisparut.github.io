@@ -25,8 +25,9 @@ import type { PageChrome } from '../editing/hcm-list-detail.js';
 import { EMPTY } from './empty.js';
 import type { HcmAccountMenu } from './hcm-account-menu.js';
 import { cityTitle } from './hcm-city-menu.js';
-import { contentText, noticeOf, shellText } from './text.js';
+import { contentText, noticeOf, noticeText, shellText } from './text.js';
 import type { AdminNavVariant } from './hcm-admin-nav.js';
+import { paintRoot, unpaintRoot } from './root-surface.js';
 import { shellStyles } from './shell-styles.js';
 
 export const HCM_ADMIN_SHELL_TAG = 'hcm-admin-shell';
@@ -132,6 +133,8 @@ export class HcmAdminShell extends LitElement {
     override disconnectedCallback(): void {
         super.disconnectedCallback();
         this.#stop();
+        unpaintRoot(this.ownerDocument);
+        this.#theme = null;
     }
 
     protected override willUpdate(): void {
@@ -214,14 +217,19 @@ export class HcmAdminShell extends LitElement {
         if (last?.tokens !== theme.tokens || last.mode !== theme.mode) {
             this.#theme = theme;
             applyTheme(this, theme.tokens, theme.mode, false);
+            // M6 (finding 22): the page's root under the shell has the same surface, so no band of another colour shows.
+            paintRoot(this.ownerDocument, theme.tokens, theme.mode);
         }
     }
 
+    /** The loading screen; its page heading is the app's name, for screen readers (M6: the tour's `shell.loading`). */
     #loading(text: string): TemplateResult {
-        return html`<div class="loading" role="status">
-            <hcm-loading-indicator .label=${text}></hcm-loading-indicator>
-            <p>${text}</p>
-        </div>`;
+        const locale = this.state?.locale ?? DEFAULT_LOCALE;
+        return html`<h1 class="visually-hidden">${shellText(locale, 'adminShell.appName')}</h1>
+            <div class="loading" role="status">
+                <hcm-loading-indicator .label=${text}></hcm-loading-indicator>
+                <p>${text}</p>
+            </div>`;
     }
 
     #panel(screen: Exclude<Screen, 'shell'>, state: AdminStatePort): TemplateResult {
@@ -369,7 +377,7 @@ export class HcmAdminShell extends LitElement {
         return html`<hcm-snackbar
             data-layout-check="snackbar"
             .message=${noticeOf(state.locale, state.notice)}
-            .actionLabel=${action === undefined ? '' : contentText(state.locale, action.key)}
+            .actionLabel=${action === undefined ? '' : noticeText(state.locale, action.key)}
             .closeLabel=${shellText(state.locale, 'adminShell.notice.close')}
             .timeoutMs=${action === undefined ? 8000 : 10_000}
             @hcm-action=${act}

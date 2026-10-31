@@ -11,7 +11,16 @@ export {
     type UpstreamHandler,
     type UpstreamRequest,
 } from './fetch.js';
-export { DEPLOYMENTS, registryFunctions, type Deployment } from './google-functions.js';
+export {
+    DEPLOYMENTS,
+    NEWER_SERVER_RELEASE,
+    OLDER_SERVER_RELEASE,
+    PRE_M6_LACKING,
+    registryFunctions,
+    type Deployment,
+} from './google-functions.js';
+// M6 installer (docs/research/M6-interfaces.md §1.10): the install builds' outcomes, the planted log secrets, the pushed digest.
+export { BUILD_OUTCOMES, OLDER_SITE_RELEASE, PIPELINE_DIGEST, PLANTED_LOG_SECRETS, type BuildOutcome } from './google-cloudbuild.js';
 export { E2E_ORGANIZATION, GOOGLE_TOKENS, type GoogleGrant, type ProjectAccess } from './google-identity.js';
 export { type CloudRunRunner, type PipelineExecution } from './google-run.js';
 export { BILLED_SERVICES, SPARK_SERVICES } from './google-services.js';

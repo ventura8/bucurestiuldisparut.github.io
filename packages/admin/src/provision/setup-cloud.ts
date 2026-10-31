@@ -3,6 +3,7 @@ import type { Logger, ProvisionItem } from '@hcm/shared';
 import { createGoogleClients, type GoogleClients } from '../google/clients.js';
 import { GoogleApiError } from '../google/failure.js';
 import { deploymentStatus } from '../google/functions.js';
+import { createApiWaits, withApiPropagation, type ApiWaits } from '../google/transport.js';
 import { findCrashPolicy } from './items-extra.js';
 import type { WebAppIdentity } from './item.js';
 import type { ProjectConfig } from './project-config.js';
@@ -88,15 +89,19 @@ async function setCrashAlerts(clients: GoogleClients, projectId: string, enabled
 
 export function createSetupCloud(deps: SetupCloudDeps): SetupCloudAdapter {
     const { project } = deps;
-    const clientsFor = (access: TokenAccess): GoogleClients =>
-        createGoogleClients({ fetch: deps.fetch, token: () => access.token, sleep: deps.sleep, log: deps.log });
-    const provisionDeps = (access: TokenAccess): Parameters<typeof applyProvision>[1] => ({
-        project,
-        web: deps.web,
-        ownerEmail: deps.ownerEmail(),
-        clients: clientsFor(access),
-        log: deps.log,
-    });
+    // M6 (§1.5, finding 4): every client waits out an API Google is still switching on in the project.
+    const clientsFor = (access: TokenAccess, waits: ApiWaits = createApiWaits()): GoogleClients =>
+        createGoogleClients(
+            withApiPropagation(
+                { fetch: deps.fetch, token: () => access.token, sleep: deps.sleep, log: deps.log },
+                project.projectNumber,
+                waits,
+            ),
+        );
+    const provisionDeps = (access: TokenAccess): Parameters<typeof applyProvision>[1] => {
+        const waits = createApiWaits();
+        return { project, web: deps.web, ownerEmail: deps.ownerEmail(), clients: clientsFor(access, waits), log: deps.log, waits };
+    };
     return {
         disabledApis: async (access, apis) => {
             const enabled = new Set(await clientsFor(access).serviceUsage.listEnabled(project.projectNumber));

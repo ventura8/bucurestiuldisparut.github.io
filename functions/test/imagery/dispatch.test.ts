@@ -309,7 +309,10 @@ describe('onJobWrite', () => {
         await onJobWriteFunction(() => world.deps).run(event as unknown as Parameters<ReturnType<typeof onJobWriteFunction>['run']>[0]);
 
         expect(world.jobs.runs).toHaveLength(1);
-        expect(onJobWriteFunction(() => world.deps).__endpoint).toMatchObject({ serviceAccountEmail: 'fn-events@', maxInstances: 5 });
+        expect(onJobWriteFunction(() => world.deps).__endpoint).toMatchObject({
+            serviceAccountEmail: 'fn-events@demo-hcm.iam.gserviceaccount.com',
+            maxInstances: 5,
+        });
     });
 });
 

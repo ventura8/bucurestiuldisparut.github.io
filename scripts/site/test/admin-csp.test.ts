@@ -21,9 +21,10 @@ function defaultProject(): string {
     return firebaserc.projects.default;
 }
 
+/** The admin's policy as `firebase.json` sends it: on `/admin/**` since M6 (the public map at the root has its own). */
 function committedPolicy(): string {
     const hosting = parseHostingConfig(readFileSync(join(ROOT, 'firebase.json'), 'utf8'));
-    return String(hostingHeaders(hosting, '/')[CSP_HEADER]);
+    return String(hostingHeaders(hosting, '/admin/')[CSP_HEADER]);
 }
 
 function sources(policy: string, name: string): readonly string[] {

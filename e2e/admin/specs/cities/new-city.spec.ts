@@ -2,6 +2,7 @@ import { DEFAULT_NEW_CITY_LIMITS, NEW_CITY_SEEDS, cityAreaAround } from '@hcm/sh
 import type { Locator, Page } from '@playwright/test';
 
 import { contentFlowBudget } from '../../../../packages/admin/src/content/budgets.js';
+import { hostingUrl } from '../../../support/hosting.js';
 import { mapIdle } from '../../../support/map.js';
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
@@ -101,6 +102,8 @@ test(
         // docs/LESSONS.md 255: the done screen's heading takes the focus, and the page's one live region says it.
         await expect(form(page).locator('h2[data-detail-heading]')).toBeFocused();
         await expect(form(page).locator('[data-live]')).toHaveText(cityText(lang, 'adminContent.cities.created.title', { city: FOUND }));
+        // M6 (CR-M6-17): its public map will be on the admin's own Hosting site, at the city's path; no repository step.
+        await expect(form(page).locator('a[data-public-address]')).toHaveAttribute('href', hostingUrl(`/${FOUND_ID}/`));
         await expectStateSound(page, adminVisit('cities.created', lang));
         expect(flow.used).toBe(2);
         const city = await emulators.document(`cities/${FOUND_ID}`);

@@ -30,7 +30,7 @@ describe('initialSetupState', () => {
         expect(state.steps.billing.scope).toBe('cloudBilling');
         // Sign-in and the claim ask Google from the shell's panels, never from their cards.
         expect([state.steps.signIn.scope, state.steps.claim.scope, state.steps.mapbox.scope]).toEqual([null, null, null]);
-        expect({ done: state.done, total: state.total, ready: state.ready }).toEqual({ done: 0, total: 9, ready: false });
+        expect({ done: state.done, total: state.total, ready: state.ready }).toEqual({ done: 0, total: 11, ready: false });
     });
 
     it('happyPath_theCardsKnowTheProjectBeforeAnyCheck', () => {
@@ -72,7 +72,8 @@ describe('availability', () => {
     it('happyPath_bootstrapOpensOnlyTheStepsWithoutServer', () => {
         const state = done(initialSetupState(createHarness().host, 'bootstrap'), 'signIn', 'billing', 'provision', 'deploy');
 
-        expect(SETUP_STEPS.filter((id) => state.steps[id].available)).toEqual(['signIn', 'billing', 'provision', 'deploy']);
+        // The imagery pipeline (d3, M6) installs before the server answers: it needs Google only.
+        expect(SETUP_STEPS.filter((id) => state.steps[id].available)).toEqual(['signIn', 'billing', 'provision', 'deploy', 'pipeline']);
     });
 
     it('happyPath_normalModeOpensEveryStepWhosePrerequisitesAreDone', () => {
@@ -94,6 +95,35 @@ describe('availability', () => {
 
         expect(done(base, 'billing', 'provision', 'mapbox').ready).toBe(false);
         expect(done(base, 'billing', 'provision', 'mapbox', 'usgs').ready).toBe(true);
+    });
+
+    it('badPath_aServerOrSiteSeenNotInstalledHoldsReadyBack', () => {
+        // M6 §4.1 (CR-M6-13): Setup is done with the server and the public map installed; a target nothing has looked at
+        // yet (a map from before M6) does not hold it back, as `setupDone` reads a `setup/status` without `install`.
+        const base = done(initialSetupState(createHarness().host, 'normal'), 'billing', 'provision', 'mapbox', 'usgs');
+        const seen = (state: string) =>
+            ({ ...base.install.site, state, checkedAt: '2026-10-30T09:00:00.000Z' }) as typeof base.install.site;
+
+        expect(refreshDerived({ ...base, install: { ...base.install, site: seen('notInstalled') } }).ready).toBe(false);
+        expect(refreshDerived({ ...base, install: { ...base.install, site: seen('updateAvailable') } }).ready).toBe(true);
+        expect(refreshDerived({ ...base, install: { ...base.install, server: { ...seen('failed'), target: 'server' } } }).ready).toBe(
+            false,
+        );
+    });
+
+    it('happyPath_anUpdateUnderWayKeepsReadyWhileAReleaseIsInstalled', () => {
+        // Finding 5 of the M6 review, as `setupDone` reads it: the installed release serves while its update runs or stops.
+        const base = done(initialSetupState(createHarness().host, 'normal'), 'billing', 'provision', 'mapbox', 'usgs');
+        const server = (state: string) =>
+            ({
+                ...base.install.server,
+                state,
+                installedRelease: '0.9.0+0000000',
+                checkedAt: '2026-10-30T09:00:00.000Z',
+            }) as typeof base.install.server;
+
+        expect(refreshDerived({ ...base, install: { ...base.install, server: server('working') } }).ready).toBe(true);
+        expect(refreshDerived({ ...base, install: { ...base.install, server: server('failed') } }).ready).toBe(true);
     });
 });
 

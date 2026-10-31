@@ -60,3 +60,13 @@ export function legacyPhotoStore(firebase: Pick<FirebasePorts, 'documents' | 'st
             documents.set(FIRESTORE_PATHS.photo(cityId, photoId), { published: true, ...stamp() }, { merge: true }),
     };
 }
+
+/**
+ * M6 (finding 17 of `docs/research/manual-test-2026-10-25.md`): the import's `photos.reprocess`, for a photo whose upload
+ * event never reached the server; the callable uploads the photo's upload again, which is a new event.
+ */
+export function legacyReprocess(firebase: Pick<FirebasePorts, 'callables'>): (cityId: string, photoId: string) => Promise<void> {
+    return async (cityId, photoId) => {
+        await firebase.callables.call('photos.reprocess', { cityId, photoId });
+    };
+}

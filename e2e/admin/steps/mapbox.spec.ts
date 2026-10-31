@@ -211,3 +211,53 @@ test(
         expect(after).not.toBe(before);
     },
 );
+
+// M6 setup-ux (docs/research/M6-interfaces.md §3.1; finding 15 of docs/research/manual-test-2026-10-25.md): each deep
+// link's label says what its page does (links.json's purpose), and advice for that page is a hint beside the link.
+
+/** The Mapbox card's deep links, in order, each with its address. */
+const MAPBOX_LINKS = [
+    ['adminSetup.link.mapbox.signup', 'https://account.mapbox.com/auth/signup/'],
+    ['adminSetup.link.mapbox.console', 'https://console.mapbox.com/'],
+    ['adminSetup.link.mapbox.usageThresholds', 'https://console.mapbox.com/account/settings/usage-thresholds'],
+    ['adminSetup.link.mapbox.accessTokens', 'https://console.mapbox.com/account/access-tokens/'],
+] as const;
+
+test(
+    "Every deep link's label says what its page does; the console's reads Open the Mapbox console",
+    { tag: ['@S-A05-HAPPY-LINK-LABELS'] },
+    async ({ page, lang }) => {
+        const card = await mapboxCard(page, lang);
+
+        for (const [key, url] of MAPBOX_LINKS) {
+            await expect(card.getByRole('link', { name: startOf(setupText(lang, key)) })).toHaveAttribute('href', url);
+        }
+        // The console's link opens the console's home (links.json): its label says so, and the payment advice is its hint
+        // (finding 7 of the M6 review: "Add the payment method" promised a page the link does not open).
+        expect(setupText('en', 'adminSetup.link.mapbox.console')).toBe('Open the Mapbox console');
+        await expect(card.getByRole('link', { name: startOf(setupText(lang, 'adminSetup.link.mapbox.console')) })).toHaveAttribute(
+            'target',
+            '_blank',
+        );
+    },
+);
+
+test(
+    'A hint for another page sits beside its link, never inside it: no link text holds a parenthesis',
+    { tag: ['@S-A05-BAD-HINT-APART'] },
+    async ({ page, lang }) => {
+        const card = await mapboxCard(page, lang);
+        const newTab = setupText(lang, 'adminSetup.newTab');
+
+        const names = await card
+            .locator('ul.links a')
+            .evaluateAll((links, hidden) => links.map((link) => link.textContent.replace(hidden, '').trim()), newTab);
+        expect(names).toHaveLength(MAPBOX_LINKS.length);
+        expect(names.filter((name) => /[()]/.test(name))).toEqual([]);
+        const hint = card.locator('[data-hint="mapbox.console"]');
+        await expect(hint).toHaveText(setupText(lang, 'adminSetup.linkHint.mapbox.console'));
+        // The hint is in the console link's own row of the list, after the link.
+        const row = card.locator('ul.links li').filter({ has: page.locator('[data-hint="mapbox.console"]') });
+        await expect(row.locator('a')).toHaveAttribute('href', 'https://console.mapbox.com/');
+    },
+);

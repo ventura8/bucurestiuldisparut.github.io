@@ -53,8 +53,11 @@ function fakeShell() {
 }
 
 function options(): SetupModuleOptions {
-    const { cloud, importer } = createHarness();
-    return { cloud, importer, createCity: vi.fn(() => Promise.resolve({ created: true })), cityId: 'bucharest', cityBBox: null };
+    const { cloud, importer, installer } = createHarness();
+    return {
+        ...{ cloud, importer, createCity: vi.fn(() => Promise.resolve({ created: true })), cityId: 'bucharest', cityBBox: null },
+        ...{ installer, release: '1.0.0+abc1234', siteAddress: 'https://demo-hcm.web.app/' },
+    };
 }
 
 describe('createSetupModule', () => {

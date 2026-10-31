@@ -24,6 +24,7 @@ import { expireExports } from './exports.js';
 import { nightlyManifests } from './manifests.js';
 import { migrateMemberships } from './memberships.js';
 import { checkServices, retireTokens } from './services.js';
+import { refreshViewerTokens } from './viewer-tokens.js';
 
 export type OpsDeps = Pick<
     Ports,
@@ -85,6 +86,8 @@ const STEPS: Readonly<Record<OpsStep, Step>> = {
     },
     tokens: async (deps, context) => {
         await retireTokens(deps, context.now);
+        // M6 (docs/research/M6-interfaces.md §2.6; owner: hosting): each city's viewer token follows the server's origins.
+        deps.log.info('viewer tokens replaced', { count: await refreshViewerTokens(deps, context.now) });
         return {};
     },
     invites: async (deps, context) => {

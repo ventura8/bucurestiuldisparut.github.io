@@ -14,10 +14,27 @@ import { E2E_TILE_HOST, MOCK_API_ORIGIN } from '../fixtures/world.js';
  * emulator and the fake upstreams agree on them.
  */
 
-/** The admin server (`e2e/mock-apis/admin-server.ts`): the e2e build of `packages/admin/dist` as Hosting serves it. */
+/**
+ * The e2e Hosting server (`e2e/mock-apis/admin-server.ts`): the e2e build's Firebase Hosting tree as Hosting serves it,
+ * the public map at its root and the admin's `e2e` build under `/admin/` (M6, docs/research/M6-interfaces.md §2): the
+ * admin tier's origin, and the viewer tier's for the Hosting scenarios (V30).
+ */
 export const ADMIN_PORT = 4312;
 export const ADMIN_ORIGIN = `http://127.0.0.1:${String(ADMIN_PORT)}`;
+/** The admin's folder on the Hosting site; every admin spec's address is below it (`adminPath`). */
+export const ADMIN_PATH = '/admin/';
+/** The admin's address on the e2e Hosting server. */
+export const ADMIN_URL = `${ADMIN_ORIGIN}${ADMIN_PATH}`;
+/** The admin's Hosting folder as its build writes it (its `e2e` Vite build and the site build's page, legacy bundle, ...). */
 export const ADMIN_DIST_DIR = 'packages/admin/dist';
+/** The e2e Hosting tree (`npm run build:site:e2e`), the public variant and the start-up one (`scripts/site/src/hosting/`). */
+export const E2E_HOSTING_DIR = 'dist/e2e-hosting';
+export const E2E_HOSTING_START_UP_DIR = 'dist/e2e-hosting-start-up';
+/**
+ * The GitHub Pages redirect tree (`npm run build:site -- --pages-redirect`, M6 §2.7) below the site server's root
+ * (`dist/e2e-site/pages-redirect/`): every page sends the visitor to the e2e Hosting server with the same hash.
+ */
+export const PAGES_REDIRECT_FOLDER = 'pages-redirect';
 
 /** The emulators' project: the `demo-` prefix keeps every real resource out of reach. */
 export const E2E_PROJECT_ID = String(FIXTURE_VALUES['projectId']);

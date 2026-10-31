@@ -17,7 +17,9 @@
     "scripts": {
         "build": "npm run build --workspaces --if-present && node --import ./scripts/site/register-ts.mjs scripts/site/build-admin.ts",
         "build:admin": "npm run build --workspace @hcm/admin && node --import ./scripts/site/register-ts.mjs scripts/site/build-admin.ts",
-        "build:site": "node --import ./scripts/site/register-ts.mjs scripts/site/build-site.ts --pages dist/pages",
+        "build:hosting": "npm run build:admin && npm run build --workspace @hcm/engine && node --import ./scripts/site/register-ts.mjs scripts/site/build-hosting.ts",
+        "build:install": "npm run build --workspace @hcm/functions && node --import ./scripts/site/register-ts.mjs scripts/site/build-install.ts",
+        "build:site": "node --import ./scripts/site/register-ts.mjs scripts/site/build-site.ts --pages dist/pages --pages-redirect dist/pages-redirect",
         "site:add": "node --import ./scripts/site/register-ts.mjs scripts/site/add-site.ts",
         "build:self-host": "npm run build:admin && npm run build --workspace @hcm/functions && node --import ./scripts/site/register-ts.mjs packages/create-historic-city/build-self-host.ts",
         "build:site:e2e": "npm run build --workspace @hcm/engine && npm run build --workspace create-historic-city && npm run build --workspace @hcm/functions && npm run build:e2e --workspace @hcm/admin && node --import ./scripts/site/register-ts.mjs e2e/scripts/build-site.ts",

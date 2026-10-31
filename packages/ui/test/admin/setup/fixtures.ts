@@ -3,6 +3,7 @@
 import { PROVISION_ITEMS, type ServiceState } from '@hcm/shared';
 
 import type { SetupIntentsPort, SetupPort, SetupStepId, SetupStepView, SetupViewState } from '../../../src/admin/setup/setup-port.js';
+import { installSliceView } from './install-fixtures.js';
 
 export const STEP_IDS: readonly SetupStepId[] = [
     'signIn',
@@ -26,6 +27,10 @@ const LETTERS: Readonly<Record<SetupStepId, string>> = {
     usgs: 'f',
     analytics: 'g',
     legacyImport: 'h',
+    // [section install] owner: installer (M6, CR-M6-6)
+    pipeline: 'd3',
+    site: 'i',
+    // [end install]
 };
 
 const NEEDS_BACKEND: ReadonlySet<SetupStepId> = new Set(['claim', 'mapbox', 'usgs', 'analytics', 'legacyImport']);
@@ -43,6 +48,7 @@ export function stepView(id: SetupStepId, changes: Partial<SetupStepView> = {}):
         optional: id === 'analytics' || id === 'legacyImport',
         busy: false,
         needsContinue: false,
+        postponed: false,
         scope: null,
         links: [],
         used: { inputs: 0, consents: 0 },
@@ -72,6 +78,9 @@ export function setupView(changes: ViewChanges = {}): SetupViewState {
         done: 5,
         total: 9,
         ready: false,
+        later: 0,
+        doneNote: null,
+        liveScopes: [],
         checking: false,
         error: null,
         used: { inputs: 0, consents: 0 },
@@ -84,6 +93,8 @@ export function setupView(changes: ViewChanges = {}): SetupViewState {
             accountName: null,
             budgetId: null,
             needsPlatform: false,
+            trialSince: null,
+            createUrl: 'https://console.cloud.google.com/billing/create',
         },
         provision: { items: PROVISION_ITEMS.map((id) => ({ id, state: 'missing', detail: null })) },
         deploy: {
@@ -112,11 +123,14 @@ export function setupView(changes: ViewChanges = {}): SetupViewState {
             area: '25.9600, 44.3300, 26.2300, 44.5400',
             username: '',
             expiresOn: '',
+            postponedAt: null,
+            pendingSince: null,
         },
         analytics: { measurementId: null, pageChangesOff: false, crashEmails: true, watching: false },
         crashes: { loaded: false, busy: false, groups: [], error: null, disabledApi: null, lastReportAt: null },
         legacyImport: { done: 0, total: 45, failed: [], running: false },
         selfTest: { checks: [] },
+        install: installSliceView(),
         ...rest,
     };
 }
@@ -140,6 +154,7 @@ function recordingIntents(calls: IntentCall[]): SetupIntentsPort {
         'linkBilling',
         'chooseBillingAccount',
         'confirmBillingAccount',
+        'markTrial',
         'provision',
         'saveMapbox',
         'rotatePublicToken',
@@ -152,6 +167,14 @@ function recordingIntents(calls: IntentCall[]): SetupIntentsPort {
         'enableApi',
         'loadCrashGroups',
         'importLegacy',
+        // [section setup-ux] owner: setup-ux (M6)
+        'postponeUsgs',
+        // [end setup-ux]
+        // [section install] owner: installer (M6)
+        'installServer',
+        'install',
+        'updateMap',
+        // [end install]
     ];
     return Object.fromEntries(names.map((name) => [name, record(name)])) as unknown as SetupIntentsPort;
 }

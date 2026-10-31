@@ -7,6 +7,13 @@
  * detail) and `detail` (the open step beside the list). The host carries `data-step`, `data-state` and the counted
  * inputs and consents against the step's budget (`data-inputs`, `data-input-budget`, `data-consents`,
  * `data-consent-budget`) for the e2e input budget.
+ *
+ * The frame's rules of M6 (setup-ux, `docs/research/M6-interfaces.md` §3.1; findings 6, 7 and 15 of 2026-10-25): a busy
+ * step's chip shows the loading indicator in place of its icon, sized to it, and says Working…; with reduced motion a
+ * still icon. A postponed step's chip reads Later. The consent note shows only on a card whose button opens Google's
+ * popup now (the page passes no `noteParams` while a live token holds the card's scope), beside Continue when that is
+ * the button. A count the card's body shows (`*.progress`) is not repeated as the step's reason. A deep link's label
+ * says what its page does; advice for that page is a hint beside it, never in the link.
  */
 import { DEFAULT_LOCALE, type AdminSetupKey, type Locale, type ServiceState } from '@hcm/shared';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
@@ -46,6 +53,22 @@ const titleKey = (id: SetupStepId): AdminSetupKey => `adminSetup.step.${id}`;
 const whyKey = (id: SetupStepId): AdminSetupKey => `adminSetup.why.${id}`;
 const stateKey = (state: ServiceState): AdminSetupKey => `adminSetup.state.${state}`;
 const linkKey = (id: SetupLinkId): AdminSetupKey => `adminSetup.link.${id}`;
+
+/** Advice for a deep link's page, said beside the link (finding 15: "(choose Rotate token)" was in the label). */
+const LINK_HINTS: Partial<Readonly<Record<SetupLinkId, AdminSetupKey>>> = {
+    'mapbox.console': 'adminSetup.linkHint.mapbox.console',
+};
+
+/** A count the card's body shows itself (the server's functions, the import's photos): never repeated as the reason. */
+function isBodyCount(detail: SetupMessage): boolean {
+    return detail.key.endsWith('.progress');
+}
+
+/**
+ * The install cards say their step's cost in their body, with the build minutes (`install-status.ts` `costLine`), so an
+ * available one has a single cost line (finding 10 of the M6 review); a step that still waits shows the frame's.
+ */
+const COST_IN_BODY: ReadonlySet<SetupStepId> = new Set<SetupStepId>(['deploy', 'pipeline', 'site']);
 
 /** Billing's cost line is its own (the Blaze estimate); every other step has `adminSetup.cost.<id>`. */
 function costKey(id: SetupStepId): AdminSetupKey {
@@ -87,6 +110,12 @@ const cardStyles = css`
         color: var(--md-sys-color-primary);
 
         --hcm-icon-size: 18px;
+    }
+
+    .links .hint {
+        display: block;
+        margin-block-end: 8px;
+        color: var(--md-sys-color-on-surface-variant);
     }
 
     .recheck {
@@ -161,9 +190,30 @@ const headerStyles = css`
         color: var(--md-sys-color-on-error-container);
     }
 
+    /* The indicator in place of the chip's icon, at the icon's size: its shape is drawn inside its box (finding 6). */
     .status hcm-loading-indicator {
+        flex: none;
         inline-size: 18px;
         block-size: 18px;
+    }
+
+    .status hcm-loading-indicator::part(indicator) {
+        inline-size: 14px;
+        block-size: 14px;
+    }
+
+    .status .still {
+        display: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .status hcm-loading-indicator {
+            display: none;
+        }
+
+        .status .still {
+            display: inline-flex;
+        }
     }
 `;
 
@@ -190,8 +240,11 @@ export class HcmSetupStep extends LitElement {
 
     declare step: SetupStepView | null;
     declare intents: SetupIntentsPort | null;
-    /** What the consent note names: the project, the budget (formatted) and the auth domain. */
-    declare noteParams: ConsentNoteParams;
+    /**
+     * What the consent note names: the project, the budget (formatted) and the auth domain; null when the card's button
+     * opens no popup now (a live token holds its scope: finding 7), so the card shows no note.
+     */
+    declare noteParams: ConsentNoteParams | null;
     declare locale: Locale;
     declare mode: SetupStepMode;
     declare open: boolean;
@@ -200,7 +253,7 @@ export class HcmSetupStep extends LitElement {
         super();
         this.step = null;
         this.intents = null;
-        this.noteParams = { projectId: '', amount: '', domain: '' };
+        this.noteParams = null;
         this.locale = DEFAULT_LOCALE;
         this.mode = 'inline';
         this.open = false;
@@ -277,17 +330,25 @@ export class HcmSetupStep extends LitElement {
         </h2>`;
     }
 
+    /** The state's icon and label; busy: the indicator in the icon's place and Working…; postponed: Later. */
     private renderChip(step: SetupStepView): TemplateResult {
-        const icon = step.busy
-            ? html`<hcm-loading-indicator label=${this.t('adminSetup.busy')}></hcm-loading-indicator>`
-            : html`<hcm-icon name=${STATE_ICONS[step.state]}></hcm-icon>`;
-        return html`<span class="status label-large" data-state=${step.state}>${icon}${this.t(stateKey(step.state))}</span>`;
+        const later = step.postponed && step.state !== 'ok';
+        if (step.busy) {
+            return html`<span class="status label-large" data-state=${step.state} data-busy
+                ><hcm-loading-indicator label=${this.t('adminSetup.busy')}></hcm-loading-indicator
+                ><hcm-icon class="still" name="pending"></hcm-icon>${this.t('adminSetup.busy')}</span
+            >`;
+        }
+        return html`<span class="status label-large" data-state=${step.state} ?data-later=${later}
+            ><hcm-icon name=${later ? 'pending_actions' : STATE_ICONS[step.state]}></hcm-icon
+            >${this.t(later ? 'adminSetup.state.later' : stateKey(step.state))}</span
+        >`;
     }
 
     private renderBody(step: SetupStepView): TemplateResult {
         return html`<div class="body" id="body">
             <p>${this.t(whyKey(step.id))}</p>
-            <p class="note">${this.t(costKey(step.id))}</p>
+            ${step.available && COST_IN_BODY.has(step.id) ? nothing : html`<p class="note">${this.t(costKey(step.id))}</p>`}
             ${this.renderReasons(step)} ${step.needsContinue ? this.renderContinue(step) : nothing} ${this.renderLinks(step)}
             ${step.available ? this.renderActions(step) : nothing}
         </div>`;
@@ -307,7 +368,10 @@ export class HcmSetupStep extends LitElement {
     }
 
     private renderDetail(detail: SetupMessage | null): TemplateResult {
-        return detail === null ? EMPTY : html`<p class="detail" data-detail=${detail.key}>${setupText(this.locale, detail)}</p>`;
+        if (detail === null || isBodyCount(detail)) {
+            return EMPTY;
+        }
+        return html`<p class="detail" data-detail=${detail.key}>${setupText(this.locale, detail)}</p>`;
     }
 
     private renderError(error: SetupMessage | null): TemplateResult {
@@ -315,7 +379,7 @@ export class HcmSetupStep extends LitElement {
     }
 
     private renderActions(step: SetupStepView): TemplateResult {
-        return html`${this.renderConsentNote(step)}<slot></slot>
+        return html`${step.needsContinue ? nothing : this.renderConsentNote(step)}<slot></slot>
             <div class="actions recheck">
                 <hcm-button
                     variant="text"
@@ -329,16 +393,18 @@ export class HcmSetupStep extends LitElement {
             </div>`;
     }
 
+    /** Continue renews the Google token: the popup's consent note goes beside it. */
     private renderContinue(step: SetupStepView): TemplateResult {
-        return html`<div class="actions">
-            <hcm-button
-                variant="filled"
-                @click=${() => {
-                    this.intents?.continueGoogle(step.id);
-                }}
-                >${setupText(this.locale, { key: 'adminShell.session.continue' })}</hcm-button
-            >
-        </div>`;
+        return html`${this.renderConsentNote(step)}
+            <div class="actions">
+                <hcm-button
+                    variant="filled"
+                    @click=${() => {
+                        this.intents?.continueGoogle(step.id);
+                    }}
+                    >${setupText(this.locale, { key: 'adminShell.session.continue' })}</hcm-button
+                >
+            </div>`;
     }
 
     private renderLinks(step: SetupStepView): TemplateResult {
@@ -358,19 +424,25 @@ export class HcmSetupStep extends LitElement {
                             }}
                             >${this.t(linkKey(link.id))}<hcm-icon name="open_in_new"></hcm-icon
                             ><span class="visually-hidden">${this.t('adminSetup.newTab')}</span></a
-                        >
+                        >${this.renderHint(link.id)}
                     </li>`,
             )}
         </ul>`;
     }
 
+    private renderHint(id: SetupLinkId): TemplateResult {
+        const hint = LINK_HINTS[id];
+        return hint === undefined ? EMPTY : html`<span class="hint" data-hint=${id}>${this.t(hint)}</span>`;
+    }
+
     /**
      * Before a Google popup: why, for how long, and Google's unverified-app screen (§2.4). Shown whenever the card's next
      * action opens one (`scope`), a done card's included: Check again on billing or provisioning asks Google again, and
-     * the analytics card still offers the GA4 stream setting once the measurement id is found.
+     * the analytics card still offers the GA4 stream setting once the measurement id is found; never while a live token
+     * holds the scope, when the button opens no popup (`noteParams` null, M6 finding 7).
      */
     private renderConsentNote(step: SetupStepView): TemplateResult {
-        if (step.scope === null) {
+        if (step.scope === null || this.noteParams === null) {
             return EMPTY;
         }
         const { projectId, amount, domain } = this.noteParams;

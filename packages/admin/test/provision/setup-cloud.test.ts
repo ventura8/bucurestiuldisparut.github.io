@@ -105,7 +105,8 @@ describe('createSetupCloud', () => {
             { id: 'secrets', state: 'ok' },
         ]);
         expect(heard).toEqual(['apis', 'secrets']);
-        expect(doctor).toHaveLength(15);
+        // M6 (CR-M6-2): the pipeline's repository is the 16th item.
+        expect(doctor).toHaveLength(16);
     });
 
     it('happyPath_theDeploymentIsCountedAgainstTheRegistry', async () => {
@@ -121,11 +122,11 @@ describe('createSetupCloud', () => {
         const deployed = await cloud.deployment(ACCESS);
 
         expect(nothing).toMatchObject({ kind: 'forbidden', api: 'cloudfunctions.googleapis.com' });
-        // The registry's 68 functions (M4: orders' 3, assists' and notifications' 7; M5: the cities' 4, the export's 3); the
-        // fake deploys a third of them.
-        expect(partial).toEqual({ ready: 22, total: 68, failed: [] });
-        expect(failed).toEqual({ ready: 67, total: 68, failed: ['admin-session'] });
-        expect(deployed).toEqual({ ready: 68, total: 68, failed: [] });
+        // The registry's 69 functions (M4: orders' 3, assists' and notifications' 7; M5: the cities' 4, the export's 3; M6:
+        // the events probe); the fake deploys a third of them.
+        expect(partial).toEqual({ ready: 23, total: 69, failed: [] });
+        expect(failed).toEqual({ ready: 68, total: 69, failed: ['admin-session'] });
+        expect(deployed).toEqual({ ready: 69, total: 69, failed: [] });
     });
 
     it('happyPath_theStreamsHistoryPageViewsAreTurnedOff', async () => {

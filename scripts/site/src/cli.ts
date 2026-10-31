@@ -6,11 +6,12 @@ import { buildSite } from './build.js';
 import { SiteBuildError } from './errors.js';
 import type { SiteFileSystem } from './files.js';
 import { assemblePages, type PagesSite } from './pages.js';
+import { buildPagesRedirect, pagesRedirectTarget } from './hosting/pages-redirect.js';
 import { pagesPathOf, parseSiteSpec } from './site-spec.js';
 
 /**
  * `node --import ./scripts/site/register-ts.mjs scripts/site/build-site.ts [--out dist/site] [--site <dir> ...]
- * [--pages dist/pages]` (`npm run build:site`): builds every site into `<out>/<site folder name>` (`dist/site/bucharest`,
+ * [--pages dist/pages] [--pages-redirect dist/pages-redirect]` (`npm run build:site`): builds every site into `<out>/<site folder name>` (`dist/site/bucharest`,
  * `dist/site/starter-kit`). Without `--site`, every `sites/<city>/` with a `site.json` (sorted), then the starter kit
  * (M5, `docs/research/M5-interfaces.md` §1.10). `--pages` then assembles the GitHub Pages tree of every city site there
  * (`pages.ts`: Bucharest at the root, each other city at its `pagesPath`); the starter kit is never in it. A city without
@@ -18,6 +19,9 @@ import { pagesPathOf, parseSiteSpec } from './site-spec.js';
  * from argv; without it the sites get the e2e placeholder token, which Mapbox refuses (a warning says so). The public
  * bucket comes from `HCM_PUBLIC_BUCKET` (a repository variable in CI): a site whose `site.json` says `publicManifest` then
  * reads the manifest the admin publishes there; without it every site bundles its manifest (DECISIONS-for-review.md §51e).
+ * M6 (`docs/research/M6-interfaces.md` §2.7): `--pages-redirect` writes the GitHub Pages redirect tree instead of the old
+ * site's (`hosting/pages-redirect.ts`): a page for the root and each city's Pages path, sending the visitor to the same page
+ * on Firebase Hosting (`https://<projectId>.web.app/`) with the same hash.
  *
  * Exit status: 0 built, 1 an input is missing or invalid, 2 usage.
  */
@@ -44,16 +48,22 @@ interface CliOptions {
     /** The sites named on the command line; none: every committed one (`defaultSites`). */
     readonly sites: readonly string[] | undefined;
     readonly pages: string | undefined;
+    readonly pagesRedirect: string | undefined;
 }
 
 function readOptions(argv: readonly string[]): CliOptions {
     const { values } = parseArgs({
         args: [...argv],
-        options: { out: { type: 'string', default: DEFAULT_OUT }, site: { type: 'string', multiple: true }, pages: { type: 'string' } },
+        options: {
+            out: { type: 'string', default: DEFAULT_OUT },
+            site: { type: 'string', multiple: true },
+            pages: { type: 'string' },
+            'pages-redirect': { type: 'string' },
+        },
         strict: true,
         allowPositionals: false,
     });
-    return { out: values.out, sites: values.site, pages: values.pages };
+    return { out: values.out, sites: values.site, pages: values.pages, pagesRedirect: values['pages-redirect'] };
 }
 
 /** Every `sites/<city>/` with a `site.json`, sorted, then the starter kit: the committed sites in build order. */
@@ -124,6 +134,11 @@ function build(options: CliOptions, context: CliContext): number {
     if (options.pages !== undefined) {
         context.log.info('pages assembled', { ...assemblePages(pages, options.pages, context.files) });
     }
+    if (options.pagesRedirect !== undefined) {
+        const folders = pages.map((site) => site.pagesPath);
+        const report = buildPagesRedirect(options.pagesRedirect, pagesRedirectTarget(context.files), folders, context.files);
+        context.log.info('pages redirect written', { ...report });
+    }
     return EXIT_OK;
 }
 
@@ -133,7 +148,9 @@ export function runCli(argv: readonly string[], context: CliContext): number {
     try {
         options = readOptions(argv);
     } catch (error: unknown) {
-        context.log.error('usage: build-site.ts [--out dist/site] [--site <dir> ...] [--pages dist/pages]', { reason: String(error) });
+        context.log.error('usage: build-site.ts [--out dist/site] [--site <dir> ...] [--pages dist/pages] [--pages-redirect <dir>]', {
+            reason: String(error),
+        });
         return EXIT_USAGE;
     }
     try {

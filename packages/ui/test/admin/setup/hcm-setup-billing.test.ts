@@ -47,17 +47,26 @@ describe('<hcm-setup-billing>', () => {
         });
 
         expect(shadowPart(element, '.success').textContent).toBe('Planul Blaze este activ; bugetul este de 25\u00a0RON pe lună.');
-        expect(element.renderRoot.querySelector('hcm-button')).toBeNull();
+        // Linked: nothing to link any more; only the owner's own word on a free trial (finding 6 of the M6 review).
+        expect([...element.renderRoot.querySelectorAll('hcm-button')].map((button) => button.textContent.trim())).toEqual([
+            'Contul este o probă gratuită',
+        ]);
     });
 
-    it('badPath_whileWaitingForANewAccountTheCardSaysSo', async () => {
+    it('badPath_whileWaitingForANewAccountTheCardSaysSoAndOffersOnlyGooglesPage', async () => {
         const { element } = await billing({
             billing: { ...setupView().billing, waitingForAccount: true },
-            steps: { billing: { busy: true } },
+            steps: { billing: { busy: true, checkedAt: '2026-10-12T13:05:00.000Z', detail: { key: 'adminSetup.billing.noAccount' } } },
         });
 
         await expect.element(page.getByRole('progressbar', { name: 'Așteptăm contul nou de facturare…' })).toBeVisible();
-        expect(shadowPart(element, 'hcm-button').hasAttribute('disabled')).toBe(true);
+        // M6 (finding 3): nothing to link yet, so no button; Google's create page is the primary action.
+        expect(element.renderRoot.querySelector('hcm-button')).toBeNull();
+        await expect
+            .element(page.getByRole('link', { name: /Creează un cont de facturare/ }))
+            .toHaveAttribute('href', 'https://console.cloud.google.com/billing/create');
+        expect(shadowPart(element, '.waiting').textContent).toContain('Pagina verifică la 10 secunde și continuă singură');
+        expect(shadowPart(element, '.last-check').textContent).toBe('Ultima verificare: 12 oct. 2026, 16:05.');
     });
 
     it('badPath_severalAccountsAreAChoiceWithTheFirstPreselected', async () => {
@@ -103,9 +112,10 @@ describe('<hcm-setup-provision>', () => {
     it('happyPath_theDoctorListsEveryItemAndOneClickPreparesTheProject', async () => {
         const { port, element } = await provision();
 
-        expect(element.renderRoot.querySelectorAll('.item')).toHaveLength(15);
+        // M6 (CR-M6-2): the imagery pipeline's repository is the 16th item.
+        expect(element.renderRoot.querySelectorAll('.item')).toHaveLength(16);
         expect(shadowPart(element, '[data-item="apis"]').textContent).toContain('Servicii Google activate');
-        expect(shadowPart(element, '.body > .note').textContent).toBe('0 din 15 elemente gata');
+        expect(shadowPart(element, '.body > .note').textContent).toBe('0 din 16 elemente gata');
         await page.getByRole('button', { name: 'Pregătește proiectul' }).click();
 
         expect(port.calls).toEqual([['provision']]);

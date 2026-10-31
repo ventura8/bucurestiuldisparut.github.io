@@ -9,14 +9,21 @@ import type {
     AdminSetupKey,
     AdminShellKey,
     ApiErrorCode,
+    InstallState,
+    InstallStepId,
+    InstallTarget,
     ProvisionItem,
     SaveUsgsRequest,
     SelfTestCheck,
     ServiceState,
+    TransientDeployReason,
     UsgsRole,
 } from '@hcm/shared';
 
-export type SetupStepId = 'signIn' | 'billing' | 'provision' | 'deploy' | 'claim' | 'mapbox' | 'usgs' | 'analytics' | 'legacyImport';
+// [section install] owner: installer (M6, CR-M6-6): the imagery pipeline (d3) and Publish the map (i) join the steps.
+export type SetupStepId =
+    'signIn' | 'billing' | 'provision' | 'deploy' | 'claim' | 'pipeline' | 'mapbox' | 'usgs' | 'analytics' | 'legacyImport' | 'site';
+// [end install]
 
 type SetupMode = 'bootstrap' | 'normal';
 
@@ -25,6 +32,7 @@ export type GoogleScopeName = 'cloudReadOnly' | 'cloudBilling' | 'cloudPlatform'
 export type SetupLinkId =
     | 'gcp.firebaseConsole'
     | 'gcp.billingAccounts'
+    | 'gcp.billingCreate'
     | 'gcp.blazeUpgrade'
     | 'mapbox.signup'
     | 'mapbox.console'
@@ -66,6 +74,8 @@ export interface SetupStepView {
     readonly optional: boolean;
     readonly busy: boolean;
     readonly needsContinue: boolean;
+    /** M6 setup-ux (A59): the owner chose Do it later; the chip reads Later. */
+    readonly postponed: boolean;
     readonly scope: GoogleScopeName | null;
     readonly links: readonly SetupLinkView[];
     readonly used: StepCounts;
@@ -87,7 +97,14 @@ export interface SetupViewState {
     readonly steps: Readonly<Record<SetupStepId, SetupStepView>>;
     readonly done: number;
     readonly total: number;
+    /** Setup is done (`setupDone`, M6): USGS may be postponed or waiting for its approval. */
     readonly ready: boolean;
+    /** M6 setup-ux: the postponed steps not done. */
+    readonly later: number;
+    /** M6 setup-ux: what "done" leaves open. */
+    readonly doneNote: 'usgsPending' | 'usgsLater' | null;
+    /** M6 setup-ux (finding 7): the scopes a live token holds now (a card's consent note only when its button will ask). */
+    readonly liveScopes: readonly GoogleScopeName[];
     readonly checking: boolean;
     readonly error: SetupMessage | null;
     readonly used: StepCounts;
@@ -100,6 +117,10 @@ export interface SetupViewState {
         readonly accountName: string | null;
         readonly budgetId: string | null;
         readonly needsPlatform: boolean;
+        /** M6 setup-ux (A60): a likely free trial since (ISO), or null. */
+        readonly trialSince: string | null;
+        /** M6 setup-ux (finding 3): Google's page that creates a billing account. */
+        readonly createUrl: string;
     };
     readonly provision: {
         readonly items: readonly { readonly id: ProvisionItem; readonly state: ServiceState; readonly detail: SetupMessage | null }[];
@@ -135,6 +156,10 @@ export interface SetupViewState {
         /** The username and expiry date as typed (kept across a layout change). */
         readonly username: string;
         readonly expiresOn: string;
+        /** M6 setup-ux (A59): Do it later was chosen (ISO), or null. */
+        readonly postponedAt: string | null;
+        /** M6 setup-ux: since when the saved token waits for USGS's approval (ISO), or null. */
+        readonly pendingSince: string | null;
     };
     readonly analytics: {
         readonly measurementId: string | null;
@@ -166,7 +191,50 @@ export interface SetupViewState {
     readonly selfTest: {
         readonly checks: readonly { readonly id: SelfTestCheck; readonly state: ServiceState; readonly detail: SetupMessage | null }[];
     };
+    // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.7)
+    readonly install: InstallSliceView;
+    // [end install]
 }
+
+// [section install] owner: installer (M6): the install cards' slice (`packages/admin/src/install/model.ts`).
+/** One install target as its card shows it. */
+export interface InstallTargetViewPort {
+    readonly target: InstallTarget;
+    readonly state: InstallState;
+    readonly installedRelease: string | null;
+    readonly buildId: string | null;
+    /** The build's page in the Google Cloud console. */
+    readonly consoleUrl: string | null;
+    readonly startedAt: string | null;
+    readonly finishedAt: string | null;
+    readonly steps: readonly { readonly id: InstallStepId; readonly state: 'done' | 'now' | 'waiting' | 'failed' }[];
+    readonly failedStep: InstallStepId | null;
+    /** A failed build's step's last lines: redacted, shown as text only. */
+    readonly log: readonly string[];
+    readonly missing: readonly string[];
+    readonly retryReason: TransientDeployReason | null;
+    readonly retryAt: string | null;
+    /** Why the card's button is off, or null. */
+    readonly blocker: SetupMessage | null;
+    readonly busy: boolean;
+    readonly error: SetupMessage | null;
+    readonly checkedAt: string | null;
+}
+
+export interface InstallSliceView {
+    /** The admin's own release. */
+    readonly release: string;
+    /** Where Publish the map puts the public map. */
+    readonly address: string;
+    readonly freeMinutes: number;
+    readonly estimates: Readonly<Record<InstallTarget, number>>;
+    /** What one Publish the map moves out of Hosting's free daily transfer, in MB. */
+    readonly siteTransferMegabytes: number;
+    readonly server: InstallTargetViewPort;
+    readonly pipeline: InstallTargetViewPort;
+    readonly site: InstallTargetViewPort;
+}
+// [end install]
 
 /** The controller's intents as the elements call them (fire and forget: the state reports the outcome). */
 export interface SetupIntentsPort {
@@ -177,18 +245,30 @@ export interface SetupIntentsPort {
     linkBilling(): void;
     chooseBillingAccount(accountName: string): void;
     confirmBillingAccount(): void;
+    /** "This account is a free trial" (one input): Home announces its end (A60). */
+    markTrial(): void;
     provision(): void;
     saveMapbox(secretToken: string): void;
     rotatePublicToken(audience: 'viewer' | 'admin'): void;
     startUsgsCountdown(): void;
     draftUsgs(fields: { readonly username?: string; readonly expiresOn?: string }): void;
     saveUsgs(request: SaveUsgsRequest): void;
+    /** M6 setup-ux (A59): Do it later on the USGS card. */
+    postponeUsgs(): void;
     followLink(step: SetupStepId): void;
     disableHistoryPageViews(): void;
     setCrashEmails(enabled: boolean): void;
     enableApi(api: string): void;
     loadCrashGroups(): void;
     importLegacy(): void;
+    // [section install] owner: installer (M6)
+    /** Install the server (d): it also starts the imagery pipeline. */
+    installServer(): void;
+    /** Publish the map, or Try again on an install card. */
+    install(target: InstallTarget): void;
+    /** Update the map, counted on `step`'s card. */
+    updateMap(step: SetupStepId): void;
+    // [end install]
 }
 
 export interface SetupPort {

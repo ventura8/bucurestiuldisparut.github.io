@@ -34,8 +34,9 @@ export const ro = {
     'adminContent.cities.created.photos': 'Adaugă fotografii',
     'adminContent.cities.created.places': 'Desenează locuri',
     'adminContent.cities.created.imagery': 'Vezi imaginile istorice',
-    'adminContent.cities.created.siteLater': 'Site-ul public îl adaugă un dezvoltator în depozit (npm run site:add, apoi un push).',
-    'adminContent.cities.created.exportInstead': 'Până atunci, Exportă orașul din Setări face o copie pentru orice găzduire statică.',
+    'adminContent.cities.created.siteLater': 'Odată publicat, vizitatorii îi găsesc harta la această adresă:',
+    'adminContent.cities.created.exportInstead': 'Exportă orașul din Setări face și o copie pentru orice găzduire statică.',
+    'adminContent.cities.newTab': '(se deschide într-o filă nouă)',
     // [end cities]
     // [section budgets] owner: multi-city; keys adminContent.budgets.*
     'adminContent.budgets.title': 'Bugetul orașului',

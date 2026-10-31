@@ -183,7 +183,7 @@ describe('workload identity', () => {
 });
 
 describe('the custom role of the translation drafts (M4)', () => {
-    const IAM_PREFIX = ['apis', 'service-accounts', 'buckets', 'secrets', 'org-policies', 'iam'] as const;
+    const IAM_PREFIX = ['apis', 'service-accounts', 'buckets', 'artifact-registry', 'secrets', 'org-policies', 'iam'] as const;
 
     it('happyPath_theRoleIsMadeWithItsPermissionsBeforeTheBindingThatNamesIt', async () => {
         const world = provisionWorld();
@@ -213,7 +213,8 @@ describe('the custom role of the translation drafts (M4)', () => {
         expect(only(report.items, 'iam')).toEqual([{ id: 'iam', state: 'ok' }]);
         expect(world.fakes.callsTo('iam.roles.undelete')).toHaveLength(1);
         expect(world.fakes.callsTo('iam.roles.patch')).toHaveLength(1);
-        expect(world.fakes.callsTo('iam.roles.create')).toEqual([]);
+        // Only M6's installer role (hcmInstaller) is new here; the drafts' role is never recreated.
+        expect(world.fakes.callsTo('iam.roles.create').filter((call) => call.body.includes('hcmVertexDrafts'))).toEqual([]);
         expect(world.fakes.state.iam.projects.get('demo-hcm')?.roles.get('hcmVertexDrafts')).toEqual({
             includedPermissions: ['aiplatform.endpoints.predict'],
             deleted: false,

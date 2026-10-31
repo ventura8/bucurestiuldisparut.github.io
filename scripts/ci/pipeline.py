@@ -127,6 +127,12 @@ DEPENDENCY_UPDATES = ("python3", "scripts/ci/check_dependency_updates.py")
 RELEASE_ADDRESSES = "reports/release/engine-addresses.md"
 RELEASE_PACK = "mkdir -p reports/release && npm pack --workspace create-historic-city --pack-destination reports/release"
 SELF_HOST_BUNDLE = ("node", "--import", "./scripts/site/register-ts.mjs", "packages/create-historic-city/build-self-host.ts")
+# M6: the Firebase Hosting tree from the build stage's own builds (`npm run build:hosting` would build the admin and the
+# engine again): dist/hosting-public and dist/hosting (docs/research/M6-interfaces.md §2.1, §2.5)
+HOSTING_TREE = ("node", "--import", "./scripts/site/register-ts.mjs", "scripts/site/build-hosting.ts")
+# M6: the in-app installer's bundle (docs/research/M6-interfaces.md §1.3) into dist/hosting/admin/install/<slug>/, from the
+# stage's own builds (`npm run build:install` would build the functions again), then its tarballs against their budgets
+INSTALL_BUNDLE = ("node", "--import", "./scripts/site/register-ts.mjs", "scripts/site/build-install.ts")
 
 GATES: dict[str, Gate] = {
     gate.name: gate
@@ -213,6 +219,14 @@ GATES: dict[str, Gate] = {
         Gate("notices", ("python3", "scripts/ci/check_notices.py"), needs=("vite-build",)),
         # The static city sites for GitHub Pages (dist/site/bucharest, dist/site/starter-kit) from the engine build
         Gate("site-build", (*NPM_RUN, "build:site"), needs=("vite-build",)),
+        # The Firebase Hosting tree (M6): the public map at the root, the other cities and the generic city page, the admin
+        # under /admin/, release.json and 404.html, in its public variant (a deploy's HCM_ADMIN_START_UP=1 never reaches
+        # the image, so dist/hosting is the public variant too)
+        Gate("hosting-build", HOSTING_TREE, needs=("vite-build",)),
+        # The in-app installer's bundle (M6) in the Hosting tree: server.tgz, pipeline.tgz, hosting.tgz and manifest.json,
+        # deterministic, then each tarball within its budget (DECISIONS-for-review.md §71)
+        Gate("install-build", INSTALL_BUNDLE, needs=("hosting-build",)),
+        Gate("install-budget", ("python3", "scripts/ci/check_bundle_budget.py", "--install"), needs=("install-build",)),
         # release: the tag agrees with every version (workspace dependencies and ENGINE_VERSION included), the released
         # engine's release.json, the kit's pinned folder, both release-notes files and the description's pinned addresses
         Gate("release-check", ("python3", "scripts/ci/check_release.py")),
@@ -298,7 +312,7 @@ STAGES: dict[str, tuple[str, ...]] = {
     # The rest of the tour matrix (e2e/projects.ts, tier `tour-matrix`): every scenario row already ran in `e2e`; these
     # projects repeat the tour at the other viewport, theme and language combinations before a push to master or a tag.
     "tour-matrix": ("e2e-matrix", "e2e-build", "playwright-tour-matrix"),
-    "build": ("vite-build", "bundle-budget", "notices", "site-build"),
+    "build": ("vite-build", "bundle-budget", "notices", "site-build", "hosting-build", "install-build", "install-budget"),
     # Needs the reports of `tests` (`all` runs it last). A stage left empty would FAIL:
     # it must never report green for work that does not exist yet.
     "sonar": ("sonar",),

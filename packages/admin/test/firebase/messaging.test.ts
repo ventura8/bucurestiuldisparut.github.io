@@ -12,6 +12,7 @@ import {
     PUSH_SERVICE_WORKER,
     firebasePush,
     loadMessagingSdk,
+    retireRootWorker,
     standInPush,
     standInToken,
     type MessagingSdk,
@@ -115,11 +116,78 @@ describe('firebasePush', () => {
 
 describe('the e2e stand-in', () => {
     it('happyPath_theBrowsersOwnPermissionAndAFixedTokenPerTest', async () => {
-        const push = standInPush(scope({ permission: 'granted' }).browser, 'S-A47 happy/1');
+        const { browser, registered } = scope({ permission: 'granted' });
+        const push = standInPush(browser, 'S-A47 happy/1');
 
         await expect(push.token()).resolves.toBe('e2e-fcm-token:S-A47happy1-browser-0001');
         expect(push.permission()).toBe('granted');
         expect(standInToken('')).toBe('e2e-fcm-token:local-browser-0001');
+        // The admin's own worker, as in production, beside its page.
+        expect(registered).toEqual([{ url: PUSH_SERVICE_WORKER, scope: './' }]);
+    });
+
+    it('badPath_aBrowserThatRefusesServiceWorkersStillGetsItsToken', async () => {
+        // The e2e projects block service workers unless a spec allows them.
+        const refusing: PushScope = {
+            navigator: { serviceWorker: { register: () => Promise.reject(new Error('blocked')) } },
+            Notification: { permission: 'granted', requestPermission: () => Promise.resolve('granted') },
+        };
+
+        await expect(standInPush(refusing, 'x').token()).resolves.toBe('e2e-fcm-token:x-browser-0001');
+        await expect(standInPush({ navigator: {} }, 'x').token()).resolves.toBe('e2e-fcm-token:x-browser-0001');
+    });
+});
+
+describe('retireRootWorker (M6: the admin moved to /admin/)', () => {
+    /** Registrations of a browser at the Hosting origin, each recording whether it was unregistered. */
+    function withRegistrations(scopes: readonly string[], refuse = false) {
+        const unregistered: string[] = [];
+        const registrations = scopes.map((registrationScope) => ({
+            scope: registrationScope,
+            unregister: () => {
+                unregistered.push(registrationScope);
+                return refuse ? Promise.reject(new Error('refused')) : Promise.resolve(true);
+            },
+        }));
+        const { browser, registered } = scope();
+        const worker = browser.navigator.serviceWorker;
+        const withRoot: PushScope = {
+            ...browser,
+            navigator: {
+                serviceWorker: {
+                    register: (url, options) => worker?.register(url, options) ?? Promise.resolve(REGISTRATION),
+                    getRegistrations: () => Promise.resolve(registrations),
+                },
+            },
+            location: { origin: 'https://demo-hcm.web.app' },
+        };
+        return { browser: withRoot, unregistered, registered };
+    }
+
+    it('happyPath_theRootScopesWorkerIsUnregisteredBeforeTheAdminRegistersItsOwn', async () => {
+        const { browser, unregistered, registered } = withRegistrations(['https://demo-hcm.web.app/', 'https://demo-hcm.web.app/admin/']);
+        const push = firebasePush({ scope: browser, app: APP, load: () => Promise.resolve(sdk()) });
+
+        await push.token();
+
+        expect(unregistered).toEqual(['https://demo-hcm.web.app/']);
+        expect(registered).toEqual([{ url: PUSH_SERVICE_WORKER, scope: './' }]);
+    });
+
+    it('badPath_aRefusalOrABrowserWithoutTheApiLeavesThingsAsTheyAre', async () => {
+        const refusing = withRegistrations(['https://demo-hcm.web.app/'], true);
+
+        await expect(retireRootWorker(refusing.browser)).resolves.toBe(0);
+        await expect(retireRootWorker(scope().browser)).resolves.toBe(0);
+        await expect(retireRootWorker({ navigator: {} })).resolves.toBe(0);
+        const failing: PushScope = {
+            navigator: {
+                serviceWorker: { register: () => Promise.resolve(REGISTRATION), getRegistrations: () => Promise.reject(new Error('x')) },
+            },
+            location: { origin: 'https://demo-hcm.web.app' },
+        };
+        await expect(retireRootWorker(failing)).resolves.toBe(0);
+        await expect(retireRootWorker(withRegistrations(['https://demo-hcm.web.app/admin/']).browser)).resolves.toBe(0);
     });
 });
 

@@ -33,12 +33,17 @@ describe('projectNames', () => {
         expect([names.privateBucket, names.publicBucket]).toEqual(['demo-hcm.firebasestorage.app', 'demo-hcm-public']);
         expect(names.adminOrigins).toEqual(['https://demo-hcm.web.app', 'https://demo-hcm.firebaseapp.com']);
         expect(names.member('gh-deployer')).toBe('serviceAccount:gh-deployer@demo-hcm.iam.gserviceaccount.com');
-        expect(SERVICE_ACCOUNT_IDS).toEqual(['fn-admin', 'fn-events', 'fn-crash', 'job-raster', 'gh-deployer']);
+        expect(SERVICE_ACCOUNT_IDS).toEqual(['fn-admin', 'fn-events', 'fn-crash', 'job-raster', 'gh-deployer', 'hcm-installer']);
     });
 });
 
 describe('the role table', () => {
-    const agents = { firebaseStorage: 'fs-agent@example.test', cloudStorage: 'gcs-agent@example.test' };
+    const agents = {
+        firebaseStorage: 'fs-agent@example.test',
+        cloudStorage: 'gcs-agent@example.test',
+        pubsub: 'pubsub-agent@example.test',
+        computeDefault: undefined,
+    };
 
     it('happyPath_everyM2bRowIsBoundOnItsResource', () => {
         const table = roleTable(PROJECT, agents, false);
@@ -53,6 +58,7 @@ describe('the role table', () => {
             'serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com',
             'serviceAccount:fn-crash@demo-hcm.iam.gserviceaccount.com',
             'serviceAccount:job-raster@demo-hcm.iam.gserviceaccount.com',
+            'repository:hcm',
         ]);
         expect(project?.bindings).toContainEqual({
             role: 'roles/firebaserules.firestoreServiceAgent',
@@ -62,7 +68,7 @@ describe('the role table', () => {
         expect(table.find((policy) => policy.resource === 'mapbox-sk-bootstrap')?.bindings.map((binding) => binding.member)).not.toContain(
             'serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com',
         );
-        expect(REQUIRED_APIS).toHaveLength(30);
+        expect(REQUIRED_APIS).toHaveLength(33);
     });
 
     it('happyPath_theM4AssistsAndPushHaveTheirApisAndRoles', () => {
@@ -115,6 +121,7 @@ describe('the role table', () => {
         expect(table.flatMap((policy) => policy.bindings).filter((binding) => binding.member === crash)).toEqual([]);
         expect(table.find((policy) => policy.resource === 'fn-crash@demo-hcm.iam.gserviceaccount.com')?.bindings).toEqual([
             { role: 'roles/iam.serviceAccountUser', member: 'serviceAccount:gh-deployer@demo-hcm.iam.gserviceaccount.com' },
+            { role: 'roles/iam.serviceAccountUser', member: 'serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com' },
         ]);
     });
 
@@ -125,5 +132,91 @@ describe('the role table', () => {
             role: 'roles/cloudbuild.builds.builder',
             member: 'serviceAccount:123456789012-compute@developer.gserviceaccount.com',
         });
+    });
+});
+
+describe('the role table of M6 (docs/research/M6-interfaces.md §1.2, §1.6)', () => {
+    const agents = {
+        firebaseStorage: 'fs-agent@example.test',
+        cloudStorage: 'gcs-agent@example.test',
+        pubsub: 'pubsub-agent@example.test',
+        computeDefault: undefined,
+    };
+
+    it('happyPath_theM6InstallerHasExactlyTheContractsRolesAndActsOnlyAsTheRuntimeAccounts @S-A04-HAPPY-INSTALLER-ACCOUNT', () => {
+        // docs/research/M6-interfaces.md §1.2 (CR-M6-2): the in-app installer's builds run as hcm-installer@.
+        const table = roleTable(PROJECT, agents, false);
+        const installer = 'serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com';
+        const roles = (resource: string): string[] =>
+            (table.find((policy) => policy.resource === resource)?.bindings ?? [])
+                .filter((binding) => binding.member === installer)
+                .map((binding) => binding.role);
+
+        expect(roles('demo-hcm')).toEqual([
+            'roles/cloudfunctions.developer',
+            'roles/firebaserules.admin',
+            'roles/datastore.indexAdmin',
+            'roles/cloudscheduler.admin',
+            'roles/cloudtasks.queueAdmin',
+            'roles/serviceusage.serviceUsageConsumer',
+            'roles/firebase.viewer',
+            'roles/firebasehosting.admin',
+            'roles/logging.logWriter',
+            'projects/demo-hcm/roles/hcmInstaller',
+        ]);
+        expect(roles('hcm')).toEqual(['roles/artifactregistry.writer']);
+        for (const account of ['fn-admin', 'fn-events', 'fn-crash', 'job-raster']) {
+            expect(roles(`${account}@demo-hcm.iam.gserviceaccount.com`)).toEqual(['roles/iam.serviceAccountUser']);
+        }
+        expect(roles('gh-deployer@demo-hcm.iam.gserviceaccount.com')).toEqual([]);
+        // Never the wide roles §1.2 rules out.
+        const wide = [
+            'roles/owner',
+            'roles/editor',
+            'roles/run.admin',
+            'roles/resourcemanager.projectIamAdmin',
+            'roles/artifactregistry.repoAdmin',
+        ];
+        expect(
+            table.flatMap((policy) => policy.bindings).filter((binding) => binding.member === installer && wide.includes(binding.role)),
+        ).toEqual([]);
+        expect(REQUIRED_APIS).toEqual(
+            expect.arrayContaining(['firebasehosting.googleapis.com', 'firebaserules.googleapis.com', 'firestore.googleapis.com']),
+        );
+    });
+
+    it('happyPath_theFunctionAccountsMayInvokeTheFunctionsEventarcAndSchedulerCall', () => {
+        // Finding 17: Eventarc delivers with fn-events@, Cloud Scheduler's OIDC token is fn-admin@'s.
+        const project = roleTable(PROJECT, agents, false)[0];
+        const invokers = (project?.bindings ?? [])
+            .filter((binding) => binding.role === 'roles/run.invoker')
+            .map((binding) => binding.member);
+
+        expect(invokers).toEqual([
+            'serviceAccount:fn-admin@demo-hcm.iam.gserviceaccount.com',
+            'serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com',
+        ]);
+    });
+
+    it('happyPath_aFirstDeploysServiceAgentRolesAreInPlaceForTheInstaller', () => {
+        // firebase-tools' ensureServiceAgentRoles wants them on a project without event functions yet; the installer may
+        // read the project's policy but not write it.
+        const withCompute = roleTable(
+            PROJECT,
+            { ...agents, computeDefault: '123456789012-compute@developer.gserviceaccount.com' },
+            false,
+        )[0];
+        const without = roleTable(PROJECT, agents, false)[0];
+        const compute = 'serviceAccount:123456789012-compute@developer.gserviceaccount.com';
+
+        expect(without?.bindings).toContainEqual({
+            role: 'roles/iam.serviceAccountTokenCreator',
+            member: 'serviceAccount:pubsub-agent@example.test',
+        });
+        expect(without?.bindings.filter((binding) => binding.member === compute)).toEqual([]);
+        expect(withCompute?.bindings.filter((binding) => binding.member === compute)).toEqual([
+            { role: 'roles/run.invoker', member: compute },
+            { role: 'roles/eventarc.eventReceiver', member: compute },
+        ]);
     });
 });

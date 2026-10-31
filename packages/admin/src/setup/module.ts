@@ -9,6 +9,7 @@
 import type { CallableName, CallableRequest, CallableResponse, Logger } from '@hcm/shared';
 
 import type { GoogleScope } from '../google/scopes.js';
+import type { InstallerPort } from '../install/ports.js';
 import { createSetupController, type SetupController } from './controller.js';
 import { MIN_TOKEN_LIFE_MS } from './google-access.js';
 import type {
@@ -21,6 +22,7 @@ import type {
     SetupGoogleAuth,
     SetupHost,
     SetupLegacyImport,
+    SetupNotice,
     VisibilityPort,
 } from './ports.js';
 import type { SetupMode, SetupState } from './state.js';
@@ -58,6 +60,8 @@ export interface SetupShell {
     setSetup(setup: SetupState): void;
     /** Step (d) saw every function `ACTIVE`: the shell probes, claims and switches to normal mode; true when it answered. */
     serverReady(): Promise<boolean>;
+    /** The shell's snackbar (M6 setup-ux: the legacy import's end). */
+    notify(notice: SetupNotice): void;
 }
 
 export interface SetupModuleOptions {
@@ -70,6 +74,12 @@ export interface SetupModuleOptions {
     /** The city the admin edits (`infra/project.json`'s first) and its bounding box for the USGS access request. */
     readonly cityId: string;
     readonly cityBBox: SetupHost['cityBBox'];
+    // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.10)
+    /** The Cloud Build installer (`createCloudBuildInstaller`), the admin's release and the public map's address. */
+    readonly installer: InstallerPort;
+    readonly release: string;
+    readonly siteAddress: string;
+    // [end install]
 }
 
 /** What the controller's `intents` are (`AdminIntents.setup`). */
@@ -135,15 +145,21 @@ export function setupDepsOf(shell: SetupShell, options: SetupModuleOptions): Set
             cityId: options.cityId,
             cityBBox: options.cityBBox,
             serverDeployed: () => shell.serverReady(),
+            release: options.release,
+            siteAddress: options.siteAddress,
         },
         google: googleOf(shell),
         cloud: options.cloud,
         backend: backendOf(shell.firebase.callables, options.createCity),
         importer: options.importer,
+        installer: options.installer,
         clock: shell.clock,
         visibility: shell.visibility,
         session: shell.session,
         log: shell.log.child('setup'),
+        notify: (notice) => {
+            shell.notify(notice);
+        },
     };
 }
 

@@ -12,6 +12,7 @@
  * - `clock`, `visibility`, `session`, `log`: time, the tab's visibility, `sessionStorage`, the logger.
  */
 import type {
+    AdminSetupKey,
     AnalyticsConfigResponse,
     ApiErrorCode,
     ListGroupsRequest,
@@ -31,7 +32,8 @@ import type {
 } from '@hcm/shared';
 
 import type { GoogleScope } from '../google/scopes.js';
-import type { SetupMessageKey } from './messages.js';
+import type { InstallerPort } from '../install/ports.js';
+import type { MessageParams, SetupMessageKey } from './messages.js';
 
 /**
  * Time for polls, countdowns and token expiry (admin-shell's `Clock`): the browser's timers, so Playwright's
@@ -203,6 +205,22 @@ export interface SetupHost {
      * claims (d2) and calls the controller's `setMode('normal')`.
      */
     serverDeployed(): Promise<boolean>;
+    // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.7)
+    /** The admin's own release (`runtime.json`): what Install and Update install. */
+    readonly release: string;
+    /** `https://<project>.web.app/`: where Publish the map puts the public map. */
+    readonly siteAddress: string;
+    // [end install]
+}
+
+/**
+ * M6 setup-ux (finding 19 of 2026-10-25): a message for the shell's snackbar, with an action for ten seconds (the
+ * import's Open); text keys only, as every notice.
+ */
+export interface SetupNotice {
+    readonly key: SetupMessageKey;
+    readonly params?: MessageParams;
+    readonly action?: { readonly key: AdminSetupKey; run(): void };
 }
 
 export interface SetupDeps {
@@ -215,4 +233,9 @@ export interface SetupDeps {
     readonly visibility: VisibilityPort;
     readonly session: SessionStore;
     readonly log: Logger;
+    // [section install] owner: installer (M6): Cloud Build with the owner's token (`../install/cloud-build-installer.ts`).
+    readonly installer: InstallerPort;
+    // [end install]
+    /** The shell's snackbar (M6 setup-ux: the end of the legacy import). */
+    readonly notify: (notice: SetupNotice) => void;
 }

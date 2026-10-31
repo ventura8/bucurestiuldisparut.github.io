@@ -35,6 +35,7 @@ import type { SetupModule } from './setup/module.js';
 import type { SetupState } from './setup/state.js';
 import { initFirebase, loadAnalyticsSdk, type FirebaseHandles } from './firebase/app.js';
 import { firebaseSdk } from './firebase/sdk.js';
+import { hostingOrigins } from './install/bundle.js';
 import { AREA_CHUNKS, areaPageLoader, type ContentModuleSlots } from './routing/area-pages.js';
 import { PageRegistry, type PageLoader } from './routing/pages.js';
 import type { AdminRouteId } from './routing/routes.js';
@@ -227,6 +228,8 @@ interface SetupParts {
     readonly config: FirebaseWebConfig;
     readonly firebase: FirebasePorts;
     readonly fetch: typeof fetch;
+    /** The admin's `runtime.json` release (M6: what the install cards install). */
+    readonly release: string;
 }
 
 /** The Setup Assistant over the project file (CR-M2b-15), or none without one. */
@@ -239,6 +242,8 @@ function setupFor(setup: SetupParts, project: ProjectConfig | null): SetupModule
         ...{ config: setup.config, project, firebase: setup.firebase, fetch: setup.fetch, clock: setup.parts.clock, log: setup.parts.log },
         baseUrl: setup.parts.win.document.baseURI,
         nonce: globalThis.crypto.randomUUID.bind(globalThis.crypto),
+        release: setup.release,
+        installOrigins: setup.parts.e2e === null ? hostingOrigins(setup.config.projectId) : [setup.parts.win.location.origin],
     });
 }
 
@@ -280,7 +285,7 @@ export function browserDeps(parts: BrowserParts): BootEnvironment<EntrySetup, En
             languages: win.navigator.languages,
             pages: PAGES,
             telemetry: telemetryFor(parts, handles, config, runtime.release),
-            setup: setupFor({ parts, config, firebase, fetch: fetcher }, project),
+            setup: setupFor({ parts, config, firebase, fetch: fetcher, release: runtime.release }, project),
             content: contentDepsFor(parts, handles, fetcher),
         };
     };

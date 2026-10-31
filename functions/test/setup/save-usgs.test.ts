@@ -4,7 +4,7 @@
  * card shows the M2M role: `ok` once approved, `pending` (checked again every six hours) before, `unavailable` during
  * maintenance. A refused token stores nothing.
  */
-import { USGS_RECHECK_HOURS } from '@hcm/shared';
+import { FIRESTORE_PATHS, USGS_RECHECK_HOURS } from '@hcm/shared';
 import { fixtureResponse } from '@hcm/test-support/api-fixtures';
 import { USGS_CREDENTIALS } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
@@ -63,6 +63,7 @@ describe('setup.saveUsgs', () => {
                 checkedAt: '2026-10-11T08:30:00.000Z',
                 role: 'search',
                 detail: 'apiError.usgs.accessPending',
+                pendingSince: '2026-10-11T08:30:00.000Z',
                 nextCheckAt: '2026-10-11T14:30:00.000Z',
             },
         });
@@ -71,6 +72,7 @@ describe('setup.saveUsgs', () => {
             checkedAt: CHECKED,
             role: 'search',
             detail: 'apiError.usgs.accessPending',
+            pendingSince: CHECKED,
             nextCheckAt: NEXT_CHECK,
         });
         expect(stored(world)).toEqual([USGS_CREDENTIALS.pending.username, USGS_CREDENTIALS.pending.applicationToken]);
@@ -173,5 +175,26 @@ describe('setup.saveUsgs', () => {
 
         await expect(rejection(save(world))).resolves.toEqual(new UpstreamError('usgs', 'invalid', { status: 500 }));
         expect(world.status()).toBeUndefined();
+    });
+});
+
+// M6 setup-ux (docs/research/M6-interfaces.md §4.1, S-A59-HAPPY-APPROVAL-PENDING): since when the approval is awaited.
+describe('setup.saveUsgs: the approval awaited', () => {
+    it('badPath_aNewTokenKeepsTheDayTheApprovalWaitsSinceAndTheApprovalEndsIt', async () => {
+        const world = createWorld();
+        const earlier = { seconds: CHECKED.seconds - 86_400, nanoseconds: 0 };
+        world.documents.seed(FIRESTORE_PATHS.setupStatus, {
+            usgs: { state: 'pending', role: 'search', detail: 'apiError.usgs.accessPending', pendingSince: earlier, postponedAt: earlier },
+            updatedBy: ADMIN.uid,
+            updatedAt: earlier,
+        });
+
+        await save(world, USGS_CREDENTIALS.pending);
+        expect(world.status()?.usgs).toMatchObject({ state: 'pending', pendingSince: earlier });
+        // A saved token ends Do it later (M6 setup-ux): the record is the check's own.
+        expect(world.status()?.usgs).not.toHaveProperty('postponedAt');
+
+        await save(world, USGS_CREDENTIALS.approved);
+        expect(world.status()?.usgs).not.toHaveProperty('pendingSince');
     });
 });

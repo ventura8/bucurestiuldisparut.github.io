@@ -113,7 +113,7 @@ describe('assist.suggestTitle and the geocoding queue', () => {
             rateLimits: { ...GEOCODE_RATE_LIMITS },
             retryConfig: { maxAttempts: GEOCODE_MAX_ATTEMPTS, minBackoffSeconds: 10 },
         });
-        expect(options.serviceAccountEmail).toBe('fn-events@');
+        expect(options.serviceAccountEmail).toBe('fn-events@demo-hcm.iam.gserviceaccount.com');
     });
 
     it('badPath_aRefusalCoolsEveryRequestDownForTenMinutes @S-A45-BAD-GEOCODE-COOLDOWN', async () => {

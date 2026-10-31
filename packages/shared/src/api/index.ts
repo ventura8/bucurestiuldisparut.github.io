@@ -100,6 +100,9 @@ export type {
     SelfTestResponse,
     SetupStatusView,
 } from './setup.js';
+// M6 setup-ux (docs/research/M6-interfaces.md §4.1): when Setup is done, and USGS's part in it.
+export { USGS_ACCESS_PENDING, setupDone, usgsReadiness } from './setup-done.js';
+export type { SetupDoneInput, UsgsReadiness } from './setup-done.js';
 export {
     ERROR_GROUP_RESOLUTIONS,
     ERROR_REPORT_LIMITS,

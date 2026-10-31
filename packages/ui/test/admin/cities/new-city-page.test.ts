@@ -298,6 +298,12 @@ describe('<hcm-new-city-page>: the city found, the id and the done screen', () =
         expect(deep(element, '[data-city-created]').textContent).toContain('Cluj-Napoca');
         expect(deep(element, '[data-harvest]').textContent).toContain('once USGS is set up');
         expect(deep(element, '[data-harvest]').textContent).not.toContain('within minutes');
+        // M6 (CR-M6-17): no repository step any more; the city's public map is on the admin's own Hosting site.
+        const address = deep(element, 'a[data-public-address]');
+        expect(address.getAttribute('href')).toBe(new URL('/cluj/', document.baseURI).href);
+        expect(address.textContent).toContain(new URL('/cluj/', document.baseURI).href);
+        expect(address.getAttribute('target')).toBe('_blank');
+        expect(element.shadowRoot?.textContent).not.toContain('site:add');
         expect(await axeViolations(element)).toEqual([]);
         const buttons = deepAll(element, '.actions hcm-button');
         for (const button of buttons) {

@@ -4,7 +4,7 @@ import type { VerifiedCaller } from '../api/access.js';
 import type { Ports } from '../ports/index.js';
 import { recordFailedAttempt } from './attempts.js';
 import { SECRET_FAILURES, upstream } from './failures.js';
-import { commitStatus, nextSecretsRev, stampOf, withoutReason } from './records.js';
+import { commitStatus, defined, nextSecretsRev, stampOf, withoutReason } from './records.js';
 import { checkUsgs, usgsRecord } from './usgs-check.js';
 import { toSetupStatusView } from './view.js';
 
@@ -26,7 +26,11 @@ async function store(deps: SaveUsgsDeps, caller: VerifiedCaller, request: Reques
     const tokenExpiresAt = expiryOf(request.expiresOn);
     const status = await commitStatus(deps.documents, stampOf(caller.uid, deps), (current) => ({
         ...current,
-        usgs: usgsRecord(outcome, now, tokenExpiresAt === undefined ? {} : { tokenExpiresAt }),
+        // M6 setup-ux: a new token keeps the date the approval has been awaited since (S-A59-HAPPY-APPROVAL-PENDING).
+        usgs: usgsRecord(outcome, now, {
+            ...defined('tokenExpiresAt', tokenExpiresAt),
+            ...defined('pendingSince', current.usgs?.pendingSince),
+        }),
         secretsRev: nextSecretsRev(current),
     }));
     deps.log.info('usgs credentials saved', { uid: caller.uid, state: outcome.state });

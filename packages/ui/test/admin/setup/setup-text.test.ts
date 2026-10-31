@@ -96,7 +96,9 @@ describe('defineSetupElements', () => {
             'hcm-setup-import',
             'hcm-setup-mapbox',
             'hcm-setup-page',
+            'hcm-setup-pipeline',
             'hcm-setup-provision',
+            'hcm-setup-site',
             'hcm-setup-step',
             'hcm-setup-usgs',
         ]);

@@ -7,7 +7,8 @@ import type { SiteFileSystem } from './files.js';
 import { prepareManifest, type PreparedManifest } from './manifest.js';
 import { bucketOrigins, manifestOrigins } from './origins.js';
 import { isOutputDir } from './output-dir.js';
-import { ENGINE_FOLDER, ENGINE_MODULE_FILE, ENGINE_STYLESHEET_FILE, renderSitePage } from './page.js';
+import { ADMIN_REDIRECT_FILE, ADMIN_REDIRECT_SOURCE } from './hosting/admin-redirect.js';
+import { ENGINE_FOLDER, ENGINE_MODULE_FILE, ENGINE_STYLESHEET_FILE, RELATIVE_ASSETS, renderSitePage, type PageAssets } from './page.js';
 import { publicManifest } from './public-manifest.js';
 import { parseSiteSpec, type SiteSpec } from './site-spec.js';
 import { subresourceIntegrity } from './sri.js';
@@ -55,6 +56,11 @@ export interface SiteBuildOptions {
      * publishes there instead of a bundled snapshot. Unset (the default), every site bundles its manifest.
      */
     readonly publicBucket?: string;
+    /**
+     * M6 (`docs/research/M6-interfaces.md` §2.7): the site is the Hosting site's root, so its page loads
+     * `admin-redirect.js` first (an old admin address `/#/<route>` goes to `/admin/`) and the build writes that file.
+     */
+    readonly adminRedirect?: boolean;
 }
 
 export interface SiteBuildReport {
@@ -186,13 +192,27 @@ interface PageParts {
     readonly configSource: string;
 }
 
+/** The root of the Hosting site's first script and its file (M6, §2.7); nothing for any other site. */
+function redirectPlan(options: SiteBuildOptions): { readonly assets: PageAssets; readonly files: PlannedFile[] } {
+    if (options.adminRedirect !== true) {
+        return { assets: RELATIVE_ASSETS, files: [] };
+    }
+    return {
+        assets: { ...RELATIVE_ASSETS, redirect: ADMIN_REDIRECT_FILE },
+        files: [{ to: ADMIN_REDIRECT_FILE, content: ADMIN_REDIRECT_SOURCE }],
+    };
+}
+
 /** The page, its configuration and its styles: what every site serves first. */
 function pageFiles(options: SiteBuildOptions, parts: PageParts, files: SiteFileSystem): PlannedFile[] {
     const integrityOf = integrity(files, options.mapboxGlDir ?? DEFAULT_MAPBOX_GL_DIR);
+    const redirect = redirectPlan(options);
+    const page = renderSitePage({ spec: parts.spec, csp: parts.csp, mapboxGlIntegrity: integrityOf, assets: redirect.assets });
     return [
-        { to: 'index.html', content: renderSitePage({ spec: parts.spec, csp: parts.csp, mapboxGlIntegrity: integrityOf }) },
+        { to: 'index.html', content: page },
         { to: 'config.js', content: parts.configSource },
         { to: 'site.css', from: requireFile(files, `${options.siteDir}/site.css`, 'every site has its page styles') },
+        ...redirect.files,
     ];
 }
 

@@ -4,11 +4,13 @@
  * unpublished photos, running and failed jobs), each a link to its page; one chip per Setup area with its state (live,
  * from `setup/status`), and the public map's state (live, from `manifests/{city}`) with **Not on the public map**: every
  * document the last build left out, its first issue and a link to its editor (`docs/research/M2c-interfaces.md` §5.4,
- * S-A38-BAD-SKIPPED-SHOWN). A count that could not be read shows a dash; Refresh counts again.
+ * S-A38-BAD-SKIPPED-SHOWN). A count that could not be read shows a dash; Refresh counts again. M6 (setup-ux): first,
+ * what Setup left open (`./reminders.ts`): USGS later or waiting for its approval, a likely free trial ending soon.
  */
 import { translate, type Locale } from '@hcm/shared';
 import { css, html, type TemplateResult } from 'lit';
 
+import { visuallyHidden } from '../../components/styles.js';
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
 import { AreaPage } from '../editing/area-page.js';
@@ -18,6 +20,7 @@ import { errorTemplate, formatWhen, reconnectingStatus } from '../editing/states
 import { EMPTY } from '../shell/empty.js';
 import { contentText, noticeOf, shellText } from '../shell/text.js';
 import type { HealthChipPort, HomeCountPort, HomeIntentsPort, HomeViewState, PublicMapPort, SkippedDocumentPort } from './home-port.js';
+import { reminderStyles, remindersSection } from './reminders.js';
 
 export const HCM_HOME_PAGE_TAG = 'hcm-home-page';
 
@@ -134,7 +137,7 @@ export class HcmHomePage extends AreaPage<HomeViewState, HomeIntentsPort> {
     /** The dashboard scrolls with the page area like a form; it has no panes. */
     static override readonly fillsPage: boolean = false;
 
-    static override readonly styles = [...editingStyles, homeStyles];
+    static override readonly styles = [...editingStyles, homeStyles, reminderStyles, visuallyHidden];
 
     protected readonly route: AdminRouteIdPort = 'home';
 
@@ -152,6 +155,7 @@ export class HcmHomePage extends AreaPage<HomeViewState, HomeIntentsPort> {
             void this.intents?.refresh();
         };
         return html`<div class="pane">
+            ${remindersSection(locale, view, this.intents)}
             <div class="actions">
                 <hcm-button variant="tonal" icon="refresh" ?disabled=${view.countsStatus === 'loading'} @click=${refresh}
                     >${shellText(locale, 'adminShell.home.refresh')}</hcm-button

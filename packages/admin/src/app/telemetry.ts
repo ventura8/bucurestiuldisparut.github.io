@@ -29,11 +29,15 @@ export function parseConsent(value: string | null): ConsentState {
     return value === 'granted' || value === 'denied' ? value : 'unknown';
 }
 
-/** GA4's first-party cookies (`_ga`, `_ga_<container>`), never another cookie. */
-const GA_COOKIE = /^_ga(?:_[\w-]+)?$/;
+/**
+ * The admin's own GA4 cookies (`hcm_admin_ga`, `hcm_admin_ga_<container>`: `ADMIN_COOKIE_PREFIX` of
+ * `../firebase/analytics.ts`), never another cookie: since M6 the public map on the same origin keeps its `_ga` and
+ * `_ga_<container>` (`docs/research/M6-interfaces.md` §2.3).
+ */
+const GA_COOKIE = /^hcm_admin_+ga(?:_[\w-]+)?$/;
 
 /**
- * Expires GA4's cookies on the admin's own host (`<project>.web.app` is a public suffix, so gtag.js writes them for the
+ * Expires the admin's GA4 cookies on its own host (`<project>.web.app` is a public suffix, so gtag.js writes them for the
  * host itself, path `/`): host-only and with the host's domain. Returns their names.
  */
 export function expireAnalyticsCookies(jar: { cookie: string }, hostname: string): readonly string[] {

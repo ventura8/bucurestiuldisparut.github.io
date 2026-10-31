@@ -3,7 +3,7 @@
  * the functions' own credentials, each isolated, and what it finds for Mapbox, USGS and crash reporting lands in
  * `setup/status`.
  */
-import { FIRESTORE_PATHS, SELF_TEST_CHECKS, manifestStateDocSchema, type SelfTestResponse } from '@hcm/shared';
+import { FIRESTORE_PATHS, SELF_TEST_CHECKS, manifestStateDocSchema, opsProbeDocSchema, type SelfTestResponse } from '@hcm/shared';
 import { MAPBOX_TOKENS, USGS_CREDENTIALS } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
@@ -11,6 +11,7 @@ import { UpstreamError } from '../../src/ports/errors.js';
 import { saveMapbox } from '../../src/setup/save-mapbox.js';
 import { saveUsgs } from '../../src/setup/save-usgs.js';
 import { selfTest } from '../../src/setup/self-test.js';
+import { EVENTS_PROBE_WAIT_MS } from '../../src/setup/self-test-checks.js';
 import { ADMIN, CITY, NOW, createWorld, type World, type WorldOptions } from './world.js';
 
 const CHECKED = { seconds: Date.parse(NOW) / 1000, nanoseconds: 0 };
@@ -182,6 +183,18 @@ describe('setup.selfTest Mapbox and USGS', () => {
         });
     });
 
+    // CR-M6-14 (M6 setup-ux §4.1): a Check again keeps the day USGS's approval has been awaited since.
+    it('badPath_aCheckAgainKeepsSinceWhenTheApprovalIsAwaited', async () => {
+        const world = await connected({ usgs: USGS_CREDENTIALS.pending });
+        const earlier = { seconds: CHECKED.seconds - 3 * 86_400, nanoseconds: 0 };
+        const status = world.status();
+        world.documents.seed(FIRESTORE_PATHS.setupStatus, { ...status, usgs: { ...status?.usgs, pendingSince: earlier } });
+
+        await selfTest(world.deps, ADMIN);
+
+        expect(world.status()?.usgs).toMatchObject({ state: 'pending', pendingSince: earlier });
+    });
+
     it('badPath_usgsMaintenanceKeepsTheKnownRole', async () => {
         const world = await connected();
         world.upstream.fail('usgs', 'maintenance');
@@ -319,5 +332,196 @@ describe('setup.selfTest Vertex AI (M4, CR-M4-5)', () => {
         const response = await selfTest(world.deps, ADMIN);
 
         expect(check(response, 'ai')).toEqual({ id: 'ai', ...expected });
+    });
+});
+
+describe('setup.selfTest events (M6, finding 17)', () => {
+    it('happyPath_theProbeComesBackThroughOpsOnProbe', async () => {
+        const world = createWorld();
+
+        const response = await selfTest(world.deps, ADMIN);
+
+        expect(check(response, 'events')).toEqual({ id: 'events', state: 'ok' });
+        const probe = opsProbeDocSchema.parse(world.documents.peek(FIRESTORE_PATHS.opsProbe));
+        expect(probe.receivedNonce).toBe(probe.nonce);
+        expect(probe.nonce).toMatch(/^[a-f0-9]{32}$/);
+        expect(probe).toMatchObject({ requestedAt: CHECKED, receivedAt: CHECKED, updatedBy: 'system:ops' });
+        // Delivered while the check waited the first time.
+        expect(world.waits).toBe(1);
+    });
+
+    it('happyPath_eachRunSendsAFreshNonce', async () => {
+        const world = createWorld();
+        await selfTest(world.deps, ADMIN);
+        const first = opsProbeDocSchema.parse(world.documents.peek(FIRESTORE_PATHS.opsProbe)).nonce;
+
+        await selfTest(world.deps, ADMIN);
+
+        const second = opsProbeDocSchema.parse(world.documents.peek(FIRESTORE_PATHS.opsProbe));
+        expect(second.nonce).not.toBe(first);
+        expect(second.receivedNonce).toBe(second.nonce);
+    });
+
+    it('badPath_eventsThatNeverArriveNameTheInvokerRole @S-A03-BAD-EVENTS-REFUSED', async () => {
+        // The project of 2026-10-25: Eventarc could not call the event functions, whose account lacked roles/run.invoker.
+        const world = createWorld();
+        world.deliverEvents = false;
+
+        const response = await selfTest(world.deps, ADMIN);
+
+        expect(check(response, 'events')).toEqual({
+            id: 'events',
+            state: 'invalid',
+            detail: 'apiError.setup.eventsUnreached',
+            params: { role: 'roles/run.invoker' },
+        });
+        // It waited 20 s in all, one second at a time, then gave up; the other checks still ran.
+        expect(world.waits).toBe(20);
+        expect(opsProbeDocSchema.parse(world.documents.peek(FIRESTORE_PATHS.opsProbe))).not.toHaveProperty('receivedNonce');
+        expect(check(response, 'mapbox')).toBeDefined();
+        expect(world.records.find((record) => record.data?.['check'] === 'events')).toMatchObject({
+            level: 'warn',
+            data: { code: 'apiError.setup.eventsUnreached' },
+        });
+    });
+
+    it('badPath_aClockThatCannotWaitPollsItsRoundsAtOnce @S-A03-BAD-EVENTS-REFUSED', async () => {
+        const world = createWorld();
+        const reads = (): number => world.documents.recorder.argsOf('get').filter((args) => args[0] === FIRESTORE_PATHS.opsProbe).length;
+
+        const response = await selfTest({ ...world.deps, clock: { now: () => new Date(NOW) } }, ADMIN);
+
+        expect(check(response, 'events')).toMatchObject({ state: 'invalid', detail: 'apiError.setup.eventsUnreached' });
+        expect(reads()).toBe(EVENTS_PROBE_WAIT_MS / 1_000);
+    });
+
+    it('badPath_aProbeThatCannotBeWrittenIsAFirestoreProblem', async () => {
+        const world = createWorld();
+        world.documents.recorder.failNext('set', new UpstreamError('firestore', 'forbidden', { status: 403 }));
+
+        const response = await selfTest(world.deps, ADMIN);
+
+        expect(check(response, 'events')).toEqual({
+            id: 'events',
+            state: 'invalid',
+            detail: 'apiError.cloud.permission',
+            params: { role: 'roles/datastore.user' },
+        });
+    });
+});
+
+/** Answers Vertex AI's `countTokens` with `status` and `body` (the other calls reach the fake upstreams). */
+function vertexAnswers(world: World, status: number, body: unknown): void {
+    world.intercept = (_method, url) =>
+        url.pathname.endsWith(':countTokens')
+            ? new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+            : undefined;
+}
+
+/** Google's error envelope with an `ErrorInfo` reason and a free-text message that must never reach a log. */
+function googleRefusal(code: number, status: string, reason: string) {
+    return {
+        error: {
+            code,
+            status,
+            message: 'Publisher model secret-detail-in-message was not found or your project does not have access to it.',
+            details: [{ '@type': 'type.googleapis.com/google.rpc.ErrorInfo', reason, domain: 'aiplatform.googleapis.com' }],
+        },
+    };
+}
+
+describe('setup.selfTest Vertex AI failures (M6, finding 20)', () => {
+    it('badPath_aModelGoogleDoesNotOfferIsNamed @S-A45-BAD-MODEL-UNAVAILABLE', async () => {
+        const world = createWorld();
+        vertexAnswers(world, 404, googleRefusal(404, 'NOT_FOUND', 'MODEL_NOT_FOUND'));
+
+        const response = await selfTest(world.deps, ADMIN);
+
+        expect(check(response, 'ai')).toEqual({
+            id: 'ai',
+            state: 'invalid',
+            detail: 'apiError.assist.modelUnavailable',
+            params: { model: 'gemini-2.5-flash-lite' },
+        });
+        expect(world.records.find((record) => record.data?.['check'] === 'ai')?.data).toEqual({
+            check: 'ai',
+            code: 'apiError.assist.modelUnavailable',
+            service: 'vertex-ai',
+            failure: 'notFound',
+            status: 404,
+            googleStatus: 'NOT_FOUND',
+            reason: 'MODEL_NOT_FOUND',
+        });
+    });
+
+    it.each([
+        [
+            400,
+            googleRefusal(400, 'INVALID_ARGUMENT', 'MODEL_CONFIG_INVALID'),
+            'MODEL_CONFIG_INVALID',
+            { failure: 'invalid', status: 400, googleStatus: 'INVALID_ARGUMENT', reason: 'MODEL_CONFIG_INVALID' },
+        ],
+        [
+            401,
+            googleRefusal(401, 'UNAUTHENTICATED', 'ACCESS_TOKEN_EXPIRED'),
+            'ACCESS_TOKEN_EXPIRED',
+            { failure: 'unauthorized', status: 401, googleStatus: 'UNAUTHENTICATED', reason: 'ACCESS_TOKEN_EXPIRED' },
+        ],
+        [
+            409,
+            { error: { code: 409, status: 'ABORTED', message: 'conflict' } },
+            'ABORTED',
+            { failure: 'conflict', status: 409, googleStatus: 'ABORTED' },
+        ],
+        [422, { error: { code: 422, message: 'no status' } }, 'HTTP 422', { failure: 'invalid', status: 422 }],
+    ] as const)(
+        'badPath_vertexAi_%i_isLoggedWithItsStatusAndReasonAndNamedAsGooglesRefusal @S-A45-BAD-UPSTREAM-LOGGED',
+        async (status, body, reason, upstream) => {
+            const world = createWorld();
+            vertexAnswers(world, status, body);
+
+            const response = await selfTest(world.deps, ADMIN);
+
+            expect(check(response, 'ai')).toEqual({
+                id: 'ai',
+                state: 'invalid',
+                detail: 'apiError.cloud.refused',
+                params: { api: 'aiplatform.googleapis.com', reason },
+            });
+            const line = world.records.find((record) => record.data?.['check'] === 'ai');
+            expect(line).toMatchObject({ level: 'warn', message: 'self-test check failed' });
+            expect(line?.data).toEqual({ check: 'ai', code: 'apiError.cloud.refused', service: 'vertex-ai', ...upstream });
+            expect(world.logged()).not.toContain('secret-detail-in-message');
+            expect(world.logged()).not.toContain('e2e-service-account-token');
+        },
+    );
+
+    it('badPath_anAnswerWithoutTheTokenCountIsARefusalNotAServerError @S-A45-BAD-UPSTREAM-LOGGED', async () => {
+        const world = createWorld();
+        vertexAnswers(world, 200, { promptTokensDetails: [] });
+
+        const response = await selfTest(world.deps, ADMIN);
+
+        expect(check(response, 'ai')).toEqual({
+            id: 'ai',
+            state: 'invalid',
+            detail: 'apiError.cloud.refused',
+            params: { api: 'aiplatform.googleapis.com', reason: 'invalid' },
+        });
+        expect(world.records.find((record) => record.data?.['check'] === 'ai')?.data).toEqual({
+            check: 'ai',
+            code: 'apiError.cloud.refused',
+            service: 'vertex-ai',
+            failure: 'invalid',
+        });
+    });
+
+    it('badPath_aGoogleNameThatIsNotOneIsDropped', async () => {
+        const world = createWorld();
+        vertexAnswers(world, 400, { error: { code: 400, status: 'not a name <b>', details: [{ reason: 'x'.repeat(65).toUpperCase() }] } });
+
+        const response = await selfTest(world.deps, ADMIN);
+
+        expect(check(response, 'ai')?.params).toEqual({ api: 'aiplatform.googleapis.com', reason: 'HTTP 400' });
     });
 });

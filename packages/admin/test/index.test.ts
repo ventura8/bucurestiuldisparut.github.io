@@ -65,7 +65,7 @@ function fakeWindow(files: Readonly<Record<string, Response>> = {}) {
     });
     const popup = { closed: false };
     const document = Object.defineProperty(Object.assign(new EventTarget(), { visibilityState: 'visible' }), 'cookie', {
-        get: () => '_ga=GA1.1.1',
+        get: () => 'hcm_admin_ga=GA1.1.1; _ga=GA1.1.2',
         set: (value: string) => {
             cookies.push(value);
         },

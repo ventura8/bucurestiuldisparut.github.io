@@ -39,6 +39,11 @@ export const UPSTREAM_SERVICES = [
     /** M4: the AI drafts and web push (`docs/research/M4-interfaces.md` §8). */
     'vertex-ai',
     'fcm',
+    /** M6: the imagery pipeline's Docker repository (`docs/research/M6-interfaces.md` §1.6). */
+    'artifact-registry',
+    /** M6 installer: the install builds and their log lines (`docs/research/M6-interfaces.md` §1.10). */
+    'cloud-build',
+    'logging',
 ] as const;
 
 export type UpstreamServiceName = (typeof UPSTREAM_SERVICES)[number];

@@ -4,12 +4,15 @@
  * `release-pack`: `docs/research/M5-interfaces.md` §4.4), assembled from the repository's own builds:
  *
  * ```text
- * admin/                      packages/admin/dist (a production build) without Bucharest's legacy import bundle,
- *                             the source maps and the files a project writes itself (project.json, runtime.json)
+ * hosting/admin/              packages/admin/dist (a production build) without Bucharest's legacy import bundle,
+ *                             the source maps and the files a project writes itself (project.json, runtime.json):
+ *                             since M6 the admin's base is `/admin/` (docs/research/M6-interfaces.md §2.3), so the
+ *                             project's Hosting folder is `hosting/` with the admin in its `admin/` folder
  * functions/                  functions/dist: index.js, package.json, package-lock.json and export-kit/ (no .env.*)
  * rules/                      firebase/firestore.rules, firestore.indexes.json, storage.rules
  * firebase.template.json      firebase.json for any project: the paths above, no build steps, no emulators, and
- *                             the repository's project id replaced by __PROJECT_ID__ (its Hosting site and CSP)
+ *                             the repository's project id replaced by __PROJECT_ID__ (its Hosting site and CSP); the
+ *                             site's root redirects to `/admin/` until the map is published (no viewer page yet)
  * bundle.json                 the release the admin was built from (its runtime.json's)
  * ```
  *
@@ -75,6 +78,14 @@ function only(value: unknown): Config {
     return { ...(Array.isArray(value) ? (value[0] as Config) : (value as Config)) };
 }
 
+/** A self-hosted project's site before its map is published: its root is the admin (M6: the admin under `/admin/`). */
+const ROOT_TO_ADMIN = { source: '/', destination: '/admin/', type: 302 } as const;
+
+function redirectsOf(hosting: Config): unknown[] {
+    const redirects = hosting['redirects'];
+    return Array.isArray(redirects) ? redirects : [];
+}
+
 /** firebase.json for any project: the bundle's paths, no `predeploy`, no emulators or schema, the project tokenised. */
 export function selfHostFirebaseConfig(config: Config, projectId: string): string {
     const kept: Config = Object.fromEntries(Object.entries(config).filter(([key]) => key !== '$schema' && key !== 'emulators'));
@@ -87,7 +98,7 @@ export function selfHostFirebaseConfig(config: Config, projectId: string): strin
         firestore: { ...only(kept['firestore']), rules: 'rules/firestore.rules', indexes: 'rules/firestore.indexes.json' },
         storage: { rules: 'rules/storage.rules' },
         functions: [{ ...functions, source: 'functions' }],
-        hosting: { ...hosting, public: 'admin' },
+        hosting: { ...hosting, public: 'hosting', redirects: [...redirectsOf(hosting), ROOT_TO_ADMIN] },
     };
     return json(rewritten).replaceAll(projectId, PROJECT_TOKEN);
 }
@@ -108,7 +119,7 @@ export function buildSelfHostBundle(layout: BundleLayout): { readonly admin: num
     const out = at(layout.out);
     rmSync(out, { recursive: true, force: true });
     mkdirSync(join(out, 'rules'), { recursive: true });
-    const admin = copyEntries(at(layout.adminDist), join(out, 'admin'), (name) => !ADMIN_LEFT_OUT.test(name));
+    const admin = copyEntries(at(layout.adminDist), join(out, 'hosting', 'admin'), (name) => !ADMIN_LEFT_OUT.test(name));
     const functions = copyEntries(at(layout.functionsDist), join(out, 'functions'), (name) => FUNCTIONS_TAKEN.test(name));
     for (const rule of layout.rules) {
         cpSync(at(rule), join(out, 'rules', rule.slice(rule.lastIndexOf('/') + 1)));

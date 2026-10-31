@@ -20,11 +20,15 @@ three parts:
   (`ADMIN_CHUNK_BUDGETS`); a chunk without a budget fails, so a new chunk is a reviewed decision;
 - everything together (`ADMIN_TOTAL_KB`), so many small chunks cannot grow unnoticed.
 
+The in-app installer's bundle (M6, docs/research/M6-interfaces.md §1.3) is checked apart, with `--install`, once
+`build:install` has written it into the Hosting tree (`dist/hosting/admin/install/<slug>/`): its three tarballs are gzip
+already, so each is measured as it is served, against `INSTALL_BUDGETS` (KB).
+
 `BUDGETS` holds the budget of each single-file bundle; `--budget FILE=KB` overrides or adds one for
 a run. Raising a budget is a reviewed change to these tables, with the reason in the commit, never
 a way to get a build green. A missing bundle is an error: the gate runs after `vite-build`.
 
-Usage: check_bundle_budget.py [--root DIR] [--budget FILE=KB ...]. Exit status: 0 OK, 1 over
+Usage: check_bundle_budget.py [--root DIR] [--budget FILE=KB ...] [--install]. Exit status: 0 OK, 1 over
 budget or missing, 2 usage.
 """
 
@@ -133,6 +137,16 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
 }
 # The entry and every chunk together.
 ADMIN_TOTAL_KB = 620
+
+# M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
+# already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). `hosting.tgz`
+# carries the public tree, 46 MB of which are the legacy originals.
+INSTALL_DIR = "dist/hosting/admin/install"
+INSTALL_BUDGETS: Mapping[str, int] = {
+    "server.tgz": 8000,
+    "pipeline.tgz": 1000,
+    "hosting.tgz": 80000,
+}
 
 # A chunk's file name: its name, a dash and the content hash (Rolldown's `[name]-[hash].js`).
 CHUNK_NAME = re.compile(r"^(?P<name>.+)-[\w-]{8}\.js$")
@@ -268,20 +282,59 @@ def check_admin(root: Path, budgets: AdminBudgets = ADMIN_BUDGETS) -> tuple[list
     return problems + within(lines[-1], total, budgets.total_kb), lines
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Check the gzip size of the shipped bundles against their budgets.")
-    parser.add_argument("--root", type=Path, default=ROOT, help="repository root (default: this checkout)")
-    parser.add_argument("--budget", action="append", type=budget_arg, default=[], metavar="FILE=KB", help="override or add a budget")
-    args = parser.parse_args(argv)
-    problems, lines = check(args.root, {**BUDGETS, **dict(args.budget)})
-    for more_problems, more_lines in (check_engine_chunks(args.root), check_admin(args.root)):
+def install_report(folder: Path, budgets: Mapping[str, int]) -> tuple[list[str], list[str]]:
+    """(problems, report lines) of one release's install bundle folder."""
+    problems: list[str] = []
+    lines: list[str] = []
+    for name, budget in sorted(budgets.items()):
+        path = folder / name
+        label = f"{INSTALL_DIR}/{folder.name}/{name}"
+        if not path.is_file():
+            problems.append(f"{label}: missing (run build:install first)")
+            continue
+        size = path.stat().st_size
+        line = f"{label}: {size / KB:.1f} KB as served (budget {budget} KB)"
+        lines.append(line)
+        problems += within(line, size, budget)
+    return problems, lines
+
+
+def check_install(root: Path, budgets: Mapping[str, int] = INSTALL_BUDGETS) -> tuple[list[str], list[str]]:
+    """(problems, report lines) of every release folder of the install bundle (none is a problem)."""
+    folders = sorted(path for path in (root / INSTALL_DIR).glob("*") if path.is_dir())
+    if not folders:
+        return [f"{INSTALL_DIR}: no install bundle (run build:install first)"], []
+    problems: list[str] = []
+    lines: list[str] = []
+    for folder in folders:
+        more_problems, more_lines = install_report(folder, budgets)
         problems += more_problems
         lines += more_lines
+    return problems, lines
+
+
+def report(problems: list[str], lines: list[str]) -> int:
+    """Logs the verdict: 1 with the problems, else 0 with every line."""
     if problems:
         LOG.error("[bundle-budget] FAILED:\n%s", "\n".join(f"  - {problem}" for problem in problems))
         return 1
     LOG.info("[bundle-budget] OK:\n%s", "\n".join(f"  {line}" for line in lines))
     return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Check the gzip size of the shipped bundles against their budgets.")
+    parser.add_argument("--root", type=Path, default=ROOT, help="repository root (default: this checkout)")
+    parser.add_argument("--budget", action="append", type=budget_arg, default=[], metavar="FILE=KB", help="override or add a budget")
+    parser.add_argument("--install", action="store_true", help="check only the in-app installer's bundle (after build:install)")
+    args = parser.parse_args(argv)
+    if args.install:
+        return report(*check_install(args.root))
+    problems, lines = check(args.root, {**BUDGETS, **dict(args.budget)})
+    for more_problems, more_lines in (check_engine_chunks(args.root), check_admin(args.root)):
+        problems += more_problems
+        lines += more_lines
+    return report(problems, lines)
 
 
 if __name__ == "__main__":

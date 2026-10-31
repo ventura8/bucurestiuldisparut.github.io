@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 import { cityDocSchema, httpsOriginSchema, mapboxTokenIdSchema } from '../schemas/firestore.js';
 import { PROVISION_ITEMS, SERVICE_STATES, USGS_ROLES, type SetupArea, type UsgsRole } from '../schemas/firestore-ops.js';
+import { setupInstallSchema } from '../schemas/install.js';
 import { cityIdSchema } from '../schemas/paths.js';
 import { coded, firebaseAppIdsSchema, isoDateSchema, mapboxPublicTokenSchema, measurementIdSchema } from '../schemas/primitives.js';
 import { emptyRequestSchema, healthViewFields, isoTimeSchema } from './common.js';
@@ -47,6 +48,11 @@ export const SELF_TEST_CHECKS = [
     'private-bucket',
     'public-bucket',
     'task-queue',
+    /**
+     * M6 (finding 17, `docs/research/M6-interfaces.md` §3.2): a write of `ops/probe` reaches `ops.onProbe` through Eventarc,
+     * which delivers it with `fn-events@`: proves `roles/run.invoker`, which the emulators never check.
+     */
+    'events',
     'mapbox',
     'usgs',
     'firebase-management',
@@ -85,6 +91,10 @@ const billingViewSchema = z.strictObject({
     budgetId: z.string().max(200).optional(),
     budgetAmount: z.number().min(0).optional(),
     currency: z.string().length(3).optional(),
+    // [section setup-ux trial] M6 (docs/research/M6-interfaces.md §3.1, A60): a likely free trial and its dismissal.
+    trialSince: isoTimeSchema.optional(),
+    trialPaidAt: isoTimeSchema.optional(),
+    // [end setup-ux trial]
 });
 
 const provisionItemViewSchema = z.strictObject({ id: z.enum(PROVISION_ITEMS), state: z.enum(SERVICE_STATES), ...healthDetail });
@@ -105,6 +115,10 @@ const usgsViewSchema = z.strictObject({
     role: z.enum(USGS_ROLES).optional(),
     nextCheckAt: isoTimeSchema.optional(),
     tokenExpiresAt: isoTimeSchema.optional(),
+    // [section setup-ux postponed] M6 (docs/research/M6-interfaces.md §4.1, A59): Do it later, and the approval's wait.
+    postponedAt: isoTimeSchema.optional(),
+    pendingSince: isoTimeSchema.optional(),
+    // [end setup-ux postponed]
 });
 
 const analyticsViewSchema = z.strictObject({ ...healthViewFields, measurementId: measurementIdSchema.optional() });
@@ -123,6 +137,10 @@ export const setupStatusViewSchema = z.strictObject({
     /** Every `SETUP_REQUIRED_AREAS` area is `ok` (`setupReady`). */
     ready: z.boolean(),
     generatedAt: isoTimeSchema,
+    // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.7): each install target's last known
+    // state, so Home can say an update is ready without a Google token.
+    install: setupInstallSchema.optional(),
+    // [end install]
 });
 
 export type SetupStatusView = z.infer<typeof setupStatusViewSchema>;
@@ -162,8 +180,20 @@ export const recordCloudRequestSchema = z
             })
             .optional(),
         provision: z.strictObject({ items: z.array(provisionItemViewSchema).min(1).max(PROVISION_ITEMS.length) }).optional(),
+        // [section install] owner: installer (M6, §1.7): what the install cards saw of each target (no token, no log line).
+        install: setupInstallSchema.optional(),
+        // [end install]
+        // [section setup-ux postponed] M6 (docs/research/M6-interfaces.md §4.1, A59): Do it later on a postponable step
+        // (true), or taken back (false); only USGS can wait.
+        postponed: z.strictObject({ usgs: z.boolean() }).optional(),
+        // [end setup-ux postponed]
+        // [section setup-ux trial] M6 (§3.1, A60): an account appeared while the billing card waited (`since`), or the
+        // owner said it is a paid account (`paid`).
+        trial: z.union([z.strictObject({ since: isoTimeSchema }), z.strictObject({ paid: z.literal(true) })]).optional(),
+        // [end setup-ux trial]
     })
-    .refine((request) => request.billing !== undefined || request.provision !== undefined, coded('validation.required'));
+    // At least one part to record (every part is optional, so a new part needs no change here).
+    .refine((request) => Object.values(request).some((part) => part !== undefined), coded('validation.required'));
 export const recordCloudResponseSchema = z.strictObject({ status: setupStatusViewSchema });
 
 /** `setup.saveMapbox`: the secret token pasted once (validated upstream before it is stored). */

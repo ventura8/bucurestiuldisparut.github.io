@@ -18,7 +18,7 @@ import process from 'node:process';
 
 import { createLogger } from '@hcm/shared';
 
-import { ADMIN_EMULATORS, ADMIN_ORIGIN, E2E_PROJECT_ID, EMULATOR_ENV, emulatorOrigin, PERSONAS } from '../admin/world.js';
+import { ADMIN_EMULATORS, ADMIN_URL, E2E_PROJECT_ID, EMULATOR_ENV, emulatorOrigin, PERSONAS } from '../admin/world.js';
 import { E2E_CITY_ID, MOCK_API_ORIGIN, SITE_ORIGIN } from '../fixtures/world.js';
 import { STACK_SECOND_CITY } from './seed-cities.js';
 import { seedStack, type SeedProfile } from './seed.js';
@@ -120,7 +120,7 @@ function banner(profile: SeedProfile, ticks: boolean): void {
         .join(', ');
     const lines = [
         `Local stack ready (seed: ${profile}). Open the addresses with 127.0.0.1, never localhost.`,
-        `  Admin      ${ADMIN_ORIGIN}   (Sign in with Google: the stand-in opens over the page, ${PERSONAS.owner.email} preselected, Allow)`,
+        `  Admin      ${ADMIN_URL}   (Sign in with Google: the stand-in opens over the page, ${PERSONAS.owner.email} preselected, Allow)`,
         `  Viewer     ${SITE_ORIGIN}/${E2E_CITY_ID}/   (the manifest the emulators published; the e2e fixture one before the first build)`,
         profile === 'city'
             ? `  Cities     ${E2E_CITY_ID} (public), ${STACK_SECOND_CITY} (not public yet: Settings → Publishing; its page ` +

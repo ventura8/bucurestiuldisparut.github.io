@@ -101,6 +101,9 @@ describe('city ids', () => {
             false,
             false,
         ]);
+        // M6: the Hosting site's generic city page and the admin are folders of the site's root, and on that one origin
+        // the admin's storage keys are `hcm:admin:*` beside a city viewer's `hcm:<cityId>:*`: no city may be `admin`.
+        expect([isUsableCityId('city'), isUsableCityId('admin')]).toEqual([false, false]);
     });
 
     it.each([
@@ -110,9 +113,10 @@ describe('city ids', () => {
         ['Cluj', ['cluj'], 'cluj-2'],
         ['Cluj', ['cluj', 'cluj-2'], 'cluj-3'],
         ['Engine', [], 'engine-2'],
-        ['!!!', [], 'city'],
-        ['A', [], 'city'],
-        ['A', ['city'], 'city-2'],
+        ['!!!', [], 'my-city'],
+        ['A', [], 'my-city'],
+        ['A', ['my-city'], 'my-city-2'],
+        ['City', [], 'city-2'],
     ])('happyPath_%s_with %j taken_suggests %s', (name, taken, expected) => {
         expect(suggestCityId(name, taken)).toBe(expected);
     });

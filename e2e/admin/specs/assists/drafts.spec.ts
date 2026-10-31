@@ -26,7 +26,7 @@ test.describe.configure({ lock: ADMIN_LOCK });
 test.use({ persona: 'owner', mapOwner: 'owner' });
 
 /** The photo of a test (one id each: a trigger of an earlier test may still write below its photo). */
-const PHOTO = { draft: 'p-ateneu-draft', refused: 'p-ateneu-refused' } as const;
+const PHOTO = { draft: 'p-ateneu-draft', refused: 'p-ateneu-refused', modelGone: 'p-ateneu-model-gone' } as const;
 
 function photoField(page: Page, lang: 'ro' | 'en', key: Parameters<typeof photosText>[1]): Locator {
     return page.locator('hcm-admin-photo-editor').getByLabel(photosText(lang, key), { exact: true });
@@ -96,6 +96,29 @@ test(
         // Nothing written: the photo is the seeded one (so nothing to publish); the callable's refusal is the 503 logged.
         expect(await city.emulators.document(`cities/${city.city}/photos/${PHOTO.refused}`)).toEqual(before);
         expect(consoleErrors.takeMatching(/status of 503 .*assist-translateDraft/)).toHaveLength(1);
+    },
+);
+
+test(
+    'A model Vertex AI does not offer to the project is named on the drafts button, not reported as a server error',
+    { tag: '@S-A45-BAD-MODEL-UNAVAILABLE' },
+    async ({ page, lang, adminWorld, upstream, consoleErrors }) => {
+        // M6 (finding 20 of docs/research/manual-test-2026-10-25.md): Google answers 404 for a publisher model it retired or
+        // does not offer; the setup self-test names it the same way (functions/test/setup/self-test.test.ts).
+        const city = ownerCity(adminWorld);
+        await upstream.scenario('vertex-ai.modelUnavailable', 'server');
+        await openPhoto(page, lang, city, PHOTO.modelGone);
+
+        await slotButton(page, 'draft-title').click();
+        const alert = assistSlot(page, 'draft-title').getByRole('alert');
+        await expect(alert).toContainText(apiText(lang, 'apiError.assist.modelUnavailable', { model: VERTEX_MODEL_ID }), {
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(alert).not.toContainText(apiText(lang, 'apiError.internal'));
+        await expect(photoField(page, lang, 'adminContent.photos.field.titleEn')).toHaveValue('');
+        expect(await upstream.calls('server', 'vertex-ai.generateContent')).toHaveLength(1);
+        // A failed precondition, which the browser logs as the callable's 400.
+        expect(consoleErrors.takeMatching(/status of 400 .*assist-translateDraft/)).toHaveLength(1);
     },
 );
 

@@ -78,6 +78,7 @@ function world() {
                 credential: vi.fn((idToken: string, accessToken: string) => ({ idToken, accessToken })),
             },
         ),
+        browserPopupRedirectResolver: 'popup-resolver',
         signInWithPopup: vi.fn(() => Promise.resolve({ user: USER, token: 'ya29.e2e-owner-access-token' })),
         reauthenticateWithPopup: vi.fn(() => Promise.resolve({ user: USER })),
         signInWithCredential: vi.fn(() => Promise.resolve({ user: USER })),
@@ -233,7 +234,9 @@ describe('firebasePopup and credentialSignIn', () => {
             include_granted_scopes: 'true',
         });
 
-        const provider = w.sdk.signInWithPopup.mock.calls[0] as unknown as [unknown, { scopes: string[]; parameters: unknown }];
+        const provider = w.sdk.signInWithPopup.mock.calls[0] as unknown as [unknown, { scopes: string[]; parameters: unknown }, unknown];
+        // The popup's resolver goes with the call: the admin's Auth is created without one (session persistence, M6).
+        expect(provider[2]).toBe('popup-resolver');
         expect(provider[1].scopes).toEqual(['https://www.googleapis.com/auth/cloud-billing']);
         expect(provider[1].parameters).toEqual({ include_granted_scopes: 'true' });
         expect(result).toEqual({ accessToken: 'ya29.e2e-owner-access-token', email: 'owner@e2e.test' });
@@ -245,7 +248,7 @@ describe('firebasePopup and credentialSignIn', () => {
 
         const result = await firebasePopup(w.typed, w.handles)(null, {});
 
-        expect(w.sdk.reauthenticateWithPopup).toHaveBeenCalledTimes(1);
+        expect(w.sdk.reauthenticateWithPopup).toHaveBeenCalledWith(USER, expect.anything(), 'popup-resolver');
         expect(result).toEqual({ accessToken: null, email: 'owner@e2e.test' });
     });
 

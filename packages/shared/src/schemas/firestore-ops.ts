@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { apiErrorCodeSchema, apiErrorParamsSchema } from '../api/errors.js';
 import { cityRolesSchema } from './city-roles.js';
+import { setupInstallSchema } from './install.js';
 import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import { httpsOriginSchema, mapboxTokenIdSchema } from './firestore.js';
 import {
@@ -84,6 +85,9 @@ export const PROVISION_ITEMS = [
     'service-accounts',
     'iam',
     'buckets',
+    // [section server-bugs artifact-registry] M6 (docs/research/M6-interfaces.md §1.6, CR-M6-2): the pipeline's Docker repository.
+    'artifact-registry',
+    // [end server-bugs artifact-registry]
     'bucket-cors',
     'bucket-lifecycle',
     'secrets',
@@ -199,6 +203,12 @@ const billingStatusSchema = z.strictObject({
         .string()
         .regex(/^[A-Z]{3}$/)
         .optional(),
+    // [section setup-ux trial] M6 (docs/research/M6-interfaces.md §3.1, behaviour A60): no Google API says whether an
+    // account is a free trial (DECISIONS-for-review.md §67f), so an account that appeared while Setup's billing card
+    // waited is recorded as a likely trial from that day; "It is a paid account" records `trialPaidAt` (for good).
+    trialSince: timestampSchema.optional(),
+    trialPaidAt: timestampSchema.optional(),
+    // [end setup-ux trial]
 });
 
 const provisionItemSchema = z.strictObject({ id: z.enum(PROVISION_ITEMS), ...health });
@@ -235,6 +245,11 @@ const usgsStatusSchema = z.strictObject({
     nextCheckAt: timestampSchema.optional(),
     /** The application token's expiry when the admin chose one; a reminder comes 14 days before. */
     tokenExpiresAt: timestampSchema.optional(),
+    // [section setup-ux postponed] M6 (docs/research/M6-interfaces.md §4.1, behaviour A59): Do it later on the USGS card
+    // (gone once a token is saved), and since when a saved token waits for USGS's M2M approval (kept while `pending`).
+    postponedAt: timestampSchema.optional(),
+    pendingSince: timestampSchema.optional(),
+    // [end setup-ux postponed]
 });
 
 const analyticsStatusSchema = z.strictObject({
@@ -258,6 +273,9 @@ export const setupStatusDocSchema = z.strictObject({
     analytics: analyticsStatusSchema.optional(),
     crash: crashStatusSchema.optional(),
     secretsRev: z.number().int().min(0).optional(),
+    // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.7): `setup.recordCloud`'s `install`.
+    install: setupInstallSchema.optional(),
+    // [end install]
     ...stamp,
 });
 
@@ -382,6 +400,25 @@ export const opsDispatchDocSchema = z.strictObject({
     ...stamp,
 });
 
+// [section server-bugs probe]
+/** A probe's nonce: 32 lowercase hex digits (16 random bytes). */
+const probeNonceSchema = z.string().regex(/^[a-f0-9]{32}$/);
+
+/**
+ * `ops/probe` (M6, finding 17 of `docs/research/manual-test-2026-10-25.md`; `docs/research/M6-interfaces.md` §3.2): the
+ * self-test's `events` check writes a fresh `nonce`, and `ops.onProbe`, a Firestore trigger that Eventarc delivers with
+ * `fn-events@`, copies it to `receivedNonce`. Its nonce coming back proves the events reach the server. Written by the
+ * functions only (`system:ops`); no client reads it.
+ */
+export const opsProbeDocSchema = z.strictObject({
+    nonce: probeNonceSchema,
+    requestedAt: timestampSchema,
+    receivedNonce: probeNonceSchema.optional(),
+    receivedAt: timestampSchema.optional(),
+    ...stamp,
+});
+// [end server-bugs probe]
+
 /** How a city's last USGS harvest went: found scenes, found none, or USGS did not answer (every dataset failed). */
 export const HARVEST_OUTCOMES = ['ok', 'empty', 'failed'] as const;
 
@@ -441,6 +478,7 @@ export type OwnerDoc = z.infer<typeof ownerDocSchema>;
 export type UsageDoc = z.infer<typeof usageDocSchema>;
 export type OpsGuardDoc = z.infer<typeof opsGuardDocSchema>;
 export type OpsDispatchDoc = z.infer<typeof opsDispatchDocSchema>;
+export type OpsProbeDoc = z.infer<typeof opsProbeDocSchema>;
 export type HarvestStateDoc = z.infer<typeof harvestStateDocSchema>;
 export type ManifestStateDoc = z.infer<typeof manifestStateDocSchema>;
 export type JobStatus = (typeof JOB_STATUSES)[number];

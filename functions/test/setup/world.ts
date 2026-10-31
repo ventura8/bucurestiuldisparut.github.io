@@ -23,6 +23,7 @@ import { createSecretManagerStore } from '../../src/adapters/secret-manager.js';
 import { createUsgsApi } from '../../src/adapters/usgs.js';
 import { createVertexAi } from '../../src/adapters/vertex-ai.js';
 import type { Caller, CallerToken, VerifiedCaller } from '../../src/api/access.js';
+import { answerProbe } from '../../src/ops/probe.js';
 import type { ErrorReporter } from '../../src/ports/error-reporter.js';
 import type { RuntimeConfig } from '../../src/ports/runtime-config.js';
 import type { SetupDeps } from '../../src/setup/index.js';
@@ -76,6 +77,13 @@ type Intercept = (method: string, url: URL) => Response | undefined;
 
 export interface World {
     readonly deps: SetupDeps;
+    /**
+     * M6: whether Eventarc delivers `ops/probe` to `ops.onProbe` (true by default); false is the project of finding 17,
+     * whose event functions' account lacked `roles/run.invoker`. A delivery happens while the self-test waits.
+     */
+    deliverEvents: boolean;
+    /** How many times the self-test waited for the probe's answer. */
+    readonly waits: number;
     /** Consulted before the fake upstreams for every outside call. */
     intercept: Intercept | undefined;
     readonly upstream: UpstreamFakes;
@@ -120,7 +128,17 @@ export function createWorld(options: WorldOptions = {}): World {
     }
     const recording = createRecordingSink();
     const log = createLogger('functions', { sink: recording.sink, minLevel: 'debug' });
-    const clock = { now: () => new Date(NOW) };
+    // While the self-test waits, Eventarc delivers its probe to ops.onProbe (when the world says it does).
+    let waits = 0;
+    const clock = {
+        now: () => new Date(NOW),
+        sleep: async () => {
+            waits += 1;
+            if (world.deliverEvents) {
+                await answerProbe({ log, clock, documents });
+            }
+        },
+    };
     const blobs = createFakeBlobStore();
     const tasks = createFakeTaskQueue();
     const errors = fakeErrors();
@@ -151,6 +169,10 @@ export function createWorld(options: WorldOptions = {}): World {
     const world: World = {
         deps,
         intercept: undefined,
+        deliverEvents: true,
+        get waits() {
+            return waits;
+        },
         upstream,
         documents,
         blobs,

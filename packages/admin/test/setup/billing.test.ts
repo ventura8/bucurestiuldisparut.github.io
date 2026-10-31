@@ -306,3 +306,40 @@ describe('billing: disabled APIs', () => {
         expect(harness.logs.records.at(-1)).toMatchObject({ level: 'warn', message: 'billing APIs not checked' });
     });
 });
+
+describe('billing: This account is a free trial (finding 6 of the M6 review)', () => {
+    it('happyPath_inAnAdminSessionTheTrialIsRecordedFromTodayWithOneInput', async () => {
+        const { harness, ctx, flow } = setup('normal');
+        const since = new Date(harness.clock.now()).toISOString();
+        harness.backend.recordCloud.mockResolvedValue({
+            status: statusView({ billing: { state: 'ok', checkedAt: null, budgetId: BUDGET, trialSince: since } }),
+        });
+
+        await flow.markTrial();
+
+        expect(harness.backend.recordCloud).toHaveBeenCalledWith({ trial: { since } });
+        expect(ctx.state().billing.trialSince).toBe(since);
+        expect(ctx.state().steps.billing.used).toEqual({ inputs: 1, consents: 0 });
+        expect(harness.google.requests).toEqual([]);
+    });
+
+    it('happyPath_inStartUpModeItWaitsInTheBootstrapRecordForTheClaim', async () => {
+        const { harness, ctx, flow } = setup('bootstrap');
+
+        await flow.markTrial();
+
+        expect(ctx.state().billing.trialSince).toBe(new Date(harness.clock.now()).toISOString());
+        expect(harness.backend.recordCloud).not.toHaveBeenCalled();
+    });
+
+    it('badPath_aKnownTrialKeepsItsDay_andARecordThatFailsIsShown', async () => {
+        const { harness, ctx, flow } = setup('normal');
+        ctx.update((state) => ({ ...state, billing: { ...state.billing, trialSince: '2026-10-01T09:00:00.000Z' } }));
+        harness.backend.recordCloud.mockRejectedValue(functionsError('apiError.unavailable'));
+
+        await flow.markTrial();
+
+        expect(harness.backend.recordCloud).toHaveBeenCalledWith({ trial: { since: '2026-10-01T09:00:00.000Z' } });
+        expect(ctx.state().steps.billing.error).toEqual({ key: 'apiError.unavailable' });
+    });
+});

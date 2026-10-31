@@ -2,10 +2,12 @@
  * Step (h), the legacy Bucharest import (`docs/research/M2b-interfaces.md` §3.3 h): one click imports the 45 photos
  * through the normal photo pipeline (google-clients' importer, idempotent by document id and `legacyId`). The card
  * shows the progress, the photos that failed processing with their reason, and is done once every photo is imported.
+ * M6 (finding 19 of 2026-10-25): the end of a run is said in the snackbar, which stays while Setup moves on: every photo
+ * on the map, or how many are, with Open (the card and its list of the photos that failed).
  */
 import type { SetupContext } from './context.js';
 import { apiFailure, setupMessage } from './messages.js';
-import type { LegacyImportProgress } from './ports.js';
+import type { LegacyImportProgress, SetupNotice } from './ports.js';
 import type { StepPatch } from './state.js';
 
 export interface LegacyImportFlow {
@@ -45,10 +47,26 @@ class LegacyImport implements LegacyImportFlow {
                 this.progress(progress, true);
             });
             this.progress(final, false);
+            this.ctx.deps.notify(this.ended(final));
         } catch (error) {
             this.ctx.update((state) => ({ ...state, legacyImport: { ...state.legacyImport, running: false } }));
             this.ctx.fail('legacyImport', apiFailure(error));
         }
+    }
+
+    /** The snackbar at the end of a run: all on the map, or how many, with Open (the card and its failures). */
+    private ended({ done, total, failed }: LegacyImportProgress): SetupNotice {
+        if (failed.length === 0 && done >= total) {
+            return { key: 'adminSetup.import.allOnMap', params: { count: String(total) } };
+        }
+        const open = (): void => {
+            this.ctx.update((state) => ({ ...state, openStep: 'legacyImport' }));
+        };
+        return {
+            key: 'adminSetup.import.someOnMap',
+            params: { done: String(done), total: String(total) },
+            action: { key: 'adminSetup.import.open', run: open },
+        };
     }
 
     private progress(progress: LegacyImportProgress, running: boolean): void {

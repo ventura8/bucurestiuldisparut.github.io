@@ -113,6 +113,7 @@ def test_bad_path_failures_are_listed_in_registry_order(tmp_path: Path) -> None:
         "build/bundle-budget",
         "build/notices",
         "build/site-build",
+        "build/install-budget",
     ]
 
 
@@ -176,10 +177,10 @@ def test_bad_path_composite_stage_reports_every_failed_part(tmp_path: Path, log:
     shell = FakeShell(tmp_path, failing=["check_bundle_budget.py", "sonar_scan.sh"])
 
     assert pipeline.run_pipeline("all", shell.context(jobs=8)) == 1
-    assert log.messages[-1] == "[FAILURE] stage 'all' failed: build/bundle-budget, sonar/sonar"
+    assert log.messages[-1] == "[FAILURE] stage 'all' failed: build/bundle-budget, build/install-budget, sonar/sonar"
     assert [" ".join(call) for call in shell.calls].count(" ".join(GATES["e2e-build"].command)) == 1
     assert "e2e 3/3 playwright" in log.messages
-    assert "build 1/4 vite-build" in log.messages
+    assert "build 1/7 vite-build" in log.messages
     assert "sonar 1/1 sonar" in log.messages
 
 

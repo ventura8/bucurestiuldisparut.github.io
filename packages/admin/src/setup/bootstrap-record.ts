@@ -5,7 +5,7 @@
  * state, an id or a message key, and a parameter value that `redactText` would change is refused. A malformed or
  * foreign record is dropped when read. After the claim, `setup.recordCloud` stores it and the record is deleted.
  */
-import { PROVISION_ITEMS, SERVICE_STATES, redactText, type ServiceState } from '@hcm/shared';
+import { PROVISION_ITEMS, SERVICE_STATES, redactText, setupInstallSchema, type ServiceState, type SetupInstall } from '@hcm/shared';
 
 import { isSetupMessageKey, type MessageParams, type SetupMessageKey } from './messages.js';
 import type { ProvisionItemResult, SessionStore } from './ports.js';
@@ -33,9 +33,14 @@ export interface BootstrapRecord {
         readonly budgetId?: string;
         readonly budgetAmount?: number;
         readonly currency?: string;
+        /** M6 setup-ux (A60): the account appeared while the card waited, a likely free trial since then (ISO 8601). */
+        readonly trialSince?: string;
     };
     readonly provision?: { readonly items: readonly ProvisionItemResult[] };
     readonly deploy?: { readonly ready: number; readonly total: number; readonly failed?: readonly string[] };
+    // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.7): each install target's state.
+    readonly install?: SetupInstall;
+    // [end install]
 }
 
 const KEY_PREFIX = 'hcm:admin:bootstrap:';
@@ -143,6 +148,7 @@ const isRecord = shape({
             budgetId: optional(matches(BUDGET_ID)),
             budgetAmount: optional(numberIn(0, 1_000_000)),
             currency: optional(matches(/^[A-Z]{3}$/)),
+            trialSince: optional(matches(ISO_TIME)),
         }),
     ),
     provision: optional(shape({ items: required(listOf(isItem, PROVISION_ITEMS.length)) })),
@@ -153,6 +159,9 @@ const isRecord = shape({
             failed: optional(listOf(matches(FUNCTION_NAME), 50)),
         }),
     ),
+    // [section install] owner: installer (M6): states, releases, build ids and API codes only (`setupInstallSchema`).
+    install: optional((value) => setupInstallSchema.safeParse(value).success),
+    // [end install]
 });
 
 /** True when `value` is a well-formed record (the checks `readBootstrapRecord` applies). */

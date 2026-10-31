@@ -171,6 +171,16 @@ describe('<hcm-setup-step> body', () => {
         expect(shadowPart(server.element, '.waiting').textContent).toBe('Disponibil după instalarea serverului hărții.');
     });
 
+    it('badPath_anInstallCardSaysItsCostOnceInItsBody_aWaitingOneInTheFrame', async () => {
+        // Finding 10 of the M6 review: the frame's cost line and the card's were two.
+        const open = await render(stepView('deploy', { available: true }), { locale: 'en' });
+        expect(open.element.renderRoot.querySelector('#body')?.textContent).not.toContain("Within the Blaze plan's estimate above.");
+        cleanup();
+
+        const waiting = await render(stepView('site', { available: false }), { locale: 'en' });
+        expect(waiting.element.renderRoot.querySelector('#body')?.textContent).toContain('Firebase Hosting: free up to 10 GB');
+    });
+
     it('happyPath_aDoneStepWhoseNextActionAsksGoogleKeepsItsNote', async () => {
         const { element } = await render(stepView('billing', { state: 'ok', scope: 'cloudBilling' }));
 

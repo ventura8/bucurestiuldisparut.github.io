@@ -4,15 +4,18 @@
  * steps are one column of accordion cards, the open step expanded in place; from expanded (840 px) the list sits
  * beside the open step (list and detail, the detail at most 840 px wide). The page opens at the controller's
  * `openStep`: the first incomplete step, or the one the address named. After Check again, the self-test's checks are
- * listed under the header, each failing one with its reason and a link to its step (`self-test.ts`).
+ * listed under the header, each failing one with its reason and a link to its step (`self-test.ts`). M6 (setup-ux,
+ * findings 7, 16 and 24): the header counts a postponed step apart ("8 of 9 steps done, 1 for later") and says what
+ * "done" leaves open (USGS later, or its approval pending); a card gets the consent note only while no live token
+ * holds its scope.
  */
-import type { Locale } from '@hcm/shared';
+import type { AdminSetupKey, Locale } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import { defineHcmButton } from '../../components/button.js';
 import { defineOnce } from '../../components/internal.js';
 import { defineHcmProgress } from '../../components/progress.js';
-import { baseStyles, typeStyles } from '../../components/styles.js';
+import { baseStyles, focusRing, typeStyles } from '../../components/styles.js';
 import { observeWindowSize } from '../../layout/window-class.js';
 import { EMPTY } from '../shell/empty.js';
 import type { WindowClass } from '../../theme/tokens.js';
@@ -20,6 +23,8 @@ import { defineHcmCrashGroups } from './hcm-crash-groups.js';
 import { defineHcmSetupAnalytics } from './hcm-setup-analytics.js';
 import { defineHcmSetupBilling } from './hcm-setup-billing.js';
 import { defineHcmSetupDeploy } from './hcm-setup-deploy.js';
+import { defineHcmSetupPipeline } from './hcm-setup-pipeline.js';
+import { defineHcmSetupSite } from './hcm-setup-site.js';
 import { defineHcmSetupImport } from './hcm-setup-import.js';
 import { defineHcmSetupMapbox } from './hcm-setup-mapbox.js';
 import { defineHcmSetupProvision } from './hcm-setup-provision.js';
@@ -27,11 +32,18 @@ import { defineHcmSetupStep, type ConsentNoteParams } from './hcm-setup-step.js'
 import { defineHcmSetupUsgs } from './hcm-setup-usgs.js';
 import { selfTestList, selfTestStyles } from './self-test.js';
 import { SetupPortHost } from './setup-host.js';
-import type { SetupIntentsPort, SetupStepId, SetupViewState } from './setup-port.js';
+import type { SetupIntentsPort, SetupStepId, SetupStepView, SetupViewState } from './setup-port.js';
 import { setupTextStyles } from './setup-styles.js';
 import { formatMoney, setupLabel, setupText } from './setup-text.js';
 
 export const HCM_SETUP_PAGE_TAG = 'hcm-setup-page';
+
+/** The header's "done" line: plainly done, or done with USGS's approval pending or USGS left for later (M6). */
+const READY_TEXTS: Readonly<Record<NonNullable<SetupViewState['doneNote']> | 'none', AdminSetupKey>> = {
+    none: 'adminSetup.ready',
+    usgsPending: 'adminSetup.readyUsgsPending',
+    usgsLater: 'adminSetup.readyUsgsLater',
+};
 
 /** From this window class the page shows the list beside the open step. */
 const SPLIT_CLASSES: ReadonlySet<WindowClass> = new Set<WindowClass>(['expanded', 'large', 'extra-large']);
@@ -54,6 +66,11 @@ const BODIES: Partial<Record<SetupStepId, (input: BodyInput) => TemplateResult>>
         html`<hcm-setup-analytics .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-analytics>`,
     legacyImport: (input) =>
         html`<hcm-setup-import .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-import>`,
+    // [section install] owner: installer (M6, CR-M6-6): the imagery pipeline (d3) and Publish the map (i).
+    pipeline: (input) =>
+        html`<hcm-setup-pipeline .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-pipeline>`,
+    site: (input) => html`<hcm-setup-site .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-site>`,
+    // [end install]
 };
 
 export class HcmSetupPage extends SetupPortHost {
@@ -62,7 +79,8 @@ export class HcmSetupPage extends SetupPortHost {
         windowClass: { type: String, reflect: true, attribute: 'window-class' },
     };
 
-    static override readonly styles = [baseStyles, typeStyles, setupTextStyles, selfTestStyles, pageStyles()];
+    // The kit's ring (focusRing): without it the server checks' fix links showed the browser's own ring (finding 20's tour state).
+    static override readonly styles = [baseStyles, focusRing, typeStyles, setupTextStyles, selfTestStyles, pageStyles()];
 
     /**
      * The page's width class. Only the width is followed (the page's height follows its content), and a change is
@@ -115,7 +133,8 @@ export class HcmSetupPage extends SetupPortHost {
     }
 
     private renderHeader(view: SetupViewState): TemplateResult {
-        const progress = setupLabel(this.language, 'adminSetup.progress', { done: String(view.done), total: String(view.total) });
+        const counts = { done: String(view.done), total: String(view.total), later: String(view.later) };
+        const progress = setupLabel(this.language, view.later > 0 ? 'adminSetup.progressLater' : 'adminSetup.progress', counts);
         return html`<header class="header">
             <div class="ring">
                 <hcm-progress kind="circular" .value=${view.done / view.total} label=${progress}></hcm-progress>
@@ -124,7 +143,7 @@ export class HcmSetupPage extends SetupPortHost {
             <div class="heading-text">
                 <h1 id="setup-title" class="headline-small">${setupLabel(this.language, 'adminSetup.title')}</h1>
                 <p class="note" role="status">${view.checking ? setupLabel(this.language, 'adminSetup.checking') : progress}</p>
-                ${view.ready ? html`<p class="success ready">${setupLabel(this.language, 'adminSetup.ready')}</p>` : nothing}
+                ${view.ready ? html`<p class="success ready">${setupLabel(this.language, READY_TEXTS[view.doneNote ?? 'none'])}</p>` : nothing}
             </div>
             <hcm-button
                 variant="tonal"
@@ -138,7 +157,11 @@ export class HcmSetupPage extends SetupPortHost {
         </header>`;
     }
 
-    private noteParams(view: SetupViewState): ConsentNoteParams {
+    /** The consent note's words, or null when a live token holds the step's scope: its button opens no popup now. */
+    private noteParams(view: SetupViewState, step: SetupStepView): ConsentNoteParams | null {
+        if (step.scope === null || view.liveScopes.includes(step.scope)) {
+            return null;
+        }
         return {
             projectId: view.projectId,
             domain: view.authDomain,
@@ -152,7 +175,6 @@ export class HcmSetupPage extends SetupPortHost {
     }
 
     private renderColumn(view: SetupViewState): TemplateResult {
-        const noteParams = this.noteParams(view);
         return html`<ol class="steps" aria-label=${setupLabel(this.language, 'adminSetup.steps')}>
             ${view.order.map((id) => {
                 const open = view.openStep === id;
@@ -161,7 +183,7 @@ export class HcmSetupPage extends SetupPortHost {
                         mode="inline"
                         .step=${view.steps[id]}
                         .intents=${this.intents}
-                        .noteParams=${noteParams}
+                        .noteParams=${this.noteParams(view, view.steps[id])}
                         .locale=${this.language}
                         ?open=${open}
                         >${open ? this.renderBody(view, id) : nothing}</hcm-setup-step
@@ -196,7 +218,7 @@ export class HcmSetupPage extends SetupPortHost {
                               mode="detail"
                               .step=${view.steps[open]}
                               .intents=${this.intents}
-                              .noteParams=${this.noteParams(view)}
+                              .noteParams=${this.noteParams(view, view.steps[open])}
                               .locale=${this.language}
                               open
                               >${this.renderBody(view, open)}</hcm-setup-step
@@ -282,6 +304,8 @@ export function defineHcmSetupPage(registry: CustomElementRegistry = customEleme
     defineHcmSetupBilling(registry);
     defineHcmSetupProvision(registry);
     defineHcmSetupDeploy(registry);
+    defineHcmSetupPipeline(registry);
+    defineHcmSetupSite(registry);
     defineHcmSetupMapbox(registry);
     defineHcmSetupUsgs(registry);
     defineHcmSetupAnalytics(registry);

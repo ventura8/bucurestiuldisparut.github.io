@@ -37,8 +37,9 @@ describe('<hcm-settings-page> publishing', () => {
         switchOf(element).dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: true } }));
 
         expect(shown).toEqual([false, 'The city is not public yet. Switched on and saved, its public map appears within about a minute.']);
-        // The UX review of M5: a city made in the admin has no public site until a developer adds one; Export works without.
-        expect(deep(element, '[data-publish-site]').textContent).toContain('npm run site:add');
+        // M6 (CR-M6-17): the city's public map is on the admin's own Hosting site; no developer step is named any more.
+        expect(deep(element, '[data-publish-site]').textContent).not.toContain('site:add');
+        expect(deep(element, 'a[data-public-address]').getAttribute('href')).toBe(new URL('/bucharest/', document.baseURI).href);
         expect(calls(settings)).toEqual(['editCity {"published":true}']);
         expect(deep(element, '[data-detail-heading]').textContent).toBe('Publishing');
         expect(await axeViolations(element)).toEqual([]);

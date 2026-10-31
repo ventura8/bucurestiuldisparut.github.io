@@ -2,19 +2,22 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { gunzipSync } from 'node:zlib';
 
-import { createLogger, isUsableCityId, STORAGE_PATHS } from '@hcm/shared';
+import { createLogger, installReleaseSlug, isUsableCityId, STORAGE_PATHS } from '@hcm/shared';
 
 import { parseHostingConfig } from '../../scripts/site/src/admin/hosting.js';
 import {
     ADMIN_CONNECT_ORIGINS,
-    ADMIN_DIST_DIR,
+    ADMIN_PATH,
     ADMIN_PORT,
     ADMIN_PROJECT,
     ADMIN_RUNTIME,
     ADMIN_WEB_CONFIG,
+    E2E_HOSTING_DIR,
+    E2E_HOSTING_START_UP_DIR,
     E2E_PROJECT_ID,
     emulatorOrigin,
 } from '../admin/world.js';
+import { installManifestText } from '../fixtures/install-bundle.js';
 import { E2E_CITY_ID, E2E_SITE_DIR, MOCK_API_ORIGIN, SITE_PORT } from '../fixtures/world.js';
 import { adminRequestHandler, type RequestHandler } from '../mock-apis/admin-server.js';
 import { isUpstreamHost, mockedHostKind, refusedAddress } from '../mock-apis/hosts.js';
@@ -22,8 +25,9 @@ import { listen, siteRequestHandler } from '../mock-apis/server.js';
 import { FORWARD_PREFIX, SHIM_PATH, shimScript, withShim } from './browser.js';
 
 /**
- * The local stack's admin and site servers (docs/SETUP.md → *Local stack for manual testing*): the e2e admin server
- * (e2e/mock-apis/admin-server.ts) and site server (e2e/mock-apis/server.ts) with the stack's routes in front:
+ * The local stack's admin and site servers (docs/SETUP.md → *Local stack for manual testing*): the e2e Hosting server
+ * (e2e/mock-apis/admin-server.ts: the admin at `/admin/`, and the stack's root sends there) and site server
+ * (e2e/mock-apis/server.ts) with the stack's routes in front:
  *
  * - every HTML page they serve gets the shim first in its `<head>` (`/__stack/shim.js`) and its loading tags' https
  *   addresses pointed at the forward, and its CSP's `frame-src` lets the consent stand-in be framed (browser.ts);
@@ -342,21 +346,58 @@ function stackServer(routes: readonly StackRoute[], fallback: RequestHandler): S
 }
 
 export interface StackServerOptions {
-    /** `/runtime.json` says start-up mode (a new map's Hosting-only deploy, the `fresh` seed). */
+    /** `/admin/runtime.json` says start-up mode (a new map's Hosting-only deploy, the `fresh` seed). */
     readonly startUp: boolean;
 }
 
-/** The admin server of the stack on 127.0.0.1:4312: the admin's e2e build as Hosting serves it, behind the stack's routes. */
+/**
+ * The admin server of the stack on 127.0.0.1:4312: the e2e Hosting tree as Hosting serves it (the admin's e2e build at
+ * `/admin/`, the public map at the root: M6), behind the stack's routes.
+ */
 export function startStackAdmin(options: StackServerOptions): Promise<Server> {
+    const release = treeRelease();
+    const runtime = { ...ADMIN_RUNTIME, release, ...(options.startUp ? { startUp: true } : {}) };
     const admin = adminRequestHandler({
-        distDir: ADMIN_DIST_DIR,
+        hostingDir: E2E_HOSTING_DIR,
+        startUpDir: E2E_HOSTING_START_UP_DIR,
         hosting: parseHostingConfig(readFileSync('firebase.json', 'utf8')),
         connect: ADMIN_CONNECT_ORIGINS,
         webConfig: ADMIN_WEB_CONFIG,
-        runtime: options.startUp ? { ...ADMIN_RUNTIME, startUp: true } : ADMIN_RUNTIME,
+        runtime,
         project: ADMIN_PROJECT,
     });
-    return listen(stackServer([commonRoute], admin), ADMIN_PORT);
+    return listen(stackServer([commonRoute, adminRootRoute, installBundleRoute(release)], admin), ADMIN_PORT);
+}
+
+/** The e2e Hosting tree's release (`release.json`, the admin build's own): what the stack's admin names and installs. */
+function treeRelease(): string {
+    const { release } = JSON.parse(readFileSync(`${E2E_HOSTING_DIR}/release.json`, 'utf8')) as { readonly release: string };
+    return release;
+}
+
+/**
+ * The admin's install bundle of `release` (M6, docs/research/M6-interfaces.md §1.3): its `manifest.json`, which Setup's
+ * install cards read and hash. The stack does not pack the bundle's files: the fake Cloud Build runs no step, and a build
+ * ends when the stack's fake is told to (`{"name":"cloud-build.finish"}`, docs/MANUAL_TEST_PLAN.md B3).
+ */
+function installBundleRoute(release: string): StackRoute {
+    const path = `${ADMIN_PATH}install/${installReleaseSlug(release)}/manifest.json`;
+    const answer: Answer = {
+        status: 200,
+        headers: { 'content-type': 'application/json', 'cache-control': 'no-cache' },
+        body: installManifestText(E2E_PROJECT_ID, true, release),
+    };
+    return (_request, target) => Promise.resolve(target.pathname === path ? answer : undefined);
+}
+
+/**
+ * The admin server's root sends a visitor to the admin (M6: the admin is at `/admin/`, and the root of the e2e Hosting
+ * tree is its public map, which reads the e2e world's bucket and not the emulators': the stack's viewer is the site
+ * server's), so `http://127.0.0.1:4312` keeps opening the admin, as `.claude/launch.json` names it.
+ */
+function adminRootRoute(_request: IncomingMessage, target: Target): Promise<Answer | undefined> {
+    const answer: Answer = { status: 302, headers: { location: `${ADMIN_PATH}${target.search}`, 'cache-control': 'no-store' } };
+    return Promise.resolve(target.pathname === '/' ? answer : undefined);
 }
 
 /** The site server of the stack on 127.0.0.1:4310: the e2e sites and every city's page, behind the stack's routes. */

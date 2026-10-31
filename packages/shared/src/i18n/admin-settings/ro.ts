@@ -31,7 +31,7 @@ export const ro = {
     'adminContent.settings.publish.label': 'Orașul este public',
     'adminContent.settings.publish.on': 'Vizitatorii văd harta orașului. Oprit și salvat, harta publică dispare în circa un minut.',
     'adminContent.settings.publish.off': 'Orașul nu este public încă. Pornit și salvat, harta publică apare în circa un minut.',
-    'adminContent.settings.publish.site': 'Site-ul public îl adaugă un dezvoltator (npm run site:add); Exportă orașul merge oricum.',
+    'adminContent.settings.publish.site': 'Harta ei publică este la această adresă; Exportă orașul merge oricum:',
     'adminContent.settings.saved': 'Setările au fost salvate. Harta publică se actualizează în aproximativ un minut.',
     'adminContent.settings.refused.conflict': 'Altcineva a modificat aceste setări între timp. Alege ce păstrezi, apoi salvează din nou.',
     'adminContent.settings.refused.gone': 'Elementul a fost șters între timp. Nimic nu a fost salvat.',

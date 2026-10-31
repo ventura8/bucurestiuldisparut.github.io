@@ -4,7 +4,9 @@
  * before it asks FCM for the browser's token. It is the whole worker, without the Firebase SDK: a `push` event's FCM
  * message (`notification`: title, text, tag; `fcmOptions.link`: the admin page) is shown as a plain-text notification, and
  * a click opens its page, on the admin's own origin only (any other address opens the admin's start page: a pushed link
- * can never send the admin elsewhere). Same-origin script, allowed by the admin's `worker-src 'self'`.
+ * can never send the admin elsewhere). Same-origin script, allowed by the admin's `worker-src 'self'`. The start page is the
+ * worker's own scope, the admin's folder (`https://<project>.web.app/admin/` since M6, docs/research/M6-interfaces.md
+ * §2.3: the site's root is the public map).
  *
  * The worker is `installPushWorker`, written in TypeScript (typed, linted and tested like the rest) and self-contained:
  * the file is its source text (Node strips the types when the site build runs) called on the worker's `self`.
@@ -37,19 +39,19 @@ export interface PushWorkerScope {
     readonly location: { readonly origin: string };
     addEventListener(type: 'push', listener: (event: PushEventLike) => void): void;
     addEventListener(type: 'notificationclick', listener: (event: ClickEventLike) => void): void;
-    readonly registration: { showNotification(title: string, options: NotificationOptionsLike): Promise<void> };
+    readonly registration: { readonly scope: string; showNotification(title: string, options: NotificationOptionsLike): Promise<void> };
     readonly clients: { openWindow(url: string): Promise<unknown> };
 }
 
 /** Installs the worker's two listeners on `scope`. Self-contained: its source text is the worker file. */
 export function installPushWorker(scope: PushWorkerScope): void {
-    const start = `${scope.location.origin}/`;
+    const start = scope.registration.scope.startsWith(`${scope.location.origin}/`) ? scope.registration.scope : `${scope.location.origin}/`;
     const field = (value: unknown, key: string): unknown =>
         typeof value === 'object' && value !== null ? (value as Readonly<Record<string, unknown>>)[key] : undefined;
     const text = (value: unknown): string => (typeof value === 'string' ? value : '');
     const ownPage = (link: unknown): string => {
         try {
-            const url = new URL(text(link) || '/', start);
+            const url = new URL(text(link) || start, start);
             return url.origin === scope.location.origin ? url.href : start;
         } catch {
             return start;

@@ -4,6 +4,7 @@ import { GOOGLE_SCOPES } from '../../../packages/admin/src/google/scopes.js';
 import type { GoogleConsent } from '../support/consent.js';
 import type { ServerDeployment } from '../support/deployment.js';
 import { setupText, shellText } from '../support/i18n.js';
+import { FIREBASE_USER_KEY } from '../support/session.js';
 import { SetupPage } from '../support/setup-page.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../support/test.js';
 import { ADMIN_RUNTIME, E2E_PROJECT_ID, PERSONAS } from '../world.js';
@@ -118,9 +119,16 @@ test(
         await page.reload();
         await signIn(page, lang, consent, inputBudget, PERSONAS.owner.email);
         await setup.expectState('billing', 'ok');
-        const stored = await page.evaluate(() => JSON.stringify(Object.entries(sessionStorage)));
-        expect(stored).toContain('hcm:admin:bootstrap:');
-        expect(stored).not.toMatch(/access-token|ya29|@e2e\.test|sk\./);
+        const entries = await page.evaluate(() => Object.entries(sessionStorage));
+        const own = JSON.stringify(entries.filter(([key]) => key.startsWith('hcm:')));
+        expect(own).toContain('hcm:admin:bootstrap:');
+        expect(own).not.toMatch(/access-token|ya29|@e2e\.test|sk\./);
+        // Besides the app's own record, only Firebase Auth's session (since M6 the sign-in lives in this tab, so no page
+        // of the public map on the same origin can read it: DECISIONS-for-review.md §73a), and never a Google token.
+        const others = entries.filter(([key]) => !key.startsWith('hcm:')).map(([key]) => key);
+        expect(others).toContain(FIREBASE_USER_KEY);
+        expect(others.every((key) => key.startsWith('firebase:'))).toBe(true);
+        expect(JSON.stringify(entries)).not.toMatch(/ya29|sk\./);
 
         // Provisioning has no token of its own scope after the reload: its click asks Google.
         const run = (await setup.show('provision')).getByRole('button', { name: setupText(lang, 'adminSetup.provision.run') });

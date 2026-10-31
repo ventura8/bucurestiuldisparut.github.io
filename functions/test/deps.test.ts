@@ -45,9 +45,9 @@ describe('runtimeConfig', () => {
             projectId: 'demo-hcm',
             region: 'us-central1',
             buckets: { private: 'demo-hcm.firebasestorage.app', public: 'demo-hcm-public' },
-            viewerOrigins: ['https://ventura8.github.io'],
+            viewerOrigins: ['https://demo-hcm.web.app', 'https://demo-hcm.firebaseapp.com'],
             adminOrigins: ['https://demo-hcm.web.app', 'https://demo-hcm.firebaseapp.com'],
-            adminUrl: 'https://demo-hcm.web.app/',
+            adminUrl: 'https://demo-hcm.web.app/admin/',
             oauthClientIds: [],
             errorEndpoint: 'https://us-central1-demo-hcm.cloudfunctions.net/telemetry-reportError',
             appCheck: 'monitor',
@@ -71,6 +71,17 @@ describe('runtimeConfig', () => {
 
     it('badPath_withoutAProjectIdFailsFast', () => {
         expect(() => runtimeConfig({})).toThrow('GCLOUD_PROJECT is not set');
+    });
+
+    it.each([
+        ['a trailing slash', 'https://city.example/'],
+        ['a path', 'https://city.example/map'],
+        ['plain http', 'http://city.example'],
+        ['eleven origins', Array.from({ length: 11 }, (_, index) => `https://city-${String(index)}.example`).join(',')],
+    ])('badPath_viewerOriginsACityCannotRecordAreRefusedBeforeAnyMint (%s) @S-A06-BAD-ORIGINS-REFUSED', (_case, origins) => {
+        // A token minted for them could never be written to the city (its schema refuses them): finding 3 of the M6
+        // security review, where each tick then minted another live token.
+        expect(() => runtimeConfig({ ...PROJECT, HCM_VIEWER_ORIGINS: origins })).toThrow('HCM_VIEWER_ORIGINS must be');
     });
 });
 

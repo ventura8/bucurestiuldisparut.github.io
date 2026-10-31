@@ -691,7 +691,7 @@ describe('imagery-publish', () => {
         expect((await readJob(world, JOB))?.status).toBe('mts_processing');
         expect(world.deps.recording.records.map((record) => record.message)).toContain('publish task refused');
         expect(queue.__endpoint).toMatchObject({
-            serviceAccountEmail: 'fn-events@',
+            serviceAccountEmail: 'fn-events@demo-hcm.iam.gserviceaccount.com',
             maxInstances: 1,
             availableMemoryMb: 1024,
             timeoutSeconds: 1800,

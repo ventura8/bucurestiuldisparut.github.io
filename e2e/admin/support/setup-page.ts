@@ -3,7 +3,7 @@ import type { BrowserContext, Locator, Page } from '@playwright/test';
 import type { GoogleScope } from '../../../packages/admin/src/google/scopes.js';
 import type { SetupStepId } from '../../../packages/admin/src/setup/steps.js';
 import { setupText, shellText } from './i18n.js';
-import { expect } from './test.js';
+import { adminPath, expect } from './test.js';
 
 /**
  * The Setup Assistant as a spec drives it (docs/research/M2b-interfaces.md §3.3, CR-M2b-23): a step's card is
@@ -50,7 +50,7 @@ export class SetupPage {
      * done) is open. A card opened before that is replaced under the spec when Setup opens its own.
      */
     async visit(first: SetupStepId = 'billing'): Promise<void> {
-        await this.page.goto(`/?lang=${this.lang}#/setup`);
+        await this.page.goto(adminPath(this.lang, 'setup'));
         await expect(this.open(first)).toBeVisible();
         await expect(this.page.getByRole('button', { name: setupText(this.lang, 'adminSetup.recheck') }).first()).toBeEnabled();
     }

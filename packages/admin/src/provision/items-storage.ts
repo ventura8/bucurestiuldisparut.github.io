@@ -1,5 +1,6 @@
-import { PRIVATE_BUCKET_LIFECYCLE } from '@hcm/shared';
+import { PIPELINE_REPOSITORY, PRIVATE_BUCKET_LIFECYCLE } from '@hcm/shared';
 
+import { pipelineRepositorySpec } from '../google/artifact-registry.js';
 import { ensureBindings, type WantedBinding } from '../google/iam-policy.js';
 import type { Bucket } from '../google/storage.js';
 import { isGoogleFailure } from '../google/failure.js';
@@ -181,4 +182,19 @@ const bucketLifecycle: ProvisionItemSpec = {
     },
 };
 
-export const STORAGE_ITEMS: readonly ProvisionItemSpec[] = [buckets, bucketCors, bucketLifecycle];
+/**
+ * M6 (`docs/research/M6-interfaces.md` §1.6, CR-M6-2): the Docker repository `hcm` in the project's region, where the
+ * in-app installer pushes the imagery pipeline's image (a cleanup policy keeps the two newest); `missing` creates it.
+ */
+const artifactRegistry: ProvisionItemSpec = {
+    id: 'artifact-registry',
+    after: ['apis'],
+    observe: async ({ clients, project }) => {
+        const found = await clients.artifactRegistry.get(project.projectId, project.region, PIPELINE_REPOSITORY);
+        return lacking(found === undefined ? [PIPELINE_REPOSITORY] : [], () =>
+            clients.artifactRegistry.create(project.projectId, project.region, PIPELINE_REPOSITORY, pipelineRepositorySpec()),
+        );
+    },
+};
+
+export const STORAGE_ITEMS: readonly ProvisionItemSpec[] = [buckets, artifactRegistry, bucketCors, bucketLifecycle];

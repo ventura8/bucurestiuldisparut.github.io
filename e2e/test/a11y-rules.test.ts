@@ -59,6 +59,7 @@ function snapshot(nodes: NodeInfo[], interactives: InteractiveInfo[]): LayoutSna
         interactives,
         chrome: [],
         sideways: [],
+        graphics: [],
         texts: [],
         legal: { map: false, owes: { logo: false, attribution: false }, logos: [], attributions: [] },
         modals: [],

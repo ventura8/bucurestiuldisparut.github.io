@@ -1,5 +1,6 @@
 import {
     PROVISION_ITEMS,
+    setupInstallSchema,
     setupReady,
     setupStatusViewSchema,
     timestampSchema,
@@ -59,6 +60,19 @@ function provisionItems(stored: unknown): unknown[] {
         .slice(0, PROVISION_ITEMS.length);
 }
 
+// [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.7)
+/** The install targets whose stored record still validates (an invalid one is dropped, never the whole view). */
+function installView(stored: unknown): { install?: Record<string, unknown> } {
+    const source = isRecord(stored) ? stored : {};
+    const valid = Object.fromEntries(
+        Object.entries(setupInstallSchema.shape).flatMap(([target, schema]) =>
+            source[target] !== undefined && schema.safeParse(source[target]).success ? [[target, source[target]]] : [],
+        ),
+    );
+    return Object.keys(valid).length === 0 ? {} : { install: valid };
+}
+// [end install]
+
 function revision(value: unknown): number {
     return VIEW.secretsRev.safeParse(value).success ? Number(value) : 0;
 }
@@ -75,6 +89,7 @@ export function toSetupStatusView(record: StoredRecord, now: Date): SetupStatusV
         secretsRev: revision(record['secretsRev']),
         ready: false,
         generatedAt: now.toISOString(),
+        ...installView(record['install']),
     });
     return { ...view, ready: setupReady(view) };
 }

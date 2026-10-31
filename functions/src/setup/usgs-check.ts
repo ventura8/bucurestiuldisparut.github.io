@@ -63,17 +63,32 @@ export async function checkUsgs(usgs: UsgsApi, username: string, applicationToke
 
 type UsgsRecord = NonNullable<SetupStatusFields['usgs']>;
 
+type KeptUsgs = Pick<UsgsRecord, 'role' | 'tokenExpiresAt' | 'pendingSince'>;
+
+/**
+ * M6 setup-ux (`docs/research/M6-interfaces.md` §4.1, S-A59-HAPPY-APPROVAL-PENDING): since when the saved token waits for
+ * USGS's approval: from the first `pending` check on, kept while USGS does not answer, gone once approved.
+ */
+function pendingSinceOf(outcome: UsgsOutcome, now: Date, kept: KeptUsgs): Pick<UsgsRecord, 'pendingSince'> {
+    if (outcome.state === 'pending') {
+        return { pendingSince: kept.pendingSince ?? timestampFromDate(now) };
+    }
+    return defined('pendingSince', outcome.state === 'ok' ? undefined : kept.pendingSince);
+}
+
 /**
  * The `setup/status.usgs` record of an outcome checked at `now`: the role when it is known (else the one `kept`), the
- * next check while waiting, the reason while unavailable, and the token's expiry from `kept`.
+ * next check while waiting, the reason while unavailable, the token's expiry from `kept`, and since when the approval
+ * is awaited.
  */
-export function usgsRecord(outcome: UsgsOutcome, now: Date, kept: Pick<UsgsRecord, 'role' | 'tokenExpiresAt'>): UsgsRecord {
+export function usgsRecord(outcome: UsgsOutcome, now: Date, kept: KeptUsgs): UsgsRecord {
     const base = {
         state: outcome.state,
         checkedAt: timestampFromDate(now),
         ...defined('role', 'role' in outcome ? outcome.role : kept.role),
         ...defined('tokenExpiresAt', kept.tokenExpiresAt),
         ...defined('detail', 'detail' in outcome ? outcome.detail : undefined),
+        ...pendingSinceOf(outcome, now, kept),
     };
     return outcome.state === 'ok'
         ? base

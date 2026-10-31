@@ -13,8 +13,8 @@ Claude Code and every other agent read the same contract.
   the engine contract is `docs/ENGINE_API.md`, the M1 interfaces `docs/research/M1-interfaces.md`, the M2
   backend contracts `docs/research/M2-interfaces.md`, the M2b admin contracts `docs/research/M2b-interfaces.md`, the
   M2c editor contracts `docs/research/M2c-interfaces.md`, the M3 imagery contracts `docs/research/M3-interfaces.md`,
-  the M4 automation contracts `docs/research/M4-interfaces.md` and the M5 multi-city, release, starter-kit and export
-  contracts `docs/research/M5-interfaces.md`.
+  the M4 automation contracts `docs/research/M4-interfaces.md`, the M5 multi-city, release, starter-kit and export
+  contracts `docs/research/M5-interfaces.md` and the M6 no-terminal Setup contracts `docs/research/M6-interfaces.md`.
 - Run the pipeline before claiming anything is done: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`
   for docs and tooling, `tests` and `build` for code, the default `all` before a push. It builds
   and uses the quality image `hcm-quality:local`; every gate runs inside it, never on the host.

@@ -1,4 +1,4 @@
-import { MAPBOX_PUBLIC_SCOPES, MAPBOX_TILES_SCOPES, missingScopes, type MapboxTokenAudience } from '@hcm/shared';
+import { MAPBOX_PUBLIC_SCOPES, MAPBOX_TILES_SCOPES, missingScopes } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
 import type { Ports } from '../ports/index.js';
@@ -22,13 +22,8 @@ export interface MapboxAccount {
     readonly tokens: readonly TokenRecord[];
 }
 
-type TokenPurpose = MapboxTokenAudience | 'tiles';
-
-/** The note that names a minted token in the Mapbox console (one per project, and per city for the viewer). */
-export function tokenNote(projectId: string, purpose: TokenPurpose, cityId?: string): string {
-    const city = purpose === 'viewer' && cityId !== undefined ? ` ${cityId}` : '';
-    return `historic-city-map ${projectId} ${purpose}${city} (auto)`;
-}
+// The note that names a minted token (M6: shared with `ops.tick`'s re-mint of the viewer's token, through `api/`).
+export { tokenNote } from '../api/mapbox-token-note.js';
 
 /** `listTokens` refused: the token cannot read its own account's tokens. */
 const LIST_FAILURES: FailureMap = { ...MAPBOX_FAILURES, forbidden: ['apiError.mapbox.missingScopes', { scopes: 'tokens:read' }] };

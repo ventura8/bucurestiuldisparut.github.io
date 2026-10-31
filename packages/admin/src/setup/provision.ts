@@ -40,10 +40,21 @@ function withItem(state: SetupState, item: ProvisionItemResult): SetupState {
     return { ...state, provision: { items } };
 }
 
-/** The items a rerun touches: those not `ok` (null, every item, when none is `ok` yet). */
+/** An item no run reported (`missing` with no reason): the record predates it, or the doctor found it absent. */
+function unreported(item: ProvisionItemState): boolean {
+    return item.state === 'missing' && item.detail === null;
+}
+
+/**
+ * The items a rerun touches: those not `ok`; every item (null) when none is `ok` yet, or when one was never reported
+ * (`unreported`). A record from before an item existed is stale as a whole: Provision's items of M6 also changed what an
+ * `ok` of before meant (the installer's account in `service-accounts`, its roles and `roles/run.invoker` in `iam`), so
+ * re-running only the new item would never create them (finding 2 of the M6 review). Every item is idempotent.
+ */
 function pendingItems(items: readonly ProvisionItemState[]): readonly ProvisionItem[] | null {
-    const todo = items.filter((item) => item.state !== 'ok').map((item) => item.id);
-    return todo.length === items.length ? null : todo;
+    const todo = items.filter((item) => item.state !== 'ok');
+    const stale = todo.length === items.length || todo.some(unreported);
+    return stale ? null : todo.map((item) => item.id);
 }
 
 type RecordedItem = NonNullable<RecordCloudRequest['provision']>['items'][number];
@@ -103,9 +114,12 @@ class Provision implements ProvisionFlow {
             await runner(access, only, (item) => {
                 this.onItem(item);
             });
-            this.settle();
+            // The card stays busy until the run is recorded: a Retry what failed clicked while the record is on its way
+            // could be overwritten by it, the server applying the older run last (S-A04-BAD-API-STILL-DISABLED).
+            this.settle(true);
             const expired = this.stoppedExpired();
             await this.record();
+            this.ctx.patchStep('provision', { busy: false });
             if (expired) {
                 this.ctx.fail('provision', googleFailure({ kind: 'unauthorized' }));
             }
@@ -128,9 +142,10 @@ class Provision implements ProvisionFlow {
         this.ctx.update((state) => withItem(state, item));
     }
 
-    private settle(): void {
+    /** The step's state from its items; `busy` while what follows the run (its record) is still on its way. */
+    private settle(busy = false): void {
         const state = provisionHealth(this.ctx.state().provision.items);
-        this.ctx.patchStep('provision', { state, busy: false, checkedAt: this.ctx.nowIso() });
+        this.ctx.patchStep('provision', { state, busy, checkedAt: this.ctx.nowIso() });
     }
 
     private async record(): Promise<void> {

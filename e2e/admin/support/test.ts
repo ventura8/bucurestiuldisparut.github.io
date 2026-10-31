@@ -1,15 +1,13 @@
-import { writeFile } from 'node:fs/promises';
-
 import type { APIRequestContext } from '@playwright/test';
 
 import { MOCK_API_ORIGIN } from '../../fixtures/world.js';
 import { expect, test as base, testIdOf, type ExpectedConsoleError } from '../../support/test.js';
-import { PERSONA_NAMES, type PersonaName } from '../world.js';
+import { ADMIN_PATH, PERSONA_NAMES, type PersonaName } from '../world.js';
 import { SetupBudget } from './budget.js';
 import { GoogleConsent } from './consent.js';
 import { ServerDeployment } from './deployment.js';
 import { EmulatorWorld, type SignedInAccount } from './emulators.js';
-import { signedInStorageState } from './session.js';
+import { signInContext } from './session.js';
 import { UpstreamControl } from './upstream.js';
 
 /**
@@ -25,8 +23,8 @@ import { UpstreamControl } from './upstream.js';
  * - options `persona` (`null`: the page opens signed out), `mapOwner` (`null`: nobody claimed the map yet), `invited`
  *   (personas with a pending invitation of the owner) and `admins` (personas who already joined as admins); the last two
  *   need a `mapOwner`.
- * - `storageState`: for a `persona`, Firebase Auth's IndexedDB holding that account, signed in after the seed (so its
- *   ID token carries the claims of `mapOwner`).
+ * - `context`: for a `persona`, every admin tab opens with that account in Firebase Auth's `sessionStorage`, signed in
+ *   after the seed (so its ID token carries the claims of `mapOwner`; `session.ts`).
  * - `upstream`: the fake upstreams' scenarios, failures and recorded calls (the browser's world and the server's).
  * - `consent`: Google's consent stand-in (the popup an in-app click opens, and what it recorded).
  * - `setupBudget`: the Setup Assistant's input and consent budgets per step.
@@ -201,15 +199,12 @@ export const test = base.extend<AdminFixtures>({
         },
         { auto: true, timeout: LEASE_WAIT_MS },
     ],
-    storageState: async ({ persona, adminWorld }, use, testInfo) => {
-        if (persona === null) {
-            await use(undefined);
-            return;
+    context: async ({ context, persona, adminWorld }, use) => {
+        if (persona !== null) {
+            // The token's expiry is the browser's wall-clock time, which Firebase Auth compares it with.
+            await signInContext(context, await adminWorld.emulators.signIn(persona), Date.now());
         }
-        const file = testInfo.outputPath('storage-state.json');
-        // The token's expiry is the browser's wall-clock time, which Firebase Auth compares it with.
-        await writeFile(file, JSON.stringify(signedInStorageState(await adminWorld.emulators.signIn(persona), Date.now())));
-        await use(file);
+        await use(context);
     },
     upstream: async ({ mockApiRequest }, use, testInfo) => {
         await use(new UpstreamControl(mockApiRequest, testIdOf(testInfo)));
@@ -227,8 +222,8 @@ export const test = base.extend<AdminFixtures>({
 
 export { expect };
 
-/** The admin's address in the project's language, optionally at a route (`setup`, `photos/<id>`). */
+/** The admin's address in the project's language, optionally at a route (`setup`, `photos/<id>`): below `/admin/` (M6). */
 export function adminPath(lang: 'ro' | 'en', route?: string): string {
     const hash = route === undefined ? '' : `#/${route}`;
-    return `/?lang=${lang}${hash}`;
+    return `${ADMIN_PATH}?lang=${lang}${hash}`;
 }

@@ -1342,3 +1342,163 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the M4/M5 walk of `docs/MANUAL_TEST_PLAN.md`, a headless probe of the export through the stack that printed the download's address.
     - Fix and pin: the shim forwards an anchor with `download` when the page clicks it (`e2e/stack/browser.ts`), never a link a person follows; the stack's check gained "a file the page saves itself stays on the machine" (`e2e/stack/check.ts`); the plan says LOCAL links open the real site, so check their address instead.
     - **A stand-in for a firewall covers what the page does by itself, and the docs say exactly where it stops: test the claim the way a person would use it before writing it down.**
+260. **The Cloud Scheduler jobs of `ops.tick` and `imagery.tick` were never made: their account was firebase-tools' shorthand.**
+    - Seen: on the real project the 61 functions deployed, but both scheduled functions had no Cloud Scheduler job: the job create answered 400 `INVALID_ARGUMENT`. `runAs` returned `fn-admin@`, which Cloud Functions expands, and firebase-tools 15.33.0 copied it unexpanded into the job's `oidcToken.serviceAccountEmail`.
+    - Found by: the user's live manual test of 2026-10-25 (`docs/research/manual-test-2026-10-25.md`, finding 11); no test could see it, as every test only compared the option with what `runAs` returned.
+    - Fix and pin: `runAs` and the global default name `<account>@<project>.iam.gserviceaccount.com`, the project read from `GCLOUD_PROJECT` (else `GOOGLE_CLOUD_PROJECT`; neither is a refusal); `functions/test/deploy-shape.test.ts` builds each scheduled function's job with firebase-tools' own `jobFromEndpoint` and pins the full address (`S-A55-HAPPY-SCHEDULER-ACCOUNT`, `S-A55-BAD-NO-PROJECT`).
+    - **Test a deploy option where it is used, not where it is made: run the deploy tool's own code over the manifest.**
+261. **The legacy import stopped at 0 of 45 photos: the events never reached the server.**
+    - Seen: the uploads reached Storage, but `photos.onUpload` never ran: Eventarc delivers an event with the function's own account (`fn-events@`), which had no `roles/run.invoker` ("lacks run.routes.invoke"); Cloud Scheduler's OIDC calls as `fn-admin@` would have met the same refusal. Each stuck photo then waited ten minutes before it was listed.
+    - Found by: the live manual test of 2026-10-25 (finding 17); the emulators skip IAM, so no e2e or rules test could see it. The role was granted by hand with the user's yes.
+    - Fix and pin: Prepare the project grants `roles/run.invoker` to `fn-events@` and `fn-admin@` (`S-A04-HAPPY-INSTALLER-ACCOUNT`); the self-test's `events` check sends a nonce through `ops/probe` to `ops.onProbe` and back, the real-data probe on the owner's Check again (`S-A03-HAPPY-EVENTS-REACH`, `S-A03-BAD-EVENTS-REFUSED`); the import sends a photo still `pending` after two minutes to `photos.reprocess` once, then lists it as not received with the step that fixes it (`S-A28-HAPPY-STUCK-REPROCESSED`, `S-A28-BAD-STUCK-AGAIN`).
+    - **What the emulators skip (IAM, service agents, propagation) needs a check that runs on the real project, and the flow that depends on it must not wait blindly for it.**
+262. **Prepare the project failed right after Google said it had switched an API on.**
+    - Seen: "Service accounts" failed with `SERVICE_DISABLED` for `iam.googleapis.com` seconds after "Google services enabled" was done: an API that `services:batchEnable` reports on keeps refusing for a few minutes, and its dependants waited for a click on Retry what failed.
+    - Found by: the live manual test of 2026-10-25 (finding 4); the fakes enabled an API at once.
+    - Fix and pin: the transport waits out a `SERVICE_DISABLED` of an API Service Usage reports on (10, 20, 40, 60 and 60 s on the injected clock), the item saying it waits, then names it `apiError.cloud.apiPropagation`; the fake's scenarios `service-usage.propagation` and `propagationSlow` play the delay (`S-A04-HAPPY-API-PROPAGATION`, `S-A04-BAD-API-STILL-DISABLED`).
+    - **A fake that answers at once hides every delay of the real service: give it the delays the real one is known to have.**
+263. **The Vertex AI check said only "Something went wrong on the server".**
+    - Seen: Translation drafts (Vertex AI) failed on the real project with `apiError.internal`, and the log said `{check, code}` only; Vertex AI's metrics showed no request, so nothing told the cause. From the code: any answer the check did not map (a 404, 400, 401 or 409) became `apiError.internal`, and Google's status and reason were dropped.
+    - Found by: the live manual test of 2026-10-25 (finding 20).
+    - Fix and pin: `UpstreamError` keeps Google's `error.status` and the first `ErrorInfo` reason (names only, never the message), the self-test logs them with the service, failure and HTTP status, a 404 names the model (`apiError.assist.modelUnavailable`, the drafts button too) and any other refusal Google's reason (`apiError.cloud.refused`) (`S-A45-BAD-MODEL-UNAVAILABLE`, `S-A45-BAD-UPSTREAM-LOGGED`).
+    - **A check exists to say why: an unmapped failure must name the upstream's own reason, never fall back to "internal".**
+264. **The first functions deploy failed for the event triggers until Eventarc's service agent had its role.**
+    - Seen: 14 Eventarc-triggered functions failed with "Permission denied while using the Eventarc Service Agent" on the first deploy and deployed on a second run: the deploy itself created the agent, minutes before the triggers needed its role.
+    - Found by: the live manual test of 2026-10-25 (finding 12).
+    - Fix and pin: Prepare the project generates the Eventarc and Pub/Sub service identities before its role table (`S-A04-HAPPY-INSTALLER-ACCOUNT`; a refusal is named on the permissions' row, `S-A04-BAD-IDENTITY-REFUSED`), so they have propagated before the server is installed; the in-app installer's build retries the known first-deploy races (`docs/research/M6-interfaces.md` §1.5).
+    - **Create what a later step waits for as early as possible, so its propagation is over by the time it is needed.**
+265. **Retry what failed on Prepare the project lost to the run it retried.**
+    - Seen: in an admin session, Retry what failed provisioned every item, and the card then showed 13 of 16 again, "Service accounts" to do without a reason: the card re-enabled the button before the first run's `setup.recordCloud` had answered, the retry recorded first, and the older record, applied last, replaced the items.
+    - Found by: the e2e `S-A04-BAD-API-STILL-DISABLED`, failing about one run in two once the Functions emulator's first `recordCloud` was slow (a cold worker); the unit tests answered the record at once.
+    - Fix and pin: the card stays busy until the run is recorded (`packages/admin/test/setup/provision.test.ts`, `badPath_retryWaitsUntilTheRunIsRecorded`; `S-A04-BAD-API-STILL-DISABLED`).
+    - **A step is done when what it writes has landed: enable the next click only after the last write of the previous one has answered.**
+266. **A click on an install card waited minutes for its next look.**
+    - Seen: after Install the server, the card stayed "Waiting for Google Cloud Build" while the fake build had started and stopped: the card's watch had been running before the click, in a back-off of up to four intervals after looks that failed before the project was prepared.
+    - Found by: the e2e `S-A55-BAD-BUILD-FAILED` and `S-A55-HAPPY-RETRIED`; the unit tests started each flow fresh.
+    - Fix and pin: a click restarts the card's watch (`installWith`, `packages/admin/src/install/install-flow.ts`); the specs also wait for the build the browser submitted before they move it on (a scenario applied before the POST finds no build).
+    - **A user's action resets whatever back-off the background polling built up before it.**
+267. **Update the map did nothing for a target Setup had recorded behind.**
+    - Seen: on a claimed map whose pipeline `setup/status` recorded `updateAvailable`, the pipeline card offered Update the map and the click asked no consent and submitted nothing.
+    - Found by: the e2e `S-A56-HAPPY-UPDATE`; the unit test reached the button through a look, never through a record.
+    - Fix and pin: Update the map reads which targets are behind from what the cards show, recorded states included (`packages/admin/src/setup/install.ts`; `happyPath_aTargetRecordedBehindIsUpdatedBeforeItsCardLooked`).
+    - **An action must decide from the same state its button was rendered from.**
+268. **Two records of one card, sent a second apart, landed in the wrong order.**
+    - Seen: `setup/status.install` kept `retrying` after the card had shown `failed`: each state change sends `setup.recordCloud` without waiting for the previous one, and the later call answered first.
+    - Found by: the tour's settle check in `e2e/admin/specs/install/states.spec.ts` at `admin-m768-ro`.
+    - Fix and pin: the server keeps a stored target record checked later than the reported one (`functions/src/setup/record-install.ts`; `badPath_aReportOlderThanTheStoredRecordOfItsTargetIsDropped`).
+    - **A record of "the last known state" carries its own time and the writer refuses an older one.**
+269. **"Installed: {release}, {date}." stopped matching the spec's pattern after Prettier wrapped the template.**
+    - Seen: the paragraph's text gained the template's line break and indentation, so `getByText(/^Installed: .+, .+\.$/)` found nothing although the line was on screen.
+    - Found by: the e2e `S-A55-HAPPY`.
+    - Fix and pin: the text is computed before the template, which interpolates it alone (`installedLine`, `packages/ui/src/admin/setup/install-status.ts`).
+    - **Interpolate a sentence as one value inside its element; a template long enough to wrap adds whitespace the page shows.**
+270. **One install test broke the reset of every test after it.**
+    - Seen: every test after `S-A57-HAPPY` failed in its fixture with `Firestore reset: 409 ... Transaction lock timeout`; a minute's wait made it pass. The test had written `manifests/bucharest` without its stamp while the publish trigger of the seeded city was still requesting a build: the trigger's transaction read a record its schema refuses, failed, and was retried, holding the document each time.
+    - Found by: the e2e `admin/steps/install/site.spec.ts`, run alone (the full run's order had hidden it); bisected by ending the test earlier and earlier.
+    - Fix and pin: `seedPublishedMap` (`e2e/admin/support/install.ts`) waits for the seeded city's own build to end, then writes the published record with the publisher's stamp; the install specs also end only when no `setup.recordCloud` of the page is under way (`trackRecords`, `recordsSettled`), and the cards send their records one after another (`packages/admin/src/setup/install.ts`).
+    - **Seed a record exactly as its writer leaves it, and only once the writer is done: a half-valid record makes the system's own retries hold it.**
+
+271. **The busy indicator covered the status chip's label, and no checker saw it (finding 6 of 2026-10-25).**
+    - Seen: live, while Prepare the project worked, the M3 loading indicator was drawn over its step's chip ("To do") in the list and in the card's header, hiding the text.
+    - Found by: the user's manual test; the tour had passed the busy state at every viewport, because the occlusion check samples a text's centre and the overlap check looks at floating chrome only, so an indicator spilling 10 px over a label's edge passed both.
+    - Fix and pin: the indicator replaces the chip's icon and label while the step is busy (setup-ux, S-A31-HAPPY-BUSY-CHIP); the tour's new `graphic-overlap` check (`e2e/support/layout-rules.ts`) fails a visible graphic over a text by more than 1 px at every state, with unit tests of both sides. A page helper of the checkers may reference only browser globals and the other helpers: a module constant is undefined in the page.
+    - **A checker that samples points proves what it samples: a defect between the points needs a check of its own shape.**
+
+272. **The Setup page's fix links showed the browser's own focus ring, which only the phone's tour project failed.**
+    - Seen: the tour state `setup.checks-optional-off` failed its focus-ring contrast at `admin-c360-ro` only (2.16:1): Android's default ring is orange; the desktop's near-black one passes, so the other projects could not see it.
+    - Found by: the e2e tour at the compact project (setup-ux, `DECISIONS-for-review.md` §70k).
+    - Fix and pin: `hcm-setup-page` takes the kit's `focusRing` in its styles; a unit test pins the ring's style and colour.
+    - **An element that renders its own links needs the kit's focus ring in its styles; a browser default differs per platform, so a desktop pass proves nothing.**
+
+273. **Publish the map stayed off after the photos were published, because the card could no longer look.**
+    - Seen: in the whole-Setup journey the site card said "The map has nothing to show yet" for ten minutes after the 45 photos and the manifest were published; the button stayed off, so the owner had no way on but Check again (one more input and consent).
+    - Found by: the e2e `admin/specs/journey.spec.ts` (S-A30-HAPPY-NO-TERMINAL), the first test that publishes the map in the same tab as the import. The site specs seed the published city before the page opens, so their first look already saw it.
+    - Cause: the blocker was observed while Prepare the project's token lived; the analytics consent then replaced the tab's token (the newest one is kept), so the card's watch stopped (`liveAccess` null) with the stale blocker on screen.
+    - Fix and pin: `InstallerPort.localBlocker` re-checks the one blocker of the admin's own data (the first city's manifest, from Firestore) once an idle interval with no Google token, until it lifts (`install-flow.ts`, unit tests both ways); the click then asks Google's consent once, as §4.2 allows.
+    - **A watch that needs a token must not freeze a reason that needs none: re-check what the app can read itself.**
+
+274. **Setup said it was done before the server and the public map were installed.**
+    - Seen: the journey's header read "Setup is done; USGS is left for later…" while Publish the map was still to do.
+    - Found by: the same journey (its error context); the contract asked for it (M6 §4.1, CR-M6-13 (1)), and the shared `setupDone` had it, but the admin's own `ready` still counted billing, Provision and Mapbox only.
+    - Fix and pin: `refreshDerived` (`packages/admin/src/setup/state.ts`) adds the install part: the server and the site installed, a target nothing has looked at or recorded (a map from before M6) not holding it back, as `setupDone` reads a status without `install`; `state.test.ts` pins both.
+    - **Two readers of one rule (the server's `setupDone`, the admin's `ready`) drift unless a test asks both the same question.**
+
+275. **Home's trial reminder test saw an update tile it did not ask for, or no reminder at all.**
+    - Seen: the split `quality` failed S-A60-HAPPY and S-A60-BAD-EXISTING-ACCOUNT on the NUC; locally the list read `["installUpdate", "trial"]` once and `[]` the next time.
+    - Found by: the integrator's split run (the setup-ux workstream had run the spec before the installer's Home tile and its records landed).
+    - Cause: the billing step's Google token let the server card look at the seeded functions, which name no release, so it recorded an update, which Home's tile showed beside the trial; and the helper read Home's list once, before the live `setup/status` and the cards' records had all arrived.
+    - Fix and pin: the spec's `expectReminders` polls the list until it is the expected one and leaves out Home's installation tile (A55's behaviour); "It is a paid account" waits for the trial reminder alone to go.
+    - **A list that follows live data is asserted with a poll, and a spec counts only the items of its own behaviour.**
+
+276. **The public map could read the owner's sign-in, because M6 put both on one origin.**
+    - Seen: the admin's `getAuth` kept the owner's Firebase refresh token in IndexedDB (`firebaseLocalStorageDb`), which belongs to the whole origin; since M6 the viewer's pages (`/`, `/<city>/`) share it with `/admin/`, so any script there could act as the owner.
+    - Found by: the M6 security-cost review (finding 1); no test looked at where the sign-in is kept, and the per-path CSP covers `/admin/**` only.
+    - Fix and pin: Auth is created with `browserSessionPersistence` (the tab's `sessionStorage`; `DECISIONS-for-review.md` §73a, one sign-in per tab); the e2e tier signs a persona in through an admin-path init script, and S-A58-BAD-VIEWER-READS-NO-SIGN-IN opens the viewer in the same context and finds no user in `localStorage`, `sessionStorage` or IndexedDB.
+    - **Moving two apps onto one origin merges their storage: a path is no boundary for IndexedDB, `localStorage` or cookies, so decide what each keeps before the move.**
+
+277. **A newer server missing one function looked "not installed", so an older admin would have replaced it.**
+    - Seen: `serverInstalled` dropped the installed release whenever the deployed set was incomplete, the state became `notInstalled`, which allows a submit; the build's `--force` deletes the functions the older source lacks.
+    - Found by: the M6 security-cost review (finding 2).
+    - Fix and pin: the observation keeps the newest release any part names (`InstalledInfo.newest`) and `deriveInstallState` refuses on it before looking at completeness (S-A55-BAD-DOWNGRADE-INCOMPLETE, `model.test.ts`).
+    - **A guard against a downgrade reads the newest thing deployed, whatever else is missing; "incomplete" must never mean "nothing there".**
+
+278. **A token minted before its record could fail was never recorded, and each tick minted another.**
+    - Seen: `ops.tick` minted the viewer token at Mapbox, then wrote it in a transaction the city's schema checks; an origin the schema refuses failed the write and left a live token behind, every 15 minutes.
+    - Found by: the M6 security-cost review (finding 3).
+    - Fix and pin: the origins are checked at build and at run time against the schema's own pattern, and a failed write deletes the minted token (S-A06-BAD-ORIGINS-REFUSED, S-A06-BAD-UNRECORDED-TOKEN-DELETED).
+    - **An outside resource created before a local write needs its undo on that write's failure, and the input the write will check should be checked before the creation.**
+
+279. **The public install bundle packed whatever was in `functions/dist`.**
+    - Seen: `server.tgz` copied the whole folder, dotfiles included; firebase-tools leaves `*.local` out of a deploy, the bundle did not, and it is served to anyone.
+    - Found by: the M6 security-cost review (finding 5); latent (nothing writes such a file there today).
+    - Fix and pin: an allowlist of the functions' build files; anything else fails `build:install` (`install-bundle.test.ts`, `.secret.local` and `.env.local` among the cases).
+    - **What is published is an allowlist; a tool's own exclusions protect only that tool's output.**
+
+280. **The live map had no way to its update: the step's Done chip hid the button, and a partial server read as not installed.**
+    - Seen: in an admin session step (d) is always done, and the server card offered Install or Try again only while it was not, so a stopped update had nothing to click; the live server (61 of 69 functions, no release) was `notInstalled`, so neither Update the map nor Home's tile appeared, and the owner steps of `M6-status.md` §3 could not be followed.
+    - Found by: the M6 min-input review (finding 1); every spec started either from a fresh project or from a complete server.
+    - Fix and pin: the card's button follows the install's state; a partial target is `updateAvailable` (S-A55-HAPPY-PRE-M6-UPGRADE, S-A55-BAD-UPDATE-FAILED-ADMIN, the fake's `cloud-functions.preM6`).
+    - **Seed the world the live project is in, not only a fresh one and a finished one: an upgrade from the last release is a scenario of its own.**
+
+281. **Retry what failed re-ran only the item a pre-M6 record lacked, so the installer's account was never made.**
+    - Seen: the live record had 15 items ok and the 16th never reported; the rerun touched that one alone, step (c) turned green, and the install cards' blocker sent the owner back to a step with no button.
+    - Found by: the M6 min-input review (finding 2).
+    - Fix and pin: an item never reported (`missing` with no reason) makes the rerun take every item (`provision.ts`, S-A04-BAD-PRE-M6-RECORD).
+    - **When a release adds an item that changes what the old items mean, a record from before it is stale as a whole.**
+
+282. **A look on step (d) put the claim back to waiting in an admin session, and the tour's screenshot showed it.**
+    - Seen: the deploy probe set d2 to `pending` after every successful look, closing steps (e) to (i) until a reload; `reports/screenshots/m6/admin.setup.install-update/` showed d2 "Waiting" on a claimed map, and every checker passed.
+    - Found by: the M6 min-input review (finding 4), from the screenshot.
+    - Fix and pin: the claim follows the server in start-up mode only (`deploy.ts`); the tour state checks the claim's chip (`specs/install/states.spec.ts`), and S-A55-HAPPY-PRE-M6-UPGRADE checks it through an update.
+    - **The layout checkers judge how a state looks, not whether it is right: a state's spec asserts the facts the screenshot shows.**
+
+283. **Every update, and one Cloud Build 503, made Setup look not done.**
+    - Seen: the cards recorded every state change (`queued`, `working`, `unavailable`), while `setupDone` and the admin's `ready` accepted only the installed states, so the dashboard-first rule sent the owner to Setup for the length of an update.
+    - Found by: the M6 min-input review (finding 5).
+    - Fix and pin: a target is installed while a release of it is recorded, whatever its build does, in both readers of the rule; `unavailable` is never recorded (`setup-done.test.ts`, `state.test.ts`, `install.test.ts`, S-A55-HAPPY-DONE-WHILE-UPDATING).
+    - **A state that says what is running is not a state that says what is installed: a "done" rule reads the latter.**
+
+284. **A signed-out spec stayed signed in once the e2e sign-in moved from the storage state to an init script.**
+    - Seen: S-A20-BAD-SIGNED-OUT-DEEP-LINK failed at every admin project of the split `all`: its `test.use({ storageState: { cookies: [], origins: [] } })` no longer cleared anything, since the persona's session now comes from `context.addInitScript` (lesson 276).
+    - Found by: the fixer's split `all` run; the admin tier's own specs passed, the content specs' signed-out describe did not.
+    - Fix and pin: the content fixtures take an option `signedIn` (default true), and the signed-out describe sets it to false; no spec overrides `storageState` any more.
+    - **When a fixture changes how a state is made, every override of the old mechanism silently stops overriding: grep for them in the same change.**
+
+285. **A privacy check of `sessionStorage` failed once Firebase Auth's session moved into it.**
+    - Seen: S-A25-BAD-RELOAD-KEEPS-STEPS asserted that the tab's whole `sessionStorage` held no e-mail address; since §73a it also holds Firebase Auth's signed-in user (its e-mail and refresh token, kept in the tab on purpose).
+    - Found by: the fixer's split `all` run (on the NUC).
+    - Fix and pin: the check reads the app's own `hcm:` entries for the bootstrap record's promise, and pins that the only other entries are Firebase's (`firebase:*`, the user's key among them) and that no Google token (`ya29.`) is anywhere.
+    - **A check over a whole storage asserts what the app writes, plus an explicit list of what libraries may write beside it.**
+
+286. **Home's update tile opened step (d), and Setup then moved on to the next step under the spec.**
+    - Seen: S-A55-HAPPY-UPDATE failed as the first test of a fresh run (twice), passed later in the same run: the card was open, then the pipeline's was.
+    - Found by: the fixer's targeted reruns of `e2e/admin/steps/install/update.spec.ts`.
+    - Cause: the link opens (d) before `setup/status` arrives; when it does, (d) turns done while open and hands over to the first step not done (`withStep`), as Setup does after any step.
+    - Fix and pin: the spec opens the card again until it shows the update (`toPass` around `setup.show`), as `SetupPage.visit` already waits for Setup to settle.
+    - **A card opened by a link may be handed over once the record arrives: a spec waits for what it needs on the card, re-opening it, never for the first open.**
+
+287. **A split run's emulator logs failed the next run's secret scan.**
+    - Seen: the fixer's second split `all` failed `static/gitleaks` with 3,200 findings, all in `firebase-debug.log` at the root: the Firebase CLI's log of the previous run's emulators, which Playwright stopped, so they never removed it; it holds the Auth emulator's test tokens.
+    - Found by: the fixer's runs (the first run's `static` came before any emulator, the second after one).
+    - Fix and pin: the stray gitignored logs were deleted before the next run; taking them out of `gitleaks dir`'s scope is `DECISIONS-for-review.md` §73l (ask first).
+    - **A gitignored file is still in a directory scan's scope: whatever a run leaves behind, the next run's `static` reads.**

@@ -267,6 +267,26 @@ describe('texts and the legal line', () => {
         expect(hasOwnText(h('div', {}, '  '))).toBe(false);
     });
 
+    test('badPath_aLoadingIndicatorsShapeOverALabel_happyPath_insideItsBox', () => {
+        // M6 (finding 6): an 18 px indicator box whose 38 px shape spills over the label beside it.
+        stage(
+            h(
+                'span',
+                { style: at(0, 400, 200, 40) },
+                h(
+                    'span',
+                    { style: at(0, 0, 18, 18) },
+                    h('div', { part: 'indicator', role: 'progressbar', 'aria-label': 'Working', style: at(-10, -10, 38, 38) }),
+                ),
+                h('span', { style: at(22, 0, 100, 20) }, 'To do'),
+            ),
+            h('div', { part: 'indicator', role: 'progressbar', 'aria-label': 'Loading', style: at(300, 400, 14, 14) }),
+        );
+        const snapshot = probeLayout(OPTIONS);
+        expect(snapshot.graphics).toHaveLength(2);
+        expect(checksOf(snapshot).filter((check) => check === 'graphic-overlap')).toHaveLength(1);
+    });
+
     test('badPath_twoLogosAndACoveredAttribution', () => {
         stage(
             h('canvas', { class: 'map', style: at(0, 0, 800, 600) }),

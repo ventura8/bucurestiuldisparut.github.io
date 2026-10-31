@@ -197,7 +197,9 @@ export interface AdminMessage {
 
 function forbiddenMessage(failure: GoogleFailure, scope: GoogleScope): AdminMessage {
     if (failure.api !== undefined) {
-        return { key: 'apiError.cloud.apiDisabled', params: { api: failure.api } };
+        // M6 (finding 4): an API the transport waited for and Google still refused is propagating, not off.
+        const key = failure.reason === 'API_PROPAGATING' ? 'apiError.cloud.apiPropagation' : 'apiError.cloud.apiDisabled';
+        return { key, params: { api: failure.api } };
     }
     if (failure.reason === 'ACCESS_TOKEN_SCOPE_INSUFFICIENT') {
         return { key: 'adminShell.oauth.scopeDenied', params: { scope: `adminShell.oauth.scope.${scope}` } };

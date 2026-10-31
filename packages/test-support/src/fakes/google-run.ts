@@ -62,9 +62,34 @@ export interface CloudRunState {
     readonly executions: Map<string, Execution>;
     /** Who plays the runs (the e2e world sets it on every partition); without one an execution runs until a scenario. */
     runner?: CloudRunRunner;
+    /** M6: what the installer's pipeline build put on a job (`<project>/<region>/<job>` → its labels and image). */
+    jobSpecs?: Map<string, JobSpec>;
+}
+
+/** A job as the installer's pipeline build makes it (M6, `docs/research/M6-interfaces.md` §1.4.2). */
+export interface JobSpec {
+    readonly labels: Readonly<Record<string, string>>;
+    readonly image: string;
+}
+
+/** Creates or replaces the job `key` (`<project>/<region>/<job>`) with `spec`, as the pipeline build's `jobs` step does. */
+export function setJobSpec(state: CloudRunState, key: string, spec: JobSpec): void {
+    state.jobs.add(key);
+    state.jobSpecs ??= new Map();
+    state.jobSpecs.set(key, spec);
+}
+
+/** A job's answer: its name and, when the pipeline build made it, its labels and image. */
+function jobBody(state: CloudRunState, key: string, name: string): Record<string, unknown> {
+    const spec = state.jobSpecs?.get(key);
+    return spec === undefined ? { name } : { name, labels: spec.labels, template: { template: { containers: [{ image: spec.image }] } } };
 }
 
 const CLOUD_RUN: GoogleApi = { service: 'run.googleapis.com', title: 'Cloud Run Admin API', permission: 'run.jobs.run' };
+
+/** M6: an older release's slug and image, as an update finds them. */
+const OLDER_RELEASE_SLUG = '0-9-0-e2e0000';
+const OLDER_PIPELINE_IMAGE = `us-central1-docker.pkg.dev/demo-hcm/hcm/pipeline@sha256:${'0'.repeat(64)}`;
 
 const STATE_FIXTURES: Readonly<Record<ExecutionState, FixtureName>> = {
     running: 'cloud-run/execution.running',
@@ -156,6 +181,13 @@ function cloudRunScenarios(state: CloudRunState): Record<string, () => void> {
         pipelineJobsProvisioned: () => {
             Object.values(CLOUD_RUN_JOBS).forEach((job) => {
                 state.jobs.add(`${String(FIXTURE_VALUES['projectId'])}/${String(FIXTURE_VALUES['region'])}/${job}`);
+            });
+        },
+        /** M6: both jobs made by an older release's pipeline build (S-A56-HAPPY-UPDATE). */
+        pipelineJobsOlderRelease: () => {
+            Object.values(CLOUD_RUN_JOBS).forEach((job) => {
+                const key = `${String(FIXTURE_VALUES['projectId'])}/${String(FIXTURE_VALUES['region'])}/${job}`;
+                setJobSpec(state, key, { labels: { 'hcm-release': OLDER_RELEASE_SLUG }, image: OLDER_PIPELINE_IMAGE });
             });
         },
         executionsOutOfMemory: () => {
@@ -252,9 +284,13 @@ export function createCloudRunFake(state: CloudRunState, projects: GoogleProject
                 'cloud-run.jobs.get',
                 auth((_request, params) =>
                     state.jobs.has(jobKey(params))
-                        ? jsonResponse({
-                              name: `projects/${projects.resolve(String(params['project'])).id}/locations/${String(params['region'])}/jobs/${String(params['job'])}`,
-                          })
+                        ? jsonResponse(
+                              jobBody(
+                                  state,
+                                  jobKey(params),
+                                  `projects/${projects.resolve(String(params['project'])).id}/locations/${String(params['region'])}/jobs/${String(params['job'])}`,
+                              ),
+                          )
                         : googleError('google/error.not-found', CLOUD_RUN),
                 ),
             ),
@@ -264,6 +300,7 @@ export function createCloudRunFake(state: CloudRunState, projects: GoogleProject
         snapshot: () => ({
             jobs: [...state.jobs].sort((left, right) => left.localeCompare(right)),
             executions: Object.fromEntries(state.executions),
+            jobSpecs: Object.fromEntries(state.jobSpecs ?? []),
         }),
     };
 }

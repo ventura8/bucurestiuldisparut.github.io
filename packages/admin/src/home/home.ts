@@ -3,7 +3,9 @@
  * the city holds (photos, places, categories, layers), what waits for an admin (photos in rights review, unpublished
  * photos, unfinished and failed jobs, from M3 the layer versions to approve or to georeference), the integrations' health from `setup/status` (one chip per Setup area, live) and
  * the public map's state from `manifests/{city}` (live). Counts are Firestore aggregations (one read per thousand
- * documents), counted when the page opens and on Refresh.
+ * documents), counted when the page opens and on Refresh. M6 (setup-ux, `./reminders.ts`): what Setup left open, as
+ * reminders: USGS later or waiting for its approval, a likely free trial nearing its end ("It is a paid account": one
+ * input, recorded with `setup.recordCloud`).
  */
 import {
     FIRESTORE_PATHS,
@@ -16,6 +18,7 @@ import {
     type SetupStatusDoc,
 } from '@hcm/shared';
 
+import { outcomeOf } from '../app/services.js';
 import type { AreaModule, AreaStore } from '../content/areas.js';
 import { LiveDoc, LOADING_DOC, type DocState } from '../content/doc.js';
 import { isoOf, type LoadStatus } from '../content/list.js';
@@ -23,6 +26,7 @@ import type { ContentQuery, ContentServices } from '../content/services.js';
 import { ACTIVE_JOB_STATUSES } from '../jobs/jobs.js';
 import type { NoticeInput } from '../state/state.js';
 import { Store } from '../state/store.js';
+import { remindersOf, type HomeReminder } from './reminders.js';
 
 /** What the dashboard counts, in the order it shows them. */
 const HOME_COUNTS = [
@@ -84,6 +88,10 @@ export interface HomeState {
     readonly health: HealthState;
     /** `manifests/{city}` (`doc` null: never built). */
     readonly publicMap: DocState<PublicMapState>;
+    /** M6 setup-ux: what Setup left open (`./reminders.ts`), from `setup/status` and the clock. */
+    readonly reminders: readonly HomeReminder[];
+    /** "It is a paid account" is being recorded. */
+    readonly dismissing: boolean;
 }
 
 export interface HomeIntents {
@@ -91,6 +99,8 @@ export interface HomeIntents {
     refresh(): Promise<void>;
     /** Try again after a listener's failure. */
     retry(): void;
+    /** M6 setup-ux (A60): "It is a paid account" on the free-trial reminder (one input, `dismissTrial`). */
+    dismissTrial(): Promise<void>;
 }
 
 const INITIAL: HomeState = {
@@ -98,6 +108,8 @@ const INITIAL: HomeState = {
     counts: null,
     health: { status: 'loading', chips: [], reconnecting: false },
     publicMap: LOADING_DOC,
+    reminders: [],
+    dismissing: false,
 };
 
 type HealthRecord = NonNullable<SetupStatusDoc[SetupArea]>;
@@ -148,8 +160,10 @@ class HomeStore implements AreaStore<HomeState, HomeIntents> {
         this.#status = new LiveDoc({
             ...{ store, clock, denied, schema: setupStatusDocSchema },
             changed: (state) => {
+                const status = state.doc?.data ?? null;
                 this.#cell.update({
-                    health: { status: state.status, chips: healthChipsOf(state.doc?.data ?? null), reconnecting: state.reconnecting },
+                    health: { status: state.status, chips: healthChipsOf(status), reconnecting: state.reconnecting },
+                    reminders: remindersOf(status, clock.now()),
                 });
             },
         });
@@ -166,6 +180,7 @@ class HomeStore implements AreaStore<HomeState, HomeIntents> {
                 this.#manifest.retry();
                 void this.#count();
             },
+            dismissTrial: () => this.#dismissTrial(),
         };
     }
 
@@ -198,6 +213,16 @@ class HomeStore implements AreaStore<HomeState, HomeIntents> {
         this.close();
         this.#counting += 1;
         this.#cell.update(INITIAL);
+    }
+
+    /** "It is a paid account": recorded for good; the live `setup/status` then drops the reminder, a failure is said. */
+    async #dismissTrial(): Promise<void> {
+        this.#cell.update({ dismissing: true });
+        const outcome = await outcomeOf(() => this.#services.callables.call('setup.recordCloud', { trial: { paid: true } }));
+        this.#cell.update({ dismissing: false });
+        if (!outcome.ok) {
+            this.#services.notify(outcome.error);
+        }
     }
 
     async #count(): Promise<void> {

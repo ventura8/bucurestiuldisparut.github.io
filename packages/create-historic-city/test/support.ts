@@ -126,10 +126,10 @@ export function packageFolder(options: { readonly bundle?: boolean } = {}): stri
 /** A self-host bundle with one file per folder (`build:self-host` writes the real one). */
 export function writeBundle(dir: string): void {
     for (const [path, content] of Object.entries({
-        'admin/index.html': '<!doctype html>\n',
+        'hosting/admin/index.html': '<!doctype html>\n',
         'functions/index.js': 'export {};\n',
         'rules/firestore.rules': "rules_version = '2';\n",
-        'firebase.template.json': '{ "hosting": { "site": "__PROJECT_ID__", "public": "admin" } }\n',
+        'firebase.template.json': '{ "hosting": { "site": "__PROJECT_ID__", "public": "hosting" } }\n',
         'bundle.json': '{ "release": "1.0.0+abc1234" }\n',
     })) {
         mkdirSync(join(dir, path, '..'), { recursive: true });

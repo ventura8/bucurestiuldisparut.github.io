@@ -44,14 +44,26 @@ export interface PublicMapPort {
     readonly error: AdminNoticeInputPort | null;
 }
 
+/** M6 setup-ux: what Setup left open (`packages/admin/src/home/reminders.ts`). */
+export type HomeReminderPort =
+    | { readonly kind: 'usgsLater' }
+    | { readonly kind: 'usgsPending'; readonly since: string | null }
+    | { readonly kind: 'trial'; readonly endsAt: string; readonly upgradeUrl: string }
+    // M6 installer (A55–A57): a stopped installation or an update, with the Setup step whose card acts on it.
+    | { readonly kind: 'installUpdate' | 'installFailed'; readonly step: string };
+
 export interface HomeViewState {
     readonly countsStatus: LoadStatusPort;
     readonly counts: Readonly<Record<HomeCountPort, number | null>> | null;
     readonly health: { readonly status: LoadStatusPort; readonly chips: readonly HealthChipPort[]; readonly reconnecting: boolean };
     readonly publicMap: DocStatePort<PublicMapPort>;
+    readonly reminders: readonly HomeReminderPort[];
+    readonly dismissing: boolean;
 }
 
 export interface HomeIntentsPort {
     refresh(): Promise<void>;
     retry(): void;
+    /** "It is a paid account" on the free-trial reminder (M6 setup-ux, A60). */
+    dismissTrial(): Promise<void>;
 }

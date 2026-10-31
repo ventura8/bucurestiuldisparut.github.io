@@ -58,10 +58,10 @@ function world(
 function bundle(testInfo: TestInfo): string {
     const dir = testInfo.outputPath('bundle');
     for (const [path, content] of Object.entries({
-        'admin/index.html': '<!doctype html>\n',
+        'hosting/admin/index.html': '<!doctype html>\n',
         'functions/index.js': 'export {};\n',
         'rules/firestore.rules': "rules_version = '2';\n",
-        'firebase.template.json': '{ "hosting": { "site": "__PROJECT_ID__", "public": "admin" } }\n',
+        'firebase.template.json': '{ "hosting": { "site": "__PROJECT_ID__", "public": "hosting" } }\n',
         'bundle.json': '{ "release": "1.0.0+e2e0000" }\n',
     })) {
         mkdirSync(join(dir, path, '..'), { recursive: true });
@@ -172,7 +172,7 @@ test('The self-host steps run the owner’s own CLIs, one consent each', { tag: 
     }
 
     expect(await run.end()).toBe(0);
-    const admin = `https://${PROJECT}.web.app/`;
+    const admin = `https://${PROJECT}.web.app/admin/`;
     expect(tools.calls()).toEqual([
         'firebase --version',
         'gcloud --version',

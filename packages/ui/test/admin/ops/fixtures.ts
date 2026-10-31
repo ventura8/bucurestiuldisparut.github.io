@@ -218,6 +218,9 @@ export function homeState(overrides: Partial<HomeViewState> = {}): HomeViewState
                 },
             },
         },
+        // M6 setup-ux: what Setup left open (none unless a test says so).
+        reminders: [],
+        dismissing: false,
         ...overrides,
     };
 }

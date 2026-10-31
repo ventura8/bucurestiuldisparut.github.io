@@ -1,24 +1,26 @@
-import { ADMIN_ORIGIN, ADMIN_WEB_CONFIG, FIREBASE_APP_NAME } from '../world.js';
+import type { BrowserContext } from '@playwright/test';
+
+import { ADMIN_PATH, ADMIN_WEB_CONFIG, FIREBASE_APP_NAME } from '../world.js';
 import type { SignedInAccount } from './emulators.js';
 
 /**
- * A signed-in admin as a Playwright storage state (docs/research/M2b-interfaces.md §6.2): Firebase Auth keeps its
- * current user in IndexedDB (`firebaseLocalStorageDb` → `firebaseLocalStorage`, key `firebase:authUser:<apiKey>:<app>`,
- * the shape of `UserImpl.toJSON()` in `@firebase/auth` 1.13), so a context created with this state opens the admin
- * already signed in, with tokens the Auth emulator issued for this test. Playwright restores IndexedDB from a storage
- * state file (`storageState({indexedDB: true})` writes the same shape).
+ * A signed-in admin as the browser holds it (docs/research/M2b-interfaces.md §6.2): since M6 the admin's Firebase Auth
+ * keeps its current user in the tab's `sessionStorage` (`browserSessionPersistence`, key
+ * `firebase:authUser:<apiKey>:<app>`, the JSON of `UserImpl.toJSON()` in `@firebase/auth` 1.13), never in the origin's
+ * IndexedDB, which the public map's pages share (finding 1 of the M6 security review). Playwright's storage state
+ * carries no `sessionStorage`, so a context signs in through an init script: the first document of each tab under the
+ * admin's folder (or the harness page) gets the account, with tokens the Auth emulator issued for this test, once (a
+ * sign-out stays signed out after a reload). A page of the public map, on the same origin, gets nothing.
  */
-
-/** Firebase Auth's IndexedDB persistence (`@firebase/auth`: `DB_NAME`, `DB_OBJECTSTORE_NAME`, `DB_DATA_KEYPATH`). */
-export const FIREBASE_AUTH_DB = {
-    name: 'firebaseLocalStorageDb',
-    version: 1,
-    store: 'firebaseLocalStorage',
-    keyPath: 'fbase_key',
-} as const;
 
 /** The key Firebase Auth stores the current user under, for the admin's web configuration. */
 export const FIREBASE_USER_KEY = `firebase:authUser:${ADMIN_WEB_CONFIG.apiKey}:${FIREBASE_APP_NAME}`;
+
+/** The paths whose tabs start signed in: the admin's folder and the harness page (`support/harness.ts`). */
+const SIGNED_IN_PATHS: readonly string[] = [ADMIN_PATH, '/__harness'];
+
+/** The tab's note that it was signed in once (a later sign-out then stays). */
+const SEEDED_KEY = 'hcm:e2e:signedIn';
 
 /** What `UserImpl._fromJSON` reads back. */
 function persistedUser(account: SignedInAccount, now: number): Record<string, unknown> {
@@ -48,30 +50,30 @@ function persistedUser(account: SignedInAccount, now: number): Record<string, un
     };
 }
 
-/** The storage state file's content: the admin origin's IndexedDB holding `account` as Firebase Auth's current user. */
-export function signedInStorageState(account: SignedInAccount, now: number): Record<string, unknown> {
-    return {
-        cookies: [],
-        origins: [
-            {
-                origin: ADMIN_ORIGIN,
-                localStorage: [],
-                indexedDB: [
-                    {
-                        name: FIREBASE_AUTH_DB.name,
-                        version: FIREBASE_AUTH_DB.version,
-                        stores: [
-                            {
-                                name: FIREBASE_AUTH_DB.store,
-                                autoIncrement: false,
-                                keyPath: FIREBASE_AUTH_DB.keyPath,
-                                records: [{ value: { [FIREBASE_AUTH_DB.keyPath]: FIREBASE_USER_KEY, value: persistedUser(account, now) } }],
-                                indexes: [],
-                            },
-                        ],
-                    },
-                ],
-            },
-        ],
+interface Seed {
+    readonly paths: readonly string[];
+    readonly key: string;
+    readonly value: string;
+    readonly marker: string;
+}
+
+/** Runs in each document before its scripts (only browser globals): the tab's first admin document signs in. */
+function seedSession(seed: Seed): void {
+    const here = location.pathname;
+    if (!seed.paths.some((path) => here.startsWith(path)) || sessionStorage.getItem(seed.marker) !== null) {
+        return;
+    }
+    sessionStorage.setItem(seed.marker, '1');
+    sessionStorage.setItem(seed.key, seed.value);
+}
+
+/** Every tab of `context` opens the admin signed in as `account` (the token's expiry is the browser's wall-clock time). */
+export async function signInContext(context: BrowserContext, account: SignedInAccount, now: number): Promise<void> {
+    const seed: Seed = {
+        paths: SIGNED_IN_PATHS,
+        key: FIREBASE_USER_KEY,
+        value: JSON.stringify(persistedUser(account, now)),
+        marker: SEEDED_KEY,
     };
+    await context.addInitScript(seedSession, seed);
 }

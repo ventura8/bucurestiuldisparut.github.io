@@ -26,6 +26,7 @@ import { areaSection } from './area-section.js';
 import { imagerySection } from './imagery-section.js';
 import { categoriesSection } from './categories-section.js';
 import { lazyBudgetCard } from '../cities/lazy-budget.js';
+import { publicAddressStyles } from '../cities/public-address.js';
 import { lazyExportCard } from '../export/lazy-card.js';
 import { overlaysSection } from './overlays-section.js';
 import { publishSection } from './publish-section.js';
@@ -81,7 +82,7 @@ const RENDERERS: Readonly<Record<Exclude<SettingsSectionPort, 'categories'>, (co
 export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntentsPort> {
     static override readonly properties = { ...AreaPage.properties, announcement: { state: true }, mapCss: { attribute: false } };
 
-    static override readonly styles = [...layersStyles, settingsStyles];
+    static override readonly styles = [...layersStyles, settingsStyles, publicAddressStyles];
 
     protected readonly route: AdminRouteIdPort = 'settings';
     declare announcement: string;
@@ -179,6 +180,11 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
         ></hcm-admin-map>`;
     }
 
+    /** The city the shell has open (its public address in Publishing), null before the shell knows it. */
+    #cityId(): string | null {
+        return this.state?.cityId ?? null;
+    }
+
     #section(locale: Locale, view: SettingsViewState, section: SettingsSectionPort): TemplateResult {
         if (view.city.doc === null && section !== 'categories' && section !== 'overlays') {
             return html`<h2 tabindex="-1" data-detail-heading>${sectionRowTexts(locale, section).title}</h2>
@@ -198,6 +204,7 @@ export class HcmSettingsPage extends AreaPage<SettingsViewState, SettingsIntents
             refresh: () => {
                 this.requestUpdate();
             },
+            cityId: this.#cityId(),
         };
         return section === 'categories' ? categoriesSection(context, this.#drag) : RENDERERS[section](context);
     }

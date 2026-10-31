@@ -211,6 +211,12 @@ describe('draftFailure', () => {
         [new UpstreamError('vertex-ai', 'rateLimited'), 'apiError.rateLimited', undefined],
         [new UpstreamError('vertex-ai', 'forbidden'), 'apiError.cloud.permission', { role: 'hcmVertexDrafts' }],
         [new UpstreamError('vertex-ai', 'invalid'), 'apiError.assist.unavailable', undefined],
+        // M6 (finding 20): a model Google does not offer to the project is named, as the self-test names it.
+        [
+            new UpstreamError('vertex-ai', 'notFound', { status: 404 }),
+            'apiError.assist.modelUnavailable',
+            { model: 'gemini-2.5-flash-lite' },
+        ],
     ])('%s', (error, code, params) => {
         expect(draftFailure(error)).toMatchObject({ code, params });
     });

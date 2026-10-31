@@ -106,7 +106,7 @@ The first start builds the e2e sites and the admin's e2e bundle (a few minutes; 
 
 | What | Address |
 | --- | --- |
-| Admin | `http://127.0.0.1:4312` |
+| Admin | `http://127.0.0.1:4312/admin/` (M6: the e2e Hosting server; the stack sends its root `http://127.0.0.1:4312` there) |
 | Viewer | `http://127.0.0.1:4310/bucharest/` (`/` redirects there) |
 | Any other city's page (M5) | `http://127.0.0.1:4310/<city>/`, as `http://127.0.0.1:4310/iasi/` |
 | The e2e Pages tree, the starter kit | `http://127.0.0.1:4310/pages/` (`/pages/e2e-second/`, `/pages/e2e-unpublished/`), `http://127.0.0.1:4310/kit/` |
@@ -135,7 +135,23 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -e HCM_PUBLIC_BUCKE
 ```
 
 - `site:add` writes `sites/<id>/site.json` (`pagesPath: "<id>/"`, `publicManifest: true`), `config.js` and Bucharest's `site.css`, and refuses an id that is no usable city id or a site that exists; commit and push it like any other change (ask first).
-- `build:site` builds each site into `dist/site/<city>/` and assembles `dist/pages/`: Bucharest at the root, every other city at its `pagesPath`. A site without a seed snapshot is built only with `HCM_PUBLIC_BUCKET` named (it reads what the admin publishes); without it the build skips it with a notice. The city appears once it is published in the admin (Settings → Publishing).
+- `build:site` builds each site into `dist/site/<city>/` and assembles `dist/pages/`: Bucharest at the root, every other city at its `pagesPath`; since M6 also the Pages redirect tree `dist/pages-redirect/` (below). A site without a seed snapshot is built only with `HCM_PUBLIC_BUCKET` named (it reads what the admin publishes); without it the build skips it with a notice. The city appears once it is published in the admin (Settings → Publishing).
+
+## The Firebase Hosting site (M6)
+
+Since M6 the public map lives on Firebase Hosting at the project's own address, with the admin under `/admin/` ([research/M6-interfaces.md](research/M6-interfaces.md) §2): `npm run build:hosting` (Hosting's `predeploy`) builds the admin and the engine, then every committed city site for Hosting (each reading the public bucket `<projectId>-public`, or `HCM_PUBLIC_BUCKET`), the generic city page that serves every city made in the admin (no `site:add` needed for Hosting), and assembles the tree:
+
+```bash
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
+  bash -c 'mkdir -p $HOME && npm run build:hosting'        # dist/hosting-public (public) and dist/hosting (the same, deployed)
+docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -e HCM_ADMIN_START_UP=1 -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
+  bash -c 'mkdir -p $HOME && npm run build:hosting'        # dist/hosting is the start-up variant: a new map's first deploy (D1)
+```
+
+- `dist/hosting-public/` is always the **public** variant: the first city's site at `/` (with `admin-redirect.js`: an old admin address `/#/<route>` goes to `/admin/#/<route>`), every other committed city at its `pagesPath`, the generic city page at `/city/` (Hosting rewrites any other city id to it), the admin at `/admin/`, `release.json` (`{release, variant}`), the bilingual `404.html`. The installer's `hosting.tgz` is made from it, and the admin's **Publish the map** releases it.
+- `dist/hosting/` (`firebase.json` → `hosting.public`) is what this deploy publishes: the **start-up** variant with `HCM_ADMIN_START_UP=1` (a bilingual "this map is being set up" page at `/`, no engine and no Mapbox, the admin's `runtime.json` with `startUp: true`), else the public one.
+- `firebase.json`'s Hosting rules are read by `scripts/site/src/admin/hosting.ts` exactly as Hosting's engine reads them, so the e2e Hosting server (`e2e/mock-apis/admin-server.ts`, `127.0.0.1:4312`, every e2e run) serves the e2e build's tree (`dist/e2e-hosting`, the start-up variant `dist/e2e-hosting-start-up` to a browser with the cookie `hcm-e2e-variant=start-up`) with the same redirects, rewrites and headers. The admin's CSP is a header on `/admin/**` only; each viewer page keeps its own meta policy.
+- To retire the old GitHub Pages site without breaking its links: `npm run build:site` also writes `dist/pages-redirect` (its `--pages-redirect` option), a tree whose every page sends the visitor to the same page on `https://<projectId>.web.app/` with the same hash (publishing it instead of the old site is a workflow line, DECISIONS-for-review.md §67c, ask first). The e2e build writes it to `dist/e2e-site/pages-redirect/`, pointed at the e2e Hosting server.
 
 ## The starter kit and create-historic-city
 
