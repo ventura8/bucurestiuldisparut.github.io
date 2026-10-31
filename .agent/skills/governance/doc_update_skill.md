@@ -6,7 +6,7 @@ Every task updates the documentation that describes it, in the same task: applic
 
 | File | Owns |
 | --- | --- |
-| `README.md` | What the project is (RO and EN, short), badges, the one-command quick start, links to every doc. No counts, no tool versions. |
+| `README.md` | What the project is (in English only, short; the user, 2026-10-31: the app and the admin guides stay RO + EN), badges, the one-command quick start, links to every doc. No counts, no tool versions. |
 | `AGENTS.md` | Commands, boundaries, global rules, project hard constraints (budget 24,000 bytes). |
 | `docs/ARCHITECTURE.md` | Components, data model, buckets, functions, the raster pipeline, the viewer and admin, security and cost guards, analytics and crashes. The *why* of each shape. |
 | `docs/CI_PIPELINE.md` | The file-type to gates table, CI workflows, tool versions, held dependencies. Stages are summarised and link to `.agent/skills/quality/pipeline_skill.md` → *Stages*. |
