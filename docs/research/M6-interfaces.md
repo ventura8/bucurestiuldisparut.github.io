@@ -102,6 +102,7 @@ builds the owner submits; nothing impersonates it otherwise (no key, no Workload
 | `roles/cloudfunctions.developer` | project | create and update the functions (gen 2) |
 | `roles/iam.serviceAccountUser` | `fn-admin@`, `fn-events@`, `fn-crash@` (server), `job-raster@` (pipeline); never project-wide | deploy a function or job that runs as that account |
 | `roles/iam.serviceAccountUser` | `<project>@appspot.gserviceaccount.com` (the App Engine default account), only when it exists; never project-wide | added 2026-10-31 (finding 28): `firebase-tools`' `checkServiceAccountIam` refuses any functions deploy without `iam.serviceAccounts.actAs` on it (`DECISIONS-for-review.md` §75a, the trade-off and §75b) |
+| `roles/iam.serviceAccountUser` | `<number>-compute@developer.gserviceaccount.com` (the Compute Engine default account, the functions' build account), only when it exists; never project-wide | added 2026-10-31 (finding 33): Cloud Functions gen 2 builds every function as this account (`firebase-tools` names no build account), and the Cloud Functions API answers each create and update 403 "Caller is missing permission 'iam.serviceaccounts.actAs'" without it (`DECISIONS-for-review.md` §75g, the user's decision "Act-as + narrow its role") |
 | `roles/firebaserules.admin` | project | release the Firestore and Storage rules |
 | `roles/datastore.indexAdmin` | project | the Firestore indexes |
 | `roles/cloudscheduler.admin` | project | the jobs of `ops.tick` and `imagery.tick` |
@@ -109,7 +110,7 @@ builds the owner submits; nothing impersonates it otherwise (no key, no Workload
 | `roles/serviceusage.serviceUsageConsumer` | project | `firebase-tools` checks that the APIs are on (Provision enabled them) |
 | `roles/firebase.viewer` | project | `firebase-tools` reads the project and its web app |
 | `roles/firebasehosting.admin` | project | the Hosting release and the site's `maxVersions` |
-| `roles/artifactregistry.writer` | repository `hcm` | push the pipeline image |
+| `roles/artifactregistry.writer` | repository `hcm` | push the pipeline image; bound by the `artifact-registry` item with the repository since 2026-10-31 (finding 31), so the `iam` item, which the server needs, never waits for the pipeline's repository |
 | `roles/logging.logWriter` | project | a build with a user-specified account writes its log to Cloud Logging only |
 | `projects/<project>/roles/hcmInstaller` (custom, made by the `iam` item) | project | added 2026-10-31 (finding 28, lesson 298): `cloudfunctions.functions.setIamPolicy` (`firebase-tools`' `checkHttpIam` before a new HTTPS function), `datastore.databases.getMetadata` and `storage.buckets.get` (its trigger-region lookups before every functions deploy); `run.services.get`, `run.services.getIamPolicy`, `run.services.setIamPolicy` (the public invoker of the callables and HTTPS functions), `run.jobs.create`, `run.jobs.get`, `run.jobs.update`, `run.operations.get` (the pipeline's two jobs), `resourcemanager.projects.getIamPolicy` (`firebase-tools` reads the service agents' bindings that Provision made), `artifactregistry.repositories.get`, `artifactregistry.repositories.update` (the cleanup policy `--force` sets on `gcf-artifacts`) |
 
@@ -124,8 +125,27 @@ builds the owner submits; nothing impersonates it otherwise (no key, no Workload
   permission of every 403 in its log; the narrowest role holding it is added (a change of this table, logged in §67).
   `firebase-tools` would also try to grant the service agents' roles itself when Provision has not; with Provision's
   bindings in place it only reads them.
-- The compute default account keeps its `roles/cloudbuild.builds.builder` only when the organisation withholds the
-  default grants (unchanged, `M2b-interfaces.md` §3.4.2): the functions' own image builds use it, not the installer.
+- **The functions' build account (2026-10-31, finding 33, `DECISIONS-for-review.md` §75g, the user's decision "Act-as +
+  narrow its role")**: not the installer's, but the `iam` item keeps it, in this order, after the role table:
+
+  | Role | On | Member | Why |
+  | --- | --- | --- | --- |
+  | `roles/iam.serviceAccountUser` | the Compute Engine default account's own policy | `hcm-installer@` | the Cloud Functions API's actAs check on the build account (the row above) |
+  | `roles/cloudbuild.builds.builder` | project | the Compute Engine default account | the role Google documents for a user-specified build account of Cloud Functions gen 2 and Cloud Run source builds: it reads the uploaded source, pushes the image to the region's `gcf-artifacts` repository and writes the build's log, so neither `roles/logging.logWriter` nor `roles/artifactregistry.writer` is bound beside it |
+  | `roles/editor` removed | project | the Compute Engine default account | only once the builder role is in place (a failed grant stops the item first); the same removal as the App Engine account's (§75b): one member of one unconditional binding, etag and 409 retry |
+
+  All three only when the account exists (a GET; a 404 is nothing to do). Until 2026-10-31 the builder role was bound
+  only when the organisation withheld the default grants (`M2b-interfaces.md` §3.4.2); it is now bound whenever the
+  account exists. While these parts are all the item lacks, the doctor's reason is
+  `adminSetup.provision.computeBuildAccount`; a stopped server build whose log names the 403 (anywhere in its
+  `functions` step, not only the card's last lines) offers **Retry what failed in step c**, then Try again
+  (S-A04-HAPPY-COMPUTE-BUILD-ACCOUNT, S-A04-BAD-COMPUTE-EDITOR-REFUSED, S-A55-BAD-NO-COMPUTE-ACTAS).
+- **What step (d) waits for (2026-10-31, finding 31)**: Install the server, its card's looks and the deployment's watch
+  wait for every Provision item the server needs (`serverPrepared`, `packages/admin/src/setup/state.ts`), not for step
+  (c) as a whole: the `artifact-registry` item (the repository `hcm` and the installer's writer role on it) only the
+  optional imagery pipeline needs, and the `iam` item no longer waits for it. The pipeline's card names the missing
+  repository (`apiError.install.noRepository`) with a way back to step (c); Setup is done only with (c) done, as before
+  (S-A55-HAPPY-PIPELINE-ITEM-FAILED, S-A55-BAD-SERVER-ITEM-FAILED).
 - **What Provision changes on the project's own policy beyond the table (2026-10-31, `DECISIONS-for-review.md` §75b, the
   user's decision)**: the `iam` item removes `serviceAccount:<project>@appspot.gserviceaccount.com` from the project's
   unconditional `roles/editor` binding, last, after the role table: that member of that binding only (every other member
@@ -136,8 +156,8 @@ builds the owner submits; nothing impersonates it otherwise (no key, no Workload
   (shown on the row as the run reports it; a doctor's `missing` is not recorded, so the server's earlier state of the item
   comes back once the run is recorded, an older behaviour of every item), and Retry what failed (step c's, or the server card's **Retry what failed in step c**, which reruns `iam`) removes it; a refused write
   fails the row with the role it needs (S-A04-HAPPY-APPENGINE-NO-EDITOR, S-A04-BAD-APPENGINE-EDITOR-REFUSED). Why: since
-  §75a the installer may act as that account, and nothing of ours runs as it. The Compute Engine default account keeps
-  its Editor role (the functions' source builds may run as it; out of scope, §75b).
+  §75a the installer may act as that account, and nothing of ours runs as it. Since §75g the Compute Engine default
+  account loses its Editor role the same way, after its builder role (above).
 
 ### 1.3 The install bundle: format, versioning, integrity
 

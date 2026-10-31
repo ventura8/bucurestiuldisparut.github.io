@@ -84,9 +84,10 @@ export interface ServiceAgents {
      */
     readonly pubsub: string;
     /**
-     * The Compute Engine default account (`<number>-compute@developer.gserviceaccount.com`) when the project has one: a
-     * first functions deploy wants it to invoke and receive events (firebase-tools' `ensureServiceAgentRoles`), and the
-     * installer may read the project's policy but never write it. Undefined: nothing is bound to it.
+     * The Compute Engine default account (`<number>-compute@developer.gserviceaccount.com`) when the project has one (a
+     * GET; 404: undefined): a first functions deploy wants it to invoke and receive events (firebase-tools'
+     * `ensureServiceAgentRoles`), and the installer may read the project's policy but never write it. It is also the
+     * functions' build account (finding 33, {@link buildAccountBindings}). Undefined: nothing is bound to it.
      */
     readonly computeDefault: string | undefined;
     /**
@@ -239,10 +240,9 @@ function firstDeployBindings(agents: ServiceAgents): WantedBinding[] {
     return [...grants(`serviceAccount:${agents.pubsub}`, ['roles/iam.serviceAccountTokenCreator']), ...compute];
 }
 
-/** The project's bindings; the compute default account's builder role only when the organisation withholds it. */
-function projectBindings(project: ProjectConfig, agents: ServiceAgents, noDefaultGrants: boolean): PolicyBindings {
+/** The project's bindings (the compute default account's builder role is {@link buildAccountBindings}' own). */
+function projectBindings(project: ProjectConfig, agents: ServiceAgents): PolicyBindings {
     const names = projectNames(project);
-    const compute = `serviceAccount:${project.projectNumber}-compute@developer.gserviceaccount.com`;
     return {
         kind: 'project',
         resource: project.projectId,
@@ -255,13 +255,16 @@ function projectBindings(project: ProjectConfig, agents: ServiceAgents, noDefaul
             ...grants(`serviceAccount:${agents.firebaseStorage}`, ['roles/firebaserules.firestoreServiceAgent']),
             ...grants(`serviceAccount:${agents.cloudStorage}`, ['roles/pubsub.publisher']),
             ...firstDeployBindings(agents),
-            ...(noDefaultGrants ? grants(compute, ['roles/cloudbuild.builds.builder']) : []),
         ],
     };
 }
 
-/** M6 (§1.2): the installer pushes the pipeline's image to the repository `hcm`, and only there. */
-function repositoryBindings(project: ProjectConfig): PolicyBindings {
+/**
+ * M6 (§1.2): the installer pushes the pipeline's image to the repository `hcm`, and only there. Kept by the
+ * `artifact-registry` item with the repository (finding 31 of 2026-10-31): only the optional imagery pipeline needs
+ * either, so the `iam` item, which the server needs, never waits for them.
+ */
+export function repositoryBindings(project: ProjectConfig): PolicyBindings {
     return {
         kind: 'repository',
         resource: PIPELINE_REPOSITORY,
@@ -330,14 +333,41 @@ function appEngineBindings(project: ProjectConfig, agents: ServiceAgents): Polic
     return [{ kind: 'serviceAccount', resource: agents.appEngineDefault, bindings: [binding] }];
 }
 
-/** Every policy the `iam` item keeps (§3.4.1), project first. */
-export function roleTable(project: ProjectConfig, agents: ServiceAgents, noDefaultGrants: boolean): PolicyBindings[] {
+/**
+ * The role Google documents for a user-specified build account of Cloud Functions gen 2 and Cloud Run source builds
+ * ("Cloud Build Service Account"): it reads the uploaded source, pushes the image to the region's `gcf-artifacts`
+ * repository (`artifactregistry.repositories.uploadArtifacts`, `createOnPush`) and writes the build's log
+ * (`logging.logEntries.create`), so it needs neither `roles/logging.logWriter` nor `roles/artifactregistry.writer` beside it
+ * (`DECISIONS-for-review.md` §75g).
+ */
+const BUILDER_ROLE = 'roles/cloudbuild.builds.builder';
+
+/**
+ * Finding 33 of `docs/research/manual-test-2026-10-25.md` (live test 2026-10-31, `DECISIONS-for-review.md` §75g, the
+ * user's decision "Act-as + narrow its role"): Cloud Functions gen 2 builds each function as the Compute Engine default
+ * account (firebase-tools names no build account), and the Cloud Functions API refuses a create or update whose caller
+ * may not act as it (403 `iam.serviceaccounts.actAs`). In the order the `iam` item writes them: (1) the installer's
+ * Service Account User on that one account's own policy, never project-wide; (2) {@link BUILDER_ROLE} for the account on
+ * the project, so (3) its `roles/editor` can go (`items-iam.ts`). None when the project has no such account.
+ */
+export function buildAccountBindings(project: ProjectConfig, computeDefault: string | undefined): PolicyBindings[] {
+    if (computeDefault === undefined) {
+        return [];
+    }
+    const actAs: WantedBinding = { role: 'roles/iam.serviceAccountUser', member: projectNames(project).member(INSTALLER_ACCOUNT) };
     return [
-        projectBindings(project, agents, noDefaultGrants),
+        { kind: 'serviceAccount', resource: computeDefault, bindings: [actAs] },
+        { kind: 'project', resource: project.projectId, bindings: grants(`serviceAccount:${computeDefault}`, [BUILDER_ROLE]) },
+    ];
+}
+
+/** Every policy the `iam` item keeps (§3.4.1), project first; the build account's are {@link buildAccountBindings}. */
+export function roleTable(project: ProjectConfig, agents: ServiceAgents): PolicyBindings[] {
+    return [
+        projectBindings(project, agents),
         ...bucketBindings(project),
         ...secretBindings(project),
         ...serviceAccountBindings(project),
         ...appEngineBindings(project, agents),
-        repositoryBindings(project),
     ];
 }

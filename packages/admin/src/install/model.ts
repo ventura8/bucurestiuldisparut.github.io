@@ -238,9 +238,11 @@ export function failedStepOf(target: InstallTarget, build: CloudBuild): InstallS
 }
 
 /**
- * What firebase-tools prints when one of its own checks before a deploy refuses the installer a permission that Prepare
- * the project's `iam` item grants (finding 28 of 2026-10-31): `checkServiceAccountIam` (actAs on the App Engine default
- * account) and `checkHttpIam` (`cloudfunctions.functions.setIamPolicy` for a new HTTPS function). Each pattern is linear.
+ * What firebase-tools prints when a check refuses the installer a permission that Prepare the project's `iam` item
+ * grants: its own `checkServiceAccountIam` (actAs on the App Engine default account) and `checkHttpIam`
+ * (`cloudfunctions.functions.setIamPolicy` for a new HTTPS function), finding 28 of 2026-10-31; and the Cloud Functions
+ * API's 403 for each function it builds as the Compute Engine default account ("Caller is missing permission
+ * 'iam.serviceaccounts.actAs'", finding 33), which the second pattern also matches. Each pattern is linear.
  */
 const PROVISION_FIX_PATTERNS: readonly RegExp[] = [
     /Missing permissions required for functions deploy/i,
@@ -248,7 +250,7 @@ const PROVISION_FIX_PATTERNS: readonly RegExp[] = [
     /to deploy new HTTPS functions/i,
 ];
 
-/** Whether a stopped step's last lines name a permission Prepare the project grants (Retry what failed in step c). */
+/** Whether a stopped step's lines name a permission Prepare the project grants (Retry what failed in step c). */
 export function fixedInProvision(log: readonly string[]): boolean {
     return log.some((line) => PROVISION_FIX_PATTERNS.some((pattern) => pattern.test(line)));
 }

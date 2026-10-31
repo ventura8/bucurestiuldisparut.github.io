@@ -139,7 +139,7 @@ interface Policy {
 export interface ResourceManagerState {
     /**
      * Project id → its IAM policy (created from the fixture on first use: the owner, and `roles/editor` for the Compute
-     * Engine and App Engine default accounts, as Google grants them; `DECISIONS-for-review.md` §75b takes the latter away).
+     * Engine and App Engine default accounts, as Google grants them; `DECISIONS-for-review.md` §75b and §75g take both away).
      */
     readonly policies: Map<string, Policy>;
     /**
@@ -150,8 +150,9 @@ export interface ResourceManagerState {
     /** The project's parent (`organizations/<id>`); a project outside any organisation has none (the default). */
     parent: string | undefined;
     /**
-     * A binding an IAM deny policy of the owner's organisation keeps (scenario `appEngineEditorLocked`): a write that drops
-     * it answers 403 `PERMISSION_DENIED`, as Google does for a denied `resourcemanager.projects.setIamPolicy`.
+     * A binding an IAM deny policy of the owner's organisation keeps (scenarios `appEngineEditorLocked`,
+     * `computeEditorLocked`): a write that drops it answers 403 `PERMISSION_DENIED`, as Google does for a denied
+     * `resourcemanager.projects.setIamPolicy`.
      */
     locked?: { readonly role: string; readonly member: string };
 }
@@ -309,6 +310,14 @@ export function createResourceManagerFake(identity: IdentityState, state: Resour
             appEngineEditorLocked: () => {
                 const projectId = String(FIXTURE_VALUES['projectId']);
                 state.locked = { role: 'roles/editor', member: `serviceAccount:${projectId}@appspot.gserviceaccount.com` };
+            },
+            /**
+             * §75g (finding 33): the same deny policy keeps the Compute Engine default account's Editor role, so Provision's
+             * removal of it is refused once its builder role is in place (the grants before it go through).
+             */
+            computeEditorLocked: () => {
+                const projectNumber = String(FIXTURE_VALUES['projectNumber']);
+                state.locked = { role: 'roles/editor', member: `serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com` };
             },
         },
         snapshot: () => ({

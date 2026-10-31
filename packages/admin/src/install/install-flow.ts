@@ -88,9 +88,14 @@ interface LogSummary {
     readonly missing: readonly string[];
     readonly failedStep: InstallStepId | null;
     readonly tail: readonly string[];
+    /**
+     * Any line of the stopped step names a permission Prepare the project grants (`fixedInProvision`): every line, not the
+     * tail, since the Cloud Functions API's 403 of finding 33 comes before one summary line per function.
+     */
+    readonly fixInProvision: boolean;
 }
 
-const NO_LOG: LogSummary = { retry: null, retryLineAt: '', missing: [], failedStep: null, tail: [] };
+const NO_LOG: LogSummary = { retry: null, retryLineAt: '', missing: [], failedStep: null, tail: [], fixInProvision: false };
 
 function eventsOf(lines: readonly BuildLogLine[]): { readonly events: InstallLogEvent[]; readonly lastAt: string } {
     const events: InstallLogEvent[] = [];
@@ -123,7 +128,7 @@ function shownRelease(observation: TargetObservation, state: InstallState): stri
 /** A failed build's step and its last lines; nothing for any other state. */
 function failureFields(summary: LogSummary, state: InstallState): Pick<InstallTargetView, 'failedStep' | 'log' | 'fixInProvision'> {
     return state === 'failed'
-        ? { failedStep: summary.failedStep, log: summary.tail, fixInProvision: fixedInProvision(summary.tail) }
+        ? { failedStep: summary.failedStep, log: summary.tail, fixInProvision: summary.fixInProvision }
         : { failedStep: null, log: [], fixInProvision: false };
 }
 
@@ -339,6 +344,7 @@ class TargetFlow implements InstallFlow {
             missing: missingFunctions(events),
             failedStep,
             tail: failedStep === null ? [] : stepTail(lines, failedStep),
+            fixInProvision: failedStep !== null && fixedInProvision(stepTail(lines, failedStep, Number.POSITIVE_INFINITY)),
         };
     }
 

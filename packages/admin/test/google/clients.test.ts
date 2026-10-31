@@ -325,8 +325,8 @@ describe('the edges', () => {
         await clients.iam.createServiceAccount('demo-hcm', 'fn-admin', 'Functions: admin');
         await clients.iam.createServiceAccount('demo-hcm', 'fn-admin', 'Functions: admin');
 
-        // Google's own App Engine default account is listed too, by the part of its address before the @.
-        await expect(clients.iam.listServiceAccounts('demo-hcm')).resolves.toEqual(['fn-admin', 'demo-hcm']);
+        // Google's own App Engine and Compute Engine default accounts are listed too, by the part of their address before the @.
+        await expect(clients.iam.listServiceAccounts('demo-hcm')).resolves.toEqual(['fn-admin', 'demo-hcm', '123456789012-compute']);
         await expect(clients.iam.getPool('123456789012', 'github')).resolves.toBeUndefined();
     });
 

@@ -9,7 +9,8 @@ import { OWNER_EMAIL, provisionWorld, type ProvisionWorld } from './world.js';
  * `DECISIONS-for-review.md` §75b (the user's decision, 2026-10-31): the `iam` item takes `roles/editor` away from the App
  * Engine default account on the project's policy, that member of that binding only, and leaves every other member and
  * binding as it found them. The fake project starts as Google makes one: the owner, and Editor for the Compute Engine
- * and App Engine default accounts.
+ * and App Engine default accounts; since §75g (finding 33) the Compute Engine account loses it too, after its builder role
+ * (`compute-build-account.test.ts`), so a fresh run leaves no Editor binding at all.
  */
 
 const APP_ENGINE = 'serviceAccount:demo-hcm@appspot.gserviceaccount.com';
@@ -30,10 +31,11 @@ function editorAgain(world: ProvisionWorld): void {
     const policies = world.fakes.state.resourceManager.policies;
     const policy = policies.get('demo-hcm');
     if (policy !== undefined) {
-        const bindings = policy.bindings.map((binding) =>
-            binding.role === 'roles/editor' ? { ...binding, members: [...binding.members, APP_ENGINE] } : binding,
-        );
-        policies.set('demo-hcm', { ...policy, bindings });
+        const others = policy.bindings.filter((binding) => binding.role !== 'roles/editor');
+        policies.set('demo-hcm', {
+            ...policy,
+            bindings: [...others, { role: 'roles/editor', members: [...membersOf(world, 'roles/editor'), APP_ENGINE] }],
+        });
     }
 }
 
@@ -75,9 +77,11 @@ describe('the App Engine default account loses Editor on the project (the iam it
         expect(before.items).toEqual([{ id: 'iam', state: 'missing' }]);
         expect(report.items.find((item) => item.id === 'iam')).toEqual({ id: 'iam', state: 'ok' });
         expect(after.items).toEqual([{ id: 'iam', state: 'ok' }]);
-        expect(membersOf(world, 'roles/editor')).toEqual([COMPUTE]);
+        // §75g took the Compute Engine account's Editor role too: the binding left empty is dropped.
+        expect(membersOf(world, 'roles/editor')).toEqual([]);
         expect(membersOf(world, 'roles/owner')).toEqual([OWNER]);
-        expect(membersOf(world, 'roles/run.invoker')).toHaveLength(2);
+        expect(membersOf(world, 'roles/run.invoker')).toEqual(expect.arrayContaining([COMPUTE]));
+        expect(membersOf(world, 'roles/run.invoker')).toHaveLength(3);
         expect(JSON.stringify(projectBindings(world))).not.toContain('appspot');
     });
 
@@ -95,7 +99,7 @@ describe('the App Engine default account loses Editor on the project (the iam it
         expect(report.items).toEqual([{ id: 'iam', state: 'ok' }]);
         expect(again.items).toEqual([{ id: 'iam', state: 'ok' }]);
         expect(world.fakes.callsTo('resource-manager.setIamPolicy')).toHaveLength(writesBefore + 1);
-        expect(membersOf(world, 'roles/editor')).toEqual([COMPUTE]);
+        expect(membersOf(world, 'roles/editor')).toEqual([]);
     });
 
     it('happyPath_aConcurrentChangeOfThePolicyIsReadAgainAndTheRemovalWritten', async () => {
@@ -107,7 +111,7 @@ describe('the App Engine default account loses Editor on the project (the iam it
         const report = await applyProvision(planProvision(null, ['iam']), concurrentRemoval(world));
 
         expect(report.items).toEqual([{ id: 'iam', state: 'ok' }]);
-        expect(membersOf(world, 'roles/editor')).toEqual([COMPUTE]);
+        expect(membersOf(world, 'roles/editor')).toEqual([]);
         // The first write met the other change (409 ABORTED), the second went through with the new etag.
         expect(world.fakes.callsTo('resource-manager.setIamPolicy')).toHaveLength(writesBefore + 2);
         expect(world.fakes.state.resourceManager.policies.get('demo-hcm')?.etag).not.toBe('BwXe2eRACE=');
@@ -120,7 +124,8 @@ describe('the App Engine default account loses Editor on the project (the iam it
         const report = await applyProvision(planProvision(null, BEFORE_IAM), world.deps);
 
         expect(report.items.find((item) => item.id === 'iam')).toEqual({ id: 'iam', state: 'ok' });
-        expect(membersOf(world, 'roles/editor')).toEqual([COMPUTE, APP_ENGINE]);
+        // The Compute Engine account's removal (§75g) is its own write; the App Engine member is left as it is.
+        expect(membersOf(world, 'roles/editor')).toEqual([APP_ENGINE]);
     });
 
     it('badPath_aRefusedRemovalFailsTheItemWithTheRoleItNeedsAndTouchesNothingElse @S-A04-BAD-APPENGINE-EDITOR-REFUSED', async () => {
@@ -135,8 +140,9 @@ describe('the App Engine default account loses Editor on the project (the iam it
             detail: 'apiError.cloud.permission',
             params: { role: 'roles/resourcemanager.projectIamAdmin' },
         });
-        // The role table was written before the removal; the editors are as Google made them.
-        expect(membersOf(world, 'roles/run.invoker')).toHaveLength(2);
+        // The role table was written before the removal; the editors are as Google made them (the App Engine removal comes
+        // first and stops the item, so the Compute Engine one is not tried).
+        expect(membersOf(world, 'roles/run.invoker')).toHaveLength(3);
         expect(membersOf(world, 'roles/editor')).toEqual([COMPUTE, APP_ENGINE]);
         // Retry what failed runs the item again: the role table is in place, so the removal is all it tries.
         const retried = await applyProvision(planProvision(report.items, ['iam']), world.deps);

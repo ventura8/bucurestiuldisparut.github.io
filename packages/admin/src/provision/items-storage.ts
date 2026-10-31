@@ -1,11 +1,12 @@
 import { PIPELINE_REPOSITORY, PRIVATE_BUCKET_LIFECYCLE } from '@hcm/shared';
 
 import { pipelineRepositorySpec } from '../google/artifact-registry.js';
-import { ensureBindings, type WantedBinding } from '../google/iam-policy.js';
+import { ensureBindings, missingBindings, type WantedBinding } from '../google/iam-policy.js';
 import type { Bucket } from '../google/storage.js';
 import { isGoogleFailure } from '../google/failure.js';
 import { at, matchesSpec, records, type JsonObject } from '../google/json.js';
 import { eachInTurn, lacking, refused, type Observation, type ProvisionContext, type ProvisionItemSpec } from './item.js';
+import { repositoryBindings } from './resources.js';
 
 /**
  * The storage items (`docs/research/M2b-interfaces.md` §3.4 items 4–6, §3.4.2): Firebase Storage's default bucket (the
@@ -184,16 +185,27 @@ const bucketLifecycle: ProvisionItemSpec = {
 
 /**
  * M6 (`docs/research/M6-interfaces.md` §1.6, CR-M6-2): the Docker repository `hcm` in the project's region, where the
- * in-app installer pushes the imagery pipeline's image (a cleanup policy keeps the two newest); `missing` creates it.
+ * in-app installer pushes the imagery pipeline's image (a cleanup policy keeps the two newest), and the installer's
+ * writer role on it (§1.2); `missing` creates the repository, then binds the role. Finding 31 of 2026-10-31: only the
+ * optional imagery pipeline needs either, so the binding lives here, not in the `iam` item, which the server needs and
+ * which no longer waits for this one; Setup's step d waits for the items the server needs only (`serverPrepared`).
  */
 const artifactRegistry: ProvisionItemSpec = {
     id: 'artifact-registry',
-    after: ['apis'],
+    after: ['apis', 'service-accounts'],
     observe: async ({ clients, project }) => {
-        const found = await clients.artifactRegistry.get(project.projectId, project.region, PIPELINE_REPOSITORY);
-        return lacking(found === undefined ? [PIPELINE_REPOSITORY] : [], () =>
-            clients.artifactRegistry.create(project.projectId, project.region, PIPELINE_REPOSITORY, pipelineRepositorySpec()),
-        );
+        const { region, projectId } = project;
+        const found = await clients.artifactRegistry.get(projectId, region, PIPELINE_REPOSITORY);
+        const policy = repositoryBindings(project);
+        const access = clients.artifactRegistry.repositoryPolicy(projectId, region, PIPELINE_REPOSITORY);
+        const unbound = found === undefined ? policy.bindings : missingBindings(await access.read(), policy.bindings);
+        const lacks = [...(found === undefined ? [PIPELINE_REPOSITORY] : []), ...(unbound.length === 0 ? [] : ['binding'])];
+        return lacking(lacks, async () => {
+            if (found === undefined) {
+                await clients.artifactRegistry.create(projectId, region, PIPELINE_REPOSITORY, pipelineRepositorySpec());
+            }
+            await ensureBindings(access, policy.bindings);
+        });
     },
 };
 

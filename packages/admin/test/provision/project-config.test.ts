@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import { parseProjectConfig, projectNames, SERVICE_ACCOUNT_IDS } from '../../src/provision/project-config.js';
-import { REQUIRED_APIS, roleTable, SECRET_IDS } from '../../src/provision/resources.js';
+import { buildAccountBindings, REQUIRED_APIS, repositoryBindings, roleTable, SECRET_IDS } from '../../src/provision/resources.js';
 import { PROJECT } from './world.js';
 
 /** `infra/project.json` and the names and roles derived from it (docs/research/M2b-interfaces.md §3.4.1, §3.7). */
@@ -47,7 +47,7 @@ describe('the role table', () => {
     };
 
     it('happyPath_everyM2bRowIsBoundOnItsResource', () => {
-        const table = roleTable(PROJECT, agents, false);
+        const table = roleTable(PROJECT, agents);
         const project = table.find((policy) => policy.kind === 'project');
 
         expect(table.map((policy) => `${policy.kind}:${policy.resource}`)).toEqual([
@@ -59,7 +59,6 @@ describe('the role table', () => {
             'serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com',
             'serviceAccount:fn-crash@demo-hcm.iam.gserviceaccount.com',
             'serviceAccount:job-raster@demo-hcm.iam.gserviceaccount.com',
-            'repository:hcm',
         ]);
         expect(project?.bindings).toContainEqual({
             role: 'roles/firebaserules.firestoreServiceAgent',
@@ -74,7 +73,7 @@ describe('the role table', () => {
 
     it('happyPath_theM4AssistsAndPushHaveTheirApisAndRoles', () => {
         // docs/research/M4-interfaces.md §4.4 (CR-M4-5): Vertex AI for the drafts, FCM for web push.
-        const project = roleTable(PROJECT, agents, false).find((policy) => policy.kind === 'project');
+        const project = roleTable(PROJECT, agents).find((policy) => policy.kind === 'project');
         const rolesOf = (account: string): string[] =>
             (project?.bindings ?? [])
                 .filter((binding) => binding.member === `serviceAccount:${account}@demo-hcm.iam.gserviceaccount.com`)
@@ -93,7 +92,7 @@ describe('the role table', () => {
 
     it('happyPath_theRasterJobReadsTheUsgsSecretsOnlyAndTheEventFunctionsRunItsExecutions', () => {
         // docs/research/M3-interfaces.md §9.4 (CR-M3-6): publishing stays in the functions, so no Mapbox secret for the job.
-        const table = roleTable(PROJECT, agents, false);
+        const table = roleTable(PROJECT, agents);
         const raster = 'serviceAccount:job-raster@demo-hcm.iam.gserviceaccount.com';
         const events = 'serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com';
         const readers = (secret: string): string[] =>
@@ -117,7 +116,7 @@ describe('the role table', () => {
 
     it('badPath_theCrashEndpointsAccountHoldsNoRoleOnlyTheDeployerMayActAsIt', () => {
         const crash = 'serviceAccount:fn-crash@demo-hcm.iam.gserviceaccount.com';
-        const table = roleTable(PROJECT, agents, false);
+        const table = roleTable(PROJECT, agents);
 
         expect(table.flatMap((policy) => policy.bindings).filter((binding) => binding.member === crash)).toEqual([]);
         expect(table.find((policy) => policy.resource === 'fn-crash@demo-hcm.iam.gserviceaccount.com')?.bindings).toEqual([
@@ -126,13 +125,32 @@ describe('the role table', () => {
         ]);
     });
 
-    it('badPath_withoutDefaultGrantsTheComputeAccountBuilds', () => {
-        const project = roleTable(PROJECT, agents, true)[0];
+    it('happyPath_theBuildAccountGetsTheInstallersActAsThenTheBuilderRoleOnly @S-A04-HAPPY-COMPUTE-BUILD-ACCOUNT', () => {
+        // Finding 33 (DECISIONS §75g): the functions build as the Compute Engine default account; the installer acts as it on
+        // that account only, and the account gets the narrow builder role before its Editor role goes.
+        const compute = '123456789012-compute@developer.gserviceaccount.com';
 
-        expect(project?.bindings).toContainEqual({
-            role: 'roles/cloudbuild.builds.builder',
-            member: 'serviceAccount:123456789012-compute@developer.gserviceaccount.com',
-        });
+        expect(buildAccountBindings(PROJECT, compute)).toEqual([
+            {
+                kind: 'serviceAccount',
+                resource: compute,
+                bindings: [
+                    { role: 'roles/iam.serviceAccountUser', member: 'serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com' },
+                ],
+            },
+            {
+                kind: 'project',
+                resource: 'demo-hcm',
+                bindings: [{ role: 'roles/cloudbuild.builds.builder', member: `serviceAccount:${compute}` }],
+            },
+        ]);
+        expect(roleTable(PROJECT, { ...agents, computeDefault: compute })[0]?.bindings.map((binding) => binding.role)).not.toContain(
+            'roles/cloudbuild.builds.builder',
+        );
+    });
+
+    it('badPath_withoutTheComputeAccountThereIsNoBuildAccountToBind', () => {
+        expect(buildAccountBindings(PROJECT, undefined)).toEqual([]);
     });
 });
 
@@ -147,7 +165,7 @@ describe('the role table of M6 (docs/research/M6-interfaces.md §1.2, §1.6)', (
 
     it('happyPath_theM6InstallerHasExactlyTheContractsRolesAndActsOnlyAsTheRuntimeAccounts @S-A04-HAPPY-INSTALLER-ACCOUNT', () => {
         // docs/research/M6-interfaces.md §1.2 (CR-M6-2): the in-app installer's builds run as hcm-installer@.
-        const table = roleTable(PROJECT, agents, false);
+        const table = roleTable(PROJECT, agents);
         const installer = 'serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com';
         const roles = (resource: string): string[] =>
             (table.find((policy) => policy.resource === resource)?.bindings ?? [])
@@ -166,7 +184,13 @@ describe('the role table of M6 (docs/research/M6-interfaces.md §1.2, §1.6)', (
             'roles/logging.logWriter',
             'projects/demo-hcm/roles/hcmInstaller',
         ]);
-        expect(roles('hcm')).toEqual(['roles/artifactregistry.writer']);
+        // Finding 31: the repository's writer role is the artifact-registry item's, so the iam item never waits for it.
+        expect(roles('hcm')).toEqual([]);
+        expect(repositoryBindings(PROJECT)).toEqual({
+            kind: 'repository',
+            resource: 'hcm',
+            bindings: [{ role: 'roles/artifactregistry.writer', member: installer }],
+        });
         for (const account of ['fn-admin', 'fn-events', 'fn-crash', 'job-raster']) {
             expect(roles(`${account}@demo-hcm.iam.gserviceaccount.com`)).toEqual(['roles/iam.serviceAccountUser']);
         }
@@ -189,7 +213,7 @@ describe('the role table of M6 (docs/research/M6-interfaces.md §1.2, §1.6)', (
 
     it('happyPath_theFunctionAccountsMayInvokeTheFunctionsEventarcAndSchedulerCall', () => {
         // Finding 17: Eventarc delivers with fn-events@, Cloud Scheduler's OIDC token is fn-admin@'s.
-        const project = roleTable(PROJECT, agents, false)[0];
+        const project = roleTable(PROJECT, agents)[0];
         const invokers = (project?.bindings ?? [])
             .filter((binding) => binding.role === 'roles/run.invoker')
             .map((binding) => binding.member);
@@ -203,12 +227,8 @@ describe('the role table of M6 (docs/research/M6-interfaces.md §1.2, §1.6)', (
     it('happyPath_aFirstDeploysServiceAgentRolesAreInPlaceForTheInstaller', () => {
         // firebase-tools' ensureServiceAgentRoles wants them on a project without event functions yet; the installer may
         // read the project's policy but not write it.
-        const withCompute = roleTable(
-            PROJECT,
-            { ...agents, computeDefault: '123456789012-compute@developer.gserviceaccount.com' },
-            false,
-        )[0];
-        const without = roleTable(PROJECT, agents, false)[0];
+        const withCompute = roleTable(PROJECT, { ...agents, computeDefault: '123456789012-compute@developer.gserviceaccount.com' })[0];
+        const without = roleTable(PROJECT, agents)[0];
         const compute = 'serviceAccount:123456789012-compute@developer.gserviceaccount.com';
 
         expect(without?.bindings).toContainEqual({
@@ -226,14 +246,14 @@ describe('the role table of M6 (docs/research/M6-interfaces.md §1.2, §1.6)', (
         // Finding 28 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31): firebase-tools' checkServiceAccountIam wants actAs on it.
         const appEngine = 'demo-hcm@appspot.gserviceaccount.com';
         const installer = 'serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com';
-        const table = roleTable(PROJECT, { ...agents, appEngineDefault: appEngine }, false);
+        const table = roleTable(PROJECT, { ...agents, appEngineDefault: appEngine });
 
         expect(table.find((policy) => policy.resource === appEngine)).toEqual({
             kind: 'serviceAccount',
             resource: appEngine,
             bindings: [{ role: 'roles/iam.serviceAccountUser', member: installer }],
         });
-        expect(table.at(-1)?.kind).toBe('repository');
+        expect(table.at(-1)?.resource).toBe(appEngine);
         // Never project-wide: the project's policy gives the installer no Service Account User role.
         expect(
             table[0]?.bindings.filter((binding) => binding.member === installer && binding.role === 'roles/iam.serviceAccountUser'),
@@ -241,7 +261,7 @@ describe('the role table of M6 (docs/research/M6-interfaces.md §1.2, §1.6)', (
     });
 
     it('badPath_aProjectWithoutTheAppEngineDefaultAccountGetsNoBindingForIt', () => {
-        const table = roleTable(PROJECT, agents, false);
+        const table = roleTable(PROJECT, agents);
 
         expect(table.some((policy) => policy.resource.endsWith('@appspot.gserviceaccount.com'))).toBe(false);
     });

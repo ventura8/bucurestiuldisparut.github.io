@@ -7,7 +7,8 @@ import { sequence, type ServiceFake } from './service.js';
 /**
  * Artifact Registry v1 (`docs/research/M6-interfaces.md` §1.6, §1.10): the Docker repositories of a project's region,
  * created at once (the operation reads back as done; a second create answers 409 `ALREADY_EXISTS`), and each repository's
- * IAM policy, where Prepare the project's `iam` item gives the installer `roles/artifactregistry.writer` on `hcm` only.
+ * IAM policy, where Prepare the project's `artifact-registry` item gives the installer `roles/artifactregistry.writer` on
+ * `hcm` only (the `iam` item's before finding 31 of 2026-10-31).
  * Made by server-bugs for the `artifact-registry` item; the installer's pipeline build reads the same repositories.
  */
 
@@ -15,6 +16,8 @@ export interface ArtifactRegistryState {
     /** `<project id>/<region>/<repository>` → the repository as created (its spec with its name). */
     readonly repositories: Map<string, Readonly<Record<string, unknown>>>;
     readonly policies: PolicyStore;
+    /** Scenario `createRefused` (finding 31): the owner's organisation refuses the repository, so a create answers 403. */
+    createRefused?: boolean;
 }
 
 export function defaultArtifactRegistryState(): ArtifactRegistryState {
@@ -39,11 +42,22 @@ export function createArtifactRegistryFake(state: ArtifactRegistryState, project
         const key = keyOf(params, String(params['repository']));
         return state.repositories.has(key) ? answer(key) : googleError('google/error.not-found', API);
     };
+    /** Why a create is refused: the organisation (scenario `createRefused`), no id, or a repository already there. */
+    const refusal = (repository: string, key: string): Response | undefined => {
+        if (state.createRefused === true) {
+            return googleError('google/error.permission-denied', API, { permission: 'artifactregistry.repositories.create' });
+        }
+        if (repository === '' || state.repositories.has(key)) {
+            return googleError(repository === '' ? 'google/error.invalid-argument' : 'google/error.already-exists', API);
+        }
+        return undefined;
+    };
     const create: Route['answer'] = (request, params) => {
         const repository = request.url.searchParams.get('repositoryId') ?? '';
         const key = keyOf(params, repository);
-        if (repository === '' || state.repositories.has(key)) {
-            return googleError(repository === '' ? 'google/error.invalid-argument' : 'google/error.already-exists', API);
+        const refused = refusal(repository, key);
+        if (refused !== undefined) {
+            return refused;
         }
         const created = { ...requestObject(request), name: nameOf(params, repository) };
         state.repositories.set(key, created);
@@ -79,10 +93,17 @@ export function createArtifactRegistryFake(state: ArtifactRegistryState, project
         ],
         failure: (mode) => googleFailure(API, mode),
         scenarios: {
-            // What Prepare the project leaves: the pipeline's repository of the demo project (its writer bound by `iam`).
+            // What Prepare the project leaves: the pipeline's repository of the demo project (its writer bound with it).
             provisioned: () => {
                 const name = `projects/${String(FIXTURE_VALUES['projectId'])}/locations/us-central1/repositories/hcm`;
                 state.repositories.set(`${String(FIXTURE_VALUES['projectId'])}/us-central1/hcm`, { name, format: 'DOCKER' });
+            },
+            /**
+             * Finding 31 of 2026-10-31: the repository cannot be made (a 403 for the create), so Prepare the project's
+             * `artifact-registry` item fails; only the optional imagery pipeline needs it, so Install the server goes on.
+             */
+            createRefused: () => {
+                state.createRefused = true;
             },
         },
         snapshot: () => ({ repositories: Object.fromEntries(state.repositories), policies: state.policies.snapshot() }),

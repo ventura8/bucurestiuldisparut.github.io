@@ -7,10 +7,18 @@ import {
     type PolicyAccess,
     type WantedBinding,
 } from '../google/iam-policy.js';
+import type { AdminMessageKey } from '../google/failure.js';
 import type { CustomRole, IdentityResource } from '../google/iam.js';
 import { matchesSpec, sameSet, type JsonObject } from '../google/json.js';
 import { eachInTurn, lacking, type Observation, type ProvisionContext, type ProvisionItemSpec } from './item.js';
-import { CUSTOM_ROLES, roleTable, type CustomRoleEntry, type PolicyBindings, type ServiceAgents } from './resources.js';
+import {
+    buildAccountBindings,
+    CUSTOM_ROLES,
+    roleTable,
+    type CustomRoleEntry,
+    type PolicyBindings,
+    type ServiceAgents,
+} from './resources.js';
 
 /**
  * The `iam` item (the project's custom roles first, M4; then the role table of `docs/research/M2b-interfaces.md` §3.4.1
@@ -19,33 +27,40 @@ import { CUSTOM_ROLES, roleTable, type CustomRoleEntry, type PolicyBindings, typ
  * M6 (`docs/research/M6-interfaces.md` §1.6, CR-M6-2): the Eventarc and Pub/Sub service identities are generated before
  * the table (finding 12), which gains `roles/run.invoker` for the function accounts (finding 17), the installer's rows and
  * the pipeline repository's policy. Since 2026-10-31 (`DECISIONS-for-review.md` §75b) it also takes `roles/editor` away
- * from the App Engine default account on the project's policy, last.
+ * from the App Engine default account on the project's policy, last; since §75g (finding 33) the installer may act as
+ * the Compute Engine default account, which builds the functions, and that account trades `roles/editor` for the
+ * Cloud Build builder role.
  */
 
-/** The Compute Engine default account's id and address, when the project has one (§1.2: a first deploy binds it). */
-async function computeDefault({ clients, project }: ProvisionContext): Promise<string | undefined> {
-    const id = `${project.projectNumber}-compute`;
-    return (await clients.iam.listServiceAccounts(project.projectId)).includes(id) ? `${id}@developer.gserviceaccount.com` : undefined;
+/** Google's default accounts of the project, each when it exists (a GET each; a 404 means nothing to do, not a failure). */
+interface DefaultAccounts {
+    /** `<number>-compute@developer.gserviceaccount.com`: the functions' build account (finding 33, §75g). */
+    readonly compute: string | undefined;
+    /** `<project>@appspot.gserviceaccount.com`: made with the App Engine app, so a project may lack it (finding 28). */
+    readonly appEngine: string | undefined;
 }
 
-/**
- * The App Engine default account's address when the project has it (finding 28 of 2026-10-31: a GET, and a 404 means
- * nothing to grant, not a failure). Google makes it with the project's App Engine app, so a project may lack it.
- */
-async function appEngineDefault({ clients, project }: ProvisionContext): Promise<string | undefined> {
-    const email = `${project.projectId}@appspot.gserviceaccount.com`;
+async function existing({ clients, project }: ProvisionContext, email: string): Promise<string | undefined> {
     return (await clients.iam.serviceAccountExists(project.projectId, email)) ? email : undefined;
 }
 
+async function defaultAccounts(context: ProvisionContext): Promise<DefaultAccounts> {
+    const { projectId, projectNumber } = context.project;
+    return {
+        compute: await existing(context, `${projectNumber}-compute@developer.gserviceaccount.com`),
+        appEngine: await existing(context, `${projectId}@appspot.gserviceaccount.com`),
+    };
+}
+
 /** The service agents by their documented names: the doctor never creates them, the fix does first. */
-async function conventionalAgents(context: ProvisionContext): Promise<ServiceAgents> {
+function conventionalAgents(context: ProvisionContext, accounts: DefaultAccounts): ServiceAgents {
     const { projectNumber } = context.project;
     return {
         firebaseStorage: `service-${projectNumber}@gcp-sa-firebasestorage.iam.gserviceaccount.com`,
         cloudStorage: `service-${projectNumber}@gs-project-accounts.iam.gserviceaccount.com`,
         pubsub: `service-${projectNumber}@gcp-sa-pubsub.iam.gserviceaccount.com`,
-        computeDefault: await computeDefault(context),
-        appEngineDefault: await appEngineDefault(context),
+        computeDefault: accounts.compute,
+        appEngineDefault: accounts.appEngine,
     };
 }
 
@@ -55,7 +70,7 @@ const POLICY_ACCESS: Readonly<Record<PolicyBindings['kind'], (context: Provision
     bucket: ({ clients }, resource) => clients.storage.bucketPolicy(resource),
     secret: ({ clients, project }, resource) => clients.secretManager.secretPolicy(project.projectId, resource),
     serviceAccount: ({ clients, project }, resource) => clients.iam.serviceAccountPolicy(project.projectId, resource),
-    // M6 (§1.2): the installer's writer role on the pipeline's repository only.
+    // M6 (§1.2): the installer's writer role on the pipeline's repository only (the `artifact-registry` item's, finding 31).
     repository: ({ clients, project }, resource) => clients.artifactRegistry.repositoryPolicy(project.projectId, project.region, resource),
 };
 
@@ -79,7 +94,7 @@ async function lackingBindings(access: PolicyAccess, wanted: readonly WantedBind
  * Creates the service agents first (their bindings name them; Eventarc's has no binding of ours, Google grants it its
  * role when it is made, minutes before a first deploy needs it), then merges every policy's bindings in.
  */
-async function bindAll(context: ProvisionContext): Promise<void> {
+async function bindAll(context: ProvisionContext, accounts: DefaultAccounts): Promise<void> {
     const { clients, project } = context;
     const identity = (service: string): Promise<string> => clients.serviceUsage.serviceIdentity(project.projectNumber, service);
     await identity('eventarc.googleapis.com');
@@ -87,11 +102,15 @@ async function bindAll(context: ProvisionContext): Promise<void> {
         firebaseStorage: await identity('firebasestorage.googleapis.com'),
         cloudStorage: await clients.storage.serviceAgent(project.projectId),
         pubsub: await identity('pubsub.googleapis.com'),
-        computeDefault: await computeDefault(context),
-        appEngineDefault: await appEngineDefault(context),
+        computeDefault: accounts.compute,
+        appEngineDefault: accounts.appEngine,
     };
-    const table = roleTable(project, agents, (await context.findings()).noDefaultGrants);
-    await eachInTurn(table, (policy) => ensureBindings(policyAccess(context, policy), policy.bindings));
+    await bindEach(context, roleTable(project, agents));
+}
+
+/** Merges each policy's bindings in, one policy after the other, in the order given. */
+function bindEach(context: ProvisionContext, policies: readonly PolicyBindings[]): Promise<void> {
+    return eachInTurn(policies, (policy) => ensureBindings(policyAccess(context, policy), policy.bindings));
 }
 
 /** A custom role as it is and what it lacks: nothing, to be made, or to be undeleted or given its permissions. */
@@ -121,14 +140,13 @@ async function fixRoles(context: ProvisionContext, findings: readonly RoleFindin
     });
 }
 
-async function bindingsLacking(context: ProvisionContext): Promise<string[]> {
-    const findings = await context.findings();
-    const table = roleTable(context.project, await conventionalAgents(context), findings.noDefaultGrants);
+/** `<prefix><kind>:<resource>` for each policy that lacks one of its bindings. */
+async function policiesLacking(context: ProvisionContext, policies: readonly PolicyBindings[], prefix = ''): Promise<string[]> {
     const lacks = await Promise.all(
-        table.map(async (policy) =>
+        policies.map(async (policy) =>
             (await lackingBindings(policyAccess(context, policy), policy.bindings)).length === 0
                 ? []
-                : [`${policy.kind}:${policy.resource}`],
+                : [`${prefix}${policy.kind}:${policy.resource}`],
         ),
     );
     return lacks.flat();
@@ -137,50 +155,87 @@ async function bindingsLacking(context: ProvisionContext): Promise<string[]> {
 /**
  * `DECISIONS-for-review.md` §75b (the user's decision, 2026-10-31): the App Engine default account loses `roles/editor`
  * on the project. Nothing of ours runs as it (every function names its own account, the raster job runs as `job-raster@`,
- * the builds as `hcm-installer@`), and since §75a the installer may act as it, which would reach Editor through it. Only
- * that member of only that binding (an unconditional one); nothing when the account is absent. The Compute Engine
- * default account keeps its Editor role: the functions' source builds may run as it (out of scope, §75b).
+ * the builds as `hcm-installer@`), and since §75a the installer may act as it, which would reach Editor through it.
+ * §75g (finding 33, the user's decision "Act-as + narrow its role"): the Compute Engine default account, which builds the
+ * functions and which the installer may now act as, loses it too, once its builder role is in place. Only that member of
+ * only that binding (an unconditional one); nothing when the account is absent.
  */
 const EDITOR_ROLE = 'roles/editor';
 
-/** The App Engine default account's Editor binding while the project's policy holds it; none otherwise. */
-async function appEngineEditorHeld(context: ProvisionContext): Promise<readonly WantedBinding[]> {
-    const account = await appEngineDefault(context);
-    if (account === undefined) {
+/** Each existing default account's Editor binding while the project's policy holds it: App Engine's first, then compute's. */
+async function editorsHeld(context: ProvisionContext, accounts: DefaultAccounts): Promise<readonly WantedBinding[]> {
+    const members = [accounts.appEngine, accounts.compute].flatMap((account) =>
+        account === undefined ? [] : [`serviceAccount:${account}`],
+    );
+    if (members.length === 0) {
         return [];
     }
     const policy = await context.clients.resourceManager.projectPolicy(context.project.projectId).read();
-    return heldBindings(policy, [{ role: EDITOR_ROLE, member: `serviceAccount:${account}` }]);
+    return heldBindings(
+        policy,
+        members.map((member) => ({ role: EDITOR_ROLE, member })),
+    );
 }
 
-/** Read again before the write: the role table's own write comes first, and someone may have changed the policy. */
-async function dropAppEngineEditor(context: ProvisionContext, held: readonly WantedBinding[]): Promise<void> {
-    if (held.length > 0) {
-        await removeBindings(context.clients.resourceManager.projectPolicy(context.project.projectId), held);
+/**
+ * One removal per account, each reading the policy again before its write (the role table's and the builder role's own
+ * writes come first, and someone may have changed the policy): a refused one stops the item with the role it needs.
+ */
+async function dropEditors(context: ProvisionContext, held: readonly WantedBinding[]): Promise<void> {
+    await eachInTurn(held, (binding) =>
+        removeBindings(context.clients.resourceManager.projectPolicy(context.project.projectId), [binding]),
+    );
+}
+
+/** Whether `binding` is the Compute Engine default account's. */
+function isCompute(binding: WantedBinding): boolean {
+    return binding.member.endsWith('-compute@developer.gserviceaccount.com');
+}
+
+/**
+ * The doctor's reason when §75's parts are all the item lacks (a project prepared before them): the build account's
+ * (§75g) before the App Engine account's Editor role (§75b); none while anything else lacks.
+ */
+function iamReason(granting: readonly string[], build: readonly string[], editors: readonly WantedBinding[]): AdminMessageKey | undefined {
+    if (granting.length > 0) {
+        return undefined;
     }
+    if (build.length > 0 || editors.some(isCompute)) {
+        return 'adminSetup.provision.computeBuildAccount';
+    }
+    return editors.length > 0 ? 'adminSetup.provision.appEngineEditor' : undefined;
 }
 
-/** The doctor's reason when the Editor role is all the item lacks: a project prepared before §75b. */
-function editorReason(observation: Observation, onlyEditor: boolean): Observation {
-    return onlyEditor ? { ...observation, detail: 'adminSetup.provision.appEngineEditor' } : observation;
+function withReason(observation: Observation, detail: AdminMessageKey | undefined): Observation {
+    return detail === undefined ? observation : { ...observation, detail };
 }
 
+/**
+ * The fix, in turn: the custom roles, the role table, the build account's actAs then builder role (§75g), then the
+ * Editor removals; a failed write stops it there, so the compute account never loses Editor before its builder role.
+ */
 const iam: ProvisionItemSpec = {
     id: 'iam',
-    after: ['service-accounts', 'buckets', 'artifact-registry', 'secrets', 'org-policies'],
+    // Finding 31 of 2026-10-31: not `artifact-registry`, which only the optional imagery pipeline needs (it keeps its own binding).
+    after: ['service-accounts', 'buckets', 'secrets', 'org-policies'],
     observe: async (context) => {
         const roles = await Promise.all(
             CUSTOM_ROLES.map(async (entry) => ({ entry, found: await context.clients.iam.getRole(context.project.projectId, entry.id) })),
         );
-        const granting = [...rolesLacking(roles), ...(await bindingsLacking(context))];
-        const editor = await appEngineEditorHeld(context);
-        const lacks = [...granting, ...editor.map((binding) => `editor:${binding.member}`)];
+        const accounts = await defaultAccounts(context);
+        const table = roleTable(context.project, conventionalAgents(context, accounts));
+        const buildAccount = buildAccountBindings(context.project, accounts.compute);
+        const granting = [...rolesLacking(roles), ...(await policiesLacking(context, table))];
+        const build = await policiesLacking(context, buildAccount, 'build:');
+        const editors = await editorsHeld(context, accounts);
+        const lacks = [...granting, ...build, ...editors.map((binding) => `editor:${binding.member}`)];
         const observation = lacking(lacks, async () => {
             await fixRoles(context, roles);
-            await bindAll(context);
-            await dropAppEngineEditor(context, editor);
+            await bindAll(context, accounts);
+            await bindEach(context, buildAccount);
+            await dropEditors(context, editors);
         });
-        return editorReason(observation, granting.length === 0 && editor.length > 0);
+        return withReason(observation, iamReason(granting, build, editors));
     },
 };
 

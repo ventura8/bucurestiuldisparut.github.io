@@ -96,10 +96,13 @@ export async function installWorld(options: { readonly provisioned?: boolean } =
             createGoogleTransport({ fetch: fakes.fetch, token: () => ACCESS.token, sleep: () => Promise.resolve(), log }),
         );
         await iam.createServiceAccount('demo-hcm', 'hcm-installer', 'Cloud Build: the in-app installer');
-        // Its `iam` item lets it act as the App Engine default account, which firebase-tools requires (finding 28).
-        await ensureBindings(iam.serviceAccountPolicy('demo-hcm', 'demo-hcm@appspot.gserviceaccount.com'), [
-            { role: 'roles/iam.serviceAccountUser', member: 'serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com' },
-        ]);
+        // Its `iam` item lets it act as the App Engine default account, which firebase-tools requires (finding 28), and as the
+        // Compute Engine default account, the functions' build account, which the Cloud Functions API requires (finding 33).
+        for (const account of ['demo-hcm@appspot.gserviceaccount.com', '123456789012-compute@developer.gserviceaccount.com']) {
+            await ensureBindings(iam.serviceAccountPolicy('demo-hcm', account), [
+                { role: 'roles/iam.serviceAccountUser', member: 'serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com' },
+            ]);
+        }
     }
     return Object.assign(world, { installer });
 }

@@ -19,7 +19,15 @@ import { apiFailure, setupMessage, type SetupMessage } from './messages.js';
 import type { SetupDeps } from './ports.js';
 import { createProvisionFlow, type ProvisionFlow } from './provision.js';
 import { applyBootstrapRecord, recordCloudRequestOf } from './records.js';
-import { initialSetupState, refreshDerived, resumeStep, type SelfTestCheckState, type SetupMode, type SetupState } from './state.js';
+import {
+    initialSetupState,
+    refreshDerived,
+    resumeStep,
+    serverPrepared,
+    type SelfTestCheckState,
+    type SetupMode,
+    type SetupState,
+} from './state.js';
 import type { SetupStepId } from './steps.js';
 import { createUsgsFlow, type UsgsFlow } from './usgs.js';
 
@@ -110,9 +118,12 @@ function createFlows(ctx: SetupContext): Flows {
 
 const isDone = (state: SetupState, id: SetupStepId): boolean => state.steps[id].state === 'ok';
 
-/** A change after which the install cards look again: the project just prepared, the mode switched, a token appeared. */
+/**
+ * A change after which the install cards look again: the project just prepared (for the server: finding 31, an item only
+ * the imagery pipeline needs does not hold it back), the mode switched, a token appeared.
+ */
 function installWatchable(before: SetupState, next: SetupState): boolean {
-    const prepared = !isDone(before, 'provision') && isDone(next, 'provision');
+    const prepared = !serverPrepared(before) && serverPrepared(next);
     const token = !before.liveScopes.includes('cloudPlatform') && next.liveScopes.includes('cloudPlatform');
     return prepared || token || before.mode !== next.mode;
 }
@@ -220,7 +231,7 @@ class Controller implements SetupController {
         if (this.analyticsOpened(before, next)) {
             void this.flows.analytics.open();
         }
-        if (next.mode === 'bootstrap' && !isDone(before, 'provision')) {
+        if (next.mode === 'bootstrap' && !serverPrepared(before)) {
             this.watchDeployment(next);
         }
         if (installWatchable(before, next)) {
@@ -233,7 +244,7 @@ class Controller implements SetupController {
      * mode the server and the pipeline, in an admin session also the site, and only on the Setup page.
      */
     private watchInstall(state: SetupState): void {
-        if (!isDone(state, 'provision') || (state.mode === 'normal' && !this.pageShown)) {
+        if (!serverPrepared(state) || (state.mode === 'normal' && !this.pageShown)) {
             return;
         }
         this.flows.install.watch(state.mode === 'normal' ? ['server', 'pipeline', 'site'] : ['server', 'pipeline']);
@@ -244,7 +255,7 @@ class Controller implements SetupController {
     }
 
     private watchDeployment(state: SetupState): void {
-        if (isDone(state, 'provision') && !isDone(state, 'deploy')) {
+        if (serverPrepared(state) && !isDone(state, 'deploy')) {
             this.flows.deploy.watch();
         }
     }

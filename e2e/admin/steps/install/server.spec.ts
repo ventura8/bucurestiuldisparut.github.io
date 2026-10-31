@@ -15,7 +15,9 @@ import { SetupPage } from '../../support/setup-page.js';
 import { bootstrapRecord, rememberBootstrap, withConsent } from '../../support/steps.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../../support/test.js';
 import type { UpstreamControl } from '../../support/upstream.js';
-import { E2E_PROJECT_ID, PERSONAS } from '../../world.js';
+import { ADMIN_PROJECT, E2E_PROJECT_ID, PERSONAS } from '../../world.js';
+
+const E2E_PROJECT_NUMBER = ADMIN_PROJECT.projectNumber;
 
 // One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
 test.describe.configure({ lock: ADMIN_LOCK });
@@ -39,14 +41,21 @@ async function serverBuilds(upstream: UpstreamControl) {
 
 const INSTALLER = `serviceAccount:hcm-installer@${E2E_PROJECT_ID}.iam.gserviceaccount.com`;
 const APP_ENGINE = `${E2E_PROJECT_ID}@appspot.gserviceaccount.com`;
+/** The Compute Engine default account: the functions' build account (finding 33 of 2026-10-31). */
+const COMPUTE = `${E2E_PROJECT_NUMBER}-compute@developer.gserviceaccount.com`;
 
-/** Who holds Service Account User on the App Engine default account, in the browser's world of the IAM fake. */
-async function appEngineUsers(upstream: UpstreamControl): Promise<readonly string[]> {
+/** Who holds Service Account User on Google's default account `account`, in the browser's world of the IAM fake. */
+async function accountUsers(upstream: UpstreamControl, account: string): Promise<readonly string[]> {
     const iam = (await upstream.snapshot('browser'))['iam'] as {
         readonly projects: Readonly<Record<string, { readonly accountPolicies: Readonly<Record<string, readonly Binding[]>> }>>;
     };
-    const policy = iam.projects[E2E_PROJECT_ID]?.accountPolicies[APP_ENGINE] ?? [];
+    const policy = iam.projects[E2E_PROJECT_ID]?.accountPolicies[account] ?? [];
     return policy.find((binding) => binding.role === 'roles/iam.serviceAccountUser')?.members ?? [];
+}
+
+/** Who holds Service Account User on the App Engine default account. */
+function appEngineUsers(upstream: UpstreamControl): Promise<readonly string[]> {
+    return accountUsers(upstream, APP_ENGINE);
 }
 
 interface Binding {
@@ -303,6 +312,103 @@ test.describe('Install the server: a permission of step c (finding 28 of 2026-10
             await expect.poll(async () => (await serverBuilds(upstream)).length).toBe(2);
             await upstream.scenario('cloud-build.finish', 'browser');
             await nextLook(page, installState(deploy).getByText(setupText(lang, 'adminSetup.install.state.installed')));
+            serverDeployment.claimErrors();
+        },
+    );
+});
+
+test.describe("Install the server: the functions' build account (finding 33 of 2026-10-31)", () => {
+    test(
+        'A project prepared before the build account fix stops at the functions with the API 403, and step c fixes it',
+        { tag: ['@S-A55-BAD-NO-COMPUTE-ACTAS'] },
+        async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment }) => {
+            // Finding 33 (live, Cloud Build f92cec75): every function create and update answered 403 'iam.serviceaccounts.actAs'
+            // on the Compute Engine default account, which Cloud Functions builds them as.
+            await serverDeployment.hide();
+            const retry = setupBudget.inputs('provision', 1);
+            const { setup, deploy } = await preparedProject({
+                ...{ page, lang, consent, setupBudget, upstream, signInBudget: inputBudget.flow('signIn', 1) },
+                signInConsent: inputBudget.flow('signInConsent', 1),
+            });
+            expect(await accountUsers(upstream, COMPUTE)).toEqual([INSTALLER]);
+            await upstream.scenario('iam.computeActAsMissing', 'browser');
+            const inputs = setupBudget.inputs('deploy', 1);
+
+            await inputs.click(installButton(deploy, lang));
+            await expect.poll(async () => (await serverBuilds(upstream)).length).toBe(1);
+            await upstream.scenario('cloud-build.finish', 'browser');
+            await page.clock.fastForward(10_000);
+
+            const step = setupText(lang, 'adminSetup.install.step.functions');
+            await expect(deploy.getByText(setupText(lang, 'adminSetup.install.failedAt', { step }))).toBeVisible();
+            // The card's last lines are firebase-tools' summary; the 403s above them still send the owner to step c.
+            await expect(deploy.locator('pre.log')).toContainText('There was an error deploying functions');
+            const fix = deploy.locator('[data-fix="provision"]');
+            await expect(fix).toContainText(setupText(lang, 'adminSetup.install.fixInProvision'));
+            await retry.click(fix.getByRole('button', { name: setupText(lang, 'adminSetup.install.retryProvision') }));
+            await expect.poll(() => accountUsers(upstream, COMPUTE), { timeout: 60_000 }).toEqual([INSTALLER]);
+            await setup.expectState('provision', 'ok');
+
+            await inputs.click(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.tryAgain') }));
+            await expect.poll(async () => (await serverBuilds(upstream)).length).toBe(2);
+            await upstream.scenario('cloud-build.finish', 'browser');
+            await nextLook(page, installState(deploy).getByText(setupText(lang, 'adminSetup.install.state.installed')));
+            serverDeployment.claimErrors();
+        },
+    );
+});
+
+test.describe('Install the server: what step d waits for in step c (finding 31 of 2026-10-31)', () => {
+    test(
+        "A refused pipeline repository leaves step c unfinished, yet Install the server is offered and installs; the pipeline's card says why it waits",
+        { tag: ['@S-A55-HAPPY-PIPELINE-ITEM-FAILED'] },
+        async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment, consoleErrors }) => {
+            await serverDeployment.hide();
+            await upstream.scenario('artifact-registry.createRefused', 'browser');
+            const { setup } = await preparedProject({
+                ...{ page, lang, consent, setupBudget, upstream, signInBudget: inputBudget.flow('signIn', 1) },
+                ...{ signInConsent: inputBudget.flow('signInConsent', 1), provisioned: 'invalid' },
+            });
+            await expect(setup.card('provision').locator('[data-busy]')).toHaveCount(0, { timeout: 60_000 });
+            const provision = await setup.show('provision');
+            await expect(provision.getByRole('button', { name: setupText(lang, 'adminSetup.provision.retry') })).toBeEnabled();
+            expect(await setup.provisionItems()).toMatchObject({ 'artifact-registry': 'invalid', iam: 'ok', secrets: 'ok', apis: 'ok' });
+            consoleErrors.takeMatching(/status of 403/);
+
+            const deploy = await setup.show('deploy');
+            await setupBudget.inputs('deploy', 1).click(installButton(deploy, lang));
+            await expect.poll(async () => (await serverBuilds(upstream)).length).toBe(1);
+            await upstream.scenario('cloud-build.finish', 'browser');
+            await nextLook(page, installState(deploy).getByText(setupText(lang, 'adminSetup.install.state.installed')));
+            // Only the server was built: the pipeline waits for its repository, which its card names.
+            expect((await submittedBuilds(upstream)).map((build) => build.target)).toEqual(['server']);
+            const pipeline = await setup.show('pipeline');
+            await expect(pipeline.getByText(apiText(lang, 'apiError.install.noRepository', { repository: 'hcm' }))).toBeVisible();
+            await setup.expectState('provision', 'invalid');
+            serverDeployment.claimErrors();
+        },
+    );
+
+    test(
+        'An item the server needs that failed keeps Install the server waiting for step c',
+        { tag: ['@S-A55-BAD-SERVER-ITEM-FAILED'] },
+        async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment, consoleErrors }) => {
+            await serverDeployment.hide();
+            await upstream.scenario('service-usage.identityRefused', 'browser');
+            const { setup } = await preparedProject({
+                ...{ page, lang, consent, setupBudget, upstream, signInBudget: inputBudget.flow('signIn', 1) },
+                ...{ signInConsent: inputBudget.flow('signInConsent', 1), provisioned: 'invalid' },
+            });
+            await expect(setup.card('provision').locator('[data-busy]')).toHaveCount(0, { timeout: 60_000 });
+            const provision = await setup.show('provision');
+            await expect(provision.getByRole('button', { name: setupText(lang, 'adminSetup.provision.retry') })).toBeEnabled();
+            expect(await setup.provisionItems()).toMatchObject({ iam: 'invalid', 'artifact-registry': 'ok' });
+            consoleErrors.takeMatching(/status of 403/);
+
+            const deploy = await setup.show('deploy');
+            await expect(deploy.getByText(setupText(lang, 'adminSetup.locked'))).toBeVisible();
+            await expect(installButton(deploy, lang)).toHaveCount(0);
+            expect(await serverBuilds(upstream)).toEqual([]);
             serverDeployment.claimErrors();
         },
     );

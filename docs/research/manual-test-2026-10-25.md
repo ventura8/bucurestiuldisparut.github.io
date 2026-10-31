@@ -150,7 +150,7 @@ Provision (M6-interfaces.md §1.6, `DECISIONS-for-review.md` §67b).
 
 The user's second live walk, on the same project: the admin `1.0.0+18977f0` deployed to `/admin/` in its start-up
 variant (D1), the server still the 61 functions of `90b31be` (2026-10-25). The numbering continues the list above.
-What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–298 and 300, `DECISIONS-for-review.md` §75 and
+What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–298 and 300–302, `DECISIONS-for-review.md` §75 and
 [M6-status.md](M6-status.md) §6.
 
 - **25.** \[bug, minor]\[hosting] On the start-up root (`/`, "the map is being set up"), an old admin address typed as a hash
@@ -200,6 +200,25 @@ What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–2
   (`M6-interfaces.md` §1.4.1, addendum). Live, after the next admin redeploy: the stopped build is of an older release,
   so (d) offers the install again (the update against the server of `90b31be`; Install the server on a fresh project),
   and its one click runs the build with `packages`.
+- **31.** \[bug]\[setup] Step (d), Install the server, waited for the whole of step (c), so an item only the optional
+  imagery pipeline needs (the Artifact Registry repository `hcm`) not done held the server back. FIXED
+  (`DECISIONS-for-review.md` §75h, lesson 302): (d), the install cards' looks and the deployment's watch wait for every
+  item the server needs (`serverPrepared`); the installer's writer role on `hcm` moved into the `artifact-registry`
+  item, which the `iam` item no longer waits for; the pipeline's card names the missing repository
+  (S-A55-HAPPY-PIPELINE-ITEM-FAILED, S-A55-BAD-SERVER-ITEM-FAILED).
+- **33.** \[BUG, blocks Setup d] With findings 28 and 30 fixed, the server install (Cloud Build f92cec75) passed fetch,
+  tools, packages, rules and indexes, the source upload and the Pub/Sub and Eventarc identities; then every function
+  create and update failed: "HTTP Error: 403, Caller is missing permission 'iam.serviceaccounts.actAs' on service
+  account `projects/-/serviceAccounts/<number>-compute@developer.gserviceaccount.com`. Grant the role
+  'roles/iam.serviceAccountUser' to the caller on the service account …", then "failed to create/update function …".
+  Cause: Cloud Functions gen 2 builds each function as the Compute Engine default account (`firebase-tools` names no
+  build account), and the API requires the deployer to act as it. The user's decision (2026-10-31): "Act-as + narrow its
+  role". FIXED (`DECISIONS-for-review.md` §75g, lesson 301): Provision's `iam` item grants `hcm-installer@` Service
+  Account User on that one account (its own policy), gives the account `roles/cloudbuild.builds.builder` on the project,
+  then removes its `roles/editor`; the server's card finds the 403 anywhere in the stopped step and offers **Retry what
+  failed in step c**, then **Try again** (S-A04-HAPPY-COMPUTE-BUILD-ACCOUNT, S-A04-BAD-COMPUTE-EDITOR-REFUSED,
+  S-A55-BAD-NO-COMPUTE-ACTAS). Live, after the next admin redeploy: reload the tab, (c) **Retry what failed**, (d) **Try
+  again** (`docs/MANUAL_TEST_PLAN.md`).
 
 Also checked: the sign-in card showed in English in an English Chrome with no saved choice. That is the admin's rule:
 `?lang=`, then the stored choice (`hcm:admin:lang`), then the browser's first language (`resolveLocale`: English for

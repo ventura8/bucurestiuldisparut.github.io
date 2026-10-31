@@ -16,12 +16,16 @@ interface Binding {
 }
 
 interface ProjectIam {
+    /** The project's number (the Compute Engine default account's address carries it). */
+    readonly number: string;
     /** Account id (`fn-admin`) → display name. */
     readonly accounts: Map<string, string>;
     /**
      * The accounts Google made in the project (e-mail → display name), outside `<project>.iam.gserviceaccount.com`: the App
-     * Engine default account `<project>@appspot.gserviceaccount.com`, which every e2e project has, as the live one does.
-     * `firebase deploy --only functions` requires `iam.serviceAccounts.actAs` on it (finding 28 of 2026-10-31).
+     * Engine default account `<project>@appspot.gserviceaccount.com` and the Compute Engine default account
+     * `<number>-compute@developer.gserviceaccount.com`, which every e2e project has, as the live one does.
+     * `firebase deploy --only functions` requires `iam.serviceAccounts.actAs` on the first (finding 28 of 2026-10-31), the
+     * Cloud Functions API on the second, the functions' build account, for every create or update (finding 33).
      */
     readonly googleAccounts: Map<string, string>;
     /** Account e-mail → its IAM policy bindings. */
@@ -52,10 +56,19 @@ export function appEngineAccount(projectId: string): string {
     return `${projectId}@appspot.gserviceaccount.com`;
 }
 
-function emptyIam(projectId: string): ProjectIam {
+/** `<number>-compute@developer.gserviceaccount.com`: the Compute Engine default account, the functions' build account (finding 33). */
+export function computeAccount(projectNumber: string): string {
+    return `${projectNumber}-compute@developer.gserviceaccount.com`;
+}
+
+function emptyIam(projectId: string, number: string): ProjectIam {
     return {
+        number,
         accounts: new Map(),
-        googleAccounts: new Map([[appEngineAccount(projectId), 'App Engine default service account']]),
+        googleAccounts: new Map([
+            [appEngineAccount(projectId), 'App Engine default service account'],
+            [computeAccount(number), 'Compute Engine default service account'],
+        ]),
         accountPolicies: new Map(),
         pools: new Map(),
         providers: new Map(),
@@ -375,12 +388,12 @@ function poolRoutes(iamOf: ProjectOf): Route[] {
 }
 
 /** The project's IAM resources, made empty (with Google's own accounts) on first use. */
-export function projectIam(state: IamState, projectId: string): ProjectIam {
+export function projectIam(state: IamState, projectId: string, number = String(FIXTURE_VALUES['projectNumber'])): ProjectIam {
     const existing = state.projects.get(projectId);
     if (existing !== undefined) {
         return existing;
     }
-    const iam = emptyIam(projectId);
+    const iam = emptyIam(projectId, number);
     state.projects.set(projectId, iam);
     return iam;
 }
@@ -401,7 +414,7 @@ export function grantAccountRole(iam: ProjectIam, email: string, role: string, m
 export function createIamFake(state: IamState, projects: GoogleProjects): ServiceFake {
     const iamOf: ProjectOf = (segment) => {
         const project = projects.resolve(segment);
-        return { ...project, iam: projectIam(state, project.id) };
+        return { ...project, iam: projectIam(state, project.id, project.number) };
     };
     const demo = (): ProjectIam => projectIam(state, String(FIXTURE_VALUES['projectId']));
     return {
@@ -420,23 +433,26 @@ export function createIamFake(state: IamState, projects: GoogleProjects): Servic
                 demo().roles.set('hcmVertexDrafts', { includedPermissions: ['aiplatform.endpoints.get'], deleted: true });
             },
             /** Finding 28: a project with no App Engine default account (no App Engine app): Provision has nothing to grant. */
-            noAppEngineAccount: () => {
-                demo().googleAccounts.clear();
-            },
+            noAppEngineAccount: () => demo().googleAccounts.delete(appEngineAccount(String(FIXTURE_VALUES['projectId']))),
+            /** Finding 33: a project with no Compute Engine default account (deleted, or Compute Engine never on): nothing to grant. */
+            noComputeAccount: () => demo().googleAccounts.delete(computeAccount(demo().number)),
             /**
              * Finding 28: a project provisioned before the fix: the installer may not act as the App Engine default account,
              * so `firebase deploy --only functions` stops before it deploys anything (the Cloud Build fake's server step).
              */
-            appEngineActAsMissing: () => {
-                const iam = demo();
-                iam.accountPolicies.delete(appEngineAccount(String(FIXTURE_VALUES['projectId'])));
-            },
+            appEngineActAsMissing: () => demo().accountPolicies.delete(appEngineAccount(String(FIXTURE_VALUES['projectId']))),
+            /**
+             * Finding 33: a project provisioned before the fix: the installer may not act as the Compute Engine default
+             * account, so the Cloud Functions API refuses every function create and update (the Cloud Build fake's server step).
+             */
+            computeActAsMissing: () => demo().accountPolicies.delete(computeAccount(demo().number)),
         },
         snapshot: () => ({
             projects: Object.fromEntries(
                 [...state.projects].map(([id, iam]) => [
                     id,
                     {
+                        number: iam.number,
                         accounts: Object.fromEntries(iam.accounts),
                         googleAccounts: Object.fromEntries(iam.googleAccounts),
                         accountPolicies: Object.fromEntries(iam.accountPolicies),

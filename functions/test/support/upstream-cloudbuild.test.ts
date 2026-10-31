@@ -2,9 +2,16 @@
  * The fake Cloud Build of the in-app installer (docs/research/M6-interfaces.md §1.10): a server build that would succeed
  * stops where firebase-tools' own preconditions would stop it, in the order the tool runs them: the installer's actAs on
  * the App Engine default account (finding 28 of 2026-10-31), then the discovery of the functions, which loads their
- * source and so needs their packages installed in it (finding 30).
+ * source and so needs their packages installed in it (finding 30); after the upload, the Cloud Functions API's own check
+ * that the installer may act as the functions' build account, the Compute Engine default account (finding 33).
  */
-import { createUpstreamFakes, DISCOVERY_FAILURE_LINES, GOOGLE_TOKENS, type UpstreamFakes } from '@hcm/test-support/fakes';
+import {
+    createUpstreamFakes,
+    DISCOVERY_FAILURE_LINES,
+    GOOGLE_TOKENS,
+    registryFunctions,
+    type UpstreamFakes,
+} from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
 const BUILDS = 'https://cloudbuild.googleapis.com/v1/projects/demo-hcm/locations/us-central1/builds';
@@ -17,7 +24,7 @@ async function functionsLines(fakes: UpstreamFakes): Promise<string[]> {
     const response = await fakes.fetch('https://logging.googleapis.com/v2/entries:list', {
         method: 'POST',
         headers: HEADERS,
-        body: JSON.stringify({ filter }),
+        body: JSON.stringify({ filter, pageSize: 500 }),
     });
     const { entries = [] } = (await response.json()) as { entries?: { textPayload: string; labels: { build_step: string } }[] };
     return entries
@@ -105,5 +112,45 @@ describe("Cloud Build: firebase-tools' discovery of the functions (finding 30 of
         fakes.scenario('google.provisioned');
 
         expect(await serverBuild(fakes, [{ id: 'fetch' }, { id: 'rules' }])).toBe('SUCCESS');
+    });
+});
+
+describe("Cloud Build: the Cloud Functions API's actAs check on the build account (finding 33 of 2026-10-31)", () => {
+    const COMPUTE = 'projects/-/serviceAccounts/123456789012-compute@developer.gserviceaccount.com';
+
+    it('badPath_withoutTheGrantEveryFunctionIsRefusedWithTheApis403AndTheStepEndsWithTheSummary', async () => {
+        const fakes = createUpstreamFakes();
+        fakes.scenario('google.provisioned');
+        fakes.scenario('cloud-build.installerAccount');
+        fakes.scenario('iam.computeActAsMissing');
+
+        expect(await serverBuild(fakes)).toBe('FAILURE');
+        const lines = await functionsLines(fakes);
+        const denied = lines.filter((line) => line.includes("Caller is missing permission 'iam.serviceaccounts.actAs'"));
+        expect(denied).toHaveLength(registryFunctions().length);
+        expect(denied[0]).toBe(
+            `⚠  functions: HTTP Error: 403, Caller is missing permission 'iam.serviceaccounts.actAs' on service account ${COMPUTE}. Grant the role 'roles/iam.serviceAccountUser' to the caller on the service account ${COMPUTE}.`,
+        );
+        expect(lines[1]).toMatch(/^⚠ {2}functions: {2}failed to create function projects\/demo-hcm\/locations\/us-central1\/functions\//);
+        expect(lines.at(-1)).toBe('Error: There was an error deploying functions');
+    });
+
+    it('badPath_firebaseToolsOwnChecksComeFirst', async () => {
+        const fakes = createUpstreamFakes();
+        fakes.scenario('google.provisioned');
+        fakes.scenario('cloud-build.installerAccount');
+        fakes.scenario('iam.computeActAsMissing');
+
+        expect(await serverBuild(fakes, [{ id: 'fetch' }, { id: 'functions' }])).toBe('FAILURE');
+        expect(await functionsLines(fakes)).toEqual([...DISCOVERY_FAILURE_LINES]);
+    });
+
+    it('happyPath_aProjectWithoutTheComputeEngineAccountHasNoCheckToFail', async () => {
+        const fakes = createUpstreamFakes();
+        fakes.scenario('google.provisioned');
+        fakes.scenario('iam.noComputeAccount');
+        fakes.scenario('cloud-build.installerAccount');
+
+        expect(await serverBuild(fakes)).toBe('SUCCESS');
     });
 });

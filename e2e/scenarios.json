@@ -3117,7 +3117,7 @@
             "area": "admin",
             "path": "happy",
             "title": "Prepare the project takes Editor away from the App Engine default account, and only that",
-            "asserts": "a new project whose policy gives roles/editor to the Compute Engine and App Engine default accounts -> Prepare the project -> the project's roles/editor holds the Compute Engine account only, roles/owner and every other binding kept -> Re-check reads the permissions done and writes nothing; a project prepared before has the Editor role as all its permissions lack, with its reason, and Retry what failed removes it in one write; a concurrent change of the policy (409) is read again and removed",
+            "asserts": "a new project whose policy gives roles/editor to the Compute Engine and App Engine default accounts -> Prepare the project -> the project's roles/editor no longer holds the App Engine account (since §75g nor the Compute Engine account, after its builder role), roles/owner and every other binding kept -> Re-check reads the permissions done and writes nothing; a project prepared before has the Editor role as all its permissions lack, with its reason, and Retry what failed removes it in one write; a concurrent change of the policy (409) is read again and removed",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "DECISIONS-for-review.md §75b (the user's decision, 2026-10-31). Tests: e2e/admin/steps/provision.spec.ts (with S-A04-HAPPY-INSTALLER-ACCOUNT), packages/admin/test/provision/app-engine-editor.test.ts, packages/admin/test/google/iam-policy.test.ts."
@@ -3132,6 +3132,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "DECISIONS-for-review.md §75b. Tests: e2e/admin/steps/provision.spec.ts, packages/admin/test/provision/app-engine-editor.test.ts."
+        },
+        {
+            "id": "S-A04-HAPPY-COMPUTE-BUILD-ACCOUNT",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "happy",
+            "title": "Prepare the project lets the installer act as the functions' build account, gives it the builder role, then takes its Editor role",
+            "asserts": "a new project with `<number>-compute@developer.gserviceaccount.com`, Editor on the project -> Prepare the project -> in this order: hcm-installer@ holds roles/iam.serviceAccountUser in that account's own policy (never project-wide), the account holds roles/cloudbuild.builds.builder on the project, then roles/editor no longer holds it (one member of one binding) -> Re-check reads the permissions done and writes nothing; a project prepared before lacks only these, its row names the reason and Retry what failed adds them; without the account nothing is granted or removed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live test of 2026-10-31, finding 33 of docs/research/manual-test-2026-10-25.md (DECISIONS-for-review.md §75g, the user's decision). Tests: e2e/admin/steps/provision.spec.ts (with S-A04-HAPPY-INSTALLER-ACCOUNT), packages/admin/test/provision/compute-build-account.test.ts, project-config.test.ts, m6-items.test.ts."
+        },
+        {
+            "id": "S-A04-BAD-COMPUTE-EDITOR-REFUSED",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "A refused removal of the build account's Editor role fails the permissions' row with what it needs, its builder role kept",
+            "asserts": "an IAM deny policy keeps the Compute Engine default account's roles/editor -> Prepare the project grants the installer's actAs on it and its roles/cloudbuild.builds.builder, then the removal's setIamPolicy answers 403 -> the permissions' row is failed and names roles/resourcemanager.projectIamAdmin, Retry what failed is offered, the actAs and the builder role are in place and the Editor binding unchanged",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §75g. Tests: e2e/admin/steps/provision.spec.ts, packages/admin/test/provision/compute-build-account.test.ts."
         },
         {
             "id": "S-A05-HAPPY",
@@ -7411,6 +7433,39 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Live test of 2026-10-31, finding 28 of docs/research/manual-test-2026-10-25.md (DECISIONS-for-review.md §75). Tests: e2e/admin/steps/install/server.spec.ts, packages/admin/test/setup/install.test.ts; tour state setup.install-failed-provision."
+        },
+        {
+            "id": "S-A55-BAD-NO-COMPUTE-ACTAS",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "A project prepared before the build account fix stops at the functions with the Cloud Functions API's 403, and step c fixes it",
+            "asserts": "the installer lacks Service Account User on the Compute Engine default account -> the server build stops at its functions step, each function refused with 'HTTP Error: 403, Caller is missing permission 'iam.serviceaccounts.actAs' on service account projects/-/serviceAccounts/<number>-compute@...' and firebase-tools' summary as the last lines -> the card still says to choose Retry what failed in step c, then Try again -> Retry what failed in step c reruns the iam item, which grants it on that account only -> Try again installs the server",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live test of 2026-10-31, finding 33 of docs/research/manual-test-2026-10-25.md (Cloud Build f92cec75; DECISIONS-for-review.md §75g). Tests: e2e/admin/steps/install/server.spec.ts, functions/test/support/upstream-cloudbuild.test.ts, packages/admin/test/install/install-flow.test.ts."
+        },
+        {
+            "id": "S-A55-HAPPY-PIPELINE-ITEM-FAILED",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "An item only the imagery pipeline needs does not hold Install the server back",
+            "asserts": "Prepare the project cannot make the pipeline's repository hcm (403) -> step c stays failed with that row named, every item the server needs done -> step d is offered and one click installs the server; only the server is built, and the pipeline's card says the repository is missing with a way back to step c",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live test of 2026-10-31, finding 31 of docs/research/manual-test-2026-10-25.md. Tests: e2e/admin/steps/install/server.spec.ts, packages/admin/test/setup/state.test.ts, packages/admin/test/provision/m6-items.test.ts."
+        },
+        {
+            "id": "S-A55-BAD-SERVER-ITEM-FAILED",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "An item the server needs that failed keeps Install the server waiting for step c",
+            "asserts": "Prepare the project's permissions row fails (a refused service identity) -> step d says it waits for the earlier steps, offers no Install the server and submits no build",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 31 of docs/research/manual-test-2026-10-25.md. Tests: e2e/admin/steps/install/server.spec.ts, packages/admin/test/setup/state.test.ts."
         },
         {
             "id": "S-A55-BAD-NO-FUNCTIONS-PACKAGES",

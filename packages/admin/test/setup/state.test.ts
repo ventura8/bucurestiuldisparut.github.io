@@ -7,6 +7,7 @@ import {
     provisionHealth,
     refreshDerived,
     resumeStep,
+    serverPrepared,
     withCount,
     withStep,
     worstState,
@@ -88,6 +89,37 @@ describe('availability', () => {
 
         expect(state.steps.billing.available).toBe(false);
         expect(refreshDerived(done(state, 'signIn')).steps.billing.available).toBe(true);
+    });
+
+    it('happyPath_anItemOnlyTheImageryPipelineNeedsDoesNotHoldTheServerBack @S-A55-HAPPY-PIPELINE-ITEM-FAILED', () => {
+        // Finding 31 of 2026-10-31: the repository `hcm` failed; every item the server needs is done.
+        const base = done(initialSetupState(createHarness().host, 'bootstrap'), 'signIn', 'billing');
+        const items = PROVISION_ITEMS.map((id) => ({
+            id,
+            state: id === 'artifact-registry' ? ('invalid' as const) : ('ok' as const),
+            detail: null,
+        }));
+        const state = withStep({ ...base, provision: { items } }, 'provision', { state: 'invalid' });
+
+        expect(serverPrepared(state)).toBe(true);
+        expect(state.steps.provision.state).toBe('invalid');
+        expect([state.steps.deploy.available, state.steps.pipeline.available]).toEqual([true, true]);
+        expect(state.ready).toBe(false);
+    });
+
+    it('badPath_anItemTheServerNeedsKeepsStepDWaiting @S-A55-BAD-SERVER-ITEM-FAILED', () => {
+        const base = done(initialSetupState(createHarness().host, 'bootstrap'), 'signIn', 'billing');
+        const items = PROVISION_ITEMS.map((id) => ({
+            id,
+            state: id === 'secrets' ? ('unavailable' as const) : ('ok' as const),
+            detail: null,
+        }));
+        const state = withStep({ ...base, provision: { items } }, 'provision', { state: 'unavailable' });
+
+        expect(serverPrepared(state)).toBe(false);
+        expect([state.steps.deploy.available, state.steps.pipeline.available]).toEqual([false, false]);
+        // Nothing checked yet: every item is to do, so nothing is prepared.
+        expect(serverPrepared(base)).toBe(false);
     });
 
     it('happyPath_readyNeedsBillingProvisioningMapboxAndUsgs', () => {

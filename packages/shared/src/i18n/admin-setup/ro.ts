@@ -190,6 +190,7 @@ export const ro = {
     'adminSetup.provision.apiDisabled': 'Serviciul {api} nu este încă activat. „Reia ce nu a reușit” îl activează.',
     'adminSetup.provision.installerPermission': 'Instalatorul mai are nevoie de o permisiune: „Reia ce nu a reușit” i-o dă.',
     'adminSetup.provision.appEngineEditor': 'Contul implicit App Engine are încă rolul Editor în proiect: „Reia ce nu a reușit” i-l ia.',
+    'adminSetup.provision.computeBuildAccount': 'Funcțiile se construiesc cu contul Compute Engine: „Reia ce nu a reușit” îl pregătește.',
     'adminSetup.usgs.later': 'Fă asta mai târziu',
     'adminSetup.usgs.laterWhy': 'USGS aduce doar imaginile istorice; harta merge și fără el, iar pasul poate fi făcut oricând.',
     'adminSetup.usgs.postponed': 'Amânat: căutarea imaginilor istorice rămâne oprită până configurezi USGS.',

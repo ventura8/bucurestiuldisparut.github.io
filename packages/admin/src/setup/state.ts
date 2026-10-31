@@ -258,6 +258,24 @@ export function provisionHealth(items: readonly { readonly id: ProvisionItem; re
     return worstState(items.filter((item) => !(item.id === 'scheduler' && item.state === 'pending')).map((item) => item.state));
 }
 
+/**
+ * Finding 31 of 2026-10-31: the Provision items only the optional imagery pipeline needs (the Docker repository `hcm`
+ * and the installer's writer role on it, both the `artifact-registry` item's); Install the server never waits for them.
+ */
+const PIPELINE_ONLY_ITEMS: ReadonlySet<ProvisionItem> = new Set<ProvisionItem>(['artifact-registry']);
+
+/**
+ * Step (c) is done, or every item the server needs is (finding 31): Install the server (d) may run, the install cards
+ * may look and the deployment may be watched, while an item only the imagery pipeline needs still fails. The pipeline's
+ * own card says what it lacks (`apiError.install.noRepository`, linking step c).
+ */
+export function serverPrepared(state: Pick<SetupState, 'steps' | 'provision'>): boolean {
+    if (state.steps.provision.state === 'ok') {
+        return true;
+    }
+    return provisionHealth(state.provision.items.filter((item) => !PIPELINE_ONLY_ITEMS.has(item.id))) === 'ok';
+}
+
 function deployVariables(projectId: string, projectNumber: string): readonly DeployVariable[] {
     return [
         {
@@ -441,14 +459,20 @@ function unknownStep(step: SetupStepState, behind: 'all' | 'status' | null): boo
     return decided && step.state === 'missing' && step.checkedAt === null;
 }
 
+/** The steps the later ones may follow: the done ones, and (c) once the server's items are (finding 31). */
+function reachedSteps(state: SetupState, done: ReadonlySet<SetupStepId>): ReadonlySet<SetupStepId> {
+    return serverPrepared(state) ? new Set([...done, 'provision']) : done;
+}
+
 /** Recomputes what follows from the steps: availability, the progress, `ready` and the totals. */
 export function refreshDerived(state: SetupState): SetupState {
     const done = doneSteps(state);
+    const reached = reachedSteps(state, done);
     const behind = serverBehind(state);
     const steps = Object.fromEntries(
         state.order.map((id) => {
             const step = state.steps[id];
-            return [id, { ...step, available: isAvailable(id, state.mode, done), unknown: unknownStep(step, behind) }];
+            return [id, { ...step, available: isAvailable(id, state.mode, reached), unknown: unknownStep(step, behind) }];
         }),
     ) as Record<SetupStepId, SetupStepState>;
     const usgs = usgsPart(state);

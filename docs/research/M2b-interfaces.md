@@ -598,7 +598,7 @@ APIs the `apis` item enables (Spark-safe ones may already be on from (a) and (b)
 | the WIF principal set | `roles/iam.workloadIdentityUser` | `gh-deployer@` | M2b (`workload-identity`) |
 | Firebase Storage service agent `service-<number>@gcp-sa-firebasestorage.iam.gserviceaccount.com` | `roles/firebaserules.firestoreServiceAgent` | project (Storage rules read Firestore) | M2b |
 | Cloud Storage service agent `service-<number>@gs-project-accounts.iam.gserviceaccount.com` | `roles/pubsub.publisher` | project (2nd-generation Storage triggers) | M2b |
-| compute default `<number>-compute@developer.gserviceaccount.com` | `roles/cloudbuild.builds.builder` | project | only when `iam.automaticIamGrantsForDefaultServiceAccounts` is enforced |
+| compute default `<number>-compute@developer.gserviceaccount.com` | `roles/cloudbuild.builds.builder` | project | only when `iam.automaticIamGrantsForDefaultServiceAccounts` is enforced; since 2026-10-31 whenever the account exists, and its `roles/editor` is then removed (`M6-interfaces.md` §1.2, `DECISIONS-for-review.md` §75g) |
 | `billing-budget-alert@system.gserviceaccount.com` | `roles/pubsub.publisher` | topic `budget` | M2b (`budget-alerts`) |
 
 #### 3.4.2 Organisation policies
@@ -607,7 +607,7 @@ APIs the `apis` item enables (Spark-safe ones may already be on from (a) and (b)
 | --- | --- | --- |
 | `iam.allowedPolicyMemberDomains` | `allUsers` refused: no public bucket read, no public callable invoker | `buckets` is `invalid` with `adminSetup.provision.orgPolicy {constraint}` and the fallback named (a Firebase-rules public path, security review §1.5); (d) names the `--no-invoker-iam-check` step (§23c). S-A04-BAD-ORG-POLICY |
 | `storage.publicAccessPrevention` | the public bucket cannot be public | same as above |
-| `iam.automaticIamGrantsForDefaultServiceAccounts` | the compute default account has no Editor role, so function builds fail | `iam` adds `roles/cloudbuild.builds.builder` to it |
+| `iam.automaticIamGrantsForDefaultServiceAccounts` | the compute default account has no Editor role, so function builds fail | `iam` adds `roles/cloudbuild.builds.builder` to it (since 2026-10-31 on every project with the account, §75g) |
 
 Changing an organisation policy is a settings change of the user's own (the guide says how); the provisioner never
 does it.

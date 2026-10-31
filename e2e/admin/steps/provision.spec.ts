@@ -32,6 +32,10 @@ test.beforeEach(async ({ adminWorld, upstream }) => {
     await upstream.scenario('billing-budgets.appBudget', 'browser');
 });
 
+/** The Compute Engine default account: the functions' build account (finding 33 of 2026-10-31). */
+const COMPUTE_EMAIL = `${ADMIN_PROJECT.projectNumber}-compute@developer.gserviceaccount.com`;
+const COMPUTE = `serviceAccount:${COMPUTE_EMAIL}`;
+
 /** Every item done but the scheduler, which the first deploy creates. */
 const PROVISIONED = {
     apis: 'ok',
@@ -52,6 +56,17 @@ const PROVISIONED = {
     'crash-alerts': 'ok',
     'api-key': 'ok',
 };
+
+/** A Google default account's own IAM policy in the browser's world of the IAM fake (none: no policy). */
+function accountPolicy(snapshot: Readonly<Record<string, unknown>>, email: string): unknown {
+    const iam = snapshot['iam'] as { readonly projects: Record<string, { readonly accountPolicies: Record<string, unknown> }> };
+    return iam.projects[ADMIN_PROJECT.projectId]?.accountPolicies[email];
+}
+
+/** The App Engine default account's own IAM policy (none: no policy). */
+function appEnginePolicy(snapshot: Readonly<Record<string, unknown>>): unknown {
+    return accountPolicy(snapshot, `${ADMIN_PROJECT.projectId}@appspot.gserviceaccount.com`);
+}
 
 /** A Google call that changes something (the rest read: GET, and the POSTs that read an IAM policy or test permissions). */
 function isWrite(call: UpstreamCall): boolean {
@@ -297,12 +312,6 @@ test(
     },
 );
 
-/** The App Engine default account's own IAM policy in the browser's world of the IAM fake (none: no policy). */
-function appEnginePolicy(snapshot: Readonly<Record<string, unknown>>): unknown {
-    const iam = snapshot['iam'] as { readonly projects: Record<string, { readonly accountPolicies: Record<string, unknown> }> };
-    return iam.projects[ADMIN_PROJECT.projectId]?.accountPolicies[`${ADMIN_PROJECT.projectId}@appspot.gserviceaccount.com`];
-}
-
 test(
     'A project without the App Engine default account is prepared in full, with nothing to grant on it',
     { tag: ['@S-A04-BAD-NO-APPENGINE-ACCOUNT'] },
@@ -323,7 +332,14 @@ test(
 
 test(
     "Prepare the project makes the installer's account with the contract's roles, the repository, the invokers and the service agents",
-    { tag: ['@S-A04-HAPPY-INSTALLER-ACCOUNT', '@S-A04-HAPPY-APPENGINE-ACTAS', '@S-A04-HAPPY-APPENGINE-NO-EDITOR'] },
+    {
+        tag: [
+            '@S-A04-HAPPY-INSTALLER-ACCOUNT',
+            '@S-A04-HAPPY-APPENGINE-ACTAS',
+            '@S-A04-HAPPY-APPENGINE-NO-EDITOR',
+            '@S-A04-HAPPY-COMPUTE-BUILD-ACCOUNT',
+        ],
+    },
     async ({ page, lang, consent, setupBudget, upstream }) => {
         test.setTimeout(150_000);
         const { run } = await provisionCard(page, lang);
@@ -353,7 +369,8 @@ test(
             'roles/logging.logWriter',
             `projects/${ADMIN_PROJECT.projectId}/roles/hcmInstaller`,
         ]);
-        expect(project['roles/run.invoker']).toEqual([account('fn-admin'), account('fn-events')]);
+        // The compute default account invokes and receives a first deploy's events (firebase-tools' ensureServiceAgentRoles).
+        expect(project['roles/run.invoker']).toEqual([account('fn-admin'), account('fn-events'), COMPUTE]);
         expect(JSON.stringify(snapshot['artifact-registry'])).toContain(`"roles/artifactregistry.writer","members":["${installer}"]`);
         expect(JSON.stringify(snapshot['iam'])).toContain('hcm-installer');
         // Finding 28 of 2026-10-31: Service Account User on the App Engine default account, in its own policy only.
@@ -361,10 +378,16 @@ test(
             expect.objectContaining({ role: 'roles/iam.serviceAccountUser', members: [installer] }),
         ]);
         expect(project['roles/iam.serviceAccountUser'] ?? []).not.toContain(installer);
-        // DECISIONS §75b: the App Engine default account no longer holds Editor; every other member and binding is kept.
-        expect(project['roles/editor']).toEqual([`serviceAccount:${ADMIN_PROJECT.projectNumber}-compute@developer.gserviceaccount.com`]);
+        // DECISIONS §75b and §75g: neither default account holds Editor any more; every other member and binding is kept.
+        expect(project['roles/editor']).toBeUndefined();
         expect(project['roles/owner']).toHaveLength(1);
         expect(JSON.stringify(project)).not.toContain('@appspot.gserviceaccount.com');
+        // Finding 33 (§75g): the installer may act as the functions' build account, on its own policy only, and the account
+        // builds with the Cloud Build builder role; the order of the writes: the actAs, the builder role, the removal.
+        expect(accountPolicy(snapshot, COMPUTE_EMAIL)).toEqual([
+            expect.objectContaining({ role: 'roles/iam.serviceAccountUser', members: [installer] }),
+        ]);
+        expect(project['roles/cloudbuild.builds.builder']).toEqual([COMPUTE]);
         // The service identities are generated before any policy is written (finding 12).
         const calls = await upstream.calls('browser');
         const index = (match: (call: UpstreamCall) => boolean): number => calls.findIndex(match);
@@ -409,6 +432,9 @@ test(
 
         const setup = new SetupPage(page, lang);
         await expect.poll(() => setup.provisionItems(), { timeout: 60_000 }).toEqual(PROVISIONED);
+        // The rows read done from the record while the run still works through them: wait for the run's own end.
+        await expect(setup.card('provision').locator('[data-busy]')).toHaveCount(0, { timeout: 60_000 });
+        await setup.expectState('provision', 'ok');
         const snapshot = await upstream.snapshot('browser');
         expect(JSON.stringify(snapshot['iam'])).toContain('hcm-installer');
         const project = bindingsIn(
@@ -506,10 +532,41 @@ test(
             ],
         );
         expect(project['roles/editor']).toContain(`serviceAccount:${ADMIN_PROJECT.projectId}@appspot.gserviceaccount.com`);
-        expect(project['roles/run.invoker']).toHaveLength(2);
+        expect(project['roles/run.invoker']).toHaveLength(3);
         expect(project['roles/owner']).toHaveLength(1);
         await expect(row).toHaveAttribute('data-state', 'invalid');
         expect(inputs.used).toBe(1);
+        consoleErrors.takeMatching(/status of 403/);
+    },
+);
+
+test(
+    "A refused removal of the build account's Editor role fails the permissions' row with the role it needs; its builder role stays",
+    { tag: ['@S-A04-BAD-COMPUTE-EDITOR-REFUSED'] },
+    async ({ page, lang, consent, setupBudget, upstream, consoleErrors }) => {
+        // DECISIONS §75g (finding 33): an IAM deny policy keeps the Compute Engine default account's Editor role; the actAs and
+        // the builder role are written first, so the installs work while only the narrowing waits.
+        test.setTimeout(150_000);
+        await upstream.scenario('resource-manager.computeEditorLocked', 'browser');
+        const { card, run, retry } = await provisionCard(page, lang);
+        await withConsent(page, consent, run, setupBudget.inputs('provision', 1), setupBudget.consents('provision'));
+
+        await expect(retry).toBeEnabled({ timeout: 60_000 });
+        expect(await new SetupPage(page, lang).provisionItems()).toMatchObject({ iam: 'invalid', apis: 'ok', 'service-accounts': 'ok' });
+        const row = card.locator('[data-item="iam"]');
+        await expect(row).toContainText(apiText(lang, 'apiError.cloud.permission', { role: 'roles/resourcemanager.projectIamAdmin' }));
+        const snapshot = await upstream.snapshot('browser');
+        const project = bindingsIn(
+            (snapshot['resource-manager'] as { policies: Record<string, unknown> }).policies[ADMIN_PROJECT.projectId],
+        );
+        expect(project['roles/editor']).toEqual([COMPUTE]);
+        expect(project['roles/cloudbuild.builds.builder']).toEqual([COMPUTE]);
+        expect(accountPolicy(snapshot, COMPUTE_EMAIL)).toEqual([
+            expect.objectContaining({
+                role: 'roles/iam.serviceAccountUser',
+                members: [`serviceAccount:hcm-installer@${ADMIN_PROJECT.projectId}.iam.gserviceaccount.com`],
+            }),
+        ]);
         consoleErrors.takeMatching(/status of 403/);
     },
 );

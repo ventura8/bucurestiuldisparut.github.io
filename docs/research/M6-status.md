@@ -169,11 +169,11 @@ The 24 findings of the live test of 2026-10-25, after these fixes:
 | 23 | a pass |
 | 4 | fixed with its rows (trusted to them, not re-verified by the reviews) |
 
-## 6. The live test of 2026-10-31 (findings 25–28 and 30)
+## 6. The live test of 2026-10-31 (findings 25–28, 30, 31 and 33)
 
 The user's second live walk, on the admin `1.0.0+18977f0` at `/admin/` (start-up variant) against the server of
 `90b31be`: [manual-test-2026-10-25.md](manual-test-2026-10-25.md) → *Live test 2026-10-31 (M6 admin)*; decisions
-`DECISIONS-for-review.md` §75; lessons 296–298 and 300. Nothing was committed, pushed or deployed; no test called a real Google
+`DECISIONS-for-review.md` §75; lessons 296–298 and 300–302. Nothing was committed, pushed or deployed; no test called a real Google
 endpoint.
 
 | Finding | Outcome | Rows |
@@ -183,8 +183,10 @@ endpoint.
 | 27: Setup read the older server's recorded steps as To do | fixed: a pre-M5 session parses, an unreadable answer is `apiError.serverOutdated` (a server, never "none"), a browser that had seen the server leaves start-up mode by itself again, a step it cannot say reads Update the server to check | S-A03-HAPPY-OLDER-SERVER, S-A03-BAD-OLDER-SERVER-STATUS; tour `setup.older-server-status` |
 | 30: the install, past the actAs check, stopped at `functions` with "Couldn't find firebase-functions package in your source code" and "An unexpected error has occurred." | fixed in code: the server build's new step `packages` (`npm ci --omit=dev --ignore-scripts` in `server/functions/dist`) installs the functions' deploy lock where `firebase-tools`' discovery loads it; the fake Cloud Build plays that discovery; the other steps audited (`M6-interfaces.md` §1.4.1 addendum); lesson 300 | S-A55-HAPPY (the step), S-A55-BAD-NO-FUNCTIONS-PACKAGES |
 | 28: the install stopped at `firebase-tools`' actAs check | fixed in code (the user: "code fix first, live later"): Service Account User on the App Engine default account only, `hcmInstaller` gains three permissions, the fakes enforce the check, the server's card offers step c's Retry what failed; and (§75b, the user: "do 75b") the `iam` item takes `roles/editor` away from that account on the project | S-A04-HAPPY-APPENGINE-ACTAS, S-A04-BAD-NO-APPENGINE-ACCOUNT, S-A55-BAD-NO-ACTAS, S-A04-HAPPY-APPENGINE-NO-EDITOR, S-A04-BAD-APPENGINE-EDITOR-REFUSED; tour `setup.install-failed-provision` |
+| 33: past every earlier step (Cloud Build f92cec75), the Cloud Functions API refused every function: 403 `iam.serviceaccounts.actAs` on the Compute Engine default account, the functions' build account | fixed in code (§75g, the user: "Act-as + narrow its role"): the `iam` item grants the installer Service Account User on that account only, then the account `roles/cloudbuild.builds.builder`, then removes its `roles/editor`; the fakes model the account and the API's check after `firebase-tools`' own; the card finds the 403 above the log's last lines; lesson 301 | S-A04-HAPPY-COMPUTE-BUILD-ACCOUNT, S-A04-BAD-COMPUTE-EDITOR-REFUSED, S-A55-BAD-NO-COMPUTE-ACTAS |
+| 31: step (d) waited for step (c)'s pipeline repository | fixed (§75h): (d) waits for the items the server needs (`serverPrepared`); the repository's writer role moved into the `artifact-registry` item, which `iam` no longer waits for; lesson 302 | S-A55-HAPPY-PIPELINE-ITEM-FAILED, S-A55-BAD-SERVER-ITEM-FAILED |
 
 What waits for you: the next admin redeploy (D1, ask first), then on Setup (d) **Reia ce nu a reușit în pasul c** (step
-c's Retry what failed) and **Încearcă din nou** (`docs/MANUAL_TEST_PLAN.md` → D1 step 4; since §75b that run also takes Editor away from the App Engine account); the decisions §75c (the
+c's Retry what failed) and **Încearcă din nou** (`docs/MANUAL_TEST_PLAN.md` → D1 step 4, after reloading the admin's tab; since §75b that run also takes Editor away from the App Engine account, and since §75g lets the installer act as the Compute Engine account, gives it the builder role and takes its Editor role); the decisions §75c (the
 admin's own site) and §75f (the admin's language with no saved choice). The verdicts of `static`, `tests` and `build`
 are in the integrator's report; the full split `all` is the orchestrator's.

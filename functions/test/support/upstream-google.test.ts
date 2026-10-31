@@ -244,6 +244,7 @@ describe('Cloud Billing, Budgets and Service Usage', () => {
 
 describe('IAM', () => {
     const IAM = 'https://iam.googleapis.com/v1/projects/demo-hcm';
+    const COMPUTE = '123456789012-compute@developer.gserviceaccount.com';
 
     it('happyPath_aServiceAccountIsCreatedOnceAndItsPolicySet', async () => {
         const fakes = createUpstreamFakes();
@@ -263,9 +264,9 @@ describe('IAM', () => {
         });
         expect(await call(fakes, 'POST', `${IAM}/serviceAccounts/${email}:getIamPolicy`, {})).toMatchObject({ body: policy });
         expect(await call(fakes, 'GET', `${IAM}/serviceAccounts/${email}`)).toMatchObject({ status: 200, body: { email } });
-        // Google's own App Engine default account is listed too (finding 28 of 2026-10-31).
+        // Google's own App Engine (finding 28 of 2026-10-31) and Compute Engine (finding 33) default accounts are listed too.
         expect((await call(fakes, 'GET', `${IAM}/serviceAccounts`)).body).toMatchObject({
-            accounts: [{ email }, { email: 'demo-hcm@appspot.gserviceaccount.com' }],
+            accounts: [{ email }, { email: 'demo-hcm@appspot.gserviceaccount.com' }, { email: COMPUTE }],
         });
     });
 
@@ -285,7 +286,28 @@ describe('IAM', () => {
         expect(await call(fakes, 'POST', `${IAM}/serviceAccounts/${appEngine}:getIamPolicy`, {})).toMatchObject({ body: { bindings: [] } });
         fakes.scenario('iam.noAppEngineAccount');
         expect((await call(fakes, 'GET', `${IAM}/serviceAccounts/${appEngine}`)).status).toBe(404);
-        expect((await call(fakes, 'GET', `${IAM}/serviceAccounts`)).body).toEqual({ accounts: [] });
+        expect((await call(fakes, 'GET', `${IAM}/serviceAccounts`)).body).toMatchObject({ accounts: [{ email: COMPUTE }] });
+    });
+
+    it('happyPath_theComputeEngineDefaultAccountIsGooglesOwn_badPath_aProjectWithoutItAnswers404', async () => {
+        // Finding 33 of 2026-10-31: the functions' build account, whose own policy says who may act as it.
+        const fakes = createUpstreamFakes();
+        const user = {
+            bindings: [{ role: 'roles/iam.serviceAccountUser', members: ['serviceAccount:x@demo-hcm.iam.gserviceaccount.com'] }],
+        };
+
+        expect(await call(fakes, 'GET', `${IAM}/serviceAccounts/${COMPUTE}`)).toMatchObject({
+            status: 200,
+            body: { email: COMPUTE, name: `projects/demo-hcm/serviceAccounts/${COMPUTE}` },
+        });
+        expect((await call(fakes, 'POST', `${IAM}/serviceAccounts/${COMPUTE}:setIamPolicy`, { policy: user })).status).toBe(200);
+        fakes.scenario('iam.computeActAsMissing');
+        expect(await call(fakes, 'POST', `${IAM}/serviceAccounts/${COMPUTE}:getIamPolicy`, {})).toMatchObject({ body: { bindings: [] } });
+        fakes.scenario('iam.noComputeAccount');
+        expect((await call(fakes, 'GET', `${IAM}/serviceAccounts/${COMPUTE}`)).status).toBe(404);
+        expect((await call(fakes, 'GET', `${IAM}/serviceAccounts`)).body).toMatchObject({
+            accounts: [{ email: 'demo-hcm@appspot.gserviceaccount.com' }],
+        });
     });
 
     it('badPath_anUnknownAccountOrAnInvalidIdIsRefused', async () => {

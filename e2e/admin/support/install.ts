@@ -85,6 +85,8 @@ export interface StartOptions {
     readonly upstream: UpstreamControl;
     readonly signInBudget: InputFlow;
     readonly signInConsent: InputFlow;
+    /** The state Prepare the project ends in (default `ok`; finding 31: an item may fail while the server's are done). */
+    readonly provisioned?: string;
 }
 
 /** Start-up mode after billing: sign in, Prepare the project (one click, one consent), the server's card open. */
@@ -112,7 +114,7 @@ export async function preparedProject(options: StartOptions): Promise<Started> {
         setupBudget.inputs('provision'),
         setupBudget.consents('provision'),
     );
-    await setup.expectState('provision', 'ok', 120_000);
+    await setup.expectState('provision', options.provisioned ?? 'ok', 120_000);
     return { setup, bundle, deploy: await setup.show('deploy') };
 }
 

@@ -215,6 +215,22 @@ describe('what the build says', () => {
         flow.dispose();
     });
 
+    it('badPath_theCloudFunctionsApis403ForTheBuildAccountIsFoundAboveTheTailAndSendsTheOwnerToStepC @S-A55-BAD-NO-COMPUTE-ACTAS', async () => {
+        // Finding 33 of 2026-10-31: the API refuses every function's build as the Compute Engine default account; the 403s
+        // come before one summary line per function, so the card's last lines name functions only.
+        const { install, clock, flow, latest } = await world();
+        install.fakes.scenario('iam.computeActAsMissing');
+        await flow.install();
+        install.fakes.scenario('cloud-build.finish');
+
+        await clock.advance(RUNNING_LOOK_MS);
+
+        expect(latest()).toMatchObject({ state: 'failed', failedStep: 'functions', fixInProvision: true });
+        expect(latest().log.at(-1)).toBe('Error: There was an error deploying functions');
+        expect(latest().log.join('\n')).not.toContain('iam.serviceaccounts.actAs');
+        flow.dispose();
+    });
+
     it('badPath_aStoppedBuildNamesItsStepAndShowsItsRedactedLog', async () => {
         const { install, clock, flow, latest } = await world();
         install.fakes.scenario('cloud-build.serverFailsAtFunctions');

@@ -3,7 +3,7 @@ import { CLOUD_RUN_JOBS, INSTALLER_ACCOUNT, installLogLine, type InstallTarget }
 import { FIXTURE_VALUES } from '../api-fixtures/index.js';
 import { authenticated, googleError, googleFailure, type GoogleApi, type GoogleProjects } from './google-common.js';
 import { registryFunctions, type DeploymentState } from './google-functions.js';
-import { appEngineAccount, grantAccountRole, holdsAccountRole, projectIam, type IamState } from './google-iam.js';
+import { appEngineAccount, computeAccount, grantAccountRole, holdsAccountRole, projectIam, type IamState } from './google-iam.js';
 import { setJobSpec, type CloudRunState } from './google-run.js';
 import { enableService, serviceEnabled, type ServiceUsageState } from './google-services.js';
 import { jsonResponse, requestObject, route, type Route } from './routes.js';
@@ -19,10 +19,12 @@ import { sequence, type ServiceFake } from './service.js';
  * pushed image with the release label; the public site's `release.json`. The build's log lines (Cloud Logging,
  * `google-logging.ts`) come from the same state, a stopped step's with a planted token for the redaction checks.
  *
- * Two of `firebase-tools`' own preconditions are enforced on a server build that would succeed, in the order it runs
- * them before a functions deploy: the installer's actAs on the App Engine default account (finding 28) and the
- * functions' packages in their source folder, which its discovery loads (finding 30): a definition with no
- * `npm ci` in `server/functions/dist` before `functions` stops there, with the tool's own lines.
+ * Three preconditions are enforced on a server build that would succeed, in the order a functions deploy meets them:
+ * `firebase-tools`' check of the installer's actAs on the App Engine default account (finding 28) and the functions'
+ * packages in their source folder, which its discovery loads (finding 30: a definition with no `npm ci` in
+ * `server/functions/dist` before `functions` stops there), both before the source upload; then, after it, the Cloud
+ * Functions API's own check that the caller may act as the functions' build account, the Compute Engine default account
+ * (finding 33: every create and update answers 403). Each stops at `functions` with the lines the live run printed.
  */
 
 const CLOUD_BUILD: GoogleApi = { service: 'cloudbuild.googleapis.com', title: 'Cloud Build API', permission: 'cloudbuild.builds.create' };
@@ -40,6 +42,9 @@ export const BUILD_OUTCOMES = [
     // Finding 30 of 2026-10-31: firebase-tools' discovery loads the functions' source, so their packages must be installed
     // in it; a server build that would succeed plays it when its definition installs none before `functions`.
     'failsAtDiscovery',
+    // Finding 33 of 2026-10-31: the Cloud Functions API refuses each create and update while the installer may not act as
+    // the functions' build account (the Compute Engine default account); played after the two above, as the deploy meets it.
+    'failsAtComputeActAs',
     'retriesExhausted',
     'internalError',
 ] as const;
@@ -107,32 +112,39 @@ function installerMember(projectId: string): string {
     return `serviceAccount:${INSTALLER_ACCOUNT}@${projectId}.iam.gserviceaccount.com`;
 }
 
+/** Google's default accounts the installer acts as: the App Engine one (finding 28), the Compute Engine one (finding 33). */
+function defaultAccounts(projectId: string, projectNumber: string): readonly string[] {
+    return [appEngineAccount(projectId), computeAccount(projectNumber)];
+}
+
 /**
  * The installer's account in `projectId`, as Provision's `service-accounts` and `iam` items make it (a map set up in an
- * earlier session): with its Service Account User role on the App Engine default account when the project has one.
+ * earlier session): with its Service Account User role on each of Google's default accounts the project has.
  */
 function addInstallerAccount(iam: IamState, projectId: string): void {
     const project = projectIam(iam, projectId);
     project.accounts.set(INSTALLER_ACCOUNT, 'Cloud Build: the in-app installer');
-    const appEngine = appEngineAccount(projectId);
-    if (project.googleAccounts.has(appEngine)) {
-        grantAccountRole(project, appEngine, SERVICE_ACCOUNT_USER, installerMember(projectId));
-    }
+    defaultAccounts(projectId, project.number)
+        .filter((account) => project.googleAccounts.has(account))
+        .forEach((account) => {
+            grantAccountRole(project, account, SERVICE_ACCOUNT_USER, installerMember(projectId));
+        });
 }
 
 /**
- * firebase-tools' `checkServiceAccountIam` (`lib/deploy/functions/checkIam.js`, run before any functions deploy): the
- * deploying account must hold `iam.serviceAccounts.actAs` on `<project>@appspot.gserviceaccount.com` when that account
- * exists (a check that errors, as for a missing account, is skipped). Provision never grants it project-wide, so the
- * account's own policy decides. A world with no IAM state of the project had no Prepare the project: nothing to check.
+ * Whether the installer lacks `iam.serviceAccounts.actAs` on Google's account `account(number)` of the project, which
+ * exists. Provision never grants it project-wide, so the account's own policy decides. A world with no IAM state of the
+ * project had no Prepare the project: nothing to check. The App Engine account: firebase-tools' `checkServiceAccountIam`
+ * (`lib/deploy/functions/checkIam.js`, before any functions deploy; a check that errors, as for a missing account, is
+ * skipped). The Compute Engine account: the Cloud Functions API, for each function it builds (finding 33).
  */
-function lacksActAs(iam: IamState, projectId: string): boolean {
+function lacksActAs(iam: IamState, projectId: string, account: (projectNumber: string) => string): boolean {
     const project = iam.projects.get(projectId);
-    const appEngine = appEngineAccount(projectId);
-    if (project?.googleAccounts.has(appEngine) !== true) {
+    const email = project === undefined ? '' : account(project.number);
+    if (project?.googleAccounts.has(email) !== true) {
         return false;
     }
-    return !holdsAccountRole(project, appEngine, SERVICE_ACCOUNT_USER, installerMember(projectId));
+    return !holdsAccountRole(project, email, SERVICE_ACCOUNT_USER, installerMember(projectId));
 }
 
 /** The functions' source in the server's tarball, as the build's working folders name it. */
@@ -199,6 +211,7 @@ function stopStep(build: FakeBuild): number {
         failsAtHosting: 'hosting',
         failsAtActAs: 'functions',
         failsAtDiscovery: 'functions',
+        failsAtComputeActAs: 'functions',
         retriesExhausted: 'verify',
     };
     const step = stops[build.outcome];
@@ -222,6 +235,29 @@ function actAsLines(projectId: string): FakeLogLine[] {
         `Error: Missing permissions required for functions deploy. You must have permission iam.serviceAccounts.ActAs on service account ${appEngineAccount(projectId)}.`,
         'To address this error, ask a project Owner to assign your account the "Service Account User" role from this URL:',
         `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`,
+    ];
+    return lines.map((text) => ({ step: 'functions', text }));
+}
+
+/**
+ * What firebase-tools 15.34.2 printed live (Cloud Build f92cec75, finding 33) when the Cloud Functions API refused the
+ * functions' builds: for each function the API's 403 and the tool's two lines (`functionsOpLogReject`, the fabricator's
+ * `Failed to …`), then its summary, so the step's last lines name the functions only.
+ */
+function computeActAsLines(build: FakeBuild): FakeLogLine[] {
+    const account = `projects/-/serviceAccounts/${computeAccount(String(FIXTURE_VALUES['projectNumber']))}`;
+    const denied = `⚠  functions: HTTP Error: 403, Caller is missing permission 'iam.serviceaccounts.actAs' on service account ${account}. Grant the role 'roles/iam.serviceAccountUser' to the caller on the service account ${account}.`;
+    const resource = (name: string): string => `projects/${build.projectId}/locations/${build.region}/functions/${name}`;
+    const names = registryFunctions();
+    const lines = [
+        ...names.flatMap((name) => [
+            denied,
+            `⚠  functions:  failed to create function ${resource(name)}`,
+            `Failed to create function ${resource(name)}`,
+        ]),
+        'Functions deploy had errors with the following functions:',
+        ...names.map((name) => `\t${name}(${build.region})`),
+        'Error: There was an error deploying functions',
     ];
     return lines.map((text) => ({ step: 'functions', text }));
 }
@@ -269,6 +305,7 @@ const OWN_STOP_LINES: Partial<Record<BuildOutcome, (build: FakeBuild) => FakeLog
     retriesExhausted: () => [...retryLines(2), ...retryLines(3), ...missingLines()],
     failsAtActAs: (build) => actAsLines(build.projectId),
     failsAtDiscovery: () => DISCOVERY_FAILURE_LINES.map((text) => ({ step: 'functions', text })),
+    failsAtComputeActAs: computeActAsLines,
 };
 
 function stopLines(build: FakeBuild): FakeLogLine[] {
@@ -287,18 +324,22 @@ function finalStatus(outcome: BuildOutcome): BuildStatus {
 }
 
 /**
- * A server build that would succeed stops at firebase-tools' actAs check when the grant is missing (finding 28), else at
- * its discovery when the functions' source has no packages (finding 30): the order firebase-tools runs them in.
+ * A server build's preconditions in the order the deploy meets them: firebase-tools' actAs check (finding 28) and its
+ * discovery (finding 30) before the source upload, the Cloud Functions API's actAs check on the build account after it
+ * (finding 33).
  */
+const PRECONDITIONS: readonly (readonly [BuildOutcome, (build: FakeBuild, world: BuildWorld) => boolean])[] = [
+    ['failsAtActAs', (build, world) => lacksActAs(world.iam, build.projectId, () => appEngineAccount(build.projectId))],
+    ['failsAtDiscovery', (build) => lacksFunctionPackages(build.request)],
+    ['failsAtComputeActAs', (build, world) => lacksActAs(world.iam, build.projectId, computeAccount)],
+];
+
+/** A server build that would succeed stops at the first precondition it fails. */
 function checkPreconditions(build: FakeBuild, world: BuildWorld): void {
     if (build.target !== 'server' || finalStatus(build.outcome) !== 'SUCCESS') {
         return;
     }
-    if (lacksActAs(world.iam, build.projectId)) {
-        build.outcome = 'failsAtActAs';
-    } else if (lacksFunctionPackages(build.request)) {
-        build.outcome = 'failsAtDiscovery';
-    }
+    build.outcome = PRECONDITIONS.find(([, fails]) => fails(build, world))?.[0] ?? build.outcome;
 }
 
 /** The build ends as its outcome says, and a success changes the world. */

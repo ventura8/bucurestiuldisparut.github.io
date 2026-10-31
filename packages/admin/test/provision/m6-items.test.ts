@@ -45,7 +45,7 @@ describe('the pipeline repository (the artifact-registry item)', () => {
         const world = provisionWorld();
 
         const doctor = await doctorProvision(world.deps, ['artifact-registry']);
-        const report = await applyProvision(planProvision(null, ['apis', 'artifact-registry']), world.deps);
+        const report = await applyProvision(planProvision(null, [...PREFIX, 'artifact-registry']), world.deps);
         const again = await applyProvision(planProvision(null, ['artifact-registry']), world.deps);
 
         expect(doctor.items).toEqual([{ id: 'artifact-registry', state: 'missing' }]);
@@ -60,7 +60,8 @@ describe('the pipeline repository (the artifact-registry item)', () => {
         });
     });
 
-    it('badPath_anOutageLeavesTheRepositoryUnavailableAndThePermissionsWaiting', async () => {
+    it('badPath_anOutageLeavesTheRepositoryUnavailableAndThePermissionsTheServerNeedsDone @S-A55-HAPPY-PIPELINE-ITEM-FAILED', async () => {
+        // Finding 31 of 2026-10-31: only the optional imagery pipeline needs the repository, so the iam item no longer waits.
         const world = provisionWorld();
         await world.createBudget();
         world.fakes.fail('artifact-registry', 'unavailable');
@@ -68,9 +69,26 @@ describe('the pipeline repository (the artifact-registry item)', () => {
         const report = await applyProvision(planProvision(null), world.deps);
 
         expect(only(report.items, 'artifact-registry', 'iam')).toEqual([
-            { id: 'iam', state: 'pending', params: { item: 'artifact-registry' } },
+            { id: 'iam', state: 'ok' },
             { id: 'artifact-registry', state: 'unavailable', detail: 'apiError.unavailable' },
         ]);
+    });
+
+    it('happyPath_aRepositoryWithoutTheInstallersWriterRoleLacksThatOnlyAndTheItemBindsIt', async () => {
+        // Finding 31: the writer role on `hcm` is the artifact-registry item's own, bound right after the repository is made.
+        const world = provisionWorld();
+        await applyProvision(planProvision(null, PREFIX), world.deps);
+        world.fakes.scenario('artifact-registry.provisioned');
+
+        const doctor = await doctorProvision(world.deps, ['artifact-registry']);
+        const report = await applyProvision(planProvision(doctor.items, ['artifact-registry']), world.deps);
+
+        expect(doctor.items).toEqual([{ id: 'artifact-registry', state: 'missing' }]);
+        expect(report.items).toEqual([{ id: 'artifact-registry', state: 'ok' }]);
+        expect(world.fakes.callsTo('artifact-registry.repositories.create')).toEqual([]);
+        expect(JSON.stringify(world.fakes.state.artifactRegistry.policies.snapshot())).toContain(
+            '"role":"roles/artifactregistry.writer","members":["serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com"]',
+        );
     });
 });
 
@@ -102,8 +120,9 @@ describe('the installer, the invokers and the service agents (the iam item)', ()
             'artifactregistry.repositories.update',
         ]);
         const project = JSON.stringify(world.fakes.snapshot()['resource-manager']);
+        // The compute default account invokes and receives a first deploy's events (firebase-tools' ensureServiceAgentRoles).
         expect(project).toContain(
-            '"role":"roles/run.invoker","members":["serviceAccount:fn-admin@demo-hcm.iam.gserviceaccount.com","serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com"]',
+            '"role":"roles/run.invoker","members":["serviceAccount:fn-admin@demo-hcm.iam.gserviceaccount.com","serviceAccount:fn-events@demo-hcm.iam.gserviceaccount.com","serviceAccount:123456789012-compute@developer.gserviceaccount.com"]',
         );
         expect(project).toContain('projects/demo-hcm/roles/hcmInstaller');
         expect(project).toContain('service-123456789012@gcp-sa-pubsub.iam.gserviceaccount.com');
@@ -142,6 +161,7 @@ describe('the installer, the invokers and the service agents (the iam item)', ()
 
     it('happyPath_theComputeDefaultAccountIsBoundOnlyWhenTheProjectHasOne', async () => {
         const world = provisionWorld();
+        world.fakes.scenario('iam.noComputeAccount');
         await applyProvision(
             planProvision(null, ['apis', 'service-accounts', 'buckets', 'artifact-registry', 'secrets', 'org-policies', 'iam']),
             world.deps,
@@ -154,13 +174,19 @@ describe('the installer, the invokers and the service agents (the iam item)', ()
         // The fake project's compute account keeps only its Editor role while the project has no such account to bind.
         expect(computeRoles()).toEqual(['roles/editor']);
 
-        world.fakes.state.iam.projects.get('demo-hcm')?.accounts.set('123456789012-compute', 'Compute Engine default service account');
+        world.fakes.state.iam.projects
+            .get('demo-hcm')
+            ?.googleAccounts.set('123456789012-compute@developer.gserviceaccount.com', 'Compute Engine default service account');
         const doctor = await doctorProvision(world.deps, ['iam']);
         const report = await applyProvision(planProvision(null, ['iam']), world.deps);
 
         expect(doctor.items).toEqual([{ id: 'iam', state: 'missing' }]);
         expect(report.items).toEqual([{ id: 'iam', state: 'ok' }]);
-        expect(computeRoles()).toEqual(['roles/editor', 'roles/run.invoker', 'roles/eventarc.eventReceiver']);
+        // Finding 33 (§75g): its builder role replaces Editor once it is the functions' build account.
+        expect(computeRoles()).toEqual(
+            expect.arrayContaining(['roles/run.invoker', 'roles/eventarc.eventReceiver', 'roles/cloudbuild.builds.builder']),
+        );
+        expect(computeRoles()).toHaveLength(3);
     });
 });
 

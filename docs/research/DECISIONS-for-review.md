@@ -4773,7 +4773,7 @@ Verify: `PIPELINE_STAGE=deps` (holds only), `static` (all but 74f; with 74f, all
 
 - **74g APPLIED 2026-10-31: `@axe-core/playwright` held at 4.13.0** (part of 74a undone, no download: the lockfile's three axe entries are those of before §74, which `npm install --package-lock-only --offline` in the pinned Node image leaves unchanged, and `node_modules` took the two 4.13.0 packages from a checkout installed before §74). The split `all` after §74 failed 46 Playwright tests on axe's `target-size` and `color-contrast` with nothing on the page changed: `axe-core` 4.14.0 leaves slotted content of a scrolling shadow-root pane out of that pane's grid, so its hidden part "covers" what lies under the pane (lesson 294, with the ten-line page that fails on 4.14.0 and passes on 4.13.0). A `HELD` entry and the *Held dependencies* row name it; `@hcm/test-support`'s own `axe-core` stays 4.14.0 (its component tests never scroll a slotted pane). The image's npm layer rebuilds from the new lockfile on its next build. Lift the hold when an `@axe-core/playwright` release brings an `axe-core` whose `findScrollRegionParent` follows the flattened tree again: the ten-line page of lesson 294 passing is the check.
 
-## 75. The live test of 2026-10-31: the installer's actAs on the App Engine default account, an admin newer than its server, the old links on a hash change, and the per-tab sign-in (2026-10-31) — 75a, 75b (the user's decision, 2026-10-31) and 75d–75f APPLIED (product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; 75b changes the live project only when the owner runs step c again); 75c PROPOSED, NOT APPLIED (a product decision)
+## 75. The live test of 2026-10-31: the installer's actAs on the App Engine default account, an admin newer than its server, the old links on a hash change, and the per-tab sign-in (2026-10-31) — 75a, 75b (the user's decision, 2026-10-31) and 75d–75f APPLIED (product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; 75b changes the live project only when the owner runs step c again); 75c PROPOSED, NOT APPLIED (a product decision); 75g APPLIED 2026-10-31 (the user's decision, "Act-as + narrow its role"; changes the live project only when the owner runs step c again) and 75h APPLIED (finding 31)
 
 The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *Live test 2026-10-31 (M6 admin)*.
 
@@ -4838,8 +4838,8 @@ The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *L
     (`packages/admin/src/install/build-spec.ts` `installerServiceAccount`), GitHub's deploys as `gh-deployer@` through
     Workload Identity Federation (`.github/workflows/ci.yml`), never as a default account. `firebase-tools`' own check
     (75a) asks for actAs on the account, not for any role of it, so the removal leaves the install as it is.
-  - **Not the other default accounts**: the Compute Engine default account `<number>-compute@developer.gserviceaccount.com`
-    keeps its Editor role. Cloud Functions gen 2 and Cloud Run build the functions' images from source with it (or the
+  - **Not the other default accounts** (superseded for the Compute Engine account by 75g, the next live finding): the
+    Compute Engine default account `<number>-compute@developer.gserviceaccount.com` keeps its Editor role. Cloud Functions gen 2 and Cloud Run build the functions' images from source with it (or the
     legacy Cloud Build account) when the deploy names no build account, and Provision already binds its invoker and
     event-receiver roles (and the builder role when the organisation withholds the default grants); taking Editor away from
     it needs those builds' exact permissions first: out of scope, a later proposal if wanted. Nothing else is removed.
@@ -4886,6 +4886,72 @@ The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *L
   `?lang=`, the stored choice, the browser's first language, then Romanian (`M2b-interfaces.md` §1.6), so an English
   Chrome sees English; PLAN's "default RO" is the fallback. Making Romanian win over the browser would be a one-line
   change of `resolveAdminLocale` and its tests: the user decides.
+
+- **75g APPLIED 2026-10-31 (the user's decision: "Act-as + narrow its role"): the installer may act as the Compute Engine
+  default account, which builds the functions; that account gets the Cloud Build builder role and loses Editor**
+  (finding 33, Cloud Build f92cec75). With 75a in place the live install passed fetch, tools, packages, rules and
+  indexes, the source upload and the Pub/Sub and Eventarc identities; then every function create and update failed:
+  "HTTP Error: 403, Caller is missing permission 'iam.serviceaccounts.actAs' on service account
+  `projects/-/serviceAccounts/<number>-compute@developer.gserviceaccount.com`. Grant the role 'roles/iam.serviceAccountUser'
+  to the caller …". Cloud Functions gen 2 builds each function with Cloud Build as a build service account;
+  `firebase-tools` 15.34.2 names none (`lib/gcp/cloudfunctionsv2.js` builds `buildConfig` from the runtime, the entry
+  point and the source only), so Google uses the Compute Engine default account, and the API checks that the caller may
+  act as it (not a check of `firebase-tools`'; lesson 298 listed only the tool's own).
+  - **What changed**: the `iam` item (`packages/admin/src/provision/items-iam.ts`, `resources.ts` `buildAccountBindings`)
+    reads the account (`IamClient.serviceAccountExists`, a GET; a 404 is nothing to do, as 75a's; the project number is
+    `ProjectConfig.projectNumber`, as for the Pub/Sub service agent) and, in this order, after the custom roles and the
+    role table: (1) binds `roles/iam.serviceAccountUser` for `hcm-installer@` on that account's own policy, never
+    project-wide; (2) binds `roles/cloudbuild.builds.builder` for the account on the project; (3) removes the account
+    from the project's unconditional `roles/editor` binding with 75b's helper (`removeBindings`: one member of one
+    binding, the etag read, a 409 read again, at most three writes), one write per account, App Engine's first. A failed
+    write stops the item, so (3) never runs before (2) is in place. The doctor lacks `build:serviceAccount:<account>`,
+    `build:project:<project>` and `editor:<member>`; while these (and 75b's) are all it lacks, its reason is
+    `adminSetup.provision.computeBuildAccount` (RO and EN; the App Engine one keeps `appEngineEditor`). The builder role
+    was bound before only when the organisation withholds the default grants (`M2b-interfaces.md` §3.4.2); it is now
+    bound whenever the account exists, so `roleTable` lost its `noDefaultGrants` argument. A stopped server build whose
+    log names the 403 anywhere in its `functions` step (the card read only the last 20 lines, which are `firebase-tools`'
+    summary of every failed function) marks `iam` to run again and offers **Retry what failed in step c**, then Try again
+    (`fixedInProvision`, `install-flow.ts`). A refused removal fails the row with the role it needs
+    (`apiError.cloud.permission`, `roles/resourcemanager.projectIamAdmin`), the actAs and the builder role in place.
+  - **Why `roles/cloudbuild.builds.builder` alone**: it is the role Google documents for a user-specified build account of
+    Cloud Functions gen 2 and Cloud Run source deploys ("Cloud Build Service Account"); the repository already relied on
+    it for that account under the organisation policy (`M2b-interfaces.md` §3.4.1, `design-review-security-cost.md`).
+    By Google's documented contents (not verifiable offline: no role definition ships in the repository or in
+    `firebase-tools`, whose code mentions the compute account only for App Hosting and the service-agent bindings) it holds
+    the build's source reads (`storage.objects.get`, `storage.objects.list`, `storage.buckets.get`), the pushes to the
+    region's `gcf-artifacts` repository (`artifactregistry.repositories.uploadArtifacts`, `downloadArtifacts`,
+    `createOnPush`) and the log writes (`logging.logEntries.create`), so neither `roles/logging.logWriter` nor
+    `roles/artifactregistry.writer` is bound beside it. UNVERIFIED until the live install: if a build then fails on a
+    permission, its log names it and the narrowest role holding it joins `M6-interfaces.md` §1.2.
+  - **The trade-off**: acting as the compute account, the installer could reach that account's roles through a build or
+    a function deployed to run as it; with Editor gone, those are the builder role (builds, the build's logs, Artifact
+    Registry pushes, the source bucket) and 75b's first-deploy roles (`roles/run.invoker`, `roles/eventarc.eventReceiver`),
+    narrower than the installer's own. Risk: an App Engine app, a Compute Engine VM or another tool of the owner's that
+    runs as that account loses Editor (Google's own guidance recommends it for production projects).
+  - **The check that nothing of ours needs that account's Editor role** (the tree searched on 2026-10-31 for `compute@`,
+    `-compute`, `computeDefault`, `serviceAccount`, `runAs`, `buildConfig`, `firebase-functions/v1`): every function is
+    gen 2 and names its account (`runAs` and `GLOBAL_OPTIONS.serviceAccount` = `fn-events@`,
+    `functions/src/global-options.ts`; `fn-admin@` and `fn-crash@` per function), so no function runs as the compute
+    account; Eventarc's triggers deliver with the function's own account; the raster jobs run as `job-raster@`
+    (`scripts/site/src/install/steps/run-jobs.ts`); the in-app builds run as `hcm-installer@` (`packages/admin/src/install/build-spec.ts`
+    `installerServiceAccount`), GitHub's deploys as `gh-deployer@`; nothing of ours creates a VM or an App Engine
+    service. What the compute account still does for us: build the functions' images (the builder role) and, on a
+    first deploy of an event type, invoke and receive events (75b's first-deploy bindings, kept).
+  - **Fakes and rows**: the IAM fake gives every project the compute account (`computeAccount`, scenarios
+    `iam.noComputeAccount`, `iam.computeActAsMissing`); the Resource Manager fake's `computeEditorLocked` refuses the
+    removal; the fake Cloud Build's server build stops at `functions` (`failsAtComputeActAs`) with the API's 403 for each
+    registry function and `firebase-tools`' summary after firebase-tools' own checks (75a's, then the discovery of
+    finding 30), as the deploy meets them. S-A04-HAPPY-COMPUTE-BUILD-ACCOUNT, S-A04-BAD-COMPUTE-EDITOR-REFUSED,
+    S-A55-BAD-NO-COMPUTE-ACTAS; lesson 301.
+  - **The live project**: unchanged until the owner, after the next admin redeploy, reloads the tab, runs step c's Retry
+    what failed (or the server card's Retry what failed in step c), then step d's Try again (`docs/MANUAL_TEST_PLAN.md`).
+- **75h APPLIED: step (d) no longer waits for the imagery pipeline's repository** (finding 31). Install the server, its
+  card's looks and the deployment's watch wait for `serverPrepared` (`packages/admin/src/setup/state.ts`: step c done,
+  or every item but `PIPELINE_ONLY_ITEMS` = `artifact-registry` done), not for step c as a whole; the installer's writer
+  role on `hcm` moved from the `iam` item's role table into the `artifact-registry` item (after `apis` and
+  `service-accounts`), so `iam` no longer waits for it. The pipeline's card names the missing repository
+  (`apiError.install.noRepository`) with a way back to step c; Setup is done only with c done, as before
+  (S-A55-HAPPY-PIPELINE-ITEM-FAILED, S-A55-BAD-SERVER-ITEM-FAILED; lesson 302).
 
 Verify: `static`, `tests` and `build`, and the touched Playwright specs in the quality image
 (`docs/research/M6-status.md` §6).
