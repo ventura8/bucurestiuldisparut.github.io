@@ -120,6 +120,7 @@ Every dependency stays on its latest stable release; a deliberate hold is a `HEL
 | --- | --- | --- | --- |
 | `typescript` (npm) | 6.0.3 | 7.0.2 | `typescript-eslint@8.72.1` peers `typescript >=4.8.4 <6.1.0` |
 | `@types/node` (npm) | 24.19.2 | 26.6.6 | follows the Node 24 runtime, not the newest Node line |
+| `@axe-core/playwright` (npm, `e2e/`) | 4.13.0 | 4.14.0 | 4.14.0 brings `axe-core` 4.14.0, whose element grid leaves slotted content of a scrolling shadow-root pane unclipped: false `target-size` and `color-contrast` violations on every such pane ([LESSONS.md](LESSONS.md) 294); `@hcm/test-support` keeps its own `axe-core` 4.14.0 |
 | `node` (Docker) | `24-bookworm-slim` | `26-bookworm-slim` | Node 24 is the runtime line (`engines` `>=24.12.0`); it moves together with `engines` |
 | `mando` (PyPI) | 0.7.1 | 0.8.2 | `radon` 6.0.1, the latest radon, requires `mando >=0.6,<0.8` |
 | `findpython` (PyPI, `pipeline/requirements-poetry.txt`) | 0.8.0 | 0.9.0 | Poetry 2.5.1, the latest Poetry, requires `findpython >=0.6.2,<0.9.0` |

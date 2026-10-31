@@ -94,6 +94,11 @@ class Held:
 HELD: dict[str, Held] = {
     "npm:typescript": Held("6.0.3", "typescript-eslint@8.72.1 peers typescript >=4.8.4 <6.1.0"),
     "npm:@types/node": Held("24.19.2", "follows the Node 24 runtime (engines >=24.12.0), not the newest Node line"),
+    "npm:@axe-core/playwright": Held(
+        "4.13.0",
+        "4.14.0 brings axe-core 4.14.0, whose element grid leaves slotted content of a scrolling shadow-root pane unclipped: "
+        "false target-size and color-contrast violations (docs/LESSONS.md 294)",
+    ),
     "docker:node": Held("24-bookworm-slim", "Node 24 is the runtime line (engines >=24.12.0); it moves together with engines"),
     "pypi:mando": Held("0.7.1", "radon 6.0.1 (the latest radon) requires mando >=0.6,<0.8"),
     "pypi:findpython": Held("0.8.0", "poetry 2.5.1 (the latest Poetry) requires findpython >=0.6.2,<0.9.0"),

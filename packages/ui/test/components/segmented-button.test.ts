@@ -188,6 +188,21 @@ describe('<hcm-segmented-button> too wide for its container', () => {
         });
     });
 
+    it('badPath_theSameLabelsInANewArrayKeepTheStackWithoutAFrameSideBySide', async () => {
+        // The account menu builds its options in render: each update of the menu handed over a new array, which put the
+        // segments side by side for a frame, past the dialog's edge (docs/LESSONS.md 295).
+        const { element } = await inBox(200);
+        await vi.waitFor(() => {
+            expect(element.stacked).toBe(true);
+        });
+        element.options = WORDS.map((option) => ({ ...option }));
+        await element.updateComplete;
+        expect(element.stacked).toBe(true);
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        expect(element.stacked).toBe(true);
+        expect(element.scrollWidth).toBeLessThanOrEqual(element.clientWidth + 1);
+    });
+
     it('happyPath_newLabelsAreMeasuredSideBySideAgain_andARemovedGroupStopsWatching', async () => {
         const { element } = await inBox(200);
         await vi.waitFor(() => {

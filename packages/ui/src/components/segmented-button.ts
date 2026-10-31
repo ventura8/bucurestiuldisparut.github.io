@@ -16,6 +16,14 @@ export interface SegmentOption {
 const NEXT_KEYS: Readonly<Record<string, number>> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 
 /**
+ * What the segments draw, as one string: a parent that builds its options in `render` hands over a new array with the
+ * same segments on every update, which must not undo the stacking (docs/LESSONS.md 295).
+ */
+function segmentsOf(options: readonly SegmentOption[] | undefined): string {
+    return (options ?? []).map((option) => [option.value, option.label, option.icon ?? ''].join('\u0000')).join('\u0001');
+}
+
+/**
  * An M3 single-select segmented button, with radio-group semantics: one Tab stop on the selected segment, arrow keys
  * (wrapping), Home and End move and select, a click selects. Every selection fires `hcm-change` with `{value}`; the
  * selected segment shows a check mark. `label` names the group. When the segments do not fit side by side even with
@@ -175,8 +183,8 @@ export class HcmSegmentedButton extends LitElement {
         for (const segment of Array.from(this.renderRoot.querySelectorAll('button'))) {
             this.resizes.observe(segment);
         }
-        if (changed.has('options')) {
-            // New labels: measure them side by side again.
+        if (changed.has('options') && segmentsOf(changed.get('options')) !== segmentsOf(this.options)) {
+            // New labels: measure them side by side again (the same labels in a new array keep the arrangement).
             this.stacked = false;
             this.scheduleArrange();
         }
