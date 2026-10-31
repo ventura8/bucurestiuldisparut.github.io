@@ -34,9 +34,13 @@ export const INSTALL_MANIFEST_FILE = 'manifest.json';
 /** The bundle's folder below the admin's base path (`/admin/install/<slug>/` on Hosting). */
 export const INSTALL_FOLDER = 'install';
 
-/** Each target's build steps in order: their `id`s in the build definition and on the card. */
+/**
+ * Each target's build steps in order: their `id`s in the build definition and on the card. The server's `packages`
+ * installs the functions' locked dependencies into their source folder, which `firebase-tools` loads to discover what to
+ * deploy (finding 30 of 2026-10-31).
+ */
 export const INSTALL_STEPS = {
-    server: ['fetch', 'tools', 'rules', 'functions', 'verify'],
+    server: ['fetch', 'tools', 'packages', 'rules', 'functions', 'verify'],
     pipeline: ['fetch', 'build', 'push', 'jobs'],
     site: ['fetch', 'tools', 'hosting', 'config'],
 } as const satisfies Readonly<Record<InstallTarget, readonly string[]>>;

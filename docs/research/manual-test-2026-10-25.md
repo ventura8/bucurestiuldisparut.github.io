@@ -150,7 +150,7 @@ Provision (M6-interfaces.md §1.6, `DECISIONS-for-review.md` §67b).
 
 The user's second live walk, on the same project: the admin `1.0.0+18977f0` deployed to `/admin/` in its start-up
 variant (D1), the server still the 61 functions of `90b31be` (2026-10-25). The numbering continues the list above.
-What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–298, `DECISIONS-for-review.md` §75 and
+What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–298 and 300, `DECISIONS-for-review.md` §75 and
 [M6-status.md](M6-status.md) §6.
 
 - **25.** \[bug, minor]\[hosting] On the start-up root (`/`, "the map is being set up"), an old admin address typed as a hash
@@ -186,6 +186,20 @@ What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–2
   reruns the `iam` item, whose row names the reason), then **Try again**. The fakes now enforce the check
   (S-A04-HAPPY-APPENGINE-ACTAS, S-A04-BAD-NO-APPENGINE-ACCOUNT, S-A55-BAD-NO-ACTAS). Live, after the next admin
   redeploy: Setup c **Retry what failed**, then d **Try again** (`docs/MANUAL_TEST_PLAN.md`).
+- **30.** \[BUG, blocks Setup d] With the actAs grant in place (admin `1.0.0+60fe650`), the server install passed
+  `firebase-tools`' check and started `deploy --only functions --force` (step `functions`, `steps/deploy-with-retry.mjs`),
+  which printed "⚠ functions: Couldn't find firebase-functions package in your source code. Have you run 'npm
+  install'?", "Loading and analyzing source code for codebase default to determine what to deploy", then "Error: An
+  unexpected error has occurred.". Cause: `firebase.json`'s functions source is `functions/dist`; `server.tgz` carries
+  it with its `package.json` and deploy lock but no `node_modules`, and `firebase-tools` resolves `firebase-functions`
+  from that folder and loads `index.js` to discover what to deploy. From a checkout Node finds the packages in the
+  repository's `node_modules` above it, so no laptop deploy, and no fake, ever showed it. FIXED: the server build's step
+  `packages` (**Install the server's packages**, after `tools`) runs `npm ci --omit=dev --ignore-scripts --no-audit
+  --no-fund` in `server/functions/dist`; the fake Cloud Build stops a server definition without it at `functions` with
+  those lines (S-A55-BAD-NO-FUNCTIONS-PACKAGES); every other step was audited for the same kind of gap
+  (`M6-interfaces.md` §1.4.1, addendum). Live, after the next admin redeploy: the stopped build is of an older release,
+  so (d) offers the install again (the update against the server of `90b31be`; Install the server on a fresh project),
+  and its one click runs the build with `packages`.
 
 Also checked: the sign-in card showed in English in an English Chrome with no saved choice. That is the admin's rule:
 `?lang=`, then the stored choice (`hcm:admin:lang`), then the browser's first language (`resolveLocale`: English for

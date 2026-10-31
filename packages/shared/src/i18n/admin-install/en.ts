@@ -36,6 +36,7 @@ export const en: AdminInstallMessages = {
     'adminSetup.install.state.unavailable': 'Unavailable now',
     'adminSetup.install.step.fetch': 'Download and check the install files',
     'adminSetup.install.step.tools': 'Prepare the Firebase tools',
+    'adminSetup.install.step.packages': "Install the server's packages",
     'adminSetup.install.step.rules': 'The database and storage rules',
     'adminSetup.install.step.functions': "The server's functions",
     'adminSetup.install.step.verify': 'Check every function',

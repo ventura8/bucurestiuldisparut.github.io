@@ -81,7 +81,12 @@ test.describe('Install the server', () => {
                 _RELEASE: INSTALL_RELEASE,
                 _SLUG: INSTALL_SLUG,
             });
-            expect(build?.request.steps.map((step) => step.id)).toEqual(['fetch', 'tools', 'rules', 'functions', 'verify']);
+            expect(build?.request.steps.map((step) => step.id)).toEqual(['fetch', 'tools', 'packages', 'rules', 'functions', 'verify']);
+            // Finding 30 of 2026-10-31: the functions' packages go into their source folder, which firebase-tools loads.
+            expect(build?.request.steps.find((step) => step.id === 'packages')).toMatchObject({
+                dir: 'server/functions/dist',
+                args: ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'],
+            });
             expect(build?.request.steps.every((step) => /@sha256:[0-9a-f]{64}$/.test(step.name))).toBe(true);
             expect(build?.request.steps.find((step) => step.id === 'functions')?.args).toContain('--force');
 
@@ -296,6 +301,42 @@ test.describe('Install the server: a permission of step c (finding 28 of 2026-10
 
             await inputs.click(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.tryAgain') }));
             await expect.poll(async () => (await serverBuilds(upstream)).length).toBe(2);
+            await upstream.scenario('cloud-build.finish', 'browser');
+            await nextLook(page, installState(deploy).getByText(setupText(lang, 'adminSetup.install.state.installed')));
+            serverDeployment.claimErrors();
+        },
+    );
+});
+
+test.describe("Install the server: the functions' packages (finding 30 of 2026-10-31)", () => {
+    test(
+        "An older admin's build without the packages step stops at firebase-tools' discovery; this admin installs them first",
+        { tag: ['@S-A55-BAD-NO-FUNCTIONS-PACKAGES'] },
+        async ({ page, lang, consent, inputBudget, setupBudget, upstream, serverDeployment }) => {
+            // Finding 30 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31): the admin 1.0.0+60fe650 submitted
+            // a server build whose functions' source had no node_modules; firebase-tools could not load it.
+            await serverDeployment.hide();
+            const { deploy } = await preparedProject({
+                ...{ page, lang, consent, setupBudget, upstream, signInBudget: inputBudget.flow('signIn', 1) },
+                signInConsent: inputBudget.flow('signInConsent', 1),
+            });
+            await upstream.scenario('cloud-build.serverQueuedWithoutPackages', 'browser');
+            await page.clock.fastForward(60_000);
+            await expect(installState(deploy)).toContainText(setupText(lang, 'adminSetup.install.state.queued'));
+            await expect(installButton(deploy, lang)).toHaveCount(0);
+
+            await upstream.scenario('cloud-build.finish', 'browser');
+            const [older] = await serverBuilds(upstream);
+            expect(older?.status).toBe('FAILURE');
+            // Another release's stopped build no longer matters to this admin: the server is simply not installed.
+            await nextLook(page, installState(deploy).getByText(setupText(lang, 'adminSetup.install.state.notInstalled')));
+            await expect(deploy.locator('pre.log')).toHaveCount(0);
+
+            await setupBudget.inputs('deploy', 1).click(installButton(deploy, lang));
+            await expect.poll(async () => (await serverBuilds(upstream)).length).toBe(2);
+            const ids = (await serverBuilds(upstream)).at(-1)?.request.steps.map((each) => each.id) ?? [];
+            expect(ids.indexOf('packages')).toBeGreaterThan(-1);
+            expect(ids.indexOf('packages')).toBeLessThan(ids.indexOf('functions'));
             await upstream.scenario('cloud-build.finish', 'browser');
             await nextLook(page, installState(deploy).getByText(setupText(lang, 'adminSetup.install.state.installed')));
             serverDeployment.claimErrors();

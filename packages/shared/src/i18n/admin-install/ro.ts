@@ -41,6 +41,7 @@ export const ro = {
     'adminSetup.install.state.unavailable': 'Indisponibil acum',
     'adminSetup.install.step.fetch': 'Descarcă și verifică fișierele de instalare',
     'adminSetup.install.step.tools': 'Pregătește uneltele Firebase',
+    'adminSetup.install.step.packages': 'Instalează pachetele serverului',
     'adminSetup.install.step.rules': 'Regulile bazei de date și ale stocării',
     'adminSetup.install.step.functions': 'Funcțiile serverului',
     'adminSetup.install.step.verify': 'Verifică fiecare funcție',

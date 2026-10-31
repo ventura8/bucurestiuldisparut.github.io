@@ -108,11 +108,12 @@ describe('the build steps', () => {
             steps: [
                 { id: 'fetch', status: 'SUCCESS' },
                 { id: 'tools', status: 'SUCCESS' },
+                { id: 'packages', status: 'SUCCESS' },
                 { id: 'rules', status: 'WORKING' },
             ],
         });
 
-        expect(stepsOf('server', working).map((step) => step.state)).toEqual(['done', 'done', 'now', 'waiting', 'waiting']);
+        expect(stepsOf('server', working).map((step) => step.state)).toEqual(['done', 'done', 'done', 'now', 'waiting', 'waiting']);
         expect(stepsOf('site', null).every((step) => step.state === 'waiting')).toBe(true);
         expect(stepsOf('pipeline', build({ status: 'QUEUED' })).map((step) => step.state)).toEqual([
             'waiting',
@@ -128,13 +129,23 @@ describe('the build steps', () => {
             steps: [
                 { id: 'fetch', status: 'SUCCESS' },
                 { id: 'tools', status: 'SUCCESS' },
+                { id: 'packages', status: 'SUCCESS' },
                 { id: 'rules', status: 'SUCCESS' },
                 { id: 'functions', status: 'FAILURE' },
             ],
         });
 
-        expect(stepsOf('server', failed).map((step) => step.state)).toEqual(['done', 'done', 'done', 'failed', 'waiting']);
+        expect(stepsOf('server', failed).map((step) => step.state)).toEqual(['done', 'done', 'done', 'done', 'failed', 'waiting']);
         expect(failedStepOf('server', failed)).toBe('functions');
+        // An admin from before finding 30 submitted no `packages` step: its stopped build still names `functions`.
+        const older = build({
+            status: 'FAILURE',
+            steps: [
+                ...['fetch', 'tools', 'rules'].map((id) => ({ id, status: 'SUCCESS' as const })),
+                { id: 'functions', status: 'FAILURE' },
+            ],
+        });
+        expect(failedStepOf('server', older)).toBe('functions');
         expect(failedStepOf('server', build({ status: 'TIMEOUT', steps: [{ id: 'fetch', status: 'SUCCESS' }] }))).toBe('tools');
         const allDone = build({
             status: 'FAILURE',

@@ -75,6 +75,20 @@ describe('buildDefinition', () => {
         expect(site[0]?.env).toContain('HCM_FILES=site,server,pipeline');
     });
 
+    it('happyPath_theServerInstallsTheFunctionsPackagesBeforeItDeploysThem_badPath_noOtherTargetDoes', () => {
+        // Finding 30 of 2026-10-31: firebase-tools loads the functions' source to discover them, so their packages must be
+        // in that folder (the tarball carries none); the laptop found them in the repository's node_modules above it.
+        const ids = (target: (typeof TARGETS)[number]): string[] =>
+            (buildDefinition(target, PARAMS)['steps'] as { id: string }[]).map((step) => step.id);
+        const server = buildDefinition('server', PARAMS)['steps'] as { id: string; dir?: string; args: string[] }[];
+        const packages = server.find((step) => step.id === 'packages');
+
+        expect(ids('server').indexOf('packages')).toBeLessThan(ids('server').indexOf('functions'));
+        expect(packages?.dir).toBe('server/functions/dist');
+        expect(packages?.args).toEqual(['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund']);
+        expect([...ids('pipeline'), ...ids('site')]).not.toContain('packages');
+    });
+
     it('badPath_noValueFromTheOwnersTokenOrDataReachesTheBuild', () => {
         const text = JSON.stringify(TARGETS.map((target) => buildDefinition(target, PARAMS)));
 

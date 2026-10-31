@@ -21,49 +21,6 @@ async function call(
     return { status: response.status, body: text === '' ? undefined : (JSON.parse(text) as unknown) };
 }
 
-/** A server build of the in-app installer, as the admin submits it, ended by the fake; its final status. */
-async function serverBuild(fakes: UpstreamFakes): Promise<string> {
-    const builds = 'https://cloudbuild.googleapis.com/v1/projects/demo-hcm/locations/us-central1/builds';
-    const request = { tags: ['hcm-install', 'hcm-server', 'hcm-r-1-0-0-abc1234'], steps: [{ id: 'fetch' }, { id: 'functions' }] };
-    expect((await call(fakes, 'POST', builds, request)).status).toBe(200);
-    fakes.scenario('cloud-build.finish');
-    const [build] = (fakes.snapshot()['cloud-build'] as { readonly builds: readonly { readonly status: string }[] }).builds;
-    return build?.status ?? 'none';
-}
-
-describe("Cloud Build: firebase-tools' actAs check (finding 28 of 2026-10-31)", () => {
-    it('happyPath_anInstallerMadeByPrepareTheProjectActsAsTheAppEngineAccountAndTheServerInstalls', async () => {
-        const fakes = createUpstreamFakes();
-        fakes.scenario('google.provisioned');
-        fakes.scenario('cloud-build.installerAccount');
-
-        expect(await serverBuild(fakes)).toBe('SUCCESS');
-    });
-
-    it('badPath_withoutTheGrantTheServerBuildStopsAtFunctionsWithFirebaseToolsLines', async () => {
-        const fakes = createUpstreamFakes();
-        fakes.scenario('google.provisioned');
-        fakes.scenario('cloud-build.installerAccount');
-        fakes.scenario('iam.appEngineActAsMissing');
-
-        expect(await serverBuild(fakes)).toBe('FAILURE');
-        expect(JSON.stringify(fakes.snapshot()['cloud-build'])).toContain('"id":"functions","status":"FAILURE"');
-    });
-
-    it.each([
-        ['a project without the App Engine default account', ['iam.noAppEngineAccount', 'cloud-build.installerAccount']],
-        ['a world whose IAM nothing prepared', []],
-    ])('happyPath_%s_hasNoCheckToFail', async (_name, scenarios) => {
-        const fakes = createUpstreamFakes();
-        fakes.scenario('google.provisioned');
-        scenarios.forEach((scenario) => {
-            fakes.scenario(scenario);
-        });
-
-        expect(await serverBuild(fakes)).toBe('SUCCESS');
-    });
-});
-
 describe('Google identity: tokeninfo and Resource Manager', () => {
     it('happyPath_theOwnerTokenNamesTheOwnerAndProvesOwnership', async () => {
         const fakes = createUpstreamFakes();

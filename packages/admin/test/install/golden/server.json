@@ -37,6 +37,13 @@
             "args": ["ci", "--ignore-scripts", "--no-audit", "--no-fund"]
         },
         {
+            "id": "packages",
+            "name": "node:24-bookworm-slim@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "entrypoint": "npm",
+            "dir": "server/functions/dist",
+            "args": ["ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund"]
+        },
+        {
             "id": "rules",
             "name": "node:24-bookworm-slim@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
             "entrypoint": "node",

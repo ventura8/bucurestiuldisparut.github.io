@@ -169,11 +169,11 @@ The 24 findings of the live test of 2026-10-25, after these fixes:
 | 23 | a pass |
 | 4 | fixed with its rows (trusted to them, not re-verified by the reviews) |
 
-## 6. The live test of 2026-10-31 (findings 25–28)
+## 6. The live test of 2026-10-31 (findings 25–28 and 30)
 
 The user's second live walk, on the admin `1.0.0+18977f0` at `/admin/` (start-up variant) against the server of
 `90b31be`: [manual-test-2026-10-25.md](manual-test-2026-10-25.md) → *Live test 2026-10-31 (M6 admin)*; decisions
-`DECISIONS-for-review.md` §75; lessons 296–298. Nothing was committed, pushed or deployed; no test called a real Google
+`DECISIONS-for-review.md` §75; lessons 296–298 and 300. Nothing was committed, pushed or deployed; no test called a real Google
 endpoint.
 
 | Finding | Outcome | Rows |
@@ -181,6 +181,7 @@ endpoint.
 | 25: an old admin hash typed on the open start-up root stayed there | fixed: `admin-redirect.js` also forwards on `hashchange` | S-A58-HAPPY-OLD-LINK-HASH-CHANGE, S-A58-BAD-VIEWER-HASH-CHANGE |
 | 26: the sign-in per tab is tiring | proposal only: the admin on its own Hosting site (§75c) | — |
 | 27: Setup read the older server's recorded steps as To do | fixed: a pre-M5 session parses, an unreadable answer is `apiError.serverOutdated` (a server, never "none"), a browser that had seen the server leaves start-up mode by itself again, a step it cannot say reads Update the server to check | S-A03-HAPPY-OLDER-SERVER, S-A03-BAD-OLDER-SERVER-STATUS; tour `setup.older-server-status` |
+| 30: the install, past the actAs check, stopped at `functions` with "Couldn't find firebase-functions package in your source code" and "An unexpected error has occurred." | fixed in code: the server build's new step `packages` (`npm ci --omit=dev --ignore-scripts` in `server/functions/dist`) installs the functions' deploy lock where `firebase-tools`' discovery loads it; the fake Cloud Build plays that discovery; the other steps audited (`M6-interfaces.md` §1.4.1 addendum); lesson 300 | S-A55-HAPPY (the step), S-A55-BAD-NO-FUNCTIONS-PACKAGES |
 | 28: the install stopped at `firebase-tools`' actAs check | fixed in code (the user: "code fix first, live later"): Service Account User on the App Engine default account only, `hcmInstaller` gains three permissions, the fakes enforce the check, the server's card offers step c's Retry what failed; and (§75b, the user: "do 75b") the `iam` item takes `roles/editor` away from that account on the project | S-A04-HAPPY-APPENGINE-ACTAS, S-A04-BAD-NO-APPENGINE-ACCOUNT, S-A55-BAD-NO-ACTAS, S-A04-HAPPY-APPENGINE-NO-EDITOR, S-A04-BAD-APPENGINE-EDITOR-REFUSED; tour `setup.install-failed-provision` |
 
 What waits for you: the next admin redeploy (D1, ask first), then on Setup (d) **Reia ce nu a reușit în pasul c** (step

@@ -55,6 +55,9 @@ const FIREBASE_BIN = 'tools/node_modules/firebase-tools/lib/bin/firebase.js';
 /** Where each target's tarball is unpacked (`/workspace/<dir>`), and the steps' working folder. */
 const TARGET_DIRS: Readonly<Record<InstallTarget, string>> = { server: 'server', pipeline: 'pipeline', site: 'site' };
 
+/** The functions' source in the server's tarball (`firebase.json`'s `functions.source`). */
+const FUNCTIONS_SOURCE = 'functions/dist';
+
 /** The tarballs each target's `fetch` downloads, its own first. */
 const FETCHED: Readonly<Record<InstallTarget, string>> = { server: 'server', pipeline: 'pipeline', site: 'site,server,pipeline' };
 
@@ -95,6 +98,25 @@ function toolsStep(target: InstallTarget, params: BuildParams): JsonObject {
     };
 }
 
+/**
+ * `packages` (finding 30 of 2026-10-31): the functions' locked runtime dependencies (`functions/dist/package-lock.json`,
+ * `functions/deploy-lock/`) installed into their source folder. Before it deploys, `firebase-tools` resolves
+ * `firebase-functions` from that folder and loads `index.js` to discover the functions, which imports `firebase-admin`
+ * and the rest; on a laptop Node finds them in the repository's `node_modules` above `functions/dist`, in the build
+ * nothing does. No install script runs: none of the tree's is needed to load it (sharp's native code comes as the
+ * prebuilt `@img/sharp-linux-x64` packages the lock names for linux x64 glibc). `node_modules` is in `functions.ignore`,
+ * so it is never uploaded; Google's own build of each function installs the same lock again.
+ */
+function packagesStep(params: BuildParams): JsonObject {
+    return {
+        id: 'packages',
+        name: params.images.node,
+        entrypoint: 'npm',
+        dir: `${TARGET_DIRS.server}/${FUNCTIONS_SOURCE}`,
+        args: ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'],
+    };
+}
+
 function nodeStep(id: string, target: InstallTarget, params: BuildParams, args: readonly string[]): JsonObject {
     return { id, name: params.images.node, entrypoint: 'node', dir: TARGET_DIRS[target], args };
 }
@@ -104,6 +126,7 @@ function serverSteps(params: BuildParams): readonly JsonObject[] {
     return [
         fetchStep('server', params),
         toolsStep('server', params),
+        packagesStep(params),
         nodeStep('rules', 'server', params, [FIREBASE_BIN, 'deploy', '--only', 'firestore,storage', ...project, '--non-interactive']),
         nodeStep('functions', 'server', params, ['steps/deploy-with-retry.mjs', ...project, '--force']),
         nodeStep('verify', 'server', params, [

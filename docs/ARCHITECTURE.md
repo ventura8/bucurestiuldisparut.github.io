@@ -144,7 +144,8 @@ admin (browser, owner's cloud-platform token in the tab only)
   └─ POST cloudbuild.googleapis.com …/builds  (serviceAccount hcm-installer@, tags hcm-install, hcm-<target>, hcm-r-<slug>)
         Cloud Build, in the owner's project:
           fetch   (Node: downloads server.tgz / pipeline.tgz / hosting.tgz from the admin's origin, refuses a wrong SHA-256)
-          server   tools → rules (firestore, storage) → functions (--force; retries Eventarc's agent propagation, quota,
+          server   tools → packages (npm ci of the functions' lock in functions/dist: firebase-tools loads that source)
+                   → rules (firestore, storage) → functions (--force; retries Eventarc's agent propagation, quota,
                    an operation in progress, with backoff) → verify (every function of the bundle's list)
           pipeline build → push (Artifact Registry repository hcm) → jobs (raster-pipeline, raster-pipeline-xl on the digest)
           site     tools → hosting (the public variant; the bundle kept under /admin/install/) → config (keep 10 versions)

@@ -7363,7 +7363,7 @@
             "area": "admin",
             "path": "happy",
             "title": "One click installs the map's server through Cloud Build",
-            "asserts": "Install the server (one click, no consent within the hour of Prepare the project) -> the mock Cloud Build gets one build as hcm-installer@ tagged hcm-install and the release, with the steps fetch (the manifest's SHA-256 the page computed), tools, rules, functions (--force) and verify -> the card shows queued, the step under way, the functions' count once, then installed with the release -> the claim follows with no click; input budget 1",
+            "asserts": "Install the server (one click, no consent within the hour of Prepare the project) -> the mock Cloud Build gets one build as hcm-installer@ tagged hcm-install and the release, with the steps fetch (the manifest's SHA-256 the page computed), tools, packages (npm ci --omit=dev --ignore-scripts in server/functions/dist, the functions' source firebase-tools loads), rules, functions (--force) and verify -> the card shows queued, the step under way, the functions' count once, then installed with the release -> the claim follows with no click; input budget 1",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.4.1, §1.7, §1.8; owner: installer). Finding 9, 10 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/server.spec.ts (installer)."
@@ -7411,6 +7411,17 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Live test of 2026-10-31, finding 28 of docs/research/manual-test-2026-10-25.md (DECISIONS-for-review.md §75). Tests: e2e/admin/steps/install/server.spec.ts, packages/admin/test/setup/install.test.ts; tour state setup.install-failed-provision."
+        },
+        {
+            "id": "S-A55-BAD-NO-FUNCTIONS-PACKAGES",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "An older admin's server build without the functions' packages stops at firebase-tools' discovery; this admin installs them first",
+            "asserts": "a server build an older admin submitted (fetch, tools, rules, functions, verify: no packages step) is followed as queued, with no Install button -> it stops at its functions step, the mock Cloud Build playing firebase-tools' discovery of a source folder with no node_modules (its own lines: Couldn't find firebase-functions package in your source code, Loading and analyzing source code for codebase default, Error: An unexpected error has occurred.) -> another release's stopped build no longer matters to this admin: the card reads Not installed, no log, Install the server offered -> one click submits a build whose packages step comes before functions -> it installs the server",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live test of 2026-10-31, finding 30 of docs/research/manual-test-2026-10-25.md: the bundle's functions/dist carries no node_modules and firebase-tools resolves firebase-functions from it (a laptop finds the repository's). Tests: e2e/admin/steps/install/server.spec.ts, functions/test/support/upstream-cloudbuild.test.ts (the fake), packages/admin/test/install/build-spec.test.ts, packages/admin/test/install/model.test.ts."
         },
         {
             "id": "S-A55-BAD-RETRIES-EXHAUSTED",

@@ -18,6 +18,11 @@ import { sequence, type ServiceFake } from './service.js';
  * functions deployed with the build's `HCM_RELEASE` and their Scheduler job; the pipeline's two Cloud Run jobs on the
  * pushed image with the release label; the public site's `release.json`. The build's log lines (Cloud Logging,
  * `google-logging.ts`) come from the same state, a stopped step's with a planted token for the redaction checks.
+ *
+ * Two of `firebase-tools`' own preconditions are enforced on a server build that would succeed, in the order it runs
+ * them before a functions deploy: the installer's actAs on the App Engine default account (finding 28) and the
+ * functions' packages in their source folder, which its discovery loads (finding 30): a definition with no
+ * `npm ci` in `server/functions/dist` before `functions` stops there, with the tool's own lines.
  */
 
 const CLOUD_BUILD: GoogleApi = { service: 'cloudbuild.googleapis.com', title: 'Cloud Build API', permission: 'cloudbuild.builds.create' };
@@ -32,6 +37,9 @@ export const BUILD_OUTCOMES = [
     // Finding 28 of 2026-10-31: firebase-tools' own check before a functions deploy, the installer's actAs on the App
     // Engine default account; a server build that would succeed plays it when the IAM fake says the grant is missing.
     'failsAtActAs',
+    // Finding 30 of 2026-10-31: firebase-tools' discovery loads the functions' source, so their packages must be installed
+    // in it; a server build that would succeed plays it when its definition installs none before `functions`.
+    'failsAtDiscovery',
     'retriesExhausted',
     'internalError',
 ] as const;
@@ -127,6 +135,26 @@ function lacksActAs(iam: IamState, projectId: string): boolean {
     return !holdsAccountRole(project, appEngine, SERVICE_ACCOUNT_USER, installerMember(projectId));
 }
 
+/** The functions' source in the server's tarball, as the build's working folders name it. */
+const FUNCTIONS_SOURCE_DIR = 'server/functions/dist';
+
+/** An `npm ci` in the functions' source folder. */
+function installsFunctionPackages(step: Readonly<Record<string, unknown>>): boolean {
+    return step['entrypoint'] === 'npm' && step['dir'] === FUNCTIONS_SOURCE_DIR && strings(step['args'])[0] === 'ci';
+}
+
+/**
+ * firebase-tools' discovery (`lib/deploy/functions/prepare.js` `loadCodebases`, `runtimes/node`): it resolves
+ * `firebase-functions` from the source folder and runs its binary, which loads `index.js`; the tarball carries no
+ * `node_modules`, so a definition without an install there before its `functions` step stops at it (a definition
+ * with no `functions` step deploys none).
+ */
+function lacksFunctionPackages(request: Readonly<Record<string, unknown>>): boolean {
+    const steps = stepObjects(request);
+    const functions = steps.findIndex((step) => step['id'] === 'functions');
+    return functions !== -1 && !steps.slice(0, functions).some(installsFunctionPackages);
+}
+
 /** A token and a secret planted in a stopped step's log: the admin must redact both (S-A55-BAD-BUILD-FAILED). */
 export const PLANTED_LOG_SECRETS = ['ya29.e2e-planted-access-token-0001', 'sk.e2e-planted-mapbox-secret-0001-abcdefgh'] as const;
 
@@ -146,14 +174,14 @@ function strings(value: unknown): string[] {
     return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }
 
-function stepId(step: unknown): string {
-    const id = typeof step === 'object' && step !== null ? (step as Record<string, unknown>)['id'] : undefined;
-    return typeof id === 'string' ? id : '';
+/** The definition's steps, each as an object (anything else as an empty one). */
+function stepObjects(request: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>>[] {
+    const steps = Array.isArray(request['steps']) ? (request['steps'] as unknown[]) : [];
+    return steps.map((step) => (typeof step === 'object' && step !== null ? (step as Record<string, unknown>) : {}));
 }
 
 function stepIdsOf(request: Readonly<Record<string, unknown>>): string[] {
-    const steps = Array.isArray(request['steps']) ? (request['steps'] as unknown[]) : [];
-    return steps.map(stepId);
+    return stepObjects(request).map((step) => (typeof step['id'] === 'string' ? step['id'] : ''));
 }
 
 function substitutionsOf(request: Readonly<Record<string, unknown>>): Record<string, string> {
@@ -170,6 +198,7 @@ function stopStep(build: FakeBuild): number {
         failsAtBuild: 'build',
         failsAtHosting: 'hosting',
         failsAtActAs: 'functions',
+        failsAtDiscovery: 'functions',
         retriesExhausted: 'verify',
     };
     const step = stops[build.outcome];
@@ -196,6 +225,13 @@ function actAsLines(projectId: string): FakeLogLine[] {
     ];
     return lines.map((text) => ({ step: 'functions', text }));
 }
+
+/** What firebase-tools 15.34.2 printed live when the functions' source had no packages (finding 30). */
+export const DISCOVERY_FAILURE_LINES = [
+    "⚠  functions: Couldn't find firebase-functions package in your source code. Have you run 'npm install'?",
+    'i  functions: Loading and analyzing source code for codebase default to determine what to deploy',
+    'Error: An unexpected error has occurred.',
+] as const;
 
 function failureLines(step: string): FakeLogLine[] {
     const [token, secret] = PLANTED_LOG_SECRETS;
@@ -228,12 +264,17 @@ function start(build: FakeBuild): void {
     }
 }
 
+/** The lines of the outcomes whose log is the tool's own, not the generic failure's. */
+const OWN_STOP_LINES: Partial<Record<BuildOutcome, (build: FakeBuild) => FakeLogLine[]>> = {
+    retriesExhausted: () => [...retryLines(2), ...retryLines(3), ...missingLines()],
+    failsAtActAs: (build) => actAsLines(build.projectId),
+    failsAtDiscovery: () => DISCOVERY_FAILURE_LINES.map((text) => ({ step: 'functions', text })),
+};
+
 function stopLines(build: FakeBuild): FakeLogLine[] {
-    if (build.outcome === 'retriesExhausted') {
-        return [...retryLines(2), ...retryLines(3), ...missingLines()];
-    }
-    if (build.outcome === 'failsAtActAs') {
-        return actAsLines(build.projectId);
+    const own = OWN_STOP_LINES[build.outcome];
+    if (own !== undefined) {
+        return own(build);
     }
     return build.outcome.startsWith('failsAt') ? failureLines(build.stepIds[stopStep(build)] ?? 'fetch') : [];
 }
@@ -245,10 +286,18 @@ function finalStatus(outcome: BuildOutcome): BuildStatus {
     return outcome === 'succeeds' || outcome === 'retries' ? 'SUCCESS' : 'FAILURE';
 }
 
-/** A server build that would succeed stops at firebase-tools' actAs check when the grant is missing (finding 28). */
+/**
+ * A server build that would succeed stops at firebase-tools' actAs check when the grant is missing (finding 28), else at
+ * its discovery when the functions' source has no packages (finding 30): the order firebase-tools runs them in.
+ */
 function checkPreconditions(build: FakeBuild, world: BuildWorld): void {
-    if (build.target === 'server' && finalStatus(build.outcome) === 'SUCCESS' && lacksActAs(world.iam, build.projectId)) {
+    if (build.target !== 'server' || finalStatus(build.outcome) !== 'SUCCESS') {
+        return;
+    }
+    if (lacksActAs(world.iam, build.projectId)) {
         build.outcome = 'failsAtActAs';
+    } else if (lacksFunctionPackages(build.request)) {
+        build.outcome = 'failsAtDiscovery';
     }
 }
 
@@ -325,7 +374,12 @@ function refusal(request: Readonly<Record<string, unknown>>): boolean {
     return stepIdsOf(request).length === 0 || !tags.includes('hcm-install') || targetOf(tags) === undefined;
 }
 
-function scenarioTable(state: CloudBuildState, world: BuildWorld, create: (target: InstallTarget, outcome: BuildOutcome) => void) {
+/** The server build's steps before finding 30 (2026-10-31), as the live admin `1.0.0+60fe650` submitted them. */
+const PRE_PACKAGES_SERVER_STEPS = ['fetch', 'tools', 'rules', 'functions', 'verify'].map((id) => ({ id }));
+
+type CreateElsewhere = (target: InstallTarget, outcome: BuildOutcome, steps?: readonly Record<string, unknown>[]) => void;
+
+function scenarioTable(state: CloudBuildState, world: BuildWorld, create: CreateElsewhere) {
     const outcomes = Object.fromEntries(
         TARGETS.flatMap((target) =>
             BUILD_OUTCOMES.map((outcome) => [
@@ -361,6 +415,13 @@ function scenarioTable(state: CloudBuildState, world: BuildWorld, create: (targe
         /** A server build queued from another tab (S-A55-BAD-SECOND-BUILD). */
         serverQueuedElsewhere: () => {
             create('server', 'succeeds');
+        },
+        /**
+         * A server build an admin from before finding 30 queued (S-A55-BAD-NO-FUNCTIONS-PACKAGES): its steps, without
+         * `packages`, so firebase-tools' discovery stops it at `functions` once it finishes.
+         */
+        serverQueuedWithoutPackages: () => {
+            create('server', 'succeeds', PRE_PACKAGES_SERVER_STEPS);
         },
     };
 }
@@ -406,9 +467,9 @@ export function createCloudBuildFake(state: CloudBuildState, world: BuildWorld, 
     };
     const base = 'https://cloudbuild.googleapis.com/v1/projects/{project}/locations/{region}/builds';
     const auth = (answer: Route['answer']): Route['answer'] => authenticated(CLOUD_BUILD, answer);
-    const elsewhere = (target: InstallTarget, outcome: BuildOutcome): void => {
+    const elsewhere: CreateElsewhere = (target, outcome, steps = [{ id: 'fetch' }]) => {
         const projectId = String(FIXTURE_VALUES['projectId']);
-        const request = { tags: ['hcm-install', `hcm-${target}`, 'hcm-r-elsewhere'], steps: [{ id: 'fetch' }], substitutions: {} };
+        const request = { tags: ['hcm-install', `hcm-${target}`, 'hcm-r-elsewhere'], steps, substitutions: {} };
         add(projectId, String(FIXTURE_VALUES['region']), request, outcome);
     };
     return {

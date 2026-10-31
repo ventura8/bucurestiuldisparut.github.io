@@ -192,6 +192,7 @@ is needed: they call Google's REST APIs with the metadata server's token.
 | --- | --- | --- |
 | `fetch` | node | `fetch-bundle.mjs`: downloads `manifest.json` and `server.tgz` from `_ORIGIN/admin/install/_SLUG/`, checks both digests, extracts into `/workspace/server` |
 | `tools` | node | `npm ci --ignore-scripts --no-audit --no-fund` in `server/tools` (the locked `firebase-tools`; npm checks each package's integrity) |
+| `packages` | node | `npm ci --omit=dev --ignore-scripts --no-audit --no-fund` in `server/functions/dist` (the functions' deploy lock; added 2026-10-31, finding 30, below) |
 | `rules` | node | `firebase deploy --only firestore,storage --project <project> --non-interactive` |
 | `functions` | node | `deploy-with-retry.mjs`: `firebase deploy --only functions --force --project <project> --non-interactive`, retrying the known races (§1.5) |
 | `verify` | node | `verify-server.mjs`: lists the functions (Cloud Functions v2), requires every name of the manifest's `functions` `ACTIVE` with `HCM_RELEASE` equal to `_RELEASE`, and prints one `HCM_INSTALL` line per missing or failed name |
@@ -201,6 +202,22 @@ is needed: they call Google's REST APIs with the metadata server's token.
   source no longer has; the installer therefore never installs a bundle older than the installed server (§1.7,
   S-A55-BAD-DOWNGRADE). The CI job `deploy-firebase` needs the same flag (a workflow edit, §67j, ask first).
 - `HCM_RELEASE` joins `.env.<project>` (`functions/build.mjs`, installer), so every function says which release it is.
+- **Addendum 2026-10-31 (finding 30 of `manual-test-2026-10-25.md`): `packages`.** Before a functions deploy
+  `firebase-tools` resolves `firebase-functions` from the source folder (`functions/dist`) and runs its binary, which
+  loads `index.js` to discover the functions (`lib/deploy/functions/prepare.js` `loadCodebases`, `runtimes/node`). The
+  tarball carries `functions/dist` without `node_modules`, so the live build printed "Couldn't find firebase-functions
+  package in your source code", then "An unexpected error has occurred." at `functions`; on a laptop Node finds the
+  packages in the repository's `node_modules` above `functions/dist`, which is why no deploy from a checkout ever showed
+  it. The step installs the deploy lock there; no install script is needed to load the tree (sharp's native code is the
+  prebuilt `@img/sharp-linux-x64` and `@img/sharp-libvips-linux-x64` the lock names for linux x64 glibc, and sharp is
+  imported only on the first photo), `node_modules` is in `functions.ignore` so nothing more is uploaded, and Google's
+  own build of each function installs the same lock again. About a minute; the server's estimate (§1.9) holds. The
+  fake Cloud Build plays the discovery: a server definition without an `npm ci` in `server/functions/dist` before
+  `functions` stops there with the tool's own lines (S-A55-BAD-NO-FUNCTIONS-PACKAGES). The same audit of every other
+  step: the step scripts are one Vite bundle with `@hcm/shared` and zod inlined and only Node built-ins external (run
+  from a folder without `node_modules` by `install-steps-bundle.test.ts`), the inline `fetch` uses Node built-ins and
+  the image's `tar`, `firebase deploy --only firestore,storage` and `--only hosting` load no code of ours, and the
+  pipeline's image builds from its own context (`pyproject.toml`, `poetry.lock`, `requirements-poetry.txt`, `src/`).
 
 #### 1.4.2 The imagery pipeline (`hcm-pipeline`, timeout 5400 s)
 
@@ -349,7 +366,9 @@ transfer past its free tier and the budget alarm pauses the pipeline, never the 
   records), and the `updateMap` flow.
 - Fakes (`packages/test-support/src/fakes/`, installer): `google-cloudbuild.ts` (builds created, listed and read; per
   target scenarios `install.succeeds`, `install.retries`, `install.fails-at-<step>`, `install.internal-error`,
-  `install.queued`; a successful server build flips the Cloud Functions fake to `deployed` with `HCM_RELEASE` and creates
+  `install.queued`; a server build that would succeed stops where `firebase-tools`' own preconditions would stop it:
+  the installer's actAs on the App Engine default account (finding 28), then the functions' packages in their source
+  folder (finding 30); a successful server build flips the Cloud Functions fake to `deployed` with `HCM_RELEASE` and creates
   the Scheduler jobs; a pipeline build makes the two jobs with their label in the Run fake; a site build sets the
   e2e Hosting's `release.json` and variant), `google-logging.ts` (the build's lines, the `HCM_INSTALL` ones included),
   `google-artifact-registry.ts`, the Run fake's jobs `get`/`create`/`patch` (beside M3's executions), and the

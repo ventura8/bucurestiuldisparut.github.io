@@ -54,7 +54,7 @@ export interface SubmittedBuild {
     readonly request: {
         readonly serviceAccount: string;
         readonly options: Readonly<Record<string, unknown>>;
-        readonly steps: readonly { readonly id: string; readonly name: string; readonly args?: readonly string[] }[];
+        readonly steps: readonly { readonly id: string; readonly name: string; readonly args?: readonly string[]; readonly dir?: string }[];
     };
 }
 
