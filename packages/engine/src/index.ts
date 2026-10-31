@@ -28,7 +28,7 @@ export type { HistoricCityMapController } from './mount.js';
 export const ENGINE_VERSION = '1.0.0';
 
 /** Mapbox GL JS version the engine is written against; pages load exactly this one from api.mapbox.com. */
-export const MAPBOX_GL_VERSION = '3.32.0';
+export const MAPBOX_GL_VERSION = '3.34.1';
 
 /** The folder of this script (read now: the IIFE build only knows it while the script runs). */
 const ENGINE_BASE = engineBaseOf((import.meta as Partial<ImportMeta>).url, globalThis);

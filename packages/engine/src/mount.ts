@@ -190,9 +190,19 @@ function failedController(code: ViewerError['code'], teardown: () => void): Hist
     };
 }
 
+/**
+ * The two calls `mount` makes on the document, each with the one signature it uses: the viewer's element by its tag, a
+ * container by its selector (`Pick<Document, ...>` also brought in the DOM's deprecated overloads for legacy tag names,
+ * which a test double then appeared to implement; typescript-eslint 8.72 reports that as `no-deprecated`).
+ */
+interface MountDocument {
+    createElement(tagName: typeof VIEWER_TAG): HcmMapViewer;
+    querySelector(selectors: string): Element | null;
+}
+
 /** Everything `mount` needs from the page; `index.ts` builds it from `window`. */
 export interface MountEnvironment {
-    readonly document: Pick<Document, 'createElement' | 'querySelector'>;
+    readonly document: MountDocument;
     /** The Mapbox MapPort (throws when Mapbox GL JS is missing from the page). */
     readonly createMap: () => MapPort;
     readonly createTelemetry: (cityId: string | undefined) => TelemetryPort;

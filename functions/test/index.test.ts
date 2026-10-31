@@ -13,7 +13,13 @@ interface Endpoint {
 
 type Groups = Readonly<Record<string, Readonly<Record<string, { readonly __endpoint: Endpoint }>>>>;
 
-const BUCKET = 'demo-hcm-private.firebasestorage.app';
+/**
+ * The bucket every functions test that loads `src/index.ts` puts in `FIREBASE_CONFIG` (`deploy-shape.test.ts`,
+ * `photos/on-upload.test.ts`, `imagery/upload.test.ts`): the shared module graph evaluates `index.ts` once, and
+ * firebase-functions caches the first configuration it reads, so a different value here depended on the files' order
+ * (lesson 290). It still differs from the fallback `<project>.appspot.com` that `GCLOUD_PROJECT` alone gives.
+ */
+const BUCKET = 'demo-hcm.firebasestorage.app';
 
 let deployed: Map<string, Endpoint>;
 

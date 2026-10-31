@@ -3,7 +3,7 @@
  *
  * - `FakeMap` implements `MapPort` and records every call, so the store and the viewer are tested by what they ask
  *   the map to do; `emit`, `clickPhoto`, `clickPoi` and `clickMap` play the map's side.
- * - `FakeMapboxGl` stands in for the global `mapboxgl` (Mapbox GL JS 3.32.0) in the adapter's tests: `FakeMapboxMap`
+ * - `FakeMapboxGl` stands in for the global `mapboxgl` (Mapbox GL JS 3.34.1) in the adapter's tests: `FakeMapboxMap`
  *   keeps sources, layers, paint and layout properties, images and configuration, records calls, and `fire` plays
  *   Mapbox's events. Nothing here renders; the browser tests with the real `mapbox-gl` come with CR-2.
  */

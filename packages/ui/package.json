@@ -45,14 +45,14 @@
         "@hcm/shared": "1.0.0",
         "@material/material-color-utilities": "0.4.0",
         "lit": "3.3.3",
-        "terra-draw": "1.38.0",
+        "terra-draw": "1.39.0",
         "terra-draw-mapbox-gl-adapter": "1.5.0"
     },
     "devDependencies": {
         "@fontsource-variable/roboto-flex": "5.3.0",
         "@hcm/test-support": "1.0.0",
-        "harfbuzzjs": "1.6.3",
-        "material-symbols": "0.48.0",
+        "harfbuzzjs": "1.6.4",
+        "material-symbols": "0.48.2",
         "wawoff2": "2.0.1"
     }
 }

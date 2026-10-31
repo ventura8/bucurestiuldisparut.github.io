@@ -1,7 +1,7 @@
 /**
- * The part of the Mapbox GL JS 3.32.0 API the adapter uses, typed structurally. The page loads Mapbox GL from
+ * The part of the Mapbox GL JS 3.34.1 API the adapter uses, typed structurally. The page loads Mapbox GL from
  * api.mapbox.com as the global `mapboxgl` (never bundled), so the engine depends on this shape, not on the npm
- * package: `mapbox-gl@3.32.0` joins as a dev dependency only for the browser tests (CR-2), which then also check
+ * package: `mapbox-gl@3.34.1` joins as a dev dependency only for the browser tests (CR-2), which then also check
  * that the real global satisfies these types. `FakeMapboxGl` (`@hcm/test-support`) implements them for the node tests.
  */
 import type { LngLat } from '@hcm/shared';

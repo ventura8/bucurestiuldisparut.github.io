@@ -17,7 +17,7 @@ describe('mount', () => {
         expect(world.viewer).toMatchObject({
             manifestUrl: MANIFEST_URL,
             engineVersion: '1.0.0',
-            mapboxCssUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css',
+            mapboxCssUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css',
             bootError: null,
         });
         expect(world.viewer.controller).toBe(controller);

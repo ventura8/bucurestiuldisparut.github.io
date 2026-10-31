@@ -1,5 +1,5 @@
 {
-    "$schema": "https://unpkg.com/knip@6.41.0/schema.json",
+    "$schema": "https://unpkg.com/knip@6.44.0/schema.json",
     "workspaces": {
         ".": {
             "entry": ["scripts/*/test/**/*.test.ts"],

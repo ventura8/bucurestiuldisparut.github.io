@@ -9,7 +9,7 @@
  */
 
 /** The Firebase CLI the repository pins (the root `package.json`); printed when it is missing. */
-export const FIREBASE_TOOLS_VERSION = '15.33.0';
+export const FIREBASE_TOOLS_VERSION = '15.34.2';
 
 export const FIREBASE = 'firebase';
 export const GCLOUD = 'gcloud';

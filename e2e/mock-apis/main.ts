@@ -36,7 +36,7 @@ const log = createLogger('e2e-servers');
 const role = process.argv[2];
 
 if (role === 'mock') {
-    // The pinned devDependency of @hcm/e2e, byte for byte what api.mapbox.com serves for v3.32.0.
+    // The pinned devDependency of @hcm/e2e, byte for byte what api.mapbox.com serves for v3.34.1.
     const mapboxGlDist = dirname(fileURLToPath(import.meta.resolve('mapbox-gl/dist/mapbox-gl.js')));
     // The fake upstreams (Google Cloud, Mapbox's Tokens and Tilesets APIs, USGS M2M, Nominatim, and for M3 USGS's browse
     // images and downloads, STAC and Overpass) answer first, one world per test; every world's Cloud Run hands its pipeline

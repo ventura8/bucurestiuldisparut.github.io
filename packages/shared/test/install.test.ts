@@ -30,7 +30,7 @@ function manifest(changes: Partial<Record<keyof InstallManifest, unknown>> = {})
             site: { name: 'hosting.tgz', bytes: 3000, sha256: 'c'.repeat(64) },
         },
         functions: ['admin-session', 'setup-status'],
-        tools: { firebaseTools: '15.33.0', node: NODE, docker: null },
+        tools: { firebaseTools: '15.34.2', node: NODE, docker: null },
         estimates: { server: { buildMinutes: 85 }, pipeline: { buildMinutes: 20 }, site: { buildMinutes: 5 } },
         ...changes,
     };
@@ -77,7 +77,7 @@ describe('the install release', () => {
 describe('the install manifest', () => {
     it('happyPath_aBundleManifestParses', () => {
         expect(installManifestSchema.safeParse(manifest()).success).toBe(true);
-        expect(installManifestSchema.safeParse(manifest({ tools: { firebaseTools: '15.33.0', node: NODE, docker: NODE } })).success).toBe(
+        expect(installManifestSchema.safeParse(manifest({ tools: { firebaseTools: '15.34.2', node: NODE, docker: NODE } })).success).toBe(
             true,
         );
     });
@@ -89,7 +89,7 @@ describe('the install manifest', () => {
             'a tarball under another name',
             { files: { ...(manifest()['files'] as object), site: { name: 'site.tgz', bytes: 1, sha256: 'c'.repeat(64) } } },
         ],
-        ['an image by tag only', { tools: { firebaseTools: '15.33.0', node: 'node:24', docker: null } }],
+        ['an image by tag only', { tools: { firebaseTools: '15.34.2', node: 'node:24', docker: null } }],
         ['another firebase-tools', { tools: { firebaseTools: '15.0.0', node: NODE, docker: null } }],
         [
             'a digest that is not hex',

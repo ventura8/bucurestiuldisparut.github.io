@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.27.1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
+# syntax=docker/dockerfile:1.28.0@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b
 #
 # Quality image: the ONLY place where lint, tests, e2e and builds run (locally and in CI).
 # Build: bash scripts/ci/build-and-test.sh (tag hcm-quality:local). Run: scripts/ci/run-all-checks.sh,
@@ -18,8 +18,8 @@ FROM mvdan/shfmt@sha256:8c06884a35683d8763fba6c0d9484d11a61a96da65f8d497d6f62582
 FROM zricethezav/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f AS gitleaks
 # node:24-bookworm-slim (Node 24.21.0, npm 11.19.0)
 FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS node
-# sonarsource/sonar-scanner-cli:12.2.0.4256_8.1.0 (SonarScanner CLI 8.1.0.6389, as in scripts/ci/sonar_scan.sh)
-FROM sonarsource/sonar-scanner-cli@sha256:a3f4215076706c95a17a68c19322ee916e40a3acd081a8c1a1e839e0194afa57 AS sonar-scanner
+# sonarsource/sonar-scanner-cli:12.3.0.4285_8.1.0 (SonarScanner CLI 8.1.0.6389, as in scripts/ci/sonar_scan.sh)
+FROM sonarsource/sonar-scanner-cli@sha256:47956b669bf486bdad919e1cbd0533223515aa0b6d1d31763e5a3754942df6d7 AS sonar-scanner
 
 # --- npm manifests without their scripts or their own versions -------------------------------
 # The npm layer of the quality image fills the npm cache and installs the browsers and the emulator JARs: it depends

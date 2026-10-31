@@ -70,8 +70,8 @@ describe('loading Mapbox GL JS', () => {
         await expect(loadMapboxGl(page)).resolves.toBe(page.mapboxgl);
         expect(page.scripts).toHaveLength(1);
         expect(page.scripts[0]).toMatchObject({ src: MAPBOX_GL_SCRIPT_URL, crossOrigin: 'anonymous', integrity: '' });
-        expect(MAPBOX_GL_SCRIPT_URL).toBe('https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js');
-        expect(MAPBOX_GL_CSS_URL).toBe('https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css');
+        expect(MAPBOX_GL_SCRIPT_URL).toBe('https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js');
+        expect(MAPBOX_GL_CSS_URL).toBe('https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css');
     });
 
     it('badPath_aFailedOrEmptyLoadRejectsAndTheNextMapTriesAgain', async () => {

@@ -179,7 +179,7 @@ Agents never read, print or paste the token. The `sonar` stage (part of `all`) r
 
 ## Cloud credentials (the user, once)
 
-- `firebase login` (`npx -y firebase-tools@15.33.0 login`) and `gcloud auth login` are run by the user in their own terminal. Agents never run `login:ci`, create keys or type credentials.
+- `firebase login` (`npx -y firebase-tools@15.34.2 login`) and `gcloud auth login` are run by the user in their own terminal. Agents never run `login:ci`, create keys or type credentials.
 - Deploys go through CI with Workload Identity Federation; a manual deploy is an explicit, one-time decision ([.agent/workflows/deploy.md](../.agent/workflows/deploy.md)).
 
 ## Housekeeping

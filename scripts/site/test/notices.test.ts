@@ -265,7 +265,7 @@ describe('thirdPartyNoticesPlugin: copied files and builds', () => {
         // Vitest runs from the repository root, where the kit's font packages are installed.
         const text = lastText(run({ product: 'x', assets: [{ package: 'material-symbols', file: 'fonts/m.woff2' }] }, {}));
 
-        expect(headers(text).slice(0, 3)).toEqual(['Package: material-symbols', 'Version: 0.48.0', 'Licence: Apache-2.0']);
+        expect(headers(text).slice(0, 3)).toEqual(['Package: material-symbols', 'Version: 0.48.2', 'Licence: Apache-2.0']);
     });
 
     it('happyPath_twoOutputsOfOneBuildMakeOneCompleteFileAndANewBuildsPluginStartsAfresh', () => {

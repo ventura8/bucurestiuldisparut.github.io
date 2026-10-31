@@ -6,7 +6,7 @@ import { autoBoot, browserEnvironment, engineBaseOf, startEngine, type EngineRel
 import { recordingLog } from './core/support.js';
 import { FakeContainer, config, testEnvironment } from './mount-support.js';
 
-const RELEASE: EngineRelease = { engineVersion: '1.2.3', mapboxGlVersion: '3.32.0', engineBase: 'https://example.org/engine/' };
+const RELEASE: EngineRelease = { engineVersion: '1.2.3', mapboxGlVersion: '3.34.1', engineBase: 'https://example.org/engine/' };
 
 type PageWindow = Window & typeof globalThis;
 
@@ -84,7 +84,7 @@ describe('browserEnvironment', () => {
         await expect((await env.fetch('https://example.org/m.json', { signal: new AbortController().signal })).text()).resolves.toBe(
             'https://example.org/m.json',
         );
-        expect(env).toMatchObject({ engineVersion: '1.2.3', mapboxCssUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css' });
+        expect(env).toMatchObject({ engineVersion: '1.2.3', mapboxCssUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css' });
     });
 
     it('happyPath_fontsLoadFromTheEngineFolderOrTheConfiguredBase', () => {
@@ -120,7 +120,7 @@ describe('browserEnvironment', () => {
         const env = browserEnvironment(fakePage().window, RELEASE, createLogger('test'));
 
         expect(() => env.createMap()).toThrow(
-            'mapboxgl is not defined: load https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js first',
+            'mapboxgl is not defined: load https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js first',
         );
     });
 

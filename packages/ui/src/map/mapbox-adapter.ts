@@ -1,5 +1,5 @@
 /**
- * `MapPort` on Mapbox GL JS 3.32.0, the global `mapboxgl` the page loads from api.mapbox.com (never bundled). The only
+ * `MapPort` on Mapbox GL JS 3.34.1, the global `mapboxgl` the page loads from api.mapbox.com (never bundled). The only
  * module that drives Mapbox (dependency-cruiser `only-the-map-adapter-imports-mapbox`); the helpers next to it build
  * the layers (`rasters.ts`, `photos.ts`, `pois.ts`), the sprite images (`icons.ts`), the overlay paint
  * (`overlay-registry.ts`), the 3D-objects switch (`basemap.ts`) and the selection (`pointer.ts`).

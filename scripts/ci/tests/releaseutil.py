@@ -10,8 +10,8 @@ from pathlib import Path
 from release_pins import ENGINE_FOLDER, KIT_PAGE, RELEASE_JSON, sri
 
 REPOSITORY = "ventura8/bucurestiuldisparut.github.io"
-MAPBOX_JS_URL = "https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js"
-MAPBOX_CSS_URL = "https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css"
+MAPBOX_JS_URL = "https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js"
+MAPBOX_CSS_URL = "https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css"
 MAPBOX_JS_SRI = sri(b"mapbox-gl test script\n")
 MAPBOX_CSS_SRI = sri(b".mapboxgl-map{}\n")
 ENGINE_FILES = {
@@ -33,7 +33,7 @@ def release_document(version: str = "1.0.0", files: dict[str, bytes] | None = No
         "repository": REPOSITORY,
         "base": base_of(version),
         "mapboxGl": {
-            "version": "3.32.0",
+            "version": "3.34.1",
             "script": {"url": MAPBOX_JS_URL, "integrity": MAPBOX_JS_SRI},
             "stylesheet": {"url": MAPBOX_CSS_URL, "integrity": MAPBOX_CSS_SRI},
         },

@@ -64,7 +64,7 @@ describe('<hcm-admin-map>', () => {
 
         expect(element.renderRoot.querySelector('.crosshair')).toBeNull();
         expect(element.renderRoot.querySelector('link')?.getAttribute('href')).toBe(
-            'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css',
+            'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css',
         );
     });
 

@@ -18,13 +18,13 @@ const sri = (letter: string): string => `sha384-${letter.repeat(64)}`;
 /** A release whose Mapbox GL JS pins are the template's own (read back from it). */
 function releaseFor(template: string, version = '1.4.0'): EngineRelease {
     const attribute = (url: string): string => new RegExp(`"${url}"\\s+integrity="([^"]+)"`).exec(template)?.[1] ?? '';
-    const css = 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css';
-    const js = 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js';
+    const css = 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css';
+    const js = 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js';
     return {
         version,
         repository: 'ventura8/bucurestiuldisparut.github.io',
         base: `https://cdn.jsdelivr.net/gh/ventura8/bucurestiuldisparut.github.io@v${version}/cdn/engine/`,
-        mapboxGl: { version: '3.32.0', script: { url: js, integrity: attribute(js) }, stylesheet: { url: css, integrity: attribute(css) } },
+        mapboxGl: { version: '3.34.1', script: { url: js, integrity: attribute(js) }, stylesheet: { url: css, integrity: attribute(css) } },
         files: [
             { path: 'engine.css', bytes: 10, integrity: sri('c') },
             { path: 'engine.iife.js', bytes: 20, integrity: sri('j') },

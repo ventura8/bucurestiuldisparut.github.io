@@ -115,7 +115,7 @@ export async function pinnedAddress(resolve: Resolver, host: string): Promise<Re
 
 /** The system resolver, every address of the host (`dns.lookup` with `all`). */
 export const systemResolver: Resolver = async (host) =>
-    (await lookup(host, { all: true, verbatim: true })).map((entry) => ({ address: entry.address, family: entry.family === 6 ? 6 : 4 }));
+    (await lookup(host, { all: true, order: 'verbatim' })).map((entry) => ({ address: entry.address, family: entry.family === 6 ? 6 : 4 }));
 
 /** A status that is not a 2xx: a redirect is refused (never followed), the others fail as their status says. */
 function statusFailure(status: number): UpstreamError {

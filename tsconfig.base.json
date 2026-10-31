@@ -1,5 +1,5 @@
 // Shared compiler options for every TypeScript project in the monorepo (TypeScript 6.0.3, HELD:
-// typescript-eslint 8.71.1 peers typescript <6.1.0). Flags follow docs/research/design-review-testability.md §1.3.
+// typescript-eslint 8.72.1 peers typescript <6.1.0). Flags follow docs/research/design-review-testability.md §1.3.
 {
     "compilerOptions": {
         "target": "es2023",

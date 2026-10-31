@@ -43,9 +43,9 @@ The automated suites already prove each behaviour against the emulators ([E2E_SC
 
 | Id | What it changes | The command (or the place) | Who runs it | After |
 | --- | --- | --- | --- | --- |
-| D1 | the Hosting site, once (M6: the admin at `/admin/` with its install bundle; the start-up page, or the public map, at `/`) | `npm run build:hosting && npm run build:install` (image; with `-e HCM_ADMIN_START_UP=1` for the start-up variant), then `npx -y firebase-tools@15.33.0 deploy --only hosting --project bucurestiul-disparut --config firebase.deploy.json` | you, or Claude after your yes | nothing |
-| D2 | terminal fallback of Setup (d): Firestore rules and indexes, Storage rules (per city) | `npx -y firebase-tools@15.33.0 deploy --only firestore,storage --project bucurestiul-disparut` | as D1 | B1, B2 |
-| D3 | terminal fallback of Setup (d): every function | `npm run build --workspace @hcm/functions` (image), then `npx -y firebase-tools@15.33.0 deploy --only functions --force --project bucurestiul-disparut --config firebase.deploy.json` | as D1 | D2 |
+| D1 | the Hosting site, once (M6: the admin at `/admin/` with its install bundle; the start-up page, or the public map, at `/`) | `npm run build:hosting && npm run build:install` (image; with `-e HCM_ADMIN_START_UP=1` for the start-up variant), then `npx -y firebase-tools@15.34.2 deploy --only hosting --project bucurestiul-disparut --config firebase.deploy.json` | you, or Claude after your yes | nothing |
+| D2 | terminal fallback of Setup (d): Firestore rules and indexes, Storage rules (per city) | `npx -y firebase-tools@15.34.2 deploy --only firestore,storage --project bucurestiul-disparut` | as D1 | B1, B2 |
+| D3 | terminal fallback of Setup (d): every function | `npm run build --workspace @hcm/functions` (image), then `npx -y firebase-tools@15.34.2 deploy --only functions --force --project bucurestiul-disparut --config firebase.deploy.json` | as D1 | D2 |
 | D4 | not needed since M6 (finding 14 of [research/manual-test-2026-10-25.md](research/manual-test-2026-10-25.md): the admin leaves start-up mode by itself once the server answers) | — | — | — |
 | D5 | terminal fallback of Setup (d3): the raster pipeline's image and its two Cloud Run Jobs | the `gcloud` block of D5 | you (the Google Cloud CLI is yours to install) | D3, B2 |
 | D6 | nothing in the cloud: one real USGS frame through the real pipeline, on this machine | the opt-in `real-data` run | Claude after your yes (it downloads a real frame) | B6 |
@@ -63,7 +63,7 @@ The automated suites already prove each behaviour against the emulators ([E2E_SC
 
 ## The deploys and their commands (each ask first)
 
-Every deploy needs your yes for that deploy, a clean tree on a commit whose default stage is green (`bash scripts/ci/e2e-split.sh`; the audit bumps of [research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §48a and §49i were applied on 2026-10-25, §64), and your own `npx -y firebase-tools@15.33.0 login` in your terminal. Builds run in the quality image; the deploy itself runs on the host with your login, from a temporary copy of `firebase.json` without its `predeploy` steps (the host's Node 22 and npm 9 do not build this repository). Every command names the project.
+Every deploy needs your yes for that deploy, a clean tree on a commit whose default stage is green (`bash scripts/ci/e2e-split.sh`; the audit bumps of [research/DECISIONS-for-review.md](research/DECISIONS-for-review.md) §48a and §49i were applied on 2026-10-25, §64), and your own `npx -y firebase-tools@15.34.2 login` in your terminal. Builds run in the quality image; the deploy itself runs on the host with your login, from a temporary copy of `firebase.json` without its `predeploy` steps (the host's Node 22 and npm 9 do not build this repository). Every command names the project.
 
 The temporary configuration `firebase.deploy.json` (`firebase.json` without its two `predeploy` steps; same folder, so every path in it still resolves), written in the image after the build and deleted after the deploy:
 
@@ -87,7 +87,7 @@ Ships the M6 Hosting tree ([research/M6-interfaces.md](research/M6-interfaces.md
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -e HCM_ADMIN_START_UP=1 -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
   bash -c 'mkdir -p $HOME && npm run build:hosting && npm run build:install'    # dist/hosting with admin/install/<release>/ (leave out -e HCM_ADMIN_START_UP=1 for the public variant)
 # then the temporary configuration (above), and:
-npx -y firebase-tools@15.33.0 deploy --only hosting --project bucurestiul-disparut --config firebase.deploy.json
+npx -y firebase-tools@15.34.2 deploy --only hosting --project bucurestiul-disparut --config firebase.deploy.json
 rm firebase.deploy.json
 ```
 
@@ -98,7 +98,7 @@ Check: `https://bucurestiul-disparut.web.app/release.json` says `"variant": "sta
 Since M6, Setup (d) **Instalează serverul** (Install the server) does this from the app (the build's `rules` step); this block is for an owner who prefers a terminal.
 
 ```bash
-npx -y firebase-tools@15.33.0 deploy --only firestore,storage --project bucurestiul-disparut
+npx -y firebase-tools@15.34.2 deploy --only firestore,storage --project bucurestiul-disparut
 ```
 
 Updates the rules and indexes of the existing `(default)` database in `nam5` (the city-scoped History indexes of §45 included); never creates a database.
@@ -111,7 +111,7 @@ Setup (d) does this from the app since M6. The deploy needs `--force` (finding 9
 docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "$PWD" hcm-quality:local \
   bash -c 'mkdir -p $HOME && npm run build --workspace @hcm/functions'   # functions/dist, its lock and .env.<project>
 # then the temporary configuration (above), and:
-npx -y firebase-tools@15.33.0 deploy --only functions --force --project bucurestiul-disparut --config firebase.deploy.json
+npx -y firebase-tools@15.34.2 deploy --only functions --force --project bucurestiul-disparut --config firebase.deploy.json
 rm firebase.deploy.json
 ```
 

@@ -30,7 +30,7 @@ describe('@hcm/engine public API', () => {
 
     it('happyPath_pinsTheVersions', () => {
         expect(ENGINE_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
-        expect(MAPBOX_GL_VERSION).toBe('3.32.0');
+        expect(MAPBOX_GL_VERSION).toBe('3.34.1');
     });
 
     it('happyPath_defineElementsRegistersTheViewerAndTheKitOnce', () => {

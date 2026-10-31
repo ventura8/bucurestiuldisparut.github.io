@@ -1,7 +1,7 @@
 /**
  * `@hcm/ui/map`: the map both apps draw on (docs/research/M2c-interfaces.md §3.1, CR-M2c-1). `MapPort` is the only map
  * surface the viewer's store and the admin's editors see; `createMapboxPort` implements it on the page's global
- * `mapboxgl` (Mapbox GL JS 3.32.0, never bundled), and `FakeMap` (`@hcm/test-support`) for the tests. It moved here from
+ * `mapboxgl` (Mapbox GL JS 3.34.1, never bundled), and `FakeMap` (`@hcm/test-support`) for the tests. It moved here from
  * the engine because the admin may not import the engine (dependency-cruiser `engine-and-admin-independent`). No Lit:
  * the admin's DOM-free logic imports it too.
  */

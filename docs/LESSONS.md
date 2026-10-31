@@ -1502,3 +1502,23 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the fixer's runs (the first run's `static` came before any emulator, the second after one).
     - Fix and pin: the stray gitignored logs were deleted before the next run; taking them out of `gitleaks dir`'s scope is `DECISIONS-for-review.md` §73l (ask first).
     - **A gitignored file is still in a directory scan's scope: whatever a run leaves behind, the next run's `static` reads.**
+
+288. **A bump left the old hoisted copy of a peer in the lockfile, and two copies of one library stopped meeting.**
+    - Seen: after the dependency update of 2026-10-31, `tsc` failed in `e2e/` (two `Page` types: `playwright-core` 1.64.0 hoisted for `@axe-core/playwright`'s peer, 1.64.1 nested under `playwright`), and every rules test failed with `Service firestore is not available` (`@firebase/app` 0.16.3 hoisted, 0.16.4 nested under `firebase` 13.1.0 and `@firebase/app-compat`, so Firestore registered on one app and the compat layer asked the other).
+    - Found by: `static/tsc` and `tests/vitest` (project `rules`).
+    - Cause: a peer that accepts any version (`>= 1.0.0`, `0.x`) keeps its lockfile entry; npm nests the bumped package's own copy instead of moving the hoisted one.
+    - Fix and pin: `npm update playwright-core` and `npm update @firebase/app` in the pinned Node image, which leave one copy each; `pipeline_skill.md` → *Local tooling quirks*.
+    - **After a bump, `npm ls <its core package>` must show one version: a library that registers itself (Firebase components, Playwright's types) breaks when two copies load.**
+
+289. **typescript-eslint 8.72 reports a test double of `Pick<Document, ...>` and `dns.lookup`'s `verbatim` as deprecated.**
+    - Seen: `no-deprecated` on `packages/engine/test/mount-support.ts` (`createElement`, `querySelector`: `Pick<Document, ...>` carries the DOM's deprecated overloads for legacy tag names) and on `functions/src/adapters/remote-files.ts` (`verbatim`, which Node replaced with `order`).
+    - Found by: `static/eslint` after the bump from 8.71.1.
+    - Fix and pin: `MountEnvironment.document` is a two-method port with the one signature `mount` uses (`createElement(tagName: typeof VIEWER_TAG): HcmMapViewer`), and the resolver asks for `order: 'verbatim'`.
+    - **A port names the signatures it calls, not a `Pick` of a DOM type: the DOM's overloads come with it.**
+
+290. **Two functions tests disagreed on the default bucket, and the first file to load the functions won.**
+    - Seen: `functions/test/index.test.ts` (the unit test of the deployed triggers) expected `demo-hcm-private.firebasestorage.app` and received `demo-hcm.firebasestorage.app` in two of three `tests` runs of 2026-10-31.
+    - Found by: `tests/vitest` (project `functions`, one shared module graph per worker).
+    - Cause: `deploy-shape.test.ts` (M6) also loads `src/index.ts`, with `demo-hcm.firebasestorage.app` in `FIREBASE_CONFIG`; the shared graph evaluates `index.ts` once and firebase-functions caches the first configuration it reads (`firebaseConfig()`), so the value depended on which file ran first.
+    - Fix and pin: every test that loads `src/index.ts` sets the same bucket; the assertion still tells it from the `GCLOUD_PROJECT` fallback (`<project>.appspot.com`).
+    - **In a shared module graph a module-level value is fixed by the first file that loads the module: tests that load it must agree on every input it reads at load time.**

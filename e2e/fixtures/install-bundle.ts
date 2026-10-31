@@ -31,7 +31,7 @@ export function installManifestText(projectId: string, docker = true, release = 
         projectId,
         files: { server: file('server.tgz', 'a'), pipeline: file('pipeline.tgz', 'b'), site: file('hosting.tgz', 'c') },
         functions: ['admin-session'],
-        tools: { firebaseTools: '15.33.0', node: NODE_IMAGE, docker: docker ? DOCKER_IMAGE : null },
+        tools: { firebaseTools: '15.34.2', node: NODE_IMAGE, docker: docker ? DOCKER_IMAGE : null },
         estimates: { server: { buildMinutes: 85 }, pipeline: { buildMinutes: 20 }, site: { buildMinutes: 5 } },
     };
     return `${JSON.stringify(manifest, null, 4)}\n`;

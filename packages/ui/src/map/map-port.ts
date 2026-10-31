@@ -1,6 +1,6 @@
 /**
  * The only map surface the engine core and the admin's editors see (docs/research/M1-interfaces.md §4,
- * M2c-interfaces.md §3). `mapbox-adapter.ts` implements it on the global `mapboxgl` (Mapbox GL JS 3.32.0, never
+ * M2c-interfaces.md §3). `mapbox-adapter.ts` implements it on the global `mapboxgl` (Mapbox GL JS 3.34.1, never
  * bundled); `FakeMap` (`@hcm/test-support`) implements it for the unit tests. Paint property names never appear in
  * the core: the adapter takes them from `overlayOpacityPaint` and `rasterAdjustmentPaint` of `@hcm/shared`.
  */

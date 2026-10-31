@@ -18,7 +18,7 @@ The `build` stage runs `npm run build`, which runs every workspace's `build` scr
 
 | Package | Output | Notes |
 | --- | --- | --- |
-| `@hcm/engine` | `packages/engine/dist/engine.iife.js`, `engine.mjs` (plus its lazy `firebase-sdk-<hash>.js`), `engine.css`, `fonts/` | IIFE global `window.HistoricCityMap`; Mapbox GL is never imported: the engine reads the page's global `mapboxgl` (Mapbox GL JS 3.32.0 from `api.mapbox.com`); config in `packages/engine/vite.config.ts`, then `fonts:copy` copies the kit's fonts and their licences into `dist/fonts/` |
+| `@hcm/engine` | `packages/engine/dist/engine.iife.js`, `engine.mjs` (plus its lazy `firebase-sdk-<hash>.js`), `engine.css`, `fonts/` | IIFE global `window.HistoricCityMap`; Mapbox GL is never imported: the engine reads the page's global `mapboxgl` (Mapbox GL JS 3.34.1 from `api.mapbox.com`); config in `packages/engine/vite.config.ts`, then `fonts:copy` copies the kit's fonts and their licences into `dist/fonts/` |
 | `@hcm/admin` | `packages/admin/dist/admin.*` | global `HistoricCityMapAdmin`; deployed to Firebase Hosting from M2 |
 
 `dist/` is git-ignored: the `release` stage rebuilds the bundles on a tag and `release.yml` attaches them to the GitHub Release. The engine a release serves through jsDelivr is the one copy of a build in the tree: `npm run release:cdn` writes it into `cdn/engine/` with `release.json` on the release commit, and the `release-cdn` gate requires it to equal a fresh build byte for byte (`.agent/skills/quality/prepare_release_skill.md`).

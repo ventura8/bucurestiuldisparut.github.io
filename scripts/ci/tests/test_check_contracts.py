@@ -21,11 +21,11 @@ from cihttp import Request, Response
 
 CONTRACTS_PY = Path(check_contracts.__file__)
 M2M = check_contracts.M2M_API
-CDN = "https://api.mapbox.com/mapbox-gl-js/v3.32.0"
+CDN = "https://api.mapbox.com/mapbox-gl-js/v3.34.1"
 COLLECTION_URL = f"{check_contracts.EARTH_SEARCH}/{check_contracts.REFERENCE_COLLECTION}"
 LINK_URL = "https://console.example.org/billing"
 # Stand-ins for the npm release's files; the probes compare the CDN's bytes with them.
-NPM_FILES = {"mapbox-gl.js": b"/* mapbox-gl 3.32.0 */", "mapbox-gl.css": b".mapboxgl-map{overflow:hidden}"}
+NPM_FILES = {"mapbox-gl.js": b"/* mapbox-gl 3.34.1 */", "mapbox-gl.css": b".mapboxgl-map{overflow:hidden}"}
 DIGESTS = {name: check_contracts.sri_digest(data) for name, data in NPM_FILES.items()}
 
 Answer = Response | Exception
@@ -66,7 +66,7 @@ def healthy_probe_answers() -> dict[tuple[str, str], Answer | list[Answer]]:
 
 
 def write_repo(
-    root: Path, links: object, engine: str = "export const MAPBOX_GL_VERSION = '3.32.0';\n", npm_version: str = "3.32.0"
+    root: Path, links: object, engine: str = "export const MAPBOX_GL_VERSION = '3.34.1';\n", npm_version: str = "3.34.1"
 ) -> None:
     links_file = root / check_contracts.LINKS_FILE
     links_file.parent.mkdir(parents=True, exist_ok=True)
@@ -195,7 +195,7 @@ def test_bad_path_network_error_is_unreachable() -> None:
 
 
 def probe_named(name: str) -> Probe:
-    return next(probe for probe in check_contracts.build_probes("3.32.0", DIGESTS) if probe.name == name)
+    return next(probe for probe in check_contracts.build_probes("3.34.1", DIGESTS) if probe.name == name)
 
 
 @pytest.mark.parametrize(
@@ -246,7 +246,7 @@ def test_bad_path_probe_reports_the_drift(name: str, response: Response, problem
 
 
 def test_happy_path_probes_send_the_documented_requests() -> None:
-    probes = {probe.name: probe.request for probe in check_contracts.build_probes("3.32.0", DIGESTS)}
+    probes = {probe.name: probe.request for probe in check_contracts.build_probes("3.34.1", DIGESTS)}
 
     assert probes["usgs.m2m.passwordLoginRemoved"] == Request("POST", f"{M2M}/login", b"{}", (("Content-Type", "application/json"),))
     assert probes["usgs.m2m.noBrowserCors"].headers == (("Origin", "https://ventura8.github.io"), ("Access-Control-Request-Method", "POST"))
@@ -335,8 +335,8 @@ def test_bad_path_script_entry_point_exits_with_main_status(monkeypatch: pytest.
         ("package.json", None, "cannot read the npm release of mapbox-gl; run npm ci"),
         ("dist/mapbox-gl.css", None, "cannot read the npm release of mapbox-gl; run npm ci"),
         ("package.json", "{", "cannot read the npm release of mapbox-gl; run npm ci"),
-        ("package.json", "[]", "mapbox-gl None is installed, but the engine pins 3.32.0"),
-        ("package.json", '{"version": "3.31.0"}', "mapbox-gl 3.31.0 is installed, but the engine pins 3.32.0"),
+        ("package.json", "[]", "mapbox-gl None is installed, but the engine pins 3.34.1"),
+        ("package.json", '{"version": "3.31.0"}', "mapbox-gl 3.31.0 is installed, but the engine pins 3.34.1"),
     ],
 )
 def test_bad_path_npm_release_unreadable_or_not_the_pinned_one_exits_2(

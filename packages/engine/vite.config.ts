@@ -9,7 +9,7 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
  * - dist/engine.mjs is the ES module build;
  * - dist/engine.css holds every stylesheet the engine imports.
  * Mapbox GL is never bundled: `mapbox-gl` resolves to the global `mapboxgl` that the page loads
- * from https://api.mapbox.com/mapbox-gl-js/v3.32.0/ (Mapbox terms, CDN caching, bundle budget).
+ * from https://api.mapbox.com/mapbox-gl-js/v3.34.1/ (Mapbox terms, CDN caching, bundle budget).
  * - dist/THIRD_PARTY_NOTICES.txt lists every bundled npm package and the fonts' packages (the `fonts:copy` script copies
  *   the fonts next to it) with their licences (scripts/site/src/notices.ts; checked by the `notices` gate).
  */

@@ -6,7 +6,7 @@ Status (M1): the manifest (with the POIs and overlay defaults of PLAN Addendum 3
 
 ## The three files of a city
 
-A city site is a page, its `config.js` and the engine (a new city's kit has its own three files, the page, `city.json` and a README: [The starter kit](#the-starter-kit)). Mapbox GL JS **3.32.0** is loaded from `api.mapbox.com` and is never bundled; the engine finds it as the global `mapboxgl`.
+A city site is a page, its `config.js` and the engine (a new city's kit has its own three files, the page, `city.json` and a README: [The starter kit](#the-starter-kit)). Mapbox GL JS **3.34.1** is loaded from `api.mapbox.com` and is never bundled; the engine finds it as the global `mapboxgl`.
 
 ```html
 <!doctype html>
@@ -16,9 +16,9 @@ A city site is a page, its `config.js` and the engine (a new city's kit has its 
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="referrer" content="strict-origin-when-cross-origin" />
         <title>București dispărut</title>
-        <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css" />
+        <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css" />
         <link rel="stylesheet" href="engine/engine.css" />
-        <script src="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js" defer></script>
+        <script src="https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js" defer></script>
         <script src="config.js" defer></script>
         <script type="module" src="engine/engine.mjs"></script>
     </head>
@@ -53,7 +53,7 @@ A new city copies `templates/starter-kit/` (M5; [research/M5-interfaces.md](rese
 
 | File | Role |
 | --- | --- |
-| `index.html` | the page: the meta CSP first, Mapbox GL JS 3.32.0 from `api.mapbox.com` and the engine's `engine.css` and `engine.iife.js` from a pinned jsDelivr folder, each with `integrity` and `crossorigin`, and `<hcm-map-viewer manifest-url="city.json" lang="ro">` |
+| `index.html` | the page: the meta CSP first, Mapbox GL JS 3.34.1 from `api.mapbox.com` and the engine's `engine.css` and `engine.iife.js` from a pinned jsDelivr folder, each with `integrity` and `crossorigin`, and `<hcm-map-viewer manifest-url="city.json" lang="ro">` |
 | `city.json` | a City Manifest v1: an example city with one place category and three places (a point, a line, an area), no photos and no layers, and the placeholder token `pk.replace-with-your-token`, which Mapbox refuses until the owner puts their own URL-restricted public token in |
 | `README.md` | the steps, in Romanian then English |
 
@@ -132,7 +132,7 @@ The IIFE build exposes `window.HistoricCityMap`; the ES module build exports the
 | Export | Type |
 | --- | --- |
 | `ENGINE_VERSION` | `string`, `major.minor.patch` |
-| `MAPBOX_GL_VERSION` | `'3.32.0'` |
+| `MAPBOX_GL_VERSION` | `'3.34.1'` |
 | `mount(element, config)` | `(element: HTMLElement, config: EngineConfig) => HistoricCityMapController` |
 | `defineElements()` | registers `<hcm-map-viewer>` and its parts; idempotent |
 

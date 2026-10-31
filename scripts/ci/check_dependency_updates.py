@@ -92,10 +92,12 @@ class Held:
 # Deliberate holds: "<ecosystem>:<name>" -> the pinned version that stays, and why (keep docs/CI_PIPELINE.md ->
 # Held dependencies in step).
 HELD: dict[str, Held] = {
-    "npm:typescript": Held("6.0.3", "typescript-eslint@8.71.1 peers typescript >=4.8.4 <6.1.0"),
+    "npm:typescript": Held("6.0.3", "typescript-eslint@8.72.1 peers typescript >=4.8.4 <6.1.0"),
     "npm:@types/node": Held("24.19.2", "follows the Node 24 runtime (engines >=24.12.0), not the newest Node line"),
     "docker:node": Held("24-bookworm-slim", "Node 24 is the runtime line (engines >=24.12.0); it moves together with engines"),
     "pypi:mando": Held("0.7.1", "radon 6.0.1 (the latest radon) requires mando >=0.6,<0.8"),
+    "pypi:findpython": Held("0.8.0", "poetry 2.5.1 (the latest Poetry) requires findpython >=0.6.2,<0.9.0"),
+    "pypi:pkginfo": Held("1.13.3", "poetry 2.5.1 (the latest Poetry) requires pkginfo >=1.12,<2.0"),
 }
 
 

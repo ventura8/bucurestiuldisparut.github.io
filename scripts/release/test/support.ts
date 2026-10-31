@@ -93,7 +93,7 @@ export function fakeRepository(version = '0.0.0'): { root: string; files: Releas
 }
 
 /** `files` with the engine built and the pinned Mapbox GL JS installed. */
-export function withEngineBuild(files: ReleaseFiles, mapboxVersion = '3.32.0'): ReleaseFiles {
+export function withEngineBuild(files: ReleaseFiles, mapboxVersion = '3.34.1'): ReleaseFiles {
     for (const [path, content] of Object.entries(ENGINE_BUILD)) {
         files.write(`packages/engine/dist/${path}`, content);
     }

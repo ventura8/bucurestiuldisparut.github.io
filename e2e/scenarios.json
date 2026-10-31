@@ -700,7 +700,7 @@
             "asserts": "pixel probes read the basemap background, then each layer's solid colour; both rasters in the middle slot; 1 map created, 1 map.load event; style, TileJSON, glyphs and tiles answered 200",
             "tier": "e2e-viewer",
             "status": "exists",
-            "notes": "Milestone M1. The mock APIs (e2e/mock-apis/) behind Mapbox GL JS 3.32.0, driven directly on a spec-made page (e2e/specs/harness/mock-apis.spec.ts)."
+            "notes": "Milestone M1. The mock APIs (e2e/mock-apis/) behind Mapbox GL JS 3.34.1, driven directly on a spec-made page (e2e/specs/harness/mock-apis.spec.ts)."
         },
         {
             "id": "S-V00-BAD-UNMOCKED-PATH",

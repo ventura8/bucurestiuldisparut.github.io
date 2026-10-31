@@ -27,7 +27,7 @@ const billing = (enabled: boolean): { code: number; stdout: string } => ok(JSON.
 
 /** A new Google account: nothing signed in, no project yet, billing linked once the owner did it in Google's page. */
 const NEW_ACCOUNT: ToolScript = {
-    'firebase --version': [ok('15.33.0\n')],
+    'firebase --version': [ok('15.34.2\n')],
     'gcloud --version': [ok('Google Cloud SDK\n')],
     'firebase login:list': [ok('⚠  No authorized accounts, run "firebase login"\n')],
     // What `login:list --json` prints once signed in: the accounts with their OAuth tokens (generated test values). The
@@ -249,8 +249,8 @@ test(
         });
 
         expect(code).toBe(1);
-        expect(output).toContain(translator(lang)('cli.tools.noFirebase', { version: '15.33.0' }));
-        expect(output).toContain('npm install -g firebase-tools@15.33.0');
+        expect(output).toContain(translator(lang)('cli.tools.noFirebase', { version: '15.34.2' }));
+        expect(output).toContain('npm install -g firebase-tools@15.34.2');
         expect(tools.calls()).toEqual([]);
         expect(existsSync(join(cwd, 'cluj/server'))).toBe(false);
     },

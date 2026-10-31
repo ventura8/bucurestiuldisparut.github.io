@@ -84,9 +84,9 @@ describe('the release folder', () => {
         withEngineBuild(files);
 
         expect(mapboxGlRelease(files)).toEqual({
-            version: '3.32.0',
-            script: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js', integrity: sri(MAPBOX_JS) },
-            stylesheet: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css', integrity: sri(MAPBOX_CSS) },
+            version: '3.34.1',
+            script: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js', integrity: sri(MAPBOX_JS) },
+            stylesheet: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css', integrity: sri(MAPBOX_CSS) },
         });
     });
 
@@ -94,7 +94,7 @@ describe('the release folder', () => {
         const { files } = fakeRepository('1.0.0');
         withEngineBuild(files, '3.31.0');
 
-        expect(() => mapboxGlRelease(files)).toThrow(/node_modules\/mapbox-gl is 3.31.0, the engine is written against 3.32.0/);
+        expect(() => mapboxGlRelease(files)).toThrow(/node_modules\/mapbox-gl is 3.31.0, the engine is written against 3.34.1/);
     });
 
     it('happyPath_theReleaseFileListsEveryFileWithItsSizeAndIntegrity', () => {
@@ -186,9 +186,9 @@ describe('the release folder', () => {
 
     it('happyPath_theReleaseFileIsMadeFromWhatIsGiven', () => {
         const mapboxGl = {
-            version: '3.32.0',
-            script: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js', integrity: sri('s') },
-            stylesheet: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css', integrity: sri('c') },
+            version: '3.34.1',
+            script: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js', integrity: sri('s') },
+            stylesheet: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css', integrity: sri('c') },
         };
         const released = [
             { path: 'engine.iife.js', content: bytes('a\n') },

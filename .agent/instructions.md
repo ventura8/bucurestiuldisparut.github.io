@@ -54,7 +54,7 @@ The stages, their gates and the meaning of `quality` and `all` are defined once,
 - **Run the pipeline, not a subset**: `scripts/ci/run-all-checks.sh` is what CI runs. Ad-hoc tool runs are for iterating only and happen inside `hcm-quality:local` (`.agent/workflows/test.md`).
 - **Architecture constraints** (`docs/ARCHITECTURE.md`):
   - The public viewer reads only the static manifest and photo files from the public bucket; it never reads Firestore and loads no Firebase SDK for data.
-  - Only the engine's Mapbox adapter touches `mapbox-gl`; the core talks to a `MapPort` interface and is tested against a fake map. `mapbox-gl` stays external (global `mapboxgl`, v3.32.0).
+  - Only the engine's Mapbox adapter touches `mapbox-gl`; the core talks to a `MapPort` interface and is tested against a fake map. `mapbox-gl` stays external (global `mapboxgl`, v3.34.1).
   - Cloud Functions are pure handlers with injected ports plus thin triggers; Cloud Run Admin and Secret Manager are called over REST so tests can mock them.
   - Every Firestore writer validates with the shared zod schemas from `@hcm/shared`; rules are default-deny.
 - **Lit without decorators**: `static override readonly properties`, `declare` fields, defaults in the constructor, an idempotent `define…()` function, the `hcm-` element prefix (`web/ui_m3_adaptive_skill.md`).

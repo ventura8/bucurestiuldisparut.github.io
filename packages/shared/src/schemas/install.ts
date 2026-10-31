@@ -71,7 +71,7 @@ export const INSTALLER_ACCOUNT = 'hcm-installer';
 export const PIPELINE_REPOSITORY = 'hcm';
 
 /** The `firebase-tools` the server and site builds install from the bundle's lock (the repository's own pin). */
-export const FIREBASE_TOOLS_VERSION = '15.33.0';
+export const FIREBASE_TOOLS_VERSION = '15.34.2';
 
 /** The prefix of a step script's machine-readable log line (`HCM_INSTALL {"event":"retry",…}`). */
 export const HCM_INSTALL_LOG_PREFIX = 'HCM_INSTALL ';

@@ -16,9 +16,9 @@ The public contract (every field of `config.js` and of the manifest) is [docs/EN
 | `site.json` | Titlul, descrierea și textul fără JavaScript ale paginii / the page's title, description and no-JavaScript note |
 | `site.css` | Cadrul paginii (harta umple fereastra) / the page frame (the map fills the window) |
 
-Pagina `index.html` este generată, nu scrisă de mână: are o politică de securitate a conținutului (CSP) calculată din manifest și încarcă Mapbox GL JS 3.32.0 de la api.mapbox.com cu Subresource Integrity. În acest depozit, `npm run build:site` scrie trusa completă în `dist/site/starter-kit/`.
+Pagina `index.html` este generată, nu scrisă de mână: are o politică de securitate a conținutului (CSP) calculată din manifest și încarcă Mapbox GL JS 3.34.1 de la api.mapbox.com cu Subresource Integrity. În acest depozit, `npm run build:site` scrie trusa completă în `dist/site/starter-kit/`.
 
-The `index.html` page is generated, not hand-written: its Content Security Policy is computed from the manifest and it loads Mapbox GL JS 3.32.0 from api.mapbox.com with Subresource Integrity. In this repository `npm run build:site` writes the complete kit to `dist/site/starter-kit/`.
+The `index.html` page is generated, not hand-written: its Content Security Policy is computed from the manifest and it loads Mapbox GL JS 3.34.1 from api.mapbox.com with Subresource Integrity. In this repository `npm run build:site` writes the complete kit to `dist/site/starter-kit/`.
 
 ## Pași (română)
 

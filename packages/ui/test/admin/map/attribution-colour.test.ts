@@ -10,7 +10,7 @@ import { cleanup, defineAll, mount } from '../shell/fake-app.js';
  * the page's text colour, light in the dark scheme, and read white on white (axe color-contrast at `admin-l1440-dark`).
  */
 
-/** The two rules of `mapbox-gl.css` 3.32.0 that colour the attribution (the stylesheet itself is not loaded here). */
+/** The two rules of `mapbox-gl.css` 3.34.1 that colour the attribution (the stylesheet itself is not loaded here). */
 const MAPBOX_RULES = '.mapboxgl-ctrl.mapboxgl-ctrl-attrib{background-color:#ffffff80}.mapboxgl-ctrl-attrib a{color:#000000bf}';
 
 /** Mapbox's attribution control as it fills it: the layer's credit as text, then Mapbox's own link. */

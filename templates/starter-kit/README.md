@@ -8,7 +8,7 @@ A historical map of your city in three files: old photos, vanished places and ma
 
 | Fișier / File | Rol / Role |
 | --- | --- |
-| `index.html` | Pagina: politica de securitate a conținutului (CSP), Mapbox GL JS 3.32.0 și motorul de la jsDelivr, fiecare cu `integrity` / the page: its Content Security Policy, Mapbox GL JS 3.32.0 and the engine from jsDelivr, each with `integrity` |
+| `index.html` | Pagina: politica de securitate a conținutului (CSP), Mapbox GL JS 3.34.1 și motorul de la jsDelivr, fiecare cu `integrity` / the page: its Content Security Policy, Mapbox GL JS 3.34.1 and the engine from jsDelivr, each with `integrity` |
 | `city.json` | Orașul, locurile, fotografiile și straturile (City Manifest v1) / the city, its places, photos and layers |
 | `README.md` | Acest fișier / this file |
 

@@ -27,9 +27,9 @@ function release(changes: Partial<EngineRelease> = {}): EngineRelease {
         repository: ENGINE_REPOSITORY,
         base: BASE,
         mapboxGl: {
-            version: '3.32.0',
-            script: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js', integrity: sri('M') },
-            stylesheet: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css', integrity: sri('N') },
+            version: '3.34.1',
+            script: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js', integrity: sri('M') },
+            stylesheet: { url: 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css', integrity: sri('N') },
         },
         files: [
             { path: 'engine.iife.js', bytes: 424_503, integrity: sri('A') },

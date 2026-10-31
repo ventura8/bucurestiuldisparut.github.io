@@ -124,7 +124,7 @@ describe('observe', () => {
         });
         const unpinned = await installWorld();
         unpinned.manifest = installManifest({
-            tools: { firebaseTools: '15.33.0', node: `node:24@sha256:${'d'.repeat(64)}`, docker: null },
+            tools: { firebaseTools: '15.34.2', node: `node:24@sha256:${'d'.repeat(64)}`, docker: null },
         });
         expect((await unpinned.installer.observe('pipeline', ACCESS)).blocker).toEqual({ key: 'apiError.install.notAvailable' });
     });
@@ -202,7 +202,7 @@ describe('submit', () => {
 
     it('badPath_thePipelineIsNotSubmittedWithoutItsBuilder', async () => {
         const world = await installWorld();
-        world.manifest = installManifest({ tools: { firebaseTools: '15.33.0', node: `node:24@sha256:${'d'.repeat(64)}`, docker: null } });
+        world.manifest = installManifest({ tools: { firebaseTools: '15.34.2', node: `node:24@sha256:${'d'.repeat(64)}`, docker: null } });
 
         await expect(world.installer.submit('pipeline', ACCESS)).rejects.toBeInstanceOf(InstallBundleError);
         expect(world.fakes.callsTo('cloud-build.builds.create')).toHaveLength(0);

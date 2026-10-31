@@ -145,7 +145,7 @@ export function testEnvironment(options: TestEnvironmentOptions = {}): TestEnvir
         location: { hash: options.location?.hash ?? '', search: options.location?.search ?? '', replaceHash: () => undefined },
         log: log.log,
         engineVersion: '1.0.0',
-        mapboxCssUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css',
+        mapboxCssUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css',
         reducedMotion: () => false,
         installFonts: (engineBase) => {
             fonts.push(engineBase);

@@ -10,7 +10,7 @@
 import type { MapboxGl } from './mapbox-types.js';
 
 /** The release the map code is written against (the engine's `MAPBOX_GL_VERSION`, the site's page). */
-export const MAPBOX_GL_VERSION = '3.32.0';
+export const MAPBOX_GL_VERSION = '3.34.1';
 
 const MAPBOX_GL_BASE = `https://api.mapbox.com/mapbox-gl-js/v${MAPBOX_GL_VERSION}`;
 

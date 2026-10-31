@@ -15,7 +15,7 @@ import type { SiteSpec } from './site-spec.js';
  */
 
 /** The Mapbox GL JS release the engine is written against (packages/engine `MAPBOX_GL_VERSION`). */
-export const MAPBOX_GL_VERSION = '3.32.0';
+export const MAPBOX_GL_VERSION = '3.34.1';
 
 export const MAPBOX_GL_SCRIPT = `https://api.mapbox.com/mapbox-gl-js/v${MAPBOX_GL_VERSION}/mapbox-gl.js`;
 export const MAPBOX_GL_STYLESHEET = `https://api.mapbox.com/mapbox-gl-js/v${MAPBOX_GL_VERSION}/mapbox-gl.css`;

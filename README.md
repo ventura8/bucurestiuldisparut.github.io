@@ -32,7 +32,7 @@ An npm-workspaces monorepo:
 
 | Path | Contents |
 | --- | --- |
-| `packages/engine` | `@hcm/engine`, the public viewer (Lit + Mapbox GL JS 3.32.0, loaded from Mapbox's CDN, never bundled); exposes `window.HistoricCityMap` |
+| `packages/engine` | `@hcm/engine`, the public viewer (Lit + Mapbox GL JS 3.34.1, loaded from Mapbox's CDN, never bundled); exposes `window.HistoricCityMap` |
 | `packages/admin` | `@hcm/admin`, the admin: its Setup Assistant and the editors (photos, places, layers, settings, history, jobs, admins, crash reports) |
 | `packages/ui` | `@hcm/ui`, the Material 3 Expressive component kit, its self-hosted fonts and the viewer's elements ([packages/ui/README.md](packages/ui/README.md)) |
 | `packages/shared` | `@hcm/shared`, schemas (City Manifest v1), the overlay model, the URL hash, i18n (RO/EN), logging |

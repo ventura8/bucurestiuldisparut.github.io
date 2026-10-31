@@ -4,7 +4,7 @@ import { expect, type Page } from '@playwright/test';
 import { mapIdle, screenPointOf, type ScreenPoint } from '../../support/map.js';
 
 /**
- * The admin's map in the e2e tier (docs/research/M2c-interfaces.md §12.3, CR-M2c-7): Mapbox GL JS 3.32.0 from the pinned
+ * The admin's map in the e2e tier (docs/research/M2c-interfaces.md §12.3, CR-M2c-7): Mapbox GL JS 3.34.1 from the pinned
  * npm package, the mock Standard basemap and the solid-colour tiles, all answered by the mock APIs behind the firewall
  * (Satellite, or any real Mapbox host, would fail the test). The instrumentation's map-instance counter
  * (e2e/support/instrumentation.ts) counts each page visit's map, a billed map load. These helpers read the live map

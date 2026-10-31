@@ -109,7 +109,7 @@ describe('upgrade', () => {
 });
 
 describe('doctor', () => {
-    const tools = new FakeRunner({ 'firebase --version': [{ code: 0, stdout: '15.33.0' }] }, ['gcloud']);
+    const tools = new FakeRunner({ 'firebase --version': [{ code: 0, stdout: '15.34.2' }] }, ['gcloud']);
 
     it('happyPath_aCityThatIsReady', async () => {
         const world = await city(release(pinned('1.0.0', 'a')), tools);

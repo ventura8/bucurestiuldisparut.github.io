@@ -67,10 +67,10 @@ describe('the template index.html', () => {
 
     it('happyPath_mapboxGlIsPinnedWithTheDigestsOfThePinnedRelease', () => {
         expect(page).toContain(
-            `href="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css"\n            integrity="${sri('node_modules/mapbox-gl/dist/mapbox-gl.css')}"`,
+            `href="https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css"\n            integrity="${sri('node_modules/mapbox-gl/dist/mapbox-gl.css')}"`,
         );
         expect(page).toContain(
-            `src="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js"\n            integrity="${sri('node_modules/mapbox-gl/dist/mapbox-gl.js')}"`,
+            `src="https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js"\n            integrity="${sri('node_modules/mapbox-gl/dist/mapbox-gl.js')}"`,
         );
     });
 

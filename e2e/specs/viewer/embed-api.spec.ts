@@ -18,7 +18,7 @@ const EMBED_HTML = `<!DOCTYPE html>
 <html lang="ro">
 <head>
 <meta charset="utf-8"><title>Embed e2e</title><link rel="icon" href="data:,">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js"></script>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js"></script>
 <script src="engine/engine.iife.js"></script>
 <style>html, body, #embed { margin: 0; width: 100%; height: 100%; }</style>
 </head>

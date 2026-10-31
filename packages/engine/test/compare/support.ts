@@ -98,7 +98,7 @@ export class FakeCompare {
             this.maps.push(map);
             return map;
         },
-        mapboxCssUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css',
+        mapboxCssUrl: 'https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css',
     };
 
     /** The newest surface. */

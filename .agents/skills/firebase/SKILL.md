@@ -39,4 +39,4 @@ The emulator JARs are baked into the image (`FIREBASE_EMULATORS_PATH`), JDK 21 i
 
 ## Ask first, every time
 
-`firebase deploy`, any `firebase`, `gcloud` or Firebase MCP action that changes a project, enabling an API, changing IAM or an org policy, accepting terms. The user runs `npx -y firebase-tools@15.33.0 login` themselves; agents never run `login:ci`, create tokens or type credentials.
+`firebase deploy`, any `firebase`, `gcloud` or Firebase MCP action that changes a project, enabling an API, changing IAM or an org policy, accepting terms. The user runs `npx -y firebase-tools@15.34.2 login` themselves; agents never run `login:ci`, create tokens or type credentials.

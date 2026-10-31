@@ -28,7 +28,7 @@ export function installManifest(changes: Readonly<Record<string, unknown>> = {})
         projectId: 'demo-hcm',
         files: { server: file('server.tgz', 'a'), pipeline: file('pipeline.tgz', 'b'), site: file('hosting.tgz', 'c') },
         functions: ['admin-session'],
-        tools: { firebaseTools: '15.33.0', node: NODE_IMAGE, docker: DOCKER_IMAGE },
+        tools: { firebaseTools: '15.34.2', node: NODE_IMAGE, docker: DOCKER_IMAGE },
         estimates: { server: { buildMinutes: 85 }, pipeline: { buildMinutes: 20 }, site: { buildMinutes: 5 } },
         ...changes,
     };

@@ -5,7 +5,7 @@ import { isColour, probePixel } from '../../support/site.js';
 import { expect, test } from '../../support/test.js';
 
 /**
- * Harness (behaviour V00): Mapbox GL JS 3.32.0, loaded from "api.mapbox.com" and answered entirely by the mock APIs,
+ * Harness (behaviour V00): Mapbox GL JS 3.34.1, loaded from "api.mapbox.com" and answered entirely by the mock APIs,
  * draws the e2e world: the minimal Standard-like basemap, a `mapbox://` tileset and an `xyz` source in the `middle`
  * slot, and a label from the generated glyphs in the `top` slot. A pixel probe reads each layer's known colour.
  * The viewer's own specs build on this; here a spec-made page drives Mapbox GL directly.
@@ -16,8 +16,8 @@ const MAP_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"><title>Map harness</title><link rel="icon" href="data:,">
-<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.css">
-<script src="https://api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js"></script>
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.css">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js"></script>
 <style>html, body, #map { margin: 0; width: 100%; height: 100%; }</style>
 </head>
 <body><div id="map" role="region" aria-label="Map harness"></div></body>
@@ -117,7 +117,7 @@ test(
         const answered = calls.filter((call) => call.status === 200).map((call) => `${call.host}${call.path}`);
         expect(answered).toEqual(
             expect.arrayContaining([
-                'api.mapbox.com/mapbox-gl-js/v3.32.0/mapbox-gl.js',
+                'api.mapbox.com/mapbox-gl-js/v3.34.1/mapbox-gl.js',
                 'api.mapbox.com/styles/v1/mapbox/standard-satellite',
                 `api.mapbox.com/v4/${E2E_TILESET_LAYER.tilesetId}.json`,
                 expect.stringMatching(/^api\.mapbox\.com\/fonts\/v1\/mapbox\/.+\/0-255\.pbf$/),

@@ -22,7 +22,7 @@ Comanda întreabă doar ce nu i-ai dat ca opțiune: numele orașului în român�
 ### Ce îți trebuie pentru self-host
 
 - Node 24.12 sau mai nou;
-- Firebase CLI: `npm install -g firebase-tools@15.33.0` (fără el, comanda se oprește înainte să ruleze ceva și îți arată această linie);
+- Firebase CLI: `npm install -g firebase-tools@15.34.2` (fără el, comanda se oprește înainte să ruleze ceva și îți arată această linie);
 - opțional, Google Cloud CLI (`gcloud`): cu el, comanda verifică singură dacă plata este legată; fără el, te întreabă;
 - un cont Google și, pentru server, un card pentru planul Blaze, introdus doar în paginile Google; conturile Mapbox și USGS le faci mai târziu, din Asistentul de configurare.
 
@@ -85,7 +85,7 @@ The command asks only what no option answered: the city's Romanian name (the id 
 ### What self-hosting needs
 
 - Node 24.12 or newer;
-- the Firebase CLI: `npm install -g firebase-tools@15.33.0` (without it the command stops before running anything and shows this line);
+- the Firebase CLI: `npm install -g firebase-tools@15.34.2` (without it the command stops before running anything and shows this line);
 - optionally the Google Cloud CLI (`gcloud`): with it the command checks the billing link itself; without it, it asks you;
 - a Google account and, for the server, a card for the Blaze plan, entered in Google's pages only; the Mapbox and USGS accounts come later, from the Setup Assistant.
 
