@@ -149,6 +149,9 @@ describe('observe: what stands in the way', () => {
             tools: { firebaseTools: '15.34.2', node: `node:24@sha256:${'d'.repeat(64)}`, docker: null },
         });
         expect((await unpinned.installer.observe('pipeline', ACCESS)).blocker).toEqual({ key: 'apiError.install.notAvailable' });
+        // Finding 43 of 2026-11-01: known without a look at Google (the admin's own bundle).
+        await expect(unpinned.installer.localBlocker('pipeline')).resolves.toEqual({ key: 'apiError.install.notAvailable' });
+        await expect(world.installer.localBlocker('pipeline')).resolves.toBeNull();
     });
 
     it('badPath_theSiteWaitsForSomethingToShow_andAMissingBundleStopsEveryTarget', async () => {
@@ -160,6 +163,8 @@ describe('observe: what stands in the way', () => {
         const missing = await installWorld();
         missing.manifest = null;
         expect((await missing.installer.observe('server', ACCESS)).blocker).toEqual({ key: 'apiError.install.bundleMissing' });
+        // Without a bundle the pipeline's own blocker is unknown, not "not available": the look at Google says why.
+        await expect(missing.installer.localBlocker('pipeline')).resolves.toBeNull();
     });
 
     it('badPath_aRefusedListIsAGoogleFailure', async () => {

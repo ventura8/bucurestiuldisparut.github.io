@@ -18,6 +18,7 @@ import {
     installStatus,
     installStatusStyles,
     mayInstall,
+    pipelineOffReason,
     serverOffersInstall,
     type InstallStatusInput,
 } from './install-status.js';
@@ -83,10 +84,10 @@ export class HcmSetupDeploy extends SetupBody {
         const tryAgain = view.state === 'failed';
         return html`${blockerLine(input, view)}
             <div class="actions">${this.renderButton(tryAgain, !mayInstall(view) || state.steps.deploy.busy)}</div>
-            ${tryAgain ? nothing : this.renderAlsoPipeline()}`;
+            ${tryAgain || pipelineOffReason(state.install) !== null ? nothing : this.renderAlsoPipeline()}`;
     }
 
-    /** The first install's click also starts the imagery pipeline (d3). */
+    /** The first install's click also starts the imagery pipeline (d3), unless this admin cannot install it (finding 43). */
     private renderAlsoPipeline(): TemplateResult {
         return html`<p class="note">${this.t('adminSetup.install.server.alsoPipeline')}</p>`;
     }

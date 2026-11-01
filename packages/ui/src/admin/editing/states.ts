@@ -65,6 +65,14 @@ export function errorTemplate(locale: Locale, failure: StoreFailurePort | null, 
 export interface ListTexts {
     readonly empty: AdminContentKey;
     readonly icon: string;
+    /** The empty state's second line: where the items come from (finding 44 of 2026-11-01). */
+    readonly emptyHint?: AdminContentKey;
+}
+
+/** The empty state: its sentence and, when the list has one, the line that says where the items come from. */
+function emptyTemplate(locale: Locale, texts: ListTexts): TemplateResult {
+    const hint = texts.emptyHint === undefined ? '' : contentText(locale, texts.emptyHint);
+    return html`<hcm-empty-state .icon=${texts.icon} .text=${contentText(locale, texts.empty)} .hint=${hint}></hcm-empty-state>`;
 }
 
 /**
@@ -81,9 +89,7 @@ export function listBody<Item>(
         return errorTemplate(locale, list.failure, handlers.retry);
     }
     if (list.items.length === 0) {
-        return list.status === 'loading'
-            ? loadingTemplate(locale)
-            : html`<hcm-empty-state .icon=${texts.icon} .text=${contentText(locale, texts.empty)}></hcm-empty-state>`;
+        return list.status === 'loading' ? loadingTemplate(locale) : emptyTemplate(locale, texts);
     }
     return html`${handlers.items(list.items)} ${moreButton(locale, list.hasMore, handlers.more)}`;
 }

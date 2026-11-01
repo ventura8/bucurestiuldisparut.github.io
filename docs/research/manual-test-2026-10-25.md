@@ -339,3 +339,72 @@ what each finding changed: `docs/LESSONS.md` 310–311 and `DECISIONS-for-review
   as fit under the 50-category limit; the snackbar says how many; with all five present the action is off with "Every
   starter category is already here" (S-A39-HAPPY-ADD-MISSING-STARTERS, S-A39-BAD-STARTERS-PRESENT; tour
   `settings.categories-starters-added`, `settings.categories-starters-present`).
+
+### The editors, Setup, Jobs, Crashes and push (2026-11-01, admin and server `1.0.0+e53d9ec`)
+
+After the Hosting redeploy and the server update of `1.0.0+e53d9ec`. The numbering continues the list above; what each
+finding changed: `docs/LESSONS.md` 312–316 and `DECISIONS-for-review.md` §79.
+
+- **42.** \[bug]\[places] Places → **Add place**, then leaving it untouched (no title, no shape; the category select filled
+  in by default) still asked "Discard your changes?". A new place counted as unsaved for being new, and the category
+  filled in once the categories were listed was an edit. FIXED (§79a): a new place is unsaved only once it differs from
+  its start (typed text, a drawn or placed position, a field moved from its default; `PoiDraft.unsaved`, positions of an
+  unfinished shape in `PlaceEditor.unsaved`), and the category filled in later is a default (`PoiDraft.prefill`), not an
+  edit (S-A38-HAPPY-NEW-UNTOUCHED, S-A38-BAD-NEW-TYPED-ASKS). UNVERIFIED: a line or an area being drawn on the map whose
+  shape is not finished is held by the map's drawing tool, not by the editor, so it does not count until it is finished
+  (the vertex list's positions do).
+- **43.** \[bug]\[setup d3] Step d3 (the optional imagery pipeline) offered **Install the pipeline** although the install
+  bundle's manifest says `tools.docker: null` (§67e undecided: no digest-pinned Docker builder), so a click could only be
+  refused. The card read a record of the pipeline (looked at, not installed) without its reason. FIXED (§79b): the cards
+  read once, without a token, whether this admin's bundle can install the pipeline (`InstallerPort.localBlocker`, the
+  admin's own origin); when it cannot, the card says "Not available yet: …" with the existing copy and shows no button,
+  no consent note and no "the same click also installs the pipeline" on the server's card, and neither Install the server
+  nor Update the map submits it; with a Docker builder in the bundle the button stays (S-A56-BAD-NOT-AVAILABLE,
+  S-A56-HAPPY-INSTALL-ALONE; tour `setup.pipeline-not-available`).
+- **44.** \[ux]\[jobs] The Jobs page's empty state only said "No jobs yet.". DONE (§79c): a second line says where jobs
+  come from, as Layers' empty state does: Historical imagery's imports (a USGS scene or a GeoTIFF), georeferencing or
+  publishing a layer again, and deleting a layer's tiles (`adminContent.jobs.emptyHint`; S-A18-HAPPY-EMPTY-HINT,
+  S-A18-BAD-EMPTY-HINT-GONE). Photo reprocessing and the static export do not make jobs (`JOB_TYPES`), so the line does
+  not name them.
+- **45.** \[ops]\[functions] Crashes showed a production group "The request was aborted because there was no available
+  instance…" (Cloud Run's 429), three times from 2026-10-26 to 2026-10-29, application `ops-onbudget`. With one instance,
+  a burst of budget notifications that came while it was starting was refused; Pub/Sub delivers a refused message again,
+  so no alert was lost, but every refusal was an error. FIXED (§79d): `ops-onBudget` scales to three instances of 80
+  concurrent requests (`BUDGET_SCALING`, `functions/src/ops/budget.ts`), no minimum instance (an idle month costs
+  nothing), under the five-instance cap of every function; the guard's transaction keeps a repeated alert from turning
+  it red or notifying twice (S-A43-HAPPY-BUDGET-BURST, S-A43-BAD-BUDGET-BURST-ONCE). Live: the next server update.
+- **46.** \[bug]\[notifications] Notifications → **Notifications on this device**: after Chrome's prompt (granted) the
+  admin said "Notifications did not start: This browser could not be registered for notifications. Try again, or use
+  the inbox." Live facts: `Notification.permission` granted, the worker `/admin/firebase-messaging-sw.js` active with
+  scope `/admin/`, a push subscription held, and a second click made no request to `fcmregistrations` or
+  `firebaseinstallations`. That message is `apiError.notify.deviceInvalid`: the browser's side gave an installation id
+  and the server's dry run at FCM (`messages:send`, `validate_only`, `fid`) refused it; with no request on the second
+  click, `register()` answered from the SDK's own record of an earlier registration. FIXED (§79e):
+  (a) a failure says why on a line of its own with its code, the SDK's (`messaging/fid-registration-failed`,
+  `messaging/permission-blocked`, `installations/request-failed`, …) or FCM's (`fcm/UNREGISTERED`, passed on by the
+  server as the refusal's `reason`), in Romanian and English for the known families, and the log keeps the code and the
+  SDK's text with every id, token or key replaced (`packages/admin/src/inbox/push-failure.ts`; the server logs FCM's code,
+  never the token); (b) a registration FCM refuses is made again once: the SDK's record is forgotten
+  (`packages/admin/src/firebase/fcm-record.ts`) and the browser registers anew, also right after the root's worker of an
+  admin before M6 is retired (S-A47-HAPPY-RENEWED, S-A47-BAD-FCM-REFUSED-REASON, S-A47-BAD-SDK-CODE,
+  S-A47-BAD-FCM-REASON-NAMED; tour `notify.push-failed-reason`). What `register()` needs, read offline from
+  `@firebase/messaging` 0.13.3 and `@firebase/installations` 0.6.24, against this project:
+  - the Notifications permission granted: yes (live);
+  - the worker's registration passed to `register()`, so the SDK never registers its own `/firebase-messaging-sw.js` at
+    `/firebase-cloud-messaging-push-scope`: yes (`scope: './'`, `/admin/` live);
+  - a push subscription of that worker, made with the SDK's default VAPID key when the worker has none (an existing one
+    is reused whatever its key): present live;
+  - Firebase Installations (`firebaseinstallations.googleapis.com`: `createInstallation`, `generateAuthToken`) with the
+    web API key: the API is enabled by Provision, the CSP `connect-src` of `/admin/**` allows `https://*.googleapis.com`,
+    and the key's referrers are `${origin}/*` of the admin's and the viewer's origins, which the page `/admin/` matches;
+  - `CreateRegistration` at `fcmregistrations.googleapis.com` with the key and the installation's token: enabled by
+    Provision, allowed by the same CSP;
+  - IndexedDB for both SDKs' records (`firebase-installations-database`, `firebase-messaging-database`): a record says
+    only the installation id and when it was registered, and is trusted for seven days, whatever worker or subscription
+    it was made with: the cause fixed in (b);
+  - the server's dry run with `fid` (firebase-admin 14's `FidMessage`) as the functions' account.
+  VERIFIED offline: the CSP, the referrers, the enabled APIs, the scope, the record's seven days. UNVERIFIED until the
+  next live try (the first attempt of 2026-11-01 was not captured): which of the record's registration (made with an
+  earlier worker, or forgotten by FCM) and FCM's refusal of a fresh one it was; that a key auto-created by Firebase
+  restricts its APIs to a list that includes the Installations and FCM Registration APIs; that the default VAPID key is
+  accepted with `register()` (M4-interfaces §10). The reason line now names the code that settles it.

@@ -90,6 +90,7 @@ export const ro = {
     // [end history]
     // [section jobs] owner: ops-screens; keys adminContent.jobs.*
     'adminContent.jobs.empty': 'Nicio procesare încă.',
+    'adminContent.jobs.emptyHint': 'Procesările pornesc din Imagini istorice: un import, un strat georeferențiat, republicat sau șters.',
     'adminContent.jobs.listLabel': 'Procesări',
     'adminContent.jobs.detailLabel': 'Detaliile procesării',
     'adminContent.jobs.filterLabel': 'Arată procesările',

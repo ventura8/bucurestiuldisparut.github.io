@@ -21,8 +21,14 @@ interface PushOutcome {
     readonly unregistered: readonly string[];
 }
 
+/**
+ * A dry run's verdict: accepted, or refused with FCM's code (`UNREGISTERED`, `INVALID_ARGUMENT`, …, or `HTTP_<status>` when
+ * the answer names none), which the admin shows (finding 46 of `docs/research/manual-test-2026-10-25.md`).
+ */
+type PushCheck = { readonly ok: true } | { readonly ok: false; readonly reason: string };
+
 export interface PushSender {
     send(tokens: readonly string[], message: PushMessage): Promise<PushOutcome>;
-    /** A dry-run send (`validateOnly`): whether FCM accepts the token, before it is stored. */
-    validate(token: string): Promise<boolean>;
+    /** A dry-run send (`validateOnly`): whether FCM accepts the token, before it is stored, and why not. */
+    validate(token: string): Promise<PushCheck>;
 }

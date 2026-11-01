@@ -70,7 +70,7 @@ describe('validate', () => {
     it('happyPath_aBrowsersTokenPassesTheDryRunAndNothingIsShown', async () => {
         const { fakes, push } = m4Upstreams();
 
-        await expect(push.validate(fcmToken('laptop'))).resolves.toBe(true);
+        await expect(push.validate(fcmToken('laptop'))).resolves.toEqual({ ok: true });
         expect(fakes.state.fcm.messages).toEqual([]);
         expect(JSON.parse(String(fakes.callsTo('fcm.send')[0]?.body))).toMatchObject({ validate_only: true });
     });
@@ -79,14 +79,15 @@ describe('validate', () => {
         [
             'an unregistered token',
             (fakes: ReturnType<typeof m4Upstreams>['fakes'], token: string) => fakes.state.fcm.unregistered.add(token),
+            'UNREGISTERED',
         ],
-        ['a token that is no registration token', () => undefined],
-    ])('badPath_%s_isRefused', async (name, prepare) => {
+        ['a token that is no registration token', () => undefined, 'INVALID_ARGUMENT'],
+    ])('badPath_%s_isRefusedWithFcmsCode', async (name, prepare, reason) => {
         const { fakes, push } = m4Upstreams();
         const token = name === 'a token that is no registration token' ? 'short' : fcmToken('old');
         prepare(fakes, token);
 
-        await expect(push.validate(token)).resolves.toBe(false);
+        await expect(push.validate(token)).resolves.toEqual({ ok: false, reason });
     });
 
     it('badPath_anOutageIsAFailureNotARefusal', async () => {
@@ -100,7 +101,15 @@ describe('validate', () => {
         const upstream = createFakeFetch(routeTable([route('POST', SEND, 'fcm.send', () => jsonResponse({ error: { code: 404 } }, 404))]));
         const push = createFcm({ projectId: PROJECT_ID, tokens: SERVICE_TOKENS, fetch: upstream.fetch });
 
-        await expect(push.validate(fcmToken('old'))).resolves.toBe(false);
+        await expect(push.validate(fcmToken('old'))).resolves.toEqual({ ok: false, reason: 'HTTP_404' });
         await expect(push.send([fcmToken('old')], MESSAGE)).resolves.toEqual({ sent: 0, unregistered: [fcmToken('old')] });
+    });
+
+    it('badPath_aNotFoundNamesItsStatusWhenItHasNoFcmCode', async () => {
+        const answer = { error: { code: 404, status: 'NOT_FOUND', message: 'Requested entity was not found.' } };
+        const upstream = createFakeFetch(routeTable([route('POST', SEND, 'fcm.send', () => jsonResponse(answer, 404))]));
+        const push = createFcm({ projectId: PROJECT_ID, tokens: SERVICE_TOKENS, fetch: upstream.fetch });
+
+        await expect(push.validate(fcmToken('old'))).resolves.toEqual({ ok: false, reason: 'NOT_FOUND' });
     });
 });

@@ -52,10 +52,25 @@ export function webPushMessage(fid: string, message: PushMessage) {
     };
 }
 
-/** A dry run's answer that says the token itself is worthless (unregistered, or no registration token at all). */
-async function refusesToken(response: Response): Promise<boolean> {
-    const code = fcmErrorCode(await readJson(response)) ?? '';
-    return response.status === NOT_FOUND || INVALID_CODES.has(code);
+/** FCM's code as the admin may see it: an error code of capitals, else the answer's HTTP status. */
+const SHOWN_CODE = /^[A-Z][A-Z0-9_]{0,39}$/;
+
+/**
+ * A dry run's answer that says the token itself is worthless (unregistered, or no registration token at all): FCM's code
+ * (the `FcmError` detail's, else the error's `status`, else `HTTP_<status>`); null for any other failure.
+ */
+async function tokenRefusal(response: Response): Promise<string | null> {
+    const body = await readJson(response);
+    const code = fcmErrorCode(body) ?? '';
+    if (response.status !== NOT_FOUND && !INVALID_CODES.has(code)) {
+        return null;
+    }
+    return shownCode(code === '' ? stringAt(at(body, 'error'), 'status') : code, response.status);
+}
+
+/** The code the admin sees: FCM's own when it reads as one, else `HTTP_<status>`. */
+function shownCode(code: string | undefined, status: number): string {
+    return code !== undefined && SHOWN_CODE.test(code) ? code : `HTTP_${String(status)}`;
 }
 
 /** A send's answer that says FCM no longer knows the token (the browser unsubscribed, or the token expired). */
@@ -95,10 +110,11 @@ export function createFcm(options: FcmOptions): PushSender {
         validate: async (token) => {
             const response = await post({ validate_only: true, message: { fid: token } });
             if (response.ok) {
-                return true;
+                return { ok: true };
             }
-            if (await refusesToken(response.clone())) {
-                return false;
+            const reason = await tokenRefusal(response.clone());
+            if (reason !== null) {
+                return { ok: false, reason };
             }
             throw await googleError(SERVICE, response);
         },

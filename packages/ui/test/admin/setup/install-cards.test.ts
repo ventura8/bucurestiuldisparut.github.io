@@ -244,11 +244,35 @@ describe('<hcm-setup-pipeline>', () => {
         cleanup();
 
         const blocked = await card('pipeline', {
-            pipeline: { ...looked, blocker: { key: 'apiError.install.notAvailable' } },
+            pipeline: { ...looked, blocker: { key: 'apiError.install.noRepository', params: { repository: 'hcm' } } },
             server: { state: 'installed' },
         });
         await expect.element(page.getByRole('button', { name: 'Install the pipeline' })).toBeDisabled();
         expect(shadowPart(blocked.element, '.blocker').textContent).toContain('Not available yet:');
+    });
+
+    it('badPath_aBundleThatCannotInstallThePipelineSaysSoAndOffersNoButton', async () => {
+        // Finding 43 of 2026-11-01: a record says looked at and not installed; the bundle names no Docker builder.
+        const looked = { checkedAt: '2026-10-20T10:00:00.000Z' };
+        const off = { key: 'apiError.install.notAvailable' } as const;
+        const { element } = await card('pipeline', { pipeline: looked, server: { state: 'installed' }, pipelineOff: off });
+
+        const reason = shadowPart(element, '.blocker').textContent;
+        expect(reason).toContain('Not available yet:');
+        expect(reason).toContain('Installing this part from the app comes with a later release; the map works without it.');
+        expect(element.renderRoot.querySelector('hcm-button')).toBeNull();
+        expect(shadowPart(element, '.body').textContent).not.toContain('It starts when');
+        expect(await axeViolations(element)).toEqual([]);
+        cleanup();
+
+        // The same answer from a look at Google, and a stopped build: still no button.
+        const failed = await card('pipeline', { pipeline: { ...looked, state: 'failed', blocker: off }, server: { state: 'installed' } });
+        expect(failed.element.renderRoot.querySelector('hcm-button')).toBeNull();
+        cleanup();
+
+        // The server's card does not promise the pipeline with its click.
+        const deploy = await card('deploy', { pipelineOff: off }, { steps: { deploy: { state: 'missing', checkedAt: looked.checkedAt } } });
+        expect(shadowPart(deploy.element, '.body').textContent).not.toContain('also installs the historical imagery pipeline');
     });
 });
 
@@ -333,6 +357,11 @@ describe('installCardAsks (finding 40 of 2026-11-01)', () => {
         expect(installCardAsks(view({ site: { state: 'installed', checkedAt: LOOKED } }), 'site')).toBe(false);
         expect(installCardAsks(view({ pipeline: { state: 'working', checkedAt: LOOKED } }), 'pipeline')).toBe(false);
         expect(installCardAsks(view({ pipeline: { state: 'notInstalled' } }), 'pipeline')).toBe(false);
+        // Finding 43: a pipeline this admin cannot install offers no button, so no consent note.
+        const off = { key: 'apiError.install.notAvailable' } as const;
+        expect(
+            installCardAsks(view({ server: { state: 'installed' }, pipeline: { checkedAt: LOOKED }, pipelineOff: off }), 'pipeline'),
+        ).toBe(false);
         expect(
             installCardAsks(
                 view({ server: { state: 'newerInstalled', checkedAt: LOOKED } }, { steps: { deploy: { state: 'ok' } } }),

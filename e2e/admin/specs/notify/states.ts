@@ -23,6 +23,11 @@ export const NOTIFY_STATES = {
         title: 'Notifications: the browser refused them, the inbox still works',
         visit: 'specs/notify/push.spec.ts',
     },
+    // Finding 46 of 2026-11-01.
+    'notify.push-failed-reason': {
+        title: "Notifications: they did not start, with the reason line and its code (the SDK's or FCM's)",
+        visit: 'specs/notify/push.spec.ts',
+    },
     'assist.suggestions': {
         title: 'Photo editor: title suggestions from OpenStreetMap with the attribution and its licence link',
         visit: 'specs/assists/title.spec.ts',

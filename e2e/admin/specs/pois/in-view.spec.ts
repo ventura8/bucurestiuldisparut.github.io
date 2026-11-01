@@ -40,14 +40,13 @@ test(
         await readyToDraw(page, lang);
         expect(near((await mapFacts(page)).center, CITY)).toBe(true);
 
-        // The saved place, by its address as a person types it (the new place's draft is let go): the same map centres
-        // on it.
+        // The saved place, by its address as a person types it: the same map centres on it. The new place was never
+        // touched, so leaving it asks nothing (finding 42 of 2026-11-01).
         await page.evaluate(() => {
             window.location.hash = '#/pois/baneasa';
         });
-        const guard = page.locator('hcm-dialog[open]').filter({ hasText: poisText(lang, 'adminContent.common.unsavedTitle') });
-        await guard.getByRole('button', { name: poisText(lang, 'adminContent.common.discard'), exact: true }).click();
         await expect(page.getByRole('heading', { name: 'Gara Băneasa' })).toBeVisible();
+        await expect(page.locator('hcm-dialog[open]')).toHaveCount(0);
         await expect.poll(async () => near((await mapFacts(page)).center, NORTH)).toBe(true);
     },
 );

@@ -28,7 +28,7 @@ import { adminAddress, devicesOf, pushToDevices } from './messages.js';
 /**
  * The push callables (admin; `docs/research/M4-interfaces.md` §5.4; S-A47-HAPPY, S-A47-BAD-TOKEN-UNREGISTERED):
  * `notify.registerDevice` stores a browser's FCM token after FCM accepted it in a dry run (`apiError.notify.deviceInvalid`
- * otherwise, and nothing stored), at most `PUSH_DEVICES_MAX` per admin (the oldest replaced), and turns push on in the
+ * otherwise, with FCM's code as `reason`, and nothing stored), at most `PUSH_DEVICES_MAX` per admin (the oldest replaced), and turns push on in the
  * admin's settings with `DEFAULT_PUSH_KINDS` unless they chose others; one browser is one admin's (a shared computer's
  * browser registered by another admin before stops getting theirs); `notify.unregisterDevice` forgets one browser;
  * `notify.sendTest` sends one test notification to the caller's own devices. Every write is the caller's own
@@ -105,8 +105,11 @@ async function registerDevice(
     caller: VerifiedCaller,
     data: NotifyRegisterDeviceRequest,
 ): Promise<CallableResponse<'notify.registerDevice'>> {
-    if (!(await viaFcm(deps.push.validate(data.token)))) {
-        throw new ApiError('apiError.notify.deviceInvalid');
+    const check = await viaFcm(deps.push.validate(data.token));
+    if (!check.ok) {
+        // Finding 46 of 2026-11-01: FCM's code reaches the admin (its reason line) and the log; the token never does.
+        deps.log.warn('push device refused by FCM', { uid: caller.uid, reason: check.reason });
+        throw new ApiError('apiError.notify.deviceInvalid', { reason: check.reason });
     }
     const now = deps.clock.now();
     const deviceId = deviceIdOf(data.token);

@@ -241,6 +241,8 @@ export interface InstallSliceView {
     readonly server: InstallTargetViewPort;
     readonly pipeline: InstallTargetViewPort;
     readonly site: InstallTargetViewPort;
+    /** Why this admin cannot install the imagery pipeline (finding 43 of 2026-11-01), or null. */
+    readonly pipelineOff: SetupMessage | null;
 }
 // [end install]
 

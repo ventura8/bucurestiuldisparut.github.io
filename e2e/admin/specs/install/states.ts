@@ -5,7 +5,7 @@
  * newer than the admin, stopped at a permission of step c (finding 28 of 2026-10-31); a server record older than the
  * admin (finding 27); an older build of the same version recorded installed, offered as an update, and the admin's own
  * release with nothing to do and no consent note (findings 39 and 40 of 2026-11-01); the imagery pipeline (d3) at work,
- * stopped and installing on its own; Publish the map (i) off with its reason, ready and published; Home's tile of an
+ * stopped, installing on its own and not available from this admin's bundle (finding 43); Publish the map (i) off with its reason, ready and published; Home's tile of an
  * update. Each is reached by e2e/admin/specs/install/states.spec.ts at the admin tier's
  * five projects (three window classes, dark, English).
  */
@@ -40,6 +40,11 @@ export const INSTALL_STATES = {
     'setup.pipeline-failed': { title: 'Setup, the imagery pipeline stopped: its step, its log and Try again', visit: VISIT },
     'setup.pipeline-install': {
         title: 'Setup, the imagery pipeline missing beside an installed server: its own Install the pipeline',
+        visit: VISIT,
+    },
+    // Finding 43 of 2026-11-01.
+    'setup.pipeline-not-available': {
+        title: "Setup, the imagery pipeline this admin's bundle cannot install: Not available yet, and no button",
         visit: VISIT,
     },
     'setup.site-blocked': { title: 'Setup, Publish the map off: nothing published to show yet, and why', visit: VISIT },

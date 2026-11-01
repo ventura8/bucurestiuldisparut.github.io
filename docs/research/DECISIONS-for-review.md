@@ -5172,3 +5172,60 @@ Verify: `PIPELINE_STAGE=static`, `tests` and `build`, and the touched Playwright
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`, and the touched Playwright specs in the quality image
 (`e2e/admin/steps/install/*.spec.ts`, `provision.spec.ts`, `status.spec.ts` at `admin-steps-l1440-en`, `journey.spec.ts`
 at `admin-l1440-ro`, `e2e/admin/specs/install/states.spec.ts` for the new states, `e2e/tour/admin-settings.tour.ts`).
+
+## 79. The live test of 2026-11-01, the editors, Setup, Jobs, Crashes and push: an untouched new place, a pipeline the bundle cannot install, where jobs come from, a burst of budget alerts, and why push did not start (2026-11-01) — 79a–79e APPLIED (findings 42–46 of `docs/research/manual-test-2026-10-25.md`: product, test and documentation changes; 79d a function's scaling option within the existing cap of five; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged)
+
+- **79a APPLIED: a new place is unsaved only once it differs from its start (finding 42).** `PoiDraft.unsaved` compares a
+  new place's value with its first value; the category filled in after the categories arrive is `prefill`, which moves
+  that start too (the select showed it as chosen, the admin did nothing); positions placed of a shape not finished yet
+  (the vertex list's sketch) count in `PlaceEditor.unsaved`. A stored place is unchanged (its changed fields). Discard on
+  a new place still returns to its start, now with the prefilled category. Left as it is: a line or an area being drawn
+  on the map before it is finished lives in the map's drawing tool and does not count (UNVERIFIED as a live complaint;
+  wiring the tool's sketch to the editor is a separate change).
+- **79b APPLIED: whether this admin can install the pipeline is read from its bundle, without a token (finding 43).**
+  `InstallerPort.localBlocker('pipeline')` reads the admin's own install manifest (its origin, no Google call) and says
+  `apiError.install.notAvailable` while `tools.docker` is null (§67e still undecided); the install cards ask once, when
+  they start following the pipeline, and before Install the server and Update the map, and keep the answer as the
+  install slice's `pipelineOff`, apart from any record (a record keeps a target's state, not its blocker, which is how
+  the live card offered its button). With `pipelineOff`, or the same answer from a look, the pipeline card shows "Not
+  available yet: …" and no button (neither Install the pipeline nor Try again), so no consent note; the server's card
+  drops "The same click also installs the historical imagery pipeline."; neither click submits the pipeline. A bundle that
+  cannot be read says nothing (the look with a token still says why). Once §67e names a digest, the button comes back
+  with no other change.
+- **79c APPLIED: the Jobs page's empty state says where jobs come from (finding 44).** `<hcm-empty-state>` takes an
+  optional `hint`, a second line, and a list's texts an optional `emptyHint`. The line names what makes jobs today
+  (`JOB_TYPES`: imports of a USGS scene or a GeoTIFF, georeferencing or publishing a layer again, deleting a layer's
+  tiles), all from Historical imagery; the finding's examples "reprocessing a photo" and "exports" make no job (the
+  photo's reprocess is a callable, the export its own document), so they are left out rather than promised.
+- **79d APPLIED: `ops-onBudget` scales to three instances of 80 concurrent requests, none kept warm (finding 45).** One
+  instance refused deliveries that arrived while it started (Cloud Run 429), each a Crashes group, though Pub/Sub
+  delivered them again. Three instances stay under every function's cap of five (`index.test.ts`), the concurrency of 80
+  is the global option stated again where it matters, and no minimum instance keeps the cost of an idle month at zero;
+  `retry: false` is unchanged (Google repeats budget alerts on its own; the 429s were redelivered by the push
+  subscription regardless). The handler was already idempotent (the guard's transaction, the event id per period); a
+  test now pins that three deliveries turn the guard red once and notify once. Live: the next server update.
+- **79e APPLIED: why push did not start, and a stale FCM registration made again (finding 46).**
+  - The registrar (`packages/admin/src/firebase/messaging.ts`) throws a `PushFailure` with a short code: the SDK's
+    `FirebaseError.code` when it is a `messaging/…` or `installations/…` code, else its own (`push/no-service-worker`,
+    `push/worker-registration-failed`, `push/no-installation-id`, `push/unknown`). The page shows "Notifications did not
+    start: …" as before and, under it, a reason line per family (permission, registration, worker, unsupported,
+    storage, installations, FCM refused, other) with the code; the log (`createLogger`) gets the code and the SDK's
+    `errorInfo` with every word of 12 or more letters and digits replaced (`redactIds`): never a token, an installation
+    id or an API key.
+  - `notify.registerDevice` passes FCM's refusal on as `apiError.notify.deviceInvalid` with `reason` (the `FcmError`
+    code, else the error's status, else `HTTP_<status>`) and logs it with the uid, never the token; the adapter's
+    `validate` returns `{ ok, reason }`. An older server's refusal without `reason` reads as `fcm/UNSPECIFIED`.
+  - On such a refusal (whatever the server's release) the admin forgets the SDK's record of the registration (IndexedDB
+    `firebase-messaging-database`, store `firebase-messaging-fid-registration-store`, cleared; a database the SDK never
+    made is not created: its creation is aborted) and registers once more, so `register()` makes the registration again
+    with this worker's subscription; the record is also forgotten right after the root's worker of an admin before M6 is
+    retired. One retry only: a second refusal is shown with FCM's code. The `e2e` build's stand-in hands out a new token
+    after `reset` (`…-browser-0002`) and fails as the SDK does when the address asks (`?pushFail=<code>`); the fake FCM
+    has `fcm.everyTokenGone`.
+  - Checked offline against the project (findings' list in the manual-test record): the CSP's `connect-src`, the API
+    key's referrers, the enabled APIs, the worker's scope, the SDK's seven-day record. UNVERIFIED until the next live
+    try: which refusal it was, the auto-created key's API restrictions, the default VAPID key with `register()`.
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build`, and the touched Playwright specs in the quality image
+(`e2e/admin/specs/editing/drafts.spec.ts`, `e2e/admin/specs/pois/in-view.spec.ts`, `e2e/admin/steps/install/update.spec.ts`,
+`e2e/admin/specs/install/states.spec.ts`, `e2e/tour/admin-jobs.tour.ts`, `e2e/admin/specs/notify/push.spec.ts`).

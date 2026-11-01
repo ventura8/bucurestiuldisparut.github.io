@@ -340,6 +340,12 @@ export interface InstallSlice {
     readonly server: InstallTargetView;
     readonly pipeline: InstallTargetView;
     readonly site: InstallTargetView;
+    /**
+     * Why this admin's bundle cannot install the imagery pipeline (`apiError.install.notAvailable`: no Docker builder
+     * digest, §67e), or null when it can or is not read yet. Finding 43 of 2026-11-01: known from the admin's own origin
+     * without a token, so the pipeline card offers no button that could only be refused, whatever a record says.
+     */
+    readonly pipelineOff: InstallMessage | null;
 }
 
 /** Nothing observed yet. */
@@ -358,5 +364,6 @@ export function initialInstallSlice(release: string, address: string, releaseTim
         server: initialTargetView('server'),
         pipeline: initialTargetView('pipeline'),
         site: initialTargetView('site'),
+        pipelineOff: null,
     };
 }

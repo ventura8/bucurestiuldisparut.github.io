@@ -42,6 +42,7 @@ export function installSliceView(changes: InstallChanges = {}): InstallSliceView
         server: installTargetView('server', server),
         pipeline: installTargetView('pipeline', pipeline),
         site: installTargetView('site', site),
+        pipelineOff: null,
         ...rest,
     };
 }

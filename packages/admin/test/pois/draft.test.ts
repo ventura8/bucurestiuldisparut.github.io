@@ -120,7 +120,7 @@ describe('a place draft: new places', () => {
         const { draft } = draftOf(world, { value: FRESH });
 
         expect(draft.state.isNew).toBe(true);
-        expect(draft.unsaved).toBe(true);
+        expect(draft.unsaved).toBe(false);
         const outcome = await draft.save();
 
         expect(outcome).toEqual({ ok: true });
@@ -140,6 +140,53 @@ describe('a place draft: new places', () => {
         expect(outcome).toEqual({ ok: false, reason: 'invalid', issues: [{ path: 'title.ro', code: 'validation.tooSmall' }] });
         expect(world.store.writes).toEqual([]);
         expect(draft.state.value).toEqual(FRESH);
+    });
+
+    it('happyPath_aNewPlaceIsUnsavedOnlyOnceTheAdminChangedIt', () => {
+        const world = poisWorld();
+        const blank: PoiValue = { category: '', geometry: null, title: { ro: '' }, links: [], photoIds: [], published: true };
+        const { draft } = draftOf(world, { value: blank });
+
+        // Finding 42 of 2026-11-01: the category filled in once the categories are listed is a default.
+        draft.prefill({ category: 'biserici' });
+        expect(draft.state.value.category).toBe('biserici');
+        expect(draft.unsaved).toBe(false);
+
+        draft.edit({ title: { ro: 'Loc' } });
+        expect(draft.unsaved).toBe(true);
+        draft.edit({ title: { ro: '' } });
+        expect(draft.unsaved).toBe(false);
+        draft.edit({ geometry: POINT });
+        expect(draft.unsaved).toBe(true);
+        draft.discard();
+        expect(draft.state.value).toEqual({ ...blank, category: 'biserici' });
+        expect(draft.unsaved).toBe(false);
+    });
+
+    it('badPath_aCategoryChosenBeforeTheDefaultArrivesStaysAnEdit', () => {
+        const world = poisWorld();
+        const blank: PoiValue = { category: '', geometry: null, title: { ro: '' }, links: [], photoIds: [], published: true };
+        const { draft } = draftOf(world, { value: blank });
+        draft.edit({ title: { ro: 'Loc' } });
+
+        draft.prefill({ category: 'biserici' });
+        draft.edit({ category: 'parcuri' });
+
+        expect(draft.unsaved).toBe(true);
+        draft.edit({ title: { ro: '' }, category: 'biserici' });
+        expect(draft.unsaved).toBe(false);
+    });
+
+    it('badPath_aStoredPlaceTakesNoPrefill', () => {
+        const world = poisWorld();
+        world.store.put(PATH, placeDoc(world));
+        const { draft } = draftOf(world, { base: stored(world) });
+        const before = draft.state.value;
+
+        draft.prefill({ category: 'parcuri' });
+
+        expect(draft.state.value).toEqual(before);
+        expect(draft.unsaved).toBe(false);
     });
 
     it('badPath_aNewPlaceStaysNewWhileItsDocumentDoesNotExist', () => {

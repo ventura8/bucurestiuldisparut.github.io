@@ -47,7 +47,7 @@ function inboxState(overrides: Partial<InboxViewState> = {}): InboxViewState {
             failure: null,
         },
         settings: { status: 'ready', push: true, kinds: DEFAULT_PUSH_KINDS, saving: false },
-        push: { device: 'off', failure: null, testing: false },
+        push: { device: 'off', failure: null, reason: null, testing: false },
         marking: false,
         ...overrides,
     };
@@ -131,7 +131,7 @@ describe('<hcm-inbox-page>', () => {
 
         deep(kinds[2] ?? element, 'hcm-switch').dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: true } }));
         deep(deep(element, '[data-push="off"]'), 'hcm-switch').dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: true } }));
-        area.set({ push: { device: 'on', failure: null, testing: false } });
+        area.set({ push: { device: 'on', failure: null, reason: null, testing: false } });
         await updated(element);
         deep(deep(element, '[data-push="on"]'), 'hcm-switch').dispatchEvent(new CustomEvent('hcm-change', { detail: { checked: false } }));
         deep(deep(element, '[data-settings] .actions'), 'hcm-button').click();
@@ -152,13 +152,27 @@ describe('<hcm-inbox-page>', () => {
         ['unsupported', null, 'This browser cannot show notifications'],
         ['working', null, 'Turning notifications on…'],
     ] as const)('badPath_thisBrowser_%s_saysSo', async (device, failure, text) => {
-        const { element } = await inboxPage(inboxState({ push: { device, failure, testing: false } }));
+        const { element } = await inboxPage(inboxState({ push: { device, failure, reason: null, testing: false } }));
 
         expect(deepText(element)).toContain(text);
     });
 
+    it('badPath_aFailureSaysWhyWithItsCode', async () => {
+        // Finding 46 of 2026-11-01: the failure's reason line names the SDK's or FCM's code.
+        const failure = { key: 'apiError.notify.deviceInvalid' } as const;
+        const reason = { key: 'adminContent.notify.push.reason.fcmRefused', params: { code: 'fcm/UNREGISTERED' } } as const;
+        const { element } = await inboxPage(inboxState({ push: { device: 'failed', failure, reason, testing: false } }));
+
+        expect(deep(element, '.reason').textContent).toBe(
+            "Why: Google's messaging service refused this browser, also registered anew (fcm/UNREGISTERED).",
+        );
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
     it('badPath_aRevokedAdminsSwitchesAndButtonsAreOff', async () => {
-        const { element } = await inboxPage(inboxState({ push: { device: 'on', failure: null, testing: false } }), { revoked: true });
+        const { element } = await inboxPage(inboxState({ push: { device: 'on', failure: null, reason: null, testing: false } }), {
+            revoked: true,
+        });
 
         expect(deepAll(element, 'hcm-switch').every((control) => control.hasAttribute('disabled'))).toBe(true);
         expect(deep(deep(element, '[data-settings] .actions'), 'hcm-button').hasAttribute('disabled')).toBe(true);

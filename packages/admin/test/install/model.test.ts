@@ -272,6 +272,7 @@ describe('the build helpers', () => {
             siteTransferMegabytes: 52,
         });
         expect(slice.server).toEqual(initialTargetView('server'));
+        expect(slice.pipelineOff).toBeNull();
         expect(slice.pipeline.steps.map((step) => step.id)).toEqual(['fetch', 'build', 'push', 'jobs']);
     });
 });

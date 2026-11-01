@@ -113,7 +113,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
             ${listBody(
                 locale,
                 view.list,
-                { empty: 'adminContent.jobs.empty', icon: 'pending_actions' },
+                { empty: 'adminContent.jobs.empty', emptyHint: 'adminContent.jobs.emptyHint', icon: 'pending_actions' },
                 {
                     retry: () => intents?.retry(),
                     more: () => intents?.more(),

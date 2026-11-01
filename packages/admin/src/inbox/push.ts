@@ -7,14 +7,20 @@
  * this browser only; when the server cannot be reached, push stays on and the snackbar says why (nothing is forgotten that
  * the server still pushes to). The FCM SDK and the service worker are behind `PushRegistrar` (`../firebase/messaging.ts`;
  * the `e2e` build's stand-in hands out a fixed token, since no browser test reaches FCM).
+ *
+ * Finding 46 of 2026-11-01: a failure says why on a line of its own, with its code (`push-failure.ts`: the SDK's code, or
+ * FCM's answer to the server's dry run), and the log keeps the code and the SDK's text without ids. When FCM refuses the
+ * registration this browser handed out (`apiError.notify.deviceInvalid`, whatever the server's release), the registrar
+ * forgets the SDK's record of it and the browser registers once more, with a new registration, before the page says so.
  */
-import { pluralOf, type Locale } from '@hcm/shared';
+import { pluralOf, type Locale, type Logger } from '@hcm/shared';
 
 import { outcomeOf } from '../app/services.js';
 import type { KeyValueStore } from '../app/ports.js';
 import type { CallablesPort } from '../firebase/ports.js';
 import type { NoticeInput } from '../state/state.js';
 import { forgetPushDevice, pushDeviceOf, rememberPushDevice } from './push-device.js';
+import { fcmRefusalOf, pushFailureOf, pushReason } from './push-failure.js';
 
 export type PushPermission = 'default' | 'granted' | 'denied';
 
@@ -25,8 +31,10 @@ export interface PushRegistrar {
     permission(): PushPermission;
     /** The browser's own prompt: called only from the admin's click. */
     requestPermission(): Promise<PushPermission>;
-    /** This browser's FCM registration token (its service worker registered first). */
+    /** This browser's FCM registration token (its service worker registered first); a failure is a `PushFailure`. */
     token(): Promise<string>;
+    /** Forgets this browser's registration, so the next `token` makes a new one (FCM refused the last). Never throws. */
+    reset(): Promise<void>;
 }
 
 type PushDevice = 'unsupported' | 'off' | 'working' | 'on' | 'denied' | 'failed';
@@ -34,6 +42,8 @@ type PushDevice = 'unsupported' | 'off' | 'working' | 'on' | 'denied' | 'failed'
 export interface PushState {
     readonly device: PushDevice;
     readonly failure: NoticeInput | null;
+    /** The failure's reason line with its code (finding 46), or null. */
+    readonly reason: NoticeInput | null;
     readonly testing: boolean;
 }
 
@@ -46,11 +56,17 @@ export interface PushDeps {
     readonly locale: () => Locale;
     readonly notify: (notice: NoticeInput) => void;
     readonly changed: (state: PushState) => void;
+    readonly log: Logger;
 }
+
+/** One registration: the device id the server stored, or why not (and whether FCM refused what the browser handed out). */
+type Attempt =
+    | { readonly ok: true; readonly deviceId: string }
+    | { readonly ok: false; readonly failure: NoticeInput; readonly reason: NoticeInput | null; readonly refused: boolean };
 
 /** What this browser shows before anything is clicked. */
 function initialPush(registrar: PushRegistrar | null, local: KeyValueStore, uid: string): PushState {
-    return { device: deviceOf(registrar, local, uid), failure: null, testing: false };
+    return { device: deviceOf(registrar, local, uid), failure: null, reason: null, testing: false };
 }
 
 function deviceOf(registrar: PushRegistrar | null, local: KeyValueStore, uid: string): PushDevice {
@@ -91,7 +107,7 @@ export class PushSession {
         if (registrar === null) {
             return;
         }
-        this.#set({ device: 'working', failure: null });
+        this.#set({ device: 'working', failure: null, reason: null });
         const permission = await registrar.requestPermission();
         if (permission !== 'granted') {
             this.#set({ device: permission === 'denied' ? 'denied' : 'off' });
@@ -124,18 +140,46 @@ export class PushSession {
     }
 
     async #register(registrar: PushRegistrar): Promise<void> {
-        const token = await registrar.token().catch(() => null);
-        if (token === null) {
-            this.#set({ device: 'failed', failure: { key: NO_REGISTRAR } });
+        const first = await this.#attempt(registrar);
+        const outcome = !first.ok && first.refused ? await this.#renewed(registrar) : first;
+        if (!outcome.ok) {
+            this.#set({ device: 'failed', failure: outcome.failure, reason: outcome.reason });
             return;
+        }
+        rememberPushDevice(this.#deps.local, this.#deps.uid(), outcome.deviceId);
+        this.#set({ device: 'on' });
+    }
+
+    /** FCM refused the registration the browser handed out: the registrar forgets it, and the browser registers once more. */
+    async #renewed(registrar: PushRegistrar): Promise<Attempt> {
+        this.#deps.log.info('push registration refused: registering this browser again');
+        await registrar.reset().catch(() => undefined);
+        return this.#attempt(registrar);
+    }
+
+    async #attempt(registrar: PushRegistrar): Promise<Attempt> {
+        let token: string;
+        try {
+            token = await registrar.token();
+        } catch (error) {
+            return this.#registrarFailed(error);
         }
         const outcome = await outcomeOf(() => this.#deps.callables.call('notify.registerDevice', { token, lang: this.#deps.locale() }));
-        if (!outcome.ok) {
-            this.#set({ device: 'failed', failure: outcome.error });
-            return;
+        if (outcome.ok) {
+            return { ok: true, deviceId: outcome.value.deviceId };
         }
-        rememberPushDevice(this.#deps.local, this.#deps.uid(), outcome.value.deviceId);
-        this.#set({ device: 'on' });
+        const refusal = fcmRefusalOf(outcome.error);
+        if (refusal !== null) {
+            this.#deps.log.warn('push registration refused by FCM', { code: refusal });
+        }
+        return { ok: false, failure: outcome.error, reason: refusal === null ? null : pushReason(refusal), refused: refusal !== null };
+    }
+
+    /** The browser's side failed (the SDK, the worker): the code on the page, the code and the SDK's text in the log. */
+    #registrarFailed(error: unknown): Attempt {
+        const failure = pushFailureOf(error);
+        this.#deps.log.warn('push registration failed', { code: failure.code, info: failure.info });
+        return { ok: false, failure: { key: NO_REGISTRAR }, reason: pushReason(failure.code), refused: false };
     }
 
     /** The registrar, when this browser can push and nothing is under way; else null. */

@@ -86,9 +86,10 @@ export class PlaceEditor {
         return this.#state.id;
     }
 
-    /** Whether leaving now would lose an edit. */
+    /** Whether leaving now would lose an edit: a changed draft, or positions placed of a shape not finished yet. */
     get unsaved(): boolean {
-        return this.#draft?.unsaved === true && !this.#draft.state.gone;
+        const changed = this.#draft?.unsaved === true || this.#state.sketch.length > 0;
+        return changed && this.#draft?.state.gone !== true;
     }
 
     /** The positions the vertex list shows. */
@@ -154,6 +155,11 @@ export class PlaceEditor {
 
     edit(patch: PoiPatch): void {
         this.#draft?.edit(patch);
+    }
+
+    /** A default filled in after the start (a new place's category): no edit (`PoiDraft.prefill`). */
+    prefill(patch: PoiPatch): void {
+        this.#draft?.prefill(patch);
     }
 
     /** A geometry the map's drawing tools finished (already checked and rounded by them). */

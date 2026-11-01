@@ -4,6 +4,7 @@ import { contentFlowBudget } from '../../../../packages/admin/src/content/budget
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
 import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
+import { apiText } from '../../support/i18n.js';
 import type { UpstreamCall, UpstreamControl } from '../../support/upstream.js';
 import { ADMIN_LOCK, expect, test } from '../../support/test.js';
 import { ADMIN_ORIGIN } from '../../world.js';
@@ -116,5 +117,97 @@ test(
         await failJob(city, 'j-inbox', AT);
         await expect(inboxRow(page, failedItemId(city, 'j-inbox'))).toHaveAttribute('data-unread', '', { timeout: FUNCTIONS_TIMEOUT_MS });
         await expect(page.locator('hcm-admin-nav [data-badge]').first()).toBeVisible();
+    },
+);
+
+/** The browser's registrations the server's fake FCM was asked to check (its dry runs), in order. */
+async function dryRuns(upstream: UpstreamControl): Promise<string[]> {
+    const calls: UpstreamCall[] = await upstream.calls('server', 'fcm.send');
+    return calls
+        .map((call) => JSON.parse(call.body) as { validate_only?: boolean; message: { fid?: string } })
+        .filter((body) => body.validate_only === true)
+        .map((body) => body.message.fid ?? '');
+}
+
+/** The failure's reason line under "Notifications did not start" (finding 46 of 2026-11-01). */
+function reasonLine(page: Page) {
+    return page.locator('hcm-inbox-page .reason');
+}
+
+test(
+    'A registration FCM no longer accepts is made again once, and push turns on',
+    { tag: '@S-A47-HAPPY-RENEWED' },
+    async ({ page, lang, adminWorld, upstream, consoleErrors }) => {
+        const testId = 'S-A47-HAPPY-RENEWED';
+        const owner = adminWorld.accounts.owner.uid;
+        await page.context().grantPermissions(['notifications'], { origin: ADMIN_ORIGIN });
+        await page.goto(cityAddress(lang, 'inbox', testId));
+        const on = page.locator('hcm-inbox-page').getByText(notifyText(lang, 'adminContent.notify.push.on'));
+        await deviceSwitch(page, lang).click();
+        await expect(on).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await deviceSwitch(page, lang).click();
+        await expect(on).toHaveCount(0, { timeout: FUNCTIONS_TIMEOUT_MS });
+
+        // Finding 46: FCM forgot the browser's registration, while the SDK's record still hands it out.
+        await upstream.scenario('fcm.tokensGone', 'server');
+        await deviceSwitch(page, lang).click();
+
+        await expect(on).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(reasonLine(page)).toHaveCount(0);
+        const first = `e2e-fcm-token:${testId}-browser-0001`;
+        const renewed = `e2e-fcm-token:${testId}-browser-0002`;
+        expect(await dryRuns(upstream)).toEqual([first, first, renewed]);
+        const devices = Object.values(await adminWorld.emulators.collection(`admins/${owner}/pushDevices`));
+        expect(devices).toEqual([expect.objectContaining({ token: renewed })]);
+        // The refused registration's answer (400 invalid-argument), which the browser reports.
+        expect(consoleErrors.takeMatching(/notify-registerDevice/)).toHaveLength(1);
+    },
+);
+
+test(
+    "A registration FCM refuses again says so with FCM's code, and nothing is stored",
+    { tag: '@S-A47-BAD-FCM-REFUSED-REASON' },
+    async ({ page, lang, adminWorld, upstream, consoleErrors }) => {
+        const testId = 'S-A47-BAD-FCM-REFUSED-REASON';
+        await upstream.scenario('fcm.everyTokenGone', 'server');
+        await page.context().grantPermissions(['notifications'], { origin: ADMIN_ORIGIN });
+        await page.goto(cityAddress(lang, 'inbox', testId));
+
+        await deviceSwitch(page, lang).click();
+
+        const alert = page.locator('hcm-inbox-page [role="alert"]');
+        const refused = apiText(lang, 'apiError.notify.deviceInvalid');
+        await expect(alert).toContainText(notifyText(lang, 'adminContent.notify.push.failed', { reason: refused }), {
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(reasonLine(page)).toHaveText(
+            notifyText(lang, 'adminContent.notify.push.reason.fcmRefused', { code: 'fcm/UNREGISTERED' }),
+        );
+        // Registered once more with a new registration before it said so.
+        expect(await dryRuns(upstream)).toEqual([`e2e-fcm-token:${testId}-browser-0001`, `e2e-fcm-token:${testId}-browser-0002`]);
+        expect(await adminWorld.emulators.collection(`admins/${adminWorld.accounts.owner.uid}/pushDevices`)).toEqual({});
+        await expectStateSound(page, adminVisit('notify.push-failed-reason', lang));
+        // Both refusals' answers (400 invalid-argument), which the browser reports.
+        expect(consoleErrors.takeMatching(/notify-registerDevice/)).toHaveLength(2);
+    },
+);
+
+test(
+    "A failure of the browser's messaging SDK shows its code, and the server is never asked",
+    { tag: '@S-A47-BAD-SDK-CODE' },
+    async ({ page, lang, adminWorld, upstream }) => {
+        const code = 'messaging/fid-registration-failed';
+        await page.context().grantPermissions(['notifications'], { origin: ADMIN_ORIGIN });
+        // The `e2e` build's stand-in of the FCM SDK fails as the real one does when CreateRegistration is refused.
+        await page.goto(cityAddress(lang, 'inbox', 'S-A47-BAD-SDK-CODE').replace('#', `&pushFail=${encodeURIComponent(code)}#`));
+
+        await deviceSwitch(page, lang).click();
+
+        await expect(page.locator('hcm-inbox-page [role="alert"]')).toContainText(
+            notifyText(lang, 'adminContent.notify.push.failed', { reason: apiText(lang, 'apiError.unavailable') }),
+        );
+        await expect(reasonLine(page)).toHaveText(notifyText(lang, 'adminContent.notify.push.reason.registration', { code }));
+        expect(await dryRuns(upstream)).toEqual([]);
+        expect(await adminWorld.emulators.collection(`admins/${adminWorld.accounts.owner.uid}/pushDevices`)).toEqual({});
     },
 );

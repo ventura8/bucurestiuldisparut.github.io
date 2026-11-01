@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { INBOX_MODULE, INBOX_PAGE_SIZE, kindsWith, settingsOf } from '../../src/inbox/inbox.js';
 import { rememberPushDevice, storedPushDevice } from '../../src/inbox/push-device.js';
 import type { PushPermission, PushRegistrar } from '../../src/inbox/push.js';
-import { failure } from '../app/fakes.js';
+import { failure, testLog } from '../app/fakes.js';
 import { at, contentWorld, type ContentWorld } from '../content/world.js';
 
 const UID = 'admin-uid';
@@ -33,10 +33,20 @@ function itemPath(id: number): string {
     return FIRESTORE_PATHS.inboxItem(UID, `job.failed~bucharest~job-${String(id)}~0`);
 }
 
-/** A scripted browser: its permission, what its prompt answers and its token (or a failure). */
-function registrar(options: { permission?: PushPermission; answer?: PushPermission; token?: string | null; supported?: boolean } = {}) {
+interface RegistrarOptions {
+    readonly permission?: PushPermission;
+    readonly answer?: PushPermission;
+    /** The token (null: the browser has none, and throws `failure`, a plain error by default). */
+    readonly token?: string | null;
+    readonly failure?: Error;
+    readonly supported?: boolean;
+}
+
+/** A scripted browser: its permission, what its prompt answers and its token (or a failure); `reset` counts a new one. */
+function registrar(options: RegistrarOptions = {}) {
     const asked: string[] = [];
     let permission = options.permission ?? 'default';
+    let generation = 1;
     const fake: PushRegistrar = {
         supported: () => options.supported ?? true,
         permission: () => permission,
@@ -47,8 +57,13 @@ function registrar(options: { permission?: PushPermission; answer?: PushPermissi
         },
         token: () =>
             options.token === null
-                ? Promise.reject(new Error('no push service'))
-                : Promise.resolve(options.token ?? 'e2e-fcm-token:inbox-browser-0001'),
+                ? Promise.reject(options.failure ?? new Error('no push service'))
+                : Promise.resolve(options.token ?? `e2e-fcm-token:inbox-browser-000${String(generation)}`),
+        reset: () => {
+            asked.push('reset');
+            generation += 1;
+            return Promise.resolve();
+        },
     };
     return { fake, asked };
 }
@@ -215,7 +230,7 @@ describe('push on this browser', () => {
             ['notify.registerDevice', { token: 'e2e-fcm-token:inbox-browser-0001', lang: 'ro' }],
             ['notify.sendTest', {}],
         ]);
-        expect(store.state.push).toEqual({ device: 'on', failure: null, testing: false });
+        expect(store.state.push).toEqual({ device: 'on', failure: null, reason: null, testing: false });
         expect(storedPushDevice(world.services.local)).toEqual({ uid: UID, deviceId: 'a'.repeat(32) });
         expect(world.notices).toEqual([{ key: 'adminContent.notify.push.testSent.few', params: { count: '2' } }]);
     });
@@ -241,14 +256,16 @@ describe('push on this browser', () => {
     });
 
     it.each([
-        ['no token from the browser', null, null, 'apiError.unavailable'],
+        ['no token from the browser', null, null, 'apiError.unavailable', 'adminContent.notify.push.reason.other', 'push/unknown'],
         [
-            'a token FCM refuses',
+            'a token FCM refuses (a server that names no reason)',
             'e2e-fcm-token:stale-browser-0001',
             failure('invalid-argument', 'apiError.notify.deviceInvalid'),
             'apiError.notify.deviceInvalid',
+            'adminContent.notify.push.reason.fcmRefused',
+            'fcm/UNSPECIFIED',
         ],
-    ] as const)('badPath_%s_failsWithItsReason', async (_name, token, refusal, key) => {
+    ] as const)('badPath_%s_failsWithItsReason', async (_name, token, refusal, key, reason, code) => {
         const world = contentWorld({ push: registrar({ token }).fake });
         if (refusal !== null) {
             world.callables.fail('notify.registerDevice', refusal);
@@ -257,7 +274,7 @@ describe('push on this browser', () => {
 
         await store.intents.turnOnPush();
 
-        expect(store.state.push).toMatchObject({ device: 'failed', failure: { key } });
+        expect(store.state.push).toMatchObject({ device: 'failed', failure: { key }, reason: { key: reason, params: { code } } });
         expect(storedPushDevice(world.services.local)).toBeNull();
     });
 
@@ -284,7 +301,7 @@ describe('push on this browser', () => {
 
         await store.intents.turnOffPush();
 
-        expect(store.state.push).toEqual({ device: 'on', failure: null, testing: false });
+        expect(store.state.push).toEqual({ device: 'on', failure: null, reason: null, testing: false });
         expect(storedPushDevice(world.services.local)).toEqual({ uid: UID, deviceId: 'b'.repeat(32) });
         expect(world.notices).toEqual([{ key: 'apiError.unavailable' }]);
     });
@@ -332,5 +349,77 @@ describe('push on this browser', () => {
         await store.intents.sendTest();
 
         expect(world.notices).toEqual([{ key: 'apiError.cloud.permission', params: { role: 'roles/firebasecloudmessaging.admin' } }]);
+    });
+});
+
+describe('push on this browser: why it did not start (finding 46 of 2026-11-01)', () => {
+    // Finding 46 of 2026-11-01: the SDK's record handed out a registration FCM no longer accepts.
+    it('happyPath_aRegistrationFcmRefusesIsMadeAgainOnceAndPushTurnsOn', async () => {
+        const browser = registrar();
+        const world = contentWorld({ push: browser.fake });
+        let calls = 0;
+        world.callables.answer('notify.registerDevice', () => {
+            calls += 1;
+            if (calls === 1) {
+                throw failure('invalid-argument', 'apiError.notify.deviceInvalid', { reason: 'UNREGISTERED' });
+            }
+            return { deviceId: 'd'.repeat(32) };
+        });
+        const store = inbox(world);
+
+        await store.intents.turnOnPush();
+
+        expect(browser.asked).toEqual(['prompt', 'reset']);
+        expect(world.callables.calls.map((call) => (call.request as { token: string }).token)).toEqual([
+            'e2e-fcm-token:inbox-browser-0001',
+            'e2e-fcm-token:inbox-browser-0002',
+        ]);
+        expect(store.state.push).toEqual({ device: 'on', failure: null, reason: null, testing: false });
+        expect(storedPushDevice(world.services.local)).toEqual({ uid: UID, deviceId: 'd'.repeat(32) });
+    });
+
+    it('badPath_aRegistrationFcmRefusesAgainSaysFcmsCodeAfterOneRetry', async () => {
+        const browser = registrar();
+        const world = contentWorld({ push: browser.fake });
+        world.callables.fail(
+            'notify.registerDevice',
+            failure('invalid-argument', 'apiError.notify.deviceInvalid', { reason: 'UNREGISTERED' }),
+        );
+        const store = inbox(world);
+
+        await store.intents.turnOnPush();
+
+        expect(browser.asked).toEqual(['prompt', 'reset']);
+        expect(world.callables.calls).toHaveLength(2);
+        expect(store.state.push).toMatchObject({
+            device: 'failed',
+            failure: { key: 'apiError.notify.deviceInvalid' },
+            reason: { key: 'adminContent.notify.push.reason.fcmRefused', params: { code: 'fcm/UNREGISTERED' } },
+        });
+    });
+
+    it('badPath_anSdkFailureShowsItsCodeAndLogsItWithoutIds', async () => {
+        const log = testLog();
+        const sdkError = Object.assign(new Error('Messaging: A problem occurred while registering (messaging/fid-registration-failed).'), {
+            code: 'messaging/fid-registration-failed',
+            customData: {
+                errorInfo: 'Requests from referer https://demo-hcm.web.app/ are blocked. key AIzaSyE2eTestKey0123456789abcdefghijk',
+            },
+        });
+        const world = contentWorld({ push: registrar({ token: null, failure: sdkError }).fake, log: log.log });
+        const store = inbox(world);
+
+        await store.intents.turnOnPush();
+
+        expect(store.state.push).toMatchObject({
+            device: 'failed',
+            reason: { key: 'adminContent.notify.push.reason.registration', params: { code: 'messaging/fid-registration-failed' } },
+        });
+        expect(world.callables.calls).toEqual([]);
+        const logged = log.recording.records.find((record) => record.message === 'push registration failed');
+        expect(logged?.data).toEqual({
+            code: 'messaging/fid-registration-failed',
+            info: 'Requests from referer https://demo-hcm.web.app/ are blocked. key [id]',
+        });
     });
 });

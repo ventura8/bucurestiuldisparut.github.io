@@ -103,6 +103,7 @@ class InboxStore implements AreaStore<InboxState, InboxIntents> {
             ...{ registrar: services.push ?? null, callables: services.callables, local: services.local, locale: services.locale },
             uid: () => this.#uid(),
             notify: services.notify,
+            log: services.log,
             changed: (push) => {
                 this.#cell.update({ push });
             },

@@ -41,6 +41,8 @@ interface InboxPushPort {
     readonly device: PushDevicePort;
     /** Why the last attempt failed (`failed`), as a message. */
     readonly failure: AdminNoticeInputPort | null;
+    /** The failure's reason line with its code (finding 46 of 2026-11-01: the SDK's, or FCM's answer), or null. */
+    readonly reason: AdminNoticeInputPort | null;
     /** A test notification is being sent. */
     readonly testing: boolean;
 }

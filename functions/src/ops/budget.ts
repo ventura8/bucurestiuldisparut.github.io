@@ -121,9 +121,19 @@ function jsonOf(message: { readonly json: unknown }): unknown {
     }
 }
 
-/** `ops-onBudget`: the budget's Pub/Sub topic (`budget`), one instance, no retry (the budget notifies again). */
+/**
+ * How far `ops-onBudget` scales (finding 45 of `docs/research/manual-test-2026-10-25.md`): Google sends a budget's
+ * notifications in bursts (one per threshold and a repeat every few hours), and with one instance Cloud Run refused the
+ * deliveries that came while it was starting with 429 "no available instance", three times in a week, each a Crashes
+ * group. Pub/Sub delivers a refused message again, so nothing was lost, but every refusal was an error. Three instances
+ * of 80 concurrent requests absorb a burst; none is kept warm (no minimum), so an idle month costs nothing, and the
+ * transaction keeps a repeated alert from turning the guard red or notifying twice.
+ */
+const BUDGET_SCALING = { maxInstances: 3, concurrency: 80 } as const;
+
+/** `ops-onBudget`: the budget's Pub/Sub topic (`budget`), up to three instances, no retry (the budget notifies again). */
 export function onBudgetFunction(getDeps: () => BudgetDeps) {
-    const options = { topic: BACKGROUND_FUNCTIONS['ops.onBudget'].source, maxInstances: 1, retry: false, ...runAs('ops.onBudget') };
+    const options = { topic: BACKGROUND_FUNCTIONS['ops.onBudget'].source, ...BUDGET_SCALING, retry: false, ...runAs('ops.onBudget') };
     return onMessagePublished(options, async (event) => {
         const deps = getDeps();
         const notification = parseBudgetNotification(jsonOf(event.data.message));

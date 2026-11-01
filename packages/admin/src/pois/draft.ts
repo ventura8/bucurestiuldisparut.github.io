@@ -6,6 +6,10 @@
  * raises the conflict the admin resolves (keep mine, take theirs), never a silent overwrite. The whole document is
  * validated with `poiDocSchema`, the geometry against the city's limits and the category against the city's categories,
  * before anything is sent.
+ *
+ * A new place counts as unsaved only once the admin changed it (finding 42 of `docs/research/manual-test-2026-10-25.md`):
+ * typed text, a drawn shape, a field moved from its default. Its first value and a default the page fills in later
+ * (`prefill`: the category once the categories are listed) are no edit, so leaving an untouched new place asks nothing.
  */
 import { FIRESTORE_PATHS, poiDocSchema, validate, type PoiDoc, type ValidationCode, type ValidationIssue } from '@hcm/shared';
 import { checkGeometry, type DrawLimits, type DrawRefusal } from '@hcm/ui/map/draw';
@@ -91,8 +95,8 @@ export function draftIssues(value: PoiValue, context: PoiContext): readonly Vali
 
 export class PoiDraft {
     readonly #deps: PoiDraftDeps;
-    /** What Discard returns to for a new place. */
-    readonly #initial: PoiValue;
+    /** What Discard returns to for a new place, and what its edits are measured against (with its prefilled defaults). */
+    #initial: PoiValue;
     /** The snapshot a conflict is about. */
     #theirs: Stored<PoiDoc> | null = null;
     #state: PoiDraftState;
@@ -111,9 +115,9 @@ export class PoiDraft {
         return this.#state;
     }
 
-    /** The admin changed something that Save would write. */
+    /** The admin changed something that Save would write: for a new place, anything that differs from its start. */
     get unsaved(): boolean {
-        return this.#state.isNew || this.#state.dirty.length > 0;
+        return this.#state.isNew ? changedFields(this.#state.value, this.#initial).length > 0 : this.#state.dirty.length > 0;
     }
 
     #checked(state: PoiDraftState): PoiDraftState {
@@ -128,6 +132,19 @@ export class PoiDraft {
     /** The checks again (the categories or the city's bounds arrived). */
     recheck(): void {
         this.#set({});
+    }
+
+    /**
+     * A default the page fills in after the start (a new place's category once the categories are listed): it changes the
+     * value and the start alike, so it is no edit. Nothing for a stored place.
+     */
+    prefill(patch: PoiPatch): void {
+        if (!this.#state.isNew || this.#deps.locked?.() === true) {
+            return;
+        }
+        this.#initial = patched(this.#initial, patch);
+        const value = patched(this.#state.value, patch);
+        this.#set({ value, dirty: this.#dirtyOf(value) });
     }
 
     edit(patch: PoiPatch): void {

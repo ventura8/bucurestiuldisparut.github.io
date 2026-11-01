@@ -249,7 +249,19 @@ class CloudBuildInstaller implements InstallerPort {
     }
 
     async localBlocker(target: InstallTarget): Promise<InstallMessage | null> {
+        if (target === 'pipeline') {
+            return this.#bundleCannotInstallPipeline();
+        }
         return target === 'site' && !(await this.#deps.hasPublishedMap()) ? { key: 'apiError.install.nothingToShow' } : null;
+    }
+
+    /** The pipeline's `notAvailable` when the bundle names no Docker builder; null when it does or cannot be read yet. */
+    async #bundleCannotInstallPipeline(): Promise<InstallMessage | null> {
+        try {
+            return (await this.#deps.bundle()).manifest.tools.docker === null ? { key: 'apiError.install.notAvailable' } : null;
+        } catch {
+            return null;
+        }
     }
 
     async #pipelineBlocker(transport: GoogleTransport, bundle: InstallBundle): Promise<InstallMessage | null> {

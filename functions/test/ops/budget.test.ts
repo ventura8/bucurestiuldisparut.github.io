@@ -1,5 +1,6 @@
 /** `ops.onBudget`: the month's cost reaching the budget turns `ops/guard` red; the public site never stops. */
 import { FIRESTORE_PATHS, opsGuardDocSchema, timestampFromDate, type OpsGuardDoc } from '@hcm/shared';
+import { RESET_VALUE } from 'firebase-functions/options';
 import { Message } from 'firebase-functions/pubsub';
 import { describe, expect, it } from 'vitest';
 
@@ -166,5 +167,28 @@ describe('ops-onBudget', () => {
             eventFilters: { topic: 'budget' },
             retry: false,
         });
+    });
+
+    it('happyPath_aBurstOfBudgetNotificationsHasRoomWithoutAWarmInstance @S-A43-HAPPY-BUDGET-BURST', () => {
+        const endpoint = onBudgetFunction(() => opsDeps(NOW)).__endpoint;
+
+        // Finding 45 of 2026-11-01: one instance refused a burst with 429; three of 80 requests each, none kept warm.
+        expect(endpoint).toMatchObject({ maxInstances: 3, concurrency: 80 });
+        // No minimum: firebase-tools resets it to Cloud Run's default of none kept warm.
+        expect(endpoint.minInstances).toBe(RESET_VALUE);
+    });
+
+    it('badPath_theSameAlertDeliveredAgainTurnsTheGuardRedAndNotifiesOnce @S-A43-BAD-BUDGET-BURST-ONCE', async () => {
+        const deps = opsDeps(NOW);
+        const alert = published(JSON.stringify({ costAmount: 5.5, budgetAmount: 5, costIntervalStart: '2026-10-01T07:00:00Z' }));
+
+        // A burst, and Pub/Sub's redelivery of a refused message: the same notification three times.
+        for (let delivery = 0; delivery < 3; delivery += 1) {
+            await onBudgetFunction(() => deps).run(alert);
+        }
+
+        expect((await guard(deps))?.state).toBe('red');
+        expect(deps.documents.paths('notificationEvents/')).toEqual(['notificationEvents/budget.paused~2026-10-01']);
+        expect(deps.recording.records.filter((record) => record.message === 'budget reached: the guard is red')).toHaveLength(1);
     });
 });

@@ -154,6 +154,37 @@ test(
 );
 
 test(
+    'A new place nobody touched leaves without asking; one with a typed title asks first',
+    { tag: ['@S-A38-HAPPY-NEW-UNTOUCHED', '@S-A38-BAD-NEW-TYPED-ASKS'] },
+    async ({ page, lang, content }) => {
+        await sideBySide(page);
+        await seedPublicCity(content, AT);
+        await seedCategories(content, AT);
+        const photos = page.getByRole('navigation').getByRole('link', { name: translateAdminShell(lang, 'adminShell.nav.photos') });
+        const addPoint = async (): Promise<void> => {
+            await page.goto(content.address(lang, 'pois', { map: false }));
+            await page.getByRole('button', { name: poisText(lang, 'adminContent.pois.add') }).click();
+            await page.getByRole('button', { name: poisText(lang, 'adminContent.pois.shape.point'), exact: true }).click();
+            // The category select starts filled in: a default, not an edit (finding 42 of 2026-11-01).
+            await expect(page.locator('hcm-poi-editor #category')).not.toHaveValue('');
+        };
+
+        // Nothing typed, nothing drawn: another page opens at once.
+        await addPoint();
+        await photos.click();
+        await expect(page).toHaveURL(/#\/photos$/);
+        await expect(guard(page)).toHaveCount(0);
+
+        // A typed title is a change: leaving asks first, and nothing was written.
+        await addPoint();
+        await title(page, lang).fill('Hala Matache');
+        await photos.click();
+        await expect(page.getByRole('dialog', { name: contentText(lang, 'adminContent.common.unsavedTitle') })).toBeVisible();
+        expect(await content.collection('pois')).toEqual({});
+    },
+);
+
+test(
     'Invalid fields are named at the field, Save says why and writes nothing',
     { tag: ['@S-A38-BAD-INVALID'] },
     async ({ page, lang, content }) => {

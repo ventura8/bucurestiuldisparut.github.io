@@ -240,6 +240,26 @@ test('The imagery pipeline missing beside an installed server offers its own Ins
     await expectStateSound(page, adminVisit('setup.pipeline-install', lang));
 });
 
+test("The imagery pipeline this admin's bundle cannot install says so and offers no button", async ({ page, lang, adminWorld }) => {
+    // Finding 43 of 2026-11-01: the bundle names no Docker builder (§67e); the record says looked at, not installed.
+    await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid, {
+        mapbox: { ...OK, user: 'e2e-mapbox' },
+        usgs: OK,
+        install: {
+            server: { state: 'installed', checkedAt: STEPS_AT.toISOString() },
+            pipeline: { state: 'notInstalled', checkedAt: STEPS_AT.toISOString() },
+        },
+    });
+    await serveInstallBundle(page, { docker: false });
+    const setup = new SetupPage(page, lang);
+    await setup.visit('pipeline');
+    const card = await setup.show('pipeline');
+
+    await expect(card.locator('[data-blocker="apiError.install.notAvailable"]')).toBeVisible();
+    await expect(card.getByRole('button', { name: setupText(lang, 'adminSetup.install.pipeline.action') })).toHaveCount(0);
+    await expectStateSound(page, adminVisit('setup.pipeline-not-available', lang));
+});
+
 test('Publish the map: off while nothing is published, ready once the city is, then published', async ({
     page,
     lang,

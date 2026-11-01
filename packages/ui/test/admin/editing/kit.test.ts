@@ -268,6 +268,18 @@ describe('<hcm-empty-state>', () => {
         expect(EDITING_TAGS).toEqual(['hcm-list-detail', 'hcm-confirm-dialog', 'hcm-empty-state', 'hcm-overflow-menu']);
         document.body.replaceChildren();
     });
+
+    it('happyPath_aHintSaysWhereTheItemsComeFrom', async () => {
+        const element = await inBox<HcmEmptyState>(
+            html`<hcm-empty-state icon="pending_actions" text="No jobs yet." hint="Jobs start with an import."></hcm-empty-state>`,
+            400,
+        );
+
+        const lines = [...(element.shadowRoot?.querySelectorAll('p') ?? [])].map((line) => line.textContent);
+        expect(lines).toEqual(['No jobs yet.', 'Jobs start with an import.']);
+        expect(await axeViolations(element)).toEqual([]);
+        document.body.replaceChildren();
+    });
 });
 
 describe('FakeArea', () => {

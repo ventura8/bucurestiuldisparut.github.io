@@ -43,7 +43,9 @@ export interface InstallerPort {
     consoleUrl(buildId: string): string;
     /**
      * The target's blocker that needs no Google token (the site's `apiError.install.nothingToShow`: whether the first
-     * city's manifest is published, read from Firestore), so a card whose token is gone still sees it lift.
+     * city's manifest is published, read from Firestore), so a card whose token is gone still sees it lift; the pipeline's
+     * `apiError.install.notAvailable` when this admin's bundle names no Docker builder (§67e; finding 43 of 2026-11-01:
+     * read from the admin's own origin, so the card knows it before any look at Google; null while the bundle is unread).
      */
     localBlocker(target: InstallTarget): Promise<InstallMessage | null>;
 }

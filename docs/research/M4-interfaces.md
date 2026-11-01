@@ -794,3 +794,26 @@ workstreams wrote them; where they differ, this addendum is the contract.
   compare's line: one extra map load per compare session, reused across window changes within a minute.
 - §10 gains: "`aiplatform.endpoints.predict` is all `generateContent` and `countTokens` of a publisher model need",
   proved by the setup self-test's `ai` check after Provision.
+
+## Addendum (2026-11-01): why push did not start, and a stale registration made again
+
+Finding 46 of `docs/research/manual-test-2026-10-25.md` (the live test of 2026-11-01; `DECISIONS-for-review.md` §79e).
+Where it differs from §5.4, this addendum is the contract.
+
+- §5.4 (push, the browser): a registrar's failure is a `PushFailure` with a short code (the SDK's `FirebaseError.code`,
+  or `push/…`), and the inbox shows, under "Notifications did not start: …", a reason line per family with that code
+  (`adminContent.notify.push.reason.*`, both languages; `packages/admin/src/inbox/push-failure.ts`); the log gets the
+  code and the SDK's text with ids, tokens and keys replaced. `PushRegistrar` gains `reset()`: it forgets the FCM SDK's
+  IndexedDB record of the registration (`packages/admin/src/firebase/fcm-record.ts`), which `register()` otherwise
+  trusts for seven days whatever worker or push subscription it was made with; the record is also forgotten right after
+  the root's worker of an admin before M6 is retired.
+- §5.4 (push, the server): `notify.registerDevice` refuses with `apiError.notify.deviceInvalid` and `reason`, FCM's code
+  (`UNREGISTERED`, `INVALID_ARGUMENT`, the status, or `HTTP_<status>`), logged without the token; `PushSender.validate`
+  returns `{ ok: true } | { ok: false, reason }`. On that refusal the admin resets the registration and registers once
+  more; a second refusal is shown with `fcm/<code>` (`fcm/UNSPECIFIED` from an older server).
+- §7.1 gains S-A47-HAPPY-RENEWED, S-A47-BAD-FCM-REFUSED-REASON, S-A47-BAD-SDK-CODE and S-A47-BAD-FCM-REASON-NAMED; §7.3
+  the tour state `notify.push-failed-reason`; §8: the fake FCM's scenario `fcm.everyTokenGone`, and the `e2e` stand-in's
+  `reset` (a new token, `…-browser-0002`) and `?pushFail=<code>`.
+- §10 gains: which refusal the live failure of 2026-11-01 was, the auto-created browser key's API restrictions
+  (Installations and FCM Registration), and the default VAPID key with `register()`: the reason line of the next live
+  try names it.

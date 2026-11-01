@@ -34,6 +34,8 @@ test(
             '@S-A18-HAPPY',
             '@S-A18-HAPPY-WAITING-JOB',
             '@S-A18-BAD-CANCEL-FINISHED',
+            '@S-A18-HAPPY-EMPTY-HINT',
+            '@S-A18-BAD-EMPTY-HINT-GONE',
             '@S-A29-HAPPY-LIST-DETAIL',
             '@S-A31-HAPPY-EDITORS',
             '@S-A21-BAD-LEAK-CHECK',
@@ -45,8 +47,11 @@ test(
         await seedCity(content, AT);
         await page.goto(content.address(lang, 'jobs'));
 
-        // No job yet; jobs then arrive live, as the pipeline queues and runs them.
+        // No job yet, and where jobs come from (finding 44 of 2026-11-01); jobs then arrive live, as the pipeline queues
+        // and runs them.
         await expect(page.getByText(contentText(lang, 'adminContent.jobs.empty'))).toBeVisible();
+        const hint = page.getByText(contentText(lang, 'adminContent.jobs.emptyHint'));
+        await expect(hint).toBeVisible();
         await expectStateSound(page, adminVisit('jobs.empty', lang));
         await seedJob(
             content,
@@ -71,6 +76,7 @@ test(
         await seedLogLine(content, 'scan-1', 1, 'Fetching the scene <DS1>', AT);
         const running = page.getByRole('link', { name: new RegExp(contentText(lang, 'adminContent.jobs.type.usgsImport')) });
         await expect(running).toBeVisible();
+        await expect(hint).toHaveCount(0);
         await expectStateSound(page, adminVisit('jobs.list', lang));
 
         // The running job: progress, steps and log; a new log line shows at once.

@@ -10,6 +10,8 @@ import type { ServiceFake } from './service.js';
  * device's token) and records it (a `validate_only` dry run is answered and not recorded); one in `unregistered`
  * answers 404 `UNREGISTERED`, as FCM does for a browser that unsubscribed; a message without a well-formed `fid` (a
  * legacy `token` target included) answers 400 `INVALID_ARGUMENT`. The scenario `fcm.tokensGone` marks every token seen so far unregistered;
+ * `fcm.everyTokenGone` answers `UNREGISTERED` for every token from then on, new ones included (finding 46 of 2026-11-01: a
+ * browser whose registration FCM refuses also when it registers again);
  * `fail('fcm', 'unavailable' | 'rateLimited' | 'forbidden' | 'apiDisabled')` answers Google's error envelopes.
  * No browser ever reaches it (the e2e firewall refuses `fcm.googleapis.com` from a page).
  */
@@ -28,10 +30,12 @@ export interface FcmState {
     readonly unregistered: Set<string>;
     /** Every token a send or a dry run named. */
     readonly seen: Set<string>;
+    /** Every token is unregistered, new ones included (`fcm.everyTokenGone`). */
+    everyTokenGone: boolean;
 }
 
 export function defaultFcmState(): FcmState {
-    return { messages: [], unregistered: new Set(), seen: new Set() };
+    return { messages: [], unregistered: new Set(), seen: new Set(), everyTokenGone: false };
 }
 
 const API: GoogleApi = {
@@ -53,6 +57,11 @@ function pushedOf(message: Readonly<Record<string, unknown>>, token: string): Pu
     return { token, notification: record(webpush['notification']), link: typeof link === 'string' ? link : null };
 }
 
+/** FCM no longer knows the token: it was unregistered, or every token is (`fcm.everyTokenGone`). */
+function gone(state: FcmState, token: string): boolean {
+    return state.everyTokenGone || state.unregistered.has(token);
+}
+
 export function createFcmFake(state: FcmState): ServiceFake {
     return {
         name: 'fcm',
@@ -69,7 +78,7 @@ export function createFcmFake(state: FcmState): ServiceFake {
                     if (!TOKEN.test(token)) {
                         return fixtureResponse('fcm/send.invalid-token');
                     }
-                    if (state.unregistered.has(token)) {
+                    if (gone(state, token)) {
                         return fixtureResponse('fcm/send.unregistered');
                     }
                     if (body['validate_only'] !== true) {
@@ -83,6 +92,9 @@ export function createFcmFake(state: FcmState): ServiceFake {
         scenarios: {
             tokensGone: () => {
                 state.seen.forEach((token) => state.unregistered.add(token));
+            },
+            everyTokenGone: () => {
+                state.everyTokenGone = true;
             },
         },
         snapshot: () => ({ messages: state.messages, unregistered: [...state.unregistered].sort((a, b) => a.localeCompare(b)) }),

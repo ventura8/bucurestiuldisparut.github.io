@@ -1677,3 +1677,59 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the note's rule was the step's scope (every install card's is `cloudPlatform`) and a live token, not what the card's body offered.
     - Fix and pin: `installCardAsks` (`packages/ui/src/admin/setup/install-status.ts`), read by the page's `noteParams` (S-A55-BAD-NOTE-NOTHING-TO-DO, tour `setup.install-nothing-to-do`).
     - **An explanation of a dialog belongs to the button that opens it: derive it from the buttons shown, not from the screen's general permission.**
+
+312. **An untouched new place asked "Discard your changes?" when left.**
+    - Seen: live on 2026-11-01 (finding 42): Places → Add place, nothing typed or drawn, then another page.
+    - Found by: the user's live walk. The unsaved-guard specs edited a stored place; the one spec that left a new place
+      (`e2e/admin/specs/pois/in-view.spec.ts`) clicked Discard in the question, so the question was taken for intended.
+    - Cause: `PoiDraft.unsaved` was true for any new place, and the category the page filled in once the categories were
+      listed went through `edit`, like the admin's own change.
+    - Fix and pin: a new place is unsaved once it differs from its start; a default filled in later is `prefill`, which
+      moves the start too (`packages/admin/src/pois/draft.ts`; S-A38-HAPPY-NEW-UNTOUCHED, S-A38-BAD-NEW-TYPED-ASKS).
+    - **"Unsaved" is a difference from what the admin saw first, not a state ("new"); a value the program fills in is part
+      of that start, not an edit.**
+
+313. **The pipeline card offered a button whose click could only be refused.**
+    - Seen: live on 2026-11-01 (finding 43): step d3, Install the pipeline, with a bundle that names no Docker builder.
+    - Found by: the user's live walk. The specs that met `apiError.install.notAvailable` looked at Google first (the
+      blocker of a look); none opened Setup on a record of the pipeline, which keeps the state and not the blocker.
+    - Cause: whether the bundle can install the pipeline was known only from a look with a token, while a recorded
+      "looked at, not installed" was enough for the card to offer its button.
+    - Fix and pin: the cards read the bundle once without a token (`InstallerPort.localBlocker('pipeline')`) and keep the
+      answer apart from any record (`pipelineOff` of the install slice); the card then shows the reason and no button
+      (S-A56-BAD-NOT-AVAILABLE; tour `setup.pipeline-not-available`).
+    - **A capability fixed by the build (what the bundle can install) is read from the build, not from the last state a
+      card recorded.**
+
+314. **A one-instance Pub/Sub function made a Crashes group out of every burst.**
+    - Seen: live from 2026-10-26 to 2026-10-29 (finding 45): `ops-onbudget`, Cloud Run 429 "no available instance".
+    - Found by: the Crashes page in production. The functions' tests checked the instance caps against a maximum, never a
+      minimum for a function that receives bursts.
+    - Cause: `maxInstances: 1` on a push-delivered function: deliveries that came while the instance was starting were
+      refused; Pub/Sub delivered them again, so nothing was lost, but each refusal was an error.
+    - Fix and pin: three instances of 80 concurrent requests, no minimum (`BUDGET_SCALING`, `functions/src/ops/budget.ts`;
+      S-A43-HAPPY-BUDGET-BURST), the transaction keeping a repeat idempotent (S-A43-BAD-BUDGET-BURST-ONCE).
+    - **A cap of one instance on an event-delivered function turns every burst into errors; leave room for a burst and make
+      the handler idempotent instead.**
+
+315. **"This browser could not be registered for notifications" said nothing of which step failed.**
+    - Seen: live on 2026-11-01 (finding 46): Notifications on this device after Chrome's prompt.
+    - Found by: the user's live walk. The specs' stand-in of the FCM SDK always succeeded, and the server's refusal had no
+      code beyond `apiError.notify.deviceInvalid`.
+    - Cause: the registrar swallowed every error into one message, and the server dropped FCM's code.
+    - Fix and pin: a reason line with the SDK's or FCM's code, the code and the redacted text in the log
+      (`packages/admin/src/inbox/push-failure.ts`; S-A47-BAD-SDK-CODE, S-A47-BAD-FCM-REFUSED-REASON,
+      S-A47-BAD-FCM-REASON-NAMED).
+    - **A failure that crosses an SDK keeps the SDK's own code to the screen and the log: it is what tells the next live
+      try what to look at.**
+
+316. **The FCM SDK handed out a registration made with another worker.**
+    - Seen: live on 2026-11-01 (finding 46): a second click made no request to FCM at all.
+    - Found by: reading `@firebase/messaging` 0.13.3 offline after the live walk.
+    - Cause: `register()` trusts its IndexedDB record (the installation id and when it was registered) for seven days,
+      without the worker or the push subscription it was made with; the admin's move to `/admin/` retired the root's
+      worker and its subscription, and a registration FCM forgot is never made again within the week.
+    - Fix and pin: the record is forgotten after the root's worker is retired and when FCM refuses the registration, and
+      the browser registers once more (`packages/admin/src/firebase/fcm-record.ts`; S-A47-HAPPY-RENEWED).
+    - **An SDK's cache keyed on less than what its result depends on goes stale silently: clear it whenever the part it
+      does not key on changes.**

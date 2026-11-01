@@ -324,11 +324,14 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         return newPlaceCategory(this.#cell.state.categories.items, this.#services.local.get(LAST_CATEGORY_KEY));
     }
 
-    /** A new place added before the categories were listed gets its category once they are (the select showed the first). */
+    /**
+     * A new place added before the categories were listed gets its category once they are (the select showed the first):
+     * a default, not the admin's edit, so leaving the place untouched asks nothing (finding 42 of 2026-11-01).
+     */
     #categoryArrived(): void {
         const category = lacksCategory(this.#editor?.state.draft) ? this.#newCategory() : '';
         if (category !== '') {
-            this.#editor?.edit({ category });
+            this.#editor?.prefill({ category });
         }
     }
 

@@ -3,7 +3,9 @@
  * with the server's (Install the server starts both). Its own button is Try again after a failure, and **Install the
  * pipeline** once the server is there but the pipeline is not (a server installed from GitHub Actions, or a pipeline
  * blocked at the server's click whose blocker has lifted: finding 3 of the M6 review). It shows the build's status
- * (`install-status.ts`), the cost line and, before the server's click, when it will start.
+ * (`install-status.ts`), the cost line and, before the server's click, when it will start. While this admin's bundle
+ * cannot install the pipeline (no Docker builder, §67e) it says "Not available yet: …" and offers no button at all
+ * (finding 43 of 2026-11-01).
  */
 import { html, type TemplateResult } from 'lit';
 
@@ -19,6 +21,8 @@ import {
     installStatusStyles,
     mayInstall,
     pipelineInstallsAlone,
+    pipelineOffReason,
+    pipelineShown,
     pipelineTriesAgain,
     type InstallStatusInput,
 } from './install-status.js';
@@ -41,7 +45,7 @@ class HcmSetupPipeline extends SetupBody {
         };
         return html`<div class="body">
             <p>${this.t('adminSetup.install.pipeline.explain')}</p>
-            ${costLine(input)} ${this.renderWaiting(state)} ${installStatus(input)} ${blockerLine(input, state.install.pipeline)}
+            ${costLine(input)} ${this.renderWaiting(state)} ${installStatus(input)} ${blockerLine(input, pipelineShown(state.install))}
             ${this.renderAction(state)}
         </div>`;
     }
@@ -49,7 +53,8 @@ class HcmSetupPipeline extends SetupBody {
     /** Before the server's click, when the pipeline starts. */
     private renderWaiting(state: SetupViewState): TemplateResult {
         const { server, pipeline } = state.install;
-        return pipeline.state === 'notInstalled' && server.buildId === null && !pipelineInstallsAlone(state)
+        const waits = pipeline.state === 'notInstalled' && pipelineOffReason(state.install) === null;
+        return waits && server.buildId === null && !pipelineInstallsAlone(state)
             ? html`<p class="note">${this.t('adminSetup.install.pipeline.waitsForServer')}</p>`
             : EMPTY;
     }

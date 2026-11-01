@@ -40,6 +40,30 @@ function fresh(shape: FreshPlace['shape']): FreshPlace {
     return { shape, value: { category: 'biserici', geometry: null, title: { ro: 'Loc' }, links: [], photoIds: [], published: true } };
 }
 
+describe('a place editor: what counts as unsaved', () => {
+    it('happyPath_anUntouchedNewPlaceIsNotUnsavedAndAPlacedPositionIs', () => {
+        const world = poisWorld();
+        const { editor } = editorOf(world, fresh('polygon'));
+
+        // Finding 42 of 2026-11-01: nothing typed, nothing drawn, the category its default.
+        editor.prefill({ category: 'biserici' });
+        expect(editor.unsaved).toBe(false);
+
+        expect(editor.addAt([26.1, 44.43])).toBe(true);
+        expect(editor.state.draft?.value.geometry).toBeNull();
+        expect(editor.unsaved).toBe(true);
+    });
+
+    it('badPath_aRedrawWithNothingDrawnIsNoEdit', () => {
+        const world = poisWorld();
+        const { editor } = editorOf(world, fresh('point'));
+
+        editor.redraw('polygon');
+
+        expect(editor.unsaved).toBe(false);
+    });
+});
+
 describe('a place editor: opening', () => {
     it('happyPath_aStoredPlaceOpensWithItsShape', () => {
         const world = poisWorld();

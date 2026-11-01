@@ -191,6 +191,47 @@ describe('Publish the map, Check again, Update the map', () => {
     });
 });
 
+describe('a pipeline this admin cannot install (finding 43 of 2026-11-01)', () => {
+    it('badPath_aPipelineTheBundleCannotInstallIsNeverSubmitted', async () => {
+        // Finding 43 of 2026-11-01: a record says the pipeline was looked at and is not installed; the bundle names no
+        // Docker builder (§67e), which the cards read without a token.
+        const { harness, ctx, cards } = setup('normal');
+        harness.installer.localBlocker.mockImplementation((target) =>
+            Promise.resolve(target === 'pipeline' ? { key: 'apiError.install.notAvailable' } : null),
+        );
+        ctx.update((state) => ({
+            ...state,
+            install: {
+                ...state.install,
+                server: { ...state.install.server, state: 'failed' },
+                pipeline: { ...state.install.pipeline, state: 'notInstalled', checkedAt: '2026-10-30T09:00:00.000Z' },
+            },
+        }));
+        harness.installer.observe.mockResolvedValue(observed());
+        cards.watch(['pipeline']);
+        await flush();
+        expect(ctx.state().install.pipelineOff).toEqual({ key: 'apiError.install.notAvailable' });
+
+        await cards.updateMap('deploy');
+        await cards.installServer();
+
+        expect(harness.installer.submit.mock.calls.map(([target]) => target)).toEqual(['server', 'server']);
+        expect(harness.installer.localBlocker.mock.calls.filter(([target]) => target === 'pipeline')).toHaveLength(1);
+        cards.dispose();
+    });
+
+    it('happyPath_aBundleThatCanInstallThePipelineOrCannotBeReadSaysNothing', async () => {
+        const { harness, ctx, cards } = setup('normal');
+        harness.installer.localBlocker.mockRejectedValueOnce(new Error('offline'));
+
+        cards.watch(['server', 'pipeline']);
+        await flush();
+
+        expect(ctx.state().install.pipelineOff).toBeNull();
+        cards.dispose();
+    });
+});
+
 describe('records', () => {
     it('happyPath_inAnAdminSessionAChangedStateIsRecordedOnce', async () => {
         const { harness, cards } = setup('normal');

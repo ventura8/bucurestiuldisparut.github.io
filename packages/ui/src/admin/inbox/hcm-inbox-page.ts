@@ -194,12 +194,19 @@ class HcmInboxPage extends AreaPage<InboxViewState, InboxIntentsPort> {
         if (push.device === 'failed') {
             const reason = noticeOf(locale, push.failure);
             return html`<p class="alert" role="alert">
-                <hcm-icon name="error"></hcm-icon><span>${contentText(locale, 'adminContent.notify.push.failed', { reason })}</span>
-            </p>`;
+                    <hcm-icon name="error"></hcm-icon><span>${contentText(locale, 'adminContent.notify.push.failed', { reason })}</span>
+                </p>
+                ${this.#reasonLine(locale, view)}`;
         }
         return push.device === 'on'
             ? this.#test(locale, view)
             : html`<p class="note status" role="status">${this.#working(locale, view)}</p>`;
+    }
+
+    /** The failure's reason with its code (finding 46 of 2026-11-01), when it has one. */
+    #reasonLine(locale: Locale, view: InboxViewState): TemplateResult | typeof nothing {
+        const { reason } = view.push;
+        return reason === null ? nothing : html`<p class="note reason">${noticeOf(locale, reason)}</p>`;
     }
 
     #working(locale: Locale, view: InboxViewState): string {

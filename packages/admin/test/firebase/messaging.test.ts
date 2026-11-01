@@ -9,6 +9,13 @@ import type { Messaging } from 'firebase/messaging';
 import { describe, expect, it } from 'vitest';
 
 import {
+    FCM_REGISTRATION_STORE,
+    type RecordDatabase,
+    type RecordFactory,
+    type RecordRequest,
+    type RecordTransaction,
+} from '../../src/firebase/fcm-record.js';
+import {
     PUSH_SERVICE_WORKER,
     firebasePush,
     loadMessagingSdk,
@@ -98,12 +105,58 @@ describe('firebasePush', () => {
 
     it('badPath_noServiceWorkerOrNoInstallationIdMeansNoToken', async () => {
         const push = firebasePush({ scope: scope({ worker: false }).browser, app: APP, load: () => Promise.resolve(sdk()) });
-        await expect(push.token()).rejects.toThrow('no service worker');
+        await expect(push.token()).rejects.toMatchObject({ code: 'push/no-service-worker' });
 
         const silent = sdk('');
         const unanswered = firebasePush({ scope: scope().browser, app: APP, load: () => Promise.resolve(silent) });
-        await expect(unanswered.token()).rejects.toThrow('no installation id');
+        await expect(unanswered.token()).rejects.toMatchObject({ code: 'push/no-installation-id' });
         expect(silent.listeners).toBe(0);
+    });
+
+    // Finding 46 of 2026-11-01: the SDK's own code reaches the page and the log, its text without ids.
+    it('badPath_anSdkFailureKeepsItsCode_andARefusedWorkerHasTheRegistrarsOwn', async () => {
+        const failing = sdk();
+        const sdkError = Object.assign(new Error('Messaging: registration failed (messaging/fid-registration-failed).'), {
+            code: 'messaging/fid-registration-failed',
+            customData: { errorInfo: 'PERMISSION_DENIED for installation cXg2c2RkZGRkZGRkZGRk' },
+        });
+        const push = firebasePush({
+            scope: scope().browser,
+            app: APP,
+            load: () => Promise.resolve({ ...failing, register: () => Promise.reject(sdkError) }),
+        });
+        await expect(push.token()).rejects.toMatchObject({
+            code: 'messaging/fid-registration-failed',
+            info: 'PERMISSION_DENIED for installation [id]',
+        });
+
+        const refusedWith = (reason: Error) =>
+            firebasePush({
+                scope: { ...scope().browser, navigator: { serviceWorker: { register: () => Promise.reject(reason) } } },
+                app: APP,
+                load: () => Promise.resolve(sdk()),
+            });
+        await expect(refusedWith(new TypeError('A bad HTTP response code (404)')).token()).rejects.toMatchObject({
+            code: 'push/worker-registration-failed',
+            info: 'A bad HTTP response code (404)',
+        });
+    });
+
+    it('happyPath_resetForgetsTheSdksRecordOfTheRegistration', async () => {
+        const database = fakeRecords(true);
+        const push = firebasePush({
+            scope: { ...scope().browser, indexedDB: database.factory },
+            app: APP,
+            load: () => Promise.resolve(sdk()),
+        });
+
+        await push.reset();
+
+        expect(database.cleared).toBe(1);
+        // A browser without IndexedDB: nothing to forget, nothing thrown.
+        await expect(
+            firebasePush({ scope: scope().browser, app: APP, load: () => Promise.resolve(sdk()) }).reset(),
+        ).resolves.toBeUndefined();
     });
 
     it('badPath_noNotificationsApiIsAPermissionDenied', async () => {
@@ -113,6 +166,43 @@ describe('firebasePush', () => {
         expect([push.supported(), push.permission()]).toEqual([false, 'denied']);
     });
 });
+
+/** IndexedDB with the FCM SDK's database (`withStore`: its registrations' store too), counting the clears. */
+function fakeRecords(withStore: boolean): { readonly factory: RecordFactory; cleared: number } {
+    const world = { cleared: 0, factory: undefined as unknown as RecordFactory };
+    const database: RecordDatabase = {
+        objectStoreNames: { contains: (name) => withStore && name === FCM_REGISTRATION_STORE },
+        transaction: () => {
+            const transaction: RecordTransaction = {
+                objectStore: () => ({
+                    clear: () => {
+                        world.cleared += 1;
+                        queueMicrotask(() => transaction.oncomplete?.());
+                    },
+                }),
+                oncomplete: null,
+                onerror: null,
+                onabort: null,
+            };
+            return transaction;
+        },
+        close: () => undefined,
+    };
+    world.factory = {
+        open: () => {
+            const request: RecordRequest<RecordDatabase> = {
+                result: database,
+                transaction: null,
+                onsuccess: null,
+                onerror: null,
+                onupgradeneeded: null,
+            };
+            queueMicrotask(() => request.onsuccess?.());
+            return request;
+        },
+    };
+    return world;
+}
 
 describe('the e2e stand-in', () => {
     it('happyPath_theBrowsersOwnPermissionAndAFixedTokenPerTest', async () => {
@@ -124,6 +214,23 @@ describe('the e2e stand-in', () => {
         expect(standInToken('')).toBe('e2e-fcm-token:local-browser-0001');
         // The admin's own worker, as in production, beside its page.
         expect(registered).toEqual([{ url: PUSH_SERVICE_WORKER, scope: './' }]);
+    });
+
+    it('happyPath_resetMakesTheNextRegistrationANewOne', async () => {
+        const push = standInPush(scope({ permission: 'granted' }).browser, 'S-A47-HAPPY-RENEWED');
+
+        await expect(push.token()).resolves.toBe('e2e-fcm-token:S-A47-HAPPY-RENEWED-browser-0001');
+        await push.reset();
+        await expect(push.token()).resolves.toBe('e2e-fcm-token:S-A47-HAPPY-RENEWED-browser-0002');
+    });
+
+    it('badPath_theSdkFailureASpecAsksForIsThrownAsTheSdkWould', async () => {
+        const browser: PushScope = {
+            ...scope({ permission: 'granted' }).browser,
+            location: { origin: 'https://demo-hcm.web.app', search: '?test=x&pushFail=messaging/fid-registration-failed' },
+        };
+
+        await expect(standInPush(browser, 'x').token()).rejects.toMatchObject({ code: 'messaging/fid-registration-failed' });
     });
 
     it('badPath_aBrowserThatRefusesServiceWorkersStillGetsItsToken', async () => {
@@ -166,12 +273,25 @@ describe('retireRootWorker (M6: the admin moved to /admin/)', () => {
 
     it('happyPath_theRootScopesWorkerIsUnregisteredBeforeTheAdminRegistersItsOwn', async () => {
         const { browser, unregistered, registered } = withRegistrations(['https://demo-hcm.web.app/', 'https://demo-hcm.web.app/admin/']);
-        const push = firebasePush({ scope: browser, app: APP, load: () => Promise.resolve(sdk()) });
+        const database = fakeRecords(true);
+        const push = firebasePush({ scope: { ...browser, indexedDB: database.factory }, app: APP, load: () => Promise.resolve(sdk()) });
 
         await push.token();
 
         expect(unregistered).toEqual(['https://demo-hcm.web.app/']);
         expect(registered).toEqual([{ url: PUSH_SERVICE_WORKER, scope: './' }]);
+        // Finding 46: the SDK's record named the retired worker's subscription; the registration is made again.
+        expect(database.cleared).toBe(1);
+    });
+
+    it('badPath_withoutARootWorkerTheSdksRecordIsKept', async () => {
+        const { browser } = withRegistrations(['https://demo-hcm.web.app/admin/']);
+        const database = fakeRecords(true);
+        const push = firebasePush({ scope: { ...browser, indexedDB: database.factory }, app: APP, load: () => Promise.resolve(sdk()) });
+
+        await push.token();
+
+        expect(database.cleared).toBe(0);
     });
 
     it('badPath_aRefusalOrABrowserWithoutTheApiLeavesThingsAsTheyAre', async () => {

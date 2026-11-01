@@ -120,8 +120,10 @@ describe('places: adding and editing', () => {
         const id = store.intents.add('point');
         store.open([id]);
         expect(store.state.editor?.draft?.value).toMatchObject({ category: 'parcuri', geometry: null, published: true });
-        expect(store.hasUnsavedChanges()).toBe(true);
+        // Finding 42 of 2026-11-01: a new place nobody touched leaves without a question; a typed title is an edit.
+        expect(store.hasUnsavedChanges()).toBe(false);
         store.intents.edit({ title: { ro: 'Statuia' } });
+        expect(store.hasUnsavedChanges()).toBe(true);
         store.intents.editVertex({ kind: 'add', index: -1, position: [26.1, 44.43] });
         const outcome = await store.intents.save();
 
@@ -191,6 +193,8 @@ describe('places: adding and editing', () => {
         seedCategory(world, 'parcuri', 2);
         seedCategory(world, 'biserici', 1);
         expect(store.state.editor?.draft?.value.category).toBe('parcuri');
+        // The category filled in once listed is a default, not the admin's edit (finding 42 of 2026-11-01).
+        expect(store.hasUnsavedChanges()).toBe(false);
         store.open([early]);
 
         expect(store.state.editor?.draft?.value.category).toBe('parcuri');

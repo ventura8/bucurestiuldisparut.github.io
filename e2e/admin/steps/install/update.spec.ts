@@ -363,6 +363,8 @@ test(
         await withConsent(page, consent, recheck, inputs, setupBudget.consents('pipeline', 1));
         const install = pipeline.getByRole('button', { name: setupText(lang, 'adminSetup.install.pipeline.action') });
         await expect(install).toBeDisabled();
+        // This admin's bundle can install the pipeline (it names its Docker builder): nothing says otherwise.
+        await expect(pipeline.getByText(apiText(lang, 'apiError.install.notAvailable'))).toHaveCount(0);
 
         await upstream.scenario('artifact-registry.provisioned', 'browser');
         await inputs.click(recheck);
@@ -376,6 +378,36 @@ test(
         // Done, the page moves on to Analytics: Google Analytics is not enabled yet, which setup.analyticsConfig answers
         // with a 400 when the card asks (after the chip turned green: the claim waits for it).
         await expect.poll(() => consoleErrors.takeMatching(/setup-analyticsConfig/).length).toBeGreaterThan(0);
+    },
+);
+
+test(
+    'A bundle that cannot install the pipeline says it is not available yet and offers no button, whatever the record says',
+    { tag: ['@S-A56-BAD-NOT-AVAILABLE'] },
+    async ({ page, lang, upstream, adminWorld }) => {
+        // Finding 43 of 2026-11-01: the live record of the pipeline says looked at and not installed beside an installed
+        // server, and the bundle names no Docker builder (§67e): the card offered Install the pipeline, which Google refused.
+        await upstream.scenario('cloud-build.installerAccount', 'browser');
+        await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid, {
+            mapbox: { ...OK, user: 'e2e-mapbox' },
+            usgs: OK,
+            install: {
+                server: { state: 'installed', checkedAt: RECORDED },
+                site: { state: 'installed', checkedAt: RECORDED },
+                pipeline: { state: 'notInstalled', checkedAt: RECORDED },
+            },
+        });
+        await serveInstallBundle(page, { docker: false });
+        const setup = new SetupPage(page, lang);
+        await setup.visit('pipeline');
+        const pipeline = await setup.show('pipeline');
+
+        await expect(pipeline.getByText(apiText(lang, 'apiError.install.notAvailable'))).toBeVisible();
+        await expect(pipeline.getByText(setupText(lang, 'adminSetup.install.offReason'))).toBeVisible();
+        await expect(pipeline.getByRole('button', { name: setupText(lang, 'adminSetup.install.pipeline.action') })).toHaveCount(0);
+        await expect(pipeline.getByRole('button', { name: setupText(lang, 'adminSetup.install.tryAgain') })).toHaveCount(0);
+        await expect(pipeline.locator('hcm-consent-note')).toHaveCount(0);
+        expect(await buildsOf(upstream, 'pipeline')).toEqual([]);
     },
 );
 

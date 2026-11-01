@@ -4681,6 +4681,28 @@
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/jobs.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes. The M3 refinement of the M2c Jobs page (docs/research/M2c-interfaces.md §9.3)."
         },
         {
+            "id": "S-A18-HAPPY-EMPTY-HINT",
+            "behaviour": "A18",
+            "area": "admin",
+            "path": "happy",
+            "title": "With no job yet, Jobs says where jobs come from",
+            "asserts": "an empty Jobs page shows No jobs yet and one line naming where jobs come from (Historical imagery: imports, georeferencing or publishing again, deleting a layer's tiles)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 44 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01). Test: e2e/tour/admin-jobs.tour.ts (state jobs.empty)."
+        },
+        {
+            "id": "S-A18-BAD-EMPTY-HINT-GONE",
+            "behaviour": "A18",
+            "area": "admin",
+            "path": "bad",
+            "title": "Once a job arrives the empty state and its hint are gone",
+            "asserts": "a job arriving live replaces the empty state: the hint line is no longer shown, the job's row is",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 44 of docs/research/manual-test-2026-10-25.md. Test: e2e/tour/admin-jobs.tour.ts (state jobs.list)."
+        },
+        {
             "id": "S-A19-HAPPY",
             "behaviour": "A19",
             "area": "admin",
@@ -6265,6 +6287,28 @@
             "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 37)."
         },
         {
+            "id": "S-A38-HAPPY-NEW-UNTOUCHED",
+            "behaviour": "A38",
+            "area": "admin",
+            "path": "happy",
+            "title": "A new place nobody touched leaves without asking",
+            "asserts": "Add place, a shape chosen, nothing typed or drawn, the category select filled in by default -> another page opens at once, no Discard your changes question",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 42 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01): the default category and the first value are no edit. Test: e2e/admin/specs/editing/drafts.spec.ts; also e2e/admin/specs/pois/in-view.spec.ts."
+        },
+        {
+            "id": "S-A38-BAD-NEW-TYPED-ASKS",
+            "behaviour": "A38",
+            "area": "admin",
+            "path": "bad",
+            "title": "A new place with a typed title asks before leaving",
+            "asserts": "Add place, a title typed -> another page asks Discard your changes first, and nothing is written",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 42 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/editing/drafts.spec.ts."
+        },
+        {
             "id": "S-A39-HAPPY",
             "behaviour": "A39",
             "area": "admin",
@@ -6672,6 +6716,28 @@
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
+            "id": "S-A43-HAPPY-BUDGET-BURST",
+            "behaviour": "A43",
+            "area": "admin",
+            "path": "happy",
+            "title": "A burst of budget notifications has room without a warm instance",
+            "asserts": "ops-onBudget deploys with up to three instances of 80 concurrent requests each and no minimum instance (one instance refused a burst with 429 no available instance)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 45 of docs/research/manual-test-2026-10-25.md (Crashes group of ops-onbudget, 2026-10-26..29). Test: functions/test/ops/budget.test.ts."
+        },
+        {
+            "id": "S-A43-BAD-BUDGET-BURST-ONCE",
+            "behaviour": "A43",
+            "area": "admin",
+            "path": "bad",
+            "title": "The same budget alert delivered again turns the guard red and notifies once",
+            "asserts": "three deliveries of one budget notification (a burst, or Pub/Sub's redelivery after a refusal) -> the guard red once, one budget.paused event, one warning logged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 45 of docs/research/manual-test-2026-10-25.md. Test: functions/test/ops/budget.test.ts."
+        },
+        {
             "id": "S-A44-HAPPY",
             "behaviour": "A44",
             "area": "admin",
@@ -6956,6 +7022,50 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §5.4; owner: assists-notify). In functions/test/notify/push.test.ts and functions/test/admin/revoke.test.ts; the browser's side in packages/admin/test/inbox/push-device.test.ts, inbox.test.ts and auth/controller.test.ts. Added by the 2026-10-24 review fixes (DECISIONS-for-review.md §57)."
+        },
+        {
+            "id": "S-A47-HAPPY-RENEWED",
+            "behaviour": "A47",
+            "area": "admin",
+            "path": "happy",
+            "title": "A registration FCM no longer accepts is made again once, and push turns on",
+            "asserts": "the browser's registration is forgotten by FCM -> Notifications on this device: the dry run refuses it, the registrar forgets the SDK's record and registers again, the new registration is accepted and stored, push is on",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 46 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01). Test: e2e/admin/specs/notify/push.spec.ts."
+        },
+        {
+            "id": "S-A47-BAD-FCM-REFUSED-REASON",
+            "behaviour": "A47",
+            "area": "admin",
+            "path": "bad",
+            "title": "A registration FCM refuses again says so with FCM's code",
+            "asserts": "every registration refused by FCM -> two dry runs (the first and a new registration), then Notifications did not start with the device-invalid message and the reason line naming fcm/UNREGISTERED; nothing stored",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 46 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/notify/push.spec.ts (state notify.push-failed-reason)."
+        },
+        {
+            "id": "S-A47-BAD-SDK-CODE",
+            "behaviour": "A47",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failure of the browser's messaging SDK shows its code",
+            "asserts": "the SDK fails with messaging/fid-registration-failed -> Notifications did not start and the reason line names the code; the server is never asked and nothing is stored",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 46 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/notify/push.spec.ts (the e2e build's stand-in of the SDK fails as asked by the address)."
+        },
+        {
+            "id": "S-A47-BAD-FCM-REASON-NAMED",
+            "behaviour": "A47",
+            "area": "admin",
+            "path": "bad",
+            "title": "FCM's refusal of a registration is passed on with its code",
+            "asserts": "notify.registerDevice with a token FCM refuses -> apiError.notify.deviceInvalid with reason UNREGISTERED (FCM's code, else its status, else HTTP_<status>), logged with the code and never the token",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 46 of docs/research/manual-test-2026-10-25.md. Test: functions/test/notify/push.test.ts and functions/test/adapters/fcm.test.ts."
         },
         {
             "id": "S-A48-HAPPY",
@@ -7869,6 +7979,17 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 3 of the min-input review. Test: e2e/admin/steps/install/update.spec.ts."
+        },
+        {
+            "id": "S-A56-BAD-NOT-AVAILABLE",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "bad",
+            "title": "A bundle that cannot install the pipeline says Not available yet and offers no button",
+            "asserts": "the bundle's manifest names no Docker builder and a record says the pipeline was looked at and is not installed -> the pipeline card shows Not available yet with the reason, no Install the pipeline or Try again button, no consent note, and no pipeline build is submitted",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 43 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §67e). Test: e2e/admin/steps/install/update.spec.ts; state setup.pipeline-not-available in e2e/admin/specs/install/states.spec.ts."
         },
         {
             "id": "S-A57-HAPPY",

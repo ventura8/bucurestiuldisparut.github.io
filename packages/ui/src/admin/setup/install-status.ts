@@ -45,18 +45,40 @@ export function serverOffersInstall(state: SetupViewState): boolean {
     return looked && INSTALLABLE_STATES.has(view.state);
 }
 
+/** The bundle's reason the pipeline cannot be installed from this admin (§67e), as a look at Google also reports it. */
+const PIPELINE_NOT_AVAILABLE = 'apiError.install.notAvailable';
+
+/**
+ * Why this admin cannot install the pipeline at all (finding 43 of 2026-11-01): its bundle's answer, read without a token
+ * (`pipelineOff`), or the same answer from the card's last look; null when nothing says so.
+ */
+export function pipelineOffReason(install: InstallSliceView): SetupMessage | null {
+    const looked = install.pipeline.blocker;
+    return install.pipelineOff ?? (looked?.key === PIPELINE_NOT_AVAILABLE ? looked : null);
+}
+
 /**
  * The pipeline installs on its own click: looked at, not installed, and the server's click is no longer what starts it
- * (the server is in place or was installed some other way).
+ * (the server is in place or was installed some other way). Never while this admin cannot install it.
  */
 export function pipelineInstallsAlone(state: SetupViewState): boolean {
     const { server, pipeline } = state.install;
-    return pipeline.state === 'notInstalled' && pipeline.checkedAt !== null && server.state !== 'notInstalled';
+    const alone = pipeline.state === 'notInstalled' && pipeline.checkedAt !== null && server.state !== 'notInstalled';
+    return alone && pipelineOffReason(state.install) === null;
 }
 
-/** The pipeline card's Try again: after a stopped build, or a look Google could not answer. */
+/** The pipeline card's Try again: after a stopped build, or a look Google could not answer; never while it is off. */
 export function pipelineTriesAgain(state: SetupViewState): boolean {
-    return PIPELINE_TRY_AGAIN.has(state.install.pipeline.state);
+    return PIPELINE_TRY_AGAIN.has(state.install.pipeline.state) && pipelineOffReason(state.install) === null;
+}
+
+/**
+ * The pipeline as its card shows it: with this admin's reason it cannot install it as the card's blocker ("Not available
+ * yet: …", known without a look at Google), else as the last look saw it.
+ */
+export function pipelineShown(install: InstallSliceView): InstallTargetViewPort {
+    const off = pipelineOffReason(install);
+    return off === null ? install.pipeline : { ...install.pipeline, blocker: off };
 }
 
 /** What each install card's body offers that asks Google: its own button, or Update the map. */

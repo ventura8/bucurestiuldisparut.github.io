@@ -42,12 +42,23 @@ const UPDATE_STATES: ReadonlySet<InstallState> = new Set<InstallState>(['updateA
 /**
  * Whether Update the map installs `view`'s target: behind or stopped, and the imagery pipeline also when a look found it
  * not installed with nothing in its way (an owner whose server came from GitHub Actions, or whose pipeline was blocked
- * at the first click: finding 3 of the M6 review). The public map's first publish stays its own click (step i).
+ * at the first click: finding 3 of the M6 review). The public map's first publish stays its own click (step i). A pipeline
+ * this admin's bundle cannot install (`pipelineOff`, finding 43 of 2026-11-01) is never submitted.
  */
-function updates(view: InstallTargetView): boolean {
-    const missingPipeline = view.target === 'pipeline' && view.state === 'notInstalled' && view.checkedAt !== null && view.blocker === null;
-    return UPDATE_STATES.has(view.state) || missingPipeline;
+function updates(view: InstallTargetView, pipelineOff: boolean): boolean {
+    if (view.target === 'pipeline' && pipelineOff) {
+        return false;
+    }
+    return UPDATE_STATES.has(view.state) || missingPipeline(view);
 }
+
+/** A pipeline a look found not installed with nothing in its way. */
+function missingPipeline(view: InstallTargetView): boolean {
+    return view.target === 'pipeline' && view.state === 'notInstalled' && view.checkedAt !== null && view.blocker === null;
+}
+
+/** The pipeline's reason, kept when it is the bundle's `notAvailable` (any other local answer says nothing of the bundle). */
+const PIPELINE_NOT_AVAILABLE = 'apiError.install.notAvailable';
 
 /**
  * The states never recorded: a passing Google outage says nothing of what is installed, and recording it would make
@@ -79,6 +90,8 @@ class Cards implements InstallCards {
     #recording: Promise<void> = Promise.resolve();
     /** The stopped server build whose missing permission step c was told of (once: a Retry what failed may follow). */
     #permissionFor: string | null = null;
+    /** The one read of whether this admin's bundle can install the pipeline (finding 43 of 2026-11-01). */
+    #pipelineChecked: Promise<void> | null = null;
 
     constructor(ctx: SetupContext) {
         this.#ctx = ctx;
@@ -90,6 +103,9 @@ class Cards implements InstallCards {
     }
 
     watch(targets: readonly InstallTarget[]): void {
+        if (targets.includes('pipeline')) {
+            void this.#checkPipeline();
+        }
         targets.forEach((target) => {
             this.#flows[target].watch();
         });
@@ -98,8 +114,9 @@ class Cards implements InstallCards {
     async installServer(): Promise<void> {
         this.#ctx.count('deploy', 'inputs');
         await this.#flows.server.install();
+        await this.#checkPipeline();
         const access = this.#live();
-        if (access !== null && this.#flows.pipeline.view().blocker === null) {
+        if (access !== null && this.#pipelineMayInstall()) {
             await this.#flows.pipeline.installWith(access);
         }
     }
@@ -111,8 +128,10 @@ class Cards implements InstallCards {
 
     async updateMap(step: SetupStepId): Promise<void> {
         this.#ctx.count(step, 'inputs');
+        await this.#checkPipeline();
         // What the cards show: a target recorded behind (`setup/status.install`) counts before its flow has looked.
-        const behind = INSTALL_TARGETS.filter((target) => updates(this.#ctx.state().install[target]));
+        const { install } = this.#ctx.state();
+        const behind = INSTALL_TARGETS.filter((target) => updates(install[target], install.pipelineOff !== null));
         if (behind.length === 0) {
             return;
         }
@@ -142,6 +161,27 @@ class Cards implements InstallCards {
 
     #live(): InstallAccess | null {
         return accessOf(liveAccess(this.#ctx, 'cloudPlatform'));
+    }
+
+    /** Nothing in the pipeline's way: neither this admin's bundle nor its card's last look. */
+    #pipelineMayInstall(): boolean {
+        return this.#ctx.state().install.pipelineOff === null && this.#flows.pipeline.view().blocker === null;
+    }
+
+    /**
+     * Reads once, without a token, whether this admin's bundle can install the pipeline (the admin's own origin): when it
+     * cannot, the slice says why and the card offers no button (finding 43 of 2026-11-01). A failed read says nothing.
+     */
+    #checkPipeline(): Promise<void> {
+        this.#pipelineChecked ??= this.#ctx.deps.installer
+            .localBlocker('pipeline')
+            .catch(() => null)
+            .then((reason) => {
+                if (reason?.key === PIPELINE_NOT_AVAILABLE) {
+                    this.#ctx.update((state) => ({ ...state, install: { ...state.install, pipelineOff: reason } }));
+                }
+            });
+        return this.#pipelineChecked;
     }
 
     #flow(target: InstallTarget): InstallFlow {

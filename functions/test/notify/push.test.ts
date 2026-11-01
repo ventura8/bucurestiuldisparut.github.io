@@ -112,16 +112,20 @@ describe('notify.registerDevice', () => {
         expect(deps.documents.paths('admins/u-admin/pushDevices/')).toEqual([`admins/u-admin/pushDevices/${deviceIdOf(token)}`]);
     });
 
-    it('badPath_aTokenFcmRefusesIsNeverStored @S-A47-BAD-TOKEN-UNREGISTERED', async () => {
+    it('badPath_aTokenFcmRefusesIsNeverStored @S-A47-BAD-TOKEN-UNREGISTERED @S-A47-BAD-FCM-REASON-NAMED', async () => {
         const deps = m4Deps(NOW);
         const token = fcmToken('stale');
         deps.upstream.state.fcm.unregistered.add(token);
 
+        // Finding 46 of 2026-11-01: FCM's own code reaches the admin as the refusal's reason, and the log; never the token.
         await expect(failureOf(register(deps, token))).resolves.toMatchObject({
             code: 'invalid-argument',
-            details: { code: 'apiError.notify.deviceInvalid' },
+            details: { code: 'apiError.notify.deviceInvalid', params: { reason: 'UNREGISTERED' } },
         });
         expect(deps.documents.paths('admins/')).toEqual([]);
+        const logged = deps.recording.records.find((record) => record.message === 'push device refused by FCM');
+        expect(logged?.data).toMatchObject({ reason: 'UNREGISTERED' });
+        expect(JSON.stringify(deps.recording.records)).not.toContain(token);
     });
 
     it.each([
