@@ -150,8 +150,8 @@ Provision (M6-interfaces.md §1.6, `DECISIONS-for-review.md` §67b).
 
 The user's second live walk, on the same project: the admin `1.0.0+18977f0` deployed to `/admin/` in its start-up
 variant (D1), the server still the 61 functions of `90b31be` (2026-10-25). The numbering continues the list above.
-What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–298 and 300–302, `DECISIONS-for-review.md` §75 and
-[M6-status.md](M6-status.md) §6.
+What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–298 and 300–305, `DECISIONS-for-review.md` §75 and
+[M6-status.md](M6-status.md) §6. Findings 29, 32 and 34 and the live outcome of 2026-11-01 were recorded on 2026-11-01.
 
 - **25.** \[bug, minor]\[hosting] On the start-up root (`/`, "the map is being set up"), an old admin address typed as a hash
   change only (`/#/setup` while already on `/`) did not forward to `/admin/#/setup`; a fresh load did. Cause:
@@ -159,7 +159,8 @@ What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–2
   `hashchange` (S-A58-HAPPY-OLD-LINK-HASH-CHANGE, S-A58-BAD-VIEWER-HASH-CHANGE).
 - **26.** \[DECISION for the user] The per-tab sign-in (`DECISIONS-for-review.md` §73a) is tiring live: every new tab, every
   notification link and Claude's own tab ask to sign in again. The alternative, the admin on its own Hosting site with
-  the normal local persistence, is written up as a proposal in §75c; nothing changed.
+  the normal local persistence, is written up as a proposal in §75c; nothing changed. The user's decision (2026-11-01):
+  §75c REJECTED, "we don't want the admin on its own hosting site"; the per-tab sign-in of §73a stays.
 - **27.** \[bug]\[setup] After the redeploy Setup read 3 of 11: d2 "Take over the map", e Mapbox, f USGS, g Analytics and h old
   photos "To do", which the old admin against the same server showed Done (USGS "Waiting"). Causes, from the code:
   (1) the M6 admin's `admin.session` schema requires M5's `cities` and `projectOwner`, which the pre-M5 server does not
@@ -186,6 +187,15 @@ What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–2
   reruns the `iam` item, whose row names the reason), then **Try again**. The fakes now enforce the check
   (S-A04-HAPPY-APPENGINE-ACTAS, S-A04-BAD-NO-APPENGINE-ACCOUNT, S-A55-BAD-NO-ACTAS). Live, after the next admin
   redeploy: Setup c **Retry what failed**, then d **Try again** (`docs/MANUAL_TEST_PLAN.md`).
+- **29.** \[bug]\[setup d] An admin tab left open across a Hosting redeploy kept running the old admin's code (the hashed chunks of
+  the old release), and its actions used the old release's install bundle, which the redeploy had removed: a server build
+  then stopped at `fetch` with "manifest.json is not the one the admin read". FIXED (`DECISIONS-for-review.md` §75i, lesson
+  303): the admin reads its `runtime.json` again (no-store, a few hundred bytes) when the tab becomes visible again (at most
+  once a minute), every five minutes while it is visible, and before it submits any install build
+  (`packages/admin/src/app/release-watch.ts`); once Hosting serves another release, a polite banner above the page says
+  "A new version of the admin is ready" with **Reload** (the sign-in, kept in the tab's `sessionStorage`, survives it),
+  and an install click refuses (`apiError.install.adminOutdated`, naming the newer release) instead of submitting a build
+  (S-A61-HAPPY, S-A61-BAD-INSTALL-REFUSED; tour `shell.new-release`).
 - **30.** \[BUG, blocks Setup d] With the actAs grant in place (admin `1.0.0+60fe650`), the server install passed
   `firebase-tools`' check and started `deploy --only functions --force` (step `functions`, `steps/deploy-with-retry.mjs`),
   which printed "⚠ functions: Couldn't find firebase-functions package in your source code. Have you run 'npm
@@ -206,6 +216,12 @@ What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–2
   item the server needs (`serverPrepared`); the installer's writer role on `hcm` moved into the `artifact-registry`
   item, which the `iam` item no longer waits for; the pipeline's card names the missing repository
   (S-A55-HAPPY-PIPELINE-ITEM-FAILED, S-A55-BAD-SERVER-ITEM-FAILED).
+- **32.** \[bug]\[setup] Right after a reload Setup showed every step as "To do" (0 of 11) for several seconds, until the
+  server's record (`setup.status`) and the checks answered. FIXED (§75j, lesson 304): until a step's first check answers
+  (the server's record, read or refused; the legacy import's own detection; the tab's record in start-up mode) its chip
+  reads **Checking…** / **Se verifică…** with the loading indicator, and the header says "Checking every step…" over an
+  indeterminate ring with no count, Check again off; a record that cannot be read ends it with the page's alert
+  (S-A03-HAPPY-CHECKING-AFTER-RELOAD, S-A03-BAD-CHECKING-STATUS-FAILS; tour `setup.loading`).
 - **33.** \[BUG, blocks Setup d] With findings 28 and 30 fixed, the server install (Cloud Build f92cec75) passed fetch,
   tools, packages, rules and indexes, the source upload and the Pub/Sub and Eventarc identities; then every function
   create and update failed: "HTTP Error: 403, Caller is missing permission 'iam.serviceaccounts.actAs' on service
@@ -219,8 +235,28 @@ What each finding changed, its rows and its decisions: `docs/LESSONS.md` 296–2
   failed in step c**, then **Try again** (S-A04-HAPPY-COMPUTE-BUILD-ACCOUNT, S-A04-BAD-COMPUTE-EDITOR-REFUSED,
   S-A55-BAD-NO-COMPUTE-ACTAS). Live, after the next admin redeploy: reload the tab, (c) **Retry what failed**, (d) **Try
   again** (`docs/MANUAL_TEST_PLAN.md`).
+- **34.** \[bug]\[setup c] After **Check again** on step (c) in a tab whose one-hour Google permission was gone (or never
+  granted), "Prepare the Google Cloud project" turned to "To do" although its last provision run had finished every item
+  (the server's record said done). Related, found by the §75b work: `provisionRequest` never recorded a doctor's `missing`
+  result, so a re-check could not show an item that had gone back to missing (the record turned the chip back to Done).
+  FIXED (§75k, lesson 305): without a Google token Re-check changes nothing (no doctor runs; an item Google refuses with
+  401 mid-check is neither shown nor recorded) and the card says "Last checked {time}; sign in to Google Cloud to check
+  again"; with a token a run records exactly what it reported, `missing` included, so the server's record follows the
+  project both ways (S-A04-BAD-RECHECK-NO-TOKEN, S-A04-HAPPY-RECHECK-RECORDS-MISSING; tour
+  `setup.provision-last-checked`).
 
 Also checked: the sign-in card showed in English in an English Chrome with no saved choice. That is the admin's rule:
 `?lang=`, then the stored choice (`hcm:admin:lang`), then the browser's first language (`resolveLocale`: English for
 any `en*`), then Romanian (`packages/admin/src/state/locale.ts`; `M2b-interfaces.md` §1.6; the i18n skill). PLAN's
 "default RO" holds only when the browser's first language is not English; nothing changed (the user decides).
+
+### The live outcome of 2026-11-01
+
+- **The server**: `1.0.0+9e2e6b5` installed from the app (Setup d, Cloud Build, no terminal), the admin the same release.
+- **Setup**: steps a–i done.
+- **The public map**: live at the root of `https://bucurestiul-disparut.web.app/` once step (e)'s **Replace the visitors'
+  token** had minted the visitors' token again.
+- **Translation drafts**: Vertex AI does not offer `gemini-2.5-flash-lite` to the project: the model is the user's
+  decision of `DECISIONS-for-review.md` §67g.
+- **Mapbox telemetry**: `events.mapbox.com` answers 503 to the map's usage events; harmless (the map draws), nothing changed.
+- **The user's decision**: §75c (the admin on its own Hosting site) REJECTED; the per-tab sign-in stays (finding 26).

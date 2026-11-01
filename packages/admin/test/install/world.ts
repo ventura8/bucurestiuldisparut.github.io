@@ -44,6 +44,8 @@ export interface InstallWorld {
     release: Record<string, unknown> | null;
     /** Whether the first city has a published manifest. */
     published: boolean;
+    /** Finding 29 of 2026-10-31: the admin release Hosting serves instead of this one (null: still this one). */
+    newerAdmin: string | null;
 }
 
 function ownOrigin(world: InstallWorld, url: URL): Response {
@@ -69,6 +71,7 @@ export async function installWorld(options: { readonly provisioned?: boolean } =
         manifest: installManifest(),
         release: null,
         published: true,
+        newerAdmin: null,
     };
     const fetcher: typeof fetch = (input, init) => {
         const url = new URL(input instanceof Request ? input.url : String(input));
@@ -88,6 +91,7 @@ export async function installWorld(options: { readonly provisioned?: boolean } =
         ...{ fetch: fetcher, sleep: () => Promise.resolve(), log, projectId: 'demo-hcm', region: 'us-central1', bundle },
         origin: ORIGIN,
         hasPublishedMap: () => Promise.resolve(world.published),
+        newerAdmin: () => Promise.resolve(world.newerAdmin),
     });
     if (options.provisioned !== false) {
         fakes.scenario('artifact-registry.provisioned');

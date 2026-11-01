@@ -92,6 +92,8 @@ export interface AdminStatePort {
         | null;
     /** The access was removed while an editor held changes: the page stays read-only under a banner until sign-out (§35e). */
     readonly revoked?: boolean;
+    /** Finding 29 of 2026-10-31: the admin release Hosting serves instead of this tab's (the shell offers Reload), or null. */
+    readonly newRelease?: string | null;
     /** The admins' names by uid, once a conflict asked for them (who saved a change). */
     readonly people?: Readonly<Record<string, string>>;
     /** M4: the signed-in admin's unread notifications (up to `INBOX_BADGE_MAX` + 1), null while unknown. */

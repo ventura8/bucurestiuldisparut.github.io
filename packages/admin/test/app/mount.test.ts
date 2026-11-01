@@ -165,6 +165,29 @@ describe('mount', () => {
         expect(app.state.auth).toBe('signedOut');
         expect(w.location.reloads).toBe(1);
     });
+
+    // Finding 29 of 2026-10-31: a newer admin served while the tab runs the old one puts the Reload banner up.
+    it('happyPath_aNewerAdminServedReachesTheShell_andItsWatchStopsWithTheApp', async () => {
+        const w = world();
+        undeployed(w.callables);
+        const heard: { listener?: (release: string) => void } = {};
+        const releases = {
+            onNewer: vi.fn((listener: (release: string) => void) => {
+                heard.listener = listener;
+                return vi.fn();
+            }),
+            stop: vi.fn(),
+        };
+        const app = mount({ ...w.deps, releases });
+        await settle();
+        expect(app.state.newRelease).toBeNull();
+
+        heard.listener?.('1.0.1+def5678');
+        expect(app.state.newRelease).toBe('1.0.1+def5678');
+        app.destroy();
+        expect(releases.stop).toHaveBeenCalledTimes(1);
+        expect(releases.onNewer.mock.results[0]?.value).toHaveBeenCalledTimes(1);
+    });
 });
 
 describe('mount: the editor areas', () => {

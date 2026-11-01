@@ -264,7 +264,7 @@ class TargetFlow implements InstallFlow {
 
     #fail(error: unknown): void {
         if (error instanceof InstallBundleError) {
-            this.#set({ error: { key: error.code } });
+            this.#set({ error: error.notice() });
             return;
         }
         const failure = googleFailure(error);

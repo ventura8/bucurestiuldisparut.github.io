@@ -41,6 +41,12 @@ export interface CloudBuildInstallerDeps {
     readonly origin: string;
     /** The project's first city has a published manifest: Publish the map has something to show. */
     readonly hasPublishedMap: () => Promise<boolean>;
+    /**
+     * Finding 29 of 2026-10-31: the admin release Hosting serves now instead of this one (`../app/release-watch.ts`), or
+     * null while it serves this one. Read before every submit: a tab left open across a redeploy would send the build
+     * to the old release's bundle, which the redeploy removed.
+     */
+    readonly newerAdmin: () => Promise<string | null>;
 }
 
 const NOT_INSTALLED: InstalledInfo = { complete: false, release: null, partial: false, newest: null };
@@ -109,6 +115,10 @@ class CloudBuildInstaller implements InstallerPort {
     }
 
     async submit(target: InstallTarget, access: InstallAccess): Promise<CloudBuild> {
+        const newer = await this.#deps.newerAdmin();
+        if (newer !== null) {
+            throw new InstallBundleError('apiError.install.adminOutdated', { release: newer });
+        }
         const bundle = await this.#deps.bundle();
         const { manifest } = bundle;
         if (target === 'pipeline' && manifest.tools.docker === null) {

@@ -186,6 +186,7 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.install.failed': spec('failed-precondition'),
     'apiError.install.missingFunctions': spec('failed-precondition'),
     'apiError.install.nothingToShow': spec('failed-precondition'),
+    'apiError.install.adminOutdated': spec('failed-precondition'),
 };
 
 export const apiErrorCodeSchema = z.custom<ApiErrorCode>(isApiErrorCode, coded('validation.value'));

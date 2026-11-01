@@ -1,9 +1,9 @@
 import type { Locator, Page, Route } from '@playwright/test';
 
 import { GOOGLE_SCOPES } from '../../../packages/admin/src/google/scopes.js';
-import { apiText, setupText, shellText } from '../support/i18n.js';
+import { apiText, setupText, shellText, templatePattern } from '../support/i18n.js';
 import { SetupPage } from '../support/setup-page.js';
-import { openStep, seedClaimedCity, STEPS_AT, withConsent } from '../support/steps.js';
+import { openStep, seedClaimedCity, seedSetupStatus, STEPS_AT, withConsent } from '../support/steps.js';
 import type { UpstreamCall, UpstreamControl } from '../support/upstream.js';
 import { ADMIN_LOCK, expect, test } from '../support/test.js';
 import { ADMIN_PROJECT } from '../world.js';
@@ -567,6 +567,67 @@ test(
                 members: [`serviceAccount:hcm-installer@${ADMIN_PROJECT.projectId}.iam.gserviceaccount.com`],
             }),
         ]);
+        consoleErrors.takeMatching(/status of 403/);
+    },
+);
+
+/**
+ * Finding 34 of docs/research/manual-test-2026-10-25.md (2026-11-01): on a map whose step c is recorded done, Check again
+ * in a tab without Google's permission changed the chip to To do; and a re-check never recorded an item the doctor found
+ * missing, so the server's record could not follow an item that went back.
+ */
+test(
+    'Check again without a Google token keeps step c as recorded and says when it was last checked',
+    { tag: ['@S-A04-BAD-RECHECK-NO-TOKEN'] },
+    async ({ page, lang, consent, setupBudget, upstream, adminWorld }) => {
+        await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid);
+        const setup = new SetupPage(page, lang);
+        await setup.visit('mapbox');
+        const card = await setup.show('provision');
+        await setup.expectState('provision', 'ok');
+        const before = (await upstream.calls('browser')).length;
+
+        const popup = await consent.opened(page, () =>
+            setupBudget.inputs('provision').click(card.getByRole('button', { name: setupText(lang, 'adminSetup.recheck') })),
+        );
+        await popup.cancel(setupBudget.consents('provision'));
+
+        await expect(
+            card.getByText(templatePattern(setupText(lang, 'adminSetup.provision.lastChecked', { time: '\u0000' }))),
+        ).toBeVisible();
+        await setup.expectState('provision', 'ok');
+        await expect(card.locator('.status')).toContainText(setupText(lang, 'adminSetup.state.ok'));
+        // The doctor never ran: its first item reads the project's services.
+        const after = (await upstream.calls('browser')).slice(before);
+        expect(after.filter((call) => call.operation.startsWith('service-usage'))).toEqual([]);
+        expect((await adminWorld.emulators.document('setup/status'))?.['provision']).toMatchObject({ state: 'ok' });
+    },
+);
+
+test(
+    "Check again with Google's permission records the items the doctor found missing, so step c follows the project",
+    { tag: ['@S-A04-HAPPY-RECHECK-RECORDS-MISSING'] },
+    async ({ page, lang, consent, setupBudget, adminWorld, consoleErrors }) => {
+        test.setTimeout(150_000);
+        // The record says every item is done; the project behind it has none of the services switched on any more.
+        await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid);
+        const setup = new SetupPage(page, lang);
+        await setup.visit('mapbox');
+        const card = await setup.show('provision');
+        await setup.expectState('provision', 'ok');
+
+        const recheck = card.getByRole('button', { name: setupText(lang, 'adminSetup.recheck') });
+        await withConsent(page, consent, recheck, setupBudget.inputs('provision'), setupBudget.consents('provision'));
+
+        await expect
+            .poll(async () => (await adminWorld.emulators.document('setup/status'))?.['provision'], { timeout: 60_000 })
+            .toMatchObject({
+                state: 'missing',
+                items: expect.arrayContaining([expect.objectContaining({ id: 'apis', state: 'missing' })]),
+            });
+        await setup.expectState('provision', 'missing', 60_000);
+        await expect.poll(async () => (await setup.provisionItems())['apis']).toBe('missing');
+        // With the token live the install cards look too, and Cloud Functions, switched off, refuses them.
         consoleErrors.takeMatching(/status of 403/);
     },
 );

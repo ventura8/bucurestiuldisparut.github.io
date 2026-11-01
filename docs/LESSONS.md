@@ -1614,3 +1614,24 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: step (d)'s availability, the install cards' looks and the deployment's watch all read step (c)'s state, the worst of its 16 items; and the `iam` item waited for `artifact-registry`, since the role table bound the installer's writer role on the repository.
     - Fix and pin: `serverPrepared` (`packages/admin/src/setup/state.ts`): (c) done, or every item but `PIPELINE_ONLY_ITEMS` (`artifact-registry`) done; the writer role on `hcm` moved into the `artifact-registry` item, which `iam` no longer waits for (S-A55-HAPPY-PIPELINE-ITEM-FAILED, S-A55-BAD-SERVER-ITEM-FAILED). Setup is done only with (c) done, as before.
     - **A step waits for what it needs, not for the step before it as a whole: when an optional part joins a required step, say which of its items each later step needs.**
+
+303. **A tab left open across a redeploy ran the old admin and sent its install build to a bundle that no longer existed.**
+    - Seen: live on 2026-10-31 (finding 29): after a Hosting redeploy, an open admin tab's server build stopped at `fetch` with "manifest.json is not the one the admin read".
+    - Found by: the user's live walk. Every test loads the page once, so the release it runs is always the one Hosting serves.
+    - Cause: a single-page app keeps the hashed chunks it loaded; the admin read its release (`runtime.json`) once, at boot, and its install bundle (`install/<release>/`) once a session, while a redeploy replaces both.
+    - Fix and pin: `watchRelease` (`packages/admin/src/app/release-watch.ts`) reads `runtime.json` again when the tab becomes visible, every five minutes while visible and before every install build; a newer release puts up the shell's Reload banner and the installer refuses with `apiError.install.adminOutdated` (`DECISIONS-for-review.md` §75i; S-A61-HAPPY, S-A61-BAD-INSTALL-REFUSED).
+    - **A page that acts on files deployed with it checks, before it acts, that they are still the deployed ones: a long-lived tab outlives its release.**
+
+304. **Setup read "To do" (0 of 11) on every step until the server's record answered.**
+    - Seen: live on 2026-10-31 (finding 32): several seconds after each reload with every chip To do.
+    - Found by: the user's live walk. The e2e waits for the settled page (`SetupPage.visit`), so no test looked at the moment before.
+    - Cause: a fresh Setup state starts every step `missing`, the state of a step checked and not done; "not checked yet" had no state of its own.
+    - Fix and pin: `firstCheck` per step and the derived `loading` (`packages/admin/src/setup/state.ts`, the controller's `withChecksAnswered`): Checking… on the chip, "Checking every step…" over an indeterminate ring in the header (`DECISIONS-for-review.md` §75j; S-A03-HAPPY-CHECKING-AFTER-RELOAD, S-A03-BAD-CHECKING-STATUS-FAILS; tour `setup.loading`).
+    - **"Unknown yet" is a state of its own: never let a default stand for an answer, and give the moment before the first answer a test and a tour state.**
+
+305. **Re-check of step (c) could show it worse than it was, and could not record that it was.**
+    - Seen: live on 2026-11-01 (finding 34): Check again on step (c) in a tab whose Google permission had expired turned it To do although the server's record said done; and (`DECISIONS-for-review.md` §75b) a doctor's `missing` was never recorded, so the record turned a regressed item back to Done.
+    - Found by: the user's live walk, and the §75b agent reading `provisionRequest`.
+    - Cause: the record was built from the card's items, dropping every `missing` one to skip the never-reported ones; and an item Google refused with 401 was shown and recorded as `invalid`, a fact about the token taken for one about the item.
+    - Fix and pin: a run records exactly what it reported, `missing` included, never a 401; Re-check without a token changes nothing and says when step (c) was last checked (`DECISIONS-for-review.md` §75k; S-A04-BAD-RECHECK-NO-TOKEN, S-A04-HAPPY-RECHECK-RECORDS-MISSING).
+    - **Record what a check observed, in both directions, and only that: track the reports of the run itself instead of filtering the screen's state, and never let a refused credential stand for the resource's state.**

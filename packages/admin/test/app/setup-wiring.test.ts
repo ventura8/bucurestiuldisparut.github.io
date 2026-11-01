@@ -48,6 +48,7 @@ function wiring(city: unknown = SEED_CITY, project: ProjectConfig = PROJECT) {
         nonce: () => 'nonce-1',
         release: '1.0.0+abc1234',
         installOrigins: ['https://demo-hcm.web.app'],
+        newerAdmin: () => Promise.resolve(null),
     };
     return { deps, fetcher, callables };
 }
@@ -126,6 +127,16 @@ describe('the installer wiring', () => {
         expect((error as InstallBundleError).code).toBe('apiError.unavailable');
         expect(w.fetcher.unhandled[0]?.url).toBe('https://demo-hcm.web.app/install/1-0-0-abc1234/manifest.json');
         expect(setupOptionsFor(w.deps)).toMatchObject({ release: '1.0.0+abc1234', siteAddress: 'https://demo-hcm.web.app/' });
+    });
+
+    it('badPath_aNewerAdminServedRefusesTheBuildBeforeItsBundleIsRead', async () => {
+        const w = wiring();
+        const { installer } = setupOptionsFor({ ...w.deps, newerAdmin: () => Promise.resolve('1.0.1+def5678') });
+
+        const error = await installer.submit('server', { token: 'test-token' }).catch((caught: unknown) => caught);
+
+        expect((error as InstallBundleError).code).toBe('apiError.install.adminOutdated');
+        expect(w.fetcher.unhandled).toEqual([]);
     });
 });
 // [end install]

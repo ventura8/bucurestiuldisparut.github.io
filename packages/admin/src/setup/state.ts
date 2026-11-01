@@ -58,6 +58,11 @@ interface SetupStepState {
      * chip reads "Update the server to check", never "To do" (derived: `refreshDerived`).
      */
     readonly unknown: boolean;
+    /**
+     * Finding 32 of 2026-10-31: the step's first check since the page loaded has not answered yet (the server's record, the
+     * tab's bootstrap record, the step's own detection): the chip reads "Checking…", never "To do".
+     */
+    readonly firstCheck: boolean;
     /** The scope the step's next Google popup asks for (the consent note explains it), or null. */
     readonly scope: GoogleScope | null;
     readonly links: readonly SetupLinkView[];
@@ -210,6 +215,8 @@ export interface SetupState {
     readonly liveScopes: readonly GoogleScope[];
     /** A whole-page check runs. */
     readonly checking: boolean;
+    /** Finding 32 of 2026-10-31: a step's first check has not answered yet (derived): the header says Checking…, not "0 of 11". */
+    readonly loading: boolean;
     /** Why the page could not load or record `setup/status` (normal mode), or null. */
     readonly error: SetupMessage | null;
     /** Finding 27: `setup/status` answered in a shape older than the admin reads (`apiError.serverOutdated`). */
@@ -310,6 +317,7 @@ function initialStep(id: SetupStepId, projectId: string): SetupStepState {
         needsContinue: false,
         postponed: false,
         unknown: false,
+        firstCheck: true,
         scope: CARD_POPUP_STEPS.has(id) ? spec.scope : null,
         links: stepLinks(id, projectId),
         used: { inputs: 0, consents: 0 },
@@ -337,7 +345,7 @@ export function initialSetupState(host: SetupHost, mode: SetupMode): SetupState 
         later: 0,
         doneNote: null,
         liveScopes: [],
-        ...{ checking: false, serverOutdated: false, error: null },
+        ...{ checking: false, loading: true, serverOutdated: false, error: null },
         used: { inputs: 0, consents: 0 },
         billing: {
             amount: budgetAmountFor(DEFAULT_BUDGET_CURRENCY),
@@ -481,6 +489,7 @@ export function refreshDerived(state: SetupState): SetupState {
         ...state,
         steps,
         done: done.size,
+        loading: state.order.some((id) => steps[id].firstCheck),
         ready,
         later: laterSteps(state).length,
         doneNote: ready ? DONE_NOTES[usgs] : null,
@@ -496,12 +505,33 @@ function keepsOpen(state: SetupState, id: SetupStepId): boolean {
     return id === 'analytics' && !state.analytics.pageChangesOff;
 }
 
+/** A patch that answers the step's check: it carries the check's time, or a failure (finding 32: no more Checking…). */
+function answersCheck(patch: StepPatch): boolean {
+    return patch.checkedAt !== undefined || (patch.error ?? null) !== null;
+}
+
+/** The step with `patch` applied; its first check ends with a patch that answers it. */
+function patched(step: SetupStepState, patch: StepPatch): SetupStepState {
+    return { ...step, ...patch, firstCheck: step.firstCheck && !answersCheck(patch) };
+}
+
 /** `state` with `patch` applied to step `id`; the step that was open and just turned ok hands over to the next one. */
 export function withStep(state: SetupState, id: SetupStepId, patch: StepPatch): SetupState {
     const before = state.steps[id];
-    const next = refreshDerived({ ...state, steps: { ...state.steps, [id]: { ...before, ...patch } } });
+    const next = refreshDerived({ ...state, steps: { ...state.steps, [id]: patched(before, patch) } });
     const finished = state.openStep === id && before.state !== 'ok' && next.steps[id].state === 'ok' && !keepsOpen(next, id);
     return finished ? { ...next, openStep: nextSetupStep(settledSteps(next)) } : next;
+}
+
+/**
+ * Finding 32 of 2026-10-31: the first checks of `ids` (every step by default) have answered, whatever they found (the
+ * server's record read or refused, the tab's record restored): their chips leave Checking….
+ */
+export function withChecksAnswered(state: SetupState, ids: readonly SetupStepId[] = state.order): SetupState {
+    const steps = Object.fromEntries(
+        state.order.map((id) => [id, ids.includes(id) ? { ...state.steps[id], firstCheck: false } : state.steps[id]]),
+    ) as Record<SetupStepId, SetupStepState>;
+    return refreshDerived({ ...state, steps });
 }
 
 /** Counts one in-app input or Google consent on step `id`. */

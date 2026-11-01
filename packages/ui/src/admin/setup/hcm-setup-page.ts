@@ -45,6 +45,12 @@ const READY_TEXTS: Readonly<Record<NonNullable<SetupViewState['doneNote']> | 'no
     usgsLater: 'adminSetup.readyUsgsLater',
 };
 
+/** "n of total steps done" (with "m for later" when a step is postponed). */
+function progressText(language: Locale, view: SetupViewState): string {
+    const counts = { done: String(view.done), total: String(view.total), later: String(view.later) };
+    return setupLabel(language, view.later > 0 ? 'adminSetup.progressLater' : 'adminSetup.progress', counts);
+}
+
 /** From this window class the page shows the list beside the open step. */
 const SPLIT_CLASSES: ReadonlySet<WindowClass> = new Set<WindowClass>(['expanded', 'large', 'extra-large']);
 
@@ -133,28 +139,46 @@ export class HcmSetupPage extends SetupPortHost {
     }
 
     private renderHeader(view: SetupViewState): TemplateResult {
-        const counts = { done: String(view.done), total: String(view.total), later: String(view.later) };
-        const progress = setupLabel(this.language, view.later > 0 ? 'adminSetup.progressLater' : 'adminSetup.progress', counts);
+        const loading = view.loading === true;
+        const checking = loading || view.checking;
+        const progress = progressText(this.language, view);
+        const status = checking ? setupLabel(this.language, 'adminSetup.checking') : progress;
         return html`<header class="header">
-            <div class="ring">
-                <hcm-progress kind="circular" .value=${view.done / view.total} label=${progress}></hcm-progress>
-                <span class="count label-large" aria-hidden="true">${view.done}/${view.total}</span>
-            </div>
+            ${this.renderRing(view, loading, loading ? status : progress)}
             <div class="heading-text">
                 <h1 id="setup-title" class="headline-small">${setupLabel(this.language, 'adminSetup.title')}</h1>
-                <p class="note" role="status">${view.checking ? setupLabel(this.language, 'adminSetup.checking') : progress}</p>
-                ${view.ready ? html`<p class="success ready">${setupLabel(this.language, READY_TEXTS[view.doneNote ?? 'none'])}</p>` : nothing}
+                <p class="note" role="status" ?data-loading=${loading}>${status}</p>
+                ${this.renderReady(view)}
             </div>
             <hcm-button
                 variant="tonal"
                 icon="refresh"
-                ?disabled=${view.checking}
+                ?disabled=${checking}
                 @click=${() => {
                     this.intents?.recheck();
                 }}
                 >${setupLabel(this.language, 'adminSetup.recheck')}</hcm-button
             >
         </header>`;
+    }
+
+    /** The header's "done" line once Setup is done. */
+    private renderReady(view: SetupViewState): TemplateResult {
+        return view.ready ? html`<p class="success ready">${setupLabel(this.language, READY_TEXTS[view.doneNote ?? 'none'])}</p>` : EMPTY;
+    }
+
+    /**
+     * The progress ring with "n/total"; finding 32 of 2026-10-31: while the first checks have not answered, an indeterminate
+     * ring without a count (never "0/11" meanwhile).
+     */
+    private renderRing(view: SetupViewState, loading: boolean, label: string): TemplateResult {
+        if (loading) {
+            return html`<div class="ring"><hcm-progress kind="circular" indeterminate label=${label}></hcm-progress></div>`;
+        }
+        return html`<div class="ring">
+            <hcm-progress kind="circular" .value=${view.done / view.total} label=${label}></hcm-progress>
+            <span class="count label-large" aria-hidden="true">${view.done}/${view.total}</span>
+        </div>`;
     }
 
     /** The consent note's words, or null when a live token holds the step's scope: its button opens no popup now. */

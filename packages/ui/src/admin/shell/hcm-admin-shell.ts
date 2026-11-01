@@ -28,6 +28,7 @@ import { cityTitle } from './hcm-city-menu.js';
 import { contentText, noticeOf, noticeText, shellText } from './text.js';
 import type { AdminNavVariant } from './hcm-admin-nav.js';
 import { paintRoot, unpaintRoot } from './root-surface.js';
+import { releaseBanner, revokedBanner } from './shell-banners.js';
 import { shellStyles } from './shell-styles.js';
 
 export const HCM_ADMIN_SHELL_TAG = 'hcm-admin-shell';
@@ -271,10 +272,7 @@ export class HcmAdminShell extends LitElement {
                     <main class="content">
                         ${this.#pageTitle(state, layout)}
                         <div class="scroller">
-                            ${this.#revoked(state)}${this.#banner(state)}<hcm-page-outlet
-                                .app=${this.app}
-                                .state=${state}
-                            ></hcm-page-outlet>
+                            ${this.#banners(state)}<hcm-page-outlet .app=${this.app} .state=${state}></hcm-page-outlet>
                         </div>
                         ${this.#snackbar(state)}
                     </main>
@@ -306,18 +304,15 @@ export class HcmAdminShell extends LitElement {
         return layout.topBar ? EMPTY : html`<h1 class="visually-hidden">${pageName(state)}${cityTitle(state)}</h1>`;
     }
 
-    /** The access was removed while editing: the page stays, read-only, under this until the admin signs out (§35e). */
-    #revoked(state: AdminStatePort): TemplateResult {
-        if (state.revoked !== true) {
-            return EMPTY;
-        }
+    /** Above the page: a revoked access (§35e), a newer admin to reload (finding 29 of 2026-10-31), the start-up mode. */
+    #banners(state: AdminStatePort): TemplateResult {
         const signOut = (): void => {
             void this.app?.intents.signOut();
         };
-        return html`<div class="banner revoked" role="alert">
-            <p>${shellText(state.locale, 'adminShell.session.revoked')}</p>
-            <hcm-button variant="tonal" icon="logout" @click=${signOut}>${shellText(state.locale, 'adminShell.auth.signOut')}</hcm-button>
-        </div>`;
+        const reload = (): void => {
+            this.app?.intents.reload();
+        };
+        return html`${revokedBanner(state, signOut)}${releaseBanner(state, reload)}${this.#banner(state)}`;
     }
 
     #banner(state: AdminStatePort): TemplateResult {

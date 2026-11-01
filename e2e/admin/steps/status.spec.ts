@@ -115,6 +115,73 @@ test(
     },
 );
 
+/**
+ * Holds the page's `setup.status` until the returned call lets it through (the server answering slowly after a reload,
+ * finding 32 of docs/research/manual-test-2026-10-25.md), or answers it as `answer` says.
+ */
+async function holdStatus(page: Page, answer: 'pass' | 'unavailable' = 'pass'): Promise<() => void> {
+    let release: () => void = () => undefined;
+    const released = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+    await page.route(`${emulatorOrigin('functions')}/**/setup-status`, async (route) => {
+        await released;
+        const response = await route.fetch();
+        if (answer === 'pass') {
+            await route.fulfill({ response });
+            return;
+        }
+        const error = { status: 'UNAVAILABLE', message: 'The service is unavailable.', details: { code: 'apiError.unavailable' } };
+        await route.fulfill({ response, status: 503, json: { error } });
+    });
+    return release;
+}
+
+/** The chips that read Checking… (finding 32). */
+function checkingChips(page: Page) {
+    return page.locator('hcm-setup-step').locator('.status[data-checking]');
+}
+
+test(
+    'Right after a reload every step reads Checking… until the server answers, then its own state; the header never says 0 done',
+    { tag: ['@S-A03-HAPPY-CHECKING-AFTER-RELOAD'] },
+    async ({ page, lang, adminWorld }) => {
+        await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid, {
+            mapbox: { state: 'ok', checkedAt: STEPS_AT, user: 'e2e-mapbox' },
+        });
+        const release = await holdStatus(page);
+        await page.goto(adminPath(lang, 'setup'));
+
+        const status = page.locator('hcm-setup-page').locator('header .note[role="status"]');
+        await expect(status).toHaveText(setupText(lang, 'adminSetup.checking'));
+        await expect(checkingChips(page).first()).toContainText(setupText(lang, 'adminSetup.state.checking'));
+        await expect(page.locator('hcm-setup-step').getByText(setupText(lang, 'adminSetup.state.missing'), { exact: true })).toHaveCount(0);
+        await expect(page.getByRole('button', { name: setupText(lang, 'adminSetup.recheck') }).first()).toBeDisabled();
+
+        release();
+        await expect(status).toHaveText(templatePattern(setupText(lang, 'adminSetup.progress', { done: '\u0000', total: '\u0000' })));
+        await expect(checkingChips(page)).toHaveCount(0);
+        expect(await chips(page)).toMatchObject({ billing: 'ok', provision: 'ok', mapbox: 'ok', usgs: 'missing' });
+    },
+);
+
+test(
+    'A server record that cannot be read ends Checking…: the page says why and no chip keeps checking',
+    { tag: ['@S-A03-BAD-CHECKING-STATUS-FAILS'] },
+    async ({ page, lang, adminWorld, consoleErrors }) => {
+        await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid);
+        const release = await holdStatus(page, 'unavailable');
+        await page.goto(adminPath(lang, 'setup'));
+        await expect(checkingChips(page).first()).toBeVisible();
+
+        release();
+        await expect(page.locator('hcm-setup-page').getByRole('alert').first()).toContainText(apiText(lang, 'apiError.unavailable'));
+        await expect(checkingChips(page)).toHaveCount(0);
+        await expect(page.getByRole('button', { name: setupText(lang, 'adminSetup.recheck') }).first()).toBeEnabled();
+        consoleErrors.takeMatching(/status of 503/);
+    },
+);
+
 test(
     'A failing self-test check names what to fix and links its step; every other check shows its own state',
     { tag: ['@S-A03-BAD-SELFTEST-FAILURE'] },

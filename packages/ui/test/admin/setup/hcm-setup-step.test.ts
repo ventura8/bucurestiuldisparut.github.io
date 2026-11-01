@@ -59,6 +59,27 @@ describe('<hcm-setup-step> header', () => {
         expect(chip.textContent).not.toContain('To do');
     });
 
+    it('happyPath_aStepWhoseFirstCheckHasNotAnsweredReadsCheckingNotToDo', async () => {
+        // Finding 32 of 2026-10-31: right after a reload.
+        const { element } = await render(stepView('mapbox', { firstCheck: true }), { open: false, locale: 'en' });
+
+        const chip = shadowPart(element, '.status');
+        expect(chip.hasAttribute('data-checking')).toBe(true);
+        expect(chip.hasAttribute('data-busy')).toBe(false);
+        expect(chip.textContent).toContain('Checking…');
+        expect(chip.textContent).not.toContain('To do');
+        expect(chip.querySelector('hcm-loading-indicator')?.getAttribute('label')).toBe('Checking…');
+    });
+
+    it('badPath_aBusyStepSaysWorkingEvenDuringItsFirstCheck', async () => {
+        const { element } = await render(stepView('provision', { firstCheck: true, busy: true }), { open: false, locale: 'ro' });
+
+        const chip = shadowPart(element, '.status');
+        expect(chip.hasAttribute('data-busy')).toBe(true);
+        expect(chip.hasAttribute('data-checking')).toBe(false);
+        expect(chip.textContent).toContain('Se lucrează…');
+    });
+
     it('happyPath_anOpenInlineCardCollapsesOnItsHeader', async () => {
         const { port } = await render(BILLING, { open: true });
 

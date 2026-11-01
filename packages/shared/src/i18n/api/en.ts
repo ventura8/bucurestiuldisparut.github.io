@@ -128,4 +128,5 @@ export const en: ApiMessages = {
     'apiError.install.failed': 'The installation stopped at the step {step}. See the last lines of its log, then try again.',
     'apiError.install.missingFunctions': 'The installation ended without the functions: {names}. Try again.',
     'apiError.install.nothingToShow': 'The map has nothing to show yet: set up Mapbox, then publish the city.',
+    'apiError.install.adminOutdated': 'A newer admin ({release}) was published since this page opened: reload the page, then try again.',
 };

@@ -200,3 +200,27 @@ describe('the shell helpers', () => {
         expect(registry.get('hcm-admin-nav')).toBe(HcmAdminNav);
     });
 });
+
+describe('<hcm-admin-shell> a newer admin', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('happyPath_aNewerAdminServedOffersReloadPolitely_badPath_noneWhileThisOneIsServed', async () => {
+        // Finding 29 of 2026-10-31: a tab left open across a redeploy runs the old admin.
+        const app = new FakeAdminApp(adminState({ destinations: DESTINATIONS }));
+        const element = await shell(app);
+        const status = deep(element, '.release-status');
+        expect(status.getAttribute('role')).toBe('status');
+        expect(deepAll(element, '.banner.release')).toEqual([]);
+
+        app.set({ newRelease: '1.0.1+def5678' });
+        await updated(element);
+        const banner = deep(element, '.banner.release');
+        expect(banner.textContent).toContain('A new version of the admin is ready. Reload the page to use it; you stay signed in.');
+        expect(banner.dataset['release']).toBe('1.0.1+def5678');
+        expect(deepAll(element, 'hcm-page-outlet')).toHaveLength(1);
+        deep(deep(banner, 'hcm-button'), 'button').click();
+        expect(app.calls).toContain('reload');
+        expect(await axeViolations(element)).toEqual([]);
+    });
+});

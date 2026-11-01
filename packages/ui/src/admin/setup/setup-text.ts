@@ -64,13 +64,25 @@ function itemLabel(locale: Locale, item: string): string {
     return isStepName(item) ? translateAdminSetup(locale, `adminSetup.step.${item}`) : item;
 }
 
-/** A `scope` parameter is shown by Google's label of the scope, an `item` parameter by the item's or step's label. */
+/** An ISO 8601 time as the app keeps it (`2026-10-31T14:05:00.000Z`), not one already written out for the page. */
+const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+
+/** A `time` parameter in ISO 8601 (finding 34's "Last checked {time}") is shown as a date and time in the page's language. */
+function timeParam(locale: Locale, time: string | undefined): Readonly<Record<string, string>> {
+    return time !== undefined && ISO_TIME.test(time) ? { time: formatDateTime(locale, time) } : {};
+}
+
+/**
+ * A `scope` parameter is shown by Google's label of the scope, an `item` parameter by the item's or step's label, an ISO
+ * `time` as a date and time.
+ */
 function localizedParams(locale: Locale, params: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
-    const { scope, item } = params;
+    const { scope, item, time } = params;
     return {
         ...params,
         ...(scope === undefined ? {} : { scope: scopeLabel(locale, scope) }),
         ...(item === undefined ? {} : { item: itemLabel(locale, item) }),
+        ...timeParam(locale, time),
     };
 }
 

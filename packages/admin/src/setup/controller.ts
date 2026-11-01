@@ -24,11 +24,12 @@ import {
     refreshDerived,
     resumeStep,
     serverPrepared,
+    withChecksAnswered,
     type SelfTestCheckState,
     type SetupMode,
     type SetupState,
 } from './state.js';
-import type { SetupStepId } from './steps.js';
+import { SETUP_STEPS, type SetupStepId } from './steps.js';
 import { createUsgsFlow, type UsgsFlow } from './usgs.js';
 
 /** What the elements call; every intent is one user action (a click, a fill, a paste) unless it says otherwise. */
@@ -118,6 +119,9 @@ function createFlows(ctx: SetupContext): Flows {
 
 const isDone = (state: SetupState, id: SetupStepId): boolean => state.steps[id].state === 'ok';
 
+/** Finding 32: the steps the server's record answers in an admin session (the legacy import detects its own). */
+const STATUS_ANSWERS: readonly SetupStepId[] = SETUP_STEPS.filter((id) => id !== 'legacyImport');
+
 /**
  * A change after which the install cards look again: the project just prepared (for the server: finding 31, an item only
  * the imagery pipeline needs does not hold it back), the mode switched, a token appeared.
@@ -171,7 +175,9 @@ class Controller implements SetupController {
      * The first checks, then the step to resume at; a card the admin opened while they ran stays open. In normal mode
      * the step opens as soon as the server's record is in, unless it is the legacy import, whose own detection (it reads
      * every photo) decides it: the page no longer sat with every card closed until a later step's check ended, and a
-     * card that opened in the middle of reading it moved every step below it.
+     * card that opened in the middle of reading it moved every step below it. Finding 32 of 2026-10-31: until a step's
+     * first check answers (the server's record, read or refused; the import's detection; the tab's record in start-up
+     * mode) its chip reads Checking….
      */
     async start(mode: SetupMode, step: string | null): Promise<void> {
         this.store.set(initialSetupState(this.deps.host, mode));
@@ -179,9 +185,11 @@ class Controller implements SetupController {
             await this.restoreBootstrap();
         } else {
             await this.loadStatus();
+            this.ctx.update((state) => withChecksAnswered(state, STATUS_ANSWERS));
             this.resume(step, (next) => next !== 'legacyImport');
             await this.flows.legacyImport.detect();
         }
+        this.ctx.update((state) => withChecksAnswered(state));
         this.resume(step, () => true);
     }
 
@@ -265,6 +273,8 @@ class Controller implements SetupController {
         if (record !== null) {
             this.ctx.update((state) => applyBootstrapRecord(state, record));
         }
+        // In start-up mode the tab's record is what is known: every step's first check has answered (finding 32).
+        this.ctx.update((state) => withChecksAnswered(state));
         this.ctx.mirrorBootstrap();
         this.ctx.patchStep('signIn', { state: 'ok', detail: null, checkedAt: this.ctx.nowIso() });
         await this.flows.billing.detectApis();

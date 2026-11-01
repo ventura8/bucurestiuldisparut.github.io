@@ -132,6 +132,7 @@ export const ro = {
     'apiError.install.failed': 'Instalarea s-a oprit la pasul {step}. Vezi ultimele rânduri ale jurnalului, apoi încearcă din nou.',
     'apiError.install.missingFunctions': 'Instalarea s-a terminat fără funcțiile: {names}. Încearcă din nou.',
     'apiError.install.nothingToShow': 'Harta nu are încă nimic de arătat: configurează Mapbox, apoi publică orașul.',
+    'apiError.install.adminOutdated': 'Între timp s-a publicat o administrare nouă ({release}): reîncarcă pagina, apoi reîncearcă.',
 } as const;
 
 export type ApiErrorCode = keyof typeof ro;

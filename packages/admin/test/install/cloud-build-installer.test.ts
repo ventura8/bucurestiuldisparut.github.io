@@ -207,6 +207,21 @@ describe('submit', () => {
         await expect(world.installer.submit('pipeline', ACCESS)).rejects.toBeInstanceOf(InstallBundleError);
         expect(world.fakes.callsTo('cloud-build.builds.create')).toHaveLength(0);
     });
+
+    // Finding 29 of 2026-10-31: a tab left open across a redeploy would send the build to the old release's bundle.
+    it('badPath_aTabWhoseAdminWasReplacedSubmitsNothingAndAsksForAReload', async () => {
+        const world = await installWorld();
+        world.newerAdmin = '1.0.1+def5678';
+
+        const error = await world.installer.submit('server', ACCESS).catch((caught: unknown) => caught);
+
+        expect(error).toBeInstanceOf(InstallBundleError);
+        expect((error as InstallBundleError).notice()).toEqual({
+            key: 'apiError.install.adminOutdated',
+            params: { release: '1.0.1+def5678' },
+        });
+        expect(world.fakes.callsTo('cloud-build.builds.create')).toHaveLength(0);
+    });
 });
 
 describe('buildLog and consoleUrl', () => {

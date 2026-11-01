@@ -647,6 +647,13 @@
             "source": "docs/research/manual-test-2026-10-25.md finding 18; docs/research/M6-interfaces.md §3.1, DECISIONS-for-review.md §67f"
         },
         {
+            "id": "A61",
+            "area": "admin",
+            "name": "The admin notices a newer release of itself (a tab left open across a redeploy)",
+            "milestone": "M6",
+            "source": "docs/research/manual-test-2026-10-25.md finding 29 (live test 2026-10-31)"
+        },
+        {
             "id": "P01",
             "area": "pipeline",
             "name": "Import job end to end",
@@ -2870,6 +2877,28 @@
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.1, §3.2; owner: setup-ux). Finding 20, 24 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/status.spec.ts (setup-ux)."
         },
         {
+            "id": "S-A03-HAPPY-CHECKING-AFTER-RELOAD",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "happy",
+            "title": "Right after a reload every step reads Checking… until the server answers, then its own state; the header never says 0 done",
+            "asserts": "a claimed map with billing, provisioning and Mapbox done, setup.status held back -> every chip reads Checking… with the loading indicator, the header says Checking every step… with no count, Check again is off, no chip reads To do -> setup.status answers -> the chips read Done, Done, Done and To do (USGS), the header counts the steps done, no chip keeps checking",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 32 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31). Tests: e2e/admin/steps/status.spec.ts, packages/admin/test/setup/controller.test.ts, packages/ui/test/admin/setup/hcm-setup-page.test.ts, hcm-setup-step.test.ts; tour state admin.setup.loading."
+        },
+        {
+            "id": "S-A03-BAD-CHECKING-STATUS-FAILS",
+            "behaviour": "A03",
+            "area": "admin",
+            "path": "bad",
+            "title": "A server record that cannot be read ends Checking…: the page says why and no chip keeps checking",
+            "asserts": "setup.status held back, then answered 503 -> the page's alert says the service is unavailable, no chip reads Checking…, Check again is offered again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 32 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31). Test: e2e/admin/steps/status.spec.ts."
+        },
+        {
             "id": "S-A04-HAPPY",
             "behaviour": "A04",
             "area": "admin",
@@ -3154,6 +3183,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "DECISIONS-for-review.md §75g. Tests: e2e/admin/steps/provision.spec.ts, packages/admin/test/provision/compute-build-account.test.ts."
+        },
+        {
+            "id": "S-A04-BAD-RECHECK-NO-TOKEN",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "Check again without a Google token keeps step c as recorded and says when it was last checked",
+            "asserts": "a claimed map whose setup/status records step c done, no Google token in the tab -> Check again on step c opens Google's consent, the owner closes it -> the chip still reads Done, the card says Last checked <time>; sign in to Google Cloud to check again, the doctor never ran (no Service Usage call), setup/status still records step c done",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 34 of docs/research/manual-test-2026-10-25.md (live 2026-11-01). Tests: e2e/admin/steps/provision.spec.ts, packages/admin/test/setup/provision.test.ts (also a 401 during the check: its rows unchanged, nothing of it recorded); tour state admin.setup.provision-last-checked."
+        },
+        {
+            "id": "S-A04-HAPPY-RECHECK-RECORDS-MISSING",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "happy",
+            "title": "Check again with Google's permission records the items the doctor found missing, so step c follows the project",
+            "asserts": "setup/status records every item of step c done, the project has none of its services on -> Check again with one consent -> setup/status records step c missing with the services' item missing, the chip reads To do and the services' row To do (before: a missing item was never recorded and the record turned the chip back to Done)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 34 of docs/research/manual-test-2026-10-25.md (live 2026-11-01); the gap DECISIONS-for-review.md §75b noted. Tests: e2e/admin/steps/provision.spec.ts, packages/admin/test/setup/provision.test.ts."
         },
         {
             "id": "S-A05-HAPPY",
@@ -7884,6 +7935,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 6 of the min-input review (finding 18 of 2026-10-25 for the live map). Test: e2e/admin/steps/billing-trial.spec.ts."
+        },
+        {
+            "id": "S-A61-HAPPY",
+            "behaviour": "A61",
+            "area": "admin",
+            "path": "happy",
+            "title": "Coming back to the tab after a redeploy shows A new version of the admin is ready; Reload opens it, still signed in",
+            "asserts": "the owner signed in on Setup, Hosting then serves a newer admin release (runtime.json) -> the tab hidden and shown again -> a polite status banner above the page says A new version of the admin is ready with Reload, the page under it still works -> Reload -> Setup opens again without a sign-in and without the banner",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 29 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31). Tests: e2e/admin/steps/install/stale-admin.spec.ts, packages/admin/test/app/release-watch.test.ts (every five minutes while visible, at most once a minute on a return, nothing once found or without a release), mount.test.ts, packages/ui/test/admin/shell/shell.test.ts; tour state admin.shell.new-release."
+        },
+        {
+            "id": "S-A61-BAD-INSTALL-REFUSED",
+            "behaviour": "A61",
+            "area": "admin",
+            "path": "bad",
+            "title": "An install clicked in a tab whose admin was replaced submits no build and asks for a reload",
+            "asserts": "start-up mode, step c done, Hosting then serves a newer admin release and no look ran yet -> Install the server -> the card says a newer admin (its release) was published: reload the page, then try again; the banner with Reload shows; the fake Cloud Build received no server build",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 29 of docs/research/manual-test-2026-10-25.md (live test 2026-10-31: a build stopped with fetch: manifest.json is not the one the admin read). Tests: e2e/admin/steps/install/stale-admin.spec.ts, packages/admin/test/install/cloud-build-installer.test.ts, install-flow.test.ts, packages/admin/test/app/setup-wiring.test.ts."
         },
         {
             "id": "S-P01-HAPPY",

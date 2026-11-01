@@ -4773,7 +4773,7 @@ Verify: `PIPELINE_STAGE=deps` (holds only), `static` (all but 74f; with 74f, all
 
 - **74g APPLIED 2026-10-31: `@axe-core/playwright` held at 4.13.0** (part of 74a undone, no download: the lockfile's three axe entries are those of before §74, which `npm install --package-lock-only --offline` in the pinned Node image leaves unchanged, and `node_modules` took the two 4.13.0 packages from a checkout installed before §74). The split `all` after §74 failed 46 Playwright tests on axe's `target-size` and `color-contrast` with nothing on the page changed: `axe-core` 4.14.0 leaves slotted content of a scrolling shadow-root pane out of that pane's grid, so its hidden part "covers" what lies under the pane (lesson 294, with the ten-line page that fails on 4.14.0 and passes on 4.13.0). A `HELD` entry and the *Held dependencies* row name it; `@hcm/test-support`'s own `axe-core` stays 4.14.0 (its component tests never scroll a slotted pane). The image's npm layer rebuilds from the new lockfile on its next build. Lift the hold when an `@axe-core/playwright` release brings an `axe-core` whose `findScrollRegionParent` follows the flattened tree again: the ten-line page of lesson 294 passing is the check.
 
-## 75. The live test of 2026-10-31: the installer's actAs on the App Engine default account, an admin newer than its server, the old links on a hash change, and the per-tab sign-in (2026-10-31) — 75a, 75b (the user's decision, 2026-10-31) and 75d–75f APPLIED (product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; 75b changes the live project only when the owner runs step c again); 75c PROPOSED, NOT APPLIED (a product decision); 75g APPLIED 2026-10-31 (the user's decision, "Act-as + narrow its role"; changes the live project only when the owner runs step c again) and 75h APPLIED (finding 31)
+## 75. The live test of 2026-10-31: the installer's actAs on the App Engine default account, an admin newer than its server, the old links on a hash change, and the per-tab sign-in (2026-10-31) — 75a, 75b (the user's decision, 2026-10-31) and 75d–75f APPLIED (product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; 75b changes the live project only when the owner runs step c again); 75c REJECTED 2026-11-01 (the user's decision: the admin stays at `/admin/`, the per-tab sign-in of §73a stays); 75g APPLIED 2026-10-31 (the user's decision, "Act-as + narrow its role"; changes the live project only when the owner runs step c again) and 75h APPLIED (finding 31); 75i–75k APPLIED 2026-11-01 (findings 29, 32 and 34: product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download)
 
 The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *Live test 2026-10-31 (M6 admin)*.
 
@@ -4822,7 +4822,8 @@ The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *L
     on the row as the run reports it. Found on the way, not changed: a doctor's `missing` is never recorded
     (`provisionRequest` in `packages/admin/src/setup/provision.ts` drops every `missing` item, to skip the never-reported
     ones), so once Re-check's run is recorded the server's earlier state of such an item comes back (`ok`, or a failure's
-    `invalid`): Re-check cannot show an item that regressed, for this part as for any item. A refused write fails
+    `invalid`): Re-check cannot show an item that regressed, for this part as for any item. Fixed since by §75k: a run
+    records what it reported, `missing` included. A refused write fails
     the row with the role it needs (`apiError.cloud.permission`, `roles/resourcemanager.projectIamAdmin`). The fake
     project's policy gives Editor to both default accounts, as Google does, and the scenario
     `resource-manager.appEngineEditorLocked` refuses the removal (S-A04-HAPPY-APPENGINE-NO-EDITOR,
@@ -4845,8 +4846,10 @@ The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *L
     it needs those builds' exact permissions first: out of scope, a later proposal if wanted. Nothing else is removed.
   - **The live project**: unchanged until the owner, after the next admin redeploy, runs step c again (its Retry what
     failed, or the server card's Retry what failed in step c); `docs/MANUAL_TEST_PLAN.md` says so.
-- **75c PROPOSED, NOT APPLIED (a product decision; finding 26): the admin on its own Hosting site, instead of the sign-in
-  per tab of §73a.** Today the admin keeps Firebase Auth in the tab's `sessionStorage`, so the public viewer on the same
+- **75c REJECTED 2026-11-01 (the user's decision: "we don't want the admin on its own hosting site"; finding 26): the
+  admin on its own Hosting site, instead of the sign-in per tab of §73a.** Nothing of it is built: the admin stays at
+  `/admin/` on the map's own origin and keeps Firebase Auth in the tab's `sessionStorage` (§73a), one sign-in per tab.
+  The proposal as it was written: Today the admin keeps Firebase Auth in the tab's `sessionStorage`, so the public viewer on the same
   origin can never read the owner's sign-in (the M6 security review's finding 1); the cost is a sign-in for every new tab,
   every notification link and Claude's own tab. The alternative: Firebase Hosting's multi-site, the admin at
   `https://<project>-admin.web.app/` with the normal local persistence (`indexedDB`), the public map alone at the root
@@ -4952,6 +4955,43 @@ The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *L
   `service-accounts`), so `iam` no longer waits for it. The pipeline's card names the missing repository
   (`apiError.install.noRepository`) with a way back to step c; Setup is done only with c done, as before
   (S-A55-HAPPY-PIPELINE-ITEM-FAILED, S-A55-BAD-SERVER-ITEM-FAILED; lesson 302).
+
+- **75i APPLIED 2026-11-01: the admin notices a newer release of itself** (finding 29: a tab left open across a Hosting
+  redeploy ran the old admin, and its install build named the old release's bundle, which the redeploy had removed; the
+  build stopped at `fetch` with "manifest.json is not the one the admin read"). `watchRelease`
+  (`packages/admin/src/app/release-watch.ts`) reads `/admin/runtime.json` again with `cache: 'no-store'` when the tab becomes
+  visible again (at most once a minute, `RELEASE_REVISIT_MS`), every five minutes while it is visible (`RELEASE_LOOK_MS`),
+  and on demand (`check`); once Hosting serves another release it says so once and reads nothing more (cost: one file of
+  a few hundred bytes every five minutes of a visible tab); a build without a release (`dev`, the e2e world's `e2e`)
+  watches nothing; an unreadable file is no news. The shell's state gains `newRelease`, which puts up a polite status
+  banner above the page, "A new version of the admin is ready. Reload the page to use it; you stay signed in." with
+  **Reload** (`adminShell.update.*`, RO and EN; `packages/ui/src/admin/shell/shell-banners.ts`); it never blocks the page.
+  The Cloud Build installer asks `newerAdmin()` before every submit (a click and the resubmit of a build Google ended)
+  and refuses with `apiError.install.adminOutdated` (the newer release as `{release}`; the admin's own code, no function
+  throws it) instead of submitting: the card says to reload, and the check itself puts the banner up. The sign-in lives
+  in the tab's `sessionStorage` (§73a), so the reload keeps it; the Google token (memory only) does not, and the next
+  Google action asks once. Clock and visibility are injected (`release-watch.test.ts`); the e2e moves the page's clock
+  and fires `visibilitychange` as the browser does (lesson 299). S-A61-HAPPY, S-A61-BAD-INSTALL-REFUSED; tour
+  `shell.new-release`; lesson 303.
+- **75j APPLIED 2026-11-01: a step reads Checking… until its first check answers** (finding 32: right after a reload every
+  chip read "To do", 0 of 11, until `setup.status` answered). Each step carries `firstCheck` (`packages/admin/src/setup/state.ts`),
+  true in a fresh state; a patch with a check's time or a failure ends it (`withStep`), and the controller ends it in bulk
+  (`withChecksAnswered`): in an admin session once the server's record is read or refused (every step but the legacy
+  import), then after the import's own detection; in start-up mode once the tab's record is restored. The derived
+  `loading` makes the header say "Checking every step…" over an indeterminate ring with no count, Check again off; the
+  chip shows the loading indicator (a still icon with reduced motion) and **Checking…** / **Se verifică…**
+  (`adminSetup.state.checking`). A busy step still says Working…. S-A03-HAPPY-CHECKING-AFTER-RELOAD,
+  S-A03-BAD-CHECKING-STATUS-FAILS; tour `setup.loading`; lesson 304.
+- **75k APPLIED 2026-11-01: Re-check of step (c) never downgrades it without a token, and records what it found both ways**
+  (finding 34, and the gap of §75b). `packages/admin/src/setup/provision.ts`: a run records exactly the items it reported
+  (`provisionRequest` over the run's reports in screen order), `missing` included, so an item that went back to missing is
+  recorded so and the chip follows; an item Google refused with 401 (`adminShell.session.googleExpired`) is never recorded
+  (an expired token says nothing about the item; before, a run recorded it `invalid`), and in Re-check (the doctor) its
+  row keeps what it showed, the card offering Continue as before. Without a token, a closed consent leaves the recorded
+  state and says "Last checked {time}; sign in to Google Cloud to check again" (`adminSetup.provision.lastChecked`; an ISO
+  `time` parameter is written out in the page's language by `setupText`); another refusal keeps its own reason. Retry what
+  failed reads a recorded `missing` item as never reported and reruns every item, which is idempotent.
+  S-A04-BAD-RECHECK-NO-TOKEN, S-A04-HAPPY-RECHECK-RECORDS-MISSING; tour `setup.provision-last-checked`; lesson 305.
 
 Verify: `static`, `tests` and `build`, and the touched Playwright specs in the quality image
 (`docs/research/M6-status.md` §6).

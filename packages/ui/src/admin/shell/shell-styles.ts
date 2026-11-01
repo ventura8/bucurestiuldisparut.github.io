@@ -97,6 +97,21 @@ export const shellStyles = [
             --hcm-focus-ring-color: var(--md-sys-color-on-error-container, CanvasText);
         }
 
+        /* Finding 29 of 2026-10-31: a newer admin served, Reload beside the words (a polite status, never blocking). */
+        .banner.release {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px 16px;
+            background: var(--md-sys-color-secondary-container, Canvas);
+            color: var(--md-sys-color-on-secondary-container, CanvasText);
+        }
+
+        .banner.release p {
+            margin: 0;
+        }
+
         .content {
             display: flex;
             flex: 1 1 auto;

@@ -113,6 +113,25 @@ describe('<hcm-setup-page> one column', () => {
         expect(steps(element).some((step) => step.open)).toBe(false);
     });
 
+    it('happyPath_rightAfterAReloadTheHeaderSaysCheckingWithoutACount', async () => {
+        // Finding 32 of 2026-10-31: "0 of 11 steps done" while the first checks had not answered.
+        const port = new FakeSetupPort(setupView({ loading: true, done: 0, openStep: null }));
+        const element = await render(port, 480, 'en');
+
+        const status = shadowPart(element, '.note[role="status"]');
+        expect(status.textContent).toBe('Checking every step…');
+        expect(status.hasAttribute('data-loading')).toBe(true);
+        await expect.element(page.getByRole('progressbar', { name: 'Checking every step…' })).not.toHaveAttribute('aria-valuenow');
+        expect(element.renderRoot.querySelector('.count')).toBeNull();
+        await expect.element(page.getByRole('button', { name: 'Check again' }).first()).toBeDisabled();
+        expect(await axeViolations(element)).toEqual([]);
+
+        port.set({ loading: false, done: 5 });
+        await element.updateComplete;
+        expect(shadowPart(element, '.note[role="status"]').textContent).toBe('5 of 9 steps done');
+        expect(shadowPart(element, '.count').textContent).toBe('5/9');
+    });
+
     it('happyPath_everyStepOpensWithItsOwnBody', async () => {
         const port = new FakeSetupPort();
         const element = await render(port);

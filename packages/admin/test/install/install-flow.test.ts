@@ -300,6 +300,19 @@ describe('failures', () => {
         flow.dispose();
     });
 
+    it('badPath_anAdminReplacedMeanwhileNamesTheNewerRelease', async () => {
+        const refused = new InstallBundleError('apiError.install.adminOutdated', { release: '1.0.1+def5678' });
+        const { flow, latest } = flowOver(port({ submit: () => Promise.reject(refused) }));
+
+        await flow.install();
+
+        expect(latest()).toMatchObject({
+            error: { key: 'apiError.install.adminOutdated', params: { release: '1.0.1+def5678' } },
+            busy: false,
+        });
+        flow.dispose();
+    });
+
     it('badPath_anUnavailableGoogleIsShownAndLookedAtAgainLater', async () => {
         const observe = vi.fn<InstallerPort['observe']>().mockRejectedValueOnce(googleError('unavailable'));
         const { clock, flow, latest } = flowOver(port({ observe }));

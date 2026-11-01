@@ -56,4 +56,17 @@ export const SETUP_UX_STATES = {
         title: 'Home: the likely free trial ends soon, with the upgrade link and It is a paid account',
         visit: 'specs/shell/setup-ux-states.spec.ts',
     },
+    // The live test of 2026-10-31 and 2026-11-01 (findings 29, 32 and 34 of docs/research/manual-test-2026-10-25.md).
+    'setup.loading': {
+        title: 'Setup right after a reload: every step Checking…, the header Checking every step… with no count',
+        visit: 'specs/shell/setup-reload-states.spec.ts',
+    },
+    'setup.provision-last-checked': {
+        title: "Setup, Prepare the project after Check again without Google's permission: still Done, when it was last checked",
+        visit: 'specs/shell/setup-reload-states.spec.ts',
+    },
+    'shell.new-release': {
+        title: 'A newer admin was published while the tab was open: the banner above the page with Reload',
+        visit: 'specs/shell/setup-reload-states.spec.ts',
+    },
 } as const;

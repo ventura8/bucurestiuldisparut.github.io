@@ -336,12 +336,24 @@ export class HcmSetupStep extends LitElement {
      */
     private renderChip(step: SetupStepView): TemplateResult {
         if (step.busy) {
-            return html`<span class="status label-large" data-state=${step.state} data-busy
-                ><hcm-loading-indicator label=${this.t('adminSetup.busy')}></hcm-loading-indicator
-                ><hcm-icon class="still" name="pending"></hcm-icon>${this.t('adminSetup.busy')}</span
-            >`;
+            return this.renderWorkingChip(step, 'adminSetup.busy');
+        }
+        if (step.firstCheck === true) {
+            return this.renderWorkingChip(step, 'adminSetup.state.checking');
         }
         return step.unknown ? this.renderUnknownChip(step) : this.renderStateChip(step);
+    }
+
+    /**
+     * The loading indicator in the icon's place (a still icon with reduced motion) and `key`'s words: Working… for a busy
+     * step, Checking… for a step whose first check has not answered (finding 32 of 2026-10-31: never "To do" meanwhile).
+     */
+    private renderWorkingChip(step: SetupStepView, key: AdminSetupKey): TemplateResult {
+        const checking = key === 'adminSetup.state.checking';
+        return html`<span class="status label-large" data-state=${step.state} ?data-busy=${!checking} ?data-checking=${checking}
+            ><hcm-loading-indicator label=${this.t(key)}></hcm-loading-indicator
+            ><hcm-icon class="still" name="pending"></hcm-icon>${this.t(key)}</span
+        >`;
     }
 
     /** The state's icon and label, or Later for a postponed step not done. */

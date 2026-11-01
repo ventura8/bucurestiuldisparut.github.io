@@ -44,6 +44,31 @@ export async function serveInstallBundle(
     return { manifestSha256: createHash('sha256').update(text).digest('hex') };
 }
 
+/**
+ * Finding 29 of docs/research/manual-test-2026-10-25.md (2026-10-31): Hosting serves another admin release from now on,
+ * as after a redeploy while the tab is open (its old chunks still run; its `runtime.json` names the new release).
+ */
+export async function redeployAdmin(page: Page, release: string, options: { readonly startUp?: boolean } = {}): Promise<void> {
+    const runtime = { ...ADMIN_RUNTIME, release, ...(options.startUp === true ? { startUp: true } : {}) };
+    await page.route('**/runtime.json', (route) => route.fulfill({ json: runtime }));
+}
+
+/**
+ * The tab hidden, or shown again: `document.visibilityState` and its event as the browser fires it on a tab switch, at the
+ * document and bubbling (`docs/LESSONS.md` 299).
+ */
+export async function setTabVisibility(page: Page, state: 'hidden' | 'visible'): Promise<void> {
+    await page.evaluate((value) => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => value });
+        document.dispatchEvent(new Event('visibilitychange', { bubbles: true }));
+    }, state);
+}
+
+/** The shell's banner that a newer admin is ready, with Reload (finding 29). */
+export function newAdminBanner(page: Page): Locator {
+    return page.locator('hcm-admin-shell').locator('.banner.release');
+}
+
 /** A build as the fake Cloud Build holds it: Google's answer, its target and the definition the admin sent. */
 export interface SubmittedBuild {
     readonly id: string;

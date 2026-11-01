@@ -39,6 +39,8 @@ export interface SetupWiringDeps {
     readonly release: string;
     /** The origins the admin may install from: the project's Hosting origins (the e2e world's own in its build). */
     readonly installOrigins: readonly string[];
+    /** Finding 29 of 2026-10-31: the admin release Hosting serves instead of this one, read now (null: still this one). */
+    readonly newerAdmin: () => Promise<string | null>;
     // [end install]
 }
 
@@ -97,6 +99,7 @@ function installerFor(deps: SetupWiringDeps, cityId: string, sleep: (ms: number)
         bundle: installBundleLoader(deps),
         origin: new URL(deps.baseUrl).origin,
         hasPublishedMap: publishedMapCheck(deps.firebase, cityId),
+        newerAdmin: deps.newerAdmin,
     });
 }
 

@@ -30,6 +30,16 @@ describe('setupText', () => {
         expect(setupText('en', { key: 'adminSetup.provision.waiting', params: { item: 'something' } })).toBe('Waiting for: something.');
     });
 
+    it('happyPath_anIsoTimeIsShownAsADateAndTime_badPath_aTimeAlreadyWrittenStaysAsItIs', () => {
+        // Finding 34 of 2026-11-01: "Last checked {time}" on step c after a Check again without a Google token.
+        const iso = '2026-10-31T12:05:00.000Z';
+        expect(setupText('en', { key: 'adminSetup.provision.lastChecked', params: { time: iso } })).toBe(
+            `Last checked ${formatDateTime('en', iso)}; sign in to Google Cloud to check again.`,
+        );
+        expect(setupText('ro', { key: 'adminSetup.provision.lastChecked', params: { time: iso } })).toContain(formatDateTime('ro', iso));
+        expect(setupText('en', { key: 'adminSetup.provision.lastChecked', params: { time: 'yesterday' } })).toContain('yesterday');
+    });
+
     it('badPath_aScopeThatIsNotAGoogleScopeStaysAsItIs', () => {
         expect(setupText('en', { key: 'adminShell.oauth.scopeDenied', params: { scope: 'drive' } })).toContain('"drive"');
     });

@@ -40,6 +40,9 @@ export const ro = {
     'adminShell.backend.down': 'Serverul hărții nu răspunde acum. Încearcă din nou peste un minut.',
     'adminShell.backend.retry': 'Încearcă din nou',
     'adminShell.config.missing': 'Configurația Firebase a site-ului nu a putut fi citită. Reîncarcă pagina.',
+    // Finding 29 of 2026-10-31: a tab left open across a redeploy runs the old admin; it offers the new one.
+    'adminShell.update.ready': 'O versiune nouă a administrării este gata. Reîncarcă pagina ca s-o folosești; rămâi conectat.',
+    'adminShell.update.reload': 'Reîncarcă',
     'adminShell.bootstrap.banner': 'Mod de pornire: harta nu are încă server, așa că pașii vorbesc direct cu Google.',
     'adminShell.oauth.title': 'Permisiune Google',
     'adminShell.oauth.why.cloudReadOnly': 'Google îți cere acces de citire la Google Cloud: verificăm că deții proiectul {projectId}.',

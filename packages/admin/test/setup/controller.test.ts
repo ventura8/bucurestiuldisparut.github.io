@@ -176,6 +176,60 @@ describe('start', () => {
     });
 });
 
+// Finding 32 of 2026-10-31: right after a reload every chip read "To do" (0 of 11) until the checks answered.
+describe('the first checks (finding 32 of 2026-10-31)', () => {
+    const firstChecks = (state: ReturnType<ReturnType<typeof createSetupController>['getState']>): string[] =>
+        state.order.filter((id) => state.steps[id].firstCheck);
+
+    it('happyPath_everyStepReadsCheckingUntilTheServersRecordAndThenTheImportAnswer', async () => {
+        const detection: { finish?: (progress: { done: number; total: number; failed: [] }) => void } = {};
+        const { harness, controller } = setup((h) => {
+            h.backend.status.mockResolvedValue(READY_VIEW);
+            h.importer.detect.mockReturnValue(
+                new Promise((resolve) => {
+                    detection.finish = resolve;
+                }),
+            );
+        });
+        expect(controller.getState().loading).toBe(true);
+        expect(firstChecks(controller.getState())).toEqual(controller.getState().order);
+
+        const starting = controller.start('normal', null);
+        expect(controller.getState().loading).toBe(true);
+        await vi.waitFor(() => {
+            expect(harness.importer.detect).toHaveBeenCalledTimes(1);
+        });
+        expect(firstChecks(controller.getState())).toEqual(['legacyImport']);
+
+        detection.finish?.({ done: 45, total: 45, failed: [] });
+        await starting;
+        expect(controller.getState()).toMatchObject({ loading: false, done: 6 });
+        expect(firstChecks(controller.getState())).toEqual([]);
+    });
+
+    it('badPath_aRecordThatCannotBeReadEndsCheckingWithTheReason', async () => {
+        const { controller } = setup((h) => {
+            h.backend.status.mockRejectedValue(functionsError('apiError.unavailable'));
+            h.importer.detect.mockRejectedValue(functionsError('apiError.unavailable'));
+        });
+
+        await controller.start('normal', null);
+
+        expect(controller.getState()).toMatchObject({ loading: false, error: { key: 'apiError.unavailable' } });
+    });
+
+    it('happyPath_inStartUpModeTheTabsRecordAnswersAtOnce', async () => {
+        const { controller } = setup((h) => {
+            writeBootstrapRecord(h.session, RECORD);
+        });
+
+        await controller.start('bootstrap', null);
+
+        expect(controller.getState().loading).toBe(false);
+        expect(controller.getState().steps.billing.state).toBe('ok');
+    });
+});
+
 describe('a server older than the admin (finding 27 of 2026-10-31)', () => {
     it('badPath_aRecordOlderThanTheAdminLeavesItsStepsUnknownNotToDo @S-A03-BAD-OLDER-SERVER-STATUS', async () => {
         // Finding 27 of 2026-10-31: the server answered, in a shape the admin cannot read.

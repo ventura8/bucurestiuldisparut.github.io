@@ -29,11 +29,19 @@ export interface InstallBundle {
 /** Why the bundle cannot be used: an `apiError.install.*` code (or `apiError.unavailable`, which may pass). */
 export class InstallBundleError extends Error {
     readonly code: ApiErrorCode;
+    /** The message's placeholders (`apiError.install.adminOutdated`'s newer release), when it has any. */
+    readonly params: Readonly<Record<string, string>> | undefined;
 
-    constructor(code: ApiErrorCode) {
+    constructor(code: ApiErrorCode, params?: Readonly<Record<string, string>>) {
         super(code);
         this.name = 'InstallBundleError';
         this.code = code;
+        this.params = params;
+    }
+
+    /** The card's message: the code and its placeholders. */
+    notice(): { readonly key: ApiErrorCode; readonly params?: Readonly<Record<string, string>> } {
+        return this.params === undefined ? { key: this.code } : { key: this.code, params: this.params };
     }
 }
 

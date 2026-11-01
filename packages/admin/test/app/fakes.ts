@@ -417,6 +417,7 @@ export function shellStateAccess(overrides: Partial<ShellState> = {}): ShellStat
         destinations: [],
         leaving: null,
         revoked: false,
+        newRelease: null,
         people: {},
         unread: null,
         cities: [],

@@ -100,6 +100,11 @@ export interface AdminState<Setup = unknown> {
      */
     readonly revoked: boolean;
     /**
+     * Finding 29 of 2026-10-31: the admin release Hosting serves instead of the one this tab runs (a redeploy while the tab
+     * was open), null while none: the shell offers Reload under a banner (`../app/release-watch.ts`).
+     */
+    readonly newRelease: string | null;
+    /**
      * The admins' names by uid (`admins.list`), asked once a session needs them (an editor's conflict names who saved,
      * `DECISIONS-for-review.md` §42c); forgotten at sign-out.
      */

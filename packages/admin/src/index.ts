@@ -18,6 +18,7 @@ import type { Clock, HashLocation, KeyValueStore } from './app/ports.js';
 import type { AdminRuntime, FirebaseWebConfig } from './app/config.js';
 import { errorEndpointFor, installErrorHooks, AdminErrorReporter } from './app/errors.js';
 import type { AdminApp, AdminDeps, TelemetryView } from './app/mount.js';
+import { watchRelease, type ReleaseWatch } from './app/release-watch.js';
 import type { AdminProject, SetupModuleSpec } from './app/services.js';
 import { setupModuleFor } from './app/setup-wiring.js';
 import { AdminTelemetry, expireAnalyticsCookies } from './app/telemetry.js';
@@ -246,6 +247,8 @@ interface SetupParts {
     readonly fetch: typeof fetch;
     /** The admin's `runtime.json` release (M6: what the install cards install). */
     readonly release: string;
+    /** Finding 29 of 2026-10-31: whether Hosting still serves this release (read before an install build). */
+    readonly releases: Pick<ReleaseWatch, 'check'>;
 }
 
 /** The Setup Assistant over the project file (CR-M2b-15), or none without one. */
@@ -259,6 +262,7 @@ function setupFor(setup: SetupParts, project: ProjectConfig | null): SetupModule
         baseUrl: setup.parts.win.document.baseURI,
         nonce: globalThis.crypto.randomUUID.bind(globalThis.crypto),
         release: setup.release,
+        newerAdmin: () => setup.releases.check(),
         installOrigins: setup.parts.e2e === null ? hostingOrigins(setup.config.projectId) : [setup.parts.win.location.origin],
     });
 }
@@ -294,14 +298,16 @@ export function browserDeps(parts: BrowserParts): BootEnvironment<EntrySetup, En
         const handles = initFirebase(firebaseSdk, config, runtime, e2e !== null);
         const fetcher: typeof fetch = (input, init) => win.fetch(input, init);
         const firebase = firebasePorts(firebaseSdk, handles);
+        const visibility = documentVisibility(win.document);
+        const releases = watchRelease({ fetch: fetcher, clock, visibility, release: runtime.release, log: log.child('release') });
         return {
-            ...{ project: project ?? projectOf(config), firebase, fetch: fetcher, clock, log },
+            ...{ project: project ?? projectOf(config), firebase, fetch: fetcher, clock, log, releases },
             google: createGoogleAuth(popupFor(win, handles, e2e, clock), { fetch: fetcher, clock, log }),
-            ...{ session: parts.session, local: parts.local, location: parts.location, visibility: documentVisibility(win.document) },
+            ...{ session: parts.session, local: parts.local, location: parts.location, visibility },
             languages: win.navigator.languages,
             pages: PAGES,
             telemetry: telemetryFor(parts, handles, config, runtime.release),
-            setup: setupFor({ parts, config, firebase, fetch: fetcher, release: runtime.release }, project),
+            setup: setupFor({ parts, config, firebase, fetch: fetcher, release: runtime.release, releases }, project),
             content: contentDepsFor(parts, handles, fetcher),
         };
     };

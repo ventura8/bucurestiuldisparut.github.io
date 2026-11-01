@@ -214,6 +214,95 @@ describe('provision: normal mode', () => {
     });
 });
 
+/** Normal mode with step c recorded done (every item, the scheduler waiting for the deploy), checked at `CHECKED_AT`. */
+const CHECKED_AT = '2026-10-31T12:05:00.000Z';
+
+function recordedDone() {
+    const world = setup('normal');
+    world.ctx.applyStatus(statusView({ provision: { state: 'ok', checkedAt: CHECKED_AT, items: provisionedItems() } }));
+    return world;
+}
+
+// Finding 34 of 2026-11-01 (docs/research/manual-test-2026-10-25.md): Re-check never downgrades step c without a Google
+// token, and with one the server's record follows what the doctor found, an item gone back to missing included.
+describe('provision: Re-check and the record', () => {
+    it('badPath_withoutAGoogleTokenTheRecordedStateStaysAndSaysWhenItWasLastChecked', async () => {
+        const { harness, ctx, flow } = recordedDone();
+        harness.google.answer = () => Promise.resolve(null);
+
+        await flow.recheck();
+
+        expect(ctx.state().steps.provision).toMatchObject({
+            state: 'ok',
+            busy: false,
+            checkedAt: CHECKED_AT,
+            error: { key: 'adminSetup.provision.lastChecked', params: { time: CHECKED_AT } },
+        });
+        expect(harness.cloud.doctor).not.toHaveBeenCalled();
+        expect(harness.backend.recordCloud).not.toHaveBeenCalled();
+    });
+
+    it('badPath_anotherRefusalKeepsItsOwnReason_andAStepNeverCheckedSaysThePopupClosed', async () => {
+        const { harness, ctx, flow } = setup('normal');
+        harness.google.answer = () => Promise.resolve(null);
+
+        await flow.recheck();
+
+        expect(ctx.state().steps.provision.error).toEqual({ key: 'adminShell.oauth.popupClosed' });
+        harness.google.answer = () => Promise.reject(Object.assign(new Error('blocked'), { code: 'auth/popup-blocked' }));
+        await flow.recheck();
+        expect(ctx.state().steps.provision.error?.key).not.toBe('adminSetup.provision.lastChecked');
+    });
+
+    it('happyPath_anItemThatWentBackToMissingIsRecordedSo', async () => {
+        const { harness, ctx, flow } = recordedDone();
+        harness.cloud.doctor.mockImplementation((_access, _only, onItem) => {
+            onItem({ id: 'apis', state: 'ok' });
+            onItem({ id: 'secrets', state: 'missing' });
+            return Promise.resolve([]);
+        });
+        const missing = provisionedItems().map((item) => (item.id === 'secrets' ? { id: item.id, state: 'missing' as const } : item));
+        harness.backend.recordCloud.mockResolvedValue({
+            status: statusView({ provision: { state: 'missing', checkedAt: '2026-10-31T13:00:00.000Z', items: missing } }),
+        });
+
+        await flow.recheck();
+
+        expect(harness.backend.recordCloud).toHaveBeenCalledWith({
+            provision: {
+                items: [
+                    { id: 'apis', state: 'ok' },
+                    { id: 'secrets', state: 'missing' },
+                ],
+            },
+        });
+        expect(ctx.state().steps.provision.state).toBe('missing');
+        expect(ctx.state().provision.items.find((item) => item.id === 'secrets')?.state).toBe('missing');
+    });
+
+    it('badPath_aTokenRefusedDuringTheCheckLeavesTheRowsAndRecordsOnlyWhatWasChecked', async () => {
+        const { harness, ctx, flow } = recordedDone();
+        harness.cloud.doctor.mockImplementation((_access, _only, onItem) => {
+            onItem({ id: 'apis', state: 'ok' });
+            onItem({ id: 'service-accounts', state: 'invalid', detail: 'adminShell.session.googleExpired' });
+            return Promise.resolve([]);
+        });
+        harness.backend.recordCloud.mockResolvedValue({
+            status: statusView({ provision: { state: 'ok', checkedAt: CHECKED_AT, items: provisionedItems() } }),
+        });
+
+        await flow.recheck();
+
+        expect(harness.backend.recordCloud).toHaveBeenCalledWith({ provision: { items: [{ id: 'apis', state: 'ok' }] } });
+        expect(ctx.state().provision.items.find((item) => item.id === 'service-accounts')?.state).toBe('ok');
+        expect(ctx.state().steps.provision).toMatchObject({
+            state: 'ok',
+            needsContinue: true,
+            error: { key: 'adminShell.session.googleExpired' },
+        });
+    });
+});
+
 describe('provision: the scheduler after the deployment', () => {
     it('happyPath_theLiveTokenChecksTheSchedulerWithoutAClick', async () => {
         const { harness, ctx, flow } = setup();

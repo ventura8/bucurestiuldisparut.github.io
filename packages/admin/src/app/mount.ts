@@ -26,7 +26,7 @@ import { FieldWatch, measuredStore } from './field.js';
 import { chooseCity, cityRefresher, switchTo, type CityChoiceDeps } from './current-city.js';
 import { Navigation } from './navigation.js';
 import { rememberedSetupReady } from './setup-readiness.js';
-import { shellWatches } from './shell-watches.js';
+import { shellWatches, type ShellWatchSources } from './shell-watches.js';
 import { destinationOf } from '../routing/router.js';
 import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } from './ports.js';
 import { guardCallables, type AdminProject, type SetupModuleSpec, type ShellServices } from './services.js';
@@ -73,6 +73,8 @@ export interface AdminDeps<Setup, SetupIntents> {
     readonly setup: SetupModuleSpec<Setup, SetupIntents>;
     /** The editors' areas (`docs/research/M2c-interfaces.md` §2); without it no area has a store. */
     readonly content?: ContentDeps;
+    /** Finding 29 of 2026-10-31: whether Hosting serves a newer admin (`release-watch.ts`); none: nothing is watched. */
+    readonly releases?: ShellWatchSources['releases'];
 }
 
 export interface AdminIntents<SetupIntents> {
@@ -149,6 +151,7 @@ function initialState<Setup>(deps: AdminDeps<Setup, unknown>): AdminState<Setup>
         notice: null,
         leaving: null,
         revoked: false,
+        newRelease: null,
         people: {},
         unread: null,
         cities: [],

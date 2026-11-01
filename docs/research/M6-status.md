@@ -169,24 +169,31 @@ The 24 findings of the live test of 2026-10-25, after these fixes:
 | 23 | a pass |
 | 4 | fixed with its rows (trusted to them, not re-verified by the reviews) |
 
-## 6. The live test of 2026-10-31 (findings 25–28, 30, 31 and 33)
+## 6. The live test of 2026-10-31 (findings 25–34)
 
 The user's second live walk, on the admin `1.0.0+18977f0` at `/admin/` (start-up variant) against the server of
 `90b31be`: [manual-test-2026-10-25.md](manual-test-2026-10-25.md) → *Live test 2026-10-31 (M6 admin)*; decisions
-`DECISIONS-for-review.md` §75; lessons 296–298 and 300–302. Nothing was committed, pushed or deployed; no test called a real Google
-endpoint.
+`DECISIONS-for-review.md` §75; lessons 296–298 and 300–305. Nothing was committed, pushed or deployed; no test called a real Google
+endpoint. Findings 29, 32 and 34 were recorded on 2026-11-01, after the live outcome of that day: the server `1.0.0+9e2e6b5`
+installed from the app, Setup a–i done, the public map live at the root once step (e)'s Replace the visitors' token
+minted it again (Vertex AI does not offer `gemini-2.5-flash-lite` to the project: §67g; `events.mapbox.com` answers 503,
+harmless).
 
 | Finding | Outcome | Rows |
 | --- | --- | --- |
 | 25: an old admin hash typed on the open start-up root stayed there | fixed: `admin-redirect.js` also forwards on `hashchange` | S-A58-HAPPY-OLD-LINK-HASH-CHANGE, S-A58-BAD-VIEWER-HASH-CHANGE |
-| 26: the sign-in per tab is tiring | proposal only: the admin on its own Hosting site (§75c) | — |
+| 26: the sign-in per tab is tiring | the admin on its own Hosting site (§75c) REJECTED by the user on 2026-11-01 ("we don't want the admin on its own hosting site"): the admin stays at `/admin/`, the per-tab sign-in of §73a stays | — |
 | 27: Setup read the older server's recorded steps as To do | fixed: a pre-M5 session parses, an unreadable answer is `apiError.serverOutdated` (a server, never "none"), a browser that had seen the server leaves start-up mode by itself again, a step it cannot say reads Update the server to check | S-A03-HAPPY-OLDER-SERVER, S-A03-BAD-OLDER-SERVER-STATUS; tour `setup.older-server-status` |
 | 30: the install, past the actAs check, stopped at `functions` with "Couldn't find firebase-functions package in your source code" and "An unexpected error has occurred." | fixed in code: the server build's new step `packages` (`npm ci --omit=dev --ignore-scripts` in `server/functions/dist`) installs the functions' deploy lock where `firebase-tools`' discovery loads it; the fake Cloud Build plays that discovery; the other steps audited (`M6-interfaces.md` §1.4.1 addendum); lesson 300 | S-A55-HAPPY (the step), S-A55-BAD-NO-FUNCTIONS-PACKAGES |
 | 28: the install stopped at `firebase-tools`' actAs check | fixed in code (the user: "code fix first, live later"): Service Account User on the App Engine default account only, `hcmInstaller` gains three permissions, the fakes enforce the check, the server's card offers step c's Retry what failed; and (§75b, the user: "do 75b") the `iam` item takes `roles/editor` away from that account on the project | S-A04-HAPPY-APPENGINE-ACTAS, S-A04-BAD-NO-APPENGINE-ACCOUNT, S-A55-BAD-NO-ACTAS, S-A04-HAPPY-APPENGINE-NO-EDITOR, S-A04-BAD-APPENGINE-EDITOR-REFUSED; tour `setup.install-failed-provision` |
 | 33: past every earlier step (Cloud Build f92cec75), the Cloud Functions API refused every function: 403 `iam.serviceaccounts.actAs` on the Compute Engine default account, the functions' build account | fixed in code (§75g, the user: "Act-as + narrow its role"): the `iam` item grants the installer Service Account User on that account only, then the account `roles/cloudbuild.builds.builder`, then removes its `roles/editor`; the fakes model the account and the API's check after `firebase-tools`' own; the card finds the 403 above the log's last lines; lesson 301 | S-A04-HAPPY-COMPUTE-BUILD-ACCOUNT, S-A04-BAD-COMPUTE-EDITOR-REFUSED, S-A55-BAD-NO-COMPUTE-ACTAS |
 | 31: step (d) waited for step (c)'s pipeline repository | fixed (§75h): (d) waits for the items the server needs (`serverPrepared`); the repository's writer role moved into the `artifact-registry` item, which `iam` no longer waits for; lesson 302 | S-A55-HAPPY-PIPELINE-ITEM-FAILED, S-A55-BAD-SERVER-ITEM-FAILED |
+| 29: a tab left open across a redeploy ran the old admin; its install build named the removed bundle ("manifest.json is not the one the admin read") | fixed (§75i): the admin reads `runtime.json` again (tab visible again, every five minutes while visible, before an install build); a newer release shows "A new version of the admin is ready" with Reload, and an install click refuses with `apiError.install.adminOutdated`; lesson 303 | S-A61-HAPPY, S-A61-BAD-INSTALL-REFUSED; tour `shell.new-release` |
+| 32: right after a reload every step read To do (0 of 11) until the checks answered | fixed (§75j): Checking… on each chip until its first check answers, "Checking every step…" over an indeterminate ring in the header; lesson 304 | S-A03-HAPPY-CHECKING-AFTER-RELOAD, S-A03-BAD-CHECKING-STATUS-FAILS; tour `setup.loading` |
+| 34: Check again on (c) without a Google token turned it To do; a doctor's `missing` was never recorded | fixed (§75k): without a token nothing changes and the card says when (c) was last checked; a run records what it reported, `missing` included, never a 401; lesson 305 | S-A04-BAD-RECHECK-NO-TOKEN, S-A04-HAPPY-RECHECK-RECORDS-MISSING; tour `setup.provision-last-checked` |
 
 What waits for you: the next admin redeploy (D1, ask first), then on Setup (d) **Reia ce nu a reușit în pasul c** (step
-c's Retry what failed) and **Încearcă din nou** (`docs/MANUAL_TEST_PLAN.md` → D1 step 4, after reloading the admin's tab; since §75b that run also takes Editor away from the App Engine account, and since §75g lets the installer act as the Compute Engine account, gives it the builder role and takes its Editor role); the decisions §75c (the
-admin's own site) and §75f (the admin's language with no saved choice). The verdicts of `static`, `tests` and `build`
+c's Retry what failed) and **Încearcă din nou** (`docs/MANUAL_TEST_PLAN.md` → D1 step 4, after reloading the admin's tab; since §75b that run also takes Editor away from the App Engine account, and since §75g lets the installer act as the Compute Engine account, gives it the builder role and takes its Editor role); the decision §75f (the admin's language with no saved
+choice; §75c was rejected on 2026-11-01). After the next redeploy an open admin tab says by itself that a new version is
+ready (§75i). The verdicts of `static`, `tests` and `build`
 are in the integrator's report; the full split `all` is the orchestrator's.

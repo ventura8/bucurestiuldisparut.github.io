@@ -78,6 +78,8 @@ export interface SetupStepView {
     readonly postponed: boolean;
     /** Finding 27 of 2026-10-31: the server is too old to say; the chip reads "Update the server to check", not "To do". */
     readonly unknown: boolean;
+    /** Finding 32 of 2026-10-31: the step's first check since the page loaded has not answered; the chip reads Checking…. */
+    readonly firstCheck?: boolean;
     readonly scope: GoogleScopeName | null;
     readonly links: readonly SetupLinkView[];
     readonly used: StepCounts;
@@ -108,6 +110,8 @@ export interface SetupViewState {
     /** M6 setup-ux (finding 7): the scopes a live token holds now (a card's consent note only when its button will ask). */
     readonly liveScopes: readonly GoogleScopeName[];
     readonly checking: boolean;
+    /** Finding 32 of 2026-10-31: a step's first check has not answered: the header says Checking…, not "0 of 11 steps done". */
+    readonly loading?: boolean;
     readonly error: SetupMessage | null;
     readonly used: StepCounts;
     readonly billing: {

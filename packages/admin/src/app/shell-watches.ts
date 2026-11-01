@@ -1,7 +1,8 @@
 /**
  * What the shell watches while an admin is signed in (`docs/research/M2b-interfaces.md` §1.7): the city's theme, whether
  * Setup is complete (`setup-readiness.ts`) and, since M4, the admin's unread notifications for the Notifications item's
- * badge (`../inbox/badge.ts`). Each follows the shell's state and stops with the app.
+ * badge (`../inbox/badge.ts`), and (finding 29 of 2026-10-31) whether Hosting serves a newer admin (`./release-watch.ts`).
+ * Each follows the shell's state and stops with the app.
  */
 import type { ContentStore } from '../content/services.js';
 import type { DocumentsPort } from '../firebase/ports.js';
@@ -9,6 +10,7 @@ import { InboxBadge } from '../inbox/badge.js';
 import type { ShellState, ShellStateAccess } from '../state/state.js';
 import { CityTheme } from './city-theme.js';
 import type { KeyValueStore } from './ports.js';
+import type { ReleaseWatch } from './release-watch.js';
 import { SetupReadiness } from './setup-readiness.js';
 
 export interface ShellWatchSources {
@@ -20,6 +22,8 @@ export interface ShellWatchSources {
     readonly content?: { readonly cityId: string | null } | undefined;
     /** The editors' Firestore, for the badge's query; null without the editors. */
     readonly store: ContentStore | null;
+    /** Finding 29 of 2026-10-31: a newer admin served (the shell's Reload banner); none: nothing is watched. */
+    readonly releases?: Pick<ReleaseWatch, 'onNewer' | 'stop'> | undefined;
 }
 
 export interface ShellWatches {
@@ -39,6 +43,7 @@ export function shellWatches(sources: ShellWatchSources, shell: ShellStateAccess
         watch: ownCity === null,
     });
     const badge = new InboxBadge({ store: sources.store, shell, denied });
+    const releases = followReleases(sources.releases, shell);
     return {
         stateChanged: (state) => {
             readiness.stateChanged(state);
@@ -49,6 +54,21 @@ export function shellWatches(sources: ShellWatchSources, shell: ShellStateAccess
             cityTheme.stop();
             readiness.stop();
             badge.stop();
+            releases();
         },
+    };
+}
+
+/** Finding 29 of 2026-10-31: a newer admin served puts the shell's Reload banner up; the returned call ends the watch. */
+function followReleases(releases: ShellWatchSources['releases'], shell: ShellStateAccess): () => void {
+    if (releases === undefined) {
+        return () => undefined;
+    }
+    const stop = releases.onNewer((newRelease) => {
+        shell.update({ newRelease });
+    });
+    return () => {
+        stop();
+        releases.stop();
     };
 }

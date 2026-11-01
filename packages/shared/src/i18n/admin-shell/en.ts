@@ -37,6 +37,9 @@ export const en: AdminShellMessages = {
     'adminShell.backend.down': "The map's server is not answering right now. Try again in a minute.",
     'adminShell.backend.retry': 'Try again',
     'adminShell.config.missing': "The site's Firebase configuration could not be read. Reload the page.",
+    // Finding 29 of 2026-10-31: a tab left open across a redeploy runs the old admin; it offers the new one.
+    'adminShell.update.ready': 'A new version of the admin is ready. Reload the page to use it; you stay signed in.',
+    'adminShell.update.reload': 'Reload',
     'adminShell.bootstrap.banner': 'Start-up mode: the map has no server yet, so these steps talk to Google directly.',
     'adminShell.oauth.title': 'Google permission',
     'adminShell.oauth.why.cloudReadOnly': 'Google asks for read access to Google Cloud: we check that you own project {projectId}.',

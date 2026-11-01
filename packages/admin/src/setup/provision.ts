@@ -4,12 +4,17 @@
  * the items that are not `ok`; Continue after an expired token does the same. The scheduler item stays `pending` until
  * the first deploy creates its job, and the doctor checks it once step (d) is done. In normal mode the card's Re-check
  * runs the read-only doctor, and every result is recorded at once with `setup.recordCloud`.
+ *
+ * Finding 34 of 2026-11-01 (`docs/research/manual-test-2026-10-25.md`): what a run records is what it reported, `missing`
+ * included (an item that went back to missing is recorded so, and the server's record follows reality both ways), never
+ * an item Google refused with 401 (an expired token says nothing about the item). Without a Google token Re-check
+ * changes nothing: the step keeps its recorded state and says when it was last checked.
  */
-import { isApiErrorCode, type ProvisionItem, type RecordCloudRequest } from '@hcm/shared';
+import { isApiErrorCode, PROVISION_ITEMS, type ProvisionItem, type RecordCloudRequest } from '@hcm/shared';
 
 import type { SetupContext } from './context.js';
 import { googleAccess, liveAccess } from './google-access.js';
-import { apiFailure, googleFailure } from './messages.js';
+import { apiFailure, googleFailure, setupMessage } from './messages.js';
 import type { GoogleAccess, ProvisionItemResult } from './ports.js';
 import { itemMessage } from './records.js';
 import { provisionHealth, type ProvisionItemState, type SetupState } from './state.js';
@@ -60,31 +65,46 @@ function pendingItems(items: readonly ProvisionItemState[]): readonly ProvisionI
 type RecordedItem = NonNullable<RecordCloudRequest['provision']>['items'][number];
 
 /** An item as `setup.recordCloud` accepts it: its reason only when that is an API error code. */
-function recordedItem(item: ProvisionItemState): RecordedItem {
-    const detail = item.detail;
-    if (detail === null || !isApiErrorCode(detail.key)) {
-        return { id: item.id, state: item.state };
+function recordedItem(item: ProvisionItemResult): RecordedItem {
+    const { id, state, detail, params } = item;
+    if (detail === undefined || !isApiErrorCode(detail)) {
+        return { id, state };
     }
-    return detail.params === undefined
-        ? { id: item.id, state: item.state, detail: detail.key }
-        : { id: item.id, state: item.state, detail: detail.key, params: detail.params };
+    return params === undefined ? { id, state, detail } : { id, state, detail, params };
 }
 
-/** `setup.recordCloud`'s request: the items the provisioner reported (null before any). */
-function provisionRequest(items: readonly ProvisionItemState[]): RecordCloudRequest | null {
-    const reported = items.filter((item) => item.state !== 'missing');
-    return reported.length === 0 ? null : { provision: { items: reported.map(recordedItem) } };
+/** An item Google refused with 401: the token expired, which says nothing about the item. */
+function refused(item: ProvisionItemResult): boolean {
+    return item.detail === EXPIRED;
 }
+
+/**
+ * `setup.recordCloud`'s request: the items this run reported, `missing` ones included (finding 34), never one refused
+ * with 401, in screen order; null when there is none.
+ */
+function provisionRequest(reported: readonly ProvisionItemResult[]): RecordCloudRequest | null {
+    const items = reported.filter((item) => !refused(item)).sort((a, b) => PROVISION_ITEMS.indexOf(a.id) - PROVISION_ITEMS.indexOf(b.id));
+    return items.length === 0 ? null : { provision: { items: items.map(recordedItem) } };
+}
+
+/** How a click runs: Prepare the project and Retry what failed (`run`), or normal mode's read-only Re-check (`doctor`). */
+interface RunMode {
+    readonly onlyPending: boolean;
+    readonly doctor: boolean;
+}
+
+const RUN: RunMode = { onlyPending: true, doctor: false };
+const DOCTOR: RunMode = { onlyPending: false, doctor: true };
 
 class Provision implements ProvisionFlow {
     constructor(private readonly ctx: SetupContext) {}
 
     async run(): Promise<void> {
-        await this.start((access, only, onItem) => this.ctx.deps.cloud.provision(access, only, onItem), true);
+        await this.start((access, only, onItem) => this.ctx.deps.cloud.provision(access, only, onItem), RUN);
     }
 
     async recheck(): Promise<void> {
-        await this.start((access, _only, onItem) => this.ctx.deps.cloud.doctor(access, null, onItem), false);
+        await this.start((access, _only, onItem) => this.ctx.deps.cloud.doctor(access, null, onItem), DOCTOR);
     }
 
     async checkScheduler(): Promise<void> {
@@ -94,7 +114,7 @@ class Provision implements ProvisionFlow {
         }
         try {
             await this.ctx.deps.cloud.doctor(access, ['scheduler'], (item) => {
-                this.onItem(item);
+                this.onItem(item, true);
             });
             this.settle();
         } catch (error) {
@@ -102,27 +122,49 @@ class Provision implements ProvisionFlow {
         }
     }
 
-    private async start(runner: Runner, onlyPending: boolean): Promise<void> {
+    private async start(runner: Runner, mode: RunMode): Promise<void> {
         this.ctx.count('provision', 'inputs');
         this.ctx.patchStep('provision', { busy: true, error: null });
-        const access = await googleAccess(this.ctx, 'provision', 'cloudPlatform', true);
-        if (access === null) {
-            return;
+        const access = await this.access(mode);
+        if (access !== null) {
+            await this.runWith(runner, access, mode);
         }
-        const only = onlyPending ? pendingItems(this.ctx.state().provision.items) : null;
+    }
+
+    /** The token for the click; without one, a Re-check leaves the recorded state and says when it was last checked. */
+    private async access(mode: RunMode): Promise<GoogleAccess | null> {
+        const access = await googleAccess(this.ctx, 'provision', 'cloudPlatform', true);
+        if (access === null && mode.doctor) {
+            this.keepRecorded();
+        }
+        return access;
+    }
+
+    /**
+     * Finding 34 of 2026-11-01: no token, so nothing was checked: the chip keeps what the server recorded, and a closed
+     * consent says "Last checked <time>; sign in to Google Cloud to check again" (any other refusal keeps its own reason).
+     */
+    private keepRecorded(): void {
+        const step = this.ctx.state().steps.provision;
+        if (step.error?.key === 'adminShell.oauth.popupClosed' && step.checkedAt !== null) {
+            this.ctx.patchStep('provision', { error: setupMessage('adminSetup.provision.lastChecked', { time: step.checkedAt }) });
+        }
+    }
+
+    private async runWith(runner: Runner, access: GoogleAccess, mode: RunMode): Promise<void> {
+        const only = mode.onlyPending ? pendingItems(this.ctx.state().provision.items) : null;
+        const reported = new Map<ProvisionItem, ProvisionItemResult>();
         try {
             await runner(access, only, (item) => {
-                this.onItem(item);
+                reported.set(item.id, item);
+                this.onItem(item, mode.doctor);
             });
             // The card stays busy until the run is recorded: a Retry what failed clicked while the record is on its way
             // could be overwritten by it, the server applying the older run last (S-A04-BAD-API-STILL-DISABLED).
             this.settle(true);
-            const expired = this.stoppedExpired();
-            await this.record();
+            await this.record([...reported.values()]);
             this.ctx.patchStep('provision', { busy: false });
-            if (expired) {
-                this.ctx.fail('provision', googleFailure({ kind: 'unauthorized' }));
-            }
+            this.failIfExpired([...reported.values()]);
         } catch (error) {
             this.settle();
             this.ctx.fail('provision', googleFailure(error));
@@ -130,16 +172,20 @@ class Provision implements ProvisionFlow {
     }
 
     /**
-     * Whether the provisioner stopped at an item Google answered 401 (the token expired mid-run, S-A04-BAD-TOKEN-
-     * EXPIRED-MID-RUN): then the token is dropped and the card offers Continue, which asks Google again and runs what
-     * is not done. Read before the run is recorded (the record keeps API error codes only).
+     * The provisioner stopped at an item Google answered 401 (the token expired mid-run, S-A04-BAD-TOKEN-EXPIRED-MID-RUN):
+     * the token is dropped and the card offers Continue, which asks Google again and runs what is not done.
      */
-    private stoppedExpired(): boolean {
-        return this.ctx.state().provision.items.some((item) => item.detail?.key === EXPIRED);
+    private failIfExpired(reported: readonly ProvisionItemResult[]): void {
+        if (reported.some(refused)) {
+            this.ctx.fail('provision', googleFailure({ kind: 'unauthorized' }));
+        }
     }
 
-    private onItem(item: ProvisionItemResult): void {
-        this.ctx.update((state) => withItem(state, item));
+    /** An item's result on its row; the doctor's 401 is no news of the item (finding 34): its row keeps what it showed. */
+    private onItem(item: ProvisionItemResult, doctor: boolean): void {
+        if (!(doctor && refused(item))) {
+            this.ctx.update((state) => withItem(state, item));
+        }
     }
 
     /** The step's state from its items; `busy` while what follows the run (its record) is still on its way. */
@@ -148,8 +194,8 @@ class Provision implements ProvisionFlow {
         this.ctx.patchStep('provision', { state, busy, checkedAt: this.ctx.nowIso() });
     }
 
-    private async record(): Promise<void> {
-        const request = provisionRequest(this.ctx.state().provision.items);
+    private async record(reported: readonly ProvisionItemResult[]): Promise<void> {
+        const request = provisionRequest(reported);
         if (this.ctx.state().mode !== 'normal' || request === null) {
             return;
         }

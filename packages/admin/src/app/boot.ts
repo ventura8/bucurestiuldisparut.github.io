@@ -58,6 +58,7 @@ function missingState(env: MissingEnvironment): AdminState<null> {
         notice: null,
         leaving: null,
         revoked: false,
+        newRelease: null,
         people: {},
         unread: null,
         cities: [],
