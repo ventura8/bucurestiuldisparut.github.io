@@ -16,6 +16,7 @@ import { createLegacyImport } from '../import/legacy-import.js';
 import type { ProjectConfig } from '../provision/project-config.js';
 import { createSetupCloud } from '../provision/setup-cloud.js';
 import { createSetupModule, type SetupModule, type SetupModuleOptions } from '../setup/module.js';
+import type { SetupLegacyImport } from '../setup/ports.js';
 import type { FirebaseWebConfig } from './config.js';
 import { legacyPhotoStore, legacyReprocess } from './legacy-photos.js';
 import type { Clock } from './ports.js';
@@ -86,6 +87,21 @@ export function publishedMapCheck(firebase: Pick<FirebasePorts, 'documents'>, ci
     };
 }
 
+/**
+ * §73k: whether step (h)'s legacy import is complete (every old photo imported, none failed), read without a write; a
+ * failed read says no, so a site build keeps the originals rather than leave out what the import may still need.
+ */
+export function legacyImportedCheck(importer: Pick<SetupLegacyImport, 'detect'>): () => Promise<boolean> {
+    return async () => {
+        try {
+            const { done, total, failed } = await importer.detect();
+            return total > 0 && done >= total && failed.length === 0;
+        } catch {
+            return false;
+        }
+    };
+}
+
 /** M6: the admin's own install bundle, read once it is found (`../install/bundle.ts`). */
 export function installBundleLoader(deps: SetupWiringDeps): () => Promise<InstallBundle> {
     const { config, fetch: fetcher, baseUrl, release, releaseTime, installOrigins } = deps;
@@ -98,13 +114,19 @@ export function installBundleLoader(deps: SetupWiringDeps): () => Promise<Instal
 }
 
 /** M6: the Cloud Build installer over the admin's own bundle, origin and release. */
-function installerFor(deps: SetupWiringDeps, cityId: string, sleep: (ms: number) => Promise<void>): InstallerPort {
+function installerFor(
+    deps: SetupWiringDeps,
+    cityId: string,
+    sleep: (ms: number) => Promise<void>,
+    importer: Pick<SetupLegacyImport, 'detect'>,
+): InstallerPort {
     return createCloudBuildInstaller({
         ...{ fetch: deps.fetch, sleep, log: deps.log.child('install'), projectId: deps.config.projectId, region: deps.project.region },
         bundle: installBundleLoader(deps),
         origin: new URL(deps.baseUrl).origin,
         hasPublishedMap: publishedMapCheck(deps.firebase, cityId),
         newerAdmin: deps.newerAdmin,
+        legacyImported: legacyImportedCheck(importer),
     });
 }
 
@@ -132,7 +154,7 @@ export function setupOptionsFor(deps: SetupWiringDeps): SetupModuleOptions {
     });
     const createCity = async (): Promise<{ readonly created: boolean }> =>
         firebase.callables.call('setup.createCity', { cityId, city: await bundledCity(deps, cityId) });
-    const installer = installerFor(deps, cityId, sleep);
+    const installer = installerFor(deps, cityId, sleep, importer);
     const siteAddress = `https://${config.projectId}.web.app/`;
     const release = { release: deps.release, releaseTime: deps.releaseTime };
     return { cloud, importer, createCity, cityId, cityBBox: null, installer, ...release, siteAddress };

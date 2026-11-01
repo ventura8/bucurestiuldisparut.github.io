@@ -4,7 +4,6 @@ import {
     FIRESTORE_PATHS,
     MANIFEST_DEBOUNCE_SECONDS,
     MANIFEST_QUEUE,
-    VERTEX_MODEL_ID,
     cityDocSchema,
     manifestStateDocSchema,
     manifestTaskId,
@@ -18,10 +17,11 @@ import {
 } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
+import { withOfferedModel } from '../api/vertex-models.js';
 import type { BlobStore } from '../ports/blob-store.js';
 import type { Ports } from '../ports/index.js';
 import type { SecretName } from '../ports/secret-store.js';
-import { MAPBOX_FAILURES, ROLES, SECRET_FAILURES, TRANSIENT, refusal, upstream, viaCloud, type FailureMap } from './failures.js';
+import { MAPBOX_FAILURES, ROLES, SECRET_FAILURES, TRANSIENT, refusal, upstream, viaCloud } from './failures.js';
 import { readSetupStatus } from './records.js';
 import { checkUsgs, type UsgsOutcome } from './usgs-check.js';
 
@@ -195,23 +195,22 @@ async function checkErrorReporting(deps: SelfTestDeps): Promise<CheckResult> {
 /** Vertex AI's API, named by a refusal. */
 const VERTEX_API = 'aiplatform.googleapis.com';
 
-/** M6 (finding 20): a 404 is the pinned model, which Google does not offer to the project (retired, or not in it). */
-const AI_FAILURES: FailureMap = { ...TRANSIENT, notFound: ['apiError.assist.modelUnavailable', { model: VERTEX_MODEL_ID }] };
-
 /**
  * M4 (`docs/research/M4-interfaces.md` §4.4, CR-M4-5; S-A45-HAPPY-SELF-TEST, S-A45-BAD-API-DISABLED): `countTokens` of a
- * word on the pinned model proves the Vertex AI API, `fn-admin@`'s custom role `hcmVertexDrafts` and that Google still serves
- * the model, without a charge (never `generateContent`). M6 (finding 20; S-A45-BAD-MODEL-UNAVAILABLE,
- * S-A45-BAD-UPSTREAM-LOGGED): a 404 names the model, and any other answer Google refused names its reason
- * (`apiError.cloud.refused`); none is `apiError.internal` any more.
+ * word proves the Vertex AI API, `fn-admin@`'s custom role `hcmVertexDrafts` and that Google serves a model, without a
+ * charge (never `generateContent`). M6 (finding 20; S-A45-BAD-MODEL-UNAVAILABLE, S-A45-BAD-UPSTREAM-LOGGED): any answer
+ * Google refused names its reason (`apiError.cloud.refused`); none is `apiError.internal` any more. §67g (the user's
+ * decision of 2026-11-01; S-A45-HAPPY-FALLBACK-MODEL): the models of `VERTEX_MODEL_IDS` are probed in order, the check
+ * names the one in use (`params.model`), and a project offered none names every model tried.
  */
-async function checkAi(deps: SelfTestDeps): Promise<CheckResult> {
+async function checkAi(deps: SelfTestDeps, context: CheckContext): Promise<CheckResult> {
     try {
-        await viaCloud(deps.translator.countTokens(VERTEX_MODEL_ID, 'test'), ROLES.vertexDrafts, AI_FAILURES);
+        const offered = withOfferedModel(context.now, (model) => deps.translator.countTokens(model, 'test'));
+        const { model } = await viaCloud(offered, ROLES.vertexDrafts, TRANSIENT);
+        return { state: 'ok', params: { model } };
     } catch (error) {
         throw refusal(error, VERTEX_API);
     }
-    return OK;
 }
 
 /** Every check, in the order the card lists them. */

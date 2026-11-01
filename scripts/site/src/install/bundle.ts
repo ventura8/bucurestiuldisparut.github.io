@@ -9,8 +9,10 @@
  *   a `firebase.json` of the server's parts (no `predeploy`), the Firestore and Storage rules and indexes, `.firebaserc`,
  *   `tools/` (the locked `firebase-tools`, with the vendored copies its lock links to) and `steps/`;
  * - `pipeline.tgz`: the raster pipeline's Docker context (no tests) and `steps/`;
- * - `hosting.tgz`: the public Hosting tree under `public/` without `admin/install/**`, a `firebase.json` of Hosting
- *   only, `.firebaserc`, `tools/` and `steps/`;
+ * - `hosting.tgz`: the public Hosting tree under `public/` without `admin/install/**` and the old photos' originals, a
+ *   `firebase.json` of Hosting only, `.firebaserc`, `tools/` and `steps/`;
+ * - `legacy.tgz` (§73k): the originals, `public/admin/legacy/<city>/originals/**`, which a site build fetches only while
+ *   the legacy import is not complete (none when the public tree has none);
  * - `manifest.json` (`installManifestSchema`): the release and its build time (the admin's `runtime.json`'s: finding 39
  *   of 2026-11-01), the slug, the project, each tarball's size and SHA-256,
  *   the server's functions, the tools by digest and the build estimates.
@@ -23,6 +25,7 @@ import {
     BACKGROUND_FUNCTIONS,
     CALLABLES,
     deployedName,
+    DOCKER_BUILDER_IMAGE,
     FIREBASE_TOOLS_VERSION,
     HTTP_ENDPOINTS,
     INSTALL_BUNDLE_FILES,
@@ -30,6 +33,7 @@ import {
     INSTALL_FOLDER,
     INSTALL_FORMAT,
     INSTALL_MANIFEST_FILE,
+    LEGACY_BUNDLE_FILE,
     installManifestSchema,
     installReleaseSlug,
     type InstallManifest,
@@ -44,13 +48,6 @@ import { toolsFolder, type Lockfile, type RootManifest } from './tools-lock.js';
 
 /** The Node image of every Node step, by digest: the quality image's own pin (`docker/Dockerfile.quality`, a test keeps them equal). */
 export const NODE_STEP_IMAGE = 'node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20';
-
-/**
- * The Docker builder of the pipeline's steps, by digest: none until its digest is read (`DECISIONS-for-review.md` §67e,
- * NOT APPLIED: reading it is a network request); until then the admin's pipeline card says the in-app install is not
- * available in this release.
- */
-const DOCKER_STEP_IMAGE: string | null = null;
 
 /** The raster pipeline's Docker context in the bundle (its tests stay out). */
 const PIPELINE_FILES = ['Dockerfile', 'pyproject.toml', 'poetry.lock', 'requirements-poetry.txt', 'README.md'] as const;
@@ -94,7 +91,8 @@ export interface InstallBundleOptions {
 export interface InstallBundleReport {
     readonly release: string;
     readonly slug: string;
-    readonly bytes: Readonly<Record<InstallTarget, number>>;
+    /** Each tarball's size; `legacy` 0 for a public tree without the old photos' originals (§73k). */
+    readonly bytes: Readonly<Record<InstallTarget | 'legacy', number>>;
 }
 
 /** The step scripts as the bundle carries them (`steps-bundle.ts`): path → bytes. */
@@ -198,16 +196,24 @@ function pipelineEntries(files: SiteFileSystem, steps: readonly TarEntry[]): Tar
     ];
 }
 
+/** The old photos' originals in the public tree (`admin/legacy/<city>/originals/…`), which travel in `legacy.tgz` (§73k). */
+const LEGACY_ORIGINAL = /^admin\/legacy\/[^/]+\/originals\//;
+
 function hostingEntries(files: SiteFileSystem, options: InstallBundleOptions, shared: readonly TarEntry[]): TarEntry[] {
     if (!files.isFile(`${options.publicTree}/index.html`)) {
         throw new SiteBuildError(`the install bundle needs the public Hosting tree in ${options.publicTree} (npm run build:hosting)`);
     }
-    const bundleFolder = (path: string): boolean => path.startsWith(`admin/${INSTALL_FOLDER}/`);
+    const elsewhere = (path: string): boolean => path.startsWith(`admin/${INSTALL_FOLDER}/`) || LEGACY_ORIGINAL.test(path);
     return [
-        ...folderEntries(files, options.publicTree, 'public/', bundleFolder),
+        ...folderEntries(files, options.publicTree, 'public/', elsewhere),
         { path: 'firebase.json', content: firebaseConfig(files, ['hosting']) },
         ...shared,
     ];
+}
+
+/** The legacy originals at their place in the public tree, or nothing for a tree without them. */
+function legacyEntries(files: SiteFileSystem, options: InstallBundleOptions): TarEntry[] {
+    return folderEntries(files, options.publicTree, 'public/', (path) => !LEGACY_ORIGINAL.test(path));
 }
 
 function projectIdOf(files: SiteFileSystem): string {
@@ -218,26 +224,36 @@ function projectIdOf(files: SiteFileSystem): string {
     return projectId;
 }
 
+/** One tarball's entry in the manifest. */
+function bundleFile<Name extends string>(
+    name: Name,
+    bytes: Uint8Array,
+): { readonly name: Name; readonly bytes: number; readonly sha256: string } {
+    return { name, bytes: bytes.length, sha256: sha256(bytes) };
+}
+
 function manifestOf(
     stamp: { readonly release: string; readonly releaseTime: number | null },
     projectId: string,
     tarballs: Readonly<Record<InstallTarget, Uint8Array>>,
+    legacy: Uint8Array | null,
 ): InstallManifest {
     const { release } = stamp;
-    const file = (target: InstallTarget) => ({
-        name: INSTALL_BUNDLE_FILES[target],
-        bytes: tarballs[target].length,
-        sha256: sha256(tarballs[target]),
-    });
+    const file = (target: InstallTarget) => bundleFile(INSTALL_BUNDLE_FILES[target], tarballs[target]);
     const manifest = {
         format: INSTALL_FORMAT,
         release,
         releaseTime: stamp.releaseTime,
         slug: installReleaseSlug(release),
         projectId,
-        files: { server: file('server'), pipeline: file('pipeline'), site: file('site') },
+        files: {
+            server: file('server'),
+            pipeline: file('pipeline'),
+            site: file('site'),
+            ...(legacy === null ? {} : { legacy: bundleFile(LEGACY_BUNDLE_FILE, legacy) }),
+        },
         functions: expectedFunctionNames(),
-        tools: { firebaseTools: FIREBASE_TOOLS_VERSION, node: NODE_STEP_IMAGE, docker: DOCKER_STEP_IMAGE },
+        tools: { firebaseTools: FIREBASE_TOOLS_VERSION, node: NODE_STEP_IMAGE, docker: DOCKER_BUILDER_IMAGE },
         estimates: INSTALL_ESTIMATES,
     };
     const parsed = installManifestSchema.safeParse(manifest);
@@ -245,6 +261,23 @@ function manifestOf(
         throw new SiteBuildError(`the install manifest is not valid: ${parsed.error.message}`);
     }
     return parsed.data;
+}
+
+/** The legacy originals' tarball, or null for a public tree without them (§73k). */
+function legacyTarball(files: SiteFileSystem, options: InstallBundleOptions, mtime: number): Uint8Array | null {
+    const originals = legacyEntries(files, options);
+    return originals.length === 0 ? null : tgz(originals, mtime);
+}
+
+/** Each file of a release's bundle folder, by name: the tarballs, the originals' when there are some, the manifest. */
+function bundleFolderFiles(
+    tarballs: Readonly<Record<InstallTarget, Uint8Array>>,
+    legacy: Uint8Array | null,
+    manifest: InstallManifest,
+): readonly (readonly [string, Uint8Array])[] {
+    const targets = (Object.keys(tarballs) as InstallTarget[]).map((target) => [INSTALL_BUNDLE_FILES[target], tarballs[target]] as const);
+    const originals = legacy === null ? [] : [[LEGACY_BUNDLE_FILE, legacy] as const];
+    return [...targets, ...originals, [INSTALL_MANIFEST_FILE, json(manifest)] as const];
 }
 
 /** Builds the bundle into every `out` tree; `steps` is `bundleSteps`' result. */
@@ -259,17 +292,24 @@ export function buildInstallBundle(options: InstallBundleOptions, files: SiteFil
         pipeline: tgz(pipelineEntries(files, stepEntries), mtime),
         site: tgz(hostingEntries(files, options, withTools), mtime),
     };
-    const manifest = manifestOf({ release, releaseTime: releaseTime(files, options.env, options.commitTime) }, projectId, tarballs);
+    const legacy = legacyTarball(files, options, mtime);
+    const stamp = { release, releaseTime: releaseTime(files, options.env, options.commitTime) };
+    const manifest = manifestOf(stamp, projectId, tarballs, legacy);
+    const written = bundleFolderFiles(tarballs, legacy, manifest);
     for (const out of options.out) {
         const folder = `${out}/admin/${INSTALL_FOLDER}/${manifest.slug}`;
-        (Object.keys(tarballs) as InstallTarget[]).forEach((target) => {
-            files.write(`${folder}/${INSTALL_BUNDLE_FILES[target]}`, tarballs[target]);
+        written.forEach(([name, bytes]) => {
+            files.write(`${folder}/${name}`, bytes);
         });
-        files.write(`${folder}/${INSTALL_MANIFEST_FILE}`, json(manifest));
     }
     return {
         release,
         slug: manifest.slug,
-        bytes: { server: tarballs.server.length, pipeline: tarballs.pipeline.length, site: tarballs.site.length },
+        bytes: {
+            server: tarballs.server.length,
+            pipeline: tarballs.pipeline.length,
+            site: tarballs.site.length,
+            legacy: legacy === null ? 0 : legacy.length,
+        },
     };
 }

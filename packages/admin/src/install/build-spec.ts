@@ -34,6 +34,11 @@ export interface BuildParams {
     /** SHA-256 of the target's tarball, as the manifest names it. */
     readonly fileSha256: string;
     readonly images: BuildImages;
+    /**
+     * §73k: whether a site build fetches and unpacks `legacy.tgz` (the old photos' originals): while the legacy import is
+     * not complete and the bundle has them. The other targets ignore it.
+     */
+    readonly legacy: boolean;
 }
 
 /** Every build's tag, and each target's own (the cards list builds by it). */
@@ -71,8 +76,21 @@ function pipelineImage(region: string): string {
     return `${region}-docker.pkg.dev/$PROJECT_ID/${PIPELINE_REPOSITORY}/pipeline:\${_SLUG}`;
 }
 
+/** The site build's extra env: the bundle kept in the release, and the legacy originals while they are needed (§73k). */
+function siteEnv(target: InstallTarget, params: BuildParams): readonly string[] {
+    if (target !== 'site') {
+        return [];
+    }
+    const keep = 'HCM_KEEP_BUNDLE=public${_BASE}install/${_SLUG}';
+    return params.legacy ? [keep, 'HCM_UNPACK=legacy'] : [keep];
+}
+
+/** The tarballs `fetch` downloads (`FETCHED`), with `legacy.tgz` for a site build that needs it. */
+function fetched(target: InstallTarget, params: BuildParams): string {
+    return target === 'site' && params.legacy ? `${FETCHED.site},legacy` : FETCHED[target];
+}
+
 function fetchStep(target: InstallTarget, params: BuildParams): JsonObject {
-    const keep = target === 'site' ? ['HCM_KEEP_BUNDLE=public${_BASE}install/${_SLUG}'] : [];
     return {
         id: 'fetch',
         name: params.images.node,
@@ -84,9 +102,9 @@ function fetchStep(target: InstallTarget, params: BuildParams): JsonObject {
             'HCM_FILE_SHA256=${_FILE_SHA256}',
             'HCM_RELEASE=${_RELEASE}',
             'HCM_RELEASE_TIME=${_RELEASE_TIME}',
-            `HCM_FILES=${FETCHED[target]}`,
+            `HCM_FILES=${fetched(target, params)}`,
             `HCM_OUT=/workspace/${TARGET_DIRS[target]}`,
-            ...keep,
+            ...siteEnv(target, params),
         ],
     };
 }

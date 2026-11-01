@@ -1500,7 +1500,7 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
 287. **A split run's emulator logs failed the next run's secret scan.**
     - Seen: the fixer's second split `all` failed `static/gitleaks` with 3,200 findings, all in `firebase-debug.log` at the root: the Firebase CLI's log of the previous run's emulators, which Playwright stopped, so they never removed it; it holds the Auth emulator's test tokens.
     - Found by: the fixer's runs (the first run's `static` came before any emulator, the second after one).
-    - Fix and pin: the stray gitignored logs were deleted before the next run; taking them out of `gitleaks dir`'s scope is `DECISIONS-for-review.md` §73l (ask first).
+    - Fix and pin: the stray gitignored logs were deleted before the next run; `.gitleaks.toml`'s scope allowlist names them since 2026-11-01 (`DECISIONS-for-review.md` §73l, the user's decision); `gitleaks-history` still scans every committed path.
     - **A gitignored file is still in a directory scan's scope: whatever a run leaves behind, the next run's `static` reads.**
 
 288. **A bump left the old hoisted copy of a peer in the lockfile, and two copies of one library stopped meeting.**
@@ -1733,3 +1733,24 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       the browser registers once more (`packages/admin/src/firebase/fcm-record.ts`; S-A47-HAPPY-RENEWED).
     - **An SDK's cache keyed on less than what its result depends on goes stale silently: clear it whenever the part it
       does not key on changes.**
+317. **Leaving the originals out of the release would not have shrunk a publish's transfer.**
+    - Seen: §73k's first reading, "Hosting releases leave out `/admin/legacy/`", while applying the user's decision of
+      2026-11-01.
+    - Found by: tracing what a publish downloads: the site build's `fetch` takes `hosting.tgz` (50.7 MB, 45 MB of it the
+      originals) from the admin's own Hosting, and that download is the transfer the card counts; deleting the folder
+      after the download would have saved nothing of it.
+    - Fix and pin: the originals travel in their own `legacy.tgz` (the manifest's optional `files.legacy`), which a site
+      build fetches and unpacks only while step (h)'s import is not complete (`build-spec.test.ts`,
+      `cloud-build-installer.test.ts`, `fetch-script.test.ts`, `install-bundle.test.ts`; S-A57-HAPPY-PUBLISH-WITHOUT-ORIGINALS,
+      S-A57-BAD-ORIGINALS-UNTIL-IMPORTED); `hosting.tgz`'s budget went from 80,000 to 12,000 KB.
+    - **A cost is cut where it is measured: find the request that moves the bytes before deciding what to leave out.**
+318. **A module-level cache in the functions outlives a test file.**
+    - Seen: the drafts' model choice (§67g, `functions/src/api/vertex-models.ts`) is kept in the module for ten minutes;
+      a test that falls back to the second model leaves it kept for the next test, which then asks the second model first.
+    - Found by: writing S-A45-HAPPY-FALLBACK-MODEL: the `functions` project shares one module graph per worker
+      (`isolate: false`, `vitest.config.ts`), so the next file of the worker would have met the same choice.
+    - Fix and pin: `forgetModelChoice()` before and after each test of the files that make a choice
+      (`self-test.test.ts`, `translate.test.ts`); the e2e tier never makes a fallback choice (only the all-404 scenario,
+      which forgets it), so the emulators' functions keep the first model.
+    - **State a module keeps between calls is shared by every test of a worker that does not isolate: each test that
+      changes it puts it back.**

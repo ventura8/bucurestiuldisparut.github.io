@@ -102,7 +102,7 @@ describe('the draft slot', () => {
         // The draft filled English: the note stays, and no button offers to replace it.
         const view: AssistViewPort = {
             ...IDLE,
-            drafts: { 'title.en': { status: 'done', model: 'gemini-2.5-flash-lite', truncated: true, error: null } },
+            drafts: { 'title.en': { status: 'done', model: 'gemini-3.5-flash-lite', truncated: true, error: null } },
         };
         const drafted = await render(
             draftAssist({
@@ -115,7 +115,7 @@ describe('the draft slot', () => {
             }),
         );
         expect(deepText(deep(drafted, '[data-draft-note]'))).toBe(
-            'Draft proposed by gemini-2.5-flash-lite: check it before you save. The draft was shortened to fit the field.',
+            'Draft proposed by gemini-3.5-flash-lite: check it before you save. The draft was shortened to fit the field.',
         );
         expect(deepAll(drafted, '.actions')).toHaveLength(0);
         expect(await axeViolations(drafted)).toEqual([]);

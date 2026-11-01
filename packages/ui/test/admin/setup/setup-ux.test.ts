@@ -337,5 +337,12 @@ describe('the page: header and optional checks (findings 7, 20, 24)', () => {
         const element = await render({ selfTest: { checks: [{ id: 'ai', state: 'ok', detail: null }] } });
 
         expect(shadowPart(element, '[data-check="ai"]').textContent).toContain('Translation drafts (Vertex AI)');
+        expect(shadowPart(element, '[data-check="ai"]').querySelector('[data-model]')).toBeNull();
+    });
+
+    it('happyPath_aWorkingAiCheckNamesTheModelInUse', async () => {
+        const element = await render({ selfTest: { checks: [{ id: 'ai', state: 'ok', detail: null, model: 'gemini-3.1-flash-lite' }] } });
+
+        expect(shadowPart(element, '[data-check="ai"] [data-model]').textContent).toBe('Model in use: gemini-3.1-flash-lite');
     });
 });

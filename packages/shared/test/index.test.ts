@@ -504,6 +504,7 @@ const EXPORTS = {
         'TRANSLATION_PROMPT_VERSION',
         'VERTEX_LOCATION',
         'VERTEX_MODEL_ID',
+        'VERTEX_MODEL_IDS',
         'aiCostUsd',
         'aiUsageDocSchema',
         'assistStateDocSchema',

@@ -908,3 +908,23 @@ Where it differs from §1.7, §1.8 and §4.1, this addendum is the contract.
   no button, so no consent note, and the server card (d) does not say its click also installs the pipeline; Install the
   server and Update the map never submit it. With a Docker builder in the bundle nothing changes.
 - §6.1 gains S-A56-BAD-NOT-AVAILABLE; §6.3 the tour state `setup.pipeline-not-available`.
+
+## Addendum 2026-11-01: the user's decisions §67e, §73j, §73k and §76f
+
+- §1.3: `manifest.json`'s `tools.docker` is `gcr.io/cloud-builders/docker@sha256:6a6635024a23c8ed596c26fefc744bd3c5dbe269e8d8d541f2fda2beb0664ea5`
+  (the tag `29`; `DOCKER_BUILDER_IMAGE` of `@hcm/shared`, the tag tracked by `scripts/ci/check_dependency_updates.py`), so
+  the pipeline target is installable from the app (§67e). `files` gains an optional `legacy`, `legacy.tgz`: the public
+  tree's `admin/legacy/<city>/originals/**`, which `hosting.tgz` no longer carries (§73k; 4.5 MB without them,
+  `hosting.tgz` budget 12,000 KB, `legacy.tgz` 60,000 KB).
+- §1.4.3: the site build's `fetch` downloads `legacy.tgz` too and unpacks it into the tree (`HCM_UNPACK=legacy`) only
+  while step (h)'s import is not complete (`CloudBuildInstallerDeps.legacyImported`, read from the importer's `detect`;
+  an unreadable state keeps them); the kept bundle under `admin/install/<slug>/` then lacks `legacy.tgz`, so a later
+  import that needs the originals again comes after a publish made while it is incomplete (which fetches them).
+- §1.9: `SITE_PUBLISH_TRANSFER_MB` (52) while the import is not complete, `SITE_PUBLISH_TRANSFER_TRIMMED_MB` (7) once it
+  is; the site card's cost line follows step (h)'s progress.
+- §4.2: the tab keeps one Google token per scope (`packages/admin/src/auth/google-access.ts`, §73j): the happy path asks
+  at most 4 consents, Publish the map none after the analytics consent within the hour.
+- §3.3 g (step g): Create the measurement reports (§76f), one click with the `analytics.edit` consent, through the lazy
+  chunk `analytics-reports` (Analytics Admin `v1beta`: `accountSummaries`, `properties/*/dataStreams`,
+  `customDimensions`, `customMetrics`); rows S-A22-HAPPY-MEASUREMENT-REPORTS, S-A22-HAPPY-REPORTS-AGAIN-NOTHING,
+  S-A22-BAD-REPORTS-NO-PROPERTY, S-A22-BAD-REPORTS-PERMISSION; the tour state `setup.analytics-reports`.

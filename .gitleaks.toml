@@ -27,6 +27,9 @@ paths = [
     '''^\.ruff_cache/''',
     '''^\.scannerwork/''',
     '''^\.firebase/''',
+    # The Firebase emulators' logs (gitignored): an e2e run whose emulators Playwright stops leaves them at the root,
+    # full of the Auth emulator's generated test tokens (§73l, lesson 287).
+    '''^(firebase|firestore|database|pubsub|storage|ui)-debug(\.[^/]*)?\.log$''',
     '''^\.claude/worktrees/''',
     '''^\.docker-build-cache''',
     '''^\.sonar-token$''',

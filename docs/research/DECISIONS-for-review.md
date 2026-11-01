@@ -4346,7 +4346,7 @@ the user may want to change:
 Verify: `bash scripts/dev/dev-stack.sh` then `bash scripts/dev/dev-stack.sh check` (`[SUCCESS] the local stack works`);
 `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`.
 
-## 67. The M6 contract: Setup with no terminal, the in-app installer on Cloud Build, the public map on Firebase Hosting (2026-10-25) — 67a, 67b, 67h, 67i and 67k DECIDED by the contract (`docs/research/M6-interfaces.md`), each applied by its workstream; 67c, 67e and 67j PROPOSED, NOT APPLIED (two workflow lines and a registry read: ask first); 67d, 67f, 67g and 67l for the user
+## 67. The M6 contract: Setup with no terminal, the in-app installer on Cloud Build, the public map on Firebase Hosting (2026-10-25) — 67a, 67b, 67h, 67i and 67k DECIDED by the contract (`docs/research/M6-interfaces.md`), each applied by its workstream; 67c, 67e and 67j PROPOSED, NOT APPLIED (two workflow lines and a registry read: ask first); 67d, 67f, 67g and 67l for the user; 67e and 67g APPLIED 2026-11-01 (the user's decision, §80)
 
 The contract answers the user's live manual test of 2026-10-25 (`docs/research/manual-test-2026-10-25.md`, findings
 1–24) and the user's four requirements of that day: install the server from step (d) with a button; no Claude and no
@@ -4386,7 +4386,7 @@ the IAM grant of finding 17 was applied live, by hand and with the user's approv
 - **67d For the user: the viewer's origins.** `infra/project.json` `viewerOrigins` and `HCM_VIEWER_ORIGINS` become the
   two Hosting origins; the contract keeps `https://ventura8.github.io` beside them while the Pages site exists (its
   token keeps working there). Dropping it once 67c's redirect is live tightens the token.
-- **67e PROPOSED, NOT APPLIED (a network read, ask first): the digest of `gcr.io/cloud-builders/docker`.** The pipeline
+- **67e APPLIED 2026-11-01 (user decision; §80a): `tools.docker` = `gcr.io/cloud-builders/docker@sha256:6a6635024a23c8ed596c26fefc744bd3c5dbe269e8d8d541f2fda2beb0664ea5`, the tag `29`.** Originally PROPOSED, NOT APPLIED (a network read, ask first): the digest of `gcr.io/cloud-builders/docker`. The pipeline
   build's Docker steps must name their image by digest (the repository's rule). Reading the current digest is a request
   to Google's registry (no image is pulled), so it waits for the user's yes; until then the pipeline target is complete
   and tested against the fakes, and the live card says it is not available in this release. The command, for the yes:
@@ -4397,7 +4397,7 @@ the IAM grant of finding 17 was applied live, by hand and with the user's approv
   waited (a new account, which Google opens as a trial for a new customer) is recorded as a likely trial, and Home
   reminds 14 days before its 90th day, with the link to upgrade and "It is a paid account" to dismiss it for good. An
   account that existed before is never flagged.
-- **67g For the user, after the probe: the Vertex AI model.** The `ai` check's `apiError.internal` means Vertex AI
+- **67g APPLIED 2026-11-01 (user decision; §80b): `gemini-3.5-flash-lite`, then `gemini-3.1-flash-lite`, the first one offered.** Originally for the user, after the probe: the Vertex AI model. The `ai` check's `apiError.internal` means Vertex AI
   answered with a failure the check did not map (a 404, a 400 or 422, a 401, or no `totalTokens`); the leading
   hypothesis is a 404 for `gemini-2.5-flash-lite` in `us-central1` (retired, or not offered to this project), UNVERIFIED.
   M6 logs the status and Google's reason and names them on the card; if the probe shows a retired model, changing
@@ -4734,7 +4734,7 @@ split stage is the integrator's.
 
 Verify: `PIPELINE_STAGE=static`, `tests`, `build`, then `PIPELINE_STAGE=quality bash scripts/ci/e2e-split.sh` (quoted in `docs/research/M6-status.md` §1).
 
-## 73. The M6 reviews' fixes: the admin's sign-in kept in its tab, the installer's guards, the live map's upgrade path and minimum input (2026-10-30) — 73a APPLIED for review (a product choice, reversible in one line: the user decides); 73b–73i APPLIED (product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download); 73j PROPOSED, NOT APPLIED (a product decision); 73k recorded; 73m APPLIED 2026-10-31 (§74)
+## 73. The M6 reviews' fixes: the admin's sign-in kept in its tab, the installer's guards, the live map's upgrade path and minimum input (2026-10-30) — 73a APPLIED for review (a product choice, reversible in one line: the user decides); 73b–73i APPLIED (product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download); 73j PROPOSED, NOT APPLIED (a product decision); 73k recorded; 73m APPLIED 2026-10-31 (§74); 73j, 73k and 73l APPLIED 2026-11-01 (the user's decision, §80)
 
 - **73a APPLIED for review: the admin's Firebase sign-in lives in its tab's `sessionStorage`** (security-cost finding 1). Since M6 the public map and the admin share one origin, and `getAuth` kept the owner's refresh token in the origin's IndexedDB (`firebaseLocalStorageDb`), which any script on a viewer page could read and use to call the owner-only callables. `packages/admin/src/firebase/app.ts` now creates Auth with `initializeAuth(app, { persistence: browserSessionPersistence })`, the popup's resolver passed with each popup (`adapters.ts`; Node's build of `firebase/auth`, which the entry's tests load, has none). The trade-off, for the user: one sign-in per tab (a reload keeps it; a new tab, or a notification's link, asks once more: one click on an already signed-in Google account). Reverting is one line (`browserLocalPersistence`), with the risk above. The admin's `hcm:admin:*` `localStorage` keys hold no secret and no authority: each is a preference read through a fixed parser (the language, the theme, the analytics consent, the city last chosen), so a same-origin script forging one gains nothing it could not do itself. The e2e tier signs a persona in through an init script that fills the admin tab's `sessionStorage` (`e2e/admin/support/session.ts`), only under `/admin/` and the harness page, so a viewer page of the same context starts with nothing (S-A58-HAPPY-SIGN-IN-IN-TAB, S-A58-BAD-VIEWER-READS-NO-SIGN-IN); the content specs take an option `signedIn` for a signed-out tab, and S-A25-BAD-RELOAD-KEEPS-STEPS checks the app's own `sessionStorage` record apart from Firebase's session (lessons 284, 285). A header CSP with enforced Trusted Types on the viewer's paths stays a possible next step (the viewer's meta CSP and Mapbox's SRI already apply).
 - **73b APPLIED: an older admin never replaces a newer server, complete or not** (security-cost finding 2). `InstalledInfo` carries the newest release any deployed function or job names (`newest`) and whether part of the target is there (`partial`); `deriveInstallState` says `newerInstalled` whenever `newest` is newer than the bundle, before completeness, so the `--force` deploy of an older release can no longer delete a newer one's functions (S-A55-BAD-DOWNGRADE-INCOMPLETE, unit tests in `model.test.ts` and `cloud-build-installer.test.ts`).
@@ -4745,10 +4745,10 @@ Verify: `PIPELINE_STAGE=static`, `tests`, `build`, then `PIPELINE_STAGE=quality 
 - **73g APPLIED: the copy and the cards' clutter** (min-input findings 7–10). The Mapbox console's link reads **Open the Mapbox console** with the payment advice in its hint; Do it later is not offered while a USGS token waits for approval (S-A59-BAD-NO-LATER-WHILE-PENDING); step (d) shows no function count before its first look nor beside a Done chip; "The button is off:" reads **Not available yet:** / **Încă indisponibil:**; the unused `adminSetup.install.site.needsServer` is gone; each install card has one cost line (the frame leaves an available install step's cost to its body); the not-available pipeline says the map works without it meanwhile; the not-provisioned blocker names Check again, then Retry what failed.
 - **73h APPLIED (documentation): the consents the whole assistant asks** (min-input finding 11). The tab keeps one Google token, so Analytics' consent replaces Google Cloud's and Publish the map asks Google once more: `docs/MANUAL_TEST_PLAN.md` and `docs/research/M6-status.md` now say at most 11 inputs and 5 consents. Keeping one token per scope would save that consent; it is 73j.
 - **73i APPLIED (documentation): the imagery pipeline is not installable from the app in this release** (min-input finding 3). The install bundle names no Docker builder digest (§67e, the user's decision), so requirement 2 holds for the server and the public map and waits on §67e for the pipeline; the plan and the status say so, with D5 as the pipeline's way in meanwhile.
-- **73j PROPOSED, NOT APPLIED (a product decision): one Google token per scope in the tab**, so the analytics consent no longer costs Publish the map a consent within the hour. It changes `packages/admin/src/auth/google-access.ts`'s single-token rule (memory only either way) and the journey's counts; for the user.
-- **73l PROPOSED, NOT APPLIED (a `.gitleaks.toml` edit; the fixer's session could not make it): the emulators' logs out of `gitleaks dir`'s scope.** The fixer's second split `all` failed `static/gitleaks` on 3,200 findings in `firebase-debug.log`, the gitignored log the Firebase CLI writes at the root when an e2e run's emulators are stopped by Playwright rather than exiting by themselves; it holds the Auth emulator's generated test tokens, and the next run's `static` scans it. The fixer deleted the stray logs (`firebase-debug.log`, `firestore-debug.log`, `pubsub-debug.log`, all gitignored) before the third run. The proposed diff adds, to the scope allowlist of gitignored pipeline output that already lists `reports/` and `dist/`: `'''^(firebase|firestore|database|pubsub|storage|ui)-debug(\.[^/]*)?\.log$'''` (the names `.gitignore` ignores); `gitleaks-history` keeps no path allowlist. Ask first (it changes a gate's scope). Lesson 287.
+- **73j APPLIED 2026-11-01 (user decision; §80c)**, originally PROPOSED, NOT APPLIED (a product decision): **one Google token per scope in the tab**, so the analytics consent no longer costs Publish the map a consent within the hour. It changes `packages/admin/src/auth/google-access.ts`'s single-token rule (memory only either way) and the journey's counts; for the user.
+- **73l APPLIED 2026-11-01 (user decision; §80e: the entry below, as proposed, in `.gitleaks.toml`'s scope allowlist; `.gitleaks-history.toml` unchanged)**, originally PROPOSED, NOT APPLIED (a `.gitleaks.toml` edit; the fixer's session could not make it): **the emulators' logs out of `gitleaks dir`'s scope.** The fixer's second split `all` failed `static/gitleaks` on 3,200 findings in `firebase-debug.log`, the gitignored log the Firebase CLI writes at the root when an e2e run's emulators are stopped by Playwright rather than exiting by themselves; it holds the Auth emulator's generated test tokens, and the next run's `static` scans it. The fixer deleted the stray logs (`firebase-debug.log`, `firestore-debug.log`, `pubsub-debug.log`, all gitignored) before the third run. The proposed diff adds, to the scope allowlist of gitignored pipeline output that already lists `reports/` and `dist/`: `'''^(firebase|firestore|database|pubsub|storage|ui)-debug(\.[^/]*)?\.log$'''` (the names `.gitignore` ignores); `gitleaks-history` keeps no path allowlist. Ask first (it changes a gate's scope). Lesson 287.
 - **73m APPLIED 2026-10-31 (§74e: `pyasn1` 0.6.5 in `pipeline/poetry.lock`, `"glob": "14.0.3"` in the root `overrides` and `functions/deploy-lock` refreshed; the user approved the dependency update): `pyasn1` 0.6.5 for the pipeline.** Published during the fixer's third run: CVE-2026-119194 to CVE-2026-119197 in `pyasn1` 0.6.4 (a transitive dependency of the raster pipeline, `pipeline/poetry.lock`), fixed in 0.6.5; `static/pipeline-pip-audit` fails on it. The fix is `poetry update pyasn1` in the image (a download), then the quality image rebuilt and `PIPELINE_STAGE=static` green; never an allowlist. Like §72c, for the orchestrator's approved dependency update. A later `static` run (2026-10-31) also found GHSA-3g3m-2fjr-6pw4 (`glob` 3.0.0–14.0.1, through `rimraf` and `gaxios`), which fails `npm-audit` beside §72c and now `deploy-lock-audit` (`functions/deploy-lock`): the same kind of fix, `overrides` and a lock refresh, a download.
-- **73k Recorded: the legacy originals in every Hosting release.** `hosting.tgz` is mostly `/admin/legacy/` (45 MB of the old photos' originals, which step (h) imports). Keeping them out of the published site once the import is done would shrink each publish's transfer to a few MB; it changes what a later import can read, so it waits for the user.
+- **73k APPLIED 2026-11-01 (user decision; §80d)**, originally recorded: **the legacy originals in every Hosting release.** `hosting.tgz` is mostly `/admin/legacy/` (45 MB of the old photos' originals, which step (h) imports). Keeping them out of the published site once the import is done would shrink each publish's transfer to a few MB; it changes what a later import can read, so it waits for the user.
 
 Verify: `bash scripts/ci/e2e-split.sh` (stage `all`), quoted in `docs/research/M6-status.md` §1.
 
@@ -4996,7 +4996,7 @@ The source: findings 25–28 of `docs/research/manual-test-2026-10-25.md` → *L
 Verify: `static`, `tests` and `build`, and the touched Playwright specs in the quality image
 (`docs/research/M6-status.md` §6).
 
-## 76. Field measurements: Core Web Vitals and the apps' own timings in GA4, after consent (2026-10-31) — 76a–76e APPLIED (the user's request and decisions of 2026-10-31, the download of `web-vitals` approved; 76d a stricter dependency rule and new budget rows, 76e a build setting that keeps a gate green without raising its budget: the pre-approved kinds; no gate relaxed, no budget raised, no checker allowlist entry); 76f recorded for the user
+## 76. Field measurements: Core Web Vitals and the apps' own timings in GA4, after consent (2026-10-31) — 76a–76e APPLIED (the user's request and decisions of 2026-10-31, the download of `web-vitals` approved; 76d a stricter dependency rule and new budget rows, 76e a build setting that keeps a gate green without raising its budget: the pre-approved kinds; no gate relaxed, no budget raised, no checker allowlist entry); 76f recorded for the user; its first option APPLIED 2026-11-01 (the user's decision, §80f)
 
 The user's request (2026-10-31): "make sure we get all measurements from the field for improvements", in this release.
 The full list of events, parameters, moments and reasons: `docs/ARCHITECTURE.md` → *Field measurements*.
@@ -5058,7 +5058,7 @@ The full list of events, parameters, moments and reasons: `docs/ARCHITECTURE.md`
   (budget 100), `engine.iife.js` 117.2 → 120.1 KB (125), `compare` 4.6 → 4.2 KB, `firebase-sdk` 13.4 KB, `field-sdk`
   7.3 KB (new, 9); the admin's entry 362.7 → 364.5 KB (450), its `field-sdk` 7.2 KB (new, 9), all of it 601.3 →
   609.6 KB (620). No budget was raised.
-- **76f recorded for the user: how to analyse, and later options.** GA4 shows the events by name after a day; the
+- **76f recorded for the user: how to analyse, and later options; the custom definitions from the app APPLIED 2026-11-01 (user decision; §80f: Setup step g's Create the measurement reports).** GA4 shows the events by name after a day; the
   parameters need registering once as custom dimensions and metrics (`ADMIN_GUIDE.*.md` lists them), then Explore's
   free form gives `web_vitals` by `metric_name`, `window_class` and `release`. Later options, each its own decision: the
   provisioner could register the custom definitions itself (Analytics Admin `customDimensions.create`, a change to the
@@ -5229,3 +5229,60 @@ at `admin-l1440-ro`, `e2e/admin/specs/install/states.spec.ts` for the new states
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`, and the touched Playwright specs in the quality image
 (`e2e/admin/specs/editing/drafts.spec.ts`, `e2e/admin/specs/pois/in-view.spec.ts`, `e2e/admin/steps/install/update.spec.ts`,
 `e2e/admin/specs/install/states.spec.ts`, `e2e/tour/admin-jobs.tour.ts`, `e2e/admin/specs/notify/push.spec.ts`).
+
+## 80. The user's decisions of 2026-11-01, "do all": the pipeline's builder, the drafts' model, a token per scope, the originals out of later publishes, the emulators' logs, the measurement reports — 80a–80f APPLIED 2026-11-01 (the user's decision in chat, the recommended option each; one network read approved: the registry read of 80a; 80d and 80f add budget rows and lower one, 80a extends the deps gate to gcr.io, 80e is the approved `.gitleaks.toml` entry: the pre-approved or approved kinds; no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged)
+
+- **80a (§67e): Google's Docker builder pinned by digest.** The one approved read: gcr.io's anonymous tag list
+  (`/v2/cloud-builders/docker/tags/list`) and `docker buildx imagetools inspect gcr.io/cloud-builders/docker:29`, no pull.
+  The current line is the tag `29`, an OCI index of linux/amd64 (`sha256:59561410…`) and linux/arm64 (`sha256:530261ce…`),
+  digest `sha256:6a6635024a23c8ed596c26fefc744bd3c5dbe269e8d8d541f2fda2beb0664ea5`; `latest` names `20.10.24`, which with
+  `24.0.9` carries Google's `no-new-use-public-image` marker. Written as `DOCKER_BUILDER_PIN` (tag and digest, read by the
+  deps gate) and `DOCKER_BUILDER_IMAGE` (digest only, the manifest's `tools.docker`) in
+  `packages/shared/src/schemas/install.ts`, a test keeping them equal; `scripts/site/src/install/bundle.ts` writes it, and
+  the build spec's golden pipeline, the admin's unit world and the e2e bundle use it. `check_dependency_updates.py` reads
+  that file and gained a gcr.io reader (the anonymous tag list per manifest, leaving out every image Google marks
+  `deprecated-public-image` or `no-new-use-public-image`): a tracked pin, no hold (a tool kept working: pre-approved). Rows:
+  S-A56's notes. UNVERIFIED live: the push to `hcm` as `hcm-installer@` and the jobs' creation (`M6-status.md` §7).
+- **80b (§67g): the drafts' model list.** `VERTEX_MODEL_IDS` = `gemini-3.5-flash-lite` (stable since 2026-07-21,
+  retirement no earlier than 2027-07-21, per Google's Vertex AI model lifecycle page, as the user gave it),
+  `gemini-3.1-flash-lite`. `functions/src/api/vertex-models.ts` (`withOfferedModel`): the models in order, a 404 moving
+  to the next, the choice kept ten minutes per instance; every model 404 is `ModelsNotOfferedError`
+  (`apiError.assist.modelUnavailable` naming both, its log line keeping the last 404). The self-test's `ai` check probes
+  them with `countTokens` and is ok with `params.model`, shown as "Model in use: …" under the check; drafts name the model
+  that drafted. The custom role needs no change (`aiplatform.endpoints.predict`); the price constant stays UNVERIFIED.
+  Rows S-A45-HAPPY-FALLBACK-MODEL (functions), S-A45-HAPPY-MODEL-NAMED (e2e), S-A45-BAD-MODEL-UNAVAILABLE and the S-A45
+  self-test and translate rows updated; lesson 318.
+- **80c (§73j): one Google token per scope.** `GoogleAccessStore` keeps the user's tokens (memory only): a new one
+  replaces those it supersedes (it may be used for every scope they may), `live` answers with the usable token that lives
+  longest; a user change, a sign-out, a wrong account or a 401 still drops them all. The journey asks Publish the map no
+  consent after the analytics consent and counts at most 4 consents (S-A30-HAPPY-NO-TERMINAL; its `- 1` allowance gone);
+  `MANUAL_TEST_PLAN.md` and `M6-status.md` say 11 inputs and 4 consents again.
+- **80d (§73k): the legacy originals out of later publishes.** The transfer is the build's download of the bundle, so
+  the originals moved to their own tarball, `legacy.tgz` (the manifest's optional `files.legacy`); `hosting.tgz` keeps
+  `photos.json` and `city.json`, which the import's detection and the city's creation read. A site build fetches and
+  unpacks `legacy.tgz` (`HCM_FILES=…,legacy`, `HCM_UNPACK=legacy`) only while step (h)'s import is not complete
+  (`legacyImportedCheck` over the importer's `detect`; an unreadable state keeps them); D1 and a fresh project keep them.
+  The site card's transfer follows the import: `SITE_PUBLISH_TRANSFER_MB` 52, `SITE_PUBLISH_TRANSFER_TRIMMED_MB` 7
+  (hosting 4.5 MB, server 0.8, pipeline 0.2 as served, measured by the build stage on 2026-11-01; 7 rounds up with the manifest and headroom). Budgets (stricter, pre-approved): `hosting.tgz`
+  80,000 → 12,000 KB, `legacy.tgz` 60,000 KB new. Rows S-A57-HAPPY-PUBLISH-WITHOUT-ORIGINALS,
+  S-A57-BAD-ORIGINALS-UNTIL-IMPORTED; lesson 317. A later import after a trimmed publish needs a publish made while the
+  import is incomplete (which fetches them), or D1.
+- **80e (§73l): the emulators' logs out of `gitleaks dir`'s scope**, the entry as proposed
+  (`'''^(firebase|firestore|database|pubsub|storage|ui)-debug(\.[^/]*)?\.log$'''`) in `.gitleaks.toml`'s scope allowlist;
+  `.gitleaks-history.toml` unchanged; lesson 287 updated.
+- **80f (§76f): Create the measurement reports.** Step (g)'s new button (RO "Creează rapoartele de măsurători"): with the
+  `analytics.edit` consent (asked on this click when the tab holds no live token of that scope), the admin finds the GA4
+  property whose web stream sends the measurement id through the Analytics Admin API `v1beta` (`accountSummaries`, then
+  each property's `dataStreams`), lists its custom dimensions and metrics and creates the missing ones: the dimensions
+  `metric_name`, `metric_rating`, `debug_target`, `window_class`, `release`, `phase`, `step`, `outcome`, `area`, `target`,
+  `error_kind`, the metrics `metric_value` and `duration_ms` (milliseconds) and `error_count` (standard), each event
+  scoped with its parameter as display name; the card says how many were created and how many were there. Code in a lazy
+  chunk (`packages/admin/src/google/analytics-reports.ts`, `analytics-reports`, 0.8 KB, a new budget row of 1 KB); the
+  admin in all 619.9 of 620 KB in the build stage (no budget raised; the room left is 0.1 KB, so the next admin feature needs a saving first). The fake GA Admin API serves the summaries, streams and definitions
+  (409 on a duplicate) with the scenario `analytics-admin.otherAccount`. Rows S-A22-HAPPY-MEASUREMENT-REPORTS,
+  S-A22-HAPPY-REPORTS-AGAIN-NOTHING, S-A22-BAD-REPORTS-NO-PROPERTY, S-A22-BAD-REPORTS-PERMISSION; the tour state
+  `setup.analytics-reports`. UNVERIFIED live: the API's answers on a real property.
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build`, and the touched Playwright specs in the quality image
+(`e2e/admin/steps/analytics.spec.ts`, `e2e/admin/steps/status.spec.ts`, `e2e/admin/specs/assists/drafts.spec.ts`,
+`e2e/admin/steps/install/update.spec.ts`, `e2e/admin/specs/install/states.spec.ts`, `e2e/admin/specs/journey.spec.ts`).

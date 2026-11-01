@@ -118,11 +118,17 @@ export type GeocodeCellDoc = z.infer<typeof geocodeCellDocSchema>;
 export type AssistStateDoc = z.infer<typeof assistStateDocSchema>;
 
 /**
- * The Gemini model the drafts come from, pinned (a new model is a reviewed change of this line); Vertex AI in the
- * functions' region. UNVERIFIED until the first real call: that Google still serves this id (the setup self-test's `ai`
- * check asks `countTokens`, which costs nothing).
+ * The Gemini models the drafts may come from, in order of preference (a new model is a reviewed change of this list);
+ * Vertex AI in the functions' region. The functions use the first one Google offers the project, probing in order and
+ * keeping the choice for a few minutes (`functions/src/api/vertex-models.ts`); the setup self-test's `ai` check asks
+ * `countTokens`, which costs nothing, and names the model in use. `DECISIONS-for-review.md` §67g (the user's decision,
+ * 2026-11-01): `gemini-2.5-flash-lite` was retired in October 2026 (the live self-test: "Vertex AI does not offer
+ * gemini-2.5-flash-lite to this project"); `gemini-3.5-flash-lite` is stable since 2026-07-21 and retires no earlier
+ * than 2027-07-21 (Google's Vertex AI model lifecycle page), `gemini-3.1-flash-lite` is its fallback.
  */
-export const VERTEX_MODEL_ID = 'gemini-2.5-flash-lite';
+export const VERTEX_MODEL_IDS = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'] as const;
+/** The preferred model: the first of `VERTEX_MODEL_IDS`. */
+export const VERTEX_MODEL_ID = VERTEX_MODEL_IDS[0];
 export const VERTEX_LOCATION = 'us-central1';
 /**
  * The project's custom role the functions' account calls the model with (Provision's `iam` item makes it), instead of
@@ -134,7 +140,10 @@ export const VERTEX_DRAFTS_ROLE_ID = 'hcmVertexDrafts';
 export const VERTEX_DRAFTS_PERMISSIONS: readonly string[] = ['aiplatform.endpoints.predict'];
 /** Bumped whenever `translationPrompt` changes (the golden test pins its text). */
 export const TRANSLATION_PROMPT_VERSION = 1;
-/** UNVERIFIED (Google's price list for the pinned model): US dollars per million tokens. */
+/**
+ * UNVERIFIED (Google's price list for the models of `VERTEX_MODEL_IDS`, kept from the flash-lite price of 2025 until the
+ * first invoice line says otherwise): US dollars per million tokens. The monthly cap bounds what an error here can cost.
+ */
 export const AI_PRICE_USD_PER_MILLION_TOKENS = { input: 0.1, output: 0.4 } as const;
 /** The month's cap for the whole project (expected use: under $0.05): over either, no draft until the next month. */
 export const AI_MONTHLY_CAP = { requests: 500, usd: 0.5 } as const;

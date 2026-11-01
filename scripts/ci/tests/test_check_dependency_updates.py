@@ -342,6 +342,49 @@ def test_bad_path_ghcr_without_a_tag_list_reads_no_tags() -> None:
     assert deps.ghcr_tags("osgeo/gdal", "x", web) == []
 
 
+GCR_TAGS = f"{deps.GCR}/v2/cloud-builders/docker/tags/list"
+BUILDER = Pin("docker", "gcr.io/cloud-builders/docker", "29", ("packages/shared/src/schemas/install.ts",))
+
+
+def gcr_answer(*manifests: object) -> Response:
+    """gcr.io's tag list: one manifest per list of tags (the numeric build tags and old lines carry Google's markers)."""
+    return json_response({"manifest": {f"sha256:{index}": {"tag": tags} for index, tags in enumerate(manifests)}, "tags": []})
+
+
+def test_happy_path_the_install_bundles_docker_builder_is_a_tracked_pin(repo: Path) -> None:
+    pin = f"export const DOCKER_BUILDER_PIN = 'gcr.io/cloud-builders/docker:29@sha256:{DIGEST}';"
+    write(repo, "packages/shared/src/schemas/install.ts", pin)
+
+    assert BUILDER in deps.collect_pins(repo)["docker"]
+    assert any(pin.name == BUILDER.name for pin in deps.collect_pins(ROOT)["docker"])
+
+
+def test_happy_path_gcr_tags_leave_out_every_image_google_retired() -> None:
+    web = FakeWeb(
+        {
+            GCR_TAGS: gcr_answer(
+                ["29"],
+                ["20.10.24", "latest", "no-new-use-public-image-1"],
+                ["129228440", "deprecated-public-image-2"],
+                ["linux-amd64"],
+                "not a list",
+            )
+        }
+    )
+
+    assert deps.gcr_tags("cloud-builders/docker", "29", web) == ["29", "linux-amd64"]
+    assert deps.docker_lookup(BUILDER, web) == Lookup(latest="29")
+
+
+def test_bad_path_a_newer_builder_line_is_reported_and_an_answer_without_manifests_reads_no_tags() -> None:
+    newer = FakeWeb({GCR_TAGS: gcr_answer(["29"], ["30"])})
+    empty = FakeWeb({GCR_TAGS: json_response({"tags": ["29"]})})
+
+    assert deps.docker_lookup(BUILDER, newer) == Lookup(latest="30")
+    assert deps.gcr_tags("cloud-builders/docker", "29", empty) == []
+    assert deps.current_tags("not a manifest") == []
+
+
 def test_bad_path_docker_hub_answer_that_is_not_an_object_is_unusable() -> None:
     pin = Pin("docker", "rhysd/actionlint", "1.7.12", ("Dockerfile",))
     url = f"{HUB}/rhysd/repositories/actionlint/tags?page_size=100"

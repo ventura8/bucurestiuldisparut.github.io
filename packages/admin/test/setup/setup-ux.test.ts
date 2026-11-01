@@ -3,7 +3,7 @@
  * 19 and 24 of the live test of 2026-10-25): the billing card's wait with its last check and the likely free trial, Do
  * it later on USGS and what "done" then means, the import's snackbar, and the live scopes behind the consent note.
  */
-import type { SetupStatusView } from '@hcm/shared';
+import { SITE_PUBLISH_TRANSFER_MB, SITE_PUBLISH_TRANSFER_TRIMMED_MB, type SetupStatusView } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { createBillingFlow } from '../../src/setup/billing.js';
@@ -186,6 +186,8 @@ describe('the import says how it ended (finding 19)', () => {
         await createLegacyImportFlow(ctx).run();
 
         expect(harness.notify).toHaveBeenCalledWith({ key: 'adminSetup.import.allOnMap', params: { count: '45' } });
+        // §73k: with every old photo imported a publish leaves the originals out; the site card says the smaller transfer.
+        expect(ctx.state().install.siteTransferMegabytes).toBe(SITE_PUBLISH_TRANSFER_TRIMMED_MB);
     });
 
     it('badPath_failuresSayHowManyAreOnTheMapAndOpenTheCard', async () => {
@@ -207,6 +209,7 @@ describe('the import says how it ended (finding 19)', () => {
         expect(notice?.action?.key).toBe('adminSetup.import.open');
         notice?.action?.run();
         expect(ctx.state().openStep).toBe('legacyImport');
+        expect(ctx.state().install.siteTransferMegabytes).toBe(SITE_PUBLISH_TRANSFER_MB);
     });
 });
 

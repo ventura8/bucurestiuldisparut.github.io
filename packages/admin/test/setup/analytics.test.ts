@@ -185,6 +185,51 @@ describe('analytics: the stream setting and the crash e-mails', () => {
     });
 });
 
+describe('analytics: the measurement reports (§76f)', () => {
+    function withMeasurementId() {
+        const found = setup();
+        found.ctx.update((state) => ({ ...state, analytics: { ...state.analytics, measurementId: 'G-E2E12345' } }));
+        return found;
+    }
+
+    it('happyPath_oneClickRegistersTheDefinitionsOnTheStreamsPropertyAndSaysWhat', async () => {
+        const { harness, ctx, flow } = withMeasurementId();
+
+        await flow.createReports();
+
+        expect(harness.google.requests).toEqual(['analyticsEdit']);
+        expect(harness.cloud.createMeasurementReports.mock.calls[0]?.[1]).toBe('G-E2E12345');
+        expect(ctx.state().analytics.reports).toEqual({ created: 14, skipped: 0 });
+        expect(ctx.state().steps.analytics.used).toEqual({ inputs: 1, consents: 1 });
+    });
+
+    it('badPath_noPropertyTheOwnerCanEditSendsTheIdAndSaysSo', async () => {
+        const { harness, ctx, flow } = withMeasurementId();
+        harness.cloud.createMeasurementReports.mockResolvedValue(null);
+
+        await flow.createReports();
+
+        expect(ctx.state().steps.analytics.error).toEqual({ key: 'adminSetup.analytics.noProperty', params: { id: 'G-E2E12345' } });
+        expect(ctx.state().analytics.reports).toBeNull();
+    });
+
+    it('badPath_aRefusedPropertyNamesTheRole_andWithoutAnIdOrAConsentNothingIsCalled', async () => {
+        const { harness, ctx, flow } = withMeasurementId();
+        harness.cloud.createMeasurementReports.mockRejectedValue(googleError('forbidden', { role: 'roles/analytics.editor' }));
+        await flow.createReports();
+        expect(ctx.state().steps.analytics.error?.key).toBe('apiError.cloud.permission');
+
+        const bare = setup();
+        await bare.flow.createReports();
+        const closed = withMeasurementId();
+        closed.harness.google.answer = () => Promise.resolve(null);
+        await closed.flow.createReports();
+        expect(
+            [bare.harness.cloud.createMeasurementReports, closed.harness.cloud.createMeasurementReports].map((mock) => mock.mock.calls),
+        ).toEqual([[], []]);
+    });
+});
+
 describe('analytics: crash reports', () => {
     it('badPath_errorReportingDisabledIsEnabledWithGoogleThenListed', async () => {
         const { harness, ctx, flow } = setup();

@@ -42,7 +42,7 @@ describe('<hcm-setup-analytics>', () => {
 
     it('happyPath_theMeasurementIdTheStreamSettingAndTheCrashSwitch', async () => {
         const { port, element } = await analytics(
-            { analytics: { measurementId: 'G-E2E12345', pageChangesOff: false, crashEmails: true, watching: false } },
+            { analytics: { measurementId: 'G-E2E12345', pageChangesOff: false, crashEmails: true, watching: false, reports: null } },
             'en',
         );
 
@@ -56,16 +56,50 @@ describe('<hcm-setup-analytics>', () => {
 
     it('badPath_withoutAnalyticsTheCardSaysWhereToEnableItAndWatches', async () => {
         const { element } = await analytics({
-            analytics: { measurementId: null, pageChangesOff: false, crashEmails: true, watching: true },
+            analytics: { measurementId: null, pageChangesOff: false, crashEmails: true, watching: true, reports: null },
         });
 
         expect(shadowPart(element, '.body > .note').textContent).toContain('Setările proiectului, Integrări, Google Analytics');
         expect(shadowPart(element, '[role="status"]').textContent).toBe('Verificăm la fiecare 15 secunde…');
     });
 
+    it('happyPath_createTheMeasurementReportsAndWhatTheLastRunDid', async () => {
+        // §76f: one click; the line under the button says what was registered and what was there already.
+        const { port, element } = await analytics(
+            {
+                analytics: {
+                    measurementId: 'G-1',
+                    pageChangesOff: true,
+                    crashEmails: true,
+                    watching: false,
+                    reports: { created: 12, skipped: 2 },
+                },
+            },
+            'en',
+        );
+
+        await page.getByRole('button', { name: 'Create the measurement reports' }).click();
+
+        expect(port.calls).toEqual([['createMeasurementReports']]);
+        expect(shadowPart(element, '.reports').textContent).toBe('Measurement reports: 12 created, 2 already there.');
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_withoutAMeasurementIdThereIsNoReportsButton_andBeforeARunNoResult', async () => {
+        const without = await analytics();
+        expect(without.element.shadowRoot?.querySelector('.reports')).toBeNull();
+        cleanup();
+
+        const before = await analytics({
+            analytics: { measurementId: 'G-1', pageChangesOff: true, crashEmails: true, watching: false, reports: null },
+        });
+        expect(shadowPart(before.element, '.reports').textContent).toBe('');
+        await expect.element(page.getByRole('button', { name: 'Creează rapoartele de măsurători' })).toBeVisible();
+    });
+
     it('happyPath_historyPageViewsOffIsShownChecked', async () => {
         const { element } = await analytics({
-            analytics: { measurementId: 'G-1', pageChangesOff: true, crashEmails: false, watching: false },
+            analytics: { measurementId: 'G-1', pageChangesOff: true, crashEmails: false, watching: false, reports: null },
         });
 
         expect(shadowPart(element, '.stream-off').textContent.trim()).toBe('Schimbările de adresă nu mai sunt numărate ca vizualizări.');

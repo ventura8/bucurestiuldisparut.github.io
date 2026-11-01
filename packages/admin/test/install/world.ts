@@ -1,7 +1,7 @@
 // The installer's test world (docs/research/M6-interfaces.md §1.10): the fake upstreams of @hcm/test-support (Cloud
 // Build, Cloud Logging, Cloud Functions, Cloud Run, Artifact Registry, IAM) behind the admin's own origin, which serves
 // the install bundle's manifest and the site's `release.json`, and the Cloud Build installer over both.
-import { createLogger } from '@hcm/shared';
+import { createLogger, DOCKER_BUILDER_IMAGE } from '@hcm/shared';
 import { createRecordingSink, type RecordingSink } from '@hcm/test-support';
 import { createUpstreamFakes, GOOGLE_TOKENS, jsonResponse, type UpstreamFakes } from '@hcm/test-support/fakes';
 
@@ -18,7 +18,6 @@ export const RELEASE_TIME = 1_761_955_200;
 const ORIGIN = 'https://demo-hcm.web.app';
 const BASE = `${ORIGIN}/admin/`;
 const NODE_IMAGE = `node:24-bookworm-slim@sha256:${'d'.repeat(64)}`;
-const DOCKER_IMAGE = `gcr.io/cloud-builders/docker@sha256:${'e'.repeat(64)}`;
 export const ACCESS = { token: GOOGLE_TOKENS.owner };
 
 /** A manifest of the admin's own release (with the docker builder pinned unless `changes` says otherwise). */
@@ -32,7 +31,7 @@ export function installManifest(changes: Readonly<Record<string, unknown>> = {})
         projectId: 'demo-hcm',
         files: { server: file('server.tgz', 'a'), pipeline: file('pipeline.tgz', 'b'), site: file('hosting.tgz', 'c') },
         functions: ['admin-session'],
-        tools: { firebaseTools: '15.34.2', node: NODE_IMAGE, docker: DOCKER_IMAGE },
+        tools: { firebaseTools: '15.34.2', node: NODE_IMAGE, docker: DOCKER_BUILDER_IMAGE },
         estimates: { server: { buildMinutes: 85 }, pipeline: { buildMinutes: 20 }, site: { buildMinutes: 5 } },
         ...changes,
     };
@@ -49,6 +48,8 @@ export interface InstallWorld {
     published: boolean;
     /** Finding 29 of 2026-10-31: the admin release Hosting serves instead of this one (null: still this one). */
     newerAdmin: string | null;
+    /** §73k: whether step (h)'s legacy import is complete. */
+    legacyImported: boolean;
 }
 
 function ownOrigin(world: InstallWorld, url: URL): Response {
@@ -75,6 +76,7 @@ export async function installWorld(options: { readonly provisioned?: boolean } =
         release: null,
         published: true,
         newerAdmin: null,
+        legacyImported: false,
     };
     const fetcher: typeof fetch = (input, init) => {
         const url = new URL(input instanceof Request ? input.url : String(input));
@@ -96,6 +98,7 @@ export async function installWorld(options: { readonly provisioned?: boolean } =
         origin: ORIGIN,
         hasPublishedMap: () => Promise.resolve(world.published),
         newerAdmin: () => Promise.resolve(world.newerAdmin),
+        legacyImported: () => Promise.resolve(world.legacyImported),
     });
     if (options.provisioned !== false) {
         fakes.scenario('artifact-registry.provisioned');

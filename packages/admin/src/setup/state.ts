@@ -131,6 +131,8 @@ export interface SelfTestCheckState {
     readonly id: SelfTestCheck;
     readonly state: ServiceState;
     readonly detail: SetupMessage | null;
+    /** §67g: the model a passing AI check found offered (`params.model`), named under the check. */
+    readonly model?: string;
 }
 
 export interface UsgsSlice {
@@ -163,6 +165,8 @@ interface AnalyticsSlice {
     readonly crashEmails: boolean;
     /** Checking every 15 s after the owner followed the link to enable Google Analytics. */
     readonly watching: boolean;
+    /** §76f: what the last Create the measurement reports registered and found there, or null before one. */
+    readonly reports: { readonly created: number; readonly skipped: number } | null;
 }
 
 export interface CrashGroupView {
@@ -382,7 +386,7 @@ export function initialSetupState(host: SetupHost, mode: SetupMode): SetupState 
             postponedAt: null,
             pendingSince: null,
         },
-        analytics: { measurementId: null, pageChangesOff: false, crashEmails: true, watching: false },
+        analytics: { measurementId: null, pageChangesOff: false, crashEmails: true, watching: false, reports: null },
         crashes: { loaded: false, busy: false, groups: [], error: null, disabledApi: null, lastReportAt: null },
         legacyImport: { done: 0, total: 0, failed: [], running: false },
         install: initialInstallSlice(host.release, host.siteAddress, host.releaseTime),

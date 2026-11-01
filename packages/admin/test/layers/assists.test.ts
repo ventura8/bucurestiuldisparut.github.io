@@ -22,7 +22,7 @@ function open(params: readonly string[]) {
     world.store.docs.set(CITY_PATH, cityDoc());
     world.callables.answer('assist.translateDraft', (request) => {
         const { text, to } = request as { readonly text: string; readonly to: string };
-        return { draft: `${text} [${to}]`, truncated: false, model: 'gemini-2.5-flash-lite' };
+        return { draft: `${text} [${to}]`, truncated: false, model: 'gemini-3.5-flash-lite' };
     });
     const store = layersModule.create(world.services);
     store.open(params);
@@ -46,7 +46,7 @@ describe('the layer editor assists', () => {
             { ro: 'Fotografie.', en: 'Fotografie. [en]' },
         ]);
         expect(world.callables.named('assist.translateDraft')).toBe(2);
-        expect(store.state.assist.drafts['label.ro']).toMatchObject({ status: 'done', model: 'gemini-2.5-flash-lite' });
+        expect(store.state.assist.drafts['label.ro']).toMatchObject({ status: 'done', model: 'gemini-3.5-flash-lite' });
         expect(world.store.writes).toEqual([]);
     });
 

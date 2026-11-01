@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    DOCKER_BUILDER_IMAGE,
+    DOCKER_BUILDER_PIN,
     INSTALL_STEP_IDS,
     INSTALL_STEPS,
     INSTALL_TARGETS,
@@ -113,6 +115,15 @@ describe('the install manifest', () => {
         expect(installManifestSchema.safeParse(manifest({ tools: { firebaseTools: '15.34.2', node: NODE, docker: NODE } })).success).toBe(
             true,
         );
+    });
+
+    it('happyPath_theDockerBuilderIsNamedByTheDigestOfItsTrackedTag', () => {
+        const [named, digest] = DOCKER_BUILDER_PIN.split('@');
+        const tools = { firebaseTools: '15.34.2', node: NODE, docker: DOCKER_BUILDER_IMAGE };
+
+        expect(named).toMatch(/^gcr\.io\/cloud-builders\/docker:\d+$/);
+        expect(DOCKER_BUILDER_IMAGE).toBe(`gcr.io/cloud-builders/docker@${digest ?? ''}`);
+        expect(installManifestSchema.safeParse(manifest({ tools })).success).toBe(true);
     });
 
     it.each([

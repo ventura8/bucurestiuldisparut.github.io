@@ -1,5 +1,5 @@
 {
-    "call": "POST https://us-central1-aiplatform.googleapis.com/v1/projects/<project>/locations/us-central1/publishers/google/models/gemini-2.5-flash-lite:countTokens",
+    "call": "POST https://us-central1-aiplatform.googleapis.com/v1/projects/<project>/locations/us-central1/publishers/google/models/gemini-3.5-flash-lite:countTokens",
     "note": "The setup self-test's free check. Recorded shape, test values.",
     "status": 200,
     "body": {

@@ -44,7 +44,7 @@ describe('the assist callables', () => {
                 .ok,
         ).toBe(true);
         expect(
-            validate(assistTranslateDraftResponseSchema, { draft: 'Capșa House', truncated: false, model: 'gemini-2.5-flash-lite' }).ok,
+            validate(assistTranslateDraftResponseSchema, { draft: 'Capșa House', truncated: false, model: 'gemini-3.5-flash-lite' }).ok,
         ).toBe(true);
     });
 

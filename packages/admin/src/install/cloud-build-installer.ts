@@ -13,6 +13,7 @@ import {
     PIPELINE_REPOSITORY,
     RELEASE_PATTERN,
     releaseOfSlug,
+    type InstallManifest,
     type InstallTarget,
     type Logger,
 } from '@hcm/shared';
@@ -48,6 +49,12 @@ export interface CloudBuildInstallerDeps {
      * to the old release's bundle, which the redeploy removed.
      */
     readonly newerAdmin: () => Promise<string | null>;
+    /**
+     * §73k: whether step (h)'s legacy import is complete (every old photo imported, none failed). A site build then
+     * leaves the originals (`legacy.tgz`) out of the download and the release; a project whose import is not complete,
+     * or whose state cannot be read, keeps them.
+     */
+    readonly legacyImported: () => Promise<boolean>;
 }
 
 const NOT_INSTALLED: InstalledInfo = { complete: false, release: null, releaseTime: null, partial: false, newest: null, newestTime: null };
@@ -171,9 +178,18 @@ class CloudBuildInstaller implements InstallerPort {
             manifestSha256: bundle.sha256,
             fileSha256: manifest.files[target].sha256,
             images: { node: manifest.tools.node, docker: manifest.tools.docker ?? '' },
+            legacy: await this.#needsLegacy(target, manifest),
         });
         this.#deps.log.info('install build submitted', { target, release: manifest.release });
         return createCloudBuildClient(this.#transport(access)).create(this.#deps.projectId, this.#deps.region, definition);
+    }
+
+    /** A site build fetches the legacy originals while the bundle has them and the import is not complete (§73k). */
+    async #needsLegacy(target: InstallTarget, manifest: InstallManifest): Promise<boolean> {
+        if (target !== 'site' || manifest.files.legacy === undefined) {
+            return false;
+        }
+        return !(await this.#deps.legacyImported());
     }
 
     buildLog(buildId: string, access: InstallAccess): ReturnType<InstallerPort['buildLog']> {

@@ -307,6 +307,34 @@ describe('submit', () => {
         expect((await world.installer.observe('pipeline', ACCESS)).build).toBeNull();
     });
 
+    it('happyPath_aSiteBuildLeavesTheLegacyOriginalsOutOnceTheImportIsComplete_badPath_beforeItOrWithoutThemNot', async () => {
+        // §73k: the originals travel in legacy.tgz; a publish after step (h) moves a few MB instead of 52.
+        const world = await installWorld();
+        const legacy = { name: 'legacy.tgz', bytes: 45_000_000, sha256: 'e'.repeat(64) };
+        world.manifest = installManifest({ files: { ...(installManifest()['files'] as object), legacy } });
+        const fetchEnv = async (): Promise<readonly string[]> => {
+            await world.installer.submit('site', ACCESS);
+            const calls = world.fakes.callsTo('cloud-build.builds.create');
+            const body = JSON.parse(calls.at(-1)?.body ?? '{}') as { steps: { env?: string[] }[] };
+            return body.steps[0]?.env ?? [];
+        };
+
+        expect(await fetchEnv()).toEqual(expect.arrayContaining(['HCM_FILES=site,server,pipeline,legacy', 'HCM_UNPACK=legacy']));
+        world.legacyImported = true;
+        expect(await fetchEnv()).toContain('HCM_FILES=site,server,pipeline');
+        expect(await fetchEnv()).not.toContain('HCM_UNPACK=legacy');
+    });
+
+    it('badPath_aBundleWithoutTheLegacyOriginalsNeverAsksForThem', async () => {
+        const world = await installWorld();
+
+        await world.installer.submit('site', ACCESS);
+
+        const [call] = world.fakes.callsTo('cloud-build.builds.create');
+        const body = JSON.parse(call?.body ?? '{}') as { steps: { env?: string[] }[] };
+        expect(body.steps[0]?.env).toContain('HCM_FILES=site,server,pipeline');
+    });
+
     it('badPath_thePipelineIsNotSubmittedWithoutItsBuilder', async () => {
         const world = await installWorld();
         world.manifest = installManifest({ tools: { firebaseTools: '15.34.2', node: `node:24@sha256:${'d'.repeat(64)}`, docker: null } });

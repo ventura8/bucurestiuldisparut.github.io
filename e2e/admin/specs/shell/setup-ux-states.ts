@@ -44,6 +44,11 @@ export const SETUP_UX_STATES = {
         title: 'Setup after Check again: the translation drafts off under Optional features, quietly, Setup still done',
         visit: 'specs/shell/setup-ux-states.spec.ts',
     },
+    // §76f (the user's decision of 2026-11-01): Create the measurement reports and what it registered.
+    'setup.analytics-reports': {
+        title: 'Setup, analytics: Create the measurement reports done, saying how many were created and how many were there',
+        visit: 'steps/analytics.spec.ts',
+    },
     'setup.import-done': {
         title: 'Setup, the legacy import ended: the snackbar saying how many photos are on the map, with Open',
         visit: 'specs/shell/setup-ux-states.spec.ts',

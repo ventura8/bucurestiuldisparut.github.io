@@ -31,6 +31,64 @@ describe('GoogleAccessStore', () => {
         expect(store.live(OWNER.uid, 'cloudReadOnly', 0)).toBeNull();
     });
 
+    it('happyPath_aTokenPerScopeStaysBesideTheNextConsentsToken', () => {
+        const clock = new FakeClock();
+        const store = new GoogleAccessStore(() => clock.now());
+        const cloud = access([GOOGLE_SCOPES.cloudPlatform], clock.now() + 3_600_000);
+        store.keep(OWNER.uid, cloud);
+
+        clock.advance(10 * 60_000);
+        const analytics = access([GOOGLE_SCOPES.analyticsEdit], clock.now() + 3_600_000);
+        store.keep(OWNER.uid, analytics);
+
+        // §73j: the Analytics consent no longer costs Google Cloud's token (Publish the map asks nothing within the hour).
+        expect(store.live(OWNER.uid, 'cloudPlatform', MIN_TOKEN_REMAINING_MS)).toBe(cloud);
+        expect(store.live(OWNER.uid, 'analyticsEdit', MIN_TOKEN_REMAINING_MS)).toBe(analytics);
+        // Each expires on its own: Google Cloud's first, the Analytics token still live.
+        clock.advance(50 * 60_000);
+        expect(store.live(OWNER.uid, 'cloudPlatform', 0)).toBeNull();
+        expect(store.live(OWNER.uid, 'analyticsEdit', 0)).toBe(analytics);
+    });
+
+    it('happyPath_aTokenThatGrantsMoreReplacesTheOnesItSupersedesAndTheLongestLivedAnswers', () => {
+        const clock = new FakeClock();
+        const store = new GoogleAccessStore(() => clock.now());
+        const readOnly = access([GOOGLE_SCOPES.cloudReadOnly], clock.now() + 3_600_000);
+        const billing = access([GOOGLE_SCOPES.cloudBilling], clock.now() + 3_600_000);
+        store.keep(OWNER.uid, readOnly);
+        store.keep(OWNER.uid, billing);
+
+        clock.advance(30 * 60_000);
+        const platform = access([GOOGLE_SCOPES.cloudPlatform, GOOGLE_SCOPES.cloudBilling], clock.now() + 3_600_000);
+        store.keep(OWNER.uid, platform);
+        clock.advance(40 * 60_000);
+
+        // Both older tokens are superseded: only the newest is kept, and it answers for each of their scopes.
+        expect(store.live(OWNER.uid, 'cloudReadOnly', MIN_TOKEN_REMAINING_MS)).toBe(platform);
+        expect(store.live(OWNER.uid, 'cloudBilling', MIN_TOKEN_REMAINING_MS)).toBe(platform);
+    });
+
+    it('happyPath_ofTwoTokensForOneScopeTheLongerLivedAnswers', () => {
+        const store = new GoogleAccessStore(() => 0);
+        const platform = access([GOOGLE_SCOPES.cloudPlatform], 3_600_000, 'ya29.platform');
+        const billing = access([GOOGLE_SCOPES.cloudBilling, GOOGLE_SCOPES.analyticsEdit], 1_800_000, 'ya29.billing');
+        store.keep(OWNER.uid, platform);
+        store.keep(OWNER.uid, billing);
+
+        // Neither supersedes the other; both may be used for billing, and the one that lives longer answers.
+        expect(store.live(OWNER.uid, 'cloudBilling', 0)).toBe(platform);
+        expect(store.live(OWNER.uid, 'analyticsEdit', 0)).toBe(billing);
+    });
+
+    it('badPath_anotherUsersTokensAreForgottenWhenTheNextUserKeepsOne', () => {
+        const store = new GoogleAccessStore(() => 0);
+        store.keep(STRANGER.uid, access([GOOGLE_SCOPES.cloudPlatform], 3_600_000));
+        store.keep(OWNER.uid, access([GOOGLE_SCOPES.analyticsEdit], 3_600_000));
+
+        expect(store.live(STRANGER.uid, 'cloudPlatform', 0)).toBeNull();
+        expect(store.live(OWNER.uid, 'cloudPlatform', 0)).toBeNull();
+    });
+
     it('badPath_aDroppedTokenIsGone', () => {
         const store = new GoogleAccessStore(() => 0);
         store.keep(OWNER.uid, access([GOOGLE_SCOPES.cloudReadOnly], 3_600_000));

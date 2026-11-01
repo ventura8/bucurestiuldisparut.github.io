@@ -1,11 +1,14 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { GOOGLE_SCOPES } from '../../../packages/admin/src/google/scopes.js';
+import { expectStateSound } from '../../support/state-check.js';
+import { adminVisit } from '../../tour/states.js';
 import { projectCity } from '../support/content.js';
 import { apiText, setupText } from '../support/i18n.js';
 import { seedPhotosCity } from '../support/photos.js';
 import { followDeepLink, SetupPage, standInProviderPages } from '../support/setup-page.js';
 import { ADMIN_LOCK, expect, test } from '../support/test.js';
+import type { UpstreamControl } from '../support/upstream.js';
 
 // One admin test at a time (the emulators are one Firebase project): see ADMIN_LOCK.
 test.describe.configure({ lock: ADMIN_LOCK });
@@ -127,5 +130,73 @@ test(
 
         const patched = (await upstream.calls('browser', 'monitoring')).filter((call) => call.method === 'PATCH');
         expect(patched.map((call) => (JSON.parse(call.body) as { enabled: boolean }).enabled)).toEqual([false, true]);
+    },
+);
+
+/** §76f: the field measurements' custom definitions the fake GA4 property holds, by kind. */
+async function definitions(upstream: UpstreamControl): Promise<Readonly<Record<string, unknown[]>>> {
+    const snapshot = (await upstream.snapshot('browser'))['analytics-admin'] as {
+        readonly definitions: Readonly<Record<string, unknown[]>>;
+    };
+    return snapshot.definitions;
+}
+
+test(
+    'Create the measurement reports registers the field measurements on the GA4 property; a second click creates nothing',
+    { tag: ['@S-A22-HAPPY-MEASUREMENT-REPORTS', '@S-A22-HAPPY-REPORTS-AGAIN-NOTHING'] },
+    async ({ page, lang, consent, setupBudget, upstream }) => {
+        await upstream.scenario('firebase-management.analyticsLinked', 'both');
+        const card = await analyticsCard(page, lang);
+        const reports = card.getByRole('button', { name: setupText(lang, 'adminSetup.analytics.reports') });
+        const inputs = setupBudget.inputs('analytics', 1);
+
+        // One consent for the Analytics Admin API, on this click only.
+        const reportsConsent = await consent.opened(page, () => inputs.click(reports));
+        expect(await reportsConsent.requestedScopes()).toEqual([GOOGLE_SCOPES.analyticsEdit]);
+        await reportsConsent.allow(setupBudget.consents('analytics'));
+        const done = card.locator('.reports');
+        await expect(done).toHaveText(setupText(lang, 'adminSetup.analytics.reportsDone', { created: '14', skipped: '0' }));
+        expect(await definitions(upstream)).toMatchObject({
+            'properties/400000001/customDimensions': expect.arrayContaining([expect.objectContaining({ parameterName: 'window_class' })]),
+            'properties/400000001/customMetrics': expect.arrayContaining([
+                expect.objectContaining({ parameterName: 'duration_ms', measurementUnit: 'MILLISECONDS' }),
+            ]),
+        });
+        await expectStateSound(page, adminVisit('setup.analytics-reports', lang));
+
+        // Idempotent: the tab still holds the Analytics token, so no consent; every definition is there already.
+        const asked = (await consent.requests()).length;
+        await inputs.click(reports);
+        await expect(done).toHaveText(setupText(lang, 'adminSetup.analytics.reportsDone', { created: '0', skipped: '14' }));
+        expect(await consent.requests()).toHaveLength(asked);
+        expect((await upstream.calls('browser', 'analytics-admin')).filter((call) => call.method === 'POST')).toHaveLength(14);
+    },
+);
+
+test(
+    'Create the measurement reports without a property the account can edit, or without its role, says why and creates nothing',
+    { tag: ['@S-A22-BAD-REPORTS-NO-PROPERTY', '@S-A22-BAD-REPORTS-PERMISSION'] },
+    async ({ page, lang, consent, setupBudget, upstream, consoleErrors }) => {
+        await upstream.scenario('firebase-management.analyticsLinked', 'both');
+        // The GA4 property belongs to an account the signed-in owner cannot see.
+        await upstream.scenario('analytics-admin.otherAccount', 'browser');
+        const card = await analyticsCard(page, lang);
+        const reports = card.getByRole('button', { name: setupText(lang, 'adminSetup.analytics.reports') });
+        const inputs = setupBudget.inputs('analytics', 1);
+        const reportsConsent = await consent.opened(page, () => inputs.click(reports));
+        await reportsConsent.allow(setupBudget.consents('analytics'));
+
+        const noProperty = setupText(lang, 'adminSetup.analytics.noProperty', { id: 'G-E2E0000000' });
+        await expect(card.getByRole('alert').filter({ hasText: noProperty })).toBeVisible();
+        await expect(card.locator('.reports')).toHaveText('');
+
+        // Its role refused on the property: the role is named.
+        await upstream.fail('analytics-admin', 'forbidden', 'browser');
+        await inputs.click(reports);
+        const permission = apiText(lang, 'apiError.cloud.permission', { role: 'roles/analytics.editor' });
+        await expect(card.getByRole('alert').filter({ hasText: permission })).toBeVisible();
+        expect((await upstream.calls('browser', 'analytics-admin')).filter((call) => call.method === 'POST')).toEqual([]);
+        expect(await definitions(upstream)).toEqual({});
+        consoleErrors.takeMatching(/status of 403/);
     },
 );

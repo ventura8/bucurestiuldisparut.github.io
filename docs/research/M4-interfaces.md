@@ -817,3 +817,13 @@ Where it differs from §5.4, this addendum is the contract.
 - §10 gains: which refusal the live failure of 2026-11-01 was, the auto-created browser key's API restrictions
   (Installations and FCM Registration), and the default VAPID key with `register()`: the reason line of the next live
   try names it.
+
+## Addendum 2026-11-01: the drafts' model (`DECISIONS-for-review.md` §67g)
+
+- §4.3, §4.4: `VERTEX_MODEL_ID` is the first of `VERTEX_MODEL_IDS` = `gemini-3.5-flash-lite` (stable since 2026-07-21,
+  retirement no earlier than 2027-07-21), `gemini-3.1-flash-lite`; `gemini-2.5-flash-lite` was retired in October 2026.
+  `assist.translateDraft` and the self-test's `ai` check call through `withOfferedModel` (`functions/src/api/vertex-models.ts`):
+  the models in order, a 404 moving to the next, the choice kept ten minutes per instance; the check names the model in
+  use (`params.model`), and a project offered neither gets `apiError.assist.modelUnavailable` naming both. The answer's
+  `model` is the model that drafted. Rows S-A45-HAPPY-FALLBACK-MODEL, S-A45-HAPPY-MODEL-NAMED; the fake Vertex AI's
+  scenario `vertex-ai.firstModelUnavailable`. The price constant and the custom role are unchanged.

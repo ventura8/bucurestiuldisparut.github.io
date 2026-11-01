@@ -8,6 +8,7 @@ import {
     AI_MONTHLY_CAP,
     FIRESTORE_PATHS,
     VERTEX_MODEL_ID,
+    VERTEX_MODEL_IDS,
     aiCostUsd,
     aiUsageDocSchema,
     timestampFromDate,
@@ -15,8 +16,9 @@ import {
     type AiUsageDoc,
 } from '@hcm/shared';
 import { INJECTED_LINK } from '@hcm/test-support/fakes';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { forgetModelChoice, ModelsNotOfferedError } from '../../src/api/vertex-models.js';
 import { draftFailure, estimateUsd, translateDraftFunction } from '../../src/assist/translate-draft.js';
 import { UpstreamError } from '../../src/ports/errors.js';
 import { failureOf } from '../admin/world.js';
@@ -51,6 +53,15 @@ async function seedUsage(deps: M4Deps, spent: Pick<AiUsageDoc, 'requests' | 'usd
         updatedAt: timestampFromDate(new Date(NOW)),
     });
 }
+
+// The model choice lives in the module (the functions project shares one module graph per worker): each test starts
+// without one and leaves none behind.
+beforeEach(() => {
+    forgetModelChoice();
+});
+afterEach(() => {
+    forgetModelChoice();
+});
 
 describe('assist.translateDraft', () => {
     it('happyPath_thePinnedModelAndPromptAndTheCountersTakeTheReportedTokens @S-A45-HAPPY-TRANSLATE', async () => {
@@ -191,6 +202,46 @@ describe('assist.translateDraft', () => {
     });
 });
 
+describe('assist.translateDraft: the models (§67g)', () => {
+    it('happyPath_theFirstModelNotOfferedTheNextOneDraftsAndIsKept @S-A45-HAPPY-FALLBACK-MODEL', async () => {
+        const deps = await world();
+        deps.upstream.scenario('vertex-ai.firstModelUnavailable');
+
+        await expect(draft(deps)).resolves.toEqual({
+            draft: 'Ateneul Român (English draft)',
+            truncated: false,
+            model: VERTEX_MODEL_IDS[1],
+        });
+        await expect(draft(deps)).resolves.toMatchObject({ model: VERTEX_MODEL_IDS[1] });
+
+        // The second draft asks the kept model at once; the first model was tried once only.
+        expect(deps.upstream.state.vertexAi.requests.map((request) => request.model)).toEqual([...VERTEX_MODEL_IDS, VERTEX_MODEL_IDS[1]]);
+        await expect(usage(deps)).resolves.toMatchObject({ requests: 2 });
+    });
+
+    it('happyPath_aKeptChoiceExpiresAndTheFirstModelIsAskedAgain', async () => {
+        const deps = await world();
+        deps.upstream.scenario('vertex-ai.firstModelUnavailable');
+        await draft(deps);
+        deps.upstream.state.vertexAi.gone = [];
+
+        deps.clock.set('2026-10-24T08:45:00.000Z');
+        await expect(draft(deps)).resolves.toMatchObject({ model: VERTEX_MODEL_ID });
+    });
+
+    it('badPath_noModelOfferedNamesEveryModelTriedAndKeepsTheField @S-A45-BAD-MODEL-UNAVAILABLE', async () => {
+        const deps = await world();
+        deps.upstream.scenario('vertex-ai.modelUnavailable');
+
+        await expect(failureOf(draft(deps))).resolves.toMatchObject({
+            code: 'failed-precondition',
+            details: { code: 'apiError.assist.modelUnavailable', params: { model: VERTEX_MODEL_IDS.join(', ') } },
+        });
+        expect(deps.upstream.state.vertexAi.requests.map((request) => request.model)).toEqual([...VERTEX_MODEL_IDS]);
+        await expect(usage(deps)).resolves.toMatchObject({ requests: 1, inputTokens: 0, outputTokens: 0 });
+    });
+});
+
 describe('assist.translateDraft: links', () => {
     it('badPath_aDraftThatAddsALinkTheSourceDoesNotHaveIsNoDraft @S-A45-BAD-LINKS-CHANGED', async () => {
         const deps = await world();
@@ -211,12 +262,13 @@ describe('draftFailure', () => {
         [new UpstreamError('vertex-ai', 'rateLimited'), 'apiError.rateLimited', undefined],
         [new UpstreamError('vertex-ai', 'forbidden'), 'apiError.cloud.permission', { role: 'hcmVertexDrafts' }],
         [new UpstreamError('vertex-ai', 'invalid'), 'apiError.assist.unavailable', undefined],
-        // M6 (finding 20): a model Google does not offer to the project is named, as the self-test names it.
+        // M6 (finding 20), §67g: no model of the list offered to the project names every model tried.
         [
-            new UpstreamError('vertex-ai', 'notFound', { status: 404 }),
+            new ModelsNotOfferedError(VERTEX_MODEL_IDS, new UpstreamError('vertex-ai', 'notFound', { status: 404 })),
             'apiError.assist.modelUnavailable',
-            { model: 'gemini-2.5-flash-lite' },
+            { model: 'gemini-3.5-flash-lite, gemini-3.1-flash-lite' },
         ],
+        [new UpstreamError('vertex-ai', 'notFound', { status: 404 }), 'apiError.assist.unavailable', undefined],
     ])('%s', (error, code, params) => {
         expect(draftFailure(error)).toMatchObject({ code, params });
     });

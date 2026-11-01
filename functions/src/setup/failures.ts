@@ -1,6 +1,7 @@
 import { API_ERRORS, VERTEX_DRAFTS_ROLE_ID, type ApiErrorCode } from '@hcm/shared';
 
 import { ApiError } from '../api/api-error.js';
+import { ModelsNotOfferedError } from '../api/vertex-models.js';
 import { UpstreamError, type UpstreamFailure } from '../ports/errors.js';
 
 /**
@@ -127,7 +128,7 @@ export function refusal(error: unknown, api: string): unknown {
 
 /** What a log line may say about the upstream answer behind a failure: names and the HTTP status, never a body. */
 export function upstreamFields(error: unknown): Readonly<Record<string, string | number>> {
-    const upstreamError = error instanceof MappedUpstreamError ? error.upstream : error;
+    const upstreamError = error instanceof MappedUpstreamError || error instanceof ModelsNotOfferedError ? error.upstream : error;
     if (!(upstreamError instanceof UpstreamError)) {
         return {};
     }

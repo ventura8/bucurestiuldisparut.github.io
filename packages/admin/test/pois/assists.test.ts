@@ -45,7 +45,7 @@ describe('the place editor assists', () => {
         world.callables.answer('assist.suggestTitle', () => ({ state: 'ready', key: 'k', suggestions: [], attribution: 'a' }));
         world.callables.answer('assist.translateDraft', (request) => {
             const { text, to } = request as { readonly text: string; readonly to: string };
-            return { draft: `${text} [${to}]`, truncated: false, model: 'gemini-2.5-flash-lite' };
+            return { draft: `${text} [${to}]`, truncated: false, model: 'gemini-3.5-flash-lite' };
         });
         const store = opened(world, ['stavropoleos']);
         store.intents.edit({ description: { ro: 'Biserica.' } });

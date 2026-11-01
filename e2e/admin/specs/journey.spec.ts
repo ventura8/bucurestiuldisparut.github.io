@@ -1,3 +1,4 @@
+import { SITE_PUBLISH_TRANSFER_MB, SITE_PUBLISH_TRANSFER_TRIMMED_MB } from '@hcm/shared';
 import { MAPBOX_TOKENS, USGS_CREDENTIALS } from '@hcm/test-support/fakes';
 import type { Locator, Page, Request } from '@playwright/test';
 
@@ -216,6 +217,12 @@ async function buildsOf(upstream: UpstreamControl, target: string): Promise<numb
     return (await submittedBuilds(upstream)).filter((build) => build.target === target).length;
 }
 
+/** The `fetch` step's environment of the newest site build: which tarballs it downloads and unpacks (§73k). */
+async function siteFetchEnv(upstream: UpstreamControl): Promise<readonly string[]> {
+    const site = (await submittedBuilds(upstream)).filter((build) => build.target === 'site').at(-1);
+    return site?.request.steps[0]?.env ?? [];
+}
+
 /** 4. Install the server: one click, no consent within the hour of Prepare the project; the claim without a click. */
 async function installTheServer(journey: Journey, owner: string): Promise<void> {
     const { page, lang, setup, setupBudget, upstream, serverDeployment, emulators } = journey;
@@ -385,8 +392,8 @@ async function expectPipelineInstalled({ setup, lang }: Journey): Promise<void> 
 }
 
 /**
- * 9b. Publish the map: one click. The steps since Prepare the project asked Google for other scopes (the analytics
- * stream), so the tab's token no longer grants Google Cloud: the same click asks once (M6 §4.2's allowance).
+ * 9b. Publish the map: one click. The steps since Prepare the project asked Google for another scope (the analytics
+ * stream); the tab keeps one token per scope (§73j), so Google Cloud's is still live and the click asks Google nothing.
  */
 async function publishTheMap({ page, lang, setup, consent, setupBudget, upstream, emulators }: Journey): Promise<void> {
     const site = await setup.show('site');
@@ -394,9 +401,16 @@ async function publishTheMap({ page, lang, setup, consent, setupBudget, upstream
     const publish = site.getByRole('button', { name: setupText(lang, 'adminSetup.install.site.action') });
     // The first city's manifest was published while the tab held no Google Cloud token: the card saw it all the same.
     await expect(publish).toBeEnabled({ timeout: 90_000 });
-    const scopes = await withConsent(page, consent, publish, setupBudget.inputs('site'), setupBudget.consents('site', 1));
-    expect(scopes).toEqual([GOOGLE_SCOPES.cloudPlatform]);
+    // §73k: the cost line counts the publish without the originals once the import is complete.
+    const transfer = setupText(lang, 'adminSetup.install.site.transfer', { megabytes: String(SITE_PUBLISH_TRANSFER_TRIMMED_MB) });
+    await expect(site).toContainText(transfer);
+    const asked = (await consent.requests()).length;
+    await setupBudget.inputs('site').click(publish);
     await expect.poll(() => buildsOf(upstream, 'site')).toBe(1);
+    expect(await consent.requests()).toHaveLength(asked);
+    // §73k: every old photo is imported (step h), so the build neither downloads nor publishes their originals.
+    expect(await siteFetchEnv(upstream)).toContain('HCM_FILES=site,server,pipeline');
+    expect((await siteFetchEnv(upstream)).some((line) => line.startsWith('HCM_UNPACK'))).toBe(false);
     await upstream.scenario('cloud-build.finish', 'browser');
     await page.clock.fastForward(10_000);
     await setup.expectState('site', 'ok');
@@ -449,6 +463,7 @@ test(
             '@S-A07-BAD-ROLE-PENDING',
             '@S-A22-HAPPY',
             '@S-A22-HAPPY-STREAM-SETTING',
+            '@S-A57-HAPPY-PUBLISH-WITHOUT-ORIGINALS',
             '@S-A28-HAPPY',
             '@S-A31-HAPPY',
             '@S-A31-BAD-ALERTS',
@@ -497,11 +512,11 @@ test(
         await importLegacyPhotos(journey);
         await expectPipelineInstalled(journey);
         await publishTheMap(journey);
-        // The required steps with USGS postponed: within 9 inputs (Do it later counted for USGS's three) and 4 consents
-        // beside the one Publish the map was allowed once the token was gone.
+        // The required steps with USGS postponed: within 9 inputs (Do it later counted for USGS's three) and 4 consents;
+        // Publish the map asks none since the tab keeps a token per scope (§73j).
         const required = setupBudget.used();
         expect(required.inputs - setupBudget.allowance() + skipUsgs.used).toBeLessThanOrEqual(required.limit.inputs - 2);
-        expect(required.consents - 1).toBeLessThanOrEqual(required.limit.consents);
+        expect(required.consents).toBeLessThanOrEqual(required.limit.consents);
         await viewTheMapAtTheRoot(journey);
         await expectDoneWithUsgsLater(journey);
         await connectUsgs(journey);
@@ -509,7 +524,7 @@ test(
         // The whole assistant: within its budget once the bad paths' declared allowances are taken off (§3.5, M6 §4.2).
         const used = setupBudget.used();
         expect(used.inputs - setupBudget.allowance()).toBeLessThanOrEqual(used.limit.inputs);
-        expect(used.consents - 1).toBeLessThanOrEqual(used.limit.consents);
+        expect(used.consents).toBeLessThanOrEqual(used.limit.consents);
         await recordsSettled(page);
     },
 );
@@ -537,7 +552,7 @@ test(
 
 test(
     'Publishing the map hours after Prepare the project costs one consent from the same click; nothing is asked again',
-    { tag: ['@S-A30-BAD-TOKEN-EXPIRED'] },
+    { tag: ['@S-A30-BAD-TOKEN-EXPIRED', '@S-A57-BAD-ORIGINALS-UNTIL-IMPORTED'] },
     async ({ page, lang, consent, setupBudget, upstream, serverDeployment, consoleErrors, adminWorld }) => {
         test.setTimeout(300_000);
         await serverDeployment.hide();
@@ -564,6 +579,9 @@ test(
         await page.clock.fastForward('02:00:00');
 
         const site = await setup.show('site');
+        await expect(site).toContainText(
+            setupText(lang, 'adminSetup.install.site.transfer', { megabytes: String(SITE_PUBLISH_TRANSFER_MB) }),
+        );
         const publish = setupBudget.inputs('site');
         const consents = setupBudget.consents('site', 1);
         const scopes = await withConsent(
@@ -576,6 +594,10 @@ test(
 
         expect(scopes).toEqual([GOOGLE_SCOPES.cloudPlatform]);
         await expect.poll(() => buildsOf(upstream, 'site')).toBe(1);
+        // §73k: no old photo is imported here, so the build still downloads and publishes their originals.
+        expect(await siteFetchEnv(upstream)).toEqual(
+            expect.arrayContaining(['HCM_FILES=site,server,pipeline,legacy', 'HCM_UNPACK=legacy']),
+        );
         await upstream.scenario('cloud-build.finish', 'browser');
         await page.clock.fastForward(10_000);
         await setup.expectState('site', 'ok');

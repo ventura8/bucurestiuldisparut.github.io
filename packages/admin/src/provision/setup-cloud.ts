@@ -1,5 +1,6 @@
 import type { Logger, ProvisionItem } from '@hcm/shared';
 
+import type { MeasurementReports } from '../google/analytics-reports.js';
 import { createGoogleClients, type GoogleClients } from '../google/clients.js';
 import { GoogleApiError } from '../google/failure.js';
 import { deploymentStatus } from '../google/functions.js';
@@ -55,6 +56,8 @@ export interface SetupCloudAdapter {
     deployment(access: TokenAccess): Promise<{ readonly ready: number; readonly total: number; readonly failed: readonly string[] }>;
     disablePageChanges(access: TokenAccess): Promise<{ readonly pageChangesEnabled: boolean }>;
     setCrashAlerts(access: TokenAccess, enabled: boolean): Promise<{ readonly enabled: boolean }>;
+    /** §76f: the field measurements' custom definitions on the GA4 property of `measurementId` (null: no such property). */
+    createMeasurementReports(access: TokenAccess, measurementId: string): Promise<MeasurementReports | null>;
 }
 
 function notFound(operation: string): GoogleApiError {
@@ -129,5 +132,11 @@ export function createSetupCloud(deps: SetupCloudDeps): SetupCloudAdapter {
         },
         disablePageChanges: (access) => disablePageChanges(clientsFor(access), deps),
         setCrashAlerts: (access, enabled) => setCrashAlerts(clientsFor(access), project.projectId, enabled),
+        // §76f: a lazy chunk (`analytics-reports`), fetched on the button's click only.
+        createMeasurementReports: async (access, measurementId) =>
+            (await import('../google/analytics-reports.js')).createMeasurementReports(
+                { fetch: deps.fetch, token: () => access.token, sleep: deps.sleep, log: deps.log },
+                measurementId,
+            ),
     };
 }

@@ -176,7 +176,7 @@ describe('title suggestions', () => {
 describe('translation drafts', () => {
     it('happyPath_aDraftGoesIntoTheEditorsDraftWithTheModelsNote', async () => {
         const { assist, callables } = session();
-        callables.answer('assist.translateDraft', () => ({ draft: 'Romanian Athenaeum', truncated: true, model: 'gemini-2.5-flash-lite' }));
+        callables.answer('assist.translateDraft', () => ({ draft: 'Romanian Athenaeum', truncated: true, model: 'gemini-3.5-flash-lite' }));
         const applied: string[] = [];
 
         await assist.draft({ field: 'title', from: 'ro', to: 'en', text: 'Ateneul Român' }, (text) => applied.push(text));
@@ -187,7 +187,7 @@ describe('translation drafts', () => {
         expect(applied).toEqual(['Romanian Athenaeum']);
         expect(assist.state.drafts[draftSlot('title', 'en')]).toEqual({
             status: 'done',
-            model: 'gemini-2.5-flash-lite',
+            model: 'gemini-3.5-flash-lite',
             truncated: true,
             error: null,
         });
@@ -210,7 +210,7 @@ describe('translation drafts', () => {
         expect(assist.state.drafts['title.en']?.status).toBe('working');
 
         assist.reset();
-        pending.resolve?.({ draft: 'Romanian Athenaeum', truncated: false, model: 'gemini-2.5-flash-lite' });
+        pending.resolve?.({ draft: 'Romanian Athenaeum', truncated: false, model: 'gemini-3.5-flash-lite' });
         await asked;
 
         expect(applied).toEqual([]);

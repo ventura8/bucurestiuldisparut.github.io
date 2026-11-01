@@ -62,6 +62,7 @@ interface SetupIntents {
     /** The owner followed one of the step's deep links (not counted); the analytics card then watches for Google Analytics. */
     followLink(step: SetupStepId): void;
     disableHistoryPageViews(): Promise<void>;
+    createMeasurementReports(): Promise<void>;
     setCrashEmails(enabled: boolean): Promise<void>;
     enableApi(api: string): Promise<void>;
     /** Lists the crash groups again (the panel's Retry and the `#/crashes` page). */
@@ -132,13 +133,15 @@ function installWatchable(before: SetupState, next: SetupState): boolean {
     return prepared || token || before.mode !== next.mode;
 }
 
-/** The self-test's checks as the page lists them: each state, and a failure's reason (S-A03-BAD-SELFTEST-FAILURE). */
+/**
+ * The self-test's checks as the page lists them: each state, a failure's reason (S-A03-BAD-SELFTEST-FAILURE), and the
+ * model a passing AI check names (§67g, S-A45-HAPPY-FALLBACK-MODEL).
+ */
 function checksOf(response: SelfTestResponse): readonly SelfTestCheckState[] {
-    return response.checks.map(({ id, state, detail, params }) => ({
-        id,
-        state,
-        detail: detail === undefined ? null : setupMessage(detail, params),
-    }));
+    return response.checks.map(({ id, state, detail, params }) => {
+        const model = detail === undefined ? params?.['model'] : undefined;
+        return { id, state, detail: detail === undefined ? null : setupMessage(detail, params), ...(model === undefined ? {} : { model }) };
+    });
 }
 
 class Controller implements SetupController {
@@ -441,6 +444,7 @@ class Controller implements SetupController {
                 }
             },
             disableHistoryPageViews: () => analytics.disablePageChanges(),
+            createMeasurementReports: () => analytics.createReports(),
             setCrashEmails: (enabled) => analytics.setCrashEmails(enabled),
             enableApi: (api) => analytics.enableApi(api),
             loadCrashGroups: () => analytics.loadCrashGroups(),

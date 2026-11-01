@@ -168,13 +168,14 @@ def install_bundle(root: Path, slug: str, sizes: dict[str, int]) -> None:
 
 
 def test_happy_path_the_install_bundle_is_measured_as_served(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
-    install_bundle(tmp_path, "1-0-0-abc1234", {"server.tgz": 2000, "pipeline.tgz": 1500, "hosting.tgz": 5000})
+    install_bundle(tmp_path, "1-0-0-abc1234", {"server.tgz": 2000, "pipeline.tgz": 1500, "hosting.tgz": 5000, "legacy.tgz": 4000})
 
     assert bundles.main(["--root", str(tmp_path), "--install"]) == 0
     lines = caplog.messages[0].splitlines()
     assert lines[0] == "[bundle-budget] OK:"
     assert lines[1:] == [
-        f"  {bundles.INSTALL_DIR}/1-0-0-abc1234/hosting.tgz: 5.0 KB as served (budget 80000 KB)",
+        f"  {bundles.INSTALL_DIR}/1-0-0-abc1234/hosting.tgz: 5.0 KB as served (budget 12000 KB)",
+        f"  {bundles.INSTALL_DIR}/1-0-0-abc1234/legacy.tgz: 4.0 KB as served (budget 60000 KB)",
         f"  {bundles.INSTALL_DIR}/1-0-0-abc1234/pipeline.tgz: 1.5 KB as served (budget 1000 KB)",
         f"  {bundles.INSTALL_DIR}/1-0-0-abc1234/server.tgz: 2.0 KB as served (budget 8000 KB)",
     ]

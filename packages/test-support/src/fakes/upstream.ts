@@ -142,7 +142,7 @@ function initialState(): UpstreamState {
         appCheck: { keys: new Map(), configs: new Map() },
         monitoring: { channels: new Map(), policies: new Map() },
         apiKeys: { projects: new Map() },
-        analyticsAdmin: { settings: new Map() },
+        analyticsAdmin: { settings: new Map(), definitions: new Map(), otherAccount: false },
         mapbox: defaultMapboxState(),
         usgs: defaultUsgsState(),
         stac: defaultStacState(),

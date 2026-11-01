@@ -28,6 +28,13 @@ export const INSTALL_BUNDLE_FILES = {
     site: 'hosting.tgz',
 } as const satisfies Readonly<Record<InstallTarget, string>>;
 
+/**
+ * §73k (the user's decision of 2026-11-01): the old photos' originals (`admin/legacy/<city>/originals/`, about 45 MB),
+ * which step (h) imports, travel in a tarball of their own beside `hosting.tgz`. A site build fetches and unpacks it only
+ * while the legacy import is not complete, so a publish after the import moves a few MB of Hosting's free transfer.
+ */
+export const LEGACY_BUNDLE_FILE = 'legacy.tgz';
+
 /** The bundle's own description, next to the tarballs. */
 export const INSTALL_MANIFEST_FILE = 'manifest.json';
 
@@ -77,6 +84,18 @@ export const PIPELINE_REPOSITORY = 'hcm';
 /** The `firebase-tools` the server and site builds install from the bundle's lock (the repository's own pin). */
 export const FIREBASE_TOOLS_VERSION = '15.34.2';
 
+/**
+ * Google's Docker builder of the imagery pipeline's build, as the deps gate tracks it: its version tag and the digest of
+ * that tag's manifest list (linux/amd64 and linux/arm64), read from gcr.io on 2026-11-01 (`DECISIONS-for-review.md`
+ * §67e, the user's decision). `29` is the builder's current line; the older lines (`20.10.24`, which `latest` still
+ * names, and `24.0.9`) carry Google's `no-new-use-public-image` marker. `scripts/ci/check_dependency_updates.py` reads
+ * this line and compares the tag with gcr.io's.
+ */
+export const DOCKER_BUILDER_PIN = 'gcr.io/cloud-builders/docker:29@sha256:6a6635024a23c8ed596c26fefc744bd3c5dbe269e8d8d541f2fda2beb0664ea5';
+
+/** The same builder as the install bundle's `tools.docker` names it: by digest alone (a test keeps the two equal). */
+export const DOCKER_BUILDER_IMAGE = 'gcr.io/cloud-builders/docker@sha256:6a6635024a23c8ed596c26fefc744bd3c5dbe269e8d8d541f2fda2beb0664ea5';
+
 /** The prefix of a step script's machine-readable log line (`HCM_INSTALL {"event":"retry",…}`). */
 export const HCM_INSTALL_LOG_PREFIX = 'HCM_INSTALL ';
 
@@ -92,11 +111,14 @@ export const INSTALL_ESTIMATES: Readonly<Record<InstallTarget, { readonly buildM
 
 /**
  * What one Publish the map moves out of Firebase Hosting, in MB (§1.9; finding 4 of the M6 security review): the site
- * build downloads the bundle's `hosting.tgz` (about 51 MB in October 2026, most of it the old photos' originals under
- * `/admin/legacy/`) and its manifest from the admin's own Hosting, whose free tier is 360 MB a day. UNVERIFIED like the
- * minutes: the bundle budget (`scripts/ci/check_bundle_budget.py`) caps `hosting.tgz` at 80 MB.
+ * build downloads the bundle's tarballs (`hosting.tgz`, `server.tgz`, `pipeline.tgz`) and its manifest from the admin's
+ * own Hosting, whose free tier is 360 MB a day, and while the legacy import is not complete also `legacy.tgz`, the old
+ * photos' originals (§73k). Measured on 2026-11-01: about 7 MB without the originals, 52 MB with them. UNVERIFIED like
+ * the minutes: the bundle budget (`scripts/ci/check_bundle_budget.py`) caps each tarball.
  */
 export const SITE_PUBLISH_TRANSFER_MB = 52;
+/** The same once the legacy import is complete: the build leaves `legacy.tgz` out (§73k). */
+export const SITE_PUBLISH_TRANSFER_TRIMMED_MB = 7;
 
 /**
  * The first-deploy races the server build retries by itself (`deploy-with-retry`, §1.5), recognised in
@@ -281,6 +303,8 @@ export const installManifestSchema = z
             server: bundleFileSchema(INSTALL_BUNDLE_FILES.server),
             pipeline: bundleFileSchema(INSTALL_BUNDLE_FILES.pipeline),
             site: bundleFileSchema(INSTALL_BUNDLE_FILES.site),
+            /** The legacy originals (§73k); absent from a bundle that has none. */
+            legacy: bundleFileSchema(LEGACY_BUNDLE_FILE).optional(),
         }),
         /** The registry's deployed names, sorted: the server's expected set. */
         functions: z

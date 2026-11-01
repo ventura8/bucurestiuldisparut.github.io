@@ -3,8 +3,11 @@
  * through the normal photo pipeline (google-clients' importer, idempotent by document id and `legacyId`). The card
  * shows the progress, the photos that failed processing with their reason, and is done once every photo is imported.
  * M6 (finding 19 of 2026-10-25): the end of a run is said in the snackbar, which stays while Setup moves on: every photo
- * on the map, or how many are, with Open (the card and its list of the photos that failed).
+ * on the map, or how many are, with Open (the card and its list of the photos that failed). §73k: once the import is
+ * complete a site build leaves the originals out, so Publish the map's cost line says the smaller transfer.
  */
+import { SITE_PUBLISH_TRANSFER_MB, SITE_PUBLISH_TRANSFER_TRIMMED_MB } from '@hcm/shared';
+
 import type { SetupContext } from './context.js';
 import { apiFailure, setupMessage } from './messages.js';
 import type { LegacyImportProgress, SetupNotice } from './ports.js';
@@ -71,7 +74,13 @@ class LegacyImport implements LegacyImportFlow {
 
     private progress(progress: LegacyImportProgress, running: boolean): void {
         const { done, total, failed } = progress;
-        this.ctx.update((state) => ({ ...state, legacyImport: { done, total, failed, running } }));
+        const complete = total > 0 && done >= total && failed.length === 0;
+        const siteTransferMegabytes = complete ? SITE_PUBLISH_TRANSFER_TRIMMED_MB : SITE_PUBLISH_TRANSFER_MB;
+        this.ctx.update((state) => ({
+            ...state,
+            legacyImport: { done, total, failed, running },
+            install: { ...state.install, siteTransferMegabytes },
+        }));
         this.ctx.patchStep('legacyImport', { ...importHealth(progress, this.ctx.nowIso()), busy: running });
     }
 }

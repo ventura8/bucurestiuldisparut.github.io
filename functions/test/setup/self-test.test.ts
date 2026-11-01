@@ -3,10 +3,18 @@
  * the functions' own credentials, each isolated, and what it finds for Mapbox, USGS and crash reporting lands in
  * `setup/status`.
  */
-import { FIRESTORE_PATHS, SELF_TEST_CHECKS, manifestStateDocSchema, opsProbeDocSchema, type SelfTestResponse } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    SELF_TEST_CHECKS,
+    VERTEX_MODEL_IDS,
+    manifestStateDocSchema,
+    opsProbeDocSchema,
+    type SelfTestResponse,
+} from '@hcm/shared';
 import { MAPBOX_TOKENS, USGS_CREDENTIALS } from '@hcm/test-support/fakes';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { forgetModelChoice } from '../../src/api/vertex-models.js';
 import { UpstreamError } from '../../src/ports/errors.js';
 import { saveMapbox } from '../../src/setup/save-mapbox.js';
 import { saveUsgs } from '../../src/setup/save-usgs.js';
@@ -26,6 +34,18 @@ async function connected(
     return world;
 }
 
+// The model choice lives in the module (the functions project shares one module graph per worker): each test starts
+// without one and leaves none behind.
+beforeEach(() => {
+    forgetModelChoice();
+});
+afterEach(() => {
+    forgetModelChoice();
+});
+
+/** The ai check's result when the first model answers: ok, naming it (§67g). */
+const AI_OK = { id: 'ai', state: 'ok', params: { model: VERTEX_MODEL_IDS[0] } };
+
 function check(response: SelfTestResponse, id: (typeof SELF_TEST_CHECKS)[number]) {
     return response.checks.find((candidate) => candidate.id === id);
 }
@@ -36,7 +56,7 @@ describe('setup.selfTest', () => {
 
         const response = await selfTest(world.deps, ADMIN);
 
-        expect(response.checks).toEqual(SELF_TEST_CHECKS.map((id) => ({ id, state: 'ok' })));
+        expect(response.checks).toEqual(SELF_TEST_CHECKS.map((id) => (id === 'ai' ? AI_OK : { id, state: 'ok' })));
         expect(response.status).toMatchObject({
             mapbox: { state: 'ok', user: 'e2e-mapbox' },
             usgs: { state: 'ok', role: 'download' },
@@ -314,10 +334,21 @@ describe('setup.selfTest Vertex AI (M4, CR-M4-5)', () => {
 
         const response = await selfTest(world.deps, ADMIN);
 
-        expect(check(response, 'ai')).toEqual({ id: 'ai', state: 'ok' });
+        expect(check(response, 'ai')).toEqual(AI_OK);
         expect(world.upstream.callsTo('vertex-ai.countTokens').map((call) => new URL(call.url).pathname)).toEqual([
-            '/v1/projects/demo-hcm/locations/us-central1/publishers/google/models/gemini-2.5-flash-lite:countTokens',
+            '/v1/projects/demo-hcm/locations/us-central1/publishers/google/models/gemini-3.5-flash-lite:countTokens',
         ]);
+        expect(world.upstream.callsTo('vertex-ai.generateContent')).toEqual([]);
+    });
+
+    it('happyPath_theFirstModelNotOfferedTheCheckProbesTheNextAndNamesIt @S-A45-HAPPY-FALLBACK-MODEL', async () => {
+        const world = createWorld();
+        world.upstream.scenario('vertex-ai.firstModelUnavailable');
+
+        const response = await selfTest(world.deps, ADMIN);
+
+        expect(check(response, 'ai')).toEqual({ id: 'ai', state: 'ok', params: { model: 'gemini-3.1-flash-lite' } });
+        expect(world.upstream.state.vertexAi.counted).toEqual(['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite']);
         expect(world.upstream.callsTo('vertex-ai.generateContent')).toEqual([]);
     });
 
@@ -441,7 +472,7 @@ describe('setup.selfTest Vertex AI failures (M6, finding 20)', () => {
             id: 'ai',
             state: 'invalid',
             detail: 'apiError.assist.modelUnavailable',
-            params: { model: 'gemini-2.5-flash-lite' },
+            params: { model: 'gemini-3.5-flash-lite, gemini-3.1-flash-lite' },
         });
         expect(world.records.find((record) => record.data?.['check'] === 'ai')?.data).toEqual({
             check: 'ai',

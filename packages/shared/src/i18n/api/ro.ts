@@ -104,7 +104,7 @@ export const ro = {
     'apiError.assist.noDraft': 'Asistentul nu a propus nicio traducere pentru acest text.',
     'apiError.assist.linksChanged': 'Traducerea propusă schimba linkurile textului și nu a fost folosită. Scrie textul sau reîncearcă.',
     'apiError.assist.dailyCap': 'Sugestiile de titlu de azi s-au terminat; revin mâine. Până atunci, scrie titlul.',
-    'apiError.assist.modelUnavailable': 'Vertex AI nu oferă modelul {model} acestui proiect: fără ciorne de traducere. Scrie textul.',
+    'apiError.assist.modelUnavailable': 'Vertex AI nu oferă proiectului modelele încercate ({model}): fără ciorne. Scrie textul.',
     'apiError.notify.deviceInvalid': 'Acest browser nu a putut fi înregistrat pentru notificări. Încearcă din nou sau folosește inboxul.',
     'apiError.city.notMember': 'Acest cont nu administrează orașul {cityId}.',
     'apiError.city.notOwner': 'Doar proprietarii orașului {cityId} pot face asta.',

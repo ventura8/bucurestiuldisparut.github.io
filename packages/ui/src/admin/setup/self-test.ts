@@ -66,12 +66,20 @@ function checkRow(locale: Locale, check: CheckView): TemplateResult {
     </li>`;
 }
 
-/** An optional feature's check: off (a neutral icon) with its reason while not ok, never an alarm. */
+/** §67g: the model a passing AI check found offered, on a line of its own. */
+function modelLine(locale: Locale, check: CheckView): TemplateResult | typeof nothing {
+    return check.model === undefined
+        ? nothing
+        : html`<span class="reason" data-model>${setupLabel(locale, 'adminSetup.selfTest.model', { model: check.model })}</span>`;
+}
+
+/** An optional feature's check: off (a neutral icon) with its reason while not ok, never an alarm; on, the model in use. */
 function optionalRow(locale: Locale, check: CheckView): TemplateResult {
     const off = check.state === 'ok' ? undefined : OPTIONAL_CHECKS[check.id];
     return html`<li class="check" data-check=${check.id} data-state=${check.state} data-optional>
         <hcm-icon name=${off === undefined ? ICONS.ok : 'info'}></hcm-icon>
         <span>${setupLabel(locale, off ?? `adminSetup.selfTest.check.${check.id}`)}</span>
+        ${modelLine(locale, check)}
         ${check.detail === null ? nothing : html`<span class="reason">${setupText(locale, check.detail)}</span>`} ${fix(locale, check)}
     </li>`;
 }

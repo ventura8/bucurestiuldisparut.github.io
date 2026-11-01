@@ -3718,7 +3718,7 @@
             "area": "admin",
             "path": "happy",
             "title": "An English draft of the Romanian title fills the field until Save",
-            "asserts": "English draft (offered while only Romanian has text) -> the English field holds the fake model's text and the note Draft proposed by gemini-2.5-flash-lite: check it before you save, and no button offers to replace it; the manifest unchanged until Save; after Save the viewer shows the English title (input budget translateDraft: 2)",
+            "asserts": "English draft (offered while only Romanian has text) -> the English field holds the fake model's text and the note Draft proposed by gemini-3.5-flash-lite: check it before you save, and no button offers to replace it; the manifest unchanged until Save; after Save the viewer shows the English title (input budget translateDraft: 2)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §4.3; owner: assists-notify). In e2e/admin/specs/assists/drafts.spec.ts (state assist.draft)."
@@ -4967,6 +4967,50 @@
             "notes": "Milestone M2b (docs/research/M2b-interfaces.md §5); the owner's whole journey (e2e/admin/specs/journey.spec.ts, M2b integration)."
         },
         {
+            "id": "S-A22-HAPPY-MEASUREMENT-REPORTS",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "happy",
+            "title": "Create the measurement reports registers the field measurements on the GA4 property",
+            "asserts": "Create the measurement reports (one click, one analytics.edit consent) -> the fake Analytics Admin API's property whose web stream sends the project's measurement id holds the 11 custom dimensions and 3 custom metrics of the field measurements (duration_ms and metric_value in milliseconds) -> the card says 14 created, 0 already there",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §76f (the user's decision of 2026-11-01). Test: e2e/admin/steps/analytics.spec.ts (state setup.analytics-reports); units: packages/admin/test/google/analytics-reports.test.ts, packages/admin/test/setup/analytics.test.ts."
+        },
+        {
+            "id": "S-A22-HAPPY-REPORTS-AGAIN-NOTHING",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "happy",
+            "title": "Creating the measurement reports again creates nothing",
+            "asserts": "a second click (the tab's Analytics token still live: no consent) -> nothing is posted and the card says 0 created, 14 already there",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §76f. Test: e2e/admin/steps/analytics.spec.ts."
+        },
+        {
+            "id": "S-A22-BAD-REPORTS-NO-PROPERTY",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "bad",
+            "title": "No property the account can edit sends the measurement id",
+            "asserts": "the GA4 property belongs to an account the signed-in owner cannot see -> the card's alert says this account cannot edit a Google Analytics property that sends G-E2E0000000; nothing is created",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §76f. Test: e2e/admin/steps/analytics.spec.ts."
+        },
+        {
+            "id": "S-A22-BAD-REPORTS-PERMISSION",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "bad",
+            "title": "The Analytics Admin API refusing the account names the role",
+            "asserts": "the fake Analytics Admin API answers 403 -> the card's alert names roles/analytics.editor; nothing is created",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §76f. Test: e2e/admin/steps/analytics.spec.ts."
+        },
+        {
             "id": "S-A22-BAD-NO-STREAM",
             "behaviour": "A22",
             "area": "admin",
@@ -5731,10 +5775,10 @@
             "area": "admin",
             "path": "happy",
             "title": "The whole Setup, server and public map included, takes no terminal",
-            "asserts": "from sign-in to Publish the map with the mocks: at most 11 in-app inputs and 4 Google consents (9 with USGS postponed); no Setup text names a command; the public map at / shows the city's photos",
+            "asserts": "from sign-in to Publish the map with the mocks: at most 11 in-app inputs and 4 Google consents (9 with USGS postponed); Publish the map asks no consent after the analytics consent (the tab keeps one Google token per scope, §73j); no Setup text names a command; the public map at / shows the city's photos",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M6 (docs/research/M6-interfaces.md §4.1, §4.2; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/journey.spec.ts (M6 integrator)."
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §4.1, §4.2; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/journey.spec.ts (M6 integrator). §73j (2026-11-01): one token per scope (packages/admin/src/auth/google-access.ts)."
         },
         {
             "id": "S-A30-BAD-TOKEN-EXPIRED",
@@ -6831,7 +6875,7 @@
             "area": "admin",
             "path": "happy",
             "title": "A draft comes from the pinned model with the pinned prompt and is counted",
-            "asserts": "the fake Vertex AI receives VERTEX_MODEL_ID, the systemInstruction of TRANSLATION_PROMPT_VERSION 1, the admin's text as the only user turn, temperature 0.2; the answer sanitized; usage/ai-YYYY-MM requests plus one and the tokens of usageMetadata",
+            "asserts": "the fake Vertex AI receives the first model of VERTEX_MODEL_IDS (VERTEX_MODEL_ID), the systemInstruction of TRANSLATION_PROMPT_VERSION 1, the admin's text as the only user turn, temperature 0.2; the answer sanitized; usage/ai-YYYY-MM requests plus one and the tokens of usageMetadata",
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §4.3; owner: assists-notify). In functions/test/assist/translate.test.ts."
@@ -6897,7 +6941,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The setup self-test proves the model answers without a charge",
-            "asserts": "the ai check calls countTokens on VERTEX_MODEL_ID only, never generateContent, and is ok",
+            "asserts": "the ai check calls countTokens on the first model of VERTEX_MODEL_IDS only, never generateContent, and is ok naming that model (params.model)",
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §4.4; owner: assists-notify). In functions/test/setup/self-test.test.ts."
@@ -6907,11 +6951,33 @@
             "behaviour": "A45",
             "area": "admin",
             "path": "bad",
-            "title": "A model Vertex AI does not serve is named, not reported as a server error",
-            "asserts": "the mock Vertex AI answers 404 for the pinned model -> the AI check says the model is not available to the project (apiError.assist.modelUnavailable with the model) and the drafts button explains the same",
+            "title": "No model Vertex AI serves the project is named, not reported as a server error",
+            "asserts": "the mock Vertex AI answers 404 for every model of VERTEX_MODEL_IDS -> the AI check says none is available to the project (apiError.assist.modelUnavailable naming every model tried: gemini-3.5-flash-lite, gemini-3.1-flash-lite) and the drafts button explains the same after asking each model once; the field stays empty",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.2; owner: server-bugs). Finding 20 of docs/research/manual-test-2026-10-25.md. Covered by e2e/admin/specs/assists/drafts.spec.ts (the drafts button) and functions/test/setup/self-test.test.ts (the AI check)."
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §3.2; owner: server-bugs). Finding 20 of docs/research/manual-test-2026-10-25.md. Covered by e2e/admin/specs/assists/drafts.spec.ts (the drafts button) and functions/test/setup/self-test.test.ts (the AI check). §67g (2026-11-01): the list of models; functions/test/assist/translate.test.ts too."
+        },
+        {
+            "id": "S-A45-HAPPY-FALLBACK-MODEL",
+            "behaviour": "A45",
+            "area": "admin",
+            "path": "happy",
+            "title": "A model Google no longer offers the project falls back to the next of the list",
+            "asserts": "the fake Vertex AI answers 404 for gemini-3.5-flash-lite only -> the self-test's ai check probes it then gemini-3.1-flash-lite with countTokens (never generateContent) and is ok naming gemini-3.1-flash-lite; a draft comes from gemini-3.1-flash-lite and names it, the next draft asks it at once (the choice kept for 10 minutes), after which the first model is asked again",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §67g (the user's decision of 2026-11-01: gemini-2.5-flash-lite retired). Tests: functions/test/setup/self-test.test.ts, functions/test/assist/translate.test.ts (vertex-ai.firstModelUnavailable; functions/src/api/vertex-models.ts)."
+        },
+        {
+            "id": "S-A45-HAPPY-MODEL-NAMED",
+            "behaviour": "A45",
+            "area": "admin",
+            "path": "happy",
+            "title": "Check again names the translation model in use",
+            "asserts": "Check again on a project Vertex AI serves -> the translation drafts' check is ok with the line Model in use: gemini-3.5-flash-lite under it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §67g. Test: e2e/admin/steps/status.spec.ts (state setup-self-test); unit: packages/ui/test/admin/setup/setup-ux.test.ts, packages/admin/test/setup/controller.test.ts."
         },
         {
             "id": "S-A45-BAD-UPSTREAM-LOGGED",
@@ -7934,7 +8000,7 @@
             "asserts": "the same click -> a pipeline build (docker build of the bundled context, push to the hcm repository, the jobs step) -> the Run fake holds raster-pipeline (4 CPU, 16 GiB) and raster-pipeline-xl (8 CPU, 32 GiB) as job-raster@ on the pushed digest with the release label -> the pipeline card installed; an import then dispatches to the job; no input of its own",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.4.2, §4.1; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/pipeline.spec.ts (installer)."
+            "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.4.2, §4.1; owner: installer). Finding 13 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/pipeline.spec.ts (installer). §67e (2026-11-01, the user's decision): the bundle names Google's Docker builder by the digest of its tag 29 (DOCKER_BUILDER_IMAGE of @hcm/shared), which the build's docker steps, the e2e bundle and the admin's unit world all use; UNVERIFIED live: the push to the hcm repository as hcm-installer@ and the jobs' creation (docs/research/M6-status.md)."
         },
         {
             "id": "S-A56-HAPPY-UPDATE",
@@ -7978,7 +8044,7 @@
             "asserts": "installer's account but no hcm repository, a server in place -> Check again: Install the pipeline is off with the reason -> the repository appears, Check again -> the button is on -> one click -> a pipeline build -> installed",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 3 of the min-input review. Test: e2e/admin/steps/install/update.spec.ts."
+            "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 3 of the min-input review. Test: e2e/admin/steps/install/update.spec.ts. §67e: with the pinned builder the live card offers this button."
         },
         {
             "id": "S-A56-BAD-NOT-AVAILABLE",
@@ -7989,7 +8055,7 @@
             "asserts": "the bundle's manifest names no Docker builder and a record says the pipeline was looked at and is not installed -> the pipeline card shows Not available yet with the reason, no Install the pipeline or Try again button, no consent note, and no pipeline build is submitted",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Finding 43 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §67e). Test: e2e/admin/steps/install/update.spec.ts; state setup.pipeline-not-available in e2e/admin/specs/install/states.spec.ts."
+            "notes": "Finding 43 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §67e). Test: e2e/admin/steps/install/update.spec.ts; state setup.pipeline-not-available in e2e/admin/specs/install/states.spec.ts. Since §67e (2026-11-01) the release's own bundle names the builder, so this row is a bundle without it (an older or a hand-made one)."
         },
         {
             "id": "S-A57-HAPPY",
@@ -8001,6 +8067,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §1.4.3, §1.8, §2.5; owner: installer). Finding 13, 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/install/site.spec.ts (installer)."
+        },
+        {
+            "id": "S-A57-HAPPY-PUBLISH-WITHOUT-ORIGINALS",
+            "behaviour": "A57",
+            "area": "admin",
+            "path": "happy",
+            "title": "After the legacy import a publish leaves the old photos' originals out",
+            "asserts": "every old photo imported (step h) -> the site card's cost line says about 7 MB a publish -> Publish the map submits a site build whose fetch downloads hosting.tgz, server.tgz and pipeline.tgz only (no legacy.tgz, nothing unpacked beside the site)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §73k (the user's decision of 2026-11-01). Test: e2e/admin/specs/journey.spec.ts; units: packages/admin/test/install/build-spec.test.ts, cloud-build-installer.test.ts, fetch-script.test.ts, packages/admin/test/app/setup-wiring.test.ts, scripts/site/test/install-bundle.test.ts."
+        },
+        {
+            "id": "S-A57-BAD-ORIGINALS-UNTIL-IMPORTED",
+            "behaviour": "A57",
+            "area": "admin",
+            "path": "bad",
+            "title": "Before the legacy import is complete a publish keeps the originals",
+            "asserts": "no old photo imported -> the site card's cost line says about 52 MB a publish -> Publish the map's build fetches legacy.tgz too and unpacks it into the site (HCM_UNPACK=legacy), so the import can still read them",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "DECISIONS-for-review.md §73k. Test: e2e/admin/specs/journey.spec.ts (the publish hours after Prepare the project)."
         },
         {
             "id": "S-A57-HAPPY-UPDATE",

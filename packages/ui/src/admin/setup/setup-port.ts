@@ -172,6 +172,8 @@ export interface SetupViewState {
         readonly pageChangesOff: boolean;
         readonly crashEmails: boolean;
         readonly watching: boolean;
+        /** §76f: what the last Create the measurement reports registered and found there, or null before one. */
+        readonly reports: { readonly created: number; readonly skipped: number } | null;
     };
     readonly crashes: {
         readonly loaded: boolean;
@@ -195,7 +197,13 @@ export interface SetupViewState {
     };
     /** The last self-test's checks (Check again in normal mode), each with its state and a failure's reason. */
     readonly selfTest: {
-        readonly checks: readonly { readonly id: SelfTestCheck; readonly state: ServiceState; readonly detail: SetupMessage | null }[];
+        readonly checks: readonly {
+            readonly id: SelfTestCheck;
+            readonly state: ServiceState;
+            readonly detail: SetupMessage | null;
+            /** §67g: the model a passing AI check found offered. */
+            readonly model?: string;
+        }[];
     };
     // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.7)
     readonly install: InstallSliceView;
@@ -267,6 +275,8 @@ export interface SetupIntentsPort {
     postponeUsgs(): void;
     followLink(step: SetupStepId): void;
     disableHistoryPageViews(): void;
+    /** §76f: Create the measurement reports (one click, the `analyticsEdit` consent when no live token has it). */
+    createMeasurementReports(): void;
     setCrashEmails(enabled: boolean): void;
     enableApi(api: string): void;
     loadCrashGroups(): void;

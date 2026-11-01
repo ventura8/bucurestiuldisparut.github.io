@@ -53,7 +53,7 @@ describe('the photo editor assists', () => {
         const world = contentWorld();
         world.callables.answer('assist.translateDraft', (request) => {
             const { text, to } = request as { readonly text: string; readonly to: string };
-            return { draft: `${text} [${to}]`, truncated: false, model: 'gemini-2.5-flash-lite' };
+            return { draft: `${text} [${to}]`, truncated: false, model: 'gemini-3.5-flash-lite' };
         });
         const photos = open(world, { ro: 'Ateneul Român' });
         photos.intents.edit({ description: { ro: '', en: 'A concert hall.' } });
@@ -67,7 +67,7 @@ describe('the photo editor assists', () => {
         expect(photos.state.editor?.value?.title).toEqual({ ro: 'Ateneul Român', en: 'Ateneul Român [en]' });
         expect(photos.state.editor?.value?.description).toEqual({ ro: 'A concert hall. [ro]', en: 'A concert hall.' });
         expect(world.callables.named('assist.translateDraft')).toBe(2);
-        expect(photos.state.assist.drafts['title.en']).toMatchObject({ status: 'done', model: 'gemini-2.5-flash-lite' });
+        expect(photos.state.assist.drafts['title.en']).toMatchObject({ status: 'done', model: 'gemini-3.5-flash-lite' });
         expect(world.store.writes).toEqual([]);
     });
 
@@ -142,7 +142,7 @@ describe('the photo editor assists', () => {
         await settled();
 
         photos.open(['p2']);
-        pending.resolve?.({ draft: 'Romanian Athenaeum', truncated: false, model: 'gemini-2.5-flash-lite' });
+        pending.resolve?.({ draft: 'Romanian Athenaeum', truncated: false, model: 'gemini-3.5-flash-lite' });
         await settled();
 
         expect(photos.state.editor?.value?.title).toEqual({ ro: 'Gara de Nord' });

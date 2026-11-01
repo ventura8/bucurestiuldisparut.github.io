@@ -360,6 +360,9 @@ describe('check again', () => {
             { id: 'firestore', state: 'ok' },
             { id: 'secrets', state: 'unavailable', detail: 'apiError.secrets.unavailable' },
             { id: 'mapbox', state: 'invalid', detail: 'apiError.cloud.permission', params: { role: 'roles/secretmanager.secretAccessor' } },
+            // §67g: a passing AI check names the model in use; a failing one names the models in its reason only.
+            { id: 'ai', state: 'ok', params: { model: 'gemini-3.1-flash-lite' } },
+            { id: 'usgs', state: 'ok' },
         ] as const;
         const { controller } = setup((h) => {
             h.backend.selfTest.mockResolvedValue({ checks: [...checks], status: READY_VIEW });
@@ -378,6 +381,8 @@ describe('check again', () => {
                 state: 'invalid',
                 detail: { key: 'apiError.cloud.permission', params: { role: 'roles/secretmanager.secretAccessor' } },
             },
+            { id: 'ai', state: 'ok', detail: null, model: 'gemini-3.1-flash-lite' },
+            { id: 'usgs', state: 'ok', detail: null },
         ]);
     });
 

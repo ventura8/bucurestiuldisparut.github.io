@@ -1,7 +1,8 @@
 /**
  * Step (g), analytics and crash reports (`docs/research/M2b-interfaces.md` §3.3 g): `setup.analyticsConfig` when the
  * card opens (and every 15 s for 15 minutes after the owner followed the link that enables Google Analytics); the GA4
- * stream setting that turns history page views off (one click, one `analyticsEdit` consent, CR-M2-37); the crash
+ * stream setting that turns history page views off (one click, one `analyticsEdit` consent, CR-M2-37); Create the
+ * measurement reports (§76f: the field measurements' custom definitions on the GA4 property, the same scope); the crash
  * e-mail switch over the `crash-alerts` alert policy (one click, one `cloudPlatform` consent); the crash groups of
  * `telemetry.listGroups`, also the `#/crashes` page, with "Enable with Google" when Error Reporting is disabled
  * (CR-M2-40).
@@ -25,6 +26,8 @@ export interface AnalyticsFlow {
     /** The owner followed the link that enables Google Analytics. */
     followLink(): void;
     disablePageChanges(): Promise<void>;
+    /** §76f: Create the measurement reports on the GA4 property of the detected measurement id. */
+    createReports(): Promise<void>;
     setCrashEmails(enabled: boolean): Promise<void>;
     loadCrashGroups(): Promise<void>;
     /** Enables a disabled API the crash panel needs (one click, one consent), then lists again. */
@@ -86,6 +89,20 @@ class Analytics implements AnalyticsFlow {
         }
     }
 
+    async createReports(): Promise<void> {
+        const id = this.ctx.state().analytics.measurementId;
+        this.ctx.count('analytics', 'inputs');
+        const access = id === null ? null : await googleAccess(this.ctx, 'analytics', 'analyticsEdit', true);
+        if (id === null || access === null) {
+            return;
+        }
+        try {
+            this.reported(id, await this.ctx.deps.cloud.createMeasurementReports(access, id));
+        } catch (error) {
+            this.ctx.fail('analytics', googleFailure(error));
+        }
+    }
+
     async setCrashEmails(enabled: boolean): Promise<void> {
         this.ctx.count('analytics', 'inputs');
         const access = await googleAccess(this.ctx, 'analytics', 'cloudPlatform', true);
@@ -127,6 +144,16 @@ class Analytics implements AnalyticsFlow {
 
     dispose(): void {
         this.poller.stop();
+    }
+
+    /** What Create the measurement reports did, or that no property the owner can edit sends `id`. */
+    private reported(id: string, reports: { readonly created: number; readonly skipped: number } | null): void {
+        if (reports === null) {
+            const message = setupMessage('adminSetup.analytics.noProperty', { id });
+            this.ctx.fail('analytics', { state: 'invalid', message, expired: false });
+            return;
+        }
+        this.ctx.update((state) => ({ ...state, analytics: { ...state.analytics, reports } }));
     }
 
     private setWatching(watching: boolean): void {

@@ -47,21 +47,23 @@ function bundle(release = RELEASE): Bundle {
     const server = tarball('server.txt', 'the server');
     const pipeline = tarball('pipeline.txt', 'the pipeline');
     const site = tarball('index.html', '<!doctype html><title>map</title>');
+    const legacy = tarball('original.jpg', 'an original');
     const entry = (name: string, bytes: Buffer) => ({ name, bytes: bytes.length, sha256: sha(bytes) });
-    const manifest = Buffer.from(
-        JSON.stringify({
-            release,
-            releaseTime: 1_761_955_200,
-            files: { server: entry('server.tgz', server), pipeline: entry('pipeline.tgz', pipeline), site: entry('hosting.tgz', site) },
-        }),
-    );
-    const files = new Map([
+    const files = {
+        server: entry('server.tgz', server),
+        pipeline: entry('pipeline.tgz', pipeline),
+        site: entry('hosting.tgz', site),
+        legacy: entry('legacy.tgz', legacy),
+    };
+    const manifest = Buffer.from(JSON.stringify({ release, releaseTime: 1_761_955_200, files }));
+    const served = new Map([
         ['manifest.json', manifest],
         ['server.tgz', server],
         ['pipeline.tgz', pipeline],
         ['hosting.tgz', site],
+        ['legacy.tgz', legacy],
     ]);
-    return { files, manifestSha: sha(manifest), serverSha: sha(server) };
+    return { files: served, manifestSha: sha(manifest), serverSha: sha(server) };
 }
 
 function run(env: Readonly<Record<string, string>>): Promise<{ readonly code: number; readonly stderr: string }> {
@@ -145,6 +147,28 @@ describe('the fetch step', () => {
         expect(existsSync(join(work, 'site', 'index.html'))).toBe(true);
         const kept = join(work, 'site', 'public', 'admin', 'install', '1-0-0-abc1234');
         expect(['manifest.json', 'hosting.tgz', 'server.tgz', 'pipeline.tgz'].every((name) => existsSync(join(kept, name)))).toBe(true);
+        // §73k: without legacy.tgz in HCM_FILES the originals are neither downloaded nor in the release.
+        expect([existsSync(join(work, 'site', 'original.jpg')), existsSync(join(kept, 'legacy.tgz'))]).toEqual([false, false]);
+    });
+
+    it('happyPath_aSiteBuildBeforeTheLegacyImportEndsUnpacksTheOriginalsToo', async () => {
+        const found = bundle();
+        served = found.files;
+        const siteSha = sha(found.files.get('hosting.tgz') ?? Buffer.alloc(0));
+
+        const result = await run(
+            envOf(found, {
+                HCM_FILE_SHA256: siteSha,
+                HCM_FILES: 'site,server,pipeline,legacy',
+                HCM_OUT: join(work, 'site'),
+                HCM_KEEP_BUNDLE: 'public/admin/install/1-0-0-abc1234',
+                HCM_UNPACK: 'legacy',
+            }),
+        );
+
+        expect(result.code).toBe(0);
+        expect(readFileSync(join(work, 'site', 'original.jpg'), 'utf8')).toBe('an original');
+        expect(existsSync(join(work, 'site', 'public', 'admin', 'install', '1-0-0-abc1234', 'legacy.tgz'))).toBe(true);
     });
 
     it.each([
@@ -163,6 +187,11 @@ describe('the fetch step', () => {
             'not the file the admin chose',
         ],
         ['a target the manifest does not name', (found: Bundle) => envOf(found, { HCM_FILES: 'other' }), 'names no file for other'],
+        [
+            'a tarball unpacked but not fetched',
+            (found: Bundle) => envOf(found, { HCM_UNPACK: 'legacy' }),
+            'legacy is unpacked but not fetched',
+        ],
     ])('badPath_%s stops the build', async (_name, env, message) => {
         const found = bundle();
         served = found.files;

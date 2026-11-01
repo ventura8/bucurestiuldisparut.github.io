@@ -100,7 +100,7 @@ export const en: ApiMessages = {
     'apiError.assist.noDraft': 'The assistant proposed no translation for this text.',
     'apiError.assist.linksChanged': 'The proposed translation changed the text’s links, so it was not used. Type the text, or try again.',
     'apiError.assist.dailyCap': 'Today’s title suggestions are used up; they return tomorrow. Type the title.',
-    'apiError.assist.modelUnavailable': 'Vertex AI does not offer {model} to this project: no translation drafts. Type the text.',
+    'apiError.assist.modelUnavailable': 'Vertex AI offers the project none of the models tried ({model}): no drafts. Type the text.',
     'apiError.notify.deviceInvalid': 'This browser could not be registered for notifications. Try again, or use the inbox.',
     'apiError.city.notMember': 'This account does not administer the city {cityId}.',
     'apiError.city.notOwner': 'Only the owners of {cityId} can do this.',

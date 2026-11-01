@@ -12,9 +12,10 @@ registry (this is the only network-bound gate besides `contract`, and it is neve
    exact pins of pipeline/pyproject.toml (project dependencies, Poetry groups, build-system requires), against
    `pip index versions --json` (stable releases installable on the image's Python 3.14).
 3. Docker, best effort: every image pinned by tag and digest (a Dockerfile's `# image:tag` comment above a
-   digest-only `FROM`, `# syntax=` lines, `image:tag@sha256:` in shell scripts and YAML), against the tags of the
-   same shape (`24-bookworm-slim` -> `<n>-bookworm-slim`) on Docker Hub or ghcr.io. A registry that cannot be
-   read is a warning, not a failure.
+   digest-only `FROM`, `# syntax=` lines, `image:tag@sha256:` in shell scripts, YAML and the install bundle's
+   Docker builder in packages/shared/src/schemas/install.ts), against the tags of the same shape (`24-bookworm-slim` ->
+   `<n>-bookworm-slim`) on Docker Hub, ghcr.io or gcr.io (Google's builders; an image Google marks retired is no
+   candidate). A registry that cannot be read is a warning, not a failure.
 4. GitHub Actions: every `uses: owner/repo@<sha> # vX.Y.Z`, against the newest `vX.Y.Z` tag of owner/repo
    (git matching-refs: some repositories publish other things as their "latest release").
 
@@ -69,9 +70,12 @@ INLINE_IMAGE = re.compile(rf"{IMAGE}:{TAG}@sha256:[0-9a-f]{{64}}")
 TAG_COMMENT = re.compile(rf"^#\s+{IMAGE}:{TAG}")
 DIGEST_FROM = re.compile(rf"^FROM\s+(?:--platform=\S+\s+)?{IMAGE}@sha256:", re.IGNORECASE)
 DOCKERFILE = re.compile(r"(?:^|/)Dockerfile(?:\.[\w.-]+)?$")
-IMAGE_FILE = re.compile(r"(?:\.sh|\.ya?ml|^scripts/git-hooks/[^/]+)$")
+IMAGE_FILE = re.compile(r"(?:\.sh|\.ya?ml|^scripts/git-hooks/[^/]+|^packages/shared/src/schemas/install\.ts)$")
 DOCKER_HUB = "https://hub.docker.com/v2/namespaces"
 GHCR = "https://ghcr.io"
+GCR = "https://gcr.io"
+# Google's markers of a builder image no longer to use: a tag of either beside a version retires that version.
+GCR_RETIRED = re.compile(r"^(?:deprecated-public-image|no-new-use-public-image)-")
 NAME_FILTER = re.compile(r"[A-Za-z][A-Za-z-]*[A-Za-z]")
 NEXT_LINK = re.compile(r'<([^>]+)>;\s*rel="next"')
 
@@ -424,7 +428,20 @@ def tag_list(value: object) -> list[object]:
     return value if isinstance(value, list) else []
 
 
-TAG_READERS: dict[str, Callable[[str, str, Fetch], list[str]]] = {"docker.io": docker_hub_tags, "ghcr.io": ghcr_tags}
+def current_tags(entry: object) -> list[str]:
+    """The tags of one gcr.io manifest, none when Google marks the image retired."""
+    names = [str(name) for name in tag_list(entry.get("tag") if isinstance(entry, dict) else None)]
+    return [] if any(GCR_RETIRED.match(name) for name in names) else names
+
+
+def gcr_tags(path: str, _tag: str, fetch: Fetch) -> list[str]:
+    """gcr.io's anonymous tag list, per manifest: the old numeric build tags and retired lines carry Google's markers."""
+    manifests = get_object(Request("GET", f"{GCR}/v2/{path}/tags/list"), fetch).get("manifest")
+    entries = list(manifests.values()) if isinstance(manifests, dict) else []
+    return [name for entry in entries for name in current_tags(entry)]
+
+
+TAG_READERS: dict[str, Callable[[str, str, Fetch], list[str]]] = {"docker.io": docker_hub_tags, "ghcr.io": ghcr_tags, "gcr.io": gcr_tags}
 
 
 def tag_shape(tag: str) -> re.Pattern[str]:

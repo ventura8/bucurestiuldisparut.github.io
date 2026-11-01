@@ -197,3 +197,36 @@ c's Retry what failed) and **Încearcă din nou** (`docs/MANUAL_TEST_PLAN.md` �
 choice; §75c was rejected on 2026-11-01). After the next redeploy an open admin tab says by itself that a new version is
 ready (§75i). The verdicts of `static`, `tests` and `build`
 are in the integrator's report; the full split `all` is the orchestrator's.
+
+## 7. The user's decisions of 2026-11-01 ("do all")
+
+`DECISIONS-for-review.md` §67e, §67g, §73j, §73k, §73l and §76f, each APPLIED on 2026-11-01 with the option
+recommended; nothing was committed, pushed or deployed, and the only network read was §67e's registry read.
+
+- **§67e, the imagery pipeline from the app.** The install bundle names Google's Docker builder by digest:
+  `gcr.io/cloud-builders/docker@sha256:6a6635024a23c8ed596c26fefc744bd3c5dbe269e8d8d541f2fda2beb0664ea5`, the manifest
+  list of the tag `29` (linux/amd64 and linux/arm64), read from gcr.io's tag list and `docker buildx imagetools inspect`
+  without a pull; `latest` still names `20.10.24`, which Google marks `no-new-use-public-image`. The pin is
+  `DOCKER_BUILDER_PIN` / `DOCKER_BUILDER_IMAGE` of `packages/shared/src/schemas/install.ts`; the deps gate tracks the tag
+  on gcr.io. The pipeline card offers Install the pipeline, and Install the server's click installs it too.
+  **UNVERIFIED live**: the push of the pipeline's image to the repository `hcm` as `hcm-installer@`
+  (`roles/artifactregistry.writer` on the repository) and the creation and update of the Cloud Run jobs
+  `raster-pipeline` and `raster-pipeline-xl` (the custom role `hcmInstaller` and Service Account User on `job-raster@`);
+  the first live install's 403s name what is missing, as for the server (§67a).
+- **§67g, the drafts' model.** `VERTEX_MODEL_IDS` = `gemini-3.5-flash-lite`, then `gemini-3.1-flash-lite`
+  (`gemini-2.5-flash-lite` retired in October 2026). The functions use the first model Google offers the project and keep
+  the choice ten minutes per instance (`functions/src/api/vertex-models.ts`); the self-test's `ai` check probes them in
+  order with the free `countTokens` and names the model in use under its row; a project offered neither names both. The
+  custom role `hcmVertexDrafts` is unchanged (`aiplatform.endpoints.predict` serves any publisher model). The price
+  constant stays UNVERIFIED until the first invoice line.
+- **§73j, one Google token per scope.** The tab keeps one token per scope (memory only): the Analytics consent no longer
+  costs Publish the map a consent within the hour. The whole assistant asks at most 11 inputs and 4 consents again.
+- **§73k, the legacy originals out of later publishes.** The bundle carries them as `legacy.tgz` beside `hosting.tgz`
+  (4.5 MB without them); a site build fetches and unpacks them only while step (h)'s import is not complete, so a
+  publish moves about 7 MB instead of 52 MB (`SITE_PUBLISH_TRANSFER_TRIMMED_MB`); D1's terminal deploy and a fresh
+  project's publishes keep them.
+- **§73l**: the emulators' gitignored `*-debug.log` files are out of `gitleaks dir`'s scope.
+- **§76f, Create the measurement reports** (step g): the field measurements' 11 custom dimensions and 3 custom metrics
+  on the GA4 property whose stream sends the measurement id, through the Analytics Admin API `v1beta` with the
+  `analytics.edit` consent; idempotent (a second run creates nothing). UNVERIFIED live: the API's answers against a real
+  property (the fakes follow Google's documented shapes).

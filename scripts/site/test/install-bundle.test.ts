@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { installManifestSchema } from '@hcm/shared';
+import { DOCKER_BUILDER_IMAGE, installManifestSchema } from '@hcm/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { SiteBuildError } from '../src/errors.js';
@@ -61,7 +61,8 @@ describe('buildInstallBundle', () => {
             // Finding 39 of 2026-11-01: the build time, here SOURCE_DATE_EPOCH's.
             releaseTime: 1_700_000_000,
             projectId: 'bucurestiul-disparut',
-            tools: { node: NODE_STEP_IMAGE, docker: null },
+            // §67e: the pipeline's Docker builder by digest, so the admin offers Install the pipeline.
+            tools: { node: NODE_STEP_IMAGE, docker: DOCKER_BUILDER_IMAGE },
         });
         expect(manifest.functions).toEqual(expectedFunctionNames());
         const server = readFileSync(join(distRoot, `dist/hosting/admin/install/${report.slug}/server.tgz`));
@@ -118,6 +119,28 @@ describe('buildInstallBundle', () => {
         );
         expect(hosting.some((path) => path.startsWith('tools/vendor/npm/braces/'))).toBe(false);
         expect(hosting.some((path) => path.startsWith('public/admin/install/'))).toBe(false);
+    });
+
+    it('happyPath_theLegacyOriginalsTravelInATarballOfTheirOwn_badPath_aTreeWithoutThemHasNone', () => {
+        const { files, distRoot } = world();
+        files.write('dist/hosting-public/admin/legacy/bucharest/photos.json', '[]');
+        files.write('dist/hosting-public/admin/legacy/bucharest/originals/p-1.jpg', 'jpeg bytes');
+        const report = buildInstallBundle(OPTIONS, files, STEPS);
+        const folder = `dist/hosting/admin/install/${report.slug}`;
+        const manifest = installManifestSchema.parse(JSON.parse(files.readText(`${folder}/manifest.json`)));
+
+        // §73k: the site build fetches them only while the legacy import is not complete; the list stays in hosting.tgz.
+        expect(listing(distRoot, `${folder}/legacy.tgz`)).toEqual(['public/admin/legacy/bucharest/originals/p-1.jpg']);
+        expect(listing(distRoot, `${folder}/hosting.tgz`)).toContain('public/admin/legacy/bucharest/photos.json');
+        expect(listing(distRoot, `${folder}/hosting.tgz`).some((path) => path.includes('/originals/'))).toBe(false);
+        expect(manifest.files.legacy).toMatchObject({ name: 'legacy.tgz', bytes: report.bytes.legacy });
+
+        const bare = world();
+        const without = buildInstallBundle(OPTIONS, bare.files, STEPS);
+        const bareManifest = installManifestSchema.parse(
+            JSON.parse(bare.files.readText(`dist/hosting/admin/install/${without.slug}/manifest.json`)),
+        );
+        expect([without.bytes.legacy, bareManifest.files.legacy]).toEqual([0, undefined]);
     });
 
     it('happyPath_theBundlesFirebaseConfigsHaveNoPredeployAndTheTreeUnderPublic', () => {

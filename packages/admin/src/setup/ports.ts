@@ -153,6 +153,14 @@ export interface SetupCloud {
     disablePageChanges(access: GoogleAccess): Promise<{ readonly pageChangesEnabled: boolean }>;
     /** Switches the `crash-alerts` alert policy on or off and reads it back. */
     setCrashAlerts(access: GoogleAccess, enabled: boolean): Promise<{ readonly enabled: boolean }>;
+    /**
+     * §76f: registers the field measurements' custom dimensions and metrics on the GA4 property of `measurementId`,
+     * skipping those there; null when no property the owner can see sends that id.
+     */
+    createMeasurementReports(
+        access: GoogleAccess,
+        measurementId: string,
+    ): Promise<{ readonly created: number; readonly skipped: number } | null>;
 }
 
 /** The callables behind the cards; failures are the Firebase SDK's `FunctionsError` (`code`, `details`). */

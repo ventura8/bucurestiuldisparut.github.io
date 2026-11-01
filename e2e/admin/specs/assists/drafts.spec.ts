@@ -1,4 +1,4 @@
-import { VERTEX_MODEL_ID } from '@hcm/shared';
+import { VERTEX_MODEL_ID, VERTEX_MODEL_IDS } from '@hcm/shared';
 import type { Locator, Page } from '@playwright/test';
 
 import { contentFlowBudget } from '../../../../packages/admin/src/content/budgets.js';
@@ -104,19 +104,20 @@ test(
     { tag: '@S-A45-BAD-MODEL-UNAVAILABLE' },
     async ({ page, lang, adminWorld, upstream, consoleErrors }) => {
         // M6 (finding 20 of docs/research/manual-test-2026-10-25.md): Google answers 404 for a publisher model it retired or
-        // does not offer; the setup self-test names it the same way (functions/test/setup/self-test.test.ts).
+        // does not offer; with none of the list offered (§67g) every model tried is named, as the setup self-test names
+        // them (functions/test/setup/self-test.test.ts).
         const city = ownerCity(adminWorld);
         await upstream.scenario('vertex-ai.modelUnavailable', 'server');
         await openPhoto(page, lang, city, PHOTO.modelGone);
 
         await slotButton(page, 'draft-title').click();
         const alert = assistSlot(page, 'draft-title').getByRole('alert');
-        await expect(alert).toContainText(apiText(lang, 'apiError.assist.modelUnavailable', { model: VERTEX_MODEL_ID }), {
+        await expect(alert).toContainText(apiText(lang, 'apiError.assist.modelUnavailable', { model: VERTEX_MODEL_IDS.join(', ') }), {
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
         await expect(alert).not.toContainText(apiText(lang, 'apiError.internal'));
         await expect(photoField(page, lang, 'adminContent.photos.field.titleEn')).toHaveValue('');
-        expect(await upstream.calls('server', 'vertex-ai.generateContent')).toHaveLength(1);
+        expect(await upstream.calls('server', 'vertex-ai.generateContent')).toHaveLength(VERTEX_MODEL_IDS.length);
         // A failed precondition, which the browser logs as the callable's 400.
         expect(consoleErrors.takeMatching(/status of 400 .*assist-translateDraft/)).toHaveLength(1);
     },

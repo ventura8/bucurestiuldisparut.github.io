@@ -6,8 +6,9 @@
  * build time (`HCM_RELEASE_TIME`, empty for a build that knows none: finding 39 of 2026-11-01), then
  * downloads each tarball of `HCM_FILES` (the target's first) and refuses any whose SHA-256 is not the manifest's, the
  * target's also not the one the admin chose (`HCM_FILE_SHA256`). It unpacks the target's tarball into `HCM_OUT` with
- * the image's `tar`; the site build also puts the bundle files back under `HCM_KEEP_BUNDLE` (a Hosting release replaces
- * every file, so the bundle must stay in it).
+ * the image's `tar`, and each other fetched tarball `HCM_UNPACK` names (§73k: the site build's `legacy.tgz` while the
+ * legacy import is not complete); the site build also puts the bundle files back under `HCM_KEEP_BUNDLE` (a Hosting
+ * release replaces every file, so the bundle must stay in it).
  *
  * The program holds no `$`: Cloud Build substitutes `$NAME` in every argument. `fetch-script.test.ts` runs it.
  */
@@ -33,6 +34,10 @@ export const FETCH_BUNDLE_SCRIPT = [
     "if (String(manifest.releaseTime ?? '') !== (env.HCM_RELEASE_TIME || '')) fail('manifest.json names another build time');",
     "writeFileSync(join(bundleDir, 'manifest.json'), manifestBytes);",
     "const targets = env.HCM_FILES.split(',');",
+    "const unpacked = [targets[0], ...(env.HCM_UNPACK ? env.HCM_UNPACK.split(',') : [])];",
+    'for (const target of unpacked) {',
+    "    if (!targets.includes(target)) fail(target + ' is unpacked but not fetched');",
+    '}',
     'for (const target of targets) {',
     '    const entry = manifest.files[target];',
     "    if (!entry) fail('manifest.json names no file for ' + target);",
@@ -43,7 +48,9 @@ export const FETCH_BUNDLE_SCRIPT = [
     'const main = manifest.files[targets[0]];',
     "if (main.sha256 !== env.HCM_FILE_SHA256) fail(main.name + ' is not the file the admin chose');",
     'mkdirSync(env.HCM_OUT, { recursive: true });',
-    "execFileSync('tar', ['-xzf', join(bundleDir, main.name), '-C', env.HCM_OUT], { stdio: 'inherit' });",
+    'for (const target of unpacked) {',
+    "    execFileSync('tar', ['-xzf', join(bundleDir, manifest.files[target].name), '-C', env.HCM_OUT], { stdio: 'inherit' });",
+    '}',
     'if (env.HCM_KEEP_BUNDLE) {',
     '    const keep = join(env.HCM_OUT, env.HCM_KEEP_BUNDLE);',
     '    mkdirSync(keep, { recursive: true });',

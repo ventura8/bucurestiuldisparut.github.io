@@ -1,3 +1,5 @@
+import { VERTEX_MODEL_IDS } from '@hcm/shared';
+
 import { fixtureBody, fixtureResponse } from '../api-fixtures/index.js';
 import type { UpstreamRequest } from './fetch.js';
 import { authenticated, googleError, googleFailure, type GoogleApi } from './google-common.js';
@@ -14,6 +16,8 @@ import type { ServiceFake } from './service.js';
  * filters); `fail('vertex-ai', 'unavailable' | 'rateLimited' | 'apiDisabled' | 'forbidden')` answers Google's
  * error envelopes (`SERVICE_DISABLED` names `aiplatform.googleapis.com`). M6 (finding 20): `vertex-ai.modelUnavailable`
  * answers both verbs 404 `NOT_FOUND`, as Google does for a publisher model it retired or does not offer to the project.
+ * §67g (the functions try the models of `VERTEX_MODEL_IDS` in order): `vertex-ai.firstModelUnavailable` answers 404 for
+ * the first model only, so the next one answers; every request records the model it named.
  */
 
 export const VERTEX_OUTCOMES = ['ok', 'markup', 'injected', 'empty', 'safety'] as const;
@@ -29,15 +33,19 @@ export interface VertexRequest {
 
 export interface VertexAiState {
     outcome: VertexOutcome;
-    /** M6: the pinned model is not served to the project (every call answers 404). */
+    /** M6: no model is served to the project (every call answers 404). */
     modelGone: boolean;
+    /** §67g: the models not served to the project (their calls answer 404), the others answer. */
+    gone: string[];
+    /** The model each `countTokens` call named, in order. */
+    readonly counted: string[];
     readonly requests: VertexRequest[];
     /** How many `countTokens` calls (the self-test's) were answered. */
     countTokens: number;
 }
 
 export function defaultVertexAiState(): VertexAiState {
-    return { outcome: 'ok', modelGone: false, requests: [], countTokens: 0 };
+    return { outcome: 'ok', modelGone: false, gone: [], counted: [], requests: [], countTokens: 0 };
 }
 
 const API: GoogleApi = { service: 'aiplatform.googleapis.com', title: 'Vertex AI API', permission: 'aiplatform.endpoints.predict' };
@@ -102,6 +110,11 @@ function modelNotFound(): Response {
     return googleError('google/error.not-found', API);
 }
 
+/** Whether the fake serves `model` to the project. */
+function served(state: VertexAiState, model: string): boolean {
+    return !state.modelGone && !state.gone.includes(model);
+}
+
 /** The model named by a `{model}:{verb}` segment. */
 function modelOf(segment: string | undefined): string {
     return (segment ?? '').split(':')[0] ?? '';
@@ -118,16 +131,18 @@ export function createVertexAiFake(state: VertexAiState): ServiceFake {
                 authenticated(API, (request, params) => {
                     const asked = requestOf(request, modelOf(params['model']));
                     state.requests.push(asked);
-                    return state.modelGone ? modelNotFound() : generated(state, asked);
+                    return served(state, asked.model) ? generated(state, asked) : modelNotFound();
                 }),
             ),
             route(
                 'POST',
                 `${BASE}/{model}:countTokens`,
                 'vertex-ai.countTokens',
-                authenticated(API, () => {
+                authenticated(API, (_request, params) => {
+                    const model = modelOf(params['model']);
                     state.countTokens += 1;
-                    return state.modelGone ? modelNotFound() : jsonResponse(fixtureBody('vertex-ai/count-tokens.ok'));
+                    state.counted.push(model);
+                    return served(state, model) ? jsonResponse(fixtureBody('vertex-ai/count-tokens.ok')) : modelNotFound();
                 }),
             ),
         ],
@@ -144,7 +159,17 @@ export function createVertexAiFake(state: VertexAiState): ServiceFake {
             modelUnavailable: () => {
                 state.modelGone = true;
             },
+            firstModelUnavailable: () => {
+                state.gone = [VERTEX_MODEL_IDS[0]];
+            },
         },
-        snapshot: () => ({ outcome: state.outcome, modelGone: state.modelGone, requests: state.requests, countTokens: state.countTokens }),
+        snapshot: () => ({
+            outcome: state.outcome,
+            modelGone: state.modelGone,
+            gone: state.gone,
+            requests: state.requests,
+            countTokens: state.countTokens,
+            counted: state.counted,
+        }),
     };
 }

@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import { DOCKER_BUILDER_IMAGE } from '@hcm/shared';
+
 import { buildDefinition, installerServiceAccount, releaseTag, targetTag, type BuildParams } from '../../src/install/build-spec.js';
 import { FETCH_BUNDLE_SCRIPT } from '../../src/install/fetch-script.js';
 
@@ -20,7 +22,8 @@ const PARAMS: BuildParams = {
     slug: '1-0-0-abc1234',
     manifestSha256: 'a'.repeat(64),
     fileSha256: 'b'.repeat(64),
-    images: { node: `node:24-bookworm-slim@sha256:${'d'.repeat(64)}`, docker: `gcr.io/cloud-builders/docker@sha256:${'e'.repeat(64)}` },
+    images: { node: `node:24-bookworm-slim@sha256:${'d'.repeat(64)}`, docker: DOCKER_BUILDER_IMAGE },
+    legacy: false,
 };
 
 const TARGETS = ['server', 'pipeline', 'site'] as const;
@@ -74,6 +77,18 @@ describe('buildDefinition', () => {
         expect(server).toContain('"steps/deploy-with-retry.mjs","--project","$PROJECT_ID","--force"');
         expect(site[0]?.env).toContain('HCM_KEEP_BUNDLE=public${_BASE}install/${_SLUG}');
         expect(site[0]?.env).toContain('HCM_FILES=site,server,pipeline');
+    });
+
+    it('happyPath_aSiteBuildBeforeTheLegacyImportEndsFetchesAndUnpacksTheOriginals_badPath_otherTargetsNever', () => {
+        // §73k: the originals (legacy.tgz) only while step (h) has not imported every old photo.
+        const site = buildDefinition('site', { ...PARAMS, legacy: true })['steps'] as { env?: string[] }[];
+        const server = buildDefinition('server', { ...PARAMS, legacy: true })['steps'] as { env?: string[] }[];
+
+        expect(site[0]?.env).toEqual(expect.arrayContaining(['HCM_FILES=site,server,pipeline,legacy', 'HCM_UNPACK=legacy']));
+        const trimmed = buildDefinition('site', PARAMS)['steps'] as { env?: string[] }[];
+        expect(server[0]?.env).toContain('HCM_FILES=server');
+        expect(server[0]?.env?.some((line) => line.startsWith('HCM_UNPACK'))).toBe(false);
+        expect(trimmed[0]?.env?.some((line) => line.startsWith('HCM_UNPACK') || line.includes('legacy'))).toBe(false);
     });
 
     it('happyPath_theServerInstallsTheFunctionsPackagesBeforeItDeploysThem_badPath_noOtherTargetDoes', () => {

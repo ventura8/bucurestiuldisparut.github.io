@@ -33,7 +33,7 @@
         },
         {
             "id": "build",
-            "name": "gcr.io/cloud-builders/docker@sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "name": "gcr.io/cloud-builders/docker@sha256:6a6635024a23c8ed596c26fefc744bd3c5dbe269e8d8d541f2fda2beb0664ea5",
             "dir": "pipeline",
             "env": ["DOCKER_BUILDKIT=1"],
             "args": [
@@ -49,7 +49,7 @@
         },
         {
             "id": "push",
-            "name": "gcr.io/cloud-builders/docker@sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "name": "gcr.io/cloud-builders/docker@sha256:6a6635024a23c8ed596c26fefc744bd3c5dbe269e8d8d541f2fda2beb0664ea5",
             "entrypoint": "bash",
             "dir": "pipeline",
             "args": [

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
     installBundleLoader,
+    legacyImportedCheck,
     publishedMapCheck,
     setupModuleFor,
     setupOptionsFor,
@@ -117,6 +118,20 @@ describe('the installer wiring', () => {
         await expect(check()).resolves.toBe(true);
         const refusing = { get: () => Promise.reject(new Error('permission-denied')) } as unknown as FakeDocuments;
         await expect(publishedMapCheck({ documents: refusing }, 'bucharest')()).resolves.toBe(false);
+    });
+
+    it.each([
+        [{ done: 45, total: 45, failed: [] }, true],
+        [{ done: 44, total: 45, failed: [] }, false],
+        [{ done: 45, total: 45, failed: [{ id: 'p-1', detail: 'apiError.unavailable' as const }] }, false],
+        [{ done: 0, total: 0, failed: [] }, false],
+    ])('happyPath_theLegacyImportIsCompleteOnlyWhenEveryPhotoIsIn (%o)', async (progress, complete) => {
+        // §73k: a site build leaves the originals out only then.
+        await expect(legacyImportedCheck({ detect: () => Promise.resolve(progress) })()).resolves.toBe(complete);
+    });
+
+    it('badPath_anUnreadableImportStateKeepsTheOriginals', async () => {
+        await expect(legacyImportedCheck({ detect: () => Promise.reject(new Error('offline')) })()).resolves.toBe(false);
     });
 
     it('badPath_theAdminsBundleIsReadFromItsOwnBase_aMissingOneCannotInstall', async () => {

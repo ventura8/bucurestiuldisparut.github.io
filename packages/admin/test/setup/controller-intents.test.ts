@@ -162,6 +162,8 @@ describe('intents: every card', () => {
         expect(controller.getState().analytics.watching).toBe(true);
         await controller.intents.disableHistoryPageViews();
         await flush();
+        await controller.intents.createMeasurementReports();
+        await flush();
         await controller.intents.setCrashEmails(false);
         await flush();
         await controller.intents.enableApi('clouderrorreporting.googleapis.com');

@@ -3,7 +3,6 @@ import '../global-options.js';
 import {
     FIRESTORE_PATHS,
     VERTEX_DRAFTS_ROLE_ID,
-    VERTEX_MODEL_ID,
     aiCostUsd,
     aiUsageDocSchema,
     draftKeepsLinks,
@@ -22,6 +21,7 @@ import {
 import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { readCityUsage, shareOf, writeCityUsage, type CityShare } from '../api/city-usage.js';
+import { withOfferedModel } from '../api/vertex-models.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import { UpstreamError, type UpstreamFailure } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
@@ -30,8 +30,10 @@ import { guardIsRed, requireCity, stampOf } from './records.js';
 /**
  * `assist.translateDraft` (admin, App Check enforced; `docs/research/M4-interfaces.md` §4.3; S-A45-HAPPY-TRANSLATE,
  * S-A45-BAD-MARKUP-AND-LENGTH, S-A45-BAD-MONTHLY-CAP, S-A45-BAD-GUARD-PAUSED, S-A45-BAD-API-DISABLED, S-A09-BAD-AI-
- * UNAVAILABLE; M5: the city's share of AI requests, `docs/research/M5-interfaces.md` §1.8): a draft of one field's text in the other language from Vertex AI Gemini, server-side only, the model and
- * the prompt pinned. A red budget guard refuses it first; then, in one transaction on `usage/ai-YYYY-MM`, the month's
+ * UNAVAILABLE; M5: the city's share of AI requests, `docs/research/M5-interfaces.md` §1.8): a draft of one field's text
+ * in the other language from Vertex AI Gemini, server-side only, the models and the prompt pinned (§67g: the first model
+ * of `VERTEX_MODEL_IDS` the project is offered, `withOfferedModel`). A red budget guard refuses it first; then, in one
+ * transaction on `usage/ai-YYYY-MM`, the month's
  * cap (`AI_MONTHLY_CAP`) refuses it or one request and its estimated cost are reserved; after the call the counters take
  * the tokens Vertex AI reports. The answer is sanitized plain text within the field's limit (`sanitizeDraft`), and a
  * draft that adds or changes a link address of the source is no draft (`apiError.assist.linksChanged`: text pasted into
@@ -42,6 +44,11 @@ export type TranslateDraftDeps = CallableDeps & Pick<Ports, 'documents' | 'clock
 
 type Response = CallableResponse<'assist.translateDraft'>;
 type Generation = Awaited<ReturnType<Ports['translator']['generate']>>;
+/** A generation and the model that made it. */
+interface Drafted {
+    readonly model: string;
+    readonly value: Generation;
+}
 
 /** Answers that are no draft whatever their text: the model stopped for safety or recitation. */
 const REFUSED_FINISH = new Set(['SAFETY', 'RECITATION', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII']);
@@ -130,12 +137,12 @@ function refusedDraft(error: UpstreamError): ApiError {
 const DRAFT_FAILURES: Partial<Readonly<Record<UpstreamFailure, (error: UpstreamError) => ApiError>>> = {
     forbidden: refusedDraft,
     rateLimited: () => new ApiError('apiError.rateLimited'),
-    notFound: () => new ApiError('apiError.assist.modelUnavailable', { model: VERTEX_MODEL_ID }),
 };
 
 /**
  * How a failed Vertex AI call reaches the admin; the field stays as it was in every case. M6 (finding 20,
- * S-A45-BAD-MODEL-UNAVAILABLE): a 404 is the pinned model Google does not offer to the project, said as the self-test says it.
+ * S-A45-BAD-MODEL-UNAVAILABLE): no model of the list offered to the project is `withOfferedModel`'s
+ * `apiError.assist.modelUnavailable` naming every model tried, said as the self-test says it (§67g).
  */
 export function draftFailure(error: unknown): unknown {
     if (!(error instanceof UpstreamError)) {
@@ -144,9 +151,9 @@ export function draftFailure(error: unknown): unknown {
     return DRAFT_FAILURES[error.failure]?.(error) ?? new ApiError('apiError.assist.unavailable');
 }
 
-async function generate(deps: TranslateDraftDeps, prompt: TranslationPrompt): Promise<Generation> {
+async function generate(deps: TranslateDraftDeps, prompt: TranslationPrompt): Promise<Drafted> {
     try {
-        return await deps.translator.generate(VERTEX_MODEL_ID, prompt);
+        return await withOfferedModel(deps.clock.now(), (model) => deps.translator.generate(model, prompt));
     } catch (error) {
         throw draftFailure(error);
     }
@@ -156,7 +163,7 @@ async function generate(deps: TranslateDraftDeps, prompt: TranslationPrompt): Pr
  * The draft of a generation: `apiError.assist.noDraft` for a refused or empty answer, `apiError.assist.linksChanged` for
  * one with a link address the source does not have.
  */
-function draftOf(generation: Generation, data: Pick<AssistTranslateDraftRequest, 'field' | 'text'>): Response {
+function draftOf({ model, value: generation }: Drafted, data: Pick<AssistTranslateDraftRequest, 'field' | 'text'>): Response {
     const draft = REFUSED_FINISH.has(generation.finishReason) ? null : sanitizeDraft(generation.text, data.field);
     if (draft === null) {
         throw new ApiError('apiError.assist.noDraft');
@@ -164,7 +171,7 @@ function draftOf(generation: Generation, data: Pick<AssistTranslateDraftRequest,
     if (!draftKeepsLinks(data.text, draft.text)) {
         throw new ApiError('apiError.assist.linksChanged');
     }
-    return { draft: draft.text, truncated: draft.truncated, model: VERTEX_MODEL_ID };
+    return { draft: draft.text, truncated: draft.truncated, model };
 }
 
 async function translateDraft(deps: TranslateDraftDeps, data: AssistTranslateDraftRequest): Promise<Response> {
@@ -176,14 +183,15 @@ async function translateDraft(deps: TranslateDraftDeps, data: AssistTranslateDra
     const month = usageMonth(deps.clock.now());
     const estimate = estimateUsd(prompt);
     await reserve(deps, month, estimate, shareOf(data.cityId, city));
-    let generation: Generation | undefined;
+    let drafted: Drafted | undefined;
     try {
-        generation = await generate(deps, prompt);
+        drafted = await generate(deps, prompt);
     } finally {
-        await settle(deps, month, estimate, generation);
+        await settle(deps, month, estimate, drafted?.value);
     }
-    deps.log.info('translation draft', { cityId: data.cityId, field: data.field, to: data.to, finish: generation.finishReason });
-    return draftOf(generation, data);
+    const { model, value } = drafted;
+    deps.log.info('translation draft', { cityId: data.cityId, field: data.field, to: data.to, model, finish: value.finishReason });
+    return draftOf(drafted, data);
 }
 
 export function translateDraftFunction(getDeps: () => TranslateDraftDeps) {

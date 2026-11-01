@@ -1,4 +1,4 @@
-import { SELF_TEST_CHECKS } from '@hcm/shared';
+import { SELF_TEST_CHECKS, VERTEX_MODEL_IDS } from '@hcm/shared';
 import { MAPBOX_TOKENS, USGS_CREDENTIALS } from '@hcm/test-support/fakes';
 import type { Page } from '@playwright/test';
 
@@ -184,7 +184,7 @@ test(
 
 test(
     'A failing self-test check names what to fix and links its step; every other check shows its own state',
-    { tag: ['@S-A03-BAD-SELFTEST-FAILURE'] },
+    { tag: ['@S-A03-BAD-SELFTEST-FAILURE', '@S-A45-HAPPY-MODEL-NAMED'] },
     async ({ page, lang, adminWorld, upstream, consoleErrors }) => {
         await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid);
         // The functions' account may not read the secrets: Secret Manager refuses it.
@@ -206,6 +206,10 @@ test(
         await expect(secrets).toContainText(apiText(lang, 'apiError.secrets.unavailable'));
         await expect(list.locator('[data-check="firestore"]')).toHaveAttribute('data-state', 'ok');
         await expect(list.locator('[data-check="private-bucket"]')).toHaveAttribute('data-state', 'ok');
+        // §67g: the translation drafts' check names the model Vertex AI offers the project, the first of the list here.
+        const ai = list.locator('[data-check="ai"]');
+        await expect(ai).toHaveAttribute('data-state', 'ok');
+        await expect(ai.locator('[data-model]')).toHaveText(setupText(lang, 'adminSetup.selfTest.model', { model: VERTEX_MODEL_IDS[0] }));
         await expectStateSound(page, adminVisit('setup-self-test', lang));
 
         // The fix: the step that grants the role.

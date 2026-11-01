@@ -21,7 +21,7 @@ three parts:
 - everything together (`ADMIN_TOTAL_KB`), so many small chunks cannot grow unnoticed.
 
 The in-app installer's bundle (M6, docs/research/M6-interfaces.md §1.3) is checked apart, with `--install`, once
-`build:install` has written it into the Hosting tree (`dist/hosting/admin/install/<slug>/`): its three tarballs are gzip
+`build:install` has written it into the Hosting tree (`dist/hosting/admin/install/<slug>/`): its four tarballs are gzip
 already, so each is measured as it is served, against `INSTALL_BUDGETS` (KB).
 
 `BUDGETS` holds the budget of each single-file bundle; `--budget FILE=KB` overrides or adds one for
@@ -149,18 +149,24 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # DECISIONS-for-review.md §62c).
     "cities": 6,
     "city-budget": 2,
+    # Step (g)'s Create the measurement reports (`packages/admin/src/google/analytics-reports.ts`: the GA4 property found
+    # from the measurement id and the field measurements' custom definitions), fetched on its button's click only: 0.8 KB
+    # measured on 2026-11-01 plus about 20 %, rounded up (DECISIONS-for-review.md §76f).
+    "analytics-reports": 1,
 }
 # The entry and every chunk together.
 ADMIN_TOTAL_KB = 620
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
-# already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). `hosting.tgz`
-# carries the public tree, 46 MB of which are the legacy originals.
+# already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k
+# (2026-11-01) the legacy originals (45 MB) travel in `legacy.tgz`, so `hosting.tgz` (4.5 MB measured then) went from
+# 80000 to 12000 and `legacy.tgz` has its own row: the stricter, pre-approved kind.
 INSTALL_DIR = "dist/hosting/admin/install"
 INSTALL_BUDGETS: Mapping[str, int] = {
     "server.tgz": 8000,
     "pipeline.tgz": 1000,
-    "hosting.tgz": 80000,
+    "hosting.tgz": 12000,
+    "legacy.tgz": 60000,
 }
 
 # A chunk's file name: its name, a dash and the content hash (Rolldown's `[name]-[hash].js`).

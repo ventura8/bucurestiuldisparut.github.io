@@ -32,6 +32,7 @@ describe('createSetupCloud', () => {
 
         expect(Object.keys(cloud).toSorted((left, right) => left.localeCompare(right))).toEqual(
             [
+                'createMeasurementReports',
                 'deployment',
                 'disablePageChanges',
                 'disabledApis',
@@ -137,6 +138,16 @@ describe('createSetupCloud', () => {
 
         expect(result).toEqual({ pageChangesEnabled: false });
         expect(world.fakes.callsTo('analytics-admin.enhancedMeasurementSettings.patch')[0]?.url).toContain('updateMask=pageChangesEnabled');
+    });
+
+    it('happyPath_theMeasurementReportsAreCreatedOnTheStreamsProperty_badPath_anUnknownIdFindsNone', async () => {
+        // §76f: the lazy chunk, over the owner's token.
+        const world = provisionWorld();
+        world.fakes.scenario('firebase-management.analyticsLinked');
+        const cloud = cloudOf(world);
+
+        await expect(cloud.createMeasurementReports(ACCESS, 'G-E2E0000000')).resolves.toEqual({ created: 14, skipped: 0 });
+        await expect(cloud.createMeasurementReports(ACCESS, 'G-SOMEONE0')).resolves.toBeNull();
     });
 
     it('badPath_withoutAStreamThereIsNothingToTurnOff', async () => {

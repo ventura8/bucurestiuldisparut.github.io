@@ -255,6 +255,7 @@ function fakeCloud(): Fake<SetupCloud> {
         deployment: vi.fn<SetupCloud['deployment']>().mockResolvedValue({ ready: 0, total: 32, failed: [] }),
         disablePageChanges: vi.fn<SetupCloud['disablePageChanges']>().mockResolvedValue({ pageChangesEnabled: false }),
         setCrashAlerts: vi.fn<SetupCloud['setCrashAlerts']>().mockImplementation((_access, enabled) => Promise.resolve({ enabled })),
+        createMeasurementReports: vi.fn<SetupCloud['createMeasurementReports']>().mockResolvedValue({ created: 14, skipped: 0 }),
     };
 }
 
