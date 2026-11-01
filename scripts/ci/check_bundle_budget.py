@@ -110,6 +110,11 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # `editor-shared` when the required fields' own words took it to 13.3 KB: 1.0 KB measured on 2026-11-01 plus about
     # 20 %, rounded up (DECISIONS-for-review.md §77e).
     "editor-texts": 2,
+    # The starter place categories (the group `starter-categories`: their data, the writes and Settings' Add the starter
+    # categories), which the place editor and the settings share since finding 41; out of `editor-shared` (13.3 KB with
+    # them) and the settings chunk (20.0 KB): 1.1 KB measured on 2026-11-01 plus about 20 %, rounded up
+    # (DECISIONS-for-review.md §78d).
+    "starter-categories": 2,
     # The admin map's box and the content it draws (the group `admin-map`): 7.4 KB measured on 2026-10-18, when the
     # settings page's map made the places' and photos' map modules shared (DECISIONS-for-review.md §42a).
     "admin-map": 9,

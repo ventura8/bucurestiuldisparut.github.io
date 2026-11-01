@@ -23,17 +23,18 @@ function refused(services: Pick<ContentServices, 'notify' | 'denied'>, reason: W
     services.notify({ key: REFUSED[reason] });
 }
 
-/** Tells the outcome of a write (nothing for none: nothing was written). */
+/** Tells the outcome of a write (nothing for none: nothing was written); `params` fill the text of a success. */
 export function reportOutcome(
     services: Pick<ContentServices, 'notify' | 'denied'>,
     outcome: WriteOutcome | null,
     saved: AdminContentKey = 'adminContent.settings.saved',
+    params?: Readonly<Record<string, string>>,
 ): void {
     if (outcome === null) {
         return;
     }
     if (outcome.ok) {
-        services.notify({ key: saved });
+        services.notify(params === undefined ? { key: saved } : { key: saved, params });
         return;
     }
     refused(services, outcome.reason);

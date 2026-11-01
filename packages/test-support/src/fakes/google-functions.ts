@@ -23,6 +23,8 @@ export interface DeploymentState {
     schedulerJob: boolean;
     /** M6: the release the deployed functions run (their `HCM_RELEASE`); unset for a deploy from before M6. */
     release?: string;
+    /** Its build time (their `HCM_RELEASE_TIME`, finding 39 of 2026-11-01); unset for a deploy without one. */
+    releaseTime?: number;
     /**
      * M6 review: how many of the registry's last functions the deploy lacks (unset: none), as a server from before M6
      * lacks the functions M6 added.
@@ -36,6 +38,15 @@ export const PRE_M6_LACKING = 8;
 /** M6: an older and a newer release than the e2e admin's (S-A55-HAPPY-UPDATE, S-A55-BAD-DOWNGRADE). */
 export const OLDER_SERVER_RELEASE = '0.9.0+e2e0000';
 export const NEWER_SERVER_RELEASE = '99.0.0+e2e9999';
+
+/**
+ * Finding 39 of 2026-11-01: other builds of the e2e admin's own version (`1.0.0`, its build time 1761955200 in
+ * `e2e/fixtures/install-bundle.ts`). The older build was deployed before the build times existed (no
+ * `HCM_RELEASE_TIME`, as the live 1.0.0+9e2e6b5); the newer one names a later time.
+ */
+export const OLDER_BUILD_RELEASE = '1.0.0+e2e0000';
+export const NEWER_BUILD_RELEASE = '1.0.0+e2e0002';
+export const NEWER_BUILD_TIME = 1_762_041_600;
 
 const FUNCTIONS: GoogleApi = {
     service: 'cloudfunctions.googleapis.com',
@@ -73,15 +84,20 @@ function deployedFunctions(deployment: Deployment, names: readonly string[]): re
     }
 }
 
-/** A function's answer with its `HCM_RELEASE` (M6), when the deploy set one. */
-function withRelease(body: unknown, release: string | undefined): unknown {
-    if (release === undefined || typeof body !== 'object' || body === null) {
+/** The functions' environment of a deploy: its `HCM_RELEASE` and, when it has one, its `HCM_RELEASE_TIME`. */
+function releaseVariables(release: string, releaseTime: number | undefined): Record<string, string> {
+    return releaseTime === undefined ? { HCM_RELEASE: release } : { HCM_RELEASE: release, HCM_RELEASE_TIME: String(releaseTime) };
+}
+
+/** A function's answer with its `HCM_RELEASE` (M6) and build time, when the deploy set one. */
+function withRelease(body: unknown, state: Pick<DeploymentState, 'release' | 'releaseTime'>): unknown {
+    if (state.release === undefined || typeof body !== 'object' || body === null) {
         return body;
     }
     const fn = body as Record<string, unknown>;
     const serviceConfig = {
         ...(fn['serviceConfig'] as Record<string, unknown> | undefined),
-        environmentVariables: { HCM_RELEASE: release },
+        environmentVariables: releaseVariables(state.release, state.releaseTime),
     };
     return { ...fn, serviceConfig };
 }
@@ -109,19 +125,21 @@ export function createCloudFunctionsFake(state: DeploymentState, services: Servi
                     functionId,
                     functionState,
                 }),
-                state.release,
+                state,
             ),
         );
         return jsonResponse(page(functions, request.url.searchParams, 'functions'));
     };
     const deployedWith =
-        (release: string | undefined, deployment: Deployment = 'deployed', lacking?: number) =>
+        (release: string | undefined, deployment: Deployment = 'deployed', lacking?: number, releaseTime?: number) =>
         () => {
             state.deployment = deployment;
             state.schedulerJob = true;
             delete state.release;
+            delete state.releaseTime;
             delete state.lacking;
             Object.assign(state, release === undefined ? {} : { release }, lacking === undefined ? {} : { lacking });
+            Object.assign(state, releaseTime === undefined ? {} : { releaseTime });
             enableService(services, String(FIXTURE_VALUES['projectId']), FUNCTIONS.service);
         };
     const scenarios = Object.fromEntries(
@@ -154,12 +172,15 @@ export function createCloudFunctionsFake(state: DeploymentState, services: Servi
             // M6: a server installed by an older and by a newer release than the e2e admin's.
             deployedOlderRelease: deployedWith(OLDER_SERVER_RELEASE),
             deployedNewerRelease: deployedWith(NEWER_SERVER_RELEASE),
+            // Finding 39 of 2026-11-01: other builds of the admin's own version, before the build times and after it.
+            deployedOlderBuild: deployedWith(OLDER_BUILD_RELEASE),
+            deployedNewerBuild: deployedWith(NEWER_BUILD_RELEASE, 'deployed', undefined, NEWER_BUILD_TIME),
             // The M6 review: a server deployed before M6 (no release, M6's functions missing: an update, never a first
             // install), and a newer server one of whose functions is gone (never replaced: --force would delete it).
             preM6: deployedWith(undefined, 'deployed', PRE_M6_LACKING),
             partialNewerRelease: deployedWith(NEWER_SERVER_RELEASE, 'partial'),
         },
-        snapshot: () => ({ deployment: state.deployment, release: state.release ?? null }),
+        snapshot: () => ({ deployment: state.deployment, release: state.release ?? null, releaseTime: state.releaseTime ?? null }),
     };
 }
 

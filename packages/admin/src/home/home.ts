@@ -163,7 +163,7 @@ class HomeStore implements AreaStore<HomeState, HomeIntents> {
                 const status = state.doc?.data ?? null;
                 this.#cell.update({
                     health: { status: state.status, chips: healthChipsOf(status), reconnecting: state.reconnecting },
-                    reminders: remindersOf(status, clock.now()),
+                    reminders: remindersOf(status, clock.now(), services.adminRelease ?? null),
                 });
             },
         });

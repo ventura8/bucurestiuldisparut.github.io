@@ -8,6 +8,7 @@ import { page } from 'vitest/browser';
 import { defineHcmSetupDeploy } from '../../../src/admin/setup/hcm-setup-deploy.js';
 import { defineHcmSetupPipeline } from '../../../src/admin/setup/hcm-setup-pipeline.js';
 import { defineHcmSetupSite } from '../../../src/admin/setup/hcm-setup-site.js';
+import { installCardAsks } from '../../../src/admin/setup/install-status.js';
 import { cleanup, fixture, shadowPart } from '../../helpers.js';
 import { FakeSetupPort, setupView, stepView, type ViewChanges } from './fixtures.js';
 import { installSliceView, type InstallChanges } from './install-fixtures.js';
@@ -311,5 +312,32 @@ describe('the installed line', () => {
 
         const notes = [...element.renderRoot.querySelectorAll('p.note')].map((note) => note.textContent);
         expect(notes.some((note) => note.startsWith('Installed:'))).toBe(false);
+    });
+});
+
+describe('installCardAsks (finding 40 of 2026-11-01)', () => {
+    const LOOKED = '2026-11-01T09:00:00Z';
+
+    it('happyPath_aCardWhoseBodyOffersAButtonThatAsksGoogle', () => {
+        expect(installCardAsks(view({ pipeline: { state: 'failed', checkedAt: LOOKED } }), 'pipeline')).toBe(true);
+        expect(
+            installCardAsks(view({ server: { state: 'installed', checkedAt: LOOKED }, pipeline: { checkedAt: LOOKED } }), 'pipeline'),
+        ).toBe(true);
+        expect(installCardAsks(view({ site: { state: 'notInstalled' } }), 'site')).toBe(true);
+        expect(installCardAsks(view({ site: { state: 'updateAvailable' } }), 'site')).toBe(true);
+        // Not an install card: the frame decides as before.
+        expect(installCardAsks(view({}), 'billing')).toBe(true);
+    });
+
+    it('badPath_aCardWithNothingToDoAsksNothing', () => {
+        expect(installCardAsks(view({ site: { state: 'installed', checkedAt: LOOKED } }), 'site')).toBe(false);
+        expect(installCardAsks(view({ pipeline: { state: 'working', checkedAt: LOOKED } }), 'pipeline')).toBe(false);
+        expect(installCardAsks(view({ pipeline: { state: 'notInstalled' } }), 'pipeline')).toBe(false);
+        expect(
+            installCardAsks(
+                view({ server: { state: 'newerInstalled', checkedAt: LOOKED } }, { steps: { deploy: { state: 'ok' } } }),
+                'deploy',
+            ),
+        ).toBe(false);
     });
 });

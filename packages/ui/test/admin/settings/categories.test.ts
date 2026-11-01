@@ -18,6 +18,7 @@ function area(state: SettingsViewState): FakeArea<SettingsViewState, SettingsInt
         askDeleteCategory: Promise.resolve(),
         moveCategory: Promise.resolve(null),
         moveCategoryTo: Promise.resolve(null),
+        addStarterCategories: Promise.resolve({ ok: true }),
     });
 }
 
@@ -80,6 +81,43 @@ describe('<hcm-settings-page> categories', () => {
             locale: 'ro',
         });
         expect(deepText(element)).toContain('Ai atins limita de 50 categorii.');
+    });
+
+    it('happyPath_oneClickAddsTheStarterCategoriesTheCityLacks', async () => {
+        const settings = area(categoriesState({ startersMissing: 3 }));
+        const { element } = await page('settings', settings, { params: ['categories'] });
+        const starters = deep(element, 'hcm-button.add-starters');
+
+        expect(starters.textContent.trim()).toBe('Add the starter categories');
+        expect((starters as HTMLElement & { disabled: boolean }).disabled).toBe(false);
+        expect(deepAll(element, '.starters-present')).toEqual([]);
+        deep(starters, 'button').click();
+
+        expect(calls(settings)).toEqual(['addStarterCategories']);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_everyStarterIsHereSoTheActionIsOffWithTheReason', async () => {
+        const off = (target: HTMLElement): boolean => (target as HTMLElement & { disabled: boolean }).disabled;
+        const settings = area(categoriesState({ startersMissing: 0 }));
+        const { element } = await page('settings', settings, { params: ['categories'], locale: 'ro' });
+
+        expect(off(deep(element, 'hcm-button.add-starters'))).toBe(true);
+        expect(deep(element, '.starters-present').textContent).toBe('Toate categoriile de pornire sunt deja aici.');
+        deep(deep(element, 'hcm-button.add-starters'), 'button').click();
+        expect(calls(settings)).toEqual([]);
+        expect(await axeViolations(element)).toEqual([]);
+
+        settings.set({ startersMissing: 2, addingStarters: true });
+        await updated(element);
+        expect(off(deep(element, 'hcm-button.add-starters'))).toBe(true);
+        expect(deepAll(element, '.starters-present')).toEqual([]);
+    });
+
+    it('badPath_aRevokedAdminCannotAddTheStarters', async () => {
+        const { element } = await page('settings', area(categoriesState()), { params: ['categories'], revoked: true });
+
+        expect((deep(element, 'hcm-button.add-starters') as HTMLElement & { disabled: boolean }).disabled).toBe(true);
     });
 
     it('happyPath_theEditorsNamesIconColourAndOpacity', async () => {

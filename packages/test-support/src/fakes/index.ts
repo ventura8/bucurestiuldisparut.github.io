@@ -13,7 +13,10 @@ export {
 } from './fetch.js';
 export {
     DEPLOYMENTS,
+    NEWER_BUILD_RELEASE,
+    NEWER_BUILD_TIME,
     NEWER_SERVER_RELEASE,
+    OLDER_BUILD_RELEASE,
     OLDER_SERVER_RELEASE,
     PRE_M6_LACKING,
     registryFunctions,

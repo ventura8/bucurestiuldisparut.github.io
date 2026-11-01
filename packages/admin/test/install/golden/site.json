@@ -11,6 +11,7 @@
         "_BASE": "/admin/",
         "_SLUG": "1-0-0-abc1234",
         "_RELEASE": "1.0.0+abc1234",
+        "_RELEASE_TIME": "1761955200",
         "_MANIFEST_SHA256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "_FILE_SHA256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     },
@@ -25,6 +26,7 @@
                 "HCM_MANIFEST_SHA256=${_MANIFEST_SHA256}",
                 "HCM_FILE_SHA256=${_FILE_SHA256}",
                 "HCM_RELEASE=${_RELEASE}",
+                "HCM_RELEASE_TIME=${_RELEASE_TIME}",
                 "HCM_FILES=site,server,pipeline",
                 "HCM_OUT=/workspace/site",
                 "HCM_KEEP_BUNDLE=public${_BASE}install/${_SLUG}"

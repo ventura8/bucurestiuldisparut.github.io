@@ -1,4 +1,4 @@
-import { BACKGROUND_FUNCTIONS, CALLABLES, deployedName, HTTP_ENDPOINTS } from '@hcm/shared';
+import { BACKGROUND_FUNCTIONS, CALLABLES, deployedName, HTTP_ENDPOINTS, parseReleaseTime } from '@hcm/shared';
 
 import { lastSegment, records, stringAt } from './json.js';
 import type { GoogleTransport } from './transport.js';
@@ -18,6 +18,8 @@ export interface DeployedFunction {
     readonly state: string;
     /** M6: the release the function runs (its `HCM_RELEASE` environment variable), or null for a deploy without one. */
     readonly release: string | null;
+    /** Its build time (`HCM_RELEASE_TIME`, finding 39 of 2026-11-01), or null for a deploy without one. */
+    readonly releaseTime: number | null;
 }
 
 export interface FunctionsClient {
@@ -71,6 +73,7 @@ export function createFunctionsClient(transport: GoogleTransport): FunctionsClie
                 id: lastSegment(String(item['name'])),
                 state: stringAt(item, 'state') ?? 'STATE_UNSPECIFIED',
                 release: stringAt(item, 'serviceConfig', 'environmentVariables', 'HCM_RELEASE') ?? null,
+                releaseTime: parseReleaseTime(stringAt(item, 'serviceConfig', 'environmentVariables', 'HCM_RELEASE_TIME')),
             })),
     };
 }

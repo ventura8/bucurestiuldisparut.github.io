@@ -2,7 +2,7 @@ import { PIPELINE_DIGEST } from '@hcm/test-support/fakes';
 import type { Locator } from '@playwright/test';
 
 import { setupText } from '../../support/i18n.js';
-import { INSTALL_SLUG, installState, preparedProject, submittedBuilds } from '../../support/install.js';
+import { INSTALL_RELEASE_TIME, INSTALL_SLUG, installState, preparedProject, submittedBuilds } from '../../support/install.js';
 import { ADMIN_LOCK, expect, test } from '../../support/test.js';
 import type { UpstreamControl } from '../../support/upstream.js';
 import { E2E_PROJECT_ID } from '../../world.js';
@@ -56,8 +56,10 @@ test(
         await setup.expectState('pipeline', 'ok');
         const jobs = await jobSpecs(upstream);
         const image = `us-central1-docker.pkg.dev/${E2E_PROJECT_ID}/hcm/pipeline@${PIPELINE_DIGEST}`;
-        expect(jobs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline`]).toEqual({ labels: { 'hcm-release': INSTALL_SLUG }, image });
-        expect(jobs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline-xl`]).toEqual({ labels: { 'hcm-release': INSTALL_SLUG }, image });
+        // The release's slug and its build time (finding 39 of 2026-11-01) label both jobs.
+        const labels = { 'hcm-release': INSTALL_SLUG, 'hcm-release-time': String(INSTALL_RELEASE_TIME) };
+        expect(jobs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline`]).toEqual({ labels, image });
+        expect(jobs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline-xl`]).toEqual({ labels, image });
         await expect(pipeline.getByRole('button', { name: setupText(lang, 'adminSetup.install.tryAgain') })).toHaveCount(0);
         serverDeployment.claimErrors();
     },

@@ -3,13 +3,21 @@
  * the migrated Bucharest had no category, so Add place showed an empty Category select and Save refused): one click
  * writes the five of `STARTER_POI_CATEGORIES` in one batch, each id the slug of its Romanian label kept clear of the
  * city's layers and categories (one overlay namespace), after the city's own categories in order. The layers' ids are
- * read once, at the click; a read that fails writes nothing.
+ * read once, at the click; a read that fails writes nothing. Settings, Place categories offers the same action to a city
+ * that already has categories (finding 41): only the starters no category names yet, as many as `MAX_POI_CATEGORIES`
+ * leaves room for.
  */
-import { FIRESTORE_PATHS, MAX_LAYERS, starterCategoryDocs } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    MAX_LAYERS,
+    MAX_POI_CATEGORIES,
+    missingStarterCategories,
+    starterCategoryDocs,
+    type StarterCategory,
+} from '@hcm/shared';
 import { z } from 'zod';
 
 import type { BatchWrite, ContentStore, WriteOutcome } from '../content/services.js';
-import type { CategoryItem } from './model.js';
 
 /** Any document: only the ids are read. */
 const ANY_DOCUMENT = z.record(z.string(), z.unknown());
@@ -38,21 +46,34 @@ export function readIds(store: Pick<ContentStore, 'watchQuery'>, collection: str
     });
 }
 
-/** The batch that adds the starter categories after `categories`, clear of `taken` (the layers' ids). */
-export function starterWrites(cityId: string, categories: readonly CategoryItem[], taken: readonly string[]): BatchWrite[] {
+/** What the starters read of a listed category (of the places or of the settings). */
+interface ListedCategory {
+    readonly id: string;
+    readonly label: { readonly ro: string; readonly en?: string | undefined };
+    readonly order: number;
+}
+
+/** The starters a city with `categories` gets: the ones no category names yet, in starter order, as many as fit. */
+export function startersFor(categories: readonly Pick<ListedCategory, 'label'>[]): StarterCategory[] {
+    return missingStarterCategories(categories).slice(0, Math.max(0, MAX_POI_CATEGORIES - categories.length));
+}
+
+/** The batch that adds the starter categories `categories` lacks after them, clear of `taken` (the layers' ids). */
+export function starterWrites(cityId: string, categories: readonly ListedCategory[], taken: readonly string[]): BatchWrite[] {
     const first = categories.reduce((last, category) => Math.max(last, category.order + 1), 0);
-    return starterCategoryDocs([...taken, ...categories.map((category) => category.id)], first).map(({ id, ...data }) => ({
+    const ids = [...taken, ...categories.map((category) => category.id)];
+    return starterCategoryDocs(ids, first, startersFor(categories)).map(({ id, ...data }) => ({
         kind: 'create',
         path: FIRESTORE_PATHS.poiCategory(cityId, id),
         data: { ...data },
     }));
 }
 
-/** Writes the starter categories of `cityId` in one batch; nothing when the layers could not be read. */
+/** Writes the starter categories `cityId` lacks in one batch; nothing when the layers could not be read. */
 export async function addStarterCategories(
     store: Pick<ContentStore, 'watchQuery' | 'batch'>,
     cityId: string,
-    categories: readonly CategoryItem[],
+    categories: readonly ListedCategory[],
 ): Promise<WriteOutcome> {
     const layers = await readIds(store, FIRESTORE_PATHS.layers(cityId));
     if (layers === null) {

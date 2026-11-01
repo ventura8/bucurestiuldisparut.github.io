@@ -81,6 +81,8 @@ export interface FakeBuild {
 /** The public site the site build published (`release.json`: what the e2e Hosting answers). */
 interface HostingRelease {
     readonly release: string;
+    /** The site's build time (finding 39 of 2026-11-01), when its release has one. */
+    readonly releaseTime?: number;
     readonly variant: 'public' | 'start-up';
 }
 
@@ -358,13 +360,33 @@ function finish(build: FakeBuild, state: CloudBuildState, world: BuildWorld): vo
     }
 }
 
+/** The build's `_RELEASE_TIME` (finding 39 of 2026-11-01): whole seconds, or undefined for a release without one. */
+function releaseTimeOf(build: FakeBuild): number | undefined {
+    const text = build.substitutions['_RELEASE_TIME'] ?? '';
+    return /^\d{1,10}$/.test(text) ? Number(text) : undefined;
+}
+
+/** `{releaseTime}` when there is one, else nothing (what a record of the release adds). */
+function timedOf(releaseTime: number | undefined): { readonly releaseTime?: number } {
+    return releaseTime === undefined ? {} : { releaseTime };
+}
+
+/** The pipeline jobs' labels: the release's slug and, when it has one, its build time (as the `jobs` step writes them). */
+function jobLabels(slug: string, releaseTime: number | undefined): Record<string, string> {
+    return releaseTime === undefined ? { 'hcm-release': slug } : { 'hcm-release': slug, 'hcm-release-time': String(releaseTime) };
+}
+
 function succeed(build: FakeBuild, state: CloudBuildState, world: BuildWorld): void {
     const release = build.substitutions['_RELEASE'] ?? '';
     const slug = build.substitutions['_SLUG'] ?? '';
+    const releaseTime = releaseTimeOf(build);
+    const timed = timedOf(releaseTime);
     if (build.target === 'server') {
         world.deployment.deployment = 'deployed';
         world.deployment.schedulerJob = true;
         world.deployment.release = release;
+        delete world.deployment.releaseTime;
+        Object.assign(world.deployment, timed);
         // A server build deploys every function of the registry (a server from before M6 lacked some).
         delete world.deployment.lacking;
         enableService(world.serviceUsage, build.projectId, 'cloudfunctions.googleapis.com');
@@ -373,11 +395,11 @@ function succeed(build: FakeBuild, state: CloudBuildState, world: BuildWorld): v
     if (build.target === 'pipeline') {
         const image = `${build.region}-docker.pkg.dev/${build.projectId}/hcm/pipeline@${PIPELINE_DIGEST}`;
         Object.values(CLOUD_RUN_JOBS).forEach((job) => {
-            setJobSpec(world.cloudRun, `${build.projectId}/${build.region}/${job}`, { labels: { 'hcm-release': slug }, image });
+            setJobSpec(world.cloudRun, `${build.projectId}/${build.region}/${job}`, { labels: jobLabels(slug, releaseTime), image });
         });
         return;
     }
-    state.hosting = { release, variant: 'public' };
+    state.hosting = { release, ...timed, variant: 'public' };
 }
 
 /** The step under way's status, or the step a stopped build stopped at: the build's own. */

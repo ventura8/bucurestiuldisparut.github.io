@@ -42,6 +42,18 @@ describe('loadRuntime', () => {
         });
     });
 
+    it('happyPath_theBuildTimeComesWithTheRelease_badPath_oneThatIsNotWholeSecondsMakesNoRuntime', async () => {
+        // Finding 39 of 2026-11-01: the build time orders two builds of one version.
+        const timed = serving({ [RUNTIME_URL]: jsonResponse({ release: '1.0.0+457201e', releaseTime: 1_761_990_000 }) });
+        const broken = serving({ [RUNTIME_URL]: jsonResponse({ release: '1.0.0+457201e', releaseTime: 'yesterday' }) });
+
+        await expect(loadRuntime((url) => timed.fetch(`https://h.test${url}`))).resolves.toEqual({
+            release: '1.0.0+457201e',
+            releaseTime: 1_761_990_000,
+        });
+        await expect(loadRuntime((url) => broken.fetch(`https://h.test${url}`))).resolves.toEqual({ release: UNKNOWN_RELEASE });
+    });
+
     it('happyPath_aStartUpDeploySaysSo', async () => {
         const fetcher = serving({ [RUNTIME_URL]: jsonResponse({ release: '0.0.0+5d02329', startUp: true }) });
 

@@ -154,6 +154,7 @@ class Cards implements InstallCards {
             visibility: deps.visibility,
             log: deps.log.child(`install-${target}`),
             release: deps.host.release,
+            releaseTime: deps.host.releaseTime,
             liveAccess: () => this.#live(),
             clickAccess: async () => accessOf(await googleAccess(this.#ctx, step, 'cloudPlatform', true)),
             report: (view) => {
@@ -188,7 +189,9 @@ class Cards implements InstallCards {
             return;
         }
         this.#recorded.set(view.target, view.state);
-        const install = { [view.target]: installRecordOf(view, this.#ctx.nowIso()) };
+        // Finding 39: a server from before the build times refuses a record naming one; it reads them once it names its own.
+        const timed = this.#ctx.state().install.server.installedReleaseTime !== null;
+        const install = { [view.target]: installRecordOf(view, this.#ctx.nowIso(), timed) };
         this.#recording = this.#recording
             .then(async () => {
                 await this.#ctx.deps.backend.recordCloud({ install });

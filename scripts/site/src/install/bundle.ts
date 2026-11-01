@@ -3,14 +3,16 @@
  * (`npm run build:install`, after `build:hosting` and the functions' build: CR-M6-5) into each Hosting tree it is given,
  * at `admin/install/<slug>/`:
  *
- * - `server.tgz`: `functions/dist/` (the bundle, its `package.json`, its deploy lock, `.env.<project>` with `HCM_RELEASE`,
+ * - `server.tgz`: `functions/dist/` (the bundle, its `package.json`, its deploy lock, `.env.<project>` with `HCM_RELEASE`
+ *   and `HCM_RELEASE_TIME`,
  *   the export kit; an allowlist, so nothing else, a local secret file least of all, is ever published),
  *   a `firebase.json` of the server's parts (no `predeploy`), the Firestore and Storage rules and indexes, `.firebaserc`,
  *   `tools/` (the locked `firebase-tools`, with the vendored copies its lock links to) and `steps/`;
  * - `pipeline.tgz`: the raster pipeline's Docker context (no tests) and `steps/`;
  * - `hosting.tgz`: the public Hosting tree under `public/` without `admin/install/**`, a `firebase.json` of Hosting
  *   only, `.firebaserc`, `tools/` and `steps/`;
- * - `manifest.json` (`installManifestSchema`): the release, the slug, the project, each tarball's size and SHA-256,
+ * - `manifest.json` (`installManifestSchema`): the release and its build time (the admin's `runtime.json`'s: finding 39
+ *   of 2026-11-01), the slug, the project, each tarball's size and SHA-256,
  *   the server's functions, the tools by digest and the build estimates.
  *
  * Deterministic: the same commit gives the same bytes (`tar.ts`; the entries' time is `SOURCE_DATE_EPOCH`, else 0).
@@ -34,7 +36,7 @@ import {
     type InstallTarget,
 } from '@hcm/shared';
 
-import { adminRelease, type BuildEnvironment } from '../admin/runtime.js';
+import { adminRelease, releaseTime, type BuildEnvironment, type CommitClock } from '../admin/runtime.js';
 import { SiteBuildError } from '../errors.js';
 import type { SiteFileSystem } from '../files.js';
 import { tgz, type TarEntry } from './tar.js';
@@ -85,6 +87,8 @@ export interface InstallBundleOptions {
     /** The functions' deploy artifact (`npm run build --workspace @hcm/functions`). */
     readonly functionsDir: string;
     readonly env: BuildEnvironment;
+    /** Reads the build commit's time (default: git); the manifest's `releaseTime` when `SOURCE_DATE_EPOCH` says none. */
+    readonly commitTime?: CommitClock;
 }
 
 export interface InstallBundleReport {
@@ -214,7 +218,12 @@ function projectIdOf(files: SiteFileSystem): string {
     return projectId;
 }
 
-function manifestOf(release: string, projectId: string, tarballs: Readonly<Record<InstallTarget, Uint8Array>>): InstallManifest {
+function manifestOf(
+    stamp: { readonly release: string; readonly releaseTime: number | null },
+    projectId: string,
+    tarballs: Readonly<Record<InstallTarget, Uint8Array>>,
+): InstallManifest {
+    const { release } = stamp;
     const file = (target: InstallTarget) => ({
         name: INSTALL_BUNDLE_FILES[target],
         bytes: tarballs[target].length,
@@ -223,6 +232,7 @@ function manifestOf(release: string, projectId: string, tarballs: Readonly<Recor
     const manifest = {
         format: INSTALL_FORMAT,
         release,
+        releaseTime: stamp.releaseTime,
         slug: installReleaseSlug(release),
         projectId,
         files: { server: file('server'), pipeline: file('pipeline'), site: file('site') },
@@ -249,7 +259,7 @@ export function buildInstallBundle(options: InstallBundleOptions, files: SiteFil
         pipeline: tgz(pipelineEntries(files, stepEntries), mtime),
         site: tgz(hostingEntries(files, options, withTools), mtime),
     };
-    const manifest = manifestOf(release, projectId, tarballs);
+    const manifest = manifestOf({ release, releaseTime: releaseTime(files, options.env, options.commitTime) }, projectId, tarballs);
     for (const out of options.out) {
         const folder = `${out}/admin/${INSTALL_FOLDER}/${manifest.slug}`;
         (Object.keys(tarballs) as InstallTarget[]).forEach((target) => {

@@ -280,3 +280,71 @@ test(
         await expectStateSound(page, adminVisit('settings.overlays', lang));
     },
 );
+
+/** The starters' names as the page shows them, in starter order. */
+const STARTERS = { ro: ['Clădire', 'Stradă', 'Piață', 'Biserică', 'Monument'], en: ['Building', 'Street', 'Square', 'Church', 'Monument'] };
+
+test(
+    'Add the starter categories adds in one click only the starters the city lacks, clear of every id',
+    { tag: ['@S-A39-HAPPY-ADD-MISSING-STARTERS', '@S-A21-BAD-LEAK-CHECK'] },
+    async ({ page, lang, content }) => {
+        await page.context().addInitScript(recordLiveRegions);
+        await seedCity(content, AT);
+        // A layer already holds the id `cladire`: the starter Building takes another.
+        await seedLayer(content, 'cladire', AT);
+        await seedCategory(content, 'biserici', AT, { label: { ro: 'Biserică' }, icon: 'church', color: '#a23b2a' });
+        await seedCategory(content, 'porturi', AT, { label: { ro: 'Porturi', en: 'Harbours' }, icon: 'location_on', order: 1 });
+        await page.goto(content.address(lang, 'settings/categories'));
+        const starters = page.getByRole('button', { name: text(lang, 'adminContent.settings.addStarters'), exact: true });
+        await expect(starters).toBeEnabled();
+
+        await starters.click();
+        await expect(page.getByText(text(lang, 'adminContent.settings.startersAdded', { count: '4' })).first()).toBeVisible();
+        const [building, street, square, , monument] = STARTERS[lang];
+        for (const name of [building, street, square, monument]) {
+            await expect(page.getByRole('link', { name: new RegExp(`^${String(name)}`) })).toBeVisible();
+        }
+        // Every starter is there now: the action is off, the reason beside it.
+        await expect(starters).toBeDisabled();
+        await expect(page.getByText(text(lang, 'adminContent.settings.startersPresent'))).toBeVisible();
+        await expectStateSound(page, adminVisit('settings.categories-starters-added', lang));
+
+        const categories = await content.collection('poiCategories');
+        const orders = Object.fromEntries(Object.entries(categories).map(([id, category]) => [id, category['order']]));
+        expect(orders).toEqual({ biserici: 0, porturi: 1, 'cladire-2': 2, strada: 3, piata: 4, monument: 5 });
+        expect(categories['cladire-2']).toMatchObject({ label: { ro: 'Clădire', en: 'Building' }, icon: 'domain' });
+        expect(await content.document('layers/cladire')).toBeDefined();
+    },
+);
+
+test(
+    'With every starter named, case and diacritics aside, Add the starter categories is off with the reason and writes nothing',
+    { tag: ['@S-A39-BAD-STARTERS-PRESENT', '@S-A21-BAD-LEAK-CHECK'] },
+    async ({ page, lang, content }) => {
+        await seedCity(content, AT);
+        const labels = [
+            { ro: 'BISERICA' },
+            { ro: 'Străzi', en: 'Street' },
+            { ro: 'clădire' },
+            { ro: 'Piata' },
+            { ro: 'Monumente', en: 'MONUMENT' },
+        ];
+        for (const [index, label] of labels.entries()) {
+            await seedCategory(content, `c${String(index)}`, AT, { label, order: index });
+        }
+        await page.goto(content.address(lang, 'settings/categories'));
+        await expect(page.getByRole('link', { name: /^BISERICA/ })).toBeVisible();
+
+        await expect(page.getByRole('button', { name: text(lang, 'adminContent.settings.addStarters'), exact: true })).toBeDisabled();
+        await expect(page.getByText(text(lang, 'adminContent.settings.startersPresent'))).toBeVisible();
+        await expect(page.getByRole('button', { name: text(lang, 'adminContent.settings.addCategory'), exact: true })).toBeEnabled();
+        await expectStateSound(page, adminVisit('settings.categories-starters-present', lang));
+        expect(Object.keys(await content.collection('poiCategories')).toSorted((a, b) => a.localeCompare(b))).toEqual([
+            'c0',
+            'c1',
+            'c2',
+            'c3',
+            'c4',
+        ]);
+    },
+);

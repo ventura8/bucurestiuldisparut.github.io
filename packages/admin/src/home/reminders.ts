@@ -10,11 +10,13 @@
  *
  * - **the map's installation** (installer, A55–A57, `home.update-tile`): a target recorded `updateAvailable` (the admin is
  *   newer than what is installed) or `failed` (its last build stopped), with the Setup step whose card offers Update the
- *   map or Try again.
+ *   map or Try again. A recorded release in place is read again against this admin's own release and build time
+ *   (finding 39 of 2026-11-01: an `installed` written by an older build of the same version is an update for this one).
  */
-import { INSTALL_TARGETS, timestampToDate, usgsReadiness, type SetupStatusDoc, type TimestampLike } from '@hcm/shared';
+import { INSTALL_TARGETS, timestampToDate, usgsReadiness, type InstallState, type SetupStatusDoc, type TimestampLike } from '@hcm/shared';
 
 import { isoOf } from '../content/list.js';
+import { recordedState, type BundleStamp } from '../install/model.js';
 import { INSTALL_STEP_OF } from '../setup/install-steps.js';
 import { SETUP_LINK_URLS } from '../setup/links.js';
 
@@ -68,23 +70,37 @@ function trialReminder(billing: BillingArea | undefined, now: number): readonly 
 }
 
 // [section install] owner: installer
-/** The first target recorded in `state`, as a reminder of `kind` opening its Setup step. */
-function installTile(install: SetupStatusDoc['install'], state: 'updateAvailable' | 'failed'): readonly HomeReminder[] {
-    const target = INSTALL_TARGETS.find((candidate) => install?.[candidate]?.state === state);
+type InstallRecords = SetupStatusDoc['install'];
+
+/** A target's recorded state, read against the admin's release when it is known (else as recorded). */
+function stateOf(install: InstallRecords, target: (typeof INSTALL_TARGETS)[number], bundle: BundleStamp | null): InstallState | undefined {
+    const record = install?.[target];
+    if (record === undefined || bundle === null) {
+        return record?.state;
+    }
+    return recordedState(record, bundle);
+}
+
+/** The first target in `state`, as a reminder of `kind` opening its Setup step. */
+function installTile(install: InstallRecords, state: 'updateAvailable' | 'failed', bundle: BundleStamp | null): readonly HomeReminder[] {
+    const target = INSTALL_TARGETS.find((candidate) => stateOf(install, candidate, bundle) === state);
     return target === undefined ? [] : [{ kind: state === 'failed' ? 'installFailed' : 'installUpdate', step: INSTALL_STEP_OF[target] }];
 }
 
 /** A stopped installation first (it needs a look), else an update the admin's release brings. */
-function installReminder(install: SetupStatusDoc['install']): readonly HomeReminder[] {
-    const failed = installTile(install, 'failed');
-    return failed.length > 0 ? failed : installTile(install, 'updateAvailable');
+function installReminder(install: InstallRecords, bundle: BundleStamp | null): readonly HomeReminder[] {
+    const failed = installTile(install, 'failed', bundle);
+    return failed.length > 0 ? failed : installTile(install, 'updateAvailable', bundle);
 }
 // [end install]
 
-/** The reminders `setup/status` calls for at `now` (none before it is read). */
-export function remindersOf(status: SetupStatusDoc | null, now: number): readonly HomeReminder[] {
+/**
+ * The reminders `setup/status` calls for at `now` (none before it is read); `bundle` is the admin's own release and build
+ * time, which the recorded installs are read against (null: a build without a release reads them as recorded).
+ */
+export function remindersOf(status: SetupStatusDoc | null, now: number, bundle: BundleStamp | null = null): readonly HomeReminder[] {
     if (status === null) {
         return [];
     }
-    return [...installReminder(status.install), ...usgsReminder(status.usgs), ...trialReminder(status.billing, now)];
+    return [...installReminder(status.install, bundle), ...usgsReminder(status.usgs), ...trialReminder(status.billing, now)];
 }

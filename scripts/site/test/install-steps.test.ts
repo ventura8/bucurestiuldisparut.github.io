@@ -185,7 +185,10 @@ describe('verify-server', () => {
 });
 
 const JOBS = 'https://run.googleapis.com/v2/projects/demo-hcm/locations/us-central1/jobs';
-const JOB_ARGS = ['--project', 'demo-hcm', '--region', 'us-central1', '--image-file', 'digest', '--slug', '1-0-0-abc1234'];
+const JOB_ARGS = [
+    ...['--project', 'demo-hcm', '--region', 'us-central1', '--image-file', 'digest', '--slug', '1-0-0-abc1234'],
+    ...['--release-time', '1761955200'],
+];
 
 describe('run-jobs', () => {
     it('happyPath_aMissingJobIsCreatedAnExistingOneReplacedEachWaitedFor', async () => {
@@ -207,16 +210,30 @@ describe('run-jobs', () => {
         const create = world.calls.find((call) => call.operation === 'create');
         expect(new URL(create?.url ?? 'https://x').searchParams.get('jobId')).toBe('raster-pipeline');
         expect(JSON.parse(create?.body ?? '{}')).toEqual(
-            jobBody({ project: 'demo-hcm', region: 'us-central1', imageFile: 'digest', slug: '1-0-0-abc1234' }, IMAGE, PIPELINE_JOBS[0]),
+            jobBody(
+                { project: 'demo-hcm', region: 'us-central1', imageFile: 'digest', slug: '1-0-0-abc1234', releaseTime: '1761955200' },
+                IMAGE,
+                PIPELINE_JOBS[0],
+            ),
         );
+        // Finding 39 of 2026-11-01: the build time labels the job next to the release's slug.
+        expect(JSON.parse(create?.body ?? '{}')).toMatchObject({
+            labels: { 'hcm-release': '1-0-0-abc1234', 'hcm-release-time': '1761955200' },
+        });
         expect(world.calls.some((call) => call.operation === 'patch')).toBe(true);
         expect(polled).toHaveBeenCalledTimes(1);
         expect(world.lines.at(-1)).toBe(`HCM_INSTALL {"event":"image","digest":"sha256:${'a'.repeat(64)}"}`);
     });
 
     it('happyPath_theJobIsTheOneD5Deployed', () => {
-        const body = jobBody({ project: 'demo-hcm', region: 'us-central1', imageFile: 'x', slug: 's' }, IMAGE, PIPELINE_JOBS[1]);
+        const body = jobBody(
+            { project: 'demo-hcm', region: 'us-central1', imageFile: 'x', slug: 's', releaseTime: '' },
+            IMAGE,
+            PIPELINE_JOBS[1],
+        );
 
+        // A release without a build time labels nothing more.
+        expect(body['labels']).toEqual({ 'hcm-release': 's' });
         expect(body).toMatchObject({
             labels: { 'hcm-release': 's' },
             template: {

@@ -14,6 +14,7 @@ import type { ThemeTokenSet } from '@hcm/ui/dynamic-color';
 import type { Clock, KeyValueStore, Unsubscribe } from '../app/ports.js';
 import type { CallablesPort } from '../firebase/ports.js';
 import type { FilePort, PicturePort } from '../imagery/files.js';
+import type { BundleStamp } from '../install/model.js';
 import type { AdminMapFactory } from '../map/factory.js';
 import type { UploadPort } from '../firebase/uploads.js';
 import type { PushRegistrar } from '../inbox/push.js';
@@ -179,6 +180,13 @@ export interface ContentServices {
     /** This browser's web push: the browser's own permission prompt and its FCM token (none without push). */
     readonly push?: PushRegistrar | null;
     // [end inbox]
+    // [section install] owner: installer (`adminRelease`: `runtime.json`'s, docs/research/M6-interfaces.md §1.7)
+    /**
+     * This admin's own release and its build time (finding 39 of 2026-11-01): Home reads the recorded installs against it
+     * (an `installed` an older build recorded is an update for this one). Null or absent: a build without a release.
+     */
+    readonly adminRelease?: BundleStamp | null;
+    // [end install]
 }
 
 /** The members every area gets from the shell; the rest are the areas' own (`AreaServiceParts`). */

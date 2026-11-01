@@ -27,6 +27,8 @@ export interface AreaServiceSources {
     readonly mapToken?: string | null | undefined;
     /** The `e2e` build's test id (`?test=`): push through the stand-in registrar, never FCM; undefined in production. */
     readonly pushTest?: string | undefined;
+    /** `runtime.json`'s release and build time (Home reads the recorded installs against them), or null without one. */
+    readonly adminRelease?: AreaServiceParts['adminRelease'];
 }
 
 /** This browser's push: FCM in production, the stand-in in the `e2e` build (M4, `../firebase/messaging.ts`). */
@@ -61,5 +63,8 @@ export function areaServices(sources: AreaServiceSources): AreaServiceParts {
         // [section inbox] owner: assists-notify
         push: pushOf(sources),
         // [end inbox]
+        // [section install] owner: installer
+        adminRelease: sources.adminRelease ?? null,
+        // [end install]
     };
 }

@@ -58,6 +58,8 @@ describe('buildInstallBundle', () => {
         expect(manifest).toMatchObject({
             format: 1,
             release: report.release,
+            // Finding 39 of 2026-11-01: the build time, here SOURCE_DATE_EPOCH's.
+            releaseTime: 1_700_000_000,
             projectId: 'bucurestiul-disparut',
             tools: { node: NODE_STEP_IMAGE, docker: null },
         });
@@ -68,6 +70,18 @@ describe('buildInstallBundle', () => {
             bytes: server.length,
             sha256: createHash('sha256').update(server).digest('hex'),
         });
+    });
+
+    it('happyPath_withoutSourceDateEpochTheCommitsTimeIsTheBuildTime_badPath_noneReadableNamesNone', () => {
+        const { files } = world();
+        const env = { HCM_COMMIT: 'a'.repeat(40) };
+        const manifestOf = (slug: string) =>
+            installManifestSchema.parse(JSON.parse(files.readText(`dist/hosting/admin/install/${slug}/manifest.json`)));
+
+        const timed = buildInstallBundle({ ...OPTIONS, env, commitTime: () => 1_761_955_200 }, files, STEPS);
+        expect(manifestOf(timed.slug).releaseTime).toBe(1_761_955_200);
+        const unknown = buildInstallBundle({ ...OPTIONS, env, commitTime: () => null }, files, STEPS);
+        expect(manifestOf(unknown.slug).releaseTime).toBeNull();
     });
 
     it('happyPath_eachTarballHoldsItsTargetsParts', () => {

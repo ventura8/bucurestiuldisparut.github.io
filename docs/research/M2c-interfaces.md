@@ -841,6 +841,15 @@ is its own draft with its own Save:
 The city document is published from creation (`DECISIONS-for-review.md` §25a); taking the public map offline is not
 offered in M2c.
 
+**Addendum 2026-11-01 (finding 41 of `manual-test-2026-10-25.md`, `DECISIONS-for-review.md` §78c): Add the starter
+categories.** The `categories` list has **Add the starter categories** beside Add a category: one batch writes the
+starters of `STARTER_POI_CATEGORIES` the city lacks (`missingStarterCategories` of `@hcm/shared`: a category's RO or EN
+label equal to a starter's after NFD, combining marks removed, lower case and spaces collapsed), as many as fit under
+`MAX_POI_CATEGORIES` (`startersFor`, `packages/admin/src/pois/starter.ts`), the ids clear of the layers (read once at the
+click) and the categories, the orders after the city's own; the snackbar names the count (`adminContent.settings.startersAdded`);
+with none missing the button is off with `adminContent.settings.startersPresent` (state `startersMissing`,
+`addingStarters`; intent `addStarterCategories`; S-A39-HAPPY-ADD-MISSING-STARTERS, S-A39-BAD-STARTERS-PRESENT).
+
 ## 9. Operations screens (ops-screens)
 
 ### 9.1 Admins (A02)

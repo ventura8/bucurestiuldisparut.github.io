@@ -13,12 +13,15 @@ import {
     isRunning,
     missingFunctions,
     pendingRetry,
+    recordedState,
+    releaseState,
     stepsOf,
     type StateInput,
 } from '../../src/install/model.js';
 
 const RELEASE = '1.0.0+abc1234';
 const SLUG = '1-0-0-abc1234';
+const RELEASE_TIME = 1_761_955_200;
 
 function build(changes: Partial<CloudBuild> = {}): CloudBuild {
     return { id: 'b-1', status: 'WORKING', steps: [], tags: ['hcm-install', 'hcm-server', `hcm-r-${SLUG}`], substitutions: {}, ...changes };
@@ -28,7 +31,7 @@ function input(changes: Partial<StateInput> = {}): StateInput {
     return {
         installed: { complete: false, release: null },
         build: null,
-        bundleRelease: RELEASE,
+        bundle: { release: RELEASE, time: RELEASE_TIME },
         bundleSlug: SLUG,
         retrying: false,
         missing: [],
@@ -99,6 +102,57 @@ describe('deriveInstallState', () => {
     it('badPath_aSucceededBuildWhoseVerifyNamedMissingFunctionsIsFailed', () => {
         expect(deriveInstallState(input({ build: build({ status: 'SUCCESS' }), missing: ['ops-tick'] }))).toBe('failed');
         expect(deriveInstallState(input({ build: build({ status: 'SUCCESS' }) }))).toBe('notInstalled');
+    });
+});
+
+describe('builds of one version (finding 39 of 2026-11-01)', () => {
+    const SAME_VERSION_OLDER = '1.0.0+9e2e6b5';
+    const SAME_VERSION_NEWER = '1.0.0+fffffff';
+
+    it('happyPath_anOlderBuildOfTheSameVersionOffersUpdate_withOrWithoutItsTime', () => {
+        // The live server 1.0.0+9e2e6b5 was deployed before the build times: no time, a different commit, an update.
+        expect(deriveInstallState(input({ installed: { complete: true, release: SAME_VERSION_OLDER } }))).toBe('updateAvailable');
+        expect(
+            deriveInstallState(input({ installed: { complete: true, release: SAME_VERSION_OLDER, releaseTime: RELEASE_TIME - 3600 } })),
+        ).toBe('updateAvailable');
+        // The same commit is installed whatever the times say.
+        expect(deriveInstallState(input({ installed: { complete: true, release: RELEASE, releaseTime: null } }))).toBe('installed');
+    });
+
+    it('badPath_aNewerBuildOfTheSameVersionIsNeverReplaced_complete_orAPartOfIt', () => {
+        const newer = { complete: true, release: SAME_VERSION_NEWER, releaseTime: RELEASE_TIME + 3600 };
+
+        expect(deriveInstallState(input({ installed: newer }))).toBe('newerInstalled');
+        expect(
+            deriveInstallState(
+                input({
+                    installed: { complete: false, release: null, partial: true, newest: SAME_VERSION_NEWER, newestTime: RELEASE_TIME + 1 },
+                }),
+            ),
+        ).toBe('newerInstalled');
+        // An admin that knows no time of its own never replaces a timed build of its version.
+        expect(deriveInstallState(input({ installed: newer, bundle: { release: RELEASE, time: null } }))).toBe('newerInstalled');
+    });
+
+    it('happyPath_aRecordedReleaseIsReadAgainAgainstThisAdmin', () => {
+        const bundle = { release: RELEASE, time: RELEASE_TIME };
+
+        // What the admin 1.0.0+9e2e6b5 recorded of itself: installed, no time. For this admin it is an update.
+        expect(recordedState({ state: 'installed', release: SAME_VERSION_OLDER }, bundle)).toBe('updateAvailable');
+        expect(recordedState({ state: 'updateAvailable', release: RELEASE }, bundle)).toBe('installed');
+        expect(recordedState({ state: 'installed', release: SAME_VERSION_NEWER, releaseTime: RELEASE_TIME + 60 }, bundle)).toBe(
+            'newerInstalled',
+        );
+    });
+
+    it('badPath_aRecordWithoutARelease_aBuildUnderWay_orAnAdminWithoutOneKeepsWhatWasRecorded', () => {
+        const bundle = { release: RELEASE, time: RELEASE_TIME };
+
+        expect(recordedState({ state: 'installed' }, bundle)).toBe('installed');
+        expect(recordedState({ state: 'failed', release: SAME_VERSION_OLDER }, bundle)).toBe('failed');
+        expect(recordedState({ state: 'working', release: SAME_VERSION_OLDER }, bundle)).toBe('working');
+        expect(recordedState({ state: 'installed', release: SAME_VERSION_OLDER }, { release: 'e2e', time: null })).toBe('installed');
+        expect([releaseState(-1), releaseState(0), releaseState(1)]).toEqual(['updateAvailable', 'installed', 'newerInstalled']);
     });
 });
 
@@ -208,6 +262,8 @@ describe('the build helpers', () => {
 
     it('happyPath_aFreshSliceKnowsTheReleaseTheAddressAndTheCosts', () => {
         const slice = initialInstallSlice(RELEASE, 'https://demo-hcm.web.app/');
+        expect(initialInstallSlice(RELEASE, 'https://demo-hcm.web.app/', RELEASE_TIME).releaseTime).toBe(RELEASE_TIME);
+        expect(slice.releaseTime).toBeNull();
 
         expect(slice).toMatchObject({
             release: RELEASE,

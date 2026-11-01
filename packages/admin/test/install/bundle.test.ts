@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { createFakeFetch, jsonResponse } from '@hcm/test-support/fakes';
 import { describe, expect, it, vi } from 'vitest';
 
-import { installManifest as e2eManifest, RELEASE } from './world.js';
+import { installManifest as e2eManifest, RELEASE, RELEASE_TIME } from './world.js';
 import {
     bundleFolderUrl,
     bundleOnce,
@@ -31,6 +31,7 @@ function deps(answer: (url: URL) => Response | undefined, changes: Partial<Bundl
         fetch: fake.fetch,
         baseUrl: BASE,
         release: RELEASE,
+        releaseTime: RELEASE_TIME,
         projectId: 'demo-hcm',
         origins: hostingOrigins('demo-hcm'),
         digest: sha256Hex,
@@ -85,6 +86,8 @@ describe('loadInstallBundle', () => {
             'apiError.install.mismatch',
         ],
         ['another project', () => jsonResponse(e2eManifest({ projectId: 'other-project' })), 'apiError.install.mismatch'],
+        // Finding 39 of 2026-11-01: a manifest of another build time is another build of the release.
+        ['another build time', () => jsonResponse(e2eManifest({ releaseTime: 1 })), 'apiError.install.mismatch'],
         ['an array', () => jsonResponse([]), 'apiError.install.bundleFormat'],
     ])('badPath_%s cannot be installed', async (_name, answer, expected) => {
         const { bundleDeps } = deps(answer);

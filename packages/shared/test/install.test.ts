@@ -10,6 +10,7 @@ import {
     installRecordSchema,
     installReleaseSlug,
     parseInstallLogLine,
+    parseReleaseTime,
     releaseOfSlug,
     setupInstallSchema,
     transientDeployReason,
@@ -22,6 +23,7 @@ function manifest(changes: Partial<Record<keyof InstallManifest, unknown>> = {})
     return {
         format: 1,
         release: '1.0.0+abc1234',
+        releaseTime: 1_761_955_200,
         slug: '1-0-0-abc1234',
         projectId: 'demo-hcm',
         files: {
@@ -68,6 +70,36 @@ describe('the install release', () => {
         expect(compareRelease('1.0.0', '1.0.0+bbbbbbb')).toBe(-1);
     });
 
+    it('happyPath_twoBuildsOfOneVersionAreOrderedByTheirBuildTimes', () => {
+        // Finding 39 of 2026-11-01: every release is 1.0.0; the later commit is the newer build.
+        expect(compareRelease('1.0.0+9e2e6b5', '1.0.0+457201e', { installed: 1_761_900_000, bundle: 1_761_990_000 })).toBe(-1);
+        expect(compareRelease('1.0.0+457201e', '1.0.0+9e2e6b5', { installed: 1_761_990_000, bundle: 1_761_900_000 })).toBe(1);
+        expect(compareRelease('1.0.0+457201e', '1.0.0+457201e', { installed: null, bundle: 1_761_990_000 })).toBe(0);
+        // A higher version wins whatever the times say.
+        expect(compareRelease('1.1.0+aaaaaaa', '1.0.0+bbbbbbb', { installed: 1, bundle: 2 })).toBe(1);
+    });
+
+    it('badPath_aBuildWithoutATimeIsOlderWhenInstalled_newerWhenOnlyTheAdminLacksOne_equalTimesAreOlder', () => {
+        // A record or a server from before the build times: the admin's bundle replaces it.
+        expect(compareRelease('1.0.0+9e2e6b5', '1.0.0+457201e', { installed: null, bundle: 1_761_990_000 })).toBe(-1);
+        // An admin that cannot place itself never replaces a timed build.
+        expect(compareRelease('1.0.0+9e2e6b5', '1.0.0+457201e', { installed: 1_761_900_000, bundle: null })).toBe(1);
+        expect(compareRelease('1.0.0+aaaaaaa', '1.0.0+bbbbbbb', { installed: 5, bundle: 5 })).toBe(-1);
+    });
+
+    it('happyPath_aBuildTimeIsReadFromTextOrANumber_badPath_anythingElseIsNone', () => {
+        expect(parseReleaseTime('1761990000')).toBe(1_761_990_000);
+        expect(parseReleaseTime(1_761_990_000)).toBe(1_761_990_000);
+        expect(parseReleaseTime('0')).toBe(0);
+        expect([parseReleaseTime(''), parseReleaseTime('-1'), parseReleaseTime('1.5'), parseReleaseTime(undefined)]).toEqual([
+            null,
+            null,
+            null,
+            null,
+        ]);
+        expect([parseReleaseTime('9999999999'), parseReleaseTime(1.5)]).toEqual([null, null]);
+    });
+
     it('badPath_anInstalledReleaseThatDoesNotParseIsOlder_aBundleThatDoesNotParseIsNever', () => {
         expect(compareRelease('e2e', '1.0.0+abc1234')).toBe(-1);
         expect(compareRelease('1.0.0+abc1234', 'not a release')).toBe(1);
@@ -77,6 +109,7 @@ describe('the install release', () => {
 describe('the install manifest', () => {
     it('happyPath_aBundleManifestParses', () => {
         expect(installManifestSchema.safeParse(manifest()).success).toBe(true);
+        expect(installManifestSchema.safeParse(manifest({ releaseTime: null })).success).toBe(true);
         expect(installManifestSchema.safeParse(manifest({ tools: { firebaseTools: '15.34.2', node: NODE, docker: NODE } })).success).toBe(
             true,
         );
@@ -84,6 +117,7 @@ describe('the install manifest', () => {
 
     it.each([
         ['another format', { format: 2 }],
+        ['a build time that is not one', { releaseTime: '1761955200' }],
         ['a slug of another release', { slug: '1-0-1-abc1234' }],
         [
             'a tarball under another name',
@@ -132,7 +166,13 @@ describe('the build log events', () => {
 
 describe('the install records', () => {
     it('happyPath_eachTargetKeepsItsStateReleaseAndBuild', () => {
-        const record = { state: 'installed', release: '1.0.0+abc1234', buildId: '0123abcd-0000', checkedAt: '2026-10-25T10:00:00.000Z' };
+        const record = {
+            state: 'installed',
+            release: '1.0.0+abc1234',
+            releaseTime: 1_761_955_200,
+            buildId: '0123abcd-0000',
+            checkedAt: '2026-10-25T10:00:00.000Z',
+        };
 
         expect(setupInstallSchema.parse({ server: record, site: { state: 'notInstalled', checkedAt: record.checkedAt } })).toEqual({
             server: record,
@@ -151,6 +191,7 @@ describe('the install records', () => {
             { state: 'failed', checkedAt: '2026-10-25T10:00:00.000Z', params: { a: '1', b: '2', c: '3', d: '4', e: '5', f: '6' } },
         ],
         ['an unknown field', { state: 'failed', checkedAt: '2026-10-25T10:00:00.000Z', log: 'ya29.secret' }],
+        ['a build time that is not one', { state: 'installed', checkedAt: '2026-10-25T10:00:00.000Z', releaseTime: -1 }],
     ])('badPath_a record with %s is refused', (_name, record) => {
         expect(installRecordSchema.safeParse(record).success).toBe(false);
     });

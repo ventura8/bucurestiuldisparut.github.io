@@ -5,7 +5,8 @@
  * icon the admin's icon guesser gives its label (`packages/admin/src/settings/icon-guess.ts`; its test pins that the
  * two agree) and a colour of the city's palette: the default sepia of a new category, then four companion tones, every
  * one dark enough for the white glyph (contrast 3:1 or more; the test pins it). The admin edits or deletes them as any
- * other category.
+ * other category. A city that already has categories is offered the starters it lacks (finding 41): a starter is there when
+ * its Romanian or English label equals one of a category's labels, case, diacritics and spacing aside.
  */
 import { freeOverlayId } from '../api/layers.js';
 import type { PoiIcon } from '../schemas/poi.js';
@@ -35,13 +36,34 @@ export interface StarterCategoryDoc {
     readonly order: number;
 }
 
+/** A label as the starters compare it: no diacritics, lower case, trimmed, one space between words. */
+function starterLabelKey(text: string): string {
+    return text.normalize('NFD').replaceAll(/\p{M}/gu, '').toLowerCase().trim().replaceAll(/\s+/gu, ' ');
+}
+
+/** The labels of a category the starters are compared with (the English one is optional). */
+interface CategoryLabels {
+    readonly label: { readonly ro: string; readonly en?: string | undefined };
+}
+
+/** The starter categories none of `categories` already names, in starter order. */
+export function missingStarterCategories(categories: readonly CategoryLabels[]): StarterCategory[] {
+    const names = new Set(categories.flatMap(({ label }) => [label.ro, label.en ?? ''].map(starterLabelKey)));
+    return STARTER_POI_CATEGORIES.filter(({ label }) => !names.has(starterLabelKey(label.ro)) && !names.has(starterLabelKey(label.en)));
+}
+
 /**
  * The starter categories with their ids and orders: each id the slug of its Romanian label, kept clear of `taken` (the
  * city's layers' and categories' ids) and of `photos`; the orders follow `firstOrder` (after the city's own categories).
+ * `starters` are the ones to add (all five by default).
  */
-export function starterCategoryDocs(taken: Iterable<string>, firstOrder = 0): StarterCategoryDoc[] {
+export function starterCategoryDocs(
+    taken: Iterable<string>,
+    firstOrder = 0,
+    starters: readonly StarterCategory[] = STARTER_POI_CATEGORIES,
+): StarterCategoryDoc[] {
     const used = new Set(taken);
-    return STARTER_POI_CATEGORIES.map((category, index) => {
+    return starters.map((category, index) => {
         const id = freeOverlayId(category.label.ro, used, 'category');
         used.add(id);
         return { id, label: category.label, icon: category.icon, color: category.color, defaultOpacity: 1, order: firstOrder + index };

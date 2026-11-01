@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+
 import type { SiteFileSystem } from '../files.js';
 import type { AdminFile } from './legacy.js';
 
@@ -8,6 +10,10 @@ import type { AdminFile } from './legacy.js';
  *
  * - `release`: the repository's version and the short commit the admin was built from (`0.0.0+5d02329`): the boot log
  *   and every crash report name it (a build outside a git checkout names the version only);
+ * - `releaseTime`: the build time, the commit's time in seconds since 1970 (`SOURCE_DATE_EPOCH`, else
+ *   `git show -s --format=%ct <commit>`; absent when neither says): it orders two builds of the same version, whose
+ *   semver is the same (live manual test 2026-11-01, finding 39). The functions' `HCM_RELEASE_TIME`, the install
+ *   bundle's manifest, the public site's `release.json` and the pipeline jobs' `hcm-release-time` label carry it too;
  * - `startUp: true` when the deploy says the map's server is not installed yet (`HCM_ADMIN_START_UP=1`, the Hosting-only
  *   deploy of a new map's start-up mode): the admin then skips its anonymous probe of `admin-session`, whose missing
  *   function would make the browser log a CORS error, and learns from Google that the server is installed (step d).
@@ -76,14 +82,58 @@ export function adminRelease(files: SiteFileSystem, env: BuildEnvironment): stri
     return commit === null ? version : `${version}+${commit.slice(0, SHORT_COMMIT)}`;
 }
 
+/** Reads a commit's time in seconds since 1970, or null when it cannot be read. */
+export type CommitClock = (commit: string) => number | null;
+
+/** Whole seconds since 1970 written as text (at most ten digits, as `releaseTimeSchema` of `@hcm/shared` reads them). */
+const SECONDS = /^\d{1,10}$/;
+
+/** git where the quality image, CI's runners and the Linux hosts have it (an absolute path: never whatever PATH names). */
+const GIT = '/usr/bin/git';
+
+/**
+ * The commit's time from git (`git show -s --format=%ct`), from the working directory's repository: null without git,
+ * outside a checkout or for a commit it does not hold. `safe.directory` admits the quality image's other user.
+ */
+export function gitCommitTime(commit: string): number | null {
+    try {
+        const text = execFileSync(GIT, ['-c', 'safe.directory=*', 'show', '-s', '--format=%ct', commit], {
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'ignore'],
+        }).trim();
+        return SECONDS.test(text) ? Number(text) : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * The build time (finding 39): `SOURCE_DATE_EPOCH` when it is whole seconds, else the build commit's time (`clock`), else
+ * null (a build outside a checkout).
+ */
+export function releaseTime(files: SiteFileSystem, env: BuildEnvironment, clock: CommitClock = gitCommitTime): number | null {
+    const epoch = env['SOURCE_DATE_EPOCH'] ?? '';
+    if (SECONDS.test(epoch)) {
+        return Number(epoch);
+    }
+    const commit = buildCommit(files, env);
+    return commit === null ? null : clock(commit);
+}
+
 /** Whether the deploy declares start-up mode (`HCM_ADMIN_START_UP=1` or `true`). */
 export function startUpDeploy(env: BuildEnvironment): boolean {
     return ['1', 'true'].includes(env[START_UP_VARIABLE] ?? '');
 }
 
-/** The page's `runtime.json`. */
-export function planRuntimeFile(files: SiteFileSystem, env: BuildEnvironment): { readonly file: AdminFile; readonly release: string } {
+/** The page's `runtime.json`: the release, its build time when known, and a start-up deploy's `startUp`. */
+export function planRuntimeFile(
+    files: SiteFileSystem,
+    env: BuildEnvironment,
+    clock: CommitClock = gitCommitTime,
+): { readonly file: AdminFile; readonly release: string } {
     const release = adminRelease(files, env);
-    const runtime = startUpDeploy(env) ? { release, startUp: true } : { release };
+    const time = releaseTime(files, env, clock);
+    const stamp = time === null ? { release } : { release, releaseTime: time };
+    const runtime = startUpDeploy(env) ? { ...stamp, startUp: true } : stamp;
     return { file: { to: RUNTIME_FILE, content: `${JSON.stringify(runtime, null, 4)}\n` }, release };
 }

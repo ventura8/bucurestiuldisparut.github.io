@@ -23,6 +23,7 @@ import { ExportSection, NO_EXPORT_SECTION, type ExportSectionState } from '../ex
 import type { ContentServices, WriteOutcome } from '../content/services.js';
 import { layerItemOf, type LayerItem } from '../layers/model.js';
 import { PreviewLayer } from '../layers/preview.js';
+import { startersFor } from '../pois/starter.js';
 import { Store } from '../state/store.js';
 import { viewFields } from './area.js';
 import { canAdd, categoryItemOf, inOrder, type CategoryItem } from './categories.js';
@@ -44,6 +45,8 @@ const INITIAL: SettingsState = {
     layers: LOADING_LIST,
     categories: LOADING_LIST,
     canAddCategory: false,
+    startersMissing: 0,
+    addingStarters: false,
     category: null,
     categoryDeletion: { phase: 'idle' },
     overlays: NO_OVERLAY_DEFAULTS,
@@ -122,14 +125,7 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
         this.#overlays = new OverlayDefaults(services, this.#preview, (overlays) => {
             this.#cell.update({ overlays });
         });
-        this.#categoryArea = new CategoryArea({
-            ...{ services, preview: this.#preview },
-            changed: (patch) => {
-                this.#cell.update(patch);
-            },
-            categories: () => this.#cell.state.categories.items,
-            taken: () => [...this.#cell.state.layers.items, ...this.#cell.state.categories.items].map((item) => item.id),
-        });
+        this.#categoryArea = this.#newCategoryArea(services);
         this.#export = new ExportSection(services, this.#exportChanged);
         this.#budget = new BudgetSection(services, this.#budgetChanged);
         this.intents = {
@@ -141,6 +137,19 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
             ...this.#otherIntents(),
             ...this.#mapIntents(),
         };
+    }
+
+    /** The categories section's moving parts, over the listed layers and categories. */
+    #newCategoryArea(services: ContentServices): CategoryArea {
+        return new CategoryArea({
+            ...{ services, preview: this.#preview },
+            changed: (patch) => {
+                this.#cell.update(patch);
+            },
+            categories: () => this.#cell.state.categories.items,
+            taken: () => [...this.#cell.state.layers.items, ...this.#cell.state.categories.items].map((item) => item.id),
+            starters: () => this.#cell.state.startersMissing,
+        });
     }
 
     get state(): SettingsState {
@@ -357,7 +366,9 @@ export class SettingsStore implements AreaStore<SettingsState, SettingsIntents> 
     #listsChanged(): void {
         const layers = this.#layers.list;
         const categories = { ...this.#categories.list, items: inOrder(this.#categories.list.items) };
-        this.#cell.update({ layers, categories, canAddCategory: categories.status === 'ready' && canAdd(categories.items.length) });
+        const listed = categories.status === 'ready';
+        const startersMissing = listed ? startersFor(categories.items).length : 0;
+        this.#cell.update({ layers, categories, canAddCategory: listed && canAdd(categories.items.length), startersMissing });
         const photos = photosOpacityOf(this.#city.state.doc?.data ?? null);
         this.#overlays.setBase({ layers: layers.items, categories: categories.items, photos });
     }

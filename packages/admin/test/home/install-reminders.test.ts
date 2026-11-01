@@ -32,4 +32,23 @@ describe('remindersOf: the installation', () => {
         expect(remindersOf({ install: inPlace, ...STAMP }, NOW)).toEqual([]);
         expect(remindersOf({ ...STAMP }, NOW)).toEqual([]);
     });
+
+    it('happyPath_anInstalledRecordOfAnOlderBuildIsAnUpdateForThisAdmin', () => {
+        // Finding 39 of 2026-11-01: the admin 1.0.0+9e2e6b5 recorded its server installed; this admin is a newer build of 1.0.0.
+        const install = { server: { state: 'installed', release: '1.0.0+9e2e6b5', checkedAt: CHECKED } } as const;
+        const bundle = { release: '1.0.0+457201e', time: 1_761_990_000 };
+
+        expect(remindersOf({ install, ...STAMP }, NOW, bundle)).toEqual([{ kind: 'installUpdate', step: 'deploy' }]);
+        expect(remindersOf({ install, ...STAMP }, NOW)).toEqual([]);
+    });
+
+    it('badPath_aRecordOfANewerBuildOrOfThisVeryReleaseRemindsNothing', () => {
+        const bundle = { release: '1.0.0+457201e', time: 1_761_990_000 };
+        const install = {
+            server: { state: 'installed', release: '1.0.0+fffffff', releaseTime: 1_762_000_000, checkedAt: CHECKED },
+            site: { state: 'updateAvailable', release: '1.0.0+457201e', checkedAt: CHECKED },
+        } as const;
+
+        expect(remindersOf({ install, ...STAMP }, NOW, bundle)).toEqual([]);
+    });
 });

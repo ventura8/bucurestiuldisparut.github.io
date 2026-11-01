@@ -4,6 +4,7 @@
  * `demo-hcm` emulator configuration), and the optional `/runtime.json` the admin's site build writes (the release, a
  * start-up deploy's `startUp`, and later the App Check site key, `DECISIONS-for-review.md` §23b).
  */
+import { releaseTimeSchema } from '@hcm/shared';
 import { z } from 'zod';
 
 import { parseProjectConfig, type ProjectConfig } from '../provision/project-config.js';
@@ -56,6 +57,11 @@ export type FirebaseWebConfig = z.infer<typeof firebaseWebConfigSchema>;
 const adminRuntimeSchema = z.object({
     /** `<version>+<short commit>` of the build (`0.0.0+5d02329`): the boot log and every crash report name it. */
     release: z.string().min(1).max(64),
+    /**
+     * The build time of the commit the admin was built from, in seconds since 1970 (finding 39 of 2026-11-01): it orders
+     * two builds of the same version, so a newer build of 1.0.0 is offered as an update. Absent from a build that knows none.
+     */
+    releaseTime: releaseTimeSchema.optional(),
     /** The Hosting-only deploy of a new map: its server is not installed yet, so the admin does not probe it at start. */
     startUp: z.boolean().optional(),
     /** The reCAPTCHA Enterprise site key of App Check; without it the admin runs without App Check. */

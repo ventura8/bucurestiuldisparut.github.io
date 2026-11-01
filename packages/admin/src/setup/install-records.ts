@@ -1,8 +1,13 @@
 /**
  * Where the install cards' last known states are kept (`docs/research/M6-interfaces.md` §1.7): in start-up mode the
  * bootstrap record's `install` (`sessionStorage`), after the claim `setup/status.install` through `setup.recordCloud`.
- * A record holds a target's state, release, build id and reason only: no token, address, secret or log line. A target
- * the cards already observed in this session keeps what they saw when it is newer than the record.
+ * A record holds a target's state, release (with its build time), build id and reason only: no token, address, secret
+ * or log line. A target the cards already observed in this session keeps what they saw when it is newer than the record.
+ *
+ * A record's state says where the target stood against the admin that wrote it (finding 39 of 2026-11-01: the admin
+ * 1.0.0+9e2e6b5 recorded its server `installed`; after the redeploy of 1.0.0+457201e the card still said installed and
+ * offered no update). A recorded release in place is therefore read again against this admin's own release and build
+ * time (`recordedState`): the same release is installed, an older one an update, a newer one newer than this admin.
  */
 import {
     installRecordSchema,
@@ -13,7 +18,7 @@ import {
     type SetupInstall,
 } from '@hcm/shared';
 
-import type { InstallTargetView } from '../install/model.js';
+import { recordedState, type BundleStamp, type InstallTargetView } from '../install/model.js';
 import { INSTALL_CHIP, INSTALL_STEP_OF } from './install-steps.js';
 import { withStep, type SetupState } from './state.js';
 
@@ -28,15 +33,28 @@ function reasonOf(view: InstallTargetView): Pick<InstallRecord, 'detail' | 'para
     return reason.params === undefined ? { detail: reason.key } : { detail: reason.key, params: reason.params };
 }
 
+/** The view's release with its build time (when `timed` and known). */
+function releaseOf(view: InstallTargetView, timed: boolean): Pick<InstallRecord, 'release' | 'releaseTime'> {
+    if (view.installedRelease === null) {
+        return {};
+    }
+    const time = timed ? view.installedReleaseTime : null;
+    return time === null ? { release: view.installedRelease } : { release: view.installedRelease, releaseTime: time };
+}
+
 /** The view's release and build, when it names them. */
-function buildOf(view: InstallTargetView): Pick<InstallRecord, 'release' | 'buildId'> {
-    const release = view.installedRelease === null ? {} : { release: view.installedRelease };
+function buildOf(view: InstallTargetView, timed: boolean): Pick<InstallRecord, 'release' | 'releaseTime' | 'buildId'> {
+    const release = releaseOf(view, timed);
     return view.buildId === null ? release : { ...release, buildId: view.buildId };
 }
 
-/** What a view keeps of its target for a record (a reason only when it is an API code). */
-export function installRecordOf(view: InstallTargetView, now: string): InstallRecord {
-    return { state: view.state, ...buildOf(view), checkedAt: view.checkedAt ?? now, ...reasonOf(view) };
+/**
+ * What a view keeps of its target for a record (a reason only when it is an API code). `timed` false leaves the build
+ * time out: a server from before the build times refuses a record that names one (its schema is strict), so an admin
+ * session sends one only once its server is known to read them (`install.ts`).
+ */
+export function installRecordOf(view: InstallTargetView, now: string, timed = true): InstallRecord {
+    return { state: view.state, ...buildOf(view, timed), checkedAt: view.checkedAt ?? now, ...reasonOf(view) };
 }
 
 /** The targets the cards observed, as records that validate (the bootstrap record's `install`). */
@@ -70,11 +88,12 @@ function recordedError(record: InstallRecord): InstallTargetView['error'] {
 }
 
 /** A recorded target as the card shows it until the next look. */
-function fromRecord(view: InstallTargetView, record: InstallRecord): InstallTargetView {
+function fromRecord(view: InstallTargetView, record: InstallRecord, bundle: BundleStamp): InstallTargetView {
     return {
         ...view,
-        state: record.state,
+        state: recordedState(record, bundle),
         installedRelease: record.release ?? null,
+        installedReleaseTime: record.releaseTime ?? null,
         buildId: record.buildId ?? null,
         checkedAt: record.checkedAt,
         error: recordedError(record),
@@ -93,7 +112,7 @@ export function withRecordedInstall(state: SetupState, recorded: SetupInstall | 
         if (record === undefined || !newer(record, view)) {
             return current;
         }
-        const next = fromRecord(view, record);
+        const next = fromRecord(view, record, { release: current.install.release, time: current.install.releaseTime });
         const installed = { ...current, install: { ...current.install, [target]: next } };
         return target === 'server'
             ? installed

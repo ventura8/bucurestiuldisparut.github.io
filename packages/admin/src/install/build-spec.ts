@@ -26,6 +26,8 @@ export interface BuildParams {
     /** The admin's base path (`/admin/`). */
     readonly basePath: string;
     readonly release: string;
+    /** The release's build time (the manifest's, finding 39 of 2026-11-01), or null when the build knows none. */
+    readonly releaseTime: number | null;
     readonly slug: string;
     /** SHA-256 of `manifest.json` as the admin read it. */
     readonly manifestSha256: string;
@@ -81,6 +83,7 @@ function fetchStep(target: InstallTarget, params: BuildParams): JsonObject {
             'HCM_MANIFEST_SHA256=${_MANIFEST_SHA256}',
             'HCM_FILE_SHA256=${_FILE_SHA256}',
             'HCM_RELEASE=${_RELEASE}',
+            'HCM_RELEASE_TIME=${_RELEASE_TIME}',
             `HCM_FILES=${FETCHED[target]}`,
             `HCM_OUT=/workspace/${TARGET_DIRS[target]}`,
             ...keep,
@@ -161,6 +164,7 @@ function pipelineSteps(params: BuildParams): readonly JsonObject[] {
         nodeStep('jobs', 'pipeline', params, [
             'steps/run-jobs.mjs',
             ...['--project', '$PROJECT_ID', '--region', params.region, '--image-file', '/workspace/digest', '--slug', '${_SLUG}'],
+            ...['--release-time', '${_RELEASE_TIME}'],
         ]),
     ];
 }
@@ -199,6 +203,8 @@ export function buildDefinition(target: InstallTarget, params: BuildParams): Jso
             _BASE: params.basePath,
             _SLUG: params.slug,
             _RELEASE: params.release,
+            // Every substitution is used by a step (Cloud Build refuses an unused one): `fetch` checks it against the manifest.
+            _RELEASE_TIME: params.releaseTime === null ? '' : String(params.releaseTime),
             _MANIFEST_SHA256: params.manifestSha256,
             _FILE_SHA256: params.fileSha256,
         },

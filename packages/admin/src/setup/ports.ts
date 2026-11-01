@@ -208,6 +208,11 @@ export interface SetupHost {
     // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.7)
     /** The admin's own release (`runtime.json`): what Install and Update install. */
     readonly release: string;
+    /**
+     * Its build time in seconds since 1970 (`runtime.json`'s `releaseTime`, finding 39 of 2026-11-01): it orders two
+     * builds of one version. Null for a build that knows none.
+     */
+    readonly releaseTime: number | null;
     /** `https://<project>.web.app/`: where Publish the map puts the public map. */
     readonly siteAddress: string;
     // [end install]

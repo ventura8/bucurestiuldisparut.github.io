@@ -9,7 +9,7 @@ import type { InstallState, InstallTarget, Locale } from '@hcm/shared';
 import { css, html, nothing, type TemplateResult } from 'lit';
 
 import { EMPTY } from '../shell/empty.js';
-import type { InstallSliceView, InstallTargetViewPort, SetupIntentsPort, SetupMessage, SetupStepId } from './setup-port.js';
+import type { InstallSliceView, InstallTargetViewPort, SetupIntentsPort, SetupMessage, SetupStepId, SetupViewState } from './setup-port.js';
 import { formatDateTime, setupLabel, setupText } from './setup-text.js';
 
 /** The state's icon. */
@@ -34,6 +34,54 @@ const STEP_ICONS: Readonly<Record<InstallTargetViewPort['steps'][number]['state'
 
 /** The states in which a click installs (the card's own button: Install, Publish, Try again). */
 export const INSTALLABLE_STATES: ReadonlySet<InstallState> = new Set<InstallState>(['notInstalled', 'failed', 'unavailable']);
+
+/** The pipeline card's states whose button is Try again. */
+const PIPELINE_TRY_AGAIN: ReadonlySet<InstallState> = new Set<InstallState>(['failed', 'unavailable']);
+
+/** The server card's own button: an installable state the card has seen (a done step offers nothing before a look). */
+export function serverOffersInstall(state: SetupViewState): boolean {
+    const view = state.install.server;
+    const looked = state.steps.deploy.state !== 'ok' || view.checkedAt !== null;
+    return looked && INSTALLABLE_STATES.has(view.state);
+}
+
+/**
+ * The pipeline installs on its own click: looked at, not installed, and the server's click is no longer what starts it
+ * (the server is in place or was installed some other way).
+ */
+export function pipelineInstallsAlone(state: SetupViewState): boolean {
+    const { server, pipeline } = state.install;
+    return pipeline.state === 'notInstalled' && pipeline.checkedAt !== null && server.state !== 'notInstalled';
+}
+
+/** The pipeline card's Try again: after a stopped build, or a look Google could not answer. */
+export function pipelineTriesAgain(state: SetupViewState): boolean {
+    return PIPELINE_TRY_AGAIN.has(state.install.pipeline.state);
+}
+
+/** What each install card's body offers that asks Google: its own button, or Update the map. */
+const CARD_BUTTONS: Readonly<Record<InstallTarget, (state: SetupViewState) => boolean>> = {
+    server: serverOffersInstall,
+    pipeline: (state) => pipelineTriesAgain(state) || pipelineInstallsAlone(state),
+    site: (state) => INSTALLABLE_STATES.has(state.install.site.state),
+};
+
+/** The install cards' steps and their targets. */
+const STEP_TARGETS: Partial<Readonly<Record<SetupStepId, InstallTarget>>> = { deploy: 'server', pipeline: 'pipeline', site: 'site' };
+
+/**
+ * Finding 40 of 2026-11-01: whether an install card's body shows a button that asks Google for its token (Install,
+ * Publish, Try again, Install the pipeline, Update the map), so Google's consent note goes with it. A card with nothing
+ * to do (installed, no update; a build under way; newer than this admin) shows no note: its Check again still asks
+ * Google, as Continue does after an expired token, beside which the frame keeps the note. Any other step: true.
+ */
+export function installCardAsks(state: SetupViewState, step: SetupStepId): boolean {
+    const target = STEP_TARGETS[step];
+    if (target === undefined) {
+        return true;
+    }
+    return state.install[target].state === 'updateAvailable' || CARD_BUTTONS[target](state);
+}
 
 /** The blockers whose fix is Prepare the project (step c): the card links it. */
 const FIXED_IN_PROVISION: ReadonlySet<string> = new Set(['apiError.install.notProvisioned', 'apiError.install.noRepository']);

@@ -109,6 +109,9 @@ export interface SettingsViewState {
     readonly layers: ListStatePort<LayerItemPort>;
     readonly categories: ListStatePort<CategoryItemPort>;
     readonly canAddCategory: boolean;
+    /** How many starter categories one click adds (0: every one is there). */
+    readonly startersMissing: number;
+    readonly addingStarters: boolean;
     readonly category: CategoryEditorPort | null;
     readonly categoryDeletion: CategoryDeletionPort;
     readonly overlays: { readonly rows: readonly OverlayRowPort[]; readonly changes: number; readonly saving: boolean };
@@ -149,6 +152,7 @@ export interface SettingsIntentsPort extends ExportIntentsPort, BudgetIntentsPor
     setDeleteTarget(target: string | null): void;
     cancelDeleteCategory(): void;
     confirmDeleteCategory(): Promise<boolean>;
+    addStarterCategories(): Promise<WriteOutcomePort | null>;
     setOverlayOpacity(kind: OverlayKind, id: string, percent: number): void;
     setShownAtStart(id: string, visible: boolean): void;
     saveOverlays(): Promise<WriteOutcomePort | null>;

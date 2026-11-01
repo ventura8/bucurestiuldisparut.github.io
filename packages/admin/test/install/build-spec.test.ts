@@ -16,6 +16,7 @@ const PARAMS: BuildParams = {
     origin: 'https://demo-hcm.web.app',
     basePath: '/admin/',
     release: '1.0.0+abc1234',
+    releaseTime: 1_761_955_200,
     slug: '1-0-0-abc1234',
     manifestSha256: 'a'.repeat(64),
     fileSha256: 'b'.repeat(64),
@@ -87,6 +88,17 @@ describe('buildDefinition', () => {
         expect(packages?.dir).toBe('server/functions/dist');
         expect(packages?.args).toEqual(['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund']);
         expect([...ids('pipeline'), ...ids('site')]).not.toContain('packages');
+    });
+
+    it('happyPath_theBuildTimeIsASubstitutionTheFetchStepChecks_badPath_aReleaseWithoutOneSendsItEmpty', () => {
+        // Finding 39 of 2026-11-01: Cloud Build refuses a substitution no step uses, so `fetch` reads it for every target.
+        for (const target of TARGETS) {
+            const definition = buildDefinition(target, PARAMS) as { substitutions: Record<string, string>; steps: { env?: string[] }[] };
+            expect(definition.substitutions['_RELEASE_TIME']).toBe('1761955200');
+            expect(definition.steps[0]?.env).toContain('HCM_RELEASE_TIME=${_RELEASE_TIME}');
+        }
+        const untimed = buildDefinition('pipeline', { ...PARAMS, releaseTime: null }) as { substitutions: Record<string, string> };
+        expect(untimed.substitutions['_RELEASE_TIME']).toBe('');
     });
 
     it('badPath_noValueFromTheOwnersTokenOrDataReachesTheBuild', () => {

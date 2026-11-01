@@ -225,7 +225,27 @@ describe('the deployment', () => {
         ]);
 
         await expect(clients.functions.list('p', 'r')).resolves.toEqual([
-            { id: 'admin-session', state: 'STATE_UNSPECIFIED', release: null },
+            { id: 'admin-session', state: 'STATE_UNSPECIFIED', release: null, releaseTime: null },
+        ]);
+    });
+
+    it('happyPath_aFunctionNamesItsReleaseAndBuildTime_badPath_aTimeThatIsNotOneIsNone', async () => {
+        // Finding 39 of 2026-11-01: HCM_RELEASE_TIME orders two builds of one version.
+        const env = (time: string) => ({ environmentVariables: { HCM_RELEASE: '1.0.0+abc1234', HCM_RELEASE_TIME: time } });
+        const clients = clientsOver([
+            route('GET', 'https://cloudfunctions.googleapis.com/v2/projects/p/locations/r/functions', 'list', () =>
+                jsonResponse({
+                    functions: [
+                        { name: 'projects/p/locations/r/functions/a', state: 'ACTIVE', serviceConfig: env('1761955200') },
+                        { name: 'projects/p/locations/r/functions/b', state: 'ACTIVE', serviceConfig: env('soon') },
+                    ],
+                }),
+            ),
+        ]);
+
+        await expect(clients.functions.list('p', 'r')).resolves.toEqual([
+            { id: 'a', state: 'ACTIVE', release: '1.0.0+abc1234', releaseTime: 1_761_955_200 },
+            { id: 'b', state: 'ACTIVE', release: '1.0.0+abc1234', releaseTime: null },
         ]);
     });
 });

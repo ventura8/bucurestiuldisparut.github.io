@@ -34,6 +34,10 @@ export interface SettingsState {
     readonly categories: ListState<CategoryItem>;
     /** At most `MAX_POI_CATEGORIES`: Add category is off at the limit (S-A39-BAD-LIMIT). */
     readonly canAddCategory: boolean;
+    /** How many starter categories **Add the starter categories** adds (finding 41: 0 when every one is there). */
+    readonly startersMissing: number;
+    /** The starter categories are being written. */
+    readonly addingStarters: boolean;
     /** `#/settings/categories/<id>`. */
     readonly category: CategoryEditorState | null;
     readonly categoryDeletion: CategoryDeletionState;

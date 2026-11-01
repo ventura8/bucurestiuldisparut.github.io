@@ -30,6 +30,7 @@ import { defineHcmSetupMapbox } from './hcm-setup-mapbox.js';
 import { defineHcmSetupProvision } from './hcm-setup-provision.js';
 import { defineHcmSetupStep, type ConsentNoteParams } from './hcm-setup-step.js';
 import { defineHcmSetupUsgs } from './hcm-setup-usgs.js';
+import { installCardAsks } from './install-status.js';
 import { selfTestList, selfTestStyles } from './self-test.js';
 import { SetupPortHost } from './setup-host.js';
 import type { SetupIntentsPort, SetupStepId, SetupStepView, SetupViewState } from './setup-port.js';
@@ -181,9 +182,15 @@ export class HcmSetupPage extends SetupPortHost {
         </div>`;
     }
 
-    /** The consent note's words, or null when a live token holds the step's scope: its button opens no popup now. */
+    /**
+     * The consent note's words, or null when no button of the card asks Google now: a live token holds the step's scope
+     * (finding 7), or an install card has nothing to do and no Continue (finding 40 of 2026-11-01, `installCardAsks`).
+     */
     private noteParams(view: SetupViewState, step: SetupStepView): ConsentNoteParams | null {
         if (step.scope === null || view.liveScopes.includes(step.scope)) {
+            return null;
+        }
+        if (!step.needsContinue && !installCardAsks(view, step.id)) {
             return null;
         }
         return {

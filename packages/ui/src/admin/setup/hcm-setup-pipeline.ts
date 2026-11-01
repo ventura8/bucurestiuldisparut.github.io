@@ -12,24 +12,21 @@ import { defineHcmIcon } from '../../components/icon.js';
 import { defineOnce } from '../../components/internal.js';
 import { visuallyHidden } from '../../components/styles.js';
 import { EMPTY } from '../shell/empty.js';
-import { blockerLine, costLine, installStatus, installStatusStyles, mayInstall, type InstallStatusInput } from './install-status.js';
+import {
+    blockerLine,
+    costLine,
+    installStatus,
+    installStatusStyles,
+    mayInstall,
+    pipelineInstallsAlone,
+    pipelineTriesAgain,
+    type InstallStatusInput,
+} from './install-status.js';
 import { SetupBody, defineSetupBodyParts } from './setup-body.js';
 import type { SetupViewState } from './setup-port.js';
 import { setupTextStyles } from './setup-styles.js';
 
 const HCM_SETUP_PIPELINE_TAG = 'hcm-setup-pipeline';
-
-/** The states whose button is Try again. */
-const TRY_AGAIN: ReadonlySet<string> = new Set(['failed', 'unavailable']);
-
-/**
- * The pipeline installs on its own click: looked at, not installed, and the server's click is no longer what starts it
- * (the server is in place or was installed some other way).
- */
-function installsAlone(state: SetupViewState): boolean {
-    const { server, pipeline } = state.install;
-    return pipeline.state === 'notInstalled' && pipeline.checkedAt !== null && server.state !== 'notInstalled';
-}
 
 class HcmSetupPipeline extends SetupBody {
     static override readonly styles = [setupTextStyles, installStatusStyles, visuallyHidden];
@@ -52,7 +49,7 @@ class HcmSetupPipeline extends SetupBody {
     /** Before the server's click, when the pipeline starts. */
     private renderWaiting(state: SetupViewState): TemplateResult {
         const { server, pipeline } = state.install;
-        return pipeline.state === 'notInstalled' && server.buildId === null && !installsAlone(state)
+        return pipeline.state === 'notInstalled' && server.buildId === null && !pipelineInstallsAlone(state)
             ? html`<p class="note">${this.t('adminSetup.install.pipeline.waitsForServer')}</p>`
             : EMPTY;
     }
@@ -60,8 +57,8 @@ class HcmSetupPipeline extends SetupBody {
     /** Try again after a stopped build; Install the pipeline once the server is there without it; else nothing. */
     private renderAction(state: SetupViewState): TemplateResult {
         const view = state.install.pipeline;
-        const tryAgain = TRY_AGAIN.has(view.state);
-        if (!tryAgain && !installsAlone(state)) {
+        const tryAgain = pipelineTriesAgain(state);
+        if (!tryAgain && !pipelineInstallsAlone(state)) {
             return EMPTY;
         }
         return html`<div class="actions">

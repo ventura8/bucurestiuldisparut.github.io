@@ -7,7 +7,7 @@ import { isBootstrapRecord } from '../../src/setup/bootstrap-record.js';
 import { installRecordOf, observedInstall, withRecordedInstall } from '../../src/setup/install-records.js';
 import { applyBootstrapRecord, applyStatusView, bootstrapRecordOf, recordCloudRequestOf } from '../../src/setup/records.js';
 import { initialSetupState, type SetupState } from '../../src/setup/state.js';
-import { ADMIN_RELEASE, createHarness, START, statusView } from './harness.js';
+import { ADMIN_RELEASE, ADMIN_RELEASE_TIME, createHarness, START, statusView } from './harness.js';
 
 const NOW = new Date(START).toISOString();
 const LATER = new Date(START + 60_000).toISOString();
@@ -52,6 +52,40 @@ describe('installRecordOf', () => {
             detail: 'apiError.install.noRepository',
         });
         expect(installRecordOf(expired, LATER)).toEqual({ state: 'notInstalled', checkedAt: LATER });
+    });
+});
+
+describe('installRecordOf: the build time (finding 39 of 2026-11-01)', () => {
+    it('happyPath_aTimedReleaseKeepsItsBuildTime', () => {
+        const installed = view({
+            state: 'installed',
+            installedRelease: ADMIN_RELEASE,
+            installedReleaseTime: ADMIN_RELEASE_TIME,
+            checkedAt: NOW,
+        });
+
+        expect(installRecordOf(installed, LATER)).toEqual({
+            state: 'installed',
+            release: ADMIN_RELEASE,
+            releaseTime: ADMIN_RELEASE_TIME,
+            checkedAt: NOW,
+        });
+    });
+
+    it('badPath_aServerFromBeforeTheTimesIsSentNone_norIsAReleaseWithoutOne', () => {
+        const installed = view({
+            state: 'installed',
+            installedRelease: ADMIN_RELEASE,
+            installedReleaseTime: ADMIN_RELEASE_TIME,
+            checkedAt: NOW,
+        });
+
+        expect(installRecordOf(installed, LATER, false)).toEqual({ state: 'installed', release: ADMIN_RELEASE, checkedAt: NOW });
+        expect(installRecordOf({ ...installed, installedReleaseTime: null }, LATER)).toEqual({
+            state: 'installed',
+            release: ADMIN_RELEASE,
+            checkedAt: NOW,
+        });
     });
 });
 
@@ -114,5 +148,31 @@ describe('withRecordedInstall', () => {
         ).toEqual({
             key: 'apiError.install.failed',
         });
+    });
+});
+
+describe('withRecordedInstall: a record read against this admin (finding 39 of 2026-11-01)', () => {
+    it('happyPath_anInstalledRecordOfAnOlderBuildOfTheVersionIsAnUpdateForThisAdmin', () => {
+        // The live case: the admin 1.0.0+9e2e6b5 recorded its server installed; Hosting now serves a newer build of 1.0.0.
+        const recorded = { server: { state: 'installed', release: '1.0.0+9e2e6b5', checkedAt: NOW } } as const;
+
+        const applied = applyStatusView(state('normal'), statusView({ install: recorded }), START);
+
+        expect(applied.install.server).toMatchObject({
+            state: 'updateAvailable',
+            installedRelease: '1.0.0+9e2e6b5',
+            installedReleaseTime: null,
+        });
+        expect(applied.steps.deploy.state).toBe('ok');
+    });
+
+    it('badPath_aRecordOfANewerBuildIsNewerThanThisAdmin_andOneOfThisVeryReleaseStaysInstalled', () => {
+        const newer = { state: 'installed', release: '1.0.0+fffffff', releaseTime: ADMIN_RELEASE_TIME + 60, checkedAt: NOW } as const;
+        const same = { state: 'updateAvailable', release: ADMIN_RELEASE, checkedAt: NOW } as const;
+
+        const applied = withRecordedInstall(state('normal'), { server: newer, site: same });
+
+        expect(applied.install.server).toMatchObject({ state: 'newerInstalled', installedReleaseTime: ADMIN_RELEASE_TIME + 60 });
+        expect(applied.install.site.state).toBe('installed');
     });
 });

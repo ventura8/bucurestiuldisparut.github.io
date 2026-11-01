@@ -99,7 +99,9 @@ await copyFile(here('deploy-lock/package-lock.json'), here('dist/package-lock.js
 // The deploy-time configuration: firebase-tools loads dist/.env.<project> for that project only. Public values only.
 // M6 (docs/research/M6-interfaces.md §1.4.1): every function also says which release it is, HCM_RELEASE, the admin's
 // own release of the same checkout (scripts/site/src/admin/runtime.ts, loaded through Node's type stripping: it imports
-// types only), so the in-app installer can tell an installed server from the admin's bundle.
+// types and Node built-ins only), so the in-app installer can tell an installed server from the admin's bundle; and
+// HCM_RELEASE_TIME, its build time (the commit's, in seconds since 1970), which orders two builds of the same version
+// (finding 39 of the live test of 2026-11-01: every release was 1.0.0, so a newer build was never offered).
 const PROJECT_ID = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
 const PUBLIC_KEY = /^HCM_[A-Z0-9_]+$/;
 // HCM_VIEWER_ORIGINS becomes each city's mapbox.allowedUrls, whose schema (httpsOriginSchema of @hcm/shared, at most
@@ -116,18 +118,20 @@ function viewerOriginsValid(value) {
     return origins.length <= MAX_VIEWER_ORIGINS && origins.every((origin) => HTTPS_ORIGIN.test(origin));
 }
 
-const { adminRelease } = await import('../scripts/site/src/admin/runtime.ts');
+const { adminRelease, releaseTime } = await import('../scripts/site/src/admin/runtime.ts');
 const repository = {
     readText: (path) => readFileSync(here(`../${path}`), 'utf8'),
     isFile: (path) => statSync(here(`../${path}`), { throwIfNoEntry: false })?.isFile() === true,
 };
 const release = adminRelease(repository, process.env);
+const releaseSeconds = releaseTime(repository, process.env);
 for (const [project, values] of Object.entries(await readJson(here('deploy-env.json')))) {
     const lines = Object.entries(values).map(([key, value]) => {
         if (
             !PROJECT_ID.test(project) ||
             !PUBLIC_KEY.test(key) ||
             key === 'HCM_RELEASE' ||
+            key === 'HCM_RELEASE_TIME' ||
             typeof value !== 'string' ||
             /[\r\n]/.test(value) ||
             (key === 'HCM_VIEWER_ORIGINS' && !viewerOriginsValid(value))
@@ -137,6 +141,9 @@ for (const [project, values] of Object.entries(await readJson(here('deploy-env.j
         return `${key}=${value}`;
     });
     lines.push(`HCM_RELEASE=${release}`);
+    if (releaseSeconds !== null) {
+        lines.push(`HCM_RELEASE_TIME=${releaseSeconds}`);
+    }
     await writeFile(here(`dist/.env.${project}`), `${lines.join('\n')}\n`);
 }
 

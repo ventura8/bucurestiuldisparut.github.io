@@ -1,4 +1,4 @@
-import { OLDER_SERVER_RELEASE } from '@hcm/test-support/fakes';
+import { OLDER_BUILD_RELEASE, OLDER_SERVER_RELEASE } from '@hcm/test-support/fakes';
 import type { Locator, Page } from '@playwright/test';
 
 import type { InputFlow } from '../../../support/budget.js';
@@ -9,6 +9,8 @@ import type { EmulatorWorld } from '../../support/emulators.js';
 import { setupText } from '../../support/i18n.js';
 import {
     answerAsOlderServer,
+    INSTALL_RELEASE,
+    INSTALL_RELEASE_TIME,
     installState,
     recordsSettled,
     seedPublishedMap,
@@ -174,6 +176,46 @@ test('A server newer than this admin offers nothing', async ({ page, lang, conse
     await expect(installState(card)).toContainText(setupText(lang, 'adminSetup.install.state.newerInstalled'));
     await expectStateSound(page, adminVisit('setup.install-newer', lang));
     await recorded(adminWorld.emulators, { server: { state: 'newerInstalled' } });
+});
+
+test('An older build of the same version recorded installed offers Update the map, with the consent note', async ({
+    page,
+    lang,
+    upstream,
+    adminWorld,
+}) => {
+    // Finding 39 of 2026-11-01: the record of an older admin is read against this one, before any look at Google.
+    await upstream.scenario('cloud-functions.deployedOlderBuild', 'browser');
+    await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid, {
+        mapbox: { ...OK, user: 'e2e-mapbox' },
+        usgs: OK,
+        install: { server: { state: 'installed', release: OLDER_BUILD_RELEASE, checkedAt: STEPS_AT.toISOString() } },
+    });
+    const setup = new SetupPage(page, lang);
+    await setup.visit('pipeline');
+    const card = await setup.show('deploy');
+
+    await expect(card.getByRole('button', { name: setupText(lang, 'adminSetup.install.updateAction') })).toBeVisible();
+    await expect(card.locator('hcm-consent-note')).toHaveCount(1);
+    await expectStateSound(page, adminVisit('setup.install-update-recorded', lang));
+});
+
+test("The admin's own release installed: nothing offered, no consent note", async ({ page, lang, adminWorld }) => {
+    // Finding 40 of 2026-11-01: Google's consent note only beside a button that asks for the token.
+    await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid, {
+        mapbox: { ...OK, user: 'e2e-mapbox' },
+        usgs: OK,
+        install: {
+            server: { state: 'installed', release: INSTALL_RELEASE, releaseTime: INSTALL_RELEASE_TIME, checkedAt: STEPS_AT.toISOString() },
+        },
+    });
+    const setup = new SetupPage(page, lang);
+    await setup.visit('pipeline');
+    const card = await setup.show('deploy');
+
+    await expect(installState(card)).toContainText(setupText(lang, 'adminSetup.install.state.installed'));
+    await expect(card.locator('hcm-consent-note')).toHaveCount(0);
+    await expectStateSound(page, adminVisit('setup.install-nothing-to-do', lang));
 });
 
 test('The imagery pipeline missing beside an installed server offers its own Install the pipeline', async ({

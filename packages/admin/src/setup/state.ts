@@ -385,7 +385,7 @@ export function initialSetupState(host: SetupHost, mode: SetupMode): SetupState 
         analytics: { measurementId: null, pageChangesOff: false, crashEmails: true, watching: false },
         crashes: { loaded: false, busy: false, groups: [], error: null, disabledApi: null, lastReportAt: null },
         legacyImport: { done: 0, total: 0, failed: [], running: false },
-        install: initialInstallSlice(host.release, host.siteAddress),
+        install: initialInstallSlice(host.release, host.siteAddress, host.releaseTime),
         selfTest: { checks: [] },
     });
 }

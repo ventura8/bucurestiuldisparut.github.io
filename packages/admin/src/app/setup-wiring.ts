@@ -37,6 +37,8 @@ export interface SetupWiringDeps {
     // [section install] owner: installer (M6, docs/research/M6-interfaces.md §1.3, §1.10)
     /** The admin's `runtime.json` release. */
     readonly release: string;
+    /** Its build time (`runtime.json`'s `releaseTime`, finding 39 of 2026-11-01), or null when the build knows none. */
+    readonly releaseTime: number | null;
     /** The origins the admin may install from: the project's Hosting origins (the e2e world's own in its build). */
     readonly installOrigins: readonly string[];
     /** Finding 29 of 2026-10-31: the admin release Hosting serves instead of this one, read now (null: still this one). */
@@ -86,9 +88,12 @@ export function publishedMapCheck(firebase: Pick<FirebasePorts, 'documents'>, ci
 
 /** M6: the admin's own install bundle, read once it is found (`../install/bundle.ts`). */
 export function installBundleLoader(deps: SetupWiringDeps): () => Promise<InstallBundle> {
-    const { config, fetch: fetcher, baseUrl, release, installOrigins } = deps;
+    const { config, fetch: fetcher, baseUrl, release, releaseTime, installOrigins } = deps;
     return bundleOnce(() =>
-        loadInstallBundle({ fetch: fetcher, baseUrl, release, projectId: config.projectId, origins: installOrigins, digest: sha256Hex }),
+        loadInstallBundle({
+            ...{ fetch: fetcher, baseUrl, release, releaseTime },
+            ...{ projectId: config.projectId, origins: installOrigins, digest: sha256Hex },
+        }),
     );
 }
 
@@ -129,7 +134,8 @@ export function setupOptionsFor(deps: SetupWiringDeps): SetupModuleOptions {
         firebase.callables.call('setup.createCity', { cityId, city: await bundledCity(deps, cityId) });
     const installer = installerFor(deps, cityId, sleep);
     const siteAddress = `https://${config.projectId}.web.app/`;
-    return { cloud, importer, createCity, cityId, cityBBox: null, installer, release: deps.release, siteAddress };
+    const release = { release: deps.release, releaseTime: deps.releaseTime };
+    return { cloud, importer, createCity, cityId, cityBBox: null, installer, ...release, siteAddress };
 }
 
 export function setupModuleFor(deps: SetupWiringDeps): SetupModule {

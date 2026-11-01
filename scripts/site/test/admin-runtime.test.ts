@@ -4,7 +4,9 @@ import {
     adminRelease,
     buildCommit,
     headCommit,
+    gitCommitTime,
     planRuntimeFile,
+    releaseTime,
     RUNTIME_FILE,
     START_UP_VARIABLE,
     startUpDeploy,
@@ -83,5 +85,43 @@ describe('the runtime file', () => {
 
     it.each([undefined, '', '0', 'false', 'yes'])('badPath_anythingElseIsNoStartUp_%s', (value) => {
         expect(startUpDeploy({ [START_UP_VARIABLE]: value })).toBe(false);
+    });
+});
+
+describe('the build time (finding 39 of 2026-11-01)', () => {
+    it('happyPath_sourceDateEpochFirst_elseTheCommitsTime', () => {
+        const files = checkout({ HEAD: `${COMMIT}\n` });
+        const asked: string[] = [];
+        const clock = (commit: string): number => {
+            asked.push(commit);
+            return 1_761_955_200;
+        };
+
+        expect(releaseTime(files, { SOURCE_DATE_EPOCH: '1700000000' }, clock)).toBe(1_700_000_000);
+        expect(releaseTime(files, {}, clock)).toBe(1_761_955_200);
+        expect(asked).toEqual([COMMIT]);
+        const { file } = planRuntimeFile(files, {}, clock);
+        expect('content' in file ? JSON.parse(file.content) : null).toEqual({ release: '1.2.3+5d02329', releaseTime: 1_761_955_200 });
+        const startUp = planRuntimeFile(files, { [START_UP_VARIABLE]: '1' }, clock).file;
+        expect('content' in startUp ? JSON.parse(startUp.content) : null).toEqual({
+            release: '1.2.3+5d02329',
+            releaseTime: 1_761_955_200,
+            startUp: true,
+        });
+    });
+
+    it('badPath_noCommitOrAnUnreadableOneHasNoTime_andAnEpochThatIsNotSecondsIsIgnored', () => {
+        expect(releaseTime(checkout({}), {}, () => 1)).toBeNull();
+        expect(releaseTime(checkout({ HEAD: `${COMMIT}\n` }), { SOURCE_DATE_EPOCH: 'yesterday' }, () => null)).toBeNull();
+        // git knows no such commit (nor is this folder a checkout of it): no time.
+        expect(gitCommitTime(OTHER)).toBeNull();
+    });
+
+    it('happyPath_gitReadsTheTimeOfACommitItHolds', () => {
+        // The repository's own HEAD, read through git as the build does (the test runs in the checkout).
+        const head = headCommit(nodeFileSystem(process.cwd()));
+
+        expect(head).not.toBeNull();
+        expect(gitCommitTime(head ?? '')).toEqual(expect.any(Number));
     });
 });

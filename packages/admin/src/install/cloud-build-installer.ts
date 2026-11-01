@@ -9,6 +9,7 @@ import {
     CLOUD_RUN_JOBS,
     compareRelease,
     INSTALLER_ACCOUNT,
+    parseReleaseTime,
     PIPELINE_REPOSITORY,
     RELEASE_PATTERN,
     releaseOfSlug,
@@ -49,36 +50,66 @@ export interface CloudBuildInstallerDeps {
     readonly newerAdmin: () => Promise<string | null>;
 }
 
-const NOT_INSTALLED: InstalledInfo = { complete: false, release: null, partial: false, newest: null };
+const NOT_INSTALLED: InstalledInfo = { complete: false, release: null, releaseTime: null, partial: false, newest: null, newestTime: null };
 
-/** The oldest of `releases` (a missing one makes the whole unknown: an update replaces it). */
-function oldestRelease(releases: readonly (string | null)[]): string | null {
-    if (releases.length === 0 || releases.includes(null)) {
-        return null;
-    }
-    return (releases as readonly string[]).reduce((oldest, release) => (compareRelease(release, oldest) < 0 ? release : oldest));
+/** An installed part's release and its build time (finding 39 of 2026-11-01); a release of null names none. */
+interface PartRelease {
+    readonly release: string | null;
+    readonly releaseTime: number | null;
 }
 
-/** The newest release any part names (parts naming none ignored), or null. */
-function newestRelease(releases: readonly (string | null)[]): string | null {
-    return releases.reduce<string | null>(
-        (newest, release) => (release !== null && (newest === null || compareRelease(release, newest) > 0) ? release : newest),
-        null,
+/** A part naming a release, with its build time. */
+interface NamedRelease {
+    readonly release: string;
+    readonly releaseTime: number | null;
+}
+
+/** `a` against `b` in the release order that follows the build. */
+function compareParts(a: NamedRelease, b: NamedRelease): number {
+    return compareRelease(a.release, b.release, { installed: a.releaseTime, bundle: b.releaseTime });
+}
+
+function named(parts: readonly PartRelease[]): NamedRelease[] {
+    return parts.filter((part): part is NamedRelease => part.release !== null);
+}
+
+/** The oldest of `parts` (a part naming no release makes the whole unknown: an update replaces it). */
+function oldestPart(parts: readonly PartRelease[]): PartRelease {
+    const [first, ...rest] = named(parts);
+    if (first === undefined || rest.length + 1 < parts.length) {
+        return { release: null, releaseTime: null };
+    }
+    return rest.reduce((oldest, part) => (compareParts(part, oldest) < 0 ? part : oldest), first);
+}
+
+/** `part` is newer than `than` (any release is newer than none). */
+function isNewer(part: NamedRelease, than: PartRelease): boolean {
+    return (
+        than.release === null || compareRelease(part.release, than.release, { installed: part.releaseTime, bundle: than.releaseTime }) > 0
     );
+}
+
+/** The newest release any part names (parts naming none ignored), or a release of null. */
+function newestPart(parts: readonly PartRelease[]): PartRelease {
+    return named(parts).reduce<PartRelease>((newest, part) => (isNewer(part, newest) ? part : newest), {
+        release: null,
+        releaseTime: null,
+    });
 }
 
 /**
  * What is installed of a target made of `parts` (null: a part not there): complete with its oldest release, or partial,
  * and in every case the newest release a part names, so a newer server missing a function is still never replaced.
  */
-function installedOf(parts: readonly ({ readonly release: string | null } | null)[], complete: boolean): InstalledInfo {
-    const present = parts.filter((part): part is { readonly release: string | null } => part !== null);
-    const releases = present.map((part) => part.release);
-    const newest = newestRelease(releases);
+function installedOf(parts: readonly (PartRelease | null)[], complete: boolean): InstalledInfo {
+    const present = parts.filter((part): part is PartRelease => part !== null);
+    const newest = newestPart(present);
+    const newestFields = { newest: newest.release, newestTime: newest.releaseTime };
     if (complete) {
-        return { complete, release: oldestRelease(releases), partial: false, newest };
+        const oldest = oldestPart(present);
+        return { complete, release: oldest.release, releaseTime: oldest.releaseTime, partial: false, ...newestFields };
     }
-    return { complete, release: null, partial: present.length > 0, newest };
+    return { complete, release: null, releaseTime: null, partial: present.length > 0, ...newestFields };
 }
 
 function serverInstalled(functions: readonly DeployedFunction[]): { installed: InstalledInfo; progress: ServerProgress } {
@@ -87,12 +118,17 @@ function serverInstalled(functions: readonly DeployedFunction[]): { installed: I
     return { installed: installedOf(functions, status.state === 'ok'), progress };
 }
 
-/** What `/release.json` says of the public site (`{release, variant}`); a start-up root or no file is not installed. */
+/**
+ * What `/release.json` says of the public site (`{release, releaseTime?, variant}`); a start-up root or no file is not
+ * installed.
+ */
 function siteInstalled(body: unknown): InstalledInfo {
     const release = stringAt(body, 'release');
-    return at(body, 'variant') === 'public' && release !== undefined && RELEASE_PATTERN.test(release)
-        ? { complete: true, release, partial: false, newest: release }
-        : NOT_INSTALLED;
+    if (at(body, 'variant') !== 'public' || release === undefined || !RELEASE_PATTERN.test(release)) {
+        return NOT_INSTALLED;
+    }
+    const releaseTime = parseReleaseTime(at(body, 'releaseTime'));
+    return { complete: true, release, releaseTime, partial: false, newest: release, newestTime: releaseTime };
 }
 
 class CloudBuildInstaller implements InstallerPort {
@@ -130,6 +166,7 @@ class CloudBuildInstaller implements InstallerPort {
             origin: bundle.origin,
             basePath: bundle.basePath,
             release: manifest.release,
+            releaseTime: manifest.releaseTime,
             slug: manifest.slug,
             manifestSha256: bundle.sha256,
             fileSha256: manifest.files[target].sha256,
@@ -159,7 +196,9 @@ class CloudBuildInstaller implements InstallerPort {
         if (target === 'pipeline') {
             const jobs = createRunJobsClient(transport);
             const found = await Promise.all(Object.values(CLOUD_RUN_JOBS).map((job) => jobs.get(projectId, region, job)));
-            const parts = found.map((job) => (job === undefined ? null : { release: releaseOfSlug(job.releaseSlug) }));
+            const parts = found.map((job) =>
+                job === undefined ? null : { release: releaseOfSlug(job.releaseSlug), releaseTime: parseReleaseTime(job.releaseTime) },
+            );
             return {
                 installed: installedOf(
                     parts,

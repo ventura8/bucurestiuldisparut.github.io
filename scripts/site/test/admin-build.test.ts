@@ -46,7 +46,9 @@ describe('buildAdminSite', () => {
         const integrity = subresourceIntegrity(files.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.js'));
         expect(files.readText(`${OUT}/index.html`)).toBe(renderAdminPage(undefined, { mapboxGlIntegrity: integrity }));
         expect(files.readText(`${OUT}/index.html`)).toContain(`<html lang="ro" data-mapbox-integrity="${integrity}">`);
-        expect(JSON.parse(files.readText(`${OUT}/${RUNTIME_FILE}`))).toEqual({ release: report.release });
+        // The checkout's own commit: its build time from git (finding 39 of 2026-11-01), whatever commit is checked out.
+        const runtime = JSON.parse(files.readText(`${OUT}/${RUNTIME_FILE}`)) as Record<string, unknown>;
+        expect(runtime).toEqual({ release: report.release, releaseTime: expect.any(Number) as unknown });
         expect(JSON.parse(files.readText(`${OUT}/${PROJECT_FILE}`))).toEqual(JSON.parse(files.readText(DEFAULT_PROJECT_FILE)));
         expect(files.readText(`${OUT}/${ADMIN_SCRIPT_FILE}`)).toBe('bundle');
         expect(files.isFile(`${OUT}/${LEGACY_FOLDER}/originals/Ferdinand.png`)).toBe(true);

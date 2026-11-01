@@ -1663,3 +1663,17 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: a row's name came from the entry's `previous`, which a creation does not have.
     - Fix and pin: `CreatedNames` (`packages/admin/src/history/names.ts`): the next entry's version, else the document now, read once (S-A23-HAPPY-CREATED-NAMED, S-A23-BAD-CREATED-GONE-UNNAMED).
     - **Seed the ids the product makes (random ones), or a test cannot tell an id shown by mistake from a name.**
+
+310. **A newer build of the same version was never offered as an update.**
+    - Seen: live on 2026-11-01 (finding 39): after the Hosting redeploy of the admin `1.0.0+457201e`, Setup (d) said "Installed: 1.0.0+9e2e6b5" and offered nothing.
+    - Found by: the user's live walk. Every e2e release differed in its version (`0.9.0+e2e0000`, `99.0.0+e2e9999` against `1.0.0+e2e0001`), and the records the specs seeded were written for the admin under test, so neither a same-version build nor a record of another admin was ever read.
+    - Cause: a release had no order beyond its semver, whose build metadata has no precedence (a different commit counted as "older", which also let an older admin replace a newer build of its version), and the cards showed a recorded state (`installed`, relative to the admin that wrote it) as it was.
+    - Fix and pin: the build time beside every release, the order "higher version, else later build time" (`compareRelease` of `@hcm/shared`), and a recorded state read again against this admin (`recordedState`, `packages/admin/src/install/model.ts`; S-A55-HAPPY-UPDATE-SAME-VERSION, S-A55-BAD-DOWNGRADE-SAME-VERSION, S-A55-HAPPY-SAME-BUILD).
+    - **A version that is not bumped for every build needs another order that follows the build; and a stored comparison ("installed", "behind") is relative to who compared: store the facts (release, time), derive the comparison where it is shown.**
+
+311. **An install card with nothing to do showed Google's consent box with no button.**
+    - Seen: live on 2026-11-01 (finding 40): card (d), installed, no update.
+    - Found by: the user's live walk. The consent-note tests covered a card with a button and the live-token case, never a card in daily use with nothing to do.
+    - Cause: the note's rule was the step's scope (every install card's is `cloudPlatform`) and a live token, not what the card's body offered.
+    - Fix and pin: `installCardAsks` (`packages/ui/src/admin/setup/install-status.ts`), read by the page's `noteParams` (S-A55-BAD-NOTE-NOTHING-TO-DO, tour `setup.install-nothing-to-do`).
+    - **An explanation of a dialog belongs to the button that opens it: derive it from the buttons shown, not from the screen's general permission.**

@@ -1,4 +1,4 @@
-import { OLDER_SERVER_RELEASE } from '@hcm/test-support/fakes';
+import { NEWER_BUILD_RELEASE, NEWER_BUILD_TIME, OLDER_BUILD_RELEASE, OLDER_SERVER_RELEASE } from '@hcm/test-support/fakes';
 import type { Page } from '@playwright/test';
 
 import { contentFlowBudget } from '../../../../packages/admin/src/content/budgets.js';
@@ -6,6 +6,7 @@ import type { EmulatorWorld } from '../../support/emulators.js';
 import { apiText, setupText, shellText } from '../../support/i18n.js';
 import {
     INSTALL_RELEASE,
+    INSTALL_RELEASE_TIME,
     INSTALL_SLUG,
     installState,
     nextLook,
@@ -106,6 +107,116 @@ test(
         await expect
             .poll(async () => (await adminWorld.emulators.document('setup/status'))?.['install'])
             .toMatchObject({ server: { state: 'installed', release: INSTALL_RELEASE } });
+        await page
+            .getByRole('link', { name: shellText(lang, 'adminShell.nav.home'), exact: true })
+            .first()
+            .click();
+        await expect(page.locator('li[data-reminder="installUpdate"]')).toHaveCount(0);
+    },
+);
+
+test(
+    'Another build of the same version, recorded installed by the older admin, is offered as an update and installed',
+    { tag: ['@S-A55-HAPPY-UPDATE-SAME-VERSION'] },
+    async ({ page, lang, consent, inputBudget, upstream, adminWorld }) => {
+        // Finding 39 of 2026-11-01: the admin 1.0.0+9e2e6b5 recorded its server installed (no build time: it knew none);
+        // Hosting now serves a newer build of 1.0.0, so the record reads as an update without any look at Google.
+        await upstream.scenario('install.provisioned', 'browser');
+        await upstream.scenario('cloud-functions.deployedOlderBuild', 'browser');
+        await seedInstalled(page, adminWorld.emulators, adminWorld.accounts.owner.uid, {
+            server: { state: 'installed', release: OLDER_BUILD_RELEASE, checkedAt: RECORDED },
+        });
+        await page.goto(adminPath(lang, 'home'));
+        const tile = page.locator('li[data-reminder="installUpdate"]');
+        await expect(tile).toContainText(setupText(lang, 'adminSetup.install.tileUpdate'));
+
+        await tile.getByRole('link', { name: setupText(lang, 'adminSetup.install.tileOpen') }).click();
+        const setup = new SetupPage(page, lang);
+        const update = setupText(lang, 'adminSetup.install.update', { release: INSTALL_RELEASE });
+        await expect(async () => {
+            await expect((await setup.show('deploy')).getByText(update)).toBeVisible({ timeout: 2_000 });
+        }).toPass({ timeout: 30_000 });
+        const deploy = setup.open('deploy');
+        // Update the map asks Google: the consent note comes with it (finding 40).
+        await expect(deploy.locator('hcm-consent-note')).toHaveCount(1);
+        await withConsent(
+            page,
+            consent,
+            deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.updateAction') }),
+            inputBudget.flow('updateMap', contentFlowBudget('updateMap')),
+            inputBudget.flow('updateMapConsent', 1),
+        );
+        await expect.poll(async () => (await buildsOf(upstream, 'server')).length).toBe(1);
+        expect((await buildsOf(upstream, 'server'))[0]?.substitutions).toMatchObject({
+            _RELEASE: INSTALL_RELEASE,
+            _RELEASE_TIME: String(INSTALL_RELEASE_TIME),
+        });
+        await upstream.scenario('cloud-build.finish', 'browser');
+        await nextLook(page, installState(deploy).filter({ hasText: setupText(lang, 'adminSetup.install.state.installed') }));
+
+        // The server names its build time now, so the record does too.
+        await expect
+            .poll(async () => (await adminWorld.emulators.document('setup/status'))?.['install'])
+            .toMatchObject({ server: { state: 'installed', release: INSTALL_RELEASE, releaseTime: INSTALL_RELEASE_TIME } });
+    },
+);
+
+test(
+    'A newer build of the same version is never replaced: the card says so, offers no update and submits nothing',
+    { tag: ['@S-A55-BAD-DOWNGRADE-SAME-VERSION'] },
+    async ({ page, lang, consent, setupBudget, upstream, adminWorld }) => {
+        // Finding 39: the server is a later build of 1.0.0 than this admin (a tab or a Hosting release left behind).
+        await upstream.scenario('install.provisioned', 'browser');
+        await upstream.scenario('cloud-functions.deployedNewerBuild', 'browser');
+        await seedInstalled(page, adminWorld.emulators, adminWorld.accounts.owner.uid, {
+            server: { state: 'installed', release: NEWER_BUILD_RELEASE, releaseTime: NEWER_BUILD_TIME, checkedAt: RECORDED },
+        });
+        const setup = new SetupPage(page, lang);
+        await setup.visit('pipeline');
+        const deploy = await setup.show('deploy');
+        const newer = setupText(lang, 'adminSetup.install.newer', { release: NEWER_BUILD_RELEASE });
+        await expect(deploy.getByText(newer)).toBeVisible();
+        await expect(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.updateAction') })).toHaveCount(0);
+        // Nothing to do: Google's consent note is not shown (finding 40).
+        await expect(deploy.locator('hcm-consent-note')).toHaveCount(0);
+
+        // A look at Google says the same: the downgrade guard holds with the build times.
+        await withConsent(
+            page,
+            consent,
+            deploy.getByRole('button', { name: setupText(lang, 'adminSetup.recheck') }),
+            setupBudget.inputs('deploy'),
+            setupBudget.consents('deploy', 1),
+        );
+        await expect(installState(deploy)).toContainText(setupText(lang, 'adminSetup.install.state.newerInstalled'));
+        await expect(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.updateAction') })).toHaveCount(0);
+        expect(await buildsOf(upstream, 'server')).toHaveLength(0);
+        await page
+            .getByRole('link', { name: shellText(lang, 'adminShell.nav.home'), exact: true })
+            .first()
+            .click();
+        await expect(page.locator('li[data-reminder="installUpdate"]')).toHaveCount(0);
+    },
+);
+
+test(
+    "The admin's own build recorded installed offers nothing and shows no consent note",
+    { tag: ['@S-A55-HAPPY-SAME-BUILD', '@S-A55-BAD-NOTE-NOTHING-TO-DO'] },
+    async ({ page, lang, upstream, adminWorld }) => {
+        // The same commit is the same release, whatever a record says of its time (finding 39); with nothing to do the card
+        // shows no Google consent note without a Continue (finding 40 of 2026-11-01).
+        await upstream.scenario('install.provisioned', 'browser');
+        await seedInstalled(page, adminWorld.emulators, adminWorld.accounts.owner.uid, {
+            server: { state: 'updateAvailable', release: INSTALL_RELEASE, checkedAt: RECORDED },
+        });
+        const setup = new SetupPage(page, lang);
+        await setup.visit('pipeline');
+        const deploy = await setup.show('deploy');
+
+        await expect(installState(deploy)).toContainText(setupText(lang, 'adminSetup.install.state.installed'));
+        await expect(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.updateAction') })).toHaveCount(0);
+        await expect(deploy.locator('hcm-consent-note')).toHaveCount(0);
+        await expect(deploy.getByRole('button', { name: setupText(lang, 'adminSetup.recheck') })).toBeVisible();
         await page
             .getByRole('link', { name: shellText(lang, 'adminShell.nav.home'), exact: true })
             .first()
@@ -226,8 +337,9 @@ test(
         const run = (await upstream.snapshot('browser'))['cloud-run'] as {
             readonly jobSpecs: Record<string, { labels: Record<string, string> }>;
         };
-        expect(run.jobSpecs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline`]?.labels).toEqual({ 'hcm-release': INSTALL_SLUG });
-        expect(run.jobSpecs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline-xl`]?.labels).toEqual({ 'hcm-release': INSTALL_SLUG });
+        const labels = { 'hcm-release': INSTALL_SLUG, 'hcm-release-time': String(INSTALL_RELEASE_TIME) };
+        expect(run.jobSpecs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline`]?.labels).toEqual(labels);
+        expect(run.jobSpecs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline-xl`]?.labels).toEqual(labels);
         // The page opened Analytics on its way (the first optional step not done): Google Analytics is not enabled yet,
         // which setup.analyticsConfig answers with a 400 when the card asks.
         consoleErrors.takeMatching(/setup-analyticsConfig/);

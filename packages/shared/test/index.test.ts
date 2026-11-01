@@ -198,6 +198,7 @@ const EXPORTS = {
         'poiInYear',
         'STARTER_POI_CATEGORIES',
         'starterCategoryDocs',
+        'missingStarterCategories',
         'ADJUSTMENT_SLIDERS',
         'adjustmentDelta',
         'adjustmentFromSlider',

@@ -1,9 +1,9 @@
 /**
  * The categories section (`docs/research/M2c-interfaces.md` §8.5, §9.5; behaviours A33, A39): the POI categories in the
  * viewer's order, reordered by a drag or Move up and Move down, **Add a category** (off at `MAX_POI_CATEGORIES`, the
- * limit named), and the open category's editor: names, icon, colour (the nearest readable tone proposed when the white
- * glyph does not read on it), default opacity (previewed live), Save, and Delete, which asks where a category's places
- * go when it is in use.
+ * limit named), **Add the starter categories** the city lacks (off, with the reason, when every one is there), and the
+ * open category's editor: names, icon, colour (the nearest readable tone proposed when the white glyph does not read on
+ * it), default opacity (previewed live), Save, and Delete, which asks where a category's places go when it is in use.
  */
 import { MAX_POI_CATEGORIES, POI_ICONS, type Locale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
@@ -15,6 +15,7 @@ import { reorderList, type RowDrag } from '../layers/reorder.js';
 import { contentText } from '../shell/text.js';
 import { SETTINGS_CONFLICT_TEXTS, SETTINGS_SAVE_TEXTS, sectionTitle, type SectionContext } from './section-parts.js';
 import type { CategoryDeletionPort, CategoryEditorPort, CategoryItemPort, CategoryValuePort } from './settings-port.js';
+import { startersButton, startersReason } from './starter-actions.js';
 
 /** The route of a category not saved yet. */
 const NEW_CATEGORY = '_new';
@@ -28,6 +29,30 @@ function swatch(color: string, icon: string): TemplateResult {
     return html`<span class="swatch" aria-hidden="true" ${cssProperties({ '--swatch': color, '--swatch-glyph': '#ffffff' })}
         ><hcm-icon name=${(POI_ICONS as readonly string[]).includes(icon) ? icon : 'location_on'}></hcm-icon
     ></span>`;
+}
+
+/** Add a category and Add the starter categories, off at `MAX_POI_CATEGORIES` (the limit named instead). */
+function addActions(context: SectionContext): TemplateResult {
+    const { locale, view } = context;
+    if (!view.canAddCategory) {
+        return html`<div class="actions">
+            <p class="note">${contentText(locale, 'adminContent.settings.categoryLimit', { max: String(MAX_POI_CATEGORIES) })}</p>
+        </div>`;
+    }
+    const present = view.startersMissing === 0;
+    return html`<div class="actions">
+            <hcm-button
+                variant="tonal"
+                icon="add"
+                ?disabled=${context.readOnly}
+                @click=${() => {
+                    context.go(['categories', NEW_CATEGORY]);
+                }}
+                >${contentText(locale, 'adminContent.settings.addCategory')}</hcm-button
+            >
+            ${startersButton(context, present)}
+        </div>
+        ${startersReason(context, present)}`;
 }
 
 function categoryList(context: SectionContext, drag: RowDrag): TemplateResult {
@@ -56,23 +81,7 @@ function categoryList(context: SectionContext, drag: RowDrag): TemplateResult {
             drag,
         );
     return html`<h2 tabindex="-1" data-detail-heading>${sectionTitle(locale, 'categories')}</h2>
-        <div class="actions">
-            ${
-                view.canAddCategory
-                    ? html`<hcm-button
-                          variant="tonal"
-                          icon="add"
-                          ?disabled=${context.readOnly}
-                          @click=${() => {
-                              context.go(['categories', NEW_CATEGORY]);
-                          }}
-                          >${contentText(locale, 'adminContent.settings.addCategory')}</hcm-button
-                      >`
-                    : html`<p class="note">
-                          ${contentText(locale, 'adminContent.settings.categoryLimit', { max: String(MAX_POI_CATEGORIES) })}
-                      </p>`
-            }
-        </div>
+        ${addActions(context)}
         ${listBody(
             locale,
             view.categories,

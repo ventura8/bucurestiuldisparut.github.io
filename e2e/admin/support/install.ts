@@ -14,7 +14,7 @@ import { PROJECT_CITY, projectCity } from './content.js';
 import type { EmulatorWorld } from './emulators.js';
 import { seedPublicCity } from './flows.js';
 import type { UpstreamControl } from './upstream.js';
-import { INSTALL_RELEASE, INSTALL_SLUG, installManifestText } from '../../fixtures/install-bundle.js';
+import { INSTALL_RELEASE, INSTALL_RELEASE_TIME, INSTALL_SLUG, installManifestText } from '../../fixtures/install-bundle.js';
 import { bucketFolder } from '../../support/hosting.js';
 import { ADMIN_ORIGIN, ADMIN_RUNTIME, E2E_PROJECT_ID, PERSONAS } from '../world.js';
 
@@ -25,7 +25,7 @@ import { ADMIN_ORIGIN, ADMIN_RUNTIME, E2E_PROJECT_ID, PERSONAS } from '../world.
  * runs: a scenario plays each build (`cloud-build.start`, `cloud-build.finish`, `cloud-build.<target><Outcome>`).
  */
 
-export { INSTALL_RELEASE, INSTALL_SLUG };
+export { INSTALL_RELEASE, INSTALL_RELEASE_TIME, INSTALL_SLUG };
 
 export interface ServedBundle {
     /** SHA-256 of the served manifest: what the build's `fetch` step must be told. */
@@ -38,7 +38,10 @@ export async function serveInstallBundle(
     options: { readonly startUp?: boolean; readonly docker?: boolean } = {},
 ): Promise<ServedBundle> {
     const text = installManifestText(E2E_PROJECT_ID, options.docker ?? true);
-    const runtime = { ...ADMIN_RUNTIME, release: INSTALL_RELEASE, ...(options.startUp === true ? { startUp: true } : {}) };
+    const runtime = {
+        ...{ ...ADMIN_RUNTIME, release: INSTALL_RELEASE, releaseTime: INSTALL_RELEASE_TIME },
+        ...(options.startUp === true ? { startUp: true } : {}),
+    };
     await page.route('**/runtime.json', (route) => route.fulfill({ json: runtime }));
     await page.route(`**/install/${INSTALL_SLUG}/manifest.json`, (route) => route.fulfill({ body: text, contentType: 'application/json' }));
     return { manifestSha256: createHash('sha256').update(text).digest('hex') };
@@ -233,7 +236,7 @@ export async function followSiteRelease(page: Page, upstream: UpstreamControl): 
     await page.route(`${ADMIN_ORIGIN}/release.json`, async (route) => {
         const { hosting } = (await upstream.snapshot('browser'))['cloud-build'] as { readonly hosting: unknown };
         await route.fulfill({
-            json: hosting ?? { release: INSTALL_RELEASE, variant: 'start-up' },
+            json: hosting ?? { release: INSTALL_RELEASE, releaseTime: INSTALL_RELEASE_TIME, variant: 'start-up' },
             headers: { 'cache-control': 'no-cache' },
         });
     });

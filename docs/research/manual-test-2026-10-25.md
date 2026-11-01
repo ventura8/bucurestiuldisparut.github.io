@@ -303,3 +303,39 @@ list above; what each finding changed: `docs/LESSONS.md` 306–309 and `DECISION
   `packages/admin/src/history/names.ts`); only a creation whose document is gone with nothing newer listed keeps the
   kind and the id (S-A23-HAPPY-CREATED-NAMED, S-A23-BAD-CREATED-GONE-UNNAMED). The entries' schema is unchanged, so an
   older admin reads a newer server's entries as before.
+
+### The update check and Settings (2026-11-01, admin `1.0.0+457201e`, server `1.0.0+9e2e6b5`)
+
+After the Hosting redeploy of the admin `1.0.0+457201e` (the public variant). The numbering continues the list above;
+what each finding changed: `docs/LESSONS.md` 310–311 and `DECISIONS-for-review.md` §78.
+
+- **39.** \[bug]\[installer] Setup step (d) said "Installed: 1.0.0+9e2e6b5" and offered no **Update the map** for the
+  admin `1.0.0+457201e`. Every release is version 1.0.0; the build metadata (`+commit`) has no precedence in semver,
+  and the card showed the state the older admin had recorded of its own server (`installed`) without reading it against
+  the newer admin (earlier updates were offered only because the old server had no release at all). FIXED (§78a):
+  every release has a total order that follows the build: its **build time**, the commit's time in seconds since 1970
+  (`SOURCE_DATE_EPOCH`, else `git show -s --format=%ct`), recorded beside the release wherever the release is recorded
+  and compared (the admin's `runtime.json` `releaseTime`, the site's `/release.json`, the install manifest, the
+  functions' `HCM_RELEASE_TIME`, the pipeline jobs' `hcm-release-time` label, the builds' `_RELEASE_TIME`,
+  `setup/status.install.*.releaseTime`). Newer = a higher version, or the same version and a later build time; the
+  same commit is installed; an installed build with a different commit and no time (every record and server before
+  this change) is behind, never newer, unless its version is higher; a timed installed build is never replaced by an
+  admin that knows no time of its own. A recorded state is read again against this admin's own release (Setup's cards
+  and Home's tile), so the live server reads as an update without a look at Google; the downgrade guard (a server newer
+  than the admin is never replaced) holds with the new order (S-A55-HAPPY-UPDATE-SAME-VERSION,
+  S-A55-BAD-DOWNGRADE-SAME-VERSION, S-A55-HAPPY-SAME-BUILD; tour `setup.install-update-recorded`). Live: the next
+  Hosting deploy of the admin; then Setup (d) **Update the map** once (one consent); the server it installs names its
+  build time from then on.
+- **40.** \[bug]\[setup] Card (d) (and any install card) showed Google's consent box ("Google asks for access to Google
+  Cloud…") with no Continue button while there was nothing to do (installed, no update). FIXED (§78b): on an install
+  card the note shows only with a button of the card that asks Google for the token (Install, Publish, Try again,
+  Install the pipeline, Update the map), or beside Continue when a check needs the token again
+  (`installCardAsks`, `packages/ui/src/admin/setup/install-status.ts`; S-A55-BAD-NOTE-NOTHING-TO-DO; tour
+  `setup.install-nothing-to-do`).
+- **41.** \[feature]\[settings] (the user approved) Settings → Place categories gets **Add the starter categories** for
+  a city that already has categories. DONE (§78c): one click adds, in one batch, only the starters of finding 35 whose
+  label is not there yet (a category's Romanian or English name equal to the starter's Romanian or English one, case,
+  diacritics and spacing aside), ids clear of the city's categories and layers, after the city's own in order, as many
+  as fit under the 50-category limit; the snackbar says how many; with all five present the action is off with "Every
+  starter category is already here" (S-A39-HAPPY-ADD-MISSING-STARTERS, S-A39-BAD-STARTERS-PRESENT; tour
+  `settings.categories-starters-added`, `settings.categories-starters-present`).

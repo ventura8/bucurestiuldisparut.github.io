@@ -2,9 +2,11 @@
  * The pipeline build's `jobs` step (`docs/research/M6-interfaces.md` §1.4.2): creates or replaces the raster pipeline's
  * two Cloud Run Jobs through Run Admin v2, on the image the `push` step pushed (by digest), exactly as D5 of
  * `MANUAL_TEST_PLAN.md` did with `gcloud`: `job-raster@`, task timeout 6 h, no retries, one task, args `run`, the
- * project's buckets in the environment and the release's slug as the `hcm-release` label. Each operation is waited for.
+ * project's buckets in the environment, the release's slug as the `hcm-release` label and its build time, when it has
+ * one, as `hcm-release-time` (finding 39 of 2026-11-01: it orders two builds of one version). Each operation is waited
+ * for.
  *
- * `node steps/run-jobs.mjs --project <p> --region <r> --image-file /workspace/digest --slug <slug>`
+ * `node steps/run-jobs.mjs --project <p> --region <r> --image-file /workspace/digest --slug <slug> [--release-time <s>]`
  */
 import { parseArgs } from 'node:util';
 
@@ -31,12 +33,17 @@ interface Options {
     readonly region: string;
     readonly imageFile: string;
     readonly slug: string;
+    /** The release's build time in seconds since 1970, or '' for a release that knows none. */
+    readonly releaseTime: string;
 }
 
 function options(argv: readonly string[]): Options {
     const { values } = parseArgs({
         args: [...argv],
-        options: { project: { type: 'string' }, region: { type: 'string' }, 'image-file': { type: 'string' }, slug: { type: 'string' } },
+        options: {
+            ...{ project: { type: 'string' }, region: { type: 'string' }, 'image-file': { type: 'string' }, slug: { type: 'string' } },
+            'release-time': { type: 'string', default: '' },
+        },
         strict: true,
     });
     const { project, region, slug } = values;
@@ -44,7 +51,7 @@ function options(argv: readonly string[]): Options {
     if (project === undefined || region === undefined || imageFile === undefined || slug === undefined) {
         throw new Error('usage: run-jobs --project <p> --region <r> --image-file <path> --slug <slug>');
     }
-    return { project, region, imageFile, slug };
+    return { project, region, imageFile, slug, releaseTime: values['release-time'] };
 }
 
 /** The pushed image by digest, from the `push` step's file (a quoted line is unquoted). */
@@ -56,6 +63,11 @@ export function imageOf(text: string): string {
     return image;
 }
 
+/** The build time as the `hcm-release-time` label (whole seconds), or no label for a release without one. */
+function timeLabel(releaseTime: string): Record<string, string> {
+    return /^\d{1,10}$/.test(releaseTime) ? { 'hcm-release-time': releaseTime } : {};
+}
+
 /** A job as Run Admin v2 takes it. */
 export function jobBody(opts: Options, image: string, job: (typeof PIPELINE_JOBS)[number]): Record<string, unknown> {
     const env = [
@@ -64,7 +76,7 @@ export function jobBody(opts: Options, image: string, job: (typeof PIPELINE_JOBS
         { name: 'HCM_PUBLIC_BUCKET', value: `${opts.project}-public` },
     ];
     return {
-        labels: { 'hcm-release': opts.slug },
+        labels: { 'hcm-release': opts.slug, ...timeLabel(opts.releaseTime) },
         template: {
             taskCount: 1,
             template: {

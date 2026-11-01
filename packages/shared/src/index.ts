@@ -330,7 +330,7 @@ export { MAP_LAYER_TYPES, OPACITY_PROPERTIES, OVERLAY_LAYER_TYPES, overlayOpacit
 export type { MapLayerType, OpacityBase, OpacityProperty, PaintUpdate, RasterAdjustmentPaint } from './overlays/paint.js';
 export { isPhotoNearYear, PHOTO_YEAR_WINDOW } from './overlays/photos.js';
 export { poiIcon, poiInYear } from './overlays/poi.js';
-export { STARTER_POI_CATEGORIES, starterCategoryDocs } from './overlays/starter-categories.js';
+export { missingStarterCategories, STARTER_POI_CATEGORIES, starterCategoryDocs } from './overlays/starter-categories.js';
 export type { StarterCategory, StarterCategoryDoc } from './overlays/starter-categories.js';
 export {
     ADJUSTMENT_SLIDERS,

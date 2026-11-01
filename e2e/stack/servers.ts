@@ -355,8 +355,9 @@ export interface StackServerOptions {
  * `/admin/`, the public map at the root: M6), behind the stack's routes.
  */
 export function startStackAdmin(options: StackServerOptions): Promise<Server> {
-    const release = treeRelease();
-    const runtime = { ...ADMIN_RUNTIME, release, ...(options.startUp ? { startUp: true } : {}) };
+    const { release, releaseTime } = treeRelease();
+    const timed = releaseTime === null ? {} : { releaseTime };
+    const runtime = { ...ADMIN_RUNTIME, release, ...timed, ...(options.startUp ? { startUp: true } : {}) };
     const admin = adminRequestHandler({
         hostingDir: E2E_HOSTING_DIR,
         startUpDir: E2E_HOSTING_START_UP_DIR,
@@ -366,13 +367,17 @@ export function startStackAdmin(options: StackServerOptions): Promise<Server> {
         runtime,
         project: ADMIN_PROJECT,
     });
-    return listen(stackServer([commonRoute, adminRootRoute, installBundleRoute(release)], admin), ADMIN_PORT);
+    return listen(stackServer([commonRoute, adminRootRoute, installBundleRoute(release, releaseTime)], admin), ADMIN_PORT);
 }
 
 /** The e2e Hosting tree's release (`release.json`, the admin build's own): what the stack's admin names and installs. */
-function treeRelease(): string {
-    const { release } = JSON.parse(readFileSync(`${E2E_HOSTING_DIR}/release.json`, 'utf8')) as { readonly release: string };
-    return release;
+/** The e2e tree's release and its build time (`release.json`; finding 39 of 2026-11-01: none without one). */
+function treeRelease(): { readonly release: string; readonly releaseTime: number | null } {
+    const { release, releaseTime } = JSON.parse(readFileSync(`${E2E_HOSTING_DIR}/release.json`, 'utf8')) as {
+        readonly release: string;
+        readonly releaseTime?: number;
+    };
+    return { release, releaseTime: releaseTime ?? null };
 }
 
 /**
@@ -380,12 +385,12 @@ function treeRelease(): string {
  * install cards read and hash. The stack does not pack the bundle's files: the fake Cloud Build runs no step, and a build
  * ends when the stack's fake is told to (`{"name":"cloud-build.finish"}`, docs/MANUAL_TEST_PLAN.md B3).
  */
-function installBundleRoute(release: string): StackRoute {
+function installBundleRoute(release: string, releaseTime: number | null): StackRoute {
     const path = `${ADMIN_PATH}install/${installReleaseSlug(release)}/manifest.json`;
     const answer: Answer = {
         status: 200,
         headers: { 'content-type': 'application/json', 'cache-control': 'no-cache' },
-        body: installManifestText(E2E_PROJECT_ID, true, release),
+        body: installManifestText(E2E_PROJECT_ID, true, release, releaseTime),
     };
     return (_request, target) => Promise.resolve(target.pathname === path ? answer : undefined);
 }

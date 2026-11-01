@@ -47,6 +47,7 @@ function wiring(city: unknown = SEED_CITY, project: ProjectConfig = PROJECT) {
         baseUrl: 'https://demo-hcm.web.app/',
         nonce: () => 'nonce-1',
         release: '1.0.0+abc1234',
+        releaseTime: 1_761_955_200,
         installOrigins: ['https://demo-hcm.web.app'],
         newerAdmin: () => Promise.resolve(null),
     };

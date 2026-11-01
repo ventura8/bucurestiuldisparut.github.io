@@ -2,7 +2,8 @@
  * The first step of every install build (`fetch`, `docs/research/M6-interfaces.md` §1.4): a Node program passed inline
  * to the pinned Node image (`node --input-type=module --eval`), because the bundle's own step scripts are inside the
  * tarball it fetches. It downloads `manifest.json` from the admin's own bundle folder (`HCM_BUNDLE_URL`), refuses to go
- * on unless its SHA-256 is the one the admin computed (`HCM_MANIFEST_SHA256`) and it names the admin's release, then
+ * on unless its SHA-256 is the one the admin computed (`HCM_MANIFEST_SHA256`) and it names the admin's release and its
+ * build time (`HCM_RELEASE_TIME`, empty for a build that knows none: finding 39 of 2026-11-01), then
  * downloads each tarball of `HCM_FILES` (the target's first) and refuses any whose SHA-256 is not the manifest's, the
  * target's also not the one the admin chose (`HCM_FILE_SHA256`). It unpacks the target's tarball into `HCM_OUT` with
  * the image's `tar`; the site build also puts the bundle files back under `HCM_KEEP_BUNDLE` (a Hosting release replaces
@@ -29,6 +30,7 @@ export const FETCH_BUNDLE_SCRIPT = [
     "if (sha(manifestBytes) !== env.HCM_MANIFEST_SHA256) fail('manifest.json is not the one the admin read');",
     "const manifest = JSON.parse(manifestBytes.toString('utf8'));",
     "if (manifest.release !== env.HCM_RELEASE) fail('manifest.json names another release');",
+    "if (String(manifest.releaseTime ?? '') !== (env.HCM_RELEASE_TIME || '')) fail('manifest.json names another build time');",
     "writeFileSync(join(bundleDir, 'manifest.json'), manifestBytes);",
     "const targets = env.HCM_FILES.split(',');",
     'for (const target of targets) {',

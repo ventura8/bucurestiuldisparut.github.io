@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto';
 
 import {
+    NEWER_BUILD_RELEASE,
+    NEWER_BUILD_TIME,
     NEWER_SERVER_RELEASE,
+    OLDER_BUILD_RELEASE,
     OLDER_SERVER_RELEASE,
     PLANTED_LOG_SECRETS,
     PRE_M6_LACKING,
@@ -11,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 
 import { GoogleApiError } from '../../src/google/failure.js';
 import { InstallBundleError } from '../../src/install/bundle.js';
-import { ACCESS, installManifest, installWorld, RELEASE } from './world.js';
+import { ACCESS, installManifest, installWorld, RELEASE, RELEASE_TIME } from './world.js';
 
 /**
  * The installer's Cloud Build adapter over the fake upstreams (`docs/research/M6-interfaces.md` §1.7, §1.10): what each
@@ -27,7 +30,7 @@ describe('observe', () => {
         const site = await world.installer.observe('site', ACCESS);
 
         expect(server).toEqual({
-            installed: { complete: false, release: null, partial: false, newest: null },
+            installed: { complete: false, release: null, releaseTime: null, partial: false, newest: null, newestTime: null },
             build: null,
             progress: { ready: 0, total: registryFunctions().length, failed: [] },
             blocker: null,
@@ -46,7 +49,14 @@ describe('observe', () => {
 
         const server = await world.installer.observe('server', ACCESS);
 
-        expect(server.installed).toEqual({ complete: true, release: OLDER_SERVER_RELEASE, partial: false, newest: OLDER_SERVER_RELEASE });
+        expect(server.installed).toEqual({
+            complete: true,
+            release: OLDER_SERVER_RELEASE,
+            releaseTime: null,
+            partial: false,
+            newest: OLDER_SERVER_RELEASE,
+            newestTime: null,
+        });
         world.fakes.scenario('cloud-functions.deployedNewerRelease');
         expect((await world.installer.observe('server', ACCESS)).installed.release).toBe(NEWER_SERVER_RELEASE);
     });
@@ -58,8 +68,10 @@ describe('observe', () => {
         expect((await world.installer.observe('server', ACCESS)).installed).toEqual({
             complete: true,
             release: null,
+            releaseTime: null,
             partial: false,
             newest: null,
+            newestTime: null,
         });
     });
 
@@ -71,14 +83,18 @@ describe('observe', () => {
         expect((await world.installer.observe('pipeline', ACCESS)).installed).toEqual({
             complete: true,
             release: '0.9.0+e2e0000',
+            releaseTime: null,
             partial: false,
             newest: '0.9.0+e2e0000',
+            newestTime: null,
         });
         expect((await world.installer.observe('site', ACCESS)).installed).toEqual({
             complete: true,
             release: RELEASE,
+            releaseTime: null,
             partial: false,
             newest: RELEASE,
+            newestTime: null,
         });
     });
 
@@ -90,19 +106,25 @@ describe('observe', () => {
         expect((await world.installer.observe('pipeline', ACCESS)).installed).toEqual({
             complete: true,
             release: null,
+            releaseTime: null,
             partial: false,
             newest: null,
+            newestTime: null,
         });
         expect((await world.installer.observe('site', ACCESS)).installed).toEqual({
             complete: false,
             release: null,
+            releaseTime: null,
             partial: false,
             newest: null,
+            newestTime: null,
         });
         world.release = null;
         expect((await world.installer.observe('site', ACCESS)).installed.complete).toBe(false);
     });
+});
 
+describe('observe: what stands in the way', () => {
     it('badPath_withoutTheInstallersAccountEveryTargetAsksForPrepareTheProject', async () => {
         const world = await installWorld({ provisioned: false });
 
@@ -155,7 +177,14 @@ describe('observe: a target only partly there (the M6 reviews)', () => {
 
         const server = await world.installer.observe('server', ACCESS);
 
-        expect(server.installed).toEqual({ complete: false, release: null, partial: true, newest: null });
+        expect(server.installed).toEqual({
+            complete: false,
+            release: null,
+            releaseTime: null,
+            partial: true,
+            newest: null,
+            newestTime: null,
+        });
         expect(server.progress).toEqual({
             ready: registryFunctions().length - PRE_M6_LACKING,
             total: registryFunctions().length,
@@ -170,8 +199,81 @@ describe('observe: a target only partly there (the M6 reviews)', () => {
         expect((await world.installer.observe('server', ACCESS)).installed).toEqual({
             complete: false,
             release: null,
+            releaseTime: null,
             partial: true,
             newest: NEWER_SERVER_RELEASE,
+            newestTime: null,
+        });
+    });
+});
+
+describe('observe: builds of one version (finding 39 of 2026-11-01)', () => {
+    it('happyPath_theFunctionsNameTheirBuildTime_aServerBuiltBeforeTheTimesNamesNone', async () => {
+        const world = await installWorld();
+        world.fakes.scenario('cloud-functions.deployedNewerBuild');
+
+        expect((await world.installer.observe('server', ACCESS)).installed).toMatchObject({
+            complete: true,
+            release: NEWER_BUILD_RELEASE,
+            releaseTime: NEWER_BUILD_TIME,
+            newest: NEWER_BUILD_RELEASE,
+            newestTime: NEWER_BUILD_TIME,
+        });
+        world.fakes.scenario('cloud-functions.deployedOlderBuild');
+        expect((await world.installer.observe('server', ACCESS)).installed).toMatchObject({
+            release: OLDER_BUILD_RELEASE,
+            releaseTime: null,
+        });
+    });
+
+    it('happyPath_releaseJsonNamesTheSitesBuildTime_badPath_oneThatIsNotWholeSecondsIsNone', async () => {
+        const world = await installWorld();
+        world.release = { release: RELEASE, releaseTime: RELEASE_TIME, variant: 'public' };
+        expect((await world.installer.observe('site', ACCESS)).installed).toMatchObject({
+            releaseTime: RELEASE_TIME,
+            newestTime: RELEASE_TIME,
+        });
+        world.release = { release: RELEASE, releaseTime: 'yesterday', variant: 'public' };
+        expect((await world.installer.observe('site', ACCESS)).installed).toMatchObject({ release: RELEASE, releaseTime: null });
+    });
+
+    it('happyPath_thePipelineJobsNameTheirBuildTimeInALabel', async () => {
+        const world = await installWorld();
+        await world.installer.submit('pipeline', ACCESS);
+        world.fakes.scenario('cloud-build.finish');
+
+        expect((await world.installer.observe('pipeline', ACCESS)).installed).toMatchObject({
+            complete: true,
+            release: RELEASE,
+            releaseTime: RELEASE_TIME,
+        });
+    });
+
+    it('badPath_theOldestOfTwoJobsIsTheBuildWithoutATime_twoTimedBuildsByTheirTimes', async () => {
+        const world = await installWorld();
+        await world.installer.submit('pipeline', ACCESS);
+        world.fakes.scenario('cloud-build.finish');
+        const specs = world.fakes.state.cloudRun.jobSpecs ?? new Map<string, { readonly image: string }>();
+        const [first, second] = [...specs.entries()];
+        const relabel = (entry: typeof first, labels: Record<string, string>): void => {
+            world.fakes.state.cloudRun.jobSpecs?.set(String(entry?.[0]), { image: String(entry?.[1].image), labels });
+        };
+        // One job left on a build of the same version from before the build times: the pipeline is that build.
+        relabel(second, { 'hcm-release': '1-0-0-0000000' });
+        expect((await world.installer.observe('pipeline', ACCESS)).installed).toMatchObject({
+            release: '1.0.0+0000000',
+            releaseTime: null,
+            newest: RELEASE,
+            newestTime: RELEASE_TIME,
+        });
+        // Two timed builds of the version: the later time is the newer, whichever job holds it.
+        relabel(first, { 'hcm-release': '1-0-0-fffffff', 'hcm-release-time': String(RELEASE_TIME + 60) });
+        relabel(second, { 'hcm-release': '1-0-0-0000000', 'hcm-release-time': String(RELEASE_TIME - 60) });
+        expect((await world.installer.observe('pipeline', ACCESS)).installed).toMatchObject({
+            release: '1.0.0+0000000',
+            releaseTime: RELEASE_TIME - 60,
+            newest: '1.0.0+fffffff',
+            newestTime: RELEASE_TIME + 60,
         });
     });
 });

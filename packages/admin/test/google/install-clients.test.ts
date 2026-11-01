@@ -139,7 +139,7 @@ describe('Cloud Run jobs and Artifact Registry', () => {
             transportOver([
                 route('GET', `${JOBS}/full`, 'full', () =>
                     jsonResponse({
-                        labels: { 'hcm-release': '1-0-0' },
+                        labels: { 'hcm-release': '1-0-0', 'hcm-release-time': '1761955200' },
                         template: { template: { containers: [{ image: 'img@sha256:1' }] } },
                     }),
                 ),
@@ -148,8 +148,13 @@ describe('Cloud Run jobs and Artifact Registry', () => {
             ]),
         );
 
-        await expect(client.get('p', 'r', 'full')).resolves.toEqual({ name: 'full', releaseSlug: '1-0-0', image: 'img@sha256:1' });
-        await expect(client.get('p', 'r', 'bare')).resolves.toEqual({ name: 'bare', releaseSlug: '', image: '' });
+        await expect(client.get('p', 'r', 'full')).resolves.toEqual({
+            name: 'full',
+            releaseSlug: '1-0-0',
+            releaseTime: '1761955200',
+            image: 'img@sha256:1',
+        });
+        await expect(client.get('p', 'r', 'bare')).resolves.toEqual({ name: 'bare', releaseSlug: '', releaseTime: '', image: '' });
         await expect(client.get('p', 'r', 'other')).resolves.toBeUndefined();
     });
 

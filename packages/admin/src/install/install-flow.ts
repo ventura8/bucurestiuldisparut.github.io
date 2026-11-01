@@ -57,6 +57,8 @@ export interface InstallFlowDeps {
     readonly log: Logger;
     /** The admin's own release. */
     readonly release: string;
+    /** Its build time (`runtime.json`'s `releaseTime`, finding 39 of 2026-11-01), or null when the build knows none. */
+    readonly releaseTime: number | null;
     /** The live `cloudPlatform` token with enough life left, or null (no popup). */
     readonly liveAccess: () => InstallAccess | null;
     /** From a click: the live token, else Google's consent, opened in the call's synchronous part; null without one. */
@@ -120,9 +122,20 @@ function stoppedBuild(build: CloudBuild): boolean {
  * newer server missing a function has no complete release, yet the card says which release it is: finding 2 of the M6
  * security review).
  */
-function shownRelease(observation: TargetObservation, state: InstallState): string | null {
+function shownRelease(observation: TargetObservation, state: InstallState): ShownRelease {
     const { installed } = observation;
-    return state === 'newerInstalled' ? (installed.newest ?? installed.release) : installed.release;
+    const newest = installed.newest ?? null;
+    if (state === 'newerInstalled' && newest !== null) {
+        return { installedRelease: newest, installedReleaseTime: knownTime(installed.newestTime) };
+    }
+    return { installedRelease: installed.release, installedReleaseTime: knownTime(installed.releaseTime) };
+}
+
+type ShownRelease = Pick<InstallTargetView, 'installedRelease' | 'installedReleaseTime'>;
+
+/** A build time an observation may leave out, as the card keeps it. */
+function knownTime(time: number | null | undefined): number | null {
+    return time ?? null;
 }
 
 /** A failed build's step and its last lines; nothing for any other state. */
@@ -282,7 +295,7 @@ class TargetFlow implements InstallFlow {
         const state = deriveInstallState({
             installed: observation.installed,
             build: observation.build,
-            bundleRelease: this.#deps.release,
+            bundle: { release: this.#deps.release, time: this.#deps.releaseTime },
             bundleSlug: this.#slug,
             retrying: summary.retry !== null,
             missing: summary.missing,
@@ -295,7 +308,7 @@ class TargetFlow implements InstallFlow {
         return {
             ...this.#view,
             state,
-            installedRelease: shownRelease(observation, state),
+            ...shownRelease(observation, state),
             ...this.#buildFields(observation.build),
             ...failureFields(summary, state),
             missing: summary.missing,

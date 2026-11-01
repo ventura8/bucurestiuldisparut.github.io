@@ -40,6 +40,14 @@ const ADMIN_MAP_MODULES =
  */
 const EDITOR_TEXT_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]editing[\\/](?:field-names|issue-text)\.ts$/;
 
+/**
+ * The starter place categories (`packages/shared/src/overlays/starter-categories.ts`, `packages/admin/src/pois/starter.ts`,
+ * `packages/ui/src/admin/settings/starter-actions.ts`), which the place editor and Settings → Place categories share since
+ * finding 41 of 2026-11-01: their own chunk, kept out of `editor-shared` and the settings chunk (DECISIONS-for-review.md §78d).
+ */
+const STARTER_MODULES =
+    /packages[\\/](?:shared[\\/]src[\\/]overlays[\\/]starter-categories|admin[\\/]src[\\/]pois[\\/]starter|ui[\\/]src[\\/]admin[\\/]settings[\\/]starter-actions)\.ts$/;
+
 /** M4: the editors' assists, their state and intents (`packages/admin/src/assist/`) and their slots (`packages/ui/src/admin/assist/`). */
 const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]assist[\\/]/;
 
@@ -86,13 +94,15 @@ export default defineConfig({
                 // DECISIONS-for-review.md §54b), which would otherwise land in `editor-shared`.
                 // `assist`: the editors' title suggestions and translation drafts (M4, the photo, place and layer editors share
                 // them), kept out of `editor-shared` (DECISIONS-for-review.md §54b). `editor-texts`: a field's name and its
-                // problem's words, which every editor shares (§77e).
+                // problem's words, which every editor shares (§77e). `starter-categories`: the starter place categories, which
+                // the place editor and the settings share (§78d).
                 codeSplitting: {
                     groups: [
                         { name: 'terra-draw', test: /node_modules[\\/]terra-draw/, priority: 4 },
                         { name: 'firebase-installations', test: /node_modules[\\/]@firebase[\\/]installations[\\/]/, priority: 2 },
                         { name: 'assist', test: ASSIST_MODULES, priority: 2 },
                         { name: 'editor-texts', test: EDITOR_TEXT_MODULES, priority: 2 },
+                        { name: 'starter-categories', test: STARTER_MODULES, priority: 2 },
                         { name: 'admin-core', tags: ['$initial'], priority: 3 },
                         { name: 'admin-map', test: ADMIN_MAP_MODULES, priority: 2 },
                         { name: 'editor-shared', minShareCount: 2, priority: 1 },

@@ -11,14 +11,14 @@ import { defineHcmButton } from '../../components/button.js';
 import { defineHcmIcon } from '../../components/icon.js';
 import { defineOnce } from '../../components/internal.js';
 import { defineHcmProgress } from '../../components/progress.js';
-import { visuallyHidden } from '../../components/styles.js';
+import { focusRing, visuallyHidden } from '../../components/styles.js';
 import {
     blockerLine,
     costLine,
-    INSTALLABLE_STATES,
     installStatus,
     installStatusStyles,
     mayInstall,
+    serverOffersInstall,
     type InstallStatusInput,
 } from './install-status.js';
 import { SetupBody, defineSetupBodyParts } from './setup-body.js';
@@ -33,15 +33,10 @@ function countShown(state: SetupViewState): boolean {
     return step.state !== 'ok' && step.checkedAt !== null;
 }
 
-/** The card's own button: an installable state the card has seen (a done step offers nothing before a look). */
-function offersInstall(state: SetupViewState): boolean {
-    const view = state.install.server;
-    const looked = state.steps.deploy.state !== 'ok' || view.checkedAt !== null;
-    return looked && INSTALLABLE_STATES.has(view.state);
-}
-
 export class HcmSetupDeploy extends SetupBody {
-    static override readonly styles = [setupTextStyles, copyStyles, installStatusStyles, visuallyHidden];
+    // The kit's focus ring on the GitHub disclosure's summary: the browser's own ring read 2.16:1 against the card at
+    // 360 px (the tour states of findings 39 and 40, 2026-11-01).
+    static override readonly styles = [setupTextStyles, copyStyles, installStatusStyles, visuallyHidden, focusRing];
 
     protected override renderBody(state: SetupViewState): TemplateResult {
         const input: InstallStatusInput = {
@@ -82,7 +77,7 @@ export class HcmSetupDeploy extends SetupBody {
      */
     private renderAction(state: SetupViewState, input: InstallStatusInput): TemplateResult {
         const view = state.install.server;
-        if (!offersInstall(state)) {
+        if (!serverOffersInstall(state)) {
             return blockerLine(input, view);
         }
         const tryAgain = view.state === 'failed';

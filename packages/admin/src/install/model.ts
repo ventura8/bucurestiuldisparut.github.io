@@ -10,6 +10,7 @@ import {
     INSTALL_ESTIMATES,
     INSTALL_RUNNING_STATES,
     INSTALL_STEPS,
+    RELEASE_PATTERN,
     SITE_PUBLISH_TRANSFER_MB,
     type InstallLogEvent,
     type InstallState,
@@ -38,6 +39,8 @@ export interface InstalledInfo {
     readonly complete: boolean;
     /** Its release; null when it names none (a deploy from before M6) or nothing is installed. */
     readonly release: string | null;
+    /** Its release's build time (finding 39 of 2026-11-01); null or absent when the installed parts name none. */
+    readonly releaseTime?: number | null;
     /**
      * Part of it is in place but not all (some functions, one job): a server from before M6 that lacks the new functions,
      * or an install that stopped half way. It is offered as an update, never as a first install (finding 1 of the M6
@@ -49,6 +52,8 @@ export interface InstalledInfo {
      * submits: the deploy's `--force` would delete the newer release's functions (finding 2 of the M6 security review).
      */
     readonly newest?: string | null;
+    /** `newest`'s build time; null or absent when it names none. */
+    readonly newestTime?: number | null;
 }
 
 /** One target as the card shows it. */
@@ -56,6 +61,8 @@ export interface InstallTargetView {
     readonly target: InstallTarget;
     readonly state: InstallState;
     readonly installedRelease: string | null;
+    /** The installed release's build time (finding 39), or null when it names none. */
+    readonly installedReleaseTime: number | null;
     /** The build the card follows or last saw (null: none yet), and its page in the Google Cloud console. */
     readonly buildId: string | null;
     readonly consoleUrl: string | null;
@@ -93,6 +100,7 @@ export function initialTargetView(target: InstallTarget): InstallTargetView {
         target,
         state: 'notInstalled',
         installedRelease: null,
+        installedReleaseTime: null,
         buildId: null,
         consoleUrl: null,
         startedAt: null,
@@ -124,38 +132,78 @@ export function buildSlug(build: CloudBuild): string | null {
     return tag === undefined ? null : tag.slice(RELEASE_TAG_PREFIX.length);
 }
 
+/** The admin's own release and its build time: what an install installs (finding 39 of 2026-11-01). */
+export interface BundleStamp {
+    readonly release: string;
+    readonly time: number | null;
+}
+
+/** An installed release against the admin's: negative when older, 0 when the same, positive when newer. */
+function orderAgainst(release: string, time: number | null | undefined, bundle: BundleStamp): number {
+    return compareRelease(release, bundle.release, { installed: time ?? null, bundle: bundle.time });
+}
+
 /** Some installed part names a release newer than the admin's, whether or not the target is complete. */
-function newerThanBundle(installed: InstalledInfo, bundleRelease: string): boolean {
-    const newest = installed.newest ?? installed.release;
-    return newest !== null && compareRelease(newest, bundleRelease) > 0;
+function newerThanBundle(installed: InstalledInfo, bundle: BundleStamp): boolean {
+    const newest = installed.newest ?? null;
+    if (newest !== null) {
+        return orderAgainst(newest, installed.newestTime, bundle) > 0;
+    }
+    return installed.release !== null && orderAgainst(installed.release, installed.releaseTime, bundle) > 0;
 }
 
 /** The order of an installed release against the admin's: newer (whatever is missing), partial, installed or update. */
-function installedState(installed: InstalledInfo, bundleRelease: string): InstallState {
-    if (newerThanBundle(installed, bundleRelease)) {
+function installedState(installed: InstalledInfo, bundle: BundleStamp): InstallState {
+    if (newerThanBundle(installed, bundle)) {
         return 'newerInstalled';
     }
     if (!installed.complete) {
         return installed.partial === true ? 'updateAvailable' : 'notInstalled';
     }
-    return completeState(installed, bundleRelease);
+    return completeState(installed, bundle);
 }
 
-/** A complete target's release against the admin's (one naming none is from before M6: an update replaces it). */
-function completeState(installed: InstalledInfo, bundleRelease: string): InstallState {
-    const order = installed.release === null ? -1 : compareRelease(installed.release, bundleRelease);
+/** The state of an installed release against the admin's: the same, behind it (Update) or ahead of it. */
+export function releaseState(order: number): InstallState {
     if (order === 0) {
         return 'installed';
     }
     return order < 0 ? 'updateAvailable' : 'newerInstalled';
 }
 
+/** A complete target's release against the admin's (one naming none is from before M6: an update replaces it). */
+function completeState(installed: InstalledInfo, bundle: BundleStamp): InstallState {
+    return releaseState(installed.release === null ? -1 : orderAgainst(installed.release, installed.releaseTime, bundle));
+}
+
+/** What a record keeps of a target's release (`installRecordSchema`'s state, release and build time). */
+export interface RecordedRelease {
+    readonly state: InstallState;
+    readonly release?: string | undefined;
+    readonly releaseTime?: number | undefined;
+}
+
+/** The recorded states that say a release is in place: they are read again against this admin's release. */
+const RECORDED_IN_PLACE: ReadonlySet<InstallState> = new Set<InstallState>(['installed', 'updateAvailable', 'newerInstalled']);
+
+/**
+ * A recorded target's state against this admin (finding 39): a release in place is ordered against the admin's own
+ * release and build time; any other state (a build under way or stopped, nothing installed) is kept as recorded, and so
+ * is every state for an admin without a release of its own (`dev`, the e2e world's `e2e`), which cannot order one.
+ */
+export function recordedState(record: RecordedRelease, bundle: BundleStamp): InstallState {
+    if (record.release === undefined || !RECORDED_IN_PLACE.has(record.state) || !RELEASE_PATTERN.test(bundle.release)) {
+        return record.state;
+    }
+    return releaseState(orderAgainst(record.release, record.releaseTime, bundle));
+}
+
 export interface StateInput {
     readonly installed: InstalledInfo;
     /** The target's newest build, or null. */
     readonly build: CloudBuild | null;
-    /** The admin's own release (its bundle's), and its slug. */
-    readonly bundleRelease: string;
+    /** The admin's own release (its bundle's) with its build time, and its slug. */
+    readonly bundle: BundleStamp;
     readonly bundleSlug: string;
     /** The build's last `HCM_INSTALL` event is a retry it still waits on. */
     readonly retrying: boolean;
@@ -189,7 +237,7 @@ export function deriveInstallState(input: StateInput): InstallState {
     if (isActive(input.build)) {
         return runningState(input.build, input.retrying);
     }
-    const settled = installedState(input.installed, input.bundleRelease);
+    const settled = installedState(input.installed, input.bundle);
     return failedOwnBuild(input) && !IN_PLACE.has(settled) ? 'failed' : settled;
 }
 
@@ -280,6 +328,8 @@ export function hasEnded(build: CloudBuild | null): boolean {
 export interface InstallSlice {
     /** The admin's own release (what Install and Update install). */
     readonly release: string;
+    /** Its build time (finding 39 of 2026-11-01), or null when the build knows none: recorded states are read against it. */
+    readonly releaseTime: number | null;
     /** `https://<project>.web.app/`: where Publish the map puts the public map. */
     readonly address: string;
     /** Cloud Build's free minutes a month, and each target's estimate (§1.9). */
@@ -293,9 +343,10 @@ export interface InstallSlice {
 }
 
 /** Nothing observed yet. */
-export function initialInstallSlice(release: string, address: string): InstallSlice {
+export function initialInstallSlice(release: string, address: string, releaseTime: number | null = null): InstallSlice {
     return {
         release,
+        releaseTime,
         address,
         freeMinutes: CLOUD_BUILD_FREE_MINUTES,
         estimates: {

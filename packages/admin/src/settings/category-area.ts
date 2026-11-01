@@ -1,7 +1,8 @@
 /**
  * The categories section's moving parts (behaviours A33, A39): the order of the list (a drag, or Move up and Move down,
- * written at once in one batch), the open category's editor and its document's listener, and its deletion. The settings
- * store routes `#/settings/categories/<id>` here.
+ * written at once in one batch), the open category's editor and its document's listener, its deletion, and **Add the
+ * starter categories** (finding 41 of 2026-11-01: the starters the city lacks, in one batch). The settings store routes
+ * `#/settings/categories/<id>` here.
  */
 import { FIRESTORE_PATHS, poiCategoryDocSchema, type Locale, type PoiCategoryDoc } from '@hcm/shared';
 
@@ -9,6 +10,7 @@ import { LiveDoc, type DocState } from '../content/doc.js';
 import type { ContentServices, WriteOutcome } from '../content/services.js';
 import { moved, moveTarget, opacityFromPercent, type MoveDirection } from '../layers/model.js';
 import type { PreviewLayer } from '../layers/preview.js';
+import { addStarterCategories } from '../pois/starter.js';
 import { ascendingOrderChanges, type CategoryItem } from './categories.js';
 import { CategoryDeletion, type CategoryDeletionState } from './category-deletion.js';
 import { CategoryEditor, type CategoryEditorState, type CategoryPatch } from './category-editor.js';
@@ -20,6 +22,8 @@ interface CategoryAreaState {
     readonly categoryDeletion: CategoryDeletionState;
     /** A reorder of the categories is being written. */
     readonly reordering: boolean;
+    /** The starter categories are being written. */
+    readonly addingStarters: boolean;
 }
 
 export interface CategoryIntents {
@@ -36,6 +40,8 @@ export interface CategoryIntents {
     setDeleteTarget(target: string | null): void;
     cancelDeleteCategory(): void;
     confirmDeleteCategory(): Promise<boolean>;
+    /** Adds the starter categories the city lacks in one batch (none: nothing is written, null). */
+    addStarterCategories(): Promise<WriteOutcome | null>;
 }
 
 export interface CategoryAreaDeps {
@@ -46,6 +52,8 @@ export interface CategoryAreaDeps {
     readonly categories: () => readonly CategoryItem[];
     /** Every id of the overlay namespace already taken (layers and categories). */
     readonly taken: () => readonly string[];
+    /** How many starter categories one click adds (0 until the categories are listed, or when every one is there). */
+    readonly starters: () => number;
 }
 
 export class CategoryArea {
@@ -54,6 +62,7 @@ export class CategoryArea {
     readonly #deletion: CategoryDeletion;
     #editor: CategoryEditor | null = null;
     #reordering = false;
+    #addingStarters = false;
     readonly intents: CategoryIntents;
 
     constructor(deps: CategoryAreaDeps) {
@@ -71,7 +80,12 @@ export class CategoryArea {
         this.#deletion = new CategoryDeletion(deps.services, (categoryDeletion) => {
             deps.changed({ categoryDeletion });
         });
-        this.intents = { ...this.#moveIntents(), ...this.#editIntents(), ...this.#deleteIntents() };
+        this.intents = {
+            ...this.#moveIntents(),
+            ...this.#editIntents(),
+            ...this.#deleteIntents(),
+            addStarterCategories: () => this.#addStarters(),
+        };
     }
 
     get unsaved(): boolean {
@@ -142,9 +156,9 @@ export class CategoryArea {
         };
     }
 
-    #editIntents(): Omit<
+    #editIntents(): Pick<
         CategoryIntents,
-        'moveCategory' | 'moveCategoryTo' | 'askDeleteCategory' | 'setDeleteTarget' | 'cancelDeleteCategory' | 'confirmDeleteCategory'
+        'editCategory' | 'setCategoryLabel' | 'setCategoryOpacity' | 'useProposedColor' | 'saveCategory' | 'discardCategory'
     > {
         return {
             editCategory: (patch) => {
@@ -202,6 +216,25 @@ export class CategoryArea {
     #setReordering(reordering: boolean): void {
         this.#reordering = reordering;
         this.#deps.changed({ reordering });
+    }
+
+    /** The starters the city lacks, in one batch; the snackbar says how many were added (a refusal says why). */
+    async #addStarters(): Promise<WriteOutcome | null> {
+        const { services, categories, starters } = this.#deps;
+        const count = starters();
+        if (count === 0 || this.#addingStarters || services.readOnly()) {
+            return null;
+        }
+        this.#setAddingStarters(true);
+        const outcome = await addStarterCategories(services.store, services.cityId, categories());
+        this.#setAddingStarters(false);
+        reportOutcome(services, outcome, 'adminContent.settings.startersAdded', { count: String(count) });
+        return outcome;
+    }
+
+    #setAddingStarters(addingStarters: boolean): void {
+        this.#addingStarters = addingStarters;
+        this.#deps.changed({ addingStarters });
     }
 
     async #save(): Promise<string | null> {

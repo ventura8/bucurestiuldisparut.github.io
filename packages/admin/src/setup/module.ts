@@ -78,6 +78,8 @@ export interface SetupModuleOptions {
     /** The Cloud Build installer (`createCloudBuildInstaller`), the admin's release and the public map's address. */
     readonly installer: InstallerPort;
     readonly release: string;
+    /** The release's build time (finding 39 of 2026-11-01), or null when the build knows none. */
+    readonly releaseTime: number | null;
     readonly siteAddress: string;
     // [end install]
 }
@@ -146,6 +148,7 @@ export function setupDepsOf(shell: SetupShell, options: SetupModuleOptions): Set
             cityBBox: options.cityBBox,
             serverDeployed: () => shell.serverReady(),
             release: options.release,
+            releaseTime: options.releaseTime,
             siteAddress: options.siteAddress,
         },
         google: googleOf(shell),

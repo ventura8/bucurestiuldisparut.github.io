@@ -13,6 +13,8 @@ import { createCloudBuildInstaller } from '../../src/install/cloud-build-install
 import type { InstallerPort } from '../../src/install/ports.js';
 
 export const RELEASE = '1.0.0+abc1234';
+/** The admin's build time (finding 39 of 2026-11-01): `runtime.json`'s and the manifest's. */
+export const RELEASE_TIME = 1_761_955_200;
 const ORIGIN = 'https://demo-hcm.web.app';
 const BASE = `${ORIGIN}/admin/`;
 const NODE_IMAGE = `node:24-bookworm-slim@sha256:${'d'.repeat(64)}`;
@@ -25,6 +27,7 @@ export function installManifest(changes: Readonly<Record<string, unknown>> = {})
     return {
         format: 1,
         release: RELEASE,
+        releaseTime: RELEASE_TIME,
         slug: '1-0-0-abc1234',
         projectId: 'demo-hcm',
         files: { server: file('server.tgz', 'a'), pipeline: file('pipeline.tgz', 'b'), site: file('hosting.tgz', 'c') },
@@ -82,6 +85,7 @@ export async function installWorld(options: { readonly provisioned?: boolean } =
             fetch: fetcher,
             baseUrl: BASE,
             release: RELEASE,
+            releaseTime: RELEASE_TIME,
             projectId: 'demo-hcm',
             origins: hostingOrigins('demo-hcm'),
             digest: sha256Hex,

@@ -185,27 +185,72 @@ function parseRelease(release: string): ParsedRelease | null {
     return plus === -1 ? { version: release, build: '' } : { version: release.slice(0, plus), build: release.slice(plus + 1) };
 }
 
-/** Two parsed releases: the version first, then a different build of the same version counts as older. */
-function compareParsed(installed: ParsedRelease, bundle: ParsedRelease): number {
-    const order = compareVersions(installed.version, bundle.version) ?? 0;
-    if (order !== 0) {
-        return Math.sign(order);
+/** The latest a release's build time may be: 2100-01-01, in seconds since 1970. */
+const MAX_RELEASE_TIME = 4_102_444_800;
+
+/**
+ * A release's build time (live manual test 2026-11-01, finding 39): the time of the commit it was built from, in whole
+ * seconds since 1970 (`git log -1 --format=%ct`, or `SOURCE_DATE_EPOCH`). Every release of a version shares its semver
+ * (build metadata has no precedence), so the time is what orders two builds of one version.
+ */
+export const releaseTimeSchema = z.number().int().min(0).max(MAX_RELEASE_TIME);
+
+/** A build time written as text (an environment variable, a Cloud Run label, a substitution), or null when it is none. */
+export function parseReleaseTime(value: unknown): number | null {
+    const text = typeof value === 'number' ? String(value) : value;
+    if (typeof text !== 'string' || !/^\d{1,10}$/.test(text)) {
+        return null;
     }
-    return installed.build === bundle.build ? 0 : -1;
+    const parsed = releaseTimeSchema.safeParse(Number(text));
+    return parsed.success ? parsed.data : null;
+}
+
+/** The build times of the two releases `compareRelease` orders; null when one is not known. */
+export interface ReleaseTimes {
+    readonly installed: number | null;
+    readonly bundle: number | null;
+}
+
+const UNKNOWN_TIMES: ReleaseTimes = { installed: null, bundle: null };
+
+/**
+ * Two builds of one version: the same commit is the same release; else the later build time is the newer one. An
+ * installed build without a time (recorded or deployed before the times existed) counts as older, so the admin's
+ * bundle replaces it; a timed installed build against an admin without a time counts as newer, never replaced by a
+ * build that cannot be placed; equal times of two commits count as older.
+ */
+function compareBuilds(installed: string, bundle: string, times: ReleaseTimes): number {
+    if (installed === bundle) {
+        return 0;
+    }
+    if (times.installed === null) {
+        return -1;
+    }
+    if (times.bundle === null) {
+        return 1;
+    }
+    return times.installed > times.bundle ? 1 : -1;
+}
+
+/** Two parsed releases: the version first, then the builds of one version by their times. */
+function compareParsed(installed: ParsedRelease, bundle: ParsedRelease, times: ReleaseTimes): number {
+    const order = compareVersions(installed.version, bundle.version) ?? 0;
+    return order === 0 ? compareBuilds(installed.build, bundle.build, times) : Math.sign(order);
 }
 
 /**
  * `installed` against `bundle` (the admin's own): negative when the installed release is older, 0 when it is the same,
- * positive when it is newer. The version decides first; a different build of the same version counts as older (the
- * admin's bundle replaces it), and an installed release that does not parse is older than any bundle.
+ * positive when it is newer. A total order that follows the build (finding 39): the version decides first; two builds
+ * of the same version are ordered by their build times (`times`, `compareBuilds`). An installed release that does not
+ * parse is older than any bundle, and a bundle that does not parse never replaces anything.
  */
-export function compareRelease(installed: string, bundle: string): number {
+export function compareRelease(installed: string, bundle: string, times: ReleaseTimes = UNKNOWN_TIMES): number {
     const left = parseRelease(installed);
     const right = parseRelease(bundle);
     if (left === null || right === null) {
         return left === null ? -1 : 1;
     }
-    return compareParsed(left, right);
+    return compareParsed(left, right, times);
 }
 
 /** One tarball of the bundle: its name (`INSTALL_BUNDLE_FILES`), its size and its SHA-256. */
@@ -227,6 +272,8 @@ export const installManifestSchema = z
         format: z.literal(INSTALL_FORMAT),
         /** The admin's `runtime.json` release of the same build. */
         release: releaseSchema,
+        /** The admin's `runtime.json` build time (finding 39), or null for a build that knows none. */
+        releaseTime: releaseTimeSchema.nullable(),
         slug: installSlugSchema,
         /** `infra/project.json`'s project. */
         projectId: z.string().regex(PROJECT_ID_PATTERN, coded('validation.format')),
@@ -303,6 +350,8 @@ const PARAM_NAME = /^[a-zA-Z]{1,30}$/;
 export const installRecordSchema = z.strictObject({
     state: z.enum(INSTALL_STATES),
     release: releaseSchema.optional(),
+    /** The installed release's build time, when the installed parts name one (finding 39). */
+    releaseTime: releaseTimeSchema.optional(),
     buildId: installBuildIdSchema.optional(),
     checkedAt: ISO_TIME,
     /** Why, as an `apiError.install.*` (or other API) code. */

@@ -1,9 +1,9 @@
-import { FIRESTORE_PATHS } from '@hcm/shared';
+import { FIRESTORE_PATHS, MAX_POI_CATEGORIES } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import type { ContentStore } from '../../src/content/services.js';
 import { POIS_MODULE } from '../../src/pois/pois.js';
-import { readIds, starterWrites } from '../../src/pois/starter.js';
+import { readIds, startersFor, starterWrites } from '../../src/pois/starter.js';
 import { CITY, poisWorld, seedCategory, settle } from './world.js';
 
 const LAYERS = FIRESTORE_PATHS.layers(CITY);
@@ -61,16 +61,35 @@ describe('the starter categories', () => {
     });
 
     it('happyPath_theWritesComeAfterTheCitysCategoriesAndAvoidEveryTakenId', () => {
-        const writes = starterWrites(
-            CITY,
-            [{ id: 'strada', label: { ro: 'Străzi' }, icon: 'add_road', color: '#000000', defaultOpacity: 1, order: 4 }],
-            ['cladire'],
-        );
+        const writes = starterWrites(CITY, [{ id: 'strada', label: { ro: 'Străzi' }, order: 4 }], ['cladire']);
 
         expect(writes.map((write) => write.path)).toEqual(
             ['cladire-2', 'strada-2', 'piata', 'biserica', 'monument'].map((id) => FIRESTORE_PATHS.poiCategory(CITY, id)),
         );
         expect(writes[0]).toMatchObject({ kind: 'create', data: { label: { ro: 'Clădire', en: 'Building' }, icon: 'domain', order: 5 } });
+    });
+
+    it('happyPath_onlyTheStartersNoCategoryNamesAreWritten', () => {
+        const writes = starterWrites(
+            CITY,
+            [
+                { id: 'biserici', label: { ro: 'Biserică' }, order: 0 },
+                { id: 'porturi', label: { ro: 'Porturi', en: 'Ports' }, order: 1 },
+            ],
+            ['cladire'],
+        );
+
+        expect(writes.map((write) => write.path)).toEqual(
+            ['cladire-2', 'strada', 'piata', 'monument'].map((id) => FIRESTORE_PATHS.poiCategory(CITY, id)),
+        );
+    });
+
+    it('badPath_theStartersStopAtTheCategoryLimit', () => {
+        const full = (count: number) => Array.from({ length: count }, (_item, index) => ({ label: { ro: `Categoria ${String(index)}` } }));
+
+        expect(startersFor(full(MAX_POI_CATEGORIES - 3)).map((category) => category.label.en)).toEqual(['Building', 'Street', 'Square']);
+        expect(startersFor(full(MAX_POI_CATEGORIES))).toEqual([]);
+        expect(startersFor(full(MAX_POI_CATEGORIES + 1))).toEqual([]);
     });
 
     it('happyPath_oneClickAddsTheFiveAndTheNewPlaceTakesTheFirst', async () => {

@@ -8,7 +8,7 @@ import type { TargetObservation } from '../../src/install/ports.js';
 import { createSetupContext, createSetupStore } from '../../src/setup/context.js';
 import { createInstallCards } from '../../src/setup/install.js';
 import { initialSetupState, withStep, type SetupMode } from '../../src/setup/state.js';
-import { ADMIN_RELEASE, createHarness, flush, googleError } from './harness.js';
+import { ADMIN_RELEASE, ADMIN_RELEASE_TIME, createHarness, flush, googleError } from './harness.js';
 
 const SLUG = '1-0-0-abc1234';
 
@@ -206,6 +206,51 @@ describe('records', () => {
         expect(harness.backend.recordCloud.mock.calls[0]?.[0]).toMatchObject({
             install: { pipeline: { state: 'installed', release: ADMIN_RELEASE } },
         });
+        cards.dispose();
+    });
+
+    it('happyPath_aServerThatNamesItsBuildTimeIsRecordedWithIt_andSoAreTheOtherTargetsOnceItDoes', async () => {
+        // Finding 39 of 2026-11-01: a server that reads build times names its own (HCM_RELEASE_TIME).
+        const { harness, cards } = setup('normal');
+        harness.google.grant('cloudPlatform');
+        const timed = { complete: true, release: ADMIN_RELEASE, releaseTime: ADMIN_RELEASE_TIME };
+        harness.installer.observe.mockResolvedValue(observed({ installed: timed }));
+
+        cards.watch(['server']);
+        await flush();
+        cards.watch(['site']);
+        await flush();
+
+        const records = harness.backend.recordCloud.mock.calls.map(([request]) => request);
+        expect(records).toEqual([
+            { install: { server: expect.objectContaining({ release: ADMIN_RELEASE, releaseTime: ADMIN_RELEASE_TIME }) as unknown } },
+            { install: { site: expect.objectContaining({ release: ADMIN_RELEASE, releaseTime: ADMIN_RELEASE_TIME }) as unknown } },
+        ]);
+        cards.dispose();
+    });
+
+    it('badPath_whileTheServerNamesNoBuildTimeNoRecordNamesOne', async () => {
+        // A server from before the build times refuses a record naming one (its schema is strict).
+        const { harness, cards } = setup('normal');
+        harness.google.grant('cloudPlatform');
+        harness.installer.observe.mockImplementation((target) =>
+            Promise.resolve(
+                observed({
+                    installed:
+                        target === 'server'
+                            ? { complete: true, release: '1.0.0+9e2e6b5', releaseTime: null }
+                            : { complete: true, release: ADMIN_RELEASE, releaseTime: ADMIN_RELEASE_TIME },
+                }),
+            ),
+        );
+
+        cards.watch(['server', 'pipeline']);
+        await flush();
+
+        const records = harness.backend.recordCloud.mock.calls.map(([request]) => request);
+        expect(records).toHaveLength(2);
+        expect(JSON.stringify(records)).not.toContain('releaseTime');
+        expect(records).toContainEqual({ install: { server: expect.objectContaining({ state: 'updateAvailable' }) as unknown } });
         cards.dispose();
     });
 

@@ -26,6 +26,8 @@ export const M6_INSTALL_EXPORTS: readonly string[] = [
     'installBuildIdSchema',
     'installReleaseSlug',
     'releaseOfSlug',
+    'releaseTimeSchema',
+    'parseReleaseTime',
     'compareRelease',
     'installManifestSchema',
     'installLogEventSchema',

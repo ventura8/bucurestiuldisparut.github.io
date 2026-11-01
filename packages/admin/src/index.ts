@@ -247,6 +247,8 @@ interface SetupParts {
     readonly fetch: typeof fetch;
     /** The admin's `runtime.json` release (M6: what the install cards install). */
     readonly release: string;
+    /** Its build time (`runtime.json`'s `releaseTime`, finding 39 of 2026-11-01), or null when the build knows none. */
+    readonly releaseTime: number | null;
     /** Finding 29 of 2026-10-31: whether Hosting still serves this release (read before an install build). */
     readonly releases: Pick<ReleaseWatch, 'check'>;
 }
@@ -262,6 +264,7 @@ function setupFor(setup: SetupParts, project: ProjectConfig | null): SetupModule
         baseUrl: setup.parts.win.document.baseURI,
         nonce: globalThis.crypto.randomUUID.bind(globalThis.crypto),
         release: setup.release,
+        releaseTime: setup.releaseTime,
         newerAdmin: () => setup.releases.check(),
         installOrigins: setup.parts.e2e === null ? hostingOrigins(setup.config.projectId) : [setup.parts.win.location.origin],
     });
@@ -277,8 +280,21 @@ export function loadColourLibrary(
     });
 }
 
+/** `runtime.json`'s release and build time, as Home reads the recorded installs against them (finding 39 of 2026-11-01). */
+function adminReleaseOf(runtime: Pick<AdminRuntime, 'release' | 'releaseTime'>): {
+    readonly release: string;
+    readonly time: number | null;
+} {
+    return { release: runtime.release, time: runtime.releaseTime ?? null };
+}
+
 /** The editors' dependencies over the real Firestore (`docs/research/M2c-interfaces.md` §2.2). */
-export function contentDepsFor(parts: BrowserParts, handles: FirebaseHandles, fetcher: typeof fetch): ContentDeps {
+export function contentDepsFor(
+    parts: BrowserParts,
+    handles: FirebaseHandles,
+    fetcher: typeof fetch,
+    runtime: Pick<AdminRuntime, 'release' | 'releaseTime'>,
+): ContentDeps {
     return {
         modules: CONTENT,
         store: contentStore({ sdk: contentSdk, firestore: handles.firestore, uid: () => handles.auth.currentUser?.uid ?? null }),
@@ -286,6 +302,7 @@ export function contentDepsFor(parts: BrowserParts, handles: FirebaseHandles, fe
         areas: areaServices({
             ...{ handles, fetch: fetcher, mapToken: parts.e2e?.mapToken(parts.win.location.search) },
             pushTest: parts.e2e === null ? undefined : testIdOf(parts.win),
+            adminRelease: adminReleaseOf(runtime),
         }),
         cityId: parts.e2e?.city(parts.win.location.search) ?? null,
     };
@@ -307,8 +324,11 @@ export function browserDeps(parts: BrowserParts): BootEnvironment<EntrySetup, En
             languages: win.navigator.languages,
             pages: PAGES,
             telemetry: telemetryFor(parts, handles, config, runtime.release),
-            setup: setupFor({ parts, config, firebase, fetch: fetcher, release: runtime.release, releases }, project),
-            content: contentDepsFor(parts, handles, fetcher),
+            setup: setupFor(
+                { parts, config, firebase, fetch: fetcher, release: runtime.release, releaseTime: runtime.releaseTime ?? null, releases },
+                project,
+            ),
+            content: contentDepsFor(parts, handles, fetcher, runtime),
         };
     };
 }

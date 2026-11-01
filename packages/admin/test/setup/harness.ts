@@ -216,6 +216,8 @@ export interface Harness {
 
 /** The release the harness's admin runs (M6 installer). */
 export const ADMIN_RELEASE = '1.0.0+abc1234';
+/** Its build time (finding 39 of 2026-11-01). */
+export const ADMIN_RELEASE_TIME = 1_761_955_200;
 
 function fakeInstaller(): Fake<InstallerPort> {
     return {
@@ -289,6 +291,7 @@ export function createHarness(): Harness {
         cityBBox: [25.96, 44.33, 26.23, 44.54],
         serverDeployed: vi.fn<SetupHost['serverDeployed']>().mockResolvedValue(true),
         release: ADMIN_RELEASE,
+        releaseTime: ADMIN_RELEASE_TIME,
         siteAddress: `https://${PROJECT_ID}.web.app/`,
     };
     const logs = createRecordingSink();

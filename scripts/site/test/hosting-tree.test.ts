@@ -88,6 +88,19 @@ describe('assembleHostingTree: the public variant', () => {
         });
     });
 
+    it('happyPath_theBuildTimeOfTheAdminsReleaseIsInReleaseJson', () => {
+        // Finding 39 of 2026-11-01: the site's card orders two builds of one version by it.
+        const { files, inputs } = world({ release: '1.0.0+abc1234', releaseTime: 1_761_955_200 });
+
+        assembleHostingTree(inputs, 'public', 'dist/hosting', files);
+
+        expect(JSON.parse(files.readText('dist/hosting/release.json'))).toEqual({
+            release: '1.0.0+abc1234',
+            releaseTime: 1_761_955_200,
+            variant: 'public',
+        });
+    });
+
     it('happyPath_aRebuildReplacesTheTreeAndDropsAnOldStartUpFlag', () => {
         const { files, inputs } = world({ release: '1.0.1+def5678', startUp: true });
         files.write('dist/hosting/stale.txt', 'old');

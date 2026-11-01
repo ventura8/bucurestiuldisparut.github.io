@@ -51,6 +51,7 @@ function bundle(release = RELEASE): Bundle {
     const manifest = Buffer.from(
         JSON.stringify({
             release,
+            releaseTime: 1_761_955_200,
             files: { server: entry('server.tgz', server), pipeline: entry('pipeline.tgz', pipeline), site: entry('hosting.tgz', site) },
         }),
     );
@@ -82,6 +83,7 @@ function envOf(found: Bundle, changes: Readonly<Record<string, string>> = {}): R
         HCM_MANIFEST_SHA256: found.manifestSha,
         HCM_FILE_SHA256: found.serverSha,
         HCM_RELEASE: RELEASE,
+        HCM_RELEASE_TIME: '1761955200',
         HCM_FILES: 'server',
         HCM_OUT: join(work, 'server'),
         ...changes,
@@ -152,6 +154,9 @@ describe('the fetch step', () => {
             'not the one the admin read',
         ],
         ['another release', (found: Bundle) => envOf(found, { HCM_RELEASE: '1.0.1+abc1234' }), 'another release'],
+        // Finding 39 of 2026-11-01: the build time the admin read is the manifest's, or the build stops.
+        ['another build time', (found: Bundle) => envOf(found, { HCM_RELEASE_TIME: '1761955201' }), 'another build time'],
+        ['no build time for a timed release', (found: Bundle) => envOf(found, { HCM_RELEASE_TIME: '' }), 'another build time'],
         [
             'a tarball the admin did not choose',
             (found: Bundle) => envOf(found, { HCM_FILE_SHA256: '0'.repeat(64) }),

@@ -153,6 +153,8 @@ export function settingsState(overrides: Partial<SettingsViewState> = {}): Setti
             categoryItem({ id: 'biserici', label: { ro: 'Biserici' }, icon: 'church', color: '#3f6836', order: 1 }),
         ]),
         canAddCategory: true,
+        startersMissing: 5,
+        addingStarters: false,
         category: null,
         categoryDeletion: { phase: 'idle' },
         overlays: { rows: [], changes: 0, saving: false },

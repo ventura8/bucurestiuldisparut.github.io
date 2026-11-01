@@ -5104,3 +5104,71 @@ Verify: `PIPELINE_STAGE=static`, `tests` and `build`, and the touched Playwright
   a chunk of their own (`packages/admin/vite.config.ts`, group `editor-texts`): 1.0 KB measured on 2026-11-01, budget
   2 KB (plus about 20 %, rounded up, in `scripts/ci/check_bundle_budget.py`); `editor-shared` is 12.4 KB, every other
   budget unchanged. A new budget row for a new chunk, no budget raised: the pre-approved kind.
+
+## 78. The live test of 2026-11-01, the update check and Settings: a release order that follows the build, the consent note only with an action, the starter categories in Settings (2026-11-01) — 78a–78e APPLIED (findings 39–41 of `docs/research/manual-test-2026-10-25.md`: product, test and documentation changes; 78c the user's approved feature; 78d a new chunk with its own new budget row, the pre-approved kind; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged)
+
+- **78a APPLIED: every release has a total order that follows the build (finding 39).** The root cause was two-fold:
+  a release had no order beyond its semver (`1.0.0` for every build; build metadata has no precedence), and Setup's
+  cards and Home's tile showed a recorded state (`setup/status.install.*.state`, written relative to the admin that
+  recorded it) as it was, so the live record "installed 1.0.0+9e2e6b5" stayed "installed" for the admin 1.0.0+457201e.
+  The live look (Check again) did offer the update, since a different commit counted as older; but that same rule let
+  an older admin replace a newer build of its own version, a hole in the downgrade guard of §73b.
+  - **The build time**: the commit's time in whole seconds since 1970: `SOURCE_DATE_EPOCH` when set, else
+    `/usr/bin/git show -s --format=%ct <commit>` (`scripts/site/src/admin/runtime.ts` `releaseTime`; an absolute path,
+    as every command the builds run; none outside a checkout). Chosen over a build counter (no shared state across
+    machines) and over the wall clock (two builds of one commit must be the same release, and the bundle stays
+    deterministic). Carried beside the release everywhere it is recorded or compared: `runtime.json` `releaseTime`,
+    `/release.json` `releaseTime` (`scripts/site/src/hosting/tree.ts`), the install manifest's `releaseTime`
+    (`installManifestSchema`, nullable, checked against `runtime.json` by the admin and against `_RELEASE_TIME` by the
+    `fetch` step), the functions' `HCM_RELEASE_TIME` (`functions/build.mjs`; `deploy-env.json` may not name it), the
+    builds' substitution `_RELEASE_TIME` (used by `fetch`, so Cloud Build never refuses it as unused) and the pipeline
+    jobs' label `hcm-release-time` (`run-jobs`), `setup/status.install.*.releaseTime` (`installRecordSchema`, optional).
+    `INSTALL_FORMAT` stays 1: an admin only ever reads its own manifest.
+  - **The order** (`compareRelease(installed, bundle, times)`, `@hcm/shared`): the version first; the same commit is the
+    same release; else the later build time is newer; an installed build without a time (every record and server
+    before this change) is older, so it is offered as an update and never counts as newer unless its version is
+    higher; a timed installed build against an admin without a time counts as newer (an admin that cannot place itself
+    never replaces a build that can); equal times of two commits count as older. Every installed part is compared this
+    way (`cloud-build-installer.ts`: the oldest part is the target's release, the newest guards against a downgrade).
+  - **Recorded states are read again** (`recordedState`, `packages/admin/src/install/model.ts`): a record's `installed`,
+    `updateAvailable` or `newerInstalled` with a release is ordered against this admin's release and build time
+    (Setup's `withRecordedInstall`, Home's `remindersOf` through `ContentServices.adminRelease`); a build under way or
+    stopped, a record without a release and an admin without a release (`dev`, the e2e world's `e2e`) keep the record.
+  - **An older server refuses a record naming a build time** (its `installRecordSchema` is strict): an admin session
+    sends `releaseTime` only once the server itself names one (`install.ts`), so the records keep landing while the
+    update to this release is under way. The self-host bundle of `create-historic-city` (§M5) names no time yet: its
+    releases fall back to the commit rule (a different commit is an update).
+- **78b APPLIED: Google's consent note only with an action that asks for the token (finding 40).** The note's rule was
+  the step's scope and a live token (finding 7); every install card's scope is `cloudPlatform`, so an installed card in
+  daily use (no token) showed the note above nothing. On an install card it now shows only while the card's body offers
+  a button that asks Google (Install the server, Install the pipeline, Publish the map, Try again, Update the map:
+  `installCardAsks`, `packages/ui/src/admin/setup/install-status.ts`), and beside Continue when a check needs the token
+  again. Check again stays on every card and still opens Google's popup when the token is gone, without the note: the
+  user's rule (the note goes with an action, or with Continue). Every other card keeps the rule of finding 7.
+- **78c APPLIED (the user approved the feature): Settings → Place categories, Add the starter categories (finding 41).**
+  For a city that already has categories (the place editor's offer of §77a covers a city with none): one click, one
+  batch, only the starters whose label is not there (`missingStarterCategories`, `@hcm/shared`: a category's RO or EN
+  label equal to a starter's RO or EN label after NFD, combining marks removed, lower case, trimmed spaces; "Clădiri" is
+  not "Clădire"), the ids clear of the city's categories and layers (the layers read once at the click; a failed read
+  writes nothing), after the city's own in order, as many as fit under `MAX_POI_CATEGORIES`; the snackbar says how many
+  (`adminContent.settings.startersAdded`); with all five present the action is off with "Every starter category is
+  already here" (`startersPresent`). The place editor's offer now writes only the missing starters too (the same
+  `startersFor`), which matters only if categories arrive between its render and the click. The two new tour states
+  are spread from `e2e/admin/specs/settings/states.ts` through `e2e/tour/admin-sections.ts` (`states.ts` is at its line
+  limit, CR-M5-15).
+
+- **78d APPLIED: a new named chunk, `starter-categories` (the bundle budget's rule for a new chunk, as §77e).** Once the
+  settings imported the starters too, the starters' data and writes (`packages/shared/src/overlays/starter-categories.ts`,
+  `packages/admin/src/pois/starter.ts`) became shared by two areas and took `editor-shared` to 13.3 KB gzip (budget 13),
+  and the settings chunk reached 20.0 KB (budget 20). Rather than raise either budget, they and Settings' button
+  (`packages/ui/src/admin/settings/starter-actions.ts`) are a chunk of their own (`packages/admin/vite.config.ts`, group
+  `starter-categories`): 1.1 KB measured on 2026-11-01, budget 2 KB (plus about 20 %, rounded up, in
+  `scripts/ci/check_bundle_budget.py`); `editor-shared` 12.4 KB, settings 19.5 KB, every other budget unchanged. A new
+  budget row for a new chunk, no budget raised: the pre-approved kind.
+- **78e found on the way, fixed: the GitHub disclosure's focus ring on the server card.** The tour states of 78a and 78b
+  at 360 px found the `<summary>` of "Optional: install from GitHub Actions" with the browser's own focus ring, 2.16:1
+  against the card (3:1 needed); the server card now carries the kit's `focusRing` (`hcm-setup-deploy.ts`).
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build`, and the touched Playwright specs in the quality image
+(`e2e/admin/steps/install/*.spec.ts`, `provision.spec.ts`, `status.spec.ts` at `admin-steps-l1440-en`, `journey.spec.ts`
+at `admin-l1440-ro`, `e2e/admin/specs/install/states.spec.ts` for the new states, `e2e/tour/admin-settings.tour.ts`).

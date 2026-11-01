@@ -3,8 +3,10 @@
  * e2e/tour/states.ts spreads them through e2e/tour/admin-sections.ts, section `install`): Install the server (d) ready,
  * at work with its steps and the functions' count, waiting on a retry, stopped with its log, offering an update and
  * newer than the admin, stopped at a permission of step c (finding 28 of 2026-10-31); a server record older than the
- * admin (finding 27); the imagery pipeline (d3) at work, stopped and installing on its own; Publish the map (i) off with its reason, ready and
- * published; Home's tile of an update. Each is reached by e2e/admin/specs/install/states.spec.ts at the admin tier's
+ * admin (finding 27); an older build of the same version recorded installed, offered as an update, and the admin's own
+ * release with nothing to do and no consent note (findings 39 and 40 of 2026-11-01); the imagery pipeline (d3) at work,
+ * stopped and installing on its own; Publish the map (i) off with its reason, ready and published; Home's tile of an
+ * update. Each is reached by e2e/admin/specs/install/states.spec.ts at the admin tier's
  * five projects (three window classes, dark, English).
  */
 const VISIT = 'specs/install/states.spec.ts';
@@ -25,6 +27,15 @@ export const INSTALL_STATES = {
         visit: VISIT,
     },
     'setup.install-newer': { title: 'Setup, a server newer than this admin: reload the page, nothing offered', visit: VISIT },
+    // Findings 39 and 40 of 2026-11-01.
+    'setup.install-update-recorded': {
+        title: 'Setup, an older build of the same version recorded installed: Update the map, with the consent note',
+        visit: VISIT,
+    },
+    'setup.install-nothing-to-do': {
+        title: "Setup, the admin's own release installed: nothing offered and no consent note, Check again only",
+        visit: VISIT,
+    },
     'setup.pipeline-working': { title: "Setup, the imagery pipeline's installation at work with its steps", visit: VISIT },
     'setup.pipeline-failed': { title: 'Setup, the imagery pipeline stopped: its step, its log and Try again', visit: VISIT },
     'setup.pipeline-install': {

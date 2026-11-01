@@ -165,11 +165,19 @@ describe('the entry', () => {
 
     it('happyPath_theEditorsStoreStampsWithTheSignedInUid', async () => {
         const parts = browserParts(fakeWindow().win, E2E, testLog().log);
-        const signedOut = contentDepsFor(parts, { firestore: () => ({}), auth: { currentUser: null } } as never, fetch);
-        const signedIn = contentDepsFor(parts, { firestore: () => ({}), auth: { currentUser: { uid: 'owner-uid' } } } as never, fetch);
+        const runtime = { release: '1.0.0+abc1234', releaseTime: 1_761_955_200 };
+        const signedOut = contentDepsFor(parts, { firestore: () => ({}), auth: { currentUser: null } } as never, fetch, runtime);
+        const signedIn = contentDepsFor(parts, { firestore: () => ({}), auth: { currentUser: { uid: 'owner-uid' } } } as never, fetch, {
+            release: 'dev',
+        });
 
         await expect(signedOut.store.batch([])).resolves.toEqual({ ok: false, reason: 'denied' });
         await expect(signedIn.store.batch([])).rejects.toThrow();
+        // Finding 39: Home reads the recorded installs against the admin's own release and build time.
+        expect([signedOut.areas.adminRelease, signedIn.areas.adminRelease]).toEqual([
+            { release: '1.0.0+abc1234', time: 1_761_955_200 },
+            { release: 'dev', time: null },
+        ]);
     });
 
     it('happyPath_theE2eBuildEditsTheTestsOwnCity', () => {

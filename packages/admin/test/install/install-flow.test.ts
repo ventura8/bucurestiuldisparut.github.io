@@ -1,5 +1,11 @@
 import { createLogger, type InstallTarget } from '@hcm/shared';
-import { NEWER_SERVER_RELEASE, PLANTED_LOG_SECRETS, registryFunctions } from '@hcm/test-support/fakes';
+import {
+    NEWER_BUILD_RELEASE,
+    NEWER_BUILD_TIME,
+    NEWER_SERVER_RELEASE,
+    PLANTED_LOG_SECRETS,
+    registryFunctions,
+} from '@hcm/test-support/fakes';
 import { describe, expect, it, vi } from 'vitest';
 
 import { InstallBundleError } from '../../src/install/bundle.js';
@@ -7,7 +13,7 @@ import { createInstallFlow, IDLE_LOOK_MS, RUNNING_LOOK_MS, type InstallFlowDeps 
 import type { InstallTargetView } from '../../src/install/model.js';
 import type { InstallAccess, InstallerPort } from '../../src/install/ports.js';
 import { FakeClock, FakeVisibility, flush, googleError } from '../setup/harness.js';
-import { ACCESS, installWorld, RELEASE, type InstallWorld } from './world.js';
+import { ACCESS, installWorld, RELEASE, RELEASE_TIME, type InstallWorld } from './world.js';
 
 /**
  * One install target as its card follows it (`docs/research/M6-interfaces.md` §1.5, §1.7): looks on the injected clock,
@@ -37,6 +43,7 @@ function flowOver(installer: InstallerPort, target: InstallTarget = 'server'): F
         visibility: new FakeVisibility(),
         log: createLogger('test', { sink: () => undefined }),
         release: RELEASE,
+        releaseTime: RELEASE_TIME,
         liveAccess: () => state.live,
         clickAccess: () => Promise.resolve(state.click),
         report: (view) => {
@@ -147,6 +154,33 @@ describe('installing', () => {
 
         expect(install.fakes.callsTo('cloud-build.builds.create')).toHaveLength(0);
         expect(latest()).toMatchObject({ state: 'newerInstalled', installedRelease: NEWER_SERVER_RELEASE });
+        flow.dispose();
+    });
+
+    it('happyPath_anOlderBuildOfTheAdminsVersionIsUpdated', async () => {
+        // Finding 39 of 2026-11-01: every release is 1.0.0; the server deployed before the build times is behind this admin.
+        const { install, flow, latest } = await world();
+        install.fakes.scenario('cloud-functions.deployedOlderBuild');
+
+        await flow.install();
+
+        expect(install.fakes.callsTo('cloud-build.builds.create')).toHaveLength(1);
+        expect(latest()).toMatchObject({ state: 'queued' });
+        flow.dispose();
+    });
+
+    it('badPath_aNewerBuildOfTheAdminsVersionIsNamedWithItsTimeAndNeverReplaced', async () => {
+        const { install, flow, latest } = await world();
+        install.fakes.scenario('cloud-functions.deployedNewerBuild');
+
+        await flow.install();
+
+        expect(install.fakes.callsTo('cloud-build.builds.create')).toHaveLength(0);
+        expect(latest()).toMatchObject({
+            state: 'newerInstalled',
+            installedRelease: NEWER_BUILD_RELEASE,
+            installedReleaseTime: NEWER_BUILD_TIME,
+        });
         flow.dispose();
     });
 

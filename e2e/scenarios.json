@@ -6386,6 +6386,28 @@
             "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 35)."
         },
         {
+            "id": "S-A39-HAPPY-ADD-MISSING-STARTERS",
+            "behaviour": "A39",
+            "area": "admin",
+            "path": "happy",
+            "title": "Settings adds in one click only the starter categories the city lacks",
+            "asserts": "a city with Biserică and Porturi/Harbours and a layer cladire -> Settings, Place categories, Add the starter categories -> one batch writes Building, Street, Square and Monument after the city's own orders (cladire-2, strada, piata, monument: no id clash with the layer), the snackbar says 4, the list shows them and the action is off with Every starter category is already here",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 41; DECISIONS-for-review.md §78c). Covered by e2e/tour/admin-settings.tour.ts; units: packages/admin/test/settings/starters.test.ts."
+        },
+        {
+            "id": "S-A39-BAD-STARTERS-PRESENT",
+            "behaviour": "A39",
+            "area": "admin",
+            "path": "bad",
+            "title": "With every starter category already named, Add the starter categories is off with the reason",
+            "asserts": "categories BISERICA, Străzi/Street, clădire, Piata and Monumente/MONUMENT (case, diacritics and spacing aside; Clădiri would not count as Clădire) -> the action is disabled, Every starter category is already here is shown, Add a category stays on, and no category is written",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 41; DECISIONS-for-review.md §78c). Covered by e2e/tour/admin-settings.tour.ts; the matching rule: packages/shared/test/overlays/starter-categories.test.ts."
+        },
+        {
             "id": "S-A40-HAPPY",
             "behaviour": "A40",
             "area": "admin",
@@ -7748,6 +7770,50 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6, the M6 reviews of 2026-10-30 (docs/research/M6-status.md §5): finding 2 of the security-cost review. Test: e2e/admin/steps/install/server.spec.ts."
+        },
+        {
+            "id": "S-A55-HAPPY-UPDATE-SAME-VERSION",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "A newer build of the same version is offered as an update and installs",
+            "asserts": "functions of 1.0.0+e2e0000 without HCM_RELEASE_TIME, recorded installed by the older admin; the admin 1.0.0+e2e0001 with its build time -> Home's tile and card d say an update is ready before any look, with the consent note -> Update the map (one click, one consent) -> a server build whose _RELEASE_TIME is the admin's -> installed, and setup/status records the release with its build time",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 39; docs/research/M6-interfaces.md §1.7 addendum, DECISIONS-for-review.md §78a). Test: e2e/admin/steps/install/update.spec.ts (installer); units: packages/shared/test/install.test.ts, packages/admin/test/install/model.test.ts."
+        },
+        {
+            "id": "S-A55-BAD-DOWNGRADE-SAME-VERSION",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "A later build of the same version is never replaced by an older admin",
+            "asserts": "functions of 1.0.0+e2e0002 with a later HCM_RELEASE_TIME than the admin's, recorded so -> card d says the server is newer than this admin, no Update, no consent note; Check again (one consent) says the same, no build is submitted, Home has no tile",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 39; docs/research/M6-interfaces.md §1.7 addendum, DECISIONS-for-review.md §78a). Test: e2e/admin/steps/install/update.spec.ts (installer); units: packages/shared/test/install.test.ts, packages/admin/test/install/model.test.ts."
+        },
+        {
+            "id": "S-A55-HAPPY-SAME-BUILD",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "happy",
+            "title": "The admin's own build is installed, whatever a record said",
+            "asserts": "a record of the admin's own release (no build time, state updateAvailable) -> card d reads Installed, no Update, Home has no tile",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 39; docs/research/M6-interfaces.md §1.7 addendum, DECISIONS-for-review.md §78a). Test: e2e/admin/steps/install/update.spec.ts (installer); units: packages/shared/test/install.test.ts, packages/admin/test/install/model.test.ts."
+        },
+        {
+            "id": "S-A55-BAD-NOTE-NOTHING-TO-DO",
+            "behaviour": "A55",
+            "area": "admin",
+            "path": "bad",
+            "title": "An install card with nothing to do shows no Google consent note",
+            "asserts": "server installed at the admin's release, no live token -> card d shows no consent note (none without a button that asks Google or a Continue), only Check again; with Update the map, Try again, Install or Continue the note is there",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 40; DECISIONS-for-review.md §78b). Tests: e2e/admin/steps/install/update.spec.ts, e2e/admin/specs/install/states.spec.ts (setup.install-nothing-to-do); units: packages/ui/test/admin/setup/hcm-setup-page.test.ts, install-cards.test.ts."
         },
         {
             "id": "S-A56-HAPPY",

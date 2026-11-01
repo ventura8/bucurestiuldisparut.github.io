@@ -4,6 +4,7 @@ import { ORDERS_STATES } from '../admin/specs/imagery/orders-states.js';
 import { SUGGESTIONS_STATES } from '../admin/specs/imagery/suggestions-states.js';
 import { INSTALL_STATES } from '../admin/specs/install/states.js';
 import { NOTIFY_STATES } from '../admin/specs/notify/states.js';
+import { SETTINGS_STARTER_STATES } from '../admin/specs/settings/states.js';
 import { SETUP_UX_STATES } from '../admin/specs/shell/setup-ux-states.js';
 
 /**
@@ -40,4 +41,7 @@ export const ADMIN_SECTION_STATES = {
     // [section install] owner: installer (Install the server, the imagery pipeline, Publish the map, Home's update tile)
     ...INSTALL_STATES,
     // [end install]
+    // [section starters] owner: settings (Settings → Place categories, Add the starter categories: finding 41 of 2026-11-01)
+    ...SETTINGS_STARTER_STATES,
+    // [end starters]
 } as const;

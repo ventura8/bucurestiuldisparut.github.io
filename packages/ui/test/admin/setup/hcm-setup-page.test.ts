@@ -7,7 +7,8 @@ import type { HcmSetupPage } from '../../../src/admin/setup/hcm-setup-page.js';
 import { defineHcmSetupPage } from '../../../src/admin/setup/hcm-setup-page.js';
 import type { HcmSetupStep } from '../../../src/admin/setup/hcm-setup-step.js';
 import { cleanup, fixture, nextFrame, shadowPart } from '../../helpers.js';
-import { FakeSetupPort, STEP_IDS, setupView } from './fixtures.js';
+import { FakeSetupPort, STEP_IDS, setupView, type ViewChanges } from './fixtures.js';
+import { installSliceView, type InstallChanges } from './install-fixtures.js';
 
 defineHcmSetupPage();
 
@@ -234,5 +235,44 @@ describe('<hcm-setup-page> controller', () => {
         await element.updateComplete;
         expect(second.listening()).toBe(0);
         expect(element.renderRoot.querySelector('section')).toBeNull();
+    });
+});
+
+describe('<hcm-setup-page> the consent note on an install card (finding 40 of 2026-11-01)', () => {
+    afterEach(cleanup);
+
+    /** The open server card's note, without a live token: the card's state decides whether a button asks Google. */
+    async function deployNote(install: InstallChanges, deploy: NonNullable<ViewChanges['steps']>['deploy'] = {}): Promise<Element | null> {
+        const changes: ViewChanges = {
+            openStep: 'deploy',
+            install: installSliceView(install),
+            steps: { deploy: { scope: 'cloudPlatform', state: 'ok', ...deploy } },
+        };
+        const element = await render(new FakeSetupPort(setupView(changes)), 480, 'en');
+        const card = steps(element).find((step) => step.step?.id === 'deploy');
+        return card?.renderRoot.querySelector('hcm-consent-note') ?? null;
+    }
+
+    it('badPath_anInstalledServerWithNothingToDoShowsNoNote', async () => {
+        expect(
+            await deployNote({ server: { state: 'installed', installedRelease: '1.0.0+abc1234', checkedAt: '2026-11-01T09:00:00Z' } }),
+        ).toBeNull();
+        cleanup();
+        expect(await deployNote({ server: { state: 'working', checkedAt: '2026-11-01T09:00:00Z' } })).toBeNull();
+        cleanup();
+        expect(await deployNote({ server: { state: 'newerInstalled', checkedAt: '2026-11-01T09:00:00Z' } })).toBeNull();
+    });
+
+    it('happyPath_theNoteComesWithUpdateTheMap_TryAgain_AFirstInstall_orContinue', async () => {
+        expect(await deployNote({ server: { state: 'updateAvailable', checkedAt: '2026-11-01T09:00:00Z' } })).not.toBeNull();
+        cleanup();
+        expect(await deployNote({ server: { state: 'failed', checkedAt: '2026-11-01T09:00:00Z' } })).not.toBeNull();
+        cleanup();
+        expect(await deployNote({}, { state: 'missing' })).not.toBeNull();
+        cleanup();
+        // A check that needs the token: Continue, the note beside it.
+        expect(
+            await deployNote({ server: { state: 'installed', checkedAt: '2026-11-01T09:00:00Z' } }, { needsContinue: true }),
+        ).not.toBeNull();
     });
 });

@@ -338,6 +338,26 @@ The state of a target, `InstallState` (`packages/shared/src/schemas/install.ts`,
   the pipeline in parallel, then the site once the server is installed). Budget `updateMap`: 1 input (plus one consent:
   in daily use there is no live token).
 
+**Addendum 2026-11-01 (finding 39 of `manual-test-2026-10-25.md`, `DECISIONS-for-review.md` §78a): the release order.**
+Every release of a version shares its semver (`1.0.0+<commit>`; build metadata has no precedence), so a release also
+carries its **build time**: the build commit's time in whole seconds since 1970 (`SOURCE_DATE_EPOCH`, else
+`git show -s --format=%ct`), as `releaseTime` in the admin's `runtime.json`, `/release.json` and the install manifest,
+`HCM_RELEASE_TIME` in the functions' environment, the label `hcm-release-time` on both pipeline jobs, the builds'
+substitution `_RELEASE_TIME` (checked by `fetch` against the manifest) and `releaseTime` in `setup/status.install.*`
+(sent only once the server names a time of its own: an older server's strict schema refuses it). `compareRelease`
+orders: a higher version is newer; within one version the same commit is the same release, else the later build time
+is newer; an installed build without a time (before this addendum) is behind, never newer unless its version is
+higher; a timed installed build is never replaced by an admin without a time. `updateAvailable` and `newerInstalled`
+above follow that order, and the downgrade guard (S-A55-BAD-DOWNGRADE, S-A55-BAD-DOWNGRADE-SAME-VERSION) with them. A
+recorded state names where the target stood against the admin that recorded it, so Setup's cards and Home's tile read
+a recorded release in place again against this admin's own release and build time (`recordedState`) before any look
+at Google (S-A55-HAPPY-UPDATE-SAME-VERSION, S-A55-HAPPY-SAME-BUILD).
+
+**Addendum 2026-11-01 (finding 40, §78b): the consent note on an install card.** It shows only while the card offers a
+button that asks Google for the token (Install, Publish, Try again, Install the pipeline, Update the map) or beside
+Continue; an install card with nothing to do (installed, under way, newer than the admin) shows none, its Check again
+still asking Google when the token is gone (S-A55-BAD-NOTE-NOTHING-TO-DO).
+
 ### 1.8 The cards (installer; the step frame's rules from setup-ux)
 
 - **(d) Install the map's server**: why, what it creates, the cost line (§1.9), **Install the server** (one click; the
@@ -789,6 +809,9 @@ viewer's at every viewer viewport), light and dark; nothing joins a checker's al
   `setup.provision-busy` (the live indicator), `setup.usgs-later`, `setup.done-usgs-pending`, `setup.import-done`
   (the snackbar), `home.usgs-later`, `home.trial-reminder`, `setup.checks-optional-off`;
 - hosting: `site.start-up` and `site.city-generic` (viewer), `site.not-found` (`404.html`).
+- added 2026-11-01 (findings 39, 40): `setup.install-update-recorded` (an older build of the same version recorded
+  installed, offered as an update with the consent note) and `setup.install-nothing-to-do` (the admin's own release
+  installed: nothing offered, no consent note).
 
 ## 7. Fakes and the e2e world
 

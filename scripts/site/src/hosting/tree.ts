@@ -18,7 +18,8 @@ import { HOSTING_STYLESHEET_FILE, HOSTING_STYLESHEET_SOURCE, renderNotFoundPage,
  * /<city>/               every other committed city site, at its Pages path
  * /city/                 the generic city page (city-page.ts): Hosting rewrites any other city id to it
  * /admin/                the admin's Hosting folder (its build), runtime.json per variant
- * /release.json          {release, variant}: what the site's card reads back (no-cache)
+ * /release.json          {release, releaseTime?, variant}: what the site's card reads back (no-cache); releaseTime is
+ *                        the build time (finding 39 of 2026-11-01) that orders two builds of one version
  * /404.html, /hosting.css
  * ```
  *
@@ -66,7 +67,18 @@ export interface HostingTreeReport {
 type PlannedFile = { readonly to: string; readonly content: string } | { readonly to: string; readonly from: string };
 
 /** The admin's `runtime.json` as its build wrote it: the release, and whatever else it carries (the App Check key). */
-const runtimeSchema = z.looseObject({ release: z.string().min(1).max(64), startUp: z.boolean().optional() });
+const runtimeSchema = z.looseObject({
+    release: z.string().min(1).max(64),
+    /** The build time (finding 39 of 2026-11-01), when the admin's build knew one. */
+    releaseTime: z.number().int().min(0).optional(),
+    startUp: z.boolean().optional(),
+});
+
+/** The admin's release as `/release.json` names it: the release and, when known, its build time. */
+interface ReleaseStamp {
+    readonly release: string;
+    readonly releaseTime?: number;
+}
 
 const BUILD_HINT = 'build the admin first (npm run build:admin)';
 
@@ -99,7 +111,11 @@ function json(value: unknown): string {
 }
 
 /** The admin's files under `admin/`, its `runtime.json` written for the variant, its installer folder left out. */
-function adminFiles(inputs: HostingTreeInputs, variant: HostingVariant, files: SiteFileSystem): { files: PlannedFile[]; release: string } {
+function adminFiles(
+    inputs: HostingTreeInputs,
+    variant: HostingVariant,
+    files: SiteFileSystem,
+): { files: PlannedFile[]; stamp: ReleaseStamp } {
     const runtime = readRuntime(inputs.adminDir, files);
     const rest = Object.fromEntries(Object.entries(runtime).filter(([key]) => key !== 'startUp'));
     const written = variant === 'start-up' ? { ...rest, startUp: true } : rest;
@@ -107,7 +123,9 @@ function adminFiles(inputs: HostingTreeInputs, variant: HostingVariant, files: S
         .listFiles(inputs.adminDir)
         .filter((path) => path !== RUNTIME_FILE && !path.startsWith(`${INSTALL_FOLDER}/`))
         .map((path) => ({ from: `${inputs.adminDir}/${path}`, to: `${ADMIN_FOLDER}/${path}` }));
-    return { files: [...copied, { to: `${ADMIN_FOLDER}/${RUNTIME_FILE}`, content: json(written) }], release: runtime.release };
+    const stamp =
+        runtime.releaseTime === undefined ? { release: runtime.release } : { release: runtime.release, releaseTime: runtime.releaseTime };
+    return { files: [...copied, { to: `${ADMIN_FOLDER}/${RUNTIME_FILE}`, content: json(written) }], stamp };
 }
 
 /** The first segment of every file of the root site (`index.html`, `engine`, `config.js`, ...). */
@@ -190,7 +208,7 @@ export function assembleHostingTree(
     const planned: PlannedFile[] = [
         ...own,
         ...admin.files,
-        { to: RELEASE_FILE, content: json({ release: admin.release, variant }) },
+        { to: RELEASE_FILE, content: json({ ...admin.stamp, variant }) },
         { to: NOT_FOUND_FILE, content: renderNotFoundPage() },
         { to: HOSTING_STYLESHEET_FILE, content: HOSTING_STYLESHEET_SOURCE },
     ];
@@ -198,5 +216,5 @@ export function assembleHostingTree(
     for (const file of planned) {
         write(files, outDir, file);
     }
-    return { outDir, variant, release: admin.release, paths: pathsOf(variant, inputs.sites), files: planned.length };
+    return { outDir, variant, release: admin.stamp.release, paths: pathsOf(variant, inputs.sites), files: planned.length };
 }

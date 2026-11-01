@@ -1,7 +1,7 @@
 /**
  * The admin's own install bundle (`docs/research/M6-interfaces.md` §1.3): `install/<slug>/manifest.json` below the
  * admin's base path, from the admin's own origin. The admin reads it when the owner clicks, refuses it unless it is
- * this admin's (its format, its release, its project), and computes its SHA-256, which the build's `fetch` step checks
+ * this admin's (its format, its release and build time, its project), and computes its SHA-256, which the build's `fetch` step checks
  * before it uses a byte of the bundle. The origin must be one of the project's Hosting origins: never a value from data.
  */
 import {
@@ -51,6 +51,8 @@ export interface BundleDeps {
     readonly baseUrl: string;
     /** The admin's `runtime.json` release. */
     readonly release: string;
+    /** Its build time (`runtime.json`'s `releaseTime`, finding 39 of 2026-11-01), or null when the build knows none. */
+    readonly releaseTime: number | null;
     /** The web configuration's project. */
     readonly projectId: string;
     /** The origins the admin may install from (the project's Hosting origins; the e2e world's own). */
@@ -112,7 +114,8 @@ function parsedManifest(json: unknown): InstallManifest {
 /** The manifest when it is this admin's, else the reason it is not. */
 function checkedManifest(deps: BundleDeps, json: unknown): InstallManifest {
     const manifest = parsedManifest(json);
-    if (manifest.release !== deps.release || manifest.projectId !== deps.projectId) {
+    const sameRelease = manifest.release === deps.release && manifest.releaseTime === deps.releaseTime;
+    if (!sameRelease || manifest.projectId !== deps.projectId) {
         throw new InstallBundleError('apiError.install.mismatch');
     }
     return manifest;

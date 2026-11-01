@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { STARTER_POI_CATEGORIES, starterCategoryDocs } from '../../src/overlays/starter-categories.js';
+import { missingStarterCategories, STARTER_POI_CATEGORIES, starterCategoryDocs } from '../../src/overlays/starter-categories.js';
 import { POI_ICONS, poiCategorySchema } from '../../src/schemas/poi.js';
 
 /** The WCAG contrast of `hex` against white. */
@@ -36,5 +36,47 @@ describe('starterCategoryDocs', () => {
         expect(docs.map((doc) => doc.id)).toEqual(['cladire-2', 'strada-3', 'piata', 'biserica', 'monument']);
         expect(docs[0]?.order).toBe(7);
         expect(docs.at(-1)?.order).toBe(11);
+    });
+});
+
+describe('missingStarterCategories', () => {
+    const missing = (labels: readonly { ro: string; en?: string }[]): string[] =>
+        missingStarterCategories(labels.map((label) => ({ label }))).map((category) => category.label.en);
+
+    it('happyPath_aStarterIsThereWhenARomanianOrEnglishLabelNamesItCaseDiacriticsAndSpacingAside', () => {
+        expect(missing([])).toEqual(['Building', 'Street', 'Square', 'Church', 'Monument']);
+        expect(missing([{ ro: 'BISERICA' }, { ro: 'Străzi', en: '  street  ' }, { ro: 'Porturi', en: 'Ports' }])).toEqual([
+            'Building',
+            'Square',
+            'Monument',
+        ]);
+        expect(missing([{ ro: 'piata' }, { ro: 'Edificiu', en: 'BUILDING' }, { ro: 'Monument   istoric' }])).toEqual([
+            'Street',
+            'Church',
+            'Monument',
+        ]);
+    });
+
+    it('badPath_onlyAnExactNameCountsSoClădiriIsNotClădire', () => {
+        expect(missing([{ ro: 'Clădiri', en: 'Buildings' }, { ro: 'Biserici' }])).toEqual([
+            'Building',
+            'Street',
+            'Square',
+            'Church',
+            'Monument',
+        ]);
+    });
+
+    it('happyPath_onlyTheGivenStartersGetIdsAndOrders', () => {
+        const [, street, , , monument] = STARTER_POI_CATEGORIES;
+        const docs = starterCategoryDocs(
+            ['strada'],
+            3,
+            [street, monument].filter((category) => category !== undefined),
+        );
+        expect(docs.map((doc) => [doc.id, doc.order])).toEqual([
+            ['strada-2', 3],
+            ['monument', 4],
+        ]);
     });
 });
