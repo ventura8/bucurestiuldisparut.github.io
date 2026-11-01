@@ -7,8 +7,16 @@
  */
 export const IMAGERY_STATES = {
     'imagery.results': {
-        title: 'Historical imagery: the ranked scenes, free first, their reasons, the filters and the footprints on the map',
+        title: "Historical imagery: the ranked scenes, free first, their reasons, the filters and the city's boundary on the map",
         visit: 'specs/imagery/search.spec.ts',
+    },
+    'imagery.results-previews': {
+        title: 'Historical imagery: every listed row with its browse image, the copies the list asked for, and what tells each frame apart',
+        visit: 'specs/imagery/rows.spec.ts',
+    },
+    'imagery.results-previews-unavailable': {
+        title: 'Historical imagery: rows whose browse image USGS does not serve, each saying so, the map showing the city alone',
+        visit: 'specs/imagery/rows.spec.ts',
     },
     'imagery.scene': {
         title: 'Historical imagery: a scene with its preview, its reasons and Import',
@@ -37,6 +45,10 @@ export const IMAGERY_STATES = {
     'imagery.version-steps': {
         title: 'Historical imagery: a version being made, its steps advancing live, Cancel',
         visit: 'specs/imagery/published.spec.ts',
+    },
+    'imagery.version-downloading': {
+        title: 'Historical imagery: an import downloading its scene, the bytes received of the total on its step, the bar moving',
+        visit: 'specs/imagery/import.spec.ts',
     },
     'imagery.version-approval': {
         title: 'Historical imagery: a version over the threshold, both errors, the compute units and Approve',

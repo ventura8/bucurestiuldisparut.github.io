@@ -124,9 +124,9 @@ Check: Setup (d) shows every function installed (**{ready} din {total} funcții 
 
 The admin leaves start-up mode by itself once the server answers (finding 14 of [research/manual-test-2026-10-25.md](research/manual-test-2026-10-25.md), observed live); `startUp` is only a hint for the first page loads. The public variant of the Hosting site is published by Setup's **Publish the map** (or by D1 without `HCM_ADMIN_START_UP=1`).
 
-### D5. Terminal fallback: the raster pipeline's image and its two Cloud Run Jobs (after D3 and Provision cloud)
+### D5. Terminal fallback: the raster pipeline's image and its three Cloud Run Jobs (after D3 and Provision cloud)
 
-Since M6, Setup (d3) installs the pipeline from the app (started by Install the server's click; Cloud Build builds the image into the `hcm` repository and makes both jobs on its digest). This block needs the Google Cloud CLI on your machine with your own `gcloud auth login` (installing it is a download: ask first), or the CI job `deploy-pipeline-image` once `DEPLOY_ENABLED` is set (D7), which pushes the image; the job definitions are these `gcloud run jobs deploy` either way.
+Since M6, Setup (d3) installs the pipeline from the app (started by Install the server's click; Cloud Build builds the image into the `hcm` repository and makes the three jobs on its digest: since finding 56 a small `raster-fetch` for the downloads). This block needs the Google Cloud CLI on your machine with your own `gcloud auth login` (installing it is a download: ask first), or the CI job `deploy-pipeline-image` once `DEPLOY_ENABLED` is set (D7), which pushes the image; the job definitions are these `gcloud run jobs deploy` either way.
 
 ```bash
 P=bucurestiul-disparut; R=us-central1; IMAGE="$R-docker.pkg.dev/$P/hcm/pipeline:$(git rev-parse --short HEAD)"
@@ -135,7 +135,7 @@ gcloud auth configure-docker "$R-docker.pkg.dev"                                
 docker build -f pipeline/Dockerfile --target runtime -t "$IMAGE" pipeline
 docker push "$IMAGE"
 DIGEST="$(gcloud artifacts docker images describe "$IMAGE" --format='value(image_summary.digest)')"
-for spec in "raster-pipeline 4 16Gi" "raster-pipeline-xl 8 32Gi"; do
+for spec in "raster-fetch 1 4Gi" "raster-pipeline 4 16Gi" "raster-pipeline-xl 8 32Gi"; do
   read -r job cpu memory <<<"$spec"
   gcloud run jobs deploy "$job" --project="$P" --region="$R" --image="$R-docker.pkg.dev/$P/hcm/pipeline@$DIGEST" \
     --service-account="job-raster@$P.iam.gserviceaccount.com" --cpu="$cpu" --memory="$memory" \
@@ -144,7 +144,7 @@ for spec in "raster-pipeline 4 16Gi" "raster-pipeline-xl 8 32Gi"; do
 done
 ```
 
-Check: **Verifică din nou** in Setup shows the Cloud Run check green; `gcloud run jobs list --project="$P" --region="$R"` lists both jobs on the image's digest.
+Check: **Verifică din nou** in Setup shows the Cloud Run check green; `gcloud run jobs list --project="$P" --region="$R"` lists the three jobs on the image's digest.
 
 ### D6. Optional: the `real-data` run (ask first, local only)
 
@@ -257,8 +257,10 @@ LOCAL now (seeded city; maps in Chrome); LIVE after D1, Update the map and B5. E
 LOCAL now (the stand-in pipeline and the fake MTS); LIVE after D1, Update the map (the server and the pipeline, B3 and B3b), B5, B6 with M2M downloads approved, and B10. The seeded LOCAL world has the harvest, a draft over the threshold, an import waiting for points, a failed import and the published 1980 frame.
 
 - [ ] **M1. Search and ranking.** **Imagini istorice**: the first visit harvests (**Se caută scenele USGS de deasupra orașului…**, then **Am găsit {found} scene, dintre care {added} noi.**); the scenes **cele mai potrivite primele** with a 0–100 score and their reasons in words; the footprints on the map. **Filtre**: **Doar gratuite**, **Ascunde respinsele**, **Din anul / Până în anul**; **Caută din nou la USGS**. LIVE: the real catalogue over Bucharest (the five target frames first after B10).
+- [ ] **M1b. Find's map and rows (findings 51–54 of 2026-11-01).** The footprints are outlines, the basemap visible under them; the open scene alone is filled, in the city's colours. Every row of the first 24 shows its USGS preview within a minute (the list asks the server for the copies it lacks); a preview USGS does not serve shows the broken-image icon (its page: **Încearcă din nou**). Rows of the same camera and day say their id, **camera din față** / **camera din spate** and **cadrul N**. While an import runs, **În lucru (n)** counts it. LOCAL: Free only off shows the 1968 twins (frames 75 and 76; 76's preview is unavailable). LIVE: the 1964 KH-4A frames of 18 June; note which rows keep the placeholder and, in the functions' logs, any `browse image not copied` (finding 52's UNVERIFIED part).
 - [ ] **M2. A scene and its preview.** Open a scene: the browse image (copied into our bucket by the server; the browser never asks USGS), the reasons, **Importă (gratuit)**; a paid frame says it must be ordered (O1).
 - [ ] **M3. Import and live progress.** **Importă (gratuit)** (one click). Expected: the version page, its steps advancing live with the log, **Anulează procesarea**; under the threshold the policy publishes it with no other click; the new layer appears in Straturi and in the viewer. LIVE: the first real run (minutes to an hour); LOCAL: seconds, then the fake MTS (about two minutes).
+- [ ] **M3b. A download on the small job (findings 55–56 of 2026-11-01).** Right after **Importă (gratuit)**: **Descărcarea scenei · În lucru · 1,23 din 3,4 GB**, the numbers moving every few seconds and the bar with them. LIVE: Cloud Run → Jobs: the execution on `raster-fetch` (1 vCPU) for the download, then one on `raster-pipeline` (`-xl` for a KH-9 panoramic frame) for the rest; the version document's `machines` names both. Prerequisite LIVE: the pipeline installed again with this release (B3b: three jobs).
 - [ ] **M4. Approve a draft over the threshold.** The version **Gata de publicare** with both errors and the compute units (**Publicarea folosește circa {estimate} unități de calcul Mapbox; luna asta mai sunt {available}.**); **Aprobă și publică** / **Respinge**. LOCAL: the seeded 1966 draft.
 - [ ] **M5. The georeferencer when matching fails.** The version waiting for points → **Georeferențiator**: the scan and the reference side by side, **Adaugă perechi** (scan, then map, or the reverse; the keyboard works too), the residual table, both errors, **Afină / Spline în plăci subțiri** with their minimum pairs, pairs on a line refused, **Salvează și georeferențiază**. Expected: **Punctele au fost salvate: procesarea continuă.** LOCAL: the seeded 1976 import. The OpenStreetMap reference image is LIVE only (LOCAL refuses OpenStreetMap tiles, the e2e firewall's rule).
 - [ ] **M6. Retry a failed import.** **Rulează din nou**. Expected: it resumes from its failed step and publishes. LOCAL: the seeded 1977 import (its second attempt is scripted to succeed).

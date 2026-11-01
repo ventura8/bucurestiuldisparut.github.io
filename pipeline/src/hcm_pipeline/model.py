@@ -193,6 +193,8 @@ class Job:
     lease: Lease | None = None
     cancel_requested: bool = False
     attempt: int = 0
+    # The Cloud Run job this run was dispatched to (`fetch`, `std`, `xl`), None for a job no dispatcher sized.
+    machine: str | None = None
 
     @classmethod
     def of(cls, job_id: str, record: Mapping[str, object]) -> Job:
@@ -208,6 +210,7 @@ class Job:
             lease=Lease.of(record.get("lease")),
             cancel_requested=record.get("cancelRequested") is True,
             attempt=attempt if isinstance(attempt, int) else 0,
+            machine=optional_str(record.get("machine")),
         )
 
     def step(self, name: str) -> StepRecord:

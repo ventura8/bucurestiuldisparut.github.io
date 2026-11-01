@@ -1,4 +1,5 @@
 import {
+    DOWNLOAD_STEPS,
     jobDocSchema,
     jobLogDocSchema,
     JOB_STEPS,
@@ -43,6 +44,11 @@ export interface StandinAttempt {
     readonly areaKm2?: number;
     /** `maintenance`: when USGS is tried again (default 30 minutes; 0 for a tick that resumes it at once). */
     readonly retryInMinutes?: number;
+    /**
+     * `fetch` reports these bytes received (and the delivery's size, when given) and the run ends there with the job still
+     * running: a long download as the admin watches it (finding 55 of 2026-11-01; the pipeline's `ctx.report_bytes`).
+     */
+    readonly downloading?: { readonly received: number; readonly total?: number };
 }
 
 /** The pipeline's weights of the `usgs-import` steps (§4.4); other job types scale theirs to 1. */
@@ -225,7 +231,9 @@ export class Run {
     /** A log line of the job (`jobs/{id}/logs/{seq}`), redacted by construction: the stand-in never holds an address. */
     async log(level: 'info' | 'warn' | 'error', message: string, step?: PipelineStep): Promise<void> {
         this.#logs += 1;
-        const seq = Number(this.job['attempt'] ?? 1) * 1000 + this.#logs;
+        // An attempt's two runs (the download on the small job, then the rest: finding 56) number their lines apart.
+        const phase = this.job['machine'] === 'fetch' ? 0 : 500;
+        const seq = Number(this.job['attempt'] ?? 1) * 1000 + phase + this.#logs;
         const line = { seq, level, message, updatedBy: PIPELINE, updatedAt: now(), ...(step === undefined ? {} : { step }) };
         jobLogDocSchema.parse(line);
         await updateDocument(`${this.jobPath}/logs/${String(seq).padStart(6, '0')}`, line, Object.keys(line));
@@ -267,8 +275,38 @@ export class Run {
     }
 
     async stepStarted(step: PipelineStep): Promise<void> {
+        await this.#recordMachine(step);
         await this.writeJob({ step, progress: this.progress(), [`steps.${step}`]: { status: 'running', startedAt: now() } });
         await this.log('info', `${step} started`, step);
+    }
+
+    /** The version records the Cloud Run job each phase runs on, once a phase (finding 56; the pipeline's `_record_machine`). */
+    async #recordMachine(step: PipelineStep): Promise<void> {
+        const machine = this.job['machine'];
+        const phase = (DOWNLOAD_STEPS as readonly string[]).includes(step) ? 'download' : 'process';
+        const machines = (this.version['machines'] ?? {}) as Readonly<Record<string, string>>;
+        if (typeof machine === 'string' && machines[phase] !== machine) {
+            await this.writeVersion({ machines: { ...machines, [phase]: machine } });
+        }
+    }
+
+    /** True on the small download job once the walk reaches a step past the download (the pipeline's `_hands_over`). */
+    handsOver(step: PipelineStep): boolean {
+        return this.job['machine'] === 'fetch' && !(DOWNLOAD_STEPS as readonly string[]).includes(step);
+    }
+
+    /** The download is done on the small job: the job is queued again for its processing on a larger one (`_hand_over`). */
+    async handOver(): Promise<void> {
+        await this.writeJob({ status: 'queued', progress: this.progress(), lease: undefined });
+        await this.log('info', 'the scene is downloaded; its processing is queued for a larger machine');
+    }
+
+    /** A transfer's bytes so far on its step, and the job's progress with the step's share of them (`report_bytes`). */
+    async reportBytes(step: PipelineStep, received: number, total: number | undefined): Promise<void> {
+        const weights = pipelineStepsOf(this.type).reduce((sum, each) => sum + (WEIGHTS[each] ?? 0), 0);
+        const share = total === undefined ? 0 : ((WEIGHTS[step] ?? 0) * received) / total / weights;
+        const sizes = total === undefined ? {} : { [`steps.${step}.totalBytes`]: total };
+        await this.writeJob({ [`steps.${step}.bytes`]: received, ...sizes, progress: Math.round((this.progress() + share) * 1000) / 1000 });
     }
 
     /** The step's record: done (or skipped), with what it wrote. */

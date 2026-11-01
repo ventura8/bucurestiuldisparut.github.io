@@ -1,8 +1,9 @@
 /**
  * The scenes' browse images (`docs/research/M3-interfaces.md` §3.4): no USGS address ever reaches the browser, so a
- * scene's image is the copy in the private bucket, read with the Storage SDK as a `blob:` address. The list shows the
- * copies that exist (the harvest copies the best-ranked ones ahead); the scene's detail asks `imagery.browse` to copy a
- * missing one first, and a failure says the preview is unavailable with Try again (`S-A11-BAD-BROWSE-UNAVAILABLE`).
+ * scene's image is the copy in the private bucket, read with the Storage SDK as a `blob:` address. The list's first rows
+ * show their copies, and ask `imagery.browse` for the ones the harvest did not make (it copies only its best-ranked
+ * frames ahead, so most rows had none: finding 52 of 2026-11-01), four at a time; a scene whose copy failed says so (its
+ * page with Try again, `S-A11-BAD-BROWSE-UNAVAILABLE`). The scene's page copies a missing one at once.
  * Every address is released when the area closes.
  */
 import type { ContentServices } from '../content/services.js';
@@ -21,6 +22,9 @@ const LIST_THUMBNAILS = 24;
 
 const UNAVAILABLE: BrowseImage = { status: 'failed', error: { key: 'apiError.imagery.browseUnavailable' } };
 
+/** Copies the list asks of `imagery.browse` at once (the scene's page asks for its own at any time). */
+const COPIES_AT_ONCE = 4;
+
 /** A scene's copy in our bucket, when the harvest made one. */
 function copiedPath(scene: SceneItem): string | null {
     return scene.browse.state === 'copied' ? scene.browse.path : null;
@@ -32,6 +36,10 @@ export class BrowseImages {
     readonly #changed: (images: Readonly<Record<string, BrowseImage>>) => void;
     readonly #images = new Map<string, BrowseImage>();
     readonly #paths = new Map<string, string>();
+    /** The images being made: the page of a scene the list is copying waits for the same copy. */
+    readonly #making = new Map<string, Promise<void>>();
+    /** The scenes the list showed last: a copy that ends lets the next one start. */
+    #listed: readonly SceneItem[] = [];
     /** Bumped by `clear`: an address that arrives for an older opening is released at once. */
     #generation = 0;
 
@@ -46,23 +54,43 @@ export class BrowseImages {
         return this.#paths.get(id) ?? null;
     }
 
-    /** The list's thumbnails: the copies that exist, for the first scenes shown. */
+    /** The list's thumbnails, for the first scenes shown: the copies, a copy asked for, or unavailable. */
     thumbnails(scenes: readonly SceneItem[]): void {
-        for (const scene of scenes.slice(0, LIST_THUMBNAILS)) {
-            const path = copiedPath(scene);
-            if (path !== null && !this.#images.has(scene.id)) {
-                void this.#load(scene.id, path, this.#generation);
-            }
+        this.#listed = scenes;
+        for (const scene of scenes.slice(0, LIST_THUMBNAILS).filter((shown) => !this.#images.has(shown.id))) {
+            this.#thumbnail(scene);
         }
     }
 
-    /** The detail's image: copied first when the harvest made no copy. */
-    async open(scene: SceneItem): Promise<void> {
-        if (this.#images.has(scene.id)) {
-            return;
+    #thumbnail(scene: SceneItem): void {
+        const path = copiedPath(scene);
+        if (path !== null) {
+            void this.#load(scene.id, path, this.#generation);
+        } else if (scene.browse.state === 'failed') {
+            this.#set(scene.id, UNAVAILABLE);
+        } else if (this.#making.size < COPIES_AT_ONCE) {
+            void this.#make(scene);
         }
+    }
+
+    /** The detail's image: copied first when the harvest made no copy (the copy the list asked for, if any). */
+    open(scene: SceneItem): Promise<void> {
+        return this.#making.get(scene.id) ?? (this.#images.has(scene.id) ? Promise.resolve() : this.#make(scene));
+    }
+
+    #make(scene: SceneItem): Promise<void> {
         this.#set(scene.id, { status: 'loading' });
-        const generation = this.#generation;
+        const made = this.#fill(scene, this.#generation).finally(() => {
+            if (this.#making.get(scene.id) === made) {
+                this.#making.delete(scene.id);
+                this.thumbnails(this.#listed);
+            }
+        });
+        this.#making.set(scene.id, made);
+        return made;
+    }
+
+    async #fill(scene: SceneItem, generation: number): Promise<void> {
         try {
             await this.#load(scene.id, copiedPath(scene) ?? (await this.#copy(scene.id)), generation);
         } catch (error) {
@@ -85,6 +113,8 @@ export class BrowseImages {
             this.#forget(id);
         }
         this.#paths.clear();
+        this.#making.clear();
+        this.#listed = [];
         this.#emit();
     }
 

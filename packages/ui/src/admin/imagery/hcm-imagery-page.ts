@@ -20,7 +20,7 @@ import { guardBanner } from './guard-banner.js';
 import type { ImageryIntentsPort, ImageryTabPort, ImageryViewState } from './imagery-port.js';
 import { imageryStyles } from './imagery-styles.js';
 import { numberText } from './imagery-text.js';
-import { ordersNeedingYou } from './orders/order-list.js';
+import { openOrderCount } from './orders/order-list.js';
 import { orderStyles } from './orders/order-styles.js';
 import { sceneDetail } from './scene-detail.js';
 import { findView } from './scene-list.js';
@@ -66,8 +66,6 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
     declare question: ImageryQuestion | null;
     /** mapbox-gl.css of the pinned release ('' in tests: no network). */
     declare mapCss: string;
-    /** The footprint click the page followed last. */
-    #picked = 0;
     /** The upload whose version the page opened. */
     #opened: string | null = null;
 
@@ -86,19 +84,11 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
         this.#follow();
     }
 
-    /** A footprint clicked on the map opens its scene; a finished upload opens its version. */
+    /** A finished upload opens its version. */
     #follow(): void {
         const view = this.view;
         if (view !== null) {
-            this.#followPick(view.pickedScene);
             this.#followUpload(view.upload);
-        }
-    }
-
-    #followPick(picked: ImageryViewState['pickedScene']): void {
-        if (picked !== null && picked.seq !== this.#picked) {
-            this.#picked = picked.seq;
-            this.go(['scene', picked.id]);
         }
     }
 
@@ -155,10 +145,11 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
 
     #list(context: ImageryContext): TemplateResult {
         const { locale, view, intents } = context;
-        const waiting = view.versions.items.filter((version) => version.needsYou).length + ordersNeedingYou(view);
+        // Work's count is what Work lists, live: every unfinished version (an import running too) and every open order (finding 54).
+        const work = view.versions.items.length + openOrderCount(view);
         const options = TABS.map((tab) => ({
             value: tab,
-            label: contentText(locale, `adminContent.imagery.tab.${tab}`, { count: String(waiting) }),
+            label: contentText(locale, `adminContent.imagery.tab.${tab}`, { count: String(work) }),
         }));
         return html`<div class="list-head">
                 <h2>${contentText(locale, 'adminContent.imagery.title')}</h2>

@@ -28,6 +28,11 @@ export const imageryStyles = [
             gap: 12px;
         }
 
+        /* The title, the frame's identity and the reasons each on their own lines (finding 53). */
+        .row.scene .row-detail {
+            display: block;
+        }
+
         .thumb {
             display: grid;
             place-items: center;
@@ -62,12 +67,13 @@ export const imageryStyles = [
             flex-direction: column;
         }
 
-        /* A card's Import sits under its text, past the thumbnail's column (16 + 64 + 12 px). */
+        /* A card's Import sits under its text, past the thumbnail's column (16 + 64 + 12 px), 4 px below the link: its
+           48 px target reaches 4 px past the button and must not cover the link (finding 53's longer rows showed it). */
         .card-import {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            padding-block: 0 8px;
+            padding-block: 4px 8px;
             padding-inline: 92px 16px;
         }
 

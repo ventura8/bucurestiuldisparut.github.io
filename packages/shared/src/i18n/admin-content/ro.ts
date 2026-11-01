@@ -29,8 +29,6 @@ export const ro = {
     'adminContent.common.unsavedTitle': 'Renunți la modificări?',
     'adminContent.common.unsavedBody': 'Modificările de aici nu sunt salvate și se pierd dacă pleci.',
     'adminContent.common.keepEditing': 'Continuă editarea',
-    'adminContent.common.moreActions': 'Mai multe acțiuni',
-    'adminContent.common.history': 'Istoric',
     'adminContent.common.savedBy': 'Salvat de {who} la {date}.',
     'adminContent.common.savedByWho': 'Salvat de {who}.',
     'adminContent.common.cannotSave': 'Nu se poate salva: {issues}.',
@@ -74,11 +72,9 @@ export const ro = {
     'adminContent.map.vertex': 'Punctul {number}',
     'adminContent.map.latitude': 'Latitudine',
     'adminContent.map.longitude': 'Longitudine',
-    'adminContent.map.chooseVertex': 'Alege punctul {number}',
     'adminContent.map.moveUp': 'Mută punctul {number} mai sus',
     'adminContent.map.moveDown': 'Mută punctul {number} mai jos',
     'adminContent.map.removeVertex': 'Șterge punctul {number}',
-    'adminContent.map.vertexRefused': 'Forma are nevoie de cel puțin {min} puncte.',
     // [end map]
     // [section field] owner: ops-screens (a document field's name in History and the conflict banners); keys adminContent.field.*
     'adminContent.field.name': 'Numele',

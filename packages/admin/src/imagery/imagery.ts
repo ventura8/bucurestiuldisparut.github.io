@@ -94,9 +94,6 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             status: (map) => {
                 this.#cell.update({ map });
             },
-            picked: (id) => {
-                this.#picked(id);
-            },
         });
         this.#orders = new OrderActions(services, (orders) => {
             this.#cell.update(orders);
@@ -231,10 +228,8 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     }
 
     #fed(patch: FeedsPatch): void {
-        const { frame, newest, ...rest } = patch;
-        if (frame !== undefined) {
-            this.#map.setFrame(frame);
-        }
+        const { frame, newest, colors, ...rest } = patch;
+        this.#mapFed(frame, colors);
         if (newest !== undefined) {
             this.#newest = newest;
         }
@@ -243,6 +238,19 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             this.#scenesChanged();
         }
         this.#search.known(this.#cell.state.usgs, this.#newest);
+    }
+
+    /** The city's frame (its boundary on the map) and its theme's colours, when the city was read. */
+    #mapFed(frame: FeedsPatch['frame'], colors: FeedsPatch['colors']): void {
+        if (frame !== undefined) {
+            this.#map.setFrame(frame);
+        }
+        if (colors !== undefined) {
+            this.#map.setColors(colors);
+        }
+        if (frame !== undefined || colors !== undefined) {
+            this.#showFind();
+        }
     }
 
     #setFilters(patch: Partial<SceneFilters>): void {
@@ -287,7 +295,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             return;
         }
         const scene = this.#selectedScene();
-        this.#map.showScenes(this.#cell.state.visible, scene);
+        this.#map.showScenes(scene);
         if (scene !== null && !this.#map.overlays.has(BROWSE_PICTURE)) {
             void this.#browse.open(scene).then(() => this.#showBrowse(scene));
         }
@@ -332,12 +340,6 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             this.#map.fitBox(output.bounds);
             void this.#map.showPicture(PREVIEW_PICTURE, output.previewPath, cornersOfBox(output.bounds), this.#cell.state.previewOpacity);
         }
-    }
-
-    /** A footprint was clicked on the map: the page opens that scene (`pickedScene`). */
-    #picked(id: string): void {
-        const seq = (this.#cell.state.pickedScene?.seq ?? 0) + 1;
-        this.#cell.update({ pickedScene: { id, seq } });
     }
 
     #setOpacity(percent: number): void {

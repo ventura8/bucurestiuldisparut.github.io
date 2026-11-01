@@ -42,6 +42,8 @@ import {
 } from './world.js';
 
 const EXECUTION = 'projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m';
+/** An import's download phase done (finding 56: the small job hands the job over for its processing). */
+const DOWNLOADED: JobDoc['steps'] = { fetch: { status: 'done' }, extract: { status: 'done' } };
 /** A lease the pipeline holds past `NOW` (its heartbeat is on time). */
 const LEASE_HELD = { owner: 'raster-pipeline-x7k2m/0', until: at('2026-10-23T08:05:00.000Z') };
 
@@ -83,17 +85,18 @@ describe('dispatchJob', () => {
 
         expect(await dispatchJob(world.deps, CITY, 'job-1966-0712')).toBe('started');
 
+        // Finding 56 of 2026-11-01: an import's download runs first on the small job.
         expect(world.jobs.runs).toEqual([
             {
-                job: CLOUD_RUN_JOBS.std,
+                job: CLOUD_RUN_JOBS.fetch,
                 env: { JOB_ID: 'job-1966-0712', CITY_ID: CITY },
-                name: 'projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-e2e01',
+                name: 'projects/demo-hcm/locations/us-central1/jobs/raster-fetch/executions/raster-fetch-e2e01',
                 options: { args: ['run'] },
             },
         ]);
         expect(await readJob(world, 'job-1966-0712')).toMatchObject({
             status: 'starting',
-            machine: 'std',
+            machine: 'fetch',
             attempt: 1,
             dispatchAt: at(NOW),
             executionName: world.jobs.runs[0]?.name,
@@ -101,9 +104,20 @@ describe('dispatchJob', () => {
         });
     });
 
+    it('happyPath_theDownloadHandedOverIsProcessedOnTheStandardJobInTheSameTry @S-A12-HAPPY-DISPATCH-PHASES', async () => {
+        const world = await readyWorld();
+        await seedJob(world, 'job-1966-0712', queued({ machine: 'fetch', attempt: 1, steps: DOWNLOADED }));
+
+        expect(await dispatchJob(world.deps, CITY, 'job-1966-0712')).toBe('started');
+
+        expect(world.jobs.runs.map((run) => run.job)).toEqual([CLOUD_RUN_JOBS.std]);
+        expect(await readJob(world, 'job-1966-0712')).toMatchObject({ status: 'starting', machine: 'std', attempt: 1 });
+    });
+
     it('happyPath_aKh9PanoramicFrameRunsOnTheLargeMachine @S-A12-HAPPY-DISPATCH', async () => {
         const world = await readyWorld();
-        await seedJob(world, 'j-pan', queued({ params: { entityId: 'D3C1216-401178F016', dataset: 'declassiii', sensor: 'KH-9-pan' } }));
+        const params = { entityId: 'D3C1216-401178F016', dataset: 'declassiii', sensor: 'KH-9-pan' };
+        await seedJob(world, 'j-pan', queued({ params, machine: 'fetch', steps: DOWNLOADED }));
 
         await dispatchJob(world.deps, CITY, 'j-pan');
 
@@ -112,9 +126,11 @@ describe('dispatchJob', () => {
     });
 
     it.each([
-        ['a KH-4A frame', { params: { sensor: 'KH-4A' } }, 'std'],
-        ['an upload (no camera)', { params: { uploadPath: 'x' } }, 'std'],
-        ['an unknown camera', { params: { sensor: 'KH-99' } }, 'std'],
+        ['an import still to download', { params: { sensor: 'KH-9-pan' } }, 'fetch'],
+        ['an import whose download ran out of memory on the small job', { machine: 'std' as const }, 'std'],
+        ['a KH-4A frame downloaded', { params: { sensor: 'KH-4A' }, steps: DOWNLOADED }, 'std'],
+        ['an upload (no camera, no download)', { type: 'geotiff-import' as const, params: { uploadPath: 'x' } }, 'std'],
+        ['an unknown camera', { params: { sensor: 'KH-99' }, steps: DOWNLOADED }, 'std'],
         ['a job that ran out of memory', { machine: 'xl' as const, params: {} }, 'xl'],
     ])('machineOf_%s', (_case, overrides, machine) => {
         expect(machineOf(queued(overrides))).toBe(machine);

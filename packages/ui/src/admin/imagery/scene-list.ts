@@ -1,8 +1,9 @@
 /**
  * Find, the Imagery area's first view (`docs/research/M3-interfaces.md` §3, §10.2; behaviour A11): the USGS search and
  * how it went, the filters (free only by default, datasets, years, hide rejected), and the scenes ranked for the city,
- * each with its browse thumbnail, its score and first reasons in plain words, and its chips (Free or Needs ordering,
- * Imported). Without USGS set up the view says so with the way to Setup's USGS card.
+ * each with its browse thumbnail (or that it is unavailable), what tells it from its twins of the same day (its USGS id,
+ * camera and frame: finding 53 of 2026-11-01), its score and first reasons in plain words, and its
+ * chips (Free or Needs ordering, Imported). Without USGS set up the view says so with the way to Setup's USGS card.
  */
 import { USGS_DATASETS, type Locale, type UsgsDataset } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
@@ -148,11 +149,40 @@ function sceneTags(locale: Locale, scene: SceneItemPort): TemplateResult {
     </span>`;
 }
 
+/** A row's browse image; one whose copy failed says so (its page offers Try again), else the placeholder while it comes. */
 function thumbnail(context: ImageryContext, scene: SceneItemPort): TemplateResult {
     const image = context.view.browse[scene.id];
-    return image?.status === 'ready'
-        ? html`<img class="thumb" src=${image.url} alt="" />`
+    if (image?.status === 'ready') {
+        return html`<img class="thumb" src=${image.url} alt="" />`;
+    }
+    return image?.status === 'failed'
+        ? html`<span class="thumb" data-browse="unavailable"
+              ><hcm-icon name="broken_image"></hcm-icon><span class="visually-hidden">${noticeOf(context.locale, image.error)}</span></span
+          >`
         : html`<span class="thumb" aria-hidden="true"><hcm-icon name="satellite_alt"></hcm-icon></span>`;
+}
+
+/**
+ * The camera and frame number a frame's id ends in: Corona's and KH-9's panoramic frames (`DS1035-1057DA023`: A aft, F
+ * forward, frame 23), KH-9's mapping camera (`DZB1211-500043L007001`: frame 7 after the L).
+ */
+const FRAME_ID = /^(?:(?:DS|D3C)[\w-]+([AF])|DZB[\w-]+L)(\d{3})\d{0,3}$/;
+
+/** What tells a frame from its twins of the same day, in short: its camera and frame number, when its id says them. */
+export function frameText(locale: Locale, entityId: string): string {
+    const [, camera, frame] = FRAME_ID.exec(entityId) ?? [];
+    if (frame === undefined) {
+        return '';
+    }
+    const number = contentText(locale, 'adminContent.imagery.frame', { frame: String(Number(frame)) });
+    const key = camera === 'A' ? 'adminContent.imagery.camera.aft' : 'adminContent.imagery.camera.forward';
+    return camera === undefined ? number : `${contentText(locale, key)}, ${number}`;
+}
+
+/** The row's line that tells it apart from its twins of the same day: its USGS id, camera and frame. */
+function identity(locale: Locale, scene: SceneItemPort): string {
+    const frame = frameText(locale, scene.id);
+    return frame === '' ? scene.displayId : `${scene.displayId} · ${frame}`;
 }
 
 /** A card's **Import** (§10.2: the one click of `importScene`), named after its scene, and why it was refused. */
@@ -174,6 +204,7 @@ function sceneRow(context: ImageryContext, scene: SceneItemPort): TemplateResult
             ${thumbnail(context, scene)}
             <span>
                 <span class="row-title">${title}</span>
+                <span class="row-detail" data-identity>${identity(locale, scene)}</span>
                 <span class="row-detail">${[score, ...reasons].join(' · ')}</span>
                 ${sceneTags(locale, scene)}
             </span>

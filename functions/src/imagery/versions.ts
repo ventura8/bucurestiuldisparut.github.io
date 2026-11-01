@@ -134,6 +134,7 @@ function processingVersion(work: NewWork, fields: VersionFields): LayerVersionDo
         guard: undefined,
         approval: undefined,
         mapbox: undefined,
+        machines: undefined,
         error: undefined,
     });
 }

@@ -74,7 +74,7 @@ describe('imagery requests', () => {
     });
 
     it('happyPath_limitsAndErrorsTheContractNames', () => {
-        expect(CLOUD_RUN_JOBS).toEqual({ std: 'raster-pipeline', xl: 'raster-pipeline-xl' });
+        expect(CLOUD_RUN_JOBS).toEqual({ fetch: 'raster-fetch', std: 'raster-pipeline', xl: 'raster-pipeline-xl' });
         expect(USGS_BACKOFF_MINUTES.at(-1)).toBe(720);
         expect(API_ERRORS['apiError.imagery.dailyLimit']).toEqual({ status: 'resource-exhausted', httpStatus: 429, retryable: true });
         expect(translateApiError('en', 'apiError.imagery.overBudget', { estimate: '24.5', available: '3' })).toBe(

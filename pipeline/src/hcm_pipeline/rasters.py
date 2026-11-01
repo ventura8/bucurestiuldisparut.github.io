@@ -1,7 +1,8 @@
 """Raster files through GDAL: open, read (whole or downsampled), write GeoTIFFs and the image formats.
 
 Settings of docs/research/M3-interfaces.md §5.2: `GDAL_NUM_THREADS=ALL_CPUS` (unless the environment sets it: 1 in tests),
-`GDAL_CACHEMAX` 4096 MB, `CPL_VSIL_USE_TEMP_FILE_FOR_RANDOM_WRITE=YES`; every write is a local file under the
+`GDAL_CACHEMAX` 1024 MB (finding 57 of 2026-11-01: a run stays within a few GiB),
+`CPL_VSIL_USE_TEMP_FILE_FOR_RANDOM_WRITE=YES`; every write is a local file under the
 job's scratch folder, uploaded by the step afterwards. GDAL calls a step makes long enough to matter pass a
 progress callback that returns 0 when the run must stop (SIGTERM, cancel), which makes GDAL raise.
 """
@@ -21,7 +22,7 @@ WEB_MERCATOR: Final = 3857
 WGS84: Final = 4326
 GTIFF_OPTIONS: Final = ("COMPRESS=DEFLATE", "TILED=YES", "BIGTIFF=IF_SAFER")
 DEFAULT_SETTINGS: Final = {
-    "GDAL_CACHEMAX": "4096",
+    "GDAL_CACHEMAX": "1024",
     "CPL_VSIL_USE_TEMP_FILE_FOR_RANDOM_WRITE": "YES",
     "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
     "GDAL_HTTP_MAX_RETRY": "3",

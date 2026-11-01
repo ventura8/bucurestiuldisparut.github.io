@@ -16,7 +16,7 @@ import { approvalCard } from './approval-card.js';
 import type { ImageryContext } from './context.js';
 import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { JobLogLinePort, JobViewPort, VersionPagePort, VersionViewPort } from './imagery-port.js';
-import { labelText, versionStateText, waitText } from './imagery-text.js';
+import { labelText, numberText, versionStateText, waitText } from './imagery-text.js';
 import { when, withValue } from './when.js';
 
 /** Setup's Mapbox step, where the secret token and its scopes are pasted again. */
@@ -62,6 +62,18 @@ function progress(locale: Locale, job: JobViewPort | null): TemplateResult {
     return withValue(job, (running) => when(!running.finished, () => html`${bar(locale, running)} ${waiting(locale, running)}`));
 }
 
+const GB = 1e9;
+
+/** A running transfer's bytes on its step line, ` · 1.2 of 3.4 GB` (` · 1.2 GB` while its total is unknown), else nothing. */
+function transferText(locale: Locale, transfer: JobViewPort['steps'][number]['transfer']): string {
+    if (transfer === null) {
+        return '';
+    }
+    const gb = (bytes: number): string => numberText(locale, bytes / GB, 2);
+    const { received, total } = transfer;
+    return ` · ${total === null ? gb(received) : contentText(locale, 'adminContent.imagery.bytesOf', { received: gb(received), total: gb(total) })} GB`;
+}
+
 function steps(locale: Locale, job: JobViewPort | null): TemplateResult {
     return withValue(
         job,
@@ -72,7 +84,7 @@ function steps(locale: Locale, job: JobViewPort | null): TemplateResult {
                         (step) =>
                             html`<li data-state=${step.status}>
                                 <span>${stepNameText(locale, step.name)}</span>
-                                <span class="note">${stepStateText(locale, step.status)}</span>
+                                <span class="note">${stepStateText(locale, step.status)}${transferText(locale, step.transfer)}</span>
                             </li>`,
                     )}
                 </ol>`,

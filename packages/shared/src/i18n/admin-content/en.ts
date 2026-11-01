@@ -27,8 +27,6 @@ export const en: Readonly<Record<AdminContentKitKey, string>> = {
     'adminContent.common.unsavedTitle': 'Discard your changes?',
     'adminContent.common.unsavedBody': 'The changes made here are not saved and are lost if you leave.',
     'adminContent.common.keepEditing': 'Keep editing',
-    'adminContent.common.moreActions': 'More actions',
-    'adminContent.common.history': 'History',
     'adminContent.common.savedBy': 'Saved by {who} on {date}.',
     'adminContent.common.savedByWho': 'Saved by {who}.',
     'adminContent.common.cannotSave': 'Cannot save: {issues}.',
@@ -72,11 +70,9 @@ export const en: Readonly<Record<AdminContentKitKey, string>> = {
     'adminContent.map.vertex': 'Position {number}',
     'adminContent.map.latitude': 'Latitude',
     'adminContent.map.longitude': 'Longitude',
-    'adminContent.map.chooseVertex': 'Choose position {number}',
     'adminContent.map.moveUp': 'Move position {number} up',
     'adminContent.map.moveDown': 'Move position {number} down',
     'adminContent.map.removeVertex': 'Remove position {number}',
-    'adminContent.map.vertexRefused': 'The shape needs at least {min} positions.',
     // [end map]
     // [section field] owner: ops-screens (a document field's name in History and the conflict banners); keys adminContent.field.*
     'adminContent.field.name': 'Name',

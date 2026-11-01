@@ -1,8 +1,8 @@
 /**
  * Orders in the Imagery area's lists (`docs/research/M4-interfaces.md` §1.7): a short chip of an order's state on the
  * scene's card, and Work's orders (every scan bought and not imported yet, live, the one that needs the admin first: an
- * order never delivered, which also counts in Work's "needs you" until it is ordered again or its mark taken back). A
- * reminder to pay is no longer the admin's to clear once it was sent: it waits like any order, and counts nowhere.
+ * order never delivered, until it is ordered again or its mark taken back); every open order counts in Work's tab
+ * (finding 54 of 2026-11-01). A reminder to pay is no longer the admin's to clear once it was sent: it waits like any order.
  */
 import type { Locale, OrderState } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
@@ -53,11 +53,6 @@ function needsYou(scene: SceneItemPort): boolean {
     return scene.order !== null && NEEDS_YOU.includes(scene.order.state);
 }
 
-/** How many orders need the admin (Work's count). */
-export function ordersNeedingYou(view: ImageryViewState): number {
-    return view.orders.items.filter(needsYou).length;
-}
-
 function orderRow(context: ImageryContext, scene: SceneItemPort): TemplateResult {
     const { locale, view } = context;
     const selected = view.detail?.kind === 'scene' && view.detail.id === scene.id;
@@ -83,7 +78,7 @@ export function ordersGroup(context: ImageryContext): TemplateResult {
     </section>`;
 }
 
-/** True when Work has orders to list. */
-export function hasOpenOrders(view: ImageryViewState): boolean {
-    return openOrders(view).length > 0;
+/** How many orders Work lists (they count in its tab, with the unfinished versions: finding 54 of 2026-11-01). */
+export function openOrderCount(view: ImageryViewState): number {
+    return openOrders(view).length;
 }

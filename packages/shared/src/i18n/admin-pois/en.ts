@@ -86,7 +86,6 @@ export const en: Readonly<Record<AdminPoisKey, string>> = {
     'adminContent.pois.redraw': 'Redraw as {shape}',
     'adminContent.pois.redrawTitle': 'Redraw the place?',
     'adminContent.pois.redrawBody': 'The current shape leaves the draft; the other fields stay. Nothing is written until you save.',
-    'adminContent.pois.redrawConfirm': 'Redraw',
     'adminContent.pois.delete': 'Delete place',
     'adminContent.pois.deleteTitle': 'Delete "{title}"?',
     'adminContent.pois.deleteBody': 'The place leaves the public map within about a minute. You can restore it from History.',

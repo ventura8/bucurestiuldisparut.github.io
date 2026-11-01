@@ -292,10 +292,10 @@ test(
         await imagery.seedScene(EXPIRED, FRESH_HARVEST, { downloadAvailable: false });
         await seedOrder(imagery, EXPIRED, { state: 'expired', expiredAt: IMAGERY_AT, remindersSent: [7, 12] });
 
-        // Work lists the orders, the expired one first; each opens from there (Free only hides them). Only the expired one
-        // counts as needing the admin: a reminder already sent is nothing an admin who paid can clear (review 2026-10-24).
+        // Work lists the orders, the expired one first; each opens from there (Free only hides them). Its tab counts the
+        // three it lists (finding 54 of 2026-11-01: the count is what Work lists, not only what waits for the admin).
         await page.goto(adminPath(lang, 'imagery'));
-        await page.getByRole('radio', { name: imageryText(lang, 'adminContent.imagery.tab.work', { count: '1' }) }).click();
+        await page.getByRole('radio', { name: imageryText(lang, 'adminContent.imagery.tab.work', { count: '3' }) }).click();
         const orders = page.locator('hcm-imagery-page').getByRole('region', { name: imageryText(lang, 'adminContent.orders.group') });
         await orders.locator(`a[href$="/imagery/scene/${PAID}"]`).click();
         await expect(orderCard(page)).toContainText(imageryText(lang, 'adminContent.orders.state.reminder'), {
@@ -316,7 +316,7 @@ test(
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
         await expect(orderButton(page, lang, 'adminContent.orders.markOrdered')).toBeEnabled();
-        // An order never delivered and no longer wanted: its mark can be taken back, which clears Work's count.
+        // An order never delivered and no longer wanted: its mark can be taken back, which takes it out of Work.
         await expect(orderButton(page, lang, 'adminContent.orders.undo')).toBeEnabled();
         await expectStateSound(page, adminVisit('orders.expired', lang));
     },

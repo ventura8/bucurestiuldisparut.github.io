@@ -265,7 +265,7 @@ describe('<hcm-imagery-page>: orders in the lists', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 
-    it('happyPath_workListsTheOpenOrdersTheOneThatNeedsYouFirstAndCountsIt', async () => {
+    it('happyPath_workListsTheOpenOrdersTheOneThatNeedsYouFirstAndCountsThem', async () => {
         const state = imageryState({
             tab: 'work',
             versions: ready([]),
@@ -282,8 +282,8 @@ describe('<hcm-imagery-page>: orders in the lists', () => {
             '#/imagery/scene/DS-REMIND',
         ]);
         expect(rows.map((row) => row.getAttribute('aria-current'))).toEqual([null, null, 'page']);
-        // Only the order never delivered needs the admin: a reminder sent is nothing an admin who paid can clear.
-        expect(deepText(element)).toContain('Work (1)');
+        // Work counts every open order it lists (finding 54), the imported one not.
+        expect(deepText(element)).toContain('Work (3)');
         expect(await axeViolations(element)).toEqual([]);
     });
 

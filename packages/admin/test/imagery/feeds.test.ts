@@ -32,6 +32,8 @@ describe('the Imagery area reads', () => {
             [25.9, 44.3],
             [26.3, 44.6],
         ]);
+        // The city has no theme here: the footprints keep their fixed colours (finding 51).
+        expect(last('colors')).toEqual({ outline: '#3949ab', selected: '#c2185b' });
         expect(last('newest')).toBe('2026-10-02T00:00:00.000Z');
         expect(last('scenes')?.items.map((scene) => scene.id)).toEqual(['a']);
         expect(last('versions')?.items.map((version) => version.id)).toEqual(['job-1966-0712']);

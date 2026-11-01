@@ -377,6 +377,39 @@ describe('<hcm-imagery-page>: a job and an upload', () => {
     });
 });
 
+describe('<hcm-imagery-page>: a running download', () => {
+    beforeAll(defineImagery);
+    afterEach(cleanup);
+
+    it('happyPath_theDownloadsStepLineShowsItsBytesOfTheTotalThenItsBytesAlone', async () => {
+        const fetching = (transfer: { received: number; total: number | null }) =>
+            versionPage(
+                {},
+                versionView({ state: 'processing', output: null }),
+                jobView({
+                    status: 'running',
+                    waitReason: null,
+                    progress: 0.09,
+                    step: 'fetch',
+                    steps: [
+                        { name: 'fetch', status: 'running', transfer },
+                        { name: 'extract', status: 'pending', transfer: null },
+                    ],
+                }),
+            );
+        const { element, area } = await imageryPage(
+            imageryState({ detail: VERSION, version: fetching({ received: 1_234_000_000, total: 3_400_000_000 }) }),
+        );
+        const line = (): string => deep(element, '.steps li[data-state="running"]').textContent.replace(/\s+/g, ' ').trim();
+        const known = line();
+        area.set({ version: fetching({ received: 524_000_000, total: null }) });
+        await updated(element);
+
+        expect(known).toBe('Downloading the scene Running · 1.23 of 3.4 GB');
+        expect(line()).toBe('Downloading the scene Running · 0.52 GB');
+    });
+});
+
 describe('<hcm-imagery-page>: an upload and its version', () => {
     beforeAll(defineImagery);
     afterEach(cleanup);

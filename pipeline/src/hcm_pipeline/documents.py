@@ -7,7 +7,7 @@ the city (`cityDocSchema`) its bounds.
 """
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Final
 
 import numpy
@@ -225,6 +225,8 @@ class Version:
     reference: ReferenceInfo | None = None
     georef: GeorefInfo | None = None
     crop: tuple[LatLng, ...] | None = None
+    # The Cloud Run job each phase ran on (`download`, `process`: finding 56 of 2026-11-01).
+    machines: Mapping[str, str] = field(default_factory=dict)
 
     @classmethod
     def of(cls, version_id: str, record: Mapping[str, object]) -> Version:
@@ -241,7 +243,12 @@ class Version:
             reference=None if reference is None else ReferenceInfo.of(reference),
             georef=None if georef is None else GeorefInfo.of(georef),
             crop=_ring_of(record.get("crop")),
+            machines=_machines_of(record.get("machines")),
         )
+
+
+def _machines_of(value: object) -> dict[str, str]:
+    return {} if not isinstance(value, dict) else {str(phase): machine for phase, machine in value.items() if isinstance(machine, str)}
 
 
 def _corner(record: Mapping[str, object], key: str) -> LatLng:

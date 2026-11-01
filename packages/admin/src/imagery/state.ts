@@ -53,8 +53,6 @@ export interface ImageryState extends OrderActionsState {
     readonly map: MapStatus;
     /** The version preview's opacity on the map, 0 to 1. */
     readonly previewOpacity: number;
-    /** The last footprint clicked on the map (`seq` counts the clicks): the page opens its scene. */
-    readonly pickedScene: { readonly id: string; readonly seq: number } | null;
     /** `#/imagery/replace/<layerId>` (the layer editor's Replace image): the upload replaces that layer's image. */
     readonly replaceLayer: string | null;
     /** The budget guard (null while reading): paused, with the spend the alert reported (CR-M3-47). */
@@ -66,7 +64,7 @@ export interface ImageryState extends OrderActionsState {
 export const INITIAL_IMAGERY: ImageryState = {
     ...{ tab: 'find', usgs: null, settings: imagerySettingsOf(undefined), search: IDLE_SEARCH, filters: DEFAULT_FILTERS },
     ...{ scenes: LOADING_LIST, visible: [], browse: {}, versions: LOADING_LIST, jobs: {}, detail: null, version: null },
-    ...{ importing: null, importRefusal: null, upload: IDLE_UPLOAD, map: 'none', previewOpacity: 0.8, pickedScene: null },
+    ...{ importing: null, importRefusal: null, upload: IDLE_UPLOAD, map: 'none', previewOpacity: 0.8 },
     ...{ replaceLayer: null, guard: null, resuming: false, orders: LOADING_LIST, ...IDLE_ORDERS },
 };
 

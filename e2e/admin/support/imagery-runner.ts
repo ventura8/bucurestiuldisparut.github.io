@@ -187,6 +187,10 @@ export class ImageryRunner implements CloudRunRunner {
             if (run.isDone(step)) {
                 continue;
             }
+            if (run.handsOver(step)) {
+                await run.handOver();
+                return;
+            }
             if (run.attempt.holdAt === step) {
                 await this.#hold(run.city, run.execution);
             }

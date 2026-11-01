@@ -11,7 +11,7 @@ import { contentText } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
 import type { VersionItemPort } from './imagery-port.js';
 import { labelText, versionDetail } from './imagery-text.js';
-import { hasOpenOrders, ordersGroup } from './orders/order-list.js';
+import { openOrderCount, ordersGroup } from './orders/order-list.js';
 
 function versionRow(context: ImageryContext, version: VersionItemPort): TemplateResult {
     const { locale, view } = context;
@@ -47,7 +47,7 @@ export function workView(context: ImageryContext): TemplateResult {
     if (list.status === 'error') {
         return errorTemplate(locale, list.failure, () => intents?.retry());
     }
-    if (list.items.length === 0 && !hasOpenOrders(view)) {
+    if (list.items.length === 0 && openOrderCount(view) === 0) {
         return list.status === 'loading'
             ? loadingTemplate(locale)
             : html`<hcm-empty-state icon="pending" .text=${contentText(locale, 'adminContent.imagery.noWork')}></hcm-empty-state>`;

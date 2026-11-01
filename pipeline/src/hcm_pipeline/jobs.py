@@ -4,7 +4,8 @@ A step gets a `JobContext` (the configuration, the services, the job and its lay
 the run's flags and the job log) and returns `Done` (with its recorded output), `Skipped` (the job does not need
 it) or `Waiting` (the job waits on USGS or on the admin's points; the run then exits 0), or raises
 `StepFailedError` with an `apiError.*` code. Long work calls `ctx.checkpoint()` (and passes `ctx.gdal_progress`
-to GDAL) so a SIGTERM, a cancellation or a lost lease stops it at the next checkpoint.
+to GDAL) so a SIGTERM, a cancellation or a lost lease stops it at the next checkpoint. A transfer reports its bytes
+with `ctx.report_bytes` (finding 55 of 2026-11-01: a long download looked stuck).
 """
 
 import threading
@@ -30,6 +31,8 @@ from hcm_pipeline.urlguard import Resolver
 
 GDAL_CONTINUE: Final = 1
 GDAL_ABORT: Final = 0
+# A transfer's bytes and the progress are written at most this often (the heartbeat writes the progress every minute).
+BYTES_REPORT_SECONDS: Final = 5.0
 ParamValue = str | int
 
 
@@ -168,6 +171,7 @@ class JobContext:
     log: JobLog
     step: str = ""
     staged: dict[str, Path] = field(default_factory=dict)
+    bytes_reported_at: float = float("-inf")
 
     def now(self) -> Timestamp:
         return Timestamp.at(self.services.clock())
@@ -204,6 +208,12 @@ class JobContext:
             self.staged[object_path] = local
         return self.staged[object_path]
 
+    def unstage(self, object_path: str) -> None:
+        """A staged object's local copy removed (the scratch folder is memory on Cloud Run: finding 57)."""
+        local = self.staged.pop(object_path, None)
+        if local is not None:
+            local.unlink(missing_ok=True)
+
     def publish(self, local: Path, object_path: str, content_type: str) -> ObjectInfo:
         """A local file uploaded create-only (an identical object already there is kept)."""
         self.checkpoint()
@@ -211,6 +221,19 @@ class JobContext:
 
     def update_version(self, fields: Mapping[str, object]) -> None:
         self.services.store.update(self.version_path(), {**fields, **stamp(self.now())})
+
+    def report_bytes(self, received: int, total: int) -> None:
+        """A transfer's bytes so far (`total` 0: unknown): the step's share of the progress follows at once, and
+        `steps.<step>.bytes` (with `totalBytes` when known) and the progress are written at most every
+        `BYTES_REPORT_SECONDS`, which the version's step line shows (`1.2 of 3.4 GB`)."""
+        if total > 0:
+            self.flags.progress_within(received / total)
+        now = self.services.clock()
+        if now - self.bytes_reported_at < BYTES_REPORT_SECONDS:
+            return
+        self.bytes_reported_at = now
+        sizes = {"bytes": received, "totalBytes": total} if total > 0 else {"bytes": received}
+        self.update_job({**{f"steps.{self.step}.{key}": value for key, value in sizes.items()}, "progress": self.flags.progress})
 
     def update_job(self, fields: Mapping[str, object]) -> None:
         self.services.store.update(self.job_path(), {**fields, **stamp(self.now())})

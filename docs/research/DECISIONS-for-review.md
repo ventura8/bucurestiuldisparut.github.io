@@ -5368,3 +5368,81 @@ Verify: `PIPELINE_STAGE=static`, `tests` and `build`; the step tests (`scripts/s
 `install-run-jobs-refusals.test.ts`); the touched Playwright specs in the quality image (`e2e/admin/steps/install/pipeline.spec.ts`,
 `e2e/admin/steps/analytics.spec.ts`, `e2e/admin/specs/notify/push.spec.ts`). The admin in all (gzip, the budget's 1000-byte
 KB): see §81e.
+
+## 82. The live test of 2026-11-01, Historical imagery: outlined footprints, rows that fetch their own previews and tell twins apart, Work counting what it lists, a download that shows its bytes, the download on a small job, a frame never held whole, a dead run noticed (2026-11-01) — 82a–82i APPLIED (findings 51–58 of `docs/research/manual-test-2026-10-25.md`: product, test and documentation changes, the user's approval of 2026-11-01 for each; 82f adds a Cloud Run job definition the pipeline install makes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged)
+
+- **82a APPLIED (finding 51): the city and the open scene, no result's footprint.** First outlines for every listed scene;
+  the user's look at them zoomed out ("what is this madness of lines on the map!!!") made it: by default the map draws
+  the city's boundary only (a closed line of the city's bounds, the theme's light `--md-sys-color-primary`), and exactly
+  one footprint, the open scene's (outline and a fill at 0.35 × 0.6 of the light `--md-sys-color-tertiary`), both not
+  clickable; `#rrggbb` only, else `#3949ab` and `#c2185b`. The map stays at the city's view (no fit to a footprint: a
+  strip would zoom it out over the region). The light scheme because the admin's map is always Standard's day look
+  (`ADMIN_MAP_CONFIG`). No change to the shared map adapter. Not done: the optional "Show all footprints" switch and a
+  footprint on hovering a row (the admin bundle's budget; the list is the way to pick).
+- **82b APPLIED (finding 52): the rows fetch their previews.** `BrowseImages.thumbnails` loads the copies that exist,
+  marks a `failed` copy unavailable without asking again (Try again on its page asks), and asks `imagery.browse` for a
+  missing one, at most four at once (`COPIES_AT_ONCE`), the next starting as each ends (the last list shown is kept);
+  the page's `open` shares a copy the list already asked for, or asks at once. Root cause and what stays UNVERIFIED:
+  finding 52.
+- **82c APPLIED (finding 53): what tells twins apart.** `frameText` reads the camera and frame from the id
+  (`^(?:(?:DS|D3C)[\w-]+([AF])|DZB[\w-]+L)(\d{3})\d{0,3}$`). Three new strings (camera aft/forward, frame) in both
+  languages. Built and taken out for the bundle (82g): "n of m that day" among the listed frames of one camera and day.
+- **82d APPLIED (finding 54): Work counts its rows.** `view.versions.items.length + openOrderCount(view)`;
+  `ordersNeedingYou` is gone. S-A13-BAD-NEVER-DELIVERED's count changes from 1 to 3 with it (the user's finding replaces
+  the M4 review's "needs you" count of 2026-10-24).
+- **82e APPLIED (finding 55): the bytes of a download.** `JobContext.report_bytes(received, total)` sets the step's share
+  at once and writes `steps.<step>.bytes`, `steps.<step>.totalBytes` (new, optional, in `jobDocSchema`'s step record) and
+  `progress` at most every `BYTES_REPORT_SECONDS` (5 s); the fetch calls it for every piece read from USGS. The version's
+  step line adds " · 1.23 of 3.4 GB" (gigabytes with two decimals; the bytes alone without a total).
+- **82f APPLIED (finding 56): the download on a small job.** `JOB_MACHINES` `fetch` | `std` | `xl`, `CLOUD_RUN_JOBS.fetch`
+  `raster-fetch` (1 vCPU, 4 GiB: the most memory Cloud Run gives one vCPU; a `.zip` delivery is staged in the in-memory
+  scratch, which an out-of-memory exit then moves to `std`), made first by the install's `jobs` step. `DOWNLOAD_STEPS`
+  (fetch, extract) in both languages' contract (`enums.json`). The dispatcher's `machineOf`: `xl` once escalated; `fetch`
+  while the download is pending (`std` once an out-of-memory exit moved it there); then the camera's (`xl` for KH-9
+  panoramic, else `std`). The run on `fetch` walks the download steps and ends `queued` with its lease released (the
+  `onJobWrite` trigger dispatches it); that dispatch is no new attempt (`handedOver`: the job was on `fetch` and its
+  download is done). The tick's out-of-memory path escalates `fetch` → `std` → `xl` (`largerThan`). The pipeline records
+  `machines.download` / `machines.process` on the version once per phase (new, optional, in `layerVersionDocSchema`). A
+  run whose job names no machine (a local worker, a job from before this change) walks every step. The e2e stand-in
+  hands over as the pipeline does. Extract unlinks each segment once published (the scratch is memory). Cost, at list
+  price ($0.000018 a vCPU-second, $0.000002 a GiB-second): `raster-fetch` about $0.09 an hour, `raster-pipeline` $0.37,
+  `-xl` $0.75; the pipeline card's cost line says so. Not done: a cost estimate on the Jobs page (the admin's total
+  budget, 82g); a fallback when `raster-fetch` does not exist yet (the pipeline card shows the pipeline as not installed
+  until it is installed again, which the update needs anyway).
+- **82g APPLIED: the admin's total budget kept without raising it.** 82a–82i cost the admin about 1.5 KB gzip at their
+  first build, most of it in the lazy `imagery` chunk (17.0 → 18.2 KB of its 18). Room made, measured with the build
+  stage's own sum (every script of `packages/admin/dist`, the push worker `firebase-messaging-sw.js` included: 0.7 KB that
+  a bare `vite build` does not write): nineteen catalogue keys no code, test or spec reads, in both languages
+  (`adminContent.common.moreActions`, `adminContent.common.history`, `adminSetup.openPage`, `adminSetup.deploy.explain`,
+  `adminSetup.deploy.variables`, `adminShell.admins.role.admin`, `adminShell.admins.inviteRow`,
+  `adminContent.map.chooseVertex`, `adminContent.map.vertexRefused`, `adminContent.layers.orderNote`,
+  `adminContent.layers.addressInvalid`, `adminContent.layers.fieldInvalid`, `adminContent.layers.reordering`,
+  `adminContent.settings.fieldInvalid`, `adminContent.photos.loading`, `adminContent.pois.redrawConfirm`,
+  `adminShell.oauth.continue`, `adminShell.city.opening`, `adminShell.city.none`; `adminShell.admins.role.owner` stays,
+  two specs read it; each found by a search of every source, test and spec for its full name and for a template that
+  could build it); the footprint click path the map no longer needs (82a: no footprint is clickable; `pickedScene`
+  gone from the Imagery state and its port); the list's copies limited by the copies in flight rather than a queue with
+  priorities; sizes on the step line in gigabytes only; and not built after all: the frames' "n of m that day" and each
+  card's Import named after its frame id. The admin in all: 619.8 KB at `c8f0019`, 619.9 KB with this change (the
+  `build` stage), within 620; the entry chunk 369.5 KB (0.4 KB less than before); `imagery` 17.6 KB of its 18.
+
+- **82h APPLIED (finding 57): a frame never held whole.** `hcm_pipeline/frames.py`: `Segment` reads a segment by windows
+  (and shrunk, by GDAL) as 8-bit pixels, a deeper one through its own linear stretch (its 2nd and 98th percentiles of a
+  shrunk read); `FrameLayout` (`frame.json`: the frame's size, the preview's shrink and each segment's place, a later one
+  on top). `stitch` stages two segments at a time (`JobContext.unstage` frees a staged copy: the scratch folder is
+  memory on Cloud Run), pairs them from shrunk copies and full-resolution strips (unchanged precision), crops the film
+  border on the preview (at most `PREVIEW_MAX_PX` 16 384 px on its long side: about 20 m a pixel on a KH-9 panoramic
+  frame, finer than the 30 m `locate` scores at; the border is placed within one preview pixel, the frame's own edge
+  kept where the crop reaches it) and publishes `frame.json` and `frame-preview.tif` instead of `frame.tif`; `locate`
+  scores the preview and reads the crop out of the covering segments one at a time. `GDAL_CACHEMAX` 4096 → 1024 MB.
+  The step order stays (stitch, then locate). Considered and not done: GDAL's `/vsigs/` streaming from the bucket (no
+  staged copy at all: the e2e and test bucket fakes speak the JSON API only), a VRT (the same reads with a file the next
+  run would need its sources beside).
+- **82i APPLIED (finding 58): a dead run noticed.** `recoverLost` also asks Cloud Run about a running job not written for
+  `HEARTBEAT_LATE_BEATS` (3) heartbeats, so a kill is noticed at the next tick instead of after the lease's ten minutes;
+  `apiError.imagery.outOfMemory` leaves `NOT_RETRYABLE_CODES` (Try again on the version page, `imagery.retry` accepts it).
+  S-A12-BAD-NOT-RETRYABLE now shows a refused Mapbox token without Try again.
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build`; the targeted Playwright specs of the imagery and the pipeline install
+(`e2e/admin/specs/imagery/rows.spec.ts`, `import.spec.ts`, `search.spec.ts`, `orders.spec.ts`,
+`e2e/admin/steps/install/pipeline.spec.ts`, `update.spec.ts`).

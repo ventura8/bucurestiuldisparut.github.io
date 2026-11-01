@@ -45,7 +45,6 @@ export const ro = {
     'adminContent.settings.keepMine': 'Păstrează modificările mele',
     'adminContent.settings.takeTheirs': 'Ia versiunea salvată',
     'adminContent.settings.cityMissing': 'Orașul nu există încă. Pornește din Configurare.',
-    'adminContent.settings.fieldInvalid': 'Valoarea trebuie corectată.',
     'adminContent.settings.bounds': 'Limitele orașului',
     'adminContent.settings.boundsHelp': 'Desenează zona pe hartă sau scrie cele patru margini ale orașului, în grade.',
     'adminContent.settings.drawSecond': 'Acum apasă colțul opus.',

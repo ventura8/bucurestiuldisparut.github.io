@@ -104,9 +104,9 @@ export function jobView(overrides: Partial<JobViewPort> = {}): JobViewPort {
     return {
         ...{ id: 'job-1966', type: 'usgs-import', status: 'awaiting_approval', finished: false, progress: 0.75, step: 'register' },
         steps: [
-            { name: 'fetch', status: 'done' },
-            { name: 'georef', status: 'done' },
-            { name: 'register', status: 'running' },
+            { name: 'fetch', status: 'done', transfer: null },
+            { name: 'georef', status: 'done', transfer: null },
+            { name: 'register', status: 'running', transfer: null },
         ],
         ...{ waitReason: 'approval', retryAt: null, attempt: 1, cancelRequested: false, error: null },
         ...{ retryable: false, atMapbox: false, refusedUpload: false },
@@ -164,7 +164,7 @@ export function imageryState(overrides: Partial<ImageryViewState> = {}): Imagery
             jobId: null,
             layerId: null,
         },
-        ...{ map: 'none', previewOpacity: 0.8, pickedScene: null, replaceLayer: null },
+        ...{ map: 'none', previewOpacity: 0.8, replaceLayer: null },
         ...{ orders: ready([]), ordering: null, orderRefusal: null },
         ...overrides,
     };

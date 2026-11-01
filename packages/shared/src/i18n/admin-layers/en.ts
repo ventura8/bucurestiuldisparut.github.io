@@ -11,11 +11,9 @@ export const en: Readonly<Record<AdminLayersKey, string>> = {
     'adminContent.layers.listLabel': 'Layer list',
     'adminContent.layers.detailLabel': 'Selected layer',
     'adminContent.layers.choose': 'Choose a layer to edit it.',
-    'adminContent.layers.orderNote': 'The top layer covers the ones below it on the map.',
     'adminContent.layers.moveUp': 'Move up: {name}',
     'adminContent.layers.moveDown': 'Move down: {name}',
     'adminContent.layers.dragHint': 'Drag a layer to move it, or use Move up and Move down.',
-    'adminContent.layers.reordering': 'Saving the order…',
     'adminContent.layers.reordered': 'The layer order is saved. The public map updates within about a minute.',
     'adminContent.layers.saved': 'The layer is saved. The public map updates within about a minute.',
     'adminContent.layers.refused.conflict': 'Someone else changed this layer meanwhile. Choose what to keep, then save again.',
@@ -82,7 +80,6 @@ export const en: Readonly<Record<AdminLayersKey, string>> = {
     'adminContent.layers.linkIntro': 'A tileset of the map’s Mapbox account, or a tile server. It starts unpublished, so you can check it.',
     'adminContent.layers.address': 'Tileset or tile address',
     'adminContent.layers.addressHelp': 'For example user.plan-1911, or an https address with z, x and y in braces.',
-    'adminContent.layers.addressInvalid': 'Type a tileset (user.name) or an https address with z, x and y in braces.',
     'adminContent.layers.tileSize': 'Tile size',
     'adminContent.layers.tileSizeValue': '{size} px',
     'adminContent.layers.kind': 'Kind',
@@ -96,6 +93,5 @@ export const en: Readonly<Record<AdminLayersKey, string>> = {
     'adminContent.layers.tilesAnswer': 'Tiles answer ({type}).',
     'adminContent.layers.linked': 'The layer “{name}” is linked. Check it on the map, then publish it.',
     'adminContent.layers.cspNote': 'Tiles from {origins} show publicly once the city site allows these addresses.',
-    'adminContent.layers.fieldInvalid': 'This value needs correcting.',
     // [end layers]
 };

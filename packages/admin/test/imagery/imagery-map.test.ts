@@ -1,8 +1,16 @@
 import { usgsSceneDocSchema } from '@hcm/shared';
 import { FakeMap } from '@hcm/test-support/fake-map';
+import type { VectorOverlaySpec } from '@hcm/ui/map';
 import { describe, expect, it } from 'vitest';
 
-import { FOOTPRINTS_OVERLAY, ImageryMap, PREVIEW_PICTURE, sceneCorners, SELECTED_OVERLAY } from '../../src/imagery/imagery-map.js';
+import {
+    CITY_OVERLAY,
+    footprintColorsOf,
+    ImageryMap,
+    PREVIEW_PICTURE,
+    sceneCorners,
+    SELECTED_OVERLAY,
+} from '../../src/imagery/imagery-map.js';
 import { sceneItemOf, type SceneItem } from '../../src/imagery/model.js';
 import type { MapStatus } from '../../src/layers/map-session.js';
 import type { AdminMapHandle } from '../../src/map/factory.js';
@@ -39,7 +47,6 @@ function fakeHandle(): { readonly handle: AdminMapHandle; readonly map: FakeMap 
 function session(handle: AdminMapHandle | null, pictures: FakePictures | null = new FakePictures()) {
     const files = new FakeFiles();
     const statuses: MapStatus[] = [];
-    const picked: string[] = [];
     const maps = handle === null ? null : factoryOf([{ ok: true, map: handle }]);
     const map = new ImageryMap({
         maps,
@@ -47,31 +54,72 @@ function session(handle: AdminMapHandle | null, pictures: FakePictures | null = 
         files,
         pictures,
         status: (status) => statuses.push(status),
-        picked: (id) => picked.push(id),
     });
-    return { map, files, statuses, picked };
+    return { map, files, statuses };
 }
 
 describe('the Imagery page map', () => {
-    it('happyPath_theFootprintsTheSelectedSceneAndAClickOnOne', async () => {
+    it('happyPath_theCitysBoundaryAndTheOpenScenesFootprintAtTheCitysView', async () => {
         const { handle, map: fake } = fakeHandle();
-        const { map, statuses, picked } = session(handle);
-        map.showScenes([scene('a'), scene('b')], null);
+        const { map, statuses } = session(handle);
+        map.showScenes(null);
 
         map.attach(host());
         map.setFrame(FRAME);
         await settle();
-        map.showScenes([scene('a'), scene('b')], scene('b'));
-        fake.clickPoi('a');
+        map.showScenes(scene('b'));
 
         expect(statuses).toEqual(['none', 'loading', 'ready']);
-        expect(fake.callsOf('addVectorOverlay').map(([spec]) => (spec as { id: string }).id)).toContain(SELECTED_OVERLAY);
-        expect(fake.callsOf('addVectorOverlay').map(([spec]) => (spec as { id: string }).id)).toContain(FOOTPRINTS_OVERLAY);
-        expect(fake.callsOf('fitBounds')).toHaveLength(1);
-        expect(picked).toEqual(['a']);
+        expect(fake.callsOf('addVectorOverlay').map(([spec]) => (spec as { id: string }).id)).toEqual([CITY_OVERLAY, SELECTED_OVERLAY]);
+        // The map stays at the city's view: a strip's footprint would zoom it out over the region (finding 51).
+        expect(fake.callsOf('fitBounds')).toHaveLength(0);
         map.zoomBy(1);
         map.detach();
         expect(statuses.at(-1)).toBe('none');
+    });
+
+    it('happyPath_noSceneOpenDrawsTheCityAloneInTheThemesColourAndAnOpenOneFilled', async () => {
+        const { handle, map: fake } = fakeHandle();
+        const { map } = session(handle);
+        map.attach(host());
+        map.setFrame(FRAME);
+        await settle();
+        map.setColors({ outline: '#123456', selected: '#654321' });
+        map.showScenes(null);
+        const alone = fake.callsOf('addVectorOverlay').map(([spec]) => (spec as VectorOverlaySpec).id);
+        map.showScenes(scene('b'));
+
+        const specs = fake.callsOf('addVectorOverlay').map(([spec]) => spec as VectorOverlaySpec);
+        const city = specs.findLast((spec) => spec.id === CITY_OVERLAY);
+        const selected = specs.findLast((spec) => spec.id === SELECTED_OVERLAY);
+        expect(alone).toEqual([CITY_OVERLAY]);
+        expect(city?.features[0]?.geometry).toEqual({
+            type: 'LineString',
+            coordinates: [
+                [25.9, 44.3],
+                [26.3, 44.3],
+                [26.3, 44.6],
+                [25.9, 44.6],
+                [25.9, 44.3],
+            ],
+        });
+        expect([city?.color, selected?.color, city?.clickable, selected?.clickable]).toEqual(['#123456', '#654321', false, false]);
+        expect(selected?.features.map((feature) => [feature.geometry.type, feature.properties.id])).toEqual([['Polygon', 'b']]);
+    });
+
+    it('badPath_aThemeWithoutUsableColoursKeepsTheFixedOnes', () => {
+        const light = (tokens: Record<string, string>) =>
+            footprintColorsOf({
+                seedColor: '#8b5e3c',
+                tokens: { light: tokens, dark: tokens, highContrastLight: tokens, highContrastDark: tokens },
+            });
+
+        expect(light({ '--md-sys-color-primary': '#8B5E3C', '--md-sys-color-tertiary': '#5b6236' })).toEqual({
+            outline: '#8B5E3C',
+            selected: '#5b6236',
+        });
+        expect(light({ '--md-sys-color-primary': 'rgb(1 2 3)' })).toEqual({ outline: '#3949ab', selected: '#c2185b' });
+        expect(footprintColorsOf(undefined)).toEqual({ outline: '#3949ab', selected: '#c2185b' });
     });
 
     it('happyPath_aPictureOfTheBucketGoesOnTheMapAndANewerOneWins', async () => {

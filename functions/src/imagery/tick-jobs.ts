@@ -1,11 +1,13 @@
 /**
  * The job parts of `imagery.tick` (`docs/research/M3-interfaces.md` §4.5, §4.6 steps 1–3; S-A12-BAD-LOST-EXECUTION): due
- * jobs dispatched, USGS waits resumed, stale starts and lost executions recovered (an out-of-memory exit on `std` runs
- * again on `xl`; past `JOB_MAX_ATTEMPTS` the job fails), cancellations and approvals a lost event left behind carried
+ * jobs dispatched, USGS waits resumed, stale starts and lost executions recovered (a lapsed lease, or a heartbeat three
+ * beats late whose execution ended: finding 58; an out-of-memory exit runs again on the next larger job; past
+ * `JOB_MAX_ATTEMPTS` the job fails), cancellations and approvals a lost event left behind carried
  * out, and the MTS jobs whose poll went missing polled again.
  */
 import {
     FIRESTORE_PATHS,
+    HEARTBEAT_SECONDS,
     JOB_MAX_ATTEMPTS,
     PUBLISH_POLL_SECONDS,
     STARTING_STALE_MINUTES,
@@ -32,6 +34,8 @@ import { IMAGERY_WRITER, stampOf, versionIdOf } from './records.js';
 export type TickJobsDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs' | 'tasks'>;
 
 const MINUTE_MS = 60_000;
+/** A running job's heartbeat is late after this many beats without a write. */
+const HEARTBEAT_LATE_BEATS = 3;
 /** The statuses whose job ends as soon as a cancellation is asked. */
 const WAITING: ReadonlySet<JobStatus> = new Set<JobStatus>(['queued', 'waiting_usgs', 'awaiting_gcps', 'awaiting_approval']);
 /** An MTS job not polled for this long lost its poll task (the longest poll delay plus five minutes). */
@@ -97,13 +101,26 @@ export async function dispatchDue(deps: TickJobsDeps, cityId: string, now: Date)
 type Ended =
     | { readonly kind: 'cancel' }
     | { readonly kind: 'fail'; readonly code: ApiErrorCode; readonly params?: Readonly<Record<string, string>> };
-type LostAction = { readonly kind: 'wait' } | { readonly kind: 'requeue'; readonly machine?: 'xl' } | Ended;
+type LostAction = { readonly kind: 'wait' } | { readonly kind: 'requeue'; readonly machine?: 'std' | 'xl' } | Ended;
+
+/** The machine after an out-of-memory exit (finding 56: the small download job escalates to `std`, `std` to `xl`). */
+function largerThan(machine: JobDoc['machine']): 'std' | 'xl' {
+    return machine === 'fetch' ? 'std' : 'xl';
+}
+
+/** A lost execution's run again: on the next larger machine after running out of memory. */
+function again(job: JobDoc, status: ExecutionStatus): LostAction {
+    return status.failure === 'oom' ? { kind: 'requeue', machine: largerThan(job.machine) } : { kind: 'requeue' };
+}
 
 function attemptsOf(job: JobDoc): number {
     return job.attempt ?? 0;
 }
 
-/** A lost execution that failed: again (on `xl` after running out of memory on `std`), or failed for good. */
+/**
+ * A lost execution that failed: again (on the next larger machine after running out of memory: `fetch` → `std` → `xl`),
+ * or failed for good.
+ */
 function retryOrFail(job: JobDoc, status: ExecutionStatus): LostAction {
     if (status.failure === 'oom' && job.machine === 'xl') {
         return { kind: 'fail', code: 'apiError.imagery.outOfMemory' };
@@ -111,7 +128,7 @@ function retryOrFail(job: JobDoc, status: ExecutionStatus): LostAction {
     if (attemptsOf(job) >= JOB_MAX_ATTEMPTS) {
         return { kind: 'fail', code: 'apiError.imagery.attemptsExhausted', params: { attempts: String(attemptsOf(job)) } };
     }
-    return status.failure === 'oom' ? { kind: 'requeue', machine: 'xl' } : { kind: 'requeue' };
+    return again(job, status);
 }
 
 /** What a running job whose lease lapsed needs, by its execution's outcome. */
@@ -137,8 +154,8 @@ function endingOf(action: Ended): Ending {
     return { status: 'failed', versionState: 'failed', by: IMAGERY_WRITER, error: { code: action.code, ...params } };
 }
 
-/** Back to `queued` (on `xl` after an out-of-memory exit), then dispatched at once. */
-async function runAgain(deps: TickJobsDeps, cityId: string, jobId: string, machine: 'xl' | undefined): Promise<void> {
+/** Back to `queued` (on a larger machine after an out-of-memory exit), then dispatched at once. */
+async function runAgain(deps: TickJobsDeps, cityId: string, jobId: string, machine: 'std' | 'xl' | undefined): Promise<void> {
     if (await requeue(deps, { cityId, jobId, from: 'running' }, machine === undefined ? {} : { machine })) {
         await dispatchJob(deps, cityId, jobId);
     }
@@ -160,10 +177,21 @@ function leaseLapsed(job: JobDoc, now: Date): boolean {
     return job.lease === undefined || timestampToDate(job.lease.until) < now;
 }
 
-/** Step 2: running jobs whose lease lapsed (no heartbeat): their execution is asked how it ended. */
+/**
+ * A running job not written for `HEARTBEAT_LATE_BEATS` heartbeats (finding 58 of 2026-11-01): its execution may have died
+ * (an out-of-memory kill writes nothing) long before its lease lapses, so Cloud Run is asked at once.
+ */
+function heartbeatLate(job: JobDoc, now: Date): boolean {
+    return earlier(job.updatedAt, new Date(now.getTime() - HEARTBEAT_LATE_BEATS * HEARTBEAT_SECONDS * 1000));
+}
+
+/**
+ * Step 2: running jobs whose lease lapsed or whose heartbeat is late: their execution is asked how it ended (one still
+ * running is left alone).
+ */
 export async function recoverLost(deps: TickJobsDeps, cityId: string, now: Date): Promise<void> {
     for (const { id, data } of await jobsIn(deps, cityId, ['running'])) {
-        if (leaseLapsed(data, now)) {
+        if (leaseLapsed(data, now) || heartbeatLate(data, now)) {
             await recover(deps, cityId, id, data);
         }
     }

@@ -27,6 +27,8 @@ def test_happy_path_the_constants_equal_the_shared_copy() -> None:
         "JOB_WAIT_REASONS": list(contract.JOB_WAIT_REASONS),
         "JOB_STEP_STATES": list(contract.JOB_STEP_STATES),
         "PIPELINE_STEPS": list(contract.PIPELINE_STEPS),
+        "DOWNLOAD_STEPS": list(contract.DOWNLOAD_STEPS),
+        "JOB_MACHINES": list(contract.JOB_MACHINES),
         "JOB_STEPS": {job_type: list(steps) for job_type, steps in contract.JOB_STEPS.items()},
         "LAYER_VERSION_STATES": list(contract.LAYER_VERSION_STATES),
         "GEOREF_TRANSFORMS": list(contract.GEOREF_TRANSFORMS),

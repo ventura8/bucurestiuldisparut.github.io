@@ -167,6 +167,11 @@ const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> =
             await run.waitForUsgs();
             return 'stop';
         }
+        const downloading = run.attempt.downloading;
+        if (downloading !== undefined) {
+            await run.reportBytes('fetch', downloading.received, downloading.total);
+            return 'stop';
+        }
         const params = run.job['params'] as { dataset?: string; entityId?: string };
         const path = RASTER_PATHS.usgsRaw(String(params.dataset), String(params.entityId), `${String(params.entityId)}.tgz`);
         await run.stepEnded('fetch', 'done', { gcsPath: path, bytes: 734_003_200 });

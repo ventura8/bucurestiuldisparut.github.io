@@ -13,11 +13,9 @@ export const ro = {
     'adminContent.layers.listLabel': 'Lista straturilor',
     'adminContent.layers.detailLabel': 'Stratul ales',
     'adminContent.layers.choose': 'Alege un strat ca să-l editezi.',
-    'adminContent.layers.orderNote': 'Stratul de sus acoperă straturile de sub el pe hartă.',
     'adminContent.layers.moveUp': 'Mută mai sus: {name}',
     'adminContent.layers.moveDown': 'Mută mai jos: {name}',
     'adminContent.layers.dragHint': 'Trage un strat ca să-l muți sau folosește Mută mai sus și Mută mai jos.',
-    'adminContent.layers.reordering': 'Se salvează ordinea…',
     'adminContent.layers.reordered': 'Ordinea straturilor a fost salvată. Harta publică se actualizează în aproximativ un minut.',
     'adminContent.layers.saved': 'Stratul a fost salvat. Harta publică se actualizează în aproximativ un minut.',
     'adminContent.layers.refused.conflict': 'Altcineva a modificat stratul între timp. Alege ce păstrezi, apoi salvează din nou.',
@@ -84,7 +82,6 @@ export const ro = {
     'adminContent.layers.linkIntro': 'Un set de dale al contului Mapbox al hărții sau un server de dale. Apare nepublicat, de verificat.',
     'adminContent.layers.address': 'Set de dale sau adresă de dale',
     'adminContent.layers.addressHelp': 'De exemplu utilizator.plan-1911, sau o adresă https cu z, x și y între acolade.',
-    'adminContent.layers.addressInvalid': 'Scrie un set de dale (utilizator.nume) sau o adresă https cu z, x și y între acolade.',
     'adminContent.layers.tileSize': 'Mărimea dalelor',
     'adminContent.layers.tileSizeValue': '{size} px',
     'adminContent.layers.kind': 'Tip',
@@ -98,7 +95,6 @@ export const ro = {
     'adminContent.layers.tilesAnswer': 'Dalele răspund ({type}).',
     'adminContent.layers.linked': 'Stratul „{name}” a fost legat. Verifică-l pe hartă, apoi publică-l.',
     'adminContent.layers.cspNote': 'Dalele de la {origins} apar public după ce site-ul orașului permite aceste adrese.',
-    'adminContent.layers.fieldInvalid': 'Valoarea trebuie corectată.',
     // [end layers]
 } as const;
 

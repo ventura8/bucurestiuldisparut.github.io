@@ -1,11 +1,15 @@
 /**
  * The Imagery page's map (`docs/research/M3-interfaces.md` §10.2): one map per page visit (the layers area's `AreaMap`),
- * always Mapbox Standard, **never Satellite**. Find draws every listed scene's footprint (a click selects the scene) and
- * the selected one above them with its browse image over its corners; a version's page draws its preview over its
- * output bounds, with the opacity slider's value. The pictures are canvas sources (`./overlay.ts`).
+ * always Mapbox Standard, **never Satellite**, at the city's own view. Find draws the city's boundary and exactly one
+ * footprint, the open scene's (outlined, lightly filled), with its browse image over its corners: nearly every frame
+ * covers the whole city and the long strips cross the region, so every result's footprint at once buried the basemap
+ * under fills, then under dozens of crossing lines (finding 51 of 2026-11-01). The boundary takes the city theme's light
+ * primary, the scene its light tertiary (the admin's basemap is Standard's day look), else fixed colours. A version's
+ * page draws its preview over its output bounds, with the opacity slider's value. The pictures are canvas sources
+ * (`./overlay.ts`).
  */
-import type { LngLat, Locale } from '@hcm/shared';
-import type { PoiFeature, Unsubscribe, VectorOverlaySpec } from '@hcm/ui/map';
+import type { BBox, LngLat, Locale, Theme } from '@hcm/shared';
+import type { PoiFeature, VectorOverlaySpec } from '@hcm/ui/map';
 
 import { AreaMap, type CityFrame, type MapStatus } from '../layers/map-session.js';
 import { PreviewLayer } from '../layers/preview.js';
@@ -14,7 +18,7 @@ import type { FilePort, Picture, PicturePort } from './files.js';
 import type { SceneItem } from './model.js';
 import { cornersOfBox, PictureOverlays, type Corners } from './overlay.js';
 
-export const FOOTPRINTS_OVERLAY = 'imagery-footprints';
+export const CITY_OVERLAY = 'imagery-city';
 export const SELECTED_OVERLAY = 'imagery-selected';
 /** The ids of the map's pictures. */
 export const BROWSE_PICTURE = 'browse';
@@ -23,8 +27,29 @@ export const PREVIEW_PICTURE = 'preview';
 /** A browse image or a preview is decoded at most this long (a canvas texture). */
 const PICTURE_MAX_SIDE = 2048;
 
-const FOOTPRINT_COLOR = '#3949ab';
-const SELECTED_COLOR = '#c2185b';
+/** The city boundary's colour and the open scene's. */
+export interface FootprintColors {
+    readonly outline: string;
+    readonly selected: string;
+}
+
+const FIXED_COLORS: FootprintColors = { outline: '#3949ab', selected: '#c2185b' };
+
+const HEX = /^#[\da-f]{6}$/i;
+
+/** The theme's light-scheme token when it is a `#rrggbb` colour, else `fallback`. */
+function tokenOr(theme: Theme | undefined, token: string, fallback: string): string {
+    const value = theme?.tokens.light[token] ?? '';
+    return HEX.test(value) ? value : fallback;
+}
+
+/** The footprints' colours from the city's theme (its light primary and tertiary), else the fixed ones. */
+export function footprintColorsOf(theme: Theme | undefined): FootprintColors {
+    return {
+        outline: tokenOr(theme, '--md-sys-color-primary', FIXED_COLORS.outline),
+        selected: tokenOr(theme, '--md-sys-color-tertiary', FIXED_COLORS.selected),
+    };
+}
 
 export interface ImageryMapDeps {
     readonly maps: AdminMapFactory | null;
@@ -32,17 +57,38 @@ export interface ImageryMapDeps {
     readonly files: FilePort;
     readonly pictures: PicturePort | null;
     readonly status: (status: MapStatus) => void;
-    /** A footprint was clicked. */
-    readonly picked: (sceneId: string) => void;
 }
 
-function footprintFeature(scene: SceneItem): PoiFeature {
-    const ring = [...scene.footprint, ...scene.footprint.slice(0, 1)].map((point): [number, number] => [point[0], point[1]]);
-    return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: { id: scene.id, title: scene.displayId } };
+/** A closed ring of `[lng, lat]` points as the map's feature: a line (an outline), or the area it encloses. */
+function ringFeature(id: string, title: string, points: readonly LngLat[], filled: boolean): PoiFeature {
+    const ring = [...points, ...points.slice(0, 1)].map((point): [number, number] => [point[0], point[1]]);
+    const geometry = filled ? { type: 'Polygon' as const, coordinates: [ring] } : { type: 'LineString' as const, coordinates: ring };
+    return { type: 'Feature', geometry, properties: { id, title } };
 }
 
-function overlay(id: string, scenes: readonly SceneItem[], color: string): VectorOverlaySpec {
-    return { id, kind: 'poi', features: scenes.map(footprintFeature), color, icon: 'satellite_alt', visible: true, opacity: 0.6 };
+/** One ring on the map, not clickable (the list opens the scenes): the city's outline, or the open scene's filled area. */
+function overlay(id: string, feature: PoiFeature, color: string): VectorOverlaySpec {
+    const filled = feature.geometry.type === 'Polygon';
+    return {
+        id,
+        kind: 'poi',
+        features: [feature],
+        color,
+        icon: 'satellite_alt',
+        visible: true,
+        opacity: filled ? 0.6 : 0.8,
+        clickable: false,
+    };
+}
+
+/** The city's bounds as a ring (west-south, east-south, east-north, west-north). */
+function boundsRing([[west, south], [east, north]]: BBox): LngLat[] {
+    return [
+        [west, south],
+        [east, south],
+        [east, north],
+        [west, north],
+    ];
 }
 
 /** The four corners a scene's picture goes on: its metadata's, else its footprint's box. */
@@ -62,16 +108,17 @@ export class ImageryMap {
     readonly #deps: ImageryMapDeps;
     readonly #area: AreaMap;
     readonly overlays: PictureOverlays;
-    #clicks: Unsubscribe | null = null;
     /** Bumped by every picture asked for: a slower decode of an older one is dropped. */
     #request = 0;
+    #colors = FIXED_COLORS;
+    #bounds: BBox | null = null;
 
     constructor(deps: ImageryMapDeps) {
         this.#deps = deps;
         this.#area = new AreaMap({
             ...{ maps: deps.maps, locale: deps.locale, preview: new PreviewLayer() },
             status: (status) => {
-                this.#statusChanged(status);
+                deps.status(status);
             },
         });
         this.overlays = new PictureOverlays(() => this.#area.port);
@@ -82,6 +129,7 @@ export class ImageryMap {
     }
 
     setFrame(frame: CityFrame): void {
+        this.#bounds = frame.bounds;
         this.#area.setFrame(frame);
     }
 
@@ -90,21 +138,25 @@ export class ImageryMap {
     }
 
     detach(): void {
-        this.#clicks?.();
-        this.#clicks = null;
         this.overlays.clear();
         this.#area.detach();
     }
 
-    /** Find: the listed scenes' footprints, the selected one above them (null: none). */
-    showScenes(scenes: readonly SceneItem[], selected: SceneItem | null): void {
-        const categories = [overlay(FOOTPRINTS_OVERLAY, scenes, FOOTPRINT_COLOR)];
-        this.#area.showContent({
-            categories: selected === null ? categories : [...categories, overlay(SELECTED_OVERLAY, [selected], SELECTED_COLOR)],
-        });
-        if (selected !== null) {
-            this.#area.port?.fitBounds(boxOf(sceneCorners(selected)), { padding: 32 });
-        }
+    /** The colours of the next `showScenes` (the city's theme was read). */
+    setColors(colors: FootprintColors): void {
+        this.#colors = colors;
+    }
+
+    /** Find: the city's boundary and the open scene's footprint (null: none), at the city's view. */
+    showScenes(selected: SceneItem | null): void {
+        const colors = this.#colors;
+        const city =
+            this.#bounds === null ? [] : [overlay(CITY_OVERLAY, ringFeature('city', '', boundsRing(this.#bounds), false), colors.outline)];
+        const scene =
+            selected === null
+                ? []
+                : [overlay(SELECTED_OVERLAY, ringFeature(selected.id, selected.displayId, selected.footprint, true), colors.selected)];
+        this.#area.showContent({ categories: [...city, ...scene] });
     }
 
     /** A picture of the bucket over `corners` (the selected scene's browse image, a version's preview). */
@@ -136,24 +188,4 @@ export class ImageryMap {
         const blob = await this.#deps.files.read(path);
         return blob === null ? null : pictures.decode(blob, PICTURE_MAX_SIDE);
     }
-
-    /** The map's status; once it is drawn (the port exists only then) its footprints answer clicks. */
-    #statusChanged(status: MapStatus): void {
-        this.#deps.status(status);
-        const port = this.#area.port;
-        if (port !== null) {
-            this.#clicks = port.onPoiClick((id) => {
-                this.#deps.picked(id);
-            });
-        }
-    }
-}
-
-function boxOf(corners: Corners): readonly [LngLat, LngLat] {
-    const lngs = corners.map((corner) => corner[0]);
-    const lats = corners.map((corner) => corner[1]);
-    return [
-        [Math.min(...lngs), Math.min(...lats)],
-        [Math.max(...lngs), Math.max(...lats)],
-    ];
 }

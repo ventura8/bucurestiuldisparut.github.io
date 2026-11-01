@@ -64,8 +64,12 @@ export const JOB_WAIT_REASONS = [
     'mapbox',
 ] as const;
 export const JOB_STEP_STATES = ['pending', 'running', 'done', 'failed', 'skipped'] as const;
-/** The two Cloud Run Job definitions (security review §4.1): `std` 4 vCPU / 16 GiB, `xl` 8 vCPU / 32 GiB. */
-export const JOB_MACHINES = ['std', 'xl'] as const;
+/**
+ * The three Cloud Run Job definitions (security review §4.1): `fetch` 1 vCPU / 4 GiB for an import's download phase
+ * (`DOWNLOAD_STEPS`, network-bound: finding 56 of 2026-11-01), `std` 4 vCPU / 16 GiB, `xl` 8 vCPU / 32 GiB.
+ */
+export const JOB_MACHINES = ['fetch', 'std', 'xl'] as const;
+export type JobMachine = (typeof JOB_MACHINES)[number];
 export const JOB_LOG_LEVELS = ['info', 'warn', 'error'] as const;
 /**
  * Where a connected service stands: never configured, waiting for someone outside (USGS M2M approval), verified,
@@ -153,7 +157,10 @@ export const jobDocSchema = z.strictObject({
                     .regex(/^\d{1,30}$/)
                     .optional(),
                 sha256: sha256Schema.optional(),
+                /** The output's size; while a transfer runs (the pipeline's `fetch`), the bytes received so far. */
                 bytes: z.number().int().min(0).optional(),
+                /** While a transfer runs: its announced size, when known (finding 55 of 2026-11-01). */
+                totalBytes: z.number().int().min(0).optional(),
                 startedAt: timestampSchema.optional(),
                 finishedAt: timestampSchema.optional(),
             }),

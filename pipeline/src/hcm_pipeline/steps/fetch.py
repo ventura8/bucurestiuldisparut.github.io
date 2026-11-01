@@ -5,7 +5,8 @@ preparing → the job waits (`usgs-preparing`, 10 minutes); `download-retrieve` 
 Cloud Storage resumable upload in 64 MiB chunks, the checkpoint `{path, session}` in `work/{city}/{job}/
 fetch.checkpoint.json` after each; a resume asks the session how much it holds and continues with an HTTP Range
 (**UNVERIFIED** that USGS honours it: when it answers the whole file, the bytes already held are skipped); a 403 or
-410 asks `download-retrieve` again; the delivered size must equal `download-options`; SHA-256 is computed by
+410 asks `download-retrieve` again; the bytes received are reported as they arrive (`ctx.report_bytes`: the version's
+step line reads `1.2 of 3.4 GB`, finding 55 of 2026-11-01); the delivered size must equal `download-options`; SHA-256 is computed by
 reading the object back in-region; `download-order-remove` cleans up. A delivery another city already fetched
 (same size) is reused. The signed address never reaches a log or a document.
 
@@ -130,7 +131,6 @@ class _Download:
         if offset + len(data) > self.option.size:
             self._discard("the delivery is larger than USGS announced")
         result = self.ctx.services.objects.write_chunk(session, offset, data, self.option.size)
-        self.ctx.flags.progress_within((offset + len(data)) / self.option.size)
         self.ctx.checkpoint()
         return result
 
@@ -138,6 +138,7 @@ class _Download:
         buffer = bytearray()
         for piece in chunks:
             buffer += piece
+            self.ctx.report_bytes(offset + len(buffer), self.option.size)
             while len(buffer) >= self.chunk_bytes:
                 result = self._write(bytes(buffer[: self.chunk_bytes]), offset)
                 offset, buffer = offset + self.chunk_bytes, buffer[self.chunk_bytes :]

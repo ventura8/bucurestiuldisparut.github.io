@@ -114,7 +114,9 @@ test(
         });
         const gcps = await savedGcps(imagery, versionId);
         expect(gcps.filter((gcp) => gcp.origin === 'auto').map((gcp) => gcp.id)).toEqual([...SUGGESTED]);
+        // Attempt 1 downloads on the small job and is processed up to the points (finding 56); the Save is attempt 2.
         expect((await imagery.runs()).map((run) => [run.jobId, run.attempt])).toEqual([
+            [versionId, 1],
             [versionId, 1],
             [versionId, 2],
         ]);

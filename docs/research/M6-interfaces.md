@@ -958,3 +958,16 @@ Where it differs from §1.4.2, §1.5, §1.7, §1.8 and §1.10, this addendum is 
 - §6.1 gains S-A56-HAPPY-JOBS-RATE-LIMITED, S-A56-BAD-JOBS-QUOTA, S-A22-BAD-REPORTS-BLOCKED-HOST,
   S-A22-BAD-REPORTS-NEW-FAILURE-ONLY, S-A22-HAPPY-REPORTS-UNBLOCKED, S-A47-HAPPY-TOKEN, S-A47-HAPPY-DRY-RUN-UNREGISTERED,
   S-A47-HAPPY-LEGACY-FID; §6.3 the tour states `setup.pipeline-retrying` and `setup.pipeline-quota`.
+
+## Addendum 2026-11-01: finding 56 (the download on a small job)
+
+Finding 56 of `docs/research/manual-test-2026-10-25.md` (`DECISIONS-for-review.md` §82f; the imagery side is
+`docs/research/M3-interfaces.md` → *Addendum 2026-11-01: findings 51–58*). Where it differs from §1.4.2 and §1.7, this
+addendum is the contract.
+
+- §1.4.2 `jobs`: `run-jobs` makes or replaces three jobs, one after the other: `raster-fetch` (1 CPU, 4 GiB) first, then
+  `raster-pipeline` (4 CPU, 16 GiB) and `raster-pipeline-xl` (8 CPU, 32 GiB), each as before (`job-raster@`, 6 h, no
+  retries, one task, args `run`, the buckets in the environment, the release labels).
+- §1.7: the pipeline card counts as installed when all three jobs run the release (`CLOUD_RUN_JOBS`); a project installed
+  before reads as not installed until the pipeline is installed again. The card's cost line names the run costs.
+- §1.10 fakes: the Cloud Run and Cloud Build fakes make, provision and label the three jobs.

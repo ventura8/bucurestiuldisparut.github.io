@@ -347,6 +347,7 @@ const EXPORTS = {
         'gcpSchema',
         'georefSchema',
         'pixelSchema',
+        'DOWNLOAD_STEPS',
         'ENDED_VERSION_STATES',
         'GUARD_VERDICTS',
         'JOB_PARAMS_SCHEMAS',

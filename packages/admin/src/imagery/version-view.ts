@@ -136,6 +136,8 @@ export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
 interface JobStepView {
     readonly name: string;
     readonly status: 'pending' | 'running' | 'done' | 'failed' | 'skipped';
+    /** A running transfer's bytes so far and its total (null: unknown), else null (finding 55 of 2026-11-01). */
+    readonly transfer: { readonly received: number; readonly total: number | null } | null;
 }
 
 export interface JobView {
@@ -160,9 +162,16 @@ export interface JobView {
     readonly refusedUpload: boolean;
 }
 
+type StepRecord = NonNullable<JobDoc['steps']>[string];
+
+/** The bytes a running step has received, when it reports them. */
+function transferOf(step: StepRecord | undefined): JobStepView['transfer'] {
+    return step?.status === 'running' && step.bytes !== undefined ? { received: step.bytes, total: orNull(step.totalBytes) } : null;
+}
+
 function stepsOf(job: JobDoc): JobStepView[] {
     const recorded = job.steps ?? {};
-    return JOB_STEPS[job.type].map((name) => ({ name, status: recorded[name]?.status ?? 'pending' }));
+    return JOB_STEPS[job.type].map((name) => ({ name, status: recorded[name]?.status ?? 'pending', transfer: transferOf(recorded[name]) }));
 }
 
 /** A job's error code as a notice: an `apiError.*` code with its parameters (a code from before M3 reads as internal). */

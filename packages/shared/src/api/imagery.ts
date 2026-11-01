@@ -15,8 +15,11 @@ import { coded, idSchema, isoDateSchema, plainText } from '../schemas/primitives
 import { isoTimeSchema } from './common.js';
 import { layerLinkRequestSchema } from './layers.js';
 
-/** The two Cloud Run Job definitions (security review §4.1): 4 vCPU / 16 GiB, and 8 vCPU / 32 GiB. */
-export const CLOUD_RUN_JOBS = { std: 'raster-pipeline', xl: 'raster-pipeline-xl' } as const;
+/**
+ * The three Cloud Run Job definitions (security review §4.1; `JOB_MACHINES`): 1 vCPU / 4 GiB for an import's download
+ * (finding 56 of 2026-11-01), 4 vCPU / 16 GiB, and 8 vCPU / 32 GiB.
+ */
+export const CLOUD_RUN_JOBS = { fetch: 'raster-fetch', std: 'raster-pipeline', xl: 'raster-pipeline-xl' } as const;
 /** The container arguments of every execution: run the job's remaining steps in order (`python -m hcm_pipeline run`). */
 export const PIPELINE_RUN_ARGS = ['run'] as const;
 /** The task queue of the publisher (`imagery.publish`: one at a time, at most two MTS calls a minute). */
@@ -26,7 +29,10 @@ export const IMAGERY_TICK_SCHEDULE = 'every 5 minutes';
 /** At most this many raster jobs a day per project (security review §3.4), and this many running at once. */
 export const JOBS_PER_DAY = 10;
 export const RUNNING_JOBS_MAX = 2;
-/** A job is tried at most this many times (dispatches, OOM on `xl` included) before it fails. */
+/**
+ * A job is tried at most this many times (dispatches, OOM on `xl` included) before it fails; the hand-over from the
+ * download phase to the processing (finding 56) is no new try.
+ */
 export const JOB_MAX_ATTEMPTS = 3;
 /**
  * A publish is started at most this many times in all (every delivery of a start task, Cloud Tasks' own retries and the
@@ -128,14 +134,13 @@ export const imageryCropResponseSchema = z.strictObject({ jobId: idSchema, versi
 
 /**
  * Failures no retry cures (CR-M3-47): the admin fixes the cause first (a Mapbox token or its scopes: Setup's Mapbox step),
- * or the frame cannot be processed (out of memory on the large machine, the attempts used up). `imagery.retry` refuses
- * them and the admin's pages offer no Retry for them.
+ * or the job used up its attempts. `imagery.retry` refuses them and the admin's pages offer no Retry for them. Out of
+ * memory on the large machine is retried (finding 58 of 2026-11-01: a later pipeline may fit it, finding 57).
  */
 export const NOT_RETRYABLE_CODES = [
     'apiError.mapbox.tokenInvalid',
     'apiError.mapbox.missingScopes',
     'apiError.mapbox.notConfigured',
-    'apiError.imagery.outOfMemory',
     'apiError.imagery.attemptsExhausted',
 ] as const;
 

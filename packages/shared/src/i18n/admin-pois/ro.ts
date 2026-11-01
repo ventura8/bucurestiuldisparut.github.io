@@ -88,7 +88,6 @@ export const ro = {
     'adminContent.pois.redraw': 'Redesenează ca {shape}',
     'adminContent.pois.redrawTitle': 'Redesenezi locul?',
     'adminContent.pois.redrawBody': 'Forma de acum dispare din ciornă; celelalte câmpuri rămân. Nimic nu se scrie până la salvare.',
-    'adminContent.pois.redrawConfirm': 'Redesenează',
     'adminContent.pois.delete': 'Șterge locul',
     'adminContent.pois.deleteTitle': 'Ștergi „{title}”?',
     'adminContent.pois.deleteBody': 'Locul dispare de pe harta publică în aproximativ un minut. Îl poți restaura din Istoric.',

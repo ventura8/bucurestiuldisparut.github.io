@@ -80,6 +80,60 @@ describe('lost executions', () => {
         expect((await readJob(world, 'job-1966-0712'))?.lease).toBeUndefined();
     });
 
+    it('badPath_anOutOfMemoryExitOfTheDownloadRunsItAgainOnStd @S-A12-BAD-PHASE-OUT-OF-MEMORY', async () => {
+        const world = await lostWorld({ machine: 'fetch' }, { state: 'failed', failure: 'oom', exitCode: 137 });
+
+        await runImageryTick(world.deps);
+
+        expect(world.jobs.runs.map((run) => run.job)).toEqual([CLOUD_RUN_JOBS.std]);
+        expect(await readJob(world, 'job-1966-0712')).toMatchObject({ status: 'starting', machine: 'std', attempt: 2 });
+    });
+
+    it('badPath_anOutOfMemoryExitOfTheProcessingMovesToXlWithoutDownloadingAgain @S-A12-BAD-PHASE-OUT-OF-MEMORY', async () => {
+        const downloaded = {
+            fetch: { status: 'done' as const },
+            extract: { status: 'done' as const },
+            stitch: { status: 'running' as const },
+        };
+        const world = await lostWorld({ steps: downloaded }, { state: 'failed', failure: 'oom', exitCode: 137 });
+
+        await runImageryTick(world.deps);
+
+        expect(world.jobs.runs.map((run) => run.job)).toEqual([CLOUD_RUN_JOBS.xl]);
+        expect(await readJob(world, 'job-1966-0712')).toMatchObject({
+            machine: 'xl',
+            steps: { fetch: { status: 'done' }, extract: { status: 'done' } },
+        });
+    });
+
+    it('happyPath_aDeadExecutionIsNoticedBeforeItsLeaseLapses @S-A12-HAPPY-DEAD-EXECUTION-NOTICED', async () => {
+        // Finding 58 of 2026-11-01: killed for its memory (signal 9), the run wrote nothing more; its lease still holds.
+        const held = { owner: 'raster-pipeline-x7k2m/0', until: minutesAgo(-6) };
+        const world = await lostWorld(
+            { machine: 'xl', attempt: 2, lease: held, updatedAt: minutesAgo(4) },
+            { state: 'failed', failure: 'oom' },
+        );
+
+        await runImageryTick(world.deps);
+
+        expect(await readJob(world, 'job-1966-0712')).toMatchObject({ status: 'failed', error: { code: 'apiError.imagery.outOfMemory' } });
+        expect((await readVersion(world, 'job-1966-0712'))?.state).toBe('failed');
+    });
+
+    it('badPath_aLateHeartbeatOfARunStillRunningIsLeftAlone @S-A12-BAD-HEARTBEAT-LATE-RUNNING', async () => {
+        const held = { owner: 'raster-pipeline-x7k2m/0', until: minutesAgo(-6) };
+        const late = await lostWorld({ lease: held, updatedAt: minutesAgo(4) }, { state: 'running' });
+        await runImageryTick(late.deps);
+        const onTime = await lostWorld({ lease: held, updatedAt: minutesAgo(1) }, { state: 'failed', failure: 'oom' });
+        await runImageryTick(onTime.deps);
+
+        expect([(await readJob(late, 'job-1966-0712'))?.status, (await readJob(onTime, 'job-1966-0712'))?.status]).toEqual([
+            'running',
+            'running',
+        ]);
+        expect([...late.jobs.runs, ...onTime.jobs.runs]).toEqual([]);
+    });
+
     it('badPath_outOfMemoryOnXlFails @S-A12-BAD-LOST-EXECUTION', async () => {
         const world = await lostWorld({ machine: 'xl', attempt: 2 }, { state: 'failed', failure: 'oom' });
 
@@ -112,7 +166,7 @@ describe('lost executions', () => {
 
     it('happyPath_aLeaseThatHoldsIsNotAsked', async () => {
         const world = await lostWorld(
-            { lease: { owner: 'x/0', until: timestampFromDate(new Date(Date.parse(NOW) + MINUTE)) } },
+            { lease: { owner: 'x/0', until: timestampFromDate(new Date(Date.parse(NOW) + MINUTE)) }, updatedAt: minutesAgo(1) },
             { state: 'failed' },
         );
 

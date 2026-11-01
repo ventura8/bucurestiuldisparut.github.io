@@ -38,6 +38,27 @@ def test_happy_path_a_delivery_another_city_fetched_is_reused(world: PipelineWor
     assert dig(world.job(), "steps", "fetch", "gcsPath") == RAW
 
 
+def test_happy_path_a_download_reports_its_bytes_of_the_total_as_they_arrive(world: PipelineWorld) -> None:
+    world.seed_import()
+    size = len(world.delivery)
+
+    def five_seconds_later(_name: str, _start: int) -> None:
+        world.clock.now += 5
+
+    world.gcs.on_chunk = five_seconds_later
+
+    assert fetch(world) is RunOutcome.DONE
+    reports = [fields for path, fields in world.store.writes if path == world.job_path() and "steps.fetch.bytes" in fields]
+    received = [int(str(report["steps.fetch.bytes"])) for report in reports]
+    assert len(reports) >= 2
+    assert received == sorted(received)
+    assert 0 < received[0] < size
+    assert {report["steps.fetch.totalBytes"] for report in reports} == {size}
+    assert all(0 < float(str(report["progress"])) <= 0.25 for report in reports)
+    # Done, the step keeps the delivery's size and the job its share of the progress.
+    assert (dig(world.job(), "steps", "fetch", "bytes"), world.job()["progress"]) == (size, 0.25)
+
+
 def test_happy_path_a_download_still_being_prepared_waits_ten_minutes(world: PipelineWorld) -> None:
     world.seed_import()
     world.m2m.set_data("download-request", {"availableDownloads": [], "preparingDownloads": [{"downloadId": 1}]})

@@ -223,3 +223,17 @@ def test_bad_path_a_job_document_without_a_type_is_invalid(world: PipelineWorld)
 
     assert runner(world, config, scripted()).run() is RunOutcome.FAILED
     assert dig(world.job(JOB), "error", "code") == Errors.INVALID_REQUEST
+
+
+def test_bad_path_a_transfer_of_unknown_size_reports_its_bytes_only_at_most_every_five_seconds(world: PipelineWorld) -> None:
+    def transfer(ctx: JobContext) -> None:
+        ctx.report_bytes(10, 0)
+        ctx.report_bytes(20, 0)
+        world.clock.now += 5
+        ctx.report_bytes(30, 0)
+
+    runner(world, seed(world), scripted(warp=Scripted("warp", action=transfer))).run()
+
+    reports = [fields for path, fields in world.store.writes if path == world.job_path(JOB) and "steps.warp.bytes" in fields]
+    assert [report["steps.warp.bytes"] for report in reports] == [10, 30]
+    assert not any("steps.warp.totalBytes" in report for report in reports)

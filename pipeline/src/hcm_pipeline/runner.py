@@ -12,9 +12,15 @@ How a run ends:
 | an invalid job | `failed` with `apiError.invalidRequest` (a retry cannot help) | 1 |
 | `cancelRequested` (heartbeat, a checkpoint, or SIGTERM after it) | `cancelled`; the version `cancelled`; its `work/` objects deleted | 0 |
 | SIGTERM without a cancel | `queued` with `retryAt` + 1 minute; the step `pending`, its checkpoint kept | 0 |
+| the download phase done on the small `fetch` job | `queued`, lease released: dispatched again on `std` or `xl` | 0 |
 | another live owner holds the lease, or the job is not runnable | untouched | 0 |
 
 Local scratch files live in a temporary folder removed whatever the ending.
+
+An import runs in two phases (finding 56 of 2026-11-01): a run on the small `fetch` job does the download phase
+(`DOWNLOAD_STEPS`, network-bound) and hands the job back, queued, for its processing on `std` (or `xl`); a run on a
+larger job (or one no dispatcher sized: a local worker) does whatever is left. The version records which job each phase
+ran on (`machines.download`, `machines.process`).
 """
 
 import enum
@@ -29,7 +35,7 @@ from typing import Final, Protocol
 
 from hcm_pipeline import paths
 from hcm_pipeline.config import Config
-from hcm_pipeline.contract import REQUEUE_SECONDS, Errors, pipeline_steps_of, step_weights
+from hcm_pipeline.contract import DOWNLOAD_STEPS, REQUEUE_SECONDS, Errors, pipeline_steps_of, step_weights
 from hcm_pipeline.documents import Version
 from hcm_pipeline.joblog import JobLog, scrub
 from hcm_pipeline.jobs import (
@@ -164,12 +170,18 @@ class JobRunner:
 
     def _walk(self, ctx: JobContext, only: str | None) -> RunOutcome:
         weights, base = step_weights(ctx.job.type), 0.0
-        for name in pipeline_steps_of(ctx.job.type):
+        for name in _walked(ctx, only):
             result = self._step(ctx, name, base, weights[name]) if only in (None, name) else Done()
             if isinstance(result, Waiting):
                 return self._wait(ctx, name, result)
             base += weights[name]
-        return self._finish(ctx) if only is None else self._release(ctx)
+        return self._end(ctx, only, base)
+
+    def _end(self, ctx: JobContext, only: str | None, progress: float) -> RunOutcome:
+        """A step run on its own releases the job; the small job hands it over; a whole walk awaits approval."""
+        if only is not None:
+            return self._release(ctx)
+        return self._hand_over(ctx, progress) if _on_small_job(ctx) else self._finish(ctx)
 
     def _finished(self, record: StepRecord) -> bool:
         if record.status not in ("done", "skipped"):
@@ -182,6 +194,7 @@ class JobRunner:
         if self._finished(ctx.job.step(name)):
             return Done()
         ctx.step = name
+        _record_machine(ctx, name)
         ctx.flags.enter(name, base, weight)
         started = self._now()
         ctx.update_job({"step": name, f"steps.{name}": StepRecord("running", started_at=started).as_record(), "progress": round(base, 4)})
@@ -224,6 +237,12 @@ class JobRunner:
         self._log.info("the layer version awaits approval", ctx.step or None)
         return RunOutcome.DONE
 
+    def _hand_over(self, ctx: JobContext, progress: float) -> RunOutcome:
+        """The download phase is done on the small job: the job is queued again for its processing (the dispatcher)."""
+        self._final({"status": "queued", "progress": round(progress, 4)})
+        self._log.info("the scene is downloaded; its processing is queued for a larger machine", ctx.step or None)
+        return RunOutcome.DONE
+
     def _release(self, ctx: JobContext) -> RunOutcome:
         self._final({"status": "queued"})
         self._log.info(f"step {ctx.step} run on its own; the job is queued again", ctx.step or None)
@@ -250,6 +269,25 @@ class JobRunner:
             self._services.store.update(ctx.version_path(), {"state": "failed", "error": _version_error(error), **stamp(now)})
         self._log.error(f"{error.code}: {error}", ctx.step if ctx else None)
         return RunOutcome.FAILED
+
+
+def _on_small_job(ctx: JobContext) -> bool:
+    """True on the small `fetch` job, which runs an import's download phase only."""
+    return ctx.job.machine == "fetch"
+
+
+def _walked(ctx: JobContext, only: str | None) -> tuple[str, ...]:
+    """The steps this run walks: the download phase on the small job (a whole walk), else every one of the job type."""
+    steps = pipeline_steps_of(ctx.job.type)
+    return tuple(step for step in steps if step in DOWNLOAD_STEPS) if only is None and _on_small_job(ctx) else steps
+
+
+def _record_machine(ctx: JobContext, name: str) -> None:
+    """The version records the job its step's phase runs on, once a phase (a run no dispatcher sized records none)."""
+    phase = "download" if name in DOWNLOAD_STEPS else "process"
+    machine = ctx.job.machine
+    if machine is not None and ctx.version.machines.get(phase) != machine:
+        ctx.update_version({f"machines.{phase}": machine})
 
 
 def _record(result: Done | Skipped, started: Timestamp, finished: Timestamp) -> Record:

@@ -14,7 +14,6 @@ export const ro = {
     'adminContent.photos.dropHint': 'Trage fotografiile aici sau alege-le cu Adaugă fotografii.',
     'adminContent.photos.dropActive': 'Lasă fotografiile aici ca să le încarci.',
     'adminContent.photos.noMatch': 'Nicio fotografie încărcată nu se potrivește căutării.',
-    'adminContent.photos.loading': 'Se încarcă fotografiile…',
     'adminContent.photos.offline': 'Se reconectează… Modificările tale sunt păstrate.',
     'adminContent.photos.error': 'Fotografiile nu au putut fi citite.',
     'adminContent.photos.retry': 'Încearcă din nou',

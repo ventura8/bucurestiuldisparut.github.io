@@ -48,7 +48,7 @@ function events(lines: readonly string[]) {
 }
 
 describe('run-jobs refusals (finding 47)', () => {
-    it('happyPath_aRateLimitedCreateIsWaitedOutThenBothJobsAreMadeOneAfterTheOther', async () => {
+    it('happyPath_aRateLimitedCreateIsWaitedOutThenTheThreeJobsAreMadeOneAfterTheOther', async () => {
         const upstream = createUpstreamFakes();
         upstream.scenario('cloud-run.jobsRateLimited');
         const { deps, lines, sleeps } = world(upstream.fetch);
@@ -58,8 +58,9 @@ describe('run-jobs refusals (finding 47)', () => {
         const writes = upstream.calls.filter((call) => call.operation === 'cloud-run.jobs.create');
         // Two refusals of the first job's create, then one create a job, in order; never two at once.
         expect(writes.map((call) => [call.status, new URL(call.url).searchParams.get('jobId')])).toEqual([
-            [429, 'raster-pipeline'],
-            [429, 'raster-pipeline'],
+            [429, 'raster-fetch'],
+            [429, 'raster-fetch'],
+            [200, 'raster-fetch'],
             [200, 'raster-pipeline'],
             [200, 'raster-pipeline-xl'],
         ]);
@@ -96,7 +97,7 @@ describe('run-jobs refusals (finding 47)', () => {
         expect(upstream.calls.filter((call) => call.operation === 'cloud-run.jobs.create')).toHaveLength(1);
         expect(sleeps).toEqual([]);
         expect(lines).toContain(
-            'jobs: Google Cloud refused raster-pipeline for the quota run.googleapis.com/cpu_allocation (limit CpuAllocPerProjectRegion) ' +
+            'jobs: Google Cloud refused raster-fetch for the quota run.googleapis.com/cpu_allocation (limit CpuAllocPerProjectRegion) ' +
                 'of run.googleapis.com. A free-trial project has lower quotas: upgrade the account, or ask for a higher quota on the ' +
                 'Quotas page, then try again.',
         );

@@ -6,7 +6,7 @@ export const en: AdminInstallMessages = {
     'adminSetup.step.site': 'Publishing the map',
     'adminSetup.why.pipeline': "The pipeline turns USGS scans into the map's layers; it installs with the server.",
     'adminSetup.why.site': "Visitors see the map at the project's address, and the admin stays at /admin/.",
-    'adminSetup.cost.pipeline': "The pipeline's image takes about 1.5 GB: about US$0.10 a month after the first free 0.5 GB.",
+    'adminSetup.cost.pipeline': 'Image US$0.10 a month; an import downloads on 1 vCPU (US$0.09/h), then works on 4 vCPU (US$0.37/h).',
     'adminSetup.cost.site': 'Firebase Hosting: free up to 10 GB stored and 360 MB transferred a day.',
     'adminSetup.install.server.explain': 'We install the server from here with Google Cloud Build, in your project: about 15 minutes.',
     'adminSetup.install.server.action': 'Install the server',

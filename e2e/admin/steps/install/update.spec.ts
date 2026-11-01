@@ -338,6 +338,7 @@ test(
             readonly jobSpecs: Record<string, { labels: Record<string, string> }>;
         };
         const labels = { 'hcm-release': INSTALL_SLUG, 'hcm-release-time': String(INSTALL_RELEASE_TIME) };
+        expect(run.jobSpecs[`${E2E_PROJECT_ID}/us-central1/raster-fetch`]?.labels).toEqual(labels);
         expect(run.jobSpecs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline`]?.labels).toEqual(labels);
         expect(run.jobSpecs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline-xl`]?.labels).toEqual(labels);
         // The page opened Analytics on its way (the first optional step not done): Google Analytics is not enabled yet,

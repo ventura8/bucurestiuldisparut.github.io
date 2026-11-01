@@ -58,8 +58,9 @@ test(
         await setup.expectState('pipeline', 'ok');
         const jobs = await jobSpecs(upstream);
         const image = `us-central1-docker.pkg.dev/${E2E_PROJECT_ID}/hcm/pipeline@${PIPELINE_DIGEST}`;
-        // The release's slug and its build time (finding 39 of 2026-11-01) label both jobs.
+        // The release's slug and its build time (finding 39 of 2026-11-01) label the three jobs (the small download one: finding 56).
         const labels = { 'hcm-release': INSTALL_SLUG, 'hcm-release-time': String(INSTALL_RELEASE_TIME) };
+        expect(jobs[`${E2E_PROJECT_ID}/us-central1/raster-fetch`]).toEqual({ labels, image });
         expect(jobs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline`]).toEqual({ labels, image });
         expect(jobs[`${E2E_PROJECT_ID}/us-central1/raster-pipeline-xl`]).toEqual({ labels, image });
         await expect(pipeline.getByRole('button', { name: setupText(lang, 'adminSetup.install.tryAgain') })).toHaveCount(0);
@@ -124,7 +125,8 @@ test(
         // Done, the card hands the detail over: it is shown again to read its state.
         await setup.expectState('pipeline', 'ok');
         await expect(installState(await setup.show('pipeline'))).toContainText(setupText(lang, 'adminSetup.install.state.installed'));
-        expect(Object.keys(await jobSpecs(upstream))).toHaveLength(2);
+        // The three jobs (the small download one since finding 56).
+        expect(Object.keys(await jobSpecs(upstream))).toHaveLength(3);
         serverDeployment.claimErrors();
     },
 );

@@ -19,11 +19,12 @@ import {
     MATCH_CHANNELS,
     MAX_SUGGESTIONS,
 } from '../../src/schemas/autogcp.js';
-import { JOB_STATUSES, JOB_STEP_STATES, JOB_WAIT_REASONS, jobDocSchema } from '../../src/schemas/firestore-ops.js';
+import { JOB_MACHINES, JOB_STATUSES, JOB_STEP_STATES, JOB_WAIT_REASONS, jobDocSchema } from '../../src/schemas/firestore-ops.js';
 import { enabledGcps, GCP_ORIGINS, gcpSchema, GEOREF_TRANSFORMS, MIN_GCPS, type GeorefTransform } from '../../src/schemas/georef.js';
 import { RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
 import { STUDIO_MAX_BYTES } from '../../src/schemas/imagery-publish.js';
 import {
+    DOWNLOAD_STEPS,
     JOB_PARAMS_SCHEMAS,
     JOB_STEPS,
     LAYER_VERSION_STATES,
@@ -74,6 +75,8 @@ describe('the pipeline contract', () => {
             JOB_WAIT_REASONS,
             JOB_STEP_STATES,
             PIPELINE_STEPS,
+            DOWNLOAD_STEPS,
+            JOB_MACHINES,
             JOB_STEPS,
             LAYER_VERSION_STATES,
             GEOREF_TRANSFORMS,
@@ -95,6 +98,19 @@ describe('the pipeline contract', () => {
         expect(validate(jobDocSchema, job).ok).toBe(true);
         expect(validate(JOB_PARAMS_SCHEMAS['usgs-import'], job.params).ok).toBe(true);
         expect(Object.keys(job.steps).every((step) => (JOB_STEPS['usgs-import'] as readonly string[]).includes(step))).toBe(true);
+    });
+
+    it('happyPath_aDownloadReportsItsBytesOfTheTotalOnItsStep', () => {
+        const job = golden('job.usgs-import.running.json') as Readonly<Record<string, unknown>>;
+        const fetching = {
+            status: 'running',
+            startedAt: { seconds: 1792000030, nanoseconds: 0 },
+            bytes: 1_200_000_000,
+            totalBytes: 3_400_000_000,
+        };
+
+        expect(validate(jobDocSchema, { ...job, step: 'fetch', progress: 0.09, steps: { fetch: fetching } }).ok).toBe(true);
+        expect(validate(jobDocSchema, { ...job, steps: { fetch: { ...fetching, totalBytes: -1 } } }).ok).toBe(false);
     });
 
     it('happyPath_theAutomaticGcpConstantsEqualThePipelinesCopy', () => {

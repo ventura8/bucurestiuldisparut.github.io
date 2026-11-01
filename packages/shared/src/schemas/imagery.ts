@@ -10,7 +10,7 @@ import { apiErrorCodeSchema, apiErrorParamsSchema } from '../api/errors.js';
 import { layerDeleteParamsSchema } from '../api/layers.js';
 import { gcpSuggestionsSchema } from './autogcp.js';
 import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
-import type { JobType } from './firestore-ops.js';
+import { JOB_MACHINES, type JobType } from './firestore-ops.js';
 import { LAYER_TILESET_ORIGINS, USGS_DATASETS } from './firestore.js';
 import { cropRingSchema, georefSchema, MAX_SCAN_PIXELS } from './georef.js';
 import { boundsRecordSchema, coded, idSchema, isoDateSchema, localizedPartial, plainText, yearSchema, zoomSchema } from './primitives.js';
@@ -207,6 +207,8 @@ export const layerVersionDocSchema = z
         guard: guardSchema.optional(),
         approval: approvalSchema.optional(),
         mapbox: mapboxSchema.optional(),
+        /** Finding 56: the Cloud Run job each phase of its making ran on (`download`: fetch and extract; `process`: the rest). */
+        machines: z.strictObject({ download: z.enum(JOB_MACHINES).optional(), process: z.enum(JOB_MACHINES).optional() }).optional(),
         error: z.strictObject({ code: apiErrorCodeSchema, params: apiErrorParamsSchema.optional() }).optional(),
         createdBy: uidSchema,
         createdAt: timestampSchema,
@@ -254,6 +256,12 @@ export const PIPELINE_STEPS = [
     'export',
     'register',
 ] as const;
+
+/**
+ * An import's download phase (finding 56 of 2026-11-01): network-bound steps the small `fetch` job runs; the job is then
+ * queued again and its processing runs on `std` (or `xl`). A job a larger machine runs from the start runs both phases.
+ */
+export const DOWNLOAD_STEPS = ['fetch', 'extract'] as const;
 
 /** The steps the publisher runs (functions, `imagery.publish`), after approval. */
 export const PUBLISH_STEPS = ['guard', 'upload', 'publish', 'tiles', 'finalize'] as const;

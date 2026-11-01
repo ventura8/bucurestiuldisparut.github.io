@@ -1,6 +1,6 @@
 /**
  * The pipeline build's `jobs` step (`docs/research/M6-interfaces.md` §1.4.2): creates or replaces the raster pipeline's
- * two Cloud Run Jobs through Run Admin v2, on the image the `push` step pushed (by digest), exactly as D5 of
+ * three Cloud Run Jobs through Run Admin v2, on the image the `push` step pushed (by digest), exactly as D5 of
  * `MANUAL_TEST_PLAN.md` did with `gcloud`: `job-raster@`, task timeout 6 h, no retries, one task, args `run`, the
  * project's buckets in the environment, the release's slug as the `hcm-release` label and its build time, when it has
  * one, as `hcm-release-time` (finding 39 of 2026-11-01: it orders two builds of one version). Each operation is waited
@@ -23,8 +23,12 @@ import { GoogleCallError, googleJson, logEvent, type StepDeps } from './step-io.
 
 const RUN = 'https://run.googleapis.com/v2';
 
-/** The two jobs and their machines (M3 §4.3). */
+/**
+ * The three jobs and their machines (M3 §4.3): the small one runs an import's download (network-bound, finding 56 of
+ * 2026-11-01: 8 vCPUs idled at 3 % for half an hour), the other two its processing.
+ */
 export const PIPELINE_JOBS = [
+    { name: CLOUD_RUN_JOBS.fetch, cpu: '1', memory: '4Gi' },
     { name: CLOUD_RUN_JOBS.std, cpu: '4', memory: '16Gi' },
     { name: CLOUD_RUN_JOBS.xl, cpu: '8', memory: '32Gi' },
 ] as const;
@@ -203,7 +207,7 @@ function nameQuota(deps: StepDeps, job: string, error: unknown): void {
     logEvent(deps, event);
 }
 
-/** Creates or replaces both jobs, one after the other; resolves to the step's exit status. */
+/** Creates or replaces the three jobs, one after the other; resolves to the step's exit status. */
 export async function runJobs(argv: readonly string[], deps: StepDeps): Promise<number> {
     const opts = options(argv);
     const image = imageOf(deps.readFile(opts.imageFile));

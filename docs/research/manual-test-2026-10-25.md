@@ -487,3 +487,91 @@ finding changed: `docs/LESSONS.md` 319–322 and `DECISIONS-for-review.md` §81.
   `eslint.config.js` allows these two in `packages/admin/src/firebase/messaging-sdk.ts` only. A browser whose device was
   recorded as an installation id keeps it (sent as `message.fid`, forgotten at a send FCM refuses) until push is turned on
   again from it. The next live try: **Notifications on this device**, then **Send a test**.
+
+### Historical imagery: Find, Work and the first real import (2026-11-01, admin and server `1.0.0+c8f0019`)
+
+The admin's Historical imagery → Find over Bucharest after the first real USGS harvest, then the first real import. The
+numbering continues the list above. The "#51 admin theme" noted first was withdrawn (the user had changed the city's theme
+themselves), so 51–58 are the imagery findings; what each changed: `docs/LESSONS.md` 323–330 and
+`DECISIONS-for-review.md` §82.
+
+- **51.** \[bug]\[imagery] The scene footprints on the imagery map were solid blue fills; nearly every frame covers the
+  whole city, so the stacked fills hid the basemap: a flat blue field with white road lines. A first fix drew them as
+  outlines; the user's look at it zoomed out (2026-11-01: "what is this madness of lines on the map") showed dozens of
+  crossing edges, since Corona and KH-9 footprints are long strips over the whole region. FIXED (§82a): by default the
+  map draws no result's footprint, only the city's boundary (a thin line in the city theme's light `primary`) on the
+  normal basemap, at the city's own view; exactly one footprint, the open scene's (outline and a light fill, 0.35 × 0.6
+  of the theme's light `tertiary`), and the map never zooms out to a footprint (`packages/admin/src/imagery/imagery-map.ts`).
+  Pixel probes: six overlapping results and none open leave the basemap's own colour at the city's centre and no
+  footprint; the open scene alone is drawn, its fill's blend at the centre (S-A11-BAD-FOOTPRINTS-STACKED,
+  S-A11-HAPPY-FOOTPRINT-SELECTED; tour `imagery.results-previews-unavailable`). Not done: a "Show all footprints"
+  switch (optional in the user's request; the list is the way to pick) and a footprint on hovering a row.
+- **52.** \[bug]\[imagery] Only one result showed its browse thumbnail (a 1964 KH-4A Corona); the others showed the generic
+  placeholder. Root cause, from the code: the list showed a thumbnail only for a scene whose copy already existed in our
+  bucket (`browse.state: 'copied'`) and never asked for one: the copies are made by the harvest's prefetch (the 20
+  best-ranked frames, each fetched with a 10 s limit at the end of the up to 300 s search) and by opening a scene
+  (`imagery.browse`); a scene whose copy was not made yet (`none`) and one whose copy failed (`failed`) showed the same
+  placeholder forever. The one thumbnail is most likely the scene that was opened (the page and the list share the
+  browse images), or one of the prefetch's few copies. Not the URL signing, CSP or CORS (that one image loaded through
+  the same Storage read), not the KH-9 browse naming (every dataset's `browsePath` is held to `usgsBrowseUrlSchema`), not
+  lazy loading (the `<img>` is eager). UNVERIFIED: why the prefetch's own copies were missing live (each scene's
+  `browse.state` and the harvest's `browse image not copied` warnings in the functions' logs would say: `none` means not
+  attempted, `failed` an answer USGS did not give within 10 s or a refused address). FIXED (§82b): the list's first 24
+  rows ask `imagery.browse` for the copies they lack, four at a time, the next starting as each ends; the scene's page
+  asks for its own at once, sharing a copy already asked for; a row whose copy failed shows a broken-image icon with the
+  reason ("The USGS preview cannot be fetched right now. Try again.") in its name, and its page keeps Try again
+  (`packages/admin/src/imagery/browse.ts`, `packages/ui/src/admin/imagery/scene-list.ts`; S-A11-HAPPY-ROW-PREVIEWS,
+  S-A11-BAD-ROW-PREVIEW-UNAVAILABLE; tour `imagery.results-previews`).
+- **53.** \[bug]\[imagery] Three results read exactly "KH-4A Corona · Jun 18, 1964": nothing told them apart. FIXED
+  (§82c): every row has a line with the frame's USGS id, its camera and frame number when the id says them (Corona's and
+  KH-9's panoramic frames end in `A`/`F` and the frame, `DS1012-1043DA015` → "aft camera, frame 15"; KH-9's mapping
+  frames name the frame after the `L`) (`frameText`; S-A11-HAPPY-TWINS-TOLD-APART, S-A11-BAD-TWINS-ALONE). Not done:
+  numbering the frames of one day ("2 of 3"), first built and then taken out for the admin's bundle budget (§82g). The id's structure is USGS's naming, read from the ids; the metadata's own "Mission" and
+  "Frame" fields stay UNVERIFIED (M3-interfaces §14).
+- **54.** \[bug]\[imagery] While an import ran, the "Work (0)" tab count stayed 0: it counted only what waits for the
+  admin. FIXED (§82d): Work's count is what Work lists, live: every unfinished version (an import running too) and every
+  open order (`packages/ui/src/admin/imagery/hcm-imagery-page.ts`, `orders/order-list.ts`; S-A12-HAPPY-WORK-COUNT,
+  S-A12-BAD-WORK-COUNT-ENDED). The orders' count of §M4 changes with it: an order waiting for its delivery counts too.
+- **55.** \[bug]\[imagery]\[pipeline] The first real import (KH-9 Hexagon 1972-02-02) sat on "Downloading the scene ·
+  Running" for 5+ minutes with the bar barely moving and no bytes shown. FIXED (§82e): the pipeline's fetch reports the
+  bytes received as they arrive (`ctx.report_bytes`: the step's share of the progress at once, and
+  `steps.fetch.bytes` with `steps.fetch.totalBytes` from `download-options`' size, with the progress, written at most
+  every 5 s), and the version's step line reads "Downloading the scene · Running · 1.23 of 3.4 GB" (gigabytes, two
+  decimals; the bytes alone while the total is unknown) (`pipeline/src/hcm_pipeline/jobs.py`, `steps/fetch.py`, `totalBytes` in `jobDocSchema`,
+  `packages/ui/src/admin/imagery/version-detail.ts`; S-A12-HAPPY-DOWNLOAD-BYTES, S-A12-BAD-DOWNLOAD-SIZE-UNKNOWN; tour
+  `imagery.version-downloading`).
+- **56.** \[cost]\[pipeline] The first import ran on `raster-pipeline-xl` (8 vCPU / 32 GiB) while the fetch was
+  network-bound: ~3 % CPU and 2–3 MB/s from USGS for 30+ minutes, eight vCPUs paid to idle. FIXED (§82f): a third Cloud
+  Run job, `raster-fetch` (1 vCPU / 4 GiB), made by the pipeline install's `jobs` step with the other two; an import's
+  download phase (`DOWNLOAD_STEPS`: fetch and extract) is dispatched to it, and the pipeline then queues the job again
+  (no new attempt) for its processing on `raster-pipeline` (`-xl` for a KH-9 panoramic frame); an out-of-memory exit moves
+  a job to the next larger job (`fetch` → `std` → `xl`), and the processing never downloads again (its steps are done);
+  the version records which job each phase ran on (`machines.download`, `machines.process`); extract frees each segment
+  from the in-memory scratch once it is in the bucket. A pipeline run no dispatcher sized (the coming local worker) runs
+  both phases. Rows S-A12-HAPPY-DISPATCH-PHASES, S-A12-BAD-PHASE-OUT-OF-MEMORY (functions), S-P01-HAPPY-PHASES,
+  S-P01-BAD-PHASE-ESCALATED (pipeline). The pipeline card's cost line names the run costs (about US$0.09 an hour on the
+  small job, US$0.37 on the standard one). The live project needs the pipeline installed again (Setup → the pipeline
+  card) with the server of this change: a server that dispatches to `raster-fetch` before the job exists retries the run
+  a minute later until its attempts are used.
+- **57.** \[bug]\[pipeline] The same import, on `raster-pipeline-xl`: fetch 22:29:09–23:15:56 (about 7 GB at 2–3 MB/s),
+  extract to 23:20:10, stitch started 23:20:11, then "Container terminated on signal 9" at 23:22:01: the stitch joined
+  the KH-9 scan's parts in memory (every segment read whole, the joined frame, its border crop: several times the
+  frame) and was killed even at 32 GiB. FIXED (§82h): the frame is never held whole. `stitch` stages two segments at a
+  time (each let go once paired), finds each offset from shrunk copies and full-resolution strips, crops the film border
+  on a preview shrunk to at most 16 384 px on its long side, and writes `frame.json` (each segment's place in the frame)
+  and `frame-preview.tif`; `locate` scores the preview and reads the city's window out of the segments that cover it,
+  one at a time; a 16-bit segment is read through its own linear stretch; `GDAL_CACHEMAX` is 1024 MB
+  (`pipeline/src/hcm_pipeline/frames.py`, `steps/stitch.py`, `steps/locate.py`). A retry reuses the delivery and the
+  segments in the bucket (the done steps are skipped). Rows S-P01-HAPPY-BOUNDED-MEMORY (a 20 MB frame stitched within
+  half of it, offsets exact), S-P01-BAD-CROP-ACROSS-SEGMENTS; the synthetic georeferencing tests unchanged and green.
+  UNVERIFIED until the next live import: the peak on the standard job (the scratch folder is memory on Cloud Run, so two
+  staged segments count: about the size of two of the delivery's TIFFs, plus a window of the city at full resolution).
+- **58.** \[bug]\[imagery] The version page still showed "Joining the scan's parts · Running" minutes after the
+  execution died: the tick asks Cloud Run only once a job's lease lapses (10 minutes after the last heartbeat). FIXED
+  (§82i): a running job not written for three heartbeats (3 minutes) has its execution asked at the next tick (every
+  5 minutes), so a killed run is noticed within about 8 minutes: out of memory on `raster-pipeline-xl` fails the job and
+  its version with "The frame did not fit in the processing memory" and, since the pipeline of finding 57 may fit it,
+  **Try again** is offered (`apiError.imagery.outOfMemory` left `NOT_RETRYABLE_CODES`); out of memory on a smaller job
+  runs again on the next larger one; another exit runs again until the attempts are used. A late heartbeat of a run
+  Cloud Run still runs is left alone (`functions/src/imagery/tick-jobs.ts`; S-A12-HAPPY-DEAD-EXECUTION-NOTICED,
+  S-A12-BAD-HEARTBEAT-LATE-RUNNING, S-A12-HAPPY-OUT-OF-MEMORY-RETRY).

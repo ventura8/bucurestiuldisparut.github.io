@@ -165,11 +165,10 @@ describe('imagery.retry: what is not tried again', () => {
     it.each([
         ['a revoked Mapbox token', 'apiError.mapbox.tokenInvalid'],
         ['a token without the tileset scopes', 'apiError.mapbox.missingScopes'],
-        ['out of memory on the large machine', 'apiError.imagery.outOfMemory'],
     ])('badPath_aFailureNoRetryCuresIsNotRetried_%s @S-A12-BAD-NOT-RETRYABLE', async (_case, code) => {
         const world = await readyWorld();
         await seedJob(world, JOB, failed({ error: { code, message: code } }));
-        await seedFailedVersion(world, { error: { code: code as 'apiError.imagery.outOfMemory' } });
+        await seedFailedVersion(world, { error: { code: code as 'apiError.mapbox.tokenInvalid' } });
 
         expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
         expect((await readJob(world, JOB))?.status).toBe('failed');

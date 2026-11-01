@@ -12,7 +12,6 @@ export const en: Readonly<Record<AdminPhotosKey, string>> = {
     'adminContent.photos.dropHint': 'Drop photos here, or choose them with Add photos.',
     'adminContent.photos.dropActive': 'Drop the photos here to upload them.',
     'adminContent.photos.noMatch': 'No loaded photo matches the search.',
-    'adminContent.photos.loading': 'Loading the photos…',
     'adminContent.photos.offline': 'Reconnecting… Your changes are kept.',
     'adminContent.photos.error': 'The photos could not be read.',
     'adminContent.photos.retry': 'Try again',

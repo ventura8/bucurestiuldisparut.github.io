@@ -9,6 +9,7 @@ import numpy
 import pytest
 from hcm_pipeline.config import Config, load_config
 from hcm_pipeline.contract import Errors
+from hcm_pipeline.frames import FrameLayout, Placement
 from hcm_pipeline.rasters import GeoTiff, write_geotiff
 from hcm_pipeline.runner import RunOutcome
 
@@ -101,7 +102,6 @@ def test_bad_path_locate_needs_the_scene_the_city_and_a_frame_over_the_window(wo
 
     world.seed_import()
     world.store.documents.pop(f"cities/{CITY}")
-    world.gcs.put(f"{WORK}frame.tif", b"")
     assert only(world, "locate") is RunOutcome.FAILED
     assert "the city bucharest does not exist" in str(dig(world.job(), "error", "message"))
 
@@ -109,7 +109,9 @@ def test_bad_path_locate_needs_the_scene_the_city_and_a_frame_over_the_window(wo
 def test_bad_path_a_frame_far_from_the_city_misses_the_window(world: PipelineWorld, tmp_path: Path) -> None:
     world.seed_import()
     world.store.update(f"cities/{CITY}", {"bounds": {"west": 2.30, "south": 48.84, "east": 2.36, "north": 48.87}})
-    world.gcs.put(f"{WORK}frame.tif", tiff_bytes(tmp_path, numpy.full((300, 400), 120)))
+    layout = FrameLayout(400, 300, 1, (Placement(f"{WORK}segments/a.tif", 0, 0, 400, 300),))
+    world.gcs.put(f"{WORK}frame.json", layout.to_json().encode())
+    world.gcs.put(f"{WORK}frame-preview.tif", tiff_bytes(tmp_path, numpy.full((300, 400), 120)))
 
     assert only(world, "locate") is RunOutcome.FAILED
     assert error_code(world) == Errors.REFERENCE_UNAVAILABLE

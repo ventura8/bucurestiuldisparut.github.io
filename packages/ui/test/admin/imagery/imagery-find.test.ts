@@ -2,7 +2,7 @@ import { axeViolations } from '@hcm/test-support/axe';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { ImageryIntentsPort, ImageryViewState } from '../../../src/admin/imagery/imagery-port.js';
-import { yearFilter } from '../../../src/admin/imagery/scene-list.js';
+import { frameText, yearFilter } from '../../../src/admin/imagery/scene-list.js';
 import type { FakeArea } from '../editing/fake-area.js';
 import { cleanup, deep, deepAll, deepText, updated } from '../shell/fake-app.js';
 import { button, click, defineImagery, imageryPage, imageryState, nth, ready, scene, versionItem } from './fixtures.js';
@@ -126,7 +126,70 @@ describe('<hcm-imagery-page>: Find', () => {
         deepAll(segments, 'button')[1]?.click();
 
         expect(calls(area)).toEqual(['more', 'setTab "work"']);
-        expect(deepAll(segments, 'button').map((segment) => segment.textContent.trim())).toEqual(['Find', 'Work (1)', 'Upload']);
+        // Work counts what it lists: the version waiting for the admin and the one in progress (finding 54).
+        expect(deepAll(segments, 'button').map((segment) => segment.textContent.trim())).toEqual(['Find', 'Work (2)', 'Upload']);
+    });
+});
+
+describe('<hcm-imagery-page>: the rows and the Work count of the live test 2026-11-01', () => {
+    beforeAll(defineImagery);
+    afterEach(cleanup);
+
+    it('happyPath_anImportRunningCountsInWorkLiveAndNothingLeftIsZero', async () => {
+        const running = versionItem({ id: 'job-new', state: 'processing', needsYou: false });
+        const { element, area } = await imageryPage(imageryState({ versions: ready([running]) }));
+        const work = (): string | undefined => deepAll(deep(element, 'hcm-segmented-button'), 'button')[1]?.textContent.trim();
+        const first = work();
+        area.set({ versions: ready([]) });
+        await updated(element);
+
+        expect([first, work()]).toEqual(['Work (1)', 'Work (0)']);
+    });
+
+    it('happyPath_twinsOfTheSameDaySayTheirIdCameraAndFrame', async () => {
+        const day = { sensorName: 'KH-4A Corona', date: '1964-06-18', year: 1964 };
+        const twins = ['DS1012-1043DA015', 'DS1012-1043DF015', 'DS1012-1043DA016'].map((id) => scene({ ...day, id, displayId: id }));
+        const mapping = scene({ id: 'DZB1211-500043L007001', displayId: 'DZB1211-500043L007001', sensorName: 'KH-9 Hexagon mapping' });
+        const visible = [...twins, mapping];
+        const { element } = await imageryPage(imageryState({ scenes: ready(visible), visible, browse: {} }));
+
+        const lines = deepAll(element, '[data-identity]').map((line) => line.textContent);
+        expect(lines).toEqual([
+            'DS1012-1043DA015 · aft camera, frame 15',
+            'DS1012-1043DF015 · forward camera, frame 15',
+            'DS1012-1043DA016 · aft camera, frame 16',
+            'DZB1211-500043L007001 · frame 7',
+        ]);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_anIdThatSaysNoCameraOrFrameShowsTheIdAloneInRomanianToo', async () => {
+        const visible = [scene(), scene({ id: 'DS2', displayId: 'DS2', date: '1968-12-11' })];
+        const { element } = await imageryPage(imageryState({ scenes: ready(visible), visible }), { locale: 'ro' });
+
+        expect(deepAll(element, '[data-identity]').map((line) => line.textContent)).toEqual([
+            'DS1035-1057DA023 · camera din spate, cadrul 23',
+            'DS2',
+        ]);
+        expect([frameText('ro', 'D3C1216-200467F021'), frameText('en', 'X1'), frameText('en', 'DS1-2DZ023')]).toEqual([
+            'camera din față, cadrul 21',
+            '',
+            '',
+        ]);
+    });
+
+    it('badPath_aRowWhosePreviewFailedSaysSoAndOneComingShowsThePlaceholder', async () => {
+        const failed = { status: 'failed' as const, error: { key: 'apiError.imagery.browseUnavailable' as const } };
+        const { element } = await imageryPage(imageryState({ browse: { 'DS1035-1057DA023': failed, DS2: { status: 'loading' } } }));
+
+        const unavailable = deep(element, '[data-scene="DS1035-1057DA023"] [data-browse="unavailable"]');
+        expect(deep(unavailable, 'hcm-icon').getAttribute('name')).toBe('broken_image');
+        expect(deep(element, 'a[href$="/DS1035-1057DA023"]').textContent).toContain(
+            'The USGS preview cannot be fetched right now. Try again.',
+        );
+        expect(deep(element, '[data-scene="DS2"] .thumb').getAttribute('aria-hidden')).toBe('true');
+        expect(deepAll(element, 'img.thumb')).toHaveLength(0);
+        expect(await axeViolations(element)).toEqual([]);
     });
 });
 
@@ -177,17 +240,6 @@ describe('<hcm-imagery-page>: Work', () => {
         expect(empty).toContain('Nothing in progress.');
         expect(loading).toBe(1);
         expect(calls(area)).toEqual(['retry']);
-    });
-
-    it('happyPath_aFootprintClickedOnTheMapOpensItsSceneOnce', async () => {
-        const { element, app, area } = await imageryPage();
-
-        area.set({ pickedScene: { id: 'DS2', seq: 1 } });
-        await updated(element);
-        area.set({ map: 'ready' });
-        await updated(element);
-
-        expect(app.named('navigate')).toEqual(['navigate {"id":"imagery","params":["scene","DS2"]}']);
     });
 });
 

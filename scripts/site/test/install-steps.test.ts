@@ -197,6 +197,8 @@ describe('run-jobs', () => {
         const world = fakes({
             files: { digest: `'${IMAGE}'\n` },
             routes: [
+                route('GET', `${JOBS}/raster-fetch`, 'get-fetch', () => jsonResponse({ name: 'fetch' })),
+                route('PATCH', `${JOBS}/raster-fetch`, 'patch-fetch', () => jsonResponse({ done: true })),
                 route('GET', `${JOBS}/raster-pipeline`, 'get-std', () => jsonResponse({ error: { code: 404 } }, 404)),
                 route('GET', `${JOBS}/raster-pipeline-xl`, 'get-xl', () => jsonResponse({ name: 'xl' })),
                 route('POST', JOBS, 'create', () =>
@@ -214,9 +216,12 @@ describe('run-jobs', () => {
             jobBody(
                 { project: 'demo-hcm', region: 'us-central1', imageFile: 'digest', slug: '1-0-0-abc1234', releaseTime: '1761955200' },
                 IMAGE,
-                PIPELINE_JOBS[0],
+                PIPELINE_JOBS[1],
             ),
         );
+        // Finding 56: the small download job is made (here replaced) first, at 1 vCPU and 4 GiB.
+        expect(PIPELINE_JOBS[0]).toEqual({ name: 'raster-fetch', cpu: '1', memory: '4Gi' });
+        expect(world.calls.map((call) => call.operation).slice(0, 2)).toEqual(['get-fetch', 'patch-fetch']);
         // Finding 39 of 2026-11-01: the build time labels the job next to the release's slug.
         expect(JSON.parse(create?.body ?? '{}')).toMatchObject({
             labels: { 'hcm-release': '1-0-0-abc1234', 'hcm-release-time': '1761955200' },
@@ -230,7 +235,7 @@ describe('run-jobs', () => {
         const body = jobBody(
             { project: 'demo-hcm', region: 'us-central1', imageFile: 'x', slug: 's', releaseTime: '' },
             IMAGE,
-            PIPELINE_JOBS[1],
+            PIPELINE_JOBS[2],
         );
 
         // A release without a build time labels nothing more.

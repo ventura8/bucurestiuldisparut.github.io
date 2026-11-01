@@ -31,6 +31,7 @@ import type { ContentQuery, ContentServices, Stored } from '../content/services.
 import { ACTIVE_JOB_STATUSES } from '../jobs/jobs.js';
 import { frameOf, type CityFrame } from '../layers/map-session.js';
 import { GuardFeed, type GuardView } from './guard.js';
+import { footprintColorsOf, type FootprintColors } from './imagery-map.js';
 import { ORDERS_QUERY, ordersList } from './orders/feed.js';
 import {
     jobProgressOf,
@@ -49,6 +50,8 @@ export interface FeedsPatch {
     readonly usgs?: ServiceState | null;
     readonly settings?: ImagerySettings;
     readonly frame?: CityFrame;
+    /** The footprints' colours, from the city's theme (finding 51). */
+    readonly colors?: FootprintColors;
     /** The newest harvest (ISO), null for none. */
     readonly newest?: string | null;
     readonly scenes?: ListState<SceneItem>;
@@ -195,7 +198,7 @@ export class ImageryFeeds {
     #cityChanged(state: DocState<CityDoc>): void {
         const city = state.doc?.data;
         if (city !== undefined) {
-            this.#changed({ settings: imagerySettingsOf(city.imagery), frame: frameOf(city) });
+            this.#changed({ settings: imagerySettingsOf(city.imagery), frame: frameOf(city), colors: footprintColorsOf(city.theme) });
         }
     }
 

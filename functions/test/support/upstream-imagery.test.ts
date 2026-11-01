@@ -527,7 +527,7 @@ describe('Cloud Run: the pipeline runner', () => {
 });
 
 describe('the imagery world', () => {
-    it('happyPath_theImageryReadyPresetHoldsTheSecretsAndBothPipelineJobs', () => {
+    it('happyPath_theImageryReadyPresetHoldsTheSecretsAndTheThreePipelineJobs', () => {
         const fakes = createUpstreamFakes();
 
         fakes.scenario('imagery.ready');
@@ -538,7 +538,7 @@ describe('the imagery world', () => {
             MAPBOX_TOKENS.tiles,
         ]);
         expect(fakes.snapshot()['cloud-run']).toMatchObject({
-            jobs: ['demo-hcm/us-central1/raster-pipeline', 'demo-hcm/us-central1/raster-pipeline-xl'],
+            jobs: ['demo-hcm/us-central1/raster-fetch', 'demo-hcm/us-central1/raster-pipeline', 'demo-hcm/us-central1/raster-pipeline-xl'],
         });
     });
 

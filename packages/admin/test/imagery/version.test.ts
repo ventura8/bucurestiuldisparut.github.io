@@ -225,9 +225,9 @@ describe('a version and its job as the page reads them', () => {
 
         const view = jobViewOf(stored(ID, job));
         expect(view.steps.slice(0, 3)).toEqual([
-            { name: 'fetch', status: 'done' },
-            { name: 'extract', status: 'failed' },
-            { name: 'stitch', status: 'pending' },
+            { name: 'fetch', status: 'done', transfer: null },
+            { name: 'extract', status: 'failed', transfer: null },
+            { name: 'stitch', status: 'pending', transfer: null },
         ]);
         expect(view.error).toEqual({ notice: { key: 'apiError.internal' }, message: 'USGS did not answer' });
         expect(jobViewOf(stored(ID, coded)).error?.notice).toEqual({ key: 'apiError.imagery.noMatch', params: { pairs: '3' } });
@@ -236,6 +236,20 @@ describe('a version and its job as the page reads them', () => {
         ).toEqual({
             key: 'apiError.unavailable',
         });
+    });
+
+    it('happyPath_aRunningDownloadShowsItsBytesOfTheTotalOrItsBytesAlone', () => {
+        const view = (fetch: Record<string, unknown>) =>
+            jobViewOf(stored(ID, jobDocSchema.parse(jobDoc({ status: 'running', step: 'fetch', steps: { fetch } })))).steps[0]?.transfer;
+
+        expect(view({ status: 'running', bytes: 1_200_000_000, totalBytes: 3_400_000_000 })).toEqual({
+            received: 1_200_000_000,
+            total: 3_400_000_000,
+        });
+        expect(view({ status: 'running', bytes: 5_000_000 })).toEqual({ received: 5_000_000, total: null });
+        // Before its first report, and once done (its bytes are then the delivery's size), nothing is shown.
+        expect(view({ status: 'running' })).toBeNull();
+        expect(view({ status: 'done', bytes: 3_400_000_000 })).toBeNull();
     });
 
     it('happyPath_whatAJobViewSaysOfItsRetryMapboxAndARefusedUpload', () => {

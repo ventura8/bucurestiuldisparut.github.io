@@ -26,6 +26,8 @@
     ],
     "JOB_STEP_STATES": ["pending", "running", "done", "failed", "skipped"],
     "PIPELINE_STEPS": ["fetch", "extract", "stitch", "inspect", "locate", "reference", "georef", "warp", "export", "register"],
+    "DOWNLOAD_STEPS": ["fetch", "extract"],
+    "JOB_MACHINES": ["fetch", "std", "xl"],
     "JOB_STEPS": {
         "usgs-import": [
             "fetch",

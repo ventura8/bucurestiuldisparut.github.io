@@ -62,7 +62,8 @@ test(
         expect((await listedScenes(page, lang))[5]).toBe(FREE_1968);
         const scores = await listedScores(page, lang);
         expect(scores).toEqual([...scores].sort((a, b) => b - a));
-        await expect.poll(() => mapFootprints(page)).toEqual(sorted(await listedScenes(page, lang)));
+        // The map draws no result's footprint until one is open (finding 51 of 2026-11-01): the city's boundary only.
+        await expect.poll(() => mapFootprints(page)).toEqual([]);
         await expectStateSound(page, adminVisit('imagery.results', lang));
 
         await sceneLink(page, lang, 'DS1035-1057DA023').click();
@@ -70,6 +71,7 @@ test(
             name: imageryText(lang, 'adminContent.imagery.browseAlt', { name: 'DS1035-1057DA023' }),
         });
         await expect(preview).toBeVisible();
+        await expect.poll(() => mapFootprints(page)).toEqual(['DS1035-1057DA023']);
         await expect.poll(() => preview.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(120);
         await expect(detail(page).getByRole('button', { name: imageryText(lang, 'adminContent.imagery.import') })).toBeEnabled();
         await expectStateSound(page, adminVisit('imagery.scene', lang));
@@ -118,16 +120,17 @@ test(
 );
 
 test(
-    'Filters narrow the results and the map together',
+    'Filters narrow the results',
     { tag: '@S-A11-HAPPY-FILTERS' },
-    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+    async ({ page, lang, adminWorld, mockApiRequest, upstream, consoleErrors }) => {
         await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, adminWorld.accounts.owner.uid);
         await page.goto(adminPath(lang, 'imagery'));
         const list = sceneList(page, lang);
         await expect(list.getByRole('link')).toHaveCount(6, { timeout: FUNCTIONS_TIMEOUT_MS });
         const expectNarrowed = async (ids: readonly string[]): Promise<void> => {
             await expect.poll(async () => sorted(await listedScenes(page, lang))).toEqual(sorted(ids));
-            await expect.poll(() => mapFootprints(page)).toEqual(sorted(ids));
+            // The map follows no filter: it draws no result's footprint while none is open (finding 51).
+            expect(await mapFootprints(page)).toEqual([]);
         };
         await expectNarrowed([...TARGET_FRAMES, FREE_1968]);
 
@@ -155,6 +158,9 @@ test(
         await to.fill('');
         await to.press('Tab');
         await expectNarrowed(ALL_SCENES);
+        // The paid 1968 twin's browse image USGS never serves: when the list asked for its copy before the harvest recorded
+        // the failure, the server's 503 is logged (finding 52: the rows ask for the copies they lack).
+        consoleErrors.takeMatching(/imagery-browse/);
     },
 );
 

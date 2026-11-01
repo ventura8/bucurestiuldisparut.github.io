@@ -5,11 +5,15 @@
  * run call, so a redelivered trigger finds it moved and starts nothing; a failed run call puts it back to `queued` a
  * minute later. The cap is checked in that same transaction (CR-M3-47): it reads and writes the execution slots
  * (`ops/dispatch`), each slot's job read again to drop the ones that ended, so the five trigger instances and the tick
- * never all see one place free and each start a run (`S-A12-BAD-RACING-DISPATCH`).
+ * never all see one place free and each start a run (`S-A12-BAD-RACING-DISPATCH`). An import runs in two phases
+ * (finding 56 of 2026-11-01): its download on the small `raster-fetch` job, which then queues the job again, and its
+ * processing on `raster-pipeline` (or `-xl`); each phase is a dispatch like any other.
  */
 import {
     CLOUD_RUN_JOBS,
+    DOWNLOAD_STEPS,
     FIRESTORE_PATHS,
+    JOB_STEPS,
     JOB_MAX_ATTEMPTS,
     PIPELINE_RUN_ARGS,
     RUNNING_JOBS_MAX,
@@ -20,6 +24,7 @@ import {
     timestampFromDate,
     timestampToDate,
     type JobDoc,
+    type JobMachine,
     type JobWaitReason,
     type OpsDispatchDoc,
     type Sensor,
@@ -46,9 +51,30 @@ function sensorMachine(job: JobDoc): 'std' | 'xl' {
     return typeof sensor === 'string' && sensor in SENSOR_SPECS ? SENSOR_SPECS[sensor as Sensor].machine : 'std';
 }
 
-/** The machine a job needs: `xl` for a KH-9 panoramic frame or after an out-of-memory exit, else `std`. */
-export function machineOf(job: JobDoc): 'std' | 'xl' {
-    return job.machine === 'xl' ? 'xl' : sensorMachine(job);
+/** True while an import's download phase (`DOWNLOAD_STEPS`) has a step neither done nor skipped. */
+function downloadPending(job: JobDoc): boolean {
+    const steps = job.steps ?? {};
+    const types: readonly string[] = JOB_STEPS[job.type];
+    return DOWNLOAD_STEPS.some((step) => types.includes(step) && !['done', 'skipped'].includes(steps[step]?.status ?? 'pending'));
+}
+
+/**
+ * The machine a job needs (finding 56 of 2026-11-01): the small `fetch` job for an import's download phase (unless an
+ * out-of-memory exit moved it to `std`), then `xl` for a KH-9 panoramic frame or after an out-of-memory exit, else `std`.
+ */
+export function machineOf(job: JobDoc): JobMachine {
+    if (job.machine === 'xl') {
+        return 'xl';
+    }
+    if (downloadPending(job)) {
+        return job.machine === 'std' ? 'std' : 'fetch';
+    }
+    return sensorMachine(job);
+}
+
+/** A dispatch after the download phase ended on the small job is the same try going on, not a new one. */
+function handedOver(job: JobDoc): boolean {
+    return job.machine === 'fetch' && !downloadPending(job);
 }
 
 /** True once neither `dispatchAt` nor `retryAt` lies in the future. */
@@ -169,7 +195,7 @@ function starting(job: JobDoc, now: Date): JobDoc {
         status: 'starting',
         dispatchAt: at,
         machine: machineOf(job),
-        attempt: (job.attempt ?? 0) + 1,
+        attempt: (job.attempt ?? 0) + (handedOver(job) ? 0 : 1),
         ...stampOf(IMAGERY_WRITER, now),
     };
 }
@@ -205,7 +231,7 @@ async function requeueAfterFailedRun(deps: DispatchDeps, cityId: string, jobId: 
 }
 
 /** Starts the execution of a job that is now `starting`. */
-async function run(deps: DispatchDeps, cityId: string, jobId: string, machine: 'std' | 'xl'): Promise<DispatchOutcome> {
+async function run(deps: DispatchDeps, cityId: string, jobId: string, machine: JobMachine): Promise<DispatchOutcome> {
     try {
         const execution = await deps.jobs.run(
             CLOUD_RUN_JOBS[machine],

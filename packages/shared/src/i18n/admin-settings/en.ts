@@ -43,7 +43,6 @@ export const en: Readonly<Record<AdminSettingsKey, string>> = {
     'adminContent.settings.keepMine': 'Keep my changes',
     'adminContent.settings.takeTheirs': 'Take the saved version',
     'adminContent.settings.cityMissing': 'The city does not exist yet. Start from Setup.',
-    'adminContent.settings.fieldInvalid': 'This value needs correcting.',
     'adminContent.settings.bounds': 'City bounds',
     'adminContent.settings.boundsHelp': 'Draw the area on the map, or type the four edges of the city in degrees.',
     'adminContent.settings.drawSecond': 'Now click the opposite corner.',

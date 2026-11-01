@@ -164,6 +164,7 @@ export type {
     InviteDoc,
     JobDoc,
     JobLogDoc,
+    JobMachine,
     JobStatus,
     JobType,
     JobWaitReason,
@@ -215,6 +216,7 @@ export {
 } from './schemas/georef.js';
 export type { CropRing, Gcp, GcpOrigin, Georef, GeorefTransform } from './schemas/georef.js';
 export {
+    DOWNLOAD_STEPS,
     ENDED_VERSION_STATES,
     GUARD_VERDICTS,
     JOB_PARAMS_SCHEMAS,

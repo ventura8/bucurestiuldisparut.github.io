@@ -166,7 +166,12 @@ export interface JobViewPort {
     readonly finished: boolean;
     readonly progress: number | null;
     readonly step: string | null;
-    readonly steps: readonly { readonly name: string; readonly status: 'pending' | 'running' | 'done' | 'failed' | 'skipped' }[];
+    readonly steps: readonly {
+        readonly name: string;
+        readonly status: 'pending' | 'running' | 'done' | 'failed' | 'skipped';
+        /** A running transfer's bytes so far and its total (null: unknown). */
+        readonly transfer: { readonly received: number; readonly total: number | null } | null;
+    }[];
     readonly waitReason: JobWaitReason | null;
     readonly retryAt: string | null;
     readonly attempt: number;
@@ -227,7 +232,6 @@ export interface ImageryViewState {
     readonly upload: UploadStatePort;
     readonly map: MapStatusPort;
     readonly previewOpacity: number;
-    readonly pickedScene: { readonly id: string; readonly seq: number } | null;
     /** `#/imagery/replace/<layerId>`: the upload replaces that layer's image. */
     readonly replaceLayer: string | null;
     /** The budget guard (null while reading; CR-M3-47). */

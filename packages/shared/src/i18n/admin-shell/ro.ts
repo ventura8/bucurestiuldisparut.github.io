@@ -53,7 +53,6 @@ export const ro = {
     'adminShell.oauth.notKept': 'Permisiunea rămâne doar în această filă, cel mult o oră, și nu este salvată nicăieri.',
     'adminShell.oauth.unverified': 'Google poate spune că nu a verificat aplicația. E normal: aplicația este a proiectului tău.',
     'adminShell.oauth.unverifiedHow': 'Atunci alege opțiunile avansate și continuă spre {domain}.',
-    'adminShell.oauth.continue': 'Continuă la Google',
     'adminShell.oauth.popupBlocked': 'Browserul a blocat fereastra Google. Permite ferestrele pop-up pentru acest site.',
     'adminShell.oauth.popupClosed': 'Fereastra Google s-a închis înainte de final. Nu s-a schimbat nimic.',
     'adminShell.oauth.scopeDenied': 'Pasul are nevoie de permisiunea „{scope}”, nebifată la Google. Nu s-a schimbat nimic.',
@@ -89,14 +88,12 @@ export const ro = {
     'adminShell.admins.copy': 'Copiază linkul',
     'adminShell.admins.copied': 'Linkul a fost copiat.',
     'adminShell.admins.role.owner': 'Proprietar',
-    'adminShell.admins.role.admin': 'Administrator',
     'adminShell.admins.you': 'Tu',
     'adminShell.admins.unnamed': 'Cont Google fără adresă',
     'adminShell.admins.remove': 'Retrage accesul pentru {name}',
     'adminShell.admins.removed': 'Accesul a fost retras.',
     'adminShell.admins.pending': 'Invitații în așteptare',
     'adminShell.admins.none': 'Nicio invitație în așteptare.',
-    'adminShell.admins.inviteRow': 'Invitație din {created}, expiră pe {expires}',
     'adminShell.admins.cancel': 'Anulează invitația din {created}',
     'adminShell.admins.cancelled': 'Invitația a fost anulată.',
     // M5 (docs/research/M5-interfaces.md §1.7): the city's admins and their roles; owner: multi-city.
@@ -150,9 +147,7 @@ export const ro = {
     'adminShell.city.new': 'Oraș nou',
     'adminShell.city.role.owner': 'Proprietar',
     'adminShell.city.role.editor': 'Editor',
-    'adminShell.city.opening': 'Se deschide {city}…',
     'adminShell.city.notMember': 'Nu administrezi orașul {cityId}; s-a deschis {city}.',
-    'adminShell.city.none': 'Contul tău nu administrează niciun oraș încă. Cere o invitație proprietarului unui oraș.',
 } as const;
 
 export type AdminShellKey = keyof typeof ro;

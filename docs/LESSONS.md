@@ -1796,3 +1796,75 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       `packages/admin/src/firebase/messaging.ts`; S-A47-HAPPY-DRY-RUN-UNREGISTERED, S-A47-HAPPY-TOKEN, S-A47-HAPPY-LEGACY-FID).
     - **A pre-check that can be wrong in the window right after the thing it checks was made must not block it: record it
       and let the real use decide.**
+323. **Footprints that each cover the whole city hid the map under their stacked fills, then under their crossing lines.**
+    - Seen: live on 2026-11-01 (finding 51): the imagery map was a flat blue field; after a first fix to outlines, dozens of
+      crossing edges (Corona and KH-9 footprints are long strips over the whole region).
+    - Found by: the user's live look at Find after the first real harvest, then at the outline fix zoomed out.
+    - Cause: every listed result drew its footprint; fills compose (n frames cover 1 − 0.79ⁿ), and outlines of strips
+      cross everywhere.
+    - Fix and pin: the city's boundary and the open scene's footprint alone, at the city's view
+      (`packages/admin/src/imagery/imagery-map.ts`; pixel probes in `e2e/admin/specs/imagery/rows.spec.ts`,
+      S-A11-BAD-FOOTPRINTS-STACKED, S-A11-HAPPY-FOOTPRINT-SELECTED).
+    - **Draw on a map what the person picked, not every candidate: a list is the place for many results, the map for one.**
+324. **A list showed only the images some other step happened to have made.**
+    - Seen: live on 2026-11-01 (finding 52): one browse thumbnail among dozens of results.
+    - Found by: the user's live look; the cause read from the code.
+    - Cause: the rows only loaded copies the harvest's prefetch (20 best-ranked, at the end of a long callable) or an opened
+      scene had made; a missing copy and a failed one looked the same.
+    - Fix and pin: the rows ask for their own copies, a few at a time, and a failed one says so
+      (`packages/admin/src/imagery/browse.ts`; S-A11-HAPPY-ROW-PREVIEWS, S-A11-BAD-ROW-PREVIEW-UNAVAILABLE).
+    - **A view that depends on a cache must fill it itself (bounded), and say "unavailable" apart from "not yet".**
+325. **Rows built from a few fields read identical when the data has twins.**
+    - Seen: live on 2026-11-01 (finding 53): three "KH-4A Corona · Jun 18, 1964" rows (a pass's forward and aft frames).
+    - Found by: the user's live look.
+    - Cause: the row's title was the camera and the day only; a fake catalogue with one frame a day never showed it.
+    - Fix and pin: the id, camera and frame on every row (`packages/ui/src/admin/imagery/scene-list.ts`;
+      S-A11-HAPPY-TWINS-TOLD-APART, S-A11-BAD-TWINS-ALONE).
+    - **Give every list row its unique key in short form, and give the fakes twins: real catalogues have them.**
+326. **A tab's count meant "needs you" while the tab listed everything.**
+    - Seen: live on 2026-11-01 (finding 54): "Work (0)" while an import ran in Work.
+    - Found by: the user's live import.
+    - Cause: the count was of versions waiting for the admin and expired orders; the label promised what Work lists.
+    - Fix and pin: the count is the rows Work lists, live (`packages/ui/src/admin/imagery/hcm-imagery-page.ts`;
+      S-A12-HAPPY-WORK-COUNT, S-A12-BAD-WORK-COUNT-ENDED).
+    - **A count next to a tab counts that tab's rows; a "needs you" count belongs on its own label.**
+327. **A long transfer reported progress per 64 MiB written and nothing a person could read.**
+    - Seen: live on 2026-11-01 (finding 55): a KH-9 download looked stuck for minutes.
+    - Found by: the user's live import.
+    - Cause: the fetch moved the step's share only per chunk written and the heartbeat wrote it once a minute; no bytes
+      were recorded.
+    - Fix and pin: `ctx.report_bytes` (`pipeline/src/hcm_pipeline/jobs.py`) writes the bytes received of the total every
+      5 s, shown on the step line (S-A12-HAPPY-DOWNLOAD-BYTES, S-A12-BAD-DOWNLOAD-SIZE-UNKNOWN; `pipeline/tests/unit/test_steps_fetch.py`).
+    - **Any step that can take minutes shows a number that moves: bytes, items or seconds, throttled, never a still bar.**
+328. **A network-bound phase ran on the largest machine.**
+    - Seen: live on 2026-11-01 (finding 56): 8 vCPU / 32 GiB at ~3 % CPU for 30+ minutes while USGS sent 2–3 MB/s.
+    - Found by: the user's Cloud Run metrics.
+    - Cause: one job definition per run, sized for the heaviest step (KH-9 panoramic warps), ran the download too.
+    - Fix and pin: the download phase on `raster-fetch` (1 vCPU / 4 GiB), then the processing dispatched to `std`/`xl`
+      (`functions/src/imagery/dispatch.ts`, `pipeline/src/hcm_pipeline/runner.py`; S-A12-HAPPY-DISPATCH-PHASES,
+      S-A12-BAD-PHASE-OUT-OF-MEMORY, S-P01-HAPPY-PHASES, S-P01-BAD-PHASE-ESCALATED).
+    - **Size a job per phase: I/O-bound work on the smallest machine, the memory-bound steps on the large one.**
+329. **A step joined a frame of tens of gigapixels in memory.**
+    - Seen: live on 2026-11-01 (finding 57): `stitch` of a KH-9 panoramic frame killed (signal 9) at 32 GiB.
+    - Found by: the user's first real KH-9 import and its Cloud Run log.
+    - Cause: every segment read whole, the joined frame and its border crop as arrays, the segments staged in the scratch
+      folder, which Cloud Run keeps in memory; the synthetic scenes were megapixels, so no test saw it.
+    - Fix and pin: segments read by windows and shrunk copies, two staged at a time, the frame described (`frame.json`) and
+      previewed, never joined; `locate` reads the city's window from the covering segments
+      (`pipeline/src/hcm_pipeline/frames.py`; S-P01-HAPPY-BOUNDED-MEMORY with a tracemalloc bound, S-P01-BAD-CROP-ACROSS-SEGMENTS).
+    - **A raster step reads windows: never an array of the whole input, and a test bounds the memory of a frame larger than it.**
+330. **A run killed by the system stayed "Running" for its lease's ten minutes.**
+    - Seen: live on 2026-11-01 (finding 58): "Joining the scan's parts · Running" minutes after signal 9.
+    - Found by: the user's look at the version page beside the Cloud Run log.
+    - Cause: the tick asked Cloud Run only once the lease lapsed; a kill writes nothing, so nothing said the run was gone.
+    - Fix and pin: a heartbeat three beats late asks Cloud Run at the next tick; out of memory offers Try again
+      (`functions/src/imagery/tick-jobs.ts`; S-A12-HAPPY-DEAD-EXECUTION-NOTICED, S-A12-BAD-HEARTBEAT-LATE-RUNNING,
+      S-A12-HAPPY-OUT-OF-MEMORY-RETRY).
+    - **A missing heartbeat is the signal: check the worker's real state at the first missed beats, not at the lease's end.**
+331. **A bundle measured with a bare `vite build` read 0.7 KB under the budget gate's figure.**
+    - Seen: 2026-11-02, while making room for findings 51–58 in the admin's 620 KB total.
+    - Found by: the `build` stage's bundle gate, after an ad-hoc measurement said there was room.
+    - Cause: the gate sums every script of `packages/admin/dist`, and the admin site build adds the push worker
+      `firebase-messaging-sw.js` (0.7 KB gzip), which `vite build` alone does not write.
+    - Fix and pin: measure with the `build` stage (or add the worker) before counting the room (`DECISIONS-for-review.md` §82g).
+    - **Measure a budget the way its gate does: the same files, the same build, the same sum.**

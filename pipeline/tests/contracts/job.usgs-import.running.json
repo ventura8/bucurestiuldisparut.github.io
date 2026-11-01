@@ -57,7 +57,7 @@
         },
         "stitch": {
             "status": "done",
-            "gcsPath": "work/bucharest/job-1966-0712/frame.tif",
+            "gcsPath": "work/bucharest/job-1966-0712/frame.json",
             "startedAt": {
                 "seconds": 1792001101,
                 "nanoseconds": 0

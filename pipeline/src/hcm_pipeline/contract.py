@@ -37,6 +37,10 @@ JOB_WAIT_REASONS: Final = (
 )
 JOB_STEP_STATES: Final = ("pending", "running", "done", "failed", "skipped")
 PIPELINE_STEPS: Final = ("fetch", "extract", "stitch", "inspect", "locate", "reference", "georef", "warp", "export", "register")
+# An import's download phase, which the small `fetch` job runs before the job is queued again for its processing on
+# `std` or `xl` (finding 56 of 2026-11-01); the Cloud Run job sizes, smallest first.
+DOWNLOAD_STEPS: Final = ("fetch", "extract")
+JOB_MACHINES: Final = ("fetch", "std", "xl")
 PUBLISH_STEPS: Final = ("guard", "upload", "publish", "tiles", "finalize")
 JOB_STEPS: Final[Mapping[str, tuple[str, ...]]] = {
     "usgs-import": ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "register", *PUBLISH_STEPS),

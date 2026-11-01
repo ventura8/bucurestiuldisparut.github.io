@@ -176,9 +176,9 @@ export async function openScene(page: Page, entityId: string): Promise<void> {
     }, `#/imagery/scene/${entityId}`);
 }
 
-/** The scene ids whose footprints the map draws, sorted. */
+/** The scene ids whose footprints the map draws: the open scene's alone, none without one (finding 51 of 2026-11-01). */
 export function mapFootprints(page: Page): Promise<string[]> {
-    return overlayFeatureIds(page, 'imagery-footprints');
+    return overlayFeatureIds(page, 'imagery-selected');
 }
 
 /**

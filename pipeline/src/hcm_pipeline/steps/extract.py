@@ -62,7 +62,10 @@ def _keep(ctx: JobContext, letter: str, data: IO[bytes]) -> ObjectInfo:
     with local.open("wb") as file:
         shutil.copyfileobj(data, file, READ_BYTES)
     ctx.checkpoint()
-    return ctx.publish(local, ctx.work_file(f"segments/{letter}.tif"), "image/tiff")
+    published = ctx.publish(local, ctx.work_file(f"segments/{letter}.tif"), "image/tiff")
+    # The scratch folder is memory on Cloud Run: a segment goes once it is in the bucket (the small download job, finding 56).
+    local.unlink()
+    return published
 
 
 def _segments(ctx: JobContext, delivery: str) -> list[ObjectInfo]:

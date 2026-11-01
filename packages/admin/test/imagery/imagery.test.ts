@@ -89,7 +89,8 @@ describe('the Imagery area', () => {
         expect(imagery.state.search.phase).toBe('done');
         expect(all).toEqual(['a', 'b']);
         expect([imagery.state.visible, imagery.state.tab]).toEqual([[], 'work']);
-        expect(heard).toEqual(['searching', 'done']);
+        // The phases in turn (the list's browse copies, asked meanwhile, change the state too).
+        expect(heard.filter((phase, index) => phase !== heard[index - 1])).toEqual(['searching', 'done']);
     });
 
     it('badPath_withoutTheBucketsFilesNoImageShowsAndNothingIsSaved', async () => {
@@ -194,7 +195,7 @@ describe('the Imagery area: versions, the map and uploads', () => {
         expect(imagery.state.map).toBe('ready');
     });
 
-    it('happyPath_aFootprintClickedOnTheMapIsPickedAndTheBrowseCopyCanBeTriedAgain', async () => {
+    it('happyPath_theBrowseCopyCanBeTriedAgain', async () => {
         const map = new FakeMap();
         const handle = {
             port: map,
@@ -208,13 +209,10 @@ describe('the Imagery area: versions, the map and uploads', () => {
         imagery.intents.attachMap(host());
         await settle();
 
-        map.clickPoi('a');
-        map.clickPoi('a');
         imagery.intents.retryBrowse('a');
         imagery.intents.retryBrowse('nothing');
         await settle();
 
-        expect(imagery.state.pickedScene).toEqual({ id: 'a', seq: 2 });
         expect(imagery.state.browse['a']?.status).toBe('ready');
     });
 

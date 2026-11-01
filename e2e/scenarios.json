@@ -3839,7 +3839,7 @@
             "area": "admin",
             "path": "happy",
             "title": "Ranked scenes with footprints and browse previews",
-            "asserts": "Search -> ranked scenes (free first, then by score) with their footprints on the admin map and browse previews (copies in our bucket read with the Storage SDK, never a USGS address from the browser); for Bucharest the 1966, 1976, 1977, 1978 and 1980 frames rank on top",
+            "asserts": "Search -> ranked scenes (free first, then by score) with the city's boundary on the admin map and the open scene's footprint alone and browse previews (copies in our bucket read with the Storage SDK, never a USGS address from the browser); for Bucharest the 1966, 1976, 1977, 1978 and 1980 frames rank on top",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/search.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
@@ -3893,8 +3893,8 @@
             "behaviour": "A11",
             "area": "admin",
             "path": "happy",
-            "title": "Filters narrow the results and the map together",
-            "asserts": "free only, a year range and a dataset narrow the list and the footprints on the map; clearing them restores both",
+            "title": "Filters narrow the results",
+            "asserts": "free only, a year range and a dataset narrow the list, the map drawing no result's footprint meanwhile (finding 51 of 2026-11-01); clearing them restores the list",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes). Test: e2e/admin/specs/imagery/search.spec.ts."
@@ -3909,6 +3909,72 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/search.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
+        },
+        {
+            "id": "S-A11-HAPPY-ROW-PREVIEWS",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "Every listed row shows its browse image",
+            "asserts": "a recent harvest that copied no browse image -> the first rows ask the server for their copies, four at a time, and each of the six listed rows shows its image (120 px wide), read from our bucket, never from USGS",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 52 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82b). Test: e2e/admin/specs/imagery/rows.spec.ts."
+        },
+        {
+            "id": "S-A11-BAD-ROW-PREVIEW-UNAVAILABLE",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A row whose browse image USGS does not serve says so",
+            "asserts": "the USGS browse host answers 503 -> every row shows a broken-image icon whose name says the preview cannot be fetched (the scene page keeps Try again); the rows and the map still work",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 52 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82b). Test: e2e/admin/specs/imagery/rows.spec.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-FOOTPRINT-SELECTED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "The open scene is the one footprint on the map",
+            "asserts": "a scene opened -> the map keeps the city's view and inside the city shows the blend of the scene's colour at 0.21 over the basemap (a pixel probe); the map's footprints are that scene's alone",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 51 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82a). Test: e2e/admin/specs/imagery/rows.spec.ts."
+        },
+        {
+            "id": "S-A11-BAD-FOOTPRINTS-STACKED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "Overlapping results draw no footprint while none is open",
+            "asserts": "six listed frames all covering the city, none open -> the map shows the basemap's own colour at the city's centre (a pixel probe, within 6 per channel) and no footprint, the city's boundary only: never the stacked fills or the crossing outlines of every result",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 51 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82a). Test: e2e/admin/specs/imagery/rows.spec.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-TWINS-TOLD-APART",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "Frames of the same camera and day say what tells them apart",
+            "asserts": "the 1968 frame and its paid twin of the same day -> each row names its USGS id, the forward camera and its frame (75, 76) in RO and EN",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 53 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82c). Test: e2e/admin/specs/imagery/rows.spec.ts."
+        },
+        {
+            "id": "S-A11-BAD-TWINS-ALONE",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame whose id names no camera says only what its id holds",
+            "asserts": "the 1966 frame -> its id, aft camera and frame 23; a KH-9 mapping frame -> its id and frame 7, no camera",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 53 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82c). Test: e2e/admin/specs/imagery/rows.spec.ts."
         },
         {
             "id": "S-A11-BAD-DOWNLOAD-NOT-APPROVED",
@@ -4010,6 +4076,50 @@
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes). Test: e2e/admin/specs/imagery/import.spec.ts."
         },
         {
+            "id": "S-A12-HAPPY-WORK-COUNT",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "Work counts an import while it runs",
+            "asserts": "Import on a card -> while the job runs, the Work tab reads Work (1), live, where it read Work (0)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 54 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82d). Test: e2e/admin/specs/imagery/import.spec.ts."
+        },
+        {
+            "id": "S-A12-BAD-WORK-COUNT-ENDED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "An import that ended leaves Work and its count",
+            "asserts": "the running import cancelled -> the Work tab reads Work (0) again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 54 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82d). Test: e2e/admin/specs/imagery/import.spec.ts."
+        },
+        {
+            "id": "S-A12-HAPPY-DOWNLOAD-BYTES",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A long download shows its bytes of the total",
+            "asserts": "the pipeline reports 1.234 of 3.4 GB received -> the version page step line reads Downloading the scene, Running, 1.23 of 3.4 GB, and the progress bar shows the job progress with the download share",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 55 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82e). Test: e2e/admin/specs/imagery/import.spec.ts."
+        },
+        {
+            "id": "S-A12-BAD-DOWNLOAD-SIZE-UNKNOWN",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A download whose size USGS did not say shows its bytes alone",
+            "asserts": "the pipeline reports 524 MB received with no total -> the step line reads Running, 0.52 GB, no total invented",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 55 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82e). Test: e2e/admin/specs/imagery/import.spec.ts."
+        },
+        {
             "id": "S-A12-BAD-RETRY",
             "behaviour": "A12",
             "area": "admin",
@@ -4092,10 +4202,54 @@
             "area": "admin",
             "path": "happy",
             "title": "A queued job starts exactly one execution",
-            "asserts": "a queued job -> one Cloud Run execution (raster-pipeline, raster-pipeline-xl for a KH-9 panoramic frame) with JOB_ID, CITY_ID and the args run; a redelivered trigger starts nothing more; a third running job waits (capacity)",
+            "asserts": "a queued job -> one Cloud Run execution (raster-fetch for an import still to download; raster-pipeline, raster-pipeline-xl for a KH-9 panoramic frame, once downloaded) with JOB_ID, CITY_ID and the args run; a redelivered trigger starts nothing more; a third running job waits (capacity)",
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: fn-imagery). Test: functions/test/imagery/dispatch.test.ts (fn-imagery, 2026-10-23)."
+        },
+        {
+            "id": "S-A12-HAPPY-DISPATCH-PHASES",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "An import downloads on the small job, then is processed on the standard one",
+            "asserts": "a queued import -> one execution of raster-fetch (machine fetch); once its download is done and it is queued again -> one execution of raster-pipeline in the same attempt",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 56 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82f). Test: functions/test/imagery/dispatch.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-PHASE-OUT-OF-MEMORY",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "An out-of-memory exit moves a phase to the next larger job, never downloading again",
+            "asserts": "an out-of-memory exit of the download on raster-fetch -> run again on raster-pipeline; of the processing on raster-pipeline -> run again on raster-pipeline-xl with the download steps kept done",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 56 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82f). Test: functions/test/imagery/tick.test.ts."
+        },
+        {
+            "id": "S-A12-HAPPY-DEAD-EXECUTION-NOTICED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "An execution killed for its memory is noticed before its lease lapses",
+            "asserts": "a running job on raster-pipeline-xl, its lease still held but no write for three heartbeats, its execution failed out of memory -> the tick fails the job and its version with apiError.imagery.outOfMemory at once",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 58 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82i). Test: functions/test/imagery/tick.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-HEARTBEAT-LATE-RUNNING",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A late heartbeat of a run Cloud Run still runs, or a heartbeat on time, is left alone",
+            "asserts": "a heartbeat three beats late whose execution is still running, and one on time whose execution reads failed -> both jobs stay running and nothing is dispatched",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 58 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82i). Test: functions/test/imagery/tick.test.ts."
         },
         {
             "id": "S-A12-BAD-LOST-EXECUTION",
@@ -4136,10 +4290,21 @@
             "area": "admin",
             "path": "bad",
             "title": "A failure no retry cures offers no Try again",
-            "asserts": "an import failed out of memory on the large machine shows its error without Try again; imagery.retry refuses a token, scope or memory failure and an upload refused before any version",
+            "asserts": "an import whose Mapbox token was refused shows its error without Try again; imagery.retry refuses a token or scope failure, a job past its attempts and an upload refused before any version (out of memory is retried since finding 58)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A12-HAPPY-OUT-OF-MEMORY-RETRY",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame that ran out of memory says so and offers Try again",
+            "asserts": "an import killed for its memory at stitch -> the version page says the frame did not fit in the processing memory, with Try again; Try again runs it once more to the approval card",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 58 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82i). Test: e2e/admin/specs/imagery/import.spec.ts."
         },
         {
             "id": "S-A12-BAD-FAILED-DISMISSED",
@@ -4169,7 +4334,7 @@
             "area": "admin",
             "path": "bad",
             "title": "An order not delivered after a week reminds the admin to pay, and one never delivered is ordered again",
-            "asserts": "orders seeded as the watch leaves them: a week old with a reminder sent and its last check failed for maintenance -> its card says Ordered: have you paid?, the 14-day warning, that an admin who paid has nothing to do, and the failed check in words, and Work does not count it; a delivered one says its import is starting; one never delivered is the one Work counts, says so and offers I ordered it again and Take the mark back (the watch's reminders on days 7 and 12 and its day-90 give-up are the functions rows S-A13-HAPPY-WATCH, S-A13-BAD-USGS-DOWN and S-A13-BAD-EXPIRED)",
+            "asserts": "orders seeded as the watch leaves them: a week old with a reminder sent and its last check failed for maintenance -> its card says Ordered: have you paid?, the 14-day warning, that an admin who paid has nothing to do, and the failed check in words; a delivered one says its import is starting; one never delivered comes first in Work, says so and offers I ordered it again and Take the mark back - Work's tab counts the three open orders it lists (finding 54) (the watch's reminders on days 7 and 12 and its day-90 give-up are the functions rows S-A13-HAPPY-WATCH, S-A13-BAD-USGS-DOWN and S-A13-BAD-EXPIRED)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §1.2, §1.5, §1.7; owner: orders). In e2e/admin/specs/imagery/orders.spec.ts (states orders.reminder, orders.delivered, orders.expired)."
@@ -8507,6 +8672,50 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_resume.py against the loopback fakes (pipeline-pytest)."
+        },
+        {
+            "id": "S-P01-HAPPY-PHASES",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The small job downloads and hands the job over for its processing",
+            "asserts": "a run on the fetch machine -> fetch and extract done, the job queued with its lease released at 30 percent, the version records download on fetch; the run on std -> the rest done, awaiting approval, process on std, the delivery requested once",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 56 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82f). Test: pipeline/tests/integration/test_import_phases.py."
+        },
+        {
+            "id": "S-P01-BAD-PHASE-ESCALATED",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Processing moved to the large job never downloads again",
+            "asserts": "after the download on the fetch machine, a run on xl (the standard one ran out of memory) -> the download steps skipped, the version awaiting approval, process on xl, the delivery requested once",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 56 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82f). Test: pipeline/tests/integration/test_import_phases.py."
+        },
+        {
+            "id": "S-P01-HAPPY-BOUNDED-MEMORY",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A frame is stitched without ever being held whole in memory",
+            "asserts": "six overlapping 8-bit segments of a 5000 by 4000 frame -> each placed exactly (offsets 800 px apart) in frame.json with a shrunk frame-preview.tif, the joined size exact, and the step allocating under half the frame (two segments staged at a time, windows and strips only)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 57 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82h). Test: pipeline/tests/unit/test_frames.py."
+        },
+        {
+            "id": "S-P01-BAD-CROP-ACROSS-SEGMENTS",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A crop across two segments reads both, and one past them reads none",
+            "asserts": "the city window across an 8-bit and a 16-bit segment -> each part read from its own segment (the later on top, the 16-bit one through its own stretch), each staged and let go in turn; a window no segment covers stays black and stages nothing",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 57 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82h). Test: pipeline/tests/unit/test_frames.py."
         },
         {
             "id": "S-P01-BAD-USGS-MAINTENANCE",

@@ -147,7 +147,7 @@ admin (browser, owner's cloud-platform token in the tab only)
           server   tools → packages (npm ci of the functions' lock in functions/dist: firebase-tools loads that source)
                    → rules (firestore, storage) → functions (--force; retries Eventarc's agent propagation, quota,
                    an operation in progress, with backoff) → verify (every function of the bundle's list)
-          pipeline build → push (Artifact Registry repository hcm) → jobs (raster-pipeline, raster-pipeline-xl on the digest)
+          pipeline build → push (Artifact Registry repository hcm) → jobs (raster-fetch, raster-pipeline, raster-pipeline-xl on the digest)
           site     tools → hosting (the public variant; the bundle kept under /admin/install/) → config (keep 10 versions)
   ◄─ GET builds by tag, each step's status; Cloud Logging's last 20 lines of a stopped step (redacted, shown as text);
      what is installed: the functions' HCM_RELEASE, the jobs' hcm-release label, the site's /release.json
