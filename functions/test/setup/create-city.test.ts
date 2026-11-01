@@ -82,6 +82,34 @@ describe('setup.createCity', () => {
 
         await expect(createCity(world.deps, ADMIN, { cityId: CITY, city: SEED })).resolves.toEqual({ created: true });
 
-        expect(world.documents.writes.filter((write) => write.kind === 'create')).toHaveLength(1);
+        expect(world.documents.writes.filter((write) => write.kind === 'create' && write.path === FIRESTORE_PATHS.city(CITY))).toHaveLength(
+            1,
+        );
+        expect(world.documents.writes.filter((write) => write.path.startsWith(FIRESTORE_PATHS.poiCategories(CITY)))).toHaveLength(5);
+    });
+
+    it('happyPath_theBundledCityStartsWithTheFiveStarterCategoriesStampedAsItIs @S-A39-HAPPY-STARTER-CATEGORIES', async () => {
+        const world = createWorld({ city: false });
+
+        await createCity(world.deps, ADMIN, { cityId: CITY, city: SEED });
+
+        const stamp = { createdAt: CREATED, updatedBy: ADMIN.uid, updatedAt: CREATED };
+        expect(world.documents.peek(FIRESTORE_PATHS.poiCategory(CITY, 'cladire'))).toEqual({
+            label: { ro: 'Clădire', en: 'Building' },
+            icon: 'domain',
+            color: '#8b5e3c',
+            defaultOpacity: 1,
+            order: 0,
+            ...stamp,
+        });
+        expect(world.documents.peek(FIRESTORE_PATHS.poiCategory(CITY, 'monument'))).toMatchObject({ icon: 'account_balance', order: 4 });
+    });
+
+    it('badPath_anExistingCityGetsNoStarterCategory @S-A39-BAD-STARTER-CATEGORIES-EXISTING-CITY', async () => {
+        const world = createWorld();
+
+        await createCity(world.deps, ADMIN, { cityId: CITY, city: SEED });
+
+        expect(world.documents.peek(FIRESTORE_PATHS.poiCategory(CITY, 'cladire'))).toBeUndefined();
     });
 });

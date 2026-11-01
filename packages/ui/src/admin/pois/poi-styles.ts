@@ -140,6 +140,15 @@ export const poiStyles = [
             min-inline-size: 48px;
         }
 
+        /* A city without categories: the field's name over its note and the two ways to add one (finding 35 of 2026-11-01). */
+        .no-categories .label {
+            font-size: var(--md-sys-typescale-body-medium-size, 0.875rem);
+        }
+
+        .no-categories .note {
+            margin: 0;
+        }
+
         hcm-admin-map {
             block-size: 45vh;
         }

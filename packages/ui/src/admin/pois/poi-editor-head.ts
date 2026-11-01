@@ -11,8 +11,9 @@ import { html, nothing, type TemplateResult } from 'lit';
 import { emit } from '../../components/internal.js';
 import { conflictFields, savedByText, type WhoPort } from '../editing/conflict.js';
 import type { OverflowAction } from '../editing/hcm-overflow-menu.js';
+import { cannotSaveText } from '../editing/issue-text.js';
 import { EMPTY } from '../shell/empty.js';
-import { issueText, localized, poiText, SHAPE_KEYS } from './poi-text.js';
+import { localized, poiText, SHAPE_KEYS } from './poi-text.js';
 import type { PoiDraftPort, PoiShapePort, PoisIntentsPort } from './pois-port.js';
 
 /** What the top of the editor shows and where its events go. */
@@ -63,12 +64,9 @@ function titleOf(locale: Locale, draft: PoiDraftPort): string {
     return poiText(locale, draft.isNew ? 'adminContent.pois.newPlace' : 'adminContent.pois.untitled');
 }
 
-function issueLine(locale: Locale, issue: PoiDraftPort['issues'][number] | undefined): TemplateResult {
-    if (issue === undefined) {
-        return EMPTY;
-    }
-    const text = poiText(locale, 'adminContent.pois.cannotSave', { issue: issueText(locale, issue) });
-    return html`<p class="note" id="save-issue">${text}</p>`;
+/** Save's note: every field it waits for, by what to do ("Cannot save: add a title in Romanian; choose a category."). */
+function issueLine(locale: Locale, issues: PoiDraftPort['issues']): TemplateResult {
+    return issues.length === 0 ? EMPTY : html`<p class="note" id="save-issue">${cannotSaveText(locale, issues)}</p>`;
 }
 
 /** The overflow menu's actions: History (a saved place), then Redraw as each other shape. */
@@ -130,7 +128,7 @@ function actions(input: HeadInput): TemplateResult {
 /** The title, the save state, then Discard and Save at the trailing end; then Delete and the overflow menu. */
 export function editorHead(input: HeadInput): TemplateResult {
     const { locale, draft, readOnly } = input;
-    const [issue] = draft.issues;
+    const issue = draft.issues.length === 0 ? undefined : 'save-issue';
     return html`<div class="editor-head">
             <h2 data-detail-heading tabindex="-1">${titleOf(locale, draft)}</h2>
             <p class="state note" role="status">${poiText(locale, stateKey(draft, readOnly))}</p>
@@ -145,12 +143,12 @@ export function editorHead(input: HeadInput): TemplateResult {
                 class="save"
                 variant="filled"
                 ?disabled=${saveBlocked(draft, readOnly)}
-                aria-describedby=${issue === undefined ? nothing : 'save-issue'}
+                aria-describedby=${issue ?? nothing}
                 @click=${() => void input.intents?.save()}
                 >${poiText(locale, 'adminContent.common.save')}</hcm-button
             >
         </div>
-        ${issueLine(locale, issue)} ${actions(input)}`;
+        ${issueLine(locale, draft.issues)} ${actions(input)}`;
 }
 
 function conflictBanner(input: HeadInput): TemplateResult {

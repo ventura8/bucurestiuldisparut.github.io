@@ -1,7 +1,11 @@
 /**
- * A POI category on the Mapbox map (PLAN Addendum 3): one GeoJSON source and six layers in the category colour,
- * bottom first: polygon fills, line and outline strokes, point discs, point icons (labelled from zoom 16), and the
- * labels of lines and areas from zoom 16. The POIs are the ones the timeline shows; titles are already localized.
+ * A POI category on the Mapbox map (PLAN Addendum 3): one GeoJSON source and seven layers, bottom first: polygon fills,
+ * a white casing under every line and area outline, the line and outline strokes in the category colour, point discs,
+ * point icons (labelled from zoom 16), and the labels of lines and areas from zoom 16. The casing keeps a line legible on
+ * a satellite photo, where a thin stroke in the category colour almost disappeared (the live manual test of 2026-11-01,
+ * finding 36): the category colour is dark by rule (the white glyph reads on it at 3:1), so the stroke stands on the white
+ * band on any basemap. Every layer's opacity scales with the overlay's (`layerOpacityPaint`): at 0 the casing goes too.
+ * The POIs are the ones the timeline shows; titles are already localized.
  */
 import type { MapLayerType, OpacityBase } from '@hcm/shared';
 
@@ -40,12 +44,34 @@ const LABEL = ['step', ['zoom'], '', POI_LABEL_MIN_ZOOM, ['get', 'title']];
 const LABEL_LAYOUT: Style = { 'text-field': LABEL, 'text-size': 13, 'text-max-width': 12, 'text-optional': true };
 const LABEL_PAINT: Style = { 'text-color': '#ffffff', 'text-halo-color': '#1d1b1a', 'text-halo-width': 1.5 };
 
+/** A width that grows with the zoom: `[zoom, width]` stops, linear between them. */
+function byZoom(...stops: readonly (readonly [number, number])[]): unknown {
+    return ['interpolate', ['linear'], ['zoom'], ...stops.flat()];
+}
+
+/** The stroke of lines and area outlines in the category colour (CSS px). */
+export const POI_LINE_WIDTH = byZoom([12, 2], [16, 4], [20, 7]);
+/** The white casing under it: two to three and a half pixels wider on each side. */
+export const POI_CASING_WIDTH = byZoom([12, 6], [16, 10], [20, 14]);
+
+const LINE_LAYOUT: Style = { 'line-cap': 'round', 'line-join': 'round' };
+
 const POI_LAYER_KINDS: readonly PoiLayerKind[] = [
     {
         suffix: 'fill',
         type: 'fill',
-        base: { 'fill-opacity': 0.3 },
+        base: { 'fill-opacity': 0.35 },
         style: (spec) => ({ filter: geometryIs('Polygon'), layout: {}, paint: { 'fill-color': spec.color } }),
+    },
+    {
+        suffix: 'casing',
+        type: 'line',
+        base: { 'line-opacity': 0.9 },
+        style: () => ({
+            filter: geometryIs('LineString', 'Polygon'),
+            layout: LINE_LAYOUT,
+            paint: { 'line-color': '#ffffff', 'line-width': POI_CASING_WIDTH },
+        }),
     },
     {
         suffix: 'line',
@@ -53,8 +79,8 @@ const POI_LAYER_KINDS: readonly PoiLayerKind[] = [
         base: {},
         style: (spec) => ({
             filter: geometryIs('LineString', 'Polygon'),
-            layout: { 'line-cap': 'round', 'line-join': 'round' },
-            paint: { 'line-color': spec.color, 'line-width': 3 },
+            layout: LINE_LAYOUT,
+            paint: { 'line-color': spec.color, 'line-width': POI_LINE_WIDTH },
         }),
     },
     {
@@ -123,7 +149,7 @@ export function poiData(spec: VectorOverlaySpec): unknown {
     return { type: 'FeatureCollection', features: spec.features };
 }
 
-/** The six Mapbox layers of a category, bottom first, at its visibility and opacity. */
+/** The seven Mapbox layers of a category, bottom first, at its visibility and opacity. */
 export function poiLayers(spec: VectorOverlaySpec, slot: MapSlot): readonly Style[] {
     return POI_LAYER_KINDS.map((kind) => {
         const style = kind.style(spec);

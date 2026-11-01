@@ -1635,3 +1635,31 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Cause: the record was built from the card's items, dropping every `missing` one to skip the never-reported ones; and an item Google refused with 401 was shown and recorded as `invalid`, a fact about the token taken for one about the item.
     - Fix and pin: a run records exactly what it reported, `missing` included, never a 401; Re-check without a token changes nothing and says when step (c) was last checked (`DECISIONS-for-review.md` §75k; S-A04-BAD-RECHECK-NO-TOKEN, S-A04-HAPPY-RECHECK-RECORDS-MISSING).
     - **Record what a check observed, in both directions, and only that: track the reports of the run itself instead of filtering the screen's state, and never let a refused credential stand for the resource's state.**
+
+306. **A city with no place category could not hold a place, and its editor said only "The value does not have the required format."**
+    - Seen: live on 2026-11-01 (finding 35): Add place in the migrated Bucharest showed an empty Category select and a Save note in the schema's words.
+    - Found by: the user's live walk. Every e2e world seeds its categories, so no test ever opened the place editor of a city without any.
+    - Cause: neither `cities.create` nor `setup.createCity` made a category, the legacy data has none, and the editor rendered the city's categories as a select whatever their number, with the draft's empty id refused by `idSchema` (`validation.format`).
+    - Fix and pin: the starter categories of `@hcm/shared` written with every new city (`functions/src/api/starter-categories.ts`), and the editor's no-categories field with **Add the starter categories** and **Add a category** (`packages/ui/src/admin/pois/poi-fields.ts`, `packages/admin/src/pois/starter.ts`; S-A39-HAPPY-STARTER-CATEGORIES, S-A39-BAD-NO-CATEGORIES, S-A39-HAPPY-ADD-STARTER, tour `pois.no-categories`).
+    - **Every choice a form needs has a state for "there is nothing to choose yet", with the way to make the first one; and a test world that seeds everything hides that state: give it a world that seeds nothing.**
+
+307. **A place's line almost disappeared on the satellite map.**
+    - Seen: live on 2026-11-01 (finding 36): the public map on Mapbox Standard Satellite.
+    - Found by: the user's live walk. The e2e basemap is a light solid colour, on which a 3 px line in a dark category colour reads well.
+    - Cause: the POI layers drew lines and area outlines as one thin stroke in the category colour, which the 3:1 rule for the white glyph keeps dark, the tone of most of a satellite photo.
+    - Fix and pin: a white casing under every line and outline, wider strokes by zoom, a 35 % fill (`packages/ui/src/map/pois.ts`); pixel probes over a dark ground served in place of the e2e basemap's (S-V24-HAPPY-LINE-CASING, S-V24-BAD-CASING-AT-ZERO-OPACITY).
+    - **Probe what is drawn on every kind of ground it is drawn on: a test basemap of one light colour cannot see a contrast problem of a satellite photo.**
+
+308. **A required field said the schema's generic words, and Save named only the first problem.**
+    - Seen: live on 2026-11-01 (finding 37): an empty Romanian title read "The value is too small or too short." at the field and above Save.
+    - Found by: the user's live walk. The tests asserted that a field was marked invalid and that Save said "Cannot save", never what it said.
+    - Cause: the editors turned every issue into `translate(issue.code)`, the words of the viewer's manifest validation, which know the code and not the field.
+    - Fix and pin: `packages/ui/src/admin/editing/issue-text.ts` (a required field's own words, the note listing every field), used by the places, photos, layers and settings editors (S-A38-BAD-REQUIRED-FIELD-NAMED, S-A38-HAPPY-REQUIRED-FIELD-FIXED).
+    - **A form's message says what to do in that field; assert the words, not only `aria-invalid`.**
+
+309. **History named a created document by its id.**
+    - Seen: live on 2026-11-01 (finding 38): "Place W1DLFHuhMZpHW6UzReWl" beside "AreaOne".
+    - Found by: the user's live walk. The tour's places were seeded with readable ids ("gara"), so "Place gara" looked like a name.
+    - Cause: a row's name came from the entry's `previous`, which a creation does not have.
+    - Fix and pin: `CreatedNames` (`packages/admin/src/history/names.ts`): the next entry's version, else the document now, read once (S-A23-HAPPY-CREATED-NAMED, S-A23-BAD-CREATED-GONE-UNNAMED).
+    - **Seed the ids the product makes (random ones), or a test cannot tell an id shown by mistake from a name.**

@@ -34,6 +34,12 @@ import { FONT_FILES } from '../ui/src/fonts/font-files.js';
 const ADMIN_MAP_MODULES =
     /packages[\\/](?:ui[\\/]src[\\/]admin[\\/]map[\\/]|admin[\\/]src[\\/](?:photos[\\/]map|pois[\\/](?:map-session|model)|layers[\\/](?:map-session|preview))\.ts)/;
 
+/**
+ * The editors' own words for a field and its problem (`packages/ui/src/admin/editing/field-names.ts`, `issue-text.ts`), which
+ * every editor area and History share: their own chunk, kept out of `editor-shared` (DECISIONS-for-review.md §77e).
+ */
+const EDITOR_TEXT_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]editing[\\/](?:field-names|issue-text)\.ts$/;
+
 /** M4: the editors' assists, their state and intents (`packages/admin/src/assist/`) and their slots (`packages/ui/src/admin/assist/`). */
 const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]assist[\\/]/;
 
@@ -79,12 +85,14 @@ export default defineConfig({
                 // the Firebase Installations SDK that the lazily loaded Analytics and Messaging SDKs share (M4's web push,
                 // DECISIONS-for-review.md §54b), which would otherwise land in `editor-shared`.
                 // `assist`: the editors' title suggestions and translation drafts (M4, the photo, place and layer editors share
-                // them), kept out of `editor-shared` (DECISIONS-for-review.md §54b).
+                // them), kept out of `editor-shared` (DECISIONS-for-review.md §54b). `editor-texts`: a field's name and its
+                // problem's words, which every editor shares (§77e).
                 codeSplitting: {
                     groups: [
                         { name: 'terra-draw', test: /node_modules[\\/]terra-draw/, priority: 4 },
                         { name: 'firebase-installations', test: /node_modules[\\/]@firebase[\\/]installations[\\/]/, priority: 2 },
                         { name: 'assist', test: ASSIST_MODULES, priority: 2 },
+                        { name: 'editor-texts', test: EDITOR_TEXT_MODULES, priority: 2 },
                         { name: 'admin-core', tags: ['$initial'], priority: 3 },
                         { name: 'admin-map', test: ADMIN_MAP_MODULES, priority: 2 },
                         { name: 'editor-shared', minShareCount: 2, priority: 1 },

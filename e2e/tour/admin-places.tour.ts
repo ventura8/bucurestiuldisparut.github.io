@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
+import { STARTER_POI_CATEGORIES, translate } from '@hcm/shared';
 import type { Page } from '@playwright/test';
 
 import { recordLiveRegions } from '../support/live-regions.js';
@@ -256,3 +257,53 @@ test(
         expect({ manuc: after['manuc'], stavropoleos: after['stavropoleos'] }).toEqual(seeded);
     },
 );
+
+test(
+    'A city without categories offers the starter categories in the place editor, and the new place then saves in the first',
+    { tag: ['@S-A39-BAD-NO-CATEGORIES', '@S-A39-HAPPY-ADD-STARTER', '@S-A31-HAPPY-EDITORS', '@S-A21-BAD-LEAK-CHECK'] },
+    async ({ page, lang, content }) => {
+        await page.context().addInitScript(recordLiveRegions);
+        await seedPoisCity(content, AT);
+        await page.goto(content.address(lang, 'pois', { map: false }));
+        await expect(page.getByText(poisText(lang, 'adminContent.pois.empty'))).toBeVisible();
+        await page.getByRole('button', { name: poisText(lang, 'adminContent.pois.add') }).click();
+        await page.getByRole('button', { name: poisText(lang, 'adminContent.pois.shape.point'), exact: true }).click();
+
+        // Finding 35 of 2026-11-01: no empty select and no format text; the field says why, and offers the starter
+        // categories or a category of the admin's own; Save's note names both fields it waits for, by what to do.
+        const editor = page.locator('hcm-poi-editor');
+        const category = editor.locator('select#category');
+        const choose = poisText(lang, 'adminContent.common.issue.category');
+        await expect(page.getByText(poisText(lang, 'adminContent.pois.noCategories'))).toBeVisible();
+        await expect(category).toHaveCount(0);
+        await expect(editor.locator('#category-error')).toHaveText(choose);
+        await expect(editor.locator('#title-ro-error')).toHaveText(poisText(lang, 'adminContent.common.issue.titleRo'));
+        await expect(editor.locator('#save-issue')).toContainText(inSentence(lang, choose));
+        await expect(page.getByText(translate(lang, 'validation.format'))).toHaveCount(0);
+        await expect(page.getByRole('link', { name: poisText(lang, 'adminContent.pois.addCategory') })).toHaveAttribute(
+            'href',
+            '#/settings/categories/_new',
+        );
+        await expectStateSound(page, adminVisit('pois.no-categories', lang));
+
+        // One click writes the five starter categories; the new place takes the first, and saves in it.
+        await page.getByRole('button', { name: poisText(lang, 'adminContent.pois.addStarters') }).click();
+        await expect(category).toHaveValue('cladire');
+        await expect(category.locator('option')).toHaveCount(STARTER_POI_CATEGORIES.length);
+        await expect
+            .poll(async () => Object.keys(await content.collection('poiCategories')).sort((a, b) => a.localeCompare(b)))
+            .toEqual(['biserica', 'cladire', 'monument', 'piata', 'strada']);
+        await page.getByRole('button', { name: poisText(lang, 'adminContent.map.tool.addCentre') }).click();
+        await page.getByRole('textbox', { name: poisText(lang, 'adminContent.pois.field.titleRo') }).fill('Casa Capșa');
+        await expect(editor.locator('#save-issue')).toHaveCount(0);
+        await page.getByRole('button', { name: poisText(lang, 'adminContent.common.save'), exact: true }).click();
+        await expect
+            .poll(async () => Object.values(await content.collection('pois')))
+            .toEqual([expect.objectContaining({ category: 'cladire', title: { ro: 'Casa Capșa' } })]);
+    },
+);
+
+/** A text as part of a longer sentence: its first letter in lower case (Save's note lists its fields so). */
+function inSentence(lang: 'ro' | 'en', text: string): string {
+    return text.charAt(0).toLocaleLowerCase(lang) + text.slice(1);
+}

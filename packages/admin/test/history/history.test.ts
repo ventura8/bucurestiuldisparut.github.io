@@ -151,6 +151,8 @@ describe('the history area', () => {
             ['poi', 'gara', 'update'],
             ['poi', 'gara', 'create'],
         ]);
+        // The creation is named by the version it made: the next entry's (finding 38 of 2026-11-01).
+        expect(history.state.recent.items.at(-1)?.name).toEqual({ ro: 'Gara veche' });
         expect(history.state.people).toEqual({ 'other-uid': 'Ion' });
         expect(HISTORY_MODULE.area).toBe('history');
         expect(history.hasUnsavedChanges()).toBe(false);

@@ -33,6 +33,14 @@ export const ro = {
     'adminContent.common.history': 'Istoric',
     'adminContent.common.savedBy': 'Salvat de {who} la {date}.',
     'adminContent.common.savedByWho': 'Salvat de {who}.',
+    'adminContent.common.cannotSave': 'Nu se poate salva: {issues}.',
+    'adminContent.common.issueAt': '{field}: {issue}',
+    'adminContent.common.issue.titleRo': 'Adaugă un titlu în română',
+    'adminContent.common.issue.labelRo': 'Adaugă un nume în română',
+    'adminContent.common.issue.nameRo': 'Adaugă numele orașului în română',
+    'adminContent.common.issue.category': 'Alege o categorie',
+    'adminContent.common.issue.geometry': 'Desenează locul pe hartă sau adaugă-i pozițiile',
+    'adminContent.common.issue.year': 'Scrie anul ca număr, de exemplu 1966',
     'adminContent.common.readOnly': 'Doar citire: accesul tău a fost retras.',
     // [end common]
     // [section map] owner: pois (the admin map, the drawing toolbar, the vertex list); keys adminContent.map.*

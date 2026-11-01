@@ -196,6 +196,8 @@ const EXPORTS = {
         'PHOTO_YEAR_WINDOW',
         'poiIcon',
         'poiInYear',
+        'STARTER_POI_CATEGORIES',
+        'starterCategoryDocs',
         'ADJUSTMENT_SLIDERS',
         'adjustmentDelta',
         'adjustmentFromSlider',

@@ -178,6 +178,8 @@ export interface PoisIntentsPort extends AssistActionsPort {
     keepMine(): void;
     takeTheirs(): void;
     remove(): Promise<{ readonly ok: boolean } | null>;
+    /** The starter categories, for a city without any (finding 35 of 2026-11-01). */
+    addStarterCategories(): Promise<unknown>;
     toggleSelected(id: string): void;
     selectAll(): void;
     clearSelection(): void;

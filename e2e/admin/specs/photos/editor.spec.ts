@@ -190,7 +190,10 @@ test(
         await latitude.focus();
         await page.keyboard.press('Tab');
         const outside = translate(lang, 'validation.outsideCity');
-        await expect(page.getByText(photosText(lang, 'adminContent.photos.editor.firstIssue', { field: outside }))).toBeVisible();
+        // Save's note names the field and its problem (finding 37 of 2026-11-01), as part of one sentence.
+        const issue = outside.charAt(0).toLocaleLowerCase(lang) + outside.slice(1, -1);
+        const at = photosText(lang, 'adminContent.common.issueAt', { field: photosText(lang, 'adminContent.field.location'), issue });
+        await expect(page.getByText(photosText(lang, 'adminContent.common.cannotSave', { issues: at }))).toBeVisible();
         await expect(saveButton(page, lang)).toBeDisabled();
         await expect(page.getByText(outside, { exact: true }).first()).toBeVisible();
         expect((await content.document('photos/cv'))?.['location']).toEqual({ lat: START[1], lng: START[0] });

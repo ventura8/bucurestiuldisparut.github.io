@@ -63,6 +63,8 @@ export interface PoisIntents extends AssistIntents {
     discard(): void;
     keepMine(): void;
     takeTheirs(): void;
+    /** Adds the starter categories to a city that has none (finding 35 of 2026-11-01): the open place takes the first. */
+    addStarterCategories(): Promise<WriteOutcome>;
     /** Deletes the open place (the page asked first); the snackbar offers Undo. */
     remove(): Promise<WriteOutcome | null>;
     toggleSelected(id: string): void;

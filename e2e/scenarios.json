@@ -2096,6 +2096,28 @@
             "notes": "Milestone M1. Found by the M1 final-gate screenshots (1280x800 dark: two POIs without their glyphs): Map.updateImage does not repaint an idle Mapbox map, so ensureIcon (packages/engine/src/map/icons.ts) triggers the repaint."
         },
         {
+            "id": "S-V24-HAPPY-LINE-CASING",
+            "behaviour": "V24",
+            "area": "viewer",
+            "path": "happy",
+            "title": "On the dark ground of a satellite photo a POI line stands out on its white casing",
+            "asserts": "pixel probes over a dark basemap: the line's category colour at its centre over the casing, and a light casing band three pixels to either side, far from the ground's colour",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 36)."
+        },
+        {
+            "id": "S-V24-BAD-CASING-AT-ZERO-OPACITY",
+            "behaviour": "V24",
+            "area": "viewer",
+            "path": "bad",
+            "title": "At 0 % opacity a POI line and its casing are both gone",
+            "asserts": "with the streets' opacity at 0 in the address, the line's centre and both sides of it show the basemap's ground only",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 36)."
+        },
+        {
             "id": "S-V25-HAPPY",
             "behaviour": "V25",
             "area": "viewer",
@@ -5066,6 +5088,28 @@
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.6, CR-M2c-5; owner: ops-screens)."
         },
         {
+            "id": "S-A23-HAPPY-CREATED-NAMED",
+            "behaviour": "A23",
+            "area": "admin",
+            "path": "happy",
+            "title": "A creation is listed by its document's title like the changes beside it",
+            "asserts": "History's recent changes name a created place by the title its creation made (the next entry's version, or the place now), never by its id",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 38)."
+        },
+        {
+            "id": "S-A23-BAD-CREATED-GONE-UNNAMED",
+            "behaviour": "A23",
+            "area": "admin",
+            "path": "bad",
+            "title": "A creation of a deleted place, listed alone, keeps its kind and id",
+            "asserts": "with only creations listed, a place created then deleted has no version left to name it and reads as Place and its id",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 38)."
+        },
+        {
             "id": "S-A24-HAPPY",
             "behaviour": "A24",
             "area": "admin",
@@ -6199,6 +6243,28 @@
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §5.4; owner: ops-screens). Since 2026-10-18 (DECISIONS-for-review.md §42b) Home lists each skipped document: e2e/admin/specs/ops/skipped.spec.ts."
         },
         {
+            "id": "S-A38-BAD-REQUIRED-FIELD-NAMED",
+            "behaviour": "A38",
+            "area": "admin",
+            "path": "bad",
+            "title": "An empty required field says what to do, at the field and in Save's note",
+            "asserts": "an empty Romanian title reads Add a title in Romanian under the field and Cannot save: add a title in Romanian. beside Save, never the schema's generic words; Save is off",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 37)."
+        },
+        {
+            "id": "S-A38-HAPPY-REQUIRED-FIELD-FIXED",
+            "behaviour": "A38",
+            "area": "admin",
+            "path": "happy",
+            "title": "Filling the required field clears its message and Save writes",
+            "asserts": "typing a title removes the field's message and Save's note, and Save writes the title",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 37)."
+        },
+        {
             "id": "S-A39-HAPPY",
             "behaviour": "A39",
             "area": "admin",
@@ -6274,6 +6340,50 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Covered by e2e/tour/admin-settings.tour.ts."
+        },
+        {
+            "id": "S-A39-HAPPY-STARTER-CATEGORIES",
+            "behaviour": "A39",
+            "area": "admin",
+            "path": "happy",
+            "title": "A new city starts with the five starter categories",
+            "asserts": "cities.create and setup.createCity write Building, Street, Square, Church and Monument with both labels, the guessed icons, colours the white glyph reads on and the city's stamp, in the city's transaction",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 35)."
+        },
+        {
+            "id": "S-A39-BAD-STARTER-CATEGORIES-EXISTING-CITY",
+            "behaviour": "A39",
+            "area": "admin",
+            "path": "bad",
+            "title": "An existing city gets no second set of starter categories",
+            "asserts": "setup.createCity on an existing city and a retried cities.create write no category (a deleted starter category stays deleted)",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 35)."
+        },
+        {
+            "id": "S-A39-HAPPY-ADD-STARTER",
+            "behaviour": "A39",
+            "area": "admin",
+            "path": "happy",
+            "title": "The place editor adds the starter categories in one click and the new place saves in the first",
+            "asserts": "Add the starter categories writes the five; the Category select lists them with Building chosen, and Save writes the place in it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 35)."
+        },
+        {
+            "id": "S-A39-BAD-NO-CATEGORIES",
+            "behaviour": "A39",
+            "area": "admin",
+            "path": "bad",
+            "title": "A city without categories shows how to add one instead of an empty select",
+            "asserts": "no empty Category select and no format text: the field says the city has no categories, offers the starter categories and Add a category, and reads Choose a category; Save's note names the category",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Live manual test of 2026-11-01 (docs/research/manual-test-2026-10-25.md, finding 35)."
         },
         {
             "id": "S-A40-HAPPY",

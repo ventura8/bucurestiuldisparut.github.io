@@ -10,6 +10,7 @@ import {
 
 import type { VerifiedCaller } from '../api/access.js';
 import { projectCityIds, rolesWithOwnedCity } from '../api/memberships.js';
+import { createStarterCategories } from '../api/starter-categories.js';
 import type { Ports } from '../ports/index.js';
 import { stampOf } from './records.js';
 
@@ -30,6 +31,8 @@ function newCity(request: Request, caller: VerifiedCaller, deps: CreateCityDeps)
  * is and answered `{created: false}`. The bundled city is public today (the static site), so it is created published:
  * its manifest appears once `setup.saveMapbox` writes the viewer token (the builder publishes nothing before). M5
  * (`docs/research/M5-interfaces.md` §1.1): the same transaction makes the caller, the project's owner, the city's owner.
+ * The same transaction writes the five starter POI categories (finding 35 of 2026-11-01: the bundled seed has none, and a
+ * city without a category cannot hold a place).
  */
 export async function createCity(
     deps: CreateCityDeps,
@@ -47,6 +50,7 @@ export async function createCity(
         }
         const city = newCity(request, caller, deps);
         await transaction.create(path, cityDocSchema, city);
+        await createStarterCategories(transaction, request.cityId, city);
         if (admin !== undefined) {
             const cities = rolesWithOwnedCity(admin, cityIds, request.cityId);
             await transaction.set(adminPath, adminDocSchema, { ...admin, cities, updatedBy: city.updatedBy, updatedAt: city.updatedAt });

@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { validateManifest, type Locale, type MessageKey } from '@hcm/shared';
 
 import { siteManifestData, type Json } from '../../fixtures/manifest.js';
-import { BASEMAP_BACKGROUND, type Rgb } from '../../fixtures/world.js';
+import { BASEMAP_BACKGROUND, MOCK_API_ORIGIN, type Rgb } from '../../fixtures/world.js';
 import {
     blend,
     colourDistance,
@@ -37,6 +37,22 @@ const TITLES = {
     category: { ro: 'Clădiri dispărute', en: 'Vanished buildings' },
 } as const;
 const LINKED_PHOTO = { id: 'uranus-colt-mihai-voda', title: 'Uranus - Mihai Vodă' } as const;
+
+const WHITE: Rgb = [255, 255, 255];
+
+/** The streets' default opacity (scripts/seed/e2e-pois.json) and the casing's own share of it (packages/ui/src/map/pois.ts). */
+const STREETS_OPACITY = 0.8;
+const CASING_OPACITY = 0.9;
+
+/** The street line at the probe over `ground`: its colour over the white casing, both at the category's opacity. */
+function streetLineOver(ground: Rgb): Rgb {
+    return blend(rgb(COLOURS.strazi), casingOver(ground), STREETS_OPACITY);
+}
+
+/** The casing beside the line over `ground`. */
+function casingOver(ground: Rgb): Rgb {
+    return blend(WHITE, ground, STREETS_OPACITY * CASING_OPACITY);
+}
 
 function rgb(hex: string): Rgb {
     const value = Number.parseInt(hex.slice(1), 16);
@@ -79,14 +95,16 @@ test(
         await expectColourAt(
             page,
             await screenPointOf(page, STRADA_ON_LINE),
-            blend(rgb(COLOURS.strazi), BASEMAP_BACKGROUND, 0.8),
+            streetLineOver(BASEMAP_BACKGROUND),
             'the street line at 80 %',
-            { radius: 0 },
+            {
+                radius: 0,
+            },
         );
         await expectColourAt(
             page,
             await screenPointOf(page, CVARTAL_INSIDE),
-            blend(rgb(COLOURS.cladiri), BASEMAP_BACKGROUND, 0.3),
+            blend(rgb(COLOURS.cladiri), BASEMAP_BACKGROUND, 0.35),
             'the block fill',
             { tolerance: 4 },
         );
@@ -128,6 +146,61 @@ test('POI labels show from zoom 16 and not below', { tag: '@S-V24-HAPPY' }, asyn
         .poll(async () => labelContrast(page, await screenPointOf(page, CLADIRE)), { message: 'no label below zoom 16' })
         .toBeLessThanOrEqual(6);
 });
+
+/** The dark ground of a satellite photo (Mapbox Standard Satellite in the live test of 2026-11-01), for the basemap. */
+const SATELLITE_GROUND: Rgb = [52, 64, 44];
+
+/** The basemap's style with the satellite's dark ground for its background: the mock's own style, its colour changed. */
+async function serveSatelliteGround(page: Page): Promise<void> {
+    await page.route(/^https:\/\/api\.mapbox\.com\/styles\/v1\/[\w.-]+\/[\w.-]+\?/, async (route) => {
+        const url = new URL(route.request().url());
+        const response = await route.fetch({ url: `${MOCK_API_ORIGIN}/h/${url.hostname}${url.pathname}${url.search}` });
+        const style = (await response.json()) as { readonly layers: readonly Json[] };
+        const ground = { 'background-color': `rgb(${SATELLITE_GROUND.join(', ')})` };
+        const layers = style.layers.map((layer) => (layer['id'] === 'background' ? { ...layer, paint: ground } : layer));
+        await route.fulfill({ response, json: { ...style, layers } });
+    });
+}
+
+/** Points three pixels to either side of the street line (it runs nearly east to west there), on its white casing. */
+async function besideTheStreet(page: Page): Promise<readonly { x: number; y: number }[]> {
+    const line = await screenPointOf(page, STRADA_ON_LINE);
+    return [
+        { x: line.x, y: line.y - 3 },
+        { x: line.x, y: line.y + 3 },
+    ];
+}
+
+test(
+    'On the dark ground of a satellite photo a street line stands out on its white casing',
+    { tag: '@S-V24-HAPPY-LINE-CASING' },
+    async ({ page, lang }) => {
+        await serveSatelliteGround(page);
+        await openViewer(page, { lang, hash: POI_VIEW });
+        // Finding 36 of 2026-11-01: the line in its dark category colour almost disappeared on the photo; its casing
+        // keeps a light band on both sides, and the line's own colour on it.
+        await expectColourAt(page, await screenPointOf(page, STRADA_ON_LINE), streetLineOver(SATELLITE_GROUND), 'the street line', {
+            radius: 0,
+        });
+        for (const beside of await besideTheStreet(page)) {
+            await expectColourAt(page, beside, casingOver(SATELLITE_GROUND), 'the casing beside the line', { radius: 0, tolerance: 24 });
+            expect(colourDistance(await probeArea(page, beside, 0), SATELLITE_GROUND)).toBeGreaterThan(100);
+        }
+    },
+);
+
+test(
+    'At 0 % opacity a street line and its casing are both gone from the satellite ground',
+    { tag: '@S-V24-BAD-CASING-AT-ZERO-OPACITY' },
+    async ({ page, lang }) => {
+        await serveSatelliteGround(page);
+        await openViewer(page, { lang, hash: `${POI_VIEW}&op=strazi:0` });
+        await expectColourAt(page, await screenPointOf(page, STRADA_ON_LINE), SATELLITE_GROUND, 'no line at 0 %', { radius: 0 });
+        for (const beside of await besideTheStreet(page)) {
+            await expectColourAt(page, beside, SATELLITE_GROUND, 'no casing at 0 %', { radius: 0 });
+        }
+    },
+);
 
 /** The fixture with its two layers moved to 1890 and 1990, so the timeline has stops around the POI years. */
 function withStops1890And1990(): Json {
@@ -259,7 +332,6 @@ test(
     },
 );
 
-const WHITE: Rgb = [255, 255, 255];
 const ICON_FONT = '**/engine/fonts/material-symbols-rounded.woff2';
 const ICON_FONT_FACE = '24px "HCM Material Symbols Rounded"';
 

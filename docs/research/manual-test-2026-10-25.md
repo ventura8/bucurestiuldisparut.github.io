@@ -260,3 +260,46 @@ any `en*`), then Romanian (`packages/admin/src/state/locale.ts`; `M2b-interfaces
   decision of `DECISIONS-for-review.md` §67g.
 - **Mapbox telemetry**: `events.mapbox.com` answers 503 to the map's usage events; harmless (the map draws), nothing changed.
 - **The user's decision**: §75c (the admin on its own Hosting site) REJECTED; the per-tab sign-in stays (finding 26).
+
+### The editors on the live map (2026-11-01, admin `1.0.0+9e2e6b5`)
+
+The user's walk through the editors of the migrated Bucharest city, once Setup was done. The numbering continues the
+list above; what each finding changed: `docs/LESSONS.md` 306–309 and `DECISIONS-for-review.md` §77.
+
+- **35.** \[bug]\[places] Places → Add place on a city with no place categories (the migrated Bucharest had none: the
+  legacy data has no categories, and neither `setup.createCity` nor `cities.create` made any): the Category select was
+  empty and Save said only "The value does not have the required format." (the schema's word for the empty category
+  id). FIXED (§77a): (a) a new city starts with five starter categories, Clădire/Building, Stradă/Street, Piață/Square,
+  Biserică/Church and Monument/Monument (`STARTER_POI_CATEGORIES` of `@hcm/shared`: both labels, the icons the admin's
+  icon guesser gives the labels, the default sepia and four companion tones the white glyph reads on), written in the
+  transaction that creates the city (`functions/src/api/starter-categories.ts`, from `cities.create` and
+  `setup.createCity`; an existing city gets none, `seed/bucharest/` unchanged); (b) the place editor of a city without
+  categories shows, instead of the empty select, why a place cannot be saved yet, **Add the starter categories** (one
+  batch, ids clear of the city's layers and categories, the new place then in the first) and **Add a category** (the
+  settings' new category); (c) the field's problem reads "Choose a category" / "Alege o categorie", never the format
+  text (S-A39-HAPPY-STARTER-CATEGORIES, S-A39-BAD-STARTER-CATEGORIES-EXISTING-CITY, S-A39-HAPPY-ADD-STARTER,
+  S-A39-BAD-NO-CATEGORIES; tour `pois.no-categories`). Live: the next deploy of the server and the admin; then Places →
+  Add place → **Add the starter categories** once in the migrated city.
+- **36.** \[bug]\[public map] On the public map (Mapbox Standard Satellite) the lines and area outlines of places were
+  thin strokes in the category colour and almost disappeared on the photo. FIXED (§77b): every category draws a white
+  casing under its lines and area outlines (`hcm-poi-<id>-casing`, 90 % of the overlay's opacity), the stroke grows with
+  the zoom (4 px at zoom 16, the casing 10 px), and the area fill is 35 % (was 30 %); every opacity still scales with the
+  overlay's slider, so 0 % hides the casing too. The admin's map draws through the same layers
+  (`packages/ui/src/map/pois.ts`; S-V24-HAPPY-LINE-CASING, S-V24-BAD-CASING-AT-ZERO-OPACITY, pixel probes over a dark
+  satellite ground).
+- **37.** \[bug]\[editors] A required field said the schema's generic words: an empty Romanian title read "The value is
+  too small or too short." at the field and "Cannot save. The value is too small or too short." above Save. FIXED
+  (§77c): the editing kit's `issue-text.ts` gives a required field the action it asks for ("Add a title in Romanian" /
+  "Adaugă un titlu în română", "Add a name in Romanian" for a layer's or a category's label, "Add the city's name in
+  Romanian", "Choose a category", "Draw the place on the map or add its positions", "Write the year as a number, such
+  as 1966"), and Save's note names every field it waits for ("Cannot save: add a title in Romanian; choose a
+  category."); the places, photos, layers and settings editors (categories and texts included) all say their problems
+  through it, every other problem keeping the validation words after the field's name (S-A38-BAD-REQUIRED-FIELD-NAMED,
+  S-A38-HAPPY-REQUIRED-FIELD-FIXED).
+- **38.** \[bug]\[history] History listed created documents by their ids ("Place W1DLFHuhMZpHW6UzReWl") while their
+  changes and deletions showed titles ("AreaOne", "Gresit"): a creation entry stores no version (`previous` is null).
+  FIXED (§77d): a creation takes the title of the version it made, the `previous` of the next entry of the same document
+  when the list holds one, else the document as it is now (read once per document,
+  `packages/admin/src/history/names.ts`); only a creation whose document is gone with nothing newer listed keeps the
+  kind and the id (S-A23-HAPPY-CREATED-NAMED, S-A23-BAD-CREATED-GONE-UNNAMED). The entries' schema is unchanged, so an
+  older admin reads a newer server's entries as before.

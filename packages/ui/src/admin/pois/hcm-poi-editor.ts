@@ -25,6 +25,7 @@ import {
     publishedField,
     titleFields,
     yearFields,
+    type CategoryChoice,
     type FieldContext,
 } from './poi-fields.js';
 import { editorBanners, editorHead, type HeadInput } from './poi-editor-head.js';
@@ -50,6 +51,8 @@ export class HcmPoiEditor extends LitElement {
     static override readonly properties = {
         editor: { attribute: false },
         categories: { attribute: false },
+        categoriesKnown: { attribute: false },
+        adding: { state: true },
         photos: { attribute: false },
         intents: { attribute: false },
         locale: { type: String },
@@ -64,6 +67,10 @@ export class HcmPoiEditor extends LitElement {
 
     declare editor: PlaceEditorPort | null;
     declare categories: readonly CategoryItemPort[];
+    /** The city's categories were listed: without any, the category field offers the starter categories. */
+    declare categoriesKnown: boolean;
+    /** The starter categories are being written. */
+    declare adding: boolean;
     declare photos: readonly PhotoChoicePort[];
     declare intents: PoisIntentsPort | null;
     /** Whether Add at centre has a centre to add (the city is read): the button waits until then. */
@@ -88,6 +95,8 @@ export class HcmPoiEditor extends LitElement {
         super();
         this.editor = null;
         this.categories = [];
+        this.categoriesKnown = false;
+        this.adding = false;
         this.photos = [];
         this.intents = null;
         this.centreKnown = true;
@@ -123,7 +132,7 @@ export class HcmPoiEditor extends LitElement {
             ${editorHead(head)} ${editorBanners(head)} ${this.#shape(editor, draft)}
             <fieldset>
                 <legend>${poiText(this.locale, 'adminContent.pois.section.texts')}</legend>
-                ${categoryField(this.#context(draft), this.categories)} ${titleFields(this.#context(draft))}
+                ${categoryField(this.#context(draft), this.#categoryChoice())} ${titleFields(this.#context(draft))}
                 ${this.#assists(draft.value, 'title')} ${descriptionFields(this.#context(draft))}
                 ${this.#assists(draft.value, 'description')}
             </fieldset>
@@ -159,6 +168,24 @@ export class HcmPoiEditor extends LitElement {
         return field === 'title'
             ? html`${titleAssist({ locale: this.locale, view, actions, id: 'place-title', readOnly: this.readOnly })} ${draft}`
             : draft;
+    }
+
+    #categoryChoice(): CategoryChoice {
+        return {
+            ...{ categories: this.categories, known: this.categoriesKnown, adding: this.adding },
+            addStarters: () => {
+                void this.#addStarters();
+            },
+        };
+    }
+
+    async #addStarters(): Promise<void> {
+        this.adding = true;
+        try {
+            await this.intents?.addStarterCategories();
+        } finally {
+            this.adding = false;
+        }
     }
 
     #context(draft: PoiDraftPort): FieldContext {

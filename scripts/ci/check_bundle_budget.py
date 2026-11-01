@@ -106,6 +106,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     "order-card": 2,
     # What two or more areas share and the entry does not (the codeSplitting group `editor-shared`).
     "editor-shared": 13,
+    # The editors' words for a field and its problem (the group `editor-texts`: `field-names.ts`, `issue-text.ts`), out of
+    # `editor-shared` when the required fields' own words took it to 13.3 KB: 1.0 KB measured on 2026-11-01 plus about
+    # 20 %, rounded up (DECISIONS-for-review.md §77e).
+    "editor-texts": 2,
     # The admin map's box and the content it draws (the group `admin-map`): 7.4 KB measured on 2026-10-18, when the
     # settings page's map made the places' and photos' map modules shared (DECISIONS-for-review.md §42a).
     "admin-map": 9,

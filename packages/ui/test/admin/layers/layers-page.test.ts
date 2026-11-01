@@ -168,7 +168,8 @@ describe('<hcm-layers-page> editor', () => {
 
         const year = deep(element, '#layer-year');
         expect(year.getAttribute('aria-invalid')).toBe('true');
-        expect(deep(element, `#${String(year.getAttribute('aria-describedby'))}`).textContent).toBe('Valoarea are un tip greșit.');
+        // A year that is not a number says how to write it (finding 37 of 2026-11-01).
+        expect(deep(element, `#${String(year.getAttribute('aria-describedby'))}`).textContent).toBe('Scrie anul ca număr, de exemplu 1966');
         expect(deepText(element)).toContain('Stratul poate fi publicat după ce dalele lui sunt gata.');
         expect(await axeViolations(element)).toEqual([]);
     });

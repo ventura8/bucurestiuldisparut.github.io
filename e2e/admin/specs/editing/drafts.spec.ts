@@ -1,4 +1,4 @@
-import { translateAdminShell } from '@hcm/shared';
+import { translate, translateAdminShell } from '@hcm/shared';
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../../support/content-test.js';
@@ -177,9 +177,33 @@ test(
         // Save is off, and says why: the first problem, the description of the button.
         await expect(saveButton(page, lang)).toBeDisabled();
         await expect(page.locator('hcm-poi-editor hcm-button.save')).toHaveAttribute('aria-describedby', 'save-issue');
-        const why = poisText(lang, 'adminContent.pois.cannotSave', { issue: '\u0000' }).split('\u0000')[0] ?? '';
+        const why = poisText(lang, 'adminContent.common.cannotSave', { issues: '\u0000' }).split('\u0000')[0] ?? '';
         await expect(page.locator('hcm-poi-editor #save-issue')).toContainText(why);
         expect((await content.document('pois/gara'))?.['title']).toEqual({ ro: 'Gara Veche' });
+    },
+);
+
+test(
+    "An empty Romanian title says to add one, at the field and in Save's note, and typing one lets Save write",
+    { tag: ['@S-A38-BAD-REQUIRED-FIELD-NAMED', '@S-A38-HAPPY-REQUIRED-FIELD-FIXED'] },
+    async ({ page, lang, content }) => {
+        await openPlace(page, content, lang);
+        const words = poisText(lang, 'adminContent.common.issue.titleRo');
+        const note = page.locator('hcm-poi-editor #save-issue');
+
+        // Finding 37 of 2026-11-01: the field and the note say what to do, never the schema's generic words.
+        await title(page, lang).fill('');
+        await expect(page.locator('hcm-poi-editor #title-ro-error')).toHaveText(words);
+        const inSentence = words.charAt(0).toLocaleLowerCase(lang) + words.slice(1);
+        await expect(note).toHaveText(poisText(lang, 'adminContent.common.cannotSave', { issues: inSentence }));
+        await expect(page.getByText(translate(lang, 'validation.tooSmall'))).toHaveCount(0);
+        await expect(saveButton(page, lang)).toBeDisabled();
+
+        await title(page, lang).fill('Gara de Nord');
+        await expect(page.locator('hcm-poi-editor #title-ro-error')).toHaveCount(0);
+        await expect(note).toHaveCount(0);
+        await saveButton(page, lang).click();
+        await expect.poll(async () => (await content.document('pois/gara'))?.['title']).toEqual({ ro: 'Gara de Nord' });
     },
 );
 

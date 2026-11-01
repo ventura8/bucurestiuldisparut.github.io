@@ -28,6 +28,9 @@ test.use({ forwardUpstreams: true });
 const AT = new Date('2026-10-17T09:00:00.000Z');
 const LATER = new Date('2026-10-24T09:00:00.000Z');
 
+/** The seeded city's name (`seedCity` of e2e/admin/support/ops.ts), which its creation entry reads. */
+const CITY_NAME = { ro: /București/, en: /Bucharest/ } as const;
+
 /** The list's further page. */
 function showMore(page: Page, lang: 'ro' | 'en'): Locator {
     return page.getByRole('button', { name: contentText(lang, 'adminContent.common.more') });
@@ -76,10 +79,11 @@ test(
         await expectEntries(content, 'tram', 2);
         // The city's own creation entry is in too, so no row arrives during the Tab round.
         await expect.poll(async () => Object.keys(await content.collection('history')).length, { timeout: FUNCTIONS_TIMEOUT_MS }).toBe(1);
-        // An entry names the place as it was before its change; the other city's deletion is not listed, and five
-        // entries offer no further page.
-        await expect(page.getByRole('link', { name: /Gara Veche/ })).toBeVisible();
-        await expect(page.getByRole('link', { name: new RegExp(content.city) })).toBeVisible();
+        // An entry names the place as it was before its change, a creation as its document was made (the renamed place's
+        // creation and change both read Gara Veche, the city's creation its name: finding 38 of 2026-11-01); the other
+        // city's deletion is not listed, and five entries offer no further page.
+        await expect(page.getByRole('link', { name: /Gara Veche/ })).toHaveCount(2);
+        await expect(page.getByRole('link', { name: CITY_NAME[lang] })).toBeVisible();
         await expect(page.getByText('Moara din alt oraș')).toHaveCount(0);
         await expect(showMore(page, lang)).toHaveCount(0);
         await expectStateSound(page, adminVisit('history.recent', lang));

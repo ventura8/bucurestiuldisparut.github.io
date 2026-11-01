@@ -424,6 +424,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
             keepMine: () => this.#editor?.keepMine(),
             takeTheirs: () => this.#editor?.takeTheirs(),
             remove: () => this.#remove(),
+            addStarterCategories: () => this.#actions.addStarters(this.#cell.state.categories.items),
         };
     }
 

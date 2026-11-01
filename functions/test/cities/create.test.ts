@@ -9,6 +9,7 @@ import {
     adminDocSchema,
     cityDocSchema,
     inviteDocSchema,
+    poiCategoryDocSchema,
     startViewForBounds,
     timestampFromDate,
     type CallableRequest,
@@ -207,5 +208,40 @@ describe('cities.create: invitations from before M5', () => {
             cities: { bucharest: 'editor' },
             updatedBy: 'system:cities',
         });
+    });
+});
+
+describe('cities.create: the starter categories (finding 35 of 2026-11-01)', () => {
+    it('happyPath_theNewCityStartsWithTheFiveStarterCategories @S-A39-HAPPY-STARTER-CATEGORIES', async () => {
+        const world = await ownerWorld();
+
+        await create(world);
+
+        const categories = await world.documents.query(FIRESTORE_PATHS.poiCategories('cluj'), poiCategoryDocSchema);
+        const labels = categories.documents.toSorted((a, b) => a.data.order - b.data.order).map(({ id, data }) => [id, data.label.en]);
+        expect(labels).toEqual([
+            ['cladire', 'Building'],
+            ['strada', 'Street'],
+            ['piata', 'Square'],
+            ['biserica', 'Church'],
+            ['monument', 'Monument'],
+        ]);
+        expect(categories.documents[0]?.data).toMatchObject({ defaultOpacity: 1, updatedBy: OWNER });
+    });
+
+    it('badPath_aRetriedCreateAddsNoSecondSetOfCategories @S-A39-BAD-STARTER-CATEGORIES-EXISTING-CITY', async () => {
+        const world = await ownerWorld();
+        await create(world);
+        await world.documents.delete(FIRESTORE_PATHS.poiCategory('cluj', 'strada'));
+
+        await create(world);
+
+        const categories = await world.documents.query(FIRESTORE_PATHS.poiCategories('cluj'), poiCategoryDocSchema);
+        expect(categories.documents.map(({ id }) => id).toSorted((a, b) => a.localeCompare(b))).toEqual([
+            'biserica',
+            'cladire',
+            'monument',
+            'piata',
+        ]);
     });
 });

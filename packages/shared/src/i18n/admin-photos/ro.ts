@@ -107,7 +107,6 @@ export const ro = {
     'adminContent.photos.editor.unsaved': 'Modificări nesalvate',
     'adminContent.photos.editor.saving': 'Se salvează…',
     'adminContent.photos.editor.save': 'Salvează',
-    'adminContent.photos.editor.firstIssue': 'De corectat mai întâi: {field}',
     'adminContent.photos.editor.more': 'Mai multe acțiuni',
     'adminContent.photos.editor.replace': 'Înlocuiește imaginea',
     'adminContent.photos.editor.history': 'Istoric',

@@ -1233,3 +1233,21 @@ Added by the M3 contracts agent. CR-M2c-13 (run `layer-delete` jobs after their 
 Re-georeference and Crop (§8.2's M3 placeholders) are `M3-interfaces.md` §10.5 (CR-M3-7, admin-imagery, through the lazy
 `layer-geometry` chunk); the Jobs page learns the raster steps and `awaiting_gcps` (CR-M3-5; the status and its text are
 done); the tour inventory gained an `imagery` section in `e2e/tour/states.ts`.
+
+## Addendum 2026-11-01: the live test's editor findings (findings 35–38)
+
+The user's live walk of 2026-11-01 (`docs/research/manual-test-2026-10-25.md`, findings 35–38;
+`DECISIONS-for-review.md` §77). What it adds to this contract:
+
+- **§7.2 the place editor, Category**: a city whose categories are listed and none (`categoriesKnown`, the page passes
+  it) shows a no-categories field instead of the select: why a place needs one, **Add the starter categories** (the
+  intent `addStarterCategories`, one batch of `STARTER_POI_CATEGORIES`, the open place then takes the first) and **Add a
+  category** (`#/settings/categories/_new`). A new city starts with those five from the server (`cities.create`,
+  `setup.createCity`). Tour state `pois.no-categories`.
+- **§5.1 and §10.1, problems at the field and Save's note**: a required field's problem is the action it asks for
+  (`adminContent.common.issue.*`, the editing kit's `issue-text.ts`), every other problem the validation words; Save's
+  note names every field it waits for (`adminContent.common.cannotSave`), in the places, photos, layers and settings
+  editors alike.
+- **§9.2 History**: a creation is named by the version it made (the next entry's `previous`, else the document now,
+  read once), never by its id while the document has a name.
+- **The map (§4.4)**: a category's overlay has seven map layers, the white `casing` under its lines and outlines.

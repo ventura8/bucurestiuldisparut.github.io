@@ -297,7 +297,7 @@ At most 50 categories.
 | `links` | `[{url, label}]` | at most 5, https only |
 | `photoIds?` | string[] | at most 20 ids of manifest photos, shown in the POI's details |
 
-At most 5,000 POIs. The timeline shows a POI at a year its span covers (an absent bound is open); "today" shows every POI (`poiInYear`). POI details open in the same sheet as photos, labels show from zoom 16.
+At most 5,000 POIs. The timeline shows a POI at a year its span covers (an absent bound is open); "today" shows every POI (`poiInYear`). POI details open in the same sheet as photos, labels show from zoom 16. Lines and area outlines are drawn in the category colour over a white casing (wider strokes as the zoom grows, the area filled at 35 %), so they stay legible on a satellite basemap; the casing fades with the category's opacity like the rest (`packages/ui/src/map/pois.ts`, 2026-11-01).
 
 ### Overlays
 

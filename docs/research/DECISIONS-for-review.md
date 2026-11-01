@@ -5067,3 +5067,40 @@ The full list of events, parameters, moments and reasons: `docs/ARCHITECTURE.md`
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`, and the touched Playwright specs in the quality image
 (`e2e/specs/viewer/field-measurements.spec.ts`, `consent.spec.ts`).
+
+## 77. The live test of 2026-11-01, the editors: starter categories, legible lines on satellite, required fields that say what to do, named creations (2026-11-01) — 77a–77e APPLIED (findings 35–38 of `docs/research/manual-test-2026-10-25.md`: product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised (77e a new chunk with its own new budget row, the pre-approved kind), no checker allowlist entry, no download; `seed/bucharest/` unchanged)
+
+- **77a APPLIED: starter categories (finding 35).** Where: a new city gets them from the server, in the transaction that
+  creates it (`cities.create` and `setup.createCity`, `functions/src/api/starter-categories.ts`), so a city is never
+  born without one; an existing city (the migrated Bucharest) is never changed behind its owner's back: its place
+  editor offers them instead, one click, one batch from the admin (`packages/admin/src/pois/starter.ts`), the ids kept
+  clear of its layers' (read once at the click) and categories'. What: five common kinds of a lost city's places,
+  Clădire/Building, Stradă/Street, Piață/Square, Biserică/Church, Monument/Monument (`STARTER_POI_CATEGORIES`,
+  `packages/shared/src/overlays/starter-categories.ts`); their icons are the icon guesser's answers for their labels
+  (`domain`, `add_road`, the pin for a square, which no bundled icon names, `church`, `account_balance`; a test pins the
+  two together); their colours the default sepia of a new category and four companion tones (blue, violet, brick, olive),
+  each 5.5:1 or more against the white glyph. They are ordinary categories: renamed, recoloured or deleted in Settings.
+  The editor's no-categories field also links to Settings' new category, where the unsaved-changes question guards a
+  place being drawn.
+- **77b APPLIED: POI lines and outlines legible on a satellite photo (finding 36).** A seventh layer per category,
+  `hcm-poi-<id>-casing`: white, under the stroke, at 90 % of the overlay's opacity (`OpacityBase` `line-opacity` 0.9, so
+  the overlay model scales it like every other paint property, 0 % included); the stroke 2/4/7 px and the casing 6/10/14
+  px at zooms 12/16/20; the area fill 35 % (was 30 %). A white casing rather than a dark one: the category colours are
+  dark by rule (the glyph's 3:1), so the stroke already reads on a light basemap and the white band is what a dark photo
+  lacked. The casing shares the stroke's filter, so it also widens the click target of a line.
+- **77c APPLIED: a required field says what to do (finding 37).** One table in the editing kit
+  (`packages/ui/src/admin/editing/issue-text.ts`) maps a field's path and code to its own words (`adminContent.common.issue.*`:
+  `title.ro`, `label.ro`, `name.ro` when empty, `category` for every problem, `geometry` when missing, `year` when not a
+  number); every other problem keeps the viewer's validation words. Save's note (`adminContent.common.cannotSave`) names
+  every field once, the own words first-letter-lowered in the sentence, any other as "{field}: {problem}" with the
+  editors' field names; it replaces `adminContent.pois.cannotSave` and the photos' `editor.firstIssue`, which named only
+  the first problem.
+- **77d APPLIED: History names a creation (finding 38).** No schema change: a creation's name is derived in the admin
+  from the next entry's `previous`, else from the document now (a one-time read per document, stopped at its answer,
+  cached for the page's life), so an older admin and a newer server keep reading each other's entries.
+- **77e APPLIED: a new named chunk, `editor-texts` (the bundle budget's rule for a new chunk, as §42a).** The required
+  fields' own words (`issue-text.ts`, which every editor imports) took `editor-shared` to 13.3 KB gzip, over its 13 KB.
+  Rather than raise that budget, the editors' words for a field and its problem (`field-names.ts`, `issue-text.ts`) are
+  a chunk of their own (`packages/admin/vite.config.ts`, group `editor-texts`): 1.0 KB measured on 2026-11-01, budget
+  2 KB (plus about 20 %, rounded up, in `scripts/ci/check_bundle_budget.py`); `editor-shared` is 12.4 KB, every other
+  budget unchanged. A new budget row for a new chunk, no budget raised: the pre-approved kind.

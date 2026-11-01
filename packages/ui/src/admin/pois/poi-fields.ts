@@ -3,9 +3,12 @@
  * English (the description in the Markdown subset, previewed as DOM by the viewer's own renderer: markup stays text),
  * the years (either open), the links (at most five, https), the linked photos and Published. Every field shows its
  * problem at the field (`aria-invalid`, `aria-describedby`) in the viewer's validation words; a year once it has been
- * left (it commits on every key, `../editing/number-fields.ts`). Native inputs, styled by the editing kit.
+ * left (it commits on every key, `../editing/number-fields.ts`); a required field's problem says what to do ("Add a title in
+ * Romanian", "Choose a category": `../editing/issue-text.ts`). A city without categories gets, instead of an empty select,
+ * the starter categories in one click or a link to add one (finding 35 of 2026-11-01). Native inputs, styled by the
+ * editing kit.
  */
-import { MAX_LINKS, type AdminContentKey, type Locale, type ValidationIssue } from '@hcm/shared';
+import { MAX_LINKS, STARTER_POI_CATEGORIES, type AdminContentKey, type Locale, type ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
 import { renderMarkdown } from '../../viewer/markdown.js';
@@ -85,7 +88,49 @@ function textField(context: FieldContext, spec: TextSpec): TemplateResult {
     </div>`;
 }
 
-export function categoryField(context: FieldContext, categories: readonly CategoryItemPort[]): TemplateResult {
+/** The category field's choices, and the starter categories a city without any is offered (finding 35 of 2026-11-01). */
+export interface CategoryChoice {
+    readonly categories: readonly CategoryItemPort[];
+    /** The city's categories were listed: an empty list then means the city has none. */
+    readonly known: boolean;
+    /** The starter categories are being written. */
+    readonly adding: boolean;
+    readonly addStarters: () => void;
+}
+
+/**
+ * A city without categories: instead of an empty select, the field says why a place cannot be saved yet and offers the
+ * starter categories in one click, or a category of the admin's own in the city settings.
+ */
+function noCategories(context: FieldContext, choice: CategoryChoice): TemplateResult {
+    const { locale } = context;
+    const { invalid, describedBy, line } = problem(context, 'category', { id: 'category', hints: 'category-none' });
+    const names = STARTER_POI_CATEGORIES.map((category) => localized(locale, category.label)).join(', ');
+    return html`<div class="field no-categories" role="group" aria-labelledby="category-label" ?data-invalid=${invalid !== nothing}>
+        <span class="label" id="category-label">${poiText(locale, 'adminContent.pois.field.category')}</span>
+        <p class="note" id="category-none">${poiText(locale, 'adminContent.pois.noCategories')}</p>
+        <div class="actions">
+            <hcm-button
+                variant="tonal"
+                icon="add"
+                class="add-starters"
+                ?disabled=${context.readOnly || choice.adding}
+                aria-describedby=${['category-starters', describedBy === nothing ? '' : describedBy].join(' ').trim()}
+                @click=${choice.addStarters}
+                >${poiText(locale, 'adminContent.pois.addStarters')}</hcm-button
+            >
+            <a class="external add-category" href="#/settings/categories/_new">${poiText(locale, 'adminContent.pois.addCategory')}</a>
+        </div>
+        <p class="note" id="category-starters">${poiText(locale, 'adminContent.pois.startersHint', { names })}</p>
+        ${line}
+    </div>`;
+}
+
+export function categoryField(context: FieldContext, choice: CategoryChoice): TemplateResult {
+    if (choice.known && choice.categories.length === 0) {
+        return noCategories(context, choice);
+    }
+    const categories = choice.categories;
     const { invalid, describedBy, line } = problem(context, 'category', { id: 'category' });
     return html`<div class="field" ?data-invalid=${invalid !== nothing}>
         <label for="category">${poiText(context.locale, 'adminContent.pois.field.category')}</label>

@@ -1,10 +1,12 @@
 /**
  * The places page's texts (docs/research/M2c-interfaces.md §10.1): every word comes from the editors' catalogue
- * (`adminContent.pois.*`, `adminContent.map.*`) or the viewer's validation messages (`validation.*`); titles, labels and
+ * (`adminContent.pois.*`, `adminContent.map.*`), the editing kit's own words for a required field, or the viewer's validation
+ * messages (`validation.*`); titles, labels and
  * imported texts are data, shown as text only.
  */
-import { translate, type AdminContentKey, type Locale, type ValidationIssue } from '@hcm/shared';
+import type { AdminContentKey, Locale, ValidationIssue } from '@hcm/shared';
 
+import { issueText as fieldIssueText } from '../editing/issue-text.js';
 import { contentText } from '../shell/text.js';
 import type {
     CategoryItemPort,
@@ -72,9 +74,9 @@ export function reasonText(locale: Locale, reason: ImportRefusalReasonPort, path
     return poiText(locale, `adminContent.pois.import.reason.${reason}`, { path: path ?? '' });
 }
 
-/** A field's problem, in the viewer's validation words. */
+/** A field's problem: the action a required field asks for, else the viewer's validation words (`../editing/issue-text.ts`). */
 export function issueText(locale: Locale, issue: ValidationIssue): string {
-    return translate(locale, issue.code);
+    return fieldIssueText(locale, issue);
 }
 
 /** The first problem of a field (its path, or a path below it). */

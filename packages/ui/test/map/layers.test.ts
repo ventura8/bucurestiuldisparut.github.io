@@ -5,7 +5,16 @@ import { describe, expect, it } from 'vitest';
 import type { PhotoFeatureCollection, RasterLayerSpec, VectorOverlaySpec } from '../../src/map/map-port.js';
 import { layerOpacityPaint, OverlayRegistry, visibilityValue } from '../../src/map/overlay-registry.js';
 import { CONE_MIN_ZOOM, PHOTO_MAP_LAYERS, photoEntry, photoLayers, photoSources, splitPhotoData } from '../../src/map/photos.js';
-import { isPoiLayer, POI_LABEL_MIN_ZOOM, poiData, poiEntry, poiLayers, poiSource } from '../../src/map/pois.js';
+import {
+    isPoiLayer,
+    POI_CASING_WIDTH,
+    POI_LABEL_MIN_ZOOM,
+    POI_LINE_WIDTH,
+    poiData,
+    poiEntry,
+    poiLayers,
+    poiSource,
+} from '../../src/map/pois.js';
 import {
     attributionText,
     layerIdOfSource,
@@ -216,25 +225,42 @@ describe('photo layers', () => {
 });
 
 describe('POI layers', () => {
-    it('happyPath_sixLayersInTheCategoryColour', () => {
+    it('happyPath_sevenLayersInTheCategoryColourWithAWhiteCasingUnderLinesAndOutlines', () => {
         const layers = poiLayers(POI, 'top');
 
         expect(layers.map((layer) => [layer['id'], layer['type']])).toEqual([
             ['hcm-poi-cladiri-fill', 'fill'],
+            ['hcm-poi-cladiri-casing', 'line'],
             ['hcm-poi-cladiri-line', 'line'],
             ['hcm-poi-cladiri-circle', 'circle'],
             ['hcm-poi-cladiri-symbol', 'symbol'],
             ['hcm-poi-cladiri-label-line', 'symbol'],
             ['hcm-poi-cladiri-label-area', 'symbol'],
         ]);
-        expect(layers[0]?.['paint']).toEqual({ 'fill-color': '#8B5E3C', 'fill-opacity': 0.15 });
-        expect(layers[2]?.['paint']).toMatchObject({ 'circle-color': '#8B5E3C', 'circle-opacity': 0.5, 'circle-stroke-opacity': 0.5 });
-        expect(layers[3]?.['layout']).toMatchObject({ 'icon-image': 'hcm-poi-icon-domain_disabled', visibility: 'none' });
-        expect(layers[4]?.['layout']).toMatchObject({
+        expect(layers[0]?.['paint']).toEqual({ 'fill-color': '#8B5E3C', 'fill-opacity': 0.175 });
+        // The casing is wider than the stroke at every zoom, and both scale with the overlay's opacity.
+        expect(layers[1]?.['paint']).toEqual({ 'line-color': '#ffffff', 'line-width': POI_CASING_WIDTH, 'line-opacity': 0.45 });
+        expect(layers[2]?.['paint']).toEqual({ 'line-color': '#8B5E3C', 'line-width': POI_LINE_WIDTH, 'line-opacity': 0.5 });
+        expect(layers[1]?.['filter']).toEqual(layers[2]?.['filter']);
+        const widths = (width: unknown): number[] => (width as unknown[]).slice(3).filter((_value, index) => index % 2 === 1) as number[];
+        widths(POI_CASING_WIDTH).forEach((casing, index) => {
+            expect(casing - (widths(POI_LINE_WIDTH)[index] ?? casing)).toBeGreaterThanOrEqual(3);
+        });
+        expect(layers[3]?.['paint']).toMatchObject({ 'circle-color': '#8B5E3C', 'circle-opacity': 0.5, 'circle-stroke-opacity': 0.5 });
+        expect(layers[4]?.['layout']).toMatchObject({ 'icon-image': 'hcm-poi-icon-domain_disabled', visibility: 'none' });
+        expect(layers[5]?.['layout']).toMatchObject({
             'symbol-placement': 'line-center',
             'text-field': ['step', ['zoom'], '', POI_LABEL_MIN_ZOOM, ['get', 'title']],
         });
         expect(layers.every((layer) => layer['source'] === 'hcm-source-cladiri' && layer['slot'] === 'top')).toBe(true);
+    });
+
+    it('badPath_atZeroOpacityTheCasingGoesWithTheStroke', () => {
+        const layers = poiLayers({ ...POI, opacity: 0 }, 'top');
+
+        expect(layers[1]?.['paint']).toMatchObject({ 'line-opacity': 0 });
+        expect(layers[2]?.['paint']).toMatchObject({ 'line-opacity': 0 });
+        expect(layers[0]?.['paint']).toMatchObject({ 'fill-opacity': 0 });
     });
 
     it('happyPath_theSourceHoldsTheFeaturesOfTheStop', () => {
@@ -268,9 +294,10 @@ describe('OverlayRegistry', () => {
         expect(map.callsOf('setPaintProperty')).toHaveLength(before);
         frames.run();
 
-        expect(map.paint.get('hcm-poi-cladiri-fill')?.['fill-opacity']).toBeCloseTo(0.27);
+        expect(map.paint.get('hcm-poi-cladiri-fill')?.['fill-opacity']).toBeCloseTo(0.315);
+        expect(map.paint.get('hcm-poi-cladiri-casing')?.['line-opacity']).toBeCloseTo(0.81);
         expect(map.paint.get('hcm-poi-cladiri-symbol')).toMatchObject({ 'icon-opacity': 0.9, 'text-opacity': 0.9 });
-        expect(map.callsOf('setPaintProperty')).toHaveLength(before + 10);
+        expect(map.callsOf('setPaintProperty')).toHaveLength(before + 11);
         expect(registry.get('cladiri')?.opacity).toBeCloseTo(0.9);
     });
 
@@ -295,7 +322,7 @@ describe('OverlayRegistry', () => {
         expect(registry.setVisibility('cladiri', true)).toBe(true);
         expect(registry.setVisibility('cladiri', true)).toBe(false);
 
-        expect(map.callsOf('setLayoutProperty')).toHaveLength(6);
+        expect(map.callsOf('setLayoutProperty')).toHaveLength(7);
         expect(map.layout.get('hcm-poi-cladiri-label-area')).toMatchObject({ visibility: 'visible' });
         expect(visibilityValue(false)).toBe('none');
     });
@@ -313,6 +340,7 @@ describe('OverlayRegistry', () => {
             'hcm-poi-cladiri-symbol',
             'hcm-poi-cladiri-circle',
             'hcm-poi-cladiri-line',
+            'hcm-poi-cladiri-casing',
             'hcm-poi-cladiri-fill',
         ]);
         expect(map.sources.has('hcm-source-cladiri')).toBe(false);

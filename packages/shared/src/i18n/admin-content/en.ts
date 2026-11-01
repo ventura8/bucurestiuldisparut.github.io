@@ -31,6 +31,14 @@ export const en: Readonly<Record<AdminContentKitKey, string>> = {
     'adminContent.common.history': 'History',
     'adminContent.common.savedBy': 'Saved by {who} on {date}.',
     'adminContent.common.savedByWho': 'Saved by {who}.',
+    'adminContent.common.cannotSave': 'Cannot save: {issues}.',
+    'adminContent.common.issueAt': '{field}: {issue}',
+    'adminContent.common.issue.titleRo': 'Add a title in Romanian',
+    'adminContent.common.issue.labelRo': 'Add a name in Romanian',
+    'adminContent.common.issue.nameRo': "Add the city's name in Romanian",
+    'adminContent.common.issue.category': 'Choose a category',
+    'adminContent.common.issue.geometry': 'Draw the place on the map or add its positions',
+    'adminContent.common.issue.year': 'Write the year as a number, such as 1966',
     'adminContent.common.readOnly': 'Read only: your access was removed.',
     // [end common]
     // [section map] owner: pois (the admin map, the drawing toolbar, the vertex list); keys adminContent.map.*

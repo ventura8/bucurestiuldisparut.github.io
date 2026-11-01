@@ -1,17 +1,18 @@
 /**
  * The pieces the layer editor and the settings sections share (`docs/research/M2c-interfaces.md` §1.6, §1.3): a native
  * field with its label, help and error (the problem at the field: `aria-invalid`, `aria-describedby`, the validation
- * key's text), a 0–100 % slider row with its value, the editor's top row (title, save state, Save, Discard) and the
+ * key's text, or the action a required field asks for: `../editing/issue-text.ts`), a 0–100 % slider row with its value, the editor's top row (title, save state, Save, Discard) and the
  * conflict and gone banners (who saved the other version and when, the fields both changed by their names). A revoked
  * admin's page is read-only (`DECISIONS-for-review.md` §42d): a field is `readOnly`, a slider `disabled`, the save row's
  * `readOnly` turns Save and Discard off. Text only: every value is bound as a property or text, never as markup.
  */
-import { translate, type AdminContentKey, type Locale, type ValidationIssue } from '@hcm/shared';
+import type { AdminContentKey, Locale, ValidationIssue } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 import { live } from 'lit/directives/live.js';
 
 import { conflictFields, NOBODY, savedByText, type ConflictPort, type WhoPort } from '../editing/conflict.js';
 import { formatDateInput, parseDateInput } from '../editing/date-text.js';
+import { issueText } from '../editing/issue-text.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
 
@@ -123,7 +124,7 @@ export function field(locale: Locale, given: FieldSpec): TemplateResult {
         ${
             spec.issue === null || spec.issueShownAt !== undefined
                 ? nothing
-                : html`<span class="error" id=${errorId}>${translate(locale, spec.issue.code)}</span>`
+                : html`<span class="error" id=${errorId}>${issueText(locale, spec.issue)}</span>`
         }
     </div>`;
 }

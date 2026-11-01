@@ -13,6 +13,10 @@ export const POIS_STATES = {
         title: 'Places: a new line without the Mapbox token (the map box with its link to Setup, the tools, no position yet)',
         visit: VISIT,
     },
+    'pois.no-categories': {
+        title: 'Places: a new point in a city without categories (the starter categories offered, Save naming what it waits for)',
+        visit: VISIT,
+    },
     'pois.editor': { title: 'Places: a saved line, its positions listed and its description previewed', visit: VISIT },
     'pois.delete-confirm': { title: 'Places: the delete confirmation (a dialog)', visit: VISIT },
     'pois.more-actions': { title: "Places: the editor's other actions, History and Redraw as… (a dialog)", visit: VISIT },

@@ -8,13 +8,14 @@
  * change is a draft the page's map previews; Save writes it. With `readOnly` (a revoked admin, `DECISIONS-for-review.md`
  * §42d) nothing on it writes: Save and the actions are off, the fields read-only; History still opens.
  */
-import { translate, type Locale } from '@hcm/shared';
+import type { Locale } from '@hcm/shared';
 import { LitElement, html, nothing, type TemplateResult } from 'lit';
 
 import { emit } from '../../components/internal.js';
 import type { AssistViewPort } from '../assist/assist-port.js';
 import { assistStyles } from '../assist/assist-parts.js';
 import { conflictFields, NOBODY, savedByText, type WhoPort } from '../editing/conflict.js';
+import { cannotSaveText } from '../editing/issue-text.js';
 
 import { LeftFields } from '../editing/number-fields.js';
 import { errorTemplate, loadingTemplate, reconnectingStatus } from '../editing/states.js';
@@ -158,11 +159,7 @@ export class HcmAdminPhotoEditor extends LitElement {
     }
 
     #head(locale: Locale, editor: PhotoEditorPort, value: PhotoValuePort): TemplateResult {
-        const first = editor.issues[0];
-        const why =
-            first === undefined
-                ? null
-                : photoText(locale, 'adminContent.photos.editor.firstIssue', { field: translate(locale, first.code) });
+        const why = editor.issues.length === 0 ? null : cannotSaveText(locale, editor.issues);
         const save = async (): Promise<void> => {
             await this.intents?.save();
         };

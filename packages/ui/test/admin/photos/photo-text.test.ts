@@ -64,8 +64,9 @@ describe('the photos texts', () => {
             { path: 'title.ro', code: 'validation.tooSmall' as const },
         ];
         expect(fieldIssue('en', issues, 'links')).toBe('Only https:// addresses are allowed.');
-        expect(fieldIssue('en', issues, 'title')).toBe('The value is too small or too short.');
-        expect(fieldIssue('en', issues, 'title.ro')).toBe('The value is too small or too short.');
+        // An empty Romanian title says what to do (finding 37 of 2026-11-01), never the schema's generic words.
+        expect(fieldIssue('en', issues, 'title')).toBe('Add a title in Romanian');
+        expect(fieldIssue('en', issues, 'title.ro')).toBe('Add a title in Romanian');
         expect(fieldIssue('en', issues, 'author')).toBeNull();
     });
 

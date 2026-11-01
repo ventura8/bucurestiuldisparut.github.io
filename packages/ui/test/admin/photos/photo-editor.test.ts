@@ -135,7 +135,7 @@ describe('<hcm-admin-photo-editor>: states', () => {
         const save = deep(element, '.editor-head hcm-button') as HTMLElement & { disabled: boolean };
         expect(save.disabled).toBe(true);
         expect(save.getAttribute('aria-describedby')).toBe('save-why');
-        expect(deep(element, '#save-why').textContent).toBe('To correct first: Only https:// addresses are allowed.');
+        expect(deep(element, '#save-why').textContent).toBe('Cannot save: Source address: only https:// addresses are allowed.');
         expect(deep(element, '#photo-sourceUrl').getAttribute('aria-invalid')).toBe('true');
         expect(deep(element, '#photo-sourceUrl-error').textContent).toBe('Only https:// addresses are allowed.');
     });

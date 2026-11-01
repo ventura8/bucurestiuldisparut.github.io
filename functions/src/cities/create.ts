@@ -20,6 +20,7 @@ import type { VerifiedCaller } from '../api/access.js';
 import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { migrateLegacyInvites, projectCityIds, rolesWithOwnedCity } from '../api/memberships.js';
+import { createStarterCategories } from '../api/starter-categories.js';
 import { InvalidDocumentError } from '../ports/errors.js';
 import type { Ports } from '../ports/index.js';
 import { aboutText, privacyText } from './texts.js';
@@ -95,7 +96,7 @@ function retried(caller: VerifiedCaller, request: CreateRequest, taken: readonly
 }
 
 /**
- * In one transaction: the city, and the caller as its owner (`admins/{uid}.cities`). A city created meanwhile under the
+ * In one transaction: the city, its starter POI categories, and the caller as its owner (`admins/{uid}.cities`). A city created meanwhile under the
  * same id makes it `apiError.city.idTaken`; a caller removed meanwhile, `apiError.notAdmin`.
  */
 async function writeCity(deps: CreateDeps, caller: VerifiedCaller, request: CreateRequest, taken: readonly string[]): Promise<void> {
@@ -111,6 +112,7 @@ async function writeCity(deps: CreateDeps, caller: VerifiedCaller, request: Crea
             throw new ApiError('apiError.notAdmin');
         }
         await transaction.create(FIRESTORE_PATHS.city(request.cityId), cityDocSchema, city);
+        await createStarterCategories(transaction, request.cityId, city);
         await transaction.set(
             FIRESTORE_PATHS.harvestState(request.cityId),
             harvestStateDocSchema,
@@ -126,7 +128,7 @@ async function writeCity(deps: CreateDeps, caller: VerifiedCaller, request: Crea
  * Refuses an id another city has, and a twenty-first city (`apiError.city.tooMany`); the request's schema already
  * refused a reserved or malformed id and a rectangle outside `CITY_SPAN_LIMITS`. The city starts unpublished, with
  * the start view of its rectangle, texts made from its name, the default basemap, the flow's theme, the new-city
- * limits and the project's analytics ids; its creator owns it. Nothing else is asked: the first USGS harvest runs at
+ * limits, the project's analytics ids and the five starter POI categories (finding 35 of 2026-11-01); its creator owns it. Nothing else is asked: the first USGS harvest runs at
  * the next `imagery.tick`, which finds the new city's harvest state due (S-A50-HAPPY-HARVEST), and the viewer's
  * Mapbox token is minted by the flow's follow-up `setup.rotatePublicToken` (the token belongs to `setup/`). A pending
  * invitation from before M5 is given the existing cities first (`migrateLegacyInvites`), so it never grants this one.

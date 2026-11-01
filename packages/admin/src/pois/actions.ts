@@ -1,15 +1,16 @@
 /**
  * What the places area writes, and what it tells the admin (docs/research/M2c-interfaces.md §1.6, §5.3, §9.5): Save
  * (and the remembered category of the next new place), a delete with Undo for ten seconds, and the bulk actions, each
- * ending in one snackbar; a refused write says why, and a `denied` one makes the shell ask who this is again.
+ * ending in one snackbar, and the starter categories a city without any is offered; a refused write says why, and a `denied` one makes the shell ask who this is again.
  */
 import { FIRESTORE_PATHS } from '@hcm/shared';
 
 import type { ContentServices, WriteOutcome } from '../content/services.js';
 import { runBulk, type BulkAction } from './bulk.js';
 import type { PlaceEditor } from './editor.js';
-import type { PoiItem } from './model.js';
+import type { CategoryItem, PoiItem } from './model.js';
 import { WRITE_FAILURES, type WriteFailure } from './places.js';
+import { addStarterCategories } from './starter.js';
 import { DeleteUndo, UNDO_WAIT_MS } from './undo.js';
 
 /** `localStorage`: the category a new place starts in (§5.6). */
@@ -99,6 +100,19 @@ export class PlaceActions {
         }
         this.#services.notify({ key: action.kind === 'delete' ? 'adminContent.pois.bulkDeleted' : 'adminContent.pois.bulkDone', params });
         return true;
+    }
+
+    /** The starter categories, for a city with none (finding 35 of 2026-11-01); one snackbar says how it went. */
+    async addStarters(categories: readonly CategoryItem[]): Promise<WriteOutcome> {
+        this.#busy(true);
+        const outcome = await addStarterCategories(this.#services.store, this.#services.cityId, categories);
+        this.#busy(false);
+        if (outcome.ok) {
+            this.#services.notify({ key: 'adminContent.pois.startersAdded' });
+        } else {
+            this.refused(outcome.reason);
+        }
+        return outcome;
     }
 
     /** Stops watching for a delete's history entry (a new delete, or the page closed). */

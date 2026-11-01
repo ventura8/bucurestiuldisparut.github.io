@@ -3,8 +3,9 @@
  * (`adminContent.photos.*`), the API's error codes (`apiError.*`) or the viewer's validation messages (`validation.*`);
  * the page receives no free text from the app. Titles, names and EXIF values are data, shown as text only.
  */
-import { translate, type AdminContentKey, type FirestoreLicense, type Locale, type ValidationIssue } from '@hcm/shared';
+import type { AdminContentKey, FirestoreLicense, Locale, ValidationIssue } from '@hcm/shared';
 
+import { issueText } from '../editing/issue-text.js';
 import { contentText, noticeText } from '../shell/text.js';
 import type {
     BulkKindPort,
@@ -165,5 +166,5 @@ export function fieldIssue(locale: Locale, issues: readonly ValidationIssue[], f
     const issue = issues.find(
         (candidate) => candidate.path === field || candidate.path.startsWith(`${field}.`) || candidate.path.startsWith(`${field}[`),
     );
-    return issue === undefined ? null : translate(locale, issue.code);
+    return issue === undefined ? null : issueText(locale, issue);
 }

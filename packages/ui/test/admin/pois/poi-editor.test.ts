@@ -122,7 +122,6 @@ describe('<hcm-poi-editor>: the form', () => {
         const save = deep(element, 'hcm-button.save') as HTMLElement & { disabled: boolean };
         expect(save.disabled).toBe(true);
         expect(save.getAttribute('aria-describedby')).toBe('save-issue');
-        expect(deep(element, '#save-issue').textContent).toContain('Cannot save:');
         expect(deep(element, '#title-ro').getAttribute('aria-invalid')).toBe('true');
         expect(deep(element, '#title-ro').getAttribute('aria-describedby')).toBe('title-ro-error');
         expect(deep(element, '#link-url-1').getAttribute('aria-invalid')).toBe('true');
@@ -415,5 +414,95 @@ describe('<hcm-poi-editor>: the save bar', () => {
         const { element } = await mounted(editor({ draft: draft({ dirty: ['title'] }) }));
 
         expect(deepAll(element, '.editor-head hcm-button').map((button) => button.className)).toEqual(['discard', 'save']);
+    });
+});
+
+describe('<hcm-poi-editor>: required fields and a city without categories', () => {
+    beforeAll(defineAll);
+    afterEach(cleanup);
+
+    it('badPath_aRequiredFieldSaysWhatToDoAndSavesNoteNamesEveryField', async () => {
+        const { element } = await mounted(
+            editor({
+                draft: draft({
+                    dirty: ['title'],
+                    issues: [
+                        { path: 'title.ro', code: 'validation.tooSmall' },
+                        { path: 'links[0].url', code: 'validation.httpsOnly' },
+                        { path: 'yearEnd', code: 'validation.yearRange' },
+                        { path: 'category', code: 'validation.reference' },
+                        { path: 'description.ro', code: 'validation.markdownLink' },
+                    ],
+                    value: { ...VALUE, title: { ro: '' }, links: [{ url: 'mailto:ana@a.ro', label: 'A' }] },
+                }),
+            }),
+        );
+
+        // Finding 37 of 2026-11-01: a required field says what to do; the note names every field it waits for.
+        expect(deep(element, '#save-issue').textContent).toBe(
+            'Cannot save: add a title in Romanian; Links: only https:// addresses are allowed; End year: the end year is before ' +
+                'the start year; choose a category; Description: the text contains a link that is not https://.',
+        );
+        expect(deep(element, '#title-ro-error').textContent).toBe('Add a title in Romanian');
+        expect(deep(element, '#category-error').textContent).toBe('Choose a category');
+    });
+
+    interface Mounted {
+        readonly element: HcmPoiEditor;
+        readonly store: PoisArea;
+        /** Lets the starter categories' write answer. */
+        readonly release: () => void;
+    }
+
+    async function withoutCategories(known: boolean): Promise<Mounted> {
+        let release = (): void => undefined;
+        const written = new Promise<void>((resolve) => {
+            release = resolve;
+        });
+        const store = area(undefined, { addStarterCategories: written.then(() => ({ ok: true })) });
+        const port = editor({
+            draft: draft({ isNew: true, value: { ...VALUE, category: '' }, issues: [{ path: 'category', code: 'validation.format' }] }),
+        });
+        const element = await mount<HcmPoiEditor>(
+            html`<hcm-poi-editor
+                .editor=${port}
+                .categories=${[]}
+                .categoriesKnown=${known}
+                .intents=${store.intents}
+                .locale=${'en'}
+            ></hcm-poi-editor>`,
+            900,
+        );
+        return { element, store, release };
+    }
+
+    it('happyPath_theStarterCategoriesAreOfferedInOneClickInsteadOfAnEmptySelect', async () => {
+        const { element, store, release } = await withoutCategories(true);
+
+        expect(deepAll(element, 'select#category')).toEqual([]);
+        expect(deepText(element)).toContain('This city has no place categories yet, and every place needs one.');
+        expect(deepText(element)).toContain('Adds Building, Street, Square, Church, Monument;');
+        expect(deep(element, 'a.add-category').getAttribute('href')).toBe('#/settings/categories/_new');
+        expect(deep(element, '#category-error').textContent).toBe('Choose a category');
+        expect(deep(element, '#save-issue').textContent).toBe('Cannot save: choose a category.');
+        const add = deep(element, 'hcm-button.add-starters') as HTMLElement & { disabled: boolean };
+        expect(add.getAttribute('aria-describedby')).toBe('category-starters category-error category-none');
+        press(add);
+        await updated(element);
+        expect(asked(store, 'addStarterCategories')).toEqual(['addStarterCategories']);
+        expect(add.disabled).toBe(true);
+        release();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await updated(element);
+        expect(add.disabled).toBe(false);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_whileTheCategoriesAreNotListedTheSelectStays', async () => {
+        const { element } = await withoutCategories(false);
+
+        expect(deepAll(element, 'select#category')).toHaveLength(1);
+        expect(deepAll(element, '.add-starters')).toEqual([]);
+        expect(deep(element, '#category-error').textContent).toBe('Choose a category');
     });
 });

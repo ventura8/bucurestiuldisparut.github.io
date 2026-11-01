@@ -105,7 +105,6 @@ export const en: Readonly<Record<AdminPhotosKey, string>> = {
     'adminContent.photos.editor.unsaved': 'Unsaved changes',
     'adminContent.photos.editor.saving': 'Saving…',
     'adminContent.photos.editor.save': 'Save',
-    'adminContent.photos.editor.firstIssue': 'To correct first: {field}',
     'adminContent.photos.editor.more': 'More actions',
     'adminContent.photos.editor.replace': 'Replace image',
     'adminContent.photos.editor.history': 'History',

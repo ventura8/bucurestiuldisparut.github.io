@@ -43,6 +43,11 @@ export function saveFile(document: Document, file: { readonly name: string; read
     URL.revokeObjectURL(url);
 }
 
+/** The city's categories were listed by the server (an empty list then means the city has none). */
+function categoriesListed(view: PoisViewState): boolean {
+    return view.categories.status === 'ready' && !view.categories.reconnecting;
+}
+
 export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
     static override readonly properties = { ...AreaPage.properties, dialog: { state: true }, mapView: { state: true } };
 
@@ -210,6 +215,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
             .editor=${editor}
             .assist=${view.assist}
             .categories=${view.categories.items}
+            .categoriesKnown=${categoriesListed(view)}
             .photos=${view.photos?.items ?? []}
             .intents=${this.intents}
             .locale=${locale}

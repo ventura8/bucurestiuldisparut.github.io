@@ -3,7 +3,8 @@
  * newest first (a collection-group query of the city's `history` entries, by their `cityId`, filtered by entity and by
  * action; the **Deleted** filter lists deleted documents, each with Restore); `#/history/<entity>/<id>` lists one
  * document's versions with the selected entry's fields before and after. **Revert** (and Restore) calls `history.revert`; a refusal is kept as an alert and
- * changes nothing. Who made a change is named from `admins.list` (read once), "you", or the server's own writers.
+ * changes nothing. Who made a change is named from `admins.list` (read once), "you", or the server's own writers. A
+ * creation is named as its document was made (`names.ts`), never by its id while the document has a title.
  */
 import {
     auditedDocumentPath,
@@ -32,6 +33,7 @@ import {
     type HistoryFilter,
     type HistoryItem,
 } from './entries.js';
+import { CreatedNames } from './names.js';
 
 /** Any audited document as it is now: shown as text field by field, never validated as one entity. */
 const currentDocumentSchema = z.record(z.string(), z.unknown());
@@ -116,6 +118,8 @@ class HistoryStore implements AreaStore<HistoryState, HistoryIntents> {
     readonly #recent: LiveList<HistoryEntryDoc, HistoryItem>;
     readonly #current: LiveDoc<CurrentDocument>;
     readonly #entries: LiveList<HistoryEntryDoc, HistoryItem>;
+    /** The recent changes' creations, named as their documents were made (finding 38 of 2026-11-01). */
+    readonly #names: CreatedNames;
     #peopleAsked = false;
     readonly intents: HistoryIntents;
 
@@ -127,11 +131,14 @@ class HistoryStore implements AreaStore<HistoryState, HistoryIntents> {
             services.denied();
         };
         const common = { store, clock, denied, schema: historyEntryDocSchema, map: historyItemOf };
+        this.#names = new CreatedNames(store, services.cityId, () => {
+            this.#recentChanged(this.#recent.list);
+        });
         this.#recent = new LiveList({
             ...common,
             collection: 'history',
             changed: (recent) => {
-                this.#cell.update({ recent });
+                this.#recentChanged(recent);
             },
         });
         const changed = (): void => {
@@ -160,7 +167,13 @@ class HistoryStore implements AreaStore<HistoryState, HistoryIntents> {
         this.#showDocument(entity, id);
     }
 
+    /** The recent changes, each creation named by the version it made. */
+    #recentChanged(recent: ListState<HistoryItem>): void {
+        this.#cell.update({ recent: { ...recent, items: this.#names.named(recent.items) } });
+    }
+
     close(): void {
+        this.#names.stop();
         this.#recent.stop();
         this.#stopDocument();
         this.#cell.update({ document: null });
