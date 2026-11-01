@@ -928,3 +928,33 @@ Where it differs from §1.7, §1.8 and §4.1, this addendum is the contract.
   chunk `analytics-reports` (Analytics Admin `v1beta`: `accountSummaries`, `properties/*/dataStreams`,
   `customDimensions`, `customMetrics`); rows S-A22-HAPPY-MEASUREMENT-REPORTS, S-A22-HAPPY-REPORTS-AGAIN-NOTHING,
   S-A22-BAD-REPORTS-NO-PROPERTY, S-A22-BAD-REPORTS-PERMISSION; the tour state `setup.analytics-reports`.
+
+## Addendum 2026-11-01: findings 47–50 (the pipeline's jobs, a blocked request, a failure's attempt, push devices)
+
+Findings 47–50 of `docs/research/manual-test-2026-10-25.md` (the live test of 2026-11-01; `DECISIONS-for-review.md` §81).
+Where it differs from §1.4.2, §1.5, §1.7, §1.8 and §1.10, this addendum is the contract.
+
+- §1.4.2 `jobs`: every Google refusal a step prints carries Google's error essentials, redacted
+  (`scripts/site/src/install/steps/google-error.ts`); `run-jobs` tries a request-rate refusal (429 or `RESOURCE_EXHAUSTED`,
+  `ErrorInfo` `RATE_LIMIT_EXCEEDED` or no details) again four times, after 5, 10, 20 and 40 s with jitter or
+  `Retry-After`, at most 60 s each, printing a `retry` event (reason `quota`) per wait, the jobs one after the other; a
+  quota (`QuotaFailure`, any other reason) ends the step with a line naming it and the new event
+  `HCM_INSTALL {"event":"quota","service","metric","limit"}` (`installLogEventSchema`). `StepDeps` gains `random`.
+- §1.5, §1.7: the admin reads a working pipeline build's log as it reads the server's (its retries show as `retrying`); a
+  stopped build's last `quota` event is the target view's `quota`, cleared by a new build.
+- §1.8: the pipeline card (d3) shows a quota with the quota's name and limit, the free-trial note and **Open the Quotas
+  page** (`gcp.quotas`: `https://console.cloud.google.com/iam-admin/quotas?project={projectId}&service={service}`), then the
+  log and Try again.
+- Every Setup card: an in-app input clears its card's last failure (`withCount`); a Google call of the admin's transport
+  with no HTTP answer names its host (`adminShell.network.blocked`), a 5xx keeps `apiError.unavailable`.
+- §1.10 fakes: the Cloud Run fake makes and replaces jobs (`cloud-run.jobs.create`, `cloud-run.jobs.patch`) with the
+  scenarios `jobsRateLimited`, `jobsQuotaExceeded`, `jobsWritable` (fixture `cloud-run/jobs.create.quota-exceeded`); the
+  Cloud Build fake's outcomes `retriesAtJobs` and `failsAtJobsQuota` (`cloud-build.pipelineRetriesAtJobs`,
+  `cloud-build.pipelineFailsAtJobsQuota`).
+- M4's push (§5.4 of `docs/research/M4-interfaces.md`), finding 50: a push device has a `kind` (`token` or `fid`; none:
+  `fid`), `notify.registerDevice` takes it (default `token`), FCM is addressed as it says, and a dry run's `UNREGISTERED`
+  of the registration just made is recorded with a warning; the browser registers an FCM registration token (`getToken`, the
+  user's approved lint exception, §81d).
+- §6.1 gains S-A56-HAPPY-JOBS-RATE-LIMITED, S-A56-BAD-JOBS-QUOTA, S-A22-BAD-REPORTS-BLOCKED-HOST,
+  S-A22-BAD-REPORTS-NEW-FAILURE-ONLY, S-A22-HAPPY-REPORTS-UNBLOCKED, S-A47-HAPPY-TOKEN, S-A47-HAPPY-DRY-RUN-UNREGISTERED,
+  S-A47-HAPPY-LEGACY-FID; §6.3 the tour states `setup.pipeline-retrying` and `setup.pipeline-quota`.

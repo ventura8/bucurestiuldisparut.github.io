@@ -135,4 +135,28 @@ describe('the SDK modules', () => {
         await expect(analytics.isSupported()).resolves.toBe(false);
         expect(vi.isMockFunction(analytics.logEvent)).toBe(false);
     });
+
+    it('happyPath_theTestsAndTheE2eBuildConnectToTheEmulators_badPath_theProductionBuildCarriesNoConnector', async () => {
+        // DECISIONS-for-review.md §81e: production's table holds a refusal instead, so the bundler drops the connectors.
+        const { connectAuthEmulator } = await import('firebase/auth');
+        expect(firebaseSdk.connectAuthEmulator).toBe(connectAuthEmulator);
+        vi.stubEnv('MODE', 'production');
+        vi.resetModules();
+        try {
+            const production = (await import('../../src/firebase/sdk.js')).firebaseSdk;
+            const connectors = [
+                production.connectAuthEmulator,
+                production.connectFunctionsEmulator,
+                production.connectFirestoreEmulator,
+                production.connectStorageEmulator,
+            ];
+            expect(connectors.every((connect) => connect !== connectAuthEmulator)).toBe(true);
+            expect(() => {
+                production.connectStorageEmulator({} as never, '127.0.0.1', 9199);
+            }).toThrow('connects to no emulator');
+        } finally {
+            vi.unstubAllEnvs();
+            vi.resetModules();
+        }
+    });
 });

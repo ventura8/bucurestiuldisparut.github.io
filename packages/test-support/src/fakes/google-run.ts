@@ -2,7 +2,8 @@ import { CLOUD_RUN_JOBS } from '@hcm/shared';
 
 import { FIXTURE_VALUES, fixtureBody, fixtureResponse, type FixtureName } from '../api-fixtures/index.js';
 import { authenticated, googleError, googleFailure, type GoogleApi, type GoogleProjects } from './google-common.js';
-import { bodyField, jsonResponse, route, type Route, type RouteParams } from './routes.js';
+import type { UpstreamRequest } from './fetch.js';
+import { bodyField, jsonResponse, requestObject, route, type Route, type RouteParams } from './routes.js';
 import { sequence, type ServiceFake } from './service.js';
 
 /**
@@ -12,6 +13,11 @@ import { sequence, type ServiceFake } from './service.js';
  * (`cloud-run.jobProvisioned`, `cloud-run.pipelineJobsProvisioned`). With a `runner` (the e2e world's stand-in or the
  * real pipeline, e2e/admin/support/imagery-runner.ts) each run is handed to it, `:cancel` becomes its SIGTERM, and the
  * execution ends when the runner says so; an out-of-memory end answers exit 137 (`execution.failed-oom.json`).
+ *
+ * M6: the pipeline build's `jobs` step creates (`jobs?jobId=`) and replaces (`PATCH`) the two jobs, each answered with a
+ * finished operation; finding 47 of 2026-11-01: `jobsRateLimited` refuses the next two writes for the request rate
+ * (`google/error.rate-limited`, which the step waits out) and `jobsQuotaExceeded` every write for a quota
+ * (`cloud-run/jobs.create.quota-exceeded`, which it names and does not try again) until `jobsWritable`.
  */
 
 type ExecutionState = 'running' | 'succeeded' | 'failed' | 'cancelled';
@@ -64,6 +70,8 @@ export interface CloudRunState {
     runner?: CloudRunRunner;
     /** M6: what the installer's pipeline build put on a job (`<project>/<region>/<job>` → its labels and image). */
     jobSpecs?: Map<string, JobSpec>;
+    /** Finding 47: how the next job writes are refused (`rate` for `remaining` of them, `quota` until cleared), if at all. */
+    jobWrites?: { readonly refusal: 'rate' | 'quota'; remaining: number };
 }
 
 /** A job as the installer's pipeline build makes it (M6, `docs/research/M6-interfaces.md` §1.4.2). */
@@ -86,6 +94,40 @@ function jobBody(state: CloudRunState, key: string, name: string): Record<string
 }
 
 const CLOUD_RUN: GoogleApi = { service: 'run.googleapis.com', title: 'Cloud Run Admin API', permission: 'run.jobs.run' };
+
+/** The refusal of a job write the state holds, counting a rate limit down (finding 47), or undefined. */
+function refusedWrite(state: CloudRunState, projectNumber: string): Response | undefined {
+    const writes = state.jobWrites;
+    if (writes === undefined) {
+        return undefined;
+    }
+    if (writes.refusal === 'quota') {
+        return fixtureResponse('cloud-run/jobs.create.quota-exceeded', {
+            values: { projectNumber, region: String(FIXTURE_VALUES['region']) },
+        });
+    }
+    writes.remaining -= 1;
+    if (writes.remaining <= 0) {
+        delete state.jobWrites;
+    }
+    return googleError('google/error.rate-limited', CLOUD_RUN, { projectNumber });
+}
+
+/** The value at `path` of a JSON value, or undefined. */
+function at(value: unknown, path: readonly (string | number)[]): unknown {
+    return path.reduce<unknown>(
+        (current, key) =>
+            typeof current === 'object' && current !== null ? (current as Record<string | number, unknown>)[key] : undefined,
+        value,
+    );
+}
+
+/** The labels and the first container's image of a job a write sends. */
+function specOf(request: UpstreamRequest): JobSpec {
+    const body = requestObject(request);
+    const image = at(body, ['template', 'template', 'containers', 0, 'image']);
+    return { labels: (body['labels'] ?? {}) as Record<string, string>, image: typeof image === 'string' ? image : '' };
+}
 
 /** M6: an older release's slug and image, as an update finds them. */
 const OLDER_RELEASE_SLUG = '0-9-0-e2e0000';
@@ -190,6 +232,17 @@ function cloudRunScenarios(state: CloudRunState): Record<string, () => void> {
                 setJobSpec(state, key, { labels: { 'hcm-release': OLDER_RELEASE_SLUG }, image: OLDER_PIPELINE_IMAGE });
             });
         },
+        /** Finding 47: the next two job writes are refused for the request rate, then accepted. */
+        jobsRateLimited: () => {
+            state.jobWrites = { refusal: 'rate', remaining: 2 };
+        },
+        /** Finding 47: every job write is refused for a quota until `jobsWritable`. */
+        jobsQuotaExceeded: () => {
+            state.jobWrites = { refusal: 'quota', remaining: 0 };
+        },
+        jobsWritable: () => {
+            delete state.jobWrites;
+        },
         executionsOutOfMemory: () => {
             state.executions.forEach((execution) => {
                 if (execution.state === 'running') {
@@ -250,10 +303,24 @@ export function createCloudRunFake(state: CloudRunState, projects: GoogleProject
     };
     const base = 'https://run.googleapis.com/v2/projects/{project}/locations/{region}/jobs';
     const auth = (answer: Route['answer']): Route['answer'] => authenticated(CLOUD_RUN, answer);
+    /** A create (`jobId` in the query) or a replace (`{job}` in the path): the job holds the request's labels and image. */
+    const write: Route['answer'] = (request, params) => {
+        const project = projects.resolve(String(params['project']));
+        const refused = refusedWrite(state, project.number);
+        if (refused !== undefined) {
+            return refused;
+        }
+        const job = String(params['job'] ?? request.url.searchParams.get('jobId'));
+        setJobSpec(state, `${project.id}/${String(params['region'])}/${job}`, specOf(request));
+        const name = `projects/${project.id}/locations/${String(params['region'])}/operations/${nextOperation()}`;
+        return jsonResponse({ name, done: true });
+    };
     return {
         name: 'cloud-run',
         routes: [
             route('POST', `${base}/{job}:run`, 'cloud-run.jobs.run', auth(run)),
+            route('POST', base, 'cloud-run.jobs.create', auth(write)),
+            route('PATCH', `${base}/{job}`, 'cloud-run.jobs.patch', auth(write)),
             route(
                 'POST',
                 `${base}/{job}/executions/{execution}:cancel`,

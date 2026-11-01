@@ -294,6 +294,46 @@ describe('what the build says', () => {
         flow.dispose();
     });
 
+    it('happyPath_aPipelineWaitingOutCloudRunsRateIsShownAsARetryThenInstalled', async () => {
+        // Finding 47 of 2026-11-01: the `jobs` step's retry line; a working pipeline build's log is read for it.
+        const { install, clock, flow, latest } = await world('pipeline');
+        install.fakes.scenario('cloud-build.pipelineRetriesAtJobs');
+        await flow.install();
+        install.fakes.scenario('cloud-build.start');
+
+        await clock.advance(RUNNING_LOOK_MS);
+        expect(latest()).toMatchObject({ state: 'retrying', retryReason: 'quota', quota: null });
+
+        install.fakes.scenario('cloud-build.finish');
+        await clock.advance(RUNNING_LOOK_MS);
+        expect(latest()).toMatchObject({ state: 'installed', quota: null });
+        flow.dispose();
+    });
+
+    it('badPath_aPipelineStoppedForAQuotaNamesIt', async () => {
+        const { install, clock, flow, latest } = await world('pipeline');
+        install.fakes.scenario('cloud-build.pipelineFailsAtJobsQuota');
+        await flow.install();
+        install.fakes.scenario('cloud-build.finish');
+
+        await clock.advance(RUNNING_LOOK_MS);
+
+        expect(latest()).toMatchObject({
+            state: 'failed',
+            failedStep: 'jobs',
+            quota: {
+                event: 'quota',
+                service: 'run.googleapis.com',
+                metric: 'run.googleapis.com/cpu_allocation',
+                limit: 'CpuAllocPerProjectRegion',
+            },
+        });
+        // Try again starts a new build: the quota line goes with the stopped one.
+        await flow.install();
+        expect(latest()).toMatchObject({ state: 'queued', quota: null });
+        flow.dispose();
+    });
+
     it('happyPath_aBuildGoogleEndedIsSubmittedAgainOnce', async () => {
         const { install, clock, flow, latest } = await world();
         install.fakes.scenario('cloud-build.serverInternalError');

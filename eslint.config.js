@@ -166,6 +166,19 @@ export default defineConfig(
         extends: [lit.configs['flat/recommended'], wc.configs['flat/recommended']],
     },
     {
+        // Web push by FCM registration token (finding 50 of 2026-11-01; the user's approval of 2026-11-01,
+        // DECISIONS-for-review.md §81d): firebase 13 marks `getToken` and `deleteToken` deprecated in favour of the
+        // installation id, which FCM refused live. Only these two, only in the module that imports the messaging SDK; every
+        // other deprecated API stays an error.
+        files: ['packages/admin/src/firebase/messaging-sdk.ts'],
+        rules: {
+            '@typescript-eslint/no-deprecated': [
+                'error',
+                { allow: [{ from: 'package', package: '@firebase/messaging', name: ['getToken', 'deleteToken'] }] },
+            ],
+        },
+    },
+    {
         // The logging module is the one place allowed to write to the console: every other
         // module logs through createLogger() (packages/shared/src/log.ts).
         files: ['packages/shared/src/log.ts'],

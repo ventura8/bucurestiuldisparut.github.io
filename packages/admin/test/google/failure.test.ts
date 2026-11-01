@@ -147,6 +147,7 @@ describe('failureMessage', () => {
                 { kind: 'conflict', status: 409 },
                 { kind: 'rateLimited', status: 429 },
                 { kind: 'unavailable', status: 503 },
+                { kind: 'unavailable', status: 0, host: 'analyticsadmin.googleapis.com' },
                 { kind: 'invalid', status: 400 },
                 { kind: 'invalid', status: 400, reason: 'QUOTA_EXCEEDED' },
                 { kind: 'orgPolicy', status: 412, constraint: 'storage.publicAccessPrevention' },
@@ -160,6 +161,8 @@ describe('failureMessage', () => {
             { key: 'apiError.conflict' },
             { key: 'apiError.rateLimited' },
             { key: 'apiError.unavailable' },
+            // Finding 48 of 2026-11-01: a request that never left the browser names its host, unlike a server's 503.
+            { key: 'adminShell.network.blocked', params: { host: 'analyticsadmin.googleapis.com' } },
             { key: 'apiError.internal' },
             { key: 'adminSetup.billing.quota' },
             { key: 'adminSetup.provision.orgPolicy', params: { constraint: 'storage.publicAccessPrevention' } },

@@ -531,6 +531,7 @@ const EXPORTS = {
         'NOTIFICATION_SEVERITIES',
         'NOTIFICATION_SPECS',
         'PUSH_DEVICES_MAX',
+        'PUSH_TARGET_KINDS',
         'inboxItemDocSchema',
         'notificationEventDocSchema',
         'notificationEventId',

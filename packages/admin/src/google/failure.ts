@@ -32,6 +32,11 @@ export interface GoogleFailure {
     readonly constraint?: string;
     /** From `Retry-After`, in seconds. */
     readonly retryAfterSeconds?: number;
+    /**
+     * The host a request to which never left the browser (finding 48 of 2026-11-01: no HTTP answer at all, as when a DNS
+     * blocklist, a VPN or a firewall stops it or its CORS preflight fails), unlike a server's own 503.
+     */
+    readonly host?: string;
 }
 
 /**
@@ -47,6 +52,7 @@ export class GoogleApiError extends Error implements GoogleFailure {
     declare readonly role?: string;
     declare readonly constraint?: string;
     declare readonly retryAfterSeconds?: number;
+    declare readonly host?: string;
     readonly operation: string;
     readonly failure: GoogleFailure;
 
@@ -213,7 +219,10 @@ const MESSAGES: Readonly<Record<GoogleFailureKind, (failure: GoogleFailure, scop
     notFound: () => ({ key: 'apiError.notFound' }),
     conflict: () => ({ key: 'apiError.conflict' }),
     rateLimited: () => ({ key: 'apiError.rateLimited' }),
-    unavailable: () => ({ key: 'apiError.unavailable' }),
+    unavailable: (failure) =>
+        failure.host === undefined
+            ? { key: 'apiError.unavailable' }
+            : { key: 'adminShell.network.blocked', params: { host: failure.host } },
     invalid: (failure) => ({ key: failure.reason === 'QUOTA_EXCEEDED' ? 'adminSetup.billing.quota' : 'apiError.internal' }),
     orgPolicy: (failure) => ({ key: 'adminSetup.provision.orgPolicy', params: { constraint: failure.constraint ?? '' } }),
 };

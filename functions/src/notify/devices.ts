@@ -27,8 +27,9 @@ import { adminAddress, devicesOf, pushToDevices } from './messages.js';
 
 /**
  * The push callables (admin; `docs/research/M4-interfaces.md` §5.4; S-A47-HAPPY, S-A47-BAD-TOKEN-UNREGISTERED):
- * `notify.registerDevice` stores a browser's FCM token after FCM accepted it in a dry run (`apiError.notify.deviceInvalid`
- * otherwise, with FCM's code as `reason`, and nothing stored), at most `PUSH_DEVICES_MAX` per admin (the oldest replaced), and turns push on in the
+ * `notify.registerDevice` stores a browser's FCM token (or installation id, its `kind`) after FCM's dry run
+ * (`apiError.notify.deviceInvalid` when it refuses, with FCM's code as `reason`, and nothing stored; an `UNREGISTERED` of the
+ * registration just made is recorded anyway, finding 50 of 2026-11-01), at most `PUSH_DEVICES_MAX` per admin (the oldest replaced), and turns push on in the
  * admin's settings with `DEFAULT_PUSH_KINDS` unless they chose others; one browser is one admin's (a shared computer's
  * browser registered by another admin before stops getting theirs); `notify.unregisterDevice` forgets one browser;
  * `notify.sendTest` sends one test notification to the caller's own devices. Every write is the caller's own
@@ -100,17 +101,34 @@ async function turnPushOn(deps: DevicesDeps, uid: string, now: Date): Promise<vo
     });
 }
 
+/**
+ * The dry run's refusals of a registration the browser has just made that do not stop it (finding 50 of 2026-11-01): FCM
+ * answered `UNREGISTERED` for an installation id `register()` had just registered, so the device is recorded anyway and
+ * the first real send decides (a target it finds gone is forgotten then, `pushToDevices`).
+ */
+const TOLERATED_REFUSALS: ReadonlySet<string> = new Set(['UNREGISTERED', 'NOT_FOUND', 'HTTP_404']);
+
+/** FCM's dry run of a new registration: a refusal other than {@link TOLERATED_REFUSALS} stops it with FCM's code. */
+async function checkWithFcm(deps: DevicesDeps, uid: string, data: NotifyRegisterDeviceRequest): Promise<void> {
+    const check = await viaFcm(deps.push.validate({ kind: data.kind, value: data.token }));
+    if (check.ok) {
+        return;
+    }
+    // Finding 46 of 2026-11-01: FCM's code reaches the admin (its reason line) and the log; the token never does.
+    if (TOLERATED_REFUSALS.has(check.reason)) {
+        deps.log.warn('push device recorded although FCM refused its dry run', { uid, kind: data.kind, reason: check.reason });
+        return;
+    }
+    deps.log.warn('push device refused by FCM', { uid, reason: check.reason });
+    throw new ApiError('apiError.notify.deviceInvalid', { reason: check.reason });
+}
+
 async function registerDevice(
     deps: DevicesDeps,
     caller: VerifiedCaller,
     data: NotifyRegisterDeviceRequest,
 ): Promise<CallableResponse<'notify.registerDevice'>> {
-    const check = await viaFcm(deps.push.validate(data.token));
-    if (!check.ok) {
-        // Finding 46 of 2026-11-01: FCM's code reaches the admin (its reason line) and the log; the token never does.
-        deps.log.warn('push device refused by FCM', { uid: caller.uid, reason: check.reason });
-        throw new ApiError('apiError.notify.deviceInvalid', { reason: check.reason });
-    }
+    await checkWithFcm(deps, caller.uid, data);
     const now = deps.clock.now();
     const deviceId = deviceIdOf(data.token);
     const devices = await devicesOf(deps, caller.uid);
@@ -120,6 +138,7 @@ async function registerDevice(
     const createdAt = devices.find((device) => device.id === deviceId)?.data.createdAt ?? timestampFromDate(now);
     await deps.documents.set(FIRESTORE_PATHS.pushDevice(caller.uid, deviceId), pushDeviceDocSchema, {
         token: data.token,
+        kind: data.kind,
         lang: data.lang,
         createdAt,
         updatedBy: caller.uid,

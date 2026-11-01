@@ -233,6 +233,33 @@ describe('<hcm-setup-pipeline>', () => {
         expect(shadowPart(blocked.element, '.blocker').textContent).toContain('The image repository hcm is missing');
     });
 
+    it('badPath_aBuildStoppedForAQuotaNamesItAndLinksItsQuotasPage', async () => {
+        // Finding 47 of 2026-11-01: the `jobs` step's `quota` line; Try again alone meets the same limit.
+        const quota = { service: 'run.googleapis.com', metric: 'run.googleapis.com/cpu_allocation', limit: 'CpuAllocPerProjectRegion' };
+        const consoleUrl = 'https://console.cloud.google.com/cloud-build/builds;region=us-central1/b-1?project=demo-hcm';
+        const pipeline = { state: 'failed', failedStep: 'jobs', log: ['jobs: Google Cloud refused'], quota, consoleUrl } as const;
+        const { element } = await card('pipeline', { pipeline }, {}, 'ro');
+
+        const line = shadowPart(element, '[data-fix="quota"]');
+        expect(line.textContent).toContain(
+            'Google Cloud a refuzat o cotă: run.googleapis.com/cpu_allocation (limita CpuAllocPerProjectRegion).',
+        );
+        expect(line.textContent).toContain('Un proiect de probă gratuită are cote mai mici');
+        expect(line.querySelector('a')?.getAttribute('href')).toBe(
+            'https://console.cloud.google.com/iam-admin/quotas?project=demo-hcm&service=run.googleapis.com',
+        );
+        await expect.element(page.getByRole('button', { name: 'Încearcă din nou' })).toBeEnabled();
+        expect(await axeViolations(element)).toEqual([]);
+        cleanup();
+
+        // A stopped build without a console page still names the quota (its link has no project then).
+        const unlinked = await card('pipeline', { pipeline: { ...pipeline, consoleUrl: null } });
+        expect(shadowPart(unlinked.element, '[data-fix="quota"] a').getAttribute('href')).toBe(
+            'https://console.cloud.google.com/iam-admin/quotas?project=&service=run.googleapis.com',
+        );
+        expect(unlinked.element.renderRoot.querySelectorAll('[data-fix="quota"]')).toHaveLength(1);
+    });
+
     it('happyPath_aPipelineMissingBesideAnInstalledServerHasItsOwnButton', async () => {
         // Finding 3 of the M6 review: a server installed some other way, or a pipeline blocked at the server's click.
         const looked = { checkedAt: '2026-10-20T10:00:00.000Z' };

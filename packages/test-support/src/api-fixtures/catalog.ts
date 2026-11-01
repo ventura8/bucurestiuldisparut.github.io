@@ -22,6 +22,7 @@ import cloudRunExecutionFailedOom from './cloud-run/execution.failed-oom.json' w
 import cloudRunExecutionRunning from './cloud-run/execution.running.json' with { type: 'json' };
 import cloudRunExecutionSucceeded from './cloud-run/execution.succeeded.json' with { type: 'json' };
 import cloudRunJobNotFound from './cloud-run/job.not-found.json' with { type: 'json' };
+import cloudRunJobsCreateQuotaExceeded from './cloud-run/jobs.create.quota-exceeded.json' with { type: 'json' };
 import cloudRunJobsRunOperation from './cloud-run/jobs.run.operation.json' with { type: 'json' };
 import cloudSchedulerJobGet from './cloud-scheduler/job.get.json' with { type: 'json' };
 import cloudStorageBucketIamOk from './cloud-storage/bucket-iam.ok.json' with { type: 'json' };
@@ -216,6 +217,7 @@ export const RAW_FIXTURES = catalogue({
     'cloud-run/execution.running': cloudRunExecutionRunning,
     'cloud-run/execution.succeeded': cloudRunExecutionSucceeded,
     'cloud-run/job.not-found': cloudRunJobNotFound,
+    'cloud-run/jobs.create.quota-exceeded': cloudRunJobsCreateQuotaExceeded,
     'cloud-run/jobs.run.operation': cloudRunJobsRunOperation,
     'cloud-scheduler/job.get': cloudSchedulerJobGet,
     'cloud-storage/bucket-iam.ok': cloudStorageBucketIamOk,

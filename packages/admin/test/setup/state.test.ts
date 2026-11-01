@@ -211,6 +211,14 @@ describe('withStep and withCount', () => {
         expect(state.steps.billing.used).toEqual({ inputs: 1, consents: 1 });
         expect(state.used).toEqual({ inputs: 2, consents: 1 });
     });
+
+    it('happyPath_anInputStartsANewAttemptWithoutTheLastFailure_badPath_aConsentKeepsIt', () => {
+        // Finding 49 of 2026-11-01: step g's "unavailable" stayed under the reports a later click created.
+        const failed = withStep(initialSetupState(createHarness().host, 'normal'), 'analytics', { error: { key: 'apiError.unavailable' } });
+
+        expect(withCount(failed, 'analytics', 'consents').steps.analytics.error).toEqual({ key: 'apiError.unavailable' });
+        expect(withCount(failed, 'analytics', 'inputs').steps.analytics.error).toBeNull();
+    });
 });
 
 describe('resumeStep, worstState and provisionHealth', () => {

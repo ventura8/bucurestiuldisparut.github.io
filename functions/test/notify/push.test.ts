@@ -35,7 +35,7 @@ function register(deps: M4Deps, token: string, lang: 'ro' | 'en' = 'ro', uid = '
 }
 
 describe('notify.registerDevice', () => {
-    it('happyPath_aTokenFcmAcceptsIsStoredAndPushTurnsOnWithTheDefaults', async () => {
+    it('happyPath_aTokenFcmAcceptsIsStoredWithItsKindAndPushTurnsOnWithTheDefaults @S-A47-HAPPY-TOKEN', async () => {
         const deps = m4Deps(NOW);
         const token = fcmToken('laptop');
 
@@ -43,6 +43,7 @@ describe('notify.registerDevice', () => {
 
         await expect(deps.documents.get(FIRESTORE_PATHS.pushDevice('u-admin', deviceIdOf(token)), pushDeviceDocSchema)).resolves.toEqual({
             token,
+            kind: 'token',
             lang: 'en',
             createdAt: timestampFromDate(new Date(NOW)),
             updatedBy: 'u-admin',
@@ -53,6 +54,8 @@ describe('notify.registerDevice', () => {
             pushKinds: DEFAULT_PUSH_KINDS,
         });
         expect(deps.upstream.state.fcm.messages).toEqual([]);
+        // Finding 50 of 2026-11-01: the dry run addressed the registration token as `message.token`.
+        expect(JSON.parse(String(deps.upstream.callsTo('fcm.send')[0]?.body))).toEqual({ validate_only: true, message: { token } });
         expect(deviceIdOf(token)).toMatch(/^[a-f0-9]{32}$/);
     });
 
@@ -112,19 +115,19 @@ describe('notify.registerDevice', () => {
         expect(deps.documents.paths('admins/u-admin/pushDevices/')).toEqual([`admins/u-admin/pushDevices/${deviceIdOf(token)}`]);
     });
 
-    it('badPath_aTokenFcmRefusesIsNeverStored @S-A47-BAD-TOKEN-UNREGISTERED @S-A47-BAD-FCM-REASON-NAMED', async () => {
+    it('badPath_aTokenFcmRefusesIsNeverStored @S-A47-BAD-FCM-REASON-NAMED', async () => {
         const deps = m4Deps(NOW);
         const token = fcmToken('stale');
-        deps.upstream.state.fcm.unregistered.add(token);
+        deps.upstream.state.fcm.invalid.add(token);
 
         // Finding 46 of 2026-11-01: FCM's own code reaches the admin as the refusal's reason, and the log; never the token.
         await expect(failureOf(register(deps, token))).resolves.toMatchObject({
             code: 'invalid-argument',
-            details: { code: 'apiError.notify.deviceInvalid', params: { reason: 'UNREGISTERED' } },
+            details: { code: 'apiError.notify.deviceInvalid', params: { reason: 'INVALID_ARGUMENT' } },
         });
         expect(deps.documents.paths('admins/')).toEqual([]);
         const logged = deps.recording.records.find((record) => record.message === 'push device refused by FCM');
-        expect(logged?.data).toMatchObject({ reason: 'UNREGISTERED' });
+        expect(logged?.data).toMatchObject({ reason: 'INVALID_ARGUMENT' });
         expect(JSON.stringify(deps.recording.records)).not.toContain(token);
     });
 
@@ -144,8 +147,48 @@ describe('notify.registerDevice', () => {
     });
 });
 
+describe('notify.registerDevice: what a device is (finding 50 of 2026-11-01)', () => {
+    it('happyPath_aRegistrationWhoseDryRunSaysUnregisteredIsRecordedAndTheFirstSendDecides @S-A47-HAPPY-DRY-RUN-UNREGISTERED @S-A47-BAD-TOKEN-UNREGISTERED', async () => {
+        const deps = m4Deps(NOW);
+        const token = fcmToken('fresh');
+        deps.upstream.state.fcm.unregistered.add(token);
+
+        // Finding 50 of 2026-11-01: FCM's dry run called a registration the browser had just made unregistered.
+        await expect(register(deps, token)).resolves.toEqual({ deviceId: deviceIdOf(token) });
+
+        expect(deps.documents.paths('admins/u-admin/pushDevices/')).toEqual([`admins/u-admin/pushDevices/${deviceIdOf(token)}`]);
+        const logged = deps.recording.records.find((record) => record.message === 'push device recorded although FCM refused its dry run');
+        expect(logged?.data).toMatchObject({ uid: 'u-admin', kind: 'token', reason: 'UNREGISTERED' });
+        expect(JSON.stringify(deps.recording.records)).not.toContain(token);
+        // FCM still does not know it when the test is sent: the device is forgotten then.
+        await expect(sendTestFunction(() => deps).run(adminCall({}))).resolves.toEqual({ sent: 0, removed: 1 });
+        expect(deps.documents.paths('admins/u-admin/pushDevices/')).toEqual([]);
+    });
+
+    it('happyPath_aDeviceRecordedBeforeFinding50IsSentToAsAnInstallationId @S-A47-HAPPY-LEGACY-FID', async () => {
+        const deps = m4Deps(NOW);
+        const fid = fcmToken('legacy');
+        const stamp = timestampFromDate(new Date(NOW));
+        await deps.documents.set(FIRESTORE_PATHS.pushDevice('u-admin', deviceIdOf(fid)), pushDeviceDocSchema, {
+            ...{ token: fid, lang: 'ro', createdAt: stamp, updatedBy: 'u-admin', updatedAt: stamp },
+        });
+
+        await expect(sendTestFunction(() => deps).run(adminCall({}))).resolves.toEqual({ sent: 1, removed: 0 });
+
+        expect(deps.upstream.state.fcm.messages).toMatchObject([{ token: fid, kind: 'fid' }]);
+        // A browser that says it registered an installation id is checked and stored as one.
+        const browser = fcmToken('browser');
+        await registerDeviceFunction(() => deps).run(adminCall({ token: browser, kind: 'fid', lang: 'en' }));
+        await expect(
+            deps.documents.get(FIRESTORE_PATHS.pushDevice('u-admin', deviceIdOf(browser)), pushDeviceDocSchema),
+        ).resolves.toMatchObject({
+            kind: 'fid',
+        });
+    });
+});
+
 describe('notify.unregisterDevice and notify.sendTest', () => {
-    it('happyPath_aTestReachesTheCallersDevicesAndAnUnregisteredOneIsForgotten', async () => {
+    it('happyPath_aTestReachesTheCallersDevicesAndAnUnregisteredOneIsForgotten @S-A47-HAPPY-TOKEN', async () => {
         const deps = m4Deps(NOW);
         const [kept, gone] = [fcmToken('kept'), fcmToken('gone')];
         await register(deps, kept, 'en');
@@ -158,6 +201,7 @@ describe('notify.unregisterDevice and notify.sendTest', () => {
         expect(deps.upstream.state.fcm.messages).toEqual([
             {
                 token: kept,
+                kind: 'token',
                 notification: {
                     title: 'Notifications',
                     body: 'Test notification: notifications work on this device.',

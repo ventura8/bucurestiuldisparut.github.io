@@ -1,20 +1,13 @@
 /**
  * Web push on this browser (`packages/admin/src/firebase/messaging.ts`; `docs/research/M4-interfaces.md` §5.4): the
- * Notifications API's permission, the service worker beside the page and the installation id FCM registered for it
- * (`register`, `onRegistered`); the `e2e` build's stand-in with a fixed token; the lazily loaded messaging module. No
+ * Notifications API's permission, the service worker beside the page and the FCM registration token of it (`getToken`;
+ * finding 50 of 2026-11-01), deleted on `reset`; the `e2e` build's stand-in with a fixed token; the lazily loaded messaging module. No
  * browser, no FCM: a scripted scope.
  */
 import type { FirebaseApp } from 'firebase/app';
 import type { Messaging } from 'firebase/messaging';
 import { describe, expect, it } from 'vitest';
 
-import {
-    FCM_REGISTRATION_STORE,
-    type RecordDatabase,
-    type RecordFactory,
-    type RecordRequest,
-    type RecordTransaction,
-} from '../../src/firebase/fcm-record.js';
 import {
     PUSH_SERVICE_WORKER,
     firebasePush,
@@ -52,48 +45,38 @@ function scope(options: { permission?: NotificationPermission; answer?: Notifica
     return { browser, registered };
 }
 
-/** The SDK's seam: `register` hands `fid` to the `onRegistered` listener before it settles ('' : it hands none). */
-function sdk(fid = 'fcm-installation-id-of-this-browser'): MessagingSdk & { readonly asked: unknown[]; listeners: number } {
+/** The SDK's seam: `getToken` answers `token`; `deleteToken` is counted. */
+function sdk(token = 'fcm-registration-token-of-this-browser'): MessagingSdk & { readonly asked: unknown[]; deleted: number } {
     const asked: unknown[] = [];
-    const listeners = new Set<(fid: string) => void>();
     const fake = {
         asked,
-        listeners: 0,
+        deleted: 0,
         getMessaging: (app: FirebaseApp): Messaging => ({ app }),
-        onRegistered: (_messaging: Messaging, next: (id: string) => void) => {
-            listeners.add(next);
-            fake.listeners = listeners.size;
-            return () => {
-                listeners.delete(next);
-                fake.listeners = listeners.size;
-            };
-        },
-        register: (messaging: Messaging, options: { readonly serviceWorkerRegistration: ServiceWorkerRegistration }) => {
+        getToken: (messaging: Messaging, options: { readonly serviceWorkerRegistration: ServiceWorkerRegistration }) => {
             asked.push({ messaging, registration: options.serviceWorkerRegistration });
-            if (fid !== '') {
-                listeners.forEach((next) => {
-                    next(fid);
-                });
-            }
-            return Promise.resolve();
+            return Promise.resolve(token);
+        },
+        deleteToken: () => {
+            fake.deleted += 1;
+            return Promise.resolve(true);
         },
     };
     return fake;
 }
 
 describe('firebasePush', () => {
-    it('happyPath_thePromptThenTheServiceWorkerThenItsInstallationId', async () => {
+    it('happyPath_thePromptThenTheServiceWorkerThenItsRegistrationToken', async () => {
         const { browser, registered } = scope();
         const messaging = sdk();
         const push = firebasePush({ scope: browser, app: APP, load: () => Promise.resolve(messaging) });
 
         await expect(push.requestPermission()).resolves.toBe('granted');
-        await expect(push.token()).resolves.toBe('fcm-installation-id-of-this-browser');
+        await expect(push.token()).resolves.toBe('fcm-registration-token-of-this-browser');
 
+        expect(push.kind).toBe('token');
         expect([push.supported(), push.permission()]).toEqual([true, 'default']);
         expect(registered).toEqual([{ url: PUSH_SERVICE_WORKER, scope: './' }]);
         expect(messaging.asked).toEqual([{ messaging: { app: APP }, registration: REGISTRATION }]);
-        expect(messaging.listeners).toBe(0);
     });
 
     it.each([
@@ -103,30 +86,25 @@ describe('firebasePush', () => {
         expect(firebasePush({ scope: scope(options).browser, app: APP, load: () => Promise.resolve(sdk()) }).supported()).toBe(false);
     });
 
-    it('badPath_noServiceWorkerOrNoInstallationIdMeansNoToken', async () => {
+    it('badPath_noServiceWorkerMeansNoToken', async () => {
         const push = firebasePush({ scope: scope({ worker: false }).browser, app: APP, load: () => Promise.resolve(sdk()) });
         await expect(push.token()).rejects.toMatchObject({ code: 'push/no-service-worker' });
-
-        const silent = sdk('');
-        const unanswered = firebasePush({ scope: scope().browser, app: APP, load: () => Promise.resolve(silent) });
-        await expect(unanswered.token()).rejects.toMatchObject({ code: 'push/no-installation-id' });
-        expect(silent.listeners).toBe(0);
     });
 
     // Finding 46 of 2026-11-01: the SDK's own code reaches the page and the log, its text without ids.
     it('badPath_anSdkFailureKeepsItsCode_andARefusedWorkerHasTheRegistrarsOwn', async () => {
         const failing = sdk();
-        const sdkError = Object.assign(new Error('Messaging: registration failed (messaging/fid-registration-failed).'), {
-            code: 'messaging/fid-registration-failed',
+        const sdkError = Object.assign(new Error('Messaging: registration failed (messaging/token-subscribe-failed).'), {
+            code: 'messaging/token-subscribe-failed',
             customData: { errorInfo: 'PERMISSION_DENIED for installation cXg2c2RkZGRkZGRkZGRk' },
         });
         const push = firebasePush({
             scope: scope().browser,
             app: APP,
-            load: () => Promise.resolve({ ...failing, register: () => Promise.reject(sdkError) }),
+            load: () => Promise.resolve({ ...failing, getToken: () => Promise.reject(sdkError) }),
         });
         await expect(push.token()).rejects.toMatchObject({
-            code: 'messaging/fid-registration-failed',
+            code: 'messaging/token-subscribe-failed',
             info: 'PERMISSION_DENIED for installation [id]',
         });
 
@@ -142,21 +120,21 @@ describe('firebasePush', () => {
         });
     });
 
-    it('happyPath_resetForgetsTheSdksRecordOfTheRegistration', async () => {
-        const database = fakeRecords(true);
-        const push = firebasePush({
-            scope: { ...scope().browser, indexedDB: database.factory },
-            app: APP,
-            load: () => Promise.resolve(sdk()),
-        });
+    it('happyPath_resetDeletesThisPagesToken', async () => {
+        const messaging = sdk();
+        const push = firebasePush({ scope: scope().browser, app: APP, load: () => Promise.resolve(messaging) });
 
+        // Before any registration of this page there is no token to delete.
         await push.reset();
-
-        expect(database.cleared).toBe(1);
-        // A browser without IndexedDB: nothing to forget, nothing thrown.
-        await expect(
-            firebasePush({ scope: scope().browser, app: APP, load: () => Promise.resolve(sdk()) }).reset(),
-        ).resolves.toBeUndefined();
+        expect(messaging.deleted).toBe(0);
+        await push.token();
+        await push.reset();
+        expect(messaging.deleted).toBe(1);
+        // A refused delete (the token was gone already) is no failure.
+        const refusing = { ...sdk(), deleteToken: () => Promise.reject(new Error('messaging/token-unsubscribe-failed')) };
+        const quiet = firebasePush({ scope: scope().browser, app: APP, load: () => Promise.resolve(refusing) });
+        await quiet.token();
+        await expect(quiet.reset()).resolves.toBeUndefined();
     });
 
     it('badPath_noNotificationsApiIsAPermissionDenied', async () => {
@@ -167,50 +145,13 @@ describe('firebasePush', () => {
     });
 });
 
-/** IndexedDB with the FCM SDK's database (`withStore`: its registrations' store too), counting the clears. */
-function fakeRecords(withStore: boolean): { readonly factory: RecordFactory; cleared: number } {
-    const world = { cleared: 0, factory: undefined as unknown as RecordFactory };
-    const database: RecordDatabase = {
-        objectStoreNames: { contains: (name) => withStore && name === FCM_REGISTRATION_STORE },
-        transaction: () => {
-            const transaction: RecordTransaction = {
-                objectStore: () => ({
-                    clear: () => {
-                        world.cleared += 1;
-                        queueMicrotask(() => transaction.oncomplete?.());
-                    },
-                }),
-                oncomplete: null,
-                onerror: null,
-                onabort: null,
-            };
-            return transaction;
-        },
-        close: () => undefined,
-    };
-    world.factory = {
-        open: () => {
-            const request: RecordRequest<RecordDatabase> = {
-                result: database,
-                transaction: null,
-                onsuccess: null,
-                onerror: null,
-                onupgradeneeded: null,
-            };
-            queueMicrotask(() => request.onsuccess?.());
-            return request;
-        },
-    };
-    return world;
-}
-
 describe('the e2e stand-in', () => {
     it('happyPath_theBrowsersOwnPermissionAndAFixedTokenPerTest', async () => {
         const { browser, registered } = scope({ permission: 'granted' });
         const push = standInPush(browser, 'S-A47 happy/1');
 
         await expect(push.token()).resolves.toBe('e2e-fcm-token:S-A47happy1-browser-0001');
-        expect(push.permission()).toBe('granted');
+        expect([push.permission(), push.kind]).toEqual(['granted', 'token']);
         expect(standInToken('')).toBe('e2e-fcm-token:local-browser-0001');
         // The admin's own worker, as in production, beside its page.
         expect(registered).toEqual([{ url: PUSH_SERVICE_WORKER, scope: './' }]);
@@ -273,25 +214,15 @@ describe('retireRootWorker (M6: the admin moved to /admin/)', () => {
 
     it('happyPath_theRootScopesWorkerIsUnregisteredBeforeTheAdminRegistersItsOwn', async () => {
         const { browser, unregistered, registered } = withRegistrations(['https://demo-hcm.web.app/', 'https://demo-hcm.web.app/admin/']);
-        const database = fakeRecords(true);
-        const push = firebasePush({ scope: { ...browser, indexedDB: database.factory }, app: APP, load: () => Promise.resolve(sdk()) });
+        const messaging = sdk();
+        const push = firebasePush({ scope: browser, app: APP, load: () => Promise.resolve(messaging) });
 
         await push.token();
 
         expect(unregistered).toEqual(['https://demo-hcm.web.app/']);
         expect(registered).toEqual([{ url: PUSH_SERVICE_WORKER, scope: './' }]);
-        // Finding 46: the SDK's record named the retired worker's subscription; the registration is made again.
-        expect(database.cleared).toBe(1);
-    });
-
-    it('badPath_withoutARootWorkerTheSdksRecordIsKept', async () => {
-        const { browser } = withRegistrations(['https://demo-hcm.web.app/admin/']);
-        const database = fakeRecords(true);
-        const push = firebasePush({ scope: { ...browser, indexedDB: database.factory }, app: APP, load: () => Promise.resolve(sdk()) });
-
-        await push.token();
-
-        expect(database.cleared).toBe(0);
+        // The token is asked for the admin's own worker, whose subscription `getToken` checks against its record.
+        expect(messaging.asked).toEqual([{ messaging: { app: APP }, registration: REGISTRATION }]);
     });
 
     it('badPath_aRefusalOrABrowserWithoutTheApiLeavesThingsAsTheyAre', async () => {
@@ -315,7 +246,7 @@ describe('loadMessagingSdk', () => {
     it('happyPath_theLazyModuleHoldsTheSdksFunctions', async () => {
         const messaging = await loadMessagingSdk();
 
-        expect([typeof messaging.getMessaging, typeof messaging.register, typeof messaging.onRegistered]).toEqual([
+        expect([typeof messaging.getMessaging, typeof messaging.getToken, typeof messaging.deleteToken]).toEqual([
             'function',
             'function',
             'function',

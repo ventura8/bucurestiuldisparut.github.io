@@ -227,6 +227,8 @@ export interface InstallTargetViewPort {
     readonly log: readonly string[];
     /** The log names a permission step c's Retry what failed grants (finding 28 of 2026-10-31). */
     readonly fixInProvision: boolean;
+    /** The quota a failed `jobs` step named (finding 47 of 2026-11-01): the card names it and links the Quotas page. */
+    readonly quota: { readonly service: string; readonly metric: string; readonly limit: string } | null;
     readonly missing: readonly string[];
     readonly retryReason: TransientDeployReason | null;
     readonly retryAt: string | null;

@@ -5055,6 +5055,39 @@
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.4; owner: ops-screens)."
         },
         {
+            "id": "S-A22-BAD-REPORTS-BLOCKED-HOST",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "bad",
+            "title": "A request this browser cannot send names its host",
+            "asserts": "the network refuses analyticsadmin.googleapis.com with no HTTP answer (a DNS blocklist, a VPN, a firewall, a failed CORS preflight) -> after the transport's retries the card's alert says the request to analyticsadmin.googleapis.com never left this browser, to allow it in the blocker or change network; never the server's unavailable message; nothing is sent",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 48 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §81b). Test: e2e/admin/steps/analytics.spec.ts."
+        },
+        {
+            "id": "S-A22-BAD-REPORTS-NEW-FAILURE-ONLY",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "bad",
+            "title": "A new click shows only its own failure",
+            "asserts": "a failed Create the measurement reports, then a click Google refuses -> the card's alert names the role; the earlier failure is gone",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 49 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §81c). Test: e2e/admin/steps/analytics.spec.ts."
+        },
+        {
+            "id": "S-A22-HAPPY-REPORTS-UNBLOCKED",
+            "behaviour": "A22",
+            "area": "admin",
+            "path": "happy",
+            "title": "A click that works after a failure clears it",
+            "asserts": "Create the measurement reports failed, then the host is allowed -> the next click creates the 14 definitions and the card shows no alert",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 49 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §81c). Finding 48 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/steps/analytics.spec.ts."
+        },
+        {
             "id": "S-A23-HAPPY",
             "behaviour": "A23",
             "area": "admin",
@@ -7051,7 +7084,7 @@
             "area": "admin",
             "path": "happy",
             "title": "Push is turned on with the browser's own permission and sends the chosen kinds",
-            "asserts": "Notifications on this device -> the browser's prompt granted -> notify.registerDevice with the fake FCM token and the device listed; a failed job -> the fake FCM receives one message in the admin's language with the job's link; a kind turned off is not pushed (input budget pushOn: 2)",
+            "asserts": "Notifications on this device -> the browser's prompt granted -> notify.registerDevice with the fake FCM registration token and the device listed with kind token; the push addresses message.token; a failed job -> the fake FCM receives one message in the admin's language with the job's link; a kind turned off is not pushed (input budget pushOn: 2)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §5.4; owner: assists-notify). In e2e/admin/specs/notify/push.spec.ts (state notify.push-on)."
@@ -7073,10 +7106,10 @@
             "area": "admin",
             "path": "bad",
             "title": "A device FCM no longer knows is forgotten",
-            "asserts": "a send FCM answers registration-token-not-registered -> that device's document deleted, the others still pushed; notify.registerDevice with a token FCM refuses -> apiError.notify.deviceInvalid and nothing stored",
+            "asserts": "a send FCM answers registration-token-not-registered (UNREGISTERED or 404) -> that device's document deleted, the others still pushed; a device recorded although its dry run said UNREGISTERED is forgotten at its first send",
             "tier": "functions",
             "status": "exists",
-            "notes": "Milestone M4 (docs/research/M4-interfaces.md §5.4; owner: assists-notify). In functions/test/notify/push.test.ts, functions/test/notify/fan-out.test.ts and functions/test/adapters/fcm.test.ts."
+            "notes": "Milestone M4 (docs/research/M4-interfaces.md §5.4; owner: assists-notify). In functions/test/notify/push.test.ts, functions/test/notify/fan-out.test.ts and functions/test/adapters/fcm.test.ts. Since finding 50 (DECISIONS-for-review.md §81d) a dry run's UNREGISTERED no longer refuses the registration."
         },
         {
             "id": "S-A47-BAD-SHARED-BROWSER",
@@ -7095,7 +7128,7 @@
             "area": "admin",
             "path": "happy",
             "title": "A registration FCM no longer accepts is made again once, and push turns on",
-            "asserts": "the browser's registration is forgotten by FCM -> Notifications on this device: the dry run refuses it, the registrar forgets the SDK's record and registers again, the new registration is accepted and stored, push is on",
+            "asserts": "FCM no longer takes the browser's registration (INVALID_ARGUMENT) -> Notifications on this device: the dry run refuses it, the registrar forgets the SDK's record and registers again, the new registration is accepted and stored, push is on",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Finding 46 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01). Test: e2e/admin/specs/notify/push.spec.ts."
@@ -7106,7 +7139,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A registration FCM refuses again says so with FCM's code",
-            "asserts": "every registration refused by FCM -> two dry runs (the first and a new registration), then Notifications did not start with the device-invalid message and the reason line naming fcm/UNREGISTERED; nothing stored",
+            "asserts": "every registration refused by FCM -> two dry runs (the first and a new registration), then Notifications did not start with the device-invalid message and the reason line naming fcm/INVALID_ARGUMENT; nothing stored",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Finding 46 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/notify/push.spec.ts (state notify.push-failed-reason)."
@@ -7117,7 +7150,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A failure of the browser's messaging SDK shows its code",
-            "asserts": "the SDK fails with messaging/fid-registration-failed -> Notifications did not start and the reason line names the code; the server is never asked and nothing is stored",
+            "asserts": "the SDK fails with messaging/token-subscribe-failed -> Notifications did not start and the reason line names the code; the server is never asked and nothing is stored",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Finding 46 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/notify/push.spec.ts (the e2e build's stand-in of the SDK fails as asked by the address)."
@@ -7128,10 +7161,43 @@
             "area": "admin",
             "path": "bad",
             "title": "FCM's refusal of a registration is passed on with its code",
-            "asserts": "notify.registerDevice with a token FCM refuses -> apiError.notify.deviceInvalid with reason UNREGISTERED (FCM's code, else its status, else HTTP_<status>), logged with the code and never the token",
+            "asserts": "notify.registerDevice with a token FCM refuses -> apiError.notify.deviceInvalid with reason INVALID_ARGUMENT (FCM's code, else its status, else HTTP_<status>), logged with the code and never the token",
             "tier": "functions",
             "status": "exists",
             "notes": "Finding 46 of docs/research/manual-test-2026-10-25.md. Test: functions/test/notify/push.test.ts and functions/test/adapters/fcm.test.ts."
+        },
+        {
+            "id": "S-A47-HAPPY-TOKEN",
+            "behaviour": "A47",
+            "area": "admin",
+            "path": "happy",
+            "title": "A registration token is checked, stored with its kind and a test reaches it",
+            "asserts": "notify.registerDevice with an FCM registration token (kind token, the request's default) -> the dry run addresses message.token, the device is stored with kind token; notify.sendTest sends it as message.token",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 50 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §81d). Test: functions/test/notify/push.test.ts and functions/test/adapters/fcm.test.ts; the browser's side (getToken, kind token) in e2e/admin/specs/notify/push.spec.ts (S-A47-HAPPY)."
+        },
+        {
+            "id": "S-A47-HAPPY-DRY-RUN-UNREGISTERED",
+            "behaviour": "A47",
+            "area": "admin",
+            "path": "happy",
+            "title": "A registration whose dry run says UNREGISTERED is recorded and the first send decides",
+            "asserts": "FCM's dry run answers UNREGISTERED for a registration the browser just made -> the device is recorded, push is on, the warning names the kind and the code (never the token); a test FCM still refuses as unregistered forgets the device",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 50 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §81d). Test: functions/test/notify/push.test.ts."
+        },
+        {
+            "id": "S-A47-HAPPY-LEGACY-FID",
+            "behaviour": "A47",
+            "area": "admin",
+            "path": "happy",
+            "title": "A device recorded before finding 50 is still sent to as an installation id",
+            "asserts": "a device document without a kind -> sent as message.fid; a browser that registers an installation id (kind fid) is checked and stored as one",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 50 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §81d). Test: functions/test/notify/push.test.ts."
         },
         {
             "id": "S-A48-HAPPY",
@@ -8056,6 +8122,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Finding 43 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §67e). Test: e2e/admin/steps/install/update.spec.ts; state setup.pipeline-not-available in e2e/admin/specs/install/states.spec.ts. Since §67e (2026-11-01) the release's own bundle names the builder, so this row is a bundle without it (an older or a hand-made one)."
+        },
+        {
+            "id": "S-A56-HAPPY-JOBS-RATE-LIMITED",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "happy",
+            "title": "Cloud Run's request rate is waited out, then the pipeline is installed",
+            "asserts": "the jobs step meets Cloud Run's 429 rate limit -> the pipeline card says Google is busy with its change quota and when it tries again (the step waits 5, 10, 20, 40 s with jitter or Retry-After, at most 60 s each); the next try makes both jobs one after the other -> installed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 47 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §81a). Test: e2e/admin/steps/install/pipeline.spec.ts (state setup.pipeline-retrying); the step's own waits in scripts/site/test/install-run-jobs-refusals.test.ts."
+        },
+        {
+            "id": "S-A56-BAD-JOBS-QUOTA",
+            "behaviour": "A56",
+            "area": "admin",
+            "path": "bad",
+            "title": "A Cloud Run quota stops the pipeline with the quota named and the Quotas page linked",
+            "asserts": "Cloud Run refuses a job's creation for a quota (QuotaFailure) -> not tried again; the build stops at Create the pipeline's jobs, the card names the quota metric and limit, says a free-trial project has lower quotas (upgrade the account or ask Google for a higher quota), links the Quotas page of the project filtered to run.googleapis.com, shows the log with Google's reason (tokens redacted) and offers Try again for one input",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 47 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §81a). Test: e2e/admin/steps/install/pipeline.spec.ts (state setup.pipeline-quota); the step in scripts/site/test/install-run-jobs-refusals.test.ts."
         },
         {
             "id": "S-A57-HAPPY",

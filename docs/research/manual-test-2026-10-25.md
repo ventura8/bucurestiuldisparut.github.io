@@ -408,3 +408,82 @@ finding changed: `docs/LESSONS.md` 312–316 and `DECISIONS-for-review.md` §79.
   earlier worker, or forgotten by FCM) and FCM's refusal of a fresh one it was; that a key auto-created by Firebase
   restricts its APIs to a list that includes the Installations and FCM Registration APIs; that the default VAPID key is
   accepted with `register()` (M4-interfaces §10). The reason line now names the code that settles it.
+
+### The pipeline's jobs, the measurement reports and push again (2026-11-01, admin and server `1.0.0+2073d68`)
+
+After the Hosting redeploy and the server update of `1.0.0+2073d68`. The numbering continues the list above; what each
+finding changed: `docs/LESSONS.md` 319–322 and `DECISIONS-for-review.md` §81.
+
+- **47.** \[bug]\[setup d3] The in-app pipeline install (Cloud Build, account `hcm-installer@`) built and pushed the
+  pipeline's image, then stopped at step 3 "jobs": `run-jobs: GoogleCallError: POST
+  https://run.googleapis.com/v2/projects/bucurestiul-disparut/locations/us-central1/jobs: HTTP 429`. The line carried no
+  reason, so the cause is UNVERIFIED: a quota (the project is on the Google Cloud free trial) or a request rate. FIXED
+  (§81a): (a) every Google refusal a step prints carries Google's error essentials, `error.status`, `error.message` and
+  each `ErrorInfo` (reason and metadata such as `quota_metric`, `quota_limit`, `consumer`) and `QuotaFailure` violation,
+  redacted of bearer tokens, keys, URL queries (signed URLs) and e-mail addresses
+  (`scripts/site/src/install/steps/google-error.ts`, `step-io.ts`); (b) a 429 or `RESOURCE_EXHAUSTED` of the request rate
+  (`ErrorInfo` `RATE_LIMIT_EXCEEDED`, or no details) is tried again after 5, 10, 20 and 40 s, each with jitter (half to
+  one and a half times) or Google's `Retry-After` when longer, at most 60 s a wait and under four minutes in all, each
+  wait a `retry` line the pipeline's card shows as "Google is still preparing its change quota"; the jobs are made one
+  after the other; a quota (a `QuotaFailure`, or any other reason) is not tried again and the step ends with a line naming
+  it and a `quota` event (`run-jobs.ts`); (c) the pipeline's card turns that event into "Google Cloud refused a quota: {metric}
+  (limit {limit}). A free-trial project has lower quotas: upgrade the account, or ask Google for a higher quota." with **Open the Quotas page** (`gcp.quotas` of `links.json`: the project's Quotas page filtered to
+  the API), keeping Try again (S-A56-HAPPY-JOBS-RATE-LIMITED, S-A56-BAD-JOBS-QUOTA; tour `setup.pipeline-retrying`,
+  `setup.pipeline-quota`). (d) The jobs' sizes against Cloud Run's documented limits, read offline: 4 vCPU / 16 GiB and
+  8 vCPU / 32 GiB, the second at the per-instance maximum of a Cloud Run job (8 vCPU, 32 GiB), each within the memory a
+  CPU count allows; both definitions are valid. Creating or updating a job definition starts no instance, so it should use
+  no CPU or memory quota (those count running instances: an execution); what a create does count is the Run Admin API's
+  request rate per region (job writes per minute), which the step's two writes plus their operation polls (one GET every
+  5 s) would exceed only on a quota far below the default. So the live 429 was most likely the request rate (a free-trial
+  or new project's lower API limits) and is now waited out; if it was a quota, the next run names it. UNVERIFIED: which it
+  was, the names Cloud Run gives its quotas (the fake's `run.googleapis.com/cpu_allocation` and `CpuAllocPerProjectRegion`
+  are placeholders), and the Quotas page's `service` filter parameter (the weekly contract run probes the link).
+- **48.** \[bug]\[setup g] **Create the measurement reports** said "The service is unavailable right now. Try again." although
+  the request never reached Google: the user's network (a Pi-hole DNS blocklist) resolved `analyticsadmin.googleapis.com`
+  to `::`, the browser's CORS preflight failed and `fetch` threw (a network error, no HTTP answer), which the admin's
+  Google transport reported as Google's own 503. FIXED (§81b): a Google call of the admin's transport (every browser-side
+  Google API the admin calls: Cloud Build, Logging, Cloud Billing, Resource Manager, IAM, Service Usage, Firebase
+  Management, Cloud Functions, Run, Hosting, Analytics Admin) that fails without an answer, after its retries, says
+  "Request to {host} never left this browser: allow it in your blocker (Pi-hole, VPN) or change network."
+  (`adminShell.network.blocked`; the admin guides' table lists the blockers: an ad or tracker blocklist, a Pi-hole, a VPN,
+  a firewall), distinct from a server's 503,
+  which keeps "unavailable" (S-A22-BAD-REPORTS-BLOCKED-HOST, S-A22-HAPPY-REPORTS-UNBLOCKED). Live after the fix's cause was
+  found: once the user allowed `analyticsadmin.googleapis.com` in Pi-hole, the button found property 560685137 and
+  created 14 definitions (11 dimensions, 3 metrics), every request answered 200. The same cause explains the earlier
+  `events.mapbox.com` 503s in the console: Mapbox GL's telemetry endpoint is on the same kind of blocklist; harmless for
+  the viewer (the map draws without it). Not covered: the ownership check's own `fetch` (`auth/ownership.ts`), which
+  reads a network failure as "the server is down".
+- **49.** \[bug]\[setup] On step g, after a failed **Create the measurement reports** (the red "The service is unavailable
+  right now. Try again."), a later run that worked showed "Measurement reports: 14 created, 0 already there." with the old
+  red banner still on the card. FIXED (§81c): an in-app input starts a new attempt and clears its card's last failure
+  (`withCount` of `packages/admin/src/setup/state.ts`, which every Setup card's action counts before it acts), so a card
+  shows only the failure of its latest attempt, or none (S-A22-HAPPY-REPORTS-UNBLOCKED, S-A22-BAD-REPORTS-NEW-FAILURE-ONLY).
+  The other cards: every Setup card's action counts its input through the same `withCount` before it acts, so the fix
+  covers them all (billing, Provision, the Mapbox and USGS pastes, step g's stream switch, crash e-mails and Turn on the
+  API, the legacy import); a check that answers already cleared the failure, and the install cards (d, d3, i) clear their
+  own on each click and each look.
+- **50.** \[bug]\[notifications] Push still failed live after §79e (admin and server `1.0.0+2073d68`): "Why: Google's
+  messaging service refused this browser, also registered anew (fcm/UNREGISTERED)"; the console showed "push registration
+  refused by FCM", "push registration refused: registering this browser again", "push registration refused by FCM".
+  After the retry the IndexedDB store `firebase-messaging-fid-registration-store` was empty (0 records), while
+  `firebase-installations-store` and `firebase-messaging-store` held one each; the worker `/admin/firebase-messaging-sw.js`
+  was active with a push subscription and the permission granted. Whether a `POST` to `fcmregistrations.googleapis.com`
+  was made was not captured. So the server's dry run `messages:send {validate_only: true, message: {fid}}` answered
+  `UNREGISTERED` for an installation id the admin had just registered. Read offline (`@firebase/messaging` 0.13.3,
+  `firebase-admin` 14.5.0): `register()` posts the registration, writes its record in the FID store and deletes the
+  `getToken` record of the same app id in one transaction, so an empty FID store beside a token record means a later
+  `getToken`-path write or a record of another app id (the admin never calls `getToken`): UNVERIFIED which;
+  firebase-admin 14 sends a `FidMessage` as `message.fid` and marks `TokenMessage` deprecated, nothing marks FID targeting
+  as preview. FIXED (§81d): (a) a device records what it is, `kind: 'token' | 'fid'` (`PUSH_TARGET_KINDS`; the
+  request's default `token`; a device stored before has none and is read as an installation id), and every send and dry
+  run addresses `message.token` or `message.fid` as it says; (b) a dry run that answers `UNREGISTERED` (or 404) for the
+  registration the browser has just made no longer refuses it: the device is recorded with a warning (the kind and the
+  code, never the token) and the first real send decides, forgetting it if FCM still does not know it (S-A47-HAPPY-TOKEN,
+  S-A47-HAPPY-DRY-RUN-UNREGISTERED, S-A47-HAPPY-LEGACY-FID, S-A47-BAD-TOKEN-UNREGISTERED); a refusal of another kind
+  (`INVALID_ARGUMENT`) still says why, after one new registration (S-A47-HAPPY-RENEWED, S-A47-BAD-FCM-REFUSED-REASON).
+  (c) With the user's approval of 2026-11-01 the browser registers an FCM registration token: `getToken` with the admin's
+  worker (`kind: 'token'`, sent as `message.token`), and a registration FCM refuses is deleted (`deleteToken`, which also
+  drops the push subscription) before the browser registers once more; firebase 13 marks both deprecated, so
+  `eslint.config.js` allows these two in `packages/admin/src/firebase/messaging-sdk.ts` only. A browser whose device was
+  recorded as an installation id keeps it (sent as `message.fid`, forgotten at a send FCM refuses) until push is turned on
+  again from it. The next live try: **Notifications on this device**, then **Send a test**.

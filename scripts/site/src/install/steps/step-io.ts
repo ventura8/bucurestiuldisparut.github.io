@@ -10,6 +10,8 @@ import process from 'node:process';
 
 import { installLogLine, type InstallLogEvent } from '@hcm/shared';
 
+import { readRefusal, type GoogleRefusal } from './google-error.js';
+
 export interface CommandResult {
     readonly code: number;
     /** What the command printed (both streams, at most the last {@link MAX_OUTPUT} characters). */
@@ -24,6 +26,8 @@ export interface StepDeps {
     readonly token: () => Promise<string>;
     readonly readFile: (path: string) => string;
     readonly sleep: (ms: number) => Promise<void>;
+    /** A number in [0, 1): the jitter of a retry's wait. */
+    readonly random: () => number;
     /** Writes one line of the build log. */
     readonly log: (line: string) => void;
 }
@@ -85,13 +89,32 @@ export function nodeStepDeps(): StepDeps {
             new Promise((resolve) => {
                 setTimeout(resolve, ms);
             }),
+        random: Math.random,
         log: (line) => {
             process.stdout.write(`${line}\n`);
         },
     };
 }
 
-/** A Google REST call with the build's token: the JSON answer, or an error naming the call and its status. */
+/** A refused call's body as JSON, or undefined when it is none. */
+async function refusalBody(response: Response): Promise<unknown> {
+    try {
+        return JSON.parse(await response.text()) as unknown;
+    } catch {
+        return undefined;
+    }
+}
+
+/** Whole seconds of a `Retry-After` header, or 0. */
+function retryAfter(response: Response): number {
+    const value = response.headers.get('retry-after') ?? '';
+    return /^\d{1,5}$/.test(value) ? Number(value) : 0;
+}
+
+/**
+ * A Google REST call with the build's token: the JSON answer, or an error naming the call, its status and what Google's
+ * error body says (finding 47 of 2026-11-01).
+ */
 export async function googleJson(deps: Pick<StepDeps, 'fetch'>, token: string, url: string, init: RequestInit = {}): Promise<unknown> {
     const response = await deps.fetch(url, {
         ...init,
@@ -102,19 +125,33 @@ export async function googleJson(deps: Pick<StepDeps, 'fetch'>, token: string, u
         },
     });
     if (!response.ok) {
-        throw new GoogleCallError(init.method ?? 'GET', url, response.status);
+        const refusal = readRefusal(response.status, await refusalBody(response), new URL(url).host);
+        throw new GoogleCallError(init.method ?? 'GET', url, response.status, { ...refusal, retryAfterSeconds: retryAfter(response) });
     }
     const text = await response.text();
     return text === '' ? {} : (JSON.parse(text) as unknown);
 }
 
-/** A refused Google call: its method, address (no query: it never holds the token) and status. */
+/** What a refused call's body and headers said. */
+export interface CallRefusal extends GoogleRefusal {
+    /** `Retry-After` in seconds, or 0. */
+    readonly retryAfterSeconds: number;
+}
+
+/**
+ * A refused Google call: its method, address (no query: it never holds the token), status and, when Google said why,
+ * its redacted reason (`RESOURCE_EXHAUSTED: …; ErrorInfo RATE_LIMIT_EXCEEDED quota_metric=…`), which the build's log
+ * then shows.
+ */
 export class GoogleCallError extends Error {
     readonly status: number;
+    readonly refusal: CallRefusal;
 
-    constructor(method: string, url: string, status: number) {
-        super(`${method} ${new URL(url).origin}${new URL(url).pathname}: HTTP ${String(status)}`);
+    constructor(method: string, url: string, status: number, refusal: CallRefusal) {
+        const reason = refusal.summary === '' ? '' : ` ${refusal.summary}`;
+        super(`${method} ${new URL(url).origin}${new URL(url).pathname}: HTTP ${String(status)}${reason}`);
         this.name = 'GoogleCallError';
         this.status = status;
+        this.refusal = refusal;
     }
 }

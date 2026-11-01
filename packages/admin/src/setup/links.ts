@@ -21,12 +21,14 @@ export const SETUP_LINK_URLS = {
     'usgs.sceneMetadata': 'https://earthexplorer.usgs.gov/scene/metadata/full/{datasetId}/{entityId}/',
     // The crash reports page's detail (CR-M2c-15), not a Setup card's: `errorGroupUrl` of @hcm/ui/admin draws it.
     'gcp.errorGroup': 'https://console.cloud.google.com/errors/detail/{groupId}?project={projectId}',
+    // The install cards' quota line (finding 47 of 2026-11-01): `quotasUrl` of @hcm/ui/admin draws it.
+    'gcp.quotas': 'https://console.cloud.google.com/iam-admin/quotas?project={projectId}&service={service}',
 } as const;
 
 export type SetupLinkId = keyof typeof SETUP_LINK_URLS;
 
 /** The links a Setup card lists (the error group's page is the crash reports page's own, CR-M2c-15). */
-export type SetupCardLinkId = Exclude<SetupLinkId, 'gcp.errorGroup'>;
+export type SetupCardLinkId = Exclude<SetupLinkId, 'gcp.errorGroup' | 'gcp.quotas'>;
 
 export interface SetupLinkView {
     readonly id: SetupCardLinkId;

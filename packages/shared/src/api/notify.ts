@@ -7,6 +7,7 @@
 import { z } from 'zod';
 
 import { LOCALES } from '../i18n/index.js';
+import { PUSH_TARGET_KINDS } from '../schemas/notifications.js';
 import { PUSH_DEVICE_ID_PATTERN } from '../schemas/paths.js';
 
 const deviceIdSchema = z.string().regex(PUSH_DEVICE_ID_PATTERN);
@@ -18,6 +19,8 @@ export const notifyRegisterDeviceRequestSchema = z.strictObject({
         .min(20)
         .max(4096)
         .regex(/^[A-Za-z0-9_:.-]+$/),
+    /** What the token is (finding 50 of 2026-11-01): an FCM registration token unless the browser says otherwise. */
+    kind: z.enum(PUSH_TARGET_KINDS).default('token'),
     lang: z.enum(LOCALES),
 });
 export const notifyRegisterDeviceResponseSchema = z.strictObject({ deviceId: deviceIdSchema });

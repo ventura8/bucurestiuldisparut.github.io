@@ -275,8 +275,9 @@ class Transport implements GoogleTransport {
         try {
             response = await this.#options.fetch(urlOf(call), requestInit(call, token));
         } catch {
-            // The original error may hold the URL; it is dropped on purpose.
-            throw new GoogleApiError(call.operation, unavailableFailure(call.role));
+            // No answer at all (finding 48): the request never left the browser, so the message names its host. The original
+            // error may hold the URL; it is dropped on purpose.
+            throw new GoogleApiError(call.operation, { ...unavailableFailure(call.role), host: new URL(call.url).host });
         }
         const body = await readBody(response);
         if (!response.ok) {

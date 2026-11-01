@@ -66,6 +66,7 @@ function fakes(
             sleeps.push(ms);
             return Promise.resolve();
         },
+        random: () => 0.5,
         log: (line) => {
             lines.push(line);
         },
@@ -360,6 +361,7 @@ describe('the steps by name and their real world', () => {
             await expect(real.sleep(1)).resolves.toBeUndefined();
             expect(real.readFile('package.json')).toContain('historic-city-map');
             expect(real.run).toBe(runCommand);
+            expect(real.random()).toBeLessThan(1);
         } finally {
             metadata.mockRestore();
             write.mockRestore();

@@ -6,18 +6,21 @@ import type { ServiceFake } from './service.js';
 /**
  * Firebase Cloud Messaging HTTP v1 (`docs/research/M4-interfaces.md` §5.4, §8), which only the server calls (the
  * fan-out's pushes, `notify.registerDevice`'s dry run, `notify.sendTest`): `messages:send` accepts a message whose
- * target is a well-formed installation id (`fid`, what the admin page registers; the shared schemas call it the
- * device's token) and records it (a `validate_only` dry run is answered and not recorded); one in `unregistered`
- * answers 404 `UNREGISTERED`, as FCM does for a browser that unsubscribed; a message without a well-formed `fid` (a
- * legacy `token` target included) answers 400 `INVALID_ARGUMENT`. The scenario `fcm.tokensGone` marks every token seen so far unregistered;
- * `fcm.everyTokenGone` answers `UNREGISTERED` for every token from then on, new ones included (finding 46 of 2026-11-01: a
- * browser whose registration FCM refuses also when it registers again);
+ * target is a well-formed registration token (`token`) or installation id (`fid`; finding 50 of 2026-11-01: the device's
+ * kind says which) and records it with its kind (a `validate_only` dry run is answered and not recorded); one in
+ * `unregistered` answers 404 `UNREGISTERED`, as FCM does for a browser that unsubscribed; one in `invalid`, or a message
+ * without a well-formed target, answers 400 `INVALID_ARGUMENT`. The scenario `fcm.tokensGone` marks every token seen so far
+ * unregistered; `fcm.everyTokenGone` answers `UNREGISTERED` for every token from then on, new ones included (finding 46 of
+ * 2026-11-01); `fcm.tokensInvalid` and `fcm.everyTokenInvalid` do the same with `INVALID_ARGUMENT` (a registration the
+ * server refuses, since it records one whose dry run says `UNREGISTERED`: finding 50);
  * `fail('fcm', 'unavailable' | 'rateLimited' | 'forbidden' | 'apiDisabled')` answers Google's error envelopes.
  * No browser ever reaches it (the e2e firewall refuses `fcm.googleapis.com` from a page).
  */
 
 export interface PushedMessage {
     readonly token: string;
+    /** The message's target field: `token` or `fid` (finding 50). */
+    readonly kind: 'token' | 'fid';
     /** `webpush.notification` as sent: the title, the text and the tag. */
     readonly notification: Readonly<Record<string, unknown>>;
     /** `webpush.fcm_options.link`: the admin page the notification opens. */
@@ -32,10 +35,13 @@ export interface FcmState {
     readonly seen: Set<string>;
     /** Every token is unregistered, new ones included (`fcm.everyTokenGone`). */
     everyTokenGone: boolean;
+    /** Tokens FCM refuses as invalid (`fcm.tokensInvalid`), or every one (`fcm.everyTokenInvalid`). */
+    readonly invalid: Set<string>;
+    everyTokenInvalid: boolean;
 }
 
 export function defaultFcmState(): FcmState {
-    return { messages: [], unregistered: new Set(), seen: new Set(), everyTokenGone: false };
+    return { messages: [], unregistered: new Set(), seen: new Set(), everyTokenGone: false, invalid: new Set(), everyTokenInvalid: false };
 }
 
 const API: GoogleApi = {
@@ -51,10 +57,24 @@ function record(value: unknown): Readonly<Record<string, unknown>> {
     return typeof value === 'object' && value !== null ? (value as Readonly<Record<string, unknown>>) : {};
 }
 
-function pushedOf(message: Readonly<Record<string, unknown>>, token: string): PushedMessage {
+/** The message's target: its `token`, else its `fid` (finding 50), with the field it came from. */
+function targetOf(message: Readonly<Record<string, unknown>>): { readonly token: string; readonly kind: PushedMessage['kind'] } {
+    const token = message['token'];
+    if (typeof token === 'string') {
+        return { token, kind: 'token' };
+    }
+    return { token: typeof message['fid'] === 'string' ? message['fid'] : '', kind: 'fid' };
+}
+
+function pushedOf(message: Readonly<Record<string, unknown>>): PushedMessage {
     const webpush = record(message['webpush']);
     const link = record(webpush['fcm_options'])['link'];
-    return { token, notification: record(webpush['notification']), link: typeof link === 'string' ? link : null };
+    return { ...targetOf(message), notification: record(webpush['notification']), link: typeof link === 'string' ? link : null };
+}
+
+/** FCM refuses the token as no registration at all: malformed, or made invalid by a scenario. */
+function invalid(state: FcmState, token: string): boolean {
+    return !TOKEN.test(token) || state.everyTokenInvalid || state.invalid.has(token);
 }
 
 /** FCM no longer knows the token: it was unregistered, or every token is (`fcm.everyTokenGone`). */
@@ -73,16 +93,16 @@ export function createFcmFake(state: FcmState): ServiceFake {
                 authenticated(API, (request) => {
                     const body = requestObject(request);
                     const message = record(body['message']);
-                    const token = typeof message['fid'] === 'string' ? message['fid'] : '';
+                    const { token } = targetOf(message);
                     state.seen.add(token);
-                    if (!TOKEN.test(token)) {
+                    if (invalid(state, token)) {
                         return fixtureResponse('fcm/send.invalid-token');
                     }
                     if (gone(state, token)) {
                         return fixtureResponse('fcm/send.unregistered');
                     }
                     if (body['validate_only'] !== true) {
-                        state.messages.push(pushedOf(message, token));
+                        state.messages.push(pushedOf(message));
                     }
                     return fixtureResponse('fcm/send.ok');
                 }),
@@ -95,6 +115,12 @@ export function createFcmFake(state: FcmState): ServiceFake {
             },
             everyTokenGone: () => {
                 state.everyTokenGone = true;
+            },
+            tokensInvalid: () => {
+                state.seen.forEach((token) => state.invalid.add(token));
+            },
+            everyTokenInvalid: () => {
+                state.everyTokenInvalid = true;
             },
         },
         snapshot: () => ({ messages: state.messages, unregistered: [...state.unregistered].sort((a, b) => a.localeCompare(b)) }),

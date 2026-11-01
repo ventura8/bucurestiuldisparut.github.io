@@ -5286,3 +5286,85 @@ Verify: `PIPELINE_STAGE=static`, `tests` and `build`, and the touched Playwright
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`, and the touched Playwright specs in the quality image
 (`e2e/admin/steps/analytics.spec.ts`, `e2e/admin/steps/status.spec.ts`, `e2e/admin/specs/assists/drafts.spec.ts`,
 `e2e/admin/steps/install/update.spec.ts`, `e2e/admin/specs/install/states.spec.ts`, `e2e/admin/specs/journey.spec.ts`).
+
+## 81. The live test of 2026-11-01, the pipeline's jobs, the measurement reports and push: Google's reason in the build's log, a blocked request named, a failure that goes with its attempt, push devices that say what they are (2026-11-01) — 81a–81c APPLIED (findings 47–49 of `docs/research/manual-test-2026-10-25.md`: product, test and documentation changes; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged); 81d APPLIED (finding 50; its lint exception is the user's approval of 2026-11-01, in chat: one file-scoped `no-deprecated` allowance for `getToken` and `deleteToken`); 81e APPLIED (the admin's total budget kept without raising it: the production build drops the emulators' connectors)
+
+- **81a APPLIED: the pipeline's `jobs` step prints Google's reason, waits out a request rate and names a quota (finding
+  47).** `googleJson` of the install steps reads a refusal's body: `error.status`, `error.message`, each `ErrorInfo`
+  (`reason`, every metadata entry) and `QuotaFailure` violation (`subject`, `quotaMetric`, `quotaId`, `quotaValue`,
+  `description`), one line of at most 900 characters, redacted with `redactText` of `@hcm/shared` plus any bearer header
+  (`scripts/site/src/install/steps/google-error.ts`); `GoogleCallError` carries it with `Retry-After`. A 429 or
+  `RESOURCE_EXHAUSTED` with no `QuotaFailure` and an `ErrorInfo` reason of `RATE_LIMIT_EXCEEDED` (or none) is a request
+  rate: every Google call of `run-jobs` is tried again up to four times, after 5·2^(n−1) s times a jitter in [0.5, 1.5)
+  (`StepDeps.random`) or `Retry-After` when longer, each at most 60 s (under four minutes in all), each wait printed with a
+  `retry` event (reason `quota`, which the card already words as "its change quota"); the jobs are made one after the
+  other. Anything else of that kind is a quota: not tried again; the step prints "Google Cloud refused <job> for the quota
+  <metric> (limit <limit>) of <service>. A free-trial project has lower quotas: …" and a new `HCM_INSTALL` event
+  `{"event":"quota","service","metric","limit"}` (`installLogEventSchema`). The admin reads a working pipeline build's log
+  too (its retries; the site's prints none) and keeps a stopped build's last `quota` event as the view's `quota`; the
+  pipeline's card shows it with **Open the Quotas page**, `https://console.cloud.google.com/iam-admin/quotas?project=<p>&service=<api>`
+  (`gcp.quotas` in `links.json`, its copy `quotasUrl` in `@hcm/ui/admin`; the project is the build's console page's),
+  and Try again. The fake Cloud Run makes and replaces jobs (`jobs.create`, `jobs.patch`) with the scenarios
+  `jobsRateLimited` (the next two writes answer `google/error.rate-limited`), `jobsQuotaExceeded` (every write answers the
+  new fixture `cloud-run/jobs.create.quota-exceeded`) and `jobsWritable`; the fake Cloud Build plays `retriesAtJobs` and
+  `failsAtJobsQuota` for the pipeline. Rows S-A56-HAPPY-JOBS-RATE-LIMITED, S-A56-BAD-JOBS-QUOTA; tour states
+  `setup.pipeline-retrying`, `setup.pipeline-quota`; lesson 319. The jobs' sizes, reviewed: 4 vCPU / 16 GiB and 8 vCPU /
+  32 GiB, the second at a Cloud Run job's per-instance maximum; unchanged. UNVERIFIED: whether the live 429 was the rate
+  or a quota (the next run prints it), Cloud Run's quota names, and the Quotas page's `service` filter (the weekly contract
+  run probes `gcp.quotas`).
+- **81b APPLIED: a request that never left the browser names its host (finding 48).** The admin's Google transport keeps
+  the host of a call whose `fetch` threw (no HTTP answer: a DNS blocklist, a VPN or firewall, a failed CORS preflight, an
+  offline browser) in the failure (`GoogleFailure.host`, still kind `unavailable`, so it is retried as before), and
+  `failureMessage` and Setup's `googleFailure` (`setup/messages.ts`) say `adminShell.network.blocked` with `{host}` ("Request to {host} never left this browser: allow it in your blocker (Pi-hole, VPN) or change network."; one line of the catalogue, so the guides' table names the other blockers) instead of `apiError.unavailable`; a server's 5xx keeps
+  "unavailable". An admin-shell key, not an `apiError.*` code: the API catalogue mirrors the server's codes and this one
+  never comes from a server. Every browser-side Google call goes through that transport. Rows
+  S-A22-BAD-REPORTS-BLOCKED-HOST, S-A22-HAPPY-REPORTS-UNBLOCKED; lesson 320. Not changed: `auth/ownership.ts`'s own
+  `fetch` (a network failure there still reads "the server is down").
+- **81c APPLIED: a card's failure goes with its attempt (finding 49).** `withCount(state, step, 'inputs')` clears the
+  step's `error`: every Setup action counts its input before it acts, so a new attempt starts clean and shows only its own
+  failure; a consent count keeps it (the consent is part of the same attempt). Rows S-A22-HAPPY-REPORTS-UNBLOCKED,
+  S-A22-BAD-REPORTS-NEW-FAILURE-ONLY; lesson 321.
+- **81d PARTLY APPLIED: push devices say what they are, and a fresh registration's `UNREGISTERED` dry run no longer
+  refuses it (finding 50).** `PUSH_TARGET_KINDS = ['token', 'fid']`; `notify.registerDevice` takes `kind` (default
+  `token`) and stores it on the device; a device without one (every device stored before) is an installation id; the FCM
+  adapter addresses `message.token` or `message.fid` as the kind says, in sends and dry runs (`PushTarget` of the
+  `PushSender` port). A dry run answering `UNREGISTERED`, `NOT_FOUND` or HTTP 404 is recorded with the warning "push
+  device recorded although FCM refused its dry run" (uid, kind, code; never the token); the first real send forgets a
+  device FCM still does not know, as before; `INVALID_ARGUMENT` and the rest still refuse with FCM's code. The browser's
+  registrar says its kind (`PushRegistrar.kind`, `fid` today). The fake FCM reads `message.token` or `message.fid`, records
+  the kind, and gains `tokensInvalid` and `everyTokenInvalid` (the e2e renewal and refusal rows now use them). Rows
+  S-A47-HAPPY-TOKEN, S-A47-HAPPY-DRY-RUN-UNREGISTERED, S-A47-HAPPY-LEGACY-FID (new), S-A47-BAD-TOKEN-UNREGISTERED,
+  S-A47-HAPPY-RENEWED, S-A47-BAD-FCM-REFUSED-REASON, S-A47-BAD-FCM-REASON-NAMED (updated); lesson 322.
+  **The browser's FCM registration token (APPLIED 2026-11-01, the user's approval in chat).** `getToken(messaging,
+  {serviceWorkerRegistration})` and `deleteToken` are `@deprecated` in firebase 13 (`@firebase/messaging` 0.13.3) and
+  `@typescript-eslint/no-deprecated` (strictTypeChecked) refuses them; with no inline suppression, `eslint.config.js` has
+  one file-scoped override for `packages/admin/src/firebase/messaging-sdk.ts`:
+  `'@typescript-eslint/no-deprecated': ['error', { allow: [{ from: 'package', package: '@firebase/messaging', name: ['getToken', 'deleteToken'] }] }]`
+  (the package the declarations resolve from: with `firebase` the two are still reported); every other deprecated API stays
+  an error, there and everywhere. `messaging-sdk.ts` exports `getMessaging`, `getToken`, `deleteToken` (no more `register`,
+  `onRegistered`); the registrar's `token()` is `getToken` with the admin's worker, `kind: 'token'`; `reset` deletes the
+  token this page registered (`deleteToken`: FCM's registration and the push subscription; a refusal ignored); the
+  admin's own clearing of the FID record (§79e's module) is removed, since `getToken`'s record keeps the subscription it
+  was made for and makes a new token when it changed; `push/no-installation-id` is gone, `messaging/token-update-failed` joins the registration
+  family. The e2e stand-in hands out its fixed tokens as `token`. A browser whose stored device is an installation id keeps
+  it (sent as `message.fid`) until push is turned on again from it, or a send FCM refuses forgets it. Rows S-A47-HAPPY
+  (the device's kind and `message.token`), S-A47-BAD-SDK-CODE (`messaging/token-subscribe-failed`). The registration's
+  dry run keeps the tolerance above. UNVERIFIED until the next live try: that FCM delivers to the token (**Send a test**).- **81e APPLIED: room in the admin's total budget without raising it.** §81a–§81d cost the admin about 0.8 KB gzip (the
+  messages in both languages, the quota line, the device's kind, and `getToken` with `deleteToken`, which pull more of the
+  messaging SDK than `register` did), past the 620 KB total (620.6 KB in the build stage, every chunk and the push worker
+  counted). Measured first: the production build carried the Firebase SDKs' emulator connectors and the Auth emulator's
+  banner although it never connects to an emulator, because `firebaseSdk` (`packages/admin/src/firebase/sdk.ts`) listed
+  them. The table now spreads `EMULATORS`: the real connectors unless `import.meta.env.MODE === 'production'`, where each
+  is a function that throws ("the production build connects to no emulator"); the bundler folds the constant and drops
+  the connectors (0.85 KB gzip). The `e2e` build and the tests keep them (a test re-imports the module with
+  `MODE=production`). §79e's module that cleared the FID record went with `register` (§81d; 0.1 KB). Also measured and
+  not done: stripping the bundler's `@__PURE__` annotations from the output (`output.comments.annotation: false` turns
+  off the minifier's use of them too: +10 KB), a stand-in for zod's JSON Schema modules (4 KB, but `aggregateChecks`
+  backs the string schemas' `minLength`/`maxLength`), `sourcemap: 'hidden'` (about 1 KB, but the deployed maps would no
+  longer load in DevTools). The admin in all (gzip, the budget's 1000-byte KB, the build stage's figure): 619.9 KB at
+  `2073d68`, 620.6 KB with §81a–§81d, 619.8 KB with this change (the `build` stage), within 620.
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build`; the step tests (`scripts/site/test/install-steps.test.ts`,
+`install-run-jobs-refusals.test.ts`); the touched Playwright specs in the quality image (`e2e/admin/steps/install/pipeline.spec.ts`,
+`e2e/admin/steps/analytics.spec.ts`, `e2e/admin/specs/notify/push.spec.ts`). The admin in all (gzip, the budget's 1000-byte
+KB): see §81e.

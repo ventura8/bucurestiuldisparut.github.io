@@ -3,8 +3,8 @@
  * `docs/research/manual-test-2026-10-25.md`: live, "Notifications did not start: This browser could not be registered
  * for notifications" said nothing of which step failed). A failure has a short code: the Firebase SDK's own
  * (`FirebaseError.code`, `messaging/fid-registration-failed`, `messaging/permission-blocked`, `installations/request-failed`
- * …), the registrar's own (`push/worker-registration-failed`, `push/no-installation-id`), or FCM's answer to the server's
- * dry run (`fcm/UNREGISTERED`, from `apiError.notify.deviceInvalid`'s `reason`). The page shows the code with one line in
+ * `messaging/token-subscribe-failed` …), the registrar's own (`push/worker-registration-failed`), or FCM's answer to the
+ * server's dry run (`fcm/INVALID_ARGUMENT`, from `apiError.notify.deviceInvalid`'s `reason`). The page shows the code with one line in
  * the admin's language for the known families; the log gets the code and the SDK's own text with every id, token or key
  * replaced. Never the token, the installation id or the API key.
  */
@@ -84,7 +84,7 @@ const FAMILIES: Readonly<Record<string, ReasonFamily>> = {
     'messaging/fid-registration-failed': 'registration',
     'messaging/token-subscribe-failed': 'registration',
     'messaging/token-subscribe-no-token': 'registration',
-    'push/no-installation-id': 'registration',
+    'messaging/token-update-failed': 'registration',
     'messaging/failed-service-worker-registration': 'worker',
     'messaging/invalid-sw-registration': 'worker',
     'push/worker-registration-failed': 'worker',

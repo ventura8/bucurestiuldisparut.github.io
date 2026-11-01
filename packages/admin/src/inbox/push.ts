@@ -13,7 +13,7 @@
  * registration this browser handed out (`apiError.notify.deviceInvalid`, whatever the server's release), the registrar
  * forgets the SDK's record of it and the browser registers once more, with a new registration, before the page says so.
  */
-import { pluralOf, type Locale, type Logger } from '@hcm/shared';
+import { pluralOf, type Locale, type Logger, type PushTargetKind } from '@hcm/shared';
 
 import { outcomeOf } from '../app/services.js';
 import type { KeyValueStore } from '../app/ports.js';
@@ -31,6 +31,8 @@ export interface PushRegistrar {
     permission(): PushPermission;
     /** The browser's own prompt: called only from the admin's click. */
     requestPermission(): Promise<PushPermission>;
+    /** What `token` hands out (finding 50 of 2026-11-01): an FCM registration token or an installation id. */
+    readonly kind: PushTargetKind;
     /** This browser's FCM registration token (its service worker registered first); a failure is a `PushFailure`. */
     token(): Promise<string>;
     /** Forgets this browser's registration, so the next `token` makes a new one (FCM refused the last). Never throws. */
@@ -164,7 +166,9 @@ export class PushSession {
         } catch (error) {
             return this.#registrarFailed(error);
         }
-        const outcome = await outcomeOf(() => this.#deps.callables.call('notify.registerDevice', { token, lang: this.#deps.locale() }));
+        const outcome = await outcomeOf(() =>
+            this.#deps.callables.call('notify.registerDevice', { token, kind: registrar.kind, lang: this.#deps.locale() }),
+        );
         if (outcome.ok) {
             return { ok: true, deviceId: outcome.value.deviceId };
         }

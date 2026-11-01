@@ -36,6 +36,27 @@ import {
 import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions';
 import { connectStorageEmulator, getStorage, ref, uploadBytes } from 'firebase/storage';
 
+/**
+ * The emulators' connectors, for the `e2e` build and the tests. The production build never connects to an emulator, so it
+ * carries none: `import.meta.env.MODE` is a constant there, and the bundler drops the SDKs' connectors and their emulator
+ * banners (about 0.85 KB gzip of the admin's total, DECISIONS-for-review.md §81e).
+ */
+const EMULATOR_CONNECTORS = { connectAuthEmulator, connectFunctionsEmulator, connectFirestoreEmulator, connectStorageEmulator };
+
+function noEmulator(): never {
+    throw new Error('the production build connects to no emulator');
+}
+
+const EMULATORS: typeof EMULATOR_CONNECTORS =
+    import.meta.env.MODE === 'production'
+        ? {
+              connectAuthEmulator: noEmulator,
+              connectFunctionsEmulator: noEmulator,
+              connectFirestoreEmulator: noEmulator,
+              connectStorageEmulator: noEmulator,
+          }
+        : EMULATOR_CONNECTORS;
+
 export const firebaseSdk = {
     initializeApp,
     initializeAppCheck,
@@ -43,7 +64,6 @@ export const firebaseSdk = {
     initializeAuth,
     browserSessionPersistence,
     browserPopupRedirectResolver,
-    connectAuthEmulator,
     onAuthStateChanged,
     signOut,
     signInWithPopup,
@@ -52,10 +72,8 @@ export const firebaseSdk = {
     reauthenticateWithCredential,
     GoogleAuthProvider,
     getFunctions,
-    connectFunctionsEmulator,
     httpsCallable,
     getFirestore,
-    connectFirestoreEmulator,
     doc,
     getDoc,
     setDoc,
@@ -67,9 +85,9 @@ export const firebaseSdk = {
     getDocs,
     serverTimestamp,
     getStorage,
-    connectStorageEmulator,
     ref,
     uploadBytes,
+    ...EMULATORS,
 };
 
 export type FirebaseSdk = typeof firebaseSdk;

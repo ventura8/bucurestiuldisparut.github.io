@@ -343,6 +343,13 @@ export const installLogEventSchema = z.discriminatedUnion('event', [
     z.strictObject({ event: z.literal('failed'), name: z.string().regex(FUNCTION_NAME_PATTERN) }),
     /** `push`: the pipeline image's digest. */
     z.strictObject({ event: z.literal('image'), digest: z.string().regex(/^sha256:[0-9a-f]{64}$/) }),
+    /** `jobs` (finding 47 of 2026-11-01): Google refused for a quota, which waiting does not lift; the card names it. */
+    z.strictObject({
+        event: z.literal('quota'),
+        service: z.string().regex(/^[a-z][a-z0-9.-]{0,99}$/),
+        metric: z.string().max(200),
+        limit: z.string().max(200),
+    }),
 ]);
 
 export type InstallLogEvent = z.infer<typeof installLogEventSchema>;

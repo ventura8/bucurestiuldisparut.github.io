@@ -47,6 +47,15 @@ export const INSTALL_STATES = {
         title: "Setup, the imagery pipeline this admin's bundle cannot install: Not available yet, and no button",
         visit: VISIT,
     },
+    // Finding 47 of 2026-11-01, reached by the functional spec of the pipeline (S-A56-HAPPY-JOBS-RATE-LIMITED, S-A56-BAD-JOBS-QUOTA).
+    'setup.pipeline-retrying': {
+        title: "Setup, the imagery pipeline waiting out Cloud Run's request rate: what it waits for and when it tries again",
+        visit: 'steps/install/pipeline.spec.ts',
+    },
+    'setup.pipeline-quota': {
+        title: 'Setup, the imagery pipeline stopped at a quota: the quota named, the Quotas page linked, the log and Try again',
+        visit: 'steps/install/pipeline.spec.ts',
+    },
     'setup.site-blocked': { title: 'Setup, Publish the map off: nothing published to show yet, and why', visit: VISIT },
     'setup.site-ready': { title: 'Setup, Publish the map: the address, what visitors see, the cost and the button', visit: VISIT },
     'setup.site-published': { title: 'Setup, the map published: the public address as a link and the release', visit: VISIT },

@@ -122,6 +122,14 @@ export const notifySettingsDocSchema = z.strictObject({
     ...stamp,
 });
 
+/**
+ * How FCM addresses a browser (finding 50 of 2026-11-01): an FCM registration `token` (what `getToken` gives; FCM HTTP v1's
+ * `message.token`), or a Firebase installation id (`fid`: what `register` gives; `message.fid`).
+ */
+export const PUSH_TARGET_KINDS = ['token', 'fid'] as const;
+
+export type PushTargetKind = (typeof PUSH_TARGET_KINDS)[number];
+
 /** `admins/{uid}/pushDevices/{deviceId}`: written by `notify.registerDevice` only (the token is checked with FCM first). */
 export const pushDeviceDocSchema = z.strictObject({
     /** The FCM registration token of one browser (not a secret, but only the admin and the server read it). */
@@ -130,6 +138,8 @@ export const pushDeviceDocSchema = z.strictObject({
         .min(20)
         .max(4096)
         .regex(/^[A-Za-z0-9_:.-]+$/),
+    /** What `token` is (finding 50); a device without one was registered before and is an installation id. */
+    kind: z.enum(PUSH_TARGET_KINDS).optional(),
     /** The language its notifications are written in. */
     lang: z.enum(LOCALES),
     createdAt: timestampSchema,

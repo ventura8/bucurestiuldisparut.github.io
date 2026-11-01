@@ -17,6 +17,7 @@ function installTargetView(target: InstallTarget, changes: Partial<InstallTarget
         failedStep: null,
         log: [],
         fixInProvision: false,
+        quota: null,
         missing: [],
         retryReason: null,
         retryAt: null,

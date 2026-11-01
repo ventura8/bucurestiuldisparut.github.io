@@ -18,17 +18,28 @@ const MESSAGE = {
 };
 const SEND = `https://fcm.googleapis.com/v1/projects/${PROJECT_ID}/messages:send`;
 
+/** A browser's registration token as FCM addresses it (finding 50 of 2026-11-01), or its installation id. */
+function target(value: string, kind: 'token' | 'fid' = 'token') {
+    return { kind, value };
+}
+
 describe('send', () => {
     it('happyPath_eachTokenGetsTheWebPushMessage', async () => {
         const { fakes, push } = m4Upstreams();
         const [laptop, phone] = [fcmToken('laptop'), fcmToken('phone')];
 
-        await expect(push.send([laptop, phone], MESSAGE)).resolves.toEqual({ sent: 2, unregistered: [] });
+        await expect(push.send([target(laptop), target(phone, 'fid')], MESSAGE)).resolves.toEqual({ sent: 2, unregistered: [] });
         expect(fakes.state.fcm.messages).toEqual([
-            { token: laptop, notification: { title: MESSAGE.title, body: MESSAGE.body, tag: MESSAGE.tag }, link: MESSAGE.link },
-            { token: phone, notification: { title: MESSAGE.title, body: MESSAGE.body, tag: MESSAGE.tag }, link: MESSAGE.link },
+            {
+                token: laptop,
+                kind: 'token',
+                notification: { title: MESSAGE.title, body: MESSAGE.body, tag: MESSAGE.tag },
+                link: MESSAGE.link,
+            },
+            { token: phone, kind: 'fid', notification: { title: MESSAGE.title, body: MESSAGE.body, tag: MESSAGE.tag }, link: MESSAGE.link },
         ]);
-        expect(webPushMessage(laptop, MESSAGE).webpush.fcm_options).toEqual({ link: MESSAGE.link });
+        expect(webPushMessage(target(laptop), MESSAGE).webpush.fcm_options).toEqual({ link: MESSAGE.link });
+        expect(webPushMessage(target(phone, 'fid'), MESSAGE)).toMatchObject({ fid: phone });
     });
 
     it('badPath_aTokenFcmNoLongerKnowsIsReportedAndTheOthersStillGo @S-A47-BAD-TOKEN-UNREGISTERED', async () => {
@@ -36,7 +47,7 @@ describe('send', () => {
         const [gone, kept] = [fcmToken('gone'), fcmToken('kept')];
         fakes.state.fcm.unregistered.add(gone);
 
-        await expect(push.send([gone, kept], MESSAGE)).resolves.toEqual({ sent: 1, unregistered: [gone] });
+        await expect(push.send([target(gone), target(kept)], MESSAGE)).resolves.toEqual({ sent: 1, unregistered: [gone] });
     });
 
     it('badPath_aTransientFailureSkipsItsTokenOnly', async () => {
@@ -44,7 +55,7 @@ describe('send', () => {
         const upstream = createFakeFetch(routeTable([route('POST', SEND, 'fcm.send', () => answers.shift() ?? jsonResponse({}, 500))]));
         const push = createFcm({ projectId: PROJECT_ID, tokens: SERVICE_TOKENS, fetch: upstream.fetch });
 
-        await expect(push.send([fcmToken('a'), fcmToken('b')], MESSAGE)).resolves.toEqual({ sent: 1, unregistered: [] });
+        await expect(push.send([target(fcmToken('a')), target(fcmToken('b'))], MESSAGE)).resolves.toEqual({ sent: 1, unregistered: [] });
     });
 
     it.each([
@@ -55,7 +66,7 @@ describe('send', () => {
         const { fakes, push } = m4Upstreams();
         fakes.fail('fcm', mode);
 
-        await expect(push.send([fcmToken('a')], MESSAGE)).rejects.toMatchObject({ service: 'fcm', ...expected });
+        await expect(push.send([target(fcmToken('a'))], MESSAGE)).rejects.toMatchObject({ service: 'fcm', ...expected });
     });
 
     it('happyPath_noTokensSendNothing', async () => {
@@ -70,9 +81,12 @@ describe('validate', () => {
     it('happyPath_aBrowsersTokenPassesTheDryRunAndNothingIsShown', async () => {
         const { fakes, push } = m4Upstreams();
 
-        await expect(push.validate(fcmToken('laptop'))).resolves.toEqual({ ok: true });
+        await expect(push.validate(target(fcmToken('laptop')))).resolves.toEqual({ ok: true });
         expect(fakes.state.fcm.messages).toEqual([]);
-        expect(JSON.parse(String(fakes.callsTo('fcm.send')[0]?.body))).toMatchObject({ validate_only: true });
+        expect(JSON.parse(String(fakes.callsTo('fcm.send')[0]?.body))).toEqual({
+            validate_only: true,
+            message: { token: fcmToken('laptop') },
+        });
     });
 
     it.each([
@@ -87,22 +101,22 @@ describe('validate', () => {
         const token = name === 'a token that is no registration token' ? 'short' : fcmToken('old');
         prepare(fakes, token);
 
-        await expect(push.validate(token)).resolves.toEqual({ ok: false, reason });
+        await expect(push.validate(target(token))).resolves.toEqual({ ok: false, reason });
     });
 
     it('badPath_anOutageIsAFailureNotARefusal', async () => {
         const { fakes, push } = m4Upstreams();
         fakes.fail('fcm', 'unavailable');
 
-        await expect(push.validate(fcmToken('laptop'))).rejects.toMatchObject({ service: 'fcm', failure: 'unavailable' });
+        await expect(push.validate(target(fcmToken('laptop')))).rejects.toMatchObject({ service: 'fcm', failure: 'unavailable' });
     });
 
     it('badPath_aNotFoundWithoutAnFcmCodeIsStillGone', async () => {
         const upstream = createFakeFetch(routeTable([route('POST', SEND, 'fcm.send', () => jsonResponse({ error: { code: 404 } }, 404))]));
         const push = createFcm({ projectId: PROJECT_ID, tokens: SERVICE_TOKENS, fetch: upstream.fetch });
 
-        await expect(push.validate(fcmToken('old'))).resolves.toEqual({ ok: false, reason: 'HTTP_404' });
-        await expect(push.send([fcmToken('old')], MESSAGE)).resolves.toEqual({ sent: 0, unregistered: [fcmToken('old')] });
+        await expect(push.validate(target(fcmToken('old')))).resolves.toEqual({ ok: false, reason: 'HTTP_404' });
+        await expect(push.send([target(fcmToken('old'))], MESSAGE)).resolves.toEqual({ sent: 0, unregistered: [fcmToken('old')] });
     });
 
     it('badPath_aNotFoundNamesItsStatusWhenItHasNoFcmCode', async () => {
@@ -110,6 +124,6 @@ describe('validate', () => {
         const upstream = createFakeFetch(routeTable([route('POST', SEND, 'fcm.send', () => jsonResponse(answer, 404))]));
         const push = createFcm({ projectId: PROJECT_ID, tokens: SERVICE_TOKENS, fetch: upstream.fetch });
 
-        await expect(push.validate(fcmToken('old'))).resolves.toEqual({ ok: false, reason: 'NOT_FOUND' });
+        await expect(push.validate(target(fcmToken('old')))).resolves.toEqual({ ok: false, reason: 'NOT_FOUND' });
     });
 });

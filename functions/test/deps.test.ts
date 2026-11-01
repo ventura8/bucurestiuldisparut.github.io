@@ -274,7 +274,9 @@ describe('createDeps: the M4 ports (docs/research/M4-interfaces.md §4, §5)', (
 
         await expect(deps.geocoder.reverse({ lat: 44.4, lng: 26.1, lang: 'ro' })).resolves.toMatchObject({ name: 'Piața Romană' });
         await expect(deps.translator.countTokens('gemini-3.5-flash-lite', 'test')).resolves.toBe(1);
-        await expect(deps.push.validate('e2e-fcm-token:laptop-xxxxxxxxxxxxxxxxxxxx')).resolves.toEqual({ ok: true });
+        await expect(deps.push.validate({ kind: 'token', value: 'e2e-fcm-token:laptop-xxxxxxxxxxxxxxxxxxxx' })).resolves.toEqual({
+            ok: true,
+        });
         const urls = fetch.mock.calls.map(([url]) => url.split('?')[0]);
         expect(urls).toEqual([
             `${FAKES}/h/nominatim.openstreetmap.org/reverse`,

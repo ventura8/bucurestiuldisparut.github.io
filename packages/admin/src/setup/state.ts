@@ -538,11 +538,16 @@ export function withChecksAnswered(state: SetupState, ids: readonly SetupStepId[
     return refreshDerived({ ...state, steps });
 }
 
-/** Counts one in-app input or Google consent on step `id`. */
+/**
+ * Counts one in-app input or Google consent on step `id`. An input starts a new attempt, so the card's last failure goes
+ * (finding 49 of 2026-11-01: step g's "unavailable" stayed under the reports a later click created); the attempt shows
+ * its own.
+ */
 export function withCount(state: SetupState, id: SetupStepId, kind: keyof StepCounts): SetupState {
     const step = state.steps[id];
     const used = { ...step.used, [kind]: step.used[kind] + 1 };
-    return refreshDerived({ ...state, steps: { ...state.steps, [id]: { ...step, used } } });
+    const error = kind === 'inputs' ? null : step.error;
+    return refreshDerived({ ...state, steps: { ...state.steps, [id]: { ...step, used, error } } });
 }
 
 /** The step to open: the requested one when it exists, else the first incomplete one. */

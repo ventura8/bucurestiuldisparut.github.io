@@ -32,6 +32,7 @@ import {
     initialTargetView,
     isRunning,
     missingFunctions,
+    namedQuota,
     pendingRetry,
     stepsOf,
     type InstallTargetView,
@@ -95,9 +96,11 @@ interface LogSummary {
      * tail, since the Cloud Functions API's 403 of finding 33 comes before one summary line per function.
      */
     readonly fixInProvision: boolean;
+    /** The quota the `jobs` step named (finding 47 of 2026-11-01). */
+    readonly quota: InstallTargetView['quota'];
 }
 
-const NO_LOG: LogSummary = { retry: null, retryLineAt: '', missing: [], failedStep: null, tail: [], fixInProvision: false };
+const NO_LOG: LogSummary = { retry: null, retryLineAt: '', missing: [], failedStep: null, tail: [], fixInProvision: false, quota: null };
 
 function eventsOf(lines: readonly BuildLogLine[]): { readonly events: InstallLogEvent[]; readonly lastAt: string } {
     const events: InstallLogEvent[] = [];
@@ -139,10 +142,13 @@ function knownTime(time: number | null | undefined): number | null {
 }
 
 /** A failed build's step and its last lines; nothing for any other state. */
-function failureFields(summary: LogSummary, state: InstallState): Pick<InstallTargetView, 'failedStep' | 'log' | 'fixInProvision'> {
+function failureFields(
+    summary: LogSummary,
+    state: InstallState,
+): Pick<InstallTargetView, 'failedStep' | 'log' | 'fixInProvision' | 'quota'> {
     return state === 'failed'
-        ? { failedStep: summary.failedStep, log: summary.tail, fixInProvision: summary.fixInProvision }
-        : { failedStep: null, log: [], fixInProvision: false };
+        ? { failedStep: summary.failedStep, log: summary.tail, fixInProvision: summary.fixInProvision, quota: summary.quota }
+        : { failedStep: null, log: [], fixInProvision: false, quota: null };
 }
 
 /** When a retry that `waitSeconds` after `writtenAt` tries again, or null without a time. */
@@ -336,8 +342,9 @@ class TargetFlow implements InstallFlow {
         return this.#ended.get(build.id) ?? (await this.#readSummary(build, access));
     }
 
+    /** A stopped build's log, and a working one's for its retries (the site's prints none; finding 47: the pipeline's may). */
     #readsLog(build: CloudBuild): boolean {
-        return stoppedBuild(build) || (build.status === 'WORKING' && this.#deps.target === 'server');
+        return stoppedBuild(build) || (build.status === 'WORKING' && this.#deps.target !== 'site');
     }
 
     async #readSummary(build: CloudBuild, access: InstallAccess): Promise<LogSummary> {
@@ -358,6 +365,7 @@ class TargetFlow implements InstallFlow {
             failedStep,
             tail: failedStep === null ? [] : stepTail(lines, failedStep),
             fixInProvision: failedStep !== null && fixedInProvision(stepTail(lines, failedStep, Number.POSITIVE_INFINITY)),
+            quota: namedQuota(events),
         };
     }
 
@@ -386,6 +394,7 @@ class TargetFlow implements InstallFlow {
                 failedStep: null,
                 log: [],
                 fixInProvision: false,
+                quota: null,
                 missing: [],
                 retryReason: null,
                 retryAt: null,

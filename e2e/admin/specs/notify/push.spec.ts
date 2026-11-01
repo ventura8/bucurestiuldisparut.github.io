@@ -55,7 +55,8 @@ test(
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
         const devices = Object.values(await adminWorld.emulators.collection(`admins/${owner}/pushDevices`));
-        expect(devices).toEqual([expect.objectContaining({ token: REGISTRATION, lang })]);
+        // Finding 50 of 2026-11-01: an FCM registration token, recorded as one and sent as `message.token`.
+        expect(devices).toEqual([expect.objectContaining({ token: REGISTRATION, kind: 'token', lang })]);
         expect(await adminWorld.emulators.document(`admins/${owner}/notify/settings`)).toMatchObject({ push: true });
         await expectStateSound(page, adminVisit('notify.push-on', lang));
 
@@ -63,7 +64,7 @@ test(
         await failJob(city, 'j-pushed', AT);
         await expect.poll(async () => (await pushed(upstream)).length, { timeout: FUNCTIONS_TIMEOUT_MS }).toBe(1);
         expect((await pushed(upstream))[0]).toMatchObject({
-            fid: REGISTRATION,
+            token: REGISTRATION,
             webpush: {
                 notification: { body: notifyText(lang, 'adminContent.notify.event.job.failed', { label: 'usgs-import' }) },
                 // M5 (docs/research/M5-interfaces.md §1.9): a city's event opens that city's page.
@@ -124,9 +125,9 @@ test(
 async function dryRuns(upstream: UpstreamControl): Promise<string[]> {
     const calls: UpstreamCall[] = await upstream.calls('server', 'fcm.send');
     return calls
-        .map((call) => JSON.parse(call.body) as { validate_only?: boolean; message: { fid?: string } })
+        .map((call) => JSON.parse(call.body) as { validate_only?: boolean; message: { token?: string } })
         .filter((body) => body.validate_only === true)
-        .map((body) => body.message.fid ?? '');
+        .map((body) => body.message.token ?? '');
 }
 
 /** The failure's reason line under "Notifications did not start" (finding 46 of 2026-11-01). */
@@ -148,8 +149,9 @@ test(
         await deviceSwitch(page, lang).click();
         await expect(on).toHaveCount(0, { timeout: FUNCTIONS_TIMEOUT_MS });
 
-        // Finding 46: FCM forgot the browser's registration, while the SDK's record still hands it out.
-        await upstream.scenario('fcm.tokensGone', 'server');
+        // Finding 46: FCM no longer takes the browser's registration, while the SDK's record still hands it out (an
+        // `UNREGISTERED` dry run is recorded since finding 50, so FCM's refusal here is `INVALID_ARGUMENT`).
+        await upstream.scenario('fcm.tokensInvalid', 'server');
         await deviceSwitch(page, lang).click();
 
         await expect(on).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
@@ -169,7 +171,7 @@ test(
     { tag: '@S-A47-BAD-FCM-REFUSED-REASON' },
     async ({ page, lang, adminWorld, upstream, consoleErrors }) => {
         const testId = 'S-A47-BAD-FCM-REFUSED-REASON';
-        await upstream.scenario('fcm.everyTokenGone', 'server');
+        await upstream.scenario('fcm.everyTokenInvalid', 'server');
         await page.context().grantPermissions(['notifications'], { origin: ADMIN_ORIGIN });
         await page.goto(cityAddress(lang, 'inbox', testId));
 
@@ -181,7 +183,7 @@ test(
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
         await expect(reasonLine(page)).toHaveText(
-            notifyText(lang, 'adminContent.notify.push.reason.fcmRefused', { code: 'fcm/UNREGISTERED' }),
+            notifyText(lang, 'adminContent.notify.push.reason.fcmRefused', { code: 'fcm/INVALID_ARGUMENT' }),
         );
         // Registered once more with a new registration before it said so.
         expect(await dryRuns(upstream)).toEqual([`e2e-fcm-token:${testId}-browser-0001`, `e2e-fcm-token:${testId}-browser-0002`]);
@@ -196,7 +198,7 @@ test(
     "A failure of the browser's messaging SDK shows its code, and the server is never asked",
     { tag: '@S-A47-BAD-SDK-CODE' },
     async ({ page, lang, adminWorld, upstream }) => {
-        const code = 'messaging/fid-registration-failed';
+        const code = 'messaging/token-subscribe-failed';
         await page.context().grantPermissions(['notifications'], { origin: ADMIN_ORIGIN });
         // The `e2e` build's stand-in of the FCM SDK fails as the real one does when CreateRegistration is refused.
         await page.goto(cityAddress(lang, 'inbox', 'S-A47-BAD-SDK-CODE').replace('#', `&pushFail=${encodeURIComponent(code)}#`));

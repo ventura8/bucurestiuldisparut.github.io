@@ -1730,7 +1730,9 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       without the worker or the push subscription it was made with; the admin's move to `/admin/` retired the root's
       worker and its subscription, and a registration FCM forgot is never made again within the week.
     - Fix and pin: the record is forgotten after the root's worker is retired and when FCM refuses the registration, and
-      the browser registers once more (`packages/admin/src/firebase/fcm-record.ts`; S-A47-HAPPY-RENEWED).
+      the browser registers once more (S-A47-HAPPY-RENEWED). Since §81d (finding 50) the browser registers a token with
+      `getToken`, whose record keeps the subscription it was made for, so the admin's own module that cleared the record was
+      removed; `reset` deletes the refused token instead.
     - **An SDK's cache keyed on less than what its result depends on goes stale silently: clear it whenever the part it
       does not key on changes.**
 317. **Leaving the originals out of the release would not have shrunk a publish's transfer.**
@@ -1754,3 +1756,43 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       which forgets it), so the emulators' functions keep the first model.
     - **State a module keeps between calls is shared by every test of a worker that does not isolate: each test that
       changes it puts it back.**
+319. **A build step's refusal said "HTTP 429" and nothing else.**
+    - Seen: live on 2026-11-01 (finding 47): the pipeline build's `jobs` step stopped at Run Admin v2's 429; quota or
+      request rate could not be told apart, so the cause stayed unknown.
+    - Found by: the user's live install. The step tests checked that a refusal stops the step, never what it prints.
+    - Cause: `GoogleCallError` kept the method, address and status only; Google's error body (`error.status`, `ErrorInfo`
+      with `quota_metric` and `quota_limit`, `QuotaFailure`) was never read.
+    - Fix and pin: the body's essentials, redacted, on the error line; a request rate waited out with backoff and jitter, a
+      quota named and not tried again (`scripts/site/src/install/steps/google-error.ts`, `run-jobs.ts`;
+      `install-run-jobs-refusals.test.ts`, S-A56-HAPPY-JOBS-RATE-LIMITED, S-A56-BAD-JOBS-QUOTA).
+    - **A failure that runs where nobody can attach a debugger prints the server's own reason, redacted: the status code
+      alone is not a diagnosis.**
+320. **A request the browser never sent was reported as Google's outage.**
+    - Seen: live on 2026-11-01 (finding 48): a Pi-hole answered `::` for `analyticsadmin.googleapis.com`; step (g) said
+      "The service is unavailable right now".
+    - Found by: the user's console (a failed CORS preflight) and the Pi-hole log.
+    - Cause: the admin's Google transport mapped a `fetch` that threw (no HTTP answer at all) to the same failure as a 503.
+    - Fix and pin: a failure without an answer keeps the host, and the message names it and the blockers that cause it
+      (`adminShell.network.blocked`; `packages/admin/src/google/transport.ts`, `failure.ts`; S-A22-BAD-REPORTS-BLOCKED-HOST).
+    - **"No answer" and "an answer that says unavailable" are different failures with different fixes: keep them apart up
+      to the message.**
+321. **A card kept the failure of an attempt the next one had already replaced.**
+    - Seen: live on 2026-11-01 (finding 49): step (g)'s red "unavailable" stayed under "14 created".
+    - Found by: the user's live walk. The specs checked each failure and each success, never a success after a failure.
+    - Cause: a step's `error` was set by a failure and cleared only by a check that answered; an action that succeeded
+      wrote its own result beside it.
+    - Fix and pin: an input starts a new attempt and clears its card's failure (`withCount`,
+      `packages/admin/src/setup/state.ts`; S-A22-HAPPY-REPORTS-UNBLOCKED, S-A22-BAD-REPORTS-NEW-FAILURE-ONLY).
+    - **A failure belongs to its attempt: clear it where the next attempt starts, not where some later success happens to
+      write.**
+322. **A dry run right after a registration refused a registration that had just been made.**
+    - Seen: live on 2026-11-01 (finding 50): FCM's `validate_only` send answered `UNREGISTERED` for the installation id the
+      browser had just registered, twice, so push never turned on.
+    - Found by: the user's live walk after §79e (the reason line named `fcm/UNREGISTERED`).
+    - Cause: UNVERIFIED (the FCM SDK's FID record was gone after the retry); the server treated the dry run as the verdict.
+    - Fix and pin: an `UNREGISTERED` dry run of a fresh registration is recorded with a warning and the first real send
+      decides; each device records its kind (`token` or `fid`) and is addressed as it says, and the browser registers an FCM
+      registration token (`getToken`) (`functions/src/notify/devices.ts`, `functions/src/adapters/fcm.ts`,
+      `packages/admin/src/firebase/messaging.ts`; S-A47-HAPPY-DRY-RUN-UNREGISTERED, S-A47-HAPPY-TOKEN, S-A47-HAPPY-LEGACY-FID).
+    - **A pre-check that can be wrong in the window right after the thing it checks was made must not block it: record it
+      and let the real use decide.**

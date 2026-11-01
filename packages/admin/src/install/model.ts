@@ -79,6 +79,8 @@ export interface InstallTargetView {
      * `fixedInProvision`): the card sends the owner to step c's Retry what failed before Try again.
      */
     readonly fixInProvision: boolean;
+    /** The quota a failed `jobs` step named (finding 47 of 2026-11-01), or null. */
+    readonly quota: InstallQuota | null;
     /** `verify`'s missing or failed functions. */
     readonly missing: readonly string[];
     /** `retrying`: why, and when the build tries again (ISO 8601). */
@@ -109,6 +111,7 @@ export function initialTargetView(target: InstallTarget): InstallTargetView {
         failedStep: null,
         log: [],
         fixInProvision: false,
+        quota: null,
         missing: [],
         retryReason: null,
         retryAt: null,
@@ -307,6 +310,14 @@ export function fixedInProvision(log: readonly string[]): boolean {
 export function pendingRetry(events: readonly InstallLogEvent[]): Extract<InstallLogEvent, { event: 'retry' }> | null {
     const last = events.at(-1);
     return last?.event === 'retry' ? last : null;
+}
+
+/** A `quota` event of the log: the quota Google refused for (finding 47 of 2026-11-01). */
+export type InstallQuota = Extract<InstallLogEvent, { event: 'quota' }>;
+
+/** The last quota the log named, or null. */
+export function namedQuota(events: readonly InstallLogEvent[]): InstallQuota | null {
+    return events.findLast((event): event is InstallQuota => event.event === 'quota') ?? null;
 }
 
 /** The functions `verify` named, in the order it named them, once each. */

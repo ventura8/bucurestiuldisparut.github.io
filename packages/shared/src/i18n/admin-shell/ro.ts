@@ -35,6 +35,7 @@ export const ro = {
     'adminShell.auth.joinAction': 'Alătură-te',
     'adminShell.session.expired': 'Sesiunea s-a încheiat. Conectează-te din nou.',
     'adminShell.session.revoked': 'Accesul tău a fost retras: nu se mai salvează nimic. Copiază ce-ți trebuie, apoi deconectează-te.',
+    'adminShell.network.blocked': 'Cererea spre {host} n-a ieșit din browser: permite-o în blocant (Pi-hole, VPN) sau schimbă rețeaua.',
     'adminShell.session.googleExpired': 'Permisiunea Google pentru acest pas a expirat după o oră. Continuă ca să o reînnoiești.',
     'adminShell.session.continue': 'Continuă',
     'adminShell.backend.down': 'Serverul hărții nu răspunde acum. Încearcă din nou peste un minut.',

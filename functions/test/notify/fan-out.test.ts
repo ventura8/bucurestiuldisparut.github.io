@@ -47,6 +47,7 @@ async function seedDevice(deps: M4Deps, uid: string, deviceId: string, lang: 'ro
     const token = fcmToken(deviceId);
     await deps.documents.set(FIRESTORE_PATHS.pushDevice(uid, deviceId.padEnd(32, '0')), pushDeviceDocSchema, {
         token,
+        kind: 'token',
         lang,
         createdAt: timestampFromDate(new Date(NOW)),
         updatedBy: uid,
@@ -156,6 +157,7 @@ describe('notify.onEvent: the pushes', () => {
         expect(deps.upstream.state.fcm.messages).toEqual([
             {
                 token: roToken,
+                kind: 'token',
                 notification: {
                     title: 'Notificări',
                     body: 'Procesarea „Corona 1968” a eșuat. Deschide-o ca să vezi de ce.',
@@ -165,6 +167,7 @@ describe('notify.onEvent: the pushes', () => {
             },
             {
                 token: enToken,
+                kind: 'token',
                 notification: { title: 'Notifications', body: 'Processing “Corona 1968 (EN)” failed. Open it to see why.', tag: EVENT_ID },
                 link: 'https://demo-hcm.web.app/#/c/assist-city/imagery/version/job-1',
             },

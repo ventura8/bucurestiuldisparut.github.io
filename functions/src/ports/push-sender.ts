@@ -1,3 +1,5 @@
+import type { PushTargetKind } from '@hcm/shared';
+
 /**
  * Firebase Cloud Messaging HTTP v1 (M4, `docs/research/M4-interfaces.md` §5.4): web push to the browsers an admin allowed
  * (`admins/{uid}/pushDevices`), through firebase-admin's `getMessaging()` with the functions' service account (no server
@@ -14,10 +16,16 @@ interface PushMessage {
     readonly tag: string;
 }
 
+/** One browser as FCM addresses it (finding 50 of 2026-11-01): `message.token` or `message.fid` set to `value`. */
+export interface PushTarget {
+    readonly kind: PushTargetKind;
+    readonly value: string;
+}
+
 /** Per token: delivered to FCM, or refused because the token is gone (`messaging/registration-token-not-registered`). */
 interface PushOutcome {
     readonly sent: number;
-    /** Tokens FCM no longer knows: their device documents are deleted. */
+    /** The values of the targets FCM no longer knows: their device documents are deleted. */
     readonly unregistered: readonly string[];
 }
 
@@ -28,7 +36,7 @@ interface PushOutcome {
 type PushCheck = { readonly ok: true } | { readonly ok: false; readonly reason: string };
 
 export interface PushSender {
-    send(tokens: readonly string[], message: PushMessage): Promise<PushOutcome>;
-    /** A dry-run send (`validateOnly`): whether FCM accepts the token, before it is stored, and why not. */
-    validate(token: string): Promise<PushCheck>;
+    send(targets: readonly PushTarget[], message: PushMessage): Promise<PushOutcome>;
+    /** A dry-run send (`validateOnly`): whether FCM accepts the target, before it is stored, and why not. */
+    validate(target: PushTarget): Promise<PushCheck>;
 }

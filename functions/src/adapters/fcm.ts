@@ -1,4 +1,4 @@
-import type { PushSender } from '../ports/push-sender.js';
+import type { PushSender, PushTarget } from '../ports/push-sender.js';
 import type { TokenProvider } from '../ports/token-provider.js';
 import { googleError, googleSend } from './google-call.js';
 import { at, list, readJson, stringAt, type Fetch } from './upstream-http.js';
@@ -7,9 +7,10 @@ import { at, list, readJson, stringAt, type Fetch } from './upstream-http.js';
  * Firebase Cloud Messaging HTTP v1 (`docs/research/M4-interfaces.md` §5.4) over REST with the functions' own service
  * account (`roles/firebasecloudmessaging.admin`; no server key): `messages:send` once per device (HTTP v1 has no
  * multicast), the item's title and text as a web push notification and its admin link as `fcm_options.link`. A device
- * is the browser's Firebase installation ID (FID), which the admin page registers with `register` and `onRegistered`
- * (firebase 13 deprecates `getToken`), so a message targets `fid`, as firebase-admin 14's `FidMessage` sends it; the
- * shared schemas keep the field's name `token` (DECISIONS-for-review.md §54). REST
+ * is addressed as its record says (finding 50 of 2026-11-01): an FCM registration token as `message.token`, or the
+ * browser's Firebase installation ID as `message.fid` (firebase-admin 14's `FidMessage`; what `register` gives, and what
+ * every device registered before finding 50 is); the shared schemas keep the field's name `token`
+ * (DECISIONS-for-review.md §54, §81). REST
  * rather than firebase-admin's `getMessaging()`, so the Functions emulator reaches the fake FCM through
  * `createEmulatorFetch` like every other Google API and no local run can push to a real browser.
  *
@@ -41,10 +42,10 @@ function fcmErrorCode(body: unknown): string | undefined {
     return stringAt(detail, 'errorCode');
 }
 
-/** The web push message of one device (its FID). */
-export function webPushMessage(fid: string, message: PushMessage) {
+/** The web push message of one device (`token` or `fid`, as its kind says). */
+export function webPushMessage(target: PushTarget, message: PushMessage) {
     return {
-        fid,
+        [target.kind]: target.value,
         webpush: {
             notification: { title: message.title, body: message.body, tag: message.tag },
             fcm_options: { link: message.link },
@@ -95,20 +96,20 @@ export function createFcm(options: FcmOptions): PushSender {
         return (await goneToken(response)) ? 'gone' : 'skipped';
     };
     return {
-        send: async (tokens, message) => {
+        send: async (targets, message) => {
             let sent = 0;
             const unregistered: string[] = [];
-            for (const token of tokens) {
-                const outcome = await outcomeOf(await post({ message: webPushMessage(token, message) }));
+            for (const target of targets) {
+                const outcome = await outcomeOf(await post({ message: webPushMessage(target, message) }));
                 sent += outcome === 'sent' ? 1 : 0;
                 if (outcome === 'gone') {
-                    unregistered.push(token);
+                    unregistered.push(target.value);
                 }
             }
             return { sent, unregistered };
         },
-        validate: async (token) => {
-            const response = await post({ validate_only: true, message: { fid: token } });
+        validate: async (target) => {
+            const response = await post({ validate_only: true, message: { [target.kind]: target.value } });
             if (response.ok) {
                 return { ok: true };
             }

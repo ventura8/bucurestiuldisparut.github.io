@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { errorGroupUrl } from '@hcm/ui/admin';
+import { errorGroupUrl, quotasUrl } from '@hcm/ui/admin';
 
 import { SETUP_LINK_URLS, STEP_LINKS, setupLink, stepLinks } from '../../src/setup/links.js';
 import { SETUP_STEPS } from '../../src/setup/steps.js';
@@ -24,6 +24,13 @@ describe('SETUP_LINK_URLS', () => {
         // CR-M2c-15: the crash reports page draws the group's link itself (@hcm/ui cannot import the admin's links).
         expect(errorGroupUrl('demo-hcm', 'CNi8 pq/m0')).toBe(
             setupLink('gcp.errorGroup', { projectId: 'demo-hcm', groupId: 'CNi8 pq/m0' }).url,
+        );
+    });
+
+    it('happyPath_theQuotaLineLinksTheVerifiedQuotasPage', () => {
+        // Finding 47 of 2026-11-01: the install cards draw the Quotas page's link themselves, as the crash page does.
+        expect(quotasUrl('demo-hcm', 'run.googleapis.com')).toBe(
+            setupLink('gcp.quotas', { projectId: 'demo-hcm', service: 'run.googleapis.com' }).url,
         );
     });
 

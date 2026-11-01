@@ -106,7 +106,14 @@ describe('call', () => {
             .call({ operation: 'gone.get', url: `${URL_BASE}/gone`, role: 'roles/owner' })
             .catch((error: unknown) => error);
 
-        expect(failure).toMatchObject({ kind: 'unavailable', status: 0, role: 'roles/owner', operation: 'gone.get' });
+        // Finding 48 of 2026-11-01: no answer at all names the host the request could not reach (never its path or query).
+        expect(failure).toMatchObject({
+            kind: 'unavailable',
+            status: 0,
+            role: 'roles/owner',
+            operation: 'gone.get',
+            host: 'example.googleapis.com',
+        });
         expect(fake.unhandled).toHaveLength(5);
         expect(slept).toEqual([1000, 2000, 4000, 8000]);
         expect(String(failure)).not.toContain('example.googleapis.com');

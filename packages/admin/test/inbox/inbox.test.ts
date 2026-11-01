@@ -48,6 +48,7 @@ function registrar(options: RegistrarOptions = {}) {
     let permission = options.permission ?? 'default';
     let generation = 1;
     const fake: PushRegistrar = {
+        kind: 'token',
         supported: () => options.supported ?? true,
         permission: () => permission,
         requestPermission: () => {
@@ -227,7 +228,7 @@ describe('push on this browser', () => {
 
         expect(browser.asked).toEqual(['prompt']);
         expect(world.callables.calls.map((call) => [call.name, call.request])).toEqual([
-            ['notify.registerDevice', { token: 'e2e-fcm-token:inbox-browser-0001', lang: 'ro' }],
+            ['notify.registerDevice', { token: 'e2e-fcm-token:inbox-browser-0001', kind: 'token', lang: 'ro' }],
             ['notify.sendTest', {}],
         ]);
         expect(store.state.push).toEqual({ device: 'on', failure: null, reason: null, testing: false });

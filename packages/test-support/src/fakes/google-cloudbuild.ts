@@ -47,6 +47,10 @@ export const BUILD_OUTCOMES = [
     'failsAtComputeActAs',
     'retriesExhausted',
     'internalError',
+    // Finding 47 of 2026-11-01: the pipeline's `jobs` step waits out Cloud Run's request rate (its retry line), then
+    // succeeds; or stops at a quota, which it names (its `quota` line).
+    'retriesAtJobs',
+    'failsAtJobsQuota',
 ] as const;
 
 export type BuildOutcome = (typeof BUILD_OUTCOMES)[number];
@@ -215,6 +219,7 @@ function stopStep(build: FakeBuild): number {
         failsAtDiscovery: 'functions',
         failsAtComputeActAs: 'functions',
         retriesExhausted: 'verify',
+        failsAtJobsQuota: 'jobs',
     };
     const step = stops[build.outcome];
     return step === undefined ? build.stepIds.length - 1 : Math.max(0, build.stepIds.indexOf(step));
@@ -288,6 +293,45 @@ function missingLines(): FakeLogLine[] {
         .map((name) => ({ step: 'verify', text: installLogLine({ event: 'missing', name }) }));
 }
 
+/** The jobs' Run Admin v2 address of the build's project, as the `jobs` step prints it. */
+function jobsUrl(build: FakeBuild): string {
+    return `https://run.googleapis.com/v2/projects/${build.projectId}/locations/${build.region}/jobs`;
+}
+
+/** What `run-jobs` prints when Cloud Run refuses a create for its request rate and it waits (finding 47). */
+function jobsRateLines(build: FakeBuild): FakeLogLine[] {
+    const refusal = `POST ${jobsUrl(build)}: HTTP 429 RESOURCE_EXHAUSTED: Quota exceeded for quota metric 'Write requests'; ErrorInfo RATE_LIMIT_EXCEEDED service=run.googleapis.com`;
+    return [
+        { step: 'jobs', text: `jobs: ${refusal}: trying again in 30 s` },
+        { step: 'jobs', text: installLogLine({ event: 'retry', attempt: 1, waitSeconds: 30, reason: 'quota' }) },
+    ];
+}
+
+/** The quota the fake Cloud Run names (`cloud-run/jobs.create.quota-exceeded`). */
+const JOBS_QUOTA = {
+    service: 'run.googleapis.com',
+    metric: 'run.googleapis.com/cpu_allocation',
+    limit: 'CpuAllocPerProjectRegion',
+} as const;
+
+/** What `run-jobs` prints when Cloud Run refuses a create for a quota: the line naming it, its event, the step's error. */
+function jobsQuotaLines(build: FakeBuild): FakeLogLine[] {
+    const lines = [
+        `jobs: Google Cloud refused raster-pipeline for the quota ${JOBS_QUOTA.metric} (limit ${JOBS_QUOTA.limit}) of ${JOBS_QUOTA.service}. ` +
+            'A free-trial project has lower quotas: upgrade the account, or ask for a higher quota on the Quotas page, then try again.',
+        installLogLine({ event: 'quota', ...JOBS_QUOTA }),
+        `run-jobs: GoogleCallError: POST ${jobsUrl(build)}: HTTP 429 RESOURCE_EXHAUSTED: Quota exceeded; ErrorInfo RESOURCE_QUOTA_EXCEEDED`,
+    ];
+    return lines.map((text) => ({ step: 'jobs', text }));
+}
+
+/** The outcomes that start at a later step and print a retry there: the step and its lines. */
+const RETRY_STARTS: Partial<Record<BuildOutcome, { readonly step: string; readonly lines: (build: FakeBuild) => FakeLogLine[] }>> = {
+    retries: { step: 'functions', lines: () => retryLines(1) },
+    retriesExhausted: { step: 'functions', lines: () => retryLines(1) },
+    retriesAtJobs: { step: 'jobs', lines: jobsRateLines },
+};
+
 function start(build: FakeBuild): void {
     if (build.status !== 'QUEUED') {
         return;
@@ -295,11 +339,9 @@ function start(build: FakeBuild): void {
     build.status = 'WORKING';
     build.startTime = now();
     build.log.push({ step: 'fetch', text: `fetch: ${build.target} checked and unpacked` });
-    const retrying = build.outcome === 'retries' || build.outcome === 'retriesExhausted';
-    build.current = retrying ? Math.max(0, build.stepIds.indexOf('functions')) : 0;
-    if (retrying) {
-        build.log.push(...retryLines(1));
-    }
+    const retrying = RETRY_STARTS[build.outcome];
+    build.current = retrying === undefined ? 0 : Math.max(0, build.stepIds.indexOf(retrying.step));
+    build.log.push(...(retrying?.lines(build) ?? []));
 }
 
 /** The lines of the outcomes whose log is the tool's own, not the generic failure's. */
@@ -308,6 +350,7 @@ const OWN_STOP_LINES: Partial<Record<BuildOutcome, (build: FakeBuild) => FakeLog
     failsAtActAs: (build) => actAsLines(build.projectId),
     failsAtDiscovery: () => DISCOVERY_FAILURE_LINES.map((text) => ({ step: 'functions', text })),
     failsAtComputeActAs: computeActAsLines,
+    failsAtJobsQuota: jobsQuotaLines,
 };
 
 function stopLines(build: FakeBuild): FakeLogLine[] {
@@ -318,11 +361,13 @@ function stopLines(build: FakeBuild): FakeLogLine[] {
     return build.outcome.startsWith('failsAt') ? failureLines(build.stepIds[stopStep(build)] ?? 'fetch') : [];
 }
 
+const SUCCESSFUL_OUTCOMES: ReadonlySet<BuildOutcome> = new Set<BuildOutcome>(['succeeds', 'retries', 'retriesAtJobs']);
+
 function finalStatus(outcome: BuildOutcome): BuildStatus {
     if (outcome === 'internalError') {
         return 'INTERNAL_ERROR';
     }
-    return outcome === 'succeeds' || outcome === 'retries' ? 'SUCCESS' : 'FAILURE';
+    return SUCCESSFUL_OUTCOMES.has(outcome) ? 'SUCCESS' : 'FAILURE';
 }
 
 /**

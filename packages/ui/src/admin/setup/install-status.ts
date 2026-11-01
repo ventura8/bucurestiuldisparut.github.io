@@ -330,7 +330,38 @@ function stopped(input: InstallStatusInput, view: InstallTargetViewPort): Templa
     }
     const step = view.failedStep === null ? '' : label(input, `adminSetup.install.step.${view.failedStep}`);
     return html`<p class="failed-at">${label(input, 'adminSetup.install.failedAt', { step })}</p>
-        ${fixLine(input, view)} ${missingLine(input, view)} ${logLines(input, view)} ${consoleLink(input, view)}`;
+        ${fixLine(input, view)} ${quotaLine(input, view)} ${missingLine(input, view)} ${logLines(input, view)} ${consoleLink(input, view)}`;
+}
+
+/**
+ * The Google Cloud console's Quotas page of `projectId`, filtered to the API `service`: the link `gcp.quotas` of
+ * `packages/admin/src/setup/links.json`, which the weekly contract check probes (`packages/admin/test/setup/links.test.ts`
+ * keeps this copy equal to it).
+ */
+export function quotasUrl(projectId: string, service: string): string {
+    return `https://console.cloud.google.com/iam-admin/quotas?project=${encodeURIComponent(projectId)}&service=${encodeURIComponent(service)}`;
+}
+
+/**
+ * A build Google stopped for a quota (finding 47 of 2026-11-01, the `jobs` step's `quota` line): Try again alone meets the
+ * same limit, so the card names the quota, says a free-trial project has lower ones, and links its Quotas page (the
+ * project is the one of the build's console page).
+ */
+function quotaLine(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
+    const { quota } = view;
+    if (quota === null) {
+        return EMPTY;
+    }
+    const project = new URL(view.consoleUrl ?? 'https://console.cloud.google.com/').searchParams.get('project') ?? '';
+    return html`<p class="blocker" data-fix="quota">
+        <span
+            >${label(input, 'adminSetup.install.quota', { metric: quota.metric, limit: quota.limit })}
+            ${label(input, 'adminSetup.install.quotaFix')}</span
+        >
+        <a href=${quotasUrl(project, quota.service)} target="_blank" rel="noopener noreferrer"
+            >${label(input, 'adminSetup.install.openQuotas')}<span class="visually-hidden"> ${label(input, 'adminSetup.newTab')}</span></a
+        >
+    </p>`;
 }
 
 /**

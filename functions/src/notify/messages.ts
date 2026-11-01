@@ -16,6 +16,7 @@ import {
 
 import type { StoredDocument } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
+import type { PushTarget } from '../ports/push-sender.js';
 
 export const NOTIFY_WRITER = 'notify';
 
@@ -72,8 +73,11 @@ export async function pushToDevices(
     let sent = 0;
     const gone: string[] = [];
     for (const locale of new Set(devices.map((device) => device.data.lang))) {
-        const tokens = devices.filter((device) => device.data.lang === locale).map((device) => device.data.token);
-        const outcome = await deps.push.send(tokens, messageIn(locale, content));
+        // A device recorded before finding 50 (no kind) is an installation id.
+        const targets = devices
+            .filter((device) => device.data.lang === locale)
+            .map((device): PushTarget => ({ kind: device.data.kind ?? 'fid', value: device.data.token }));
+        const outcome = await deps.push.send(targets, messageIn(locale, content));
         sent += outcome.sent;
         gone.push(...outcome.unregistered);
     }

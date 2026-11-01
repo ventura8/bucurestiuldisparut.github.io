@@ -32,6 +32,7 @@ export const en: AdminShellMessages = {
     'adminShell.auth.joinAction': 'Join',
     'adminShell.session.expired': 'Your session ended. Sign in again.',
     'adminShell.session.revoked': 'Your access was removed: nothing more can be saved. Copy what you need, then sign out.',
+    'adminShell.network.blocked': 'Request to {host} never left this browser: allow it in your blocker (Pi-hole, VPN) or change network.',
     'adminShell.session.googleExpired': "This step's Google permission expired after an hour. Continue to renew it.",
     'adminShell.session.continue': 'Continue',
     'adminShell.backend.down': "The map's server is not answering right now. Try again in a minute.",

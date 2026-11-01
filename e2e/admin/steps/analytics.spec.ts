@@ -4,7 +4,7 @@ import { GOOGLE_SCOPES } from '../../../packages/admin/src/google/scopes.js';
 import { expectStateSound } from '../../support/state-check.js';
 import { adminVisit } from '../../tour/states.js';
 import { projectCity } from '../support/content.js';
-import { apiText, setupText } from '../support/i18n.js';
+import { apiText, setupText, shellText } from '../support/i18n.js';
 import { seedPhotosCity } from '../support/photos.js';
 import { followDeepLink, SetupPage, standInProviderPages } from '../support/setup-page.js';
 import { ADMIN_LOCK, expect, test } from '../support/test.js';
@@ -198,5 +198,51 @@ test(
         expect((await upstream.calls('browser', 'analytics-admin')).filter((call) => call.method === 'POST')).toEqual([]);
         expect(await definitions(upstream)).toEqual({});
         consoleErrors.takeMatching(/status of 403/);
+    },
+);
+
+test(
+    'A request this browser cannot send names its host; a new click shows only its own failure, and one that works clears it',
+    { tag: ['@S-A22-BAD-REPORTS-BLOCKED-HOST', '@S-A22-BAD-REPORTS-NEW-FAILURE-ONLY', '@S-A22-HAPPY-REPORTS-UNBLOCKED'] },
+    async ({ page, lang, consent, setupBudget, upstream, consoleErrors }) => {
+        // Finding 48 of 2026-11-01: a DNS blocklist (Pi-hole) answered `::` for the Analytics Admin API, so the request
+        // never left the browser; the network refuses it here the same way (no HTTP answer at all).
+        const host = 'analyticsadmin.googleapis.com';
+        await page.route(`https://${host}/**`, (route) => route.abort('addressunreachable'));
+        await page.clock.install();
+        await upstream.scenario('firebase-management.analyticsLinked', 'both');
+        const card = await analyticsCard(page, lang);
+        const reports = card.getByRole('button', { name: setupText(lang, 'adminSetup.analytics.reports') });
+        // Two clicks more than the happy path: the refused one and the one that works.
+        const inputs = setupBudget.inputs('analytics', 2);
+        const reportsConsent = await consent.opened(page, () => inputs.click(reports));
+        await reportsConsent.allow(setupBudget.consents('analytics'));
+        // The transport tries a request with no answer again (1, 2 and 4 s) before it says so.
+        await page.clock.fastForward(10_000);
+
+        const blocked = card.getByRole('alert').filter({ hasText: shellText(lang, 'adminShell.network.blocked', { host }) });
+        await expect(blocked).toBeVisible();
+        await expect(card.getByRole('alert').filter({ hasText: apiText(lang, 'apiError.unavailable') })).toHaveCount(0);
+        expect(await upstream.calls('browser', 'analytics-admin')).toEqual([]);
+
+        // Finding 49: the next click is a new attempt; Google now answers it with a refusal, which is all the card says.
+        await page.unroute(`https://${host}/**`);
+        await upstream.fail('analytics-admin', 'forbidden', 'browser');
+        await inputs.click(reports);
+        const permission = apiText(lang, 'apiError.cloud.permission', { role: 'roles/analytics.editor' });
+        await expect(card.getByRole('alert').filter({ hasText: permission })).toBeVisible();
+        await expect(blocked).toHaveCount(0);
+
+        // Allowed and permitted: the reports are made and no failure is left on the card.
+        await upstream.fail('analytics-admin', null, 'browser');
+        await inputs.click(reports);
+        await expect(card.locator('.reports')).toHaveText(
+            setupText(lang, 'adminSetup.analytics.reportsDone', { created: '14', skipped: '0' }),
+        );
+        // Finding 49: the last failure went with its attempt (the card's alert regions stay, empty).
+        await expect(card.getByRole('alert').filter({ hasText: permission })).toHaveCount(0);
+        await expect(blocked).toHaveCount(0);
+        await expect(card.getByRole('alert').filter({ hasText: /\S/ })).toHaveCount(0);
+        consoleErrors.takeMatching(/ERR_ADDRESS_UNREACHABLE|status of 403/);
     },
 );

@@ -19,6 +19,8 @@ export { adminBase, panelStyles } from './shell/admin-styles.js';
 export { contentText, noticeOf, noticeText, shellText } from './shell/text.js';
 // setup-ui's pages (`setup`, `crashes`), which the admin's page registry loads.
 export { SETUP_PAGE_TAGS, defineSetupElements } from './setup/define.js';
+// The quota card's Quotas page (finding 47 of 2026-11-01): links.test.ts keeps it equal to links.json's `gcp.quotas`.
+export { quotasUrl } from './setup/install-status.js';
 export type {
     AdminAppPort,
     AdminAuthStatePort,

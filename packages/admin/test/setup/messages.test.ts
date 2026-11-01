@@ -22,6 +22,15 @@ describe('googleFailure', () => {
         });
     });
 
+    it('badPath_aRequestThatNeverLeftTheBrowserNamesItsHost', () => {
+        // Finding 48 of 2026-11-01: a blocklist answered `::`; a server's 503 (above) stays "unavailable".
+        expect(googleFailure(googleError('unavailable', { host: 'analyticsadmin.googleapis.com' }))).toEqual({
+            state: 'unavailable',
+            message: { key: 'adminShell.network.blocked', params: { host: 'analyticsadmin.googleapis.com' } },
+            expired: false,
+        });
+    });
+
     it('badPath_aDisabledApiIsNamed', () => {
         const failure = googleFailure(googleError('forbidden', { api: 'cloudbilling.googleapis.com' }));
 

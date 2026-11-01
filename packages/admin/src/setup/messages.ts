@@ -57,13 +57,21 @@ function forbidden(error: unknown): StepFailure {
         : failed('invalid', 'apiError.cloud.apiDisabled', { api });
 }
 
+/** No answer at all names the host the request could not leave the browser for (finding 48); a 5xx is Google's. */
+function unavailable(error: unknown): StepFailure {
+    const host = text(error, 'host');
+    return host === undefined
+        ? failed('unavailable', 'apiError.unavailable')
+        : failed('unavailable', 'adminShell.network.blocked', { host });
+}
+
 const GOOGLE_FAILURES = new Map<string, (error: unknown) => StepFailure>([
     ['unauthorized', () => ({ state: 'unavailable', message: setupMessage('adminShell.session.googleExpired'), expired: true })],
     ['forbidden', forbidden],
     ['notFound', () => failed('invalid', 'apiError.notFound')],
     ['conflict', () => failed('unavailable', 'apiError.conflict')],
     ['rateLimited', () => failed('unavailable', 'apiError.rateLimited')],
-    ['unavailable', () => failed('unavailable', 'apiError.unavailable')],
+    ['unavailable', unavailable],
     ['invalid', () => failed('invalid', 'adminSetup.error.googleRefused')],
     ['orgPolicy', (error) => failed('invalid', 'adminSetup.provision.orgPolicy', { constraint: text(error, 'constraint') ?? '' })],
 ]);
