@@ -16,6 +16,7 @@ import type { GoogleIam } from './google-iam.js';
 import type { ImageProcessor } from './image-processor.js';
 import type { MapboxApi } from './mapbox-api.js';
 import type { MapboxTilesets } from './mapbox-tilesets.js';
+import type { MapboxUploads } from './mapbox-uploads.js';
 import type { PushSender } from './push-sender.js';
 import type { RemoteFiles } from './remote-files.js';
 import type { RuntimeConfig } from './runtime-config.js';
@@ -64,6 +65,8 @@ export interface Ports {
     readonly writer: BlobWriter;
     readonly signer: UrlSigner;
     readonly kit: ExportKit;
+    /** M7 (docs/research/M7-local-worker.md §6): Mapbox's Uploads API, the free publish path of a small file. */
+    readonly uploads: MapboxUploads;
     readonly admins: AdminDirectory;
     readonly setup: SetupRecords;
 }

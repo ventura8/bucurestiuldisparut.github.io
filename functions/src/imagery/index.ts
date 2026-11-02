@@ -1,8 +1,8 @@
 /**
  * The `imagery.*` functions (`docs/research/M3-interfaces.md` §9): the callables of the Imagery area, the georeferencer
  * and the layer editor; the dispatcher on job writes, the raster upload trigger, the publisher's task queue and the
- * five-minute tick. `functions/src/index.ts` exports `imagery = imageryFunctions(getDeps, bucket)`, which deploys
- * `imagery-search`, `imagery-browse`, ..., `imagery-tick`.
+ * five-minute tick; M7's choice of where a job runs (`imagery.runOn`). `functions/src/index.ts` exports
+ * `imagery = imageryFunctions(getDeps, bucket)`, which deploys `imagery-search`, `imagery-browse`, ..., `imagery-tick`.
  */
 import type { CallableDeps } from '../api/callable.js';
 import type { Ports } from '../ports/index.js';
@@ -16,13 +16,14 @@ import { probeTilesFunction } from './probe.js';
 import { publishFunction } from './publish.js';
 import { resumeGuardFunction } from './resume-guard.js';
 import { retryFunction } from './retry.js';
+import { runOnFunction } from './run-on.js';
 import { saveGcpsFunction } from './save-gcps.js';
 import { searchFunction } from './search.js';
 import { chooseFunction, studioDoneFunction } from './studio.js';
 import { tickFunction, type TickDeps } from './tick.js';
 
 /** Every port the family uses (the union of its functions' own `Pick<Ports, …>`). */
-export type ImageryFamilyDeps = CallableDeps & TickDeps & Pick<Ports, 'reader'>;
+export type ImageryFamilyDeps = CallableDeps & TickDeps & Pick<Ports, 'reader' | 'uploads'>;
 
 export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: string) {
     return {
@@ -36,6 +37,7 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         saveGcps: saveGcpsFunction(getDeps),
         crop: cropFunction(getDeps),
         retry: retryFunction(getDeps),
+        runOn: runOnFunction(getDeps),
         probeTiles: probeTilesFunction(getDeps),
         resumeGuard: resumeGuardFunction(getDeps),
         onJobWrite: onJobWriteFunction(getDeps),

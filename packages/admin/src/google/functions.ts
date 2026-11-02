@@ -1,4 +1,4 @@
-import { BACKGROUND_FUNCTIONS, CALLABLES, deployedName, HTTP_ENDPOINTS, parseReleaseTime } from '@hcm/shared';
+import { BACKGROUND_FUNCTIONS, CALLABLE_NAMES, deployedName, HTTP_ENDPOINTS, parseReleaseTime } from '@hcm/shared';
 
 import { lastSegment, records, stringAt } from './json.js';
 import type { GoogleTransport } from './transport.js';
@@ -34,9 +34,9 @@ export interface DeploymentStatus {
     readonly failed: readonly string[];
 }
 
-/** Every function the backend deploys (`deployedName` of the callables, the HTTPS endpoints and the triggers): 32 today. */
+/** Every function the backend deploys (`deployedName` of the callables, the worker's included, the HTTPS endpoints and the triggers). */
 export function expectedFunctions(): string[] {
-    return [...Object.keys(CALLABLES), ...Object.keys(HTTP_ENDPOINTS), ...Object.keys(BACKGROUND_FUNCTIONS)].map(deployedName);
+    return [...CALLABLE_NAMES, ...Object.keys(HTTP_ENDPOINTS), ...Object.keys(BACKGROUND_FUNCTIONS)].map(deployedName);
 }
 
 function deploymentState(ready: number, total: number, failed: number): DeploymentStatus['state'] {

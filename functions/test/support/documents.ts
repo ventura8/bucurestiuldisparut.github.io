@@ -103,9 +103,32 @@ function isChildOf(path: string, collection: string): boolean {
     return path.startsWith(`${collection}/`) && !path.slice(collection.length + 1).includes('/');
 }
 
+/** A create or set as the store applies it: validated first; a create of an existing document is a `conflict`. */
+function prepared<T>(kind: 'create' | 'set', path: string, schema: Schema<T>, data: T, exists: (path: string) => boolean): Write {
+    const value = checked(path, schema, data);
+    if (kind === 'create' && exists(path)) {
+        throw new UpstreamError('firestore', 'conflict');
+    }
+    return { kind, path, data: value };
+}
+
+/** Each document's update time (M7's compare-and-set), as Firestore's `<seconds>.<nanoseconds>`: every write moves it on. */
+function updateClock() {
+    const times = new Map<string, number>();
+    let tick = 0;
+    return {
+        touch: (path: string): void => {
+            tick += 1;
+            times.set(path, tick);
+        },
+        timeOf: (path: string): string => `${String(1_700_000_000 + (times.get(path) ?? 0))}.000000000`,
+    };
+}
+
 /** A fresh, empty store. */
 export function createFakeDocumentStore(): FakeDocumentStore {
     const docs = new Map<string, unknown>();
+    const clock = updateClock();
     const writes: Write[] = [];
     const recorder = new PortRecorder<Method>();
     let contention = 0;
@@ -119,14 +142,8 @@ export function createFakeDocumentStore(): FakeDocumentStore {
         } else {
             docs.set(write.path, structuredClone(write.data));
         }
+        clock.touch(write.path);
         writes.push(write);
-    };
-    const prepared = <T>(kind: 'create' | 'set', path: string, schema: Schema<T>, data: T, exists: (path: string) => boolean): Write => {
-        const value = checked(path, schema, data);
-        if (kind === 'create' && exists(path)) {
-            throw new UpstreamError('firestore', 'conflict');
-        }
-        return { kind, path, data: value };
     };
     /** One run of `work`: reads see the store plus this run's own writes, the writes are returned, not applied. */
     const run = async <R>(
@@ -144,6 +161,8 @@ export function createFakeDocumentStore(): FakeDocumentStore {
                 }
                 return Promise.resolve(read(path, schema));
             },
+            getVersioned: <T>(path: string, schema: Schema<T>) =>
+                transaction.get(path, schema).then((data) => (data === undefined ? undefined : { data, updateTime: clock.timeOf(path) })),
             create: <T>(path: string, schema: Schema<T>, data: T) => {
                 pending.push(prepared('create', path, schema, data, exists));
                 return Promise.resolve();
@@ -215,6 +234,7 @@ export function createFakeDocumentStore(): FakeDocumentStore {
         },
         seed: (path, data) => {
             docs.set(path, structuredClone(data));
+            clock.touch(path);
         },
         peek: (path) => (docs.has(path) ? structuredClone(docs.get(path)) : undefined),
         paths: (prefix = '') => [...docs.keys()].filter((path) => path.startsWith(prefix)).sort((a, b) => a.localeCompare(b)),

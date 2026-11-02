@@ -40,6 +40,7 @@ import {
 } from '../support/imagery-fakes.js';
 import { createFakeCloudRunJobs, createFakeSecretStore } from '../support/platform.js';
 import { createFakeUsgsApi } from '../support/services.js';
+import { createFakeMapboxUploads } from '../support/uploads-fake.js';
 
 export const CITY = 'bucharest';
 export const MAPBOX_USER = 'e2e-mapbox';
@@ -63,6 +64,8 @@ export interface ImageryWorld {
     readonly scenes: ReturnType<typeof createFakeUsgsScenes>;
     readonly remote: ReturnType<typeof createFakeRemoteFiles>;
     readonly tilesets: ReturnType<typeof createFakeMapboxTilesets>;
+    /** M7: Mapbox's Uploads API (the tiles token lacks its scopes until `uploads.grantScopes()`). */
+    readonly uploads: ReturnType<typeof createFakeMapboxUploads>;
     readonly reader: ReturnType<typeof createMemoryBlobReader>;
     readonly jobs: ReturnType<typeof createFakeCloudRunJobs>;
 }
@@ -79,6 +82,7 @@ export function imageryWorld(now = NOW, records: Readonly<Record<string, readonl
     const scenes = createFakeUsgsScenes(records);
     const remote = createFakeRemoteFiles();
     const tilesets = createFakeMapboxTilesets(MAPBOX_USER, TILES_TOKEN);
+    const uploads = createFakeMapboxUploads(tilesets.recipes, MAPBOX_USER, TILES_TOKEN);
     const reader = createMemoryBlobReader(base.blobs);
     const jobs = createFakeCloudRunJobs();
     const setup = {
@@ -91,11 +95,12 @@ export function imageryWorld(now = NOW, records: Readonly<Record<string, readonl
         scenes: scenes.scenes,
         remote: remote.remote,
         tilesets: tilesets.tilesets,
+        uploads: uploads.uploads,
         reader: reader.reader,
         jobs: jobs.jobs,
         setup,
     };
-    return { deps, secrets, usgs, scenes, remote, tilesets, reader, jobs };
+    return { deps, secrets, usgs, scenes, remote, tilesets, uploads, reader, jobs };
 }
 
 export function at(iso: string) {

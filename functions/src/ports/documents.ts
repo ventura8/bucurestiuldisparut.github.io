@@ -31,7 +31,7 @@ export interface QueryResult<T> {
  * Reads of a {@link DocumentStore} or a transaction. Every document is validated with the caller's schema (paths and
  * schemas come from `@hcm/shared`: `FIRESTORE_PATHS`, `firestore.ts`, `firestore-ops.ts`).
  */
-interface DocumentReader {
+export interface DocumentReader {
     /** The document at `path`, or undefined when there is none; an invalid one rejects with `InvalidDocumentError`. */
     get<T>(path: string, schema: Schema<T>): Promise<T | undefined>;
 }
@@ -49,8 +49,21 @@ interface DocumentWriter {
     delete(path: string): Promise<void>;
 }
 
+/** A document read with its update time (M7): `<seconds>.<9-digit nanoseconds>`, as Firestore stamps the last write. */
+export interface VersionedDocument<T> {
+    readonly data: T;
+    readonly updateTime: string;
+}
+
 /** Firestore's rule: every read of a transaction happens before its first write. */
-export interface DocumentTransaction extends DocumentReader, DocumentWriter {}
+export interface DocumentTransaction extends DocumentReader, DocumentWriter {
+    /**
+     * The document with its update time (M7, `worker.step`'s compare-and-set, `docs/research/M7-local-worker.md` §1.3): a
+     * later call that finds another update time knows another writer came between; the transaction itself makes the
+     * comparison and the write one step. Undefined when there is no document.
+     */
+    getVersioned<T>(path: string, schema: Schema<T>): Promise<VersionedDocument<T> | undefined>;
+}
 
 /**
  * Firestore through the Admin SDK (adapter `functions/src/adapters/documents.ts`; fake: `createFakeDocumentStore` in

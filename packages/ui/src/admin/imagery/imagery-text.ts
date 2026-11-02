@@ -32,7 +32,18 @@ const WAITS = {
     'compute-units': 'adminContent.imagery.wait.computeUnits',
     deferred: 'adminContent.imagery.wait.deferred',
     mapbox: 'adminContent.imagery.wait.mapbox',
-} as const satisfies Readonly<Record<JobWaitReason, string>>;
+} as const satisfies Readonly<Record<WordedWait, string>>;
+
+/**
+ * M7 (`docs/research/M7-local-worker.md` §7): a job waiting for the owner's computer or for the OK past Cloud Run's free
+ * tier says so in `<hcm-run-place>` (the lazy `worker` chunk, with its switch), not in a line of its own.
+ */
+type WordedWait = Exclude<JobWaitReason, 'worker' | 'free-tier'>;
+
+/** The reason a job waits when a line says it, else null. */
+export function wordedWait(reason: JobWaitReason | null): WordedWait | null {
+    return reason === null || reason === 'worker' || reason === 'free-tier' ? null : reason;
+}
 
 const DATASETS = {
     corona2: 'adminContent.imagery.dataset.corona2',
@@ -59,7 +70,7 @@ export function numberText(locale: Locale, value: number, digits = 1): string {
 }
 
 /** Why a job waits, in words (the deferral and the retries with their date). */
-export function waitText(locale: Locale, reason: JobWaitReason, at: string | null): string {
+export function waitText(locale: Locale, reason: WordedWait, at: string | null): string {
     return contentText(locale, WAITS[reason], { date: at === null ? '' : dayText(locale, at) });
 }
 
@@ -99,8 +110,9 @@ export function versionDetail(locale: Locale, version: VersionItemPort, job: Job
     if (job === undefined) {
         return state;
     }
-    if (job.waitReason !== null) {
-        return `${state} · ${waitText(locale, job.waitReason, job.retryAt)}`;
+    const wait = wordedWait(job.waitReason);
+    if (wait !== null) {
+        return `${state} · ${waitText(locale, wait, job.retryAt)}`;
     }
     return job.progress === null
         ? state

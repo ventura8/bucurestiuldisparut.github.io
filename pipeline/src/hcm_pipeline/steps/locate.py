@@ -4,9 +4,13 @@ The scene's corners (else its footprint's extremes) and the eight assignments of
 scored against the Sentinel-2 window at 60 m (`georef/corners.py`); the best one maps the city window (bounds plus
 10 %) back into the frame: that crop is `scan.tif`, with its preview and four corner GCPs (`method: 'corners'`)
 that start the georeferencing. A frame that does not cover the window fails with
-`apiError.imagery.referenceUnavailable`. Finding 57 of 2026-11-01: the frame is never read whole; the guess scores
+`apiError.imagery.referenceUnavailable`. Findings 62 and 63 of 2026-11-02: only assignments whose ground pixels are
+about square are scored, a guess under the least correlation is searched around a widened window, and one still under it
+fails with `apiError.imagery.cityNotFound` instead of cropping; a crop with a side over `MAX_SCAN_PIXELS`
+fails before it is read (`georef/corners.py`). Finding 57 of 2026-11-01: the frame is never read whole; the guess scores
 `stitch`'s shrunk preview, and the crop is read window by window out of the segments that cover it (`frame.json`),
-each staged, read and let go in turn.
+each staged, read and let go in turn. M7 (`docs/research/M7-local-worker.md` §5): once `scan.tif` and the version's
+`scan` are recorded, the job's USGS delivery is deleted (and logged); a later run needs it no more (`runner.py`).
 """
 
 import math
@@ -15,11 +19,20 @@ from typing import Final
 
 import numpy
 
-from hcm_pipeline.contract import Errors
+from hcm_pipeline.contract import MAX_SCAN_PIXELS, Errors
 from hcm_pipeline.documents import GeorefInfo, Scene
 from hcm_pipeline.frames import FRAME_JSON, FRAME_PREVIEW, FrameLayout, Segment
 from hcm_pipeline.geo import Grid, MercatorBox, to_mercator
-from hcm_pipeline.georef.corners import SCORE_RESOLUTION_M, Crop, Frame, WindowMissedError, best_assignment, crop
+from hcm_pipeline.georef.corners import (
+    SCORE_RESOLUTION_M,
+    CityNotFoundError,
+    Crop,
+    Frame,
+    Guess,
+    WindowMissedError,
+    crop,
+    guess_corners,
+)
 from hcm_pipeline.images import UInt8Array, as_uint8, resize
 from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult
 from hcm_pipeline.model import UsgsImportParams
@@ -28,6 +41,9 @@ from hcm_pipeline.steps.common import city_window, gdal_step, grey_reference, pu
 
 # The frame is shrunk until a pixel is about this many metres before it is scored at 60 m.
 SCORING_PIXEL_M: Final = 30.0
+# The step whose output is the USGS delivery, and the prefix every delivery lives under (`paths.usgs_raw`).
+DELIVERY_STEP: Final = "fetch"
+USGS_RAW_PREFIX: Final = "usgs-raw/"
 
 
 def _scene(ctx: JobContext, entity: UsgsImportParams) -> Scene:
@@ -67,6 +83,16 @@ def crop_pixels(ctx: JobContext, layout: FrameLayout, box: Crop) -> UInt8Array:
     return as_uint8(pixels)
 
 
+def delete_delivery(ctx: JobContext) -> None:
+    """The job's USGS delivery deleted once the city crop and the version's scan are recorded (M7 §5): only a
+    `usgs-raw/` object, a missing one is fine (a retry of `locate`, or another city's job deleted it first)."""
+    delivery = ctx.job.step(DELIVERY_STEP).gcs_path
+    if delivery is None or not delivery.startswith(USGS_RAW_PREFIX):
+        return
+    ctx.services.objects.delete(delivery)
+    ctx.log.info(f"the USGS delivery {delivery} is deleted: the city crop is recorded", LocateStep.name)
+
+
 class LocateStep:
     name = "locate"
 
@@ -81,6 +107,7 @@ class LocateStep:
         scan = publish_scan(ctx, write_geotiff(ctx.local("scan.tif"), GeoTiff([pixels])), pixels)
         georef = GeorefInfo("corners", "affine", located.gcps)
         ctx.update_version({"scan": scan.as_record(), "georef": georef.as_record()})
+        delete_delivery(ctx)
         return Done(ctx.services.objects.stat(scan.path), scan.sha256)
 
     def _located(self, ctx: JobContext, scene: Scene, window: MercatorBox, preview: Path, size: tuple[int, int]) -> Crop:
@@ -88,10 +115,27 @@ class LocateStep:
         reference = resize(grey_reference(sentinel2(ctx, window)), (grid.width, grid.height))
         frame = gdal_step(ctx, lambda: scoring_frame(preview, *size, _frame_pixel_m(scene, size[0])), "read the frame")
         try:
-            best, score = best_assignment(frame, scene.corner_quad(), reference, grid)
-            located = crop(best, window, *size)
+            guess = guess_corners(frame, scene.corner_quad(), reference, grid)
+            located = crop(guess.assignment, window, *size)
+        except CityNotFoundError as error:
+            raise StepFailedError(Errors.CITY_NOT_FOUND, str(error)) from error
         except WindowMissedError as error:
             raise StepFailedError(Errors.REFERENCE_UNAVAILABLE, str(error)) from error
-        mirror = ", mirrored" if best.mirrored else ""
-        ctx.log.info(f"corner guess: rotation {best.rotation * 90} degrees{mirror}, correlation {score:.2f}", self.name)
-        return located
+        ctx.log.info(guess_line(guess), self.name)
+        return within_limits(located)
+
+
+def guess_line(guess: Guess) -> str:
+    """The log line of the corner guess kept: its rotation, mirror, correlation, and how far the search moved it."""
+    mirror = ", mirrored" if guess.assignment.mirrored else ""
+    moved = f", moved {guess.moved_m / 1000:.1f} km by the search around the window" if guess.moved_m > 0 else ""
+    return f"corner guess: rotation {guess.assignment.rotation * 90} degrees{mirror}, correlation {guess.score:.2f}{moved}"
+
+
+def within_limits(located: Crop) -> Crop:
+    """The crop, refused before it is read when a side is over `MAX_SCAN_PIXELS`: a version's scan is never larger
+    (`scanSchema`; finding 62 of 2026-11-02: a 300 000-pixel crop made the version unreadable in the admin)."""
+    if max(located.width, located.height) > MAX_SCAN_PIXELS:
+        why = f"the city crop would be {located.width} x {located.height} pixels, over the {MAX_SCAN_PIXELS} a scan may have"
+        raise StepFailedError(Errors.PROCESSING_FAILED, why)
+    return located

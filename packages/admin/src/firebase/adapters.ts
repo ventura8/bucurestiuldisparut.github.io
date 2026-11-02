@@ -3,7 +3,14 @@
  * (validated with the registry's response schemas), Firestore, Storage, and the two ways the admin signs in with Google
  * (Firebase's popup in production, the e2e stand-in's credential). Tested in Node with a fake table.
  */
-import { apiErrorFromFailure, CALLABLES, deployedName, type CallableName, type CallableRequest, type CallableResponse } from '@hcm/shared';
+import {
+    ADMIN_CALLABLES,
+    apiErrorFromFailure,
+    deployedName,
+    type AdminCallableName,
+    type CallableRequest,
+    type CallableResponse,
+} from '@hcm/shared';
 import type { User } from 'firebase/auth';
 
 import type { PopupSignIn } from '../auth/google-auth.js';
@@ -47,7 +54,7 @@ export function callableFailureOf(error: unknown): CallableFailure {
 
 export function callablesPort(sdk: FirebaseSdk, handles: Pick<FirebaseHandles, 'functions'>): CallablesPort {
     return {
-        call: async <N extends CallableName>(name: N, request: CallableRequest<N>, options: { readonly timeoutMs?: number } = {}) => {
+        call: async <N extends AdminCallableName>(name: N, request: CallableRequest<N>, options: { readonly timeoutMs?: number } = {}) => {
             const timeout = options.timeoutMs === undefined ? {} : { timeout: options.timeoutMs };
             const callable = sdk.httpsCallable(handles.functions, deployedName(name), timeout);
             let data: unknown;
@@ -56,7 +63,7 @@ export function callablesPort(sdk: FirebaseSdk, handles: Pick<FirebaseHandles, '
             } catch (error) {
                 throw callableFailureOf(error);
             }
-            const parsed = CALLABLES[name].response.safeParse(data);
+            const parsed = ADMIN_CALLABLES[name].response.safeParse(data);
             if (!parsed.success) {
                 // An answer, in a shape older than this admin reads (finding 27 of 2026-10-31): a server is there, and
                 // it is outdated, not down.

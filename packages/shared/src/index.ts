@@ -139,10 +139,13 @@ export {
     MANIFEST_ENTITIES,
     OPS_STEPS,
     PROVISION_ITEMS,
+    RUN_CHOICES,
+    RUN_PLACES,
     SERVICE_STATES,
     SETUP_AREAS,
     USGS_ROLES,
     USGS_SCENE_STATUSES,
+    WORKER_ID_PATTERN,
     adminDocSchema,
     harvestStateDocSchema,
     inviteDocSchema,
@@ -168,6 +171,8 @@ export type {
     JobStatus,
     JobType,
     JobWaitReason,
+    RunChoice,
+    RunPlace,
     ManifestStateDoc,
     OpsDispatchDoc,
     OpsGuardDoc,
@@ -225,6 +230,7 @@ export {
     MTS_PRECISIONS,
     PIPELINE_STEPS,
     PUBLISH_CHOICES,
+    PUBLISH_PATHS,
     PUBLISH_STEPS,
     SCAN_PREVIEW_MAX_PX,
     VERSION_ORIGINS,
@@ -278,6 +284,7 @@ export * from './schemas/usgs-order.js';
 export * from './schemas/autogcp.js';
 export * from './schemas/assist.js';
 export * from './schemas/notifications.js';
+export * from './schemas/worker.js';
 // M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases on jsDelivr (every
 // export of these modules is public; `test/index.test.ts` lists them).
 export * from './schemas/cities.js';

@@ -1868,3 +1868,76 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       `firebase-messaging-sw.js` (0.7 KB gzip), which `vite build` alone does not write.
     - Fix and pin: measure with the `build` stage (or add the worker) before counting the room (`DECISIONS-for-review.md` §82g).
     - **Measure a budget the way its gate does: the same files, the same build, the same sum.**
+332. **The pipeline wrote a layer version its own contract refused, and the admin could only say "could not be read".**
+    - Seen: live on 2026-11-02 (finding 62): the KH-9 version page read "invalid-document" and Work showed 0.
+    - Found by: the user's live import.
+    - Cause: `MAX_SCAN_PIXELS` was declared in the pipeline's contract and never checked, so a 300 000-pixel crop was
+      recorded; the golden documents were written by hand, so nothing compared what the writers produce with the
+      schemas; the admin logged nothing about which field failed.
+    - Fix and pin: `within_limits` in `steps/locate.py`; `test_written_documents.py` records every document the real
+      runner writes along ten paths and holds it to `contracts/written-documents.json`, which the shared test parses;
+      the admin's store logs the failing fields (S-P01-HAPPY-WRITTEN-CONTRACT; `packages/admin/test/firebase/content.test.ts`).
+    - **A cross-language contract checks what the real writers produce, not hand-written examples; a declared limit is
+      enforced where the value is made.**
+333. **A failure's numeric parameter would have made the job and its version unreadable, and a test asserted it.**
+    - Seen: 2026-11-02, while tracing finding 62 (not live yet).
+    - Found by: reading every `StepFailedError` call against `apiErrorParamsSchema` (texts only).
+    - Cause: `{bytes}`, `{count}` and `{min}` were passed as numbers and written as they came; the runner's test pinned
+      `{"min": 6}`.
+    - Fix and pin: `StepFailedError` writes every parameter as text (S-P01-BAD-WRITTEN-PARAMS; `test_runner.py`, the
+      size-mismatch path of `test_written_documents.py`).
+    - **Convert at the boundary: a writer turns values into the schema's types itself, whatever its callers pass.**
+334. **A corner guess no better than chance was cropped.**
+    - Seen: live on 2026-11-02 (finding 63): "rotation 270 degrees, correlation 0.03" on a KH-9 strip, then 0 of 128
+      tiles matched.
+    - Found by: the user's live import's log.
+    - Cause: the best of eight assignments was kept with no floor; a quarter turn of a strip stretches the pixels by its
+      aspect squared, and a guess a few hundred metres off correlates about 0.01 at 60 m, so the best was noise.
+    - Fix and pin: square-pixel assignments only, a floor of 0.2, a search around the window widened by half, then
+      `apiError.imagery.cityNotFound` (S-P01-HAPPY-KH9-STRIP, S-P01-BAD-CITY-NOT-FOUND; `pipeline/tests/unit/test_corners.py`).
+    - **A best-of-N choice needs a floor and a plausibility filter; "the best" of candidates that all fail is a failure.**
+335. **A callable answered a document's timestamps in a shape its own schema refused.**
+    - Seen: 2026-11-02, M7's `worker.step` `get` (not live: found while building the local worker).
+    - Found by: the worker's documents going through the shared schemas on the pipeline's side.
+    - Cause: a document read with the Admin SDK holds `Timestamp` instances, and a callable's answer is encoded field by
+      field, so a `Timestamp` reaches the caller as `{_seconds, _nanoseconds}`, not the `{seconds, nanoseconds}` every
+      reader of the wire expects.
+    - Fix and pin: `toWire` (`functions/src/worker/fields.ts`) turns every timestamp, at any depth, into plain
+      `{seconds, nanoseconds}` before the answer and before a merge is validated
+      (`functions/test/worker/step.test.ts`: `happyPath_theJobIsReadWithPlainTimestampsAndItsUpdateTime`).
+    - **A callable's answer is JSON: convert SDK objects into the wire's shape yourself, never rely on how the SDK encodes a class.**
+336. **A fallback would have queued a Cloud Tasks task under a name its first path had already used.**
+    - Seen: 2026-11-02, M7's Uploads API path (not live).
+    - Found by: writing the fallback's tests (`functions/test/imagery/publish-uploads.test.ts`).
+    - Cause: the publish's tasks are named `<city>-<job>-<reason>` so a redelivery never queues twice; the Uploads path's
+      polls used `poll-<n>`, and an MTS publish started after a fallback while polling began again at the same `n`.
+    - Fix and pin: a fallback during the polls starts MTS at the next poll number; one before any poll keeps the task's
+      (`afterUploads` in `functions/src/imagery/publish.ts`; `badPath_anUploadThatEndsInAnErrorFallsBackToMtsOnce`).
+    - **Deterministic task names are ids for the queue's whole life: a second path that reuses the first one's names is refused.**
+337. **The admin's bundle carried the schemas of five callables it never calls.**
+    - Seen: 2026-11-02, M7's build: the admin in all 627.8 KB of its 620 KB budget.
+    - Found by: the `bundle-budget` gate, then a search of `admin-core` for the worker's strings (`download-options`,
+      `ifUpdateTime`).
+    - Cause: the admin validates every answer with the one registry table, `CALLABLES`, so every row's request and response
+      schemas were in its entry, the local worker's included; zod's builders are calls the bundler keeps.
+    - Fix and pin: `ADMIN_CALLABLES` (every callable but the worker's) and `CALLABLE_NAMES` (the names the deployment
+      check waits for), with the worker's rows and schemas in `packages/shared/src/api/worker-calls.ts` and the whole table
+      in `callables.ts`, which the admin never imports: 0.6 KB less (627.8 → 627.2 KB) (`packages/shared/test/api/registry.test.ts`). The
+      deployment count of the admin's test went from 69 to 75 with it (`packages/admin/test/google/clients.test.ts`).
+    - **What a bundle imports for one part of a table it carries whole: split a shared registry by its consumers.**
+338. **A persona's ID token was refused where the page's own token is accepted.**
+    - Seen: 2026-11-02, the first run of `e2e/admin/specs/imagery/worker-run.spec.ts`: `worker.hello` answered
+      `apiError.notAdmin`.
+    - Found by: S-A62-HAPPY-WORKER-RUN.
+    - Cause: the admin fixtures sign the personas in before the world gives them their claims; the admin page refreshes
+      its token, a process handed the first token does not.
+    - Fix and pin: the spec signs the owner in again (`EmulatorWorld.signIn`) just before it hands the tokens to the
+      worker's page.
+    - **A token carries the claims of the moment it was minted: hand a process one minted after the claims it needs.**
+339. **A logging test that expected exactly one line saw another thread's.**
+    - Seen: 2026-11-02, `pipeline/tests/unit/test_log.py` failing now and then in a whole pipeline run.
+    - Found by: the M7 runs of the pipeline suite.
+    - Cause: the tests read every line of the configured handler, and a daemon thread an earlier test left running (a
+      worker's local page, a fake server) could log through it meanwhile.
+    - Fix and pin: the tests read only their own logger's lines (`read_entries(stream, logger)`).
+    - **A test that counts shared output filters it to what the test wrote.**

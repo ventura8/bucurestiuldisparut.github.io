@@ -6,7 +6,7 @@
  * mode after the claim, and opens the step a `#/setup/<step>` address names. The entry passes what the shell does not
  * know: google-clients' Cloud port and legacy importer, `setup.createCity` (CR-M2b-1) and the city.
  */
-import type { CallableName, CallableRequest, CallableResponse, Logger } from '@hcm/shared';
+import type { AdminCallableName, CallableRequest, CallableResponse, Logger } from '@hcm/shared';
 
 import type { GoogleScope } from '../google/scopes.js';
 import type { InstallerPort } from '../install/ports.js';
@@ -33,7 +33,7 @@ type ShellGoogleOutcome =
     { readonly granted: true; readonly access: GoogleAccess | null } | { readonly granted: false; readonly failure: string };
 
 interface SetupCallables {
-    call<N extends CallableName>(name: N, request: CallableRequest<N>): Promise<CallableResponse<N>>;
+    call<N extends AdminCallableName>(name: N, request: CallableRequest<N>): Promise<CallableResponse<N>>;
 }
 
 /** What the module reads of the admin's state. */

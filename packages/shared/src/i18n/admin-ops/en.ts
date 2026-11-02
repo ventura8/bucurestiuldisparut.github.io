@@ -134,6 +134,7 @@ export const en: Readonly<Record<AdminOpsKey, string>> = {
     'adminContent.jobs.stepName.register': 'Recording the version',
     'adminContent.jobs.stepName.guard': 'Checking the budget',
     'adminContent.jobs.stepName.upload': 'Uploading to Mapbox',
+    'adminContent.jobs.stepName.uploads': 'Free upload to Mapbox',
     'adminContent.jobs.stepName.tiles': 'Mapbox is building the tiles',
     'adminContent.jobs.stepName.finalize': 'Finishing',
     'adminContent.jobs.level.info': 'Info',

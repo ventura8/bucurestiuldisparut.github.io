@@ -49,7 +49,9 @@ export const FINISHED_JOB_STATUSES = ['succeeded', 'failed', 'cancelled'] as con
 /**
  * Why an unfinished job is not running (`docs/research/M3-interfaces.md` §4.2): USGS preparing the download or in
  * maintenance, rate limited, the two-running-jobs cap, the budget guard, the admin's points or approval, the compute-unit
- * guard's choice, a publish deferred to next month, Mapbox processing.
+ * guard's choice, a publish deferred to next month, Mapbox processing. M7 (`docs/research/M7-local-worker.md` §3, §4): a job
+ * chosen for the owner's computer waiting for a worker to claim it, a cloud run waiting for the admin's OK past Cloud
+ * Run's free tier.
  */
 export const JOB_WAIT_REASONS = [
     'usgs-preparing',
@@ -62,7 +64,17 @@ export const JOB_WAIT_REASONS = [
     'compute-units',
     'deferred',
     'mapbox',
+    'worker',
+    'free-tier',
 ] as const;
+/** M7 (`docs/research/M7-local-worker.md` §3): where a raster job runs, the owner's computer or Cloud Run. */
+export const RUN_PLACES = ['local', 'cloud'] as const;
+export type RunPlace = (typeof RUN_PLACES)[number];
+/** M7: a city's remembered choice; `auto` is the computer while one of the city's workers was seen lately, else the cloud. */
+export const RUN_CHOICES = ['auto', 'local', 'cloud'] as const;
+export type RunChoice = (typeof RUN_CHOICES)[number];
+/** M7: a local worker's id (`w-` and 16 hex characters, new per process). */
+export const WORKER_ID_PATTERN = /^w-[0-9a-f]{16}$/;
 export const JOB_STEP_STATES = ['pending', 'running', 'done', 'failed', 'skipped'] as const;
 /**
  * The three Cloud Run Job definitions (security review §4.1): `fetch` 1 vCPU / 4 GiB for an import's download phase
@@ -178,6 +190,14 @@ export const jobDocSchema = z.strictObject({
     waitReason: z.enum(JOB_WAIT_REASONS).optional(),
     startedAt: timestampSchema.optional(),
     finishedAt: timestampSchema.optional(),
+    /** M7 (`docs/research/M7-local-worker.md` §3): where it runs, decided by the dispatcher or the admin (`imagery.runOn`). */
+    runOn: z.enum(RUN_PLACES).optional(),
+    /** M7: the local worker that claimed it last (`worker.claim`); its writes are accepted while it holds the job. */
+    worker: z.strictObject({ id: z.string().regex(WORKER_ID_PATTERN), uid: uidSchema, claimedAt: timestampSchema }).optional(),
+    /** M7 (§4.3): the admin's OK to run it in the cloud past the month's free tier. */
+    freeTierOk: z.strictObject({ by: uidSchema, at: timestampSchema }).optional(),
+    /** M7 (§4.2): the `dispatchAt` of the last cloud run counted into `usage/cloudrun-*` (a redelivered event counts nothing). */
+    usageCountedAt: timestampSchema.optional(),
     ...stamp,
 });
 
@@ -342,6 +362,9 @@ export const usageDocSchema = z.strictObject({
     uploadedMb: z.number().min(0),
     publishes: z.number().int().min(0),
     studioUploads: z.number().int().min(0).optional(),
+    /** M7 (`docs/research/M7-local-worker.md` §6): megabytes and publishes through Mapbox's Uploads API this month. */
+    uploadsApiMb: z.number().min(0).optional(),
+    uploadsApiPublishes: z.number().int().min(0).optional(),
     /**
      * M3: compute units held for publishes under way (by layer version), released or counted when Mapbox answers, so two
      * publishes never both fit in the same remaining budget (`docs/research/M3-interfaces.md` §7.2).

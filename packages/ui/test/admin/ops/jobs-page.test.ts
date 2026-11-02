@@ -62,7 +62,13 @@ describe('<hcm-jobs-page>', () => {
         deep(nth(chips, 0), 'button').click();
         deep(deep(element, '.more'), 'hcm-button').click();
 
-        expect(jobs.calls.filter((call) => !call.startsWith('open'))).toEqual(['setFilter "failed"', 'setFilter "all"', 'more']);
+        // The page asks once for the worker chunk's elements (M7: `workerElements`), then nothing but the user's actions.
+        expect(jobs.calls.filter((call) => !call.startsWith('open'))).toEqual([
+            'workerElements',
+            'setFilter "failed"',
+            'setFilter "all"',
+            'more',
+        ]);
         expect((chips[0] as HTMLElement & { selected: boolean }).selected).toBe(true);
         expect(deepText(element)).toContain('Choose a job to see its steps and log.');
     });

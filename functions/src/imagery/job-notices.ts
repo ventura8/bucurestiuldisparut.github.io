@@ -32,7 +32,7 @@ export function noticeOf(before: JobDoc | undefined, after: JobDoc): JobNotice |
 }
 
 /** The version's label in both languages, or the job's type for a job without a version (a layer's deletion). */
-function labelParams(version: LayerVersionDoc | undefined, job: JobDoc): Readonly<Record<string, string>> {
+export function labelParams(version: LayerVersionDoc | undefined, job: JobDoc): Readonly<Record<string, string>> {
     if (version === undefined) {
         return { label: job.type };
     }

@@ -7,17 +7,18 @@
  * (`ops/dispatch`), each slot's job read again to drop the ones that ended, so the five trigger instances and the tick
  * never all see one place free and each start a run (`S-A12-BAD-RACING-DISPATCH`). An import runs in two phases
  * (finding 56 of 2026-11-01): its download on the small `raster-fetch` job, which then queues the job again, and its
- * processing on `raster-pipeline` (or `-xl`); each phase is a dispatch like any other.
+ * processing on `raster-pipeline` (or `-xl`); each phase is a dispatch like any other. M7
+ * (`docs/research/M7-local-worker.md` §3, §4.3): first where the job runs (`runOn`, written the first time); a job for
+ * the owner's computer waits for a worker (`waitReason: 'worker'`), and neither it nor a worker's run of it takes a
+ * slot; a cloud run past the month's free tier waits for the admin's OK (`waitReason: 'free-tier'`).
  */
 import {
     CLOUD_RUN_JOBS,
-    DOWNLOAD_STEPS,
     FIRESTORE_PATHS,
-    JOB_STEPS,
     JOB_MAX_ATTEMPTS,
     PIPELINE_RUN_ARGS,
     RUNNING_JOBS_MAX,
-    SENSOR_SPECS,
+    WORKER_LEASE_PREFIX,
     jobDocSchema,
     opsDispatchDocSchema,
     runsOnPipeline,
@@ -27,16 +28,21 @@ import {
     type JobMachine,
     type JobWaitReason,
     type OpsDispatchDoc,
-    type Sensor,
+    type RunPlace,
 } from '@hcm/shared';
 
 import { omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { endWork } from './end.js';
+import { askForOk, needsFreeTierOk } from './free-tier.js';
 import { cityIds } from './limits.js';
+import { handedOver, machineOf } from './machine.js';
+import { placeFor } from './place.js';
 import { enqueuePublish } from './publish-queue.js';
 import { IMAGERY_WRITER, appendJobLog, guardIsRed, stampOf } from './records.js';
+
+export { machineOf } from './machine.js';
 
 export type DispatchDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs' | 'tasks'>;
 
@@ -44,38 +50,6 @@ export type DispatchOutcome = 'started' | 'waiting' | 'not-due' | 'publish' | 's
 
 /** A failed run call is tried again this much later. */
 const RUN_RETRY_MS = 60_000;
-
-/** The machine the job's camera needs (`SENSOR_SPECS`: a KH-9 panoramic strip does not fit in 16 GiB). */
-function sensorMachine(job: JobDoc): 'std' | 'xl' {
-    const sensor = job.params['sensor'];
-    return typeof sensor === 'string' && sensor in SENSOR_SPECS ? SENSOR_SPECS[sensor as Sensor].machine : 'std';
-}
-
-/** True while an import's download phase (`DOWNLOAD_STEPS`) has a step neither done nor skipped. */
-function downloadPending(job: JobDoc): boolean {
-    const steps = job.steps ?? {};
-    const types: readonly string[] = JOB_STEPS[job.type];
-    return DOWNLOAD_STEPS.some((step) => types.includes(step) && !['done', 'skipped'].includes(steps[step]?.status ?? 'pending'));
-}
-
-/**
- * The machine a job needs (finding 56 of 2026-11-01): the small `fetch` job for an import's download phase (unless an
- * out-of-memory exit moved it to `std`), then `xl` for a KH-9 panoramic frame or after an out-of-memory exit, else `std`.
- */
-export function machineOf(job: JobDoc): JobMachine {
-    if (job.machine === 'xl') {
-        return 'xl';
-    }
-    if (downloadPending(job)) {
-        return job.machine === 'std' ? 'std' : 'fetch';
-    }
-    return sensorMachine(job);
-}
-
-/** A dispatch after the download phase ended on the small job is the same try going on, not a new one. */
-function handedOver(job: JobDoc): boolean {
-    return job.machine === 'fetch' && !downloadPending(job);
-}
 
 /** True once neither `dispatchAt` nor `retryAt` lies in the future. */
 function isDue(job: JobDoc, now: Date): boolean {
@@ -88,7 +62,15 @@ function isDue(job: JobDoc, now: Date): boolean {
  * capacity, so a run that stopped heartbeating never blocks the next one.
  */
 function holdsExecution(job: JobDoc, now: Date): boolean {
+    if (runsLocally(job)) {
+        return false;
+    }
     return job.status === 'starting' || (job.lease !== undefined && timestampToDate(job.lease.until) >= now);
+}
+
+/** M7 §3: a run on the owner's computer (a local job, or one a worker leased) takes no Cloud Run slot. */
+function runsLocally(job: JobDoc): boolean {
+    return job.runOn === 'local' || job.lease?.owner.startsWith(WORKER_LEASE_PREFIX) === true;
 }
 
 /** A job's key in the execution slots: `<city>/<job>`. */
@@ -291,11 +273,62 @@ async function dispatchPipelineJob(deps: DispatchDeps, cityId: string, jobId: st
     if (early === 'exhausted') {
         return exhausted(deps, cityId, jobId, job);
     }
+    return dispatchByPlace(deps, cityId, jobId, job);
+}
+
+/** M7 §3: a job for the owner's computer waits for a worker; a cloud one goes on to Cloud Run. */
+async function dispatchByPlace(deps: DispatchDeps, cityId: string, jobId: string, job: JobDoc): Promise<DispatchOutcome> {
+    const place = await settlePlace(deps, cityId, jobId, job);
+    if (place === 'cloud') {
+        return dispatchToCloud(deps, cityId, jobId, job);
+    }
+    return place === 'local' ? wait(deps, cityId, jobId, 'worker') : 'skipped';
+}
+
+/** The free tier (M7 §4.3), then the budget guard and the capacity. */
+async function dispatchToCloud(deps: DispatchDeps, cityId: string, jobId: string, job: JobDoc): Promise<DispatchOutcome> {
+    if (await needsFreeTierOk(deps.documents, job, deps.clock.now())) {
+        return waitForOk(deps, cityId, jobId, job);
+    }
     const admitted = await admit(deps, cityId, jobId);
     if (admitted === 'started') {
         return run(deps, cityId, jobId, machineOf(job));
     }
     return admitted === 'moved' ? 'skipped' : wait(deps, cityId, jobId, admitted);
+}
+
+/**
+ * Where the job runs (M7 §3): its own `runOn`, else the city's choice, written on the job the first time in a transaction
+ * (a job for the computer waits for a worker from that same write); undefined when the job is no longer queued.
+ */
+async function settlePlace(deps: DispatchDeps, cityId: string, jobId: string, job: JobDoc): Promise<RunPlace | undefined> {
+    if (job.runOn !== undefined) {
+        return job.runOn;
+    }
+    const now = deps.clock.now();
+    const place = await placeFor(deps.documents, cityId, now);
+    const path = FIRESTORE_PATHS.job(cityId, jobId);
+    return deps.documents.transaction(async (transaction) => {
+        const current = await transaction.get(path, jobDocSchema);
+        if (!isQueued(current)) {
+            return undefined;
+        }
+        if (current.runOn !== undefined) {
+            return current.runOn;
+        }
+        const waits = place === 'local' ? { waitReason: 'worker' as const } : {};
+        await transaction.set(path, jobDocSchema, { ...current, runOn: place, ...waits, ...stampOf(IMAGERY_WRITER, now) });
+        return place;
+    });
+}
+
+/** A cloud run past the free tier waits for the OK; an automated one also asks for it in the inbox (once). */
+async function waitForOk(deps: DispatchDeps, cityId: string, jobId: string, job: JobDoc): Promise<DispatchOutcome> {
+    const outcome = await wait(deps, cityId, jobId, 'free-tier');
+    if (job.waitReason !== 'free-tier') {
+        await askForOk(deps, cityId, jobId, job);
+    }
+    return outcome;
 }
 
 function isQueued(job: JobDoc | undefined): job is JobDoc {

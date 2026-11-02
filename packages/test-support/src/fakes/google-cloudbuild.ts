@@ -438,6 +438,8 @@ function succeed(build: FakeBuild, state: CloudBuildState, world: BuildWorld): v
         return;
     }
     if (build.target === 'pipeline') {
+        // The `push` step names the digest it pushed (M7: the admin records it for the local worker's command).
+        build.log.push({ step: 'push', text: installLogLine({ event: 'image', digest: PIPELINE_DIGEST }) });
         const image = `${build.region}-docker.pkg.dev/${build.projectId}/hcm/pipeline@${PIPELINE_DIGEST}`;
         Object.values(CLOUD_RUN_JOBS).forEach((job) => {
             setJobSpec(world.cloudRun, `${build.projectId}/${build.region}/${job}`, { labels: jobLabels(slug, releaseTime), image });

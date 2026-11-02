@@ -10,7 +10,8 @@
  * reservations of first publishes, so two first publishes at once never both take the last place
  * (`S-A42-BAD-RACING-TILESETS`). M5 (`docs/research/M5-interfaces.md` §1.8; S-A52-BAD-CITY-OVER): a city with limits is
  * also held by its share of the month (`cities/{city}/usage/{month}`, in the same transaction): over it, the version
- * waits with the verdict `city-over` while the other cities' publishes go on.
+ * waits with the verdict `city-over` while the other cities' publishes go on. M7 (`docs/research/M7-local-worker.md` §6):
+ * the same transaction first chooses the way to Mapbox (`publish-path.ts`); the free Uploads API path reserves nothing.
  */
 import {
     FIRESTORE_PATHS,
@@ -30,6 +31,7 @@ import {
     type CityUsageDoc,
     type GuardOutcome,
     type JobDoc,
+    type LayerDoc,
     type LayerVersionDoc,
     type UsageDoc,
 } from '@hcm/shared';
@@ -39,6 +41,7 @@ import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { estimateOf } from './approval.js';
 import { cityIds } from './limits.js';
+import { publishPathOf, takeUploads } from './publish-path.js';
 import { IMAGERY_WRITER, countersOf, pickDefined, stampOf, versionIdOf, withStep } from './records.js';
 
 export type GuardDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
@@ -142,6 +145,8 @@ interface CityAccount {
 interface Loaded {
     readonly job: JobDoc | undefined;
     readonly version: LayerVersionDoc | undefined;
+    /** M7: the version's layer (its tileset's origin decides whether the Uploads API may replace it). */
+    readonly layer: LayerDoc | undefined;
     readonly versionId: string;
     readonly usage: UsageDoc;
     readonly city: CityAccount | undefined;
@@ -151,6 +156,7 @@ interface Loaded {
 interface Checked {
     readonly job: JobDoc;
     readonly version: LayerVersionDoc;
+    readonly layer: LayerDoc | undefined;
     readonly versionId: string;
     readonly estimate: number;
     readonly usage: UsageDoc;
@@ -169,8 +175,9 @@ async function load(transaction: DocumentTransaction, cityId: string, jobId: str
         usage: FIRESTORE_PATHS.usage(usageMonth(now)),
     };
     const version = await transaction.get(paths.version, layerVersionDocSchema);
+    const layer = version === undefined ? undefined : await transaction.get(FIRESTORE_PATHS.layer(cityId, version.layerId), layerDocSchema);
     const usage = (await transaction.get(paths.usage, usageDocSchema)) ?? emptyUsage(usageMonth(now), now);
-    return { job, version, versionId, usage, city: await loadCity(transaction, cityId, now), paths };
+    return { job, version, layer, versionId, usage, city: await loadCity(transaction, cityId, now), paths };
 }
 
 /** M5 (`docs/research/M5-interfaces.md` §1.8): the city's share and counters, read in the guard's transaction. */
@@ -314,7 +321,13 @@ export async function runGuard(deps: GuardDeps, cityId: string, jobId: string, s
     const now = deps.clock.now();
     const step = await deps.documents.transaction(async (transaction) => {
         const next = checkable(await load(transaction, cityId, jobId, now), now, !tilesets.ownHasTileset);
-        return 'step' in next ? next.step : decide(transaction, next.checked, tilesets, now);
+        if ('step' in next) {
+            return next.step;
+        }
+        const checked = next.checked;
+        return publishPathOf(checked) === 'uploads'
+            ? takeUploads(transaction, checked.paths, checked, now)
+            : decide(transaction, checked, tilesets, now);
     });
     deps.log.info('compute-unit guard', { cityId, jobId, step, tilesets: tilesets.existing + tilesets.firstPublishes.size });
     return step;

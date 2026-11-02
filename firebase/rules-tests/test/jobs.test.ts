@@ -7,7 +7,7 @@
 import { FIRESTORE_PATHS, JOB_STATUSES, JOB_TYPES, USGS_SCENE_STATUSES } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { jobDoc, layerDoc, layerVersionDoc, newJob, usgsSceneDoc } from './support/documents.js';
+import { jobDoc, layerDoc, layerVersionDoc, newJob, runChoiceDoc, usgsSceneDoc, workerDoc } from './support/documents.js';
 import { createWorld, deleted, serverTime, stampedBy, verdict, withChanges, type Data, type Verdict, type World } from './support/world.js';
 
 const CITY_ID = 'rules-jobs';
@@ -168,5 +168,46 @@ describe('triage a USGS scene', () => {
         ['another editor', { status: 'rejected', updatedBy: 'someone-else' }],
     ])('badPath_adminCannotSet_%s', async (_label, changes) => {
         expect(await triage(changes)).toBe('deny');
+    });
+});
+
+describe('local workers (M7, docs/research/M7-local-worker.md §2.4, §3)', () => {
+    it('happyPath_theCitysMembersReadItsWorkersAndItsRunChoice', async () => {
+        const worker = await seeded(FIRESTORE_PATHS.worker(CITY_ID, 'w-0123456789abcdef'), workerDoc(world.uid('admin')));
+        const choice = await seeded(FIRESTORE_PATHS.runChoice(CITY_ID), runChoiceDoc(world.uid('admin')));
+        const member = world.db('admin');
+
+        expect({
+            worker: await verdict(member.doc(worker).get()),
+            choice: await verdict(member.doc(choice).get()),
+            list: await verdict(member.collection(FIRESTORE_PATHS.workers(CITY_ID)).get()),
+        }).toEqual({ worker: 'allow', choice: 'allow', list: 'allow' });
+    });
+
+    it('badPath_noClientWritesAWorkerOrTheChoiceAndOtherCitiesReadNeither', async () => {
+        const worker = await seeded(FIRESTORE_PATHS.worker(CITY_ID, 'w-fedcba9876543210'), workerDoc(world.uid('admin')));
+        const member = world.db('admin');
+
+        expect({
+            createWorker: await verdict(
+                member.doc(FIRESTORE_PATHS.worker(CITY_ID, 'w-1111111111111111')).set(workerDoc(world.uid('admin'))),
+            ),
+            refreshWorker: await verdict(member.doc(worker).update({ lastSeenAt: serverTime(), ...stampedBy(world.uid('admin')) })),
+            setChoice: await verdict(
+                member.doc(FIRESTORE_PATHS.runChoice(CITY_ID)).set({ choice: 'local', ...stampedBy(world.uid('admin')) }),
+            ),
+            deleteWorker: await verdict(member.doc(worker).delete()),
+            outsiderReads: await verdict(world.db('outsider').doc(worker).get()),
+            outsiderLists: await verdict(world.db('outsider').collection(FIRESTORE_PATHS.workers(CITY_ID)).get()),
+            anonymousReads: await verdict(world.db('anonymous').doc(worker).get()),
+        }).toEqual({
+            createWorker: 'deny',
+            refreshWorker: 'deny',
+            setChoice: 'deny',
+            deleteWorker: 'deny',
+            outsiderReads: 'deny',
+            outsiderLists: 'deny',
+            anonymousReads: 'deny',
+        });
     });
 });

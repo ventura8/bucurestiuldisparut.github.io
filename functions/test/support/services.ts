@@ -313,7 +313,9 @@ export function createFakeUsgsApi() {
         [USGS_CREDENTIALS.pending.username, USGS_CREDENTIALS.pending.applicationToken],
     ]);
     const sessions = new Map<string, string>();
-    const recorder = new PortRecorder<'login' | 'permissions' | 'logout'>();
+    /** M7: what a generic M2M call answers, by endpoint (`data` as USGS sends it); an endpoint without one answers null. */
+    const answers = new Map<string, unknown>();
+    const recorder = new PortRecorder<'login' | 'permissions' | 'logout' | 'request'>();
     let logins = 0;
     const usgs: UsgsApi = {
         login: (username, applicationToken) =>
@@ -341,9 +343,17 @@ export function createFakeUsgsApi() {
                 recorder.enter('logout', [apiKey]);
                 sessions.delete(apiKey);
             }),
+        request: (apiKey, endpoint, payload) =>
+            promised(() => {
+                recorder.enter('request', [apiKey, endpoint, payload]);
+                if (!sessions.has(apiKey)) {
+                    throw new UpstreamError('usgs', 'unauthorized', { status: 500 });
+                }
+                return answers.get(endpoint) ?? null;
+            }),
     };
     const approve = (): void => {
         permissions.set(USGS_CREDENTIALS.pending.username, ['user', 'download', 'order']);
     };
-    return { usgs, sessions, approve, recorder };
+    return { usgs, sessions, approve, recorder, answers };
 }

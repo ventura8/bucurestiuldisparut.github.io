@@ -102,7 +102,7 @@ def _persisted(header: str | None) -> int:
     return 0 if not header else int(header.rsplit("-", 1)[1]) + 1
 
 
-class _StreamReader(io.RawIOBase):
+class StreamReader(io.RawIOBase):
     """A readable file over an httpx streaming response (tarfile's `r|gz` reads it front to back)."""
 
     def __init__(self, chunks: Iterator[bytes]) -> None:
@@ -178,7 +178,7 @@ class GcsObjectStore:
     def _reading(self, path: str) -> Iterator[IO[bytes]]:
         with self._http.stream("GET", self._object_url(path), params={"alt": "media"}, headers=self._auth()) as response:
             self._checked(response, "read")
-            yield io.BufferedReader(_StreamReader(response.iter_bytes(READ_BYTES)), READ_BYTES)
+            yield io.BufferedReader(StreamReader(response.iter_bytes(READ_BYTES)), READ_BYTES)
 
     def open_read(self, path: str) -> AbstractContextManager[IO[bytes]]:
         return self._reading(path)

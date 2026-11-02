@@ -126,7 +126,7 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
 
     #context(view: ImageryViewState): ImageryContext {
         return {
-            ...{ locale: this.locale, view, intents: this.intents, readOnly: this.readOnly },
+            ...{ locale: this.locale, view, intents: this.intents, readOnly: this.readOnly, app: this.app },
             href: (params) => this.href(params),
             go: (params) => {
                 this.go(params);

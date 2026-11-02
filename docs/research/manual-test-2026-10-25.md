@@ -575,3 +575,51 @@ themselves), so 51–58 are the imagery findings; what each changed: `docs/LESSO
   runs again on the next larger one; another exit runs again until the attempts are used. A late heartbeat of a run
   Cloud Run still runs is left alone (`functions/src/imagery/tick-jobs.ts`; S-A12-HAPPY-DEAD-EXECUTION-NOTICED,
   S-A12-BAD-HEARTBEAT-LATE-RUNNING, S-A12-HAPPY-OUT-OF-MEMORY-RETRY).
+
+### The KH-9 import after finding 57 (2026-11-02, admin, server and pipeline `1.0.0+9ecfe87`)
+
+The retry of the KH-9 Hexagon import (1972-02-02, `D3C1202-200149F039`, forward camera, frame 39) on
+`raster-pipeline-xl`, 00:32–00:37: `stitch` done in 2 minutes within its memory (finding 57 holds), then
+"corner guess: rotation 270 degrees, correlation 0.03", `reference` done, `georef` "sift over s2, osm: 0 confident
+pairs, 0 suggestions, 0 of 128 tiles matched", the job waiting for the admin's points, exit 0. Changes: `docs/LESSONS.md`
+332–334, `DECISIONS-for-review.md` §84.
+
+- **62.** \[blocker]\[imagery]\[pipeline] The version page then read "This could not be read (invalid-document). Try
+  again." and Work showed 0: the admin refused the layer version the pipeline wrote (the Work list drops a document
+  that fails its schema, so the unfinished version vanished from the count). Root cause, from the code (**UNVERIFIED**
+  against the live document, which was not read: its `scan.width`/`scan.height` and `georef.gcps[].pixel` would say):
+  the quarter-turn guess of finding 63 mapped the city window across the strip's whole length (a KH-9 panoramic frame is
+  about 1:12, some 300 000 film pixels long at 7 µm: about 7 GB delivered), so `locate` cropped and recorded a scan with
+  a side over `MAX_SCAN_PIXELS` (200 000) and corner GCPs past it, which `scanSchema` and `pixelSchema` refuse; the
+  pipeline declared the limit (`contract.MAX_SCAN_PIXELS`) but never checked it. Ruled out by running the real writers
+  through every path and parsing what they wrote: `machines`, `steps.<step>.bytes`/`totalBytes`, the corner `georef`,
+  the reference, the suggestions with no pairs, `error {pairs: '0'}` and the waiting job all pass. Found on the way, the
+  same class: a step failure with a numeric parameter (`downloadIncomplete {bytes}`, `gcpOutside {count}`,
+  `tooFewGcps {min}`) wrote a number where `apiErrorParamsSchema` takes text, so the job and its version would have
+  been unreadable too (a pipeline test even asserted the number). FIXED (§84a): `locate` refuses a crop over
+  `MAX_SCAN_PIXELS` before reading it (`processingFailed`); a failure's parameters are written as text
+  (`StepFailedError`); a contract test runs the real runner along ten paths and holds every job, version and log
+  document it writes to a shape of `pipeline/tests/contracts/written-documents.json`, whose documents the shared test
+  parses with `jobDocSchema`, `layerVersionDocSchema` and `jobLogDocSchema`; every pipeline error code must be an
+  `ApiErrorCode` and `MAX_SCAN_PIXELS`/`MAX_GCPS` join `enums.json`; the admin's store logs a refused document's path
+  with its failing fields and codes, never their values ("a document does not match its schema and is not shown",
+  scope `admin-store`), while the page keeps its message (S-P01-HAPPY-WRITTEN-CONTRACT, S-P01-BAD-WRITTEN-PARAMS).
+  Live: the version stays unreadable until it is written again; **Try again** on it after the next deploy (or, if
+  the page cannot show it, the job's retry from Jobs) runs `locate` again under the new guess.
+- **63.** \[bug]\[pipeline] "rotation 270 degrees, correlation 0.03": a guess no better than chance was cropped, and its
+  scan matched nothing in 128 tiles. Root cause, from the code: the corner guess (`georef/corners.py`) scored all eight
+  assignments of the frame's corners to the scene's (four turns, mirrored or not) and kept the best with no threshold;
+  on a strip, a quarter turn (or a transposition) stretches every ground pixel by the aspect squared (about 140 times
+  for 1:12), and at 60 m a guess a few hundred metres off already correlates about 0.01 on the synthetic world, so any
+  sizeable error in the metadata corners left only noise to choose from. **UNVERIFIED** why the right turn scored so low
+  live: the corners' error, and the KH-9 panoramic geometry (film position follows the scan angle, the ground its
+  tangent; across ±60° a four-corner homography is kilometres off away from the frame's middle). The KH-9 corner order
+  in the USGS metadata is read as north-west first and clockwise like every other dataset (`Scene.corner_quad`); a
+  forward or aft camera only changes which assignment is right, and all of them are scored. FIXED (§84b): only
+  assignments with about square ground pixels are scored (at most 3 times as elongated as the best-shaped one); a guess
+  under 0.2 is searched again over the window widened by half on every side, moved by the best match and scored again;
+  still under it, `locate` fails with the new `apiError.imagery.cityNotFound` ("The city could not be found on this
+  frame: its corners do not match the map. Choose another frame.") instead of cropping; the log names the
+  move ("moved 1.3 km by the search around the window") (S-P01-HAPPY-KH9-STRIP, S-P01-BAD-CITY-NOT-FOUND). Not done:
+  the frame preview in the admin to mark the city's area by hand (a new georeferencer mode), and a panoramic camera
+  model for the guess; both in §84c.

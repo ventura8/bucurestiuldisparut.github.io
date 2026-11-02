@@ -106,6 +106,7 @@ export function createUsgsApi(options: UsgsOptions): UsgsApi {
                 options.log.debug('usgs logout failed (the key expires by itself)', { error: String(error) });
             }
         },
+        request: (apiKey, endpoint, payload) => m2m(endpoint, payload, apiKey),
     };
 }
 

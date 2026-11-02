@@ -116,12 +116,14 @@ import {
     setupStatusViewSchema,
 } from './setup.js';
 import { ERROR_REPORT_MAX_BYTES, errorReportSchema, listGroupsRequestSchema, listGroupsResponseSchema } from './telemetry.js';
+import { imageryRunOnRequestSchema, imageryRunOnResponseSchema } from './worker.js';
 
 /**
  * The workstreams that implement the functions (`docs/research/M2-interfaces.md` §5; `fn-imagery`:
  * `docs/research/M3-interfaces.md` §9, the M3 raster backend; `fn-orders` and `fn-assist-notify`:
  * `docs/research/M4-interfaces.md` §6, the M4 orders, assists and notifications; `fn-cities`:
- * `docs/research/M5-interfaces.md` §6, the M5 multi-city workstream; `fn-export`: the M5 static export, §5).
+ * `docs/research/M5-interfaces.md` §6, the M5 multi-city workstream; `fn-export`: the M5 static export, §5; `fn-worker`:
+ * `docs/research/M7-local-worker.md` §2.4, the local worker's callables).
  */
 export const FUNCTION_OWNERS = [
     'fn-admin',
@@ -132,6 +134,7 @@ export const FUNCTION_OWNERS = [
     'fn-assist-notify',
     'fn-cities',
     'fn-export',
+    'fn-worker',
 ] as const;
 export type FunctionOwner = (typeof FUNCTION_OWNERS)[number];
 
@@ -147,8 +150,12 @@ export type CallableAccess = 'signedIn' | 'admin' | 'cityEditor' | 'cityOwner' |
 /** The accesses that name a city: their requests carry `cityId` at the top level (the registry's test checks it). */
 export const CITY_ACCESSES: readonly CallableAccess[] = ['cityEditor', 'cityOwner'];
 
-/** `consume`: a replay-protected App Check token (`consumeAppCheckToken`), for ownership and secret pastes. */
-export type AppCheckMode = 'enforce' | 'consume';
+/**
+ * `consume`: a replay-protected App Check token (`consumeAppCheckToken`), for ownership and secret pastes. `off` (M7,
+ * `docs/research/M7-local-worker.md` §2.4, §10.6): no App Check, for the local worker's callables only, which a process
+ * on the owner's computer calls (nothing can attest it); each is bound to the one job that worker claimed.
+ */
+export type AppCheckMode = 'enforce' | 'consume' | 'off';
 
 export interface CallableSpec {
     readonly access: CallableAccess;
@@ -180,10 +187,16 @@ function scoped<Access extends CallableAccess>(access: Access) {
 }
 
 const cityEditor = scoped('cityEditor');
+
 const cityOwner = scoped('cityOwner');
 const projectOwner = scoped('projectOwner');
 
-export const CALLABLES = {
+/**
+ * The callables the admin calls (every one but the local worker's five), with the schemas it validates their answers
+ * with. The whole table, the worker's rows included, is `CALLABLES` (`callables.ts`), which the functions and the tests
+ * read; the admin imports this one and `CALLABLE_NAMES`, so the worker's schemas stay out of its bundle (M7).
+ */
+export const ADMIN_CALLABLES = {
     'admin.session': {
         access: 'signedIn',
         appCheck: 'enforce',
@@ -260,11 +273,19 @@ export const CALLABLES = {
     // M5 static export (owner fn-export, docs/research/M5-interfaces.md §5.3): a city's owners export it and download it.
     'export.start': cityOwner('fn-export', exportStartRequestSchema, exportStartResponseSchema),
     'export.download': cityOwner('fn-export', exportDownloadRequestSchema, exportDownloadResponseSchema),
+    // M7 (docs/research/M7-local-worker.md §3): the admin's choice of where a job runs. The local worker's five callables
+    // are `WORKER_CALLABLES` (worker-calls.ts).
+    'imagery.runOn': cityEditor('fn-imagery', imageryRunOnRequestSchema, imageryRunOnResponseSchema),
 } as const satisfies Readonly<Record<string, CallableSpec>>;
 
-export type CallableName = keyof typeof CALLABLES;
-export type CallableRequest<N extends CallableName> = z.infer<(typeof CALLABLES)[N]['request']>;
-export type CallableResponse<N extends CallableName> = z.infer<(typeof CALLABLES)[N]['response']>;
+export type AdminCallableName = keyof typeof ADMIN_CALLABLES;
+
+/** The local worker's callables (M7, `docs/research/M7-local-worker.md` §2.4): their rows are `WORKER_CALLABLES`. */
+export const WORKER_CALLABLE_NAMES = ['worker.hello', 'worker.claim', 'worker.step', 'worker.urls', 'worker.end'] as const;
+export type WorkerCallableName = (typeof WORKER_CALLABLE_NAMES)[number];
+
+/** Every callable's name, the admin's and the worker's: what a deployment holds (`CALLABLES`' keys, its test checks). */
+export const CALLABLE_NAMES: readonly string[] = [...Object.keys(ADMIN_CALLABLES), ...WORKER_CALLABLE_NAMES];
 
 /** The public HTTPS endpoints (`onRequest`): no Firebase SDK on the caller's side. */
 export const HTTP_ENDPOINTS = {

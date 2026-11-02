@@ -153,9 +153,17 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # from the measurement id and the field measurements' custom definitions), fetched on its button's click only: 0.8 KB
     # measured on 2026-11-01 plus about 20 %, rounded up (DECISIONS-for-review.md §76f).
     "analytics-reports": 1,
+    # M7's `worker` chunk (docs/research/M7-local-worker.md §7: `packages/admin/src/worker/worker.ts`, its one dynamic entry,
+    # which the Jobs store imports): the local worker's feed, `<hcm-worker-panel>`, `<hcm-run-place>` and their texts
+    # (`@hcm/shared/admin-worker`), 5.5 KB measured on 2026-11-02 plus about 20 %, rounded up.
+    "worker": 7,
 }
-# The entry and every chunk together.
-ADMIN_TOTAL_KB = 620
+# The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
+# loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)
+# with the entry's share of M7 (the job's place and wait, the install's image record, Provision's public pull) took it to
+# 627.8 KB; with the worker's five callables' schemas out of the admin (`ADMIN_CALLABLES`, 0.6 KB) it is 627.2 KB. The
+# entry stays well under its own 450 KB (DECISIONS-for-review.md §83).
+ADMIN_TOTAL_KB = 630
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip
 # already): the contract's ceilings (docs/research/M6-interfaces.md §1.3; DECISIONS-for-review.md §71). Since §73k

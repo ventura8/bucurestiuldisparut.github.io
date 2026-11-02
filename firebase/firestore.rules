@@ -632,6 +632,13 @@ service cloud.firestore {
                 allow read: if isCityMember(city);
             }
 
+            // M7 (docs/research/M7-local-worker.md §2.4, §3): the city's local workers (`w-…`) and its remembered choice of
+            // where raster jobs run (`choice`), written by the worker callables and imagery.runOn only; the Jobs page, the
+            // pipeline card and the version page read them.
+            match /workers/{doc} {
+                allow read: if isCityMember(city);
+            }
+
             // USGS scenes are harvested server-side; admins triage them (candidate, rejected) and annotate
             // them, whatever state the harvest left them in. M4 (docs/research/M4-interfaces.md §1.8): an
             // order is usgs.markOrdered's, which asks USGS first, so no client writes `ordered` or `available`,

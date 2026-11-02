@@ -6,7 +6,7 @@
 import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
-import { waitText } from '../imagery/imagery-text.js';
+import { waitText, wordedWait } from '../imagery/imagery-text.js';
 import { when, withValue } from '../imagery/when.js';
 import { EMPTY } from '../shell/empty.js';
 import { contentText } from '../shell/text.js';
@@ -23,7 +23,7 @@ export function waitLine(locale: Locale, job: JobItemPort): TemplateResult {
     if (job.finished) {
         return EMPTY;
     }
-    return withValue(job.waitReason, (reason) => html`<p data-wait=${reason}>${waitText(locale, reason, job.retryAt)}</p>`);
+    return withValue(wordedWait(job.waitReason), (reason) => html`<p data-wait=${reason}>${waitText(locale, reason, job.retryAt)}</p>`);
 }
 
 /** The version a job awaiting its points opens in the georeferencer, or null. */

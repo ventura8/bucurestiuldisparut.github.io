@@ -16,8 +16,9 @@ import { approvalCard } from './approval-card.js';
 import type { ImageryContext } from './context.js';
 import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { JobLogLinePort, JobViewPort, VersionPagePort, VersionViewPort } from './imagery-port.js';
-import { labelText, numberText, versionStateText, waitText } from './imagery-text.js';
+import { labelText, numberText, versionStateText, waitText, wordedWait } from './imagery-text.js';
 import { when, withValue } from './when.js';
+import { loadWorkerElements } from '../worker/load.js';
 
 /** Setup's Mapbox step, where the secret token and its scopes are pasted again. */
 const MAPBOX_SETUP_HREF = '#/setup/mapbox';
@@ -55,7 +56,10 @@ function bar(locale: Locale, job: JobViewPort): TemplateResult {
 }
 
 function waiting(locale: Locale, job: JobViewPort): TemplateResult {
-    return withValue(job.waitReason, (reason) => html`<p class="note" data-wait=${reason}>${waitText(locale, reason, job.retryAt)}</p>`);
+    return withValue(
+        wordedWait(job.waitReason),
+        (reason) => html`<p class="note" data-wait=${reason}>${waitText(locale, reason, job.retryAt)}</p>`,
+    );
 }
 
 function progress(locale: Locale, job: JobViewPort | null): TemplateResult {
@@ -269,6 +273,17 @@ function awaitsDecision(version: VersionViewPort): boolean {
     return version.state === 'awaiting_approval' || (version.state === 'approved' && stopped);
 }
 
+/**
+ * M7 (`docs/research/M7-local-worker.md` §7): where an unfinished job runs, and its switch (the lazy `worker` chunk's
+ * `<hcm-run-place>`, which shows itself only while the job holds no run).
+ */
+function runPlace({ context, job }: Shown): TemplateResult {
+    return withValue(job?.finished === false ? job : null, (open) => {
+        loadWorkerElements(context.app);
+        return html`<hcm-run-place .app=${context.app} .locale=${context.locale} job=${open.id}></hcm-run-place>`;
+    });
+}
+
 /** The approval card while it waits, the layer's link once published. */
 function outcome(shown: Shown): TemplateResult {
     const { context, page, version } = shown;
@@ -316,7 +331,7 @@ function body(shown: Shown): TemplateResult {
         <div class="actions">
             ${retryButton(shown)} ${uploadAnother(shown)} ${mapboxSetupLink(shown)} ${georefLink(shown)} ${dismissButton(shown)}
         </div>
-        ${refusal(shown)} ${outcome(shown)} ${opacity(shown)} ${steps(locale, job)}
+        ${runPlace(shown)} ${refusal(shown)} ${outcome(shown)} ${opacity(shown)} ${steps(locale, job)}
         <h3>${contentText(locale, 'adminContent.jobs.log')}</h3>
         ${logs(locale, page.logs.items)} ${cancel(shown)}
     </div>`;

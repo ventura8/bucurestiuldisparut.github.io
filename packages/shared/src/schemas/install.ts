@@ -384,6 +384,14 @@ export const installRecordSchema = z.strictObject({
     /** The installed release's build time, when the installed parts name one (finding 39). */
     releaseTime: releaseTimeSchema.optional(),
     buildId: installBuildIdSchema.optional(),
+    /**
+     * M7 (`docs/research/M7-local-worker.md` §1.1): the pipeline's image digest its build pushed (the log's `image` event),
+     * which the local worker's command names.
+     */
+    image: z
+        .string()
+        .regex(/^sha256:[0-9a-f]{64}$/)
+        .optional(),
     checkedAt: ISO_TIME,
     /** Why, as an `apiError.install.*` (or other API) code. */
     detail: z.string().regex(MESSAGE_CODE).optional(),

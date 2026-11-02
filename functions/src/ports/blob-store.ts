@@ -6,6 +6,8 @@ export interface BlobMetadata {
     readonly contentType: string;
     readonly generation: string;
     readonly customMetadata: Readonly<Record<string, string>>;
+    /** The base64 MD5 Cloud Storage records (`md5Hash`), when it has one (M7: the worker's identity check of a re-upload). */
+    readonly md5Hash?: string;
 }
 
 export interface WriteOptions {

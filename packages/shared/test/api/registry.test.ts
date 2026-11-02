@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { CALLABLES } from '../../src/api/callables.js';
 import {
+    ADMIN_CALLABLES,
     BACKGROUND_FUNCTIONS,
-    CALLABLES,
+    CALLABLE_NAMES,
     CITY_ACCESSES,
     deployedName,
     FUNCTION_OWNERS,
     HTTP_ENDPOINTS,
+    WORKER_CALLABLE_NAMES,
     type CallableAccess,
 } from '../../src/api/registry.js';
 
@@ -23,6 +26,22 @@ describe('the function registry', () => {
         }
         expect(Object.keys(all)).toHaveLength(
             Object.keys(CALLABLES).length + Object.keys(HTTP_ENDPOINTS).length + Object.keys(BACKGROUND_FUNCTIONS).length,
+        );
+    });
+
+    it('happyPath_theAdminsTableIsEveryCallableButTheWorkersAndTheNamesListEveryOne', () => {
+        const workers = Object.keys(CALLABLES).filter((name) => name.startsWith('worker.'));
+
+        expect(workers).toEqual([...WORKER_CALLABLE_NAMES]);
+        expect(Object.keys(ADMIN_CALLABLES)).toEqual(Object.keys(CALLABLES).filter((name) => !workers.includes(name)));
+        expect(new Set(CALLABLE_NAMES)).toEqual(new Set(Object.keys(CALLABLES)));
+        expect(CALLABLE_NAMES).toHaveLength(Object.keys(CALLABLES).length);
+    });
+
+    it('badPath_noAdminCallableRunsWithoutAppCheckAndEveryWorkerCallableDoes', () => {
+        expect(Object.values(ADMIN_CALLABLES).filter((spec) => spec.appCheck === 'off')).toEqual([]);
+        expect(WORKER_CALLABLE_NAMES.map((name) => [CALLABLES[name].appCheck, CALLABLES[name].owner])).toEqual(
+            WORKER_CALLABLE_NAMES.map(() => ['off', 'fn-worker']),
         );
     });
 

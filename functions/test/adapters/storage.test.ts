@@ -142,6 +142,16 @@ describe('createStorageBlobStore: metadata', () => {
             customMetadata: { writtenAt: 'x' },
         });
     });
+
+    it('happyPath_theMd5CloudStorageRecordsIsSaid', async () => {
+        await expect(withMetadata({ size: 3, generation: '9', md5Hash: 'q83vEjRWeJA=' }).stat('private', 'any')).resolves.toEqual({
+            size: 3,
+            contentType: 'application/octet-stream',
+            generation: '9',
+            customMetadata: {},
+            md5Hash: 'q83vEjRWeJA=',
+        });
+    });
 });
 
 describe('storageFailure', () => {

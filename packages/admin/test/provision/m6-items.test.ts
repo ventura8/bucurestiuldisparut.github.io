@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import { createGoogleClients } from '../../src/google/clients.js';
 import { createApiWaits, withApiPropagation, API_PROPAGATION_RETRY_MS } from '../../src/google/transport.js';
+import type { ProvisionContext } from '../../src/provision/item.js';
+import { STORAGE_ITEMS } from '../../src/provision/items-storage.js';
 import { applyProvision, doctorProvision, planProvision, type ProvisionItemResult } from '../../src/provision/provisioner.js';
 import { provisionWorld, writes, type ProvisionWorld } from './world.js';
 
@@ -89,6 +91,77 @@ describe('the pipeline repository (the artifact-registry item)', () => {
         expect(JSON.stringify(world.fakes.state.artifactRegistry.policies.snapshot())).toContain(
             '"role":"roles/artifactregistry.writer","members":["serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com"]',
         );
+    });
+});
+
+describe('the pipeline image for everyone (M7, docs/research/M7-local-worker.md §1.1)', () => {
+    const PULL = '"role":"roles/artifactregistry.reader","members":["allUsers"]';
+
+    it('happyPath_anyoneMayPullThePipelinesImageFromHcm', async () => {
+        const world = provisionWorld();
+        await applyProvision(planProvision(null, [...PREFIX, 'artifact-registry']), world.deps);
+
+        expect(JSON.stringify(world.fakes.state.artifactRegistry.policies.snapshot())).toContain(PULL);
+        // A repository made before M7 lacks only the public pull, which the next run adds.
+        const again = await doctorProvision(world.deps, ['artifact-registry']);
+        expect(again.items).toEqual([{ id: 'artifact-registry', state: 'ok' }]);
+    });
+
+    it('badPath_anOrganisationThatRefusesAllUsersKeepsTheImagePrivateAndProvisionGoesOn', async () => {
+        const world = provisionWorld();
+        world.fakes.scenario('resource-manager.domainRestricted');
+        const report = await applyProvision(planProvision(null, [...PREFIX, 'artifact-registry']), world.deps);
+
+        const item = {
+            id: 'artifact-registry',
+            state: 'ok',
+            detail: 'adminSetup.provision.orgPolicy',
+            params: { constraint: 'iam.allowedPolicyMemberDomains' },
+        };
+        expect(only(report.items, 'artifact-registry')).toEqual([item]);
+        expect(JSON.stringify(world.fakes.state.artifactRegistry.policies.snapshot())).not.toContain('allUsers');
+        expect(JSON.stringify(world.fakes.state.artifactRegistry.policies.snapshot())).toContain('roles/artifactregistry.writer');
+    });
+
+    it('badPath_aRefusalTheFindingsDidNotForeseeIsRecordedAndTheItemIsStillOk', async () => {
+        const world = provisionWorld();
+        world.fakes.scenario('artifact-registry.publicPullRefused');
+
+        const report = await applyProvision(planProvision(null, [...PREFIX, 'artifact-registry']), world.deps);
+
+        expect(only(report.items, 'artifact-registry')).toEqual([
+            {
+                id: 'artifact-registry',
+                state: 'ok',
+                detail: 'adminSetup.provision.orgPolicy',
+                params: { constraint: 'iam.allowedPolicyMemberDomains' },
+            },
+        ]);
+        expect(JSON.stringify(world.fakes.state.artifactRegistry.policies.snapshot())).toContain('roles/artifactregistry.writer');
+    });
+
+    it('badPath_anyOtherFailureOfThePublicPullFailsTheFixAndUnreadableFindingsRestrictNothing', async () => {
+        // The repository and its writer are there; Google fails the public pull's write for another reason than a policy.
+        const writer = {
+            role: 'roles/artifactregistry.writer',
+            members: ['serviceAccount:hcm-installer@demo-hcm.iam.gserviceaccount.com'],
+        };
+        const policy = {
+            read: () => Promise.resolve({ version: 1, bindings: [writer] }),
+            write: () => Promise.reject(new Error('outage')),
+        };
+        const world = provisionWorld();
+        const context = {
+            project: world.deps.project,
+            clients: { artifactRegistry: { get: () => Promise.resolve({ name: 'hcm' }), repositoryPolicy: () => policy } },
+            findings: () => Promise.reject(new Error('organisation unreadable')),
+        } as unknown as ProvisionContext;
+        const item = STORAGE_ITEMS.find((spec) => spec.id === 'artifact-registry');
+
+        const observation = await item?.observe(context);
+
+        expect(observation).toMatchObject({ state: 'missing', lacks: ['binding'] });
+        await expect(observation?.fix?.()).rejects.toThrow('outage');
     });
 });
 

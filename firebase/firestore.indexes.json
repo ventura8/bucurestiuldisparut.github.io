@@ -89,6 +89,15 @@
             ]
         },
         {
+            "collectionGroup": "jobs",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "runOn", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "createdAt", "order": "ASCENDING" }
+            ]
+        },
+        {
             "collectionGroup": "layerVersions",
             "queryScope": "COLLECTION",
             "fields": [

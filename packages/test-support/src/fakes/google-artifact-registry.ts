@@ -1,6 +1,7 @@
-import { FIXTURE_VALUES } from '../api-fixtures/index.js';
+import { FIXTURE_VALUES, fixtureResponse } from '../api-fixtures/index.js';
 import { authenticated, googleError, googleFailure, type GoogleApi, type GoogleProjects } from './google-common.js';
 import { PolicyStore } from './google-policies.js';
+import type { UpstreamRequest } from './fetch.js';
 import { jsonResponse, requestObject, route, type Route, type RouteParams } from './routes.js';
 import { sequence, type ServiceFake } from './service.js';
 
@@ -18,6 +19,11 @@ export interface ArtifactRegistryState {
     readonly policies: PolicyStore;
     /** Scenario `createRefused` (finding 31): the owner's organisation refuses the repository, so a create answers 403. */
     createRefused?: boolean;
+    /**
+     * Scenario `publicPullRefused` (M7): an organisation policy the findings did not show refuses `allUsers` on the
+     * repository, so a policy naming it answers 400 with `constraints/iam.allowedPolicyMemberDomains`.
+     */
+    publicPullRefused?: boolean;
 }
 
 export function defaultArtifactRegistryState(): ArtifactRegistryState {
@@ -67,8 +73,13 @@ export function createArtifactRegistryFake(state: ArtifactRegistryState, project
             response: created,
         });
     };
+    const publicPull = (request: UpstreamRequest): boolean =>
+        state.publicPullRefused === true && JSON.stringify(requestObject(request)).includes('"allUsers"');
     const setPolicy: Route['answer'] = (request, params) =>
         withRepository(params, (key) => {
+            if (publicPull(request)) {
+                return fixtureResponse('resource-manager/set-iam-policy.org-policy', { values: { member: 'allUsers' } });
+            }
             const stored = state.policies.write(key, request);
             return stored === undefined ? googleError('google/error.aborted', API) : jsonResponse(stored);
         });
@@ -104,6 +115,9 @@ export function createArtifactRegistryFake(state: ArtifactRegistryState, project
              */
             createRefused: () => {
                 state.createRefused = true;
+            },
+            publicPullRefused: () => {
+                state.publicPullRefused = true;
             },
         },
         snapshot: () => ({ repositories: Object.fromEntries(state.repositories), policies: state.policies.snapshot() }),

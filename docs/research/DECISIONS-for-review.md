@@ -5446,3 +5446,129 @@ KB): see §81e.
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; the targeted Playwright specs of the imagery and the pipeline install
 (`e2e/admin/specs/imagery/rows.spec.ts`, `import.spec.ts`, `search.spec.ts`, `orders.spec.ts`,
 `e2e/admin/steps/install/pipeline.spec.ts`, `update.spec.ts`).
+
+## 83. M7: "Run on my computer" and the cheap cloud defaults (2026-11-02) — 83a–83h APPLIED (the user's decisions of 2026-11-01, "make this as free as possible": product, test and documentation changes within `docs/research/M7-local-worker.md`; 83b raises `ADMIN_TOTAL_KB` from 620 to 630, approved under the user's overnight blanket approval of 2026-11-01 ("i give u all the yes"), flagged for review in the morning; 83d a Provision binding the owner applies with step c; no gate relaxed, no checker allowlist entry, no download; `seed/bucharest/` unchanged); 83i PROPOSED (the Uploads scopes of the Mapbox tokens); 83j OPEN (the first stop signal after a job sometimes lost)
+
+The contract is `docs/research/M7-local-worker.md` (written before the code; §11 lists what only a real project can prove). Four
+workstreams built it in one tree (fn-worker, fn-cost, pipeline, admin) and an integrator ran the gates.
+
+- **83a APPLIED: the worker, its callables and where a job runs.** As the contract's §1–§5: `python -m hcm_pipeline worker`
+  (`pipeline/src/hcm_pipeline/worker/`), the five `worker.*` callables (owner `fn-worker`, `functions/src/worker/`), the
+  dispatcher's `runOn` and `imagery.runOn`, Cloud Run's free-tier count and the OK, the raw delivery deleted by `locate`
+  (lifecycle 30 → 7 days), the Uploads API path. Rows A62–A64, P04 and P01's raw-deletion pair, every one `exists`.
+- **83b APPLIED: the admin's bundle.** The first build of M7 measured the admin in all at 627.8 KB gzip of its 620 (the
+  `build` stage), its entry 371.5 of 450. The waste first: the admin validated every answer with the one registry table,
+  so the local worker's five callables' request and response schemas were in its entry (`docs/LESSONS.md` 337). The
+  registry is now split by its consumers: `ADMIN_CALLABLES` (every callable but the worker's, with the schemas the admin
+  checks its answers with), `WORKER_CALLABLE_NAMES` and `CALLABLE_NAMES` (the names the deployment check waits for) in
+  `packages/shared/src/api/registry.ts`; the worker's schemas and rows (`WORKER_CALLABLES`) in `worker-calls.ts`; the whole
+  table `CALLABLES` (the functions', the tests' and the mock server's) in `callables.ts`, which the admin never imports:
+  0.6 KB less. Tried and not kept: Rolldown's `manualPureFunctions: ['z']` (unused schemas dropped, about 1 KB) would also have
+  dropped the `z.config({ jitless: true })` call the admin's CSP needs. What is left is real: the lazy `worker` chunk
+  (5.5 KB, loaded only by the Jobs page, the pipeline card and an unfinished version's page; its budget row 7 KB, the
+  contract's 5 plus room) and the entry's share of M7 (the job's place and wait, the install's image record, Provision's
+  public pull, the new error codes). The total counts every lazy chunk, those loaded only on use included, so
+  `ADMIN_TOTAL_KB` goes from 620 to 630, the smallest round value that fits (`scripts/ci/check_bundle_budget.py`, with
+  the reason beside it): approved under the user's overnight blanket approval of 2026-11-01 ("i give u all the yes");
+  flagged for review in the morning. Measured by the `build` stage at the end of this change: the admin in all 627.2 KB of 630, its entry 371.0 KB of 450
+  (369.5 at `9ecfe87`), `worker` 5.5 KB of 7.
+- **83c APPLIED: the `worker` chunk.** No codeSplitting group (a group's chunk needs Rolldown's runtime helper, which would
+  make a chunk of its own beside terra-draw's): the natural chunk of its one dynamic entry, `packages/admin/src/worker/worker.ts`,
+  imported by the Jobs store; its elements come from the subpath `@hcm/ui/admin/worker` and its words from
+  `@hcm/shared/admin-worker` (`packages/shared/src/i18n/admin-worker/`), a catalogue the entry does not import (the
+  `i18n` gate checks its parity like every folder's).
+- **83d APPLIED: the image anyone can pull.** Provision's `hcm` repository of Artifact Registry gets `allUsers` →
+  `roles/artifactregistry.reader` (`PUBLIC_PULL`, `packages/admin/src/provision/resources.ts`), so the owner's
+  `docker run` needs no login. The trade-off: anyone who learns the project id can pull the pipeline's image (it holds
+  the open-source pipeline and no secret or configuration: the secret scans run on the tree it is built from), and every
+  pull, the owner's or another's, is internet egress billed to the owner (about 0.6 GB, cents at list price). Where an
+  organisation policy refuses `allUsers`, Provision records the refusal and goes on; the panel names `gcloud auth
+  configure-docker us-central1-docker.pkg.dev`. Applied to a live project when the owner runs step c again.
+- **83e APPLIED: App Check off for `worker.*`.** The first callables without it (`AppCheckMode` `off`): App Check cannot
+  attest a process on the owner's computer. The credential is a verified ID token of a city editor; each call is bound to
+  the one job the caller's worker claimed (`job.worker.{id,uid}`, no other live lease), the guard pauses them, `worker.urls`
+  signs at most 20 objects a call and the instance cap is two. The registry's test pins that no admin callable is `off`
+  and every worker callable is.
+- **83f APPLIED: the workstreams' choices beyond the contract.** fn-worker: the five callables run as `fn-admin@` (it reads
+  the USGS secrets for the M2M calls it makes for a worker and signs the worker's object addresses with its own
+  `signBlob`); `worker.step` stamps every write `system:pipeline` at the server's time and answers documents through
+  `toWire` (`docs/LESSONS.md` 335); under the emulators the "signed" address is the Storage emulator's own JSON API (a
+  `POST` upload as its owner; `workerSignedObjectSchema.method` admits it), loopback only. fn-cost: the Uploads path is
+  recorded on the job as a step of its own, **`uploads`** (`UPLOADS_STEP`; "Free upload to Mapbox", "Încărcarea gratuită
+  pe Mapbox"): running while the path is used, `skipped` after a fallback, so the guard never chooses it again for that
+  job; a fallback while polling continues MTS at the next poll number (`docs/LESSONS.md` 336); the version records
+  `mapbox.via`.
+- **83g APPLIED: the integration.** S-A62-HAPPY-WORKER-RUN (`e2e/admin/specs/imagery/worker-run.spec.ts`) runs the real
+  worker against the emulators: queued for the computer before sign-in, signed in through its page (the CSRF token of
+  `GET /`, `POST /session` from the page's origin), every step through `worker.step` and signed URLs, the version awaiting
+  approval, no Cloud Run execution, no `usgs-raw/` or `work/` object in the bucket, the delivery deleted from the work
+  folder after `locate`, the panel showing the computer's last job done; the row's text says that the raw delivery stays
+  local and is deleted after `locate`. `pipeline/tests/contracts/written-documents.json` was written again from M7's
+  writers. Fixed on the way: the admin's deployment count (69 → 75), `test_log.py` reading only its own logger's lines
+  (lesson 339), the ops fake's `request`, the worker tests' answer types, the exports knip found only their own modules use.
+- **83h APPLIED: the documentation.** The admin guide's M7 section and troubleshooting table and `docs/MANUAL_TEST_PLAN.md`
+  W1–W5 name the admin's actual words (Procesări, **Copiază comanda**, **Rulează pe calculatorul meu când e conectat**,
+  **Rulează în Google Cloud oricum**, the worker page's "Sesiunea s-a încheiat: conectează-te din nou").
+- **83i PROPOSED: the Uploads scopes.** Setup mints `mapbox-sk-tiles` with `MAPBOX_TILES_SCOPES` (`tilesets:*` only) and
+  the bootstrap token needs `MAPBOX_BOOTSTRAP_SCOPES`, neither with `uploads:read` or `uploads:write`; the contract's §6
+  says the tiles token "must also carry" them. As built, every publish on a real project tries the Uploads API once, gets
+  403 and goes through MTS behind the compute-unit guard (one log line says why), so the free path costs nothing and gains
+  nothing until both lists gain the two scopes (the owner's bootstrap token then needs them too, and Setup asks for a
+  new paste). The user's decision.
+- **83j OPEN: the first stop signal after a job is sometimes lost.** In five runs of S-A62-HAPPY-WORKER-RUN the first
+  SIGTERM, or the first Ctrl-C (SIGINT), sent to the worker after it ran a job did not stop it within 30 s three times
+  (once its main thread was caught in a network call at that moment, and 5 s later in the loop's wait); a second signal of
+  either kind then stopped it at once with exit 0 and "worker … stopped", and in the other two runs the first Ctrl-C did.
+  Before a job, the first SIGTERM stopped it at once. After the run the handler is the loop's at
+  both the Python and the C level (`signal.getsignal` and `sigaction` read in the process), no thread blocks the
+  signals, and pytest's reproductions (the real steps inside `loop.run()`, OpenCV's default threads, a signal to a
+  native thread, a signal during an httpx call) all stop at once, so the cause is not found. The spec sends Ctrl-C, as the
+  admin guide says, and records how the worker ended without asserting it. The owner's second Ctrl-C works;
+  `docker stop` sends SIGTERM, then kills the container after its 10 s grace, and the job goes back to waiting when its
+  lease lapses. To look into before the first live run.
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build`; the targeted Playwright runs of `worker.spec.ts`, `worker-run.spec.ts`,
+`jobs.spec.ts`, `guard.spec.ts`, `publish.spec.ts`, `published.spec.ts`, `automation.spec.ts`, `pipeline.spec.ts`, the
+pipeline install and provision steps and the journey at `admin-l1440-ro`.
+
+## 84. The KH-9 import after finding 57: a version the admin could not read, a corner guess no better than chance (2026-11-02) — 84a–84b APPLIED, 84c PROPOSED (findings 62–63 of `docs/research/manual-test-2026-10-25.md`: product, test and documentation changes; one new error code with both languages' message; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged)
+
+- **84a APPLIED (finding 62): what the pipeline writes, held to the schemas.** The writer was wrong, not the schema:
+  `scanSchema` and `pixelSchema` cap a side at `MAX_SCAN_PIXELS` (a KH-9 strip cropped to a city fits) and
+  `apiErrorParamsSchema` takes texts. `steps/locate.py` `within_limits` fails a crop over the cap with `processingFailed`
+  before any pixel is read; `StepFailedError` turns every parameter into text. The contract gains a check of what the
+  real writers produce: `pipeline/tests/integration/test_written_documents.py` runs the runner along ten paths
+  (whole import, two phases, USGS preparing, not scanned, size mismatch, corrupt archive, cancelled, no pairs, corners
+  far off, city not found) on a recording store and holds every job, version and log document after every write to a
+  shape (each field path with its JSON type, list items merged) of `pipeline/tests/contracts/written-documents.json`, a
+  generated file (`HCM_WRITE_CONTRACTS=1`, then Prettier) with one document of each shape, lists cut to 12 items keeping
+  one of each item shape; `pipeline-contract.test.ts` parses each with its schema. Shapes, not values: the golden
+  documents come from synthetic scenes, so value limits stay the writers' own checks. `enums.json` gains `MAX_GCPS`,
+  `MAX_SCAN_PIXELS` (equal on both sides) and `PIPELINE_ERROR_CODES` (every `contract.Errors` code; each must be an
+  `ApiErrorCode`). The admin's `contentStore` takes an optional `log` (`createLogger('admin-store')` in production) and
+  warns once per document and set of issues with its path and failing fields and codes (`scan.width validation.tooBig`),
+  never the values; the page's text is unchanged. Not done: an admin Playwright row for the log (a log is not shown to
+  the user).
+- **84b APPLIED (finding 63): the corner guess has a floor.** `georef/corners.py`: `plausible` keeps the assignments
+  whose centre ground pixel is at most `MAX_ANISOTROPY` (3) times as elongated as the best-shaped one's (on a square
+  frame all eight stay; on a 1:2 KH-9 mapping frame or a strip, the four with the film's long side along the
+  footprint's); `guess_corners` keeps the best when it reaches `MIN_CORRELATION` (0.2), else `searched` warps the frame
+  onto the window widened by `SEARCH_MARGIN` (0.5 of its size) on every side, matches the window's Sentinel-2 inside it
+  (`TM_CCOEFF_NORMED`; a place where the frame covers under `MIN_COVERAGE` of the window is no match), moves the guess
+  by the offset and scores it again; still under 0.2: `CityNotFoundError` → `apiError.imagery.cityNotFound` (new, both
+  languages, `failed-precondition`, retryable: a later pipeline may find it), nothing cropped. The search runs whenever
+  the first score is low, which on the synthetic scenes is most of the time (CR-M3-20 measured 0.08 to 0.13 for right
+  guesses with corners 290 m off; the moved guess scores 0.8 to 0.9), so every import now crops a better-placed window.
+  The 0.2 floor and the 3× shape limit are calibrated on synthetic frames only: **UNVERIFIED** on real ones (the log
+  line names each run's correlation and move).
+- **84c PROPOSED: what the admin can do when the city is not found.** (1) Show the frame's preview (`frame-preview.tif`,
+  already in `work/`) on the failed version and let the admin draw the city's rough area on it; `locate` then crops
+  that area and the georeferencer takes over (a new georeferencer mode, a callable and rows). (2) A panoramic camera
+  model for KH-4 (±35°) and KH-9 (±60°, **UNVERIFIED**) frames in the guess: the long axis's pixel as the scan angle,
+  the ground as its tangent, as extra candidates scored like the others. Neither is built: both change the admin or the
+  geometry beyond this finding; the user's decision.
+
+Verify: the targeted tests (`pipeline/tests/unit/test_corners.py`, `pipeline/tests/integration/test_written_documents.py`,
+`pipeline/tests/unit/test_contract.py`, `test_runner.py`, the whole pipeline suite;
+`packages/shared/test/schemas/pipeline-contract.test.ts`, `packages/admin/test/firebase/content.test.ts`); the
+`static`, `tests` and `build` stages once the M7 work in the same tree is finished.

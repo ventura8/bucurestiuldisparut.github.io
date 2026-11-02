@@ -248,14 +248,57 @@ export {
     exportTaskSchema,
 } from './city-export.js';
 export type { ExportDownloadResponse, ExportStartRequest, ExportTask } from './city-export.js';
-export { BACKGROUND_FUNCTIONS, CALLABLES, CITY_ACCESSES, FUNCTION_OWNERS, HTTP_ENDPOINTS, deployedName } from './registry.js';
+export {
+    CLOUD_RUN_ESTIMATE_SECONDS,
+    CLOUD_RUN_FREE_TIER,
+    JOB_MACHINE_SIZES,
+    MAPBOX_FREE_UPLOAD_MB,
+    UPLOADS_FREE_MAX_BYTES,
+    WORKER_DELETE_FIELD,
+    WORKER_FRESH_SECONDS,
+    WORKER_LEASE_PREFIX,
+    WORKER_POLL_SECONDS,
+    WORKER_PORT,
+    WORKER_URL_SECONDS,
+    WORKER_URLS_MAX,
+    WORKER_USGS_ENDPOINTS,
+    imageryRunOnRequestSchema,
+    imageryRunOnResponseSchema,
+} from './worker.js';
+export {
+    ADMIN_CALLABLES,
+    BACKGROUND_FUNCTIONS,
+    CALLABLE_NAMES,
+    CITY_ACCESSES,
+    FUNCTION_OWNERS,
+    HTTP_ENDPOINTS,
+    WORKER_CALLABLE_NAMES,
+    deployedName,
+} from './registry.js';
 export type {
+    AdminCallableName,
     AppCheckMode,
     BackgroundTrigger,
     CallableAccess,
-    CallableName,
-    CallableRequest,
-    CallableResponse,
     CallableSpec,
     FunctionOwner,
+    WorkerCallableName,
 } from './registry.js';
+// M7: the local worker's callables, and the whole table (the functions' and the tests'; the admin reads ADMIN_CALLABLES).
+export {
+    WORKER_CALLABLES,
+    workerClaimRequestSchema,
+    workerClaimResponseSchema,
+    workerEndRequestSchema,
+    workerEndResponseSchema,
+    workerHelloRequestSchema,
+    workerHelloResponseSchema,
+    workerSignedObjectSchema,
+    workerStepOpSchema,
+    workerStepRequestSchema,
+    workerStepResponseSchema,
+    workerUrlsRequestSchema,
+    workerUrlsResponseSchema,
+} from './worker-calls.js';
+export { CALLABLES } from './callables.js';
+export type { CallableName, CallableRequest, CallableResponse } from './callables.js';

@@ -25,6 +25,7 @@ import type { ContentQuery, ContentServices, Stored, WriteOutcome } from '../con
 import { GuardFeed, resumeGuard, type GuardView } from '../imagery/guard.js';
 import { Store } from '../state/store.js';
 import { rasterFieldsOf, retryRasterJob, type RasterJobFields } from './raster.js';
+import type { WorkerFeed } from '../worker/feed.js';
 
 /** The list's status chips: every job, the unfinished ones, the failed ones, the others that ended. */
 export type JobFilter = 'all' | 'active' | 'failed' | 'done';
@@ -108,6 +109,13 @@ export interface JobsIntents {
     retryJob(): Promise<boolean>;
     /** Turns the budget guard green again; true once it is. */
     resumeGuard(): Promise<boolean>;
+    /**
+     * M7 (`docs/research/M7-local-worker.md` §7): a new feed of the city's local worker, its choice and the free-tier meter,
+     * from the lazy `worker` chunk; the Jobs page, the pipeline card and a version's page each start and stop their own.
+     */
+    worker(): Promise<WorkerFeed>;
+    /** M7: registers the `worker` chunk's elements, which then ask `worker` for their feeds. */
+    workerElements(): Promise<void>;
 }
 
 const INITIAL: JobsState = {
@@ -217,6 +225,10 @@ class JobsStore implements AreaStore<JobsState, JobsIntents> {
             cancel: () => this.#cancel(),
             retryJob: () => this.#retryJob(),
             resumeGuard: () => this.#resumeGuard(),
+            worker: async () => (await import('../worker/worker.js')).createWorkerFeed(services),
+            workerElements: async () => {
+                (await import('../worker/worker.js')).defineWorkerElements();
+            },
         };
     }
 

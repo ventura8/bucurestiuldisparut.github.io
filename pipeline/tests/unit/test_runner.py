@@ -1,15 +1,16 @@
 """The run loop with scripted steps: lease, step records, skips, waits, failures, crashes, cancels and resumes."""
 
+import signal
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import pytest
 from hcm_pipeline.config import Config
 from hcm_pipeline.contract import Errors
-from hcm_pipeline.jobs import Done, InterruptedRunError, JobContext, LeaseLostError, Skipped, StepFailedError, StepResult, Waiting
+from hcm_pipeline.jobs import Done, InterruptedRunError, JobContext, LeaseLostError, RunFlags, Skipped, StepFailedError, StepResult, Waiting
 from hcm_pipeline.model import Timestamp
 from hcm_pipeline.objects import ObjectInfo
-from hcm_pipeline.runner import JobRunner, RunOutcome, RunSettings
+from hcm_pipeline.runner import JobRunner, RunOutcome, RunSettings, sigterm_raises
 
 from tests.fakes.world import CITY, NOW, PipelineWorld, dig
 
@@ -133,6 +134,8 @@ def test_bad_path_a_job_naming_no_version_is_invalid(world: PipelineWorld) -> No
 
 
 def test_bad_path_a_step_failure_fails_the_job_and_the_version_with_its_params(world: PipelineWorld) -> None:
+    """Scenarios: S-P01-BAD-WRITTEN-PARAMS"""
+
     def fail(_ctx: JobContext) -> None:
         raise StepFailedError(Errors.TOO_FEW_GCPS, "too few enabled points; token=abc", {"min": 6})
 
@@ -140,11 +143,12 @@ def test_bad_path_a_step_failure_fails_the_job_and_the_version_with_its_params(w
 
     job, version = world.job(JOB), world.version(JOB)
     assert outcome is RunOutcome.FAILED
-    assert job["error"] == {"code": Errors.TOO_FEW_GCPS, "message": "too few enabled points; token=[REDACTED]", "params": {"min": 6}}
+    # The params are texts, as `apiErrorParamsSchema` reads them (finding 62 of 2026-11-02: a number made both unreadable).
+    assert job["error"] == {"code": Errors.TOO_FEW_GCPS, "message": "too few enabled points; token=[REDACTED]", "params": {"min": "6"}}
     assert job["finishedAt"] == Timestamp.at(NOW)
     assert statuses(world)["georef"] == "failed"
     assert version["state"] == "failed"
-    assert version["error"] == {"code": Errors.TOO_FEW_GCPS, "params": {"min": 6}}
+    assert version["error"] == {"code": Errors.TOO_FEW_GCPS, "params": {"min": "6"}}
 
 
 def test_bad_path_a_crash_fails_the_job_as_internal(world: PipelineWorld) -> None:
@@ -237,3 +241,15 @@ def test_bad_path_a_transfer_of_unknown_size_reports_its_bytes_only_at_most_ever
     reports = [fields for path, fields in world.store.writes if path == world.job_path(JOB) and "steps.warp.bytes" in fields]
     assert [report["steps.warp.bytes"] for report in reports] == [10, 30]
     assert not any("steps.warp.totalBytes" in report for report in reports)
+
+
+@pytest.mark.parametrize("number", [signal.SIGTERM, signal.SIGINT])
+def test_bad_path_sigterm_or_ctrl_c_stops_the_run_at_its_next_checkpoint(number: signal.Signals) -> None:
+    """Cloud Run's SIGTERM, or a local worker's Ctrl-C (M7): the flag the next checkpoint raises; the handlers come back after."""
+    flags, before = RunFlags(), signal.getsignal(number)
+
+    with sigterm_raises(flags):
+        signal.raise_signal(number)
+
+    assert flags.stopping is InterruptedRunError
+    assert signal.getsignal(number) is before

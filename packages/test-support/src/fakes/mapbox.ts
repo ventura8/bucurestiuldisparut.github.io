@@ -11,6 +11,7 @@ import {
 } from './mapbox-state.js';
 import { styleRoutes, tilesetRoutes } from './mapbox-tilesets.js';
 import { tileRoutes } from './mapbox-tiles.js';
+import { uploadRoutes } from './mapbox-uploads.js';
 import { jsonResponse, requestObject, route, type Route } from './routes.js';
 import { sequence, type FailureMode, type ServiceFake } from './service.js';
 
@@ -215,6 +216,7 @@ export function createMapboxFake(state: MapboxState): ServiceFake {
             ...tilesetRoutes(state),
             ...styleRoutes(state),
             ...tileRoutes(state),
+            ...uploadRoutes(state),
         ],
         failure: (mode) => {
             const name = MAPBOX_FAILURES[mode];

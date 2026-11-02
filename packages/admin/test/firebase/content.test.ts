@@ -1,3 +1,5 @@
+import { createLogger } from '@hcm/shared';
+import { createRecordingSink } from '@hcm/test-support';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
@@ -27,6 +29,7 @@ interface Observer {
 /** A fake SDK table: references are plain objects, listeners are kept to be driven by the test, writes recorded. */
 function world(options: { readonly server?: Record<string, Record<string, unknown>>; readonly transactionError?: string } = {}) {
     const server = options.server ?? {};
+    const recording = createRecordingSink();
     const observers: Observer[] = [];
     const ops: unknown[] = [];
     const commit = vi.fn(() => Promise.resolve());
@@ -67,8 +70,9 @@ function world(options: { readonly server?: Record<string, Record<string, unknow
         deleteField: vi.fn(() => 'DELETE_FIELD'),
     };
     const uid = { current: 'admin-uid' as string | null };
-    const store = contentStore({ sdk: sdk as unknown as ContentSdk, firestore: () => ({}) as never, uid: () => uid.current });
-    return { store, sdk, observers, ops, commit, uid };
+    const log = createLogger('store-test', { sink: recording.sink });
+    const store = contentStore({ sdk: sdk as unknown as ContentSdk, firestore: () => ({}) as never, uid: () => uid.current, log });
+    return { store, sdk, observers, ops, commit, uid, logged: recording.records };
 }
 
 describe('the Firestore ContentStore', () => {
@@ -279,5 +283,71 @@ describe('the Firestore ContentStore: writes', () => {
             { ok: false, reason: 'offline' },
         ]);
         expect([versionOf(undefined), versionOf({ updatedAt: 'nope' })]).toEqual(['', '']);
+    });
+});
+
+describe('the Firestore ContentStore and a document it refuses', () => {
+    it('badPath_aDocumentThatFailsItsSchemaIsLoggedWithItsFailingFieldsOnce', () => {
+        // Finding 62 of 2026-11-02: the version page said only "could not be read"; the log names the fields, never values.
+        const { store, observers, logged } = world();
+        const strict = z.strictObject({ name: z.string(), size: z.number().max(10) });
+
+        store.watchDoc(
+            'cities/b/layerVersions/v',
+            strict,
+            () => undefined,
+            () => undefined,
+        );
+        observers[0]?.next(docSnapshot('cities/b/layerVersions/v', { name: 'scan', size: 300_000, extra: 'secret-value' }));
+        observers[0]?.next(docSnapshot('cities/b/layerVersions/v', { name: 'scan', size: 300_000, extra: 'secret-value' }));
+        store.watchQuery(
+            'cities/b/layerVersions',
+            strict,
+            {},
+            () => undefined,
+            () => undefined,
+        );
+        observers[1]?.next({
+            docs: [docSnapshot('cities/b/layerVersions/w', { name: 4, size: 1 })],
+            size: 1,
+            metadata: { fromCache: false },
+        });
+
+        expect(logged.map(({ level, message, data }) => ({ level, message, data }))).toEqual([
+            {
+                level: 'warn',
+                message: 'a document does not match its schema and is not shown',
+                data: { path: 'cities/b/layerVersions/v', fields: 'size validation.tooBig; extra validation.unknownKey' },
+            },
+            {
+                level: 'warn',
+                message: 'a document does not match its schema and is not shown',
+                data: { path: 'cities/b/layerVersions/w', fields: 'name validation.type' },
+            },
+        ]);
+        expect(JSON.stringify(logged)).not.toContain('secret-value');
+    });
+
+    it('happyPath_aStoreWithoutALogStillRefusesTheDocument', () => {
+        const failures: unknown[] = [];
+        const observers: Observer[] = [];
+        const sdk = {
+            doc: (_db: unknown, path: string) => ({ path }),
+            onSnapshot: (_ref: unknown, observer: Observer) => {
+                observers.push(observer);
+                return () => undefined;
+            },
+        };
+        const store = contentStore({ sdk: sdk as unknown as ContentSdk, firestore: () => ({}) as never, uid: () => null });
+
+        store.watchDoc(
+            'a/1',
+            schema,
+            () => undefined,
+            (failure) => failures.push(failure),
+        );
+        observers[0]?.next(docSnapshot('a/1', { name: 1 }));
+
+        expect(failures).toEqual([{ kind: 'failed', code: 'invalid-document' }]);
     });
 });

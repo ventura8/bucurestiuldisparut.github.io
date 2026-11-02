@@ -16,6 +16,7 @@ import {
 import { Timestamp } from 'firebase-admin/firestore';
 import { afterAll, describe, expect, it } from 'vitest';
 
+import { formatUpdateTime } from '../../src/adapters/documents.js';
 import { InvalidDocumentError, UpstreamError } from '../../src/ports/errors.js';
 import { openEmulators, sorted } from '../admin/world.js';
 
@@ -234,5 +235,29 @@ describe('transaction', () => {
             }),
         ).rejects.toThrow('handler gave up');
         expect((await documents.query(FIRESTORE_PATHS.invites, inviteDocSchema)).documents).toEqual([]);
+    });
+
+    it('happyPath_aVersionedReadCarriesFirestoresUpdateTimeWhichEveryWriteMoves', async () => {
+        const { db, documents } = emulators.newWorld();
+        const path = FIRESTORE_PATHS.invite(INVITE_A);
+        await documents.set(path, inviteDocSchema, invite('u-one'));
+        const readTime = () => documents.transaction((transaction) => transaction.getVersioned(path, inviteDocSchema));
+
+        const first = await readTime();
+        await documents.set(path, inviteDocSchema, invite('u-two'));
+        const second = await readTime();
+
+        const stored = (await db.doc(path).get()).updateTime;
+        expect(first?.data.invitedBy).toBe('u-one');
+        expect(second?.updateTime).toBe(formatUpdateTime({ seconds: Number(stored?.seconds), nanoseconds: Number(stored?.nanoseconds) }));
+        expect(second?.updateTime).toMatch(/^\d+\.\d{9}$/);
+        expect(second?.updateTime).not.toBe(first?.updateTime);
+        await expect(
+            documents.transaction((transaction) => transaction.getVersioned(FIRESTORE_PATHS.invite(INVITE_B), inviteDocSchema)),
+        ).resolves.toBeUndefined();
+    });
+
+    it('happyPath_anUpdateTimeKeepsItsNanosecondsToNineDigits', () => {
+        expect(formatUpdateTime({ seconds: 1792000000, nanoseconds: 42 })).toBe('1792000000.000000042');
     });
 });

@@ -150,6 +150,9 @@ const approvalSchema = z.strictObject({
     thresholdM: z.number().min(0).optional(),
 });
 
+/** M7: how a version reached Mapbox: the Uploads API (no compute units), MTS behind the guard, or the admin's Studio upload. */
+export const PUBLISH_PATHS = ['uploads', 'mts', 'studio'] as const;
+
 const mapboxSchema = z.strictObject({
     tilesetId: z.string().max(100),
     sourceId: z.string().max(100).optional(),
@@ -158,6 +161,8 @@ const mapboxSchema = z.strictObject({
     /** km² processed per precision, as the MTS job reports it (`tileset_precisions`): the estimate's calibration. */
     precisions: z.record(z.enum(MTS_PRECISIONS), z.number().min(0)).optional(),
     publishedAt: timestampSchema.optional(),
+    /** M7 (`docs/research/M7-local-worker.md` §6): the path that published it. */
+    via: z.enum(PUBLISH_PATHS).optional(),
 });
 
 /** The fields a version must carry in each state (beyond the always-required ones). */

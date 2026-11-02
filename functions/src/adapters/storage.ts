@@ -13,6 +13,7 @@ interface StoredMetadata {
     readonly contentType?: string | undefined;
     readonly generation?: string | number | undefined;
     readonly metadata?: Readonly<Record<string, unknown>> | undefined;
+    readonly md5Hash?: string | undefined;
 }
 
 /** HTTP statuses of the Cloud Storage JSON API, as a handler needs to tell them apart (M2-interfaces §4.1). */
@@ -61,6 +62,7 @@ function toBlobMetadata(metadata: StoredMetadata): BlobMetadata {
         contentType: metadata.contentType ?? 'application/octet-stream',
         generation: String(metadata.generation ?? ''),
         customMetadata: customMetadataOf(metadata),
+        ...(metadata.md5Hash === undefined ? {} : { md5Hash: metadata.md5Hash }),
     };
 }
 

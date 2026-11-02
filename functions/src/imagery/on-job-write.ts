@@ -7,6 +7,7 @@ import { runAs } from '../global-options.js';
 import type { Ports } from '../ports/index.js';
 import { applyApprovalPolicy } from './approval.js';
 import { cancelJob } from './cancel.js';
+import { countCloudRun } from './cloud-usage.js';
 import { dispatchJob } from './dispatch.js';
 import { releaseCancelled } from './end.js';
 import { noticeJobChange } from './job-notices.js';
@@ -17,7 +18,9 @@ import { noticeJobChange } from './job-notices.js';
  * the job again, so a redelivered event finds the job already moved and does nothing (S-A12-HAPPY-DISPATCH). A job that
  * becomes `queued` is dispatched; a cancellation the admin asks for is carried out; a job that reaches
  * `awaiting_approval` gets the approval policy; a job that becomes `cancelled` (the pipeline's SIGTERM handler, CR-M3-18)
- * has what it still held released.
+ * has what it still held released. M7 (`docs/research/M7-local-worker.md` §3, §4.2): a queued job whose place the admin
+ * changed, or that got the admin's OK past the free tier, is dispatched again; a cloud run that ended is counted into
+ * the month's Cloud Run use.
  */
 export type JobWriteDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs' | 'tasks'>;
 
@@ -44,9 +47,32 @@ const STARTS: readonly (readonly [Acting, (job: JobDoc) => boolean])[] = [
     ['release', (job) => job.status === 'cancelled'],
 ];
 
-/** The transition from `before` to `after`: the first condition that holds now and did not hold before. */
+/** M7: the admin moved a placed job elsewhere (`imagery.runOn`). */
+function movedElsewhere(before: JobDoc, after: JobDoc): boolean {
+    return before.runOn !== undefined && before.runOn !== after.runOn;
+}
+
+/** M7: the admin gave the OK past the free tier. */
+function okGiven(before: JobDoc, after: JobDoc): boolean {
+    return before.freeTierOk === undefined && after.freeTierOk !== undefined;
+}
+
+function bothQueued(before: JobDoc | undefined, after: JobDoc): before is JobDoc {
+    return before?.status === 'queued' && after.status === 'queued';
+}
+
+/** M7: a queued job that the admin moved, or that got the OK past the free tier, is dispatched again. */
+function placeChanged(before: JobDoc | undefined, after: JobDoc): boolean {
+    return bothQueued(before, after) && (movedElsewhere(before, after) || okGiven(before, after));
+}
+
+/**
+ * The transition from `before` to `after`: the first condition that holds now and did not hold before, else a queued job
+ * whose place or OK changed (M7).
+ */
 export function transitionOf(before: JobDoc | undefined, after: JobDoc): JobTransition {
-    return STARTS.find(([, holds]) => holds(after) && !(before !== undefined && holds(before)))?.[0] ?? 'none';
+    const started = STARTS.find(([, holds]) => holds(after) && !(before !== undefined && holds(before)))?.[0];
+    return started ?? (placeChanged(before, after) ? 'dispatch' : 'none');
 }
 
 const ACTIONS: Readonly<Record<Acting, (deps: JobWriteDeps, cityId: string, jobId: string) => Promise<unknown>>> = {
@@ -67,6 +93,10 @@ export async function onJobWrite(deps: JobWriteDeps, cityId: string, jobId: stri
     if (transition !== 'none') {
         await ACTIONS[transition](deps, cityId, jobId);
     }
+    // M7 (docs/research/M7-local-worker.md §4.2): a cloud run that ended counts into the month's Cloud Run use.
+    await countCloudRun(deps, cityId, jobId, { before, after }).catch((error: unknown) => {
+        deps.log.warn('cloud run not counted', { cityId, jobId, error: String(error) });
+    });
     // M4 (docs/research/M4-interfaces.md §5.1, assists-notify): a failed job, a version waiting for Approve or for points.
     await noticeJobChange(deps, { cityId, jobId, job: after }, before);
     return transition;

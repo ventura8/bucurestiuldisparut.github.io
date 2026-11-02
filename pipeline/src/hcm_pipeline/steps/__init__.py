@@ -7,8 +7,8 @@ something outside us (USGS preparing a download or in maintenance, Mapbox proces
 
 import enum
 import logging
-from collections.abc import Iterable
-from dataclasses import dataclass
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from hcm_pipeline.config import Config
@@ -32,10 +32,13 @@ class StepError(Exception):
 
 @dataclass(frozen=True)
 class StepContext:
-    """What a step runs with: its logger and, for steps that declare `requires_config`, the job configuration."""
+    """What a step runs with: its logger and, for steps that declare `requires_config`, the job configuration; the
+    command line's options and the environment for a command that reads its own (`worker`, M7)."""
 
     log: logging.Logger
     config: Config | None = None
+    options: Mapping[str, object] = field(default_factory=dict)
+    env: Mapping[str, str] = field(default_factory=dict)
 
     def require_config(self) -> Config:
         if self.config is None:

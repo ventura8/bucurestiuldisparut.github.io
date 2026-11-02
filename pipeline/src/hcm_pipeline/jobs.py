@@ -20,7 +20,6 @@ from hcm_pipeline import paths
 from hcm_pipeline.config import Config
 from hcm_pipeline.documents import Version
 from hcm_pipeline.joblog import JobLog
-from hcm_pipeline.m2m import M2MClient
 from hcm_pipeline.model import Job, Record, Timestamp, stamp
 from hcm_pipeline.objects import ObjectInfo, ObjectStore
 from hcm_pipeline.osm import OverpassClient
@@ -28,6 +27,7 @@ from hcm_pipeline.secrets import SecretSource
 from hcm_pipeline.stac import StacClient
 from hcm_pipeline.store import DocumentStore
 from hcm_pipeline.urlguard import Resolver
+from hcm_pipeline.usgs import M2MSession
 
 GDAL_CONTINUE: Final = 1
 GDAL_ABORT: Final = 0
@@ -42,7 +42,9 @@ class StepFailedError(Exception):
     def __init__(self, code: str, message: str, params: Mapping[str, ParamValue] | None = None) -> None:
         super().__init__(message)
         self.code = code
-        self.params = dict(params or {})
+        # Error parameters are texts (`apiErrorParamsSchema`): a number made the job and its version unreadable in the
+        # admin (finding 62 of 2026-11-02; `{bytes}`, `{count}` and `{min}` were numbers).
+        self.params = {key: str(value) for key, value in (params or {}).items()}
 
 
 class RunStoppedError(Exception):
@@ -138,8 +140,16 @@ class RunFlags:
             return round(min(1.0, self.base_progress + self.step_weight * self.step_fraction), 4)
 
 
+class M2MConnection(Protocol):
+    """What `with ctx.services.m2m() as m2m:` opens: the `M2MClient` on Cloud Run, the worker's proxy (M7) on a computer."""
+
+    def __enter__(self) -> M2MSession: ...
+
+    def __exit__(self, *exc_info: object) -> None: ...
+
+
 class M2MFactory(Protocol):
-    def __call__(self) -> M2MClient: ...
+    def __call__(self) -> M2MConnection: ...
 
 
 @dataclass

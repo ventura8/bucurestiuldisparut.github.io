@@ -1,5 +1,6 @@
 """A USGS import job that stops and resumes: SIGTERM, cancels, maintenance, expired addresses, short deliveries."""
 
+import hashlib
 import io
 import os
 import signal
@@ -67,7 +68,9 @@ def test_bad_path_sigterm_without_a_cancel_requeues_and_the_resume_continues_the
     ranges = [request.headers.get("range") for request in world.http.requests if request.path.endswith(".tgz")]
     assert second is RunOutcome.DONE
     assert ranges == [None, f"bytes={2 * TEST_CHUNK_BYTES}-"]
-    assert world.gcs.objects[RAW].data == world.delivery
+    # The resumed delivery arrived whole (its SHA-256), then `locate` deleted it (M7 §5).
+    assert dig(world.job(), "steps", "fetch", "sha256") == hashlib.sha256(world.delivery).hexdigest()
+    assert world.gcs.names("usgs-raw/") == []
     assert world.job()["status"] == "awaiting_approval"
 
 

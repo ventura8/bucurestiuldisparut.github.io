@@ -26,6 +26,8 @@ export const NOTIFICATION_KINDS = [
     'layer.needsPoints',
     'budget.paused',
     'crash.spike',
+    // M7 (docs/research/M7-local-worker.md §4.3): a cloud run made by automation waits for the admin's OK past the free tier.
+    'job.needsOk',
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -53,6 +55,7 @@ export const NOTIFICATION_SPECS: Readonly<Record<NotificationKind, NotificationS
     'layer.needsPoints': { severity: 'info', push: true },
     'budget.paused': { severity: 'error', push: true },
     'crash.spike': { severity: 'warning', push: true },
+    'job.needsOk': { severity: 'warning', push: true },
 };
 
 /** The kinds pushed when an admin turns push on and changes nothing else. */

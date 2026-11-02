@@ -83,7 +83,7 @@ function fakeMapbox(): FakeMapbox {
     };
 }
 
-type UsgsMethod = 'login' | 'permissions' | 'logout';
+type UsgsMethod = 'login' | 'permissions' | 'logout' | 'request';
 
 interface FakeUsgs extends UsgsApi {
     readonly recorder: PortRecorder<UsgsMethod>;
@@ -106,6 +106,12 @@ function fakeUsgs(permissions: readonly string[]): FakeUsgs {
         logout: (apiKey) =>
             Promise.resolve().then(() => {
                 recorder.enter('logout', [apiKey]);
+            }),
+        // M7's worker proxy: the ops checks never call M2M's other endpoints, so the fake answers nothing.
+        request: (apiKey, endpoint) =>
+            Promise.resolve().then(() => {
+                recorder.enter('request', [apiKey, endpoint]);
+                return null;
             }),
     };
 }

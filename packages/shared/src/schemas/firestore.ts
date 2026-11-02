@@ -58,8 +58,11 @@ export const LAYER_STATUSES = ['draft', 'processing', 'awaiting_approval', 'read
 export const USGS_DATASETS = ['corona2', 'declassii', 'declassiii'] as const;
 /** How a layer was georeferenced: the scene's corners, the admin's points, the automatic matcher, or an upload's own (M3). */
 export const GEOREF_METHODS = ['corners', 'gcps', 'auto', 'embedded'] as const;
-/** How a layer's tiles reached Mapbox (M3): our MTS publish, the admin's free Studio upload, or `layers.link`. */
-export const LAYER_TILESET_ORIGINS = ['mts', 'studio', 'linked'] as const;
+/**
+ * How a layer's tiles reached Mapbox (M3): our MTS publish, the admin's free Studio upload, or `layers.link`; M7
+ * (`docs/research/M7-local-worker.md` §6): our publish through Mapbox's Uploads API.
+ */
+export const LAYER_TILESET_ORIGINS = ['mts', 'studio', 'linked', 'uploads'] as const;
 /** The audited, admin-editable documents (PLAN Addendum 3): each keeps a `history` subcollection. */
 export const HISTORY_ENTITIES = ['city', 'layer', 'photo', 'poi', 'poiCategory'] as const;
 export const HISTORY_ACTIONS = ['create', 'update', 'delete', 'revert'] as const;

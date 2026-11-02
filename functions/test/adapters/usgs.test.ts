@@ -177,3 +177,26 @@ describe('logout', () => {
         await expect(usgs.logout('e2e-usgs-api-key-0001')).resolves.toBeUndefined();
     });
 });
+
+describe('request (M7: the local worker’s M2M call through the server)', () => {
+    it('happyPath_anyEndpointIsPostedWithTheKeyAndAnswersItsData', async () => {
+        const data = { availableDownloads: [{ entityId: 'DS1035-1057DA023', url: 'https://dds.cr.usgs.gov/e2e/frame.tgz' }] };
+        const fake = createFakeFetch(
+            routeTable([
+                route('POST', `${USGS_M2M_API}/{endpoint}`, 'usgs.any', () => fixtureResponse('usgs/logout.ok', { merge: { data } })),
+            ]),
+        );
+        const { usgs } = world(fake.fetch);
+
+        await expect(usgs.request('e2e-usgs-api-key-0001', 'download-request', { label: 'hcm-job-1' })).resolves.toEqual(data);
+        expect(fake.calls.map((call) => [call.url, call.headers['x-auth-token'], call.body])).toEqual([
+            [`${USGS_M2M_API}/download-request`, 'e2e-usgs-api-key-0001', JSON.stringify({ label: 'hcm-job-1' })],
+        ]);
+    });
+
+    it('badPath_anM2MErrorFailsTheRequestAsEveryCall', async () => {
+        const { usgs } = world(answering(() => fixtureResponse('usgs/login-token.auth-invalid', { merge: { errorCode: 'RATE_LIMIT' } })));
+
+        await expect(usgs.request('e2e-usgs-api-key-0001', 'download-options', {})).rejects.toMatchObject({ failure: 'rateLimited' });
+    });
+});

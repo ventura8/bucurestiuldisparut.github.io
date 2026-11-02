@@ -110,6 +110,8 @@ describe('composite indexes', () => {
         'usgsScenes: status ASCENDING, rank.score DESCENDING',
         // M4 (docs/research/M4-interfaces.md §5.6): an admin's unread items, newest first.
         'inbox: read ASCENDING, createdAt DESCENDING',
+        // M7 (docs/research/M7-local-worker.md §8): worker.claim's oldest queued local jobs.
+        'jobs: runOn ASCENDING, status ASCENDING, createdAt ASCENDING',
     ])('happyPath_theAdminQueryHasItsIndex_%s', (wanted) => {
         expect(config.indexes.filter((index) => index.queryScope === 'COLLECTION').map(signature)).toContain(wanted);
     });

@@ -476,7 +476,7 @@ No new dependency (`DECISIONS-for-review.md` §46g): numpy, `opencv-python-headl
 | `extract` | streams the `.tgz` / `.zip` (`tarfile` `r\|gz`, `zipfile`), keeps only the TIFF segments (`_a` … `_d`) | `work/{city}/{job}/segments/*.tif` | `apiError.imagery.archiveCorrupt` (unreadable, or no TIFF inside; the delivery is deleted so a retry fetches it again) |
 | `stitch` | orders the segments, finds each overlap's offset by feature matching (within 1 px), mosaics, finds the film border (intensity profiles) and crops it | `work/{city}/{job}/frame.tif` | `apiError.imagery.unreadableRaster` |
 | `inspect` (uploads) | opens the upload with GDAL; a geotransform or GCPs with a CRS → georeferenced (`method: 'embedded'`), else a scan; converts to 8-bit (one band, or three for colour) | the scan (`scan.tif`, `scan-preview.jpg`); for an embedded georeference the version's `georef: {method: 'embedded', transform: 'affine', gcps: []}` | `apiError.imagery.unreadableRaster` |
-| `locate` | the corner guess (§5.4): the frame's orientation among the eight rotations and mirrors, the initial transform from the corners, the city window ± 10 % cropped from the frame | `scan.tif`, `scan-preview.jpg` (long side `SCAN_PREVIEW_MAX_PX`), the version's `scan` and four `corner` GCPs | `apiError.imagery.referenceUnavailable` when the window misses the city |
+| `locate` | the corner guess (§5.4): the frame's orientation among the eight rotations and mirrors, the initial transform from the corners, the city window ± 10 % cropped from the frame | `scan.tif`, `scan-preview.jpg` (long side `SCAN_PREVIEW_MAX_PX`), the version's `scan` and four `corner` GCPs | `apiError.imagery.referenceUnavailable` when the window misses the city; `apiError.imagery.cityNotFound` when no guess correlates (§5.4) |
 | `reference` | the window's Sentinel-2 L2A (§5.5) and OSM features, both cached; draws the georeferencer's two reference images | `reference/{city}/...`, `reference-s2.jpg`, `reference-osm.png`, the version's `reference` | `apiError.imagery.referenceUnavailable` (no item under 20 % clouds in three years, Overpass down after three tries) |
 | `georef` | automatic GCPs (§5.6) for a `usgs-import`; for a version that already holds the admin's points, the fit and residuals only | the version's `georef` (pairs, transform, `fitRmseM`, `checkpointRmseM`, `checkpointCount`) | too few pairs → the job `awaiting_gcps`, the version `needs_gcps` with `apiError.imagery.noMatch {pairs}` (waits, not a failure); `apiError.imagery.degenerateGcps`; `apiError.imagery.gcpOutside` |
 | `warp` | `gdalwarp` with the GCPs in EPSG:3857 metres (`-order 1`, `-order 2` or `-tps`), `-t_srs EPSG:3857`, the resolution of `maxzoom` (156543.03392804097 / 2^z m) on the tile grid, `-r bilinear`, an alpha band, `-cutline` (a GeoJSON of the closed ring) with `-crop_to_cutline` when the version has a crop | `work/{city}/{job}/warped.tif` | `apiError.imagery.unreadableRaster` |
@@ -496,6 +496,17 @@ rewrites (no USGS call, `S-P02-HAPPY`).
 - The kept transform maps the city window (the city's bounds plus 10 %) back into frame pixels; the crop is `scan.tif`.
   Four GCPs at the crop's corners, `origin: 'corner'`, start the georeferencing (and the georeferencer when matching
   fails).
+- Findings 62 and 63 of 2026-11-02 (`DECISIONS-for-review.md` §84): only the assignments whose ground pixel at the
+  frame's centre is at most `MAX_ANISOTROPY` (3) times as elongated as the best-shaped one's are scored (a quarter turn
+  or a transposition of a strip is never scored); a best guess under `MIN_CORRELATION` (0.2) is searched again over the
+  window widened by `SEARCH_MARGIN` (half its size) on every side: the frame warped onto the wide window, the window's
+  Sentinel-2 matched inside it (`cv2.matchTemplate`, places where the frame covers under 20 % of the window refused),
+  the guess moved by the match's offset and scored again; still under it, the step fails with
+  `apiError.imagery.cityNotFound` and nothing is cropped. A crop with a side over `MAX_SCAN_PIXELS` fails with
+  `processingFailed` before it is read (`scanSchema` would refuse the version). **UNVERIFIED**: the threshold on real
+  frames (the synthetic right guess scores 0.8 to 0.9 once moved, noise 0.15 at most); a KH-9 panoramic frame's
+  cross-track scale is not projective (film position follows the scan angle, the ground its tangent), which the
+  four-corner homography does not model.
 
 ### 5.5 The references
 

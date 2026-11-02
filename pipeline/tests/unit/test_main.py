@@ -72,7 +72,7 @@ def test_happy_path_environment_defaults_to_the_process_environment(monkeypatch:
     assert (code, step.seen_job_id) == (ExitCode.OK, VALID_ENV["JOB_ID"])
 
 
-def test_happy_path_default_registry_offers_doctor_run_and_each_pipeline_step() -> None:
+def test_happy_path_default_registry_offers_doctor_run_each_pipeline_step_and_the_worker() -> None:
     assert default_registry().names() == (
         "doctor",
         "run",
@@ -86,6 +86,7 @@ def test_happy_path_default_registry_offers_doctor_run_and_each_pipeline_step() 
         "warp",
         "export",
         "register",
+        "worker",
     )
 
 

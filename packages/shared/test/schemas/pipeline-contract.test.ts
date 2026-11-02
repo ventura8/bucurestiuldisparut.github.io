@@ -7,8 +7,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import type { z } from 'zod';
 
 import { HEARTBEAT_SECONDS, LEASE_SECONDS, USGS_BACKOFF_MINUTES } from '../../src/api/imagery.js';
+import { isApiErrorCode } from '../../src/i18n/api/index.js';
 import {
     AUTO_GCP_CHECKPOINT_SHARE,
     AUTO_GCP_METHODS,
@@ -19,8 +21,24 @@ import {
     MATCH_CHANNELS,
     MAX_SUGGESTIONS,
 } from '../../src/schemas/autogcp.js';
-import { JOB_MACHINES, JOB_STATUSES, JOB_STEP_STATES, JOB_WAIT_REASONS, jobDocSchema } from '../../src/schemas/firestore-ops.js';
-import { enabledGcps, GCP_ORIGINS, gcpSchema, GEOREF_TRANSFORMS, MIN_GCPS, type GeorefTransform } from '../../src/schemas/georef.js';
+import {
+    JOB_MACHINES,
+    JOB_STATUSES,
+    JOB_STEP_STATES,
+    JOB_WAIT_REASONS,
+    jobDocSchema,
+    jobLogDocSchema,
+} from '../../src/schemas/firestore-ops.js';
+import {
+    enabledGcps,
+    GCP_ORIGINS,
+    gcpSchema,
+    GEOREF_TRANSFORMS,
+    MAX_GCPS,
+    MAX_SCAN_PIXELS,
+    MIN_GCPS,
+    type GeorefTransform,
+} from '../../src/schemas/georef.js';
 import { RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
 import { STUDIO_MAX_BYTES } from '../../src/schemas/imagery-publish.js';
 import {
@@ -65,11 +83,27 @@ interface GeorefCase {
 
 const georefCases = (golden('georef-cases.json') as { readonly cases: readonly GeorefCase[] }).cases;
 
+/**
+ * Finding 62 of 2026-11-02: one document of each shape the pipeline's real writers left along every path of an import
+ * (`pipeline/tests/integration/test_written_documents.py` writes the file and holds the pipeline to its shapes).
+ */
+const written = golden('written-documents.json') as Readonly<Record<'job' | 'version' | 'log', readonly unknown[]>>;
+const WRITTEN_SCHEMAS: Readonly<Record<'job' | 'version' | 'log', z.ZodType>> = {
+    job: jobDocSchema,
+    version: layerVersionDocSchema,
+    log: jobLogDocSchema,
+};
+const writtenCases = (['job', 'version', 'log'] as const).flatMap((kind) =>
+    written[kind].map((document, index) => ({ kind, index, document })),
+);
+
 describe('the pipeline contract', () => {
     it('happyPath_theSharedConstantsEqualThePipelinesCopy', () => {
-        const { comment, ...constants } = golden('enums.json') as Readonly<Record<string, unknown>>;
+        const { comment, PIPELINE_ERROR_CODES: codes, ...constants } = golden('enums.json') as Readonly<Record<string, unknown>>;
 
         expect(typeof comment).toBe('string');
+        // Every code a pipeline step fails or waits with is one the admin reads (finding 62 of 2026-11-02).
+        expect((codes as readonly string[]).filter((code) => !isApiErrorCode(code))).toEqual([]);
         expect(constants).toEqual({
             JOB_STATUSES,
             JOB_WAIT_REASONS,
@@ -89,6 +123,8 @@ describe('the pipeline contract', () => {
             SCAN_PREVIEW_MAX_PX,
             STUDIO_MAX_BYTES,
             SENSOR_SPECS,
+            MAX_GCPS,
+            MAX_SCAN_PIXELS,
         });
     });
 
@@ -146,6 +182,17 @@ describe('the pipeline contract', () => {
         expect(version.suggestions.pairs.every((pair) => pair.score >= AUTO_GCP_SUGGEST_MIN && pair.score < AUTO_GCP_MIN_CONFIDENCE)).toBe(
             true,
         );
+    });
+
+    it('happyPath_thePipelineWroteEveryKindOfDocument', () => {
+        expect(writtenCases.filter(({ kind }) => kind === 'version').length).toBeGreaterThan(5);
+        expect(new Set(writtenCases.map(({ kind }) => kind))).toEqual(new Set(['job', 'version', 'log']));
+    });
+
+    it.each(writtenCases)('happyPath_the written $kind document $index passes its schema', ({ kind, document }) => {
+        const result = validate(WRITTEN_SCHEMAS[kind], document);
+
+        expect(result.ok ? [] : result.issues).toEqual([]);
     });
 
     it.each(paths.built)('happyPath_$builder builds $path', (pathCase) => {

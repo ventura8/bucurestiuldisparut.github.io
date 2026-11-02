@@ -5,6 +5,7 @@ import { M5_EXPORTS } from './fixtures/exports-m5.js';
 import { M6_INSTALL_EXPORTS } from './fixtures/exports-m6-install.js';
 import { FIELD_EXPORTS } from './fixtures/exports-field.js';
 import { M6_SETUP_UX_EXPORTS } from './fixtures/exports-m6-setup-ux.js';
+import { M7_EXPORTS } from './fixtures/exports-m7.js';
 
 /** The public API, by module: a removed or renamed export breaks the engine, the admin and the functions. */
 const EXPORTS = {
@@ -571,6 +572,8 @@ const EXPORTS = {
     m6SetupUx: M6_SETUP_UX_EXPORTS,
     /** Field measurements (DECISIONS-for-review.md §76): GA4's event schemas and guards, Core Web Vitals as parameters. */
     fieldMeasurements: FIELD_EXPORTS,
+    /** M7 (docs/research/M7-local-worker.md §8): the local worker, where a job runs, Cloud Run's free tier, the Uploads path. */
+    m7: M7_EXPORTS,
     migration: [
         'KNOWN_HTTPS_HOSTS',
         'decodeEntities',

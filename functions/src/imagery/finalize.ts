@@ -2,8 +2,9 @@
  * The publisher's last step (`docs/research/M3-interfaces.md` §2.2, §7.2 step 4, §7.3 `finalize`, §7.5): in one
  * transaction the layer is created (its first version) or pointed at the new tiles (a later one: its presentation is
  * kept), the previous version is superseded, this one is published, the job succeeds, and the month's counters move:
- * the compute units counted and the reservation released for MTS, one more Studio upload for the free path. The
- * manifest is rebuilt by `publish.onLayerWrite`.
+ * the compute units counted and the reservation released for MTS, one more Studio upload for the free path, the
+ * megabytes and one more publish of Mapbox's Uploads API for its free path (M7, `docs/research/M7-local-worker.md` §6: no
+ * compute units). The version records the path (`mapbox.via`). The manifest is rebuilt by `publish.onLayerWrite`.
  */
 import {
     FIRESTORE_PATHS,
@@ -37,7 +38,7 @@ export interface Finish {
     readonly cityId: string;
     readonly jobId: string;
     readonly versionId: string;
-    readonly origin: 'mts' | 'studio';
+    readonly origin: 'mts' | 'studio' | 'uploads';
     readonly tilesetId: string;
     readonly sourceId?: string;
     /** km² processed per precision, as the MTS job reported it (the estimate's calibration). */
@@ -161,6 +162,7 @@ function publishedVersion(held: Held, finish: Finish, stamp: Stamp): LayerVersio
         origin: finish.origin,
         precisions: finish.precisions,
         publishedAt: stamp.updatedAt,
+        via: finish.origin,
     });
     return { ...held.version, state: 'published', mapbox, ...stamp };
 }
@@ -191,6 +193,23 @@ function mtsUsage(usage: UsageDoc, held: Held, finish: Finish, stamp: Stamp): Us
     return { ...usage, ...counted, reservations, ...stamp };
 }
 
+/** The Uploads API counts the Studio file's megabytes and one publish; no compute units (nothing was reserved). */
+function uploadsUsage(usage: UsageDoc, held: Held, stamp: Stamp): UsageDoc {
+    const megabytes = (held.version.output.studioBytes ?? 0) / 1e6;
+    return {
+        ...usage,
+        uploadsApiMb: (usage.uploadsApiMb ?? 0) + megabytes,
+        uploadsApiPublishes: (usage.uploadsApiPublishes ?? 0) + 1,
+        ...stamp,
+    };
+}
+
+const USAGE_BY_ORIGIN: Readonly<Record<Finish['origin'], (usage: UsageDoc, held: Held, finish: Finish, stamp: Stamp) => UsageDoc>> = {
+    mts: mtsUsage,
+    studio: (usage, _held, _finish, stamp) => studioUsage(usage, stamp),
+    uploads: (usage, held, _finish, stamp) => uploadsUsage(usage, held, stamp),
+};
+
 function usageAfter(held: Held, finish: Finish, stamp: Stamp): UsageDoc {
     const usage = held.usage ?? {
         month: held.usageMonth,
@@ -200,7 +219,7 @@ function usageAfter(held: Held, finish: Finish, stamp: Stamp): UsageDoc {
         publishes: 0,
         ...stamp,
     };
-    return finish.origin === 'studio' ? studioUsage(usage, stamp) : mtsUsage(usage, held, finish, stamp);
+    return USAGE_BY_ORIGIN[finish.origin](usage, held, finish, stamp);
 }
 
 /** The month whose counter the publish is booked in: where its reservation was taken (the guard), else now. */

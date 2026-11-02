@@ -177,6 +177,8 @@ function createSigner(): FakeSigner {
             signed.push({ bucket, download });
             return Promise.resolve(`https://storage.googleapis.com/demo-hcm.firebasestorage.app/${download.path}?X-Goog-Signature=test`);
         },
+        // M7: the local worker's objects; the export never signs one.
+        signedObject: () => Promise.reject(new Error('the export signs downloads only')),
     };
 }
 

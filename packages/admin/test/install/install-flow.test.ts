@@ -3,6 +3,7 @@ import {
     NEWER_BUILD_RELEASE,
     NEWER_BUILD_TIME,
     NEWER_SERVER_RELEASE,
+    PIPELINE_DIGEST,
     PLANTED_LOG_SECRETS,
     registryFunctions,
 } from '@hcm/test-support/fakes';
@@ -307,6 +308,22 @@ describe('what the build says', () => {
         install.fakes.scenario('cloud-build.finish');
         await clock.advance(RUNNING_LOOK_MS);
         expect(latest()).toMatchObject({ state: 'installed', quota: null });
+        flow.dispose();
+    });
+
+    it('happyPath_aPipelineThatEndedWellNamesItsImagesDigest', async () => {
+        // M7 (docs/research/M7-local-worker.md §1.1): the push step's `image` event, read once the build ended well.
+        const { install, clock, flow, latest } = await world('pipeline');
+        await flow.install();
+        expect(latest().image).toBeNull();
+        install.fakes.scenario('cloud-build.finish');
+
+        await clock.advance(RUNNING_LOOK_MS);
+
+        expect(latest()).toMatchObject({ state: 'installed', image: PIPELINE_DIGEST });
+        // Another build under way keeps the digest of the one installed until it names its own.
+        await flow.install();
+        expect(latest().image).toBe(PIPELINE_DIGEST);
         flow.dispose();
     });
 

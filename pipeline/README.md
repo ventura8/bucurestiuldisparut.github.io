@@ -37,6 +37,9 @@ model, §5 the steps, §6 the georeferencing conventions); plan: `docs/research/
   layer's `maxzoom` on the tile grid, an alpha band, `-cutline` for a crop; `export`: the 8-bit JPEG COG (alpha as a
   mask), the RGBA preview, the Studio GeoTIFF of at most 300 MB, the valid area; `register`: the version
   `awaiting_approval`, the job's scratch objects deleted.
+- `locate` deletes the job's USGS delivery (`usgs-raw/`) once `scan.tif` and the version's `scan` are recorded, and
+  logs it (M7: `docs/research/M7-local-worker.md` §5); a later run of the job passes `fetch` over while `locate`'s crop
+  exists, and downloads again only when the crop is not there yet.
 
 ## Layout
 
@@ -53,6 +56,7 @@ model, §5 the steps, §6 the georeferencing conventions); plan: `docs/research/
 | `raster.py`, `rasters.py`, `images.py` | the one GDAL import, GDAL file helpers, OpenCV images |
 | `services.py` | the composition root: the real adapters (the emulators under `FIRESTORE_EMULATOR_HOST` and `STORAGE_EMULATOR_HOST`) |
 | `steps/` | one file per step, `common.py` for what they share, `doctor.py` |
+| `worker/` | M7, the local worker (`python -m hcm_pipeline worker`): its arguments, the owner's session, the local page and its server, the callables' client, the stores over `worker.step` and signed URLs, the work folder, the USGS proxy, the loop |
 | `typings/osgeo/` | mypy stubs for the GDAL API the code calls |
 
 ## Configuration
@@ -63,6 +67,18 @@ model, §5 the steps, §6 the georeferencing conventions); plan: `docs/research/
 `STORAGE_EMULATOR_HOST` (loopback only) and `HCM_E2E_USGS_TOKEN` (a scenario test value); `GDAL_NUM_THREADS`, when
 set, replaces the default `ALL_CPUS`. The USGS credentials (`usgs-username`, `usgs-app-token`) are read from Secret Manager at
 run time.
+
+## The local worker (M7)
+
+`python -m hcm_pipeline worker --city <id> --project <id> [--port 8765] [--work /work] [--emulators]` runs the city's
+jobs chosen for the owner's computer (`docs/research/M7-local-worker.md`): in the pipeline image, `docker run --rm -p
+127.0.0.1:8765:8765 -v "$HOME/hcm-worker:/work" <image> worker --city <city> --project <project>`. The owner opens
+`http://localhost:8765/`, signs in with Google; the worker keeps the ID and refresh tokens in memory only (after
+`worker.hello` accepted them), claims a job every `pollSeconds`, runs it with the normal runner (documents through
+`worker.step`, the version's files through signed URLs, the delivery, the scratch and the reference cache in `/work`,
+USGS through `worker.urls`) and reports `worker.end`. Ctrl-C or SIGTERM requeues a running job and exits 0. Under
+`--emulators` every address is this machine's: `FIREBASE_AUTH_EMULATOR_HOST`, `FUNCTIONS_EMULATOR_HOST`,
+`HCM_HOSTING_HOST` (serves `/__/firebase/init.json`), `HCM_STAC_URL`, `HCM_OVERPASS_URL`.
 
 ## Exit codes
 

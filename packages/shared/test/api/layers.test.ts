@@ -11,7 +11,7 @@ import {
     sourceOrigins,
     tilesetOwnerOf,
 } from '../../src/api/layers.js';
-import { CALLABLES } from '../../src/api/registry.js';
+import { CALLABLES } from '../../src/api/callables.js';
 import { CLIENT_JOB_TYPES, JOB_TYPES } from '../../src/schemas/firestore-ops.js';
 import type { LayerSource } from '../../src/schemas/manifest.js';
 

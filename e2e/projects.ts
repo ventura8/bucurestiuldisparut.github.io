@@ -324,7 +324,7 @@ const JOURNEY_MATRIX: readonly { readonly name: string; readonly use: Use }[] = 
  * admin lock: the imports that reach the public map, crop, replace and re-georeference) run on a push at a phone and a
  * laptop, like the Setup journey; at the tablet, in the dark scheme and in English they repeat the same rows in
  * `tour-matrix` (DECISIONS-for-review.md §48b, §49k). The real pipeline's run does not depend on the window class: on a
- * push at the laptop only.
+ * push at the laptop only, the Cloud Run run's and the local worker's (M7) alike.
  */
 const IMAGERY_PUBLISH_SPECS = [
     'specs/imagery/published.spec.ts',
@@ -332,7 +332,7 @@ const IMAGERY_PUBLISH_SPECS = [
     // M4's automation from a bought scan to the viewer's compare (two publishes in its happy path).
     'specs/imagery/automation.spec.ts',
 ];
-const PIPELINE_SPEC = 'specs/imagery/pipeline.spec.ts';
+const PIPELINE_SPECS = ['specs/imagery/pipeline.spec.ts', 'specs/imagery/worker-run.spec.ts'];
 
 function adminJourneyMatrixProjects(): E2eProject[] {
     const matrix = { metadata: { tier: 'tour-matrix' } };
@@ -355,9 +355,9 @@ function adminProjects(part: ShardRange | null): E2eProject[] {
     const SPECS_GLOB = 'specs/**/*.spec.ts';
     const FORMS_GLOB = 'specs/editing/**/*.spec.ts';
     // At the tablet, in the dark scheme and in English the journey and the slow imagery specs run in `tour-matrix`.
-    const noJourney = { testIgnore: [JOURNEY_SPEC, ...IMAGERY_PUBLISH_SPECS, PIPELINE_SPEC] };
+    const noJourney = { testIgnore: [JOURNEY_SPEC, ...IMAGERY_PUBLISH_SPECS, ...PIPELINE_SPECS] };
     const tests = [
-        adminProject('admin-c360-ro', SPECS_GLOB, chromium('c360'), { testIgnore: PIPELINE_SPEC }),
+        adminProject('admin-c360-ro', SPECS_GLOB, chromium('c360'), { testIgnore: PIPELINE_SPECS }),
         adminProject('admin-m768-ro', SPECS_GLOB, chromium('m768'), noJourney),
         adminProject('admin-l1440-ro', SPECS_GLOB, chromium('l1440')),
         // The dark scheme: colours, rings and contrast are the scheme's (the visual audit of 2026-10-17 found the admin

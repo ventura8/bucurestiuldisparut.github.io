@@ -1,0 +1,87 @@
+"""The worker assembled from its parts (docs/research/M7-local-worker.md §1): the session, the callables, the page's
+server, the job runtime and the loop; `serve` runs the page in a thread and the loop in the calling (main) thread.
+"""
+
+import secrets
+import time
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Final
+
+import httpx
+
+from hcm_pipeline.log import get_logger
+from hcm_pipeline.services import default_steps, http
+from hcm_pipeline.worker.api import WorkerApi
+from hcm_pipeline.worker.app import PageActions
+from hcm_pipeline.worker.args import WorkerArgs
+from hcm_pipeline.worker.loop import WorkerLoop
+from hcm_pipeline.worker.page import PageSettings, content_security_policy
+from hcm_pipeline.worker.runtime import StepsFactory, WorkerRuntime
+from hcm_pipeline.worker.server import LocalServer
+from hcm_pipeline.worker.session import Session
+from hcm_pipeline.worker.state import WorkerState
+from hcm_pipeline.worker.webconfig import WebConfig
+
+LOG = get_logger("worker")
+# Inside the container the page listens on every interface, which Docker's port publishing needs; the command publishes
+# it on the computer's loopback only (`-p 127.0.0.1:8765:8765`), and the Host and Origin checks refuse anything else.
+EVERY_INTERFACE: Final = ""
+WORKER_ID_PREFIX: Final = "w-"
+
+
+def new_worker_id() -> str:
+    """`w-` and 16 hex characters, new per process (`WORKER_ID_PATTERN`)."""
+    return WORKER_ID_PREFIX + secrets.token_hex(8)
+
+
+@dataclass(frozen=True)
+class Worker:
+    session: Session
+    api: WorkerApi
+    state: WorkerState
+    actions: PageActions
+    server: LocalServer
+    loop: WorkerLoop
+    runtime: WorkerRuntime
+    client: httpx.Client
+    worker_id: str
+
+    @classmethod
+    def build(
+        cls,
+        args: WorkerArgs,
+        bind_host: str = EVERY_INTERFACE,
+        clock: Callable[[], float] = time.time,
+        steps: StepsFactory = default_steps,
+    ) -> Worker:
+        worker_id = new_worker_id()
+        client = http()
+        web_config = WebConfig(client, args.endpoints.init_json, args.project)
+        session = Session(client, lambda: f"{args.endpoints.securetoken}?key={web_config.api_key()}", clock)
+        api = WorkerApi(client, args.endpoints.function, session.bearer, time.sleep)
+        state = WorkerState(args.city, args.project, session)
+        ids = {"cityId": args.city, "workerId": worker_id}
+        actions = PageActions(session, api, state, web_config, ids)
+        emulators = [host for host in (args.endpoints.auth_emulator,) if host]
+        settings = PageSettings(args.project, args.city, LocalServer.new_csrf_token(), args.endpoints.auth_emulator)
+        server = LocalServer(actions, settings, (bind_host, args.port), content_security_policy(args.project, emulators))
+        runtime = WorkerRuntime(args, api, worker_id, state, steps)
+        loop = WorkerLoop(session, api, state, runtime, ids)
+        return cls(session, api, state, actions, server, loop, runtime, client, worker_id)
+
+    def serve(self) -> None:
+        """The page in a thread, the loop here, until SIGTERM or Ctrl-C."""
+        self.server.start()
+        LOG.info("worker %s: open http://localhost:%d/ and sign in with Google", self.worker_id, self.server.port)
+        try:
+            self.loop.run()
+        finally:
+            self.close()
+            LOG.info("worker %s stopped", self.worker_id)
+
+    def close(self) -> None:
+        """The page's socket and every client closed (the tokens go with the process)."""
+        self.server.stop()
+        self.runtime.close()
+        self.client.close()

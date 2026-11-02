@@ -21,6 +21,7 @@ import { contentText } from '../shell/text.js';
 import { FILTERS, jobStatusText, jobTypeText, levelText, percentOf, statusTone, stepNameText, stepStateText } from './job-text.js';
 import type { JobFilterPort, JobItemPort, JobLogLinePort, JobsIntentsPort, JobsViewState } from './jobs-port.js';
 import { rasterActions, waitLine } from './raster-parts.js';
+import { loadWorkerElements } from '../worker/load.js';
 
 export const HCM_JOBS_PAGE_TAG = 'hcm-jobs-page';
 
@@ -41,6 +42,8 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
     declare confirming: boolean;
     /** The Resume processing question is open. */
     declare resumeAsked: boolean;
+    /** The `worker` chunk's elements were asked for. */
+    #workerLoaded = false;
 
     constructor() {
         super();
@@ -110,6 +113,7 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
                     this.resumeAsked = true;
                 },
             })}
+            ${this.#worker(locale)}
             ${listBody(
                 locale,
                 view.list,
@@ -123,6 +127,15 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
                         </ul>`,
                 },
             )}`;
+    }
+
+    /** M7: the local worker's panel (docs/research/M7-local-worker.md §7); its elements are the lazy `worker` chunk's. */
+    #worker(locale: Locale): TemplateResult {
+        if (!this.#workerLoaded && this.app !== null) {
+            this.#workerLoaded = true;
+            loadWorkerElements(this.app);
+        }
+        return html`<hcm-worker-panel .app=${this.app} .locale=${locale} project=${this.state?.projectId ?? ''}></hcm-worker-panel>`;
     }
 
     #chip(locale: Locale, selected: JobFilterPort, filter: JobFilterPort): TemplateResult {
@@ -188,7 +201,8 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
             <div class="chips"><span class="tag" data-tone=${statusTone(job)}>${jobStatusText(locale, job.status)}</span></div>
             <p class="note">${started}</p>
             ${this.#waiting(locale, job)} ${waitLine(locale, job)} ${this.#progress(locale, job)} ${this.#error(locale, job)}
-            ${this.#raster(locale, view, job)} ${this.#steps(locale, job)} ${reconnectingStatus(locale, isReconnecting(view.detail))}
+            ${this.#raster(locale, view, job)} ${this.#place(locale, job)} ${this.#steps(locale, job)}
+            ${reconnectingStatus(locale, isReconnecting(view.detail))}
             <h3>${contentText(locale, 'adminContent.jobs.log')}</h3>
             ${this.#logs(locale, logs.items)} ${this.#cancel(locale, view, job)}
         </div>`;
@@ -199,6 +213,11 @@ export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
             void this.intents?.retryJob();
         };
         return rasterActions(locale, job, { retrying: view.retrying, readOnly: this.readOnly, retry });
+    }
+
+    /** M7: where an unfinished job runs and its switch (`<hcm-run-place>` shows itself only for a pipeline job holding no run). */
+    #place(locale: Locale, job: JobItemPort): TemplateResult {
+        return job.finished ? EMPTY : html`<hcm-run-place .app=${this.app} .locale=${locale} job=${job.id}></hcm-run-place>`;
     }
 
     #self(): string | null {

@@ -1,0 +1,180 @@
+"""The worker's command line and the addresses it talks to (docs/research/M7-local-worker.md §1.1).
+
+`worker --city <id> --project <id> [--port 8765] [--work /work] [--emulators]`: the project gives the callables' origin
+(`https://us-central1-<project>.cloudfunctions.net`), the Hosting origin of the web configuration
+(`https://<project>.web.app/__/firebase/init.json`) and nothing else is configured. Under `--emulators` (the e2e tier)
+the same code talks to this machine only, from the variables below, each a loopback `host:port`:
+
+| Variable | What |
+| --- | --- |
+| `FIREBASE_AUTH_EMULATOR_HOST` | the Auth emulator: the page signs in there, the worker refreshes its token there |
+| `FUNCTIONS_EMULATOR_HOST` | the Functions emulator: `http://<host>/<project>/us-central1/worker-*` |
+| `HCM_HOSTING_HOST` | the host that serves `/__/firebase/init.json` (the e2e admin server) |
+| `HCM_STAC_URL`, `HCM_OVERPASS_URL` | the references' roots, as for `run` (loopback under the emulators) |
+"""
+
+import re
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Final
+from urllib.parse import urlsplit
+
+from hcm_pipeline.config import (
+    DEFAULT_OVERPASS_URL,
+    DEFAULT_STAC_URL,
+    ENV_OVERPASS_URL,
+    ENV_STAC_URL,
+    LOOPBACK_HOSTS,
+    ConfigError,
+    url_problem,
+)
+from hcm_pipeline.paths import CITY_ID
+
+ENV_AUTH_EMULATOR: Final = "FIREBASE_AUTH_EMULATOR_HOST"
+ENV_FUNCTIONS_EMULATOR: Final = "FUNCTIONS_EMULATOR_HOST"
+ENV_HOSTING: Final = "HCM_HOSTING_HOST"
+EMULATOR_VARIABLES: Final = (ENV_AUTH_EMULATOR, ENV_FUNCTIONS_EMULATOR, ENV_HOSTING)
+DEFAULT_PORT: Final = 8765
+DEFAULT_WORK: Final = "/work"
+REGION: Final = "us-central1"
+MAX_PORT: Final = 65535
+SECURETOKEN_PATH: Final = "securetoken.googleapis.com/v1/token"
+INIT_JSON_PATH: Final = "/__/firebase/init.json"
+# Google Cloud project ids: 6-30 characters, lowercase letters, digits and hyphens, starting with a letter.
+PROJECT_ID: Final = re.compile(r"[a-z][a-z0-9-]{4,28}[a-z0-9]")
+EMULATOR_HOST: Final = re.compile(r"(?:127\.0\.0\.1|localhost|\[::1\]):\d{1,5}")
+
+
+@dataclass(frozen=True)
+class Endpoints:
+    """Where the worker's calls go: the callables, Google's token refresh, the web configuration (and, under the
+    emulators, the Auth emulator the page connects to)."""
+
+    functions: str
+    securetoken: str
+    init_json: str
+    auth_emulator: str | None = None
+
+    def function(self, name: str) -> str:
+        """The address of the deployed callable `name` (`worker-claim`, ...)."""
+        return f"{self.functions}{name}"
+
+    @classmethod
+    def cloud(cls, project: str) -> Endpoints:
+        return cls(
+            functions=f"https://{REGION}-{project}.cloudfunctions.net/",
+            securetoken=f"https://{SECURETOKEN_PATH}",
+            init_json=f"https://{project}.web.app{INIT_JSON_PATH}",
+        )
+
+    @classmethod
+    def emulated(cls, project: str, env: Mapping[str, str]) -> Endpoints:
+        auth = env[ENV_AUTH_EMULATOR]
+        return cls(
+            functions=f"http://{env[ENV_FUNCTIONS_EMULATOR]}/{project}/{REGION}/",
+            securetoken=f"http://{auth}/{SECURETOKEN_PATH}",
+            init_json=f"http://{env[ENV_HOSTING]}{INIT_JSON_PATH}",
+            auth_emulator=auth,
+        )
+
+
+@dataclass(frozen=True)
+class WorkerArgs:
+    """The validated command line (`WorkerArgs` of the contract) and what follows from it."""
+
+    city: str
+    project: str
+    port: int
+    work: Path
+    emulators: bool
+    endpoints: Endpoints
+    stac_url: str = DEFAULT_STAC_URL
+    overpass_url: str = DEFAULT_OVERPASS_URL
+
+
+def _text(options: Mapping[str, object], key: str) -> str:
+    value = options.get(key)
+    return value if isinstance(value, str) else ""
+
+
+def _pattern_problem(value: str, pattern: re.Pattern[str], what: str) -> str | None:
+    return None if pattern.fullmatch(value) else what
+
+
+def _port_of(options: Mapping[str, object]) -> int | None:
+    """The port (0 lets the system choose one: the tests), None when it is not a port."""
+    value = options.get("port")
+    port = DEFAULT_PORT if value is None else value
+    return port if isinstance(port, int) and 0 <= port <= MAX_PORT else None
+
+
+def _emulator_problem(env: Mapping[str, str], name: str) -> str | None:
+    return None if EMULATOR_HOST.fullmatch(env.get(name, "")) else f"{name} must be a loopback host:port"
+
+
+def _emulator_problems(env: Mapping[str, str]) -> list[str | None]:
+    return [_emulator_problem(env, name) for name in EMULATOR_VARIABLES]
+
+
+def _reference_urls(env: Mapping[str, str]) -> dict[str, str]:
+    return {
+        ENV_STAC_URL: (env.get(ENV_STAC_URL) or DEFAULT_STAC_URL).rstrip("/"),
+        ENV_OVERPASS_URL: env.get(ENV_OVERPASS_URL) or DEFAULT_OVERPASS_URL,
+    }
+
+
+def _loopback_problem(name: str, url: str) -> str | None:
+    return None if _loopback(url) else f"{name} must be a loopback address under the emulators"
+
+
+def _url_problems(urls: Mapping[str, str], emulators: bool) -> list[str | None]:
+    sealed = [_loopback_problem(name, url) for name, url in urls.items()] if emulators else []
+    return [url_problem(name, url) for name, url in urls.items()] + sealed
+
+
+def _loopback(url: str) -> bool:
+    try:
+        return urlsplit(url).hostname in LOOPBACK_HOSTS
+    except ValueError:
+        return False
+
+
+def _work_problem(options: Mapping[str, object]) -> str | None:
+    """`--work` is optional (`/work`), but when given it names a folder."""
+    return None if options.get("work") is None or _text(options, "work") else "--work must name a folder"
+
+
+def _option_problems(options: Mapping[str, object]) -> list[str | None]:
+    return [
+        _pattern_problem(_text(options, "city"), CITY_ID, "--city must be a city id of lowercase letters, digits and '-'"),
+        _pattern_problem(_text(options, "project"), PROJECT_ID, "--project must be a Google Cloud project id"),
+        None if _port_of(options) is not None else "--port must be a port number",
+        _work_problem(options),
+    ]
+
+
+def _problems(options: Mapping[str, object], env: Mapping[str, str], emulators: bool) -> Sequence[str]:
+    emulator = _emulator_problems(env) if emulators else []
+    found = _option_problems(options) + emulator + _url_problems(_reference_urls(env), emulators)
+    return [problem for problem in found if problem is not None]
+
+
+def parse_worker_args(options: Mapping[str, object], env: Mapping[str, str]) -> WorkerArgs:
+    """The worker's arguments; raises ConfigError naming every option or variable at fault (never a value)."""
+    emulators = options.get("emulators") is True
+    problems = _problems(options, env, emulators)
+    if problems:
+        raise ConfigError(problems)
+    project = _text(options, "project")
+    urls = _reference_urls(env)
+    return WorkerArgs(
+        city=_text(options, "city"),
+        project=project,
+        port=_port_of(options) or 0,
+        work=Path(_text(options, "work") or DEFAULT_WORK),
+        emulators=emulators,
+        endpoints=Endpoints.emulated(project, env) if emulators else Endpoints.cloud(project),
+        stac_url=urls[ENV_STAC_URL],
+        overpass_url=urls[ENV_OVERPASS_URL],
+    )

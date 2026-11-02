@@ -22,7 +22,9 @@
         "approval",
         "compute-units",
         "deferred",
-        "mapbox"
+        "mapbox",
+        "worker",
+        "free-tier"
     ],
     "JOB_STEP_STATES": ["pending", "running", "done", "failed", "skipped"],
     "PIPELINE_STEPS": ["fetch", "extract", "stitch", "inspect", "locate", "reference", "georef", "warp", "export", "register"],
@@ -136,5 +138,31 @@
             "maxzoom": 17,
             "machine": "xl"
         }
-    }
+    },
+    "MAX_GCPS": 300,
+    "MAX_SCAN_PIXELS": 200000,
+    "PIPELINE_ERROR_CODES": [
+        "apiError.imagery.archiveCorrupt",
+        "apiError.imagery.cityNotFound",
+        "apiError.imagery.degenerateGcps",
+        "apiError.imagery.downloadIncomplete",
+        "apiError.imagery.gcpOutside",
+        "apiError.imagery.noMatch",
+        "apiError.imagery.noScan",
+        "apiError.imagery.noSpread",
+        "apiError.imagery.notScanned",
+        "apiError.imagery.processingFailed",
+        "apiError.imagery.referenceUnavailable",
+        "apiError.imagery.tooFewGcps",
+        "apiError.imagery.unreadableRaster",
+        "apiError.internal",
+        "apiError.invalidRequest",
+        "apiError.notFound",
+        "apiError.rateLimited",
+        "apiError.unavailable",
+        "apiError.usgs.credentials",
+        "apiError.usgs.maintenance",
+        "apiError.usgs.notConfigured",
+        "apiError.usgs.unavailable"
+    ]
 }

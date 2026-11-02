@@ -54,7 +54,8 @@ function buildOf(view: InstallTargetView, timed: boolean): Pick<InstallRecord, '
  * session sends one only once its server is known to read them (`install.ts`).
  */
 export function installRecordOf(view: InstallTargetView, now: string, timed = true): InstallRecord {
-    return { state: view.state, ...buildOf(view, timed), checkedAt: view.checkedAt ?? now, ...reasonOf(view) };
+    const image = view.image === null ? {} : { image: view.image };
+    return { state: view.state, ...buildOf(view, timed), ...image, checkedAt: view.checkedAt ?? now, ...reasonOf(view) };
 }
 
 /** The targets the cards observed, as records that validate (the bootstrap record's `install`). */
@@ -97,6 +98,7 @@ function fromRecord(view: InstallTargetView, record: InstallRecord, bundle: Bund
         buildId: record.buildId ?? null,
         checkedAt: record.checkedAt,
         error: recordedError(record),
+        image: record.image ?? view.image,
     };
 }
 

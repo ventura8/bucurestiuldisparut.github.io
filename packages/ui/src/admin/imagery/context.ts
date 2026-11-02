@@ -5,6 +5,7 @@
  */
 import type { Locale } from '@hcm/shared';
 
+import type { WorkerHostPort } from '../worker/worker-port.js';
 import type { ImageryIntentsPort, ImageryViewState } from './imagery-port.js';
 
 /** The questions the page asks before an action that cannot be taken back or costs money. */
@@ -27,4 +28,6 @@ export interface ImageryContext {
      * own control may go with it (I ordered it on a frame scanned meanwhile: the card goes with the order).
      */
     readonly focusDetail: () => void;
+    /** M7: the admin app, which hands a version's `<hcm-run-place>` its feed (absent: no place shown). */
+    readonly app?: WorkerHostPort | null;
 }

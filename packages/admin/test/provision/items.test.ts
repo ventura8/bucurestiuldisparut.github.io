@@ -433,7 +433,7 @@ describe('the private bucket lifecycle', () => {
             ['tmp/', 1],
             ['uploads/', 7],
             ['work/', 14],
-            ['usgs-raw/', 30],
+            ['usgs-raw/', 7],
             ['reference/', 90],
             ['exports/', 7],
         ]);

@@ -92,16 +92,21 @@ class Config:
     firestore_emulator: str | None = None
     storage_emulator: str | None = None
     e2e_usgs_scenario: str = DEFAULT_E2E_USGS_SCENARIO
+    # M7, the local worker (docs/research/M7-local-worker.md §1.2): the lease owner `worker:<workerId>` its claim wrote,
+    # and `sealed` under `--emulators` (it talks to no Firestore or Storage of its own, yet must stay on this machine).
+    owner: str | None = None
+    sealed: bool = False
 
     @property
     def lease_owner(self) -> str:
-        """`<execution>/<attempt>`: who holds the job lease, so a duplicate execution exits early."""
-        return f"{self.execution}/{self.task_attempt}"
+        """`<execution>/<attempt>` (a local worker: `worker:<workerId>`): who holds the job lease, so a duplicate
+        execution exits early."""
+        return self.owner or f"{self.execution}/{self.task_attempt}"
 
     @property
     def emulated(self) -> bool:
-        """True in the e2e pipeline tier: Firestore and Storage are the local emulators."""
-        return self.firestore_emulator is not None and self.storage_emulator is not None
+        """True in the e2e pipeline tier: Firestore and Storage are the local emulators (or a worker run with `--emulators`)."""
+        return self.sealed or (self.firestore_emulator is not None and self.storage_emulator is not None)
 
 
 def is_mapbox_host(host: str | None) -> bool:

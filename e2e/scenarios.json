@@ -673,6 +673,34 @@
             "name": "Automatic GCPs: CLAHE, SIFT or ORB, RANSAC, OSM tiles",
             "milestone": "M4",
             "source": "docs/research/PLAN.md (Raster pipeline, georef); docs/research/M4-interfaces.md §2"
+        },
+        {
+            "id": "A62",
+            "area": "admin",
+            "name": "Run imagery jobs on my computer (the local worker)",
+            "milestone": "M7",
+            "source": "docs/research/M7-local-worker.md (the user's decisions of 2026-11-01, \"make this as free as possible\"; DECISIONS-for-review.md §83) §1-§3, §7"
+        },
+        {
+            "id": "A63",
+            "area": "admin",
+            "name": "Cloud Run's free tier: the month's use and the OK before passing it",
+            "milestone": "M7",
+            "source": "docs/research/M7-local-worker.md (the user's decisions of 2026-11-01, \"make this as free as possible\"; DECISIONS-for-review.md §83) §4"
+        },
+        {
+            "id": "A64",
+            "area": "admin",
+            "name": "Publish through Mapbox's free Uploads path when the file fits",
+            "milestone": "M7",
+            "source": "docs/research/M7-local-worker.md (the user's decisions of 2026-11-01, \"make this as free as possible\"; DECISIONS-for-review.md §83) §6"
+        },
+        {
+            "id": "P04",
+            "area": "pipeline",
+            "name": "The local worker runs a job through the API and signed URLs",
+            "milestone": "M7",
+            "source": "docs/research/M7-local-worker.md (the user's decisions of 2026-11-01, \"make this as free as possible\"; DECISIONS-for-review.md §83) §1-§2, §10"
         }
     ],
     "scenarios": [
@@ -8718,6 +8746,50 @@
             "notes": "Finding 57 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82h). Test: pipeline/tests/unit/test_frames.py."
         },
         {
+            "id": "S-P01-HAPPY-KH9-STRIP",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A turned, mirrored KH-9-like strip is located, even with its corners kilometres off",
+            "asserts": "a 1:3.75 strip of 4 m pixels stored turned and mirrored -> only the four assignments with about square ground pixels are scored (a quarter turn stretches them 14 times); corners tens of metres off -> the right one at once, its crop box within 30 px; corners 1.3-1.6 km off -> the guess under the least correlation is searched around the window widened by half on every side and moved by 1-2.2 km, its box within 40 px; an import whose scene corners are 1.3 km off reaches approval and logs the move",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 63 of docs/research/manual-test-2026-10-25.md (live test 2026-11-02; DECISIONS-for-review.md §84b). Tests: pipeline/tests/unit/test_corners.py, pipeline/tests/integration/test_written_documents.py (corners-far-off)."
+        },
+        {
+            "id": "S-P01-BAD-CITY-NOT-FOUND",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A frame that does not show the city is never cropped",
+            "asserts": "Sentinel-2 of another place -> the best guess stays under the least correlation (0.2) after the search: the job and the version failed with apiError.imagery.cityNotFound and no scan; a frame 56 km from the window -> WindowMissedError (referenceUnavailable); a crop with a side over MAX_SCAN_PIXELS -> processingFailed before any pixel is read",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Findings 62 and 63 of docs/research/manual-test-2026-10-25.md (live test 2026-11-02; DECISIONS-for-review.md §84a, §84b). Tests: pipeline/tests/unit/test_corners.py, pipeline/tests/integration/test_written_documents.py (city-not-found)."
+        },
+        {
+            "id": "S-P01-HAPPY-WRITTEN-CONTRACT",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Every document the pipeline writes has a shape the shared schemas accept",
+            "asserts": "the real runner along ten paths (whole import, two phases, USGS preparing, not scanned, a size mismatch, a corrupt archive, cancelled, no pairs, corners far off, the city not found) -> every job, version and log document after every write has a shape of pipeline/tests/contracts/written-documents.json, which holds exactly those shapes; the shared contract test parses each of its documents with jobDocSchema, layerVersionDocSchema and jobLogDocSchema, and every pipeline error code is one the admin reads",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 62 of docs/research/manual-test-2026-10-25.md (live test 2026-11-02; DECISIONS-for-review.md §84a). Tests: pipeline/tests/integration/test_written_documents.py, packages/shared/test/schemas/pipeline-contract.test.ts."
+        },
+        {
+            "id": "S-P01-BAD-WRITTEN-PARAMS",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A step failure's numeric parameters are written as text",
+            "asserts": "a step fails with {min: 6} -> the job's and the version's error params read {min: '6'} (apiErrorParamsSchema takes texts only; a number made both unreadable in the admin); a delivery larger than announced -> the version's {bytes} is text",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 62 of docs/research/manual-test-2026-10-25.md (live test 2026-11-02; DECISIONS-for-review.md §84a). Tests: pipeline/tests/unit/test_runner.py, pipeline/tests/integration/test_written_documents.py (size-mismatch)."
+        },
+        {
             "id": "S-P01-BAD-USGS-MAINTENANCE",
             "behaviour": "P01",
             "area": "pipeline",
@@ -8892,6 +8964,303 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §2.3; owner: autogcp). Test: pipeline/tests/integration/test_autogcp.py against the loopback fakes and the synthetic world through an exact affine map (pipeline-pytest)."
+        },
+        {
+            "id": "S-A62-HAPPY-PANEL",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Jobs page shows the connected computer and the command to start a worker",
+            "asserts": "a worker seen a minute ago -> Your computer is connected with its last job; the docker run command names the pipeline image by digest, the city and the project; Copy puts it on the clipboard; the city's choice reads Run on my computer when it is connected",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker.spec.ts."
+        },
+        {
+            "id": "S-A62-BAD-NO-WORKER",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "No computer connected: a job chosen for it waits and says so",
+            "asserts": "no worker seen for ten minutes -> No computer connected; a version whose job waits for a worker says Waiting for your computer; Run in Google Cloud moves it to the cloud",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker.spec.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-CHOICE",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "Run on my computer on a version sets the job's place and the city's choice",
+            "asserts": "a queued cloud version -> Run on my computer -> the job's runOn is local, it waits for the worker, and the city's choice is local",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker.spec.ts."
+        },
+        {
+            "id": "S-A62-BAD-NO-IMAGE",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A pipeline installed before the image was recorded shows no command",
+            "asserts": "setup/status without the pipeline image -> the panel asks to update the imagery pipeline and shows no docker command",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker.spec.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-WORKER-RUN",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "The real worker claims a local job and finishes it against the emulators",
+            "asserts": "the city's choice is the computer -> Import waits for a worker (Waiting for your computer); the pipeline's worker process signed in with the owner's tokens through its local page (CSRF token, same Origin) -> claims the queued local import, runs every step through worker.step and signed URLs to the Storage emulator -> the version awaits approval, no Cloud Run execution or machine named, the panel shows the computer connected with its last job done; the raw delivery stays in the work folder and is deleted there after locate, and no usgs-raw/ or work/ object is ever in the bucket",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker-run.spec.ts."
+        },
+        {
+            "id": "S-A62-BAD-RUNNING",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "Where a job runs cannot change while it runs",
+            "asserts": "imagery.runOn on a running job -> apiError.imagery.versionState, nothing changed; runOn auto with a job id -> invalid request",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/run-on.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-CLAIM",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A worker claims the oldest due local job",
+            "asserts": "two queued local jobs and one cloud job -> worker.claim leases the older local one (starting, worker, lease owner worker:<id>, attempt + 1, no machine) and refreshes the worker's lastSeenAt; a second claim of another worker gets the other one; none left -> job null",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/worker/claim.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-NOT-HOLDER",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker writes only its own job's documents and fields",
+            "asserts": "worker.step from a worker that does not hold the job -> apiError.worker.notHolder; a path off the allow-list, a field the pipeline does not write, a status the pipeline does not set, another owner's lease -> apiError.worker.refused; an invalid merged document -> apiError.invalidRequest; nothing written",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/worker/step.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-SIGNED-URLS",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A worker gets signed URLs for its version's files and inputs only",
+            "asserts": "worker.urls -> PUT URLs bound to their content type for the version's files, GET URLs for its inputs, each valid 15 minutes with the object's metadata; usgs download-options of the job's scene answered with the server's key",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/worker/urls.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-PATH-REFUSED",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A delivery, another version or another scene is never signed",
+            "asserts": "worker.urls for a usgs-raw or work object, another version's file, more than 20 objects, a USGS endpoint or label not of the job -> refused, nothing signed or called",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/worker/urls.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-DISPATCH-LOCAL",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A new job goes to the computer while a worker is connected",
+            "asserts": "choice auto and a worker seen within three minutes -> the queued import gets runOn local and waits for the worker; no Cloud Run execution is asked for and no slot is taken",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/dispatch-place.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-WORKER-LOST",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker that stops is noticed and its job waits again",
+            "asserts": "a running local job whose lease lapsed -> imagery.tick puts it back to queued waiting for a worker with an apiError.imagery.workerLost log line; Cloud Run is never asked about it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/tick-local.test.ts."
+        },
+        {
+            "id": "S-A63-HAPPY-METER",
+            "behaviour": "A63",
+            "area": "admin",
+            "path": "happy",
+            "title": "The Jobs page and the pipeline card show this month's Cloud Run use",
+            "asserts": "usage/cloudrun of the month -> both show the vCPU-seconds and GiB-seconds of the 180,000 and 360,000 free, labelled as an estimate",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker.spec.ts."
+        },
+        {
+            "id": "S-A63-BAD-OVER-FREE-TIER",
+            "behaviour": "A63",
+            "area": "admin",
+            "path": "bad",
+            "title": "A cloud run past the free tier waits for the admin's OK",
+            "asserts": "a version whose job waits for the OK -> the page shows the estimate and the month's use; Run in Google Cloud anyway -> imagery.runOn with the OK and the job is dispatched",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker.spec.ts."
+        },
+        {
+            "id": "S-A63-HAPPY-COUNTED",
+            "behaviour": "A63",
+            "area": "admin",
+            "path": "happy",
+            "title": "A cloud run is counted once when it ends",
+            "asserts": "a job leaves running on std after 1,000 s -> usage/cloudrun gains 4,000 vCPU-seconds and 16,000 GiB-seconds and one run; the redelivered event adds nothing; a local run adds nothing",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/cloud-usage.test.ts."
+        },
+        {
+            "id": "S-A63-BAD-AUTOMATION-WAITS",
+            "behaviour": "A63",
+            "area": "admin",
+            "path": "bad",
+            "title": "An automated cloud run past the free tier waits with an inbox item",
+            "asserts": "the month's use plus the estimate passes the free tier -> the job stays queued with waitReason free-tier; made by the system it raises job.needsOk, made by a click it does not; with the OK it is dispatched; a hand-over from the fetch machine is never asked again",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/free-tier.test.ts."
+        },
+        {
+            "id": "S-A64-HAPPY-UPLOADS",
+            "behaviour": "A64",
+            "area": "admin",
+            "path": "happy",
+            "title": "A small file publishes through the Uploads API without compute units",
+            "asserts": "an approved version with a 120 MB studio file -> credentials, the S3 put, the upload and its polling, the TileJSON smoke test -> the layer's origin uploads, the version's mapbox.via uploads, uploadsApiMb counted and no compute units reserved or counted",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/publish-uploads.test.ts."
+        },
+        {
+            "id": "S-A64-BAD-TOO-LARGE",
+            "behaviour": "A64",
+            "area": "admin",
+            "path": "bad",
+            "title": "A file over 300 MB or past the month's allowance goes through MTS",
+            "asserts": "a 400 MB studio file, or the month's Uploads megabytes used -> the compute-unit guard and MTS as before, mapbox.via mts",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/publish-uploads.test.ts."
+        },
+        {
+            "id": "S-A64-BAD-MTS-TILESET",
+            "behaviour": "A64",
+            "area": "admin",
+            "path": "bad",
+            "title": "A layer whose tileset MTS made stays on MTS",
+            "asserts": "a new version of a layer with mapbox.origin mts -> MTS behind the guard, never the Uploads API",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/publish-uploads.test.ts."
+        },
+        {
+            "id": "S-A64-BAD-NO-SCOPE",
+            "behaviour": "A64",
+            "area": "admin",
+            "path": "bad",
+            "title": "A token without the uploads scope falls back to MTS",
+            "asserts": "the credentials call answers 403 -> one log line naming the missing scope, then MTS behind the guard",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/publish-uploads.test.ts."
+        },
+        {
+            "id": "S-P04-HAPPY-WORKER-RUN",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The worker runs a claimed import through the API and signed URLs",
+            "asserts": "a claimed usgs-import -> every step runs unchanged; the documents go through worker.step, the version's files through signed PUTs; the delivery, the segments and the frame stay in the work folder; worker.end reports done",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: pipeline/tests/integration/test_worker_run.py."
+        },
+        {
+            "id": "S-P04-BAD-NOT-HOLDER",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A worker that lost its job stops writing",
+            "asserts": "the server answers notHolder in the middle of a run -> the run stops as a lost lease, writes nothing more and reports the end",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: pipeline/tests/integration/test_worker_run.py."
+        },
+        {
+            "id": "S-P04-HAPPY-SESSION",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The local page signs the owner in and the worker starts claiming",
+            "asserts": "the page's POST /session with its CSRF token from the same origin -> worker.hello with the token, the state signed in; the ID token refreshed before it expires",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: pipeline/tests/integration/test_worker_session.py."
+        },
+        {
+            "id": "S-P04-BAD-FORGED-ORIGIN",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Another site cannot plant or read a session",
+            "asserts": "a POST /session from another origin, without the CSRF token, as a form, or to another Host -> 403 or 421 and no token kept; GET /state carries no CORS header",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: pipeline/tests/integration/test_worker_session.py."
+        },
+        {
+            "id": "S-P04-BAD-REFRESH-REFUSED",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A refused refresh ends the session",
+            "asserts": "securetoken refuses the refresh token -> the session ends, claiming stops, the page asks to sign in again",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: pipeline/tests/integration/test_worker_session.py."
+        },
+        {
+            "id": "S-P01-HAPPY-RAW-DELETED",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The raw delivery is deleted once the city crop exists",
+            "asserts": "after locate -> the usgs-raw delivery is gone from the bucket, scan.tif and the version's scan are there, the log says so",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: pipeline/tests/integration/test_raw_deleted.py."
+        },
+        {
+            "id": "S-P01-BAD-RAW-GONE-RETRY",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A retry after the delivery was deleted downloads it again",
+            "asserts": "a failed job retried from extract with its delivery deleted -> fetch runs again and the job finishes",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: pipeline/tests/integration/test_raw_deleted.py."
         }
     ]
 }

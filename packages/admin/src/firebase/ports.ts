@@ -4,7 +4,7 @@
  * `adapters.ts`) and the entry import the Firebase JS SDK. A workstream that needs more of Firebase asks admin-shell
  * for a port method (a change request), never imports the SDK itself.
  */
-import type { ApiErrorDetails, CallableName, CallableRequest, CallableResponse } from '@hcm/shared';
+import type { AdminCallableName, ApiErrorDetails, CallableRequest, CallableResponse } from '@hcm/shared';
 
 import type { Unsubscribe } from '../app/ports.js';
 
@@ -50,7 +50,7 @@ export interface CallablesPort {
      * Calls `httpsCallable(functions, deployedName(name))` and validates the answer with the registry's response
      * schema. Rejects with a `CallableFailure` (a response that fails its schema is `apiError.internal`).
      */
-    call<N extends CallableName>(name: N, request: CallableRequest<N>, options?: CallOptions): Promise<CallableResponse<N>>;
+    call<N extends AdminCallableName>(name: N, request: CallableRequest<N>, options?: CallOptions): Promise<CallableResponse<N>>;
 }
 
 /** A Firestore document's fields as the SDK returns them (timestamps are `Timestamp` objects). */

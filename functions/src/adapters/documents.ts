@@ -108,9 +108,23 @@ function settled(write: () => void): Promise<void> {
     });
 }
 
+/** Firestore's update time as `worker.step` answers it: `<seconds>.<9-digit nanoseconds>` (M7). */
+export function formatUpdateTime(time: { readonly seconds: number; readonly nanoseconds: number }): string {
+    return `${String(time.seconds)}.${String(time.nanoseconds).padStart(9, '0')}`;
+}
+
+/** The document with its update time, or undefined when there is none (a snapshot that exists always has one). */
+function readVersioned<T>(snapshot: DocumentSnapshot, schema: Schema<T>): { data: T; updateTime: string } | undefined {
+    const data = readDocument(snapshot, schema);
+    return data === undefined || snapshot.updateTime === undefined
+        ? undefined
+        : { data, updateTime: formatUpdateTime(snapshot.updateTime) };
+}
+
 function transactionOf(db: Firestore, transaction: Transaction): DocumentTransaction {
     return {
         get: async (path, schema) => readDocument(await transaction.get(db.doc(path)), schema),
+        getVersioned: async (path, schema) => readVersioned(await transaction.get(db.doc(path)), schema),
         create: (path, schema, data) => settled(() => transaction.create(db.doc(path), toDocument(path, schema, data))),
         set: (path, schema, data) => settled(() => transaction.set(db.doc(path), toDocument(path, schema, data))),
         delete: (path) => settled(() => transaction.delete(db.doc(path))),

@@ -336,6 +336,16 @@ describe('callableOptions', () => {
         expect(callableOptions('imagery.import', {})).not.toHaveProperty('timeoutSeconds');
     });
 
+    it('badPath_theLocalWorkersCallablesNeverEnforceAppCheck', () => {
+        // M7 (docs/research/M7-local-worker.md §2.4): a process on the owner's computer cannot be attested.
+        expect(callableOptions('worker.step', { HCM_APP_CHECK: 'enforce' })).toEqual({
+            maxInstances: 2,
+            serviceAccount: 'fn-admin@demo-hcm.iam.gserviceaccount.com',
+            enforceAppCheck: false,
+            consumeAppCheckToken: false,
+        });
+    });
+
     it('badPath_monitorModeEnforcesNothingYet', () => {
         expect(callableOptions('admin.claim', {})).toEqual({
             maxInstances: 2,

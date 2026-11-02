@@ -6,7 +6,7 @@
  */
 import {
     BACKGROUND_FUNCTIONS,
-    CALLABLES,
+    CALLABLE_NAMES,
     HTTP_ENDPOINTS,
     MAPBOX_BOOTSTRAP_SCOPES,
     PROVISION_ITEMS,
@@ -251,11 +251,9 @@ const REQUIRED_STEPS: readonly SetupStepId[] = ['billing', 'provision', 'mapbox'
 /** No public token replaced yet. */
 const NO_ROTATION: RotationState = { audience: null, busy: false, retiresOldAt: null, done: false, error: null };
 
-/** Every function the deployment step waits for (32 today). */
-export const REGISTRY_FUNCTION_COUNT = [CALLABLES, HTTP_ENDPOINTS, BACKGROUND_FUNCTIONS].reduce(
-    (count, table) => count + Object.keys(table).length,
-    0,
-);
+/** Every function the deployment step waits for: the callables (the worker's included), the HTTPS endpoints and the triggers. */
+export const REGISTRY_FUNCTION_COUNT =
+    CALLABLE_NAMES.length + Object.keys(HTTP_ENDPOINTS).length + Object.keys(BACKGROUND_FUNCTIONS).length;
 
 const SEVERITY: Readonly<Record<ServiceState, number>> = { ok: 0, pending: 1, missing: 2, unavailable: 3, invalid: 4 };
 

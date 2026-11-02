@@ -59,6 +59,8 @@ interface BodyInput {
     readonly view: SetupViewState;
     readonly intents: SetupIntentsPort | null;
     readonly locale: Locale;
+    /** The admin app (M7: the pipeline card's worker panel asks it for its feed). */
+    readonly app: unknown;
 }
 
 /** The card body of each step that has one (sign-in and the claim are text only). */
@@ -75,7 +77,12 @@ const BODIES: Partial<Record<SetupStepId, (input: BodyInput) => TemplateResult>>
         html`<hcm-setup-import .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-import>`,
     // [section install] owner: installer (M6, CR-M6-6): the imagery pipeline (d3) and Publish the map (i).
     pipeline: (input) =>
-        html`<hcm-setup-pipeline .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-pipeline>`,
+        html`<hcm-setup-pipeline
+            .view=${input.view}
+            .intents=${input.intents}
+            .locale=${input.locale}
+            .app=${input.app}
+        ></hcm-setup-pipeline>`,
     site: (input) => html`<hcm-setup-site .view=${input.view} .intents=${input.intents} .locale=${input.locale}></hcm-setup-site>`,
     // [end install]
 };
@@ -202,7 +209,7 @@ export class HcmSetupPage extends SetupPortHost {
 
     private renderBody(view: SetupViewState, id: SetupStepId): TemplateResult {
         const body = BODIES[id];
-        return body === undefined ? EMPTY : body({ view, intents: this.intents, locale: this.language });
+        return body === undefined ? EMPTY : body({ view, intents: this.intents, locale: this.language, app: this.app });
     }
 
     private renderColumn(view: SetupViewState): TemplateResult {

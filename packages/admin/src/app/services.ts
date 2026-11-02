@@ -4,7 +4,7 @@
  * Assistant is plugged into `mount` as a `SetupModuleSpec`: its initial state lives in `AdminState.setup`, its intents in
  * `AdminIntents.setup`.
  */
-import { apiErrorFromFailure, type CallableName, type CallableRequest, type CallableResponse, type Logger } from '@hcm/shared';
+import { apiErrorFromFailure, type AdminCallableName, type CallableRequest, type CallableResponse, type Logger } from '@hcm/shared';
 
 import type { GoogleAccess } from '../auth/google-auth.js';
 import type { GoogleOutcome } from '../auth/google-service.js';
@@ -78,7 +78,11 @@ export const NO_SETUP: SetupModuleSpec<null, null> = { initial: null, create: ()
 /** Callables whose `apiError.notAdmin` failure (a removed admin, §1.5) calls `denied` before it is rethrown. */
 export function guardCallables(callables: CallablesPort, denied: () => void): CallablesPort {
     return {
-        call: async <N extends CallableName>(name: N, request: CallableRequest<N>, options?: CallOptions): Promise<CallableResponse<N>> => {
+        call: async <N extends AdminCallableName>(
+            name: N,
+            request: CallableRequest<N>,
+            options?: CallOptions,
+        ): Promise<CallableResponse<N>> => {
             try {
                 return await callables.call(name, request, options);
             } catch (error) {

@@ -56,6 +56,8 @@ const STEP_NAMES: Readonly<Record<string, AdminContentKey>> = {
     register: 'adminContent.jobs.stepName.register',
     guard: 'adminContent.jobs.stepName.guard',
     upload: 'adminContent.jobs.stepName.upload',
+    // M7 (docs/research/M7-local-worker.md §6): the free Uploads API path, `skipped` after a fallback to MTS.
+    uploads: 'adminContent.jobs.stepName.uploads',
     tiles: 'adminContent.jobs.stepName.tiles',
     finalize: 'adminContent.jobs.stepName.finalize',
 };

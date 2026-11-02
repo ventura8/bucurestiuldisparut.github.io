@@ -169,6 +169,12 @@ export const FIRESTORE_PATHS = {
     /** M5 (§5): a city's static exports, written by `export.start` and `export.build`. */
     cityExports: (cityId: string) => `${cityPath(cityId)}/exports`,
     cityExport: (cityId: string, exportId: string) => child(cityId, 'exports', exportId),
+    /** M7 (docs/research/M7-local-worker.md §2.4, §3): a city's local workers (`w-…`) and its remembered run choice (`choice`). */
+    workers: (cityId: string) => `${cityPath(cityId)}/workers`,
+    worker: (cityId: string, workerId: string) => child(cityId, 'workers', workerId),
+    runChoice: (cityId: string) => child(cityId, 'workers', 'choice'),
+    /** M7 (§4.2): the month's Cloud Run use of every city's cloud runs (an estimate against the free tier). */
+    cloudRunUsage: (month: string) => `usage/cloudrun-${segment(month, matching(MONTH_PATTERN))}`,
 } as const;
 
 /** The file extension each accepted photo type is stored with. */

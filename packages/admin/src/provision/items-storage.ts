@@ -1,12 +1,12 @@
 import { PIPELINE_REPOSITORY, PRIVATE_BUCKET_LIFECYCLE } from '@hcm/shared';
 
 import { pipelineRepositorySpec } from '../google/artifact-registry.js';
-import { ensureBindings, missingBindings, type WantedBinding } from '../google/iam-policy.js';
+import { ensureBindings, missingBindings, type PolicyAccess, type WantedBinding } from '../google/iam-policy.js';
 import type { Bucket } from '../google/storage.js';
 import { isGoogleFailure } from '../google/failure.js';
 import { at, matchesSpec, records, type JsonObject } from '../google/json.js';
-import { eachInTurn, lacking, refused, type Observation, type ProvisionContext, type ProvisionItemSpec } from './item.js';
-import { repositoryBindings } from './resources.js';
+import { eachInTurn, lacking, ok, refused, type Observation, type ProvisionContext, type ProvisionItemSpec } from './item.js';
+import { PUBLIC_PULL, repositoryBindings } from './resources.js';
 
 /**
  * The storage items (`docs/research/M2b-interfaces.md` §3.4 items 4–6, §3.4.2): Firebase Storage's default bucket (the
@@ -32,7 +32,7 @@ function corsRule(origins: readonly string[]): JsonObject[] {
 
 /**
  * The private bucket's lifecycle, `PRIVATE_BUCKET_LIFECYCLE` of `@hcm/shared` (CR-M3-6): `tmp/` after a day, `uploads/`
- * after a week, the raster pipeline's `work/` after two, `usgs-raw/` after a month and the cached `reference/` after 90 days.
+ * after a week, the raster pipeline's `work/` after two, `usgs-raw/` after a week (M7: `locate` deletes it sooner) and the cached `reference/` after 90 days.
  */
 const LIFECYCLE: JsonObject = {
     rule: PRIVATE_BUCKET_LIFECYCLE.map(({ prefix, days }) => ({
@@ -184,28 +184,79 @@ const bucketLifecycle: ProvisionItemSpec = {
 };
 
 /**
+ * M7 (`docs/research/M7-local-worker.md` §1.1): the runs in which an organisation policy refused the image's public pull
+ * at the write (the organisation's findings did not foresee it), so the run's next look leaves the image private.
+ */
+const PULL_REFUSED = new WeakSet<ProvisionContext>();
+
+/** The constraint that keeps the image private. */
+const PULL_CONSTRAINT = 'iam.allowedPolicyMemberDomains';
+
+/** Whether this run leaves the image private: the organisation refuses `allUsers`, foreseen or met at the write. */
+async function pullBlocked(context: ProvisionContext): Promise<boolean> {
+    const restricted = await context.findings().then(
+        (findings) => findings.domainRestricted,
+        () => false,
+    );
+    return restricted || PULL_REFUSED.has(context);
+}
+
+/** The public pull (`PUBLIC_PULL`); an organisation policy's refusal is recorded for the run, never a failure. */
+async function grantPublicPull(context: ProvisionContext, access: PolicyAccess): Promise<void> {
+    try {
+        await ensureBindings(access, [PUBLIC_PULL]);
+    } catch (error) {
+        if (!isGoogleFailure(error, 'orgPolicy')) {
+            throw error;
+        }
+        PULL_REFUSED.add(context);
+    }
+}
+
+/** What the repository lacks: itself, and the bindings `wanted` its policy does not hold. */
+async function repositoryLacks(context: ProvisionContext, wanted: readonly WantedBinding[], access: PolicyAccess): Promise<string[]> {
+    const { clients, project } = context;
+    const found = await clients.artifactRegistry.get(project.projectId, project.region, PIPELINE_REPOSITORY);
+    if (found === undefined) {
+        return [PIPELINE_REPOSITORY, 'binding'];
+    }
+    return missingBindings(await access.read(), wanted).length === 0 ? [] : ['binding'];
+}
+
+/** Creates what lacks: the repository, the installer's role, and the public pull unless the organisation refuses it. */
+async function fixRepository(context: ProvisionContext, lacks: readonly string[], access: PolicyAccess, blocked: boolean): Promise<void> {
+    const { clients, project } = context;
+    if (lacks.includes(PIPELINE_REPOSITORY)) {
+        await clients.artifactRegistry.create(project.projectId, project.region, PIPELINE_REPOSITORY, pipelineRepositorySpec());
+    }
+    await ensureBindings(access, repositoryBindings(project).bindings);
+    if (!blocked) {
+        await grantPublicPull(context, access);
+    }
+}
+
+/**
  * M6 (`docs/research/M6-interfaces.md` §1.6, CR-M6-2): the Docker repository `hcm` in the project's region, where the
  * in-app installer pushes the imagery pipeline's image (a cleanup policy keeps the two newest), and the installer's
  * writer role on it (§1.2); `missing` creates the repository, then binds the role. Finding 31 of 2026-10-31: only the
  * optional imagery pipeline needs either, so the binding lives here, not in the `iam` item, which the server needs and
  * which no longer waits for this one; Setup's step d waits for the items the server needs only (`serverPrepared`).
+ * M7 (`docs/research/M7-local-worker.md` §1.1): `allUsers` may pull the image too (`PUBLIC_PULL`); where an organisation
+ * policy refuses it the item is still `ok`, with the constraint named, and Provision goes on.
  */
 const artifactRegistry: ProvisionItemSpec = {
     id: 'artifact-registry',
     after: ['apis', 'service-accounts'],
-    observe: async ({ clients, project }) => {
-        const { region, projectId } = project;
-        const found = await clients.artifactRegistry.get(projectId, region, PIPELINE_REPOSITORY);
-        const policy = repositoryBindings(project);
-        const access = clients.artifactRegistry.repositoryPolicy(projectId, region, PIPELINE_REPOSITORY);
-        const unbound = found === undefined ? policy.bindings : missingBindings(await access.read(), policy.bindings);
-        const lacks = [...(found === undefined ? [PIPELINE_REPOSITORY] : []), ...(unbound.length === 0 ? [] : ['binding'])];
-        return lacking(lacks, async () => {
-            if (found === undefined) {
-                await clients.artifactRegistry.create(projectId, region, PIPELINE_REPOSITORY, pipelineRepositorySpec());
-            }
-            await ensureBindings(access, policy.bindings);
-        });
+    observe: async (context) => {
+        const { project } = context;
+        const access = context.clients.artifactRegistry.repositoryPolicy(project.projectId, project.region, PIPELINE_REPOSITORY);
+        const blocked = await pullBlocked(context);
+        const wanted = blocked ? repositoryBindings(project).bindings : [...repositoryBindings(project).bindings, PUBLIC_PULL];
+        const lacks = await repositoryLacks(context, wanted, access);
+        if (blocked && lacks.length === 0) {
+            return { ...ok(), detail: 'adminSetup.provision.orgPolicy', params: { constraint: PULL_CONSTRAINT } };
+        }
+        return lacking(lacks, () => fixRepository(context, lacks, access, blocked));
     },
 };
 

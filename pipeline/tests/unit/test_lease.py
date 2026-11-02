@@ -139,3 +139,18 @@ def test_bad_path_a_failed_heartbeat_is_logged_and_the_thread_runs_on() -> None:
         assert store.attempts.acquire(timeout=5)
 
     assert flags.stopping is None
+
+
+class NotHolderStore(MemoryStore):
+    """A store that says the job is no longer this run's (the local worker's API answering notHolder: M7)."""
+
+    def transact(self, path: str, change: Change) -> Mapping[str, object] | None:
+        raise LeaseLostError("the server says another worker holds the job")
+
+
+def test_bad_path_a_store_that_says_the_job_is_lost_stops_the_run() -> None:
+    flags = RunFlags()
+
+    Heartbeat(NotHolderStore(), JOB, "worker:w-0123456789abcdef", flags, lambda: 0.0).beat()
+
+    assert flags.stopping is LeaseLostError

@@ -272,6 +272,14 @@ export function repositoryBindings(project: ProjectConfig): PolicyBindings {
     };
 }
 
+/**
+ * M7 (`docs/research/M7-local-worker.md` §1.1, §10.5): anyone may pull the pipeline's image from the repository `hcm`, so
+ * the owner's computer runs the local worker with Docker alone (the image is the open-source pipeline: no secret, no
+ * configuration). An organisation policy that refuses `allUsers` leaves it private; the panel names the alternative
+ * (`gcloud auth configure-docker`).
+ */
+export const PUBLIC_PULL: WantedBinding = { role: 'roles/artifactregistry.reader', member: 'allUsers' };
+
 function bucketBindings(project: ProjectConfig): PolicyBindings[] {
     const names = projectNames(project);
     const writers = (accounts: readonly ServiceAccountId[]): WantedBinding[] =>

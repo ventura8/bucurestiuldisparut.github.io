@@ -13,6 +13,8 @@ import {
     notificationEventDocSchema,
     notifySettingsDocSchema,
     pushDeviceDocSchema,
+    runChoiceDocSchema,
+    workerDocSchema,
     cityDocSchema,
     historyEntryDocSchema,
     inviteDocSchema,
@@ -46,6 +48,8 @@ import {
     notificationEventDoc,
     notifySettingsDoc,
     pushDeviceDoc,
+    runChoiceDoc,
+    workerDoc,
     cityDoc,
     editableFields,
     harvestStateDoc,
@@ -119,6 +123,8 @@ const SERVER_ONLY: readonly (readonly [string, DocumentSchema, () => Data])[] = 
     ['notification event', notificationEventDocSchema, notificationEventDoc],
     ['geocode cell', geocodeCellDocSchema, geocodeCellDoc],
     ['AI usage', aiUsageDocSchema, aiUsageDoc],
+    ['local worker', workerDocSchema, () => workerDoc(UID)],
+    ['run choice', runChoiceDocSchema, () => runChoiceDoc(UID)],
 ];
 
 /** A client document as Firestore stores it: `serverTimestamp()` becomes a timestamp. */

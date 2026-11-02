@@ -34,6 +34,8 @@ JOB_WAIT_REASONS: Final = (
     "compute-units",
     "deferred",
     "mapbox",
+    "worker",
+    "free-tier",
 )
 JOB_STEP_STATES: Final = ("pending", "running", "done", "failed", "skipped")
 PIPELINE_STEPS: Final = ("fetch", "extract", "stitch", "inspect", "locate", "reference", "georef", "warp", "export", "register")
@@ -148,6 +150,7 @@ class Errors:
     ARCHIVE_CORRUPT: Final = "apiError.imagery.archiveCorrupt"
     DOWNLOAD_INCOMPLETE: Final = "apiError.imagery.downloadIncomplete"
     REFERENCE_UNAVAILABLE: Final = "apiError.imagery.referenceUnavailable"
+    CITY_NOT_FOUND: Final = "apiError.imagery.cityNotFound"
     NO_MATCH: Final = "apiError.imagery.noMatch"
     NO_SPREAD: Final = "apiError.imagery.noSpread"
     TOO_FEW_GCPS: Final = "apiError.imagery.tooFewGcps"

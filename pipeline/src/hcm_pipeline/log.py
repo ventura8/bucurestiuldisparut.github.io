@@ -3,8 +3,8 @@
 Cloud Run turns each output line that is a JSON object into a structured entry: `severity`, `message`
 and `time` are recognised, every other key lands in `jsonPayload`. Every record passes through
 `redact()` (the message, the exception text and the values given with `extra=fields(...)`), so the
-USGS app token and API key (`X-Auth-Token`), `access_token=` values, Mapbox tokens, JWTs and the
-query strings of signed download URLs never reach the job logs or `jobs/{id}/logs`
+USGS app token and API key (`X-Auth-Token`), `access_token=` values, Mapbox tokens, JWTs (a Firebase ID token), refresh
+tokens (the local worker's, M7) and the query strings of signed download URLs never reach the job logs or `jobs/{id}/logs`
 (docs/research/design-review-security-cost.md §1.2 and §4.6). Over-redaction is the safe side.
 
     log = configure()                                   # once, in main
@@ -41,8 +41,12 @@ _RULES: Final[tuple[tuple[re.Pattern[str], str], ...]] = (
     (re.compile(rf"(\b{_NAME}\s*[:=]\s*)(?:(?:bearer|basic)\s+)?{_VALUE}", re.IGNORECASE), rf"\1{REDACTED}"),
     # Mapbox tokens in free text: sk./pk./tk. followed by a JWT-like body.
     (re.compile(r"\b([spt]k)\.[\w-]{20,}(?:\.[\w-]+){1,2}"), rf"\1.{REDACTED}"),
-    # Any other JWT or base64-encoded JSON blob (`eyJ...`), e.g. inside a signed download path.
+    # Any other JWT or base64-encoded JSON blob (`eyJ...`), e.g. inside a signed download path, and so a Firebase ID token.
     (re.compile(r"\beyJ[\w-]{16,}(?:\.[\w-]+)*"), REDACTED),
+    # The local worker's Firebase refresh token (M7: `AMf-v...`), a Google OAuth refresh token (`1//0...`), and any other
+    # run of 100 or more base64url characters (no word of a log line is that long; a token or a key is).
+    (re.compile(r"\b(?:AMf-v|1//0)[\w/-]{20,}"), REDACTED),
+    (re.compile(r"[\w-]{100,}"), REDACTED),
 )
 
 _SCALARS = (bool, int, float, type(None))

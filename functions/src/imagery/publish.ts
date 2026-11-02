@@ -26,6 +26,7 @@ import { runGuard, type GuardStep } from './publish-guard.js';
 import { loadPublishing, pollDelay, publishTileset, uploadAndPublish, type MtsDeps, type Publishing } from './publish-mts.js';
 import { enqueuePublish } from './publish-queue.js';
 import { tooLargeForMts } from './publish-studio.js';
+import { pollUpload, publishThroughUploads, usesUploads, type UploadsDeps, type UploadsOutcome } from './publish-uploads.js';
 import { IMAGERY_WRITER, appendJobLog, guardIsRed, stampOf, versionIdOf } from './records.js';
 
 /**
@@ -36,9 +37,11 @@ import { IMAGERY_WRITER, appendJobLog, guardIsRed, stampOf, versionIdOf } from '
  * still working → the next poll; success → the TileJSON smoke test and the finalize step; an internal Mapbox failure →
  * published once more; any other failure → the job fails with `apiError.imagery.mtsRefused`, the reservation released and
  * the layer's tiles unchanged. A file Mapbox refuses as too large goes back to the admin with the free Studio upload; a
- * transient failure (5xx, rate limit) is retried by Cloud Tasks.
+ * transient failure (5xx, rate limit) is retried by Cloud Tasks. M7 (`docs/research/M7-local-worker.md` §6): when the
+ * guard chose the free Uploads API path, the attempt and the polls go through it (`publish-uploads.ts`); when that path
+ * falls back, the publish starts again at once, through the guard and MTS.
  */
-export type PublishDeps = MtsDeps;
+export type PublishDeps = MtsDeps & UploadsDeps;
 
 /** Errors of a failed MTS job that say Mapbox itself failed (worth one more publish). */
 const INTERNAL = /internal/i;
@@ -131,8 +134,28 @@ async function attemptPublish(deps: PublishDeps, task: PublishTask): Promise<voi
         return;
     }
     const work = claim.kind === 'go' ? await loadPublishing(deps, task.cityId, task.jobId) : undefined;
-    if (work !== undefined) {
-        await uploadAndPublish(deps, work, task.poll);
+    if (work === undefined) {
+        return;
+    }
+    if (usesUploads(work.job)) {
+        await afterUploads(deps, work, task, await publishThroughUploads(deps, work, task.poll));
+        return;
+    }
+    await uploadAndPublish(deps, work, task.poll);
+}
+
+/**
+ * What follows a step of the Uploads path: the next poll while Mapbox processes, the MTS path when it fell back. A
+ * fallback while polling starts MTS with the next poll number (the path's own poll tasks keep their names: Cloud Tasks
+ * refuses a known one); one before any poll was queued keeps the task's.
+ */
+async function afterUploads(deps: PublishDeps, work: Publishing, task: PublishTask, outcome: UploadsOutcome): Promise<void> {
+    if (outcome === 'processing') {
+        await stillProcessing(deps, work, task.poll);
+        return;
+    }
+    if (outcome === 'fell-back') {
+        await startPublish(deps, { ...task, phase: 'start', poll: task.phase === 'poll' ? task.poll + 1 : task.poll });
     }
 }
 
@@ -207,6 +230,10 @@ async function pollMts(deps: PublishDeps, task: PublishTask): Promise<void> {
         return;
     }
     const { work, mapboxJobId } = found;
+    if (usesUploads(work.job)) {
+        await afterUploads(deps, work, task, await pollUpload(deps, work, mapboxJobId));
+        return;
+    }
     const result = await deps.tilesets.job(work.token, work.tilesetId, mapboxJobId);
     if (result.stage === 'success') {
         await succeed(deps, work, result.precisions);

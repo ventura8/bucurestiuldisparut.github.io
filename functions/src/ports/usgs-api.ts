@@ -12,4 +12,9 @@ export interface UsgsApi {
     permissions(apiKey: string): Promise<readonly string[]>;
     /** `logout`, in a `finally` after every use; never throws. */
     logout(apiKey: string): Promise<void>;
+    /**
+     * M7 (`docs/research/M7-local-worker.md` §2.5): one M2M call made for a local worker, its `data` as USGS sent it. The
+     * caller checks the endpoint and the payload first (`worker.urls`); the same failures as every call.
+     */
+    request(apiKey: string, endpoint: string, payload: Readonly<Record<string, unknown>>): Promise<unknown>;
 }

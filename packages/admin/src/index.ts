@@ -297,7 +297,10 @@ export function contentDepsFor(
 ): ContentDeps {
     return {
         modules: CONTENT,
-        store: contentStore({ sdk: contentSdk, firestore: handles.firestore, uid: () => handles.auth.currentUser?.uid ?? null }),
+        store: contentStore({
+            ...{ sdk: contentSdk, firestore: handles.firestore, uid: () => handles.auth.currentUser?.uid ?? null },
+            log: createLogger('admin-store'),
+        }),
         theme: themeFromSeed,
         areas: areaServices({
             ...{ handles, fetch: fetcher, mapToken: parts.e2e?.mapToken(parts.win.location.search) },

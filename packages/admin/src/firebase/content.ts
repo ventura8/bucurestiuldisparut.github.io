@@ -6,7 +6,7 @@
  * Firestore's error codes become the port's: `permission-denied` is `denied` (the shell asks `admin.session` again),
  * `unavailable` is `offline` (the draft stays).
  */
-import { timestampSchema, timestampToDate, toValidationIssues, type Schema } from '@hcm/shared';
+import { timestampSchema, timestampToDate, toValidationIssues, type Logger, type Schema, type ValidationIssue } from '@hcm/shared';
 import type {
     DocumentData,
     DocumentReference,
@@ -36,6 +36,11 @@ export interface ContentStoreDeps {
     readonly firestore: () => Firestore;
     /** The signed-in uid that stamps every write; null refuses the write as `denied`. */
     readonly uid: () => string | null;
+    /**
+     * Where a document that fails its schema is reported, with the failing fields and their codes (never their values),
+     * once per document and set of issues; the page only says it could not be read (finding 62 of 2026-11-02).
+     */
+    readonly log?: Logger;
 }
 
 /** A pending server timestamp reads as the local estimate, so a document just written still validates. */
@@ -145,8 +150,15 @@ function cleared(sdk: ContentSdk, fields: Fields): Fields {
     return Object.fromEntries(Object.entries(fields).map(([field, value]) => [field, value === undefined ? sdk.deleteField() : value]));
 }
 
+/** The failing fields of a document as one line: `scan.width validation.tooBig; georef.gcps.0.pixel.x validation.tooBig`. */
+function failingFields(issues: readonly ValidationIssue[]): string {
+    return issues.map((issue) => `${issue.path === '' ? '(document)' : issue.path} ${issue.code}`).join('; ');
+}
+
 class FirestoreContentStore implements ContentStore {
     readonly #deps: ContentStoreDeps;
+    /** What was reported already (`path|fields`): a live listener delivers the same document again and again. */
+    readonly #reported = new Set<string>();
 
     constructor(deps: ContentStoreDeps) {
         this.#deps = deps;
@@ -180,7 +192,11 @@ class FirestoreContentStore implements ContentStore {
             { includeMetadataChanges: true },
             {
                 next: (snapshot: QuerySnapshot) => {
-                    listener(pageOf(snapshot, schema, limit));
+                    const page = pageOf(snapshot, schema, limit);
+                    page.invalid.forEach(({ path, issues }) => {
+                        this.#report(path, issues);
+                    });
+                    listener(page);
                 },
                 error: (error: unknown) => {
                     failed(failureOf(error));
@@ -274,8 +290,20 @@ class FirestoreContentStore implements ContentStore {
         if (parsed.ok) {
             listener(parsed.doc);
         } else {
+            this.#report(parsed.path, parsed.issues);
             failed({ kind: 'failed', code: 'invalid-document' });
         }
+    }
+
+    /** A document that failed its schema, logged with its failing fields once (`ContentStoreDeps.log`). */
+    #report(path: string, issues: readonly ValidationIssue[]): void {
+        const fields = failingFields(issues);
+        const key = `${path}|${fields}`;
+        if (this.#deps.log === undefined || this.#reported.has(key)) {
+            return;
+        }
+        this.#reported.add(key);
+        this.#deps.log.warn('a document does not match its schema and is not shown', { path, fields });
     }
 
     /**

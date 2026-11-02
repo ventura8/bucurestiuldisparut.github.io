@@ -84,7 +84,11 @@ export async function loadPublishing(deps: MtsDeps, cityId: string, jobId: strin
  * Writes the job and the version as `change` leaves them (stamped by the publisher) while the job is still at Mapbox;
  * returns the job as written, or undefined when the job moved on meanwhile (a cancellation: nothing is written).
  */
-async function record(deps: MtsDeps, work: Publishing, change: { job: JobDoc; version?: LayerVersionDoc }): Promise<JobDoc | undefined> {
+export async function record(
+    deps: MtsDeps,
+    work: Publishing,
+    change: { job: JobDoc; version?: LayerVersionDoc },
+): Promise<JobDoc | undefined> {
     const stamp = stampOf(IMAGERY_WRITER, deps.clock.now());
     return deps.documents.transaction(async (transaction) => {
         const path = FIRESTORE_PATHS.job(work.cityId, work.jobId);
@@ -154,7 +158,7 @@ async function upload(deps: MtsDeps, work: Publishing): Promise<JobDoc | undefin
 async function followJob(deps: MtsDeps, work: Publishing, mapboxJobId: string, poll: number): Promise<void> {
     const at = stampOf(IMAGERY_WRITER, deps.clock.now()).updatedAt;
     const job = withStep(withStep({ ...work.job, mapboxJobId }, 'publish', 'done', at), 'tiles', 'running', at);
-    const mapbox = { tilesetId: work.tilesetId, sourceId: work.sourceId, jobId: mapboxJobId, origin: 'mts' as const };
+    const mapbox = { tilesetId: work.tilesetId, sourceId: work.sourceId, jobId: mapboxJobId, origin: 'mts' as const, via: 'mts' as const };
     await record(deps, work, { job, version: { ...work.version, mapbox } });
     await appendJobLog(deps, work.cityId, work.jobId, {
         level: 'info',

@@ -114,6 +114,14 @@ import mapboxTokensRetrieveInvalid from './mapbox/tokens.retrieve.invalid.json' 
 import mapboxTokensRetrievePublic from './mapbox/tokens.retrieve.public.json' with { type: 'json' };
 import mapboxTokensRetrieveSecret from './mapbox/tokens.retrieve.secret.json' with { type: 'json' };
 import mapboxTokensUpdateOk from './mapbox/tokens.update.ok.json' with { type: 'json' };
+import mapboxUploadsCreateMtsTileset from './mapbox/uploads.create.mts-tileset.json' with { type: 'json' };
+import mapboxUploadsCreateOk from './mapbox/uploads.create.ok.json' with { type: 'json' };
+import mapboxUploadsCredentialsOk from './mapbox/uploads.credentials.ok.json' with { type: 'json' };
+import mapboxUploadsStageDenied from './mapbox/uploads.stage.denied.json' with { type: 'json' };
+import mapboxUploadsStageOk from './mapbox/uploads.stage.ok.json' with { type: 'json' };
+import mapboxUploadsStatusComplete from './mapbox/uploads.status.complete.json' with { type: 'json' };
+import mapboxUploadsStatusError from './mapbox/uploads.status.error.json' with { type: 'json' };
+import mapboxUploadsStatusProcessing from './mapbox/uploads.status.processing.json' with { type: 'json' };
 import monitoringAlertPolicyGet from './monitoring/alert-policy.get.json' with { type: 'json' };
 import monitoringNotificationChannelGet from './monitoring/notification-channel.get.json' with { type: 'json' };
 import nominatimErrorRateLimited from './nominatim/error.rate-limited.json' with { type: 'json' };
@@ -309,6 +317,14 @@ export const RAW_FIXTURES = catalogue({
     'mapbox/tokens.retrieve.public': mapboxTokensRetrievePublic,
     'mapbox/tokens.retrieve.secret': mapboxTokensRetrieveSecret,
     'mapbox/tokens.update.ok': mapboxTokensUpdateOk,
+    'mapbox/uploads.create.mts-tileset': mapboxUploadsCreateMtsTileset,
+    'mapbox/uploads.create.ok': mapboxUploadsCreateOk,
+    'mapbox/uploads.credentials.ok': mapboxUploadsCredentialsOk,
+    'mapbox/uploads.stage.denied': mapboxUploadsStageDenied,
+    'mapbox/uploads.stage.ok': mapboxUploadsStageOk,
+    'mapbox/uploads.status.complete': mapboxUploadsStatusComplete,
+    'mapbox/uploads.status.error': mapboxUploadsStatusError,
+    'mapbox/uploads.status.processing': mapboxUploadsStatusProcessing,
     'monitoring/alert-policy.get': monitoringAlertPolicyGet,
     'monitoring/notification-channel.get': monitoringNotificationChannelGet,
     'nominatim/error.rate-limited': nominatimErrorRateLimited,

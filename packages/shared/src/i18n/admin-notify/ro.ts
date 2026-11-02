@@ -20,6 +20,7 @@ export const ro = {
     'adminContent.notify.event.job.failed': 'Procesarea „{label}” a eșuat. Deschide-o ca să vezi de ce.',
     'adminContent.notify.event.layer.readyToApprove': '„{label}” așteaptă aprobarea ta.',
     'adminContent.notify.event.layer.needsPoints': '„{label}” are nevoie de câteva puncte în georeferențiator.',
+    'adminContent.notify.event.job.needsOk': '„{label}” așteaptă acordul tău: rularea în Google Cloud ar depăși nivelul gratuit al lunii.',
     'adminContent.notify.event.budget.paused': 'Buget atins ({cost} din {budget} {currency}): procesarea imaginilor e oprită; harta merge.',
     'adminContent.notify.event.crash.spike': 'Rapoarte de erori noi în ultima oră: {count}.',
     'adminContent.notify.push.turnOn': 'Notificări pe acest dispozitiv',
@@ -59,6 +60,7 @@ export const ro = {
     'adminContent.notify.kind.job.failed': 'O procesare a eșuat',
     'adminContent.notify.kind.layer.readyToApprove': 'Un strat așteaptă aprobarea',
     'adminContent.notify.kind.layer.needsPoints': 'Un strat are nevoie de puncte',
+    'adminContent.notify.kind.job.needsOk': 'O rulare în cloud așteaptă acordul tău',
     'adminContent.notify.kind.budget.paused': 'Bugetul a oprit procesarea',
     'adminContent.notify.kind.crash.spike': 'Multe erori noi',
     // [end notify]

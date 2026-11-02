@@ -6,6 +6,7 @@ import type { JobWaitReason } from '@hcm/shared';
 
 import type { DocStatePort, ListStatePort } from '../area-port.js';
 import type { GuardPort } from '../imagery/guard-port.js';
+import type { WorkerFeedPort } from '../worker/worker-port.js';
 
 export type JobFilterPort = 'all' | 'active' | 'failed' | 'done';
 
@@ -67,4 +68,8 @@ export interface JobsIntentsPort {
     cancel(): Promise<unknown>;
     retryJob(): Promise<unknown>;
     resumeGuard(): Promise<unknown>;
+    /** M7: a new feed of the city's local worker (the lazy `worker` chunk); optional, so a page without it shows none. */
+    worker?(): Promise<WorkerFeedPort>;
+    /** M7: registers the `worker` chunk's elements (`../worker/load.ts`). */
+    workerElements?(): Promise<void>;
 }

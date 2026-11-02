@@ -125,7 +125,10 @@ test(
                 timeout: FUNCTIONS_TIMEOUT_MS,
             })
             .toMatchObject({ tilesetId: `${IMAGERY_MAPBOX_USER}.${name}`, origin: 'studio' });
-        await expect.poll(async () => Object.values(await adminWorld.emulators.collection('usage'))[0]).toMatchObject({ studioUploads: 1 });
+        // The month's Mapbox use (`usage/mapbox-<month>`; M7 counts Cloud Run's beside it, `usage/cloudrun-<month>`).
+        const mapboxUse = async (): Promise<Record<string, unknown> | undefined> =>
+            Object.entries(await adminWorld.emulators.collection('usage')).find(([id]) => id.startsWith('mapbox-'))?.[1];
+        await expect.poll(mapboxUse).toMatchObject({ studioUploads: 1 });
         expect(await upstream.calls('server', 'mapbox.tilesets.publish')).toEqual([]);
     },
 );

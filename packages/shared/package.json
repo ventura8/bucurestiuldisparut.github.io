@@ -10,6 +10,10 @@
         ".": {
             "types": "./src/index.ts",
             "default": "./src/index.ts"
+        },
+        "./admin-worker": {
+            "types": "./src/i18n/admin-worker/index.ts",
+            "default": "./src/i18n/admin-worker/index.ts"
         }
     },
     "dependencies": {

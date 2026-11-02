@@ -95,7 +95,9 @@ export default defineConfig({
                 // `assist`: the editors' title suggestions and translation drafts (M4, the photo, place and layer editors share
                 // them), kept out of `editor-shared` (DECISIONS-for-review.md §54b). `editor-texts`: a field's name and its
                 // problem's words, which every editor shares (§77e). `starter-categories`: the starter place categories, which
-                // the place editor and the settings share (§78d).
+                // the place editor and the settings share (§78d). M7's `worker` chunk is no group: the natural chunk of its one
+                // dynamic entry (`src/worker/worker.ts`), whose namespace is the chunk's own (a group's needs Rolldown's runtime
+                // helper, a chunk of its own beside terra-draw's), with its texts on a path of their own (`@hcm/shared/admin-worker`).
                 codeSplitting: {
                     groups: [
                         { name: 'terra-draw', test: /node_modules[\\/]terra-draw/, priority: 4 },

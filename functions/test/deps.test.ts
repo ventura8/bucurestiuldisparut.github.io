@@ -129,6 +129,7 @@ describe('createDeps', () => {
                 'tasks',
                 'tilesets',
                 'translator',
+                'uploads',
                 'usgs',
                 'writer',
             ].sort((a, b) => a.localeCompare(b)),

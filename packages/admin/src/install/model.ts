@@ -94,6 +94,11 @@ export interface InstallTargetView {
     readonly error: InstallMessage | null;
     /** ISO 8601 of the last observation. */
     readonly checkedAt: string | null;
+    /**
+     * M7 (`docs/research/M7-local-worker.md` §1.1): the pipeline image's digest its build's log named (the `image` event),
+     * which the local worker's command names; null until a pipeline build that pushed one was read.
+     */
+    readonly image: string | null;
 }
 
 /** A target nothing is known of yet. */
@@ -119,6 +124,7 @@ export function initialTargetView(target: InstallTarget): InstallTargetView {
         busy: false,
         error: null,
         checkedAt: null,
+        image: null,
     };
 }
 
@@ -318,6 +324,11 @@ export type InstallQuota = Extract<InstallLogEvent, { event: 'quota' }>;
 /** The last quota the log named, or null. */
 export function namedQuota(events: readonly InstallLogEvent[]): InstallQuota | null {
     return events.findLast((event): event is InstallQuota => event.event === 'quota') ?? null;
+}
+
+/** The pipeline image's digest the log's last `image` event named, or null. */
+export function pushedImage(events: readonly InstallLogEvent[]): string | null {
+    return events.findLast((event): event is Extract<InstallLogEvent, { event: 'image' }> => event.event === 'image')?.digest ?? null;
 }
 
 /** The functions `verify` named, in the order it named them, once each. */

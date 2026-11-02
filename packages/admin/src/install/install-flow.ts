@@ -33,6 +33,7 @@ import {
     isRunning,
     missingFunctions,
     namedQuota,
+    pushedImage,
     pendingRetry,
     stepsOf,
     type InstallTargetView,
@@ -98,9 +99,20 @@ interface LogSummary {
     readonly fixInProvision: boolean;
     /** The quota the `jobs` step named (finding 47 of 2026-11-01). */
     readonly quota: InstallTargetView['quota'];
+    /** M7: the pipeline image's digest the `push` step named. */
+    readonly image: string | null;
 }
 
-const NO_LOG: LogSummary = { retry: null, retryLineAt: '', missing: [], failedStep: null, tail: [], fixInProvision: false, quota: null };
+const NO_LOG: LogSummary = {
+    retry: null,
+    retryLineAt: '',
+    missing: [],
+    failedStep: null,
+    tail: [],
+    fixInProvision: false,
+    quota: null,
+    image: null,
+};
 
 function eventsOf(lines: readonly BuildLogLine[]): { readonly events: InstallLogEvent[]; readonly lastAt: string } {
     const events: InstallLogEvent[] = [];
@@ -322,6 +334,7 @@ class TargetFlow implements InstallFlow {
             blocker: observation.blocker,
             error: null,
             checkedAt: new Date(this.#deps.clock.now()).toISOString(),
+            image: summary.image ?? this.#view.image,
         };
     }
 
@@ -342,9 +355,13 @@ class TargetFlow implements InstallFlow {
         return this.#ended.get(build.id) ?? (await this.#readSummary(build, access));
     }
 
-    /** A stopped build's log, and a working one's for its retries (the site's prints none; finding 47: the pipeline's may). */
+    /**
+     * A stopped build's log, and a working one's for its retries (the site's prints none; finding 47: the pipeline's may);
+     * M7: a pipeline build that ended well too, once, for its image's digest.
+     */
     #readsLog(build: CloudBuild): boolean {
-        return stoppedBuild(build) || (build.status === 'WORKING' && this.#deps.target !== 'site');
+        const target = this.#deps.target;
+        return stoppedBuild(build) || (target === 'pipeline' && hasEnded(build)) || (build.status === 'WORKING' && target !== 'site');
     }
 
     async #readSummary(build: CloudBuild, access: InstallAccess): Promise<LogSummary> {
@@ -366,6 +383,7 @@ class TargetFlow implements InstallFlow {
             tail: failedStep === null ? [] : stepTail(lines, failedStep),
             fixInProvision: failedStep !== null && fixedInProvision(stepTail(lines, failedStep, Number.POSITIVE_INFINITY)),
             quota: namedQuota(events),
+            image: pushedImage(events),
         };
     }
 

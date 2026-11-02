@@ -65,7 +65,7 @@ export const RASTER_PATHS = {
             id(uploadId),
             segment(fileName, matching(RASTER_UPLOAD_FILE_PATTERN)),
         ].join('/'),
-    /** A USGS delivery, shared by every city that imports the scene (lifecycle: 30 days; USGS keeps the archive). */
+    /** A USGS delivery, shared by every city that imports the scene (deleted by `locate` once the crop exists; lifecycle: 7 days). */
     usgsRaw: (datasetName: string, entityId: string, fileName: string) =>
         ['usgs-raw', dataset(datasetName), id(entityId), segment(fileName, matching(DELIVERY_FILE))].join('/'),
     /** The browse copy the admin previews (kept: a few hundred KB per scene). */
@@ -88,7 +88,8 @@ export const PRIVATE_BUCKET_LIFECYCLE: readonly { readonly prefix: string; reado
     { prefix: 'tmp/', days: 1 },
     { prefix: 'uploads/', days: 7 },
     { prefix: 'work/', days: 14 },
-    { prefix: 'usgs-raw/', days: 30 },
+    // M7 (docs/research/M7-local-worker.md §5): `locate` deletes the delivery once the city's crop exists; this is the backstop.
+    { prefix: 'usgs-raw/', days: 7 },
     { prefix: 'reference/', days: 90 },
     // M5 (CR-M5-8): a city's static export, `EXPORT_LIMITS.ttlDays` after it was built (its record says expired by then).
     { prefix: 'exports/', days: 7 },

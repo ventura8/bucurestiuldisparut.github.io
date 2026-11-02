@@ -32,11 +32,12 @@ const CALLABLE_TIMEOUT_SECONDS: Readonly<Partial<Record<CallableName, number>>> 
  * The deploy options of a callable: its `maxInstances`, a longer timeout where `CALLABLE_TIMEOUT_SECONDS` names one,
  * its runtime service account (`runAs`: `fn-admin@` for every callable), and App Check from `HCM_APP_CHECK` (security review §1.6: one week of `monitor`, which leaves enforcement
  * off, then `enforce`); `consume` callables then also consume the token (replay protection for ownership and secret
- * pastes).
+ * pastes). The local worker's callables (`off`, M7: `docs/research/M7-local-worker.md` §2.4) never enforce it: a process on
+ * the owner's computer cannot be attested; the city editor's ID token is their credential.
  */
 export function callableOptions(name: CallableName, env: Env): CallableOptions {
     const spec = CALLABLES[name];
-    const enforce = env['HCM_APP_CHECK'] === 'enforce';
+    const enforce = env['HCM_APP_CHECK'] === 'enforce' && spec.appCheck !== 'off';
     const timeoutSeconds = CALLABLE_TIMEOUT_SECONDS[name];
     return {
         maxInstances: spec.maxInstances,

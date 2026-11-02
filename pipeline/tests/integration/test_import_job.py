@@ -1,5 +1,6 @@
 """A USGS import job end to end: fetch to register against the loopback fakes (docs/research/M3-interfaces.md §5)."""
 
+import hashlib
 import io
 from pathlib import Path
 
@@ -88,8 +89,10 @@ def test_happy_path_a_queued_import_becomes_a_version_awaiting_approval(
         for name in ("cog.tif", "preview.png", "reference-osm.png", "reference-s2.jpg", "scan-preview.jpg", "scan.tif", "studio.tif")
     ]
     assert world.gcs.names(WORK) == []
-    assert world.gcs.names(f"usgs-raw/corona2/{ENTITY_ID}/") == [RAW]
-    assert world.gcs.objects[RAW].data == world.delivery
+    # The delivery was fetched whole, then deleted once the city crop existed (M7 §5: S-P01-HAPPY-RAW-DELETED).
+    assert dig(job, "steps", "fetch", "gcsPath") == RAW
+    assert dig(job, "steps", "fetch", "sha256") == hashlib.sha256(world.delivery).hexdigest()
+    assert world.gcs.names("usgs-raw/") == []
     assert "step register done" in world.log_lines()
     assert GOOD_SIGNATURE not in world.everything_written(log_stream)
 

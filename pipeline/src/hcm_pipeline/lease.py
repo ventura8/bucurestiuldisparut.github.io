@@ -101,9 +101,12 @@ class Heartbeat:
             self.beat()
 
     def beat(self) -> None:
-        """One renewal; a failed write is logged and tried again at the next beat (the lease outlives several)."""
+        """One renewal; a failed write is logged and tried again at the next beat (the lease outlives several). A store
+        that says the job is no longer this run's (the local worker's API: M7) stops the run at its next checkpoint."""
         try:
             self._store.transact(self._path, self._change)
+        except LeaseLostError:
+            self._flags.raise_flag(LeaseLostError)
         except Exception as error:  # the thread must survive a transient Firestore failure
             LOG.warning("heartbeat failed (%s); the next one tries again", type(error).__name__)
 

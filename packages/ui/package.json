@@ -15,6 +15,10 @@
             "types": "./src/admin/index.ts",
             "default": "./src/admin/index.ts"
         },
+        "./admin/worker": {
+            "types": "./src/admin/worker/define.ts",
+            "default": "./src/admin/worker/define.ts"
+        },
         "./admin/areas/*": {
             "types": "./src/admin/areas/*.ts",
             "default": "./src/admin/areas/*.ts"

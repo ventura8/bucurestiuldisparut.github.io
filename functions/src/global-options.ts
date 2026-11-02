@@ -63,6 +63,7 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'imagery.saveGcps': 'fn-admin',
     'imagery.crop': 'fn-admin',
     'imagery.retry': 'fn-admin',
+    'imagery.runOn': 'fn-admin',
     'imagery.probeTiles': 'fn-admin',
     'imagery.resumeGuard': 'fn-admin',
     // M4 orders (docs/research/M4-interfaces.md §1.4): the order card's callables, as every callable, fn-admin@ (USGS secrets).
@@ -92,6 +93,13 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'export.start': 'fn-admin',
     'export.download': 'fn-admin',
     'export.build': 'fn-events',
+    // M7 (docs/research/M7-local-worker.md §2.4): the local worker's callables as fn-admin@, which reads the USGS secrets
+    // for the M2M calls it makes for a worker and signs the worker's object addresses with its own signBlob.
+    'worker.hello': 'fn-admin',
+    'worker.claim': 'fn-admin',
+    'worker.step': 'fn-admin',
+    'worker.urls': 'fn-admin',
+    'worker.end': 'fn-admin',
 };
 
 /** What firebase-tools and Cloud Run set to the project while the code loads (discovery, the emulator, a cold start). */

@@ -136,6 +136,7 @@ export const ro = {
     'adminContent.jobs.stepName.register': 'Înregistrarea versiunii',
     'adminContent.jobs.stepName.guard': 'Verificarea bugetului',
     'adminContent.jobs.stepName.upload': 'Încărcarea pe Mapbox',
+    'adminContent.jobs.stepName.uploads': 'Încărcarea gratuită pe Mapbox',
     'adminContent.jobs.stepName.tiles': 'Mapbox construiește dalele',
     'adminContent.jobs.stepName.finalize': 'Încheierea',
     'adminContent.jobs.level.info': 'Informație',

@@ -55,6 +55,25 @@ describe('installRecordOf', () => {
     });
 });
 
+describe('installRecordOf: the pipeline image (M7, docs/research/M7-local-worker.md §1.1)', () => {
+    const DIGEST = `sha256:${'c'.repeat(64)}`;
+
+    it('happyPath_aPipelineRecordKeepsItsImagesDigestAndARecordGivesItBack', () => {
+        const installed = view({ state: 'installed', installedRelease: ADMIN_RELEASE, checkedAt: NOW, image: DIGEST }, 'pipeline');
+
+        const record = installRecordOf(installed, LATER, false);
+        expect(record).toEqual({ state: 'installed', release: ADMIN_RELEASE, image: DIGEST, checkedAt: NOW });
+        const recorded = withRecordedInstall(state('normal'), { pipeline: { ...record, checkedAt: LATER } });
+        expect(recorded.install.pipeline.image).toBe(DIGEST);
+    });
+
+    it('badPath_aRecordWithoutADigestKeepsWhatTheCardSaw', () => {
+        const seen = withRecordedInstall(state('normal'), { pipeline: { state: 'installed', checkedAt: NOW } });
+        expect(seen.install.pipeline.image).toBeNull();
+        expect(installRecordOf(view({ state: 'installed' }, 'pipeline'), LATER)).not.toHaveProperty('image');
+    });
+});
+
 describe('installRecordOf: the build time (finding 39 of 2026-11-01)', () => {
     it('happyPath_aTimedReleaseKeepsItsBuildTime', () => {
         const installed = view({

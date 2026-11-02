@@ -218,30 +218,44 @@ async function stopped(run: Run, step: Parameters<typeof playStep>[1]): Promise<
 }
 
 /** The real pipeline's interpreter in the quality image (docs/research/M0-handoff.md). */
-const PIPELINE_PYTHON = '/opt/hcm/pipeline-venv/bin/python';
-const REPO_ROOT = resolve(import.meta.dirname, '../../..');
+export const PIPELINE_PYTHON = '/opt/hcm/pipeline-venv/bin/python';
+export const REPO_ROOT = resolve(import.meta.dirname, '../../..');
 
-/** The environment of a real pipeline run against the emulators and the mock APIs' upstreams (§5.7). */
-function pythonEnv(execution: PipelineExecution): NodeJS.ProcessEnv {
-    const upstream = (host: string, path: string): string => `${MOCK_API_ORIGIN}/h/${host}${path}`;
+/** An upstream of the mock APIs, as the pipeline reaches it (`/h/<host><path>`). */
+function upstream(host: string, path: string): string {
+    return `${MOCK_API_ORIGIN}/h/${host}${path}`;
+}
+
+/**
+ * What every real pipeline process of the e2e world gets, a Cloud Run run (`run`) as the local worker (`worker`, M7): the
+ * interpreter's path and home, the package's source, the references' roots on the mock APIs, one GDAL thread.
+ */
+export function pipelineBaseEnv(): NodeJS.ProcessEnv {
     return {
         PATH: process.env['PATH'],
         HOME: process.env['HOME'],
         PYTHONPATH: resolve(REPO_ROOT, 'pipeline/src'),
+        HCM_STAC_URL: upstream('earth-search.aws.element84.com', '/v1'),
+        HCM_OVERPASS_URL: upstream('overpass-api.de', '/api/interpreter'),
+        GDAL_NUM_THREADS: '1',
+    };
+}
+
+/** The environment of a real pipeline run against the emulators and the mock APIs' upstreams (§5.7). */
+function pythonEnv(execution: PipelineExecution): NodeJS.ProcessEnv {
+    return {
+        ...pipelineBaseEnv(),
         JOB_ID: execution.env['JOB_ID'],
         CITY_ID: execution.env['CITY_ID'],
         GOOGLE_CLOUD_PROJECT: E2E_PROJECT_ID,
         HCM_PRIVATE_BUCKET: ADMIN_WEB_CONFIG.storageBucket,
         HCM_PUBLIC_BUCKET: `${E2E_PROJECT_ID}-public`,
         USGS_M2M_BASE_URL: upstream('m2m.cr.usgs.gov', '/api/api/json/stable/'),
-        HCM_STAC_URL: upstream('earth-search.aws.element84.com', '/v1'),
-        HCM_OVERPASS_URL: upstream('overpass-api.de', '/api/interpreter'),
         FIRESTORE_EMULATOR_HOST: new URL(emulatorOrigin('firestore')).host,
         STORAGE_EMULATOR_HOST: new URL(emulatorOrigin('storage')).host,
         HCM_E2E_USGS_TOKEN: 'e2e-ok',
         CLOUD_RUN_EXECUTION: execution.id,
         CLOUD_RUN_TASK_ATTEMPT: '0',
-        GDAL_NUM_THREADS: '1',
     };
 }
 

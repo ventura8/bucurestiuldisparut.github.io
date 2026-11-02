@@ -277,6 +277,11 @@ export function jobDoc(creator: string, status = 'running'): Data {
         waitReason: 'usgs-preparing',
         startedAt: past(),
         finishedAt: later(),
+        // M7 (docs/research/M7-local-worker.md §3, §4): where it runs, the worker that claimed it, the free-tier OK, the count.
+        runOn: 'local',
+        worker: { id: 'w-0123456789abcdef', uid: creator, claimedAt: past() },
+        freeTierOk: { by: creator, at: past() },
+        usageCountedAt: past(),
         ...systemStamp('pipeline'),
     };
 }
@@ -291,6 +296,26 @@ export function newJob(uid: string): Data {
         createdAt: serverTime(),
         ...stampedBy(uid),
     };
+}
+
+/** A city's local worker (M7, `worker.hello` and `worker.claim`): written by the worker callables only. */
+export function workerDoc(uid: string): Data {
+    return {
+        uid,
+        version: '1.0.0',
+        startedAt: past(),
+        lastSeenAt: past(),
+        state: 'busy',
+        jobId: 'job-1966',
+        lastJob: { id: 'job-1965', outcome: 'done', at: past() },
+        updatedBy: uid,
+        updatedAt: past(),
+    };
+}
+
+/** A city's remembered choice of where raster jobs run (M7, `imagery.runOn`). */
+export function runChoiceDoc(uid: string): Data {
+    return { choice: 'auto', updatedBy: uid, updatedAt: past() };
 }
 
 export function jobLogDoc(): Data {

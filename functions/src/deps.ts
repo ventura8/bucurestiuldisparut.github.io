@@ -21,6 +21,7 @@ import { createFunctionsLogSink } from './adapters/functions-log-sink.js';
 import { createGoogleTokenProvider } from './adapters/google-token-provider.js';
 import { createSharpImageProcessor } from './adapters/image.js';
 import { createMapboxTilesets } from './adapters/mapbox-tilesets.js';
+import { createMapboxUploads } from './adapters/mapbox-uploads.js';
 import { createMapboxApi } from './adapters/mapbox.js';
 import { createNominatim } from './adapters/nominatim.js';
 import { createRemoteFiles, fetchPinnedGet, httpsPinnedGet, systemResolver } from './adapters/remote-files.js';
@@ -211,12 +212,13 @@ function nominatimOptions(env: Env, upstream: Upstream): { readonly fetch: Fetch
 }
 
 /**
- * The static export's signer (M5, `docs/research/M5-interfaces.md` §5.5): V4 signing with the runtime account in
- * production; in the Functions emulator, which has no account to sign with, the e2e stand-in.
+ * The static export's signer (M5, `docs/research/M5-interfaces.md` §5.5) and the local worker's (M7): V4 signing with the
+ * runtime account in production; in the Functions emulator, which has no account to sign with, the e2e stand-in, whose
+ * worker objects are addresses of the Storage emulator the emulators set (`FIREBASE_STORAGE_EMULATOR_HOST`).
  */
 function urlSignerOf(env: Env, storage: ReturnType<typeof getStorage>, buckets: RuntimeConfig['buckets']): UrlSigner {
     return env['FUNCTIONS_EMULATOR'] === 'true'
-        ? createStandInUrlSigner(buckets, () => systemClock.now())
+        ? createStandInUrlSigner(buckets, () => systemClock.now(), env['FIREBASE_STORAGE_EMULATOR_HOST'])
         : createStorageUrlSigner(storage, buckets);
 }
 
@@ -247,6 +249,7 @@ export function createDeps(env: Env, app: App): Deps {
         usgs: createUsgsApi({ fetch: upstream.fetch, log }),
         jobs: createCloudRunJobs({ fetch: upstream.fetch, tokens: upstream.tokens, projectId: config.projectId, region: config.region }),
         tilesets: createMapboxTilesets({ fetch: upstream.fetch }),
+        uploads: createMapboxUploads({ fetch: upstream.fetch, now: () => systemClock.now() }),
         scenes: createUsgsScenes({ fetch: upstream.fetch, log }),
         remote: remoteFilesOf(env, upstream),
         reader: createStorageBlobReader(getStorage(app), config.buckets),

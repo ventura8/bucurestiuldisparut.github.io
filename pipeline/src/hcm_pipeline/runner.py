@@ -11,11 +11,12 @@ How a run ends:
 | a step fails | `failed` with `error {code, message, params}`; the version `failed` | 1 |
 | an invalid job | `failed` with `apiError.invalidRequest` (a retry cannot help) | 1 |
 | `cancelRequested` (heartbeat, a checkpoint, or SIGTERM after it) | `cancelled`; the version `cancelled`; its `work/` objects deleted | 0 |
-| SIGTERM without a cancel | `queued` with `retryAt` + 1 minute; the step `pending`, its checkpoint kept | 0 |
+| SIGTERM (or SIGINT: a local worker's Ctrl-C), no cancel | `queued` with `retryAt` + 1 minute; the step `pending` | 0 |
 | the download phase done on the small `fetch` job | `queued`, lease released: dispatched again on `std` or `xl` | 0 |
 | another live owner holds the lease, or the job is not runnable | untouched | 0 |
 
-Local scratch files live in a temporary folder removed whatever the ending.
+Local scratch files live in a temporary folder removed whatever the ending. A step whose recorded output is gone runs
+again, except `fetch` once `locate` is finished (`locate` deletes the delivery: docs/research/M7-local-worker.md §5).
 
 An import runs in two phases (finding 56 of 2026-11-01): a run on the small `fetch` job does the download phase
 (`DOWNLOAD_STEPS`, network-bound) and hands the job back, queued, for its processing on `std` (or `xl`); a run on a
@@ -79,18 +80,27 @@ class JobStep(Protocol):
     def run(self, ctx: JobContext) -> StepResult: ...
 
 
+# The signals that stop a run at its next checkpoint: Cloud Run's SIGTERM, and Ctrl-C on a local worker (M7).
+STOP_SIGNALS: Final = (signal.SIGTERM, signal.SIGINT)
+# `fetch`'s delivery is deleted by `locate` once the city crop exists (docs/research/M7-local-worker.md §5): a resume
+# after `locate` needs it no more, so a gone delivery is downloaded again only while `locate` is not finished.
+DELIVERY_STEP: Final = "fetch"
+DELIVERY_CONSUMER: Final = "locate"
+
+
 @contextmanager
 def sigterm_raises(flags: RunFlags) -> Iterator[None]:
-    """While the run lasts, SIGTERM raises the flag the next checkpoint turns into `InterruptedRunError`."""
+    """While the run lasts, SIGTERM (or SIGINT) raises the flag the next checkpoint turns into `InterruptedRunError`."""
 
     def handler(_signum: int, _frame: FrameType | None) -> None:
         flags.raise_flag(InterruptedRunError)
 
-    previous = signal.signal(signal.SIGTERM, handler)
+    previous = {number: signal.signal(number, handler) for number in STOP_SIGNALS}
     try:
         yield
     finally:
-        signal.signal(signal.SIGTERM, previous)
+        for number, before in previous.items():
+            signal.signal(number, before)
 
 
 @dataclass(frozen=True)
@@ -189,9 +199,13 @@ class JobRunner:
         info = self._services.objects.stat(record.gcs_path) if record.gcs_path else None
         return record.gcs_path is None or (info is not None and record.generation in (None, info.generation))
 
+    def _consumed(self, ctx: JobContext, name: str) -> bool:
+        """True for `fetch` once `locate` is finished: its delivery was deleted and nothing after `locate` reads it."""
+        return name == DELIVERY_STEP and self._finished(ctx.job.step(DELIVERY_CONSUMER))
+
     def _step(self, ctx: JobContext, name: str, base: float, weight: float) -> StepResult:
         self._refresh(ctx)
-        if self._finished(ctx.job.step(name)):
+        if self._finished(ctx.job.step(name)) or self._consumed(ctx, name):
             return Done()
         ctx.step = name
         _record_machine(ctx, name)

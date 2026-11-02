@@ -6,6 +6,7 @@ import { INSTALL_STATES } from '../admin/specs/install/states.js';
 import { NOTIFY_STATES } from '../admin/specs/notify/states.js';
 import { SETTINGS_STARTER_STATES } from '../admin/specs/settings/states.js';
 import { SETUP_UX_STATES } from '../admin/specs/shell/setup-ux-states.js';
+import { WORKER_STATES } from '../admin/specs/imagery/worker-states.js';
 
 /**
  * The admin states of the M4 and M5 workstreams in the tour inventory (`ADMIN_STATES` of ./states.ts spreads them; moved
@@ -44,4 +45,8 @@ export const ADMIN_SECTION_STATES = {
     // [section starters] owner: settings (Settings → Place categories, Add the starter categories: finding 41 of 2026-11-01)
     ...SETTINGS_STARTER_STATES,
     // [end starters]
+    // M7 (docs/research/M7-local-worker.md §7): ids 'worker.<state>', the local worker's panel and a version's place.
+    // [section worker] owner: admin (M7)
+    ...WORKER_STATES,
+    // [end worker]
 } as const;

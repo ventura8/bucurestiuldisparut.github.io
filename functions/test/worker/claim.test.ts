@@ -1,0 +1,182 @@
+/**
+ * `worker.hello` and `worker.claim` (`functions/src/worker/{hello,claim}.ts`, `docs/research/M7-local-worker.md` §1.2,
+ * §2.4): a worker introduces itself, then takes the oldest due queued job of its city chosen for the owner's computer,
+ * leased to it in one transaction; nothing else (a cloud job, a job not due, cancelled or out of attempts) is ever taken.
+ */
+import { FIRESTORE_PATHS, HEARTBEAT_SECONDS, JOB_MAX_ATTEMPTS, LEASE_SECONDS, WORKER_POLL_SECONDS, jobDocSchema } from '@hcm/shared';
+import { describe, expect, it } from 'vitest';
+
+import { omit } from '../../src/api/objects.js';
+import { claimFunction } from '../../src/worker/claim.js';
+import { helloFunction } from '../../src/worker/hello.js';
+import { failureOf } from '../admin/world.js';
+import { readJob, seedGuard, seedJob } from '../imagery/world.js';
+import {
+    CITY,
+    NOW,
+    OTHER,
+    OTHER_WORKER,
+    WORKER,
+    at,
+    callAs,
+    localJob,
+    minutes,
+    readWorker,
+    seedWorker,
+    workerWorld,
+    type WorkerWorld,
+} from './world.js';
+
+function claim(world: WorkerWorld, workerId = WORKER, uid?: string) {
+    return callAs(world, claimFunction, { workerId }, uid);
+}
+
+function hello(world: WorkerWorld, version = '1.0.0', uid?: string) {
+    return callAs(world, helloFunction, { workerId: WORKER, version }, uid);
+}
+
+/** Two queued local jobs (`j-old` the older) and an older cloud job; both workers said hello. */
+async function queuedWorld(): Promise<WorkerWorld> {
+    const world = await workerWorld();
+    await seedWorker(world);
+    await seedWorker(world, OTHER_WORKER, { uid: OTHER, updatedBy: OTHER });
+    await seedJob(world, 'j-cloud', localJob({ runOn: 'cloud', createdAt: minutes(-300), waitReason: 'capacity' }));
+    await seedJob(world, 'j-old', localJob({ createdAt: minutes(-120), machine: 'std', retryAt: minutes(-5) }));
+    await seedJob(world, 'j-new', omit(localJob({ createdAt: minutes(-60) }), ['attempt']));
+    return world;
+}
+
+describe('worker.claim', () => {
+    it('happyPath_aWorkerClaimsTheOldestDueLocalJob @S-A62-HAPPY-CLAIM', async () => {
+        const world = await queuedWorld();
+
+        await expect(claim(world)).resolves.toEqual({ job: { jobId: 'j-old' } });
+
+        const job = await readJob(world, 'j-old');
+        expect(job).toMatchObject({
+            status: 'starting',
+            attempt: 1,
+            dispatchAt: at(NOW),
+            lease: { owner: `worker:${WORKER}`, until: at(new Date(Date.parse(NOW) + LEASE_SECONDS * 1000).toISOString()) },
+            worker: { id: WORKER, uid: 'u-admin', claimedAt: at(NOW) },
+            updatedBy: 'system:imagery',
+        });
+        expect(job).not.toHaveProperty('machine');
+        expect(job).not.toHaveProperty('waitReason');
+        await expect(readWorker(world)).resolves.toMatchObject({ state: 'busy', jobId: 'j-old', lastSeenAt: at(NOW) });
+    });
+
+    it('happyPath_anotherWorkerGetsTheNextOneAndThenThereIsNone @S-A62-HAPPY-CLAIM', async () => {
+        const world = await queuedWorld();
+        await claim(world);
+
+        await expect(claim(world, OTHER_WORKER, OTHER)).resolves.toEqual({ job: { jobId: 'j-new' } });
+        await expect(claim(world, OTHER_WORKER, OTHER)).resolves.toEqual({ job: null });
+
+        expect(await readJob(world, 'j-new')).toMatchObject({ attempt: 1, worker: { id: OTHER_WORKER, uid: OTHER } });
+        await expect(readJob(world, 'j-cloud')).resolves.toMatchObject({ status: 'queued', waitReason: 'capacity' });
+        const other = await readWorker(world, OTHER_WORKER);
+        expect(other).toMatchObject({ state: 'idle', lastSeenAt: at(NOW) });
+        expect(other).not.toHaveProperty('jobId');
+    });
+
+    it.each([
+        ['not due yet', localJob({ retryAt: minutes(5) })],
+        ['dispatched later', localJob({ dispatchAt: minutes(5) })],
+        ['asked to cancel', localJob({ cancelRequested: true })],
+        ['out of attempts', localJob({ attempt: JOB_MAX_ATTEMPTS })],
+        ['a layer deletion', localJob({ type: 'layer-delete', params: { layerId: 'kh-4a-corona-1966' } })],
+        ['already starting', localJob({ status: 'starting' })],
+    ])('badPath_aLocalJob%sIsNotTaken @S-A62-HAPPY-CLAIM', async (_name, job) => {
+        const world = await workerWorld();
+        await seedWorker(world);
+        await seedJob(world, 'j-1', job);
+
+        await expect(claim(world)).resolves.toEqual({ job: null });
+        await expect(readJob(world, 'j-1')).resolves.toEqual(job);
+    });
+
+    it('badPath_aJobAnotherWorkerTookFirstIsNotTakenAgain', async () => {
+        const world = await queuedWorld();
+        const { documents } = world.deps;
+        const racing: typeof documents = {
+            ...documents,
+            transaction: (work) => {
+                documents.seed(FIRESTORE_PATHS.job(CITY, 'j-old'), { ...localJob({ createdAt: minutes(-120) }), status: 'starting' });
+                documents.seed(FIRESTORE_PATHS.job(CITY, 'j-new'), { ...localJob(), status: 'starting' });
+                return documents.transaction(work);
+            },
+        };
+        const raced: WorkerWorld = { ...world, deps: { ...world.deps, documents: racing } };
+
+        await expect(claim(raced)).resolves.toEqual({ job: null });
+        await expect(documents.get(FIRESTORE_PATHS.job(CITY, 'j-old'), jobDocSchema)).resolves.not.toHaveProperty('worker');
+    });
+
+    it.each([
+        ['no hello first', async (world: WorkerWorld) => world.deps.documents.delete(FIRESTORE_PATHS.worker(CITY, WORKER))],
+        ['a worker id another account said hello with', (world: WorkerWorld) => seedWorker(world, WORKER, { uid: OTHER })],
+    ])('badPath_%sIsRefused', async (_name, arrange) => {
+        const world = await queuedWorld();
+        await arrange(world);
+
+        await expect(failureOf(claim(world))).resolves.toMatchObject({ details: { code: 'apiError.worker.refused' } });
+        await expect(readJob(world, 'j-old')).resolves.toMatchObject({ status: 'queued' });
+    });
+
+    it('badPath_nothingIsClaimedWhileTheGuardIsRed', async () => {
+        const world = await queuedWorld();
+        await seedGuard(world, 'red');
+
+        await expect(failureOf(claim(world))).resolves.toMatchObject({ details: { code: 'apiError.guardPaused' } });
+        await expect(readJob(world, 'j-old')).resolves.toMatchObject({ status: 'queued' });
+    });
+});
+
+describe('worker.hello', () => {
+    it('happyPath_aNewWorkerIsRecordedIdleAndToldItsIntervals', async () => {
+        const world = await workerWorld();
+
+        await expect(hello(world)).resolves.toEqual({ pollSeconds: WORKER_POLL_SECONDS, heartbeatSeconds: HEARTBEAT_SECONDS });
+        await expect(readWorker(world)).resolves.toEqual({
+            uid: 'u-admin',
+            version: '1.0.0',
+            startedAt: at(NOW),
+            lastSeenAt: at(NOW),
+            state: 'idle',
+            updatedBy: 'u-admin',
+            updatedAt: at(NOW),
+        });
+    });
+
+    it('happyPath_aSecondHelloKeepsWhenItStartedAndWhatItDoes', async () => {
+        const world = await workerWorld();
+        await seedWorker(world, WORKER, { state: 'busy', jobId: 'j-1' });
+
+        await hello(world, '1.0.1');
+
+        await expect(readWorker(world)).resolves.toMatchObject({
+            version: '1.0.1',
+            startedAt: minutes(-30),
+            lastSeenAt: at(NOW),
+            state: 'busy',
+            jobId: 'j-1',
+        });
+    });
+
+    it('badPath_anotherAccountCannotTakeOverAWorkerId', async () => {
+        const world = await workerWorld();
+        await seedWorker(world);
+
+        await expect(failureOf(hello(world, '1.0.0', OTHER))).resolves.toMatchObject({ details: { code: 'apiError.worker.refused' } });
+        await expect(readWorker(world)).resolves.toMatchObject({ uid: 'u-admin' });
+    });
+
+    it('badPath_aWorkerCannotStartWhileTheGuardIsRed', async () => {
+        const world = await workerWorld();
+        await seedGuard(world, 'red');
+
+        await expect(failureOf(hello(world))).resolves.toMatchObject({ details: { code: 'apiError.guardPaused' } });
+        await expect(readWorker(world)).resolves.toBeUndefined();
+    });
+});

@@ -27,11 +27,11 @@ import httpx
 from hcm_pipeline import paths
 from hcm_pipeline.contract import USGS_BACKOFF_MINUTES, USGS_PREPARING_MINUTES, Errors
 from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult, Waiting
-from hcm_pipeline.m2m import AuthError, M2MClient, M2MError, MaintenanceError, RateLimitError
+from hcm_pipeline.m2m import AuthError, M2MError, MaintenanceError, RateLimitError
 from hcm_pipeline.model import UsgsImportParams
 from hcm_pipeline.objects import CHUNK_BYTES, READ_BYTES, ObjectInfo, SessionExpiredError
 from hcm_pipeline.secrets import SecretUnavailableError
-from hcm_pipeline.usgs import DownloadOption, download_option, label_for, remove_order, request_download, retrieve_download
+from hcm_pipeline.usgs import DownloadOption, M2MSession, download_option, label_for, remove_order, request_download, retrieve_download
 
 CHECKPOINT: Final = "fetch.checkpoint.json"
 DELIVERY_TYPE: Final = "application/octet-stream"
@@ -199,7 +199,7 @@ class FetchStep:
         except M2MError as error:
             return _usgs_problem(ctx, checkpoint, error)
 
-    def _fetch(self, ctx: JobContext, m2m: M2MClient, entity: UsgsImportParams, checkpoint: Checkpoint) -> StepResult:
+    def _fetch(self, ctx: JobContext, m2m: M2MSession, entity: UsgsImportParams, checkpoint: Checkpoint) -> StepResult:
         option = download_option(m2m, entity.dataset, entity.entity_id)
         if option is None:
             raise StepFailedError(Errors.NOT_SCANNED, f"USGS offers no download of {entity.entity_id} yet", {"entityId": entity.entity_id})
@@ -212,7 +212,7 @@ class FetchStep:
         return Done(info, object_sha256(ctx, info.path))
 
     def _download(
-        self, ctx: JobContext, m2m: M2MClient, entity: UsgsImportParams, option: DownloadOption, checkpoint: Checkpoint
+        self, ctx: JobContext, m2m: M2MSession, entity: UsgsImportParams, option: DownloadOption, checkpoint: Checkpoint
     ) -> ObjectInfo | None:
         label = label_for(ctx.job.id)
         url = request_download(m2m, entity.entity_id, option.product_id, label) or retrieve_download(m2m, label)
