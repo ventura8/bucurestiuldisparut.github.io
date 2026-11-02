@@ -135,6 +135,15 @@ describe('interactive elements', () => {
         expect(pointReaches(corner, 40, 210)).toBe(false);
     });
 
+    test('happyPath_aRingInTheViewportsLastHalfPixelCountsAsOffScreen_badPath_theRowAboveIsHitTested', () => {
+        // The hit test rounds a point to the pixel: 0.25 px above the foot of a 600 px viewport is tested at row 600, off screen.
+        const foot = h('button', { class: 'touch-target', style: at(300, 556.75, 40, 40) }, 'f');
+        stage(h('style', {}, RING), foot);
+        expect(targetSizeOf(foot)).toEqual({ width: 48, height: 48 });
+        expect(pointReaches(foot, 100, 599.6)).toBe(true);
+        expect(pointReaches(foot, 100, 599.4)).toBe(false);
+    });
+
     test('happyPath_aRingScrolledOutOfItsListCountsAsComputed_badPath_aRingUnderAnotherControlDoesNot', () => {
         // A switch half scrolled out of its list: the hidden half of its ring is reached by scrolling, not cut.
         const scrolled = h(

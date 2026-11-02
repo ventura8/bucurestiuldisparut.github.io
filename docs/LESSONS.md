@@ -1986,3 +1986,31 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       run writes after the version's.
     - **A signal handler takes no lock and loses nothing: it sets a flag, tells the handler it replaced, and every wait
       looks at the flag.**
+343. **Publish the map, opened while the claim still loaded, turned into the Mapbox card under the owner's click.**
+    - Seen: 2026-11-02, split `all` on 61fd1e8, `admin-l1440-dark-journey`, `journey.spec.ts` "Publishing the map hours
+      after Prepare the project…" (S-A30-BAD-TOKEN-EXPIRED): the spec opened Publish the map, read its text, and its
+      Publish button was never there; the failure's screenshot showed the Mapbox card open and still "To do", though the
+      spec had recorded Mapbox done after the claim had answered.
+    - Found by: the tour matrix on the loaded NUC only; the four other journey projects passed, because there the switch to
+      normal mode had finished before the spec opened the card.
+    - Cause: after the claim, `setMode('normal')` reads the server's record, then runs the legacy import's detection (it
+      reads every photo), then opened the step to resume at unconditionally. A card the admin opened during that load was
+      replaced by the first step not done in the record it had read before (Mapbox). `start` had kept such a card since
+      finding 32; the mode switch had not.
+    - Fix and pin: the controller counts the cards opened (`intents.open`, from a click or the address) and the switch
+      opens the step to resume at only when none was opened while it loaded (`packages/admin/src/setup/controller.ts`,
+      `badPath_aCardOpenedWhileTheSwitchLoadsStaysOpen`).
+    - **Every load that ends by choosing what shows must yield to what the person chose while it ran, on each path that
+      loads, not only the first.**
+344. **A 48 px touch target at the viewport's foot read as 46 px.**
+    - Seen: 2026-11-02, split `all` on 61fd1e8, `tour-c412-light-en` and `tour-c412-dark-en`,
+      `admin.photos.editor-invalid` scrolled to 638 px: the English draft button's ring ended 0.25 px past the viewport,
+      and the target-size rule reported a 133x46 target under M3's 48 x 48. The button and its ring were intact.
+    - Found by: the scroll sweep at the one position (of the English editor's height after #37's field texts) that put a
+      ring's last tested point in the viewport's last half pixel; Romanian and the other sizes never stopped there.
+    - Cause: `pointReaches` counted a point as on screen by its fractional coordinates (914.75 < 915), and the hit test
+      rounds the point to the pixel (915, off screen), where it hits nothing; the side's reach then stopped 2 px short.
+    - Fix and pin: `pointReaches` decides on screen and scrolled away at the rounded pixel the hit test uses
+      (`e2e/support/layout-probe.ts`; `happyPath_aRingInTheViewportsLastHalfPixelCountsAsOffScreen_badPath_theRowAboveIsHitTested`
+      in `e2e/test/layout-probe.test.ts`, which read 48x46 on the old code).
+    - **A probe that hit-tests a fractional point must judge that point where the hit test does: at its rounded pixel.**

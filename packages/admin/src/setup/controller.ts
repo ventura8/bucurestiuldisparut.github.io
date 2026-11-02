@@ -152,6 +152,8 @@ class Controller implements SetupController {
     private readonly unsubscribe: () => void;
     /** Whether the Setup page shows: the shell says so (`module.ts`); a controller without a shell is its own page. */
     private pageShown = true;
+    /** How many times the admin (or the address) opened a card: the switch to normal mode keeps one opened while it loads. */
+    private opened = 0;
 
     constructor(private readonly deps: SetupDeps) {
         this.store = createSetupStore(initialSetupState(deps.host, 'bootstrap'));
@@ -204,8 +206,13 @@ class Controller implements SetupController {
         this.flows.deploy.dispose();
         this.ctx.update((state) => refreshDerived({ ...state, mode }));
         if (mode === 'normal') {
+            // A card opened while the server's record and the import's detection load stays open, as in `start` (the
+            // journey's Publish the map card, opened while the claim's detection still read the photos, became Mapbox).
+            const opened = this.opened;
             await this.loadNormal();
-            this.ctx.update((state) => ({ ...state, openStep: resumeStep(state, null) }));
+            if (this.opened === opened) {
+                this.ctx.update((state) => ({ ...state, openStep: resumeStep(state, null) }));
+            }
         }
     }
 
@@ -414,6 +421,7 @@ class Controller implements SetupController {
         const { billing, provision, mapbox, usgs, analytics, legacyImport } = this.flows;
         return {
             open: (step) => {
+                this.opened += 1;
                 this.ctx.update((state) => ({ ...state, openStep: step }));
             },
             recheck: (step) => (step === undefined ? this.recheckPage() : this.recheckStep(step)),

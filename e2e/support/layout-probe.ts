@@ -274,11 +274,15 @@ export function scrolledAway(element: Element, x: number, y: number): boolean {
 
 /**
  * Whether a pointer at (x, y) reaches `element`. A point off screen or scrolled away cannot be tried and counts as
- * reached: the viewport's edge and a scroller's are the edge checks' business, not the target's size.
+ * reached: the viewport's edge and a scroller's are the edge checks' business, not the target's size. Both are decided
+ * at the pixel the hit test rounds the point to: a point in the viewport's last half pixel is tested at the row past it,
+ * where nothing is hit (the 412 px English photo editor scrolled to put a draft button's ring 0.25 px short of the
+ * viewport's foot read as a 46 px target).
  */
 export function pointReaches(element: Element, x: number, y: number): boolean {
-    const onScreen = x >= 0 && y >= 0 && x < innerWidth && y < innerHeight;
-    return !onScreen || scrolledAway(element, x, y) || reaches(element, deepHit(x, y));
+    const [px, py] = [Math.round(x), Math.round(y)];
+    const onScreen = px >= 0 && py >= 0 && px < innerWidth && py < innerHeight;
+    return !onScreen || scrolledAway(element, px, py) || reaches(element, deepHit(x, y));
 }
 
 /**

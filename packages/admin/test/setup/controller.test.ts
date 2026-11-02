@@ -267,6 +267,31 @@ describe('the switch to normal mode', () => {
         expect(controller.getState().steps.claim.state).toBe('ok');
     });
 
+    it('badPath_aCardOpenedWhileTheSwitchLoadsStaysOpen', async () => {
+        // The journey's Publish the map card, opened while the claim's import detection still read the photos, became Mapbox.
+        const detection: { finish?: (progress: { done: number; total: number; failed: [] }) => void } = {};
+        const { harness, controller } = setup((h) => {
+            writeBootstrapRecord(h.session, RECORD);
+            h.backend.status.mockResolvedValue(READY_VIEW);
+            h.importer.detect.mockReturnValue(
+                new Promise((resolve) => {
+                    detection.finish = resolve;
+                }),
+            );
+        });
+        await controller.start('bootstrap', null);
+
+        const switching = controller.setMode('normal');
+        await vi.waitFor(() => {
+            expect(harness.importer.detect).toHaveBeenCalledTimes(1);
+        });
+        controller.intents.open('site');
+        detection.finish?.({ done: 0, total: 45, failed: [] });
+        await switching;
+
+        expect(controller.getState()).toMatchObject({ mode: 'normal', openStep: 'site' });
+    });
+
     it('badPath_aCityThatCannotBeCreatedKeepsTheRecordForTheNextTry', async () => {
         const { harness, controller } = setup((h) => {
             writeBootstrapRecord(h.session, RECORD);
