@@ -55,9 +55,11 @@ class Runtime:
         self.ending = ending
         self.before = before
         self.jobs: list[str] = []
+        self.asked_to_stop: Callable[[], bool] = lambda: False
 
-    def run(self, job_id: str) -> RunOutcome:
+    def run(self, job_id: str, asked_to_stop: Callable[[], bool]) -> RunOutcome:
         self.jobs.append(job_id)
+        self.asked_to_stop = asked_to_stop
         self.before()
         if isinstance(self.ending, Exception):
             raise self.ending
@@ -195,3 +197,35 @@ def test_happy_path_a_signed_out_worker_waits_and_a_loop_off_the_main_thread_ins
     assert loop.passes == [Pass.NO_SESSION, Pass.NO_SESSION]
     assert server.calls == []
     assert signal.getsignal(signal.SIGTERM) is before
+
+
+def test_happy_path_a_signal_during_a_run_asks_the_run_to_stop_and_ends_the_loop_after_it() -> None:
+    """The run's own handler, when there is one, tells the loop's (lesson 342); the run asks the loop at its checkpoints."""
+    server = Server("job-1")
+    asked: list[bool] = []
+    runtime = Runtime(RunOutcome.DONE)
+
+    def signalled() -> None:
+        signal.raise_signal(signal.SIGTERM)
+        asked.append(runtime.asked_to_stop())
+
+    runtime.before = signalled
+    loop, _state, session = loop_with(server, runtime)
+
+    loop.run()
+
+    assert asked == [True]
+    assert loop.stopping.is_set()
+    session.end("signedOut")
+
+
+def test_happy_path_an_idle_worker_waits_its_poll_interval_in_short_looks() -> None:
+    server = Server()
+    loop, state, _session = loop_with(server, Runtime(), kind=CountingLoop)
+    state.timing.poll_seconds = 0.05
+
+    loop.run()
+
+    assert isinstance(loop, CountingLoop)
+    assert loop.passes == [Pass.IDLE, Pass.IDLE]
+    assert [name for name, _data in server.calls] == ["worker-claim", "worker-claim"]

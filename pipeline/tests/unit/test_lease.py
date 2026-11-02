@@ -4,7 +4,7 @@ import threading
 from collections.abc import Mapping
 
 import pytest
-from hcm_pipeline.jobs import CancelledRunError, LeaseLostError, RunFlags
+from hcm_pipeline.jobs import CancelledRunError, InterruptedRunError, LeaseLostError, RunFlags
 from hcm_pipeline.lease import Heartbeat, owned_change, take_lease
 from hcm_pipeline.model import Timestamp
 from hcm_pipeline.store import Change
@@ -154,3 +154,16 @@ def test_bad_path_a_store_that_says_the_job_is_lost_stops_the_run() -> None:
     Heartbeat(NotHolderStore(), JOB, "worker:w-0123456789abcdef", flags, lambda: 0.0).beat()
 
     assert flags.stopping is LeaseLostError
+
+
+def test_bad_path_a_signal_stops_the_run_without_a_lock_and_a_cancel_or_a_lost_lease_still_wins() -> None:
+    """`interrupt` (the signal handler's) takes no lock: it may run while the main thread holds the flags' own (lesson 342)."""
+    flags = RunFlags()
+    with flags._lock:
+        flags.interrupt()
+    interrupted: object = flags.stopping
+    flags.raise_flag(CancelledRunError)
+    cancelled: object = flags.stopping
+
+    assert (interrupted, cancelled) == (InterruptedRunError, CancelledRunError)
+    assert RunFlags(lambda: True).stopping is InterruptedRunError

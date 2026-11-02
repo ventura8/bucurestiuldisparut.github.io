@@ -98,8 +98,8 @@ export class LocalWorker {
     }
 
     /**
-     * Ctrl-C in the worker's terminal (SIGINT), the way the admin guide stops it: the worker stops and exits; how it ended
-     * (`exit 0` when it stopped cleanly).
+     * One Ctrl-C in the worker's terminal (SIGINT), the way the admin guide stops it: the worker stops and exits; how it
+     * ended (`exit 0` when it stopped cleanly; a worker still running after `STOP_TIMEOUT_MS` is killed and says so).
      */
     async stop(): Promise<string> {
         if (this.#child.exitCode === null && this.#child.signalCode === null) {

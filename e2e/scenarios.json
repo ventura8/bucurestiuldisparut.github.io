@@ -3936,7 +3936,7 @@
             "asserts": "the USGS browse host answers 503 -> 'Preview unavailable' with Try again on the card; the rest of the results work; the browser never requests a USGS address (firewall)",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/search.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes."
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: e2e-fakes; the integrator, 2026-10-24). Test: e2e/admin/specs/imagery/search.spec.ts. The state check passes at every admin project since the CR-M3-35 fixes. Every admin test ends once its page's imagery.search and imagery.browse calls have answered (e2e/admin/support/server-calls.ts): a copy of the test before once recorded the scene as copied in this one (docs/LESSONS.md 341)."
         },
         {
             "id": "S-A11-HAPPY-ROW-PREVIEWS",
@@ -9015,7 +9015,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The real worker claims a local job and finishes it against the emulators",
-            "asserts": "the city's choice is the computer -> Import waits for a worker (Waiting for your computer); the pipeline's worker process signed in with the owner's tokens through its local page (CSRF token, same Origin) -> claims the queued local import, runs every step through worker.step and signed URLs to the Storage emulator -> the version awaits approval, no Cloud Run execution or machine named, the panel shows the computer connected with its last job done; the raw delivery stays in the work folder and is deleted there after locate, and no usgs-raw/ or work/ object is ever in the bucket",
+            "asserts": "the city's choice is the computer -> Import waits for a worker (Waiting for your computer); the pipeline's worker process signed in with the owner's tokens through its local page (CSRF token, same Origin) -> claims the queued local import, runs every step through worker.step and signed URLs to the Storage emulator -> the version awaits approval, no Cloud Run execution or machine named, the panel shows the computer connected with its last job done; the raw delivery stays in the work folder and is deleted there after locate, and no usgs-raw/ or work/ object is ever in the bucket; one Ctrl-C then stops the worker with exit 0",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker-run.spec.ts."
@@ -9239,6 +9239,17 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: pipeline/tests/integration/test_worker_session.py."
+        },
+        {
+            "id": "S-P04-BAD-ONE-SIGNAL",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "One SIGTERM or Ctrl-C stops the worker at any moment",
+            "asserts": "the worker process held while it claims a job, inside a step, right after its run's last checkpoint (five times) or between jobs -> one SIGTERM or SIGINT -> exit 0 within 10 s; a job claimed or mid-step goes back to queued with no step started or the step pending, a finished one stays awaiting approval",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M7 (docs/research/M7-local-worker.md §1.2 step 6; DECISIONS-for-review.md §83j, docs/LESSONS.md 342). Test: pipeline/tests/integration/test_worker_stop.py (the worker in a process of its own: pipeline/tests/fakes/stopping_worker.py)."
         },
         {
             "id": "S-P01-HAPPY-RAW-DELETED",

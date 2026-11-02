@@ -1941,3 +1941,48 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       worker's local page, a fake server) could log through it meanwhile.
     - Fix and pin: the tests read only their own logger's lines (`read_entries(stream, logger)`).
     - **A test that counts shared output filters it to what the test wrote.**
+340. **A notification kind added to the shared list was refused by the rules, and with it every save of the defaults.**
+    - Seen: 2026-11-02, the split `all` of M7 (`d7fe0c9`): S-A47-HAPPY failed at every admin project; saving the push
+      settings answered 403 on `documents:commit` and `pushKinds` kept `job.failed`.
+    - Found by: S-A47-HAPPY (`e2e/admin/specs/notify/push.spec.ts`), the console guard's 403.
+    - Cause: M7 added `job.needsOk` to `NOTIFICATION_KINDS` (pushed by default), but `validPushKinds` in
+      `firebase/firestore.rules` spells the kinds out (rules cannot import `@hcm/shared`) and allowed at most 10; the
+      admin's settings always carry the defaults, so every save held a kind the rules did not know.
+    - Fix and pin: the rules list gains `job.needsOk` and allows 11; `firebase/rules-tests/test/notify.test.ts` saves every
+      kind of `NOTIFICATION_KINDS` alone, all of them, `DEFAULT_PUSH_KINDS` and the defaults without `job.failed` (a kind
+      added to the shared list without the rules fails it), and keeps `job.needsOk` beside an unknown kind refused.
+    - **A list the rules repeat from a shared constant is pinned by a rules test that writes every value of the constant.**
+341. **A browse copy of the test before landed on the next test's scene.**
+    - Seen: 2026-11-02, the split `all` of M7: S-A11-BAD-BROWSE-UNAVAILABLE at `admin-m768-ro` once; after Try again the
+      scene's page showed the image (no 503 followed the click) instead of "unavailable".
+    - Found by: the trace: the retry made no call, so the scene's document said `copied` and the copy existed.
+    - Cause: the admin tests share one city (`PROJECT_CITY`) and the `usgs-browse/` copies (kept by every reset), and
+      the Functions emulator finishes a callable whose page closed. The test before ("Filters narrow the results", under
+      a second) left its harvest's browse prefetch and its rows' `imagery.browse` calls (finding 52's rows ask for every
+      missing copy) running; one of them fetched before this test failed the browse host and recorded `copied` on this
+      test's freshly harvested scene after its own copy had failed. A cross-test leak, not a product race.
+    - Fix and pin: the admin fixtures' `page` ends a test only once its page's `imagery.search` and `imagery.browse` calls
+      have answered (`e2e/admin/support/server-calls.ts`, `SceneWriters`; at most 120 s), so their writes land in the
+      test that made them.
+    - **A server call outlives the page that made it: a test over shared server state ends once its calls have answered.**
+342. **The local worker's first stop signal after a job was lost.**
+    - Seen: 2026-11-02, S-A62-HAPPY-WORKER-RUN: the first SIGTERM or Ctrl-C after a run did not stop the worker within
+      30 s in three of five runs, a second one did at once (`DECISIONS-for-review.md` §83j); in the split `all` the spec
+      read the job `running` while its version already awaited approval, and its stop came in the same moment.
+    - Found by: `pipeline/tests/integration/test_worker_stop.py`, which holds a worker process at a chosen moment and
+      sends one signal: on the old code it timed out at every attempt right after the run's last checkpoint, and while
+      the job was claimed (the whole job then ran).
+    - Cause: the runner replaces the loop's handler for the whole run (`sigterm_raises`), and its handler only raised
+      the run's flag; after the last checkpoint (`_finish`'s write, its log line, both network calls) nothing read the
+      flag again, the run ended `DONE` and the loop went on claiming with its own handler back. A signal while the claim
+      was under way set the loop's flag, which the run never read. Both handlers also took a lock (`RunFlags._lock`,
+      `Event.set`), which a handler running between two bytecodes of the main thread could find held by that thread.
+    - Fix and pin: the runner's handler calls `RunFlags.interrupt` (one assignment, no lock) and the Python handler it
+      replaced (never Python's own Ctrl-C handler); the loop's handler sets a flag only and its waits look at it every
+      0.25 s; the run asks the loop at every checkpoint (`RunSettings.asked_to_stop`), so a stop asked before the first
+      step requeues the job with no step started (`_requeue` without a step). `test_worker_stop.py` (five times at the
+      run's tail, once each during the claim, a step and the idle wait, SIGTERM and SIGINT) expects exit 0 within 10 s;
+      S-A62-HAPPY-WORKER-RUN expects one Ctrl-C to end the worker with `exit 0`, and polls the job's status, which the
+      run writes after the version's.
+    - **A signal handler takes no lock and loses nothing: it sets a flag, tells the handler it replaced, and every wait
+      looks at the flag.**

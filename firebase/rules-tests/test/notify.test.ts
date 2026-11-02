@@ -4,7 +4,7 @@
  * each once, the one `settings` document), reads only their own devices; no client creates or deletes an item or a
  * device or touches `notificationEvents`; admins read the geocoding cache the editors listen to.
  */
-import { FIRESTORE_PATHS } from '@hcm/shared';
+import { DEFAULT_PUSH_KINDS, FIRESTORE_PATHS, NOTIFICATION_KINDS } from '@hcm/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { inboxItemDoc, notificationEventDoc, notifySettingsDoc, pushDeviceDoc } from './support/documents.js';
@@ -138,6 +138,39 @@ describe('the own push settings', () => {
         expect({ created, updated }).toEqual({ created: 'allow', updated: 'allow' });
     });
 
+    it('happyPath_everyKindTheSharedListNamesAndTheDefaultListAreSaved', async () => {
+        // The rules spell the kinds out (rules cannot import @hcm/shared): a kind added to NOTIFICATION_KINDS without the
+        // rules refused every save of the defaults (the M7 kind job.needsOk, docs/LESSONS.md 340). One fresh admin per write.
+        const writes: readonly (readonly [string, readonly string[]])[] = [
+            ['all', NOTIFICATION_KINDS],
+            ['defaults', DEFAULT_PUSH_KINDS],
+            ['defaults but job.failed', DEFAULT_PUSH_KINDS.filter((kind) => kind !== 'job.failed')],
+            ...NOTIFICATION_KINDS.map((kind) => [kind, [kind]] as const),
+        ];
+        const results: Record<string, string> = {};
+        for (const [name, kinds] of writes) {
+            const { uid, db } = await freshAdmin();
+            results[name] = await verdict(
+                db
+                    .doc(FIRESTORE_PATHS.notifySettings(uid))
+                    .set({ push: true, pushKinds: kinds, createdAt: serverTime(), ...stampedBy(uid) }),
+            );
+        }
+
+        expect(results).toEqual(Object.fromEntries(writes.map(([name]) => [name, 'allow'])));
+    });
+
+    it('happyPath_theM7KindJobNeedsOkIsSavedAndAnUnknownKindBesideItIsDenied', async () => {
+        const { uid, db } = await freshAdmin();
+        const path = FIRESTORE_PATHS.notifySettings(uid);
+        await world.seed(path, notifySettingsDoc(uid));
+
+        const withKind = await verdict(db.doc(path).update({ pushKinds: ['job.needsOk', 'job.failed'], ...stampedBy(uid) }));
+        const withUnknown = await verdict(db.doc(path).update({ pushKinds: ['job.needsOk', 'job.needsPay'], ...stampedBy(uid) }));
+
+        expect({ withKind, withUnknown }).toEqual({ withKind: 'allow', withUnknown: 'deny' });
+    });
+
     it('badPath_aCreateWithoutItsOwnCreationTimeIsDenied', async () => {
         const { uid, db } = await freshAdmin();
 
@@ -152,7 +185,7 @@ describe('the own push settings', () => {
         ['an unknown kind', { pushKinds: ['order.paid'] }],
         ['a kind twice', { pushKinds: ['job.failed', 'job.failed'] }],
         ['kinds that are not a list', { pushKinds: 'job.failed' }],
-        ['more kinds than there are', { pushKinds: Array.from({ length: 11 }, () => 'job.failed') }],
+        ['more kinds than there are', { pushKinds: [...NOTIFICATION_KINDS, 'job.failed'] }],
         ['push that is not a switch', { push: 'yes' }],
         ['an unknown field', { email: 'admin@example.test' }],
         ['its creation time', { createdAt: serverTime() }],

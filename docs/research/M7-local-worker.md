@@ -379,3 +379,12 @@ gates and writes the docs.
   token does not carry `uploads:read` and `uploads:write` yet, so a publish falls back to MTS once (§83i, PROPOSED).
 - §1.2 step 6: the first SIGTERM or Ctrl-C after the worker ran a job was lost in three of five e2e runs; a second one
   stops it (§83j, OPEN).
+
+## Addendum (2026-11-02, after the split `all` of `d7fe0c9`)
+
+- §1.2 step 6 as fixed (`DECISIONS-for-review.md` §83j RESOLVED, `docs/LESSONS.md` 342): one SIGTERM or Ctrl-C stops the
+  worker at any moment. The runner's handler tells the loop's, neither takes a lock, the loop's waits look at the signal's
+  flag every 0.25 s, and a stop taken while a job is claimed requeues it at the run's first checkpoint, no step started.
+  `pipeline/tests/integration/test_worker_stop.py` (S-P04-BAD-ONE-SIGNAL) pins it.
+- §4.3's notification `job.needsOk` is one of the push kinds the rules allow (`firebase/firestore.rules`
+  `validPushKinds`, §83k, `docs/LESSONS.md` 340); it was missing, and every save of the push settings was refused.

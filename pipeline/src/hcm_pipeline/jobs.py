@@ -92,11 +92,18 @@ StepResult = Done | Skipped | Waiting
 
 
 class RunFlags:
-    """Thread-safe flags the SIGTERM handler and the heartbeat raise, and the progress the heartbeat writes."""
+    """Thread-safe flags the SIGTERM handler and the heartbeat raise, and the progress the heartbeat writes.
 
-    def __init__(self) -> None:
+    The handler raises its flag with `interrupt`, which takes no lock: a Python signal handler runs in the main thread
+    between two bytecodes, also while that thread holds `_lock` (`progress_within` from GDAL's callback), and taking
+    it there would wait for itself forever (docs/LESSONS.md 342)."""
+
+    def __init__(self, asked_to_stop: Callable[[], bool] = lambda: False) -> None:
         self._lock = threading.Lock()
         self._stop: type[RunStoppedError] | None = None
+        self._interrupted = False
+        # The local worker's stop (M7): a signal it took before the run's own handler was in place counts too.
+        self._asked_to_stop = asked_to_stop
         self.cancel_requested = False
         self.step: str | None = None
         self.base_progress = 0.0
@@ -110,10 +117,16 @@ class RunFlags:
         if stop is CancelledRunError:
             self.cancel_requested = True
 
+    def interrupt(self) -> None:
+        """SIGTERM or Ctrl-C: the run stops at its next checkpoint (`InterruptedRunError`, unless a cancel or a lost lease
+        came first). One assignment and no lock, so a signal handler may call it at any moment."""
+        self._interrupted = True
+
     @property
     def stopping(self) -> type[RunStoppedError] | None:
         with self._lock:
-            return self._stop
+            stop = self._stop
+        return InterruptedRunError if stop is None and (self._interrupted or self._asked_to_stop()) else stop
 
     def check(self) -> None:
         stop = self.stopping

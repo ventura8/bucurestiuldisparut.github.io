@@ -7,6 +7,7 @@ import { SetupBudget } from './budget.js';
 import { GoogleConsent } from './consent.js';
 import { ServerDeployment } from './deployment.js';
 import { EmulatorWorld, type SignedInAccount } from './emulators.js';
+import { SceneWriters } from './server-calls.js';
 import { signInContext } from './session.js';
 import { UpstreamControl } from './upstream.js';
 
@@ -29,6 +30,8 @@ import { UpstreamControl } from './upstream.js';
  * - `consent`: Google's consent stand-in (the popup an in-app click opens, and what it recorded).
  * - `setupBudget`: the Setup Assistant's input and consent budgets per step.
  * - `serverDeployment`: "not deployed yet" at the network edge.
+ * - `page`: the test ends only once the page's harvest and browse copies (`imagery.search`, `imagery.browse`) have
+ *   answered, so their server-side writes never land on the next test's scenes of the shared city (`server-calls.ts`).
  */
 
 interface AdminWorld {
@@ -199,6 +202,11 @@ export const test = base.extend<AdminFixtures>({
         },
         { auto: true, timeout: LEASE_WAIT_MS },
     ],
+    page: async ({ page }, use) => {
+        const writers = new SceneWriters(page);
+        await use(page);
+        await writers.settled();
+    },
     context: async ({ context, persona, adminWorld }, use) => {
         if (persona !== null) {
             // The token's expiry is the browser's wall-clock time, which Firebase Auth compares it with.

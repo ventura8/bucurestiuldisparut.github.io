@@ -5447,7 +5447,7 @@ Verify: `PIPELINE_STAGE=static`, `tests` and `build`; the targeted Playwright sp
 (`e2e/admin/specs/imagery/rows.spec.ts`, `import.spec.ts`, `search.spec.ts`, `orders.spec.ts`,
 `e2e/admin/steps/install/pipeline.spec.ts`, `update.spec.ts`).
 
-## 83. M7: "Run on my computer" and the cheap cloud defaults (2026-11-02) — 83a–83h APPLIED (the user's decisions of 2026-11-01, "make this as free as possible": product, test and documentation changes within `docs/research/M7-local-worker.md`; 83b raises `ADMIN_TOTAL_KB` from 620 to 630, approved under the user's overnight blanket approval of 2026-11-01 ("i give u all the yes"), flagged for review in the morning; 83d a Provision binding the owner applies with step c; no gate relaxed, no checker allowlist entry, no download; `seed/bucharest/` unchanged); 83i PROPOSED (the Uploads scopes of the Mapbox tokens); 83j OPEN (the first stop signal after a job sometimes lost)
+## 83. M7: "Run on my computer" and the cheap cloud defaults (2026-11-02) — 83a–83h APPLIED (the user's decisions of 2026-11-01, "make this as free as possible": product, test and documentation changes within `docs/research/M7-local-worker.md`; 83b raises `ADMIN_TOTAL_KB` from 620 to 630, approved under the user's overnight blanket approval of 2026-11-01 ("i give u all the yes"), flagged for review in the morning; 83d a Provision binding the owner applies with step c; no gate relaxed, no checker allowlist entry, no download; `seed/bucharest/` unchanged); 83i PROPOSED (the Uploads scopes of the Mapbox tokens); 83j RESOLVED (the first stop signal after a job sometimes lost: found and fixed 2026-11-02); 83k–83l APPLIED (the split `all` of `d7fe0c9`: the push kinds the rules allow, the admin tests' server calls)
 
 The contract is `docs/research/M7-local-worker.md` (written before the code; §11 lists what only a real project can prove). Four
 workstreams built it in one tree (fn-worker, fn-cost, pipeline, admin) and an integrator ran the gates.
@@ -5515,7 +5515,7 @@ workstreams built it in one tree (fn-worker, fn-cost, pipeline, admin) and an in
   403 and goes through MTS behind the compute-unit guard (one log line says why), so the free path costs nothing and gains
   nothing until both lists gain the two scopes (the owner's bootstrap token then needs them too, and Setup asks for a
   new paste). The user's decision.
-- **83j OPEN: the first stop signal after a job is sometimes lost.** In five runs of S-A62-HAPPY-WORKER-RUN the first
+- **83j RESOLVED (2026-11-02, below): the first stop signal after a job is sometimes lost.** In five runs of S-A62-HAPPY-WORKER-RUN the first
   SIGTERM, or the first Ctrl-C (SIGINT), sent to the worker after it ran a job did not stop it within 30 s three times
   (once its main thread was caught in a network call at that moment, and 5 s later in the loop's wait); a second signal of
   either kind then stopped it at once with exit 0 and "worker … stopped", and in the other two runs the first Ctrl-C did.
@@ -5526,6 +5526,31 @@ workstreams built it in one tree (fn-worker, fn-cost, pipeline, admin) and an in
   admin guide says, and records how the worker ended without asserting it. The owner's second Ctrl-C works;
   `docker stop` sends SIGTERM, then kills the container after its 10 s grace, and the job goes back to waiting when its
   lease lapses. To look into before the first live run.
+  **Resolved 2026-11-02** (`docs/LESSONS.md` 342): the runner's handler (`sigterm_raises`) replaces the loop's for the
+  whole run and only raised the run's flag; a signal after the run's last checkpoint (`_finish`'s final write and its
+  log line, both network calls through `worker.step`, which is where the main thread was caught) was read by nobody, the
+  run ended `DONE`, and the loop, its own handler back, kept claiming; the second signal reached the loop's handler.
+  The spec's stop came at that moment because the job's status is written after the version's (the split `all` read the
+  job `running`). Also a signal while a claim was under way set the loop's flag only, and the claimed job then ran whole.
+  The reproductions above stopped at once because their signal never fell after the last checkpoint. Fixed: the runner's
+  handler calls `RunFlags.interrupt` (one assignment, no lock: both handlers used to take a lock the main thread could hold
+  at that very bytecode) and then the Python handler it replaced (never Python's own Ctrl-C handler, which would raise
+  `KeyboardInterrupt` inside the run); the loop's handler sets a flag and its waits look at it every 0.25 s
+  (`SIGNAL_CHECK_SECONDS`); the run asks the loop at each checkpoint (`RunSettings.asked_to_stop`), and a stop asked
+  before the first step requeues the job without a step record. `pipeline/tests/integration/test_worker_stop.py`
+  (S-P04-BAD-ONE-SIGNAL) holds a worker process at a moment, sends one signal and expects exit 0 within 10 s: on the old
+  code it timed out at all six tail attempts and during the claim, now all nine pass. S-A62-HAPPY-WORKER-RUN polls the
+  job's status and asserts that one Ctrl-C ends the worker with `exit 0`.
+- **83k APPLIED: the push kinds the rules allow** (`docs/LESSONS.md` 340). `validPushKinds` in `firebase/firestore.rules`
+  spelled out the ten kinds of M4, so `job.needsOk` (M7, pushed by default) made every save of the push settings a 403
+  (S-A47-HAPPY failed at every admin project). The list gains it and allows 11; `firebase/rules-tests/test/notify.test.ts`
+  saves every kind of `NOTIFICATION_KINDS`, all of them and the defaults, so a kind added to the shared list without the
+  rules fails the rules tests.
+- **83l APPLIED: an admin test ends once its imagery calls answered** (`docs/LESSONS.md` 341). S-A11-BAD-BROWSE-UNAVAILABLE
+  failed once at `admin-m768-ro`: a browse copy of the test before (its harvest's prefetch or a row's `imagery.browse`,
+  which finding 52 multiplied) recorded `copied` on this test's scene of the shared `PROJECT_CITY`. Not a product race:
+  the copy existed. The admin fixtures' `page` (`e2e/admin/support/test.ts`) now ends a test only once its page's
+  `imagery.search` and `imagery.browse` requests have answered (`e2e/admin/support/server-calls.ts`). No sleep, no retry.
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; the targeted Playwright runs of `worker.spec.ts`, `worker-run.spec.ts`,
 `jobs.spec.ts`, `guard.spec.ts`, `publish.spec.ts`, `published.spec.ts`, `automation.spec.ts`, `pipeline.spec.ts`, the

@@ -253,3 +253,33 @@ def test_bad_path_sigterm_or_ctrl_c_stops_the_run_at_its_next_checkpoint(number:
 
     assert flags.stopping is InterruptedRunError
     assert signal.getsignal(number) is before
+
+
+def test_bad_path_a_signal_also_tells_the_python_handler_it_replaced_but_never_raises_ctrl_c() -> None:
+    """The local worker's loop learns of a signal during a run, after its last checkpoint too (docs/LESSONS.md 342); Python's
+    own Ctrl-C handler is not called, which would raise `KeyboardInterrupt` in the middle of the run."""
+    told: list[int] = []
+    flags, before = RunFlags(), signal.signal(signal.SIGTERM, lambda number, _frame: told.append(number))
+    try:
+        with sigterm_raises(flags):
+            signal.raise_signal(signal.SIGTERM)
+            signal.raise_signal(signal.SIGINT)
+    finally:
+        signal.signal(signal.SIGTERM, before)
+
+    assert told == [signal.SIGTERM]
+    assert flags.stopping is InterruptedRunError
+
+
+def test_bad_path_a_stop_asked_before_the_run_requeues_the_job_before_its_first_step(world: PipelineWorld) -> None:
+    """The local worker took a signal while it claimed the job: the run stops at its first checkpoint, no step started."""
+    steps = scripted()
+    settings = RunSettings(heartbeat_seconds=3600, asked_to_stop=lambda: True)
+
+    outcome = JobRunner(seed(world), world.services(), steps, settings).run()
+
+    job = world.job(JOB)
+    assert outcome is RunOutcome.REQUEUED
+    assert (job["status"], job["retryAt"]) == ("queued", Timestamp.at(NOW + 60))
+    assert all(step.runs == 0 for step in steps.values())
+    assert "steps" not in job

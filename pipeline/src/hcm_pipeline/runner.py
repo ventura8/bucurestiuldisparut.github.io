@@ -27,7 +27,7 @@ ran on (`machines.download`, `machines.process`).
 import enum
 import signal
 import tempfile
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -42,7 +42,6 @@ from hcm_pipeline.joblog import JobLog, scrub
 from hcm_pipeline.jobs import (
     CancelledRunError,
     Done,
-    InterruptedRunError,
     JobContext,
     LeaseLostError,
     RunFlags,
@@ -88,12 +87,26 @@ DELIVERY_STEP: Final = "fetch"
 DELIVERY_CONSUMER: Final = "locate"
 
 
+def _chained(before: object) -> Callable[[int, FrameType | None], object] | None:
+    """The handler that was there before the run, when it is a Python one to tell too: the local worker's loop (M7).
+    Not the default ones: Python's Ctrl-C handler would raise `KeyboardInterrupt` in the middle of the run."""
+    return before if callable(before) and before is not signal.default_int_handler else None
+
+
 @contextmanager
 def sigterm_raises(flags: RunFlags) -> Iterator[None]:
-    """While the run lasts, SIGTERM (or SIGINT) raises the flag the next checkpoint turns into `InterruptedRunError`."""
+    """While the run lasts, SIGTERM (or SIGINT) raises the flag the next checkpoint turns into `InterruptedRunError`,
+    and tells the handler it replaced: a signal after the run's last checkpoint (its final writes, its log line) would
+    otherwise be lost to the local worker's loop, which then kept claiming (docs/LESSONS.md 342)."""
+    chained: dict[int, Callable[[int, FrameType | None], object] | None] = {
+        int(number): _chained(signal.getsignal(number)) for number in STOP_SIGNALS
+    }
 
-    def handler(_signum: int, _frame: FrameType | None) -> None:
-        flags.raise_flag(InterruptedRunError)
+    def handler(signum: int, frame: FrameType | None) -> None:
+        flags.interrupt()
+        before = chained.get(signum)
+        if before is not None:
+            before(signum, frame)
 
     previous = {number: signal.signal(number, handler) for number in STOP_SIGNALS}
     try:
@@ -105,9 +118,10 @@ def sigterm_raises(flags: RunFlags) -> Iterator[None]:
 
 @dataclass(frozen=True)
 class RunSettings:
-    """What tests shorten: the heartbeat's interval."""
+    """What tests shorten: the heartbeat's interval; and the local worker's stop, which a run obeys from its start (M7)."""
 
     heartbeat_seconds: float | None = None
+    asked_to_stop: Callable[[], bool] = lambda: False
 
 
 class JobRunner:
@@ -128,7 +142,7 @@ class JobRunner:
         if not decision.taken:
             LOG.info("job %s not run: %s", self._config.job_id, decision.verdict)
             return RunOutcome.UNTOUCHED
-        flags = RunFlags()
+        flags = RunFlags(self._settings.asked_to_stop)
         heartbeat = Heartbeat(self._services.store, self._path, self._config.lease_owner, flags, self._services.clock)
         heartbeat.interval = self._settings.heartbeat_seconds or heartbeat.interval
         with tempfile.TemporaryDirectory(prefix=f"hcm-{self._config.job_id}-") as scratch, heartbeat, sigterm_raises(flags):
@@ -263,7 +277,9 @@ class JobRunner:
         return RunOutcome.DONE
 
     def _requeue(self, ctx: JobContext) -> RunOutcome:
-        self._final({"status": "queued", "retryAt": self._now().plus(REQUEUE_SECONDS), **self._pending(ctx, ctx.step)})
+        """Back to `queued`; the step it stopped in, if it had started one (a stop asked before the first step has none)."""
+        pending = self._pending(ctx, ctx.step) if ctx.step else {}
+        self._final({"status": "queued", "retryAt": self._now().plus(REQUEUE_SECONDS), **pending})
         self._log.warn("stopped by Cloud Run (SIGTERM); the job resumes from its checkpoint", ctx.step or None)
         return RunOutcome.REQUEUED
 

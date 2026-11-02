@@ -101,7 +101,8 @@ class WorkerRuntime:
         self._signed.close()
         self._http.close()
 
-    def run(self, job_id: str) -> RunOutcome:
+    def run(self, job_id: str, asked_to_stop: Callable[[], bool]) -> RunOutcome:
+        """The job's run; it stops at its next checkpoint once `asked_to_stop` (the loop's signal) says so."""
         config = worker_config(self._args, self._worker_id, job_id)
-        settings = RunSettings(heartbeat_seconds=self._state.timing.heartbeat_seconds)
+        settings = RunSettings(heartbeat_seconds=self._state.timing.heartbeat_seconds, asked_to_stop=asked_to_stop)
         return JobRunner(config, self.services(config), self._steps(), settings).run()

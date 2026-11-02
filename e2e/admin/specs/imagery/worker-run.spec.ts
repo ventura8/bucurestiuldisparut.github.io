@@ -130,6 +130,10 @@ test(
             await expect
                 .poll(async () => (await imagery.version(versionId))?.['state'], { timeout: FUNCTIONS_TIMEOUT_MS })
                 .toBe('awaiting_approval');
+            // The version is told first (by the last step), the job by the run's final write after it.
+            await expect
+                .poll(async () => (await imagery.job(versionId))?.['status'], { timeout: FUNCTIONS_TIMEOUT_MS })
+                .toBe('awaiting_approval');
             const job = (await imagery.job(versionId)) ?? {};
             expect(job).toMatchObject({ status: 'awaiting_approval', waitReason: 'approval', runOn: 'local' });
             expect((job['worker'] as { id?: string } | undefined)?.id).toMatch(/^w-[0-9a-f]{16}$/);
@@ -158,9 +162,13 @@ test(
                 })
                 .toBe('idle');
             await expectPanelIdle(page, lang);
+
+            // One Ctrl-C, as the admin guide stops it, ends the worker cleanly (the first signal after a job was once lost:
+            // DECISIONS-for-review.md §83j, docs/LESSONS.md 342).
+            expect(await worker.stop()).toBe('exit 0');
+            expect(worker.output()).toMatch(/worker w-[0-9a-f]{16} stopped/);
         } finally {
-            // Ctrl-C, as the admin guide stops it. How it ended is recorded, not asserted: the first signal after a job was
-            // sometimes lost in this world (DECISIONS-for-review.md §83j, open), and the stop then ends with SIGKILL.
+            // A test that failed before its stop still ends the worker (a second stop of an ended worker only reads how).
             testInfo.annotations.push({ type: 'worker stop', description: await worker.stop() });
         }
     },

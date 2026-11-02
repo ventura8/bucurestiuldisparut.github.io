@@ -403,13 +403,14 @@ service cloud.firestore {
         // time is the server's) and writes its own push settings (CLIENT_WRITES.inboxItem, .notifySettings).
         // notificationEvents/* has no client rule at all: the producers create them, the fan-out reads them.
 
-        // The kinds an admin may have pushed (`NOTIFICATION_KINDS`), each at most once.
+        // The kinds an admin may have pushed (`NOTIFICATION_KINDS` of @hcm/shared, the same order), each at most once. A kind
+        // added there must be added here too: the rules test `notify.test.ts` saves every kind and the default list.
         function validPushKinds(kinds) {
             return kinds is list
-                && kinds.size() <= 10
+                && kinds.size() <= 11
                 && kinds.toSet().size() == kinds.size()
                 && kinds.hasOnly(['usgs.approved', 'order.delivered', 'order.imported', 'order.reminder', 'order.expired', 'job.failed',
-                    'layer.readyToApprove', 'layer.needsPoints', 'budget.paused', 'crash.spike']);
+                    'layer.readyToApprove', 'layer.needsPoints', 'budget.paused', 'crash.spike', 'job.needsOk']);
         }
 
         function ownAdmin(uid) {
