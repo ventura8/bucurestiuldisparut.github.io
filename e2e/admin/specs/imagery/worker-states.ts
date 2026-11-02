@@ -38,6 +38,19 @@ export const WORKER_STATES = {
         title: 'Historical imagery: a version no computer came for in 15 minutes, Run in Google Cloud instead first',
         visit: 'specs/imagery/worker.spec.ts',
     },
+    // Finding 72 of 2026-11-02 ("I should not have to copy and paste").
+    'worker.local-downloaded': {
+        title: 'Jobs: Use this computer gave the starter file, and how to open it on the chosen system',
+        visit: 'specs/imagery/worker.spec.ts',
+    },
+    'worker.local-advanced': {
+        title: 'Jobs: the file could not be prepared; Advanced open, the command with its one-time code and Copy',
+        visit: 'specs/imagery/worker.spec.ts',
+    },
+    'worker.local-connected': {
+        title: 'Jobs: the admin paired this computer by itself, This computer is connected, no code on screen',
+        visit: 'specs/imagery/worker-run.spec.ts',
+    },
     'worker.place-worker': {
         title: 'Historical imagery: a version waiting for your computer, the Jobs link and Run in Google Cloud',
         visit: 'specs/imagery/worker.spec.ts',

@@ -133,6 +133,8 @@ class App:
 
     def __init__(self) -> None:
         self.signed_in: list[tuple[object, object]] = []
+        self.paired: list[object] = []
+        self.pair_refusal: str | None = None
 
     def web_config(self) -> Mapping[str, str] | None:
         return None
@@ -147,11 +149,18 @@ class App:
     def sign_out(self) -> None:
         return
 
+    def pair(self, code: object) -> str | None:
+        self.paired.append(code)
+        return self.pair_refusal
+
+
+HOSTING = f"https://{PROJECT}.web.app"
+
 
 @pytest.fixture
 def server() -> Iterator[tuple[LocalServer, App]]:
     app = App()
-    local = LocalServer(app, SETTINGS, ("127.0.0.1", 0), content_security_policy(PROJECT))
+    local = LocalServer(app, SETTINGS, ("127.0.0.1", 0), content_security_policy(PROJECT), Endpoints.cloud(PROJECT).hosting_origins)
     try:
         yield local, app
     finally:
@@ -201,6 +210,91 @@ def test_happy_path_the_server_answers_over_http_with_its_headers(server: tuple[
     assert answer.headers["content-security-policy"] == content_security_policy(PROJECT)
 
 
+# --- auto-pair from the admin (finding 72, M7 §2.7) --------------------------------------------------------
+
+
+def from_admin(local: LocalServer, method: str, path: str, body: bytes | None = b"", headers: Mapping[str, str] | None = None) -> Request:
+    """A request of the admin's page on the project's Hosting origin (no CSRF token: it cannot know it)."""
+    base = {"host": f"127.0.0.1:{local.port}", "origin": HOSTING, "content-type": "application/json"}
+    return Request(method, path, {**base, **(headers or {})}, body)
+
+
+def test_happy_path_the_admins_origin_reads_the_state_and_posts_its_code(server: tuple[LocalServer, App]) -> None:
+    local, app = server
+    preflight = from_admin(local, "OPTIONS", "/pair", headers={"access-control-request-private-network": "true"})
+    state = from_admin(local, "GET", "/state")
+    pair = from_admin(local, "POST", "/pair", json.dumps({"code": "a" * 26}).encode())
+
+    assert local.answer(preflight)[0] == 204
+    assert dict(local.cors_headers(preflight)) == {
+        "Access-Control-Allow-Origin": HOSTING,
+        "Vary": "Origin",
+        "Access-Control-Allow-Methods": "GET, POST",
+        "Access-Control-Allow-Headers": "content-type",
+        "Access-Control-Max-Age": "600",
+        "Access-Control-Allow-Private-Network": "true",
+    }
+    assert local.answer(state)[0] == 200
+    assert dict(local.cors_headers(state)) == {"Access-Control-Allow-Origin": HOSTING, "Vary": "Origin"}
+    assert local.answer(pair)[0] == 202
+    assert app.paired == ["a" * 26]
+
+
+def test_bad_path_another_site_can_neither_read_the_state_nor_pair(server: tuple[LocalServer, App]) -> None:
+    local, app = server
+    stranger = {"origin": "https://attacker.example"}
+    app.pair_refusal = "paired"
+
+    answers = {
+        "a stranger's preflight": local.answer(from_admin(local, "OPTIONS", "/pair", headers=stranger)),
+        "a preflight of the page's sign-in": local.answer(from_admin(local, "OPTIONS", "/session")),
+        "a stranger's read": local.answer(from_admin(local, "GET", "/state", headers=stranger)),
+        "a stranger's code": local.answer(from_admin(local, "POST", "/pair", b'{"code": "x"}', headers=stranger)),
+        "the page's own origin": local.answer(request(local, "POST", "/pair", b'{"code": "x"}')),
+        "a form's body": local.answer(from_admin(local, "POST", "/pair", b"code=x", headers={"content-type": "text/plain"})),
+        "a body too large": local.answer(from_admin(local, "POST", "/pair", None)),
+        "a computer paired already": local.answer(from_admin(local, "POST", "/pair", b'{"code": "x"}')),
+    }
+
+    assert {name: status for name, (status, _body, _type) in answers.items()} == {
+        "a stranger's preflight": 403,
+        "a preflight of the page's sign-in": 403,
+        "a stranger's read": 403,
+        "a stranger's code": 403,
+        "the page's own origin": 403,
+        "a form's body": 403,
+        "a body too large": 413,
+        "a computer paired already": 409,
+    }
+    assert local.cors_headers(from_admin(local, "GET", "/state", headers=stranger)) == []
+    assert app.paired == ["x"]
+
+
+def test_happy_path_the_page_actions_hand_a_code_to_the_connector_only_while_unpaired(
+    api: FakeWorkerApi, tmp_path: Path, built: list[Worker]
+) -> None:
+    worker = worker_for(api, tmp_path, built)
+    offered: list[str] = []
+    worker.actions.accept_pairing(offered.append)
+
+    assert worker.actions.pair("not a code") == Errors.INVALID_REQUEST
+    assert worker.actions.pair("b" * 26) is None
+    assert worker.state.snapshot()["pairable"] is True
+    assert worker.state.snapshot()["workerId"] == worker.worker_id
+    assert worker.actions.sign_in(*api.sign_in_tokens(api.clock() + 3600)) is None
+    assert worker.actions.pair("c" * 26) == "paired"
+    assert offered == ["b" * 26]
+    assert worker.state.snapshot()["pairable"] is False
+
+
+def test_bad_path_a_disconnected_worker_takes_no_code_from_the_admin(api: FakeWorkerApi, tmp_path: Path, built: list[Worker]) -> None:
+    worker = worker_for(api, tmp_path, built)
+
+    worker.state.failed("apiError.worker.revoked")
+
+    assert worker.state.snapshot()["pairable"] is False
+
+
 # --- the runtime and the command --------------------------------------------------------------------------
 
 
@@ -242,6 +336,28 @@ def test_happy_path_the_worker_command_serves_until_stopped(api: FakeWorkerApi, 
 
     assert code == ExitCode.OK
     assert built[0].loop.stopping.is_set()
+
+
+def test_bad_path_an_outdated_image_under_the_supervisor_exits_75(api: FakeWorkerApi, tmp_path: Path) -> None:
+    """Scenarios: S-P04-BAD-SUPERVISED-OUTDATED"""
+    # Finding 72: the starter's supervisor reads the exit and pulls the installed image.
+    env = {**api.env(), "HCM_STAC_URL": "http://127.0.0.1:1/stac", "HCM_OVERPASS_URL": "http://127.0.0.1:1/overpass"}
+    built: list[Worker] = []
+
+    def build(args: WorkerArgs) -> Worker:
+        worker = Worker.build(args, "127.0.0.1", api.clock)
+        worker.loop.outdated_exit = True
+        worker.loop.stop()
+        built.append(worker)
+        return worker
+
+    digest = "sha256:" + "e7" * 32
+    argv = ["worker", "--city", "bucharest", "--project", PROJECT, "--port", "0", "--work", str(tmp_path), "--emulators"]
+    code = main([*argv, "--supervised", "--image", digest], env, StepRegistry((WorkerCommand(build),)), io.StringIO())
+
+    assert code == ExitCode.OUTDATED
+    assert int(code) == 75
+    assert built[0].loop.supervised is True
 
 
 def test_bad_path_the_worker_command_names_a_bad_argument() -> None:

@@ -17,6 +17,10 @@ import { ANALYTICS_IMAGE_SOURCES, ANALYTICS_SCRIPT_SOURCES, MAPBOX_CONNECT_SOURC
  * - **App Check with reCAPTCHA Enterprise** (security review §1.6): its script on `www.google.com/recaptcha/` and
  *   `www.gstatic.com/recaptcha/`, its frames on `www.google.com/recaptcha/` and `recaptcha.google.com/recaptcha/`.
  * - **Images**: Cloud Storage downloads, the Google account picture, OpenStreetMap tiles (the georeferencer, M3).
+ * - **The local worker** (finding 72 of 2026-11-02, `docs/research/M7-local-worker.md` §2.7): the auto-pair reads
+ *   `http://127.0.0.1:8765/state` and posts its code to `/pair` (`localhost` too, the worker page's own name). A
+ *   loopback address is potentially trustworthy, so neither mixed-content blocking nor `upgrade-insecure-requests`
+ *   touches it (**UNVERIFIED** in every browser: the first live auto-pair proves Chrome's).
  */
 
 /** Firebase Auth's popup flow loads the gapi helper from here. */
@@ -28,6 +32,9 @@ const RECAPTCHA_FRAME_SOURCES: readonly string[] = ['https://www.google.com/reca
 
 /** Every Google API the admin calls (Cloud REST, tokeninfo, Identity Toolkit, Firestore, Storage) and the callables. */
 const GOOGLE_CONNECT_SOURCES: readonly string[] = ['https://*.googleapis.com', 'https://*.cloudfunctions.net', 'https://*.run.app'];
+
+/** This computer's local worker (`WORKER_PORT`), on its two loopback names. */
+const LOCAL_WORKER_CONNECT_SOURCES: readonly string[] = ['http://127.0.0.1:8765', 'http://localhost:8765'];
 
 /** GA4 beacons after consent (the Analytics card's own measurement; the API hosts are under `*.googleapis.com`). */
 const ADMIN_ANALYTICS_CONNECT_SOURCES: readonly string[] = [
@@ -72,7 +79,16 @@ export function adminCspDirectives(projectId: string): readonly CspDirective[] {
             ],
         ],
         ['style-src', ["'self'", MAPBOX_GL_CDN]],
-        ['connect-src', ["'self'", ...GOOGLE_CONNECT_SOURCES, ...MAPBOX_CONNECT_SOURCES, ...ADMIN_ANALYTICS_CONNECT_SOURCES]],
+        [
+            'connect-src',
+            [
+                "'self'",
+                ...GOOGLE_CONNECT_SOURCES,
+                ...MAPBOX_CONNECT_SOURCES,
+                ...ADMIN_ANALYTICS_CONNECT_SOURCES,
+                ...LOCAL_WORKER_CONNECT_SOURCES,
+            ],
+        ],
         ['img-src', ["'self'", 'data:', 'blob:', ...ADMIN_IMAGE_SOURCES, ...ANALYTICS_IMAGE_SOURCES]],
         ['frame-src', ["'self'", ...authDomains(projectId), 'https://accounts.google.com', ...RECAPTCHA_FRAME_SOURCES]],
         ['worker-src', ["'self'", 'blob:']],

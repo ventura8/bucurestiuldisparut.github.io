@@ -73,4 +73,9 @@ export const INSTALL_STATES = {
         title: 'Setup, a server in place on a project prepared before Provision changed: the settings the update applies, Update the map',
         visit: 'steps/install/update.spec.ts',
     },
+    // Finding 70 and 59 of 2026-11-02: a build under way offers no update, and the card never says Not installed meanwhile.
+    'setup.install-update-building': {
+        title: "Setup, Install the server: the update's build under way, no Update the map and no Provision line beside it",
+        visit: 'steps/install/update.spec.ts',
+    },
 } as const;

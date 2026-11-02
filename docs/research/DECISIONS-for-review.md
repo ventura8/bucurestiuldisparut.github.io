@@ -5672,3 +5672,71 @@ Verify: the targeted tests (`pipeline/tests/unit/test_corners.py`, `pipeline/tes
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`worker.spec.ts`, `worker-run.spec.ts`, the
 install specs, `provision.spec.ts`, `journey.spec.ts`, two workers).
+
+## 86. No copy and paste for the local worker, and the live test's open issues: the starter file, auto-pair, an update's record after its server, a card quiet during a build, the month's meter backfilled, a lost run's page (2026-11-02) — 86a–86g and 86i APPLIED (findings 59–61, 64, 70–72 of `docs/research/manual-test-2026-10-25.md`, the user's request "I should not have to copy and paste. Fix. Also fix open issues" and decision "Starter file + auto-pair": product, test and documentation changes; one new callable and one new lazy chunk with its own budget row (the pre-approved kind), each text in both languages; the admin's CSP `connect-src` gains the worker's loopback address; no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged); 86h APPLIED for review (two build changes that shrink the admin, each reversible in one line); 86j recorded for the user
+
+- **86a APPLIED (finding 72): the starter file.** **Use this computer** on the worker's panel saves a file for the browser's
+  system (switchable), made from the templates `packages/admin/starter/hcm-worker.sh` (Linux `.sh`, macOS `.command`) and
+  `hcm-worker.bat` (Windows: cmd, then PowerShell), which the admin's site build publishes at `/admin/worker/` and the admin
+  fills with the project, the city and `install`/`uninstall`, each checked against its pattern. Opened once, it checks
+  Docker and installs a per-user supervisor (systemd `--user`, else the desktop's autostart; a LaunchAgent; a task at
+  logon, else the Startup folder), whose loop reads the installed image from the new callable `worker.image` (no sign-in,
+  App Check off, `fn-worker`, read-only), pulls it by digest and runs `worker --supervised --image <digest>` with no restart
+  policy, starting it again after any end (at once after `75`, `WORKER_OUTDATED_EXIT`). It holds no secret. **Stop using
+  this computer** gives the same file set to `uninstall`. Chosen over the example's static `/admin/worker.json` of the site
+  build: the site's build cannot know the digest the pipeline's own build pushes, and a stale file would make every
+  supervisor pull an image the server calls outdated, in a loop (`docs/research/M7-local-worker.md`, its addendum of
+  2026-11-02). Not made: a Linux `.desktop` launcher (GNOME's Files does not launch an untrusted downloaded one). The shell
+  template passes shellcheck and shfmt in the static stage; the image has no PowerShell, so the Windows file's structure is
+  unit-tested (`packages/admin/test/worker/starter.test.ts`: every system's file, no placeholder, no code, CRLF, one
+  PowerShell part, balanced brackets; the POSIX one through `sh -n`).
+- **86b APPLIED (finding 72): auto-pair.** The worker's local server answers `GET /state` and `POST /pair {code}` with CORS
+  and Private Network Access's preflight for the project's Hosting origins only (`Endpoints.hosting_origins`); the code goes
+  to the connector, which pairs at the loop's next pass as `--pair` does. The admin's `LocalComputer` (lazy chunk
+  `worker-local`, one instance per city and project) looks every 5 s while the panel is shown and while the admin is open
+  (`packages/admin/src/app/local-watch.ts`, its own listener of the shell), only in a browser that set the computer up
+  (`localStorage` `hcm:admin:workerLocal`), and posts a fresh `worker.pairCode` to a `pairable` worker of its city and
+  project. The panel no longer mints a code just by showing (the Advanced command mints one when opened). The admin's CSP
+  `connect-src` gains `http://127.0.0.1:8765 http://localhost:8765` (`scripts/site/src/admin/csp.ts`, `firebase.json`; a
+  narrower policy than a wildcard, the kept-equal test unchanged). The security review: §10.14–§10.19 of the M7 contract.
+- **86c APPLIED: the image a supervised worker runs is the one compared.** `worker.hello` takes an optional `image`; the
+  worker's document records it, and `worker.hello` and `worker.claim` compare it, else the pairing's, with the installed
+  one: a kept pairing outlives many images. A worker of this release against a server of before it is refused at hello
+  (its strict schema): Update the map installs the server with the pipeline, so only a starter file run before the server's
+  update meets it, and the supervisor's next start after the update succeeds.
+- **86d APPLIED (finding 71): an update's Provision record waits for the server it installs.** `ProvisionUpdate` takes
+  `recordAfter`, which `#update` resolves once the server's build has settled (any state but a running one; also when the
+  cards are disposed). Root cause, from the code and the live facts: the items ran (already `ok`), the record naming
+  `setVersion` went to the server being replaced, whose strict schema refused it. Rejected: retrying the record without
+  `setVersion` (the items would be recorded, the version never). Live: one more Update the map records it.
+- **86e APPLIED (finding 59): a card keeps what it showed until its first look.** `Cards.#shown`: a view without
+  `checkedAt` takes only `busy`, `error` and `blocker` over the recorded target.
+- **86f APPLIED (findings 60, 61): a lost run's version page.** `jobViewOf` reads a `running` step of a failed job as
+  `failed` (no byte count) and drops a message that is only a code; the server's ending is unchanged (the job keeps the
+  code, the Jobs page shows it).
+- **86g APPLIED (finding 64): the month's meter backfilled once.** `backfillCloudUsage` (`imagery.tick`, before the cities'
+  parts): when `usage/cloudrun-<month>` has no `backfilledAt`, every city's jobs dispatched this month that ran in the cloud,
+  are not running and were never counted add (end − dispatch, at most `BACKFILL_RUN_MAX_SECONDS` = 3 h) × the machine (`std`
+  when none is named); the transaction marks the month (`cloudRunUsageDocSchema.backfilledAt`), and a later count keeps the
+  mark. An earlier attempt of a job that ran again is lost: the meter stays an estimate.
+- **86h APPLIED for review (the admin's bundle): two savings instead of a raise.** Finding 72 needed about 2 KB and the
+  admin had 0.8 KB left of 630. (1) zod's classic schemas import its JSON Schema conversion for `toJSONSchema()`, Standard
+  Schema's `jsonSchema` and derived getters the admin never calls, reachable from every schema's constructor; the admin's
+  build resolves those two imports to `packages/admin/src/vendor/zod-json-schema-unsupported.ts` (each function throws;
+  unit-tested to name every one zod imports), as §65k did for `re2js`: −5.7 KB. (2) `sourcemap: 'hidden'`: the maps are
+  still written (the notices gate reads them) but the chunks no longer name files Hosting never serves (`**/*.map` is
+  ignored): −1.1 KB. With finding 72 and the other fixes: 626.6 of 630 KB; `worker` 5.7 of 7 KB; the new `worker-local`
+  4.3 KB with its row `"worker-local": 5` (the measurement plus about 20 %, the pre-approved kind). To revert either: delete
+  the plugin line, or set `sourcemap: true` (the budget then needs a raise). Every admin unit and the targeted e2e tests
+  pass on it (the e2e admin is built with it).
+- **86i APPLIED (finding 70): no update offered while a build runs.** `updateOffered` is false while any target's build is
+  queued, working or retrying, or a click on one is on its way: neither **Update the map** nor the Provision line shows.
+- **86j recorded for the user.** To take these live: deploy the server (it adds `worker-image` and the backfill) and the
+  site (the starter templates and the admin), then **Update the map** once more (it records Provision's version: finding 71).
+  On the computer: **Use this computer**, open the file once; the panel says **This computer is connected** without a paste.
+  The running worker of the old command keeps working until the file's supervisor replaces it (the same container name).
+  Verify live, each **UNVERIFIED** until then: the first double-click per system, the task at logon without administrator
+  rights, Chrome's Local Network Access prompt, an update reaching the supervised worker (exit 75, the new digest pulled).
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`worker.spec.ts`, `worker-run.spec.ts`, the
+install specs, `provision.spec.ts`, `journey.spec.ts`, the imagery version specs; two workers).

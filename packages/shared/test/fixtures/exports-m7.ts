@@ -62,4 +62,10 @@ export const M7_EXPORTS: readonly string[] = [
     'workerRevokeResponseSchema',
     'workerPairingDocSchema',
     'workerPairLimitDocSchema',
+    // Finding 72: the starter file and its supervisor (`worker.image`), auto-pair.
+    'WORKER_OUTDATED_EXIT',
+    'WORKER_STARTER_PLACEHOLDERS',
+    'WORKER_STARTER_TEMPLATES',
+    'workerImageRequestSchema',
+    'workerImageResponseSchema',
 ];

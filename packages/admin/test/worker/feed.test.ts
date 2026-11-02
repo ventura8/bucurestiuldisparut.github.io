@@ -220,43 +220,18 @@ describe("the local worker feed: a version's job and the failures", () => {
 });
 
 describe('the local worker feed: pairing, progress and Disconnect (findings 66-68 of 2026-11-02)', () => {
-    const CODE = 'abcdefghijklmnopqrstuvwxyz';
-
-    it('happyPath_theCommandCarriesAPairingCodeRenewedAMinuteBeforeItExpires @S-A62-HAPPY-PAIR', async () => {
+    it('happyPath_thePanelMintsNoCodeOnItsOwnAndHandsOutTheComputersPart @S-A62-HAPPY-PAIR', async () => {
+        // Finding 72: the code is minted only when the computer's part needs one (auto-pair, or Advanced opened).
         const world = contentWorld();
         world.callables.answer('setup.status', () => status(DIGEST));
-        let minted = 0;
-        world.callables.answer('worker.pairCode', () => {
-            minted += 1;
-            return { code: minted === 1 ? CODE : 'bcdefghijklmnopqrstuvwxyza', expiresAt: '2025-10-09T08:10:00.000Z' };
-        });
         const { feed } = feedOf(world);
         await settle();
 
-        expect(feed.state.pairCode).toBe(CODE);
-        expect(world.callables.calls.find((call) => call.name === 'worker.pairCode')?.request).toEqual({ cityId: CITY });
-        world.clock.advance(9 * 60_000);
-        await settle();
-        expect(feed.state.pairCode).toBe('bcdefghijklmnopqrstuvwxyza');
-        feed.stop();
-        world.clock.advance(9 * 60_000);
-        await settle();
-        expect(minted).toBe(2);
-    });
+        const local = await feed.intents.local('demo-hcm');
 
-    it('badPath_aRefusedCodeOrNoImageLeavesTheCommandWithoutOne', async () => {
-        const world = contentWorld();
-        world.callables.answer('setup.status', () => status(DIGEST));
-        world.callables.fail('worker.pairCode', failure('permission-denied', 'apiError.notAdmin'));
-        const { feed } = feedOf(world);
-        await settle();
-        expect(feed.state).toMatchObject({ image: DIGEST, pairCode: null });
-
-        const bare = contentWorld();
-        bare.callables.answer('setup.status', () => status());
-        feedOf(bare);
-        await settle();
-        expect(bare.callables.named('worker.pairCode')).toBe(0);
+        expect(world.callables.named('worker.pairCode')).toBe(0);
+        expect(local.state).toMatchObject({ phase: 'none', code: null });
+        expect(globalThis.customElements.get('hcm-worker-local')).toBeDefined();
     });
 
     it('happyPath_theConnectedWorkersJobIsFollowedLiveAndDroppedWhenItIsIdle', async () => {

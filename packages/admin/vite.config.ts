@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 import { cssLiteralsPlugin } from '../../scripts/site/src/css-literals.js';
 import { thirdPartyNoticesPlugin } from '../../scripts/site/src/notices.js';
@@ -57,12 +57,34 @@ const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]
  */
 const RE2JS_STAND_IN = fileURLToPath(new URL('src/vendor/re2js-unsupported.ts', import.meta.url));
 
+/**
+ * zod's classic schemas import its JSON Schema conversion for `toJSONSchema()`, Standard Schema's `jsonSchema` and the
+ * derived getters (`minLength`, `maxValue`, `isInt`, `format`), none of which the admin calls: those two imports resolve
+ * to a stand-in that refuses (`src/vendor/zod-json-schema-unsupported.ts`, DECISIONS-for-review.md §86), and the real
+ * modules (18 KB of `admin-core`) are no longer reachable. Every other importer keeps zod's own.
+ */
+const ZOD_JSON_SCHEMA_STAND_IN = fileURLToPath(new URL('src/vendor/zod-json-schema-unsupported.ts', import.meta.url));
+const ZOD_CLASSIC_SCHEMAS = /[\\/]zod[\\/]v4[\\/]classic[\\/]schemas\.js$/;
+const ZOD_JSON_SCHEMA_IMPORTS: ReadonlySet<string> = new Set(['../core/json-schema-processors.js', '../core/to-json-schema.js']);
+
+function zodJsonSchemaStandIn(): Plugin {
+    return {
+        name: 'hcm-zod-json-schema-stand-in',
+        enforce: 'pre',
+        resolveId(source, importer) {
+            const fromZod = importer !== undefined && ZOD_CLASSIC_SCHEMAS.test(importer);
+            return fromZod && ZOD_JSON_SCHEMA_IMPORTS.has(source) ? ZOD_JSON_SCHEMA_STAND_IN : null;
+        },
+    };
+}
+
 export default defineConfig({
     // M6 (docs/research/M6-interfaces.md §2.3): Hosting serves the admin under /admin/ (the public map is at the root);
     // `import.meta.env.BASE_URL` names it for the files the admin fetches by absolute path (src/app/config.ts).
     base: '/admin/',
     resolve: { alias: [{ find: /^re2js$/, replacement: RE2JS_STAND_IN }] },
     plugins: [
+        zodJsonSchemaStandIn(),
         cssLiteralsPlugin(),
         thirdPartyNoticesPlugin({
             product: 'the Historic City Map admin (admin.mjs, its chunks and fonts)',
@@ -72,7 +94,11 @@ export default defineConfig({
     build: {
         outDir: 'dist',
         emptyOutDir: true,
-        sourcemap: true,
+        // The maps are written for the notices gate (scripts/ci/check_notices.py reads the module graph from them) and the
+        // build's own debugging, but Hosting never serves them (`firebase.json` ignores `**/*.map`): `hidden` leaves out
+        // each chunk's `//# sourceMappingURL` line, which only made a browser ask for a missing file (1.1 KB gzip over 31
+        // chunks; DECISIONS-for-review.md §86).
+        sourcemap: 'hidden',
         lib: {
             entry: 'src/index.ts',
             formats: ['es'],

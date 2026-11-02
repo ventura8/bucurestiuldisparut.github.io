@@ -159,7 +159,8 @@ def test_bad_path_another_site_cannot_read_the_state_or_end_the_session(page: Pa
     preflight = page.client.options("/session", headers={"Origin": "https://attacker.example"})
     sign_out = page.client.request("DELETE", "/session", headers={"Origin": "https://attacker.example", "Content-Type": "application/json"})
 
-    assert (own.status_code, foreign.status_code, preflight.status_code, sign_out.status_code) == (200, 403, 405, 403)
+    # A preflight is answered for the admin's Hosting origins only (finding 72's auto-pair): another site's is refused.
+    assert (own.status_code, foreign.status_code, preflight.status_code, sign_out.status_code) == (200, 403, 403, 403)
     assert all(no_cors(answer) for answer in (own, foreign, preflight, sign_out))
     assert page.state()["signedIn"] is True
 

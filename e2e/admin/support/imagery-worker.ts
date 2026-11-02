@@ -11,7 +11,9 @@ import { PIPELINE_PYTHON, pipelineBaseEnv, REPO_ROOT } from './imagery-runner.js
  * Functions emulators (its five `worker.*` callables, the signed URLs to the Storage emulator, the server's USGS calls to
  * the mock APIs), reading the web configuration from the e2e admin server's `/__/firebase/init.json`, and the references
  * from the mock APIs. Its work folder is the test's (the named volume `hcm-worker` of the admin's command). Finding 67 of
- * 2026-11-02: started with the admin command's pairing code (`--pair`), it signs itself in through `worker.pair`.
+ * 2026-11-02: started with the admin command's pairing code (`--pair`), it signs itself in through `worker.pair`. Finding
+ * 72: started without one on the worker's own port (as the starter file's supervisor starts it), the admin's page pairs it
+ * by itself (`POST /pair` from the admin's origin, which the worker's `HCM_HOSTING_HOST` names).
  */
 
 const log = createLogger('e2e-imagery-worker');
@@ -68,8 +70,12 @@ export class LocalWorker {
         });
     }
 
-    /** Starts the worker for `city` with its work folder at `work`, with the admin command's pairing code if given. */
-    static start(city: string, work: string, pair?: string): LocalWorker {
+    /**
+     * Starts the worker for `city` with its work folder at `work`, with the admin command's pairing code if given, on `port`
+     * (0: one the system chooses; `WORKER_PORT`, where the admin's auto-pair looks: one such worker at a time, the admin
+     * tier's lock).
+     */
+    static start(city: string, work: string, pair?: string, port = 0): LocalWorker {
         const args = [
             '-m',
             'hcm_pipeline',
@@ -79,7 +85,7 @@ export class LocalWorker {
             '--project',
             E2E_PROJECT_ID,
             '--port',
-            '0',
+            String(port),
             '--work',
             work,
             '--emulators',

@@ -464,3 +464,96 @@ findings 65–69, `DECISIONS-for-review.md` §85). What changes in this contract
 **UNVERIFIED** (§11, added): fn-admin's `signBlob` for `createCustomToken` (the role Provision grants it since M5), the
 custom-token sign-in with the Hosting origin as `Referer`, a reboot resuming the kept session, the image pull through
 the new command; the first real pairing proves the first two, a reboot the third.
+
+## Addendum (2026-11-02, the starter file and auto-pair: finding 72)
+
+The owner's request after the live update: "I should not have to copy and paste. Fix."; the decision **Starter file +
+auto-pair** (`docs/research/manual-test-2026-10-25.md` finding 72, `DECISIONS-for-review.md` §86). What changes in this
+contract:
+
+- **§1.5 (new), the starter file.** The worker's panel leads with **Use this computer**: the browser saves a file for the
+  system it picks from the user agent (switchable): Linux `hcm-worker.sh`, macOS `hcm-worker.command` (the same POSIX
+  template), Windows `hcm-worker.bat` (cmd, then a PowerShell part after its `exit /b`). The templates are
+  `packages/admin/starter/hcm-worker.sh` and `hcm-worker.bat`; the admin's site build publishes them at
+  `/admin/worker/` and the admin fills `__HCM_PROJECT__`, `__HCM_CITY__` and `__HCM_ACTION__` (`install` or `uninstall`),
+  each value checked against its pattern first, CRLF line ends for Windows (`packages/admin/src/worker/local.ts`). The file
+  holds no secret. Opened once (Linux: `sh ~/Downloads/hcm-worker.sh`; macOS: a double-click, or the same `sh` line when
+  Gatekeeper refuses a downloaded script; Windows: a double-click, past SmartScreen's **More info** → **Run anyway**), it
+  checks Docker (`docker info`; else it says so and opens Get Docker), copies itself to a folder of the user's
+  (`~/.local/share/hcm-worker`, `~/Library/Application Support/hcm-worker`, `%LOCALAPPDATA%\hcm-worker`) and installs a
+  per-user supervisor with no administrator rights:
+
+  | System | Supervisor | Back after |
+  | --- | --- | --- |
+  | Linux | `~/.config/systemd/user/hcm-worker.service` (`Restart=always`, `WantedBy=default.target`, the install's `PATH` and `DOCKER_HOST`); without `systemd --user`, `~/.config/autostart/hcm-worker.desktop` and the supervisor started now | login (and a reboot's login) |
+  | macOS | `~/Library/LaunchAgents/org.historiccitymap.worker.plist` (`RunAtLoad`, `KeepAlive`, a `PATH` with Docker Desktop's folders, a log in `~/Library/Logs`) | login |
+  | Windows | the scheduled task `hcm-worker` at the user's logon running the installed `hcm-worker.ps1` hidden; without the Task Scheduler, a `.cmd` in the Startup folder | logon |
+
+  The supervisor's loop: ask the server for the installed image (`worker.image`, no sign-in: `{image, digest, release}`
+  of `setup/status.install.pipeline`; `apiError.notFound` while none), accept only
+  `us-central1-docker.pkg.dev/<project>/hcm/pipeline@sha256:<64 hex>`, `docker pull` it, remove an older `hcm-worker`
+  container, `docker run --rm --name hcm-worker -p 127.0.0.1:8765:8765 -v hcm-worker:/work <image> worker --city <c>
+  --project <p> --supervised --image sha256:<digest>` in the foreground, with **no** restart policy (the supervisor
+  restarts it). When the worker ends: at once after `75` (`WORKER_OUTDATED_EXIT`, `ExitCode.OUTDATED`: under
+  `--supervised` a claim answered `outdated` ends the worker), after a wait that grows from 10 s to 5 minutes after any
+  other end (small again after a run of over 10 minutes); then it reads the installed image again. So an update of the
+  pipeline reaches the computer within minutes, with no paste and no Docker socket in the container. **Stop using this
+  computer** gives the same file with `uninstall`: it removes the supervisor, the container, the volume `hcm-worker` and the
+  copied folder. One worker per computer, as before.
+- **Why `worker.image` and not a file of the site build**: the image's digest is known only once the pipeline's own build
+  has pushed it (`setup.recordInstall` records it); the site's build cannot know it, and a pipeline updated without the site
+  would leave a static file naming an older image, which the supervisor would pull and the server call outdated, again
+  and again. The callable reads the record the moment it asks.
+- **§1.4 as changed, the image a worker runs**: `worker.hello` takes `image` (the digest the supervisor named); the worker's
+  document records it, and `worker.hello` and `worker.claim` compare it (else the pairing's, as before) with the installed
+  one. A kept pairing outlives many images, so the pairing's own image no longer decides for a supervised worker.
+- **§2.7 (new), auto-pair.** The worker's local server answers two requests of the project's Hosting origins
+  (`https://<project>.web.app`, `https://<project>.firebaseapp.com`; under the emulators `http://<HCM_HOSTING_HOST>`):
+  `GET /state` (now also `workerId` and `pairable`: no session, and not disconnected in the admin) with
+  `Access-Control-Allow-Origin: <origin>` and `Vary: Origin`, and `POST /pair {code}` (a JSON body, so a preflight: `OPTIONS`
+  answers 204 with the methods, `content-type`, `Access-Control-Max-Age: 600` and, when asked,
+  `Access-Control-Allow-Private-Network: true`); 202 with the state, or 409 with why (`paired`, an invalid code). The code
+  goes to the connector (`Connector.offer`), which pairs at the loop's next pass exactly as `--pair` does. Any other origin
+  gets 403 and no CORS header. The admin (`LocalComputer`, the lazy `worker-local` chunk) looks every 5 s while the panel is
+  shown, and while the admin is open (`packages/admin/src/app/local-watch.ts`), but only in a browser that set this
+  computer up for the city (`localStorage` `hcm:admin:workerLocal`, written by **Use this computer**, removed by **Stop
+  using this computer**): a worker of this city and project that is `pairable` gets a code from `worker.pairCode` posted to
+  `/pair` (again after a minute at most); a signed-in one shows **This computer is connected**. The admin's CSP
+  `connect-src` names `http://127.0.0.1:8765` and `http://localhost:8765`. The copyable command stays behind **Advanced**,
+  its code minted when Advanced opens (no code is minted any more when the panel merely shows).
+- **§7 as changed**: the `worker` chunk keeps the panel; the new lazy chunk `worker-local` (budget 5 KB, 4.3 KB measured)
+  holds the starter file, the auto-pair, Stop using this computer, the command and `<hcm-worker-local>`, with its texts in
+  `packages/shared/src/i18n/admin-worker-local/`.
+
+### §10, the security review of the starter file and auto-pair (added)
+
+1. **A malicious site cannot pair the worker (§10.14).** The worker answers `/state` and `/pair` with CORS only for the
+   project's Hosting origins; a page of any other origin gets 403 and no `Access-Control-Allow-Origin`, so it can neither
+   read the state nor send the JSON `POST` (a JSON body needs a preflight, which the worker refuses for that origin; a
+   `text/plain` or form body is refused by the server itself). A browser sets `Origin`, which a page cannot forge. A DNS
+   rebinding name still meets the `Host` check (421). Even a code that reached the worker could only pair it to the account
+   that minted the code, in this project and city: the server's `worker.pair` binds the code to its minter and city.
+2. **No CSRF token on `/pair` (§10.15).** The admin's page cannot know the worker's per-process token; the guard is the
+   origin allow-list above, the preflight, and the code itself (single use, ten minutes, minted by a signed-in city editor
+   through App Check). Replaying a seen code fails (`apiError.worker.pairCode`); a worker already paired answers 409.
+3. **A malicious local process (§10.16), as before §10.3.** A process of the same user can send any `Origin` to
+   `127.0.0.1:8765`, but it can already run `docker` and read the volume, which hold more than a pairing could give it; a
+   process of another user cannot reach Docker. Nothing changes there.
+4. **Private Network Access, Local Network Access (§10.17).** A page on a public origin reaching `127.0.0.1` is what PNA and
+   Chrome's Local Network Access permission guard: the worker answers PNA's preflight for the Hosting origins only, and the
+   admin looks at the computer only in a browser that set it up (`hcm:admin:workerLocal`), so a visitor who never chose to
+   use a computer is never asked. **UNVERIFIED**: the prompt Chrome shows the first time, and whether
+   `upgrade-insecure-requests` leaves a loopback address alone in every browser (a potentially trustworthy URL: Chrome
+   does).
+5. **The starter file (§10.18).** It holds the project id and the city id, both public, and no secret; the values are checked
+   against their patterns before they are written, so no quote or command reaches the script. It runs nothing but `docker`
+   and `curl`/`Invoke-RestMethod` against the project's `cloudfunctions.net` address, and runs only an image of the
+   project's own repository named by digest (the supervisor rejects any other answer). The container gets no Docker socket.
+6. **`worker.image` without a sign-in (§10.19).** It reads one document and answers the image the repository already makes
+   public (`allUsers` reader, §1.1), with the release; two instances at most, App Check off like `worker.pair`.
+
+**UNVERIFIED** (§11, added): each system's first double-click (macOS Gatekeeper on a downloaded `.command`, Windows
+SmartScreen, a Linux file manager that opens `.sh` in an editor: hence the `sh` line), `Register-ScheduledTask` at logon
+without administrator rights, `launchctl bootstrap` from a double-clicked script, Chrome's Local Network Access prompt for
+the admin's look at the loopback, Safari's and Firefox's handling of it, and the supervisor's update after a real Update the
+map. A `.desktop` launcher for Linux was not made: GNOME's Files no longer launches an untrusted downloaded launcher.

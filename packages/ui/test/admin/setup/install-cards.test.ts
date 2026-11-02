@@ -397,3 +397,27 @@ describe('installCardAsks (finding 40 of 2026-11-01)', () => {
         ).toBe(false);
     });
 });
+
+describe('<hcm-setup-deploy>: an update under way (finding 70 of 2026-11-02)', () => {
+    afterEach(cleanup);
+
+    it('badPath_whileABuildRunsNeitherUpdateTheMapNorTheProvisionLineIsOffered @S-A55-BAD-UPDATE-DURING-BUILD', async () => {
+        // Finding 70 of 2026-11-02: the card still offered Update the map and the Provision line beside its own build.
+        const due = { provisionDue: ['artifact-registry', 'bucket-lifecycle'] } as const;
+        const working = await card('deploy', { ...due, server: { state: 'working', steps: RUNNING_STEPS, startedAt: null } });
+
+        expect(working.element.renderRoot.querySelector('[data-provision-due]')).toBeNull();
+        expect(shadowPart(working.element, '.body').textContent).not.toContain('Update the map');
+        cleanup();
+
+        const pipelineBuilds = await card('deploy', { ...due, pipeline: { state: 'queued' } });
+        expect(pipelineBuilds.element.renderRoot.querySelector('[data-provision-due]')).toBeNull();
+        cleanup();
+
+        // Every build settled: the changed settings are offered again.
+        const idle = await card('deploy', { ...due, server: { state: 'installed', installedRelease: '1.0.0+abc1234' } });
+        expect(idle.element.renderRoot.querySelector('[data-provision-due]')).not.toBeNull();
+        await page.getByRole('button', { name: 'Update the map' }).click();
+        expect(idle.port.calls).toEqual([['updateMap', 'deploy']]);
+    });
+});

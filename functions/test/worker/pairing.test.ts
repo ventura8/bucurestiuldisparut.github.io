@@ -20,6 +20,7 @@ import type { CallerToken } from '../../src/api/access.js';
 import { claimFunction } from '../../src/worker/claim.js';
 import { endFunction } from '../../src/worker/end.js';
 import { helloFunction } from '../../src/worker/hello.js';
+import { imageFunction } from '../../src/worker/image.js';
 import { pairCodeFunction } from '../../src/worker/pair-code.js';
 import { pairFunction } from '../../src/worker/pair.js';
 import { newPairCode, pairIdOf } from '../../src/worker/pairing.js';
@@ -317,5 +318,71 @@ describe('worker.revoke', () => {
         const world = await workerWorld();
 
         await expect(callAs(world, revokeFunction, { workerId: WORKER })).resolves.toEqual({ revoked: false });
+    });
+});
+
+describe('the starter file (finding 72)', () => {
+    it('happyPath_theSupervisorAsksForTheInstalledImageWithoutASignIn @S-A62-HAPPY-STARTER-IMAGE', async () => {
+        const world = await workerWorld();
+        await installed(world, NEWER);
+
+        const request = { data: {}, rawRequest: {}, acceptsStreaming: false } as unknown as CallableRequest<unknown>;
+        await expect(imageFunction(() => world.deps).run(request)).resolves.toEqual({
+            image: `us-central1-docker.pkg.dev/${world.deps.config.projectId}/hcm/pipeline@${NEWER}`,
+            digest: NEWER,
+            release: '1.0.0',
+        });
+    });
+
+    it('badPath_withoutAnInstalledImageTheSupervisorIsToldNotFound @S-A62-BAD-STARTER-NO-IMAGE', async () => {
+        const world = await workerWorld();
+        const request = { data: {}, rawRequest: {}, acceptsStreaming: false } as unknown as CallableRequest<unknown>;
+
+        await expect(failureOf(imageFunction(() => world.deps).run(request))).resolves.toMatchObject({
+            details: { code: 'apiError.notFound' },
+        });
+        // A pipeline recorded before its image was (an install from before M7): the same answer.
+        await seedSetup(world, { install: { pipeline: { state: 'installed', release: '1.0.0', checkedAt: NOW } } });
+        await expect(failureOf(imageFunction(() => world.deps).run(request))).resolves.toMatchObject({
+            details: { code: 'apiError.notFound' },
+        });
+    });
+
+    it('happyPath_anImageRecordedWithoutItsReleaseIsAnsweredWithoutOne', async () => {
+        const world = await workerWorld();
+        await seedSetup(world, { install: { pipeline: { state: 'installed', checkedAt: NOW, image: NEWER } } });
+        const request = { data: {}, rawRequest: {}, acceptsStreaming: false } as unknown as CallableRequest<unknown>;
+
+        await expect(imageFunction(() => world.deps).run(request)).resolves.toEqual({
+            image: `us-central1-docker.pkg.dev/${world.deps.config.projectId}/hcm/pipeline@${NEWER}`,
+            digest: NEWER,
+        });
+    });
+
+    it('happyPath_theImageTheSupervisorRunsIsTheOneCompared @S-A62-HAPPY-STARTER-UPDATE', async () => {
+        // The kept pairing was made under the older image; the supervisor pulled the installed one and says so.
+        const world = await workerWorld();
+        await installed(world, NEWER);
+        await seedPairing(world, { pairedAt: minutes(-1) });
+
+        await expect(asPaired(world, helloFunction, { workerId: WORKER, version: '1.0.0', image: NEWER })).resolves.toMatchObject({
+            image: NEWER,
+            outdated: false,
+        });
+        await expect(readWorker(world)).resolves.toMatchObject({ image: NEWER, outdated: false });
+        await seedJob(world, JOB, localJob());
+        await expect(asPaired(world, claimFunction, { workerId: WORKER })).resolves.toEqual({ job: { jobId: JOB } });
+    });
+
+    it('badPath_aSupervisorStillOnTheOlderImageIsToldItIsOutdated @S-A62-BAD-STARTER-OUTDATED', async () => {
+        const world = await workerWorld();
+        await installed(world, NEWER);
+        await seedPairing(world, { pairedAt: minutes(-1) });
+        await seedJob(world, JOB, localJob());
+
+        await expect(asPaired(world, helloFunction, { workerId: WORKER, version: '1.0.0', image: IMAGE })).resolves.toMatchObject({
+            outdated: true,
+        });
+        await expect(asPaired(world, claimFunction, { workerId: WORKER })).resolves.toEqual({ job: null, outdated: true });
     });
 });

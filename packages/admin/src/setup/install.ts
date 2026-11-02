@@ -82,8 +82,11 @@ function needsInstallerPermission(state: SetupState): SetupState {
     return { ...state, provision: { ...state.provision, items } };
 }
 
-/** Provision's part of an update (`ProvisionFlow.update`), with the update click's token. */
-export type ProvisionUpdate = (access: GoogleAccess) => Promise<void>;
+/**
+ * Provision's part of an update (`ProvisionFlow.update`), with the update click's token; its record waits for `recordAfter`
+ * (the server the same update installs: finding 71).
+ */
+export type ProvisionUpdate = (access: GoogleAccess, recordAfter: Promise<void>) => Promise<void>;
 
 class Cards implements InstallCards {
     readonly #ctx: SetupContext;
@@ -97,6 +100,8 @@ class Cards implements InstallCards {
     #recording: Promise<void> = Promise.resolve();
     /** The stopped server build whose missing permission step c was told of (once: a Retry what failed may follow). */
     #permissionFor: string | null = null;
+    /** Finding 71: Update the map's server build settled (installed, failed or stopped); Provision's record waits for it. */
+    #serverSettled: (() => void) | null = null;
     /** The one read of whether this admin's bundle can install the pipeline (finding 43 of 2026-11-01). */
     #pipelineChecked: Promise<void> | null = null;
 
@@ -149,12 +154,26 @@ class Cards implements InstallCards {
         }
     }
 
-    /** The targets behind built (the site after the server) beside Provision's changed items, with the click's token. */
+    /**
+     * The targets behind built (the site after the server) beside Provision's changed items, with the click's token.
+     * Finding 71 of 2026-11-02: Provision's record (`setup.recordCloud` with the item set's version) waits until the server
+     * this update installs has settled: the server before it refuses a record naming the set's version (its request schema
+     * is strict), so the version reached was never recorded and the card kept offering the update.
+     */
     async #update(behind: readonly InstallTarget[], provisionDue: boolean, access: GoogleAccess): Promise<void> {
         this.#siteAfterServer = behind.includes('site') && behind.includes('server');
         const now = behind.filter((target) => target !== 'site' || !this.#siteAfterServer);
-        const provision = provisionDue ? [this.#provisionUpdate(access)] : [];
+        const recordAfter = now.includes('server') ? this.#serverSettles() : Promise.resolve();
+        const provision = provisionDue ? [this.#provisionUpdate(access, recordAfter)] : [];
         await Promise.all([...provision, ...now.map((target) => this.#flows[target].installWith({ token: access.token }))]);
+    }
+
+    /** Settles once the server's build (which this update submits) has settled; a later update replaces the wait. */
+    #serverSettles(): Promise<void> {
+        this.#serverSettled?.();
+        return new Promise((settled) => {
+            this.#serverSettled = settled;
+        });
     }
 
     async recheck(target: InstallTarget): Promise<void> {
@@ -170,6 +189,8 @@ class Cards implements InstallCards {
         INSTALL_TARGETS.forEach((target) => {
             this.#flows[target].dispose();
         });
+        this.#serverSettled?.();
+        this.#serverSettled = null;
     }
 
     #live(): InstallAccess | null {
@@ -220,7 +241,8 @@ class Cards implements InstallCards {
         });
     }
 
-    #report(view: InstallTargetView): void {
+    #report(reported: InstallTargetView): void {
+        const view = this.#shown(reported);
         this.#ctx.update((state) => ({ ...state, install: { ...state.install, [view.target]: view } }));
         this.#record(view);
         const step = INSTALL_STEP_OF[view.target];
@@ -228,9 +250,23 @@ class Cards implements InstallCards {
             this.#ctx.patchStep(step, { busy: view.busy });
             this.#permissionToProvision(view);
             this.#afterServer(view);
+            this.#settledServer(view);
             return;
         }
         this.#ctx.patchStep(step, { state: INSTALL_CHIP[view.state], busy: view.busy, checkedAt: view.checkedAt });
+    }
+
+    /**
+     * Finding 59 of 2026-11-02: a flow that has not looked at Google yet (an update clicked right after Setup opened, or
+     * from Home's tile) reports its first view, "Not installed", with the click's `busy`; the card keeps what it showed
+     * (the recorded target) and takes only the click's `busy`, `error` and `blocker` until the first look.
+     */
+    #shown(view: InstallTargetView): InstallTargetView {
+        if (view.checkedAt !== null) {
+            return view;
+        }
+        const known = this.#ctx.state().install[view.target];
+        return known.checkedAt === null ? view : { ...known, busy: view.busy, error: view.error, blocker: view.blocker };
     }
 
     /**
@@ -272,6 +308,14 @@ class Cards implements InstallCards {
     /** Update the map waits for the server, whose build has settled. */
     #siteDue(view: InstallTargetView): boolean {
         return this.#siteAfterServer && !isRunning(view.state) && !view.busy;
+    }
+
+    /** Finding 71: the server's build, which Provision's record waits for, has settled (any state but a running one). */
+    #settledServer(view: InstallTargetView): void {
+        if (this.#serverSettled !== null && view.checkedAt !== null && !isRunning(view.state) && !view.busy) {
+            this.#serverSettled();
+            this.#serverSettled = null;
+        }
     }
 
     /** Update the map's site, once the server it waited for is installed (with the live token; else the card offers it). */

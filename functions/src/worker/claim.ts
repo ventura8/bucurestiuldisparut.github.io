@@ -112,7 +112,8 @@ async function workerClaim(
     const call = { cityId: request.cityId, workerId: request.workerId, uid: caller.uid };
     const now = deps.clock.now();
     const worker = await requireWorker(deps.documents, call);
-    const { outdated } = await imageState(deps.documents, caller, call.cityId);
+    // Finding 72: the image `worker.hello` recorded (the supervisor's), else the pairing's.
+    const { outdated } = await imageState(deps.documents, caller, call.cityId, worker.image);
     const jobId = outdated ? null : await takeFirst(deps, call, now);
     if (jobId !== null) {
         deps.log.info('worker claimed a job', { cityId: call.cityId, workerId: call.workerId, jobId });

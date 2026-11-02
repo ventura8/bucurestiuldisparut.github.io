@@ -3,7 +3,11 @@
 A threading HTTP server (`wsgiref`'s, with `ThreadingMixIn`). Inside the container it listens on every interface, as
 Docker's port publishing needs; the command publishes it on the computer's loopback only (`-p 127.0.0.1:8765:8765`).
 Every answer carries the page's Content-Security-Policy, `X-Content-Type-Options: nosniff`, `Referrer-Policy:
-no-referrer` and `Cache-Control: no-store`, and no CORS header at all.
+no-referrer` and `Cache-Control: no-store`. Finding 72's auto-pair (2026-11-02, M7 §2.7): the admin, open on one of the
+project's Hosting origins (`https://<project>.web.app`, `https://<project>.firebaseapp.com`; the e2e admin server under
+the emulators), reads `GET /state` and posts its one-time code to `POST /pair`; those two paths, and only for those
+origins, answer CORS (`Access-Control-Allow-Origin: <origin>`, `Vary: Origin`) and Private Network Access's preflight
+(`Access-Control-Allow-Private-Network: true`). Any other origin gets no CORS header at all.
 
 | Request | Answer |
 | --- | --- |
@@ -13,11 +17,15 @@ no-referrer` and `Cache-Control: no-store`, and no CORS header at all.
 | `GET /state` | the worker's state; 403 with another `Origin` |
 | `POST /session` `{idToken, refreshToken}` | sign in: `worker.hello` must accept the token first (403 with its code) |
 | `DELETE /session` | sign out |
+| `OPTIONS /state`, `OPTIONS /pair` from a Hosting origin | 204, the CORS preflight (403 from any other origin) |
+| `POST /pair` `{code}` from a Hosting origin | 202 and the state: the worker pairs with the code at its loop's next pass |
 | anything else | 404, or 405 for another method |
 
 `POST` and `DELETE` answer 403 unless `Origin` is the page's, the body is JSON (`Content-Type: application/json`, which a
 cross-site form cannot send without a preflight nobody answers) and `X-HCM-Worker` is the CSRF token (32 random bytes,
-per process, written only into the page).
+per process, written only into the page). `POST /pair` has no CSRF token (the admin's page cannot know it): its guard is
+the Origin allow-list (a page of another site cannot send one of the project's origins, and its JSON body needs a
+preflight only those origins pass) and the code itself, single-use and minted by a city editor minutes before.
 """
 
 import hmac
@@ -41,6 +49,13 @@ LOOPBACK_NAMES: Final = ("localhost", "127.0.0.1")
 MAX_BODY_BYTES: Final = 16 * 1024
 JSON_TYPE: Final = "application/json"
 POLL_SECONDS: Final = 0.2
+# The paths the admin reads and posts to from its Hosting origin (auto-pair), and the preflight's fixed answers.
+CORS_PATHS: Final = ("/state", "/pair")
+PREFLIGHT_HEADERS: Final = (
+    ("Access-Control-Allow-Methods", "GET, POST"),
+    ("Access-Control-Allow-Headers", "content-type"),
+    ("Access-Control-Max-Age", "600"),
+)
 _STATIC: Final = {
     "/page.js": (PAGE_JS.encode("utf-8"), "text/javascript; charset=utf-8"),
     "/page.css": (PAGE_CSS.encode("utf-8"), "text/css; charset=utf-8"),
@@ -57,6 +72,8 @@ class WorkerApp(Protocol):
     def sign_in(self, id_token: object, refresh_token: object) -> str | None: ...
 
     def sign_out(self) -> None: ...
+
+    def pair(self, code: object) -> str | None: ...
 
 
 Reply = tuple[int, bytes, str]
@@ -98,9 +115,17 @@ class _ThreadingServer(ThreadingMixIn, WSGIServer):
 class LocalServer:
     """The page's server; `start` serves in a daemon thread, `stop` ends it."""
 
-    def __init__(self, app: WorkerApp, settings: PageSettings, bind: tuple[str, int], content_security_policy: str) -> None:
+    def __init__(
+        self,
+        app: WorkerApp,
+        settings: PageSettings,
+        bind: tuple[str, int],
+        content_security_policy: str,
+        cors_origins: Iterable[str] = (),
+    ) -> None:
         self._app = app
         self._settings = settings
+        self._cors_origins = frozenset(cors_origins)
         self._httpd = make_server(bind[0], bind[1], self._wsgi, server_class=_ThreadingServer, handler_class=_QuietHandler)
         self._thread = threading.Thread(target=self._httpd.serve_forever, kwargs={"poll_interval": POLL_SECONDS}, daemon=True)
         self.headers: Mapping[str, str] = {
@@ -114,7 +139,7 @@ class LocalServer:
         method = str(environ["REQUEST_METHOD"])
         request = Request(method, str(environ.get("PATH_INFO") or "/"), _headers(environ), _body(environ))
         status, body, content_type = self.answer(request)
-        headers = [*self.headers.items(), ("Content-Type", content_type), ("Content-Length", str(len(body)))]
+        headers = [*self.headers.items(), *self.cors_headers(request), ("Content-Type", content_type), ("Content-Length", str(len(body)))]
         start_response(f"{status} {HTTPStatus(status).phrase}", headers)
         return [body]
 
@@ -122,7 +147,7 @@ class LocalServer:
         """The reply to a request, every guard applied."""
         if not self.host_allowed(request.headers.get("host")):
             return _json(HTTPStatus.MISDIRECTED_REQUEST, {})
-        route = {"GET": self.get, "POST": self.post, "DELETE": self.delete}.get(request.method)
+        route = {"GET": self.get, "POST": self.post, "DELETE": self.delete, "OPTIONS": self.preflight}.get(request.method)
         return route(request) if route is not None else _json(HTTPStatus.METHOD_NOT_ALLOWED, {})
 
     @staticmethod
@@ -152,11 +177,34 @@ class LocalServer:
     def _origin_allowed(self, origin: str | None) -> bool:
         return origin in {f"http://{name}:{self.port}" for name in LOOPBACK_NAMES}
 
+    def cors_allowed(self, origin: str | None) -> bool:
+        """One of the project's Hosting origins, where the admin runs (auto-pair)."""
+        return origin in self._cors_origins
+
+    def cors_headers(self, request: Request) -> list[tuple[str, str]]:
+        """CORS for a Hosting origin (with the preflight's answers on `OPTIONS`); nothing for any other origin."""
+        origin = request.headers.get("origin")
+        if origin is None or not self.cors_allowed(origin):
+            return []
+        found = [("Access-Control-Allow-Origin", origin), ("Vary", "Origin")]
+        if request.method == "OPTIONS":
+            found.extend(PREFLIGHT_HEADERS)
+        if request.headers.get("access-control-request-private-network") == "true":
+            found.append(("Access-Control-Allow-Private-Network", "true"))
+        return found
+
+    @staticmethod
+    def _json_body(request: Request) -> bool:
+        return request.headers.get("content-type", "").split(";", 1)[0].strip().lower() == JSON_TYPE
+
     def _state_change_allowed(self, request: Request) -> bool:
-        media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
         token = request.headers.get(CSRF_HEADER, "")
         same_origin = self._origin_allowed(request.headers.get("origin"))
-        return same_origin and media_type == JSON_TYPE and hmac.compare_digest(token.encode("utf-8"), self._settings.csrf.encode("utf-8"))
+        return same_origin and self._json_body(request) and hmac.compare_digest(token.encode("utf-8"), self._settings.csrf.encode("utf-8"))
+
+    def _pair_allowed(self, request: Request) -> bool:
+        """`POST /pair`: a Hosting origin and a JSON body (which needs the preflight only those origins pass)."""
+        return self.cors_allowed(request.headers.get("origin")) and self._json_body(request)
 
     # --- routes ----------------------------------------------------------------------------------------------
 
@@ -177,9 +225,14 @@ class LocalServer:
 
     def _state(self, request: Request) -> Reply:
         origin = request.headers.get("origin")
-        if origin is not None and not self._origin_allowed(origin):
+        if origin is not None and not (self._origin_allowed(origin) or self.cors_allowed(origin)):
             return _json(HTTPStatus.FORBIDDEN, {})
         return _json(HTTPStatus.OK, self._app.state())
+
+    def preflight(self, request: Request) -> Reply:
+        """The CORS (and Private Network Access) preflight of the admin's `GET /state` and `POST /pair`."""
+        allowed = request.path in CORS_PATHS and self.cors_allowed(request.headers.get("origin"))
+        return (HTTPStatus.NO_CONTENT, b"", "text/plain") if allowed else _json(HTTPStatus.FORBIDDEN, {})
 
     def _guarded(self, request: Request, action: Callable[[Mapping[str, object]], Reply]) -> Reply:
         if request.path != "/session":
@@ -190,7 +243,17 @@ class LocalServer:
         return action(_parsed(body)) if body is not None else _json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {})
 
     def post(self, request: Request) -> Reply:
-        return self._guarded(request, self._sign_in)
+        return self._pair(request) if request.path == "/pair" else self._guarded(request, self._sign_in)
+
+    def _pair(self, request: Request) -> Reply:
+        """The admin's one-time code (auto-pair): taken at the loop's next pass; 409 with why when it is not taken."""
+        if not self._pair_allowed(request):
+            return _json(HTTPStatus.FORBIDDEN, {"error": "forbidden"})
+        body = request.body
+        if body is None:
+            return _json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {})
+        refused = self._app.pair(_parsed(body).get("code"))
+        return _json(HTTPStatus.CONFLICT, {"error": refused}) if refused else _json(HTTPStatus.ACCEPTED, self._app.state())
 
     def delete(self, request: Request) -> Reply:
         return self._guarded(request, self._sign_out)

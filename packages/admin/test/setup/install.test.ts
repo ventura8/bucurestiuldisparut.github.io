@@ -27,13 +27,20 @@ function setup(mode: SetupMode = 'bootstrap') {
         (state, id) => withStep(state, id, { state: 'ok' }),
         initialSetupState(harness.host, mode),
     );
-    const ctx = createSetupContext(harness.deps, createSetupStore(base));
+    const store = createSetupStore(base);
+    const ctx = createSetupContext(harness.deps, store);
     const provisioned: string[][] = [];
-    const cards = createInstallCards(ctx, (access) => {
+    /** Whether each Provision part's record may go ahead yet (finding 71). */
+    const recordable: boolean[] = [];
+    const cards = createInstallCards(ctx, (access, recordAfter) => {
         provisioned.push([access.token, ...ctx.state().install.provisionDue]);
+        const index = recordable.push(false) - 1;
+        void recordAfter.then(() => {
+            recordable[index] = true;
+        });
         return Promise.resolve();
     });
-    return { harness, ctx, cards, provisioned };
+    return { harness, ctx, cards, provisioned, recordable, store };
 }
 
 describe('Install the server', () => {
@@ -230,6 +237,80 @@ describe('Update the map and Provision (finding 65 of 2026-11-02)', () => {
         expect(harness.google.requests).toEqual([]);
         expect(provisioned).toHaveLength(1);
         expect(harness.installer.submit.mock.calls.map(([target]) => target)).toEqual(['pipeline']);
+        cards.dispose();
+    });
+
+    it('happyPath_provisionsRecordWaitsForTheServerTheSameUpdateInstalls @S-A04-HAPPY-UPDATE-PROVISION-RECORD', async () => {
+        // Finding 71 of 2026-11-02: the server before the update refuses a record naming the item set's version.
+        const { harness, ctx, cards, provisioned, recordable } = setup('normal');
+        const server = { installed: false };
+        harness.installer.observe.mockImplementation((target) =>
+            Promise.resolve(
+                target === 'server' && server.installed
+                    ? observed({ installed: { complete: true, release: ADMIN_RELEASE }, build: build('server', 'SUCCESS') })
+                    : observed({ installed: { complete: true, release: target === 'server' ? '0.9.0' : ADMIN_RELEASE } }),
+            ),
+        );
+        harness.google.grant('cloudPlatform');
+        cards.watch(['server', 'pipeline', 'site']);
+        await flush();
+        ctx.update((state) => ({ ...state, install: { ...state.install, provisionDue: ['artifact-registry', 'bucket-lifecycle'] } }));
+
+        await cards.updateMap('deploy');
+        await flush();
+
+        expect(provisioned).toHaveLength(1);
+        expect(harness.installer.submit.mock.calls.map(([target]) => target)).toEqual(['server']);
+        expect(recordable).toEqual([false]);
+        server.installed = true;
+        await harness.clock.advance(10_000);
+        await flush();
+        expect(recordable).toEqual([true]);
+        cards.dispose();
+    });
+
+    it('badPath_withoutTheServerInTheUpdateProvisionRecordsAtOnce_andLeavingSetupLetsItGo', async () => {
+        const { harness, ctx, cards, recordable } = setup('normal');
+        ctx.update((state) => ({ ...state, install: { ...state.install, provisionDue: ['bucket-lifecycle'] } }));
+
+        await cards.updateMap('deploy');
+        await flush();
+        expect(recordable).toEqual([true]);
+
+        // A server update the owner leaves Setup during: the wait ends with the cards.
+        ctx.update((state) => ({ ...state, install: { ...state.install, server: { ...state.install.server, state: 'updateAvailable' } } }));
+        harness.installer.observe.mockResolvedValue(observed({ installed: { complete: true, release: '0.9.0' } }));
+        await cards.updateMap('deploy');
+        await flush();
+        expect(recordable).toEqual([true, false]);
+        cards.dispose();
+        await flush();
+        expect(recordable).toEqual([true, true]);
+    });
+
+    it('badPath_anUpdateClickedBeforeTheCardsFirstLookNeverShowsNotInstalled @S-A55-BAD-UPDATE-NOT-INSTALLED', async () => {
+        // Finding 59 of 2026-11-02: the card showed "Not installed" until the update's first look answered.
+        const { harness, ctx, cards, store } = setup('normal');
+        const recorded = { state: 'updateAvailable' as const, installedRelease: '0.9.0', checkedAt: '2026-11-02T16:59:00.000Z' };
+        ctx.update((state) => ({ ...state, install: { ...state.install, server: { ...state.install.server, ...recorded } } }));
+        const pending: { answer?: (observation: TargetObservation) => void } = {};
+        harness.installer.observe.mockImplementation(
+            () =>
+                new Promise<TargetObservation>((resolve) => {
+                    pending.answer = resolve;
+                }),
+        );
+        const seen: string[] = [];
+        store.subscribe((state) => seen.push(state.install.server.state));
+
+        const updating = cards.updateMap('deploy');
+        await flush();
+
+        expect(ctx.state().install.server).toMatchObject({ ...recorded, busy: true });
+        pending.answer?.(observed({ installed: { complete: true, release: '0.9.0' } }));
+        await updating;
+        expect(seen).not.toContain('notInstalled');
+        expect(harness.installer.submit.mock.calls.map(([target]) => target)).toEqual(['server']);
         cards.dispose();
     });
 

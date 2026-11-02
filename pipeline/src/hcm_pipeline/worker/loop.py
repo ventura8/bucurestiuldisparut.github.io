@@ -11,13 +11,15 @@ loop's (a signal after the run's last checkpoint was once lost), and the loop's 
 Finding 67 of 2026-11-02: without a session each pass first lets the connector try (the command's pairing code, or the
 session kept in the work folder); a call answered `apiError.worker.revoked` (Disconnect this computer) ends the session
 and deletes the kept one; a claim answered `outdated` (the pipeline was updated in the admin) is said on the page.
+Finding 72 (the starter file, M7 §1.5): under the starter's supervisor (`supervised`) an outdated claim ends the loop
+instead (`outdated_exit`), and the command exits with `ExitCode.OUTDATED`, so the supervisor pulls the installed image.
 """
 
 import enum
 import signal
 import threading
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from types import FrameType
@@ -91,6 +93,13 @@ class Ending:
 DONE: Final = Ending("done")
 
 
+def _job_of(answer: Mapping[str, object]) -> str | None:
+    """The claimed job's id, when the answer names one of the right shape."""
+    job = answer.get("job")
+    job_id = job.get("jobId") if isinstance(job, dict) else None
+    return job_id if isinstance(job_id, str) and ID.fullmatch(job_id) else None
+
+
 class WorkerLoop:
     def __init__(self, session: Session, api: WorkerApi, state: WorkerState, runtime: JobRunning, ids: dict[str, str]) -> None:
         self._session = session
@@ -103,6 +112,9 @@ class WorkerLoop:
         # Set by the signal handler alone: one assignment, no lock (`_stopped` turns it into `stopping`).
         self._signalled = False
         self.no_session_seconds = NO_SESSION_SECONDS
+        # Finding 72: under the starter's supervisor an outdated image ends the loop (the supervisor updates it).
+        self.supervised = False
+        self.outdated_exit = False
 
     def connect_with(self, connector: Connecting) -> None:
         """The connector each pass without a session lets try first (finding 67: pairing, the kept session)."""
@@ -173,9 +185,16 @@ class WorkerLoop:
             self._refused(error)
             return None
         self._state.outdated(answer.get("outdated") is True)
-        job = answer.get("job")
-        job_id = job.get("jobId") if isinstance(job, dict) else None
-        return job_id if isinstance(job_id, str) and ID.fullmatch(job_id) else None
+        return None if self._ends_outdated() else _job_of(answer)
+
+    def _ends_outdated(self) -> bool:
+        """Under the starter's supervisor, an outdated image ends the loop (finding 72); true when it did."""
+        if not (self.supervised and self._state.is_outdated):
+            return False
+        LOG.warning("this image is older than the installed pipeline's: stopping, so the supervisor starts the new one")
+        self.outdated_exit = True
+        self.stop()
+        return True
 
     def _work(self, job_id: str) -> Pass:
         LOG.info("claimed job %s", job_id)

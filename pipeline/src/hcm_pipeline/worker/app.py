@@ -6,6 +6,8 @@ that is not an editor of the city, is refused at once and the page shows the cod
 answer sets how often the worker claims and how often the heartbeat writes. Sign out forgets the tokens; the loop then
 stops claiming. Finding 67 of 2026-11-02: pairing (`pairing.py`) signs in through the same `sign_in`, with `keep` (the
 session is kept in the work folder); `worker.hello` also says whether this worker's image is still the installed one.
+Finding 72 (auto-pair, M7 §2.7): `pair` takes the admin's one-time code from `POST /pair` while the worker has no session
+and hands it to the connector (`accept_pairing`), which pairs at the loop's next pass.
 """
 
 from collections.abc import Callable, Mapping
@@ -15,12 +17,15 @@ from hcm_pipeline import __version__
 from hcm_pipeline.contract import Errors
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.worker.api import HELLO, RevokedError, WorkerApi, WorkerApiError
+from hcm_pipeline.worker.args import PAIR_CODE
 from hcm_pipeline.worker.session import SIGNED_OUT, Session, Tokens
 from hcm_pipeline.worker.state import WorkerState
 from hcm_pipeline.worker.webconfig import WebConfig, WebConfigError
 
 LOG = get_logger("worker.app")
 CONFIG_MISSING: Final = "configMissing"
+# `POST /pair` while a session is held: the computer is paired already.
+PAIRED: Final = "paired"
 
 
 def _seconds(answer: Mapping[str, object], key: str) -> float | None:
@@ -37,6 +42,21 @@ class PageActions:
         self._state = state
         self._web_config = web_config
         self._hello = {**hello, "version": __version__}
+        self._offer: Callable[[str], None] | None = None
+
+    def accept_pairing(self, offer: Callable[[str], None]) -> None:
+        """Where `pair` hands a code: the connector's `offer` (finding 72)."""
+        self._offer = offer
+
+    def pair(self, code: object) -> str | None:
+        """The admin's code (auto-pair): None when it was handed to the connector, else why not."""
+        if self._session.active:
+            return PAIRED
+        if self._offer is None or not isinstance(code, str) or PAIR_CODE.fullmatch(code) is None:
+            return Errors.INVALID_REQUEST
+        self._offer(code)
+        LOG.info("the admin sent a pairing code; pairing now")
+        return None
 
     def web_config(self) -> Mapping[str, str] | None:
         try:

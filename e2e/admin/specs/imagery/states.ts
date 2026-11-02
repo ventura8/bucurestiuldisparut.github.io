@@ -74,6 +74,11 @@ export const IMAGERY_STATES = {
         title: 'Historical imagery: an import waiting for USGS maintenance to end',
         visit: 'specs/imagery/import.spec.ts',
     },
+    // Findings 60 and 61 of 2026-11-02.
+    'imagery.version-lost-run': {
+        title: "Historical imagery: a run lost in a step, that step failed and the failure's sentence alone",
+        visit: 'specs/imagery/import.spec.ts',
+    },
     'imagery.version-over-budget': {
         title: "Historical imagery: an approved version past the month's compute units, the three ways out",
         visit: 'specs/imagery/publish.spec.ts',

@@ -26,7 +26,10 @@ export const workerDocSchema = z.strictObject({
     lastJob: z.strictObject({ id: idSchema, outcome: z.enum(['done', 'failed']), at: timestampSchema }).optional(),
     /** Finding 67: the pairing it signed in with (absent: a Google sign-in on its local page). */
     pair: z.string().regex(PAIR_ID).optional(),
-    /** The pipeline image its pairing's command named, and whether that is no longer the installed one. */
+    /**
+     * The pipeline image it runs (finding 72: the one the starter's supervisor names in `worker.hello`, else its pairing's
+     * command's), and whether that is no longer the installed one.
+     */
     image: digestSchema.optional(),
     outdated: z.boolean().optional(),
     /** Disconnect this computer (`worker.revoke`): every later call of this worker is refused. */
@@ -55,12 +58,17 @@ export const workerPairLimitDocSchema = z.strictObject({ windowStart: timestampS
 /** `cities/{city}/workers/choice`: where the city's raster jobs run by default (`auto` when absent). */
 export const runChoiceDocSchema = z.strictObject({ choice: z.enum(RUN_CHOICES), ...stamp });
 
-/** `usage/cloudrun-YYYY-MM`: the month's counted cloud runs, seconds × each machine's vCPUs and GiB. */
+/**
+ * `usage/cloudrun-YYYY-MM`: the month's counted cloud runs, seconds × each machine's vCPUs and GiB. Finding 64 of
+ * 2026-11-02: `backfilledAt` says the month's cloud runs that ended before they were counted (the count began with M7's
+ * release) were added once, from their jobs' recorded times (`imagery.tick`).
+ */
 export const cloudRunUsageDocSchema = z.strictObject({
     month: z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])$/),
     vcpuSeconds: z.number().min(0),
     gibSeconds: z.number().min(0),
     runs: z.number().int().min(0),
+    backfilledAt: timestampSchema.optional(),
     ...stamp,
 });
 

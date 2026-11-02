@@ -4,7 +4,7 @@ import process from 'node:process';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { buildAdminSite, DEFAULT_ADMIN_DIR, FONTS_FOLDER } from '../src/admin/build.js';
+import { buildAdminSite, DEFAULT_ADMIN_DIR, FONTS_FOLDER, STARTER_FOLDER } from '../src/admin/build.js';
 import { EXIT_INVALID, EXIT_OK, EXIT_USAGE, runAdminCli } from '../src/admin/cli.js';
 import { LEGACY_FOLDER } from '../src/admin/legacy.js';
 import { ADMIN_SCRIPT_FILE, ADMIN_STYLESHEET_FILE, renderAdminPage } from '../src/admin/page.js';
@@ -41,7 +41,7 @@ describe('buildAdminSite', () => {
             originals: 44,
             warnings: 1,
             fonts: 3,
-            files: 54,
+            files: 56,
         });
         const integrity = subresourceIntegrity(files.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.js'));
         expect(files.readText(`${OUT}/index.html`)).toBe(renderAdminPage(undefined, { mapboxGlIntegrity: integrity }));
@@ -59,6 +59,18 @@ describe('buildAdminSite', () => {
             'roboto-flex-latin-ext-wght.woff2',
             'roboto-flex-latin-wght.woff2',
         ]);
+        // Finding 72: the starter files' templates, which the admin's Use this computer fills.
+        expect(files.listFiles(`${OUT}/${STARTER_FOLDER}`)).toEqual(['hcm-worker.bat', 'hcm-worker.sh']);
+        expect(files.readText(`${OUT}/${STARTER_FOLDER}/hcm-worker.sh`)).toContain("HCM_CITY='__HCM_CITY__'");
+    });
+
+    it('badPath_withoutAStarterTemplateNothingIsWritten', () => {
+        const { files } = repositoryWithAdminBundle();
+
+        expect(() => buildAdminSite({ outDir: OUT, starterDir: 'dist/nowhere' }, files)).toThrow(
+            /^dist\/nowhere\/hcm-worker\.sh is missing/,
+        );
+        expect(files.isFile(`${OUT}/index.html`)).toBe(false);
     });
 
     it('badPath_withoutTheKitsFontsNothingIsWritten', () => {

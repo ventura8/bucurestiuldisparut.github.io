@@ -62,6 +62,8 @@ function added(usage: CloudRunUsageDoc | undefined, month: string, run: EndedRun
         vcpuSeconds: before.vcpuSeconds + seconds * size.vcpu,
         gibSeconds: before.gibSeconds + seconds * size.gib,
         runs: before.runs + 1,
+        // Finding 64: the month's one backfill is kept.
+        ...(usage?.backfilledAt === undefined ? {} : { backfilledAt: usage.backfilledAt }),
         ...stampOf(IMAGERY_WRITER, now),
     };
 }

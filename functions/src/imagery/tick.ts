@@ -6,6 +6,7 @@ import { onSchedule } from 'firebase-functions/scheduler';
 import { runAs } from '../global-options.js';
 import type { Ports } from '../ports/index.js';
 import { cityIds } from './limits.js';
+import { backfillCloudUsage } from './cloud-usage-backfill.js';
 import { guardIsRed } from './records.js';
 import { watchOrders } from './orders/watch.js';
 import { cancelAsked, dispatchDue, pendingApprovals, pollStale, recoverLost } from './tick-jobs.js';
@@ -18,7 +19,8 @@ import { offerCloud } from './tick-worker.js';
  * cancellations and approvals a lost event left, MTS polls gone missing, deferred publishes, due layer deletions, the
  * files of long-ended versions, the monthly harvest and (M4) the order watch. While the budget guard is red only the
  * parts that end or recover work run (lost executions, cancellations) and the order watch, which asks USGS and reminds
- * but imports nothing; nothing new starts, and the public site is never touched.
+ * but imports nothing; nothing new starts, and the public site is never touched. Finding 64 of 2026-11-02: first, once a
+ * month, the cloud runs that ended before they were counted are added to Cloud Run's free-tier meter (`backfill`).
  */
 export type TickDeps = Pick<
     Ports,
@@ -49,6 +51,10 @@ export async function runImageryTick(deps: TickDeps): Promise<string[]> {
     const now = deps.clock.now();
     const red = await guardIsRed(deps.documents);
     const failed: string[] = [];
+    await backfillCloudUsage(deps, now).catch((error: unknown) => {
+        deps.log.error('imagery tick part failed', { part: 'backfill', error: String(error) });
+        failed.push('backfill');
+    });
     for (const cityId of await cityIds(deps.documents)) {
         for (const [name, part] of PARTS.filter(([, , whileRed]) => whileRed || !red)) {
             await part(deps, cityId, now).catch((error: unknown) => {

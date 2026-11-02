@@ -8,17 +8,28 @@ import type { CallableDeps } from '../api/callable.js';
 import { claimFunction, type ClaimDeps } from './claim.js';
 import { endFunction, type EndDeps } from './end.js';
 import { helloFunction, type HelloDeps } from './hello.js';
+import { imageFunction, type ImageDeps } from './image.js';
 import { pairCodeFunction, type PairCodeDeps } from './pair-code.js';
 import { pairFunction, type PairDeps } from './pair.js';
 import { revokeFunction, type RevokeDeps } from './revoke.js';
 import { stepFunction, type StepDeps } from './step.js';
 import { urlsFunction, type UrlsDeps } from './urls.js';
 
-export type WorkerFamilyDeps = CallableDeps & HelloDeps & ClaimDeps & StepDeps & UrlsDeps & EndDeps & PairDeps & PairCodeDeps & RevokeDeps;
+export type WorkerFamilyDeps = CallableDeps &
+    HelloDeps &
+    ClaimDeps &
+    StepDeps &
+    UrlsDeps &
+    EndDeps &
+    PairDeps &
+    PairCodeDeps &
+    RevokeDeps &
+    ImageDeps;
 
 /**
  * `worker.hello`, `worker.claim`, `worker.step`, `worker.urls`, `worker.end`; finding 67's pairing: `worker.pair` (the
- * worker's one-time code exchanged for a sign-in), `worker.pairCode` and `worker.revoke` (the admin's).
+ * worker's one-time code exchanged for a sign-in), `worker.pairCode` and `worker.revoke` (the admin's); finding 72's
+ * `worker.image` (the installed image the starter's supervisor runs).
  */
 export function workerFunctions(getDeps: () => WorkerFamilyDeps) {
     return {
@@ -30,5 +41,6 @@ export function workerFunctions(getDeps: () => WorkerFamilyDeps) {
         pair: pairFunction(getDeps),
         pairCode: pairCodeFunction(getDeps),
         revoke: revokeFunction(getDeps),
+        image: imageFunction(getDeps),
     };
 }

@@ -6,13 +6,12 @@
  * (`usage/cloudrun-<month>`) and, on a version's page, its job's place and wait. The choice and a job's place change through
  * `imagery.runOn`; a refusal is said where the change was asked for.
  *
- * Findings 66–68 of 2026-11-02: the panel's command carries a one-time pairing code (`worker.pairCode`, minted when the
- * image is known and again a minute before it expires), so the worker needs no sign-in; Disconnect this computer is
- * `worker.revoke`; the connected worker's job is followed live (its step and progress); a job waiting past
- * `WORKER_WAIT_MINUTES` for a computer that never came is `overdue` (its page offers Run in Google Cloud instead).
+ * Findings 66–68 of 2026-11-02: Disconnect this computer is `worker.revoke`; the connected worker's job is followed live
+ * (its step and progress); a job waiting past `WORKER_WAIT_MINUTES` for a computer that never came is `overdue` (its page
+ * offers Run in Google Cloud instead). Finding 72: the panel's part about the computer the admin is open on (the starter
+ * file, the auto-pair, the command behind Advanced with its one-time code) is the lazy `worker-local` chunk (`local`).
  */
 import {
-    WORKER_PAIR_SECONDS,
     cloudRunUsageDocSchema,
     FIRESTORE_PATHS,
     jobDocSchema,
@@ -38,6 +37,7 @@ import { refusalOf } from '../imagery/api.js';
 import { Store } from '../state/store.js';
 import type { NoticeInput } from '../state/state.js';
 import { estimateCloudRun, type CloudRunUse } from './estimate.js';
+import type { LocalComputer } from './local.js';
 
 export interface WorkerSeen {
     readonly id: string;
@@ -83,8 +83,6 @@ export interface WorkerState {
     readonly acting: boolean;
     /** Why the last change was refused, or null. */
     readonly refusal: NoticeInput | null;
-    /** The one-time pairing code the command carries (finding 67); null while none could be minted. */
-    readonly pairCode: string | null;
 }
 
 export interface WorkerIntents {
@@ -96,17 +94,16 @@ export interface WorkerIntents {
     retry(): void;
     /** Disconnect this computer (`worker.revoke`, finding 67); true once the server took it. */
     disconnect(): Promise<boolean>;
+    /** Finding 72: the computer the admin is open on, for `project` (the `worker-local` chunk, its element registered). */
+    local(project: string): Promise<LocalComputer>;
 }
 
 const NO_USE: CloudRunUse = { vcpuSeconds: 0, gibSeconds: 0 };
 
 const INITIAL: Omit<WorkerState, 'city'> = {
     ...{ status: 'loading', failure: null, worker: null, connected: false, choice: 'auto', image: undefined },
-    ...{ usage: NO_USE, job: null, acting: false, refusal: null, pairCode: null },
+    ...{ usage: NO_USE, job: null, acting: false, refusal: null },
 };
-
-/** A code is minted again this long before it expires, so the command on screen always works. */
-const PAIR_RENEW_MS = (WORKER_PAIR_SECONDS - 60) * 1000;
 
 function seenOf(doc: Stored<WorkerDoc>): WorkerSeen {
     const { state, jobId, lastJob, lastSeenAt } = doc.data;
@@ -158,7 +155,6 @@ export class WorkerFeed {
     readonly #job: LiveDoc<JobDoc>;
     readonly intents: WorkerIntents;
     #stale: unknown = null;
-    #renew: unknown = null;
     /** The panel follows the connected worker's job; a version's page its own. */
     #panel = false;
     #followed: string | null = null;
@@ -204,6 +200,11 @@ export class WorkerFeed {
                 this.#workers.retry();
             },
             disconnect: () => this.#disconnect(),
+            local: async (project) => {
+                const chunk = await import('./worker-local.js');
+                chunk.defineWorkerLocal();
+                return chunk.createLocal(this.#services, project);
+            },
         };
     }
 
@@ -234,30 +235,14 @@ export class WorkerFeed {
             live.stop();
         }
         this.#services.clock.clearTimeout(this.#stale);
-        this.#services.clock.clearTimeout(this.#renew);
-        this.#renew = null;
     }
 
     async #askImage(): Promise<void> {
         try {
             const status = await this.#services.callables.call('setup.status', {});
-            const image = imageOf(status);
-            this.#cell.update({ image });
-            await (image === null ? Promise.resolve() : this.#mintCode());
+            this.#cell.update({ image: imageOf(status) });
         } catch {
             this.#cell.update({ image: null });
-        }
-    }
-
-    /** A one-time code for the command (finding 67), minted again a minute before it expires; null when refused. */
-    async #mintCode(): Promise<void> {
-        const { callables, cityId, clock } = this.#services;
-        try {
-            const { code } = await callables.call('worker.pairCode', { cityId });
-            this.#cell.update({ pairCode: code });
-            this.#renew = clock.setTimeout(() => void this.#mintCode(), PAIR_RENEW_MS);
-        } catch {
-            this.#cell.update({ pairCode: null });
         }
     }
 

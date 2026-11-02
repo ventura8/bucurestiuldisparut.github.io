@@ -72,10 +72,14 @@ export interface ImageState {
     readonly outdated: boolean;
 }
 
-/** The installed image beside the worker's own: outdated only when both are known and differ. */
-export async function imageState(reader: DocumentReader, caller: VerifiedCaller, cityId: string): Promise<ImageState> {
+/**
+ * The installed image beside the worker's own: outdated only when both are known and differ. The worker's own is the one
+ * it says it runs (`reported`: finding 72, the starter's supervisor names the image it pulled, and a kept pairing outlives
+ * many images), else its pairing's command's.
+ */
+export async function imageState(reader: DocumentReader, caller: VerifiedCaller, cityId: string, reported?: string): Promise<ImageState> {
     const pairing = await requirePairing(reader, caller, cityId);
     const installed = await installedImage(reader);
-    const own = pairing?.image;
+    const own = reported ?? pairing?.image;
     return { installed, own, outdated: installed !== undefined && own !== undefined && own !== installed };
 }

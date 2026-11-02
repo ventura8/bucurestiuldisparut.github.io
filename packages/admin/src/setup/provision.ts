@@ -29,9 +29,10 @@ export interface ProvisionFlow {
     checkScheduler(): Promise<void>;
     /**
      * Finding 65 of 2026-11-02: an update's part, with the update click's token: the items whose definition changed since
-     * the project was last prepared (`updateItems`), then the set version reached recorded. Nothing when none is due.
+     * the project was last prepared (`updateItems`), then the set version reached recorded, once `recordAfter` settled
+     * (finding 71: the server the same update installs). Nothing when none is due.
      */
-    update(access: GoogleAccess): Promise<void>;
+    update(access: GoogleAccess, recordAfter?: Promise<void>): Promise<void>;
 }
 
 /** The reason of an item Google refused with 401: the step's token expired. */
@@ -102,6 +103,8 @@ interface RunMode {
     readonly doctor: boolean;
     /** The items an update runs (finding 65); otherwise every item or the pending ones. */
     readonly only?: readonly ProvisionItem[];
+    /** Finding 71: the record waits for this (the server an update installs, which knows the item set's version). */
+    readonly recordAfter?: Promise<void>;
 }
 
 const RUN: RunMode = { onlyPending: true, doctor: false };
@@ -118,14 +121,14 @@ class Provision implements ProvisionFlow {
         await this.start((access, _only, onItem) => this.ctx.deps.cloud.doctor(access, null, onItem), DOCTOR);
     }
 
-    async update(access: GoogleAccess): Promise<void> {
+    async update(access: GoogleAccess, recordAfter: Promise<void> = Promise.resolve()): Promise<void> {
         const due = updateItems(this.ctx.state().provision);
         if (due.length === 0) {
             return;
         }
         this.ctx.patchStep('provision', { busy: true, error: null });
         const run: Runner = (granted, only, onItem) => this.ctx.deps.cloud.provision(granted, only, onItem);
-        await this.runWith(run, access, { onlyPending: false, doctor: false, only: due });
+        await this.runWith(run, access, { onlyPending: false, doctor: false, only: due, recordAfter });
     }
 
     async checkScheduler(): Promise<void> {
@@ -183,6 +186,7 @@ class Provision implements ProvisionFlow {
             // The card stays busy until the run is recorded: a Retry what failed clicked while the record is on its way
             // could be overwritten by it, the server applying the older run last (S-A04-BAD-API-STILL-DISABLED).
             this.settle(true);
+            await mode.recordAfter;
             await this.record([...reported.values()]);
             this.ctx.patchStep('provision', { busy: false });
             this.failIfExpired([...reported.values()]);

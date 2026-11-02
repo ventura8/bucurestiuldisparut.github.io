@@ -283,6 +283,64 @@ test(
 );
 
 test(
+    "A server update with Provision's changed items offers nothing more while it builds, and records the items' version once the server is in",
+    { tag: ['@S-A55-HAPPY-UPDATE-WITH-PROVISION', '@S-A55-BAD-UPDATE-DURING-BUILD'] },
+    async ({ page, lang, consent, inputBudget, upstream, adminWorld, consoleErrors }) => {
+        // Findings 70, 59 and 71 of 2026-11-02: during the update's build the server card still offered Update the map and
+        // the Provision line, and briefly said Not installed; after it, the card still offered the update, because the
+        // record naming the items' version went to the server being replaced, which refused it.
+        await upstream.scenario('install.provisioned', 'browser');
+        await upstream.scenario('cloud-functions.deployedOlderRelease', 'browser');
+        const installed = { state: 'installed', release: INSTALL_RELEASE, checkedAt: RECORDED };
+        await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid, {
+            provision: { ...OK, items: PROVISION_ITEMS.map((id) => ({ id, ...OK })) },
+            mapbox: { ...OK, user: 'e2e-mapbox' },
+            usgs: OK,
+            install: {
+                server: { state: 'updateAvailable', release: OLDER_SERVER_RELEASE, checkedAt: RECORDED },
+                pipeline: installed,
+                site: installed,
+            },
+        });
+        await serveInstallBundle(page);
+        await page.goto(adminPath(lang, 'setup/deploy'));
+        const setup = new SetupPage(page, lang);
+        await expect(async () => {
+            await expect((await setup.show('deploy')).locator('[data-provision-due]')).toBeVisible({ timeout: 2_000 });
+        }).toPass({ timeout: 30_000 });
+        const deploy = setup.open('deploy');
+        const update = deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.updateAction') });
+        await withConsent(
+            page,
+            consent,
+            update,
+            inputBudget.flow('updateMap', contentFlowBudget('updateMap')),
+            inputBudget.flow('updateMapConsent', 1),
+        );
+        await expect.poll(async () => (await buildsOf(upstream, 'server')).length).toBe(1);
+
+        // The build is under way: no second update offered, no Provision line, and never Not installed.
+        await expect(installState(deploy)).toHaveAttribute('data-state', /^(queued|working|retrying)$/);
+        await expect(deploy.locator('[data-provision-due]')).toHaveCount(0);
+        await expect(update).toHaveCount(0);
+        await expectStateSound(page, adminVisit('setup.install-update-building', lang));
+        // The items ran with the click's token, but their version waits for the server this update installs.
+        expect((await adminWorld.emulators.document('setup/status'))?.['provision']).not.toHaveProperty('setVersion');
+
+        await upstream.scenario('cloud-build.finish', 'browser');
+        await page.clock.fastForward(10_000);
+        await expect(installState(deploy)).toContainText(setupText(lang, 'adminSetup.install.state.installed'));
+        await expect
+            .poll(async () => (await adminWorld.emulators.document('setup/status'))?.['provision'], { timeout: 30_000 })
+            .toMatchObject({ setVersion: PROVISION_SET_VERSION });
+        await expect(deploy.locator('[data-provision-due]')).toHaveCount(0);
+        await expect(update).toHaveCount(0);
+        // Setup's analytics card asks for its stream's settings, which this world's project has none of (a 400 the browser logs).
+        consoleErrors.takeMatching(/setup-analyticsConfig/);
+    },
+);
+
+test(
     "A server from before M6, lacking M6's functions, offers Update the map; the claim stays done throughout",
     { tag: ['@S-A55-HAPPY-PRE-M6-UPGRADE'] },
     async ({ page, lang, consent, inputBudget, setupBudget, upstream, adminWorld }) => {

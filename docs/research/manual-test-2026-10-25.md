@@ -676,3 +676,58 @@ automagic for the admin!!!". Changes: `DECISIONS-for-review.md` §85, `docs/LESS
   seconds ("The sign-in did not finish: use the command from the admin, which signs this computer in"), and it still shows
   the state when the SDK cannot be loaded. The worker's own calls to Google's token services name the Hosting origin as
   their `Referer`, so the referrer-restricted key accepts them (S-P04-BAD-POPUP-TIMEOUT).
+
+### Open issues of the local worker's live test, and no copy and paste (2026-11-02, admin, server and pipeline `1.0.0+b8b4a26`)
+
+The owner, after Update the map installed `b8b4a26` (17:00–17:15): "I should not have to copy and paste. Fix. Also fix open
+issues"; the decision for the first: **Starter file + auto-pair**. The open issues kept their numbers from the session
+(59–61, 64, 70, 71), recorded here with their fixes. Changes: `DECISIONS-for-review.md` §86, `docs/LESSONS.md` 350–353,
+the addendum of 2026-11-02 (the starter file and auto-pair) of `docs/research/M7-local-worker.md`.
+
+- **59.** \[bug]\[setup] The server card said **Not installed** for a moment while an update started. Root cause: the click
+  sets the target's flow busy, and a flow that has not looked at Google yet (the update clicked from Home's tile, or right
+  after Setup opened, with no live token) reported its first view, "Not installed", over the recorded target until its
+  look answered. FIXED (§86e): a view without a look keeps what the card showed and takes only the click's `busy`,
+  `error` and `blocker` (S-A55-BAD-UPDATE-DURING-BUILD).
+- **60.** \[bug]\[imagery] The version page showed the raw code (`apiError.imagery.outOfMemory`) under the translated
+  message. Root cause: `imagery.tick`'s ending of a lost run writes the job's `message` as the code, and the page prints the
+  message as the technical detail. FIXED (§86f): a message that is only a code (or the code again) is not shown; the code
+  stays on the job, which **Jobs** shows (S-A12-BAD-LOST-RUN-STEP).
+- **61.** \[bug]\[imagery] A failed version's step list still said **Running** on the step the run died in. Root cause: the
+  run was killed (out of memory), so nothing wrote the step's end; the tick failed the job only. FIXED (§86f): the page reads
+  a `running` step of a failed job as **Failed** (and drops its byte count) (S-A12-BAD-LOST-RUN-STEP).
+- **64.** \[bug]\[cost] Cloud Run's free-tier meter showed 0 although the month had cloud runs. Root cause: the count
+  (`imagery.onJobWrite`) began with M7's release; runs that ended before it were never counted. FIXED (§86g): once a month
+  the first `imagery.tick` adds every city's cloud runs of the month that ended uncounted, from their jobs' times (dispatch
+  to end × the machine; at most three hours each), and marks the month `backfilledAt` (S-A63-HAPPY-BACKFILL,
+  S-A63-BAD-BACKFILL-ONCE).
+- **70.** \[bug]\[setup] While an install or update ran, the server card still showed **Update the map** and the line
+  "The update also brings these project settings up to date: …". FIXED (§86i): neither is offered while any target's build
+  is queued or running, or a click on one is on its way (S-A55-BAD-UPDATE-DURING-BUILD).
+- **71.** \[bug]\[setup] After a successful Update the map that included the changed Provision items, the card still offered
+  the update with "also brings these project settings up to date". Found: the items did run (both were already `ok` from an
+  earlier manual Retry, and stayed so); the record that names the item set's version (`setup.recordCloud` with
+  `provision.setVersion`) was sent beside the server's build, to the server being replaced (a release before `b8b4a26`), whose strict
+  request schema did not know `setVersion` and refused the whole record (the step's error, on step c's card). FIXED
+  (§86d): an update that installs the server records Provision's result once that build has settled
+  (S-A55-HAPPY-UPDATE-WITH-PROVISION). Live: one more **Update the map** after this release records it (the server now
+  knows the field).
+- **72.** \[ux]\[worker] "I should not have to copy and paste." FIXED (§86a–§86c): **Use this computer** on the worker's panel
+  saves a small starter file for the browser's system (Linux `hcm-worker.sh`, macOS `hcm-worker.command`, Windows
+  `hcm-worker.bat`, switchable), which holds no secret. Opened once, it checks Docker (Get Docker when missing) and installs a
+  supervisor of the owner's user, no administrator rights (Linux a `systemd --user` service, else the desktop's autostart;
+  macOS a LaunchAgent; Windows a task at logon, else the Startup folder), which asks the server for the installed pipeline
+  image (`worker.image`), pulls it by digest and runs the worker with `--supervised --image <digest>` and no restart policy;
+  when the worker ends (exit 75 when its image is older than the installed one, or any other end) it waits and starts the
+  installed image again, so updates reach the computer with no paste and no Docker socket in the container. The admin pairs
+  the computer by itself: while the panel is shown, or the admin is open in a browser that set the computer up, it reads
+  `http://127.0.0.1:8765/state` (the worker answers CORS and Private Network Access's preflight for the project's Hosting
+  origins only) and posts a fresh one-time code to the worker's `POST /pair`: **Connecting this computer…**, then **This
+  computer is connected**. **Stop using this computer** gives the same file set to remove the service, the worker and its
+  volume, and disconnects the computer's worker. The copyable command stays behind **Advanced** (S-A62-HAPPY-STARTER,
+  S-A62-BAD-STARTER-TEMPLATE, S-A62-HAPPY-STOP-COMPUTER, S-A62-HAPPY-AUTO-PAIR, S-A62-HAPPY-STARTER-IMAGE,
+  S-A62-BAD-STARTER-NO-IMAGE, S-A62-HAPPY-STARTER-UPDATE, S-A62-BAD-STARTER-OUTDATED, S-P04-HAPPY-AUTO-PAIR,
+  S-P04-BAD-AUTO-PAIR-ORIGIN, S-P04-BAD-SUPERVISED-OUTDATED). **UNVERIFIED** until the owner's first run: each system's
+  double-click (Gatekeeper, SmartScreen, a file manager that opens a `.sh` in an editor), the Scheduled Task without
+  administrator rights, Chrome's Local Network Access prompt for the admin's look at `127.0.0.1`, and browsers other than
+  Chrome.

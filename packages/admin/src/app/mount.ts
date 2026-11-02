@@ -392,7 +392,7 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
         ...{ shell, location: deps.location, session: deps.session, pages: deps.pages },
         ...{ track, unsaved, switchCity: openCity },
     });
-    const watches = shellWatches({ ...deps, store: deps.content?.store ?? null }, shell, denied);
+    const watches = shellWatches({ ...deps, store: deps.content?.store ?? null, states: store, stores: content.stores }, shell, denied);
     const stopWatching = store.subscribe((state) => {
         watches.stateChanged(state);
         navigation.stateChanged(state);

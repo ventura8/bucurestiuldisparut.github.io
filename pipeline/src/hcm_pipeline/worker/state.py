@@ -1,7 +1,8 @@
 """What the local page shows (`GET /state`, docs/research/M7-local-worker.md §2.1, §10.3): the account signed in (its
 e-mail only, never a token), the city, idle or the job and its step, and the last error; and what `worker.hello`
 answered (how often to claim, how often the heartbeat writes). Thread-safe: the page's server reads it while the loop
-writes it.
+writes it. Finding 72 of 2026-11-02 (auto-pair, M7 §2.7): the admin reads it too, from the project's Hosting origin: the
+worker's id and whether it takes a pairing code now (`pairable`: no session, and not disconnected in the admin).
 """
 
 import threading
@@ -10,6 +11,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from hcm_pipeline.log import get_logger
+from hcm_pipeline.worker.api import REVOKED
 from hcm_pipeline.worker.session import Session
 
 LOG = get_logger("worker.state")
@@ -27,9 +29,10 @@ class Timing:
 
 
 class WorkerState:
-    def __init__(self, city: str, project: str, session: Session) -> None:
+    def __init__(self, city: str, project: str, session: Session, worker_id: str = "") -> None:
         self._city = city
         self._project = project
+        self._worker_id = worker_id
         self._session = session
         self._lock = threading.Lock()
         self._job: str | None = None
@@ -50,6 +53,11 @@ class WorkerState:
         """The last error the page shows (an `apiError.*` code), or none."""
         with self._lock:
             self._error = code
+
+    @property
+    def is_outdated(self) -> bool:
+        with self._lock:
+            return self._outdated
 
     def outdated(self, outdated: bool) -> None:
         """Finding 67: whether this worker's image is no longer the installed pipeline's (it takes no job until updated)."""
@@ -75,14 +83,17 @@ class WorkerState:
 
     def snapshot(self) -> dict[str, object]:
         with self._lock:
+            last_error = self._error or self._session.ended_because
             return {
+                "workerId": self._worker_id,
                 "signedIn": self._session.active,
+                "pairable": not self._session.active and last_error != REVOKED,
                 "email": self._session.email,
                 "city": self._city,
                 "project": self._project,
                 "state": self._phase(),
                 "jobId": self._job,
                 "step": self._step,
-                "lastError": self._error or self._session.ended_because,
+                "lastError": last_error,
                 "outdated": self._outdated,
             }

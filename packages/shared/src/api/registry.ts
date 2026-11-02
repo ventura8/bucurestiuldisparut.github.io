@@ -297,7 +297,15 @@ export const ADMIN_CALLABLES = {
 export type AdminCallableName = keyof typeof ADMIN_CALLABLES;
 
 /** The local worker's callables (M7, `docs/research/M7-local-worker.md` §2.4): their rows are `WORKER_CALLABLES`. */
-export const WORKER_CALLABLE_NAMES = ['worker.hello', 'worker.claim', 'worker.step', 'worker.urls', 'worker.end', 'worker.pair'] as const;
+export const WORKER_CALLABLE_NAMES = [
+    'worker.hello',
+    'worker.claim',
+    'worker.step',
+    'worker.urls',
+    'worker.end',
+    'worker.pair',
+    'worker.image',
+] as const;
 export type WorkerCallableName = (typeof WORKER_CALLABLE_NAMES)[number];
 
 /** Every callable's name, the admin's and the worker's: what a deployment holds (`CALLABLES`' keys, its test checks). */

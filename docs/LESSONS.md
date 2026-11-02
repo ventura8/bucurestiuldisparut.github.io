@@ -2058,3 +2058,37 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       read (§85c; S-A62-BAD-PAIR-REUSED, S-A62-BAD-PAIR-EXPIRED).
     - **A credential exchanged without a sign-in is single-use, short-lived, hashed at rest, rate-limited and refused
       with one answer.**
+350. **A record the update sent to the server it was replacing was refused, so the update was offered again forever.**
+    - Seen: 2026-11-02 live (finding 71): Update the map installed the server and pipeline of `b8b4a26` and ran Provision's
+      two changed items, yet the server card kept offering the update "also brings these project settings up to date". The
+      items had run (they were `ok`); their `setup.recordCloud` naming `setVersion` went to the server being replaced,
+      whose strict request schema did not know the field and refused the whole record.
+    - Found by: the owner's live update; every tier ran the admin against a server of its own release.
+    - Fix and pin: an update that installs the server records Provision's result once that build has settled
+      (`recordAfter`, §86d; S-A55-HAPPY-UPDATE-WITH-PROVISION, `packages/admin/test/setup/{install,provision}.test.ts`).
+    - **A client that upgrades its server writes the server's new fields only after the new server is in place.**
+351. **A view nobody had looked at yet replaced the one the card showed.**
+    - Seen: 2026-11-02 live (finding 59): the server card said "Not installed" for a moment after Update the map. The click
+      set its flow busy, and the flow's first view, never looked at ("Not installed"), replaced the recorded target until
+      the look answered.
+    - Found by: the owner's eye; the specs looked after the look had answered.
+    - Fix and pin: a view without `checkedAt` keeps the shown target and takes only `busy`, `error` and `blocker` (§86e;
+      S-A55-BAD-UPDATE-DURING-BUILD, `packages/admin/test/setup/install.test.ts`).
+    - **A placeholder state never overwrites a known one: merge the intent (busy) into what is shown.**
+352. **A library's unused feature can be most of its weight: zod's JSON Schema conversion was 18 KB of the admin.**
+    - Seen: 2026-11-02, finding 72 needed 2 KB and the admin had 0.8 KB left of 630. zod 4's classic schemas import the JSON
+      Schema processors for `toJSONSchema()`, Standard Schema's `jsonSchema` and derived getters, reachable from every
+      schema's constructor, so no tree shaking removes them, though the admin calls none.
+    - Found by: the bundle budget, then a one-off count of the source map's bytes per module (§86h).
+    - Fix and pin: the admin's build resolves those two imports of zod's classic schemas to a stand-in that throws
+      (`packages/admin/src/vendor/zod-json-schema-unsupported.ts`, unit-tested to name every function zod imports): 5.7 KB
+      gzip less; the e2e admin is built with it.
+    - **Before raising a budget, weigh the bundle by module: a dependency's eagerly reachable but unused code is a
+      stand-in away.**
+353. **A job failed by something other than its run kept a step "Running" and printed its code as its message.**
+    - Seen: 2026-11-02 live (findings 60, 61): a run killed for its memory on the largest machine; `imagery.tick` failed the
+      job with `message` = the code, and the step it died in stayed `running`.
+    - Found by: the owner, on the version page.
+    - Fix and pin: the page reads a failed job's `running` step as failed and drops a message that is only a code (§86f;
+      S-A12-BAD-LOST-RUN-STEP).
+    - **A screen derives what an interrupted writer could not finish writing.**

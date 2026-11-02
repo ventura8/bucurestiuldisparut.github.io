@@ -104,6 +104,8 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'worker.pair': 'fn-admin',
     'worker.pairCode': 'fn-admin',
     'worker.revoke': 'fn-admin',
+    // Finding 72: the starter's supervisor asks the installed image (reads setup/status only).
+    'worker.image': 'fn-admin',
 };
 
 /** What firebase-tools and Cloud Run set to the project while the code loads (discovery, the emulator, a cold start). */

@@ -129,3 +129,24 @@ def test_happy_path_a_loop_without_a_connector_tries_and_forgets_nothing() -> No
     connector.forget()
 
     assert list(Path.cwd().iterdir()) == folder_before
+
+
+def test_happy_path_the_admins_code_offered_later_pairs_a_worker_started_without_one(tmp_path: Path) -> None:
+    # Finding 72 (auto-pair): the starter starts the worker with no code; the admin posts one to `POST /pair` later.
+    clock = FakeClock()
+    pairing = pairing_with(lambda _request: httpx.Response(200, json={"idToken": fake_id_token(clock() + 3600), "refreshToken": "r"}))
+    session = Session(httpx.Client(transport=httpx.MockTransport(unreachable)), lambda: "https://token.test", clock)
+    connector = Connector(
+        pairing, SessionFile(tmp_path, "bucharest"), Signer(session, Actions(session, None), lambda _code: None), None, clock
+    )
+
+    connector.attempt()
+    assert [session.active] == [False]
+    connector.forget()
+    connector.offer(CODE)
+    connector.attempt()
+
+    assert [session.active] == [True]
+    kept = SessionFile(tmp_path, "bucharest").load()
+    assert kept is not None
+    assert kept.pair_id == PAIR

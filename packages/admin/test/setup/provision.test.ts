@@ -270,6 +270,33 @@ describe('provision: an update applies the items that changed (finding 65 of 202
         expect(ctx.state().install.provisionDue).toEqual([]);
     });
 
+    it('happyPath_theRecordWaitsForTheServerTheSameUpdateInstalls @S-A04-HAPPY-UPDATE-PROVISION-RECORD', async () => {
+        // Finding 71 of 2026-11-02: the items ran, but the server before the update refused the record naming the version.
+        const { harness, ctx, flow } = prepared();
+        harness.cloud.provision.mockImplementation(
+            reporting([
+                { id: 'artifact-registry', state: 'ok' },
+                { id: 'bucket-lifecycle', state: 'ok' },
+            ]),
+        );
+        harness.backend.recordCloud.mockResolvedValue({ status: statusView() });
+        let serverInstalled: () => void = () => undefined;
+        const recordAfter = new Promise<void>((resolve) => {
+            serverInstalled = resolve;
+        });
+
+        const updating = flow.update(access(Date.now(), 'cloudPlatform'), recordAfter);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(harness.cloud.provision).toHaveBeenCalledTimes(1);
+        expect(harness.backend.recordCloud).not.toHaveBeenCalled();
+        expect(ctx.state().steps.provision.busy).toBe(true);
+        serverInstalled();
+        await updating;
+        expect(harness.backend.recordCloud.mock.calls[0]?.[0]).toMatchObject({ provision: { setVersion: PROVISION_SET_VERSION } });
+        expect(ctx.state().steps.provision.busy).toBe(false);
+    });
+
     it('badPath_anItemThatFailsLeavesTheVersionUnrecorded @S-A04-BAD-UPDATE-PROVISION', async () => {
         const { harness, ctx, flow } = prepared();
         harness.cloud.provision.mockImplementation(

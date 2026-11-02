@@ -169,9 +169,21 @@ function transferOf(step: StepRecord | undefined): JobStepView['transfer'] {
     return step?.status === 'running' && step.bytes !== undefined ? { received: step.bytes, total: orNull(step.totalBytes) } : null;
 }
 
+/**
+ * A step's state as the page shows it: a step a failed job left `running` (the run died in it: finding 61 of 2026-11-02,
+ * an out-of-memory exit the tick failed the job for) is `failed`.
+ */
+function shownStatus(job: JobDoc, step: StepRecord | undefined): JobStepView['status'] {
+    const status = step?.status ?? 'pending';
+    return status === 'running' && job.status === 'failed' ? 'failed' : status;
+}
+
 function stepsOf(job: JobDoc): JobStepView[] {
     const recorded = job.steps ?? {};
-    return JOB_STEPS[job.type].map((name) => ({ name, status: recorded[name]?.status ?? 'pending', transfer: transferOf(recorded[name]) }));
+    return JOB_STEPS[job.type].map((name) => {
+        const status = shownStatus(job, recorded[name]);
+        return { name, status, transfer: status === 'running' ? transferOf(recorded[name]) : null };
+    });
 }
 
 /** A job's error code as a notice: an `apiError.*` code with its parameters (a code from before M3 reads as internal). */
@@ -182,8 +194,17 @@ function jobNotice(error: NonNullable<JobDoc['error']>): NoticeInput {
     return error.params === undefined ? { key: error.code } : { key: error.code, params: error.params };
 }
 
+/**
+ * The job's error: its notice, and its technical detail unless that is only the code again (finding 60 of 2026-11-02: a
+ * failure the server wrote with the code as its message, `apiError.imagery.outOfMemory`, showed the raw code under the
+ * translated sentence; the code stays in the job's record, which the Jobs page shows).
+ */
 function jobErrorOf(error: JobDoc['error']): JobView['error'] {
-    return error === undefined ? null : { notice: jobNotice(error), message: error.message };
+    if (error === undefined) {
+        return null;
+    }
+    const detail = error.message === error.code || isApiErrorCode(error.message) ? '' : error.message;
+    return { notice: jobNotice(error), message: detail };
 }
 
 /** Mapbox was asked to publish: the MTS job is recorded, or the publish call is (or was) under way. */

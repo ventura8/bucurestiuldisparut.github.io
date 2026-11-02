@@ -1,12 +1,16 @@
 import { existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
+import { WORKER_PORT } from '@hcm/shared';
 import { translateAdminWorker, type AdminWorkerKey } from '@hcm/shared/admin-worker';
-import type { APIRequestContext, Page } from '@playwright/test';
+import { translateAdminWorkerLocal, type AdminWorkerLocalKey } from '@hcm/shared/admin-worker-local';
+import type { APIRequestContext, Page, TestInfo } from '@playwright/test';
 
 import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
 import { REPO_ROOT } from '../../support/imagery-runner.js';
 import { LocalWorker } from '../../support/imagery-worker.js';
+import { expectStateSound } from '../../../support/state-check.js';
+import { adminVisit } from '../../../tour/states.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../../support/test.js';
 import { E2E_PROJECT_ID } from '../../world.js';
 import { FRAME_CITY, generateScene, SYNTHETIC_SCENE } from './synthetic.js';
@@ -39,17 +43,23 @@ function text(lang: 'ro' | 'en', key: AdminWorkerKey, params?: Readonly<Record<s
     return translateAdminWorker(lang, key, params);
 }
 
+function local(lang: 'ro' | 'en', key: AdminWorkerLocalKey): string {
+    return translateAdminWorkerLocal(lang, key);
+}
+
 /** The first sentence of a text with a `{when}`, which the page fills with a relative time. */
 function lead(lang: 'ro' | 'en', key: AdminWorkerKey): string {
     return text(lang, key, { when: '' }).split(':')[0] ?? '';
 }
 
-/** The command the Jobs page shows for the computer (one line, nothing to prepare: finding 66), and its pairing code. */
+/** Advanced's command on the Jobs page (finding 66; behind Advanced since finding 72), and its one-time pairing code. */
 async function commandOfJobsPage(page: Page, lang: 'ro' | 'en'): Promise<{ readonly command: string; readonly code: string }> {
     await page.goto(adminPath(lang, 'jobs'));
-    const shown = page.locator('hcm-worker-panel pre');
-    await expect(shown).toContainText('--pair ', { timeout: FUNCTIONS_TIMEOUT_MS });
-    const command = (await shown.textContent()) ?? '';
+    const shown = page.locator('hcm-worker-panel');
+    await shown.getByText(local(lang, 'adminWorkerLocal.advanced')).click({ timeout: FUNCTIONS_TIMEOUT_MS });
+    const pre = shown.locator('hcm-worker-local pre');
+    await expect(pre).toContainText('--pair ', { timeout: FUNCTIONS_TIMEOUT_MS });
+    const command = (await pre.textContent()) ?? '';
     return { command, code: PAIR.exec(command)?.[1] ?? '' };
 }
 
@@ -81,10 +91,46 @@ async function expectPanelIdle(page: Page, lang: 'ro' | 'en'): Promise<void> {
     await expect(panel.getByText(lead(lang, 'adminWorker.lastDone'))).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
 }
 
+/**
+ * Advanced's command (finding 66) on another computer (an empty work folder): its one-time code pairs a worker once; the
+ * same code on a third computer is refused, it worked once (S-A62-BAD-PAIR-REUSED).
+ */
+async function advancedCodeWorksOnce(
+    page: Page,
+    lang: 'ro' | 'en',
+    request: APIRequestContext,
+    testInfo: TestInfo,
+    city: string,
+): Promise<void> {
+    const { command, code } = await commandOfJobsPage(page, lang);
+    expect(command).toContain('docker rm -f hcm-worker');
+    expect(command).toContain('--restart unless-stopped');
+    expect(command).toContain(`-v hcm-worker:/work us-central1-docker.pkg.dev/${E2E_PROJECT_ID}/hcm/pipeline@${DIGEST} `);
+    expect(code).toMatch(/^[a-z2-7]{26}$/);
+    const second = testInfo.outputPath('work-second');
+    mkdirSync(second, { recursive: true });
+    const paired = LocalWorker.start(city, second, code);
+    try {
+        await stateOnce(request, await paired.origin(), 'signedIn', true);
+        expect(paired.output()).not.toContain(code);
+    } finally {
+        await paired.stop();
+    }
+    const fresh = testInfo.outputPath('work-other');
+    mkdirSync(fresh, { recursive: true });
+    const other = LocalWorker.start(city, fresh, code);
+    try {
+        const refused = await stateOnce(request, await other.origin(), 'lastError', 'apiError.worker.pairCode');
+        expect(refused).toMatchObject({ signedIn: false });
+    } finally {
+        await other.stop();
+    }
+}
+
 test(
     "The real worker on the owner's computer claims a local import, runs it and keeps the raw scan local",
-    { tag: ['@S-A62-HAPPY-WORKER-RUN', '@S-A62-HAPPY-PAIR', '@S-A62-BAD-PAIR-REUSED'] },
-    async ({ page, lang, adminWorld, mockApiRequest, upstream, request }, testInfo) => {
+    { tag: ['@S-A62-HAPPY-WORKER-RUN', '@S-A62-HAPPY-PAIR', '@S-A62-BAD-PAIR-REUSED', '@S-A62-HAPPY-AUTO-PAIR'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream, request, consoleErrors }, testInfo) => {
         test.setTimeout(600_000);
         const owner = adminWorld.accounts.owner;
         const { emulators } = adminWorld;
@@ -121,23 +167,30 @@ test(
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
 
-        // The owner copies the Jobs page's command and runs it: one line with its pairing code, which signs the worker in.
+        // The starter file's supervisor starts the worker on its own port with no code; the owner clicks Use this computer on the
+        // Jobs page, and the admin pairs this computer by itself (finding 72): no code on screen, nothing pasted.
         const versionUrl = page.url();
-        const { command, code } = await commandOfJobsPage(page, lang);
-        expect(command).toContain('docker rm -f hcm-worker');
-        expect(command).toContain('--restart unless-stopped');
-        expect(command).toContain(`-v hcm-worker:/work us-central1-docker.pkg.dev/${E2E_PROJECT_ID}/hcm/pipeline@${DIGEST} `);
-        expect(code).toMatch(/^[a-z2-7]{26}$/);
-        await page.goto(versionUrl);
         const work = testInfo.outputPath('work');
         mkdirSync(work, { recursive: true });
-        const worker = LocalWorker.start(imagery.city, work, code);
+        const worker = LocalWorker.start(imagery.city, work, undefined, WORKER_PORT);
         try {
             const origin = await worker.origin();
+            await stateOnce(request, origin, 'pairable', true);
+            await page.goto(adminPath(lang, 'jobs'));
+            const shown = page.locator('hcm-worker-panel');
+            const saved = page.waitForEvent('download');
+            await shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.use') }).click({ timeout: FUNCTIONS_TIMEOUT_MS });
+            expect((await saved).suggestedFilename()).toBe('hcm-worker.sh');
+            await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.connected'), {
+                timeout: FUNCTIONS_TIMEOUT_MS,
+            });
             const signedIn = await stateOnce(request, origin, 'signedIn', true);
-            expect(signedIn).toMatchObject({ city: imagery.city, lastError: null, outdated: false });
+            expect(signedIn).toMatchObject({ city: imagery.city, lastError: null, outdated: false, pairable: false });
+            await expect(shown.locator('hcm-worker-local pre')).not.toContainText('--pair');
+            await expectStateSound(page, adminVisit('worker.local-connected', lang));
             // The session is kept in the work folder (the named volume), readable by the worker's user only.
             expect(filesUnder(work).filter((name) => name.startsWith('.hcm-session-'))).toEqual([`.hcm-session-${imagery.city}.json`]);
+            await page.goto(versionUrl);
 
             // It claims the job and runs every step of the import.
             for (const step of STEPS) {
@@ -183,31 +236,22 @@ test(
             // DECISIONS-for-review.md §83j, docs/LESSONS.md 342).
             expect(await worker.stop()).toBe('exit 0');
             expect(worker.output()).toMatch(/worker w-[0-9a-f]{16} stopped/);
-            expect(worker.output()).not.toContain(code);
 
-            // Docker's restart policy runs the same command again after a reboot: the kept session signs it in, the used
-            // code is not asked again.
-            const restarted = LocalWorker.start(imagery.city, work, code);
+            // The supervisor starts it again after a reboot: the kept session signs it in, no new pairing.
+            const restarted = LocalWorker.start(imagery.city, work);
             try {
                 await stateOnce(request, await restarted.origin(), 'signedIn', true);
             } finally {
                 expect(await restarted.stop()).toBe('exit 0');
             }
 
-            // The same code on another computer (an empty work folder): refused, it worked once.
-            const fresh = testInfo.outputPath('work-other');
-            mkdirSync(fresh, { recursive: true });
-            const other = LocalWorker.start(imagery.city, fresh, code);
-            try {
-                const refused = await stateOnce(request, await other.origin(), 'lastError', 'apiError.worker.pairCode');
-                expect(refused).toMatchObject({ signedIn: false });
-            } finally {
-                await other.stop();
-            }
+            await advancedCodeWorksOnce(page, lang, request, testInfo, imagery.city);
         } finally {
             // A test that failed before its stop still ends the worker (a second stop of an ended worker only reads how).
             testInfo.annotations.push({ type: 'worker stop', description: await worker.stop() });
         }
+        // The Jobs page's auto-pair kept looking at this computer after its worker stopped (a refused connection).
+        consoleErrors.takeMatching(/127\.0\.0\.1:8765/);
     },
 );
 

@@ -26,8 +26,10 @@ def test_happy_path_the_city_and_the_project_are_all_the_cloud_worker_needs() ->
         init_json="https://demo-hcm.web.app/__/firebase/init.json",
         custom_token="https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken",
         referer="https://demo-hcm.web.app/",
+        hosting_origins=("https://demo-hcm.web.app", "https://demo-hcm.firebaseapp.com"),
     )
     assert args.pair is None
+    assert (args.supervised, args.image) == (False, None)
     assert args.endpoints.function("worker-claim") == "https://us-central1-demo-hcm.cloudfunctions.net/worker-claim"
 
 
@@ -35,6 +37,13 @@ def test_happy_path_the_admins_command_carries_its_pairing_code() -> None:
     args = parse_worker_args({"city": "bucharest", "project": "demo-hcm", "pair": "abcdefghijklmnopqrstuvwxyz"}, {})
 
     assert args.pair == "abcdefghijklmnopqrstuvwxyz"
+
+
+def test_happy_path_the_starters_supervisor_names_the_image_it_runs() -> None:
+    digest = "sha256:" + "e7" * 32
+    args = parse_worker_args({"city": "bucharest", "project": "demo-hcm", "supervised": True, "image": digest}, {})
+
+    assert (args.supervised, args.image, args.pair) == (True, digest, None)
 
 
 def test_happy_path_under_the_emulators_every_address_is_this_machine() -> None:
@@ -50,6 +59,7 @@ def test_happy_path_under_the_emulators_every_address_is_this_machine() -> None:
         custom_token="http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken",
         referer="http://127.0.0.1:4312/",
         auth_emulator="127.0.0.1:9099",
+        hosting_origins=("http://127.0.0.1:4312",),
     )
     assert args.stac_url == "http://127.0.0.1:4311/h/earth-search.aws.element84.com/v1"
 
@@ -63,6 +73,7 @@ def test_happy_path_under_the_emulators_every_address_is_this_machine() -> None:
         ({"city": "bucharest", "project": "demo-hcm", "port": 70000}, "--port must be a port number"),
         ({"city": "bucharest", "project": "demo-hcm", "work": ""}, "--work must name a folder"),
         ({"city": "bucharest", "project": "demo-hcm", "pair": "ABC"}, "--pair must be the admin's pairing code"),
+        ({"city": "bucharest", "project": "demo-hcm", "image": "latest"}, "--image must be sha256:<digest>"),
     ],
 )
 def test_bad_path_a_bad_option_is_named(options: dict[str, object], problem: str) -> None:

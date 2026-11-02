@@ -1,6 +1,9 @@
 import { CLOUD_RUN_FREE_TIER, PROVISION_ITEMS, PROVISION_SET_VERSION, usageMonth, WORKER_WAIT_MINUTES } from '@hcm/shared';
+import { readFileSync } from 'node:fs';
+
 import { translateAdminWorker, type AdminWorkerKey } from '@hcm/shared/admin-worker';
-import type { Locator, Page } from '@playwright/test';
+import { translateAdminWorkerLocal, type AdminWorkerLocalKey } from '@hcm/shared/admin-worker-local';
+import type { Download, Locator, Page } from '@playwright/test';
 
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
@@ -34,6 +37,11 @@ const LAYER = 'kh-4a-corona-1966';
 
 function text(lang: 'ro' | 'en', key: AdminWorkerKey, params?: Readonly<Record<string, string>>): string {
     return translateAdminWorker(lang, key, params);
+}
+
+/** "Use this computer"'s words (finding 72, the `worker-local` chunk's catalogue). */
+function local(lang: 'ro' | 'en', key: AdminWorkerLocalKey): string {
+    return translateAdminWorkerLocal(lang, key);
 }
 
 /** A whole number as the page writes it. */
@@ -112,6 +120,17 @@ function panel(page: Page): Locator {
     return page.locator('hcm-worker-panel');
 }
 
+/** Opens Advanced (the copyable command, finding 66) in `scope`'s computer part, which mints the command's code. */
+async function openAdvanced(scope: Locator, lang: 'ro' | 'en'): Promise<Locator> {
+    await scope.getByText(local(lang, 'adminWorkerLocal.advanced')).click();
+    return scope.locator('hcm-worker-local pre');
+}
+
+/** The text of a file the browser saved. */
+async function savedText(download: Download): Promise<string> {
+    return readFileSync(await download.path(), 'utf8');
+}
+
 function place(page: Page): Locator {
     return page.locator('hcm-run-place');
 }
@@ -133,13 +152,18 @@ test(
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
         await expect(shown.getByText(text(lang, 'adminWorker.lastDone', { when: '' }).split(':')[0] ?? '')).toBeVisible();
-        await expect(shown.locator('pre')).toHaveText(commandPattern(imagery.city), { timeout: FUNCTIONS_TIMEOUT_MS });
-        const command = (await shown.locator('pre').textContent()) ?? '';
-        await expect(shown.getByRole('link', { name: text(lang, 'adminWorker.getDocker') })).toHaveAttribute(
+        // Finding 72: the computer's part leads with Use this computer; the command waits behind Advanced.
+        await expect(shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.use') })).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(shown.getByRole('link', { name: local(lang, 'adminWorkerLocal.getDocker') })).toHaveAttribute(
             'href',
             'https://docs.docker.com/get-started/get-docker/',
         );
-        await expect(shown.getByText(text(lang, 'adminWorker.notePair'))).toBeVisible();
+        const pre = await openAdvanced(shown, lang);
+        await expect(pre).toHaveText(commandPattern(imagery.city), { timeout: FUNCTIONS_TIMEOUT_MS });
+        const command = (await pre.textContent()) ?? '';
+        await expect(shown.getByText(local(lang, 'adminWorkerLocal.notePair'))).toBeVisible();
         await expect(shown.getByRole('radio', { name: text(lang, 'adminWorker.choice.auto') })).toHaveAttribute('aria-checked', 'true');
         const use = text(lang, 'adminWorker.meterUse', {
             ...{ vcpu: count(lang, 12_345), vcpuFree: count(lang, CLOUD_RUN_FREE_TIER.vcpuSeconds) },
@@ -150,8 +174,8 @@ test(
         await expectStateSound(page, adminVisit('worker.panel-connected', lang));
 
         // Copy puts the command on the clipboard and says so in a polite region.
-        await shown.getByRole('button', { name: text(lang, 'adminWorker.copy') }).click();
-        await expect(shown.getByRole('status').filter({ hasText: text(lang, 'adminWorker.copied') })).toBeVisible();
+        await shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.copy') }).click();
+        await expect(shown.getByRole('status').filter({ hasText: local(lang, 'adminWorkerLocal.copied') })).toBeVisible();
         expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(command);
 
         // The pipeline card shows the same panel and the same month.
@@ -159,7 +183,9 @@ test(
         await page.goto(adminPath(lang, 'setup/pipeline'));
         const card = await setup.show('pipeline');
         await expect(card.locator('hcm-worker-panel').getByText(use)).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
-        await expect(card.locator('hcm-worker-panel pre')).toHaveText(commandPattern(imagery.city), { timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(card.getByRole('button', { name: local(lang, 'adminWorkerLocal.use') })).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
         await expectStateSound(page, adminVisit('worker.setup-panel', lang));
         // Setup's analytics card asks for its stream's settings, which this world's project has none of (a 400 the browser logs).
         consoleErrors.takeMatching(/setup-analyticsConfig/);
@@ -179,7 +205,7 @@ test(
         await expect(shown.getByText(text(lang, 'adminWorker.noImage'))).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         await expect(shown.getByRole('link', { name: text(lang, 'adminWorker.openSetup') })).toHaveAttribute('href', '#/setup/pipeline');
         await expect(shown.locator('pre')).toHaveCount(0);
-        await expect(shown.getByRole('button', { name: text(lang, 'adminWorker.copy') })).toHaveCount(0);
+        await expect(shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.use') })).toHaveCount(0);
         await expectStateSound(page, adminVisit('worker.panel-no-image', lang));
     },
 );
@@ -314,5 +340,61 @@ test(
 
         await expect.poll(async () => (await imagery.job('late-1'))?.['runOn'], { timeout: FUNCTIONS_TIMEOUT_MS }).toBe('cloud');
         expect(await imagery.job('late-1')).not.toHaveProperty('workerOverdueAt');
+    },
+);
+
+test(
+    "Use this computer gives the starter file for the browser's system, and Stop using this computer the file that removes it",
+    { tag: ['@S-A62-HAPPY-STARTER', '@S-A62-HAPPY-STOP-COMPUTER', '@S-A62-BAD-STARTER-TEMPLATE'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream, consoleErrors }) => {
+        // Finding 72 of 2026-11-02 ("I should not have to copy and paste"): one file, opened once, sets the computer up.
+        const owner = adminWorld.accounts.owner.uid;
+        const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
+        await recordPipeline(imagery);
+
+        await page.goto(adminPath(lang, 'jobs'));
+        const shown = panel(page);
+        const use = shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.use') });
+        await expect(use).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        const linux = page.waitForEvent('download');
+        await use.click();
+        const starter = await linux;
+        expect(starter.suggestedFilename()).toBe('hcm-worker.sh');
+        const script = await savedText(starter);
+        expect(script).toContain(`HCM_PROJECT='${E2E_PROJECT_ID}'`);
+        expect(script).toContain(`HCM_CITY='${imagery.city}'`);
+        expect(script).toContain("HCM_ACTION='install'");
+        expect(script).not.toMatch(/__HCM_|--pair/);
+        await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.open.linux'));
+        await expectStateSound(page, adminVisit('worker.local-downloaded', lang));
+
+        // Windows: the .bat that calls PowerShell, with Windows' line ends.
+        await shown.getByRole('radio', { name: local(lang, 'adminWorkerLocal.os.windows') }).click();
+        const windows = page.waitForEvent('download');
+        await use.click();
+        const bat = await windows;
+        expect(bat.suggestedFilename()).toBe('hcm-worker.bat');
+        expect(await savedText(bat)).toContain(`set "HCM_CITY=${imagery.city}"\r\n`);
+        await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.open.windows'));
+
+        // Stop using this computer: the same file, set to remove the worker.
+        await shown.getByRole('radio', { name: local(lang, 'adminWorkerLocal.os.linux') }).click();
+        const removal = page.waitForEvent('download');
+        await shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.stop') }).click();
+        const remover = await removal;
+        expect(remover.suggestedFilename()).toBe('hcm-worker-remove.sh');
+        expect(await savedText(remover)).toContain("HCM_ACTION='uninstall'");
+        await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.stopped'));
+
+        // A template the site does not serve: no file, and the panel says so.
+        await page.route('**/admin/worker/hcm-worker.sh', (route) => route.fulfill({ status: 404, body: '' }));
+        await use.click();
+        await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.failed'));
+        await openAdvanced(shown, lang);
+        await expect(shown.locator('hcm-worker-local pre')).toHaveText(commandPattern(imagery.city), { timeout: FUNCTIONS_TIMEOUT_MS });
+        await expectStateSound(page, adminVisit('worker.local-advanced', lang));
+        // The template refused on purpose, and the auto-pair's looks at this computer, where no worker runs in this test
+        // (the browser logs a refused connection; worker-run.spec.ts pairs a real one).
+        consoleErrors.takeMatching(/admin\/worker\/hcm-worker\.sh|127\.0\.0\.1:8765/);
     },
 );

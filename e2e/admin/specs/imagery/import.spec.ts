@@ -248,6 +248,48 @@ test(
 );
 
 test(
+    "A run lost in a step shows that step failed and only the failure's sentence, not its code",
+    { tag: '@S-A12-BAD-LOST-RUN-STEP' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        // Findings 60 and 61 of 2026-11-02: imagery.tick failed a job whose run died in stitch (out of memory on the largest
+        // machine): its step stayed "running", and its message, the bare code, showed under the translated sentence.
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        const at = new Date();
+        const scene = { entityId: SCENE, dataset: 'corona2', sensor: 'KH-4A' } as const;
+        const error = { code: 'apiError.imagery.outOfMemory', message: 'apiError.imagery.outOfMemory' };
+        await imagery.seedVersion(
+            'lost-1',
+            {
+                ...{ layerId: 'kh-4a-corona-1966', origin: 'usgs', state: 'failed', year: 1966, date: '1966-07-12', sensor: 'KH-4A' },
+                source: { kind: 'usgs', ...scene, acquisitionDate: '1966-07-12' },
+                label: { ro: 'KH-4A Corona, 12 iulie 1966', en: 'KH-4A Corona, 12 July 1966' },
+                error: { code: error.code },
+            },
+            at,
+        );
+        const steps = { fetch: { status: 'done' }, extract: { status: 'done' }, stitch: { status: 'running', bytes: 1000 } };
+        await imagery.seedJob(
+            'lost-1',
+            { type: 'usgs-import', status: 'failed', params: scene, layerId: 'kh-4a-corona-1966', versionId: 'lost-1', steps, error },
+            at,
+        );
+
+        await page.goto(adminPath(lang, 'imagery/version/lost-1'));
+        await expect(detail(page).getByText(errorText(lang, 'apiError.imagery.outOfMemory'))).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(stepRow(page, lang, 'stitch')).toContainText(stepStateText(lang, 'failed'));
+        await expect(stepRow(page, lang, 'stitch')).not.toContainText(stepStateText(lang, 'running'));
+        await expect(stepRow(page, lang, 'fetch')).toContainText(stepStateText(lang, 'done'));
+        await expect(detail(page).getByText('apiError.imagery.outOfMemory')).toHaveCount(0);
+        await expectStateSound(page, adminVisit('imagery.version-lost-run', lang));
+    },
+);
+
+test(
     'USGS maintenance makes the import wait, not fail',
     { tag: '@S-A12-BAD-USGS-MAINTENANCE' },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {

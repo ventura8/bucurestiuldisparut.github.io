@@ -114,7 +114,7 @@ function createFlows(ctx: SetupContext): Flows {
         usgs: createUsgsFlow(ctx),
         analytics: createAnalyticsFlow(ctx),
         legacyImport: createLegacyImportFlow(ctx),
-        install: createInstallCards(ctx, (access) => provision.update(access)),
+        install: createInstallCards(ctx, (access, recordAfter) => provision.update(access, recordAfter)),
     };
 }
 

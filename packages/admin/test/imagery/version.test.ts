@@ -339,3 +339,31 @@ describe('a version and its job as the page reads them', () => {
         });
     });
 });
+
+describe('a job lost in a step as the page reads it (findings 60 and 61 of 2026-11-02)', () => {
+    it('badPath_aStepAFailedJobLeftRunningIsFailedAndAMessageThatIsOnlyTheCodeIsNotShown @S-A16-BAD-FAILED-STEP', () => {
+        // Findings 60 and 61 of 2026-11-02: the tick failed a job whose run died in georef (out of memory on xl), writing the
+        // code as the message.
+        const georef = { status: 'running', bytes: 5_000_000 };
+        const job = jobDocSchema.parse(
+            jobDoc({
+                status: 'failed',
+                steps: { fetch: { status: 'done' }, georef },
+                error: { code: 'apiError.imagery.outOfMemory', message: 'apiError.imagery.outOfMemory' },
+            }),
+        );
+
+        const view = jobViewOf(stored(ID, job));
+
+        expect(view.steps.find((step) => step.name === 'georef')).toEqual({ name: 'georef', status: 'failed', transfer: null });
+        expect(view.error).toEqual({ notice: { key: 'apiError.imagery.outOfMemory' }, message: '' });
+        const other = jobDocSchema.parse(
+            jobDoc({ status: 'failed', error: { code: 'apiError.internal', message: 'apiError.unavailable' } }),
+        );
+        expect(jobViewOf(stored(ID, other)).error?.message).toBe('');
+        // A running job's running step stays running.
+        expect(jobViewOf(stored(ID, jobDocSchema.parse(jobDoc({ status: 'running', steps: { georef } })))).steps[5]?.status).toBe(
+            'running',
+        );
+    });
+});

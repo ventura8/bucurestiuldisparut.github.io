@@ -137,6 +137,15 @@ token in the volume (mode 600). The page's Google sign-in remains a fallback. A 
 minutes offers the cloud (`job.noWorker`). An update (Update the map) also applies the Provision items whose definition
 changed since the project was prepared (`setup/status.provision.setVersion`).
 
+Since finding 72 (`DECISIONS-for-review.md` §86): nothing is copied or pasted. **Use this computer** saves a starter file
+for the computer's system (`packages/admin/starter/`, published at `/admin/worker/`, filled with the project and the city;
+no secret), which installs a per-user supervisor (systemd `--user`, a LaunchAgent, a task at logon): it reads the installed
+image from `worker.image`, runs `worker --supervised --image <digest>` and starts it again after any end, the installed
+image after an outdated one (exit 75). The admin pairs the computer by itself: the worker answers `GET /state` and
+`POST /pair` for the project's Hosting origins only (CORS, Private Network Access), and the admin (the lazy
+`worker-local` chunk) posts a fresh one-time code to a worker that takes one. Provision's update record waits for the
+server the same update installs.
+
 ## Security
 
 - **Rules** (`firebase/firestore.rules`, `firebase/storage.rules`): default deny; admin = verified Google sign-in with the `admin` claim **and** an `admins/{uid}` document; clients write exactly the fields of `CLIENT_WRITES` with the values the zod schemas allow, stamped with their uid and the server time; `setup/*`, `invites`, `usage`, `ops`, `manifests`, job logs and every `history` are read-only; a whole document is validated on every write within Firestore's 1000-expression budget. Storage: uploads only into the admin's own folder under an existing photo document, 1 byte to 60 MiB, image types only (never SVG), never overwritten, nothing public. Composite indexes (`firebase/firestore.indexes.json`) serve the admin's lists of photos, POIs, layers, jobs and history. The Admin SDK bypasses rules, so every server writer validates with zod.

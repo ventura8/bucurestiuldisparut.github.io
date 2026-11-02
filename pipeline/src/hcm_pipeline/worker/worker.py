@@ -66,17 +66,21 @@ class Worker:
             client, lambda: f"{args.endpoints.securetoken}?key={web_config.api_key()}", clock, {"Referer": args.endpoints.referer}
         )
         api = WorkerApi(client, args.endpoints.function, session.bearer, time.sleep)
-        state = WorkerState(args.city, args.project, session)
+        state = WorkerState(args.city, args.project, session, worker_id)
         ids = {"cityId": args.city, "workerId": worker_id}
-        actions = PageActions(session, api, state, web_config, ids)
+        # Finding 72: the image the starter's supervisor runs, which `worker.hello` compares with the installed one.
+        actions = PageActions(session, api, state, web_config, {**ids, **({"image": args.image} if args.image else {})})
         emulators = [host for host in (args.endpoints.auth_emulator,) if host]
         settings = PageSettings(args.project, args.city, LocalServer.new_csrf_token(), args.endpoints.auth_emulator)
-        server = LocalServer(actions, settings, (bind_host, args.port), content_security_policy(args.project, emulators))
+        policy = content_security_policy(args.project, emulators)
+        server = LocalServer(actions, settings, (bind_host, args.port), policy, args.endpoints.hosting_origins)
         runtime = WorkerRuntime(args, api, worker_id, state, steps)
         pairing = Pairing(client, api, args.endpoints, web_config, args.city)
         connector = Connector(pairing, SessionFile(args.work, args.city), Signer(session, actions, state.failed), args.pair, clock)
+        actions.accept_pairing(connector.offer)
         loop = WorkerLoop(session, api, state, runtime, ids)
         loop.connect_with(connector)
+        loop.supervised = args.supervised
         return cls(session, api, state, actions, server, loop, runtime, client, worker_id, connector)
 
     def serve(self) -> None:

@@ -9,6 +9,8 @@ the ID token first. The refresh token is kept in the work folder (`.hcm-session-
 unless-stopped`) resumes the session without a new code, and a new command (a new code) pairs again, revoking the old
 pairing (`replaces`). Disconnect this computer in the admin revokes the pairing: the next call says so and the kept
 session is deleted. A transient failure (the network not up yet after a reboot) is tried again every `RETRY_SECONDS`.
+Finding 72 (auto-pair, M7 §2.7): the code may also come later, from the admin itself (`POST /pair`, `offer`), to a worker
+the starter file started with no code at all.
 """
 
 import contextlib
@@ -182,6 +184,12 @@ class Connector:
         except TRANSIENT as error:
             LOG.warning("could not sign in yet (%s); trying again in %d s", type(error).__name__, int(RETRY_SECONDS))
             self._next_at = self._clock() + RETRY_SECONDS
+
+    def offer(self, code: str) -> None:
+        """The admin's code (`POST /pair`): tried at the loop's next pass, as the command's code would have been."""
+        self._code = code
+        self._settled = False
+        self._next_at = 0.0
 
     def forget(self) -> None:
         """Disconnected in the admin: the kept session is deleted, and nothing is tried again until a new command."""

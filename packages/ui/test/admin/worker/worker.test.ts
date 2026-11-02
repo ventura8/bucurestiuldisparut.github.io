@@ -3,14 +3,15 @@
 import { axeViolations } from '@hcm/test-support/axe';
 import { translateAdminWorker, type AdminWorkerKey } from '@hcm/shared/admin-worker';
 import { html, render, type LitElement } from 'lit';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { wordedWait, versionDetail } from '../../../src/admin/imagery/imagery-text.js';
 import { defineHcmSetupPipeline } from '../../../src/admin/setup/hcm-setup-pipeline.js';
 import { defineWorkerElements } from '../../../src/admin/worker/define.js';
-import { defaultShell, GET_DOCKER_URL, workerCommand, WORKER_PAGE } from '../../../src/admin/worker/hcm-worker-panel.js';
+import { defineWorkerLocal } from '../../../src/admin/worker/hcm-worker-local.js';
 import { loadWorkerElements } from '../../../src/admin/worker/load.js';
 import type { WorkerFeedPort, WorkerHostPort, WorkerViewPort } from '../../../src/admin/worker/worker-port.js';
+import { FakeLocal } from './fake-local.js';
 import { cleanup, fixture } from '../../helpers.js';
 import { deep, deepAll, deepText, updated } from '../shell/fake-app.js';
 import { setupView, stepView } from '../setup/fixtures.js';
@@ -21,9 +22,6 @@ defineWorkerElements();
 defineHcmSetupPipeline();
 
 const DIGEST = `sha256:${'b'.repeat(64)}`;
-const CODE = 'abcdefghijklmnopqrstuvwxyz';
-/** The command the panel shows on this (Linux) test browser, with the feed's pairing code. */
-const COMMAND = workerCommand({ project: 'demo-hcm', city: 'bucharest', digest: DIGEST, code: CODE, shell: 'posix' });
 
 function view(changes: Partial<WorkerViewPort> = {}): WorkerViewPort {
     return {
@@ -38,7 +36,6 @@ function view(changes: Partial<WorkerViewPort> = {}): WorkerViewPort {
         job: null,
         acting: false,
         refusal: null,
-        pairCode: CODE,
         ...changes,
     };
 }
@@ -59,6 +56,8 @@ function seen(changes: Partial<NonNullable<WorkerViewPort['worker']>> = {}): Non
 
 class FakeFeed implements WorkerFeedPort {
     readonly calls: string[] = [];
+    readonly locals: FakeLocal[] = [];
+    localFails = false;
     readonly #listeners = new Set<(state: WorkerViewPort) => void>();
     state: WorkerViewPort;
 
@@ -73,6 +72,16 @@ class FakeFeed implements WorkerFeedPort {
             this.calls.push('retry');
         },
         disconnect: (): Promise<boolean> => this.#record('disconnect'),
+        local: (project: string): Promise<FakeLocal> => {
+            this.calls.push(`local ${project}`);
+            if (this.localFails) {
+                return Promise.reject(new Error('chunk lost'));
+            }
+            defineWorkerLocal();
+            const local = new FakeLocal();
+            this.locals.push(local);
+            return Promise.resolve(local);
+        },
     };
 
     subscribe(listener: (state: WorkerViewPort) => void): () => void {
@@ -107,6 +116,8 @@ class FakeHost implements WorkerHostPort {
     readonly calls: string[] = [];
     readonly feeds: FakeFeed[] = [];
     fails = false;
+    /** The feeds' computer part does not load (its chunk lost). */
+    localFails = false;
 
     constructor(readonly state: WorkerViewPort = view()) {}
 
@@ -115,6 +126,7 @@ class FakeHost implements WorkerHostPort {
             intents: {
                 worker: (): Promise<FakeFeed> => {
                     const feed = new FakeFeed(this.state);
+                    feed.localFails = this.localFails;
                     this.feeds.push(feed);
                     return Promise.resolve(feed);
                 },
@@ -167,7 +179,7 @@ function button(element: Element, label: string): HTMLElement {
 describe('<hcm-worker-panel>', () => {
     afterEach(cleanup);
 
-    it('happyPath_aConnectedComputerItsLastJobTheCommandTheChoiceAndTheMeter', async () => {
+    it('happyPath_aConnectedComputerItsLastJobThisComputersPartTheChoiceAndTheMeter', async () => {
         const seenAt = '2026-11-02T09:59:00.000Z';
         const host = new FakeHost(
             view({
@@ -176,49 +188,42 @@ describe('<hcm-worker-panel>', () => {
             }),
         );
         const element = await panel(host);
+        await updated(element);
         const text = deepText(element);
 
-        expect(host.feed.calls).toEqual(['start null']);
+        expect(host.feed.calls).toEqual(['start null', 'local demo-hcm']);
         expect(text).toContain(t('en', 'adminWorker.connected', { when: '' }).split(' Seen')[0] ?? '');
         expect(text).toContain(t('en', 'adminWorker.lastDone', { when: '' }).slice(0, 10));
-        // Finding 66: one line, nothing to prepare (a named volume), detached, restarted with the computer, replacing an
-        // older worker; finding 67: the pairing code signs it in.
-        expect(COMMAND).toBe(
-            'docker rm -f hcm-worker 2>&1 | true; docker run -d --name hcm-worker --restart unless-stopped ' +
-                `-p 127.0.0.1:8765:8765 -v hcm-worker:/work us-central1-docker.pkg.dev/demo-hcm/hcm/pipeline@${DIGEST} ` +
-                `worker --city bucharest --project demo-hcm --pair ${CODE}`,
-        );
-        expect(deep(element, 'pre').textContent).toBe(COMMAND);
-        expect(deep(element, `a[href="${WORKER_PAGE}"]`).getAttribute('rel')).toBe('noopener noreferrer');
-        expect(deep(element, `a[href="${GET_DOCKER_URL}"]`).textContent).toBe(t('en', 'adminWorker.getDocker'));
-        expect(text).toContain(t('en', 'adminWorker.notePair'));
+        // Finding 72: this computer's part comes from the lazy chunk, started with the panel and stopped when it goes.
+        const local = deep(element, 'hcm-worker-local') as LitElement & { image: string; city: string; project: string };
+        expect([local.image, local.city, local.project]).toEqual([DIGEST, 'bucharest', 'demo-hcm']);
+        expect(host.feed.locals[0]?.calls).toEqual(['start']);
         expect(text).not.toContain('mkdir');
         expect(text).toContain('12,345 of 180,000 vCPU-seconds · 45,678 of 360,000 GiB-seconds');
         // The bar shows the larger share: 45,678 of 360,000 GiB-seconds is more than 12,345 of 180,000 vCPU-seconds.
-        expect((deep(element, 'hcm-progress') as LitElement & { value: number }).value).toBeCloseTo(45_678 / 360_000);
+        expect((deepAll(element, 'hcm-progress').at(-1) as LitElement & { value: number }).value).toBeCloseTo(45_678 / 360_000);
         expect(await axeViolations(element)).toEqual([]);
+        element.remove();
+        expect(host.feed.locals[0]?.calls).toEqual(['start', 'stop']);
     });
 
-    it('happyPath_copyPutsTheCommandOnTheClipboardAndSaysSoPolitely', async () => {
-        const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
-        const element = await panel(new FakeHost());
-        button(element, t('en', 'adminWorker.copy')).click();
+    it('badPath_aComputersPartThatDoesNotLoadLeavesThePanelWithoutIt', async () => {
+        const host = new FakeHost();
+        host.localFails = true;
+        const element = await panel(host);
         await updated(element);
 
-        expect(write).toHaveBeenCalledWith(COMMAND);
-        expect(deep(element, 'p[role="status"]').textContent).toBe(t('en', 'adminWorker.copied'));
-
-        write.mockRejectedValue(new Error('denied'));
-        button(element, t('en', 'adminWorker.copy')).click();
-        await updated(element);
-        expect(deep(element, 'p[role="status"]').textContent).toBe(t('en', 'adminWorker.copyFailed'));
-        write.mockRestore();
+        expect(deepAll(element, 'hcm-worker-local')).toHaveLength(0);
+        expect(deepText(element)).toContain(t('en', 'adminWorker.choice'));
     });
 
     it('happyPath_theChoiceIsChangedFromTheSegmentedButton', async () => {
         const host = new FakeHost();
         const element = await panel(host, 'ro');
-        const segments = deepAll(deepAll(element, 'hcm-segmented-button')[1] ?? element, 'button');
+        const choice = deepAll(element, 'hcm-segmented-button').find(
+            (found) => (found as LitElement & { label: string }).label === t('ro', 'adminWorker.choice'),
+        );
+        const segments = deepAll(choice ?? element, 'button');
 
         expect(segments.map((segment) => segment.textContent.trim())).toEqual([
             t('ro', 'adminWorker.choice.auto'),
@@ -287,7 +292,7 @@ describe('<hcm-worker-panel>', () => {
         const element = await panel(host);
         const first = host.feed;
         element.remove();
-        expect(first.calls).toEqual(['start null', 'stop']);
+        expect(first.calls).toEqual(['start null', 'local demo-hcm', 'stop']);
         document.body.append(element);
         await updated(element);
         expect(host.feeds).toHaveLength(2);
@@ -298,36 +303,12 @@ describe('<hcm-worker-panel>', () => {
         await element.updateComplete;
         (element as LitElement & { app: WorkerHostPort }).app = next;
         await updated(element);
-        expect(next.feed.calls).toEqual(['start null']);
+        expect(next.feed.calls).toEqual(['start null', 'local demo-hcm']);
     });
 });
 
 describe('<hcm-worker-panel>: findings 66-68 of 2026-11-02', () => {
     afterEach(cleanup);
-
-    it('happyPath_theCommandIsWrittenForWindowsPowerShellOnRequestOrOnAWindowsComputer', async () => {
-        const element = await panel(new FakeHost());
-        const shells = deepAll(deepAll(element, 'hcm-segmented-button')[0] ?? element, 'button');
-
-        expect(shells.map((segment) => segment.textContent.trim())).toEqual([
-            t('en', 'adminWorker.shell.posix'),
-            t('en', 'adminWorker.shell.powershell'),
-        ]);
-        shells[1]?.click();
-        await updated(element);
-        const windows = workerCommand({ project: 'demo-hcm', city: 'bucharest', digest: DIGEST, code: CODE, shell: 'powershell' });
-        expect(windows.startsWith('docker rm -f hcm-worker 2>&1 | Out-Null; docker run -d --name hcm-worker')).toBe(true);
-        expect(deep(element, 'pre').textContent).toBe(windows);
-        expect(defaultShell('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe('powershell');
-        expect(defaultShell('Mozilla/5.0 (X11; Linux x86_64)')).toBe('posix');
-    });
-
-    it('badPath_withoutAPairingCodeTheCommandHasNoneAndThePageSignInIsSaid', async () => {
-        const element = await panel(new FakeHost(view({ pairCode: null })));
-
-        expect(deep(element, 'pre').textContent).not.toContain('--pair');
-        expect(deepText(element)).toContain(t('en', 'adminWorker.noteNoPair'));
-    });
 
     it('happyPath_aConnectedWorkersJobShowsItsStepAndProgressAndDisconnectAsksTheFeed', async () => {
         const worker = seen({ state: 'busy', jobId: 'j7' });

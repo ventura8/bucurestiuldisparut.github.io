@@ -4,7 +4,11 @@
 callables' origin (`https://us-central1-<project>.cloudfunctions.net`), the Hosting origin of the web configuration
 (`https://<project>.web.app/__/firebase/init.json`, also the `Referer` of the worker's calls to Google's token services:
 the project's browser key accepts only its Hosting origins) and nothing else is configured. `--pair` is the admin
-command's one-time code (finding 67 of 2026-11-02, `pairing.py`): 26 base32 characters. Under `--emulators` (the e2e tier)
+command's one-time code (finding 67 of 2026-11-02, `pairing.py`): 26 base32 characters. Finding 72 (the starter file, M7
+§1.5): `--supervised` (the starter's supervisor runs it: an outdated image exits with `ExitCode.OUTDATED`, so the
+supervisor pulls the installed one) and `--image sha256:<digest>` (the image it runs, which `worker.hello` compares with
+the installed one); the project's Hosting origins (`hosting_origins`) are where the admin's auto-pair comes from. Under
+`--emulators` (the e2e tier)
 the same code talks to this machine only, from the variables below, each a loopback `host:port`:
 
 | Variable | What |
@@ -19,7 +23,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 from urllib.parse import urlsplit
 
 from hcm_pipeline.config import (
@@ -45,6 +49,8 @@ SECURETOKEN_PATH: Final = "securetoken.googleapis.com/v1/token"
 CUSTOM_SIGN_IN_PATH: Final = "identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken"
 # The admin command's one-time pairing code (`WORKER_PAIR_CODE_PATTERN` of @hcm/shared).
 PAIR_CODE: Final = re.compile(r"[a-z2-7]{26}")
+# The pipeline image's digest the supervisor pulled (`--image`).
+DIGEST: Final = re.compile(r"sha256:[0-9a-f]{64}")
 INIT_JSON_PATH: Final = "/__/firebase/init.json"
 # Google Cloud project ids: 6-30 characters, lowercase letters, digits and hyphens, starting with a letter.
 PROJECT_ID: Final = re.compile(r"[a-z][a-z0-9-]{4,28}[a-z0-9]")
@@ -63,6 +69,8 @@ class Endpoints:
     # The Hosting origin the worker names as its `Referer` to Google's token services (the browser key's restriction).
     referer: str
     auth_emulator: str | None = None
+    # Finding 72: the origins the admin runs on, whose auto-pair the page's server answers (CORS, `POST /pair`).
+    hosting_origins: tuple[str, ...] = ()
 
     def function(self, name: str) -> str:
         """The address of the deployed callable `name` (`worker-claim`, ...)."""
@@ -76,6 +84,7 @@ class Endpoints:
             init_json=f"https://{project}.web.app{INIT_JSON_PATH}",
             custom_token=f"https://{CUSTOM_SIGN_IN_PATH}",
             referer=f"https://{project}.web.app/",
+            hosting_origins=(f"https://{project}.web.app", f"https://{project}.firebaseapp.com"),
         )
 
     @classmethod
@@ -88,6 +97,7 @@ class Endpoints:
             custom_token=f"http://{auth}/{CUSTOM_SIGN_IN_PATH}",
             referer=f"http://{env[ENV_HOSTING]}/",
             auth_emulator=auth,
+            hosting_origins=(f"http://{env[ENV_HOSTING]}",),
         )
 
 
@@ -102,6 +112,8 @@ class WorkerArgs:
     emulators: bool
     endpoints: Endpoints
     pair: str | None = None
+    supervised: bool = False
+    image: str | None = None
     stac_url: str = DEFAULT_STAC_URL
     overpass_url: str = DEFAULT_OVERPASS_URL
 
@@ -162,6 +174,16 @@ def _pair_of(options: Mapping[str, object]) -> str | None:
     return _text(options, "pair") or None
 
 
+def _image_problem(options: Mapping[str, object]) -> str | None:
+    """`--image` is optional, but when given it is a pipeline image's digest."""
+    return None if options.get("image") is None or DIGEST.fullmatch(_text(options, "image")) else "--image must be sha256:<digest>"
+
+
+def _supervision_of(options: Mapping[str, object]) -> dict[str, Any]:
+    """The pairing code, and the starter's supervisor's flag and image (finding 72), when given."""
+    return {"pair": _pair_of(options), "supervised": options.get("supervised") is True, "image": _text(options, "image") or None}
+
+
 def _work_problem(options: Mapping[str, object]) -> str | None:
     """`--work` is optional (`/work`), but when given it names a folder."""
     return None if options.get("work") is None or _text(options, "work") else "--work must name a folder"
@@ -174,6 +196,7 @@ def _option_problems(options: Mapping[str, object]) -> list[str | None]:
         None if _port_of(options) is not None else "--port must be a port number",
         _work_problem(options),
         _pair_problem(options),
+        _image_problem(options),
     ]
 
 
@@ -198,7 +221,7 @@ def parse_worker_args(options: Mapping[str, object], env: Mapping[str, str]) -> 
         work=Path(_text(options, "work") or DEFAULT_WORK),
         emulators=emulators,
         endpoints=Endpoints.emulated(project, env) if emulators else Endpoints.cloud(project),
-        pair=_pair_of(options),
+        **_supervision_of(options),
         stac_url=urls[ENV_STAC_URL],
         overpass_url=urls[ENV_OVERPASS_URL],
     )

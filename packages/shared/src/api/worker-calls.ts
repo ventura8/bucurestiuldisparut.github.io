@@ -30,10 +30,18 @@ const updateTimeSchema = z.string().regex(/^\d{1,20}\.\d{9}$/);
 
 const workerJobFields = { cityId: cityIdSchema, workerId: workerIdSchema, jobId: idSchema };
 
-/** `worker.hello`: the worker introduces itself (recorded in `cities/{city}/workers/{workerId}`). */
-export const workerHelloRequestSchema = z.strictObject({ cityId: cityIdSchema, workerId: workerIdSchema, version: versionSchema });
 /** The pipeline image's digest (`sha256:<64 hex>`). */
 const digestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
+/**
+ * `worker.hello`: the worker introduces itself (recorded in `cities/{city}/workers/{workerId}`). Finding 72: a worker the
+ * starter's supervisor runs names the image it runs (`image`), which is compared with the installed one.
+ */
+export const workerHelloRequestSchema = z.strictObject({
+    cityId: cityIdSchema,
+    workerId: workerIdSchema,
+    version: versionSchema,
+    image: digestSchema.optional(),
+});
 export const workerHelloResponseSchema = z.strictObject({
     pollSeconds: z.number().int().min(1),
     heartbeatSeconds: z.number().int().min(1),
@@ -63,6 +71,18 @@ export const workerPairRequestSchema = z.strictObject({
     replaces: pairIdSchema.optional(),
 });
 export const workerPairResponseSchema = z.strictObject({ token: z.string().min(1).max(4096), pairId: pairIdSchema });
+
+/**
+ * `worker.image` (no sign-in, finding 72 of 2026-11-02, M7 §1.5): the installed pipeline image the starter's supervisor
+ * pulls and runs, by digest (`setup/status.install.pipeline.image`), with its release; `apiError.notFound` while none
+ * is recorded. The image is public (Provision's `allUsers` reader of the repository `hcm`), so nothing here is a secret.
+ */
+export const workerImageRequestSchema = z.strictObject({});
+export const workerImageResponseSchema = z.strictObject({
+    image: z.string().regex(/^us-central1-docker\.pkg\.dev\/[a-z][a-z0-9-]{4,28}[a-z0-9]\/hcm\/pipeline@sha256:[0-9a-f]{64}$/),
+    digest: digestSchema,
+    release: z.string().max(64).optional(),
+});
 
 /** `worker.step`: one document operation of the claimed job's run (the pipeline's `DocumentStore`). */
 export const workerStepOpSchema = z.discriminatedUnion('op', [
@@ -155,6 +175,15 @@ export const WORKER_CALLABLES = {
         maxInstances: 2,
         request: workerPairRequestSchema,
         response: workerPairResponseSchema,
+        owner: 'fn-worker',
+    },
+    // Finding 72: no sign-in; the starter's supervisor asks which image to run (public, read-only).
+    'worker.image': {
+        access: 'none',
+        appCheck: 'off',
+        maxInstances: 2,
+        request: workerImageRequestSchema,
+        response: workerImageResponseSchema,
         owner: 'fn-worker',
     },
 } as const satisfies Readonly<Record<WorkerCallableName, CallableSpec>>;

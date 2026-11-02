@@ -1,14 +1,17 @@
-"""`python -m hcm_pipeline worker --city <id> --project <id> [--port 8765] [--work /work] [--emulators]` (M7 §1.1).
+"""`python -m hcm_pipeline worker --city <id> --project <id> [--pair <code>] [--supervised --image <digest>] [--port 8765]
+[--work /work] [--emulators]` (M7 §1.1, §1.5).
 
 Validates the arguments (a bad one exits with the configuration code, naming it), sets GDAL up as `run` does, then
-serves the local page and runs the loop until SIGTERM or Ctrl-C (exit 0).
+serves the local page and runs the loop until SIGTERM or Ctrl-C (exit 0). Finding 72: under the starter's supervisor
+(`--supervised`) an image older than the installed pipeline's ends the run with `ExitCode.OUTDATED` (75).
 """
 
 from collections.abc import Callable
 
+from hcm_pipeline.exit_codes import ExitCode
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import configure_gdal
-from hcm_pipeline.steps import Outcome, StepContext
+from hcm_pipeline.steps import Outcome, StepContext, StepError
 from hcm_pipeline.worker.args import WorkerArgs, parse_worker_args
 from hcm_pipeline.worker.worker import Worker
 
@@ -24,5 +27,8 @@ class WorkerCommand:
         args = parse_worker_args(ctx.options, ctx.env)
         configure_gdal()
         gdal.UseExceptions()
-        self._build(args).serve()
+        worker = self._build(args)
+        worker.serve()
+        if worker.loop.outdated_exit:
+            raise StepError("the installed pipeline is newer than this image: the supervisor pulls it", ExitCode.OUTDATED)
         return Outcome.DONE

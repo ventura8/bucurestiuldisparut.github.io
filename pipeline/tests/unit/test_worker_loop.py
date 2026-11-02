@@ -40,6 +40,12 @@ class Server:
     def _claim(self) -> httpx.Response:
         self.on_claim()
         claim = self.claims.pop(0) if self.claims else None
+        if claim == "outdated":
+            return httpx.Response(200, json={"result": {"job": None, "outdated": True}})
+        return self._job(claim)
+
+    @staticmethod
+    def _job(claim: str | None) -> httpx.Response:
         if claim is not None and claim.startswith("apiError."):
             return httpx.Response(400, json={"error": {"message": "no", "status": "FAILED_PRECONDITION", "details": {"code": claim}}})
         return httpx.Response(200, json={"result": {"job": None if claim is None else {"jobId": claim}}})
@@ -102,6 +108,25 @@ def test_bad_path_no_job_a_bad_id_or_a_refused_claim_leaves_the_worker_idle(clai
 
     assert runtime.jobs == []
     assert state.snapshot()["lastError"] == (claim if claim == "apiError.guardPaused" else None)
+
+
+def test_bad_path_an_outdated_image_under_the_supervisor_ends_the_loop() -> None:
+    # Finding 72 (the starter's supervisor): the installed pipeline is newer, so the worker stops and the supervisor pulls it.
+    server, runtime = Server("outdated"), Runtime()
+    loop, state, _session = loop_with(server, runtime)
+    loop.supervised = True
+
+    loop.run()
+
+    assert (loop.outdated_exit, state.snapshot()["outdated"], runtime.jobs) == (True, True, [])
+
+
+def test_happy_path_an_outdated_image_without_the_supervisor_stays_and_takes_no_job() -> None:
+    server, runtime = Server("outdated"), Runtime()
+    loop, state, _session = loop_with(server, runtime)
+
+    assert loop.run_once() is Pass.IDLE
+    assert (loop.outdated_exit, state.snapshot()["outdated"], loop.stopping.is_set()) == (False, True, False)
 
 
 def test_bad_path_without_a_session_nothing_is_claimed() -> None:

@@ -399,9 +399,18 @@ function provisionDueLine(input: InstallStatusInput): TemplateResult {
     return html`<p class="note" data-provision-due>${label(input, 'adminSetup.install.provisionDue', { items })}</p>`;
 }
 
-/** An update is offered: the release is behind, or (the server's card) Provision's items changed. */
+/** A build of any target is queued or at work, or a click on one is on its way (Update the map's click starts them all). */
+function building(slice: InstallSliceView): boolean {
+    return [slice.server, slice.pipeline, slice.site].some((target) => installRunning(target) || target.busy);
+}
+
+/**
+ * An update is offered: the release is behind, or (the server's card) Provision's items changed; never while a build runs
+ * (finding 70 of 2026-11-02: the card showed Update the map and the Provision line beside the build it had started).
+ */
 function updateOffered(input: InstallStatusInput, view: InstallTargetViewPort): boolean {
-    return view.state === 'updateAvailable' || (input.target === 'server' && input.slice.provisionDue.length > 0);
+    const due = view.state === 'updateAvailable' || (input.target === 'server' && input.slice.provisionDue.length > 0);
+    return due && !building(input.slice);
 }
 
 function updateLine(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {

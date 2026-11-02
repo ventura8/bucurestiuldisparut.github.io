@@ -17,3 +17,7 @@ class ExitCode(enum.IntEnum):
     """Bad command line (unknown or missing step)."""
     CONFIG = 3
     """The job environment is incomplete or invalid; a retry cannot help."""
+    OUTDATED = 75
+    """The local worker under the starter's supervisor (`worker --supervised`, M7 §1.5) runs an image older than the
+    installed pipeline's: the supervisor reads the installed image's digest, pulls it and starts again (75: sysexits'
+    EX_TEMPFAIL, apart from Docker's own 125-137)."""

@@ -155,14 +155,22 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     "analytics-reports": 1,
     # M7's `worker` chunk (docs/research/M7-local-worker.md §7: `packages/admin/src/worker/worker.ts`, its one dynamic entry,
     # which the Jobs store imports): the local worker's feed, `<hcm-worker-panel>`, `<hcm-run-place>` and their texts
-    # (`@hcm/shared/admin-worker`), 5.5 KB measured on 2026-11-02 plus about 20 %, rounded up.
+    # (`@hcm/shared/admin-worker`), 5.5 KB measured on 2026-11-02 plus about 20 %, rounded up; 5.7 KB since finding 72
+    # moved the command into `worker-local`.
     "worker": 7,
+    # Finding 72 of 2026-11-02 ("Use this computer": `packages/admin/src/worker/worker-local.ts`, the feed's one dynamic
+    # import): the starter file, the auto-pair, Stop using this computer, the command behind Advanced, `<hcm-worker-local>`
+    # and its texts (`@hcm/shared/admin-worker-local`), fetched when the worker's panel first shows the computer's part:
+    # 4.3 KB measured on 2026-11-02 plus about 20 %, rounded up (DECISIONS-for-review.md §86).
+    "worker-local": 5,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
 # loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)
 # with the entry's share of M7 (the job's place and wait, the install's image record, Provision's public pull) took it to
 # 627.8 KB; with the worker's five callables' schemas out of the admin (`ADMIN_CALLABLES`, 0.6 KB) it is 627.2 KB. The
-# entry stays well under its own 450 KB (DECISIONS-for-review.md §83).
+# entry stays well under its own 450 KB (DECISIONS-for-review.md §83). Finding 72 (2026-11-02) added `worker-local`
+# within it, by two savings instead of a raise: zod's JSON Schema conversion out of the admin (a stand-in, 5.7 KB) and the
+# source maps' comment lines (1.1 KB): 626.6 KB (§86).
 ADMIN_TOTAL_KB = 630
 
 # M6: the install bundle's folder in the deployed Hosting tree, and each tarball's budget in KB as served (it is gzip

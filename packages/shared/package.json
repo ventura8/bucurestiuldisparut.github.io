@@ -14,6 +14,10 @@
         "./admin-worker": {
             "types": "./src/i18n/admin-worker/index.ts",
             "default": "./src/i18n/admin-worker/index.ts"
+        },
+        "./admin-worker-local": {
+            "types": "./src/i18n/admin-worker-local/index.ts",
+            "default": "./src/i18n/admin-worker-local/index.ts"
         }
     },
     "dependencies": {

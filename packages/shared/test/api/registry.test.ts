@@ -60,11 +60,12 @@ describe('the function registry', () => {
         expect(open).toEqual(['admin.session', 'admin.claim', 'admin.join']);
     });
 
-    it('badPath_onlyPairingNeedsNoSignInAndOnlyTheWorkersOwnCallablesAdmitAPairedToken', () => {
+    it('badPath_onlyPairingAndTheStartersImageNeedNoSignInAndOnlyTheWorkersOwnCallablesAdmitAPairedToken', () => {
         const none = Object.entries(CALLABLES).filter(([, spec]) => spec.access === 'none');
         const paired = Object.entries(CALLABLES).filter(([, spec]) => 'workerToken' in spec);
 
-        expect(none.map(([name]) => name)).toEqual(['worker.pair']);
+        // Finding 72: `worker.image` too, which the starter file's supervisor asks (it reads one record, writes nothing).
+        expect(none.map(([name]) => name)).toEqual(['worker.pair', 'worker.image']);
         expect(paired.map(([name]) => name)).toEqual(['worker.hello', 'worker.claim', 'worker.step', 'worker.urls', 'worker.end']);
     });
 

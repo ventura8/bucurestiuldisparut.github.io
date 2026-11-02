@@ -11,6 +11,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
+import httpx
 import pytest
 from hcm_pipeline.worker.args import Endpoints, WorkerArgs
 from hcm_pipeline.worker.loop import Pass
@@ -215,3 +216,61 @@ def test_bad_path_a_custom_token_the_sign_in_service_refuses_leaves_no_session(w
     assert once(worker) is Pass.NO_SESSION
     assert world.kept() is None
     assert worker.state.snapshot()["lastError"] == "apiError.unauthenticated"
+
+
+# --- auto-pair: the admin posts the code itself (finding 72 of 2026-11-02, M7 §2.7) ------------------------------------
+
+
+def admin_post(worker: Worker, path: str, body: bytes, origin: str) -> httpx.Response:
+    """A request of the admin's page (`origin`) to the worker's local server, over HTTP as the browser sends it."""
+    headers = {"Origin": origin, "Content-Type": "application/json"}
+    with httpx.Client() as client:
+        return client.post(f"http://127.0.0.1:{worker.server.port}{path}", content=body, headers=headers)
+
+
+def test_happy_path_a_worker_started_without_a_code_is_paired_by_the_admin(world: World) -> None:
+    """Scenarios: S-P04-HAPPY-AUTO-PAIR"""
+    worker = world.worker(None)
+    worker.server.start()
+    admin = f"http://{world.api.host}"
+    try:
+        assert worker.loop.run_once() is Pass.NO_SESSION
+        with httpx.Client() as client:
+            state = client.get(f"http://127.0.0.1:{worker.server.port}/state", headers={"Origin": admin})
+            preflight = client.options(
+                f"http://127.0.0.1:{worker.server.port}/pair",
+                headers={"Origin": admin, "Access-Control-Request-Private-Network": "true"},
+            )
+        assert state.json()["pairable"] is True
+        assert state.headers["access-control-allow-origin"] == admin
+        assert preflight.status_code == 204
+        assert preflight.headers["access-control-allow-private-network"] == "true"
+
+        answer = admin_post(worker, "/pair", json.dumps({"code": CODE}).encode(), admin)
+
+        assert answer.status_code == 202
+        assert worker.loop.run_once() is Pass.IDLE
+        assert world.api.names()[:2] == ["worker-pair", "worker-hello"]
+        kept = world.kept()
+        assert kept is not None
+        assert kept.pair_id == PAIR
+        assert admin_post(worker, "/pair", json.dumps({"code": NEW_CODE}).encode(), admin).status_code == 409
+    finally:
+        worker.close()
+
+
+def test_bad_path_another_site_cannot_pair_the_worker(world: World) -> None:
+    """Scenarios: S-P04-BAD-AUTO-PAIR-ORIGIN"""
+    worker = world.worker(None)
+    worker.server.start()
+    try:
+        answer = admin_post(worker, "/pair", json.dumps({"code": CODE}).encode(), "https://attacker.example")
+        with httpx.Client() as client:
+            read = client.get(f"http://127.0.0.1:{worker.server.port}/state", headers={"Origin": "https://attacker.example"})
+
+        assert (answer.status_code, read.status_code) == (403, 403)
+        assert "access-control-allow-origin" not in read.headers
+        assert worker.loop.run_once() is Pass.NO_SESSION
+        assert "worker-pair" not in world.api.names()
+    finally:
+        worker.close()

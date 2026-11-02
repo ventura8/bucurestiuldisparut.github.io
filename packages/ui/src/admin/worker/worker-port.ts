@@ -48,8 +48,37 @@ export interface WorkerViewPort {
     readonly job: WorkerJobPort | null;
     readonly acting: boolean;
     readonly refusal: AdminNoticeInputPort | null;
-    /** The command's one-time pairing code (finding 67); null while none could be minted. */
-    readonly pairCode: string | null;
+}
+
+/** The systems a starter file is made for (finding 72). */
+export type WorkerOsPort = 'linux' | 'mac' | 'windows';
+
+/** "Use this computer" as `packages/admin/src/worker/local.ts` keeps it (finding 72 of 2026-11-02). */
+export interface LocalViewPort {
+    readonly os: WorkerOsPort;
+    readonly phase: 'none' | 'downloaded' | 'connecting' | 'connected' | 'stopped' | 'failed';
+    /** The Advanced command's one-time code (null until Advanced asked for one). */
+    readonly code: string | null;
+}
+
+/** A starter file as the browser saves it. */
+export interface StarterFilePort {
+    readonly name: string;
+    readonly text: string;
+}
+
+/** This computer's part of the panel: the starter file, the auto-pair, Stop using this computer, the Advanced command. */
+export interface LocalPort {
+    readonly state: LocalViewPort;
+    subscribe(listener: (state: LocalViewPort) => void): () => void;
+    readonly intents: {
+        setOs(os: WorkerOsPort): void;
+        use(): Promise<StarterFilePort | null>;
+        stop(): Promise<StarterFilePort | null>;
+        command(): Promise<void>;
+    };
+    start(): void;
+    stop(): void;
 }
 
 interface WorkerIntentsPort {
@@ -57,6 +86,8 @@ interface WorkerIntentsPort {
     runJob(runOn: RunPlace, freeTierOk: boolean): Promise<boolean>;
     retry(): void;
     disconnect(): Promise<boolean>;
+    /** Finding 72: this computer's part, from the lazy `worker-local` chunk (its element registered first). */
+    local(project: string): Promise<LocalPort>;
 }
 
 /** One element's feed: started when it connects (with its version's job, if any), stopped when it goes. */
