@@ -16,6 +16,7 @@ import {
     type InstallState,
     type InstallStepId,
     type InstallTarget,
+    type ProvisionItem,
     type TransientDeployReason,
 } from '@hcm/shared';
 
@@ -368,6 +369,11 @@ export interface InstallSlice {
      * without a token, so the pipeline card offers no button that could only be refused, whatever a record says.
      */
     readonly pipelineOff: InstallMessage | null;
+    /**
+     * Finding 65 of 2026-11-02: the Provision items whose definition changed since the project was last prepared; the
+     * server card's Update the map applies them in the same click (empty: none, or never prepared).
+     */
+    readonly provisionDue: readonly ProvisionItem[];
 }
 
 /** Nothing observed yet. */
@@ -387,5 +393,6 @@ export function initialInstallSlice(release: string, address: string, releaseTim
         pipeline: initialTargetView('pipeline'),
         site: initialTargetView('site'),
         pipelineOff: null,
+        provisionDue: [],
     };
 }

@@ -18,6 +18,7 @@ import { BOOTSTRAP_STEPS, type BootstrapRecord, type StepHealth } from './bootst
 import { isSetupMessageKey, setupMessage, type MessageParams, type SetupMessage, type SetupMessageKey } from './messages.js';
 import { observedInstall, withRecordedInstall } from './install-records.js';
 import type { ProvisionItemResult } from './ports.js';
+import { reachedVersion, updateItems } from './provision-version.js';
 import {
     provisionHealth,
     withStep,
@@ -122,6 +123,11 @@ function withKnownReasons(recorded: readonly ProvisionItemState[], shown: readon
     });
 }
 
+/** Finding 65: the Provision items the next update also applies, on the install cards' slice. */
+function withProvisionDue(state: SetupState): SetupState {
+    return { ...state, install: { ...state.install, provisionDue: updateItems(state.provision) } };
+}
+
 /** Normal mode: the server's record. The bootstrap steps and the claim are done (the server answers an admin). */
 export function applyStatusView(state: SetupState, view: SetupStatusView, now: number): SetupState {
     const done: StepPatch = { state: 'ok', checkedAt: view.generatedAt, detail: null };
@@ -139,14 +145,14 @@ export function applyStatusView(state: SetupState, view: SetupStatusView, now: n
     const applied = {
         ...next,
         billing: billingFromView(next.billing, view.billing),
-        provision: { items },
+        provision: view.provision.setVersion === undefined ? { items } : { items, setVersion: view.provision.setVersion },
         mapbox: { ...next.mapbox, user: view.mapbox.user ?? null },
         usgs: usgsFromView(next.usgs, view.usgs, now),
         analytics: { ...next.analytics, measurementId: view.analytics.measurementId ?? next.analytics.measurementId },
         crashes: { ...next.crashes, lastReportAt: view.crash.lastReportAt ?? null },
     };
     // [section install] owner: installer (M6): the install targets `setup.recordCloud` recorded.
-    return withRecordedInstall(applied, view.install);
+    return withProvisionDue(withRecordedInstall(applied, view.install));
     // [end install]
 }
 
@@ -276,7 +282,10 @@ function provisionRequest(record: BootstrapRecord): Pick<RecordCloudRequest, 'pr
     if (items.length === 0) {
         return {};
     }
-    return { provision: { items: items.map((item) => ({ id: item.id, state: item.state, ...apiReason(item.detail, item.params) })) } };
+    // Finding 65: the bootstrap's runs observed every item with this admin's definitions (its own set version).
+    const setVersion = reachedVersion(items, undefined);
+    const recorded = items.map((item) => ({ id: item.id, state: item.state, ...apiReason(item.detail, item.params) }));
+    return { provision: setVersion === undefined ? { items: recorded } : { items: recorded, setVersion } };
 }
 
 /** M6 setup-ux (A60): the likely trial the billing step saw begin. */

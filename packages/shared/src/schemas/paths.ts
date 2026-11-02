@@ -173,6 +173,10 @@ export const FIRESTORE_PATHS = {
     workers: (cityId: string) => `${cityPath(cityId)}/workers`,
     worker: (cityId: string, workerId: string) => child(cityId, 'workers', workerId),
     runChoice: (cityId: string) => child(cityId, 'workers', 'choice'),
+    /** Finding 67: a city's worker pairings (one-time codes and the sessions made with them) and their attempt limit. */
+    pairings: (cityId: string) => `${cityPath(cityId)}/pairings`,
+    pairing: (cityId: string, pairId: string) => child(cityId, 'pairings', pairId),
+    pairLimit: (cityId: string) => child(cityId, 'pairings', 'limit'),
     /** M7 (§4.2): the month's Cloud Run use of every city's cloud runs (an estimate against the free tier). */
     cloudRunUsage: (month: string) => `usage/cloudrun-${segment(month, matching(MONTH_PATTERN))}`,
 } as const;

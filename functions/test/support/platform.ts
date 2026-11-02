@@ -14,7 +14,7 @@ import { PortRecorder, promised } from './recorder.js';
  */
 
 type AuthUser = NonNullable<Awaited<ReturnType<AuthAdmin['getUser']>>>;
-type AuthMethod = 'getUser' | 'setAdminClaim' | 'revokeSessions' | 'deleteUser' | 'listUsers';
+type AuthMethod = 'getUser' | 'setAdminClaim' | 'revokeSessions' | 'createCustomToken' | 'deleteUser' | 'listUsers';
 
 /** A verified Google account created at `NOW`; override what a scenario needs. */
 export function authUser(uid: string, overrides: Partial<AuthUser> = {}): AuthUser {
@@ -55,6 +55,12 @@ export function createFakeAuthAdmin(users: readonly AuthUser[] = [], pageSize = 
             promised(() => {
                 recorder.enter('revokeSessions', [uid]);
                 revoked.push(uid);
+            }),
+        // A stand-in token that says what it was made for (the real one is a signed JWT).
+        createCustomToken: (uid, claims) =>
+            promised(() => {
+                recorder.enter('createCustomToken', [uid, claims]);
+                return `custom.${uid}.${JSON.stringify(claims)}`;
             }),
         deleteUser: (uid) =>
             promised(() => {

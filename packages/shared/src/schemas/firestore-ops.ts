@@ -116,6 +116,39 @@ export const PROVISION_ITEMS = [
     'crash-alerts',
     'api-key',
 ] as const;
+/**
+ * Finding 65 of 2026-11-02: the version of Provision's item set, and the set version in which each item's definition last
+ * changed. A release that changes what an item creates bumps `PROVISION_SET_VERSION` and sets that item's entry to it;
+ * an update (Update the map, Install) then runs the items changed since the version `setup/status.provision.setVersion`
+ * records, in the same click. Version 2 (M7): `artifact-registry`'s public pull of the pipeline image and
+ * `bucket-lifecycle`'s 7-day `usgs-raw/`.
+ */
+export const PROVISION_SET_VERSION = 2;
+export const PROVISION_CHANGED_IN: Readonly<Record<(typeof PROVISION_ITEMS)[number], number>> = {
+    apis: 1,
+    'service-accounts': 1,
+    iam: 1,
+    buckets: 1,
+    'artifact-registry': 2,
+    'bucket-cors': 1,
+    'bucket-lifecycle': 2,
+    secrets: 1,
+    'task-queues': 1,
+    scheduler: 1,
+    'workload-identity': 1,
+    'app-check': 1,
+    'budget-alerts': 1,
+    'org-policies': 1,
+    'crash-alerts': 1,
+    'api-key': 1,
+};
+
+/** The items whose definition changed since the set version `recorded` (absent: 1, before the set had versions). */
+export function provisionDue(recorded: number | undefined): readonly (typeof PROVISION_ITEMS)[number][] {
+    const since = recorded ?? 1;
+    return PROVISION_ITEMS.filter((id) => PROVISION_CHANGED_IN[id] > since);
+}
+
 /** `search` until USGS approves the M2M download role, then `download`. */
 export const USGS_ROLES = ['search', 'download'] as const;
 export const ADMIN_ROLES = ['owner', 'admin'] as const;
@@ -198,6 +231,11 @@ export const jobDocSchema = z.strictObject({
     freeTierOk: z.strictObject({ by: uidSchema, at: timestampSchema }).optional(),
     /** M7 (§4.2): the `dispatchAt` of the last cloud run counted into `usage/cloudrun-*` (a redelivered event counts nothing). */
     usageCountedAt: timestampSchema.optional(),
+    /**
+     * Finding 68 of 2026-11-02: when `imagery.tick` found it waiting for the computer `WORKER_WAIT_MINUTES` with no computer
+     * seen (its page offers Run in Google Cloud instead; an inbox item `job.noWorker` was left once).
+     */
+    workerOverdueAt: timestampSchema.optional(),
     ...stamp,
 });
 
@@ -240,7 +278,15 @@ const billingStatusSchema = z.strictObject({
 
 const provisionItemSchema = z.strictObject({ id: z.enum(PROVISION_ITEMS), ...health });
 
-const provisionStatusSchema = z.strictObject({ ...health, items: z.array(provisionItemSchema).max(PROVISION_ITEMS.length).optional() });
+const provisionStatusSchema = z.strictObject({
+    ...health,
+    items: z.array(provisionItemSchema).max(PROVISION_ITEMS.length).optional(),
+    /**
+     * Finding 65 of 2026-11-02: the version of Provision's item set (`PROVISION_SET_VERSION`) the project was last brought
+     * to; an update runs the items changed since (`provisionDue`). Absent: provisioned before the set had versions (1).
+     */
+    setVersion: z.number().int().min(1).max(1000).optional(),
+});
 
 const mapboxStatusSchema = z.strictObject({
     ...health,

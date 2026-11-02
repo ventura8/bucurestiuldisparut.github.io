@@ -8,6 +8,13 @@ project's web configuration from the worker (`GET /config`, which the worker rea
 with Google in a popup (the SDK keeps nothing: in-memory persistence, signed out once the worker holds the tokens),
 posts `{idToken, refreshToken}` to `POST /session` with the CSRF token, polls `GET /state` and has Sign out. Its words
 are in English and Romanian (the browser's language picks).
+
+Finding 67 of 2026-11-02: the admin's command pairs the worker (`pairing.py`), so the page is for its state; the Google
+sign-in stays as a fallback. Finding 69: on the live project that popup never finished (the page stayed "Not signed in",
+no error): the SDK's calls from `localhost` carry the project's browser key, which Provision restricts to the Hosting
+origins (UNVERIFIED as the cause; Chrome's partitioned storage of the auth iframe is the other suspect). So the sign-in
+now gives up after `SIGN_IN_TIMEOUT_MS` with a clear message pointing at the admin's command, and the page still shows
+the worker's state when the SDK cannot be loaded at all.
 """
 
 import json
@@ -20,6 +27,8 @@ from hcm_pipeline.paths import CITY_ID
 from hcm_pipeline.worker.args import EMULATOR_HOST, PROJECT_ID
 
 FIREBASE_SDK_VERSION: Final = "13.1.0"
+# How long the fallback Google sign-in may take before the page gives up and points at the admin's command (finding 69).
+SIGN_IN_TIMEOUT_MS: Final = 90_000
 SDK_ORIGIN: Final = "https://www.gstatic.com"
 SETTINGS_ELEMENT: Final = "hcm-worker-settings"
 CSRF_TOKEN: Final = re.compile(r"[0-9a-f]{64}")
@@ -85,6 +94,7 @@ PAGE_HTML: Final = f"""<!doctype html>
 <body>
 <main>
 <h1 data-text="title">Historic City Map: this computer's worker</h1>
+<p data-text="intro">The command from the admin signs this computer in. Sign in with Google only if it did not.</p>
 <dl>
 <dt data-text="accountLabel">Signed in as</dt><dd id="account"></dd>
 <dt data-text="cityLabel">City</dt><dd id="city"></dd>
@@ -115,14 +125,18 @@ PAGE_JS: Final = (
     """const SDK = 'https://www.gstatic.com/firebasejs/"""
     + FIREBASE_SDK_VERSION
     + """';
-const { initializeApp } = await import(`${SDK}/firebase-app.js`);
-const auth$ = await import(`${SDK}/firebase-auth.js`);
+const SIGN_IN_TIMEOUT_MS = """
+    + str(SIGN_IN_TIMEOUT_MS)
+    + """;
+// The page shows the worker's state even when the SDK cannot be loaded (its sign-in is only the fallback).
+const sdk = await Promise.all([import(`${SDK}/firebase-app.js`), import(`${SDK}/firebase-auth.js`)]).catch(() => undefined);
 const settings = JSON.parse(document.getElementById('"""
     + SETTINGS_ELEMENT
     + """').textContent);
 const TEXTS = {
     en: {
         title: "Historic City Map: this computer's worker",
+        intro: 'The command from the admin signs this computer in. Sign in with Google only if it did not.',
         accountLabel: 'Signed in as',
         cityLabel: 'City',
         workLabel: 'Work',
@@ -139,9 +153,15 @@ const TEXTS = {
         'apiError.unauthenticated': 'The sign-in was not accepted: sign in again',
         'apiError.invalidRequest': 'The sign-in could not be read: sign in again',
         'apiError.unavailable': 'The server did not answer: try again',
+        'apiError.worker.revoked': 'This computer was disconnected in the admin: run the command from the admin again',
+        'apiError.worker.pairCode': 'The pairing code is not valid any more: copy the command from the admin again',
+        'apiError.city.notMember': 'This account is not an editor of this city',
+        signInTimeout: 'The sign-in did not finish: use the command from the admin, which signs this computer in',
+        outdated: 'The imagery pipeline was updated: copy the command from the admin and run it to update this computer',
     },
     ro: {
         title: 'Harta istorică a orașului: lucrătorul acestui calculator',
+        intro: 'Comanda din administrare conectează acest calculator. Conectează-te cu Google doar dacă ea nu a reușit.',
         accountLabel: 'Conectat ca',
         cityLabel: 'Oraș',
         workLabel: 'Lucru',
@@ -158,6 +178,11 @@ const TEXTS = {
         'apiError.unauthenticated': 'Conectarea nu a fost acceptată: conectează-te din nou',
         'apiError.invalidRequest': 'Conectarea nu a putut fi citită: conectează-te din nou',
         'apiError.unavailable': 'Serverul nu a răspuns: încearcă din nou',
+        'apiError.worker.revoked': 'Acest calculator a fost deconectat din administrare: rulează din nou comanda din administrare',
+        'apiError.worker.pairCode': 'Codul de asociere nu mai este valabil: copiază din nou comanda din administrare',
+        'apiError.city.notMember': 'Acest cont nu este editor al acestui oraș',
+        signInTimeout: 'Conectarea nu s-a încheiat: folosește comanda din administrare, care conectează acest calculator',
+        outdated: 'Fluxul de imagini a fost actualizat: copiază comanda din administrare și rulează-o ca să actualizezi acest calculator',
     },
 };
 const lang = (navigator.language || 'en').toLowerCase().startsWith('ro') ? 'ro' : 'en';
@@ -180,12 +205,16 @@ async function session(method, body) {
     }
 }
 
+// What the page's own last action said (a sign-in that timed out), kept across the state polls until the next action.
+let pageError = null;
+
 function show(state) {
     byId('account').textContent = state.signedIn ? (state.email ?? '') : text('notSignedIn');
     byId('city').textContent = state.city;
     const step = state.step ? ` · ${state.step}` : '';
     byId('work').textContent = state.state === 'busy' ? `${text('busy')} ${state.jobId}${step}` : text(state.state);
-    byId('error').textContent = state.lastError ? text(state.lastError) : '';
+    const problem = state.lastError ?? pageError ?? (state.outdated ? 'outdated' : null);
+    byId('error').textContent = problem ? text(problem) : '';
     byId('sign-in').hidden = state.signedIn;
     byId('sign-out').hidden = !state.signedIn;
 }
@@ -197,10 +226,20 @@ async function poll() {
     }
 }
 
+/** The popup's promise, or a refusal `signInTimeout` after `SIGN_IN_TIMEOUT_MS` (finding 69: it may never settle). */
+function withTimeout(promise) {
+    let timer;
+    const late = new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error('signInTimeout')), SIGN_IN_TIMEOUT_MS);
+    });
+    return Promise.race([promise, late]).finally(() => clearTimeout(timer));
+}
+
 let auth;
-const configured = await fetch('/config').catch(() => undefined);
+const auth$ = sdk?.[1];
+const configured = sdk ? await fetch('/config').catch(() => undefined) : undefined;
 if (configured?.ok) {
-    const app = initializeApp(await configured.json());
+    const app = sdk[0].initializeApp(await configured.json());
     auth = auth$.initializeAuth(app, {
         persistence: auth$.inMemoryPersistence,
         popupRedirectResolver: auth$.browserPopupRedirectResolver,
@@ -211,15 +250,17 @@ if (configured?.ok) {
 }
 
 byId('sign-in').addEventListener('click', async () => {
+    pageError = null;
     try {
         if (!auth) {
             throw new Error('configMissing');
         }
-        const credential = await auth$.signInWithPopup(auth, new auth$.GoogleAuthProvider());
+        const credential = await withTimeout(auth$.signInWithPopup(auth, new auth$.GoogleAuthProvider()));
         const idToken = await credential.user.getIdToken();
         await session('POST', { idToken, refreshToken: credential.user.refreshToken });
         await auth$.signOut(auth);
     } catch (error) {
+        pageError = error.message;
         byId('error').textContent = text(error.message);
     }
     await poll();

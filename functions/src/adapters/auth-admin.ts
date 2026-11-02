@@ -74,6 +74,7 @@ export function createAuthAdmin(auth: Auth, pageSize = PAGE_SIZE): AuthAdmin {
             await auth.setCustomUserClaims(uid, withAdminClaim(record.customClaims ?? {}, admin));
         },
         revokeSessions: (uid) => auth.revokeRefreshTokens(uid).catch(rethrowNotFound),
+        createCustomToken: (uid, claims) => auth.createCustomToken(uid, { ...claims }),
         deleteUser: async (uid) => {
             await auth.deleteUser(uid).catch(ignoreNotFound);
         },

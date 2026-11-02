@@ -1,3 +1,4 @@
+import { PROVISION_ITEMS, PROVISION_SET_VERSION } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { isBootstrapRecord, type BootstrapRecord } from '../../src/setup/bootstrap-record.js';
@@ -215,6 +216,20 @@ describe('bootstrapRecordOf', () => {
 });
 
 describe('recordCloudRequestOf', () => {
+    it('happyPath_aBootstrapThatBroughtEveryChangedItemToOkRecordsTheSetVersion @S-A04-HAPPY-UPDATE-PROVISION', () => {
+        // Finding 65 of 2026-11-02: a project prepared by this admin from the start is at the current item set.
+        const items = PROVISION_ITEMS.map((id) => ({ id, state: 'ok' as const }));
+
+        expect(recordCloudRequestOf({ ...RECORD, provision: { items } })?.provision).toMatchObject({ setVersion: PROVISION_SET_VERSION });
+        expect(
+            applyStatusView(
+                initialSetupState(createHarness().host, 'normal'),
+                statusView({ provision: { state: 'ok', checkedAt: null, items: provisionedItems(), setVersion: 2 } }),
+                START,
+            ).provision.setVersion,
+        ).toBe(2);
+    });
+
     it('happyPath_billingWithItsBudgetAndTheItemsWithTheirApiReasons', () => {
         expect(recordCloudRequestOf(RECORD)).toEqual({
             billing: { state: 'ok', budgetId: BUDGET, budgetAmount: 25, currency: 'RON' },

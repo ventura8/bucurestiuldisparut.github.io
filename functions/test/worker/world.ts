@@ -14,6 +14,7 @@ import type { SignedDownload, SignedObjectRequest, UrlSigner } from '../../src/p
 import type { WorkerFamilyDeps } from '../../src/worker/index.js';
 import { adminCall } from '../publish/fakes.js';
 import { fakeAdmins } from '../support/fakes.js';
+import { createFakeAuthAdmin } from '../support/platform.js';
 import { CITY, NOW, at, readyWorld, renderedVersion, seedJob, seedVersion, type ImageryWorld } from '../imagery/world.js';
 
 export { CITY, NOW, at };
@@ -53,7 +54,8 @@ function createFakeSigner(): FakeSigner {
     };
 }
 
-export type WorkerTestDeps = ImageryWorld['deps'] & WorkerFamilyDeps & { readonly signer: FakeSigner };
+export type WorkerTestDeps = ImageryWorld['deps'] &
+    WorkerFamilyDeps & { readonly signer: FakeSigner; readonly authAdmin: ReturnType<typeof createFakeAuthAdmin> };
 
 export interface WorkerWorld extends Omit<ImageryWorld, 'deps'> {
     readonly deps: WorkerTestDeps;
@@ -64,7 +66,8 @@ export interface WorkerWorld extends Omit<ImageryWorld, 'deps'> {
 export async function workerWorld(now = NOW): Promise<WorkerWorld> {
     const base = await readyWorld(now);
     const signer = createFakeSigner();
-    return { ...base, signer, deps: { ...base.deps, signer, admins: fakeAdmins([OWNER, OTHER]) } };
+    const authAdmin = createFakeAuthAdmin();
+    return { ...base, signer, deps: { ...base.deps, signer, authAdmin, auth: authAdmin.auth, admins: fakeAdmins([OWNER, OTHER]) } };
 }
 
 /** One call of a worker callable, as `uid`, through its `.run()`. */

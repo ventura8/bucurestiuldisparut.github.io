@@ -99,7 +99,13 @@ const billingViewSchema = z.strictObject({
 
 const provisionItemViewSchema = z.strictObject({ id: z.enum(PROVISION_ITEMS), state: z.enum(SERVICE_STATES), ...healthDetail });
 
-const provisionViewSchema = z.strictObject({ ...healthViewFields, items: z.array(provisionItemViewSchema).max(PROVISION_ITEMS.length) });
+/** Finding 65 of 2026-11-02: the set version the project was last brought to (absent: before versions, 1). */
+const setVersionSchema = z.number().int().min(1).max(1000);
+const provisionViewSchema = z.strictObject({
+    ...healthViewFields,
+    items: z.array(provisionItemViewSchema).max(PROVISION_ITEMS.length),
+    setVersion: setVersionSchema.optional(),
+});
 
 const mapboxViewSchema = z.strictObject({
     ...healthViewFields,
@@ -179,7 +185,12 @@ export const recordCloudRequestSchema = z
                     .optional(),
             })
             .optional(),
-        provision: z.strictObject({ items: z.array(provisionItemViewSchema).min(1).max(PROVISION_ITEMS.length) }).optional(),
+        provision: z
+            .strictObject({
+                items: z.array(provisionItemViewSchema).min(1).max(PROVISION_ITEMS.length),
+                setVersion: setVersionSchema.optional(),
+            })
+            .optional(),
         // [section install] owner: installer (M6, §1.7): what the install cards saw of each target (no token, no log line).
         install: setupInstallSchema.optional(),
         // [end install]

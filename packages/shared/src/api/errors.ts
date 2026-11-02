@@ -154,6 +154,9 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.workerLost': spec('unavailable'),
     'apiError.worker.notHolder': spec('failed-precondition'),
     'apiError.worker.refused': spec('permission-denied'),
+    // Finding 67 of 2026-11-02: a pairing code unknown, used or expired (one answer for the three), and a disconnected computer.
+    'apiError.worker.pairCode': spec('permission-denied'),
+    'apiError.worker.revoked': spec('permission-denied'),
     'apiError.telemetry.origin': spec('permission-denied'),
     'apiError.telemetry.tooLarge': spec('invalid-argument', 413),
     'apiError.assist.rateLimited': spec('resource-exhausted'),

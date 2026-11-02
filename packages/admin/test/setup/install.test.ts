@@ -1,6 +1,7 @@
 // The Setup Assistant's install cards (docs/research/M6-interfaces.md §1.7, §1.8, §4.1): Install the server also starts
 // the imagery pipeline, Publish the map, Update the map with one consent, Check again, the chips, the records.
 import type { InstallState } from '@hcm/shared';
+import { GOOGLE_TOKENS } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
 import type { CloudBuild } from '../../src/google/cloud-build.js';
@@ -27,7 +28,12 @@ function setup(mode: SetupMode = 'bootstrap') {
         initialSetupState(harness.host, mode),
     );
     const ctx = createSetupContext(harness.deps, createSetupStore(base));
-    return { harness, ctx, cards: createInstallCards(ctx) };
+    const provisioned: string[][] = [];
+    const cards = createInstallCards(ctx, (access) => {
+        provisioned.push([access.token, ...ctx.state().install.provisionDue]);
+        return Promise.resolve();
+    });
+    return { harness, ctx, cards, provisioned };
 }
 
 describe('Install the server', () => {
@@ -182,12 +188,60 @@ describe('Publish the map, Check again, Update the map', () => {
     });
 
     it('badPath_nothingBehindAsksNothing', async () => {
-        const { harness, cards } = setup('normal');
+        const { harness, cards, provisioned } = setup('normal');
 
         await cards.updateMap('deploy');
 
         expect(harness.google.requests).toEqual([]);
         expect(harness.installer.submit).not.toHaveBeenCalled();
+        expect(provisioned).toEqual([]);
+    });
+});
+
+describe('Update the map and Provision (finding 65 of 2026-11-02)', () => {
+    it('happyPath_updateTheMapAlsoAppliesTheProvisionItemsThatChangedInTheSameConsent @S-A04-HAPPY-UPDATE-PROVISION', async () => {
+        // Finding 65 of 2026-11-02: M7's release changed two Provision items; nothing else is behind.
+        const { harness, ctx, cards, provisioned } = setup('normal');
+        ctx.update((state) => ({ ...state, install: { ...state.install, provisionDue: ['artifact-registry', 'bucket-lifecycle'] } }));
+
+        await cards.updateMap('deploy');
+
+        expect(harness.google.requests).toEqual(['cloudPlatform']);
+        expect(provisioned).toEqual([[GOOGLE_TOKENS.owner, 'artifact-registry', 'bucket-lifecycle']]);
+        expect(harness.installer.submit).not.toHaveBeenCalled();
+        cards.dispose();
+    });
+
+    it('happyPath_aTargetBehindAndProvisionsChangesGoTogether', async () => {
+        const { harness, ctx, cards, provisioned } = setup('normal');
+        harness.google.grant('cloudPlatform');
+        ctx.update((state) => ({
+            ...state,
+            install: {
+                ...state.install,
+                provisionDue: ['artifact-registry'],
+                pipeline: { ...state.install.pipeline, state: 'updateAvailable' },
+            },
+        }));
+        harness.installer.observe.mockResolvedValue(observed({ installed: { complete: true, release: '0.9.0' } }));
+
+        await cards.updateMap('pipeline');
+
+        expect(harness.google.requests).toEqual([]);
+        expect(provisioned).toHaveLength(1);
+        expect(harness.installer.submit.mock.calls.map(([target]) => target)).toEqual(['pipeline']);
+        cards.dispose();
+    });
+
+    it('badPath_aClosedConsentAppliesNothing', async () => {
+        const { harness, ctx, cards, provisioned } = setup('normal');
+        ctx.update((state) => ({ ...state, install: { ...state.install, provisionDue: ['bucket-lifecycle'] } }));
+        harness.google.answer = () => Promise.resolve(null);
+
+        await cards.updateMap('deploy');
+
+        expect(provisioned).toEqual([]);
+        cards.dispose();
     });
 });
 

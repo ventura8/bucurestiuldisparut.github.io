@@ -388,3 +388,79 @@ gates and writes the docs.
   `pipeline/tests/integration/test_worker_stop.py` (S-P04-BAD-ONE-SIGNAL) pins it.
 - §4.3's notification `job.needsOk` is one of the push kinds the rules allow (`firebase/firestore.rules`
   `validPushKinds`, §83k, `docs/LESSONS.md` 340); it was missing, and every save of the push settings was refused.
+
+## Addendum (2026-11-02, the live test of the local worker: findings 65–69)
+
+The owner's request: "make sure all of this is automagic for the admin!!!" (`docs/research/manual-test-2026-10-25.md`
+findings 65–69, `DECISIONS-for-review.md` §85). What changes in this contract:
+
+- **§1.1, the command (finding 66)**, one line with nothing to prepare, written for the owner's shell:
+
+  ```text
+  docker rm -f hcm-worker 2>&1 | true; docker run -d --name hcm-worker --restart unless-stopped \
+    -p 127.0.0.1:8765:8765 -v hcm-worker:/work \
+    us-central1-docker.pkg.dev/<project>/hcm/pipeline@sha256:<digest> worker --city <city> --project <project> --pair <code>
+  ```
+
+  (on Windows PowerShell `2>&1 | Out-Null` instead of `2>&1 | true`; one line in the panel). `/work` is the named volume
+  `hcm-worker`, initialised from the image's `/work` (owned by the worker's user `10001`), so the `mkdir -m 777` note is
+  gone; the worker runs detached and comes back after a reboot; the same line replaces an older worker. One worker per
+  computer (the container's name and the port).
+- **§1.4 (new), the image a worker runs (finding 67).** The command names the image by digest, and Docker's restart
+  policy never pulls, so the worker cannot update itself. The pairing records the digest its command named;
+  `worker.hello` answers the installed one (`image`) and `outdated`; `worker.claim` gives an outdated worker no job
+  (`{job: null, outdated: true}`); the worker's page and log, and the admin's panel, say to run the command again (its
+  new code replaces the pairing: one paste, no sign-in).
+- **§2.1, the page (finding 69)** is for the worker's state; its Google sign-in is a fallback that gives up after 90
+  seconds with a message pointing at the admin's command, and the page shows the state when the SDK cannot be loaded.
+- **§2.6 (new), pairing (finding 67).** `worker.pairCode {cityId}` (admin, `cityEditor`) mints the command's one-time
+  code (26 base32 characters, 130 bits, 10 minutes) into `cities/{c}/pairings/{sha256(code)[:40]}` `{uid, image?,
+  expiresAt}`, renewed by the panel a minute before it ends; `worker.pair {cityId, code, replaces?}` (no sign-in, App
+  Check off, 20 attempts per city per 10 minutes) exchanges it once for a custom token of that owner with the claims
+  `worker: true`, `city`, `pair`; the worker signs in with it at Identity Toolkit (`accounts:signInWithCustomToken`,
+  the web API key, the Hosting origin as `Referer`), keeps `{refreshToken, pairId, codeHash}` in
+  `/work/.hcm-session-<city>.json` (mode 600), and resumes it at the next start; `worker.revoke {cityId, workerId}`
+  (admin, Disconnect this computer) revokes the worker and its pairing. The worker's five callables admit a paired
+  token for its city (`workerToken` in their rows) as well as a city editor's Google sign-in; each finds its pairing
+  standing (`apiError.worker.revoked` otherwise). `cities/{city}/pairings/*` has no client rule.
+- **§3.1 (new), a computer that does not come (finding 68).** `imagery.tick` marks a local job that waited
+  `WORKER_WAIT_MINUTES` (15) with no worker seen (`workerOverdueAt`, once) and leaves the inbox item `job.noWorker`; its
+  version page offers Run in Google Cloud instead; a claim or a move clears the mark. The Jobs panel follows the busy
+  worker's job live (step and progress).
+- **§2.2 as changed**: a paired session's refresh token is on disk, in the volume only (mode 600, the code never), so a
+  restart needs no new pairing; a session from the page's Google sign-in stays in memory only.
+- **Provision (finding 65)** is versioned: an update runs the items whose definition changed since the project was
+  last prepared (`DECISIONS-for-review.md` §85a), so this contract's `artifact-registry` and `bucket-lifecycle` changes
+  reach a project with Update the map.
+
+### §10, the security review of pairing (added)
+
+1. **Code entropy and lifetime (§10.8).** 26 base32 characters from `crypto.randomBytes`: 130 bits. Valid 10 minutes, one use
+   (marked used in the transaction that reads it), stored only as the first 40 hex characters of its SHA-256 (160 bits:
+   a read of the collection gives no usable code). Guessing is hopeless; the per-city attempt limit (20 in 10 minutes,
+   counted before the code is read) bounds the cost of trying, and one answer covers unknown, used, expired and revoked.
+   The code is in the command the owner copies (a terminal's history, the clipboard): it is spent at the first start,
+   and an unused one lapses in 10 minutes.
+2. **Token scope (§10.9).** The custom token is the owner's uid with `worker: true`, `city`, `pair`, `sign_in_provider:
+   'custom'`. `requireAccess` admits it only for the worker's own callables (`workerToken` rows), only for its `city`,
+   only while the owner still has a role there and the pairing stands. Every other callable and every security rule wants
+   `sign_in_provider == 'google.com'`, so the token reads no Firestore and calls no admin callable. It can do what §10.1
+   says a worker can, for one city.
+3. **Persistence on disk (§10.10).** The refresh token is in the named volume (`.hcm-session-<city>.json`, mode 600, owned by the
+    container's user), never the ID token, never the code (its SHA-256 only, to tell a new command). Anyone with root or
+    the Docker group on the computer can read it, as they can read the container's memory (§10.3).
+4. **Revocation (§10.11).** Disconnect this computer revokes the pairing and the worker document in one transaction: every call
+    of that worker, and of a restart with the kept refresh token, is refused (`apiError.worker.revoked`) and the worker
+    deletes its kept session. The refresh token itself stays valid at Google until the owner's sessions are revoked, but
+    it opens nothing: the worker's callables check the pairing on every call, and nothing else admits the token. A new
+    command revokes the pairing it replaces.
+5. **`worker.pair` without App Check or sign-in (§10.12).** The only callable of its kind: it reads one document by a hash, writes
+    two (the limit, the pairing), and mints a token only for a code an editor minted minutes before. The rate limit is
+    per city, so a stranger can make the owner's pairing wait 10 minutes at worst, not take it.
+6. **The Referer header (§10.13).** The worker names the project's Hosting origin as `Referer` to Identity Toolkit and the token
+    service, because Provision restricts the browser key to the Hosting origins; that restriction guards the key in
+    browsers, not against a client that sets headers, so this widens nothing.
+
+**UNVERIFIED** (§11, added): fn-admin's `signBlob` for `createCustomToken` (the role Provision grants it since M5), the
+custom-token sign-in with the Hosting origin as `Referer`, a reboot resuming the kept session, the image pull through
+the new command; the first real pairing proves the first two, a reboot the third.

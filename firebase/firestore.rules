@@ -407,10 +407,10 @@ service cloud.firestore {
         // added there must be added here too: the rules test `notify.test.ts` saves every kind and the default list.
         function validPushKinds(kinds) {
             return kinds is list
-                && kinds.size() <= 11
+                && kinds.size() <= 12
                 && kinds.toSet().size() == kinds.size()
                 && kinds.hasOnly(['usgs.approved', 'order.delivered', 'order.imported', 'order.reminder', 'order.expired', 'job.failed',
-                    'layer.readyToApprove', 'layer.needsPoints', 'budget.paused', 'crash.spike', 'job.needsOk']);
+                    'layer.readyToApprove', 'layer.needsPoints', 'budget.paused', 'crash.spike', 'job.needsOk', 'job.noWorker']);
         }
 
         function ownAdmin(uid) {

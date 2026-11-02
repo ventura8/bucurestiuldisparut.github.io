@@ -58,7 +58,16 @@ function provisionRecord(
     // An item never reported counts as `missing`, so the area is `ok` only once every item is; the scheduler's job is
     // created by the first deploy, so its `pending` (waiting for that deploy) does not hold the area back (CR-M2b-21 b).
     const states = PROVISION_ITEMS.map((id) => itemState(id, items.find((item) => item.id === id)?.state ?? 'missing'));
-    return { state: worstState(states), checkedAt, items };
+    return { state: worstState(states), checkedAt, items, ...setVersionOf(current, reported) };
+}
+
+/** Finding 65: the item set's version the run brought the project to; a run that does not say keeps the recorded one. */
+function setVersionOf(
+    current: ProvisionRecord | undefined,
+    reported: NonNullable<Request['provision']>,
+): Pick<ProvisionRecord, 'setVersion'> {
+    const setVersion = reported.setVersion ?? current?.setVersion;
+    return setVersion === undefined ? {} : { setVersion };
 }
 
 function applyReport(current: SetupStatusFields, request: Request, checkedAt: Timestamp): SetupStatusFields {

@@ -69,6 +69,22 @@ describe('setup.recordCloud', () => {
         });
     });
 
+    it('badPath_aRunThatDidNotReachEveryChangedItemRecordsNoVersionSoTheNextUpdateRunsThemAgain @S-A04-BAD-UPDATE-PROVISION', async () => {
+        // Finding 65 of 2026-11-02: the admin sends the item set's version only when its run brought every changed item to ok.
+        const world = createWorld();
+
+        const partial = await record(world, {
+            provision: { items: [...items('ok', ['apis']), { id: 'bucket-lifecycle', state: 'invalid' }] },
+        });
+        expect(partial.status.provision).not.toHaveProperty('setVersion');
+
+        const reached = await record(world, { provision: { items: items('ok'), setVersion: 2 } });
+        const later = await record(world, { provision: { items: items('ok', ['apis']) } });
+        expect(reached.status.provision.setVersion).toBe(2);
+        expect(later.status.provision.setVersion).toBe(2);
+        expect(world.status()?.provision?.setVersion).toBe(2);
+    });
+
     it('happyPath_aLaterReportReplacesItsItemsAndKeepsTheOthers', async () => {
         const world = createWorld();
         await record(world, { provision: { items: items('ok') } });

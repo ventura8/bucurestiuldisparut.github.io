@@ -60,6 +60,7 @@ export const en: AdminInstallMessages = {
     'adminSetup.install.installedRelease': 'Installed: {release}.',
     'adminSetup.install.update': 'An update is ready: {release}.',
     'adminSetup.install.updateAction': 'Update the map',
+    'adminSetup.install.provisionDue': 'The update also brings these project settings up to date: {items}.',
     'adminSetup.install.newer': 'Installed {release}, newer than this admin: reload the page.',
     'adminSetup.install.failedAt': 'Stopped at the step: {step}.',
     'adminSetup.install.missing': 'Missing functions: {names}.',

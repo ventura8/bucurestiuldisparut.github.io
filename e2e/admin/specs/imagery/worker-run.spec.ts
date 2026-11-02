@@ -4,10 +4,11 @@ import { join, relative } from 'node:path';
 import { translateAdminWorker, type AdminWorkerKey } from '@hcm/shared/admin-worker';
 import type { APIRequestContext, Page } from '@playwright/test';
 
-import { FUNCTIONS_TIMEOUT_MS, type SignedInAccount } from '../../support/emulators.js';
+import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
 import { REPO_ROOT } from '../../support/imagery-runner.js';
 import { LocalWorker } from '../../support/imagery-worker.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../../support/test.js';
+import { E2E_PROJECT_ID } from '../../world.js';
 import { FRAME_CITY, generateScene, SYNTHETIC_SCENE } from './synthetic.js';
 import { awaitHarvest, cardImport, closeImportNotice, IMAGERY_AT, readyImagery, stepRow, stepStateText, versionIdOf } from './world.js';
 
@@ -17,10 +18,10 @@ test.describe.configure({ lock: ADMIN_LOCK });
 /**
  * "Run on my computer" for real (docs/research/M7-local-worker.md §1–§3, §5; S-A62-HAPPY-WORKER-RUN): the city's choice is
  * the computer, so the 1966 frame imported with Import on its card waits for a worker. The pipeline's own worker process
- * (`python -m hcm_pipeline worker --emulators`, the quality image's pipeline venv) is then started and signed in the way its
- * local page does it: the page's CSRF token read from `GET /`, and `POST /session` from the page's origin with the owner's
- * Firebase ID and refresh tokens of a Google sign-in made then (the Auth emulator's `signInWithIdp`). It claims the
- * job through `worker.claim`, runs every step of the import unchanged against the synthetic scene, writes the documents
+ * (`python -m hcm_pipeline worker --emulators`, the quality image's pipeline venv) is then started with the command the
+ * Jobs page shows (finding 67 of 2026-11-02): its one-time pairing code (`--pair`), which the worker exchanges through
+ * `worker.pair` for a custom token of the owner and signs in with at the Auth emulator: no browser, no `POST /session`.
+ * It claims the job through `worker.claim`, runs every step of the import unchanged against the synthetic scene, writes the documents
  * through `worker.step` and the version's files through signed URLs to the Storage emulator, and reports the end. The
  * city's imagery settings do not publish on their own, so the version stops where a person approves it.
  *
@@ -31,8 +32,8 @@ test.use({ persona: 'owner', mapOwner: 'owner' });
 
 const STEPS = ['fetch', 'extract', 'stitch', 'locate', 'georef', 'warp', 'export'] as const;
 const DIGEST = `sha256:${'e7'.repeat(32)}`;
-/** The JSON settings the worker writes into its page (`worker/page.py`, `SETTINGS_ELEMENT`). */
-const SETTINGS = /<script type="application\/json" id="hcm-worker-settings">([^<]+)<\/script>/;
+/** The pairing code of the command the panel shows (finding 67). */
+const PAIR = /--pair ([a-z2-7]{26})$/;
 
 function text(lang: 'ro' | 'en', key: AdminWorkerKey, params?: Readonly<Record<string, string>>): string {
     return translateAdminWorker(lang, key, params);
@@ -43,20 +44,28 @@ function lead(lang: 'ro' | 'en', key: AdminWorkerKey): string {
     return text(lang, key, { when: '' }).split(':')[0] ?? '';
 }
 
-/** Signs the worker in as its page does: the CSRF token of `GET /`, then `POST /session` from the page's origin. */
-async function signIn(request: APIRequestContext, origin: string, account: SignedInAccount): Promise<Record<string, unknown>> {
-    const page = await request.get(`${origin}/`);
-    expect(page.status()).toBe(200);
-    const settings = JSON.parse(SETTINGS.exec(await page.text())?.[1] ?? '{}') as { readonly csrf?: string };
-    expect(settings.csrf).toMatch(/^[0-9a-f]{64}$/);
-    expect(await (await request.get(`${origin}/state`)).json()).toMatchObject({ signedIn: false, state: 'signed-out' });
+/** The command the Jobs page shows for the computer (one line, nothing to prepare: finding 66), and its pairing code. */
+async function commandOfJobsPage(page: Page, lang: 'ro' | 'en'): Promise<{ readonly command: string; readonly code: string }> {
+    await page.goto(adminPath(lang, 'jobs'));
+    const shown = page.locator('hcm-worker-panel pre');
+    await expect(shown).toContainText('--pair ', { timeout: FUNCTIONS_TIMEOUT_MS });
+    const command = (await shown.textContent()) ?? '';
+    return { command, code: PAIR.exec(command)?.[1] ?? '' };
+}
 
-    const session = await request.post(`${origin}/session`, {
-        headers: { Origin: origin, 'X-HCM-Worker': settings.csrf ?? '', 'Content-Type': 'application/json' },
-        data: JSON.stringify({ idToken: account.idToken, refreshToken: account.refreshToken }),
-    });
-    expect(session.status(), await session.text()).toBe(200);
-    return (await session.json()) as Record<string, unknown>;
+/** The worker's page state (`GET /state`), once it says `field` is `value`. */
+async function stateOnce(request: APIRequestContext, origin: string, field: string, value: unknown): Promise<Record<string, unknown>> {
+    let state: Record<string, unknown> = {};
+    await expect
+        .poll(
+            async () => {
+                state = (await (await request.get(`${origin}/state`)).json()) as Record<string, unknown>;
+                return state[field];
+            },
+            { timeout: FUNCTIONS_TIMEOUT_MS },
+        )
+        .toEqual(value);
+    return state;
 }
 
 /** The files under `folder` (relative to it), or none when it does not exist. */
@@ -74,7 +83,7 @@ async function expectPanelIdle(page: Page, lang: 'ro' | 'en'): Promise<void> {
 
 test(
     "The real worker on the owner's computer claims a local import, runs it and keeps the raw scan local",
-    { tag: '@S-A62-HAPPY-WORKER-RUN' },
+    { tag: ['@S-A62-HAPPY-WORKER-RUN', '@S-A62-HAPPY-PAIR', '@S-A62-BAD-PAIR-REUSED'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream, request }, testInfo) => {
         test.setTimeout(600_000);
         const owner = adminWorld.accounts.owner;
@@ -112,16 +121,23 @@ test(
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
 
-        // The worker starts, and is signed in with the owner's account as its page does it: a Google sign-in of now (the
-        // Auth emulator's signInWithIdp), whose ID token carries the claims the world gave the owner.
-        const signedInNow = await emulators.signIn('owner');
+        // The owner copies the Jobs page's command and runs it: one line with its pairing code, which signs the worker in.
+        const versionUrl = page.url();
+        const { command, code } = await commandOfJobsPage(page, lang);
+        expect(command).toContain('docker rm -f hcm-worker');
+        expect(command).toContain('--restart unless-stopped');
+        expect(command).toContain(`-v hcm-worker:/work us-central1-docker.pkg.dev/${E2E_PROJECT_ID}/hcm/pipeline@${DIGEST} `);
+        expect(code).toMatch(/^[a-z2-7]{26}$/);
+        await page.goto(versionUrl);
         const work = testInfo.outputPath('work');
         mkdirSync(work, { recursive: true });
-        const worker = LocalWorker.start(imagery.city, work);
+        const worker = LocalWorker.start(imagery.city, work, code);
         try {
             const origin = await worker.origin();
-            const signedIn = await signIn(request, origin, signedInNow);
-            expect(signedIn).toMatchObject({ signedIn: true, email: owner.email, city: imagery.city, lastError: null });
+            const signedIn = await stateOnce(request, origin, 'signedIn', true);
+            expect(signedIn).toMatchObject({ city: imagery.city, lastError: null, outdated: false });
+            // The session is kept in the work folder (the named volume), readable by the worker's user only.
+            expect(filesUnder(work).filter((name) => name.startsWith('.hcm-session-'))).toEqual([`.hcm-session-${imagery.city}.json`]);
 
             // It claims the job and runs every step of the import.
             for (const step of STEPS) {
@@ -167,9 +183,79 @@ test(
             // DECISIONS-for-review.md §83j, docs/LESSONS.md 342).
             expect(await worker.stop()).toBe('exit 0');
             expect(worker.output()).toMatch(/worker w-[0-9a-f]{16} stopped/);
+            expect(worker.output()).not.toContain(code);
+
+            // Docker's restart policy runs the same command again after a reboot: the kept session signs it in, the used
+            // code is not asked again.
+            const restarted = LocalWorker.start(imagery.city, work, code);
+            try {
+                await stateOnce(request, await restarted.origin(), 'signedIn', true);
+            } finally {
+                expect(await restarted.stop()).toBe('exit 0');
+            }
+
+            // The same code on another computer (an empty work folder): refused, it worked once.
+            const fresh = testInfo.outputPath('work-other');
+            mkdirSync(fresh, { recursive: true });
+            const other = LocalWorker.start(imagery.city, fresh, code);
+            try {
+                const refused = await stateOnce(request, await other.origin(), 'lastError', 'apiError.worker.pairCode');
+                expect(refused).toMatchObject({ signedIn: false });
+            } finally {
+                await other.stop();
+            }
         } finally {
             // A test that failed before its stop still ends the worker (a second stop of an ended worker only reads how).
             testInfo.annotations.push({ type: 'worker stop', description: await worker.stop() });
+        }
+    },
+);
+
+/** Stand-ins of the Firebase JS SDK's two modules the worker's page loads: a Google popup that never comes back. */
+const SDK_STUBS: Readonly<Record<string, string>> = {
+    'firebase-app.js': 'export function initializeApp(config) { return { config }; }',
+    'firebase-auth.js': [
+        'export const inMemoryPersistence = {};',
+        'export const browserPopupRedirectResolver = {};',
+        'export function initializeAuth() { return {}; }',
+        'export function connectAuthEmulator() {}',
+        'export class GoogleAuthProvider {}',
+        'export function signInWithPopup() { return new Promise(() => {}); }',
+        'export function signOut() { return Promise.resolve(); }',
+    ].join('\n'),
+};
+
+test(
+    "The worker page's fallback Google sign-in that never finishes gives up with a message pointing at the admin's command",
+    { tag: ['@S-P04-BAD-POPUP-TIMEOUT'] },
+    async ({ page }, testInfo) => {
+        // Finding 69 of 2026-11-02: on the live project the popup completed but the page stayed "Not signed in", without a
+        // word. The page now gives up after 90 seconds and says to use the command from the admin, which pairs the computer.
+        const work = testInfo.outputPath('work');
+        mkdirSync(work, { recursive: true });
+        const worker = LocalWorker.start('bucharest', work);
+        try {
+            for (const [file, body] of Object.entries(SDK_STUBS)) {
+                await page.route(`https://www.gstatic.com/firebasejs/*/${file}`, (route) =>
+                    route.fulfill({ status: 200, contentType: 'text/javascript', body }),
+                );
+            }
+            await page.clock.install();
+            await page.goto(`${await worker.origin()}/`);
+            const error = page.locator('#error');
+            await page.locator('#sign-in').click();
+            await page.clock.fastForward(60_000);
+            await expect(error).toHaveText('');
+
+            await page.clock.fastForward(31_000);
+            await expect(error).toHaveText(
+                /did not finish: use the command from the admin|nu s-a încheiat: folosește comanda din administrare/,
+            );
+            // The state polls that follow keep the message (the worker itself has no error to say).
+            await page.clock.fastForward(6_000);
+            await expect(error).toHaveText(/did not finish|nu s-a încheiat/);
+        } finally {
+            await worker.stop();
         }
     },
 );

@@ -83,6 +83,10 @@ ENV PATH=/opt/venv/bin:$PATH \
     HOME=/tmp \
     TMPDIR=/tmp
 
+# The local worker's work folder (M7, finding 66 of 2026-11-02): the admin's command mounts the named volume
+# `hcm-worker` here; Docker initialises an empty named volume from this folder, owner included, so the worker's user can
+# write it with no preparation on the computer (no `mkdir -m 777`).
+RUN mkdir -p /work && chown 10001:10001 /work
 WORKDIR /tmp
 USER 10001:10001
 ENTRYPOINT ["/opt/venv/bin/python", "-m", "hcm_pipeline"]

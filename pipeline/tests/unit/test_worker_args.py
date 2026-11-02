@@ -24,8 +24,17 @@ def test_happy_path_the_city_and_the_project_are_all_the_cloud_worker_needs() ->
         functions="https://us-central1-demo-hcm.cloudfunctions.net/",
         securetoken="https://securetoken.googleapis.com/v1/token",
         init_json="https://demo-hcm.web.app/__/firebase/init.json",
+        custom_token="https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken",
+        referer="https://demo-hcm.web.app/",
     )
+    assert args.pair is None
     assert args.endpoints.function("worker-claim") == "https://us-central1-demo-hcm.cloudfunctions.net/worker-claim"
+
+
+def test_happy_path_the_admins_command_carries_its_pairing_code() -> None:
+    args = parse_worker_args({"city": "bucharest", "project": "demo-hcm", "pair": "abcdefghijklmnopqrstuvwxyz"}, {})
+
+    assert args.pair == "abcdefghijklmnopqrstuvwxyz"
 
 
 def test_happy_path_under_the_emulators_every_address_is_this_machine() -> None:
@@ -38,6 +47,8 @@ def test_happy_path_under_the_emulators_every_address_is_this_machine() -> None:
         functions="http://127.0.0.1:5001/demo-hcm/us-central1/",
         securetoken="http://127.0.0.1:9099/securetoken.googleapis.com/v1/token",
         init_json="http://127.0.0.1:4312/__/firebase/init.json",
+        custom_token="http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken",
+        referer="http://127.0.0.1:4312/",
         auth_emulator="127.0.0.1:9099",
     )
     assert args.stac_url == "http://127.0.0.1:4311/h/earth-search.aws.element84.com/v1"
@@ -51,6 +62,7 @@ def test_happy_path_under_the_emulators_every_address_is_this_machine() -> None:
         ({"city": "bucharest"}, "--project must be a Google Cloud project id"),
         ({"city": "bucharest", "project": "demo-hcm", "port": 70000}, "--port must be a port number"),
         ({"city": "bucharest", "project": "demo-hcm", "work": ""}, "--work must name a folder"),
+        ({"city": "bucharest", "project": "demo-hcm", "pair": "ABC"}, "--pair must be the admin's pairing code"),
     ],
 )
 def test_bad_path_a_bad_option_is_named(options: dict[str, object], problem: str) -> None:

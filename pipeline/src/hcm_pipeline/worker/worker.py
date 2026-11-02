@@ -1,5 +1,7 @@
 """The worker assembled from its parts (docs/research/M7-local-worker.md §1): the session, the callables, the page's
 server, the job runtime and the loop; `serve` runs the page in a thread and the loop in the calling (main) thread.
+Finding 67 of 2026-11-02: the connector (`pairing.py`) signs it in from the command's pairing code or the session kept
+in the work folder, so the page is for its state only (its Google sign-in stays as the fallback).
 """
 
 import secrets
@@ -17,6 +19,7 @@ from hcm_pipeline.worker.app import PageActions
 from hcm_pipeline.worker.args import WorkerArgs
 from hcm_pipeline.worker.loop import WorkerLoop
 from hcm_pipeline.worker.page import PageSettings, content_security_policy
+from hcm_pipeline.worker.pairing import Connector, Pairing, SessionFile, Signer
 from hcm_pipeline.worker.runtime import StepsFactory, WorkerRuntime
 from hcm_pipeline.worker.server import LocalServer
 from hcm_pipeline.worker.session import Session
@@ -46,6 +49,7 @@ class Worker:
     runtime: WorkerRuntime
     client: httpx.Client
     worker_id: str
+    connector: Connector
 
     @classmethod
     def build(
@@ -58,7 +62,9 @@ class Worker:
         worker_id = new_worker_id()
         client = http()
         web_config = WebConfig(client, args.endpoints.init_json, args.project)
-        session = Session(client, lambda: f"{args.endpoints.securetoken}?key={web_config.api_key()}", clock)
+        session = Session(
+            client, lambda: f"{args.endpoints.securetoken}?key={web_config.api_key()}", clock, {"Referer": args.endpoints.referer}
+        )
         api = WorkerApi(client, args.endpoints.function, session.bearer, time.sleep)
         state = WorkerState(args.city, args.project, session)
         ids = {"cityId": args.city, "workerId": worker_id}
@@ -67,13 +73,18 @@ class Worker:
         settings = PageSettings(args.project, args.city, LocalServer.new_csrf_token(), args.endpoints.auth_emulator)
         server = LocalServer(actions, settings, (bind_host, args.port), content_security_policy(args.project, emulators))
         runtime = WorkerRuntime(args, api, worker_id, state, steps)
+        pairing = Pairing(client, api, args.endpoints, web_config, args.city)
+        connector = Connector(pairing, SessionFile(args.work, args.city), Signer(session, actions, state.failed), args.pair, clock)
         loop = WorkerLoop(session, api, state, runtime, ids)
-        return cls(session, api, state, actions, server, loop, runtime, client, worker_id)
+        loop.connect_with(connector)
+        return cls(session, api, state, actions, server, loop, runtime, client, worker_id, connector)
 
     def serve(self) -> None:
         """The page in a thread, the loop here, until SIGTERM or Ctrl-C."""
         self.server.start()
-        LOG.info("worker %s: open http://localhost:%d/ and sign in with Google", self.worker_id, self.server.port)
+        LOG.info(
+            "worker %s: open http://localhost:%d/ to see what it does (the admin's command signs it in)", self.worker_id, self.server.port
+        )
         try:
             self.loop.run()
         finally:

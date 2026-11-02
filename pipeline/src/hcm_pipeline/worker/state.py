@@ -9,7 +9,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Final
 
+from hcm_pipeline.log import get_logger
 from hcm_pipeline.worker.session import Session
+
+LOG = get_logger("worker.state")
 
 # `WORKER_POLL_SECONDS` of @hcm/shared, until `worker.hello` answers its own.
 DEFAULT_POLL_SECONDS: Final = 30.0
@@ -32,6 +35,7 @@ class WorkerState:
         self._job: str | None = None
         self._step: str | None = None
         self._error: str | None = None
+        self._outdated = False
         self.timing = Timing()
 
     def busy(self, job_id: str) -> None:
@@ -46,6 +50,16 @@ class WorkerState:
         """The last error the page shows (an `apiError.*` code), or none."""
         with self._lock:
             self._error = code
+
+    def outdated(self, outdated: bool) -> None:
+        """Finding 67: whether this worker's image is no longer the installed pipeline's (it takes no job until updated)."""
+        with self._lock:
+            if outdated and not self._outdated:
+                LOG.warning(
+                    "the imagery pipeline was updated in the admin: this computer runs an older image and takes no job; "
+                    "copy the command from the admin (Jobs, Your computer) and run it to update"
+                )
+            self._outdated = outdated
 
     def observe(self, path: str, fields: Mapping[str, object]) -> None:
         """A document write of the run: the job's `step` becomes the page's step line."""
@@ -70,4 +84,5 @@ class WorkerState:
                 "jobId": self._job,
                 "step": self._step,
                 "lastError": self._error or self._session.ended_because,
+                "outdated": self._outdated,
             }

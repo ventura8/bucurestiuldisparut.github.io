@@ -28,6 +28,8 @@ export const NOTIFICATION_KINDS = [
     'crash.spike',
     // M7 (docs/research/M7-local-worker.md §4.3): a cloud run made by automation waits for the admin's OK past the free tier.
     'job.needsOk',
+    // Finding 68 of 2026-11-02: a job waited for the computer WORKER_WAIT_MINUTES and no computer came.
+    'job.noWorker',
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -56,6 +58,7 @@ export const NOTIFICATION_SPECS: Readonly<Record<NotificationKind, NotificationS
     'budget.paused': { severity: 'error', push: true },
     'crash.spike': { severity: 'warning', push: true },
     'job.needsOk': { severity: 'warning', push: true },
+    'job.noWorker': { severity: 'warning', push: true },
 };
 
 /** The kinds pushed when an admin turns push on and changes nothing else. */

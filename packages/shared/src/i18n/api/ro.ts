@@ -100,6 +100,8 @@ export const ro = {
     'apiError.imagery.workerLost': 'Calculatorul tău a încetat să lucreze la această sarcină; o reia când revine.',
     'apiError.worker.notHolder': 'Sarcina nu mai este a acestui calculator.',
     'apiError.worker.refused': 'Calculatorul a cerut ceva de care sarcina lui nu are nevoie.',
+    'apiError.worker.pairCode': 'Acest cod de asociere nu mai este valabil: copiază din nou comanda din administrare.',
+    'apiError.worker.revoked': 'Calculatorul a fost deconectat din administrare: copiază din nou comanda de acolo ca să-l reconectezi.',
     'apiError.telemetry.origin': 'Raportul vine de pe un site necunoscut.',
     'apiError.telemetry.tooLarge': 'Raportul este prea mare.',
     'apiError.assist.rateLimited': 'Sugestiile OpenStreetMap nu sunt disponibile acum. Scrie titlul; reîncercăm peste câteva minute.',

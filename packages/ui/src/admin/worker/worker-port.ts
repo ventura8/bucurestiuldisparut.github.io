@@ -20,6 +20,8 @@ export interface WorkerSeenPort {
     readonly seenAt: string;
     readonly jobId: string | null;
     readonly lastJob: { readonly id: string; readonly outcome: 'done' | 'failed'; readonly at: string } | null;
+    readonly outdated: boolean;
+    readonly revoked: boolean;
 }
 
 export interface WorkerJobPort {
@@ -28,6 +30,9 @@ export interface WorkerJobPort {
     readonly runOn: RunPlace | null;
     readonly waitReason: JobWaitReason | null;
     readonly estimate: CloudRunUsePort;
+    readonly step: string | null;
+    readonly progress: number | null;
+    readonly overdue: boolean;
 }
 
 export interface WorkerViewPort {
@@ -43,12 +48,15 @@ export interface WorkerViewPort {
     readonly job: WorkerJobPort | null;
     readonly acting: boolean;
     readonly refusal: AdminNoticeInputPort | null;
+    /** The command's one-time pairing code (finding 67); null while none could be minted. */
+    readonly pairCode: string | null;
 }
 
 interface WorkerIntentsPort {
     setChoice(choice: RunChoice): Promise<boolean>;
     runJob(runOn: RunPlace, freeTierOk: boolean): Promise<boolean>;
     retry(): void;
+    disconnect(): Promise<boolean>;
 }
 
 /** One element's feed: started when it connects (with its version's job, if any), stopped when it goes. */

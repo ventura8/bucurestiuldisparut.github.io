@@ -30,9 +30,11 @@ describe('the function registry', () => {
     });
 
     it('happyPath_theAdminsTableIsEveryCallableButTheWorkersAndTheNamesListEveryOne', () => {
-        const workers = Object.keys(CALLABLES).filter((name) => name.startsWith('worker.'));
+        // Finding 67: the admin's two pairing callables share the family's prefix; the worker's own six are the rest.
+        const workers = Object.keys(CALLABLES).filter((name) => name.startsWith('worker.') && !(name in ADMIN_CALLABLES));
 
         expect(workers).toEqual([...WORKER_CALLABLE_NAMES]);
+        expect(Object.keys(ADMIN_CALLABLES).filter((name) => name.startsWith('worker.'))).toEqual(['worker.pairCode', 'worker.revoke']);
         expect(Object.keys(ADMIN_CALLABLES)).toEqual(Object.keys(CALLABLES).filter((name) => !workers.includes(name)));
         expect(new Set(CALLABLE_NAMES)).toEqual(new Set(Object.keys(CALLABLES)));
         expect(CALLABLE_NAMES).toHaveLength(Object.keys(CALLABLES).length);
@@ -56,6 +58,14 @@ describe('the function registry', () => {
             .map(([name]) => name);
 
         expect(open).toEqual(['admin.session', 'admin.claim', 'admin.join']);
+    });
+
+    it('badPath_onlyPairingNeedsNoSignInAndOnlyTheWorkersOwnCallablesAdmitAPairedToken', () => {
+        const none = Object.entries(CALLABLES).filter(([, spec]) => spec.access === 'none');
+        const paired = Object.entries(CALLABLES).filter(([, spec]) => 'workerToken' in spec);
+
+        expect(none.map(([name]) => name)).toEqual(['worker.pair']);
+        expect(paired.map(([name]) => name)).toEqual(['worker.hello', 'worker.claim', 'worker.step', 'worker.urls', 'worker.end']);
     });
 
     it('badPath_everySecretPasteLayerDeletePaidOverageAndGuardResumeConsumesItsAppCheckToken', () => {

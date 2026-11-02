@@ -1,11 +1,11 @@
-import { PROVISION_ITEMS, type ProvisionItem } from '@hcm/shared';
+import { PROVISION_ITEMS, PROVISION_SET_VERSION, type ProvisionItem } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { createSetupContext, createSetupStore } from '../../src/setup/context.js';
 import type { ProvisionItemResult, SetupCloud } from '../../src/setup/ports.js';
 import { createProvisionFlow } from '../../src/setup/provision.js';
 import { initialSetupState, withStep } from '../../src/setup/state.js';
-import { createHarness, functionsError, googleError, provisionedItems, statusView } from './harness.js';
+import { access, createHarness, functionsError, googleError, provisionedItems, statusView } from './harness.js';
 
 function setup(mode: 'bootstrap' | 'normal' = 'bootstrap') {
     const harness = createHarness();
@@ -225,6 +225,79 @@ function recordedDone() {
 
 // Finding 34 of 2026-11-01 (docs/research/manual-test-2026-10-25.md): Re-check never downgrades step c without a Google
 // token, and with one the server's record follows what the doctor found, an item gone back to missing included.
+describe('provision: an update applies the items that changed (finding 65 of 2026-11-02)', () => {
+    /** A project prepared before M7 (no set version recorded), every item ok. */
+    function prepared(setVersion?: number) {
+        const world = setup('normal');
+        world.ctx.update((state) => ({
+            ...state,
+            provision: {
+                items: state.provision.items.map((item) => ({ ...item, state: 'ok' as const })),
+                ...(setVersion === undefined ? {} : { setVersion }),
+            },
+        }));
+        return world;
+    }
+
+    it('happyPath_theChangedItemsRunWithTheUpdatesTokenAndTheVersionIsRecorded @S-A04-HAPPY-UPDATE-PROVISION', async () => {
+        const { harness, ctx, flow } = prepared();
+        harness.cloud.provision.mockImplementation(
+            reporting([
+                { id: 'artifact-registry', state: 'ok' },
+                { id: 'bucket-lifecycle', state: 'ok' },
+            ]),
+        );
+        harness.backend.recordCloud.mockResolvedValue({
+            status: statusView({
+                provision: { state: 'ok', checkedAt: null, items: provisionedItems(), setVersion: PROVISION_SET_VERSION },
+            }),
+        });
+
+        await flow.update(access(Date.now(), 'cloudPlatform'));
+
+        expect(harness.cloud.provision.mock.calls[0]?.[1]).toEqual<ProvisionItem[]>(['artifact-registry', 'bucket-lifecycle']);
+        expect(harness.google.requests).toEqual([]);
+        expect(harness.backend.recordCloud).toHaveBeenCalledWith({
+            provision: {
+                items: [
+                    { id: 'artifact-registry', state: 'ok' },
+                    { id: 'bucket-lifecycle', state: 'ok' },
+                ],
+                setVersion: PROVISION_SET_VERSION,
+            },
+        });
+        expect(ctx.state().provision.setVersion).toBe(PROVISION_SET_VERSION);
+        expect(ctx.state().install.provisionDue).toEqual([]);
+    });
+
+    it('badPath_anItemThatFailsLeavesTheVersionUnrecorded @S-A04-BAD-UPDATE-PROVISION', async () => {
+        const { harness, ctx, flow } = prepared();
+        harness.cloud.provision.mockImplementation(
+            reporting([
+                { id: 'artifact-registry', state: 'invalid', detail: 'adminSetup.provision.orgPolicy', params: { constraint: 'x' } },
+                { id: 'bucket-lifecycle', state: 'ok' },
+            ]),
+        );
+        harness.backend.recordCloud.mockResolvedValue({ status: statusView() });
+
+        await flow.update(access(Date.now(), 'cloudPlatform'));
+
+        expect(harness.backend.recordCloud.mock.calls[0]?.[0]).not.toHaveProperty('provision.setVersion');
+        expect(ctx.state().steps.provision.busy).toBe(false);
+    });
+
+    it.each([
+        ['a project at the current version', PROVISION_SET_VERSION],
+        ['a project never prepared', undefined],
+    ])('badPath_%sRunsNothing', async (name, setVersion) => {
+        const world = name.includes('never') ? setup('normal') : prepared(setVersion);
+
+        await world.flow.update(access(Date.now(), 'cloudPlatform'));
+
+        expect(world.harness.cloud.provision).not.toHaveBeenCalled();
+    });
+});
+
 describe('provision: Re-check and the record', () => {
     it('badPath_withoutAGoogleTokenTheRecordedStateStaysAndSaysWhenItWasLastChecked', async () => {
         const { harness, ctx, flow } = recordedDone();

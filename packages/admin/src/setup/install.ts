@@ -4,13 +4,16 @@
  * (`../install/install-flow.ts`). Each flow's view lands in the state's `install` slice; the pipeline's and the site's
  * steps take their chip from it (the server's step is the deployment's, `deploy.ts`, which also claims). Update the map
  * submits every target that is behind with one click (one consent without a live token): the server and the pipeline
- * at once, the site once the server is installed.
+ * at once, the site once the server is installed. Finding 65 of 2026-11-02: the same click and consent also apply the
+ * Provision items whose definition changed since the project was last prepared (`provisionDue` on the slice; the
+ * pipeline's public pull and the 7-day raw delivery of M7, for one), beside the builds.
  */
 import { INSTALL_TARGETS, type InstallState, type InstallTarget } from '@hcm/shared';
 
 import { createInstallFlow, type InstallFlow } from '../install/install-flow.js';
 import { isRunning, type InstallTargetView } from '../install/model.js';
 import type { InstallAccess } from '../install/ports.js';
+import type { GoogleAccess } from './ports.js';
 import type { SetupContext } from './context.js';
 import { googleAccess, liveAccess } from './google-access.js';
 import { installRecordOf } from './install-records.js';
@@ -76,11 +79,15 @@ function needsInstallerPermission(state: SetupState): SetupState {
     const items = state.provision.items.map((item): ProvisionItemState =>
         item.id === 'iam' ? { id: item.id, state: 'invalid', detail: { key: 'adminSetup.provision.installerPermission' } } : item,
     );
-    return { ...state, provision: { items } };
+    return { ...state, provision: { ...state.provision, items } };
 }
+
+/** Provision's part of an update (`ProvisionFlow.update`), with the update click's token. */
+export type ProvisionUpdate = (access: GoogleAccess) => Promise<void>;
 
 class Cards implements InstallCards {
     readonly #ctx: SetupContext;
+    readonly #provisionUpdate: ProvisionUpdate;
     readonly #flows: Readonly<Record<InstallTarget, InstallFlow>>;
     /** Update the map waits for the server before it republishes the site. */
     #siteAfterServer = false;
@@ -93,8 +100,9 @@ class Cards implements InstallCards {
     /** The one read of whether this admin's bundle can install the pipeline (finding 43 of 2026-11-01). */
     #pipelineChecked: Promise<void> | null = null;
 
-    constructor(ctx: SetupContext) {
+    constructor(ctx: SetupContext, provisionUpdate: ProvisionUpdate) {
         this.#ctx = ctx;
+        this.#provisionUpdate = provisionUpdate;
         this.#flows = {
             server: this.#flow('server'),
             pipeline: this.#flow('pipeline'),
@@ -132,16 +140,21 @@ class Cards implements InstallCards {
         // What the cards show: a target recorded behind (`setup/status.install`) counts before its flow has looked.
         const { install } = this.#ctx.state();
         const behind = INSTALL_TARGETS.filter((target) => updates(install[target], install.pipelineOff !== null));
-        if (behind.length === 0) {
+        if (behind.length === 0 && install.provisionDue.length === 0) {
             return;
         }
-        const granted = accessOf(await googleAccess(this.#ctx, step, 'cloudPlatform', true));
-        if (granted === null) {
-            return;
+        const access = await googleAccess(this.#ctx, step, 'cloudPlatform', true);
+        if (access !== null) {
+            await this.#update(behind, install.provisionDue.length > 0, access);
         }
+    }
+
+    /** The targets behind built (the site after the server) beside Provision's changed items, with the click's token. */
+    async #update(behind: readonly InstallTarget[], provisionDue: boolean, access: GoogleAccess): Promise<void> {
         this.#siteAfterServer = behind.includes('site') && behind.includes('server');
         const now = behind.filter((target) => target !== 'site' || !this.#siteAfterServer);
-        await Promise.all(now.map((target) => this.#flows[target].installWith(granted)));
+        const provision = provisionDue ? [this.#provisionUpdate(access)] : [];
+        await Promise.all([...provision, ...now.map((target) => this.#flows[target].installWith({ token: access.token }))]);
     }
 
     async recheck(target: InstallTarget): Promise<void> {
@@ -275,6 +288,6 @@ class Cards implements InstallCards {
 }
 
 /** The install cards over the Setup Assistant's context. */
-export function createInstallCards(ctx: SetupContext): InstallCards {
-    return new Cards(ctx);
+export function createInstallCards(ctx: SetupContext, provisionUpdate: ProvisionUpdate): InstallCards {
+    return new Cards(ctx, provisionUpdate);
 }

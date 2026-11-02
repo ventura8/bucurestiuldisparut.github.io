@@ -12,8 +12,17 @@
  *   newer than what is installed) or `failed` (its last build stopped), with the Setup step whose card offers Update the
  *   map or Try again. A recorded release in place is read again against this admin's own release and build time
  *   (finding 39 of 2026-11-01: an `installed` written by an older build of the same version is an update for this one).
+ *   Finding 65 of 2026-11-02: also a project prepared before Provision's items last changed (the update applies them).
  */
-import { INSTALL_TARGETS, timestampToDate, usgsReadiness, type InstallState, type SetupStatusDoc, type TimestampLike } from '@hcm/shared';
+import {
+    INSTALL_TARGETS,
+    provisionDue,
+    timestampToDate,
+    usgsReadiness,
+    type InstallState,
+    type SetupStatusDoc,
+    type TimestampLike,
+} from '@hcm/shared';
 
 import { isoOf } from '../content/list.js';
 import { recordedState, type BundleStamp } from '../install/model.js';
@@ -87,10 +96,26 @@ function installTile(install: InstallRecords, state: 'updateAvailable' | 'failed
     return target === undefined ? [] : [{ kind: state === 'failed' ? 'installFailed' : 'installUpdate', step: INSTALL_STEP_OF[target] }];
 }
 
-/** A stopped installation first (it needs a look), else an update the admin's release brings. */
-function installReminder(install: InstallRecords, bundle: BundleStamp | null): readonly HomeReminder[] {
-    const failed = installTile(install, 'failed', bundle);
-    return failed.length > 0 ? failed : installTile(install, 'updateAvailable', bundle);
+/**
+ * Finding 65 of 2026-11-02: an installed map whose project was prepared before Provision's items last changed: Update the
+ * map on the server's card applies them, so it is an update too.
+ */
+function provisionTile(status: SetupStatusDoc): readonly HomeReminder[] {
+    const due = preparedAndInstalled(status) ? provisionDue(status.provision?.setVersion) : [];
+    return due.length > 0 ? [{ kind: 'installUpdate', step: INSTALL_STEP_OF.server }] : [];
+}
+
+/** A project prepared (its doctor's items recorded) with its server installed. */
+function preparedAndInstalled(status: SetupStatusDoc): boolean {
+    const items = status.provision?.items ?? [];
+    return items.length > 0 && status.install?.server !== undefined;
+}
+
+/** A stopped installation first (it needs a look), else an update the admin's release brings, else Provision's changes. */
+function installReminder(status: SetupStatusDoc, bundle: BundleStamp | null): readonly HomeReminder[] {
+    const failed = installTile(status.install, 'failed', bundle);
+    const update = failed.length > 0 ? failed : installTile(status.install, 'updateAvailable', bundle);
+    return update.length > 0 ? update : provisionTile(status);
 }
 // [end install]
 
@@ -102,5 +127,5 @@ export function remindersOf(status: SetupStatusDoc | null, now: number, bundle: 
     if (status === null) {
         return [];
     }
-    return [...installReminder(status.install, bundle), ...usgsReminder(status.usgs), ...trialReminder(status.billing, now)];
+    return [...installReminder(status, bundle), ...usgsReminder(status.usgs), ...trialReminder(status.billing, now)];
 }

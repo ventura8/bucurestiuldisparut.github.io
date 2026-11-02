@@ -5,8 +5,14 @@
  * image's digest the worker's command names (`setup.status`'s `install.pipeline.image`), this month's Cloud Run use
  * (`usage/cloudrun-<month>`) and, on a version's page, its job's place and wait. The choice and a job's place change through
  * `imagery.runOn`; a refusal is said where the change was asked for.
+ *
+ * Findings 66–68 of 2026-11-02: the panel's command carries a one-time pairing code (`worker.pairCode`, minted when the
+ * image is known and again a minute before it expires), so the worker needs no sign-in; Disconnect this computer is
+ * `worker.revoke`; the connected worker's job is followed live (its step and progress); a job waiting past
+ * `WORKER_WAIT_MINUTES` for a computer that never came is `overdue` (its page offers Run in Google Cloud instead).
  */
 import {
+    WORKER_PAIR_SECONDS,
     cloudRunUsageDocSchema,
     FIRESTORE_PATHS,
     jobDocSchema,
@@ -21,6 +27,7 @@ import {
     type RunChoice,
     type RunChoiceDoc,
     type RunPlace,
+    type SetupStatusView,
     type WorkerDoc,
 } from '@hcm/shared';
 
@@ -38,6 +45,10 @@ export interface WorkerSeen {
     readonly seenAt: string;
     readonly jobId: string | null;
     readonly lastJob: { readonly id: string; readonly outcome: 'done' | 'failed'; readonly at: string } | null;
+    /** Its image is no longer the installed pipeline's: it takes no job until the command is run again. */
+    readonly outdated: boolean;
+    /** Disconnected in the admin (`worker.revoke`). */
+    readonly revoked: boolean;
 }
 
 /** The job of a version's page: where it runs, why it waits, and what a cloud run of it would use. */
@@ -47,6 +58,11 @@ interface WorkerJob {
     readonly runOn: RunPlace | null;
     readonly waitReason: JobWaitReason | null;
     readonly estimate: CloudRunUse;
+    /** Its pipeline step and progress (0–1) while it runs. */
+    readonly step: string | null;
+    readonly progress: number | null;
+    /** Finding 68: waited `WORKER_WAIT_MINUTES` for a computer that never came. */
+    readonly overdue: boolean;
 }
 
 export interface WorkerState {
@@ -67,6 +83,8 @@ export interface WorkerState {
     readonly acting: boolean;
     /** Why the last change was refused, or null. */
     readonly refusal: NoticeInput | null;
+    /** The one-time pairing code the command carries (finding 67); null while none could be minted. */
+    readonly pairCode: string | null;
 }
 
 export interface WorkerIntents {
@@ -76,19 +94,25 @@ export interface WorkerIntents {
     runJob(runOn: RunPlace, freeTierOk: boolean): Promise<boolean>;
     /** Try again after the workers' listener stopped. */
     retry(): void;
+    /** Disconnect this computer (`worker.revoke`, finding 67); true once the server took it. */
+    disconnect(): Promise<boolean>;
 }
 
 const NO_USE: CloudRunUse = { vcpuSeconds: 0, gibSeconds: 0 };
 
 const INITIAL: Omit<WorkerState, 'city'> = {
     ...{ status: 'loading', failure: null, worker: null, connected: false, choice: 'auto', image: undefined },
-    ...{ usage: NO_USE, job: null, acting: false, refusal: null },
+    ...{ usage: NO_USE, job: null, acting: false, refusal: null, pairCode: null },
 };
+
+/** A code is minted again this long before it expires, so the command on screen always works. */
+const PAIR_RENEW_MS = (WORKER_PAIR_SECONDS - 60) * 1000;
 
 function seenOf(doc: Stored<WorkerDoc>): WorkerSeen {
     const { state, jobId, lastJob, lastSeenAt } = doc.data;
     const last = lastJob === undefined ? null : { id: lastJob.id, outcome: lastJob.outcome, at: isoOf(lastJob.at) };
-    return { id: doc.id, state, seenAt: isoOf(lastSeenAt), jobId: jobId ?? null, lastJob: last };
+    const flags = { outdated: doc.data.outdated === true, revoked: doc.data.revokedAt !== undefined };
+    return { id: doc.id, state, seenAt: isoOf(lastSeenAt), jobId: jobId ?? null, lastJob: last, ...flags };
 }
 
 /** The jobs the raster pipeline runs, whose place may be the computer or the cloud. */
@@ -106,7 +130,18 @@ function jobOf(doc: Stored<JobDoc> | null): WorkerJob | null {
         runOn: job.runOn ?? null,
         waitReason: job.waitReason ?? null,
         estimate: estimateCloudRun(job),
+        ...runOf(job),
     };
+}
+
+/** Finding 68: how far a running job got, and whether no computer came for it. */
+function runOf(job: JobDoc): Pick<WorkerJob, 'step' | 'progress' | 'overdue'> {
+    return { step: job.step ?? null, progress: job.progress ?? null, overdue: job.workerOverdueAt !== undefined };
+}
+
+/** The pipeline image's digest `setup.status` names, or null. */
+function imageOf(status: SetupStatusView): string | null {
+    return status.install?.pipeline?.image ?? null;
 }
 
 function usageOf(state: DocState<CloudRunUsageDoc>): CloudRunUse {
@@ -123,6 +158,10 @@ export class WorkerFeed {
     readonly #job: LiveDoc<JobDoc>;
     readonly intents: WorkerIntents;
     #stale: unknown = null;
+    #renew: unknown = null;
+    /** The panel follows the connected worker's job; a version's page its own. */
+    #panel = false;
+    #followed: string | null = null;
 
     constructor(services: ContentServices) {
         this.#services = services;
@@ -153,7 +192,9 @@ export class WorkerFeed {
         this.#job = new LiveDoc({
             ...{ ...common, schema: jobDocSchema },
             changed: (state) => {
-                this.#cell.update({ job: jobOf(state.doc) });
+                // The panel's worker went idle while an answer was on its way: that job is no longer shown.
+                const dropped = this.#panel && this.#followed === null;
+                this.#cell.update({ job: dropped ? null : jobOf(state.doc) });
             },
         });
         this.intents = {
@@ -162,6 +203,7 @@ export class WorkerFeed {
             retry: () => {
                 this.#workers.retry();
             },
+            disconnect: () => this.#disconnect(),
         };
     }
 
@@ -176,6 +218,7 @@ export class WorkerFeed {
     /** Starts every listener: with `jobId`, that job's too (a version's page); without, asks for the image's digest (the panel). */
     start(jobId: string | null): void {
         const { cityId, clock } = this.#services;
+        this.#panel = jobId === null;
         this.#workers.show({ orderBy: [['lastSeenAt', 'desc']] });
         this.#choice.show(FIRESTORE_PATHS.runChoice(cityId));
         this.#usage.show(FIRESTORE_PATHS.cloudRunUsage(usageMonth(new Date(clock.now()))));
@@ -191,14 +234,66 @@ export class WorkerFeed {
             live.stop();
         }
         this.#services.clock.clearTimeout(this.#stale);
+        this.#services.clock.clearTimeout(this.#renew);
+        this.#renew = null;
     }
 
     async #askImage(): Promise<void> {
         try {
             const status = await this.#services.callables.call('setup.status', {});
-            this.#cell.update({ image: status.install?.pipeline?.image ?? null });
+            const image = imageOf(status);
+            this.#cell.update({ image });
+            await (image === null ? Promise.resolve() : this.#mintCode());
         } catch {
             this.#cell.update({ image: null });
+        }
+    }
+
+    /** A one-time code for the command (finding 67), minted again a minute before it expires; null when refused. */
+    async #mintCode(): Promise<void> {
+        const { callables, cityId, clock } = this.#services;
+        try {
+            const { code } = await callables.call('worker.pairCode', { cityId });
+            this.#cell.update({ pairCode: code });
+            this.#renew = clock.setTimeout(() => void this.#mintCode(), PAIR_RENEW_MS);
+        } catch {
+            this.#cell.update({ pairCode: null });
+        }
+    }
+
+    /** The panel's worker busy with a job: that job followed live (its step and progress). */
+    #follow(worker: WorkerSeen | null): void {
+        const jobId = this.#busyJob(worker);
+        if (jobId === this.#followed) {
+            return;
+        }
+        this.#followed = jobId;
+        if (jobId === null) {
+            this.#job.stop();
+            this.#cell.update({ job: null });
+        } else {
+            this.#job.show(FIRESTORE_PATHS.job(this.#services.cityId, jobId));
+        }
+    }
+
+    /** The job the panel's worker works on, or null (a version's page, or a worker idle or gone). */
+    #busyJob(worker: WorkerSeen | null): string | null {
+        return this.#panel && worker?.state === 'busy' ? worker.jobId : null;
+    }
+
+    async #disconnect(): Promise<boolean> {
+        const worker = this.#cell.state.worker;
+        if (worker === null || this.#cell.state.acting) {
+            return false;
+        }
+        this.#cell.update({ acting: true, refusal: null });
+        try {
+            await this.#services.callables.call('worker.revoke', { cityId: this.#services.cityId, workerId: worker.id });
+            this.#cell.update({ acting: false });
+            return true;
+        } catch (error) {
+            this.#cell.update({ acting: false, refusal: refusalOf(error) });
+            return false;
         }
     }
 
@@ -206,7 +301,7 @@ export class WorkerFeed {
     #seen(list: ListState<WorkerSeen>): void {
         const { clock } = this.#services;
         const worker = list.items[0] ?? null;
-        const left = worker === null ? 0 : Date.parse(worker.seenAt) + WORKER_FRESH_SECONDS * 1000 - clock.now();
+        const left = worker === null || worker.revoked ? 0 : Date.parse(worker.seenAt) + WORKER_FRESH_SECONDS * 1000 - clock.now();
         clock.clearTimeout(this.#stale);
         if (left > 0) {
             this.#stale = clock.setTimeout(() => {
@@ -214,6 +309,7 @@ export class WorkerFeed {
             }, left);
         }
         this.#cell.update({ status: list.status, failure: list.failure, worker, connected: left > 0 });
+        this.#follow(worker);
     }
 
     async #runJob(runOn: RunPlace, freeTierOk: boolean): Promise<boolean> {

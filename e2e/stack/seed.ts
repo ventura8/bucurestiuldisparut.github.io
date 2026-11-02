@@ -1,4 +1,4 @@
-import { createLogger, opsGuardDocSchema, PROVISION_ITEMS, setupStatusDocSchema } from '@hcm/shared';
+import { createLogger, opsGuardDocSchema, PROVISION_ITEMS, PROVISION_SET_VERSION, setupStatusDocSchema } from '@hcm/shared';
 import { MAPBOX_TOKENS } from '@hcm/test-support/fakes';
 import { request, type APIRequestContext } from '@playwright/test';
 
@@ -75,7 +75,7 @@ async function seedSetupStatus(emulators: EmulatorWorld, owner: SignedInAccount)
     const ok = { state: 'ok', checkedAt: SETUP_AT };
     const status = {
         billing: { ...ok, budgetId: BUDGET_ID, budgetAmount: 5, currency: 'USD' },
-        provision: { ...ok, items: PROVISION_ITEMS.map((id) => ({ id, ...ok })) },
+        provision: { ...ok, items: PROVISION_ITEMS.map((id) => ({ id, ...ok })), setVersion: PROVISION_SET_VERSION },
         mapbox: { ...ok, user: 'e2e-mapbox', scopes: ['tilesets:write', 'tilesets:read'], adminToken: E2E_TOKEN },
         usgs: { ...ok, role: 'download' },
         updatedBy: owner.uid,

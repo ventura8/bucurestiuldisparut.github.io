@@ -2,6 +2,7 @@
  * Home's installation reminder (M6 installer, `docs/research/M6-interfaces.md` §1.7; A55–A57): a target recorded
  * `failed` first, else one recorded `updateAvailable`, each opening the Setup step whose card acts on it.
  */
+import { PROVISION_SET_VERSION, type SetupStatusDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { remindersOf } from '../../src/home/reminders.js';
@@ -50,5 +51,16 @@ describe('remindersOf: the installation', () => {
         } as const;
 
         expect(remindersOf({ install, ...STAMP }, NOW, bundle)).toEqual([]);
+    });
+
+    it('happyPath_aProjectPreparedBeforeProvisionChangedIsAnUpdate @S-A04-HAPPY-UPDATE-PROVISION', () => {
+        // Finding 65 of 2026-11-02: everything installed, but M7 changed two Provision items after the project was prepared.
+        const install = { server: { state: 'installed', checkedAt: CHECKED } } as const;
+        const provision: NonNullable<SetupStatusDoc['provision']> = { state: 'ok', items: [{ id: 'apis', state: 'ok' }] };
+
+        expect(remindersOf({ install, provision, ...STAMP }, NOW)).toEqual([{ kind: 'installUpdate', step: 'deploy' }]);
+        expect(remindersOf({ install, provision: { ...provision, setVersion: PROVISION_SET_VERSION }, ...STAMP }, NOW)).toEqual([]);
+        expect(remindersOf({ provision, ...STAMP }, NOW)).toEqual([]);
+        expect(remindersOf({ install, provision: { state: 'missing' }, ...STAMP }, NOW)).toEqual([]);
     });
 });

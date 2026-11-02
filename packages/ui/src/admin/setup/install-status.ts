@@ -386,14 +386,36 @@ function fixLine(input: InstallStatusInput, view: InstallTargetViewPort): Templa
     </p>`;
 }
 
+/**
+ * Finding 65 of 2026-11-02: the server card's update also applies the Provision items changed since the project was
+ * last prepared; the card names them (their state is step c's rows).
+ */
+function provisionDueLine(input: InstallStatusInput): TemplateResult {
+    const due = input.target === 'server' ? input.slice.provisionDue : [];
+    if (due.length === 0) {
+        return EMPTY;
+    }
+    const items = due.map((id) => label(input, `adminSetup.provision.item.${id}`)).join(', ');
+    return html`<p class="note" data-provision-due>${label(input, 'adminSetup.install.provisionDue', { items })}</p>`;
+}
+
+/** An update is offered: the release is behind, or (the server's card) Provision's items changed. */
+function updateOffered(input: InstallStatusInput, view: InstallTargetViewPort): boolean {
+    return view.state === 'updateAvailable' || (input.target === 'server' && input.slice.provisionDue.length > 0);
+}
+
 function updateLine(input: InstallStatusInput, view: InstallTargetViewPort): TemplateResult {
     if (view.state === 'newerInstalled') {
         return html`<p class="note">${label(input, 'adminSetup.install.newer', { release: view.installedRelease ?? '' })}</p>`;
     }
-    if (view.state !== 'updateAvailable') {
+    if (!updateOffered(input, view)) {
         return EMPTY;
     }
-    return html`<p>${label(input, 'adminSetup.install.update', { release: input.slice.release })}</p>
+    const release =
+        view.state === 'updateAvailable'
+            ? html`<p>${label(input, 'adminSetup.install.update', { release: input.slice.release })}</p>`
+            : EMPTY;
+    return html`${release} ${provisionDueLine(input)}
         <div class="actions">
             <hcm-button
                 variant="filled"

@@ -25,6 +25,11 @@ export interface AuthAdmin {
     revokeSessions(uid: string): Promise<void>;
     /** Deleting a missing account is not an error. */
     deleteUser(uid: string): Promise<void>;
+    /**
+     * Finding 67 (`worker.pair`): a Firebase custom token for `uid` carrying `claims`, signed by the runtime account's own
+     * `signBlob` (`roles/iam.serviceAccountTokenCreator` on itself, Provision's `iam` item since M5); an hour to sign in with.
+     */
+    createCustomToken(uid: string, claims: Readonly<Record<string, unknown>>): Promise<string>;
     /** At most 1000 accounts per page. */
     listUsers(pageToken?: string): Promise<{ readonly users: readonly AuthUser[]; readonly nextPageToken?: string }>;
 }

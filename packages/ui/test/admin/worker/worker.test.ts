@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { wordedWait, versionDetail } from '../../../src/admin/imagery/imagery-text.js';
 import { defineHcmSetupPipeline } from '../../../src/admin/setup/hcm-setup-pipeline.js';
 import { defineWorkerElements } from '../../../src/admin/worker/define.js';
-import { workerCommand, WORKER_PAGE } from '../../../src/admin/worker/hcm-worker-panel.js';
+import { defaultShell, GET_DOCKER_URL, workerCommand, WORKER_PAGE } from '../../../src/admin/worker/hcm-worker-panel.js';
 import { loadWorkerElements } from '../../../src/admin/worker/load.js';
 import type { WorkerFeedPort, WorkerHostPort, WorkerViewPort } from '../../../src/admin/worker/worker-port.js';
 import { cleanup, fixture } from '../../helpers.js';
@@ -21,6 +21,9 @@ defineWorkerElements();
 defineHcmSetupPipeline();
 
 const DIGEST = `sha256:${'b'.repeat(64)}`;
+const CODE = 'abcdefghijklmnopqrstuvwxyz';
+/** The command the panel shows on this (Linux) test browser, with the feed's pairing code. */
+const COMMAND = workerCommand({ project: 'demo-hcm', city: 'bucharest', digest: DIGEST, code: CODE, shell: 'posix' });
 
 function view(changes: Partial<WorkerViewPort> = {}): WorkerViewPort {
     return {
@@ -35,6 +38,21 @@ function view(changes: Partial<WorkerViewPort> = {}): WorkerViewPort {
         job: null,
         acting: false,
         refusal: null,
+        pairCode: CODE,
+        ...changes,
+    };
+}
+
+/** A worker as the feed reads it: idle, its image current, not disconnected. */
+function seen(changes: Partial<NonNullable<WorkerViewPort['worker']>> = {}): NonNullable<WorkerViewPort['worker']> {
+    return {
+        id: 'w-1',
+        state: 'idle',
+        seenAt: '2026-11-02T09:00:00.000Z',
+        jobId: null,
+        lastJob: null,
+        outdated: false,
+        revoked: false,
         ...changes,
     };
 }
@@ -54,6 +72,7 @@ class FakeFeed implements WorkerFeedPort {
         retry: (): void => {
             this.calls.push('retry');
         },
+        disconnect: (): Promise<boolean> => this.#record('disconnect'),
     };
 
     subscribe(listener: (state: WorkerViewPort) => void): () => void {
@@ -153,7 +172,7 @@ describe('<hcm-worker-panel>', () => {
         const host = new FakeHost(
             view({
                 connected: true,
-                worker: { id: 'w-1', state: 'idle', seenAt, jobId: null, lastJob: { id: 'j0', outcome: 'done', at: seenAt } },
+                worker: seen({ seenAt, lastJob: { id: 'j0', outcome: 'done', at: seenAt } }),
             }),
         );
         const element = await panel(host);
@@ -162,12 +181,18 @@ describe('<hcm-worker-panel>', () => {
         expect(host.feed.calls).toEqual(['start null']);
         expect(text).toContain(t('en', 'adminWorker.connected', { when: '' }).split(' Seen')[0] ?? '');
         expect(text).toContain(t('en', 'adminWorker.lastDone', { when: '' }).slice(0, 10));
-        const command = workerCommand('demo-hcm', 'bucharest', DIGEST);
-        expect(command).toBe(
-            `docker run --rm -p 127.0.0.1:8765:8765 -v "$HOME/hcm-worker:/work" us-central1-docker.pkg.dev/demo-hcm/hcm/pipeline@${DIGEST} worker --city bucharest --project demo-hcm`,
+        // Finding 66: one line, nothing to prepare (a named volume), detached, restarted with the computer, replacing an
+        // older worker; finding 67: the pairing code signs it in.
+        expect(COMMAND).toBe(
+            'docker rm -f hcm-worker 2>&1 | true; docker run -d --name hcm-worker --restart unless-stopped ' +
+                `-p 127.0.0.1:8765:8765 -v hcm-worker:/work us-central1-docker.pkg.dev/demo-hcm/hcm/pipeline@${DIGEST} ` +
+                `worker --city bucharest --project demo-hcm --pair ${CODE}`,
         );
-        expect(deep(element, 'pre').textContent).toBe(command);
+        expect(deep(element, 'pre').textContent).toBe(COMMAND);
         expect(deep(element, `a[href="${WORKER_PAGE}"]`).getAttribute('rel')).toBe('noopener noreferrer');
+        expect(deep(element, `a[href="${GET_DOCKER_URL}"]`).textContent).toBe(t('en', 'adminWorker.getDocker'));
+        expect(text).toContain(t('en', 'adminWorker.notePair'));
+        expect(text).not.toContain('mkdir');
         expect(text).toContain('12,345 of 180,000 vCPU-seconds · 45,678 of 360,000 GiB-seconds');
         // The bar shows the larger share: 45,678 of 360,000 GiB-seconds is more than 12,345 of 180,000 vCPU-seconds.
         expect((deep(element, 'hcm-progress') as LitElement & { value: number }).value).toBeCloseTo(45_678 / 360_000);
@@ -180,7 +205,7 @@ describe('<hcm-worker-panel>', () => {
         button(element, t('en', 'adminWorker.copy')).click();
         await updated(element);
 
-        expect(write).toHaveBeenCalledWith(workerCommand('demo-hcm', 'bucharest', DIGEST));
+        expect(write).toHaveBeenCalledWith(COMMAND);
         expect(deep(element, 'p[role="status"]').textContent).toBe(t('en', 'adminWorker.copied'));
 
         write.mockRejectedValue(new Error('denied'));
@@ -193,7 +218,7 @@ describe('<hcm-worker-panel>', () => {
     it('happyPath_theChoiceIsChangedFromTheSegmentedButton', async () => {
         const host = new FakeHost();
         const element = await panel(host, 'ro');
-        const segments = deepAll(deep(element, 'hcm-segmented-button'), 'button');
+        const segments = deepAll(deepAll(element, 'hcm-segmented-button')[1] ?? element, 'button');
 
         expect(segments.map((segment) => segment.textContent.trim())).toEqual([
             t('ro', 'adminWorker.choice.auto'),
@@ -212,17 +237,17 @@ describe('<hcm-worker-panel>', () => {
         expect(deepText(element)).toContain(t('en', 'adminWorker.none'));
 
         const seenAt = '2026-11-02T09:00:00.000Z';
-        host.feed.set({ worker: { id: 'w-1', state: 'busy', seenAt, jobId: 'j7', lastJob: null } });
+        host.feed.set({ worker: seen({ state: 'busy', seenAt, jobId: 'j7' }) });
         await updated(element);
         expect(deepText(element)).toContain(t('en', 'adminWorker.working'));
         expect(deep(element, 'a[href="#/jobs/j7"]').textContent).toBe('j7');
 
         // Busy without a job yet, and no job before: nothing about jobs.
-        host.feed.set({ worker: { id: 'w-1', state: 'busy', seenAt, jobId: null, lastJob: null } });
+        host.feed.set({ worker: seen({ state: 'busy', seenAt }) });
         await updated(element);
         expect(deepAll(element, 'a[href^="#/jobs/"]')).toHaveLength(0);
 
-        host.feed.set({ worker: { id: 'w-1', state: 'idle', seenAt, jobId: null, lastJob: { id: 'j7', outcome: 'failed', at: seenAt } } });
+        host.feed.set({ worker: seen({ seenAt, lastJob: { id: 'j7', outcome: 'failed', at: seenAt } }) });
         await updated(element);
         expect(deepText(element)).toContain(t('en', 'adminWorker.lastFailed', { when: '' }).slice(0, 15));
         expect(deepText(element)).toContain(t('en', 'adminWorker.lastSeen', { when: '' }).slice(0, 9));
@@ -277,6 +302,65 @@ describe('<hcm-worker-panel>', () => {
     });
 });
 
+describe('<hcm-worker-panel>: findings 66-68 of 2026-11-02', () => {
+    afterEach(cleanup);
+
+    it('happyPath_theCommandIsWrittenForWindowsPowerShellOnRequestOrOnAWindowsComputer', async () => {
+        const element = await panel(new FakeHost());
+        const shells = deepAll(deepAll(element, 'hcm-segmented-button')[0] ?? element, 'button');
+
+        expect(shells.map((segment) => segment.textContent.trim())).toEqual([
+            t('en', 'adminWorker.shell.posix'),
+            t('en', 'adminWorker.shell.powershell'),
+        ]);
+        shells[1]?.click();
+        await updated(element);
+        const windows = workerCommand({ project: 'demo-hcm', city: 'bucharest', digest: DIGEST, code: CODE, shell: 'powershell' });
+        expect(windows.startsWith('docker rm -f hcm-worker 2>&1 | Out-Null; docker run -d --name hcm-worker')).toBe(true);
+        expect(deep(element, 'pre').textContent).toBe(windows);
+        expect(defaultShell('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe('powershell');
+        expect(defaultShell('Mozilla/5.0 (X11; Linux x86_64)')).toBe('posix');
+    });
+
+    it('badPath_withoutAPairingCodeTheCommandHasNoneAndThePageSignInIsSaid', async () => {
+        const element = await panel(new FakeHost(view({ pairCode: null })));
+
+        expect(deep(element, 'pre').textContent).not.toContain('--pair');
+        expect(deepText(element)).toContain(t('en', 'adminWorker.noteNoPair'));
+    });
+
+    it('happyPath_aConnectedWorkersJobShowsItsStepAndProgressAndDisconnectAsksTheFeed', async () => {
+        const worker = seen({ state: 'busy', jobId: 'j7' });
+        const job = { id: 'j7', status: 'running', runOn: 'local', waitReason: null, estimate: { vcpuSeconds: 0, gibSeconds: 0 } } as const;
+        const host = new FakeHost(view({ connected: true, worker, job: { ...job, step: 'georef', progress: 0.4, overdue: false } }));
+        const element = await panel(host);
+
+        expect(deep(element, '[data-progress]').textContent).toBe(t('en', 'adminWorker.progress', { step: 'georef', percent: '40' }));
+        button(element, t('en', 'adminWorker.disconnect')).click();
+        expect(host.feed.calls).toContain('disconnect');
+
+        host.feed.set({ job: { ...job, step: null, progress: null, overdue: false } });
+        await updated(element);
+        expect(deepAll(element, '[data-progress]')).toHaveLength(0);
+        host.feed.set({ job: { ...job, id: 'other', step: 'warp', progress: null, overdue: false } });
+        await updated(element);
+        expect(deepAll(element, '[data-progress]')).toHaveLength(0);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it('badPath_anOutdatedWorkerIsToldToUpdateAndADisconnectedOneSaysSo', async () => {
+        const host = new FakeHost(view({ connected: true, worker: seen({ outdated: true }) }));
+        const element = await panel(host);
+        expect(deep(element, '[data-outdated]').textContent).toBe(t('en', 'adminWorker.outdated'));
+
+        host.feed.set({ connected: false, worker: seen({ revoked: true }) });
+        await updated(element);
+        expect(deepAll(element, '[data-outdated]')).toHaveLength(0);
+        expect(deepText(element)).toContain(t('en', 'adminWorker.disconnected'));
+        expect(deepAll(element, 'hcm-button').some((found) => found.textContent.trim() === t('en', 'adminWorker.disconnect'))).toBe(false);
+    });
+});
+
 describe('<hcm-run-place>', () => {
     afterEach(cleanup);
 
@@ -287,6 +371,9 @@ describe('<hcm-run-place>', () => {
             runOn: 'cloud',
             waitReason: null,
             estimate: { vcpuSeconds: 12_600, gibSeconds: 50_400 },
+            step: null,
+            progress: null,
+            overdue: false,
             ...changes,
         };
     }
@@ -330,6 +417,17 @@ describe('<hcm-run-place>', () => {
         expect(deepText(element)).toContain(t('en', 'adminWorker.waitWorker'));
         expect(deep(element, 'a[href="#/jobs"]').textContent).toBe(t('en', 'adminWorker.startWorker'));
         expect(button(element, t('en', 'adminWorker.runCloud')).hasAttribute('disabled')).toBe(true);
+        expect(deepAll(element, '[data-overdue]')).toHaveLength(0);
+    });
+
+    it('happyPath_aJobNoComputerCameForOffersTheCloudInsteadFirst @S-A62-HAPPY-NO-WORKER-OFFER', async () => {
+        const host = new FakeHost(view({ job: job({ runOn: 'local', waitReason: 'worker', overdue: true }) }));
+        const element = await place(host, 'ro');
+
+        expect(deep(element, '[data-overdue]').textContent).toBe(t('ro', 'adminWorker.waitOverdue', { minutes: '15' }));
+        button(element, t('ro', 'adminWorker.runCloudInstead')).click();
+        expect(host.feed.calls).toEqual(['start j1', 'runJob cloud false']);
+        expect(await axeViolations(element)).toEqual([]);
     });
 
     it('badPath_aRunningJobOrNoneShowsNothing', async () => {

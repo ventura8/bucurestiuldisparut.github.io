@@ -3,7 +3,7 @@ import { onCall, type CallableFunction, type CallableOptions } from 'firebase-fu
 
 import { runAs } from '../global-options.js';
 import type { AdminDirectory } from '../ports/admin-directory.js';
-import { requireAccess, requireCityRole, type Caller, type VerifiedCaller } from './access.js';
+import { noWorkerClaims, requireAccess, requireCityRole, workerClaims, type Caller, type VerifiedCaller } from './access.js';
 import { ApiError, toHttpsError } from './api-error.js';
 
 /** What every callable needs from the composition root, besides the ports its handler picks. */
@@ -60,7 +60,7 @@ export async function runCallable<N extends CallableName, D extends CallableDeps
     request: { readonly auth: Caller | undefined; readonly data: unknown },
 ): Promise<CallableResponse<N>> {
     const spec = CALLABLES[name];
-    const caller = await requireAccess(spec.access, request.auth, deps.admins);
+    const caller = await requireAccess(spec.access, request.auth, deps.admins, 'workerToken' in spec ? workerClaims : noWorkerClaims);
     const input = validate<unknown>(spec.request, request.data);
     if (!input.ok) {
         throw new ApiError('apiError.invalidRequest', undefined, input.issues);

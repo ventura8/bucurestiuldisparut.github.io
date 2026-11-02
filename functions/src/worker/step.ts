@@ -23,6 +23,7 @@ import type { Ports } from '../ports/index.js';
 import { documentTarget, isJobLog, logLineOf, type DocumentTarget, type JobScope } from './allow-list.js';
 import { storable, toWire } from './fields.js';
 import { PIPELINE_WRITER, at, requireHeld, type WorkerCall } from './holder.js';
+import { paired } from './pairing.js';
 import { updateDocument } from './step-update.js';
 
 export type StepDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
@@ -143,5 +144,5 @@ async function workerStep(deps: StepDeps, caller: VerifiedCaller, request: Reque
 
 /** The `worker-step` callable. */
 export function stepFunction(getDeps: () => StepDeps & CallableDeps) {
-    return defineCallable('worker.step', workerStep, getDeps);
+    return defineCallable('worker.step', paired(workerStep), getDeps);
 }

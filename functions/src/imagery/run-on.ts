@@ -45,7 +45,10 @@ interface Move {
 
 /** The job as moved: its worker and wait reason cleared, the OK recorded or dropped. */
 function movedJob(job: JobDoc, move: Move, stamp: Stamp): JobDoc {
-    const kept = omit(job, move.place === 'local' ? ['worker', 'waitReason', 'freeTierOk'] : ['worker', 'waitReason']);
+    const kept = omit(
+        job,
+        move.place === 'local' ? ['worker', 'waitReason', 'freeTierOk', 'workerOverdueAt'] : ['worker', 'waitReason', 'workerOverdueAt'],
+    );
     const okay = move.place === 'cloud' && move.ok ? { freeTierOk: { by: move.uid, at: stamp.updatedAt } } : {};
     return { ...kept, runOn: move.place, ...okay, ...stamp };
 }

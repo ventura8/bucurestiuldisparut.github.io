@@ -8,6 +8,9 @@ that ended, stops the run where it is without another write (a lost lease to the
 jobs the loop ends; during a run the step stops at its next checkpoint and the job goes back to `queued` (the runner's
 path), then the loop ends; the process exits 0. One signal is enough at any moment: the runner's handler tells the
 loop's (a signal after the run's last checkpoint was once lost), and the loop's takes no lock (docs/LESSONS.md 342).
+Finding 67 of 2026-11-02: without a session each pass first lets the connector try (the command's pairing code, or the
+session kept in the work folder); a call answered `apiError.worker.revoked` (Disconnect this computer) ends the session
+and deletes the kept one; a claim answered `outdated` (the pipeline was updated in the admin) is said on the page.
 """
 
 import enum
@@ -26,7 +29,7 @@ from hcm_pipeline.jobs import LeaseLostError, RunStoppedError
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.paths import ID
 from hcm_pipeline.runner import STOP_SIGNALS, RunOutcome
-from hcm_pipeline.worker.api import CLAIM, END, WorkerApi, WorkerApiError
+from hcm_pipeline.worker.api import CLAIM, END, REVOKED, RevokedError, WorkerApi, WorkerApiError
 from hcm_pipeline.worker.session import RefreshUnavailableError, Session
 from hcm_pipeline.worker.state import WorkerState
 
@@ -54,6 +57,24 @@ class JobRunning(Protocol):
     def run(self, job_id: str, asked_to_stop: Callable[[], bool]) -> RunOutcome: ...
 
 
+class Connecting(Protocol):
+    """Signs the worker in without the page (`pairing.Connector`)."""
+
+    def attempt(self) -> None: ...
+
+    def forget(self) -> None: ...
+
+
+class NoConnector:
+    """A worker without a pairing code or kept session: only the page signs it in."""
+
+    def attempt(self) -> None:
+        return None
+
+    def forget(self) -> None:
+        return None
+
+
 @dataclass(frozen=True)
 class Ending:
     """What `worker.end` reports."""
@@ -73,6 +94,7 @@ DONE: Final = Ending("done")
 class WorkerLoop:
     def __init__(self, session: Session, api: WorkerApi, state: WorkerState, runtime: JobRunning, ids: dict[str, str]) -> None:
         self._session = session
+        self._connector: Connecting = NoConnector()
         self._api = api
         self._state = state
         self._runtime = runtime
@@ -81,6 +103,10 @@ class WorkerLoop:
         # Set by the signal handler alone: one assignment, no lock (`_stopped` turns it into `stopping`).
         self._signalled = False
         self.no_session_seconds = NO_SESSION_SECONDS
+
+    def connect_with(self, connector: Connecting) -> None:
+        """The connector each pass without a session lets try first (finding 67: pairing, the kept session)."""
+        self._connector = connector
 
     def stop(self) -> None:
         self.stopping.set()
@@ -131,7 +157,9 @@ class WorkerLoop:
                 signal.signal(number, before)
 
     def run_once(self) -> Pass:
-        """One pass: nothing without a session; else a claim, and the claimed job's run."""
+        """One pass: nothing without a session (the connector tries first); else a claim, and the claimed job's run."""
+        if not self._session.active:
+            self._connector.attempt()
         if not self._session.active:
             return Pass.NO_SESSION
         job_id = self._claim()
@@ -139,11 +167,13 @@ class WorkerLoop:
 
     def _claim(self) -> str | None:
         try:
-            job = self._api.call(CLAIM, self._ids).get("job")
+            answer = self._api.call(CLAIM, self._ids)
         except CALL_ERRORS as error:
             LOG.warning("worker.claim failed: %s", error)
-            self._state.failed(getattr(error, "code", None))
+            self._refused(error)
             return None
+        self._state.outdated(answer.get("outdated") is True)
+        job = answer.get("job")
         job_id = job.get("jobId") if isinstance(job, dict) else None
         return job_id if isinstance(job_id, str) and ID.fullmatch(job_id) else None
 
@@ -175,3 +205,12 @@ class WorkerLoop:
             self._api.call(END, {**report, **({"error": ending.error} if ending.error else {})})
         except CALL_ERRORS as error:
             LOG.warning("worker.end failed: %s", error)
+            self._refused(error)
+
+    def _refused(self, error: Exception) -> None:
+        """The page's last error; Disconnect this computer also ends the session and deletes the kept one."""
+        self._state.failed(getattr(error, "code", None))
+        if isinstance(error, RevokedError):
+            LOG.warning("this computer was disconnected in the admin; run the admin's command again to reconnect it")
+            self._session.end(REVOKED)
+            self._connector.forget()

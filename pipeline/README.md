@@ -70,15 +70,22 @@ run time.
 
 ## The local worker (M7)
 
-`python -m hcm_pipeline worker --city <id> --project <id> [--port 8765] [--work /work] [--emulators]` runs the city's
-jobs chosen for the owner's computer (`docs/research/M7-local-worker.md`): in the pipeline image, `docker run --rm -p
-127.0.0.1:8765:8765 -v "$HOME/hcm-worker:/work" <image> worker --city <city> --project <project>`. The owner opens
-`http://localhost:8765/`, signs in with Google; the worker keeps the ID and refresh tokens in memory only (after
-`worker.hello` accepted them), claims a job every `pollSeconds`, runs it with the normal runner (documents through
+`python -m hcm_pipeline worker --city <id> --project <id> [--pair <code>] [--port 8765] [--work /work] [--emulators]`
+runs the city's jobs chosen for the owner's computer (`docs/research/M7-local-worker.md` and its addendum of
+2026-11-02). In the pipeline image, the admin's one-line command: `docker rm -f hcm-worker 2>&1 | true; docker run
+-d --name hcm-worker --restart unless-stopped -p 127.0.0.1:8765:8765 -v hcm-worker:/work <image@digest> worker --city
+<city> --project <project> --pair <code>` (the named volume is initialised from the image's `/work`, owned by the
+worker's user). `--pair` (`worker/pairing.py`) exchanges the one-time code through `worker.pair` for a custom token,
+signs in at Identity Toolkit (the Hosting origin as `Referer`) and keeps the refresh token in
+`/work/.hcm-session-<city>.json` (mode 600), so a restart resumes it; without a code, the page at
+`http://localhost:8765/` offers a Google sign-in as a fallback (it gives up after 90 s). After `worker.hello` accepted
+the token, the worker claims a job every `pollSeconds`, runs it with the normal runner (documents through
 `worker.step`, the version's files through signed URLs, the delivery, the scratch and the reference cache in `/work`,
-USGS through `worker.urls`) and reports `worker.end`. Ctrl-C or SIGTERM requeues a running job and exits 0. Under
-`--emulators` every address is this machine's: `FIREBASE_AUTH_EMULATOR_HOST`, `FUNCTIONS_EMULATOR_HOST`,
-`HCM_HOSTING_HOST` (serves `/__/firebase/init.json`), `HCM_STAC_URL`, `HCM_OVERPASS_URL`.
+USGS through `worker.urls`) and reports `worker.end`. `apiError.worker.revoked` (Disconnect this computer) ends the
+session and deletes the kept one; an `outdated` answer (the installed pipeline image changed) stops claiming and says to
+run the admin's command again. Ctrl-C or SIGTERM requeues a running job and exits 0. Under `--emulators` every address
+is this machine's: `FIREBASE_AUTH_EMULATOR_HOST`, `FUNCTIONS_EMULATOR_HOST`, `HCM_HOSTING_HOST` (serves
+`/__/firebase/init.json`), `HCM_STAC_URL`, `HCM_OVERPASS_URL`.
 
 ## Exit codes
 

@@ -10,6 +10,7 @@ import { guardIsRed } from './records.js';
 import { watchOrders } from './orders/watch.js';
 import { cancelAsked, dispatchDue, pendingApprovals, pollStale, recoverLost } from './tick-jobs.js';
 import { monthlyHarvest, publishDeferred, runDeletions, sweepEnded } from './tick-maintenance.js';
+import { offerCloud } from './tick-worker.js';
 
 /**
  * `imagery.tick` (every 5 minutes, one instance; `docs/research/M3-interfaces.md` §4.6): the raster work's clock. For
@@ -30,6 +31,8 @@ type Part = (deps: TickDeps, cityId: string, now: Date) => Promise<void>;
 const PARTS: readonly (readonly [name: string, part: Part, whileRed: boolean])[] = [
     ['dispatch', dispatchDue, false],
     ['lost', recoverLost, true],
+    // Finding 68 (docs/research/M7-local-worker.md §3.1): a local job no computer came for offers the cloud, once.
+    ['noWorker', offerCloud, false],
     ['cancel', cancelAsked, true],
     ['approval', pendingApprovals, false],
     ['mapbox', pollStale, false],

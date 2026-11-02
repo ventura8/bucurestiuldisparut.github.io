@@ -1,5 +1,5 @@
 """Command line of the Cloud Run Job: `python -m hcm_pipeline <step>` (or `--list`); on the owner's computer
-`python -m hcm_pipeline worker --city <id> --project <id> [--port 8765] [--work /work] [--emulators]` (M7, the local
+`python -m hcm_pipeline worker --city <id> --project <id> [--pair <code>] [--port 8765] [--work /work] [--emulators]` (M7, the local
 worker: `docs/research/M7-local-worker.md` §1).
 
 Configures redacted JSON logging, loads and validates the job configuration from the environment
@@ -55,6 +55,7 @@ def parse_args(argv: Sequence[str] | None, registry: StepRegistry) -> argparse.N
     worker.add_argument("--port", type=int, help="the local page's port (default 8765)")
     worker.add_argument("--work", help="the work folder: the delivery, the scratch and the reference cache (default /work)")
     worker.add_argument("--emulators", action="store_true", help="talk to the Firebase emulators on this machine")
+    worker.add_argument("--pair", help="the one-time pairing code of the admin's command (finding 67)")
     return parser.parse_args(argv)
 
 

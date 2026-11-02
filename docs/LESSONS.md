@@ -2014,3 +2014,47 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       (`e2e/support/layout-probe.ts`; `happyPath_aRingInTheViewportsLastHalfPixelCountsAsOffScreen_badPath_theRowAboveIsHitTested`
       in `e2e/test/layout-probe.test.ts`, which read 48x46 on the old code).
     - **A probe that hit-tests a fractional point must judge that point where the hit test does: at its rounded pixel.**
+
+345. **An update installed a release whose Provision items had changed, and nothing applied them.**
+    - Seen: 2026-11-02, live, after Update the map installed M7: the pipeline's image would not pull without a login
+      (the repository's public read was new in M7) and `usgs-raw/` kept its 30 days; the owner fixed both from step c by
+      hand (finding 65).
+    - Found by: the owner, starting the local worker.
+    - Cause: Provision ran only from step c, and `setup/status` recorded each item `ok` under the definition of the
+      release that ran it; no record said which definitions a newer admin had changed.
+    - Fix and pin: the item set is versioned (`PROVISION_SET_VERSION`, `PROVISION_CHANGED_IN`), the version a run reached
+      is recorded, and Update the map runs the items changed since (`DECISIONS-for-review.md` §85a;
+      S-A04-HAPPY-UPDATE-PROVISION, S-A04-BAD-UPDATE-PROVISION).
+    - **A release that changes what a Provision item creates bumps the item set's version and marks the item; an "ok" of
+      an older release is not an "ok" of this one.**
+346. **A Docker bind mount needed a `chmod 777` on the host.**
+    - Seen: 2026-11-02, live: the worker's container (user 10001) could not write `~/hcm-worker` until the owner ran
+      `mkdir -m 777` (finding 66).
+    - Cause: a bind mount keeps the host folder's owner; the image's user is not the host's.
+    - Fix and pin: a named volume (`-v hcm-worker:/work`), which Docker initialises from the image's `/work`, created
+      owned by 10001 in `pipeline/Dockerfile` (§85b; S-A62-HAPPY-PANEL).
+    - **A container that writes a work folder gets a named volume initialised from a folder the image owns, never a host
+      folder the user must prepare.**
+347. **The worker's Google sign-in never finished on `localhost`, and the page said nothing.**
+    - Seen: 2026-11-02, live, Chrome: the popup completed, the page stayed "Not signed in" with no error (finding 69).
+    - Cause: **UNVERIFIED**; the Firebase SDK's calls from `localhost` carry the browser key Provision restricts to the
+      Hosting origins (the page also sent no Referer), or the auth iframe's storage is partitioned off a non-Firebase
+      origin; the popup's promise never settled, and nothing bounded it.
+    - Fix and pin: pairing makes the page's sign-in unnecessary; the fallback gives up after 90 s with a message
+      (§85f; S-P04-BAD-POPUP-TIMEOUT); the worker's own calls to Google's token services name the Hosting origin as
+      `Referer` (§85c).
+    - **A promise that waits on another window or another origin gets a timeout and a message; a page served from
+      `localhost` cannot use a browser key restricted to the project's origins.**
+348. **The worker's page went blank when the SDK could not load.**
+    - Seen: 2026-11-02, while writing the timeout's e2e test: the page's module awaited both SDK imports at its top, so a
+      blocked `www.gstatic.com` stopped it before it showed the worker's state.
+    - Fix and pin: the imports are one `Promise.all` whose failure leaves the SDK unset; the state is shown regardless
+      (§85f).
+    - **A page whose main job is to show a state loads its optional third-party code after, and apart from, that state.**
+349. **A pairing code must not outlive its use, nor say which way it failed.**
+    - Seen: 2026-11-02, designing `worker.pair` (finding 67), the one callable without a sign-in.
+    - Decision and pin: 130 random bits, 10 minutes, one use in a transaction, stored only as a hash prefix, one answer
+      (`apiError.worker.pairCode`) for unknown, used, expired and revoked, attempts limited per city before the code is
+      read (§85c; S-A62-BAD-PAIR-REUSED, S-A62-BAD-PAIR-EXPIRED).
+    - **A credential exchanged without a sign-in is single-use, short-lived, hashed at rest, rate-limited and refused
+      with one answer.**

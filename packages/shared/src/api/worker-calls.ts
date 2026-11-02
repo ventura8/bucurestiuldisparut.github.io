@@ -11,7 +11,7 @@ import { cityIdSchema } from '../schemas/paths.js';
 import { JOB_STATUSES, WORKER_ID_PATTERN } from '../schemas/firestore-ops.js';
 import { isoTimeSchema } from './common.js';
 import type { CallableSpec, WorkerCallableName } from './registry.js';
-import { WORKER_URLS_MAX, WORKER_USGS_ENDPOINTS } from './worker.js';
+import { WORKER_PAIR_CODE_PATTERN, WORKER_PAIR_ID_PATTERN, WORKER_URLS_MAX, WORKER_USGS_ENDPOINTS } from './worker.js';
 
 const workerIdSchema = z.string().regex(WORKER_ID_PATTERN);
 const versionSchema = z.string().regex(/^[0-9A-Za-z.+-]{1,40}$/);
@@ -32,14 +32,37 @@ const workerJobFields = { cityId: cityIdSchema, workerId: workerIdSchema, jobId:
 
 /** `worker.hello`: the worker introduces itself (recorded in `cities/{city}/workers/{workerId}`). */
 export const workerHelloRequestSchema = z.strictObject({ cityId: cityIdSchema, workerId: workerIdSchema, version: versionSchema });
+/** The pipeline image's digest (`sha256:<64 hex>`). */
+const digestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 export const workerHelloResponseSchema = z.strictObject({
     pollSeconds: z.number().int().min(1),
     heartbeatSeconds: z.number().int().min(1),
+    /** The installed pipeline image (`setup/status.install.pipeline.image`), when one is recorded. */
+    image: digestSchema.optional(),
+    /** A paired worker whose image is not the installed one: it claims nothing until it runs the new command. */
+    outdated: z.boolean().optional(),
 });
 
 /** `worker.claim`: the oldest due local job of the city, leased to this worker, or none. */
 export const workerClaimRequestSchema = z.strictObject({ cityId: cityIdSchema, workerId: workerIdSchema });
-export const workerClaimResponseSchema = z.strictObject({ job: z.strictObject({ jobId: idSchema }).nullable() });
+export const workerClaimResponseSchema = z.strictObject({
+    job: z.strictObject({ jobId: idSchema }).nullable(),
+    /** True when the worker's image is not the installed one (no job is given to it). */
+    outdated: z.boolean().optional(),
+});
+
+/**
+ * `worker.pair` (no sign-in, finding 67): the one-time code of the admin's command, exchanged once for a Firebase custom
+ * token of the owner who minted it, with the claims `worker: true`, `city` and `pair`. `replaces` is the pairing the
+ * worker held before (a new command on the same computer): it is revoked when it is the same owner's, in the same city.
+ */
+const pairIdSchema = z.string().regex(WORKER_PAIR_ID_PATTERN);
+export const workerPairRequestSchema = z.strictObject({
+    cityId: cityIdSchema,
+    code: z.string().regex(WORKER_PAIR_CODE_PATTERN),
+    replaces: pairIdSchema.optional(),
+});
+export const workerPairResponseSchema = z.strictObject({ token: z.string().min(1).max(4096), pairId: pairIdSchema });
 
 /** `worker.step`: one document operation of the claimed job's run (the pipeline's `DocumentStore`). */
 export const workerStepOpSchema = z.discriminatedUnion('op', [
@@ -110,9 +133,12 @@ export const workerEndRequestSchema = z.strictObject({
 });
 export const workerEndResponseSchema = z.strictObject({ status: z.enum(JOB_STATUSES) });
 
-/** A local worker's callable (M7): a city editor's ID token, App Check off, two instances at most. */
+/**
+ * A local worker's callable (M7): a city editor's ID token, or the token of a worker paired for the city (`workerToken`),
+ * App Check off, two instances at most.
+ */
 function workerCallable<Request extends z.ZodType, Response extends z.ZodType>(request: Request, response: Response) {
-    return { access: 'cityEditor', appCheck: 'off', maxInstances: 2, request, response, owner: 'fn-worker' } as const;
+    return { access: 'cityEditor', appCheck: 'off', maxInstances: 2, request, response, owner: 'fn-worker', workerToken: true } as const;
 }
 
 /** The worker's rows of the registry, one per name of `WORKER_CALLABLE_NAMES` (no more, no fewer). */
@@ -122,4 +148,13 @@ export const WORKER_CALLABLES = {
     'worker.step': workerCallable(workerStepRequestSchema, workerStepResponseSchema),
     'worker.urls': workerCallable(workerUrlsRequestSchema, workerUrlsResponseSchema),
     'worker.end': workerCallable(workerEndRequestSchema, workerEndResponseSchema),
+    // Finding 67: no sign-in; the one-time code is the credential, the attempts are limited per city.
+    'worker.pair': {
+        access: 'none',
+        appCheck: 'off',
+        maxInstances: 2,
+        request: workerPairRequestSchema,
+        response: workerPairResponseSchema,
+        owner: 'fn-worker',
+    },
 } as const satisfies Readonly<Record<WorkerCallableName, CallableSpec>>;

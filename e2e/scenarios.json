@@ -3257,6 +3257,28 @@
             "notes": "Finding 34 of docs/research/manual-test-2026-10-25.md (live 2026-11-01); the gap DECISIONS-for-review.md §75b noted. Tests: e2e/admin/steps/provision.spec.ts, packages/admin/test/setup/provision.test.ts."
         },
         {
+            "id": "S-A04-HAPPY-UPDATE-PROVISION",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "happy",
+            "title": "Update the map also applies the Provision items that changed since the project was prepared",
+            "asserts": "a project prepared before M7 (no item-set version recorded), every target installed -> Home's update tile; the server card names the settings the update applies (the pipeline's repository, the storage clean-up) -> one Update the map click and one consent run those two items, no build -> setup/status.provision.setVersion is the current version, the tile and the line are gone",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 65 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md, its addendum of 2026-11-02. Test: e2e/admin/steps/install/update.spec.ts."
+        },
+        {
+            "id": "S-A04-BAD-UPDATE-PROVISION",
+            "behaviour": "A04",
+            "area": "admin",
+            "path": "bad",
+            "title": "A run that did not bring every changed item to ok records no version",
+            "asserts": "setup.recordCloud with the items but no setVersion (an item of the update failed) -> no version recorded, so the next update runs the changed items again; a later partial report keeps a version already recorded",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 65 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md, its addendum of 2026-11-02. Test: functions/test/setup/record-cloud.test.ts."
+        },
+        {
             "id": "S-A05-HAPPY",
             "behaviour": "A05",
             "area": "admin",
@@ -8971,10 +8993,10 @@
             "area": "admin",
             "path": "happy",
             "title": "The Jobs page shows the connected computer and the command to start a worker",
-            "asserts": "a worker seen a minute ago -> Your computer is connected with its last job; the docker run command names the pipeline image by digest, the city and the project; Copy puts it on the clipboard; the city's choice reads Run on my computer when it is connected",
+            "asserts": "a worker seen a minute ago -> Your computer is connected with its last job; one command line that needs no preparation (docker rm -f hcm-worker, then docker run -d --name hcm-worker --restart unless-stopped with the named volume hcm-worker:/work) names the pipeline image by digest, the city, the project and a one-time pairing code, written for Linux or macOS or for Windows PowerShell, with Get Docker; Copy puts it on the clipboard; the city's choice reads Run on my computer when it is connected",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker.spec.ts."
+            "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker.spec.ts; findings 66-67 of 2026-11-02 (DECISIONS-for-review.md §85)."
         },
         {
             "id": "S-A62-BAD-NO-WORKER",
@@ -9015,7 +9037,7 @@
             "area": "admin",
             "path": "happy",
             "title": "The real worker claims a local job and finishes it against the emulators",
-            "asserts": "the city's choice is the computer -> Import waits for a worker (Waiting for your computer); the pipeline's worker process signed in with the owner's tokens through its local page (CSRF token, same Origin) -> claims the queued local import, runs every step through worker.step and signed URLs to the Storage emulator -> the version awaits approval, no Cloud Run execution or machine named, the panel shows the computer connected with its last job done; the raw delivery stays in the work folder and is deleted there after locate, and no usgs-raw/ or work/ object is ever in the bucket; one Ctrl-C then stops the worker with exit 0",
+            "asserts": "the city's choice is the computer -> Import waits for a worker (Waiting for your computer); the pipeline's worker process started with the Jobs page's command and its pairing code (no browser sign-in) -> claims the queued local import, runs every step through worker.step and signed URLs to the Storage emulator -> the version awaits approval, no Cloud Run execution or machine named, the panel shows the computer connected with its last job done; the raw delivery stays in the work folder and is deleted there after locate, and no usgs-raw/ or work/ object is ever in the bucket; one Ctrl-C then stops the worker with exit 0",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker-run.spec.ts."
@@ -9096,6 +9118,94 @@
             "tier": "functions",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: functions/test/imagery/tick-local.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-PAIR",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "The command's one-time code signs the worker in, no browser",
+            "asserts": "the Jobs page's command carries --pair <26 base32 characters> (worker.pairCode, renewed before its 10 minutes end) -> the worker started with it calls worker.pair (no sign-in), gets a custom token of the owner (claims worker, city, pair), signs in at Identity Toolkit and works as before; its session is kept in the work folder (mode 600) and a restart with the same command resumes it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 67 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§2.6. Test: e2e/admin/specs/imagery/worker-run.spec.ts, functions/test/worker/pairing.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-PAIR-REUSED",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A pairing code works once",
+            "asserts": "the same code on a second computer (an empty work folder) after it was exchanged -> worker.pair answers apiError.worker.pairCode and the worker's page says so; no token minted",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 67 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§2.6, §10. Test: e2e/admin/specs/imagery/worker-run.spec.ts, functions/test/worker/pairing.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-PAIR-EXPIRED",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "An expired, revoked or unknown code, or too many attempts, is refused",
+            "asserts": "worker.pair with a code past its 10 minutes, revoked, unknown, of an owner no longer in the city -> apiError.worker.pairCode, no token; past 20 attempts in 10 minutes for the city -> apiError.rateLimited; a paired token for another city, without the worker claim or calling an admin callable -> refused",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 67 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§2.6, §10. Test: functions/test/worker/pairing.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-DISCONNECT",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "Disconnect this computer revokes its worker and pairing",
+            "asserts": "Disconnect this computer on the panel -> worker.revoke sets revokedAt on the worker and its pairing -> every later call of that worker or of a restart with the kept session -> apiError.worker.revoked; the panel says the computer was disconnected",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 67 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§2.6, §10. Test: e2e/admin/specs/imagery/worker.spec.ts, functions/test/worker/pairing.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-WORKER-OUTDATED",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker on an older pipeline image takes no job and is told to update",
+            "asserts": "the installed pipeline image differs from the one the worker's pairing named -> worker.hello says outdated, worker.claim gives no job (outdated: true); the panel says to run the command again (no new sign-in)",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 67 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§1.4. Test: e2e/admin/specs/imagery/worker.spec.ts, functions/test/worker/pairing.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-PROGRESS",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "The panel follows the connected worker's job live",
+            "asserts": "a worker busy with a running local job -> the panel shows the job, its step and its progress, and the next write of the job moves them",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 68 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§7. Test: e2e/admin/specs/imagery/worker.spec.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-NO-WORKER-OFFER",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A job no computer came for offers the cloud in one click",
+            "asserts": "a local job queued 15 minutes with no worker seen -> imagery.tick marks it workerOverdueAt and leaves one inbox item job.noWorker linking its version; the version says no computer came and offers Run in Google Cloud instead, which moves it to the cloud",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 68 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§3.1. Test: e2e/admin/specs/imagery/worker.spec.ts, functions/test/imagery/tick-worker.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-NO-WORKER-QUIET",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A job that may still be claimed is left alone",
+            "asserts": "a local job waiting less than 15 minutes, already marked, in the cloud, running, or a worker seen within three minutes -> nothing marked, no inbox item",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 68 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§3.1. Test: functions/test/imagery/tick-worker.test.ts."
         },
         {
             "id": "S-A63-HAPPY-METER",
@@ -9212,7 +9322,7 @@
             "behaviour": "P04",
             "area": "pipeline",
             "path": "happy",
-            "title": "The local page signs the owner in and the worker starts claiming",
+            "title": "The local page's fallback sign-in signs the owner in and the worker starts claiming",
             "asserts": "the page's POST /session with its CSRF token from the same origin -> worker.hello with the token, the state signed in; the ID token refreshed before it expires",
             "tier": "e2e-pipeline",
             "status": "exists",
@@ -9250,6 +9360,61 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md §1.2 step 6; DECISIONS-for-review.md §83j, docs/LESSONS.md 342). Test: pipeline/tests/integration/test_worker_stop.py (the worker in a process of its own: pipeline/tests/fakes/stopping_worker.py)."
+        },
+        {
+            "id": "S-P04-HAPPY-PAIR",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The worker pairs with the command's code and keeps its session",
+            "asserts": "worker --pair <code> -> worker.pair without an Authorization header, the custom token signed in at Identity Toolkit with the Hosting origin as Referer, worker.hello, then claiming; the refresh token kept in .hcm-session-<city>.json (mode 600, no code in it); a restart resumes it; a new code pairs again naming the pairing it replaces",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 67 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§2.6. Test: pipeline/tests/integration/test_worker_pairing.py."
+        },
+        {
+            "id": "S-P04-BAD-PAIR-REFUSED",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A refused or unreachable pairing leaves the worker waiting",
+            "asserts": "a used code -> no session, the page says apiError.worker.pairCode; a refused custom-token sign-in -> no session; the server out of reach -> tried again 30 seconds later; a refused new code falls back to the kept session",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 67 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§2.6. Test: pipeline/tests/integration/test_worker_pairing.py."
+        },
+        {
+            "id": "S-P04-BAD-REVOKED",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A disconnected worker forgets its session",
+            "asserts": "a call answered apiError.worker.revoked (at start or while working) -> the session ends, the kept session file is deleted, the page says so and nothing is tried again until a new command",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 67 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§2.6. Test: pipeline/tests/integration/test_worker_pairing.py."
+        },
+        {
+            "id": "S-P04-BAD-OUTDATED",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An outdated worker says so on its page",
+            "asserts": "worker.hello or worker.claim answers outdated -> the page's state says the pipeline was updated and to run the admin's command again; a later claim without it clears it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 67 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§1.4. Test: pipeline/tests/integration/test_worker_pairing.py."
+        },
+        {
+            "id": "S-P04-BAD-POPUP-TIMEOUT",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The page's fallback Google sign-in gives up with a clear message",
+            "asserts": "Sign in with Google whose popup never comes back -> after 90 seconds the page says the sign-in did not finish and to use the command from the admin; the state polls keep the message",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 69 of docs/research/manual-test-2026-10-25.md (the live test of the local worker, 2026-11-02); DECISIONS-for-review.md §85; docs/research/M7-local-worker.md §§2.1. Test: e2e/admin/specs/imagery/worker-run.spec.ts."
         },
         {
             "id": "S-P01-HAPPY-RAW-DELETED",

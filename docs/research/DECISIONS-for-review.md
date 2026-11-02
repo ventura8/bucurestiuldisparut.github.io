@@ -5597,3 +5597,78 @@ Verify: the targeted tests (`pipeline/tests/unit/test_corners.py`, `pipeline/tes
 `pipeline/tests/unit/test_contract.py`, `test_runner.py`, the whole pipeline suite;
 `packages/shared/test/schemas/pipeline-contract.test.ts`, `packages/admin/test/firebase/content.test.ts`); the
 `static`, `tests` and `build` stages once the M7 work in the same tree is finished.
+
+## 85. The live test of the local worker: Provision with an update, one command with nothing to prepare, pairing instead of a second sign-in, the cloud when no computer comes, a page sign-in that gave up (2026-11-02) — 85a–85f APPLIED (findings 65–69 of `docs/research/manual-test-2026-10-25.md`, the user's request "make sure all of this is automagic for the admin!!!": product, test and documentation changes; three new callables and one new notification kind, each in both languages; a pipeline image line (`/work` owned by the worker's user); no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged); 85g recorded for the user
+
+- **85a APPLIED (finding 65): Provision's item set is versioned and an update applies what changed.** `@hcm/shared`
+  gains `PROVISION_SET_VERSION` (2) and `PROVISION_CHANGED_IN` (each item's set version of its last definition change:
+  `artifact-registry` and `bucket-lifecycle` 2, the others 1) and `provisionDue(recorded)`; `setup/status.provision`
+  and `setup.recordCloud`'s `provision` gain `setVersion` (absent = 1). The admin sends it when the run reported every
+  item changed since the recorded version `ok` (`reachedVersion` of `packages/admin/src/setup/provision-version.ts`: the
+  run observed them with this admin's definitions, so a record of an older release's `ok` never counts), step c's runs,
+  Re-check and the bootstrap's claim record included; the server keeps a recorded version when a later report names none.
+  The install slice carries `provisionDue` (`updateItems`: none for a project never prepared); Update the map, from any
+  card and so from Home's tile, runs `ProvisionFlow.update` with the click's token beside the builds (one click, one
+  consent); the server card names the items and offers Update the map for them alone; Home's update tile also shows for
+  them when every target is current. Rejected: re-running every item on every update (16 items of Google calls, and a
+  refusal of an unchanged item would block an update that did not touch it); a version per item (the user asked for the
+  set's; one number per release is enough while items only gain definitions).
+- **85b APPLIED (finding 66): one line with nothing to prepare.** `workerCommand` (`hcm-worker-panel.ts`):
+  `docker rm -f hcm-worker <quiet>; docker run -d --name hcm-worker --restart unless-stopped -p 127.0.0.1:8765:8765 -v
+  hcm-worker:/work <image@digest> worker --city <c> --project <p> --pair <code>`, `<quiet>` `2>&1 | true` (Linux,
+  macOS) or `2>&1 | Out-Null` (Windows PowerShell; the shell picked from the browser's user agent, switchable; not `>/dev/null` nor `$null`: the e2e placeholder guard reads a visible `null` as a leaked value, and a pipe says the same). The named volume
+  replaces `$HOME/hcm-worker`: `pipeline/Dockerfile`'s runtime stage creates `/work` owned by `10001`, and Docker
+  initialises an empty named volume from it, owner included. One container per computer (a second city's command
+  replaces the first: a documented limit; the volume keeps each city's session file apart). "Docker is not installed?
+  Get Docker" links `https://docs.docker.com/get-started/get-docker/`.
+- **85c APPLIED (finding 67): pairing.** `worker.pairCode {cityId}` (admin, `cityEditor`, App Check enforced) mints 26
+  base32 characters from `crypto.randomBytes` (130 bits), stores `cities/{c}/pairings/{sha256(code)[:40]}` `{uid, image?,
+  expiresAt (+600 s)}` and deletes the caller's unused expired codes; `worker.pair {cityId, code, replaces?}` (access
+  `none`, App Check off, two instances) counts the attempt in `pairings/limit` (20 per city per 10 minutes, counted before
+  the code is read; `apiError.rateLimited`), marks the code used in one transaction (used, revoked, expired and unknown
+  are one answer, `apiError.worker.pairCode`), checks that the owner still has a role in the city, revokes the replaced
+  pairing when it is the same owner's, and returns `auth.createCustomToken(uid, {worker: true, city, pair})`
+  (fn-admin's own `signBlob`: the `roles/iam.serviceAccountTokenCreator` on itself Provision's `iam` item grants since
+  M5 for `export.download`, so no new item; **UNVERIFIED** until the first real pairing). The worker's five callables
+  carry `workerToken: true` in their rows: `requireAccess` reads such a token (`sign_in_provider: 'custom'`, the three
+  claims) only there, still requires the owner's membership, and `requireCityRole` holds it to its `city`; every handler
+  is wrapped in `paired`, which finds the pairing standing (exchanged, the caller's, not revoked) or refuses with the new
+  `apiError.worker.revoked`. `worker.revoke {cityId, workerId}` (admin) sets `revokedAt` on the worker and its pairing;
+  `ownWorker` refuses a revoked worker, so a Google-signed worker stops at its next claim. Chosen over Firebase's
+  `revokeRefreshTokens`, which would sign the owner out of every browser too. The worker (`pairing.py`) exchanges the
+  code, signs in at `accounts:signInWithCustomToken` with the web API key and the Hosting origin as `Referer` (the key is
+  referrer-restricted to the Hosting origins; the token refresh sends the same header), calls `worker.hello` through the
+  page's own sign-in path, and keeps `{refreshToken, pairId, codeHash}` in `<work>/.hcm-session-<city>.json` (mode 600,
+  written to a new file then moved), again after every refresh. At start: a code different from the kept one's pairs
+  (naming the kept pairing as `replaces`), else the kept session resumes; a refused code falls back to the kept session;
+  a transient failure is tried again every 30 s (a reboot's network); `apiError.worker.revoked` ends the session and
+  deletes the file. The security review is §10's addendum of `docs/research/M7-local-worker.md`.
+- **85d APPLIED (finding 67, the auto-update): the image a worker runs is the pairing's, compared on every hello and
+  claim.** Decided: the command keeps naming the image by digest (the supply-chain pin of `DECISIONS-for-review.md` §83),
+  and Docker's restart policy never pulls, so a tag would not update anything without a watcher container (Watchtower:
+  another image with the Docker socket, rejected). The pairing records the digest its command named; `worker.hello`
+  answers the installed one (`setup/status.install.pipeline.image`) and `outdated`; `worker.claim` gives an outdated
+  paired worker no job (`{job: null, outdated: true}`) and records `outdated` on its document; the worker's page and log
+  say to run the admin's command again; the panel says so with the command, whose new code replaces the pairing (one
+  paste, no sign-in). A worker signed in with Google has no image recorded and is never called outdated.
+- **85e APPLIED (finding 68): the admin does the rest.** `imagery.tick`'s new part `noWorker` (`tick-worker.ts`, green
+  guard only): a queued local job waiting for the computer whose last write is `WORKER_WAIT_MINUTES` (15) old, with no
+  worker of the city seen within `WORKER_FRESH_SECONDS`, is marked `workerOverdueAt` in a transaction that finds it still
+  waiting and leaves the notification `job.noWorker` (warning, pushed by default; the rules' `validPushKinds` gains it and
+  its size cap goes to 12); the version page offers **Run in Google Cloud instead** (filled) with "Your computer has not
+  picked it up in 15 minutes"; a claim or a move of the job clears the mark. Never moved by itself: a cloud run costs, and
+  past the free tier it would wait for the OK anyway. The Jobs panel follows the busy worker's job (its `step` and
+  `progress`, live).
+- **85f APPLIED (finding 69): the page's sign-in is a fallback that gives up.** `page.py`: the SDK modules are loaded
+  together and their failure leaves the page showing the state; `signInWithPopup` races `SIGN_IN_TIMEOUT_MS` (90 s),
+  after which the page says the sign-in did not finish and to use the admin's command, a message the state polls keep.
+  The cause is **UNVERIFIED** (findings doc, 69). Not done: adding `localhost` to the browser key's referrers (it would
+  widen the key for every page on every computer).
+- **85g recorded for the user.** To take these live: deploy the server and run Update the map (it applies 85a's two
+  items and installs the new pipeline image), then copy the panel's new command once on the computer (it replaces the
+  running worker; no `mkdir`, no sign-in). Verify live: the first `worker.pair` (fn-admin's `signBlob` for the custom
+  token), the Identity Toolkit sign-in with the Hosting origin as `Referer`, and a reboot of the computer (the worker
+  back with no new code).
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`worker.spec.ts`, `worker-run.spec.ts`, the
+install specs, `provision.spec.ts`, `journey.spec.ts`, two workers).

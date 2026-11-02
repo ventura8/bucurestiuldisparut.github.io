@@ -100,6 +100,10 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'worker.step': 'fn-admin',
     'worker.urls': 'fn-admin',
     'worker.end': 'fn-admin',
+    // Finding 67 (docs/research/M7-local-worker.md §2.6): pairing mints a custom token with fn-admin@'s own signBlob.
+    'worker.pair': 'fn-admin',
+    'worker.pairCode': 'fn-admin',
+    'worker.revoke': 'fn-admin',
 };
 
 /** What firebase-tools and Cloud Run set to the project while the code loads (discovery, the emulator, a cold start). */

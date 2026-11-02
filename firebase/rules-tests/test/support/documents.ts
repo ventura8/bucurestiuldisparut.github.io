@@ -282,6 +282,8 @@ export function jobDoc(creator: string, status = 'running'): Data {
         worker: { id: 'w-0123456789abcdef', uid: creator, claimedAt: past() },
         freeTierOk: { by: creator, at: past() },
         usageCountedAt: past(),
+        // Finding 68 of 2026-11-02: imagery.tick's mark of a local job no computer came for.
+        workerOverdueAt: past(),
         ...systemStamp('pipeline'),
     };
 }

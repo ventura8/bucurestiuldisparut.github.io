@@ -16,6 +16,7 @@ import type { SetupContext } from './context.js';
 import { googleAccess, liveAccess } from './google-access.js';
 import { apiFailure, googleFailure, setupMessage } from './messages.js';
 import type { GoogleAccess, ProvisionItemResult } from './ports.js';
+import { reachedVersion, updateItems } from './provision-version.js';
 import { itemMessage } from './records.js';
 import { provisionHealth, type ProvisionItemState, type SetupState } from './state.js';
 
@@ -26,6 +27,11 @@ export interface ProvisionFlow {
     recheck(): Promise<void>;
     /** After the deployment, with the live token: the scheduler's job now exists. */
     checkScheduler(): Promise<void>;
+    /**
+     * Finding 65 of 2026-11-02: an update's part, with the update click's token: the items whose definition changed since
+     * the project was last prepared (`updateItems`), then the set version reached recorded. Nothing when none is due.
+     */
+    update(access: GoogleAccess): Promise<void>;
 }
 
 /** The reason of an item Google refused with 401: the step's token expired. */
@@ -42,7 +48,7 @@ function withItem(state: SetupState, item: ProvisionItemResult): SetupState {
     const items = state.provision.items.map((current): ProvisionItemState =>
         current.id === item.id ? { id: item.id, state: item.state, detail } : current,
     );
-    return { ...state, provision: { items } };
+    return { ...state, provision: { ...state.provision, items } };
 }
 
 /** An item no run reported (`missing` with no reason): the record predates it, or the doctor found it absent. */
@@ -80,17 +86,22 @@ function refused(item: ProvisionItemResult): boolean {
 
 /**
  * `setup.recordCloud`'s request: the items this run reported, `missing` ones included (finding 34), never one refused
- * with 401, in screen order; null when there is none.
+ * with 401, in screen order, with the item set's version when the run brought every item due since `recorded` to `ok`
+ * (finding 65); null when there is none.
  */
-function provisionRequest(reported: readonly ProvisionItemResult[]): RecordCloudRequest | null {
+function provisionRequest(reported: readonly ProvisionItemResult[], recorded: number | undefined): RecordCloudRequest | null {
     const items = reported.filter((item) => !refused(item)).sort((a, b) => PROVISION_ITEMS.indexOf(a.id) - PROVISION_ITEMS.indexOf(b.id));
-    return items.length === 0 ? null : { provision: { items: items.map(recordedItem) } };
+    const setVersion = reachedVersion(items, recorded);
+    const version = setVersion === undefined ? {} : { setVersion };
+    return items.length === 0 ? null : { provision: { items: items.map(recordedItem), ...version } };
 }
 
 /** How a click runs: Prepare the project and Retry what failed (`run`), or normal mode's read-only Re-check (`doctor`). */
 interface RunMode {
     readonly onlyPending: boolean;
     readonly doctor: boolean;
+    /** The items an update runs (finding 65); otherwise every item or the pending ones. */
+    readonly only?: readonly ProvisionItem[];
 }
 
 const RUN: RunMode = { onlyPending: true, doctor: false };
@@ -105,6 +116,16 @@ class Provision implements ProvisionFlow {
 
     async recheck(): Promise<void> {
         await this.start((access, _only, onItem) => this.ctx.deps.cloud.doctor(access, null, onItem), DOCTOR);
+    }
+
+    async update(access: GoogleAccess): Promise<void> {
+        const due = updateItems(this.ctx.state().provision);
+        if (due.length === 0) {
+            return;
+        }
+        this.ctx.patchStep('provision', { busy: true, error: null });
+        const run: Runner = (granted, only, onItem) => this.ctx.deps.cloud.provision(granted, only, onItem);
+        await this.runWith(run, access, { onlyPending: false, doctor: false, only: due });
     }
 
     async checkScheduler(): Promise<void> {
@@ -152,7 +173,7 @@ class Provision implements ProvisionFlow {
     }
 
     private async runWith(runner: Runner, access: GoogleAccess, mode: RunMode): Promise<void> {
-        const only = mode.onlyPending ? pendingItems(this.ctx.state().provision.items) : null;
+        const only = mode.only ?? (mode.onlyPending ? pendingItems(this.ctx.state().provision.items) : null);
         const reported = new Map<ProvisionItem, ProvisionItemResult>();
         try {
             await runner(access, only, (item) => {
@@ -195,7 +216,7 @@ class Provision implements ProvisionFlow {
     }
 
     private async record(reported: readonly ProvisionItemResult[]): Promise<void> {
-        const request = provisionRequest(reported);
+        const request = provisionRequest(reported, this.ctx.state().provision.setVersion);
         if (this.ctx.state().mode !== 'normal' || request === null) {
             return;
         }

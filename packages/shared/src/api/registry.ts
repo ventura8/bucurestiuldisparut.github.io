@@ -116,7 +116,14 @@ import {
     setupStatusViewSchema,
 } from './setup.js';
 import { ERROR_REPORT_MAX_BYTES, errorReportSchema, listGroupsRequestSchema, listGroupsResponseSchema } from './telemetry.js';
-import { imageryRunOnRequestSchema, imageryRunOnResponseSchema } from './worker.js';
+import {
+    imageryRunOnRequestSchema,
+    imageryRunOnResponseSchema,
+    workerPairCodeRequestSchema,
+    workerPairCodeResponseSchema,
+    workerRevokeRequestSchema,
+    workerRevokeResponseSchema,
+} from './worker.js';
 
 /**
  * The workstreams that implement the functions (`docs/research/M2-interfaces.md` §5; `fn-imagery`:
@@ -144,8 +151,9 @@ export type FunctionOwner = (typeof FUNCTION_OWNERS)[number];
  * M5 (`docs/research/M5-interfaces.md` §1.3), each an `admin` too: `cityEditor` has a role in the request's `cityId`,
  * `cityOwner` owns it (both checked once the request is valid, before the handler reads anything), `projectOwner` is the
  * account that claimed the project (`admins/{uid}.role == 'owner'`).
+ * `none` (finding 67 of 2026-11-02): no sign-in at all, for `worker.pair` only, whose one-time code is the credential.
  */
-export type CallableAccess = 'signedIn' | 'admin' | 'cityEditor' | 'cityOwner' | 'projectOwner';
+export type CallableAccess = 'signedIn' | 'admin' | 'cityEditor' | 'cityOwner' | 'projectOwner' | 'none';
 
 /** The accesses that name a city: their requests carry `cityId` at the top level (the registry's test checks it). */
 export const CITY_ACCESSES: readonly CallableAccess[] = ['cityEditor', 'cityOwner'];
@@ -164,6 +172,11 @@ export interface CallableSpec {
     readonly request: z.ZodType;
     readonly response: z.ZodType;
     readonly owner: FunctionOwner;
+    /**
+     * Finding 67: the callable also admits the token of a worker paired for the request's city (`worker: true`, `city`,
+     * `pair` claims, signed in with a custom token), besides a city editor's Google sign-in. Only the worker's callables.
+     */
+    readonly workerToken?: true;
 }
 
 /** An admin-only callable (`access: 'admin'`, three instances at most), its schemas keeping their types. */
@@ -276,12 +289,15 @@ export const ADMIN_CALLABLES = {
     // M7 (docs/research/M7-local-worker.md §3): the admin's choice of where a job runs. The local worker's five callables
     // are `WORKER_CALLABLES` (worker-calls.ts).
     'imagery.runOn': cityEditor('fn-imagery', imageryRunOnRequestSchema, imageryRunOnResponseSchema),
+    // Finding 67 of 2026-11-02: the worker command's one-time pairing code, and Disconnect this computer.
+    'worker.pairCode': cityEditor('fn-worker', workerPairCodeRequestSchema, workerPairCodeResponseSchema),
+    'worker.revoke': cityEditor('fn-worker', workerRevokeRequestSchema, workerRevokeResponseSchema),
 } as const satisfies Readonly<Record<string, CallableSpec>>;
 
 export type AdminCallableName = keyof typeof ADMIN_CALLABLES;
 
 /** The local worker's callables (M7, `docs/research/M7-local-worker.md` §2.4): their rows are `WORKER_CALLABLES`. */
-export const WORKER_CALLABLE_NAMES = ['worker.hello', 'worker.claim', 'worker.step', 'worker.urls', 'worker.end'] as const;
+export const WORKER_CALLABLE_NAMES = ['worker.hello', 'worker.claim', 'worker.step', 'worker.urls', 'worker.end', 'worker.pair'] as const;
 export type WorkerCallableName = (typeof WORKER_CALLABLE_NAMES)[number];
 
 /** Every callable's name, the admin's and the worker's: what a deployment holds (`CALLABLES`' keys, its test checks). */

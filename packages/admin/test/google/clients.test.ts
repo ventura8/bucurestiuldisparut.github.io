@@ -203,10 +203,21 @@ describe('the deployment', () => {
         // M3's 51, M4's orders (3 callables) and assists and notifications (5 callables, 2 background functions), M5's
         // cities (4 callables, `cities.locate` with the UX review) and static export (2 callables, 1 task queue function),
         // M6's events probe `ops.onProbe` (docs/research/M6-interfaces.md §3.2), M7's local worker (5 callables, which the
-        // admin never calls but waits for, by name) and `imagery.runOn` (docs/research/M7-local-worker.md §2.4, §3).
-        expect(expected).toHaveLength(75);
-        expect(expected).toEqual(expect.arrayContaining(['worker-hello', 'worker-claim', 'worker-step', 'worker-urls', 'worker-end']));
-        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 75, total: 75, failed: [] });
+        // admin never calls but waits for, by name) and `imagery.runOn` (docs/research/M7-local-worker.md §2.4, §3); finding
+        // 67 of 2026-11-02: `worker.pair` (the worker's) and `worker.pairCode`, `worker.revoke` (the admin's).
+        expect(expected).toHaveLength(78);
+        expect(expected).toEqual(
+            expect.arrayContaining([
+                'worker-hello',
+                'worker-claim',
+                'worker-step',
+                'worker-urls',
+                'worker-end',
+                'worker-pair',
+                'worker-pairCode',
+            ]),
+        );
+        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 78, total: 78, failed: [] });
     });
 
     it('badPath_someMissingIsPendingAndOneFailedIsInvalid', () => {

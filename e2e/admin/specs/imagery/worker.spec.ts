@@ -1,4 +1,4 @@
-import { CLOUD_RUN_FREE_TIER, PROVISION_ITEMS, usageMonth } from '@hcm/shared';
+import { CLOUD_RUN_FREE_TIER, PROVISION_ITEMS, PROVISION_SET_VERSION, usageMonth, WORKER_WAIT_MINUTES } from '@hcm/shared';
 import { translateAdminWorker, type AdminWorkerKey } from '@hcm/shared/admin-worker';
 import type { Locator, Page } from '@playwright/test';
 
@@ -52,7 +52,7 @@ async function recordPipeline(imagery: ImageryWorld, image = true): Promise<void
         'setup/status',
         {
             billing: { ...ok, budgetAmount: 5, currency: 'USD' },
-            provision: { ...ok, items: PROVISION_ITEMS.map((id) => ({ id, ...ok })) },
+            provision: { ...ok, items: PROVISION_ITEMS.map((id) => ({ id, ...ok })), setVersion: PROVISION_SET_VERSION },
             install: { pipeline },
         },
         ['billing', 'provision', 'install'],
@@ -95,6 +95,19 @@ async function seedQueued(imagery: ImageryWorld, id: string, owner: string): Pro
     );
 }
 
+/**
+ * The one-line command the panel shows on this (Linux) browser (finding 66): the old worker removed, the new one detached,
+ * named and restarted with the computer, the named volume, the image by digest, and (finding 67) a fresh pairing code.
+ */
+function commandPattern(city: string): RegExp {
+    const escaped = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const fixed =
+        'docker rm -f hcm-worker 2>&1 | true; docker run -d --name hcm-worker --restart unless-stopped ' +
+        `-p 127.0.0.1:8765:8765 -v hcm-worker:/work us-central1-docker.pkg.dev/${E2E_PROJECT_ID}/hcm/pipeline@${DIGEST} ` +
+        `worker --city ${city} --project ${E2E_PROJECT_ID} --pair `;
+    return new RegExp(`^${escaped(fixed)}[a-z2-7]{26}$`);
+}
+
 function panel(page: Page): Locator {
     return page.locator('hcm-worker-panel');
 }
@@ -120,10 +133,13 @@ test(
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
         await expect(shown.getByText(text(lang, 'adminWorker.lastDone', { when: '' }).split(':')[0] ?? '')).toBeVisible();
-        const command =
-            `docker run --rm -p 127.0.0.1:8765:8765 -v "$HOME/hcm-worker:/work" ` +
-            `us-central1-docker.pkg.dev/${E2E_PROJECT_ID}/hcm/pipeline@${DIGEST} worker --city ${imagery.city} --project ${E2E_PROJECT_ID}`;
-        await expect(shown.locator('pre')).toHaveText(command);
+        await expect(shown.locator('pre')).toHaveText(commandPattern(imagery.city), { timeout: FUNCTIONS_TIMEOUT_MS });
+        const command = (await shown.locator('pre').textContent()) ?? '';
+        await expect(shown.getByRole('link', { name: text(lang, 'adminWorker.getDocker') })).toHaveAttribute(
+            'href',
+            'https://docs.docker.com/get-started/get-docker/',
+        );
+        await expect(shown.getByText(text(lang, 'adminWorker.notePair'))).toBeVisible();
         await expect(shown.getByRole('radio', { name: text(lang, 'adminWorker.choice.auto') })).toHaveAttribute('aria-checked', 'true');
         const use = text(lang, 'adminWorker.meterUse', {
             ...{ vcpu: count(lang, 12_345), vcpuFree: count(lang, CLOUD_RUN_FREE_TIER.vcpuSeconds) },
@@ -143,7 +159,7 @@ test(
         await page.goto(adminPath(lang, 'setup/pipeline'));
         const card = await setup.show('pipeline');
         await expect(card.locator('hcm-worker-panel').getByText(use)).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
-        await expect(card.locator('hcm-worker-panel pre')).toHaveText(command);
+        await expect(card.locator('hcm-worker-panel pre')).toHaveText(commandPattern(imagery.city), { timeout: FUNCTIONS_TIMEOUT_MS });
         await expectStateSound(page, adminVisit('worker.setup-panel', lang));
         // Setup's analytics card asks for its stream's settings, which this world's project has none of (a 400 the browser logs).
         consoleErrors.takeMatching(/setup-analyticsConfig/);
@@ -224,5 +240,79 @@ test(
         // Past the free tier without the OK it waits again: no run of it was asked for.
         await expect.poll(async () => (await imagery.job('local-1'))?.['waitReason'], { timeout: FUNCTIONS_TIMEOUT_MS }).toBe('free-tier');
         expect((await imagery.runs()).map((run) => run.jobId)).not.toContain('local-1');
+    },
+);
+
+test(
+    "A connected computer's job shows its step live, an outdated one is told to update, and Disconnect revokes it",
+    { tag: ['@S-A62-HAPPY-DISCONNECT', '@S-A62-BAD-WORKER-OUTDATED', '@S-A62-HAPPY-PROGRESS'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const owner = adminWorld.accounts.owner.uid;
+        const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
+        await recordPipeline(imagery);
+        await seedQueued(imagery, 'busy-1', owner);
+        await imagery.cityWorld.emulators.updateFields(
+            `cities/${imagery.city}/jobs/busy-1`,
+            { status: 'running', runOn: 'local', step: 'georef', progress: 0.4 },
+            ['status', 'runOn', 'step', 'progress'],
+        );
+        await seedWorker(imagery, owner, 10);
+        const workerPath = `cities/${imagery.city}/workers/${WORKER}`;
+        await imagery.cityWorld.emulators.updateFields(workerPath, { state: 'busy', jobId: 'busy-1' }, ['state', 'jobId']);
+
+        // Finding 68: the job it works on, with its step and how far it got, live.
+        await page.goto(adminPath(lang, 'jobs'));
+        const said = text(lang, 'adminWorker.progress', { step: 'georef', percent: '40' });
+        await expect(panel(page).locator('[data-progress]')).toHaveText(said, { timeout: FUNCTIONS_TIMEOUT_MS });
+        await expectStateSound(page, adminVisit('worker.panel-progress', lang));
+        await imagery.cityWorld.emulators.updateFields(`cities/${imagery.city}/jobs/busy-1`, { progress: 0.8 }, ['progress']);
+        await expect(panel(page).locator('[data-progress]')).toHaveText(
+            text(lang, 'adminWorker.progress', { step: 'georef', percent: '80' }),
+        );
+
+        // Finding 67: the pipeline was updated since the computer's command: it takes no job until the command runs again.
+        await imagery.cityWorld.emulators.updateFields(workerPath, { state: 'idle', outdated: true }, ['state', 'jobId', 'outdated']);
+        await expect(panel(page).locator('[data-outdated]')).toHaveText(text(lang, 'adminWorker.outdated'), {
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expectStateSound(page, adminVisit('worker.panel-outdated', lang));
+
+        // Disconnect this computer: its worker (and the pairing it signed in with) refused from now on.
+        await panel(page)
+            .getByRole('button', { name: text(lang, 'adminWorker.disconnect') })
+            .click();
+        await expect
+            .poll(async () => (await adminWorld.emulators.document(workerPath))?.['revokedAt'], { timeout: FUNCTIONS_TIMEOUT_MS })
+            .toBeDefined();
+        await expect(panel(page).getByText(text(lang, 'adminWorker.disconnected'))).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(panel(page).getByText(text(lang, 'adminWorker.none'))).toBeVisible();
+    },
+);
+
+test(
+    'A job no computer came for offers Run in Google Cloud instead, which moves it there in one click',
+    { tag: ['@S-A62-HAPPY-NO-WORKER-OFFER'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const owner = adminWorld.accounts.owner.uid;
+        const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
+        await recordPipeline(imagery);
+        await seedQueued(imagery, 'late-1', owner);
+        // What imagery.tick leaves on a local job that waited WORKER_WAIT_MINUTES with no computer seen (finding 68).
+        await imagery.cityWorld.emulators.updateFields(
+            `cities/${imagery.city}/jobs/late-1`,
+            { runOn: 'local', waitReason: 'worker', workerOverdueAt: NOW },
+            ['runOn', 'waitReason', 'workerOverdueAt'],
+        );
+
+        await page.goto(adminPath(lang, 'imagery/version/late-1'));
+        const overdue = text(lang, 'adminWorker.waitOverdue', { minutes: String(WORKER_WAIT_MINUTES) });
+        await expect(place(page).locator('[data-overdue]')).toHaveText(overdue, { timeout: FUNCTIONS_TIMEOUT_MS });
+        await expectStateSound(page, adminVisit('worker.place-overdue', lang));
+        await place(page)
+            .getByRole('button', { name: text(lang, 'adminWorker.runCloudInstead') })
+            .click();
+
+        await expect.poll(async () => (await imagery.job('late-1'))?.['runOn'], { timeout: FUNCTIONS_TIMEOUT_MS }).toBe('cloud');
+        expect(await imagery.job('late-1')).not.toHaveProperty('workerOverdueAt');
     },
 );

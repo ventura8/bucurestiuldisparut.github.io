@@ -623,3 +623,56 @@ pairs, 0 suggestions, 0 of 128 tiles matched", the job waiting for the admin's p
   move ("moved 1.3 km by the search around the window") (S-P01-HAPPY-KH9-STRIP, S-P01-BAD-CITY-NOT-FOUND). Not done:
   the frame preview in the admin to mark the city's area by hand (a new georeferencer mode), and a panoramic camera
   model for the guess; both in §84c.
+
+### The local worker, live (2026-11-02, admin, server and pipeline after `5d0c318`; the worker image `b9130dc…`)
+
+The owner started M7's worker on a Linux computer against `bucurestiul-disparut` and asked: "make sure all of this is
+automagic for the admin!!!". Changes: `DECISIONS-for-review.md` §85, `docs/LESSONS.md` 345–349, the addendum of
+2026-11-02 (findings 65–69) of `docs/research/M7-local-worker.md`.
+
+- **65.** \[ux]\[setup] "Update the map" installed a release whose Provision items had changed (M7's public pull of the
+  Artifact Registry repository `hcm`, the 7-day lifecycle of `usgs-raw/`), and nothing applied them: the owner had to
+  open step c, Check again (a consent), then Retry what failed. Root cause: Provision ran only from step c; the record
+  said each item `ok` under the definition of the release that ran it, and nothing told a newer admin which items its own
+  definitions had changed. FIXED (§85a): the item set is versioned (`PROVISION_SET_VERSION`, `PROVISION_CHANGED_IN` of
+  `@hcm/shared`; version 2 for M7's two items) and `setup/status.provision.setVersion` records the version a run brought
+  the project to (a run that reported every item changed since `ok`, step c's first run included). Update the map (the
+  server card's, the pipeline's or the site's, and Home's update tile, which opens it) also runs those items in the same
+  click and consent, beside the builds; the server card names them ("The update also brings these project settings up to
+  date: …"), and Home shows its update tile for them alone when every target is current (S-A04-HAPPY-UPDATE-PROVISION,
+  S-A04-BAD-UPDATE-PROVISION).
+- **66.** \[ux]\[worker] Starting the worker needed `mkdir -m 777 ~/hcm-worker` and a long command, and the terminal had
+  to stay open. FIXED (§85b): one line, nothing to prepare: `docker rm -f hcm-worker …; docker run -d --name hcm-worker
+  --restart unless-stopped -p 127.0.0.1:8765:8765 -v hcm-worker:/work <image@digest> worker --city … --project …
+  --pair …`. The named volume `hcm-worker` replaces the bind mount (Docker initialises it from the image's `/work`, owned
+  by the worker's user, so no permissions to set); it runs in the background and comes back after a reboot; the same line
+  replaces (and so updates) an older worker. The panel writes it for Linux or macOS, or for Windows PowerShell (picked
+  from the browser's system), with "Docker is not installed? Get Docker" (S-A62-HAPPY-PANEL).
+- **67.** \[ux]\[security]\[worker] The worker's page then asked for a second Google sign-in. FIXED (§85c): pairing. The
+  panel mints a one-time code when it shows the command (`worker.pairCode`: 130 random bits, 10 minutes, stored only as a
+  SHA-256 prefix with the owner and the image digest; renewed a minute before it ends); the worker exchanges it once
+  through `worker.pair` (no sign-in, App Check off, 20 attempts per city in 10 minutes) for a Firebase custom token of
+  that owner with the claims `worker: true`, `city` and `pair`, signs in at Identity Toolkit and works as before. Only
+  the worker's own callables of that city admit that token (every other callable and the rules want a Google sign-in).
+  The refresh token is kept in the volume (`.hcm-session-<city>.json`, mode 600), so a restart needs no new code; a new
+  command pairs again and revokes the pairing it replaces; **Disconnect this computer** revokes the worker and its pairing
+  (`worker.revoke`; the owner's own sessions are untouched). The worker learns from `worker.hello` and `worker.claim`
+  whether its image is still the installed one; an outdated worker takes no job and the panel says to run the command
+  again (pairing reused through the volume) (S-A62-HAPPY-PAIR, S-A62-BAD-PAIR-REUSED, S-A62-BAD-PAIR-EXPIRED,
+  S-A62-HAPPY-DISCONNECT, S-A62-BAD-WORKER-OUTDATED, S-P04-HAPPY-PAIR, S-P04-BAD-PAIR-REFUSED, S-P04-BAD-REVOKED,
+  S-P04-BAD-OUTDATED).
+- **68.** \[ux]\[worker] The admin should do the rest by itself. FIXED (§85d): new imports already default to a connected
+  computer; a local job that waited 15 minutes (`WORKER_WAIT_MINUTES`) with no computer seen is marked by `imagery.tick`
+  (`workerOverdueAt`), leaves one inbox item (`job.noWorker`, pushed by default) and its version page offers **Run in
+  Google Cloud instead** first (one click); the Jobs panel follows the connected computer's job live, its step and its
+  progress (S-A62-HAPPY-NO-WORKER-OFFER, S-A62-BAD-NO-WORKER-QUIET, S-A62-HAPPY-PROGRESS).
+- **69.** \[bug]\[worker] On the live worker (Chrome, `http://localhost:8765/`) **Sign in with Google** completed Google's
+  account popup, but the page stayed "Not signed in": no error, no console line, no `POST /session` reached the worker.
+  Root cause **UNVERIFIED** (the live page was not instrumented): the Firebase JS SDK's calls from `localhost` carry the
+  project's browser API key, which Provision's `api-key` item restricts to the Hosting origins (and the page sends
+  `Referrer-Policy: no-referrer`), so Identity Toolkit refuses them; Chrome's partitioned storage of the SDK's auth iframe
+  on a non-Firebase origin is the other suspect. Either way the popup's promise never settled. FIXED (§85e): pairing (67)
+  makes the browser sign-in unnecessary; the page is for the worker's state, its sign-in a fallback that gives up after 90
+  seconds ("The sign-in did not finish: use the command from the admin, which signs this computer in"), and it still shows
+  the state when the SDK cannot be loaded. The worker's own calls to Google's token services name the Hosting origin as
+  their `Referer`, so the referrer-restricted key accepts them (S-P04-BAD-POPUP-TIMEOUT).

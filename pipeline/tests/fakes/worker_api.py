@@ -8,7 +8,9 @@ essentials over an in-memory Firestore (`MemoryStore`): `worker.claim` leases th
 and `worker.urls` answer `apiError.worker.notHolder` unless the caller's worker holds the job (or once `revoke_when`
 matched a request), refuse a document of another job and any object but the city's `rasters/`, and `worker.urls`'s
 USGS calls are made with the server's own M2M client. Every call, every signed URL and every request sent to one is
-recorded; ID and refresh tokens are generated test values.
+recorded; ID and refresh tokens are generated test values. Finding 67: `worker-pair` (no sign-in) exchanges a code of
+`pair_codes` once for a custom token, which Identity Toolkit's `accounts:signInWithCustomToken` turns into tokens; the
+`Referer` of every call to Google's token services is recorded.
 """
 
 import base64
@@ -114,6 +116,14 @@ class FakeWorkerApi:
     revoked: bool = False
     m2m: Callable[[], M2MClient] | None = None
     hello_answer: dict[str, object] = field(default_factory=lambda: {"pollSeconds": 30, "heartbeatSeconds": 3600})
+    hello_refusal: str | None = None
+    claim_extra: dict[str, object] = field(default_factory=dict)
+    claim_refusal: str | None = None
+    custom_sign_in_refused: bool = False
+    pair_codes: dict[str, str] = field(default_factory=dict)
+    pair_refusal: str | None = None
+    custom_tokens: set[str] = field(default_factory=set)
+    referers: list[str] = field(default_factory=list)
     refreshes: int = 0
     versions: dict[str, int] = field(default_factory=dict)
     generations: itertools.count[int] = field(default_factory=lambda: itertools.count(1_793_000_000_000_001))
@@ -132,7 +142,30 @@ class FakeWorkerApi:
             self.server.route("POST", f"/{PROJECT}/{REGION}/worker-{name}", self._callable(f"worker-{name}", handler))
         self.server.route("POST", "/securetoken.googleapis.com/v1/token", self._refresh)
         self.server.route("GET", "/__/firebase/init.json", self._init_json)
+        self.server.route("POST", f"/{PROJECT}/{REGION}/worker-pair", self._pair)
+        self.server.route("POST", "/identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken", self._custom_sign_in)
         return self
+
+    def _pair(self, request: Request) -> Reply:
+        """`worker.pair`: no sign-in; a code of `pair_codes` once, for a custom token."""
+        data = json.loads(request.body)["data"]
+        self.calls.append(Call("worker-pair", data, request.headers.get("authorization", "")))
+        pair_id = None if self.pair_refusal is not None else self.pair_codes.pop(str(data.get("code")), None)
+        if pair_id is None:
+            code = self.pair_refusal or "apiError.worker.pairCode"
+            return refusal(RefusedError(code, HTTPStatus.FORBIDDEN, "PERMISSION_DENIED"))
+        token = f"custom-token-{len(self.custom_tokens) + 1}"
+        self.custom_tokens.add(token)
+        return Reply.json(json.dumps({"result": {"token": token, "pairId": pair_id}}))
+
+    def _custom_sign_in(self, request: Request) -> Reply:
+        """Identity Toolkit: a custom token this server issued, for the owner's tokens."""
+        self.referers.append(request.headers.get("referer", ""))
+        token = json.loads(request.body).get("token")
+        if self.custom_sign_in_refused or token not in self.custom_tokens:
+            return Reply.json(json.dumps({"error": {"code": 400, "message": "INVALID_CUSTOM_TOKEN"}}), HTTPStatus.BAD_REQUEST)
+        id_token, refresh_token = self.sign_in_tokens(self.clock() + 3600)
+        return Reply.json(json.dumps({"idToken": id_token, "refreshToken": refresh_token, "expiresIn": "3600"}))
 
     def sign_in_tokens(self, expires_at: float) -> tuple[str, str]:
         """An ID token the callables accept and its refresh token."""
@@ -163,6 +196,7 @@ class FakeWorkerApi:
     def _refresh(self, request: Request) -> Reply:
         form = {key: values[0] for key, values in parse_qs(request.body.decode("utf-8")).items()}
         self.refreshes += 1
+        self.referers.append(request.headers.get("referer", ""))
         if form.get("grant_type") != "refresh_token" or form.get("refresh_token") not in self.refresh_tokens:
             return Reply.json(json.dumps({"error": {"code": 400, "message": "TOKEN_EXPIRED"}}), HTTPStatus.BAD_REQUEST)
         id_token = fake_id_token(self.clock() + 3600)
@@ -176,6 +210,8 @@ class FakeWorkerApi:
     # --- the callables -------------------------------------------------------------------------------------
 
     def _hello(self, data: dict[str, object]) -> dict[str, object]:
+        if self.hello_refusal is not None:
+            raise RefusedError(self.hello_refusal, HTTPStatus.FORBIDDEN, "PERMISSION_DENIED")
         return dict(self.hello_answer)
 
     def _job_path(self, job_id: object) -> str:
@@ -189,6 +225,9 @@ class FakeWorkerApi:
         return job.get("status") == "queued" and job.get("runOn") == "local"
 
     def _claim(self, data: dict[str, object]) -> dict[str, object]:
+        return self._claim_held() or self._take(data)
+
+    def _take(self, data: dict[str, object]) -> dict[str, object]:
         found = next((job_id for job_id in self.store.list_ids(f"cities/{self.city}/jobs") if self._claimable(job_id)), None)
         if found is None:
             return {"job": None}
@@ -199,6 +238,12 @@ class FakeWorkerApi:
         self.store.update(self._job_path(found), {**fields, "worker": worker, "waitReason": DELETE, "dispatchAt": now})
         self._touch(self._job_path(found))
         return {"job": {"jobId": found}}
+
+    def _claim_held(self) -> dict[str, object] | None:
+        """A claim the test refuses (`claim_refusal`) or answers without a job (`claim_extra`), else None."""
+        if self.claim_refusal is not None:
+            raise RefusedError(self.claim_refusal, HTTPStatus.FORBIDDEN, "PERMISSION_DENIED")
+        return {"job": None, **self.claim_extra} if self.claim_extra else None
 
     def _holder(self, job_id: object) -> object:
         worker = (self.store.get(self._job_path(job_id)) or {}).get("worker")

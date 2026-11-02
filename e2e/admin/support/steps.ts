@@ -1,4 +1,4 @@
-import { PROVISION_ITEMS } from '@hcm/shared';
+import { PROVISION_ITEMS, PROVISION_SET_VERSION } from '@hcm/shared';
 import type { Locator, Page } from '@playwright/test';
 
 import { projectCity } from './content.js';
@@ -33,7 +33,7 @@ export async function seedSetupStatus(
     const ok = { state: 'ok', checkedAt: STEPS_AT };
     await emulators.setDocument('setup/status', {
         billing: { ...ok, budgetId: BUDGET_ID, budgetAmount: 5, currency: 'USD' },
-        provision: { ...ok, items: PROVISION_ITEMS.map((id) => ({ id, ...ok })) },
+        provision: { ...ok, items: PROVISION_ITEMS.map((id) => ({ id, ...ok })), setVersion: PROVISION_SET_VERSION },
         ...areas,
         updatedBy: ownerUid,
         updatedAt: STEPS_AT,

@@ -72,13 +72,17 @@ export async function requireGreen(documents: Ports['documents']): Promise<void>
 }
 
 /**
- * The caller's worker document, refused (`apiError.worker.refused`) when another account said hello with the same id;
- * undefined when there is none yet.
+ * The caller's worker document, refused (`apiError.worker.refused`) when another account said hello with the same id, or
+ * (`apiError.worker.revoked`) once it was disconnected; undefined when there is none yet.
  */
 export async function ownWorker(reader: DocumentReader, call: WorkerCall): Promise<WorkerDoc | undefined> {
     const worker = await reader.get(FIRESTORE_PATHS.worker(call.cityId, call.workerId), workerDocSchema);
     if (worker !== undefined && worker.uid !== call.uid) {
         throw new ApiError('apiError.worker.refused');
+    }
+    // Finding 67: Disconnect this computer (`worker.revoke`) refuses every later call of that worker.
+    if (worker?.revokedAt !== undefined) {
+        throw new ApiError('apiError.worker.revoked');
     }
     return worker;
 }

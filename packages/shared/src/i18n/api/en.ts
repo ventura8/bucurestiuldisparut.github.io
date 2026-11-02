@@ -96,6 +96,8 @@ export const en: ApiMessages = {
     'apiError.imagery.workerLost': 'Your computer stopped working on this job; it picks it up again when it is back.',
     'apiError.worker.notHolder': 'This job no longer belongs to this computer.',
     'apiError.worker.refused': 'The computer asked for something its job does not need.',
+    'apiError.worker.pairCode': 'This pairing code is not valid any more: copy the command from the admin again.',
+    'apiError.worker.revoked': 'This computer was disconnected in the admin: copy the command from the admin again to reconnect it.',
     'apiError.telemetry.origin': 'The report comes from an unknown site.',
     'apiError.telemetry.tooLarge': 'The report is too large.',
     'apiError.assist.rateLimited': 'OpenStreetMap suggestions are not available right now. Type the title; we try again in a few minutes.',

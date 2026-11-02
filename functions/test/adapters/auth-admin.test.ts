@@ -123,6 +123,18 @@ describe('revokeSessions and deleteUser', () => {
     });
 });
 
+describe('createCustomToken', () => {
+    it('happyPath_mintsATokenForTheAccountWithItsClaims', async () => {
+        const uid = await account();
+
+        const token = await auth.createCustomToken(uid, { worker: true, city: 'bucharest' });
+
+        // The emulator's custom tokens are unsigned JWTs: the payload names the account and carries the claims.
+        const payload = JSON.parse(Buffer.from(token.split('.')[1] ?? '', 'base64url').toString('utf8')) as Record<string, unknown>;
+        expect(payload).toMatchObject({ uid, claims: { worker: true, city: 'bucharest' } });
+    });
+});
+
 describe('listUsers', () => {
     it('happyPath_pagesThroughTheAccounts', async () => {
         await account();

@@ -17,6 +17,7 @@ import type { BlobMetadata } from '../ports/blob-store.js';
 import type { Ports } from '../ports/index.js';
 import { mayRead, mayWrite, type ObjectScope } from './allow-list.js';
 import { IN_RUN, requireGreen, requireHeld } from './holder.js';
+import { paired } from './pairing.js';
 import { proxyUsgs, type UsgsProxyDeps } from './usgs-proxy.js';
 
 export type UrlsDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'blobs' | 'signer'> & UsgsProxyDeps;
@@ -106,5 +107,5 @@ async function workerUrls(deps: UrlsDeps, caller: VerifiedCaller, request: Reque
 
 /** The `worker-urls` callable. */
 export function urlsFunction(getDeps: () => UrlsDeps & CallableDeps) {
-    return defineCallable('worker.urls', workerUrls, getDeps);
+    return defineCallable('worker.urls', paired(workerUrls), getDeps);
 }

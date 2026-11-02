@@ -68,4 +68,9 @@ export const INSTALL_STATES = {
         visit: VISIT,
     },
     'home.update-tile': { title: 'Home: an update of the map is ready, with the link to its step in Setup', visit: VISIT },
+    // Finding 65 of 2026-11-02, reached by the functional spec of updates (S-A04-HAPPY-UPDATE-PROVISION).
+    'setup.install-update-provision': {
+        title: 'Setup, a server in place on a project prepared before Provision changed: the settings the update applies, Update the map',
+        visit: 'steps/install/update.spec.ts',
+    },
 } as const;

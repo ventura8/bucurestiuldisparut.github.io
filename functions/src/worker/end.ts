@@ -19,6 +19,7 @@ import { omit } from '../api/objects.js';
 import { endWork } from '../imagery/end.js';
 import type { Ports } from '../ports/index.js';
 import { IN_RUN, PIPELINE_WRITER, at, holds, requireWorker, type WorkerCall } from './holder.js';
+import { paired } from './pairing.js';
 
 export type EndDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
@@ -80,5 +81,5 @@ async function workerEnd(deps: EndDeps, caller: VerifiedCaller, request: Request
 
 /** The `worker-end` callable. */
 export function endFunction(getDeps: () => EndDeps & CallableDeps) {
-    return defineCallable('worker.end', workerEnd, getDeps);
+    return defineCallable('worker.end', paired(workerEnd), getDeps);
 }

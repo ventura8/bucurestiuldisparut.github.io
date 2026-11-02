@@ -3,9 +3,11 @@
  * version whose job holds no run (`queued`, `waiting_usgs`, `awaiting_gcps`): where the job runs and the switch to the
  * other place (`imagery.runOn` with the job). A cloud job waiting for the admin's OK past the free tier (`free-tier`)
  * shows the run's estimate and the month's use, with **Run in Google Cloud anyway** (the OK) and **Run on my computer**;
- * a job waiting for the computer (`worker`) says so and links the Jobs page, where the worker's command is.
+ * a job waiting for the computer (`worker`) says so and links the Jobs page, where the worker's command is. Finding 68 of
+ * 2026-11-02: one that waited `WORKER_WAIT_MINUTES` with no computer seen (`overdue`) says so and offers **Run in Google
+ * Cloud instead** first.
  */
-import type { JobStatus, RunPlace } from '@hcm/shared';
+import { WORKER_WAIT_MINUTES, type JobStatus, type RunPlace } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import type { WorkerJobPort, WorkerViewPort } from './worker-port.js';
@@ -20,6 +22,18 @@ const PLACE_TEXT = { local: 'adminWorker.place.local', cloud: 'adminWorker.place
 
 /** Each button's words: on the computer; in the cloud; in the cloud with the OK past the free tier. */
 const BUTTON_TEXT = { local: 'adminWorker.runLocal', cloud: 'adminWorker.runCloud', ok: 'adminWorker.runCloudAnyway' } as const;
+
+/** Run in Google Cloud instead (no computer came), else the place's words, or the OK's past the free tier. */
+function labelOf(
+    place: RunPlace,
+    freeTierOk: boolean,
+    instead: boolean,
+): (typeof BUTTON_TEXT)[keyof typeof BUTTON_TEXT] | 'adminWorker.runCloudInstead' {
+    if (instead) {
+        return 'adminWorker.runCloudInstead';
+    }
+    return BUTTON_TEXT[freeTierOk ? 'ok' : place];
+}
 
 /** The feed's job while its place may change, else null. */
 function placeable(view: WorkerViewPort | null): WorkerJobPort | null {
@@ -62,23 +76,32 @@ export class HcmRunPlace extends WorkerElement {
             return html`<p>${this.t('adminWorker.freeTier')}</p>
                 <p>${this.t('adminWorker.estimate', estimate)}</p>
                 ${meter(this.locale, view.usage)}
-                <div class="actions">${this.#button(view, 'cloud', true)} ${this.#button(view, 'local', false)}</div>`;
+                <div class="actions">${this.#button(view, 'cloud', true, false)} ${this.#button(view, 'local', false, false)}</div>`;
         }
         if (job.waitReason === 'worker') {
-            return html`<p>${this.t('adminWorker.waitWorker')}</p>
-                <a class="external" href="#/jobs">${this.t('adminWorker.startWorker')}</a>
-                <div class="actions">${this.#button(view, 'cloud', false)}</div>`;
+            return this.#waiting(view, job);
         }
         const places: readonly RunPlace[] = (['local', 'cloud'] as const).filter((place) => place !== job.runOn);
         return html`<p>${this.t(job.runOn === null ? 'adminWorker.place.auto' : PLACE_TEXT[job.runOn])}</p>
-            <div class="actions">${places.map((place) => this.#button(view, place, false))}</div>`;
+            <div class="actions">${places.map((place) => this.#button(view, place, false, false))}</div>`;
     }
 
-    /** Run on my computer, Run in Google Cloud, or Run in Google Cloud anyway (the OK past the free tier). */
-    #button(view: WorkerViewPort, place: RunPlace, freeTierOk: boolean): TemplateResult {
-        const label = BUTTON_TEXT[freeTierOk ? 'ok' : place];
+    /** Waiting for the computer; past `WORKER_WAIT_MINUTES` without one, the cloud offered first (finding 68). */
+    #waiting(view: WorkerViewPort, job: WorkerJobPort): TemplateResult {
+        const overdue = job.overdue
+            ? html`<p class="alert" data-overdue>${this.t('adminWorker.waitOverdue', { minutes: String(WORKER_WAIT_MINUTES) })}</p>`
+            : html``;
+        return html`<p>${this.t('adminWorker.waitWorker')}</p>
+            ${overdue}
+            <a class="external" href="#/jobs">${this.t('adminWorker.startWorker')}</a>
+            <div class="actions">${this.#button(view, 'cloud', false, job.overdue)}</div>`;
+    }
+
+    /** Run on my computer, Run in Google Cloud (instead, filled, once no computer came), or Run in Google Cloud anyway. */
+    #button(view: WorkerViewPort, place: RunPlace, freeTierOk: boolean, instead: boolean): TemplateResult {
+        const label = labelOf(place, freeTierOk, instead);
         return html`<hcm-button
-            variant=${freeTierOk ? 'filled' : 'tonal'}
+            variant=${freeTierOk || instead ? 'filled' : 'tonal'}
             icon=${place === 'local' ? 'play_arrow' : 'cloud'}
             ?disabled=${view.acting}
             @click=${() => void this.feed?.intents.runJob(place, freeTierOk)}

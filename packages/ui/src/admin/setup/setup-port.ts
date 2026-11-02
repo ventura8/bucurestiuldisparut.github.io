@@ -253,6 +253,8 @@ export interface InstallSliceView {
     readonly site: InstallTargetViewPort;
     /** Why this admin cannot install the imagery pipeline (finding 43 of 2026-11-01), or null. */
     readonly pipelineOff: SetupMessage | null;
+    /** Finding 65 of 2026-11-02: the Provision items the server card's Update the map also applies (empty: none). */
+    readonly provisionDue: readonly ProvisionItem[];
 }
 // [end install]
 

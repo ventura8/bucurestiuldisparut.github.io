@@ -25,6 +25,19 @@ export const WORKER_STATES = {
         title: 'Historical imagery: a version waiting for your OK past the free tier, the estimate and the month',
         visit: 'specs/imagery/worker.spec.ts',
     },
+    // Findings 66-68 of 2026-11-02.
+    'worker.panel-progress': {
+        title: "Jobs: your computer at work, its job's step and progress live, Disconnect this computer",
+        visit: 'specs/imagery/worker.spec.ts',
+    },
+    'worker.panel-outdated': {
+        title: 'Jobs: your computer runs an older imagery pipeline: run the command again to update it',
+        visit: 'specs/imagery/worker.spec.ts',
+    },
+    'worker.place-overdue': {
+        title: 'Historical imagery: a version no computer came for in 15 minutes, Run in Google Cloud instead first',
+        visit: 'specs/imagery/worker.spec.ts',
+    },
     'worker.place-worker': {
         title: 'Historical imagery: a version waiting for your computer, the Jobs link and Run in Google Cloud',
         visit: 'specs/imagery/worker.spec.ts',

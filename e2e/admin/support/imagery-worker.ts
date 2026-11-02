@@ -10,12 +10,13 @@ import { PIPELINE_PYTHON, pipelineBaseEnv, REPO_ROOT } from './imagery-runner.js
  * worker --emulators` of the quality image's pipeline venv, on a port the system chooses, talking to the Auth and
  * Functions emulators (its five `worker.*` callables, the signed URLs to the Storage emulator, the server's USGS calls to
  * the mock APIs), reading the web configuration from the e2e admin server's `/__/firebase/init.json`, and the references
- * from the mock APIs. Its work folder is the test's.
+ * from the mock APIs. Its work folder is the test's (the named volume `hcm-worker` of the admin's command). Finding 67 of
+ * 2026-11-02: started with the admin command's pairing code (`--pair`), it signs itself in through `worker.pair`.
  */
 
 const log = createLogger('e2e-imagery-worker');
 
-/** The worker's log line that names its page (`worker.py`: "open http://localhost:<port>/ and sign in with Google"). */
+/** The worker's log line that names its page (`worker.py`: "open http://localhost:<port>/ to see what it does"). */
 const PAGE_LINE = /open http:\/\/localhost:(\d+)\//;
 /** How long the worker may take to serve its page, and to stop after Ctrl-C. */
 const START_TIMEOUT_MS = 60_000;
@@ -67,8 +68,8 @@ export class LocalWorker {
         });
     }
 
-    /** Starts the worker for `city` with its work folder at `work`. */
-    static start(city: string, work: string): LocalWorker {
+    /** Starts the worker for `city` with its work folder at `work`, with the admin command's pairing code if given. */
+    static start(city: string, work: string, pair?: string): LocalWorker {
         const args = [
             '-m',
             'hcm_pipeline',
@@ -82,6 +83,7 @@ export class LocalWorker {
             '--work',
             work,
             '--emulators',
+            ...(pair === undefined ? [] : ['--pair', pair]),
         ];
         const child = spawn(PIPELINE_PYTHON, args, { cwd: REPO_ROOT, env: workerEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
         return new LocalWorker(child);

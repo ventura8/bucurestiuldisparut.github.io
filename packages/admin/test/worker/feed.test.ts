@@ -162,6 +162,9 @@ describe("the local worker feed: a version's job and the failures", () => {
             runOn: 'cloud',
             waitReason: 'free-tier',
             estimate: { vcpuSeconds: 12_600, gibSeconds: 50_400 },
+            step: null,
+            progress: null,
+            overdue: false,
         });
         expect(world.callables.named('setup.status')).toBe(0);
         await expect(feed.intents.runJob('cloud', true)).resolves.toBe(true);
@@ -213,5 +216,103 @@ describe("the local worker feed: a version's job and the failures", () => {
         expect(feed.state.city).toBe(CITY);
         expect(globalThis.customElements.get('hcm-worker-panel')).toBeDefined();
         expect(globalThis.customElements.get('hcm-run-place')).toBeDefined();
+    });
+});
+
+describe('the local worker feed: pairing, progress and Disconnect (findings 66-68 of 2026-11-02)', () => {
+    const CODE = 'abcdefghijklmnopqrstuvwxyz';
+
+    it('happyPath_theCommandCarriesAPairingCodeRenewedAMinuteBeforeItExpires @S-A62-HAPPY-PAIR', async () => {
+        const world = contentWorld();
+        world.callables.answer('setup.status', () => status(DIGEST));
+        let minted = 0;
+        world.callables.answer('worker.pairCode', () => {
+            minted += 1;
+            return { code: minted === 1 ? CODE : 'bcdefghijklmnopqrstuvwxyza', expiresAt: '2025-10-09T08:10:00.000Z' };
+        });
+        const { feed } = feedOf(world);
+        await settle();
+
+        expect(feed.state.pairCode).toBe(CODE);
+        expect(world.callables.calls.find((call) => call.name === 'worker.pairCode')?.request).toEqual({ cityId: CITY });
+        world.clock.advance(9 * 60_000);
+        await settle();
+        expect(feed.state.pairCode).toBe('bcdefghijklmnopqrstuvwxyza');
+        feed.stop();
+        world.clock.advance(9 * 60_000);
+        await settle();
+        expect(minted).toBe(2);
+    });
+
+    it('badPath_aRefusedCodeOrNoImageLeavesTheCommandWithoutOne', async () => {
+        const world = contentWorld();
+        world.callables.answer('setup.status', () => status(DIGEST));
+        world.callables.fail('worker.pairCode', failure('permission-denied', 'apiError.notAdmin'));
+        const { feed } = feedOf(world);
+        await settle();
+        expect(feed.state).toMatchObject({ image: DIGEST, pairCode: null });
+
+        const bare = contentWorld();
+        bare.callables.answer('setup.status', () => status());
+        feedOf(bare);
+        await settle();
+        expect(bare.callables.named('worker.pairCode')).toBe(0);
+    });
+
+    it('happyPath_theConnectedWorkersJobIsFollowedLiveAndDroppedWhenItIsIdle', async () => {
+        const world = contentWorld();
+        world.callables.answer('setup.status', () => status());
+        world.store.docs.set(FIRESTORE_PATHS.job(CITY, 'j3'), jobDoc({ status: 'running', runOn: 'local', step: 'georef', progress: 0.4 }));
+        world.store.docs.set(FIRESTORE_PATHS.worker(CITY, WORKER), workerDoc(before(world, 10), { state: 'busy', jobId: 'j3' }));
+        const { feed } = feedOf(world);
+        await settle();
+
+        expect(feed.state.job).toMatchObject({ id: 'j3', step: 'georef', progress: 0.4, overdue: false });
+        world.store.put(FIRESTORE_PATHS.worker(CITY, WORKER), workerDoc(before(world, 5), { state: 'idle' }));
+        await settle();
+        expect(feed.state.job).toBeNull();
+        feed.stop();
+    });
+
+    it('happyPath_disconnectRevokesTheSeenWorker @S-A62-HAPPY-DISCONNECT', async () => {
+        const world = contentWorld();
+        world.callables.answer('setup.status', () => status());
+        world.callables.answer('worker.revoke', () => ({ revoked: true }));
+        world.store.docs.set(FIRESTORE_PATHS.worker(CITY, WORKER), workerDoc(before(world, 10), { outdated: true }));
+        const { feed } = feedOf(world);
+        await settle();
+
+        expect(feed.state.worker).toMatchObject({ outdated: true, revoked: false });
+        await expect(feed.intents.disconnect()).resolves.toBe(true);
+        expect(world.callables.calls.find((call) => call.name === 'worker.revoke')?.request).toEqual({ cityId: CITY, workerId: WORKER });
+
+        world.store.put(FIRESTORE_PATHS.worker(CITY, WORKER), workerDoc(before(world, 5), { revokedAt: at('2025-10-09T08:00:00Z') }));
+        await settle();
+        expect(feed.state).toMatchObject({ connected: false, worker: { revoked: true } });
+        feed.stop();
+    });
+
+    it('badPath_noWorkerOrARefusedDisconnectIsSaid', async () => {
+        const world = contentWorld();
+        world.callables.answer('setup.status', () => status());
+        world.callables.fail('worker.revoke', failure('permission-denied', 'apiError.city.notMember'));
+        const { feed } = feedOf(world);
+        await settle();
+        await expect(feed.intents.disconnect()).resolves.toBe(false);
+
+        world.store.put(FIRESTORE_PATHS.worker(CITY, WORKER), workerDoc(before(world, 10)));
+        await settle();
+        await expect(feed.intents.disconnect()).resolves.toBe(false);
+        expect(feed.state.refusal).toEqual({ key: 'apiError.city.notMember' });
+        feed.stop();
+    });
+
+    it('happyPath_aJobNoComputerCameForIsOverdue @S-A62-HAPPY-NO-WORKER-OFFER', () => {
+        const world = contentWorld();
+        world.store.docs.set(
+            FIRESTORE_PATHS.job(CITY, 'j4'),
+            jobDoc({ runOn: 'local', waitReason: 'worker', workerOverdueAt: at('2025-10-09T08:20:00Z') }),
+        );
+        expect(feedOf(world, 'j4').feed.state.job).toMatchObject({ overdue: true, waitReason: 'worker' });
     });
 });

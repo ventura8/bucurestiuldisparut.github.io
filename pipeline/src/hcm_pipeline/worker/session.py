@@ -5,7 +5,10 @@ token (`app.py`). An ID token lives an hour: five minutes before it expires (its
 server verifies it) the next call refreshes it through `securetoken.googleapis.com/v1/token?key=<web API key>` (the Auth
 emulator's under `--emulators`). A refused refresh (the refresh token revoked or expired) ends the session: the run in
 progress stops writing (`SessionEndedError` is a lost lease to the runner), claiming stops and the page asks the owner
-to sign in again. Neither token is ever written to disk or logged (the pipeline's logger redacts both shapes).
+to sign in again. Neither token is ever logged (the pipeline's logger redacts both shapes). Finding 67 of 2026-11-02: a
+session made by pairing (`pairing.py`) is kept (`keep`) each time its refresh token changes, so a restart of the container
+resumes it (`renew`) without a new code; a session from the local page's Google sign-in is never written down. Every call
+to Google's token service names the project's Hosting origin as its `Referer` (the project's browser key accepts no other).
 """
 
 import base64
@@ -13,6 +16,7 @@ import json
 import threading
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Final
 
 import httpx
@@ -89,12 +93,20 @@ def _token_text(value: object) -> bool:
 class Session:
     """The tokens of the signed-in owner, refreshed on use; thread-safe (the page's server and the loop share it)."""
 
-    def __init__(self, http: httpx.Client, refresh_url: Callable[[], str], clock: Callable[[], float]) -> None:
+    def __init__(
+        self,
+        http: httpx.Client,
+        refresh_url: Callable[[], str],
+        clock: Callable[[], float],
+        headers: Mapping[str, str] = MappingProxyType({}),
+    ) -> None:
         self._http = http
         self._refresh_url = refresh_url
         self._clock = clock
+        self._headers = dict(headers)
         self._lock = threading.RLock()
         self._tokens: Tokens | None = None
+        self._keep: Callable[[Tokens], None] | None = None
         self.ended_because: str | None = None
 
     @property
@@ -107,14 +119,22 @@ class Session:
         with self._lock:
             return self._tokens.email if self._tokens else None
 
-    def begin(self, tokens: Tokens) -> None:
+    def begin(self, tokens: Tokens, keep: Callable[[Tokens], None] | None = None) -> None:
+        """The session's tokens; `keep` (a paired session) hears them now and after every refresh."""
         with self._lock:
-            self._tokens, self.ended_because = tokens, None
+            self._tokens, self._keep, self.ended_because = tokens, keep, None
+            if keep is not None:
+                keep(tokens)
 
     def end(self, why: str) -> None:
         """The tokens forgotten; `why` is what the page tells the owner."""
         with self._lock:
-            self._tokens, self.ended_because = None, why
+            self._tokens, self._keep, self.ended_because = None, None, why
+
+    def renew(self, refresh_token: str) -> Tokens:
+        """Fresh tokens from a kept refresh token (a paired worker's restart); SessionEndedError when Google refuses it."""
+        with self._lock:
+            return self._exchange(refresh_token, None)
 
     def bearer(self) -> str:
         """The ID token for the next call, refreshed first when it expires within five minutes."""
@@ -122,27 +142,29 @@ class Session:
             if self._tokens is None:
                 raise SessionEndedError("no session: sign in on the local page")
             if self._clock() >= self._tokens.expires_at - REFRESH_MARGIN_SECONDS:
-                self._tokens = self._refreshed(self._tokens)
+                self._tokens = self._exchange(self._tokens.refresh_token, self._tokens.email)
+                if self._keep is not None:
+                    self._keep(self._tokens)
             return self._tokens.id_token
 
-    def _refreshed(self, tokens: Tokens) -> Tokens:
-        form = {"grant_type": "refresh_token", "refresh_token": tokens.refresh_token}
+    def _exchange(self, refresh_token: str, email: str | None) -> Tokens:
+        form = {"grant_type": "refresh_token", "refresh_token": refresh_token}
         try:
-            response = self._http.post(self._refresh_url(), data=form)
+            response = self._http.post(self._refresh_url(), data=form, headers=self._headers)
         except httpx.TransportError as error:
             raise RefreshUnavailableError(f"the token service is unreachable: {type(error).__name__}") from error
         if response.is_success:
-            return _answered(response, tokens)
+            return _answered(response, email)
         LOG.warning("the token service refused the refresh (HTTP %s); the session ends", response.status_code)
         self.end(SIGN_IN_AGAIN)
         raise SessionEndedError("the refresh was refused: sign in again on the local page")
 
 
-def _answered(response: httpx.Response, previous: Tokens) -> Tokens:
+def _answered(response: httpx.Response, email: str | None) -> Tokens:
     """The refreshed tokens (Google's answer keeps the e-mail out of a refresh: the previous one stays)."""
     try:
         body = response.json()
         tokens = Tokens.of(body.get("id_token"), body.get("refresh_token"))
     except (ValueError, AttributeError) as error:
         raise RefreshUnavailableError("the token service answered without tokens") from error
-    return Tokens(tokens.id_token, tokens.refresh_token, tokens.expires_at, tokens.email or previous.email)
+    return Tokens(tokens.id_token, tokens.refresh_token, tokens.expires_at, tokens.email or email)

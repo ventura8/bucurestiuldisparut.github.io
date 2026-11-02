@@ -65,6 +65,7 @@ export const ro = {
     'adminSetup.install.installedRelease': 'Instalat: {release}.',
     'adminSetup.install.update': 'O actualizare este gata: {release}.',
     'adminSetup.install.updateAction': 'Actualizează harta',
+    'adminSetup.install.provisionDue': 'Actualizarea aduce la zi și aceste setări ale proiectului: {items}.',
     'adminSetup.install.newer': 'Instalat {release}, mai nou decât această administrare: reîncarcă pagina.',
     'adminSetup.install.failedAt': 'Oprit la pasul: {step}.',
     'adminSetup.install.missing': 'Funcții lipsă: {names}.',

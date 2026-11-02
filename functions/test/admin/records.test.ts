@@ -14,7 +14,14 @@ function authWith(user: Partial<AuthUser> | undefined): AuthAdmin {
             ? undefined
             : { uid: 'u1', emailVerified: true, providers: ['google.com'], createdAt: NOW, customClaims: {}, ...user };
     const never = () => Promise.reject(new Error('not used'));
-    return { getUser: () => Promise.resolve(account), setAdminClaim: never, revokeSessions: never, deleteUser: never, listUsers: never };
+    return {
+        getUser: () => Promise.resolve(account),
+        setAdminClaim: never,
+        revokeSessions: never,
+        createCustomToken: never,
+        deleteUser: never,
+        listUsers: never,
+    };
 }
 
 describe('displayNameOf', () => {

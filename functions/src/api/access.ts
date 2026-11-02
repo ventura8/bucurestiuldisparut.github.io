@@ -1,4 +1,4 @@
-import { CITY_ACCESSES, type CallableAccess, type CityRole } from '@hcm/shared';
+import { CITY_ACCESSES, WORKER_PAIR_ID_PATTERN, type CallableAccess, type CityRole } from '@hcm/shared';
 
 import type { AdminDirectory, AdminMembership } from '../ports/admin-directory.js';
 import { ApiError } from './api-error.js';
@@ -8,6 +8,10 @@ export interface CallerToken {
     readonly email?: string;
     readonly email_verified?: boolean;
     readonly admin?: unknown;
+    /** Finding 67: the developer claims of a paired worker's custom token (`worker.pair`). */
+    readonly worker?: unknown;
+    readonly city?: unknown;
+    readonly pair?: unknown;
     readonly firebase: { readonly sign_in_provider: string };
 }
 
@@ -26,11 +30,32 @@ export interface VerifiedCaller {
     readonly claim: boolean;
     /** M5: the caller's project and city roles, read once by the access check of a city or project callable. */
     readonly membership?: AdminMembership;
+    /** Finding 67: a paired worker's pairing and the one city its token is for (absent: a Google sign-in). */
+    readonly worker?: { readonly pair: string; readonly city: string };
 }
+
+/** Who a callable of access `none` acts for (`worker.pair`): nobody signed in. */
+const NOBODY: VerifiedCaller = { uid: '', email: undefined, claim: false };
 
 /** firestore.rules `authed()`: a verified Google account (admins only ever sign in with Google). */
 function isVerifiedGoogle(token: CallerToken): boolean {
     return token.email_verified === true && token.firebase.sign_in_provider === 'google.com';
+}
+
+/**
+ * A paired worker's token (finding 67, `docs/research/M7-local-worker.md` §2.6): a custom-token sign-in whose claims
+ * `worker: true`, `city` and `pair` `worker.pair` set. Only callables whose row says `workerToken` admit it; every other
+ * callable (and the rules) wants a Google sign-in, so the token can do nothing else.
+ */
+const WORKER_TOKEN_RULES: readonly ((token: CallerToken) => boolean)[] = [
+    (token) => token.firebase.sign_in_provider === 'custom',
+    (token) => token.worker === true,
+    (token) => typeof token.city === 'string',
+    (token) => typeof token.pair === 'string' && WORKER_PAIR_ID_PATTERN.test(token.pair),
+];
+
+export function workerClaims(token: CallerToken): VerifiedCaller['worker'] {
+    return WORKER_TOKEN_RULES.every((rule) => rule(token)) ? { pair: String(token.pair), city: String(token.city) } : undefined;
 }
 
 /** The claim AND the document; the document is read only when the token already qualifies. */
@@ -57,10 +82,43 @@ async function requireMembership(access: CallableAccess, caller: Caller, admins:
  * M5's accesses read the document once (its membership) and `projectOwner` needs its `owner` role; the city of
  * `cityEditor` and `cityOwner` is checked by {@link requireCityRole} once the request is valid.
  */
-export async function requireAccess(access: CallableAccess, caller: Caller | undefined, admins: AdminDirectory): Promise<VerifiedCaller> {
+export async function requireAccess(
+    access: CallableAccess,
+    caller: Caller | undefined,
+    admins: AdminDirectory,
+    readWorker: WorkerClaimsReader = noWorkerClaims,
+): Promise<VerifiedCaller> {
+    if (access === 'none') {
+        return NOBODY;
+    }
     if (caller === undefined) {
         throw new ApiError('apiError.unauthenticated');
     }
+    const worker = readWorker(caller.token);
+    return worker === undefined ? requireGoogle(access, caller, admins) : requireWorkerToken(access, caller, admins, worker);
+}
+
+/** How a callable reads a paired worker's claims: `workerClaims` where its row says `workerToken`, else none. */
+export type WorkerClaimsReader = (token: CallerToken) => VerifiedCaller['worker'];
+
+/** A callable that admits no paired worker. */
+export function noWorkerClaims(): VerifiedCaller['worker'] {
+    return undefined;
+}
+
+/** A paired worker: the owner it was paired for must still be a member (the city is checked with the request). */
+async function requireWorkerToken(
+    access: CallableAccess,
+    caller: Caller,
+    admins: AdminDirectory,
+    worker: NonNullable<VerifiedCaller['worker']>,
+): Promise<VerifiedCaller> {
+    const membership = await requireMembership(access, caller, admins);
+    return { uid: caller.uid, email: caller.token.email, claim: caller.token.admin === true, worker, membership };
+}
+
+/** A Google sign-in, as every callable but `worker.pair` and the worker's family with a paired token wants. */
+async function requireGoogle(access: CallableAccess, caller: Caller, admins: AdminDirectory): Promise<VerifiedCaller> {
     if (!isVerifiedGoogle(caller.token)) {
         throw new ApiError('apiError.accountNotAllowed');
     }
@@ -99,6 +157,14 @@ export function requireCityRole(access: CallableAccess, caller: VerifiedCaller, 
     if (CITY_ACCESSES.includes(access)) {
         const cityId = cityIdOf(request);
         requireRoleIn(cityId, roleOf(caller, cityId), access === 'cityOwner');
+        requireWorkerCity(caller, cityId);
+    }
+}
+
+/** A paired worker's token works for the one city it was paired for (finding 67). */
+function requireWorkerCity(caller: VerifiedCaller, cityId: string): void {
+    if (caller.worker !== undefined && caller.worker.city !== cityId) {
+        throw new ApiError('apiError.city.notMember', { cityId });
     }
 }
 

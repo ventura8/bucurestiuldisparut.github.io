@@ -137,13 +137,18 @@ describe('worker.hello', () => {
     it('happyPath_aNewWorkerIsRecordedIdleAndToldItsIntervals', async () => {
         const world = await workerWorld();
 
-        await expect(hello(world)).resolves.toEqual({ pollSeconds: WORKER_POLL_SECONDS, heartbeatSeconds: HEARTBEAT_SECONDS });
+        await expect(hello(world)).resolves.toEqual({
+            pollSeconds: WORKER_POLL_SECONDS,
+            heartbeatSeconds: HEARTBEAT_SECONDS,
+            outdated: false,
+        });
         await expect(readWorker(world)).resolves.toEqual({
             uid: 'u-admin',
             version: '1.0.0',
             startedAt: at(NOW),
             lastSeenAt: at(NOW),
             state: 'idle',
+            outdated: false,
             updatedBy: 'u-admin',
             updatedAt: at(NOW),
         });

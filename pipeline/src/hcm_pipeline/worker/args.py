@@ -1,8 +1,10 @@
 """The worker's command line and the addresses it talks to (docs/research/M7-local-worker.md §1.1).
 
-`worker --city <id> --project <id> [--port 8765] [--work /work] [--emulators]`: the project gives the callables' origin
-(`https://us-central1-<project>.cloudfunctions.net`), the Hosting origin of the web configuration
-(`https://<project>.web.app/__/firebase/init.json`) and nothing else is configured. Under `--emulators` (the e2e tier)
+`worker --city <id> --project <id> [--pair <code>] [--port 8765] [--work /work] [--emulators]`: the project gives the
+callables' origin (`https://us-central1-<project>.cloudfunctions.net`), the Hosting origin of the web configuration
+(`https://<project>.web.app/__/firebase/init.json`, also the `Referer` of the worker's calls to Google's token services:
+the project's browser key accepts only its Hosting origins) and nothing else is configured. `--pair` is the admin
+command's one-time code (finding 67 of 2026-11-02, `pairing.py`): 26 base32 characters. Under `--emulators` (the e2e tier)
 the same code talks to this machine only, from the variables below, each a loopback `host:port`:
 
 | Variable | What |
@@ -40,6 +42,9 @@ DEFAULT_WORK: Final = "/work"
 REGION: Final = "us-central1"
 MAX_PORT: Final = 65535
 SECURETOKEN_PATH: Final = "securetoken.googleapis.com/v1/token"
+CUSTOM_SIGN_IN_PATH: Final = "identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken"
+# The admin command's one-time pairing code (`WORKER_PAIR_CODE_PATTERN` of @hcm/shared).
+PAIR_CODE: Final = re.compile(r"[a-z2-7]{26}")
 INIT_JSON_PATH: Final = "/__/firebase/init.json"
 # Google Cloud project ids: 6-30 characters, lowercase letters, digits and hyphens, starting with a letter.
 PROJECT_ID: Final = re.compile(r"[a-z][a-z0-9-]{4,28}[a-z0-9]")
@@ -54,6 +59,9 @@ class Endpoints:
     functions: str
     securetoken: str
     init_json: str
+    custom_token: str
+    # The Hosting origin the worker names as its `Referer` to Google's token services (the browser key's restriction).
+    referer: str
     auth_emulator: str | None = None
 
     def function(self, name: str) -> str:
@@ -66,6 +74,8 @@ class Endpoints:
             functions=f"https://{REGION}-{project}.cloudfunctions.net/",
             securetoken=f"https://{SECURETOKEN_PATH}",
             init_json=f"https://{project}.web.app{INIT_JSON_PATH}",
+            custom_token=f"https://{CUSTOM_SIGN_IN_PATH}",
+            referer=f"https://{project}.web.app/",
         )
 
     @classmethod
@@ -75,6 +85,8 @@ class Endpoints:
             functions=f"http://{env[ENV_FUNCTIONS_EMULATOR]}/{project}/{REGION}/",
             securetoken=f"http://{auth}/{SECURETOKEN_PATH}",
             init_json=f"http://{env[ENV_HOSTING]}{INIT_JSON_PATH}",
+            custom_token=f"http://{auth}/{CUSTOM_SIGN_IN_PATH}",
+            referer=f"http://{env[ENV_HOSTING]}/",
             auth_emulator=auth,
         )
 
@@ -89,6 +101,7 @@ class WorkerArgs:
     work: Path
     emulators: bool
     endpoints: Endpoints
+    pair: str | None = None
     stac_url: str = DEFAULT_STAC_URL
     overpass_url: str = DEFAULT_OVERPASS_URL
 
@@ -140,6 +153,15 @@ def _loopback(url: str) -> bool:
         return False
 
 
+def _pair_problem(options: Mapping[str, object]) -> str | None:
+    """`--pair` is optional, but when given it is a pairing code (never echoed: it is a credential for ten minutes)."""
+    return None if options.get("pair") is None or PAIR_CODE.fullmatch(_text(options, "pair")) else "--pair must be the admin's pairing code"
+
+
+def _pair_of(options: Mapping[str, object]) -> str | None:
+    return _text(options, "pair") or None
+
+
 def _work_problem(options: Mapping[str, object]) -> str | None:
     """`--work` is optional (`/work`), but when given it names a folder."""
     return None if options.get("work") is None or _text(options, "work") else "--work must name a folder"
@@ -151,6 +173,7 @@ def _option_problems(options: Mapping[str, object]) -> list[str | None]:
         _pattern_problem(_text(options, "project"), PROJECT_ID, "--project must be a Google Cloud project id"),
         None if _port_of(options) is not None else "--port must be a port number",
         _work_problem(options),
+        _pair_problem(options),
     ]
 
 
@@ -175,6 +198,7 @@ def parse_worker_args(options: Mapping[str, object], env: Mapping[str, str]) -> 
         work=Path(_text(options, "work") or DEFAULT_WORK),
         emulators=emulators,
         endpoints=Endpoints.emulated(project, env) if emulators else Endpoints.cloud(project),
+        pair=_pair_of(options),
         stac_url=urls[ENV_STAC_URL],
         overpass_url=urls[ENV_OVERPASS_URL],
     )

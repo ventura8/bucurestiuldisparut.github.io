@@ -6,6 +6,9 @@ emulators `http://<FUNCTIONS_EMULATOR_HOST>/<project>/us-central1/<name>`) with 
 {"code", "params"}}}` whose `details.code` is the `apiError.*` code. `apiError.worker.notHolder` (the job is no longer
 this worker's) is raised as `LeaseLostError`, so a run stops where it is and writes nothing more, as a lost lease does;
 every other refusal is `WorkerApiError`. An unreachable server, or a 502-504 without a code, is tried again twice.
+Finding 67 of 2026-11-02: `worker-pair` is called with no sign-in at all (`anonymous`); `apiError.worker.revoked` (the
+owner pressed Disconnect this computer) is `RevokedError`, a lost lease too, so a run stops and the loop forgets the
+session.
 """
 
 from collections.abc import Callable, Mapping
@@ -24,8 +27,10 @@ CLAIM: Final = "worker-claim"
 STEP: Final = "worker-step"
 URLS: Final = "worker-urls"
 END: Final = "worker-end"
+PAIR: Final = "worker-pair"
 NOT_HOLDER: Final = "apiError.worker.notHolder"
 REFUSED: Final = "apiError.worker.refused"
+REVOKED: Final = "apiError.worker.revoked"
 ATTEMPTS: Final = 3
 RETRY_SECONDS: Final = 2.0
 _RETRIED: Final = frozenset({HTTPStatus.BAD_GATEWAY, HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.GATEWAY_TIMEOUT})
@@ -46,6 +51,12 @@ class WorkerApiError(RuntimeError):
     def __init__(self, code: str, message: str) -> None:
         super().__init__(f"{code}: {message}")
         self.code = code
+
+
+class RevokedError(LeaseLostError):
+    """The computer was disconnected in the admin: the run stops and the session is forgotten."""
+
+    code: Final = REVOKED
 
 
 def _body(response: httpx.Response) -> dict[str, object]:
@@ -78,6 +89,8 @@ def refusal(status: int, body: Mapping[str, object]) -> Exception:
     message = str(error.get("message") or f"HTTP {status}")
     if code == NOT_HOLDER:
         return LeaseLostError(f"the server says this worker no longer holds the job: {message}")
+    if code == REVOKED:
+        return RevokedError(f"this computer was disconnected in the admin: {message}")
     return WorkerApiError(code, message)
 
 
@@ -92,15 +105,15 @@ class WorkerApi:
         self._bearer = bearer
         self._sleep = sleep
 
-    def call(self, name: str, data: Mapping[str, object], token: str | None = None) -> dict[str, object]:
+    def call(self, name: str, data: Mapping[str, object], token: str | None = None, anonymous: bool = False) -> dict[str, object]:
         """The callable's `result`; raises `WorkerApiError` (or `LeaseLostError` for notHolder) when it refuses."""
-        response = self._send(name, data, token)
+        response = self._send(name, data, None if anonymous else (token or self._bearer))
         body = _body(response)
         if response.is_success and "result" in body:
             return _record(body["result"])
         raise refusal(response.status_code, body)
 
-    def _send(self, name: str, data: Mapping[str, object], token: str | None) -> httpx.Response:
+    def _send(self, name: str, data: Mapping[str, object], token: str | Callable[[], str] | None) -> httpx.Response:
         for attempt in range(ATTEMPTS):
             if attempt:
                 LOG.warning("the server did not answer %s; trying again (attempt %d of %d)", name, attempt + 1, ATTEMPTS)
@@ -110,8 +123,9 @@ class WorkerApi:
                 return response
         raise WorkerApiError(Errors.UNAVAILABLE, f"the server did not answer {name}")
 
-    def _post(self, name: str, data: Mapping[str, object], token: str | None) -> httpx.Response | None:
-        headers = {"Authorization": f"Bearer {token or self._bearer()}"}
+    def _post(self, name: str, data: Mapping[str, object], token: str | Callable[[], str] | None) -> httpx.Response | None:
+        """`token`: the ID token, the session's (called per attempt: a refresh may come between), or none at all."""
+        headers = {} if token is None else {"Authorization": f"Bearer {token if isinstance(token, str) else token()}"}
         try:
             return self._http.post(self._address(name), json={"data": dict(data)}, headers=headers)
         except httpx.TransportError:

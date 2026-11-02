@@ -14,6 +14,7 @@ import type { VerifiedCaller } from '../api/access.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import type { Ports } from '../ports/index.js';
 import { at, ownWorker, requireGreen } from './holder.js';
+import { imageState, paired, type ImageState } from './pairing.js';
 
 export type HelloDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
@@ -22,6 +23,8 @@ export type HelloDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
  * anything, which records `cities/{city}/workers/{workerId}` (its account, its version, when it started and was last
  * seen; a worker id another account said hello with is refused) and answers how often it asks for work and beats.
  * The local page calls it with a fresh token first, so a token of another project or of a non-editor is refused at once.
+ * Finding 67: a paired worker's document also names its pairing and its image, and the answer says the installed image
+ * and whether the worker's is outdated (it then claims nothing until the owner runs the admin's new command).
  */
 async function workerHello(
     deps: HelloDeps,
@@ -32,6 +35,7 @@ async function workerHello(
     const call = { cityId: request.cityId, workerId: request.workerId, uid: caller.uid };
     const now = at(deps.clock.now());
     const path = FIRESTORE_PATHS.worker(request.cityId, request.workerId);
+    const images = await imageState(deps.documents, caller, request.cityId);
     await deps.documents.transaction(async (transaction) => {
         const known = await ownWorker(transaction, call);
         const base: Pick<WorkerDoc, 'startedAt' | 'state'> = known ?? { startedAt: now, state: 'idle' };
@@ -40,16 +44,29 @@ async function workerHello(
             ...base,
             uid: caller.uid,
             version: request.version,
+            ...pairingFields(caller, images),
             lastSeenAt: now,
             updatedBy: caller.uid,
             updatedAt: now,
         });
     });
-    deps.log.info('worker hello', { cityId: request.cityId, workerId: request.workerId, version: request.version });
-    return { pollSeconds: WORKER_POLL_SECONDS, heartbeatSeconds: HEARTBEAT_SECONDS };
+    deps.log.info('worker hello', {
+        cityId: request.cityId,
+        workerId: request.workerId,
+        version: request.version,
+        outdated: images.outdated,
+    });
+    const image = images.installed === undefined ? {} : { image: images.installed };
+    return { pollSeconds: WORKER_POLL_SECONDS, heartbeatSeconds: HEARTBEAT_SECONDS, ...image, outdated: images.outdated };
+}
+
+/** A paired worker's document names its pairing, its image and whether that is still the installed one (finding 67). */
+function pairingFields(caller: VerifiedCaller, images: ImageState): Partial<WorkerDoc> {
+    const pair = caller.worker === undefined ? {} : { pair: caller.worker.pair };
+    return { ...pair, ...(images.own === undefined ? {} : { image: images.own }), outdated: images.outdated };
 }
 
 /** The `worker-hello` callable. */
 export function helloFunction(getDeps: () => HelloDeps & CallableDeps) {
-    return defineCallable('worker.hello', workerHello, getDeps);
+    return defineCallable('worker.hello', paired(workerHello), getDeps);
 }

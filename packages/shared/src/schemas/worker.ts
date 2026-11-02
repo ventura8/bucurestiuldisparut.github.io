@@ -9,6 +9,9 @@ import { stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import { RUN_CHOICES } from './firestore-ops.js';
 import { idSchema } from './primitives.js';
 
+const PAIR_ID = /^[0-9a-f]{40}$/;
+const digestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
+
 /** What a worker is doing: waiting for a job, or running one. */
 export const WORKER_STATES = ['idle', 'busy'] as const;
 
@@ -21,8 +24,33 @@ export const workerDocSchema = z.strictObject({
     state: z.enum(WORKER_STATES),
     jobId: idSchema.optional(),
     lastJob: z.strictObject({ id: idSchema, outcome: z.enum(['done', 'failed']), at: timestampSchema }).optional(),
+    /** Finding 67: the pairing it signed in with (absent: a Google sign-in on its local page). */
+    pair: z.string().regex(PAIR_ID).optional(),
+    /** The pipeline image its pairing's command named, and whether that is no longer the installed one. */
+    image: digestSchema.optional(),
+    outdated: z.boolean().optional(),
+    /** Disconnect this computer (`worker.revoke`): every later call of this worker is refused. */
+    revokedAt: timestampSchema.optional(),
     ...stamp,
 });
+
+/**
+ * `cities/{city}/pairings/{pairId}` (finding 67; id: the first 40 hex characters of the code's SHA-256, the code is never
+ * stored): a one-time code minted by `worker.pairCode` for `uid`, exchanged once by `worker.pair` (`pairedAt`) before
+ * `expiresAt`, revoked by Disconnect this computer or a later pairing that replaced it. No client reads or writes it.
+ */
+export const workerPairingDocSchema = z.strictObject({
+    uid: uidSchema,
+    /** The pipeline image the command named (absent: no image was recorded yet). */
+    image: digestSchema.optional(),
+    expiresAt: timestampSchema,
+    pairedAt: timestampSchema.optional(),
+    revokedAt: timestampSchema.optional(),
+    ...stamp,
+});
+
+/** `cities/{city}/pairings/limit`: `worker.pair`'s attempts in the current window (it needs no sign-in). */
+export const workerPairLimitDocSchema = z.strictObject({ windowStart: timestampSchema, attempts: z.number().int().min(0), ...stamp });
 
 /** `cities/{city}/workers/choice`: where the city's raster jobs run by default (`auto` when absent). */
 export const runChoiceDocSchema = z.strictObject({ choice: z.enum(RUN_CHOICES), ...stamp });
@@ -39,3 +67,5 @@ export const cloudRunUsageDocSchema = z.strictObject({
 export type WorkerDoc = z.infer<typeof workerDocSchema>;
 export type RunChoiceDoc = z.infer<typeof runChoiceDocSchema>;
 export type CloudRunUsageDoc = z.infer<typeof cloudRunUsageDocSchema>;
+export type WorkerPairingDoc = z.infer<typeof workerPairingDocSchema>;
+export type WorkerPairLimitDoc = z.infer<typeof workerPairLimitDocSchema>;

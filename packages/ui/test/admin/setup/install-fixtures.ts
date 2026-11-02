@@ -44,6 +44,7 @@ export function installSliceView(changes: InstallChanges = {}): InstallSliceView
         pipeline: installTargetView('pipeline', pipeline),
         site: installTargetView('site', site),
         pipelineOff: null,
+        provisionDue: [],
         ...rest,
     };
 }

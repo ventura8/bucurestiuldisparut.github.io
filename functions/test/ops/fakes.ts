@@ -31,6 +31,7 @@ function fakeAuth(users: readonly AuthUser[], pageSize = 2): FakeAuth {
         getUser: unused,
         setAdminClaim: unused,
         revokeSessions: unused,
+        createCustomToken: unused,
         listUsers: (pageToken) =>
             Promise.resolve().then(() => {
                 recorder.enter('listUsers', [pageToken]);

@@ -129,6 +129,14 @@ USGS delivery, the scratch and the reference cache on the computer and sends onl
 decided by the dispatcher (the city's choice, `auto` by default: the computer while one of its workers was seen within
 three minutes); a local job never reaches Cloud Run.
 
+Since the live test of 2026-11-02 (`DECISIONS-for-review.md` §85): the admin's one-line command (a named volume,
+detached, restarted with the computer) carries a one-time pairing code; `worker.pair` exchanges it once for a Firebase
+custom token of the owner with the claims `worker`, `city` and `pair`, which only the worker's own callables of that city
+admit while the pairing stands (Disconnect this computer, `worker.revoke`, revokes it), and the worker keeps its refresh
+token in the volume (mode 600). The page's Google sign-in remains a fallback. A local job no computer came for in 15
+minutes offers the cloud (`job.noWorker`). An update (Update the map) also applies the Provision items whose definition
+changed since the project was prepared (`setup/status.provision.setVersion`).
+
 ## Security
 
 - **Rules** (`firebase/firestore.rules`, `firebase/storage.rules`): default deny; admin = verified Google sign-in with the `admin` claim **and** an `admins/{uid}` document; clients write exactly the fields of `CLIENT_WRITES` with the values the zod schemas allow, stamped with their uid and the server time; `setup/*`, `invites`, `usage`, `ops`, `manifests`, job logs and every `history` are read-only; a whole document is validated on every write within Firestore's 1000-expression budget. Storage: uploads only into the admin's own folder under an existing photo document, 1 byte to 60 MiB, image types only (never SVG), never overwritten, nothing public. Composite indexes (`firebase/firestore.indexes.json`) serve the admin's lists of photos, POIs, layers, jobs and history. The Admin SDK bypasses rules, so every server writer validates with zod.

@@ -10,8 +10,9 @@ import { z } from 'zod';
 
 import { coded, idSchema } from '../schemas/primitives.js';
 import { cityIdSchema } from '../schemas/paths.js';
-import { RUN_CHOICES, RUN_PLACES, type JobMachine } from '../schemas/firestore-ops.js';
+import { RUN_CHOICES, RUN_PLACES, WORKER_ID_PATTERN, type JobMachine } from '../schemas/firestore-ops.js';
 import { STUDIO_MAX_BYTES } from '../schemas/imagery-publish.js';
+import { isoTimeSchema } from './common.js';
 
 /** The local page's port, on the computer's loopback only (`-p 127.0.0.1:8765:8765`). */
 export const WORKER_PORT = 8765;
@@ -27,6 +28,25 @@ export const WORKER_URLS_MAX = 20;
 export const WORKER_LEASE_PREFIX = 'worker:';
 /** The field value a `worker.step` update sends to remove a field (Firestore's `DELETE_FIELD` cannot travel as JSON). */
 export const WORKER_DELETE_FIELD = '__hcmDelete';
+/**
+ * Pairing (finding 67 of 2026-11-02, `docs/research/M7-local-worker.md` §2.6): the one-time code the admin's command
+ * carries (`--pair <code>`), 26 characters of base32 (130 random bits), minted by `worker.pairCode` and exchanged once by
+ * `worker.pair` for a sign-in of the owner's account; it works this many seconds.
+ */
+export const WORKER_PAIR_SECONDS = 600;
+export const WORKER_PAIR_CODE_PATTERN = /^[a-z2-7]{26}$/;
+/** `worker.pair` answers at most this many attempts per city in `WORKER_PAIR_WINDOW_SECONDS` (it needs no sign-in). */
+export const WORKER_PAIR_ATTEMPTS = 20;
+export const WORKER_PAIR_WINDOW_SECONDS = 600;
+/** A pairing's id: the first 40 hex characters of the code's SHA-256 (the code itself is never stored). */
+export const WORKER_PAIR_ID_PATTERN = /^[0-9a-f]{40}$/;
+/** The worker's container and its named volume (`-v hcm-worker:/work`: the work folder and the paired session). */
+export const WORKER_CONTAINER = 'hcm-worker';
+/**
+ * Finding 68: a job waiting for the computer this many minutes, with no computer seen, offers Run in Google Cloud instead
+ * and leaves an inbox item (`job.noWorker`).
+ */
+export const WORKER_WAIT_MINUTES = 15;
 /** The USGS M2M endpoints a worker may ask the server to call for its job (§2.5). */
 export const WORKER_USGS_ENDPOINTS = ['download-options', 'download-request', 'download-retrieve', 'download-order-remove'] as const;
 
@@ -57,3 +77,10 @@ export const imageryRunOnRequestSchema = z
     .strictObject({ cityId: cityIdSchema, jobId: idSchema.optional(), runOn: z.enum(RUN_CHOICES), freeTierOk: z.boolean().optional() })
     .refine((request) => request.jobId === undefined || request.runOn !== 'auto', coded('validation.format', ['runOn']));
 export const imageryRunOnResponseSchema = z.strictObject({ choice: z.enum(RUN_CHOICES), runOn: z.enum(RUN_PLACES).optional() });
+
+/** `worker.pairCode` (admin): a one-time pairing code for the city's worker command, and when it stops working. */
+export const workerPairCodeRequestSchema = z.strictObject({ cityId: cityIdSchema });
+export const workerPairCodeResponseSchema = z.strictObject({ code: z.string().regex(WORKER_PAIR_CODE_PATTERN), expiresAt: isoTimeSchema });
+/** `worker.revoke` (admin): Disconnect this computer: its pairing and its worker refused from now on. */
+export const workerRevokeRequestSchema = z.strictObject({ cityId: cityIdSchema, workerId: z.string().regex(WORKER_ID_PATTERN) });
+export const workerRevokeResponseSchema = z.strictObject({ revoked: z.boolean() });

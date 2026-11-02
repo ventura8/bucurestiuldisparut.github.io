@@ -8,12 +8,18 @@ import type { CallableDeps } from '../api/callable.js';
 import { claimFunction, type ClaimDeps } from './claim.js';
 import { endFunction, type EndDeps } from './end.js';
 import { helloFunction, type HelloDeps } from './hello.js';
+import { pairCodeFunction, type PairCodeDeps } from './pair-code.js';
+import { pairFunction, type PairDeps } from './pair.js';
+import { revokeFunction, type RevokeDeps } from './revoke.js';
 import { stepFunction, type StepDeps } from './step.js';
 import { urlsFunction, type UrlsDeps } from './urls.js';
 
-export type WorkerFamilyDeps = CallableDeps & HelloDeps & ClaimDeps & StepDeps & UrlsDeps & EndDeps;
+export type WorkerFamilyDeps = CallableDeps & HelloDeps & ClaimDeps & StepDeps & UrlsDeps & EndDeps & PairDeps & PairCodeDeps & RevokeDeps;
 
-/** `worker.hello`, `worker.claim`, `worker.step`, `worker.urls`, `worker.end`. */
+/**
+ * `worker.hello`, `worker.claim`, `worker.step`, `worker.urls`, `worker.end`; finding 67's pairing: `worker.pair` (the
+ * worker's one-time code exchanged for a sign-in), `worker.pairCode` and `worker.revoke` (the admin's).
+ */
 export function workerFunctions(getDeps: () => WorkerFamilyDeps) {
     return {
         hello: helloFunction(getDeps),
@@ -21,5 +27,8 @@ export function workerFunctions(getDeps: () => WorkerFamilyDeps) {
         step: stepFunction(getDeps),
         urls: urlsFunction(getDeps),
         end: endFunction(getDeps),
+        pair: pairFunction(getDeps),
+        pairCode: pairCodeFunction(getDeps),
+        revoke: revokeFunction(getDeps),
     };
 }

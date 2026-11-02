@@ -227,7 +227,11 @@ export interface SetupState {
     readonly serverOutdated: boolean;
     readonly used: StepCounts;
     readonly billing: BillingSlice;
-    readonly provision: { readonly items: readonly ProvisionItemState[] };
+    /**
+     * The doctor's items; `setVersion` (finding 65 of 2026-11-02): the version of Provision's item set the project was last
+     * brought to (`setup/status`), absent before it was recorded.
+     */
+    readonly provision: { readonly items: readonly ProvisionItemState[]; readonly setVersion?: number };
     readonly deploy: DeploySlice;
     readonly mapbox: MapboxSlice;
     readonly usgs: UsgsSlice;

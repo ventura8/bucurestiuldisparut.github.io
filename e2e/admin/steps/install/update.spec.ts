@@ -1,7 +1,10 @@
 import { NEWER_BUILD_RELEASE, NEWER_BUILD_TIME, OLDER_BUILD_RELEASE, OLDER_SERVER_RELEASE } from '@hcm/test-support/fakes';
+import { PROVISION_ITEMS, PROVISION_SET_VERSION } from '@hcm/shared';
 import type { Page } from '@playwright/test';
 
 import { contentFlowBudget } from '../../../../packages/admin/src/content/budgets.js';
+import { expectStateSound } from '../../../support/state-check.js';
+import { adminVisit } from '../../../tour/states.js';
 import type { EmulatorWorld } from '../../support/emulators.js';
 import { apiText, setupText, shellText } from '../../support/i18n.js';
 import {
@@ -222,6 +225,60 @@ test(
             .first()
             .click();
         await expect(page.locator('li[data-reminder="installUpdate"]')).toHaveCount(0);
+    },
+);
+
+test(
+    'A project prepared before Provision changed: Home says so, and Update the map applies the changed items in the same consent',
+    { tag: ['@S-A04-HAPPY-UPDATE-PROVISION'] },
+    async ({ page, lang, consent, inputBudget, upstream, adminWorld, consoleErrors }) => {
+        // Finding 65 of 2026-11-02: M7's release changed Provision's artifact-registry (the pipeline's public pull) and
+        // bucket-lifecycle (the raw delivery's 7 days); the live owner had to open step c, Check again and Retry. Every
+        // target is in place at the admin's release, so the update is Provision's alone.
+        await upstream.scenario('install.provisioned', 'browser');
+        await upstream.scenario('cloud-functions.deployed', 'browser');
+        const installed = { state: 'installed', release: INSTALL_RELEASE, checkedAt: RECORDED };
+        await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid, {
+            provision: { ...OK, items: PROVISION_ITEMS.map((id) => ({ id, ...OK })) },
+            mapbox: { ...OK, user: 'e2e-mapbox' },
+            usgs: OK,
+            install: { server: installed, pipeline: installed, site: installed },
+        });
+        await serveInstallBundle(page);
+        await page.goto(adminPath(lang, 'home'));
+        const tile = page.locator('li[data-reminder="installUpdate"]');
+        await expect(tile).toContainText(setupText(lang, 'adminSetup.install.tileUpdate'));
+
+        await tile.getByRole('link', { name: setupText(lang, 'adminSetup.install.tileOpen') }).click();
+        const setup = new SetupPage(page, lang);
+        const due = page.locator('hcm-setup-page').locator('[data-provision-due]');
+        await expect(async () => {
+            await expect((await setup.show('deploy')).locator('[data-provision-due]')).toBeVisible({ timeout: 2_000 });
+        }).toPass({ timeout: 30_000 });
+        await expect(due).toContainText(setupText(lang, 'adminSetup.provision.item.artifact-registry'));
+        await expect(due).toContainText(setupText(lang, 'adminSetup.provision.item.bucket-lifecycle'));
+        await expectStateSound(page, adminVisit('setup.install-update-provision', lang));
+
+        const deploy = setup.open('deploy');
+        await withConsent(
+            page,
+            consent,
+            deploy.getByRole('button', { name: setupText(lang, 'adminSetup.install.updateAction') }),
+            inputBudget.flow('updateMap', contentFlowBudget('updateMap')),
+            inputBudget.flow('updateMapConsent', 1),
+        );
+        await expect
+            .poll(async () => (await adminWorld.emulators.document('setup/status'))?.['provision'], { timeout: 30_000 })
+            .toMatchObject({ setVersion: PROVISION_SET_VERSION });
+        expect(await submittedBuilds(upstream)).toEqual([]);
+        await expect(deploy.locator('[data-provision-due]')).toHaveCount(0);
+        await page
+            .getByRole('link', { name: shellText(lang, 'adminShell.nav.home'), exact: true })
+            .first()
+            .click();
+        await expect(page.locator('li[data-reminder="installUpdate"]')).toHaveCount(0);
+        // Setup's analytics card asks for its stream's settings, which this world's project has none of (a 400 the browser logs).
+        consoleErrors.takeMatching(/setup-analyticsConfig/);
     },
 );
 

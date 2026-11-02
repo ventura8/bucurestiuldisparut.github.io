@@ -195,6 +195,15 @@ const ROWS: Readonly<Record<string, Row>> = {
     })),
     // M7 (docs/research/M7-local-worker.md §2.4, §3): the city's local workers and run choice, server-written.
     'cities/{city}/workers/{doc}': serverOwned(FIRESTORE_PATHS.workers(CITY_ID), 'w-0123456789abcdef', () => workerDoc(admin())),
+    // Finding 67 of 2026-11-02: the worker pairings (a code's hash, its owner, its image) have no client rule at all.
+    'cities/{city}/pairings/{pair}': {
+        ...serverOwned(FIRESTORE_PATHS.pairings(CITY_ID), 'a'.repeat(40), () => ({
+            uid: 'u-owner',
+            expiresAt: serverTime(),
+            ...systemStamp('imagery'),
+        })),
+        allowed: {},
+    },
     'cities/{city}/history/{entry}': history(audited('city', CITY_ID)),
     'cities/{city}/photos/{photo}/history/{entry}': history(audited('photo', 'p1')),
     'cities/{city}/layers/{layer}/history/{entry}': history(audited('layer', 'corona-1966')),
