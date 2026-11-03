@@ -1,7 +1,8 @@
 """`stitch`: where the segments lie in one frame, its film border cropped (docs/research/M3-interfaces.md §5.3).
 
 USGS scans a long film frame in overlapping parts (`_a` to `_d`, left to right). Each pair's offset is found by
-matching the right segment's left strip inside the left segment's right part: first on images shrunk to about
+matching the right segment's left strip inside the left segment's right part (its last `MAX_OVERLAP_SHARE`, finding
+76): first on images shrunk to about
 512 rows, then at full resolution within a few pixels of that, so it is exact within 1 px. The film border (the
 unexposed edge and its markings) is cut where the row and column intensity profiles of a shrunk mosaic leave the dark
 level. Finding 57 of 2026-11-01: the frame is never joined in memory (a KH-9 panoramic frame was killed at 32 GiB):
@@ -29,6 +30,10 @@ COARSE_ROWS: Final = 512
 TEMPLATE_PX: Final = 160
 MIN_TEMPLATE_PX: Final = 8
 SEARCH_PX: Final = 1200
+# Finding 76 of 2026-11-03: the right segment starts in this last share of the left one. USGS leaves narrow overlaps (4 to
+# 8 % on a KH-9 panoramic frame); searched across the whole segment, a snow-covered frame of repeating valleys matched a
+# strip 46 % inside the left segment, and the frame was joined wrong.
+MAX_OVERLAP_SHARE: Final = 0.35
 REFINE_PX: Final = 6
 MARGIN_SHARE: Final = 0.1
 # A row or column belongs to the film border while its mean stays under this share of the frame's median.
@@ -60,7 +65,8 @@ def _coarse(left: UInt8Array, right: UInt8Array, template_px: int) -> tuple[int,
     height = right.shape[0]
     margin = int(height * MARGIN_SHARE)
     template = right[margin : height - margin, : min(template_px, right.shape[1])]
-    start = max(0, left.shape[1] - SEARCH_PX)
+    reach = min(SEARCH_PX, max(template.shape[1], math.ceil(left.shape[1] * MAX_OVERLAP_SHARE)))
+    start = max(0, left.shape[1] - reach)
     x, y = _best(left[:, start:], template)
     return start + x, y - margin
 

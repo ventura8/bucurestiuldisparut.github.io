@@ -761,3 +761,29 @@ and its `jobs` step put the new digest on the Cloud Run jobs), the owner used th
   minutes after three usage errors in a row (S-A62-HAPPY-STARTER-IMAGE-UPDATE, S-A62-BAD-STARTER-IMAGE-STALE,
   S-A62-BAD-STARTER-OLD-IMAGE). Live: one more **Update the map** applies the role and installs the server that reads the
   job; the looping supervisor then pulls the new image at its next ask.
+
+### The worker paired live, and the 1972 import on the owner's computer (2026-11-03, admin, server and pipeline `1.0.0+27a537d`)
+
+After **Update the map** installed `27a537d` (`worker-starter` answered at 19:54, `worker.image` named the job's digest
+`sha256:8aa2d47e…` with the release `1.0.0+27a537d` at 19:55: finding 74 fixed live), Claude started the `systemd --user`
+service installed earlier from the live template; it ran the new image and answered `pairable`. Opening **Jobs** paired
+nothing until the owner clicked **Use this computer**; then the admin posted a code and the worker signed in
+(18:39:49 UTC, "paired with the admin's code"), and the KH-9 import of 1972-02-02 the owner started was claimed by the
+computer within its 30 s poll.
+
+- **75.** \[ux]\[worker] A computer whose worker runs but that this browser did not set up (installed from another browser,
+  the browser's storage cleared, or installed by hand as here) is never paired: the panel looks at `127.0.0.1:8765` only
+  in a browser marked by **Use this computer** (`LOCAL_KEY`, so admins who never use a computer get no local-network
+  prompt), and says nothing about it. The owner had to click **Use this computer** again, which also downloads the
+  starter file again. OPEN: proposal, a **Look for this computer** action on the panel (it sets the mark and looks once,
+  no download), and the starter file's first run telling the admin to click it when it finds no pairing within a minute.
+- **76.** \[bug]\[imagery] The 1972 KH-9 import ran on the owner's computer (fetch 29 min for 8.8 GB, extract 1 min, stitch
+  9 s with no memory trouble) and failed in `locate`: `apiError.imagery.cityNotFound`, "the best guess correlates 0.09,
+  under 0.20" (the cloud run of 2026-11-01 had 0.03). The frame's `frame.json` placed segment `d` 17,246 px inside `c`
+  (46 % of a segment) and 2,500 px higher, where every other pair overlaps 1,400 to 3,100 px (4 to 8 %); the preview
+  shows the seam broken. Root cause: the coarse match looked for the right segment's 8 px wide strip (the frame shrunk 48
+  times) across the whole left segment, and on a snow-covered frame of repeating valleys a place deep inside matched
+  better. FIXED (§88e): the coarse search looks only in the left segment's last 35 % (S-P01-BAD-STITCH-DECOY). Also seen:
+  the frame of 2 February 1972 is under snow, which the summer Sentinel-2 and OpenStreetMap reference matches poorly, so
+  the crop may stay below 0.20 with the seam fixed; a frame of the warm season is the better first import. Live: one more
+  **Update the map** rebuilds the pipeline; **Try again** reuses the delivery kept on the computer.

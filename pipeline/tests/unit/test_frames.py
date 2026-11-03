@@ -21,6 +21,8 @@ from tests.fakes.world import CITY, JOB_ID, PipelineWorld
 
 WORK = f"work/{CITY}/{JOB_ID}/"
 HEIGHT, SEGMENT_WIDTH, STEP = 4000, 1000, 800
+# Finding 76's copy of a strip inside the left segment: a multiple of the coarse shrink.
+DECOY = 196
 SEGMENTS = 6
 
 
@@ -73,6 +75,28 @@ def test_happy_path_a_frame_larger_than_the_memory_it_uses_is_stitched_exactly(
     # The old step held every segment and the joined frame (over 2.5 times the frame); this one two segments' windows.
     assert peak < frame.nbytes / 2
     assert f"{WORK}frame-preview.tif" in world.gcs.objects
+
+
+def test_bad_path_a_copy_of_the_strip_deep_inside_the_left_segment_is_not_where_the_right_one_starts(tmp_path: Path) -> None:
+    """Scenarios: S-P01-BAD-STITCH-DECOY"""
+    frame = scan()
+    left, right = frame[:, :SEGMENT_WIDTH].copy(), frame[:, STEP : STEP + SEGMENT_WIDTH].copy()
+    # The right segment's left strip again at a fifth of the left one (an overlap of 80 %), exactly and on the coarse
+    # grid (7 px: 4000 rows shrunk to about 512); the true overlap grainy, as a scan's is, so a search across the whole
+    # segment prefers the copy.
+    left[:, DECOY : DECOY + 300] = right[:, :300]
+    grain = numpy.random.default_rng(76).integers(-60, 61, left[:, STEP:].shape)
+    left[:, STEP:] = numpy.clip(left[:, STEP:].astype(numpy.int16) + grain, 0, 255).astype(numpy.uint8)
+    paths = [tmp_path / name for name in ("a.tif", "b.tif")]
+    for path, pixels in zip(paths, (left, right), strict=True):
+        path.write_bytes(tiff(tmp_path, numpy.ascontiguousarray(pixels), f"{path.stem}-src.tif"))
+    segments = [Segment(path) for path in paths]
+
+    offset = stitch.pair_offset(*segments)
+    for segment in segments:
+        segment.close()
+
+    assert offset == (STEP, 0)
 
 
 class Staging:

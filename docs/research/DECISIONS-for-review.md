@@ -5812,5 +5812,10 @@ install specs; two workers).
   on the NUC's Jobs tour (two projects; every other gate green, `[local] [SUCCESS] stage 'all' passed`, tour-matrix 1112
   passed): another test's `imagery.tick` took the seeded running job for a lost run (finding 58's late heartbeat) and the
   stand-in failed it. `seedJob` now writes a running job's `updatedAt` at its lease's end. Test support only.
+- **88e APPLIED (finding 76, lesson 358): the stitch's coarse search is bounded.** `MAX_OVERLAP_SHARE` 0.35 of
+  `pipeline/src/hcm_pipeline/steps/stitch.py`: the right segment starts in the left one's last 35 % (real overlaps 4 to
+  8 % on a KH-9 panoramic frame, 20 % in the synthetic tests). Rejected: a check of each overlap against the others'
+  median after the walk (it needs every pair first, while the step holds two segments at a time). Live: **Update the
+  map** rebuilds the pipeline image, then **Try again** on the failed 1972 version.
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`e2e/admin/specs/imagery/`).

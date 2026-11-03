@@ -2143,3 +2143,14 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: `seedJob` writes a running job's `updatedAt` at its lease's end too (`e2e/admin/support/ops.ts`).
     - **A new rule that reads a field of every document in a shared world must be checked against every seed of that
       field: a seed made safe for the old rule is not safe for the new one.**
+358. **A segment of a snow-covered KH-9 frame was joined 46 % inside its neighbour.**
+    - Seen: 2026-11-03 live (finding 76): `locate` correlated 0.09 on the 1972 frame; `frame.json` put segment `d` 17,246
+      px inside `c` (other overlaps 1,400 to 3,100 px).
+    - Cause: the coarse match searched the whole left segment for an 8 px wide strip of the right one (the frame shrunk 48
+      times), and a snowy frame's repeating valleys matched better far from the edge.
+    - Found by: reading the placements of `frame.json` and rendering `frame-preview.tif` on the owner's computer; the
+      synthetic frames were blurred noise, which matches in one place only.
+    - Fix and pin: the search is bounded to the overlap USGS can leave (the left segment's last 35 %), with a test whose
+      exact copy of the strip sits deeper than that (S-P01-BAD-STITCH-DECOY).
+    - **A search that may find a wrong place must be bounded by what the physics allows, and a synthetic image must
+      repeat itself the way real ones do.**

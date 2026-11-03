@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 100 | 815 | 312 | 503 | 813 | 2 | 218 |
+| 100 | 816 | 312 | 504 | 814 | 2 | 218 |
 
 ## Viewer
 
@@ -818,6 +818,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-P01-BAD-SIGTERM` | P01 | bad | SIGTERM cancels the job and cleans up | SIGTERM while cancel is requested -> the job cancelled, the job's work/ objects and the local temp files removed, exit 0 | e2e-pipeline | exists | `pipeline/tests/integration/test_import_resume.py` |
 | `S-P01-BAD-SIGTERM-RESUME` | P01 | bad | SIGTERM without a cancel keeps the work for a resume | SIGTERM during fetch -> the checkpoint (offset, hash state) kept, the lease released, the job queued again; the resume skips the finished steps and continues the download where it stopped | e2e-pipeline | exists | `pipeline/tests/integration/test_import_resume.py` |
 | `S-P01-BAD-SIZE-MISMATCH` | P01 | bad | A short delivery is discarded | the delivered size differs from download-options -> apiError.imagery.downloadIncomplete, the object discarded, fetched again on the next attempt | e2e-pipeline | exists | `pipeline/tests/integration/test_import_resume.py` |
+| `S-P01-BAD-STITCH-DECOY` | P01 | bad | A copy of the next segment's edge deep inside a segment does not join the frame there | the right segment's left strip copied exactly at a fifth of the left segment (an 80 % overlap) and the true overlap grainy -> the pair's offset is the true one (800, 0): the coarse search looks only in the left segment's last 35 % (USGS overlaps are 4 to 20 %) | e2e-pipeline | exists | `pipeline/tests/unit/test_frames.py` |
 | `S-P01-BAD-UPLOAD-NO-GEOREF` | P01 | bad | A plain TIFF waits for points | geotiff-import of a TIFF without georeference -> the scan, its preview and the reference written; the job awaiting_gcps, the version needs_gcps | e2e-pipeline | exists | `pipeline/tests/integration/test_upload_job.py` |
 | `S-P01-BAD-USGS-MAINTENANCE` | P01 | bad | USGS maintenance makes the pipeline wait and exit | the HTML 503 from M2M -> waiting_usgs with retryAt 30 minutes later (then doubling, at most 12 hours), exit 0, no failure | e2e-pipeline | exists | `pipeline/tests/integration/test_import_resume.py` |
 | `S-P01-BAD-WRITTEN-PARAMS` | P01 | bad | A step failure's numeric parameters are written as text | a step fails with {min: 6} -> the job's and the version's error params read {min: '6'} (apiErrorParamsSchema takes texts only; a number made both unreadable in the admin); a delivery larger than announced -> the version's {bytes} is text | e2e-pipeline | exists | `pipeline/tests/integration/test_written_documents.py`<br>`pipeline/tests/unit/test_runner.py` |

@@ -8812,6 +8812,17 @@
             "notes": "Finding 57 of docs/research/manual-test-2026-10-25.md (live test 2026-11-01; DECISIONS-for-review.md §82h). Test: pipeline/tests/unit/test_frames.py."
         },
         {
+            "id": "S-P01-BAD-STITCH-DECOY",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A copy of the next segment's edge deep inside a segment does not join the frame there",
+            "asserts": "the right segment's left strip copied exactly at a fifth of the left segment (an 80 % overlap) and the true overlap grainy -> the pair's offset is the true one (800, 0): the coarse search looks only in the left segment's last 35 % (USGS overlaps are 4 to 20 %)",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 76 of 2026-11-03 (docs/research/manual-test-2026-10-25.md): the 1972 KH-9 frame, snow-covered, had segment d joined 46 % inside c. In pipeline/tests/unit/test_frames.py."
+        },
+        {
             "id": "S-P01-BAD-CROP-ACROSS-SEGMENTS",
             "behaviour": "P01",
             "area": "pipeline",
