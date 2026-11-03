@@ -160,6 +160,8 @@ the exact pages; nothing is done without you.
   OpenStreetMap, and whether more than 15 confident pairs come out of a 1960s scan.
 - The order watch filters the due orders in memory (CR-M4-13 (b)); with CR-M4-11 fixed, a composite index on
   `order.state`, `order.nextCheckAt` could replace that if a city ever has many open orders.
-- The address of a scene to buy that no one ordered yet (`#/imagery/scene/<id>`) opened while __Free only__ is on says
-  the scene was not found: the page looks the scene up in the filtered list and in the orders, not by its id. An ordered
-  scene, which every notification links to, opens whatever the filters. A small follow-up (read the one scene by its id).
+- Closed 2026-11-03: the address of a scene to buy that no one ordered yet (`#/imagery/scene/<id>`) opened while
+  __Free only__ is on said the scene was not found, since the page looked it up in the filtered list and the orders only.
+  The area now also reads the routed scene by its id (`ImageryFeeds.showScene`), so any scene of the city opens from its
+  address, past the list's first page too; an address of no scene says "No scene has this address" once that read
+  answers (S-A13-HAPPY-ADDRESS, S-A13-BAD-NO-SCENE).

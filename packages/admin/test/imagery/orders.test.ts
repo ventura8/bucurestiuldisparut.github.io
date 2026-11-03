@@ -98,6 +98,39 @@ describe('the Imagery area with orders', () => {
         imagery.close();
     });
 
+    it('happyPath_aSceneToBuyThatFreeOnlyHidesOpensFromItsOwnRead', async () => {
+        const { services, store } = seeded();
+        const imagery = IMAGERY_MODULE.create(services);
+
+        imagery.open(['scene', 'DS-TO-BUY']);
+        await settle();
+
+        expect(imagery.state.visible.map((scene) => scene.id)).toEqual(['a']);
+        expect([imagery.state.named.loading, imagery.state.named.scene?.id]).toEqual([false, 'DS-TO-BUY']);
+        imagery.open(['scene', 'a']);
+        await settle();
+        expect(imagery.state.named.scene?.id).toBe('a');
+        imagery.close();
+        expect([imagery.state.named, store.listeners()]).toEqual([{ loading: false, scene: null }, 0]);
+    });
+
+    it('badPath_anAddressOfNoSceneIsNotFoundOnceItsReadAnswers', async () => {
+        const { services, store } = seeded();
+        const imagery = IMAGERY_MODULE.create(services);
+
+        imagery.open(['scene', 'DS-NONE']);
+        await settle();
+
+        expect(imagery.state.named).toEqual({ loading: false, scene: null });
+        store.fail(SCENES('DS-NONE'), { kind: 'failed', code: 'internal' });
+        imagery.intents.retry();
+        await settle();
+        expect(imagery.state.named.scene).toBeNull();
+        imagery.open([]);
+        expect(imagery.state.named).toEqual({ loading: false, scene: null });
+        imagery.close();
+    });
+
     it('happyPath_iOrderedItThenTheSnackbarsUndo @S-A13-HAPPY-TAKE-BACK', async () => {
         const { services, callables, notices } = seeded();
         callables.answer('usgs.markOrdered', () => ({ state: 'ordered', nextCheckAt: '2026-10-21T09:00:00.000Z' }));

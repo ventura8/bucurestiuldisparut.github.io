@@ -15,7 +15,7 @@ import {
 import type { PipelineExecution } from '@hcm/test-support/fakes';
 
 import { E2E_CITY_BOUNDS, type Bounds } from './imagery-geometry.js';
-import { deleteObjects, readDocument, updateDocument } from './imagery-store.js';
+import { deleteObjects, DocumentGone, readDocument, updateDocument } from './imagery-store.js';
 
 /**
  * One run of the raster pipeline as the stand-in plays it (docs/research/M3-interfaces.md §4.4, §4.5, §13): the job and
@@ -123,7 +123,7 @@ export async function failWithoutVersion(city: string, jobId: string): Promise<v
         updatedBy: PIPELINE,
         updatedAt: now(),
     };
-    await updateDocument(path, failed, [...Object.keys(failed), 'lease']);
+    await updateDocument(path, failed, [...Object.keys(failed), 'lease'], true);
 }
 
 export class Run {
@@ -192,9 +192,13 @@ export class Run {
         return `cities/${this.city}/layerVersions/${this.versionId}`;
     }
 
-    /** Re-reads the job (the dispatcher and the admin write it too). */
+    /** Re-reads the job (the dispatcher and the admin write it too); a job the next test's reset deleted ends the run. */
     async refresh(): Promise<Data> {
-        this.job = (await readDocument(this.jobPath)) ?? this.job;
+        const job = await readDocument(this.jobPath);
+        if (job === undefined) {
+            throw new DocumentGone(this.jobPath);
+        }
+        this.job = job;
         return this.job;
     }
 
@@ -208,7 +212,7 @@ export class Run {
             (built, path) => withPath(built, path.split('.'), valueAt(merged, path.split('.'))),
             {},
         );
-        await updateDocument(this.jobPath, data, Object.keys(stamped));
+        await updateDocument(this.jobPath, data, Object.keys(stamped), true);
         this.job = merged;
     }
 
@@ -224,6 +228,7 @@ export class Run {
             this.versionPath,
             Object.fromEntries(Object.entries(stamped).filter(([, value]) => value !== undefined)),
             Object.keys(stamped),
+            true,
         );
         this.version = merged;
     }

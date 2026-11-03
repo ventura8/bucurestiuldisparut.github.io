@@ -152,7 +152,15 @@ export function imageryState(overrides: Partial<ImageryViewState> = {}): Imagery
         jobs: {
             'job-1980': { id: 'job-1980', status: 'running', progress: 0.4, step: 'warp', waitReason: null, retryAt: null, attempt: 1 },
         },
-        ...{ detail: null, version: null, importing: null, importRefusal: null, guard: null, resuming: false },
+        ...{
+            detail: null,
+            version: null,
+            importing: null,
+            importRefusal: null,
+            guard: null,
+            resuming: false,
+            named: { loading: false, scene: null },
+        },
         upload: {
             phase: 'idle',
             fileName: null,

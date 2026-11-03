@@ -321,3 +321,39 @@ test(
         await expectStateSound(page, adminVisit('orders.expired', lang));
     },
 );
+
+test(
+    'A scene to buy opens from its address while Free only hides it',
+    { tag: '@S-A13-HAPPY-ADDRESS' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        await seedScenes(imagery);
+
+        await page.goto(adminPath(lang, `imagery/scene/${PAID}`));
+
+        await expect(orderButton(page, lang, 'adminContent.orders.markOrdered')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(sceneLink(page, lang, PAID)).toHaveCount(0);
+    },
+);
+
+test(
+    'An address of no scene says so once its read answers',
+    { tag: '@S-A13-BAD-NO-SCENE' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        await seedScenes(imagery);
+
+        await page.goto(adminPath(lang, 'imagery/scene/DS-NO-SUCH-FRAME'));
+
+        await expect(detail(page).getByRole('heading', { name: imageryText(lang, 'adminContent.imagery.sceneNotFound') })).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(orderCard(page)).toHaveCount(0);
+    },
+);

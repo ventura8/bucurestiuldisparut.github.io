@@ -165,5 +165,6 @@ export function sceneDetail(context: ImageryContext, scene: SceneItemPort | null
     if (scene !== null) {
         return sceneBody(context, scene);
     }
-    return context.view.scenes.status === 'loading' ? loadingTemplate(context.locale) : notFound(context);
+    const loading = context.view.scenes.status === 'loading' || context.view.named.loading;
+    return loading ? loadingTemplate(context.locale) : notFound(context);
 }

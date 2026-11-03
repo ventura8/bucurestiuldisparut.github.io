@@ -49,6 +49,20 @@ export interface SceneItem extends OrderFields {
     readonly layerId: string | null;
 }
 
+/** The routed scene read by its id (a scene the filters hide or past the list's page): loading, then the scene or null. */
+export interface NamedScene {
+    readonly loading: boolean;
+    readonly scene: SceneItem | null;
+}
+
+/** No routed scene is read. */
+export const NO_NAMED_SCENE: NamedScene = { loading: false, scene: null };
+
+/** The scene `id` names in the list, the orders or its own read; null while none has it. */
+export function sceneNamed(id: string, lists: readonly (readonly SceneItem[])[], named: NamedScene): SceneItem | null {
+    return lists.flat().find((scene) => scene.id === id) ?? (named.scene?.id === id ? named.scene : null);
+}
+
 const lngLat = (point: { readonly lat: number; readonly lng: number }): LngLat => [point.lng, point.lat];
 
 /** An optional field as the items keep it: null when absent. */

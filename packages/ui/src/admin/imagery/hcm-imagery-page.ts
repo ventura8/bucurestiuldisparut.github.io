@@ -215,8 +215,9 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
             ></hcm-empty-state>`;
         }
         if (detail.kind === 'scene') {
-            // M4: an ordered scene the filters hide (Free only) opens too, from Work's orders or a notification's link.
-            const scenes = [...view.scenes.items, ...view.orders.items];
+            // M4: an ordered scene the filters hide (Free only) opens too, from Work's orders or a notification's link; any
+            // other scene they hide, or past the list's page, from its own read (a shared or bookmarked address).
+            const scenes = [...view.scenes.items, ...view.orders.items, ...(view.named.scene === null ? [] : [view.named.scene])];
             return sceneDetail(context, scenes.find((scene) => scene.id === detail.id) ?? null);
         }
         return versionDetail(context, view.version);

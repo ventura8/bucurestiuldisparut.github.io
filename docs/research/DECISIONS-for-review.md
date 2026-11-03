@@ -5791,3 +5791,22 @@ install specs, `provision.spec.ts`, `journey.spec.ts`, the imagery version specs
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`worker.spec.ts`, `worker-run.spec.ts`, the
 install specs; two workers).
+
+## 88. While the owner is away (2026-11-03): a scene opens from its address, the e2e stand-in no longer writes into the next test's world, the v1.0.0 notes catch up with M6 and M7 — 88a–88c APPLIED (an M4 follow-up of `docs/research/M4-status.md`, lesson 356, release notes: product, test and documentation changes; one text changed in both languages; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged)
+
+- **88a APPLIED: a scene opens from its address whatever the filters.** The Imagery area also reads the routed scene by
+  its id (`ImageryFeeds.showScene`, one live document while a scene is open, stopped with the route): a frame to buy that
+  **Free only** hides, or one past the list's first page, opens from `#/imagery/scene/<entityId>`; the page waits for that
+  read before it says the scene is missing, now "No scene has this address" / "Nicio scenă nu are această adresă" (it
+  said "not in the list", no longer the reason). Cost: one document read per scene opened. Rejected: reading it only
+  when the lists lack it (a second state to keep in step with two paged lists, for one read). S-A13-HAPPY-ADDRESS,
+  S-A13-BAD-NO-SCENE.
+- **88b APPLIED (lesson 356): the imagery stand-in writes only what exists.** `updateDocument(…, existing)` adds
+  `currentDocument.exists=true` for the job's and the version's writes, `DocumentGone` ends the run as cancelled (logged at
+  info), and `refresh()` of a deleted job ends it the same way. Test support only; no product code changed.
+- **88c APPLIED: the v1.0.0 notes.** `docs/releases/v1.0.0.md` gains M6 and M7 (Setup with no terminal, the install
+  bundle and **Update the map**, the local worker, the cheap cloud defaults, the field measurements) and says where the
+  public map lives now (Firebase Hosting's root, the admin at `/admin/`; GitHub Pages optional, with the redirect tree).
+  The GitHub description is unchanged (its pins wait for the release commit).
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`e2e/admin/specs/imagery/`).

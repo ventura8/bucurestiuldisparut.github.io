@@ -16,7 +16,7 @@ import { ImageryFeeds, type FeedsPatch } from './feeds.js';
 import { resumeGuard } from './guard.js';
 import { NO_FILES } from './files.js';
 import { BROWSE_PICTURE, ImageryMap, PREVIEW_PICTURE, sceneCorners } from './imagery-map.js';
-import { visibleScenes, type SceneFilters, type SceneItem } from './model.js';
+import { sceneNamed, visibleScenes, type SceneFilters, type SceneItem } from './model.js';
 import { cornersOfBox } from './overlay.js';
 import { OrderActions } from './orders/actions.js';
 import { HarvestSearch } from './search.js';
@@ -24,6 +24,11 @@ import { INITIAL_IMAGERY, type ImageryDetail, type ImageryIntents, type ImageryS
 import { RasterUploader } from './upload.js';
 import { VersionPage, type VersionPageState } from './version.js';
 import type { VersionView } from './version-view.js';
+
+/** The routed item's id when it is a `kind`, else null. */
+function routedId(detail: ImageryDetail | null, kind: ImageryDetail['kind']): string | null {
+    return detail?.kind === kind ? detail.id : null;
+}
 
 /** The routed item of `#/imagery/<kind>/<id>`, or null for the area alone (or an address that names none). */
 export function detailOf(params: readonly string[]): ImageryDetail | null {
@@ -234,7 +239,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
             this.#newest = newest;
         }
         this.#cell.update(rest);
-        if (rest.scenes !== undefined || rest.orders !== undefined) {
+        if (rest.scenes !== undefined || rest.orders !== undefined || rest.named !== undefined) {
             this.#scenesChanged();
         }
         this.#search.known(this.#cell.state.usgs, this.#newest);
@@ -279,14 +284,15 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         this.#cell.update({ detail, importRefusal: null });
         this.#map.clearPictures();
         this.#previewShown = '';
-        this.#version.show(detail?.kind === 'version' ? detail.id : null);
+        this.#version.show(routedId(detail, 'version'));
+        this.#feeds.showScene(routedId(detail, 'scene'));
         this.#showFind();
     }
 
-    /** The scene the route names, once the list (or, M4, the orders) has it. */
+    /** The scene the route names, once the list, the orders (M4) or its own read has it. */
     #selectedScene(): SceneItem | null {
-        const { detail, scenes, orders } = this.#cell.state;
-        return detail?.kind === 'scene' ? ([...scenes.items, ...orders.items].find((scene) => scene.id === detail.id) ?? null) : null;
+        const { detail, scenes, orders, named } = this.#cell.state;
+        return detail?.kind === 'scene' ? sceneNamed(detail.id, [scenes.items, orders.items], named) : null;
     }
 
     /** Find's map: the footprints, the selected scene and its browse image. */

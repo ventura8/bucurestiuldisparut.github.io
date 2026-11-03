@@ -10,7 +10,15 @@ import type { MapStatus } from '../layers/map-session.js';
 import type { NoticeInput } from '../state/state.js';
 import type { BrowseImage } from './browse.js';
 import type { GuardView } from './guard.js';
-import { DEFAULT_FILTERS, type JobProgress, type SceneFilters, type SceneItem, type VersionItem } from './model.js';
+import {
+    DEFAULT_FILTERS,
+    NO_NAMED_SCENE,
+    type JobProgress,
+    type NamedScene,
+    type SceneFilters,
+    type SceneItem,
+    type VersionItem,
+} from './model.js';
 import { IDLE_ORDERS, type OrderActionsState } from './orders/actions.js';
 import { IDLE_SEARCH, type SearchState } from './search.js';
 import { IDLE_UPLOAD, type ChosenFile, type UploadState } from './upload.js';
@@ -39,6 +47,8 @@ export interface ImageryState extends OrderActionsState {
     readonly visible: readonly SceneItem[];
     /** M4: the scenes that have an order, whatever the filters. */
     readonly orders: ListState<SceneItem>;
+    /** The routed scene read by its id: a scene the filters hide or past the list's page opens too. */
+    readonly named: NamedScene;
     readonly browse: Readonly<Record<string, BrowseImage>>;
     readonly versions: ListState<VersionItem>;
     /** The unfinished jobs by id (a version's job has the version's id). */
@@ -65,7 +75,7 @@ export const INITIAL_IMAGERY: ImageryState = {
     ...{ tab: 'find', usgs: null, settings: imagerySettingsOf(undefined), search: IDLE_SEARCH, filters: DEFAULT_FILTERS },
     ...{ scenes: LOADING_LIST, visible: [], browse: {}, versions: LOADING_LIST, jobs: {}, detail: null, version: null },
     ...{ importing: null, importRefusal: null, upload: IDLE_UPLOAD, map: 'none', previewOpacity: 0.8 },
-    ...{ replaceLayer: null, guard: null, resuming: false, orders: LOADING_LIST, ...IDLE_ORDERS },
+    ...{ replaceLayer: null, guard: null, resuming: false, orders: LOADING_LIST, named: NO_NAMED_SCENE, ...IDLE_ORDERS },
 };
 
 export interface ImageryIntents {

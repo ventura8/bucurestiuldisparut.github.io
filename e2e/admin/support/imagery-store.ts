@@ -130,16 +130,40 @@ function maskPath(path: string): string {
 }
 
 /**
- * Writes the fields of `mask` (dotted paths into `data`, `steps.fetch`): a path present in `data` is set, one absent is
- * deleted; every other field of the document stays as it is.
+ * A write to a document that no longer exists: the run of a test that ended, whose world the next test reset. Without
+ * the precondition the write would create a partial document in that test's world.
  */
-export async function updateDocument(path: string, data: Readonly<Record<string, unknown>>, mask: readonly string[]): Promise<void> {
-    const query = mask.map((field) => `updateMask.fieldPaths=${encodeURIComponent(maskPath(field))}`).join('&');
+export class DocumentGone extends Error {
+    readonly path: string;
+
+    constructor(path: string) {
+        super(`${path} no longer exists`);
+        this.name = 'DocumentGone';
+        this.path = path;
+    }
+}
+
+/**
+ * Writes the fields of `mask` (dotted paths into `data`, `steps.fetch`): a path present in `data` is set, one absent is
+ * deleted; every other field of the document stays as it is. `existing`: only into a document that exists, else
+ * `DocumentGone` (a job or a version; a log line is created).
+ */
+export async function updateDocument(
+    path: string,
+    data: Readonly<Record<string, unknown>>,
+    mask: readonly string[],
+    existing = false,
+): Promise<void> {
+    const fields = mask.map((field) => `updateMask.fieldPaths=${encodeURIComponent(maskPath(field))}`);
+    const query = [...fields, ...(existing ? ['currentDocument.exists=true'] : [])].join('&');
     const response = await fetch(`${DOCUMENTS}/${path}?${query}`, {
         method: 'PATCH',
         headers: { ...OWNER, 'content-type': 'application/json' },
         body: JSON.stringify({ fields: encodeAll(data) }),
     });
+    if (existing && response.status === 404) {
+        throw new DocumentGone(path);
+    }
     await ok(response, `update of ${path}`);
 }
 

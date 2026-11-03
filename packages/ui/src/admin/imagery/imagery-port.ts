@@ -239,6 +239,8 @@ export interface ImageryViewState {
     readonly resuming: boolean;
     /** M4: the scenes that have an order, whatever the filters (Work's orders; a routed scene Free only hides). */
     readonly orders: ListStatePort<SceneItemPort>;
+    /** The routed scene read by its id (a scene the filters hide, or past the list's page): loading, then it or null. */
+    readonly named: { readonly loading: boolean; readonly scene: SceneItemPort | null };
     /** M4: the order card's action running, for which scene, and the last refusal on its card. */
     readonly ordering: { readonly id: string; readonly action: 'mark' | 'check' | 'cancel' } | null;
     readonly orderRefusal: { readonly id: string; readonly notice: AdminNoticeInputPort } | null;

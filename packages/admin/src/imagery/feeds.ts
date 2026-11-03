@@ -5,7 +5,8 @@
  * `downloadAvailable, rank.score` index), the unfinished versions (`state, updatedAt`), the unfinished jobs (`status,
  * createdAt`) and the budget guard (`ops/guard`, CR-M3-47), each attached again by itself after a dropped connection.
  * M4 (`docs/research/M4-interfaces.md` §1.7): the scenes that have an order, whatever the filters (Work's orders, and a
- * notification's link to an ordered scene while Free only hides it).
+ * notification's link to an ordered scene while Free only hides it), and the routed scene read by its id (a scene the
+ * filters hide or past the list's first page: an address shared or bookmarked).
  */
 import {
     cityDocSchema,
@@ -25,7 +26,7 @@ import {
     type UsgsSceneDoc,
 } from '@hcm/shared';
 
-import { LiveDoc, type DocState } from '../content/doc.js';
+import { LiveDoc, type DocState, type LiveDocDeps } from '../content/doc.js';
 import { isoOf, LiveList, type ListState } from '../content/list.js';
 import type { ContentQuery, ContentServices, Stored } from '../content/services.js';
 import { ACTIVE_JOB_STATUSES } from '../jobs/jobs.js';
@@ -39,6 +40,8 @@ import {
     sceneItemOf,
     versionItemOf,
     type JobProgress,
+    NO_NAMED_SCENE,
+    type NamedScene,
     type SceneItem,
     type VersionItem,
 } from './model.js';
@@ -57,6 +60,8 @@ export interface FeedsPatch {
     readonly scenes?: ListState<SceneItem>;
     /** M4: the scenes that have an order. */
     readonly orders?: ListState<SceneItem>;
+    /** The routed scene, read by its id. */
+    readonly named?: NamedScene;
     readonly versions?: ListState<VersionItem>;
     readonly jobs?: Readonly<Record<string, JobProgress>>;
     readonly guard?: GuardView | null;
@@ -86,6 +91,25 @@ function usgsStateOf(usgs: SetupStatusDoc['usgs']): ServiceState {
     return usgs.state === 'unavailable' && usgs.role !== undefined ? ROLE_STATES[usgs.role] : usgs.state;
 }
 
+/** The routed scene's read: loading until it answers, then the scene or null (no such scene). */
+function namedOf(state: DocState<UsgsSceneDoc>): NamedScene {
+    return { loading: state.status === 'loading', scene: state.doc === null ? null : sceneItemOf(state.doc) };
+}
+
+/** The routed scene's own read, which reports `named`. */
+function namedSceneDoc(
+    base: Omit<LiveDocDeps<UsgsSceneDoc>, 'schema' | 'changed'>,
+    changed: (patch: FeedsPatch) => void,
+): LiveDoc<UsgsSceneDoc> {
+    return new LiveDoc({
+        ...base,
+        schema: usgsSceneDocSchema,
+        changed: (state) => {
+            changed({ named: namedOf(state) });
+        },
+    });
+}
+
 const harvestedAtOf = (doc: Stored<UsgsSceneDoc>): string => isoOf(doc.data.harvestedAt);
 
 export class ImageryFeeds {
@@ -96,6 +120,7 @@ export class ImageryFeeds {
     readonly #newest: LiveList<UsgsSceneDoc, string>;
     readonly #scenes: LiveList<UsgsSceneDoc, SceneItem>;
     readonly #orders: LiveList<UsgsSceneDoc, SceneItem>;
+    readonly #named: LiveDoc<UsgsSceneDoc>;
     readonly #versions: LiveList<LayerVersionDoc, VersionItem>;
     readonly #jobs: LiveList<JobDoc, JobProgress>;
     readonly #guard: GuardFeed;
@@ -142,6 +167,7 @@ export class ImageryFeeds {
         this.#orders = ordersList({ ...scenes, pageSize: SCENE_PAGE }, (orders) => {
             changed({ orders });
         });
+        this.#named = namedSceneDoc(base, changed);
         this.#versions = new LiveList({
             ...{ ...base, collection: FIRESTORE_PATHS.layerVersions(cityId), schema: layerVersionDocSchema, map: versionItemOf },
             changed: (list) => {
@@ -179,6 +205,16 @@ export class ImageryFeeds {
         this.#scenes.show(scenesQuery(freeOnly));
     }
 
+    /** The routed scene by its id, whatever the filters and the list's pages; null stops reading it. */
+    showScene(id: string | null): void {
+        if (id === null) {
+            this.#named.stop();
+            this.#changed({ named: NO_NAMED_SCENE });
+            return;
+        }
+        this.#named.show(FIRESTORE_PATHS.usgsScene(this.#services.cityId, id));
+    }
+
     moreScenes(): void {
         this.#scenes.more();
     }
@@ -187,10 +223,23 @@ export class ImageryFeeds {
         for (const feed of [this.#setup, this.#city, this.#newest, this.#scenes, this.#orders, this.#versions, this.#jobs, this.#guard]) {
             feed.retry();
         }
+        if (this.#named.path !== '') {
+            this.#named.retry();
+        }
     }
 
     stop(): void {
-        for (const feed of [this.#setup, this.#city, this.#newest, this.#scenes, this.#orders, this.#versions, this.#jobs, this.#guard]) {
+        for (const feed of [
+            this.#setup,
+            this.#city,
+            this.#newest,
+            this.#scenes,
+            this.#orders,
+            this.#named,
+            this.#versions,
+            this.#jobs,
+            this.#guard,
+        ]) {
             feed.stop();
         }
     }

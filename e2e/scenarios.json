@@ -4522,6 +4522,28 @@
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §1.8; owner: orders). In firebase/rules-tests/test/jobs.test.ts."
         },
         {
+            "id": "S-A13-HAPPY-ADDRESS",
+            "behaviour": "A13",
+            "area": "admin",
+            "path": "happy",
+            "title": "A scene to buy opens from its address while Free only hides it",
+            "asserts": "the address #/imagery/scene/<entityId> of a frame no one ordered yet, opened with Free only on (the list does not show it) -> its page with the order card (EarthExplorer and I ordered it), read by its id",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M4 follow-up (docs/research/M4-status.md; owner: orders). In e2e/admin/specs/imagery/orders.spec.ts; the area's read in packages/admin/test/imagery/orders.test.ts, the page in packages/ui/test/admin/imagery/orders.test.ts."
+        },
+        {
+            "id": "S-A13-BAD-NO-SCENE",
+            "behaviour": "A13",
+            "area": "admin",
+            "path": "bad",
+            "title": "An address of no scene says so once its read answers",
+            "asserts": "the address of an entity id the city has no scene for -> loading while its read runs, then the heading No scene has this address and no order card",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Milestone M4 follow-up (docs/research/M4-status.md; owner: orders). In e2e/admin/specs/imagery/orders.spec.ts; the loading state in packages/ui/test/admin/imagery/orders.test.ts."
+        },
+        {
             "id": "S-A14-HAPPY",
             "behaviour": "A14",
             "area": "admin",

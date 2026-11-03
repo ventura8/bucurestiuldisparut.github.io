@@ -119,7 +119,7 @@ describe('<hcm-imagery-page>: a scene', () => {
         await updated(element);
 
         expect(loading).toBe(1);
-        expect(deep(element, '[data-detail-heading]').textContent).toBe('The scene is not in the list');
+        expect(deep(element, '[data-detail-heading]').textContent).toBe('No scene has this address');
         expect(deep(element, '[slot="detail"] .pane a').getAttribute('href')).toBe('#/imagery');
     });
     it('happyPath_anUnknownCloudCoverAnImportedSceneWithoutItsLayerAndAnImportThatOpensNothing', async () => {

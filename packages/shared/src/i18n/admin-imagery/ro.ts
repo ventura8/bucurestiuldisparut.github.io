@@ -98,7 +98,7 @@ export const ro = {
     'adminContent.imagery.import': 'Importă (gratuit)',
     'adminContent.imagery.importing': 'Se importă…',
     'adminContent.imagery.importedOpen': 'Importată: deschide versiunea sau stratul',
-    'adminContent.imagery.sceneNotFound': 'Scena nu este în listă',
+    'adminContent.imagery.sceneNotFound': 'Nicio scenă nu are această adresă',
     'adminContent.imagery.backToList': 'Înapoi la imaginile istorice',
     'adminContent.imagery.needsYou': 'Așteaptă după tine',
     'adminContent.imagery.inProgress': 'În lucru',

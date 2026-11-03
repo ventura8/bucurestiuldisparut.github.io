@@ -9,7 +9,7 @@ import type { CloudRunRunner, PipelineExecution, UpstreamFakes } from '@hcm/test
 import { MOCK_API_ORIGIN } from '../../fixtures/world.js';
 import { ADMIN_WEB_CONFIG, E2E_PROJECT_ID, emulatorOrigin } from '../world.js';
 import { failWithoutVersion, Run, pipelineStepsOf, type StandinAttempt } from './imagery-run.js';
-import { readDocument } from './imagery-store.js';
+import { DocumentGone, readDocument } from './imagery-store.js';
 import { playStep } from './imagery-standin.js';
 
 /**
@@ -125,6 +125,12 @@ export class ImageryRunner implements CloudRunRunner {
         const script = this.#scripts.get(city);
         const play = script?.runner === 'python' ? playPython(execution) : this.#playStandin(city, jobId, execution, script);
         play.catch((error: unknown) => {
+            if (error instanceof DocumentGone) {
+                // A run of a test that ended: the next test's reset deleted its job, so it stops where it stands.
+                log.info('the e2e run stopped: its job is gone', { city, jobId });
+                execution.finish('cancelled');
+                return;
+            }
             log.error('the e2e runner failed', { city, jobId, error: String(error) });
             execution.finish('failed');
         });
@@ -172,7 +178,7 @@ export class ImageryRunner implements CloudRunRunner {
         } catch (error) {
             record.state = 'failed';
             record.error = String(error);
-            execution.finish('failed');
+            execution.finish(error instanceof DocumentGone ? 'cancelled' : 'failed');
             throw error;
         } finally {
             execution.finish('succeeded');

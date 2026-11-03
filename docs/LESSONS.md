@@ -2121,3 +2121,14 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       on Linux, the exact line to run it with Copy (§87d–§87e; S-A62-HAPPY-STARTER, S-A62-BAD-STARTER-TEMPLATE).
     - **A download a person must keep comes from a URL their click opens, answered by a server as an attachment, and the
       page says what the browser may ask next.**
+356. **A stand-in run of a test that ended wrote a partial job into the next test's world.**
+    - Seen: 2026-11-03, the admin tier's imagery specs: `[e2e-imagery-runner] the e2e runner failed` with a job whose
+      `type` and `status` were missing, after every S-A13-HAPPY; the tests passed.
+    - Cause: the next test's reset deleted the job while the stand-in (`e2e/admin/support/imagery-run.ts`) still played
+      its steps; its next write was a Firestore `PATCH` with a field mask and no precondition, which creates a missing
+      document, so the next test's world gained a job of a few fields, and the run's next read failed the job's schema.
+    - Found by: reading the web server's log of a targeted run (a passing run's error lines are findings too).
+    - Fix and pin: the stand-in writes a job or a version only with `currentDocument.exists=true` and treats a job that is
+      gone (`DocumentGone`) as the end of its run, cancelled, logged at info; a log line is still created.
+    - **A write from a process a test started must not create what the next test's reset deleted: write with an exists
+      precondition, and end the process when its subject is gone.**
