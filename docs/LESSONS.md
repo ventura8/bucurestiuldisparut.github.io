@@ -2132,3 +2132,14 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       gone (`DocumentGone`) as the end of its run, cancelled, logged at info; a log line is still created.
     - **A write from a process a test started must not create what the next test's reset deleted: write with an exists
       precondition, and end the process when its subject is gone.**
+357. **A seeded running job with an old last write was taken for a dead run by another test's tick.**
+    - Seen: 2026-11-03, the split `all` on the NUC: the Jobs tour (`e2e/tour/admin-jobs.tour.ts`) at x3840 and l1440
+      found no **Stopping…** after Cancel, and the job's page said "the layer version does not exist (e2e stand-in)".
+    - Cause: finding 58 made `imagery.tick` ask Cloud Run about a running job whose last write is a few heartbeats old,
+      whatever its lease (`heartbeatLate`); `seedJob` gave the seeded running job the lease of lesson 217 far ahead but its
+      `updatedAt` on the test's own day, so a tick any other test ran over every city found it late, found no execution,
+      queued it again, and the stand-in failed it for its missing version.
+    - Found by: the slow machine of the split run, where ticks of other specs overlapped the tour; it passed here.
+    - Fix and pin: `seedJob` writes a running job's `updatedAt` at its lease's end too (`e2e/admin/support/ops.ts`).
+    - **A new rule that reads a field of every document in a shared world must be checked against every seed of that
+      field: a seed made safe for the old rule is not safe for the new one.**

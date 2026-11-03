@@ -5808,5 +5808,9 @@ install specs; two workers).
   bundle and **Update the map**, the local worker, the cheap cloud defaults, the field measurements) and says where the
   public map lives now (Firebase Hosting's root, the admin at `/admin/`; GitHub Pages optional, with the redirect tree).
   The GitHub description is unchanged (its pins wait for the release commit).
+- **88d APPLIED (lesson 357): a seeded running job's heartbeat is never late.** The split `all` on `86cd289` failed only
+  on the NUC's Jobs tour (two projects; every other gate green, `[local] [SUCCESS] stage 'all' passed`, tour-matrix 1112
+  passed): another test's `imagery.tick` took the seeded running job for a lost run (finding 58's late heartbeat) and the
+  stand-in failed it. `seedJob` now writes a running job's `updatedAt` at its lease's end. Test support only.
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`e2e/admin/specs/imagery/`).

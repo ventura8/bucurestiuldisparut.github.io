@@ -29,18 +29,23 @@ export async function seedCity(world: CityWorld, at: Date): Promise<void> {
 /**
  * The lease a seeded running job is held by, far ahead: `imagery.tick` (which any test may run, over every city) takes a
  * running job whose lease lapsed for a lost execution and runs it again, and the stand-in runner then fails it for its
- * missing layer version, under a test that shows it running (`docs/LESSONS.md` 217).
+ * missing layer version, under a test that shows it running (`docs/LESSONS.md` 217). Since finding 58 the tick also
+ * takes a running job whose last write is a few heartbeats old, whatever its lease, so the seeded job's last write is
+ * the lease's end too (lesson 357).
  */
 const HELD_LEASE = { owner: 'e2e-seeded-execution', until: new Date('2100-01-01T00:00:00.000Z') };
 
-/** A job of the city as the dispatcher and the pipeline keep it (`jobDocSchema`); a running one holds `HELD_LEASE`. */
+/**
+ * A job of the city as the dispatcher and the pipeline keep it (`jobDocSchema`); a running one holds `HELD_LEASE` and
+ * was last written at its end (no heartbeat is late).
+ */
 export async function seedJob(world: CityWorld, id: string, fields: Readonly<Record<string, unknown>>, at: Date): Promise<void> {
     await world.emulators.setDocument(`cities/${world.city}/jobs/${id}`, {
         params: {},
         createdAt: at,
         updatedBy: 'system:pipeline',
         updatedAt: at,
-        ...(fields['status'] === 'running' ? { lease: HELD_LEASE } : {}),
+        ...(fields['status'] === 'running' ? { lease: HELD_LEASE, updatedAt: HELD_LEASE.until } : {}),
         ...fields,
     });
 }
