@@ -87,6 +87,8 @@ describe('observe', () => {
             partial: false,
             newest: '0.9.0+e2e0000',
             newestTime: null,
+            // Finding 74: the image the job raster-pipeline runs, by digest.
+            image: `sha256:${'0'.repeat(64)}`,
         });
         expect((await world.installer.observe('site', ACCESS)).installed).toEqual({
             complete: true,
@@ -110,6 +112,7 @@ describe('observe', () => {
             partial: false,
             newest: null,
             newestTime: null,
+            image: null,
         });
         expect((await world.installer.observe('site', ACCESS)).installed).toEqual({
             complete: false,

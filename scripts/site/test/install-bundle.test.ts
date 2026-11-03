@@ -165,6 +165,8 @@ describe('buildInstallBundle: what the public server tarball may carry (finding 
         files.write('dist/functions/package.json', '{}');
         files.write('dist/functions/package-lock.json', '{}');
         files.write('dist/functions/export-kit/kit.json', '{}');
+        files.write('dist/functions/starter/hcm-worker.sh', '#!/bin/sh\n');
+        files.write('dist/functions/starter/hcm-worker.bat', '@echo off\r\n');
         const { slug } = buildInstallBundle(OPTIONS, files, STEPS);
 
         expect(listing(distRoot, `dist/hosting/admin/install/${slug}/server.tgz`).filter((path) => path.startsWith('functions/'))).toEqual(
@@ -174,11 +176,13 @@ describe('buildInstallBundle: what the public server tarball may carry (finding 
                 'functions/dist/package-lock.json',
                 'functions/dist/.env.bucurestiul-disparut',
                 'functions/dist/export-kit/kit.json',
+                'functions/dist/starter/hcm-worker.sh',
+                'functions/dist/starter/hcm-worker.bat',
             ]),
         );
     });
 
-    it.each(['.secret.local', '.env.local', 'notes.txt', 'index.js.map'])(
+    it.each(['.secret.local', '.env.local', 'notes.txt', 'index.js.map', 'starter/other.sh'])(
         'badPath_anyOtherFileFailsTheBuildInsteadOfBeingPublished (%s)',
         (name) => {
             const { files } = world();

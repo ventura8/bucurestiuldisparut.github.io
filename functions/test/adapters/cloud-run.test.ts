@@ -7,7 +7,7 @@ import { fixtureBody, fixtureResponse } from '@hcm/test-support/api-fixtures';
 import { createFakeFetch, jsonResponse, route, routeTable } from '@hcm/test-support/fakes';
 import { describe, expect, it } from 'vitest';
 
-import { createCloudRunJobs, executionStatus } from '../../src/adapters/cloud-run.js';
+import { createCloudRunJobs, executionStatus, jobDescription } from '../../src/adapters/cloud-run.js';
 
 const RUN = 'https://run.googleapis.com/v2';
 const JOBS = `${RUN}/projects/demo-hcm/locations/us-central1/jobs`;
@@ -142,6 +142,39 @@ describe('createCloudRunJobs', () => {
         ]);
 
         await expect(jobs.get(EXECUTION)).rejects.toMatchObject({ failure: 'forbidden', status: 403 });
+    });
+
+    it('happyPath_jobReadsTheImageAndTheLabelsAJobRuns', async () => {
+        const image = `us-central1-docker.pkg.dev/demo-hcm/hcm/pipeline@sha256:${'eb'.repeat(32)}`;
+        const { upstream, jobs } = adapter([
+            route('GET', `${JOBS}/{job}`, 'cloud-run.jobs.get', () =>
+                jsonResponse({ labels: { 'hcm-release': '1-0-0-bf74d17', count: 3 }, template: { template: { containers: [{ image }] } } }),
+            ),
+        ]);
+
+        await expect(jobs.job('raster-pipeline')).resolves.toEqual({ image, labels: { 'hcm-release': '1-0-0-bf74d17' } });
+        expect(upstream.calls[0]).toMatchObject({ method: 'GET', url: `${JOBS}/raster-pipeline` });
+    });
+
+    it('badPath_jobOfAMissingJobIsNoneAndOtherFailuresAreThrown', async () => {
+        const { jobs } = adapter([
+            route('GET', `${JOBS}/{job}`, 'cloud-run.jobs.get', (_request, params) =>
+                params['job'] === 'raster-pipeline'
+                    ? fixtureResponse('cloud-run/job.not-found', { values: VALUES })
+                    : fixtureResponse('google/error.permission-denied', {
+                          values: { service: 'run.googleapis.com', serviceTitle: 'Cloud Run Admin API', permission: 'run.jobs.get' },
+                      }),
+            ),
+        ]);
+
+        await expect(jobs.job('raster-pipeline')).resolves.toBeUndefined();
+        await expect(jobs.job('raster-fetch')).rejects.toMatchObject({ failure: 'forbidden' });
+        await expect(jobs.job('../x')).rejects.toMatchObject({ failure: 'invalid' });
+    });
+
+    it('happyPath_aJobWithoutContainersOrLabelsReadsAsNoImage', () => {
+        expect(jobDescription({})).toEqual({ image: '', labels: {} });
+        expect(jobDescription({ labels: 'x', template: { template: { containers: [] } } })).toEqual({ image: '', labels: {} });
     });
 });
 

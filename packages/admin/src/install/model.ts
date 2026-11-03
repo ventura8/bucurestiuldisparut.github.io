@@ -55,6 +55,11 @@ export interface InstalledInfo {
     readonly newest?: string | null;
     /** `newest`'s build time; null or absent when it names none. */
     readonly newestTime?: number | null;
+    /**
+     * The pipeline only (finding 74 of 2026-11-03): the digest of the image the job `raster-pipeline` runs, which the
+     * build that set its release label pushed; null or absent when it runs none by digest (or for another target).
+     */
+    readonly image?: string | null;
 }
 
 /** One target as the card shows it. */
@@ -96,8 +101,9 @@ export interface InstallTargetView {
     /** ISO 8601 of the last observation. */
     readonly checkedAt: string | null;
     /**
-     * M7 (`docs/research/M7-local-worker.md` §1.1): the pipeline image's digest its build's log named (the `image` event),
-     * which the local worker's command names; null until a pipeline build that pushed one was read.
+     * M7 (`docs/research/M7-local-worker.md` §1.1): the pipeline image's digest, which the local worker's command names:
+     * finding 74 of 2026-11-03, the one the job `raster-pipeline` runs (`InstalledInfo.image`), else the one its build's
+     * log named (the `image` event), else the one shown before for the same release; null until one is known.
      */
     readonly image: string | null;
 }

@@ -39,12 +39,13 @@ export const WORKER_STATES = {
         visit: 'specs/imagery/worker.spec.ts',
     },
     // Finding 72 of 2026-11-02 ("I should not have to copy and paste").
+    // Finding 73 of 2026-11-03: the file is a download the server answers; then where it is and how to run it.
     'worker.local-downloaded': {
-        title: 'Jobs: Use this computer gave the starter file, and how to open it on the chosen system',
+        title: 'Jobs: Use this computer downloaded the starter file: keep it, it is in Downloads, the Linux line to run it with Copy',
         visit: 'specs/imagery/worker.spec.ts',
     },
     'worker.local-advanced': {
-        title: 'Jobs: the file could not be prepared; Advanced open, the command with its one-time code and Copy',
+        title: "Jobs: the map's server gives no starter file yet: update the map; Advanced open, the command with its code and Copy",
         visit: 'specs/imagery/worker.spec.ts',
     },
     'worker.local-connected': {

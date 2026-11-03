@@ -74,8 +74,8 @@ export const workerPairResponseSchema = z.strictObject({ token: z.string().min(1
 
 /**
  * `worker.image` (no sign-in, finding 72 of 2026-11-02, M7 §1.5): the installed pipeline image the starter's supervisor
- * pulls and runs, by digest (`setup/status.install.pipeline.image`), with its release; `apiError.notFound` while none
- * is recorded. The image is public (Provision's `allUsers` reader of the repository `hcm`), so nothing here is a secret.
+ * pulls and runs, by digest, with its release: since finding 74 of 2026-11-03 the one the job `raster-pipeline` runs, with
+ * its label's release, else `setup/status.install.pipeline`; `apiError.notFound` while neither names one. The image is public (Provision's `allUsers` reader of the repository `hcm`), so nothing here is a secret.
  */
 export const workerImageRequestSchema = z.strictObject({});
 export const workerImageResponseSchema = z.strictObject({

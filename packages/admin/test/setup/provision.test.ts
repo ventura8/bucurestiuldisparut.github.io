@@ -243,6 +243,7 @@ describe('provision: an update applies the items that changed (finding 65 of 202
         const { harness, ctx, flow } = prepared();
         harness.cloud.provision.mockImplementation(
             reporting([
+                { id: 'iam', state: 'ok' },
                 { id: 'artifact-registry', state: 'ok' },
                 { id: 'bucket-lifecycle', state: 'ok' },
             ]),
@@ -255,11 +256,13 @@ describe('provision: an update applies the items that changed (finding 65 of 202
 
         await flow.update(access(Date.now(), 'cloudPlatform'));
 
-        expect(harness.cloud.provision.mock.calls[0]?.[1]).toEqual<ProvisionItem[]>(['artifact-registry', 'bucket-lifecycle']);
+        // Set version 2 (M7) changed artifact-registry and bucket-lifecycle; 3 (finding 74) iam's run.viewer for fn-admin@.
+        expect(harness.cloud.provision.mock.calls[0]?.[1]).toEqual<ProvisionItem[]>(['iam', 'artifact-registry', 'bucket-lifecycle']);
         expect(harness.google.requests).toEqual([]);
         expect(harness.backend.recordCloud).toHaveBeenCalledWith({
             provision: {
                 items: [
+                    { id: 'iam', state: 'ok' },
                     { id: 'artifact-registry', state: 'ok' },
                     { id: 'bucket-lifecycle', state: 'ok' },
                 ],
@@ -275,6 +278,7 @@ describe('provision: an update applies the items that changed (finding 65 of 202
         const { harness, ctx, flow } = prepared();
         harness.cloud.provision.mockImplementation(
             reporting([
+                { id: 'iam', state: 'ok' },
                 { id: 'artifact-registry', state: 'ok' },
                 { id: 'bucket-lifecycle', state: 'ok' },
             ]),
@@ -311,6 +315,16 @@ describe('provision: an update applies the items that changed (finding 65 of 202
 
         expect(harness.backend.recordCloud.mock.calls[0]?.[0]).not.toHaveProperty('provision.setVersion');
         expect(ctx.state().steps.provision.busy).toBe(false);
+    });
+
+    it('happyPath_aProjectAtM7sVersionRunsOnlyTheIamItem', async () => {
+        const { harness, flow } = prepared(2);
+        harness.cloud.provision.mockImplementation(reporting([{ id: 'iam', state: 'ok' }]));
+        harness.backend.recordCloud.mockResolvedValue({ status: statusView() });
+
+        await flow.update(access(Date.now(), 'cloudPlatform'));
+
+        expect(harness.cloud.provision.mock.calls[0]?.[1]).toEqual<ProvisionItem[]>(['iam']);
     });
 
     it.each([

@@ -41,7 +41,7 @@ describe('buildAdminSite', () => {
             originals: 44,
             warnings: 1,
             fonts: 3,
-            files: 56,
+            files: 54,
         });
         const integrity = subresourceIntegrity(files.readBytes('node_modules/mapbox-gl/dist/mapbox-gl.js'));
         expect(files.readText(`${OUT}/index.html`)).toBe(renderAdminPage(undefined, { mapboxGlIntegrity: integrity }));
@@ -59,18 +59,16 @@ describe('buildAdminSite', () => {
             'roboto-flex-latin-ext-wght.woff2',
             'roboto-flex-latin-wght.woff2',
         ]);
-        // Finding 72: the starter files' templates, which the admin's Use this computer fills.
-        expect(files.listFiles(`${OUT}/${STARTER_FOLDER}`)).toEqual(['hcm-worker.bat', 'hcm-worker.sh']);
-        expect(files.readText(`${OUT}/${STARTER_FOLDER}/hcm-worker.sh`)).toContain("HCM_CITY='__HCM_CITY__'");
     });
 
-    it('badPath_withoutAStarterTemplateNothingIsWritten', () => {
+    it('happyPath_theStarterFolderAnEarlierBuildLeftIsRemoved', () => {
+        // Finding 73 of 2026-11-03: the server's worker.starter serves the starter files; the admin's folder has none.
         const { files } = repositoryWithAdminBundle();
+        files.write(`${OUT}/${STARTER_FOLDER}/hcm-worker.sh`, '#!/bin/sh\n');
 
-        expect(() => buildAdminSite({ outDir: OUT, starterDir: 'dist/nowhere' }, files)).toThrow(
-            /^dist\/nowhere\/hcm-worker\.sh is missing/,
-        );
-        expect(files.isFile(`${OUT}/index.html`)).toBe(false);
+        buildAdminSite({ outDir: OUT }, files);
+
+        expect(files.isFile(`${OUT}/${STARTER_FOLDER}/hcm-worker.sh`)).toBe(false);
     });
 
     it('badPath_withoutTheKitsFontsNothingIsWritten', () => {

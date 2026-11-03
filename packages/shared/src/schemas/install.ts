@@ -81,6 +81,17 @@ export const INSTALLER_ACCOUNT = 'hcm-installer';
 /** The Artifact Registry repository (Docker, `us-central1`) the imagery pipeline's image is pushed to. */
 export const PIPELINE_REPOSITORY = 'hcm';
 
+/** `<region>-docker.pkg.dev/<project>/hcm/pipeline@sha256:<64 hex>`: the pipeline image by digest, as its jobs run it. */
+const PIPELINE_IMAGE_BY_DIGEST = /^[a-z0-9-]{1,40}-docker\.pkg\.dev\/[a-z][a-z0-9-]{4,28}[a-z0-9]\/hcm\/pipeline@(sha256:[0-9a-f]{64})$/;
+
+/**
+ * Finding 74 of 2026-11-03: the digest (`sha256:<64 hex>`) of the pipeline image a Cloud Run job of the pipeline runs
+ * (`template.template.containers[0].image`), the truth of what is installed; null for any other image name.
+ */
+export function pipelineImageDigest(image: string): string | null {
+    return PIPELINE_IMAGE_BY_DIGEST.exec(image)?.[1] ?? null;
+}
+
 /** The `firebase-tools` the server and site builds install from the bundle's lock (the repository's own pin). */
 export const FIREBASE_TOOLS_VERSION = '15.34.2';
 

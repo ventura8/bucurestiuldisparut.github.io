@@ -53,18 +53,22 @@ export interface WorkerViewPort {
 /** The systems a starter file is made for (finding 72). */
 export type WorkerOsPort = 'linux' | 'mac' | 'windows';
 
+/** A starter file as its link gives it (finding 73 of 2026-11-03): `worker.starter`'s address and the file's name. */
+interface StarterLinkPort {
+    readonly url: string;
+    readonly name: string;
+}
+
 /** "Use this computer" as `packages/admin/src/worker/local.ts` keeps it (finding 72 of 2026-11-02). */
 export interface LocalViewPort {
     readonly os: WorkerOsPort;
-    readonly phase: 'none' | 'downloaded' | 'connecting' | 'connected' | 'stopped' | 'failed';
+    readonly phase: 'none' | 'downloaded' | 'connecting' | 'connected' | 'stopped';
     /** The Advanced command's one-time code (null until Advanced asked for one). */
     readonly code: string | null;
-}
-
-/** A starter file as the browser saves it. */
-export interface StarterFilePort {
-    readonly name: string;
-    readonly text: string;
+    /** Finding 73: whether the server makes the starter file; null until it answered. */
+    readonly starter: boolean | null;
+    /** The starter file and the removal file for `os`. */
+    readonly files: { readonly install: StarterLinkPort; readonly uninstall: StarterLinkPort };
 }
 
 /** This computer's part of the panel: the starter file, the auto-pair, Stop using this computer, the Advanced command. */
@@ -73,8 +77,8 @@ export interface LocalPort {
     subscribe(listener: (state: LocalViewPort) => void): () => void;
     readonly intents: {
         setOs(os: WorkerOsPort): void;
-        use(): Promise<StarterFilePort | null>;
-        stop(): Promise<StarterFilePort | null>;
+        use(): void;
+        stop(): Promise<void>;
         command(): Promise<void>;
     };
     start(): void;

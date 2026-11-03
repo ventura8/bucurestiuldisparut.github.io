@@ -3,17 +3,19 @@
  * `worker.*` callable share. A one-time code is stored only as its id (the first 40 hex characters of its SHA-256); a
  * paired worker's token names that id (`pair`), and each of its calls finds the pairing still standing (exchanged, the
  * same owner, not revoked). The pipeline image the code's command named is the pairing's; `worker.hello` and
- * `worker.claim` compare it with the installed one (`setup/status.install.pipeline.image`).
+ * `worker.claim` compare it with the installed one (finding 74: the image the job `raster-pipeline` runs, else
+ * `setup/status.install.pipeline.image`; `installed-image.ts`).
  */
 import { createHash, randomBytes } from 'node:crypto';
 
-import { FIRESTORE_PATHS, setupStatusDocSchema, workerPairingDocSchema, type CallableName, type WorkerPairingDoc } from '@hcm/shared';
+import { FIRESTORE_PATHS, workerPairingDocSchema, type CallableName, type WorkerPairingDoc } from '@hcm/shared';
 
 import type { VerifiedCaller } from '../api/access.js';
 import { ApiError } from '../api/api-error.js';
 import type { CallableHandler } from '../api/callable.js';
 import type { DocumentReader } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
+import { installedImage, type InstalledImageDeps } from './installed-image.js';
 
 /** RFC 4648's base32 alphabet, lower case: no 0, 1, 8 or 9 to misread. */
 const BASE32 = 'abcdefghijklmnopqrstuvwxyz234567';
@@ -59,12 +61,6 @@ export function paired<N extends CallableName, D extends Pick<Ports, 'documents'
     };
 }
 
-/** The installed pipeline image (`setup/status.install.pipeline.image`), if one is recorded. */
-export async function installedImage(reader: DocumentReader): Promise<string | undefined> {
-    const status = await reader.get(FIRESTORE_PATHS.setupStatus, setupStatusDocSchema).catch(() => undefined);
-    return status?.install?.pipeline?.image;
-}
-
 /** What a worker knows of the images: the installed one, its own (its pairing's), and whether they differ. */
 export interface ImageState {
     readonly installed: string | undefined;
@@ -77,9 +73,13 @@ export interface ImageState {
  * it says it runs (`reported`: finding 72, the starter's supervisor names the image it pulled, and a kept pairing outlives
  * many images), else its pairing's command's.
  */
-export async function imageState(reader: DocumentReader, caller: VerifiedCaller, cityId: string, reported?: string): Promise<ImageState> {
-    const pairing = await requirePairing(reader, caller, cityId);
-    const installed = await installedImage(reader);
-    const own = reported ?? pairing?.image;
+export async function imageState(deps: InstalledImageDeps, caller: VerifiedCaller, cityId: string, reported?: string): Promise<ImageState> {
+    const pairing = await requirePairing(deps.documents, caller, cityId);
+    const installed = (await installedImage(deps))?.digest;
+    return compared(installed, reported ?? pairing?.image);
+}
+
+/** Outdated only when both images are known and differ. */
+function compared(installed: string | undefined, own: string | undefined): ImageState {
     return { installed, own, outdated: installed !== undefined && own !== undefined && own !== installed };
 }

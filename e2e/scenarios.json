@@ -9245,22 +9245,22 @@
             "behaviour": "A62",
             "area": "admin",
             "path": "happy",
-            "title": "Use this computer gives the starter file for the browser's system",
-            "asserts": "the Jobs page, the pipeline image recorded -> Use this computer saves hcm-worker.sh (Linux), with the project, the city and install filled in and no code or placeholder, and says how to open it; Windows chosen -> hcm-worker.bat with Windows line ends; the command waits behind Advanced",
+            "title": "Use this computer gives the starter file for the browser's system as a download",
+            "asserts": "the Jobs page, the pipeline image recorded -> Use this computer is a link to the server's worker.starter, which answers hcm-worker.sh (Linux) as a download, with the project, the city and install filled in and no code or placeholder; the panel then says the browser may ask to keep it and that it is in Downloads, and on Linux shows sh ~/Downloads/hcm-worker.sh with Copy; Windows chosen -> hcm-worker.bat with Windows line ends; the command waits behind Advanced",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Finding 72 of docs/research/manual-test-2026-10-25.md (the user, 2026-11-02: \"I should not have to copy and paste\"; the decision \"Starter file + auto-pair\"); DECISIONS-for-review.md §86; docs/research/M7-local-worker.md, its addendum of 2026-11-02 (the starter file and auto-pair). Test: e2e/admin/specs/imagery/worker.spec.ts; the templates: packages/admin/test/worker/starter.test.ts."
+            "notes": "Finding 72 of docs/research/manual-test-2026-10-25.md (the user, 2026-11-02: \"I should not have to copy and paste\"; the decision \"Starter file + auto-pair\"); DECISIONS-for-review.md §86; docs/research/M7-local-worker.md, its addendum of 2026-11-02 (the starter file and auto-pair). Finding 73 of docs/research/manual-test-2026-10-25.md (the live test of 2026-11-03: Chrome saved nothing of the file the admin made in the page); DECISIONS-for-review.md §87; docs/research/M7-local-worker.md, its addendum of 2026-11-03. Test: e2e/admin/specs/imagery/worker.spec.ts; the function and the templates: functions/test/worker/starter.test.ts."
         },
         {
             "id": "S-A62-BAD-STARTER-TEMPLATE",
             "behaviour": "A62",
             "area": "admin",
             "path": "bad",
-            "title": "A starter template the site does not serve gives no file and says so",
-            "asserts": "the template answers 404 -> no download, \"The file could not be prepared: try again.\"; Advanced still shows the command with its one-time code",
+            "title": "A server that does not make the starter file gives no link and says to update the map",
+            "asserts": "worker.starter answers 404 (a server from before this release) -> no link, \"The map's server does not give the file yet: update the map (Setup, Update the map), then come back.\"; Advanced still shows the command with its one-time code; a template the server cannot read -> 503 without a file, logged",
             "tier": "e2e-admin",
             "status": "exists",
-            "notes": "Finding 72 of docs/research/manual-test-2026-10-25.md (the user, 2026-11-02: \"I should not have to copy and paste\"; the decision \"Starter file + auto-pair\"); DECISIONS-for-review.md §86; docs/research/M7-local-worker.md, its addendum of 2026-11-02 (the starter file and auto-pair). Test: e2e/admin/specs/imagery/worker.spec.ts."
+            "notes": "Finding 72 of docs/research/manual-test-2026-10-25.md (the user, 2026-11-02: \"I should not have to copy and paste\"; the decision \"Starter file + auto-pair\"); DECISIONS-for-review.md §86; docs/research/M7-local-worker.md, its addendum of 2026-11-02 (the starter file and auto-pair). Finding 73 of docs/research/manual-test-2026-10-25.md (the live test of 2026-11-03: Chrome saved nothing of the file the admin made in the page); DECISIONS-for-review.md §87; docs/research/M7-local-worker.md, its addendum of 2026-11-03. Test: e2e/admin/specs/imagery/worker.spec.ts, functions/test/worker/starter.test.ts."
         },
         {
             "id": "S-A62-HAPPY-STOP-COMPUTER",
@@ -9268,7 +9268,7 @@
             "area": "admin",
             "path": "happy",
             "title": "Stop using this computer gives the file that removes the worker",
-            "asserts": "Stop using this computer -> hcm-worker-remove.sh with uninstall filled in, \"Run the downloaded file once: it removes the worker from this computer.\"; the auto-pair stops looking and a worker this computer answered with is disconnected (worker.revoke)",
+            "asserts": "Stop using this computer (a link to worker.starter) -> hcm-worker-remove.sh with uninstall filled in, \"Run the downloaded file once: it removes the worker from this computer.\"; the auto-pair stops looking and a worker this computer answered with is disconnected (worker.revoke)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Finding 72 of docs/research/manual-test-2026-10-25.md (the user, 2026-11-02: \"I should not have to copy and paste\"; the decision \"Starter file + auto-pair\"); DECISIONS-for-review.md §86; docs/research/M7-local-worker.md, its addendum of 2026-11-02 (the starter file and auto-pair). Test: e2e/admin/specs/imagery/worker.spec.ts; the revoke: packages/admin/test/worker/local.test.ts."
@@ -9327,6 +9327,39 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Finding 72 of docs/research/manual-test-2026-10-25.md (the user, 2026-11-02: \"I should not have to copy and paste\"; the decision \"Starter file + auto-pair\"); DECISIONS-for-review.md §86; docs/research/M7-local-worker.md, its addendum of 2026-11-02 (the starter file and auto-pair). Test: functions/test/worker/pairing.test.ts."
+        },
+        {
+            "id": "S-A62-HAPPY-STARTER-IMAGE-UPDATE",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "After an update the supervisor is given the image the pipeline job runs",
+            "asserts": "the record still names the release before's digest beside the new release, the job raster-pipeline runs the new image with the hcm-release label of the new release -> worker.image answers the new image by digest with the new release; the worker the supervisor starts on it is not outdated and claims the local job",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 74 of docs/research/manual-test-2026-10-25.md (the live test of 2026-11-03: worker.image answered the release before's digest beside the new release, and the supervisor looped on 'unrecognized arguments'); DECISIONS-for-review.md §87; docs/research/M7-local-worker.md, its addendum of 2026-11-03. Test: functions/test/worker/pairing.test.ts, functions/test/worker/installed-image.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-STARTER-IMAGE-STALE",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A stale record never pairs the new release with the old digest",
+            "asserts": "the job runs another digest than the record names and its label names no release -> worker.image answers the job's digest without a release; a worker on the record's older image is outdated; a job that cannot be read (Run Admin refused) -> the record answers, and that is logged",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 74 of docs/research/manual-test-2026-10-25.md (the live test of 2026-11-03: worker.image answered the release before's digest beside the new release, and the supervisor looped on 'unrecognized arguments'); DECISIONS-for-review.md §87; docs/research/M7-local-worker.md, its addendum of 2026-11-03. Test: functions/test/worker/pairing.test.ts, functions/test/worker/installed-image.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-STARTER-OLD-IMAGE",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A worker image that refuses the supervisor's arguments makes it say so and wait",
+            "asserts": "the worker exits with its usage error (2) three times in a row -> the supervisor says once that the server named an image that does not support this computer's starter (update the map) and asks again every 5 minutes; an outdated worker (75) is started again at once with nothing said",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 74 of docs/research/manual-test-2026-10-25.md (the live test of 2026-11-03: worker.image answered the release before's digest beside the new release, and the supervisor looped on 'unrecognized arguments'); DECISIONS-for-review.md §87; docs/research/M7-local-worker.md, its addendum of 2026-11-03. Test: functions/test/worker/starter.test.ts."
         },
         {
             "id": "S-A63-HAPPY-METER",

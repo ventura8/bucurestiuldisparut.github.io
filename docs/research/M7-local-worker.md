@@ -557,3 +557,55 @@ SmartScreen, a Linux file manager that opens `.sh` in an editor: hence the `sh` 
 without administrator rights, `launchctl bootstrap` from a double-clicked script, Chrome's Local Network Access prompt for
 the admin's look at the loopback, Safari's and Firefox's handling of it, and the supervisor's update after a real Update the
 map. A `.desktop` launcher for Linux was not made: GNOME's Files no longer launches an untrusted downloaded launcher.
+
+## Addendum (2026-11-03, the installed image from the job, and the starter file as a download: findings 73–74)
+
+The live test of 2026-11-03 after Update the map to `1.0.0+bf74d17` (`docs/research/manual-test-2026-10-25.md` findings
+73–74, `DECISIONS-for-review.md` §87). What changes in this contract:
+
+- **§1.5 as changed, which image is installed (finding 74).** The installed pipeline image is the one the Cloud Run job
+  `raster-pipeline` runs (Run Admin v2 `jobs.get`, `template.template.containers[0].image`, `…/hcm/pipeline@sha256:<64
+  hex>`), which the pipeline build's `jobs` step sets in the build that pushed it, with the release its `hcm-release`
+  label names (`releaseOfSlug`). `worker.image`, `worker.hello`, `worker.claim` and `worker.pairCode` read it through one
+  resolver (`functions/src/worker/installed-image.ts`), each instance keeping it a minute; the record
+  `setup/status.install.pipeline.image` answers only while the job cannot be read (no job yet, a refusal: logged), and its
+  `release` only for the digest it names: a release is never paired with another digest. `fn-admin@` reads the job with
+  `roles/run.viewer` (Provision's `iam`, item set version 3: an update applies it in the same consent; until then the
+  record answers). The admin reads the same job image on every look of the pipeline card (`InstalledInfo.image`), before
+  the build log's `image` event (which Cloud Logging may not have yet when the build has just ended), and records the
+  pipeline again when the image changes, not only its state. `worker.image` answers `{image, digest, release?}` as before.
+- **The supervisor and an image older than it (finding 74).** A worker that ends with its usage error (`2`, argparse: an
+  image from before `--supervised --image`) three times in a row makes the supervisor say once, in its log (the journal,
+  `~/Library/Logs/hcm-worker.log`, the task's output), "The server named an image that does not support this computer's
+  starter: update the map." and ask again every 5 minutes until the image changes; an outdated worker (`75`) is still
+  started again at once.
+- **§1.5 as changed, the starter file is a download the server answers (finding 73).** Live, Chrome saved nothing of the
+  file the admin made in the page (a Blob URL behind a synthetic click after an `await`; cause **UNVERIFIED**: a `.sh` is a
+  type Chrome lets through only for a download the user starts). **Use this computer** and **Stop using this computer** are
+  now links (`<a href download>`) to the public HTTPS function `worker.starter` (`worker-starter`, `fn-admin@`, two
+  instances, App Check off, no sign-in): `GET ?city=<city>&os=<linux|mac|windows>&action=<install|uninstall>`
+  (`workerStarterQuerySchema`) answers the template of the system filled with this project, the city and the action, CRLF
+  for Windows, with `Content-Type: application/octet-stream`, `Content-Disposition: attachment; filename="<name>"`
+  (`WORKER_STARTER_FILE_NAMES`), `Cache-Control: no-store` and `Access-Control-Allow-Origin: *`; a bad query 400, another
+  method 405, an unreadable template 503 (logged). `HEAD` answers the same headers: the panel makes one `HEAD` when it first
+  shows, and a server that does not make the file (one from before this release) gets no link but "The map's server does
+  not give the file yet: update the map (Setup, Update the map), then come back." The templates stay in
+  `packages/admin/starter/`; `functions/build.mjs` copies them into `functions/dist/starter/` (the install bundle's
+  `server.tgz` allows exactly those two files), and the admin's site build no longer publishes `/admin/worker/`.
+- **§7 as changed, after the click.** The region says "Your browser may ask whether to keep the file: choose Keep. It is
+  saved in your Downloads folder.", then how to open it: on Linux (a double-click opens a `.sh` as text) the exact line
+  `sh ~/Downloads/hcm-worker.sh` with **Copy the line**; macOS and Windows as before. When the worker comes up and takes a
+  code the panel turns to **Connecting this computer…** by itself, then **This computer is connected**.
+
+### §10, the security review of `worker.starter` (added)
+
+1. **A public file endpoint (§10.20).** It answers the same file anyone can derive from the open templates: the project id
+   (in its own address) and a city id the query names, checked against `cityIdSchema`, so no quote or command reaches the
+   script; nothing is read from Firestore, nothing is written. The action and the system are enums. `Cache-Control:
+   no-store`, `nosniff`; two instances at most.
+2. **CORS `*` (§10.21).** Only for the panel's `HEAD`; no credentials are sent or accepted, and the answer is public.
+3. **`roles/run.viewer` for `fn-admin@` (§10.22).** Read-only: Cloud Run services', jobs' and executions' definitions and
+   states of this project (the jobs' environment names the buckets, no secret). `fn-events@` already holds it.
+
+**UNVERIFIED** (§11, added): what Chrome does with the server's attachment on each system (the keep prompt is expected for
+`.bat` and possibly `.sh` and `.command`), and the cause of finding 73 itself.

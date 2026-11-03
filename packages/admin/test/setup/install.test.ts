@@ -505,3 +505,26 @@ describe('records', () => {
         cards.dispose();
     });
 });
+
+describe('records: the pipeline image (finding 74 of 2026-11-03)', () => {
+    it('happyPath_thePipelineIsRecordedAgainWhenTheImageItsJobRunsChanges @S-A62-HAPPY-STARTER-IMAGE-UPDATE', async () => {
+        // Finding 74 of 2026-11-03: the state stays installed while the job's image changes; the record follows the image.
+        const { harness, cards } = setup('normal');
+        harness.google.grant('cloudPlatform');
+        const first = `sha256:${'ae'.repeat(32)}`;
+        const second = `sha256:${'eb'.repeat(32)}`;
+        harness.installer.observe.mockResolvedValue(observed({ installed: { complete: true, release: ADMIN_RELEASE, image: first } }));
+
+        cards.watch(['pipeline']);
+        await flush();
+        harness.installer.observe.mockResolvedValue(observed({ installed: { complete: true, release: ADMIN_RELEASE, image: second } }));
+        await harness.clock.advance(60_000);
+        await flush();
+        await harness.clock.advance(60_000);
+        await flush();
+
+        const images = harness.backend.recordCloud.mock.calls.map(([request]) => request.install?.pipeline?.image);
+        expect(images).toEqual([first, second]);
+        cards.dispose();
+    });
+});

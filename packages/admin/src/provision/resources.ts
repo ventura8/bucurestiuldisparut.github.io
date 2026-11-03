@@ -173,12 +173,17 @@ export const CUSTOM_ROLES: readonly CustomRoleEntry[] = [
  */
 const INVOKER_ROLE = 'roles/run.invoker';
 const FCM_SENDER_ROLE = 'roles/firebasecloudmessaging.admin';
+/**
+ * Finding 74 of 2026-11-03 (set version 3): the worker's callables (`worker.image`, `worker.hello`, `worker.claim`,
+ * `worker.pairCode`) read which image the job `raster-pipeline` runs (`run.jobs.get`), read-only.
+ */
 const FN_ADMIN_PROJECT_ROLES = [
     'roles/datastore.user',
     'roles/firebaseauth.admin',
     'roles/firebase.viewer',
     'roles/errorreporting.viewer',
     'roles/cloudtasks.enqueuer',
+    'roles/run.viewer',
     FCM_SENDER_ROLE,
     INVOKER_ROLE,
 ];

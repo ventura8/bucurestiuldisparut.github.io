@@ -1,25 +1,34 @@
-// A fake of this computer's part (`LocalPort`, finding 72): its state set by the test, its intents recorded.
-import type { LocalPort, LocalViewPort, StarterFilePort, WorkerOsPort } from '../../../src/admin/worker/worker-port.js';
+// A fake of this computer's part (`LocalPort`, finding 72; finding 73: the starter files as links): its state set by
+// the test, its intents recorded.
+import type { LocalPort, LocalViewPort, WorkerOsPort } from '../../../src/admin/worker/worker-port.js';
+
+const BASE = 'https://us-central1-demo-hcm.cloudfunctions.net/worker-starter';
+
+/** The two links of `os`, as the admin's `starterLinks` makes them. */
+export function linksOf(os: WorkerOsPort): LocalViewPort['files'] {
+    const extension = { linux: 'sh', mac: 'command', windows: 'bat' }[os];
+    return {
+        install: { url: `${BASE}?city=bucharest&os=${os}&action=install`, name: `hcm-worker.${extension}` },
+        uninstall: { url: `${BASE}?city=bucharest&os=${os}&action=uninstall`, name: `hcm-worker-remove.${extension}` },
+    };
+}
 
 export class FakeLocal implements LocalPort {
     readonly calls: string[] = [];
     readonly #listeners = new Set<(state: LocalViewPort) => void>();
-    state: LocalViewPort = { os: 'linux', phase: 'none', code: null };
-    /** What Use this computer and Stop using this computer give (null: the file could not be made). */
-    file: StarterFilePort | null = { name: 'hcm-worker.sh', text: "HCM_CITY='bucharest'\n" };
+    state: LocalViewPort = { os: 'linux', phase: 'none', code: null, starter: true, files: linksOf('linux') };
 
     readonly intents = {
         setOs: (os: WorkerOsPort): void => {
             this.calls.push(`setOs ${os}`);
-            this.set({ os });
+            this.set({ os, files: linksOf(os) });
         },
-        use: (): Promise<StarterFilePort | null> => {
+        use: (): void => {
             this.calls.push('use');
-            return Promise.resolve(this.file);
         },
-        stop: (): Promise<StarterFilePort | null> => {
+        stop: (): Promise<void> => {
             this.calls.push('stopUsing');
-            return Promise.resolve(this.file);
+            return Promise.resolve();
         },
         command: (): Promise<void> => {
             this.calls.push('command');

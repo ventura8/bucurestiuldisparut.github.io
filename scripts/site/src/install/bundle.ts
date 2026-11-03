@@ -5,7 +5,7 @@
  *
  * - `server.tgz`: `functions/dist/` (the bundle, its `package.json`, its deploy lock, `.env.<project>` with `HCM_RELEASE`
  *   and `HCM_RELEASE_TIME`,
- *   the export kit; an allowlist, so nothing else, a local secret file least of all, is ever published),
+ *   the export kit, the starter files' templates; an allowlist, so nothing else, a local secret file least of all, is ever published),
  *   a `firebase.json` of the server's parts (no `predeploy`), the Firestore and Storage rules and indexes, `.firebaserc`,
  *   `tools/` (the locked `firebase-tools`, with the vendored copies its lock links to) and `steps/`;
  * - `pipeline.tgz`: the raster pipeline's Docker context (no tests) and `steps/`;
@@ -65,6 +65,8 @@ const SERVER_FILES: readonly RegExp[] = [
     /^package-lock\.json$/,
     /^\.env\.[a-z][a-z0-9-]{4,28}[a-z0-9]$/,
     /^export-kit\/[^/].*$/,
+    // Finding 73 of 2026-11-03: the starter files' templates `worker.starter` fills.
+    /^starter\/hcm-worker\.(?:sh|bat)$/,
 ];
 
 /** `functions/dist`'s files, refusing any the allowlist does not name. */

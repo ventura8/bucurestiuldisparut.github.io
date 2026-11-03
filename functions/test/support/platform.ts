@@ -1,6 +1,6 @@
 import type { AuthAdmin } from '../../src/ports/auth-admin.js';
 import type { BlobStore } from '../../src/ports/blob-store.js';
-import type { CloudRunJobs, ExecutionStatus, JobRunOptions } from '../../src/ports/cloud-run-jobs.js';
+import type { CloudRunJobs, ExecutionStatus, JobDescription, JobRunOptions } from '../../src/ports/cloud-run-jobs.js';
 import { UpstreamError } from '../../src/ports/errors.js';
 import type { SecretName, SecretStore } from '../../src/ports/secret-store.js';
 import type { TaskQueue } from '../../src/ports/task-queue.js';
@@ -218,7 +218,8 @@ export function createFakeSecretStore(initial: Partial<Readonly<Record<SecretNam
 
 /**
  * `CloudRunJobs` (M3) that records the executions it starts (their options when given) and the ones it cancels; `get`
- * answers an execution's scripted status (`statuses`), `running` until a test sets another.
+ * answers an execution's scripted status (`statuses`), `running` until a test sets another; `job` a job's scripted
+ * image and labels (`descriptions`, finding 74), none until a test sets one.
  */
 export function createFakeCloudRunJobs() {
     const runs: {
@@ -229,7 +230,9 @@ export function createFakeCloudRunJobs() {
     }[] = [];
     const cancelled: string[] = [];
     const statuses = new Map<string, ExecutionStatus>();
-    const recorder = new PortRecorder<'run' | 'cancel' | 'get'>();
+    /** Finding 74: what each job runs (`job`); a job not listed does not exist. */
+    const descriptions = new Map<string, JobDescription>();
+    const recorder = new PortRecorder<'run' | 'cancel' | 'get' | 'job'>();
     const jobs: CloudRunJobs = {
         run: (job, env, options) =>
             promised(() => {
@@ -248,6 +251,11 @@ export function createFakeCloudRunJobs() {
                 recorder.enter('get', [execution]);
                 return statuses.get(execution) ?? { state: 'running' };
             }),
+        job: (job) =>
+            promised(() => {
+                recorder.enter('job', [job]);
+                return descriptions.get(job);
+            }),
     };
-    return { jobs, runs, cancelled, statuses, recorder };
+    return { jobs, runs, cancelled, statuses, descriptions, recorder };
 }

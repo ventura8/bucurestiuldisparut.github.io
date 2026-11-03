@@ -12,6 +12,7 @@ import { imageFunction, type ImageDeps } from './image.js';
 import { pairCodeFunction, type PairCodeDeps } from './pair-code.js';
 import { pairFunction, type PairDeps } from './pair.js';
 import { revokeFunction, type RevokeDeps } from './revoke.js';
+import { starterFunction, type StarterDeps } from './starter.js';
 import { stepFunction, type StepDeps } from './step.js';
 import { urlsFunction, type UrlsDeps } from './urls.js';
 
@@ -24,12 +25,14 @@ export type WorkerFamilyDeps = CallableDeps &
     PairDeps &
     PairCodeDeps &
     RevokeDeps &
-    ImageDeps;
+    ImageDeps &
+    StarterDeps;
 
 /**
  * `worker.hello`, `worker.claim`, `worker.step`, `worker.urls`, `worker.end`; finding 67's pairing: `worker.pair` (the
  * worker's one-time code exchanged for a sign-in), `worker.pairCode` and `worker.revoke` (the admin's); finding 72's
- * `worker.image` (the installed image the starter's supervisor runs).
+ * `worker.image` (the installed image the starter's supervisor runs); finding 73's `worker.starter` (the starter file
+ * itself, an HTTPS function: a download).
  */
 export function workerFunctions(getDeps: () => WorkerFamilyDeps) {
     return {
@@ -42,5 +45,6 @@ export function workerFunctions(getDeps: () => WorkerFamilyDeps) {
         pairCode: pairCodeFunction(getDeps),
         revoke: revokeFunction(getDeps),
         image: imageFunction(getDeps),
+        starter: starterFunction(getDeps),
     };
 }

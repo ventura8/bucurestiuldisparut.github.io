@@ -1,19 +1,26 @@
 /**
  * `<hcm-worker-local>` (finding 72 of 2026-11-02, `docs/research/M7-local-worker.md` §1.5, §2.7; behaviour A62), the worker
  * panel's part about the computer the admin is open on, in the lazy `worker-local` chunk: the system (picked from the
- * browser's), **Use this computer** (the starter file is saved, then one sentence says how to open it), the auto-pair's
- * "Connecting this computer…" and "This computer is connected" in a polite region, "Docker is not installed? Get Docker",
- * **Stop using this computer** (the removal file; the computer's worker disconnected), and behind **Advanced** the
- * copyable command of finding 66 with its one-time code (Copy, the worker's page, the gcloud note).
+ * browser's), **Use this computer**, the auto-pair's "Connecting this computer…" and "This computer is connected" in a
+ * polite region, "Docker is not installed? Get Docker", **Stop using this computer** (the removal file; the computer's
+ * worker disconnected), and behind **Advanced** the copyable command of finding 66 with its one-time code (Copy, the
+ * worker's page, the gcloud note).
+ *
+ * Finding 73 of 2026-11-03: Use this computer and Stop using this computer are links to the server's `worker.starter`,
+ * which answers the file as a download the owner started (Chrome kept nothing of the Blob this element used to save).
+ * After the click the region says the browser may ask to keep the file and where it is saved, and how to open it; on
+ * Linux, where a double-click opens a `.sh` as text, the exact line `sh ~/Downloads/hcm-worker.sh` with its Copy button.
+ * A server that does not make the file yet says to update the map instead of a link.
  */
 import { PIPELINE_REPOSITORY, WORKER_CONTAINER, WORKER_PORT, DEFAULT_LOCALE, type Locale } from '@hcm/shared';
 import { translateAdminWorkerLocal, type AdminWorkerLocalKey } from '@hcm/shared/admin-worker-local';
-import { css, html, LitElement, type PropertyValues, type TemplateResult } from 'lit';
+import { css, html, LitElement, nothing, type PropertyValues, type TemplateResult } from 'lit';
 
 import { defineOnce } from '../../components/internal.js';
 import { copyToClipboard } from '../setup/setup-body.js';
 import { workerStyles } from './worker-element.js';
-import type { LocalPort, LocalViewPort, StarterFilePort, WorkerOsPort } from './worker-port.js';
+import { linkButtonStyles } from '../setup/setup-styles.js';
+import type { LocalPort, LocalViewPort, WorkerOsPort } from './worker-port.js';
 
 export const HCM_WORKER_LOCAL_TAG = 'hcm-worker-local';
 
@@ -24,13 +31,19 @@ export const GET_DOCKER_URL = 'https://docs.docker.com/get-started/get-docker/';
 
 const OSES: readonly WorkerOsPort[] = ['linux', 'mac', 'windows'];
 
-/** The words under the button, by phase (nothing before the first click). */
+/** The words under the link, by phase (nothing before the first click). */
 const PHASE_TEXT: Readonly<Partial<Record<LocalViewPort['phase'], AdminWorkerLocalKey>>> = {
+    downloaded: 'adminWorkerLocal.saved',
     connecting: 'adminWorkerLocal.connecting',
     connected: 'adminWorkerLocal.connected',
     stopped: 'adminWorkerLocal.stopped',
-    failed: 'adminWorkerLocal.failed',
 };
+
+/** Where the browser saves a download on Linux, and the line that runs the starter file from there. */
+export const LINUX_RUN_LINE = 'sh ~/Downloads/hcm-worker.sh';
+
+/** Which Copy was asked, and whether it worked. */
+type Copied = { readonly what: 'run' | 'command'; readonly ok: boolean } | null;
 
 /** What the command names. */
 export interface WorkerCommandInput {
@@ -57,19 +70,6 @@ export function workerCommand(input: WorkerCommandInput): string {
     return `docker rm -f ${WORKER_CONTAINER} ${quiet}; ${run} ${image} worker --city ${city} --project ${project}${pair}`;
 }
 
-/** Saves `file` as the browser's download (a Blob behind a short-lived link). */
-function save(file: StarterFilePort): void {
-    const url = URL.createObjectURL(new Blob([file.text], { type: 'application/octet-stream' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = file.name;
-    link.hidden = true;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-}
-
 export class HcmWorkerLocal extends LitElement {
     static override readonly properties = {
         local: { attribute: false },
@@ -83,6 +83,7 @@ export class HcmWorkerLocal extends LitElement {
 
     static override readonly styles = [
         ...workerStyles,
+        linkButtonStyles,
         css`
             /* The panel's own rhythm (its section's gap), so no touch target reaches the next line. */
             :host {
@@ -92,6 +93,34 @@ export class HcmWorkerLocal extends LitElement {
             }
 
             .advanced {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .link-text {
+                display: inline-flex;
+                gap: 8px;
+                align-items: center;
+                box-sizing: border-box;
+                min-block-size: 48px;
+                padding-inline: 12px;
+                border-radius: var(--md-sys-shape-corner-full);
+                color: var(--md-sys-color-primary);
+                font-family: var(--md-sys-typescale-label-large-font);
+                font-size: var(--md-sys-typescale-label-large-size);
+                font-weight: var(--md-sys-typescale-label-large-weight);
+                text-decoration: none;
+
+                --hcm-icon-size: 18px;
+            }
+
+            .link-text:focus-visible {
+                outline: 3px solid var(--md-sys-color-secondary);
+                outline-offset: 2px;
+            }
+
+            .open {
                 display: flex;
                 flex-direction: column;
                 gap: 12px;
@@ -113,8 +142,8 @@ export class HcmWorkerLocal extends LitElement {
     /** The pipeline image's digest the command names. */
     declare image: string;
     declare view: LocalViewPort | null;
-    /** Whether Copy worked (null: not asked yet). */
-    declare copied: boolean | null;
+    /** Which Copy was asked and whether it worked (null: none yet). */
+    declare copied: Copied;
     #unsubscribe: (() => void) | null = null;
 
     constructor() {
@@ -170,12 +199,9 @@ export class HcmWorkerLocal extends LitElement {
                     this.local?.intents.setOs(event.detail.value);
                 }}
             ></hcm-segmented-button>
-            <div class="actions">
-                <hcm-button variant="filled" icon="download" @click=${() => void this.#give(this.local?.intents.use())}
-                    >${this.#t('adminWorkerLocal.use')}</hcm-button
-                >
-            </div>
+            ${this.#use(view)}
             <p class="note" role="status" data-local=${view.phase}>${this.#phase(view)}</p>
+            ${view.phase === 'downloaded' ? this.#open(view) : nothing}
             <ul class="note">
                 <li>
                     ${this.#t('adminWorkerLocal.noDocker')}
@@ -184,11 +210,7 @@ export class HcmWorkerLocal extends LitElement {
                     >
                 </li>
             </ul>
-            <div class="actions">
-                <hcm-button variant="text" icon="delete" @click=${() => void this.#give(this.local?.intents.stop())}
-                    >${this.#t('adminWorkerLocal.stop')}</hcm-button
-                >
-            </div>
+            ${this.#stopUsing(view)}
             <details
                 @toggle=${(event: Event) => {
                     this.#advanced(event);
@@ -199,17 +221,67 @@ export class HcmWorkerLocal extends LitElement {
             </details>`;
     }
 
-    /** The phase's words; after the file was given, how to open it on the chosen system. */
+    /** The starter file's link (a download the server answers), or why there is none: the server does not make it yet. */
+    #use(view: LocalViewPort): TemplateResult {
+        if (view.starter === false) {
+            return html`<p class="note" role="alert" data-starter-missing>${this.#t('adminWorkerLocal.failed')}</p>`;
+        }
+        const file = view.files.install;
+        return html`<div class="actions">
+            <a
+                class="link-button"
+                href=${file.url}
+                download=${file.name}
+                data-starter=${file.name}
+                @click=${() => {
+                    this.local?.intents.use();
+                }}
+                ><hcm-icon name="download" aria-hidden="true"></hcm-icon>${this.#t('adminWorkerLocal.use')}</a
+            >
+        </div>`;
+    }
+
+    /** Stop using this computer: the removal file's link (none while the server makes no file). */
+    #stopUsing(view: LocalViewPort): TemplateResult {
+        if (view.starter === false) {
+            return html``;
+        }
+        const file = view.files.uninstall;
+        return html`<div class="actions">
+            <a
+                class="link-text"
+                href=${file.url}
+                download=${file.name}
+                data-starter=${file.name}
+                @click=${() => void this.local?.intents.stop()}
+                ><hcm-icon name="delete" aria-hidden="true"></hcm-icon>${this.#t('adminWorkerLocal.stop')}</a
+            >
+        </div>`;
+    }
+
+    /** The phase's words: after the click, that the browser may ask to keep the file and where it is saved. */
     #phase(view: LocalViewPort): string {
-        const key = view.phase === 'downloaded' ? (`adminWorkerLocal.open.${view.os}` as const) : PHASE_TEXT[view.phase];
+        const key = PHASE_TEXT[view.phase];
         return key === undefined ? '' : this.#t(key);
     }
 
-    async #give(pending: Promise<StarterFilePort | null> | undefined): Promise<void> {
-        const file = (await pending) ?? null;
-        if (file !== null) {
-            save(file);
+    /** How to open the saved file on the chosen system; on Linux the exact line, with Copy. */
+    #open(view: LocalViewPort): TemplateResult {
+        const key = `adminWorkerLocal.open.${view.os}` as const;
+        const how = html`<p data-open=${view.os}>${this.#t(key)}</p>`;
+        if (view.os !== 'linux') {
+            return html`<div class="open">${how}</div>`;
         }
+        return html`<div class="open">
+            ${how}
+            <pre class="text" aria-label=${this.#t('adminWorkerLocal.runCommand')}>${LINUX_RUN_LINE}</pre>
+            <div class="actions">
+                <hcm-button variant="tonal" icon="content_copy" @click=${() => void this.#copy('run', LINUX_RUN_LINE)}
+                    >${this.#t('adminWorkerLocal.copyRun')}</hcm-button
+                >
+            </div>
+            <p class="note" role="status" data-copied="run">${this.#copiedText('run')}</p>
+        </div>`;
     }
 
     /** Opening Advanced asks for the command's one-time code. */
@@ -225,28 +297,29 @@ export class HcmWorkerLocal extends LitElement {
         return html`<p>${this.#t('adminWorkerLocal.commandIntro')}</p>
             <pre class="text" aria-label=${this.#t('adminWorkerLocal.command')}>${command}</pre>
             <div class="actions">
-                <hcm-button variant="tonal" icon="content_copy" @click=${() => void this.#copy(command)}
+                <hcm-button variant="tonal" icon="content_copy" @click=${() => void this.#copy('command', command)}
                     >${this.#t('adminWorkerLocal.copy')}</hcm-button
                 >
                 <a class="external" href=${WORKER_PAGE} target="_blank" rel="noopener noreferrer">${this.#t('adminWorkerLocal.page')}</a>
             </div>
-            <p class="note" role="status">${this.#copiedText()}</p>
+            <p class="note" role="status" data-copied="command">${this.#copiedText('command')}</p>
             <ul class="note">
                 <li>${this.#t('adminWorkerLocal.notePair')}</li>
                 <li>${this.#t('adminWorkerLocal.noteGcloud')}</li>
             </ul>`;
     }
 
-    #copiedText(): string {
-        if (this.copied === null) {
+    #copiedText(what: 'run' | 'command'): string {
+        const copied = this.copied;
+        if (copied?.what !== what) {
             return '';
         }
-        return this.#t(this.copied ? 'adminWorkerLocal.copied' : 'adminWorkerLocal.copyFailed');
+        return this.#t(copied.ok ? 'adminWorkerLocal.copied' : 'adminWorkerLocal.copyFailed');
     }
 
-    async #copy(command: string): Promise<void> {
+    async #copy(what: 'run' | 'command', text: string): Promise<void> {
         this.copied = null;
-        this.copied = await copyToClipboard(command, navigator.clipboard);
+        this.copied = { what, ok: await copyToClipboard(text, navigator.clipboard) };
     }
 }
 

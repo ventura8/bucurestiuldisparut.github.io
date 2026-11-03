@@ -16,7 +16,7 @@ import type { Ports } from '../ports/index.js';
 import { at, ownWorker, requireGreen } from './holder.js';
 import { imageState, paired, type ImageState } from './pairing.js';
 
-export type HelloDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
+export type HelloDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs'>;
 
 /**
  * `worker.hello` (`docs/research/M7-local-worker.md` §1.2, §2.4): a worker process introduces itself before it claims
@@ -36,7 +36,7 @@ async function workerHello(
     const call = { cityId: request.cityId, workerId: request.workerId, uid: caller.uid };
     const now = at(deps.clock.now());
     const path = FIRESTORE_PATHS.worker(request.cityId, request.workerId);
-    const images = await imageState(deps.documents, caller, request.cityId, request.image);
+    const images = await imageState(deps, caller, request.cityId, request.image);
     await deps.documents.transaction(async (transaction) => {
         const known = await ownWorker(transaction, call);
         const base: Pick<WorkerDoc, 'startedAt' | 'state'> = known ?? { startedAt: now, state: 'idle' };

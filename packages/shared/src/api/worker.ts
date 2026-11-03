@@ -54,10 +54,34 @@ export const WORKER_WAIT_MINUTES = 15;
  * EX_TEMPFAIL (the pipeline's `ExitCode.OUTDATED`), apart from Docker's own 125-137.
  */
 export const WORKER_OUTDATED_EXIT = 75;
-/** The starter files' templates the site build publishes next to the admin (`/admin/worker/<file>`), one per system. */
+/**
+ * The starter files' templates (`packages/admin/starter/`), one per system, which `functions/build.mjs` copies beside the
+ * server's bundle (`dist/starter/`) and `worker.starter` fills (finding 73 of 2026-11-03).
+ */
 export const WORKER_STARTER_TEMPLATES = { posix: 'hcm-worker.sh', windows: 'hcm-worker.bat' } as const;
-/** The placeholders a starter template carries, which the admin fills (the project, the city, install or uninstall). */
+/** The placeholders a starter template carries, which `worker.starter` fills (the project, the city, install or uninstall). */
 export const WORKER_STARTER_PLACEHOLDERS = { project: '__HCM_PROJECT__', city: '__HCM_CITY__', action: '__HCM_ACTION__' } as const;
+/** The systems a starter file is made for. */
+export const WORKER_OSES = ['linux', 'mac', 'windows'] as const;
+export type WorkerOs = (typeof WORKER_OSES)[number];
+/** What a starter file does when opened: set the computer up, or remove the worker from it. */
+export const WORKER_STARTER_ACTIONS = ['install', 'uninstall'] as const;
+export type WorkerStarterAction = (typeof WORKER_STARTER_ACTIONS)[number];
+/** The file's name, by action and system (what the browser saves; `Content-Disposition` of `worker.starter`). */
+export const WORKER_STARTER_FILE_NAMES: Readonly<Record<WorkerStarterAction, Readonly<Record<WorkerOs, string>>>> = {
+    install: { linux: 'hcm-worker.sh', mac: 'hcm-worker.command', windows: 'hcm-worker.bat' },
+    uninstall: { linux: 'hcm-worker-remove.sh', mac: 'hcm-worker-remove.command', windows: 'hcm-worker-remove.bat' },
+};
+/**
+ * `worker.starter` (finding 73 of 2026-11-03: Chrome saved nothing of the file the admin made in the page): the public
+ * HTTPS function's query, `GET /worker-starter?city=<city>&os=<linux|mac|windows>&action=<install|uninstall>`, answered
+ * with the filled file as a download (`Content-Disposition: attachment`). Nothing in it is a secret.
+ */
+export const workerStarterQuerySchema = z.strictObject({
+    city: cityIdSchema,
+    os: z.enum(WORKER_OSES),
+    action: z.enum(WORKER_STARTER_ACTIONS),
+});
 
 /** The USGS M2M endpoints a worker may ask the server to call for its job (§2.5). */
 export const WORKER_USGS_ENDPOINTS = ['download-options', 'download-request', 'download-retrieve', 'download-order-remove'] as const;

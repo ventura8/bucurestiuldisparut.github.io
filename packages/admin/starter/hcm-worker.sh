@@ -20,6 +20,9 @@ HCM_ACTION='__HCM_ACTION__'
 NAME=hcm-worker
 PORT=8765
 OUTDATED=75
+# The worker's usage error (argparse): an image older than this starter's supervisor (finding 74 of 2026-11-03).
+USAGE=2
+REFUSALS=3
 LABEL=org.historiccitymap.worker
 GET_DOCKER=https://docs.docker.com/get-started/get-docker/
 IMAGE_API="https://us-central1-${HCM_PROJECT}.cloudfunctions.net/worker-image"
@@ -85,9 +88,12 @@ current_image() {
 }
 
 # The supervisor: the worker in the foreground, started again whenever it ends: at once after an outdated image (75),
-# else after a wait that grows to five minutes while it keeps failing (and starts small again after a long run).
+# else after a wait that grows to five minutes while it keeps failing (and starts small again after a long run). A worker
+# that refuses the supervisor's arguments (usage error 2) three times in a row runs an image older than this starter:
+# that is said once in the log, and the supervisor asks again every five minutes until the map is updated.
 run_worker() {
 	wait_seconds=10
+	refused=0
 	while :; do
 		if image=$(current_image) && docker pull "$image" >/dev/null; then
 			docker rm -f "$NAME" >/dev/null 2>&1 || true
@@ -98,6 +104,14 @@ run_worker() {
 			if [ "$code" -eq "$OUTDATED" ] || [ $(($(date +%s) - started)) -gt 600 ]; then
 				wait_seconds=0
 			fi
+			refused=$((code == USAGE ? refused + 1 : 0))
+		fi
+		if [ "$refused" -eq "$REFUSALS" ]; then
+			say "The server named an image that does not support this computer's starter: update the map."
+			say 'In the admin: Setup, Update the map. The worker is asked for again every 5 minutes.'
+		fi
+		if [ "$refused" -ge "$REFUSALS" ]; then
+			wait_seconds=300
 		fi
 		sleep "$wait_seconds"
 		wait_seconds=$((wait_seconds < 145 ? wait_seconds * 2 + 10 : 300))

@@ -8,6 +8,7 @@
 import { FIRESTORE_PATHS, LEASE_SECONDS, workerDocSchema, type JobDoc, type LayerVersionDoc, type WorkerDoc } from '@hcm/shared';
 import type { CallableFunction } from 'firebase-functions/https';
 
+import { createDiskStarterTemplates } from '../../src/adapters/starter-templates.js';
 import { omit } from '../../src/api/objects.js';
 import type { BucketRole } from '../../src/ports/blob-store.js';
 import type { SignedDownload, SignedObjectRequest, UrlSigner } from '../../src/ports/url-signer.js';
@@ -67,7 +68,9 @@ export async function workerWorld(now = NOW): Promise<WorkerWorld> {
     const base = await readyWorld(now);
     const signer = createFakeSigner();
     const authAdmin = createFakeAuthAdmin();
-    return { ...base, signer, deps: { ...base.deps, signer, authAdmin, auth: authAdmin.auth, admins: fakeAdmins([OWNER, OTHER]) } };
+    const starters = createDiskStarterTemplates(new URL('../../../packages/admin/starter/', import.meta.url));
+    const deps = { ...base.deps, signer, authAdmin, auth: authAdmin.auth, admins: fakeAdmins([OWNER, OTHER]), starters };
+    return { ...base, signer, deps };
 }
 
 /** One call of a worker callable, as `uid`, through its `.run()`. */

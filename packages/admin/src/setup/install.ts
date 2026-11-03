@@ -82,6 +82,11 @@ function needsInstallerPermission(state: SetupState): SetupState {
     return { ...state, provision: { ...state.provision, items } };
 }
 
+/** What a record is made again for: the target's state and, finding 74 of 2026-11-03, the pipeline image it runs. */
+function recordKey(view: InstallTargetView): string {
+    return `${view.state} ${view.image ?? ''}`;
+}
+
 /**
  * Provision's part of an update (`ProvisionFlow.update`), with the update click's token; its record waits for `recordAfter`
  * (the server the same update installs: finding 71).
@@ -94,7 +99,7 @@ class Cards implements InstallCards {
     readonly #flows: Readonly<Record<InstallTarget, InstallFlow>>;
     /** Update the map waits for the server before it republishes the site. */
     #siteAfterServer = false;
-    /** The state last recorded of each target (`setup.recordCloud`, an admin session only). */
+    /** The state (and image) last recorded of each target (`setup.recordCloud`, an admin session only). */
     readonly #recorded = new Map<InstallTarget, string>();
     /** The records under way, one after another: concurrent ones contend for `setup/status` and may land out of order. */
     #recording: Promise<void> = Promise.resolve();
@@ -277,7 +282,7 @@ class Cards implements InstallCards {
         if (!this.#records(view)) {
             return;
         }
-        this.#recorded.set(view.target, view.state);
+        this.#recorded.set(view.target, recordKey(view));
         // Finding 39: a server from before the build times refuses a record naming one; it reads them once it names its own.
         const timed = this.#ctx.state().install.server.installedReleaseTime !== null;
         const install = { [view.target]: installRecordOf(view, this.#ctx.nowIso(), timed) };
@@ -290,9 +295,9 @@ class Cards implements InstallCards {
             });
     }
 
-    /** An admin session records an observed target whose state changed, but never a passing outage. */
+    /** An admin session records an observed target whose state (or image, finding 74) changed, but never a passing outage. */
     #records(view: InstallTargetView): boolean {
-        const changed = view.checkedAt !== null && this.#recorded.get(view.target) !== view.state;
+        const changed = view.checkedAt !== null && this.#recorded.get(view.target) !== recordKey(view);
         return this.#ctx.state().mode === 'normal' && changed && !UNRECORDED.has(view.state);
     }
 

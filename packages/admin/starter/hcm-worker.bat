@@ -24,6 +24,9 @@ $Action = $env:HCM_ACTION
 $Name = 'hcm-worker'
 $Port = 8765
 $Outdated = 75
+# The worker's usage error (argparse): an image older than this starter's supervisor (finding 74 of 2026-11-03).
+$Usage = 2
+$Refusals = 3
 $GetDocker = 'https://docs.docker.com/get-started/get-docker/'
 $ImageApi = "https://us-central1-$Project.cloudfunctions.net/worker-image"
 $ImagePattern = '^us-central1-docker\.pkg\.dev/' + [regex]::Escape($Project) + '/hcm/pipeline@sha256:[0-9a-f]{64}$'
@@ -54,9 +57,12 @@ function Get-CurrentImage {
 }
 
 # The supervisor: the worker in the foreground, started again whenever it ends: at once after an outdated image (75), else
-# after a wait that grows to five minutes while it keeps failing (and starts small again after a long run).
+# after a wait that grows to five minutes while it keeps failing (and starts small again after a long run). A worker that
+# refuses the supervisor's arguments (usage error 2) three times in a row runs an image older than this starter: that is
+# said once, and the supervisor asks again every five minutes until the map is updated.
 function Start-Supervisor {
     $wait = 10
+    $refused = 0
     while ($true) {
         $image = Get-CurrentImage
         if ($image) {
@@ -68,9 +74,16 @@ function Start-Supervisor {
                 $arguments = @('run', '--rm', '--name', $Name, '-p', "127.0.0.1:${Port}:${Port}", '-v', "${Name}:/work", $image)
                 $arguments += @('worker', '--city', $City, '--project', $Project, '--supervised', '--image', $digest)
                 & docker @arguments
-                if ($LASTEXITCODE -eq $Outdated -or ((Get-Date) - $started).TotalSeconds -gt 600) { $wait = 0 }
+                $code = $LASTEXITCODE
+                if ($code -eq $Outdated -or ((Get-Date) - $started).TotalSeconds -gt 600) { $wait = 0 }
+                if ($code -eq $Usage) { $refused += 1 } else { $refused = 0 }
             }
         }
+        if ($refused -eq $Refusals) {
+            Write-Host "The server named an image that does not support this computer's starter: update the map."
+            Write-Host 'In the admin: Setup, Update the map. The worker is asked for again every 5 minutes.'
+        }
+        if ($refused -ge $Refusals) { $wait = 300 }
         Start-Sleep -Seconds $wait
         $wait = [Math]::Min(300, $wait * 2 + 10)
     }

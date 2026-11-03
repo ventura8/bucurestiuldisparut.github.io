@@ -205,8 +205,8 @@ describe('the deployment', () => {
         // M6's events probe `ops.onProbe` (docs/research/M6-interfaces.md §3.2), M7's local worker (5 callables, which the
         // admin never calls but waits for, by name) and `imagery.runOn` (docs/research/M7-local-worker.md §2.4, §3); finding
         // 67 of 2026-11-02: `worker.pair` (the worker's) and `worker.pairCode`, `worker.revoke` (the admin's); finding 72:
-        // `worker.image` (the starter file's supervisor's).
-        expect(expected).toHaveLength(79);
+        // `worker.image` (the starter file's supervisor's); finding 73: `worker.starter` (the starter file, HTTPS).
+        expect(expected).toHaveLength(80);
         expect(expected).toEqual(
             expect.arrayContaining([
                 'worker-hello',
@@ -217,9 +217,10 @@ describe('the deployment', () => {
                 'worker-pair',
                 'worker-pairCode',
                 'worker-image',
+                'worker-starter',
             ]),
         );
-        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 79, total: 79, failed: [] });
+        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 80, total: 80, failed: [] });
     });
 
     it('badPath_someMissingIsPendingAndOneFailedIsInvalid', () => {

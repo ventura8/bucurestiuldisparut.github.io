@@ -2092,3 +2092,32 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: the page reads a failed job's `running` step as failed and drops a message that is only a code (§86f;
       S-A12-BAD-LOST-RUN-STEP).
     - **A screen derives what an interrupted writer could not finish writing.**
+354. **The installed pipeline image was read from the last line of a log that lags the build, once, and cached.**
+    - Seen: 2026-11-03 live (finding 74): after Update the map to `1.0.0+bf74d17`, the build pushed the new image and its
+      `jobs` step put the new digest on the Cloud Run jobs, but `worker.image` answered the previous release's digest
+      beside the new release name. The starter's supervisor pulled the old image, whose worker refused `--supervised
+      --image` ("unrecognized arguments") and was started again in a loop.
+    - Root cause: the admin took the digest only from the build log's `image` event, the `jobs` step's last line, and read
+      the log once when it first saw the build end (the summary of an ended build is cached). Cloud Logging lags a build's
+      status by seconds, so that read had no `image` event; the view kept the earlier record's digest, and the state change
+      to installed was recorded with the new release (from the jobs' label) beside the old digest. Later looks recorded
+      nothing (the state did not change).
+    - Found by: the owner's computer, which ran the old image; every tier read a log that was complete when the build ended.
+    - Fix and pin: the digest is what the job `raster-pipeline` runs, read with its release label: by the admin on every
+      look (`InstalledInfo.image`, recorded again when it changes) and by `worker.image`, `worker.hello`, `worker.claim`
+      and `worker.pairCode` on the server (Run Admin `jobs.get`, kept a minute; the record only when the job cannot be
+      read), and a release is never paired with another digest (§87a–§87b; S-A62-HAPPY-STARTER-IMAGE-UPDATE,
+      S-A62-BAD-STARTER-IMAGE-STALE, `packages/admin/test/install/install-flow.test.ts`). The supervisor backs off when an
+      image refuses its arguments (§87c; S-A62-BAD-STARTER-OLD-IMAGE).
+    - **Read what is installed from the thing installed, not from a log of how it got there; a log is late and partial.**
+355. **A file the page made and "clicked" after an `await` never reached the owner's Downloads.**
+    - Seen: 2026-11-03 live (finding 73): **Use this computer** saved nothing in Chrome on Linux: no `hcm-worker.sh`, no
+      `.crdownload`. The page fetched the template, filled it, and saved it through a Blob URL and a synthetic click after
+      the `await`. Cause **UNVERIFIED** (Chrome's download bubble was not inspected): a `.sh` is a type Chrome lets through
+      only for a download the user started from a known site, and a Blob behind a click after an `await` is neither.
+    - Found by: the owner; Playwright's downloads accept any file a page saves.
+    - Fix and pin: the file is an ordinary download the owner's click starts, a link to the server's `worker.starter` that
+      answers with `Content-Disposition: attachment`; the panel then says the browser may ask to keep it, where it is and,
+      on Linux, the exact line to run it with Copy (§87d–§87e; S-A62-HAPPY-STARTER, S-A62-BAD-STARTER-TEMPLATE).
+    - **A download a person must keep comes from a URL their click opens, answered by a server as an attachment, and the
+      page says what the browser may ask next.**

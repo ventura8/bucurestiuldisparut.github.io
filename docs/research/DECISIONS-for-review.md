@@ -5740,3 +5740,54 @@ install specs, `provision.spec.ts`, `journey.spec.ts`, two workers).
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`worker.spec.ts`, `worker-run.spec.ts`, the
 install specs, `provision.spec.ts`, `journey.spec.ts`, the imagery version specs; two workers).
+
+## 87. The live test of 2026-11-03: the worker's image follows the job its build set, the supervisor backs off from an older image, the starter file is a download the server answers (2026-11-03) — 87a–87e APPLIED (findings 73–74 of `docs/research/manual-test-2026-10-25.md`: product, test and documentation changes; one new public HTTPS function and its port, one Provision role (`iam`, set version 3), each new text in both languages; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged); 87f recorded for the user
+
+- **87a APPLIED (finding 74): the root cause, and the admin's record.** `setup/status.install.pipeline.image` came only from
+  the build log's `image` event, the `jobs` step's last line, read once when the admin's card first saw the build end
+  (`TargetFlow.#readsLog`, the summary of an ended build cached in `#ended`). Cloud Logging lags a build's status, so that
+  read lacked the line; `#viewOf` kept the image of the record before (`summary.image ?? this.#view.image`, the view filled
+  by `fromRecord`), and `Cards.#record`, which records on a change of state only, wrote `installed` with the new release
+  (read from the jobs' `hcm-release` label) beside the old digest; no later look changed the state, so nothing corrected it.
+  Fixed: the pipeline's observation carries the digest the job `raster-pipeline` runs (`InstalledInfo.image`,
+  `cloud-build-installer.ts`), which wins over the log's (`imageOf`, `install-flow.ts`: the job's, else the log's, else the
+  kept one only while the shown release is the same), and a target is recorded again when its image changes
+  (`recordKey`, `setup/install.ts`). Rejected: re-reading the log until it names the image (it costs a Logging read per look,
+  and a failed build never names one).
+- **87b APPLIED (finding 74): the server reads the job.** `installedImage` (`functions/src/worker/installed-image.ts`) is the
+  one answer of `worker.image`, `worker.hello`, `worker.claim` and `worker.pairCode`: the job's image and its label's release
+  (`CloudRunJobs.job`, Run Admin `jobs.get`, kept `JOB_CACHE_MS` = 60 s per instance), else the record (the release only for
+  its own digest). One resolver for all four, or a supervisor given the job's image would be called outdated by `hello`
+  against a stale record and loop. `fn-admin@` gains `roles/run.viewer` (Provision `iam`, `PROVISION_SET_VERSION` 3,
+  `PROVISION_CHANGED_IN.iam` 3), so Update the map applies it in the same consent; before that, a refused read is logged
+  and the record answers. The e2e IAM fake gains `iam.accountsProvisioned` (the accounts an earlier Prepare the project
+  made), which the two update specs that run the changed items now need, as `iam` binds those accounts. Rejected: running the four callables as `fn-events@` (which has the role; `worker.pair` and the
+  USGS proxy need `fn-admin@`), and having `imagery.tick` rewrite the record from the job (a minute late, and a second
+  writer of `setup/status`).
+- **87c APPLIED (finding 74): the supervisor and an older image.** Old images cannot learn the new arguments, so the
+  supervisor (`hcm-worker.sh`, `hcm-worker.bat`) counts the worker's usage error (`2`) in a row: at the third it says once
+  "The server named an image that does not support this computer's starter: update the map." and waits 5 minutes between
+  tries until the image changes (`functions/test/worker/starter.test.ts` runs the POSIX supervisor over stand-ins of
+  `curl`, `docker` and `sleep`).
+- **87d APPLIED (finding 73): the starter file as a download the server answers.** The public HTTPS function
+  `worker.starter` (`functions/src/worker/starter.ts`, `HTTP_ENDPOINTS`, `fn-admin@`, two instances) answers `GET` and
+  `HEAD ?city&os&action` with the filled template as `Content-Disposition: attachment`; the templates go into
+  `functions/dist/starter/` (`functions/build.mjs`; the install bundle's allowlist names the two files) through the port
+  `StarterTemplates`. The admin's links point at it (`functionsBaseFor`: the emulator's address in the e2e build); one
+  `HEAD` when the panel first shows says whether the server makes the file. Rejected: a Hosting rewrite to the function
+  (same origin, but a site deploy then fails on a server without the function), a per-city file at publish time (a new
+  city has no site deploy), the Blob kept but prepared before the click (the cause is **UNVERIFIED**; a server's
+  attachment is what browsers trust for a typed download). The site build no longer publishes `/admin/worker/`.
+- **87e APPLIED (finding 73): after the click.** The polite region says the browser may ask to keep the file and that it
+  is in Downloads; on Linux the exact line `sh ~/Downloads/hcm-worker.sh` with **Copy the line** (GNOME opens a downloaded
+  `.sh` as text); a worker that comes up and takes a code turns the panel to **Connecting this computer…** by itself.
+  Tour states `worker.local-downloaded` and `worker.local-advanced` changed with it.
+- **87f recorded for the user.** To take these live: **Update the map** (the server gains `worker-starter` and reads the
+  job; Provision's `iam` gives `fn-admin@` `roles/run.viewer` in the same consent; the pipeline is rebuilt and its record
+  follows its job). Then `worker.image` names the job's digest even before the admin records it, and the supervisor that
+  loops today picks it up at its next ask (at most 5 minutes). On the computer nothing else is needed; **Use this
+  computer** now downloads from the server. Verify live, **UNVERIFIED** until then: Chrome's keep prompt per system, the
+  first `jobs.get` with the new role.
+
+Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`worker.spec.ts`, `worker-run.spec.ts`, the
+install specs; two workers).

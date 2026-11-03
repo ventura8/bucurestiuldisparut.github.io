@@ -1,5 +1,6 @@
-// `<hcm-worker-local>` (finding 72 of 2026-11-02): Use this computer saves the starter file and says how to open it, the
-// auto-pair's progress in a polite region, Stop using this computer, and the command behind Advanced.
+// `<hcm-worker-local>` (finding 72 of 2026-11-02; finding 73 of 2026-11-03: the starter files are links the server answers
+// as downloads): Use this computer, then where the file is and how to run it, the auto-pair's progress in a polite region,
+// Stop using this computer, and the command behind Advanced.
 import { axeViolations } from '@hcm/test-support/axe';
 import { translateAdminWorkerLocal, type AdminWorkerLocalKey } from '@hcm/shared/admin-worker-local';
 import { html, type LitElement } from 'lit';
@@ -7,10 +8,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { defineHcmButton } from '../../../src/components/button.js';
 import { defineHcmSegmentedButton } from '../../../src/components/segmented-button.js';
-import { defineWorkerLocal, GET_DOCKER_URL, WORKER_PAGE, workerCommand } from '../../../src/admin/worker/hcm-worker-local.js';
+import {
+    defineWorkerLocal,
+    GET_DOCKER_URL,
+    LINUX_RUN_LINE,
+    WORKER_PAGE,
+    workerCommand,
+} from '../../../src/admin/worker/hcm-worker-local.js';
 import { cleanup, fixture } from '../../helpers.js';
 import { deep, deepAll, deepText, updated } from '../shell/fake-app.js';
-import { FakeLocal } from './fake-local.js';
+import { FakeLocal, linksOf } from './fake-local.js';
 
 defineHcmButton();
 defineHcmSegmentedButton();
@@ -47,32 +54,45 @@ function status(element: Element): string {
 describe('<hcm-worker-local>', () => {
     afterEach(cleanup);
 
-    it('happyPath_useThisComputerSavesTheFileAndSaysHowToOpenItThenTheAutoPair @S-A62-HAPPY-STARTER', async () => {
+    it('happyPath_useThisComputerIsADownloadLinkThenWhereTheFileIsAndHowToRunItThenTheAutoPair @S-A62-HAPPY-STARTER', async () => {
         const local = new FakeLocal();
-        const saved: string[] = [];
-        const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
-            saved.push(this.download);
-        });
+        const write = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined);
         const element = await shown(local);
-
-        expect(status(element)).toBe('');
-        button(element, t('adminWorkerLocal.use')).click();
-        await vi.waitFor(() => {
-            expect(saved).toEqual(['hcm-worker.sh']);
+        const link = deep(element, 'a[data-starter="hcm-worker.sh"]') as HTMLAnchorElement;
+        // Finding 73: an ordinary link the owner clicks; the server answers the file as a download.
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
         });
+
+        expect(link.href).toBe(linksOf('linux').install.url);
+        expect(link.download).toBe('hcm-worker.sh');
+        expect(link.textContent.trim()).toBe(t('adminWorkerLocal.use'));
+        expect(status(element)).toBe('');
+        link.click();
+        expect(local.calls).toContain('use');
         local.set({ phase: 'downloaded' });
         await updated(element);
-        expect(status(element)).toBe(t('adminWorkerLocal.open.linux'));
+        expect(status(element)).toBe(t('adminWorkerLocal.saved'));
+        expect(deep(element, 'p[data-open="linux"]').textContent).toBe(t('adminWorkerLocal.open.linux'));
+        expect(deep(element, 'pre').textContent).toBe(LINUX_RUN_LINE);
+        button(element, t('adminWorkerLocal.copyRun')).click();
+        await vi.waitFor(() => {
+            expect(write).toHaveBeenCalledWith('sh ~/Downloads/hcm-worker.sh');
+        });
+        await updated(element);
+        expect(deep(element, 'p[data-copied="run"]').textContent).toBe(t('adminWorkerLocal.copied'));
+        expect(await axeViolations(element)).toEqual([]);
         local.set({ phase: 'connecting' });
         await updated(element);
         expect(status(element)).toBe(t('adminWorkerLocal.connecting'));
+        expect(deepAll(element, 'p[data-open]')).toEqual([]);
         local.set({ phase: 'connected' });
         await updated(element);
         expect(status(element)).toBe(t('adminWorkerLocal.connected'));
         expect(deep(element, 'p[data-local]').getAttribute('role')).toBe('status');
         expect(deep(element, `a[href="${GET_DOCKER_URL}"]`).textContent).toBe(t('adminWorkerLocal.getDocker'));
         expect(await axeViolations(element)).toEqual([]);
-        click.mockRestore();
+        write.mockRestore();
     });
 
     it('happyPath_theSystemIsChosenAndTheWindowsCommandIsPowerShells', async () => {
@@ -127,30 +147,6 @@ describe('<hcm-worker-local>', () => {
         write.mockRestore();
     });
 
-    it('badPath_aFileThatCannotBeMadeIsNotSavedAndStopUsingSaysWhatToDo @S-A62-HAPPY-STOP-COMPUTER', async () => {
-        const local = new FakeLocal();
-        local.file = null;
-        const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
-        const element = await shown(local);
-
-        button(element, t('adminWorkerLocal.use')).click();
-        await vi.waitFor(() => {
-            expect(local.calls).toContain('use');
-        });
-        local.set({ phase: 'failed' });
-        await updated(element);
-        expect(status(element)).toBe(t('adminWorkerLocal.failed'));
-        button(element, t('adminWorkerLocal.stop')).click();
-        await vi.waitFor(() => {
-            expect(local.calls).toContain('stopUsing');
-        });
-        local.set({ phase: 'stopped' });
-        await updated(element);
-        expect(status(element)).toBe(t('adminWorkerLocal.stopped'));
-        expect(click).not.toHaveBeenCalled();
-        click.mockRestore();
-    });
-
     it('badPath_withoutItsPartNothingShowsAndALeavingElementListensNoMore', async () => {
         expect(deepText(await shown(null))).toBe('');
 
@@ -159,5 +155,49 @@ describe('<hcm-worker-local>', () => {
         element.remove();
         local.set({ phase: 'connected' });
         expect(deepText(element)).not.toContain(t('adminWorkerLocal.connected'));
+    });
+});
+
+describe("<hcm-worker-local>: the starter files' links (finding 73 of 2026-11-03)", () => {
+    afterEach(cleanup);
+
+    it('happyPath_onMacAndWindowsTheFileIsOpenedFromDownloadsWithNoLineToCopy', async () => {
+        const local = new FakeLocal();
+        local.set({ os: 'windows', files: linksOf('windows'), phase: 'downloaded' });
+        const element = await shown(local);
+
+        expect((deep(element, 'a[data-starter="hcm-worker.bat"]') as HTMLAnchorElement).href).toBe(linksOf('windows').install.url);
+        expect(deep(element, 'p[data-open="windows"]').textContent).toBe(t('adminWorkerLocal.open.windows'));
+        expect(deepAll(element, 'p[data-copied="run"]')).toEqual([]);
+    });
+
+    it('happyPath_stopUsingIsTheRemovalFilesLinkAndSaysWhatToDo @S-A62-HAPPY-STOP-COMPUTER', async () => {
+        const local = new FakeLocal();
+        const element = await shown(local);
+        const link = deep(element, 'a[data-starter="hcm-worker-remove.sh"]') as HTMLAnchorElement;
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+        });
+
+        expect(link.href).toBe(linksOf('linux').uninstall.url);
+        expect(link.textContent.trim()).toBe(t('adminWorkerLocal.stop'));
+        link.click();
+        await vi.waitFor(() => {
+            expect(local.calls).toContain('stopUsing');
+        });
+        local.set({ phase: 'stopped' });
+        await updated(element);
+        expect(status(element)).toBe(t('adminWorkerLocal.stopped'));
+    });
+
+    it('badPath_aServerThatMakesNoFileGivesNoLinkAndSaysToUpdateTheMap @S-A62-BAD-STARTER-TEMPLATE', async () => {
+        const local = new FakeLocal();
+        local.set({ starter: false });
+        const element = await shown(local);
+
+        expect(deepAll(element, 'a[data-starter]')).toEqual([]);
+        expect(deep(element, 'p[data-starter-missing]').textContent).toBe(t('adminWorkerLocal.failed'));
+        expect(deep(element, 'p[data-starter-missing]').getAttribute('role')).toBe('alert');
+        expect(deep(element, 'details summary').textContent).toBe(t('adminWorkerLocal.advanced'));
     });
 });

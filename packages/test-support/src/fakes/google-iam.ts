@@ -52,6 +52,16 @@ const IAM: GoogleApi = {
 };
 
 /** `<project>@appspot.gserviceaccount.com`: the App Engine default account (finding 28 of 2026-10-31). */
+/** The service accounts Provision creates (`packages/admin/src/provision/project-config.ts`), with their display names. */
+const PROVISIONED_ACCOUNTS: readonly (readonly [string, string])[] = [
+    ['fn-admin', 'Functions: admin, setup, telemetry, ops'],
+    ['fn-events', 'Functions: events (history, publish, photos)'],
+    ['fn-crash', 'Functions: the public crash endpoint (no role)'],
+    ['job-raster', 'Cloud Run Job: raster pipeline'],
+    ['gh-deployer', 'GitHub Actions deploy (Workload Identity)'],
+    ['hcm-installer', 'Cloud Build: the in-app installer'],
+];
+
 export function appEngineAccount(projectId: string): string {
     return `${projectId}@appspot.gserviceaccount.com`;
 }
@@ -422,6 +432,16 @@ export function createIamFake(state: IamState, projects: GoogleProjects): Servic
         routes: [...poolRoutes(iamOf), ...accountRoutes(iamOf), ...roleRoutes(iamOf)],
         failure: (mode) => googleFailure(IAM, mode),
         scenarios: {
+            /**
+             * Finding 74 of 2026-11-03: the accounts Provision's `service-accounts` item made, so an update that runs only
+             * the `iam` item (set version 3) finds them in a project prepared earlier.
+             */
+            accountsProvisioned: () => {
+                const iam = demo();
+                for (const [id, name] of PROVISIONED_ACCOUNTS) {
+                    iam.accounts.set(id, name);
+                }
+            },
             /** The `github` pool of the e2e project was deleted (an earlier setup removed): it must be undeleted. */
             poolDeleted: () => {
                 const iam = demo();

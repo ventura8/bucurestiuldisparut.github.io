@@ -148,6 +148,20 @@ function shownRelease(observation: TargetObservation, state: InstallState): Show
 
 type ShownRelease = Pick<InstallTargetView, 'installedRelease' | 'installedReleaseTime'>;
 
+/**
+ * The pipeline image's digest the card keeps (finding 74 of 2026-11-03): the one the job `raster-pipeline` runs, else the
+ * one the build's log named, else the one it kept, but only while the release it was kept for is still the one shown.
+ * Before, the log was the only source; Cloud Logging lags a build's end, so the first look at a finished update read a
+ * log without its last line (the `image` event), cached that summary, and recorded the new release beside the old digest.
+ */
+function imageOf(observation: TargetObservation, summary: LogSummary, kept: InstallTargetView, release: string | null): string | null {
+    const known = observation.installed.image ?? summary.image;
+    if (known !== null) {
+        return known;
+    }
+    return kept.installedRelease === release ? kept.image : null;
+}
+
 /** A build time an observation may leave out, as the card keeps it. */
 function knownTime(time: number | null | undefined): number | null {
     return time ?? null;
@@ -323,10 +337,11 @@ class TargetFlow implements InstallFlow {
     }
 
     #viewOf(observation: TargetObservation, summary: LogSummary, state: InstallState): InstallTargetView {
+        const release = shownRelease(observation, state);
         return {
             ...this.#view,
             state,
-            ...shownRelease(observation, state),
+            ...release,
             ...this.#buildFields(observation.build),
             ...failureFields(summary, state),
             missing: summary.missing,
@@ -334,7 +349,7 @@ class TargetFlow implements InstallFlow {
             blocker: observation.blocker,
             error: null,
             checkedAt: new Date(this.#deps.clock.now()).toISOString(),
-            image: summary.image ?? this.#view.image,
+            image: imageOf(observation, summary, this.#view, release.installedRelease),
         };
     }
 

@@ -179,7 +179,7 @@ test(
             await page.goto(adminPath(lang, 'jobs'));
             const shown = page.locator('hcm-worker-panel');
             const saved = page.waitForEvent('download');
-            await shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.use') }).click({ timeout: FUNCTIONS_TIMEOUT_MS });
+            await shown.getByRole('link', { name: local(lang, 'adminWorkerLocal.use') }).click({ timeout: FUNCTIONS_TIMEOUT_MS });
             expect((await saved).suggestedFilename()).toBe('hcm-worker.sh');
             await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.connected'), {
                 timeout: FUNCTIONS_TIMEOUT_MS,

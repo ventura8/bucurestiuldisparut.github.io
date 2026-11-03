@@ -14,9 +14,10 @@ import type { VerifiedCaller } from '../api/access.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import type { Ports } from '../ports/index.js';
 import { at } from './holder.js';
-import { installedImage, newPairCode, pairIdOf } from './pairing.js';
+import { installedImage } from './installed-image.js';
+import { newPairCode, pairIdOf } from './pairing.js';
 
-export type PairCodeDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
+export type PairCodeDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs'>;
 
 /** How many of the caller's own pairings one call looks at to delete the unused expired ones. */
 const SWEEP_MAX = 50;
@@ -51,7 +52,7 @@ async function workerPairCode(
     await sweep(deps, request.cityId, caller.uid, now);
     const code = newPairCode();
     const expiresAt = new Date(now.getTime() + WORKER_PAIR_SECONDS * 1000);
-    const image = await installedImage(deps.documents);
+    const image = (await installedImage(deps))?.digest;
     await deps.documents.set(FIRESTORE_PATHS.pairing(request.cityId, pairIdOf(code)), workerPairingDocSchema, {
         uid: caller.uid,
         ...(image === undefined ? {} : { image }),

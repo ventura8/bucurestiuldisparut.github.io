@@ -22,6 +22,7 @@ import type { RemoteFiles } from './remote-files.js';
 import type { RuntimeConfig } from './runtime-config.js';
 import type { SecretStore } from './secret-store.js';
 import type { SetupRecords } from './setup-records.js';
+import type { StarterTemplates } from './starter-templates.js';
 import type { TaskQueue } from './task-queue.js';
 import type { Translator } from './translator.js';
 import type { UsgsApi } from './usgs-api.js';
@@ -67,6 +68,8 @@ export interface Ports {
     readonly kit: ExportKit;
     /** M7 (docs/research/M7-local-worker.md §6): Mapbox's Uploads API, the free publish path of a small file. */
     readonly uploads: MapboxUploads;
+    /** Finding 73 of 2026-11-03: the starter files' templates `worker.starter` fills. */
+    readonly starters: StarterTemplates;
     readonly admins: AdminDirectory;
     readonly setup: SetupRecords;
 }

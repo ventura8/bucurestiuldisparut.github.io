@@ -374,6 +374,53 @@ describe('the starter file (finding 72)', () => {
         await expect(asPaired(world, claimFunction, { workerId: WORKER })).resolves.toEqual({ job: { jobId: JOB } });
     });
 
+    it('happyPath_afterAnUpdateTheSupervisorIsGivenTheImageTheJobRuns @S-A62-HAPPY-STARTER-IMAGE-UPDATE', async () => {
+        // Finding 74: Update the map rebuilt the image and the jobs run it; the record still names the release before's digest.
+        const world = await workerWorld();
+        await seedSetup(world, { install: { pipeline: { state: 'installed', release: '1.0.0+bf74d17', checkedAt: NOW, image: IMAGE } } });
+        world.jobs.descriptions.set('raster-pipeline', {
+            image: `us-central1-docker.pkg.dev/${world.deps.config.projectId}/hcm/pipeline@${NEWER}`,
+            labels: { 'hcm-release': '1-0-0-bf74d17' },
+        });
+        const request = { data: {}, rawRequest: {}, acceptsStreaming: false } as unknown as CallableRequest<unknown>;
+
+        await expect(imageFunction(() => world.deps).run(request)).resolves.toEqual({
+            image: `us-central1-docker.pkg.dev/${world.deps.config.projectId}/hcm/pipeline@${NEWER}`,
+            digest: NEWER,
+            release: '1.0.0+bf74d17',
+        });
+        // The worker the supervisor then starts on that image is not outdated, and takes the local job.
+        await seedPairing(world, { pairedAt: minutes(-1) });
+        await seedJob(world, JOB, localJob());
+        await expect(asPaired(world, helloFunction, { workerId: WORKER, version: '1.0.0', image: NEWER })).resolves.toMatchObject({
+            image: NEWER,
+            outdated: false,
+        });
+        await expect(asPaired(world, claimFunction, { workerId: WORKER })).resolves.toEqual({ job: { jobId: JOB } });
+    });
+
+    it('badPath_aStaleRecordNeverPairsTheNewReleaseWithTheOldDigest @S-A62-BAD-STARTER-IMAGE-STALE', async () => {
+        // The job names no release: the record's release belongs to another digest, so none is answered.
+        const world = await workerWorld();
+        await seedSetup(world, { install: { pipeline: { state: 'installed', release: '1.0.0+bf74d17', checkedAt: NOW, image: IMAGE } } });
+        world.jobs.descriptions.set('raster-pipeline', {
+            image: `us-central1-docker.pkg.dev/${world.deps.config.projectId}/hcm/pipeline@${NEWER}`,
+            labels: {},
+        });
+        const request = { data: {}, rawRequest: {}, acceptsStreaming: false } as unknown as CallableRequest<unknown>;
+
+        await expect(imageFunction(() => world.deps).run(request)).resolves.toEqual({
+            image: `us-central1-docker.pkg.dev/${world.deps.config.projectId}/hcm/pipeline@${NEWER}`,
+            digest: NEWER,
+        });
+        // A worker still on the record's (older) image is outdated against the job's.
+        await seedPairing(world, { pairedAt: minutes(-1) });
+        await expect(asPaired(world, helloFunction, { workerId: WORKER, version: '1.0.0', image: IMAGE })).resolves.toMatchObject({
+            image: NEWER,
+            outdated: true,
+        });
+    });
+
     it('badPath_aSupervisorStillOnTheOlderImageIsToldItIsOutdated @S-A62-BAD-STARTER-OUTDATED', async () => {
         const world = await workerWorld();
         await installed(world, NEWER);

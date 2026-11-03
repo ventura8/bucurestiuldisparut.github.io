@@ -10,6 +10,7 @@ import {
     compareRelease,
     INSTALLER_ACCOUNT,
     parseReleaseTime,
+    pipelineImageDigest,
     PIPELINE_REPOSITORY,
     RELEASE_PATTERN,
     releaseOfSlug,
@@ -215,11 +216,16 @@ class CloudBuildInstaller implements InstallerPort {
             const parts = found.map((job) =>
                 job === undefined ? null : { release: releaseOfSlug(job.releaseSlug), releaseTime: parseReleaseTime(job.releaseTime) },
             );
+            // Finding 74: the image the job `raster-pipeline` runs is the installed one.
+            const image = pipelineImageDigest(found.find((job) => job?.name === CLOUD_RUN_JOBS.std)?.image ?? '');
             return {
-                installed: installedOf(
-                    parts,
-                    parts.every((part) => part !== null),
-                ),
+                installed: {
+                    ...installedOf(
+                        parts,
+                        parts.every((part) => part !== null),
+                    ),
+                    image,
+                },
                 progress: null,
             };
         }

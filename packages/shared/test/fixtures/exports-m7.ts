@@ -68,4 +68,10 @@ export const M7_EXPORTS: readonly string[] = [
     'WORKER_STARTER_TEMPLATES',
     'workerImageRequestSchema',
     'workerImageResponseSchema',
+    // Finding 73 of 2026-11-03: the starter file served by `worker.starter`; finding 74: the image a job runs.
+    'WORKER_OSES',
+    'WORKER_STARTER_ACTIONS',
+    'WORKER_STARTER_FILE_NAMES',
+    'workerStarterQuerySchema',
+    'pipelineImageDigest',
 ];

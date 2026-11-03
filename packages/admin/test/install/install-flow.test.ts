@@ -484,3 +484,28 @@ describe('failures', () => {
         });
     });
 });
+
+describe('the pipeline image a finished update shows (finding 74 of 2026-11-03)', () => {
+    it('badPath_aFinishedUpdateWhoseLogLagsStillNamesTheImageItsJobRuns', async () => {
+        // Finding 74 of 2026-11-03: Cloud Logging had not yet the `jobs` step's last line (the `image` event) when the
+        // card first saw the build end; the card kept the release before's digest beside the new release. The jobs run
+        // the new image: that is the one shown, and a log read once more is not needed for it.
+        const install = await installWorld();
+        const installer: InstallerPort = {
+            localBlocker: (target) => install.installer.localBlocker(target),
+            observe: (target, access) => install.installer.observe(target, access),
+            submit: (target, access) => install.installer.submit(target, access),
+            buildLog: async (buildId, access) =>
+                (await install.installer.buildLog(buildId, access)).filter((line) => !line.text.includes('"event":"image"')),
+            consoleUrl: (buildId) => install.installer.consoleUrl(buildId),
+        };
+        const { clock, flow, latest } = flowOver(installer, 'pipeline');
+        await flow.install();
+        install.fakes.scenario('cloud-build.finish');
+
+        await clock.advance(RUNNING_LOOK_MS);
+
+        expect(latest()).toMatchObject({ state: 'installed', installedRelease: RELEASE, image: PIPELINE_DIGEST });
+        flow.dispose();
+    });
+});

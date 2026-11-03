@@ -153,7 +153,7 @@ test(
         });
         await expect(shown.getByText(text(lang, 'adminWorker.lastDone', { when: '' }).split(':')[0] ?? '')).toBeVisible();
         // Finding 72: the computer's part leads with Use this computer; the command waits behind Advanced.
-        await expect(shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.use') })).toBeVisible({
+        await expect(shown.getByRole('link', { name: local(lang, 'adminWorkerLocal.use') })).toBeVisible({
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
         await expect(shown.getByRole('link', { name: local(lang, 'adminWorkerLocal.getDocker') })).toHaveAttribute(
@@ -183,7 +183,7 @@ test(
         await page.goto(adminPath(lang, 'setup/pipeline'));
         const card = await setup.show('pipeline');
         await expect(card.locator('hcm-worker-panel').getByText(use)).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
-        await expect(card.getByRole('button', { name: local(lang, 'adminWorkerLocal.use') })).toBeVisible({
+        await expect(card.getByRole('link', { name: local(lang, 'adminWorkerLocal.use') })).toBeVisible({
             timeout: FUNCTIONS_TIMEOUT_MS,
         });
         await expectStateSound(page, adminVisit('worker.setup-panel', lang));
@@ -205,7 +205,7 @@ test(
         await expect(shown.getByText(text(lang, 'adminWorker.noImage'))).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         await expect(shown.getByRole('link', { name: text(lang, 'adminWorker.openSetup') })).toHaveAttribute('href', '#/setup/pipeline');
         await expect(shown.locator('pre')).toHaveCount(0);
-        await expect(shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.use') })).toHaveCount(0);
+        await expect(shown.getByRole('link', { name: local(lang, 'adminWorkerLocal.use') })).toHaveCount(0);
         await expectStateSound(page, adminVisit('worker.panel-no-image', lang));
     },
 );
@@ -348,14 +348,16 @@ test(
     { tag: ['@S-A62-HAPPY-STARTER', '@S-A62-HAPPY-STOP-COMPUTER', '@S-A62-BAD-STARTER-TEMPLATE'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream, consoleErrors }) => {
         // Finding 72 of 2026-11-02 ("I should not have to copy and paste"): one file, opened once, sets the computer up.
+        // Finding 73 of 2026-11-03: a link the owner clicks, which the server's worker.starter answers as a download.
         const owner = adminWorld.accounts.owner.uid;
         const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
         await recordPipeline(imagery);
 
         await page.goto(adminPath(lang, 'jobs'));
         const shown = panel(page);
-        const use = shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.use') });
+        const use = shown.getByRole('link', { name: local(lang, 'adminWorkerLocal.use') });
         await expect(use).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(use).toHaveAttribute('href', /\/worker-starter\?city=[a-z0-9-]+&os=linux&action=install$/);
         const linux = page.waitForEvent('download');
         await use.click();
         const starter = await linux;
@@ -365,7 +367,10 @@ test(
         expect(script).toContain(`HCM_CITY='${imagery.city}'`);
         expect(script).toContain("HCM_ACTION='install'");
         expect(script).not.toMatch(/__HCM_|--pair/);
-        await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.open.linux'));
+        // After the click: the browser may ask to keep it, where it is saved, and on Linux the line that runs it.
+        await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.saved'));
+        await expect(shown.locator('[data-open="linux"]')).toHaveText(local(lang, 'adminWorkerLocal.open.linux'));
+        await expect(shown.getByLabel(local(lang, 'adminWorkerLocal.runCommand'))).toHaveText('sh ~/Downloads/hcm-worker.sh');
         await expectStateSound(page, adminVisit('worker.local-downloaded', lang));
 
         // Windows: the .bat that calls PowerShell, with Windows' line ends.
@@ -375,26 +380,31 @@ test(
         const bat = await windows;
         expect(bat.suggestedFilename()).toBe('hcm-worker.bat');
         expect(await savedText(bat)).toContain(`set "HCM_CITY=${imagery.city}"\r\n`);
-        await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.open.windows'));
+        await expect(shown.locator('[data-open="windows"]')).toHaveText(local(lang, 'adminWorkerLocal.open.windows'));
 
         // Stop using this computer: the same file, set to remove the worker.
         await shown.getByRole('radio', { name: local(lang, 'adminWorkerLocal.os.linux') }).click();
         const removal = page.waitForEvent('download');
-        await shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.stop') }).click();
+        await shown.getByRole('link', { name: local(lang, 'adminWorkerLocal.stop') }).click();
         const remover = await removal;
         expect(remover.suggestedFilename()).toBe('hcm-worker-remove.sh');
         expect(await savedText(remover)).toContain("HCM_ACTION='uninstall'");
         await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.stopped'));
 
-        // A template the site does not serve: no file, and the panel says so.
-        await page.route('**/admin/worker/hcm-worker.sh', (route) => route.fulfill({ status: 404, body: '' }));
-        await use.click();
-        await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.failed'));
+        // A server that does not make the file yet (one from before this release): no link, and the panel says so.
+        await page.route('**/worker-starter?**', (route) => route.fulfill({ status: 404, body: '' }));
+        await page.reload();
+        await expect(shown.locator('[data-starter-missing]')).toHaveText(local(lang, 'adminWorkerLocal.failed'), {
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(shown.getByRole('link', { name: local(lang, 'adminWorkerLocal.use') })).toHaveCount(0);
         await openAdvanced(shown, lang);
-        await expect(shown.locator('hcm-worker-local pre')).toHaveText(commandPattern(imagery.city), { timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(shown.getByLabel(local(lang, 'adminWorkerLocal.command'))).toHaveText(commandPattern(imagery.city), {
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
         await expectStateSound(page, adminVisit('worker.local-advanced', lang));
-        // The template refused on purpose, and the auto-pair's looks at this computer, where no worker runs in this test
+        // The starter refused on purpose, and the auto-pair's looks at this computer, where no worker runs in this test
         // (the browser logs a refused connection; worker-run.spec.ts pairs a real one).
-        consoleErrors.takeMatching(/admin\/worker\/hcm-worker\.sh|127\.0\.0\.1:8765/);
+        consoleErrors.takeMatching(/worker-starter|127\.0\.0\.1:8765/);
     },
 );

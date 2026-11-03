@@ -137,11 +137,14 @@ token in the volume (mode 600). The page's Google sign-in remains a fallback. A 
 minutes offers the cloud (`job.noWorker`). An update (Update the map) also applies the Provision items whose definition
 changed since the project was prepared (`setup/status.provision.setVersion`).
 
-Since finding 72 (`DECISIONS-for-review.md` §86): nothing is copied or pasted. **Use this computer** saves a starter file
-for the computer's system (`packages/admin/starter/`, published at `/admin/worker/`, filled with the project and the city;
-no secret), which installs a per-user supervisor (systemd `--user`, a LaunchAgent, a task at logon): it reads the installed
+Since finding 72 (`DECISIONS-for-review.md` §86): nothing is copied or pasted. **Use this computer** downloads a starter
+file for the computer's system (`packages/admin/starter/`, filled with the project and the city; no secret; since finding
+73, §87, served by the public HTTPS function `worker.starter` as an attachment, the templates copied beside the functions'
+bundle), which installs a per-user supervisor (systemd `--user`, a LaunchAgent, a task at logon): it reads the installed
 image from `worker.image`, runs `worker --supervised --image <digest>` and starts it again after any end, the installed
-image after an outdated one (exit 75). The admin pairs the computer by itself: the worker answers `GET /state` and
+image after an outdated one (exit 75), and backs off to five minutes from an image that refuses its arguments. The
+installed image is the one the Cloud Run job `raster-pipeline` runs (finding 74: read by the admin's pipeline card and by
+the worker's callables, `roles/run.viewer` for `fn-admin@`; the record answers only while the job cannot be read). The admin pairs the computer by itself: the worker answers `GET /state` and
 `POST /pair` for the project's Hosting origins only (CORS, Private Network Access), and the admin (the lazy
 `worker-local` chunk) posts a fresh one-time code to a worker that takes one. Provision's update record waits for the
 server the same update installs.

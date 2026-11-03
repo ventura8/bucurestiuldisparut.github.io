@@ -20,12 +20,13 @@ import { PUSH_SERVICE_WORKER_FILE, PUSH_SERVICE_WORKER_SOURCE } from './service-
  * <outDir>/fonts/…                       the kit's self-hosted fonts and their licences (packages/ui/fonts), which the
  *                                        admin loads from `fonts/` next to the page, as the engine's site pages do
  * <outDir>/legacy/bucharest/…            the legacy import bundle (legacy.ts)
- * <outDir>/worker/hcm-worker.sh, .bat    the starter files' templates (packages/admin/starter/), which the admin's "Use this
- *                                        computer" fills with the project and the city (finding 72 of 2026-11-02)
  * ```
  *
+ * The starter files of "Use this computer" are no longer published here (finding 73 of 2026-11-03): the server's
+ * `worker.starter` serves them filled, as a download; a `worker/` folder an earlier build left is removed.
+ *
  * Every input is read and validated before anything is written, and only `index.html`, `runtime.json`, `project.json`,
- * the service worker, `worker/`, `fonts/` and `legacy/` are replaced: the Vite output stays. The production folder is `packages/admin/dist` (`firebase.json` → `hosting.public`); a test
+ * the service worker, `fonts/` and `legacy/` are replaced: the Vite output stays. The production folder is `packages/admin/dist` (`firebase.json` → `hosting.public`); a test
  * writes below `dist/`.
  */
 
@@ -37,10 +38,8 @@ const DEFAULT_FONTS_DIR = 'packages/ui/fonts';
 /** Where the page finds them. */
 export const FONTS_FOLDER = 'fonts';
 
-/** The starter files' templates (finding 72, `docs/research/M7-local-worker.md` §1.5) and where the admin fetches them. */
-const DEFAULT_STARTER_DIR = 'packages/admin/starter';
+/** Where finding 72's build published the starter templates (finding 73: removed; the server serves the files). */
 export const STARTER_FOLDER = 'worker';
-const STARTER_FILES = ['hcm-worker.sh', 'hcm-worker.bat'] as const;
 
 /** The pinned Mapbox GL JS release whose digest the page names (a pinned devDependency of `@hcm/e2e`). */
 const DEFAULT_MAPBOX_GL_DIR = 'node_modules/mapbox-gl/dist';
@@ -56,8 +55,6 @@ export interface AdminBuildOptions {
     readonly projectFile?: string;
     /** The pinned Mapbox GL JS release; default `node_modules/mapbox-gl/dist`. */
     readonly mapboxGlDir?: string;
-    /** The starter files' templates (finding 72); default `packages/admin/starter`. */
-    readonly starterDir?: string;
     /** The build's environment: the commit (`HCM_COMMIT`, `GITHUB_SHA`) and a start-up deploy (`HCM_ADMIN_START_UP`). */
     readonly env?: BuildEnvironment;
 }
@@ -89,17 +86,6 @@ function requireBundle(files: SiteFileSystem, outDir: string): void {
     }
 }
 
-/** The starter templates, each required (the admin's Use this computer fetches them). */
-function starterFiles(files: SiteFileSystem, starterDir: string): AdminFile[] {
-    return STARTER_FILES.map((name) => {
-        const from = `${starterDir}/${name}`;
-        if (!files.isFile(from)) {
-            throw new SiteBuildError(`${from} is missing: the admin's Use this computer gives a file made from it`);
-        }
-        return { from, to: `${STARTER_FOLDER}/${name}` };
-    });
-}
-
 /** The fonts and their licences, every `.woff2` and `LICENSES.md` of `fontsDir`. */
 function fontFiles(files: SiteFileSystem, fontsDir: string): AdminFile[] {
     const names = files.isFile(`${fontsDir}/LICENSES.md`) ? files.listFiles(fontsDir) : [];
@@ -122,12 +108,11 @@ function write(files: SiteFileSystem, outDir: string, file: AdminFile): void {
 }
 
 /** The input folders of `options`, the defaults where it names none. */
-function foldersOf(options: AdminBuildOptions): Required<Pick<AdminBuildOptions, 'fontsDir' | 'seedDir' | 'mapboxGlDir' | 'starterDir'>> {
+function foldersOf(options: AdminBuildOptions): Required<Pick<AdminBuildOptions, 'fontsDir' | 'seedDir' | 'mapboxGlDir'>> {
     return {
         fontsDir: options.fontsDir ?? DEFAULT_FONTS_DIR,
         seedDir: options.seedDir ?? DEFAULT_SEED_DIR,
         mapboxGlDir: options.mapboxGlDir ?? DEFAULT_MAPBOX_GL_DIR,
-        starterDir: options.starterDir ?? DEFAULT_STARTER_DIR,
     };
 }
 
@@ -159,16 +144,7 @@ export function buildAdminSite(options: AdminBuildOptions, files: SiteFileSystem
     const runtime = planRuntimeFile(files, inputs.env);
     const page = renderAdminPage(undefined, { mapboxGlIntegrity: mapboxGlIntegrity(files, inputs.mapboxGlDir) });
     const worker: AdminFile = { to: PUSH_SERVICE_WORKER_FILE, content: PUSH_SERVICE_WORKER_SOURCE };
-    const starters = starterFiles(files, inputs.starterDir);
-    const planned: AdminFile[] = [
-        { to: 'index.html', content: page },
-        runtime.file,
-        project.file,
-        worker,
-        ...starters,
-        ...fonts,
-        ...legacy.files,
-    ];
+    const planned: AdminFile[] = [{ to: 'index.html', content: page }, runtime.file, project.file, worker, ...fonts, ...legacy.files];
     files.remove(`${outDir}/${FONTS_FOLDER}`);
     files.remove(`${outDir}/${STARTER_FOLDER}`);
     files.remove(`${outDir}/${LEGACY_FOLDER}`);

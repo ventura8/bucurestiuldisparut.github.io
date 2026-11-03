@@ -1,8 +1,18 @@
-// "Use this computer" (finding 72 of 2026-11-02, `packages/admin/src/worker/local.ts`): the starter file from its template,
-// the auto-pair over the worker's local `GET /state` and `POST /pair`, Stop using this computer and the Advanced code.
+// "Use this computer" (finding 72 of 2026-11-02, `packages/admin/src/worker/local.ts`; finding 73 of 2026-11-03: the starter
+// files are links to the server's `worker.starter`, whose answer one HEAD checks): the auto-pair over the worker's local
+// `GET /state` and `POST /pair`, Stop using this computer and the Advanced code.
 import { describe, expect, it } from 'vitest';
 
-import { createLocal, LOCAL_KEY, LOCAL_WORKER, LocalComputer, osOf, PROBE_MS, starterText } from '../../src/worker/local.js';
+import {
+    createLocal,
+    functionsBaseFor,
+    LOCAL_KEY,
+    LOCAL_WORKER,
+    LocalComputer,
+    osOf,
+    PROBE_MS,
+    starterLinks,
+} from '../../src/worker/local.js';
 import { failure } from '../app/fakes.js';
 import { CITY, contentWorld, type ContentWorld } from '../content/world.js';
 
@@ -10,26 +20,27 @@ const PROJECT = 'demo-hcm';
 const CODE = 'abcdefghijklmnopqrstuvwxyz';
 const LINUX = 'Mozilla/5.0 (X11; Linux x86_64)';
 const WINDOWS = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)';
-const TEMPLATE = "HCM_PROJECT='__HCM_PROJECT__'\nHCM_CITY='__HCM_CITY__'\nHCM_ACTION='__HCM_ACTION__'\n";
+const BASE = 'https://us-central1-demo-hcm.cloudfunctions.net';
 
 interface Sent {
     readonly url: string;
     readonly init: RequestInit | undefined;
 }
 
-/** The page's `fetch` as the tests answer it: the templates next to the admin, and this computer's worker. */
+/** The page's `fetch` as the tests answer it: the server's `worker.starter`, and this computer's worker. */
 class FakeNet {
     readonly sent: Sent[] = [];
     /** The worker's `GET /state` answer; null: nothing answers on this computer. */
     state: Record<string, unknown> | null = null;
-    templates = true;
+    /** Whether the server makes the starter file. */
+    starter = true;
 
     readonly fetch = (url: string, init?: RequestInit): Promise<Response> => {
         this.sent.push({ url, init });
         if (url.startsWith(`${LOCAL_WORKER}/`)) {
             return this.#worker(url);
         }
-        return Promise.resolve(this.templates ? new Response(TEMPLATE) : new Response('', { status: 404 }));
+        return Promise.resolve(new Response(null, { status: this.starter ? 200 : 404 }));
     };
 
     #worker(url: string): Promise<Response> {
@@ -51,7 +62,7 @@ function answer(changes: Record<string, unknown> = {}): Record<string, unknown> 
 function localOf(world: ContentWorld, net: FakeNet, userAgent = LINUX): LocalComputer {
     world.callables.answer('worker.pairCode', () => ({ code: CODE, expiresAt: '2025-10-09T08:10:00.000Z' }));
     world.callables.answer('worker.revoke', () => ({ revoked: true }));
-    return new LocalComputer(world.services, PROJECT, net.fetch, userAgent);
+    return new LocalComputer(world.services, { project: PROJECT, functionsBase: BASE, fetch: net.fetch, userAgent });
 }
 
 async function settle(): Promise<void> {
@@ -65,18 +76,57 @@ describe("this computer's starter file", () => {
         expect([osOf(LINUX), osOf(WINDOWS), osOf('Mozilla/5.0 (Macintosh; Intel Mac OS X 15_1)')]).toEqual(['linux', 'windows', 'mac']);
     });
 
-    it('happyPath_theTemplateIsFilledAndWindowsGetsItsLineEnds', () => {
-        const values = { project: PROJECT, city: CITY, action: 'install' };
-
-        expect(starterText(TEMPLATE, values, 'linux')).toBe(`HCM_PROJECT='${PROJECT}'\nHCM_CITY='${CITY}'\nHCM_ACTION='install'\n`);
-        expect(starterText(TEMPLATE, { ...values, action: 'uninstall' }, 'windows')).toBe(
-            `HCM_PROJECT='${PROJECT}'\r\nHCM_CITY='${CITY}'\r\nHCM_ACTION='uninstall'\r\n`,
-        );
+    it('happyPath_theLinksAreTheServersStarterFunctionForTheCityAndSystem', () => {
+        expect(functionsBaseFor(PROJECT, false)).toBe(BASE);
+        expect(functionsBaseFor(PROJECT, true)).toBe('http://127.0.0.1:5001/demo-hcm/us-central1');
+        expect(starterLinks(BASE, CITY, 'windows')).toEqual({
+            install: { url: `${BASE}/worker-starter?city=${CITY}&os=windows&action=install`, name: 'hcm-worker.bat' },
+            uninstall: { url: `${BASE}/worker-starter?city=${CITY}&os=windows&action=uninstall`, name: 'hcm-worker-remove.bat' },
+        });
     });
 
-    it('badPath_aValueOfAnotherShapeNeverReachesTheFile', () => {
-        expect(starterText(TEMPLATE, { project: "x'; rm -rf ~; '", city: CITY, action: 'install' }, 'linux')).toBeNull();
-        expect(starterText(TEMPLATE, { project: PROJECT, city: 'Bucharest!', action: 'install' }, 'linux')).toBeNull();
+    it('happyPath_onceShownItAsksTheServerOnceWhetherItMakesTheFile', async () => {
+        const world = contentWorld();
+        const net = new FakeNet();
+        const local = localOf(world, net);
+        expect(local.state.starter).toBeNull();
+
+        local.start();
+        local.start();
+        await settle();
+
+        expect(local.state.starter).toBe(true);
+        expect(net.sent).toEqual([
+            {
+                url: `${BASE}/worker-starter?city=${CITY}&os=linux&action=install`,
+                init: { method: 'HEAD', credentials: 'omit', cache: 'no-store' },
+            },
+        ]);
+        local.intents.setOs('mac');
+        expect(local.state.files.install).toEqual({
+            url: `${BASE}/worker-starter?city=${CITY}&os=mac&action=install`,
+            name: 'hcm-worker.command',
+        });
+    });
+
+    it('badPath_aServerThatDoesNotMakeTheFileOrDoesNotAnswerSaysSo @S-A62-BAD-STARTER-TEMPLATE', async () => {
+        const world = contentWorld();
+        const net = new FakeNet();
+        net.starter = false;
+        const local = localOf(world, net);
+        local.start();
+        await settle();
+        expect(local.state.starter).toBe(false);
+
+        const offline = new LocalComputer(world.services, {
+            project: PROJECT,
+            functionsBase: BASE,
+            fetch: () => Promise.reject(new TypeError('offline')),
+            userAgent: LINUX,
+        });
+        offline.start();
+        await settle();
+        expect(offline.state.starter).toBe(false);
     });
 });
 
@@ -86,12 +136,11 @@ describe('Use this computer and the auto-pair', () => {
         const net = new FakeNet();
         const local = localOf(world, net);
         local.start();
-        expect(net.sent).toEqual([]);
+        await settle();
+        expect(net.to('/state')).toEqual([]);
 
-        const file = await local.intents.use();
+        local.intents.use();
 
-        expect(file).toEqual({ name: 'hcm-worker.sh', text: `HCM_PROJECT='${PROJECT}'\nHCM_CITY='${CITY}'\nHCM_ACTION='install'\n` });
-        expect(net.sent[0]?.url).toBe('/worker/hcm-worker.sh');
         expect(world.services.local.get(LOCAL_KEY)).toBe(CITY);
         expect(local.state.phase).toBe('downloaded');
         await settle();
@@ -163,21 +212,6 @@ describe('Use this computer and the auto-pair', () => {
         expect(net.to('/pair')).toHaveLength(1);
         local.stop();
     });
-
-    it('badPath_aTemplateThatCannotBeReadGivesNoFile', async () => {
-        const world = contentWorld();
-        const net = new FakeNet();
-        net.templates = false;
-        const local = localOf(world, net);
-
-        expect(await local.intents.use()).toBeNull();
-        expect(local.state.phase).toBe('failed');
-        expect(world.services.local.get(LOCAL_KEY)).toBeNull();
-
-        const offline = new LocalComputer(world.services, PROJECT, () => Promise.reject(new TypeError('offline')), LINUX);
-        expect(await offline.intents.stop()).toBeNull();
-        expect(offline.state.phase).toBe('failed');
-    });
 });
 
 describe('Stop using this computer and the Advanced command', () => {
@@ -191,13 +225,9 @@ describe('Stop using this computer and the Advanced command', () => {
         await settle();
         expect(local.state).toMatchObject({ os: 'windows', phase: 'connected' });
 
-        const file = await local.intents.stop();
+        await local.intents.stop();
 
-        expect(file).toEqual({
-            name: 'hcm-worker-remove.bat',
-            text: `HCM_PROJECT='${PROJECT}'\r\nHCM_CITY='${CITY}'\r\nHCM_ACTION='uninstall'\r\n`,
-        });
-        expect(net.sent.at(-1)?.url).toBe('/worker/hcm-worker.bat');
+        expect(local.state.files.uninstall.name).toBe('hcm-worker-remove.bat');
         expect(world.callables.calls.find((call) => call.name === 'worker.revoke')?.request).toEqual({
             cityId: CITY,
             workerId: 'w-0123456789abcdef',
@@ -214,7 +244,9 @@ describe('Stop using this computer and the Advanced command', () => {
         const net = new FakeNet();
         const local = localOf(world, net, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_1)');
 
-        expect((await local.intents.stop())?.name).toBe('hcm-worker-remove.command');
+        await local.intents.stop();
+
+        expect(local.state.files.uninstall.name).toBe('hcm-worker-remove.command');
         expect(world.callables.named('worker.revoke')).toBe(0);
     });
 

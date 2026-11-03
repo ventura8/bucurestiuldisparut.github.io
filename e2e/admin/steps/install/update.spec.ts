@@ -236,6 +236,8 @@ test(
         // bucket-lifecycle (the raw delivery's 7 days); the live owner had to open step c, Check again and Retry. Every
         // target is in place at the admin's release, so the update is Provision's alone.
         await upstream.scenario('install.provisioned', 'browser');
+        // Finding 74: set version 3 changed `iam`, which binds the accounts an earlier Prepare the project made.
+        await upstream.scenario('iam.accountsProvisioned', 'browser');
         await upstream.scenario('cloud-functions.deployed', 'browser');
         const installed = { state: 'installed', release: INSTALL_RELEASE, checkedAt: RECORDED };
         await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid, {
@@ -290,6 +292,7 @@ test(
         // the Provision line, and briefly said Not installed; after it, the card still offered the update, because the
         // record naming the items' version went to the server being replaced, which refused it.
         await upstream.scenario('install.provisioned', 'browser');
+        await upstream.scenario('iam.accountsProvisioned', 'browser');
         await upstream.scenario('cloud-functions.deployedOlderRelease', 'browser');
         const installed = { state: 'installed', release: INSTALL_RELEASE, checkedAt: RECORDED };
         await seedSetupStatus(adminWorld.emulators, adminWorld.accounts.owner.uid, {

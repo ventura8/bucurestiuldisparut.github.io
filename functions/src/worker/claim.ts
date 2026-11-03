@@ -22,7 +22,7 @@ import type { Ports } from '../ports/index.js';
 import { at, leaseOwnerOf, requireGreen, requireWorker, type WorkerCall } from './holder.js';
 import { imageState, paired } from './pairing.js';
 
-export type ClaimDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
+export type ClaimDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs'>;
 
 /** How many of the oldest queued local jobs one claim looks at (the rest wait for the next poll). */
 const CLAIM_SCAN = 20;
@@ -113,7 +113,7 @@ async function workerClaim(
     const now = deps.clock.now();
     const worker = await requireWorker(deps.documents, call);
     // Finding 72: the image `worker.hello` recorded (the supervisor's), else the pairing's.
-    const { outdated } = await imageState(deps.documents, caller, call.cityId, worker.image);
+    const { outdated } = await imageState(deps, caller, call.cityId, worker.image);
     const jobId = outdated ? null : await takeFirst(deps, call, now);
     if (jobId !== null) {
         deps.log.info('worker claimed a job', { cityId: call.cityId, workerId: call.workerId, jobId });

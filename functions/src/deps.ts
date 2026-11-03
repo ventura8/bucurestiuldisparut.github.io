@@ -14,6 +14,7 @@ import { createDocumentStore } from './adapters/documents.js';
 import { createEmulatorFetch } from './adapters/emulator-fetch.js';
 import { createErrorReporter } from './adapters/error-reporting.js';
 import { createDiskExportKit } from './adapters/export-kit.js';
+import { createDiskStarterTemplates } from './adapters/starter-templates.js';
 import { createFcm } from './adapters/fcm.js';
 import { createFirebaseManagement } from './adapters/firebase-management.js';
 import { firestoreAdminDirectory, firestoreSetupRecords } from './adapters/firestore.js';
@@ -224,6 +225,8 @@ function urlSignerOf(env: Env, storage: ReturnType<typeof getStorage>, buckets: 
 
 /** The export kit `functions/build.mjs` copies beside the bundle (`dist/export-kit/`, M5 §5.3). */
 const EXPORT_KIT_FOLDER = new URL('./export-kit/', import.meta.url);
+/** The starter files' templates `functions/build.mjs` copies beside the bundle (`dist/starter/`, finding 73). */
+const STARTER_FOLDER = new URL('./starter/', import.meta.url);
 
 /** The composition root: the only place that picks adapters (tests build their ports from fakes instead). */
 export function createDeps(env: Env, app: App): Deps {
@@ -261,6 +264,7 @@ export function createDeps(env: Env, app: App): Deps {
         writer: createStorageBlobWriter(getStorage(app), config.buckets),
         signer: urlSignerOf(env, getStorage(app), config.buckets),
         kit: createDiskExportKit(EXPORT_KIT_FOLDER),
+        starters: createDiskStarterTemplates(STARTER_FOLDER),
     };
 }
 

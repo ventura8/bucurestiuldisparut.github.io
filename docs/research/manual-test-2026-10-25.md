@@ -731,3 +731,33 @@ the addendum of 2026-11-02 (the starter file and auto-pair) of `docs/research/M7
   double-click (Gatekeeper, SmartScreen, a file manager that opens a `.sh` in an editor), the Scheduled Task without
   administrator rights, Chrome's Local Network Access prompt for the admin's look at `127.0.0.1`, and browsers other than
   Chrome.
+
+### The starter file, live (2026-11-03, admin, server and pipeline `1.0.0+bf74d17`)
+
+After **Update the map** installed `bf74d17` (Cloud Build `e407898b` rebuilt the pipeline image, tag `pipeline:1-0-0-bf74d17`,
+and its `jobs` step put the new digest on the Cloud Run jobs), the owner used the worker's panel on Linux in Chrome. Changes:
+`DECISIONS-for-review.md` §87, `docs/LESSONS.md` 354–355, the addendum of 2026-11-03 of
+`docs/research/M7-local-worker.md`.
+
+- **73.** \[ux]\[worker] **Use this computer** downloaded nothing: no `hcm-worker.sh` in `~/Downloads`, no `.crdownload`.
+  The page saved a file it made itself (a Blob URL behind a synthetic click after an `await`). Root cause **UNVERIFIED**
+  (Chrome's download bubble was not inspected): a `.sh` is a type Chrome lets through only for a download the user
+  starts from a site they know. FIXED (§87d–§87e): the link points at the server's new public function `worker.starter`,
+  which answers the filled file with `Content-Disposition: attachment`; one `HEAD` when the panel shows tells a server
+  that does not make the file yet ("update the map"). After the click the panel says the browser may ask to keep the file
+  and that it is in Downloads, and on Linux shows `sh ~/Downloads/hcm-worker.sh` with **Copy the line** (GNOME opens a
+  downloaded `.sh` as text); a worker that comes up turns it to **Connecting this computer…** by itself
+  (S-A62-HAPPY-STARTER, S-A62-BAD-STARTER-TEMPLATE, S-A62-HAPPY-STOP-COMPUTER, tour `worker.local-downloaded`,
+  `worker.local-advanced`).
+- **74.** \[bug]\[worker] The public `worker.image` answered `pipeline@sha256:ae268234…` (the image of `b8b4a26`) with the
+  release `1.0.0+bf74d17`; the supervisor pulled that old image, whose worker refused `--supervised --image`
+  ("unrecognized arguments", exit 2) and was started again in a loop. Root cause: the record's digest came only from the
+  build log's last line (the `jobs` step's `image` event), which the admin read once, when it first saw the build end, and
+  cached; Cloud Logging had not delivered that line yet, so the record kept the earlier digest while the state change to
+  installed wrote the new release from the jobs' label, and no later look changed the state. FIXED (§87a–§87c): the admin
+  and the server read the digest the job `raster-pipeline` runs (with its label's release; the server keeps it a minute,
+  `fn-admin@` gains `roles/run.viewer` through Provision's `iam`, set version 3), the record follows the image as well as
+  the state, a release is never paired with another digest, and the supervisor says once "update the map" and waits 5
+  minutes after three usage errors in a row (S-A62-HAPPY-STARTER-IMAGE-UPDATE, S-A62-BAD-STARTER-IMAGE-STALE,
+  S-A62-BAD-STARTER-OLD-IMAGE). Live: one more **Update the map** applies the role and installs the server that reads the
+  job; the looping supervisor then pulls the new image at its next ask.

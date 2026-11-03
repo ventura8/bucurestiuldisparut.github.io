@@ -126,6 +126,7 @@ describe('createDeps', () => {
                 'secrets',
                 'setup',
                 'signer',
+                'starters',
                 'tasks',
                 'tilesets',
                 'translator',
@@ -342,5 +343,6 @@ describe('createDeps: the M5 export ports (docs/research/M5-interfaces.md §5)',
         const deps = createDeps(PROJECT, app);
 
         await expect(deps.kit.engineVersion()).rejects.toThrow();
+        await expect(deps.starters.read('hcm-worker.sh')).rejects.toThrow();
     });
 });

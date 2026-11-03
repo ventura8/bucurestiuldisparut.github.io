@@ -123,6 +123,7 @@ import {
     workerPairCodeResponseSchema,
     workerRevokeRequestSchema,
     workerRevokeResponseSchema,
+    workerStarterQuerySchema,
 } from './worker.js';
 
 /**
@@ -319,6 +320,14 @@ export const HTTP_ENDPOINTS = {
         maxInstances: 2,
         request: errorReportSchema,
         owner: 'fn-admin',
+    },
+    /** Finding 73 of 2026-11-03: the starter file of "Use this computer", as a download (its query, no body). */
+    'worker.starter': {
+        method: 'GET',
+        maxBytes: 0,
+        maxInstances: 2,
+        request: workerStarterQuerySchema,
+        owner: 'fn-worker',
     },
 } as const;
 

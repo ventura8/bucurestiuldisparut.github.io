@@ -14,6 +14,9 @@
 // source maps (packages/engine/dist: engine.iife.js, engine.css, fonts/, THIRD_PARTY_NOTICES.txt, so the engine is built
 // first, as `npm run build` does) and kit.json, the engine's ENGINE_VERSION and every copied file with its size.
 //
+// The starter files' templates (finding 73 of 2026-11-03: `worker.starter` serves them filled as a download) are copied
+// from packages/admin/starter/ into dist/starter/.
+//
 // Four checks run on the result, because a broken artifact would only show at deploy time:
 // 1. every bare import left in dist/index.js, static or dynamic, is a Node built-in or a dependency dist/package.json
 //    pins (a dependency of @hcm/shared left external would install nothing and crash at cold start);
@@ -81,6 +84,13 @@ const engine = await Promise.all(
     [...ENGINE_FILES, ...fonts].sort().map(async (path) => ({ path, bytes: (await stat(`${KIT_DIR}engine/${path}`)).size })),
 );
 await writeFile(`${KIT_DIR}kit.json`, `${JSON.stringify({ engineVersion, engine }, null, 4)}\n`);
+
+// The starter files' templates `worker.starter` fills (finding 73), beside the bundle.
+const STARTER_DIR = here('dist/starter/');
+await mkdir(STARTER_DIR, { recursive: true });
+for (const file of ['hcm-worker.sh', 'hcm-worker.bat']) {
+    await copyFile(here(`../packages/admin/starter/${file}`), `${STARTER_DIR}${file}`);
+}
 
 const artifactManifest = manifestText(deployManifest(manifest, await readJson(here('../package.json'))));
 await writeFile(here('dist/package.json'), artifactManifest);

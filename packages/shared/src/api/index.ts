@@ -272,6 +272,10 @@ export {
     WORKER_OUTDATED_EXIT,
     WORKER_STARTER_PLACEHOLDERS,
     WORKER_STARTER_TEMPLATES,
+    WORKER_OSES,
+    WORKER_STARTER_ACTIONS,
+    WORKER_STARTER_FILE_NAMES,
+    workerStarterQuerySchema,
     imageryRunOnRequestSchema,
     imageryRunOnResponseSchema,
     workerPairCodeRequestSchema,
@@ -279,6 +283,7 @@ export {
     workerRevokeRequestSchema,
     workerRevokeResponseSchema,
 } from './worker.js';
+export type { WorkerOs, WorkerStarterAction } from './worker.js';
 export {
     ADMIN_CALLABLES,
     BACKGROUND_FUNCTIONS,
