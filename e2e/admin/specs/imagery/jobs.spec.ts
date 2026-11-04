@@ -42,54 +42,65 @@ const STEPS_OF_FAILED = Object.fromEntries(
     JOB_STEPS['usgs-import'].map((step, index) => [step, { status: ['done', 'failed'][index] ?? 'pending' }]),
 );
 
-test("A raster job reads in the admin's words", { tag: '@S-A18-HAPPY-RASTER-STEPS' }, async ({ page, lang, content }) => {
-    await seedCity(content, AT);
-    for (const wait of WAITS) {
+test(
+    "A raster job reads in the admin's words",
+    { tag: ['@S-A18-HAPPY-RASTER-STEPS', '@S-A18-HAPPY-STEP-ORDER'] },
+    async ({ page, lang, content }) => {
+        await seedCity(content, AT);
+        for (const wait of WAITS) {
+            await seedJob(
+                content,
+                wait.id,
+                {
+                    ...IMPORT,
+                    status: wait.status,
+                    waitReason: wait.waitReason,
+                    versionId: wait.id,
+                    retryAt: RETRY_AT,
+                    createdBy: content.uid,
+                    attempt: 1,
+                },
+                AT,
+            );
+        }
         await seedJob(
             content,
-            wait.id,
+            'failed',
             {
                 ...IMPORT,
-                status: wait.status,
-                waitReason: wait.waitReason,
-                versionId: wait.id,
-                retryAt: RETRY_AT,
-                createdBy: content.uid,
+                status: 'failed',
+                versionId: 'failed',
                 attempt: 1,
+                createdBy: content.uid,
+                steps: STEPS_OF_FAILED,
+                error: { code: 'apiError.imagery.archiveCorrupt', message: 'the archive could not be read' },
             },
             AT,
         );
-    }
-    await seedJob(
-        content,
-        'failed',
-        {
-            ...IMPORT,
-            status: 'failed',
-            versionId: 'failed',
-            attempt: 1,
-            createdBy: content.uid,
-            steps: STEPS_OF_FAILED,
-            error: { code: 'apiError.imagery.archiveCorrupt', message: 'the archive could not be read' },
-        },
-        AT,
-    );
 
-    // Every step of an import, the pipeline's and the publisher's, by its name.
-    await page.goto(content.address(lang, 'jobs/failed', { map: false }));
-    for (const step of JOB_STEPS['usgs-import']) {
-        await expect(page.getByText(text(lang, `adminContent.jobs.stepName.${step}`), { exact: true })).toBeVisible();
-    }
-    await expect(page.getByRole('button', { name: text(lang, 'adminContent.jobs.retry') })).toBeEnabled();
-    await expectStateSound(page, adminVisit('imagery.job-failed', lang));
+        // Every step of an import, the pipeline's and the publisher's, by its name.
+        await page.goto(content.address(lang, 'jobs/failed', { map: false }));
+        // Finding 80 of 2026-11-03: in the order the type runs them, not the stored map's.
+        await expect(page.getByRole('term')).toHaveText(
+            JOB_STEPS['usgs-import'].map((step) => text(lang, `adminContent.jobs.stepName.${step}`)),
+        );
+        for (const step of JOB_STEPS['usgs-import']) {
+            await expect(page.getByText(text(lang, `adminContent.jobs.stepName.${step}`), { exact: true })).toBeVisible();
+        }
+        await expect(page.getByRole('button', { name: text(lang, 'adminContent.jobs.retry') })).toBeEnabled();
+        await expectStateSound(page, adminVisit('imagery.job-failed', lang));
 
-    // Why each waiting job waits, in words; the one waiting for points opens the georeferencer.
-    for (const wait of WAITS) {
-        await page.goto(content.address(lang, `jobs/${wait.id}`, { map: false }));
-        await expect(page.locator(`[data-wait="${wait.waitReason}"]`)).toContainText(text(lang, wait.key));
-    }
-    await page.goto(content.address(lang, 'jobs/points', { map: false }));
-    await expect(page.getByRole('link', { name: text(lang, 'adminContent.jobs.openGeoref') })).toHaveAttribute('href', '#/georef/points');
-    await expectStateSound(page, adminVisit('imagery.job-points', lang));
-    await expect(page.getByRole('button', { name: text(lang, 'adminContent.jobs.retry') })).toHaveCount(0);
-});
+        // Why each waiting job waits, in words; the one waiting for points opens the georeferencer.
+        for (const wait of WAITS) {
+            await page.goto(content.address(lang, `jobs/${wait.id}`, { map: false }));
+            await expect(page.locator(`[data-wait="${wait.waitReason}"]`)).toContainText(text(lang, wait.key));
+        }
+        await page.goto(content.address(lang, 'jobs/points', { map: false }));
+        await expect(page.getByRole('link', { name: text(lang, 'adminContent.jobs.openGeoref') })).toHaveAttribute(
+            'href',
+            '#/georef/points',
+        );
+        await expectStateSound(page, adminVisit('imagery.job-points', lang));
+        await expect(page.getByRole('button', { name: text(lang, 'adminContent.jobs.retry') })).toHaveCount(0);
+    },
+);

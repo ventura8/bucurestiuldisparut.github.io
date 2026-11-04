@@ -345,7 +345,7 @@ test(
 
 test(
     "Use this computer gives the starter file for the browser's system, and Stop using this computer the file that removes it",
-    { tag: ['@S-A62-HAPPY-STARTER', '@S-A62-HAPPY-STOP-COMPUTER', '@S-A62-BAD-STARTER-TEMPLATE'] },
+    { tag: ['@S-A62-HAPPY-STARTER', '@S-A62-HAPPY-STOP-COMPUTER', '@S-A62-BAD-STARTER-TEMPLATE', '@S-A62-BAD-FIND-COMPUTER'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream, consoleErrors }) => {
         // Finding 72 of 2026-11-02 ("I should not have to copy and paste"): one file, opened once, sets the computer up.
         // Finding 73 of 2026-11-03: a link the owner clicks, which the server's worker.starter answers as a download.
@@ -355,6 +355,15 @@ test(
 
         await page.goto(adminPath(lang, 'jobs'));
         const shown = panel(page);
+        // Finding 75: a computer set up another way is looked for, with no file; nothing answers here, so it says so.
+        await shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.find') }).click({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.looking'));
+        await expect(shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.find') })).toHaveCount(0);
+        await expectStateSound(page, adminVisit('worker.local-looking', lang));
+        await page.evaluate(() => {
+            localStorage.clear();
+        });
+        await page.reload();
         const use = shown.getByRole('link', { name: local(lang, 'adminWorkerLocal.use') });
         await expect(use).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         await expect(use).toHaveAttribute('href', /\/worker-starter\?city=[a-z0-9-]+&os=linux&action=install$/);

@@ -36,6 +36,7 @@ LOG = get_logger("worker.pairing")
 RETRY_SECONDS: Final = 30.0
 FILE_MODE: Final = 0o600
 PAIR_ID: Final = re.compile(r"[0-9a-f]{40}")
+WORKER_ID: Final = re.compile(r"w-[0-9a-f]{16}")
 CODE_HASH: Final = re.compile(r"[0-9a-f]{64}")
 SIGN_IN_REFUSED: Final = "apiError.unauthenticated"
 # What a failed attempt may raise and is tried again later: the server, Google's token services or the web configuration
@@ -74,6 +75,7 @@ class SessionFile:
 
     def __init__(self, folder: Path, city: str) -> None:
         self.path = folder / f".hcm-session-{city}.json"
+        self.id_path = folder / f".hcm-worker-{city}.id"
 
     def load(self) -> Kept | None:
         try:
@@ -91,9 +93,22 @@ class SessionFile:
         os.chmod(partial, FILE_MODE)
         os.replace(partial, self.path)
 
+    def worker_id(self, new: Callable[[], str]) -> str:
+        """This computer's worker id, kept beside the session (finding 77 of 2026-11-03: a new id per process left one more
+        worker document at every restart); forgotten with the session, so a disconnected computer starts as a new worker."""
+        with contextlib.suppress(OSError):
+            kept = self.id_path.read_text("utf-8").strip()
+            if WORKER_ID.fullmatch(kept):
+                return kept
+        worker_id = new()
+        self.id_path.parent.mkdir(parents=True, exist_ok=True)
+        self.id_path.write_text(worker_id, "utf-8")
+        return worker_id
+
     def clear(self) -> None:
-        with contextlib.suppress(FileNotFoundError):
-            self.path.unlink()
+        for path in (self.path, self.id_path):
+            with contextlib.suppress(FileNotFoundError):
+                path.unlink()
 
 
 @dataclass(frozen=True)
@@ -217,7 +232,7 @@ class Connector:
         """A refused code: an unreachable server is tried again; else the kept session (if any) is the fallback."""
         if code == Errors.UNAVAILABLE:
             raise RefreshUnavailableError("the server did not answer worker.pair")
-        LOG.warning("the pairing code was refused (%s): copy the command from the admin again", code)
+        LOG.warning("the pairing code was refused (%s): the admin's Jobs page pairs this computer again", code)
         if kept is not None:
             return self._resume(kept)
         self._failed(code)
@@ -227,7 +242,7 @@ class Connector:
         try:
             tokens = self._session.renew(kept.refresh_token)
         except SessionEndedError:
-            LOG.warning("the kept session was refused: copy the command from the admin again")
+            LOG.warning("the kept session was refused: the admin's Jobs page pairs this computer again")
             self._file.clear()
             return True
         refused = self._actions.sign_in(tokens.id_token, tokens.refresh_token, self._keeper(kept.pair_id, kept.code_hash))

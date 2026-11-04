@@ -73,6 +73,7 @@ describe('<hcm-worker-local>', () => {
         local.set({ phase: 'downloaded' });
         await updated(element);
         expect(status(element)).toBe(t('adminWorkerLocal.saved'));
+        expect(deep(element, `a[href="${GET_DOCKER_URL}"]`).textContent).toBe(t('adminWorkerLocal.getDocker'));
         expect(deep(element, 'p[data-open="linux"]').textContent).toBe(t('adminWorkerLocal.open.linux'));
         expect(deep(element, 'pre').textContent).toBe(LINUX_RUN_LINE);
         button(element, t('adminWorkerLocal.copyRun')).click();
@@ -90,9 +91,32 @@ describe('<hcm-worker-local>', () => {
         await updated(element);
         expect(status(element)).toBe(t('adminWorkerLocal.connected'));
         expect(deep(element, 'p[data-local]').getAttribute('role')).toBe('status');
-        expect(deep(element, `a[href="${GET_DOCKER_URL}"]`).textContent).toBe(t('adminWorkerLocal.getDocker'));
         expect(await axeViolations(element)).toEqual([]);
         write.mockRestore();
+    });
+
+    it('happyPath_aComputerSetUpAnotherWayIsLookedForWithNoFile @S-A62-HAPPY-FIND-COMPUTER', async () => {
+        const local = new FakeLocal();
+        const element = await shown(local);
+
+        button(element, t('adminWorkerLocal.find')).click();
+        await updated(element);
+
+        expect(local.calls).toContain('find');
+        expect(status(element)).toBe(t('adminWorkerLocal.looking'));
+        expect(deepAll(element, 'hcm-button[data-find]')).toEqual([]);
+    });
+
+    it('badPath_noHintToGetDockerNorToLookOnceThisComputersWorkerAnswers', async () => {
+        const local = new FakeLocal();
+        const element = await shown(local);
+        expect(deepText(element)).toContain(t('adminWorkerLocal.noDocker'));
+
+        local.set({ phase: 'connected' });
+        await updated(element);
+
+        expect(deepText(element)).not.toContain(t('adminWorkerLocal.noDocker'));
+        expect(deepAll(element, 'hcm-button[data-find]')).toEqual([]);
     });
 
     it('happyPath_theSystemIsChosenAndTheWindowsCommandIsPowerShells', async () => {

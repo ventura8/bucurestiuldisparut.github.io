@@ -26,6 +26,10 @@ export class FakeLocal implements LocalPort {
         use: (): void => {
             this.calls.push('use');
         },
+        find: (): void => {
+            this.calls.push('find');
+            this.set({ phase: 'looking' });
+        },
         stop: (): Promise<void> => {
             this.calls.push('stopUsing');
             return Promise.resolve();

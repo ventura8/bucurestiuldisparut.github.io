@@ -51,6 +51,26 @@ function world(): ContentWorld & { readonly states: JobsState[]; readonly store:
     return { ...base, states: [] };
 }
 
+describe("a job's steps", () => {
+    it('happyPath_theyReadInTheOrderTheTypeRunsThem_whateverTheStoredMapsOrder @S-A18-HAPPY-STEP-ORDER', () => {
+        const steps = {
+            locate: { status: 'pending' },
+            fetch: { status: 'done' },
+            'mts-retry': { status: 'done' },
+            stitch: { status: 'done' },
+        };
+        const seeded = world();
+        const [path, data] = job('z', { steps });
+        seeded.store.docs.set(path, data);
+        const jobs = JOBS_MODULE.create(seeded.services);
+
+        jobs.open(['z']);
+
+        expect(jobs.state.detail?.job.doc?.data.steps.map((step) => step.name)).toEqual(['fetch', 'stitch', 'locate', 'mts-retry']);
+        jobs.close();
+    });
+});
+
 describe('the jobs area', () => {
     it('happyPath_listsTheCitysJobsNewestFirstAndOpensOneWithItsLogLines', () => {
         const { services } = world();

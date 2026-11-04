@@ -2154,3 +2154,13 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       exact copy of the strip sits deeper than that (S-P01-BAD-STITCH-DECOY).
     - **A search that may find a wrong place must be bounded by what the physics allows, and a synthetic image must
       repeat itself the way real ones do.**
+359. **A retry after an update kept the results of the pipeline it was meant to replace.**
+    - Seen: 2026-11-03 live (finding 78): with the stitch fixed and installed, **Run it again** re-ran `locate` on the frame
+      the old pipeline had joined; `imagery.retry` reopened only the failed step.
+    - Cause: resuming from the first unfinished step assumes a finished step's result is still what the code would produce;
+      an in-app update breaks that between a failure and its retry.
+    - Found by: reading the job's steps after the click, before spending another run; no test retried across a release.
+    - Fix and pin: a pipeline retry keeps only what is costly or gone and runs every later step again; automatic resumes
+      (a lost run, the small job's hand-over) still continue where they stopped (S-A12-HAPPY-RETRY-REDOES,
+      S-A12-BAD-RETRY-KEEPS-CROP).
+    - **A checkpoint is only valid for the code that wrote it: when the owner asks for another try, redo what is cheap.**

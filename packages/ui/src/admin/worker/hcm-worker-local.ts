@@ -20,7 +20,7 @@ import { defineOnce } from '../../components/internal.js';
 import { copyToClipboard } from '../setup/setup-body.js';
 import { workerStyles } from './worker-element.js';
 import { linkButtonStyles } from '../setup/setup-styles.js';
-import type { LocalPort, LocalViewPort, WorkerOsPort } from './worker-port.js';
+import type { LocalPort, LocalViewPort, StarterLinkPort, WorkerOsPort } from './worker-port.js';
 
 export const HCM_WORKER_LOCAL_TAG = 'hcm-worker-local';
 
@@ -34,6 +34,7 @@ const OSES: readonly WorkerOsPort[] = ['linux', 'mac', 'windows'];
 /** The words under the link, by phase (nothing before the first click). */
 const PHASE_TEXT: Readonly<Partial<Record<LocalViewPort['phase'], AdminWorkerLocalKey>>> = {
     downloaded: 'adminWorkerLocal.saved',
+    looking: 'adminWorkerLocal.looking',
     connecting: 'adminWorkerLocal.connecting',
     connected: 'adminWorkerLocal.connected',
     stopped: 'adminWorkerLocal.stopped',
@@ -199,17 +200,9 @@ export class HcmWorkerLocal extends LitElement {
                     this.local?.intents.setOs(event.detail.value);
                 }}
             ></hcm-segmented-button>
-            ${this.#use(view)}
+            ${this.#use(view)} ${view.phase === 'none' ? this.#find() : nothing}
             <p class="note" role="status" data-local=${view.phase}>${this.#phase(view)}</p>
-            ${view.phase === 'downloaded' ? this.#open(view) : nothing}
-            <ul class="note">
-                <li>
-                    ${this.#t('adminWorkerLocal.noDocker')}
-                    <a class="external" href=${GET_DOCKER_URL} target="_blank" rel="noopener noreferrer"
-                        >${this.#t('adminWorkerLocal.getDocker')}</a
-                    >
-                </li>
-            </ul>
+            ${view.phase === 'downloaded' ? this.#open(view) : nothing} ${view.phase.startsWith('connect') ? nothing : this.#noDocker()}
             ${this.#stopUsing(view)}
             <details
                 @toggle=${(event: Event) => {
@@ -221,24 +214,39 @@ export class HcmWorkerLocal extends LitElement {
             </details>`;
     }
 
+    /** Finding 75: already set up on this computer, another way: look for its worker, with no file. */
+    #find(): TemplateResult {
+        return html`<div class="actions">
+            <hcm-button
+                variant="text"
+                icon="search"
+                data-find
+                @click=${() => {
+                    this.local?.intents.find();
+                }}
+                >${this.#t('adminWorkerLocal.find')}</hcm-button
+            >
+        </div>`;
+    }
+
+    /** Where to get Docker, unless this computer's worker answers (`connecting`, `connected`: finding 79 of 2026-11-03). */
+    #noDocker(): TemplateResult {
+        return html`<p class="note">
+            ${this.#t('adminWorkerLocal.noDocker')}
+            <a class="external" href=${GET_DOCKER_URL} target="_blank" rel="noopener noreferrer"
+                >${this.#t('adminWorkerLocal.getDocker')}</a
+            >
+        </p>`;
+    }
+
     /** The starter file's link (a download the server answers), or why there is none: the server does not make it yet. */
     #use(view: LocalViewPort): TemplateResult {
         if (view.starter === false) {
             return html`<p class="note" role="alert" data-starter-missing>${this.#t('adminWorkerLocal.failed')}</p>`;
         }
-        const file = view.files.install;
-        return html`<div class="actions">
-            <a
-                class="link-button"
-                href=${file.url}
-                download=${file.name}
-                data-starter=${file.name}
-                @click=${() => {
-                    this.local?.intents.use();
-                }}
-                ><hcm-icon name="download" aria-hidden="true"></hcm-icon>${this.#t('adminWorkerLocal.use')}</a
-            >
-        </div>`;
+        return this.#file(view.files.install, ['link-button', 'download', 'adminWorkerLocal.use'], () => {
+            this.local?.intents.use();
+        });
     }
 
     /** Stop using this computer: the removal file's link (none while the server makes no file). */
@@ -246,15 +254,14 @@ export class HcmWorkerLocal extends LitElement {
         if (view.starter === false) {
             return html``;
         }
-        const file = view.files.uninstall;
+        return this.#file(view.files.uninstall, ['link-text', 'delete', 'adminWorkerLocal.stop'], () => void this.local?.intents.stop());
+    }
+
+    /** A starter file's link. */
+    #file(file: StarterLinkPort, [kind, icon, label]: readonly [string, string, AdminWorkerLocalKey], clicked: () => void): TemplateResult {
         return html`<div class="actions">
-            <a
-                class="link-text"
-                href=${file.url}
-                download=${file.name}
-                data-starter=${file.name}
-                @click=${() => void this.local?.intents.stop()}
-                ><hcm-icon name="delete" aria-hidden="true"></hcm-icon>${this.#t('adminWorkerLocal.stop')}</a
+            <a class=${kind} href=${file.url} download=${file.name} data-starter=${file.name} @click=${clicked}
+                ><hcm-icon name=${icon} aria-hidden="true"></hcm-icon>${this.#t(label)}</a
             >
         </div>`;
     }

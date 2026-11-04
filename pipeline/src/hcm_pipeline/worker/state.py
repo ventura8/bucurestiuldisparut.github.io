@@ -64,8 +64,8 @@ class WorkerState:
         with self._lock:
             if outdated and not self._outdated:
                 LOG.warning(
-                    "the imagery pipeline was updated in the admin: this computer runs an older image and takes no job; "
-                    "copy the command from the admin (Jobs, Your computer) and run it to update"
+                    "the imagery pipeline was updated in the admin: this computer runs an older image and takes no job until it runs "
+                    "the new one (the starter file's service does so by itself; a worker started by hand needs the admin's command)"
                 )
             self._outdated = outdated
 

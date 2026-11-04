@@ -168,6 +168,42 @@ describe('Use this computer and the auto-pair', () => {
         expect(net.to('/state')).toHaveLength(3);
     });
 
+    it('happyPath_aComputerSetUpAnotherWayIsFoundAndPairedWithNoFile @S-A62-HAPPY-FIND-COMPUTER', async () => {
+        const world = contentWorld();
+        const net = new FakeNet();
+        const local = localOf(world, net);
+        local.start();
+        await settle();
+        expect(net.to('/state')).toEqual([]);
+        net.state = answer();
+
+        local.intents.find();
+
+        expect(world.services.local.get(LOCAL_KEY)).toBe(CITY);
+        expect(local.state.phase).toBe('looking');
+        await settle();
+        expect(local.state.phase).toBe('connecting');
+        expect(net.to('/pair')).toHaveLength(1);
+        local.stop();
+    });
+
+    it('badPath_nothingAnswersSoItKeepsLookingAndSaysSo @S-A62-BAD-FIND-COMPUTER', async () => {
+        const world = contentWorld();
+        const net = new FakeNet();
+        const local = localOf(world, net);
+        local.start();
+
+        local.intents.find();
+        await settle();
+        world.clock.advance(PROBE_MS);
+        await settle();
+
+        expect(local.state.phase).toBe('looking');
+        expect(net.to('/state').length).toBeGreaterThan(1);
+        expect(net.to('/pair')).toEqual([]);
+        local.stop();
+    });
+
     it('badPath_aWorkerOfAnotherCityOrOneThatTakesNoCodeIsNotPaired @S-A62-BAD-AUTO-PAIR', async () => {
         const world = contentWorld();
         world.services.local.set(LOCAL_KEY, CITY);

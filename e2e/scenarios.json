@@ -4379,6 +4379,28 @@
             "notes": "Findings 60 and 61 of docs/research/manual-test-2026-10-25.md (2026-11-02); DECISIONS-for-review.md §86. Test: e2e/admin/specs/imagery/import.spec.ts; packages/admin/test/imagery/version.test.ts."
         },
         {
+            "id": "S-A12-HAPPY-RETRY-REDOES",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A retry redoes what a newer pipeline may do differently and keeps the download",
+            "asserts": "a job failed in locate with fetch, extract and stitch done -> after imagery.retry stitch and locate are pending, fetch and extract keep their records",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 78 of docs/research/manual-test-2026-10-25.md (2026-11-03: the 1972 retry kept the frame joined by the pipeline before the fix). In functions/test/imagery/retry.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-RETRY-KEEPS-CROP",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A retry after the city crop keeps the crop, whose delivery is gone",
+            "asserts": "a job failed in georef with locate done -> after imagery.retry reference and georef are pending, locate and everything before it keep their records",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 78 of docs/research/manual-test-2026-10-25.md. In functions/test/imagery/retry.test.ts."
+        },
+        {
             "id": "S-A13-HAPPY",
             "behaviour": "A13",
             "area": "admin",
@@ -4949,6 +4971,17 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Finding 44 of docs/research/manual-test-2026-10-25.md. Test: e2e/tour/admin-jobs.tour.ts (state jobs.list)."
+        },
+        {
+            "id": "S-A18-HAPPY-STEP-ORDER",
+            "behaviour": "A18",
+            "area": "admin",
+            "path": "happy",
+            "title": "A job's steps read in the order its type runs them",
+            "asserts": "a stored steps map in another order (as a retry's write leaves it) -> the Jobs page lists fetch, stitch, locate, and a step the type does not list last",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 80 of docs/research/manual-test-2026-10-25.md (2026-11-03). In e2e/admin/specs/imagery/jobs.spec.ts and packages/admin/test/jobs/jobs.test.ts."
         },
         {
             "id": "S-A19-HAPPY",
@@ -9395,6 +9428,28 @@
             "notes": "Finding 74 of docs/research/manual-test-2026-10-25.md (the live test of 2026-11-03: worker.image answered the release before's digest beside the new release, and the supervisor looped on 'unrecognized arguments'); DECISIONS-for-review.md §87; docs/research/M7-local-worker.md, its addendum of 2026-11-03. Test: functions/test/worker/starter.test.ts."
         },
         {
+            "id": "S-A62-HAPPY-FIND-COMPUTER",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A computer set up another way is found and paired with no file",
+            "asserts": "a browser with no mark, a worker of this city answering on the loopback: nothing is asked of it until Already set up? Look for it -> the mark set, no download, Looking..., then Connecting and a code posted to the worker",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 75 of docs/research/manual-test-2026-10-25.md (2026-11-03). In e2e/admin/specs/imagery/worker-run.spec.ts (a real worker), e2e/admin/specs/imagery/worker.spec.ts (the looking state), packages/admin/test/worker/local.test.ts and packages/ui/test/admin/worker/local.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-FIND-COMPUTER",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "Looking for a computer where no worker answers says so and keeps looking",
+            "asserts": "Look for it with nothing on the loopback -> Looking... stays, the look repeats, no code minted or posted; the file stays offered",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 75 of docs/research/manual-test-2026-10-25.md (2026-11-03). In e2e/admin/specs/imagery/worker.spec.ts and packages/admin/test/worker/local.test.ts."
+        },
+        {
             "id": "S-A63-HAPPY-METER",
             "behaviour": "A63",
             "area": "admin",
@@ -9657,6 +9712,28 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Finding 72 of docs/research/manual-test-2026-10-25.md (the user, 2026-11-02: \"I should not have to copy and paste\"; the decision \"Starter file + auto-pair\"); DECISIONS-for-review.md §86; docs/research/M7-local-worker.md, its addendum of 2026-11-02 (the starter file and auto-pair). Test: pipeline/tests/unit/test_worker_app.py, pipeline/tests/unit/test_worker_loop.py."
+        },
+        {
+            "id": "S-P04-HAPPY-WORKER-ID-KEPT",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The worker keeps its id across restarts",
+            "asserts": "a second process on the same work folder uses the same worker id, so a restart leaves no second worker document",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 77 of docs/research/manual-test-2026-10-25.md (2026-11-03). In pipeline/tests/unit/test_worker_pairing.py."
+        },
+        {
+            "id": "S-P04-BAD-WORKER-ID-FORGOTTEN",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A forgotten session or a damaged id file starts a new worker",
+            "asserts": "after the session file is cleared (a disconnected computer) or with an id file that is not an id -> a new worker id, written back",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Finding 77 of docs/research/manual-test-2026-10-25.md. In pipeline/tests/unit/test_worker_pairing.py."
         },
         {
             "id": "S-P01-HAPPY-RAW-DELETED",

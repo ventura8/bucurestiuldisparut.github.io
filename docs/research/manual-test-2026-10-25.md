@@ -775,8 +775,9 @@ computer within its 30 s poll.
   the browser's storage cleared, or installed by hand as here) is never paired: the panel looks at `127.0.0.1:8765` only
   in a browser marked by **Use this computer** (`LOCAL_KEY`, so admins who never use a computer get no local-network
   prompt), and says nothing about it. The owner had to click **Use this computer** again, which also downloads the
-  starter file again. OPEN: proposal, a **Look for this computer** action on the panel (it sets the mark and looks once,
-  no download), and the starter file's first run telling the admin to click it when it finds no pairing within a minute.
+  starter file again. FIXED (§88f): **Already set up? Look for it** under the file's link sets the mark with no
+  download and says it is looking until the worker answers (S-A62-HAPPY-FIND-COMPUTER, S-A62-BAD-FIND-COMPUTER, tour
+  `worker.local-looking`).
 - **76.** \[bug]\[imagery] The 1972 KH-9 import ran on the owner's computer (fetch 29 min for 8.8 GB, extract 1 min, stitch
   9 s with no memory trouble) and failed in `locate`: `apiError.imagery.cityNotFound`, "the best guess correlates 0.09,
   under 0.20" (the cloud run of 2026-11-01 had 0.03). The frame's `frame.json` placed segment `d` 17,246 px inside `c`
@@ -787,3 +788,19 @@ computer within its 30 s poll.
   the frame of 2 February 1972 is under snow, which the summer Sentinel-2 and OpenStreetMap reference matches poorly, so
   the crop may stay below 0.20 with the seam fixed; a frame of the warm season is the better first import. Live: one more
   **Update the map** rebuilds the pipeline; **Try again** reuses the delivery kept on the computer.
+- **77.** \[bug]\[worker] Under the starter file's service the outdated worker logged "copy the command from the admin and
+  run it to update", and each restart (an update, a reboot) took a new worker id (`w-5e82…`, `w-02bb…`, `w-2612…` in one
+  day), leaving one more worker document. FIXED (§88g): the words say the service updates by itself and only a worker
+  started by hand needs the command; the id is kept in the work folder and forgotten with the session, so a disconnected
+  computer starts as a new worker (S-P04-HAPPY-WORKER-ID-KEPT, S-P04-BAD-WORKER-ID-FORGOTTEN).
+- **78.** \[bug]\[imagery] **Run it again** on the 1972 job after the update re-ran only `locate`: `stitch` stayed Done, so
+  the new pipeline read the frame the old one had joined wrong, and finding 76's fix could not apply. FIXED (§88e): a
+  pipeline retry keeps only what is costly or gone (the city crop, an upload's inspection, the unpacked segments, the
+  delivery) and runs every later step again; a publish retry still keeps the render (S-A12-HAPPY-RETRY-REDOES,
+  S-A12-BAD-RETRY-KEEPS-CROP). Also seen, **not reproduced**: the owner's earlier click on **Try again** left the job Failed
+  with no claim for 30 minutes. It came minutes after **Update the map** started and the owner's tab is not one Claude could
+  read, so the cause is **UNVERIFIED**; the Jobs page's button worked at once.
+- **79.** \[ux]\[worker] The panel said "Docker is not installed? Get Docker" beside "This computer is connected". FIXED
+  (§88f): the hint shows only while this computer has no worker that answers (S-A62-HAPPY-FIND-COMPUTER).
+- **80.** \[bug]\[jobs] After the retry the Jobs page listed "Finding the city" before "Downloading the scene": it showed the
+  stored map's order. FIXED (§88e): the steps read in the order their type runs them (S-A18-HAPPY-STEP-ORDER).

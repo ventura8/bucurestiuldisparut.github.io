@@ -43,6 +43,29 @@ def unreachable(request: httpx.Request) -> httpx.Response:
     raise httpx.ConnectError("offline", request=request)
 
 
+def test_happy_path_the_worker_id_outlives_a_restart(tmp_path: Path) -> None:
+    """Scenarios: S-P04-HAPPY-WORKER-ID-KEPT"""
+    ids = iter(["w-0123456789abcdef", "w-fedcba9876543210"])
+
+    first = SessionFile(tmp_path, "bucharest").worker_id(lambda: next(ids))
+    again = SessionFile(tmp_path, "bucharest").worker_id(lambda: next(ids))
+
+    assert (first, again) == ("w-0123456789abcdef", "w-0123456789abcdef")
+
+
+def test_bad_path_a_forgotten_session_or_a_damaged_file_starts_as_a_new_worker(tmp_path: Path) -> None:
+    """Scenarios: S-P04-BAD-WORKER-ID-FORGOTTEN"""
+    ids = iter(["w-0123456789abcdef", "w-fedcba9876543210", "w-00000000000000aa"])
+    file = SessionFile(tmp_path, "bucharest")
+    file.worker_id(lambda: next(ids))
+
+    file.clear()
+    assert file.worker_id(lambda: next(ids)) == "w-fedcba9876543210"
+
+    file.id_path.write_text("not an id", "utf-8")
+    assert file.worker_id(lambda: next(ids)) == "w-00000000000000aa"
+
+
 def test_happy_path_the_custom_token_is_signed_in_with_the_hosting_origin_as_referer() -> None:
     seen: list[httpx.Request] = []
 

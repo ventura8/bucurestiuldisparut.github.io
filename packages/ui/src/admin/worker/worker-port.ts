@@ -54,7 +54,7 @@ export interface WorkerViewPort {
 export type WorkerOsPort = 'linux' | 'mac' | 'windows';
 
 /** A starter file as its link gives it (finding 73 of 2026-11-03): `worker.starter`'s address and the file's name. */
-interface StarterLinkPort {
+export interface StarterLinkPort {
     readonly url: string;
     readonly name: string;
 }
@@ -62,7 +62,7 @@ interface StarterLinkPort {
 /** "Use this computer" as `packages/admin/src/worker/local.ts` keeps it (finding 72 of 2026-11-02). */
 export interface LocalViewPort {
     readonly os: WorkerOsPort;
-    readonly phase: 'none' | 'downloaded' | 'connecting' | 'connected' | 'stopped';
+    readonly phase: 'none' | 'downloaded' | 'looking' | 'connecting' | 'connected' | 'stopped';
     /** The Advanced command's one-time code (null until Advanced asked for one). */
     readonly code: string | null;
     /** Finding 73: whether the server makes the starter file; null until it answered. */
@@ -78,6 +78,7 @@ export interface LocalPort {
     readonly intents: {
         setOs(os: WorkerOsPort): void;
         use(): void;
+        find(): void;
         stop(): Promise<void>;
         command(): Promise<void>;
     };

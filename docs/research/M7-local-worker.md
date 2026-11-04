@@ -77,7 +77,7 @@ docker run --rm -p 127.0.0.1:8765:8765 -v "$HOME/hcm-worker:/work" \
 ### 1.2 The loop
 
 1. Serve the local page (§2) and wait for a session.
-2. `worker.hello {cityId, workerId, version}` once (`workerId`: `w-` and 16 hex characters, new per process), which
+2. `worker.hello {cityId, workerId, version}` once (`workerId`: `w-` and 16 hex characters, kept in the work folder across restarts since finding 77 and forgotten with the session), which
    records `cities/{city}/workers/{workerId}` and answers the poll interval.
 3. Every `WORKER_POLL_SECONDS` (30) while idle: `worker.claim {cityId, workerId}` (which also refreshes the worker's
    `lastSeenAt`). A claimed job runs at once; one job at a time.
@@ -609,3 +609,11 @@ The live test of 2026-11-03 after Update the map to `1.0.0+bf74d17` (`docs/resea
 
 **UNVERIFIED** (§11, added): what Chrome does with the server's attachment on each system (the keep prompt is expected for
 `.bat` and possibly `.sh` and `.command`), and the cause of finding 73 itself.
+
+## Addendum of 2026-11-03: the first import on the owner's computer
+
+Findings 75 to 80 of `manual-test-2026-10-25.md` (`DECISIONS-for-review.md` §88e–§88h). The panel gains **Already set up? Look
+for it** (`LocalIntents.find`, phase `looking`, the mark with no file); the worker's id is kept in
+`<work>/.hcm-worker-<city>.id` and forgotten with the session (§1.2's "new per process" no longer holds); a Retry
+(`imagery.retry`) keeps only the first finished of `locate`, `inspect`, `extract`, `fetch` and what came before it, so a
+pipeline updated since the failure redoes the rest, on the computer or in Cloud Run alike.

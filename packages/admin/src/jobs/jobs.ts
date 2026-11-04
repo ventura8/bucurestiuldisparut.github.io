@@ -10,6 +10,7 @@
 import {
     FIRESTORE_PATHS,
     isId,
+    JOB_STEPS,
     jobDocSchema,
     jobLogDocSchema,
     type JobDoc,
@@ -127,9 +128,18 @@ function optionalIso(timestamp: TimestampLike | undefined): string | null {
     return timestamp === undefined ? null : isoOf(timestamp);
 }
 
-/** The steps of a job in their recorded order. */
+/** A step's place in the order its job's type runs them; one the type does not list goes last. */
+function stepRank(order: readonly string[], name: string): number {
+    const rank = order.indexOf(name);
+    return rank === -1 ? order.length : rank;
+}
+
+/** The steps of a job in the order its type runs them (finding 80 of 2026-11-03: a retry's write reordered the stored map). */
 function stepsOf(job: JobDoc): JobItem['steps'] {
-    return Object.entries(job.steps ?? {}).map(([name, step]) => ({ name, status: step.status }));
+    const order: readonly string[] = JOB_STEPS[job.type];
+    return Object.entries(job.steps ?? {})
+        .toSorted(([left], [right]) => stepRank(order, left) - stepRank(order, right))
+        .map(([name, step]) => ({ name, status: step.status }));
 }
 
 function jobItemOf(doc: Stored<JobDoc>): JobItem {

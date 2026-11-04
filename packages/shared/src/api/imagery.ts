@@ -178,7 +178,7 @@ export function jobRetryable(job: RetriedJob): boolean {
 export const imageryResumeGuardRequestSchema = z.strictObject({});
 export const imageryResumeGuardResponseSchema = z.strictObject({ state: z.literal('green') });
 
-/** `imagery.retry` (admin): a failed job again, from its first unfinished step. */
+/** `imagery.retry` (admin): a failed job again, keeping what is costly or gone (`functions/src/imagery/retry.ts`). */
 export const imageryRetryRequestSchema = z.strictObject({ cityId: cityIdSchema, jobId: idSchema });
 export const imageryRetryResponseSchema = z.strictObject({ status: z.enum(JOB_STATUSES), attempt: z.number().int().min(0) });
 

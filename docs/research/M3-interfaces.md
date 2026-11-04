@@ -312,7 +312,7 @@ The browser never requests a USGS address (the admin's CSP does not allow one, a
 | `imagery.onRasterUpload` | `geotiff-import` `{uploadPath, originalName?, replaces}`, id = the upload id | the version (`origin: 'upload'`); a replacement sets `layer.pendingVersion` |
 | `imagery.saveGcps` on a published or awaiting version | `regeoref` `{basedOn}` | the version (`origin: 'regeoref'`, `georef` with the admin's points, `crop?`, `scan` and `reference` copied from the base); `layer.pendingVersion` |
 | `imagery.crop` | `regeoref` `{basedOn: layer.currentVersion}` | the version (`origin: 'crop'`, the current georef, `crop`); `layer.pendingVersion` |
-| `imagery.retry` | none: the failed job goes back to `queued` (`attempt` kept, `error` cleared, the failed step `pending`) | the version back to `processing` |
+| `imagery.retry` | none: the failed job goes back to `queued` (`attempt` kept, `error` cleared, every step after the first finished of `locate`, `inspect`, `extract`, `fetch` `pending`: finding 78 of 2026-11-03) | the version back to `processing` |
 | `layers.delete` (M2c, done) | `layer-delete` `{layerId, tilesetId?, sourceSha?}` with `dispatchAt` + 7 days | |
 
 Every creator refuses when `ops/guard` is red (`apiError.guardPaused`), when today's raster jobs reached `JOBS_PER_DAY`
@@ -393,8 +393,9 @@ belong to the dispatcher and the lease, so an execution never races its own retr
 ### 4.5 Retry, cancel, SIGTERM and out-of-memory
 
 - **Retry** (`imagery.retry`, admin): only a `failed` job of a pipeline or publish type with `attempt <
-  JOB_MAX_ATTEMPTS`; it becomes `queued` with the failed step `pending`; finished steps are skipped by their recorded
-  outputs (§5.2). A failure at a publish step goes back to the publisher, not to Cloud Run.
+  JOB_MAX_ATTEMPTS`; it becomes `queued` with every step after the first finished of `locate`, `inspect`, `extract`, `fetch`
+  `pending` (finding 78 of 2026-11-03: a pipeline updated since the failure redoes its own results); the steps kept are
+  skipped by their recorded outputs (§5.2). A failure at a publish step goes back to the publisher, not to Cloud Run.
 - **Cancel**: §4.2. The pipeline checks `cancelRequested` at every heartbeat and at its own checkpoints.
 - **SIGTERM** (Cloud Run's cancel, a task timeout): the handler sets a flag; the running step stops at its next
   checkpoint (fetch: every 64 MiB chunk; GDAL calls through their progress callback, which returns 0 to abort); within

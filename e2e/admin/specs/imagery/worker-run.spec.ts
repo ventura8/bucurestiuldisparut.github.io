@@ -270,6 +270,44 @@ const SDK_STUBS: Readonly<Record<string, string>> = {
 };
 
 test(
+    'A computer set up another way is found with no file, and its worker keeps its id across a restart',
+    { tag: ['@S-A62-HAPPY-FIND-COMPUTER'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream, request }, testInfo) => {
+        // Finding 75 of 2026-11-03: the worker runs, this browser never clicked Use this computer. Finding 77: same id after a restart.
+        const owner = adminWorld.accounts.owner;
+        const { emulators } = adminWorld;
+        const imagery = await readyImagery({ emulators, api: mockApiRequest, upstream }, owner.uid, { autoPublish: false });
+        const pipeline = { state: 'installed', release: '1.0.0', checkedAt: IMAGERY_AT.toISOString(), image: DIGEST };
+        await emulators.updateFields('setup/status', { install: { pipeline } }, ['install']);
+        const work = testInfo.outputPath('work');
+        mkdirSync(work, { recursive: true });
+        const worker = LocalWorker.start(imagery.city, work, undefined, WORKER_PORT);
+        let workerId: unknown;
+        try {
+            const origin = await worker.origin();
+            workerId = (await stateOnce(request, origin, 'pairable', true))['workerId'];
+            await page.goto(adminPath(lang, 'jobs'));
+            const shown = page.locator('hcm-worker-panel');
+            await shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.find') }).click({ timeout: FUNCTIONS_TIMEOUT_MS });
+            await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.connected'), {
+                timeout: FUNCTIONS_TIMEOUT_MS,
+            });
+            await stateOnce(request, origin, 'signedIn', true);
+            await expect(shown.getByRole('link', { name: local(lang, 'adminWorkerLocal.getDocker') })).toHaveCount(0);
+        } finally {
+            expect(await worker.stop()).toBe('exit 0');
+        }
+        const restarted = LocalWorker.start(imagery.city, work, undefined, WORKER_PORT);
+        try {
+            const state = await stateOnce(request, await restarted.origin(), 'signedIn', true);
+            expect(state['workerId']).toBe(workerId);
+        } finally {
+            expect(await restarted.stop()).toBe('exit 0');
+        }
+    },
+);
+
+test(
     "The worker page's fallback Google sign-in that never finishes gives up with a message pointing at the admin's command",
     { tag: ['@S-P04-BAD-POPUP-TIMEOUT'] },
     async ({ page }, testInfo) => {

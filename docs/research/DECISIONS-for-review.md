@@ -5792,7 +5792,7 @@ install specs, `provision.spec.ts`, `journey.spec.ts`, the imagery version specs
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`worker.spec.ts`, `worker-run.spec.ts`, the
 install specs; two workers).
 
-## 88. While the owner is away (2026-11-03): a scene opens from its address, the e2e stand-in no longer writes into the next test's world, the v1.0.0 notes catch up with M6 and M7 — 88a–88c APPLIED (an M4 follow-up of `docs/research/M4-status.md`, lesson 356, release notes: product, test and documentation changes; one text changed in both languages; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged)
+## 88. While the owner is away (2026-11-03) and the 1972 import's findings: a scene opens from its address, the e2e stand-in no longer writes into the next test's world, the v1.0.0 notes catch up with M6 and M7, the stitch's bounded search, a computer set up another way, what a retry redoes — 88a–88h APPLIED (an M4 follow-up of `docs/research/M4-status.md`, lesson 356, release notes: product, test and documentation changes; one text changed in both languages; no configuration of the ask-first kinds, no gate relaxed, no budget raised, no checker allowlist entry, no download; `seed/bucharest/` unchanged)
 
 - **88a APPLIED: a scene opens from its address whatever the filters.** The Imagery area also reads the routed scene by
   its id (`ImageryFeeds.showScene`, one live document while a scene is open, stopped with the route): a frame to buy that
@@ -5816,6 +5816,20 @@ install specs; two workers).
   `pipeline/src/hcm_pipeline/steps/stitch.py`: the right segment starts in the left one's last 35 % (real overlaps 4 to
   8 % on a KH-9 panoramic frame, 20 % in the synthetic tests). Rejected: a check of each overlap against the others'
   median after the walk (it needs every pair first, while the step holds two segments at a time). Live: **Update the
-  map** rebuilds the pipeline image, then **Try again** on the failed 1972 version.
+  map** rebuilds the pipeline image, then **Try again** on the failed 1972 version (see 88h: that retry needed the next
+  release to re-stitch).
+- **88f APPLIED (findings 75, 79): a computer set up another way.** **Already set up? Look for it**
+  (`LocalIntents.find`, phase `looking`) sets the browser's mark without a download; the mark still gates every look, so an
+  admin who never uses a computer gets no local-network prompt. Rejected: looking once on every Jobs page (the prompt for
+  everyone), the starter file telling the admin (it cannot reach the browser). The Docker hint hides while the worker answers.
+- **88g APPLIED (finding 77): the worker's words and id.** The id lives in `<work>/.hcm-worker-<city>.id` beside the session
+  and is cleared with it (`SessionFile.clear`), so a revoked worker's next start is a new worker, as before. Old worker
+  documents from before this release stay; nothing reads them beyond the panel's newest. A cleanup is not worth a job.
+- **88h APPLIED (findings 78, 80, lesson 359): what a retry redoes.** `rerunSteps` of `functions/src/imagery/retry.ts` keeps
+  the first finished of `locate`, `inspect`, `extract`, `fetch` and everything before it, and reopens the rest; a publish
+  retry and the automatic resumes are unchanged. Rejected: recording each step's pipeline release and comparing it with the
+  installed one (a job field through the schema, the worker's allow-list and the contract files, for the same result on
+  the rare manual retry, whose cost here is seconds to minutes; the cost: a retry of a late failure redoes `reference` and
+  `georef`). Jobs lists its steps in the type's order.
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`e2e/admin/specs/imagery/`).

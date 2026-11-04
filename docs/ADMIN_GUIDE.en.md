@@ -354,6 +354,7 @@ The message shown, its cause and what to do, screen by screen.
 | "The map's server does not give the file yet" instead of **Use this computer** | the map's server is older than the admin | **Update the map** in Setup, then open **Jobs** again |
 | **Use this computer** clicked, but no file in Downloads | the browser kept it aside as a file to confirm | open the browser's downloads (Ctrl+J) and choose **Keep** |
 | The worker's log says "The server named an image that does not support this computer's starter: update the map" | the map's imagery pipeline is older than the starter file | **Update the map** in Setup; the service picks up the new image within 5 minutes |
+| The worker runs but the panel does not see it (you set it up from another browser, or cleared the browser's data) | this browser does not know the computer | **Already set up? Look for it**: it downloads nothing and connects it once it answers |
 | **Use this computer** clicked, but no **This computer is connected** | the file was not opened yet, Docker is not running, or the browser was not allowed to connect to this computer | open the file once; start Docker; allow the browser's question about this computer |
 | "This pairing code is not valid any more" (the worker's page) | the command's code was used, or is older than 10 minutes | copy the command from the panel again (it shows a fresh code) and run it |
 | "This computer was disconnected in the admin" (the worker's page) | **Disconnect this computer** was pressed | **Use this computer** and open the file again |

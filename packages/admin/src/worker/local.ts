@@ -36,8 +36,8 @@ const PAIR_AGAIN_MS = 60_000;
 /** The Advanced command's code is minted again this long before it expires. */
 const RENEW_MS = (WORKER_PAIR_SECONDS - 60) * 1000;
 
-/** What the panel shows of this computer: nothing yet, the file given, pairing, connected, or removed. */
-type LocalPhase = 'none' | 'downloaded' | 'connecting' | 'connected' | 'stopped';
+/** What the panel shows of this computer: nothing yet, the file given, looking for it, pairing, connected, or removed. */
+type LocalPhase = 'none' | 'downloaded' | 'looking' | 'connecting' | 'connected' | 'stopped';
 
 /** A starter file as the link gives it: the server's address and the name the browser saves it under. */
 export interface StarterLink {
@@ -60,6 +60,8 @@ export interface LocalIntents {
     setOs(os: WorkerOs): void;
     /** The starter file's link was followed: the auto-pair from now on. */
     use(): void;
+    /** Finding 75: a computer set up another way (another browser, cleared storage, by hand): the auto-pair, no file. */
+    find(): void;
     /** The removal file's link was followed: the computer's worker disconnected, and no more auto-pair. */
     stop(): Promise<void>;
     /** A one-time code for the Advanced command, renewed while the panel is shown. */
@@ -141,7 +143,10 @@ export class LocalComputer {
                 this.#cell.update({ os: next, files: this.#files(next) });
             },
             use: () => {
-                this.#use();
+                this.#remember('downloaded');
+            },
+            find: () => {
+                this.#remember('looking');
             },
             stop: () => this.#stop(),
             command: () => this.#mint(),
@@ -215,9 +220,10 @@ export class LocalComputer {
         this.#cell.update({ starter: made });
     }
 
-    #use(): void {
+    /** This browser looks after this computer from now on (the mark `start` and the shell's watch read). */
+    #remember(phase: LocalPhase): void {
         this.#services.local.set(LOCAL_KEY, this.#services.cityId);
-        this.#cell.update({ phase: 'downloaded' });
+        this.#cell.update({ phase });
         this.#look();
     }
 

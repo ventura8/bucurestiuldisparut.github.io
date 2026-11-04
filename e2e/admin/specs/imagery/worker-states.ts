@@ -44,6 +44,11 @@ export const WORKER_STATES = {
         title: 'Jobs: Use this computer downloaded the starter file: keep it, it is in Downloads, the Linux line to run it with Copy',
         visit: 'specs/imagery/worker.spec.ts',
     },
+    // Finding 75 of 2026-11-03: a computer set up another way is looked for, with no file.
+    'worker.local-looking': {
+        title: "Jobs: Already set up? Look for it: looking for the computer's worker, nothing downloaded",
+        visit: 'specs/imagery/worker.spec.ts',
+    },
     'worker.local-advanced': {
         title: "Jobs: the map's server gives no starter file yet: update the map; Advanced open, the command with its code and Copy",
         visit: 'specs/imagery/worker.spec.ts',

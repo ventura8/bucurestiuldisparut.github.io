@@ -34,7 +34,7 @@ WORKER_ID_PREFIX: Final = "w-"
 
 
 def new_worker_id() -> str:
-    """`w-` and 16 hex characters, new per process (`WORKER_ID_PATTERN`)."""
+    """`w-` and 16 hex characters (`WORKER_ID_PATTERN`), kept in the work folder across restarts (`SessionFile.worker_id`)."""
     return WORKER_ID_PREFIX + secrets.token_hex(8)
 
 
@@ -59,7 +59,8 @@ class Worker:
         clock: Callable[[], float] = time.time,
         steps: StepsFactory = default_steps,
     ) -> Worker:
-        worker_id = new_worker_id()
+        session_file = SessionFile(args.work, args.city)
+        worker_id = session_file.worker_id(new_worker_id)
         client = http()
         web_config = WebConfig(client, args.endpoints.init_json, args.project)
         session = Session(
@@ -76,7 +77,7 @@ class Worker:
         server = LocalServer(actions, settings, (bind_host, args.port), policy, args.endpoints.hosting_origins)
         runtime = WorkerRuntime(args, api, worker_id, state, steps)
         pairing = Pairing(client, api, args.endpoints, web_config, args.city)
-        connector = Connector(pairing, SessionFile(args.work, args.city), Signer(session, actions, state.failed), args.pair, clock)
+        connector = Connector(pairing, session_file, Signer(session, actions, state.failed), args.pair, clock)
         actions.accept_pairing(connector.offer)
         loop = WorkerLoop(session, api, state, runtime, ids)
         loop.connect_with(connector)

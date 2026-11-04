@@ -1,6 +1,6 @@
 /**
  * `imagery.retry` (`functions/src/imagery/retry.ts`, `docs/research/M3-interfaces.md` §4.5): a failed raster job again
- * from its first unfinished step: a pipeline failure goes back to `queued` (the dispatcher starts it), a failure after
+ * after what it keeps (the city crop, the segments, the delivery): a pipeline failure goes back to `queued` (the dispatcher starts it), a failure after
  * approval goes back to the publisher; never past the attempts, never while the budget guard is red.
  */
 import { JOB_MAX_ATTEMPTS, PUBLISH_MAX_ATTEMPTS, type JobDoc } from '@hcm/shared';
@@ -86,6 +86,54 @@ describe('imagery.retry', () => {
         expect(job?.finishedAt).toBeUndefined();
         expect((await readVersion(world, JOB))?.state).toBe('processing');
         expect(world.deps.tasks.queued).toEqual([]);
+    });
+
+    it('happyPath_aRetryRedoesWhatANewerPipelineMayDoDifferently_keepingTheDownload @S-A12-HAPPY-RETRY-REDOES', async () => {
+        const world = await readyWorld();
+        const fetched = { status: 'done', gcsPath: 'usgs-raw/corona2/DS1035-1057DA023/a.tgz' } as const;
+        const steps = { fetch: fetched, extract: { status: 'done' }, stitch: { status: 'done' }, locate: { status: 'failed' } } as const;
+        await seedJob(world, JOB, failed({ error: { code: 'apiError.imagery.cityNotFound', message: 'x' }, steps }));
+        await seedVersion(
+            world,
+            JOB,
+            renderedVersion({ state: 'failed', output: undefined, error: { code: 'apiError.imagery.cityNotFound' } }),
+        );
+
+        await retry(world);
+
+        expect((await readJob(world, JOB))?.steps).toEqual({
+            fetch: fetched,
+            extract: { status: 'done' },
+            stitch: { status: 'pending' },
+            locate: { status: 'pending' },
+        });
+    });
+
+    it('badPath_aRetryAfterTheCityCropKeepsIt_theDeliveryIsGone @S-A12-BAD-RETRY-KEEPS-CROP', async () => {
+        const world = await readyWorld();
+        const steps = {
+            fetch: { status: 'done' },
+            stitch: { status: 'done' },
+            locate: { status: 'done' },
+            reference: { status: 'done' },
+            georef: { status: 'failed' },
+        } as const;
+        await seedJob(world, JOB, failed({ steps }));
+        await seedVersion(
+            world,
+            JOB,
+            renderedVersion({ state: 'failed', output: undefined, error: { code: 'apiError.imagery.referenceUnavailable' } }),
+        );
+
+        await retry(world);
+
+        expect((await readJob(world, JOB))?.steps).toEqual({
+            fetch: { status: 'done' },
+            stitch: { status: 'done' },
+            locate: { status: 'done' },
+            reference: { status: 'pending' },
+            georef: { status: 'pending' },
+        });
     });
 
     it('happyPath_aFailureAfterApprovalGoesBackToThePublisher', async () => {

@@ -3,6 +3,7 @@ import '../global-options.js';
 import {
     FIRESTORE_PATHS,
     JOB_MAX_ATTEMPTS,
+    JOB_STEPS,
     NOT_RETRYABLE_CODES,
     PUBLISH_MAX_ATTEMPTS,
     jobDocSchema,
@@ -10,6 +11,7 @@ import {
     type CallableRequest,
     type CallableResponse,
     type JobDoc,
+    type JobStep,
     type LayerVersionDoc,
 } from '@hcm/shared';
 
@@ -84,11 +86,35 @@ async function requireRetryable(deps: RetryDeps, request: Request): Promise<JobD
     return job;
 }
 
-/** The failed steps become `pending` again; the others keep what they recorded. */
+/** The failed steps become `pending` again; the others keep what they recorded (a publish retry: the render stands). */
 function reopenedSteps(job: JobDoc): JobDoc['steps'] {
     const steps = Object.entries(job.steps ?? {}).map(([name, step]) => [
         name,
         step.status === 'failed' ? { status: 'pending' as const } : step,
+    ]);
+    return Object.fromEntries(steps) as JobDoc['steps'];
+}
+
+/**
+ * What a pipeline retry keeps, the first of these that is finished (finding 78 of 2026-11-03): the city crop (the delivery
+ * is gone after it), an upload's inspection, the unpacked segments, the delivery (a long download). Every step after it
+ * runs again, so a pipeline updated since the failure redoes its own results: the 1972 frame's retry kept the wrongly
+ * joined frame of the pipeline before the fix.
+ */
+const KEPT_BY_A_RETRY: readonly JobStep[] = ['locate', 'inspect', 'extract', 'fetch'];
+
+function finished(job: JobDoc, step: string): boolean {
+    const status = job.steps?.[step]?.status;
+    return status === 'done' || status === 'skipped';
+}
+
+/** The steps after what a retry keeps become `pending` again; the kept ones and those before them stay as recorded. */
+function rerunSteps(job: JobDoc): JobDoc['steps'] {
+    const order: readonly string[] = JOB_STEPS[job.type];
+    const kept = order.indexOf(KEPT_BY_A_RETRY.find((step) => finished(job, step)) ?? '');
+    const steps = Object.entries(job.steps ?? {}).map(([name, step]) => [
+        name,
+        order.indexOf(name) > kept ? { status: 'pending' as const } : step,
     ]);
     return Object.fromEntries(steps) as JobDoc['steps'];
 }
@@ -106,7 +132,7 @@ function retriedJob(job: JobDoc, atPublish: boolean, stamp: Stamp): JobDoc {
     if (atPublish) {
         return { ...kept, status: 'awaiting_approval', waitReason: 'approval', ...publishReopened(job), ...stamp };
     }
-    return { ...kept, status: 'queued', steps: reopenedSteps(job), ...stamp };
+    return { ...kept, status: 'queued', steps: rerunSteps(job), ...stamp };
 }
 
 function retriedVersion(version: LayerVersionDoc, atPublish: boolean, stamp: Stamp): LayerVersionDoc {
