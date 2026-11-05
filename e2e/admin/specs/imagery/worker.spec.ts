@@ -137,7 +137,7 @@ function place(page: Page): Locator {
 
 test(
     'The Jobs page and the pipeline card show the connected computer, the command, the choice and the month',
-    { tag: ['@S-A62-HAPPY-PANEL', '@S-A63-HAPPY-METER'] },
+    { tag: ['@S-A62-HAPPY-PANEL', '@S-A62-HAPPY-PANEL-ALIGNED', '@S-A63-HAPPY-METER'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream, consoleErrors }) => {
         const owner = adminWorld.accounts.owner.uid;
         const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
@@ -171,6 +171,10 @@ test(
         });
         await expect(shown.getByText(use)).toBeVisible();
         await expect(shown.getByText(text(lang, 'adminWorker.meter'))).toBeVisible();
+        // Finding 81: the panel's text lines up with the filter chips above it, inside the list pane's padding.
+        const chips = await page.locator('hcm-jobs-page .list-head .chips').boundingBox();
+        const title = await shown.getByRole('heading', { name: text(lang, 'adminWorker.title') }).boundingBox();
+        expect(title?.x).toBeCloseTo(chips?.x ?? Number.NaN, 0);
         await expectStateSound(page, adminVisit('worker.panel-connected', lang));
 
         // Copy puts the command on the clipboard and says so in a polite region.

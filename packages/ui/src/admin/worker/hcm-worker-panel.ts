@@ -124,7 +124,7 @@ export class HcmWorkerPanel extends WorkerElement {
             return html`<p class="note">${this.t('adminWorker.disconnected')}</p>`;
         }
         return html`<div class="actions">
-            <hcm-button variant="text" icon="link_off" ?disabled=${view.acting} @click=${() => void this.feed?.intents.disconnect()}
+            <hcm-button variant="text" icon="cancel" ?disabled=${view.acting} @click=${() => void this.feed?.intents.disconnect()}
                 >${this.t('adminWorker.disconnect')}</hcm-button
             >
         </div>`;

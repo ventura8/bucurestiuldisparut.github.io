@@ -804,3 +804,10 @@ computer within its 30 s poll.
   (§88f): the hint shows only while this computer has no worker that answers (S-A62-HAPPY-FIND-COMPUTER).
 - **80.** \[bug]\[jobs] After the retry the Jobs page listed "Finding the city" before "Downloading the scene": it showed the
   stored map's order. FIXED (§88e): the steps read in the order their type runs them (S-A18-HAPPY-STEP-ORDER).
+- **81.** \[ux]\[jobs] The owner, 2026-11-05: "fix padding in jobs tab". The worker's panel sat flush against the list pane's
+  edge, 16 px left of the filter chips above it and with no space on the right. FIXED (§88i): the Jobs page gives the panel
+  the pane's padding; the Setup card, which has its own, is unchanged (S-A62-HAPPY-PANEL-ALIGNED).
+- **82.** \[bug]\[admin] **Disconnect this computer** showed an empty gap for its icon, seen in the state screenshots of 81:
+  `link_off` is not in the bundled icon font, which draws nothing for an unlisted name; so were `save` (a city's budget)
+  and `task_alt` (an order delivered). FIXED (§88i): bundled icons instead (the font, which the viewer loads too, is not
+  rebuilt), and a test reads the admin's sources for any icon that is not bundled.

@@ -9098,6 +9098,17 @@
             "notes": "M7 (docs/research/M7-local-worker.md). Test: e2e/admin/specs/imagery/worker.spec.ts; findings 66-67 of 2026-11-02 (DECISIONS-for-review.md §85). Finding 72: the command behind Advanced."
         },
         {
+            "id": "S-A62-HAPPY-PANEL-ALIGNED",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "The worker's panel on the Jobs page lines up with the filter chips",
+            "asserts": "the panel's heading starts at the same left edge as the filter chips above it, inside the list pane's padding",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 81 of docs/research/manual-test-2026-10-25.md (the owner, 2026-11-05). In e2e/admin/specs/imagery/worker.spec.ts."
+        },
+        {
             "id": "S-A62-BAD-NO-WORKER",
             "behaviour": "A62",
             "area": "admin",

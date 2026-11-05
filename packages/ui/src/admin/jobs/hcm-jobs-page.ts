@@ -8,7 +8,7 @@
  * processing, asked first (CR-M3-47, `../imagery/guard-banner.ts`).
  */
 import type { Locale } from '@hcm/shared';
-import { html, nothing, type TemplateResult } from 'lit';
+import { css, html, nothing, type TemplateResult } from 'lit';
 
 import type { AdminRouteIdPort } from '../admin-port.js';
 import type { AreaPort, ContentPort } from '../content-port.js';
@@ -35,7 +35,16 @@ function isReconnecting(detail: JobsViewState['detail']): boolean {
 export class HcmJobsPage extends AreaPage<JobsViewState, JobsIntentsPort> {
     static override readonly properties = { ...AreaPage.properties, confirming: { state: true }, resumeAsked: { state: true } };
 
-    static override readonly styles = editingStyles;
+    static override readonly styles = [
+        ...editingStyles,
+        // Finding 81 of 2026-11-05: on this page's list pane the panel lines up with the filter chips above it.
+        css`
+            hcm-worker-panel {
+                display: block;
+                padding: 16px;
+            }
+        `,
+    ];
 
     protected readonly route: AdminRouteIdPort = 'jobs';
     /** The Cancel question is open. */

@@ -12,10 +12,10 @@
 //     node packages/ui/scripts/build-fonts.mjs           # (re)write the fonts
 //     node packages/ui/scripts/build-fonts.mjs --check   # verify the committed fonts (exit 1 when stale or incomplete)
 //
-// The output is deterministic, so --check rebuilds in memory and compares bytes, and also shapes every icon name with
-// the committed subset. Exit status: 0 ok, 1 stale or an icon missing, 2 usage.
+// The output is deterministic, so --check rebuilds in memory and compares bytes, also shapes every icon name with the
+// committed subset, and refuses an icon the sources use that is not listed. Exit status: 0 ok, 1 stale or an icon missing, 2 usage.
 import { Buffer } from 'node:buffer';
-import { readFile, writeFile } from 'node:fs/promises';
+import { glob, readFile, writeFile } from 'node:fs/promises';
 import { createRequire, registerHooks } from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
@@ -153,6 +153,32 @@ async function readOrEmpty(file) {
     }
 }
 
+/**
+ * Icon names the sources use that the subset does not hold, each with its file (finding 82 of 2026-11-03: `<hcm-icon>` draws
+ * nothing for an unlisted name, so a button shows an empty gap and no other check sees it).
+ */
+async function unbundledIcons() {
+    const known = new Set(ICONS);
+    const unbundled = [];
+    const root = path.join(import.meta.dirname, '..', '..');
+    for await (const file of glob(['ui/src/**/*.ts', 'admin/src/**/*.ts', 'engine/src/**/*.ts'], { cwd: root })) {
+        const source = await readFile(path.join(root, file), 'utf8');
+        const names = [...source.matchAll(/\bicon(?:=|: )["']([a-z][a-z0-9_]*)["']/g)].map((match) => match[1]);
+        unbundled.push(...names.filter((name) => !known.has(name)).map((name) => `${name} in ${file}`));
+    }
+    return unbundled;
+}
+
+/** `--check`: the sources' icons first, then the committed fonts. */
+async function checkAll(outputs) {
+    const unbundled = await unbundledIcons();
+    if (unbundled.length > 0) {
+        log.error('icons the sources use are not listed in packages/ui/src/icons.ts', { unbundled });
+        return 1;
+    }
+    return check(outputs);
+}
+
 async function check(outputs) {
     const stale = [];
     for (const [file, bytes] of outputs) {
@@ -193,5 +219,5 @@ if (mode === null) {
     process.exitCode = 2;
 } else {
     const outputs = await buildAll();
-    process.exitCode = mode === 'check' ? await check(outputs) : await write(outputs);
+    process.exitCode = mode === 'check' ? await checkAll(outputs) : await write(outputs);
 }

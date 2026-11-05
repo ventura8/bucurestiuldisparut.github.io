@@ -127,7 +127,7 @@ function buyCard(context: ImageryContext, scene: SceneItemPort): TemplateResult 
             ${earthExplorerLink(context, scene)}
             ${actionButton(context, {
                 label: 'adminContent.orders.markOrdered',
-                icon: 'task_alt',
+                icon: 'check_circle',
                 variant: 'tonal',
                 run: () => void markOrdered(context, scene.id),
             })}

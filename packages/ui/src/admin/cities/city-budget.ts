@@ -102,7 +102,7 @@ function actions(context: BudgetCardContext): TemplateResult {
     };
     const changed = Object.keys(view.draft).length > 0;
     return html`<div class="actions">
-        <hcm-button variant="filled" icon="save" ?disabled=${!changed || view.saving || context.readOnly} @click=${save}
+        <hcm-button variant="filled" icon="check" ?disabled=${!changed || view.saving || context.readOnly} @click=${save}
             >${contentText(locale, 'adminContent.common.save')}</hcm-button
         >
         <hcm-button variant="text" ?disabled=${!changed || view.saving} @click=${discard}

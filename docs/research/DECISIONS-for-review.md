@@ -5831,5 +5831,8 @@ install specs; two workers).
   installed one (a job field through the schema, the worker's allow-list and the contract files, for the same result on
   the rare manual retry, whose cost here is seconds to minutes; the cost: a retry of a late failure redoes `reference` and
   `georef`). Jobs lists its steps in the type's order.
+- **88i APPLIED (finding 81): the panel's padding on Jobs.** A rule of `hcm-jobs-page`, not of the panel, which the Setup card
+  also holds with its own padding. Finding 82: `cancel`, `check` and `check_circle` stand in for three unbundled icons. The `fonts` gate (`build-fonts.mjs --check`) now also
+  refuses an icon the sources name that is not listed: the stricter, pre-approved kind.
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`e2e/admin/specs/imagery/`).

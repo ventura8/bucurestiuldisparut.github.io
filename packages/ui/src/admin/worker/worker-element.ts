@@ -57,6 +57,11 @@ export const workerStyles = [
             font-weight: var(--md-sys-typescale-title-medium-weight, 500);
         }
 
+        /* Empty, the computer's live region stays in the page but takes no line of the panel's rhythm. */
+        p[data-local]:empty {
+            position: absolute;
+        }
+
         .meter {
             display: flex;
             flex-direction: column;
