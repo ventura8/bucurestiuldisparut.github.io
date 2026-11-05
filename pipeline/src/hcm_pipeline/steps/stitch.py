@@ -3,7 +3,7 @@
 USGS scans a long film frame in overlapping parts (`_a` to `_d`, left to right). Each pair's offset is found by
 matching the right segment's left strip inside the left segment's right part (its last `MAX_OVERLAP_SHARE`, finding
 76): first on images shrunk to about
-512 rows, then at full resolution within a few pixels of that, so it is exact within 1 px. The film border (the
+2048 rows, then at full resolution within a few pixels of that, so it is exact within 1 px. The film border (the
 unexposed edge and its markings) is cut where the row and column intensity profiles of a shrunk mosaic leave the dark
 level. Finding 57 of 2026-11-01: the frame is never joined in memory (a KH-9 panoramic frame was killed at 32 GiB):
 the step reads windows and shrunk copies of two segments at a time and writes `frame.json` (each segment's place) and
@@ -25,7 +25,9 @@ from hcm_pipeline.objects import ObjectInfo
 from hcm_pipeline.rasters import GeoTiff, write_geotiff
 from hcm_pipeline.steps.common import gdal_step
 
-COARSE_ROWS: Final = 512
+# Finding 83 of 2026-11-05: at 512 rows a KH-9 frame was shrunk 48 times, too blurred to tell its snow-covered valleys
+# apart, and one pair of eight matched a wrong place; at 2048 every pair agrees with the widest strip that fits.
+COARSE_ROWS: Final = 2048
 # The strip of the right segment matched inside the left one: narrower than any overlap USGS leaves.
 TEMPLATE_PX: Final = 160
 MIN_TEMPLATE_PX: Final = 8
@@ -35,7 +37,9 @@ SEARCH_PX: Final = 1200
 # strip 46 % inside the left segment, and the frame was joined wrong.
 MAX_OVERLAP_SHARE: Final = 0.35
 REFINE_PX: Final = 6
-MARGIN_SHARE: Final = 0.1
+# The strip's top and bottom left out, which is also how far up or down the right segment may lie: the scanner keeps the
+# film straight (at most 0.5 % of the height on a KH-9 frame), and a jump of 11 % was a wrong match (finding 83).
+MARGIN_SHARE: Final = 0.03
 # A row or column belongs to the film border while its mean stays under this share of the frame's median.
 BORDER_SHARE: Final = 0.35
 # ... and never under this grey level (a frame that is dark everywhere holds no image).

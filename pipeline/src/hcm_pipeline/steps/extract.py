@@ -1,7 +1,7 @@
 """`extract`: the delivery's TIFF segments, and nothing else (docs/research/M3-interfaces.md §5.3).
 
 A `.tgz` is streamed front to back (`tarfile` `r|gz`, never extracted to paths: only the members' bytes are read);
-a `.zip` is staged first (its directory is at the end). Each TIFF member (`*_a.tif` ... `*_d.tif`, or a single
+a `.zip` is staged first (its directory is at the end). Each TIFF member (`*_a.tif` ... `*_n.tif`, or a single
 TIFF) becomes `work/{city}/{job}/segments/{letter}.tif`. An unreadable archive, or one without a TIFF, fails with
 `apiError.imagery.archiveCorrupt` and the delivery is deleted, so a retry fetches it again.
 """
@@ -20,7 +20,9 @@ from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult
 from hcm_pipeline.objects import READ_BYTES, ObjectInfo
 
 SEGMENT: Final = re.compile(r"(?:_([a-z]))?\.tiff?$", re.IGNORECASE)
-MAX_SEGMENTS: Final = 8
+# Finding 84 of 2026-11-05: a KH-9 panoramic frame comes in 14 parts (`_a` to `_n`). The limit was 8 and silently dropped
+# the rest, so the 1972 frame ended at the edge of the city its corners promised. It only refuses an archive no scan is.
+MAX_SEGMENTS: Final = 26
 _CORRUPT: Final = (tarfile.TarError, zipfile.BadZipFile, zlib.error, EOFError, OSError)
 Member = tuple[str, IO[bytes]]
 
@@ -73,8 +75,11 @@ def _segments(ctx: JobContext, delivery: str) -> list[ObjectInfo]:
     with _members(ctx, delivery) as members:
         for name, data in members:
             letter = segment_letter(name, len(kept))
-            if letter is not None and len(kept) < MAX_SEGMENTS:
-                kept.append(_keep(ctx, letter, data))
+            if letter is None:
+                continue
+            if len(kept) == MAX_SEGMENTS:
+                raise StepFailedError(Errors.ARCHIVE_CORRUPT, f"the delivery holds more than {MAX_SEGMENTS} TIFF segments")
+            kept.append(_keep(ctx, letter, data))
     return kept
 
 

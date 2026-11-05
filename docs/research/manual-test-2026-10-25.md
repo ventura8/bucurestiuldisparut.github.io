@@ -811,3 +811,24 @@ computer within its 30 s poll.
   `link_off` is not in the bundled icon font, which draws nothing for an unlisted name; so were `save` (a city's budget)
   and `task_alt` (an order delivered). FIXED (§88i): bundled icons instead (the font, which the viewer loads too, is not
   rebuilt), and a test reads the admin's sources for any icon that is not bundled.
+
+### Why the 1972 frame never found Bucharest (2026-11-05, offline, on the delivery kept on the owner's computer)
+
+The owner away ("u do all steps"), **Update the map** refused to Claude, the real segments in the worker's volume were read
+without any cloud change: `reports/stitch-1972/` (git-ignored). `DECISIONS-for-review.md` §88j, `docs/LESSONS.md` 360.
+
+- **83.** \[bug]\[imagery] Finding 76's bound was not enough: `c`→`d` then overlapped a plausible 7.6 % but 2,774 px too high, and
+  the seam still broke the river. Root cause: at 512 rows the frame was shrunk 48 times, too blurred for snow-covered valleys.
+  At 12 times every strip from 96 to 1,440 px wide agrees on 1,518 px and 24 px, like its neighbours. FIXED: `COARSE_ROWS` 2048,
+  and the search reaches at most 3 % of the height up or down (real offsets on this frame: at most 124 px of 25,047)
+  (S-P01-BAD-STITCH-VERTICAL). Seen, open: `l`→`m`, over featureless cloud, overlaps only 173 px, likely wrong by about 1,600
+  px; it lies past the city and moves only the frame's far end.
+- **84.** \[bug]\[imagery] **The root cause of `cityNotFound` on this frame.** The delivery holds 14 segments (`_a` to `_n`) and
+  `extract` kept 8: `MAX_SEGMENTS = 8` dropped the rest without a word. The frame was 57 % of its true width (284,762 of
+  498,189 px) and ended at the edge of Bucharest, while the scene's corners describe the whole film. FIXED: the limit is 26 and
+  passing it fails the job (S-P01-HAPPY-ALL-SEGMENTS, S-P01-BAD-TOO-MANY-SEGMENTS). Live: a new import (the job's attempts are
+  used, and a retry keeps `extract`). **UNVERIFIED** until that run: the crop's correlation. By eye the whole frame shows
+  Otopeni, Băneasa, Gara de Nord's rail lines and the Colentina lakes; matched by hand against Sentinel-2 this snow-covered
+  frame scores only 0.15 to 0.25, so the 0.20 threshold may still refuse it; and its bottom edge seems to cut the city near
+  its centre (by the two airports' distance, about 44.44° N), though the scene says it covers 100 %. The scene's corners
+  were not read. The other candidate is **KH-9, 8 August 1972** (`D3C1203-300415F006`, free, no snow).

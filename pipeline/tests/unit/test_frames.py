@@ -21,7 +21,7 @@ from tests.fakes.world import CITY, JOB_ID, PipelineWorld
 
 WORK = f"work/{CITY}/{JOB_ID}/"
 HEIGHT, SEGMENT_WIDTH, STEP = 4000, 1000, 800
-# Finding 76's copy of a strip inside the left segment: a multiple of the coarse shrink.
+# Finding 76's copy of a strip inside the left segment.
 DECOY = 196
 SEGMENTS = 6
 
@@ -81,9 +81,8 @@ def test_bad_path_a_copy_of_the_strip_deep_inside_the_left_segment_is_not_where_
     """Scenarios: S-P01-BAD-STITCH-DECOY"""
     frame = scan()
     left, right = frame[:, :SEGMENT_WIDTH].copy(), frame[:, STEP : STEP + SEGMENT_WIDTH].copy()
-    # The right segment's left strip again at a fifth of the left one (an overlap of 80 %), exactly and on the coarse
-    # grid (7 px: 4000 rows shrunk to about 512); the true overlap grainy, as a scan's is, so a search across the whole
-    # segment prefers the copy.
+    # The right segment's left strip again at a fifth of the left one (an overlap of 80 %), exactly; the true overlap grainy,
+    # as a scan's is, so a search across the whole segment prefers the copy.
     left[:, DECOY : DECOY + 300] = right[:, :300]
     grain = numpy.random.default_rng(76).integers(-60, 61, left[:, STEP:].shape)
     left[:, STEP:] = numpy.clip(left[:, STEP:].astype(numpy.int16) + grain, 0, 255).astype(numpy.uint8)
@@ -97,6 +96,25 @@ def test_bad_path_a_copy_of_the_strip_deep_inside_the_left_segment_is_not_where_
         segment.close()
 
     assert offset == (STEP, 0)
+
+
+def test_bad_path_a_copy_of_the_strip_far_above_its_place_is_not_where_the_right_one_starts(tmp_path: Path) -> None:
+    """Scenarios: S-P01-BAD-STITCH-VERTICAL"""
+    frame = scan()
+    left, right = frame[:, :SEGMENT_WIDTH].copy(), frame[:, STEP : STEP + SEGMENT_WIDTH].copy()
+    # In the overlap's own columns but 8 % of the height higher: a false step like the 1972 frame's (finding 83).
+    jump = HEIGHT * 8 // 100
+    left[: HEIGHT - jump, STEP:] = right[jump:, : SEGMENT_WIDTH - STEP]
+    paths = [tmp_path / name for name in ("a.tif", "b.tif")]
+    for path, pixels in zip(paths, (left, right), strict=True):
+        path.write_bytes(tiff(tmp_path, numpy.ascontiguousarray(pixels), f"{path.stem}-src.tif"))
+    segments = [Segment(path) for path in paths]
+
+    _dx, dy = stitch.pair_offset(*segments)
+    for segment in segments:
+        segment.close()
+
+    assert abs(dy) <= HEIGHT * 3 // 100
 
 
 class Staging:

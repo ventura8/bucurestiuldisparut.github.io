@@ -8856,6 +8856,39 @@
             "notes": "Finding 76 of 2026-11-03 (docs/research/manual-test-2026-10-25.md): the 1972 KH-9 frame, snow-covered, had segment d joined 46 % inside c. In pipeline/tests/unit/test_frames.py."
         },
         {
+            "id": "S-P01-BAD-STITCH-VERTICAL",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "path": "bad",
+            "title": "A copy of the next segment's edge far above its place does not shift the frame",
+            "asserts": "the right segment's strip copied into the overlap's columns 8 % of the height higher -> the pair's vertical offset stays within 3 % of the height (a scanner keeps the film straight)",
+            "notes": "Finding 83 of docs/research/manual-test-2026-10-25.md (the 1972 frame's false 2,774 px step). In pipeline/tests/unit/test_frames.py."
+        },
+        {
+            "id": "S-P01-HAPPY-ALL-SEGMENTS",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "path": "happy",
+            "title": "A panoramic frame's fourteen segments are all kept",
+            "asserts": "a delivery of 14 TIFF members `_a` to `_n` -> segments/a.tif to segments/n.tif, none dropped",
+            "notes": "Finding 84 of docs/research/manual-test-2026-10-25.md: the limit of 8 cut the 1972 frame at the edge of Bucharest. In pipeline/tests/unit/test_steps_edges.py."
+        },
+        {
+            "id": "S-P01-BAD-TOO-MANY-SEGMENTS",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "path": "bad",
+            "title": "More segments than any scan has fails instead of cutting the frame",
+            "asserts": "a delivery of 27 TIFF members -> the job fails with apiError.imagery.archiveCorrupt, never a shorter frame",
+            "notes": "Finding 84 of docs/research/manual-test-2026-10-25.md. In pipeline/tests/unit/test_steps_edges.py."
+        },
+        {
             "id": "S-P01-BAD-CROP-ACROSS-SEGMENTS",
             "behaviour": "P01",
             "area": "pipeline",

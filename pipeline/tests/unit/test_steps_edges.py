@@ -12,6 +12,7 @@ from hcm_pipeline.contract import Errors
 from hcm_pipeline.frames import FrameLayout, Placement
 from hcm_pipeline.rasters import GeoTiff, write_geotiff
 from hcm_pipeline.runner import RunOutcome
+from hcm_pipeline.steps import extract
 
 from tests.fakes.http import Reply
 from tests.fakes.world import CITY, ENTITY_ID, JOB_ID, PipelineWorld, dig
@@ -49,6 +50,34 @@ def test_happy_path_a_zip_delivery_gives_its_segments(world: PipelineWorld, tmp_
 
     assert only(world, "extract") is RunOutcome.DONE
     assert world.gcs.names(WORK) == [f"{WORK}segments/b.tif"]
+
+
+def tar_of_segments(tmp_path: Path, count: int) -> bytes:
+    """A delivery of `count` TIFF members named as USGS names them (`_a`, `_b`, ...)."""
+    member = tiff_bytes(tmp_path, numpy.ones((4, 4)))
+    packed = io.BytesIO()
+    with tarfile.open(fileobj=packed, mode="w:gz") as archive:
+        for index in range(count):
+            info = tarfile.TarInfo(f"{ENTITY_ID}_{chr(ord('a') + index)}.tif" if index < 26 else f"{ENTITY_ID}.tif")
+            info.size = len(member)
+            archive.addfile(info, io.BytesIO(member))
+    return packed.getvalue()
+
+
+def test_happy_path_a_panoramic_frames_fourteen_segments_are_all_kept(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P01-HAPPY-ALL-SEGMENTS"""
+    fetched(world, f"{RAW}.tgz", tar_of_segments(tmp_path, 14))
+
+    assert only(world, "extract") is RunOutcome.DONE
+    assert world.gcs.names(WORK) == [f"{WORK}segments/{letter}.tif" for letter in "abcdefghijklmn"]
+
+
+def test_bad_path_more_segments_than_any_scan_has_fails_rather_than_cutting_the_frame(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P01-BAD-TOO-MANY-SEGMENTS"""
+    fetched(world, f"{RAW}.tgz", tar_of_segments(tmp_path, extract.MAX_SEGMENTS + 1))
+
+    assert only(world, "extract") is RunOutcome.FAILED
+    assert error_code(world) == Errors.ARCHIVE_CORRUPT
 
 
 def test_bad_path_a_delivery_without_a_tiff_is_corrupt_and_deleted(world: PipelineWorld) -> None:

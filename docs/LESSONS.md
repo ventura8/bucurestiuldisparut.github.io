@@ -2164,3 +2164,13 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
       (a lost run, the small job's hand-over) still continue where they stopped (S-A12-HAPPY-RETRY-REDOES,
       S-A12-BAD-RETRY-KEEPS-CROP).
     - **A checkpoint is only valid for the code that wrote it: when the owner asks for another try, redo what is cheap.**
+360. **A limit that dropped data in silence hid the real bug behind three plausible ones.**
+    - Seen: 2026-11-05 (findings 83, 84): `cityNotFound` on a KH-9 frame survived two stitch fixes. The delivery held 14 segments;
+      `extract` kept 8 (`MAX_SEGMENTS`, sized for Corona's 4), so the frame ended at the edge of the city.
+    - Cause: a guard written as "stop reading here" instead of "refuse this archive"; nothing compared the segments kept
+      with the members offered, and the frame's length was never compared with its corners.
+    - Found by: listing the archive after the picture ended mid-terrain with no film border; every earlier look read the
+      pipeline's own output, which was consistent with itself.
+    - Fix and pin: past the limit the job fails (S-P01-BAD-TOO-MANY-SEGMENTS), and the limit fits what USGS delivers
+      (S-P01-HAPPY-ALL-SEGMENTS). A synthetic scene of 2 or 4 segments could never have shown it.
+    - **A safety limit must fail loudly, never truncate; and when a result is wrong, look at the input before tuning the step.**

@@ -5834,5 +5834,10 @@ install specs; two workers).
 - **88i APPLIED (finding 81): the panel's padding on Jobs.** A rule of `hcm-jobs-page`, not of the panel, which the Setup card
   also holds with its own padding. Finding 82: `cancel`, `check` and `check_circle` stand in for three unbundled icons. The `fonts` gate (`build-fonts.mjs --check`) now also
   refuses an icon the sources name that is not listed: the stricter, pre-approved kind.
+- **88j APPLIED (findings 83, 84, lesson 360): the whole frame, joined right.** `MAX_SEGMENTS` 26 and a failure past it,
+  `COARSE_ROWS` 2048 (a shrunk segment of about 3,100 by 2,090 px, two at a time: about 13 MB, far under the machine's
+  memory), `MARGIN_SHARE` 0.03. A KH-9 frame now keeps about 13 GB of segments for its run, on the computer or in the bucket
+  (the extra 5.6 GB there until the job ends). **For the owner:** whether to keep the 0.20 threshold is open until a real run
+  of the whole frame reports its figure.
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`e2e/admin/specs/imagery/`).
