@@ -194,7 +194,7 @@ test(
 
 test(
     'A failure no retry cures offers no Try again, and the failed version is dismissed',
-    { tag: ['@S-A12-BAD-NOT-RETRYABLE', '@S-A12-BAD-FAILED-DISMISSED'] },
+    { tag: ['@S-A12-BAD-NOT-RETRYABLE', '@S-A12-BAD-FAILED-DISMISSED', '@S-A12-HAPPY-DISMISS-IMPORT-AGAIN'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
         const imagery = await readyImagery(
             { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
@@ -219,6 +219,12 @@ test(
         await expect(versionState(page, lang, 'adminContent.imagery.version.rejected')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         await expect.poll(async () => (await imagery.version(versionId))?.['state'], { timeout: FUNCTIONS_TIMEOUT_MS }).toBe('rejected');
         expect((await imagery.job(versionId))?.['status']).toBe('failed');
+
+        // Finding 85: the frame can be imported again.
+        await page.goto(adminPath(lang, `imagery/scene/${SCENE}`));
+        await expect(detail(page).getByRole('button', { name: imageryText(lang, 'adminContent.imagery.import') })).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
     },
 );
 

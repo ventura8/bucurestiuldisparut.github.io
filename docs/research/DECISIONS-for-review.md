@@ -5839,5 +5839,9 @@ install specs; two workers).
   memory), `MARGIN_SHARE` 0.03. A KH-9 frame now keeps about 13 GB of segments for its run, on the computer or in the bucket
   (the extra 5.6 GB there until the job ends). **For the owner:** whether to keep the 0.20 threshold is open until a real run
   of the whole frame reports its figure.
+- **88k APPLIED (finding 85): a scene is freed when nothing can make its layer.** `functions/src/imagery/release-scene.ts`, on a
+  dismissal and as the tick's part `scenes` (one query of the city's `imported` scenes). A failed version still holds its
+  scene, since Try again may yet make the layer. Rejected: writing the freeing into the pipeline's failure (a retry needs the
+  scene held), and a one-off repair of the live document (a cloud write by hand, which the next stuck scene would need again).
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`e2e/admin/specs/imagery/`).

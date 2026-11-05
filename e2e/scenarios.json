@@ -4401,6 +4401,28 @@
             "notes": "Finding 78 of docs/research/manual-test-2026-10-25.md. In functions/test/imagery/retry.test.ts."
         },
         {
+            "id": "S-A12-HAPPY-DISMISS-IMPORT-AGAIN",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "happy",
+            "title": "A dismissed failed import can be imported again",
+            "asserts": "a version that failed in the pipeline, dismissed -> its scene is a candidate again, its reserved layer id freed, and its page offers Import; a scene an earlier release left reserved is freed by the next tick",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Finding 85 of docs/research/manual-test-2026-10-25.md (2026-11-05). In e2e/admin/specs/imagery/import.spec.ts and functions/test/imagery/approve.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-DISMISS-SCENE-HELD",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "Dismissing a version leaves a scene another version holds",
+            "asserts": "another version of the same layer still failed (a retry may yet make it) -> the scene stays imported with its layer id",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Finding 85 of docs/research/manual-test-2026-10-25.md. In functions/test/imagery/approve.test.ts."
+        },
+        {
             "id": "S-A13-HAPPY",
             "behaviour": "A13",
             "area": "admin",

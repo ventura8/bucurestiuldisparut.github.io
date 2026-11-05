@@ -12,6 +12,7 @@ import { watchOrders } from './orders/watch.js';
 import { cancelAsked, dispatchDue, pendingApprovals, pollStale, recoverLost } from './tick-jobs.js';
 import { monthlyHarvest, publishDeferred, runDeletions, sweepEnded } from './tick-maintenance.js';
 import { offerCloud } from './tick-worker.js';
+import { releaseScenes } from './release-scene.js';
 
 /**
  * `imagery.tick` (every 5 minutes, one instance; `docs/research/M3-interfaces.md` §4.6): the raster work's clock. For
@@ -44,6 +45,8 @@ const PARTS: readonly (readonly [name: string, part: Part, whileRed: boolean])[]
     ['harvest', monthlyHarvest, false],
     // M4 (docs/research/M4-interfaces.md §1.5): the order watch asks USGS and reminds while the guard is red; its import waits.
     ['orders', watchOrders, true],
+    // Finding 85: a scene an ended import left reserved can be imported again.
+    ['scenes', (deps, cityId) => releaseScenes(deps, cityId), true],
 ];
 
 /** One tick over every city; returns the parts that failed (`<city>:<part>`). */

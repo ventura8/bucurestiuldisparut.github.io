@@ -832,3 +832,9 @@ without any cloud change: `reports/stitch-1972/` (git-ignored). `DECISIONS-for-r
   frame scores only 0.15 to 0.25, so the 0.20 threshold may still refuse it; and its bottom edge seems to cut the city near
   its centre (by the two airports' distance, about 44.44° N), though the scene says it covers 100 %. The scene's corners
   were not read. The other candidate is **KH-9, 8 August 1972** (`D3C1203-300415F006`, free, no snow).
+- **85.** \[bug]\[imagery] Dismissing the failed 1972 version left its scene **Imported** with no **Import**: a frame that failed
+  could never be imported again. `imagery.reject` trusted that "the failure already released what it held", true for the
+  server's endings (`endWork`) but not for a run that fails in the pipeline, which ends the job itself. FIXED (§88k): a
+  dismissal frees a scene whose reserved layer was never made and whose versions are all rejected or cancelled, and the tick
+  frees those an earlier release left (the 1972 scene, within 15 minutes of the update) (S-A12-HAPPY-DISMISS-IMPORT-AGAIN,
+  S-A12-BAD-DISMISS-SCENE-HELD).

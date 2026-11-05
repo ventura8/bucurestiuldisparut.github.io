@@ -18,6 +18,7 @@ import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { approved, estimateOf, queuePublish, type ApprovalDeps } from './approval.js';
 import { endWork } from './end.js';
+import { releaseScenes } from './release-scene.js';
 import { requireVersion, stampOf } from './records.js';
 
 /**
@@ -26,7 +27,7 @@ import { requireVersion, stampOf } from './records.js';
  * Reject ends the version and its job, frees its reserved layer id and its scene, and the layer keeps its tiles. The
  * job and the version are checked again in the transaction that ends them, so a rejection never ends a publish the guard
  * has meanwhile sent to Mapbox (CR-M3-47). A version that failed is dismissed the same way: it becomes `rejected` and
- * leaves the Imagery area's "Waiting for you" (its job stays failed; the failure already released what it held).
+ * leaves the Imagery area's "Waiting for you" (its job stays failed), and its scene can be imported again (finding 85).
  */
 type VersionRequest = CallableRequest<'imagery.approve'>;
 
@@ -89,6 +90,7 @@ async function dismissFailed(deps: ApprovalDeps, caller: VerifiedCaller, request
         }
         await transaction.set(path, layerVersionDocSchema, { ...version, state: 'rejected', ...stampOf(caller.uid, deps.clock.now()) });
     });
+    await releaseScenes(deps, request.cityId);
 }
 
 /** A waiting version: it and its job end, checked again in the transaction. */
