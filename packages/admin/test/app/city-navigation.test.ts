@@ -96,13 +96,13 @@ describe('Navigation: many cities', () => {
     });
 
     it('badPath_aCityTheAdminDoesNotAdministerOpensTheirOwn @S-A49-BAD-NOT-MEMBER', () => {
-        const n = navigation('#/c/iasi/photos/p1', [BUCHAREST, CLUJ]);
+        const n = navigation('#/c/bacau/photos/p1', [BUCHAREST, CLUJ]);
 
         n.change({ auth: 'admin', mode: 'normal' });
 
         expect(n.shell.get()).toMatchObject({
             route: { id: 'photos', params: ['p1'] },
-            notice: { key: 'adminShell.city.notMember', params: { cityId: 'iasi', city: 'Bucharest' } },
+            notice: { key: 'adminShell.city.notMember', params: { cityId: 'bacau', city: 'Bucharest' } },
         });
         expect(n.location.writes).toEqual([{ hash: '#/c/bucharest/photos/p1', replace: true }]);
         expect(n.switchCity).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe('Navigation: many cities', () => {
 
     it('badPath_aSignedOutDeepLinkToAnotherCityIsNotSeededIntoTheHistory', () => {
         const n = navigation('', [BUCHAREST]);
-        n.session.set(RETURN_TO_KEY, '#/c/iasi/photos/p1');
+        n.session.set(RETURN_TO_KEY, '#/c/bacau/photos/p1');
 
         n.change({ auth: 'admin', mode: 'normal' });
 

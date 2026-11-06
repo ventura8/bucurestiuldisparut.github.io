@@ -77,7 +77,7 @@ describe('site:add', () => {
         const { files } = repository();
         const { log, records } = recordingLogger();
 
-        expect(runAddSite(['--city', 'iasi'], { files, log })).toBe(ADD_EXIT_USAGE);
+        expect(runAddSite(['--city', 'bacau'], { files, log })).toBe(ADD_EXIT_USAGE);
         expect(runAddSite(['--bogus'], { files, log })).toBe(ADD_EXIT_USAGE);
         expect(records[0]?.message).toContain('usage: add-site.ts');
     });
@@ -92,19 +92,23 @@ describe('site:add', () => {
         };
 
         expect(() =>
-            runAddSite(['--city', 'iasi', '--name-ro', 'Iași', '--theme', '#112233'], { files: broken, log: recordingLogger().log }),
+            runAddSite(['--city', 'bacau', '--name-ro', 'Bacău', '--theme', '#112233'], { files: broken, log: recordingLogger().log }),
         ).toThrow('disk full');
     });
 
     it('happyPath_runsUnderNodeWithTheTypeScriptHook', () => {
         const { root, files } = repository();
 
-        const result = spawnSync(process.execPath, ['--import', HOOK, ENTRY, '--city', 'iasi', '--name-ro', 'Iași', '--theme', '#112233'], {
-            cwd: root,
-            encoding: 'utf8',
-        });
+        const result = spawnSync(
+            process.execPath,
+            ['--import', HOOK, ENTRY, '--city', 'bacau', '--name-ro', 'Bacău', '--theme', '#112233'],
+            {
+                cwd: root,
+                encoding: 'utf8',
+            },
+        );
 
         expect(result).toMatchObject({ status: ADD_EXIT_OK });
-        expect(files.isFile('sites/iasi/site.json')).toBe(true);
+        expect(files.isFile('sites/bacau/site.json')).toBe(true);
     });
 });

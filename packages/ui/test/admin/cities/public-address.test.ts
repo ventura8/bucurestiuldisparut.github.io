@@ -46,18 +46,20 @@ describe('the public address of a city', () => {
     });
 
     it('happyPath_theAdminsOriginWithTheCityIdAsThePath', () => {
-        expect(publicCityAddress('iasi', 'https://bucurestiul-disparut.web.app/admin/')).toBe('https://bucurestiul-disparut.web.app/iasi/');
+        expect(publicCityAddress('bacau', 'https://bucurestiul-disparut.web.app/admin/')).toBe(
+            'https://bucurestiul-disparut.web.app/bacau/',
+        );
         expect(publicCityAddress('cluj', 'https://demo-hcm.firebaseapp.com/admin/#/settings/publish')).toBe(
             'https://demo-hcm.firebaseapp.com/cluj/',
         );
     });
 
     it('happyPath_theLinkOpensANewTabAndSaysSoInRomanian', () => {
-        const link = shown(publicAddressLink('ro', 'iasi', 'https://bucurestiul-disparut.web.app/admin/')).querySelector('a');
+        const link = shown(publicAddressLink('ro', 'bacau', 'https://bucurestiul-disparut.web.app/admin/')).querySelector('a');
 
-        expect(link?.getAttribute('href')).toBe('https://bucurestiul-disparut.web.app/iasi/');
+        expect(link?.getAttribute('href')).toBe('https://bucurestiul-disparut.web.app/bacau/');
         expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
-        expect(link?.textContent).toContain('https://bucurestiul-disparut.web.app/iasi/');
+        expect(link?.textContent).toContain('https://bucurestiul-disparut.web.app/bacau/');
         expect(link?.querySelector('.visually-hidden')?.textContent).toContain('filă nouă');
     });
 
@@ -69,10 +71,10 @@ describe('the public address of a city', () => {
     });
 
     it('happyPath_publishingNamesTheShellsCityElseTheDocumentsOwnId', () => {
-        const fromShell = shown(publishSection(publishContext(cityDoc({ id: 'other' }), 'iasi'))).querySelector('a[data-public-address]');
+        const fromShell = shown(publishSection(publishContext(cityDoc({ id: 'other' }), 'bacau'))).querySelector('a[data-public-address]');
         const fromDoc = shown(publishSection(publishContext(cityDoc({ id: 'cluj' }), null))).querySelector('a[data-public-address]');
 
-        expect(fromShell?.getAttribute('href')).toBe(new URL('/iasi/', document.baseURI).href);
+        expect(fromShell?.getAttribute('href')).toBe(new URL('/bacau/', document.baseURI).href);
         expect(fromDoc?.getAttribute('href')).toBe(new URL('/cluj/', document.baseURI).href);
     });
 

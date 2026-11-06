@@ -2415,7 +2415,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "The public map opens at the Hosting root and every city at its path",
-            "asserts": "the e2e Hosting tree -> / boots the first city from the public bucket's manifest with one map load and its own meta policy, asking nothing of Firestore or Firebase; /iasi/ (a city made in the admin, no committed site) boots that city through the generic city page with one map; /admin/ serves the admin",
+            "asserts": "the e2e Hosting tree -> / boots the first city from the public bucket's manifest with one map load and its own meta policy, asking nothing of Firestore or Firebase; /bacau/ (a city made in the admin, no committed site) boots that city through the generic city page with one map; /admin/ serves the admin",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.1, §2.4; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/specs/viewer/hosting.spec.ts (tour states site.city-generic in e2e/tour/site-states.ts)."
@@ -8564,7 +8564,7 @@
             "area": "admin",
             "path": "happy",
             "title": "An old admin address on the root forwards to the admin with the same route",
-            "asserts": "/#/setup and /#/c/iasi/photos on the root -> /admin/ with the same hash before any map loads (no map load counted)",
+            "asserts": "/#/setup and /#/c/bacau/photos on the root -> /admin/ with the same hash before any map loads (no map load counted)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.7; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/admin/specs/shell/admin-path.spec.ts."

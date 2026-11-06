@@ -69,7 +69,7 @@ export interface PagesRedirectTarget {
     readonly base: string;
 }
 
-/** One page of the tree: its folder below the tree (`''`, `iasi/`) and the matching address on Hosting. */
+/** One page of the tree: its folder below the tree (`''`, `bacau/`) and the matching address on Hosting. */
 function pageFile(target: PagesRedirectTarget, folder: string): { readonly to: string; readonly content: string } {
     const page = renderRedirectPage({ target: `${target.origin}/${folder}`, base: target.base, script: PAGES_REDIRECT_FILE });
     return { to: `${folder}index.html`, content: page };

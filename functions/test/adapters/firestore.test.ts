@@ -48,7 +48,7 @@ describe('firestoreAdminDirectory', () => {
         const membership = await firestoreAdminDirectory(db).membership('functions-adapter-owner');
 
         expect(membership?.projectRole).toBe('owner');
-        expect(['bucharest', 'cluj', 'iasi'].map((city) => membership?.roleIn(city))).toEqual(['owner', 'editor', null]);
+        expect(['bucharest', 'cluj', 'bacau'].map((city) => membership?.roleIn(city))).toEqual(['owner', 'editor', null]);
     });
 
     it('badPath_aDocumentFromBeforeM5OrWithAnInvalidMembershipBelongsToNoCity', async () => {

@@ -94,10 +94,10 @@ describe('the New city flow', () => {
 
     it('happyPath_theEnglishNameAndATypedIdAreKeptAndAMovedCornerMovesTheRectangle', async () => {
         const w = world();
-        w.area.intents.setNameRo('Iași');
-        w.area.intents.setId(' IASI-ORAS ');
-        w.area.intents.setNameRo('Iași, capitala Moldovei');
-        w.area.intents.setNameEn('Iasi');
+        w.area.intents.setNameRo('Bacău');
+        w.area.intents.setId(' BACAU-ORAS ');
+        w.area.intents.setNameRo('Bacău, pe Bistrița');
+        w.area.intents.setNameEn('Bacau');
         await drawn(w);
         w.draw.emitChange([
             {
@@ -106,11 +106,11 @@ describe('the New city flow', () => {
                     type: 'Polygon',
                     coordinates: [
                         [
-                            [27.5, 47.1],
-                            [27.7, 47.1],
-                            [27.7, 47.2],
-                            [27.5, 47.2],
-                            [27.5, 47.1],
+                            [26.8, 46.5],
+                            [27.0, 46.5],
+                            [27.0, 46.6],
+                            [26.8, 46.6],
+                            [26.8, 46.5],
                         ],
                     ],
                 },
@@ -118,12 +118,12 @@ describe('the New city flow', () => {
         ]);
         w.draw.emitChange([], false);
 
-        expect(w.area.state).toMatchObject({ cityId: 'iasi-oras', idEdited: true, nameEn: 'Iasi', bounds: { west: 27.5, north: 47.2 } });
-        w.callables.answer('cities.create', () => ({ created: true, cityId: 'iasi-oras' }));
+        expect(w.area.state).toMatchObject({ cityId: 'bacau-oras', idEdited: true, nameEn: 'Bacau', bounds: { west: 26.8, north: 46.6 } });
+        w.callables.answer('cities.create', () => ({ created: true, cityId: 'bacau-oras' }));
         w.callables.fail('setup.rotatePublicToken', failure('failed-precondition', 'apiError.mapbox.notConfigured'));
         await expect(w.area.intents.create()).resolves.toBe(true);
         expect(w.callables.calls.find((call) => call.name === 'cities.create')?.request).toMatchObject({
-            name: { ro: 'Iași, capitala Moldovei', en: 'Iasi' },
+            name: { ro: 'Bacău, pe Bistrița', en: 'Bacau' },
         });
     });
 
@@ -337,7 +337,7 @@ describe('the New city flow: the id and the map', () => {
     });
 
     it('badPath_anIdNoCityMayTakeKeepsCreateOff @S-A50-BAD-ID-INVALID', () => {
-        for (const cityId of ['engine', 'cluj napoca', 'iași', 'x']) {
+        for (const cityId of ['engine', 'cluj napoca', 'bacău', 'x']) {
             expect(canCreate({ nameRo: 'Cluj', cityId, bounds: FOUND, problem: null, busy: false })).toBe(false);
         }
         expect(canCreate({ nameRo: 'Cluj', cityId: 'cluj', bounds: FOUND, problem: null, busy: false })).toBe(true);

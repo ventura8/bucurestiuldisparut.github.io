@@ -120,7 +120,7 @@ describe('the static pages', () => {
 describe('admin-redirect.js', () => {
     it.each([
         ['#/setup', '', '/admin/#/setup'],
-        ['#/c/iasi/photos', '?lang=en', '/admin/?lang=en#/c/iasi/photos'],
+        ['#/c/bacau/photos', '?lang=en', '/admin/?lang=en#/c/bacau/photos'],
     ])('happyPath_anOldAdminAddress_%s_goesToTheAdmin', (hash, search, expected) => {
         const scope = locationOf(hash, search);
 
@@ -164,7 +164,7 @@ describe('the generic city page', () => {
     const before = 'https://storage.googleapis.com/demo-hcm-public/cities/';
 
     it.each([
-        ['/iasi/', 'iasi'],
+        ['/bacau/', 'bacau'],
         ['/cluj-napoca', 'cluj-napoca'],
         ['/', 'city'],
         ['/Not_A_City/', 'city'],

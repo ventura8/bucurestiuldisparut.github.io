@@ -275,7 +275,7 @@ test(
 );
 
 /** A second city of the project, owned by the map's owner too (a reset removes it: not a content world's). */
-const SECOND_CITY = 'iasi';
+const SECOND_CITY = 'bacau';
 
 /** The map's owner as an owner of the project's city and of `SECOND_CITY`. */
 async function ownTwoCities(emulators: Parameters<typeof projectCity>[0], uid: string): Promise<void> {
@@ -296,7 +296,8 @@ test(
         await page.goto(adminPath(lang));
 
         await expect(page.locator('hcm-home-page')).toBeVisible();
-        await expect(page).toHaveURL(new RegExp(`#/c/${PROJECT_CITY}/home$`));
+        // With no remembered city, the first by name: `bacau`, before the project's city.
+        await expect(page).toHaveURL(new RegExp(`#/c/${SECOND_CITY}/home$`));
     },
 );
 

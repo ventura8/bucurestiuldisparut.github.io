@@ -129,11 +129,11 @@ describe('<hcm-city-menu>', () => {
         await updated(orphan);
         expect(orphan.open).toBe(false);
 
-        expect(currentCityLabel(adminState({ cities: [], cityId: 'iasi' }))).toBe('iasi');
+        expect(currentCityLabel(adminState({ cities: [], cityId: 'bacau' }))).toBe('bacau');
         expect(cityTitle(adminState({ cities: TWO_CITIES, cityId: 'cluj', locale: 'en' }))).toBe(' · Cluj-Napoca');
         expect(cityTitle(adminState({ cities: [CLUJ], cityId: 'cluj', projectOwner: false }))).toBe('');
         expect(cityTitle(adminState({ cities: [CLUJ], cityId: 'cluj', projectOwner: true }))).toBe('');
-        expect(cityTitle(adminState({ cities: TWO_CITIES, cityId: 'iasi' }))).toBe(' · iasi');
+        expect(cityTitle(adminState({ cities: TWO_CITIES, cityId: 'bacau' }))).toBe(' · bacau');
         expect(cityTitle(withoutCities())).toBe('');
         expect(currentCityLabel(withoutCities())).toBe('');
         expect(currentCityLabel(adminState({ cities: TWO_CITIES, cityId: 'cluj', locale: 'en' }))).toBe('Cluj-Napoca');

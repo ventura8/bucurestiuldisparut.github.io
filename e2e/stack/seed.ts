@@ -20,7 +20,7 @@ import { StackImagery, type ImagerySeed } from './seed-imagery.js';
  *   nobody. Setup's required steps are green (`setup/status`, and the fake Google, Mapbox and USGS in the same state: the
  *   project provisioned and deployed, M2M downloads approved, Analytics linked, two crash groups; Mapbox connected through
  *   the server's own `setup.saveMapbox` with the fake's generated bootstrap token), the budget guard is green, the city
- *   `bucharest` has its content (seed-content.ts) and its imagery (seed-imagery.ts), and a second city, `iasi`,
+ *   `bucharest` has its content (seed-content.ts) and its imagery (seed-imagery.ts), and a second city, `bacau`,
  *   unpublished, is the owner's alone (seed-cities.ts: M5's city menu, per-city admins and budgets).
  * - `fresh`: nothing but the fake's one open billing account: a new map, its admin in start-up mode, for the Setup
  *   Assistant from the first sign-in.

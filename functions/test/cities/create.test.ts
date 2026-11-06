@@ -187,9 +187,9 @@ describe('cities.create', () => {
 
 describe('the texts of a new city', () => {
     it('happyPath_theNamesMarkdownMarkersStayLiteral', () => {
-        expect(markdownLiteral('*Iași* [x]_\\')).toBe('\\*Iași\\* \\[x\\]\\_\\\\');
-        expect(aboutText({ ro: 'Iași', en: 'Iasi' }).en).toMatch(/^\*\*Iasi\*\* /);
-        expect(aboutText({ ro: 'Iași' }).en).toMatch(/^\*\*Iași\*\* /);
+        expect(markdownLiteral('*Bacău* [x]_\\')).toBe('\\*Bacău\\* \\[x\\]\\_\\\\');
+        expect(aboutText({ ro: 'Bacău', en: 'Bacau' }).en).toMatch(/^\*\*Bacau\*\* /);
+        expect(aboutText({ ro: 'Bacău' }).en).toMatch(/^\*\*Bacău\*\* /);
     });
 });
 

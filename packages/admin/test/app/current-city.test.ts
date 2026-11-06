@@ -76,7 +76,7 @@ describe('the current city', () => {
     });
 
     it.each([
-        ['a city the admin does not administer', '#/c/iasi/photos', 'bucharest'],
+        ['a city the admin does not administer', '#/c/bacau/photos', 'bucharest'],
         ['a remembered city the admin left', '', 'bucharest'],
     ])('badPath_%s_opensTheFirstOfTheirs @S-A49-BAD-NOT-MEMBER', (_name, hash, opened) => {
         const d = deps(hash);
@@ -101,9 +101,9 @@ describe('opening another city', () => {
         const local = new MemoryStore();
 
         switchTo(location, local, { uid: 'u-ana', cityId: 'cluj' });
-        switchTo(location, local, { uid: null, cityId: 'iasi', route: { id: 'photos', params: [] } });
+        switchTo(location, local, { uid: null, cityId: 'bacau', route: { id: 'photos', params: [] } });
 
-        expect(location.writes.map((write) => write.hash)).toEqual(['#/c/cluj/home', '#/c/iasi/photos']);
+        expect(location.writes.map((write) => write.hash)).toEqual(['#/c/cluj/home', '#/c/bacau/photos']);
         expect(location.reloads).toBe(2);
         expect(local.get(cityMemoryKey('u-ana'))).toBe('cluj');
     });

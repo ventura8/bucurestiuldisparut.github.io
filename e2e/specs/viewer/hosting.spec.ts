@@ -19,7 +19,7 @@ import { engineEvents, t, waitForEngineEvent } from '../../support/viewer.js';
  */
 
 /** A city made in the admin: no committed site, so Hosting rewrites its address to the generic city page. */
-const ADMIN_MADE_CITY = 'iasi';
+const ADMIN_MADE_CITY = 'bacau';
 
 /** Every request the page makes to Firestore or the Firebase SDK's hosts. */
 function firebaseRequests(page: Page): Request[] {

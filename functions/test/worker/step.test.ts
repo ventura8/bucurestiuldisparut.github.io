@@ -94,7 +94,7 @@ describe('worker.step get and list', () => {
 
     it.each([
         ['another job', FIRESTORE_PATHS.job(CITY, 'j-other')],
-        ['another city', FIRESTORE_PATHS.city('iasi')],
+        ['another city', FIRESTORE_PATHS.city('bacau')],
         ['the setup', FIRESTORE_PATHS.setupStatus],
     ])('badPath_%sIsOffTheAllowList @S-A62-BAD-NOT-HOLDER', async (_name, path) => {
         const world = await held();

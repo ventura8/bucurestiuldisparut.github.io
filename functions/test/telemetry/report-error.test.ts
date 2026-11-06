@@ -261,7 +261,7 @@ describe('telemetry.reportError on one origin', () => {
         const shared = { ...deps, config: { ...deps.config, viewerOrigins: [...deps.config.viewerOrigins, ADMIN] } };
         const limiter = createRateLimiter('e2e-salt');
 
-        for (const path of ['/admin/', '/admin', '/', '/iasi/', '/administration/']) {
+        for (const path of ['/admin/', '/admin', '/', '/bacau/', '/administration/']) {
             expect(handleErrorReport(shared, limiter, post({ ...REPORT, page: `${ADMIN}${path}` }, ADMIN)).status).toBe(204);
         }
 

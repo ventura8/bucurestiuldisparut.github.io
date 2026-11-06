@@ -21,13 +21,13 @@ describe('the city roles', () => {
     });
 
     it('badPath_aCityTheSessionDidNotNameShowsItsIdAndNoStateNothing', () => {
-        const unnamed = adminState({ cities: [], cityId: 'iasi' });
+        const unnamed = adminState({ cities: [], cityId: 'bacau' });
 
         expect([
             currentCityName(unnamed, 'ro'),
             currentCityName(null, 'en'),
             currentCityName(adminState({ cities: [], cityId: null }), 'en'),
-        ]).toEqual(['iasi', '', '']);
+        ]).toEqual(['bacau', '', '']);
         expect([ownsCurrentCity(unnamed), ownsCurrentCity(null)]).toEqual([false, false]);
         expect(rowDetail('ro', { role: 'editor', projectOwner: false, self: false })).toBe('Editor');
     });

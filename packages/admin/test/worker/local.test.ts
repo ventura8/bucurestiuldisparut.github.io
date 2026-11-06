@@ -208,7 +208,7 @@ describe('Use this computer and the auto-pair', () => {
         const world = contentWorld();
         world.services.local.set(LOCAL_KEY, CITY);
         const net = new FakeNet();
-        net.state = answer({ city: 'iasi' });
+        net.state = answer({ city: 'bacau' });
         const local = localOf(world, net);
 
         local.start();

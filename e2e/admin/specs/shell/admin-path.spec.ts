@@ -244,14 +244,14 @@ test(
             '/index.html',
             '/engine/engine.mjs',
             '/e2e-second/',
-            '/iasi/',
+            '/bacau/',
             '/city/',
             '/release.json',
             '/Not_A_City/',
         ]) {
             expect(policyHeaders((await request.get(`${ADMIN_ORIGIN}${path}`)).headersArray()), path).toEqual([]);
         }
-        for (const path of ['/', '/e2e-second/', '/iasi/', '/Not_A_City/']) {
+        for (const path of ['/', '/e2e-second/', '/bacau/', '/Not_A_City/']) {
             const html = await (await request.get(`${ADMIN_ORIGIN}${path}`)).text();
             expect(html.match(/http-equiv="Content-Security-Policy"/g), path).toHaveLength(1);
         }

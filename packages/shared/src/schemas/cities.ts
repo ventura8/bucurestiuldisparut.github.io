@@ -87,7 +87,7 @@ function unavailable(cityId: string, taken: ReadonlySet<string>): boolean {
 }
 
 /**
- * The id the New city flow suggests for a name (`Cluj-Napoca` → `cluj-napoca`, `Iași` → `iasi`): the slug cut to
+ * The id the New city flow suggests for a name (`Cluj-Napoca` → `cluj-napoca`, `Bacău` → `bacau`): the slug cut to
  * `MAX_CITY_ID_LENGTH` at a word boundary, `my-city` when the name has no letter or digit (`city` is reserved since M6),
  * then `-2`, `-3`, ... while it is taken or reserved.
  */

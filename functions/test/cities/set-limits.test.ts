@@ -54,7 +54,7 @@ describe('cities.setLimits', () => {
 
     it.each([
         ['more daily jobs than the project allows', { cityId: 'cluj', limits: { ...LIMITS, rasterJobsPerDay: 11 } }, 'invalid-argument'],
-        ['a city that does not exist', { cityId: 'iasi', limits: LIMITS }, 'not-found'],
+        ['a city that does not exist', { cityId: 'bacau', limits: LIMITS }, 'not-found'],
     ])('badPath_%s', async (_name, data, code) => {
         const world = await seeded();
 

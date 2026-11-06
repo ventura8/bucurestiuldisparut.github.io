@@ -15,7 +15,7 @@ function builtSites(): SiteFileSystem {
     for (const [site, extra] of [
         ['bucharest', 'data/manifest.json'],
         ['cluj', 'engine/engine.mjs'],
-        ['iasi', 'engine/engine.mjs'],
+        ['bacau', 'engine/engine.mjs'],
     ] as const) {
         files.write(`dist/site/${site}/index.html`, `<title>${site}</title>`);
         files.write(`dist/site/${site}/${extra}`, site);
@@ -35,20 +35,20 @@ describe('assemblePages', () => {
             [
                 { outDir: 'dist/site/bucharest', pagesPath: '' },
                 { outDir: 'dist/site/cluj', pagesPath: 'cluj/' },
-                { outDir: 'dist/site/iasi', pagesPath: 'iasi/' },
+                { outDir: 'dist/site/bacau', pagesPath: 'bacau/' },
             ],
             'dist/pages',
             files,
         );
 
-        expect(report).toEqual({ pagesDir: 'dist/pages', paths: ['/', '/cluj/', '/iasi/'], files: 7 });
+        expect(report).toEqual({ pagesDir: 'dist/pages', paths: ['/', '/cluj/', '/bacau/'], files: 7 });
         expect(files.listFiles('dist/pages')).toEqual([
+            'bacau/engine/engine.mjs',
+            'bacau/index.html',
             'cluj/engine/engine.mjs',
             'cluj/index.html',
             'data/manifest.json',
             'engine/engine.mjs',
-            'iasi/engine/engine.mjs',
-            'iasi/index.html',
             'index.html',
         ]);
         expect(files.readText('dist/pages/index.html')).toBe('<title>bucharest</title>');
@@ -59,7 +59,7 @@ describe('assemblePages', () => {
             'two sites on one path',
             [
                 { outDir: 'dist/site/cluj', pagesPath: 'cluj/' },
-                { outDir: 'dist/site/iasi', pagesPath: 'cluj/' },
+                { outDir: 'dist/site/bacau', pagesPath: 'cluj/' },
             ],
             'two sites ask',
         ],

@@ -9,7 +9,7 @@ import type { SiteSpec } from '../site-spec.js';
 
 /**
  * The Hosting site's generic city page (docs/research/M6-interfaces.md §2.4, behaviour V30): a city made in the admin
- * needs no repository step. Hosting rewrites every address that names a city id (`/iasi/`, `CITY_PATH_REGEX`) to
+ * needs no repository step. Hosting rewrites every address that names a city id (`/bacau/`, `CITY_PATH_REGEX`) to
  * `/city/index.html` when no committed site has that folder; the page's `config.js` takes the city id from the address's
  * first segment, checks it with `CITY_ID_PATTERN` (inline: the script is self-contained; a test pins it to the shared one) and reads `cities/<id>/manifest.json` of the public bucket, which the
  * admin publishes. A city never published answers 404 there, and the viewer says its map was not found. The page's files

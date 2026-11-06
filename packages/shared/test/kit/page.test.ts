@@ -107,10 +107,10 @@ describe('fillKitPage', () => {
     });
 
     it('happyPath_aSlotLeftOutKeepsTheTemplatesValue', () => {
-        const page = fillKitPage(TEMPLATE, { engine: LOCAL, title: 'Iași' });
+        const page = fillKitPage(TEMPLATE, { engine: LOCAL, title: 'Bacău' });
 
         expect(page).toContain('<html lang="ro">');
-        expect(page).toContain('<title>Iași</title>');
+        expect(page).toContain('<title>Bacău</title>');
         expect(page).toContain('<h1 class="hcm-visually-hidden">Orașul meu</h1>');
         expect(page).toContain('<meta name="description" content="Descriere" />');
     });

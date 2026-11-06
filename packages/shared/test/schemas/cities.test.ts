@@ -54,7 +54,7 @@ describe('city roles', () => {
     it('happyPath_theRoleOfACityIsReadFromOwnKeysOnly', () => {
         const roles: CityRoles = { bucharest: 'owner', cluj: 'editor' };
 
-        expect([cityRoleOf(roles, 'bucharest'), cityRoleOf(roles, 'cluj'), cityRoleOf(roles, 'iasi')]).toEqual(['owner', 'editor', null]);
+        expect([cityRoleOf(roles, 'bucharest'), cityRoleOf(roles, 'cluj'), cityRoleOf(roles, 'bacau')]).toEqual(['owner', 'editor', null]);
         expect([cityRoleOf(roles, 'constructor'), cityRoleOf(roles, '__proto__'), cityRoleOf(undefined, 'cluj')]).toEqual([
             null,
             null,
@@ -81,7 +81,7 @@ describe('city roles', () => {
     });
 
     it('happyPath_theCitiesOfAnAdminAreSorted', () => {
-        expect(cityIdsOf({ iasi: 'editor', bucharest: 'owner', cluj: 'editor' })).toEqual(['bucharest', 'cluj', 'iasi']);
+        expect(cityIdsOf({ bacau: 'editor', bucharest: 'owner', cluj: 'editor' })).toEqual(['bacau', 'bucharest', 'cluj']);
         expect(cityIdsOf(undefined)).toEqual([]);
     });
 
@@ -108,7 +108,7 @@ describe('city ids', () => {
 
     it.each([
         ['Cluj-Napoca', [], 'cluj-napoca'],
-        ['Iași', [], 'iasi'],
+        ['Bacău', [], 'bacau'],
         ['  Târgu Mureș  ', [], 'targu-mures'],
         ['Cluj', ['cluj'], 'cluj-2'],
         ['Cluj', ['cluj', 'cluj-2'], 'cluj-3'],

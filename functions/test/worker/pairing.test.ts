@@ -245,7 +245,7 @@ describe('a paired worker', () => {
     });
 
     it.each([
-        ['for another city', { city: 'iasi' }, 'apiError.city.notMember'],
+        ['for another city', { city: 'bacau' }, 'apiError.city.notMember'],
         ['without the worker claim', { worker: undefined }, 'apiError.accountNotAllowed'],
         ['with a malformed pairing', { pair: 'not-a-pair' }, 'apiError.accountNotAllowed'],
     ])('badPath_aToken%sIsRefused', async (_name, claims, code) => {

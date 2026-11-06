@@ -34,7 +34,7 @@ interface SiteTour {
 }
 
 /** A city made in the admin: no committed site, so its address is the generic city page's. */
-const ADMIN_MADE_CITY = 'iasi';
+const ADMIN_MADE_CITY = 'bacau';
 
 /** How each journey reaches its state, and the language the state is checked in. */
 const JOURNEYS: Readonly<Record<SiteStateId, (tour: SiteTour) => Promise<Locale>>> = {

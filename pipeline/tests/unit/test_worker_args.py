@@ -47,7 +47,7 @@ def test_happy_path_the_starters_supervisor_names_the_image_it_runs() -> None:
 
 
 def test_happy_path_under_the_emulators_every_address_is_this_machine() -> None:
-    options = {"city": "iasi", "project": "demo-hcm", "port": 0, "work": "/tmp/hcm-work", "emulators": True}
+    options = {"city": "bacau", "project": "demo-hcm", "port": 0, "work": "/tmp/hcm-work", "emulators": True}
 
     args = parse_worker_args(options, LOOPBACK)
 

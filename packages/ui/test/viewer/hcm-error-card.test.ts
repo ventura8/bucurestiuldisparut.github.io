@@ -82,12 +82,12 @@ describe('<hcm-error-card>', () => {
     it('badPath_aConfigurationErrorNamesTheProblemWithoutRetry', async () => {
         const element = await mountElement<HcmErrorCard>(HCM_ERROR_CARD_TAG, {
             locale: 'en',
-            error: { code: 'error.config.cityMismatch', retryable: false, params: { cityId: 'iasi', manifestCityId: 'bucuresti' } },
+            error: { code: 'error.config.cityMismatch', retryable: false, params: { cityId: 'bacau', manifestCityId: 'bucuresti' } },
         });
 
         await expect
             .element(page.getByRole('alert'))
-            .toHaveTextContent('The cityId in config.js (iasi) does not match the map (bucuresti).');
+            .toHaveTextContent('The cityId in config.js (bacau) does not match the map (bucuresti).');
         expect(shadowText(element)).toContain('bucuresti');
         expect(element.shadowRoot?.querySelector('hcm-button')).toBeNull();
     });

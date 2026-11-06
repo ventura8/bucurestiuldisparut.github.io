@@ -1,7 +1,7 @@
 /**
  * The About and privacy texts a new city starts with (`docs/research/M5-interfaces.md` §1.6): made from its name, in
  * Romanian and English, in the M1 starter kit's wording; Settings changes them later. The name is plain text, so its
- * Markdown markers are escaped (`\*`): a city called `*Iași*` is not shown in italics.
+ * Markdown markers are escaped (`\*`): a city called `*Bacău*` is not shown in italics.
  */
 import type { CityDoc } from '@hcm/shared';
 

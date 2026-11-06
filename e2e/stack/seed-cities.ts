@@ -8,7 +8,7 @@ import { callable } from './callable.js';
 import { firestoreShape } from './seed-content.js';
 
 /**
- * The local stack's second city (M5; docs/SETUP.md → *Local stack for manual testing*): Iași, made by the project's owner
+ * The local stack's second city (M5; docs/SETUP.md → *Local stack for manual testing*): Bacău, made by the project's owner
  * with the server's own `cities.create` and `setup.rotatePublicToken`, as New city makes it (its start view, texts and
  * per-city limits, the owner's membership, its viewer token, unpublished), then given a category and two places past the
  * rules, as an earlier session of editing would have. Nobody else administers it: `admin@e2e.test` edits Bucharest only,
@@ -21,13 +21,13 @@ import { firestoreShape } from './seed-content.js';
 const log = createLogger('dev-stack-seed');
 
 /** The second city's id, the one New city suggests for its name. */
-export const STACK_SECOND_CITY = 'iasi';
+export const STACK_SECOND_CITY = 'bacau';
 
 /** Its name, as the city menu shows it. */
-export const STACK_SECOND_CITY_NAME = 'Iași';
+export const STACK_SECOND_CITY_NAME = 'Bacău';
 
 const NAME = { ro: STACK_SECOND_CITY_NAME, en: STACK_SECOND_CITY_NAME } as const;
-const BOUNDS = { west: 27.52, south: 47.12, east: 27.66, north: 47.21 } as const;
+const BOUNDS = { west: 26.86, south: 46.52, east: 26.96, north: 46.6 } as const;
 
 /** When the city's content was written (fixed: never the wall clock). */
 const SEEDED_AT = new Date('2026-10-18T09:00:00.000Z');
@@ -50,29 +50,29 @@ const CATEGORY = { id: 'monumente', label: { ro: 'Monumente', en: 'Monuments' },
 
 const PLACES = [
     {
-        id: 'palatul-culturii',
-        geometry: { type: 'Point', point: { lat: 47.1575, lng: 27.5869 } },
-        title: { ro: 'Palatul Culturii', en: 'The Palace of Culture' },
-        description: { ro: 'Construit între 1906 și 1925.', en: 'Built between 1906 and 1925.' },
-        yearStart: 1906,
+        id: 'biserica-precista',
+        geometry: { type: 'Point', point: { lat: 46.5655, lng: 26.9125 } },
+        title: { ro: 'Biserica Precista', en: 'The Precista Church' },
+        description: { ro: 'Ctitorită în 1491.', en: 'Founded in 1491.' },
+        yearStart: 1491,
     },
     {
-        id: 'parcul-copou',
+        id: 'parcul-cancicov',
         geometry: {
             type: 'Polygon',
             rings: [
                 {
                     points: [
-                        { lat: 47.181, lng: 27.562 },
-                        { lat: 47.181, lng: 27.5705 },
-                        { lat: 47.176, lng: 27.5705 },
-                        { lat: 47.176, lng: 27.562 },
-                        { lat: 47.181, lng: 27.562 },
+                        { lat: 46.5685, lng: 26.905 },
+                        { lat: 46.5685, lng: 26.9105 },
+                        { lat: 46.5655, lng: 26.9105 },
+                        { lat: 46.5655, lng: 26.905 },
+                        { lat: 46.5685, lng: 26.905 },
                     ],
                 },
             ],
         },
-        title: { ro: 'Parcul Copou', en: 'Copou Park' },
+        title: { ro: 'Parcul Cancicov', en: 'Cancicov Park' },
     },
 ] as const;
 
@@ -102,7 +102,7 @@ async function seedContent(emulators: EmulatorWorld, owner: SignedInAccount): Pr
     }
 }
 
-/** Iași through `cities.create`, then its content; a failure is logged and the stack comes up without it. */
+/** Bacău through `cities.create`, then its content; a failure is logged and the stack comes up without it. */
 export async function seedSecondCity(api: APIRequestContext, emulators: EmulatorWorld, owner: SignedInAccount): Promise<void> {
     try {
         const request = citiesCreateRequestSchema.parse({

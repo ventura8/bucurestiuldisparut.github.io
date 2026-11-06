@@ -103,12 +103,12 @@ describe('admin.join', () => {
         const { uid, email } = await newAccount(world);
         const stamp = { createdAt: AT, updatedBy: uid, updatedAt: AT };
         await world.documents.set(FIRESTORE_PATHS.admin(uid), adminDocSchema, { role: 'owner', cities: { cluj: 'owner' }, ...stamp });
-        await invite(world, email, { cluj: 'editor', iasi: 'editor' });
+        await invite(world, email, { cluj: 'editor', bacau: 'editor' });
 
         await join(world, uid, email);
 
         await expect(world.documents.get(FIRESTORE_PATHS.admin(uid), adminDocSchema)).resolves.toMatchObject({
-            cities: { cluj: 'owner', iasi: 'editor' },
+            cities: { cluj: 'owner', bacau: 'editor' },
         });
     });
 

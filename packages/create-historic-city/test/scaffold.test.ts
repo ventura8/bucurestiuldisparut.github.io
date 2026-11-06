@@ -77,7 +77,7 @@ describe('scaffold', () => {
     });
 
     it('happyPath_theQuestionsAnswerWhatNoOptionGave', async () => {
-        const { ports, terminal, cwd } = world(['  Iași  ', '', '#3d6b8c', 'pk.e2e-test-token']);
+        const { ports, terminal, cwd } = world(['  Bacău  ', '', '#3d6b8c', 'pk.e2e-test-token']);
 
         const code = await runCli(['--lang', 'en'], ports);
 
@@ -88,11 +88,11 @@ describe('scaffold', () => {
             en('cli.ask.seed', { default: '#8B5E3C' }),
             en('cli.ask.token'),
         ]);
-        const manifest = manifestIn(join(cwd, 'iasi'));
-        expect(manifest.city.name).toEqual({ ro: 'Iași', en: 'Iași' });
+        const manifest = manifestIn(join(cwd, 'bacau'));
+        expect(manifest.city.name).toEqual({ ro: 'Bacău', en: 'Bacău' });
         expect(manifest.city.theme.seedColor).toBe('#3D6B8C');
         expect(manifest.city.mapbox.publicToken).toBe('pk.e2e-test-token');
-        const page = read(join(cwd, 'iasi/index.html'));
+        const page = read(join(cwd, 'bacau/index.html'));
         expect(page).toContain('<html lang="en">');
         expect(page).toContain('<hcm-map-viewer manifest-url="city.json" lang="en">');
         expect(terminal.lines).not.toContain(en('cli.scaffold.nextToken'));

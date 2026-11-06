@@ -43,7 +43,7 @@ const create = {
 describe('cities.create', () => {
     it('happyPath_aNameARectangleAndASeed', () => {
         expect(validate(citiesCreateRequestSchema, create).ok).toBe(true);
-        expect(validate(citiesCreateRequestSchema, { ...create, name: { ro: 'Iași' } }).ok).toBe(true);
+        expect(validate(citiesCreateRequestSchema, { ...create, name: { ro: 'Bacău' } }).ok).toBe(true);
         expect(validate(citiesCreateResponseSchema, { created: true, cityId: 'cluj' }).ok).toBe(true);
     });
 

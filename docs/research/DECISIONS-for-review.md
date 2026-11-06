@@ -5845,3 +5845,7 @@ install specs; two workers).
   scene held), and a one-off repair of the live document (a cloud write by hand, which the next stuck scene would need again).
 
 Verify: `PIPELINE_STAGE=static`, `tests` and `build`; targeted Playwright (`e2e/admin/specs/imagery/`).
+
+## 89. Bacău is the second city of multi-city testing (2026-11-06) — APPLIED (the owner's decision: "for multi city testing we will use Bacau, Romania, not Iasi"; test, seed and documentation changes only; no gate relaxed; `seed/bucharest/` unchanged)
+
+The local stack's seeded second city (`e2e/stack/seed-cities.ts`: `bacau`, its rectangle, Biserica Precista and Parcul Cancicov, generated test values), the tests' example city ids and the current documents. Past records (`docs/research/` logs, `docs/LESSONS.md`) keep what they say. One consequence, kept: `bacau` sorts before `bucharest`, so an admin of both with no remembered city opens Bacău first (`packages/admin/src/app/current-city.ts`, the first by name; S-A49-HAPPY-FIRST-SCREEN), and the stack's owner lands there.

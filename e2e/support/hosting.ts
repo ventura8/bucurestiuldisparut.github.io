@@ -17,7 +17,7 @@ export interface HostingOpenOptions {
     readonly hash?: string;
 }
 
-/** The e2e Hosting server's address of `path` (`/`, `/iasi/`), with the language and the hash. */
+/** The e2e Hosting server's address of `path` (`/`, `/bacau/`), with the language and the hash. */
 export function hostingUrl(path: string, options: HostingOpenOptions = {}): string {
     const query = options.lang === undefined ? '' : `?lang=${options.lang}`;
     const hash = options.hash === undefined ? '' : `#${options.hash}`;

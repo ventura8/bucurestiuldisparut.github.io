@@ -33,8 +33,8 @@ const VISUALLY_HIDDEN_CLASS = 'hcm-visually-hidden';
 
 /**
  * Where the page finds its files: relative to the page by default (a city site served from any folder), absolute for
- * the Hosting site's generic city page, which every city's address is rewritten to (`/iasi/` serves
- * `/city/index.html`, so a relative `config.js` would be `/iasi/config.js`: docs/research/M6-interfaces.md §2.4).
+ * the Hosting site's generic city page, which every city's address is rewritten to (`/bacau/` serves
+ * `/city/index.html`, so a relative `config.js` would be `/bacau/config.js`: docs/research/M6-interfaces.md §2.4).
  */
 export interface PageAssets {
     /** The engine's folder, ending with `/` (`engine/`, `/engine/`). */

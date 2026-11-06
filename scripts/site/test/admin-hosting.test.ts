@@ -129,12 +129,12 @@ describe('globToRegExp and ruleMatches', () => {
     });
 
     it.each([
-        ['/iasi/', true],
-        ['/iasi', true],
+        ['/bacau/', true],
+        ['/bacau', true],
         ['/cluj-napoca/', true],
         ['/Not_A_City/', false],
         ['/x/', false],
-        ['/iasi/config.js', false],
+        ['/bacau/config.js', false],
     ])('happyPath_theCityRegexMatches_%s_%s', (path, expected) => {
         expect(ruleMatches({ regex: CITY_PATH_REGEX }, path)).toBe(expected);
     });
@@ -148,8 +148,8 @@ describe('resolveHostingPath over the committed rules', () => {
         ['/admin/photos/abc', { kind: 'file', file: '/admin/index.html', status: 200 }],
         ['/admin/admin.mjs', { kind: 'file', file: '/admin/admin.mjs', status: 200 }],
         ['/cluj/', { kind: 'file', file: '/cluj/index.html', status: 200 }],
-        ['/iasi/', { kind: 'file', file: '/city/index.html', status: 200 }],
-        ['/iasi', { kind: 'file', file: '/city/index.html', status: 200 }],
+        ['/bacau/', { kind: 'file', file: '/city/index.html', status: 200 }],
+        ['/bacau', { kind: 'file', file: '/city/index.html', status: 200 }],
         ['/city/', { kind: 'file', file: '/city/index.html', status: 200 }],
         ['/about/', { kind: 'file', file: '/about.html', status: 200 }],
         ['/Not_A_City/', { kind: 'file', file: NOT_FOUND_PAGE, status: 404 }],
@@ -175,7 +175,7 @@ describe('resolveHostingPath over the committed rules', () => {
         const hosting = committedHosting();
 
         expect(resolveHostingPath(hosting, '/Not_A_City/', '', () => false)).toEqual({ kind: 'missing' });
-        expect(resolveHostingPath(hosting, '/iasi/', '', () => false)).toEqual({ kind: 'missing' });
+        expect(resolveHostingPath(hosting, '/bacau/', '', () => false)).toEqual({ kind: 'missing' });
     });
 
     it.each([
@@ -240,7 +240,7 @@ describe('hostingHeaders: one policy per page', () => {
         '/',
         '/index.html',
         '/engine/engine.iife.js',
-        '/iasi/',
+        '/bacau/',
         '/cluj/',
         '/city/index.html',
         '/404.html',
@@ -259,7 +259,7 @@ describe('hostingHeaders: one policy per page', () => {
         const hosting = committedHosting();
         const cache = (path: string): string | undefined => hostingHeaders(hosting, path)['Cache-Control'];
 
-        expect([cache('/'), cache('/iasi/'), cache('/admin/'), cache('/config.js'), cache('/release.json')]).toEqual([
+        expect([cache('/'), cache('/bacau/'), cache('/admin/'), cache('/config.js'), cache('/release.json')]).toEqual([
             'no-cache',
             'no-cache',
             'no-cache',
@@ -308,7 +308,7 @@ describe('isIgnored and rewriteOf', () => {
         expect(isIgnored(hosting, '/.env')).toBe(true);
         expect(isIgnored(hosting, '/admin/admin.mjs')).toBe(false);
         expect(rewriteOf(hosting, '/admin/photos/abc')).toBe('/admin/index.html');
-        expect(rewriteOf(hosting, '/iasi/')).toBe('/city/index.html');
+        expect(rewriteOf(hosting, '/bacau/')).toBe('/city/index.html');
     });
 
     it('badPath_noRewriteWithoutAMatchingRule', () => {

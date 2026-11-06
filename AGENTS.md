@@ -26,7 +26,7 @@ docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp/hcm-home -v "$PWD:$PWD" -w "
   bash -c 'mkdir -p $HOME && npx vitest run --project ui'   # one ad-hoc tool, inside the image
 ```
 
-The local stack (`scripts/dev/dev-stack.sh`, `docs/SETUP.md` → *Local stack for manual testing*; `.claude/launch.json` opens it in the Claude browser pane) is the e2e world without Playwright on the e2e ports, seeded with a Bucharest city and a second city (Iași); the walk-through before the go-live is `docs/MANUAL_TEST_PLAN.md`.
+The local stack (`scripts/dev/dev-stack.sh`, `docs/SETUP.md` → *Local stack for manual testing*; `.claude/launch.json` opens it in the Claude browser pane) is the e2e world without Playwright on the e2e ports, seeded with a Bucharest city and a second city (Bacău); the walk-through before the go-live is `docs/MANUAL_TEST_PLAN.md`.
 
 Every gate runs **inside the pinned quality image** (`docker/Dockerfile.quality`), with the repository mounted at the same absolute path and no host-home mount; the host's Node 22 and Python are never used for a gate. Ad-hoc `npm install` runs in the digest-pinned `node:24-bookworm-slim` image (exact command: `docs/SETUP.md` → *npm in a container*). Read the pipeline's own verdict line, `[SUCCESS] stage '<x>' passed`; never pipe the run through `tail` or `head`. Stages and what `quality` / `all` contain: `.agent/skills/quality/pipeline_skill.md` → *Stages* (the one definition); the fix for each gate: `.agent/skills/quality/ci_quality_gates_skill.md`.
 

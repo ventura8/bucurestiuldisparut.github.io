@@ -46,7 +46,7 @@ describe("the shell's look at this computer", () => {
         await settle();
         expect(calls).toEqual(['part demo-hcm', 'start', 'stop']);
         watch.stateChanged(state('admin', 'bucharest'));
-        watch.stateChanged(state('admin', 'iasi'));
+        watch.stateChanged(state('admin', 'bacau'));
         await settle();
         expect(calls.slice(3)).toEqual(['part demo-hcm', 'start', 'stop']);
         expect(part).toBeDefined();
@@ -99,7 +99,7 @@ describe("the shell's wiring of the look (watchComputer)", () => {
 
         stop();
         await settle();
-        shell.update({ cityId: 'iasi' });
+        shell.update({ cityId: 'bacau' });
         expect(calls).toEqual(['load jobs', 'demo-hcm', 'start', 'stop']);
     });
 
