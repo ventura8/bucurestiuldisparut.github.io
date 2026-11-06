@@ -87,6 +87,7 @@ export const RASTER_PATHS = {
 export const PRIVATE_BUCKET_LIFECYCLE: readonly { readonly prefix: string; readonly days: number }[] = [
     { prefix: 'tmp/', days: 1 },
     { prefix: 'uploads/', days: 7 },
+    // A dismissal or a rejection deletes its job's folder at once (`functions/src/imagery/work-files.ts`): this is the backstop.
     { prefix: 'work/', days: 14 },
     // M7 (docs/research/M7-local-worker.md §5): `locate` deletes the delivery once the city's crop exists; this is the backstop.
     { prefix: 'usgs-raw/', days: 7 },

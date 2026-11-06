@@ -393,9 +393,11 @@ belong to the dispatcher and the lease, so an execution never races its own retr
 ### 4.5 Retry, cancel, SIGTERM and out-of-memory
 
 - **Retry** (`imagery.retry`, admin): only a `failed` job of a pipeline or publish type with `attempt <
-  JOB_MAX_ATTEMPTS`; it becomes `queued` with every step after the first finished of `locate`, `inspect`, `extract`, `fetch`
+  JOB_MAX_ATTEMPTS`, whose version is failed, or still `processing` (a stranded run: the runner writes the job first, and
+  neither Dismiss nor Cancel takes it), never one that ended otherwise (2026-11-06); it becomes `queued` with every step after the first finished of `locate`, `inspect`, `extract`, `fetch`
   `pending` (finding 78 of 2026-11-03: a pipeline updated since the failure redoes its own results); the steps kept are
-  skipped by their recorded outputs (§5.2). A failure at a publish step goes back to the publisher, not to Cloud Run.
+  skipped by their recorded outputs (§5.2), `fetch` also once `extract` is finished, as the segments outlive the delivery by a
+  week. A failure at a publish step goes back to the publisher, not to Cloud Run.
 - **Cancel**: §4.2. The pipeline checks `cancelRequested` at every heartbeat and at its own checkpoints.
 - **SIGTERM** (Cloud Run's cancel, a task timeout): the handler sets a flag; the running step stops at its next
   checkpoint (fetch: every 64 MiB chunk; GDAL calls through their progress callback, which returns 0 to abort); within
@@ -447,7 +449,7 @@ pipeline/src/hcm_pipeline/
   m2m.py         (M0) + download-options, download-request (label), download-retrieve, download-order-remove
   stac.py        STAC search for Sentinel-2 L2A over a window (httpx); the asset's COG read through GDAL /vsicurl/
   osm.py         Overpass query → GeoJSON → a line raster (GDAL rasterize)
-  georef/        corners.py (the corner guess), transforms.py (affine, poly2, tps, residuals: numpy), matcher.py (OpenCV)
+  georef/        corners.py (the corner guess), panoramic.py (the panoramic forward model), surface.py (the search's masked correlation), transforms.py (affine, poly2, tps, residuals: numpy), matcher.py (OpenCV)
   raster.py      (M0) the only GDAL import
   steps/         fetch, extract, stitch, inspect, locate, reference, georef, warp, export, register (one file each)
 ```
@@ -474,12 +476,12 @@ No new dependency (`DECISIONS-for-review.md` §46g): numpy, `opencv-python-headl
 | Step | Does | Writes | Fails or waits with |
 | --- | --- | --- | --- |
 | `fetch` | `download-options` (available, size); `download-request` with the label `hcm-{job}` (a retry reuses it); preparing → `waiting_usgs` (`usgs-preparing`, `retryAt` + 10 minutes); `download-retrieve` → the signed address; streams it into a GCS resumable upload in 64 MiB chunks, checkpointing `{session, offset}`; resumes with an HTTP Range when USGS honours it (**UNVERIFIED**), else restarts; a 403 or 410 asks `download-retrieve` again; the size must equal `download-options`; SHA-256 computed by reading the object back in-region; `download-order-remove` best effort | `RASTER_PATHS.usgsRaw(...)` (skipped when the object exists with the expected size) | `apiError.usgs.maintenance` → waits (HTML 503, backoff `USGS_BACKOFF_MINUTES`); `rateLimited` → waits (`Retry-After`); `apiError.usgs.credentials`; `apiError.imagery.downloadIncomplete` (size) |
-| `extract` | streams the `.tgz` / `.zip` (`tarfile` `r\|gz`, `zipfile`), keeps only the TIFF segments (`_a` … `_d` on a Corona, `_a` … `_n` on a KH-9 panoramic frame; finding 84: more than 26 fails the job, none is dropped) | `work/{city}/{job}/segments/*.tif` | `apiError.imagery.archiveCorrupt` (unreadable, or no TIFF inside; the delivery is deleted so a retry fetches it again) |
-| `stitch` | orders the segments, finds each overlap's offset by feature matching (within 1 px), mosaics, finds the film border (intensity profiles) and crops it | `work/{city}/{job}/frame.tif` | `apiError.imagery.unreadableRaster` |
+| `extract` | streams the `.tgz` / `.zip` (`tarfile` `r\|gz`, `zipfile`), keeps only the TIFF segments (`_a` … `_d` on a Corona, `_a` … `_n` on a KH-9 panoramic frame; finding 84: more than 26 fails the job, none is dropped) | `work/{city}/{job}/segments/*.tif` | `apiError.imagery.archiveCorrupt` (unreadable, also a reader that seeks nowhere, `EINVAL`; or no TIFF inside; the delivery is deleted so a retry fetches it again); `apiError.imagery.processingFailed` when this machine's disk fails, the delivery kept |
+| `stitch` | orders the segments, finds each overlap's offset (within 1 px), finds the film border (intensity profiles), and records the exposure's columns: the dark column runs of at least 1 % of the width (`MIN_GAP_SHARE`) with at most 10 % of it beyond them (`MAX_FRAGMENT_SHARE`), a fragment of the next exposure, on either side of the film (`image_start`, `image_end`; a panoramic camera's model, scoring and crops stay between them; the layout's `width` stays) | `work/{city}/{job}/frame.json`, `frame-preview.tif` (averaged down, GDAL's `GRIORA_Average`; the coarse matching keeps its fast pick of pixels) (the addendum on finding 57 below) | `apiError.imagery.unreadableRaster` |
 | `inspect` (uploads) | opens the upload with GDAL; a geotransform or GCPs with a CRS → georeferenced (`method: 'embedded'`), else a scan; converts to 8-bit (one band, or three for colour) | the scan (`scan.tif`, `scan-preview.jpg`); for an embedded georeference the version's `georef: {method: 'embedded', transform: 'affine', gcps: []}` | `apiError.imagery.unreadableRaster` |
-| `locate` | the corner guess (§5.4): the frame's orientation among the eight rotations and mirrors, the initial transform from the corners, the city window ± 10 % cropped from the frame | `scan.tif`, `scan-preview.jpg` (long side `SCAN_PREVIEW_MAX_PX`), the version's `scan` and four `corner` GCPs | `apiError.imagery.referenceUnavailable` when the window misses the city; `apiError.imagery.cityNotFound` when no guess correlates (§5.4) |
+| `locate` | the corner guess (§5.4): the frame's orientation among the eight rotations and mirrors, the initial transform from the corners, the city window ± 10 % cropped from the frame | `scan.tif`, `scan-preview.jpg` (long side `SCAN_PREVIEW_MAX_PX`), the version's `scan` and four `corner` GCPs | `apiError.imagery.referenceUnavailable` without a Sentinel-2 window; `apiError.imagery.cityNotFound` only when the frame does not reach the window under any orientation. A guess nothing confirms is no failure: a wider crop, and the admin's points (§5.4) |
 | `reference` | the window's Sentinel-2 L2A (§5.5) and OSM features, both cached; draws the georeferencer's two reference images | `reference/{city}/...`, `reference-s2.jpg`, `reference-osm.png`, the version's `reference` | `apiError.imagery.referenceUnavailable` (no item under 20 % clouds in three years, Overpass down after three tries) |
-| `georef` | automatic GCPs (§5.6) for a `usgs-import`; for a version that already holds the admin's points, the fit and residuals only | the version's `georef` (pairs, transform, `fitRmseM`, `checkpointRmseM`, `checkpointCount`) | too few pairs → the job `awaiting_gcps`, the version `needs_gcps` with `apiError.imagery.noMatch {pairs}` (waits, not a failure); `apiError.imagery.degenerateGcps`; `apiError.imagery.gcpOutside` |
+| `georef` | automatic GCPs (§5.6) for a `usgs-import`; for a version that already holds the admin's points, the fit and residuals only | the version's `georef` (pairs, transform, `fitRmseM`, `checkpointRmseM`, `checkpointCount`) | too few pairs (also how a weak guess of §5.4 ends) → the job `awaiting_gcps`, the version `needs_gcps` with `apiError.imagery.noMatch {pairs}` (waits, not a failure); `apiError.imagery.degenerateGcps`; `apiError.imagery.gcpOutside` |
 | `warp` | `gdalwarp` with the GCPs in EPSG:3857 metres (`-order 1`, `-order 2` or `-tps`), `-t_srs EPSG:3857`, the resolution of `maxzoom` (156543.03392804097 / 2^z m) on the tile grid, `-r bilinear`, an alpha band, `-cutline` (a GeoJSON of the closed ring) with `-crop_to_cutline` when the version has a crop | `work/{city}/{job}/warped.tif` | `apiError.imagery.unreadableRaster` |
 | `export` | an 8-bit COG (`-of COG -co COMPRESS=JPEG -co QUALITY=85 -co BLOCKSIZE=512 -co OVERVIEWS=AUTO`), an RGBA preview PNG of at most 2048 px, a JPEG-compressed GeoTIFF of at most `STUDIO_MAX_BYTES` (halved until it fits) for the Studio path, the valid area in km² | `cog.tif`, `preview.png`, `studio.tif` | |
 | `register` | writes the version's `output` and `state: 'awaiting_approval'`, the job `awaiting_approval` (`waitReason: 'approval'`), releases the lease, deletes the job's `work/` objects | the version, the job | |
@@ -502,12 +504,35 @@ rewrites (no USGS call, `S-P02-HAPPY`).
   or a transposition of a strip is never scored); a best guess under `MIN_CORRELATION` (0.2) is searched again over the
   window widened by `SEARCH_MARGIN` (half its size) on every side: the frame warped onto the wide window, the window's
   Sentinel-2 matched inside it (`cv2.matchTemplate`, places where the frame covers under 20 % of the window refused),
-  the guess moved by the match's offset and scored again; still under it, the step fails with
-  `apiError.imagery.cityNotFound` and nothing is cropped. A crop with a side over `MAX_SCAN_PIXELS` fails with
-  `processingFailed` before it is read (`scanSchema` would refuse the version). **UNVERIFIED**: the threshold on real
-  frames (the synthetic right guess scores 0.8 to 0.9 once moved, noise 0.15 at most); a KH-9 panoramic frame's
-  cross-track scale is not projective (film position follows the scan angle, the ground its tangent), which the
-  four-corner homography does not model.
+  the guess moved by the match's offset and scored again. A crop with a side over `MAX_SCAN_PIXELS` fails with
+  `processingFailed` before it is read (`scanSchema` would refuse the version).
+- Lesson 361, the rehearsal on the real 1972 KH-9 frame D3C1202-200149F039 (17 hand-read landmarks), which replaces what the
+  previous item says of the failure and of `cv2.matchTemplate`:
+  - **The panoramic first guess** (`georef/panoramic.py`). A homography through a panoramic frame's corners cannot hold it
+    (6.65 km RMS, scale wrong 1.5 to 2 times at the city). A sensor with a half angle (`SensorSpec.half_angle_deg`, the
+    pipeline's alone: KH-9 panoramic 60.5 degrees) uses `u = 2x/W - 1`, `theta = u * half_angle`, along the film
+    `tan(theta) / tan(half_angle)`, across it `(2y/H - 1) * cos(half_angle) / cos(theta)`, then bilinear on the corners; `x` is
+    counted from `stitch`'s `image_start` and `W` runs up to its `image_end`, else the frame's width; the frame is scored and cropped between them, so a window past the exposure's end cannot match its gap and the next exposure's fragment. For each of the plausible orientations, a homography is fitted from the model
+    around the window, so `Assignment`, `warp_onto`, `crop` and the corner GCPs stay as they were. **UNVERIFIED**: Corona is
+    panoramic too but keeps the corner homography until a real run measures its half angle.
+  - **The search** (`georef/surface.py`): a normalised correlation of gradient magnitudes over only the pixels the frame
+    covers, each place at least 35 % covered, returning the peak, the second best beyond 2 km, their ratio and the peak's z.
+    A guess is accepted by the raw gate (`MIN_CORRELATION`), or by a ratio of at least 2 and a z of at least 7. Under the
+    transform the landmarks give, the frame's truth has 4.15 and 16, the city absent (48 placements) at most 1.63 and 4.5; under the
+    panoramic first guess, whose scale is 2 to 3 % off at the city, the truth has 2.10 and 8.7, the city absent at most 1.40 and 4.8.
+    **Calibrated on one frame.**
+  - **The preview is averaged** and blurred to the scoring cell, never enlarged (the true place's raw score 0.126, 0.167
+    averaged, 0.180 blurred too; a scoring frame over 32 767 pixels a side is more than `cv2.remap` takes).
+  - **A weak guess is not a failure.** A frame that covers the window with nothing accepted: which orientation is true stays
+    unknown (a z of 4 to 5 is what a surface with no city gives), so the crop is the union of `WEAK_CROP_MARGIN_M` (10 km of ground:
+    the measured 7.3 km plus a few) around the window under every orientation that reaches it (on the 1972 frame 181 197 x
+    21 984 pixels; under 50 to 85 % cloud the city was in it 12 times of 12, one orientation's crop held none of it 5 times of 12).
+    It is never cut: a side over `MAX_SCAN_PIXELS` fails with `processingFailed`, a city far from the frame's middle does. The
+    delivery stays. The GCPs lie at the corners of the kept orientation's own box (most coverage, then the search's strength, not
+    moved), marked `weakCorners`, and only start the matcher: `georef` goes on, and with too few pairs ends at `needs_gcps` with
+    `apiError.imagery.noMatch` and **clears them** (kept, they turned 8 hand-read points' 424 px of error into 3266 px, and could be
+    saved alone at a plausible 404 m RMSE while 7 km off). `apiError.imagery.cityNotFound` is left for a frame
+    that reaches the window under no orientation, searched around too.
 
 ### 5.5 The references
 
@@ -516,7 +541,7 @@ rewrites (no USGS call, `S-P02-HAPPY`).
   window's bbox, the last three years, `eo:cloud_cover < 20`, sorted by cloud cover; the first item that covers the window
   (else up to four of one date, mosaicked); its `visual` asset (an 8-bit true-colour COG) read through
   `/vsicurl/` for the window only, warped to EPSG:3857 at 10 m, cached as `reference/{city}/s2/{key}.tif` (the key: FNV-1a of
-  the window and the item id). Attribution in the georeferencer: "Contains modified Copernicus Sentinel data {year}".
+  the window and the item id; a mosaic that does not cover the window together is no reference, 2026-11-06). Attribution in the georeferencer: "Contains modified Copernicus Sentinel data {year}".
 - **OSM** (`osm.py`): one Overpass query (`HCM_OVERPASS_URL`, default `https://overpass-api.de/api/interpreter`,
   **UNVERIFIED** policy limits) for the window's highways down to residential, railways, waterways and water areas,
   cached as GeoJSON (`reference/{city}/osm/{key}.geojson`), rasterized at 10 m for matching and drawn for the
@@ -536,7 +561,9 @@ rewrites (no USGS call, `S-P02-HAPPY`).
 5. Each kept pair goes back to scan pixels through the pre-warp's inverse: a GCP with `origin: 'auto'` and `score`
    (the ratio margin times the inlier support).
 6. Transform: `poly2` from 12 well-spread pairs, else `affine` from 6; the thin-plate spline is never chosen
-   automatically. Fewer than 6 → the job waits for points (§5.3).
+   automatically. Fewer than 6 → the job waits for points (§5.3). That is also how a weak guess of `locate` (§5.4) ends: its corner
+   GCPs may be kilometres off, so its matching rarely finds pairs, and any it does find have to pass the same bar. On the panoramic
+   first guess the search leaves 0.28 km RMS on the 1972 frame (0.47 km at most), about the reach of step 3's ± 400 m.
 7. Errors: `fitRmseM` over the enabled pairs; `checkpointRmseM` by leave-one-out over them (the disabled pairs, when the
    admin set some, are true checkpoints instead); `checkpointCount`.
 
@@ -1183,3 +1210,12 @@ Where it differs from §2.3, §3.4, §4.2–§4.6, §5.3 and §10.2, this addend
   `imagery.results-previews`, `imagery.results-previews-unavailable`, `imagery.version-downloading`. The e2e stand-in
   (`e2e/admin/support/imagery-run.ts`) hands over from `fetch` as the pipeline does, and its attempt `downloading`
   reports a transfer's bytes and stops there.
+
+## Addendum of 2026-11-06: what a failure keeps and frees
+
+The review of 66b1271 and its integration. A failure keeps its scene, and its failed version holds the layer id (`holdsLayerId`)
+until it is dismissed; a dismissal marks the job `cancelRequested`, deletes the bucket's `work/{city}/{job}/` at once (the 14-day
+lifecycle stays as the backstop; a local worker's stays in its work folder until its sweep) and frees the scene, its import's order
+gone with it. A layer's deletion frees its scene only once it succeeded: one failed for good keeps the scene `imported` and the id
+taken, as the tileset is still at Mapbox and a revert can bring the layer back (`deletionsPending`, S-A33-BAD-DELETE-FAILED-KEEPS-SCENE).
+An invalid job's version fails with it when it can be read (S-A12-BAD-STRANDED-VERSION).

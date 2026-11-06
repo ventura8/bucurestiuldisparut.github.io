@@ -11,11 +11,11 @@ const schema = z.object({ name: z.string(), updatedAt: z.unknown() });
 const UPDATED = at('2026-10-17T10:00:00Z');
 const VERSION = '2026-10-17T10:00:00.000Z';
 
-function docSnapshot(path: string, data: Record<string, unknown> | null, pending = false) {
+function docSnapshot(path: string, data: Record<string, unknown> | null, pending = false, fromCache = false) {
     return {
         id: path.split('/').at(-1),
         ref: { path },
-        metadata: { hasPendingWrites: pending },
+        metadata: { hasPendingWrites: pending, fromCache },
         exists: () => data !== null,
         data: vi.fn(() => data ?? undefined),
     };
@@ -100,6 +100,25 @@ describe('the Firestore ContentStore', () => {
             { kind: 'failed', code: 'invalid-document' },
             { kind: 'denied', code: 'permission-denied' },
         ]);
+    });
+
+    it('badPath_aCachedCopyThatFailsItsSchemaWaitsForTheServersAnswer', () => {
+        const { store, observers, logged } = world();
+        const seen: unknown[] = [];
+        const failures: unknown[] = [];
+
+        store.watchDoc(
+            'cities/b/photos/p',
+            schema,
+            (doc) => seen.push(doc),
+            (failure) => failures.push(failure),
+        );
+        observers[0]?.next(docSnapshot('cities/b/photos/p', { name: 3 }, false, true));
+        expect([seen, failures, logged]).toEqual([[], [], []]);
+
+        observers[0]?.next(docSnapshot('cities/b/photos/p', { name: 'Gara', updatedAt: UPDATED }));
+        expect(seen).toHaveLength(1);
+        expect(failures).toEqual([]);
     });
 
     it('happyPath_aQueryPageWithItsInvalidDocumentsApartAndItsConstraints', () => {
@@ -333,7 +352,7 @@ describe('the Firestore ContentStore and a document it refuses', () => {
         const observers: Observer[] = [];
         const sdk = {
             doc: (_db: unknown, path: string) => ({ path }),
-            onSnapshot: (_ref: unknown, observer: Observer) => {
+            onSnapshot: (_ref: unknown, _options: unknown, observer: Observer) => {
                 observers.push(observer);
                 return () => undefined;
             },

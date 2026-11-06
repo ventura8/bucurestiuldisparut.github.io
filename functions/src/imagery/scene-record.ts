@@ -1,7 +1,7 @@
 /**
  * What the harvest keeps of an M2M `scene-search` record (`docs/research/M3-interfaces.md` §3.2): the frame's dates, its
- * footprint and corners, its camera, its coverage of the city, whether it is already scanned and its browse address on
- * USGS's own host. The metadata field names of the camera and the corners are **UNVERIFIED** (the fixtures define them;
+ * footprint and corners, its camera, its coverage of the city (a KH-9 panoramic frame's by its camera's outline, the stored
+ * footprint staying what USGS says), whether it is already scanned and its browse address on USGS's own host. The metadata field names of the camera and the corners are **UNVERIFIED** (the fixtures define them;
  * the first real search over Bucharest proves them, §14).
  */
 import {
@@ -100,7 +100,8 @@ export function sceneFields(record: SceneRecord, dataset: UsgsDataset, bounds: B
         return undefined;
     }
     const sensor = sensorOf(dataset, record.metadata);
-    const optional = { displayId: displayIdOf(record), corners: cornersOf(record.metadata), cloudCover: cloudOf(record.cloudCover) };
+    const corners = cornersOf(record.metadata);
+    const optional = { displayId: displayIdOf(record), corners, cloudCover: cloudOf(record.cloudCover) };
     return {
         entityId: record.entityId,
         dataset,
@@ -109,7 +110,7 @@ export function sceneFields(record: SceneRecord, dataset: UsgsDataset, bounds: B
         downloadAvailable: record.downloadAvailable,
         footprint,
         resolutionM: SENSOR_SPECS[sensor].resolutionM,
-        coverage: footprintCoverage(footprint, bounds),
+        coverage: footprintCoverage(footprint, bounds, { sensor, corners }),
         ...Object.fromEntries(Object.entries(optional).filter(([, value]) => value !== undefined)),
     };
 }

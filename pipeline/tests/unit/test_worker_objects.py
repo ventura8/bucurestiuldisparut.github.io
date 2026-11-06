@@ -3,14 +3,19 @@
 import base64
 import hashlib
 import json
+import os
+import shutil
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import pytest
+from hcm_pipeline.contract import Errors
+from hcm_pipeline.jobs import StepFailedError
 from hcm_pipeline.objects import ObjectInfo, ObjectStoreError, PreconditionFailedError, SessionExpiredError
 from hcm_pipeline.worker.api import WorkerApi
 from hcm_pipeline.worker.documents import JobIds
-from hcm_pipeline.worker.local_store import LocalObjectStore
+from hcm_pipeline.worker.local_store import DAY_SECONDS, ROOM_FACTOR, LocalObjectStore
 from hcm_pipeline.worker.routed import RoutedObjectStore
 from hcm_pipeline.worker.signed_store import SignedObjectStore
 
@@ -27,6 +32,23 @@ def file_with(folder: Path, name: str, data: bytes) -> Path:
     path = folder / name
     path.write_bytes(data)
     return path
+
+
+def free_disk(monkeypatch: pytest.MonkeyPatch, free: float) -> None:
+    monkeypatch.setattr(shutil, "disk_usage", lambda _path: SimpleNamespace(free=int(free)))
+
+
+NOW = 1_792_000_000.0
+
+
+def aged(root: Path, name: str, days: float, data: bytes = b"x") -> Path:
+    """A file of the work folder last written `days` before `NOW`."""
+    file = root / name
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_bytes(data)
+    moment = NOW - days * DAY_SECONDS
+    os.utime(file, (moment, moment))
+    return file
 
 
 # --- the work folder -------------------------------------------------------------------------------------
@@ -79,6 +101,128 @@ def test_bad_path_reading_a_missing_object_fails(tmp_path: Path) -> None:
         store.download_file(RAW, tmp_path / "x")
     with pytest.raises(ObjectStoreError):
         store.open_read(RAW)
+
+
+def test_bad_path_a_copy_cut_short_by_a_full_disk_leaves_no_partial_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    store = LocalObjectStore(tmp_path / "work")
+
+    def cut_short(_source: Path, target: Path) -> None:
+        target.write_bytes(b"half")
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(shutil, "copyfile", cut_short)
+
+    with pytest.raises(OSError, match="No space"):
+        store.upload_file(file_with(tmp_path, "a.tif", b"segment a"), "work/bucharest/job-1/segments/a.tif", "image/tiff")
+
+    assert list((tmp_path / "work/work/bucharest/job-1/segments").iterdir()) == []
+
+
+def test_happy_path_a_session_starts_with_enough_room_for_the_delivery_and_its_segments(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P04-HAPPY-WORKER-RUN"""
+    free_disk(monkeypatch, 1000 * ROOM_FACTOR)
+
+    assert LocalObjectStore(tmp_path).start_resumable(RAW, 1000, "application/octet-stream").startswith("local-session:")
+
+
+def test_bad_path_a_disk_too_small_for_the_delivery_is_refused_before_its_first_byte(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P04-BAD-NO-FREE-SPACE"""
+    free_disk(monkeypatch, 22_000_000_000)
+
+    with pytest.raises(StepFailedError) as refused:
+        LocalObjectStore(tmp_path).start_resumable(RAW, 8_700_000_000, "application/octet-stream")
+
+    assert refused.value.code == Errors.PROCESSING_FAILED
+    assert str(refused.value) == (
+        "22.0 GB are free in the work folder; this delivery of 8.7 GB needs about 22.6 GB: free some disk and try again"
+    )
+    assert list((tmp_path / ".sessions").iterdir()) == []
+
+
+# --- the sweep --------------------------------------------------------------------------------------------
+
+
+def test_happy_path_the_sweep_removes_what_the_buckets_lifecycle_would(tmp_path: Path) -> None:
+    """Scenarios: S-P04-HAPPY-DISK-SWEPT"""
+    old_job = aged(tmp_path, "work/bucharest/old-job/segments/a.tif", 15)
+    young_job = aged(tmp_path, "work/bucharest/young-job/segments/a.tif", 13)
+    old_delivery = aged(tmp_path, "usgs-raw/corona2/E1/E1.tgz", 8)
+    young_delivery = aged(tmp_path, "usgs-raw/corona2/E2/E2.tgz", 6)
+    cache = aged(tmp_path, "reference/bucharest/s2/abcdef12.tif", 400)
+    session_file = aged(tmp_path, ".hcm-session-bucharest.json", 400)
+
+    LocalObjectStore(tmp_path).sweep(NOW, None)
+
+    assert not old_job.parent.parent.exists()
+    assert not old_delivery.parent.exists()
+    assert all(file.exists() for file in (young_job, young_delivery, cache, session_file))
+
+
+def test_happy_path_one_new_file_keeps_its_whole_job_folder(tmp_path: Path) -> None:
+    """Scenarios: S-P04-HAPPY-DISK-SWEPT"""
+    old = aged(tmp_path, "work/bucharest/job-1/segments/a.tif", 30)
+    aged(tmp_path, "work/bucharest/job-1/frame.json", 1)
+
+    LocalObjectStore(tmp_path).sweep(NOW, None)
+
+    assert old.exists()
+
+
+def test_happy_path_the_sweep_removes_an_empty_old_folder_and_unfinished_downloads(tmp_path: Path) -> None:
+    """Scenarios: S-P04-HAPPY-DISK-SWEPT"""
+    empty = tmp_path / "work/bucharest/empty-job"
+    empty.mkdir(parents=True)
+    moment = NOW - 15 * DAY_SECONDS
+    os.utime(empty, (moment, moment))
+    store = LocalObjectStore(tmp_path)
+    old = store.start_resumable(RAW, 6, "application/octet-stream").removeprefix("local-session:")
+    young = store.start_resumable(f"{RAW}2", 6, "application/octet-stream").removeprefix("local-session:")
+    finished = aged(tmp_path, ".sessions/feedc0de.json", 8)
+    for name in (f"{old}.json", f"{old}.part", f"{young}.json"):
+        os.utime(tmp_path / ".sessions" / name, (NOW - 8 * DAY_SECONDS, NOW - 8 * DAY_SECONDS))
+    # The session a download still writes to: only its record is old.
+    os.utime(tmp_path / ".sessions" / f"{young}.part", (NOW - DAY_SECONDS, NOW - DAY_SECONDS))
+
+    store.sweep(NOW, None)
+
+    assert not empty.exists()
+    assert not finished.exists()
+    assert sorted(path.name for path in (tmp_path / ".sessions").iterdir()) == [f"{young}.json", f"{young}.part"]
+    with pytest.raises(SessionExpiredError):
+        store.resumable_offset(f"local-session:{old}", 6)
+
+
+def test_bad_path_the_sweep_keeps_the_claimed_jobs_scratch_and_every_delivery(tmp_path: Path) -> None:
+    """Scenarios: S-P04-BAD-SWEEP-KEEPS-CLAIMED"""
+    claimed = aged(tmp_path, "work/bucharest/job-1/segments/a.tif", 30)
+    other = aged(tmp_path, "work/bucharest/job-2/segments/a.tif", 30)
+    delivery = aged(tmp_path, "usgs-raw/corona2/E1/E1.tgz", 30)
+    download = aged(tmp_path, ".sessions/feedc0de.part", 30)
+
+    LocalObjectStore(tmp_path).sweep(NOW, "work/bucharest/job-1/")
+
+    assert not other.exists()
+    assert all(file.exists() for file in (claimed, delivery, download))
+
+
+def test_bad_path_a_disk_that_refuses_the_sweep_does_not_stop_the_loop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Scenarios: S-P04-BAD-SWEEP-KEEPS-CLAIMED"""
+    stubborn = aged(tmp_path, "work/bucharest/job-2/segments/a.tif", 30)
+    monkeypatch.setattr(shutil, "rmtree", lambda _path, **_kwargs: None)
+
+    LocalObjectStore(tmp_path).sweep(NOW, None)
+    assert stubborn.exists()
+
+    def refused(_path: Path) -> float:
+        raise PermissionError("no")
+
+    monkeypatch.setattr("hcm_pipeline.worker.local_store._last_written", refused)
+    LocalObjectStore(tmp_path).sweep(NOW, None)
+    assert stubborn.exists()
 
 
 def test_happy_path_a_resumable_session_outlives_the_store_and_creates_its_object(tmp_path: Path) -> None:

@@ -42,6 +42,7 @@ registerHooks({
 const { createLogger } = await import('../../shared/src/log.ts');
 const { ICONS } = await import('../src/icons.ts');
 const { FONT_FILES, ICON_FONT_AXES } = await import('../src/fonts/font-files.ts');
+const { iconNamesIn } = await import('../src/fonts/icon-scan.ts');
 
 const log = createLogger('build-fonts');
 const require = createRequire(import.meta.url);
@@ -162,8 +163,7 @@ async function unbundledIcons() {
     const unbundled = [];
     const root = path.join(import.meta.dirname, '..', '..');
     for await (const file of glob(['ui/src/**/*.ts', 'admin/src/**/*.ts', 'engine/src/**/*.ts'], { cwd: root })) {
-        const source = await readFile(path.join(root, file), 'utf8');
-        const names = [...source.matchAll(/\bicon(?:=|: )["']([a-z][a-z0-9_]*)["']/g)].map((match) => match[1]);
+        const names = iconNamesIn(await readFile(path.join(root, file), 'utf8'));
         unbundled.push(...names.filter((name) => !known.has(name)).map((name) => `${name} in ${file}`));
     }
     return unbundled;

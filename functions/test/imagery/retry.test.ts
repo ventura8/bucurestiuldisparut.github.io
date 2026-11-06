@@ -19,6 +19,7 @@ import {
     renderedVersion,
     seedGuard,
     seedJob,
+    seedScene,
     seedVersion,
     type ImageryWorld,
 } from './world.js';
@@ -180,6 +181,69 @@ describe('imagery.retry', () => {
         await retry(world);
 
         expect((await readJob(world, JOB))?.steps).toEqual({ upload: { status: 'done', sha256: 'c'.repeat(64) } });
+    });
+});
+
+describe('imagery.retry: a version that is no longer failed', () => {
+    const SCENE = 'DS1035-1057DA023';
+
+    it('badPath_aDismissedVersionIsNotBroughtBack_itsSceneWasFreed @S-A12-BAD-RETRY-DISMISSED', async () => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed({ cancelRequested: true }));
+        await seedFailedVersion(world, { state: 'rejected' });
+        await seedScene(world, SCENE);
+
+        expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
+
+        expect((await readJob(world, JOB))?.status).toBe('failed');
+        expect((await readVersion(world, JOB))?.state).toBe('rejected');
+    });
+
+    it('badPath_aVersionDismissedDuringTheRetryIsNotBroughtBack @S-A12-BAD-RETRY-DISMISSED', async () => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed());
+        await seedFailedVersion(world);
+        const original = world.deps.documents.transaction.bind(world.deps.documents);
+        world.deps.documents.transaction = (async (work: Parameters<typeof original>[0]) => {
+            await seedFailedVersion(world, { state: 'rejected' });
+            return original(work);
+        }) as typeof original;
+
+        expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
+
+        expect((await readJob(world, JOB))?.status).toBe('failed');
+    });
+
+    it.each(['cancelled', 'awaiting_approval'] as const)(
+        'badPath_aVersionInAnotherStateIsNotBroughtBack_%s @S-A12-BAD-RETRY-DISMISSED',
+        async (state) => {
+            const world = await readyWorld();
+            await seedJob(world, JOB, failed());
+            await seedVersion(world, JOB, renderedVersion({ state }));
+
+            expect(await failureOf(retry(world))).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
+        },
+    );
+
+    it('badPath_aVersionStrandedProcessingUnderAFailedJobCanBeRetried @S-A12-BAD-STRANDED-VERSION', async () => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed());
+        await seedVersion(world, JOB, renderedVersion({ state: 'processing' }));
+
+        await expect(retry(world)).resolves.toMatchObject({ status: 'queued' });
+
+        expect((await readJob(world, JOB))?.status).toBe('queued');
+        expect((await readVersion(world, JOB))?.state).toBe('processing');
+    });
+
+    it.each(['approved', 'publishing'] as const)('happyPath_aPublishRetryOfAVersionStill_%s_goesBackToThePublisher', async (state) => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, failed({ error: { code: 'apiError.imagery.mtsRefused', message: 'x' } }));
+        await seedVersion(world, JOB, renderedVersion({ state, approval: { auto: true, by: 'system:imagery', at: at(NOW) } }));
+
+        await expect(retry(world)).resolves.toMatchObject({ status: 'awaiting_approval' });
+
+        expect((await readVersion(world, JOB))?.state).toBe(state);
     });
 });
 

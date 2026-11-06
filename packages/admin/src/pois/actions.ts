@@ -1,5 +1,5 @@
 /**
- * What the places area writes, and what it tells the admin (docs/research/M2c-interfaces.md §1.6, §5.3, §9.5): Save
+ * What the places area writes (and reads whole for Export all), and what it tells the admin (docs/research/M2c-interfaces.md §1.6, §5.3, §9.5): Save
  * (and the remembered category of the next new place), a delete with Undo for ten seconds, and the bulk actions, each
  * ending in one snackbar, and the starter categories a city without any is offered; a refused write says why, and a `denied` one makes the shell ask who this is again.
  */
@@ -9,7 +9,7 @@ import type { ContentServices, WriteOutcome } from '../content/services.js';
 import { runBulk, type BulkAction } from './bulk.js';
 import type { PlaceEditor } from './editor.js';
 import type { CategoryItem, PoiItem } from './model.js';
-import { WRITE_FAILURES, type WriteFailure } from './places.js';
+import { everyPlace, WRITE_FAILURES, type WriteFailure } from './places.js';
 import { addStarterCategories } from './starter.js';
 import { DeleteUndo, UNDO_WAIT_MS } from './undo.js';
 
@@ -20,12 +20,32 @@ export type ActionServices = Pick<ContentServices, 'cityId' | 'store' | 'callabl
 
 export class PlaceActions {
     readonly #services: ActionServices;
-    readonly #busy: (busy: boolean) => void;
+    readonly #changed: (patch: { readonly busy?: boolean; readonly exporting?: boolean }) => void;
     #undo: DeleteUndo | null = null;
 
-    constructor(services: ActionServices, busy: (busy: boolean) => void) {
+    constructor(services: ActionServices, changed: (patch: { readonly busy?: boolean; readonly exporting?: boolean }) => void) {
         this.#services = services;
-        this.#busy = busy;
+        this.#changed = changed;
+    }
+
+    #busy(busy: boolean): void {
+        this.#changed({ busy });
+    }
+
+    /**
+     * Export all: every place of the city that reads, whatever the list loaded; null when they could not be read. The snackbar
+     * says so, or how many places the file leaves out.
+     */
+    async everyPlace(): Promise<readonly PoiItem[] | null> {
+        this.#changed({ exporting: true });
+        const read = await everyPlace(this.#services);
+        this.#changed({ exporting: false });
+        if (read === null) {
+            this.#services.notify({ key: 'adminContent.pois.exportFailed' });
+        } else if (read.unreadable.length > 0) {
+            this.#services.notify({ key: 'adminContent.pois.exportPartial', params: { count: String(read.unreadable.length) } });
+        }
+        return read?.places ?? null;
     }
 
     refused(reason: WriteFailure): void {

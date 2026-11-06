@@ -1,17 +1,18 @@
 /**
  * The places list's pure parts (docs/research/M2c-interfaces.md §7.1): its query (one indexed filter: a category, else
  * Unpublished), what the filter shows of a loaded page (Unpublished within a category, the title search), the map's
- * overlays of the shown places and of an import's preview, and the photos the picker offers.
+ * overlays of the shown places and of an import's preview, the photos the picker offers, and every place read once.
  */
-import { DEFAULT_POI_ICON, isHttpsUrl, type AdminContentKey, type PhotoDoc } from '@hcm/shared';
+import { DEFAULT_POI_ICON, FIRESTORE_PATHS, isHttpsUrl, MAX_POIS, poiDocSchema, type AdminContentKey, type PhotoDoc } from '@hcm/shared';
 import type { VectorOverlaySpec } from '@hcm/ui/map';
 
-import type { ContentQuery, Stored, WriteOutcome } from '../content/services.js';
+import { readOnce } from '../content/read-once.js';
+import type { ContentQuery, ContentServices, Stored, WriteOutcome } from '../content/services.js';
 import type { PlaceEditorState } from './editor.js';
 import type { ImportState } from './importer.js';
 import { overlayOf, UNCATEGORISED_COLOR } from './map-session.js';
 import { exportFileName, exportText, GEOJSON_MEDIA_TYPE } from './geojson.js';
-import { textIn, textOf, type CategoryItem, type PoiItem, type PoiValue } from './model.js';
+import { poiItemOf, textIn, textOf, type CategoryItem, type PoiItem, type PoiValue } from './model.js';
 
 export interface PoisFilter {
     /** One category, or every one. */
@@ -123,7 +124,28 @@ export function lacksCategory(draft: PlaceEditorState['draft'] | undefined): boo
     return draft?.isNew === true && draft.value.category === '';
 }
 
-/** The GeoJSON file of `places` of the city (the list's export, or its selection's). */
+/** Every place of the city that reads, and the ids of those whose document fails its schema (never shown as data). */
+export interface EveryPlace {
+    readonly places: readonly PoiItem[];
+    readonly unreadable: readonly string[];
+}
+
+/**
+ * Every place of the city, whatever the list loaded or filters (Export all, an import's plan); null when the read failed
+ * (refused: the shell asks who this is again).
+ */
+export async function everyPlace(services: Pick<ContentServices, 'store' | 'clock' | 'cityId' | 'denied'>): Promise<EveryPlace | null> {
+    const { page, failure } = await readOnce(services, FIRESTORE_PATHS.pois(services.cityId), poiDocSchema, { limit: MAX_POIS });
+    if (page === null) {
+        if (failure === 'denied') {
+            services.denied();
+        }
+        return null;
+    }
+    return { places: page.docs.map(poiItemOf), unreadable: page.invalid.map((doc) => doc.path.slice(doc.path.lastIndexOf('/') + 1)) };
+}
+
+/** The GeoJSON file of `places` of the city (the whole city's export, or its selection's). */
 export function exportFile(
     cityId: string,
     now: number,

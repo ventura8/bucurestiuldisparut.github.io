@@ -299,3 +299,22 @@ export function overlayOf(
         opacity: category.defaultOpacity,
     };
 }
+
+/** The page's hold on the area's map. */
+export function mapIntents(map: PoisMap): {
+    attachMap(container: HTMLElement): void;
+    detachMap(): void;
+    zoomBy(delta: number): void;
+} {
+    return {
+        attachMap: (container) => {
+            map.attach(container);
+        },
+        detachMap: () => {
+            map.detach();
+        },
+        zoomBy: (delta) => {
+            map.zoomBy(delta);
+        },
+    };
+}

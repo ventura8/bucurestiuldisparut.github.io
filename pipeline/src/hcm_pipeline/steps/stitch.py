@@ -6,8 +6,9 @@ matching the right segment's left strip inside the left segment's right part (it
 2048 rows, then at full resolution within a few pixels of that, so it is exact within 1 px. The film border (the
 unexposed edge and its markings) is cut where the row and column intensity profiles of a shrunk mosaic leave the dark
 level. Finding 57 of 2026-11-01: the frame is never joined in memory (a KH-9 panoramic frame was killed at 32 GiB):
-the step reads windows and shrunk copies of two segments at a time and writes `frame.json` (each segment's place) and
-`frame-preview.tif` (the frame shrunk to at most `PREVIEW_MAX_PX` on its long side), which `locate` reads.
+the step reads windows and shrunk copies of two segments at a time and writes `frame.json` (each segment's place, and
+the exposure's columns when a dark gap parts it from a fragment of the next one) and `frame-preview.tif` (the frame averaged down
+to at most `PREVIEW_MAX_PX` on its long side), which `locate` reads.
 """
 
 import math
@@ -31,6 +32,8 @@ COARSE_ROWS: Final = 2048
 # The strip of the right segment matched inside the left one: narrower than any overlap USGS leaves.
 TEMPLATE_PX: Final = 160
 MIN_TEMPLATE_PX: Final = 8
+# The coarse search's reach in shrunk pixels, when less than `MAX_OVERLAP_SHARE` of the segment: on a segment wider than about 1.7
+# times its height (a Corona's), where 35 % would search further than any overlap USGS leaves.
 SEARCH_PX: Final = 1200
 # Finding 76 of 2026-11-03: the right segment starts in this last share of the left one. USGS leaves narrow overlaps (4 to
 # 8 % on a KH-9 panoramic frame); searched across the whole segment, a snow-covered frame of repeating valleys matched a
@@ -45,6 +48,12 @@ BORDER_SHARE: Final = 0.35
 # ... and never under this grey level (a frame that is dark everywhere holds no image).
 MIN_CONTENT_LEVEL: Final = 10.0
 MIN_FRAME_PX: Final = 16
+# A dark column run at least this share of the frame's width may part the exposure from the next one: the 1972 KH-9 frame's holds
+# 2 % of it (columns 459 808 to 469 632 of 494 445); nothing else on it runs for even 0.1 %. Calibrated on one frame.
+MIN_GAP_SHARE: Final = 0.01
+# ... when no more than this share of the width lies beyond it: a real gap leaves only a fragment of the next exposure (5 % on the
+# 1972 frame, 24 813 columns), so a dark band with more film after it (a sea, a cloud's shadow) lies inside the exposure.
+MAX_FRAGMENT_SHARE: Final = 0.1
 
 
 def _best(area: UInt8Array, template: UInt8Array) -> tuple[int, int]:
@@ -53,9 +62,14 @@ def _best(area: UInt8Array, template: UInt8Array) -> tuple[int, int]:
     return int(x), int(y)
 
 
+def _shrunk_size(segment: Segment, factor: int) -> tuple[int, int]:
+    """The segment's size shrunk `factor` times (rounded up: placed in a preview rounded down, it leaves no blank edge)."""
+    return math.ceil(segment.width / factor), math.ceil(segment.height / factor)
+
+
 def _shrunk(segment: Segment, factor: int) -> UInt8Array:
-    """The segment shrunk `factor` times (rounded up: placed in a preview rounded down, it leaves no blank edge)."""
-    return segment.read(0, 0, segment.width, segment.height, (math.ceil(segment.width / factor), math.ceil(segment.height / factor)))
+    """The segment shrunk `factor` times by picking pixels: fast, and enough to match two segments."""
+    return segment.read(0, 0, segment.width, segment.height, _shrunk_size(segment, factor))
 
 
 def pair_offset(left: Segment, right: Segment) -> tuple[int, int]:
@@ -92,14 +106,46 @@ def _span(profile: numpy.ndarray, level: float) -> tuple[int, int]:
     return (int(inside[0]), int(inside[-1]) + 1) if inside.size else (0, 0)
 
 
+def _dark_level(frame: UInt8Array) -> float:
+    return max(BORDER_SHARE * float(numpy.median(frame)), MIN_CONTENT_LEVEL)
+
+
 def border_box(frame: UInt8Array) -> tuple[int, int, int, int]:
     """The frame inside its dark film border (rows and columns whose mean stays under the border level): x, y, w, h."""
-    level = max(BORDER_SHARE * float(numpy.median(frame)), MIN_CONTENT_LEVEL)
+    level = _dark_level(frame)
     top, bottom = _span(frame.mean(axis=1), level)
     left, right = _span(frame.mean(axis=0), level)
     if min(bottom - top, right - left) < MIN_FRAME_PX:
         raise StepFailedError(Errors.PROCESSING_FAILED, "the scan holds no image inside its film border")
     return left, top, right - left, bottom - top
+
+
+def _dark_runs(frame: UInt8Array) -> list[tuple[int, int]]:
+    """The long dark column runs of `frame` (first column, one past the last), left to right."""
+    dark = (frame.mean(axis=0) < _dark_level(frame)).astype(numpy.int8)
+    edges = numpy.flatnonzero(numpy.diff(numpy.concatenate(([0], dark, [0])))).tolist()
+    runs = zip(edges[::2], edges[1::2], strict=True)
+    return [(start, end) for start, end in runs if end - start >= max(1, MIN_GAP_SHARE * frame.shape[1])]
+
+
+def _exposure_starts(runs: list[tuple[int, int]], width: int) -> list[int]:
+    """Where the exposure may start: after a gap with only a fragment before it, in the frame's first half."""
+    return [end for start, end in runs if start <= MAX_FRAGMENT_SHARE * width and end <= width / 2]
+
+
+def _exposure_ends(runs: list[tuple[int, int]], width: int) -> list[int]:
+    """Where the exposure may end: before a gap with only a fragment after it, in the frame's second half."""
+    return [start for start, end in runs if width - end <= MAX_FRAGMENT_SHARE * width and start >= width / 2]
+
+
+def exposure_span(frame: UInt8Array) -> tuple[int, int] | None:
+    """The columns of `frame` (inside its border) that hold its exposure, whichever side of the film the next one's fragment
+    lies on (an aft camera's frame, or a turned scan): between the innermost dark gaps with only such a fragment outside them.
+    None: no such gap, the whole width is the exposure."""
+    width = frame.shape[1]
+    runs = _dark_runs(frame)
+    starts, ends = _exposure_starts(runs, width), _exposure_ends(runs, width)
+    return (max(starts, default=0), min(ends, default=width)) if starts or ends else None
 
 
 def _frame_size(origins: list[tuple[int, int]], segments: list[Segment]) -> tuple[int, int, int]:
@@ -151,7 +197,7 @@ class _Walk:
             dx, dy = pair_offset(previous, segment)
             self.origins.append((self.origins[-1][0] + dx, self.origins[-1][1] + dy))
         self.sizes.append(segment)
-        self.shrunk.append(_shrunk(segment, self.factor))
+        self.shrunk.append(segment.averaged(_shrunk_size(segment, self.factor)))
 
     def _let_go(self, segment: Segment | None) -> None:
         if segment is not None:
@@ -178,7 +224,9 @@ def _layout(walk: _Walk) -> tuple[FrameLayout, UInt8Array]:
         for path, (x, y), segment in zip(walk.paths, walk.origins, walk.sizes, strict=True)
     )
     full = (_full_span(left, width, preview.shape[1], factor, size[0]), _full_span(top, height, preview.shape[0], factor, size[1]))
-    return FrameLayout(full[0], full[1], factor, placements), as_uint8(preview[top : top + height, left : left + width])
+    kept = as_uint8(preview[top : top + height, left : left + width])
+    start, end = exposure_span(kept) or (0, width)
+    return FrameLayout(full[0], full[1], factor, placements, None if end == width else end * factor, start * factor), kept
 
 
 def _full_span(start: int, span: int, preview_span: int, factor: int, full: int) -> int:

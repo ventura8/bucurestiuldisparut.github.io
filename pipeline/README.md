@@ -21,10 +21,16 @@ model, §5 the steps, §6 the georeferencing conventions); plan: `docs/research/
   followed only through the address guard; the size must equal
   `download-options`; SHA-256 read back in-region. Maintenance waits 30 minutes doubling to 12 hours; a rate limit waits
   its `Retry-After`; a preparing download waits 10 minutes.
-- `extract` keeps the TIFF segments of the `.tgz` (streamed) or `.zip`; `stitch` mosaics them (template matching, coarse
-  to fine, exact within 1 px) and cuts the film border.
-- `locate`: the corner guess (`georef/corners.py`): eight assignments of the frame's corners to the scene's, scored
-  against Sentinel-2 at 60 m; the city window (bounds ± 10 %) cropped as `scan.tif` with four corner GCPs.
+- `extract` keeps the TIFF segments of the `.tgz` (streamed) or `.zip`; `stitch` places them (template matching, coarse
+  to fine, exact within 1 px), cuts the film border and records the exposure's columns when a dark gap parts it from a
+  fragment of the next one, on either side (`frame.json`).
+- `locate`: the corner guess (`georef/corners.py`): the square-pixel assignments of the frame's corners to the scene's, a
+  camera with a half angle through its panoramic model (`georef/panoramic.py`) and on its exposure alone; scored against
+  Sentinel-2 at 60 m, a low score searched around by masked gradients (`georef/surface.py`), whose shape can accept it; the
+  city window (bounds ± 10 %) cropped as `scan.tif` with four corner GCPs. A guess nothing accepts is weak, no failure: the
+  crop holds every orientation that reaches the window with a 10 km margin (a side over `MAX_SCAN_PIXELS` fails and keeps the
+  delivery), its corners only start the matcher (`weakCorners`), and with too few pairs the admin places the points on a scan
+  with no corner pairs. `apiError.imagery.cityNotFound` is left for a frame that reaches the window under no orientation.
 - `reference`: Sentinel-2 L2A from the STAC API (`stac.py`, the `visual` COG through `/vsicurl/` after the address
   guard `urlguard.py`) and OpenStreetMap from Overpass (`osm.py`), cached under `reference/{city}/`; the
   georeferencer's `reference-s2.jpg` and `reference-osm.png`. **Never Mapbox Satellite**: `config.py` refuses a Mapbox

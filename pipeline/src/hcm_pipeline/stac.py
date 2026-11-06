@@ -1,17 +1,20 @@
 """Sentinel-2 L2A from a public STAC API: the georeferencing reference (docs/research/M3-interfaces.md §5.5).
 
 `POST {HCM_STAC_URL}/search` (default Element 84's Earth Search) for `sentinel-2-l2a` over the window's bbox, the
-last three years, under 20 % clouds, least cloudy first; the first item that covers the window, else up to four
-items of one date (mosaicked by the warp). Its `visual` asset (an 8-bit true-colour COG) is read through GDAL's
+last three years, under 20 % clouds, least cloudy first; the first item that covers the window, else the least cloudy
+date whose items (up to four, mosaicked by the warp) cover it together; none when no date does, which the caller fails
+with `apiError.imagery.referenceUnavailable`: a reference with a hole matches nothing there, and `locate` would call it
+the wrong city. Its `visual` asset (an 8-bit true-colour COG) is read through GDAL's
 `/vsicurl/` for the window only, after the address guard (`urlguard.py`). Never Mapbox Satellite, a Mapbox raster
 tileset or a resource of the old site's account: `config.py` refuses a Mapbox host as the STAC root, and the guard
 refuses one as an asset.
 """
 
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
+from itertools import pairwise, product
 from typing import Final
 
 import httpx
@@ -108,13 +111,40 @@ def item_of(feature: object) -> StacItem | None:
 
 
 def choose(items: Sequence[StacItem], bounds: Bounds) -> list[StacItem]:
-    """The least cloudy item that covers the window, else up to four items of the least cloudy date."""
+    """The least cloudy item that covers the window, else the least cloudy date's items that cover it together, else none."""
     covering = [item for item in items if item.covers(bounds)]
-    return covering[:1] or _same_date(items)[:MOSAIC_ITEMS]
+    return covering[:1] or _covering_mosaic(items, bounds)
 
 
-def _same_date(items: Sequence[StacItem]) -> list[StacItem]:
-    return [item for item in items if item.date == items[0].date] if items else []
+def _covering_mosaic(items: Sequence[StacItem], bounds: Bounds) -> list[StacItem]:
+    return next((mosaic for mosaic in _mosaics(items) if _together_cover(mosaic, bounds)), [])
+
+
+def _mosaics(items: Sequence[StacItem]) -> Iterator[list[StacItem]]:
+    """Up to four items of each date, the date of the least cloudy item first."""
+    for date in dict.fromkeys(item.date for item in items):
+        yield [item for item in items if item.date == date][:MOSAIC_ITEMS]
+
+
+def _edges(mosaic: Sequence[StacItem], *sides: int) -> Iterator[float]:
+    return (item.bbox[side] for item in mosaic for side in sides)
+
+
+def _middles(low: float, high: float, edges: Iterable[float]) -> list[float]:
+    """`low` to `high` cut at every edge between them: the middle of each piece."""
+    cuts = sorted({low, high, *(edge for edge in edges if low < edge < high)})
+    return [(start + end) / 2 for start, end in pairwise(cuts)]
+
+
+def _inside_one(mosaic: Sequence[StacItem], x: float, y: float) -> bool:
+    return any(item.bbox[0] <= x <= item.bbox[2] and item.bbox[1] <= y <= item.bbox[3] for item in mosaic)
+
+
+def _together_cover(mosaic: Sequence[StacItem], bounds: Bounds) -> bool:
+    """True when the items' boxes leave no part of the window out: their edges cut it into cells, each wholly in or out."""
+    columns = _middles(bounds.west, bounds.east, _edges(mosaic, 0, 2))
+    rows = _middles(bounds.south, bounds.north, _edges(mosaic, 1, 3))
+    return all(_inside_one(mosaic, x, y) for x, y in product(columns, rows))
 
 
 class StacClient:

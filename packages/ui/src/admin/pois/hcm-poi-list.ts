@@ -176,6 +176,7 @@ export class HcmPoiList extends LitElement {
                 class="export"
                 variant="outlined"
                 icon="download"
+                ?disabled=${this.view?.exporting === true}
                 @click=${() => {
                     emit(this, 'hcm-export', { selection });
                 }}

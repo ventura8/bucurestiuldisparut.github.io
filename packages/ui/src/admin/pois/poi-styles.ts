@@ -68,7 +68,8 @@ export const poiStyles = [
          * M3's check box: an 18 px box with its own 2 px border (3:1 against the surface, non-text contrast; a native check
          * box's own drawing does not reach it), the check mark drawn inside, and a 48 px target around it.
          */
-        .check input {
+        .check input,
+        .picker input {
             position: relative;
             display: grid;
             place-content: center;
@@ -82,7 +83,8 @@ export const poiStyles = [
             cursor: pointer;
         }
 
-        .check input::after {
+        .check input::after,
+        .picker input::after {
             position: absolute;
             inset: 50% auto auto 50%;
             inline-size: 48px;
@@ -91,12 +93,14 @@ export const poiStyles = [
             transform: translate(-50%, -50%);
         }
 
-        .check input:checked {
+        .check input:checked,
+        .picker input:checked {
             border-color: var(--md-sys-color-primary, Highlight);
             background: var(--md-sys-color-primary, Highlight);
         }
 
-        .check input:checked::before {
+        .check input:checked::before,
+        .picker input:checked::before {
             inline-size: 4px;
             block-size: 9px;
             border: solid var(--md-sys-color-on-primary, Canvas);

@@ -110,8 +110,13 @@ class HcmInboxPage extends AreaPage<InboxViewState, InboxIntentsPort> {
         return html`<div class="pane">${this.#list(locale, view)} ${this.#settings(locale, view)}</div>`;
     }
 
+    /** The badge's count knows the items past the loaded page too. */
+    get #unreadPastThePage(): boolean {
+        return (this.state?.unread ?? 0) > 0;
+    }
+
     #list(locale: Locale, view: InboxViewState): TemplateResult {
-        const unread = view.list.items.some((row) => !row.read);
+        const unread = view.list.items.some((row) => !row.read) || this.#unreadPastThePage;
         const markAll = (): void => {
             void this.intents?.markAllRead();
         };

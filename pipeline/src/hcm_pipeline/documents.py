@@ -140,7 +140,8 @@ def _optional_metres(value: float | None) -> float | None:
 
 @dataclass(frozen=True)
 class GeorefInfo:
-    """`version.georef`: how the scan is georeferenced, its pairs and errors."""
+    """`version.georef`: how the scan is georeferenced, its pairs and errors; `weak_corners`: its corner pairs come from a guess
+    nothing confirmed, good to start the matcher and no more (`steps/georef.py` clears them when it waits for the admin)."""
 
     method: str
     transform: str
@@ -148,13 +149,13 @@ class GeorefInfo:
     fit_rmse_m: float | None = None
     checkpoint_rmse_m: float | None = None
     checkpoint_count: int | None = None
+    weak_corners: bool = False
 
     @classmethod
     def of(cls, value: object) -> GeorefInfo:
         record = record_of(value, "georef")
-        return cls(
-            member_of(record, "method", GEOREF_METHODS), require_transform(text_of(record, "transform")), _gcps_of(record.get("gcps"))
-        )
+        method, transform = member_of(record, "method", GEOREF_METHODS), require_transform(text_of(record, "transform"))
+        return cls(method, transform, _gcps_of(record.get("gcps")), weak_corners=record.get("weakCorners") is True)
 
     def as_record(self) -> Record:
         return _without_none(
@@ -165,6 +166,7 @@ class GeorefInfo:
                 "fitRmseM": _optional_metres(self.fit_rmse_m),
                 "checkpointRmseM": _optional_metres(self.checkpoint_rmse_m),
                 "checkpointCount": self.checkpoint_count,
+                "weakCorners": True if self.weak_corners else None,
             }
         )
 

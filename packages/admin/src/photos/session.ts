@@ -13,9 +13,6 @@ export const STICKY_KEY = 'hcm:admin:photoSticky';
 export const LAST_PIN_KEY = 'hcm:admin:lastPin';
 export const CHECK_PLACE_KEY = 'hcm:admin:photoCheckPlace';
 
-/** At most this many photos are remembered as "check the place" (the oldest are forgotten first). */
-export const MAX_CHECK_PLACE = 500;
-
 const text = z.string().trim().min(1).max(200);
 
 const stickySchema = z.strictObject({
@@ -40,7 +37,8 @@ export function definedSticky(fields: StickyFields): Partial<Pick<PhotoDoc, Stic
 }
 
 const lastPinSchema = z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]);
-const checkPlaceSchema = z.array(z.string().regex(ID_PATTERN)).max(MAX_CHECK_PLACE);
+// No cap: a mark forgotten would lift its photo's publish block. A city holds at most `MAX_PHOTOS` of them, a few KB of 5 MB.
+const checkPlaceSchema = z.array(z.string().regex(ID_PATTERN));
 
 function read<T>(local: KeyValueStore, key: string, schema: z.ZodType<T>): T | null {
     const raw = local.get(key);
@@ -89,7 +87,7 @@ export class PhotoMemory {
 
     markCheckPlace(photoId: string, check: boolean): void {
         const ids = [...this.checkPlace()].filter((id) => id !== photoId);
-        const next = check ? [...ids, photoId].slice(-MAX_CHECK_PLACE) : ids;
+        const next = check ? [...ids, photoId] : ids;
         this.#local.set(CHECK_PLACE_KEY, JSON.stringify(next));
     }
 }

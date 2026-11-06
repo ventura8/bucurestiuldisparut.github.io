@@ -4,12 +4,14 @@
  * own; Reject ends the version and frees what it held; over budget, the admin chooses the free Studio upload, next month
  * or paying the overage (never at the tileset cap), and Studio's tileset is found by its name and becomes the layer's.
  */
-import { MAX_TILESETS, type JobDoc, type LayerVersionDoc } from '@hcm/shared';
+import { MAX_TILESETS, jobRetryable, type JobDoc, type LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { approveFunction, rejectFunction } from '../../src/imagery/approve.js';
+import { onJobWrite } from '../../src/imagery/on-job-write.js';
 import { releaseScenes } from '../../src/imagery/release-scene.js';
 import { chooseFunction, studioDoneFunction } from '../../src/imagery/studio.js';
+import { UpstreamError } from '../../src/ports/errors.js';
 import { failureOf } from '../admin/world.js';
 import { adminCall } from '../publish/fakes.js';
 import {
@@ -37,6 +39,15 @@ import {
 const JOB = 'job-1966-0712';
 const LAYER = 'kh-4a-corona-1966';
 const REQUEST = { cityId: CITY, versionId: JOB };
+/** The job's scratch files, another job's whose id starts the same, another city's and a delivery any city may share. */
+const SCRATCH = [
+    `work/${CITY}/${JOB}/segments/a.tif`,
+    `work/${CITY}/${JOB}/frame.json`,
+    `work/${CITY}/${JOB}0/segments/a.tif`,
+    `work/iasi/${JOB}/segments/a.tif`,
+    'usgs-raw/corona2/DS1035-1057DA023/a.tgz',
+] as const;
+const KEPT = [...SCRATCH.slice(2)].sort((left, right) => left.localeCompare(right));
 
 function awaitingJob(overrides: Partial<JobDoc> = {}): JobDoc {
     return {
@@ -241,6 +252,134 @@ describe('imagery.reject', () => {
         const failure = await failureOf(rejectFunction(() => world.deps).run(adminCall(REQUEST)));
 
         expect(failure).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
+    });
+});
+
+describe('imagery.reject: what a dismissal leaves', () => {
+    it('happyPath_aDismissalReleasesOnlyItsOwnScene_theTickTheOthers', async () => {
+        const world = await versionWorld();
+        await seedVersion(world, JOB, renderedVersion({ state: 'failed', error: { code: 'apiError.imagery.cityNotFound' } }));
+        await seedScene(world, 'DS1035-1057DA023', { status: 'imported', layerId: LAYER });
+        await seedScene(world, 'DS-LEFT-BEHIND', { status: 'imported', layerId: 'no-such-layer' });
+
+        await rejectFunction(() => world.deps).run(adminCall(REQUEST));
+
+        expect(await readScene(world, 'DS1035-1057DA023')).toMatchObject({ status: 'candidate' });
+        expect(await readScene(world, 'DS-LEFT-BEHIND')).toMatchObject({ status: 'imported' });
+
+        await releaseScenes(world.deps, CITY);
+
+        expect(await readScene(world, 'DS-LEFT-BEHIND')).toMatchObject({ status: 'candidate' });
+    });
+
+    it('badPath_aDismissedUploadHasNoSceneToRelease', async () => {
+        const world = await versionWorld();
+        const source = { kind: 'upload', uploadPath: 'uploads/rasters/bucharest/u/x/a.tif', bytes: 10 } as const;
+        await seedVersion(
+            world,
+            JOB,
+            renderedVersion({ state: 'failed', origin: 'upload', source, error: { code: 'apiError.imagery.cityNotFound' } }),
+        );
+        await seedScene(world, 'DS1035-1057DA023', { status: 'imported', layerId: LAYER });
+
+        await expect(rejectFunction(() => world.deps).run(adminCall(REQUEST))).resolves.toEqual({ state: 'rejected' });
+
+        expect(await readScene(world, 'DS1035-1057DA023')).toMatchObject({ status: 'imported' });
+    });
+
+    it('happyPath_aDismissedVersionsFailedJobOffersNoRetry @S-A12-BAD-RETRY-DISMISSED', async () => {
+        const failure = { code: 'apiError.imagery.cityNotFound', message: 'x' };
+        const world = await versionWorld(
+            renderedVersion({ state: 'failed', error: { code: 'apiError.imagery.cityNotFound' } }),
+            awaitingJob({ status: 'failed', waitReason: undefined, error: failure }),
+        );
+
+        await rejectFunction(() => world.deps).run(adminCall(REQUEST));
+
+        const job = await readJob(world, JOB);
+        expect(job).toMatchObject({ status: 'failed', cancelRequested: true, error: failure, updatedBy: 'u-admin' });
+        expect(job === undefined ? true : jobRetryable(job)).toBe(false);
+    });
+
+    it('badPath_theDismissalsMarkStopsNoRunAndAsksNothing @S-A12-BAD-RETRY-DISMISSED', async () => {
+        const failure = { code: 'apiError.imagery.cityNotFound', message: 'x' };
+        const job = awaitingJob({ status: 'failed', waitReason: undefined, error: failure, executionName: 'runs/ended' });
+        const world = await versionWorld(renderedVersion({ state: 'failed', error: { code: 'apiError.imagery.cityNotFound' } }), job);
+
+        await rejectFunction(() => world.deps).run(adminCall(REQUEST));
+        const after = await readJob(world, JOB);
+        expect(await onJobWrite(world.deps, CITY, JOB, { before: job, after })).toBe('cancel');
+
+        expect(world.jobs.recorder.argsOf('cancel')).toEqual([]);
+        expect(await readJob(world, JOB)).toMatchObject({ status: 'failed', cancelRequested: true });
+    });
+
+    it('happyPath_aDismissalDeletesItsJobsScratchFilesOnly', async () => {
+        const world = await versionWorld();
+        await seedVersion(world, JOB, renderedVersion({ state: 'failed', error: { code: 'apiError.imagery.cityNotFound' } }));
+        for (const path of SCRATCH) {
+            world.deps.blobs.put('private', path, new Uint8Array([1]));
+        }
+
+        await rejectFunction(() => world.deps).run(adminCall(REQUEST));
+
+        expect(world.deps.blobs.paths('private', '')).toEqual(KEPT);
+    });
+
+    it('happyPath_aRejectionDeletesItsJobsScratchFiles', async () => {
+        const world = await versionWorld();
+        for (const path of SCRATCH) {
+            world.deps.blobs.put('private', path, new Uint8Array([1]));
+        }
+
+        await rejectFunction(() => world.deps).run(adminCall(REQUEST));
+
+        expect(world.deps.blobs.paths('private', '')).toEqual(KEPT);
+    });
+
+    it('badPath_scratchFilesThatCannotBeDeletedAreLeftToTheLifecycle', async () => {
+        const world = await versionWorld();
+        await seedVersion(world, JOB, renderedVersion({ state: 'failed', error: { code: 'apiError.imagery.cityNotFound' } }));
+        world.deps.blobs.put('private', SCRATCH[0], new Uint8Array([1]));
+        world.deps.blobs.recorder.failNext('list', new UpstreamError('cloud-storage', 'unavailable', { status: 503 }));
+
+        await expect(rejectFunction(() => world.deps).run(adminCall(REQUEST))).resolves.toEqual({ state: 'rejected' });
+
+        expect(world.deps.blobs.paths('private', 'work/')).toEqual([SCRATCH[0]]);
+        expect(world.deps.recording.records.map((record) => record.message)).toContain('scratch files left to the lifecycle');
+    });
+
+    it('happyPath_theTickReadsOneLayerForASceneWhoseLayerExists', async () => {
+        const world = await versionWorld();
+        await seedLayer(world, LAYER);
+        await seedScene(world, 'DS1035-1057DA023', { status: 'imported', layerId: LAYER });
+        const recorder = world.deps.documents.recorder;
+        const queries = () => recorder.argsOf('query').length;
+        const [queriesBefore, transactionsBefore] = [queries(), recorder.argsOf('transaction').length];
+
+        await releaseScenes(world.deps, CITY);
+
+        expect(queries() - queriesBefore).toBe(1);
+        expect(recorder.argsOf('transaction')).toHaveLength(transactionsBefore);
+    });
+
+    it('badPath_aSceneOfALayerInItsDeletionsGraceStaysImported', async () => {
+        const world = await versionWorld();
+        await seedVersion(world, JOB, renderedVersion({ state: 'published', mapbox: { tilesetId: 'a.b', origin: 'mts' } }));
+        await seedJob(world, 'ld-1', {
+            type: 'layer-delete',
+            status: 'queued',
+            params: { layerId: LAYER },
+            createdBy: 'u-admin',
+            createdAt: at(NOW),
+            updatedBy: 'u-admin',
+            updatedAt: at(NOW),
+        });
+        await seedScene(world, 'DS1035-1057DA023', { status: 'imported', layerId: LAYER });
+
+        await releaseScenes(world.deps, CITY);
+
+        expect(await readScene(world, 'DS1035-1057DA023')).toMatchObject({ status: 'imported', layerId: LAYER });
     });
 });
 

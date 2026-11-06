@@ -19,10 +19,12 @@ import {
     imageryWorld,
     readScene,
     readyWorld,
+    renderedVersion,
     seedCity,
     seedLayer,
     seedScene,
     seedSetup,
+    seedVersion,
     type ImageryWorld,
 } from './world.js';
 
@@ -62,6 +64,75 @@ function serveBrowse(world: ImageryWorld, entityIds: readonly string[]): void {
 function search(world: ImageryWorld, data: unknown = { cityId: CITY }) {
     return searchFunction(() => world.deps).run(adminCall(data));
 }
+
+/** The measured KH-9 panoramic frame's outline (D3C1202-200149F039): a strip over Bucharest, as M2M closes its ring. */
+const PANORAMIC_RING: [number, number][] = [
+    [22.169, 45.112],
+    [29.158, 44.205],
+    [29.2, 43.887],
+    [21.965, 44.824],
+    [22.169, 45.112],
+];
+
+const PANORAMIC_CORNERS = {
+    'NW Corner Lat dec': '45.112',
+    'NW Corner Long dec': '22.169',
+    'NE Corner Lat dec': '44.205',
+    'NE Corner Long dec': '29.158',
+    'SE Corner Lat dec': '43.887',
+    'SE Corner Long dec': '29.2',
+    'SW Corner Lat dec': '44.824',
+    'SW Corner Long dec': '21.965',
+};
+
+describe('imagery.search: the years the city shows', () => {
+    it.each([
+        ['an unfinished version counts', 'processing', { code: 'sameYear', params: { year: '1966' } }],
+        ['a failed version does not: its id is held, nothing is shown', 'failed', { code: 'noLayers' }],
+    ] as const)('happyPath_%s', async (_case, state, reason) => {
+        const world = await readyWorld(NOW, { corona2: [sceneRecord(KH4B, { acquisitionDate: '1966-07-12' })] });
+        serveBrowse(world, [KH4B]);
+        const error = { code: 'apiError.imagery.cityNotFound' } as const;
+        await seedVersion(world, 'v-1', renderedVersion({ jobId: 'v-1', layerId: 'another-layer', year: 1966, state, error }));
+
+        await search(world);
+
+        expect((await readScene(world, KH4B))?.rank.reasons).toContainEqual(reason);
+    });
+});
+
+describe('imagery.search: how much of the city a frame covers', () => {
+    const FRAME = 'D3C1202-200149F039';
+
+    it('happyPath_aKh9PanoramicFrameCoversItsBowTie_theFootprintStaysUsgss @S-A11-HAPPY-PANORAMIC-COVERAGE', async () => {
+        const frame = sceneRecord(FRAME, { footprint: PANORAMIC_RING, metadata: PANORAMIC_CORNERS, acquisitionDate: '1972-05-20' });
+        const world = await readyWorld(NOW, { declassiii: [frame] });
+        serveBrowse(world, [FRAME]);
+        // Harvested before this model: the next search reads it again, the admin's own fields kept.
+        await seedScene(world, FRAME, { dataset: 'declassiii', sensor: 'KH-9-pan', coverage: 0.97, note: 'Bună.' });
+
+        await search(world);
+
+        const scene = await readScene(world, FRAME);
+        expect(scene?.coverage).toBeCloseTo(0.53, 2);
+        expect(scene).toMatchObject({ note: 'Bună.' });
+        expect(scene?.rank.reasons).toContainEqual({ code: 'coverage', params: { percent: '53' } });
+        expect(scene?.footprint).toHaveLength(4);
+        expect(scene?.footprint[0]).toEqual({ lat: 45.112, lng: 22.169 });
+    });
+
+    it('badPath_aCoronaFrameOfTheSameOutlineKeepsItsWholeFootprint @S-A11-BAD-CORONA-COVERAGE-UNCHANGED', async () => {
+        const frame = sceneRecord(KH4B, { footprint: PANORAMIC_RING, metadata: { 'Camera Type': 'KH-4B', ...PANORAMIC_CORNERS } });
+        const world = await readyWorld(NOW, { corona2: [frame] });
+        serveBrowse(world, [KH4B]);
+
+        await search(world);
+
+        const scene = await readScene(world, KH4B);
+        expect(scene?.sensor).toBe('KH-4B');
+        expect(scene?.coverage).toBeCloseTo(0.975, 3);
+    });
+});
 
 describe('imagery.search', () => {
     it('happyPath_everyDatasetIsHarvestedRankedAndItsBrowseImagesCopied @S-A11-HAPPY-HARVEST', async () => {

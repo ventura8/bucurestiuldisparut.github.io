@@ -159,7 +159,7 @@ export function imageryState(overrides: Partial<ImageryViewState> = {}): Imagery
             importRefusal: null,
             guard: null,
             resuming: false,
-            named: { loading: false, scene: null },
+            named: { loading: false, scene: null, failure: null },
         },
         upload: {
             phase: 'idle',

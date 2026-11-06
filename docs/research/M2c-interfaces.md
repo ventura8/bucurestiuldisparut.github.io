@@ -1260,3 +1260,15 @@ The user's live walk of 2026-11-01 (`docs/research/manual-test-2026-10-25.md`, f
 - **§9.2 History**: a creation is named by the version it made (the next entry's `previous`, else the document now,
   read once), never by its id while the document has a name.
 - **The map (§4.4)**: a category's overlay has seven map layers, the white `casing` under its lines and outlines.
+
+## Addendum of 2026-11-06: reads of the whole city (§7.4, §7.3, §8.5, §9.5)
+
+`readOnce` (`packages/admin/src/content/read-once.ts`) takes only the server's answer: a listener's first answer may be the cache's,
+which holds what other listeners brought, and taken for the whole collection it exported 50 places of 900. It gives up after
+`READ_WAIT_MS` (30 s) and says why (`denied` or `offline`), and no caller may read that as an empty collection: Export all and an import's
+plan say so and write nothing, smaller bounds are refused (S-A19-BAD-BOUNDS-UNREAD), a category in use survives with its places
+(S-A33-BAD-CATEGORY-UNREAD), Mark all as read marks nothing; a refusal also makes the shell ask who this is again. **§7.4**: an import
+plans against every place of the city, read once per chosen file, so a file naming a place past the list's page updates it; a place whose
+document fails its schema is left out of Export all aloud (`adminContent.pois.exportPartial`) and a feature naming it is refused
+(`unreadable-place`), never a second place; a file chosen or a dialog closed during that read ends the earlier file's turn
+(S-A34-BAD-FILE-CHANGED-WHILE-READING). The place's photo picker pages through the photos, and a linked photo is named past its page.

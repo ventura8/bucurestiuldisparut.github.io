@@ -86,7 +86,12 @@ PIPELINE_WRITER: Final = "system:pipeline"
 
 @dataclass(frozen=True)
 class SensorSpec:
-    """A camera: its dataset, label name, nominal resolution, tile zooms and Cloud Run machine (`SENSOR_SPECS`)."""
+    """A camera: its dataset, label name, nominal resolution, tile zooms and Cloud Run machine (`SENSOR_SPECS`).
+
+    `half_angle_deg` is the pipeline's alone (no TypeScript twin, not in `as_contract`): the half scan angle of a panoramic
+    camera whose film position follows the angle and the ground its tangent (`georef/panoramic.py`); None: the corner
+    homography holds.
+    """
 
     dataset: str
     name: str
@@ -94,6 +99,7 @@ class SensorSpec:
     minzoom: int
     maxzoom: int
     machine: str
+    half_angle_deg: float | None = None
 
     def as_contract(self) -> dict[str, object]:
         """The camelCase record of `enums.json` (the TypeScript `SensorSpec`)."""
@@ -107,13 +113,15 @@ class SensorSpec:
         }
 
 
+# Corona is panoramic too, but **UNVERIFIED**: it keeps the corner homography until a real run measures its half angle.
 SENSOR_SPECS: Final[Mapping[str, SensorSpec]] = {
     "KH-4": SensorSpec("corona2", "KH-4 Corona", 7.5, 10, 15, "std"),
     "KH-4A": SensorSpec("corona2", "KH-4A Corona", 2.75, 10, 16, "std"),
     "KH-4B": SensorSpec("corona2", "KH-4B Corona", 1.8, 10, 16, "std"),
     "KH-7": SensorSpec("declassii", "KH-7 Gambit", 1.2, 10, 17, "std"),
     "KH-9-mapping": SensorSpec("declassii", "KH-9 Hexagon (mapping camera)", 7.5, 10, 15, "std"),
-    "KH-9-pan": SensorSpec("declassiii", "KH-9 Hexagon", 1, 10, 17, "xl"),
+    # 60.5 degrees: fitted on the 1972 frame D3C1202-200149F039 (17 hand-read landmarks, 0.24 km RMS after one shift).
+    "KH-9-pan": SensorSpec("declassiii", "KH-9 Hexagon", 1, 10, 17, "xl", 60.5),
 }
 
 # The share of a job's progress each pipeline step stands for (`usgs-import`'s weights add up to 1; other job

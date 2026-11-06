@@ -1,7 +1,8 @@
 // What the photos remember per admin in localStorage: the sticky fields, the last pin, the photos whose place to check.
+import { MAX_PHOTOS } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { CHECK_PLACE_KEY, LAST_PIN_KEY, MAX_CHECK_PLACE, PhotoMemory, STICKY_KEY, definedSticky } from '../../src/photos/session.js';
+import { CHECK_PLACE_KEY, LAST_PIN_KEY, PhotoMemory, STICKY_KEY, definedSticky } from '../../src/photos/session.js';
 import { MemoryStore } from '../app/fakes.js';
 
 describe('PhotoMemory: sticky fields', () => {
@@ -66,16 +67,18 @@ describe('PhotoMemory: the last pin and the places to check', () => {
         expect([...memory.checkPlace()]).toEqual(['p2']);
     });
 
-    it('badPath_onlyTheNewestMarksAreKept', () => {
+    it('badPath_noMarkIsForgottenHoweverMany @S-A08-BAD-CHECK-PLACE-KEPT', () => {
         const local = new MemoryStore();
         const memory = new PhotoMemory(local);
-        local.set(CHECK_PLACE_KEY, JSON.stringify(Array.from({ length: MAX_CHECK_PLACE }, (_value, index) => `p${String(index)}`)));
+        const many = Array.from({ length: MAX_PHOTOS }, (_value, index) => `p${String(index)}`);
+        local.set(CHECK_PLACE_KEY, JSON.stringify(many));
 
         memory.markCheckPlace('newest', true);
 
-        const kept = [...memory.checkPlace()];
-        expect(kept).toHaveLength(MAX_CHECK_PLACE);
-        expect(kept.at(-1)).toBe('newest');
-        expect(kept).not.toContain('p0');
+        const kept = memory.checkPlace();
+        expect(kept.size).toBe(MAX_PHOTOS + 1);
+        // The oldest mark still blocks its photo's publish.
+        expect(kept.has('p0')).toBe(true);
+        expect(kept.has('newest')).toBe(true);
     });
 });

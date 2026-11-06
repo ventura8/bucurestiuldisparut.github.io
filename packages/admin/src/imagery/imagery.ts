@@ -315,8 +315,9 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     }
 
     #retryBrowse(id: string): void {
-        const scene = this.#cell.state.scenes.items.find((candidate) => candidate.id === id);
-        if (scene !== undefined) {
+        const { scenes, orders, named } = this.#cell.state;
+        const scene = sceneNamed(id, [scenes.items, orders.items], named);
+        if (scene !== null) {
             void this.#browse.retry(scene).then(() => this.#showBrowse(scene));
         }
     }

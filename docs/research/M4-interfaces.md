@@ -537,7 +537,7 @@ A Firestore trigger on `notificationEvents/{eventId}` (create; `fn-events@`, own
 - A route `#/inbox` (icon `notifications`, in the rail after Jobs and under More on the compact bar, its own lazy chunk
   `inbox` with its budget) listing the admin's items newest first (`admins/{uid}/inbox`, `onSnapshot`, 50 at a time): the
   message in the admin's language, the time, the severity's colour and icon, unread in bold; a click (Enter) marks it
-  read and opens its link; **Mark all as read** (a client batch of at most 50 updates).
+  read and opens its link; **Mark all as read** (client batches of at most 50 updates each, read from the server until none is unread: 2026-11-06, S-A46-HAPPY-MARK-ALL-READ; a read that cannot answer says why and marks nothing).
 - **The badge**: the rail's and the compact bar's Notifications item shows the unread count (a query on `read == false`
   limited to `INBOX_BADGE_MAX + 1`, `99+` above), in its accessible name (`adminContent.notify.unread`).
 - **Settings**: a section of the inbox page: push on this device (§5.4) and one switch per kind (`pushKinds`), saved
@@ -827,3 +827,9 @@ Where it differs from §5.4, this addendum is the contract.
   use (`params.model`), and a project offered neither gets `apiError.assist.modelUnavailable` naming both. The answer's
   `model` is the model that drafted. Rows S-A45-HAPPY-FALLBACK-MODEL, S-A45-HAPPY-MODEL-NAMED; the fake Vertex AI's
   scenario `vertex-ai.firstModelUnavailable`. The price constant and the custom role are unchanged.
+
+## Addendum of 2026-11-06: §1.5, an order and its ended import
+
+A freed scene drops its import's order (`imported` or `importing`): not back to `delivered`, which the watch would import again within
+five minutes; a scene USGS delivered and with no order is `available`, whose Import is the admin's own click. A failure keeps the scene
+and its order until the version is dismissed (`docs/research/M3-interfaces.md`, its addendum of the same date).

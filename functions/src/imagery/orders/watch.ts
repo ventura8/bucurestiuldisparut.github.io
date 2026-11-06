@@ -4,7 +4,8 @@
  * city download; then every open order moves on by itself: a reminder on days 7 and 12 (USGS deletes an unpaid order
  * after two weeks), `expired` after `ORDER_GIVE_UP_DAYS`, a delivered scan imported into the M3 pipeline when the budget
  * guard is green and today's raster jobs allow (else on a later tick), and an import whose version left processing
- * `imported`. It runs while the guard is red: asking and reminding cost nothing; only the import waits.
+ * `imported`. An import that ended for good takes its order off the scene with it (`freedScene`), so Import is offered and
+ * nothing here starts it again. It runs while the guard is red: asking and reminding cost nothing; only the import waits.
  */
 import {
     FIRESTORE_PATHS,
@@ -34,7 +35,7 @@ const ACTIVE_ORDER_STATES: readonly OrderState[] = ['ordered', 'reminder', 'deli
 /** USGS is asked about at most this many orders a run (the rest wait for the next tick). */
 const DUE_PER_RUN = 50;
 /** A version in these states has not left processing for good: the import is not done. */
-const NOT_IMPORTED: readonly LayerVersionState[] = ['processing', 'failed', 'cancelled'];
+const NOT_IMPORTED: readonly LayerVersionState[] = ['processing', 'failed', 'cancelled', 'rejected'];
 
 /** The city's open orders (a handful: each is a scan the admin bought). */
 async function activeOrders(deps: OrderWatchDeps, cityId: string): Promise<OrderedScene[]> {

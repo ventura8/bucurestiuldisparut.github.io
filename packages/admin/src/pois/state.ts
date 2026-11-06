@@ -30,6 +30,10 @@ export interface PoisState {
     readonly clicked: { readonly id: string; readonly seq: number } | null;
     /** The photo picker's list, read when it first opens. */
     readonly photos: ListState<PhotoChoice> | null;
+    /** The open place's linked photos, each read by its id: past the picker's pages, or with the picker not opened yet. */
+    readonly linkedPhotos: readonly PhotoChoice[];
+    /** Export all is reading the city's places. */
+    readonly exporting: boolean;
     readonly importing: ImportState | null;
     /** A delete or a bulk action is being written. */
     readonly busy: boolean;
@@ -72,18 +76,21 @@ export interface PoisIntents extends AssistIntents {
     clearSelection(): void;
     bulk(action: BulkAction): Promise<void>;
     loadPhotos(): void;
+    /** The picker's next page of photos. */
+    morePhotos(): void;
     chooseImport(file: ImportFile): Promise<void>;
     setImportCategory(category: string): void;
     commitImport(): Promise<void>;
     closeImport(): void;
-    /** Every loaded place, or the selection, as a GeoJSON file. */
-    exportPlaces(onlySelection: boolean): SavedFile;
+    /** Every place of the city, or the selection, as a GeoJSON file; null (the snackbar says so) when they could not be read. */
+    exportPlaces(onlySelection: boolean): Promise<SavedFile | null>;
     attachMap(container: HTMLElement): void;
     detachMap(): void;
     zoomBy(delta: number): void;
 }
 
-export type ListIntent = 'setFilter' | 'more' | 'retry' | 'add' | 'toggleSelected' | 'selectAll' | 'clearSelection' | 'bulk' | 'loadPhotos';
+export type ListIntent =
+    'setFilter' | 'more' | 'retry' | 'add' | 'toggleSelected' | 'selectAll' | 'clearSelection' | 'bulk' | 'loadPhotos' | 'morePhotos';
 export type FileIntent =
     'chooseImport' | 'setImportCategory' | 'commitImport' | 'closeImport' | 'exportPlaces' | 'attachMap' | 'detachMap' | 'zoomBy';
 
@@ -93,4 +100,5 @@ export type PoisServices = ContentServices & { readonly maps?: AdminMapFactory |
 export const INITIAL_POIS_STATE: PoisState = {
     ...{ filter: { category: null, unpublished: false, search: '' }, list: LOADING_LIST, categories: LOADING_LIST, frame: null },
     ...{ selection: [], editor: null, map: 'none', clicked: null, photos: null, importing: null, busy: false, assist: NO_ASSIST },
+    ...{ linkedPhotos: [], exporting: false },
 };

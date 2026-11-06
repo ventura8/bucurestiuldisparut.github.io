@@ -26,6 +26,10 @@ export const IMAGERY_STATES = {
         title: 'Historical imagery: a scene whose preview cannot be fetched, with Try again',
         visit: 'specs/imagery/search.spec.ts',
     },
+    'imagery.scene-unread': {
+        title: 'Historical imagery: a scene named by the address whose read failed, why, with Try again',
+        visit: 'specs/imagery/search.spec.ts',
+    },
     'imagery.empty-usgs': {
         title: 'Historical imagery: USGS not set up, with the link to its Setup step',
         visit: 'specs/imagery/search.spec.ts',

@@ -72,7 +72,7 @@ export const en: ApiMessages = {
     'apiError.imagery.archiveCorrupt': 'The archive from USGS is damaged. Try again: it is downloaded again.',
     'apiError.imagery.downloadIncomplete': 'The download from USGS did not arrive whole. It is retried automatically.',
     'apiError.imagery.referenceUnavailable': 'The reference imagery (OpenStreetMap, Sentinel-2) is not available for this area right now.',
-    'apiError.imagery.cityNotFound': 'The city could not be found on this frame: its corners do not match the map. Choose another frame.',
+    'apiError.imagery.cityNotFound': 'This frame does not reach the city: it shows another area. Choose another frame.',
     'apiError.imagery.noMatch': 'Reliable points found automatically: {pairs}, too few. Place a few points in the georeferencer.',
     'apiError.imagery.noSpread': 'Reliable points found automatically: {pairs}, but almost in a line. Place a few points across the image.',
     'apiError.imagery.tooFewGcps': 'The chosen transform needs at least {min} enabled point pairs.',

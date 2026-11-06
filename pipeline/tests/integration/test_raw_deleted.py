@@ -1,9 +1,15 @@
 """The raw USGS delivery is deleted once the city crop exists (M7, docs/research/M7-local-worker.md §5)."""
 
+from pathlib import Path
+
+import pytest
+from hcm_pipeline.contract import Errors
 from hcm_pipeline.runner import RunOutcome
+from hcm_pipeline.steps import locate
 
 from tests.fakes.http import Reply
 from tests.fakes.world import CITY, ENTITY_ID, JOB_ID, LAYER_ID, OVERPASS_PATH, PipelineWorld, dig
+from tests.synthetic.scenes import render_world, write_sentinel2
 
 RAW = f"usgs-raw/corona2/{ENTITY_ID}/{ENTITY_ID}.tgz"
 SCAN = f"rasters/{CITY}/{LAYER_ID}/{JOB_ID}/scan.tif"
@@ -44,6 +50,26 @@ def test_happy_path_a_retry_after_locate_needs_no_delivery(world: PipelineWorld)
     assert world.log_lines().count("step fetch started") == 1
 
 
+def test_bad_path_a_resume_after_locate_with_its_work_folder_gone_goes_on(world: PipelineWorld) -> None:
+    """Scenarios: S-P01-BAD-RESUME-WORK-GONE"""
+    for _ in range(3):
+        world.http.enqueue(OVERPASS_PATH, Reply(503, b"<html>busy</html>", "text/html"))
+    world.seed_import()
+    assert world.run() is RunOutcome.FAILED
+    assert dig(world.job(), "steps", "locate", "status") == "done"
+    # The job's scratch is gone (the bucket's lifecycle, the worker's sweep): the segments and the frame fed only `locate`.
+    for name in world.gcs.names(f"work/{CITY}/{JOB_ID}/"):
+        del world.gcs.objects[name]
+    world.store.update(world.job_path(), {"status": "starting"})
+
+    assert world.run() is RunOutcome.DONE
+
+    assert world.job()["status"] == "awaiting_approval"
+    assert deliveries(world) == 1
+    assert world.log_lines().count("step extract started") == 1
+    assert world.log_lines().count("step stitch started") == 1
+
+
 def test_bad_path_a_retry_after_the_delivery_was_deleted_downloads_it_again(world: PipelineWorld) -> None:
     """Scenarios: S-P01-BAD-RAW-GONE-RETRY"""
     world.seed_import()
@@ -60,3 +86,37 @@ def test_bad_path_a_retry_after_the_delivery_was_deleted_downloads_it_again(worl
     assert world.job()["status"] == "awaiting_approval"
     assert dig(world.job(), "steps", "fetch", "status") == "done"
     assert world.gcs.names("usgs-raw/") == []
+
+
+def test_happy_path_a_retry_after_the_deliverys_week_with_its_segments_left_needs_no_download(world: PipelineWorld) -> None:
+    """Scenarios: S-P01-HAPPY-RAW-DELETED"""
+    world.seed_import()
+    world.store.update(world.job_path(), {"machine": "fetch"})
+    assert world.run() is RunOutcome.DONE
+    # `stitch` failed; day 8: the delivery's seven days are over, the segments' fourteen are not. The retry reads nothing else of it.
+    del world.gcs.objects[RAW]
+    world.store.update(world.job_path(), {"status": "starting", "machine": "std", "steps.stitch": {"status": "failed"}})
+
+    assert world.run() is RunOutcome.DONE
+
+    assert deliveries(world) == 1
+    assert world.log_lines().count("step fetch started") == 1
+    assert world.log_lines().count("step extract started") == 1
+    assert world.job()["status"] == "awaiting_approval"
+
+
+def test_bad_path_a_weak_guess_too_wide_to_crop_fails_and_keeps_the_delivery(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P01-BAD-WEAK-GUESS-TOO-WIDE"""
+    world.http.serve("/s2/visual.tif", write_sentinel2(render_world(99), tmp_path / "elsewhere.tif").read_bytes())
+    monkeypatch.setattr(locate, "MAX_SCAN_PIXELS", 100)
+    world.seed_import()
+
+    assert world.run() is RunOutcome.FAILED
+
+    assert dig(world.job(), "error", "code") == Errors.PROCESSING_FAILED
+    assert "over the 100 a scan may have" in str(dig(world.job(), "error", "message"))
+    assert world.gcs.names("usgs-raw/") == [RAW]
+    assert "scan" not in world.version()
+    assert not any(line.startswith("the guess is weak") for line in world.log_lines())

@@ -7,7 +7,9 @@ import { FIRESTORE_PATHS, jobDocSchema, timestampFromDate, type JobDoc } from '@
 import { describe, expect, it } from 'vitest';
 
 import { runLayerDelete } from '../../src/imagery/layer-delete.js';
+import { releaseScenes } from '../../src/imagery/release-scene.js';
 import { runImageryTick } from '../../src/imagery/tick.js';
+import { deletionsPending } from '../../src/imagery/versions.js';
 import { UpstreamError } from '../../src/ports/errors.js';
 import {
     CITY,
@@ -15,10 +17,12 @@ import {
     NOW,
     at,
     readJob,
+    readScene,
     readyWorld,
     renderedVersion,
     seedJob,
     seedLayer,
+    seedScene,
     seedSetup,
     seedVersion,
     type ImageryWorld,
@@ -63,6 +67,75 @@ async function dueWorld(overrides: Partial<JobDoc> = {}): Promise<ImageryWorld> 
     );
     return world;
 }
+
+describe('layer-delete: the scene of the deleted layer', () => {
+    it('happyPath_theSuccessfulDeletionFreesTheLayersScene @S-A33-HAPPY-TILESET-DELETED', async () => {
+        const world = await dueWorld();
+        await seedScene(world, 'DS-PUBLISHED', {
+            status: 'imported',
+            layerId: 'corona-1968',
+            order: {
+                state: 'imported',
+                orderedAt: at(NOW),
+                orderedBy: 'u-admin',
+                checks: 1,
+                nextCheckAt: at(NOW),
+                remindersSent: [],
+            },
+        });
+        await seedScene(world, 'DS-OTHER', { status: 'imported', layerId: 'corona-1969' });
+
+        expect(await runLayerDelete(world.deps, CITY, 'ld-1')).toBe('succeeded');
+
+        const scene = await readScene(world, 'DS-PUBLISHED');
+        expect(scene).toMatchObject({ status: 'candidate' });
+        expect(scene?.layerId).toBeUndefined();
+        expect(scene?.order).toBeUndefined();
+        expect(await readScene(world, 'DS-OTHER')).toMatchObject({ status: 'imported', layerId: 'corona-1969' });
+    });
+
+    it('badPath_aDeletionFailedForGoodKeepsTheSceneOnEveryTickAndTheIdForALaterImport @S-A33-BAD-DELETE-FAILED-KEEPS-SCENE', async () => {
+        const world = await dueWorld({ status: 'failed' });
+        await seedScene(world, 'S-1', { status: 'imported', layerId: 'corona-1968' });
+
+        // The layer's tiles are still at Mapbox and a revert can bring it back, though its document is gone.
+        await releaseScenes(world.deps, CITY);
+
+        expect((await readScene(world, 'S-1'))?.status).toBe('imported');
+        expect(await deletionsPending(world.deps.documents, CITY)).toEqual(['corona-1968']);
+    });
+
+    it('happyPath_aFailedDeletionThatALaterOneFinishedFreesTheSceneAndTheId @S-A33-BAD-DELETE-FAILED-KEEPS-SCENE', async () => {
+        const world = await dueWorld({ status: 'failed' });
+        await seedJob(world, 'ld-2', deletion({ status: 'succeeded' }));
+        await seedScene(world, 'S-1', { status: 'imported', layerId: 'corona-1968' });
+
+        await releaseScenes(world.deps, CITY);
+
+        expect((await readScene(world, 'S-1'))?.status).toBe('candidate');
+        expect(await deletionsPending(world.deps.documents, CITY)).toEqual([]);
+    });
+
+    it('badPath_aDeletionWhoseParametersCannotBeReadHoldsNoId', async () => {
+        const world = await dueWorld({ params: { layerId: '../nope' } });
+
+        expect(await deletionsPending(world.deps.documents, CITY)).toEqual([]);
+    });
+
+    it('badPath_aDeletionThatFailedOrWasCancelledKeepsTheScene @S-A33-HAPPY-TILESET-DELETED', async () => {
+        const world = await dueWorld();
+        await seedScene(world, 'DS-PUBLISHED', { status: 'imported', layerId: 'corona-1968' });
+        world.tilesets.recorder.failNext('deleteTileset', new UpstreamError('mapbox', 'unavailable', { status: 503 }));
+
+        expect(await runLayerDelete(world.deps, CITY, 'ld-1')).toBe('retry');
+        expect(await readScene(world, 'DS-PUBLISHED')).toMatchObject({ status: 'imported', layerId: 'corona-1968' });
+
+        await seedLayer(world, 'corona-1968');
+
+        expect(await runLayerDelete(world.deps, CITY, 'ld-1')).toBe('cancelled');
+        expect(await readScene(world, 'DS-PUBLISHED')).toMatchObject({ status: 'imported', layerId: 'corona-1968' });
+    });
+});
 
 describe('layer-delete', () => {
     it('happyPath_afterTheGraceTheTilesetItsSourceAndTheFilesGo @S-A33-HAPPY-TILESET-DELETED', async () => {

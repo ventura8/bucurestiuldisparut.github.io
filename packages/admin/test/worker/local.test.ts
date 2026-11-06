@@ -204,6 +204,28 @@ describe('Use this computer and the auto-pair', () => {
         local.stop();
     });
 
+    it('happyPath_aReloadLooksAgainAndNeverSaysAFileWasJustSaved @S-A62-HAPPY-LOOKING-AFTER-RELOAD', async () => {
+        const world = contentWorld();
+        const net = new FakeNet();
+        localOf(world, net).intents.find();
+
+        const reloaded = localOf(world, net);
+
+        expect(reloaded.state.phase).toBe('looking');
+        net.state = answer({ signedIn: true });
+        reloaded.start();
+        await settle();
+        expect(reloaded.state.phase).toBe('connected');
+        reloaded.stop();
+    });
+
+    it('badPath_aBrowserThatSetNothingUpStaysWithNothingAfterAReload', () => {
+        const world = contentWorld();
+        world.services.local.set(LOCAL_KEY, 'another-city');
+
+        expect(localOf(world, new FakeNet()).state.phase).toBe('none');
+    });
+
     it('badPath_aWorkerOfAnotherCityOrOneThatTakesNoCodeIsNotPaired @S-A62-BAD-AUTO-PAIR', async () => {
         const world = contentWorld();
         world.services.local.set(LOCAL_KEY, CITY);
@@ -222,7 +244,7 @@ describe('Use this computer and the auto-pair', () => {
 
         expect(world.callables.named('worker.pairCode')).toBe(0);
         expect(net.to('/pair')).toEqual([]);
-        expect(local.state.phase).toBe('downloaded');
+        expect(local.state.phase).toBe('looking');
         local.stop();
     });
 

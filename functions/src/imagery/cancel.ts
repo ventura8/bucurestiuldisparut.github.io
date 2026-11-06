@@ -6,7 +6,7 @@
  * the pipeline's SIGTERM handler finishes the cancellation (the tick does when no heartbeat follows); Mapbox's
  * processing, once asked for, can no longer be stopped.
  */
-import { FIRESTORE_PATHS, jobDocSchema, type JobDoc, type JobStatus } from '@hcm/shared';
+import { FINISHED_JOB_STATUSES, FIRESTORE_PATHS, jobDocSchema, type JobDoc, type JobStatus } from '@hcm/shared';
 
 import type { Ports } from '../ports/index.js';
 import { endWork } from './end.js';
@@ -18,6 +18,8 @@ export type CancelOutcome = 'cancelled' | 'signalled' | 'finishing' | 'skipped';
 
 /** The statuses whose job ends as soon as the admin asks. */
 const WAITING: ReadonlySet<JobStatus> = new Set<JobStatus>(['queued', 'waiting_usgs', 'awaiting_gcps', 'awaiting_approval']);
+
+const FINISHED: ReadonlySet<JobStatus> = new Set(FINISHED_JOB_STATUSES);
 
 /** The publish steps' states that mean Mapbox was asked (the call under way, or made). */
 const CALLED: ReadonlySet<string> = new Set(['running', 'done']);
@@ -32,10 +34,15 @@ export function beforeMapbox(job: Pick<JobDoc, 'status' | 'mapboxJobId' | 'steps
     return job.status === 'mts_processing' && job.mapboxJobId === undefined && !publishCalled(job);
 }
 
+/** A job with something left to stop: not gone, not finished (a dismissal marks its failed job `cancelRequested`). */
+function unfinished(job: JobDoc | undefined): job is JobDoc {
+    return job !== undefined && !FINISHED.has(job.status);
+}
+
 /** Cancels the job as far as its status allows. */
 export async function cancelJob(deps: CancelDeps, cityId: string, jobId: string): Promise<CancelOutcome> {
     const job = await deps.documents.get(FIRESTORE_PATHS.job(cityId, jobId), jobDocSchema);
-    if (job === undefined) {
+    if (!unfinished(job)) {
         return 'skipped';
     }
     if (WAITING.has(job.status)) {

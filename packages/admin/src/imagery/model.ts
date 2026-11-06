@@ -20,7 +20,7 @@ import {
 } from '@hcm/shared';
 
 import { isoOf } from '../content/list.js';
-import type { Stored } from '../content/services.js';
+import type { Stored, StoreFailure } from '../content/services.js';
 import { orderFieldsOf, type OrderFields } from './orders/model.js';
 
 /** M4 (`docs/research/M4-interfaces.md` §1.7): with its acquisition state, its order and its EarthExplorer page. */
@@ -49,14 +49,16 @@ export interface SceneItem extends OrderFields {
     readonly layerId: string | null;
 }
 
-/** The routed scene read by its id (a scene the filters hide or past the list's page): loading, then the scene or null. */
+/** The routed scene read by its id (a scene the filters hide or past the list's page): loading, then the scene, null or why not. */
 export interface NamedScene {
     readonly loading: boolean;
     readonly scene: SceneItem | null;
+    /** The read stopped (the page offers Try again): "not found" would be a guess. */
+    readonly failure: StoreFailure | null;
 }
 
 /** No routed scene is read. */
-export const NO_NAMED_SCENE: NamedScene = { loading: false, scene: null };
+export const NO_NAMED_SCENE: NamedScene = { loading: false, scene: null, failure: null };
 
 /** The scene `id` names in the list, the orders or its own read; null while none has it. */
 export function sceneNamed(id: string, lists: readonly (readonly SceneItem[])[], named: NamedScene): SceneItem | null {

@@ -6,6 +6,7 @@ import { axeViolations } from '@hcm/test-support/axe';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { HomeIntentsPort, HomeViewState } from '../../../src/admin/home/home-port.js';
+import { isBundledIcon } from '../../../src/icons.js';
 import { FakeArea } from '../editing/fake-area.js';
 import { homeState, page } from '../ops/fixtures.js';
 import { cleanup, deepAll, deepText, defineAll } from '../shell/fake-app.js';
@@ -23,6 +24,9 @@ describe('<hcm-home-page> installation tile', () => {
         const [link] = deepAll(element, 'li.reminder a.action');
         expect(link?.getAttribute('href')).toBe('#/setup/deploy');
         expect(link?.textContent).toContain('Open its step in Setup');
+        // In the icon font's subset: an unbundled name draws nothing (the tile's icon was one).
+        const [icon] = deepAll(element, 'li.reminder hcm-icon').map((shown) => shown.getAttribute('name'));
+        expect(isBundledIcon(icon ?? '')).toBe(true);
         expect(await axeViolations(element)).toEqual([]);
     });
 

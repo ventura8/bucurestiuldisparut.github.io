@@ -1,8 +1,10 @@
 """The steps' refusals and less common paths, driven through the runner against the loopback world."""
 
+import errno
 import io
 import tarfile
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy
@@ -90,6 +92,93 @@ def test_bad_path_a_delivery_without_a_tiff_is_corrupt_and_deleted(world: Pipeli
         notes.size = 2
         archive.addfile(notes, io.BytesIO(b"hi"))
     fetched(world, f"{RAW}.tgz", packed.getvalue())
+
+    assert only(world, "extract") is RunOutcome.FAILED
+    assert error_code(world) == Errors.ARCHIVE_CORRUPT
+    assert world.gcs.names("usgs-raw/") == []
+
+
+class FailingFile(io.BytesIO):
+    """A segment's file on a disk that refuses every write."""
+
+    def __init__(self, code: int, message: str) -> None:
+        super().__init__()
+        self.failure = OSError(code, message)
+
+    def write(self, _data: object) -> int:
+        raise self.failure
+
+
+def failing_writes(code: int, message: str) -> Callable[..., object]:
+    """`Path.open` whose segment files refuse every write; anything else opens as ever."""
+    real: Callable[..., object] = Path.open
+
+    def opening(path: Path, mode: str = "r", *args: object, **kwargs: object) -> object:
+        return FailingFile(code, message) if mode == "wb" and "segments" in path.parts else real(path, mode, *args, **kwargs)
+
+    return opening
+
+
+def zip_with_a_negative_offset(tmp_path: Path) -> bytes:
+    """A zip whose end record claims its directory lies further in than it does: each member's offset comes out negative, and
+    `zipfile`'s seek to it raises `OSError` (EINVAL), as 17 of 6000 damaged zips did."""
+    packed = io.BytesIO()
+    with zipfile.ZipFile(packed, "w") as archive:
+        archive.writestr(f"{ENTITY_ID}_a.tif", tiff_bytes(tmp_path, numpy.zeros((8, 8))))
+    data = bytearray(packed.getvalue())
+    end_record = data.rfind(b"PK\x05\x06")
+    directory_at = int.from_bytes(data[end_record + 16 : end_record + 20], "little")
+    data[end_record + 16 : end_record + 20] = (directory_at + 4096).to_bytes(4, "little")
+    return bytes(data)
+
+
+def test_bad_path_a_zip_whose_reader_seeks_nowhere_is_corrupt_not_a_disk_failure(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P01-BAD-CORRUPT-ARCHIVE"""
+    fetched(world, f"{RAW}.zip", zip_with_a_negative_offset(tmp_path))
+
+    assert only(world, "extract") is RunOutcome.FAILED
+
+    assert error_code(world) == Errors.ARCHIVE_CORRUPT
+    assert world.gcs.names("usgs-raw/") == []
+
+
+def test_bad_path_a_write_that_says_einval_is_still_the_disks(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P01-BAD-DISK-FULL-KEEPS-DELIVERY"""
+    fetched(world, f"{RAW}.tgz", tar_of_segments(tmp_path, 2))
+
+    with monkeypatch.context() as patched:
+        patched.setattr(Path, "open", failing_writes(errno.EINVAL, "Invalid argument"))
+        assert only(world, "extract") is RunOutcome.FAILED
+
+    assert error_code(world) == Errors.PROCESSING_FAILED
+    assert world.gcs.names("usgs-raw/") == [f"{RAW}.tgz"]
+
+
+def test_bad_path_a_full_disk_during_extract_keeps_the_delivery_and_a_retry_needs_no_download(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P01-BAD-DISK-FULL-KEEPS-DELIVERY"""
+    fetched(world, f"{RAW}.tgz", tar_of_segments(tmp_path, 2))
+
+    with monkeypatch.context() as patched:
+        patched.setattr(Path, "open", failing_writes(errno.ENOSPC, "No space left on device"))
+        assert only(world, "extract") is RunOutcome.FAILED
+
+    assert error_code(world) == Errors.PROCESSING_FAILED
+    assert "No space left on device" in str(dig(world.job(), "error", "message"))
+    assert world.gcs.names("usgs-raw/") == [f"{RAW}.tgz"]
+
+    world.store.update(world.job_path(), {"status": "starting", "steps.extract": {"status": "pending"}})
+    assert only(world, "extract") is RunOutcome.DONE
+    assert world.gcs.names(WORK) == [f"{WORK}segments/{letter}.tif" for letter in "ab"]
+
+
+def test_bad_path_a_truncated_archive_is_still_corrupt_and_deleted(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P01-BAD-CORRUPT-ARCHIVE"""
+    whole = tar_of_segments(tmp_path, 2)
+    fetched(world, f"{RAW}.tgz", whole[: len(whole) // 2])
 
     assert only(world, "extract") is RunOutcome.FAILED
     assert error_code(world) == Errors.ARCHIVE_CORRUPT

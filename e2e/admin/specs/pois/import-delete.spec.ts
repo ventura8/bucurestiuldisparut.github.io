@@ -1,13 +1,18 @@
+import { readFile } from 'node:fs/promises';
+
 import { MAX_POIS } from '@hcm/shared';
 import type { Locator, Page } from '@playwright/test';
 
 import { contentFlowBudget } from '../../../../packages/admin/src/content/budgets.js';
 import { renderedFeatureIds, screenPointOf } from '../../../support/map.js';
+import { expectStateSound } from '../../../support/state-check.js';
+import { adminVisit } from '../../../tour/states.js';
 import { expect, test } from '../../support/content-test.js';
 import type { ContentWorld } from '../../support/content.js';
 import { awaitManifest, entries, entry, openPublicViewer, seedPublicCity } from '../../support/flows.js';
 import { contentText } from '../../support/ops.js';
 import { adminMapReady, overlayFeatureIds } from '../../support/map.js';
+import { seedPhoto, servePhotoImages } from '../../support/photos.js';
 import { chooseImport, feature, poisText, seedCategories, seedPlace } from './places.js';
 import { chooseInMenu } from '../../support/menu.js';
 
@@ -15,7 +20,8 @@ import { chooseInMenu } from '../../support/menu.js';
  * Importing places from GeoJSON and deleting them (docs/research/M2c-interfaces.md §7.3, §7.4, §9.5; behaviours A34, A33)
  * in a city of the admin's own: a file is previewed with its counts and drawn on the map before anything is written, one
  * category is given to the features without one, Import writes them; markup in a file stays text everywhere; a file that
- * would take the city past its limit is refused before any write. Five places deleted with one question come back from
+ * would take the city past its limit is refused before any write. Export all and an import's plan read the whole city, not
+ * the list's page, and a place's photos are reached past the picker's page. Five places deleted with one question come back from
  * History; Cancel, Esc and the scrim of the delete question delete nothing.
  */
 
@@ -37,6 +43,113 @@ function importButton(page: Page, lang: 'ro' | 'en'): Locator {
 }
 
 const point = (lng: number, lat: number): Record<string, unknown> => ({ type: 'Point', coordinates: [lng, lat] });
+
+/** Firestore's listen channel of the emulator (WebChannel), and what cutting it logs (e2e/admin/specs/ops/stream.spec.ts). */
+const LISTEN = /\/google\.firestore\.v1\.Firestore\/Listen\/channel/;
+const CUT = /ERR_CONNECTION_RESET|ERR_INTERNET_DISCONNECTED|Listen\/channel|cleardot\.gif/;
+
+/** One place more than the list's first page; the oldest, `loc-00`, is past it. */
+const PAST_THE_PAGE = 51;
+
+async function seedPastThePage(content: ContentWorld): Promise<void> {
+    for (let index = 0; index < PAST_THE_PAGE; index += 1) {
+        const number = String(index).padStart(2, '0');
+        const at = new Date(AT.getTime() + index * 1000);
+        await seedPlace(content, { id: `loc-${number}`, title: `Loc ${number}`, at: [26.1, 44.43] }, at);
+    }
+}
+
+test(
+    'Export all holds the places past the loaded page, and importing its file again adds none',
+    { tag: ['@S-A34-HAPPY-EXPORT-ALL-PLACES', '@S-A34-BAD-REIMPORT-NO-DUPLICATES'] },
+    async ({ page, lang, content }) => {
+        test.setTimeout(150_000);
+        await seedPublicCity(content, AT);
+        await seedCategories(content, AT);
+        await seedPastThePage(content);
+        await page.goto(content.address(lang, 'pois', { map: false }));
+        await expect(page.getByRole('link', { name: /Loc 50/ })).toBeVisible();
+        // The list holds its first page: the oldest place is not on it.
+        await expect(page.getByRole('link', { name: /Loc 00/ })).toHaveCount(0);
+        const seeded = await content.collection('pois');
+
+        const download = page.waitForEvent('download');
+        await page.getByRole('button', { name: poisText(lang, 'adminContent.pois.export') }).click();
+        const exported = await (await download).path();
+        const collection = JSON.parse(await readFile(exported, 'utf8')) as { features: { id: string }[] };
+        expect(collection.features).toHaveLength(PAST_THE_PAGE);
+        expect(collection.features.map((item) => item.id)).toContain('loc-00');
+
+        // Its import knows every place, the one past the page too: all unchanged, none new, nothing to write.
+        await page.locator('hcm-poi-list input[type="file"]').setInputFiles(exported);
+        const dialog = importDialog(page);
+        await expect(
+            dialog.getByText(poisText(lang, 'adminContent.pois.import.unchanged', { count: String(PAST_THE_PAGE) })),
+        ).toBeVisible();
+        await expect(dialog.getByText(poisText(lang, 'adminContent.pois.import.created', { count: '0' }))).toBeVisible();
+        await expect(importButton(page, lang)).toHaveCount(0);
+        expect(await content.collection('pois')).toEqual(seeded);
+    },
+);
+
+test(
+    'Export all that cannot read the places from the server says so and saves nothing',
+    { tag: '@S-A34-BAD-EXPORT-ALL-UNREAD' },
+    async ({ page, lang, content, consoleErrors }) => {
+        test.setTimeout(150_000);
+        await page.clock.install();
+        await openPlaces(page, content, lang, false);
+        await seedPlace(content, { id: 'manuc', title: 'Hanul lui Manuc', at: [26.1003, 44.4302] }, AT);
+        await expect(page.getByRole('link', { name: /Hanul lui Manuc/ })).toBeVisible();
+        let saved = 0;
+        page.on('download', () => {
+            saved += 1;
+        });
+
+        // Offline only the local cache answers, which holds the list's page, not the city.
+        await page.route(LISTEN, (route) => route.abort('connectionreset'));
+        await page.context().setOffline(true);
+        const exporting = page.getByRole('button', { name: poisText(lang, 'adminContent.pois.export') });
+        await exporting.click();
+        await expect(exporting).toBeDisabled();
+        await page.clock.fastForward(30_000);
+
+        await expect(page.getByText(poisText(lang, 'adminContent.pois.exportFailed'))).toBeVisible();
+        await expect(exporting).toBeEnabled();
+        expect(saved).toBe(0);
+        await page.context().setOffline(false);
+        await page.unroute(LISTEN);
+        consoleErrors.takeMatching(CUT);
+    },
+);
+
+test(
+    "A place's linked photo is named by its title with the picker closed, and the picker's Show more reaches it",
+    { tag: ['@S-A32-BAD-LINKED-PHOTO-PAST-PAGE', '@S-A32-HAPPY-PHOTO-PICKER-PAGES'] },
+    async ({ page, lang, content }) => {
+        test.setTimeout(150_000);
+        await servePhotoImages(page);
+        await seedPublicCity(content, AT);
+        await seedCategories(content, AT);
+        for (let index = 0; index < PAST_THE_PAGE; index += 1) {
+            const number = String(index).padStart(2, '0');
+            await seedPhoto(content, { id: `foto-${number}`, title: `Foto ${number}` }, new Date(AT.getTime() + index * 1000));
+        }
+        await seedPlace(content, { id: 'manuc', title: 'Hanul lui Manuc', at: [26.1003, 44.4302], extra: { photoIds: ['foto-00'] } }, AT);
+        await page.goto(content.address(lang, 'pois/manuc', { map: false }));
+
+        await expect(page.locator('hcm-poi-editor ul.chosen').getByText('Foto 00')).toBeVisible();
+
+        await page.getByRole('button', { name: poisText(lang, 'adminContent.pois.field.choosePhotos') }).click();
+        const picker = page.locator('hcm-dialog.photo-picker');
+        await expect(picker.getByText(/Foto 50/)).toBeVisible();
+        await expect(picker.getByText(/Foto 00/)).toHaveCount(0);
+        await expectStateSound(page, adminVisit('pois.photo-picker', lang));
+        await picker.getByRole('button', { name: poisText(lang, 'adminContent.common.more') }).click();
+        await expect(picker.getByText(/Foto 00/)).toBeVisible();
+        await expect(picker.getByRole('button', { name: poisText(lang, 'adminContent.common.more') })).toHaveCount(0);
+    },
+);
 
 test(
     'A GeoJSON file is previewed with its counts and on the map, its uncategorised features get one category, and Import writes them',

@@ -13,6 +13,7 @@ session kept in the work folder); a call answered `apiError.worker.revoked` (Dis
 and deletes the kept one; a claim answered `outdated` (the pipeline was updated in the admin) is said on the page.
 Finding 72 (the starter file, M7 §1.5): under the starter's supervisor (`supervised`) an outdated claim ends the loop
 instead (`outdated_exit`), and the command exits with `ExitCode.OUTDATED`, so the supervisor pulls the installed image.
+Each pass that holds a session sweeps the work folder after its claim (`sweep`, `runtime.py`), told the job it claimed.
 """
 
 import enum
@@ -112,6 +113,8 @@ class WorkerLoop:
         # Set by the signal handler alone: one assignment, no lock (`_stopped` turns it into `stopping`).
         self._signalled = False
         self.no_session_seconds = NO_SESSION_SECONDS
+        # What each pass with a session does to the work folder, told the job it just claimed (`WorkerRuntime.sweep`).
+        self.sweep: Callable[[str | None], None] = lambda _claimed: None
         # Finding 72: under the starter's supervisor an outdated image ends the loop (the supervisor updates it).
         self.supervised = False
         self.outdated_exit = False
@@ -175,6 +178,7 @@ class WorkerLoop:
         if not self._session.active:
             return Pass.NO_SESSION
         job_id = self._claim()
+        self.sweep(job_id)
         return Pass.IDLE if job_id is None else self._work(job_id)
 
     def _claim(self) -> str | None:

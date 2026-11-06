@@ -349,7 +349,16 @@ test(
 
 test(
     "Use this computer gives the starter file for the browser's system, and Stop using this computer the file that removes it",
-    { tag: ['@S-A62-HAPPY-STARTER', '@S-A62-HAPPY-STOP-COMPUTER', '@S-A62-BAD-STARTER-TEMPLATE', '@S-A62-BAD-FIND-COMPUTER'] },
+    {
+        tag: [
+            '@S-A62-HAPPY-STARTER',
+            '@S-A62-HAPPY-STOP-COMPUTER',
+            '@S-A62-BAD-STARTER-TEMPLATE',
+            '@S-A62-BAD-FIND-COMPUTER',
+            '@S-A62-HAPPY-LOOKING-AFTER-RELOAD',
+            '@S-A62-BAD-NOT-SET-UP-AFTER-RELOAD',
+        ],
+    },
     async ({ page, lang, adminWorld, mockApiRequest, upstream, consoleErrors }) => {
         // Finding 72 of 2026-11-02 ("I should not have to copy and paste"): one file, opened once, sets the computer up.
         // Finding 73 of 2026-11-03: a link the owner clicks, which the server's worker.starter answers as a download.
@@ -364,12 +373,19 @@ test(
         await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.looking'));
         await expect(shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.find') })).toHaveCount(0);
         await expectStateSound(page, adminVisit('worker.local-looking', lang));
+        // A reload still looks: it never says a file was just saved, which nobody downloaded.
+        await page.reload();
+        await expect(shown.locator('[data-local]')).toHaveText(local(lang, 'adminWorkerLocal.looking'), { timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(shown.locator('[data-open]')).toHaveCount(0);
         await page.evaluate(() => {
             localStorage.clear();
         });
         await page.reload();
         const use = shown.getByRole('link', { name: local(lang, 'adminWorkerLocal.use') });
         await expect(use).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        // A browser that set nothing up looks for nothing after a reload, and offers both ways.
+        await expect(shown.locator('[data-local]')).toHaveText('');
+        await expect(shown.getByRole('button', { name: local(lang, 'adminWorkerLocal.find') })).toBeVisible();
         await expect(use).toHaveAttribute('href', /\/worker-starter\?city=[a-z0-9-]+&os=linux&action=install$/);
         const linux = page.waitForEvent('download');
         await use.click();

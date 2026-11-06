@@ -76,7 +76,7 @@ export const ro = {
     'apiError.imagery.archiveCorrupt': 'Arhiva primită de la USGS este deteriorată. Încearcă din nou: o descărcăm din nou.',
     'apiError.imagery.downloadIncomplete': 'Descărcarea de la USGS nu a ajuns întreagă. Reîncercăm automat.',
     'apiError.imagery.referenceUnavailable': 'Imaginile de referință (OpenStreetMap, Sentinel-2) nu sunt disponibile acum pentru zonă.',
-    'apiError.imagery.cityNotFound': 'Orașul nu a fost găsit pe acest cadru: colțurile lui nu se potrivesc cu harta. Alege alt cadru.',
+    'apiError.imagery.cityNotFound': 'Acest cadru nu ajunge până la oraș: arată altă zonă. Alege alt cadru.',
     'apiError.imagery.noMatch': 'Puncte sigure găsite automat: {pairs}, prea puține. Așază câteva puncte în georeferențiator.',
     'apiError.imagery.noSpread': 'Puncte sigure găsite automat: {pairs}, dar aproape în linie. Așază câteva puncte pe toată imaginea.',
     'apiError.imagery.tooFewGcps': 'Transformarea aleasă are nevoie de cel puțin {min} perechi de puncte active.',

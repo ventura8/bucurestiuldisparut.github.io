@@ -11,7 +11,7 @@ from hcm_pipeline.geo import Grid, ground_scale, to_lnglat, to_mercator
 from hcm_pipeline.georef import features
 from hcm_pipeline.georef.consensus import Candidate, consensus, ransac
 from hcm_pipeline.georef.corners import corner_transform
-from hcm_pipeline.georef.matcher import References, Scan, match
+from hcm_pipeline.georef.matcher import References, Scan, match, prewarp
 from hcm_pipeline.georef.tiles import TileMatcher, lines, lines_at, peak_margin, proximity
 from hcm_pipeline.georef.transforms import Gcp
 from hcm_pipeline.osm import draw, to_geojson
@@ -22,6 +22,8 @@ from tests.fakes.http import Reply
 from tests.fakes.world import OVERPASS_PATH, PipelineWorld
 from tests.integration.matching import CORNER_ERROR_M, blurred, seed_matching
 from tests.synthetic.scenes import affine_scan
+
+WIDE_SCAN_PX = 70_000
 
 
 def test_happy_path_orb_matches_when_this_opencv_has_no_sift(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -164,3 +166,42 @@ def test_bad_path_without_openstreetmap_lines_sentinel2_matches_alone(world: Pip
     assert outcome is RunOutcome.DONE
     assert suggestions["channels"] == ["s2"]
     assert any("no OpenStreetMap lines" in line for line in world.log_lines())
+
+
+def wide_scan() -> Scan:
+    """A scan wider than `cv2.remap` takes, as a weak guess's crop is, its grey counting the columns."""
+    columns = numpy.arange(WIDE_SCAN_PX, dtype=numpy.float64) / WIDE_SCAN_PX * 255
+    return Scan(numpy.tile(columns, (64, 1)).astype(numpy.uint8), 5.0)
+
+
+def test_bad_path_a_scan_wider_than_the_resampler_takes_is_read_under_the_grid_alone() -> None:
+    """Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS"""
+    scan = wide_scan()
+    grid = Grid(0.0, 0.0, 10.0, 16, 8)
+
+    # The grid's places lie near the scan's far end.
+    warped, inside = prewarp(scan, lambda mx, my: (mx / 10 + 60_000, -my / 10 + 10), grid)
+
+    assert inside.all()
+    assert warped.shape == inside.shape
+    assert warped.mean() == pytest.approx(60_000 / WIDE_SCAN_PX * 255, abs=2.0)
+
+
+def test_bad_path_a_transform_that_spreads_over_all_of_a_wide_scan_is_shrunk_to_what_the_resampler_takes() -> None:
+    """Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS"""
+    scan = wide_scan()
+    grid = Grid(0.0, 0.0, 10.0, 16, 8)
+
+    warped, inside = prewarp(scan, lambda mx, my: (mx / 160 * WIDE_SCAN_PX, -my / 10 * 8), grid)
+
+    assert inside.any()
+    assert warped[:, 0].mean() < warped[:, -1].mean()
+
+
+def test_bad_path_a_grid_off_the_scan_has_nothing_to_resample() -> None:
+    """Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS"""
+    warped, inside = prewarp(wide_scan(), lambda mx, my: (mx - 1e7, my - 1e7), Grid(0.0, 0.0, 10.0, 16, 8))
+
+    assert not inside.any()
+    assert warped.shape == (8, 16)
+    assert warped.max() == 0

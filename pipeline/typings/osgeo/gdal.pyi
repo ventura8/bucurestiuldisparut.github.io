@@ -12,6 +12,8 @@ from numpy.typing import NDArray
 
 __version__: str
 
+GRIORA_NearestNeighbour: int
+GRIORA_Average: int
 GDT_Byte: int
 GDT_UInt16: int
 GDT_Float32: int
@@ -45,6 +47,7 @@ class Band:
         win_ysize: int | None = None,
         buf_xsize: int | None = None,
         buf_ysize: int | None = None,
+        resample_alg: int = ...,
     ) -> NDArray[Any]: ...
     def Checksum(self) -> int: ...
     def GetColorInterpretation(self) -> int: ...

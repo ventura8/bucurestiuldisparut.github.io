@@ -184,9 +184,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
                 this.#add(event.detail.shape);
             }}
             @hcm-import=${(event: CustomEvent<{ readonly file: ImportFilePort }>) => void this.intents?.chooseImport(event.detail.file)}
-            @hcm-export=${(event: CustomEvent<{ readonly selection: boolean }>) => {
-                this.#export(event.detail.selection);
-            }}
+            @hcm-export=${(event: CustomEvent<{ readonly selection: boolean }>) => void this.#export(event.detail.selection)}
             @hcm-bulk=${(event: CustomEvent<{ readonly action: BulkActionPort }>) => {
                 this.#bulk(event.detail.action, view.selection.length);
             }}
@@ -216,7 +214,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
             .assist=${view.assist}
             .categories=${view.categories.items}
             .categoriesKnown=${categoriesListed(view)}
-            .photos=${view.photos?.items ?? []}
+            .photos=${[...view.linkedPhotos, ...(view.photos?.items ?? [])]}
             .intents=${this.intents}
             .locale=${locale}
             .centreKnown=${view.frame !== null}
@@ -254,9 +252,9 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         }
     }
 
-    #export(selection: boolean): void {
-        const file = this.intents?.exportPlaces(selection);
-        if (file !== undefined) {
+    async #export(selection: boolean): Promise<void> {
+        const file = await this.intents?.exportPlaces(selection);
+        if (file !== undefined && file !== null) {
             saveFile(this.ownerDocument, file);
         }
     }
@@ -305,8 +303,8 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         const toggle = (id: string): void => {
             this.intents?.edit({ photoIds: chosen.includes(id) ? chosen.filter((photo) => photo !== id) : [...chosen, id] });
         };
-        const photos = view.photos === null ? [] : view.photos.items;
-        return photoPicker(locale, this.dialog?.kind === 'photos', { photos, chosen }, { toggle, close });
+        const handlers = { toggle, close, more: () => this.intents?.morePhotos(), retry: () => this.intents?.retry() };
+        return photoPicker(locale, this.dialog?.kind === 'photos', { photos: view.photos, chosen }, handlers);
     }
 }
 

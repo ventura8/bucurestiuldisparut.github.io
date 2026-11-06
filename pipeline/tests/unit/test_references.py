@@ -83,6 +83,49 @@ def test_happy_path_the_first_covering_item_wins_else_one_dates_mosaic() -> None
     assert item_of(feature("n", "2025-01-01", 0, [1, 2, 3, 4])) == StacItem("n", "2025-01-01", 0.0, "https://x/n.tif", (1, 2, 3, 4))
 
 
+def test_happy_path_a_date_with_a_hole_gives_way_to_a_later_date_that_covers_the_window() -> None:
+    """Scenarios: S-P01-HAPPY-MOSAIC-COVERING-DATE"""
+    lone = StacItem("lone", "2025-01-01", 1, "h", (25, 44, 26.1, 45))
+    west = StacItem("w", "2025-02-02", 2, "h", (25, 44, 26.1, 45))
+    east = StacItem("e", "2025-02-02", 3, "h", (26.1, 44, 27, 45))
+
+    assert choose([lone, west, east], WINDOW) == [west, east]
+
+
+def test_happy_path_four_boxes_around_a_corner_cover_the_window_together() -> None:
+    """Scenarios: S-P01-HAPPY-MOSAIC-COVERING-DATE"""
+    quarters = [
+        StacItem("nw", "2025-01-01", 1, "h", (26, 44.43, 26.1, 45)),
+        StacItem("ne", "2025-01-01", 2, "h", (26.1, 44.43, 27, 45)),
+        StacItem("sw", "2025-01-01", 3, "h", (26, 44, 26.1, 44.43)),
+        StacItem("se", "2025-01-01", 4, "h", (26.1, 44, 27, 44.43)),
+    ]
+
+    assert choose(quarters, WINDOW) == quarters
+
+
+@pytest.mark.parametrize(
+    "boxes",
+    [
+        [(25, 44, 26.1, 45)],
+        [(25, 44, 26.08, 45), (26.12, 44, 27, 45)],
+        [(26, 44.43, 26.1, 45), (26.1, 44.43, 27, 45), (26, 44, 26.1, 44.43)],
+    ],
+)
+def test_bad_path_no_date_that_covers_the_window_gives_no_mosaic(boxes: list[tuple[float, float, float, float]]) -> None:
+    """Scenarios: S-P01-BAD-MOSAIC-NOT-COVERED"""
+    items = [StacItem(f"i{index}", "2025-01-01", index, "h", box) for index, box in enumerate(boxes)]
+
+    assert choose(items, WINDOW) == []
+
+
+def test_bad_path_only_four_items_of_a_date_count() -> None:
+    """Scenarios: S-P01-BAD-MOSAIC-NOT-COVERED"""
+    strips = [StacItem(f"s{index}", "2025-01-01", index, "h", (26.05 + index * 0.02, 44, 26.07 + index * 0.02, 45)) for index in range(5)]
+
+    assert choose(strips, WINDOW) == []
+
+
 def test_happy_path_overpass_returns_the_windows_lines_as_geojson(server: FakeHttpServer) -> None:
     elements = [
         {"type": "way", "tags": {"highway": "primary"}, "geometry": [{"lat": 44.41, "lon": 26.06}, {"lat": 44.45, "lon": 26.14}]},

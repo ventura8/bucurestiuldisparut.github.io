@@ -59,7 +59,7 @@ type InstallReminder = Extract<HomeReminderPort, { kind: 'installUpdate' | 'inst
 function installTile(locale: Locale, reminder: InstallReminder): TemplateResult {
     const failed = reminder.kind === 'installFailed';
     return html`<li class="reminder" data-reminder=${reminder.kind}>
-        <hcm-icon name=${failed ? 'error' : 'system_update'}></hcm-icon>
+        <hcm-icon name=${failed ? 'error' : 'publish'}></hcm-icon>
         <p>${setupLabel(locale, failed ? 'adminSetup.install.tileFailed' : 'adminSetup.install.tileUpdate')}</p>
         <a class="action" href=${`#/setup/${reminder.step}`}>${setupLabel(locale, 'adminSetup.install.tileOpen')}</a>
     </li>`;

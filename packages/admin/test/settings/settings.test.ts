@@ -3,8 +3,8 @@ import type { ThemeTokenSet } from '@hcm/ui/dynamic-color';
 import { describe, expect, it } from 'vitest';
 
 import { PreviewLayer } from '../../src/layers/preview.js';
+import { READ_WAIT_MS } from '../../src/content/read-once.js';
 import { CategoryEditor } from '../../src/settings/category-editor.js';
-import { readOnce } from '../../src/settings/read-once.js';
 import { reportOutcome } from '../../src/settings/report.js';
 import { settingsModule } from '../../src/settings/settings.js';
 import type { SettingsState } from '../../src/settings/state.js';
@@ -396,6 +396,37 @@ describe('the categories section', () => {
     });
 });
 
+describe('smaller bounds whose check cannot read', () => {
+    it('badPath_boundsWhoseCheckCannotReadTheContentAreRefused @S-A19-BAD-BOUNDS-UNREAD', async () => {
+        const { store, world } = open(['area']);
+        world.store.docs.set(FIRESTORE_PATHS.poi(CITY, 'l1'), poiDoc(44.31, 25.91, 'Loc'));
+        store.intents.editCity({ bounds: { west: 26.9, south: 45.2, east: 27, north: 45.3 } });
+        world.store.setOffline(true);
+
+        const saving = store.intents.saveSection();
+        await settle();
+        world.clock.advance(READ_WAIT_MS);
+
+        expect(await saving).toEqual({ ok: false, reason: 'offline' });
+        expect(world.store.writes).toEqual([]);
+        expect(store.state.citySection.checking).toBe(false);
+    });
+
+    it('badPath_boundsWhoseCheckIsRefusedHalfWaySayDenied @S-A19-BAD-BOUNDS-UNREAD', async () => {
+        const { store, world } = open(['area']);
+        store.intents.editCity({ bounds: { west: 26.9, south: 45.2, east: 27, north: 45.3 } });
+        world.store.setOffline(true);
+
+        const saving = store.intents.saveSection();
+        await settle();
+        world.store.fail(FIRESTORE_PATHS.pois(CITY), { kind: 'denied', code: 'permission-denied' });
+        world.store.setOffline(false);
+
+        expect(await saving).toEqual({ ok: false, reason: 'denied' });
+        expect(world.store.writes).toEqual([]);
+    });
+});
+
 describe('deleting a category', () => {
     it('happyPath_aCategoryInUseMovesItsPlacesFirst', async () => {
         const { store, world } = open(['categories', 'cladiri']);
@@ -411,6 +442,42 @@ describe('deleting a category', () => {
         expect(world.store.docs.get(FIRESTORE_PATHS.poi(CITY, 'l1'))).toMatchObject({ category: 'biserici' });
         expect(world.store.docs.has(CATEGORY_PATH('cladiri'))).toBe(false);
         expect(world.notices.at(-1)?.key).toBe('adminContent.settings.categoryDeleted');
+    });
+
+    it('badPath_aCategoryWhosePlacesCannotBeReadIsNotDeleted @S-A33-BAD-CATEGORY-UNREAD', async () => {
+        const { store, world } = open(['categories', 'cladiri']);
+        world.store.docs.set(FIRESTORE_PATHS.poi(CITY, 'l1'), poiDoc(44.4, 26.1, 'Loc', 'cladiri'));
+        await store.intents.askDeleteCategory();
+        store.intents.setDeleteTarget('biserici');
+        world.store.setOffline(true);
+
+        const confirming = store.intents.confirmDeleteCategory();
+        await settle();
+        world.clock.advance(READ_WAIT_MS);
+
+        expect(await confirming).toBe(false);
+        expect(world.store.writes).toEqual([]);
+        expect(world.store.docs.has(CATEGORY_PATH('cladiri'))).toBe(true);
+        expect(world.store.docs.get(FIRESTORE_PATHS.poi(CITY, 'l1'))).toMatchObject({ category: 'cladiri' });
+        expect(store.state.categoryDeletion).toMatchObject({ phase: 'confirm', target: 'biserici' });
+        expect(world.notices.at(-1)?.key).toBe('adminContent.settings.refused.offline');
+    });
+
+    it('badPath_aCategoryWhosePlacesAreRefusedSaysDeniedAndAsksWhoThisIs @S-A33-BAD-CATEGORY-UNREAD', async () => {
+        const { store, world } = open(['categories', 'cladiri']);
+        world.store.docs.set(FIRESTORE_PATHS.poi(CITY, 'l1'), poiDoc(44.4, 26.1, 'Loc', 'cladiri'));
+        await store.intents.askDeleteCategory();
+        store.intents.setDeleteTarget('biserici');
+        world.store.setOffline(true);
+
+        const confirming = store.intents.confirmDeleteCategory();
+        await settle();
+        world.store.fail(FIRESTORE_PATHS.pois(CITY), { kind: 'denied', code: 'permission-denied' });
+
+        expect(await confirming).toBe(false);
+        expect(world.store.docs.has(CATEGORY_PATH('cladiri'))).toBe(true);
+        expect(world.denials.count).toBe(1);
+        expect(world.notices.at(-1)?.key).toBe('adminContent.settings.refused.denied');
     });
 
     it('badPath_cancelAndARefusedBatchKeepTheCategory', async () => {
@@ -502,42 +569,6 @@ describe('the overlays section', () => {
 });
 
 describe('the helpers', () => {
-    it('happyPath_readOnceTakesTheFirstAnswerAndLeaves', async () => {
-        const { world } = open([]);
-        const page = await readOnce(
-            world.services.store,
-            FIRESTORE_PATHS.layers(CITY),
-            { safeParse: () => ({ success: true, data: {} }) } as never,
-            {},
-        );
-        expect(page?.docs).toHaveLength(1);
-        world.store.fail(FIRESTORE_PATHS.pois(CITY), { kind: 'failed', code: 'x' });
-        await settle();
-    });
-
-    it('badPath_aFailedReadIsNull', async () => {
-        const world = contentWorld();
-        const pending = readOnce(
-            {
-                ...world.services.store,
-                watchQuery: (
-                    _c: string,
-                    _s: unknown,
-                    _q: unknown,
-                    _l: unknown,
-                    failed: (failure: { kind: 'failed'; code: string }) => void,
-                ) => {
-                    failed({ kind: 'failed', code: 'x' });
-                    return () => undefined;
-                },
-            } as never,
-            'x',
-            {} as never,
-            {},
-        );
-        expect(await pending).toBeNull();
-    });
-
     it('happyPath_reportSaysSavedOrWhyAndNothingForNothing', () => {
         const world = contentWorld();
         reportOutcome(world.services, null);
@@ -546,9 +577,7 @@ describe('the helpers', () => {
         expect(world.notices.map((notice) => notice.key)).toEqual(['adminContent.settings.saved', 'adminContent.settings.refused.gone']);
         expect(world.denials.count).toBe(0);
     });
-});
 
-describe('more edges', () => {
     it('badPath_aCategoryConflictIsResolvedAndANewCategorySavesOnce', async () => {
         const { store, world } = open(['categories', 'cladiri']);
         store.intents.setCategoryOpacity(30);
@@ -586,27 +615,6 @@ describe('more edges', () => {
         const world = contentWorld();
         reportOutcome(world.services, { ok: false, reason: 'denied' });
         expect(world.denials.count).toBe(1);
-    });
-
-    it('happyPath_readOnceListensUntilItsFirstAnswer', async () => {
-        const world = contentWorld();
-        const answers: ((page: unknown) => void)[] = [];
-        let stopped = 0;
-        const store = {
-            ...world.services.store,
-            watchQuery: (_c: string, _s: unknown, _q: unknown, listener: (page: unknown) => void) => {
-                answers.push(listener);
-                return () => {
-                    stopped += 1;
-                };
-            },
-        };
-        const pending = readOnce(store as never, 'x', {} as never, {});
-        answers[0]?.({ docs: [] });
-        answers[0]?.({ docs: [1] });
-
-        expect(await pending).toEqual({ docs: [] });
-        expect(stopped).toBe(1);
     });
 
     it('badPath_aRefusedOverlaysBatchKeepsTheEdits', async () => {

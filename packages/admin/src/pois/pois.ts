@@ -9,11 +9,9 @@ import {
     cityDocSchema,
     FIRESTORE_PATHS,
     isId,
-    photoDocSchema,
     poiCategoryDocSchema,
     poiDocSchema,
     type CityDoc,
-    type PhotoDoc,
     type PoiCategoryDoc,
     type PoiDoc,
 } from '@hcm/shared';
@@ -30,20 +28,20 @@ import type { PoiContext } from './draft.js';
 import { placeAssists, pointDrawn } from './assists.js';
 import { PlaceEditor, type PlaceEditorState } from './editor.js';
 import { Importer } from './importer.js';
-import { PoisMap, UNCATEGORISED_COLOR, type EditTarget } from './map-session.js';
+import { PlacePhotos } from './place-photos.js';
+import { mapIntents, PoisMap, UNCATEGORISED_COLOR, type EditTarget } from './map-session.js';
 import { categoryItemOf, cityFrameOf, drawLimitsOf, poiItemOf, type CategoryItem, type PoiItem, type PoiValue } from './model.js';
 import {
+    everyPlace,
     exportFile,
     importOverlays,
     lacksCategory,
     newPlaceCategory,
     newPlaceValue,
     notFound,
-    photoChoiceOf,
     placeOverlays,
     poisQuery,
     shownPlaces,
-    type PhotoChoice,
     type PoisFilter,
 } from './places.js';
 import {
@@ -63,7 +61,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
     readonly #list: LiveList<PoiDoc, PoiItem>;
     readonly #categories: LiveList<PoiCategoryDoc, CategoryItem>;
     readonly #city: LiveDoc<CityDoc>;
-    readonly #photos: LiveList<PhotoDoc, PhotoChoice>;
+    readonly #photos: PlacePhotos;
     readonly #map: PoisMap;
     readonly #importer: Importer;
     readonly #actions: PlaceActions;
@@ -94,8 +92,8 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
                 this.#categoryArrived();
             },
         );
-        this.#photos = this.#liveList(FIRESTORE_PATHS.photos(services.cityId), photoDocSchema, photoChoiceOf, (photos) => {
-            this.#cell.update({ photos });
+        this.#photos = new PlacePhotos({ ...this.#liveParts(), cityId: services.cityId }, (patch) => {
+            this.#cell.update(patch);
         });
         this.#city = new LiveDoc({
             ...this.#liveParts(),
@@ -107,14 +105,15 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         this.#map = this.#newMap();
         this.#importer = new Importer({
             ...{ store: services.store, cityId: services.cityId },
-            context: () => ({ ...this.#context(), existing: new Map(this.#cell.state.list.items.map((item) => [item.id, item.value])) }),
+            context: () => this.#context(),
+            places: () => everyPlace(services),
             changed: (importing) => {
                 this.#cell.update({ importing });
                 this.#placesChanged();
             },
         });
-        this.#actions = new PlaceActions(services, (busy) => {
-            this.#cell.update({ busy });
+        this.#actions = new PlaceActions(services, (patch) => {
+            this.#cell.update(patch);
         });
         this.#assists = placeAssists({
             ...{ services, value: () => this.#cell.state.editor?.draft?.value ?? null, edit: (patch) => this.#editor?.edit(patch) },
@@ -233,6 +232,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         }
         this.#editor?.close();
         this.#assists.reset();
+        this.#photos.stopLinked();
         this.#editor = id !== null && isId(id) ? this.#editorFor(id) : null;
         this.#categoryArrived();
         this.#cell.update({ editor: this.#editorState(id) });
@@ -273,9 +273,10 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         });
     }
 
-    /** The map's drawing tools follow the open place. */
+    /** The map's drawing tools and the linked photos' titles follow the open place. */
     #targetChanged(): void {
         this.#map.edit(this.#target());
+        this.#photos.showLinked(this.#cell.state.editor?.draft?.value.photoIds ?? []);
     }
 
     #target(): EditTarget | null {
@@ -359,10 +360,12 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         this.#cell.update({ selection: selection.includes(id) ? selection.filter((selected) => selected !== id) : [...selection, id] });
     }
 
-    #export(onlySelection: boolean): SavedFile {
-        const { list, categories, selection } = this.#cell.state;
-        const chosen = onlySelection ? list.items.filter((item) => selection.includes(item.id)) : list.items;
-        return exportFile(this.#services.cityId, this.#services.clock.now(), chosen, categories.items);
+    async #export(onlySelection: boolean): Promise<SavedFile | null> {
+        const { list, selection } = this.#cell.state;
+        const chosen = onlySelection ? list.items.filter((item) => selection.includes(item.id)) : await this.#actions.everyPlace();
+        return chosen === null
+            ? null
+            : exportFile(this.#services.cityId, this.#services.clock.now(), chosen, this.#cell.state.categories.items);
     }
 
     /** Adds a vertex at the map's centre (the city's starting view's without a map: the keyboard path still works). */
@@ -391,6 +394,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
                 this.#list.retry();
                 this.#categories.retry();
                 this.#editor?.retry();
+                this.#photos.retry();
             },
             add: (shape) => this.#add(shape),
             toggleSelected: (id) => {
@@ -404,9 +408,10 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
             },
             bulk: (action) => this.#bulk(action),
             loadPhotos: () => {
-                if (!this.#photos.active) {
-                    this.#photos.show({ orderBy: [['updatedAt', 'desc']] });
-                }
+                this.#photos.load();
+            },
+            morePhotos: () => {
+                this.#photos.more();
             },
         };
     }
@@ -442,15 +447,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
                 this.#importer.close();
             },
             exportPlaces: (only) => this.#export(only),
-            attachMap: (container) => {
-                this.#map.attach(container);
-            },
-            detachMap: () => {
-                this.#map.detach();
-            },
-            zoomBy: (delta) => {
-                this.#map.zoomBy(delta);
-            },
+            ...mapIntents(this.#map),
         };
     }
 }

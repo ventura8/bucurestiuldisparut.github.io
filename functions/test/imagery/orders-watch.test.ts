@@ -4,11 +4,23 @@
  * admin who ordered it) and its end noticed; reminders on days 7 and 12 and the give-up on day 90, each told once; USGS
  * failures retried sooner; and the import alone waiting while the budget guard is red or today's jobs are used up.
  */
-import { FIRESTORE_PATHS, JOBS_PER_DAY, notificationEventDocSchema, setupStatusDocSchema } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    JOBS_PER_DAY,
+    acquisitionState,
+    notificationEventDocSchema,
+    setupStatusDocSchema,
+    type JobDoc,
+    type LayerVersionDoc,
+} from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
+import { rejectFunction } from '../../src/imagery/approve.js';
+import { cancelJob } from '../../src/imagery/cancel.js';
+import { endWork } from '../../src/imagery/end.js';
 import { runImageryTick } from '../../src/imagery/tick.js';
 import { UpstreamError } from '../../src/ports/errors.js';
+import { adminCall } from '../publish/fakes.js';
 import {
     CORONA_EE_ID,
     ORDERED_BY,
@@ -39,11 +51,123 @@ import {
 
 const JOB_ID = (iso: string, entityId = PAID) => `im-${Date.parse(iso).toString(36)}-${entityId}`;
 
+/** A `usgs-import` job of the bought scene, waiting. */
+function importJob(overrides: Partial<JobDoc> = {}): JobDoc {
+    return {
+        type: 'usgs-import',
+        status: 'queued',
+        params: { entityId: PAID, dataset: 'corona2', sensor: 'KH-4A' },
+        createdBy: ORDERED_BY,
+        createdAt: stampAfter(0),
+        layerId: 'corona-1968',
+        versionId: 'im-1',
+        updatedBy: ORDERED_BY,
+        updatedAt: stampAfter(0),
+        ...overrides,
+    };
+}
+
+/** A version made from the bought scene. */
+function usgsSource(): Pick<LayerVersionDoc, 'source'> {
+    return { source: { kind: 'usgs', entityId: PAID, dataset: 'corona2', sensor: 'KH-4A', acquisitionDate: '1968-12-11' } };
+}
+
 /** The tick at `iso`. */
 async function tickAt(world: ImageryWorld, iso: string): Promise<string[]> {
     world.deps.clock.set(iso);
     return runImageryTick(world.deps);
 }
+
+describe('an import that ended for good', () => {
+    it('happyPath_aCancelledImportOffersImportAgain_andTheWatchDoesNotStartIt @S-A13-HAPPY-ORDER-FREED', async () => {
+        const world = await readyWorld();
+        await seedPaid(world, PAID, {
+            downloadAvailable: true,
+            status: 'imported',
+            layerId: 'corona-1968',
+            order: order({ state: 'importing', importJobId: 'im-1', deliveredAt: stampAfter(0) }),
+        });
+        await seedJob(world, 'im-1', importJob());
+        await seedVersion(world, 'im-1', renderedVersion({ layerId: 'corona-1968', jobId: 'im-1', state: 'processing' }));
+
+        expect(await cancelJob(world.deps, CITY, 'im-1')).toBe('cancelled');
+
+        const scene = await readScene(world, PAID);
+        expect(scene).toMatchObject({ status: 'candidate', downloadAvailable: true });
+        expect(scene?.layerId).toBeUndefined();
+        expect(scene?.order).toBeUndefined();
+        expect(scene === undefined ? undefined : acquisitionState(scene)).toBe('available');
+
+        expect(await tickAt(world, after(1))).toEqual([]);
+
+        expect((await readScene(world, PAID))?.status).toBe('candidate');
+        expect(world.deps.documents.paths(`cities/${CITY}/jobs/`)).toEqual([`cities/${CITY}/jobs/im-1`]);
+    });
+
+    it('happyPath_aDismissedImportFreesItsOrder_withNoImportedAnnounced @S-A13-HAPPY-ORDER-FREED', async () => {
+        const world = await readyWorld();
+        await seedPaid(world, PAID, {
+            downloadAvailable: true,
+            status: 'imported',
+            layerId: 'corona-1968',
+            order: order({ state: 'importing', importJobId: 'im-1' }),
+        });
+        await seedJob(world, 'im-1', importJob({ status: 'failed' }));
+        await seedVersion(
+            world,
+            'im-1',
+            renderedVersion({
+                ...usgsSource(),
+                layerId: 'corona-1968',
+                jobId: 'im-1',
+                state: 'failed',
+                error: { code: 'apiError.imagery.cityNotFound' },
+            }),
+        );
+
+        await rejectFunction(() => world.deps).run(adminCall({ cityId: CITY, versionId: 'im-1' }));
+        expect(await tickAt(world, after(1))).toEqual([]);
+
+        const scene = await readScene(world, PAID);
+        expect(scene).toMatchObject({ status: 'candidate' });
+        expect(scene?.order).toBeUndefined();
+        expect((await events(world)).has(`order.imported~${CITY}~${PAID}`)).toBe(false);
+    });
+
+    it('badPath_aRejectedVersionIsNotAnnouncedImported_whileAnotherVersionKeepsTheScene @S-A13-HAPPY-ORDER-FREED', async () => {
+        const world = await readyWorld();
+        await seedPaid(world, PAID, {
+            status: 'imported',
+            layerId: 'corona-1968',
+            order: order({ state: 'importing', importJobId: 'im-1' }),
+        });
+        await seedVersion(world, 'im-1', renderedVersion({ layerId: 'corona-1968', jobId: 'im-1', state: 'rejected' }));
+        await seedVersion(world, 'rg-1', renderedVersion({ layerId: 'corona-1968', jobId: 'rg-1', state: 'processing' }));
+
+        expect(await tickAt(world, NOW)).toEqual([]);
+
+        expect((await readScene(world, PAID))?.order?.state).toBe('importing');
+        expect((await events(world)).has(`order.imported~${CITY}~${PAID}`)).toBe(false);
+    });
+
+    it('badPath_aServerSideFailureKeepsTheSceneAndItsOrder_aRetryMayYetMakeTheLayer', async () => {
+        const world = await readyWorld();
+        await seedPaid(world, PAID, {
+            downloadAvailable: true,
+            status: 'imported',
+            layerId: 'corona-1968',
+            order: order({ state: 'importing', importJobId: 'im-1' }),
+        });
+        await seedJob(world, 'im-1', importJob());
+        await seedVersion(world, 'im-1', renderedVersion({ layerId: 'corona-1968', jobId: 'im-1', state: 'processing' }));
+
+        const error = { code: 'apiError.internal', message: 'x' } as const;
+        await endWork(world.deps, CITY, 'im-1', { status: 'failed', versionState: 'failed', by: 'system:imagery', error });
+
+        expect((await readVersion(world, 'im-1'))?.state).toBe('failed');
+        expect(await readScene(world, PAID)).toMatchObject({ status: 'imported', layerId: 'corona-1968', order: { state: 'importing' } });
+    });
+});
 
 describe('asking USGS', () => {
     it('happyPath_dueOrdersAreAskedOnceADayInOneSessionPerDataset @S-A13-HAPPY-WATCH', async () => {

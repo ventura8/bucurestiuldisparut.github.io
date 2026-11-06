@@ -87,7 +87,15 @@ export interface PlaceEditorPort {
 }
 
 export type ImportRefusalReasonPort =
-    'unsupported-type' | 'altitude' | 'open-ring' | 'too-many-positions' | 'outside' | 'bad-shape' | 'unknown-category' | 'invalid';
+    | 'unsupported-type'
+    | 'altitude'
+    | 'open-ring'
+    | 'too-many-positions'
+    | 'outside'
+    | 'bad-shape'
+    | 'unknown-category'
+    | 'invalid'
+    | 'unreadable-place';
 
 interface ImportPlanPort {
     readonly created: readonly unknown[];
@@ -105,7 +113,7 @@ interface ImportPlanPort {
 export interface ImportStatePort {
     readonly status: 'reading' | 'refused' | 'preview' | 'writing' | 'done' | 'failed';
     readonly fileName: string;
-    readonly refusal: 'too-big' | 'not-geojson' | 'empty' | 'too-many' | 'unreadable' | null;
+    readonly refusal: 'too-big' | 'not-geojson' | 'empty' | 'too-many' | 'unreadable' | 'places-unread' | null;
     readonly plan: ImportPlanPort | null;
     readonly fallbackCategory: string | null;
     readonly written: number;
@@ -135,6 +143,10 @@ export interface PoisViewState {
     readonly map: MapStatusPort;
     readonly clicked: { readonly id: string; readonly seq: number } | null;
     readonly photos: ListStatePort<PhotoChoicePort> | null;
+    /** The open place's linked photos, each read by its id (the editor names them by title). */
+    readonly linkedPhotos: readonly PhotoChoicePort[];
+    /** Export all is reading the city's places. */
+    readonly exporting: boolean;
     readonly importing: ImportStatePort | null;
     readonly busy: boolean;
     /** M4 (CR-M4-4): the open place's title suggestions and translation drafts. */
@@ -185,11 +197,13 @@ export interface PoisIntentsPort extends AssistActionsPort {
     clearSelection(): void;
     bulk(action: BulkActionPort): Promise<void>;
     loadPhotos(): void;
+    morePhotos(): void;
     chooseImport(file: ImportFilePort): Promise<void>;
     setImportCategory(category: string): void;
     commitImport(): Promise<void>;
     closeImport(): void;
-    exportPlaces(onlySelection: boolean): { readonly name: string; readonly type: string; readonly text: string };
+    /** Every place of the city, or the selection, as a file; null (the area said why) when they could not be read. */
+    exportPlaces(onlySelection: boolean): Promise<{ readonly name: string; readonly type: string; readonly text: string } | null>;
     attachMap(container: HTMLElement): void;
     detachMap(): void;
     zoomBy(delta: number): void;

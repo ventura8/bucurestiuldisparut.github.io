@@ -617,3 +617,14 @@ for it** (`LocalIntents.find`, phase `looking`, the mark with no file); the work
 `<work>/.hcm-worker-<city>.id` and forgotten with the session (§1.2's "new per process" no longer holds); a Retry
 (`imagery.retry`) keeps only the first finished of `locate`, `inspect`, `extract`, `fetch` and what came before it, so a
 pipeline updated since the failure redoes the rest, on the computer or in Cloud Run alike.
+
+## Addendum of 2026-11-06: the work folder
+
+The worker's idle pass sweeps its work folder (`LocalObjectStore.sweep`, `worker/local_store.py`): a job's scratch and a scene's delivery
+go whole once nothing in them was written for 14 and 7 days, never the scratch of the job just claimed. A new download session is refused
+when the disk could not hold the delivery and its unpacked segments, before its first byte (`_require_room`, 2.6 times the delivery); a
+retry after the delivery's week with its segments left downloads nothing (`runner.py` `_consumed`). **Known limit, decided for now:** a
+dismissal or a rejection deletes only the bucket's `work/` (`functions/src/imagery/work-files.ts`); a job run here keeps its segments, about
+13 GB, until the sweep's 14 days, as the server cannot reach this folder and tells the worker of no ended job. After a reload the panel
+starts `looking` for the computer it remembers, not `downloaded`: nothing says the file was just saved, and the first answer says the rest.
+An id file that holds no valid id is not read: the worker takes a new one at its next start.

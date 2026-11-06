@@ -16,7 +16,9 @@ How a run ends:
 | another live owner holds the lease, or the job is not runnable | untouched | 0 |
 
 Local scratch files live in a temporary folder removed whatever the ending. A step whose recorded output is gone runs
-again, except `fetch` once `locate` is finished (`locate` deletes the delivery: docs/research/M7-local-worker.md §5).
+again, except what only feeds `locate` once `locate` is finished: `fetch` (`locate` deletes the delivery:
+docs/research/M7-local-worker.md §5), `extract` and `stitch` (their `work/` files go with the job's scratch); and `fetch` once
+`extract` is finished: the segments outlive the delivery by a week, and nothing else reads it.
 
 An import runs in two phases (finding 56 of 2026-11-01): a run on the small `fetch` job does the download phase
 (`DOWNLOAD_STEPS`, network-bound) and hands the job back, queued, for its processing on `std` (or `xl`); a run on a
@@ -81,10 +83,15 @@ class JobStep(Protocol):
 
 # The signals that stop a run at its next checkpoint: Cloud Run's SIGTERM, and Ctrl-C on a local worker (M7).
 STOP_SIGNALS: Final = (signal.SIGTERM, signal.SIGINT)
-# `fetch`'s delivery is deleted by `locate` once the city crop exists (docs/research/M7-local-worker.md §5): a resume
-# after `locate` needs it no more, so a gone delivery is downloaded again only while `locate` is not finished.
+# `fetch`'s delivery is deleted by `locate` once the city crop exists (docs/research/M7-local-worker.md §5), and `extract`'s
+# segments and `stitch`'s frame feed `locate` alone, in a `work/` that `register`, the bucket's lifecycle or the worker's
+# sweep empties: a resume after `locate` needs none of them, so they are made again only while `locate` is not finished.
+LOCATE_INPUTS: Final = ("fetch", "extract", "stitch")
+LOCATE_STEP: Final = "locate"
+# ... and `extract` alone reads the delivery: with its segments still there, a retry after the delivery's seven days has nothing to
+# download (8.7 GB that nothing reads, and a disk check that counts the segments' 13 GB against it).
 DELIVERY_STEP: Final = "fetch"
-DELIVERY_CONSUMER: Final = "locate"
+EXTRACT_STEP: Final = "extract"
 
 
 def _chained(before: object) -> Callable[[int, FrameType | None], object] | None:
@@ -152,6 +159,7 @@ class JobRunner:
         try:
             ctx = self._context(Job.of(self._config.job_id, record), flags, scratch)
         except DocumentError as error:
+            self._fail_version_of(record, StepFailedError(Errors.INVALID_REQUEST, str(error)))
             return self._fail_job(None, StepFailedError(Errors.INVALID_REQUEST, str(error)))
         return self._guarded(ctx, only)
 
@@ -214,8 +222,10 @@ class JobRunner:
         return record.gcs_path is None or (info is not None and record.generation in (None, info.generation))
 
     def _consumed(self, ctx: JobContext, name: str) -> bool:
-        """True for `fetch` once `locate` is finished: its delivery was deleted and nothing after `locate` reads it."""
-        return name == DELIVERY_STEP and self._finished(ctx.job.step(DELIVERY_CONSUMER))
+        """True for what feeds `locate` once `locate` is finished, and for the delivery once its segments are out: nothing after
+        them reads those outputs, maybe gone by now."""
+        finished_with = (LOCATE_STEP, EXTRACT_STEP) if name == DELIVERY_STEP else (LOCATE_STEP,)
+        return name in LOCATE_INPUTS and any(self._finished(ctx.job.step(step)) for step in finished_with)
 
     def _step(self, ctx: JobContext, name: str, base: float, weight: float) -> StepResult:
         self._refresh(ctx)
@@ -290,6 +300,12 @@ class JobRunner:
         _delete_work(ctx)
         self._log.info("the job was cancelled; its scratch files are deleted", ctx.step or None)
         return RunOutcome.CANCELLED
+
+    def _fail_version_of(self, record: Record, error: StepFailedError) -> None:
+        """An invalid job's version, when it names one that exists: failed with it, so a Retry or a Dismiss finds it failed."""
+        path = f"cities/{self._config.city_id}/layerVersions/{record.get('versionId')}"
+        if isinstance(record.get("versionId"), str) and self._services.store.get(path) is not None:
+            self._services.store.update(path, {"state": "failed", "error": _version_error(error), **stamp(self._now())})
 
     def _fail_job(self, ctx: JobContext | None, error: StepFailedError) -> RunOutcome:
         now = self._now()

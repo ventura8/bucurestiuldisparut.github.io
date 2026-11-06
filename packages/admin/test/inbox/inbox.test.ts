@@ -6,6 +6,8 @@
 import { DEFAULT_PUSH_KINDS, FIRESTORE_PATHS, type NotificationKind } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
+import { READ_WAIT_MS } from '../../src/content/read-once.js';
+import { MAX_BATCH_WRITES } from '../../src/content/services.js';
 import { INBOX_MODULE, INBOX_PAGE_SIZE, kindsWith, settingsOf } from '../../src/inbox/inbox.js';
 import { rememberPushDevice, storedPushDevice } from '../../src/inbox/push-device.js';
 import type { PushPermission, PushRegistrar } from '../../src/inbox/push.js';
@@ -154,12 +156,79 @@ describe('marking read', () => {
             {
                 kind: 'batch',
                 writes: [
-                    { kind: 'update', path: itemPath(3), fields: { read: true } },
                     { kind: 'update', path: itemPath(1), fields: { read: true } },
+                    { kind: 'update', path: itemPath(3), fields: { read: true } },
                 ],
             },
         ]);
         expect(store.state.marking).toBe(false);
+    });
+
+    it('happyPath_markAllAsReadReachesEveryUnreadItemInBatches @S-A46-HAPPY-MARK-ALL-READ', async () => {
+        const world = contentWorld();
+        const total = MAX_BATCH_WRITES + INBOX_PAGE_SIZE + 1;
+        for (let id = 1; id <= total; id += 1) {
+            world.store.put(itemPath(id), item(id % 15));
+        }
+        const store = inbox(world);
+        expect(store.state.list.items).toHaveLength(INBOX_PAGE_SIZE);
+
+        const marking = store.intents.markAllRead();
+        expect(store.state.marking).toBe(true);
+        await marking;
+
+        expect(world.store.writes.map((write) => (write.kind === 'batch' ? write.writes.length : 0))).toEqual([
+            MAX_BATCH_WRITES,
+            INBOX_PAGE_SIZE + 1,
+        ]);
+        expect([...world.store.docs.values()].filter((doc) => doc['read'] === false)).toEqual([]);
+        expect(store.state.marking).toBe(false);
+    });
+
+    it('badPath_markAllAsReadThatCannotReadTheUnreadSaysSoAndWritesNothing @S-A46-BAD-MARK-ALL-OFFLINE', async () => {
+        const world = contentWorld();
+        world.store.put(itemPath(1), item(1));
+        const store = inbox(world);
+        world.store.setOffline(true);
+
+        const marking = store.intents.markAllRead();
+        await settled();
+        world.clock.advance(READ_WAIT_MS);
+        await marking;
+
+        expect(world.store.writes).toEqual([]);
+        expect(world.notices.at(-1)?.key).toBe('adminContent.common.offline');
+        expect(store.state.marking).toBe(false);
+    });
+
+    it('badPath_markAllAsReadWhoseReadIsRefusedSaysDeniedNotOffline @S-A46-BAD-MARK-ALL-OFFLINE', async () => {
+        const world = contentWorld();
+        world.store.put(itemPath(1), item(1));
+        const store = inbox(world);
+        world.store.setOffline(true);
+
+        const marking = store.intents.markAllRead();
+        await settled();
+        world.store.fail(FIRESTORE_PATHS.inbox(UID), { kind: 'denied', code: 'permission-denied' });
+        await marking;
+
+        expect(world.store.writes).toEqual([]);
+        expect(world.denials.count).toBeGreaterThan(0);
+        expect(world.notices.at(-1)?.key).toBe('adminContent.common.denied');
+    });
+
+    it('badPath_aRefusedBatchStopsMarkAllAsRead', async () => {
+        const world = contentWorld();
+        for (let id = 1; id <= MAX_BATCH_WRITES + 1; id += 1) {
+            world.store.put(itemPath(id), item(id % 15));
+        }
+        const store = inbox(world);
+        world.store.outcomes.push({ ok: false, reason: 'denied' });
+
+        await store.intents.markAllRead();
+
+        expect(world.store.writes).toHaveLength(1);
+        expect(world.denials.count).toBe(1);
     });
 
     it.each([

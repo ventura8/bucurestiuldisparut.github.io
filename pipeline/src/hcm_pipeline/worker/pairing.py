@@ -10,7 +10,11 @@ unless-stopped`) resumes the session without a new code, and a new command (a ne
 pairing (`replaces`). Disconnect this computer in the admin revokes the pairing: the next call says so and the kept
 session is deleted. A transient failure (the network not up yet after a reboot) is tried again every `RETRY_SECONDS`.
 Finding 72 (auto-pair, M7 §2.7): the code may also come later, from the admin itself (`POST /pair`, `offer`), to a worker
-the starter file started with no code at all.
+the starter file started with no code at all. A new pairing `worker.hello` refuses for this computer's worker id (revoked
+while the computer was off, or another account's) would be refused for every later code too: the id is forgotten, the new
+pairing kept, and the process ends (`Signer.restart`), so the supervisor or Docker's restart policy starts it as a new
+worker, with no new code. An id file or a session file the work folder cannot hold (read-only, damaged) is only logged:
+the id and the session then live in memory.
 """
 
 import contextlib
@@ -27,7 +31,7 @@ import httpx
 
 from hcm_pipeline.contract import Errors
 from hcm_pipeline.log import get_logger
-from hcm_pipeline.worker.api import PAIR, REVOKED, WorkerApi, WorkerApiError
+from hcm_pipeline.worker.api import PAIR, REFUSED, REVOKED, WorkerApi, WorkerApiError
 from hcm_pipeline.worker.args import Endpoints
 from hcm_pipeline.worker.session import RefreshUnavailableError, Session, SessionEndedError, Tokens
 from hcm_pipeline.worker.webconfig import WebConfig, WebConfigError
@@ -42,6 +46,8 @@ SIGN_IN_REFUSED: Final = "apiError.unauthenticated"
 # What a failed attempt may raise and is tried again later: the server, Google's token services or the web configuration
 # out of reach.
 TRANSIENT: Final = (RefreshUnavailableError, WebConfigError)
+# What `worker.hello` answers about the worker id itself, whichever pairing asks: disconnected, or another account's.
+ID_REFUSALS: Final = (REVOKED, REFUSED)
 
 
 def code_hash(code: str) -> str:
@@ -84,30 +90,50 @@ class SessionFile:
             return None
 
     def save(self, kept: Kept) -> None:
-        """Written to a new file of mode 600, then moved over the old one (never readable by others, never half written)."""
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        """Written to a new file of mode 600, then moved over the old one (never readable by others, never half written).
+        A work folder that refuses it costs the next restart a new code, not this run."""
         partial = self.path.with_suffix(".partial")
-        descriptor = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, FILE_MODE)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-            json.dump(kept.record(), stream)
-        os.chmod(partial, FILE_MODE)
-        os.replace(partial, self.path)
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            descriptor = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, FILE_MODE)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                json.dump(kept.record(), stream)
+            os.chmod(partial, FILE_MODE)
+            os.replace(partial, self.path)
+        except OSError as error:
+            LOG.warning("the session cannot be kept in the work folder (%s): the next start needs a new code", type(error).__name__)
+
+    def _kept_id(self) -> str | None:
+        """The id file's id; None without a file, with a damaged one, or with one that cannot be read."""
+        try:
+            kept = self.id_path.read_text("utf-8").strip()
+        except OSError, ValueError:
+            return None
+        return kept if WORKER_ID.fullmatch(kept) else None
 
     def worker_id(self, new: Callable[[], str]) -> str:
         """This computer's worker id, kept beside the session (finding 77 of 2026-11-03: a new id per process left one more
-        worker document at every restart); forgotten with the session, so a disconnected computer starts as a new worker."""
-        with contextlib.suppress(OSError):
-            kept = self.id_path.read_text("utf-8").strip()
-            if WORKER_ID.fullmatch(kept):
-                return kept
+        worker document at every restart); forgotten with the session, so a disconnected computer starts as a new worker. A
+        work folder that cannot hold it only logs: the id then lives as long as the process."""
+        kept = self._kept_id()
+        if kept is not None:
+            return kept
         worker_id = new()
-        self.id_path.parent.mkdir(parents=True, exist_ok=True)
-        self.id_path.write_text(worker_id, "utf-8")
+        try:
+            self.id_path.parent.mkdir(parents=True, exist_ok=True)
+            self.id_path.write_text(worker_id, "utf-8")
+        except OSError as error:
+            LOG.warning("the worker id cannot be kept in the work folder (%s): a restart makes a new one", type(error).__name__)
         return worker_id
+
+    def forget_id(self) -> None:
+        """The id alone forgotten: the next start is a new worker, on the session kept beside it."""
+        with contextlib.suppress(OSError):
+            self.id_path.unlink()
 
     def clear(self) -> None:
         for path in (self.path, self.id_path):
-            with contextlib.suppress(FileNotFoundError):
+            with contextlib.suppress(OSError):
                 path.unlink()
 
 
@@ -169,11 +195,13 @@ class SignIn(Protocol):
 
 @dataclass(frozen=True)
 class Signer:
-    """Who the connector signs in through: the session, the page's sign-in (`worker.hello` first) and the page's error."""
+    """Who the connector signs in through: the session, the page's sign-in (`worker.hello` first) and the page's error; and
+    what ends this process, for a supervisor or a restart policy to start it again (`WorkerLoop.stop`)."""
 
     session: Session
     actions: SignIn
     failed: Callable[[str], None]
+    restart: Callable[[], None] = lambda: None
 
 
 class Connector:
@@ -181,6 +209,7 @@ class Connector:
 
     def __init__(self, pairing: Pairing, file: SessionFile, signer: Signer, code: str | None, clock: Callable[[], float]) -> None:
         self._failed = signer.failed
+        self._restart = signer.restart
         self._pairing = pairing
         self._file = file
         self._session = signer.session
@@ -222,11 +251,20 @@ class Connector:
             paired = self._pairing.exchange(code, kept.pair_id if kept else None)
         except WorkerApiError as error:
             return self._refused(error.code, kept)
-        keep = self._keeper(paired.pair_id, code_hash(code))
-        refused = self._actions.sign_in(paired.id_token, paired.refresh_token, keep)
+        hashed = code_hash(code)
+        refused = self._actions.sign_in(paired.id_token, paired.refresh_token, self._keeper(paired.pair_id, hashed))
         if refused is None:
             LOG.info("paired with the admin's code: this computer works for the city now, no sign-in needed")
+        elif refused in ID_REFUSALS:
+            self._start_as_new_worker(Kept(paired.refresh_token, paired.pair_id, hashed), refused)
         return self._settle(refused)
+
+    def _start_as_new_worker(self, kept: Kept, refused: str) -> None:
+        """The pairing is good and the id is not: the id goes, the pairing stays (its code is used up), and the process ends."""
+        LOG.warning("this computer's worker id is refused (%s): it starts again as a new worker, on the new pairing", refused)
+        self._file.forget_id()
+        self._file.save(kept)
+        self._restart()
 
     def _refused(self, code: str, kept: Kept | None) -> bool:
         """A refused code: an unreachable server is tried again; else the kept session (if any) is the fallback."""

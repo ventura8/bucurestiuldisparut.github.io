@@ -16,6 +16,7 @@ import {
     photoRow,
     photosText,
     rememberPhotoChoices,
+    seedPhoto,
     seedPhotosCity,
     servePhotoImages,
     uploadItem,
@@ -268,5 +269,38 @@ test(
         await expect(suggestion).toBeVisible();
         await expect(suggestion.getByText(photosText(lang, 'adminContent.photos.suggestion.outside'))).toBeVisible();
         await expect(suggestion.getByRole('button', { name: photosText(lang, 'adminContent.photos.suggestion.apply') })).toHaveCount(0);
+    },
+);
+
+test(
+    'However many photos wait for their place, each keeps its mark until its own place is confirmed',
+    { tag: ['@S-A08-BAD-CHECK-PLACE-KEPT', '@S-A08-HAPPY-CHECK-PLACE-CONFIRMED'] },
+    async ({ page, lang, content }) => {
+        await servePhotoImages(page);
+        await seedPhotosCity(content, AT);
+        await seedPhoto(content, { id: 'oldest-mark', title: 'Strada Lipscani' }, AT);
+        await seedPhoto(content, { id: 'newest-mark', title: 'Piața Romană' }, AT);
+        // As a browser that uploaded hundreds of photos without a place left it, the oldest mark first (a set of the page's own).
+        const others = Array.from({ length: 600 }, (_unused, index) => `other-mark-${String(index)}`);
+        const marks = JSON.stringify(['oldest-mark', ...others, 'newest-mark']);
+        await page.addInitScript((stored) => {
+            if (localStorage.getItem('hcm:admin:photoCheckPlace') === null) {
+                localStorage.setItem('hcm:admin:photoCheckPlace', stored);
+            }
+        }, marks);
+        await page.goto(content.address(lang, 'photos', { map: false }));
+        const check = photosText(lang, 'adminContent.photos.chip.checkPlace');
+
+        await expect(photoRow(page, 'Strada Lipscani').getByText(check)).toBeVisible();
+        await expect(photoRow(page, 'Piața Romană').getByText(check)).toBeVisible();
+
+        // Confirming one lifts that mark alone, also after a reload.
+        await photoRow(page, 'Strada Lipscani')
+            .getByRole('button', { name: photosText(lang, 'adminContent.photos.confirmPlace') })
+            .click();
+        await expect(photoRow(page, 'Strada Lipscani').getByText(check)).toHaveCount(0);
+        await page.reload();
+        await expect(photoRow(page, 'Piața Romană').getByText(check)).toBeVisible();
+        await expect(photoRow(page, 'Strada Lipscani').getByText(check)).toHaveCount(0);
     },
 );

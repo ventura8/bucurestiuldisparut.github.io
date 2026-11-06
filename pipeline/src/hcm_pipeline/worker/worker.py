@@ -76,11 +76,13 @@ class Worker:
         policy = content_security_policy(args.project, emulators)
         server = LocalServer(actions, settings, (bind_host, args.port), policy, args.endpoints.hosting_origins)
         runtime = WorkerRuntime(args, api, worker_id, state, steps)
+        runtime.clock = clock
         pairing = Pairing(client, api, args.endpoints, web_config, args.city)
-        connector = Connector(pairing, session_file, Signer(session, actions, state.failed), args.pair, clock)
-        actions.accept_pairing(connector.offer)
         loop = WorkerLoop(session, api, state, runtime, ids)
+        connector = Connector(pairing, session_file, Signer(session, actions, state.failed, loop.stop), args.pair, clock)
+        actions.accept_pairing(connector.offer)
         loop.connect_with(connector)
+        loop.sweep = runtime.sweep
         loop.supervised = args.supervised
         return cls(session, api, state, actions, server, loop, runtime, client, worker_id, connector)
 

@@ -192,6 +192,74 @@ test(
 );
 
 test(
+    'A routed scene whose read fails says so, and Try again opens it',
+    { tag: ['@S-A11-BAD-ROUTED-SCENE-UNREAD', '@S-A11-HAPPY-ROUTED-SCENE-RETRY'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        for (const entityId of ALL_SCENES) {
+            await imagery.seedScene(entityId, FRESH_HARVEST);
+        }
+        // A document that fails its schema: its read stops with a failure, which is not "no such scene".
+        const [routed] = PAID_FRAMES;
+        await adminWorld.emulators.setDocument(`cities/${imagery.city}/usgsScenes/${routed}`, { broken: true });
+        await page.goto(adminPath(lang, `imagery/scene/${routed}`));
+
+        await expect(detail(page).getByRole('alert')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(detail(page).getByText(imageryText(lang, 'adminContent.imagery.sceneNotFound'))).toHaveCount(0);
+        await expectStateSound(page, adminVisit('imagery.scene-unread', lang));
+
+        await imagery.seedScene(routed, FRESH_HARVEST);
+        // A first answer can still be the browser's cached copy of the broken document, which fails the read again: as a
+        // person would, click again until the server's copy opens.
+        await expect(async () => {
+            await detail(page)
+                .getByRole('button', { name: imageryText(lang, 'adminContent.common.retry') })
+                .click({ timeout: 2_000 });
+            await expect(detail(page).locator(`[data-scene="${routed}"]`)).toBeVisible({ timeout: 2_000 });
+        }).toPass({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(detail(page).getByRole('alert')).toHaveCount(0);
+    },
+);
+
+test(
+    'Try again on the browse image of a scene only the address names reaches it',
+    { tag: '@S-A11-HAPPY-BROWSE-RETRY-ROUTED' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream, consoleErrors }) => {
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        for (const entityId of ALL_SCENES) {
+            await imagery.seedScene(entityId, FRESH_HARVEST);
+        }
+        // Not free: Free only keeps it off the list, so the page has it from its own read alone.
+        const routed = 'DS1035-1057DA023';
+        await imagery.seedScene(routed, FRESH_HARVEST, { downloadAvailable: false });
+        await upstream.fail('usgs-browse', 'unavailable', 'server');
+        await page.goto(adminPath(lang, `imagery/scene/${routed}`));
+        const unavailable = detail(page)
+            .getByRole('alert')
+            .filter({ hasText: errorText(lang, 'apiError.imagery.browseUnavailable') });
+        await expect(unavailable).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+
+        await upstream.fail('usgs-browse', null, 'server');
+        await detail(page)
+            .getByRole('button', { name: imageryText(lang, 'adminContent.common.retry') })
+            .click();
+
+        await expect(
+            detail(page).getByRole('img', { name: imageryText(lang, 'adminContent.imagery.browseAlt', { name: routed }) }),
+        ).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        consoleErrors.takeMatching(/imagery-browse/);
+    },
+);
+
+test(
     'Without USGS setup a link to setup is shown',
     { tag: '@S-A11-BAD-USGS-NOT-SET-UP' },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {

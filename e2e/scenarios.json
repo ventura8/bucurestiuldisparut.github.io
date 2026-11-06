@@ -3565,6 +3565,28 @@
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §6.2; owner: photos)."
         },
         {
+            "id": "S-A08-BAD-CHECK-PLACE-KEPT",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "bad",
+            "title": "However many photos wait for their place, none loses its mark",
+            "asserts": "a browser holding more than 500 marks, the oldest first -> the oldest photo still shows Check the place and bulk Publish still skips it: a mark forgotten would lift its publish block",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/photos/upload.spec.ts; packages/admin/test/photos/session.test.ts."
+        },
+        {
+            "id": "S-A08-HAPPY-CHECK-PLACE-CONFIRMED",
+            "behaviour": "A08",
+            "area": "admin",
+            "path": "happy",
+            "title": "Confirming a place lifts that photo's mark alone",
+            "asserts": "among hundreds of marks, Confirm place on one -> its chip goes, the others stay, also after a reload",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/photos/upload.spec.ts."
+        },
+        {
             "id": "S-A08-BAD-DUPLICATE",
             "behaviour": "A08",
             "area": "admin",
@@ -4093,6 +4115,61 @@
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
+            "id": "S-A11-BAD-ROUTED-SCENE-UNREAD",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A scene named by the address whose read failed says so, never that it does not exist",
+            "asserts": "a scene document that cannot be read, opened by its address -> the failure with Try again, not 'No scene has this address'",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/imagery/search.spec.ts; packages/admin/test/imagery/orders.test.ts, packages/ui/test/admin/imagery/orders.test.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-ROUTED-SCENE-RETRY",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "Try again opens the scene whose read failed",
+            "asserts": "the document readable again -> Try again -> the scene's page, the alert gone",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/imagery/search.spec.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-BROWSE-RETRY-ROUTED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "Try again on the browse image reaches a scene only the address names",
+            "asserts": "a scene Free only hides, its browse image failed, the host back -> Try again -> the image shows",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/imagery/search.spec.ts; packages/admin/test/imagery/imagery.test.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-PANORAMIC-COVERAGE",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "A KH-9 panoramic frame's coverage is what its film covers, not its corners' box",
+            "asserts": "the frame D3C1202-200149F039 over Bucharest: USGS's corners alone say 97 %; the search stores about 53 % (a bow tie, cos(60.5) wide at the frame's waist; measured truth about 51 %, the estimate misses it by the corners' 7 km shift) and ranks by it, a scene harvested earlier is read again by the next search, and the stored footprint stays USGS's",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Round of 2026-11-06. In functions/test/imagery/search.test.ts; the model in packages/shared/test/imagery/coverage.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-CORONA-COVERAGE-UNCHANGED",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame of any other camera keeps its footprint's coverage",
+            "asserts": "a KH-4B frame of the same outline over the same city -> still 97 %: only the KH-9 panoramic camera's coverage narrows",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Round of 2026-11-06. In functions/test/imagery/search.test.ts; every other sensor in packages/shared/test/imagery/coverage.test.ts."
+        },
+        {
             "id": "S-A12-HAPPY",
             "behaviour": "A12",
             "area": "admin",
@@ -4423,6 +4500,39 @@
             "notes": "Finding 85 of docs/research/manual-test-2026-10-25.md. In functions/test/imagery/approve.test.ts."
         },
         {
+            "id": "S-A12-BAD-RETRY-DISMISSED",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A dismissed version is not brought back by Retry",
+            "asserts": "its scene was freed: imagery.retry refuses a version that is rejected, cancelled or otherwise ended (also one dismissed during the retry) with apiError.imagery.versionState, job and version unchanged; the dismissal marks its failed job cancelRequested, so jobRetryable offers Retry on no page; a publish retry of a version still approved or publishing goes on",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Round of 2026-11-06. In functions/test/imagery/retry.test.ts and approve.test.ts; jobRetryable in packages/shared/test/imagery/job-retryable.test.ts."
+        },
+        {
+            "id": "S-A12-BAD-STRANDED-VERSION",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failed job whose version stayed processing can still be retried",
+            "asserts": "the runner's second write never arrived, or the job was invalid: the job is failed, its version processing -> imagery.retry queues the job and leaves the version processing instead of refusing it with no other way out; an invalid job's version now fails with it when it can be read",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Review of 2026-11-06, integrated. Tests: functions/test/imagery/retry.test.ts; pipeline/tests/unit/test_runner.py."
+        },
+        {
+            "id": "S-A12-BAD-FAILED-HOLDS-ID",
+            "behaviour": "A12",
+            "area": "admin",
+            "path": "bad",
+            "title": "A failed version holds its layer id until it is dismissed",
+            "asserts": "a version of the same label failed -> a new import reserves the next id, so two scenes never share one (a shared id held each other's release for ever); rejected or cancelled -> the id is free again",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Round of 2026-11-06. In functions/test/imagery/import.test.ts."
+        },
+        {
             "id": "S-A13-HAPPY",
             "behaviour": "A13",
             "area": "admin",
@@ -4586,6 +4696,17 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M4 follow-up (docs/research/M4-status.md; owner: orders). In e2e/admin/specs/imagery/orders.spec.ts; the loading state in packages/ui/test/admin/imagery/orders.test.ts."
+        },
+        {
+            "id": "S-A13-HAPPY-ORDER-FREED",
+            "behaviour": "A13",
+            "area": "admin",
+            "path": "happy",
+            "title": "An order's import that ended for good offers Import again",
+            "asserts": "a delivered order's import cancelled or dismissed -> the order goes with it and the scene is a candidate, acquisition state available (Import, one click); the watch starts no new import and announces no imported; a version rejected while another keeps the scene is not announced imported; a failure the server recorded keeps the scene and the order until it is dismissed",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Round of 2026-11-06. Not back to delivered: the watch imports a delivered order by itself. In functions/test/imagery/orders-watch.test.ts."
         },
         {
             "id": "S-A14-HAPPY",
@@ -5048,6 +5169,17 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §8.5; owner: layers-settings). Covered by e2e/tour/admin-settings.tour.ts."
+        },
+        {
+            "id": "S-A19-BAD-BOUNDS-UNREAD",
+            "behaviour": "A19",
+            "area": "admin",
+            "path": "bad",
+            "title": "Bounds whose check cannot read the content are refused",
+            "asserts": "smaller bounds saved offline, or with the server silent for 30 s, or refused -> the save is refused with its reason (offline or denied) and nothing is written; an unread collection never counts as nothing outside",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Review of 2026-11-06, integrated. Tests: e2e/admin/specs/settings/unread.spec.ts; packages/admin/test/settings/settings.test.ts."
         },
         {
             "id": "S-A19-BAD-MARKDOWN-LINK",
@@ -6260,6 +6392,28 @@
             "notes": "Milestone M2e review (owner: pois). e2e/admin/specs/pois/in-view.spec.ts; packages/admin/test/pois/map-session.test.ts."
         },
         {
+            "id": "S-A32-HAPPY-PHOTO-PICKER-PAGES",
+            "behaviour": "A32",
+            "area": "admin",
+            "path": "happy",
+            "title": "The photo picker reaches every photo of the city, a page at a time",
+            "asserts": "51 photos -> the picker lists the newest 50 with Show more -> Show more lists the oldest and the button goes",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/pois/import-delete.spec.ts; packages/admin/test/pois/pois.test.ts, packages/ui/test/admin/pois/pois-page.test.ts."
+        },
+        {
+            "id": "S-A32-BAD-LINKED-PHOTO-PAST-PAGE",
+            "behaviour": "A32",
+            "area": "admin",
+            "path": "bad",
+            "title": "A linked photo past the picker's page is still named by its title",
+            "asserts": "a place linked to the oldest of 51 photos, the picker never opened -> the editor names it by its title, from its own read, not by its id",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/pois/import-delete.spec.ts; packages/admin/test/pois/pois.test.ts, packages/ui/test/admin/pois/pois-page.test.ts."
+        },
+        {
             "id": "S-A33-HAPPY",
             "behaviour": "A33",
             "area": "admin",
@@ -6315,6 +6469,17 @@
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §9.5; owner: layers-settings). Covered by e2e/tour/admin-settings.tour.ts."
         },
         {
+            "id": "S-A33-BAD-CATEGORY-UNREAD",
+            "behaviour": "A33",
+            "area": "admin",
+            "path": "bad",
+            "title": "A category whose places cannot be read is not deleted",
+            "asserts": "a category in use confirmed with a target while the places cannot be read (offline, 30 s without an answer, refused) -> the dialog stays on confirm with the reason, the category survives and its places still name it, no batch is written",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Review of 2026-11-06, integrated. Tests: e2e/admin/specs/settings/unread.spec.ts; packages/admin/test/settings/settings.test.ts."
+        },
+        {
             "id": "S-A33-BAD-CLIENT-LAYER-DELETE",
             "behaviour": "A33",
             "area": "admin",
@@ -6346,6 +6511,17 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A33-BAD-DELETE-FAILED-KEEPS-SCENE",
+            "behaviour": "A33",
+            "area": "admin",
+            "path": "bad",
+            "title": "A layer deletion that failed for good keeps its scene and its id",
+            "asserts": "a layer-delete job failed after its attempts, its tileset still at Mapbox -> the scene stays imported on every tick and no new layer takes the id, a revert still restores the layer; once another deletion of that id succeeded, both go free",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Review of 2026-11-06, integrated. Test: functions/test/imagery/layer-delete.test.ts."
         },
         {
             "id": "S-A34-HAPPY",
@@ -6412,6 +6588,61 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M2c (docs/research/M2c-interfaces.md §7.4; owner: pois)."
+        },
+        {
+            "id": "S-A34-HAPPY-EXPORT-ALL-PLACES",
+            "behaviour": "A34",
+            "area": "admin",
+            "path": "happy",
+            "title": "Export all writes every place of the city, past the loaded page",
+            "asserts": "51 places, the list holding 50 -> Export all -> a file of 51, the oldest included",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/pois/import-delete.spec.ts; packages/admin/test/pois/pois.test.ts."
+        },
+        {
+            "id": "S-A34-BAD-REIMPORT-NO-DUPLICATES",
+            "behaviour": "A34",
+            "area": "admin",
+            "path": "bad",
+            "title": "Importing a city's own file again adds no place past the loaded page",
+            "asserts": "the file of 51 places chosen with the list holding 50 -> 51 unchanged, 0 new, no Import, nothing written",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/pois/import-delete.spec.ts; packages/admin/test/pois/pois.test.ts."
+        },
+        {
+            "id": "S-A34-BAD-UNREADABLE-PLACE",
+            "behaviour": "A34",
+            "area": "admin",
+            "path": "bad",
+            "title": "A place that cannot be read is left out aloud, and a file naming it does not make it twice",
+            "asserts": "a place whose document fails its schema -> Export all goes on and the snackbar says how many it left out; a file feature with that id is refused with its reason and no new place is planned",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Review of 2026-11-06, integrated. Tests: e2e/admin/specs/pois/import-reading.spec.ts; packages/admin/test/pois/."
+        },
+        {
+            "id": "S-A34-BAD-FILE-CHANGED-WHILE-READING",
+            "behaviour": "A34",
+            "area": "admin",
+            "path": "bad",
+            "title": "A file chosen while another one's read waits keeps its own plan",
+            "asserts": "file A's read of the city still waits, the dialog closed or file B chosen -> A's answer, or its giving up after 30 s, changes nothing: the preview holds B's plan under B's name, and a closed dialog stays closed",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Review of 2026-11-06, integrated. Tests: e2e/admin/specs/pois/import-reading.spec.ts; packages/admin/test/pois/importer.test.ts."
+        },
+        {
+            "id": "S-A34-BAD-EXPORT-ALL-UNREAD",
+            "behaviour": "A34",
+            "area": "admin",
+            "path": "bad",
+            "title": "Export all that cannot read the places says so and saves nothing",
+            "asserts": "offline, only the cache answers -> after the read's wait the snackbar says nothing was exported; no file, never the cache's part of the city",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/pois/import-delete.spec.ts; packages/admin/test/pois/pois.test.ts."
         },
         {
             "id": "S-A35-HAPPY",
@@ -7347,6 +7578,28 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "Milestone M4 (docs/research/M4-interfaces.md §5.5; owner: assists-notify). In e2e/admin/specs/notify/inbox.spec.ts (state notify.inbox-empty)."
+        },
+        {
+            "id": "S-A46-HAPPY-MARK-ALL-READ",
+            "behaviour": "A46",
+            "area": "admin",
+            "path": "happy",
+            "title": "Mark all as read reaches every unread item, past the loaded page",
+            "asserts": "51 unread, the list holding 50 -> Mark all as read -> none unread on the server, the badge gone, the button off",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/notify/inbox.spec.ts; packages/admin/test/inbox/inbox.test.ts, packages/ui/test/admin/inbox/inbox-page.test.ts."
+        },
+        {
+            "id": "S-A46-BAD-MARK-ALL-OFFLINE",
+            "behaviour": "A46",
+            "area": "admin",
+            "path": "bad",
+            "title": "Mark all as read that cannot reach the server says so and marks nothing",
+            "asserts": "offline -> after the read's wait the snackbar says offline; every item stays unread",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/notify/inbox.spec.ts; packages/admin/test/inbox/inbox.test.ts."
         },
         {
             "id": "S-A46-HAPPY-FAN-OUT",
@@ -8784,10 +9037,10 @@
             "area": "pipeline",
             "path": "bad",
             "title": "A corrupt archive fails the job with a clear error",
-            "asserts": "a corrupt archive -> the job failed at extract with apiError.imagery.archiveCorrupt; the delivery deleted so a retry downloads it again",
+            "asserts": "a corrupt archive, also a zip whose reader seeks to a negative offset (EINVAL) -> the job failed at extract with apiError.imagery.archiveCorrupt; the delivery deleted so a retry downloads it again",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Test: pipeline/tests/integration/test_import_job.py against the loopback fakes (pipeline-pytest)."
+            "notes": "Milestone M3 (docs/research/M3-interfaces.md §11; owner: pipeline). Tests: pipeline/tests/unit/test_steps_edges.py, pipeline/tests/integration/test_import_job.py against the loopback fakes (pipeline-pytest)."
         },
         {
             "id": "S-P01-BAD-NO-REFERENCE",
@@ -8937,11 +9190,88 @@
             "behaviour": "P01",
             "area": "pipeline",
             "path": "bad",
-            "title": "A frame that does not show the city is never cropped",
-            "asserts": "Sentinel-2 of another place -> the best guess stays under the least correlation (0.2) after the search: the job and the version failed with apiError.imagery.cityNotFound and no scan; a frame 56 km from the window -> WindowMissedError (referenceUnavailable); a crop with a side over MAX_SCAN_PIXELS -> processingFailed before any pixel is read",
+            "title": "A frame that does not reach the city window fails, and a crop over the limit is never read",
+            "asserts": "a scene whose corners lie a degree from the city, or a frame 56 km from the window -> no orientation covers the window nor its surroundings: the job and the version failed with apiError.imagery.cityNotFound and no scan; a frame that does cover it but shows another place is no failure (S-P01-BAD-WEAK-GUESS-TO-POINTS); a crop with a side over MAX_SCAN_PIXELS -> processingFailed before any pixel is read",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Findings 62 and 63 of docs/research/manual-test-2026-10-25.md (live test 2026-11-02; DECISIONS-for-review.md §84a, §84b). Tests: pipeline/tests/unit/test_corners.py, pipeline/tests/integration/test_written_documents.py (city-not-found)."
+        },
+        {
+            "id": "S-P01-HAPPY-PANORAMIC-LOCATE",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A panoramic frame is found through its camera's forward model",
+            "asserts": "a synthetic KH-9 film made through the panoramic model (u = 2x/W - 1, theta = u × half angle, along tan(theta)/tan(half angle), across (2y/H - 1) × cos(half angle)/cos(theta)), its corners 3.3 km off -> the model round-trips within 0.001 px and takes the film's corners to the ground's, the local homography holds it within 50 m at the window's corners, the guess keeps the right orientation of four and moves by the corners' error; the corner homography cannot hold the same frame; only a sensor with a half angle gets the model",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 361 of docs/LESSONS.md (the rehearsal on the 1972 frame D3C1202-200149F039). Tests: pipeline/tests/unit/test_panoramic.py, pipeline/tests/unit/test_frames.py."
+        },
+        {
+            "id": "S-P01-BAD-WEAK-GUESS-TO-POINTS",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A guess nothing confirms goes on to the admin's points",
+            "asserts": "Sentinel-2 of another place over a frame that covers the window -> no raw gate, no ratio and z: the guess is weak, not moved; the crop holds the window with a 10 km margin under every orientation that reaches it, so the city is in it whichever is true (the real frame under 50 to 85 % cloud: 12 of 12); the delivery stays, the log says so plainly, the job goes on and georef ends at needs_gcps with apiError.imagery.noMatch, the scan recorded and no corner pairs of a guess nothing confirmed",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 361 of docs/LESSONS.md. Review of 2026-11-06. Tests: pipeline/tests/unit/test_panoramic.py, pipeline/tests/unit/test_corners.py, pipeline/tests/integration/test_written_documents.py (weak-guess)."
+        },
+        {
+            "id": "S-P01-BAD-WEAK-GUESS-TOO-WIDE",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A weak guess whose orientations lie too far apart fails and keeps the delivery",
+            "asserts": "the crop that would hold every orientation reaching the window has a side over MAX_SCAN_PIXELS -> it is never cut: processingFailed with the size in its message, no scan, the delivery stays",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Review of 2026-11-06, integrated. Lesson 361. Tests: pipeline/tests/integration/test_raw_deleted.py, pipeline/tests/unit/test_corners.py."
+        },
+        {
+            "id": "S-P01-BAD-CITY-OFF-FRAME",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A window off the frame is the one failure left",
+            "asserts": "corners that put the frame 100 km from the window, or 1 degree off in a whole import, or a window past the exposure's end over its dark gap and the next exposure's fragment -> no orientation reaches it, searched around too: CityNotFoundError, the job and the version failed with apiError.imagery.cityNotFound, whose message no longer blames the corners, and nothing is cropped; a crop beside the end stops at the exposure",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 361 of docs/LESSONS.md. Tests: pipeline/tests/unit/test_panoramic.py, pipeline/tests/unit/test_corners.py, pipeline/tests/integration/test_written_documents.py (city-off-frame)."
+        },
+        {
+            "id": "S-P01-HAPPY-AVERAGED-PREVIEW",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The frame's preview averages what it shrinks, and records where the exposure ends",
+            "asserts": "film grain of alternating columns -> the preview's shrink is their mean while the coarse matching's read stays a pick of pixels; a dark run of 2 % of the width after the first half -> frame.json's image_end, the layout's width unchanged; no such run, a short one or one in the first half, or a frame.json from before the field -> the whole width; the scoring frame is blurred and never enlarged past its preview",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Lesson 361 of docs/LESSONS.md. Tests: pipeline/tests/unit/test_frames.py."
+        },
+        {
+            "id": "S-P01-HAPPY-EXPOSURE-SPAN",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The exposure is found whichever way the film was scanned",
+            "asserts": "a frame's dark gap and the next exposure's fragment on either side, or both -> frame.json records image_start and image_end, the panoramic model counts from the exposure's first column, and a frame flipped left to right is found on its own exposure; an old frame.json reads start 0 and end the width",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Review of 2026-11-06, integrated. Lesson 361; the real frame flipped four ways keeps ratio 2.09 to 2.10 and z 8.7. Tests: pipeline/tests/unit/test_frames.py, pipeline/tests/unit/test_panoramic.py."
+        },
+        {
+            "id": "S-P01-BAD-EXPOSURE-DARK-BAND",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A dark band inside the film does not end the exposure",
+            "asserts": "a dark run with more than a fragment (10 % of the width) of film beyond it (a sea, a cloud's shadow), or one taking the film's middle -> no exposure end there, and it does not hide a real gap after it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Review of 2026-11-06, integrated. Calibrated on the 1972 frame alone. Test: pipeline/tests/unit/test_frames.py."
         },
         {
             "id": "S-P01-HAPPY-WRITTEN-CONTRACT",
@@ -9516,6 +9846,28 @@
             "notes": "Finding 75 of docs/research/manual-test-2026-10-25.md (2026-11-03). In e2e/admin/specs/imagery/worker.spec.ts and packages/admin/test/worker/local.test.ts."
         },
         {
+            "id": "S-A62-HAPPY-LOOKING-AFTER-RELOAD",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "happy",
+            "title": "A reload of a browser that set this computer up looks for its worker",
+            "asserts": "Look for it, then a reload -> Looking..., with what to do if nothing answers; never that a file was just saved, nor how to open one",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/imagery/worker.spec.ts; packages/admin/test/worker/local.test.ts."
+        },
+        {
+            "id": "S-A62-BAD-NOT-SET-UP-AFTER-RELOAD",
+            "behaviour": "A62",
+            "area": "admin",
+            "path": "bad",
+            "title": "A reload of a browser that set nothing up looks for nothing",
+            "asserts": "no mark, a reload -> no words under the link, the file and Already set up? both offered",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "2026-11-06 review of 66b1271; workstream admin. Test: e2e/admin/specs/imagery/worker.spec.ts; packages/admin/test/worker/local.test.ts."
+        },
+        {
             "id": "S-A63-HAPPY-METER",
             "behaviour": "A63",
             "area": "admin",
@@ -9807,7 +10159,7 @@
             "area": "pipeline",
             "path": "happy",
             "title": "The raw delivery is deleted once the city crop exists",
-            "asserts": "after locate -> the usgs-raw delivery is gone from the bucket, scan.tif and the version's scan are there, the log says so",
+            "asserts": "after locate -> the usgs-raw delivery is gone from the bucket, scan.tif and the version's scan are there, the log says so; a weak guess keeps it; a retry with the delivery gone and the segments there needs no download",
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: pipeline/tests/integration/test_raw_deleted.py."
@@ -9822,6 +10174,116 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "M7 (docs/research/M7-local-worker.md). Test: pipeline/tests/integration/test_raw_deleted.py."
+        },
+        {
+            "id": "S-P01-BAD-DISK-FULL-KEEPS-DELIVERY",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A full disk during extract keeps the delivery",
+            "asserts": "the disk fills while the segments are written -> the job failed with apiError.imagery.processingFailed and the disk's reason in its message, not archiveCorrupt; the delivery stays, and a retry unpacks it with no new download",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/unit/test_steps_edges.py."
+        },
+        {
+            "id": "S-P01-BAD-RESUME-WORK-GONE",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A job resumed after locate goes on when its work folder is gone",
+            "asserts": "locate is finished and every work/ object of the job is gone -> the resume does not run fetch, extract or stitch again, and the job reaches approval instead of crashing at every retry",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_raw_deleted.py."
+        },
+        {
+            "id": "S-P01-HAPPY-MOSAIC-COVERING-DATE",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Sentinel-2 tiles are mosaicked only from a date that covers the window",
+            "asserts": "the least cloudy date leaves a hole in the window -> the next date whose tiles (up to four) cover it together is the reference",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/unit/test_references.py."
+        },
+        {
+            "id": "S-P01-BAD-MOSAIC-NOT-COVERED",
+            "behaviour": "P01",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "No date covers the window: no reference with a hole",
+            "asserts": "no date's tiles cover the window together -> the job fails at locate with apiError.imagery.referenceUnavailable, not with a misleading cityNotFound on a partial mosaic",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_import_job.py and pipeline/tests/unit/test_references.py."
+        },
+        {
+            "id": "S-P03-HAPPY-RETRY-KEEPS-SUGGESTIONS",
+            "behaviour": "P03",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A retry after an automatic fit keeps its suggestions",
+            "asserts": "georef runs again on a version it fitted automatically -> the same transform through its pairs, and the suggestions the georeferencer offers are still there",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_autogcp.py."
+        },
+        {
+            "id": "S-P04-HAPPY-DISK-SWEPT",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The worker removes what old imports left on the owner's disk",
+            "asserts": "a pass without a job -> job folders with nothing written for 14 days, scene deliveries and unfinished downloads for 7 are gone; younger ones, the reference cache and the session stay",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_worker_run.py and pipeline/tests/unit/test_worker_objects.py."
+        },
+        {
+            "id": "S-P04-BAD-SWEEP-KEEPS-CLAIMED",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The sweep never touches the job just claimed",
+            "asserts": "a pass that claims a job with old scratch -> its folder and every delivery stay while another job's old folder goes; a disk that refuses the sweep does not stop the loop",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_worker_run.py and pipeline/tests/unit/test_worker_objects.py."
+        },
+        {
+            "id": "S-P04-BAD-NO-FREE-SPACE",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A disk too small is refused before the download",
+            "asserts": "free space under about 2.6 times the announced size -> the job failed at fetch with apiError.imagery.processingFailed, its message says how much is free and how much is needed, and no byte was stored",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_worker_run.py and pipeline/tests/unit/test_worker_objects.py."
+        },
+        {
+            "id": "S-P04-BAD-REVOKED-ID-REPAIRS",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A worker id revoked or of another owner does not refuse every new code",
+            "asserts": "worker.hello refuses a new pairing for the id -> the id is forgotten, the new pairing kept, the process ends; the restart is a new worker on that pairing, with no new code. Any other refusal keeps the id",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/integration/test_worker_pairing.py."
+        },
+        {
+            "id": "S-P04-BAD-WORKER-ID-UNWRITABLE",
+            "behaviour": "P04",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A work folder that cannot hold the id does not stop the worker",
+            "asserts": "a read-only folder or an undecodable id file -> the worker starts, logs it, and keeps a new id in memory; a kept id is still read from a read-only folder",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/unit/test_worker_pairing.py."
         }
     ]
 }

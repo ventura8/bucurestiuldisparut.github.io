@@ -157,6 +157,50 @@ def test_bad_path_a_revoked_kept_session_is_deleted(world: World) -> None:
     assert worker.state.snapshot()["lastError"] == "apiError.worker.revoked"
 
 
+@pytest.mark.parametrize("refusal", ["apiError.worker.revoked", "apiError.worker.refused"])
+def test_bad_path_a_new_code_refused_for_the_id_starts_a_new_worker_on_the_new_pairing(world: World, refusal: str) -> None:
+    """Scenarios: S-P04-BAD-REVOKED-ID-REPAIRS"""
+    first = world.worker()
+    old_id = first.worker_id
+    once(first)
+    world.api.pair_codes[NEW_CODE] = NEW_PAIR
+    world.api.hello_refusal = refusal
+
+    refused = world.worker(NEW_CODE)
+    assert refused.worker_id == old_id
+    assert once(refused) is Pass.NO_SESSION
+
+    # The process ends, for the supervisor or the restart policy; the id is gone, the new pairing stays.
+    assert refused.loop.stopping.is_set()
+    file = SessionFile(world.folder, CITY)
+    assert not file.id_path.exists()
+    kept = world.kept()
+    assert kept is not None
+    assert (kept.pair_id, kept.code_hash) == (NEW_PAIR, code_hash(NEW_CODE))
+
+    # The server knows no such refusal for a new id; the used code is not sent again.
+    world.api.hello_refusal = None
+    world.api.calls.clear()
+    restarted = world.worker(NEW_CODE)
+    assert once(restarted) is Pass.IDLE
+    assert restarted.worker_id != old_id
+    assert world.api.names()[:2] == ["worker-hello", "worker-claim"]
+    assert world.api.calls[0].data["workerId"] == restarted.worker_id
+    assert file.id_path.read_text("utf-8") == restarted.worker_id
+
+
+def test_bad_path_a_code_refused_for_another_reason_keeps_the_id_and_goes_on(world: World) -> None:
+    """Scenarios: S-P04-BAD-REVOKED-ID-REPAIRS"""
+    world.api.hello_refusal = "apiError.notAdmin"
+    worker = world.worker()
+    worker_id = worker.worker_id
+
+    assert once(worker) is Pass.NO_SESSION
+
+    assert not worker.loop.stopping.is_set()
+    assert SessionFile(world.folder, CITY).id_path.read_text("utf-8") == worker_id
+
+
 def test_bad_path_a_kept_session_google_refuses_is_deleted(world: World) -> None:
     once(world.worker())
     world.api.refresh_tokens.clear()

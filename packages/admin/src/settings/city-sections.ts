@@ -19,11 +19,11 @@ import {
     type ValidationIssue,
 } from '@hcm/shared';
 
+import { readOnce, type ReadFailure } from '../content/read-once.js';
 import type { ContentServices, Stored, WriteOutcome } from '../content/services.js';
 import { EditDraft, EMPTY_DRAFT, type DraftState } from '../layers/draft.js';
 import { AREA_FIELDS, areaIssues, areaNumberPatch, boundsGrow, contentOutside, type AreaNumberField, type Outside } from './area.js';
 import { withOptionalText, withText } from './localized.js';
-import { readOnce } from './read-once.js';
 import { markdownLinesOf, NO_LINK_LINES, TEXT_FIELDS, type MarkdownLines } from './texts.js';
 import { seedTheme, type ThemeTools } from './theme.js';
 
@@ -205,7 +205,10 @@ export class CitySections {
         });
     }
 
-    /** Smaller bounds: the photos and places they would leave out refuse the save (null: none, or the bounds grew). */
+    /**
+     * Smaller bounds: the photos and places they would leave out refuse the save, and so does a check that could not read them
+     * (S-A19-BAD-BOUNDS-UNREAD; null: none outside, or the bounds grew).
+     */
     async #refusedBounds(draft: EditDraft<CityDoc>): Promise<WriteOutcome | null> {
         const smaller = this.#smallerBounds(draft);
         if (smaller === null) {
@@ -213,6 +216,10 @@ export class CitySections {
         }
         this.#set({ ...this.#state, checking: true });
         const outside = await this.#outside(smaller);
+        if (typeof outside === 'string') {
+            this.#set({ ...this.#state, checking: false });
+            return { ok: false, reason: outside };
+        }
         this.#set({ ...this.#state, checking: false, outside });
         const issues: ValidationIssue[] = [{ path: 'bounds', code: 'validation.outsideCity' }];
         return outside.length === 0 ? null : { ok: false, reason: 'invalid', issues };
@@ -227,13 +234,17 @@ export class CitySections {
         return boundsGrow(base.data.bounds, value.bounds) ? null : value;
     }
 
-    async #outside(city: CityDoc): Promise<Outside[]> {
-        const { store, cityId } = this.#services;
+    /** What the bounds would leave out, or why it could not be read. */
+    async #outside(city: CityDoc): Promise<readonly Outside[] | ReadFailure> {
+        const { cityId } = this.#services;
         const [photos, pois] = await Promise.all([
-            readOnce(store, FIRESTORE_PATHS.photos(cityId), photoDocSchema, { limit: MAX_PHOTOS }),
-            readOnce(store, FIRESTORE_PATHS.pois(cityId), poiDocSchema, { limit: MAX_POIS }),
+            readOnce(this.#services, FIRESTORE_PATHS.photos(cityId), photoDocSchema, { limit: MAX_PHOTOS }),
+            readOnce(this.#services, FIRESTORE_PATHS.pois(cityId), poiDocSchema, { limit: MAX_POIS }),
         ]);
-        return contentOutside(city.bounds, photos?.docs ?? [], pois?.docs ?? []);
+        if (photos.page === null || pois.page === null) {
+            return photos.failure ?? pois.failure ?? 'offline';
+        }
+        return contentOutside(city.bounds, photos.page.docs, pois.page.docs);
     }
 
     #set(state: CitySectionState): void {

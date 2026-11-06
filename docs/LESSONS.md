@@ -2174,3 +2174,22 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Fix and pin: past the limit the job fails (S-P01-BAD-TOO-MANY-SEGMENTS), and the limit fits what USGS delivers
       (S-P01-HAPPY-ALL-SEGMENTS). A synthetic scene of 2 or 4 segments could never have shown it.
     - **A safety limit must fail loudly, never truncate; and when a result is wrong, look at the input before tuning the step.**
+361. **A homography through a panoramic frame's corners cannot hold the frame, and a threshold cannot find its true place.**
+    - Seen: 2026-11-06, rehearsing `locate` offline on the real 1972 KH-9 frame before spending a live run: the corner homography
+      had the scale wrong 1.5 to 2 times at the city (6.65 km RMS at 17 hand-read landmarks); the frame's true place scored 0.126
+      against the least correlation of 0.2, and the search walked 27.5 km away from a start at the truth.
+    - Cause: on a panoramic camera the film position follows the scan angle and the ground its tangent, so four corners do not
+      give one projective map; the search correlated the blank area around the frame; the preview picked single pixels of film grain.
+    - Found by: 17 landmarks read by hand against Sentinel-2, then asking each step of the guess what it does at the known truth
+      instead of tuning thresholds on the failure's own numbers; every synthetic scene was a homography, so none could show it.
+    - Fix and pin: a panoramic forward model with the camera's half angle, a local homography fitted from it, a masked correlation
+      of gradients whose peak's ratio and z accept a guess, an averaged preview (S-P01-HAPPY-PANORAMIC-LOCATE,
+      S-P01-HAPPY-AVERAGED-PREVIEW); a guess nothing confirms goes on to the admin's points instead of failing the job
+      (S-P01-BAD-WEAK-GUESS-TO-POINTS, S-P01-BAD-CITY-OFF-FRAME). The rule's constants are calibrated on one frame.
+    - **Rehearse on the real input with its known answer before a live run: a model of the sensor beats a threshold on its symptom.**
+362. **Try again could never heal a document repaired after it failed its schema.**
+    - Seen: 2026-11-06, the first run of S-A11-HAPPY-ROUTED-SCENE-RETRY: a scene repaired on the server stayed "invalid-document" through every Try again.
+    - Cause: a listener's first answer can be the browser's cached copy; a schema failure ends the listener, so the broken cached copy failed the read before the server could answer, each time.
+    - Found by: a test that was first written off as timing, then given retries, which still failed: the retries proved it was no race.
+    - Fix and pin: a cached copy that fails its schema waits for the server's answer; only the server's copy fails the read (`packages/admin/src/firebase/content.ts`, `content.test.ts`).
+    - **A failure that ends a listener must come from the source of truth, never from its cache.**

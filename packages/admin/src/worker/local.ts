@@ -86,10 +86,10 @@ export function functionsBaseFor(project: string, emulators: boolean): string {
 
 /** The system of the browser's computer: Windows, macOS, else Linux. */
 export function osOf(userAgent: string): WorkerOs {
-    if (/Windows/i.test(userAgent)) {
+    if (userAgent.includes('Windows')) {
         return 'windows';
     }
-    return /Macintosh|Mac OS X/i.test(userAgent) ? 'mac' : 'linux';
+    return userAgent.includes('Mac') ? 'mac' : 'linux';
 }
 
 /** The starter file and the removal file of `os` for the city, as `worker.starter` gives them. */
@@ -134,9 +134,9 @@ export class LocalComputer {
     constructor(services: ContentServices, options: LocalOptions) {
         this.#services = services;
         this.#options = options;
-        const remembered = services.local.get(LOCAL_KEY) === services.cityId;
         const os = osOf(options.userAgent);
-        const phase = remembered ? 'downloaded' : 'none';
+        // After a reload nothing says the file was just saved: it looks, and the first answer says the rest.
+        const phase = this.#remembered() ? 'looking' : 'none';
         this.#cell = new Store<LocalState>({ os, phase, code: null, starter: null, files: this.#files(os) }, services.log);
         this.intents = {
             setOs: (next) => {
@@ -215,7 +215,7 @@ export class LocalComputer {
             .then((response) => response.ok)
             .catch(() => false);
         if (!made) {
-            this.#services.log.warn('the server makes no starter file', { url });
+            this.#services.log.warn('no starter file', { url });
         }
         this.#cell.update({ starter: made });
     }
@@ -307,7 +307,7 @@ export class LocalComputer {
                 credentials: 'omit',
             });
         } catch (error) {
-            this.#services.log.warn('this computer could not be paired', { error: String(error) });
+            this.#services.log.warn('pairing failed', { error: String(error) });
         }
     }
 

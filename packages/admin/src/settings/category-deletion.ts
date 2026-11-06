@@ -1,14 +1,15 @@
 /**
  * Deleting a POI category (`docs/research/M2c-interfaces.md` §9.5; behaviours A33, A39): Delete counts the places that
  * use it; a category in use asks where its places go (one choice among the other categories) and is deleted only after
- * they moved, in batches, the category last (S-A33-BAD-CATEGORY-IN-USE). Without a choice nothing changes. A deleted
- * category comes back from History.
+ * they moved, in batches, the category last (S-A33-BAD-CATEGORY-IN-USE). Without a choice nothing changes, and neither when
+ * its places cannot be read (S-A33-BAD-CATEGORY-UNREAD): the places would still name a category that no longer exists. A
+ * deleted category comes back from History.
  */
 import { FIRESTORE_PATHS, MAX_POIS, poiDocSchema } from '@hcm/shared';
 
+import { readOnce, type ReadFailure } from '../content/read-once.js';
 import type { ContentServices, WriteOutcome } from '../content/services.js';
 import { deletionBatches } from './categories.js';
-import { readOnce } from './read-once.js';
 
 export type CategoryDeletionState =
     | { readonly phase: 'idle' }
@@ -82,7 +83,11 @@ export class CategoryDeletion {
 
     async #run(id: string, target: string | null): Promise<WriteOutcome> {
         const { store, cityId } = this.#services;
-        for (const batch of deletionBatches(cityId, id, await this.#placesOf(id, target), target)) {
+        const places = await this.#placesOf(id, target);
+        if (typeof places === 'string') {
+            return { ok: false, reason: places };
+        }
+        for (const batch of deletionBatches(cityId, id, places, target)) {
             const outcome = await store.batch(batch);
             if (!outcome.ok) {
                 return outcome;
@@ -91,17 +96,16 @@ export class CategoryDeletion {
         return { ok: true };
     }
 
-    /** The places of category `id` that move to `target` (none without a target: the category was not in use). */
-    async #placesOf(id: string, target: string | null): Promise<string[]> {
+    /** The places of category `id` that move to `target` (none without a target: the category was not in use), or why not read. */
+    async #placesOf(id: string, target: string | null): Promise<readonly string[] | ReadFailure> {
         if (target === null) {
             return [];
         }
-        const { store, cityId } = this.#services;
-        const page = await readOnce(store, FIRESTORE_PATHS.pois(cityId), poiDocSchema, {
+        const { page, failure } = await readOnce(this.#services, FIRESTORE_PATHS.pois(this.#services.cityId), poiDocSchema, {
             where: [['category', '==', id]],
             limit: MAX_POIS,
         });
-        return page?.docs.map((poi) => poi.id) ?? [];
+        return page === null ? failure : page.docs.map((poi) => poi.id);
     }
 
     #set(state: CategoryDeletionState): void {

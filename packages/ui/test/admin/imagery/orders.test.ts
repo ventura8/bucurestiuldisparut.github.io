@@ -297,19 +297,37 @@ describe('<hcm-imagery-page>: orders in the lists', () => {
     it('happyPath_aSceneToBuyTheFiltersHideOpensFromItsOwnRead', async () => {
         const toBuy = paid({ id: 'DS-TO-BUY', displayId: 'DS-TO-BUY', order: null, acquisition: 'needsOrder' });
         const named = { loading: false, scene: toBuy };
-        const state = imageryState({ detail: { kind: 'scene', id: 'DS-TO-BUY' }, scenes: ready([scene()]), named });
+        const state = imageryState({
+            detail: { kind: 'scene', id: 'DS-TO-BUY' },
+            scenes: ready([scene()]),
+            named: { ...named, failure: null },
+        });
         const { element } = await imageryPage(state, { params: ['scene', 'DS-TO-BUY'] });
 
         expect(deep(element, '[data-scene="DS-TO-BUY"]')).not.toBeNull();
     });
 
     it('badPath_anAddressOfNoSceneWaitsForItsReadThenSaysNotFound', async () => {
-        const loading = imageryState({ detail: { kind: 'scene', id: 'DS-NONE' }, named: { loading: true, scene: null } });
+        const loading = imageryState({ detail: { kind: 'scene', id: 'DS-NONE' }, named: { loading: true, scene: null, failure: null } });
         const { element, area } = await imageryPage(loading, { params: ['scene', 'DS-NONE'] });
 
         expect(deepText(element)).not.toContain('No scene has this address');
-        area.set({ ...loading, named: { loading: false, scene: null } });
+        area.set({ ...loading, named: { loading: false, scene: null, failure: null } });
         await updated(element);
         expect(deepText(element)).toContain('No scene has this address');
+    });
+
+    it('badPath_aRoutedSceneWhoseReadFailedSaysSoWithTryAgain @S-A11-BAD-ROUTED-SCENE-UNREAD', async () => {
+        const failure = { kind: 'failed', code: 'internal' } as const;
+        const state = imageryState({ detail: { kind: 'scene', id: 'DS-X' }, named: { loading: false, scene: null, failure } });
+        const { element, area } = await imageryPage(state, { params: ['scene', 'DS-X'] });
+
+        expect(deepText(element)).not.toContain('No scene has this address');
+        expect(deepText(deep(element, 'p.alert'))).not.toBe('');
+        deepAll(element, 'hcm-button')
+            .find((button) => button.textContent.includes('Try again'))
+            ?.click();
+
+        expect(area.calls).toContain('retry');
     });
 });

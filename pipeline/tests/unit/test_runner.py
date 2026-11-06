@@ -118,6 +118,18 @@ def test_bad_path_an_invalid_job_fails_without_running_a_step(world: PipelineWor
     assert all(step.runs == 0 for step in steps.values())
 
 
+def test_bad_path_an_invalid_jobs_version_fails_with_it_so_a_retry_or_a_dismiss_finds_it_failed(world: PipelineWorld) -> None:
+    """Scenarios: S-A12-BAD-STRANDED-VERSION"""
+    config = seed(world, {"basedOn": "../x"})
+    world.store.update(world.job_path(JOB), {"versionId": JOB})
+
+    assert runner(world, config, scripted()).run() is RunOutcome.FAILED
+
+    version = world.version(JOB)
+    assert version["state"] == "failed"
+    assert dig(version, "error", "code") == Errors.INVALID_REQUEST
+
+
 def test_bad_path_a_job_without_its_version_is_invalid(world: PipelineWorld) -> None:
     outcome = runner(world, seed(world, version=False), scripted()).run()
 

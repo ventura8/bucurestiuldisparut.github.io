@@ -91,9 +91,10 @@ function usgsStateOf(usgs: SetupStatusDoc['usgs']): ServiceState {
     return usgs.state === 'unavailable' && usgs.role !== undefined ? ROLE_STATES[usgs.role] : usgs.state;
 }
 
-/** The routed scene's read: loading until it answers, then the scene or null (no such scene). */
+/** The routed scene's read: loading until it answers, then the scene, null (no such scene) or why the read stopped. */
 function namedOf(state: DocState<UsgsSceneDoc>): NamedScene {
-    return { loading: state.status === 'loading', scene: state.doc === null ? null : sceneItemOf(state.doc) };
+    const failure = state.status === 'error' ? state.failure : null;
+    return { loading: state.status === 'loading', scene: state.doc === null ? null : sceneItemOf(state.doc), failure };
 }
 
 /** The routed scene's own read, which reports `named`. */

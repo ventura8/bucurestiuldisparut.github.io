@@ -8,6 +8,8 @@
 import { MAX_POI_PHOTOS, MAX_POIS, type Locale } from '@hcm/shared';
 import { html, nothing, type TemplateResult } from 'lit';
 
+import type { ListStatePort } from '../area-port.js';
+import { errorTemplate } from '../editing/states.js';
 import { localized, poiText, reasonText, SHAPE_KEYS } from './poi-text.js';
 import type { CategoryItemPort, ImportStatePort, PhotoChoicePort, PoiShapePort } from './pois-port.js';
 
@@ -129,6 +131,7 @@ function photoOption(locale: Locale, photo: PhotoChoicePort, chosen: readonly st
     return html`<li>
         <label>
             <input
+                class="touch-target"
                 type="checkbox"
                 .checked=${checked}
                 ?disabled=${full}
@@ -142,14 +145,48 @@ function photoOption(locale: Locale, photo: PhotoChoicePort, chosen: readonly st
     </li>`;
 }
 
-/** The photo picker: the city's photos, at most `MAX_POI_PHOTOS` chosen. */
+interface PickerHandlers {
+    readonly toggle: (id: string) => void;
+    readonly close: () => void;
+    readonly more: () => void;
+    readonly retry: () => void;
+}
+
+/** The picker's list before its read started. */
+const NOT_READ: ListStatePort<PhotoChoicePort> = { status: 'loading', items: [], hasMore: false, reconnecting: false, failure: null };
+
+/** What the read gave so far: the words when the city has none, and Show more while there are others. */
+function pickerList(
+    locale: Locale,
+    photos: ListStatePort<PhotoChoicePort>,
+    chosen: readonly string[],
+    handlers: PickerHandlers,
+): TemplateResult {
+    return html`${
+            photos.status === 'ready' && photos.items.length === 0
+                ? html`<p class="note">${poiText(locale, 'adminContent.pois.photoPicker.empty')}</p>`
+                : nothing
+        }
+        <ul class="picker">
+            ${photos.items.map((photo) => photoOption(locale, photo, chosen, handlers.toggle))}
+        </ul>
+        ${
+            photos.hasMore
+                ? html`<hcm-button class="more-photos" variant="text" @click=${handlers.more}
+                      >${poiText(locale, 'adminContent.common.more')}</hcm-button
+                  >`
+                : nothing
+        }`;
+}
+
+/** The photo picker: the city's photos, newest first, a page at a time, at most `MAX_POI_PHOTOS` chosen. */
 export function photoPicker(
     locale: Locale,
     open: boolean,
-    picker: { readonly photos: readonly PhotoChoicePort[]; readonly chosen: readonly string[] },
-    handlers: { readonly toggle: (id: string) => void; readonly close: () => void },
+    picker: { readonly photos: ListStatePort<PhotoChoicePort> | null; readonly chosen: readonly string[] },
+    handlers: PickerHandlers,
 ): TemplateResult {
-    const { photos, chosen } = picker;
+    const { chosen, photos } = picker;
     return html`<hcm-dialog
         class="photo-picker"
         .open=${open}
@@ -160,10 +197,11 @@ export function photoPicker(
         <p class="note" role="status">
             ${poiText(locale, 'adminContent.pois.photoPicker.limit', { count: String(chosen.length), max: String(MAX_POI_PHOTOS) })}
         </p>
-        ${photos.length === 0 ? html`<p class="note">${poiText(locale, 'adminContent.pois.photoPicker.empty')}</p>` : nothing}
-        <ul class="picker">
-            ${photos.map((photo) => photoOption(locale, photo, chosen, handlers.toggle))}
-        </ul>
+        ${
+            photos?.status === 'error'
+                ? errorTemplate(locale, photos.failure, handlers.retry)
+                : pickerList(locale, photos ?? NOT_READ, chosen, handlers)
+        }
         <hcm-button slot="actions" variant="filled" @click=${handlers.close}
             >${poiText(locale, 'adminContent.pois.photoPicker.done')}</hcm-button
         >

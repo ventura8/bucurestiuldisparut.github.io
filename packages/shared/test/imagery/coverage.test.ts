@@ -49,6 +49,70 @@ describe('footprintCoverage', () => {
     });
 });
 
+describe('footprintCoverage of a KH-9 panoramic frame', () => {
+    /** The corners USGS lists for D3C1202-200149F039 (a strip 560 km long and 36 km wide at its ends). */
+    const MEASURED = {
+        nw: { lat: 45.112, lng: 22.169 },
+        ne: { lat: 44.205, lng: 29.158 },
+        se: { lat: 43.887, lng: 29.2 },
+        sw: { lat: 44.824, lng: 21.965 },
+    };
+    const OUTLINE = [MEASURED.nw, MEASURED.ne, MEASURED.se, MEASURED.sw];
+    const BUCHAREST = { west: 25.9, south: 44.3, east: 26.3, north: 44.6 };
+    /** A strip along the equator, 40 degrees long and 2 wide at its ends, so its shape can be read off. */
+    const STRIP = box(-20, -1, 20, 1);
+    const PANORAMIC = { sensor: 'KH-9-pan' } as const;
+
+    /** A window taller than the strip, as wide as `width`, around longitude `lng`. */
+    const across = (lng: number, width = 0.01) => ({ west: lng - width / 2, south: -5, east: lng + width / 2, north: 5 });
+    /** The strip's width at a longitude, in degrees (the coverage of a window 10 degrees tall). */
+    const widthAt = (ring: typeof STRIP, lng: number) => footprintCoverage(ring, across(lng), PANORAMIC) * 10;
+
+    it('happyPath_theMeasuredFrameCoversAboutHalfTheCityNotAllOfIt', () => {
+        expect(footprintCoverage(OUTLINE, BUCHAREST)).toBeCloseTo(0.975, 3);
+
+        const coverage = footprintCoverage(OUTLINE, BUCHAREST, { sensor: 'KH-9-pan', corners: MEASURED });
+
+        expect(coverage).toBeCloseTo(0.53, 2);
+        // The measured truth is about 51 %: the estimate misses it by the corners' constant shift, not by its shape.
+        expect(Math.abs(coverage - 0.51)).toBeLessThan(0.03);
+    });
+
+    it('happyPath_theWidthFollowsTheSlantRange_aBowTie', () => {
+        expect(widthAt(STRIP, 0)).toBeCloseTo(2 * Math.cos((60.5 * Math.PI) / 180), 3);
+        expect(widthAt(STRIP, 19.99)).toBeGreaterThan(1.95);
+        expect(widthAt(STRIP, -19.99)).toBeGreaterThan(1.95);
+        // Halfway along the frame the scan angle is atan(tan(60.5) / 2), 41.5 degrees: wider than the waist, under the ends.
+        expect(widthAt(STRIP, 10)).toBeCloseTo(
+            (2 * Math.cos((60.5 * Math.PI) / 180)) / Math.cos(Math.atan(Math.tan((60.5 * Math.PI) / 180) / 2)),
+            2,
+        );
+    });
+
+    it('happyPath_theCornersDecideWhenBothAreKnown_elseTheFootprintsFourVertices', () => {
+        const fromFootprint = footprintCoverage(OUTLINE, BUCHAREST, PANORAMIC);
+        const fromCorners = footprintCoverage(box(10, 10, 11, 11), BUCHAREST, { sensor: 'KH-9-pan', corners: MEASURED });
+
+        expect(fromFootprint).toBeCloseTo(fromCorners, 9);
+    });
+
+    it('happyPath_aStripNamedFromItsShortSideIsTheSameBowTie', () => {
+        const [a, b, c, d] = STRIP as [(typeof STRIP)[0], (typeof STRIP)[0], (typeof STRIP)[0], (typeof STRIP)[0]];
+
+        expect(widthAt([b, c, d, a], 0)).toBeCloseTo(widthAt(STRIP, 0), 9);
+    });
+
+    it('badPath_anOutlineOfOtherThanFourVerticesIsKept', () => {
+        const hexagon = [...STRIP, { lat: 1, lng: -21 }, { lat: -1, lng: -21 }];
+
+        expect(footprintCoverage(hexagon, across(0), PANORAMIC)).toBeCloseTo(footprintCoverage(hexagon, across(0)), 9);
+    });
+
+    it.each(['KH-4', 'KH-4A', 'KH-4B', 'KH-7', 'KH-9-mapping'] as const)('badPath_anotherCameraKeepsItsFootprint_%s', (sensor) => {
+        expect(footprintCoverage(OUTLINE, BUCHAREST, { sensor, corners: MEASURED })).toBe(footprintCoverage(OUTLINE, BUCHAREST));
+    });
+});
+
 describe('footprintOf', () => {
     it('happyPath_aClosedM2mRingBecomesAnOpenFootprintOfLatLngVertices', () => {
         const ring: [number, number][] = [

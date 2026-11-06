@@ -26,6 +26,10 @@ export const POIS_STATES = {
         title: 'Places: the import preview, one new place and five refused with their reasons (a dialog)',
         visit: VISIT,
     },
+    'pois.photo-picker': {
+        title: "Places: the photo picker, the city's newest photos with Show more (a dialog)",
+        visit: 'specs/pois/import-delete.spec.ts',
+    },
     'pois.drawing': { title: 'Places: an area being drawn on the map, click by click, its positions listed', visit: DRAWING },
     'pois.draw-refused': { title: 'Places: a position outside the city refused, said at the drawing tools', visit: DRAWING },
     'pois.vertex-list': {

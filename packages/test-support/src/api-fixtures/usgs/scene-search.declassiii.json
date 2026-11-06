@@ -50,42 +50,42 @@
                         {
                             "id": "e2e-field-06",
                             "fieldName": "NW Corner Lat dec",
-                            "value": "44.900000"
+                            "value": "45.400000"
                         },
                         {
                             "id": "e2e-field-07",
                             "fieldName": "NW Corner Long dec",
-                            "value": "25.950000"
+                            "value": "25.650000"
                         },
                         {
                             "id": "e2e-field-08",
                             "fieldName": "NE Corner Lat dec",
-                            "value": "44.900000"
+                            "value": "45.400000"
                         },
                         {
                             "id": "e2e-field-09",
                             "fieldName": "NE Corner Long dec",
-                            "value": "26.250000"
+                            "value": "26.550000"
                         },
                         {
                             "id": "e2e-field-10",
                             "fieldName": "SE Corner Lat dec",
-                            "value": "44.000000"
+                            "value": "43.600000"
                         },
                         {
                             "id": "e2e-field-11",
                             "fieldName": "SE Corner Long dec",
-                            "value": "26.250000"
+                            "value": "26.550000"
                         },
                         {
                             "id": "e2e-field-12",
                             "fieldName": "SW Corner Lat dec",
-                            "value": "44.000000"
+                            "value": "43.600000"
                         },
                         {
                             "id": "e2e-field-13",
                             "fieldName": "SW Corner Long dec",
-                            "value": "25.950000"
+                            "value": "25.650000"
                         }
                     ],
                     "options": {
@@ -99,11 +99,11 @@
                         "type": "Polygon",
                         "coordinates": [
                             [
-                                [25.95, 44.0],
-                                [26.25, 44.0],
-                                [26.25, 44.9],
-                                [25.95, 44.9],
-                                [25.95, 44.0]
+                                [25.65, 43.6],
+                                [26.55, 43.6],
+                                [26.55, 45.4],
+                                [25.65, 45.4],
+                                [25.65, 43.6]
                             ]
                         ]
                     },
@@ -111,11 +111,11 @@
                         "type": "Polygon",
                         "coordinates": [
                             [
-                                [25.95, 44.0],
-                                [26.25, 44.0],
-                                [26.25, 44.9],
-                                [25.95, 44.9],
-                                [25.95, 44.0]
+                                [25.65, 43.6],
+                                [26.55, 43.6],
+                                [26.55, 45.4],
+                                [25.65, 45.4],
+                                [25.65, 43.6]
                             ]
                         ]
                     },

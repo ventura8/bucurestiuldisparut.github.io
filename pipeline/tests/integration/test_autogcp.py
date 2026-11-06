@@ -234,6 +234,22 @@ def test_bad_path_a_blank_scan_gives_no_pairs_and_no_suggestions(world: Pipeline
     assert suggestions["method"] == "orb"
 
 
+def test_happy_path_a_retry_after_an_automatic_fit_keeps_its_suggestions(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P03-HAPPY-RETRY-KEEPS-SUGGESTIONS"""
+    seed_matching(world, tmp_path, blurred(8))
+    assert run_georef(world) is RunOutcome.DONE
+    fitted_first, suggested = world.version()["georef"], suggestions_of(world)
+    assert records(suggested["pairs"])
+    # `imagery.retry` of a failure after `georef`: the step runs again on the version it fitted.
+    world.store.update(world.job_path(), {"status": "starting", "steps.georef": {"status": "pending"}})
+
+    assert run_georef(world) is RunOutcome.DONE
+
+    assert suggestions_of(world) == suggested
+    assert dig(world.version(), "georef", "method") == "auto"
+    assert record(world.version()["georef"])["transform"] == record(fitted_first)["transform"]
+
+
 def test_happy_path_the_admins_points_are_fitted_and_the_suggestions_are_done_with(world: PipelineWorld, tmp_path: Path) -> None:
     seed_matching(world, tmp_path, blurred(8))
     run_georef(world)

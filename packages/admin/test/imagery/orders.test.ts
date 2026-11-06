@@ -111,7 +111,7 @@ describe('the Imagery area with orders', () => {
         await settle();
         expect(imagery.state.named.scene?.id).toBe('a');
         imagery.close();
-        expect([imagery.state.named, store.listeners()]).toEqual([{ loading: false, scene: null }, 0]);
+        expect([imagery.state.named, store.listeners()]).toEqual([{ loading: false, scene: null, failure: null }, 0]);
     });
 
     it('badPath_anAddressOfNoSceneIsNotFoundOnceItsReadAnswers', async () => {
@@ -121,13 +121,15 @@ describe('the Imagery area with orders', () => {
         imagery.open(['scene', 'DS-NONE']);
         await settle();
 
-        expect(imagery.state.named).toEqual({ loading: false, scene: null });
+        expect(imagery.state.named).toEqual({ loading: false, scene: null, failure: null });
         store.fail(SCENES('DS-NONE'), { kind: 'failed', code: 'internal' });
+        // A read that failed is not "no such scene": it says why, with Try again.
+        expect(imagery.state.named).toEqual({ loading: false, scene: null, failure: { kind: 'failed', code: 'internal' } });
         imagery.intents.retry();
         await settle();
-        expect(imagery.state.named.scene).toBeNull();
+        expect(imagery.state.named).toEqual({ loading: false, scene: null, failure: null });
         imagery.open([]);
-        expect(imagery.state.named).toEqual({ loading: false, scene: null });
+        expect(imagery.state.named).toEqual({ loading: false, scene: null, failure: null });
         imagery.close();
     });
 

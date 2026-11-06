@@ -15,6 +15,7 @@
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from math import ceil, floor
 from typing import Final
 
 import cv2
@@ -33,6 +34,8 @@ PixelMap = Callable[[FloatArray, FloatArray], tuple[FloatArray, FloatArray]]
 LEVELS: Final = ((4, 400.0), (2, 200.0), (1, 100.0))
 MAX_AUTO_GCPS: Final = 200
 ERODE_PX: Final = 5
+# `cv2.remap` asserts every side of its source and its result under 32 767 pixels.
+REMAP_MAX_PX: Final = 32_766
 
 
 @dataclass(frozen=True)
@@ -84,26 +87,43 @@ class MatchResult:
     tiles: Tiles
 
 
-def _shrunk(scan: Scan, resolution: float) -> tuple[UInt8Array, float]:
-    """The scan downsampled to about two of its pixels per grid pixel, and the factor (so the pre-warp does not alias)."""
-    factor = resolution / scan.resolution / 2
-    if factor <= 1.0:
-        return scan.pixels, 1.0
-    height, width = scan.pixels.shape
-    shrunk_width = max(1, round(width / factor))
-    return resize(scan.pixels, (shrunk_width, max(1, round(height / factor)))), width / shrunk_width
+def _shrink_factor(resolution: float, scan_resolution: float) -> float:
+    """About two scan pixels per grid pixel (so the pre-warp does not alias), never enlarged."""
+    return max(1.0, resolution / scan_resolution / 2)
+
+
+def _shrunk(pixels: UInt8Array, factor: float) -> tuple[UInt8Array, float]:
+    """`pixels` downsampled `factor` times, or further when a side would be more than `cv2.remap` takes, and the factor applied."""
+    height, width = pixels.shape
+    applied = max(factor, max(width, height) / REMAP_MAX_PX)
+    if applied <= 1.0:
+        return pixels, 1.0
+    shrunk_width = max(1, round(width / applied))
+    return resize(pixels, (shrunk_width, max(1, round(height / applied)))), width / shrunk_width
+
+
+def _covered_box(px: FloatArray, py: FloatArray, shape: tuple[int, ...], pad: int) -> tuple[int, int, int, int]:
+    """The scan's pixels (left, top, right, bottom) the places lie on, `pad` wider on every side, within the scan."""
+    height, width = shape
+    left, right = max(0, floor(px.min()) - pad), min(width, ceil(px.max()) + pad + 1)
+    top, bottom = max(0, floor(py.min()) - pad), min(height, ceil(py.max()) + pad + 1)
+    return left, top, right, bottom
 
 
 def prewarp(scan: Scan, to_pixel: PixelMap, grid: Grid) -> tuple[UInt8Array, BoolArray]:
-    """The scan resampled onto `grid` (mercator to scan pixel through `to_pixel`), and the mask it covers."""
-    pixels, factor = _shrunk(scan, grid.resolution)
+    """The scan resampled onto `grid` (mercator to scan pixel through `to_pixel`), and the mask it covers. Only the part of the scan
+    under the grid is shrunk and resampled: a weak guess's crop (`georef/corners.py`) is far wider than the window, and more than
+    `cv2.remap` takes."""
     px, py = to_pixel(*grid.centres())
     height, width = scan.pixels.shape
     inside = (px >= 0) & (px < width) & (py >= 0) & (py < height)
-    warped = cv2.remap(
-        pixels, (px / factor - 0.5).astype(numpy.float32), (py / factor - 0.5).astype(numpy.float32), cv2.INTER_LINEAR, borderValue=0
-    )
-    return as_uint8(warped), inside
+    if not inside.any():
+        return as_uint8(numpy.zeros(px.shape)), inside
+    factor = _shrink_factor(grid.resolution, scan.resolution)
+    left, top, right, bottom = _covered_box(px[inside], py[inside], scan.pixels.shape, ceil(2 * factor))
+    pixels, applied = _shrunk(scan.pixels[top:bottom, left:right], factor)
+    map_x, map_y = ((px - left) / applied - 0.5).astype(numpy.float32), ((py - top) / applied - 0.5).astype(numpy.float32)
+    return as_uint8(cv2.remap(pixels, map_x, map_y, cv2.INTER_LINEAR, borderValue=0)), inside
 
 
 def _eroded(inside: BoolArray) -> BoolArray:

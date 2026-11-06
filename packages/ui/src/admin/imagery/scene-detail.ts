@@ -9,7 +9,7 @@
 import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
-import { loadingTemplate } from '../editing/states.js';
+import { errorTemplate, loadingTemplate } from '../editing/states.js';
 import { contentText, noticeOf } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
 import type { SceneItemPort } from './imagery-port.js';
@@ -165,6 +165,9 @@ export function sceneDetail(context: ImageryContext, scene: SceneItemPort | null
     if (scene !== null) {
         return sceneBody(context, scene);
     }
-    const loading = context.view.scenes.status === 'loading' || context.view.named.loading;
-    return loading ? loadingTemplate(context.locale) : notFound(context);
+    const { locale, view, intents } = context;
+    if (view.scenes.status === 'loading' || view.named.loading) {
+        return loadingTemplate(locale);
+    }
+    return view.named.failure === null ? notFound(context) : errorTemplate(locale, view.named.failure, () => intents?.retry());
 }

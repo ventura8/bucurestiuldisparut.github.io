@@ -1,10 +1,11 @@
 /**
  * How unfinished raster work ends (`docs/research/M3-interfaces.md` §4.2, §7.1): cancelled, rejected or failed, in one
  * transaction that also releases what the work held: its compute-unit reservation in `usage/mapbox-YYYY-MM`, the layer's
- * `pendingVersion`, and, for a first import that never became a layer, its scene (back to `candidate`, so its layer id
- * is free again), unless another unfinished version holds the same layer id (a re-georeference that replaced it:
- * CR-M3-47). An ending may name the job and version it accepts (`accept`), checked in the same transaction, so a
- * cancellation or a rejection that read a waiting job never ends one the guard has meanwhile sent to Mapbox.
+ * `pendingVersion`, and, for a first import cancelled or rejected before it became a layer, its scene (back to `candidate`,
+ * so its layer id is free again; `freedScene`), unless another version holds the same layer id (a re-georeference that
+ * replaced it: CR-M3-47; `holdsLayerId`). A failure keeps its scene: Retry may still make its layer, and only a dismissal
+ * gives it up (`release-scene.ts`). An ending may name the job and version it accepts (`accept`), checked in the same
+ * transaction, so a cancellation or a rejection that read a waiting job never ends one the guard has meanwhile sent to Mapbox.
  */
 import {
     ENDED_VERSION_STATES,
@@ -32,6 +33,8 @@ import { compact, omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { IMAGERY_WRITER, stampOf, versionIdOf, type Stamp } from './records.js';
+import { freedScene } from './release-scene.js';
+import { holdsLayerId } from './versions.js';
 
 const FINISHED: ReadonlySet<JobStatus> = new Set(FINISHED_JOB_STATUSES);
 const ENDED: ReadonlySet<LayerVersionState> = new Set(ENDED_VERSION_STATES);
@@ -72,7 +75,7 @@ interface Held {
     readonly layer: LayerDoc | undefined;
     readonly scene: UsgsSceneDoc | undefined;
     readonly usage: UsageDoc | undefined;
-    /** Another unfinished version holds the version's layer id. */
+    /** Another version holds the version's layer id (`holdsLayerId`). */
     readonly layerIdHeld: boolean;
 }
 
@@ -109,11 +112,11 @@ function placesOf({ cityId, jobId, now }: Subject, job: JobDoc, version: LayerVe
     });
 }
 
-/** True when one of `siblings` (re-read in the transaction) is an unfinished version of the same layer. */
+/** True when one of `siblings` (re-read in the transaction) is a version that holds the same layer id. */
 async function siblingHolds(transaction: DocumentTransaction, subject: Subject, layerId: string | undefined): Promise<boolean> {
     for (const id of subject.siblings) {
         const sibling = await transaction.get(FIRESTORE_PATHS.layerVersion(subject.cityId, id), layerVersionDocSchema);
-        if (sibling !== undefined && sibling.layerId === layerId && !ENDED.has(sibling.state)) {
+        if (sibling !== undefined && sibling.layerId === layerId && holdsLayerId(sibling.state)) {
             return true;
         }
     }
@@ -210,13 +213,13 @@ function isFirstImport(held: Held): boolean {
     return version !== undefined && scene !== undefined && holdsScene(held, version, scene);
 }
 
-/** The scene of a first import whose layer never existed goes back to `candidate`, its reserved layer id freed. */
-function sceneWrite(held: Held, stamp: Stamp): Apply | undefined {
+/** The scene of a first import that ended for good, its layer never made, goes back to `candidate`; a failure may be retried. */
+function sceneWrite(held: Held, versionState: Ending['versionState'], stamp: Stamp): Apply | undefined {
     const { scene, places } = held;
-    if (!isFirstImport(held) || scene === undefined || places.scene === undefined) {
+    if (versionState === 'failed' || !isFirstImport(held) || scene === undefined || places.scene === undefined) {
         return undefined;
     }
-    return setting(places.scene, usgsSceneDocSchema, { ...omit(scene, ['layerId']), status: 'candidate', ...stamp });
+    return setting(places.scene, usgsSceneDocSchema, freedScene(scene, stamp));
 }
 
 /** The usage counter without this version's reservation (nothing to write when it held none). */
@@ -251,7 +254,7 @@ export async function endWork(deps: EndDeps, cityId: string, jobId: string, endi
             jobWrite(held, ending, stamp),
             versionWrite(held, ending, stamp),
             layerWrite(held, stamp),
-            sceneWrite(held, stamp),
+            sceneWrite(held, ending.versionState, stamp),
             usageWrite(held, stamp),
         ];
         for (const write of writes) {
@@ -278,7 +281,12 @@ export async function releaseCancelled(deps: EndDeps, cityId: string, jobId: str
             return false;
         }
         const held = await readRest(transaction, { cityId, jobId, now, siblings }, job);
-        const writes = [versionWrite(held, CANCELLED, stamp), layerWrite(held, stamp), sceneWrite(held, stamp), usageWrite(held, stamp)];
+        const writes = [
+            versionWrite(held, CANCELLED, stamp),
+            layerWrite(held, stamp),
+            sceneWrite(held, CANCELLED.versionState, stamp),
+            usageWrite(held, stamp),
+        ];
         const due = writes.filter((write): write is Apply => write !== undefined);
         for (const write of due) {
             await write(transaction);

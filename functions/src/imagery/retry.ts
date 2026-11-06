@@ -13,6 +13,7 @@ import {
     type JobDoc,
     type JobStep,
     type LayerVersionDoc,
+    type LayerVersionState,
 } from '@hcm/shared';
 
 import type { VerifiedCaller } from '../api/access.js';
@@ -31,7 +32,11 @@ import { guardIsRed, requireJob, stampOf, versionIdOf, type Stamp } from './reco
  * to Cloud Run, its MTS job and publish steps cleared (the upload is kept: the same file is not sent twice). At most
  * `JOB_MAX_ATTEMPTS` executions and `PUBLISH_MAX_ATTEMPTS` publish starts in all; never while the budget guard is red;
  * never a job without its version (an upload the server refused: there is nothing to run) nor a failure no retry can
- * cure (a Mapbox token or its scopes: Setup's Mapbox step; out of memory on the large machine) (CR-M3-47).
+ * cure (a Mapbox token or its scopes: Setup's Mapbox step; out of memory on the large machine) (CR-M3-47); never a version
+ * that ended otherwise: a dismissed one gave its scene and its scratch files back, and a retry would make a layer no scene
+ * knows (finding of 2026-11-06; S-A12-BAD-RETRY-DISMISSED). A version still `processing` under a failed job is a stranded run
+ * (the runner's second write did not arrive): the retry is the way out, as neither Dismiss nor Cancel takes it
+ * (S-A12-BAD-STRANDED-VERSION). Checked again in the transaction that retries.
  */
 export type RetryDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'tasks'>;
 
@@ -60,9 +65,20 @@ function curable(job: JobDoc): boolean {
     return job.error === undefined || !NOT_RETRYABLE.has(job.error.code);
 }
 
+/**
+ * The states a retry may bring a version back from: failed; processing under a failed job, a stranded run (`_fail_job`
+ * writes the job first); or approved or publishing for a publish retry (the schema gives those two an approval, so
+ * `failedAtPublish` holds); never one dismissed or otherwise ended.
+ */
+const REVIVABLE: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['failed', 'processing', 'approved', 'publishing']);
+
+function revivable(version: LayerVersionDoc | undefined): version is LayerVersionDoc {
+    return version !== undefined && REVIVABLE.has(version.state);
+}
+
 /** A failed raster job, made with its version (a refused upload has none), whose failure a retry may cure. */
 function retryable(job: JobDoc, version: LayerVersionDoc | undefined): version is LayerVersionDoc {
-    return job.status === 'failed' && job.type !== 'layer-delete' && version !== undefined && curable(job);
+    return job.status === 'failed' && job.type !== 'layer-delete' && revivable(version) && curable(job);
 }
 
 /** A failed raster job with its version, whose failure a retry may cure. */
@@ -147,10 +163,13 @@ async function retryIn(transaction: DocumentTransaction, request: Request, stamp
     }
     const versionPath = FIRESTORE_PATHS.layerVersion(request.cityId, versionIdOf(request.jobId, job));
     const version = await transaction.get(versionPath, layerVersionDocSchema);
+    if (!revivable(version)) {
+        throw new ApiError('apiError.imagery.versionState');
+    }
     const atPublish = failedAtPublish(job, version);
     const retried = retriedJob(job, atPublish, stamp);
     await transaction.set(jobPath, jobDocSchema, retried);
-    if (version?.state === 'failed') {
+    if (version.state === 'failed') {
         await transaction.set(versionPath, layerVersionDocSchema, retriedVersion(version, atPublish, stamp));
     }
     return { job: retried, atPublish };

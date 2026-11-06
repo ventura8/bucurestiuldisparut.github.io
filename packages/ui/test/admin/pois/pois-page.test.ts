@@ -141,6 +141,7 @@ describe('<hcm-pois-page>: bulk actions and files', () => {
         const clicked = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockReturnValue(undefined);
 
         press(deep(element, 'hcm-button.export'));
+        await updated(element);
         const input = deep(element, '.file-input') as HTMLInputElement;
         const opened = vi.spyOn(input, 'click').mockReturnValue(undefined);
         press(deep(element, 'hcm-button.import'));

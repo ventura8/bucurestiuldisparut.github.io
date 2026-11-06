@@ -16,10 +16,13 @@ import {
 import type { VerifiedCaller } from '../api/access.js';
 import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
+import type { DocumentTransaction } from '../ports/documents.js';
+import type { Ports } from '../ports/index.js';
 import { approved, estimateOf, queuePublish, type ApprovalDeps } from './approval.js';
 import { endWork } from './end.js';
-import { releaseScenes } from './release-scene.js';
-import { requireVersion, stampOf } from './records.js';
+import { releaseScene } from './release-scene.js';
+import { requireVersion, stampOf, type Stamp } from './records.js';
+import { deleteWorkFiles } from './work-files.js';
 
 /**
  * `imagery.approve` and `imagery.reject` (admin; `docs/research/M3-interfaces.md` §7.1; S-A12-HAPPY, S-A17-*): the one
@@ -27,9 +30,13 @@ import { requireVersion, stampOf } from './records.js';
  * Reject ends the version and its job, frees its reserved layer id and its scene, and the layer keeps its tiles. The
  * job and the version are checked again in the transaction that ends them, so a rejection never ends a publish the guard
  * has meanwhile sent to Mapbox (CR-M3-47). A version that failed is dismissed the same way: it becomes `rejected` and
- * leaves the Imagery area's "Waiting for you" (its job stays failed), and its scene can be imported again (finding 85).
+ * leaves the Imagery area's "Waiting for you" (its job stays failed, marked `cancelRequested` so no page offers Retry), and its
+ * scene can be imported again (finding 85). A version ended either way can never run again: its scratch files in the bucket go
+ * (a local worker's stay in its work folder until its sweep: `work-files.ts`).
  */
 type VersionRequest = CallableRequest<'imagery.approve'>;
+
+type RejectDeps = ApprovalDeps & Pick<Ports, 'blobs'>;
 
 /** The versions an admin may still reject: waiting for points, for approval, or for a compute-unit choice. */
 const REJECTABLE: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['needs_gcps', 'awaiting_approval', 'approved']);
@@ -80,30 +87,50 @@ async function requireRejectable(deps: ApprovalDeps, request: VersionRequest): P
     return version;
 }
 
-/** A failed version, dismissed: `rejected` in a transaction that finds it still failed. */
-async function dismissFailed(deps: ApprovalDeps, caller: VerifiedCaller, request: VersionRequest): Promise<void> {
+/** The failed job stays failed, marked so that `jobRetryable` no longer offers Retry on any page. */
+async function markJobDismissed(transaction: DocumentTransaction, path: string, stamp: Stamp): Promise<void> {
+    const job = await transaction.get(path, jobDocSchema);
+    if (job?.status === 'failed') {
+        await transaction.set(path, jobDocSchema, { ...job, cancelRequested: true, ...stamp });
+    }
+}
+
+/** A failed version `rejected`, its job marked, in a transaction that finds it still failed; returns it. */
+async function rejectFailed(deps: ApprovalDeps, caller: VerifiedCaller, request: VersionRequest): Promise<LayerVersionDoc> {
     const path = FIRESTORE_PATHS.layerVersion(request.cityId, request.versionId);
-    await deps.documents.transaction(async (transaction) => {
+    const stamp = stampOf(caller.uid, deps.clock.now());
+    return deps.documents.transaction(async (transaction) => {
         const version = await transaction.get(path, layerVersionDocSchema);
         if (version?.state !== 'failed') {
             throw new ApiError('apiError.imagery.versionState');
         }
-        await transaction.set(path, layerVersionDocSchema, { ...version, state: 'rejected', ...stampOf(caller.uid, deps.clock.now()) });
+        await markJobDismissed(transaction, FIRESTORE_PATHS.job(request.cityId, version.jobId), stamp);
+        await transaction.set(path, layerVersionDocSchema, { ...version, state: 'rejected', ...stamp });
+        return version;
     });
-    await releaseScenes(deps, request.cityId);
 }
 
-/** A waiting version: it and its job end, checked again in the transaction. */
-async function rejectWaiting(deps: ApprovalDeps, caller: VerifiedCaller, request: VersionRequest): Promise<void> {
+/** A failed version, dismissed: only its own scene is released, and its scratch files go. */
+async function dismissFailed(deps: RejectDeps, caller: VerifiedCaller, request: VersionRequest): Promise<void> {
+    const version = await rejectFailed(deps, caller, request);
+    if (version.source?.kind === 'usgs') {
+        await releaseScene(deps, request.cityId, version.source.entityId, version.layerId);
+    }
+    await deleteWorkFiles(deps, request.cityId, version.jobId);
+}
+
+/** A waiting version: it and its job end, checked again in the transaction; its scratch files go. */
+async function rejectWaiting(deps: RejectDeps, caller: VerifiedCaller, request: VersionRequest): Promise<void> {
     const version = await requireRejectable(deps, request);
     const ending = { status: 'cancelled', versionState: 'rejected', by: caller.uid, accept: rejectable } as const;
     if (!(await endWork(deps, request.cityId, version.jobId, ending))) {
         throw new ApiError('apiError.imagery.versionState');
     }
+    await deleteWorkFiles(deps, request.cityId, version.jobId);
 }
 
 async function imageryReject(
-    deps: ApprovalDeps,
+    deps: RejectDeps,
     caller: VerifiedCaller,
     request: VersionRequest,
 ): Promise<CallableResponse<'imagery.reject'>> {
@@ -119,6 +146,6 @@ export function approveFunction(getDeps: () => ApprovalDeps & CallableDeps) {
 }
 
 /** The `imagery-reject` callable. */
-export function rejectFunction(getDeps: () => ApprovalDeps & CallableDeps) {
+export function rejectFunction(getDeps: () => RejectDeps & CallableDeps) {
     return defineCallable('imagery.reject', imageryReject, getDeps);
 }

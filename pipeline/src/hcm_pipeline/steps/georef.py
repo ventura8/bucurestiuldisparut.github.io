@@ -1,14 +1,16 @@
 """`georef`: automatic GCPs and suggestions, or the fit of the admin's points (M3-interfaces.md §5.6, §6; M4 §2).
 
 A version still on its corner GCPs (`method: 'corners'`, a USGS import) is matched against the Sentinel-2 window and
-OpenStreetMap's lines (`georef/matcher.py`). With at least six confident pairs (`AUTO_GCP_MIN_CONFIDENCE`) the
-version gets its `georef` (`poly2` from 12 well-spread pairs, else `affine`; a fifth held out as checkpoints from 15)
-and the weaker pairs are its `suggestions`; with fewer, every candidate is a suggestion and the job waits for the
-admin's points (`awaiting_gcps`, the version `needs_gcps` with `apiError.imagery.noMatch {pairs}`, the confident
-count, or `apiError.imagery.noSpread {pairs}` when enough confident pairs lie almost in a line), which is not a failure
-(`georef/autogcp.py`). A version that holds the admin's points (or any other method) is
-only fitted with its own transform, and its suggestions are done with; a scan without any georeference waits for
-points; an upload's own georeference needs none (`skipped`).
+OpenStreetMap's lines (`georef/matcher.py`). With at least six confident pairs (`AUTO_GCP_MIN_CONFIDENCE`) the version gets its
+`georef` (`poly2` from 12 well-spread pairs, else `affine`; a fifth held out as checkpoints from 15) and the weaker pairs are its
+`suggestions`; with fewer, every candidate is a suggestion and the job waits for the admin's points (`awaiting_gcps`, the version
+`needs_gcps` with `apiError.imagery.noMatch {pairs}`, the confident count, or `apiError.imagery.noSpread {pairs}` when enough
+confident pairs lie almost in a line), which is not a failure (`georef/autogcp.py`). The corner pairs of a guess nothing confirmed
+(`weakCorners`) go then: kilometres off, they would spoil the admin's fit (3.3 km of error at 8 hand-read points of the 1972
+frame, 0.4 km without them) and could be saved alone. A version that holds the admin's points (or any other method) is only fitted
+with its own transform, and its suggestions are done with; an automatic fit met again (a retry after this step) is fitted the same
+way and keeps its suggestions: the corner GCPs a new match starts from were replaced by it, and the georeferencer still offers
+those pairs. A scan without any georeference waits for points; an upload's own georeference needs none (`skipped`).
 """
 
 import math
@@ -30,6 +32,7 @@ from hcm_pipeline.steps.common import Sentinel2, city_window, gdal_step, grey_re
 from hcm_pipeline.store import DELETE
 
 NEEDS_POINTS: Final = "the scan needs the admin's points (georeferencer)"
+AUTO_METHOD: Final = "auto"
 
 
 def recorded(fitted: Fit, method: str) -> GeorefInfo:
@@ -64,10 +67,11 @@ def fit_points(georef: GeorefInfo, scan: ScanInfo) -> GeorefInfo:
 
 
 def scan_resolution(gcps: tuple[Gcp, ...], width: int) -> float:
-    """The scan's approximate pixel size in EPSG:3857 metres, from its top corner GCPs."""
+    """The scan's approximate pixel size in EPSG:3857 metres, from its first two corner GCPs (a weak crop's lie inside the scan)."""
     first, second = gcps[0], gcps[1]
     (x0, y0), (x1, y1) = to_mercator(first.lng, first.lat), to_mercator(second.lng, second.lat)
-    return max(math.hypot(x1 - x0, y1 - y0) / max(width, 1), 1e-3)
+    pixels = math.hypot(second.x - first.x, second.y - first.y) or width
+    return max(math.hypot(x1 - x0, y1 - y0) / max(pixels, 1), 1e-3)
 
 
 def _missing(path: str) -> NoReturn:
@@ -119,6 +123,16 @@ def _suggestions(ctx: JobContext, result: MatchResult, decision: Decision) -> di
     return {"suggestions": record}
 
 
+def _left_by_a_fit(georef: GeorefInfo) -> Mapping[str, object]:
+    """The admin's points are done with the suggestions; an automatic fit retried keeps those its match left."""
+    return {} if georef.method == AUTO_METHOD else {"suggestions": DELETE}
+
+
+def _left_by_a_weak_guess(corners: GeorefInfo) -> Mapping[str, object]:
+    """The scan waits for the admin: the corner pairs of a guess nothing confirmed go (`needs_gcps` asks only for a scan)."""
+    return {"georef": DELETE} if corners.weak_corners else {}
+
+
 class GeorefStep:
     name = "georef"
 
@@ -130,10 +144,10 @@ class GeorefStep:
         if georef is None or not georef.gcps:
             return wait_for_points(ctx, 0)
         if georef.method != "corners":
-            return self._fitted(ctx, fit_points(georef, scan), {"suggestions": DELETE})
-        return self._matched(ctx, match_scan(ctx, georef, scan))
+            return self._fitted(ctx, fit_points(georef, scan), _left_by_a_fit(georef))
+        return self._matched(ctx, georef, match_scan(ctx, georef, scan))
 
-    def _matched(self, ctx: JobContext, result: MatchResult) -> StepResult:
+    def _matched(self, ctx: JobContext, corners: GeorefInfo, result: MatchResult) -> StepResult:
         decision = decide(result.pairs)
         matched, total = result.tiles.total
         ctx.log.info(
@@ -144,8 +158,8 @@ class GeorefStep:
         suggestions = _suggestions(ctx, result, decision)
         if decision.fitted is None:
             code = Errors.NO_SPREAD if decision.degenerate else Errors.NO_MATCH
-            return wait_for_points(ctx, decision.confident, suggestions, code)
-        return self._fitted(ctx, recorded(decision.fitted, "auto"), suggestions)
+            return wait_for_points(ctx, decision.confident, {**suggestions, **_left_by_a_weak_guess(corners)}, code)
+        return self._fitted(ctx, recorded(decision.fitted, AUTO_METHOD), suggestions)
 
     def _fitted(self, ctx: JobContext, georef: GeorefInfo, fields: Mapping[str, object]) -> Done:
         ctx.update_version({"georef": georef.as_record(), **fields})

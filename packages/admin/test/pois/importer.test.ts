@@ -1,8 +1,9 @@
 import { FIRESTORE_PATHS, MAX_GEOMETRY_VERTICES, MAX_POLYGON_RINGS } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
-import { Importer, type ImportFile, type ImportState } from '../../src/pois/importer.js';
+import { Importer, type ImporterDeps, type ImportFile, type ImportState } from '../../src/pois/importer.js';
 import type { PoiValue } from '../../src/pois/model.js';
+import { settle } from '../app/fakes.js';
 import { CITY, POINT, poisWorld, type PoisWorld } from './world.js';
 
 const LIMITS = {
@@ -35,7 +36,8 @@ function importer(
     const subject = new Importer({
         store: world.store,
         cityId: CITY,
-        context: () => ({ limits: LIMITS, categories: new Set(['biserici', 'parcuri']), existing }),
+        context: () => ({ limits: LIMITS, categories: new Set(['biserici', 'parcuri']) }),
+        places: () => Promise.resolve({ places: [...existing].map(([id, value]) => ({ id, value })), unreadable: [] }),
         changed: (state) => states.push(state),
     });
     return { importer: subject, states };
@@ -100,7 +102,8 @@ describe('the import dialog', () => {
         const subject = new Importer({
             store: world.store,
             cityId: CITY,
-            context: () => ({ limits: LIMITS, categories, existing: new Map() }),
+            context: () => ({ limits: LIMITS, categories }),
+            places: () => Promise.resolve({ places: [], unreadable: [] }),
             changed: () => undefined,
         });
         subject.contextChanged();
@@ -127,6 +130,25 @@ describe('the import dialog', () => {
         await subject.commit();
 
         expect(subject.state?.fallbackCategory).toBeNull();
+        expect(world.store.writes).toEqual([]);
+    });
+});
+
+describe('the import: what it cannot do', () => {
+    it('badPath_placesThatCannotBeReadRefuseTheFileBeforeAnyWrite', async () => {
+        const world = poisWorld();
+        const subject = new Importer({
+            store: world.store,
+            cityId: CITY,
+            context: () => ({ limits: LIMITS, categories: new Set(['biserici']) }),
+            places: () => Promise.resolve(null),
+            changed: () => undefined,
+        });
+
+        await subject.choose(file(collection(1)), null);
+
+        expect(subject.state).toMatchObject({ status: 'refused', refusal: 'places-unread', plan: null });
+        await subject.commit();
         expect(world.store.writes).toEqual([]);
     });
 
@@ -180,5 +202,126 @@ describe('the import dialog', () => {
 
         expect(subject.state).toBeNull();
         expect(states.at(-1)).toBeNull();
+    });
+
+    it('badPath_aFeatureNamingAPlaceThatCannotBeReadIsRefusedNotMadeANewPlace @S-A34-BAD-UNREADABLE-PLACE', async () => {
+        const world = poisWorld();
+        const subject = new Importer({
+            store: world.store,
+            cityId: CITY,
+            context: () => ({ limits: LIMITS, categories: new Set(['biserici']) }),
+            places: () => Promise.resolve({ places: [], unreadable: ['stricat'] }),
+            changed: () => undefined,
+        });
+        const features = [
+            { type: 'Feature', id: 'stricat', geometry: POINT, properties: { category: 'biserici', title: 'Loc stricat' } },
+            { type: 'Feature', geometry: POINT, properties: { category: 'biserici', title: 'Loc nou' } },
+        ];
+
+        await subject.choose(file(JSON.stringify({ type: 'FeatureCollection', features })), null);
+
+        expect(subject.state?.plan?.created).toHaveLength(1);
+        expect(subject.state?.plan?.refused).toEqual([{ number: 1, title: 'Loc stricat', reason: 'unreadable-place', path: null }]);
+    });
+});
+
+describe('a file chosen while another one reads', () => {
+    type Places = Awaited<ReturnType<ImporterDeps['places']>>;
+
+    /** An importer whose reads of the city's places wait until the test answers each, in the order they were asked. */
+    function held(): { readonly subject: Importer; readonly answers: ((places: Places) => void)[] } {
+        const world = poisWorld();
+        const answers: ((places: Places) => void)[] = [];
+        const subject = new Importer({
+            store: world.store,
+            cityId: CITY,
+            context: () => ({ limits: LIMITS, categories: new Set(['biserici']) }),
+            places: () =>
+                new Promise((resolve) => {
+                    answers.push(resolve);
+                }),
+            changed: () => undefined,
+        });
+        return { subject, answers };
+    }
+
+    const EMPTY: Places = { places: [], unreadable: [] };
+
+    it('badPath_closingAndChoosingAnotherFileForgetsTheFirstFilesPlan @S-A34-BAD-FILE-CHANGED-WHILE-READING', async () => {
+        const { subject, answers } = held();
+        const first = subject.choose(file(collection(1), 100, 'a.geojson'), null);
+        await settle();
+        subject.close();
+        const second = subject.choose(file(collection(2), 100, 'b.geojson'), null);
+        await settle();
+
+        answers[0]?.(EMPTY);
+        await first;
+        expect(subject.state).toMatchObject({ status: 'reading', fileName: 'b.geojson', plan: null });
+
+        answers[1]?.(EMPTY);
+        await second;
+        expect(subject.state).toMatchObject({ status: 'preview', fileName: 'b.geojson' });
+        expect(subject.state?.plan?.created).toHaveLength(2);
+    });
+
+    it('badPath_theFirstFilesLateAnswerNeitherOverwritesNorRefusesTheSecondsPreview @S-A34-BAD-FILE-CHANGED-WHILE-READING', async () => {
+        const { subject, answers } = held();
+        const first = subject.choose(file(collection(1), 100, 'a.geojson'), null);
+        await settle();
+        const second = subject.choose(file(collection(2), 100, 'b.geojson'), null);
+        await settle();
+
+        answers[1]?.(EMPTY);
+        await second;
+        answers[0]?.(null);
+        await first;
+
+        expect(subject.state).toMatchObject({ status: 'preview', fileName: 'b.geojson', refusal: null });
+        expect(subject.state?.plan?.created).toHaveLength(2);
+    });
+
+    it('badPath_theFirstFileFailingLateDoesNotRefuseTheSecondsPreview @S-A34-BAD-FILE-CHANGED-WHILE-READING', async () => {
+        const { subject, answers } = held();
+        const failing: ((error: Error) => void)[] = [];
+        const slow: ImportFile = {
+            name: 'a.geojson',
+            size: 100,
+            text: () =>
+                new Promise((_resolve, reject) => {
+                    failing.push(reject);
+                }),
+        };
+        const first = subject.choose(slow, null);
+        const second = subject.choose(file(collection(2), 100, 'b.geojson'), null);
+        await settle();
+        answers[0]?.(EMPTY);
+        await second;
+
+        failing[0]?.(new Error('the disk went away'));
+        await first;
+
+        expect(subject.state).toMatchObject({ status: 'preview', fileName: 'b.geojson', refusal: null });
+    });
+
+    it('badPath_aFileStillBeingReadWhenTheDialogClosesLeavesItClosed @S-A34-BAD-FILE-CHANGED-WHILE-READING', async () => {
+        const world = poisWorld();
+        const finishing: ((text: string) => void)[] = [];
+        const slow: ImportFile = {
+            name: 'a.geojson',
+            size: 100,
+            text: () =>
+                new Promise((resolve) => {
+                    finishing.push(resolve);
+                }),
+        };
+        const { importer: subject } = importer(world);
+        const choosing = subject.choose(slow, null);
+        subject.close();
+
+        finishing[0]?.(collection(1));
+        await choosing;
+
+        expect(subject.state).toBeNull();
     });
 });

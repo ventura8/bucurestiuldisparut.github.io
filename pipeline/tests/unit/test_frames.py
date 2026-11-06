@@ -15,7 +15,7 @@ from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import GeoTiff, write_geotiff
 from hcm_pipeline.runner import RunOutcome
 from hcm_pipeline.steps import stitch
-from hcm_pipeline.steps.locate import crop_pixels
+from hcm_pipeline.steps.locate import camera_of, crop_pixels, film_limits, scoring_frame
 
 from tests.fakes.world import CITY, JOB_ID, PipelineWorld
 
@@ -115,6 +115,160 @@ def test_bad_path_a_copy_of_the_strip_far_above_its_place_is_not_where_the_right
         segment.close()
 
     assert abs(dy) <= HEIGHT * 3 // 100
+
+
+def test_happy_path_the_preview_averages_what_it_shrinks_and_the_matching_does_not(world: PipelineWorld, tmp_path: Path) -> None:
+    """Scenarios: S-P01-HAPPY-AVERAGED-PREVIEW"""
+    # Film grain at its finest: every other column black or white. Picking pixels gives one of the two, the average the mean.
+    grain = numpy.zeros((1600, 1600), numpy.uint8)
+    grain[:, ::2] = 200
+    path = tmp_path / "grain.tif"
+    path.write_bytes(tiff(tmp_path, grain, "grain-src.tif"))
+    segment = Segment(path)
+
+    picked = segment.read(0, 0, 1600, 1600, (200, 200))
+    averaged = segment.averaged((200, 200))
+    segment.close()
+
+    assert averaged.shape == picked.shape == (200, 200)
+    assert int(averaged.min()) == int(averaged.max()) == 100
+    assert int(picked.max() - picked.min()) == 0
+    assert int(picked.max()) in (0, 200)
+
+
+def test_happy_path_a_stitched_frame_records_where_its_exposure_ends_and_its_preview_is_averaged(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P01-HAPPY-AVERAGED-PREVIEW"""
+    monkeypatch.setattr(stitch, "PREVIEW_MAX_PX", 1024)
+    frame = scan()
+    # The exposure stops at column 4500: a dark gap after the last overlap, then a fragment of the next exposure, as on the 1972 frame.
+    frame[:, 4500:4600] = 0
+    segmented(world, tmp_path, frame)
+    world.seed_import()
+
+    assert world.runner().run("stitch") is RunOutcome.DONE
+
+    layout = FrameLayout.from_json(world.gcs.objects[f"{WORK}frame.json"].data.decode())
+    assert layout.width == frame.shape[1]
+    assert layout.image_end == pytest.approx(4500, abs=2 * layout.preview_factor)
+    assert layout.image_start == 0
+    assert layout.image_width == layout.image_end
+
+
+def test_happy_path_a_film_scanned_the_other_way_records_where_its_exposure_starts(
+    world: PipelineWorld, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P01-HAPPY-EXPOSURE-SPAN"""
+    monkeypatch.setattr(stitch, "PREVIEW_MAX_PX", 1024)
+    frame = scan()
+    # The fragment and its gap first, as an aft camera's frame or a turned scan holds them.
+    frame[:, 300:400] = 0
+    segmented(world, tmp_path, frame)
+    world.seed_import()
+
+    assert world.runner().run("stitch") is RunOutcome.DONE
+
+    layout = FrameLayout.from_json(world.gcs.objects[f"{WORK}frame.json"].data.decode())
+    assert layout.image_start == pytest.approx(400, abs=2 * layout.preview_factor)
+    assert layout.image_end is None
+    assert layout.image_width == layout.width - layout.image_start
+
+
+def test_happy_path_a_frame_without_a_gap_ends_at_its_width_and_old_files_read_the_same() -> None:
+    """Scenarios: S-P01-HAPPY-AVERAGED-PREVIEW"""
+    whole = numpy.full((40, 400), 120, numpy.uint8)
+    # A dark column run shorter than the share is a shadow, not the end.
+    whole[:, 300:302] = 0
+    assert stitch.exposure_span(whole) is None
+
+    old = FrameLayout.from_json('{"width": 400, "height": 40, "preview_factor": 1, "placements": []}')
+    assert old.image_end is None
+    assert old.image_start == 0
+    assert old.image_width == 400
+    assert old.exposure == (0, 400)
+    written = FrameLayout.from_json(FrameLayout(400, 40, 1, (), 320, 30).to_json())
+    assert (written.image_width, written.exposure) == (290, (30, 320))
+    assert FrameLayout.from_json(FrameLayout(400, 40, 1, (), None, 30).to_json()).exposure == (30, 400)
+
+
+def strip_with(*gaps: tuple[int, int]) -> numpy.ndarray:
+    """A bright film of 10 000 columns with dark columns at `gaps`."""
+    strip = numpy.full((20, 10000), 120, numpy.uint8)
+    for start, end in gaps:
+        strip[:, start:end] = 0
+    return strip
+
+
+def test_happy_path_the_exposure_is_found_whichever_way_the_film_was_scanned() -> None:
+    """Scenarios: S-P01-HAPPY-EXPOSURE-SPAN"""
+    # As the 1972 frame: the exposure, a dark gap of 2 %, a fragment of 5 % of the next exposure.
+    scanned = strip_with((9300, 9500))
+
+    assert stitch.exposure_span(scanned) == (0, 9300)
+    assert stitch.exposure_span(scanned[::-1]) == (0, 9300)
+    assert stitch.exposure_span(scanned[:, ::-1]) == (700, 10000)
+    assert stitch.exposure_span(scanned[::-1, ::-1]) == (700, 10000)
+    # Fragments on both sides.
+    assert stitch.exposure_span(strip_with((500, 700), (9300, 9500))) == (700, 9300)
+
+
+@pytest.mark.parametrize(
+    ("gaps", "span"),
+    [
+        # A dark band with more film after it than a fragment is not the end of the exposure: a sea, a cloud's shadow.
+        (((7000, 8500),), None),
+        (((6000, 6200),), None),
+        # ... and it does not hide the real gap after it.
+        (((6000, 6200), (9300, 9500)), (0, 9300)),
+        (((1500, 3000),), None),
+        # A run that takes the middle of the film leaves no exposure to squeeze the frame into.
+        (((500, 9500),), None),
+    ],
+)
+def test_bad_path_a_dark_band_inside_the_film_does_not_end_the_exposure(
+    gaps: tuple[tuple[int, int], ...], span: tuple[int, int] | None
+) -> None:
+    """Scenarios: S-P01-BAD-EXPOSURE-DARK-BAND"""
+    assert stitch.exposure_span(strip_with(*gaps)) == span
+
+
+def test_happy_path_the_scoring_frame_shrinks_a_preview_but_never_enlarges_it(tmp_path: Path) -> None:
+    """Scenarios: S-P01-HAPPY-AVERAGED-PREVIEW"""
+    pixels = numpy.random.default_rng(5).integers(0, 256, (100, 800), dtype=numpy.uint8)
+    preview = tmp_path / "preview.tif"
+    preview.write_bytes(tiff(tmp_path, pixels, "preview-src.tif"))
+
+    shrunk = scoring_frame(preview, 8000, 1000, 6.0)
+    kept = scoring_frame(preview, 8000, 1000, 0.5)
+    fine = scoring_frame(preview, 8000, 1000, 30.0)
+
+    assert shrunk.pixels.shape == (100, 800)
+    assert (shrunk.factor, shrunk.width, shrunk.height) == (10.0, 8000, 1000)
+    assert kept.pixels.shape == (17, 133)
+    assert kept.factor == pytest.approx(8000 / 133)
+    # Finer than the scoring cell by its corners, a frame is not enlarged past its preview (cv2.remap's limit, the 1972 frame's 2 m).
+    assert fine.pixels.shape == (100, 800)
+    # Blurred to the scoring cell: the grain's spread falls.
+    assert float(shrunk.pixels.std()) < float(pixels.std()) / 2
+
+
+def test_happy_path_only_a_camera_with_a_half_angle_has_a_panoramic_model() -> None:
+    """Scenarios: S-P01-HAPPY-PANORAMIC-LOCATE"""
+    layout = FrameLayout(494445, 21984, 32, (), 459808)
+
+    camera = camera_of("KH-9-pan", layout)
+
+    assert camera is not None
+    assert (camera.half_angle_deg, camera.image_width, camera.image_start) == (60.5, 459808, 0)
+    assert camera_of("KH-4A", layout) is None
+    # A crop stays on the exposure of a frame with a panoramic model, and on the whole frame of any other.
+    assert film_limits(camera, layout) == (459808, 21984, 0)
+    assert film_limits(None, layout) == (494445, 21984, 0)
+    turned = camera_of("KH-9-pan", FrameLayout(494445, 21984, 32, (), None, 34624))
+    assert turned is not None
+    assert (turned.image_width, turned.image_start) == (459821, 34624)
+    assert film_limits(turned, layout) == (494445, 21984, 34624)
 
 
 class Staging:

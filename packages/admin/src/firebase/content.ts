@@ -165,14 +165,19 @@ class FirestoreContentStore implements ContentStore {
     }
 
     watchDoc<T>(path: string, schema: Schema<T>, listener: (doc: Stored<T> | null) => void, failed: (failure: StoreFailure) => void) {
-        return this.#deps.sdk.onSnapshot(this.#ref(path), {
-            next: (snapshot: DocumentSnapshot) => {
-                this.#deliver(snapshot, schema, listener, failed);
+        return this.#deps.sdk.onSnapshot(
+            this.#ref(path),
+            // With metadata changes: a cached copy that fails its schema waits for the server's answer (`#deliver`).
+            { includeMetadataChanges: true },
+            {
+                next: (snapshot: DocumentSnapshot) => {
+                    this.#deliver(snapshot, schema, listener, failed);
+                },
+                error: (error: unknown) => {
+                    failed(failureOf(error));
+                },
             },
-            error: (error: unknown) => {
-                failed(failureOf(error));
-            },
-        });
+        );
     }
 
     /** The port's five arguments, taken as one tuple (the limit on parameters, ESLint `max-params`). */
@@ -289,7 +294,9 @@ class FirestoreContentStore implements ContentStore {
         const parsed = parse(snapshot, schema);
         if (parsed.ok) {
             listener(parsed.doc);
-        } else {
+        } else if (!snapshot.metadata.fromCache) {
+            // Only the server's copy fails the read: a failure ends the listener, so a cached copy of a document repaired
+            // since would otherwise fail every Try again, and the server's answer would never be heard.
             this.#report(parsed.path, parsed.issues);
             failed({ kind: 'failed', code: 'invalid-document' });
         }

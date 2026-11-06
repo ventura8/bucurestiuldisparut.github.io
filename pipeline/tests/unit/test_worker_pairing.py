@@ -66,6 +66,42 @@ def test_bad_path_a_forgotten_session_or_a_damaged_file_starts_as_a_new_worker(t
     assert file.worker_id(lambda: next(ids)) == "w-00000000000000aa"
 
 
+def test_bad_path_a_damaged_undecodable_id_file_starts_as_a_new_worker(tmp_path: Path) -> None:
+    """Scenarios: S-P04-BAD-WORKER-ID-UNWRITABLE"""
+    file = SessionFile(tmp_path, "bucharest")
+    file.id_path.write_bytes(b"\xff\xfe\x00 not text")
+
+    assert file.worker_id(lambda: "w-fedcba9876543210") == "w-fedcba9876543210"
+    assert file.id_path.read_text("utf-8") == "w-fedcba9876543210"
+
+
+def test_bad_path_a_folder_that_cannot_be_written_keeps_the_id_and_the_session_in_memory(tmp_path: Path) -> None:
+    """Scenarios: S-P04-BAD-WORKER-ID-UNWRITABLE"""
+    not_a_folder = tmp_path / "work"
+    not_a_folder.write_text("a file where the folder should be", "utf-8")
+    file = SessionFile(not_a_folder, "bucharest")
+
+    assert file.worker_id(lambda: "w-fedcba9876543210") == "w-fedcba9876543210"
+
+    file.save(Kept("refresh", PAIR, "e" * 64))
+    file.clear()
+    file.forget_id()
+    assert file.load() is None
+
+
+def test_happy_path_a_kept_id_is_read_from_a_folder_that_cannot_be_written(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Scenarios: S-P04-BAD-WORKER-ID-UNWRITABLE"""
+    file = SessionFile(tmp_path, "bucharest")
+    file.id_path.write_text("w-0123456789abcdef", "utf-8")
+
+    def read_only(*_args: object, **_kwargs: object) -> None:
+        raise PermissionError("read-only")
+
+    monkeypatch.setattr(Path, "write_text", read_only)
+
+    assert file.worker_id(lambda: "w-fedcba9876543210") == "w-0123456789abcdef"
+
+
 def test_happy_path_the_custom_token_is_signed_in_with_the_hosting_origin_as_referer() -> None:
     seen: list[httpx.Request] = []
 

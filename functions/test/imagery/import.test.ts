@@ -20,11 +20,13 @@ import {
     readScene,
     readVersion,
     readyWorld,
+    renderedVersion,
     seedGuard,
     seedJob,
     seedLayer,
     seedScene,
     seedSetup,
+    seedVersion,
     type ImageryWorld,
 } from './world.js';
 
@@ -85,6 +87,22 @@ describe('imagery.import', () => {
         const second = await importScene(world, 'DS-OTHER');
 
         expect(second.layerId).toBe('kh-4a-corona-12-iulie-1966-3');
+    });
+
+    it.each([
+        ['failed', 'kh-4a-corona-12-iulie-1966-2'],
+        ['rejected', 'kh-4a-corona-12-iulie-1966'],
+        ['cancelled', 'kh-4a-corona-12-iulie-1966'],
+    ] as const)('badPath_aFailedVersionHoldsItsIdUntilItIsDismissed_%s @S-A12-BAD-FAILED-HOLDS-ID', async (state, layerId) => {
+        const world = await scannedWorld();
+        const error = { code: 'apiError.imagery.cityNotFound' } as const;
+        await seedVersion(
+            world,
+            'im-earlier',
+            renderedVersion({ jobId: 'im-earlier', layerId: 'kh-4a-corona-12-iulie-1966', state, error }),
+        );
+
+        expect((await importScene(world)).layerId).toBe(layerId);
     });
 
     it('badPath_aDeletedLayersIdStaysTakenUntilItsDeletionRuns @S-A33-BAD-ID-REUSED', async () => {

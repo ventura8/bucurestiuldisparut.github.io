@@ -2,6 +2,8 @@ import { FIRESTORE_PATHS } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import type { AreaStore } from '../../src/content/areas.js';
+import { READ_WAIT_MS } from '../../src/content/read-once.js';
+import { PAGE_SIZE } from '../../src/content/services.js';
 import { LAST_CATEGORY_KEY } from '../../src/pois/actions.js';
 import { POIS_MODULE } from '../../src/pois/pois.js';
 import type { PoisIntents, PoisState } from '../../src/pois/state.js';
@@ -11,6 +13,17 @@ function opened(world: PoisWorld, params: readonly string[] = []): AreaStore<Poi
     const store = POIS_MODULE.create(world.services);
     store.open(params);
     return store;
+}
+
+function seedPhoto(world: PoisWorld, id: string, title: string): void {
+    world.store.put(FIRESTORE_PATHS.photo(CITY, id), {
+        title: { ro: title },
+        published: true,
+        processing: 'done',
+        license: 'CC-BY-4.0',
+        location: { lat: 44.43, lng: 26.1 },
+        ...world.store.stamp(),
+    });
 }
 
 describe('places: the list', () => {
@@ -364,21 +377,98 @@ describe('places: deleting', () => {
 });
 
 describe('places: files and photos', () => {
-    it('happyPath_theExportHoldsEveryLoadedPlaceOrTheSelection', () => {
+    /** The ids a file of the export holds. */
+    function exported(file: { readonly text: string } | null): string[] {
+        return (JSON.parse(file?.text ?? '{"features":[]}') as { features: { id: string }[] }).features.map((feature) => feature.id);
+    }
+
+    it('happyPath_theExportHoldsTheSelection', async () => {
         const world = seededWorld();
         const store = opened(world);
         store.intents.toggleSelected('stavropoleos');
 
-        const all = store.intents.exportPlaces(false);
-        const selection = store.intents.exportPlaces(true);
+        const selection = await store.intents.exportPlaces(true);
 
-        expect(all).toMatchObject({ name: 'bucharest-places-2025-10-09.geojson', type: 'application/geo+json' });
-        expect((JSON.parse(all.text) as { features: unknown[] }).features).toHaveLength(2);
-        expect((JSON.parse(selection.text) as { features: { id: string }[] }).features.map((feature) => feature.id)).toEqual([
-            'stavropoleos',
-        ]);
+        expect(selection).toMatchObject({ name: 'bucharest-places-2025-10-09.geojson', type: 'application/geo+json' });
+        expect(exported(selection)).toEqual(['stavropoleos']);
     });
 
+    it('happyPath_exportAllHoldsTheWholeCityPastTheLoadedPageAndAnyFilter @S-A34-HAPPY-EXPORT-ALL-PLACES', async () => {
+        const world = seededWorld();
+        for (let place = 0; place < PAGE_SIZE; place += 1) {
+            seedPlace(world, `loc-${String(place)}`);
+        }
+        const store = opened(world);
+        store.intents.setFilter({ category: 'parcuri' });
+        expect(store.state.list.items).toHaveLength(1);
+
+        const reading = store.intents.exportPlaces(false);
+        expect(store.state.exporting).toBe(true);
+        const all = await reading;
+
+        expect(store.state.exporting).toBe(false);
+        expect(exported(all)).toHaveLength(PAGE_SIZE + 2);
+        expect(world.store.listeners(FIRESTORE_PATHS.pois(CITY))).toBe(1);
+    });
+
+    it('badPath_exportAllNeverTakesTheCachesPartOfTheCityForAllOfIt @S-A34-BAD-EXPORT-ALL-UNREAD', async () => {
+        const world = seededWorld();
+        const store = opened(world);
+        world.store.setOffline(true);
+
+        const reading = store.intents.exportPlaces(false);
+        await settle();
+        world.clock.advance(READ_WAIT_MS);
+
+        expect(await reading).toBeNull();
+        expect(store.state.exporting).toBe(false);
+        expect(world.notices.at(-1)?.key).toBe('adminContent.pois.exportFailed');
+    });
+
+    it('badPath_exportAllSaysHowManyPlacesItLeftOutThatFailTheirSchema @S-A34-BAD-UNREADABLE-PLACE', async () => {
+        const world = seededWorld();
+        world.store.docs.set(FIRESTORE_PATHS.poi(CITY, 'stricat'), { title: 42 });
+        const store = opened(world);
+
+        const all = await store.intents.exportPlaces(false);
+
+        expect(exported(all).length).toBeGreaterThan(0);
+        expect(exported(all)).not.toContain('stricat');
+        expect(world.notices.at(-1)).toEqual({ key: 'adminContent.pois.exportPartial', params: { count: '1' } });
+    });
+
+    it('badPath_exportAllRefusedAsksWhoThisIs @S-A34-BAD-EXPORT-ALL-UNREAD', async () => {
+        const world = seededWorld();
+        const store = opened(world);
+        world.store.setOffline(true);
+
+        const reading = store.intents.exportPlaces(false);
+        await settle();
+        world.store.fail(FIRESTORE_PATHS.pois(CITY), { kind: 'denied', code: 'permission-denied' });
+
+        expect(await reading).toBeNull();
+        // The list's own listener says so once, and the export's read again.
+        expect(world.denials.count).toBe(2);
+        expect(world.notices.at(-1)?.key).toBe('adminContent.pois.exportFailed');
+    });
+
+    it('badPath_aFileThatNamesAPlacePastTheLoadedPageUpdatesItWithNoDuplicate @S-A34-BAD-REIMPORT-NO-DUPLICATES', async () => {
+        const world = seededWorld();
+        for (let place = 0; place < PAGE_SIZE; place += 1) {
+            seedPlace(world, `loc-${String(place)}`);
+        }
+        const store = opened(world);
+        expect(store.state.list.items.map((item) => item.id)).not.toContain('stavropoleos');
+        const file = await store.intents.exportPlaces(false);
+        const again = file?.text ?? '';
+
+        await store.intents.chooseImport({ name: 'a.geojson', size: again.length, text: () => Promise.resolve(again) });
+
+        expect(store.state.importing?.plan).toMatchObject({ created: [], updated: [], unchanged: PAGE_SIZE + 2 });
+    });
+});
+
+describe('places: importing and the photos', () => {
     it('happyPath_anImportIsPreviewedOnTheMapAndWritten', async () => {
         const world = seededWorld();
         const store = opened(world);
@@ -423,6 +513,68 @@ describe('places: files and photos', () => {
             { id: 'p1', title: { ro: 'Lipscani' }, year: 1930, thumb: 'https://example.org/t.webp' },
         ]);
         expect(world.store.listeners(FIRESTORE_PATHS.photos(CITY))).toBe(1);
+    });
+
+    it('happyPath_thePickerReadsThePhotosPastItsFirstPage @S-A32-HAPPY-PHOTO-PICKER-PAGES', () => {
+        const world = seededWorld();
+        for (let photo = 0; photo <= PAGE_SIZE; photo += 1) {
+            seedPhoto(world, `p${String(photo)}`, `Foto ${String(photo)}`);
+        }
+        const store = opened(world);
+
+        store.intents.loadPhotos();
+        expect([store.state.photos?.items.length, store.state.photos?.hasMore]).toEqual([PAGE_SIZE, true]);
+        store.intents.morePhotos();
+
+        expect([store.state.photos?.items.length, store.state.photos?.hasMore]).toEqual([PAGE_SIZE + 1, false]);
+    });
+
+    it('badPath_aPickerWhoseReadFailedCanTryAgain', () => {
+        const world = seededWorld();
+        seedPhoto(world, 'p1', 'Lipscani');
+        const store = opened(world);
+        store.intents.retry();
+        expect(world.store.listeners(FIRESTORE_PATHS.photos(CITY))).toBe(0);
+        store.intents.loadPhotos();
+
+        world.store.fail(FIRESTORE_PATHS.photos(CITY), { kind: 'failed', code: 'internal' });
+        expect(store.state.photos?.status).toBe('error');
+        store.intents.retry();
+
+        expect(store.state.photos?.status).toBe('ready');
+    });
+
+    it('happyPath_aLinkedPhotoIsNamedFromItsOwnReadWithThePickerClosed @S-A32-BAD-LINKED-PHOTO-PAST-PAGE', async () => {
+        const world = seededWorld();
+        seedPhoto(world, 'p1', 'Lipscani');
+        seedPlace(world, 'cu-poze', { photoIds: ['p1', 'gone'] });
+        const store = opened(world);
+
+        store.open(['cu-poze']);
+        await settle();
+
+        expect(store.state.photos).toBeNull();
+        expect(store.state.linkedPhotos.map((photo) => [photo.id, photo.title.ro])).toEqual([['p1', 'Lipscani']]);
+        const reads = world.store.listeners(FIRESTORE_PATHS.photo(CITY, 'p1'));
+        store.intents.edit({ title: { ro: 'Alt titlu' } });
+        expect(world.store.listeners(FIRESTORE_PATHS.photo(CITY, 'p1'))).toBe(reads);
+
+        store.open([]);
+        expect(world.store.listeners(FIRESTORE_PATHS.photo(CITY, 'p1'))).toBe(0);
+    });
+
+    it('badPath_aLinkedPhotoThatCannotBeReadKeepsItsId', async () => {
+        const world = seededWorld();
+        seedPhoto(world, 'p1', 'Lipscani');
+        seedPlace(world, 'cu-poze', { photoIds: ['p1'] });
+        const store = opened(world);
+        world.store.fail(FIRESTORE_PATHS.photo(CITY, 'p1'), { kind: 'failed', code: 'internal' });
+        world.store.docs.delete(FIRESTORE_PATHS.photo(CITY, 'p1'));
+
+        store.open(['cu-poze']);
+        await settle();
+
+        expect(store.state.linkedPhotos).toEqual([]);
     });
 });
 

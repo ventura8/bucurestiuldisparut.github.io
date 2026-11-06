@@ -21,7 +21,15 @@ export const GEOJSON_MEDIA_TYPE = 'application/geo+json';
 export type ImportFileRefusal = 'too-big' | 'not-geojson' | 'empty';
 
 type ImportRefusalReason =
-    'unsupported-type' | 'altitude' | 'open-ring' | 'too-many-positions' | 'outside' | 'bad-shape' | 'unknown-category' | 'invalid';
+    | 'unsupported-type'
+    | 'altitude'
+    | 'open-ring'
+    | 'too-many-positions'
+    | 'outside'
+    | 'bad-shape'
+    | 'unknown-category'
+    | 'invalid'
+    | 'unreadable-place';
 
 interface ImportRefusal {
     /** The feature's place in the file, from 1. */
@@ -55,6 +63,8 @@ export interface ImportPlan {
 export interface ImportContext extends PoiContext {
     /** The city's places by id. */
     readonly existing: ReadonlyMap<string, PoiValue>;
+    /** The ids of the city's places whose documents fail their schema: a feature naming one is refused, never a new place. */
+    readonly unreadable?: ReadonlySet<string>;
     /** The category a feature without a known one takes (chosen in the dialog), or null. */
     readonly fallbackCategory: string | null;
 }
@@ -198,6 +208,11 @@ function existingId(feature: Raw, existing: ReadonlyMap<string, PoiValue>): stri
     return id !== null && ID_PATTERN.test(id) && existing.has(id) ? id : null;
 }
 
+function namesUnreadable(feature: Raw, context: ImportContext): boolean {
+    const id = stringOf(feature['id']);
+    return id !== null && context.unreadable?.has(id) === true;
+}
+
 function categoryOf(properties: Raw, context: ImportContext): string | null {
     const named = stringOf(properties['category']);
     return named !== null && context.categories?.has(named) === true ? named : context.fallbackCategory;
@@ -231,7 +246,14 @@ interface Candidate {
 }
 
 /** A mapped feature checked like an edited place. */
-function checked(candidate: Candidate, context: ImportContext, refuse: (reason: ImportRefusalReason, path: string) => Mapped): Mapped {
+function checked(
+    candidate: Candidate,
+    context: ImportContext,
+    refuse: (reason: ImportRefusalReason, path: string | null) => Mapped,
+): Mapped {
+    if (namesUnreadable(candidate.feature, context)) {
+        return refuse('unreadable-place', null);
+    }
     const [issue] = draftIssues(candidate.value, context);
     if (issue !== undefined) {
         return refuse(issueReason(issue.path, issue.code), issue.path);

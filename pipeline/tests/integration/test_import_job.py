@@ -2,11 +2,13 @@
 
 import hashlib
 import io
+import json
 from pathlib import Path
 
 import cv2
 import numpy
 from hcm_pipeline.contract import Errors
+from hcm_pipeline.geo import to_lnglat
 from hcm_pipeline.model import Timestamp
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.runner import RunOutcome
@@ -21,6 +23,7 @@ from tests.fakes.world import (
     NOW,
     OVERPASS_PATH,
     S2_ITEM,
+    STAC_PATH,
     PipelineWorld,
     dig,
 )
@@ -133,6 +136,25 @@ def test_bad_path_a_corrupt_archive_fails_at_extract_and_is_discarded(world: Pip
 def test_bad_path_no_sentinel2_item_fails_at_locate_with_reference_unavailable(world: PipelineWorld) -> None:
     """Scenarios: S-P01-BAD-NO-REFERENCE"""
     world.stac_items = False
+    world.seed_import()
+
+    outcome = world.run()
+
+    assert outcome is RunOutcome.FAILED
+    assert dig(world.job(), "error", "code") == Errors.REFERENCE_UNAVAILABLE
+    assert step_statuses(world)["locate"] == "failed"
+
+
+def test_bad_path_sentinel2_items_that_leave_a_hole_in_the_window_fail_at_locate(world: PipelineWorld) -> None:
+    """Scenarios: S-P01-BAD-MOSAIC-NOT-COVERED"""
+    west, south = to_lnglat(world.scene.world.grid.left, world.scene.world.grid.box().bottom)
+    item = {
+        "id": "half",
+        "bbox": [west - 1, south - 1, west + 0.001, south + 5],
+        "properties": {"datetime": "2025-08-03T09:20:31Z", "eo:cloud_cover": 3.2},
+        "assets": {"visual": {"href": world.http.url("/s2/visual.tif")}},
+    }
+    world.http.enqueue(f"{STAC_PATH}/search", Reply.json(json.dumps({"features": [item]})))
     world.seed_import()
 
     outcome = world.run()

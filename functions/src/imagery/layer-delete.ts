@@ -4,8 +4,9 @@
  * from History) the job is cancelled; while an unfinished version holds the layer's id (it should not, the id stays
  * reserved during the grace: CR-M3-47) the job waits for it to end, since the tileset id is the layer's; otherwise the
  * tileset and its source are deleted at Mapbox (a missing one is fine; a tileset of another account is never touched),
- * the files of the deleted layer's own versions (those made before the deletion) go, and the job succeeds. A failure is
- * tried again on the next tick, at most `JOB_MAX_ATTEMPTS` times.
+ * the files of the deleted layer's own versions (those made before the deletion) go, and the job succeeds, which frees the
+ * scene the layer was imported from (`release-scene.ts`: nothing can bring the layer back now, so it can be imported again).
+ * A failure is tried again on the next tick, at most `JOB_MAX_ATTEMPTS` times.
  */
 import {
     ENDED_VERSION_STATES,
@@ -30,6 +31,7 @@ import { omit } from '../api/objects.js';
 import type { StoredDocument } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { IMAGERY_WRITER, appendJobLog, requireMapboxUser, requireTilesToken, stampOf, withStep } from './records.js';
+import { releaseLayerScenes } from './release-scene.js';
 
 export type LayerDeleteDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'secrets' | 'setup' | 'tilesets' | 'blobs'>;
 
@@ -136,9 +138,11 @@ export async function runLayerDelete(deps: LayerDeleteDeps, cityId: string, jobI
         const files = await deleteFiles(deps, cityId, job, versions);
         await finish(deps, path, job, 'succeeded');
         await appendJobLog(deps, cityId, jobId, { level: 'info', step: 'delete', message: `Tileset and ${String(files)} files deleted.` });
-        return 'succeeded';
     } catch (error) {
         deps.log.warn('layer deletion failed', { cityId, jobId, error: String(error) });
         return failedAttempt(deps, path, job, error);
     }
+    // After the try: a job that succeeded stays so; a scene not freed here is freed by the tick's next `scenes` part.
+    await releaseLayerScenes(deps, cityId, params.layerId);
+    return 'succeeded';
 }

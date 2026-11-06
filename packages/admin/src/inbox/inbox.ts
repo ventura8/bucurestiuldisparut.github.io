@@ -1,8 +1,8 @@
 /**
  * The inbox (`docs/research/M4-interfaces.md` §5.5; behaviours A46, A47): the signed-in admin's notifications
  * (`admins/{uid}/inbox`, written by `notify.onEvent`) newest first, 50 at a time; opening one marks it read (`read`, the
- * stamp's server time records when: the rules allow nothing else); **Mark all as read** writes the loaded unread items in
- * one batch (at most 50). The push settings of this account (`admins/{uid}/notify/settings`: the kinds pushed to its
+ * stamp's server time records when: the rules allow nothing else); **Mark all as read** reads every unread item, loaded or
+ * not, and marks them in batches of at most `MAX_BATCH_WRITES`. The push settings of this account (`admins/{uid}/notify/settings`: the kinds pushed to its
  * devices, saved with the Firestore SDK) and push on this browser (`push.ts`). Nothing here renders a notification:
  * the page fills each message from the catalogue with its parameters as plain text.
  */
@@ -20,7 +20,8 @@ import {
 import type { AreaModule, AreaStore } from '../content/areas.js';
 import { LiveDoc, type DocState } from '../content/doc.js';
 import { LOADING_LIST, LiveList, isoOf, type ListState, type LoadStatus } from '../content/list.js';
-import type { ContentServices, Stored, WriteOutcome } from '../content/services.js';
+import { readOnce } from '../content/read-once.js';
+import { MAX_BATCH_WRITES, type ContentServices, type Stored, type WriteOutcome } from '../content/services.js';
 import { Store } from '../state/store.js';
 import { PushSession, type PushState } from './push.js';
 
@@ -61,7 +62,7 @@ export interface InboxIntents {
     sendTest(): Promise<void>;
 }
 
-/** Items per page, and the most one Mark all as read writes (a batch the rules check item by item). */
+/** Items per page. */
 export const INBOX_PAGE_SIZE = 50;
 
 const LOADING_SETTINGS: InboxSettings = { status: 'loading', push: false, kinds: DEFAULT_PUSH_KINDS, saving: false };
@@ -189,19 +190,26 @@ class InboxStore implements AreaStore<InboxState, InboxIntents> {
     }
 
     async #markAllRead(): Promise<void> {
-        const unread = this.#cell.state.list.items.filter((item) => !item.read).slice(0, INBOX_PAGE_SIZE);
-        if (unread.length === 0) {
-            return;
-        }
         this.#cell.update({ marking: true });
-        const writes = unread.map((row) => ({
-            kind: 'update' as const,
-            path: FIRESTORE_PATHS.inboxItem(this.#uid(), row.id),
-            fields: { read: true },
-        }));
-        const outcome = await this.#services.store.batch(writes);
+        const outcome = await this.#markUnread();
         this.#cell.update({ marking: false });
         this.#reported(outcome);
+    }
+
+    /** One batch of the unread items, whatever pages the list loaded, then the next while the read filled its limit. */
+    async #markUnread(): Promise<WriteOutcome> {
+        const query = { where: [['read', '==', false]], limit: MAX_BATCH_WRITES } as const;
+        const { page, failure } = await readOnce(this.#services, FIRESTORE_PATHS.inbox(this.#uid()), inboxItemDocSchema, query);
+        if (page === null) {
+            return { ok: false, reason: failure };
+        }
+        if (page.docs.length === 0) {
+            return { ok: true };
+        }
+        const outcome = await this.#services.store.batch(
+            page.docs.map((doc) => ({ kind: 'update', path: doc.path, fields: { read: true } })),
+        );
+        return outcome.ok && page.hasMore ? this.#markUnread() : outcome;
     }
 
     async #setKind(kind: NotificationKind, on: boolean): Promise<void> {

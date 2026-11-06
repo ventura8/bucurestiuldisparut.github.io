@@ -216,6 +216,25 @@ describe('the Imagery area: versions, the map and uploads', () => {
         expect(imagery.state.browse['a']?.status).toBe('ready');
     });
 
+    it('happyPath_tryAgainOnTheBrowseImageReachesASceneFromTheRoutedRead @S-A11-HAPPY-BROWSE-RETRY-ROUTED', async () => {
+        const world = seeded();
+        // `b` is not free: Free only hides it, so only the routed read has it.
+        answer(world.callables, 'imagery.browse', () => Promise.reject(new Error('offline')));
+        const imagery = IMAGERY_MODULE.create(world.services);
+        imagery.open(['scene', 'b']);
+        await settle();
+        expect(imagery.state.visible.map((scene) => scene.id)).toEqual(['a']);
+        expect(imagery.state.browse['b']?.status).toBe('failed');
+        world.files.put('usgs-browse/corona2/b.jpg');
+        answer(world.callables, 'imagery.browse', () => Promise.resolve({ path: 'usgs-browse/corona2/b.jpg', contentType: 'image/jpeg' }));
+
+        imagery.intents.retryBrowse('b');
+        await settle();
+
+        expect(imagery.state.browse['b']).toEqual({ status: 'ready', url: 'blob:usgs-browse/corona2/b.jpg' });
+        imagery.close();
+    });
+
     it('happyPath_theUploadIntentsReachTheUploader', async () => {
         const { services, uploads } = seeded();
         const imagery = IMAGERY_MODULE.create(services);

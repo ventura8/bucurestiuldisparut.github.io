@@ -81,6 +81,18 @@ describe('<hcm-inbox-page>', () => {
     });
     afterEach(cleanup);
 
+    it('happyPath_markAllIsOfferedForUnreadItemsPastTheLoadedPage @S-A46-HAPPY-MARK-ALL-READ', async () => {
+        const read = inboxState().list.items.map((row) => ({ ...row, read: true }));
+        const { element } = await inboxPage(inboxState({ list: { ...inboxState().list, items: read } }));
+        const button = (): HTMLElement => deep(deep(element, '.head'), 'hcm-button');
+        expect(button().hasAttribute('disabled')).toBe(true);
+
+        (element as HTMLElement & { state: object }).state = { ...(element as HTMLElement & { state: object }).state, unread: 3 };
+        await updated(element);
+
+        expect(button().hasAttribute('disabled')).toBe(false);
+    });
+
     it('happyPath_eachNotificationIsALinkToItsPageAndOpeningItMarksItRead', async () => {
         const { area, element } = await inboxPage(inboxState());
 

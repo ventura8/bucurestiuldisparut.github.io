@@ -83,6 +83,11 @@ export const georefSchema = z
         checkpointRmseM: z.number().min(0).optional(),
         /** How many checks `checkpointRmseM` comes from. */
         checkpointCount: z.number().int().min(0).max(MAX_GCPS).optional(),
+        /**
+         * The corner pairs come from a guess nothing confirmed: good to start the matcher and no more. The pipeline clears them
+         * when the scan waits for the admin (`pipeline/src/hcm_pipeline/steps/georef.py`), so they never spoil the admin's fit.
+         */
+        weakCorners: z.boolean().optional(),
     })
     .refine(
         (georef) => georef.method === 'embedded' || enabledGcps(georef.gcps) >= MIN_GCPS[georef.transform],

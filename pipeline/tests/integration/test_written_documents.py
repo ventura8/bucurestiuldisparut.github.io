@@ -4,7 +4,7 @@ The live KH-9 import left a layer version the admin could not read ("This could 
 0): the pipeline wrote what `layerVersionDocSchema` refuses, and the golden documents of `pipeline/tests/contracts/`
 were written by hand, so nothing compared what the writers really produce with the schemas. Here the real runner and
 steps run the imports' paths through every state (awaiting approval, the download handed over, USGS preparing, a failure
-with parameters, a corrupt archive, cancelled, no pairs, corners kilometres off, the city not found) against the
+with parameters, a corrupt archive, cancelled, no pairs, corners kilometres off, a weak guess, the city off the frame) against the
 loopback fakes, and every job, version and log document is recorded after each write. Its **shape** (every field path
 with its JSON type, list items merged) must be one of the shapes of `contracts/written-documents.json`, whose documents
 `packages/shared/test/schemas/pipeline-contract.test.ts` parses with `jobDocSchema`, `layerVersionDocSchema` and
@@ -200,10 +200,29 @@ def corners_far_off(world: PipelineWorld, _tmp: Path) -> None:
     assert any("by the search around the window" in line for line in world.log_lines())
 
 
-def city_not_found(world: PipelineWorld, tmp: Path) -> None:
-    """Sentinel-2 shows another place: the guess is refused, the version fails with `cityNotFound`, nothing is cropped."""
+def weak_guess(world: PipelineWorld, tmp: Path) -> None:
+    """Sentinel-2 shows another place: no guess is believed, the crop keeps a wide margin, the admin places the points on a scan
+    with no corner pairs of a guess nothing confirmed, and the delivery stays."""
     world.http.serve("/s2/visual.tif", write_sentinel2(render_world(99), tmp / "elsewhere.tif").read_bytes())
     world.seed_import()
+    world.run()
+    assert world.version()["state"] == "needs_gcps"
+    assert dig(world.version(), "error", "code") == Errors.NO_MATCH
+    assert "scan" in world.version()
+    assert "georef" not in world.version()
+    assert world.gcs.names("usgs-raw/") != []
+    assert any(line.startswith("the guess is weak") for line in world.log_lines())
+
+
+def city_off_frame(world: PipelineWorld, _tmp: Path) -> None:
+    """The scene's corners a degree away from the city: the frame does not reach the window, nothing is cropped."""
+    world.seed_import()
+    scene = f"cities/{CITY}/usgsScenes/{ENTITY_ID}"
+    corners = record(world.store.documents[scene]["corners"])
+    moved = {
+        name: {"lat": float(str(record(place)["lat"])) + 1.0, "lng": float(str(record(place)["lng"]))} for name, place in corners.items()
+    }
+    poke(world, scene, {"corners": moved, "footprint": list(moved.values())})
     world.run()
     assert dig(world.version(), "error", "code") == Errors.CITY_NOT_FOUND
     assert "scan" not in world.version()
@@ -219,7 +238,8 @@ PATHS: Final[dict[str, Callable[[PipelineWorld, Path], None]]] = {
     "cancelled": cancelled,
     "no-pairs": no_pairs,
     "corners-far-off": corners_far_off,
-    "city-not-found": city_not_found,
+    "weak-guess": weak_guess,
+    "city-off-frame": city_off_frame,
 }
 
 
@@ -249,7 +269,8 @@ def nearest_difference(written_shape: Shape, known: set[Shape]) -> list[str]:
 
 @pytest.mark.parametrize("name", list(PATHS))
 def test_happy_path_each_path_writes_only_documents_of_a_known_shape(name: str, recorded: dict[str, Recorded]) -> None:
-    """Scenarios: S-P01-HAPPY-WRITTEN-CONTRACT, S-P01-BAD-WRITTEN-PARAMS, S-P01-HAPPY-KH9-STRIP, S-P01-BAD-CITY-NOT-FOUND"""
+    """Scenarios: S-P01-HAPPY-WRITTEN-CONTRACT, S-P01-BAD-WRITTEN-PARAMS, S-P01-HAPPY-KH9-STRIP, S-P01-BAD-CITY-NOT-FOUND
+    Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS, S-P01-BAD-CITY-OFF-FRAME"""
     known = known_shapes()
 
     unknown = [

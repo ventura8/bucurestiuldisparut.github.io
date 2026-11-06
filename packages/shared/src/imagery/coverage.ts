@@ -2,10 +2,12 @@
  * How much of a city a USGS frame covers (`docs/research/M3-interfaces.md` §3.2): the frame's footprint, clipped to the
  * city's bounds, against the bounds' own area. Areas use an equal-area approximation good enough for a city: longitudes
  * are scaled by the cosine of the bounds' middle latitude, latitudes are kept. Pure: the harvest (functions) writes the
- * value, the admin's Imagery area could compute the same live.
+ * value, the admin's Imagery area could compute the same live. A KH-9 panoramic frame's footprint is its corners' box, whose
+ * middle the film does not reach: its coverage goes through the camera's own outline (`panoramicRing`).
  */
 import type { BoundsRecord } from '../geo/bbox.js';
 import { clamp, toRadians } from '../geo/math.js';
+import type { Sensor, UsgsSceneDoc } from '../schemas/usgs-scene.js';
 
 /** A vertex of a footprint, as the scene document stores it. */
 export interface FootprintVertex {
@@ -81,9 +83,86 @@ function ringArea(ring: readonly FootprintVertex[], scale: number): number {
     return Math.abs(twice) / 2;
 }
 
-/** The share of `bounds` that `footprint` (an open ring) covers, 0 to 1. */
-export function footprintCoverage(footprint: readonly FootprintVertex[], bounds: BoundsRecord): number {
-    const clipped = edgesOf(bounds).reduce<readonly FootprintVertex[]>((ring, edge) => clipRing(ring, edge), footprint);
+/** The scene fields that tell which outline a frame's coverage uses. */
+export interface FrameCamera {
+    readonly sensor: Sensor;
+    readonly corners?: UsgsSceneDoc['corners'];
+}
+
+/** Half of the KH-9 panoramic camera's scan across the flight: the frame's ends lie this far from straight down. */
+const PANORAMIC_HALF_SCAN = toRadians(60.5);
+/** The scan angles sampled along the frame: an odd count, so the waist itself is one of them. */
+const PANORAMIC_SAMPLES = 41;
+
+/** A frame's four corners, in ring order. */
+type Quad = readonly [FootprintVertex, FootprintVertex, FootprintVertex, FootprintVertex];
+
+/** Two opposite long sides of a frame, the same way round. */
+type Rails = readonly [readonly [FootprintVertex, FootprintVertex], readonly [FootprintVertex, FootprintVertex]];
+
+/** A side's length with its longitudes scaled by the cosine of its latitude (the frame's long sides are told from its ends). */
+function sideLength(from: FootprintVertex, to: FootprintVertex): number {
+    return Math.hypot((to.lng - from.lng) * Math.cos(toRadians(from.lat)), to.lat - from.lat);
+}
+
+/** The long sides of the four-cornered ring `a, b, c, d`. */
+function railsOf([a, b, c, d]: Quad): Rails {
+    return sideLength(a, b) >= sideLength(b, c)
+        ? [
+              [a, b],
+              [d, c],
+          ]
+        : [
+              [b, c],
+              [a, d],
+          ];
+}
+
+/** The two edges of the film at one scan angle: on the ground it lies at `tan` along the frame, and is `1 / cos` wide. */
+function filmEdges([left, right]: Rails, theta: number): readonly [FootprintVertex, FootprintVertex] {
+    const position = (1 + Math.tan(theta) / Math.tan(PANORAMIC_HALF_SCAN)) / 2;
+    const [leftEnd, rightEnd] = [along(left[0], left[1], position), along(right[0], right[1], position)];
+    const middle = along(leftEnd, rightEnd, 0.5);
+    const narrowed = Math.cos(PANORAMIC_HALF_SCAN) / Math.cos(theta);
+    return [along(middle, leftEnd, narrowed), along(middle, rightEnd, narrowed)];
+}
+
+/**
+ * The bow tie a KH-9 panoramic frame really covers, as an open ring (the same model as the pipeline's). The film is a strip
+ * of constant width swept through the scan angle theta, so its width on the ground follows the slant range, `1 / cos(theta)`:
+ * USGS's four corners give the width at the frame's ends (theta 60.5 degrees), and straight down it is cos(60.5) of that,
+ * about half. Sampled along the frame; the coverage clip takes a ring that is not convex.
+ *
+ * The figure is an estimate. On the measured frame D3C1202-200149F039 the shape holds to 0.24 km, but the true frame sits
+ * about 7 km from where its USGS corners say, a constant shift nothing here can know: the model gives 53 % of Bucharest
+ * (bounds 25.9 to 26.3, 44.3 to 44.6) where the frame was measured to cover about 51 %, and USGS's corners alone give 97 %.
+ */
+function panoramicRing(corners: Quad): FootprintVertex[] {
+    const rails = railsOf(corners);
+    const step = (2 * PANORAMIC_HALF_SCAN) / (PANORAMIC_SAMPLES - 1);
+    const edges = Array.from({ length: PANORAMIC_SAMPLES }, (_sample, index) => filmEdges(rails, index * step - PANORAMIC_HALF_SCAN));
+    return [...edges.map((pair) => pair[0]), ...edges.map((pair) => pair[1]).toReversed()];
+}
+
+/** A ring of just four corners (the sides of a footprint USGS draws otherwise cannot be told apart). */
+function isQuad(ring: readonly FootprintVertex[]): ring is Quad {
+    return ring.length === 4;
+}
+
+/** The outline a frame's coverage uses: only the KH-9 panoramic camera's differs from the stored footprint. */
+function coverageRing(footprint: readonly FootprintVertex[], camera: FrameCamera | undefined): readonly FootprintVertex[] {
+    if (camera?.sensor !== 'KH-9-pan') {
+        return footprint;
+    }
+    const { corners } = camera;
+    const ring = corners === undefined ? footprint : [corners.nw, corners.ne, corners.se, corners.sw];
+    return isQuad(ring) ? panoramicRing(ring) : footprint;
+}
+
+/** The share of `bounds` that `footprint` (an open ring) of a frame of `camera` covers, 0 to 1. */
+export function footprintCoverage(footprint: readonly FootprintVertex[], bounds: BoundsRecord, camera?: FrameCamera): number {
+    const outline = coverageRing(footprint, camera);
+    const clipped = edgesOf(bounds).reduce<readonly FootprintVertex[]>((ring, edge) => clipRing(ring, edge), outline);
     const scale = Math.cos(toRadians((bounds.south + bounds.north) / 2));
     const whole = (bounds.east - bounds.west) * scale * (bounds.north - bounds.south);
     return clamp(ringArea(clipped, scale) / whole, 0, 1);

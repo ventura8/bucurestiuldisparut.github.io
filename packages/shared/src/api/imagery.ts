@@ -146,7 +146,7 @@ export const NOT_RETRYABLE_CODES = [
 
 const NOT_RETRYABLE: ReadonlySet<string> = new Set(NOT_RETRYABLE_CODES);
 
-type RetriedJob = Pick<JobDoc, 'status' | 'type' | 'layerId' | 'attempt' | 'publishAttempts' | 'error' | 'steps'>;
+type RetriedJob = Pick<JobDoc, 'status' | 'type' | 'layerId' | 'attempt' | 'publishAttempts' | 'error' | 'steps' | 'cancelRequested'>;
 
 /** The job reached the publisher's guard: a retry starts the publish again, not a run. */
 function atPublish(job: RetriedJob): boolean {
@@ -164,11 +164,17 @@ function curable(job: RetriedJob): boolean {
 }
 
 /**
- * A failed raster job a Retry may run again: not a tileset deletion, made with its layer version (an upload the server
- * refused has none: its cure is another file), a failure a retry can cure, attempts left (`imagery.retry` decides).
+ * A failed job with work to run again: not a tileset deletion, made with its layer version (an upload the server refused
+ * has none: its cure is another file), not dismissed (a dismissal marks its failed job `cancelRequested`: the version is
+ * `rejected`, and `imagery.retry` refuses it).
  */
+function failedWork(job: RetriedJob): boolean {
+    return job.status === 'failed' && job.type !== 'layer-delete' && job.layerId !== undefined && job.cancelRequested !== true;
+}
+
+/** A failed raster job a Retry may run again: a failure a retry can cure, attempts left (`imagery.retry` decides). */
 export function jobRetryable(job: RetriedJob): boolean {
-    return job.status === 'failed' && job.type !== 'layer-delete' && job.layerId !== undefined && curable(job) && attemptsLeft(job);
+    return failedWork(job) && curable(job) && attemptsLeft(job);
 }
 
 /**
