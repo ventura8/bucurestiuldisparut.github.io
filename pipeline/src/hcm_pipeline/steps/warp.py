@@ -32,7 +32,7 @@ def gcp_source(scan: Path, georef: GeorefInfo, target: Path) -> Path:
     return target
 
 
-def _method(georef: GeorefInfo) -> dict[str, object]:
+def warp_method(georef: GeorefInfo) -> dict[str, object]:
     if georef.method == "embedded":
         return {}
     return {"tps": True} if georef.transform == "tps" else {"polynomialOrder": POLYNOMIAL_ORDER[georef.transform]}
@@ -76,7 +76,7 @@ class WarpStep:
             if georef.method == "embedded"
             else gdal_step(ctx, lambda: gcp_source(scan, georef, ctx.local("scan-gcps.vrt")), "attach the GCPs")
         )
-        method = _method(georef)
+        method = warp_method(georef)
         native = gdal_step(ctx, lambda: native_zoom(source, method, ctx.local("probe.vrt")), "measure the scan")
         _, maxzoom = zooms(version, native)
         warped = ctx.local("warped.tif")

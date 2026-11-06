@@ -2,7 +2,9 @@
  * The approval policy (`docs/research/M3-interfaces.md` §7.1; S-A17-*): when the pipeline registers a rendered version,
  * its compute-unit estimate is recorded and it is approved on its own, by `system:imagery`, when the city auto-publishes,
  * the georeference was measured (an upload's own georeference never is: S-A17-BAD-EMBEDDED-GEOREF) and its checkpoint
- * error is within the city's threshold over at least three checks. Otherwise it waits for Approve.
+ * error is within the city's threshold over at least three checks. Otherwise it waits for Approve. M8
+ * (`docs/research/M8-join-interfaces.md` §5): a frame made for a join never approves on its own, whether that join is live or
+ * ended (half a city would go public), and a join has its own conditions, every one required: it has no georeference.
  */
 import {
     FIRESTORE_PATHS,
@@ -15,6 +17,8 @@ import {
     timestampFromDate,
     type Georef,
     type ImagerySettings,
+    type JoinReport,
+    type JoinSeam,
     type LayerVersionDoc,
 } from '@hcm/shared';
 
@@ -28,6 +32,10 @@ export type ApprovalDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'tasks'>;
 
 /** A georeference is trusted on its own only with this many checks behind its checkpoint error. */
 const MIN_CHECKPOINTS = 3;
+/** A seam closed to more than this stays for an admin's eye, whatever the city's own threshold. */
+const JOIN_MAX_SEAM_M = 15;
+/** A join covering less of the city waits for Approve: it may still want another frame. */
+const JOIN_MIN_COVERAGE_PCT = 90;
 
 type Output = NonNullable<LayerVersionDoc['output']>;
 
@@ -47,9 +55,40 @@ function measuredWithin(georef: Georef, threshold: number): boolean {
     return georef.method !== 'embedded' && (georef.checkpointCount ?? 0) >= MIN_CHECKPOINTS && rmse <= threshold;
 }
 
+/** A seam the pipeline measured, corrected, and found closed. */
+function seamClosed(seam: JoinSeam): boolean {
+    return seam.measured && seam.applied && (seam.afterRmseM ?? Number.POSITIVE_INFINITY) <= JOIN_MAX_SEAM_M;
+}
+
+/** What a join must show to publish on its own, each condition on its own. */
+const JOIN_CONDITIONS: readonly ((join: JoinReport, threshold: number) => boolean)[] = [
+    (join, threshold) => (join.checkpointRmseM ?? Number.POSITIVE_INFINITY) <= threshold,
+    (join) => join.checkpointCount >= MIN_CHECKPOINTS,
+    (join, threshold) => join.maxShiftM <= threshold,
+    (join) => join.seams.length > 0 && join.seams.every(seamClosed),
+    (join) => join.coveragePct >= JOIN_MIN_COVERAGE_PCT,
+];
+
+function joinWithin(join: JoinReport, threshold: number): boolean {
+    return JOIN_CONDITIONS.every((condition) => condition(join, threshold));
+}
+
+/** A version's own evidence: its georeference, or a join's report; neither means no evidence. */
+function evidenceWithin(version: LayerVersionDoc, threshold: number): boolean {
+    if (version.georef !== undefined) {
+        return measuredWithin(version.georef, threshold);
+    }
+    return version.join !== undefined && joinWithin(version.join, threshold);
+}
+
 /** True when the version may be published without anyone's click. */
 function autoApproves(version: LayerVersionDoc, settings: ImagerySettings): boolean {
-    return settings.autoPublish && version.georef !== undefined && measuredWithin(version.georef, settings.rmseThresholdM);
+    return settings.autoPublish && evidenceWithin(version, settings.rmseThresholdM);
+}
+
+/** The checkpoint error a version answers for: its georeference's, or the worst frame's of a join. */
+function measuredRmseOf(version: LayerVersionDoc): number | undefined {
+    return version.georef?.checkpointRmseM ?? version.join?.checkpointRmseM;
 }
 
 /** The version approved: by the policy (`auto`, with the error and the threshold it met) or by an admin. */
@@ -58,7 +97,7 @@ export function approved(version: LayerVersionDoc, by: string, now: Date, settin
         auto: settings !== undefined,
         by,
         at: timestampFromDate(now),
-        checkpointRmseM: settings === undefined ? undefined : version.georef?.checkpointRmseM,
+        checkpointRmseM: settings === undefined ? undefined : measuredRmseOf(version),
         thresholdM: settings?.rmseThresholdM,
     });
     return { ...version, state: 'approved', approval, ...stampOf(by, now) };
@@ -79,6 +118,8 @@ interface Awaiting {
     readonly path: string;
     readonly version: Rendered;
     readonly settings: ImagerySettings;
+    /** A join named this frame: the policy records its estimate and leaves it for that join, or for an admin once it ended. */
+    readonly held: boolean;
 }
 
 /** The job's rendered version while both await approval, with the city's settings. */
@@ -90,7 +131,10 @@ async function readAwaiting(transaction: DocumentTransaction, cityId: string, jo
     const path = FIRESTORE_PATHS.layerVersion(cityId, versionIdOf(jobId, job));
     const version = await transaction.get(path, layerVersionDocSchema);
     const city = await transaction.get(FIRESTORE_PATHS.city(cityId), cityDocSchema);
-    return isRendered(version) ? { path, version, settings: imagerySettingsOf(city?.imagery) } : undefined;
+    if (!isRendered(version)) {
+        return undefined;
+    }
+    return { path, version, settings: imagerySettingsOf(city?.imagery), held: version.partOf !== undefined };
 }
 
 async function policyIn(transaction: DocumentTransaction, cityId: string, jobId: string, now: Date): Promise<boolean> {
@@ -103,7 +147,7 @@ async function policyIn(transaction: DocumentTransaction, cityId: string, jobId:
         estimate: estimateOf(awaiting.version.output, now),
         ...stampOf(IMAGERY_WRITER, now),
     };
-    const auto = autoApproves(estimated, awaiting.settings);
+    const auto = !awaiting.held && autoApproves(estimated, awaiting.settings);
     await transaction.set(
         awaiting.path,
         layerVersionDocSchema,

@@ -640,6 +640,12 @@ service cloud.firestore {
                 allow read: if isCityMember(city);
             }
 
+            // M8 (docs/research/M8-join-interfaces.md §2, §5): the plan of whole-city dates, written by the imagery functions
+            // only; the Imagery area's Find reads it.
+            match /imageryPlans/{id} {
+                allow read: if isCityMember(city);
+            }
+
             // USGS scenes are harvested server-side; admins triage them (candidate, rejected) and annotate
             // them, whatever state the harvest left them in. M4 (docs/research/M4-interfaces.md §1.8): an
             // order is usgs.markOrdered's, which asks USGS first, so no client writes `ordered` or `available`,

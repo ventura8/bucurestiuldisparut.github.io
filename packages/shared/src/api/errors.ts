@@ -152,6 +152,15 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.attemptsExhausted': spec('failed-precondition'),
     'apiError.imagery.mapboxFinishing': spec('failed-precondition'),
     'apiError.imagery.workerLost': spec('unavailable'),
+    // M8 (docs/research/M8-join-interfaces.md §4): joining frames of one date into one layer.
+    'apiError.imagery.joinMixedFrames': spec('invalid-argument'),
+    'apiError.imagery.joinTwoPublished': spec('failed-precondition'),
+    'apiError.imagery.joinPartGone': spec('failed-precondition'),
+    'apiError.imagery.joinPartHeld': spec('failed-precondition'),
+    'apiError.imagery.joinPartMissing': spec('failed-precondition'),
+    'apiError.imagery.joinSeamTooFar': spec('failed-precondition'),
+    'apiError.imagery.joinNoFrames': spec('failed-precondition'),
+    'apiError.imagery.joinNoRoom': spec('failed-precondition'),
     'apiError.worker.notHolder': spec('failed-precondition'),
     'apiError.worker.refused': spec('permission-denied'),
     // Finding 67 of 2026-11-02: a pairing code unknown, used or expired (one answer for the three), and a disconnected computer.

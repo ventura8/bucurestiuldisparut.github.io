@@ -192,6 +192,12 @@ export class ImageryWorld {
         await ok(await this.#api.post(url), 'synthetic scene');
     }
 
+    /** USGS answers these frames of a date's set as scanned, though its catalogue does not list them (M8). */
+    async scannedFrames(entityIds: readonly string[]): Promise<void> {
+        const url = `${MOCK_API_ORIGIN}/__imagery/frames?ids=${encodeURIComponent(entityIds.join(','))}`;
+        await ok(await this.#api.post(url), 'scanned frames');
+    }
+
     #control(action: string): string {
         return `${MOCK_API_ORIGIN}/__imagery/${action}?city=${encodeURIComponent(this.#world.city)}`;
     }

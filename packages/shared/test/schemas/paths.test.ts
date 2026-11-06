@@ -37,6 +37,7 @@ describe('Firestore paths', () => {
             FIRESTORE_PATHS.invite(SHA),
             FIRESTORE_PATHS.usage('2026-10'),
             FIRESTORE_PATHS.manifestState(city),
+            FIRESTORE_PATHS.imageryPlan(city),
         ]).toEqual([
             'cities/bucuresti',
             'cities/bucuresti/photos',
@@ -58,6 +59,7 @@ describe('Firestore paths', () => {
             `invites/${SHA}`,
             'usage/mapbox-2026-10',
             'manifests/bucuresti',
+            'cities/bucuresti/imageryPlans/dates',
         ]);
         expect([
             FIRESTORE_PATHS.admins,

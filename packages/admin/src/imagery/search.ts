@@ -10,6 +10,7 @@ import { HARVEST_EVERY_DAYS, type ServiceState, type UsgsDataset } from '@hcm/sh
 import type { ContentServices } from '../content/services.js';
 import type { NoticeInput } from '../state/state.js';
 import { callImagery, refusalOf } from './api.js';
+import { IMAGERY_SEARCH_TIMEOUT_MS } from './search-timeout.js';
 import { harvestIsStale } from './model.js';
 
 type SearchPhase = 'idle' | 'searching' | 'done' | 'failed';
@@ -25,11 +26,6 @@ export interface SearchState {
 
 export const IDLE_SEARCH: SearchState = { phase: 'idle', found: null, added: null, failedDatasets: [], error: null };
 
-/**
- * The search's timeout: just over the server's 300 s (`CALLABLE_TIMEOUT_SECONDS` of `functions/src/api/callable.ts`,
- * CR-M3-22), past the SDK's 70 s default, so a first harvest is not cut short in the browser.
- */
-export const IMAGERY_SEARCH_TIMEOUT_MS = 310_000;
 const SEARCH_OPTIONS = { timeoutMs: IMAGERY_SEARCH_TIMEOUT_MS } as const;
 
 /** USGS states in which a search may run (downloads need `ok`). */

@@ -150,7 +150,7 @@ function isQuad(ring: readonly FootprintVertex[]): ring is Quad {
 }
 
 /** The outline a frame's coverage uses: only the KH-9 panoramic camera's differs from the stored footprint. */
-function coverageRing(footprint: readonly FootprintVertex[], camera: FrameCamera | undefined): readonly FootprintVertex[] {
+export function coverageRing(footprint: readonly FootprintVertex[], camera: FrameCamera | undefined): readonly FootprintVertex[] {
     if (camera?.sensor !== 'KH-9-pan') {
         return footprint;
     }

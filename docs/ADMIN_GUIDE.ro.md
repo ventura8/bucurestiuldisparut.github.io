@@ -181,7 +181,7 @@ Fiecare secțiune are propriul Salvează.
 - **Texte**: numele, „Despre” și textul despre confidențialitate, în română și engleză (subsetul Markdown, previzualizat cum îl vor vedea vizitatorii; un link care nu e https este refuzat la rândul lui) și mențiunile (până la 50, în ordinea aleasă de tine).
 - **Temă și hartă de bază**: culoarea de bază (o valoare hex, selectorul de culoare sau una din opt propuneri), previzualizată pe loc în toată aplicația de administrare până o salvezi sau renunți la ea (ori pleci din Setări); o culoare care ar face textul greu de citit este mutată la cea mai apropiată nuanță lizibilă, cu o notă. Harta de bază pe care o văd vizitatorii (Standard sau Standard Satellite); harta aplicației de administrare este mereu Standard.
 - **Categorii de locuri**: adaugi una (eticheta în română; pictograma urmează cuvintele etichetei, „Fântâni” apă, „Biserici” o biserică, până alegi tu una; culoarea, opacitatea și eticheta în engleză au valori implicite), o editezi, le reordonezi, o ștergi. Selectorul oferă 30 de pictograme, prin care te miști cu săgețile; o culoare pe care pictograma albă s-ar vedea greu este mutată la o nuanță lizibilă. Ștergerea unei categorii folosite încă de locuri te întreabă întâi unde merg ele. Pagina spune când ai ajuns la limită. **Adaugă categoriile de pornire** adaugă dintr-un clic acele categorii obișnuite (Clădire, Stradă, Piață, Biserică, Monument) pe care orașul nu le are încă: o categorie contează ca una dintre ele când numele ei în română sau în engleză e același, oricare ar fi literele mari, diacriticele și spațiile în plus („Biserica” contează ca Biserică; „Clădiri” nu e „Clădire”). Vin după ale tale, nu iau niciodată un id folosit de un strat sau de o categorie, iar mesajul spune câte s-au adăugat; doar câte încap sub limita de 50. Când toate cinci sunt acolo, butonul e oprit și o notă spune de ce.
-- **Imagini istorice**: dacă un cadru georeferențiat se publică fără niciun clic când eroarea la punctele de control este sub prag (pornit implicit), pragul acesta în metri (1–200, implicit 15) și anii pe care căutarea îi pune primii (cel mult 20, fiecare cu **Scoate**; ai Bucureștiului sunt 1966, 1976, 1977, 1978 și 1980: îi adaugi aici o dată). Se salvează separat.
+- **Imagini istorice**: dacă un cadru georeferențiat se publică fără niciun clic când eroarea la punctele de control este sub prag (pornit implicit), pragul acesta în metri (1–200, implicit 15) și anii pe care căutarea îi pune primii (cel mult 20, fiecare cu **Scoate**; Bucureștiul pornește cu 1966, 1972, 1976, 1977, 1978, 1979, 1980, 1982, 1983 și 1984). Se salvează separat, iar salvarea caută din nou, pentru că numai o căutare reordonează scenele; dacă acea căutare eșuează, salvarea rămâne.
 - **Opacități implicite**: opacitatea cu care pornește fiecare strat suprapus (fiecare strat istoric, fotografiile, fiecare categorie de locuri) și, pentru straturi, dacă apar la deschidere, fiecare schimbare văzută pe harta de deasupra; un singur Salvează le scrie pe toate, Renunță la modificări le aduce înapoi pe cele salvate. Linkul unui vizitator care fixează o opacitate are în continuare prioritate.
 
 ### Istoric
@@ -224,6 +224,20 @@ Cadrele de satelit declasificate ale USGS (Corona, Gambit, Hexagon; 1960–1984)
 - **În lucru (n)** numără tot ce listează fila, pe viu: importurile care rulează, versiunile care așteaptă după tine și comenzile deschise.
 - Limite: 10 importuri pe zi și 2 în lucru deodată, pe proiect.
 - **Oprită de protecția bugetului**: când costul Google Cloud al lunii ajunge la buget, importurile, reîncercările, salvările georeferențiatorului, decupările și publicările se opresc (harta publică niciodată). **Imagini istorice** și **Procesări** spun asta, cu costul și bugetul, iar **Reia procesarea** (cu întrebare) le pornește din nou pentru restul lunii; alerta lunii viitoare le oprește iar.
+
+### Un strat pentru tot orașul din cadrele unei zile (M8)
+
+Un cadru KH-9 cuprinde adesea doar o parte din oraș. Cadrele din aceeași zi, de la aceeași cameră, se pot uni într-un singur strat. Proiectul: `docs/research/M8-join-interfaces.md`.
+
+- **Date pentru tot orașul**, deasupra listei din Găsește: fiecare dată ale cărei cadre acoperă împreună mai mult din oraș, cu cadrele ei, cam cât din oraș acoperă (o estimare, de aceea „circa”), câte sunt de descărcat și **Unește cadrele**. Datele de vară stau deasupra celor de iarnă: o dată de iarnă spune că poate necesita puncte. Un cadru care ar trebui cumpărat nu este niciodată ales în locul tău; rândul spune câte sunt și duce la cardul comenzii. **Adaugă {year} la anii țintă** apare când anul nu este unul dintre ai orașului.
+- **Oferta**: pagina unui cadru care lasă în afară o parte din oraș spune cât acoperă și cât ar acoperi cu celelalte din aceeași zi, cu **Unește cadrele** (și la o scenă încă neimportată). Un clic, apoi se deschide pagina unirii.
+- **Pagina unirii**: cadrele ei, cu stările lor. Cadrele încă neimportate se importă întâi, iar unirea le așteaptă. Un cadru care are nevoie de puncte le așteaptă pe ale tale: rândul lui duce la georeferențiator, iar unirea continuă singură după ce le salvezi. Un cadru dintr-o unire iese din **Așteaptă după tine**, în afară de cazul în care are nevoie de puncte.
+- **Ce face unirea**: măsoară fiecare îmbinare dintre două cadre și le mută după cele măsurate, pe cel mai puțin precis mai mult, tot mai puțin până la 6 km de îmbinare. Dacă măsurătoarea spune că o corecție nu a ajutat, ea nu se aplică. Apoi egalizează tonul de-a lungul îmbinării și face o singură imagine.
+- **Raportul** de pe cardul de aprobare: cât din oraș acoperă (măsurat acum, nu estimat), eroarea fiecărei îmbinări înainte și după, sau faptul că nu a putut fi măsurată, cea mai mare deplasare și eroarea celui mai slab cadru. **O unire închide golurile dintre cadre; nu îmbunătățește locul lor pe hartă.** Cadrele care nu adaugă nimic sunt numite ca omise. Dacă orașul nu este bine acoperit, cardul oferă **Adaugă {frame} și unește din nou**, care nu descarcă nimic a doua oară.
+- **Publicarea**: fără clic numai când publicarea automată este pornită și toate limitele sunt respectate: eroarea celui mai slab cadru și cea mai mare deplasare în pragul orașului, cel puțin 3 puncte de control, fiecare îmbinare măsurată, corectată și de cel mult 15 m, și cel puțin 90 % din oraș acoperit. Altfel, **Aprobă și publică** sau **Respinge**, cu aceleași alegeri de unități de calcul ca la orice strat.
+- **Cât timp o unire ține un cadru**, acel cadru nu poate fi aprobat, respins, georeferențiat din nou, decupat, șters sau anulat: respinge sau anulează mai întâi unirea. Un cadru pe care l-a numit vreodată o unire nu se publică singur, nici după ce unirea s-a încheiat: așteaptă **Aprobă** sau **Unește cadrele**. O unire respinsă, anulată sau eșuată se încheie singură: cadrele ei rămân cum erau, iar unirea lor din nou nu descarcă nimic.
+- **Limite**: o unire contează ca o procesare, plus câte una pentru fiecare cadru încă de importat, din cele 10 pe zi. Cel mult 8 cadre, aceeași zi, aceeași cameră. Un strat unit nu poate fi decupat sau georeferențiat din nou, iar o unire publicată nu mai primește alt cadru: ștergi stratul și o iei de la capăt. Ca să continui fără un cadru, anulezi unirea și unești restul.
+- **Calculatorul pe care rulează**: o unire citește toată scanarea fiecărui cadru, deci are nevoie de spațiu pe disc și de memorie; **Rulează pe calculatorul meu** poate fi singurul loc practic pentru o unire a întregului oraș. Durata pe cadre reale nu a fost încă măsurată.
 
 ### Cumpărarea unei scanări, sugestii, asistenți și notificări (M4)
 
@@ -306,6 +320,20 @@ Mesajul afișat, cauza și ce trebuie făcut, pentru fiecare ecran.
 | „Nu încape în bugetul Mapbox al lunii: alege cum continuăm” | publicarea costă mai multe unități de calcul decât au rămas | încărcarea gratuită prin Studio, luna viitoare sau plata |
 | „Fișierul nu este un GeoTIFF. Încarcă un fișier .tif.” | fișierul ales este alt fel de imagine | îl exporți întâi ca GeoTIFF |
 | „Sursa nu are dale la această adresă (404).” / „Adresa nu răspunde cu o imagine.” / „Serverul de dale nu răspunde.” | **Verifică** pe adresa unor dale în **Leagă un strat** | corectezi adresa (trebuie să conțină `{z}`, `{x}`, `{y}`) sau încerci mai târziu |
+
+### Unirea cadrelor (din M8)
+
+| Mesaj | Cauză | Ce faci |
+| --- | --- | --- |
+| „Se pot uni doar cadre din aceeași zi și de la aceeași cameră.” | cadrele diferă ca dată sau cameră | folosești cadrele unui singur rând din **Date pentru tot orașul** |
+| „Două dintre aceste cadre sunt deja publicate; șterge mai întâi unul dintre straturi.” | fiecare este deja un strat | ștergi unul dintre cele două straturi, apoi unești |
+| „Cadrul … s-a încheiat; importă-l sau reia-l, apoi unește din nou.” | un cadru a eșuat sau a fost respins | **Încearcă din nou** la acel cadru sau îl imporți din nou, apoi **Unește cadrele** |
+| „Cadrul … este în curs de unire; respinge sau anulează mai întâi unirea.” | ai acționat asupra unui cadru ținut de o unire activă | deschizi unirea din pagina cadrului și o respingi sau o anulezi |
+| „Scanarea cadrului … nu mai este stocată.” | scanarea cadrului a fost ștearsă | îl imporți din nou (întâi înlături sau ștergi ce a rămas din el), apoi **Unește cadrele** |
+| „Cadrele … și … sunt prea departe pentru a fi unite; corectează punctele unuia.” | cadrele diferă cu mai mult de 300 m | deschizi georeferențiatorul cadrului mai slab, îi corectezi punctele, unești din nou |
+| „Mai puțin de două cadre adaugă ceva la oraș.” | un cadru cuprinde deja ce adaugă celelalte | folosești acel cadru singur |
+| „Nu este destul spațiu pe disc pentru această unire; eliberează spațiu și reia.” | calculatorul care rulează unirea nu are loc | eliberezi spațiu pe disc, **Încearcă din nou** |
+| „Îmbinarea … și … nu a putut fi măsurată” pe cardul de aprobare | prea puține potriviri peste îmbinare (fără suprapunere, teren plat, zăpadă) | te uiți la îmbinare în previzualizare: aprobi dacă e destul de bună, altfel respingi și alegi altă dată |
 
 ### Comenzi, asistenți și notificări (din M4)
 

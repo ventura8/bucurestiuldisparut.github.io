@@ -13,6 +13,7 @@ import {
 } from './imagery-geometry.js';
 import { referenceOsmPng, referenceS2Jpeg, scanPreviewJpeg, smallTiff, warpedPreviewPng } from './imagery-images.js';
 import type { Run } from './imagery-run.js';
+import { joinReportOf } from './imagery-standin-join.js';
 import { uploadObject, type StoredObject } from './imagery-store.js';
 
 /**
@@ -161,6 +162,17 @@ function isEmbedded(run: Run): boolean {
     return georef?.method === 'embedded';
 }
 
+/** `warp`, and a join's `merge`: what `export` reads next. */
+async function writeWarped(run: Run, step: 'warp' | 'merge'): Promise<StepResult> {
+    const warped = await uploadObject(
+        RASTER_PATHS.work(run.city, run.jobId, 'warped.tif'),
+        new Uint8Array(await smallTiff(130)),
+        'image/tiff',
+    );
+    await run.stepEnded(step, 'done', recorded(warped));
+    return 'next';
+}
+
 const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> = {
     fetch: async (run) => {
         if (run.attempt.outcome === 'maintenance') {
@@ -214,15 +226,15 @@ const STEPS: Readonly<Record<PipelineStep, (run: Run) => Promise<StepResult>>> =
         return 'next';
     },
     georef: (run) => georeference(run),
-    warp: async (run) => {
-        const warped = await uploadObject(
-            RASTER_PATHS.work(run.city, run.jobId, 'warped.tif'),
-            new Uint8Array(await smallTiff(130)),
-            'image/tiff',
-        );
-        await run.stepEnded('warp', 'done', recorded(warped));
+    align: async (run) => {
+        await run.stepEnded('align', 'done');
         return 'next';
     },
+    merge: async (run) => {
+        await run.writeVersion({ join: joinReportOf(run, checkpointRmse(run)) });
+        return writeWarped(run, 'merge');
+    },
+    warp: (run) => writeWarped(run, 'warp'),
     export: async (run) => {
         const cog = await store(run, 'cog.tif', await smallTiff(150), 'image/tiff');
         await store(run, 'preview.png', await warpedPreviewPng(outputBounds(run)), 'image/png');
@@ -289,6 +301,9 @@ function sensorOf(run: Run): Sensor | undefined {
 
 /** The warped layer's bounds: the crop's box, a GeoTIFF's own (the city), or the scan's corners on the ground. */
 function outputBounds(run: Run): Bounds {
+    if (run.attempt.outputBounds !== undefined) {
+        return run.attempt.outputBounds;
+    }
     const crop = run.version['crop'] as LatLng[] | undefined;
     if (crop !== undefined) {
         return boundsOf(crop);
@@ -328,7 +343,7 @@ export async function playStep(run: Run, step: PipelineStep): Promise<StepResult
         await run.stepStarted(step);
     }
     if (run.attempt.outcome === 'fail' && step === failAt) {
-        await run.fail(step, run.attempt.code ?? 'apiError.imagery.processingFailed');
+        await run.fail(step, run.attempt.code ?? 'apiError.imagery.processingFailed', run.attempt.codeParams);
         run.execution.finish('failed');
         return 'stop';
     }

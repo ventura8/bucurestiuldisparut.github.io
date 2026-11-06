@@ -43,14 +43,18 @@ interface Move {
     readonly uid: string;
 }
 
-/** The job as moved: its worker and wait reason cleared, the OK recorded or dropped. */
+/**
+ * The job as moved: its worker and wait reason cleared, the OK recorded or dropped. M8: a join's wait for its frames stays,
+ * or a worker could claim it before they rendered (the dispatcher moves it on once they did).
+ */
 function movedJob(job: JobDoc, move: Move, stamp: Stamp): JobDoc {
     const kept = omit(
         job,
         move.place === 'local' ? ['worker', 'waitReason', 'freeTierOk', 'workerOverdueAt'] : ['worker', 'waitReason', 'workerOverdueAt'],
     );
     const okay = move.place === 'cloud' && move.ok ? { freeTierOk: { by: move.uid, at: stamp.updatedAt } } : {};
-    return { ...kept, runOn: move.place, ...okay, ...stamp };
+    const held = job.waitReason === 'parts' ? { waitReason: job.waitReason } : {};
+    return { ...kept, runOn: move.place, ...okay, ...held, ...stamp };
 }
 
 async function moveJob(transaction: DocumentTransaction, move: Move, stamp: Stamp): Promise<void> {

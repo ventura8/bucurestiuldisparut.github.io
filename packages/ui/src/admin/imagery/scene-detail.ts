@@ -4,7 +4,7 @@
  * reason of its rank in plain words, and **Import** in one click for a free scene. A scene imported already, and a city
  * whose USGS downloads are not approved yet each say why Import is not offered. M4 (A13): a scene that must be bought has
  * the order card instead (`orders/order-card.ts`, a chunk fetched on first need: `orders/lazy-card.ts`), and so has one
- * USGS just delivered (the server imports it).
+ * USGS just delivered (the server imports it). M8: a frame that leaves part of the city out is offered its date's others.
  */
 import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
@@ -14,6 +14,7 @@ import { contentText, noticeOf } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
 import type { SceneItemPort } from './imagery-port.js';
 import { datasetText, dayText, numberText, reasonText } from './imagery-text.js';
+import { lazyJoin } from './join/lazy-card.js';
 import { lazyOrderCard } from './orders/lazy-card.js';
 import { sceneRefusal, USGS_SETUP_HREF } from './scene-refusal.js';
 import { when } from './when.js';
@@ -153,6 +154,7 @@ function sceneBody(context: ImageryContext, scene: SceneItemPort): TemplateResul
         <p>${contentText(locale, 'adminContent.imagery.score', { score: String(scene.score) })}</p>
         ${browseImage(context, scene)} ${lazyOrderCard(context, scene)}
         ${when(importShown(scene), () => noImport(context, scene) ?? importButton(context, scene))} ${importRefusal(context, scene)}
+        ${lazyJoin(context, null, (chunk) => chunk.sceneOffer(context, scene))}
         <h3>${contentText(locale, 'adminContent.imagery.why')}</h3>
         <ul class="reasons">
             ${scene.reasons.map((reason) => html`<li>${reasonText(locale, reason)}</li>`)}

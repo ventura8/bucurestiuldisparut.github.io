@@ -22,6 +22,7 @@ import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
+import { GO, partsReady } from './join-parts.js';
 import { enqueuePublish } from './publish-queue.js';
 import { guardIsRed, requireJob, stampOf, versionIdOf, type Stamp } from './records.js';
 
@@ -36,7 +37,10 @@ import { guardIsRed, requireJob, stampOf, versionIdOf, type Stamp } from './reco
  * that ended otherwise: a dismissed one gave its scene and its scratch files back, and a retry would make a layer no scene
  * knows (finding of 2026-11-06; S-A12-BAD-RETRY-DISMISSED). A version still `processing` under a failed job is a stranded run
  * (the runner's second write did not arrive): the retry is the way out, as neither Dismiss nor Cancel takes it
- * (S-A12-BAD-STRANDED-VERSION). Checked again in the transaction that retries.
+ * (S-A12-BAD-STRANDED-VERSION). Checked again in the transaction that retries. M8 (`docs/research/M8-join-interfaces.md` §5): a
+ * failed join freed its frames, so its retry asks whether they are still its own (a newer join, new points or a publish of its
+ * own may have taken one: `apiError.imagery.joinPartGone`), and it goes back waiting for them, so no worker can claim it before the
+ * dispatcher looked; a publish retry needs them all still there.
  */
 export type RetryDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'tasks'>;
 
@@ -143,12 +147,28 @@ function publishReopened(job: JobDoc): Pick<JobDoc, 'steps'> {
     return { steps: omit(reopenedSteps(job) ?? {}, PUBLISH_AGAIN) };
 }
 
+/** M8: a join goes back waiting for its frames, as `imagery.join` leaves it: a worker claims nothing the dispatcher did not see ready. */
+function queuedAgain(job: JobDoc): Pick<JobDoc, 'waitReason'> {
+    return job.type === 'layer-join' ? { waitReason: 'parts' } : {};
+}
+
 function retriedJob(job: JobDoc, atPublish: boolean, stamp: Stamp): JobDoc {
     const kept = omit(job, ['error', 'finishedAt', 'lease', 'retryAt', 'executionName', 'mapboxJobId']);
     if (atPublish) {
         return { ...kept, status: 'awaiting_approval', waitReason: 'approval', ...publishReopened(job), ...stamp };
     }
-    return { ...kept, status: 'queued', steps: rerunSteps(job), ...stamp };
+    return { ...kept, status: 'queued', ...queuedAgain(job), steps: rerunSteps(job), ...stamp };
+}
+
+/** M8: a join's frames are still its own; a publish retry cannot wait, so it needs them all ready now. */
+async function requireJoinFrames(transaction: DocumentTransaction, request: Request, job: JobDoc, atPublish: boolean): Promise<void> {
+    const ready = job.type === 'layer-join' ? await partsReady(transaction, request.cityId, request.jobId, job) : GO;
+    if (ready.kind === 'gone') {
+        throw new ApiError('apiError.imagery.joinPartGone', { frame: ready.frame });
+    }
+    if (atPublish && ready.kind === 'hold') {
+        throw new ApiError('apiError.imagery.versionState');
+    }
 }
 
 function retriedVersion(version: LayerVersionDoc, atPublish: boolean, stamp: Stamp): LayerVersionDoc {
@@ -167,6 +187,7 @@ async function retryIn(transaction: DocumentTransaction, request: Request, stamp
         throw new ApiError('apiError.imagery.versionState');
     }
     const atPublish = failedAtPublish(job, version);
+    await requireJoinFrames(transaction, request, job, atPublish);
     const retried = retriedJob(job, atPublish, stamp);
     await transaction.set(jobPath, jobDocSchema, retried);
     if (version.state === 'failed') {

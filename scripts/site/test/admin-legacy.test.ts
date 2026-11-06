@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { citySchema, photoSchema, type MigratedPhoto } from '@hcm/shared';
 
-import { LEGACY_FOLDER, planLegacyBundle, type AdminFile } from '../src/admin/legacy.js';
+import { CITY_SEED_FILE, LEGACY_FOLDER, planLegacyBundle, type AdminFile } from '../src/admin/legacy.js';
 import { SiteBuildError } from '../src/errors.js';
 import { nodeFileSystem, type SiteFileSystem } from '../src/files.js';
 import { readRepositoryJson } from './manifests.js';
@@ -50,7 +50,10 @@ describe('planLegacyBundle', () => {
         expect(bundle.originals).toBe(44);
         expect(bundle.warnings).toBe(1);
         expect(city['id']).toBe('bucuresti');
-        expect(citySchema.safeParse({ ...city, mapbox: { publicToken: 'pk.e2e-fake-token' }, analytics: {} }).success).toBe(true);
+        // The city file's settings, which the viewer's manifest never holds.
+        const { imagery, ...manifestCity } = city;
+        expect(imagery).toEqual({ targetYears: [1966, 1972, 1976, 1977, 1978, 1979, 1980, 1982, 1983, 1984] });
+        expect(citySchema.safeParse({ ...manifestCity, mapbox: { publicToken: 'pk.e2e-fake-token' }, analytics: {} }).success).toBe(true);
         expect(photos.every((record) => photoSchema.safeParse({ ...record.photo, image: IMAGE }).success)).toBe(true);
         expect(bundle.files.filter((file) => 'from' in file).map((file) => file.to)).toContain(`${LEGACY_FOLDER}/originals/Ferdinand.png`);
     });
@@ -73,7 +76,25 @@ describe('planLegacyBundle', () => {
             'privacy',
             'theme',
             'basemap',
+            'imagery',
         ]);
+    });
+
+    it('happyPath_aSeedOutsideThisRepositoryHasNoImagerySettings', () => {
+        const files = syntheticSeed([point('A.jpg', 26.08)], ['A.jpg']);
+
+        const city = (): unknown => JSON.parse(generated(planLegacyBundle(files, 'seed/x').files, `${LEGACY_FOLDER}/city.json`));
+
+        expect(city()).not.toHaveProperty('imagery');
+        files.write(CITY_SEED_FILE, JSON.stringify({ id: 'x' }));
+        expect(city()).not.toHaveProperty('imagery');
+    });
+
+    it('badPath_invalidImagerySettingsStopTheBuild', () => {
+        const files = syntheticSeed([point('A.jpg', 26.08)], ['A.jpg']);
+        files.write(CITY_SEED_FILE, JSON.stringify({ imagery: { targetYears: [1966, 1966] } }));
+
+        expect(() => planLegacyBundle(files, 'seed/x')).toThrow(/invalid imagery/);
     });
 
     it('happyPath_keepsTheLegacyIdWhenThereIsOne', () => {

@@ -8,7 +8,7 @@ import { FIRESTORE_PATHS, cityDocSchema, imagerySettingsOf, rankScene, usgsScene
 
 import type { Ports } from '../ports/index.js';
 import { IMAGERY_WRITER, stampOf } from './records.js';
-import { shownYears } from './versions.js';
+import { rankContextOf, shownYears } from './versions.js';
 
 type RankDeps = Pick<Ports, 'documents' | 'clock'>;
 
@@ -19,7 +19,7 @@ type RankDeps = Pick<Ports, 'documents' | 'clock'>;
 export async function rankNow(deps: RankDeps, cityId: string, scene: UsgsSceneDoc): Promise<UsgsSceneDoc['rank']> {
     const city = await deps.documents.get(FIRESTORE_PATHS.city(cityId), cityDocSchema);
     const shown = await shownYears(deps.documents, cityId, scene.layerId);
-    return rankScene(scene, { targetYears: imagerySettingsOf(city?.imagery).targetYears, layerYears: shown.map((each) => each.year) });
+    return rankScene(scene, rankContextOf(imagerySettingsOf(city?.imagery).targetYears, shown));
 }
 
 /** The scene is not scanned after all: `downloadAvailable` false, ranked again. */

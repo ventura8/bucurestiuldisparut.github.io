@@ -44,6 +44,14 @@ def configure_gdal(threads: str | None = None) -> None:
     gdal.SetConfigOption(ENV_THREADS, threads or os.environ.get(ENV_THREADS) or "ALL_CPUS")
 
 
+def driver_of(name: str) -> gdal.Driver:
+    """A GDAL driver the pipeline cannot run without."""
+    driver = gdal.GetDriverByName(name)
+    if driver is None:
+        raise RasterError(f"GDAL has no {name} driver")
+    return driver
+
+
 def srs_wkt(epsg: int) -> str:
     srs = osr.SpatialReference()
     srs.ImportFromEPSG(epsg)
@@ -112,11 +120,8 @@ class GeoTiff:
 
 
 def write_geotiff(path: Path, image: GeoTiff, options: Sequence[str] = GTIFF_OPTIONS) -> Path:
-    driver = gdal.GetDriverByName("GTiff")
-    if driver is None:
-        raise RasterError("GDAL has no GTiff driver")
     height, width = image.bands[0].shape
-    dataset = driver.Create(str(path), width, height, len(image.bands), gdal.GDT_Byte, list(options))
+    dataset = driver_of("GTiff").Create(str(path), width, height, len(image.bands), gdal.GDT_Byte, list(options))
     if image.geotransform is not None:
         dataset.SetGeoTransform(image.geotransform)
         dataset.SetProjection(srs_wkt(image.epsg))

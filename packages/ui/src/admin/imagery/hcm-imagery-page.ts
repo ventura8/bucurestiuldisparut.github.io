@@ -24,13 +24,16 @@ import { openOrderCount } from './orders/order-list.js';
 import { orderStyles } from './orders/order-styles.js';
 import { sceneDetail } from './scene-detail.js';
 import { findView } from './scene-list.js';
-import { uploadPanel } from './upload-panel.js';
+import { chunkLoader, chunkTemplate } from './orders/lazy-card.js';
 import { versionDetail } from './version-detail.js';
 import { workView } from './work-list.js';
 
 export const HCM_IMAGERY_PAGE_TAG = 'hcm-imagery-page';
 
 const TABS: readonly ImageryTabPort[] = ['find', 'work', 'upload'];
+
+/** The Upload view as a chunk of its own, fetched when its tab first opens (M8: room in the area's chunk for the join's plan). */
+export const UPLOAD_PANEL_CHUNK = chunkLoader(async () => import('./upload-panel.js'));
 
 const QUESTIONS = {
     reject: {
@@ -177,14 +180,16 @@ class HcmImageryPage extends AreaPage<ImageryViewState, ImageryIntentsPort> {
         if (view.tab === 'work') {
             return workView(context);
         }
-        return uploadPanel(
-            context.locale,
-            { ...view.upload, layerId: view.upload.layerId ?? view.replaceLayer },
-            {
-                ...{ choose: (file) => void intents?.chooseFile(file), setYear: (text) => intents?.setYear(text) },
-                ...{ start: () => intents?.startUpload(), cancel: () => intents?.cancelUpload(), reset: () => intents?.resetUpload() },
-                readOnly: context.readOnly,
-            },
+        return chunkTemplate(context, UPLOAD_PANEL_CHUNK, ({ uploadPanel }) =>
+            uploadPanel(
+                context.locale,
+                { ...view.upload, layerId: view.upload.layerId ?? view.replaceLayer },
+                {
+                    ...{ choose: (file) => void intents?.chooseFile(file), setYear: (text) => intents?.setYear(text) },
+                    ...{ start: () => intents?.startUpload(), cancel: () => intents?.cancelUpload(), reset: () => intents?.resetUpload() },
+                    readOnly: context.readOnly,
+                },
+            ),
         );
     }
 

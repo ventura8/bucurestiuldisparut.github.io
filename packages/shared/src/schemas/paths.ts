@@ -126,6 +126,8 @@ export const FIRESTORE_PATHS = {
     /** M3: the layer versions (drafts on their way to a layer; `docs/research/M3-interfaces.md` §4.4). */
     layerVersions: (cityId: string) => `${cityPath(cityId)}/layerVersions`,
     layerVersion: (cityId: string, versionId: string) => child(cityId, 'layerVersions', versionId),
+    /** M8 (`docs/research/M8-join-interfaces.md` §2): the one plan of which frames make each date's whole-city layer. */
+    imageryPlan: (cityId: string) => child(cityId, 'imageryPlans', 'dates'),
     /** The `history` subcollection of an audited document (`auditedDocumentPath`). */
     history: (document: AuditedDocument) => `${auditedDocumentPath(document)}/history`,
     historyEntry: (document: AuditedDocument, entryId: string) =>

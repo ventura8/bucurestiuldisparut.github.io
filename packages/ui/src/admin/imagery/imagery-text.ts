@@ -19,6 +19,7 @@ const VERSION_STATES = {
     superseded: 'adminContent.imagery.version.superseded',
     failed: 'adminContent.imagery.version.failed',
     cancelled: 'adminContent.imagery.version.cancelled',
+    joined: 'adminContent.imagery.version.joined',
 } as const satisfies Readonly<Record<LayerVersionState, string>>;
 
 const WAITS = {
@@ -32,6 +33,7 @@ const WAITS = {
     'compute-units': 'adminContent.imagery.wait.computeUnits',
     deferred: 'adminContent.imagery.wait.deferred',
     mapbox: 'adminContent.imagery.wait.mapbox',
+    parts: 'adminContent.imagery.wait.parts',
 } as const satisfies Readonly<Record<WordedWait, string>>;
 
 /**

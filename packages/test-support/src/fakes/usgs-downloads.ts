@@ -74,10 +74,13 @@ export function defaultDownloadState(): DownloadState {
     };
 }
 
-/** True when the scene can be downloaded: scanned already, or (M4) bought and delivered. */
+/**
+ * True when the scene can be downloaded: scanned already, (M4) bought and delivered, or (M8) a frame of a date's set that a
+ * spec gave a delivery of its own, which the catalogue need not list.
+ */
 function scanned(state: DownloadState, entityId: string): boolean {
     const scene = catalogueScene(entityId);
-    return scene !== undefined && (scene.result.options.download || state.ordersDelivered);
+    return state.deliveries.has(entityId) || (scene !== undefined && (scene.result.options.download || state.ordersDelivered));
 }
 
 /** EarthExplorer's own id of each dataset, as `dataset-search` names them (Declass 3's is not recorded: null). */

@@ -5,12 +5,13 @@ import { z } from 'zod';
  * The bundled `legacy/<city>/city.json` (the seed manifest's city, manifest shape: `center` `[lng, lat]`, `bounds`
  * `[[w, s], [e, n]]`, its own id `bucuresti`) as the fields of the city document `setup.createCity` creates under the
  * project's city id (`infra/project.json`: `bucharest`; CR-M2b-1, CR-M2b-12). The viewer token and the analytics ids
- * are left out: the server writes them (`setup.saveMapbox`, `setup.analyticsConfig`).
+ * are left out: the server writes them (`setup.saveMapbox`, `setup.analyticsConfig`). `imagery` holds the city's target
+ * years (M8, `docs/research/M8-join-interfaces.md` §5): the build adds it, a seed manifest has none.
  */
 
 export type LegacyCityFields = Pick<
     CityDoc,
-    'name' | 'bounds' | 'center' | 'zoom' | 'minZoom' | 'maxZoom' | 'about' | 'privacy' | 'credits' | 'theme' | 'basemap'
+    'name' | 'bounds' | 'center' | 'zoom' | 'minZoom' | 'maxZoom' | 'about' | 'privacy' | 'credits' | 'theme' | 'basemap' | 'imagery'
 >;
 
 const position = z.tuple([z.number(), z.number()]);
@@ -21,7 +22,7 @@ const manifestCitySchema = z.looseObject({
 });
 
 /** The copied fields, as the manifest names them. */
-const COPIED = ['name', 'zoom', 'minZoom', 'maxZoom', 'about', 'privacy', 'credits', 'theme', 'basemap'] as const;
+const COPIED = ['name', 'zoom', 'minZoom', 'maxZoom', 'about', 'privacy', 'credits', 'theme', 'basemap', 'imagery'] as const;
 
 /** A placeholder stamp and state: validation needs them; `setup.createCity` writes the real ones. */
 const SERVER_OWNED = { published: false, updatedBy: 'legacy-import', updatedAt: { seconds: 0, nanoseconds: 0 } };

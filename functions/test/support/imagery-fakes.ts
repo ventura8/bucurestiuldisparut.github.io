@@ -44,6 +44,12 @@ const EE_DATASETS: readonly DatasetIds[] = [
     { alias: 'declassii', datasetId: '5e839ff7d71d4811' },
 ];
 
+/** A record inside the request's acquisition window (absent ends are open). */
+function within(record: SceneRecord, { from, to }: { readonly from?: string; readonly to?: string }): boolean {
+    const date = record.acquisitionDate;
+    return (from === undefined || date >= from) && (to === undefined || date <= to);
+}
+
 /**
  * `UsgsScenes` answering `records[dataset]` in pages of the request's `maxResults`; a dataset without records answers
  * none, a dataset in `failing` throws its error. `options` holds `download-options` answers by entity id (an unknown
@@ -62,7 +68,7 @@ export function createFakeUsgsScenes(records: Readonly<Record<string, readonly S
                 if (failure !== undefined) {
                     throw failure;
                 }
-                const all = records[request.dataset] ?? [];
+                const all = (records[request.dataset] ?? []).filter((record) => within(record, request));
                 const start = (request.startingNumber ?? 1) - 1;
                 const page = all.slice(start, start + request.maxResults);
                 const nextRecord = start + page.length + 1;

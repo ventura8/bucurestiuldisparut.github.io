@@ -16,13 +16,15 @@ import {
     validate,
     type JobDoc,
     type JobType,
+    type JobWaitReason,
     type LayerVersionDoc,
     type LayerVersionState,
+    type RankContext,
 } from '@hcm/shared';
 
 import { compact } from '../api/objects.js';
 import type { DocumentStore, DocumentTransaction } from '../ports/documents.js';
-import { stampOf } from './records.js';
+import { pickDefined, stampOf } from './records.js';
 
 const ENDED: ReadonlySet<LayerVersionState> = new Set(ENDED_VERSION_STATES);
 
@@ -77,35 +79,67 @@ export async function deletionsPending(documents: DocumentStore, cityId: string)
 }
 
 /**
- * A free layer id for a new layer labelled `label`: clear of the layers', the categories', `photos`, the layer id of every
- * version that holds one (`holdsLayerId`; the overlay namespace of the manifest) and every layer id a queued deletion
- * will clean up.
+ * The ids a new layer may not take: the layers', the categories', the layer id of every version that holds one
+ * (`holdsLayerId`; the overlay namespace of the manifest) and every layer id a queued deletion will clean up.
  */
-export async function reserveLayerId(documents: DocumentStore, cityId: string, label: string): Promise<string> {
+async function takenLayerIds(documents: DocumentStore, cityId: string): Promise<Set<string>> {
     const [layers, categories, versions, deletions] = await Promise.all([
         documents.query(FIRESTORE_PATHS.layers(cityId), layerDocSchema),
         documents.query(FIRESTORE_PATHS.poiCategories(cityId), poiCategoryDocSchema),
         versionsIn(documents, cityId, holdsLayerId),
         deletionsPending(documents, cityId),
     ]);
-    const taken = new Set([
+    return new Set([
         ...[...layers.documents, ...layers.invalid, ...categories.documents, ...categories.invalid].map((document) => document.id),
         ...versions.map((version) => version.layerId),
         ...deletions,
     ]);
-    return freeOverlayId(label, taken, 'layer');
+}
+
+/** A free layer id for a new layer labelled `label`: clear of {@link takenLayerIds} and `photos`. */
+export async function reserveLayerId(documents: DocumentStore, cityId: string, label: string): Promise<string> {
+    return freeOverlayId(label, await takenLayerIds(documents, cityId), 'layer');
+}
+
+/**
+ * M8: a source of free ids, each clear of the ones before it. Frames of one date share a label, so a repeated
+ * {@link reserveLayerId} would answer the same id each time (no version holds it yet).
+ */
+export async function reserveLayerIds(documents: DocumentStore, cityId: string): Promise<(label: string) => string> {
+    const taken = await takenLayerIds(documents, cityId);
+    return (label) => {
+        const id = freeOverlayId(label, taken, 'layer');
+        taken.add(id);
+        return id;
+    };
+}
+
+/** A year the city shows; `date` only for an unfinished version (M8: its neighbours of that date are not demoted). */
+export interface ShownYear {
+    readonly layerId: string;
+    readonly year: number;
+    readonly date?: string;
 }
 
 /** The years the city's layers and unfinished versions show, leaving out layer `except` (a scene's own import). */
-export async function shownYears(documents: DocumentStore, cityId: string, except?: string): Promise<{ layerId: string; year: number }[]> {
+export async function shownYears(documents: DocumentStore, cityId: string, except?: string): Promise<ShownYear[]> {
     const [layers, versions] = await Promise.all([
         documents.query(FIRESTORE_PATHS.layers(cityId), layerDocSchema),
         unfinishedVersions(documents, cityId),
     ]);
     return [
         ...layers.documents.map((layer) => ({ layerId: layer.id, year: layer.data.year })),
-        ...versions.map((version) => ({ layerId: version.layerId, year: version.year })),
+        ...versions.map((version) => ({ layerId: version.layerId, year: version.year, ...pickDefined(version, ['date']) })),
     ].filter((shown) => shown.layerId !== except);
+}
+
+/** What a scene is ranked against, from what the city shows (the scene's own import already left out). */
+export function rankContextOf(targetYears: readonly number[], shown: readonly ShownYear[]): RankContext {
+    return {
+        targetYears,
+        layerYears: shown.map((each) => each.year),
+        pendingDates: shown.flatMap((each) => each.date ?? []),
+    };
 }
 
 /** What a new job and its version have in common. */
@@ -117,6 +151,8 @@ export interface NewWork {
     readonly layerId: string;
     readonly createdBy: string;
     readonly now: Date;
+    /** M8: a job born waiting (`parts`: a join until its frames rendered), so nothing may claim it before its first dispatch. */
+    readonly waitReason?: JobWaitReason;
 }
 
 /** A `queued` job of `work`, stamped by its creator. */
@@ -129,6 +165,7 @@ function queuedJob(work: NewWork): JobDoc {
         createdAt: timestampFromDate(work.now),
         layerId: work.layerId,
         versionId: work.jobId,
+        ...pickDefined(work, ['waitReason']),
         ...stampOf(work.createdBy, work.now),
     };
 }
@@ -154,6 +191,8 @@ function processingVersion(work: NewWork, fields: VersionFields): LayerVersionDo
         scan: fields.scan,
         reference: fields.reference,
         georef: fields.georef,
+        partOf: fields.partOf,
+        join: undefined,
         suggestions: undefined,
         crop: fields.crop,
         output: undefined,

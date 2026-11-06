@@ -127,6 +127,19 @@ describe('setup views', () => {
         expect(validate(createCityRequestSchema, { cityId: 'bucharest', city })).toMatchObject({ ok: true });
     });
 
+    it('happyPath_createCityTakesTheSeedsTargetYears', () => {
+        const city = {
+            name: { ro: 'București' },
+            bounds: { west: 25.93, south: 44.33, east: 26.25, north: 44.55 },
+            imagery: { targetYears: [1972] },
+        };
+
+        expect(validate(createCityRequestSchema, { cityId: 'bucharest', city })).toMatchObject({
+            ok: true,
+            value: { city: { imagery: { targetYears: [1972] } } },
+        });
+    });
+
     it.each([
         ['a server-owned field', { published: true }, 'city.published'],
         ['the viewer token', { mapbox: { publicToken: 'pk.x' } }, 'city.mapbox'],

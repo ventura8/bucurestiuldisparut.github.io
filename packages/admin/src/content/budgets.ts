@@ -46,6 +46,10 @@ export const CONTENT_INPUT_BUDGETS = {
     uploadGeotiff: { inputs: 3, how: 'Upload, choose the georeferenced file, Approve' },
     chooseStudio: { inputs: 3, how: 'Free: Studio, Download, I uploaded it (plus the upload in Mapbox Studio)' },
     georeferencePair: { inputs: 2, how: 'a click on the scan, a click on the same place on the map (per pair)' },
+    joinFrames: {
+        inputs: 1,
+        how: 'Join frames on a date, a frame or a rendered frame (docs/research/M8-join-interfaces.md §6); Approve is its own',
+    },
     cropLayer: { inputs: 2, how: 'Crop, n clicks (the last on the first corner), Save the crop', per: 'vertex' },
     // [end imagery]
     // [section orders] owner: orders (docs/research/M4-interfaces.md §1.6)

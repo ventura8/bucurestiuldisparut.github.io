@@ -14,7 +14,8 @@ import type { MockResponse } from './router.js';
  *   `POST /__imagery/script?city=` (an `ImageryScript`), `POST /__imagery/release?city=` (runs held at their `holdAt`
  *   step go on), `GET /__imagery/runs?city=` (what the runner played), `POST /__imagery/reset[?city=]`, and
  *   `POST /__imagery/synthetic?dir=` (the server's world answers the synthetic scene a spec generated in `dir`, a folder
- *   under `reports/`: its delivery, its Sentinel-2 window and its OpenStreetMap lines, until the world is reset);
+ *   under `reports/`: its delivery, its Sentinel-2 window and its OpenStreetMap lines, until the world is reset), and
+ *   `POST /__imagery/frames?ids=` (M8: USGS answers these frames as scanned, though the catalogue does not list them);
  * - the tiles of the tilesets the fake MTS published, for every page: the publish happens in the server's world (the
  *   shared partition `''`, which the Functions emulator reaches), and tiles are public, so a page's request for a tileset
  *   of the fake's accounts (`/v4/e2e-mapbox.*`) is answered from that world, wherever the page is (the viewer showing a
@@ -63,6 +64,15 @@ function synthetic(context: ControlContext): MockResponse {
     return NO_CONTENT;
 }
 
+/** A frame of a date's set the stand-in imports: USGS says it is scanned; the stand-in never fetches its bytes. */
+function scannedFrames(context: ControlContext): MockResponse {
+    const { deliveries } = context.upstream.partitions.get('').state.usgs;
+    (context.query.get('ids') ?? '').split(',').forEach((entityId) => {
+        deliveries.set(entityId, () => new Uint8Array(1));
+    });
+    return NO_CONTENT;
+}
+
 const CONTROL: Readonly<Record<string, Control>> = {
     'POST script': (runner, city, body) => {
         const script = parsedScript(body);
@@ -79,6 +89,7 @@ const CONTROL: Readonly<Record<string, Control>> = {
         return NO_CONTENT;
     },
     'POST synthetic': (_runner, _city, _body, context) => synthetic(context),
+    'POST frames': (_runner, _city, _body, context) => scannedFrames(context),
 };
 
 /** The e2e tile host's layers that are not tiles (`/xyz/<layer>/…`). */

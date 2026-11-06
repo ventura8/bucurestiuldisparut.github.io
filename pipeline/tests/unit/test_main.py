@@ -83,6 +83,8 @@ def test_happy_path_default_registry_offers_doctor_run_each_pipeline_step_and_th
         "locate",
         "reference",
         "georef",
+        "align",
+        "merge",
         "warp",
         "export",
         "register",

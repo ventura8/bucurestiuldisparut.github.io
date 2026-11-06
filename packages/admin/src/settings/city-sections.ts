@@ -20,6 +20,7 @@ import {
 } from '@hcm/shared';
 
 import { readOnce, type ReadFailure } from '../content/read-once.js';
+import { IMAGERY_SEARCH_TIMEOUT_MS } from '../imagery/search-timeout.js';
 import type { ContentServices, Stored, WriteOutcome } from '../content/services.js';
 import { EditDraft, EMPTY_DRAFT, type DraftState } from '../layers/draft.js';
 import { AREA_FIELDS, areaIssues, areaNumberPatch, boundsGrow, contentOutside, type AreaNumberField, type Outside } from './area.js';
@@ -186,8 +187,23 @@ export class CitySections {
     #saved(outcome: WriteOutcome | null): WriteOutcome | null {
         if (outcome?.ok === true) {
             this.#set({ ...this.#state, theme: NO_THEME });
+            this.#rankAgain();
         }
         return outcome;
+    }
+
+    /**
+     * M8 (`docs/research/M8-join-interfaces.md` §5): saved target years rank nothing until a search does, so the imagery
+     * section's Save starts one. It is not Save's to report: without USGS, or while USGS is down, Imagery's own search says why.
+     */
+    #rankAgain(): void {
+        if (this.#state.section !== 'imagery') {
+            return;
+        }
+        const { callables, cityId, log } = this.#services;
+        callables.call('imagery.search', { cityId }, { timeoutMs: IMAGERY_SEARCH_TIMEOUT_MS }).catch((error: unknown) => {
+            log.warn('the search after saving the target years did not run', { error: String(error) });
+        });
     }
 
     #newDraft(section: CitySection): EditDraft<CityDoc> {

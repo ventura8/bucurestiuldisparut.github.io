@@ -10,7 +10,8 @@
  * processing on `raster-pipeline` (or `-xl`); each phase is a dispatch like any other. M7
  * (`docs/research/M7-local-worker.md` §3, §4.3): first where the job runs (`runOn`, written the first time); a job for
  * the owner's computer waits for a worker (`waitReason: 'worker'`), and neither it nor a worker's run of it takes a
- * slot; a cloud run past the month's free tier waits for the admin's OK (`waitReason: 'free-tier'`).
+ * slot; a cloud run past the month's free tier waits for the admin's OK (`waitReason: 'free-tier'`). M8
+ * (`docs/research/M8-join-interfaces.md` §5): a join waits for its frames (`waitReason: 'parts'`), and fails when one ended.
  */
 import {
     CLOUD_RUN_JOBS,
@@ -37,6 +38,7 @@ import type { Ports } from '../ports/index.js';
 import { endWork } from './end.js';
 import { askForOk, needsFreeTierOk } from './free-tier.js';
 import { cityIds } from './limits.js';
+import { partsReady } from './join-parts.js';
 import { handedOver, machineOf } from './machine.js';
 import { placeFor } from './place.js';
 import { enqueuePublish } from './publish-queue.js';
@@ -273,7 +275,21 @@ async function dispatchPipelineJob(deps: DispatchDeps, cityId: string, jobId: st
     if (early === 'exhausted') {
         return exhausted(deps, cityId, jobId, job);
     }
-    return dispatchByPlace(deps, cityId, jobId, job);
+    return job.type === 'layer-join' ? dispatchJoin(deps, cityId, jobId, job) : dispatchByPlace(deps, cityId, jobId, job);
+}
+
+/** M8: a join holds until its frames rendered (the tick asks again), and fails once one of them ended. */
+async function dispatchJoin(deps: DispatchDeps, cityId: string, jobId: string, job: JobDoc): Promise<DispatchOutcome> {
+    const ready = await partsReady(deps.documents, cityId, jobId, job);
+    if (ready.kind === 'go') {
+        return dispatchByPlace(deps, cityId, jobId, job);
+    }
+    if (ready.kind === 'hold') {
+        return wait(deps, cityId, jobId, 'parts');
+    }
+    const error = { code: 'apiError.imagery.joinPartGone', params: { frame: ready.frame } } as const;
+    await endWork(deps, cityId, jobId, { status: 'failed', versionState: 'failed', by: IMAGERY_WRITER, error });
+    return 'failed';
 }
 
 /** M7 §3: a job for the owner's computer waits for a worker; a cloud one goes on to Cloud Run. */

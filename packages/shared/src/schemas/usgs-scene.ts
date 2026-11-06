@@ -79,6 +79,7 @@ export const RANK_REASONS = [
     'nearTargetYear',
     'newYear',
     'sameYear',
+    'sameDate',
     'noLayers',
     'cloud',
     'cloudUnknown',
@@ -89,9 +90,10 @@ export type RankReason = (typeof RANK_REASONS)[number];
 
 /**
  * Bumped when the weights, the parts or the reasons change: the harvest re-ranks every scene of an older version. 2: the
- * reasons that explain a low rank come first, and a city without layers says so (CR-M3-47).
+ * reasons that explain a low rank come first, and a city without layers says so (CR-M3-47). 3 (M8): a frame of the same
+ * date as one in progress is its join's neighbour, never "a year the city already has".
  */
-export const RANKING_VERSION = 2;
+export const RANKING_VERSION = 3;
 
 /**
  * The weight of each part of the score (they add up to 100; each part is 0 to 1): free first, then how much of the city

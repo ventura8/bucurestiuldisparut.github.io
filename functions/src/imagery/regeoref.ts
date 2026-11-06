@@ -5,7 +5,9 @@
  * layer keeps its tiles and shows the version as pending until it is published; a base that was still awaiting approval
  * is replaced (it and its job end, cancelled). The transaction that creates the new version reads the base and the layer
  * again (CR-M3-47): a base the guard sent to Mapbox meanwhile, or a layer another version took, refuses the save
- * (`apiError.imagery.versionState`, `apiError.layers.busy`) instead of cancelling what is already under way.
+ * (`apiError.imagery.versionState`, `apiError.layers.busy`) instead of cancelling what is already under way. M8: a frame a
+ * live join holds gets no new rendition (`apiError.imagery.joinPartHeld`); points on a frame waiting for them continue its
+ * own job (`save-gcps.ts`), which is what the join waits for.
  */
 import {
     FIRESTORE_PATHS,
@@ -23,6 +25,7 @@ import { ApiError } from '../api/api-error.js';
 import { omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
+import { refuseHeldPart } from './join-parts.js';
 import { refuseBusyLayer, refuseNewRasterJob } from './limits.js';
 import { pickDefined, stampOf, type Stamp } from './records.js';
 import { createWork, jobIdFor, type NewWork } from './versions.js';
@@ -49,7 +52,8 @@ function fieldsOf(regeoref: Regeoref): Fields {
         basedOn: base.jobId,
         label: base.label,
         year: base.year,
-        ...pickDefined(base, ['source', 'date', 'sensor', 'scan', 'reference']),
+        // `partOf`: a frame a join named stays out of the approval policy with its new points (`approval.ts`).
+        ...pickDefined(base, ['source', 'date', 'sensor', 'scan', 'reference', 'partOf']),
         georef: regeoref.georef,
         ...(crop === undefined ? {} : { crop }),
     };
@@ -118,6 +122,7 @@ async function regeorefIn(transaction: DocumentTransaction, regeoref: Regeoref, 
 export async function startRegeoref(deps: RegeorefDeps, regeoref: Regeoref): Promise<{ jobId: string; versionId: string }> {
     const now = deps.clock.now();
     const { cityId, base } = regeoref;
+    await refuseHeldPart(deps.documents, cityId, base);
     await refuseNewRasterJob(deps.documents, now, cityId);
     await refuseBusyLayer(deps.documents, cityId, base.layerId, base.state === 'awaiting_approval' ? base.jobId : undefined);
     const jobId = jobIdFor(regeoref.origin === 'crop' ? 'cr' : 'rg', now, base.layerId);

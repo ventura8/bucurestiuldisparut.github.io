@@ -6,6 +6,7 @@ import { M6_INSTALL_EXPORTS } from './fixtures/exports-m6-install.js';
 import { FIELD_EXPORTS } from './fixtures/exports-field.js';
 import { M6_SETUP_UX_EXPORTS } from './fixtures/exports-m6-setup-ux.js';
 import { M7_EXPORTS } from './fixtures/exports-m7.js';
+import { M8_EXPORTS } from './fixtures/exports-m8.js';
 
 /** The public API, by module: a removed or renamed export breaks the engine, the admin and the functions. */
 const EXPORTS = {
@@ -334,6 +335,7 @@ const EXPORTS = {
         'rankReasonSchema',
         'usgsBrowseUrlSchema',
         'DEFAULT_RMSE_THRESHOLD_M',
+        'JOIN_MAX_PARTS',
         'MAX_TARGET_YEARS',
         'RMSE_THRESHOLD_RANGE',
         'cityImagerySchema',
@@ -574,6 +576,8 @@ const EXPORTS = {
     fieldMeasurements: FIELD_EXPORTS,
     /** M7 (docs/research/M7-local-worker.md §8): the local worker, where a job runs, Cloud Run's free tier, the Uploads path. */
     m7: M7_EXPORTS,
+    /** M8 (docs/research/M8-join-interfaces.md §2): one date's frames joined into one layer, the plan of the dates. */
+    m8: M8_EXPORTS,
     migration: [
         'KNOWN_HTTPS_HOSTS',
         'decodeEntities',

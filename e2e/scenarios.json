@@ -701,6 +701,27 @@
             "name": "The local worker runs a job through the API and signed URLs",
             "milestone": "M7",
             "source": "docs/research/M7-local-worker.md (the user's decisions of 2026-11-01, \"make this as free as possible\"; DECISIONS-for-review.md §83) §1-§2, §10"
+        },
+        {
+            "id": "A65",
+            "area": "admin",
+            "name": "Join one date's frames into one whole-city layer",
+            "milestone": "M8",
+            "source": "docs/research/M8-join-interfaces.md §2-§6 (the owner, 2026-11-06)"
+        },
+        {
+            "id": "A66",
+            "area": "admin",
+            "name": "Whole-city dates and target years",
+            "milestone": "M8",
+            "source": "docs/research/M8-join-interfaces.md §1, §2, §5, §6 (the owner, 2026-11-06)"
+        },
+        {
+            "id": "P05",
+            "area": "pipeline",
+            "name": "The layer-join job: align and merge a date's frames",
+            "milestone": "M8",
+            "source": "docs/research/M8-join-interfaces.md §3, §13"
         }
     ],
     "scenarios": [
@@ -4168,6 +4189,17 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Round of 2026-11-06. In functions/test/imagery/search.test.ts; every other sensor in packages/shared/test/imagery/coverage.test.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-SAME-DATE-RANK",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame of a date in progress is not demoted as a repeated year",
+            "asserts": "a frame in progress on 1972-08-08 -> another frame of that date scores as new, with the reason Same date as a frame in progress, listed first",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: functions/test/imagery/search.test.ts."
         },
         {
             "id": "S-A12-HAPPY",
@@ -10284,6 +10316,435 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "Findings of the review of 2026-11-06 (workstream pipeline-robust). Test: pipeline/tests/unit/test_worker_pairing.py."
+        },
+        {
+            "id": "S-A65-HAPPY",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame of part of the city joins its date's others and is approved and published as one layer",
+            "asserts": "a frame covering about 55 % of the city waiting for approval -> the offer (about 55 %, with F040 about 100 %) -> Join frames (one click) -> the join's page lists its frames with their states and says it waits -> the frame renders, the tick starts the join -> the report (coverage, seam before and after, worst frame's error, largest shift) -> Approve (one click) -> published, the viewer paints it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-HAPPY-ADD-FRAME",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "happy",
+            "title": "A join that came out short takes the next frame; nothing is downloaded again",
+            "asserts": "a rendered join covering 62 %, a third frame of its date in the plan -> Add F041 and join again -> a new join of three frames, the old one rejected, the two rendered frames ran once",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-HAPPY-AUTO",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "happy",
+            "title": "A join within all limits publishes itself",
+            "asserts": "every condition met (auto-publish on, worst frame under the threshold with three checkpoints, shift under it, every seam measured and applied under 15 m, coverage at least 90 %) -> approved by the policy and published; Join frames was the only click",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-HAPPY-FINALIZE-SCENES",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "happy",
+            "title": "A published join owns its frames",
+            "asserts": "published -> its frames are joined, their scenes point at the join's layer, the sweep skips joined frames, deleting the layer removes their files",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-MIXED",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "Frames of different dates or cameras cannot be joined",
+            "asserts": "imagery.join over two dates -> apiError.imagery.joinMixedFrames, nothing created",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-DAILY-LIMIT",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A set past today's limit is refused up front",
+            "asserts": "two missing frames and the join count three jobs; the city's limit of 2 -> the message beside Join frames; no version created, the scenes still candidates",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-PART-NEEDS-POINTS",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame that needs points holds the join",
+            "asserts": "a frame in needs_gcps -> the join says it waits, the frame's row links the georeferencer, Work still asks for that frame; a tick starts nothing, no worker can claim it; it resumes once the points are saved",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-PART-GONE",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame that ended fails the join with its name",
+            "asserts": "a frame failed or rejected -> apiError.imagery.joinPartGone naming it, from the callable and from the hold",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-PART-HELD",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A held frame refuses changes of its own",
+            "asserts": "a frame a live join holds -> its page links the join and offers no join; Approve shows apiError.imagery.joinPartHeld and the frame stays waiting; Work no longer asks for it; reject, re-georeference and delete refuse as well",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-PART-NOT-AUTO",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A held frame never publishes itself",
+            "asserts": "a frame under the threshold held by a join -> no approval and no call to Mapbox; half a city never reaches the map",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-OVER-THRESHOLD",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A join over the threshold waits for Approve",
+            "asserts": "worst frame's error over the threshold -> the card says the figure and that joining does not improve it; nothing reaches Mapbox until Approve",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-REJECTED",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "Rejecting a join gives its frames back",
+            "asserts": "Reject -> only the join ends: its frames wait for approval, their scenes stay imported, and Join frames is on again",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-UNMEASURED",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A seam that could not be measured is said",
+            "asserts": "too few samples at the seam -> the card says the seam could not be measured, and the join waits for Approve",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts."
+        },
+        {
+            "id": "S-A65-BAD-NO-SEAMS",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "Frames that never meet are said",
+            "asserts": "frames that do not overlap render with no seam -> the card says so, shows no list, and the join waits for Approve",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §17). Test: e2e/admin/specs/imagery/join.spec.ts."
+        },
+        {
+            "id": "S-A65-BAD-SEAM-REFUSED",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A correction that did not help is said",
+            "asserts": "a seam the pixels refused -> the card gives its one figure and says nothing moved, and the join waits for Approve",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §17). Test: e2e/admin/specs/imagery/join.spec.ts."
+        },
+        {
+            "id": "S-A65-BAD-RETRY-STALE",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A join's retry finds its frames gone",
+            "asserts": "a failed join whose frame a newer join stamped, new points replaced or its own publish took -> the retry answers joinPartGone and nothing moves; else it goes back waiting for its frames, so no worker claims it unseen",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §17). Test: functions/test/imagery/retry.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-CANCEL-HELD",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "Cancel of a frame a live join holds is withdrawn",
+            "asserts": "the admin's request on a held frame's job -> the job and its scene stay, the request is taken back, the log says why; the page offers no Cancel",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §17). Test: functions/test/imagery/join-parts.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-ENDED-NOT-AUTO",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame of a join that ended never publishes alone",
+            "asserts": "a frame named by a join that failed, was rejected or cancelled, or its new points -> it waits for Approve; a frame the policy approved meanwhile is refused by the join",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §17). Tests: functions/test/imagery/join-parts.test.ts, join.test.ts."
+        },
+        {
+            "id": "S-A65-HAPPY-NEW-POINTS-SCAN",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame with new points joins from where its scan lies",
+            "asserts": "a re-georeferenced frame's scan stays in its base's folder -> a worker may read it, the sweep keeps it while the frame reads it, the layer's deletion takes it",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §17). Tests: functions/test/worker/urls.test.ts, functions/test/imagery/join-finalize.test.ts."
+        },
+        {
+            "id": "S-A65-BAD-SEAM-TOO-FAR",
+            "behaviour": "A65",
+            "area": "admin",
+            "path": "bad",
+            "title": "Frames too far apart fail the join and lead to the georeferencer",
+            "asserts": "apiError.imagery.joinSeamTooFar -> the message names both frames, and each frame's row links the georeferencer",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join.spec.ts."
+        },
+        {
+            "id": "S-A66-HAPPY",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "happy",
+            "title": "Whole-city dates list the best date first",
+            "asserts": "the page's own search writes the plan -> rows sorted: reaches 95 %, target year, not winter, fewest downloads; a summer date above a winter one, which notes it may need points",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join-dates.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A66-HAPPY-ADD-YEAR",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "happy",
+            "title": "Add {year} saves the year and re-ranks",
+            "asserts": "Add 1968 to target years -> the city's target years hold it, the button goes, and after the search the 1968 frame's row says it is a wanted year",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join-dates.spec.ts."
+        },
+        {
+            "id": "S-A66-HAPPY-SEED",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "happy",
+            "title": "A new setup holds the target years",
+            "asserts": "Setup creates Bucharest from the bundle -> imagery.targetYears holds 1966, 1972, 1976, 1977, 1978, 1979, 1980, 1982, 1983, 1984",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/steps/deploy.spec.ts."
+        },
+        {
+            "id": "S-A66-HAPPY-TRUNCATED",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "happy",
+            "title": "A capped dataset still finds a target date",
+            "asserts": "a dataset at its 500-scene cap -> a warning and one windowed search per target year, which finds the target date",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A66-BAD-PAID-FRAME",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame that must be ordered is named, never joined",
+            "asserts": "a date whose other frame is paid -> the row links that frame's page (1 more would need ordering) and has no Join frames",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join-dates.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-A66-BAD-NO-NEIGHBOUR",
+            "behaviour": "A66",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame with no neighbour has no row and no offer",
+            "asserts": "one frame of its date -> the plan has no rows, Find shows no whole-city dates and the scene's page no offer",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join-dates.spec.ts, functions/test/imagery/join*.test.ts."
+        },
+        {
+            "id": "S-P05-HAPPY",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Two frames join: the seam closes and nothing moves beyond the taper",
+            "asserts": "2 frames, 60 m off each other, a 25 % tone step -> the seam under 15 m on held-out tiles, truth error beyond the taper unchanged within 1 m, no partial alpha inside the valid area, areaKm2 the union",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
+        },
+        {
+            "id": "S-P05-HAPPY-OFF-NADIR",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Past the taper a part shows what its own warp shows",
+            "asserts": "a panoramic frame off nadir, poly2, affine or thin-plate, warped for real through its nodes against its own points -> within a few metres past the taper, and the largest move is what the warp really does, drift between nodes included",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §17). Test: pipeline/tests/integration/test_join_warp_parity.py."
+        },
+        {
+            "id": "S-P05-HAPPY-THREE",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "Three frames: two seams whose fields add",
+            "asserts": "3 frames -> two seams, each closed; the middle frame carries both fields",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
+        },
+        {
+            "id": "S-P05-HAPPY-OMITTED",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A covered frame is left out",
+            "asserts": "a frame owning under 1 % of the window -> listed in omitted, not warped",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
+        },
+        {
+            "id": "S-P05-HAPPY-WORKER",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The join runs under the worker allow-lists",
+            "asserts": "the local worker -> reads the part versions and each scan, writes only the join's own files",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
+        },
+        {
+            "id": "S-P05-HAPPY-ADMIN",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The real pipeline joins two frames from the admin",
+            "asserts": "Join frames over the two synthetic frames -> python -m hcm_pipeline run imports both and joins them against the emulators; one seam measured and applied under 15 m, coverage at least 90 % -> the policy publishes it, the viewer paints it",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: e2e/admin/specs/imagery/join-pipeline.spec.ts."
+        },
+        {
+            "id": "S-P05-BAD-NO-OVERLAP",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Frames with no overlap render without a seam",
+            "asserts": "no overlap -> rendered, no seams, never auto-published",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
+        },
+        {
+            "id": "S-P05-BAD-UNMEASURED",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A flat overlap is not measured",
+            "asserts": "flat overlap -> measured false, no shift, the 12 m cut",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
+        },
+        {
+            "id": "S-P05-BAD-WORSENED",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A correction that did not help is refused",
+            "asserts": "an adversarial field -> applied false, the before figure reported, no frame shifted",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
+        },
+        {
+            "id": "S-P05-BAD-TOO-FAR",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Frames 500 m apart fail",
+            "asserts": "500 m on the ground -> apiError.imagery.joinSeamTooFar naming both",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
+        },
+        {
+            "id": "S-P05-BAD-PART-MISSING",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A scan no longer stored fails",
+            "asserts": "a part's scan.tif gone -> apiError.imagery.joinPartMissing naming it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
+        },
+        {
+            "id": "S-P05-BAD-NO-ROOM",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Too little disk fails before warping",
+            "asserts": "disk under the need -> apiError.imagery.joinNoRoom; a seam needs two scans at once, a run resumed at merge checks again, and a disk that fills during a download says the same",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
+        },
+        {
+            "id": "S-P05-BAD-NO-FRAMES",
+            "behaviour": "P05",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Fewer than two useful frames fail",
+            "asserts": "fewer than two frames owning at least 1 % -> apiError.imagery.joinNoFrames",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: pipeline/tests/integration/test_join_job.py."
         }
     ]
 }

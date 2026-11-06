@@ -47,6 +47,23 @@ async function queuedWorld(): Promise<WorkerWorld> {
 }
 
 describe('worker.claim', () => {
+    it('badPath_aJoinWaitingForItsFramesIsNotClaimed_onceTheyAreThereItIs @S-A65-BAD-PART-NEEDS-POINTS', async () => {
+        const world = await workerWorld();
+        await seedWorker(world);
+        const parts = [
+            { versionId: 'v-f039', layerId: 'l-f039' },
+            { versionId: 'v-f040', layerId: 'l-f040' },
+        ];
+        const held = localJob({ type: 'layer-join', params: { parts, sensor: 'KH-9-pan' }, waitReason: 'parts' });
+        await seedJob(world, 'jn-1', held);
+
+        await expect(claim(world)).resolves.toEqual({ job: null });
+        expect((await readJob(world, 'jn-1'))?.status).toBe('queued');
+
+        await seedJob(world, 'jn-1', { ...held, waitReason: 'worker' });
+        await expect(claim(world)).resolves.toEqual({ job: { jobId: 'jn-1' } });
+    });
+
     it('happyPath_aWorkerClaimsTheOldestDueLocalJob @S-A62-HAPPY-CLAIM', async () => {
         const world = await queuedWorld();
 

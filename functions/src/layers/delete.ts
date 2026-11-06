@@ -1,10 +1,12 @@
 import '../global-options.js';
 
 import {
+    ENDED_VERSION_STATES,
     FIRESTORE_PATHS,
     LAYER_DELETE_GRACE_DAYS,
     jobDocSchema,
     layerDocSchema,
+    layerVersionDocSchema,
     timestampFromDate,
     type CallableRequest,
     type CallableResponse,
@@ -12,6 +14,8 @@ import {
     type JobStatus,
     type LayerDeleteParams,
     type LayerDoc,
+    type LayerVersionDoc,
+    type LayerVersionState,
 } from '@hcm/shared';
 
 import type { VerifiedCaller } from '../api/access.js';
@@ -26,6 +30,8 @@ export type LayerDeleteDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 type Request = CallableRequest<'layers.delete'>;
 
 const DAY_MS = 86_400_000;
+
+const ENDED_VERSIONS: ReadonlySet<LayerVersionState> = new Set(ENDED_VERSION_STATES);
 
 /** A job in one of these states is done with its layer; any other one is still working on it. */
 const FINISHED: ReadonlySet<JobStatus> = new Set<JobStatus>(['succeeded', 'failed', 'cancelled']);
@@ -57,6 +63,37 @@ async function refuseWhileBusy(deps: LayerDeleteDeps, request: Request): Promise
         if (await unfinishedJobOf(deps, request, field)) {
             throw new ApiError('apiError.layers.busy');
         }
+    }
+}
+
+/** The layer's current version, if it has one. */
+async function currentVersionOf(deps: LayerDeleteDeps, request: Request): Promise<LayerVersionDoc | undefined> {
+    const layer = await deps.documents.get(FIRESTORE_PATHS.layer(request.cityId, request.layerId), layerDocSchema);
+    const current = layer?.currentVersion;
+    return current === undefined
+        ? undefined
+        : deps.documents.get(FIRESTORE_PATHS.layerVersion(request.cityId, current), layerVersionDocSchema);
+}
+
+/** The frame a join is built from, by the join's own state: one that ended holds nothing (a stale `partOf`). */
+async function heldByLiveJoin(deps: LayerDeleteDeps, cityId: string, partOf: string): Promise<boolean> {
+    const join = await deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, partOf), layerVersionDocSchema);
+    return join !== undefined && !ENDED_VERSIONS.has(join.state);
+}
+
+/** What the admin knows a frame by: its USGS entity, else its version's job. */
+function frameOf(version: LayerVersionDoc): string {
+    return version.source?.kind === 'usgs' ? version.source.entityId : version.jobId;
+}
+
+/**
+ * M8 (docs/research/M8-join-interfaces.md §5): a layer whose current version is a frame of a live join is not deleted
+ * (`apiError.imagery.joinPartHeld`). Its folder keeps its own reading of these documents (CR-M2-3).
+ */
+async function refuseHeldLayer(deps: LayerDeleteDeps, request: Request): Promise<void> {
+    const version = await currentVersionOf(deps, request);
+    if (version?.partOf !== undefined && (await heldByLiveJoin(deps, request.cityId, version.partOf))) {
+        throw new ApiError('apiError.imagery.joinPartHeld', { frame: frameOf(version) });
     }
 }
 
@@ -115,9 +152,11 @@ async function deleteAndQueue(transaction: DocumentTransaction, deletion: Deleti
  * `layers.delete` (admins; `docs/research/M2c-interfaces.md` §8.4, CR-M2c-3; S-A33-HAPPY-LAYER): deletes the layer
  * document and queues a `layer-delete` job that may run `LAYER_DELETE_GRACE_DAYS` later (the raster pipeline's
  * dispatcher runs it in M3, CR-M2c-13; a revert of the deletion before then cancels it, CR-M2c-5). A missing layer is
- * `apiError.notFound`; a layer the pipeline is working on is `apiError.layers.busy`.
+ * `apiError.notFound`; a layer the pipeline is working on is `apiError.layers.busy`; M8: a layer a live join is built from is
+ * `apiError.imagery.joinPartHeld`.
  */
 async function layersDelete(deps: LayerDeleteDeps, caller: VerifiedCaller, request: Request): Promise<CallableResponse<'layers.delete'>> {
+    await refuseHeldLayer(deps, request);
     await refuseWhileBusy(deps, request);
     const now = deps.clock.now();
     const runsAt = new Date(now.getTime() + LAYER_DELETE_GRACE_DAYS * DAY_MS);

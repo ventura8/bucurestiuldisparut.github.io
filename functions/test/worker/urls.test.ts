@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import { urlsFunction } from '../../src/worker/urls.js';
 import { failureOf } from '../admin/world.js';
-import { seedGuard } from '../imagery/world.js';
+import { renderedVersion, seedGuard, seedVersion } from '../imagery/world.js';
 import { CITY, ENTITY, FOLDER, JOB, LAYER, NOW, WORKER, callAs, seedHeld, workerWorld, type WorkerWorld } from './world.js';
 
 const EXPIRES = new Date(Date.parse(NOW) + WORKER_URL_SECONDS * 1000).toISOString();
@@ -40,6 +40,41 @@ async function held(job: Parameters<typeof seedHeld>[1] = {}): Promise<WorkerWor
 function codeOf(promise: Promise<unknown>): Promise<unknown> {
     return failureOf(promise).then((failure) => (failure.details as { code?: unknown } | undefined)?.code);
 }
+
+describe('worker.urls objects of a join (M8)', () => {
+    const BASE_SCAN = `rasters/${CITY}/layer-f039/im-f039/scan.tif`;
+    const parts = [
+        { versionId: 'rg-f039', layerId: 'layer-f039' },
+        { versionId: 'im-f040', layerId: 'layer-f040' },
+    ];
+
+    async function joining(): Promise<WorkerWorld> {
+        const world = await held({ type: 'layer-join', params: { parts, sensor: 'KH-9-pan' } });
+        const scan = { path: BASE_SCAN, width: 10, height: 10, sha256: 'a'.repeat(64), previewPath: 'p', previewScale: 1 };
+        await seedVersion(world, 'rg-f039', renderedVersion({ jobId: 'rg-f039', layerId: 'layer-f039', scan }));
+        return world;
+    }
+
+    it('happyPath_aFrameWithNewPointsIsReadFromTheFolderItsScanLivesIn @S-A65-HAPPY-NEW-POINTS-SCAN', async () => {
+        const world = await joining();
+        world.deps.blobs.put('private', BASE_SCAN, new Uint8Array([1]), { contentType: 'image/tiff' });
+
+        const answer = await objects(world, [{ path: BASE_SCAN, method: 'GET' }]);
+
+        expect(answer.objects).toMatchObject([{ path: BASE_SCAN, method: 'GET', exists: true }]);
+    });
+
+    it('badPath_aFrameCanNotHaveItsBasesFolderWritten_norAnyOtherFileRead', async () => {
+        const world = await joining();
+
+        await expect(codeOf(objects(world, [{ path: BASE_SCAN, method: 'PUT', contentType: 'image/tiff' }]))).resolves.toBe(
+            'apiError.worker.refused',
+        );
+        await expect(codeOf(objects(world, [{ path: `rasters/${CITY}/layer-f039/im-f039/cog.tif`, method: 'GET' }]))).resolves.toBe(
+            'apiError.worker.refused',
+        );
+    });
+});
 
 describe('worker.urls objects', () => {
     it('happyPath_theVersionsFilesAreSignedForUploadAndItsInputsForDownload @S-A62-HAPPY-SIGNED-URLS', async () => {

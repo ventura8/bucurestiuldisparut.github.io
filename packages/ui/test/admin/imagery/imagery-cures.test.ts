@@ -180,7 +180,7 @@ describe('a failed version page offers what cures it', () => {
         const upload = versionView({ label: { ro: 'ortofoto' }, year: 1938, origin: 'upload' });
         const { element } = await imageryPage(imageryState({ detail: VERSION, version: versionPage({}, upload) }));
 
-        expect(deep(element, '[data-detail-heading]').textContent).toBe('ortofoto · 1938');
+        expect(deep(element, '[data-detail-heading]').textContent).toBe('ortofoto · 1938 · A023');
     });
 });
 

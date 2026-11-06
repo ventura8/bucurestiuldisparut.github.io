@@ -14,6 +14,7 @@ import { callImagery, refusalOf } from './api.js';
 import { BrowseImages } from './browse.js';
 import { ImageryFeeds, type FeedsPatch } from './feeds.js';
 import { resumeGuard } from './guard.js';
+import { JoinActions } from './join.js';
 import { NO_FILES } from './files.js';
 import { BROWSE_PICTURE, ImageryMap, PREVIEW_PICTURE, sceneCorners } from './imagery-map.js';
 import { sceneNamed, visibleScenes, type SceneFilters, type SceneItem } from './model.js';
@@ -60,6 +61,11 @@ function previewOf(version: VersionPageState | null): { readonly key: string; re
     return output === null ? null : { key: `${version.id}@${output.previewPath}`, output };
 }
 
+/** The USGS scene the open version came from. */
+function entityOf(version: VersionPageState | null): string | null {
+    return version?.version.doc?.data.entityId ?? null;
+}
+
 class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     readonly #services: ContentServices;
     readonly #cell: Store<ImageryState>;
@@ -70,6 +76,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     readonly #version: VersionPage;
     readonly #map: ImageryMap;
     readonly #orders: OrderActions;
+    readonly #join: JoinActions;
     #newest: string | null | undefined = undefined;
     /** The preview on the map now (`<version>@<path>`), '' for none. */
     #previewShown = '';
@@ -102,6 +109,9 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         });
         this.#orders = new OrderActions(services, (orders) => {
             this.#cell.update(orders);
+        });
+        this.#join = new JoinActions(services, (join) => {
+            this.#cell.update(join);
         });
         this.intents = this.#intents();
     }
@@ -141,7 +151,17 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
 
     #intents(): ImageryIntents {
         const resumeGuard = (): Promise<boolean> => this.#resumeGuard();
-        return { ...this.#findIntents(), ...this.#versionIntents(), ...this.#uploadIntents(), ...this.#orderIntents(), resumeGuard };
+        return {
+            ...{ ...this.#findIntents(), ...this.#versionIntents(), ...this.#uploadIntents(), ...this.#orderIntents(), resumeGuard },
+            joinFrames: (entityIds) => this.#join.join(entityIds),
+            addTargetYear: (year) => this.#addYear(year),
+        };
+    }
+
+    /** M8: Add {year} over the settings as read; the search then ranks with the year. */
+    #addYear(year: number): Promise<boolean> {
+        const target = { settings: this.#cell.state.settings, version: this.#feeds.cityVersion, search: () => this.#search.search() };
+        return this.#join.addYear(year, target);
     }
 
     /** M4: the order card (`docs/research/M4-interfaces.md` §1.7). */
@@ -284,8 +304,8 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         this.#cell.update({ detail, importRefusal: null });
         this.#map.clearPictures();
         this.#previewShown = '';
-        this.#version.show(routedId(detail, 'version'));
         this.#feeds.showScene(routedId(detail, 'scene'));
+        this.#version.show(routedId(detail, 'version'));
         this.#showFind();
     }
 
@@ -340,12 +360,20 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
 
     #versionChanged(version: VersionPageState | null): void {
         this.#cell.update({ version });
+        this.#readFrame(entityOf(version));
         const preview = previewOf(version);
         if (preview !== null && preview.key !== this.#previewShown) {
             const { output } = preview;
             this.#previewShown = preview.key;
             this.#map.fitBox(output.bounds);
             void this.#map.showPicture(PREVIEW_PICTURE, output.previewPath, cornersOfBox(output.bounds), this.#cell.state.previewOpacity);
+        }
+    }
+
+    /** M8: the frame's scene, read by its id, says how much of the city it covers (the page's offer to join). */
+    #readFrame(entityId: string | null): void {
+        if (entityId !== null) {
+            this.#feeds.showScene(entityId);
         }
     }
 

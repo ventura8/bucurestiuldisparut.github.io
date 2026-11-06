@@ -149,6 +149,7 @@ describe('jobs', () => {
         ['regeoref', true],
         ['republish', false],
         ['layer-delete', false],
+        ['layer-join', true],
     ] as const)('runsOnPipeline_%s', (type, expected) => {
         expect(runsOnPipeline(type)).toBe(expected);
     });

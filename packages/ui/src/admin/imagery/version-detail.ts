@@ -4,7 +4,7 @@
  * **Try again** when a retry can, Setup's Mapbox step for a token or its scopes, **Upload another file** for an upload the
  * server refused, **Dismiss** for a failed version), the georeferencer, the approval card once it is rendered, the
  * preview's opacity on the map, the job's log as text, and **Cancel** while it runs (asked first; once Mapbox was asked
- * to publish, its processing cannot be stopped).
+ * to publish, its processing cannot be stopped). M8: a join's frames, and a frame's offer to join its date's others.
  */
 import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
@@ -17,6 +17,8 @@ import type { ImageryContext } from './context.js';
 import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { JobLogLinePort, JobViewPort, VersionPagePort, VersionViewPort } from './imagery-port.js';
 import { labelText, numberText, versionStateText, waitText, wordedWait } from './imagery-text.js';
+import { liveJoin, versionMark } from './join/live-join.js';
+import { lazyJoin } from './join/lazy-card.js';
 import { when, withValue } from './when.js';
 import { loadWorkerElements } from '../worker/load.js';
 
@@ -57,7 +59,8 @@ function bar(locale: Locale, job: JobViewPort): TemplateResult {
 
 function waiting(locale: Locale, job: JobViewPort): TemplateResult {
     return withValue(
-        wordedWait(job.waitReason),
+        // M8: a join waiting for its frames says so above them (`join/join-card.ts`).
+        wordedWait(job.waitReason === 'parts' ? null : job.waitReason),
         (reason) => html`<p class="note" data-wait=${reason}>${waitText(locale, reason, job.retryAt)}</p>`,
     );
 }
@@ -237,12 +240,22 @@ function stoppable(job: JobViewPort | null): job is JobViewPort {
     return job !== null && !job.finished && !job.atMapbox;
 }
 
-function cancel({ context, page, job }: Shown): TemplateResult {
-    if (!stoppable(job)) {
+/** M8: a frame a live join holds does not stop (`functions/src/imagery/cancel.ts`): its page links the join, which does. */
+function heldByJoin({ context, version }: Shown): boolean {
+    return liveJoin(context.view.versions.items, version?.partOf ?? null);
+}
+
+function cancelOff({ context, page }: Shown, job: JobViewPort): boolean {
+    return job.cancelRequested || page.acting !== null || context.readOnly;
+}
+
+function cancel(shown: Shown): TemplateResult {
+    const { context, job } = shown;
+    if (!stoppable(job) || heldByJoin(shown)) {
         return html``;
     }
     const label = job.cancelRequested ? 'adminContent.jobs.stopping' : 'adminContent.jobs.cancel';
-    const off = job.cancelRequested || page.acting !== null || context.readOnly;
+    const off = cancelOff(shown, job);
     return html`<div class="actions">
         <hcm-button
             variant="outlined"
@@ -303,7 +316,8 @@ function outcome(shown: Shown): TemplateResult {
 function titleOf(version: VersionViewPort, locale: Locale): string {
     const label = labelText(version.label, locale);
     const year = String(version.year);
-    return label.includes(year) ? label : `${label} · ${year}`;
+    const mark = versionMark(locale, version.origin, version.entityId ?? undefined);
+    return [label, ...(label.includes(year) ? [] : [year]), ...(mark === null ? [] : [mark])].join(' · ');
 }
 
 function heading({ context, version }: Shown): TemplateResult {
@@ -331,7 +345,9 @@ function body(shown: Shown): TemplateResult {
         <div class="actions">
             ${retryButton(shown)} ${uploadAnother(shown)} ${mapboxSetupLink(shown)} ${georefLink(shown)} ${dismissButton(shown)}
         </div>
-        ${runPlace(shown)} ${refusal(shown)} ${outcome(shown)} ${opacity(shown)} ${steps(locale, job)}
+        ${runPlace(shown)} ${refusal(shown)}
+        ${withValue(version, (known) => lazyJoin(context, known, (chunk) => chunk.versionJoin(context, known, job)))} ${outcome(shown)}
+        ${opacity(shown)} ${steps(locale, job)}
         <h3>${contentText(locale, 'adminContent.jobs.log')}</h3>
         ${logs(locale, page.logs.items)} ${cancel(shown)}
     </div>`;

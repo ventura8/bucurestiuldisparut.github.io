@@ -176,6 +176,18 @@ describe("the local worker feed: a version's job and the failures", () => {
         ]);
     });
 
+    it('happyPath_aJoinRunsOnThePipelineSoItHasAPlace', () => {
+        const world = contentWorld();
+        const parts = [
+            { versionId: 'a', layerId: 'la' },
+            { versionId: 'b', layerId: 'lb' },
+        ];
+        const params = { parts, sensor: 'KH-9-pan' };
+        world.store.docs.set(FIRESTORE_PATHS.job(CITY, 'join'), jobDoc({ type: 'layer-join', params, waitReason: 'parts' }));
+
+        expect(feedOf(world, 'join').feed.state.job).toMatchObject({ id: 'join', waitReason: 'parts' });
+    });
+
     it('badPath_aJobThePipelineDoesNotRunOrNoJobAtAllHasNoPlace', async () => {
         const world = contentWorld();
         world.store.docs.set(FIRESTORE_PATHS.job(CITY, 'del'), jobDoc({ type: 'layer-delete', params: {} }));

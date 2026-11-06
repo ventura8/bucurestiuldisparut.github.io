@@ -63,8 +63,24 @@ const NO_CARD: ReadonlySet<SceneAcquisitionState> = new Set<SceneAcquisitionStat
 const CHUNK_FAILURE = { kind: 'unavailable', code: 'network' } as const;
 
 /** Fetches the chunk (or joins the running fetch); the page renders again when it settles, either way. */
-function fetchChunk(context: ImageryContext, chunk: ChunkLoader<OrderCardChunk>): void {
+function fetchChunk<T>(context: ImageryContext, chunk: ChunkLoader<T>): void {
     chunk.load().then(context.refresh, context.refresh);
+}
+
+/** `render` over a chunk once it is in; until then Loading (fetching it), or after a failed fetch why not, with Try again. */
+export function chunkTemplate<T>(context: ImageryContext, chunk: ChunkLoader<T>, render: (loaded: T) => TemplateResult): TemplateResult {
+    const loaded = chunk.loaded();
+    if (loaded !== undefined) {
+        return render(loaded);
+    }
+    if (chunk.failed()) {
+        return errorTemplate(context.locale, CHUNK_FAILURE, () => {
+            fetchChunk(context, chunk);
+            context.refresh();
+        });
+    }
+    fetchChunk(context, chunk);
+    return loadingTemplate(context.locale);
 }
 
 /**
@@ -76,19 +92,5 @@ export function lazyOrderCard(
     scene: SceneItemPort,
     chunk: ChunkLoader<OrderCardChunk> = ORDER_CARD_CHUNK,
 ): TemplateResult {
-    if (NO_CARD.has(scene.acquisition)) {
-        return EMPTY;
-    }
-    const loaded = chunk.loaded();
-    if (loaded !== undefined) {
-        return loaded.orderCard(context, scene);
-    }
-    if (chunk.failed()) {
-        return errorTemplate(context.locale, CHUNK_FAILURE, () => {
-            fetchChunk(context, chunk);
-            context.refresh();
-        });
-    }
-    fetchChunk(context, chunk);
-    return loadingTemplate(context.locale);
+    return NO_CARD.has(scene.acquisition) ? EMPTY : chunkTemplate(context, chunk, (loaded) => loaded.orderCard(context, scene));
 }

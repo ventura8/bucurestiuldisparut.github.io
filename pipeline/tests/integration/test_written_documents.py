@@ -31,6 +31,7 @@ from hcm_pipeline.model import contract_json
 from tests.contracts_loader import CONTRACTS, golden, record, records
 from tests.fakes.documents import MemoryStore
 from tests.fakes.world import CITY, ENTITY_ID, PipelineWorld, dig
+from tests.integration.joining import JOB, Frame, run_join, seed_frames
 from tests.integration.matching import seed_matching, uniform
 from tests.synthetic.scenes import Scene, render_world, write_sentinel2
 
@@ -228,6 +229,28 @@ def city_off_frame(world: PipelineWorld, _tmp: Path) -> None:
     assert "scan" not in world.version()
 
 
+def _join_frames(world: PipelineWorld, tmp: Path, apart_m: float = 0.0) -> None:
+    """Two frames of one date over the scene's own ground, `apart_m` from each other."""
+    size = (500, 400)
+    frames = [Frame("west", (-1500.0, 0.0), (apart_m, 0.0), size=size), Frame("east", (1500.0, 0.0), (-apart_m, 0.0), size=size)]
+    seed_frames(world, tmp, world.scene.world, frames, (2500.0, 1500.0))
+
+
+def joined_frames(world: PipelineWorld, tmp: Path) -> None:
+    """A `layer-join` end to end: its report and the job's own steps."""
+    _join_frames(world, tmp, 20.0)
+    run_join(world)
+    assert world.version(JOB)["state"] == "awaiting_approval"
+    assert dig(world.version(JOB), "join", "seams")
+
+
+def join_too_far(world: PipelineWorld, tmp: Path) -> None:
+    """Frames too far apart: the failure's `{a}` and `{b}` parameters."""
+    _join_frames(world, tmp, 400.0)
+    run_join(world)
+    assert dig(world.job(JOB), "error", "code") == Errors.JOIN_SEAM_TOO_FAR
+
+
 PATHS: Final[dict[str, Callable[[PipelineWorld, Path], None]]] = {
     "whole-import": whole_import,
     "two-phases": two_phases,
@@ -240,6 +263,8 @@ PATHS: Final[dict[str, Callable[[PipelineWorld, Path], None]]] = {
     "corners-far-off": corners_far_off,
     "weak-guess": weak_guess,
     "city-off-frame": city_off_frame,
+    "joined-frames": joined_frames,
+    "join-too-far": join_too_far,
 }
 
 
@@ -270,7 +295,7 @@ def nearest_difference(written_shape: Shape, known: set[Shape]) -> list[str]:
 @pytest.mark.parametrize("name", list(PATHS))
 def test_happy_path_each_path_writes_only_documents_of_a_known_shape(name: str, recorded: dict[str, Recorded]) -> None:
     """Scenarios: S-P01-HAPPY-WRITTEN-CONTRACT, S-P01-BAD-WRITTEN-PARAMS, S-P01-HAPPY-KH9-STRIP, S-P01-BAD-CITY-NOT-FOUND
-    Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS, S-P01-BAD-CITY-OFF-FRAME"""
+    Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS, S-P01-BAD-CITY-OFF-FRAME, S-P05-HAPPY, S-P05-BAD-TOO-FAR"""
     known = known_shapes()
 
     unknown = [

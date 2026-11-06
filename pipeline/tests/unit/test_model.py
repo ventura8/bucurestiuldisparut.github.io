@@ -2,12 +2,14 @@
 
 import pytest
 from hcm_pipeline.contract import PIPELINE_WRITER
-from hcm_pipeline.documents import GeorefInfo, OutputInfo, ReferenceInfo, ScanInfo, Version
+from hcm_pipeline.documents import GeorefInfo, JoinReport, JoinSeam, OutputInfo, ReferenceInfo, ScanInfo, Version
 from hcm_pipeline.geo import Bounds
 from hcm_pipeline.model import (
     DocumentError,
     GeotiffImportParams,
     Job,
+    JoinParams,
+    JoinPart,
     Lease,
     RegeorefParams,
     StepRecord,
@@ -100,6 +102,20 @@ def test_happy_path_the_version_waiting_for_points_is_the_golden_one() -> None:
     assert stamp(Timestamp(1))["updatedBy"] == PIPELINE_WRITER
 
 
+def test_happy_path_a_joins_report_is_the_golden_one() -> None:
+    measured = JoinSeam("D3C1202-200149F039", "D3C1202-200149F040", True, True, 24, 4, 42.75, 61.25, 9.5)
+    unmeasured = JoinSeam("D3C1202-200149F040", "D3C1202-200149F041", False, False, 3, 0, 0)
+    report = JoinReport((measured, unmeasured), ("D3C1202-200149A039",), 97.5, 3, 42.75, 51.6)
+
+    assert report.as_record() == golden("version.join.json")["join"]
+
+
+def test_happy_path_a_join_version_reads_back_without_scan_or_georef() -> None:
+    version = Version.of("job-1972-0808-join", golden("version.join.json"))
+
+    assert (version.origin, version.scan, version.georef, version.source["kind"]) == ("join", None, None, "join")
+
+
 def test_happy_path_versions_read_back_what_the_golden_documents_hold() -> None:
     version = Version.of("job-1966-0712", AWAITING)
 
@@ -136,6 +152,11 @@ def test_happy_path_jobs_read_their_steps_lease_and_params() -> None:
             GeotiffImportParams("u.tif", "Plan.tif", False),
         ),
         ("regeoref", {"basedOn": "v-1"}, RegeorefParams("v-1")),
+        (
+            "layer-join",
+            {"parts": [{"versionId": "v-1", "layerId": "l-1"}, {"versionId": "v-2", "layerId": "l-2"}], "sensor": "KH-9-pan"},
+            JoinParams((JoinPart("v-1", "l-1"), JoinPart("v-2", "l-2")), "KH-9-pan"),
+        ),
     ],
 )
 def test_happy_path_each_type_reads_its_own_params(job_type: str, params: dict[str, object], expected: object) -> None:
@@ -152,6 +173,13 @@ def test_happy_path_each_type_reads_its_own_params(job_type: str, params: dict[s
         ("geotiff-import", {"uploadPath": "u" * 501, "replaces": False}, "longer than 500"),
         ("regeoref", {"basedOn": ""}, "basedOn must be a non-empty text"),
         ("republish", {"versionId": "v"}, "does not run republish jobs"),
+        ("layer-join", {"parts": [{"versionId": "v", "layerId": "l"}], "sensor": "KH-9-pan"}, "2 to 8 frames"),
+        ("layer-join", {"parts": [{"versionId": "v", "layerId": "l"}] * 9, "sensor": "KH-9-pan"}, "2 to 8 frames"),
+        ("layer-join", {"parts": "v", "sensor": "KH-9-pan"}, "2 to 8 frames"),
+        ("layer-join", {"parts": [{"versionId": "v", "layerId": "../l"}] * 2, "sensor": "KH-9-pan"}, "layerId must be an id"),
+        ("layer-join", {"parts": [{"versionId": "v", "layerId": "l", "x": 1}] * 2, "sensor": "KH-9-pan"}, "unknown keys: x"),
+        ("layer-join", {"parts": ["v", "w"], "sensor": "KH-9-pan"}, "a part must be a record"),
+        ("layer-join", {"parts": [{"versionId": "v", "layerId": "l"}] * 2, "sensor": "KH-5"}, "sensor must be one of"),
     ],
 )
 def test_bad_path_malformed_params_are_refused(job_type: str, params: dict[str, object], problem: str) -> None:

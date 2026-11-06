@@ -148,7 +148,7 @@ describe('<hcm-imagery-page>: a version', () => {
             params: ['version', 'job-1966'],
         });
 
-        expect(deep(element, '[data-detail-heading]').textContent).toBe('KH-4A Corona, 12 July 1966');
+        expect(deep(element, '[data-detail-heading]').textContent).toBe('KH-4A Corona, 12 July 1966 · A023');
         expect(deep(element, '[data-rmse="under"]').textContent).toContain("7.2 m, under the city's threshold (15 m)");
         expect(deep(element, '[data-estimate]').textContent).toContain('about 2.5 Mapbox compute units; 16 are left');
         expect(deepText(element)).toContain('Pairs of points: 24; checks: 24.');

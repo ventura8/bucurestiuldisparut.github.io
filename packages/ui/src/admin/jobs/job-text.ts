@@ -14,6 +14,7 @@ const TYPES: Readonly<Record<string, AdminContentKey>> = {
     regeoref: 'adminContent.jobs.type.regeoref',
     republish: 'adminContent.jobs.type.republish',
     'layer-delete': 'adminContent.jobs.type.layerDelete',
+    'layer-join': 'adminContent.jobs.type.layerJoin',
 };
 
 const STATUSES: Readonly<Record<JobStatusPort, AdminContentKey>> = {
@@ -48,6 +49,9 @@ const STEP_NAMES: Readonly<Record<string, AdminContentKey>> = {
     export: 'adminContent.jobs.stepName.export',
     publish: 'adminContent.jobs.stepName.publish',
     delete: 'adminContent.jobs.stepName.delete',
+    // M8 (docs/research/M8-join-interfaces.md §3): a join's own steps.
+    align: 'adminContent.jobs.stepName.align',
+    merge: 'adminContent.jobs.stepName.merge',
     // M3 (CR-M3-5): the pipeline's other steps and the publisher's (`JOB_STEPS` in @hcm/shared).
     extract: 'adminContent.jobs.stepName.extract',
     stitch: 'adminContent.jobs.stepName.stitch',

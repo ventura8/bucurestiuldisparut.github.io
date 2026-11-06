@@ -21,6 +21,12 @@ export const RMSE_THRESHOLD_RANGE = { min: 1, max: 200 } as const;
 export const MAX_TARGET_YEARS = 20;
 
 /**
+ * M8 (`docs/research/M8-join-interfaces.md` §2): at most this many frames of one date join into one layer. Here because
+ * this module is a leaf: the layer document (`firestore.ts`) and the join's schemas (`imagery-join.ts`) both read it.
+ */
+export const JOIN_MAX_PARTS = 8;
+
+/**
  * `cities/{city}.imagery`. Every field is optional in the document: an absent field takes its default
  * ({@link imagerySettingsOf}), so a city created before M3 needs no migration.
  */

@@ -47,6 +47,7 @@ import {
     NOBODY,
     createWorld,
     expected,
+    past,
     serverTime,
     stampedBy,
     systemStamp,
@@ -192,6 +193,11 @@ const ROWS: Readonly<Record<string, Row>> = {
     'cities/{city}/exports/{export}': serverOwned(FIRESTORE_PATHS.cityExports(CITY_ID), 'export-1', () => ({
         status: 'queued',
         ...systemStamp('export'),
+    })),
+    // M8 (docs/research/M8-join-interfaces.md §2): the plan of whole-city dates, written by the imagery functions only.
+    'cities/{city}/imageryPlans/{id}': serverOwned(`${FIRESTORE_PATHS.city(CITY_ID)}/imageryPlans`, 'dates', () => ({
+        rows: [],
+        updatedAt: past(),
     })),
     // M7 (docs/research/M7-local-worker.md §2.4, §3): the city's local workers and run choice, server-written.
     'cities/{city}/workers/{doc}': serverOwned(FIRESTORE_PATHS.workers(CITY_ID), 'w-0123456789abcdef', () => workerDoc(admin())),

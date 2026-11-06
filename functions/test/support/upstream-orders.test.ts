@@ -32,6 +32,17 @@ describe('the fake USGS delivers bought scans', () => {
         expect(after).toEqual([{ entityId: PAID, available: true, bytes: 734_003_200, datasetId: '5e839febdccb64b3' }]);
     });
 
+    it('happyPath_aFrameTheCatalogueDoesNotListIsScannedOnceASpecGivesItADelivery', async () => {
+        const { fakes, apiKey, scenes } = await session();
+
+        const before = await scenes.downloadOptions(apiKey, 'declassiii', ['D3C1202-200149F040']);
+        fakes.state.usgs.deliveries.set('D3C1202-200149F040', () => new Uint8Array(3));
+        const after = await scenes.downloadOptions(apiKey, 'declassiii', ['D3C1202-200149F040']);
+
+        expect(before).toEqual([{ entityId: 'D3C1202-200149F040', available: false, bytes: 0 }]);
+        expect(after).toEqual([{ entityId: 'D3C1202-200149F040', available: true, bytes: 3 }]);
+    });
+
     it('badPath_declassThreeHasNoRecordedIdAndAnUnknownSceneIsNeverDelivered', async () => {
         const { fakes, apiKey, scenes } = await session();
         fakes.scenario('usgs.ordersDelivered');

@@ -24,10 +24,24 @@
         "deferred",
         "mapbox",
         "worker",
-        "free-tier"
+        "free-tier",
+        "parts"
     ],
     "JOB_STEP_STATES": ["pending", "running", "done", "failed", "skipped"],
-    "PIPELINE_STEPS": ["fetch", "extract", "stitch", "inspect", "locate", "reference", "georef", "warp", "export", "register"],
+    "PIPELINE_STEPS": [
+        "fetch",
+        "extract",
+        "stitch",
+        "inspect",
+        "locate",
+        "reference",
+        "georef",
+        "align",
+        "merge",
+        "warp",
+        "export",
+        "register"
+    ],
     "DOWNLOAD_STEPS": ["fetch", "extract"],
     "JOB_MACHINES": ["fetch", "std", "xl"],
     "JOB_STEPS": {
@@ -62,7 +76,8 @@
         ],
         "regeoref": ["georef", "warp", "export", "register", "guard", "upload", "publish", "tiles", "finalize"],
         "republish": ["guard", "upload", "publish", "tiles", "finalize"],
-        "layer-delete": ["delete"]
+        "layer-delete": ["delete"],
+        "layer-join": ["align", "merge", "export", "register", "guard", "upload", "publish", "tiles", "finalize"]
     },
     "LAYER_VERSION_STATES": [
         "processing",
@@ -74,7 +89,8 @@
         "rejected",
         "superseded",
         "failed",
-        "cancelled"
+        "cancelled",
+        "joined"
     ],
     "GEOREF_TRANSFORMS": ["affine", "poly2", "tps"],
     "MIN_GCPS": {
@@ -141,12 +157,17 @@
     },
     "MAX_GCPS": 300,
     "MAX_SCAN_PIXELS": 200000,
+    "JOIN_MAX_PARTS": 8,
     "PIPELINE_ERROR_CODES": [
         "apiError.imagery.archiveCorrupt",
         "apiError.imagery.cityNotFound",
         "apiError.imagery.degenerateGcps",
         "apiError.imagery.downloadIncomplete",
         "apiError.imagery.gcpOutside",
+        "apiError.imagery.joinNoFrames",
+        "apiError.imagery.joinNoRoom",
+        "apiError.imagery.joinPartMissing",
+        "apiError.imagery.joinSeamTooFar",
         "apiError.imagery.noMatch",
         "apiError.imagery.noScan",
         "apiError.imagery.noSpread",

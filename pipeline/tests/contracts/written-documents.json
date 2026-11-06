@@ -186,7 +186,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -244,7 +244,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -309,7 +309,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -381,7 +381,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -460,7 +460,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -546,7 +546,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -639,7 +639,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -740,7 +740,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -848,7 +848,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -963,7 +963,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1085,7 +1085,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1211,7 +1211,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1344,7 +1344,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1484,7 +1484,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1631,7 +1631,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1786,7 +1786,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -1948,7 +1948,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2107,7 +2107,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2267,7 +2267,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2813,7 +2813,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2929,7 +2929,7 @@
                     "status": "done",
                     "gcsPath": "usgs-raw/corona2/DS1035-1057DA023/DS1035-1057DA023.tgz",
                     "generation": "1792000000000002",
-                    "sha256": "85c6c38c5f950a2f93e2ab877919bb15533292264beed693a76f35bc3a131a2d",
+                    "sha256": "82f9df2121874b836a7a0f7c8db75206b375cadd8774cc1399847b74b125d490",
                     "bytes": 1588134,
                     "startedAt": {
                         "seconds": 1792000000,
@@ -2984,6 +2984,875 @@
             "error": {
                 "code": "apiError.imagery.cityNotFound",
                 "message": "the frame does not reach the city window under any orientation"
+            }
+        },
+        {
+            "type": "layer-join",
+            "status": "running",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            }
+        },
+        {
+            "type": "layer-join",
+            "status": "running",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "align",
+            "steps": {
+                "align": {
+                    "status": "running",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.0
+        },
+        {
+            "type": "layer-join",
+            "status": "running",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "align",
+            "steps": {
+                "align": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
+                    "generation": "1792000000000004",
+                    "bytes": 2199,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.2727
+        },
+        {
+            "type": "layer-join",
+            "status": "running",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "merge",
+            "steps": {
+                "align": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
+                    "generation": "1792000000000004",
+                    "bytes": 2199,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "merge": {
+                    "status": "running",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.2727
+        },
+        {
+            "type": "layer-join",
+            "status": "running",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "merge",
+            "steps": {
+                "align": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
+                    "generation": "1792000000000004",
+                    "bytes": 2199,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "merge": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/warped.tif",
+                    "generation": "1792000000000005",
+                    "bytes": 532044,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.7273
+        },
+        {
+            "type": "layer-join",
+            "status": "running",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "export",
+            "steps": {
+                "align": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
+                    "generation": "1792000000000004",
+                    "bytes": 2199,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "merge": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/warped.tif",
+                    "generation": "1792000000000005",
+                    "bytes": 532044,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "running",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.7273
+        },
+        {
+            "type": "layer-join",
+            "status": "running",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "export",
+            "steps": {
+                "align": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
+                    "generation": "1792000000000004",
+                    "bytes": 2199,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "merge": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/warped.tif",
+                    "generation": "1792000000000005",
+                    "bytes": 532044,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
+                    "generation": "1792000000000006",
+                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
+                    "bytes": 209279,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.9091
+        },
+        {
+            "type": "layer-join",
+            "status": "running",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "register",
+            "steps": {
+                "align": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
+                    "generation": "1792000000000004",
+                    "bytes": 2199,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "merge": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/warped.tif",
+                    "generation": "1792000000000005",
+                    "bytes": 532044,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
+                    "generation": "1792000000000006",
+                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
+                    "bytes": 209279,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "register": {
+                    "status": "running",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.9091
+        },
+        {
+            "type": "layer-join",
+            "status": "running",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "lease": {
+                "owner": "raster-pipeline-x7k2m/0",
+                "until": {
+                    "seconds": 1792000600,
+                    "nanoseconds": 0
+                }
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "register",
+            "steps": {
+                "align": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
+                    "generation": "1792000000000004",
+                    "bytes": 2199,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "merge": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/warped.tif",
+                    "generation": "1792000000000005",
+                    "bytes": 532044,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
+                    "generation": "1792000000000006",
+                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
+                    "bytes": 209279,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "register": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 1.0
+        },
+        {
+            "type": "layer-join",
+            "status": "awaiting_approval",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "register",
+            "steps": {
+                "align": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/join-plan.json",
+                    "generation": "1792000000000004",
+                    "bytes": 2199,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "merge": {
+                    "status": "done",
+                    "gcsPath": "work/bucharest/job-join-1972/warped.tif",
+                    "generation": "1792000000000005",
+                    "bytes": 532044,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "export": {
+                    "status": "done",
+                    "gcsPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
+                    "generation": "1792000000000006",
+                    "sha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
+                    "bytes": 209279,
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                },
+                "register": {
+                    "status": "done",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    },
+                    "finishedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 1.0,
+            "waitReason": "approval"
+        },
+        {
+            "type": "layer-join",
+            "status": "failed",
+            "params": {
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east"
+                    }
+                ],
+                "sensor": "KH-4"
+            },
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "layerId": "kh-4-corona-1972",
+            "versionId": "job-join-1972",
+            "dispatchAt": {
+                "seconds": 1791999910,
+                "nanoseconds": 0
+            },
+            "executionName": "projects/demo-hcm/locations/us-central1/jobs/raster-pipeline/executions/raster-pipeline-x7k2m",
+            "machine": "std",
+            "attempt": 1,
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "startedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "step": "align",
+            "steps": {
+                "align": {
+                    "status": "failed",
+                    "startedAt": {
+                        "seconds": 1792000000,
+                        "nanoseconds": 0
+                    }
+                }
+            },
+            "progress": 0.0,
+            "finishedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "error": {
+                "code": "apiError.imagery.joinSeamTooFar",
+                "message": "D3C1202-west and D3C1202-east lie 571 m apart",
+                "params": {
+                    "a": "D3C1202-west",
+                    "b": "D3C1202-east"
+                }
             }
         }
     ],
@@ -4436,107 +5305,93 @@
                 },
                 "minConfidence": 0.6,
                 "tiles": {
-                    "matched": 23,
-                    "total": 126
+                    "matched": 12,
+                    "total": 125
                 },
                 "pairs": [
                     {
                         "id": "a001",
                         "pixel": {
-                            "x": 289.81,
-                            "y": 732.71
+                            "x": 523.67,
+                            "y": 405.81
                         },
                         "geo": {
-                            "lat": 44.416783246,
-                            "lng": 26.120301784
+                            "lat": 44.423384656,
+                            "lng": 26.087673553
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.577
+                        "score": 0.539
                     },
                     {
                         "id": "a002",
                         "pixel": {
-                            "x": 1229.6,
-                            "y": 576.46
+                            "x": 1120.15,
+                            "y": 872.96
                         },
                         "geo": {
-                            "lat": 44.443295885,
-                            "lng": 26.103723601
+                            "lat": 44.440519018,
+                            "lng": 26.121918751
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.538
+                        "score": 0.413
                     },
                     {
                         "id": "a003",
                         "pixel": {
-                            "x": 1092.15,
-                            "y": 851.17
+                            "x": 563.07,
+                            "y": 727.08
                         },
                         "geo": {
-                            "lat": 44.440903843,
-                            "lng": 26.123535719
+                            "lat": 44.425508867,
+                            "lng": 26.116978017
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.454
+                        "score": 0.405
                     },
                     {
                         "id": "a004",
                         "pixel": {
-                            "x": 459.44,
-                            "y": 374.56
+                            "x": 445.26,
+                            "y": 488.45
                         },
                         "geo": {
-                            "lat": 44.41934974,
-                            "lng": 26.092813336
+                            "lat": 44.421531172,
+                            "lng": 26.096047271
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.403
+                        "score": 0.401
                     },
                     {
                         "id": "a005",
                         "pixel": {
-                            "x": 737.89,
-                            "y": 292.81
+                            "x": 311.85,
+                            "y": 396.84
                         },
                         "geo": {
-                            "lat": 44.426791936,
-                            "lng": 26.086165803
-                        },
-                        "enabled": true,
-                        "origin": "auto",
-                        "score": 0.402
-                    },
-                    {
-                        "id": "a006",
-                        "pixel": {
-                            "x": 559.68,
-                            "y": 741.26
-                        },
-                        "geo": {
-                            "lat": 44.424739011,
-                            "lng": 26.118505153
+                            "lat": 44.417553206,
+                            "lng": 26.089130244
                         },
                         "enabled": true,
                         "origin": "auto",
                         "score": 0.4
                     },
                     {
-                        "id": "a007",
+                        "id": "a006",
                         "pixel": {
-                            "x": 486.54,
-                            "y": 715.27
+                            "x": 492.89,
+                            "y": 689.66
                         },
                         "geo": {
-                            "lat": 44.421755319,
-                            "lng": 26.116729018
+                            "lat": 44.423289444,
+                            "lng": 26.114129718
                         },
                         "enabled": true,
                         "origin": "auto",
-                        "score": 0.359
+                        "score": 0.387
                     }
                 ]
             }
@@ -4576,6 +5431,254 @@
             },
             "error": {
                 "code": "apiError.imagery.cityNotFound"
+            }
+        },
+        {
+            "layerId": "kh-4-corona-1972",
+            "jobId": "job-join-1972",
+            "origin": "join",
+            "state": "processing",
+            "source": {
+                "kind": "join",
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west",
+                        "entityId": "D3C1202-west",
+                        "dataset": "corona2",
+                        "sensor": "KH-4",
+                        "acquisitionDate": "1972-08-08"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east",
+                        "entityId": "D3C1202-east",
+                        "dataset": "corona2",
+                        "sensor": "KH-4",
+                        "acquisitionDate": "1972-08-08"
+                    }
+                ]
+            },
+            "label": {
+                "ro": "KH-4 Corona, 8 august 1972"
+            },
+            "year": 1972,
+            "date": "1972-08-08",
+            "sensor": "KH-4",
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "process": "std"
+            }
+        },
+        {
+            "layerId": "kh-4-corona-1972",
+            "jobId": "job-join-1972",
+            "origin": "join",
+            "state": "processing",
+            "source": {
+                "kind": "join",
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west",
+                        "entityId": "D3C1202-west",
+                        "dataset": "corona2",
+                        "sensor": "KH-4",
+                        "acquisitionDate": "1972-08-08"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east",
+                        "entityId": "D3C1202-east",
+                        "dataset": "corona2",
+                        "sensor": "KH-4",
+                        "acquisitionDate": "1972-08-08"
+                    }
+                ]
+            },
+            "label": {
+                "ro": "KH-4 Corona, 8 august 1972"
+            },
+            "year": 1972,
+            "date": "1972-08-08",
+            "sensor": "KH-4",
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "process": "std"
+            },
+            "join": {
+                "seams": [
+                    {
+                        "a": "D3C1202-west",
+                        "b": "D3C1202-east",
+                        "measured": true,
+                        "applied": true,
+                        "samples": 9,
+                        "heldOut": 0,
+                        "beforeRmseM": 28.26,
+                        "afterRmseM": 0.42,
+                        "maxShiftM": 14.22
+                    }
+                ],
+                "omitted": [],
+                "coveragePct": 100.0,
+                "checkpointRmseM": 20.0,
+                "checkpointCount": 5,
+                "maxShiftM": 14.19
+            }
+        },
+        {
+            "layerId": "kh-4-corona-1972",
+            "jobId": "job-join-1972",
+            "origin": "join",
+            "state": "processing",
+            "source": {
+                "kind": "join",
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west",
+                        "entityId": "D3C1202-west",
+                        "dataset": "corona2",
+                        "sensor": "KH-4",
+                        "acquisitionDate": "1972-08-08"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east",
+                        "entityId": "D3C1202-east",
+                        "dataset": "corona2",
+                        "sensor": "KH-4",
+                        "acquisitionDate": "1972-08-08"
+                    }
+                ]
+            },
+            "label": {
+                "ro": "KH-4 Corona, 8 august 1972"
+            },
+            "year": 1972,
+            "date": "1972-08-08",
+            "sensor": "KH-4",
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "process": "std"
+            },
+            "join": {
+                "seams": [
+                    {
+                        "a": "D3C1202-west",
+                        "b": "D3C1202-east",
+                        "measured": true,
+                        "applied": true,
+                        "samples": 9,
+                        "heldOut": 0,
+                        "beforeRmseM": 28.26,
+                        "afterRmseM": 0.42,
+                        "maxShiftM": 14.22
+                    }
+                ],
+                "omitted": [],
+                "coveragePct": 100.0,
+                "checkpointRmseM": 20.0,
+                "checkpointCount": 5,
+                "maxShiftM": 14.19
+            },
+            "output": {
+                "cogPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/cog.tif",
+                "cogBytes": 209279,
+                "cogSha256": "36c329cc2e4ffaaa98ac4c116f73db4fe62178d939e752be2bfdbc81092ae799",
+                "previewPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/preview.png",
+                "bounds": {
+                    "west": 26.07296,
+                    "south": 44.418333,
+                    "east": 26.127205,
+                    "north": 44.441624
+                },
+                "minzoom": 10,
+                "maxzoom": 15,
+                "areaKm2": 11.18,
+                "studioPath": "rasters/bucharest/kh-4-corona-1972/job-join-1972/studio.tif",
+                "studioBytes": 98756
+            }
+        },
+        {
+            "layerId": "kh-4-corona-1972",
+            "jobId": "job-join-1972",
+            "origin": "join",
+            "state": "failed",
+            "source": {
+                "kind": "join",
+                "parts": [
+                    {
+                        "versionId": "v-west",
+                        "layerId": "layer-west",
+                        "entityId": "D3C1202-west",
+                        "dataset": "corona2",
+                        "sensor": "KH-4",
+                        "acquisitionDate": "1972-08-08"
+                    },
+                    {
+                        "versionId": "v-east",
+                        "layerId": "layer-east",
+                        "entityId": "D3C1202-east",
+                        "dataset": "corona2",
+                        "sensor": "KH-4",
+                        "acquisitionDate": "1972-08-08"
+                    }
+                ]
+            },
+            "label": {
+                "ro": "KH-4 Corona, 8 august 1972"
+            },
+            "year": 1972,
+            "date": "1972-08-08",
+            "sensor": "KH-4",
+            "createdBy": "uid-owner",
+            "createdAt": {
+                "seconds": 1791999900,
+                "nanoseconds": 0
+            },
+            "updatedBy": "system:pipeline",
+            "updatedAt": {
+                "seconds": 1792000000,
+                "nanoseconds": 0
+            },
+            "machines": {
+                "process": "std"
+            },
+            "error": {
+                "code": "apiError.imagery.joinSeamTooFar",
+                "params": {
+                    "a": "D3C1202-west",
+                    "b": "D3C1202-east"
+                }
             }
         }
     ],

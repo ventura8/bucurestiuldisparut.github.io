@@ -204,6 +204,7 @@ export {
 export type { RankReason, RankReasonEntry, Sensor, SensorSpec, UsgsDataset } from './schemas/usgs-scene.js';
 export {
     DEFAULT_RMSE_THRESHOLD_M,
+    JOIN_MAX_PARTS,
     MAX_TARGET_YEARS,
     RMSE_THRESHOLD_RANGE,
     cityImagerySchema,
@@ -288,6 +289,8 @@ export * from './schemas/autogcp.js';
 export * from './schemas/assist.js';
 export * from './schemas/notifications.js';
 export * from './schemas/worker.js';
+export * from './schemas/imagery-join.js';
+export * from './schemas/imagery-plan.js';
 // M5 (docs/research/M5-interfaces.md): many cities in one project, the static export, engine releases on jsDelivr (every
 // export of these modules is public; `test/index.test.ts` lists them).
 export * from './schemas/cities.js';

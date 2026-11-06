@@ -113,7 +113,7 @@ function seenOf(doc: Stored<WorkerDoc>): WorkerSeen {
 }
 
 /** The jobs the raster pipeline runs, whose place may be the computer or the cloud. */
-const PIPELINE_TYPES: ReadonlySet<JobDoc['type']> = new Set<JobDoc['type']>(['usgs-import', 'geotiff-import', 'regeoref']);
+const PIPELINE_TYPES: ReadonlySet<JobDoc['type']> = new Set<JobDoc['type']>(['usgs-import', 'geotiff-import', 'regeoref', 'layer-join']);
 
 /** The pipeline job of a version's page, or null (none, or a job the pipeline does not run). */
 function jobOf(doc: Stored<JobDoc> | null): WorkerJob | null {

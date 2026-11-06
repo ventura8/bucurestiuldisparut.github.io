@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import { stepFunction } from '../../src/worker/step.js';
 import { failureOf } from '../admin/world.js';
-import { goldenGeoref, readJob, readVersion, seedGuard, seedJob, seedVersion } from '../imagery/world.js';
+import { goldenGeoref, goldenOutput, readJob, readVersion, seedGuard, seedJob, seedVersion } from '../imagery/world.js';
 import {
     CITY,
     ENTITY,
@@ -54,6 +54,41 @@ async function held(job: Partial<JobDoc> = {}, version: Parameters<typeof seedHe
 function codeOf(promise: Promise<unknown>): Promise<unknown> {
     return failureOf(promise).then((failure) => (failure.details as { code?: unknown } | undefined)?.code);
 }
+
+describe('worker.step and a join (M8)', () => {
+    const parts = [
+        { versionId: 'v-f039', layerId: 'l-f039' },
+        { versionId: 'v-f040', layerId: 'l-f040' },
+    ];
+    const join = { type: 'layer-join', params: { parts, sensor: 'KH-9-pan' } } as const;
+    const report = { seams: [], omitted: [], coveragePct: 80, checkpointCount: 3, maxShiftM: 0 };
+
+    it('happyPath_aJoinReadsItsFramesAndWritesItsReport', async () => {
+        const world = await held(join);
+        await seedVersion(world, 'v-f039', processingVersion({ layerId: 'l-f039', jobId: 'v-f039' }));
+
+        await expect(step(world, { op: 'get', path: FIRESTORE_PATHS.layerVersion(CITY, 'v-f039') })).resolves.toMatchObject({
+            data: { layerId: 'l-f039' },
+        });
+        await expect(update(world, VERSION_PATH, { join: report })).resolves.toEqual({ ok: true });
+        expect((await readVersion(world, JOB))?.join).toEqual(report);
+    });
+
+    it('badPath_aFrameIsNeverWritten', async () => {
+        const world = await held(join);
+        await seedVersion(world, 'v-f039', processingVersion({ layerId: 'l-f039', jobId: 'v-f039' }));
+
+        expect(await codeOf(update(world, FIRESTORE_PATHS.layerVersion(CITY, 'v-f039'), { state: 'failed' }))).toBe(
+            'apiError.worker.refused',
+        );
+    });
+
+    it('badPath_aRunNeverMarksAVersionJoined', async () => {
+        const world = await held(join, { output: goldenOutput() });
+
+        expect(await codeOf(update(world, VERSION_PATH, { state: 'joined' }))).toBe('apiError.worker.refused');
+    });
+});
 
 describe('worker.step get and list', () => {
     it('happyPath_theJobIsReadWithPlainTimestampsAndItsUpdateTime', async () => {

@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { apiErrorCodeSchema } from '../api/errors.js';
 import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import { geometryDocSchema } from './geometry.js';
-import { cityImagerySchema } from './imagery-settings.js';
+import { cityImagerySchema, JOIN_MAX_PARTS } from './imagery-settings.js';
 import {
     analyticsSchema,
     basemapSchema,
@@ -232,6 +232,8 @@ export const layerDocSchema = z.strictObject({
         .strictObject({
             usgsEntityId: z.string().max(64).optional(),
             usgsDataset: z.enum(USGS_DATASETS).optional(),
+            /** M8: every frame of a joined layer; `usgsEntityId` is then the first, so the layer stays exportable. */
+            usgsParts: z.array(z.string().max(64)).max(JOIN_MAX_PARTS).optional(),
             georef: z
                 .strictObject({
                     method: z.enum(GEOREF_METHODS),

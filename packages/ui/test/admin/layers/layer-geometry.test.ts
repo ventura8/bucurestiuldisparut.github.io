@@ -63,6 +63,15 @@ describe('<hcm-layers-page>: the image and geometry tools', () => {
         expect(deepAll(group(element), 'a').map((link) => link.getAttribute('href'))).toEqual(['#/imagery/replace/corona']);
     });
 
+    it('badPath_aJoinedLayerOffersNeitherGeoreferenceAgainNorCrop_andSaysWhatToDo', async () => {
+        const joined = layerDoc({ currentVersion: 'corona-v1', provenance: { usgsParts: ['F039', 'F040'] } });
+        const { element } = await page('layers', area(layersState({ editor: editorOf(joined) })), { params: ['corona'] });
+
+        expect(deep(group(element), '[data-state="joined-layer"]').textContent).toContain('delete it and join them again');
+        expect(deepAll(group(element), 'hcm-button')).toHaveLength(0);
+        expect(deepAll(group(element), 'a').map((link) => link.getAttribute('href'))).toEqual(['#/imagery/replace/corona']);
+    });
+
     it('happyPath_theCropSaysWhatToDoAndItsButtonsCallTheirIntents', async () => {
         const layers = area(layersState({ editor: editorOf(PROCESSED), crop: crop() }));
         const { element } = await page('layers', layers, { params: ['corona'] });

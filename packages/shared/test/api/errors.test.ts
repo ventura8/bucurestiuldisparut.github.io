@@ -117,3 +117,29 @@ describe('apiErrorFromFailure', () => {
         expect(apiErrorFromFailure(status, { message: 'old server' })).toEqual({ code });
     });
 });
+
+describe('the join refusals (docs/research/M8-join-interfaces.md §4)', () => {
+    it.each([
+        [
+            'apiError.imagery.joinMixedFrames',
+            {},
+            'Only frames of one date and one camera can be joined.',
+            'Se pot uni doar cadre din aceeași zi și de la aceeași cameră.',
+        ],
+        [
+            'apiError.imagery.joinPartHeld',
+            { frame: 'F039' },
+            'Frame F039 is being joined; reject or cancel the join first.',
+            'Cadrul F039 este în curs de unire; respinge sau anulează mai întâi unirea.',
+        ],
+        [
+            'apiError.imagery.joinSeamTooFar',
+            { a: 'F039', b: 'F040' },
+            'Frames F039 and F040 are too far apart to join; fix the points of one.',
+            'Cadrele F039 și F040 sunt prea departe pentru a fi unite; corectează punctele unuia.',
+        ],
+    ] as const)('happyPath_%s_readsInBothLanguages', (code, params, en, ro) => {
+        expect(translateApiError('en', code, params)).toBe(en);
+        expect(translateApiError('ro', code, params)).toBe(ro);
+    });
+});

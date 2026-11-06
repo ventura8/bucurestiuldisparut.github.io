@@ -9,6 +9,7 @@ import {
     systemWriter,
     timestampFromDate,
     type JobType,
+    type JoinReport,
     type PipelineStep,
     type TimestampLike,
 } from '@hcm/shared';
@@ -38,10 +39,17 @@ export interface StandinAttempt {
     readonly failAt?: PipelineStep;
     /** The `apiError.*` code of `fail` (default `apiError.imagery.processingFailed`, as the pipeline's GDAL failures). */
     readonly code?: string;
+    /** What the message of `code` names (M8: the frames of `apiError.imagery.joinSeamTooFar`). */
+    readonly codeParams?: Readonly<Record<string, string>>;
     /** The checkpoint RMSE the georeferencing measures (default 6.2 m under, 28.4 m over). */
     readonly checkpointRmseM?: number;
     /** The warped area (default 40 km²: within the month's free compute units at any zoom). */
     readonly areaKm2?: number;
+    /** The warped layer's bounds (default the scan's corners, the whole city): a frame that holds only part of it (M8). */
+    readonly outputBounds?: Bounds;
+    /** M8, a `layer-join`: what its report says beyond the defaults (`imagery-standin-join.ts`), and that no seam could be measured. */
+    readonly join?: Partial<JoinReport>;
+    readonly seamsUnmeasured?: boolean;
     /** `maintenance`: when USGS is tried again (default 30 minutes; 0 for a tick that resumes it at once). */
     readonly retryInMinutes?: number;
     /**
@@ -60,6 +68,8 @@ const WEIGHTS: Readonly<Partial<Record<PipelineStep, number>>> = {
     locate: 0.05,
     reference: 0.05,
     georef: 0.2,
+    align: 0.15,
+    merge: 0.25,
     warp: 0.15,
     export: 0.1,
     register: 0.05,

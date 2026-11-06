@@ -5,6 +5,7 @@
  * month offers its three ways out with their consequences: the free Mapbox Studio upload (three steps), next month, or
  * pay about $X now (asked first). At the tileset cap neither money nor a month frees a place: the card says to delete a
  * layer (with the way to Layers) or use Studio; a file Mapbox refused as too large has only the Studio way (CR-M3-47).
+ * M8: a join's section says what it measured (`join/join-card.ts`).
  */
 import { availableComputeUnits, MAX_TILESETS, nextMonthStart, translateApiError, type Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
@@ -13,6 +14,7 @@ import { contentText } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
 import type { VersionPagePort, VersionViewPort } from './imagery-port.js';
 import { dayText, numberText } from './imagery-text.js';
+import { lazyJoin } from './join/lazy-card.js';
 import { when, withValue } from './when.js';
 
 /** Mapbox Studio's tilesets page: `links.json` → `mapbox.studioTilesets` (CR-M3-9; the weekly contract run probes it). */
@@ -33,8 +35,13 @@ function measured(context: ImageryContext, rmse: number): TemplateResult {
     return over ? html`<p class="alert" data-rmse="over">${text}</p>` : html`<p data-rmse="under">${text}</p>`;
 }
 
+/** The checkpoint error. M8: a join has no georeference of its own; its figure is its worst frame's. */
+function checkpointOf(version: VersionViewPort): number | null {
+    return version.georef?.checkpointRmseM ?? version.join?.checkpointRmseM ?? null;
+}
+
 function rmseText(context: ImageryContext, version: VersionViewPort): TemplateResult {
-    const rmse = version.georef?.checkpointRmseM ?? null;
+    const rmse = checkpointOf(version);
     return rmse === null
         ? html`<p class="note" data-rmse="unmeasured">${contentText(context.locale, 'adminContent.imagery.approval.unmeasured')}</p>`
         : measured(context, rmse);
@@ -217,7 +224,8 @@ export function approvalCard(context: ImageryContext, page: VersionPagePort, ver
     const guard = stopped(version);
     return html`<section class="card" aria-labelledby="approval-title" data-state=${guard === null ? 'approval' : 'guard'}>
         <h3 id="approval-title">${contentText(context.locale, 'adminContent.imagery.approval.title')}</h3>
-        ${rmseText(context, version)} ${pairsText(context.locale, version)} ${costText(context, page, version)}
+        ${lazyJoin(context, version, (chunk) => chunk.joinReport(context, version))} ${rmseText(context, version)}
+        ${pairsText(context.locale, version)} ${costText(context, page, version)}
         ${guard === null ? decision(context, page) : guarded(context, page, guard, version)}
     </section>`;
 }

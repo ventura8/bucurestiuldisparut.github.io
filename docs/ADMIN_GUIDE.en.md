@@ -181,7 +181,7 @@ Each section has its own Save.
 - **Texts**: the name, About and the privacy text in Romanian and English (the Markdown subset, previewed as visitors will see it; a link that is not https is refused at its line), and the credits (up to 50, in the order you choose).
 - **Theme and basemap**: the seed colour (a hex value, the colour picker or one of eight presets), previewed live on the whole admin until you save or discard it (or leave Settings); a colour that would leave text unreadable is moved to the nearest readable tone, with a note. The basemap the visitors see (Standard or Standard Satellite); the admin's own map is always Standard.
 - **Place categories**: add one (the Romanian label; its icon follows the label's words, "Fântâni" water, "Biserici" a church, until you pick one; the colour, the opacity and the English label have defaults), edit, reorder, delete. The icon picker offers 30 icons, and the arrow keys move through them; a colour on which the white icon would be hard to see is moved to a readable tone. Deleting a category that places still use asks where they go first. The page says when the limit is reached. **Add the starter categories** adds, in one click, those of the five common categories (Building, Street, Square, Church, Monument) the city does not have yet: a category counts as one of them when its Romanian or English name is the same, whatever the capitals, diacritics and extra spaces ("Biserica" counts as Church; "Clădiri" is not "Clădire"). They go after yours, never take an id a layer or a category uses, and the message says how many were added; only as many as fit under the limit of 50. When all five are there, the button is off and a note says so.
-- **Historical imagery**: whether a georeferenced frame is published without a click when its checkpoint error is under the threshold (on by default), that threshold in metres (1–200, 15 by default), and the years the search ranks first (at most 20, each with **Remove**; Bucharest's are 1966, 1976, 1977, 1978 and 1980: add them here once). Saved on its own.
+- **Historical imagery**: whether a georeferenced frame is published without a click when its checkpoint error is under the threshold (on by default), that threshold in metres (1–200, 15 by default), and the years the search ranks first (at most 20, each with **Remove**; Bucharest starts with 1966, 1972, 1976, 1977, 1978, 1979, 1980, 1982, 1983 and 1984). Saved on its own, and saving searches again, because only a search re-ranks the scenes; if that search fails, your Save still stands.
 - **Default opacities**: the opacity every overlay starts with (each layer, the photos, each place category) and, for layers, whether they show at start, each change previewed on the map above; one Save writes them all, Discard brings the stored ones back. A visitor's own link that sets an opacity still wins.
 
 ### History
@@ -224,6 +224,20 @@ Declassified USGS satellite frames (Corona, Gambit, Hexagon; 1960–1984) become
 - **Work (n)** counts everything Work lists, live: the imports running, the versions waiting for you and the open orders.
 - Limits: 10 imports a day and 2 running at once, per project.
 - **Paused by the budget guard**: when the month's Google Cloud cost reaches the budget, imports, retries, the georeferencer's saves, crops and publishes stop (the public map never does). **Historical imagery** and **Jobs** say so with the cost and the budget, and **Resume processing** (asked first) starts them again for the rest of the month; next month's alert pauses them again.
+
+### A whole-city layer from one date's frames (M8)
+
+A KH-9 frame often holds only part of the city. Frames of one date, from one camera, can be joined into one layer. The design: `docs/research/M8-join-interfaces.md`.
+
+- **Whole-city dates**, above Find's list: each date whose frames together cover more of the city, with its frames, about how much of the city they cover (an estimate, so "about"), how many must be downloaded, and **Join frames**. Summer dates come above winter ones: a winter date says it may need points. A frame that would have to be bought is never chosen for you; the row says how many and links its order card. **Add {year} to target years** appears when the year is not one of the city's.
+- **The offer**: the page of a frame that leaves part of the city out says how much it covers and how much it would with its date's others, with **Join frames** (also on a scene not imported yet). One click, then the join's page opens.
+- **The join's page**: its frames with their states. Frames not imported yet are imported first, and the join waits for them. A frame that needs points waits for yours: its row leads to the georeferencer, and the join goes on by itself after you save them. A frame in a join leaves **Waiting for you** unless it needs points.
+- **What the join does**: it measures each seam between two frames and moves them by what was measured, the less accurate frame more, fading to nothing 6 km from the seam. If the measure says a correction did not help, it is not applied. Then it evens the tone along the seam and makes one image.
+- **The report** on the approval card: how much of the city it covers (measured now, not estimated), each seam's error before and after, or that it could not be measured, the largest shift, and the worst frame's own error. **A join closes the gaps between frames; it does not improve where they sit on the map.** Frames that add nothing are named as left out. If the city is not covered well, the card offers **Add {frame} and join again**, which downloads nothing a second time.
+- **Publishing**: without a click only when auto-publish is on and every limit holds: the worst frame's error and the largest shift within the city's threshold, at least 3 checkpoints, every seam measured, corrected and at most 15 m, and at least 90 % of the city covered. Otherwise **Approve and publish** or **Reject**, with the same compute-unit choices as any layer.
+- **While a join holds a frame**, that frame cannot be approved, rejected, re-georeferenced, cropped, deleted or cancelled: reject or cancel the join first. A frame a join ever named never publishes on its own, also once that join ended: it waits for your **Approve**, or for **Join frames**. A rejected, cancelled or failed join ends alone: its frames stay as they were, and joining them again downloads nothing.
+- **Limits**: a join counts as one job plus one for each frame still to import, against the 10 a day. At most 8 frames, one date, one camera. A joined layer cannot be cropped or re-georeferenced, and a published join cannot take another frame: delete the layer and start again. To go on without a frame, cancel the join and join the rest.
+- **The computer it runs on**: a join reads each frame's whole scan, so it needs disk room and memory; **Run on my computer** may be the only practical place for a whole-city join. How long it takes on real frames has yet to be measured.
 
 ### Buying a scan, suggestions, assists and notifications (M4)
 
@@ -306,6 +320,20 @@ The message shown, its cause and what to do, screen by screen.
 | "Does not fit this month's Mapbox budget: choose how to go on" | the publish costs more compute units than are left | the free Studio upload, next month, or pay |
 | "The file is not a GeoTIFF. Upload a .tif file." | the chosen file is another kind of image | export it as a GeoTIFF first |
 | "The source has no tiles at this address (404)." / "The address does not answer with an image." / "The tile server is not responding." | **Check** of a tile address in **Link a layer** | correct the address (it must hold `{z}`, `{x}`, `{y}`) or try again later |
+
+### Joining frames (since M8)
+
+| Message | Cause | What to do |
+| --- | --- | --- |
+| "Only frames of one date and one camera can be joined." | the frames differ in date or camera | use the frames of one row of **Whole-city dates** |
+| "Two of these frames are already published; delete one layer first." | each is already its own layer | delete one of the two layers, then join |
+| "Frame … ended; import or retry it, then join again." | a frame failed or was rejected | **Try again** on that frame, or import it again, then **Join frames** |
+| "Frame … is being joined; reject or cancel the join first." | you acted on a frame a live join holds | open the join from the frame's page, and reject or cancel it |
+| "The scan of frame … is no longer stored." | the frame's scan was deleted | import it again (first dismiss or delete what is left of it), then **Join frames** |
+| "Frames … and … are too far apart to join; fix the points of one." | the frames disagree by more than 300 m | open the georeferencer of the worse frame, fix its points, join again |
+| "Fewer than two frames add anything to the city." | one frame already holds what the others add | use that frame on its own |
+| "Not enough disk space for this join; free some and retry." | the computer running the join lacks the room | free some disk, **Try again** |
+| "Seam … and … could not be measured" on the approval card | too little matches across the seam (no overlap, flat land, snow) | look at the seam in the preview: Approve if it is good enough, else Reject and choose another date |
 
 ### Orders, assists and notifications (since M4)
 

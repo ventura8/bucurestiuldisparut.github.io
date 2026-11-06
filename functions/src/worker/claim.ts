@@ -32,6 +32,8 @@ const CLAIM_RULES: readonly ((job: JobDoc, now: Date) => boolean)[] = [
     (job) => job.status === 'queued' && job.runOn === 'local',
     (job) => job.cancelRequested !== true && runsOnPipeline(job.type),
     (job) => (job.attempt ?? 0) < JOB_MAX_ATTEMPTS,
+    // M8 (docs/research/M8-join-interfaces.md §5): a join still waiting for its frames; the dispatcher moves it on.
+    (job) => job.waitReason !== 'parts',
     (job, now) => [job.dispatchAt, job.retryAt].every((time) => time === undefined || timestampToDate(time) <= now),
 ];
 

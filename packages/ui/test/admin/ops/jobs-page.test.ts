@@ -2,7 +2,7 @@ import { axeViolations } from '@hcm/test-support/axe';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { JobsIntentsPort, JobsViewState } from '../../../src/admin/jobs/jobs-port.js';
-import { jobStatusText, jobTypeText, percentOf, statusTone, stepStateText } from '../../../src/admin/jobs/job-text.js';
+import { jobStatusText, jobTypeText, percentOf, statusTone, stepNameText, stepStateText } from '../../../src/admin/jobs/job-text.js';
 import { FakeArea } from '../editing/fake-area.js';
 import { cleanup, deep, deepAll, deepText, defineAll, updated } from '../shell/fake-app.js';
 import { jobItem, jobsState, LOADING, nth, page, ready, route } from './fixtures.js';
@@ -204,6 +204,19 @@ describe('<hcm-jobs-page>: waiting, finished and failing jobs', () => {
 
         expect(jobs.named('close')).toEqual(['close']);
         expect(jobs.listening).toBe(0);
+    });
+
+    it('happyPath_aJoinAndItsStepsHaveTheirWords', () => {
+        expect([jobTypeText('en', 'layer-join'), stepNameText('en', 'align'), stepNameText('en', 'merge')]).toEqual([
+            'Join frames',
+            'Align seams',
+            'Merge frames',
+        ]);
+        expect([jobTypeText('ro', 'layer-join'), stepNameText('ro', 'align'), stepNameText('ro', 'merge')]).toEqual([
+            'Unire cadre',
+            'Aliniere îmbinări',
+            'Unire cadre',
+        ]);
     });
 
     it('happyPath_theWordsOfJobsInRomanian', () => {

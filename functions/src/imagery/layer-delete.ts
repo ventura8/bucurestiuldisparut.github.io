@@ -4,8 +4,8 @@
  * from History) the job is cancelled; while an unfinished version holds the layer's id (it should not, the id stays
  * reserved during the grace: CR-M3-47) the job waits for it to end, since the tileset id is the layer's; otherwise the
  * tileset and its source are deleted at Mapbox (a missing one is fine; a tileset of another account is never touched),
- * the files of the deleted layer's own versions (those made before the deletion) go, and the job succeeds, which frees the
- * scene the layer was imported from (`release-scene.ts`: nothing can bring the layer back now, so it can be imported again).
+ * the files of the deleted layer's own versions (those made before the deletion; M8: and of the frames a join of the layer
+ * made `joined`) go, and the job succeeds, which frees the scenes the layer was imported from (`release-scene.ts`: nothing can bring the layer back now, so it can be imported again).
  * A failure is tried again on the next tick, at most `JOB_MAX_ATTEMPTS` times.
  */
 import {
@@ -30,6 +30,7 @@ import { ApiError } from '../api/api-error.js';
 import { omit } from '../api/objects.js';
 import type { StoredDocument } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
+import { rewriteDatePlan } from './join-plan.js';
 import { IMAGERY_WRITER, appendJobLog, requireMapboxUser, requireTilesToken, stampOf, withStep } from './records.js';
 import { releaseLayerScenes } from './release-scene.js';
 
@@ -70,17 +71,48 @@ async function versionsOf(deps: LayerDeleteDeps, cityId: string, layerId: string
     return versions.documents;
 }
 
-/** The files of the deleted layer's own versions (`rasters/{city}/{layer}/{version}/…`, made before the deletion). */
-async function deleteFiles(deps: LayerDeleteDeps, cityId: string, job: JobDoc, versions: readonly StoredDocument<LayerVersionDoc>[]) {
-    const deletedAt = timestampToDate(job.createdAt).getTime();
-    const own = versions.filter((version) => timestampToDate(version.data.createdAt).getTime() <= deletedAt);
+/**
+ * M8: the folders of a join's frames that the join made `joined`, whose layer ids are not the deleted layer's. A frame of a
+ * join that was rejected stays out: it lives on, and only a published join ever moves a frame to `joined`.
+ */
+async function joinedFolders(deps: LayerDeleteDeps, cityId: string, version: LayerVersionDoc): Promise<string[]> {
+    const parts = version.source?.kind === 'join' ? version.source.parts : [];
+    const read = await Promise.all(
+        parts.map(async (part) => ({
+            part,
+            frame: await deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, part.versionId), layerVersionDocSchema),
+        })),
+    );
+    return read
+        .filter(({ frame }) => frame?.state === 'joined')
+        .flatMap(({ part, frame }) => [`rasters/${cityId}/${part.layerId}/${part.versionId}/`, ...scanFolderOf(frame)]);
+}
+
+/** The folder a frame's scan lies in, when its new points left it in the version it was based on. */
+function scanFolderOf(frame: LayerVersionDoc | undefined): string[] {
+    const path = frame?.scan?.path;
+    return path === undefined ? [] : [path.slice(0, path.lastIndexOf('/') + 1)];
+}
+
+/** Every folder under `prefixes` emptied; how many files went. */
+async function deleteFolders(deps: LayerDeleteDeps, prefixes: readonly string[]): Promise<number> {
     let count = 0;
-    for (const version of own) {
-        const paths = await deps.blobs.list('private', `rasters/${cityId}/${version.data.layerId}/${version.id}/`);
+    for (const prefix of prefixes) {
+        const paths = await deps.blobs.list('private', prefix);
         await Promise.all(paths.map((path) => deps.blobs.delete('private', path)));
         count += paths.length;
     }
     return count;
+}
+
+/** The files of the deleted layer's own versions (`rasters/{city}/{layer}/{version}/…`, made before the deletion). */
+async function deleteFiles(deps: LayerDeleteDeps, cityId: string, job: JobDoc, versions: readonly StoredDocument<LayerVersionDoc>[]) {
+    const deletedAt = timestampToDate(job.createdAt).getTime();
+    const own = versions.filter((version) => timestampToDate(version.data.createdAt).getTime() <= deletedAt);
+    const joined = await Promise.all(own.map((version) => joinedFolders(deps, cityId, version.data)));
+    return deleteFolders(deps, [
+        ...new Set([...own.map((version) => `rasters/${cityId}/${version.data.layerId}/${version.id}/`), ...joined.flat()]),
+    ]);
 }
 
 async function finish(deps: LayerDeleteDeps, path: string, job: JobDoc, status: 'succeeded' | 'cancelled'): Promise<void> {
@@ -144,5 +176,9 @@ export async function runLayerDelete(deps: LayerDeleteDeps, cityId: string, jobI
     }
     // After the try: a job that succeeded stays so; a scene not freed here is freed by the tick's next `scenes` part.
     await releaseLayerScenes(deps, cityId, params.layerId);
+    // M8: its scenes are free again, so a date a join showed has its row back (§9: delete the layer and start again).
+    await rewriteDatePlan(deps, cityId).catch((error: unknown) => {
+        deps.log.warn('date plan not rewritten', { cityId, jobId, error: String(error) });
+    });
     return 'succeeded';
 }

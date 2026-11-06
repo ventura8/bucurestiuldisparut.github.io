@@ -43,17 +43,27 @@ def test_happy_path_the_constants_equal_the_shared_copy() -> None:
         "SENSOR_SPECS": sensors,
         "MAX_GCPS": contract.MAX_GCPS,
         "MAX_SCAN_PIXELS": contract.MAX_SCAN_PIXELS,
+        "JOIN_MAX_PARTS": contract.JOIN_MAX_PARTS,
         # Every code a step fails or waits with: the shared test holds each to a code the admin can read (finding 62).
         "PIPELINE_ERROR_CODES": sorted(value for name, value in vars(contract.Errors).items() if name.isupper()),
     }
 
 
-@pytest.mark.parametrize("job_type", ["usgs-import", "geotiff-import", "regeoref"])
+@pytest.mark.parametrize("job_type", ["usgs-import", "geotiff-import", "regeoref", "layer-join"])
 def test_happy_path_each_pipeline_job_type_weighs_its_steps_to_one(job_type: str) -> None:
     weights = contract.step_weights(job_type)
 
     assert tuple(weights) == contract.pipeline_steps_of(job_type)
     assert sum(weights.values()) == pytest.approx(1.0)
+
+
+def test_happy_path_a_join_runs_its_own_steps_with_the_contract_shares() -> None:
+    weights = contract.step_weights("layer-join")
+
+    assert contract.pipeline_steps_of("layer-join") == ("align", "merge", "export", "register")
+    # align 0.15, merge 0.25, export 0.10, register 0.05 of 0.55.
+    assert weights["merge"] == pytest.approx(0.25 / 0.55)
+    assert weights["align"] == pytest.approx(0.15 / 0.55)
 
 
 def test_happy_path_usgs_import_keeps_the_contract_weights() -> None:

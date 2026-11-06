@@ -15,7 +15,7 @@ import { defineCallable, type CallableDeps } from '../api/callable.js';
 import { versionIdOf } from '../imagery/records.js';
 import type { BlobMetadata } from '../ports/blob-store.js';
 import type { Ports } from '../ports/index.js';
-import { mayRead, mayWrite, type ObjectScope } from './allow-list.js';
+import { inputVersionsOf, mayRead, mayWrite, type ObjectScope } from './allow-list.js';
 import { IN_RUN, requireGreen, requireHeld } from './holder.js';
 import { paired } from './pairing.js';
 import { proxyUsgs, type UsgsProxyDeps } from './usgs-proxy.js';
@@ -34,6 +34,14 @@ function refused(): ApiError {
     return new ApiError('apiError.worker.refused');
 }
 
+/** The scan each input version names (M8: a re-georeferenced frame's lies in its base's folder). */
+async function inputScans(deps: UrlsDeps, cityId: string, job: JobDoc): Promise<string[]> {
+    const inputs = await Promise.all(
+        inputVersionsOf(job).map((id) => deps.documents.get(FIRESTORE_PATHS.layerVersion(cityId, id), layerVersionDocSchema)),
+    );
+    return inputs.flatMap((input) => input?.scan?.path ?? []);
+}
+
 /** The objects of the job's run: its version's folder (the version's layer) and the inputs its parameters name. */
 async function objectScope(deps: UrlsDeps, cityId: string, jobId: string, job: JobDoc): Promise<ObjectScope> {
     const versionId = versionIdOf(jobId, job);
@@ -41,7 +49,7 @@ async function objectScope(deps: UrlsDeps, cityId: string, jobId: string, job: J
     if (version === undefined) {
         throw new ApiError('apiError.notFound');
     }
-    return { cityId, layerId: version.layerId, versionId, job };
+    return { cityId, layerId: version.layerId, versionId, job, inputScans: await inputScans(deps, cityId, job) };
 }
 
 /** True when the run may have `object` signed: a read of its files or inputs, a typed write of one of its version's files. */

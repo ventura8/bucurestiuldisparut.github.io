@@ -67,7 +67,7 @@ test.describe('the owner, signed in, back after the server appeared', () => {
 
     test(
         'Without a live Google token the claim costs one click and one read-only consent; nothing is claimed before it',
-        { tag: ['@S-A26-BAD-TOKEN-GONE'] },
+        { tag: ['@S-A26-BAD-TOKEN-GONE', '@S-A66-HAPPY-SEED'] },
         async ({ page, lang, consent, setupBudget, adminWorld }) => {
             await rememberBootstrap(page, E2E_PROJECT_ID, bootstrapRecord(E2E_PROJECT_ID, true));
             await page.goto(adminPath(lang));
@@ -85,6 +85,10 @@ test.describe('the owner, signed in, back after the server appeared', () => {
                 .poll(async () => (await adminWorld.emulators.document('setup/status'))?.['billing'])
                 .toMatchObject({ state: 'ok', budgetAmount: 5 });
             expect(await adminWorld.emulators.document('cities/bucharest')).toEqual(expect.objectContaining({ updatedBy: owner }));
+            // The bundled city's target years, which only `setup.createCity` writes (M8).
+            expect(await adminWorld.emulators.document('cities/bucharest')).toMatchObject({
+                imagery: { targetYears: [1966, 1972, 1976, 1977, 1978, 1979, 1980, 1982, 1983, 1984] },
+            });
             await expect.poll(() => page.evaluate(() => sessionStorage.getItem('hcm:admin:bootstrap:demo-hcm'))).toBeNull();
         },
     );

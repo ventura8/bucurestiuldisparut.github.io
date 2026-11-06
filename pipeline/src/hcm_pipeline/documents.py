@@ -34,7 +34,7 @@ from hcm_pipeline.model import (
 )
 
 GEOREF_METHODS: Final = ("corners", "gcps", "auto", "embedded")
-VERSION_ORIGINS: Final = ("usgs", "upload", "regeoref", "crop")
+VERSION_ORIGINS: Final = ("usgs", "upload", "regeoref", "crop", "join")
 LOG_LEVELS: Final = ("info", "warn", "error")
 LOG_MESSAGE_MAX: Final = 2000
 LatLng = tuple[float, float]
@@ -199,6 +199,60 @@ class OutputInfo:
                 "areaKm2": round(self.area_km2, 3),
                 "studioPath": self.studio_path,
                 "studioBytes": self.studio_bytes,
+            }
+        )
+
+
+@dataclass(frozen=True)
+class JoinSeam:
+    """One owner boundary of a join (`joinSeamSchema`): `a` and `b` are entity ids; the RMSEs are absent on an unmeasured seam."""
+
+    a: str
+    b: str
+    measured: bool
+    applied: bool
+    samples: int
+    held_out: int
+    max_shift_m: float
+    before_rmse_m: float | None = None
+    after_rmse_m: float | None = None
+
+    def as_record(self) -> Record:
+        return _without_none(
+            {
+                "a": self.a,
+                "b": self.b,
+                "measured": self.measured,
+                "applied": self.applied,
+                "samples": self.samples,
+                "heldOut": self.held_out,
+                "beforeRmseM": _optional_metres(self.before_rmse_m),
+                "afterRmseM": _optional_metres(self.after_rmse_m),
+                "maxShiftM": metres(self.max_shift_m),
+            }
+        )
+
+
+@dataclass(frozen=True)
+class JoinReport:
+    """`version.join` (`joinReportSchema`): the checkpoint figures are the WORST frame's own and the LOWEST count, never pooled."""
+
+    seams: tuple[JoinSeam, ...]
+    omitted: tuple[str, ...]
+    coverage_pct: float
+    checkpoint_count: int
+    max_shift_m: float
+    checkpoint_rmse_m: float | None = None
+
+    def as_record(self) -> Record:
+        return _without_none(
+            {
+                "seams": [seam.as_record() for seam in self.seams],
+                "omitted": list(self.omitted),
+                "coveragePct": round(self.coverage_pct, 2),
+                "checkpointRmseM": _optional_metres(self.checkpoint_rmse_m),
+                "checkpointCount": self.checkpoint_count,
+                "maxShiftM": metres(self.max_shift_m),
             }
         )
 

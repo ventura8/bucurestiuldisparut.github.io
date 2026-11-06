@@ -3,15 +3,18 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { cssLiteralsPlugin, minifyCss, minifyCssLiterals } from '../src/css-literals.js';
+import { cssLiteralsPlugin, minifyCss, minifyCssLiterals, minifyHtml } from '../src/css-literals.js';
 import { ROOT } from './support.js';
 
 describe('minifyCss', () => {
-    it('happyPath_indentationCommentsAndTheSpaceAroundPunctuationGoAndEveryLineStays', () => {
+    it('happyPath_indentationCommentsLineBreaksAndTheSpaceAroundPunctuationGo', () => {
         const raw = '\n    :host {\n        display: block; /* the box */\n        font: 400 1rem/1.5 a, b;\n    }\n';
 
-        expect(minifyCss(raw)).toBe('\n:host{\ndisplay:block;\nfont:400 1rem/1.5 a,b;\n}\n');
-        expect(minifyCss(raw).split('\n')).toHaveLength(raw.split('\n').length);
+        expect(minifyCss(raw)).toBe(':host{display:block;font:400 1rem/1.5 a,b;}');
+    });
+
+    it('happyPath_aLineBreakThatMeansASpaceBecomesOne', () => {
+        expect(minifyCss('.a\n    .b { margin: 1px\n  2px }')).toBe('.a .b{margin:1px 2px}');
     });
 
     it('happyPath_aSelectorsDescendantSpaceAndAValuesSpacesStay', () => {
@@ -32,9 +35,19 @@ describe('minifyCss', () => {
 
     it('badPath_whitespaceAtAnInterpolationStays', () => {
         expect(minifyCss('  .b { color: ', { start: false, end: false })).toBe(' .b{color:');
-        expect(minifyCss(' ;\n', { start: false, end: true })).toBe(';\n');
+        expect(minifyCss(' ;\n', { start: false, end: true })).toBe(';');
         expect(minifyCss(' a ', { start: false, end: false })).toBe(' a ');
         expect(minifyCss(' a ', { start: true, end: true })).toBe('a');
+    });
+});
+
+describe('minifyHtml', () => {
+    it('happyPath_aRunWithALineBreakBecomesOneSpaceAndGoesBeforeATagsEnd', () => {
+        expect(minifyHtml('<a\n    href="x"\n    id="y"\n    >text</a\n>\n    <b>')).toBe('<a href="x" id="y">text</a> <b>');
+    });
+
+    it('badPath_whitespaceWithoutALineBreakIsContentAndStays', () => {
+        expect(minifyHtml('<p>  two  spaces  </p> <b> x</b>')).toBe('<p>  two  spaces  </p> <b> x</b>');
     });
 });
 
@@ -56,11 +69,11 @@ describe('minifyCssLiterals', () => {
         expect(out).toBe(
             [
                 "import { css } from 'lit';",
-                'const ring = css`',
-                ':focus-visible{',
-                'outline:3px solid ${unsafeCSS(colour)};',
-                '}',
-                '`;',
+                'const ring = css`:focus-visible{outline:3px solid ${',
+                '',
+                'unsafeCSS(colour)};}`',
+                '',
+                ';',
                 'const plain = css`a{color:red}`;',
                 'const other = html`<p>  two  spaces  </p>`;',
             ].join('\n'),
@@ -73,10 +86,38 @@ describe('minifyCssLiterals', () => {
         expect(minifyCssLiterals(code, 'a.ts')).toBe('const a = css`${host} .b{margin:${x} ${y};}`;');
     });
 
+    it('happyPath_anHtmlTemplateAndTheOneInsideItKeepEveryLineOfTheModule', () => {
+        const code = [
+            'const a = html`<ul',
+            '    class="x"',
+            '>',
+            '    ${items.map((item) => html`<li>',
+            '        ${item}',
+            '    </li>`)}',
+            '</ul>`;',
+            'after();',
+        ].join('\n');
+
+        const out = minifyCssLiterals(code, 'a.ts') ?? '';
+
+        expect(out.split('\n')).toHaveLength(code.split('\n').length);
+        expect(out.split('\n').at(-1)).toBe('after();');
+        expect(out.replaceAll('\n', '')).toBe(
+            'const a = html`<ul class="x"> ${items.map((item) => html`<li> ${item} </li>`)} </ul>`;after();',
+        );
+        expect(out).toContain('item}');
+    });
+
+    it('badPath_anHtmlTemplateWithAPreOrATextareaStaysAsWritten', () => {
+        expect(minifyCssLiterals('const a = html`<pre>\n  x\n</pre>`;', 'a.ts')).toBeNull();
+        expect(minifyCssLiterals('const a = html`<textarea\n  rows="2"\n></textarea>`;', 'a.ts')).toBeNull();
+    });
+
     it('badPath_aModuleWithoutCssOrAlreadyMinifiedIsLeftAlone', () => {
         expect(minifyCssLiterals('const x = 1;', 'x.ts')).toBeNull();
         expect(minifyCssLiterals('const a = css`a{color:red}`;', 'a.ts')).toBeNull();
         expect(minifyCssLiterals('const a = mycss`a { color: red }`; // css` in a comment', 'a.ts')).toBeNull();
+        expect(minifyCssLiterals('const a = other.html`a\n  b`; // html` in a comment', 'a.ts')).toBeNull();
     });
 
     it('happyPath_aKitElementKeepsItsLinesAndParses', () => {
@@ -86,7 +127,7 @@ describe('minifyCssLiterals', () => {
 
         expect(out.split('\n')).toHaveLength(code.split('\n').length);
         expect(out.length).toBeLessThan(code.length);
-        expect(out).toContain('.actions{\ndisplay:flex;');
+        expect(out).toContain('.actions{display:flex;');
         expect(out).not.toContain('4 px above the actions');
     });
 });

@@ -16,6 +16,8 @@ import type {
     VersionPagePort,
     VersionViewPort,
 } from '../../../src/admin/imagery/imagery-port.js';
+import { UPLOAD_PANEL_CHUNK } from '../../../src/admin/imagery/hcm-imagery-page.js';
+import { JOIN_CARD_CHUNK } from '../../../src/admin/imagery/join/lazy-card.js';
 import { ORDER_CARD_CHUNK } from '../../../src/admin/imagery/orders/lazy-card.js';
 import { FakeArea } from '../editing/fake-area.js';
 import { adminState, deep, deepAll, defineAll, FakeAdminApp, mount, updated } from '../shell/fake-app.js';
@@ -30,6 +32,8 @@ export async function defineImagery(): Promise<void> {
     IMAGERY.define(customElements);
     GEOREF.define(customElements);
     await ORDER_CARD_CHUNK.load();
+    await JOIN_CARD_CHUNK.load();
+    await UPLOAD_PANEL_CHUNK.load();
 }
 
 export function scene(overrides: Partial<SceneItemPort> = {}): SceneItemPort {
@@ -77,6 +81,8 @@ export function versionItem(overrides: Partial<VersionItemPort> = {}): VersionIt
             updatedAt: '2026-10-20T09:00:00.000Z',
             needsYou: true,
             checkpointRmseM: 7.2,
+            partOf: null,
+            entityIds: [],
         },
         ...overrides,
     };
@@ -96,6 +102,7 @@ export function versionView(overrides: Partial<VersionViewPort> = {}): VersionVi
             cogBytes: 212_000_000,
         },
         ...{ estimate: 2.5, guard: null, approval: null, error: null, hasScan: true },
+        ...{ entityId: 'DS1035-1057DA023', partOf: null, parts: [], join: null },
         ...overrides,
     };
 }
@@ -174,6 +181,7 @@ export function imageryState(overrides: Partial<ImageryViewState> = {}): Imagery
         },
         ...{ map: 'none', previewOpacity: 0.8, replaceLayer: null },
         ...{ orders: ready([]), ordering: null, orderRefusal: null },
+        ...{ dates: [], joining: null, joinRefusal: null, addingYear: null },
         ...overrides,
     };
 }
@@ -313,6 +321,7 @@ export function imageryPage(
             retryJob: Promise.resolve(true),
         },
         ...{ cancelJob: Promise.resolve(true), chooseFile: Promise.resolve() },
+        ...{ joinFrames: Promise.resolve('job-join'), addTargetYear: Promise.resolve(true) },
         ...answers,
     });
     return mountPage('hcm-imagery-page', 'imagery', area, options);

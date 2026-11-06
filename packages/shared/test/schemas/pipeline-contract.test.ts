@@ -41,6 +41,7 @@ import {
 } from '../../src/schemas/georef.js';
 import { RASTER_PATHS, VERSION_FILES } from '../../src/schemas/imagery-paths.js';
 import { STUDIO_MAX_BYTES } from '../../src/schemas/imagery-publish.js';
+import { JOIN_MAX_PARTS } from '../../src/schemas/imagery-settings.js';
 import {
     DOWNLOAD_STEPS,
     JOB_PARAMS_SCHEMAS,
@@ -125,6 +126,7 @@ describe('the pipeline contract', () => {
             SENSOR_SPECS,
             MAX_GCPS,
             MAX_SCAN_PIXELS,
+            JOIN_MAX_PARTS,
         });
     });
 
@@ -165,7 +167,7 @@ describe('the pipeline contract', () => {
         });
     });
 
-    it.each(['version.awaiting-approval.json', 'version.needs-gcps.json', 'version.needs-gcps.suggestions.json'])(
+    it.each(['version.awaiting-approval.json', 'version.needs-gcps.json', 'version.needs-gcps.suggestions.json', 'version.join.json'])(
         'happyPath_%s passes the version schema',
         (name) => {
             const result = validate(layerVersionDocSchema, golden(name));

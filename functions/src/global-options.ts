@@ -62,6 +62,7 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'imagery.studioDone': 'fn-admin',
     'imagery.saveGcps': 'fn-admin',
     'imagery.crop': 'fn-admin',
+    'imagery.join': 'fn-admin',
     'imagery.retry': 'fn-admin',
     'imagery.runOn': 'fn-admin',
     'imagery.probeTiles': 'fn-admin',

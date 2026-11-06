@@ -109,6 +109,14 @@ Pitfalls the M3 imagery specs met (`docs/LESSONS.md` 150–165; CR-M3-36):
 - The admin map opens at the city's zoom 13: a crop ring is brought into view with Zoom out and the arrow keys (`bringIntoView`, `layer.ts`).
 - A publish waits for the fake MTS's job and the manifest build behind the lock: two to six minutes per publish (`PUBLISH_TIMEOUT_MS`); keep a spec to one or two publishes. A spec that publishes joins `IMAGERY_PUBLISH_SPECS` of `e2e/projects.ts` (per push at `admin-c360-ro` and `admin-l1440-ro`, the other three in `tour-matrix`; `DECISIONS-for-review.md` §49k).
 
+Pitfalls the M8 join specs met (A65, A66, P05; `docs/LESSONS.md` 363):
+
+- A join's frames are seeded `usgsScenes` the fake USGS's catalogue does not list (`join-world.ts`), so the page's own search writes the plan from them without changing what other imagery specs list; `POST /__imagery/frames` makes USGS answer each as scanned. Adding same-date frames to the catalogue would change every imagery spec.
+- Only a footprint of four corners goes through the panoramic bow tie: a frame that must cover what the spec says has five vertices. A frame the stand-in renders over the whole city leaves its date no row: script its `outputBounds`.
+- A new link in a card takes `a.external`, and a tour state at the compact width checks it: a bare link passed at a laptop's width and was a 19 px target on a phone.
+- Selectors: `[data-join-dates]`, `[data-date]`, `[data-join-offer]`, `[data-join-parts]`, `[data-part]`, `[data-join-report]`, `[data-seam]`, `[data-omitted]`, and `data-state` `join-waiting`, `join-holds`, `join-refused`, `join-paid`, `join-winter`.
+- `HCM_STATE_SCREENSHOTS` is relative to the repository root, even when written absolute.
+
 Pitfalls the M5 integrator's cross-app journey met (A54; `docs/research/DECISIONS-for-review.md` §63, `docs/LESSONS.md` 231–233):
 
 - A city made with New city is unpublished: nothing reaches its manifest until Settings → Publishing is switched on and saved, so a journey walks that step instead of seeding `published: true` (seeding it hid the missing screen from every M5 spec).

@@ -6,6 +6,7 @@ from collections.abc import Mapping
 import httpx
 import pytest
 from hcm_pipeline.config import Config, load_config
+from hcm_pipeline.contract import PIPELINE_STEPS
 from hcm_pipeline.exit_codes import ExitCode
 from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult
 from hcm_pipeline.objects import GCS_BASE_URL, GcsObjectStore
@@ -102,7 +103,8 @@ def test_happy_path_cloud_run_uses_secret_manager_and_default_credentials() -> N
         assert isinstance(_secrets(config, client), SecretManager)
     assert isinstance(_tokens(config), GoogleTokens)
     assert _storage_url(config) == GCS_BASE_URL
-    assert set(default_steps()) == {"fetch", "extract", "stitch", "inspect", "locate", "reference", "georef", "warp", "export", "register"}
+    assert set(default_steps()) == set(PIPELINE_STEPS)
+    assert {"align", "merge", "warp", "export", "register"} <= set(default_steps())
     assert http().follow_redirects is False
 
 

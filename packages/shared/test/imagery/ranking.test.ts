@@ -108,6 +108,27 @@ describe('rankScene', () => {
         expect(rank.reasons.map((entry) => entry.code)).toEqual(['needsOrder', 'coverage', 'sameYear', 'resolution']);
     });
 
+    it('happyPath_aFrameOfTheDateInProgressKeepsItsNewYearPointsAndSaysWhy', () => {
+        const context: RankContext = { targetYears: [], layerYears: [1966], pendingDates: ['1966-07-12'] };
+        const rank = rankScene(scene(), context);
+
+        // The same frame without the date scores 10 less and blames the year.
+        expect(rank.score).toBe(rankScene(scene(), { targetYears: [], layerYears: [1966] }).score + 10);
+        expect(rank.reasons[0]).toEqual({ code: 'sameDate' });
+        expect(rank.reasons.map((entry) => entry.code)).not.toContain('sameYear');
+    });
+
+    it('badPath_anotherDateOfTheSameYearStaysDemoted', () => {
+        const context: RankContext = { targetYears: [], layerYears: [1966], pendingDates: ['1966-02-02'] };
+
+        expect(codes(context)).toContain('sameYear');
+        expect(codes(context)).not.toContain('sameDate');
+    });
+
+    it('happyPath_theRankingVersionMovedWithTheSameDateReason', () => {
+        expect(RANKING_VERSION).toBe(3);
+    });
+
     it('happyPath_aCityWithoutLayersSaysAnyYearIsNew', () => {
         expect(codes(NO_CONTEXT)).toContain('noLayers');
         expect(codes(NO_CONTEXT)).not.toContain('newYear');

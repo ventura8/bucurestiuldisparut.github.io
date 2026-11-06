@@ -6,10 +6,13 @@
 import type {
     ApiErrorCode,
     BBox,
+    DatePlanRow,
     GeorefTransform,
     JobStatus,
     JobType,
     JobWaitReason,
+    JoinPart,
+    JoinReport,
     LayerVersionState,
     LngLat,
     OrderState,
@@ -82,11 +85,13 @@ export interface VersionItemPort {
     readonly layerId: string;
     readonly label: { readonly ro: string; readonly en?: string | undefined };
     readonly year: number;
-    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop';
+    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join';
     readonly state: LayerVersionState;
     readonly updatedAt: string;
     readonly needsYou: boolean;
     readonly checkpointRmseM: number | null;
+    readonly partOf: string | null;
+    readonly entityIds: readonly string[];
 }
 
 export interface JobProgressPort {
@@ -126,7 +131,7 @@ export interface VersionViewPort {
     readonly year: number;
     readonly date: string | null;
     readonly sensor: Sensor | null;
-    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop';
+    readonly origin: 'usgs' | 'upload' | 'regeoref' | 'crop' | 'join';
     readonly state: LayerVersionState;
     readonly georef: {
         readonly method: string;
@@ -157,6 +162,11 @@ export interface VersionViewPort {
     readonly approval: { readonly auto: boolean; readonly by: string; readonly at: string } | null;
     readonly error: AdminNoticeInputPort | null;
     readonly hasScan: boolean;
+    /** M8: the USGS scene it came from, the join that holds it, a join's frames and what the join measured. */
+    readonly entityId: string | null;
+    readonly partOf: string | null;
+    readonly parts: readonly JoinPart[];
+    readonly join: JoinReport | null;
 }
 
 export interface JobViewPort {
@@ -244,6 +254,11 @@ export interface ImageryViewState {
     /** M4: the order card's action running, for which scene, and the last refusal on its card. */
     readonly ordering: { readonly id: string; readonly action: 'mark' | 'check' | 'cancel' } | null;
     readonly orderRefusal: { readonly id: string; readonly notice: AdminNoticeInputPort } | null;
+    /** M8: the server's plan of each date's whole-city layer, the join on its way (by its first frame), its refusal, the year being saved. */
+    readonly dates: readonly DatePlanRow[];
+    readonly joining: string | null;
+    readonly joinRefusal: { readonly id: string; readonly notice: AdminNoticeInputPort } | null;
+    readonly addingYear: number | null;
 }
 
 /** A chosen file (a `File`). */
@@ -281,4 +296,7 @@ export interface ImageryIntentsPort {
     markOrdered(id: string): Promise<boolean>;
     checkOrder(id: string): Promise<boolean>;
     cancelOrder(id: string): Promise<boolean>;
+    /** M8: Join frames (the new join's version id, or null when refused) and Add {year} to target years. */
+    joinFrames(entityIds: readonly string[]): Promise<string | null>;
+    addTargetYear(year: number): Promise<boolean>;
 }

@@ -167,6 +167,7 @@ Documents (`worker.step`), for the claimed job `J` of city `C` with its version 
 | `cities/C/jobs/J/logs/*` | | | yes (`jobLogDocSchema`) | yes |
 | `cities/C/layerVersions/V` | yes | the pipeline's fields only (`WORKER_VERSION_FIELDS`); `state` to `processing`, `needs_gcps`, `awaiting_approval`, `failed`, `cancelled` | | |
 | `cities/C/layerVersions/<params.basedOn>` (`regeoref`) | yes | | | |
+| `cities/C/layerVersions/<params.parts[].versionId>` (`layer-join`, M8) | yes | | | |
 | `cities/C/layers/L` | yes | | | |
 | `cities/C/usgsScenes/<params.entityId>` (`usgs-import`) | yes | | | |
 
@@ -174,8 +175,8 @@ Each write is merged into the current document and the result validated with the
 (`jobDocSchema`, `layerVersionDocSchema`, `jobLogDocSchema`); `updatedBy` is `system:pipeline`, as the Cloud Run run
 writes. A finished job (`succeeded`, `failed`, `cancelled`) takes no more writes but its log lines.
 
-Objects (`worker.urls`): GET `rasters/C/L/V/*`, `rasters/C/L/<basedOn>/scan.tif` (`regeoref`), the job's
-`params.uploadPath` (`geotiff-import`); PUT `rasters/C/L/V/<VERSION_FILES>` only. Nothing else: the delivery, the scratch
+Objects (`worker.urls`): GET `rasters/C/L/V/*`, `rasters/C/L/<basedOn>/scan.tif` (`regeoref`), each
+`rasters/C/<part.layerId>/<part.versionId>/scan.tif` (`layer-join`, M8), the job's `params.uploadPath` (`geotiff-import`); PUT `rasters/C/L/V/<VERSION_FILES>` only. Nothing else: the delivery, the scratch
 and the reference cache stay on the computer, so no signed URL ever names them.
 
 USGS (`worker.urls`, `kind: 'usgs'`): `download-options` with `datasetName == params.dataset` and `entityIds ==
@@ -628,3 +629,7 @@ dismissal or a rejection deletes only the bucket's `work/` (`functions/src/image
 13 GB, until the sweep's 14 days, as the server cannot reach this folder and tells the worker of no ended job. After a reload the panel
 starts `looking` for the computer it remembers, not `downloaded`: nothing says the file was just saved, and the first answer says the rest.
 An id file that holds no valid id is not read: the worker takes a new one at its next start.
+
+## Addendum of 2026-11-06: a join on the worker (M8)
+
+A `layer-join` runs here as any pipeline job (`docs/research/M8-join-interfaces.md`). `worker/allow-list.ts` reads `inputVersionsOf(job)`: a re-georeference's base or a join's frames, each read-only, and `inputsOf` adds each frame's `scan.tif`; the worker writes only the join's own version files, and `WORKER_VERSION_FIELDS` gains `join`. A worker cannot write `joined`: `WORKER_VERSION_STATES` does not hold it, as the finalize does that. `worker.claim` refuses a job waiting on `parts`, and `run-on.ts` keeps that reason when the city's choice moves the job. A scan is staged for its preview, its seams, its re-warp and its `merge`, so up to four downloads per frame with at most two scans on disk; `S-P05-HAPPY-WORKER` runs the job under the Python fake's copy of these lists and the callable's own lists have their tests in `functions/test/worker/`. **UNVERIFIED** on real frames: the time and the disk, measured by decision D3 of the M8 contract, where the worker may be the only practical runner.

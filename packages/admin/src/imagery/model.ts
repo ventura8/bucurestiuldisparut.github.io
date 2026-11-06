@@ -146,6 +146,18 @@ export interface VersionItem {
     /** It waits for the admin: points, an approval, a compute-unit choice, the Studio upload, or a retry or dismissal. */
     readonly needsYou: boolean;
     readonly checkpointRmseM: number | null;
+    /** M8: the join that holds this frame (a stale one is ignored: the join ended). */
+    readonly partOf: string | null;
+    /** M8: the USGS frames it is made of: a frame's own, a join's all, none for an upload. */
+    readonly entityIds: readonly string[];
+}
+
+/** The USGS frames a version's source names. */
+function entityIdsOf(source: LayerVersionDoc['source']): readonly string[] {
+    if (source?.kind === 'join') {
+        return source.parts.map((part) => part.entityId);
+    }
+    return source?.kind === 'usgs' ? [source.entityId] : [];
 }
 
 const WAITING_FOR_ADMIN: readonly LayerVersionState[] = ['needs_gcps', 'awaiting_approval', 'failed'];
@@ -166,6 +178,8 @@ export function versionItemOf(doc: Stored<LayerVersionDoc>): VersionItem {
         updatedAt: isoOf(version.updatedAt),
         needsYou: WAITING_FOR_ADMIN.includes(version.state) || stoppedForChoice(version),
         checkpointRmseM: orNull(version.georef?.checkpointRmseM),
+        partOf: orNull(version.partOf),
+        entityIds: entityIdsOf(version.source),
     };
 }
 

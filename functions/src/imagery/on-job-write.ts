@@ -11,6 +11,7 @@ import { countCloudRun } from './cloud-usage.js';
 import { dispatchJob } from './dispatch.js';
 import { releaseCancelled } from './end.js';
 import { noticeJobChange } from './job-notices.js';
+import { datePlanChangedBy, rewriteDatePlan } from './join-plan.js';
 
 /**
  * `imagery.onJobWrite` (Firestore trigger on `cities/{city}/jobs/{job}`; `docs/research/M3-interfaces.md` §4.2): the
@@ -20,7 +21,8 @@ import { noticeJobChange } from './job-notices.js';
  * `awaiting_approval` gets the approval policy; a job that becomes `cancelled` (the pipeline's SIGTERM handler, CR-M3-18)
  * has what it still held released. M7 (`docs/research/M7-local-worker.md` §3, §4.2): a queued job whose place the admin
  * changed, or that got the admin's OK past the free tier, is dispatched again; a cloud run that ended is counted into
- * the month's Cloud Run use.
+ * the month's Cloud Run use. M8 (`docs/research/M8-join-interfaces.md` §5): a frame that rendered, or a join published,
+ * rewrites the plan of whole-city dates.
  */
 export type JobWriteDeps = Pick<Ports, 'documents' | 'clock' | 'log' | 'jobs' | 'tasks'>;
 
@@ -99,6 +101,11 @@ export async function onJobWrite(deps: JobWriteDeps, cityId: string, jobId: stri
     });
     // M4 (docs/research/M4-interfaces.md §5.1, assists-notify): a failed job, a version waiting for Approve or for points.
     await noticeJobChange(deps, { cityId, jobId, job: after }, before);
+    if (datePlanChangedBy(before, after)) {
+        await rewriteDatePlan(deps, cityId).catch((error: unknown) => {
+            deps.log.warn('date plan not rewritten', { cityId, jobId, error: String(error) });
+        });
+    }
     return transition;
 }
 

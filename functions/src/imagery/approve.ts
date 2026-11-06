@@ -20,6 +20,7 @@ import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { approved, estimateOf, queuePublish, type ApprovalDeps } from './approval.js';
 import { endWork } from './end.js';
+import { refuseHeldPart } from './join-parts.js';
 import { releaseScene } from './release-scene.js';
 import { requireVersion, stampOf, type Stamp } from './records.js';
 import { deleteWorkFiles } from './work-files.js';
@@ -32,7 +33,8 @@ import { deleteWorkFiles } from './work-files.js';
  * has meanwhile sent to Mapbox (CR-M3-47). A version that failed is dismissed the same way: it becomes `rejected` and
  * leaves the Imagery area's "Waiting for you" (its job stays failed, marked `cancelRequested` so no page offers Retry), and its
  * scene can be imported again (finding 85). A version ended either way can never run again: its scratch files in the bucket go
- * (a local worker's stay in its work folder until its sweep: `work-files.ts`).
+ * (a local worker's stay in its work folder until its sweep: `work-files.ts`). M8: a frame a live join holds refuses both
+ * (`refuseHeldPart`).
  */
 type VersionRequest = CallableRequest<'imagery.approve'>;
 
@@ -59,6 +61,7 @@ async function approveVersion(deps: ApprovalDeps, caller: VerifiedCaller, reques
         if (version.state !== 'awaiting_approval' || version.output === undefined) {
             throw new ApiError('apiError.imagery.versionState');
         }
+        await refuseHeldPart(transaction, request.cityId, version);
         const result = approved({ ...version, estimate: version.estimate ?? estimateOf(version.output, now) }, caller.uid, now);
         await transaction.set(path, layerVersionDocSchema, result);
         return result;
@@ -135,6 +138,7 @@ async function imageryReject(
     request: VersionRequest,
 ): Promise<CallableResponse<'imagery.reject'>> {
     const current = await requireVersion(deps.documents, request.cityId, request.versionId);
+    await refuseHeldPart(deps.documents, request.cityId, current);
     await (current.state === 'failed' ? dismissFailed(deps, caller, request) : rejectWaiting(deps, caller, request));
     deps.log.info('layer version rejected', { uid: caller.uid, cityId: request.cityId, versionId: request.versionId, was: current.state });
     return { state: 'rejected' };

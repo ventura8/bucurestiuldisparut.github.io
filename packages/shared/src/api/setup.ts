@@ -250,7 +250,7 @@ export const analyticsConfigResponseSchema = z.strictObject({
 export const createCityRequestSchema = z.strictObject({
     cityId: cityIdSchema,
     /**
-     * The bundled seed's name, view, texts, theme and basemap. The server owns the rest: `id`, `createdAt`, the stamp,
+     * The bundled seed's name, view, texts, theme, basemap and imagery settings (its target years, M8). The server owns the rest: `id`, `createdAt`, the stamp,
      * `published` (true: the bundled city is public today), the viewer token (`setup.saveMapbox`) and the analytics ids
      * (`setup.analyticsConfig`).
      */
@@ -266,6 +266,7 @@ export const createCityRequestSchema = z.strictObject({
         credits: true,
         theme: true,
         basemap: true,
+        imagery: true,
     }),
 });
 /** `created: false` when the city already existed (the call is idempotent: a second owner claim, a reload). */

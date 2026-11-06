@@ -42,6 +42,7 @@
     },
     "theme": { "seedColor": "#8B5E3C" },
     "basemap": { "style": "mapbox://styles/mapbox/standard-satellite" },
+    "imagery": { "targetYears": [1966, 1972, 1976, 1977, 1978, 1979, 1980, 1982, 1983, 1984] },
     "mapbox": { "publicToken": "pk.REPLACE_AT_DEPLOY" },
     "analytics": {}
 }

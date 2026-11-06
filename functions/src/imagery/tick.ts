@@ -9,6 +9,7 @@ import { cityIds } from './limits.js';
 import { backfillCloudUsage } from './cloud-usage-backfill.js';
 import { guardIsRed } from './records.js';
 import { watchOrders } from './orders/watch.js';
+import { ensureDatePlan } from './join-plan.js';
 import { cancelAsked, dispatchDue, pendingApprovals, pollStale, recoverLost } from './tick-jobs.js';
 import { monthlyHarvest, publishDeferred, runDeletions, sweepEnded } from './tick-maintenance.js';
 import { offerCloud } from './tick-worker.js';
@@ -47,6 +48,8 @@ const PARTS: readonly (readonly [name: string, part: Part, whileRed: boolean])[]
     ['orders', watchOrders, true],
     // Finding 85: a scene an ended import left reserved can be imported again.
     ['scenes', (deps, cityId) => releaseScenes(deps, cityId), true],
+    // M8: a city with no plan of its whole-city dates gets one, as a deploy finds frames waiting and no job moves.
+    ['plan', (deps, cityId) => ensureDatePlan(deps, cityId), true],
 ];
 
 /** One tick over every city; returns the parts that failed (`<city>:<part>`). */

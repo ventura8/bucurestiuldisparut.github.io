@@ -112,8 +112,8 @@ and opens the exact pages; nothing is done without you.
    the card green), and the application token is pasted in Setup's USGS card (60 seconds).
 4. __Mapbox secret token__: pasted once in Setup's Mapbox card with the tileset scopes (the publisher reads it from Secret
    Manager; the pipeline holds none).
-5. __Bucharest's target years__ (CR-M3-28): add 1966, 1976, 1977, 1978 and 1980 once in Settings → Historical imagery
-   (the bundled seed does not carry them; changing `seed/bucharest/` is ask-first).
+5. __Bucharest's target years__ (CR-M3-28, done in M8 on 2026-11-06): the setup bundle now carries ten years, and the live
+   city holds them; nothing to do.
 6. __The opt-in `real-data` run__ (ask first, local only, never in CI): import one free Bucharest frame end to end and
    report its checkpoint RMSE. It also settles what §14 of the contract marks __UNVERIFIED__: the M2M metadata field
    names, whether USGS honours HTTP Range and redirects, the MTS recipe and its price per km² (calibrate
@@ -140,8 +140,7 @@ and opens the exact pages; nothing is done without you.
 - __One request off the machine__: the first run of the real pipeline under the admin tier fetched a signed address the
   e2e fake had put on the real USGS delivery host (one GET of a made-up path, no credential; the host answered 404).
   The pipeline is now sealed under the emulators and the fake signs on loopback (`docs/LESSONS.md` 164, CR-M3-43).
-- __Contract follow-ups__: Bucharest's target years in the bundled seed (CR-M3-28, `seed/bucharest/` is ask-first);
-  `fn-events@`'s Cloud Run roles narrowed to the two job definitions once the provisioner can (§47d);
+- __Contract follow-ups__: `fn-events@`'s Cloud Run roles narrowed to the two job definitions once the provisioner can (§47d);
   `mapbox.studioTilesets` into `links.json` after the weekly contract probe (CR-M3-9; the probe is ask-first);
   `google-cloud-storage` dropped from the pipeline's lock (CR-M3-19 c); OpenStreetMap as a matching channel and the
   georeferencer's automatic suggestions (M4).

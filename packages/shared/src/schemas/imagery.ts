@@ -13,6 +13,7 @@ import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-com
 import { JOB_MACHINES, type JobType } from './firestore-ops.js';
 import { LAYER_TILESET_ORIGINS, USGS_DATASETS } from './firestore.js';
 import { cropRingSchema, georefSchema, MAX_SCAN_PIXELS } from './georef.js';
+import { joinReportSchema, joinSourceSchema, layerJoinParamsSchema } from './imagery-join.js';
 import { boundsRecordSchema, coded, idSchema, isoDateSchema, localizedPartial, plainText, yearSchema, zoomSchema } from './primitives.js';
 import { SENSORS } from './usgs-scene.js';
 
@@ -20,7 +21,8 @@ import { SENSORS } from './usgs-scene.js';
  * Where a version stands. `processing`: its job runs; `needs_gcps`: the scan waits for the admin's points
  * (georeferencer); `awaiting_approval`: rendered, waits for Approve (or for a compute-unit choice); `approved`: queued to
  * publish; `publishing`: at Mapbox; `published`: the layer shows it; `rejected`, `superseded` (a newer one was published),
- * `failed`, `cancelled`: ended.
+ * `failed`, `cancelled`: ended. M8 (`docs/research/M8-join-interfaces.md`): `joined`: a frame now shown through the published
+ * join of its date (`partOf`), its files kept for that join's layer.
  */
 export const LAYER_VERSION_STATES = [
     'processing',
@@ -33,15 +35,16 @@ export const LAYER_VERSION_STATES = [
     'superseded',
     'failed',
     'cancelled',
+    'joined',
 ] as const;
 
 export type LayerVersionState = (typeof LAYER_VERSION_STATES)[number];
 
 /** States a version never leaves. */
-export const ENDED_VERSION_STATES = ['published', 'rejected', 'superseded', 'failed', 'cancelled'] as const;
+export const ENDED_VERSION_STATES = ['published', 'rejected', 'superseded', 'failed', 'cancelled', 'joined'] as const;
 
-/** What a version was made from: a USGS scene, an uploaded GeoTIFF, new points on an earlier version, a crop of one. */
-export const VERSION_ORIGINS = ['usgs', 'upload', 'regeoref', 'crop'] as const;
+/** What a version was made from: a USGS scene, an uploaded GeoTIFF, new points on an earlier version, a crop of one, joined frames. */
+export const VERSION_ORIGINS = ['usgs', 'upload', 'regeoref', 'crop', 'join'] as const;
 
 /** The compute-unit guard's three ways out when a publish does not fit the month (security review §3.3). */
 export const PUBLISH_CHOICES = ['studio', 'defer', 'pay'] as const;
@@ -79,6 +82,7 @@ const sourceSchema = z.discriminatedUnion('kind', [
         originalName: plainText(255).optional(),
         bytes: z.number().int().min(1),
     }),
+    joinSourceSchema,
 ]);
 
 /** The cropped scan in pixel space: the georeferencer's left pane and the input of every later georeferencing. */
@@ -178,6 +182,7 @@ const REQUIRED_BY_STATE: Readonly<Record<LayerVersionState, readonly ('scan' | '
         superseded: ['output', 'mapbox'],
         failed: ['error'],
         cancelled: [],
+        joined: ['output'],
     };
 
 function hasStateFields(version: { readonly state: LayerVersionState } & Partial<Record<string, unknown>>): boolean {
@@ -215,6 +220,10 @@ export const layerVersionDocSchema = z
         /** Finding 56: the Cloud Run job each phase of its making ran on (`download`: fetch and extract; `process`: the rest). */
         machines: z.strictObject({ download: z.enum(JOB_MACHINES).optional(), process: z.enum(JOB_MACHINES).optional() }).optional(),
         error: z.strictObject({ code: apiErrorCodeSchema, params: apiErrorParamsSchema.optional() }).optional(),
+        /** M8: the join version that holds this frame while it is live; a stale one (the join ended) is ignored. */
+        partOf: idSchema.optional(),
+        /** M8: what the join measured; a join version has no `scan` and no `georef` (`georefSchema` means one scan's pixels). */
+        join: joinReportSchema.optional(),
         createdBy: uidSchema,
         createdAt: timestampSchema,
         ...stamp,
@@ -246,6 +255,7 @@ export const JOB_PARAMS_SCHEMAS: Readonly<Record<JobType, z.ZodType>> = {
     regeoref: regeorefParamsSchema,
     republish: republishParamsSchema,
     'layer-delete': layerDeleteParamsSchema,
+    'layer-join': layerJoinParamsSchema,
 };
 
 /** The steps the raster pipeline runs (`pipeline/src/hcm_pipeline/steps/<step>.py`), in this order when a type has them. */
@@ -257,6 +267,8 @@ export const PIPELINE_STEPS = [
     'locate',
     'reference',
     'georef',
+    'align',
+    'merge',
     'warp',
     'export',
     'register',
@@ -282,6 +294,8 @@ export const JOB_STEPS: Readonly<Record<JobType, readonly JobStep[]>> = {
     regeoref: ['georef', 'warp', 'export', 'register', ...PUBLISH_STEPS],
     republish: [...PUBLISH_STEPS],
     'layer-delete': ['delete'],
+    // M8: `merge` writes the same `warped.tif` a `warp` does, so `export` and `register` run unchanged.
+    'layer-join': ['align', 'merge', 'export', 'register', ...PUBLISH_STEPS],
 };
 
 /** True for the job types the Cloud Run pipeline runs (the others run in functions). */

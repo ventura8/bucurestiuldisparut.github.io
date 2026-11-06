@@ -60,6 +60,8 @@ import {
     imageryCropResponseSchema,
     imageryImportRequestSchema,
     imageryImportResponseSchema,
+    imageryJoinRequestSchema,
+    imageryJoinResponseSchema,
     imageryProbeRequestSchema,
     imageryProbeResponseSchema,
     imageryRejectResponseSchema,
@@ -264,6 +266,7 @@ export const ADMIN_CALLABLES = {
     'imagery.studioDone': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryStudioDoneResponseSchema),
     'imagery.saveGcps': cityEditor('fn-imagery', imagerySaveGcpsRequestSchema, imagerySaveGcpsResponseSchema),
     'imagery.crop': cityEditor('fn-imagery', imageryCropRequestSchema, imageryCropResponseSchema),
+    'imagery.join': cityEditor('fn-imagery', imageryJoinRequestSchema, imageryJoinResponseSchema),
     'imagery.retry': cityEditor('fn-imagery', imageryRetryRequestSchema, imageryRetryResponseSchema),
     'imagery.probeTiles': cityEditor('fn-imagery', imageryProbeRequestSchema, imageryProbeResponseSchema),
     // M5: the budget guard is the project's (docs/research/M5-interfaces.md §1.3).

@@ -6,10 +6,12 @@
  * createdAt`) and the budget guard (`ops/guard`, CR-M3-47), each attached again by itself after a dropped connection.
  * M4 (`docs/research/M4-interfaces.md` §1.7): the scenes that have an order, whatever the filters (Work's orders, and a
  * notification's link to an ordered scene while Free only hides it), and the routed scene read by its id (a scene the
- * filters hide or past the list's first page: an address shared or bookmarked).
+ * filters hide or past the list's first page: an address shared or bookmarked). M8 (`docs/research/M8-join-interfaces.md`
+ * §6): the server's plan of each date's whole-city layer, a document because the list above is paged and filtered.
  */
 import {
     cityDocSchema,
+    datePlanDocSchema,
     FIRESTORE_PATHS,
     imagerySettingsOf,
     jobDocSchema,
@@ -17,6 +19,8 @@ import {
     setupStatusDocSchema,
     usgsSceneDocSchema,
     type CityDoc,
+    type DatePlanDoc,
+    type DatePlanRow,
     type ImagerySettings,
     type JobDoc,
     type LayerVersionDoc,
@@ -65,6 +69,8 @@ export interface FeedsPatch {
     readonly versions?: ListState<VersionItem>;
     readonly jobs?: Readonly<Record<string, JobProgress>>;
     readonly guard?: GuardView | null;
+    /** M8: the plan's rows (none without a plan). */
+    readonly dates?: readonly DatePlanRow[];
 }
 
 /** The scenes' query: best score first, free only when asked. */
@@ -111,6 +117,17 @@ function namedSceneDoc(
     });
 }
 
+/** M8: the plan of the dates, which reports its rows (none without a plan, or one that fails its schema). */
+function planDoc(base: Omit<LiveDocDeps<DatePlanDoc>, 'schema' | 'changed'>, changed: (patch: FeedsPatch) => void): LiveDoc<DatePlanDoc> {
+    return new LiveDoc({
+        ...base,
+        schema: datePlanDocSchema,
+        changed: (state) => {
+            changed({ dates: state.doc?.data.rows ?? [] });
+        },
+    });
+}
+
 const harvestedAtOf = (doc: Stored<UsgsSceneDoc>): string => isoOf(doc.data.harvestedAt);
 
 export class ImageryFeeds {
@@ -125,6 +142,7 @@ export class ImageryFeeds {
     readonly #versions: LiveList<LayerVersionDoc, VersionItem>;
     readonly #jobs: LiveList<JobDoc, JobProgress>;
     readonly #guard: GuardFeed;
+    readonly #plan: LiveDoc<DatePlanDoc>;
 
     constructor(services: ContentServices, changed: (patch: FeedsPatch) => void) {
         this.#services = services;
@@ -184,10 +202,16 @@ export class ImageryFeeds {
         this.#guard = new GuardFeed(services, (guard) => {
             changed({ guard });
         });
+        this.#plan = planDoc(base, changed);
     }
 
     get active(): boolean {
         return this.#scenes.active;
+    }
+
+    /** The city document's version as read (null before it is): what a write of its imagery settings expects. */
+    get cityVersion(): string | null {
+        return this.#city.state.doc?.version ?? null;
     }
 
     start(freeOnly: boolean): void {
@@ -199,6 +223,7 @@ export class ImageryFeeds {
         this.#versions.show({ where: [['state', 'in', OPEN_VERSION_STATES]], orderBy: [['updatedAt', 'desc']] });
         this.#jobs.show({ where: [['status', 'in', ACTIVE_JOB_STATUSES]], orderBy: [['createdAt', 'desc']] });
         this.#guard.start();
+        this.#plan.show(FIRESTORE_PATHS.imageryPlan(this.#services.cityId));
     }
 
     /** The free-only filter changed: the scenes are read again. */
@@ -213,7 +238,10 @@ export class ImageryFeeds {
             this.#changed({ named: NO_NAMED_SCENE });
             return;
         }
-        this.#named.show(FIRESTORE_PATHS.usgsScene(this.#services.cityId, id));
+        const path = FIRESTORE_PATHS.usgsScene(this.#services.cityId, id);
+        if (this.#named.path !== path) {
+            this.#named.show(path);
+        }
     }
 
     moreScenes(): void {
@@ -221,7 +249,17 @@ export class ImageryFeeds {
     }
 
     retry(): void {
-        for (const feed of [this.#setup, this.#city, this.#newest, this.#scenes, this.#orders, this.#versions, this.#jobs, this.#guard]) {
+        for (const feed of [
+            this.#setup,
+            this.#city,
+            this.#newest,
+            this.#scenes,
+            this.#orders,
+            this.#versions,
+            this.#jobs,
+            this.#guard,
+            this.#plan,
+        ]) {
             feed.retry();
         }
         if (this.#named.path !== '') {
@@ -240,6 +278,7 @@ export class ImageryFeeds {
             this.#versions,
             this.#jobs,
             this.#guard,
+            this.#plan,
         ]) {
             feed.stop();
         }

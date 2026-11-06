@@ -331,8 +331,10 @@ const IMAGERY_PUBLISH_SPECS = [
     'specs/imagery/layer-geometry.spec.ts',
     // M4's automation from a bought scan to the viewer's compare (two publishes in its happy path).
     'specs/imagery/automation.spec.ts',
+    // M8's join, from a date's row to the published layer.
+    'specs/imagery/join.spec.ts',
 ];
-const PIPELINE_SPECS = ['specs/imagery/pipeline.spec.ts', 'specs/imagery/worker-run.spec.ts'];
+const PIPELINE_SPECS = ['specs/imagery/pipeline.spec.ts', 'specs/imagery/worker-run.spec.ts', 'specs/imagery/join-pipeline.spec.ts'];
 
 function adminJourneyMatrixProjects(): E2eProject[] {
     const matrix = { metadata: { tier: 'tour-matrix' } };

@@ -16,6 +16,8 @@ import {
     type JobDoc,
     type JobStatus,
     type JobWaitReason,
+    type JoinPart,
+    type JoinReport,
     type LayerVersionDoc,
     type LayerVersionState,
     type PublishChoice,
@@ -67,6 +69,12 @@ export interface VersionView {
     readonly error: NoticeInput | null;
     /** The georeferencer can open it: it has a scan. */
     readonly hasScan: boolean;
+    /** The USGS scene it came from. */
+    readonly entityId: string | null;
+    /** M8: the join that holds this frame, a join's frames, and what the join measured. */
+    readonly partOf: string | null;
+    readonly parts: readonly JoinPart[];
+    readonly join: JoinReport | null;
 }
 
 function georefOf(georef: LayerVersionDoc['georef']): VersionView['georef'] {
@@ -123,6 +131,14 @@ function estimateOf(version: LayerVersionDoc): number | null {
     return output === undefined ? null : estimateComputeUnits(output.areaKm2, output.maxzoom);
 }
 
+/** A version's frames and scene, as its source names them. */
+function sourceOf(source: LayerVersionDoc['source']): Pick<VersionView, 'entityId' | 'parts'> {
+    if (source?.kind === 'join') {
+        return { entityId: null, parts: source.parts };
+    }
+    return { entityId: source?.kind === 'usgs' ? source.entityId : null, parts: [] };
+}
+
 export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
     const version = doc.data;
     return {
@@ -130,6 +146,7 @@ export function versionViewOf(doc: Stored<LayerVersionDoc>): VersionView {
         ...{ sensor: orNull(version.sensor), origin: version.origin, state: version.state, georef: georefOf(version.georef) },
         ...{ output: outputOf(version.output), estimate: estimateOf(version), guard: guardOf(version.guard) },
         ...{ approval: approvalOf(version.approval), error: errorOf(version.error), hasScan: version.scan !== undefined },
+        ...{ ...sourceOf(version.source), partOf: orNull(version.partOf), join: orNull(version.join) },
     };
 }
 
@@ -237,9 +254,14 @@ export interface ApprovalFigures {
     readonly overThreshold: boolean;
 }
 
+/** The checkpoint error: its georeference's, or a join's (its worst frame's; a join has no georeference). */
+function checkpointOf(version: VersionView): number | null {
+    return version.georef?.checkpointRmseM ?? version.join?.checkpointRmseM ?? null;
+}
+
 export function approvalFigures(version: VersionView, usage: UsageCounters | undefined, thresholdM: number): ApprovalFigures {
     const available = availableComputeUnits(usage, version.id);
-    const rmse = version.georef?.checkpointRmseM ?? null;
+    const rmse = checkpointOf(version);
     return {
         ...{ estimate: version.estimate, available, fits: (version.estimate ?? 0) <= available },
         ...{ checkpointRmseM: rmse, thresholdM, overThreshold: rmse === null || rmse > thresholdM },

@@ -2193,3 +2193,45 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: a test that was first written off as timing, then given retries, which still failed: the retries proved it was no race.
     - Fix and pin: a cached copy that fails its schema waits for the server's answer; only the server's copy fails the read (`packages/admin/src/firebase/content.ts`, `content.test.ts`).
     - **A failure that ends a listener must come from the source of truth, never from its cache.**
+363. **A link added inside a list row was a 19 px target on a phone.**
+    - Seen: 2026-11-06, the first phone run of S-A66-BAD-PAID-FRAME: "1 more would need ordering" on a date's row, 312 x 19 px at 360 wide; the frame page's link to its join was built the same way.
+    - Cause: the join card's links were bare `<a>`s; only the kit's `a.external` gives a link the 48 px height of a compact window. The card's unit tests read the `href`, never a size.
+    - Found by: the tour's `expectStateSound` on `imagery.date-rows`, scrolled through the list: at a laptop's width the check passed.
+    - Fix and pin: both links use `a.external` (`packages/ui/src/admin/imagery/join/join-card.ts`); the states `imagery.date-rows` and `imagery.join-holds` check them at the phone width.
+    - **A new link in a card is checked at the compact width by a state of the tour, not by its unit test.**
+364. **"Add a frame" took the old join for the frame.**
+    - Seen: 2026-11-06, a functions test of "add a frame" on a published layer: with a published frame the join becomes that layer's newest version, so "not ended, or published, newest" answered the join itself.
+    - Cause: the contract's rule for finding a scene's part asked only for the newest live version of the layer; a join on the same layer is such a version, though it is no frame.
+    - Found by: `functions/test/imagery/join.test.ts` (S-A65-HAPPY-ADD-FRAME).
+    - Fix and pin: `isUsablePart` (`functions/src/imagery/join-parts.ts`) leaves out a join not published yet; `docs/research/M8-join-interfaces.md` §15.
+    - **When a new kind of version shares a layer with the old ones, every "newest version of this layer" reads it too: check each such query.**
+365. **A search narrower than the failure it must report turned "too far" into "unmeasured".**
+    - Seen: 2026-11-06, the pipeline's S-P05-BAD-TOO-FAR: the design searched seams within 400 m and failed them above 300 m; a pair 500 m apart found no peak at all.
+    - Cause: tiles outside the search fail like tiles on flat land, so the seam read `measured:false` and would have rendered double streets, instead of `joinSeamTooFar` with the way to fix it.
+    - Found by: the row's pair, built with a known offset.
+    - Fix and pin: `COARSE_SEARCH_M` 600 (`pipeline/src/hcm_pipeline/join/measure.py`), and a peak on the search's edge is refused; `docs/research/M8-join-interfaces.md` §13.
+    - **A measurement's range must exceed the largest case it has to name; out of range is not the same answer as no signal.**
+366. **Nodes built on GDAL's forward polynomial moved a whole frame, and the figure read at the nodes never saw it.**
+    - Seen: 2026-11-06, the M8 review's probe: a pixel-coded panoramic frame warped through its own points and through its nodes differed by a median of 36 to 70 m past the taper at 25 to 40 degrees off nadir, with `maxShiftM` reading 1 m; thin-plate parts lost GCP-scale detail too (S-P05-HAPPY-OFF-NADIR).
+    - Cause: a warp runs from the output to the scan, on a reverse polynomial GDAL fits apart from the forward one; the nodes paired a pixel with its forward image, and `largest_move_m` compared them with that same forward image. A spline through a grid also cannot hold the detail of a spline through its points.
+    - Found by: a real `gdal.Warp` of a raster whose values are its own coordinates; every P05 frame was an exact affine scan, where forward and reverse agree.
+    - Fix and pin: a node is a place and the pixel the reverse transform reads there; a thin-plate part keeps its own points as nodes; the sparse grid went from 5 km to 2 km; the largest move compares what the two warps read, between the nodes too (`join/correction.py`, `join/warping.py`, `tests/integration/test_join_warp_parity.py`).
+    - **Test a transform through the operation that uses it, on the geometry it is for: an affine fixture hides every difference between a fit and its inverse.**
+367. **A version's id does not say where its scan lies.**
+    - Seen: 2026-11-06, the M8 review: a frame whose points were fixed could not join on a worker (`apiError.worker.refused`), and 30 days after its base ended the sweep took the scan of a frame still awaiting approval or published.
+    - Cause: a re-georeference copies `scan` from its base and never the file, while the allow-list derived the path from the version's id and the sweep looked only at the ended version's own state.
+    - Found by: reading `fieldsOf` against `inputsOf` and `sweepEnded`; every test seeded a scan in its own folder.
+    - Fix and pin: `worker.urls` reads the input versions' `scan.path`; the sweep keeps a folder whose scan another version still reads; a layer's deletion also takes a joined frame's scan folder (S-A65-HAPPY-NEW-POINTS-SCAN).
+    - **What a document names and what its id implies can differ: read the field, and when deleting, ask who else names the path.**
+368. **A failed join "frees its frames", and four doors stayed open on that freedom.**
+    - Seen: 2026-11-06, the M8 review: Retry revived a join over frames a newer join had taken or a publish had moved; a worker could claim the retried join before the dispatcher looked; Cancel ended a frame under a running join; a frame of a join that ended auto-published alone.
+    - Cause: "holds" was asked only of a live join, and only by approve, reject, regeoref, crop and delete. A retry brings a join back without asking its frames; a frame imported for a join has no estimate when the join ends, so the policy met it fresh.
+    - Found by: walking each path that changes a frame or a join against the invariant "no half a city", not against the list of refusals.
+    - Fix and pin: `partsReady` also asks `partOf`, the retry goes through it and restores the `parts` wait; `cancelJob` withdraws the request on a held frame; a frame any join named never auto-approves, nor do its new points; the transaction refuses a frame the policy moved meanwhile (S-A65-BAD-RETRY-STALE, S-A65-BAD-CANCEL-HELD, S-A65-BAD-ENDED-NOT-AUTO).
+    - **State an invariant over the whole state machine and walk every transition; a list of guarded callables only ever covers the ones someone thought of.**
+369. **A box was read as an outline, and an e2e row hid the offer it was named after.**
+    - Seen: 2026-11-06, the M8 review: `output.bounds` holds nodata, so a tilted frame read 97 % against a true 51 %, and the date could lose its row and the frame its offer; S-A65-HAPPY-ADD-FRAME passed on a plan row the spec wrote itself, which the server would never write.
+    - Cause: the plan took the rendered box for the frame; the spec's frames were axis-aligned, where a box is an outline; the stand-in's plan had no way to offer a frame beyond the estimate.
+    - Found by: running the real `planDate` on the spec's geometry and on F039's corners.
+    - Fix and pin: a rendered frame covers its outline inside its box; rows name their `spareFrames`, which the short join offers, and the spec reads the server's own row; the 30-row cap keeps dates with work (`packages/shared/src/imagery/join.ts`).
+    - **A spec that edits the server's output to reach a state is testing its edit: reach the state from what the server really writes.**

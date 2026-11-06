@@ -39,9 +39,16 @@ BORDER_VALUE: Final = 6
 SEGMENT_OVERLAP_PX: Final = 300
 ROAD_VALUE: Final = 235
 RIVER_VALUE: Final = 35
+ROADS_PER_WORLD: Final = 14
+BLOCKS_PER_WORLD: Final = 420
+PARKS_PER_WORLD: Final = 7
 # What the corner metadata gets wrong (east, north, metres): the corner guess must not need exact corners.
 CORNER_OFFSET_M: Final = (240.0, -160.0)
 EXPECTED_RMSE_M: Final = 15.0
+# `--join`: the entities of a date's two frames (the first is the default scene's), their size and how far each lies off the middle.
+JOIN_ENTITIES: Final = ("DS1035-1057DA023", "DS1035-1057DA024")
+JOIN_FRAME_PX: Final = (1000, 1100)
+JOIN_OFFSET_M: Final = 1500.0
 
 
 @dataclass(frozen=True)
@@ -58,6 +65,8 @@ class SceneSpec:
     pan_m: float = 18.0
     segments: int = 2
     entity_id: str = "DS1035-1057DA023"
+    # Where the frame's centre lies from the world's (east, north, EPSG:3857 metres): several frames of one date over one world.
+    centre_offset_m: tuple[float, float] = (0.0, 0.0)
 
 
 @dataclass(frozen=True)
@@ -75,37 +84,37 @@ class Truth:
     world: dict[str, float] = field(default_factory=dict)
 
 
-def world_grid() -> Grid:
+def world_grid(size_px: int = WORLD_PX) -> Grid:
     cx, cy = to_mercator(*CENTRE)
-    half = WORLD_PX * WORLD_RESOLUTION_M / 2
+    half = size_px * WORLD_RESOLUTION_M / 2
     return Grid.over(MercatorBox(cx - half, cy - half, cx + half, cy + half), WORLD_RESOLUTION_M)
 
 
-def _texture(rng: numpy.random.Generator) -> FloatArray:
-    texture = numpy.zeros((WORLD_PX, WORLD_PX))
+def _texture(rng: numpy.random.Generator, size_px: int) -> FloatArray:
+    texture = numpy.zeros((size_px, size_px))
     for sigma, weight in ((1.5, 0.35), (5.0, 0.4), (18.0, 0.6)):
-        noise = rng.normal(0, 1, (WORLD_PX, WORLD_PX))
+        noise = rng.normal(0, 1, (size_px, size_px))
         blurred = cv2.GaussianBlur(noise, (0, 0), sigma)
         texture += weight * blurred / max(float(blurred.std()), 1e-9)
     return 120 + 22 * texture
 
 
-def _roads(rng: numpy.random.Generator) -> list[tuple[list[tuple[float, float]], int]]:
+def _roads(rng: numpy.random.Generator, size_px: int) -> list[tuple[list[tuple[float, float]], int]]:
     """Polylines in world pixels with their widths: straight avenues at random angles and a few bent streets."""
     lines = []
-    for _ in range(14):
-        x0, y0 = rng.uniform(0, WORLD_PX, 2)
+    for _ in range(ROADS_PER_WORLD * size_px // WORLD_PX):
+        x0, y0 = rng.uniform(0, size_px, 2)
         angle = rng.uniform(0, math.pi)
-        dx, dy = math.cos(angle) * WORLD_PX, math.sin(angle) * WORLD_PX
+        dx, dy = math.cos(angle) * size_px, math.sin(angle) * size_px
         bend = rng.uniform(-60, 60, 2)
         points = [(x0 - dx, y0 - dy), (x0 + bend[0], y0 + bend[1]), (x0 + dx, y0 + dy)]
         lines.append((points, int(rng.integers(1, 5))))
     return lines
 
 
-def _river() -> list[tuple[float, float]]:
-    columns = numpy.linspace(-20, WORLD_PX + 20, 80)
-    rows = WORLD_PX * 0.62 + 70 * numpy.sin(columns / 110.0) + 25 * numpy.sin(columns / 37.0)
+def _river(size_px: int) -> list[tuple[float, float]]:
+    columns = numpy.linspace(-20, size_px + 20, 80 * size_px // WORLD_PX)
+    rows = size_px * 0.62 + 70 * numpy.sin(columns / 110.0) + 25 * numpy.sin(columns / 37.0)
     return list(zip(columns.tolist(), rows.tolist(), strict=True))
 
 
@@ -115,12 +124,14 @@ def _draw(image: FloatArray, points: Sequence[tuple[float, float]], value: float
 
 
 def _blocks(image: FloatArray, rng: numpy.random.Generator) -> None:
-    for _ in range(420):
-        x, y = rng.integers(0, WORLD_PX - 10, 2)
+    size_px = image.shape[0]
+    area = (size_px / WORLD_PX) ** 2
+    for _ in range(round(BLOCKS_PER_WORLD * area)):
+        x, y = rng.integers(0, size_px - 10, 2)
         w, h = rng.integers(3, 9, 2)
         image[y : y + h, x : x + w] = rng.uniform(170, 225)
-    for _ in range(7):
-        centre = (int(rng.integers(80, WORLD_PX - 80)), int(rng.integers(80, WORLD_PX - 80)))
+    for _ in range(round(PARKS_PER_WORLD * area)):
+        centre = (int(rng.integers(80, size_px - 80)), int(rng.integers(80, size_px - 80)))
         axes = (int(rng.integers(20, 55)), int(rng.integers(15, 40)))
         cv2.ellipse(image, centre, axes, float(rng.uniform(0, 180)), 0, 360, 85, -1)
 
@@ -133,16 +144,16 @@ class World:
     river: list[tuple[float, float]]
 
 
-def render_world(seed: int) -> World:
+def render_world(seed: int, size_px: int = WORLD_PX) -> World:
     rng = numpy.random.default_rng(seed)
-    image = _texture(rng)
+    image = _texture(rng, size_px)
     _blocks(image, rng)
-    roads = _roads(rng)
+    roads = _roads(rng, size_px)
     for points, width in roads:
         _draw(image, points, ROAD_VALUE, width)
-    river = _river()
+    river = _river(size_px)
     _draw(image, river, RIVER_VALUE, 9)
-    return World(world_grid(), numpy.asarray(numpy.clip(image, 0, 255), numpy.uint8), roads, river)
+    return World(world_grid(size_px), numpy.asarray(numpy.clip(image, 0, 255), numpy.uint8), roads, river)
 
 
 def write_sentinel2(world: World, path: Path) -> Path:
@@ -178,6 +189,7 @@ def truth_for(spec: SceneSpec) -> Truth:
     """The frame's ground-truth corners: a rotated, slightly skewed rectangle around the world's centre."""
     rng = numpy.random.default_rng(spec.seed + 1)
     cx, cy = to_mercator(*CENTRE)
+    cx, cy = cx + spec.centre_offset_m[0], cy + spec.centre_offset_m[1]
     half_w, half_h = spec.width * spec.resolution_m / 2, spec.height * spec.resolution_m / 2
     angle = math.radians(spec.rotation_deg)
     corners = []
@@ -307,17 +319,23 @@ class AffineScan:
 
 
 def affine_scan(
-    world: World, size: tuple[int, int] = (1200, 900), matrix: tuple[float, float, float, float] = (6.0, 0.4, -0.3, -6.0)
+    world: World,
+    size: tuple[int, int] = (1200, 900),
+    matrix: tuple[float, float, float, float] = (6.0, 0.4, -0.3, -6.0),
+    centre_offset_m: tuple[float, float] = (0.0, 0.0),
+    gain: float = 1.0,
 ) -> AffineScan:
-    """A scan of the world's middle through an exact affine map (its GCPs then fit with no residual)."""
+    """A scan through an exact affine map (its GCPs then fit with no residual) of the world's middle, or `centre_offset_m` (east, north)
+    from it, its grey levels through `gain`: another frame of the same date, printed differently."""
     width, height = size
     centre_x, centre_y = to_mercator(*CENTRE)
+    centre_x, centre_y = centre_x + centre_offset_m[0], centre_y + centre_offset_m[1]
     a, b, c, d = matrix
     origin = (centre_x - (a * width + b * height) / 2, centre_y - (c * width + d * height) / 2)
     u, v = numpy.meshgrid(numpy.arange(width) + 0.5, numpy.arange(height) + 0.5)
     gx, gy = world.grid.to_pixel(origin[0] + a * u + b * v, origin[1] + c * u + d * v)
     pixels = cv2.remap(world.pixels, (gx - 0.5).astype(numpy.float32), (gy - 0.5).astype(numpy.float32), cv2.INTER_LINEAR)
-    return AffineScan(numpy.asarray(pixels, numpy.uint8), origin, matrix)
+    return AffineScan(numpy.asarray(numpy.clip(pixels * gain, 0, 255), numpy.uint8), origin, matrix)
 
 
 def write_truth(scene: Scene) -> Path:
@@ -328,12 +346,22 @@ def write_truth(scene: Scene) -> Path:
     return path
 
 
+def join_specs(seed: int) -> tuple[SceneSpec, SceneSpec]:
+    """Two frames of one date over one world, side by side with a third of a frame in common: what `--join` writes."""
+    width, height = JOIN_FRAME_PX
+    west = SceneSpec(seed, width, height, entity_id=JOIN_ENTITIES[0], centre_offset_m=(-JOIN_OFFSET_M, 0.0))
+    return west, SceneSpec(seed, width, height, entity_id=JOIN_ENTITIES[1], centre_offset_m=(JOIN_OFFSET_M, 0.0))
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Write a synthetic USGS scene and its references.")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=SceneSpec.seed)
+    parser.add_argument("--join", action="store_true", help="two overlapping frames of one date, each in its entity's folder")
     args = parser.parse_args(argv)
-    write_truth(build_scene(args.out, SceneSpec(seed=args.seed)))
+    specs = join_specs(args.seed) if args.join else (SceneSpec(seed=args.seed),)
+    for spec in specs:
+        write_truth(build_scene(args.out / spec.entity_id if args.join else args.out, spec))
     return 0
 
 

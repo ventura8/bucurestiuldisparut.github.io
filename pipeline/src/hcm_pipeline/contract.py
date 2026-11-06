@@ -36,9 +36,23 @@ JOB_WAIT_REASONS: Final = (
     "mapbox",
     "worker",
     "free-tier",
+    "parts",
 )
 JOB_STEP_STATES: Final = ("pending", "running", "done", "failed", "skipped")
-PIPELINE_STEPS: Final = ("fetch", "extract", "stitch", "inspect", "locate", "reference", "georef", "warp", "export", "register")
+PIPELINE_STEPS: Final = (
+    "fetch",
+    "extract",
+    "stitch",
+    "inspect",
+    "locate",
+    "reference",
+    "georef",
+    "align",
+    "merge",
+    "warp",
+    "export",
+    "register",
+)
 # An import's download phase, which the small `fetch` job runs before the job is queued again for its processing on
 # `std` or `xl` (finding 56 of 2026-11-01); the Cloud Run job sizes, smallest first.
 DOWNLOAD_STEPS: Final = ("fetch", "extract")
@@ -50,6 +64,8 @@ JOB_STEPS: Final[Mapping[str, tuple[str, ...]]] = {
     "regeoref": ("georef", "warp", "export", "register", *PUBLISH_STEPS),
     "republish": PUBLISH_STEPS,
     "layer-delete": ("delete",),
+    # `merge` writes the same `warped.tif` a `warp` does, so `export` and `register` run unchanged (M8).
+    "layer-join": ("align", "merge", "export", "register", *PUBLISH_STEPS),
 }
 LAYER_VERSION_STATES: Final = (
     "processing",
@@ -62,6 +78,7 @@ LAYER_VERSION_STATES: Final = (
     "superseded",
     "failed",
     "cancelled",
+    "joined",
 )
 USGS_DATASETS: Final = ("corona2", "declassii", "declassiii")
 GEOREF_TRANSFORMS: Final = ("affine", "poly2", "tps")
@@ -77,6 +94,8 @@ STUDIO_MAX_BYTES: Final = 300_000_000
 MAX_GCPS: Final = 300
 MAX_SCAN_PIXELS: Final = 200_000
 MAX_JOB_LOGS: Final = 500
+# At most this many frames of one date join into one layer (`JOIN_MAX_PARTS`, docs/research/M8-join-interfaces.md §2).
+JOIN_MAX_PARTS: Final = 8
 # How a job waits for the USGS download to be prepared, and how long a SIGTERM'd job waits before it runs again.
 USGS_PREPARING_MINUTES: Final = 10
 REQUEUE_SECONDS: Final = 60
@@ -134,6 +153,8 @@ STEP_WEIGHTS: Final[Mapping[str, float]] = {
     "locate": 0.05,
     "reference": 0.05,
     "georef": 0.20,
+    "align": 0.15,
+    "merge": 0.25,
     "warp": 0.15,
     "export": 0.10,
     "register": 0.05,
@@ -165,6 +186,10 @@ class Errors:
     DEGENERATE_GCPS: Final = "apiError.imagery.degenerateGcps"
     GCP_OUTSIDE: Final = "apiError.imagery.gcpOutside"
     NO_SCAN: Final = "apiError.imagery.noScan"
+    JOIN_PART_MISSING: Final = "apiError.imagery.joinPartMissing"
+    JOIN_SEAM_TOO_FAR: Final = "apiError.imagery.joinSeamTooFar"
+    JOIN_NO_FRAMES: Final = "apiError.imagery.joinNoFrames"
+    JOIN_NO_ROOM: Final = "apiError.imagery.joinNoRoom"
 
 
 def pipeline_steps_of(job_type: str) -> tuple[str, ...]:

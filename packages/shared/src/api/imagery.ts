@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { JOB_STATUSES, type JobDoc } from '../schemas/firestore-ops.js';
 import { USGS_DATASETS } from '../schemas/firestore.js';
 import { cropRingSchema, enabledGcps, GEOREF_TRANSFORMS, gcpSchema, MAX_GCPS, MIN_GCPS } from '../schemas/georef.js';
+import { JOIN_MAX_PARTS } from '../schemas/imagery-settings.js';
 import { LAYER_VERSION_STATES, PUBLISH_CHOICES } from '../schemas/imagery.js';
 import { cityIdSchema } from '../schemas/paths.js';
 import { coded, idSchema, isoDateSchema, plainText } from '../schemas/primitives.js';
@@ -133,15 +134,30 @@ export const imageryCropRequestSchema = z.strictObject({ cityId: cityIdSchema, l
 export const imageryCropResponseSchema = z.strictObject({ jobId: idSchema, versionId: idSchema });
 
 /**
+ * `imagery.join` (M8, `docs/research/M8-join-interfaces.md` §2, §5): join frames of one date and one camera into one layer.
+ * It imports the frames not imported yet and queues a `layer-join` job that waits for them; only this callable queues one.
+ */
+export const imageryJoinRequestSchema = z.strictObject({
+    cityId: cityIdSchema,
+    entityIds: z.array(idSchema).min(2).max(JOIN_MAX_PARTS),
+});
+export const imageryJoinResponseSchema = z.strictObject({ jobId: idSchema, versionId: idSchema, layerId: idSchema });
+
+/**
  * Failures no retry cures (CR-M3-47): the admin fixes the cause first (a Mapbox token or its scopes: Setup's Mapbox step),
  * or the job used up its attempts. `imagery.retry` refuses them and the admin's pages offer no Retry for them. Out of
- * memory on the large machine is retried (finding 58 of 2026-11-01: a later pipeline may fit it, finding 57).
+ * memory on the large machine is retried (finding 58 of 2026-11-01: a later pipeline may fit it, finding 57). M8: a join's
+ * frames too far apart or adding nothing are measured the same way again; only **Join frames** with the fixed frames cures them.
+ * `joinPartGone` stays: the frame's own retry can bring it back, and the join with it.
  */
 export const NOT_RETRYABLE_CODES = [
     'apiError.mapbox.tokenInvalid',
     'apiError.mapbox.missingScopes',
     'apiError.mapbox.notConfigured',
     'apiError.imagery.attemptsExhausted',
+    'apiError.imagery.joinSeamTooFar',
+    'apiError.imagery.joinNoFrames',
+    'apiError.imagery.joinPartMissing',
 ] as const;
 
 const NOT_RETRYABLE: ReadonlySet<string> = new Set(NOT_RETRYABLE_CODES);
@@ -227,5 +243,7 @@ export type ImageryChooseRequest = z.infer<typeof imageryChooseRequestSchema>;
 export type ImagerySaveGcpsRequest = z.infer<typeof imagerySaveGcpsRequestSchema>;
 export type ImageryCropRequest = z.infer<typeof imageryCropRequestSchema>;
 export type ImageryProbeRequest = z.infer<typeof imageryProbeRequestSchema>;
+export type ImageryJoinRequest = z.infer<typeof imageryJoinRequestSchema>;
+export type ImageryJoinResponse = z.infer<typeof imageryJoinResponseSchema>;
 export type PublishTask = z.infer<typeof publishTaskSchema>;
 export type RasterUploadMetadata = z.infer<typeof rasterUploadMetadataSchema>;

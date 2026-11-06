@@ -3,7 +3,18 @@
  * write, which fields and states its writes may set, and which objects `worker.urls` may sign. Everything is bound to the
  * one job the worker claimed: its city, its version, its layer and its parameters.
  */
-import { FIRESTORE_PATHS, RASTER_PATHS, VERSION_FILES, isId, type JobDoc, type JobStatus, type LayerVersionState } from '@hcm/shared';
+import {
+    FIRESTORE_PATHS,
+    RASTER_PATHS,
+    VERSION_FILES,
+    isId,
+    layerJoinParamsSchema,
+    validate,
+    type JobDoc,
+    type JobStatus,
+    type LayerJoinParams,
+    type LayerVersionState,
+} from '@hcm/shared';
 
 /**
  * The job fields a run writes (`pipeline/src/hcm_pipeline/{runner,lease,jobs}.py`: the lease and its heartbeat, the step
@@ -26,8 +37,8 @@ export const WORKER_JOB_FIELDS: ReadonlySet<string> = new Set([
 
 /**
  * The layer version fields a run writes (`pipeline/src/hcm_pipeline/{documents,runner}.py` and `steps/*.py`: the scan,
- * the reference, the georeference, the suggestions, the output, the machines and the state with its error;
- * `pipeline/tests/contracts/version.*.json`).
+ * the reference, the georeference, the suggestions, the output, the machines and the state with its error, M8: the join's
+ * report; `pipeline/tests/contracts/version.*.json`).
  */
 export const WORKER_VERSION_FIELDS: ReadonlySet<string> = new Set([
     'state',
@@ -35,6 +46,7 @@ export const WORKER_VERSION_FIELDS: ReadonlySet<string> = new Set([
     'scan',
     'reference',
     'georef',
+    'join',
     'suggestions',
     'output',
     'machines',
@@ -91,6 +103,18 @@ function baseVersionOf(job: JobDoc): string | undefined {
     return job.type === 'regeoref' ? idParam(job, 'basedOn') : undefined;
 }
 
+/** M8: the frames a join reads, only from well-formed parameters of its own type. */
+function joinPartsOf(job: JobDoc): LayerJoinParams['parts'] {
+    const params = job.type === 'layer-join' ? validate(layerJoinParamsSchema, job.params) : undefined;
+    return params?.ok === true ? params.value.parts : [];
+}
+
+/** The versions the job reads and never writes: a re-georeference's base, a join's frames. */
+export function inputVersionsOf(job: JobDoc): string[] {
+    const base = baseVersionOf(job);
+    return [...(base === undefined ? [] : [base]), ...joinPartsOf(job).map((part) => part.versionId)];
+}
+
 /** The scene a USGS import fetches. */
 export function sceneOf(job: JobDoc): string | undefined {
     return job.type === 'usgs-import' ? idParam(job, 'entityId') : undefined;
@@ -101,16 +125,15 @@ function uploadOf(job: JobDoc): string | undefined {
     return job.type === 'geotiff-import' ? textParam(job, 'uploadPath') : undefined;
 }
 
-/** The documents of §2.5 by path (the base version, the layer and the scene only when the job names them). */
+/** The documents of §2.5 by path (the input versions, the layer and the scene only when the job names them). */
 function documentTargets({ cityId, jobId, job, versionId }: JobScope): Map<string, DocumentTarget> {
-    const base = baseVersionOf(job);
     const scene = sceneOf(job);
     const layerId = job.layerId;
     const entries: [string | undefined, DocumentTarget][] = [
         [FIRESTORE_PATHS.city(cityId), 'city'],
         [FIRESTORE_PATHS.job(cityId, jobId), 'job'],
         [FIRESTORE_PATHS.layerVersion(cityId, versionId), 'version'],
-        [base === undefined ? undefined : FIRESTORE_PATHS.layerVersion(cityId, base), 'base'],
+        ...inputVersionsOf(job).map((id): [string, DocumentTarget] => [FIRESTORE_PATHS.layerVersion(cityId, id), 'base']),
         [layerId === undefined ? undefined : FIRESTORE_PATHS.layer(cityId, layerId), 'layer'],
         [scene === undefined ? undefined : FIRESTORE_PATHS.usgsScene(cityId, scene), 'scene'],
     ];
@@ -143,6 +166,11 @@ export interface ObjectScope {
     readonly layerId: string;
     readonly versionId: string;
     readonly job: JobDoc;
+    /**
+     * M8: the scans its input versions name. A version with new points keeps the scan of the one it was based on, in that one's
+     * folder (`imagery/regeoref.ts`, which never copies it), so a version's id does not say where its scan lies.
+     */
+    readonly inputScans: readonly string[];
 }
 
 function versionFolder({ cityId, layerId, versionId }: Pick<ObjectScope, 'cityId' | 'layerId' | 'versionId'>): string {
@@ -156,19 +184,25 @@ function inVersionFolder(scope: ObjectScope, path: string): boolean {
     return name !== '' && !name.includes('/');
 }
 
-/** The inputs a run reads beyond its own folder: the base version's scan (`regeoref`), the upload (`geotiff-import`). */
+/** The inputs a run reads beyond its own folder: the base version's scan (`regeoref`), each frame's (`layer-join`), the upload. */
 function inputsOf(scope: ObjectScope): string[] {
     const base = baseVersionOf(scope.job);
     const upload = uploadOf(scope.job);
     return [
         ...(base === undefined ? [] : [RASTER_PATHS.version(scope.cityId, scope.layerId, base, 'scan.tif')]),
+        ...joinPartsOf(scope.job).map((part) => RASTER_PATHS.version(scope.cityId, part.layerId, part.versionId, 'scan.tif')),
         ...(upload === undefined ? [] : [upload]),
     ];
 }
 
+/** A scan an input version names, of this city: a path a document holds grants no more than the city's rasters. */
+function isInputScan(scope: ObjectScope, path: string): boolean {
+    return scope.inputScans.includes(path) && path.startsWith(`rasters/${scope.cityId}/`) && !path.includes('..');
+}
+
 /** True when the run may read `path`: a file of its version, or one of its inputs. */
 export function mayRead(scope: ObjectScope, path: string): boolean {
-    return inVersionFolder(scope, path) || inputsOf(scope).includes(path);
+    return inVersionFolder(scope, path) || inputsOf(scope).includes(path) || isInputScan(scope, path);
 }
 
 /** True when the run may write `path`: one of its version's files (`VERSION_FILES`), nothing else. */

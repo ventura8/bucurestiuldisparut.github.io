@@ -26,10 +26,13 @@ import { isValidationCode } from './validation.js';
 
 export { USGS_SCENE_STATUSES, usgsSceneDocSchema, type UsgsSceneDoc } from './usgs-scene.js';
 
-/** The jobs an admin may queue with the Firestore SDK (`firebase/firestore.rules` lists the same four). */
+/** The jobs the admin's own screens start; the rules do not list job types, a client never creates a job (imagery callables do). */
 export const CLIENT_JOB_TYPES = ['usgs-import', 'geotiff-import', 'regeoref', 'republish'] as const;
-/** Every job type: the client's, and `layer-delete`, which only `layers.delete` queues (CR-M2c-3). */
-export const JOB_TYPES = [...CLIENT_JOB_TYPES, 'layer-delete'] as const;
+/**
+ * Every job type: the client's, `layer-delete`, which only `layers.delete` queues (CR-M2c-3), and `layer-join`, which only
+ * `imagery.join` queues (M8, `docs/research/M8-join-interfaces.md` §2).
+ */
+export const JOB_TYPES = [...CLIENT_JOB_TYPES, 'layer-delete', 'layer-join'] as const;
 /** The job state machine of security review §4.1. */
 export const JOB_STATUSES = [
     'queued',
@@ -51,7 +54,8 @@ export const FINISHED_JOB_STATUSES = ['succeeded', 'failed', 'cancelled'] as con
  * maintenance, rate limited, the two-running-jobs cap, the budget guard, the admin's points or approval, the compute-unit
  * guard's choice, a publish deferred to next month, Mapbox processing. M7 (`docs/research/M7-local-worker.md` §3, §4): a job
  * chosen for the owner's computer waiting for a worker to claim it, a cloud run waiting for the admin's OK past Cloud
- * Run's free tier.
+ * Run's free tier. M8 (`docs/research/M8-join-interfaces.md` §2, §5): a join waiting for its frames; it is born with this
+ * reason, so no worker claims it before they are ready.
  */
 export const JOB_WAIT_REASONS = [
     'usgs-preparing',
@@ -66,6 +70,7 @@ export const JOB_WAIT_REASONS = [
     'mapbox',
     'worker',
     'free-tier',
+    'parts',
 ] as const;
 /** M7 (`docs/research/M7-local-worker.md` §3): where a raster job runs, the owner's computer or Cloud Run. */
 export const RUN_PLACES = ['local', 'cloud'] as const;

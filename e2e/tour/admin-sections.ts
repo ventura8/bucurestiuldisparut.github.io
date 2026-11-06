@@ -1,5 +1,6 @@
 import { CITIES_STATES } from '../admin/specs/cities/states.js';
 import { EXPORT_STATES } from '../admin/specs/export/states.js';
+import { JOIN_STATES } from '../admin/specs/imagery/join-states.js';
 import { ORDERS_STATES } from '../admin/specs/imagery/orders-states.js';
 import { SUGGESTIONS_STATES } from '../admin/specs/imagery/suggestions-states.js';
 import { INSTALL_STATES } from '../admin/specs/install/states.js';
@@ -49,4 +50,8 @@ export const ADMIN_SECTION_STATES = {
     // [section worker] owner: admin (M7)
     ...WORKER_STATES,
     // [end worker]
+    // M8 (docs/research/M8-join-interfaces.md §8): the join's date rows, offer and page, ids 'imagery.date-rows', 'imagery.join-<state>'.
+    // [section join] owner: e2e (M8)
+    ...JOIN_STATES,
+    // [end join]
 } as const;

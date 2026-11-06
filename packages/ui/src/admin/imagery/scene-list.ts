@@ -13,6 +13,7 @@ import { contentText, noticeOf } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
 import type { SceneItemPort } from './imagery-port.js';
 import { datasetText, dayText, reasonText } from './imagery-text.js';
+import { lazyJoin } from './join/lazy-card.js';
 import { orderTag } from './orders/order-list.js';
 import { importable, importButton, importRefusal } from './scene-detail.js';
 import { USGS_SETUP_HREF } from './scene-refusal.js';
@@ -339,5 +340,5 @@ export function findView(context: ImageryContext): TemplateResult {
     return html`<div class="pane" data-view="find">
             ${searchButton(context)} ${searchStatus(context)} ${downloadsPending(context)} ${filters(context)}
         </div>
-        ${sceneRows(context)}`;
+        ${lazyJoin(context, null, (chunk) => chunk.dateRows(context))} ${sceneRows(context)}`;
 }

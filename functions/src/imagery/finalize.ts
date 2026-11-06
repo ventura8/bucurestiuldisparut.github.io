@@ -4,7 +4,8 @@
  * kept), the previous version is superseded, this one is published, the job succeeds, and the month's counters move:
  * the compute units counted and the reservation released for MTS, one more Studio upload for the free path, the
  * megabytes and one more publish of Mapbox's Uploads API for its free path (M7, `docs/research/M7-local-worker.md` §6: no
- * compute units). The version records the path (`mapbox.via`). The manifest is rebuilt by `publish.onLayerWrite`.
+ * compute units). The version records the path (`mapbox.via`). The manifest is rebuilt by `publish.onLayerWrite`. M8: a
+ * join also ends the frames it is made of (`finalize-join.ts`).
  */
 import {
     FIRESTORE_PATHS,
@@ -20,6 +21,7 @@ import {
     usageMonth,
     type Georef,
     type JobDoc,
+    type JoinPart,
     type LayerDoc,
     type LayerVersionDoc,
     type MtsPrecision,
@@ -30,6 +32,7 @@ import {
 import { compact, omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
+import { joinFrameWrites, readJoinFrames } from './finalize-join.js';
 import { IMAGERY_WRITER, stampOf, withStep, type Stamp } from './records.js';
 
 export type FinalizeDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
@@ -82,8 +85,22 @@ function georefProvenance(georef: Georef): NonNullable<Provenance['georef']> {
     });
 }
 
-function usgsProvenance(version: LayerVersionDoc): Pick<Provenance, 'usgsEntityId' | 'usgsDataset'> {
-    return version.source?.kind === 'usgs' ? { usgsEntityId: version.source.entityId, usgsDataset: version.source.dataset } : {};
+type UsgsProvenance = Pick<Provenance, 'usgsEntityId' | 'usgsDataset' | 'usgsParts'>;
+
+/** M8: a join's first frame stands for it (`rasterExportable` reads `usgsEntityId`), with every frame in `usgsParts`. */
+function joinProvenance([first, ...rest]: readonly JoinPart[]): UsgsProvenance {
+    if (first === undefined) {
+        return {};
+    }
+    return { usgsEntityId: first.entityId, usgsDataset: first.dataset, usgsParts: [first, ...rest].map((part) => part.entityId) };
+}
+
+function usgsProvenance(version: LayerVersionDoc): UsgsProvenance {
+    const source = version.source;
+    if (source?.kind === 'join') {
+        return joinProvenance(source.parts);
+    }
+    return source?.kind === 'usgs' ? { usgsEntityId: source.entityId, usgsDataset: source.dataset } : {};
 }
 
 /** Where the tiles came from, kept on the layer: the USGS frame (the layer's own when the version has no source). */
@@ -279,7 +296,9 @@ export async function finalizeVersion(deps: FinalizeDeps, finish: Finish): Promi
         if (held === undefined) {
             return false;
         }
+        const frames = await readJoinFrames(transaction, finish.cityId, held.version);
         const writes = [
+            ...joinFrameWrites(frames, held.version.layerId, stamp),
             setting(FIRESTORE_PATHS.layer(finish.cityId, held.version.layerId), layerDocSchema, layerAfter(held, finish, order, stamp)),
             supersede(held, finish, stamp),
             setting(

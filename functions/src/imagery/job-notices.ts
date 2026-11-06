@@ -3,7 +3,8 @@
  * a job that becomes `failed` (`job.failed`, one event per attempt), a version waiting for Approve after the approval
  * policy left it there (`layer.readyToApprove`), and one waiting for points in the georeferencer (`layer.needsPoints`).
  * Read after the dispatcher's own action, so an automatic approval is seen and not announced. Emitting never fails the
- * dispatcher (`emitNotification`); a redelivered write finds its event and writes nothing.
+ * dispatcher (`emitNotification`); a redelivered write finds its event and writes nothing. M8: a frame a live join holds
+ * is not announced as ready: its Approve is refused, and the join is what the admin approves.
  */
 import {
     FIRESTORE_PATHS,
@@ -15,6 +16,7 @@ import {
 } from '@hcm/shared';
 
 import { emitNotification, type EmitDeps } from '../api/notification-event.js';
+import { liveJoinOf } from './join-parts.js';
 import { versionIdOf } from './records.js';
 
 type JobNotice = Extract<NotificationKind, 'job.failed' | 'layer.readyToApprove' | 'layer.needsPoints'>;
@@ -57,6 +59,11 @@ function partsOf(notice: JobNotice, write: JobWrite, versionId: string): readonl
     return notice === 'job.failed' ? [write.cityId, write.jobId, String(write.job.attempt ?? 0)] : [write.cityId, versionId];
 }
 
+/** A version that still waits after the policy, and that no live join holds. */
+async function readyForAnAdmin(deps: EmitDeps, cityId: string, version: LayerVersionDoc | undefined): Promise<boolean> {
+    return version?.state === 'awaiting_approval' && (await liveJoinOf(deps.documents, cityId, version)) === undefined;
+}
+
 /** Emits the notice of this write of job `jobId` (`before` → `after`), if it calls for one. */
 export async function noticeJobChange(deps: EmitDeps, write: JobWrite, before: JobDoc | undefined): Promise<void> {
     const notice = noticeOf(before, write.job);
@@ -67,7 +74,7 @@ export async function noticeJobChange(deps: EmitDeps, write: JobWrite, before: J
     const versionId = versionIdOf(write.jobId, job);
     const path = FIRESTORE_PATHS.layerVersion(cityId, versionId);
     const version = await deps.documents.get(path, layerVersionDocSchema).catch(() => undefined);
-    if (notice === 'layer.readyToApprove' && version?.state !== 'awaiting_approval') {
+    if (notice === 'layer.readyToApprove' && !(await readyForAnAdmin(deps, cityId, version))) {
         return;
     }
     await emitNotification(deps, 'imagery', {

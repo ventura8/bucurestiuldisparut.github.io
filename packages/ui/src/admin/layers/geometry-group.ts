@@ -2,7 +2,8 @@
  * The layer editor's Image and geometry group (`docs/research/M3-interfaces.md` §10.5; CR-M3-7): the chip of a newer
  * version under way (its page), **Replace the image** (the Imagery area's upload for this layer), **Georeference again**
  * (the georeferencer on the current version; a linked layer has no scan, and says so), and **Crop**, whose tool comes in
- * the lazy `layer-geometry` chunk (`<hcm-layer-crop>`) on the first click.
+ * the lazy `layer-geometry` chunk (`<hcm-layer-crop>`) on the first click. M8 (`docs/research/M8-join-interfaces.md` §9): a joined
+ * layer has neither: it has no scan of its own, so it says to delete it and join again.
  */
 import type { LayerDoc, Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
@@ -32,7 +33,15 @@ function pendingChip(locale: Locale, layer: LayerDoc): TemplateResult {
     );
 }
 
+/** A layer several frames were joined into. */
+function isJoined(layer: LayerDoc): boolean {
+    return layer.provenance?.usgsParts !== undefined;
+}
+
 function georefItem(locale: Locale, layer: LayerDoc): TemplateResult {
+    if (isJoined(layer)) {
+        return html`<li class="note" data-state="joined-layer">${contentText(locale, 'adminContent.imagery.layer.joined')}</li>`;
+    }
     const version = layer.currentVersion;
     return version === undefined
         ? html`<li class="note" data-state="no-scan">${noticeText(locale, 'apiError.imagery.noScan')}</li>`
@@ -68,7 +77,9 @@ function cropButton(context: GeometryContext): TemplateResult {
 /** Crop for a layer with a scan: the tool while it is open, else its button. */
 function cropControls(context: GeometryContext, layer: LayerDoc): TemplateResult {
     const crop = context.crop;
-    return when(layer.currentVersion !== undefined, () => (crop === null ? cropButton(context) : cropTool(context, crop)));
+    return when(layer.currentVersion !== undefined && !isJoined(layer), () =>
+        crop === null ? cropButton(context) : cropTool(context, crop),
+    );
 }
 
 export function geometryGroup(context: GeometryContext, id: string, layer: LayerDoc): TemplateResult {

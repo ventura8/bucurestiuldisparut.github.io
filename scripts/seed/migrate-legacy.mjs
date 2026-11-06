@@ -134,7 +134,8 @@ async function main(options) {
     const { images, bytes } = await deriveAll(migration.photos, options.cityDir);
     const city = readJson(options.cityFile);
     const seedColor = String(city.theme?.seedColor);
-    const rest = Object.fromEntries(Object.entries(city).filter(([key]) => key !== 'theme'));
+    // `imagery` is the admin's (M8: the city's target years): the Setup bundle takes it from this file, the viewer's manifest never holds it.
+    const rest = Object.fromEntries(Object.entries(city).filter(([key]) => !['theme', 'imagery'].includes(key)));
     const result = shared.buildStaticManifest({ city: rest, theme: { seedColor, tokens: themeFromSeed(seedColor) }, photos: migration.photos, images });
     if (!result.ok) {
         reportIssues(result.issues);

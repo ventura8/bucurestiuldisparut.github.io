@@ -15,6 +15,11 @@ export interface RankContext {
     readonly targetYears: readonly number[];
     /** The years of the city's layers and unfinished layer versions (the scene's own import left out by the caller). */
     readonly layerYears: readonly number[];
+    /**
+     * M8: the acquisition dates of the city's unfinished layer versions. A frame of such a date is that version's neighbour
+     * in a join, so it is not demoted for sharing its year. Absent: none.
+     */
+    readonly pendingDates?: readonly string[];
 }
 
 type Part = keyof typeof RANKING_WEIGHTS;
@@ -24,7 +29,7 @@ interface Scored {
     readonly part: Part;
     readonly value: number;
     readonly reason?: RankReasonEntry;
-    /** Listed whatever its contribution (`needsOrder`, `sameYear`, a coverage under half): it explains a low rank. */
+    /** Listed first whatever its contribution (`needsOrder`, `sameYear`, `sameDate`, a coverage under half): a card shows three. */
     readonly always?: boolean;
 }
 
@@ -76,6 +81,9 @@ function targetYear(scene: RankedScene, context: RankContext): Scored {
 }
 
 function newYear(scene: RankedScene, context: RankContext): Scored {
+    if (context.pendingDates?.includes(scene.acquisitionDate) === true) {
+        return { part: 'newYear', value: 1, reason: reason('sameDate'), always: true };
+    }
     const found = nearest(yearOf(scene), context.layerYears);
     if (found === undefined) {
         return { part: 'newYear', value: 1, reason: reason('noLayers') };

@@ -10,6 +10,7 @@ import { approveFunction, rejectFunction } from './approve.js';
 import { browseFunction } from './browse.js';
 import { cropFunction } from './crop.js';
 import { importFunction } from './import.js';
+import { joinFunction } from './join.js';
 import { onJobWriteFunction } from './on-job-write.js';
 import { onRasterUploadFunction } from './on-raster-upload.js';
 import { probeTilesFunction } from './probe.js';
@@ -36,6 +37,7 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         studioDone: studioDoneFunction(getDeps),
         saveGcps: saveGcpsFunction(getDeps),
         crop: cropFunction(getDeps),
+        join: joinFunction(getDeps),
         retry: retryFunction(getDeps),
         runOn: runOnFunction(getDeps),
         probeTiles: probeTilesFunction(getDeps),

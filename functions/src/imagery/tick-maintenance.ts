@@ -34,7 +34,10 @@ export type TickMaintenanceDeps = Pick<Ports, 'tasks'> & LayerDeleteDeps & Harve
 const DAY_MS = 86_400_000;
 /** An ended version's files are kept this long (a revert of a rejection, a look at what failed). */
 const SWEEP_AFTER_DAYS = 30;
-const ENDED_FOR_SWEEP: readonly LayerVersionState[] = ENDED_VERSION_STATES.filter((state) => state !== 'published');
+/** M8: a `joined` frame keeps its files: its layer's delete removes them (`layer-delete.ts`). */
+const KEPT_FROM_SWEEP: ReadonlySet<LayerVersionState> = new Set<LayerVersionState>(['published', 'joined']);
+const ENDED_FOR_SWEEP: readonly LayerVersionState[] = ENDED_VERSION_STATES.filter((state) => !KEPT_FROM_SWEEP.has(state));
+const SWEPT: ReadonlySet<LayerVersionState> = new Set(ENDED_FOR_SWEEP);
 
 /** A version the admin deferred, whose month has come. */
 function deferralDue(version: LayerVersionDoc, now: Date): boolean {
@@ -78,14 +81,35 @@ async function sweep(deps: TickMaintenanceDeps, cityId: string, version: StoredD
     await deps.documents.set(FIRESTORE_PATHS.layerVersion(cityId, version.id), layerVersionDocSchema, touched);
 }
 
-/** Step 6: the files of versions rejected, cancelled, failed or superseded more than 30 days ago. */
+function sweepable(version: LayerVersionDoc, limit: number): boolean {
+    return SWEPT.has(version.state) && timestampToDate(version.updatedAt).getTime() < limit;
+}
+
+/**
+ * True while another version still reads the scan in this version's folder: a re-georeference or a crop keeps its base's scan
+ * (`regeoref.ts`) while the base ends `cancelled` or `superseded`, so the frame the admin sees, and any join of it, would lose it.
+ */
+async function scanStillRead(deps: TickMaintenanceDeps, cityId: string, version: StoredDocument<LayerVersionDoc>, limit: number) {
+    const path = version.data.scan?.path;
+    if (path?.startsWith(`rasters/${cityId}/${version.data.layerId}/${version.id}/`) !== true) {
+        return false;
+    }
+    const readers = await deps.documents.query(FIRESTORE_PATHS.layerVersions(cityId), layerVersionDocSchema, {
+        where: [['scan.path', '==', path]],
+    });
+    return readers.documents.some((reader) => reader.id !== version.id && !sweepable(reader.data, limit));
+}
+
+/** Step 6: the files of versions rejected, cancelled, failed or superseded more than 30 days ago, unless a later version reads their scan. */
 export async function sweepEnded(deps: TickMaintenanceDeps, cityId: string, now: Date): Promise<void> {
     const limit = now.getTime() - SWEEP_AFTER_DAYS * DAY_MS;
     const ended = await deps.documents.query(FIRESTORE_PATHS.layerVersions(cityId), layerVersionDocSchema, {
         where: [['state', 'in', [...ENDED_FOR_SWEEP]]],
     });
-    for (const version of ended.documents.filter((candidate) => timestampToDate(candidate.data.updatedAt).getTime() < limit)) {
-        await sweep(deps, cityId, version);
+    for (const version of ended.documents.filter((candidate) => sweepable(candidate.data, limit))) {
+        if (!(await scanStillRead(deps, cityId, version, limit))) {
+            await sweep(deps, cityId, version);
+        }
     }
 }
 

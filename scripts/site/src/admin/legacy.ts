@@ -1,4 +1,12 @@
-import { migrateLegacyPhotos, validateManifest, type City, type MigratedPhoto } from '@hcm/shared';
+import {
+    cityImagerySchema,
+    migrateLegacyPhotos,
+    validate,
+    validateManifest,
+    type City,
+    type CityImagery,
+    type MigratedPhoto,
+} from '@hcm/shared';
 
 import { SiteBuildError, issuesText } from '../errors.js';
 import type { SiteFileSystem } from '../files.js';
@@ -9,7 +17,8 @@ import type { SiteFileSystem } from '../files.js';
  *
  * ```text
  * legacy/bucharest/city.json              the seed manifest's city, without its Mapbox token and analytics ids
- *                                         (the fields `setup.createCity` takes, CR-M2b-1)
+ *                                         (the fields `setup.createCity` takes, CR-M2b-1), plus the imagery settings of
+ *                                         scripts/seed/bucharest.city.json: the manifest is the viewer's, it holds none (M8)
  * legacy/bucharest/photos.json            migrateLegacyPhotos(photos.legacy.geojson): [{sourceFile, legacyId?, photo}]
  * legacy/bucharest/originals/<sourceFile> each original a record names, once (the import uploads them; photos.onUpload
  *                                         makes the public derivatives, so nothing is upscaled)
@@ -23,6 +32,9 @@ export const LEGACY_FOLDER = 'legacy/bucharest';
 
 /** The seed it is made from. */
 export const DEFAULT_SEED_DIR = 'seed/bucharest';
+
+/** The city file the seed manifest was made from: the only place that holds the city's target years. */
+export const CITY_SEED_FILE = 'scripts/seed/bucharest.city.json';
 
 /** One output file, relative to the admin's output folder: generated text, or a copy of a repository file. */
 export type AdminFile = { readonly to: string; readonly content: string } | { readonly to: string; readonly from: string };
@@ -44,6 +56,8 @@ type LegacyCity = Pick<
     'id' | 'name' | 'center' | 'zoom' | 'minZoom' | 'maxZoom' | 'bounds' | 'about' | 'credits' | 'privacy' | 'theme' | 'basemap'
 >;
 
+type BundledCity = LegacyCity & { readonly imagery?: CityImagery };
+
 function cityFields(city: City): LegacyCity {
     const { id, name, center, zoom, minZoom, maxZoom, bounds, about, credits, privacy, theme, basemap } = city;
     return { id, name, center, zoom, minZoom, maxZoom, bounds, about, credits, privacy, theme, basemap };
@@ -60,13 +74,26 @@ function readJson(files: SiteFileSystem, path: string): unknown {
     }
 }
 
-function legacyCity(files: SiteFileSystem, seedDir: string): LegacyCity {
+/** The city file's imagery settings; none without the file (a seed outside this repository). */
+function seedImagery(files: SiteFileSystem): { readonly imagery?: CityImagery } {
+    const { imagery } = (files.isFile(CITY_SEED_FILE) ? readJson(files, CITY_SEED_FILE) : {}) as { readonly imagery?: unknown };
+    if (imagery === undefined) {
+        return {};
+    }
+    const result = validate(cityImagerySchema, imagery);
+    if (!result.ok) {
+        throw new SiteBuildError(`${CITY_SEED_FILE}: invalid imagery\n${issuesText(result.issues)}`);
+    }
+    return { imagery: result.value };
+}
+
+function legacyCity(files: SiteFileSystem, seedDir: string): BundledCity {
     const path = `${seedDir}/manifest.static.json`;
     const result = validateManifest(readJson(files, path));
     if (!result.ok) {
         throw new SiteBuildError(`${path}: invalid manifest\n${issuesText(result.issues)}`);
     }
-    return cityFields(result.value.city);
+    return { ...cityFields(result.value.city), ...seedImagery(files) };
 }
 
 function originals(files: SiteFileSystem, seedDir: string, photos: readonly MigratedPhoto[]): AdminFile[] {

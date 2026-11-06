@@ -1,16 +1,22 @@
 import ts from 'typescript';
 
 /**
- * Minifies the CSS of Lit's `css` tagged templates in a module's source before the bundler sees it (the admin's Vite
- * build, `packages/admin/vite.config.ts`; `DECISIONS-for-review.md` §36). The bundler's own minifier shortens the
- * JavaScript of the IIFE (Vite's library mode minifies that format), but leaves a template literal's text as written:
- * the stylesheets' indentation and comments were about 77 KB of the admin bundle (2026-10-18).
+ * Minifies the text of Lit's `css` and `html` tagged templates in a module's source before the bundler sees it (the admin's
+ * and the engine's Vite builds; `DECISIONS-for-review.md` §36). The bundler's own minifier shortens the JavaScript, but
+ * leaves a template literal's text as written: the stylesheets' indentation and comments were about 77 KB of the admin
+ * bundle (2026-10-18), and the line breaks and indentation left after that about 6 KB gzip (M8, 2026-11-06).
  *
- * Outside quoted strings, comments go, runs of spaces and tabs become one space, the indentation after a line break
- * goes, and the whitespace around `{`, `}`, `;` and `,` and after `:` goes; a quoted string and an escaped character are
- * kept as they are. Every line break is kept, so every line of the module stays where it was and the source map needs
- * no change (the transform returns no map: the mappings of the lines hold). A whitespace at a template's interpolation
- * (`${...}`) stays, as the value there is not known.
+ * `css`: outside quoted strings, comments go, runs of whitespace become one space, and the whitespace around `{`, `}`, `;`
+ * and `,` and after `:` goes; a quoted string and an escaped character are kept as they are. A whitespace at a
+ * template's interpolation (`${...}`) stays, as the value there is not known.
+ *
+ * `html`: a run of whitespace with a line break becomes one space, which reads the same in a text and between attributes,
+ * and goes before a `>` (the end of a tag Prettier broke over two lines). A template with a `<pre>` or a `<textarea>`, whose
+ * whitespace is its content, stays as written.
+ *
+ * Every line of the module stays where it was, so the source map needs no change (the transform returns no map: the
+ * mappings of the lines hold): the line breaks a part lost move out of the text, into the next `${` or after the closing
+ * backtick, where they are whitespace between tokens that had a valid program without them, so no semicolon is inserted.
  */
 
 /** Characters around which whitespace has no meaning in a stylesheet. */
@@ -79,12 +85,8 @@ function pieceAt(raw: string, at: number): Piece {
     return { blank: blank !== '', text: blank === '' ? char : blank, escape: false };
 }
 
-/** What a blank piece becomes: its line breaks, else one space where whitespace means something, else nothing. */
-function blankText(blank: string, before: string, after: string, edge: Edge): string {
-    const breaks = blank.split('\n').length - 1;
-    if (breaks > 0) {
-        return '\n'.repeat(breaks);
-    }
+/** What a blank piece becomes: one space where whitespace means something, else nothing. */
+function blankText(before: string, after: string, edge: Edge): string {
     return droppable(before, after, edge) ? '' : ' ';
 }
 
@@ -103,56 +105,100 @@ function minified(raw: string, edge: Edge): string {
     let last = '';
     for (let at = 0; at < raw.length;) {
         const piece = pieceAt(raw, at);
-        out += piece.blank ? blankText(piece.text, last, raw.charAt(at + piece.text.length), edge) : piece.text;
+        out += piece.blank ? blankText(last, raw.charAt(at + piece.text.length), edge) : piece.text;
         last = piece.escape ? '\\' : (out.at(-1) ?? '');
         at += piece.text.length;
     }
     return out;
 }
 
-/** A literal part of a template in the module: where its text is and whether its ends are the template's. */
+/** One literal part of an `html` template, as its source spells it, minified (see the module's comment). */
+export function minifyHtml(raw: string): string {
+    const [first = '', ...rest] = raw.split('\n');
+    return rest.reduce((out, line) => {
+        const text = line.trimStart();
+        return `${out.trimEnd()}${text.startsWith('>') ? '' : ' '}${text}`;
+    }, first);
+}
+
+/** What minifies a template's literal parts, by the tag's name. */
+const MINIFIERS: Readonly<Partial<Record<string, (raw: string, edge: Edge) => string>>> = { css: minifyCss, html: minifyHtml };
+
+/** An `html` template whose whitespace is content. */
+const VERBATIM = /<(?:pre|textarea)\b/;
+
+/** A literal part of a template in the module: where its text is, the delimiter after it, and whether its ends are the template's. */
 interface LiteralPart {
     readonly from: number;
     readonly to: number;
+    /** The length of the `${` or the backtick after the text: the line breaks the text lost go after it. */
+    readonly close: number;
     readonly edge: Edge;
+    readonly minify: (raw: string, edge: Edge) => string;
 }
 
-/** The literal parts of a `css` template (one without interpolations, or the head, middles and tail of one with). */
-function partsOf(template: ts.TemplateLiteral, source: ts.SourceFile): LiteralPart[] {
+type Minify = LiteralPart['minify'];
+
+/** The literal parts of a template (one without interpolations, or the head, middles and tail of one with). */
+function partsOf(template: ts.TemplateLiteral, source: ts.SourceFile, minify: Minify): LiteralPart[] {
     if (ts.isNoSubstitutionTemplateLiteral(template)) {
-        return [{ from: template.getStart(source) + 1, to: template.end - 1, edge: { start: true, end: true } }];
+        return [{ from: template.getStart(source) + 1, to: template.end - 1, close: 1, edge: { start: true, end: true }, minify }];
     }
-    const head = { from: template.head.getStart(source) + 1, to: template.head.end - 2, edge: { start: true, end: false } };
+    const head = {
+        from: template.head.getStart(source) + 1,
+        to: template.head.end - 2,
+        close: 2,
+        edge: { start: true, end: false },
+        minify,
+    };
     const spans = template.templateSpans.map((span) => {
         const tail = ts.isTemplateTail(span.literal);
-        return { from: span.literal.getStart(source) + 1, to: span.literal.end - (tail ? 1 : 2), edge: { start: false, end: tail } };
+        const close = tail ? 1 : 2;
+        return { from: span.literal.getStart(source) + 1, to: span.literal.end - close, close, edge: { start: false, end: tail }, minify };
     });
     return [head, ...spans];
 }
 
-/** Every literal part of every `css` tagged template in the module. */
-function cssParts(source: ts.SourceFile): LiteralPart[] {
+/** What minifies this tagged template, or undefined: another tag, or an `html` template whose whitespace is content. */
+function minifierOf(node: ts.TaggedTemplateExpression, source: ts.SourceFile): Minify | undefined {
+    const tag = ts.isIdentifier(node.tag) ? node.tag.text : '';
+    return tag === 'html' && VERBATIM.test(node.template.getText(source)) ? undefined : MINIFIERS[tag];
+}
+
+/** Every literal part of every `css` and `html` tagged template in the module, the last in the module first. */
+function literalParts(source: ts.SourceFile): LiteralPart[] {
     const parts: LiteralPart[] = [];
     const visit = (node: ts.Node): void => {
-        if (ts.isTaggedTemplateExpression(node) && ts.isIdentifier(node.tag) && node.tag.text === 'css') {
-            parts.push(...partsOf(node.template, source));
+        const minify = ts.isTaggedTemplateExpression(node) ? minifierOf(node, source) : undefined;
+        if (ts.isTaggedTemplateExpression(node) && minify !== undefined) {
+            parts.push(...partsOf(node.template, source, minify));
         }
         ts.forEachChild(node, visit);
     };
     visit(source);
-    return parts;
+    return parts.toSorted((a, b) => b.from - a.from);
 }
 
-/** The module with the CSS of its `css` templates minified, or null when it has none (or none changes). */
+function lineCount(text: string): number {
+    return text.split('\n').length;
+}
+
+/** `code` with one part's text minified and the line breaks it lost after its delimiter. */
+function withPart(code: string, part: LiteralPart): string {
+    const raw = code.slice(part.from, part.to);
+    const text = part.minify(raw, part.edge);
+    const after = part.to + part.close;
+    const breaks = '\n'.repeat(lineCount(raw) - lineCount(text));
+    return code.slice(0, part.from) + text + code.slice(part.to, after) + breaks + code.slice(after);
+}
+
+/** The module with the text of its `css` and `html` templates minified, or null when it has none (or none changes). */
 export function minifyCssLiterals(code: string, fileName: string): string | null {
-    if (!code.includes('css`')) {
+    if (!code.includes('css`') && !code.includes('html`')) {
         return null;
     }
     const source = ts.createSourceFile(fileName, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-    let out = code;
-    for (const part of cssParts(source).reverse()) {
-        out = out.slice(0, part.from) + minifyCss(out.slice(part.from, part.to), part.edge) + out.slice(part.to);
-    }
+    const out = literalParts(source).reduce(withPart, code);
     return out === code ? null : out;
 }
 

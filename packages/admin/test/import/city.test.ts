@@ -25,6 +25,19 @@ describe('legacyCityFields', () => {
         expect(fields).not.toHaveProperty('analytics');
     });
 
+    it('happyPath_theSeedsTargetYearsTravelWithTheCity', () => {
+        const city = (JSON.parse(readFileSync(MANIFEST, 'utf8')) as { city: object }).city;
+
+        expect(legacyCityFields({ ...city, imagery: { targetYears: [1972, 1984] } })?.imagery).toEqual({ targetYears: [1972, 1984] });
+        expect(legacyCityFields(city)).not.toHaveProperty('imagery');
+    });
+
+    it('badPath_invalidTargetYearsRefuseTheCity', () => {
+        const city = (JSON.parse(readFileSync(MANIFEST, 'utf8')) as { city: object }).city;
+
+        expect(legacyCityFields({ ...city, imagery: { targetYears: [1972, 1972] } })).toBeUndefined();
+    });
+
     it('badPath_somethingThatIsNotACityIsRefused', () => {
         expect(legacyCityFields({ center: [26, 44] })).toBeUndefined();
         expect(

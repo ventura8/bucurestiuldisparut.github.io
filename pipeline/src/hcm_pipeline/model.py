@@ -13,12 +13,13 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Final
 
-from hcm_pipeline.contract import GEOREF_TRANSFORMS, JOB_STEP_STATES, PIPELINE_WRITER, SENSOR_SPECS, USGS_DATASETS
+from hcm_pipeline.contract import GEOREF_TRANSFORMS, JOB_STEP_STATES, JOIN_MAX_PARTS, PIPELINE_WRITER, SENSOR_SPECS, USGS_DATASETS
 from hcm_pipeline.geo import Bounds, numbers_of
 
 ID: Final = re.compile(r"[A-Za-z0-9_-]{1,40}")
 NS_PER_SECOND: Final = 1_000_000_000
 METRE_DIGITS: Final = 2
+JOIN_MIN_PARTS: Final = 2
 Record = dict[str, object]
 
 
@@ -263,6 +264,34 @@ class RegeorefParams:
         return cls(id_of(params, "basedOn"))
 
 
+@dataclass(frozen=True)
+class JoinPart:
+    """A frame of a `layer-join`: its files live under its own layer and version."""
+
+    version_id: str
+    layer_id: str
+
+    @classmethod
+    def of(cls, value: object) -> JoinPart:
+        record = record_of(value, "a part")
+        _strict(record, frozenset({"versionId", "layerId"}))
+        return cls(id_of(record, "versionId"), id_of(record, "layerId"))
+
+
+@dataclass(frozen=True)
+class JoinParams:
+    parts: tuple[JoinPart, ...]
+    sensor: str
+
+    @classmethod
+    def of(cls, params: Mapping[str, object]) -> JoinParams:
+        _strict(params, frozenset({"parts", "sensor"}))
+        parts = params.get("parts")
+        if not isinstance(parts, list) or not JOIN_MIN_PARTS <= len(parts) <= JOIN_MAX_PARTS:
+            raise DocumentError(f"parts must be a list of {JOIN_MIN_PARTS} to {JOIN_MAX_PARTS} frames")
+        return cls(tuple(JoinPart.of(part) for part in parts), member_of(params, "sensor", tuple(SENSOR_SPECS)))
+
+
 def _bounded_text(record: Mapping[str, object], key: str, limit: int) -> str:
     value = text_of(record, key)
     if len(value) > limit:
@@ -274,11 +303,12 @@ def _optional_bounded(record: Mapping[str, object], key: str, limit: int) -> str
     return _bounded_text(record, key, limit) if key in record else None
 
 
-JobParams = UsgsImportParams | GeotiffImportParams | RegeorefParams
+JobParams = UsgsImportParams | GeotiffImportParams | RegeorefParams | JoinParams
 _PARAMS: Final[Mapping[str, Callable[[Mapping[str, object]], JobParams]]] = {
     "usgs-import": UsgsImportParams.of,
     "geotiff-import": GeotiffImportParams.of,
     "regeoref": RegeorefParams.of,
+    "layer-join": JoinParams.of,
 }
 
 

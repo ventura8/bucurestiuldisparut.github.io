@@ -55,16 +55,24 @@ async function cityDailyJobs(documents: DocumentStore, cityId: string): Promise<
  * `apiError.guardPaused` while the budget guard is red, `apiError.imagery.dailyLimit` once today's jobs reached the
  * project's cap or (M5, `docs/research/M5-interfaces.md` §1.8; S-A52-BAD-DAILY-JOBS) the share of `cityId`.
  */
-export async function refuseNewRasterJob(documents: DocumentStore, now: Date, cityId: string): Promise<void> {
+export function refuseNewRasterJob(documents: DocumentStore, now: Date, cityId: string): Promise<void> {
+    return refuseRasterJobs(documents, now, cityId, 1);
+}
+
+/**
+ * The same refusals for `count` new jobs at once (M8, `docs/research/M8-join-interfaces.md` §5: a join's missing frames and
+ * the join itself): all of them must fit today, so a set is never half created.
+ */
+export async function refuseRasterJobs(documents: DocumentStore, now: Date, cityId: string, count: number): Promise<void> {
     if (await guardIsRed(documents)) {
         throw new ApiError('apiError.guardPaused');
     }
     const today = await rasterJobsToday(documents, now);
     refuseAtLimit(
-        [...today.values()].reduce((sum, count) => sum + count, 0),
+        [...today.values()].reduce((sum, jobs) => sum + jobs, count - 1),
         JOBS_PER_DAY,
     );
-    refuseAtLimit(today.get(cityId) ?? 0, await cityDailyJobs(documents, cityId));
+    refuseAtLimit((today.get(cityId) ?? 0) + count - 1, await cityDailyJobs(documents, cityId));
 }
 
 /** `apiError.imagery.dailyLimit` once `count` reached `limit` (none: no limit of its own, as a city created before M5). */

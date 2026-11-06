@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { HarvestSearch, IMAGERY_SEARCH_TIMEOUT_MS, usgsCanSearch, type SearchState } from '../../src/imagery/search.js';
+import { IMAGERY_SEARCH_TIMEOUT_MS } from '../../src/imagery/search-timeout.js';
+import { HarvestSearch, usgsCanSearch, type SearchState } from '../../src/imagery/search.js';
 import { failure, settle } from '../app/fakes.js';
 import { answer, callsOf, imageryWorld } from './world.js';
 

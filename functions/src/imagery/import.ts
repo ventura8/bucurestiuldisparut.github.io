@@ -42,7 +42,7 @@ async function requireScene(deps: ImportDeps, request: Request): Promise<UsgsSce
 }
 
 /** `apiError.imagery.alreadyImported` naming the layer (its label once it exists, else its reserved id). */
-async function alreadyImported(deps: ImportDeps, cityId: string, layerId: string): Promise<ApiError> {
+export async function alreadyImported(deps: Pick<Ports, 'documents'>, cityId: string, layerId: string): Promise<ApiError> {
     const layer = await deps.documents.get(FIRESTORE_PATHS.layer(cityId, layerId), layerDocSchema);
     return new ApiError('apiError.imagery.alreadyImported', { layer: layer?.label.ro ?? layerId });
 }
@@ -51,7 +51,7 @@ async function alreadyImported(deps: ImportDeps, cityId: string, layerId: string
  * USGS confirms the frame can be downloaded now (`download-options`), else `apiError.imagery.notScanned`, and the scene
  * records that it is not (no longer) free, so its card stops offering an Import that always fails (CR-M3-47).
  */
-async function confirmScanned(deps: ImportDeps, cityId: string, scene: UsgsSceneDoc): Promise<void> {
+export async function confirmScanned(deps: ImportDeps, cityId: string, scene: UsgsSceneDoc): Promise<void> {
     const options = await withUsgs(deps, (apiKey) => deps.scenes.downloadOptions(apiKey, scene.dataset, [scene.entityId]));
     if (!options.some((option) => option.entityId === scene.entityId && option.available)) {
         await markNotScanned(deps, cityId, scene.entityId);
@@ -64,19 +64,23 @@ function orderImporting(order: UsgsSceneDoc['order'], jobId: string): Pick<UsgsS
     return order === undefined ? {} : { order: { ...order, state: 'importing', importJobId: jobId } };
 }
 
-/**
- * In one transaction: the scene is still free, the job and its version are created, the scene is marked imported (and
- * its order, M4, `importing`).
- */
-async function importIn(transaction: DocumentTransaction, work: NewWork, scene: UsgsSceneDoc): Promise<void> {
-    const path = FIRESTORE_PATHS.usgsScene(work.cityId, scene.entityId);
-    const current = await transaction.get(path, usgsSceneDocSchema);
+/** The scene as a transaction reads it, still free (M8: a join reads all its scenes before its first write). */
+export async function readFreeScene(transaction: DocumentTransaction, cityId: string, entityId: string): Promise<UsgsSceneDoc> {
+    const current = await transaction.get(FIRESTORE_PATHS.usgsScene(cityId, entityId), usgsSceneDocSchema);
     if (current === undefined) {
         throw new ApiError('apiError.notFound');
     }
     if (current.status === 'imported' && current.layerId !== undefined) {
         throw new ApiError('apiError.imagery.alreadyImported', { layer: current.layerId });
     }
+    return current;
+}
+
+/**
+ * The job and its version are created, the scene (as `readFreeScene` read it) is marked imported and its order, M4,
+ * `importing`. `partOf` (M8): the join this frame is imported for.
+ */
+export async function writeImport(transaction: DocumentTransaction, work: NewWork, scene: UsgsSceneDoc, partOf?: string): Promise<void> {
     const label = layerLabelFor(scene.sensor, scene.acquisitionDate);
     await createWork(transaction, work, {
         origin: 'usgs',
@@ -91,18 +95,19 @@ async function importIn(transaction: DocumentTransaction, work: NewWork, scene: 
         year: yearOfDate(scene.acquisitionDate),
         date: scene.acquisitionDate,
         sensor: scene.sensor,
+        ...(partOf === undefined ? {} : { partOf }),
     });
-    await transaction.set(path, usgsSceneDocSchema, {
-        ...current,
+    await transaction.set(FIRESTORE_PATHS.usgsScene(work.cityId, scene.entityId), usgsSceneDocSchema, {
+        ...scene,
         status: 'imported',
         layerId: work.layerId,
-        ...orderImporting(current.order, work.jobId),
+        ...orderImporting(scene.order, work.jobId),
         ...stampOf(work.createdBy, work.now),
     });
 }
 
 /** USGS must have approved downloads (the `download` role); before that only the search works. */
-function refuseWithoutDownloads(usgs: Awaited<ReturnType<typeof requireUsgs>>): void {
+export function refuseWithoutDownloads(usgs: Awaited<ReturnType<typeof requireUsgs>>): void {
     if (!usgsDownloads(usgs)) {
         throw new ApiError('apiError.usgs.accessPending');
     }
@@ -130,25 +135,32 @@ export interface ImportStart {
     readonly now: Date;
 }
 
-/**
- * The import of a scanned scene once every check passed: a layer id reserved from its label, then the job, its version
- * and the scene (and its order) in one transaction. Used by `imagery.import` and by the order watch (M4).
- */
-export async function startImport(deps: Pick<Ports, 'documents'>, start: ImportStart): Promise<{ jobId: string; layerId: string }> {
+/** The `usgs-import` job of a scene: its id and parameters, under `layerId`. */
+export function importWork(start: ImportStart, layerId: string): NewWork {
     const { cityId, scene, now } = start;
-    const layerId = await reserveLayerId(deps.documents, cityId, layerLabelFor(scene.sensor, scene.acquisitionDate).ro);
-    const jobId = jobIdFor('im', now, scene.entityId);
-    const work: NewWork = {
+    return {
         cityId,
-        jobId,
+        jobId: jobIdFor('im', now, scene.entityId),
         type: 'usgs-import',
         params: { entityId: scene.entityId, dataset: scene.dataset, sensor: scene.sensor },
         layerId,
         createdBy: start.createdBy,
         now,
     };
-    await deps.documents.transaction((transaction) => importIn(transaction, work, scene));
-    return { jobId, layerId };
+}
+
+/**
+ * The import of a scanned scene once every check passed: a layer id reserved from its label, then the job, its version
+ * and the scene (and its order) in one transaction. Used by `imagery.import` and by the order watch (M4).
+ */
+export async function startImport(deps: Pick<Ports, 'documents'>, start: ImportStart): Promise<{ jobId: string; layerId: string }> {
+    const { cityId, scene } = start;
+    const layerId = await reserveLayerId(deps.documents, cityId, layerLabelFor(scene.sensor, scene.acquisitionDate).ro);
+    const work = importWork(start, layerId);
+    await deps.documents.transaction(async (transaction) =>
+        writeImport(transaction, work, await readFreeScene(transaction, cityId, scene.entityId)),
+    );
+    return { jobId: work.jobId, layerId };
 }
 
 async function imageryImport(deps: ImportDeps, caller: VerifiedCaller, request: Request): Promise<CallableResponse<'imagery.import'>> {

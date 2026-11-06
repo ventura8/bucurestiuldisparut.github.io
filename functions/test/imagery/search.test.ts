@@ -90,7 +90,8 @@ describe('imagery.search: the years the city shows', () => {
         ['an unfinished version counts', 'processing', { code: 'sameYear', params: { year: '1966' } }],
         ['a failed version does not: its id is held, nothing is shown', 'failed', { code: 'noLayers' }],
     ] as const)('happyPath_%s', async (_case, state, reason) => {
-        const world = await readyWorld(NOW, { corona2: [sceneRecord(KH4B, { acquisitionDate: '1966-07-12' })] });
+        // M8: another day of the year; a neighbour of the very date is `sameDate` (join-plan.test.ts).
+        const world = await readyWorld(NOW, { corona2: [sceneRecord(KH4B, { acquisitionDate: '1966-07-13' })] });
         serveBrowse(world, [KH4B]);
         const error = { code: 'apiError.imagery.cityNotFound' } as const;
         await seedVersion(world, 'v-1', renderedVersion({ jobId: 'v-1', layerId: 'another-layer', year: 1966, state, error }));

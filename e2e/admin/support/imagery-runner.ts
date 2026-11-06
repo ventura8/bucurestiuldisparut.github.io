@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -29,6 +29,10 @@ export interface ImageryScript {
     readonly runner?: RunnerKind;
     /** One per dispatch (the job's `attempt`, 1 first); the last one repeats. */
     readonly attempts: readonly StandinAttempt[];
+    /** M8: the attempts of a `layer-join` job, in place of `attempts` (one script plays a join and its frames). */
+    readonly join?: readonly StandinAttempt[];
+    /** M8: the attempts of one frame's import, by its entity id, in place of `attempts`. */
+    readonly entities?: Readonly<Record<string, readonly StandinAttempt[]>>;
 }
 
 /** One run as the runner played it (`GET /__imagery/runs?city=`). */
@@ -51,6 +55,7 @@ const DEFAULT_OUTCOMES: Readonly<Record<JobType, StandinAttempt['outcome']>> = {
     regeoref: 'under',
     republish: 'under',
     'layer-delete': 'under',
+    'layer-join': 'under',
 };
 
 /** How long a run waits for the dispatcher to record its execution (a container starts in about that time). */
@@ -72,6 +77,13 @@ async function dispatched(city: string, jobId: string, execution: PipelineExecut
         }
         await pause(POLL_MS);
     }
+}
+
+/** What the script says of this job: a join's or a frame's own attempts, else the city's. */
+function scriptedAttempts(script: ImageryScript | undefined, job: Readonly<Record<string, unknown>>): readonly StandinAttempt[] {
+    const entityId = (job['params'] as { entityId?: string } | undefined)?.entityId ?? '';
+    const own = job['type'] === 'layer-join' ? script?.join : script?.entities?.[entityId];
+    return own ?? script?.attempts ?? [];
 }
 
 export class ImageryRunner implements CloudRunRunner {
@@ -138,7 +150,7 @@ export class ImageryRunner implements CloudRunRunner {
 
     #attemptOf(script: ImageryScript | undefined, job: Readonly<Record<string, unknown>>): StandinAttempt {
         const attempt = Number(job['attempt'] ?? 1);
-        const attempts = script?.attempts ?? [];
+        const attempts = scriptedAttempts(script, job);
         return attempts[Math.min(attempt, attempts.length) - 1] ?? { outcome: DEFAULT_OUTCOMES[job['type'] as JobType] };
     }
 
@@ -295,15 +307,37 @@ function playPython(execution: PipelineExecution): Promise<void> {
  * them) and `truth.json` (the transform and the RMSE the e2e asserts). Absent: the fakes answer their fixtures.
  */
 const SYNTHETIC_SCENES_DIR = resolve(REPO_ROOT, 'reports/e2e-fixtures/imagery');
-/** The scene the synthetic delivery stands for (the 1966 target frame, scenes.py's default entity). */
-const SYNTHETIC_SCENE_ENTITY = 'DS1035-1057DA023';
+const DELIVERY = /^(?<entity>.+)\.tgz$/;
+
+/** Every delivery in `dir`, by the entity its name says. */
+function registerDeliveries(fakes: UpstreamFakes, dir: string): void {
+    for (const name of readdirSync(dir)) {
+        const entity = DELIVERY.exec(name)?.groups?.['entity'];
+        if (entity !== undefined) {
+            fakes.state.usgs.deliveries.set(entity, async () => new Uint8Array(await readFile(resolve(dir, name))));
+        }
+    }
+}
+
+/**
+ * The folders a generated scene's deliveries lie in: `dir`, and (M8, `scenes.py --join`) each entity's folder below it. The
+ * first folder holding a reference answers for the world, which a join's frames share.
+ */
+function sceneFolders(dir: string): string[] {
+    const below = readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+    return [dir, ...below.map((entry) => resolve(dir, entry.name))];
+}
+
 /** Points the server's fakes at the synthetic scene, when it was generated (the pipeline tier). */
 export function useSyntheticScenes(fakes: UpstreamFakes, dir: string = SYNTHETIC_SCENES_DIR): void {
-    const file = (name: string): string => resolve(dir, name);
-    const delivery = file(`${SYNTHETIC_SCENE_ENTITY}.tgz`);
-    if (existsSync(delivery)) {
-        fakes.state.usgs.deliveries.set(SYNTHETIC_SCENE_ENTITY, async () => new Uint8Array(await readFile(delivery)));
+    if (!existsSync(dir)) {
+        return;
     }
+    const folders = sceneFolders(dir);
+    folders.forEach((folder) => {
+        registerDeliveries(fakes, folder);
+    });
+    const file = (name: string): string => resolve(folders.find((folder) => existsSync(resolve(folder, name))) ?? dir, name);
     if (existsSync(file('sentinel2.tif'))) {
         fakes.state.stac.cog = async () => new Uint8Array(await readFile(file('sentinel2.tif')));
     }

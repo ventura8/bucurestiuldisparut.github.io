@@ -3,16 +3,18 @@
  * after what it keeps (the city crop, the segments, the delivery): a pipeline failure goes back to `queued` (the dispatcher starts it), a failure after
  * approval goes back to the publisher; never past the attempts, never while the budget guard is red.
  */
-import { JOB_MAX_ATTEMPTS, PUBLISH_MAX_ATTEMPTS, type JobDoc } from '@hcm/shared';
+import { JOB_MAX_ATTEMPTS, PUBLISH_MAX_ATTEMPTS, type JobDoc, type LayerVersionDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { retryFunction } from '../../src/imagery/retry.js';
 import { failureOf } from '../admin/world.js';
+import { F039, F040, requireVersion, seedJoinOfTwo } from './join-world.js';
 import { adminCall } from '../publish/fakes.js';
 import {
     CITY,
     NOW,
     at,
+    goldenOutput,
     readJob,
     readVersion,
     readyWorld,
@@ -347,4 +349,102 @@ describe('imagery.retry: what is not tried again', () => {
 
         await expect(retry(world)).resolves.toEqual({ status: 'queued', attempt: 0 });
     });
+});
+
+describe('imagery.retry of a join (M8)', () => {
+    const JOIN = 'jn-1';
+
+    function failedJoin(): Partial<JobDoc> {
+        return { status: 'failed', error: { code: 'apiError.imagery.processingFailed', message: 'apiError.imagery.processingFailed' } };
+    }
+
+    async function joinFailedOfTwo(world: ImageryWorld, version: Partial<LayerVersionDoc> = {}, job: Partial<JobDoc> = {}) {
+        return seedJoinOfTwo(
+            world,
+            JOIN,
+            { state: 'failed', output: undefined, join: undefined, error: { code: 'apiError.imagery.processingFailed' }, ...version },
+            { ...failedJoin(), ...job },
+        );
+    }
+
+    function retryJoin(world: ImageryWorld) {
+        return retry(world, JOIN);
+    }
+
+    it('happyPath_itsFramesStillItsOwn_itWaitsForTheDispatcher_noWorkerCanClaimIt', async () => {
+        const world = await readyWorld();
+        await joinFailedOfTwo(world, {}, { runOn: 'local' });
+
+        await expect(retryJoin(world)).resolves.toMatchObject({ status: 'queued' });
+
+        expect(await readJob(world, JOIN)).toMatchObject({ status: 'queued', waitReason: 'parts' });
+    });
+
+    it('badPath_aFrameANewerJoinTookRefuses_nothingMoves @S-A65-BAD-RETRY-STALE', async () => {
+        const world = await readyWorld();
+        await joinFailedOfTwo(world);
+        const frame = await requireVersion(world, 'v-f039');
+        await seedVersion(world, 'v-f039', { ...frame, partOf: 'jn-2' });
+
+        const failure = await failureOf(retryJoin(world));
+
+        expect(failure.details).toMatchObject({ code: 'apiError.imagery.joinPartGone', params: { frame: F039 } });
+        expect((await readJob(world, JOIN))?.status).toBe('failed');
+        expect((await readVersion(world, JOIN))?.state).toBe('failed');
+    });
+
+    it('badPath_aFrameReplacedByItsNewPointsRefuses', async () => {
+        const world = await readyWorld();
+        await joinFailedOfTwo(world);
+        const frame = await requireVersion(world, 'v-f040');
+        await seedVersion(world, 'v-f040', { ...frame, state: 'cancelled' });
+
+        expect((await failureOf(retryJoin(world))).details).toMatchObject({
+            code: 'apiError.imagery.joinPartGone',
+            params: { frame: F040 },
+        });
+    });
+
+    it('badPath_atPublishAFramePublishedOnItsOwnMeanwhileRefuses_nothingIsQueued', async () => {
+        const world = await readyWorld();
+        const approval = { auto: false, by: 'u-admin', at: at(NOW) };
+        await joinFailedOfTwo(
+            world,
+            { state: 'approved', output: goldenOutput(), error: undefined, approval },
+            { steps: { guard: { status: 'done' } } },
+        );
+        const frame = await requireVersion(world, 'v-f039');
+        await seedVersion(world, 'v-f039', {
+            ...frame,
+            state: 'published',
+            mapbox: { tilesetId: 'a.b', origin: 'mts', publishedAt: at(NOW) },
+        });
+
+        expect((await failureOf(retryJoin(world))).details).toMatchObject({ code: 'apiError.imagery.joinPartGone' });
+        expect(world.deps.tasks.queued).toEqual([]);
+    });
+
+    it('happyPath_atPublishFramesStillWaitingGoBackToThePublisher', async () => {
+        const world = await readyWorld();
+        const approval = { auto: false, by: 'u-admin', at: at(NOW) };
+        await joinFailedOfTwo(
+            world,
+            { state: 'approved', output: goldenOutput(), error: undefined, approval },
+            { steps: { guard: { status: 'done' } } },
+        );
+
+        await expect(retryJoin(world)).resolves.toMatchObject({ status: 'awaiting_approval' });
+
+        expect((await readVersion(world, JOIN))?.state).toBe('approved');
+    });
+
+    it.each(['apiError.imagery.joinSeamTooFar', 'apiError.imagery.joinNoFrames', 'apiError.imagery.joinPartMissing'] as const)(
+        'badPath_%sNoRetryCures',
+        async (code) => {
+            const world = await readyWorld();
+            await joinFailedOfTwo(world, {}, { error: { code, message: code } });
+
+            expect((await failureOf(retryJoin(world))).details).toMatchObject({ code: 'apiError.imagery.versionState' });
+        },
+    );
 });

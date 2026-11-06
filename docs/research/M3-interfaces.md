@@ -79,11 +79,17 @@ Imagery (opens) ── harvest when older than 30 days ──► ranked scenes, 
 | `chooseStudio` (over budget) | 3 (Free: Studio, Download, I uploaded it) plus the upload in Mapbox Studio |
 | `georeferencePair` | 2 per pair (a click on the scan, a click on the map) |
 | `cropLayer` | the polygon's clicks plus Save |
+| `joinFrames` (M8) | 1 (Join frames), then 1 Approve unless every limit of `M8-join-interfaces.md` §5 holds |
 
 The Bucharest frames M3 targets (PLAN: likely scanned already, so free) are the city's target years
-(`cities/{city}.imagery.targetYears`, written by the legacy Bucharest import, CR-M3-8): 1966 (1966-07-12, KH-4A),
-1976 (1976-02-20), 1977 (1977-09-13), 1978 (1978-03-30, KH-9 mapping camera) and 1980 (1980-07-16, KH-9). The e2e
-fixtures name five synthetic scenes with these dates.
+(`cities/{city}.imagery.targetYears`, which `setup.createCity` writes from `scripts/seed/bucharest.city.json`, CR-M3-8 and
+CR-M3-28, done): 1966 (1966-07-12, KH-4A), 1972, 1976 (1976-02-20), 1977 (1977-09-13), 1978 (1978-03-30, KH-9 mapping
+camera), 1979, 1980 (1980-07-16, KH-9), 1982, 1983 and 1984 (M8, the owner, 2026-11-06). Whether USGS returns each of
+them for Bucharest is checked at M8's acceptance (`M8-join-interfaces.md` §10); the live data so far names 1978-07-06. The
+e2e fixtures name five synthetic scenes with the five dates above.
+
+A KH-9 panoramic frame often holds only part of a city, so M8 joins one date's frames into one layer:
+`M8-join-interfaces.md` is that contract, and its §11 to §16 say what was built.
 
 ## 2. Data model
 
@@ -93,6 +99,7 @@ fixtures name five synthetic scenes with these dates.
 | --- | --- | --- | --- |
 | `cities/{city}` | `cityDocSchema` + `imagery` (`cityImagerySchema`: `autoPublish`, `rmseThresholdM`, `targetYears`) | admins (settings; `imagery` after CR-M3-2) | read, update |
 | `cities/{city}/layers/{layer}` | `layerDocSchema` + `currentVersion`, `pendingVersion`, `mapbox.sourceId`, `mapbox.origin` (`mts` \| `studio` \| `linked`) | `layers.link`; `imagery.publish` (finalize, `system:imagery`); admins (presentation) | read, update (unchanged) |
+| `cities/{city}/imageryPlans/dates` (M8) | `datePlanDocSchema` (one row per date that can be joined) | `imagery/join-plan.ts`, after a harvest and when a frame reaches approval | read |
 | `cities/{city}/layerVersions/{version}` | `layerVersionDocSchema` | the imagery callables (create), the pipeline (scan, reference, georef, output), the publisher (estimate, guard, approval, mapbox) | read only (CR-M3-2) |
 | `cities/{city}/jobs/{job}` (+ `logs`) | `jobDocSchema` + `layerId`, `versionId`, `waitReason`, `startedAt`, `finishedAt`, `error.params`, step `bytes`/`startedAt`/`finishedAt`; status `awaiting_gcps` | the imagery callables and triggers (create), the dispatcher, the pipeline, the publisher | read; update `cancelRequested` (client creates refused, CR-M3-2) |
 | `cities/{city}/usgsScenes/{entityId}` | `usgsSceneDocSchema` (reshaped, `schemas/usgs-scene.ts`) | the harvest (`system:imagery`); admins triage | read; update `status`, `note` (unchanged) |
@@ -124,6 +131,7 @@ fixtures name five synthetic scenes with these dates.
 | `awaiting_approval` → `approved` | `imagery.onJobWrite` (policy, `approval.auto`) or `imagery.approve` | under the threshold, or Approve |
 | `approved` → `publishing` → `published` | `imagery.publish` | guard within (or a choice made), MTS success, smoke test |
 | `published` (older) → `superseded` | `imagery.publish` (finalize) | a newer version of the layer is published |
+| `awaiting_approval` (a frame a join holds) → `joined` | `imagery.publish` (finalize, `functions/src/imagery/finalize-join.ts`) | the join is published; the frame's job `succeeded`, its scene points at the join's layer (M8) |
 | any unfinished → `rejected` / `cancelled` / `failed` | `imagery.reject` / cancel / the step that failed | |
 
 - The layer document is created by the finalize step of the layer's first published version (stamped `system:imagery`):
@@ -148,6 +156,7 @@ fixtures name five synthetic scenes with these dates.
 | `status` `waiting_usgs` + `retryAt` + `waitReason` `usgs-preparing` / `usgs-maintenance` / `rate-limited` | the pipeline |
 | `status` `awaiting_gcps` (`waitReason: 'gcps'`), `awaiting_approval` (`waitReason: 'approval'`) | the pipeline |
 | `waitReason` `compute-units` / `deferred`, `status` `mts_processing`, `mapboxJobId`, `steps.<publish step>` | the publisher |
+| `waitReason` `parts`, `status` `queued` | `imagery.join`, then the dispatcher while a frame of a `layer-join` is unfinished (`partsReady`); `run-on.ts` keeps it, and `worker.claim` refuses it (M8) |
 | `status` `succeeded` / `failed` / `cancelled`, `finishedAt`, `error {code, message, params}` | whichever actor ends it |
 | `cancelRequested` | an admin (Firestore SDK, the rules of M2) |
 
@@ -156,7 +165,8 @@ fixtures name five synthetic scenes with these dates.
 - `JOB_STEPS[type]` (done) names a job's steps in order: `usgs-import` runs `fetch`, `extract`, `stitch`, `locate`,
   `reference`, `georef`, `warp`, `export`, `register`, then the publisher's `guard`, `upload`, `publish`, `tiles`,
   `finalize`; `geotiff-import` starts with `inspect`, `reference`; `regeoref` with `georef`; `republish` is the publisher's
-  five; `layer-delete` is `delete`. `runsOnPipeline(type)` tells the dispatcher which go to Cloud Run.
+  five; `layer-delete` is `delete`; `layer-join` (M8, queued only by `imagery.join`) runs `align`, `merge`, `export`,
+  `register`, then the publisher's five. `runsOnPipeline(type)` tells the dispatcher which go to Cloud Run.
 
 ### 2.4 The job state machine
 
@@ -280,6 +290,9 @@ resolution 10) times its part:
   coverage under 50 % are always listed (they explain a low rank). The screen shows the first three and the rest on
   demand. The list sorts free scenes first, then by `rank.score`, then by `acquisitionDate`.
 - A change of weights or parts bumps `RANKING_VERSION`; the harvest re-ranks every document of an older version, and the
+- M8 (`RANKING_VERSION` 3): `RankContext.pendingDates` holds the dates of unfinished versions. A scene of such a date scores
+  1 for the new year, with the reason `sameDate`, listed first (a card shows three): a frame of a date in progress is a
+  neighbour to join, not a year the city already has.
   layer list's changes are reflected the next time the area opens (the admin re-ranks in the page meanwhile).
 
 ### 3.4 The browse proxy
@@ -312,6 +325,7 @@ The browser never requests a USGS address (the admin's CSP does not allow one, a
 | `imagery.onRasterUpload` | `geotiff-import` `{uploadPath, originalName?, replaces}`, id = the upload id | the version (`origin: 'upload'`); a replacement sets `layer.pendingVersion` |
 | `imagery.saveGcps` on a published or awaiting version | `regeoref` `{basedOn}` | the version (`origin: 'regeoref'`, `georef` with the admin's points, `crop?`, `scan` and `reference` copied from the base); `layer.pendingVersion` |
 | `imagery.crop` | `regeoref` `{basedOn: layer.currentVersion}` | the version (`origin: 'crop'`, the current georef, `crop`); `layer.pendingVersion` |
+| `imagery.join` (M8) | `layer-join` `{parts, sensor}`, born with `waitReason: 'parts'` | the join's version (`origin: 'join'`, `source.kind: 'join'`), an import per missing frame with `partOf`, `partOf` on each existing frame; a live join awaiting approval that shares a frame is rejected |
 | `imagery.retry` | none: the failed job goes back to `queued` (`attempt` kept, `error` cleared, every step after the first finished of `locate`, `inspect`, `extract`, `fetch` `pending`: finding 78 of 2026-11-03) | the version back to `processing` |
 | `layers.delete` (M2c, done) | `layer-delete` `{layerId, tilesetId?, sourceSha?}` with `dispatchAt` + 7 days | |
 
@@ -482,12 +496,15 @@ No new dependency (`DECISIONS-for-review.md` §46g): numpy, `opencv-python-headl
 | `locate` | the corner guess (§5.4): the frame's orientation among the eight rotations and mirrors, the initial transform from the corners, the city window ± 10 % cropped from the frame | `scan.tif`, `scan-preview.jpg` (long side `SCAN_PREVIEW_MAX_PX`), the version's `scan` and four `corner` GCPs | `apiError.imagery.referenceUnavailable` without a Sentinel-2 window; `apiError.imagery.cityNotFound` only when the frame does not reach the window under any orientation. A guess nothing confirms is no failure: a wider crop, and the admin's points (§5.4) |
 | `reference` | the window's Sentinel-2 L2A (§5.5) and OSM features, both cached; draws the georeferencer's two reference images | `reference/{city}/...`, `reference-s2.jpg`, `reference-osm.png`, the version's `reference` | `apiError.imagery.referenceUnavailable` (no item under 20 % clouds in three years, Overpass down after three tries) |
 | `georef` | automatic GCPs (§5.6) for a `usgs-import`; for a version that already holds the admin's points, the fit and residuals only | the version's `georef` (pairs, transform, `fitRmseM`, `checkpointRmseM`, `checkpointCount`) | too few pairs (also how a weak guess of §5.4 ends) → the job `awaiting_gcps`, the version `needs_gcps` with `apiError.imagery.noMatch {pairs}` (waits, not a failure); `apiError.imagery.degenerateGcps`; `apiError.imagery.gcpOutside` |
+| `align` (`layer-join`, M8) | checks the scans and the disk, warps previews at z14, gives each z13 cell to the frame deepest inside itself, measures every seam on tiles (coarse, then fine), fits and shares a correction by each frame's error, tapered to nothing at 6 km, carried by TPS nodes, and measures again: a seam the correction did not help is refused | `work/{city}/{job}/join-plan.json`, `join-owner.tif` | `apiError.imagery.joinPartMissing`, `joinSeamTooFar`, `joinNoFrames`, `joinNoRoom` |
+| `merge` (`layer-join`, M8) | warps each used frame once from `scan.tif`, evens the tone along the seams, composes 4096 px blocks with normalised weights | `work/{city}/{job}/warped.tif`, the version's `join` | `apiError.imagery.processingFailed` |
 | `warp` | `gdalwarp` with the GCPs in EPSG:3857 metres (`-order 1`, `-order 2` or `-tps`), `-t_srs EPSG:3857`, the resolution of `maxzoom` (156543.03392804097 / 2^z m) on the tile grid, `-r bilinear`, an alpha band, `-cutline` (a GeoJSON of the closed ring) with `-crop_to_cutline` when the version has a crop | `work/{city}/{job}/warped.tif` | `apiError.imagery.unreadableRaster` |
 | `export` | an 8-bit COG (`-of COG -co COMPRESS=JPEG -co QUALITY=85 -co BLOCKSIZE=512 -co OVERVIEWS=AUTO`), an RGBA preview PNG of at most 2048 px, a JPEG-compressed GeoTIFF of at most `STUDIO_MAX_BYTES` (halved until it fits) for the Studio path, the valid area in km² | `cog.tif`, `preview.png`, `studio.tif` | |
 | `register` | writes the version's `output` and `state: 'awaiting_approval'`, the job `awaiting_approval` (`waitReason: 'approval'`), releases the lease, deletes the job's `work/` objects | the version, the job | |
 
 `regeoref` runs `georef` (fit only), `warp`, `export`, `register` on the base version's `scan.tif`, which it reads but never
-rewrites (no USGS call, `S-P02-HAPPY`).
+rewrites (no USGS call, `S-P02-HAPPY`). `layer-join` runs `align`, `merge`, `export`, `register` on its frames' `scan.tif`
+(`M8-join-interfaces.md` §3, §13); `export` and `register` are unchanged because `merge` writes the same `warped.tif`.
 
 ### 5.4 The corner guess (`locate`)
 
@@ -810,11 +827,14 @@ implementation, `maxInstances` 3, as `fn-admin@`; the schemas are done (`package
 | `imagery.studioDone` | enforce | `{cityId, versionId}` → `{tilesetId, layerId}` | `imagery.studioNotFound`, `imagery.versionState`, `mapbox.notConfigured` |
 | `imagery.saveGcps` | enforce | `imagerySaveGcpsRequestSchema` → `{jobId, versionId, resumed}` | `invalidRequest`, `imagery.tooFewGcps`, `imagery.degenerateGcps`, `imagery.gcpOutside`, `imagery.versionState`, `imagery.dailyLimit`, `guardPaused`, `layers.busy` |
 | `imagery.crop` | enforce | `{cityId, layerId, ring}` → `{jobId, versionId}` | `notFound`, `imagery.noScan`, `imagery.cropOutsideLayer`, `layers.busy`, `imagery.dailyLimit`, `guardPaused` |
+| `imagery.join` (M8) | enforce | `imageryJoinRequestSchema` → `imageryJoinResponseSchema` (`{jobId, versionId, layerId}`) | `notFound`, `usgs.notConfigured`, `imagery.notScanned`, `imagery.alreadyImported`, `imagery.dailyLimit`, `guardPaused`, `layers.busy`, `imagery.joinMixedFrames`, `imagery.joinTwoPublished`, `imagery.joinPartGone`, `imagery.joinPartHeld` |
 | `imagery.retry` | enforce | `{cityId, jobId}` → `{status, attempt}` | `notFound`, `imagery.versionState`, `imagery.attemptsExhausted`, `guardPaused` |
 | `imagery.probeTiles` | enforce | `{cityId, source}` → `{contentType, tile}` | `layers.foreignTileset`, `layers.secretInAddress`, `mapbox.notConfigured`, `imagery.addressRefused`, `imagery.tilesNotFound`, `imagery.tilesNotImage`, `imagery.tilesUnreachable` |
 
 The 28 `apiError.imagery.*` codes are done (`packages/shared/src/api/errors.ts`, both catalogues of
-`packages/shared/src/i18n/api/`); a new one is a change request.
+`packages/shared/src/i18n/api/`); a new one is a change request. M8 adds eight `join*` codes (`M8-join-interfaces.md` §4);
+`joinPartHeld` also answers `imagery.approve`, `imagery.reject`, `imagery.saveGcps`, `imagery.crop` and `layers.delete` for a
+frame a live join holds.
 
 ### 9.2 Background functions
 
@@ -860,6 +880,7 @@ until fn-imagery wires them (done: `Omit<Ports, 'jobs' | 'tilesets' | 'scenes' |
 | `#/imagery` | the Imagery area: Find (ranked results, map, filters), In progress, Needs you (awaiting approval, points, a choice), Upload | `imagery` (30 KB) |
 | `#/imagery/scene/<entityId>` | a scene: browse image, metadata, reasons, Import | `imagery` |
 | `#/imagery/version/<versionId>` | a version: live progress, the approval card, the guard's choices, the error with Retry or Open georeferencer | `imagery` |
+| Find, a version, a scene (M8; no new route) | the whole-city dates, the offer to join, a join's frames and report | `join-card` (3 KB, fetched when the city has a plan or a join opens); Upload moved to `upload-panel` (2 KB) |
 | `#/georef/<versionId>` | the georeferencer | `georef` (30 KB) |
 | `#/layers/<layerId>` (M2c) | + Replace image, Re-georeference, Crop, the version chip | `layer-geometry` (8 KB, loaded on the first of these) |
 
@@ -885,6 +906,9 @@ until fn-imagery wires them (done: `Omit<Ports, 'jobs' | 'tilesets' | 'scenes' |
   RMSE against the threshold in words, the pairs' count, the compute-unit estimate and what is left this month, Approve
   and Reject; over budget, the three choices with their consequences and the cost; for Studio, its three steps.
 - States (each joins the tour, §10.9): empty (USGS not set up: the link to `#/setup/usgs`), searching, results, zero
+- M8 (`M8-join-interfaces.md` §6, §12): **Whole-city dates** above Find's list, **Join frames** on a row, the offer on a frame's
+  version and scene page, the join's page with its frames and report. A frame a live join holds leaves **Waiting for you**
+  unless it needs points.
   results, search error, a dataset failed, browse unavailable, downloads not approved, importing, waiting for USGS,
   awaiting approval, over budget, Studio steps, deferred, failed with Retry, needs points.
 
@@ -930,7 +954,8 @@ georeferencer on one awaiting points (CR-M3-5). `awaiting_gcps` is already an ac
 ### 10.7 Settings: imagery
 
 A Settings section `imagery` (its own draft and Save): auto-publish (a switch), the RMSE threshold (a number field in
-metres, 1–200), the target years (chips, at most 20); `cities/{city}.imagery` after CR-M3-2 (CR-M3-8).
+metres, 1–200), the target years (chips, at most 20); `cities/{city}.imagery` after CR-M3-2 (CR-M3-8). Since M8 a successful Save of this
+section also calls `imagery.search`, because only a search re-ranks; a failed search is logged and the Save stands.
 
 ### 10.8 Texts and icons
 
@@ -950,7 +975,9 @@ Every new screen and state joins `ADMIN_STATES` (`e2e/tour/states.ts`, the `imag
 `imagery.waiting-usgs`, `imagery.approval`, `imagery.over-budget`, `imagery.studio-steps`, `imagery.failed`,
 `imagery.upload`, `imagery.upload-refused`, `imagery.uploading`, `georef.editor`, `georef.pair-half`, `georef.too-few`,
 `georef.rmse-over`, `georef.degenerate`, `georef.compact-scan`, `layers.version-pending`, `layers.crop-drawing`,
-`layers.crop-refused`, `layers.link-checked`, `settings.imagery`.
+`layers.crop-refused`, `layers.link-checked`, `settings.imagery`. M8 (`e2e/admin/specs/imagery/join-states.ts`):
+`imagery.date-rows`, `imagery.join-offer`, `imagery.join-waiting`, `imagery.join-part-needs-points`, `imagery.join-holds`,
+`imagery.join-approval`, `imagery.join-unmeasured`, `imagery.join-no-seams`, `imagery.join-seam-refused`, `imagery.join-refused`, `imagery.join-failed`.
 
 ## 11. Scenarios
 
@@ -978,6 +1005,8 @@ Registered in `e2e/scenarios.json` (done; `docs/E2E_SCENARIOS.md` regenerated). 
   `-BAD-DUPLICATE-EXECUTION`, `-HAPPY-UPLOAD-GEOREFERENCED`, `-BAD-UPLOAD-NO-GEOREF`.
 - **P02** re-georeference: both rows refined; new `S-P02-HAPPY-CROP`.
 - **Stay planned, M4**: A13 (buy a scan), V06 (swipe compare), the A09 assists.
+- **M8** (`M8-join-interfaces.md` §8, §14; every row exists): **A65** the join, **A66** the dates and target years, **P05** the
+  pipeline's join, and `S-A11-HAPPY-SAME-DATE-RANK`.
 
 The `e2e-pipeline` rows are carried by pytest docstrings (`Scenarios: S-P01-…`) in `pipeline/tests/integration/`
 against the loopback fakes (the `pipeline-pytest` gate); the compose tier against the emulators (§4.3's `python`
@@ -1130,7 +1159,7 @@ owner (or the integrator) applies it. Ids are `CR-M3-<n>`; status `open`, `accep
 | CR-M3-5 | contracts | admin-imagery (the M2c Jobs page) | Step names for `extract`, `stitch`, `inspect`, `reference`, `register`, `guard`, `upload`, `tiles`, `finalize`; the wait reasons; Retry (`imagery.retry`) on a failed raster job; Open georeferencer on `awaiting_gcps` | §10.6 | done (admin-imagery, 2026-10-23: `packages/admin/src/jobs/raster.ts` (wait reason, `retryAt`, `versionId`, Retry only for a failed pipeline or publish job under `JOB_MAX_ATTEMPTS`), `jobs.ts` `retrying` and `retryJob`; `packages/ui/src/admin/jobs/raster-parts.ts` (the wait in words, **Run it again**, the georeferencer link on `awaiting_gcps`), the nine step names in `admin-ops`; tests `packages/admin/test/jobs/raster.test.ts`, `packages/ui/test/admin/ops/jobs-raster.test.ts`; the ops fixtures gained the four fields) |
 | CR-M3-6 | contracts | admin-imagery (the provisioner, `packages/admin/src/provision/**`) | `bucket-lifecycle` from `PRIVATE_BUCKET_LIFECYCLE`; `run.googleapis.com` and `artifactregistry.googleapis.com` in `apis`; §9.4's roles in `iam` (no Mapbox secret for `job-raster@`) | §2.7, §9.4 | done (admin-imagery, 2026-10-23: `bucket-lifecycle` is `PRIVATE_BUCKET_LIFECYCLE`'s five prefixes; `run` and `artifactregistry` were already in `REQUIRED_APIS`; `iam`: `job-raster@` reads `usgs-username` and `usgs-app-token` only, `fn-events@` gains `roles/run.jobsExecutorWithOverrides` and `roles/run.viewer` **on the project**, not on the two job definitions (the provisioner has no Cloud Run resource policy kind and the definitions are deployed after it runs; narrowing them is a follow-up); tests in `packages/admin/test/provision/`) |
 | CR-M3-7 | contracts | admin-imagery (the M2c layers area) | The layer editor's Replace image, Re-georeference, Crop and the pending version's chip through the `layer-geometry` chunk; the empty state's text (imports arrive from Imagery) | §10.5 | done (admin-imagery, 2026-10-23: `packages/ui/src/admin/layers/geometry-group.ts` (the pending version's chip, **Replace the image** = `#/imagery/replace/<layerId>`, the Imagery upload in replace mode, so no upload code joins the layers or `layer-geometry` chunks; **Georeference again** = `#/georef/<currentVersion>`, a linked layer says `apiError.imagery.noScan`; **Crop**); the `layer-geometry` chunk is `packages/admin/src/pages/layer-geometry.ts`: `<hcm-layer-crop>` and the crop tool (`packages/admin/src/layers/geometry/`), loaded by `ContentServices.layerCrop` (`../layers/crop-chunk.ts`) through `CropSlot` (`../layers/crop-slot.ts`); the polygon is drawn with the drawing tools on the editor's map (`AreaMap.drawing()` added to `layers/map-session.ts`), or corner by corner at the map's centre from the keyboard; `LayersState.crop`, five intents; the empty state's and the geometry note's texts changed in both languages) |
-| CR-M3-8 | contracts | admin-imagery (the M2c settings area; the legacy Bucharest import) | The `imagery` section of Settings; the Bucharest import writes `imagery.targetYears` [1966, 1976, 1977, 1978, 1980] | §1, §10.7 | half done (admin-imagery, 2026-10-23: the Settings section; the Bucharest import's `imagery.targetYears` stays open as CR-M3-28) (integrator, 2026-10-24) |
+| CR-M3-8 | contracts | admin-imagery (the M2c settings area; the legacy Bucharest import) | The `imagery` section of Settings; the Bucharest import writes `imagery.targetYears` [1966, 1976, 1977, 1978, 1980] | §1, §10.7 | done (admin-imagery, 2026-10-23: the Settings section; the Bucharest import's `imagery.targetYears` through CR-M3-28, M8, 2026-11-06) |
 | CR-M3-9 | contracts | admin-imagery (the shell's routes, `AREA_CHUNKS`, `CONTENT_AREAS`, `ContentPort`, `UI_ICONS` and the font subset, `links.json`, `ADMIN_CHUNK_BUDGETS`, `CONTENT_INPUT_BUDGETS`) | §10.1, §10.8, §1's budgets; `mapbox.studioTilesets` in `links.json` after the weekly probe | the area and its chunks | done except `links.json` (admin-imagery, 2026-10-23: routes `imagery` and `georef` (`inNavigation: false`), `AREA_CHUNKS`, `CONTENT_AREAS`, `ContentPort`, ten icons and the font subset, `CONTENT_INPUT_BUDGETS` section `imagery` (six flows), `ADMIN_CHUNK_BUDGETS` `imagery` 18, `georef` 17, `layer-geometry` 3 (`DECISIONS-for-review.md` §47); `mapbox.studioTilesets` stays out of `links.json` until the weekly probe verifies it: the approval card's `MAPBOX_STUDIO_TILESETS_URL` (`packages/ui/src/admin/imagery/approval-card.ts`) moves there then) |
 | CR-M3-10 | contracts | e2e-fakes (`packages/test-support`, `e2e/mock-apis`) | §13 | the specs and the stand-in runner | done (e2e-fakes, 2026-10-24: §13.1) (integrator, 2026-10-24) |
 | CR-M3-11 | contracts | integrator | What each workstream built and learned, reported as a row here at its end; then the docs, skills and `docs/LESSONS.md` | docs follow the code | done (integrator, 2026-10-24): the docs, skills and lessons of CR-M3-20, -25, -31 and -36 (`docs/LESSONS.md` 150–165, the raster-pipeline and e2e skills, `docs/TESTING.md`, `docs/ARCHITECTURE.md`, `docs/CI_PIPELINE.md`, the admin guides, `docs/research/M3-status.md`) |
@@ -1150,7 +1179,7 @@ owner (or the integrator) applies it. Ids are `CR-M3-<n>`; status `open`, `accep
 | CR-M3-25 | fn-imagery | integrator | Built (2026-10-23): `packages/shared/src/imagery/{coverage,ranking,labels,index}.ts` (Sutherland–Hodgman footprint coverage, `rankScene`, the labels); `functions/src/imagery/**` (search and harvest, browse proxy, import, the dispatcher `on-job-write`/`dispatch`/`cancel`/`end`, approval and the auto-publish policy, the compute-unit guard `publish-guard` with its reservation in the transaction, the MTS publish `publish-mts`/`publish`/`finalize`, Studio, re-georeference, save points, crop, retry, the probe, the raster upload trigger, layer deletion, `imagery.tick` in `tick{,-jobs,-maintenance}.ts`, `index.ts`); the adapters `cloud-run.ts`, `mapbox-tilesets.ts`, `remote-files.ts` (the pinned address guard), `storage-reader.ts`, the M3 half of `usgs.ts`; `deps.ts`, `index.ts`, `global-options.ts`; the rules, Storage rules, indexes and rules tests; fakes `functions/test/support/imagery-fakes.ts` and `functions/test/imagery/world.ts` (the golden documents of `pipeline/tests/contracts/`); 19 functions-tier rows of `e2e/scenarios.json` `exists` (`docs/E2E_SCENARIOS.md` rendered with `check_e2e_matrix.write_doc` while e2e-fakes' tagged rows are still planned). As built, for §7 and §4: an MTS source is replaced by a delete then a streamed multipart POST (a POST appends to a source); one republish after an internal MTS failure, marked by the step `mts-retry`; the publish task is one dispatch at a time, two a minute, 1 GiB, 1800 s; the daily cap (`JOBS_PER_DAY`) and the running cap (`RUNNING_JOBS_MAX`) are counted by queries outside the transaction, so two creates in the same instant may both pass (bounded by the dispatcher's capacity check); auto-approval needs at least three checkpoints. **UNVERIFIED**: the M2M metadata names (CR-M3-15); that `mapbox-sk-tiles` reads v4 raster tiles for the probe; MTS's 413 for a source past its size limit (mapped to `apiError.imagery.sourceTooLarge`); the metadata's resolution field is not used for the ranking. Lessons for `docs/LESSONS.md` and the skills: the Firestore rules' 1000-expression limit counts each use of a function argument again, so a 20-entry list checked per element inside a large validator fails only at its largest write (`limits.test.ts`); v8 counts every `??` and `?.` fallback as a branch, so an unreachable fallback costs branch coverage (write the type guard instead); under `exactOptionalPropertyTypes` `compact<T>` needs every key, `pickDefined` takes a key list; the in-memory `DocumentStore` has no optimistic concurrency, so races are tested in sequence | docs follow the code (CR-M3-11) | done (integrator, 2026-10-24): `docs/LESSONS.md` 161, the tooling quirks, §4 and §7 as built |
 | CR-M3-26 | admin-imagery | contracts (`packages/shared/src/schemas/imagery-publish.ts`) | `UsageCounters`' optional members (`overageComputeUnits`, `reservations`) without `\| undefined`: under `exactOptionalPropertyTypes` a `UsageDoc` read is not assignable to them, so the admin passes `usageViewOf` (zero defaults) to `availableComputeUnits` | one type for the stored usage and the guard's input | done (integrator, 2026-10-24): the optional members take `undefined`; the admin's `usageViewOf` stays as the page's view |
 | CR-M3-27 | admin-imagery | e2e-fakes (`packages/test-support/src/fake-content-store.ts`) | `orderBy` on a dotted path (`rank.score`): the fake orders by a top-level field only, so the Imagery area's scene query (`scenesQuery`, indexed `downloadAvailable` + `rank.score`) is also sorted client-side (`visibleScenes`); once the fake orders by a path the client sort can go | the fake reads like Firestore | done (e2e-fakes, 2026-10-23: `where` and `orderBy` read a dotted path into maps; `functions/test/support/fake-content-store-paths.test.ts`; the client sort can go) |
-| CR-M3-28 | admin-imagery | fn-setup / the legacy import (`setup.createCity`, `scripts/seed/`; `seed/bucharest/` is ask-first) | CR-M3-8's second half: the Bucharest import writes `imagery.targetYears` [1966, 1976, 1977, 1978, 1980]; `createCityRequestSchema` picks the city's fields and has no `imagery`. Until then an owner adds the years in Settings → Historical imagery | the ranking's target years for Bucharest | open (integrator, 2026-10-24): needs the bundled seed (`seed/bucharest/`, ask first) or `createCityRequestSchema` to carry `imagery`; until then the owner adds the five years once in Settings → Historical imagery (the admin guides say so) |
+| CR-M3-28 | admin-imagery | fn-setup / the legacy import (`setup.createCity`, `scripts/seed/`; `seed/bucharest/` is ask-first) | CR-M3-8's second half: the Bucharest import writes `imagery.targetYears` [1966, 1976, 1977, 1978, 1980]; `createCityRequestSchema` picks the city's fields and has no `imagery`. Until then an owner adds the years in Settings → Historical imagery | the ranking's target years for Bucharest | done (M8, 2026-11-06): `createCityRequestSchema` picks `imagery`; `scripts/seed/bucharest.city.json` holds ten years (1966, 1972, 1976, 1977, 1978, 1979, 1980, 1982, 1983, 1984), which the setup bundle carries to `setup.createCity` (`M8-join-interfaces.md` §11); nothing under `seed/bucharest/` changed; the live city got them through Settings (D2); `S-A66-HAPPY-SEED` |
 | CR-M3-29 | admin-imagery | e2e-fakes (`e2e/tour/states.ts` imagery section, the specs) | The tour's states and the specs' hooks of the admin-imagery screens: Imagery (`[data-view="find"\|"work"\|"upload"]`, the upload's `[data-phase]`, a scene `.pane[data-scene]` with `[data-state="needs-order"\|"downloads-pending"\|"browse-unavailable"]`, a version's approval card and `[data-wait]`, `#/imagery/replace/<layerId>`), the georeferencer (`hcm-scan-viewer`, `table.residuals`, `[data-state="too-few"\|"degenerate"\|"rmse-over"\|"read-only"\|"no-scan"\|"no-pairs"]`, the compact pane switch), the layer editor's `[data-group="geometry"]` and `hcm-layer-crop[data-phase]`, Settings → `#/settings/imagery` (`#imagery-threshold`, `#imagery-new-year`, `.year-row`), Jobs (`[data-wait]`, **Run it again**, the `#/georef/` link), Home's two tiles (`#/imagery`). Rows the screens serve: S-A11-*, S-A12-BAD-RETRY, S-A12-BAD-CANCEL, S-A14-*, S-A16-*, S-A17-BAD-AUTO-PUBLISH-OFF, S-A18-HAPPY-RASTER-STEPS, S-A42-* | the tour and the e2e meet the screens as built | done (e2e-fakes, 2026-10-24; the integrator added the zero-results, search-credentials, downloads-pending, over-budget, Studio, upload, Link Check and pending-version states, 2026-10-24) |
 | CR-M3-30 | admin-imagery | ops-screens (Home, Jobs) and layers-settings (tests) | Applied, for review: Home counts `versionsToApprove` and `versionsNeedingPoints` (`layerVersions` by `state`, single-field) with two tiles to `#/imagery`; the tests these screens' additions changed: `packages/admin/test/{app/admin-port,index,routing/router,photos/port,home/home,settings/settings}.test.ts`, `packages/ui/test/admin/{ops/fixtures,ops/crashes-home.test,layers/fixtures,layers/layers-page.test,settings/settings-page.test}.ts` | the dashboard says what waits in Imagery | accepted (integrator, 2026-10-24) |
 | CR-M3-31 | admin-imagery | integrator | Built (2026-10-23): `packages/shared/src/georef/` (affine, second-order polynomial and thin-plate spline from pixels to Web Mercator metres; leave-one-out residuals by the hat matrix and Rippa's rule; checkpoints; ground metres; the warp mesh), held to `pipeline/tests/contracts/georef-cases.json`; `packages/admin/src/{imagery,georef}/**`, `packages/admin/src/firebase/files.ts`, `pages/{imagery,georef,layer-geometry}.ts`, `layers/{crop-slot,crop-chunk}.ts`, `layers/geometry/**`, `jobs/raster.ts`; `packages/ui/src/admin/{imagery,georef}/**`, `layers/geometry/**`, `layers/geometry-group.ts`, `settings/imagery-section.ts`, `jobs/raster-parts.ts`, `areas/{imagery,georef,layer-geometry}.ts`; the `admin-imagery` catalogue. Lessons for `docs/LESSONS.md` and the skills: an import across areas moves the imported module and everything it imports into `editor-shared` (the georeferencer's one constant from `imagery.ts` took the whole Imagery store there, 17.5 KB against 13; a leaf module fixed it), so a lazy area imports only leaves of another; the admin's CSP refuses `blob:` for `connect-src`, so a picture reaches Mapbox as a canvas source (`nativeMap`), never an image source by `blob:` address; v8 counts `??`/`?.` as branches and ESLint's complexity counts them and destructuring defaults too; `@typescript-eslint`'s `non-nullable-type-assertion-style` and `no-non-null-assertion` together forbid both `x as T` and `x!` for a nullable `x`: restructure (slice destructuring, `Number()`, `instanceof`); the catalogue sections' regex takes letters only (`[section layer-geometry]` is no section) | docs follow the code (CR-M3-11) | done (integrator, 2026-10-24): `docs/LESSONS.md` 150–157, the tooling quirks in `quality/pipeline_skill.md` |

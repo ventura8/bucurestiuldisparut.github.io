@@ -3,13 +3,14 @@
  * imagery settings, the search, the ranked scenes with their filters and browse images, the unfinished versions with
  * their jobs, the open scene or version, the upload, and the page's map.
  */
-import { imagerySettingsOf, type ImagerySettings, type PublishChoice, type ServiceState } from '@hcm/shared';
+import { imagerySettingsOf, type DatePlanRow, type ImagerySettings, type PublishChoice, type ServiceState } from '@hcm/shared';
 
 import { LOADING_LIST, type ListState } from '../content/list.js';
 import type { MapStatus } from '../layers/map-session.js';
 import type { NoticeInput } from '../state/state.js';
 import type { BrowseImage } from './browse.js';
 import type { GuardView } from './guard.js';
+import { IDLE_JOIN, type JoinActionsState } from './join.js';
 import {
     DEFAULT_FILTERS,
     NO_NAMED_SCENE,
@@ -33,8 +34,11 @@ export interface ImageryDetail {
     readonly id: string;
 }
 
-/** M4 (`docs/research/M4-interfaces.md` §1.7): the order card's action and refusal (`OrderActionsState`). */
-export interface ImageryState extends OrderActionsState {
+/**
+ * M4 (`docs/research/M4-interfaces.md` §1.7): the order card's action and refusal (`OrderActionsState`). M8
+ * (`docs/research/M8-join-interfaces.md` §6): the join's (`JoinActionsState`).
+ */
+export interface ImageryState extends OrderActionsState, JoinActionsState {
     readonly tab: ImageryTab;
     /** `setup/status.usgs.state` (null while reading): `missing` or `invalid` is the "set up USGS" state. */
     readonly usgs: ServiceState | null;
@@ -69,6 +73,8 @@ export interface ImageryState extends OrderActionsState {
     readonly guard: GuardView | null;
     /** Resume processing is on its way. */
     readonly resuming: boolean;
+    /** M8: the server's plan of each date's whole-city layer, best first. */
+    readonly dates: readonly DatePlanRow[];
 }
 
 export const INITIAL_IMAGERY: ImageryState = {
@@ -76,6 +82,7 @@ export const INITIAL_IMAGERY: ImageryState = {
     ...{ scenes: LOADING_LIST, visible: [], browse: {}, versions: LOADING_LIST, jobs: {}, detail: null, version: null },
     ...{ importing: null, importRefusal: null, upload: IDLE_UPLOAD, map: 'none', previewOpacity: 0.8 },
     ...{ replaceLayer: null, guard: null, resuming: false, orders: LOADING_LIST, named: NO_NAMED_SCENE, ...IDLE_ORDERS },
+    ...{ dates: [], ...IDLE_JOIN },
 };
 
 export interface ImageryIntents {
@@ -117,4 +124,8 @@ export interface ImageryIntents {
     checkOrder(id: string): Promise<boolean>;
     /** M4: "Take the mark back" (`usgs.cancelOrder`). */
     cancelOrder(id: string): Promise<boolean>;
+    /** M8: `imagery.join` of one date's frames: the join version's id (the page opens it), or null when refused. */
+    joinFrames(entityIds: readonly string[]): Promise<string | null>;
+    /** M8: Add {year} to target years, then search again; true once it is saved. */
+    addTargetYear(year: number): Promise<boolean>;
 }

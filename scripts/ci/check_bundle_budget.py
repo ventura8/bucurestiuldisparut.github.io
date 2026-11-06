@@ -163,6 +163,13 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # and its texts (`@hcm/shared/admin-worker-local`), fetched when the worker's panel first shows the computer's part:
     # 4.3 KB measured on 2026-11-02 plus about 20 %, rounded up (DECISIONS-for-review.md §86).
     "worker-local": 5,
+    # M8 (docs/research/M8-join-interfaces.md §6): the join's screens (`packages/ui/src/admin/imagery/join/join-card.ts`), fetched
+    # when the city has a plan of its dates or a join opens, 2.4 KB measured on 2026-11-06 plus about 20 %, rounded up; and the
+    # Upload view (`packages/ui/src/admin/imagery/upload-panel.ts`), out of the Imagery chunk to make room for the plan's feed
+    # and Join frames, fetched when its tab first opens, 1.2 KB measured then. The total did not rise: the line breaks left in
+    # the `css` and `html` templates went (6.4 KB, `scripts/site/src/css-literals.ts`).
+    "join-card": 3,
+    "upload-panel": 2,
 }
 # The entry and every chunk together. 620 until M7 (2026-11-02), 630 since: the total counts every lazy chunk, also those
 # loaded only on use, and M7's `worker` chunk (5.5 KB, loaded only by the Jobs page, the pipeline card and a version page)
