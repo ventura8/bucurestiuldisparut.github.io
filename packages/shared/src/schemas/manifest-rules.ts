@@ -26,6 +26,7 @@ export interface CheckedManifest {
     readonly city: { readonly bounds: BBox };
     readonly layers: readonly Identified[];
     readonly photos: readonly (Identified & { readonly location: { readonly lat: number; readonly lng: number } })[];
+    readonly unplaced?: readonly Identified[] | undefined;
     readonly poiCategories?: readonly Identified[] | undefined;
     readonly pois?:
         | readonly (Identified & {
@@ -36,7 +37,7 @@ export interface CheckedManifest {
         | undefined;
 }
 
-type ListKey = 'layers' | 'photos' | 'poiCategories' | 'pois';
+type ListKey = 'layers' | 'photos' | 'unplaced' | 'poiCategories' | 'pois';
 
 function duplicates(key: ListKey, items: readonly Identified[]): RuleIssue[] {
     const seen = new Set<string>();
@@ -91,11 +92,23 @@ function poiReferences(manifest: CheckedManifest): RuleIssue[] {
     ]);
 }
 
+function unplacedClashes(manifest: CheckedManifest): RuleIssue[] {
+    const placed = new Set(manifest.photos.map((photo) => photo.id));
+    return [
+        ...duplicates('unplaced', manifest.unplaced ?? []),
+        ...(manifest.unplaced ?? []).flatMap((photo, index) =>
+            placed.has(photo.id) ? [{ path: ['unplaced', index, 'id'], code: 'validation.duplicateId' as const }] : [],
+        ),
+    ];
+}
+
 /** Every cross-value problem of a manifest whose fields are individually valid, in a stable order. */
 export function manifestRuleIssues(manifest: CheckedManifest): RuleIssue[] {
     return [
         ...duplicates('layers', manifest.layers),
         ...duplicates('photos', manifest.photos),
+        // M13: a photo's address is its id, so a photo is placed or unplaced, never both.
+        ...unplacedClashes(manifest),
         ...duplicates('poiCategories', manifest.poiCategories ?? []),
         ...duplicates('pois', manifest.pois ?? []),
         ...overlayClashes(manifest),

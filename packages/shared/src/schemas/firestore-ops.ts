@@ -544,6 +544,8 @@ export const manifestStateDocSchema = z.strictObject({
         .strictObject({
             layers: z.number().int().min(0),
             photos: z.number().int().min(0),
+            /** M13: photos in the "Where was this taken?" gallery; absent from a build before it. */
+            unplaced: z.number().int().min(0).optional(),
             pois: z.number().int().min(0),
             poiCategories: z.number().int().min(0),
         })

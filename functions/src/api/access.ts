@@ -1,4 +1,4 @@
-import { CITY_ACCESSES, WORKER_PAIR_ID_PATTERN, type CallableAccess, type CityRole } from '@hcm/shared';
+import { CITY_ACCESSES, REVIEW_ROLES, STAFF_ROLES, WORKER_PAIR_ID_PATTERN, type ApiErrorCode, type CallableAccess, type CityRole } from '@hcm/shared';
 
 import type { AdminDirectory, AdminMembership } from '../ports/admin-directory.js';
 import { ApiError } from './api-error.js';
@@ -61,6 +61,12 @@ export function workerClaims(token: CallerToken): VerifiedCaller['worker'] {
 /** The claim AND the document; the document is read only when the token already qualifies. */
 async function isAdmin(caller: Caller, admins: AdminDirectory): Promise<boolean> {
     return caller.token.admin === true && (await admins.isAdmin(caller.uid));
+}
+
+/** M13 §1: the claim and the document, read once, and not an account whose every role is `moderator` or `uploader`. */
+async function isStaffAccount(caller: Caller, admins: AdminDirectory): Promise<boolean> {
+    const membership = caller.token.admin === true ? await admins.membership(caller.uid) : null;
+    return membership !== null && !membership.contributorOnly;
 }
 
 /** The membership behind an M5 access (`cityEditor`, `cityOwner`, `projectOwner`): the claim and the document. */
@@ -126,14 +132,24 @@ async function requireGoogle(access: CallableAccess, caller: Caller, admins: Adm
     if (access === 'signedIn') {
         return verified;
     }
-    if (access === 'admin') {
-        return requireAdmin(caller, admins, verified);
+    if (access === 'admin' || access === 'member') {
+        return requireAdmin(access, caller, admins, verified);
     }
     return { ...verified, membership: await requireMembership(access, caller, admins) };
 }
 
-async function requireAdmin(caller: Caller, admins: AdminDirectory, verified: VerifiedCaller): Promise<VerifiedCaller> {
-    if (!(await isAdmin(caller, admins))) {
+/**
+ * `member`: the claim and the document. `admin` (M13, `docs/research/M13-roles.md` §1) also refuses an account with cities and
+ * none as staff, so a moderator or an uploader reaches none of the project's own state.
+ */
+async function requireAdmin(
+    access: 'admin' | 'member',
+    caller: Caller,
+    admins: AdminDirectory,
+    verified: VerifiedCaller,
+): Promise<VerifiedCaller> {
+    const allowed = access === 'member' ? await isAdmin(caller, admins) : await isStaffAccount(caller, admins);
+    if (!allowed) {
         throw new ApiError('apiError.notAdmin');
     }
     return verified;
@@ -156,7 +172,7 @@ function cityIdOf(request: unknown): string {
 export function requireCityRole(access: CallableAccess, caller: VerifiedCaller, request: unknown): void {
     if (CITY_ACCESSES.includes(access)) {
         const cityId = cityIdOf(request);
-        requireRoleIn(cityId, roleOf(caller, cityId), access === 'cityOwner');
+        requireRoleIn(cityId, roleOf(caller, cityId), access);
         requireWorkerCity(caller, cityId);
     }
 }
@@ -172,11 +188,19 @@ function roleOf(caller: VerifiedCaller, cityId: string): CityRole | null {
     return caller.membership?.roleIn(cityId) ?? null;
 }
 
-function requireRoleIn(cityId: string, role: CityRole | null, owner: boolean): void {
+/** M13 §1: what each city access needs, named role by role, so a new role opens nothing it does not name. */
+const CITY_ACCESS_ROLES: Readonly<Record<string, { readonly roles: readonly CityRole[]; readonly refusal: ApiErrorCode }>> = {
+    cityOwner: { roles: ['owner'], refusal: 'apiError.city.notOwner' },
+    cityEditor: { roles: STAFF_ROLES, refusal: 'apiError.city.notEditor' },
+    cityReviewer: { roles: REVIEW_ROLES, refusal: 'apiError.city.notReviewer' },
+};
+
+function requireRoleIn(cityId: string, role: CityRole | null, access: CallableAccess): void {
     if (role === null) {
         throw new ApiError('apiError.city.notMember', { cityId });
     }
-    if (owner && role !== 'owner') {
-        throw new ApiError('apiError.city.notOwner', { cityId });
+    const needed = CITY_ACCESS_ROLES[access];
+    if (needed === undefined || !needed.roles.includes(role)) {
+        throw new ApiError(needed?.refusal ?? 'apiError.city.notMember', { cityId });
     }
 }

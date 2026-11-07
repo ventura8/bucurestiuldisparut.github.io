@@ -248,3 +248,61 @@ describe('assembleManifest: the city itself', () => {
         expect(assembly.ok ? [] : assembly.issues.map((issue) => issue.path)).toEqual([path]);
     });
 });
+
+describe('assembleManifest: M13 (docs/research/M13-roles.md §§2, 5)', () => {
+    const unplaced = () => photoDoc('lost', { location: undefined, bearing: undefined, credit: 'Maria' });
+
+    it('happyPath_aPhotoWithNoPlaceJoinsTheUnplacedListAndNotTheMap @S-V40-HAPPY-MANIFEST', () => {
+        const assembly = assembleManifest(content({ photos: result([['p1', photoDoc('p1')], ['lost', unplaced()]]) }), TEST_CONFIG.errorEndpoint);
+        const manifest = manifestOf(assembly);
+        expect(manifest.photos.map((photo) => photo.id)).toEqual(['p1']);
+        expect(manifest.unplaced?.map((photo) => [photo.id, photo.credit])).toEqual([['lost', 'Maria']]);
+        expect(assembly.ok && assembly.counts.unplaced).toBe(1);
+    });
+
+    it('happyPath_noUnplacedPhotosLeaveTheManifestAsItWas', () => {
+        const manifest = manifestOf(assembleManifest(content(), TEST_CONFIG.errorEndpoint));
+        const published: object = JSON.parse(JSON.stringify(manifest)) as object;
+        expect(Object.keys(published)).not.toContain('unplaced');
+        expect(Object.keys(published)).not.toContain('contributeUrl');
+    });
+
+    it('happyPath_theContributeLinkNamesTheCity', () => {
+        const manifest = manifestOf(assembleManifest(content(), TEST_CONFIG.errorEndpoint, { adminUrl: 'https://demo-hcm.web.app/admin/' }));
+        expect(manifest.contributeUrl).toBe(`https://demo-hcm.web.app/admin/#/contribute/${CITY_ID}`);
+    });
+
+    it.each(['pending', 'refused'] as const)('badPath_a_%s_itemNeverReachesThePublicWhateverItsPublishedSays @S-A62-BAD-NOT-PUBLIC-BEFORE', (reviewStatus) => {
+        const manifest = manifestOf(
+            assembleManifest(
+                content({
+                    photos: result([
+                        ['p1', photoDoc('p1')],
+                        ['held', photoDoc('held', { reviewStatus })],
+                        ['heldLost', photoDoc('heldLost', { reviewStatus, location: undefined, bearing: undefined })],
+                    ]),
+                    pois: result([['held', poiDoc({ reviewStatus })]]),
+                }),
+                TEST_CONFIG.errorEndpoint,
+            ),
+        );
+        expect(manifest.photos.map((photo) => photo.id)).toEqual(['p1']);
+        expect(manifest.unplaced).toBeUndefined();
+        expect(manifest.pois).toEqual([]);
+    });
+
+    it('happyPath_anApprovedItemIsPublic', () => {
+        const manifest = manifestOf(
+            assembleManifest(content({ photos: result([['p1', photoDoc('p1', { reviewStatus: 'approved' })]]) }), TEST_CONFIG.errorEndpoint),
+        );
+        expect(manifest.photos.map((photo) => photo.id)).toEqual(['p1']);
+    });
+
+    it('badPath_aRefusedUnplacedPhotoIsReportedLikeAnyOther', () => {
+        const assembly = assembleManifest(
+            content({ photos: result([['lost', photoDoc('lost', { location: undefined, bearing: undefined, license: 'unknown' })]]) }),
+            TEST_CONFIG.errorEndpoint,
+        );
+        expect(assembly.skipped.map((item) => [item.entity, item.id])).toEqual([['photo', 'lost']]);
+    });
+});

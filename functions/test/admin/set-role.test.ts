@@ -154,7 +154,7 @@ describe('admins.setRole', () => {
         await seedAdmin(world, OWNER, { [CITY]: 'editor' });
         const staleAccess: AdminDirectory = {
             isAdmin: () => Promise.resolve(true),
-            membership: () => Promise.resolve({ projectRole: 'admin', roleIn: () => 'owner' }),
+            membership: () => Promise.resolve({ projectRole: 'admin', contributorOnly: false, roleIn: () => 'owner' }),
         };
         const run = setRoleFunction(() => ({ ...world, admins: staleAccess })).run(
             callableRequest(

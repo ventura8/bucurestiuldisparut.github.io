@@ -15,7 +15,7 @@ import { JOBS_PER_DAY } from '../api/imagery.js';
 import { slugify, truncateSlug } from '../migration/slug.js';
 import { AI_MONTHLY_CAP, GEOCODE_DAILY_CAP } from './assist.js';
 import { EXPORT_LIMITS } from './city-export.js';
-import type { CityRole, CityRoles } from './city-roles.js';
+import { CITY_ROLES, type CityRole, type CityRoles } from './city-roles.js';
 import { stamp, timestampSchema } from './firestore-common.js';
 import { MAPBOX_FREE_COMPUTE_UNITS } from './imagery-publish.js';
 import { CITY_ID_PATTERN } from './paths.js';
@@ -34,7 +34,7 @@ export function cityRoleOf(roles: CityRoles | undefined, cityId: string): CityRo
 /** Whether `roles` give `cityId` at least `needed` (an owner may do everything an editor may). */
 export function hasCityRole(roles: CityRoles | undefined, cityId: string, needed: CityRole): boolean {
     const role = cityRoleOf(roles, cityId);
-    return role === 'owner' || (role === 'editor' && needed === 'editor');
+    return role !== null && CITY_ROLES.indexOf(role) <= CITY_ROLES.indexOf(needed);
 }
 
 /** The ids of an admin's cities, sorted (the switcher lists them by name; this order is the fallback). */

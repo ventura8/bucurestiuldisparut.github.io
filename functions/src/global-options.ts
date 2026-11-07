@@ -90,6 +90,14 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'cities.locate': 'fn-admin',
     'cities.setLimits': 'fn-admin',
     'admins.setRole': 'fn-admin',
+    // M13 (docs/research/M13-roles.md).
+    'contribute.context': 'fn-admin',
+    'contribute.request': 'fn-admin',
+    'contribute.decide': 'fn-admin',
+    'review.decide': 'fn-admin',
+    'suggestions.submit': 'fn-admin',
+    'suggestions.decide': 'fn-admin',
+    'contributors.setBlocked': 'fn-admin',
     // M5 static export (docs/research/M5-interfaces.md §5.3, §5.5): the callables as fn-admin@, which signs the download
     // address with its own signBlob; the build as fn-events@, which reads the public bucket and writes the private one.
     'export.start': 'fn-admin',

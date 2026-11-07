@@ -187,27 +187,37 @@ const photoImageSchema = z.strictObject({
     h: z.number().int().min(1).max(20_000),
 });
 
+/** What a photo says wherever it stands on the map or, unplaced (M13), in the gallery. */
+const photoFields = {
+    id: idSchema,
+    title: localizedPartial(200),
+    description: localizedPartial(5000).optional(),
+    year: yearSchema.optional(),
+    yearEnd: yearSchema.optional(),
+    /** How the source dates the photo when that is more than a year (`Iulie 1936`). */
+    dateText: localizedPartial(100).optional(),
+    author: plainText(200).optional(),
+    license: z.enum(LICENSES),
+    rightsHolder: plainText(200).optional(),
+    /** True while the rights of a migrated photo are being confirmed (the viewer shows a note). */
+    rightsReview: z.boolean().optional(),
+    /** M13: the name its contributor asked to be credited under. */
+    credit: plainText(100).optional(),
+    links: z.array(linkSchema).max(MAX_LINKS),
+    image: photoImageSchema,
+};
+
 export const photoSchema = z
     .strictObject({
-        id: idSchema,
-        title: localizedPartial(200),
-        description: localizedPartial(5000).optional(),
-        year: yearSchema.optional(),
-        yearEnd: yearSchema.optional(),
-        /** How the source dates the photo when that is more than a year (`Iulie 1936`). */
-        dateText: localizedPartial(100).optional(),
-        author: plainText(200).optional(),
-        license: z.enum(LICENSES),
-        rightsHolder: plainText(200).optional(),
-        /** True while the rights of a migrated photo are being confirmed (the viewer shows a note). */
-        rightsReview: z.boolean().optional(),
-        links: z.array(linkSchema).max(MAX_LINKS),
+        ...photoFields,
         location: latLngSchema,
         bearing: bearingSchema.optional(),
         fov: fovSchema.optional(),
-        image: photoImageSchema,
     })
     .refine(validYearRange, coded('validation.yearRange', ['yearEnd']));
+
+/** M13 (`docs/research/M13-roles.md` §5): a published photo with no place yet, shown in the "Where was this taken?" gallery. */
+export const unplacedPhotoSchema = z.strictObject(photoFields).refine(validYearRange, coded('validation.yearRange', ['yearEnd']));
 
 export const manifestSchema = z
     .strictObject({
@@ -215,6 +225,10 @@ export const manifestSchema = z
         city: citySchema,
         layers: z.array(layerSchema).max(MAX_LAYERS),
         photos: z.array(photoSchema).max(MAX_PHOTOS),
+        /** M13: photos with no place yet; absent when there are none, so a manifest from before it stays valid. */
+        unplaced: z.array(unplacedPhotoSchema).max(MAX_PHOTOS).optional(),
+        /** M13: the Contribute page of this city, the map's one link to anything that signs in. */
+        contributeUrl: httpsUrlSchema.optional(),
         /** Defaults of the photos overlay; without it the photos start fully opaque. */
         photosOverlay: photosOverlaySchema.optional(),
         poiCategories: z.array(poiCategorySchema).max(MAX_POI_CATEGORIES).optional(),
@@ -238,6 +252,7 @@ export type LayerKind = (typeof LAYER_KINDS)[number];
 export type LayerSource = z.infer<typeof layerSourceSchema>;
 export type LayerAdjustments = z.infer<typeof layerAdjustmentsSchema>;
 export type Photo = z.infer<typeof photoSchema>;
+export type UnplacedPhoto = z.infer<typeof unplacedPhotoSchema>;
 export type PhotoImage = z.infer<typeof photoImageSchema>;
 export type PhotoLink = z.infer<typeof linkSchema>;
 export type License = (typeof LICENSES)[number];

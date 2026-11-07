@@ -26,6 +26,7 @@ import {
     LAYER_KINDS,
 } from './manifest.js';
 import { iconNameSchema, MAX_POI_PHOTOS, photosOverlaySchema } from './poi.js';
+import { heldImageSchema, reviewFields } from './review.js';
 import {
     assetUrlSchema,
     bearingSchema,
@@ -137,6 +138,11 @@ const photoImageDocSchema = z.strictObject({
 });
 
 /** The original upload, kept in the private bucket (`STORAGE_PATHS.photoOriginal`): uploads/ expire after 7 days. */
+/** M13: a direction or a field of view means nothing without a place. */
+function aimedOnlyIfPlaced(photo: { readonly location?: unknown; readonly bearing?: unknown; readonly fov?: unknown }): boolean {
+    return photo.location !== undefined || (photo.bearing === undefined && photo.fov === undefined);
+}
+
 const photoOriginalDocSchema = z.strictObject({
     path: z.string().min(1).max(1024),
     contentType: z.enum(PHOTO_CONTENT_TYPES),
@@ -184,7 +190,8 @@ export const photoDocSchema = z
         permissionNote: plainText(2000).optional(),
         legacyId: plainText(64).optional(),
         links: z.array(linkSchema).max(MAX_LINKS).optional(),
-        location: latLngSchema,
+        /** M13: absent while the photo waits for a place (`docs/research/M13-roles.md` §5); the map lists it apart. */
+        location: latLngSchema.optional(),
         bearing: bearingSchema.optional(),
         fov: fovSchema.optional(),
         published: z.boolean(),
@@ -199,11 +206,15 @@ export const photoDocSchema = z
         suggested: photoSuggestionsSchema.optional(),
         original: photoOriginalDocSchema.optional(),
         replacement: photoReplacementSchema.optional(),
+        /** M13: a pending photo's derivatives, in the private bucket until `review.decide` moves them. */
+        heldImage: heldImageSchema.optional(),
+        ...reviewFields,
         createdAt: timestampSchema.optional(),
         createdBy: uidSchema.optional(),
         ...stamp,
     })
-    .refine(validYearRange, coded('validation.yearRange', ['yearEnd']));
+    .refine(validYearRange, coded('validation.yearRange', ['yearEnd']))
+    .refine(aimedOnlyIfPlaced, coded('validation.reference', ['bearing']));
 
 /**
  * `cities/{city}/layers/{layer}`: a layer that has tiles. Created by `layers.link` or, in M3, by the publish of its first
@@ -283,6 +294,7 @@ export const poiDocSchema = z
         links: z.array(linkSchema).max(MAX_LINKS).optional(),
         photoIds: z.array(idSchema).max(MAX_POI_PHOTOS).optional(),
         published: z.boolean(),
+        ...reviewFields,
         createdAt: timestampSchema.optional(),
         createdBy: uidSchema.optional(),
         ...stamp,

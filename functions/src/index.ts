@@ -5,7 +5,7 @@
  * `getDeps`, which creates the adapters on the first call, never at cold start; `functions/test/index.test.ts` checks
  * that the exports are exactly the registry's functions, each with its region, instance cap and service account.
  */
-import { adminFunctions, adminsFunctions } from './admin/index.js';
+import { adminFunctions, adminsFunctions, contributeFunctions } from './admin/index.js';
 import { assistFunctions } from './assist/index.js';
 import { citiesFunctions } from './cities/index.js';
 import { getDeps, privateBucket } from './deps.js';
@@ -16,7 +16,7 @@ import { usgsFunctions } from './imagery/orders/index.js';
 import { layersFunctions } from './layers/index.js';
 import { notifyFunctions } from './notify/index.js';
 import { opsFunctions } from './ops/index.js';
-import { photosFunctions } from './photos/index.js';
+import { contributorsFunctions, photosFunctions, reviewFunctions, suggestionsFunctions } from './photos/index.js';
 import { publishFunctions } from './publish/index.js';
 import { defineSetupFunctions } from './setup/index.js';
 import { telemetryFunctions } from './telemetry/index.js';
@@ -24,6 +24,11 @@ import { workerFunctions } from './worker/index.js';
 
 export const admin = adminFunctions(getDeps);
 export const admins = adminsFunctions(getDeps);
+// M13 (docs/research/M13-roles.md): the Contribute page, role requests, the review queue and the suggestions.
+export const contribute = contributeFunctions(getDeps);
+export const review = reviewFunctions(getDeps);
+export const suggestions = suggestionsFunctions(getDeps);
+export const contributors = contributorsFunctions(getDeps);
 export const history = historyFunctions(getDeps);
 export const telemetry = telemetryFunctions(getDeps);
 export const setup = defineSetupFunctions(getDeps);

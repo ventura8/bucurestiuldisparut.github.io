@@ -52,7 +52,7 @@ const HEIC_ERROR: ApiErrorCode = 'apiError.photo.heicUnsupported';
 const UNDECODABLE: ReadonlySet<PhotoContentType> = new Set(['image/heic', 'image/heif']);
 
 /** The fields one processing result replaces; everything else of the document stays as the admin wrote it. */
-const SERVER_FIELDS = ['image', 'exif', 'suggested', 'original', 'processingError', 'duplicateOf', 'replacement'] as const;
+const SERVER_FIELDS = ['image', 'heldImage', 'exif', 'suggested', 'original', 'processingError', 'duplicateOf', 'replacement'] as const;
 
 const DERIVATIVES: Readonly<Record<PhotoVariant, { readonly longEdge: number; readonly quality: number }>> = {
     web: { longEdge: PHOTO_LIMITS.webLongEdge, quality: PHOTO_LIMITS.webQuality },
@@ -77,7 +77,9 @@ class PhotoRefused extends Error {
 }
 
 interface Processed {
-    readonly image: NonNullable<PhotoDoc['image']>;
+    /** The public derivatives, or (M13 §2) `heldImage`, the private ones of a photo that waits for review. */
+    readonly image?: NonNullable<PhotoDoc['image']>;
+    readonly heldImage?: NonNullable<PhotoDoc['heldImage']>;
     readonly original: NonNullable<PhotoDoc['original']>;
     readonly exif: NonNullable<PhotoDoc['exif']>;
     readonly suggested?: NonNullable<PhotoDoc['suggested']>;
@@ -163,6 +165,12 @@ interface Derivative {
     readonly height: number;
 }
 
+interface Rendered {
+    readonly web: Derivative;
+    readonly thumb: Derivative;
+    readonly sha256: string;
+}
+
 /** Both derivatives in memory: every decoding problem shows here, before anything is written. */
 async function render(deps: PhotoDeps, bytes: Uint8Array): Promise<readonly [Derivative, Derivative]> {
     const encode = async (variant: PhotoVariant): Promise<Derivative> => ({
@@ -190,7 +198,26 @@ async function store(deps: PhotoDeps, upload: PhotoUpload, sha256: string, deriv
     return publicObjectUrl(deps.config.buckets.public, path);
 }
 
-async function processBytes(deps: PhotoDeps, upload: PhotoUpload, object: FinalizedObject, bytes: Uint8Array): Promise<Processed> {
+/**
+ * M13 §2: a pending photo's derivative stays in the private bucket: nothing of it has a public address until `review.decide`
+ * moves it, so an uploader cannot host a file by uploading it.
+ */
+async function hold(deps: PhotoDeps, upload: PhotoUpload, sha256: string, derivative: Derivative): Promise<string> {
+    const path = STORAGE_PATHS.reviewHeld(upload.cityId, upload.photoId, sha256, derivative.variant);
+    await deps.blobs.write('private', path, derivative.bytes, { contentType: 'image/webp' });
+    return path;
+}
+
+/** Where the derivatives go: the public bucket, or held back while the photo waits for review. */
+async function stored(deps: PhotoDeps, upload: PhotoUpload, held: boolean, rendered: Rendered) {
+    const { web, thumb, sha256 } = rendered;
+    const size = { sha256, w: web.width, h: web.height };
+    return held
+        ? { image: undefined, heldImage: { web: await hold(deps, upload, sha256, web), thumb: await hold(deps, upload, sha256, thumb), ...size } }
+        : { heldImage: undefined, image: { web: await store(deps, upload, sha256, web), thumb: await store(deps, upload, sha256, thumb), ...size } };
+}
+
+async function processBytes(deps: PhotoDeps, upload: PhotoUpload, object: FinalizedObject, bytes: Uint8Array, held: boolean): Promise<Processed> {
     const accepted = accept(await deps.images.inspect(bytes).catch(refuseUnreadable));
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     await refuseDuplicate(deps, upload, sha256);
@@ -198,13 +225,7 @@ async function processBytes(deps: PhotoDeps, upload: PhotoUpload, object: Finali
     const originalPath = STORAGE_PATHS.photoOriginal(upload.cityId, upload.photoId, sha256, accepted.contentType);
     await deps.blobs.copy({ bucket: 'private', path: object.name }, { bucket: 'private', path: originalPath });
     return compact<Processed>({
-        image: {
-            web: await store(deps, upload, sha256, web),
-            thumb: await store(deps, upload, sha256, thumb),
-            sha256,
-            w: web.width,
-            h: web.height,
-        },
+        ...(await stored(deps, upload, held, { web, thumb, sha256 })),
         original: { path: originalPath, contentType: accepted.contentType, bytes: bytes.length, sha256 },
         exif: exifRecord(accepted.exif),
         suggested: suggestionsFrom(accepted.exif, object.metadata['originalName']),
@@ -284,15 +305,15 @@ async function recordFailure(deps: PhotoDeps, upload: PhotoUpload, object: Final
     deps.log.info('photo refused', { cityId: upload.cityId, photoId: upload.photoId, code: error.refusal.code });
 }
 
-async function processKnownUpload(deps: PhotoDeps, upload: PhotoUpload, object: FinalizedObject): Promise<UploadOutcome> {
+async function processKnownUpload(deps: PhotoDeps, upload: PhotoUpload, object: FinalizedObject, held: boolean): Promise<UploadOutcome> {
     try {
         const bytes = await readUpload(deps, object);
         if (bytes === undefined) {
             return 'gone';
         }
-        const processed = await processBytes(deps, upload, object, bytes);
+        const processed = await processBytes(deps, upload, object, bytes, held);
         await recordDone(deps, upload, processed);
-        deps.log.info('photo processed', { cityId: upload.cityId, photoId: upload.photoId, sha256: processed.image.sha256 });
+        deps.log.info('photo processed', { cityId: upload.cityId, photoId: upload.photoId, held });
     } catch (error) {
         await recordFailure(deps, upload, object, error);
         return 'failed';
@@ -320,5 +341,5 @@ export async function processPhotoUpload(deps: PhotoDeps, object: FinalizedObjec
         deps.log.warn('upload without its photo document deleted', { cityId: upload.cityId, photoId: upload.photoId });
         return 'orphan';
     }
-    return processKnownUpload(deps, upload, object);
+    return processKnownUpload(deps, upload, object, photo.reviewStatus === 'pending');
 }

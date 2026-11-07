@@ -11,6 +11,7 @@ import {
     bboxFromRecord,
     geometryFromDoc,
     validateManifest,
+    isReviewCleared,
     type CityDoc,
     type LayerDoc,
     type Manifest,
@@ -44,6 +45,11 @@ export type Assembly =
     | { readonly ok: true; readonly manifest: Manifest; readonly counts: Counts; readonly skipped: readonly SkippedDocument[] }
     | { readonly ok: false; readonly issues: readonly ValidationIssue[]; readonly skipped: readonly SkippedDocument[] };
 
+/** M13 §5: where the manifest's Contribute link goes: the project's admin, when it knows its address. */
+export interface ManifestLinks {
+    readonly adminUrl?: string;
+}
+
 /** The view of a city that sets none: a city-wide zoom, within its own limits when it sets those. */
 const VIEW_DEFAULTS = { zoom: 13, minZoom: 10, maxZoom: 20 } as const;
 const DEFAULT_BASEMAP = { style: 'mapbox://styles/mapbox/standard' } as const;
@@ -51,16 +57,17 @@ const DEFAULT_BASEMAP = { style: 'mapbox://styles/mapbox/standard' } as const;
 const MAX_PASSES = 4;
 const MAX_SKIPPED_PATH = 200;
 
-type ListKey = 'layers' | 'photos' | 'poiCategories' | 'pois';
+type ListKey = 'layers' | 'photos' | 'unplaced' | 'poiCategories' | 'pois';
 
 const ENTITY_OF: Readonly<Record<ListKey, ManifestEntity>> = {
     layers: 'layer',
     photos: 'photo',
+    unplaced: 'photo',
     poiCategories: 'poiCategory',
     pois: 'poi',
 };
 
-const LIST_KEYS: readonly ListKey[] = ['layers', 'photos', 'poiCategories', 'pois'];
+const LIST_KEYS: readonly ListKey[] = ['layers', 'photos', 'unplaced', 'poiCategories', 'pois'];
 
 /** One listed document: its id and its manifest entry (a POI's photos are the ones the manifest still lists). */
 interface Item {
@@ -141,7 +148,8 @@ function layerEntry(layer: LayerDoc, id: string): unknown {
     };
 }
 
-function photoEntry(photo: PhotoDoc & { readonly image: NonNullable<PhotoDoc['image']> }, id: string): unknown {
+/** What a photo says wherever it stands: on the map, or (M13) in the "Where was this taken?" gallery. */
+function photoCommon(photo: PhotoDoc & { readonly image: NonNullable<PhotoDoc['image']> }, id: string) {
     return {
         id,
         title: photo.title,
@@ -153,12 +161,14 @@ function photoEntry(photo: PhotoDoc & { readonly image: NonNullable<PhotoDoc['im
         license: photo.license,
         rightsHolder: photo.rightsHolder,
         rightsReview: photo.rightsReview,
+        credit: photo.credit,
         links: photo.links ?? [],
-        location: photo.location,
-        bearing: photo.bearing,
-        fov: photo.fov,
         image: { web: photo.image.web, thumb: photo.image.thumb, w: photo.image.w, h: photo.image.h },
     };
+}
+
+function photoEntry(photo: PhotoDoc & { readonly image: NonNullable<PhotoDoc['image']> }, id: string): unknown {
+    return { ...photoCommon(photo, id), location: photo.location, bearing: photo.bearing, fov: photo.fov };
 }
 
 function poiCategoryEntry(category: PoiCategoryDoc, id: string): unknown {
@@ -178,6 +188,7 @@ function poiEntry(poi: PoiDoc, id: string, photoIds: ReadonlySet<string>): unkno
         yearEnd: poi.yearEnd,
         links: poi.links ?? [],
         photoIds: photos?.length === 0 ? undefined : photos,
+        credit: poi.credit,
     };
 }
 
@@ -187,30 +198,40 @@ function byOrder(a: StoredDocument<{ readonly order: number }>, b: StoredDocumen
     return a.data.order - b.data.order || byId(a, b);
 }
 
+/**
+ * Listed: published, processed and (M13 §2) cleared by review. `reviewStatus` is checked here as well as in the rules: a
+ * pending or refused document never reaches the public whatever its `published` says.
+ */
 function hasImage(photo: PhotoDoc): photo is PhotoDoc & { readonly image: NonNullable<PhotoDoc['image']> } {
-    return photo.published && photo.processing === 'done' && photo.image !== undefined;
+    return photo.published && isReviewCleared(photo) && photo.processing === 'done' && photo.image !== undefined;
 }
 
 /** The listed documents in a stable order: ready published layers, processed published photos, every category. */
 function listsOf(content: CityContent): Lists {
-    const photos = content.photos.documents.flatMap(({ id, data }) => (hasImage(data) ? [{ id, entry: () => photoEntry(data, id) }] : []));
+    const shown = content.photos.documents.flatMap(({ id, data }) => (hasImage(data) ? [{ id, data }] : []));
+    const items = (placed: boolean, entry: (typeof photoEntry | typeof photoCommon)) =>
+        shown
+            .filter(({ data }) => (data.location !== undefined) === placed)
+            .map(({ id, data }) => ({ id, entry: () => entry(data, id) }))
+            .toSorted(byId);
     return {
         layers: content.layers.documents
             .filter(({ data }) => data.published && data.status === 'ready')
             .toSorted(byOrder)
             .map(({ id, data }) => ({ id, entry: () => layerEntry(data, id) })),
-        photos: photos.toSorted(byId),
+        photos: items(true, photoEntry),
+        unplaced: items(false, photoCommon),
         poiCategories: content.poiCategories.documents
             .toSorted(byOrder)
             .map(({ id, data }) => ({ id, entry: () => poiCategoryEntry(data, id) })),
         pois: content.pois.documents
-            .filter(({ data }) => data.published)
+            .filter(({ data }) => data.published && isReviewCleared(data))
             .toSorted(byId)
             .map(({ id, data }) => ({ id, entry: (photoIds: ReadonlySet<string>) => poiEntry(data, id, photoIds) })),
     };
 }
 
-function draft(content: CityContent, city: unknown, lists: Lists): unknown {
+function draft(content: CityContent, city: unknown, lists: Lists, links: ManifestLinks): unknown {
     const photoIds = new Set(lists.photos.map((item) => item.id));
     const entries = (key: ListKey) => lists[key].map((item) => item.entry(photoIds));
     return {
@@ -218,6 +239,9 @@ function draft(content: CityContent, city: unknown, lists: Lists): unknown {
         city,
         layers: entries('layers'),
         photos: entries('photos'),
+        // M13 §5: absent when empty, so a city with none keeps the manifest it had.
+        unplaced: lists.unplaced.length === 0 ? undefined : entries('unplaced'),
+        contributeUrl: links.adminUrl === undefined ? undefined : `${links.adminUrl}#/contribute/${content.cityId}`,
         photosOverlay: content.city.photosOverlay,
         poiCategories: entries('poiCategories'),
         pois: entries('pois'),
@@ -254,7 +278,16 @@ function drop(lists: Lists, located: readonly Located[]): { readonly lists: List
             }
             return refusal === undefined;
         });
-    return { lists: { layers: keep('layers'), photos: keep('photos'), poiCategories: keep('poiCategories'), pois: keep('pois') }, skipped };
+    return {
+        lists: {
+            layers: keep('layers'),
+            photos: keep('photos'),
+            unplaced: keep('unplaced'),
+            poiCategories: keep('poiCategories'),
+            pois: keep('pois'),
+        },
+        skipped,
+    };
 }
 
 /** Validates, drops the refused documents and tries again, until the manifest passes or the city itself is the problem. */
@@ -262,13 +295,14 @@ function settle(
     content: CityContent,
     city: unknown,
     lists: Lists,
-    state: { passes: number; skipped: readonly SkippedDocument[] },
+    state: { passes: number; skipped: readonly SkippedDocument[]; links: ManifestLinks },
 ): Assembly {
-    const result = validateManifest(draft(content, city, lists));
+    const result = validateManifest(draft(content, city, lists, state.links));
     if (result.ok) {
         const counts = {
             layers: lists.layers.length,
             photos: lists.photos.length,
+            unplaced: lists.unplaced.length,
             poiCategories: lists.poiCategories.length,
             pois: lists.pois.length,
         };
@@ -280,7 +314,7 @@ function settle(
         return { ok: false, issues: result.issues.filter((_, index) => located[index] === undefined), skipped: state.skipped };
     }
     const next = drop(lists, items);
-    return settle(content, city, next.lists, { passes: state.passes - 1, skipped: [...state.skipped, ...next.skipped] });
+    return settle(content, city, next.lists, { passes: state.passes - 1, skipped: [...state.skipped, ...next.skipped], links: state.links });
 }
 
 function refused(entity: ManifestEntity, documents: readonly InvalidDocument[]): SkippedDocument[] {
@@ -293,12 +327,12 @@ function refused(entity: ManifestEntity, documents: readonly InvalidDocument[]):
 }
 
 /** The city's manifest and the documents left out, or the issues of the city itself when it cannot be published. */
-export function assembleManifest(content: CityContent, errorEndpoint: string): Assembly {
+export function assembleManifest(content: CityContent, errorEndpoint: string, links: ManifestLinks = {}): Assembly {
     const skipped = [
         ...refused('layer', content.layers.invalid),
         ...refused('photo', content.photos.invalid),
         ...refused('poiCategory', content.poiCategories.invalid),
         ...refused('poi', content.pois.invalid),
     ];
-    return settle(content, cityEntry(content, errorEndpoint), listsOf(content), { passes: MAX_PASSES, skipped });
+    return settle(content, cityEntry(content, errorEndpoint), listsOf(content), { passes: MAX_PASSES, skipped, links });
 }

@@ -58,6 +58,7 @@ export const MANIFEST_FIELDS: Readonly<Record<HistoryEntity, readonly string[]>>
         'license',
         'rightsHolder',
         'rightsReview',
+        'credit',
         'links',
         'location',
         'bearing',
@@ -65,13 +66,16 @@ export const MANIFEST_FIELDS: Readonly<Record<HistoryEntity, readonly string[]>>
         'image',
         'processing',
     ],
-    poi: ['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd', 'links', 'photoIds'],
+    poi: ['category', 'geometry', 'title', 'description', 'yearStart', 'yearEnd', 'links', 'photoIds', 'credit'],
     poiCategory: ['label', 'icon', 'color', 'defaultOpacity', 'order'],
 };
 
 /** POI categories have no `published` flag: every category is listed while it exists. */
 function isListed(entity: HistoryEntity, document: RawDocument): boolean {
-    return entity === 'poiCategory' ? document !== undefined : document?.['published'] === true;
+    if (entity === 'poiCategory') {
+        return document !== undefined;
+    }
+    return document?.['published'] === true && [undefined, 'approved'].includes(document['reviewStatus'] as string | undefined);
 }
 
 /** The same value whatever the key order of its maps (Firestore does not promise one). */

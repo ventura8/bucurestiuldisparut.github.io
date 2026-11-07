@@ -11,6 +11,10 @@ import {
     adminDocSchema,
     cityRoleOf,
     inboxItemDocSchema,
+    isContributorOnly,
+    isReviewRole,
+    isStaffRole,
+    notificationAudience,
     notificationEventDocSchema,
     notifySettingsDocSchema,
     systemWriter,
@@ -18,6 +22,7 @@ import {
     validate,
     wantsPush,
     type AdminDoc,
+    type CityRole,
     type InboxItemDoc,
     type NotificationEventDoc,
 } from '@hcm/shared';
@@ -64,9 +69,24 @@ function itemLink(event: Pick<NotificationEventDoc, 'cityId' | 'link'>): string 
     }
 }
 
-/** M5: a city's event goes to that city's admins only; a project event (no city) to every admin. */
+/** M13 §7: whether this role hears of this kind of a city's event. */
+function hears(kind: NotificationEventDoc['kind'], role: CityRole | null): boolean {
+    const audience = notificationAudience(kind);
+    if (audience === 'owners') {
+        return role === 'owner';
+    }
+    return audience === 'reviewers' ? isReviewRole(role) : isStaffRole(role);
+}
+
+/**
+ * M5: a city's event goes to that city's admins only; a project event (no city) to every admin. M13 §7: each to its audience,
+ * so a moderator or an uploader hears nothing of imagery, budgets or crashes.
+ */
 function concerns(event: NotificationEventDoc, admin: AdminDoc): boolean {
-    return event.cityId === undefined || cityRoleOf(admin.cities, event.cityId) !== null;
+    if (event.cityId === undefined) {
+        return !isContributorOnly(admin.cities);
+    }
+    return hears(event.kind, cityRoleOf(admin.cities, event.cityId));
 }
 
 function itemOf(event: NotificationEventDoc, now: Date): InboxItemDoc {

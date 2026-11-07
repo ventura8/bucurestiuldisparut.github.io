@@ -7,7 +7,9 @@
  */
 import type { CallableDeps } from '../api/callable.js';
 import { claimFunction, type ClaimDeps } from './claim.js';
+import { contextFunction, requestFunction, type ContributeDeps } from './contribute.js';
 import { inviteFunction, type InviteDeps } from './invite.js';
+import { roleDecideFunction, type RoleDecideDeps } from './role-requests.js';
 import { joinFunction, type JoinDeps } from './join.js';
 import { listFunction, type ListDeps } from './list.js';
 import { revokeFunction, type RevokeDeps } from './revoke.js';
@@ -16,6 +18,11 @@ import { setRoleFunction, type SetRoleDeps } from './set-role.js';
 
 export type AdminFamilyDeps = CallableDeps & SessionDeps & ClaimDeps & JoinDeps;
 export type AdminsFamilyDeps = CallableDeps & InviteDeps & RevokeDeps & ListDeps & SetRoleDeps;
+
+/** M13's `contribute.*`: the Contribute page's two (any verified Google account) and an owner's decision on a request. */
+export function contributeFunctions(getDeps: () => CallableDeps & ContributeDeps & RoleDecideDeps) {
+    return { context: contextFunction(getDeps), request: requestFunction(getDeps), decide: roleDecideFunction(getDeps) };
+}
 
 /** `admin.session`, `admin.claim`, `admin.join`: any verified Google account may call them. */
 export function adminFunctions(getDeps: () => AdminFamilyDeps) {

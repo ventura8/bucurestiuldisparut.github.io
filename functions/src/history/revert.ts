@@ -7,6 +7,7 @@ import {
     cityDocSchema,
     historyEntryDocSchema,
     historyEntryId,
+    isStaffRole,
     layerDocSchema,
     photoDocSchema,
     poiCategoryDocSchema,
@@ -121,6 +122,14 @@ async function isDeleted(deps: RevertDeps, audited: AuditedDocument): Promise<bo
     return (await deps.documents.get(auditedDocumentPath(audited), SCHEMAS[audited.entity])) === undefined;
 }
 
+/** M13 §1: a moderator reverts a photo or a place, and never a city's settings, a layer or a category. */
+function requireEntityRight(caller: VerifiedCaller, data: CallableRequest<'history.revert'>): void {
+    const staff = isStaffRole(caller.membership?.roleIn(data.cityId));
+    if (!staff && data.entity !== 'photo' && data.entity !== 'poi') {
+        throw new ApiError('apiError.city.notEditor', { cityId: data.cityId });
+    }
+}
+
 /**
  * `history.revert` (admins; S-A23-HAPPY, S-A23-BAD-INVALID-SNAPSHOT, S-A23-BAD-CREATION-ENTRY): restores the version
  * one history entry kept. A version today's schema refuses is not written (`history.invalidSnapshot` with the number
@@ -133,6 +142,7 @@ async function historyRevert(
     caller: VerifiedCaller,
     data: CallableRequest<'history.revert'>,
 ): Promise<CallableResponse<'history.revert'>> {
+    requireEntityRight(caller, data);
     const audited: AuditedDocument = { entity: data.entity, cityId: data.cityId, entityId: data.entityId };
     const deleted = await isDeleted(deps, audited);
     const cancel = deleted ? await waitingLayerDeletes(deps, audited) : [];

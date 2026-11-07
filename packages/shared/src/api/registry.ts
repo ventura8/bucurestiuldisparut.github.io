@@ -46,6 +46,7 @@ import {
     reprocessPhotoRequestSchema,
     reprocessPhotoResponseSchema,
 } from './content.js';
+import { COMMUNITY_CALLABLES } from './community.js';
 import { revertRequestSchema, revertResponseSchema } from './history.js';
 import { ASSIST_GEOCODE_QUEUE } from '../schemas/assist.js';
 import {
@@ -154,12 +155,14 @@ export type FunctionOwner = (typeof FUNCTION_OWNERS)[number];
  * M5 (`docs/research/M5-interfaces.md` §1.3), each an `admin` too: `cityEditor` has a role in the request's `cityId`,
  * `cityOwner` owns it (both checked once the request is valid, before the handler reads anything), `projectOwner` is the
  * account that claimed the project (`admins/{uid}.role == 'owner'`).
+ * M13 (`docs/research/M13-roles.md` §1): `cityEditor` is an owner or an editor, `cityReviewer` adds a moderator, `admin` leaves
+ * out an account whose every role is `moderator` or `uploader`, and `member` is any admin document (the push devices only).
  * `none` (finding 67 of 2026-11-02): no sign-in at all, for `worker.pair` only, whose one-time code is the credential.
  */
-export type CallableAccess = 'signedIn' | 'admin' | 'cityEditor' | 'cityOwner' | 'projectOwner' | 'none';
+export type CallableAccess = 'signedIn' | 'member' | 'admin' | 'cityEditor' | 'cityReviewer' | 'cityOwner' | 'projectOwner' | 'none';
 
 /** The accesses that name a city: their requests carry `cityId` at the top level (the registry's test checks it). */
-export const CITY_ACCESSES: readonly CallableAccess[] = ['cityEditor', 'cityOwner'];
+export const CITY_ACCESSES: readonly CallableAccess[] = ['cityEditor', 'cityReviewer', 'cityOwner'];
 
 /**
  * `consume`: a replay-protected App Check token (`consumeAppCheckToken`), for ownership and secret pastes. `off` (M7,
@@ -202,8 +205,9 @@ function scoped<Access extends CallableAccess>(access: Access) {
     ) => ({ access, appCheck, maxInstances: 3, request, response, owner }) as const;
 }
 
+const memberCallable = scoped('member');
 const cityEditor = scoped('cityEditor');
-
+const cityReviewer = scoped('cityReviewer');
 const cityOwner = scoped('cityOwner');
 const projectOwner = scoped('projectOwner');
 
@@ -242,7 +246,8 @@ export const ADMIN_CALLABLES = {
     'admins.invite': cityOwner('fn-admin', cityInviteRequestSchema, inviteResponseSchema),
     'admins.revoke': cityOwner('fn-admin', cityRevokeRequestSchema, revokeResponseSchema),
     'admins.list': cityEditor('fn-admin', cityAdminsListRequestSchema, cityAdminsListResponseSchema),
-    'history.revert': cityEditor('fn-admin', revertRequestSchema, revertResponseSchema),
+    // M13: a moderator reverts a photo or a place only; the handler checks the entity.
+    'history.revert': cityReviewer('fn-admin', revertRequestSchema, revertResponseSchema),
     'telemetry.listGroups': adminCallable('fn-admin', listGroupsRequestSchema, listGroupsResponseSchema),
     'setup.status': adminCallable('fn-setup', statusRequestSchema, setupStatusViewSchema),
     'setup.selfTest': adminCallable('fn-setup', selfTestRequestSchema, selfTestResponseSchema),
@@ -280,9 +285,13 @@ export const ADMIN_CALLABLES = {
     // M4 assists and notifications (owner fn-assist-notify, docs/research/M4-interfaces.md §4, §5).
     'assist.suggestTitle': cityEditor('fn-assist-notify', assistSuggestTitleRequestSchema, assistSuggestTitleResponseSchema),
     'assist.translateDraft': cityEditor('fn-assist-notify', assistTranslateDraftRequestSchema, assistTranslateDraftResponseSchema),
-    'notify.registerDevice': adminCallable('fn-assist-notify', notifyRegisterDeviceRequestSchema, notifyRegisterDeviceResponseSchema),
-    'notify.unregisterDevice': adminCallable('fn-assist-notify', notifyUnregisterDeviceRequestSchema, notifyUnregisterDeviceResponseSchema),
-    'notify.sendTest': adminCallable('fn-assist-notify', notifySendTestRequestSchema, notifySendTestResponseSchema),
+    'notify.registerDevice': memberCallable('fn-assist-notify', notifyRegisterDeviceRequestSchema, notifyRegisterDeviceResponseSchema),
+    'notify.unregisterDevice': memberCallable(
+        'fn-assist-notify',
+        notifyUnregisterDeviceRequestSchema,
+        notifyUnregisterDeviceResponseSchema,
+    ),
+    'notify.sendTest': memberCallable('fn-assist-notify', notifySendTestRequestSchema, notifySendTestResponseSchema),
     // M5 many cities (owner fn-cities, docs/research/M5-interfaces.md §1.3, §1.6 to §1.8): the project owner creates cities
     // and sets their budgets; a city's owner sets its admins' roles.
     'cities.create': projectOwner('fn-cities', citiesCreateRequestSchema, citiesCreateResponseSchema),
@@ -298,6 +307,8 @@ export const ADMIN_CALLABLES = {
     // Finding 67 of 2026-11-02: the worker command's one-time pairing code, and Disconnect this computer.
     'worker.pairCode': cityEditor('fn-worker', workerPairCodeRequestSchema, workerPairCodeResponseSchema),
     'worker.revoke': cityEditor('fn-worker', workerRevokeRequestSchema, workerRevokeResponseSchema),
+    // M13 (docs/research/M13-roles.md): the Contribute page, the review queue, the suggestions.
+    ...COMMUNITY_CALLABLES,
 } as const satisfies Readonly<Record<string, CallableSpec>>;
 
 export type AdminCallableName = keyof typeof ADMIN_CALLABLES;

@@ -13,6 +13,7 @@ export {
     validationIssueSchema,
 } from './errors.js';
 export type { ApiErrorDetails, ApiErrorSpec, FunctionsErrorStatus } from './errors.js';
+export * from './community.js';
 export { emptyRequestSchema, googleAccessTokenSchema, healthViewFields, isoTimeSchema } from './common.js';
 export {
     CLAIM_OAUTH_SCOPE,

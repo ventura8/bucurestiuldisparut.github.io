@@ -1,5 +1,5 @@
 /** In-memory ports for handler tests: they record what the handler asked for. */
-import { cityRoleOf, createLogger, type AdminRole, type CityRoles, type Logger } from '@hcm/shared';
+import { cityRoleOf, createLogger, type AdminRole, type CityRoles, type Logger, isContributorOnly } from '@hcm/shared';
 import { createRecordingSink, type RecordingSink } from '@hcm/test-support';
 
 import type { AdminDirectory, AdminMembership } from '../../src/ports/admin-directory.js';
@@ -22,6 +22,7 @@ export function fakeMembership(standing: FakeStanding = {}): AdminMembership {
     const { cities } = standing;
     return {
         projectRole: standing.projectRole ?? 'owner',
+        contributorOnly: isContributorOnly(cities),
         roleIn: (cityId) => (cities === undefined ? 'owner' : cityRoleOf(cities, cityId)),
     };
 }

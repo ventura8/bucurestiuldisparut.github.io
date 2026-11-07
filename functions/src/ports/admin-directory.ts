@@ -6,6 +6,8 @@ import type { AdminRole, CityRole } from '@hcm/shared';
  */
 export interface AdminMembership {
     readonly projectRole: AdminRole;
+    /** M13: it has cities and none as staff, so the project's own state is closed to it (`isContributorOnly`). */
+    readonly contributorOnly: boolean;
     roleIn(cityId: string): CityRole | null;
 }
 

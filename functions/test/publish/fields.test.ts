@@ -61,3 +61,19 @@ describe('needsManifestBuild', () => {
         expect(Object.values(MANIFEST_FIELDS).flat()).not.toContain('published');
     });
 });
+
+describe('needsManifestBuild: M13', () => {
+    const photo = { published: true, title: { ro: 'x' } };
+
+    it('happyPath_approvalPutsAPhotoInTheManifest', () => {
+        expect(needsManifestBuild('photo', { ...photo, reviewStatus: 'pending', published: false }, { ...photo, reviewStatus: 'approved' })).toBe(true);
+    });
+
+    it('badPath_aPendingPhotoIsNotListedWhateverItsPublishedSays', () => {
+        expect(needsManifestBuild('photo', { ...photo, reviewStatus: 'pending' }, { ...photo, reviewStatus: 'pending', title: { ro: 'y' } })).toBe(false);
+    });
+
+    it('happyPath_aCreditChangesTheManifest', () => {
+        expect(needsManifestBuild('poi', { ...photo, credit: 'a' }, { ...photo, credit: 'b' })).toBe(true);
+    });
+});

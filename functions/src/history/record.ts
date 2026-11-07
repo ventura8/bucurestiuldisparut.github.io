@@ -17,9 +17,10 @@ import {
 import { onDocumentWrittenWithAuthContext } from 'firebase-functions/firestore';
 
 import type { Ports } from '../ports/index.js';
+import { emitNotification } from '../api/notification-event.js';
 import { changedKeys, isTimestampLike, sameValue, type Fields } from './diff.js';
 
-export type RecordDeps = Pick<Ports, 'documents' | 'log'>;
+export type RecordDeps = Pick<Ports, 'documents' | 'log' | 'clock'>;
 
 /** One write of an audited document, as the trigger hands it to {@link recordHistory}. */
 export interface DocumentChange {
@@ -129,6 +130,19 @@ function stalePaths(listed: readonly ListedEntry[], written: ListedEntry): strin
         .map((entry) => entry.path);
 }
 
+/** M13 §7: a new item an uploader added waits: the city's reviewers hear of it once (the event's id is the item's). */
+async function tellReviewers(deps: RecordDeps, audited: AuditedDocument, change: DocumentChange): Promise<void> {
+    if (change.before !== undefined || change.after?.['reviewStatus'] !== 'pending') {
+        return;
+    }
+    await emitNotification(deps, 'history', {
+        kind: 'review.waiting',
+        parts: [audited.cityId, audited.entityId],
+        link: '#/review',
+        cityId: audited.cityId,
+    });
+}
+
 /**
  * The `history.on*Write` handler (PLAN Addendum 3; `docs/research/M2-interfaces.md` §2.2; S-A23-*): one entry per
  * change in the document's `history` subcollection, id `historyEntryId(time, eventId)` (a redelivered event writes
@@ -155,6 +169,7 @@ export async function recordHistory(deps: RecordDeps, change: DocumentChange): P
     await deps.documents.set(path, historyEntryDocSchema, entryOf(audited, action, change, stamp));
     const stale = stalePaths([...listed.documents, ...listed.invalid], { id, path });
     await Promise.all(stale.map((entry) => deps.documents.delete(entry)));
+    await tellReviewers(deps, audited, change);
     return 'recorded';
 }
 

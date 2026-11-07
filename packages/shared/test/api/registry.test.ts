@@ -57,7 +57,7 @@ describe('the function registry', () => {
             .filter(([, spec]) => spec.access === 'signedIn')
             .map(([name]) => name);
 
-        expect(open).toEqual(['admin.session', 'admin.claim', 'admin.join']);
+        expect(open).toEqual(['admin.session', 'admin.claim', 'admin.join', 'contribute.context', 'contribute.request', 'suggestions.submit']);
     });
 
     it('badPath_onlyPairingAndTheStartersImageNeedNoSignInAndOnlyTheWorkersOwnCallablesAdmitAPairedToken', () => {
@@ -141,17 +141,16 @@ describe('the M5 access of each callable (docs/research/M5-interfaces.md §1.3)'
             'admins.setRole',
             'export.start',
             'export.download',
+            'contribute.decide',
         ]);
     });
 
-    it('badPath_projectWideFactsStayReadableByEveryAdmin', () => {
-        expect(callablesWith('admin')).toEqual([
-            'telemetry.listGroups',
-            'setup.status',
-            'setup.selfTest',
-            'notify.registerDevice',
-            'notify.unregisterDevice',
-            'notify.sendTest',
-        ]);
+    it('badPath_projectWideFactsStayWithStaff', () => {
+        expect(callablesWith('admin')).toEqual(['telemetry.listGroups', 'setup.status', 'setup.selfTest']);
+        expect(callablesWith('member')).toEqual(['notify.registerDevice', 'notify.unregisterDevice', 'notify.sendTest']);
+    });
+
+    it('badPath_onlyTheReviewQueueAndARevertAdmitAModerator', () => {
+        expect(callablesWith('cityReviewer')).toEqual(['history.revert', 'review.decide', 'suggestions.decide', 'contributors.setBlocked']);
     });
 });

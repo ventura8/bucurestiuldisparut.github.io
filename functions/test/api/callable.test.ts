@@ -355,3 +355,41 @@ describe('callableOptions', () => {
         });
     });
 });
+
+describe('M13: the roles and the accesses (docs/research/M13-roles.md §1)', () => {
+    const cases = [
+        ['cityEditor', 'editor', null],
+        ['cityEditor', 'moderator', 'apiError.city.notEditor'],
+        ['cityEditor', 'uploader', 'apiError.city.notEditor'],
+        ['cityReviewer', 'moderator', null],
+        ['cityReviewer', 'editor', null],
+        ['cityReviewer', 'uploader', 'apiError.city.notReviewer'],
+        ['cityOwner', 'moderator', 'apiError.city.notOwner'],
+        ['cityOwner', 'editor', 'apiError.city.notOwner'],
+    ] as const;
+
+    it.each(cases)('%s with a %s', async (access, role, code) => {
+        const caller = { uid: 'u-admin', token: { email_verified: true, admin: true, firebase: { sign_in_provider: 'google.com' } } };
+        const verified = await requireAccess(access, caller, fakeAdmins(['u-admin'], { projectRole: 'admin', cities: { bucharest: role } }));
+        const check = () => {
+            requireCityRole(access, verified, { cityId: 'bucharest' });
+        };
+        if (code === null) {
+            expect(check).not.toThrow();
+        } else {
+            expect(check).toThrow(expect.objectContaining({ code }));
+        }
+    });
+
+    it.each(['moderator', 'uploader'] as const)('badPath_a_%s_reachesNoProjectStateButMayRegisterADevice', async (role) => {
+        const caller = { uid: 'u-admin', token: { email_verified: true, admin: true, firebase: { sign_in_provider: 'google.com' } } };
+        const admins = fakeAdmins(['u-admin'], { projectRole: 'admin', cities: { bucharest: role } });
+        await expect(requireAccess('admin', caller, admins)).rejects.toMatchObject({ code: 'apiError.notAdmin' });
+        await expect(requireAccess('member', caller, admins)).resolves.toMatchObject({ uid: 'u-admin' });
+    });
+
+    it('happyPath_anAccountWithNoCityKeepsWhatItHad', async () => {
+        const caller = { uid: 'u-admin', token: { email_verified: true, admin: true, firebase: { sign_in_provider: 'google.com' } } };
+        await expect(requireAccess('admin', caller, fakeAdmins(['u-admin'], { projectRole: 'admin', cities: {} }))).resolves.toMatchObject({ uid: 'u-admin' });
+    });
+});

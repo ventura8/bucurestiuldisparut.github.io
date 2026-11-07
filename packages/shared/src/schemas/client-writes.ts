@@ -50,6 +50,8 @@ const PHOTO_EDITABLE = [
     'fov',
     'published',
     'rightsReview',
+    /** M13: the optional credit name. */
+    'credit',
     ...STAMP,
 ] as const;
 
@@ -76,6 +78,8 @@ const POI_EDITABLE = [
     'yearEnd',
     'links',
     'photoIds',
+    /** M13: the optional credit name. */
+    'credit',
     'published',
     ...STAMP,
 ] as const;
@@ -90,7 +94,10 @@ export interface ClientWrites {
 export const CLIENT_WRITES = {
     /** Cities are created and deleted by callables (M5); admins edit the settings. */
     city: { create: [], update: CITY_EDITABLE },
-    /** A new photo starts `processing: 'pending'`, unpublished; `photos.onUpload` owns the image fields. */
+    /**
+     * A new photo starts `processing: 'pending'`, unpublished; `photos.onUpload` owns the image fields. M13: an uploader's
+     * create of a photo or a place also carries `reviewStatus: 'pending'`, and nobody else's may (`firestore.rules`).
+     */
     photo: { create: [...PHOTO_EDITABLE, 'processing', 'createdAt', 'createdBy'], update: PHOTO_EDITABLE },
     /** Layers are created by the pipeline; admins edit presentation, default opacity and image adjustments. */
     layer: { create: [], update: LAYER_EDITABLE },
