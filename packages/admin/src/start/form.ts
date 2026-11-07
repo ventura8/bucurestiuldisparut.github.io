@@ -5,7 +5,7 @@
  */
 import { PROJECT_ID_PATTERN, cityBoundsProblem, isUsableCityId, suggestCityId, type CityBounds, type StartKey } from '@hcm/shared';
 
-import { parsePlan, type StartPlan } from './plan.js';
+import { parsePlan, PROJECT_NAME_CHARACTERS, type StartPlan } from './plan.js';
 
 const AREA_EDGES = ['west', 'south', 'east', 'north'] as const;
 
@@ -56,6 +56,14 @@ export function suggestProjectId(cityId: string): string {
     return body.length >= MIN_PROJECT_ID ? body : `${PROJECT_PREFIX}oras`;
 }
 
+const NOT_IN_A_PROJECT_NAME = new RegExp(`[^${PROJECT_NAME_CHARACTERS}]+`, 'g');
+
+/** The project's display name for a city's: Google's characters only (`Sf. Gheorghe` is `Sf Gheorghe`), within its length. */
+export function projectDisplayName(name: string): string {
+    const clean = name.normalize('NFD').replace(/\p{M}/gu, '').replace(NOT_IN_A_PROJECT_NAME, ' ').replace(/ {2,}/g, ' ');
+    return clean.trim().slice(0, DISPLAY_NAME_MAX).trim();
+}
+
 /** The form after the Romanian name changes: what follows it, unless the owner typed it. */
 export function withName(form: StartForm, nameRo: string): StartForm {
     if (nameRo.trim() === '') {
@@ -66,7 +74,7 @@ export function withName(form: StartForm, nameRo: string): StartForm {
         ...form,
         nameRo,
         cityId,
-        displayName: nameRo.slice(0, DISPLAY_NAME_MAX),
+        displayName: projectDisplayName(nameRo),
         projectId: form.projectIdEdited ? form.projectId : suggestProjectId(cityId),
     };
 }
@@ -81,7 +89,11 @@ export function withCityId(form: StartForm, cityId: string): StartForm {
 }
 
 type AreaFields =
-    { readonly kind: 'empty' | 'partial'; readonly bounds?: undefined } | { readonly kind: 'area'; readonly bounds: CityBounds };
+    | { readonly kind: 'empty' | 'partial' | 'notNumber'; readonly bounds?: undefined }
+    | { readonly kind: 'area'; readonly bounds: CityBounds };
+
+/** An edge as a number: a decimal comma, which a Romanian keyboard offers, is a decimal point. */
+const edgeNumber = (text: string): number => Number(text.replace(',', '.'));
 
 /** The rectangle's four fields as numbers: `empty` when all four are blank, `partial` when some are. */
 function areaOf(form: StartForm): AreaFields {
@@ -89,10 +101,14 @@ function areaOf(form: StartForm): AreaFields {
     if (texts.every((text) => text === '')) {
         return { kind: 'empty' };
     }
-    if (texts.some((text) => text === '' || !Number.isFinite(Number(text)))) {
+    if (texts.includes('')) {
         return { kind: 'partial' };
     }
-    const [west, south, east, north] = texts.map(Number) as [number, number, number, number];
+    const numbers = texts.map(edgeNumber);
+    if (!numbers.every(Number.isFinite)) {
+        return { kind: 'notNumber' };
+    }
+    const [west, south, east, north] = numbers as [number, number, number, number];
     return { kind: 'area', bounds: { west, south, east, north } };
 }
 
@@ -102,11 +118,17 @@ const AREA_PROBLEMS: Readonly<Record<NonNullable<ReturnType<typeof cityBoundsPro
     'validation.tooBig': 'start.plan.areaTooBig',
 };
 
+const AREA_FIELD_PROBLEMS: Readonly<Record<'empty' | 'partial' | 'notNumber', StartKey | null>> = {
+    empty: null,
+    partial: 'start.plan.areaIncomplete',
+    notNumber: 'start.plan.areaNumber',
+};
+
 /** Why the rectangle cannot be a city, or null. */
 export function areaProblem(form: StartForm): StartKey | null {
     const { kind, bounds } = areaOf(form);
     if (kind !== 'area') {
-        return kind === 'empty' ? null : 'start.plan.areaIncomplete';
+        return AREA_FIELD_PROBLEMS[kind];
     }
     const problem = cityBoundsProblem(bounds);
     return problem === null ? null : AREA_PROBLEMS[problem];

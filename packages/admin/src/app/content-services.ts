@@ -71,6 +71,7 @@ export function contentServices(parts: ContentShell): ContentServices {
             return cityId();
         },
         firstCity: parts.firstCity,
+        adminCityIds: () => shell.get().cities.map((city) => city.id),
         store: writesRefusedWhen(content.store, () => shell.get().revoked),
         ...{ theme: content.theme, callables: parts.callables },
         ...{ clock: parts.clock, local: parts.local, log: parts.log, denied: parts.denied },

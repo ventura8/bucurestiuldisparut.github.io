@@ -2375,7 +2375,7 @@
             "area": "starter-kit",
             "path": "happy",
             "title": "The self-host steps run the owner's own CLIs, one consent each",
-            "asserts": "with fake firebase and gcloud first on PATH and a fake xdg-open: each step asks y/N first; firebase login, projects:create, the billing page opened, billing polled until linked, the admin deployed to Hosting and its Setup opened; no credential is ever asked for or printed With only (CR-M5-7), whose warning comes first; the sign-in is probed with firebase login:list as plain text, never --json (whose answer holds the account's tokens), and no token reaches the output.",
+            "asserts": "with fake firebase and gcloud first on PATH and a fake xdg-open: each step asks y/N first; firebase login, projects:create, the billing page opened, billing polled until linked, the admin deployed to Hosting and its Setup opened; no credential is ever asked for or printed; server/hosting holds Setup's install bundle and the city page with this project in it; the sign-in is probed with firebase login:list as plain text, never --json (whose answer holds the account's tokens), and no token reaches the output.",
             "tier": "e2e-starter-kit",
             "status": "exists",
             "notes": "Milestone M5 (docs/research/M5-interfaces.md §4.4; owner: kit-cli). Test: e2e/specs/starter-kit/create-city.spec.ts."
@@ -11769,7 +11769,7 @@
             "area": "admin",
             "path": "happy",
             "title": "A new owner starts a map from nothing, in a browser",
-            "asserts": "the page explains what you get, the cost and the accounts; consent in the same tab, the fragment cleared at once; the city and project form; the project, Firebase, the web app, the site, the files and the release against the fake Google; the console step detected; what is released equals the manifest byte for byte, with no GitHub, no Bucharest and the project filled in; the released admin boots from those bytes",
+            "asserts": "the page explains what you get, the cost and the accounts; consent in the same tab, the fragment cleared at once; the city and project form; the project, Firebase, the web app, the site, the files and the release against the fake Google, the project's read answering 403 as Google does; the console step detected, the admin's address shown before it; each released file equals the tree's, whose SHA-256 the manifest names, with the project where it holds the token; the tree names no project and holds no Bucharest data, and project.json no GitHub; the released admin boots from those bytes",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
@@ -11780,7 +11780,7 @@
             "area": "admin",
             "path": "happy",
             "title": "From the start page to a live map of Fostul Bacău, on the bytes that were released",
-            "asserts": "the released admin (no GitHub) runs Setup: Prepare the project without gh-deployer or the Workload Identity pool, Install the server from the released bundle, the claim; New city opens filled in, created in one click; published, the map boots at /fostul-bacau/ through the released generic city page",
+            "asserts": "the released admin (no GitHub) runs Setup: Prepare the project without gh-deployer or the Workload Identity pool, Install the server from the released bundle, the claim; New city opens filled in, created in one click; published in the city's settings, the map boots at /fostul-bacau/ through the released generic city page; then again on the files Publish the map's fetch step makes of the generic bundle (its Firebase deploy runs only on real Google)",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner's request, 2026-11-07, on the emulators and fakes. Test: e2e/admin/specs/start/start.spec.ts."
@@ -11835,7 +11835,7 @@
             "area": "admin",
             "path": "bad",
             "title": "A taken project id is refused, with a free one offered",
-            "asserts": "a 409 from projects.create -> the form, the reason and a free id in the field",
+            "asserts": "the read answers 403 for a taken id as for a free one; a 409 from projects.create -> the form, the reason and a free id in the field",
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
@@ -11883,6 +11883,83 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner's request, 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A70-HAPPY-PLAN-WORDS",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "happy",
+            "title": "A city name with punctuation and a decimal comma still make a plan",
+            "asserts": "a name holding what Google refuses in a display name is cleaned for the project, whose create takes it (the fake checks Google's characters); 26,85 is 26.85",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A70-HAPPY-ANNOUNCED",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "happy",
+            "title": "The long run is said to a screen reader",
+            "asserts": "each new screen takes focus at its heading; the step under way is in one polite status line, not each file of the count",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A70-HAPPY-ROOT",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "happy",
+            "title": "After Publish the map the root goes to the first city",
+            "asserts": "the real fetch step over the real generic bundle leaves the token only in the admin's script, which looks for it; the city page's policy names the project; the published root opens /fostul-bacau/, which boots",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A70-BAD-PROJECT-REFUSED",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "A project Google refuses goes back to the form, which says so",
+            "asserts": "a 400 from projects.create -> the form and the reason, not the terms and no Try again of the same plan",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A70-BAD-RELEASE-AGAIN",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "After the release nothing releases again: not a reload, a new consent or another tab",
+            "asserts": "a reload opens the provider step with the address; Check again after a consent reads the provider only; a new tab asking the same new project leaves the live site; releases.create ran once",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A70-BAD-PROVIDER-UNREADABLE",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "A provider that cannot be read is said so, and the admin's address is still there",
+            "asserts": "a read refused -> its own words, not 'not on yet', and the link to the live admin",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
+        },
+        {
+            "id": "S-A70-BAD-NEW-CITY-AGAIN",
+            "behaviour": "A70",
+            "area": "admin",
+            "path": "bad",
+            "title": "New city does not offer a first city that already exists",
+            "asserts": "project.json still names it; once the session lists it the form opens empty",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The review of 2026-11-07. Test: e2e/admin/specs/start/start.spec.ts."
         }
     ]
 }

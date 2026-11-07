@@ -11,12 +11,25 @@ import type { KeyValueStore } from '../app/ports.js';
 const PLAN_KEY = 'hcm:start:plan';
 const STATE_KEY = 'hcm:start:state';
 
+/**
+ * Resource Manager's `displayName`: "lowercase and uppercase letters, numbers, hyphen, single-quote, double-quote, space, and
+ * exclamation point". Whether "letters" takes ă or ș is not said, so only ASCII is sent.
+ */
+export const PROJECT_NAME_CHARACTERS = 'A-Za-z0-9\\-\'" !';
+
 const planSchema = z.strictObject({
     projectId: z.string().regex(PROJECT_ID_PATTERN),
-    displayName: z.string().trim().min(4).max(30),
+    displayName: z
+        .string()
+        .trim()
+        .min(4)
+        .max(30)
+        .regex(new RegExp(`^[${PROJECT_NAME_CHARACTERS}]+$`)),
     /** False: the owner picked a project they have; it is never created. */
     create: z.boolean(),
     city: startFirstCitySchema,
+    /** Set once `releases.create` answered: from then on the site may have moved on, and only the provider is left to check. */
+    released: z.literal(true).optional(),
 });
 
 export type StartPlan = z.infer<typeof planSchema>;

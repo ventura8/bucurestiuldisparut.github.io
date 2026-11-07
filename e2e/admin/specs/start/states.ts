@@ -21,5 +21,9 @@ export const START_STATES = {
         visit: 'specs/start/start.spec.ts',
     },
     'start.provider': { title: 'Start your map: the one console click, its link and Check again', visit: 'specs/start/start.spec.ts' },
+    'start.provider-unreadable': {
+        title: 'Start your map: the provider could not be read, said apart from not yet, and the admin’s address',
+        visit: 'specs/start/start.spec.ts',
+    },
     'start.done': { title: 'Start your map: the admin is published, the address and what comes next', visit: 'specs/start/start.spec.ts' },
 } as const;

@@ -28,7 +28,7 @@ function explanation(t: StartText): TemplateResult {
 }
 
 export function closedScreen(t: StartText, view: IntroView): TemplateResult {
-    return html`<h1>${t('start.title')}</h1>
+    return html`<h1 tabindex="-1">${t('start.title')}</h1>
         <p class="lede">${t('start.lede')}</p>
         ${explanation(t)}
         <section class="panel" data-state="closed">
@@ -38,7 +38,7 @@ export function closedScreen(t: StartText, view: IntroView): TemplateResult {
 }
 
 export function introScreen(t: StartText, view: IntroView, signIn: () => void): TemplateResult {
-    return html`<h1>${t('start.title')}</h1>
+    return html`<h1 tabindex="-1">${t('start.title')}</h1>
         <p class="lede">${t('start.lede')}</p>
         ${view.notice === null ? nothing : html`<p role="alert" class="alert">${t(view.notice)}</p>`} ${explanation(t)}
         <section class="panel">

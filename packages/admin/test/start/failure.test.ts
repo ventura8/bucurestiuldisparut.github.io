@@ -31,6 +31,17 @@ describe('what the start page says of a failure', () => {
         });
     });
 
+    it('aNameOrIdGoogleRefusesGoesBackToTheForm_notToTheTerms', () => {
+        expect(failureOf({ kind: 'invalid', status: 400, reason: 'INVALID_ARGUMENT' }, 'project')).toEqual({
+            key: 'start.failure.refused',
+            action: 'form',
+        });
+        expect(failureOf({ kind: 'invalid', status: 400, reason: 'FAILED_PRECONDITION' }, 'project')).toMatchObject({
+            key: 'start.failure.terms',
+            link: { url: CLOUD_CONSOLE },
+        });
+    });
+
     it('aConflictOrALimitElsewhereIsNoReasonToLeave', () => {
         expect(failureOf({ kind: 'conflict', status: 409 }, 'firebase')).toMatchObject({
             key: 'start.failure.unknown',
@@ -48,7 +59,7 @@ describe('what the start page says of a failure', () => {
             key: 'start.failure.terms',
             link: { url: FIREBASE_CONSOLE },
         });
-        expect(failureOf({ kind: 'invalid', status: 400 }, 'project')).toMatchObject({
+        expect(failureOf({ kind: 'forbidden', status: 403 }, 'project')).toMatchObject({
             key: 'start.failure.terms',
             link: { url: CLOUD_CONSOLE },
         });

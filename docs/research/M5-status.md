@@ -103,7 +103,8 @@ two M2 rows `S-A19-BAD-LOW-CONTRAST-SEED` and `S-A20-BAD-NO-APP-CHECK` are still
   `gcloud`, never a credential: the sign-in is probed as text, never `login:list --json`), `deploy`, `upgrade` (it keeps
   the page's own policy sources), `theme` (the colours from one colour), `doctor`, all against fake tools; a non-empty
   folder, an `sk.` token, no Firebase CLI, billing not linked, a taken project id (another one named) and a declined
-  step each stop with the reason. Since CR-M5-7 (M14) they need no flag; every
+  step each stop with the reason. Since CR-M5-7 (M14) they need no flag, and the bundle holds what Setup's Install and
+  Publish the map read (`M14-start-your-map.md` §6); every
   command the CLI and the guides print names its exact release (`npx create-historic-city@1.0.0`).
 - **The review screenshots** (`DECISIONS-for-review.md` §63j): every new admin state (the city menu, New city's form,
   drawing, area refused, id taken and done, a city's admins as owner and editor, the role question, the city's budget

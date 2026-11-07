@@ -1,7 +1,8 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { START_RELEASE_FILE, startReleaseSchema, type StartRelease } from '@hcm/shared';
+import { START_PROJECT_TOKEN, START_RELEASE_FILE, START_TREE_FOLDER, startReleaseSchema, type StartRelease } from '@hcm/shared';
 import type { Page } from '@playwright/test';
 
 import { expectStateSound } from '../../../support/state-check.js';
@@ -21,9 +22,12 @@ import {
     allowConsent,
     cancelConsent,
     CITY,
+    claimProjectRead,
     FakeHostingUploads,
+    filesWithToken,
     fillPlan,
     PROJECT,
+    publishedSite,
     REPOSITORY,
     serveReleased,
     START_URL,
@@ -34,10 +38,34 @@ import {
 // The fake's project is the emulators' own (`demo-hcm`), so what is released can run against them.
 test.describe.configure({ lock: ADMIN_LOCK });
 
-function releaseManifest(): StartRelease {
+function releaseFolder(): string {
     const root = join(REPOSITORY, E2E_START_DIR);
     const config = JSON.parse(readFileSync(join(root, 'start-config.json'), 'utf8')) as { readonly release: string };
-    return startReleaseSchema.parse(JSON.parse(readFileSync(join(root, 'release', config.release, START_RELEASE_FILE), 'utf8')));
+    return join(root, 'release', config.release);
+}
+
+function releaseManifest(): StartRelease {
+    return startReleaseSchema.parse(JSON.parse(readFileSync(join(releaseFolder(), START_RELEASE_FILE), 'utf8')));
+}
+
+/** Every file released is the tree's, whose digest the manifest names, with this project where it holds the token. */
+function expectManifestReleased(manifest: StartRelease, released: Readonly<Record<string, Uint8Array>>): void {
+    for (const file of manifest.files) {
+        const source = readFileSync(join(releaseFolder(), START_TREE_FOLDER, file.path));
+        expect(createHash('sha256').update(source).digest('hex'), file.path).toBe(file.sha256);
+        const expected = file.template === true ? Buffer.from(source.toString('utf8').replaceAll(START_PROJECT_TOKEN, PROJECT)) : source;
+        expect(Buffer.compare(Buffer.from(released[file.path] ?? []), expected), file.path).toBe(0);
+    }
+}
+
+/** The tree holds nobody's project and none of Bucharest's data: what a tarball holds is `start.test.ts`'s and the publish's. */
+function expectGenericTree(manifest: StartRelease): void {
+    for (const file of manifest.files.filter((item) => !item.path.endsWith('.tgz') && !item.path.endsWith('.woff2'))) {
+        const text = readFileSync(join(releaseFolder(), START_TREE_FOLDER, file.path), 'utf8');
+        expect(text.includes(PROJECT) || text.includes('bucurestiul-disparut'), file.path).toBe(false);
+    }
+    const paths = manifest.files.map((file) => file.path);
+    expect(paths.filter((path) => path.startsWith('data/') || path === 'config.js' || path.includes('/legacy/'))).toEqual([]);
 }
 
 async function openStart(page: Page, testId: string, lang: 'ro' | 'en'): Promise<void> {
@@ -47,8 +75,8 @@ async function openStart(page: Page, testId: string, lang: 'ro' | 'en'): Promise
 
 test(
     'A new owner starts a map from nothing, in a browser',
-    { tag: '@S-A70-HAPPY' },
-    async ({ page, context, lang, upstream, mockApiRequest }, testInfo) => {
+    { tag: ['@S-A70-HAPPY', '@S-A70-HAPPY-ANNOUNCED'] },
+    async ({ page, context, lang, upstream, mockApiRequest, consoleErrors }, testInfo) => {
         const testId = testIdOf(testInfo);
         await upstream.scenario('firebase-hosting.fresh', 'browser');
         const uploads = new FakeHostingUploads();
@@ -70,8 +98,26 @@ test(
         await fillPlan(page, lang);
         await expectStateSound(page, adminVisit('start.plan', lang));
 
+        // Held at the create: the long run is said to a screen reader, from the heading it moved to.
+        let releaseCreate: () => void = () => undefined;
+        const created = new Promise<void>((resolve) => {
+            releaseCreate = resolve;
+        });
+        await page.route('https://cloudresourcemanager.googleapis.com/v3/projects', async (route) => {
+            await created;
+            await route.fallback();
+        });
         await start.getByRole('button', { name: startText(lang, 'start.plan.go') }).click();
+        await expect(start.getByRole('heading', { level: 1, name: startText(lang, 'start.work.title') })).toBeFocused();
+        await expect(start.getByRole('status').filter({ hasText: startText(lang, 'start.step.project') })).toHaveText(
+            startText(lang, 'start.work.now', { step: startText(lang, 'start.step.project') }),
+        );
+        releaseCreate();
         await expect(start.getByRole('heading', { name: startText(lang, 'start.provider.title') })).toBeVisible({ timeout: 60_000 });
+        await expect(start.getByRole('heading', { level: 1 })).toBeFocused();
+        await claimProjectRead(consoleErrors);
+        // The admin's address is there before anything could read that sign-in is on (M14 §4).
+        await expect(start.locator('[data-open-admin]')).toHaveAttribute('href', `https://${PROJECT}.web.app/admin/`);
         const console = start.getByRole('link', { name: startText(lang, 'start.provider.link') });
         await expect(console).toHaveAttribute('href', `https://console.firebase.google.com/project/${PROJECT}/authentication/providers`);
         await expectStateSound(page, adminVisit('start.provider', lang));
@@ -90,6 +136,8 @@ test(
         const released = await uploads.releaseToFolder(upstream, folder);
         const manifest = releaseManifest();
         expect(new Set(Object.keys(released.files))).toEqual(new Set([...manifest.files.map((file) => file.path), 'admin/project.json']));
+        expectManifestReleased(manifest, released.bytes);
+        expectGenericTree(manifest);
         expect(JSON.stringify(released.config)).toContain(`"${PROJECT}`.replace('"', ''));
         expect(JSON.stringify(released.config)).not.toContain('__HCM_PROJECT_ID__');
         const project = JSON.parse(released.files['admin/project.json'] ?? '{}') as Record<string, unknown>;
@@ -113,7 +161,7 @@ test(
 
 test(
     'From the start page to a live map of Fostul Bacău, on the bytes that were released',
-    { tag: '@S-A70-HAPPY-LIVE' },
+    { tag: ['@S-A70-HAPPY-LIVE', '@S-A70-HAPPY-ROOT', '@S-A70-BAD-NEW-CITY-AGAIN'] },
     async (
         { page, context, lang, upstream, consent, setupBudget, serverDeployment, adminWorld, mockApiRequest, consoleErrors },
         testInfo,
@@ -132,6 +180,7 @@ test(
         await fillPlan(page, lang);
         await start.getByRole('button', { name: startText(lang, 'start.plan.go') }).click();
         await expect(start.getByRole('heading', { name: startText(lang, 'start.done.title') })).toBeVisible({ timeout: 90_000 });
+        await claimProjectRead(consoleErrors);
         const folder = `live-${testId.replace(/[^\w-]/g, '-').slice(0, 90)}`;
         await uploads.releaseToFolder(upstream, folder);
 
@@ -188,6 +237,11 @@ test(
         await expect.poll(() => consoleErrors.takeMatching(/status of 400 .*setup-rotatePublicToken/).length).toBe(1);
         await giveViewerToken(emulators, CITY.id);
 
+        // The city exists: project.json still names it, and New city no longer offers it. A new page load, as the owner's next visit.
+        await page.reload();
+        await expect(form.getByLabel(cityText(lang, 'adminContent.cities.new.nameRo'), { exact: true })).toHaveValue('');
+        await expect(form.getByLabel(cityText(lang, 'adminContent.cities.new.id'), { exact: true })).toHaveValue('');
+
         // Published, its manifest in the public bucket: the live map, at the address of the released rewrites.
         await page.goto(`/admin/?lang=${lang}&test=${encodeURIComponent(testId)}#/c/${CITY.id}/settings/publish`);
         await page.getByRole('switch', { name: cityText(lang, 'adminContent.settings.publish.label') }).click();
@@ -199,6 +253,18 @@ test(
         await page.goto(`/${CITY.id}/?lang=${lang}`);
         await waitForEngineEvent(page, 'hcm-ready');
         expect(await engineEvents(page, 'hcm-ready')).toEqual([expect.objectContaining({ cityId: CITY.id })]);
+
+        // Publish the map's site build on the real generic bundle: only the admin's script keeps the token, as the text it looks
+        // for; the city page's policy and everything else name the project.
+        const site = await publishedSite(folder);
+        expect(filesWithToken(site).filter((path) => !/\/admin\/[^/]+\.m?js$/.test(path))).toEqual([]);
+        await serveReleased(context, site);
+        // The root now goes to the first city, a page load away, and the map boots there from the published files.
+        await page.goto(`/?lang=${lang}`);
+        await page.waitForURL(new RegExp(`/${CITY.id}/`));
+        await waitForEngineEvent(page, 'hcm-ready');
+        const policy = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
+        expect(policy).toContain(`https://us-central1-${PROJECT}.cloudfunctions.net`);
     },
 );
 
@@ -275,6 +341,7 @@ test(
         await expect(start.getByRole('alert')).toContainText(startText(lang, 'start.failure.taken', { projectId: PROJECT }));
         await expect(start.getByLabel(startText(lang, 'start.plan.projectId'))).toHaveValue(`${PROJECT}-2`);
         await expect.poll(() => consoleErrors.takeMatching(/status of 409/).length).toBeGreaterThan(0);
+        await claimProjectRead(consoleErrors);
     },
 );
 
@@ -294,6 +361,7 @@ test(
         await expect(start.getByRole('alert')).toContainText(startText(lang, 'start.failure.quota'), { timeout: 60_000 });
         await expect(start.getByRole('link', { name: startText(lang, 'start.failure.quotaLink') })).toBeVisible();
         await expect.poll(() => consoleErrors.takeMatching(/status of 429/).length).toBeGreaterThan(0);
+        await claimProjectRead(consoleErrors);
     },
 );
 
@@ -307,6 +375,8 @@ test('The form says what it cannot take, and Create waits', { tag: '@S-A70-BAD-F
     await fillPlan(page, lang, 'Nu E Bun');
     await start.getByLabel(startText(lang, 'start.plan.east'), { exact: true }).fill('40');
     await expect(start.locator('[data-area-problem]')).toHaveText(startText(lang, 'start.plan.areaTooBig'));
+    await expect(start.getByLabel(startText(lang, 'start.plan.east'), { exact: true })).toHaveAttribute('aria-invalid', 'true');
+    await expect(start.locator('[data-area-status]')).toHaveRole('status');
     await expect(start.getByText(startText(lang, 'start.plan.projectIdInvalid'))).toBeVisible();
     await expect(start.getByRole('button', { name: startText(lang, 'start.plan.go') })).toBeDisabled();
     await expectStateSound(page, adminVisit('start.plan-invalid', lang));
@@ -378,11 +448,129 @@ test(
         await expect(start.getByRole('alert')).toContainText('npx create-historic-city', { timeout: 60_000 });
         await expect(start.locator('[data-step="files"]')).toHaveAttribute('data-state', 'failed');
         await expect.poll(() => consoleErrors.takeMatching(/upload-firebasehosting/).length).toBeGreaterThan(0);
+        await claimProjectRead(consoleErrors);
         // Nothing is released: the site stays as it was.
         const snapshot = (await upstream.snapshot('browser'))['firebase-hosting'] as { readonly live: object };
         expect(snapshot.live).toEqual({});
         refuse = false;
         await start.getByRole('button', { name: startText(lang, 'start.tryAgain') }).click();
         await expect(start.getByRole('heading', { name: startText(lang, 'start.provider.title') })).toBeVisible({ timeout: 60_000 });
+    },
+);
+
+test(
+    'A city name with punctuation and a decimal comma still make a plan',
+    { tag: '@S-A70-HAPPY-PLAN-WORDS' },
+    async ({ page, context, lang, upstream, mockApiRequest, consoleErrors }, testInfo) => {
+        const testId = testIdOf(testInfo);
+        await upstream.scenario('firebase-hosting.fresh', 'browser');
+        await new FakeHostingUploads().install(context, mockApiRequest, testId);
+        await openStart(page, testId, lang);
+        const start = startPage(page);
+        await start.getByRole('button', { name: startText(lang, 'start.signIn') }).click();
+        await allowConsent(page);
+        await fillPlan(page, lang);
+        await start.getByLabel(startText(lang, 'start.plan.cityName'), { exact: true }).fill('Sf. Gheorghe, vechi');
+        await start.getByLabel(startText(lang, 'start.plan.west'), { exact: true }).fill(CITY.west.replace('.', ','));
+        await expect(start.locator('[data-area-problem]')).toBeHidden();
+        await start.getByRole('button', { name: startText(lang, 'start.plan.go') }).click();
+        await expect(start.getByRole('heading', { name: startText(lang, 'start.provider.title') })).toBeVisible({ timeout: 60_000 });
+        await claimProjectRead(consoleErrors);
+        const { projects } = (await upstream.snapshot('browser'))['firebase-hosting'] as {
+            readonly projects: Readonly<Record<string, string>>;
+        };
+        expect(projects[PROJECT]).toBe('Sf Gheorghe vechi');
+    },
+);
+
+test(
+    'A project Google refuses goes back to the form, which says so',
+    { tag: '@S-A70-BAD-PROJECT-REFUSED' },
+    async ({ page, lang, upstream, consoleErrors }, testInfo) => {
+        const testId = testIdOf(testInfo);
+        await upstream.scenario('firebase-hosting.fresh', 'browser');
+        await upstream.scenario('firebase-hosting.projectRefused', 'browser');
+        await openStart(page, testId, lang);
+        const start = startPage(page);
+        await start.getByRole('button', { name: startText(lang, 'start.signIn') }).click();
+        await allowConsent(page);
+        await fillPlan(page, lang);
+        await start.getByRole('button', { name: startText(lang, 'start.plan.go') }).click();
+        await expect(start.getByRole('alert')).toHaveText(startText(lang, 'start.failure.refused'));
+        await expect(start.getByLabel(startText(lang, 'start.plan.cityName'), { exact: true })).toBeVisible();
+        await expect(start.getByRole('button', { name: startText(lang, 'start.tryAgain') })).toBeHidden();
+        await expect.poll(() => consoleErrors.takeMatching(/status of 400/).length).toBeGreaterThan(0);
+        await claimProjectRead(consoleErrors);
+    },
+);
+
+test(
+    'After the release nothing releases again: not a reload, a new consent or another tab',
+    { tag: '@S-A70-BAD-RELEASE-AGAIN' },
+    async ({ page, context, lang, upstream, mockApiRequest, consoleErrors }, testInfo) => {
+        const testId = testIdOf(testInfo);
+        await upstream.scenario('firebase-hosting.fresh', 'browser');
+        await new FakeHostingUploads().install(context, mockApiRequest, testId);
+        await openStart(page, testId, lang);
+        const start = startPage(page);
+        await start.getByRole('button', { name: startText(lang, 'start.signIn') }).click();
+        await allowConsent(page);
+        await fillPlan(page, lang);
+        await start.getByRole('button', { name: startText(lang, 'start.plan.go') }).click();
+        const provider = start.getByRole('heading', { name: startText(lang, 'start.provider.title') });
+        await expect(provider).toBeVisible({ timeout: 60_000 });
+        await claimProjectRead(consoleErrors);
+        const releases = async (): Promise<number> => (await upstream.calls('browser', 'start.hosting.releases.create')).length;
+        expect(await releases()).toBe(1);
+
+        // A reload: the provider step, with no token; Check again asks for one and reads the provider, nothing else.
+        await page.reload();
+        await expect(provider).toBeVisible();
+        await expect(start.locator('[data-open-admin]')).toHaveAttribute('href', `https://${PROJECT}.web.app/admin/`);
+        await start.getByRole('button', { name: startText(lang, 'start.provider.check') }).click();
+        await allowConsent(page);
+        await expect(provider).toBeVisible();
+        expect(await releases()).toBe(1);
+
+        // The plan gone, the same new project asked for again: what is live stays.
+        await page.evaluate(() => {
+            sessionStorage.clear();
+        });
+        await page.reload();
+        await start.getByRole('button', { name: startText(lang, 'start.signIn') }).click();
+        await allowConsent(page);
+        await fillPlan(page, lang);
+        await start.getByRole('button', { name: startText(lang, 'start.plan.go') }).click();
+        await expect(provider).toBeVisible({ timeout: 60_000 });
+        expect(await releases()).toBe(1);
+        expect(await upstream.calls('browser', 'start.projects.create')).toHaveLength(1);
+    },
+);
+
+test(
+    'A provider that cannot be read is said so, and the admin’s address is still there',
+    { tag: '@S-A70-BAD-PROVIDER-UNREADABLE' },
+    async ({ page, context, lang, upstream, mockApiRequest, consoleErrors }, testInfo) => {
+        const testId = testIdOf(testInfo);
+        await upstream.scenario('firebase-hosting.fresh', 'browser');
+        await new FakeHostingUploads().install(context, mockApiRequest, testId);
+        await openStart(page, testId, lang);
+        const start = startPage(page);
+        await start.getByRole('button', { name: startText(lang, 'start.signIn') }).click();
+        await allowConsent(page);
+        await fillPlan(page, lang);
+        await start.getByRole('button', { name: startText(lang, 'start.plan.go') }).click();
+        await expect(start.getByRole('heading', { name: startText(lang, 'start.provider.title') })).toBeVisible({ timeout: 60_000 });
+        await claimProjectRead(consoleErrors);
+        await upstream.fail('firebase-management', 'forbidden', 'browser');
+        await start.getByRole('button', { name: startText(lang, 'start.provider.check') }).click();
+        await expect(start.getByRole('status').filter({ hasText: startText(lang, 'start.provider.unreadable') })).toBeVisible();
+        await expect(start.getByText(startText(lang, 'start.provider.waiting'))).toBeHidden();
+        await expect(start.getByRole('link', { name: startText(lang, 'start.provider.open') })).toHaveAttribute(
+            'href',
+            `https://${PROJECT}.web.app/admin/`,
+        );
+        await expect.poll(() => consoleErrors.takeMatching(/status of 403/).length).toBeGreaterThan(0);
+        await expectStateSound(page, adminVisit('start.provider-unreadable', lang));
     },
 );

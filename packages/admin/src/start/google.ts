@@ -33,6 +33,14 @@ function ownProject(body: unknown): OwnProject {
     };
 }
 
+/** The version's label that says which release of the start page it is. */
+export const START_RELEASE_LABEL = 'hcm-start-release';
+
+/** What the live channel serves: the start page's release label, or null for a version something else made. */
+export interface LiveRelease {
+    readonly label: string | null;
+}
+
 export interface StartGoogle {
     listProjects(): Promise<readonly OwnProject[]>;
     getProject(projectId: string): Promise<OwnProject | null>;
@@ -43,7 +51,8 @@ export interface StartGoogle {
     createWebApp(projectId: string, displayName: string): Promise<void>;
     defaultSite(projectId: string): Promise<string | null>;
     createSite(projectId: string): Promise<string>;
-    createVersion(site: string, config: HostingServingConfig): Promise<string>;
+    liveRelease(site: string): Promise<LiveRelease | null>;
+    createVersion(site: string, config: HostingServingConfig, labels?: Readonly<Record<string, string>>): Promise<string>;
     populate(version: string, files: Readonly<Record<string, string>>): Promise<{ required: readonly string[]; uploadUrl: string }>;
     finalize(version: string): Promise<void>;
     release(site: string, version: string): Promise<void>;
@@ -123,8 +132,17 @@ function firebaseCalls(
     };
 }
 
-function siteCalls(transport: GoogleTransport): Pick<StartGoogle, 'defaultSite' | 'createSite'> {
+function siteCalls(transport: GoogleTransport): Pick<StartGoogle, 'defaultSite' | 'createSite' | 'liveRelease'> {
     return {
+        liveRelease: async (site) => {
+            // `sites.channels.get`: the channel's `release` is "the current release for the channel, if any".
+            const body = await transport.find({
+                operation: 'firebase-hosting.getLiveChannel',
+                url: `${HOSTING}/sites/${site}/channels/live`,
+            });
+            const version = at(body, 'release', 'version');
+            return version === undefined ? null : { label: stringAt(version, 'labels', START_RELEASE_LABEL) ?? null };
+        },
         defaultSite: async (projectId) => {
             const body = await transport.find({ operation: 'firebase-hosting.listSites', url: `${HOSTING}/projects/${projectId}/sites` });
             const site = records(at(body, 'sites')).find((item) => item['type'] === 'DEFAULT_SITE');
@@ -145,12 +163,12 @@ function siteCalls(transport: GoogleTransport): Pick<StartGoogle, 'defaultSite' 
 
 function versionCalls(transport: GoogleTransport): Pick<StartGoogle, 'createVersion' | 'populate' | 'finalize' | 'release'> {
     return {
-        createVersion: async (site, config) => {
+        createVersion: async (site, config, labels = {}) => {
             const body = await transport.call({
                 operation: 'firebase-hosting.createVersion',
                 method: 'POST',
                 url: `${HOSTING}/sites/${site}/versions`,
-                body: { config },
+                body: { config, labels },
             });
             return textAt(body, 'name');
         },

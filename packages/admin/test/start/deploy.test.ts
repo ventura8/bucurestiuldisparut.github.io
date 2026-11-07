@@ -25,6 +25,7 @@ function google(overrides: Partial<StartGoogle> = {}): StartGoogle {
         finalize: () => Promise.resolve(),
         release: () => Promise.resolve(),
         googleSignInOn: () => Promise.resolve(true),
+        liveRelease: () => Promise.resolve(null),
         ...overrides,
     };
 }
@@ -108,6 +109,48 @@ describe('deployStart', () => {
         await expect(deployStart(depsOf(OK, api), PLAN, TOKEN)).resolves.toBeUndefined();
     });
 
+    it('badPath_googleAnswers403ForAProjectNobodyCanSee_soTheCreateStillRuns', async () => {
+        const made: string[] = [];
+        let looks = 0;
+        const api = google({
+            getProject: () => {
+                looks += 1;
+                return looks === 1
+                    ? Promise.reject(new GoogleApiError('resource-manager.getProject', { kind: 'forbidden', status: 403 }))
+                    : Promise.resolve({ projectId: 'my-project', displayName: 'x', projectNumber: '7' });
+            },
+            createProject: (project) => {
+                made.push(project);
+                return Promise.resolve();
+            },
+        });
+        await deployStart(depsOf(OK, api), PLAN, TOKEN);
+        expect(made).toEqual(['my-project']);
+    });
+
+    it('badPath_aTakenIdAnswers403ThenAConflict', async () => {
+        const api = google({
+            getProject: () => Promise.reject(new GoogleApiError('resource-manager.getProject', { kind: 'forbidden', status: 403 })),
+            createProject: () => Promise.reject(new GoogleApiError('resource-manager.createProject', { kind: 'conflict', status: 409 })),
+        });
+        await expect(deployStart(depsOf(OK, api), PLAN, TOKEN)).rejects.toMatchObject({ kind: 'conflict' });
+    });
+
+    it('badPath_a403OnAPickedProjectStaysARefusal', async () => {
+        const api = google({
+            getProject: () => Promise.reject(new GoogleApiError('resource-manager.getProject', { kind: 'forbidden', status: 403 })),
+            createProject: () => Promise.reject(new Error('must not be made')),
+        });
+        await expect(deployStart(depsOf(OK, api), { ...PLAN, create: false }, TOKEN)).rejects.toMatchObject({ kind: 'forbidden' });
+    });
+
+    it('badPath_aReadThatFailsOtherwiseStops', async () => {
+        const api = google({
+            getProject: () => Promise.reject(new GoogleApiError('resource-manager.getProject', { kind: 'unavailable', status: 503 })),
+        });
+        await expect(deployStart(depsOf(OK, api), PLAN, TOKEN)).rejects.toMatchObject({ kind: 'unavailable' });
+    });
+
     it.each([
         [401, 'unauthorized'],
         [500, 'unavailable'],
@@ -115,5 +158,55 @@ describe('deployStart', () => {
         const refused = (): Promise<Response> => Promise.resolve(new Response('', { status }));
         await expect(deployStart(depsOf(refused), PLAN, TOKEN)).rejects.toBeInstanceOf(GoogleApiError);
         await expect(deployStart(depsOf(refused), PLAN, TOKEN)).rejects.toMatchObject({ kind });
+    });
+});
+
+describe('what is live already (M14 §7)', () => {
+    function recording(live: { readonly label: string | null } | null): { api: StartGoogle; released: string[] } {
+        const released: string[] = [];
+        const api = google({
+            liveRelease: () => Promise.resolve(live),
+            release: (_site, version) => {
+                released.push(version);
+                return Promise.resolve();
+            },
+        });
+        return { api, released };
+    }
+
+    it('happyPath_aSiteWithNothingLiveGetsTheRelease_labelledWithIt', async () => {
+        const { api, released } = recording(null);
+        const labels: unknown[] = [];
+        const labelling = {
+            ...api,
+            createVersion: (site: string, config: never, label: unknown) => {
+                labels.push(label);
+                return api.createVersion(site, config, label as never);
+            },
+        };
+        await deployStart(depsOf(OK, labelling), PLAN, TOKEN);
+        expect(released).toHaveLength(1);
+        expect(labels).toEqual([{ 'hcm-start-release': SLUG }]);
+    });
+
+    it('badPath_thisReleaseLiveIsNotReleasedAgain', async () => {
+        const { api, released } = recording({ label: SLUG });
+        const steps: string[] = [];
+        await deployStart({ ...depsOf(OK, api), onStep: (step) => steps.push(step) }, { ...PLAN, create: false }, TOKEN);
+        expect(released).toEqual([]);
+        expect(steps.at(-1)).toBe('release');
+        expect(steps).not.toContain('files');
+    });
+
+    it('badPath_aPublishedSiteOnAProjectThisOwnerMadeIsLeftAlone', async () => {
+        const { api, released } = recording({ label: null });
+        await deployStart(depsOf(OK, api), PLAN, TOKEN);
+        expect(released).toEqual([]);
+    });
+
+    it('happyPath_aPickedProjectsOtherSiteIsReplaced_asThePageWarned', async () => {
+        const { api, released } = recording({ label: null });
+        await deployStart(depsOf(OK, api), { ...PLAN, create: false }, TOKEN);
+        expect(released).toHaveLength(1);
     });
 });

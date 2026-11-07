@@ -59,10 +59,12 @@ function bundle(testInfo: TestInfo): string {
     const dir = testInfo.outputPath('bundle');
     for (const [path, content] of Object.entries({
         'hosting/admin/index.html': '<!doctype html>\n',
+        'hosting/admin/install/1-0-0-e2e0000/manifest.json': '{ "projectId": "any-project" }\n',
+        'hosting/city/index.html': 'https://us-central1-__HCM_PROJECT_ID__.cloudfunctions.net\n',
         'functions/index.js': 'export {};\n',
         'rules/firestore.rules': "rules_version = '2';\n",
         'firebase.template.json': '{ "hosting": { "site": "__PROJECT_ID__", "public": "hosting" } }\n',
-        'bundle.json': '{ "release": "1.0.0+e2e0000" }\n',
+        'bundle.json': '{ "release": "1.0.0+e2e0000", "templates": ["city/index.html"] }\n',
     })) {
         mkdirSync(join(dir, path, '..'), { recursive: true });
         writeFileSync(join(dir, path), content);
@@ -202,6 +204,11 @@ test('The self-host steps run the owner’s own CLIs, one consent each', { tag: 
     expect(run.output).not.toMatch(/\b(?:sk|pk)\.[\w-]|AIza|refresh-e2e-value/);
     expect(run.output.split(consent).length - 1).toBe(8);
     expect(JSON.parse(readFileSync(join(cwd, 'cluj/server/.firebaserc'), 'utf8'))).toEqual({ projects: { default: PROJECT } });
+    // Setup's Publish the map reads this bundle from the site, and the map's address serves this page.
+    expect(existsSync(join(cwd, 'cluj/server/hosting/admin/install/1-0-0-e2e0000/manifest.json'))).toBe(true);
+    expect(readFileSync(join(cwd, 'cluj/server/hosting/city/index.html'), 'utf8')).toBe(
+        `https://us-central1-${PROJECT}.cloudfunctions.net\n`,
+    );
 });
 
 test('A folder that is not empty is left alone', { tag: '@S-V29-BAD-NOT-EMPTY' }, async ({ lang }, testInfo) => {

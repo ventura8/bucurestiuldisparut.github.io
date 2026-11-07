@@ -237,8 +237,10 @@ GATES: dict[str, Gate] = {
         # the check also writes the pinned addresses and their integrity, which release.yml shows in its job summary
         Gate("release-cdn", (*NPM_RUN, "release:cdn", "--", "--check", "--summary", RELEASE_ADDRESSES), needs=("vite-build",)),
         # create-historic-city's self-host bundle (dist/self-host/) from that production build: the vite build of the CLI
-        # empties its dist/, and the admin's e2e build writes the same folder, which the bundle refuses (docs/LESSONS.md 247)
-        Gate("self-host-bundle", SELF_HOST_BUNDLE, needs=("vite-build",)),
+        # empties its dist/, and the admin's e2e build writes the same folder, which the bundle refuses (docs/LESSONS.md 247).
+        # Its hosting folder is the start site's release tree: without its install bundle and city page a self-hosted
+        # project could not publish its map (M14)
+        Gate("self-host-bundle", SELF_HOST_BUNDLE, needs=("vite-build", "start-build")),
         # create-historic-city's package from that build, its self-host bundle in it, for the publish (M5-interfaces §4.6)
         Gate("release-pack", ("bash", "-c", RELEASE_PACK), needs=("vite-build", "self-host-bundle")),
         # contract (weekly, network): Setup Assistant deep links and third-party API shapes
@@ -328,6 +330,8 @@ STAGES: dict[str, tuple[str, ...]] = {
         "release-cdn",
         "bundle-budget",
         "notices",
+        "hosting-build",
+        "start-build",
         "self-host-bundle",
         "release-pack",
     ),

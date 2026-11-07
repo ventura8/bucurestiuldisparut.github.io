@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import type { StartPagePort } from '@hcm/ui/start';
+
 import { autoStart, browserDeps } from '../../src/start/index.js';
 import { testLog } from '../app/fakes.js';
 
@@ -64,6 +66,29 @@ describe('the start entry', () => {
         expect(port?.view).toMatchObject({ locale: 'ro' });
         expect(port?.subscribe(() => undefined)).toEqual(expect.any(Function));
         await new Promise((resolve) => setImmediate(resolve));
+    });
+
+    it('happyPath_theFormsRulesReachThePage', () => {
+        const defined = new Map<string, CustomElementConstructor>();
+        const registry = {
+            get: (name: string) => defined.get(name),
+            define: (name: string, element: CustomElementConstructor) => defined.set(name, element),
+        };
+        const element = { port: undefined as unknown as StartPagePort };
+        const doc = { querySelector: () => element };
+        autoStart({ document: doc, customElements: registry } as never, fakeWindow(), testLog().log);
+        const { port } = element;
+        expect(port.problems().ready).toBe(false);
+        port.intents.setName('Bacău');
+        expect(port.problems().ready).toBe(true);
+        port.intents.setCityId('a');
+        expect(port.problems().ready).toBe(false);
+        port.intents.setCityId('bacau');
+        port.intents.setProjectId('NU E BUN');
+        expect(port.problems().ready).toBe(false);
+        port.intents.setCreate(false);
+        port.intents.setPicked('harta-bacau');
+        expect(port.problems().ready).toBe(true);
     });
 
     it('e2e_theConsentIsTheStandInsInTheTestsPartition', () => {

@@ -541,7 +541,7 @@ terms acceptance and billing entry happens in Google's own pages and the CLI nev
 | 8 | The server | `create-historic-city deploy`: billing checked with `gcloud billing projects describe <id> --format=json` when gcloud exists (polled every 15 s, at most 20 minutes), else the owner confirms; then `firebase deploy --only functions,firestore,storage,hosting --project <id>` | none |
 | 9 | The rest of Setup | opens the admin again: Mapbox, USGS, analytics, the first city (New city) | the Setup Assistant's cards |
 
-The bundled self-host files (built at release by `npm run build:self-host`, kit-cli): the admin's Hosting build
+The bundled self-host files (built at release by `npm run build:self-host`, kit-cli; since M14 its hosting folder is the start site's release tree, with Setup's install bundle and the city page, `M14-start-your-map.md` §6): the admin's Hosting build
 without Bucharest's legacy bundle, `functions/dist` with its deploy lockfile, the rules and indexes, and the templates of
 `firebase.json` and `project.json` (CR-M5-7: `project.json`'s `github` becomes optional for a project deployed from the
 owner's own terminal, and the provisioner then skips the Workload Identity items).

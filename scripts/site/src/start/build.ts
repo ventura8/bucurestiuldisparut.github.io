@@ -69,13 +69,21 @@ export function buildStartSite(
     const startUp = startTreeFiles(inputs, 'start-up', files);
     files.remove(options.outDir);
     files.remove(GENERIC_PUBLIC);
-    for (const file of startTreeFiles(inputs, 'public', files)) {
+    const publicTree = startTreeFiles(inputs, 'public', files);
+    for (const file of publicTree) {
         files.write(`${GENERIC_PUBLIC}/${file.path}`, file.bytes);
     }
     const bundleDir = `${GENERIC_PUBLIC}-bundle`;
     files.remove(bundleDir);
     const bundle = buildInstallBundle(
-        { publicTree: GENERIC_PUBLIC, out: [bundleDir], functionsDir: options.functionsDir, env, generic: true },
+        {
+            publicTree: GENERIC_PUBLIC,
+            out: [bundleDir],
+            functionsDir: options.functionsDir,
+            env,
+            generic: true,
+            templates: publicTree.filter((file) => file.template).map((file) => file.path),
+        },
         files,
         steps,
     );

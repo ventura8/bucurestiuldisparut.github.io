@@ -1,14 +1,15 @@
 /**
  * The steps from nothing to a live admin (`docs/research/M14-start-your-map.md` §1, §7). Each looks before it acts, so
  * **Try again** is the first click's action from anywhere and nothing is made twice. Only `releases.create` changes the
- * site: stopping before it leaves whatever was live. The token is the transport's; nothing here holds it.
+ * site: stopping before it leaves whatever was live, and a site that already went on is never released over. The token is
+ * the transport's; nothing here holds it.
  */
 import type { StartFirstCity, StartRelease } from '@hcm/shared';
 
 import type { Clock } from '../app/ports.js';
-import { GoogleApiError } from '../google/failure.js';
+import { GoogleApiError, isGoogleFailure } from '../google/failure.js';
 import { adoptedConfig, preparedBytes, prepareFile, type FileTools, type PreparedFile } from './files.js';
-import type { StartGoogle } from './google.js';
+import { START_RELEASE_LABEL, type LiveRelease, type OwnProject, type StartGoogle } from './google.js';
 
 export const START_STEPS = ['project', 'firebase', 'webApp', 'site', 'files', 'release'] as const;
 
@@ -67,8 +68,24 @@ function sleep(clock: DeployDeps['clock'], ms: number): Promise<void> {
     });
 }
 
+/**
+ * The project, or null when it is not this account's yet. Google answers 403 for a project the caller cannot see "regardless of
+ * whether or not it exists" (AIP-193), so for a new project a refusal says nothing: the create's own answer decides, 409 for a
+ * taken id and 403 for the terms. For a picked project it stays a refusal.
+ */
+async function readProject(deps: DeployDeps, plan: DeployPlan): Promise<OwnProject | null> {
+    try {
+        return await deps.google.getProject(plan.projectId);
+    } catch (error) {
+        if (plan.create && isGoogleFailure(error, 'forbidden')) {
+            return null;
+        }
+        throw error;
+    }
+}
+
 async function ensureProject(deps: DeployDeps, plan: DeployPlan): Promise<string> {
-    const found = await deps.google.getProject(plan.projectId);
+    const found = await readProject(deps, plan);
     if (found !== null) {
         return found.projectNumber;
     }
@@ -76,7 +93,7 @@ async function ensureProject(deps: DeployDeps, plan: DeployPlan): Promise<string
         throw new GoogleApiError('resource-manager.getProject', { kind: 'forbidden', status: 403 });
     }
     await deps.google.createProject(plan.projectId, plan.displayName);
-    const created = await deps.google.getProject(plan.projectId);
+    const created = await readProject(deps, plan);
     return created?.projectNumber ?? '';
 }
 
@@ -170,6 +187,14 @@ async function uploadAll(deps: DeployDeps, version: string, files: readonly Prep
     }
 }
 
+/**
+ * Whether what is live stays (§7): this very release, or anything on a project the owner asked to make, which can only be an
+ * earlier run of theirs, published since or not. A project picked from a list was warned about (`start.plan.pickWarning`).
+ */
+function keepsLive(live: LiveRelease | null, plan: DeployPlan, slug: string): boolean {
+    return live !== null && (plan.create || live.label === slug);
+}
+
 /** Everything; throws the step's failure, and a second call continues from what exists. */
 export async function deployStart(deps: DeployDeps, plan: DeployPlan, token: () => string | null): Promise<void> {
     const { google, release, onStep } = deps;
@@ -181,9 +206,15 @@ export async function deployStart(deps: DeployDeps, plan: DeployPlan, token: () 
     await ensureWebApp(deps, plan);
     onStep('site');
     const site = await ensureSite(deps, plan.projectId);
+    if (keepsLive(await google.liveRelease(site), plan, release.slug)) {
+        onStep('release');
+        return;
+    }
     onStep('files');
     const files = await prepareAll(deps, plan, projectNumber);
-    const version = await google.createVersion(site, adoptedConfig(release.hosting, plan.projectId));
+    const version = await google.createVersion(site, adoptedConfig(release.hosting, plan.projectId), {
+        [START_RELEASE_LABEL]: release.slug,
+    });
     await uploadAll(deps, version, files, token);
     onStep('release');
     await google.finalize(version);

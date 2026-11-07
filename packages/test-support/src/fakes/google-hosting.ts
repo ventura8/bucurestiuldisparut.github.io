@@ -14,6 +14,7 @@ import type { FirebaseState } from './google-firebase.js';
 interface HostingVersion {
     readonly site: string;
     readonly config: unknown;
+    readonly labels: unknown;
     /** Path → hash. */
     readonly files: Record<string, string>;
     status: 'CREATED' | 'FINALIZED';
@@ -25,6 +26,8 @@ export interface StartWorldState {
     terms: boolean;
     quotaReached: boolean;
     idTaken: boolean;
+    /** `projects.create` refuses every request (`INVALID_ARGUMENT`). */
+    projectRefused: boolean;
     /** Created or owned project ids (display names beside them). */
     readonly projects: Map<string, string>;
     /** Project id → default site, once Hosting is provisioned. */
@@ -44,6 +47,7 @@ export function defaultStartWorldState(): StartWorldState {
         terms: true,
         quotaReached: false,
         idTaken: false,
+        projectRefused: false,
         projects: new Map(),
         sites: new Map(),
         versions: new Map(),
@@ -69,10 +73,15 @@ const FIREBASE_API: GoogleApi = {
     permission: 'firebase.projects.update',
 };
 
+type GoogleErrorFixture = Parameters<typeof googleError>[0];
+
 const RESOURCE_MANAGER = 'https://cloudresourcemanager.googleapis.com/v3';
 const FIREBASE = 'https://firebase.googleapis.com/v1beta1';
 const HOSTING = 'https://firebasehosting.googleapis.com/v1beta1';
 const UPLOAD = 'https://upload-firebasehosting.googleapis.com/upload';
+
+/** Resource Manager's `displayName`: "lowercase and uppercase letters, numbers, hyphen, single-quote, double-quote, space, and exclamation point", 4 to 30 of them. */
+const DISPLAY_NAME = /^[A-Za-z0-9\-'" !]{4,30}$/;
 
 const bodyOf = (request: { readonly body: string }): Record<string, unknown> =>
     JSON.parse(request.body === '' ? '{}' : request.body) as Record<string, unknown>;
@@ -86,6 +95,21 @@ async function textHash(text: string): Promise<string> {
 function validConfig(config: unknown): boolean {
     const allowed = ['rewrites', 'headers', 'redirects', 'cleanUrls', 'trailingSlashBehavior'];
     return typeof config === 'object' && config !== null && Object.keys(config).every((key) => allowed.includes(key));
+}
+
+function validProject(state: StartWorldState, displayName: string): boolean {
+    return !state.projectRefused && DISPLAY_NAME.test(displayName);
+}
+
+/** Why `projects.create` refuses, as a fixture of Google's errors, or null. */
+function createRefusal(state: StartWorldState, projectId: string, displayName: string): GoogleErrorFixture | null {
+    if (state.quotaReached) {
+        return 'google/error.rate-limited';
+    }
+    if (state.idTaken || state.projects.has(projectId)) {
+        return 'google/error.already-exists';
+    }
+    return validProject(state, displayName) ? null : 'google/error.invalid-argument';
 }
 
 /** The projects' side. */
@@ -103,13 +127,11 @@ function projectRoutes(state: StartWorldState, firebase: FirebaseState, projects
             return operations.has(name) ? jsonResponse({ name, done: true, response: {} }) : googleError('google/error.not-found', api);
         });
     const create: Route['answer'] = (request) => {
-        if (state.quotaReached) {
-            return googleError('google/error.rate-limited', PROJECTS_API);
-        }
-        if (state.idTaken) {
-            return googleError('google/error.already-exists', PROJECTS_API);
-        }
         const { projectId, displayName } = bodyOf(request);
+        const refused = createRefusal(state, String(projectId), String(displayName));
+        if (refused !== null) {
+            return googleError(refused, PROJECTS_API);
+        }
         state.projects.set(String(projectId), String(displayName));
         return operation('operations');
     };
@@ -146,12 +168,12 @@ function hostingRoutes(state: StartWorldState): Route[] {
     const versionName = (params: Readonly<Record<string, string>>): string =>
         `sites/${String(params['site'])}/versions/${String(params['version'])}`;
     const createVersion: Route['answer'] = (request, params) => {
-        const { config } = bodyOf(request);
+        const { config, labels } = bodyOf(request);
         if (!validConfig(config)) {
             return googleError('google/error.invalid-argument', HOSTING_API);
         }
         const name = `sites/${String(params['site'])}/versions/${nextVersion()}`;
-        state.versions.set(name, { site: String(params['site']), config, files: {}, status: 'CREATED' });
+        state.versions.set(name, { site: String(params['site']), config, labels, files: {}, status: 'CREATED' });
         return jsonResponse({ name, status: 'CREATED', config });
     };
     const populate: Route['answer'] = (request, params) => {
@@ -207,6 +229,24 @@ function hostingRoutes(state: StartWorldState): Route[] {
         route('POST', `${UPLOAD}/sites/{site}/versions/{version}/files/{hash}`, 'start.hosting.upload', authenticated(HOSTING_API, upload)),
         route(
             'GET',
+            `${HOSTING}/sites/{site}/channels/live`,
+            'start.hosting.channels.get',
+            authenticated(HOSTING_API, (_request, params) => {
+                const site = String(params['site']);
+                const name = state.live.get(site);
+                const channel = `sites/${site}/channels/live`;
+                return jsonResponse(
+                    name === undefined
+                        ? { name: channel }
+                        : {
+                              name: channel,
+                              release: { name: `${channel}/releases/1`, version: { name, labels: state.versions.get(name)?.labels } },
+                          },
+                );
+            }),
+        ),
+        route(
+            'GET',
             `${HOSTING}/projects/{project}/sites`,
             'start.hosting.sites.list',
             authenticated(HOSTING_API, (_request, params) => {
@@ -260,6 +300,9 @@ export function createStartWorldFake(state: StartWorldState, firebase: FirebaseS
             },
             idFree: () => {
                 state.idTaken = false;
+            },
+            projectRefused: () => {
+                state.projectRefused = true;
             },
             /** The owner has a project with Firebase and its site, as an earlier console session left it. */
             ownedProject: () => {

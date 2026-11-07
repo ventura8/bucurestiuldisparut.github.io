@@ -289,9 +289,10 @@ export function createResourceManagerFake(
                 'resource-manager.getProject',
                 auth((_request, params) => {
                     const project = projects.resolve(String(params['project']));
-                    // M14: in the start page's fresh world a project exists once it was made (google-hosting.ts).
+                    // M14: in the start page's fresh world a project exists once it was made (google-hosting.ts). What the
+                    // caller cannot see answers 403 whether it exists or not (AIP-193), never a 404 that says the id is free.
                     if (start.fresh && !start.projects.has(project.id)) {
-                        return googleError('google/error.not-found', RESOURCE_MANAGER);
+                        return googleError('google/error.permission-denied', RESOURCE_MANAGER);
                     }
                     const values = { projectId: project.id, projectNumber: project.number };
                     return state.parent === undefined

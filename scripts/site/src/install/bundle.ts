@@ -96,6 +96,8 @@ export interface InstallBundleOptions {
      * `.env` of the release and `HCM_APP_CHECK` only; `hosting.tgz`'s `firebase.json` holds the token.
      */
     readonly generic?: boolean;
+    /** With `generic`: the public tree's files that hold the token, which `hosting.tgz` lists in `templates.json` for `fetch`. */
+    readonly templates?: readonly string[];
 }
 
 export interface InstallBundleReport {
@@ -232,6 +234,7 @@ function hostingEntries(files: SiteFileSystem, options: InstallBundleOptions, sh
     const elsewhere = (path: string): boolean => path.startsWith(`admin/${INSTALL_FOLDER}/`) || LEGACY_ORIGINAL.test(path);
     return [
         ...folderEntries(files, options.publicTree, 'public/', elsewhere),
+        ...(options.generic === true ? [{ path: GENERIC_TEMPLATES_FILE, content: json(options.templates ?? []) }] : []),
         {
             path: 'firebase.json',
             content:
@@ -240,6 +243,12 @@ function hostingEntries(files: SiteFileSystem, options: InstallBundleOptions, sh
         ...shared,
     ];
 }
+
+/**
+ * The list of what a site build adopts (M14 §6). A list, not a search: the admin's own script holds the token as the text it looks
+ * for, and replacing that would change a file the tree promises as it is, and stop the next publish from finding the token.
+ */
+export const GENERIC_TEMPLATES_FILE = 'templates.json';
 
 /** `firebase.json` naming no project: the token where the repository's id was (M14 §6). */
 function tokenised(config: Uint8Array, projectId: string): Uint8Array {

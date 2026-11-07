@@ -50,16 +50,25 @@ function termsFailure(context: FailureContext): StartFailure {
     };
 }
 
-function projectFailure(error: GoogleApiError, context: FailureContext): StartFailure | null {
-    if (context.step !== 'project' || !context.create) {
-        return null;
-    }
+/** A 400 of `projects.create` that names no precondition: the name or the id, which the form can change; Try again could not. */
+function refusedValues(error: GoogleApiError): boolean {
+    return error.kind === 'invalid' && error.reason !== 'FAILED_PRECONDITION';
+}
+
+function createFailure(error: GoogleApiError, context: FailureContext): StartFailure | null {
     if (error.kind === 'conflict') {
         return { key: 'start.failure.taken', params: { projectId: context.projectId }, action: 'form' };
+    }
+    if (refusedValues(error)) {
+        return { key: 'start.failure.refused', action: 'form' };
     }
     return quota(error)
         ? { key: 'start.failure.quota', link: { key: 'start.failure.quotaLink', url: QUOTA_REQUEST }, action: 'form' }
         : null;
+}
+
+function projectFailure(error: GoogleApiError, context: FailureContext): StartFailure | null {
+    return context.step === 'project' && context.create ? createFailure(error, context) : null;
 }
 
 function refusedFailure(error: GoogleApiError, context: FailureContext): StartFailure | null {

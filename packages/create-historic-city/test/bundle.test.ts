@@ -7,6 +7,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { buildSelfHostBundle, DEFAULT_LAYOUT, E2E_BUILD_MARKER, selfHostFirebaseConfig } from '../src/self-host/bundle.js';
 import { cleanUp, list, read, REPOSITORY, temporaryFolder } from './support.js';
 
+const SLUG = '1-0-0-abc1234';
+const RELEASE_FOLDER = `dist/start/release/${SLUG}`;
+const TREE = `${RELEASE_FOLDER}/tree`;
 const folders: string[] = [];
 
 afterEach(() => {
@@ -25,12 +28,22 @@ function repository(): string {
     const root = temporaryFolder();
     folders.push(root);
     put(root, {
-        'packages/admin/dist/index.html': '<!doctype html>\n',
-        'packages/admin/dist/admin.mjs': 'export {};\n',
-        'packages/admin/dist/admin.mjs.map': '{}\n',
-        'packages/admin/dist/legacy/bucharest/import.json': '{}\n',
-        'packages/admin/dist/project.json': '{}\n',
-        'packages/admin/dist/runtime.json': '{ "release": "1.0.0+abc1234" }\n',
+        'dist/start/start-config.json': `{ "release": "${SLUG}" }\n`,
+        [`${RELEASE_FOLDER}/start-release.json`]: `${JSON.stringify({
+            release: '1.0.0+abc1234',
+            slug: SLUG,
+            files: [{ path: 'admin/index.html', template: true }, { path: 'city/config.js', template: true }, { path: 'index.html' }],
+        })}\n`,
+        [`${TREE}/index.html`]: '<!doctype html>being set up\n',
+        [`${TREE}/release.json`]: '{}\n',
+        [`${TREE}/admin/index.html`]: '<!doctype html>__HCM_PROJECT_ID__\n',
+        [`${TREE}/admin/admin.mjs`]: 'export {};\n',
+        [`${TREE}/admin/runtime.json`]: '{ "startUp": true }\n',
+        [`${TREE}/admin/install/${SLUG}/manifest.json`]: '{ "projectId": "any-project" }\n',
+        [`${TREE}/admin/install/${SLUG}/hosting.tgz`]: 'tgz',
+        [`${TREE}/city/index.html`]: '<!doctype html>city\n',
+        [`${TREE}/city/config.js`]: '__HCM_PROJECT_ID__-public\n',
+        [`${TREE}/engine/engine.mjs`]: 'export {};\n',
         'functions/dist/index.js': 'export {};\n',
         'functions/dist/package.json': '{}\n',
         'functions/dist/package-lock.json': '{}\n',
@@ -49,7 +62,7 @@ describe('buildSelfHostBundle', () => {
     it('badPath_theAdminsE2eBuildIsNeverBundled', () => {
         // docs/LESSONS.md 247: `vite build --mode e2e` writes the same packages/admin/dist, with the OAuth stand-in.
         const root = repository();
-        put(root, { 'packages/admin/dist/admin-core-Ab3_x9Yz.js': `const page = '${E2E_BUILD_MARKER}';\n` });
+        put(root, { [`${TREE}/admin/admin-core-Ab3_x9Yz.js`]: `const page = '${E2E_BUILD_MARKER}';\n` });
 
         expect(() => buildSelfHostBundle({ root, ...DEFAULT_LAYOUT })).toThrow(/admin-core-Ab3_x9Yz\.js is the admin's e2e build/);
         expect(list(root)).not.toContain('packages/create-historic-city/dist/self-host');
@@ -58,7 +71,7 @@ describe('buildSelfHostBundle', () => {
     it('happyPath_theAdminTheFunctionsAndTheRulesForAnyProject', () => {
         const root = repository();
 
-        expect(buildSelfHostBundle({ root, ...DEFAULT_LAYOUT })).toEqual({ admin: 2, functions: 4 });
+        expect(buildSelfHostBundle({ root, ...DEFAULT_LAYOUT })).toEqual({ hosting: 5, functions: 4 });
 
         const out = join(root, DEFAULT_LAYOUT.out);
         expect(list(out)).toEqual([
@@ -74,12 +87,26 @@ describe('buildSelfHostBundle', () => {
             'hosting/admin',
             'hosting/admin/admin.mjs',
             'hosting/admin/index.html',
+            'hosting/admin/install',
+            `hosting/admin/install/${SLUG}`,
+            `hosting/admin/install/${SLUG}/hosting.tgz`,
+            `hosting/admin/install/${SLUG}/manifest.json`,
+            'hosting/city',
+            'hosting/city/config.js',
+            'hosting/city/index.html',
+            'hosting/engine',
+            'hosting/engine/engine.mjs',
+            'hosting/index.html',
+            'hosting/release.json',
             'rules',
             'rules/firestore.indexes.json',
             'rules/firestore.rules',
             'rules/storage.rules',
         ]);
-        expect(JSON.parse(read(join(out, 'bundle.json')))).toEqual({ release: '1.0.0+abc1234' });
+        expect(JSON.parse(read(join(out, 'bundle.json')))).toEqual({
+            release: '1.0.0+abc1234',
+            templates: ['admin/index.html', 'city/config.js'],
+        });
         const template = read(join(out, 'firebase.template.json'));
         expect(template).not.toContain('bucurestiul-disparut');
         expect(template).not.toContain('predeploy');
@@ -110,8 +137,10 @@ describe('buildSelfHostBundle', () => {
 
         expect(() => buildSelfHostBundle({ root, ...DEFAULT_LAYOUT })).toThrow(/functions\/dist is missing: build it first/);
 
-        cleanUp(join(root, 'packages/admin/dist'));
-        expect(() => buildSelfHostBundle({ root, ...DEFAULT_LAYOUT })).toThrow(/packages\/admin\/dist is missing: build it first/);
+        cleanUp(join(root, 'dist/start'));
+        expect(() => buildSelfHostBundle({ root, ...DEFAULT_LAYOUT })).toThrow(
+            /dist\/start is missing: build it first \(npm run build:start\)/,
+        );
     });
 });
 

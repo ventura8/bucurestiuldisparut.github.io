@@ -77,6 +77,16 @@ export const startStyles = css`
         margin-block: 4px;
     }
 
+    .for-readers {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        margin: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
     .alert {
         color: var(--error);
         margin-block: 4px;

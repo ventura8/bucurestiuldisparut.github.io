@@ -8,7 +8,7 @@ This file is the contract. It says what Google's documents allow from a browser,
 
 | Step | API (read at) | Browser? | Notes |
 | --- | --- | --- | --- |
-| Create a project | `POST cloudresourcemanager.googleapis.com/v3/projects`, a long-running operation ([projects.create](https://docs.cloud.google.com/resource-manager/reference/rest/v3/projects/create)) | Yes | Scopes `cloud-platform` or `cloudplatformprojects`. Usually "a few seconds, but can sometimes take much longer": poll, and survive a reload (§7). |
+| Create a project | `POST cloudresourcemanager.googleapis.com/v3/projects`, a long-running operation ([projects.create](https://docs.cloud.google.com/resource-manager/reference/rest/v3/projects/create)) | Yes | Scopes `cloud-platform` or `cloudplatformprojects`. Usually "a few seconds, but can sometimes take much longer": poll, and survive a reload (§7). The read before it answers 403 for a project the caller cannot see, "regardless of whether or not it exists" ([AIP-193](https://google.aip.dev/193)), so for a new project a 403 says nothing and the create's own answer decides. `displayName` takes only "lowercase and uppercase letters, numbers, hyphen, single-quote, double-quote, space, and exclamation point", 4 to 30 ([Project](https://docs.cloud.google.com/resource-manager/reference/rest/v3/projects#Project)): the form cleans the city's name to ASCII for it (`Sf. Gheorghe` is `Sf Gheorghe`). |
 | List projects to pick one | `GET …/v3/projects:search` ([projects.search](https://docs.cloud.google.com/resource-manager/reference/rest/v3/projects/search)) | Yes | Results "may lag" behind recent changes, so a project just made is never looked up this way. |
 | Add Firebase | `POST firebase.googleapis.com/v1beta1/projects/<id>:addFirebase` ([addFirebase](https://firebase.google.com/docs/reference/firebase-management/rest/v1beta1/projects/addFirebase)) | Yes, once the account accepted the terms | Scopes `cloud-platform` or `firebase`. Needs `firebase.projects.update`, `resourcemanager.projects.get`, `serviceusage.services.enable`, `serviceusage.services.get`, which Owner holds. "does not modify any billing account information". |
 | The terms | None | **No** | "not possible using the Firebase CLI, REST API, or Terraform" ([existing project](https://firebase.google.com/docs/projects/use-firebase-with-existing-cloud-project)). Once per Google account. See §3. |
@@ -41,7 +41,7 @@ The self-hosted admin's own sign-in is unaffected: it runs in the owner's projec
 - **Google Cloud's own terms.** A first-time Google Cloud account may meet the same from `projects.create`; the message and the action are the same with `console.cloud.google.com/` (UNVERIFIED wording, §9).
 - **Project quota.** "The number of projects any user or service account can create is limited"; outside an organisation the account's own quota counts; the console's New Project page shows what remains when fewer than 30 are left ([limits](https://docs.cloud.google.com/resource-manager/docs/limits)). Quota numbers are not published ([why limits](https://support.google.com/cloud/answer/6330231)). Third-party reports speak of about 25 by default, which is not Google's number and is not stated on the page. A quota refusal shows the request-more link and offers an existing project (S-A70-BAD-QUOTA).
 - **Rate.** `CreateProject` costs "10 requests per second" of the OAuth client's own write quota (10 per second, 600 per minute, per consumer project, same page). The start page's client is one consumer for every visitor; at this project's scale that is not a limit.
-- **Ids.** Project ids are unique across Google. A taken id (409) offers another one (S-A70-BAD-ID-TAKEN).
+- **Ids.** Project ids are unique across Google. A taken id (409) offers another one (S-A70-BAD-ID-TAKEN). A 400 of the create names the name or the id, not the terms: it goes back to the form, with no Try again of the same plan (S-A70-BAD-PROJECT-REFUSED); only `FAILED_PRECONDITION` still reads as Cloud's terms.
 
 ## 4. Google sign-in: the one click no API can do
 
@@ -49,7 +49,7 @@ The admin signs in through Firebase Auth's Google provider, and that provider ne
 
 1. After the deploy the page opens the step **Turn on Google sign-in**, with the link `https://console.firebase.google.com/project/<id>/authentication/providers`, the same page `create-historic-city self-host` step 5 opens.
 2. It reads `GET identitytoolkit.googleapis.com/admin/v2/projects/<id>/defaultSupportedIdpConfigs/google.com`, on load and on **Check again**. An existing project that has it on skips the step.
-3. Only then does it say the admin is ready. The address is shown regardless, so nobody is stuck on a page that cannot see the console.
+3. Only then does it say the admin is ready. The address and a link to it are on the step from the start, so nobody is stuck on a page that cannot see the console. A read that fails has its own words, not "not on yet" (S-A70-BAD-PROVIDER-UNREADABLE).
 
 ## 5. Where the page is hosted
 
@@ -96,14 +96,18 @@ Generated at deploy, never fetched: `admin/project.json` (§8), and `release.jso
 - `manifest.projectId` is `GENERIC_INSTALL_PROJECT` and the admin accepts it (`packages/admin/src/install/bundle.ts`);
 - `server.tgz` carries no `.firebaserc` (every build passes `--project $PROJECT_ID`) and `functions/dist/.env` holds the release and `HCM_APP_CHECK` only: "`.env` and project-specific `.env` files" reach all functions ([env](https://firebase.google.com/docs/functions/config-env));
 - with no `HCM_VIEWER_ORIGINS` and no `HCM_OAUTH_CLIENT_IDS` the server already falls back to the project's Hosting origins and to the provider's client (`functions/src/deps.ts`, `functions/src/admin/claim.ts`);
-- the site's `fetch` step adopts the project: it replaces the token in `firebase.json` and `public/city/config.js`, and takes `project.json` from the live site (`HCM_ADOPT_PROJECT`, set for a generic bundle only).
+- the site's `fetch` step adopts the project: it replaces the token in `firebase.json` and in every file `hosting.tgz`'s `templates.json` lists, which are the tree's own marks and include the city page's policy, and takes `project.json` from the live site (`HCM_ADOPT_PROJECT`, set for a generic bundle only).
+
+**Self-hosting takes the same tree.** `create-historic-city`'s bundle has this release tree as `hosting/`, and `bundle.json` lists its templates, which `self-host` fills in for the project. Without it a self-hosted project had no `admin/install/<slug>/` and no `city/`, so Setup's Install and Publish the map could not start and the map's address served no map. The bundle builds after `build:start`: the `release` stage runs `hosting-build` and `start-build` before `self-host-bundle`.
 
 The start tree holds no Bucharest: no legacy bundle, no site data, no root viewer. Its root is the bilingual "being set up" page until a city exists, its `/<city>/` the generic city page from the first deploy, and after **Publish the map** its root goes to the first city.
 
 ## 7. Failure and resume
 
 - **The plan** (`{projectId, displayName, city}`) is kept in `sessionStorage` before any redirect, so a consent round trip or a reload loses nothing. The token never joins it.
-- **Every step detects before it acts:** project exists, Firebase on, a web app listed, a site listed, a live release of this release. So **Try again** is the same action as the first click, from anywhere, and nothing is made twice.
+- **Every step detects before it acts:** project readable (a 403 on a new project only means not yet this account's), Firebase on, a web app listed, a site listed, the live channel's release (`sites.channels.get`). Each version the page makes carries the label `hcm-start-release: <slug>`. So **Try again** is the same action as the first click, from anywhere, and nothing is made twice.
+- **What is live stays.** This very release is not released again; on a project the owner asked to make, nothing live is replaced, since it can only be their earlier run, published since or not. A project picked from the list was warned about (`start.plan.pickWarning`) and is replaced on the first run.
+- **After the release** the tab's plan is marked `released`: a reload opens the provider step, and a new consent only reads the provider (S-A70-BAD-RELEASE-AGAIN). Publish the map's site replacing the start-up tree must never be undone from a tab left open.
 - **An expired token** stops the run with "Continue", which is one consent and resumes.
 - **Files:** an upload of a hash Hosting already holds is skipped by `uploadRequiredHashes`; a version left unfinalised by a crash is abandoned (Hosting keeps it, unreleased, and it does not count against anything visible).
 - **Moving away mid-upload** leaves the old release live. Only `releases.create` changes the site.
@@ -127,6 +131,8 @@ Every fake in `packages/test-support/src/fakes/google-hosting.ts` follows the do
 4. How long `init.json`, the default site and `web.app` take to appear on a new project.
 5. That `.env` in `functions/dist` reaches every function through the generic `firebase deploy` of Cloud Build.
 6. The unverified-app screen's real text and the 100-user count.
+7. That `projects.get` answers 403 and not 404 for a free id (the deployer takes either as absent), and that a version's `labels` come back on the live channel's `release.version`. If they did not, a picked project would be released over again on a second run with the plan gone; a new project is protected either way. That a new default site has no release of Firebase's own: if it had, a new project's first run would keep that release.
+8. That Resource Manager takes non-ASCII letters in `displayName` is not stated; only ASCII is sent, so the console shows `Bacau` for `Bacău`.
 
 ## 10. What waits for the owner (ask first)
 
@@ -138,6 +144,6 @@ Every fake in `packages/test-support/src/fakes/google-hosting.ts` follows the do
 
 Behaviour `A70` (`e2e/scenarios.json`), `e2e/admin/specs/start/`, on the fakes and emulators. `V29`'s rows follow CR-M5-7. Tour states `start.*` in `e2e/admin/specs/start/states.ts`.
 
-`S-A70-HAPPY-LIVE` is the owner's question end to end: a seeded Fostul Bacău from nothing. The project id is the emulators' own (`demo-hcm`), because the Functions emulator serves one project; the display name, the city and its id are Fostul Bacău's. The fake Hosting keeps what the page uploaded, the spec unpacks the live release, and the admin server serves those very bytes: the released admin runs Setup without GitHub, the fake Cloud Build plays the install from the released generic bundle, New city opens filled in, and the map boots at `/fostul-bacau/` through the released generic city page.
+`S-A70-HAPPY-LIVE` is the owner's question end to end: a seeded Fostul Bacău from nothing. The project id is the emulators' own (`demo-hcm`), because the Functions emulator serves one project; the display name, the city and its id are Fostul Bacău's. The fake Hosting keeps what the page uploaded, the spec unpacks the live release, and the admin server serves those very bytes: the released admin runs Setup without GitHub, the fake Cloud Build plays the install from the released generic bundle, New city opens filled in, and the map boots at `/fostul-bacau/` through the released generic city page; then the real `fetch` step runs over the real generic bundle, as Publish the map's site build does, and what it leaves is served: only the admin's script holds the token, as the text it looks for; the root goes to the first city (S-A70-HAPPY-ROOT) and the map boots again.
 
-What the e2e does not run: Cloud Build's step scripts (as in M6, tested apart: `fetch` with the adoption in `packages/admin/test/install/fetch-script.test.ts`), real Google anywhere, Mapbox's token step (a project without Mapbox is refused best effort, as in A54; the spec gives the city the token Setup's card would).
+What the e2e does not run: Cloud Build's other step scripts (as in M6, tested apart; `fetch` also in `packages/admin/test/install/fetch-script.test.ts`), the site build's `firebase deploy`, real Google anywhere, Mapbox's token step (a project without Mapbox is refused best effort, as in A54; the spec gives the city the token Setup's card would).

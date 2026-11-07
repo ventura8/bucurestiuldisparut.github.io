@@ -9,7 +9,7 @@ import { rememberState, savePlan, type StartPlan } from '../../src/start/plan.js
 import { BASE, grantFragment, releaseOf, sha, SLUG, startWorld, type StartWorld } from './fakes.js';
 
 const PROJECT = 'fostul-bacau';
-const PLAN: StartPlan = { projectId: PROJECT, displayName: 'Fostul Bacău', create: true, city: { id: 'bacau', name: { ro: 'Bacău' } } };
+const PLAN: StartPlan = { projectId: PROJECT, displayName: 'Fostul Bacau', create: true, city: { id: 'bacau', name: { ro: 'Bacău' } } };
 
 function hostingState(world: StartWorld): {
     readonly live: Readonly<Record<string, string>>;
@@ -299,16 +299,107 @@ describe('the start page, its smaller parts', () => {
         expect(controller.view.screen).toBe('plan');
     });
 
-    it('badPath_aProviderThatCannotBeReadCountsAsNotYet', async () => {
+    it('badPath_aProviderThatCannotBeReadIsSaidApartFromNotYet', async () => {
         const world = startWorld();
         const controller = await signedIn(world);
         fill(controller);
         controller.intents.go();
         await settled(controller);
+        expect(controller.view).toMatchObject({ screen: 'provider', providerWaiting: false, providerUnreadable: false });
+        controller.intents.checkProvider();
+        await settled(controller);
+        expect(controller.view).toMatchObject({ providerWaiting: true, providerUnreadable: false });
         world.fakes.fail('firebase-management', 'forbidden');
         controller.intents.checkProvider();
         await settled(controller);
-        expect(controller.view).toMatchObject({ screen: 'provider', providerWaiting: true });
+        expect(controller.view).toMatchObject({ screen: 'provider', providerWaiting: false, providerUnreadable: true });
+    });
+
+    it('badPath_aCityNameGoogleWouldRefuseIsCleanedForTheProject', async () => {
+        const world = startWorld();
+        const controller = await signedIn(world);
+        controller.intents.setName('Sf. Gheorghe, vechi');
+        controller.intents.setCityId('sf-gheorghe');
+        controller.intents.setProjectId(PROJECT);
+        controller.intents.go();
+        await settled(controller);
+        expect(controller.view).toMatchObject({ screen: 'provider', failure: null });
+        const { projects } = world.fakes.snapshot()['firebase-hosting'] as { readonly projects: Readonly<Record<string, string>> };
+        expect(projects[PROJECT]).toBe('Sf Gheorghe vechi');
+    });
+
+    it('badPath_aProjectGoogleRefusesGoesBackToTheForm', async () => {
+        const world = startWorld();
+        const controller = await signedIn(world);
+        fill(controller);
+        world.fakes.scenario('firebase-hosting.projectRefused');
+        controller.intents.go();
+        await settled(controller);
+        expect(controller.view).toMatchObject({ screen: 'plan', failure: { key: 'start.failure.refused', action: 'form' } });
+        expect(world.session.has('hcm:start:plan')).toBe(false);
+    });
+});
+
+describe('the start page, after the release', () => {
+    it('happyPath_aFirstVisitOpensTheIntro_andTheConsentCarriesTheTestsPartition', async () => {
+        const world = startWorld();
+        world.deps = { ...world.deps, testId: 'a test' };
+        const controller = new StartController(world.deps);
+        await controller.start();
+        expect(controller.view.screen).toBe('intro');
+        controller.intents.signIn();
+        expect(world.assigned[0]).toContain('test=');
+    });
+
+    it('badPath_afterTheReleaseAnExpiredCheckDoesNotReleaseAgain', async () => {
+        const world = startWorld();
+        const controller = await signedIn(world);
+        fill(controller);
+        controller.intents.go();
+        await settled(controller);
+        const versions = Object.keys(hostingState(world).versions);
+        expect(versions).toHaveLength(1);
+
+        world.now += 2 * 3_600_000;
+        world.assigned.length = 0;
+        controller.intents.checkProvider();
+        await settled(controller);
+        expect(world.assigned).toHaveLength(1);
+
+        const back = await signedIn(world);
+        await settled(back);
+        expect(back.view).toMatchObject({ screen: 'provider', failure: null, plan: { projectId: PROJECT } });
+        expect(Object.keys(hostingState(world).versions)).toEqual(versions);
+    });
+
+    it('badPath_aReloadAfterTheReleaseOpensTheProviderStep', async () => {
+        const world = startWorld();
+        const controller = await signedIn(world);
+        fill(controller);
+        controller.intents.go();
+        await settled(controller);
+
+        const reloaded = new StartController(world.deps);
+        await reloaded.start();
+        expect(reloaded.view).toMatchObject({ screen: 'provider', failure: null, plan: { projectId: PROJECT } });
+    });
+
+    it('badPath_anotherTabWithTheSameNewProjectLeavesTheLiveSite', async () => {
+        const world = startWorld();
+        const first = await signedIn(world);
+        fill(first);
+        first.intents.go();
+        await settled(first);
+        const { live } = hostingState(world);
+
+        world.session.clear();
+        const again = await signedIn(world);
+        fill(again);
+        again.intents.go();
+        await settled(again);
+        expect(again.view.screen).toBe('provider');
+        expect(hostingState(world).live).toEqual(live);
+        expect(Object.keys(hostingState(world).versions)).toHaveLength(1);
     });
 
     it('edge_aConfigurationThatIsNoJson', async () => {

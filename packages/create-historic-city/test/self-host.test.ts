@@ -101,6 +101,10 @@ describe('self-host', () => {
             viewerOrigins: [`https://${PROJECT}.web.app`],
         });
         expect(JSON.parse(read(join(server, 'hosting/admin/runtime.json')))).toEqual({ release: '1.0.0+abc1234' });
+        // Publish the map needs these on the site: Setup's bundle, and the city page with this project in it.
+        expect(existsSync(join(server, 'hosting/admin/install/1-0-0-abc1234/manifest.json'))).toBe(true);
+        expect(read(join(server, 'hosting/city/index.html'))).toBe(`connect-src https://us-central1-${PROJECT}.cloudfunctions.net\n`);
+        expect(read(join(server, 'hosting/city/config.js'))).toBe(`${PROJECT}-public\n`);
         expect(read(join(server, `functions/.env.${PROJECT}`))).toBe(
             `HCM_VIEWER_ORIGINS=https://${PROJECT}.web.app\nHCM_APP_CHECK=monitor\n`,
         );
@@ -357,14 +361,8 @@ describe('self-host: what the run cannot use', () => {
 
     it('badPath_whatTheRunCannotUseIsRefused', async () => {
         const cases: readonly (readonly [readonly string[], string])[] = [
-            [
-                ['self-host', 'nowhere', '--project', PROJECT],
-                ro('cli.admin.noKit', { dir: 'nowhere', command: NPX_COMMAND }),
-            ],
-            [
-                ['self-host', 'cluj', '--project', 'Not_A_Project'],
-                ro('cli.project.invalid', { project: 'Not_A_Project' }),
-            ],
+            [['self-host', 'nowhere', '--project', PROJECT], ro('cli.admin.noKit', { dir: 'nowhere', command: NPX_COMMAND })],
+            [['self-host', 'cluj', '--project', 'Not_A_Project'], ro('cli.project.invalid', { project: 'Not_A_Project' })],
             [['self-host', 'cluj'], ro('cli.project.invalid', { project: '' })],
             [
                 ['self-host', 'cluj', '--project', PROJECT, '--viewer-origin', HTTP_ORIGIN, '--experimental'],
@@ -445,9 +443,7 @@ describe('self-host details', () => {
         writeFileSync(join(bundle, 'bundle.json'), '{');
         const { ports } = await withCity(newAccount(), ['y', 'y', 'y', 'y', '', 'y']);
 
-        await expect(runCli(['self-host', 'cluj', '--project', PROJECT, '--bundle', bundle], ports)).rejects.toThrow(
-            SyntaxError,
-        );
+        await expect(runCli(['self-host', 'cluj', '--project', PROJECT, '--bundle', bundle], ports)).rejects.toThrow(SyntaxError);
     });
 });
 

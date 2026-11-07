@@ -16,10 +16,36 @@ const COMPLETE = { ...withName(EMPTY_FORM, 'Fostul Bacău'), area: { west: '26.8
 
 describe('the start form', () => {
     it('happyPath_theNameLeadsTheIdsUntilTheOwnerTypesThem', () => {
-        expect(COMPLETE).toMatchObject({ cityId: 'fostul-bacau', displayName: 'Fostul Bacău', projectId: 'harta-fostul-bacau' });
+        expect(COMPLETE).toMatchObject({ cityId: 'fostul-bacau', displayName: 'Fostul Bacau', projectId: 'harta-fostul-bacau' });
         const typed = withCityId(COMPLETE, 'bacau');
         expect(typed).toMatchObject({ cityId: 'bacau', projectId: 'harta-bacau' });
         expect(withName(typed, 'Alt nume')).toMatchObject({ cityId: 'bacau' });
+    });
+
+    it.each([
+        ['Sf. Gheorghe', 'Sf Gheorghe'],
+        ['Cluj, vechi!', 'Cluj vechi!'],
+        ['Târgu Mureș', 'Targu Mures'],
+        ['București și împrejurimile lui, cele vechi', 'Bucuresti si imprejurimile lui'],
+    ])('badPath_aNameGoogleWouldRefuseIsCleaned_%s', (name, displayName) => {
+        const form = withName(EMPTY_FORM, name);
+        expect(form.displayName).toBe(displayName);
+        expect(planOf({ ...form, cityId: 'oras', projectId: 'harta-oras' })?.displayName).toBe(displayName);
+    });
+
+    it('edge_aNameLeftTooShortTakesTheProjectsId', () => {
+        expect(planOf({ ...withName(EMPTY_FORM, '.,;'), cityId: 'oras', projectId: 'harta-oras' })?.displayName).toBe('harta-oras');
+    });
+
+    it('badPath_aDecimalCommaIsADecimalPoint', () => {
+        const comma = { ...COMPLETE, area: { west: '26,85', south: '46,5', east: '26,98', north: '46,62' } };
+        expect(areaProblem(comma)).toBeNull();
+        expect(planOf(comma)?.city.bounds).toEqual({ west: 26.85, south: 46.5, east: 26.98, north: 46.62 });
+    });
+
+    it('badPath_whatIsNoNumberIsSaidSo', () => {
+        expect(areaProblem({ ...COMPLETE, area: { ...COMPLETE.area, west: 'vest' } })).toBe('start.plan.areaNumber');
+        expect(areaProblem({ ...COMPLETE, area: { ...COMPLETE.area, west: '' } })).toBe('start.plan.areaIncomplete');
     });
 
     it('happyPath_anEmptiedNameEmptiesWhatFollowedIt', () => {
@@ -43,7 +69,7 @@ describe('the start form', () => {
 
     it.each([
         [{ west: '1', south: '', east: '', north: '' }, 'start.plan.areaIncomplete'],
-        [{ west: 'x', south: '1', east: '2', north: '3' }, 'start.plan.areaIncomplete'],
+        [{ west: 'x', south: '1', east: '2', north: '3' }, 'start.plan.areaNumber'],
         [{ west: '2', south: '1', east: '1', north: '3' }, 'start.plan.areaBounds'],
         [{ west: '1', south: '1', east: '1.001', north: '1.001' }, 'start.plan.areaTooSmall'],
         [{ west: '1', south: '1', east: '9', north: '2' }, 'start.plan.areaTooBig'],

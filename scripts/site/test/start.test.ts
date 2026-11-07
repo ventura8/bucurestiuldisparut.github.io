@@ -1,4 +1,5 @@
 import { GENERIC_INSTALL_PROJECT, startConfigSchema, startReleaseSchema } from '@hcm/shared';
+import { execFileSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { SiteBuildError } from '../src/errors.js';
@@ -87,6 +88,10 @@ describe('the start site', () => {
         const bundle = JSON.parse(tree(`admin/install/${config.release}/manifest.json`)) as { readonly projectId: string };
         expect(bundle.projectId).toBe(GENERIC_INSTALL_PROJECT);
         expect(files.readText('dist/start/start.mjs')).toBe('export {};');
+        // What a site build adopts is the public tree's own marks, the city page's policy included when it names the project.
+        const site = files.readBytes(`dist/start/release/${config.release}/tree/admin/install/${config.release}/hosting.tgz`);
+        const listed = execFileSync('/usr/bin/tar', ['-xzO', 'templates.json'], { input: site }).toString('utf8');
+        expect(JSON.parse(listed)).toEqual(expect.arrayContaining(['city/config.js', 'admin/index.html']));
     });
 
     it('happyPath_withoutAClientThePageIsClosed', () => {

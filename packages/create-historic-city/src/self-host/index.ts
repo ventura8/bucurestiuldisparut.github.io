@@ -125,9 +125,7 @@ async function attempt(session: Session, step: Step): Promise<StepOutcome | 'fai
 
 function resumeCommand(session: Session, step: Step): string {
     const { dir, id } = session.project;
-    return RESUMES_WITH_DEPLOY.includes(step.id)
-        ? deployCommand(session)
-        : `${NPX_COMMAND} self-host ${dir} --project ${id}`;
+    return RESUMES_WITH_DEPLOY.includes(step.id) ? deployCommand(session) : `${NPX_COMMAND} self-host ${dir} --project ${id}`;
 }
 
 /** Stops at `left[0]`: after a "no", the steps left are listed; either way, the command that resumes. */

@@ -33,6 +33,7 @@ const VIEW: StartPageView = {
     busy: false,
     plan: { projectId: 'fostul-bacau', city: { name: { ro: 'Bacău' } } },
     providerWaiting: false,
+    providerUnreadable: false,
     command: 'npx create-historic-city@1 self-host',
 };
 
@@ -226,6 +227,74 @@ describe('hcm-start-page, the run', () => {
         expect(calls).toEqual([['checkProvider']]);
         await change({ providerWaiting: true });
         expect(root.querySelector('[data-provider-waiting]')?.textContent).toBe(t('start.provider.waiting'));
+    });
+
+    it('happyPath_theProviderStepShowsTheAddressWhateverTheReadSays', async () => {
+        const { root } = await rendered({ screen: 'provider' });
+        const address = 'https://fostul-bacau.web.app/admin/';
+        expect(root.querySelector('[data-open-admin]')?.getAttribute('href')).toBe(address);
+        expect(root.textContent).toContain(t('start.provider.address', { address }));
+        expect(root.querySelector('[data-provider-unreadable]')).toBeNull();
+    });
+
+    it('badPath_aProviderThatCannotBeReadIsNotCalledNotOn', async () => {
+        const { root } = await rendered({ screen: 'provider', providerUnreadable: true });
+        expect(root.querySelector('[data-provider-unreadable]')?.textContent).toBe(t('start.provider.unreadable'));
+        expect(root.querySelector('[data-provider-waiting]')).toBeNull();
+        expect(root.querySelector('[data-open-admin]')).not.toBeNull();
+    });
+
+    it('a11y_theWorkingStepIsSaidInOnePoliteRegion_withoutTheFileCount', async () => {
+        const { root, change } = await rendered({ screen: 'work' });
+        const status = (): Element | null => root.querySelector('[role="status"][data-progress]');
+        expect(status()?.textContent).toBe(t('start.work.now', { step: t('start.step.firebase') }));
+        const region = status();
+        await change({ steps: { ...VIEW.steps, firebase: 'done', files: 'working' }, files: { done: 2, total: 3 } });
+        expect(status()).toBe(region);
+        expect(status()?.textContent).toBe(t('start.work.now', { step: t('start.step.filesShort') }));
+        await change({ steps: { ...VIEW.steps, firebase: 'failed' } });
+        expect(status()?.textContent).toBe('');
+    });
+
+    it('a11y_aNewScreenTakesFocusAtItsHeading_theFirstDoesNot', async () => {
+        const { page, root, change } = await rendered({ screen: 'plan' });
+        expect(root.activeElement).toBeNull();
+        await change({ screen: 'work' });
+        await page.updateComplete;
+        expect(root.activeElement?.tagName).toBe('H1');
+        expect(root.activeElement?.textContent).toBe(t('start.work.title'));
+        await change({ steps: { ...VIEW.steps, files: 'working' } });
+        expect(root.activeElement?.tagName).toBe('H1');
+    });
+
+    it('a11y_aProblemIsAnnouncedAndTiedToItsFields', async () => {
+        const { root } = await rendered({ screen: 'plan' }, { area: 'start.plan.areaTooBig', cityId: 'start.plan.cityIdInvalid' });
+        const west = root.querySelector('#edge-west');
+        expect(west?.getAttribute('aria-invalid')).toBe('true');
+        expect(west?.getAttribute('aria-describedby')).toBe('area-problem');
+        expect(root.querySelector('#area-problem')?.textContent).toBe(t('start.plan.areaTooBig'));
+        expect(root.querySelector('#area-problem')?.closest('[role="status"]')).not.toBeNull();
+        expect(root.querySelector('#city-id-problem')?.closest('[role="status"]')).not.toBeNull();
+    });
+
+    it('a11y_theRegionsAreThereBeforeAnyProblem', async () => {
+        const { root } = await rendered({ screen: 'plan' });
+        expect(root.querySelector('#edge-west')?.getAttribute('aria-invalid')).toBe('false');
+        expect(root.querySelector('#edge-west')?.hasAttribute('aria-describedby')).toBe(false);
+        expect(root.querySelector('#area-problem')).toBeNull();
+        expect(root.querySelector('[data-area-status][role="status"]')).not.toBeNull();
+        expect(root.querySelector('[data-field-status="name-ro"][role="status"]')).not.toBeNull();
+    });
+
+    it('edge_screensWithoutAPlanOrWithTheFormsValues', async () => {
+        for (const screen of ['provider', 'done'] as const) {
+            const { root } = await rendered({ screen, plan: null });
+            expect(root.querySelector('[data-open-admin]')?.getAttribute('href')).toBe('https://.web.app/admin/');
+            document.body.replaceChildren();
+        }
+        const { root } = await rendered({ screen: 'plan', form: { ...VIEW.form, cityId: 'bacau', projectId: 'harta-bacau' } });
+        expect(root.textContent).toContain(t('start.plan.cityIdHelp', { cityId: 'bacau' }));
+        expect(root.textContent).toContain(t('start.plan.projectIdHelp', { projectId: 'harta-bacau' }));
     });
 
     it('happyPath_theDoneScreenLinksTheAdmin', async () => {

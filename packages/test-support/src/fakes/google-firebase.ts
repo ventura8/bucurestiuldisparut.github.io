@@ -47,11 +47,26 @@ function defaultProject(): FirebaseProject {
     };
 }
 
-/** The fake Firebase Management API. */
-export function createFirebaseManagementFake(state: FirebaseState, projects: GoogleProjects): ServiceFake {
-    const nextOperation = sequence('e2e-analytics-');
-    const operations = new Map<string, string>();
-    const projectOf = (segment: string): { readonly id: string; readonly number: string; readonly firebase: FirebaseProject } => {
+const appBody = (projectId: string, app: FirebaseWebApp): Readonly<Record<string, unknown>> => ({
+    ...(fixtureBody('firebase-management/web-apps.one-active', { projectId, appId: app.appId }) as { apps: Record<string, unknown>[] })
+        .apps[0],
+    displayName: app.displayName,
+    state: app.state,
+});
+
+const analyticsBody = (projectId: string, firebase: FirebaseProject): unknown =>
+    fixtureBody('firebase-management/analytics-details.linked', {
+        projectId,
+        appId: firebase.apps[0]?.appId ?? String(FIXTURE_VALUES['appId']),
+        measurementId: String(firebase.measurementId),
+    });
+
+/** A project of the fake, with its Firebase side made on first sight (empty in the start page's fresh world). */
+function projectLookup(
+    state: FirebaseState,
+    projects: GoogleProjects,
+): (segment: string) => { readonly id: string; readonly number: string; readonly firebase: FirebaseProject } {
+    return (segment) => {
         const project = projects.resolve(segment);
         const existing = state.projects.get(project.id);
         const firebase = existing ?? (state.fresh ? { ...defaultProject(), apps: [], googleSignIn: false } : defaultProject());
@@ -60,6 +75,13 @@ export function createFirebaseManagementFake(state: FirebaseState, projects: Goo
         }
         return { ...project, firebase };
     };
+}
+
+/** The fake Firebase Management API. */
+export function createFirebaseManagementFake(state: FirebaseState, projects: GoogleProjects): ServiceFake {
+    const nextOperation = sequence('e2e-analytics-');
+    const operations = new Map<string, string>();
+    const projectOf = projectLookup(state, projects);
     const createApp: Route['answer'] = (request, params) => {
         const { firebase } = projectOf(String(params['project']));
         const { displayName } = JSON.parse(request.body) as { readonly displayName?: string };
@@ -68,18 +90,6 @@ export function createFirebaseManagementFake(state: FirebaseState, projects: Goo
         operations.set(name, String(params['project']));
         return jsonResponse({ name, done: false });
     };
-    const appBody = (projectId: string, app: FirebaseWebApp): Readonly<Record<string, unknown>> => ({
-        ...(fixtureBody('firebase-management/web-apps.one-active', { projectId, appId: app.appId }) as { apps: Record<string, unknown>[] })
-            .apps[0],
-        displayName: app.displayName,
-        state: app.state,
-    });
-    const analyticsBody = (projectId: string, firebase: FirebaseProject): unknown =>
-        fixtureBody('firebase-management/analytics-details.linked', {
-            projectId,
-            appId: firebase.apps[0]?.appId ?? String(FIXTURE_VALUES['appId']),
-            measurementId: String(firebase.measurementId),
-        });
     const config: Route['answer'] = (_request, params) => {
         const { id, number, firebase } = projectOf(String(params['project']));
         const app = firebase.apps.find((candidate) => candidate.appId === params['appId'] && candidate.state === 'ACTIVE');

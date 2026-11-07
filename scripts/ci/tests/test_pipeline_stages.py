@@ -114,6 +114,8 @@ def test_bad_path_failures_are_listed_in_registry_order(tmp_path: Path) -> None:
         "build/notices",
         "build/site-build",
         "build/install-budget",
+        # "npm run --silent build" is also the start of "npm run --silent build:start" (M14)
+        "build/start-build",
     ]
 
 
@@ -180,7 +182,7 @@ def test_bad_path_composite_stage_reports_every_failed_part(tmp_path: Path, log:
     assert log.messages[-1] == "[FAILURE] stage 'all' failed: build/bundle-budget, build/install-budget, sonar/sonar"
     assert [" ".join(call) for call in shell.calls].count(" ".join(GATES["e2e-build"].command)) == 1
     assert "e2e 3/3 playwright" in log.messages
-    assert "build 1/7 vite-build" in log.messages
+    assert "build 1/8 vite-build" in log.messages
     assert "sonar 1/1 sonar" in log.messages
 
 

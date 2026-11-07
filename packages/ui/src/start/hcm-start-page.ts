@@ -11,24 +11,18 @@ import { applyTheme } from '../theme/apply.js';
 import { BASELINE_THEME } from '../theme/baseline.js';
 import { defineHcmStartLanguage } from './hcm-start-language.js';
 import { closedScreen, introScreen, type StartText } from './start-intro.js';
+import { doneScreen, failurePanel, providerScreen, workScreen, type RunFailure, type RunView } from './start-run.js';
 import { startHostStyles, startStyles } from './start-styles.js';
 
 export const HCM_START_PAGE_TAG = 'hcm-start-page';
 
-const STEPS = ['project', 'firebase', 'webApp', 'site', 'files', 'release'] as const;
 const EDGES = ['west', 'south', 'east', 'north'] as const;
 
-type StepId = (typeof STEPS)[number];
 type Edge = (typeof EDGES)[number];
 
-export interface StartPageFailure {
-    readonly key: StartKey;
-    readonly params?: Readonly<Record<string, string>>;
-    readonly link?: { readonly key: StartKey; readonly url: string };
-    readonly action: 'again' | 'consent' | 'form';
-}
+export type StartPageFailure = RunFailure;
 
-export interface StartPageView {
+export interface StartPageView extends RunView {
     readonly screen: 'closed' | 'intro' | 'plan' | 'work' | 'provider' | 'done';
     readonly locale: Locale;
     readonly form: {
@@ -42,12 +36,7 @@ export interface StartPageView {
     };
     readonly projects: readonly { readonly projectId: string; readonly displayName: string }[] | null;
     readonly notice: StartKey | null;
-    readonly steps: Readonly<Record<StepId, 'waiting' | 'working' | 'done' | 'failed'>>;
-    readonly files: { readonly done: number; readonly total: number };
-    readonly failure: StartPageFailure | null;
     readonly busy: boolean;
-    readonly plan: { readonly projectId: string; readonly city: { readonly name: { readonly ro: string } } } | null;
-    readonly providerWaiting: boolean;
     readonly command: string;
 }
 
@@ -94,6 +83,8 @@ export class HcmStartPage extends LitElement {
 
     declare port: StartPagePort | undefined;
     #unsubscribe: (() => void) | null = null;
+    /** The screen last rendered: a move to another one takes the focus to its heading, which a reader then announces. */
+    #shown: StartPageView['screen'] | undefined;
 
     override connectedCallback(): void {
         super.connectedCallback();
@@ -113,6 +104,14 @@ export class HcmStartPage extends LitElement {
         }
     }
 
+    override updated(): void {
+        const screen = this.port?.view.screen;
+        if (this.#shown !== undefined && screen !== this.#shown) {
+            this.renderRoot.querySelector('h1')?.focus();
+        }
+        this.#shown = screen;
+    }
+
     #follow(): void {
         this.#unsubscribe?.();
         this.#unsubscribe =
@@ -126,6 +125,10 @@ export class HcmStartPage extends LitElement {
     }
 
     readonly #text: StartText = (key, params) => this.#t(key, params);
+
+    readonly #tryAgain = (): void => {
+        this.port?.intents.tryAgain();
+    };
 
     override render(): TemplateResult {
         const view = this.port?.view;
@@ -153,9 +156,12 @@ export class HcmStartPage extends LitElement {
                     this.port?.intents.signIn();
                 }),
             plan: () => this.#plan(view),
-            work: () => this.#work(view),
-            provider: () => this.#provider(view),
-            done: () => this.#done(view),
+            work: () => workScreen(this.#text, view, this.#tryAgain),
+            provider: () =>
+                providerScreen(this.#text, view, () => {
+                    this.port?.intents.checkProvider();
+                }),
+            done: () => doneScreen(this.#text, view),
         };
         return screens[view.screen]();
     }
@@ -182,7 +188,9 @@ export class HcmStartPage extends LitElement {
     #fieldNotes({ id, problem, help }: FieldSpec): TemplateResult {
         const helpLine = help === undefined ? nothing : html`<p id="${id}-help" class="note">${help}</p>`;
         const problemLine = problem === null ? nothing : html`<p id="${id}-problem" class="alert">${this.#t(problem)}</p>`;
-        return html`${helpLine} ${problemLine}`;
+        // The region is there before its problem, or a reader would not announce it.
+        return html`${helpLine}
+            <div role="status" data-field-status=${id}>${problemLine}</div>`;
     }
 
     #edges(view: StartPageView, port: StartPagePort): TemplateResult {
@@ -198,6 +206,8 @@ export class HcmStartPage extends LitElement {
                             <input
                                 id="edge-${edge}"
                                 inputmode="decimal"
+                                aria-invalid=${problem === null ? 'false' : 'true'}
+                                aria-describedby=${problem === null ? nothing : 'area-problem'}
                                 .value=${view.form.area[edge]}
                                 @input=${(event: Event) => {
                                     port.intents.setEdge(edge, valueOf(event));
@@ -206,7 +216,9 @@ export class HcmStartPage extends LitElement {
                         </div>`,
                 )}
             </div>
-            ${problem === null ? nothing : html`<p class="alert" data-area-problem>${this.#t(problem)}</p>`}
+            <div role="status" data-area-status>
+                ${problem === null ? nothing : html`<p id="area-problem" class="alert" data-area-problem>${this.#t(problem)}</p>`}
+            </div>
         </fieldset>`;
     }
 
@@ -274,8 +286,8 @@ export class HcmStartPage extends LitElement {
             return html``;
         }
         const { form } = view;
-        return html`<h1>${this.#t('start.plan.title')}</h1>
-            ${this.#failure(view)}
+        return html`<h1 tabindex="-1">${this.#t('start.plan.title')}</h1>
+            ${failurePanel(this.#text, view, this.#tryAgain)}
             <form
                 @submit=${(event: Event) => {
                     event.preventDefault();
@@ -315,84 +327,6 @@ export class HcmStartPage extends LitElement {
                     ${this.#t(form.create ? 'start.plan.go' : 'start.plan.goExisting')}
                 </button>
             </form>`;
-    }
-
-    #stepLabel(view: StartPageView, step: StepId): string {
-        return step === 'files'
-            ? this.#t('start.step.files', { done: String(view.files.done), total: String(view.files.total) })
-            : this.#t(`start.step.${step}`);
-    }
-
-    #work(view: StartPageView): TemplateResult {
-        return html`<h1>${this.#t('start.work.title')}</h1>
-            <p>${this.#t('start.work.body')}</p>
-            <ol class="steps">
-                ${STEPS.map(
-                    (step) =>
-                        html`<li data-step=${step} data-state=${view.steps[step]}>
-                            <span>${this.#stepLabel(view, step)}</span>
-                            <span class="chip">${this.#t(`start.step.state.${view.steps[step]}`)}</span>
-                        </li>`,
-                )}
-            </ol>
-            ${this.#failure(view)}`;
-    }
-
-    #failure(view: StartPageView): TemplateResult {
-        const { failure } = view;
-        if (failure === null) {
-            return html``;
-        }
-        return html`<section class="panel" role="alert" data-failure=${failure.key}>
-            <p>${this.#t(failure.key, failure.params)}</p>
-            ${failure.link === undefined ? nothing : this.#external(failure.link.url, failure.link.key)} ${this.#failureAction(failure)}
-        </section>`;
-    }
-
-    #failureAction(failure: StartPageFailure): TemplateResult {
-        if (failure.action === 'form') {
-            return html``;
-        }
-        return html`<button
-            type="button"
-            class="filled"
-            @click=${() => {
-                this.port?.intents.tryAgain();
-            }}
-        >
-            ${this.#t(failure.action === 'consent' ? 'start.continue' : 'start.tryAgain')}
-        </button>`;
-    }
-
-    #external(url: string, key: StartKey): TemplateResult {
-        return html`<p><a href=${url} target="_blank" rel="noopener noreferrer">${this.#t(key)}</a></p>`;
-    }
-
-    #provider(view: StartPageView): TemplateResult {
-        const projectId = view.plan?.projectId ?? '';
-        return html`<h1>${this.#t('start.provider.title')}</h1>
-            <p>${this.#t('start.provider.body')}</p>
-            <p>${this.#t('start.provider.how')}</p>
-            ${this.#external(`https://console.firebase.google.com/project/${projectId}/authentication/providers`, 'start.provider.link')}
-            ${view.providerWaiting ? html`<p role="status" class="note" data-provider-waiting>${this.#t('start.provider.waiting')}</p>` : nothing}
-            <button
-                type="button"
-                class="filled"
-                @click=${() => {
-                    this.port?.intents.checkProvider();
-                }}
-            >
-                ${this.#t('start.provider.check')}
-            </button>`;
-    }
-
-    #done(view: StartPageView): TemplateResult {
-        const projectId = view.plan?.projectId ?? '';
-        const address = `https://${projectId}.web.app/admin/`;
-        return html`<h1>${this.#t('start.done.title')}</h1>
-            <p>${this.#t('start.done.body', { address })}</p>
-            <p>${this.#t('start.done.next', { city: view.plan?.city.name.ro ?? '' })}</p>
-            <p><a class="filled" href=${address} data-open-admin>${this.#t('start.done.open')}</a></p>`;
     }
 }
 

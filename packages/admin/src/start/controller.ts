@@ -3,41 +3,19 @@
  * in memory only and asks the browser for nothing but through its ports, so the tests drive it end to end over the fake
  * upstreams. `<hcm-start-page>` renders the view and calls the intents.
  */
-import { startConfigSchema, type Locale, type Logger, type StartConfig, type StartKey } from '@hcm/shared';
+import { startConfigSchema, type Locale, type Logger, type StartConfig } from '@hcm/shared';
 
 import type { Clock, KeyValueStore } from '../app/ports.js';
 import { createGoogleTransport } from '../google/transport.js';
 import { resolveAdminLocale } from '../state/locale.js';
 import { consentUrl, readConsentAnswer, type ConsentAnswer, type StartToken } from './consent.js';
 import { deployStart, START_STEPS, type StartStepId } from './deploy.js';
-import { startFailureOf, type StartFailure } from './failure.js';
+import { startFailureOf } from './failure.js';
 import { loadRelease, type FileTools } from './files.js';
-import { EMPTY_FORM, nextProjectId, planOf, withCityId, withName, type AreaEdge, type StartForm } from './form.js';
-import { createStartGoogle, type OwnProject, type StartGoogle } from './google.js';
+import { nextProjectId, planOf, withCityId, withName, type AreaEdge, type StartForm } from './form.js';
+import { createStartGoogle, type StartGoogle } from './google.js';
 import { clearPlan, loadPlan, rememberState, savePlan, takeState, type StartPlan } from './plan.js';
-
-type StartScreen = 'closed' | 'intro' | 'plan' | 'work' | 'provider' | 'done';
-
-type StepState = 'waiting' | 'working' | 'done' | 'failed';
-
-export interface StartView {
-    readonly screen: StartScreen;
-    readonly locale: Locale;
-    readonly form: StartForm;
-    /** The owner's projects; null until read. */
-    readonly projects: readonly OwnProject[] | null;
-    /** Said on the first screen: why the consent changed nothing. */
-    readonly notice: StartKey | null;
-    readonly steps: Readonly<Record<StartStepId, StepState>>;
-    readonly files: { readonly done: number; readonly total: number };
-    readonly failure: StartFailure | null;
-    readonly busy: boolean;
-    readonly plan: StartPlan | null;
-    /** The provider was checked and is not on yet. */
-    readonly providerWaiting: boolean;
-    /** The terminal road's command, which the catalogue's texts name. */
-    readonly command: string;
-}
+import { INITIAL, NOTICE_OF_ANSWER, stepStateAt, WAITING_STEPS, type StartView, type StepState } from './view.js';
 
 export interface StartIntents {
     setLocale(locale: Locale): void;
@@ -79,35 +57,6 @@ const CONFIG_FILE = 'start-config.json';
 const LANGUAGE_KEY = 'hcm:start:lang';
 /** The upload is the long part; a token this close to its end would stop in the middle. */
 const MIN_TOKEN_LIFE_MS = 5 * 60_000;
-const WAITING_STEPS = Object.fromEntries(START_STEPS.map((step) => [step, 'waiting'])) as Record<StartStepId, StepState>;
-
-const INITIAL: Omit<StartView, 'locale'> = {
-    screen: 'intro',
-    form: EMPTY_FORM,
-    projects: null,
-    notice: null,
-    steps: WAITING_STEPS,
-    files: { done: 0, total: 0 },
-    failure: null,
-    busy: false,
-    plan: null,
-    providerWaiting: false,
-    command: '',
-};
-
-const NOTICE_OF_ANSWER: Readonly<Record<'denied' | 'wrongState' | 'scope', StartKey>> = {
-    denied: 'start.signedOut.denied',
-    wrongState: 'start.signedOut.state',
-    scope: 'start.signedOut.scope',
-};
-
-function stepStateAt(position: number, current: number): StepState {
-    if (position === current) {
-        return 'working';
-    }
-    return position < current ? 'done' : 'waiting';
-}
-
 export class StartController {
     readonly #deps: StartDeps;
     readonly #listeners = new Set<() => void>();
@@ -195,9 +144,17 @@ export class StartController {
         } else if (answer.kind !== 'none') {
             this.#update({ notice: NOTICE_OF_ANSWER[answer.kind] });
         } else if (plan !== null) {
-            // A reload: the plan is here, the token is not (it never leaves memory).
-            this.#update({ screen: 'work', plan, failure: { key: 'start.failure.expired', action: 'consent' } });
+            this.#reloaded(plan);
         }
+    }
+
+    /** A reload: the plan is here, the token is not (it never leaves memory). After the release only the provider is left. */
+    #reloaded(plan: StartPlan): void {
+        if (plan.released === true) {
+            this.#update({ screen: 'provider', plan });
+            return;
+        }
+        this.#update({ screen: 'work', plan, failure: { key: 'start.failure.expired', action: 'consent' } });
     }
 
     #update(patch: Partial<StartView>): void {
@@ -238,6 +195,12 @@ export class StartController {
     async #afterConsent(plan: StartPlan | null): Promise<void> {
         if (plan === null) {
             this.#update({ screen: 'plan' });
+            return;
+        }
+        if (plan.released === true) {
+            // The site may have moved on since (M14 §7): a new consent only reads the provider again, it never releases.
+            this.#update({ plan });
+            await this.#checkProvider();
             return;
         }
         await this.#run(plan);
@@ -326,7 +289,9 @@ export class StartController {
             this.#failed(error, current, plan);
             return;
         }
-        this.#update({ busy: false, steps: { ...this.#view.steps, release: 'done' } });
+        const released: StartPlan = { ...plan, released: true };
+        savePlan(this.#deps.session, released);
+        this.#update({ busy: false, plan: released, steps: { ...this.#view.steps, release: 'done' } });
         await this.#checkProvider();
     }
 
@@ -374,22 +339,26 @@ export class StartController {
         this.#showProvider(await this.#providerOn(plan.projectId));
     }
 
-    #showProvider(on: boolean): void {
-        if (on) {
+    #showProvider(read: 'on' | 'off' | 'unreadable'): void {
+        if (read === 'on') {
             clearPlan(this.#deps.session);
-            this.#update({ screen: 'done', providerWaiting: false });
+            this.#update({ screen: 'done', providerWaiting: false, providerUnreadable: false });
             return;
         }
-        this.#update({ screen: 'provider', providerWaiting: this.#view.screen === 'provider' });
+        this.#update({
+            screen: 'provider',
+            providerWaiting: read === 'off' && this.#view.screen === 'provider',
+            providerUnreadable: read === 'unreadable',
+        });
     }
 
-    /** Whether Google sign-in is on; a read that fails counts as not yet, and Check again reads again. */
-    async #providerOn(projectId: string): Promise<boolean> {
+    /** Whether Google sign-in is on; a read that fails is said apart from "not yet", and Check again reads again. */
+    async #providerOn(projectId: string): Promise<'on' | 'off' | 'unreadable'> {
         try {
-            return await this.#google().googleSignInOn(projectId);
+            return (await this.#google().googleSignInOn(projectId)) ? 'on' : 'off';
         } catch (error) {
             this.#deps.log.warn('the sign-in provider could not be read', { error: String(error) });
-            return false;
+            return 'unreadable';
         }
     }
 }

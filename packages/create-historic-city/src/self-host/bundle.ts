@@ -1,19 +1,21 @@
 /**
  * The self-host bundle the package carries (`dist/self-host/`, `npm run build:self-host` at a release, which builds the
- * admin and the functions for production first; the `release` stage's `self-host-bundle` gate assembles it before
+ * admin, the Hosting tree, the functions and the start site for production first; the `release` stage's `self-host-bundle` gate assembles it before
  * `release-pack`: `docs/research/M5-interfaces.md` §4.4), assembled from the repository's own builds:
  *
  * ```text
- * hosting/admin/              packages/admin/dist (a production build) without Bucharest's legacy import bundle,
- *                             the source maps and the files a project writes itself (project.json, runtime.json):
- *                             since M6 the admin's base is `/admin/` (docs/research/M6-interfaces.md §2.3), so the
- *                             project's Hosting folder is `hosting/` with the admin in its `admin/` folder
+ * hosting/                    the start site's release tree (dist/start, a production build; M14 §6), which names no
+ *                             project and holds no Bucharest: the admin at `admin/` (M6) with the generic install bundle
+ *                             Setup's Install and Publish read at `admin/install/<slug>/`, the city page and its engine.
+ *                             Without the bundle and the city page a self-hosted project cannot publish its map.
+ *                             Less `admin/runtime.json`, which a project writes itself, as it does `project.json`
  * functions/                  functions/dist: index.js, package.json, package-lock.json and export-kit/ (no .env.*)
  * rules/                      firebase/firestore.rules, firestore.indexes.json, storage.rules
  * firebase.template.json      firebase.json for any project: the paths above, no build steps, no emulators, and
  *                             the repository's project id replaced by __PROJECT_ID__ (its Hosting site and CSP); the
  *                             site's root redirects to `/admin/` until the map is published (no viewer page yet)
- * bundle.json                 the release the admin was built from (its runtime.json's)
+ * bundle.json                 the release the tree was built from, and the files of `hosting/` that hold the project's
+ *                             token (the manifest's templates), which `server-files.ts` fills in
  * ```
  *
  * Nothing secret is copied: the admin build and the rules are public, and the functions' `.env.<project>` files (public
@@ -27,7 +29,8 @@ import { BUNDLE, PROJECT_TOKEN } from './server-files.js';
 /** Where the inputs and the output are, from the repository's root. */
 export interface BundleLayout {
     readonly root: string;
-    readonly adminDist: string;
+    /** The start site (`npm run build:start`). */
+    readonly startSite: string;
     readonly functionsDist: string;
     readonly firebaseConfig: string;
     readonly rules: readonly string[];
@@ -36,7 +39,7 @@ export interface BundleLayout {
 }
 
 export const DEFAULT_LAYOUT: Omit<BundleLayout, 'root'> = {
-    adminDist: 'packages/admin/dist',
+    startSite: 'dist/start',
     functionsDist: 'functions/dist',
     firebaseConfig: 'firebase.json',
     rules: ['firebase/firestore.rules', 'firebase/firestore.indexes.json', 'firebase/storage.rules'],
@@ -50,8 +53,8 @@ export const DEFAULT_LAYOUT: Omit<BundleLayout, 'root'> = {
  */
 export const E2E_BUILD_MARKER = '/__oauth/authorize';
 
-/** Admin files a self-hosted project does not take: the legacy import, the maps, what the project writes itself. */
-const ADMIN_LEFT_OUT = /^(?:legacy|project\.json|runtime\.json|.*\.map)$/;
+/** The tree's file a self-hosted project writes itself. */
+const OWN_RUNTIME = 'admin/runtime.json';
 /** The functions' artifact, without its per-project `.env.*`. */
 const FUNCTIONS_TAKEN = /^(?:index\.js|package\.json|package-lock\.json|export-kit)$/;
 
@@ -108,25 +111,50 @@ function requireProductionAdmin(adminDist: string): void {
     const scripts = existsSync(adminDist) ? readdirSync(adminDist).filter((name) => /\.m?js$/.test(name)) : [];
     const e2e = scripts.find((name) => readFileSync(join(adminDist, name), 'utf8').includes(E2E_BUILD_MARKER));
     if (e2e !== undefined) {
-        throw new Error(`${adminDist}/${e2e} is the admin's e2e build: run npm run build:admin first`);
+        throw new Error(`${adminDist}/${e2e} is the admin's e2e build: run npm run build:admin and npm run build:start first`);
     }
 }
 
+interface StartRelease {
+    readonly release: string;
+    readonly tree: string;
+    readonly templates: readonly string[];
+}
+
+/** The start site's release: where its tree is, and which of its files hold the project's token. */
+function startRelease(startSite: string): StartRelease {
+    if (!existsSync(startSite)) {
+        throw new Error(`${startSite} is missing: build it first (npm run build:start)`);
+    }
+    const { release: slug } = readJson(join(startSite, 'start-config.json')) as { readonly release: string };
+    const folder = join(startSite, 'release', slug);
+    const manifest = readJson(join(folder, 'start-release.json')) as {
+        readonly release: string;
+        readonly files: readonly { readonly path: string; readonly template?: boolean }[];
+    };
+    return {
+        release: manifest.release,
+        tree: join(folder, 'tree'),
+        templates: manifest.files.filter((file) => file.template === true && file.path !== OWN_RUNTIME).map((file) => file.path),
+    };
+}
+
 /** Assembles the bundle into `layout.out` (replaced); throws when an input build is missing or the admin's is not production. */
-export function buildSelfHostBundle(layout: BundleLayout): { readonly admin: number; readonly functions: number } {
+export function buildSelfHostBundle(layout: BundleLayout): { readonly hosting: number; readonly functions: number } {
     const at = (path: string): string => join(layout.root, path);
-    requireProductionAdmin(at(layout.adminDist));
+    const start = startRelease(at(layout.startSite));
+    requireProductionAdmin(join(start.tree, 'admin'));
     const out = at(layout.out);
     rmSync(out, { recursive: true, force: true });
     mkdirSync(join(out, 'rules'), { recursive: true });
-    const admin = copyEntries(at(layout.adminDist), join(out, 'hosting', 'admin'), (name) => !ADMIN_LEFT_OUT.test(name));
+    const hosting = copyEntries(start.tree, join(out, 'hosting'), () => true);
+    rmSync(join(out, 'hosting', OWN_RUNTIME), { force: true });
     const functions = copyEntries(at(layout.functionsDist), join(out, 'functions'), (name) => FUNCTIONS_TAKEN.test(name));
     for (const rule of layout.rules) {
         cpSync(at(rule), join(out, 'rules', rule.slice(rule.lastIndexOf('/') + 1)));
     }
     const projectId = String(readJson(at(layout.projectFile))['projectId']);
     writeFileSync(join(out, BUNDLE.firebaseTemplate), selfHostFirebaseConfig(readJson(at(layout.firebaseConfig)), projectId));
-    const runtime = readJson(join(at(layout.adminDist), 'runtime.json'));
-    writeFileSync(join(out, BUNDLE.release), json({ release: runtime['release'] }));
-    return { admin, functions };
+    writeFileSync(join(out, BUNDLE.release), json({ release: start.release, templates: start.templates }));
+    return { hosting, functions };
 }
