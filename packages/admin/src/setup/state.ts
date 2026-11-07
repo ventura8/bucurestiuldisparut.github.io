@@ -289,7 +289,11 @@ export function serverPrepared(state: Pick<SetupState, 'steps' | 'provision'>): 
     return provisionHealth(state.provision.items.filter((item) => !PIPELINE_ONLY_ITEMS.has(item.id))) === 'ok';
 }
 
-function deployVariables(projectId: string, projectNumber: string): readonly DeployVariable[] {
+/** CR-M5-7: the repository variables exist only for a project that names a repository. */
+function deployVariables(projectId: string, projectNumber: string, github: boolean): readonly DeployVariable[] {
+    if (!github) {
+        return [];
+    }
     return [
         {
             name: 'GCP_WIF_PROVIDER',
@@ -306,6 +310,11 @@ function deployVariables(projectId: string, projectNumber: string): readonly Dep
  * their own consent note, so their cards name no scope.
  */
 const CARD_POPUP_STEPS: ReadonlySet<SetupStepId> = new Set(['billing', 'provision', 'deploy', 'analytics', 'pipeline', 'site']);
+
+/** The steps of this project: a project of the owner's own has no bundled old photos to import (CR-M5-7, M14 §8). */
+function stepsOf(host: Pick<SetupHost, 'github'>): readonly SetupStepId[] {
+    return host.github ? SETUP_STEPS : SETUP_STEPS.filter((id) => id !== 'legacyImport');
+}
 
 function initialStep(id: SetupStepId, projectId: string): SetupStepState {
     const spec = SETUP_STEP_SPECS[id];
@@ -343,10 +352,10 @@ export function initialSetupState(host: SetupHost, mode: SetupMode): SetupState 
         projectId: host.projectId,
         authDomain: host.authDomain,
         openStep: null,
-        order: SETUP_STEPS,
+        order: stepsOf(host),
         steps,
         done: 0,
-        total: SETUP_STEPS.length,
+        total: stepsOf(host).length,
         ready: false,
         later: 0,
         doneNote: null,
@@ -370,7 +379,7 @@ export function initialSetupState(host: SetupHost, mode: SetupMode): SetupState 
             ready: 0,
             total: REGISTRY_FUNCTION_COUNT,
             failed: [],
-            variables: deployVariables(host.projectId, host.projectNumber),
+            variables: deployVariables(host.projectId, host.projectNumber, host.github),
             watching: false,
         },
         mapbox: { user: null, requiredScopes: MAPBOX_BOOTSTRAP_SCOPES, rotation: NO_ROTATION },
@@ -484,7 +493,7 @@ export function refreshDerived(state: SetupState): SetupState {
     const reached = reachedSteps(state, done);
     const behind = serverBehind(state);
     const steps = Object.fromEntries(
-        state.order.map((id) => {
+        SETUP_STEPS.map((id) => {
             const step = state.steps[id];
             return [id, { ...step, available: isAvailable(id, state.mode, reached), unknown: unknownStep(step, behind) }];
         }),
@@ -535,7 +544,7 @@ export function withStep(state: SetupState, id: SetupStepId, patch: StepPatch): 
  */
 export function withChecksAnswered(state: SetupState, ids: readonly SetupStepId[] = state.order): SetupState {
     const steps = Object.fromEntries(
-        state.order.map((id) => [id, ids.includes(id) ? { ...state.steps[id], firstCheck: false } : state.steps[id]]),
+        SETUP_STEPS.map((id) => [id, ids.includes(id) ? { ...state.steps[id], firstCheck: false } : state.steps[id]]),
     ) as Record<SetupStepId, SetupStepState>;
     return refreshDerived({ ...state, steps });
 }

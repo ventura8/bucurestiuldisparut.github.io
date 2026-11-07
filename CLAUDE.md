@@ -16,7 +16,7 @@ Claude Code and every other agent read the same contract.
   the M4 automation contracts `docs/research/M4-interfaces.md`, the M5 multi-city, release, starter-kit and export
   contracts `docs/research/M5-interfaces.md` and the M6 no-terminal Setup contracts `docs/research/M6-interfaces.md`,
   the M7 local worker and cheap cloud defaults `docs/research/M7-local-worker.md`, the M8 join of one date's frames
-  `docs/research/M8-join-interfaces.md`, the M9 import and calibration for any place on Earth `docs/research/M9-calibration.md`.
+  `docs/research/M8-join-interfaces.md`, the M9 import and calibration for any place on Earth `docs/research/M9-calibration.md`, the M14 start page `docs/research/M14-start-your-map.md`.
 - Run the pipeline before claiming anything is done: `PIPELINE_STAGE=static bash scripts/ci/run-all-checks.sh`
   for docs and tooling, `tests` and `build` for code, the default `all` before a push. It builds
   and uses the quality image `hcm-quality:local`; every gate runs inside it, never on the host.

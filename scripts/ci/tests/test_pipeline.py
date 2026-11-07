@@ -93,6 +93,7 @@ def test_happy_path_gates_that_read_other_gates_output_wait_for_them() -> None:
     assert GATES["hosting-build"].needs == ("vite-build",)
     assert GATES["install-build"].needs == ("hosting-build",)
     assert GATES["install-budget"].needs == ("install-build",)
+    assert GATES["start-build"].needs == ("hosting-build",)
     assert GATES["playwright"].needs == ("e2e-build",)
     assert GATES["playwright-tour-matrix"].needs == ("e2e-build",)
     assert [name for name, gate in GATES.items() if gate.exclusive] == ["playwright", "playwright-tour-matrix"]

@@ -23,6 +23,8 @@ import {
     ADMIN_WEB_CONFIG,
     E2E_HOSTING_DIR,
     E2E_HOSTING_START_UP_DIR,
+    E2E_RELEASED_DIR,
+    E2E_START_DIR,
 } from '../admin/world.js';
 import { ImageryRunner, useSyntheticScenes } from '../admin/support/imagery-runner.js';
 import { E2E_SITE_DIR, MOCK_API_ORIGIN, MOCK_API_PORT, SITE_ORIGIN, SITE_PORT } from '../fixtures/world.js';
@@ -71,6 +73,8 @@ if (role === 'mock') {
     await startAdminServer(ADMIN_PORT, {
         hostingDir: E2E_HOSTING_DIR,
         startUpDir: E2E_HOSTING_START_UP_DIR,
+        startDir: E2E_START_DIR,
+        releasedDir: E2E_RELEASED_DIR,
         hosting: parseHostingConfig(readFileSync('firebase.json', 'utf8')),
         connect: ADMIN_CONNECT_ORIGINS,
         webConfig: ADMIN_WEB_CONFIG,

@@ -26,9 +26,9 @@ describe('parseOptions', () => {
             dir: 'cluj',
             project: 'cluj-harta',
             billingWait: 0,
-            experimental: false,
         });
-        expect(parseOptions(['--experimental', 'deploy'])).toMatchObject({ command: 'deploy', experimental: true });
+        // v1.0.0's notes name the flag: an old command line keeps working, and it changes nothing.
+        expect(parseOptions(['--experimental', 'deploy'])).toMatchObject({ command: 'deploy' });
         expect(parseOptions(['theme', 'cluj', '--seed', '#1B6C4A'])).toMatchObject({ command: 'theme', dir: 'cluj', seed: '#1B6C4A' });
         expect(parseOptions(['doctor', '--lang', 'en', '--dry-run'])).toMatchObject({
             command: 'doctor',

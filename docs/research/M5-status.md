@@ -103,7 +103,7 @@ two M2 rows `S-A19-BAD-LOW-CONTRAST-SEED` and `S-A20-BAD-NO-APP-CHECK` are still
   `gcloud`, never a credential: the sign-in is probed as text, never `login:list --json`), `deploy`, `upgrade` (it keeps
   the page's own policy sources), `theme` (the colours from one colour), `doctor`, all against fake tools; a non-empty
   folder, an `sk.` token, no Firebase CLI, billing not linked, a taken project id (another one named) and a declined
-  step each stop with the reason. `self-host` and `deploy` run only with `--experimental` until CR-M5-7 (§4); every
+  step each stop with the reason. Since CR-M5-7 (M14) they need no flag; every
   command the CLI and the guides print names its exact release (`npx create-historic-city@1.0.0`).
 - **The review screenshots** (`DECISIONS-for-review.md` §63j): every new admin state (the city menu, New city's form,
   drawing, area refused, id taken and done, a city's admins as owner and editor, the role question, the city's budget
@@ -244,11 +244,7 @@ you. Run builds in the quality image (`docker run --rm -u "$(id -u):$(id -g)" -e
   PyPI and the npm packages, and had started fetching the browsers' system libraries. The Playwright browsers and the
   Firebase emulator JARs (Google's storage) were not reached, and nothing reached the tree. §64's approved run then
   rebuilt the NUC's image, and the second run's split built from that cache with no download (§63j).
-- **CR-M5-7** stays accepted, not applied (§63f): the admin refuses `create-historic-city`'s `project.json`, which has
-  no `github`, and without a project file its Setup is unavailable, so a self-hosted admin cannot run the Setup
-  Assistant yet (`docs/SELF_HOST.md` step 7). Until it lands, `self-host` and `deploy` refuse without `--experimental`
-  (§65j), so nobody is walked onto Blaze toward a server that cannot run. Its work list is in CR-M5-7; the admin's
-  bundle now has room for it (§65k). The release notes name it as a known limitation.
+- **CR-M5-7** done in M14 (`docs/research/M14-start-your-map.md`): `project.json`'s `github` is optional, Provision then leaves out `gh-deployer`, its grants and bindings and the Workload Identity pool, the `workload-identity` item is `ok`, the install card shows no GitHub variables, and `self-host` and `deploy` need no `--experimental`.
 - **v1.0.0's last local steps** wait for step 1 above: the kit's engine block keeps placeholder digests until
   `release:pin-kit`, so no page can load the pinned jsDelivr addresses before the tag.
 - UNVERIFIED until a real run (`M5-interfaces.md` §10, `DECISIONS-for-review.md` §61f): jsDelivr serving this

@@ -10,6 +10,10 @@
             "types": "./src/index.ts",
             "default": "./src/index.ts"
         },
+        "./start": {
+            "types": "./src/start/index.ts",
+            "default": "./src/start/index.ts"
+        },
         "./setup/steps": {
             "types": "./src/setup/steps.ts",
             "default": "./src/setup/steps.ts"
@@ -24,8 +28,8 @@
         }
     },
     "scripts": {
-        "build": "vite build",
-        "build:e2e": "vite build --mode e2e"
+        "build": "vite build && vite build --config vite.start.config.ts",
+        "build:e2e": "vite build --mode e2e && vite build --config vite.start.config.ts --mode e2e"
     },
     "dependencies": {
         "@hcm/shared": "1.0.0",

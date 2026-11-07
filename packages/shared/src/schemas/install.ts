@@ -162,7 +162,7 @@ const IMAGE_DIGEST_PATTERN = /^[a-z0-9][a-z0-9._/-]{0,200}(?::[\w.-]{1,128})?@sh
 /** A deployed function's name (`admin-session`, `setup-recordCloud`: the registry's `deployedName`). */
 const FUNCTION_NAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]{0,62}$/;
 const BUILD_ID_PATTERN = /^[0-9a-f-]{8,64}$/;
-const PROJECT_ID_PATTERN = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
+export const PROJECT_ID_PATTERN = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
 
 /** The most a bundle file may weigh (the Hosting tree carries the 46 MB of legacy originals, §1.3). */
 const MAX_BUNDLE_FILE_BYTES = 200 * 1024 * 1024;

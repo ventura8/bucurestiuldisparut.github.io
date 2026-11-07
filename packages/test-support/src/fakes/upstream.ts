@@ -10,6 +10,7 @@ import { createFcmFake, defaultFcmState, type FcmState } from './fcm.js';
 import { createErrorReportingFake, type ErrorReportingState } from './google-errors.js';
 import { createFirebaseStorageFake } from './google-firebase-storage.js';
 import { createFirebaseManagementFake, type FirebaseState } from './google-firebase.js';
+import { createStartWorldFake, defaultStartWorldState, type StartWorldState } from './google-hosting.js';
 import { createCloudBuildFake, defaultCloudBuildState, type CloudBuildState } from './google-cloudbuild.js';
 import { createCloudFunctionsFake, createCloudSchedulerFake, type DeploymentState } from './google-functions.js';
 import { createIamFake, type IamState } from './google-iam.js';
@@ -61,6 +62,8 @@ export interface UpstreamState {
     readonly billing: BillingState;
     readonly serviceUsage: ServiceUsageState;
     readonly firebase: FirebaseState;
+    /** M14: the start page's world (`google-hosting.ts`). */
+    readonly startWorld: StartWorldState;
     readonly secrets: SecretsState;
     readonly cloudRun: CloudRunState;
     readonly cloudTasks: CloudTasksState;
@@ -130,7 +133,8 @@ function initialState(): UpstreamState {
         iam: { projects: new Map() },
         billing: defaultBillingState(),
         serviceUsage: defaultServiceUsageState(),
-        firebase: { projects: new Map() },
+        firebase: { projects: new Map(), fresh: false, added: new Set(), signInOn: false },
+        startWorld: defaultStartWorldState(),
         secrets: { projects: new Map(), policies: new PolicyStore() },
         cloudRun: { jobs: new Set(), executions: new Map() },
         cloudTasks: { queues: new Map() },
@@ -158,7 +162,8 @@ function services(state: UpstreamState): readonly ServiceFake[] {
     const projects = new GoogleProjects();
     return [
         createGoogleOauthFake(state.identity),
-        createResourceManagerFake(state.identity, state.resourceManager, projects),
+        createStartWorldFake(state.startWorld, state.firebase, projects),
+        createResourceManagerFake(state.identity, state.resourceManager, projects, state.startWorld),
         createIamFake(state.iam, projects),
         createCloudBillingFake(state.billing, projects),
         createBillingBudgetsFake(state.billing),

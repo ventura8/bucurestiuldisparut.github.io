@@ -10,7 +10,7 @@ import {
 import type { AdminMessageKey } from '../google/failure.js';
 import type { CustomRole, IdentityResource } from '../google/iam.js';
 import { matchesSpec, sameSet, type JsonObject } from '../google/json.js';
-import { eachInTurn, lacking, type Observation, type ProvisionContext, type ProvisionItemSpec } from './item.js';
+import { eachInTurn, lacking, ok, type Observation, type ProvisionContext, type ProvisionItemSpec } from './item.js';
 import {
     buildAccountBindings,
     CUSTOM_ROLES,
@@ -239,13 +239,16 @@ const iam: ProvisionItemSpec = {
     },
 };
 
+/** The repository's facts of a project that deploys from GitHub Actions (CR-M5-7: others have none). */
+type ProjectGithub = NonNullable<ProvisionContext['project']['github']>;
+
 const POOL_ID = 'github';
 const PROVIDER_ID = 'site-master';
 const ISSUER = 'https://token.actions.githubusercontent.com';
 
 /** The provider's mapping and condition: only this repository's `master` branch, from the `deploy` environment (§23g). */
-function providerSpec({ project }: ProvisionContext): JsonObject {
-    const { ownerId, repoId, branch, environment } = project.github;
+function providerSpec(github: ProjectGithub): JsonObject {
+    const { ownerId, repoId, branch, environment } = github;
     return {
         displayName: 'GitHub master deploys',
         attributeMapping: {
@@ -269,8 +272,8 @@ function poolName({ project }: ProvisionContext): string {
 }
 
 /** The repository's principal set: who may impersonate the deployer through the pool. */
-function deployerBinding(context: ProvisionContext): WantedBinding {
-    const member = `principalSet://iam.googleapis.com/${poolName(context)}/attribute.repository_id/${String(context.project.github.repoId)}`;
+function deployerBinding(context: ProvisionContext, github: ProjectGithub): WantedBinding {
+    const member = `principalSet://iam.googleapis.com/${poolName(context)}/attribute.repository_id/${String(github.repoId)}`;
     return { role: 'roles/iam.workloadIdentityUser', member };
 }
 
@@ -288,25 +291,27 @@ function identityPart(resource: IdentityResource | undefined, prefix: string, ma
 /** The steps in the order they must run: the pool before its provider, both before the deployer's binding. */
 const IDENTITY_STEP_ORDER = ['pool:create', 'pool:undelete', 'provider:create', 'provider:undelete', 'provider:update', 'binding'] as const;
 
-const IDENTITY_STEPS: Readonly<Record<(typeof IDENTITY_STEP_ORDER)[number], (context: ProvisionContext) => Promise<unknown>>> = {
+const IDENTITY_STEPS: Readonly<
+    Record<(typeof IDENTITY_STEP_ORDER)[number], (context: ProvisionContext, github: ProjectGithub) => Promise<unknown>>
+> = {
     'pool:create': (context) =>
         context.clients.iam.createPool(context.project.projectNumber, POOL_ID, {
             displayName: 'GitHub Actions',
             description: 'Keyless deploys of the master branch',
         }),
     'pool:undelete': (context) => context.clients.iam.undelete(poolName(context)),
-    'provider:create': (context) => context.clients.iam.createProvider(poolName(context), PROVIDER_ID, providerSpec(context)),
+    'provider:create': (context, github) => context.clients.iam.createProvider(poolName(context), PROVIDER_ID, providerSpec(github)),
     'provider:undelete': (context) => context.clients.iam.undelete(`${poolName(context)}/providers/${PROVIDER_ID}`),
-    'provider:update': (context) =>
-        context.clients.iam.updateProvider(`${poolName(context)}/providers/${PROVIDER_ID}`, providerSpec(context), [
+    'provider:update': (context, github) =>
+        context.clients.iam.updateProvider(`${poolName(context)}/providers/${PROVIDER_ID}`, providerSpec(github), [
             'displayName',
             'attributeMapping',
             'attributeCondition',
             'oidc',
         ]),
-    binding: (context) =>
+    binding: (context, github) =>
         ensureBindings(context.clients.iam.serviceAccountPolicy(context.project.projectId, context.names.email('gh-deployer')), [
-            deployerBinding(context),
+            deployerBinding(context, github),
         ]),
 };
 
@@ -319,19 +324,25 @@ const workloadIdentity: ProvisionItemSpec = {
     id: 'workload-identity',
     after: ['apis', 'service-accounts'],
     observe: async (context) => {
-        const { iam: client } = context.clients;
-        const pool = await client.getPool(context.project.projectNumber, POOL_ID);
-        const provider = pool === undefined ? undefined : await client.getProvider(pool.name, PROVIDER_ID);
-        const deployer = client.serviceAccountPolicy(context.project.projectId, context.names.email('gh-deployer'));
-        const binding = await lackingBindings(deployer, [deployerBinding(context)]);
-        const lacks = [
-            ...identityPart(pool, 'pool', true),
-            ...identityPart(provider, 'provider', matchesSpec(provider?.body, providerSpec(context))),
-            ...(binding.length === 0 ? [] : ['binding']),
-        ];
-        const steps = IDENTITY_STEP_ORDER.filter((step) => lacks.includes(step));
-        return lacking(lacks, () => eachInTurn(steps, (step) => IDENTITY_STEPS[step](context)), deployVariables(context));
+        const { github } = context.project;
+        // CR-M5-7: a project deployed from the owner's browser or terminal has no GitHub Actions, so nothing to look for.
+        return github === undefined ? ok() : observeIdentity(context, github);
     },
 };
 
 export const IAM_ITEMS: readonly ProvisionItemSpec[] = [iam, workloadIdentity];
+
+async function observeIdentity(context: ProvisionContext, github: ProjectGithub): Promise<Observation> {
+    const { iam: client } = context.clients;
+    const pool = await client.getPool(context.project.projectNumber, POOL_ID);
+    const provider = pool === undefined ? undefined : await client.getProvider(pool.name, PROVIDER_ID);
+    const deployer = client.serviceAccountPolicy(context.project.projectId, context.names.email('gh-deployer'));
+    const binding = await lackingBindings(deployer, [deployerBinding(context, github)]);
+    const lacks = [
+        ...identityPart(pool, 'pool', true),
+        ...identityPart(provider, 'provider', matchesSpec(provider?.body, providerSpec(github))),
+        ...(binding.length === 0 ? [] : ['binding']),
+    ];
+    const steps = IDENTITY_STEP_ORDER.filter((step) => lacks.includes(step));
+    return lacking(lacks, () => eachInTurn(steps, (step) => IDENTITY_STEPS[step](context, github)), deployVariables(context));
+}

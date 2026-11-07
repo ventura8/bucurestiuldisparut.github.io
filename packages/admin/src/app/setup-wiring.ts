@@ -47,6 +47,18 @@ export interface SetupWiringDeps {
     // [end install]
 }
 
+/** The rectangle the start page was given, for the USGS access request. */
+function bboxOf(project: ProjectConfig): readonly [number, number, number, number] | null {
+    const bounds = project.firstCity?.bounds;
+    return bounds === undefined ? null : [bounds.west, bounds.south, bounds.east, bounds.north];
+}
+
+/** M14: nothing to import in a project of the owner's own: no old photos were bundled for it. */
+const NO_LEGACY_IMPORT: SetupLegacyImport = {
+    detect: () => Promise.resolve({ done: 0, total: 0, failed: [] }),
+    run: () => Promise.resolve({ done: 0, total: 0, failed: [] }),
+};
+
 /** The bundled city as `setup.createCity` takes it; a missing or invalid file fails the step. */
 async function bundledCity(deps: SetupWiringDeps, cityId: string): Promise<LegacyCityFields> {
     const response = await deps.fetch(bundleUrl(deps.baseUrl, cityId, 'city.json'), { cache: 'no-store' });
@@ -134,30 +146,34 @@ function installerFor(
 export function setupOptionsFor(deps: SetupWiringDeps): SetupModuleOptions {
     const { config, project, firebase, log } = deps;
     const cityId = project.cities[0] ?? DEFAULT_CITY;
+    const ownProject = project.github === undefined;
     const { uid, ownerEmail, sleep } = wiringHelpers(firebase, deps.clock);
     const cloud = createSetupCloud({
         ...{ fetch: deps.fetch, sleep, log: log.child('cloud'), project, ownerEmail },
         web: { projectId: config.projectId, appId: config.appId, apiKey: config.apiKey },
     });
     const store = legacyPhotoStore(firebase, uid);
-    const importer = createLegacyImport({
-        fetch: deps.fetch,
-        store,
-        cityId,
-        baseUrl: deps.baseUrl,
-        uid,
-        nonce: deps.nonce,
-        sleep,
-        log: log.child('import'),
-        // M6 (finding 17, server-bugs): a photo whose upload event never arrived is processed again once.
-        reprocess: legacyReprocess(firebase),
-    });
+    const importer = ownProject
+        ? NO_LEGACY_IMPORT
+        : createLegacyImport({
+              fetch: deps.fetch,
+              store,
+              cityId,
+              baseUrl: deps.baseUrl,
+              uid,
+              nonce: deps.nonce,
+              sleep,
+              log: log.child('import'),
+              // M6 (finding 17, server-bugs): a photo whose upload event never arrived is processed again once.
+              reprocess: legacyReprocess(firebase),
+          });
+    // M14: a project of the owner's own has no bundled city: its first city comes from New city (M14 §8).
     const createCity = async (): Promise<{ readonly created: boolean }> =>
-        firebase.callables.call('setup.createCity', { cityId, city: await bundledCity(deps, cityId) });
+        ownProject ? { created: false } : firebase.callables.call('setup.createCity', { cityId, city: await bundledCity(deps, cityId) });
     const installer = installerFor(deps, cityId, sleep, importer);
     const siteAddress = `https://${config.projectId}.web.app/`;
     const release = { release: deps.release, releaseTime: deps.releaseTime };
-    return { cloud, importer, createCity, cityId, cityBBox: null, installer, ...release, siteAddress };
+    return { cloud, importer, createCity, cityId, github: !ownProject, cityBBox: bboxOf(deps.project), installer, ...release, siteAddress };
 }
 
 export function setupModuleFor(deps: SetupWiringDeps): SetupModule {

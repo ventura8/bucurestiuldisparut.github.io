@@ -107,7 +107,11 @@ export class HcmSetupDeploy extends SetupBody {
     }
 
     /** The optional GitHub Actions path: the repository variables its deploy job reads, collapsed. */
-    private renderGithub(state: SetupViewState): TemplateResult {
+    private renderGithub(state: SetupViewState): TemplateResult | typeof nothing {
+        // CR-M5-7: a project without a repository has no such path to offer.
+        if (state.deploy.variables.length === 0) {
+            return nothing;
+        }
         return html`<details class="github">
             <summary>${this.t('adminSetup.install.github')}</summary>
             <p>${this.t('adminSetup.install.githubExplain')}</p>

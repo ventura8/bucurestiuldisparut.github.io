@@ -143,6 +143,29 @@ describe('the New city flow', () => {
     });
 });
 
+describe('the New city flow, after the start page', () => {
+    it('happyPath_whatTheStartPageWasToldFillsTheFormOnce', () => {
+        const { area, services } = world();
+        (services as { firstCity?: unknown }).firstCity = {
+            id: 'bacau',
+            name: { ro: 'Bacău', en: 'Bacau' },
+            bounds: { west: 26.85, south: 46.5, east: 26.98, north: 46.62 },
+        };
+        area.open([]);
+        expect(area.state).toMatchObject({ nameRo: 'Bacău', nameEn: 'Bacau', cityId: 'bacau', bounds: { west: 26.85 } });
+        area.intents.startOver();
+        area.open([]);
+        expect(area.state.nameRo).toBe('');
+    });
+
+    it('happyPath_withoutARectangleTheNameLooksForIt', () => {
+        const { area, services } = world();
+        (services as { firstCity?: unknown }).firstCity = { id: 'bacau', name: { ro: 'Bacău' } };
+        area.open([]);
+        expect(area.state).toMatchObject({ nameRo: 'Bacău', nameEn: '', cityId: 'bacau', bounds: null });
+    });
+});
+
 describe('the New city flow: refusals and starting over', () => {
     it('badPath_aTakenIdIsReplacedByTheFreeOneOffered @S-A50-BAD-ID-TAKEN', async () => {
         const w = world();

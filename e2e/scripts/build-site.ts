@@ -26,8 +26,18 @@ import { planCityPage } from '../../scripts/site/src/hosting/city-page.js';
 import { buildPagesRedirect } from '../../scripts/site/src/hosting/pages-redirect.js';
 import { assembleHostingTree, type HostingTreeInputs } from '../../scripts/site/src/hosting/tree.js';
 import { assemblePages } from '../../scripts/site/src/pages.js';
+import { buildStartSite } from '../../scripts/site/src/start/build.js';
+import { bundleSteps } from '../../scripts/site/src/install/steps-bundle.js';
 import { subresourceIntegrity } from '../../scripts/site/src/sri.js';
-import { ADMIN_DIST_DIR, ADMIN_ORIGIN, E2E_HOSTING_DIR, E2E_HOSTING_START_UP_DIR, PAGES_REDIRECT_FOLDER } from '../admin/world.js';
+import {
+    ADMIN_DIST_DIR,
+    ADMIN_ORIGIN,
+    E2E_HOSTING_DIR,
+    E2E_HOSTING_START_UP_DIR,
+    E2E_START_CLIENT_ID,
+    E2E_START_DIR,
+    PAGES_REDIRECT_FOLDER,
+} from '../admin/world.js';
 import { buildFixtureManifest } from '../fixtures/manifest.js';
 import { PAGES_FOLDER, SECOND_CITY, UNPUBLISHED_CITY, buildSecondCityManifest } from '../fixtures/second-city.js';
 import { E2E_PUBLIC_BUCKET, E2E_SITE_DIR, E2E_TOKEN } from '../fixtures/world.js';
@@ -116,6 +126,20 @@ try {
     // The admin's Hosting folder joins the e2e Hosting tree under /admin/, so every run builds it (M6).
     log.info('e2e admin built', { ...buildAdminSite({ outDir: ADMIN_DIST_DIR }, files) });
     buildHosting();
+    // M14: the start site over the e2e Hosting tree, its project the e2e world's, with a client id so its road is open.
+    const startEnv = { ...process.env, HCM_START_OAUTH_CLIENT_ID: E2E_START_CLIENT_ID };
+    const started = buildStartSite(
+        {
+            publicTree: E2E_HOSTING_DIR,
+            appDir: 'dist/start-app',
+            outDir: E2E_START_DIR,
+            functionsDir: 'functions/dist',
+            project: { projectId: 'bucurestiul-disparut', publicBucket: E2E_PUBLIC_BUCKET },
+        },
+        { files, env: startEnv },
+        await bundleSteps(process.cwd()),
+    );
+    log.info('e2e start site built', started);
 } catch (error: unknown) {
     if (!(error instanceof SiteBuildError)) {
         throw error;

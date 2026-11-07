@@ -24,6 +24,9 @@ export interface ConsentView {
     /** The accounts offered; `selected` is ticked. */
     readonly accounts: readonly string[];
     readonly selected: string;
+    /** M14: the same-tab flow's `redirect_uri`, and its `state`; empty for a popup. */
+    readonly redirect?: string;
+    readonly state?: string;
 }
 
 function hidden(name: string, value: string): HtmlElement {
@@ -53,6 +56,9 @@ export function consentPage(view: ConsentView): string {
     const form = element('form', { id: 'consent' }, [
         hidden('request', view.request),
         hidden('test', view.test),
+        // M14: the start page's same-tab flow, where the answer returns on the address's fragment instead of to an opener.
+        hidden('redirect', view.redirect ?? ''),
+        hidden('state', view.state ?? ''),
         accounts,
         scopeList(view.scopes),
         element('button', { type: 'submit' }, ['Allow']),
@@ -103,14 +109,30 @@ function standInConsent(config: StandInScriptConfig): void {
         }
         window.close();
     };
+    const redirect = field('redirect');
+    const back = (fields: Readonly<Record<string, string>>): void => {
+        window.location.assign(`${redirect}#${new URLSearchParams({ ...fields, state: field('state') }).toString()}`);
+    };
+    const answered = (grant: unknown): void => {
+        if (redirect === '') {
+            tell(grant);
+            return;
+        }
+        const { accessToken, scope, expiresIn } = grant as { accessToken: string; scope: string; expiresIn: number };
+        back({ access_token: accessToken, token_type: 'Bearer', scope, expires_in: String(expiresIn) });
+    };
     form.addEventListener('submit', (event) => {
         event.preventDefault();
         const scopes = new FormData(form).getAll('scope').filter((scope): scope is string => typeof scope === 'string');
-        void post('/__oauth/grant', { request: field('request'), test: field('test'), account: field('account'), scopes }).then(tell);
+        void post('/__oauth/grant', { request: field('request'), test: field('test'), account: field('account'), scopes }).then(answered);
     });
     cancel.addEventListener('click', () => {
         void post('/__oauth/cancel', { request: field('request'), test: field('test') }).then(() => {
-            tell({ cancelled: true });
+            if (redirect === '') {
+                tell({ cancelled: true });
+            } else {
+                back({ error: 'access_denied' });
+            }
         });
     });
 }

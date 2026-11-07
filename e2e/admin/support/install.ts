@@ -99,7 +99,7 @@ export async function submittedBuilds(upstream: UpstreamControl): Promise<Submit
 }
 
 /** Steps (a) and (b) done in the tab: Prepare the project is next (it makes the installer's account). */
-function billingDoneRecord(): Readonly<Record<string, unknown>> {
+export function billingDoneRecord(): Readonly<Record<string, unknown>> {
     const record = Object.fromEntries(Object.entries(bootstrapRecord(E2E_PROJECT_ID, false)).filter(([key]) => key !== 'provision'));
     const ok = { state: 'ok', checkedAt: STEPS_AT.toISOString() };
     return { ...record, steps: { signIn: ok, billing: ok } };

@@ -39,6 +39,11 @@ export interface BuildParams {
      * not complete and the bundle has them. The other targets ignore it.
      */
     readonly legacy: boolean;
+    /**
+     * M14 (`docs/research/M14-start-your-map.md` §6): the bundle names no project, so a site build's `fetch` puts this
+     * project's id into the tree it unpacks and takes `project.json` from the live site.
+     */
+    readonly adopt?: boolean;
 }
 
 /** Every build's tag, and each target's own (the cards list builds by it). */
@@ -82,7 +87,8 @@ function siteEnv(target: InstallTarget, params: BuildParams): readonly string[] 
         return [];
     }
     const keep = 'HCM_KEEP_BUNDLE=public${_BASE}install/${_SLUG}';
-    return params.legacy ? [keep, 'HCM_UNPACK=legacy'] : [keep];
+    const adopt = params.adopt === true ? ['HCM_ADOPT_PROJECT=$PROJECT_ID', 'HCM_ADOPT_FROM=${_ORIGIN}${_BASE}project.json'] : [];
+    return [...(params.legacy ? [keep, 'HCM_UNPACK=legacy'] : [keep]), ...adopt];
 }
 
 /** The tarballs `fetch` downloads (`FETCHED`), with `legacy.tgz` for a site build that needs it. */

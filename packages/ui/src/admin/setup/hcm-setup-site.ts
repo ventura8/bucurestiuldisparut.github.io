@@ -66,7 +66,9 @@ class HcmSetupSite extends SetupBody {
             return blockerLine(input, view);
         }
         const tip =
-            state.steps.legacyImport.state === 'ok' ? nothing : html`<p class="note">${this.t('adminSetup.install.site.importFirst')}</p>`;
+            state.steps.legacyImport.state === 'ok' || !state.order.includes('legacyImport')
+                ? nothing
+                : html`<p class="note">${this.t('adminSetup.install.site.importFirst')}</p>`;
         return html`${blockerLine(input, view)} ${tip}
             <div class="actions">${this.renderButton(view.state === 'failed', !mayInstall(view) || state.steps.site.busy)}</div>`;
     }

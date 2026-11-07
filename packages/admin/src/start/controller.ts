@@ -1,0 +1,395 @@
+/**
+ * The start page's state (`docs/research/M14-start-your-map.md`): the screens, the form and the run. It holds the token
+ * in memory only and asks the browser for nothing but through its ports, so the tests drive it end to end over the fake
+ * upstreams. `<hcm-start-page>` renders the view and calls the intents.
+ */
+import { startConfigSchema, type Locale, type Logger, type StartConfig, type StartKey } from '@hcm/shared';
+
+import type { Clock, KeyValueStore } from '../app/ports.js';
+import { createGoogleTransport } from '../google/transport.js';
+import { resolveAdminLocale } from '../state/locale.js';
+import { consentUrl, readConsentAnswer, type ConsentAnswer, type StartToken } from './consent.js';
+import { deployStart, START_STEPS, type StartStepId } from './deploy.js';
+import { startFailureOf, type StartFailure } from './failure.js';
+import { loadRelease, type FileTools } from './files.js';
+import { EMPTY_FORM, nextProjectId, planOf, withCityId, withName, type AreaEdge, type StartForm } from './form.js';
+import { createStartGoogle, type OwnProject, type StartGoogle } from './google.js';
+import { clearPlan, loadPlan, rememberState, savePlan, takeState, type StartPlan } from './plan.js';
+
+type StartScreen = 'closed' | 'intro' | 'plan' | 'work' | 'provider' | 'done';
+
+type StepState = 'waiting' | 'working' | 'done' | 'failed';
+
+export interface StartView {
+    readonly screen: StartScreen;
+    readonly locale: Locale;
+    readonly form: StartForm;
+    /** The owner's projects; null until read. */
+    readonly projects: readonly OwnProject[] | null;
+    /** Said on the first screen: why the consent changed nothing. */
+    readonly notice: StartKey | null;
+    readonly steps: Readonly<Record<StartStepId, StepState>>;
+    readonly files: { readonly done: number; readonly total: number };
+    readonly failure: StartFailure | null;
+    readonly busy: boolean;
+    readonly plan: StartPlan | null;
+    /** The provider was checked and is not on yet. */
+    readonly providerWaiting: boolean;
+    /** The terminal road's command, which the catalogue's texts name. */
+    readonly command: string;
+}
+
+export interface StartIntents {
+    setLocale(locale: Locale): void;
+    signIn(): void;
+    setName(name: string): void;
+    setNameEn(name: string): void;
+    setCityId(cityId: string): void;
+    setEdge(edge: AreaEdge, value: string): void;
+    setCreate(create: boolean): void;
+    setProjectId(projectId: string): void;
+    setPicked(projectId: string): void;
+    go(): void;
+    tryAgain(): void;
+    checkProvider(): void;
+}
+
+export interface StartDeps {
+    readonly fetch: typeof fetch;
+    readonly tools: FileTools;
+    readonly clock: Clock;
+    readonly session: KeyValueStore;
+    readonly log: Logger;
+    /** The start site's address, the redirect URI (no fragment or query). */
+    readonly baseUrl: string;
+    readonly fragment: () => string;
+    readonly clearFragment: () => void;
+    readonly assign: (url: string) => void;
+    readonly random: () => string;
+    readonly search: string;
+    readonly languages: readonly string[];
+    readonly authorizeUrl: string;
+    /** The e2e world's partition, for the consent stand-in. */
+    readonly testId?: string;
+    /** The terminal road (the catalogue names it with this command). */
+    readonly command: string;
+}
+
+const CONFIG_FILE = 'start-config.json';
+const LANGUAGE_KEY = 'hcm:start:lang';
+/** The upload is the long part; a token this close to its end would stop in the middle. */
+const MIN_TOKEN_LIFE_MS = 5 * 60_000;
+const WAITING_STEPS = Object.fromEntries(START_STEPS.map((step) => [step, 'waiting'])) as Record<StartStepId, StepState>;
+
+const INITIAL: Omit<StartView, 'locale'> = {
+    screen: 'intro',
+    form: EMPTY_FORM,
+    projects: null,
+    notice: null,
+    steps: WAITING_STEPS,
+    files: { done: 0, total: 0 },
+    failure: null,
+    busy: false,
+    plan: null,
+    providerWaiting: false,
+    command: '',
+};
+
+const NOTICE_OF_ANSWER: Readonly<Record<'denied' | 'wrongState' | 'scope', StartKey>> = {
+    denied: 'start.signedOut.denied',
+    wrongState: 'start.signedOut.state',
+    scope: 'start.signedOut.scope',
+};
+
+function stepStateAt(position: number, current: number): StepState {
+    if (position === current) {
+        return 'working';
+    }
+    return position < current ? 'done' : 'waiting';
+}
+
+export class StartController {
+    readonly #deps: StartDeps;
+    readonly #listeners = new Set<() => void>();
+    #view: StartView;
+    #grant: StartToken | null = null;
+    #config: StartConfig | null = null;
+
+    readonly intents: StartIntents = {
+        setLocale: (locale) => {
+            this.#deps.session.set(LANGUAGE_KEY, locale);
+            this.#update({ locale });
+        },
+        signIn: () => {
+            this.#consent();
+        },
+        setName: (name) => {
+            this.#form(withName(this.#view.form, name));
+        },
+        setNameEn: (nameEn) => {
+            this.#form({ ...this.#view.form, nameEn });
+        },
+        setCityId: (cityId) => {
+            this.#form(withCityId(this.#view.form, cityId.trim().toLowerCase()));
+        },
+        setEdge: (edge, value) => {
+            this.#form({ ...this.#view.form, area: { ...this.#view.form.area, [edge]: value } });
+        },
+        setCreate: (create) => {
+            this.#form({ ...this.#view.form, create });
+            if (!create) {
+                void this.#loadProjects();
+            }
+        },
+        setProjectId: (projectId) => {
+            this.#form({ ...this.#view.form, projectId: projectId.trim().toLowerCase(), projectIdEdited: true });
+        },
+        setPicked: (picked) => {
+            this.#form({ ...this.#view.form, picked });
+        },
+        go: () => {
+            void this.#go();
+        },
+        tryAgain: () => {
+            void this.#retry();
+        },
+        checkProvider: () => {
+            void this.#checkProvider();
+        },
+    };
+
+    constructor(deps: StartDeps) {
+        this.#deps = deps;
+        const stored = deps.session.get(LANGUAGE_KEY);
+        this.#view = { ...INITIAL, command: deps.command, locale: resolveAdminLocale(deps.search, stored, deps.languages) };
+    }
+
+    get view(): StartView {
+        return this.#view;
+    }
+
+    subscribe(listener: () => void): () => void {
+        this.#listeners.add(listener);
+        return () => {
+            this.#listeners.delete(listener);
+        };
+    }
+
+    /** Reads the configuration and Google's answer, if the address carries one, and opens the right screen. */
+    async start(): Promise<void> {
+        const fragment = this.#deps.fragment();
+        this.#deps.clearFragment();
+        this.#config = await this.#readConfig();
+        if (this.#config?.oauthClientId === undefined) {
+            this.#update({ screen: 'closed' });
+            return;
+        }
+        await this.#open(readConsentAnswer(fragment, takeState(this.#deps.session), this.#deps.clock.now()));
+    }
+
+    async #open(answer: ConsentAnswer): Promise<void> {
+        const plan = loadPlan(this.#deps.session);
+        if (answer.kind === 'granted') {
+            this.#grant = answer.grant;
+            await this.#afterConsent(plan);
+        } else if (answer.kind !== 'none') {
+            this.#update({ notice: NOTICE_OF_ANSWER[answer.kind] });
+        } else if (plan !== null) {
+            // A reload: the plan is here, the token is not (it never leaves memory).
+            this.#update({ screen: 'work', plan, failure: { key: 'start.failure.expired', action: 'consent' } });
+        }
+    }
+
+    #update(patch: Partial<StartView>): void {
+        this.#view = { ...this.#view, ...patch };
+        this.#listeners.forEach((listener) => {
+            listener();
+        });
+    }
+
+    #form(form: StartForm): void {
+        this.#update({ form });
+    }
+
+    async #readConfig(): Promise<StartConfig | null> {
+        const response = await this.#deps
+            .fetch(new URL(CONFIG_FILE, this.#deps.baseUrl).toString(), { cache: 'no-cache' })
+            .catch(() => null);
+        const body: unknown = response?.ok === true ? await response.json().catch(() => null) : null;
+        const parsed = startConfigSchema.safeParse(body);
+        return parsed.success ? parsed.data : null;
+    }
+
+    #consent(): void {
+        const deps = this.#deps;
+        const state = deps.random();
+        rememberState(deps.session, state);
+        deps.assign(
+            consentUrl({
+                authorizeUrl: deps.authorizeUrl,
+                clientId: this.#config?.oauthClientId ?? '',
+                redirectUri: deps.baseUrl,
+                state,
+                ...(deps.testId === undefined ? {} : { testId: deps.testId }),
+            }),
+        );
+    }
+
+    async #afterConsent(plan: StartPlan | null): Promise<void> {
+        if (plan === null) {
+            this.#update({ screen: 'plan' });
+            return;
+        }
+        await this.#run(plan);
+    }
+
+    #google(): StartGoogle {
+        const deps = this.#deps;
+        return createStartGoogle(
+            createGoogleTransport({
+                fetch: (...args) => deps.fetch(...args),
+                token: () => this.#grant?.token ?? null,
+                sleep: (ms) =>
+                    new Promise((resolve) => {
+                        deps.clock.setTimeout(resolve, ms);
+                    }),
+                log: deps.log.child('google'),
+            }),
+        );
+    }
+
+    async #loadProjects(): Promise<void> {
+        if (this.#view.projects !== null) {
+            return;
+        }
+        try {
+            this.#update({ projects: await this.#google().listProjects() });
+        } catch (error) {
+            this.#deps.log.warn('the projects could not be listed', { error: String(error) });
+            this.#update({ projects: [] });
+        }
+    }
+
+    async #go(): Promise<void> {
+        const plan = planOf(this.#view.form);
+        if (plan === null) {
+            return;
+        }
+        savePlan(this.#deps.session, plan);
+        await this.#run(plan);
+    }
+
+    async #retry(): Promise<void> {
+        const { failure, plan } = this.#view;
+        if (failure?.action === 'consent' || !this.#tokenLives()) {
+            this.#consent();
+            return;
+        }
+        if (plan !== null) {
+            await this.#run(plan);
+        }
+    }
+
+    #tokenLives(): boolean {
+        return this.#grant !== null && this.#grant.expiresAt - this.#deps.clock.now() >= MIN_TOKEN_LIFE_MS;
+    }
+
+    async #run(plan: StartPlan): Promise<void> {
+        if (!this.#tokenLives()) {
+            this.#update({ screen: 'work', plan, failure: { key: 'start.failure.expired', action: 'consent' } });
+            return;
+        }
+        this.#update({ screen: 'work', plan, failure: null, busy: true, steps: WAITING_STEPS, files: { done: 0, total: 0 } });
+        let current: StartStepId = 'project';
+        const google = this.#google();
+        try {
+            const release = await loadRelease(this.#deps.tools, this.#deps.baseUrl, this.#config?.release ?? '');
+            await deployStart(
+                {
+                    google,
+                    tools: this.#deps.tools,
+                    clock: this.#deps.clock,
+                    baseUrl: this.#deps.baseUrl,
+                    release,
+                    onStep: (step) => {
+                        current = step;
+                        this.#mark(step);
+                    },
+                    onFiles: (done, total) => {
+                        this.#update({ files: { done, total } });
+                    },
+                },
+                plan,
+                () => this.#grant?.token ?? null,
+            );
+        } catch (error) {
+            this.#failed(error, current, plan);
+            return;
+        }
+        this.#update({ busy: false, steps: { ...this.#view.steps, release: 'done' } });
+        await this.#checkProvider();
+    }
+
+    /** `step` is under way and every step before it is done. */
+    #mark(step: StartStepId): void {
+        const index = START_STEPS.indexOf(step);
+        const steps = Object.fromEntries(START_STEPS.map((id, position) => [id, stepStateAt(position, index)])) as Record<
+            StartStepId,
+            StepState
+        >;
+        this.#update({ steps });
+    }
+
+    #failed(error: unknown, step: StartStepId, plan: StartPlan): void {
+        const failure = startFailureOf(error, {
+            step,
+            projectId: plan.projectId,
+            create: plan.create,
+            command: this.#deps.command,
+        });
+        this.#deps.log.warn('a start step failed', { step, key: failure.key });
+        const steps = { ...this.#view.steps, [step]: 'failed' as const };
+        if (failure.action === 'form') {
+            // The form says why, with what it can offer: a taken id gives way to a free one.
+            const form =
+                failure.key === 'start.failure.taken'
+                    ? { ...this.#view.form, projectId: nextProjectId(plan.projectId), projectIdEdited: true }
+                    : this.#view.form;
+            clearPlan(this.#deps.session);
+            this.#update({ screen: 'plan', form, failure, busy: false, steps, plan: null });
+            return;
+        }
+        this.#update({ failure, busy: false, steps });
+    }
+
+    async #checkProvider(): Promise<void> {
+        const { plan } = this.#view;
+        if (plan === null) {
+            return;
+        }
+        if (!this.#tokenLives()) {
+            this.#consent();
+            return;
+        }
+        this.#showProvider(await this.#providerOn(plan.projectId));
+    }
+
+    #showProvider(on: boolean): void {
+        if (on) {
+            clearPlan(this.#deps.session);
+            this.#update({ screen: 'done', providerWaiting: false });
+            return;
+        }
+        this.#update({ screen: 'provider', providerWaiting: this.#view.screen === 'provider' });
+    }
+
+    /** Whether Google sign-in is on; a read that fails counts as not yet, and Check again reads again. */
+    async #providerOn(projectId: string): Promise<boolean> {
+        try {
+            return await this.#google().googleSignInOn(projectId);
+        } catch (error) {
+            this.#deps.log.warn('the sign-in provider could not be read', { error: String(error) });
+            return false;
+        }
+    }
+}

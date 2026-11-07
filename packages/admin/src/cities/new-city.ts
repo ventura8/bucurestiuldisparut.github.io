@@ -18,6 +18,7 @@ import {
     type CallableResponse,
     type CitiesCreateRequest,
     type CityBounds,
+    type StartFirstCity,
 } from '@hcm/shared';
 
 import { outcomeOf } from '../app/services.js';
@@ -117,6 +118,7 @@ class NewCityStore implements AreaStore<NewCityState, NewCityIntents> {
     readonly intents: NewCityIntents;
     /** The pending `cities.locate` of the name being typed. */
     #locating: unknown = null;
+    #prefilled = false;
 
     constructor(services: ContentServices) {
         this.#services = services;
@@ -173,6 +175,28 @@ class NewCityStore implements AreaStore<NewCityState, NewCityIntents> {
 
     open(): void {
         // The form keeps what was typed until the page goes; nothing is read before the map host shows.
+        this.#fromStartPage();
+    }
+
+    /** M14 (`docs/research/M14-start-your-map.md` §8): what the start page was told fills an empty form, once. */
+    #fromStartPage(): void {
+        const city = this.#services.firstCity;
+        const { nameRo, created } = this.#cell.state;
+        const untouched = !this.#prefilled && nameRo === '' && created === null;
+        if (city === undefined || !untouched) {
+            return;
+        }
+        this.#prefilled = true;
+        this.#fill(city);
+    }
+
+    #fill(city: StartFirstCity): void {
+        this.#cell.update({ nameRo: city.name.ro, nameEn: city.name.en ?? '', cityId: city.id, idEdited: true });
+        if (city.bounds === undefined) {
+            this.#name(city.name.ro);
+        } else {
+            this.#area(city.bounds, true);
+        }
     }
 
     close(): void {

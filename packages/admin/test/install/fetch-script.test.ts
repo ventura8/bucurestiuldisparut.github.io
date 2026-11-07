@@ -92,6 +92,17 @@ function envOf(found: Bundle, changes: Readonly<Record<string, string>> = {}): R
     };
 }
 
+/** A site tarball of a bundle made for no project (M14 §6): the token in `firebase.json` and the city page's `config.js`. */
+function genericSite(): { readonly bytes: Buffer } {
+    const source = mkdtempSync(join(work, 'generic-'));
+    mkdirSync(join(source, 'public/city'), { recursive: true });
+    writeFileSync(join(source, 'firebase.json'), '{"hosting":{"site":"__HCM_PROJECT_ID__"}}');
+    writeFileSync(join(source, 'public/city/config.js'), 'bucket("__HCM_PROJECT_ID__-public")');
+    const out = join(work, 'generic.tgz');
+    execFileSync(TAR, ['-czf', out, '-C', source, 'firebase.json', 'public']);
+    return { bytes: readFileSync(out) };
+}
+
 beforeEach(async () => {
     work = mkdtempSync(join(tmpdir(), 'hcm-fetch-'));
     served = new Map();
@@ -219,5 +230,44 @@ describe('the fetch step', () => {
 
         expect(result.code).toBe(1);
         expect(result.stderr).toContain('manifest.json: HTTP 404');
+    });
+});
+
+describe('a site build of a bundle made for no project (M14)', () => {
+    function servedGeneric(): Record<string, string> {
+        const site = genericSite().bytes;
+        const entry = { name: 'hosting.tgz', bytes: site.length, sha256: sha(site) };
+        const manifest = Buffer.from(JSON.stringify({ release: RELEASE, releaseTime: 1_761_955_200, files: { site: entry } }));
+        served.set('manifest.json', manifest);
+        served.set('hosting.tgz', site);
+        return {
+            HCM_BUNDLE_URL: `${origin}/admin/install/1-0-0-abc1234/`,
+            HCM_MANIFEST_SHA256: sha(manifest),
+            HCM_FILE_SHA256: entry.sha256,
+            HCM_RELEASE: RELEASE,
+            HCM_RELEASE_TIME: '1761955200',
+            HCM_FILES: 'site',
+            HCM_OUT: join(work, 'site'),
+            HCM_ADOPT_PROJECT: 'fostul-bacau',
+            HCM_ADOPT_FROM: `${origin}/admin/project.json`,
+        };
+    }
+
+    it('happyPath_theProjectJoinsTheTreeAndItsFileComesFromTheLiveSite', async () => {
+        const env = servedGeneric();
+        served.set('project.json', Buffer.from('{"projectId":"fostul-bacau"}'));
+
+        expect((await run(env)).code).toBe(0);
+
+        expect(readFileSync(join(work, 'site/firebase.json'), 'utf8')).toContain('"site":"fostul-bacau"');
+        expect(readFileSync(join(work, 'site/public/city/config.js'), 'utf8')).toBe('bucket("fostul-bacau-public")');
+        expect(readFileSync(join(work, 'site/public/admin/project.json'), 'utf8')).toBe('{"projectId":"fostul-bacau"}');
+    });
+
+    it('badPath_aProjectFileTheLiveSiteDoesNotServeStopsTheBuild', async () => {
+        const { code, stderr } = await run(servedGeneric());
+
+        expect(code).toBe(1);
+        expect(stderr).toContain('project.json: HTTP 404');
     });
 });

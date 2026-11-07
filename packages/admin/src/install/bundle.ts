@@ -6,6 +6,7 @@
  */
 import {
     INSTALL_FOLDER,
+    GENERIC_INSTALL_PROJECT,
     INSTALL_FORMAT,
     INSTALL_MANIFEST_FILE,
     installManifestSchema,
@@ -115,7 +116,9 @@ function parsedManifest(json: unknown): InstallManifest {
 function checkedManifest(deps: BundleDeps, json: unknown): InstallManifest {
     const manifest = parsedManifest(json);
     const sameRelease = manifest.release === deps.release && manifest.releaseTime === deps.releaseTime;
-    if (!sameRelease || manifest.projectId !== deps.projectId) {
+    // M14: a bundle made for no project in particular fits any (`docs/research/M14-start-your-map.md` §6).
+    const sameProject = manifest.projectId === deps.projectId || manifest.projectId === GENERIC_INSTALL_PROJECT;
+    if (!sameRelease || !sameProject) {
         throw new InstallBundleError('apiError.install.mismatch');
     }
     return manifest;

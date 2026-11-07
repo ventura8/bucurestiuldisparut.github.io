@@ -148,7 +148,7 @@ test('The self-host steps run the owner’s own CLIs, one consent each', { tag: 
     const { cwd, tools } = world(testInfo);
     const t = translator(lang);
     expect((await runCli(['cluj', '--yes', ...CLUJ], { cwd, tools })).code).toBe(0);
-    const run = new CliRun(['self-host', 'cluj', '--project', PROJECT, '--bundle', bundle(testInfo), '--lang', lang, '--experimental'], {
+    const run = new CliRun(['self-host', 'cluj', '--project', PROJECT, '--bundle', bundle(testInfo), '--lang', lang], {
         cwd,
         tools,
     });
@@ -200,7 +200,6 @@ test('The self-host steps run the owner’s own CLIs, one consent each', { tag: 
         expect(run.output).not.toContain(question);
     }
     expect(run.output).not.toMatch(/\b(?:sk|pk)\.[\w-]|AIza|refresh-e2e-value/);
-    expect(run.output).toContain(t('cli.selfHost.experimental'));
     expect(run.output.split(consent).length - 1).toBe(8);
     expect(JSON.parse(readFileSync(join(cwd, 'cluj/server/.firebaserc'), 'utf8'))).toEqual({ projects: { default: PROJECT } });
 });
@@ -243,7 +242,7 @@ test(
         const { cwd, tools } = world(testInfo, ['gcloud', 'xdg-open']);
         expect((await runCli(['cluj', '--yes', ...CLUJ], { cwd, tools })).code).toBe(0);
 
-        const { code, output } = await runCli(['self-host', 'cluj', '--project', PROJECT, '--lang', lang, '--experimental'], {
+        const { code, output } = await runCli(['self-host', 'cluj', '--project', PROJECT, '--lang', lang], {
             cwd,
             tools,
         });
@@ -263,7 +262,7 @@ test('Billing never linked stops with how to resume', { tag: '@S-V29-BAD-BILLING
     });
     const t = translator(lang);
     expect((await runCli(['cluj', '--yes', ...CLUJ], { cwd, tools })).code).toBe(0);
-    const run = new CliRun(['deploy', 'cluj', '--project', PROJECT, '--billing-wait', '0', '--lang', lang, '--experimental'], {
+    const run = new CliRun(['deploy', 'cluj', '--project', PROJECT, '--billing-wait', '0', '--lang', lang], {
         cwd,
         tools,
     });
@@ -273,7 +272,7 @@ test('Billing never linked stops with how to resume', { tag: '@S-V29-BAD-BILLING
 
     expect(await run.end()).toBe(1);
     const page = `https://console.cloud.google.com/billing/linkedaccount?project=${PROJECT}`;
-    const resume = `${NPX_COMMAND} deploy cluj --project ${PROJECT} --experimental`;
+    const resume = `${NPX_COMMAND} deploy cluj --project ${PROJECT}`;
     expect(run.output).toContain(t('cli.billing.never', { url: page, command: resume }));
     expect(tools.calls().filter((line) => line.startsWith('gcloud billing'))).toHaveLength(2);
     expect(tools.calls().filter((line) => line.startsWith('firebase deploy'))).toEqual([]);
@@ -283,7 +282,7 @@ test('Answering no stops at that step', { tag: '@S-V29-BAD-DECLINED' }, async ({
     const { cwd, tools } = world(testInfo);
     const t = translator(lang);
     expect((await runCli(['cluj', '--yes', ...CLUJ], { cwd, tools })).code).toBe(0);
-    const run = new CliRun(['self-host', 'cluj', '--project', PROJECT, '--lang', lang, '--experimental'], { cwd, tools });
+    const run = new CliRun(['self-host', 'cluj', '--project', PROJECT, '--lang', lang], { cwd, tools });
 
     await run.answer(t('cli.ask.consent'), 'y');
     await run.answer(t('cli.ask.consent'), 'n');
@@ -292,25 +291,39 @@ test('Answering no stops at that step', { tag: '@S-V29-BAD-DECLINED' }, async ({
     expect(tools.calls()).not.toContain(`firebase projects:create ${PROJECT} --display-name Cluj`);
     expect(run.output).toContain(t('cli.step.declined'));
     expect(run.output).toContain(t('cli.step.left', { n: 9, title: t('cli.step.rest.title') }));
-    expect(run.output).toContain(t('cli.step.resume', { command: `${NPX_COMMAND} self-host cluj --project ${PROJECT} --experimental` }));
+    expect(run.output).toContain(t('cli.step.resume', { command: `${NPX_COMMAND} self-host cluj --project ${PROJECT}` }));
 });
 
-test('Self-hosting is not available yet without --experimental', { tag: '@S-V29-BAD-NOT-AVAILABLE' }, async ({ lang }, testInfo) => {
-    // docs/LESSONS.md 239: the admin's Setup cannot run in an owner's own project before CR-M5-7, so step 8 cannot work.
-    const { cwd, tools } = world(testInfo);
-    const t = translator(lang);
-    expect((await runCli(['cluj', '--yes', ...CLUJ], { cwd, tools })).code).toBe(0);
+test(
+    'Self-hosting names what is missing when the package carries no bundle',
+    { tag: '@S-V29-BAD-NO-BUNDLE' },
+    async ({ lang }, testInfo) => {
+        // CR-M5-7 removed the old refusal (--experimental): what can still stop step 6 is a package without the admin's files.
+        const { cwd, tools } = world(testInfo);
+        const t = translator(lang);
+        expect((await runCli(['cluj', '--yes', ...CLUJ], { cwd, tools })).code).toBe(0);
 
-    for (const command of ['self-host', 'deploy']) {
-        const { code, output } = await runCli([command, 'cluj', '--project', PROJECT, '--lang', lang], { cwd, tools });
+        const run = new CliRun(['self-host', 'cluj', '--project', PROJECT, '--bundle', join(cwd, 'no-such-bundle'), '--lang', lang], {
+            cwd,
+            tools,
+        });
+        const consent = t('cli.ask.consent');
+        for (const [prompt, line] of [
+            [consent, 'y'],
+            [consent, 'y'],
+            [consent, 'y'],
+            [consent, 'y'],
+            [t('cli.ask.enter'), ''],
+            [consent, 'y'],
+        ] as const) {
+            await run.answer(prompt, line);
+        }
+        expect(await run.end()).toBe(1);
 
-        expect(code).toBe(1);
-        expect(output).toContain(t('cli.selfHost.unavailable'));
-        expect(output).toContain(t('cli.selfHost.tryAnyway'));
-    }
-    expect(tools.calls()).toEqual([]);
-    expect(existsSync(join(cwd, 'cluj/server'))).toBe(false);
-});
+        expect(run.output).toContain(t('cli.admin.noBundle', { command: NPX_COMMAND }));
+        expect(existsSync(join(cwd, 'cluj/server/firebase.json'))).toBe(false);
+    },
+);
 
 test('A taken project id is named with another to try', { tag: '@S-V29-BAD-PROJECT-TAKEN' }, async ({ lang }, testInfo) => {
     // The UX review of M5: any failure of projects:create was taken for Google's terms, and the same id was tried again.
@@ -318,7 +331,7 @@ test('A taken project id is named with another to try', { tag: '@S-V29-BAD-PROJE
     const { cwd, tools } = world(testInfo, ['firebase', 'gcloud', 'xdg-open'], { ...NEW_ACCOUNT, [create]: [{ code: 1 }] });
     const t = translator(lang);
     expect((await runCli(['cluj', '--yes', ...CLUJ], { cwd, tools })).code).toBe(0);
-    const run = new CliRun(['self-host', 'cluj', '--project', PROJECT, '--lang', lang, '--experimental'], { cwd, tools });
+    const run = new CliRun(['self-host', 'cluj', '--project', PROJECT, '--lang', lang], { cwd, tools });
 
     await run.answer(t('cli.ask.consent'), 'y');
     await run.answer(t('cli.ask.consent'), 'y');

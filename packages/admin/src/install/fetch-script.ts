@@ -8,14 +8,16 @@
  * target's also not the one the admin chose (`HCM_FILE_SHA256`). It unpacks the target's tarball into `HCM_OUT` with
  * the image's `tar`, and each other fetched tarball `HCM_UNPACK` names (§73k: the site build's `legacy.tgz` while the
  * legacy import is not complete); the site build also puts the bundle files back under `HCM_KEEP_BUNDLE` (a Hosting
- * release replaces every file, so the bundle must stay in it).
+ * release replaces every file, so the bundle must stay in it). M14 (`docs/research/M14-start-your-map.md` §6): a site build
+ * of a bundle made for no project (`HCM_ADOPT_PROJECT`) replaces the token in `firebase.json` and the city page's
+ * `config.js` with this project's id, and takes `admin/project.json` from the live site (`HCM_ADOPT_FROM`).
  *
  * The program holds no `$`: Cloud Build substitutes `$NAME` in every argument. `fetch-script.test.ts` runs it.
  */
 export const FETCH_BUNDLE_SCRIPT = [
     "import { createHash } from 'node:crypto';",
     "import { execFileSync } from 'node:child_process';",
-    "import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';",
+    "import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
     "import { join } from 'node:path';",
     'const env = process.env;',
     "const fail = (message) => { process.stderr.write('fetch: ' + message + '\\n'); process.exit(1); };",
@@ -57,6 +59,16 @@ export const FETCH_BUNDLE_SCRIPT = [
     "    for (const name of ['manifest.json', ...targets.map((target) => manifest.files[target].name)]) {",
     '        copyFileSync(join(bundleDir, name), join(keep, name));',
     '    }',
+    '}',
+    'if (env.HCM_ADOPT_PROJECT) {',
+    "    for (const file of ['firebase.json', 'public/city/config.js']) {",
+    '        const path = join(env.HCM_OUT, file);',
+    "        writeFileSync(path, readFileSync(path, 'utf8').replaceAll('__HCM_PROJECT_ID__', env.HCM_ADOPT_PROJECT));",
+    '    }',
+    "    const live = await fetch(env.HCM_ADOPT_FROM, { redirect: 'error' });",
+    "    if (!live.ok) fail('project.json: HTTP ' + live.status);",
+    "    mkdirSync(join(env.HCM_OUT, 'public/admin'), { recursive: true });",
+    "    writeFileSync(join(env.HCM_OUT, 'public/admin/project.json'), Buffer.from(await live.arrayBuffer()));",
     '}',
     "process.stdout.write('fetch: ' + main.name + ' checked and unpacked\\n');",
 ].join('\n');

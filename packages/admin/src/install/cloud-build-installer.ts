@@ -18,6 +18,7 @@ import {
     type InstallTarget,
     type Logger,
 } from '@hcm/shared';
+import { GENERIC_INSTALL_PROJECT } from '@hcm/shared';
 
 import { createArtifactRegistryClient } from '../google/artifact-registry.js';
 import { cloudBuildConsoleUrl, createCloudBuildClient, type CloudBuild } from '../google/cloud-build.js';
@@ -180,6 +181,7 @@ class CloudBuildInstaller implements InstallerPort {
             fileSha256: manifest.files[target].sha256,
             images: { node: manifest.tools.node, docker: manifest.tools.docker ?? '' },
             legacy: await this.#needsLegacy(target, manifest),
+            ...(manifest.projectId === GENERIC_INSTALL_PROJECT ? { adopt: true } : {}),
         });
         this.#deps.log.info('install build submitted', { target, release: manifest.release });
         return createCloudBuildClient(this.#transport(access)).create(this.#deps.projectId, this.#deps.region, definition);

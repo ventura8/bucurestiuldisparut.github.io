@@ -10,10 +10,10 @@
 import { z } from 'zod';
 
 import type { Clock, Unsubscribe } from '../app/ports.js';
+import { STAND_IN_ORIGIN } from './stand-in-origin.js';
 import type { PopupResult, PopupSignIn } from './google-auth.js';
 
-/** The mock APIs of the e2e world (`e2e/mock-apis/`). */
-export const STAND_IN_ORIGIN = 'http://127.0.0.1:4311';
+export { STAND_IN_ORIGIN };
 
 /** How often the stand-in checks whether its popup was closed without an answer. */
 export const POPUP_POLL_MS = 500;

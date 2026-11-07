@@ -41,6 +41,10 @@ export interface AdminServerOptions {
     readonly hostingDir: string;
     /** The start-up variant's tree, served to a browser with the variant cookie. */
     readonly startUpDir?: string;
+    /** M14: the start site, served as it is at `/start/` (`docs/research/M14-start-your-map.md` §5). */
+    readonly startDir?: string;
+    /** M14: the folder of what a test released on the fake Hosting (below it, one folder per test, named by the cookie). */
+    readonly releasedDir?: string;
     readonly hosting: HostingConfig;
     /** Origins added to the CSP's `connect-src`. */
     readonly connect: readonly string[];
@@ -55,6 +59,8 @@ export interface AdminServerOptions {
 /** The cookie that picks the start-up variant of the tree, and its value. */
 export const E2E_VARIANT_COOKIE = 'hcm-e2e-variant';
 export const START_UP_VARIANT = 'start-up';
+/** M14: the cookie that serves a browser what its test released on the fake Hosting (`released:<folder>`). */
+const RELEASED_VARIANT = /(?:^|;\s*)hcm-e2e-variant=released:([\w-]{1,128})(?:;|$)/;
 
 /** The legacy root push worker of the old-service-worker scenario (scope `/`). */
 export const OLD_PUSH_WORKER_PATH = '/__old-push-sw.js';
@@ -129,7 +135,37 @@ async function served(dir: string, answer: HostingAnswer): Promise<MockResponse>
     return { status: answer.status, type: SITE_TYPES[extname(file)] ?? 'application/octet-stream', body: await readFile(file) };
 }
 
+/** The folder of what this browser's test released, or undefined (M14). */
+function releasedTree(options: AdminServerOptions, request: IncomingMessage): string | undefined {
+    const folder = RELEASED_VARIANT.exec(request.headers.cookie ?? '')?.[1];
+    return folder === undefined || options.releasedDir === undefined ? undefined : join(options.releasedDir, folder);
+}
+
+/** A file of the start site at `/start/` (the page for its folder), or undefined for any other address. */
+async function startSite(options: AdminServerOptions, pathname: string): Promise<MockResponse | undefined> {
+    if (options.startDir === undefined || !pathname.startsWith('/start/')) {
+        return undefined;
+    }
+    const relative = normalize(decodeURIComponent(pathname.slice('/start/'.length)) || 'index.html');
+    const file = resolve(options.startDir, relative);
+    if (!file.startsWith(`${resolve(options.startDir)}${sep}`) || !statSync(file, { throwIfNoEntry: false })?.isFile()) {
+        return NOT_FOUND;
+    }
+    return { status: 200, type: SITE_TYPES[extname(file)] ?? 'application/octet-stream', body: await readFile(file) };
+}
+
 async function answer(options: AdminServerOptions, request: IncomingMessage, target: Target): Promise<Answered> {
+    const started = await startSite(options, target.pathname);
+    if (started !== undefined) {
+        return { result: started, answer: null };
+    }
+    const released = releasedTree(options, request);
+    if (released !== undefined && target.pathname !== '/__/firebase/init.json' && target.pathname !== '/__health') {
+        // What was released is served as it was uploaded: its own runtime and project files, never the e2e world's.
+        const path = decodeURIComponent(target.pathname);
+        const resolved = resolveHostingPath(options.hosting, path, target.search, (file) => deployed(released, options.hosting, file));
+        return { result: await served(released, resolved), answer: resolved };
+    }
     const fixed = reserved(options, target.pathname);
     if (fixed !== undefined) {
         return { result: fixed, answer: null };

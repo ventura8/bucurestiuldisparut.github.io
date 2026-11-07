@@ -28,6 +28,13 @@ interface FirebaseProject {
 export interface FirebaseState {
     /** Project id → its web apps and Analytics link (created with the default web app on first use). */
     readonly projects: Map<string, FirebaseProject>;
+    /**
+     * M14 (the start page, `google-hosting.ts`): a world where a project has nothing until it is made: no Firebase (`added`
+     * says which have it), no web app, Google sign-in off until `signInOn`.
+     */
+    fresh: boolean;
+    readonly added: Set<string>;
+    signInOn: boolean;
 }
 
 const FIREBASE: GoogleApi = { service: 'firebase.googleapis.com', title: 'Firebase Management API', permission: 'firebase.projects.get' };
@@ -47,11 +54,19 @@ export function createFirebaseManagementFake(state: FirebaseState, projects: Goo
     const projectOf = (segment: string): { readonly id: string; readonly number: string; readonly firebase: FirebaseProject } => {
         const project = projects.resolve(segment);
         const existing = state.projects.get(project.id);
-        const firebase = existing ?? defaultProject();
+        const firebase = existing ?? (state.fresh ? { ...defaultProject(), apps: [], googleSignIn: false } : defaultProject());
         if (existing === undefined) {
             state.projects.set(project.id, firebase);
         }
         return { ...project, firebase };
+    };
+    const createApp: Route['answer'] = (request, params) => {
+        const { firebase } = projectOf(String(params['project']));
+        const { displayName } = JSON.parse(request.body) as { readonly displayName?: string };
+        firebase.apps.push({ appId: String(FIXTURE_VALUES['appId']), displayName: displayName ?? '', state: 'ACTIVE' });
+        const name = `operations/${nextOperation()}`;
+        operations.set(name, String(params['project']));
+        return jsonResponse({ name, done: false });
     };
     const appBody = (projectId: string, app: FirebaseWebApp): Readonly<Record<string, unknown>> => ({
         ...(fixtureBody('firebase-management/web-apps.one-active', { projectId, appId: app.appId }) as { apps: Record<string, unknown>[] })
@@ -100,6 +115,18 @@ export function createFirebaseManagementFake(state: FirebaseState, projects: Goo
                     return jsonResponse(apps.length === 0 ? {} : { apps: apps.map((app) => appBody(id, app)) });
                 }),
             ),
+            route('POST', `${base}/webApps`, 'firebase-management.webApps.create', auth(createApp)),
+            route(
+                'GET',
+                base,
+                'firebase-management.getProject',
+                auth((_request, params) => {
+                    const { id, number } = projectOf(String(params['project']));
+                    return state.fresh && !state.added.has(id)
+                        ? googleError('google/error.not-found', FIREBASE)
+                        : jsonResponse({ projectId: id, projectNumber: number, name: `projects/${id}`, state: 'ACTIVE' });
+                }),
+            ),
             route('GET', `${base}/webApps/{appId}/config`, 'firebase-management.webApps.getConfig', auth(config)),
             route('POST', `${base}:addGoogleAnalytics`, 'firebase-management.addGoogleAnalytics', auth(addAnalytics)),
             route(
@@ -119,7 +146,7 @@ export function createFirebaseManagementFake(state: FirebaseState, projects: Goo
                 'firebase-management.googleIdpConfig',
                 auth((_request, params) => {
                     const { id, firebase } = projectOf(String(params['project']));
-                    return firebase.googleSignIn
+                    return firebase.googleSignIn || state.signInOn
                         ? fixtureResponse('firebase-management/google-idp-config.get', { values: { projectId: id } })
                         : googleError('google/error.not-found', FIREBASE);
                 }),
