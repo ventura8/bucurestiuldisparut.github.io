@@ -5896,7 +5896,7 @@ The local stack's seeded second city (`e2e/stack/seed-cities.ts`: `bacau`, its r
 ## 95. Roles and review (2026-11-07) — APPLIED (the owner's decisions: code, tests and documentation on `track/roles`; no gate relaxed, no budget raised, no download, no deploy)
 
 - **95a The contract** is `docs/research/M13-roles.md`.
-- **95b Two new chunk rows**: `review` (4.1 KB measured) and `contribute` (3.4 KB), each plus about 20 %, in `ADMIN_CHUNK_BUDGETS`; the admin's total 642.5 KB of 650, the entry 376.8 of 450, the engine 95.3 of 100 and its IIFE 121.6 of 125: none raised.
+- **95b Two new chunk rows**: `review` (4.1 KB measured) and `contribute` (3.5 KB), each plus about 20 %, in `ADMIN_CHUNK_BUDGETS`; the admin's total 642.8 KB of 650, the entry 372.1 of 450, the engine 95.4 of 100 and its IIFE 121.7 of 125: none raised.
 - **95c `admin` access narrowed.** It now leaves out an account whose every role is `moderator` or `uploader`; `notify.*` moved to a new `member` access. An account with no city at all keeps what it had.
 - **95d The Contribute page is a route of the admin**, not a page of its own: it reuses sign-in, the catalogues and the Mapbox loader at the cost of one chunk. A signed-in account of no role gets the new auth state `visitor` there instead of being signed out.
 - **95e No `minVersion`.** No release is tagged, so the manifest's additions join the v1 baseline, as `photosOverlay` did.
