@@ -92,6 +92,8 @@ export const en: ApiMessages = {
     'apiError.imagery.addressRefused': 'The address is not allowed: use a public https address.',
     'apiError.imagery.outOfMemory': 'The frame did not fit in the processing memory, not even on the large machine.',
     'apiError.imagery.attemptsExhausted': 'The processing stopped after {attempts} attempts.',
+    'apiError.imagery.locateInputsGone': 'The working files and USGS delivery expired. Add points, or cancel and import again.',
+    'apiError.imagery.locateFilesElsewhere': 'The working files stayed where this frame ran. Move it back, or add points.',
     'apiError.imagery.mapboxFinishing': 'Mapbox is already processing the layer: it can no longer be cancelled.',
     'apiError.imagery.workerLost': 'Your computer stopped working on this job; it picks it up again when it is back.',
     'apiError.imagery.joinMixedFrames': 'Only frames of one date and one camera can be joined.',

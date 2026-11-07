@@ -10,6 +10,7 @@ import {
     isHttpsUrl,
     poiIcon,
     poiInYear,
+    type Basemap,
     type Layer,
     type LayerSource,
     type Locale,
@@ -20,6 +21,7 @@ import {
     type Poi,
     type PoiCategory,
 } from '@hcm/shared';
+import { basemapLabels, MAP_LABEL_CONFIG, MAP_LABEL_KINDS, type MapLabels } from '@hcm/shared/map-labels';
 import type {
     MapOptions,
     PhotoConeFeature,
@@ -124,12 +126,32 @@ export function poiSpecs(
     return (manifest.poiCategories ?? []).map((category) => poiSpec(category, shown, findOverlay(overlays, category.id), locale));
 }
 
+/** What a map is mounted with besides the manifest: the moment's view, language, motion and basemap labels. */
+export interface MapMoment {
+    readonly view: MapView;
+    readonly locale: Locale;
+    readonly reducedMotion: boolean;
+    readonly labels: MapLabels;
+}
+
+/**
+ * The city's `basemap.config` with the labels the visitor chose where they differ from it, so a shared link never flashes
+ * the labels it turned off. Mapbox ignores a property the style does not have.
+ */
+function basemapConfig(basemap: Basemap, labels: MapLabels): MapOptions['config'] {
+    const defaults = basemapLabels(basemap);
+    const changed = MAP_LABEL_KINDS.filter((kind) => labels[kind] !== defaults[kind]).map((kind) => [MAP_LABEL_CONFIG[kind], labels[kind]]);
+    const config = { ...basemap.config, ...Object.fromEntries(changed) } as NonNullable<MapOptions['config']>;
+    return Object.keys(config).length === 0 ? undefined : config;
+}
+
 /** The map of a city: its basemap, token, zoom range and bounds. */
-export function mapOptions(manifest: Manifest, view: MapView, locale: Locale, reducedMotion: boolean): MapOptions {
+export function mapOptions(manifest: Manifest, { view, locale, reducedMotion, labels }: MapMoment): MapOptions {
     const { city } = manifest;
+    const config = basemapConfig(city.basemap, labels);
     return {
         style: city.basemap.style,
-        ...(city.basemap.config === undefined ? {} : { config: city.basemap.config }),
+        ...(config === undefined ? {} : { config }),
         accessToken: city.mapbox.publicToken,
         view,
         minZoom: city.minZoom,

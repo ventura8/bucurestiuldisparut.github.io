@@ -140,6 +140,7 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.approve': 'Approve and publish',
     'adminContent.imagery.reject': 'Reject',
     'adminContent.imagery.dismiss': 'Dismiss',
+    'adminContent.imagery.locateAgain': 'Locate again',
     // M9 (docs/research/M9-calibration.md §8)
     'adminContent.imagery.calibration.how.votes': 'Found automatically',
     'adminContent.imagery.calibration.how.pass': 'Found from a neighbouring frame',
@@ -182,6 +183,7 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.notice.chose.pay': 'It is being published now.',
     'adminContent.imagery.notice.studioLinked': 'The layer now uses the tileset from Mapbox Studio.',
     'adminContent.imagery.notice.retrying': 'The processing starts again.',
+    'adminContent.imagery.notice.locating': 'The frame is being located again. This is not a new import.',
     'adminContent.imagery.notice.cancelRefused': 'The processing could not be stopped.',
     'adminContent.imagery.notice.dismissed': 'The version was dismissed.',
     'adminContent.imagery.notice.resumed': 'Processing starts again within five minutes.',

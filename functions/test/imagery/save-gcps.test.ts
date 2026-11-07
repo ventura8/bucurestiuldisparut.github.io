@@ -5,10 +5,11 @@
  * same layer, which keeps its tiles until the new one is published. Points off the scan or out of the city, a collinear
  * set, a crop that misses the layer or crosses itself are refused before anything is written.
  */
-import { FIRESTORE_PATHS, type Gcp, type JobDoc } from '@hcm/shared';
+import { FIRESTORE_PATHS, JOB_MAX_ATTEMPTS, type Gcp, type JobDoc } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { cropFunction } from '../../src/imagery/crop.js';
+import { dispatchJob } from '../../src/imagery/dispatch.js';
 import { onJobWrite } from '../../src/imagery/on-job-write.js';
 import { saveGcpsFunction } from '../../src/imagery/save-gcps.js';
 import { failureOf } from '../admin/world.js';
@@ -229,6 +230,32 @@ describe('imagery.saveGcps', () => {
         expect(failure).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
         expect((await readJob(world, CORONA))?.status).toBe('mts_processing');
         expect(world.deps.documents.paths(FIRESTORE_PATHS.jobs(CITY))).toEqual([FIRESTORE_PATHS.job(CITY, CORONA)]);
+    });
+});
+
+describe('imagery.saveGcps: the attempts', () => {
+    async function seedAttempts(world: ImageryWorld, attempt: number): Promise<void> {
+        await seedJob(world, PLAN, job({ attempt }));
+    }
+
+    it('happyPath_thePointsGetARunOfTheirOwnWhenTheRunsBeforeUsedUpTheAttempts @S-A16-HAPPY-POINTS-AFTER-ATTEMPTS', async () => {
+        const world = await waitingWorld();
+        await seedAttempts(world, JOB_MAX_ATTEMPTS);
+
+        await expect(save(world, { versionId: PLAN, gcps: pairs(8) })).resolves.toMatchObject({ resumed: true });
+
+        expect(await dispatchJob(world.deps, CITY, PLAN)).toBe('started');
+        expect(await readJob(world, PLAN)).toMatchObject({ status: 'starting', attempt: JOB_MAX_ATTEMPTS });
+        expect((await readVersion(world, PLAN))?.state).toBe('processing');
+    });
+
+    it('badPath_pointsBeforeTheLastAttemptLeaveTheCountAlone @S-A16-HAPPY-POINTS-AFTER-ATTEMPTS', async () => {
+        const world = await waitingWorld();
+        await seedAttempts(world, 1);
+
+        await save(world, { versionId: PLAN, gcps: pairs(8) });
+
+        expect((await readJob(world, PLAN))?.attempt).toBe(1);
     });
 });
 

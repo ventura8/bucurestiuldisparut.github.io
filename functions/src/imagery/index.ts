@@ -16,6 +16,7 @@ import { onRasterUploadFunction } from './on-raster-upload.js';
 import { probeTilesFunction } from './probe.js';
 import { publishFunction } from './publish.js';
 import { resumeGuardFunction } from './resume-guard.js';
+import { locateAgainFunction } from './locate-again.js';
 import { retryFunction } from './retry.js';
 import { runOnFunction } from './run-on.js';
 import { saveGcpsFunction } from './save-gcps.js';
@@ -39,6 +40,7 @@ export function imageryFunctions(getDeps: () => ImageryFamilyDeps, bucket?: stri
         crop: cropFunction(getDeps),
         join: joinFunction(getDeps),
         retry: retryFunction(getDeps),
+        locateAgain: locateAgainFunction(getDeps),
         runOn: runOnFunction(getDeps),
         probeTiles: probeTilesFunction(getDeps),
         resumeGuard: resumeGuardFunction(getDeps),

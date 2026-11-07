@@ -6,9 +6,12 @@
  * `<hcm-map-viewer>`, which updates the store (the map follows live, the hash on release). A city without historical
  * layers yet gets a note at the top, where the layers will be (below the photos and places it read as a footnote).
  * With historical layers and a map, a Compare button below the list opens swipe compare (M4, V06), or closes it while
- * the visitor compares: it fires `hcm-compare-toggle`, which the viewer turns into the store's compare action.
+ * the visitor compares: it fires `hcm-compare-toggle`, which the viewer turns into the store's compare action. Below the
+ * list, the Map labels group (V31) has a switch per label the city's basemap really has (none: no group, a custom style
+ * has nothing to switch), each firing `hcm-map-label`; its note tells them from the city's own Places above.
  */
 import { DEFAULT_LOCALE, overlayLabel, poiIcon, translate, type Locale, type Manifest, type Overlay } from '@hcm/shared';
+import { translateMapLabels, type MapLabelKind, type MapLabels, type MapLabelsKey } from '@hcm/shared/map-labels';
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 
 import { EMPTY } from './empty.js';
@@ -18,6 +21,20 @@ import { closeEvent, renderSheetFrame } from './sheet-frame.js';
 import { baseStyles, sheetStyles } from './shared-styles.js';
 
 export const HCM_LAYER_PANEL_TAG = 'hcm-layer-panel';
+
+/** `hcm-map-label`: a Map labels switch moved. */
+export interface MapLabelDetail {
+    readonly kind: MapLabelKind;
+    readonly visible: boolean;
+}
+
+/** What the Map labels group shows: what is drawn, and the kinds the basemap has (null until a map has answered). */
+export interface LayerPanelLabels {
+    readonly shown: MapLabels;
+    readonly available: readonly MapLabelKind[] | null;
+}
+
+const LABEL_NAMES: Readonly<Record<MapLabelKind, MapLabelsKey>> = { streets: 'mapLabels.streets', pois: 'mapLabels.pois' };
 
 /** The list rows: overlay labels in `locale`; a POI category also gets its colour and its bundled icon. */
 export function overlayItems(overlays: readonly Overlay[], manifest: Manifest, locale: Locale): readonly OverlayListItem[] {
@@ -53,6 +70,12 @@ export function attributionLines(overlays: readonly Overlay[], manifest: Manifes
         });
 }
 
+/** The note below the switches: what they are, and how they differ from the city's own places when it has some. */
+function labelsNote(manifest: Manifest, locale: Locale): string {
+    const note = translateMapLabels(locale, 'mapLabels.note');
+    return (manifest.poiCategories ?? []).length > 0 ? `${note} ${translateMapLabels(locale, 'mapLabels.notePlaces')}` : note;
+}
+
 export class HcmLayerPanel extends LitElement {
     static override readonly properties = {
         overlays: { attribute: false },
@@ -63,6 +86,7 @@ export class HcmLayerPanel extends LitElement {
         closable: { type: Boolean },
         canCompare: { type: Boolean, attribute: 'can-compare' },
         comparing: { type: Boolean },
+        labels: { attribute: false },
     };
 
     static override readonly styles = [
@@ -99,6 +123,37 @@ export class HcmLayerPanel extends LitElement {
             .compare {
                 align-self: flex-start;
             }
+
+            .labels h3 {
+                margin: 0 0 4px;
+                color: var(--md-sys-color-primary, CanvasText);
+                font-size: var(--md-sys-typescale-title-small-size, 0.875rem);
+                font-weight: var(--md-sys-typescale-title-small-weight, 500);
+                line-height: var(--md-sys-typescale-title-small-line-height, 1.25rem);
+            }
+
+            .labels ul {
+                padding: 0;
+                margin: 0;
+                list-style: none;
+            }
+
+            .labels li {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                justify-content: space-between;
+
+                /* 48 px rows: each switch's touch target stays its own, none reaches over its neighbour (the tour's target-size check). */
+                padding-block: 8px;
+            }
+
+            .labels p {
+                margin: 4px 0 0;
+                color: var(--md-sys-color-on-surface-variant, CanvasText);
+                font-size: var(--md-sys-typescale-body-small-size, 0.75rem);
+                line-height: var(--md-sys-typescale-body-small-line-height, 1rem);
+            }
         `,
     ];
 
@@ -113,6 +168,8 @@ export class HcmLayerPanel extends LitElement {
     declare canCompare: boolean;
     /** The visitor compares: the button closes compare. */
     declare comparing: boolean;
+    /** The basemap's own labels; null: no map (no WebGL), no group. */
+    declare labels: LayerPanelLabels | null;
 
     constructor() {
         super();
@@ -124,6 +181,7 @@ export class HcmLayerPanel extends LitElement {
         this.closable = true;
         this.canCompare = false;
         this.comparing = false;
+        this.labels = null;
     }
 
     override render(): TemplateResult {
@@ -156,11 +214,38 @@ export class HcmLayerPanel extends LitElement {
                 .shownText=${translate(locale, 'layers.shown')}
                 .hiddenText=${translate(locale, 'layers.hidden')}
             ></hcm-overlay-list>
-            ${this.#compareButton(locale)}
+            ${this.#mapLabels(manifest, locale)} ${this.#compareButton(locale)}
             <ul class="attribution">
                 ${attributionLines(this.overlays, manifest, locale).map((line) => html`<li>${line}</li>`)}
             </ul>
         </div>`;
+    }
+
+    #mapLabels(manifest: Manifest, locale: Locale): TemplateResult {
+        const kinds = this.labels?.available ?? [];
+        if (kinds.length === 0) {
+            return EMPTY;
+        }
+        return html`<div class="labels" role="group" aria-labelledby="map-labels">
+            <h3 id="map-labels">${translateMapLabels(locale, 'mapLabels.group')}</h3>
+            <ul>
+                ${kinds.map((kind) => this.#mapLabel(kind, locale))}
+            </ul>
+            <p>${labelsNote(manifest, locale)}</p>
+        </div>`;
+    }
+
+    #mapLabel(kind: MapLabelKind, locale: Locale): TemplateResult {
+        const name = translateMapLabels(locale, LABEL_NAMES[kind]);
+        const onChange = (event: CustomEvent<{ readonly checked: boolean }>): void => {
+            event.stopPropagation();
+            const detail: MapLabelDetail = { kind, visible: event.detail.checked };
+            this.dispatchEvent(new CustomEvent('hcm-map-label', { bubbles: true, composed: true, detail }));
+        };
+        return html`<li>
+            <span>${name}</span>
+            <hcm-switch .checked=${this.labels?.shown[kind] === true} .label=${name} @hcm-change=${onChange}></hcm-switch>
+        </li>`;
     }
 
     #compareButton(locale: Locale): TemplateResult {

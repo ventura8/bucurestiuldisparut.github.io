@@ -4,20 +4,22 @@
  * photos (filtered by the timeline), one vector overlay per POI category in the `top` slot; visibility and opacity
  * whenever an overlay changes (the adapter coalesces opacity to one paint per animation frame); a language switch
  * also reaches Mapbox's own labels and the basemap's (`setLocale`). The overlays drawn are `displayedOverlays`: on a
- * compact window, swipe compare's toggle may show the compared side's historical layer instead (M4, V06).
+ * compact window, swipe compare's toggle may show the compared side's historical layer instead (M4, V06). The basemap's
+ * own labels follow the visitor's choice on either map (`map-labels.ts`, V31).
  */
 import { findOverlay, PHOTOS_OVERLAY_ID, rasterAdjustmentPaint, type Manifest, type Overlay } from '@hcm/shared';
-import type { MapPort } from '@hcm/ui/map';
+import type { ViewerMapPort } from '@hcm/ui/map';
 
+import { drawMapLabels } from './map-labels.js';
 import { photoFeatures, poiSpecs, rasterSpec } from './map-specs.js';
 import { displayedOverlays, type ViewerState } from './state.js';
 
 export class MapSync {
-    readonly #map: MapPort;
+    readonly #map: ViewerMapPort;
     readonly #assetBase: string | undefined;
 
     /** `assetBase`: the manifest's absolute address, for relative asset URLs (undefined: relative to the page). */
-    constructor(map: MapPort, assetBase: string | undefined) {
+    constructor(map: ViewerMapPort, assetBase: string | undefined) {
         this.#map = map;
         this.#assetBase = assetBase;
     }
@@ -39,6 +41,7 @@ export class MapSync {
             this.#map.setOverlayOpacity(photos.id, photos.opacity);
         }
         this.#features(manifest, state);
+        drawMapLabels(this.#map, state.mapLabels.shown);
     }
 
     /** Applies the difference between `previous` and `next` (same manifest). */
@@ -49,6 +52,9 @@ export class MapSync {
         }
         this.#overlays(displayedOverlays(previous), displayedOverlays(next));
         this.#yearAndLanguage(previous, next, manifest);
+        if (next.mapLabels.shown !== previous.mapLabels.shown) {
+            drawMapLabels(this.#map, next.mapLabels.shown);
+        }
     }
 
     /** A new year or language redraws the photos and POIs; a new language also relabels Mapbox's own controls. */

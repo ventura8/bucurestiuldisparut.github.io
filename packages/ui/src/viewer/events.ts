@@ -8,14 +8,23 @@
  * - `hcm-photo-open` and `hcm-poi-open` when a photo's or a POI's details open;
  * - `hcm-compare-change` (M4, V06) when swipe compare opens, closes, switches between `swipe` and `toggle` (the window
  *   class), changes its compared side or settles its divider (a drag fires it once, on release); a compare the URL hash
- *   opens fires it after `hcm-ready`.
+ *   opens fires it after `hcm-ready`;
+ * - `hcm-map-labels-change` (V31) when the basemap's own labels change; a link's choice fires it after `hcm-ready`.
  */
 import type { Manifest, Overlay } from '@hcm/shared';
+import type { MapLabels } from '@hcm/shared/map-labels';
 
 import type { ViewerError, ViewerState } from './store-port.js';
 
 type PublicEventType =
-    'hcm-ready' | 'hcm-error' | 'hcm-layer-change' | 'hcm-overlay-change' | 'hcm-photo-open' | 'hcm-poi-open' | 'hcm-compare-change';
+    | 'hcm-ready'
+    | 'hcm-error'
+    | 'hcm-layer-change'
+    | 'hcm-overlay-change'
+    | 'hcm-photo-open'
+    | 'hcm-poi-open'
+    | 'hcm-compare-change'
+    | 'hcm-map-labels-change';
 
 export interface PublicEvent {
     readonly type: PublicEventType;
@@ -161,6 +170,20 @@ function compareEvents(previous: ViewerState, state: ViewerState): PublicEvent[]
     return same ? [] : [{ type: 'hcm-compare-change', detail: { ...after } }];
 }
 
+/** The labels as announced: before the viewer is ready, the city's default (so a link's choice fires after `hcm-ready`). */
+function announcedLabels(state: ViewerState): MapLabels {
+    return state.status === 'ready' ? state.mapLabels.shown : state.mapLabels.defaults;
+}
+
+function mapLabelsEvents(previous: ViewerState, state: ViewerState): PublicEvent[] {
+    const before = announcedLabels(previous);
+    const after = announcedLabels(state);
+    const same = before.streets === after.streets && before.pois === after.pois;
+    return same || state.status !== 'ready'
+        ? []
+        : [{ type: 'hcm-map-labels-change', detail: { streets: after.streets, pois: after.pois } }];
+}
+
 /** Every public event a store transition from `previous` to `state` causes, in order. */
 export function viewerEvents(
     previous: ViewerState,
@@ -173,5 +196,6 @@ export function viewerEvents(
         ...changeEvents(previous, state, tracker),
         ...selectionEvents(previous, state),
         ...compareEvents(previous, state),
+        ...mapLabelsEvents(previous, state),
     ];
 }

@@ -10,7 +10,7 @@ import {
     overlayGroups,
     overlayItems,
 } from '../../src/viewer/hcm-layer-panel.js';
-import { defineKitDoubles, mountElement, recordEvents, shadowQuery, shadowText } from './doubles.js';
+import { defineKitDoubles, fireKitEvent, mountElement, recordEvents, shadowQuery, shadowText } from './doubles.js';
 import { testManifest } from './fixtures.js';
 
 interface OverlayListProps {
@@ -30,6 +30,12 @@ async function panel(properties: Partial<HcmLayerPanel> = {}): Promise<HcmLayerP
         open: true,
         ...properties,
     });
+}
+
+/** The Map labels switches as the panel set them. */
+function switches(element: HcmLayerPanel): readonly { readonly label: string; readonly checked: boolean }[] {
+    const found = element.shadowRoot?.querySelectorAll('hcm-switch') ?? [];
+    return [...found].map(({ label, checked }) => ({ label, checked }));
 }
 
 describe('overlay list data', () => {
@@ -184,5 +190,57 @@ describe('<hcm-layer-panel>', () => {
         await panel({ mode: 'docked' });
 
         await expect.element(page.getByRole('button', { name: 'Compară' })).not.toBeInTheDocument();
+    });
+
+    describe('Map labels (V31)', () => {
+        const available = ['streets', 'pois'] as const;
+        const shown = { streets: true, pois: false };
+
+        it('happyPath_aSwitchPerLabelTheBasemapHasWithTheirState', async () => {
+            const element = await panel({ mode: 'docked', labels: { shown, available } });
+
+            expect(shadowText(element)).toContain('Etichetele hărții');
+            expect(shadowQuery(element, '[role="group"]').getAttribute('aria-labelledby')).toBe('map-labels');
+            expect(switches(element)).toEqual([
+                { label: 'Numele străzilor', checked: true },
+                { label: 'Puncte de interes', checked: false },
+            ]);
+        });
+
+        it('happyPath_aSwitchFiresItsKindAndStopsTheKitsEvent', async () => {
+            const element = await panel({ mode: 'docked', labels: { shown, available } });
+            const events = recordEvents(element, 'hcm-map-label');
+            const inner = recordEvents(element, 'hcm-change');
+
+            fireKitEvent(shadowQuery(element, 'hcm-switch'), 'hcm-change', { checked: false });
+
+            expect(events.map((event) => (event as CustomEvent<unknown>).detail)).toEqual([{ kind: 'streets', visible: false }]);
+            expect(inner).toEqual([]);
+        });
+
+        it('happyPath_theNoteTellsThemFromTheCitysPlacesOnlyWhenTheCityHasPlaces', async () => {
+            const withPlaces = await panel({ mode: 'docked', locale: 'en', labels: { shown, available } });
+            expect(shadowText(withPlaces)).toContain("The Places above are this site's own");
+
+            const city = testManifest();
+            const without = { ...city, poiCategories: [], pois: [] };
+            const element = await panel({ mode: 'docked', locale: 'en', manifest: without, labels: { shown, available } });
+            expect(shadowText(element)).toContain("Text on today's map");
+            expect(shadowText(element)).not.toContain('Places above');
+        });
+
+        it('happyPath_onlyTheKindTheBasemapHasGetsASwitch', async () => {
+            const element = await panel({ mode: 'docked', labels: { shown, available: ['pois'] } });
+
+            expect(switches(element)).toEqual([{ label: 'Puncte de interes', checked: false }]);
+        });
+
+        it('badPath_aBasemapWithoutThePropertiesOrNoMapHasNoGroup', async () => {
+            for (const labels of [{ shown, available: [] }, { shown, available: null }, null]) {
+                const element = await panel({ mode: 'docked', labels });
+
+                expect(element.shadowRoot?.querySelector('.labels')).toBeNull();
+            }
+        });
     });
 });

@@ -7,6 +7,7 @@
  * are injected (`MountEnvironment`; `index.ts` wires the browser's), so the node tests drive every path with fakes.
  */
 import { DEFAULT_CONTAINER_SELECTOR, resolveLocale, translate, type EngineConfig, type Locale, type Logger } from '@hcm/shared';
+import type { MapLabels } from '@hcm/shared/map-labels';
 import {
     installFonts,
     type HcmMapViewer,
@@ -16,7 +17,7 @@ import {
     type ViewerReady,
     type ViewerStorePort,
 } from '@hcm/ui';
-import { createMapboxPort, type MapboxGl, type MapPort, type Unsubscribe } from '@hcm/ui/map';
+import { createViewerMapPort, type MapboxGl, type Unsubscribe, type ViewerMapPort } from '@hcm/ui/map';
 
 import { configFromAttributes, readConfig, type Result } from './config/load.js';
 import { urlLocaleOf } from './core/boot.js';
@@ -129,6 +130,12 @@ class Controller implements HistoricCityMapController {
         });
     }
 
+    setMapLabels(labels: Partial<MapLabels>): void {
+        this.#run(() => {
+            this.#store.setMapLabels(labels);
+        });
+    }
+
     destroy(): void {
         if (this.#destroyed) {
             return;
@@ -181,6 +188,7 @@ function failedController(code: ViewerError['code'], teardown: () => void): Hist
         openCompare: ignore,
         setComparePosition: ignore,
         closeCompare: ignore,
+        setMapLabels: ignore,
         destroy: () => {
             if (!removed) {
                 removed = true;
@@ -204,7 +212,7 @@ interface MountDocument {
 export interface MountEnvironment {
     readonly document: MountDocument;
     /** The Mapbox MapPort (throws when Mapbox GL JS is missing from the page). */
-    readonly createMap: () => MapPort;
+    readonly createMap: () => ViewerMapPort;
     readonly createTelemetry: (cityId: string | undefined) => TelemetryPort;
     readonly createStore: (deps: ViewerDeps) => ViewerStore;
     readonly fetch: ViewerDeps['fetch'];
@@ -255,7 +263,7 @@ function fail(viewer: HcmMapViewer, error: ViewerError, locale: Locale): Histori
     });
 }
 
-function createMap(env: MountEnvironment): MapPort | null {
+function createMap(env: MountEnvironment): ViewerMapPort | null {
     try {
         return env.createMap();
     } catch (error: unknown) {
@@ -486,7 +494,7 @@ export function browserEnvironment(
 ): MountEnvironment {
     return {
         document: win.document,
-        createMap: () => createMapboxPort(mapboxOf(win, release.mapboxGlVersion)),
+        createMap: () => createViewerMapPort(mapboxOf(win, release.mapboxGlVersion)),
         createTelemetry: telemetryFactory(win, log, release.engineVersion),
         createStore: createViewerStore,
         fetch: (url, init) => win.fetch(url, init),

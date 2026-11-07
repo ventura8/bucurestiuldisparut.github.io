@@ -62,6 +62,7 @@ describe('the version page', () => {
         answer(callables, 'imagery.choose', () => ({ state: 'awaiting_approval', studioPath: 'rasters/x/studio.tif' }));
         answer(callables, 'imagery.studioDone', () => ({ tilesetId: 'e2e.hcm-bucharest-x', layerId: 'x' }));
         answer(callables, 'imagery.retry', () => ({ status: 'queued', attempt: 1 }));
+        answer(callables, 'imagery.locateAgain', () => ({ status: 'queued', attempt: 1 }));
         version.show(ID);
 
         const done = [
@@ -70,17 +71,20 @@ describe('the version page', () => {
             await version.choose('studio'),
             await version.studioDone(),
             await version.retry(),
+            await version.locateAgain(),
         ];
 
-        expect(done).toEqual([true, true, true, true, true]);
+        expect(done).toEqual([true, true, true, true, true, true]);
         expect(callsOf(callables, 'imagery.choose')).toEqual([{ cityId: 'bucharest', versionId: ID, choice: 'studio' }]);
         expect(callsOf(callables, 'imagery.retry')).toEqual([{ cityId: 'bucharest', jobId: ID }]);
+        expect(callsOf(callables, 'imagery.locateAgain')).toEqual([{ cityId: 'bucharest', versionId: ID }]);
         expect(notices.map((notice) => notice.key)).toEqual([
             'adminContent.imagery.notice.approved',
             'adminContent.imagery.notice.rejected',
             'adminContent.imagery.notice.chose.studio',
             'adminContent.imagery.notice.studioLinked',
             'adminContent.imagery.notice.retrying',
+            'adminContent.imagery.notice.locating',
         ]);
     });
 });

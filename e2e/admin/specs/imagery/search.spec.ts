@@ -202,8 +202,9 @@ test(
         for (const entityId of ALL_SCENES) {
             await imagery.seedScene(entityId, FRESH_HARVEST);
         }
-        // A document that fails its schema: its read stops with a failure, which is not "no such scene".
-        const [routed] = PAID_FRAMES;
+        // A document that fails its schema: its read stops with a failure, which is not "no such scene". A frame whose browse
+        // image USGS serves: on the paid twin the page's copy then ended in a 503 that raced the test's end (LESSONS).
+        const routed = 'DS1035-1057DA023';
         await adminWorld.emulators.setDocument(`cities/${imagery.city}/usgsScenes/${routed}`, { broken: true });
         await page.goto(adminPath(lang, `imagery/scene/${routed}`));
 
@@ -211,7 +212,7 @@ test(
         await expect(detail(page).getByText(imageryText(lang, 'adminContent.imagery.sceneNotFound'))).toHaveCount(0);
         await expectStateSound(page, adminVisit('imagery.scene-unread', lang));
 
-        await imagery.seedScene(routed, FRESH_HARVEST);
+        await imagery.seedScene(routed, FRESH_HARVEST, { downloadAvailable: false });
         // A first answer can still be the browser's cached copy of the broken document, which fails the read again: as a
         // person would, click again until the server's copy opens.
         await expect(async () => {
@@ -220,6 +221,10 @@ test(
                 .click({ timeout: 2_000 });
             await expect(detail(page).locator(`[data-scene="${routed}"]`)).toBeVisible({ timeout: 2_000 });
         }).toPass({ timeout: FUNCTIONS_TIMEOUT_MS });
+        // The picture settled first: with it still on its way, no alert proved nothing.
+        await expect(
+            detail(page).getByRole('img', { name: imageryText(lang, 'adminContent.imagery.browseAlt', { name: routed }) }),
+        ).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
         await expect(detail(page).getByRole('alert')).toHaveCount(0);
     },
 );

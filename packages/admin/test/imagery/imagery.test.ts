@@ -13,6 +13,7 @@ import {
     CITY,
     callsOf,
     cityDoc,
+    type FakeFiles,
     imageryWorld,
     JOBS,
     jobDoc,
@@ -22,6 +23,17 @@ import {
     VERSIONS,
     versionDoc,
 } from './world.js';
+
+/** Counts what is read of each path, while the fake answers as before. */
+function countingReads(files: FakeFiles): { of(path: string): number } {
+    const seen = new Map<string, number>();
+    const read = files.read.bind(files);
+    files.read = (path) => {
+        seen.set(path, (seen.get(path) ?? 0) + 1);
+        return read(path);
+    };
+    return { of: (path) => seen.get(path) ?? 0 };
+}
 
 const VERSION = 'job-1966-0712';
 const PREVIEW = 'rasters/bucharest/kh-4a-corona-1966/job-1966-0712/preview.png';
@@ -231,7 +243,7 @@ describe('the Imagery area: versions, the map and uploads', () => {
         imagery.intents.retryBrowse('b');
         await settle();
 
-        expect(imagery.state.browse['b']).toEqual({ status: 'ready', url: 'blob:usgs-browse/corona2/b.jpg' });
+        expect(imagery.state.browse['b']).toMatchObject({ status: 'ready', url: 'blob:usgs-browse/corona2/b.jpg' });
         imagery.close();
     });
 
@@ -297,5 +309,47 @@ describe('the routed item', () => {
             null,
             null,
         ]);
+    });
+});
+
+describe('Locate again on the version page', () => {
+    it('happyPath_theIntentAsksTheServerForTheOpenVersion', async () => {
+        const { services, callables } = seeded();
+        answer(callables, 'imagery.locateAgain', () => ({ status: 'queued', attempt: 1 }));
+        const imagery = IMAGERY_MODULE.create(services);
+        imagery.open(['version', VERSION]);
+
+        await expect(imagery.intents.locateAgain()).resolves.toBe(true);
+
+        expect(callsOf(callables, 'imagery.locateAgain')).toEqual([{ cityId: 'bucharest', versionId: VERSION }]);
+        imagery.close();
+    });
+});
+
+describe('the browse image on the map', () => {
+    it('badPath_listWritesDuringAnOpenDoNotReadTheFullSizeImageAgain @S-A11-HAPPY-HUGE-THUMBNAIL', async () => {
+        const { handle } = await mapboxHandle();
+        const world = seeded({ maps: factoryOf([{ ok: true, map: handle }]) });
+        const reads = countingReads(world.files);
+        const imagery = IMAGERY_MODULE.create(world.services);
+
+        world.files.hold = true;
+        imagery.open(['scene', 'a']);
+        imagery.intents.attachMap(host());
+        await settle();
+        for (const entity of ['c', 'd', 'e']) {
+            world.store.put(SCENES(entity), sceneDoc(entity, { browse: { state: 'copied', path: `usgs-browse/corona2/${entity}.jpg` } }));
+            await settle();
+        }
+        const whileHeld = reads.of('usgs-browse/corona2/a.jpg');
+        world.files.hold = false;
+        world.files.flush();
+        await settle();
+
+        // The row's thumbnail, the page's preview and the map's one decode, however many writes came meanwhile.
+        expect(whileHeld).toBeLessThanOrEqual(3);
+        expect(reads.of('usgs-browse/corona2/a.jpg')).toBe(3);
+        expect(world.services.pictures).toMatchObject({ decoded: [2048] });
+        imagery.close();
     });
 });

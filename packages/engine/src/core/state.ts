@@ -15,6 +15,7 @@ import {
 import type { WindowClass } from '@hcm/ui';
 
 import type { ConsentState } from '../telemetry/telemetry-port.js';
+import { mapLabelsOf, NO_MAP_LABELS, type MapLabelsState } from './map-labels.js';
 import { layerIdsOfYear, snapYear, timelineYears, yearOfLayers } from './timeline.js';
 
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -72,6 +73,8 @@ export interface ViewerState {
     readonly toast: Toast | null;
     /** Swipe compare, or null when the visitor does not compare (M4). */
     readonly compare: CompareView | null;
+    /** The basemap's own labels, as the visitor chose them (`map-labels.ts`); the compared side draws the same. */
+    readonly mapLabels: MapLabelsState;
 }
 
 const NO_VIEW: MapView = { center: [0, 0], zoom: 0, bearing: 0 };
@@ -96,6 +99,7 @@ export function initialState(locale: Locale, theme: ThemeMode, consent: ConsentS
         consent,
         toast: null,
         compare: null,
+        mapLabels: NO_MAP_LABELS,
     };
 }
 
@@ -119,6 +123,7 @@ export function withManifest(state: ViewerState, manifest: Manifest): ViewerStat
         lightbox: false,
         sheet: 'none',
         compare: null,
+        mapLabels: mapLabelsOf(manifest),
     };
 }
 

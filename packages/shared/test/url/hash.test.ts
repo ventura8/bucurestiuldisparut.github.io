@@ -213,3 +213,29 @@ describe('compare in the hash', () => {
         expect(decodeHash(hash).compare).toEqual(compare);
     });
 });
+
+describe('map labels in the hash (V31)', () => {
+    it('happyPath_namesTheDrawnKindsInTheirOrderAndNoneIsEmpty', () => {
+        expect(encodeHash({ labels: { streets: true, pois: false } })).toBe('#labels=streets');
+        expect(encodeHash({ labels: { streets: true, pois: true } })).toBe('#labels=streets,pois');
+        expect(encodeHash({ labels: { streets: false, pois: false } })).toBe('#labels=');
+    });
+
+    it('happyPath_decodesBackInAnyOrderBesideTheOtherParameters', () => {
+        expect(decodeHash('#14/44.4/26.1&labels=pois,streets').labels).toEqual({ streets: true, pois: true });
+        expect(decodeHash('#labels=').labels).toEqual({ streets: false, pois: false });
+        expect(decodeHash('#14/44.4/26.1&labels=pois&lang=en')).toMatchObject({ labels: { streets: false, pois: true }, lang: 'en' });
+    });
+
+    it('happyPath_anOldLinkWithoutItHasNoLabels', () => {
+        expect(decodeHash('#14/44.4/26.1&layers=a&op=a:50').labels).toBeUndefined();
+        expect(encodeHash({ lang: 'en' })).toBe('#lang=en');
+    });
+
+    it('badPath_anUnknownWordIsIgnoredAndOnlyUnknownWordsAreIgnoredAsAWhole', () => {
+        expect(decodeHash('#labels=streets,transit').labels).toEqual({ streets: true, pois: false });
+        expect(decodeHash('#labels=transit')).toEqual({ legacy: false });
+        expect(decodeHash('#labels=__proto__')).toEqual({ legacy: false });
+        expect(decodeHash('#labels=streets&labels=nonsense').labels).toEqual({ streets: true, pois: false });
+    });
+});

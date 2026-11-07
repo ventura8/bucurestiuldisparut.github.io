@@ -163,7 +163,7 @@ export class ImageryMap {
     async showPicture(id: string, path: string, corners: Corners, opacity: number): Promise<void> {
         this.#request += 1;
         const request = this.#request;
-        const picture = await this.#decode(path);
+        const picture = await this.#decode(path, request);
         if (picture !== null && request === this.#request) {
             this.overlays.show({ id, picture, corners, opacity });
         }
@@ -180,12 +180,9 @@ export class ImageryMap {
         this.#area.port?.fitBounds(box, { padding: 32 });
     }
 
-    async #decode(path: string): Promise<Picture | null> {
-        const pictures = this.#deps.pictures;
-        if (pictures === null) {
-            return null;
-        }
-        const blob = await this.#deps.files.read(path);
-        return blob === null ? null : pictures.decode(blob, PICTURE_MAX_SIDE);
+    /** In the pictures' queue; one asked for since then is what the map shows, so an older turn reads nothing. */
+    async #decode(path: string, request: number): Promise<Picture | null> {
+        const read = (): Promise<Blob | null> => (request === this.#request ? this.#deps.files.read(path) : Promise.resolve(null));
+        return (await this.#deps.pictures?.decode(read, PICTURE_MAX_SIDE)) ?? null;
     }
 }

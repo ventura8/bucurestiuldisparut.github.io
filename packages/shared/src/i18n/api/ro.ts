@@ -96,6 +96,8 @@ export const ro = {
     'apiError.imagery.addressRefused': 'Adresa nu este permisă: folosește o adresă https publică.',
     'apiError.imagery.outOfMemory': 'Cadrul nu a încăput în memoria procesării, nici pe mașina mare.',
     'apiError.imagery.attemptsExhausted': 'Procesarea s-a oprit după {attempts} încercări.',
+    'apiError.imagery.locateInputsGone': 'Fișierele de lucru și livrarea USGS au expirat. Adaugă puncte sau anulează și importă din nou.',
+    'apiError.imagery.locateFilesElsewhere': 'Fișierele de lucru au rămas unde a rulat cadrul. Mută-l înapoi sau adaugă puncte.',
     'apiError.imagery.mapboxFinishing': 'Mapbox procesează deja stratul: nu mai poate fi anulat.',
     'apiError.imagery.workerLost': 'Calculatorul tău a încetat să lucreze la această sarcină; o reia când revine.',
     'apiError.imagery.joinMixedFrames': 'Se pot uni doar cadre din aceeași zi și de la aceeași cameră.',

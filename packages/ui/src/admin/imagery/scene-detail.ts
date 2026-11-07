@@ -11,40 +11,50 @@ import { html, type TemplateResult } from 'lit';
 
 import { errorTemplate, loadingTemplate } from '../editing/states.js';
 import { contentText, noticeOf } from '../shell/text.js';
+import type { AdminNoticeInputPort } from '../notice-port.js';
 import type { ImageryContext } from './context.js';
 import type { SceneItemPort } from './imagery-port.js';
 import { datasetText, dayText, numberText, reasonText } from './imagery-text.js';
 import { lazyJoin } from './join/lazy-card.js';
 import { lazyOrderCard } from './orders/lazy-card.js';
-import { sceneRefusal, USGS_SETUP_HREF } from './scene-refusal.js';
+import { notFoundPane } from './not-found.js';
+import { sceneRefusal, usgsSetupLink } from './scene-refusal.js';
 import { when } from './when.js';
 
+/** Why there is no image, with Try again; a preview that could not be made too: the row's small crop is not the browse image. */
+function browseFailure(context: ImageryContext, scene: SceneItemPort, error: AdminNoticeInputPort | undefined): TemplateResult {
+    return html`<p class="alert" role="alert" data-state="browse-unavailable">
+            <hcm-icon name="broken_image"></hcm-icon><span>${noticeOf(context.locale, error ?? null)}</span>
+        </p>
+        <div class="actions">
+            <hcm-button
+                variant="tonal"
+                icon="refresh"
+                @click=${() => {
+                    context.intents?.retryBrowse(scene.id);
+                }}
+                >${contentText(context.locale, 'adminContent.common.retry')}</hcm-button
+            >
+        </div>`;
+}
+
+/** The page's picture, the row's until it is made. */
+function largest(image: { readonly url: string; readonly preview?: string | null }): string {
+    return image.preview ?? image.url;
+}
+
 function browseImage(context: ImageryContext, scene: SceneItemPort): TemplateResult {
-    const { locale, intents } = context;
     const image = context.view.browse[scene.id] ?? { status: 'loading' };
     if (image.status === 'loading') {
-        return html`<p class="note" role="status">${contentText(locale, 'adminContent.imagery.browseLoading')}</p>`;
+        return html`<p class="note" role="status">${contentText(context.locale, 'adminContent.imagery.browseLoading')}</p>`;
     }
-    if (image.status === 'failed') {
-        return html`<p class="alert" role="alert" data-state="browse-unavailable">
-                <hcm-icon name="broken_image"></hcm-icon><span>${noticeOf(locale, image.error)}</span>
-            </p>
-            <div class="actions">
-                <hcm-button
-                    variant="tonal"
-                    icon="refresh"
-                    @click=${() => {
-                        intents?.retryBrowse(scene.id);
-                    }}
-                    >${contentText(locale, 'adminContent.common.retry')}</hcm-button
-                >
-            </div>`;
-    }
-    return html`<img
-        class="browse"
-        src=${image.url}
-        alt=${contentText(locale, 'adminContent.imagery.browseAlt', { name: scene.displayId })}
-    />`;
+    return image.status === 'ready' && image.error === undefined
+        ? html`<img
+              class="browse"
+              src=${largest(image)}
+              alt=${contentText(context.locale, 'adminContent.imagery.browseAlt', { name: scene.displayId })}
+          />`
+        : browseFailure(context, scene, image.error);
 }
 
 function fact(locale: Locale, key: Parameters<typeof contentText>[1], value: string): TemplateResult {
@@ -88,7 +98,7 @@ function downloadsPending(context: ImageryContext): TemplateResult {
             <hcm-icon name="schedule"></hcm-icon>
             <div class="alert-body">
                 <p>${noticeOf(locale, { key: 'apiError.usgs.accessPending' })}</p>
-                <p><a href=${USGS_SETUP_HREF}>${contentText(locale, 'adminContent.imagery.openUsgsSetup')}</a></p>
+                ${usgsSetupLink(locale)}
             </div>
         </div>`;
 }
@@ -141,10 +151,7 @@ export function importRefusal(context: ImageryContext, scene: SceneItemPort): Te
 }
 
 function notFound(context: ImageryContext): TemplateResult {
-    return html`<div class="pane">
-        <h2 tabindex="-1" data-detail-heading>${contentText(context.locale, 'adminContent.imagery.sceneNotFound')}</h2>
-        <p><a href=${context.href([])}>${contentText(context.locale, 'adminContent.imagery.backToList')}</a></p>
-    </div>`;
+    return notFoundPane(context, 'adminContent.imagery.sceneNotFound');
 }
 
 function sceneBody(context: ImageryContext, scene: SceneItemPort): TemplateResult {

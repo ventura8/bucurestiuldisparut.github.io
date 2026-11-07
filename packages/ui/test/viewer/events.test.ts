@@ -161,3 +161,30 @@ describe('viewerEvents: swipe compare (M4, V06)', () => {
         expect(viewerEvents(loading, open, tracker, '1.0.0').map((event) => event.type)).toEqual(['hcm-ready', 'hcm-compare-change']);
     });
 });
+
+describe('viewerEvents: map labels (V31)', () => {
+    const tracker = new OverlayChangeTracker();
+    const ready = readyState();
+    const hidden = { ...ready, mapLabels: { ...ready.mapLabels, shown: { streets: false, pois: true } } };
+
+    it('happyPath_aChangeFiresOnceWithBothLabels', () => {
+        expect(viewerEvents(ready, hidden, tracker, '1.0.0')).toEqual([
+            { type: 'hcm-map-labels-change', detail: { streets: false, pois: true } },
+        ]);
+        expect(viewerEvents(hidden, { ...hidden }, tracker, '1.0.0')).toEqual([]);
+    });
+
+    it('happyPath_aLinksChoiceFiresAfterTheReadyEvent', () => {
+        const loading = { ...hidden, status: 'loading' as const };
+
+        expect(viewerEvents(loading, hidden, tracker, '1.0.0').map((event) => event.type)).toEqual(['hcm-ready', 'hcm-map-labels-change']);
+    });
+
+    it('badPath_nothingFiresBeforeTheViewerIsReady', () => {
+        const loading = { ...ready, status: 'loading' as const };
+        const reloading = { ...hidden, status: 'loading' as const };
+
+        expect(viewerEvents(loading, reloading, tracker, '1.0.0')).toEqual([]);
+        expect(viewerEvents(hidden, reloading, tracker, '1.0.0')).toEqual([]);
+    });
+});

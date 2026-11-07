@@ -339,16 +339,18 @@ describe('the sidecar lives only while a frame wants it', () => {
         writeFileSync(join(home, 'ai-image'), 'one@sha256:a\ntwo@sha256:b\n');
         writeFileSync(join(bin, 'docker'), `#!/bin/sh\necho "$*" >>"${log}"\nexit 0\n`);
         chmodSync(join(bin, 'docker'), 0o755);
+        // A stand-in: the real `pkill -f` matches by command line, so it also killed the supervisor another test file ran beside this one.
+        writeFileSync(join(bin, 'pkill'), `#!/bin/sh\necho "pkill $*" >>"${log}"\nexit 0\n`);
+        chmodSync(join(bin, 'pkill'), 0o755);
         const script = join(folder, 'hcm-worker-remove.sh');
         writeFileSync(script, (await file('linux', 'uninstall')).body);
 
         spawnSync('/bin/sh', [script], { encoding: 'utf8', env: { PATH: `${bin}:/usr/bin:/bin`, HOME: folder }, timeout: 20_000 });
 
-        const removed = readFileSync(log, 'utf8')
-            .trim()
-            .split('\n')
-            .filter((call) => call.startsWith('image rm '));
+        const calls = readFileSync(log, 'utf8').trim().split('\n');
+        const removed = calls.filter((call) => call.startsWith('image rm '));
         expect(removed).toEqual(['image rm one@sha256:a', 'image rm two@sha256:b']);
+        expect(calls).toContain('pkill -f hcm-worker.sh run');
         expect(existsSync(home)).toBe(false);
     });
 

@@ -28,6 +28,7 @@ export const ENGINE_EVENTS = [
     'hcm-photo-open',
     'hcm-poi-open',
     'hcm-compare-change',
+    'hcm-map-labels-change',
 ];
 
 /** Runs in the page, serialized by Playwright: it must not reference anything outside its own body. */

@@ -16,6 +16,7 @@ describe('the map entries', () => {
                 'PHOTOS_OVERLAY_ID',
                 'browserAdapterEnv',
                 'createMapboxPort',
+                'createViewerMapPort',
                 'nativeMap',
                 'loadMapboxGl',
             ]),

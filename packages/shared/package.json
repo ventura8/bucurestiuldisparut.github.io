@@ -18,6 +18,10 @@
         "./admin-worker-local": {
             "types": "./src/i18n/admin-worker-local/index.ts",
             "default": "./src/i18n/admin-worker-local/index.ts"
+        },
+        "./map-labels": {
+            "types": "./src/i18n/map-labels/index.ts",
+            "default": "./src/i18n/map-labels/index.ts"
         }
     },
     "dependencies": {

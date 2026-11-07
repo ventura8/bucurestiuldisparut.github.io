@@ -15,6 +15,7 @@ import {
     type MapView,
     type MessageKey,
 } from '@hcm/shared';
+import type { MapLabels } from '@hcm/shared/map-labels';
 import { isCompactHeight, windowClassFor } from '@hcm/ui';
 import { Listeners, type Unsubscribe } from '@hcm/ui/map';
 
@@ -23,6 +24,7 @@ import { Boot, type BootHost } from './boot.js';
 import { CompareDriver, type CompareDriverHost } from './compare-driver.js';
 import type { MountedMap } from './compare-port.js';
 import type { ViewerDeps } from './deps.js';
+import { withRequestedLabels } from './map-labels.js';
 import { Preferences } from './preferences.js';
 import { isCompareLayer, withYear, type SheetName, type ThemeMode, type ViewerState } from './state.js';
 import { encodeViewerHash, HashWriter } from './url-sync.js';
@@ -73,6 +75,8 @@ export interface ViewerActions {
     setComparePosition(position: number): void;
     /** M4: closes compare; its second map goes with it. */
     closeCompare(): void;
+    /** The basemap's own labels, on every map, live: a kind this basemap does not have, or no map yet, is ignored (V31). */
+    setMapLabels(labels: Partial<MapLabels>): void;
 }
 
 export interface ViewerStore extends ViewerActions {
@@ -343,6 +347,14 @@ class Store implements ViewerStore, BootHost, CompareDriverHost {
     closeCompare(): void {
         if (this.#state.compare !== null) {
             this.set({ ...this.#state, compare: null });
+            this.hash.schedule();
+        }
+    }
+
+    setMapLabels(labels: Partial<MapLabels>): void {
+        const mapLabels = withRequestedLabels(this.#state.mapLabels, labels);
+        if (mapLabels !== this.#state.mapLabels) {
+            this.set({ ...this.#state, mapLabels });
             this.hash.schedule();
         }
     }

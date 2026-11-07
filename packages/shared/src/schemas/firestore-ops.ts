@@ -231,6 +231,8 @@ export const jobDocSchema = z.strictObject({
     finishedAt: timestampSchema.optional(),
     /** M7 (`docs/research/M7-local-worker.md` §3): where it runs, decided by the dispatcher or the admin (`imagery.runOn`). */
     runOn: z.enum(RUN_PLACES).optional(),
+    /** The place that holds this job's files when it was moved after parking for points: the other place cannot read them. */
+    filesOn: z.enum(RUN_PLACES).optional(),
     /** M7: the local worker that claimed it last (`worker.claim`); its writes are accepted while it holds the job. */
     worker: z.strictObject({ id: z.string().regex(WORKER_ID_PATTERN), uid: uidSchema, claimedAt: timestampSchema }).optional(),
     /** M7 (§4.3): the admin's OK to run it in the cloud past the month's free tier. */

@@ -2338,3 +2338,39 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: following `measuredPct` from `proof._spread` to `approval.ts`; a simulated corner of a town confirmed it (S-P07-BAD-WIDE-SPREAD, S-P07-BAD-MATCHER-FIGURES). A real frame in that state was not observed.
     - Fix and pin: the window's own figure for a wide proof; figures of another map no longer recorded for this fit, so the card has none to show.
     - **When a measurement's ground changes, follow every reader of its result: a figure is true only of what it was measured over.**
+386. **Two switches in a row, each with the other's touch target.**
+    - Seen: 2026-11-07, the Map labels group's first draft on a 360 px window: "Numele străzilor" kept only 52 x 40 of its 48 px touch target, because the next switch's reached over it. The overlay list never met this: a slider stands between its switches.
+    - Cause: a row of 40 px under a target of 48 px; the switch's `::after` is wider than its button by design, so neighbours must leave room for it.
+    - Found by: the tour's target-size check while scrolling through the sheet (`expectStateSound`, `viewer.layers-full`), which a unit test and the functional spec both passed.
+    - Fix and pin: 48 px rows in `hcm-layer-panel`; the tour's `layers-map-labels` state.
+    - **A control's touch target is a claim on the space around it: stack two and the row height is the target's, not the control's.**
+387. **A 64 px thumbnail that cost 288 MB of pixels a row.**
+    - Seen: 2026-11-07, live: the Imagery list froze the tab and Chrome's screenshots timed out. USGS's browse copies reach 37,440 x 1,920 px, and each row was an `<img>` of the file.
+    - Cause: the CSS size says how large an image is shown, not how large it is decoded; the e2e fixture is 120 x 90 px, and it never tested that.
+    - Found by: the owner's live use.
+    - Fix and pin: `createImageBitmap`'s resize, one at a time, a small JPEG (`packages/admin/src/imagery/pictures.ts`); `pictures.test.ts` pins what the decoder is asked for, `@S-A11-HAPPY-HUGE-THUMBNAIL` a 20,000 px strip in Chromium.
+    - **A fixture sized for convenience hides every cost that grows with size: test an image as large as the real source.**
+388. **A wait with no way back but to pay again.**
+    - Seen: 2026-11-07: a frame parked at `needs_gcps` under an older pipeline could not use the newer one. Retry takes failed jobs only, so the owner had to cancel and import again, which spent a daily import and a download.
+    - Cause: Retry was designed for failures. A pipeline update changes what a waiting state means, and nothing reopened one.
+    - Found by: the owner's live use.
+    - Fix and pin: `imagery.locateAgain` (S-A69-*).
+    - **Every state that waits for a person needs a way to run again without starting over: the pipeline may have learned what it was waiting to be told.**
+389. **A removal test's real `pkill` shot the supervisor of the test file beside it.**
+    - Seen: 2026-11-07: one `tests` stage failed `S-A62-BAD-STARTER-OLD-IMAGE` after 219 ms with the supervisor's log cut short by its last round; the file alone, and both files together, passed every time on an idle machine.
+    - Cause: `happyPath_theRemovalTakesEveryImageItNotedAndNoOther` ran the uninstall file with stand-ins for `docker` only, so its `pkill -f "hcm-worker.sh run"` was the image's real one, and it matches any process of the container by command line: the supervisor `starter.test.ts` was running at that moment in another Vitest worker.
+    - Found by: the failure's 219 ms ruled out the 20 s timeout; a loop of that `pkill` beside `starter.test.ts` gave the same cut-short log. The natural overlap itself was seen once only, in the loaded stage, and did not come back in 25 runs of the two files together.
+    - Fix and pin: a `pkill` stand-in that logs in that test, which now also asserts the call (`functions/test/worker/starter-sidecar.test.ts`).
+    - **A stand-in for every command that reaches outside the test's folder: `pkill -f` is global, and test files run side by side.**
+390. **"No alert" asserted while the picture was still on its way.**
+    - Seen: 2026-11-07: `S-A11-HAPPY-ROUTED-SCENE-RETRY` failed 4 runs of 16 on a console 503 from `imagery-browse` at the test's end, and passed the others.
+    - Cause: the test opened the paid twin, whose browse image USGS never serves. After Try again the page asks for its copy, so the 503 and its alert always come, and the test's last line, no alert, held only if it ran first.
+    - Found by: a targeted run, then `--repeat-each 8`.
+    - Fix and pin: a frame whose browse image is served, the same one as `S-A11-HAPPY-BROWSE-RETRY-ROUTED`; the picture must be visible before the alert is counted (`e2e/admin/specs/imagery/search.spec.ts`).
+    - **An absence proves nothing until the thing that could still bring it has settled: wait for the outcome first, then assert what is not there.**
+391. **Six ways a review of one day's work found the same two shapes of bug.**
+    - Seen: 2026-11-07, code review of the labels, Locate again and huge-preview work. The labels: a link's choice equal to the assumed default read as "no choice" on a style with its own default, so the viewer dropped a link it had written itself. Locate again: its last attempt left a frame whose saved points then failed the job for good; it searched an older pipeline's `frame.json`; moved to the other place it downloaded up to 8.7 GB under a log saying "no new download". The preview: the map's full-size decode ran beside the one-at-a-time queue, once per feed write; a failed one looked like success, and a stale opening blocked the next.
+    - Cause: an equality used as a flag (shown equal to the default means nobody chose), and a claim about where things are kept in a sentence, not in a record (the queue "one at a time" held for two of three callers; "keeps both there" held for jobs that never moved).
+    - Found by: review, each reproduced by a scratch test before the fix.
+    - Fix and pin: `MapLabelsState.pinned` with a fixture style that really defaults a label off (S-V31-*-STYLE-DEFAULT); `saveGcps` leaves the points a run (S-A16-HAPPY-POINTS-AFTER-ATTEMPTS); `JobDoc.filesOn` (S-A69-BAD-FILES-ELSEWHERE); `PicturePort.decode` takes its turn and `#browsing` asks once (S-A11-HAPPY-HUGE-THUMBNAIL, S-A11-BAD-PREVIEW-UNAVAILABLE).
+    - **A value equal to its default says nothing about who chose it, and "kept there" is true only of what recorded it: store the choice and the place, do not infer them.**

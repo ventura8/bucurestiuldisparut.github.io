@@ -4,7 +4,7 @@
  * the other's code.
  */
 import type { Logger, MessageKey } from '@hcm/shared';
-import type { MapPort, Unsubscribe } from '@hcm/ui/map';
+import type { Unsubscribe, ViewerMapPort } from '@hcm/ui/map';
 import type { CompareUiFactory } from '@hcm/ui/viewer/compare';
 
 import type { ViewerState } from './state.js';
@@ -25,11 +25,11 @@ export interface CompareHost {
 export interface CompareSessionDeps {
     readonly host: CompareHost;
     /** The viewer's map: the main side. */
-    readonly mainMap: MapPort;
+    readonly mainMap: ViewerMapPort;
     /** The element the viewer's map is mounted into; compare's surface goes right after it. */
     readonly anchor: HTMLElement;
     /** A new Mapbox MapPort for the second map (each is a billed map load). */
-    readonly createMap: () => MapPort;
+    readonly createMap: () => ViewerMapPort;
     /** mapbox-gl.css of the pinned release, linked beside the second map. */
     readonly mapboxCssUrl: string;
     /** The manifest's address, for relative asset URLs (as the main map's). */
@@ -55,7 +55,7 @@ export interface CompareModule {
 export interface CompareDeps {
     /** `import('../compare/compare.js')`: the chunk, fetched the first time the visitor compares. */
     readonly load: () => Promise<CompareModule>;
-    readonly createMap: () => MapPort;
+    readonly createMap: () => ViewerMapPort;
     readonly mapboxCssUrl: string;
 }
 

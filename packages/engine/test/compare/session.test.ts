@@ -1,4 +1,4 @@
-import type { RasterLayerSpec } from '@hcm/ui/map';
+import type { MapOptions, RasterLayerSpec } from '@hcm/ui/map';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { linkCameras } from '../../src/compare/camera-sync.js';
@@ -45,6 +45,61 @@ describe('swipe compare session', () => {
 
     afterEach(() => {
         vi.useRealTimers();
+    });
+
+    it('happyPath_bothSidesFollowTheMapLabelsChoiceLiveWithNoNewMap', async () => {
+        const { store, map, compare } = await comparing();
+        store.openCompare(null);
+        await settle();
+        const second = compare.maps[0];
+        const loads = map.mapLoadCount + (second?.mapLoadCount ?? 0);
+
+        store.setMapLabels({ streets: false });
+
+        expect(map.callsOf('setBasemapFlag')).toEqual([['showRoadLabels', false]]);
+        expect(second?.callsOf('setBasemapFlag')).toEqual([['showRoadLabels', false]]);
+        expect(map.mapLoadCount + (second?.mapLoadCount ?? 0)).toBe(loads);
+    });
+
+    it('happyPath_aSecondMapMadeAfterTheChoiceMountsWithIt', async () => {
+        const { store, compare } = await comparing({ hash: '#14/44.43/26.1&labels=streets' });
+        store.openCompare(null);
+        await settle();
+        const second = compare.maps[0];
+
+        expect((second?.callsOf('mount')[0]?.[1] as MapOptions).config).toMatchObject({ showPointOfInterestLabels: false });
+        expect(second?.getBasemapFlag('showPointOfInterestLabels')).toBe(false);
+        expect(second?.callsOf('setBasemapFlag')).toEqual([]);
+    });
+
+    it('badPath_aCustomBasemapIsNeverWrittenOnEitherSide', async () => {
+        const compare = new FakeCompare();
+        compare.mapOptions = { basemapFlags: {} };
+        const { store, map } = await comparing({ compare, map: { basemapFlags: {} }, hash: '#14/44.43/26.1&labels=' });
+        store.openCompare(null);
+        await settle();
+
+        store.setMapLabels({ streets: false });
+
+        expect(map.callsOf('setBasemapFlag')).toEqual([]);
+        expect(compare.maps[0]?.callsOf('setBasemapFlag')).toEqual([]);
+    });
+
+    it('badPath_aChoiceMadeWhileTheSecondMapMountsIsDrawnWhenItLoads', async () => {
+        const compare = new FakeCompare();
+        let open: () => void = () => undefined;
+        compare.mountGate = new Promise((resolve) => {
+            open = resolve;
+        });
+        const { store } = await comparing({ compare });
+        store.openCompare(null);
+        await settle();
+
+        store.setMapLabels({ pois: false });
+        open();
+        await settle();
+
+        expect(compare.maps[0]?.getBasemapFlag('showPointOfInterestLabels')).toBe(false);
     });
 
     it('happyPath_aWideWindowCreatesTheSecondMapOnlyWhenTheVisitorCompares', async () => {

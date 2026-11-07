@@ -1,4 +1,4 @@
-import { BASEMAP_BACKGROUND, E2E_PLAIN_STYLE_ID } from '../fixtures/world.js';
+import { BASEMAP_BACKGROUND, E2E_PLAIN_STYLE_ID, E2E_ROADS_OFF_STYLE_ID } from '../fixtures/world.js';
 
 /**
  * The basemap every `mapbox://styles/<owner>/<id>` resolves to in e2e: a local minimal style shaped like Mapbox
@@ -8,7 +8,7 @@ import { BASEMAP_BACKGROUND, E2E_PLAIN_STYLE_ID } from '../fixtures/world.js';
  * solid background makes every pixel the engine does not draw a known colour. Like Standard it credits Mapbox and
  * OpenStreetMap through a source its own (empty) layer uses, so the attribution control is always there (V18). The
  * style id `e2e-plain` is the same style as a plain root style, without the fragment flag and the configuration schema
- * (a city's custom style).
+ * (a city's custom style); `e2e-roads-off` the same fragment with street names off by its own default.
  */
 
 /** Mapbox Standard's attribution, which the viewer must keep visible and reachable (scenario V18). */
@@ -32,7 +32,8 @@ const SCHEMA = {
 } as const;
 
 export function basemapStyle(owner: string, styleId: string): Record<string, unknown> {
-    const configurable = styleId === E2E_PLAIN_STYLE_ID ? {} : { fragment: true, schema: SCHEMA };
+    const schema = styleId === E2E_ROADS_OFF_STYLE_ID ? { ...SCHEMA, showRoadLabels: { default: false, type: 'boolean' } } : SCHEMA;
+    const configurable = styleId === E2E_PLAIN_STYLE_ID ? {} : { fragment: true, schema };
     return {
         version: 8,
         name: `HCM e2e basemap (${owner}/${styleId})`,

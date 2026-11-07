@@ -4,7 +4,7 @@
  */
 import type { Locale, MapView, MessageKey, Overlay } from '@hcm/shared';
 import type { WindowClass } from '@hcm/ui';
-import { PHOTOS_OVERLAY_ID, type MapErrorKind, type MapEventMap, type MapPort, type PhotoPointProperties } from '@hcm/ui/map';
+import { PHOTOS_OVERLAY_ID, type MapErrorKind, type MapEventMap, type ViewerMapPort, type PhotoPointProperties } from '@hcm/ui/map';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import { initialState, type Toast } from '../../src/core/state.js';
@@ -42,7 +42,7 @@ describe('engine-core contract', () => {
         expectTypeOf<ViewerStore>().toExtend<ViewerActions>();
         expectTypeOf<ViewerActions['toggleOverlay']>().toEqualTypeOf<(overlayId: string, visible?: boolean) => void>();
         expectTypeOf<ViewerActions['setOverlayOpacity']>().toEqualTypeOf<(overlayId: string, opacity: number, final?: boolean) => void>();
-        expectTypeOf<ViewerDeps['map']>().toEqualTypeOf<MapPort>();
+        expectTypeOf<ViewerDeps['map']>().toEqualTypeOf<ViewerMapPort>();
         expectTypeOf<ViewerDeps['telemetry']>().toEqualTypeOf<TelemetryPort>();
         expectTypeOf<ViewerDeps['location']>().toEqualTypeOf<ViewerLocation>();
         expectTypeOf<ViewerLocation['hash']>().toEqualTypeOf<string>();

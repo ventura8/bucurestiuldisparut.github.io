@@ -40,7 +40,7 @@ describe('the browse images', () => {
         await browse.open(scene('b', 'none'));
 
         expect(callsOf(callables, 'imagery.browse')).toEqual([{ cityId: 'bucharest', entityId: 'b' }]);
-        expect(shown()['b']).toEqual({ status: 'ready', url: `blob:${COPY('b')}` });
+        expect(shown()['b']).toEqual({ status: 'ready', url: `blob:${COPY('b')}`, preview: `blob:preview:${COPY('b')}` });
     });
 
     it('badPath_aCopyThatFailsOrCannotBeReadIsUnavailableAndTryAgainAsksAgain', async () => {
@@ -54,7 +54,7 @@ describe('the browse images', () => {
         await browse.retry(scene('d'));
 
         expect(refused).toEqual({ status: 'failed', error: { key: 'apiError.imagery.browseUnavailable' } });
-        expect(shown()['d']).toEqual({ status: 'ready', url: `blob:${COPY('d')}` });
+        expect(shown()['d']).toEqual({ status: 'ready', url: `blob:${COPY('d')}`, preview: `blob:preview:${COPY('d')}` });
     });
 
     it('happyPath_closingReleasesEveryAddressAndALateOneToo', async () => {
@@ -86,7 +86,7 @@ describe('the browse images', () => {
         copy();
         await copying;
 
-        expect(files.released).toEqual([`blob:${COPY('a')}`, `blob:${COPY('late')}`]);
+        expect(files.released).toEqual([`blob:${COPY('a')}`, `blob:preview:${COPY('a')}`, `blob:${COPY('late')}`]);
         expect(shown()).toEqual({});
         expect(browse.pathOf('a')).toBeNull();
     });
@@ -164,7 +164,7 @@ describe('the list asks for the copies it lacks (finding 52 of 2026-11-01)', () 
         await browse.retry(scene('x', 'failed'));
 
         expect([unavailable, asked]).toEqual([{ status: 'failed', error: { key: 'apiError.imagery.browseUnavailable' } }, 0]);
-        expect(shown()['x']).toEqual({ status: 'ready', url: `blob:${COPY('x')}` });
+        expect(shown()['x']).toEqual({ status: 'ready', url: `blob:${COPY('x')}`, preview: `blob:preview:${COPY('x')}` });
     });
 
     it('happyPath_theOpenScenesCopyStartsAtOnceAndOneTheListAskedForIsAskedOnce', async () => {
@@ -199,5 +199,110 @@ describe('the list asks for the copies it lacks (finding 52 of 2026-11-01)', () 
         expect(asked).toEqual(['b', 'c', 'd', 'e', 'g']);
         expect([browse.pathOf('g'), browse.pathOf('b')]).toEqual([COPY('g'), COPY('b')]);
         expect(callsOf(callables, 'imagery.browse')).toHaveLength(6);
+    });
+});
+
+describe('a row gets a small picture, an open scene its larger one (the frozen tab of 2026-11-07)', () => {
+    it('happyPath_aRowGetsASmallPictureAndOnlyTheOpenSceneItsLargerOne', async () => {
+        const { browse, files, pictures, shown } = images();
+        files.put(COPY('a'));
+        files.put(COPY('b'));
+
+        browse.thumbnails([scene('a'), scene('b')]);
+        await settle();
+        const listed = [...pictures.shrunk];
+        await browse.open(scene('a'));
+
+        expect(listed).toEqual([128, 128]);
+        expect(pictures.shrunk.slice(2)).toEqual([2048]);
+        expect(shown()['a']).toEqual({ status: 'ready', url: `blob:${COPY('a')}`, preview: `blob:preview:${COPY('a')}` });
+        expect(shown()['b']).toEqual({ status: 'ready', url: `blob:${COPY('b')}` });
+
+        await browse.open(scene('a'));
+        expect(pictures.shrunk).toHaveLength(3);
+
+        browse.clear();
+        expect(files.released).toEqual([`blob:${COPY('a')}`, `blob:preview:${COPY('a')}`, `blob:${COPY('b')}`]);
+    });
+
+    it('badPath_aFileThatIsNoImageIsUnavailableInItsRowAndAFailedPreviewSaysSoWithTryAgain @S-A11-BAD-PREVIEW-UNAVAILABLE', async () => {
+        const { browse, files, pictures, shown } = images();
+        files.put(COPY('z'), 'not an image');
+        files.put(COPY('a'));
+
+        await browse.open(scene('z'));
+        expect(shown()['z']).toEqual({ status: 'failed', error: { key: 'apiError.imagery.browseUnavailable' } });
+
+        const preview = pictures.preview.bind(pictures);
+        pictures.preview = () => Promise.resolve(null);
+        await browse.open(scene('a'));
+        expect(shown()['a']).toEqual({
+            status: 'ready',
+            url: `blob:${COPY('a')}`,
+            preview: null,
+            error: { key: 'apiError.imagery.browseUnavailable' },
+        });
+
+        pictures.preview = preview;
+        await browse.retry(scene('a'));
+        expect(shown()['a']).toEqual({ status: 'ready', url: `blob:${COPY('a')}`, preview: `blob:preview:${COPY('a')}` });
+    });
+
+    it('badPath_anOpeningLeftFromBeforeClosingDoesNotBlockThePreviewOfTheNewImage', async () => {
+        const { browse, files, callables, shown } = images();
+        files.put(COPY('s'));
+        let copied: () => void = () => undefined;
+        answer(
+            callables,
+            'imagery.browse',
+            () =>
+                new Promise((resolve) => {
+                    copied = () => {
+                        resolve({ path: COPY('s'), contentType: 'image/jpeg' });
+                    };
+                }),
+        );
+        const left = browse.open(scene('s', 'none'));
+        await settle();
+
+        browse.clear();
+        browse.thumbnails([scene('s')]);
+        await settle();
+        copied();
+        await left;
+        expect(shown()['s']).toEqual({ status: 'ready', url: `blob:${COPY('s')}` });
+
+        await browse.open(scene('s'));
+        expect(shown()['s']).toEqual({ status: 'ready', url: `blob:${COPY('s')}`, preview: `blob:preview:${COPY('s')}` });
+    });
+
+    it('badPath_aPreviewThatArrivesAfterClosingIsReleased', async () => {
+        const { browse, files, shown } = images();
+        files.put(COPY('a'));
+        browse.thumbnails([scene('a')]);
+        await settle();
+
+        files.hold = true;
+        const opening = browse.open(scene('a'));
+        await settle();
+        browse.clear();
+        files.flush();
+        await opening;
+
+        expect(shown()).toEqual({});
+        expect(files.released).toEqual([`blob:${COPY('a')}`, `blob:preview:${COPY('a')}`]);
+    });
+
+    it('badPath_noPicturePortMeansNoImage', async () => {
+        const world = imageryWorld({ pictures: null });
+        let shown: Readonly<Record<string, BrowseImage>> = {};
+        const browse = new BrowseImages(world.services, world.files, (next) => {
+            shown = next;
+        });
+        world.files.put(COPY('a'));
+
+        await browse.open(scene('a'));
+
+        expect(shown['a']).toEqual({ status: 'failed', error: { key: 'apiError.imagery.browseUnavailable' } });
     });
 });

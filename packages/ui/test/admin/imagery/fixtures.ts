@@ -329,6 +329,7 @@ export function imageryPage(
             studioDone: Promise.resolve(true),
             download: Promise.resolve(true),
             retryJob: Promise.resolve(true),
+            locateAgain: Promise.resolve(true),
         },
         ...{ cancelJob: Promise.resolve(true), chooseFile: Promise.resolve() },
         ...{ joinFrames: Promise.resolve('job-join'), addTargetYear: Promise.resolve(true) },

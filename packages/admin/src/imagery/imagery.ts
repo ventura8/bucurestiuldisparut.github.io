@@ -80,6 +80,8 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
     #newest: string | null | undefined = undefined;
     /** The preview on the map now (`<version>@<path>`), '' for none. */
     #previewShown = '';
+    /** The scene whose browse image is on its way: every feed's write asks again, and each asking read and decoded it whole. */
+    #browsing: string | null = null;
     readonly intents: ImageryIntents;
 
     constructor(services: ContentServices) {
@@ -206,6 +208,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         | 'studioDone'
         | 'download'
         | 'retryJob'
+        | 'locateAgain'
         | 'cancelJob'
         | 'setPreviewOpacity'
         | 'attachMap'
@@ -219,7 +222,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
                 choose: (choice: PublishChoice) => version.choose(choice),
             },
             ...{ studioDone: () => version.studioDone(), download: () => version.download(), retryJob: () => version.retry() },
-            cancelJob: () => version.cancel(),
+            ...{ locateAgain: () => version.locateAgain(), cancelJob: () => version.cancel() },
             setPreviewOpacity: (percent) => {
                 this.#setOpacity(percent);
             },
@@ -304,6 +307,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         this.#cell.update({ detail, importRefusal: null });
         this.#map.clearPictures();
         this.#previewShown = '';
+        this.#browsing = null;
         this.#feeds.showScene(routedId(detail, 'scene'));
         this.#version.show(routedId(detail, 'version'));
         this.#showFind();
@@ -322,9 +326,18 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         }
         const scene = this.#selectedScene();
         this.#map.showScenes(scene);
-        if (scene !== null && !this.#map.overlays.has(BROWSE_PICTURE)) {
-            void this.#browse.open(scene).then(() => this.#showBrowse(scene));
+        if (scene !== null) {
+            this.#openBrowse(scene);
         }
+    }
+
+    /** The scene's browse image and its picture on the map, unless it is there or on its way. */
+    #openBrowse(scene: SceneItem): void {
+        if (this.#map.overlays.has(BROWSE_PICTURE) || this.#browsing === scene.id) {
+            return;
+        }
+        this.#browsing = scene.id;
+        void this.#browse.open(scene).then(() => this.#showBrowse(scene));
     }
 
     async #showBrowse(scene: SceneItem): Promise<void> {
@@ -332,6 +345,7 @@ class ImageryStore implements AreaStore<ImageryState, ImageryIntents> {
         if (path !== null && this.#selectedScene()?.id === scene.id) {
             await this.#map.showPicture(BROWSE_PICTURE, path, sceneCorners(scene), 1);
         }
+        this.#browsing = null;
     }
 
     #retryBrowse(id: string): void {

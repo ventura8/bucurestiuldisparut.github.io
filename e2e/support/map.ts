@@ -271,6 +271,23 @@ export async function mapFacts(page: Page): Promise<MapFacts> {
     return facts;
 }
 
+/** Runs in the page: what Standard's two label properties read on each live map (null: the style has no such property). */
+function mapLabelFlagsInPage(): { streets: unknown; pois: unknown }[] {
+    interface ConfigMap {
+        getConfigProperty(importId: string, name: string): unknown;
+    }
+    const maps = (window as unknown as { __hcmE2e?: { maps: ConfigMap[] } }).__hcmE2e?.maps ?? [];
+    return maps.map((map) => ({
+        streets: map.getConfigProperty('basemap', 'showRoadLabels'),
+        pois: map.getConfigProperty('basemap', 'showPointOfInterestLabels'),
+    }));
+}
+
+/** Each live map's basemap labels, as Mapbox GL itself reports them (V31). */
+export async function mapLabelFlags(page: Page): Promise<readonly { readonly streets: unknown; readonly pois: unknown }[]> {
+    return page.evaluate(mapLabelFlagsInPage);
+}
+
 export interface RenderedPoint {
     /** The photo or POI id; null for a cluster. */
     readonly id: string | null;

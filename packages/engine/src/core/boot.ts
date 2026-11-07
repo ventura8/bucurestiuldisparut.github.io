@@ -11,6 +11,7 @@ import type { MapEventMap, Unsubscribe } from '@hcm/ui/map';
 import { loadManifest } from '../config/load.js';
 import type { Measurement, TelemetryContext } from '../telemetry/telemetry-port.js';
 import type { MountedMap } from './compare-port.js';
+import { readMapLabels, withMapAnswer } from './map-labels.js';
 import { mapOptions } from './map-specs.js';
 import { MapSync } from './map-sync.js';
 import type { ViewerDeps } from './deps.js';
@@ -164,7 +165,10 @@ export class Boot {
         const state = this.#host.getState();
         const reducedMotion = deps.reducedMotion?.() === true;
         try {
-            await deps.map.mount(container, mapOptions(manifest, state.view, state.locale, reducedMotion));
+            await deps.map.mount(
+                container,
+                mapOptions(manifest, { view: state.view, locale: state.locale, reducedMotion, labels: state.mapLabels.shown }),
+            );
         } catch (error) {
             this.#mountFailed(id, error);
             return;
@@ -180,6 +184,8 @@ export class Boot {
     #onMounted(id: number, container: HTMLElement): void {
         const { deps } = this.#host;
         if (this.#current(id)) {
+            const state = this.#host.getState();
+            this.#host.set({ ...state, mapLabels: withMapAnswer(state.mapLabels, readMapLabels(deps.map)) });
             const base = assetBase(deps.config.manifestUrl, deps.location.href);
             this.#sync = new MapSync(deps.map, base);
             this.#mounted = { anchor: container, assetBase: base };

@@ -79,7 +79,7 @@ interface SceneFiltersPort {
 
 type BrowseImagePort =
     | { readonly status: 'loading' }
-    | { readonly status: 'ready'; readonly url: string }
+    | { readonly status: 'ready'; readonly url: string; readonly preview?: string | null; readonly error?: AdminNoticeInputPort }
     | { readonly status: 'failed'; readonly error: AdminNoticeInputPort };
 
 export interface VersionItemPort {
@@ -218,7 +218,7 @@ interface UsagePort {
     readonly reservations: Readonly<Record<string, { readonly computeUnits: number }>>;
 }
 
-type VersionActionPort = 'approve' | 'reject' | 'choose' | 'studioDone' | 'download' | 'retry' | 'cancel';
+type VersionActionPort = 'approve' | 'reject' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel';
 
 export interface VersionPagePort {
     readonly id: string;
@@ -289,6 +289,7 @@ export interface ImageryIntentsPort {
     studioDone(): Promise<boolean>;
     download(): Promise<boolean>;
     retryJob(): Promise<boolean>;
+    locateAgain(): Promise<boolean>;
     cancelJob(): Promise<boolean>;
     resumeGuard(): Promise<boolean>;
     chooseFile(file: ChosenFilePort): Promise<void>;

@@ -2,6 +2,7 @@ import '../global-options.js';
 
 import {
     FIRESTORE_PATHS,
+    JOB_MAX_ATTEMPTS,
     MIN_GCPS,
     fitTransform,
     jobDocSchema,
@@ -27,8 +28,10 @@ import { startRegeoref, type RegeorefDeps } from './regeoref.js';
 /**
  * `imagery.saveGcps` (admin; `docs/research/M3-interfaces.md` §4.1, §6; S-A16-*, S-P02-*): the georeferencer's points,
  * refitted server-side with the same mathematics the page used (`fitTransform`), each pair on the scan and in the city.
- * A version waiting for points (`needs_gcps`) continues its own job from `georef`; the layer's current version or one
- * awaiting approval gets a new `regeoref` job and version, and the layer keeps its tiles until that one is published.
+ * A version waiting for points (`needs_gcps`) continues its own job from `georef`, with a run of its own even when the runs before
+ * used up `JOB_MAX_ATTEMPTS` (S-A16-HAPPY-POINTS-AFTER-ATTEMPTS: Locate again spends them, and the points were accepted and then
+ * failed the job for good); the layer's current version or one awaiting approval gets a new `regeoref` job and version, and the
+ * layer keeps its tiles until that one is published.
  */
 export type SaveGcpsDeps = RegeorefDeps;
 
@@ -95,6 +98,11 @@ function requireWaiting(version: LayerVersionDoc | undefined, job: JobDoc | unde
     return [version, job];
 }
 
+/** The attempts the job goes on with: the dispatcher starts one more, for the admin's points, whatever the runs before them used. */
+function attemptForPoints(job: JobDoc): Pick<JobDoc, 'attempt'> {
+    return (job.attempt ?? 0) >= JOB_MAX_ATTEMPTS ? { attempt: JOB_MAX_ATTEMPTS - 1 } : {};
+}
+
 /** A `needs_gcps` version continues its own job (the dispatcher starts it again; the pipeline fits from `georef`). */
 async function resumeIn(transaction: DocumentTransaction, resume: Resume): Promise<Response> {
     const { request, georef } = resume;
@@ -114,7 +122,13 @@ async function resumeIn(transaction: DocumentTransaction, resume: Resume): Promi
         ...stamp,
     });
     const steps = { ...job.steps, georef: { status: 'pending' as const } };
-    await transaction.set(jobPath, jobDocSchema, { ...omit(job, ['waitReason', 'error']), status: 'queued', steps, ...stamp });
+    await transaction.set(jobPath, jobDocSchema, {
+        ...omit(job, ['waitReason', 'error']),
+        ...attemptForPoints(job),
+        status: 'queued',
+        steps,
+        ...stamp,
+    });
     return { jobId: version.jobId, versionId: request.versionId, resumed: true };
 }
 

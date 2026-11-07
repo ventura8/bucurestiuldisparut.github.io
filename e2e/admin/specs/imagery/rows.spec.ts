@@ -1,13 +1,15 @@
-import type { Page } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 
 import { BASEMAP_BACKGROUND, type Rgb } from '../../../fixtures/world.js';
 import { blend, expectColourAt, mapFraction } from '../../../support/map.js';
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
 import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
+import { greyPng } from '../../support/grey-png.js';
 import { adminMapReady } from '../../support/map.js';
 import { ADMIN_LOCK, adminPath, expect, test } from '../../support/test.js';
 import {
+    detail,
     errorText,
     FREE_1968,
     FRESH_HARVEST,
@@ -66,7 +68,7 @@ test(
         await expect(thumbnails).toHaveCount(6, { timeout: FUNCTIONS_TIMEOUT_MS });
         await expect
             .poll(() => thumbnails.evaluateAll((images) => images.map((image) => (image as HTMLImageElement).naturalWidth)))
-            .toEqual([120, 120, 120, 120, 120, 120]);
+            .toEqual([128, 128, 128, 128, 128, 128]);
         await expectStateSound(page, adminVisit('imagery.results-previews', lang));
 
         // Free only off: the 1968 frame and its paid twin of the same day, from the forward camera, frames 75 and 76.
@@ -119,5 +121,72 @@ test(
             tolerance: 10,
         });
         await expect.poll(() => consoleErrors.takeMatching(/imagery-browse/).length).toBeGreaterThan(0);
+    },
+);
+
+test(
+    'A preview that could not be made says so with Try again, and Try again makes it',
+    { tag: '@S-A11-BAD-PREVIEW-UNAVAILABLE' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream, consoleErrors }) => {
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        await imagery.seedScene(CORONA_1966, FRESH_HARVEST);
+        await imagery.upload(await imagery.seedBrowse(CORONA_1966, new Date()), greyPng(4000, 1000), 'image/png');
+        await page.goto(adminPath(lang, 'imagery'));
+        const row = sceneList(page, lang).locator(`li[data-scene="${CORONA_1966}"] img.thumb`);
+        await expect(row).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+
+        // The thumbnail is made; the bucket then stops answering for the page's larger picture.
+        // A 403, as the SDK gives up on it at once; a network failure it retries for minutes before the same answer.
+        const offline = (route: Route): Promise<void> => route.fulfill({ status: 403, json: { error: { code: 403, message: 'denied' } } });
+        await page.route('**/v0/b/**', offline);
+        await sceneLink(page, lang, CORONA_1966).click();
+
+        const alert = detail(page).locator('[data-state="browse-unavailable"]');
+        await expect(alert).toContainText(errorText(lang, 'apiError.imagery.browseUnavailable'), { timeout: FUNCTIONS_TIMEOUT_MS });
+        await expect(detail(page).locator('img.browse')).toHaveCount(0);
+        await expectStateSound(page, adminVisit('imagery.preview-unavailable', lang));
+
+        await page.unroute('**/v0/b/**', offline);
+        await detail(page)
+            .getByRole('button', { name: imageryText(lang, 'adminContent.common.retry') })
+            .click();
+
+        const preview = detail(page).getByRole('img', { name: imageryText(lang, 'adminContent.imagery.browseAlt', { name: CORONA_1966 }) });
+        await expect
+            .poll(() => preview.evaluate((image: HTMLImageElement) => image.naturalWidth), { timeout: FUNCTIONS_TIMEOUT_MS })
+            .toBe(2048);
+        await expect(alert).toHaveCount(0);
+        consoleErrors.takeMatching(/v0\/b\//);
+    },
+);
+
+test(
+    'A huge browse image is a small picture in its row and a bounded one on its page; an unreadable copy says so',
+    { tag: ['@S-A11-HAPPY-HUGE-THUMBNAIL', '@S-A11-BAD-UNREADABLE-THUMBNAIL'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const imagery = await readyImagery(
+            { emulators: adminWorld.emulators, api: mockApiRequest, upstream },
+            adminWorld.accounts.owner.uid,
+        );
+        for (const entityId of [CORONA_1966, FREE_1968]) {
+            await imagery.seedScene(entityId, FRESH_HARVEST);
+        }
+        // Grey strips as long as USGS's panoramic frames (37,440 x 1,920 px in live use; shorter here, as Chromium's memory is shared).
+        await imagery.upload(await imagery.seedBrowse(CORONA_1966, new Date()), greyPng(20_000, 1000), 'image/png');
+        await imagery.upload(await imagery.seedBrowse(FREE_1968, new Date()), new TextEncoder().encode('no image'), 'image/jpeg');
+        await page.goto(adminPath(lang, 'imagery'));
+
+        const row = sceneList(page, lang).locator(`li[data-scene="${CORONA_1966}"] img.thumb`);
+        await expect(row).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        const sizeOf = (image: HTMLImageElement): readonly number[] => [image.naturalWidth, image.naturalHeight];
+        await expect.poll(() => row.evaluate(sizeOf)).toEqual([128, 128]);
+        await expect(sceneList(page, lang).locator(`li[data-scene="${FREE_1968}"] [data-browse="unavailable"]`)).toBeVisible();
+
+        await sceneLink(page, lang, CORONA_1966).click();
+        const preview = detail(page).getByRole('img', { name: imageryText(lang, 'adminContent.imagery.browseAlt', { name: CORONA_1966 }) });
+        await expect.poll(() => preview.evaluate(sizeOf), { timeout: FUNCTIONS_TIMEOUT_MS }).toEqual([2048, 102]);
     },
 );

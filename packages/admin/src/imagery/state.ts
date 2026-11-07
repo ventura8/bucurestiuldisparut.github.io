@@ -105,6 +105,8 @@ export interface ImageryIntents {
     download(): Promise<boolean>;
     /** `imagery.retry` of the open version's failed job. */
     retryJob(): Promise<boolean>;
+    /** `imagery.locateAgain` of the open version, a frame waiting for points. */
+    locateAgain(): Promise<boolean>;
     /** Turns the budget guard green again (`imagery.resumeGuard`); true once it is. */
     resumeGuard(): Promise<boolean>;
     cancelJob(): Promise<boolean>;

@@ -99,7 +99,16 @@ export function part(mounted: Mounted, selector: string): HTMLElement {
 /** Collects the public events the page would see. */
 export function publicEvents(element: HTMLElement): { type: string; detail: unknown }[] {
     const seen: { type: string; detail: unknown }[] = [];
-    for (const type of ['hcm-ready', 'hcm-error', 'hcm-layer-change', 'hcm-overlay-change', 'hcm-photo-open', 'hcm-poi-open']) {
+    const types = [
+        'hcm-ready',
+        'hcm-error',
+        'hcm-layer-change',
+        'hcm-overlay-change',
+        'hcm-photo-open',
+        'hcm-poi-open',
+        'hcm-map-labels-change',
+    ];
+    for (const type of types) {
         document.addEventListener(type, (event) => {
             if (event.target === element) {
                 seen.push({ type, detail: (event as CustomEvent).detail });

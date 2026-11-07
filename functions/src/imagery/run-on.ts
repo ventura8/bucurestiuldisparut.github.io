@@ -25,7 +25,9 @@ import { requireCity, stampOf, type Stamp } from './records.js';
  * runs (`local` or `cloud`) and the city's choice with it, only while the job holds no run (`queued`, `waiting_usgs`,
  * `awaiting_gcps`; else `apiError.imagery.versionState`). The job's worker and wait reason are cleared; `freeTierOk`
  * with `cloud` is the admin's OK past the month's free tier (`{by, at}`), and moving the job to the computer drops an
- * earlier OK. A `queued` job is then dispatched again by its own trigger (`imagery.onJobWrite`).
+ * earlier OK. A `queued` job is then dispatched again by its own trigger (`imagery.onJobWrite`). A job that parked for points
+ * leaves its segments where it ran, which the other place cannot read: `filesOn` records them while it is elsewhere, for
+ * `imagery.locateAgain`.
  */
 export type RunOnDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
@@ -43,6 +45,17 @@ interface Move {
     readonly uid: string;
 }
 
+/** Where a job waiting for points ran, and so where its files lie. */
+function parkedOn(job: JobDoc): RunPlace | undefined {
+    return job.status === 'awaiting_gcps' ? (job.runOn ?? 'cloud') : undefined;
+}
+
+/** Where the files of a moved job are, when that is not where it now runs: only a parked job has any to leave behind. */
+function filesLeftOn(job: JobDoc, place: RunPlace): Pick<JobDoc, 'filesOn'> {
+    const filesOn = job.filesOn ?? parkedOn(job) ?? place;
+    return filesOn === place ? {} : { filesOn };
+}
+
 /**
  * The job as moved: its worker and wait reason cleared, the OK recorded or dropped. M8: a join's wait for its frames stays,
  * or a worker could claim it before they rendered (the dispatcher moves it on once they did).
@@ -54,7 +67,7 @@ function movedJob(job: JobDoc, move: Move, stamp: Stamp): JobDoc {
     );
     const okay = move.place === 'cloud' && move.ok ? { freeTierOk: { by: move.uid, at: stamp.updatedAt } } : {};
     const held = job.waitReason === 'parts' ? { waitReason: job.waitReason } : {};
-    return { ...kept, runOn: move.place, ...okay, ...held, ...stamp };
+    return { ...omit(kept, ['filesOn']), runOn: move.place, ...okay, ...held, ...filesLeftOn(job, move.place), ...stamp };
 }
 
 async function moveJob(transaction: DocumentTransaction, move: Move, stamp: Stamp): Promise<void> {

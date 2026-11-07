@@ -18,6 +18,7 @@ import {
     type Overlay,
 } from '@hcm/shared';
 
+import { hashMapLabels, withHashLabels } from './map-labels.js';
 import { isCompareLayer, withVisibleLayers, type CompareView, type ViewerState } from './state.js';
 import { yearOfLayers } from './timeline.js';
 
@@ -71,10 +72,15 @@ function withHashCompare(state: ViewerState, compare: CompareState | undefined):
     return next === null && state.compare === null ? state : { ...state, compare: next };
 }
 
-/** `hash` applied to `state`: the view, the visible layers (and their year), the opacities, compare, the photo, the language. */
+function withHashMapLabels(state: ViewerState, labels: DecodedHash['labels']): ViewerState {
+    const mapLabels = withHashLabels(state.mapLabels, labels);
+    return mapLabels === state.mapLabels ? state : { ...state, mapLabels };
+}
+
+/** `hash` applied to `state`: the view, the visible layers (and their year), the opacities, compare, the labels, the photo, the language. */
 export function applyDecodedHash(state: ViewerState, hash: DecodedHash): AppliedHash {
     const withView = hash.view === undefined ? state : { ...state, view: hash.view };
-    const withLayers = withHashCompare(withHashLayers(withView, hash.layers), hash.compare);
+    const withLayers = withHashMapLabels(withHashCompare(withHashLayers(withView, hash.layers), hash.compare), hash.labels);
     const overlays = withHashOpacity(withLayers.overlays, hash);
     const withLang = hash.lang === undefined ? withLayers : { ...withLayers, locale: hash.lang };
     return withHashPhoto(overlays === withLang.overlays ? withLang : { ...withLang, overlays }, hash.photo);
@@ -100,6 +106,7 @@ export function hashStateOf(state: ViewerState, defaultLocale: Locale): HashStat
         ...hashLayers(state.overlays),
         ...(overlayOpacity === undefined ? {} : { overlayOpacity }),
         ...(state.compare === null ? {} : { compare: { layer: state.compare.layerId, position: state.compare.position } }),
+        ...hashMapLabels(state.mapLabels),
         ...(state.selectedPhotoId === null ? {} : { photo: state.selectedPhotoId }),
         ...(state.locale === defaultLocale ? {} : { lang: state.locale }),
     };

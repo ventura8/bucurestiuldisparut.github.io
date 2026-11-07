@@ -1,7 +1,7 @@
 /**
  * Map fakes for the engine's and the admin's tests (docs/research/M1-interfaces.md §4, M2c-interfaces.md §3):
  *
- * - `FakeMap` implements `MapPort` and records every call, so the store and the viewer are tested by what they ask
+ * - `FakeMap` implements `ViewerMapPort` (so `MapPort`) and records every call, so the store and the viewer are tested by what they ask
  *   the map to do; `emit`, `clickPhoto`, `clickPoi` and `clickMap` play the map's side.
  * - `FakeMapboxGl` stands in for the global `mapboxgl` (Mapbox GL JS 3.34.1) in the adapter's tests: `FakeMapboxMap`
  *   keeps sources, layers, paint and layout properties, images and configuration, records calls, and `fire` plays
@@ -13,13 +13,13 @@ import type {
     MapEventMap,
     MapOptions,
     MapPadding,
-    MapPort,
     MapSlot,
     PhotoFeatureCollection,
     RasterLayerSpec,
     Unsubscribe,
     VectorOverlaySpec,
 } from '../../ui/src/map/map-port.js';
+import type { ViewerMapPort } from '../../ui/src/map/viewer-map.js';
 import type {
     MapboxCameraOptions,
     MapboxEvent,
@@ -43,18 +43,24 @@ export interface FakeMapOptions {
     readonly webgl?: boolean;
     /** When set, `mount` rejects with this error (`new Error('style')`, `new Error('webgl')`). */
     readonly mountError?: Error;
+    /**
+     * The basemap's boolean configuration (default: Standard's labels, drawn); `{}` is a style without it. As Mapbox does,
+     * `mount`'s `config` overrides the properties the style has and ignores the others.
+     */
+    readonly basemapFlags?: Readonly<Record<string, boolean>>;
 }
 
 type Handlers = { [E in keyof MapEventMap]: Set<(payload: MapEventMap[E]) => void> };
 
-/** A recording `MapPort`. */
-export class FakeMap implements MapPort {
+/** A recording `ViewerMapPort`. */
+export class FakeMap implements ViewerMapPort {
     readonly calls: RecordedCall[] = [];
     webgl: boolean;
     mountError: Error | undefined;
     view: MapView = { center: [0, 0], zoom: 0, bearing: 0 };
     mounted = false;
     #loads = 0;
+    readonly #flags: Map<string, boolean>;
     readonly #photoHandlers = new Set<(photoId: string) => void>();
     readonly #poiHandlers = new Set<(poiId: string) => void>();
     readonly #mapClickHandlers = new Set<(position: LngLat) => void>();
@@ -70,6 +76,7 @@ export class FakeMap implements MapPort {
     constructor(options: FakeMapOptions = {}) {
         this.webgl = options.webgl ?? true;
         this.mountError = options.mountError;
+        this.#flags = new Map(Object.entries(options.basemapFlags ?? { showRoadLabels: true, showPointOfInterestLabels: true }));
     }
 
     get mapLoadCount(): number {
@@ -98,7 +105,17 @@ export class FakeMap implements MapPort {
         }
         this.mounted = true;
         this.view = options.view;
+        this.#configure(options.config ?? {});
         return Promise.resolve();
+    }
+
+    /** As Mapbox does: what the style has takes the value, anything else is ignored. */
+    #configure(config: NonNullable<MapOptions['config']>): void {
+        for (const [name, value] of Object.entries(config)) {
+            if (typeof value === 'boolean' && this.#flags.has(name)) {
+                this.#flags.set(name, value);
+            }
+        }
     }
 
     addRasterLayer(spec: RasterLayerSpec, slot: MapSlot): void {
@@ -171,6 +188,15 @@ export class FakeMap implements MapPort {
 
     setLocale(locale: Locale): void {
         this.#record('setLocale', locale);
+    }
+
+    getBasemapFlag(name: string): boolean | null {
+        return this.#flags.get(name) ?? null;
+    }
+
+    setBasemapFlag(name: string, value: boolean): void {
+        this.#record('setBasemapFlag', name, value);
+        this.#flags.set(name, value);
     }
 
     resize(): void {

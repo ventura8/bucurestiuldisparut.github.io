@@ -64,6 +64,7 @@ export const RUNTIME_ACCOUNTS: Readonly<Record<FunctionName, RuntimeAccount>> = 
     'imagery.crop': 'fn-admin',
     'imagery.join': 'fn-admin',
     'imagery.retry': 'fn-admin',
+    'imagery.locateAgain': 'fn-admin',
     'imagery.runOn': 'fn-admin',
     'imagery.probeTiles': 'fn-admin',
     'imagery.resumeGuard': 'fn-admin',

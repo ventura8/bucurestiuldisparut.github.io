@@ -178,8 +178,7 @@ export class GeorefPictures {
         if (pictures === null) {
             return null;
         }
-        const blob = await this.#deps.files.read(path);
-        const picture = blob === null ? null : await pictures.decode(blob, DECODE_MAX_SIDE);
+        const picture = await pictures.decode(() => this.#deps.files.read(path), DECODE_MAX_SIDE);
         return picture === null ? null : { pictures, picture };
     }
 

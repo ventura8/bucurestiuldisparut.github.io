@@ -55,9 +55,13 @@ export type Rgb = readonly [red: number, green: number, blue: number];
 
 /**
  * A basemap without Standard's configuration (`mapbox://styles/<owner>/e2e-plain`): a plain style with the three slots
- * and no `schema`, so the engine must leave its 3D-objects switch alone (S-V03-BAD-STYLE-WITHOUT-CONFIG).
+ * and no `schema`, so the engine must leave its 3D-objects switch alone (S-V03-BAD-STYLE-WITHOUT-CONFIG) and offer no
+ * map-label switches (S-V31-BAD-CUSTOM-BASEMAP).
  */
 export const E2E_PLAIN_STYLE_ID = 'e2e-plain';
+
+/** A basemap with Standard's configuration whose own default leaves street names off, with no `basemap.config` to say so (S-V31-*-STYLE-DEFAULT). */
+export const E2E_ROADS_OFF_STYLE_ID = 'e2e-roads-off';
 
 /** The basemap's background (the mock style), what a probe sees where no layer draws. */
 export const BASEMAP_BACKGROUND: Rgb = [242, 239, 233];

@@ -3,14 +3,14 @@
  * `CompareDriver` once the visitor compares on a ready map and destroyed when that ends. It keeps compare's surface in
  * step with the store, and in swipe mode (a window 600 px wide or more) the second map: created lazily (one more billed
  * map load, counted by the e2e map-instance counter), drawn by its own `MapSync` from the state as the compared side
- * shows it (`comparedState`: the same basemap, photos and places with their visibility and opacity, of the historical
+ * shows it (`comparedState`: the same basemap and map labels, photos and places with their visibility and opacity, of the historical
  * layers only the compared one with its opacity and image adjustments), its camera linked to the main map's, and
  * destroyed when compare closes and with the viewer. A window that becomes compact (the toggle needs no second map) hides
  * it for `COMPARE_PARK_MS` before destroying it, so a phone turned back and forth or a window dragged across 600 px
  * reuses the one map instead of paying a new map load each time (the security and cost review of M4). A second map that
  * fails to load closes compare with the `error.mapLoad` toast; the main map is never touched.
  */
-import type { MapEventMap, MapPort, Unsubscribe } from '@hcm/ui/map';
+import type { MapEventMap, Unsubscribe, ViewerMapPort } from '@hcm/ui/map';
 import type { CompareUi } from '@hcm/ui/viewer/compare';
 
 import type { CompareSession, CompareSessionDeps } from '../core/compare-port.js';
@@ -29,7 +29,7 @@ export function comparedState(state: ViewerState): ViewerState {
 }
 
 interface SecondMap {
-    readonly map: MapPort;
+    readonly map: ViewerMapPort;
     readonly sync: MapSync;
     readonly unlink: readonly Unsubscribe[];
 }
@@ -40,7 +40,7 @@ class Session implements CompareSession {
     readonly #unsubscribe: Unsubscribe;
     #second: SecondMap | null = null;
     /** The second map while it mounts (its style is on its way), null otherwise. */
-    #opening: MapPort | null = null;
+    #opening: ViewerMapPort | null = null;
     /** While a compact window hides the second map: the timer that destroys it. */
     #parked: ReturnType<typeof setTimeout> | null = null;
     #destroyed = false;
@@ -118,11 +118,11 @@ class Session implements CompareSession {
     }
 
     /** Whether `map` is still the second map being mounted (not superseded, closed or destroyed). */
-    #current(map: MapPort): boolean {
+    #current(map: ViewerMapPort): boolean {
         return !this.#destroyed && this.#opening === map;
     }
 
-    async #mount(map: MapPort): Promise<void> {
+    async #mount(map: ViewerMapPort): Promise<void> {
         const container = await this.#ui.mapContainer();
         const state = this.#deps.host.getState();
         if (container === null || state.manifest === null || !this.#current(map)) {
@@ -130,7 +130,12 @@ class Session implements CompareSession {
             return;
         }
         try {
-            await map.mount(container, mapOptions(state.manifest, this.#deps.mainMap.getView(), state.locale, this.#deps.reducedMotion));
+            const { locale, mapLabels } = state;
+            const { mainMap, reducedMotion } = this.#deps;
+            await map.mount(
+                container,
+                mapOptions(state.manifest, { view: mainMap.getView(), locale, reducedMotion, labels: mapLabels.shown }),
+            );
         } catch (error: unknown) {
             this.#failed(map, error);
             return;
@@ -138,7 +143,7 @@ class Session implements CompareSession {
         this.#mounted(map);
     }
 
-    #abandon(map: MapPort): void {
+    #abandon(map: ViewerMapPort): void {
         if (this.#opening === map) {
             this.#opening = null;
         }
@@ -146,7 +151,7 @@ class Session implements CompareSession {
     }
 
     /** The second map's style or WebGL failed: compare closes with a toast; one that was closed meanwhile goes quietly. */
-    #failed(map: MapPort, error: unknown): void {
+    #failed(map: ViewerMapPort, error: unknown): void {
         const current = this.#current(map);
         this.#abandon(map);
         if (current) {
@@ -158,7 +163,7 @@ class Session implements CompareSession {
     }
 
     /** The second map's style loaded: it draws the compared side and follows the main map, unless compare moved on. */
-    #mounted(map: MapPort): void {
+    #mounted(map: ViewerMapPort): void {
         if (!this.#current(map)) {
             map.destroy();
             return;

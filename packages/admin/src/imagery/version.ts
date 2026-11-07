@@ -2,7 +2,8 @@
  * The version's page (`#/imagery/version/<versionId>`, `docs/research/M3-interfaces.md` §10.2): the version, its job
  * and the job's log lines, live, and this month's Mapbox usage (`usage/mapbox-YYYY-MM`) for the compute-unit figures;
  * and what the admin does there: Approve, Reject, a way out of a publish that does not fit the month (the free Studio
- * upload with its download and "I uploaded it", next month, or pay), Retry a failed job, Cancel an unfinished one. The
+ * upload with its download and "I uploaded it", next month, or pay), Retry a failed job, Locate again a frame
+ * waiting for points, Cancel an unfinished one. The
  * page asks before Reject, Pay and Cancel; every refusal stays on the card as its error code's text.
  */
 import {
@@ -28,7 +29,7 @@ import { callImagery, refusalOf, type ImageryCallName, type ImageryRequest } fro
 import type { FilePort } from './files.js';
 import { jobViewOf, versionViewOf, type JobView, type VersionView } from './version-view.js';
 
-export type VersionAction = 'approve' | 'reject' | 'choose' | 'studioDone' | 'download' | 'retry' | 'cancel';
+export type VersionAction = 'approve' | 'reject' | 'choose' | 'studioDone' | 'download' | 'retry' | 'locate' | 'cancel';
 
 export interface JobLogLine {
     readonly seq: number;
@@ -196,6 +197,12 @@ export class VersionPage {
         });
     }
 
+    locateAgain(): Promise<boolean> {
+        return this.#act('locate', 'imagery.locateAgain', (id) => ({ cityId: this.#services.cityId, versionId: id }), {
+            key: 'adminContent.imagery.notice.locating',
+        });
+    }
+
     /** Saves the Studio file under the tileset's name, so Studio names the tileset after it (§7.5). */
     async download(): Promise<boolean> {
         const file = this.#studioFile();
@@ -219,7 +226,9 @@ export class VersionPage {
             null,
         );
         this.#finish(outcome.ok ? null : { key: 'adminContent.imagery.notice.cancelRefused' });
-        this.#notifyIf(outcome.ok, { key: 'adminContent.jobs.cancelRequested' });
+        if (outcome.ok) {
+            this.#services.notify({ key: 'adminContent.jobs.cancelRequested' });
+        }
         return outcome.ok;
     }
 
@@ -274,12 +283,6 @@ export class VersionPage {
         const state = this.#state;
         if (state !== null) {
             this.#set({ ...state, acting: null, refusal, downloaded: state.downloaded || downloaded });
-        }
-    }
-
-    #notifyIf(condition: boolean, notice: NoticeInput): void {
-        if (condition) {
-            this.#services.notify(notice);
         }
     }
 

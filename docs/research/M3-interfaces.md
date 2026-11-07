@@ -305,6 +305,11 @@ The browser never requests a USGS address (the admin's CSP does not allow one, a
   `path`, `checkedAt`; a failure records `state: 'failed'` with `apiError.imagery.browseUnavailable` and answers that code
   (retryable: the card's Try again). The admin reads the copy with the Storage SDK (`getBlob` → a `blob:` URL), which is
   also the admin map's image source for the footprint preview (§10.2).
+- A copy is stored as USGS made it: up to 37,440 x 1,920 px, and our functions carry no image library to shrink one. Pages never show
+  it as it is, as an `<img>` of it holds 288 MB of pixels per row and 24 rows froze the tab (2026-11-07). `PicturePort` (`packages/admin/src/imagery/pictures.ts`):
+  a row's picture is decoded small off the main thread (`createImageBitmap`'s `resizeHeight`, `resizeWidth` for a tall one), its
+  middle at most 128 px square, as a small JPEG; a scene's page shows the whole frame at most 2,048 px long; one at a time, each a
+  `blob:` address (the CSP is unchanged). `createImageBitmap` still reads the file once whole for a moment, off the main thread.
 - No browse address is signed; download addresses are, and they never leave the pipeline (§5.3).
 
 ### 3.5 When the harvest runs
@@ -412,6 +417,20 @@ belong to the dispatcher and the lease, so an execution never races its own retr
   `pending` (finding 78 of 2026-11-03: a pipeline updated since the failure redoes its own results); the steps kept are
   skipped by their recorded outputs (§5.2), `fetch` also once `extract` is finished, as the segments outlive the delivery by a
   week. A failure at a publish step goes back to the publisher, not to Cloud Run.
+- **Locate again** (`imagery.locateAgain`, a city editor; S-A69-*; the owner's live use of 2026-11-07): a USGS frame waiting for points
+  (`needs_gcps`, its job `awaiting_gcps`, not asked to stop) goes back to `queued` from `stitch`, which Retry cannot do (it takes failed
+  jobs only): `fetch` and `extract` stay as recorded, `stitch` (the reason of finding 78: an older pipeline's `frame.json` and preview
+  must not be what it searches), `locate` and every step after it become `pending`, and the version
+  forgets its error, `calibration`, `georef` and `suggestions` (the scan stays until `locate` replaces it). So a frame parked under
+  an older pipeline, or a `locate` that refused, may now prove. The runner passes over what is still stored and unpacks again from a
+  delivery a weak crop kept; with neither the segments (14 days) nor the delivery (7 days) in the bucket, `apiError.imagery.locateInputsGone`
+  says so, and no download starts. A job on the owner's computer (`runOn: 'local'`) keeps both there, out of the server's reach: its
+  runner fetches again only if that computer's sweep removed them. A job moved after it parked left its files where it ran (`JobDoc.filesOn`,
+  written by `imagery.runOn`; the other place cannot read them): `apiError.imagery.locateFilesElsewhere` until it is moved back, and no
+  delivery starts (S-A69-BAD-FILES-ELSEWHERE). It is the same job, so **`JOBS_PER_DAY` is not asked and the day's
+  imports are not used**; each start counts against `JOB_MAX_ATTEMPTS` as any (`apiError.imagery.attemptsExhausted`), and the budget
+  guard stops it (`apiError.guardPaused`). A frame that parks again with the attempts used up can still take the admin's points:
+  `imagery.saveGcps` goes on one short of the limit, so the dispatcher starts them instead of failing the job (S-A16-HAPPY-POINTS-AFTER-ATTEMPTS).
 - **Cancel**: §4.2. The pipeline checks `cancelRequested` at every heartbeat and at its own checkpoints.
 - **SIGTERM** (Cloud Run's cancel, a task timeout): the handler sets a flag; the running step stops at its next
   checkpoint (fetch: every 64 MiB chunk; GDAL calls through their progress callback, which returns 0 to abort); within
@@ -837,6 +856,7 @@ implementation, `maxInstances` 3, as `fn-admin@`; the schemas are done (`package
 | `imagery.crop` | enforce | `{cityId, layerId, ring}` → `{jobId, versionId}` | `notFound`, `imagery.noScan`, `imagery.cropOutsideLayer`, `layers.busy`, `imagery.dailyLimit`, `guardPaused` |
 | `imagery.join` (M8) | enforce | `imageryJoinRequestSchema` → `imageryJoinResponseSchema` (`{jobId, versionId, layerId}`) | `notFound`, `usgs.notConfigured`, `imagery.notScanned`, `imagery.alreadyImported`, `imagery.dailyLimit`, `guardPaused`, `layers.busy`, `imagery.joinMixedFrames`, `imagery.joinTwoPublished`, `imagery.joinPartGone`, `imagery.joinPartHeld` |
 | `imagery.retry` | enforce | `{cityId, jobId}` → `{status, attempt}` | `notFound`, `imagery.versionState`, `imagery.attemptsExhausted`, `guardPaused` |
+| `imagery.locateAgain` | enforce | `{cityId, versionId}` → `{status, attempt}` | `imagery.versionState`, `imagery.attemptsExhausted`, `imagery.locateInputsGone`, `guardPaused` |
 | `imagery.probeTiles` | enforce | `{cityId, source}` → `{contentType, tile}` | `layers.foreignTileset`, `layers.secretInAddress`, `mapbox.notConfigured`, `imagery.addressRefused`, `imagery.tilesNotFound`, `imagery.tilesNotImage`, `imagery.tilesUnreachable` |
 
 The 28 `apiError.imagery.*` codes are done (`packages/shared/src/api/errors.ts`, both catalogues of

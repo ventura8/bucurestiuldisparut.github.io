@@ -45,6 +45,11 @@ export function idleState(): ViewerState {
         consent: 'unknown',
         toast: null,
         compare: null,
+        mapLabels: {
+            shown: { streets: true, pois: true },
+            defaults: { streets: true, pois: true },
+            available: null,
+        },
     };
 }
 
@@ -197,6 +202,12 @@ export class FakeStore implements ViewerStorePort {
         if (compare !== null) {
             this.set({ compare: { ...compare, position } });
         }
+    }
+
+    setMapLabels(labels: Partial<ViewerState['mapLabels']['shown']>): void {
+        this.#record('setMapLabels', labels);
+        const { mapLabels } = this.getState();
+        this.set({ mapLabels: { ...mapLabels, shown: { ...mapLabels.shown, ...labels } } });
     }
 
     closeCompare(): void {

@@ -16,7 +16,7 @@ import { contentText, noticeOf } from '../../shell/text.js';
 import type { ImageryContext } from '../context.js';
 import type { SceneItemPort, SceneOrderPort } from '../imagery-port.js';
 import { numberText } from '../imagery-text.js';
-import { USGS_SETUP_HREF, sceneRefusal } from '../scene-refusal.js';
+import { sceneRefusal, usgsSetupLink } from '../scene-refusal.js';
 import { when, withValue } from '../when.js';
 
 /** EarthExplorer's home, for a scene whose page is not known yet (the admin searches its entity id there). */
@@ -101,7 +101,7 @@ function approvalNote(context: ImageryContext): TemplateResult {
                 <hcm-icon name="schedule"></hcm-icon>
                 <div class="alert-body">
                     <p>${contentText(locale, 'adminContent.orders.waitsForApproval')}</p>
-                    <p><a href=${USGS_SETUP_HREF}>${contentText(locale, 'adminContent.imagery.openUsgsSetup')}</a></p>
+                    ${usgsSetupLink(locale)}
                 </div>
             </div>`,
     );

@@ -142,6 +142,7 @@ export const ro = {
     'adminContent.imagery.approve': 'Aprobă și publică',
     'adminContent.imagery.reject': 'Respinge',
     'adminContent.imagery.dismiss': 'Renunță la versiune',
+    'adminContent.imagery.locateAgain': 'Localizează din nou',
     // M9 (docs/research/M9-calibration.md §8)
     'adminContent.imagery.calibration.how.votes': 'Găsită automat',
     'adminContent.imagery.calibration.how.pass': 'Găsită după un cadru vecin',
@@ -184,6 +185,7 @@ export const ro = {
     'adminContent.imagery.notice.chose.pay': 'Se publică acum.',
     'adminContent.imagery.notice.studioLinked': 'Stratul folosește acum setul de dale din Mapbox Studio.',
     'adminContent.imagery.notice.retrying': 'Procesarea reîncepe.',
+    'adminContent.imagery.notice.locating': 'Cadrul este localizat din nou. Nu se socotește ca un import nou.',
     'adminContent.imagery.notice.cancelRefused': 'Procesarea nu a putut fi oprită.',
     'adminContent.imagery.notice.dismissed': 'Versiunea a fost înlăturată.',
     'adminContent.imagery.notice.resumed': 'Procesarea reîncepe în cel mult cinci minute.',

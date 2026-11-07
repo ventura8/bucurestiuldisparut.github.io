@@ -220,6 +220,13 @@
             "source": "docs/research/manual-test-2026-10-25.md findings 13, 14 (the user's decision); docs/research/M6-interfaces.md §2"
         },
         {
+            "id": "V31",
+            "area": "viewer",
+            "name": "The basemap's own labels: street names and points of interest",
+            "milestone": "post-M8",
+            "source": "docs/ENGINE_API.md -> Map labels; the owner's request of 2026-11-07"
+        },
+        {
             "id": "A00",
             "area": "admin",
             "name": "Admin e2e harness",
@@ -750,6 +757,13 @@
             "name": "What the local AI ran on, or why it cannot",
             "milestone": "M10",
             "source": "docs/research/M10-local-ai.md (the owner, 2026-11-06)"
+        },
+        {
+            "id": "A69",
+            "area": "admin",
+            "name": "Locate again a frame waiting for points",
+            "milestone": "M9",
+            "source": "the owner's live use, 2026-11-07: a frame parked under an older pipeline could only be cancelled and imported again"
         }
     ],
     "scenarios": [
@@ -2503,6 +2517,160 @@
             "notes": "Milestone M6 (docs/research/M6-interfaces.md §2.2, §2.4; owner: hosting). Finding 14 of docs/research/manual-test-2026-10-25.md. Test: e2e/specs/viewer/hosting.spec.ts (tour state site.not-found)."
         },
         {
+            "id": "S-V31-HAPPY",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The two switches turn the labels off and on live, with no new map load",
+            "asserts": "the Layers panel's Map labels group -> each switch sets showRoadLabels or showPointOfInterestLabels on the basemap import as Mapbox GL reports it; the hash names what is drawn and drops labels at the default; one map created",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-HAPPY-KEYBOARD",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The switches work from the keyboard",
+            "asserts": "a focused switch, named by its visible label, flips with Space and the map follows",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-BAD-CATEGORIES-UNTOUCHED",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The place categories keep their own switches, apart from the labels",
+            "asserts": "turning the basemap's labels off changes no overlay switch of the list and writes no overlay opacity into the hash",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-HAPPY-HASH-RESTORED",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A shared link restores the choice from the map's first frame",
+            "asserts": "labels=streets -> the map loads with points of interest off (one map, no later write needed), the switch shows it, hcm-map-labels-change fires, the hash keeps it",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-HAPPY-OLD-LINK",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A link from before map labels keeps working and gains nothing",
+            "asserts": "an older hash without labels -> both drawn, the other parameters kept, no labels parameter added",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-BAD-HASH-INVALID",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "An invalid hash value is ignored and the viewer rewrites the hash without it",
+            "asserts": "labels=nonsense,__proto__ -> both drawn, the switches on, the next write drops the parameter",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-HAPPY-CITY-DEFAULT",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The city's basemap.config is the default the hash leaves out",
+            "asserts": "basemap.config showRoadLabels false -> the switch starts off and the hash has no labels; turning it on writes labels=streets,pois",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-BAD-CUSTOM-BASEMAP",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A custom basemap offers no switch, drops the link's choice and is never written to",
+            "asserts": "a style without the basemap import and labels= in the link -> no Map labels group, Mapbox GL reports no such configuration, the hash loses labels, the controller's call changes nothing and fires nothing",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-HAPPY-COMPARE",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "happy",
+            "title": "Swipe compare follows the choice on both sides, with no third map",
+            "asserts": "a link comparing with labels=streets -> both maps load with it; a switch changes both live; two maps created",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-BAD-COMPARE-CUSTOM-BASEMAP",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Compare on a custom basemap writes neither side",
+            "asserts": "a custom style while comparing -> neither map gains the configuration, the hash loses labels, no console error",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-HAPPY-API",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "happy",
+            "title": "The controller sets the labels and the event says so",
+            "asserts": "setMapLabels({pois: false}) -> the map follows, hcm-map-labels-change carries both labels",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-BAD-API",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "The controller ignores what is not a label choice",
+            "asserts": "a value that is not a boolean, an unknown kind, null or no argument -> nothing changes and nothing fires, nothing is thrown at the host page, and calls queued after it before ready still run",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/map-labels.spec.ts."
+        },
+        {
+            "id": "S-V31-HAPPY-STYLE-DEFAULT",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A link turning on what the style's own default leaves off keeps its choice",
+            "asserts": "a style whose schema defaults showRoadLabels off, no basemap.config, labels=streets,pois -> Mapbox GL reports it on after the mount, the switch shows on, the hash keeps labels, one map",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Code review of 2026-11-07. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts."
+        },
+        {
+            "id": "S-V31-BAD-STYLE-DEFAULT",
+            "behaviour": "V31",
+            "area": "viewer",
+            "path": "bad",
+            "title": "A link over a style's own default loses nothing on the next reload",
+            "asserts": "labels=pois over that style -> the map cannot tell the default beneath the choice, so turning streets on keeps labels=streets,pois in the hash and a reload shows them on",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "Code review of 2026-11-07. Tests: e2e/specs/viewer/map-labels.spec.ts, packages/engine/test/core/map-labels.test.ts."
+        },
+        {
             "id": "S-A00-HAPPY",
             "behaviour": "A00",
             "area": "admin",
@@ -4252,6 +4420,39 @@
             "notes": "M8 (docs/research/M8-join-interfaces.md §8). Test: functions/test/imagery/search.test.ts."
         },
         {
+            "id": "S-A11-HAPPY-HUGE-THUMBNAIL",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "A huge browse image is a small picture in its row and a bounded one on its page",
+            "asserts": "a copy 20,000 x 1,000 px long: the row's image is 128 x 128 px, decoded small by createImageBitmap's resize and never held at full size; the scene's page shows the whole frame at most 2,048 px long; the pictures are made one at a time, the map's full-size decode among them and once however many list writes come while it waits, and every address is released",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's live use, 2026-11-07. Tab frozen by 64 px thumbnails of 37,440 x 1,920 px copies. Tests: e2e/admin/specs/imagery/rows.spec.ts, packages/admin/test/imagery/pictures.test.ts (what the decoder is asked for), browse.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-UNREADABLE-THUMBNAIL",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A browse copy that is no image says its preview is unavailable",
+            "asserts": "a copy that cannot be decoded: its row shows the unavailable placeholder, not a broken image, the other rows stand",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's live use, 2026-11-07. Tests: e2e/admin/specs/imagery/rows.spec.ts, packages/admin/test/imagery/browse.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-PREVIEW-UNAVAILABLE",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "A preview that could not be made says so with Try again, and Try again makes it",
+            "asserts": "the thumbnail made and the bucket then failing: the scene's page shows the unavailable alert with Try again instead of the row's 128 px crop as the browse image, the row keeps its thumbnail; Try again shows the whole frame",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "Code review of 2026-11-07. Tests: e2e/admin/specs/imagery/rows.spec.ts, packages/admin/test/imagery/browse.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
             "id": "S-A12-HAPPY",
             "behaviour": "A12",
             "area": "admin",
@@ -5075,6 +5276,17 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
+        },
+        {
+            "id": "S-A16-HAPPY-POINTS-AFTER-ATTEMPTS",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "happy",
+            "title": "The admin's points get a run of their own after the attempts were used up",
+            "asserts": "a job parked at JOB_MAX_ATTEMPTS (Locate again spent them): saveGcps queues it one short of the limit and the dispatcher starts it at the limit, instead of accepting the points and failing the job for good; earlier counts stay as they are",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Code review of 2026-11-07. Tests: functions/test/imagery/save-gcps.test.ts."
         },
         {
             "id": "S-A17-HAPPY",
@@ -11455,6 +11667,94 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "docs/research/M10-local-ai.md. Tests: e2e/admin/specs/imagery/worker.spec.ts, packages/ui/test/admin/worker/worker.test.ts, packages/admin/test/worker/feed.test.ts, packages/shared/test/api/worker.test.ts, functions/test/worker/starter-sidecar.test.ts."
+        },
+        {
+            "id": "S-A69-HAPPY-LOCATE-AGAIN",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame waiting for points searches for its place again",
+            "asserts": "a USGS frame at needs_gcps offers Locate again; the job goes back to queued with fetch and extract as recorded and stitch and every step after it pending, so an older pipeline's frame.json is not searched; the runner runs from stitch; the notice says it is no new import",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's live use, 2026-11-07. Tests: e2e/admin/specs/imagery/calibration.spec.ts, functions/test/imagery/locate-again.test.ts, pipeline/tests/unit/test_runner.py, packages/ui/test/admin/imagery/imagery-detail.test.ts."
+        },
+        {
+            "id": "S-A69-HAPPY-REFUSED-MAY-PROVE",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "happy",
+            "title": "A locate that refused may prove on the second search",
+            "asserts": "the version forgets the refusal, the calibration and the weak corners (the scan stays until replaced); a search that proves shows its figures and the frame goes on to approval",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's live use, 2026-11-07. Tests: e2e/admin/specs/imagery/calibration.spec.ts, functions/test/imagery/locate-again.test.ts."
+        },
+        {
+            "id": "S-A69-HAPPY-DELIVERY-KEPT",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "happy",
+            "title": "A weak crop's kept delivery is enough when the segments expired",
+            "asserts": "the segments gone and the delivery there: accepted; the runner passes over fetch and unpacks again, with no download",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's live use, 2026-11-07. Tests: functions/test/imagery/locate-again.test.ts, pipeline/tests/unit/test_runner.py."
+        },
+        {
+            "id": "S-A69-HAPPY-NOT-AN-IMPORT",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "happy",
+            "title": "Locate again is not a new import",
+            "asserts": "with the day's raster jobs at their limit the frame still searches again: it is the same job, so the daily limit is not asked",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's live use, 2026-11-07. Tests: functions/test/imagery/locate-again.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-INPUTS-GONE",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "With neither segments nor delivery the refusal says why",
+            "asserts": "apiError.imagery.locateInputsGone on the page, the job and version unchanged, the frame still waits for points and the georeferencer stays open",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "The owner's live use, 2026-11-07. Tests: e2e/admin/specs/imagery/calibration.spec.ts, functions/test/imagery/locate-again.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-FILES-ELSEWHERE",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "A frame moved after it parked is refused rather than downloaded again",
+            "asserts": "a job parked in the cloud and moved to the computer, or the reverse: apiError.imagery.locateFilesElsewhere, nothing moves and no delivery starts; moved back, its files count again and the refusal is gone",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "Code review of 2026-11-07. Tests: functions/test/imagery/locate-again.test.ts, functions/test/imagery/run-on.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-ATTEMPTS",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "Attempts used up are refused with their count",
+            "asserts": "at JOB_MAX_ATTEMPTS: apiError.imagery.attemptsExhausted, nothing moves; a red budget guard: apiError.guardPaused",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's live use, 2026-11-07. Tests: functions/test/imagery/locate-again.test.ts."
+        },
+        {
+            "id": "S-A69-BAD-NOT-WAITING",
+            "behaviour": "A69",
+            "area": "admin",
+            "path": "bad",
+            "title": "Only a USGS frame still waiting for points is located again",
+            "asserts": "a job not waiting, asked to stop, moved during the check or of a type with no locate is refused with apiError.imagery.versionState; the page offers no button for an upload or a version that moved on",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "The owner's live use, 2026-11-07. Tests: functions/test/imagery/locate-again.test.ts, packages/ui/test/admin/imagery/imagery-detail.test.ts."
         }
     ]
 }

@@ -3,15 +3,18 @@
  * and the last refusal of an action on a scene (Import on the page, an order action on its card) as an alert. A leaf
  * module: the Imagery area's chunk and the order card's chunk share it.
  */
+import type { Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
-import { noticeOf } from '../shell/text.js';
+import { contentText, noticeOf } from '../shell/text.js';
 import type { ImageryContext } from './context.js';
 import type { ImageryViewState, SceneItemPort } from './imagery-port.js';
 import { withValue } from './when.js';
 
 /** Setup's USGS step, where the credentials are pasted and the M2M access is watched. */
-export const USGS_SETUP_HREF = '#/setup/usgs';
+export function usgsSetupLink(locale: Locale): TemplateResult {
+    return html`<p><a href="#/setup/usgs">${contentText(locale, 'adminContent.imagery.openUsgsSetup')}</a></p>`;
+}
 
 type SceneRefusalPort = ImageryViewState['importRefusal'];
 

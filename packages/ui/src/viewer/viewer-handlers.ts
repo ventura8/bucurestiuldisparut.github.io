@@ -73,6 +73,9 @@ export function createHandlers(host: HandlerHost): ViewerHandlers {
             void store.retry();
         }),
         onCompareToggle: on(toggleCompare),
+        onMapLabel: on((store, event) => {
+            store.setMapLabels({ [event.detail.kind]: event.detail.visible });
+        }),
         onToastDismiss: on((store) => {
             store.dismissToast();
         }),

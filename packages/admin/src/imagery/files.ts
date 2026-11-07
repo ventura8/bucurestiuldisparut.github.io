@@ -43,8 +43,15 @@ export interface PictureTriangle {
 }
 
 export interface PicturePort {
-    /** The image of `blob` in a canvas at most `maxSide` pixels on its long side; null when it is no image. */
-    decode(blob: Blob, maxSide: number): Promise<Picture | null>;
+    /**
+     * The image in a canvas at most `maxSide` pixels on its long side; null when `read` finds nothing or it is no image. `read` is
+     * called when its turn comes: this and the next two make one picture at a time.
+     */
+    decode(read: () => Promise<Blob | null>, maxSide: number): Promise<Picture | null>;
+    /** A `blob:` address (`FilePort.release` frees it) of the image's middle, at most `side` square, or null likewise. */
+    thumbnail(read: () => Promise<Blob | null>, side: number): Promise<string | null>;
+    /** The same of the whole image, at most `maxSide` long. */
+    preview(read: () => Promise<Blob | null>, maxSide: number): Promise<string | null>;
     /** An empty canvas of the given size (the georeferencer's warped preview). */
     blank(width: number, height: number): Picture;
     /** Clears `target` and draws `source` into it, triangle by triangle. */

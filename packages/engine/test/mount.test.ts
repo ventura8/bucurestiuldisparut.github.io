@@ -190,6 +190,24 @@ describe('the controller', () => {
         await expect(failed.ready).resolves.toMatchObject({ ok: false });
     });
 
+    it('badPath_setMapLabelsWithNothingIsIgnoredAndTheCallsQueuedAfterItStillRun @S-V31-BAD-API', async () => {
+        const world = testEnvironment();
+        const controller = mount(new FakeContainer().element, config(), world.env);
+        const nothing = null as unknown as Parameters<typeof controller.setMapLabels>[0];
+
+        controller.setMapLabels(nothing);
+        controller.setYear(1966);
+        await controller.ready;
+        await settle();
+
+        expect(world.viewer.store?.getState().year).toBe(1966);
+        expect(() => {
+            controller.setMapLabels(nothing);
+            controller.setMapLabels(undefined as unknown as typeof nothing);
+        }).not.toThrow();
+        expect(world.viewer.store?.getState().mapLabels.shown).toEqual({ streets: true, pois: true });
+    });
+
     it('badPath_destroyBeforeReadySettlesReadyAndDropsTheQueue', async () => {
         const world = testEnvironment();
         const controller = mount(new FakeContainer().element, config(), world.env);
@@ -201,6 +219,21 @@ describe('the controller', () => {
         await settle();
         expect(world.map.callsOf('mount')).toEqual([]);
         expect(world.stores[0]?.getState().year).toBeNull();
+    });
+
+    it('happyPath_setMapLabelsDrawsWhatTheBasemapHasAndAFailedOrDestroyedControllerIgnoresIt', async () => {
+        const world = testEnvironment();
+        const controller = mount(new FakeContainer().element, config(), world.env);
+
+        controller.setMapLabels({ pois: false });
+        await controller.ready;
+        expect(world.viewer.store?.getState().mapLabels.shown).toEqual({ streets: true, pois: false });
+
+        const failed = mount(new FakeContainer().element, { manifestUrl: 'http://example.org/manifest.json' }, testEnvironment().env);
+        failed.setMapLabels({ pois: false });
+        await expect(failed.ready).resolves.toMatchObject({ ok: false });
+        controller.destroy();
+        controller.setMapLabels({ pois: true });
     });
 });
 

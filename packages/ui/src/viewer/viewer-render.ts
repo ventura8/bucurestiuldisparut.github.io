@@ -15,7 +15,8 @@ import { keyed } from 'lit/directives/keyed.js';
 import type { FabMenuItem } from '../components/fab-menu.js';
 import type { AttributionPart } from './attribution.js';
 import { EMPTY } from './empty.js';
-import type { SheetMode, ViewerLayout } from './layout.js';
+import type { MapLabelDetail } from './hcm-layer-panel.js';
+import { DOCKED_OPEN, type Placement, type SheetMode, type ViewerLayout } from './layout.js';
 import { renderSheetFrame } from './sheet-frame.js';
 import type { ViewerError, ViewerState } from './store-port.js';
 import { photosNearYear, type TimelineStop } from './timeline-model.js';
@@ -61,6 +62,8 @@ export interface ViewerHandlers {
     readonly onRetry: (event: Event) => void;
     /** The Layers panel's Compare button (M4, V06). */
     readonly onCompareToggle: (event: Event) => void;
+    /** The Layers panel's Map labels switches (V31). */
+    readonly onMapLabel: (event: CustomEvent<MapLabelDetail>) => void;
     readonly onToastDismiss: (event: Event) => void;
     readonly onSkip: () => void;
     readonly onNearYear: () => void;
@@ -334,19 +337,6 @@ function toast(view: ViewerView, state: ViewerState, handlers: ViewerHandlers): 
     </div>`;
 }
 
-/**
- * Where a sheet shows, whether it is open, whether it can be closed (the always-docked layers pane cannot) and whether
- * a modal surface above it (the lightbox over a modal sheet) makes it inert.
- */
-interface Placement {
-    readonly mode: SheetMode;
-    readonly open: boolean;
-    readonly closable?: boolean;
-    readonly inert?: boolean;
-}
-
-const DOCKED_OPEN: Placement = { mode: 'docked', open: true };
-
 function layerPanel(view: ViewerView, ready: Ready, placement: Placement, handlers: ViewerHandlers): TemplateResult {
     return html`<hcm-layer-panel
         .overlays=${ready.state.overlays}
@@ -357,11 +347,13 @@ function layerPanel(view: ViewerView, ready: Ready, placement: Placement, handle
         .closable=${placement.closable !== false}
         .canCompare=${ready.state.webgl && ready.manifest.layers.length > 0}
         .comparing=${ready.state.compare !== null}
+        .labels=${ready.state.webgl ? ready.state.mapLabels : null}
         ?inert=${placement.inert === true}
         @hcm-close=${handlers.onSheetClose}
         @hcm-overlay-visibility=${handlers.onOverlayVisibility}
         @hcm-overlay-opacity=${handlers.onOverlayOpacity}
         @hcm-compare-toggle=${handlers.onCompareToggle}
+        @hcm-map-label=${handlers.onMapLabel}
     ></hcm-layer-panel>`;
 }
 

@@ -39,6 +39,50 @@ function choice(world: ImageryWorld) {
     return world.deps.documents.get(FIRESTORE_PATHS.runChoice(CITY), runChoiceDocSchema);
 }
 
+describe('imagery.runOn: the files of a parked job', () => {
+    const parked = { status: 'awaiting_gcps', steps: { extract: { status: 'done', gcsPath: 'work/c/j/segments/a.tif' } } } as const;
+
+    it('badPath_aParkedCloudJobMovedToTheComputerLeavesItsFilesBehindAndMovedBackHasThemAgain @S-A69-BAD-FILES-ELSEWHERE', async () => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, queued(parked));
+
+        await runOn(world, { jobId: JOB, runOn: 'local' });
+        expect(await readJob(world, JOB)).toMatchObject({ runOn: 'local', filesOn: 'cloud' });
+
+        await runOn(world, { jobId: JOB, runOn: 'cloud' });
+        const back = await readJob(world, JOB);
+        expect(back?.runOn).toBe('cloud');
+        expect(back?.filesOn).toBeUndefined();
+    });
+
+    it('badPath_aParkedLocalJobMovedToTheCloudLeavesItsFilesOnTheComputer @S-A69-BAD-FILES-ELSEWHERE', async () => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, queued({ ...parked, runOn: 'local' }));
+
+        await runOn(world, { jobId: JOB, runOn: 'cloud' });
+
+        expect(await readJob(world, JOB)).toMatchObject({ runOn: 'cloud', filesOn: 'local' });
+    });
+
+    it('happyPath_aJobNotParkedTakesItsFilesAlongAsItRunsThereFromTheStart', async () => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, queued());
+
+        await runOn(world, { jobId: JOB, runOn: 'local' });
+
+        expect((await readJob(world, JOB))?.filesOn).toBeUndefined();
+    });
+
+    it('happyPath_movedWhileQueuedAfterItsPointsTheFilesStayWhereTheyAre', async () => {
+        const world = await readyWorld();
+        await seedJob(world, JOB, queued({ runOn: 'local', filesOn: 'cloud' }));
+
+        await runOn(world, { jobId: JOB, runOn: 'cloud' });
+
+        expect((await readJob(world, JOB))?.filesOn).toBeUndefined();
+    });
+});
+
 describe('imagery.runOn', () => {
     it('happyPath_theCitysChoiceIsRemembered', async () => {
         const world = await readyWorld();

@@ -49,6 +49,7 @@ const IMAGERY_CALLS = {
     'imagery.saveGcps': { request: imagerySaveGcpsRequestSchema, response: imagerySaveGcpsResponseSchema },
     'imagery.crop': { request: imageryCropRequestSchema, response: imageryCropResponseSchema },
     'imagery.retry': { request: imageryRetryRequestSchema, response: imageryRetryResponseSchema },
+    'imagery.locateAgain': { request: imageryVersionRequestSchema, response: imageryRetryResponseSchema },
     'imagery.probeTiles': { request: imageryProbeRequestSchema, response: imageryProbeResponseSchema },
     'imagery.resumeGuard': { request: imageryResumeGuardRequestSchema, response: imageryResumeGuardResponseSchema },
 } as const;

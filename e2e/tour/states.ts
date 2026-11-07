@@ -4,6 +4,8 @@ import { expect, type BrowserContext, type Locator, type Page, type Route } from
 import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
 import { ADMIN_SECTION_STATES } from './admin-sections.js';
 import { COMPARE_STATES, openComparing } from './compare-states.js';
+import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
+import { hasBottomSheets, toDetent } from './sheets.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
 import { POIS_STATES } from '../admin/specs/pois/states.js';
 import { SITE_ORIGIN } from '../fixtures/world.js';
@@ -63,33 +65,6 @@ interface ViewerState {
     readonly escape?: (tour: TourContext) => { readonly opener: string | null } | null;
     /** The language the page shows (the language item of the menu switches to the other one). */
     readonly shows?: (lang: Locale) => Locale;
-}
-
-/** A phone held upright: sheets are bottom sheets with three heights (peek, half, full). */
-function hasBottomSheets(page: Page): boolean {
-    const size = page.viewportSize();
-    return size !== null && size.width < 600 && size.height >= 480;
-}
-
-/** The open sheet (one at a time) and its box. */
-function openSheet(page: Page): { sheet: Locator; box: Locator } {
-    const sheet = viewer(page).locator('hcm-sheet[open]');
-    return { sheet, box: sheet.locator('section.sheet') };
-}
-
-/** Moves the open bottom sheet to `detent` with its handle's arrow keys (one step per press), then waits for it to settle. */
-async function toDetent(page: Page, lang: Locale, detent: 'peek' | 'half' | 'full'): Promise<void> {
-    const { sheet, box } = openSheet(page);
-    const order = ['peek', 'half', 'full'];
-    const now = order.indexOf((await sheet.getAttribute('detent')) ?? 'half');
-    const steps = order.indexOf(detent) - now;
-    const handle = sheet.getByRole('button', { name: t(lang, 'sheet.resize'), exact: true });
-    await handle.focus();
-    for (let step = 0; step < Math.abs(steps); step += 1) {
-        await handle.press(steps > 0 ? 'ArrowUp' : 'ArrowDown');
-    }
-    await expect(sheet).toHaveAttribute('detent', detent);
-    await expect.poll(() => box.evaluate((element) => element.getAnimations().length), { message: 'the sheet has settled' }).toBe(0);
 }
 
 /**
@@ -351,6 +326,7 @@ const VIEWER_STATES = {
     },
     // Swipe compare (M4, V06): the second map behind its divider, the toggle of a compact window, the chooser.
     ...COMPARE_STATES,
+    ...MAP_LABEL_STATES,
 } as const satisfies Record<string, Omit<ViewerState, 'id'>>;
 
 type ViewerStateId = keyof typeof VIEWER_STATES;
@@ -447,8 +423,18 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         title: 'A historical year, the timeline and the Layers panel',
         id: 'year-layers',
         boot: ({ page, lang }) => openViewer(page, { lang, hash: '15/44.42700/26.08530&layers=e2e-1966' }),
-        states: ['year', 'near-year-photos', 'timeline-step', 'layers', 'layers-peek', 'layers-full', 'layers-opacity'],
+        states: [
+            'year',
+            'near-year-photos',
+            'timeline-step',
+            'layers',
+            'layers-map-labels',
+            'layers-peek',
+            'layers-full',
+            'layers-opacity',
+        ],
     },
+    MAP_LABEL_JOURNEY,
     {
         title: 'A photo at every height, its lightbox, and the photo list',
         id: 'photo',

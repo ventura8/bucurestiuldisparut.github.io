@@ -284,6 +284,7 @@ export function jobDoc(creator: string, status = 'running'): Data {
         usageCountedAt: past(),
         // Finding 68 of 2026-11-02: imagery.tick's mark of a local job no computer came for.
         workerOverdueAt: past(),
+        filesOn: 'cloud',
         ...systemStamp('pipeline'),
     };
 }

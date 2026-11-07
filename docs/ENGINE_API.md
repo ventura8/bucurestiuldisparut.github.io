@@ -123,6 +123,7 @@ Events are `CustomEvent`s that bubble and cross shadow roots (`composed: true`):
 | `hcm-overlay-change` | `{ overlayId, kind, visible, opacity }` | Any overlay (a historical layer, `photos`, a POI category) was shown, hidden or faded; fired once per change, after a slider is released. |
 | `hcm-photo-open` | `{ photoId }` | A photo's sheet opened. |
 | `hcm-poi-open` | `{ poiId }` | A POI's details opened (in the same sheet as photos). |
+| `hcm-map-labels-change` | `{ streets, pois }` | The basemap's own labels changed ([Map labels](#map-labels)), by the visitor, the hash or the API; a link's choice fires it after `hcm-ready`. Additive within v1. |
 | `hcm-compare-change` | `{ open, mode, layerId, position }` | M4: swipe compare opened, closed, switched between `swipe` and `toggle` (the window class), changed its compared side or settled its divider (a drag once, on release; a key each time) ([Compare](#compare)); closed, `mode`, `layerId` and `position` are `null`. A compare the URL hash opens fires it after `hcm-ready`. |
 
 ## JavaScript API
@@ -157,6 +158,8 @@ interface HistoricCityMapController {
     setComparePosition(position: number): void;
     /** M4: closes compare and destroys its second map; nothing happens when it is closed. */
     closeCompare(): void;
+    /** Draws or hides the basemap's street names and points of interest, live; a kind the basemap does not have is ignored. */
+    setMapLabels(labels: { readonly streets?: boolean; readonly pois?: boolean }): void;
     /** Removes the map (one map per view), every listener and the rendered content; later calls do nothing. */
     destroy(): void;
 }
@@ -167,7 +170,7 @@ interface HistoricCityMapController {
 ## URL hash v1
 
 ```text
-#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>][&photo=<id>][&lang=ro|en]
+#<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>][&labels=streets,pois][&photo=<id>][&lang=ro|en]
 ```
 
 | Part | Rule when read |
@@ -178,6 +181,7 @@ interface HistoricCityMapController {
 | `op` | Per-overlay opacity (PLAN Addendum 3) in percent, clamped to `[0, 100]`; at most 50 entries (the encoder never writes more); wins over `opacity`. Overlays are the layer ids, `photos` and the POI category ids ([Overlays](#overlays)). An entry for an id the manifest does not have is dropped (`decodeHash` with `overlayIds`), and the viewer writes only the overlays whose opacity differs from the manifest default. |
 | `cmp` | M4: swipe compare is open with this historical layer on the compared side; empty (`cmp=`) means today, no historical layer. An id that is not a layer of the manifest opens nothing and the viewer rewrites the hash without `cmp` and `sw` (scenario V06). |
 | `sw` | M4: the divider in percent of the map's width, clamped to `[0, 100]`; 50 when absent, ignored without `cmp`; on a compact window 0 shows the compared side and anything else the main one. Either of `cmp` and `sw` may come first. |
+| `labels` | The basemap's labels that are drawn: `streets`, `pois`, comma-separated, in any order; `labels=` (empty) means none. Absent is the city's default, and the encoder omits a default, so a link from before this parameter opens as it did. An unknown word is ignored (`labels=streets,transit` is `streets`), and a value with nothing but unknown words is ignored as a whole. A kind the city's basemap does not have is dropped and the next write omits it ([Map labels](#map-labels)). |
 | `photo` | The open photo; an id that is not in the manifest shows a toast (scenario V09). |
 | `lang` | `ro` or `en`; anything else is ignored. |
 
@@ -198,6 +202,20 @@ Swipe compare (M4, scenario V06; the contract is [research/M4-interfaces.md](res
 - **Compact windows** (below 600 px) get a toggle between the two sides on the one map instead of a second map (one made on a wider window waits hidden for a minute, as above).
 - **The legal line**: one Mapbox logo and one attribution, the viewer map's, stay visible above both sides at every divider position (the second map's own are hidden); the compare bar credits the compared layer's source ("Sursa: …"), and the viewer map's attribution the main side's.
 - **The URL hash** carries `cmp=` and `sw=` ([URL hash v1](#url-hash-v1)); a shared link reopens compare where it was. Codec: `CompareState` in `packages/shared/src/url/hash.ts`.
+
+## Map labels
+
+Status (2026-11-07): the owner's request; scenario rows V31, `e2e/specs/viewer/map-labels.spec.ts`, the tour's states `layers-map-labels` and `layers-no-map-labels`. Additive within v1.
+
+The Layers panel's **Map labels** group has two switches for the text Mapbox draws on today's map: **Street names** (Standard's `showRoadLabels`) and **Points of interest** (`showPointOfInterestLabels`), both on the `basemap` import. They apply live with `setConfigProperty`, with no new map load. Both Mapbox Standard and Mapbox Standard Satellite have them (Mapbox: the Satellite style takes all of Standard's configuration except the 3D objects and the colours). `showPlaceLabels` and `showTransitLabels` are not the visitor's choice: a city sets them in `basemap.config`, and places and transit stay as it says.
+
+- **Not the city's places.** A POI category of the manifest is an overlay with its own switch and opacity under **Places**. The group's note says so when the city has such categories; nothing here changes an overlay.
+- **The default is the city's.** There is no field for it: `basemap.config` sets `showRoadLabels` or `showPointOfInterestLabels` to `false`, and the switch starts off and the hash omits it. Without them, a label is drawn (Standard's default, and what the map itself reports for a style with its own default). A link's choice stands over a style's own default; the choice the map was mounted with hides the default beneath it, so the hash then keeps `labels` until a link without it opens, even at what may be the default, and no reload loses it.
+- **What a basemap can do is read, not assumed.** Once the map has loaded, the viewer asks it for each property. A custom style, or the base without the `basemap` import, has neither: no group shows, what a link asked for is dropped, `setMapLabels` changes nothing and fires nothing, and the style is never written to. A style with one of them gets that one switch. Without a map (no WebGL) there is no group.
+- **A shared link never flashes** what it turned off: its choice goes into the map's creation options (`config`), not a later write.
+- **Swipe compare** draws the same choice on both sides; a switch moved while comparing changes both maps, and the second map is created with it.
+
+Code: `packages/engine/src/core/map-labels.ts`, `packages/shared/src/overlays/map-labels.ts`, `ViewerMapPort` in `packages/ui/src/map/viewer-map.ts` (the viewer's port: the admin's bundle does not carry it), and `packages/shared/src/i18n/map-labels/`, which `@hcm/shared/map-labels` exports with the panel's words.
 
 ## City Manifest v1
 
@@ -228,7 +246,7 @@ Common rules:
 | `about`, `privacy` | `{ro, en}` | Markdown subset, at most 10,000 characters |
 | `credits` | `[{label: {ro, en}, url?}]` | at most 50 |
 | `theme` | `{seedColor, tokens}` | `seedColor` `#rrggbb`; `tokens.light`, `.dark`, `.highContrastLight`, `.highContrastDark` each map 1 to 200 `--md-sys-*` names to values without `;`, braces, quotes, `:` or `url(` |
-| `basemap` | `{style, config?}` | `mapbox://styles/<owner>/<style>` or https; `config` sets Mapbox Standard configuration properties (at most 30) |
+| `basemap` | `{style, config?}` | `mapbox://styles/<owner>/<style>` or https; `config` sets Mapbox Standard configuration properties (at most 30), among them the [Map labels](#map-labels) defaults |
 | `mapbox` | `{publicToken}` | a `pk.` token (URL-restricted); a secret `sk.` token is rejected |
 | `analytics` | `{measurementId?, errorEndpoint?, firebase?}` | `G-…`; https; `firebase` is `{apiKey, appId, projectId}` of the city's Firebase web app (`AIza…`, `1:<number>:web:<hex>`, a project id), written by the manifest builder and never committed. GA4 loads only with a `measurementId`, the `firebase` ids and the visitor's consent; without the ids the consent banner still asks, but nothing is sent. GA4 is told the page's origin and path, never the hash; withdrawing consent in About expires its `_ga` cookies; the viewer has no Performance Monitoring; after consent it also sends its field measurements (Core Web Vitals, the boot's timings, map failures: [ARCHITECTURE.md](ARCHITECTURE.md) → *Field measurements*) |
 | `engine` | `{minVersion?}` (optional) | the oldest engine that can read this manifest |

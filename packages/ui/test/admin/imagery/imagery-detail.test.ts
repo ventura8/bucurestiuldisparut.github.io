@@ -110,6 +110,19 @@ describe('<hcm-imagery-page>: a scene', () => {
         expect(await axeViolations(element)).toEqual([]);
     });
 
+    it('badPath_aPreviewThatCouldNotBeMadeSaysSoInsteadOfShowingTheRowsCrop @S-A11-BAD-PREVIEW-UNAVAILABLE', async () => {
+        const error = { key: 'apiError.imagery.browseUnavailable' } as const;
+        const browse = { [SCENE.id]: { status: 'ready' as const, url: 'blob:thumb', preview: null, error } };
+        const { element, area } = await imageryPage(imageryState({ detail: SCENE, browse }), { params: ['scene', SCENE.id] });
+
+        click(button(element, 'Try again'));
+
+        expect(deep(element, '[data-state="browse-unavailable"]').getAttribute('role')).toBe('alert');
+        expect(element.shadowRoot?.querySelector('img.browse')).toBeNull();
+        expect(calls(area)).toEqual(['retryBrowse "DS1035-1057DA023"']);
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
     it('badPath_aSceneNotInTheListIsNotFoundOnceTheListIsRead', async () => {
         const { element, area } = await imageryPage(
             imageryState({ detail: { kind: 'scene', id: 'gone' }, scenes: { ...imageryState().scenes, status: 'loading' } }),
@@ -333,6 +346,32 @@ describe('<hcm-imagery-page>: a job and an upload', () => {
         expect(deepAll(element, '.pane .alert').length).toBeGreaterThan(1);
         expect(calls(area)).toEqual(['retryJob']);
         expect((await axeViolations(element)).join('\n')).toBe('');
+    });
+
+    it('happyPath_aUsgsFrameWaitingForPointsOffersLocateAgain @S-A69-HAPPY-LOCATE-AGAIN', async () => {
+        const waiting = jobView({ status: 'awaiting_gcps', waitReason: 'gcps', finished: false });
+        const { element, area } = await imageryPage(
+            imageryState({
+                detail: VERSION,
+                version: versionPage({}, versionView({ state: 'needs_gcps', origin: 'usgs', output: null }), waiting),
+            }),
+        );
+
+        click(button(element, 'Locate again'));
+
+        expect(calls(area)).toEqual(['locateAgain']);
+        expect(deepAll(element, '.actions hcm-button').map((found) => found.textContent.trim())).not.toContain('Try again');
+        expect((await axeViolations(element)).join('\n')).toBe('');
+    });
+
+    it.each([
+        ['an upload', versionView({ state: 'needs_gcps', origin: 'upload', output: null }), 'awaiting_gcps'],
+        ['a version not waiting', versionView({ state: 'processing', origin: 'usgs', output: null }), 'awaiting_gcps'],
+        ['a job that moved on', versionView({ state: 'needs_gcps', origin: 'usgs', output: null }), 'queued'],
+    ] as const)('badPath_noLocateAgainFor_%s @S-A69-BAD-NOT-WAITING', async (_name, version, status) => {
+        const { element } = await imageryPage(imageryState({ detail: VERSION, version: versionPage({}, version, jobView({ status })) }));
+
+        expect(deepAll(element, 'hcm-button').some((found) => found.textContent.includes('Locate again'))).toBe(false);
     });
 
     it('happyPath_aPublishedVersionLinksItsLayerAndThePreviewsOpacityMoves', async () => {

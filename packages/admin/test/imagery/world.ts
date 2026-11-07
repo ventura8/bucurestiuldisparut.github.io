@@ -91,7 +91,7 @@ export class FakeFiles implements FilePort {
     readonly #held: (() => void)[] = [];
 
     put(path: string, text = 'image'): void {
-        this.objects.set(path, new Blob([text], { type: text === 'not an image' ? 'text/plain' : 'image/jpeg' }));
+        this.objects.set(path, new File([text], path, { type: text === 'not an image' ? 'text/plain' : 'image/jpeg' }));
     }
 
     async read(path: string): Promise<Blob | null> {
@@ -129,13 +129,33 @@ export class FakeFiles implements FilePort {
 
 export class FakePictures implements PicturePort {
     readonly decoded: number[] = [];
+    readonly shrunk: number[] = [];
     readonly drawn: { readonly target: Picture; readonly source: Picture; readonly triangles: readonly PictureTriangle[] }[] = [];
     #next = 1;
 
-    decode(blob: Blob, maxSide: number): Promise<Picture | null> {
+    async decode(read: () => Promise<Blob | null>, maxSide: number): Promise<Picture | null> {
+        const blob = await read();
+        if (blob === null) {
+            return null;
+        }
         this.decoded.push(maxSide);
-        const image = blob.type.startsWith('image/');
-        return Promise.resolve(image ? this.blank(Math.min(maxSide, 400), Math.min(maxSide, 300)) : null);
+        return blob.type.startsWith('image/') ? this.blank(Math.min(maxSide, 400), Math.min(maxSide, 300)) : null;
+    }
+
+    /** The address of a thumbnail (`blob:<path>`), and the sides asked for. */
+    async thumbnail(read: () => Promise<Blob | null>, side: number): Promise<string | null> {
+        this.shrunk.push(side);
+        return this.#address('', await read());
+    }
+
+    /** The address of a preview (`blob:preview:<path>`), and the sides asked for. */
+    async preview(read: () => Promise<Blob | null>, maxSide: number): Promise<string | null> {
+        this.shrunk.push(maxSide);
+        return this.#address('preview:', await read());
+    }
+
+    #address(kind: string, blob: Blob | null): string | null {
+        return blob?.type.startsWith('image/') === true ? `blob:${kind}${(blob as File).name}` : null;
     }
 
     blank(width: number, height: number): Picture {

@@ -16,7 +16,7 @@ import { datasetText, dayText, reasonText } from './imagery-text.js';
 import { lazyJoin } from './join/lazy-card.js';
 import { orderTag } from './orders/order-list.js';
 import { importable, importButton, importRefusal } from './scene-detail.js';
-import { USGS_SETUP_HREF } from './scene-refusal.js';
+import { usgsSetupLink } from './scene-refusal.js';
 import { when } from './when.js';
 
 /** The reasons a row shows (the rest on its page). */
@@ -111,7 +111,7 @@ const TRY_AGAIN_ERRORS: ReadonlySet<string> = new Set(['apiError.usgs.unavailabl
 /** What the admin can do about a failed search: Setup's USGS step, or Try again when USGS did not answer. */
 function searchCure(context: ImageryContext, key: string): TemplateResult {
     if (SETUP_ERRORS.has(key)) {
-        return html`<p><a href=${USGS_SETUP_HREF}>${contentText(context.locale, 'adminContent.imagery.openUsgsSetup')}</a></p>`;
+        return usgsSetupLink(context.locale);
     }
     return when(
         TRY_AGAIN_ERRORS.has(key),
@@ -302,7 +302,7 @@ function sceneRows(context: ImageryContext): TemplateResult {
 function usgsMissing(context: ImageryContext): TemplateResult {
     return html`<div class="pane" data-state="usgs-missing">
         <hcm-empty-state icon="satellite_alt" .text=${contentText(context.locale, 'adminContent.imagery.usgsMissing')}></hcm-empty-state>
-        <p><a href=${USGS_SETUP_HREF}>${contentText(context.locale, 'adminContent.imagery.openUsgsSetup')}</a></p>
+        ${usgsSetupLink(context.locale)}
     </div>`;
 }
 

@@ -2,12 +2,12 @@
  * A version's page (`#/imagery/version/<versionId>`, `docs/research/M3-interfaces.md` §2.2–§2.4, §10.2; behaviours A12,
  * A14, A17, A18, A42): its state, its job's progress and steps (live), why it waits, its error with what cures it (CR-M3-47:
  * **Try again** when a retry can, Setup's Mapbox step for a token or its scopes, **Upload another file** for an upload the
- * server refused, **Dismiss** for a failed version), the georeferencer, the approval card once it is rendered, the
+ * server refused, **Dismiss** for a failed version), **Locate again** for a frame waiting for points, the georeferencer, the approval card once it is rendered, the
  * preview's opacity on the map, the job's log as text, and **Cancel** while it runs (asked first; once Mapbox was asked
  * to publish, its processing cannot be stopped). M8: a join's frames, and a frame's offer to join its date's others. M9: how the
  * frame was found, or that it was not (`calibration-card.ts`).
  */
-import type { Locale } from '@hcm/shared';
+import type { AdminContentKey, Locale } from '@hcm/shared';
 import { html, type TemplateResult } from 'lit';
 
 import { errorTemplate, formatWhen, loadingTemplate, reconnectingStatus } from '../editing/states.js';
@@ -20,6 +20,7 @@ import type { JobLogLinePort, JobViewPort, VersionPagePort, VersionViewPort } fr
 import { labelText, numberText, versionStateText, waitText, wordedWait } from './imagery-text.js';
 import { liveJoin, versionMark } from './join/live-join.js';
 import { lazyJoin } from './join/lazy-card.js';
+import { notFoundPane } from './not-found.js';
 import { when, withValue } from './when.js';
 import { loadWorkerElements } from '../worker/load.js';
 
@@ -129,16 +130,36 @@ function failure({ context, version, job }: Shown): TemplateResult {
     );
 }
 
-function retryButton({ context, page, job }: Shown): TemplateResult {
-    const offered = job?.status === 'failed' && job.retryable;
-    const busy = page.acting !== null || context.readOnly;
+/** A button of the page's row, off while another action runs or for a revoked admin. */
+function action(
+    { context, page }: Shown,
+    spec: { offered: boolean; icon: string; label: AdminContentKey; variant?: string },
+    click: () => unknown,
+): TemplateResult {
     return when(
-        offered,
+        spec.offered,
         () =>
-            html`<hcm-button variant="tonal" icon="replay" ?disabled=${busy} @click=${() => void context.intents?.retryJob()}
-                >${contentText(context.locale, 'adminContent.common.retry')}</hcm-button
+            html`<hcm-button
+                variant=${spec.variant ?? 'tonal'}
+                icon=${spec.icon}
+                ?disabled=${page.acting !== null || context.readOnly}
+                @click=${click}
+                >${contentText(context.locale, spec.label)}</hcm-button
             >`,
     );
+}
+
+function retryButton(shown: Shown): TemplateResult {
+    const { job, context } = shown;
+    const offered = job?.status === 'failed' && job.retryable;
+    return action(shown, { offered, icon: 'replay', label: 'adminContent.common.retry' }, () => context.intents?.retryJob());
+}
+
+/** A USGS frame waiting for points searches for its place again (`imagery.locateAgain`): a newer pipeline may now find it. */
+function locateButton(shown: Shown): TemplateResult {
+    const { version, job, context } = shown;
+    const offered = version?.origin === 'usgs' && version.state === 'needs_gcps' && job?.status === 'awaiting_gcps';
+    return action(shown, { offered, icon: 'replay', label: 'adminContent.imagery.locateAgain' }, () => context.intents?.locateAgain());
 }
 
 /** An upload the server refused: the Upload view again, with nothing chosen. */
@@ -167,20 +188,12 @@ function mapboxSetupLink({ context, version, job }: Shown): TemplateResult {
 }
 
 /** A failed version leaves "Waiting for you" (`imagery.reject` dismisses it; asked first). */
-function dismissButton({ context, page, version }: Shown): TemplateResult {
-    return when(
-        version?.state === 'failed',
-        () =>
-            html`<hcm-button
-                variant="outlined"
-                icon="close"
-                ?disabled=${page.acting !== null || context.readOnly}
-                @click=${() => {
-                    context.ask('dismiss');
-                }}
-                >${contentText(context.locale, 'adminContent.imagery.dismiss')}</hcm-button
-            >`,
-    );
+function dismissButton(shown: Shown): TemplateResult {
+    const { context, version } = shown;
+    const offered = version?.state === 'failed';
+    return action(shown, { offered, icon: 'close', label: 'adminContent.imagery.dismiss', variant: 'outlined' }, () => {
+        context.ask('dismiss');
+    });
 }
 
 function georefLink({ context, version }: Shown): TemplateResult {
@@ -344,7 +357,8 @@ function body(shown: Shown): TemplateResult {
     return html`<div class="pane" data-version=${page.id} data-state=${stateOf(version, job)}>
         ${heading(shown)} ${reconnectingStatus(locale, reconnecting)} ${progress(locale, job)} ${failure(shown)}
         <div class="actions">
-            ${retryButton(shown)} ${uploadAnother(shown)} ${mapboxSetupLink(shown)} ${georefLink(shown)} ${dismissButton(shown)}
+            ${retryButton(shown)} ${locateButton(shown)} ${uploadAnother(shown)} ${mapboxSetupLink(shown)} ${georefLink(shown)}
+            ${dismissButton(shown)}
         </div>
         ${runPlace(shown)} ${refusal(shown)}
         ${withValue(version, (known) => lazyJoin(context, known, (chunk) => chunk.versionJoin(context, known, job)))} ${outcome(shown)}
@@ -355,10 +369,7 @@ function body(shown: Shown): TemplateResult {
 }
 
 function notFound(context: ImageryContext): TemplateResult {
-    return html`<div class="pane">
-        <h2 tabindex="-1" data-detail-heading>${contentText(context.locale, 'adminContent.imagery.versionNotFound')}</h2>
-        <p><a href=${context.href([])}>${contentText(context.locale, 'adminContent.imagery.backToList')}</a></p>
-    </div>`;
+    return notFoundPane(context, 'adminContent.imagery.versionNotFound');
 }
 
 /** Read: the version's listener answered (or failed). */

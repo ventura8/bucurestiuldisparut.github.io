@@ -7,6 +7,7 @@
  * renders `getState()` and calls the actions; it never touches the map or the URL hash itself.
  */
 import type { Locale, Manifest, MapView, MessageKey, Overlay } from '@hcm/shared';
+import type { MapLabelKind, MapLabels } from '@hcm/shared/map-labels';
 
 import type { ThemeMode } from '../theme/apply.js';
 import type { WindowClass } from '../theme/tokens.js';
@@ -57,6 +58,15 @@ export interface ViewerState {
      * the main side's share); null when the visitor does not compare.
      */
     readonly compare: { readonly layerId: string | null; readonly position: number } | null;
+    /**
+     * The basemap's own labels (V31): what is drawn, what the city's basemap draws by itself, and the kinds it has (null
+     * until a map has answered: no switch shows).
+     */
+    readonly mapLabels: {
+        readonly shown: MapLabels;
+        readonly defaults: MapLabels;
+        readonly available: readonly MapLabelKind[] | null;
+    };
 }
 
 /** The store actions the viewer elements call (a subset of the engine's `ViewerActions`). */
@@ -88,6 +98,8 @@ export interface ViewerStorePort {
     openCompare(layerId: string | null, position?: number): void;
     setComparePosition(position: number): void;
     closeCompare(): void;
+    /** The basemap's own labels, live on every map; a kind the basemap does not have is ignored. */
+    setMapLabels(labels: Partial<MapLabels>): void;
 }
 
 /** How `ready` settles (docs/ENGINE_API.md → JavaScript API). */
@@ -109,5 +121,7 @@ export interface ViewerController {
     setComparePosition(position: number): void;
     /** M4: closes compare and destroys its second map. */
     closeCompare(): void;
+    /** Draws or hides the basemap's street names and points of interest; a kind the basemap does not have is ignored. */
+    setMapLabels(labels: { readonly streets?: boolean; readonly pois?: boolean }): void;
     destroy(): void;
 }

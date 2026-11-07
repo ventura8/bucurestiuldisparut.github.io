@@ -2,9 +2,11 @@ import type { Calibration } from '@hcm/shared';
 
 import { expectStateSound } from '../../../support/state-check.js';
 import { adminVisit } from '../../../tour/states.js';
+import { PROJECT_CITY } from '../../support/content.js';
 import { FUNCTIONS_TIMEOUT_MS } from '../../support/emulators.js';
+import { deleteObjects } from '../../support/imagery-store.js';
 import { ADMIN_LOCK, expect, test } from '../../support/test.js';
-import { detail, importFromList, imageryText, readyImagery, versionState } from './world.js';
+import { detail, errorText, importFromList, imageryText, readyImagery, versionState } from './world.js';
 
 // One admin test at a time: the import runs in the server's upstream world and reads setup/status.
 test.describe.configure({ lock: ADMIN_LOCK });
@@ -91,6 +93,70 @@ test(
         );
         await expect(detail(page).getByRole('link', { name: imageryText(lang, 'adminContent.imagery.openGeoref') })).toBeVisible();
         await expectStateSound(page, adminVisit('imagery.version-not-found', lang));
+    },
+);
+
+test(
+    'Locate again: a frame waiting for points searches again, and this time the proof holds',
+    { tag: ['@S-A69-HAPPY-LOCATE-AGAIN', '@S-A69-HAPPY-REFUSED-MAY-PROVE'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        test.setTimeout(420_000);
+        const fixtures = { emulators: adminWorld.emulators, api: mockApiRequest, upstream };
+        const imagery = await readyImagery(fixtures, adminWorld.accounts.owner.uid);
+        await imagery.script({
+            attempts: [
+                { outcome: 'no-match', calibration: { how: 'none', refusal: 'no-votes' } },
+                { outcome: 'over', calibration: PROVED, coveragePct: 96 },
+            ],
+        });
+        await importFromList(page, lang, SCENE);
+        await expect(versionState(page, lang, 'adminContent.imagery.version.needsGcps')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+
+        await detail(page)
+            .getByRole('button', { name: imageryText(lang, 'adminContent.imagery.locateAgain') })
+            .click();
+
+        await expect(
+            page.locator('hcm-snackbar').filter({ hasText: imageryText(lang, 'adminContent.imagery.notice.locating') }),
+        ).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(versionState(page, lang, 'adminContent.imagery.version.awaitingApproval')).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(detail(page).locator('[data-calibration="votes"]')).toBeVisible();
+        await expect(detail(page).locator('[data-calibration="none"]')).toHaveCount(0);
+        await expect(detail(page).getByRole('button', { name: imageryText(lang, 'adminContent.imagery.locateAgain') })).toHaveCount(0);
+    },
+);
+
+test(
+    'Locate again with the working files and the delivery gone says why, and the frame still waits for points',
+    { tag: '@S-A69-BAD-INPUTS-GONE' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream, consoleErrors }) => {
+        test.setTimeout(420_000);
+        const fixtures = { emulators: adminWorld.emulators, api: mockApiRequest, upstream };
+        const imagery = await readyImagery(fixtures, adminWorld.accounts.owner.uid);
+        await imagery.script({ attempts: [{ outcome: 'no-match', calibration: { how: 'none', refusal: 'no-votes' } }] });
+        const versionId = await importFromList(page, lang, SCENE);
+        await expect(versionState(page, lang, 'adminContent.imagery.version.needsGcps')).toBeVisible({ timeout: FUNCTIONS_TIMEOUT_MS });
+        await deleteObjects(`work/${PROJECT_CITY}/${versionId}/`);
+
+        await detail(page)
+            .getByRole('button', { name: imageryText(lang, 'adminContent.imagery.locateAgain') })
+            .click();
+
+        await expect(
+            detail(page)
+                .getByRole('alert')
+                .filter({ hasText: errorText(lang, 'apiError.imagery.locateInputsGone') }),
+        ).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expect(versionState(page, lang, 'adminContent.imagery.version.needsGcps')).toBeVisible();
+        await expect(detail(page).getByRole('link', { name: imageryText(lang, 'adminContent.imagery.openGeoref') })).toBeVisible();
+        await expectStateSound(page, adminVisit('imagery.version-locate-refused', lang));
+        expect(consoleErrors.takeMatching(/imagery-locateAgain/).length).toBeGreaterThan(0);
     },
 );
 

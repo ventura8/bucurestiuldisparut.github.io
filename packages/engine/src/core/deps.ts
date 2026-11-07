@@ -4,7 +4,7 @@
  * preference, and the page address, query and `hashchange` of the location.
  */
 import type { EngineConfig, Logger } from '@hcm/shared';
-import type { MapPort, Unsubscribe } from '@hcm/ui/map';
+import type { Unsubscribe, ViewerMapPort } from '@hcm/ui/map';
 
 import type { TelemetryPort } from '../telemetry/telemetry-port.js';
 import type { CompareDeps } from './compare-port.js';
@@ -25,7 +25,7 @@ export interface ViewerDeps {
     readonly config: EngineConfig;
     /** `fetch` for the manifest (tests pass a fake); the store applies a 15 s timeout. */
     readonly fetch: (url: string, init: { readonly signal: AbortSignal }) => Promise<Response>;
-    readonly map: MapPort;
+    readonly map: ViewerMapPort;
     readonly telemetry: TelemetryPort;
     /** localStorage-like; preferences live under `hcm:<cityId>:<name>` (`lang`, `theme`, `consent`). */
     readonly storage: PreferenceStorage;

@@ -48,6 +48,12 @@ const EDITOR_TEXT_MODULES = /packages[\\/]ui[\\/]src[\\/]admin[\\/]editing[\\/](
 const STARTER_MODULES =
     /packages[\\/](?:shared[\\/]src[\\/]overlays[\\/]starter-categories|admin[\\/]src[\\/]pois[\\/]starter|ui[\\/]src[\\/]admin[\\/]settings[\\/]starter-actions)\.ts$/;
 
+/**
+ * Three small `@hcm/shared` modules only the Imagery area reads (a plan's schema, a label's words, a year in a name): in the
+ * `editor-texts` chunk, which has room, so the `imagery` chunk stays within its 18 KB with Locate again (DECISIONS-for-review.md §93).
+ */
+const IMAGERY_SHARED_MODULES = /packages[\\/]shared[\\/]src[\\/](?:schemas[\\/]imagery-plan|imagery[\\/]labels|migration[\\/]year)\.ts$/;
+
 /** M4: the editors' assists, their state and intents (`packages/admin/src/assist/`) and their slots (`packages/ui/src/admin/assist/`). */
 const ASSIST_MODULES = /packages[\\/](?:admin[\\/]src|ui[\\/]src[\\/]admin)[\\/]assist[\\/]/;
 
@@ -66,14 +72,26 @@ const RE2JS_STAND_IN = fileURLToPath(new URL('src/vendor/re2js-unsupported.ts', 
 const ZOD_JSON_SCHEMA_STAND_IN = fileURLToPath(new URL('src/vendor/zod-json-schema-unsupported.ts', import.meta.url));
 const ZOD_CLASSIC_SCHEMAS = /[\\/]zod[\\/]v4[\\/]classic[\\/]schemas\.js$/;
 const ZOD_JSON_SCHEMA_IMPORTS: ReadonlySet<string> = new Set(['../core/json-schema-processors.js', '../core/to-json-schema.js']);
+/**
+ * zod's classic schemas also install its English messages (1.1 KB gzip of `admin-core`), which the admin never shows: an issue
+ * reaches a page as its `validation.*` code (`toValidationIssues`), so this import resolves to a stand-in with no messages, and
+ * an uncoded issue reads zod's own "Invalid input" in a log (DECISIONS-for-review.md §93).
+ */
+const ZOD_LOCALE_STAND_IN = fileURLToPath(new URL('src/vendor/zod-locale-none.ts', import.meta.url));
+const ZOD_LOCALE_IMPORT = '../locales/en.js';
 
 function zodJsonSchemaStandIn(): Plugin {
     return {
         name: 'hcm-zod-json-schema-stand-in',
         enforce: 'pre',
         resolveId(source, importer) {
-            const fromZod = importer !== undefined && ZOD_CLASSIC_SCHEMAS.test(importer);
-            return fromZod && ZOD_JSON_SCHEMA_IMPORTS.has(source) ? ZOD_JSON_SCHEMA_STAND_IN : null;
+            if (importer === undefined || !ZOD_CLASSIC_SCHEMAS.test(importer)) {
+                return null;
+            }
+            if (source === ZOD_LOCALE_IMPORT) {
+                return ZOD_LOCALE_STAND_IN;
+            }
+            return ZOD_JSON_SCHEMA_IMPORTS.has(source) ? ZOD_JSON_SCHEMA_STAND_IN : null;
         },
     };
 }
@@ -131,7 +149,11 @@ export default defineConfig({
                         { name: 'terra-draw', test: /node_modules[\\/]terra-draw/, priority: 4 },
                         { name: 'firebase-installations', test: /node_modules[\\/]@firebase[\\/]installations[\\/]/, priority: 2 },
                         { name: 'assist', test: ASSIST_MODULES, priority: 2 },
-                        { name: 'editor-texts', test: EDITOR_TEXT_MODULES, priority: 2 },
+                        {
+                            name: 'editor-texts',
+                            test: (id: string) => EDITOR_TEXT_MODULES.test(id) || IMAGERY_SHARED_MODULES.test(id),
+                            priority: 2,
+                        },
                         { name: 'starter-categories', test: STARTER_MODULES, priority: 2 },
                         { name: 'admin-core', tags: ['$initial'], priority: 3 },
                         { name: 'admin-map', test: ADMIN_MAP_MODULES, priority: 2 },

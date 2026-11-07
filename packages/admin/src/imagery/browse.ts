@@ -4,6 +4,10 @@
  * show their copies, and ask `imagery.browse` for the ones the harvest did not make (it copies only its best-ranked
  * frames ahead, so most rows had none: finding 52 of 2026-11-01), four at a time; a scene whose copy failed says so (its
  * page with Try again, `S-A11-BAD-BROWSE-UNAVAILABLE`). The scene's page copies a missing one at once.
+ * A copy is as USGS made it, up to 37,440 x 1,920 px, and our functions have no image library to shrink it: a row shows a small
+ * JPEG decoded from it and a scene's page one at most `PREVIEW_SIDE` long, made one at a time (`./pictures.ts`), so 24 rows never
+ * hold 24 full-size images (they froze the tab, 2026-11-07). The map decodes its own copy (`./imagery-map.ts`), in the same queue. A
+ * preview that could not be made says so on the page, with Try again (S-A11-BAD-PREVIEW-UNAVAILABLE); the row keeps its thumbnail.
  * Every address is released when the area closes.
  */
 import type { ContentServices } from '../content/services.js';
@@ -14,13 +18,22 @@ import type { SceneItem } from './model.js';
 
 export type BrowseImage =
     | { readonly status: 'loading' }
-    | { readonly status: 'ready'; readonly url: string }
+    /**
+     * `url` is the thumbnail, `preview` the larger picture a scene's page asked for (null: being made, or none could be: then `error`
+     * says so, and the page offers Try again; the row keeps its thumbnail).
+     */
+    | { readonly status: 'ready'; readonly url: string; readonly preview?: string | null; readonly error?: NoticeInput }
     | { readonly status: 'failed'; readonly error: NoticeInput };
 
 /** The list loads at most this many thumbnails (the first scenes it shows). */
 const LIST_THUMBNAILS = 24;
 
-const UNAVAILABLE: BrowseImage = { status: 'failed', error: { key: 'apiError.imagery.browseUnavailable' } };
+const NOT_SERVED: NoticeInput = { key: 'apiError.imagery.browseUnavailable' };
+const UNAVAILABLE: BrowseImage = { status: 'failed', error: NOT_SERVED };
+
+/** A row's 64 px at twice the density, and the longest side a scene's page shows (the map's own limit). */
+const THUMBNAIL_SIDE = 128;
+const PREVIEW_SIDE = 2048;
 
 /** Copies the list asks of `imagery.browse` at once (the scene's page asks for its own at any time). */
 const COPIES_AT_ONCE = 4;
@@ -28,6 +41,10 @@ const COPIES_AT_ONCE = 4;
 /** A scene's copy in our bucket, when the harvest made one. */
 function copiedPath(scene: SceneItem): string | null {
     return scene.browse.state === 'copied' ? scene.browse.path : null;
+}
+
+function awaitsPreview(image: BrowseImage | undefined): image is Extract<BrowseImage, { status: 'ready' }> {
+    return image?.status === 'ready' && image.preview === undefined;
 }
 
 export class BrowseImages {
@@ -63,19 +80,44 @@ export class BrowseImages {
     }
 
     #thumbnail(scene: SceneItem): void {
-        const path = copiedPath(scene);
-        if (path !== null) {
-            void this.#load(scene.id, path, this.#generation);
-        } else if (scene.browse.state === 'failed') {
+        if (copiedPath(scene) === null && scene.browse.state === 'failed') {
             this.#set(scene.id, UNAVAILABLE);
-        } else if (this.#making.size < COPIES_AT_ONCE) {
+        } else if (copiedPath(scene) !== null || this.#making.size < COPIES_AT_ONCE) {
             void this.#make(scene);
         }
     }
 
-    /** The detail's image: copied first when the harvest made no copy (the copy the list asked for, if any). */
-    open(scene: SceneItem): Promise<void> {
-        return this.#making.get(scene.id) ?? (this.#images.has(scene.id) ? Promise.resolve() : this.#make(scene));
+    /** The detail's image: copied first when the harvest made no copy (the copy the list asked for, if any), then its larger picture. */
+    async open(scene: SceneItem): Promise<void> {
+        const generation = this.#generation;
+        await (this.#making.get(scene.id) ?? (this.#images.has(scene.id) ? null : this.#make(scene)));
+        await this.#preview(scene.id, generation);
+    }
+
+    async #preview(id: string, generation: number): Promise<void> {
+        const image = this.#images.get(id);
+        const path = this.#paths.get(id);
+        // An opening from before `clear` must not mark the new image's preview as being made: nothing would ever make it.
+        if (generation !== this.#generation || !awaitsPreview(image) || path === undefined) {
+            return;
+        }
+        this.#set(id, { ...image, preview: null });
+        this.#placePreview(id, generation, await this.#shrunk('preview', path, generation, PREVIEW_SIDE));
+    }
+
+    #placePreview(id: string, generation: number, preview: string | null): void {
+        const image = this.#images.get(id);
+        if (generation !== this.#generation || image?.status !== 'ready') {
+            this.#release(preview);
+        } else {
+            this.#set(id, preview === null ? { ...image, preview, error: NOT_SERVED } : { ...image, preview });
+        }
+    }
+
+    /** The picture of the file at `path`, read when its turn comes; none once the area closed meanwhile. */
+    async #shrunk(kind: 'thumbnail' | 'preview', path: string, generation: number, side: number): Promise<string | null> {
+        const read = (): Promise<Blob | null> => (generation === this.#generation ? this.#files.read(path) : Promise.resolve(null));
+        return (await this.#services.pictures?.[kind](read, side)) ?? null;
     }
 
     #make(scene: SceneItem): Promise<void> {
@@ -129,7 +171,7 @@ export class BrowseImages {
         }
         this.#paths.set(id, path);
         this.#set(id, { status: 'loading' });
-        const url = await this.#files.url(path);
+        const url = await this.#shrunk('thumbnail', path, generation, THUMBNAIL_SIDE);
         if (generation !== this.#generation) {
             this.#release(url);
             return;
@@ -145,7 +187,10 @@ export class BrowseImages {
 
     #forget(id: string): void {
         const image = this.#images.get(id);
-        this.#release(image?.status === 'ready' ? image.url : null);
+        if (image?.status === 'ready') {
+            this.#release(image.url);
+            this.#release(image.preview ?? null);
+        }
         this.#images.delete(id);
     }
 

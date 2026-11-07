@@ -2,7 +2,7 @@
  * URL-hash codec v1 of the public viewer (docs/ENGINE_API.md → URL hash).
  *
  *     #<zoom>/<lat>/<lng>[/<bearing>][&layers=<id>,<id>][&opacity=<0..1>][&op=<id>:<0..100>,...][&cmp=<id>][&sw=<0..100>]
- *         [&photo=<id>][&lang=ro|en]
+ *         [&labels=streets,pois][&photo=<id>][&lang=ro|en]
  *
  * Decoding is defensive: the hash is visitor input. Numbers must be plain decimals, every range is
  * clamped, ids must match `ID_PATTERN` (anything else is dropped, never put into a selector), unknown
@@ -10,13 +10,15 @@
  * of each overlay in percent (PLAN Addendum 3: historical layers, `photos`, POI categories); given the manifest's
  * overlay ids, the decoder also drops the entries of unknown overlays. `cmp=` opens swipe compare (M4, scenario V06) with
  * the layer the second side shows (empty: today, no historical layer) and `sw=` places its divider in percent of the
- * map's width; `sw=` without `cmp=` is ignored, and either may come first. The legacy
+ * map's width; `sw=` without `cmp=` is ignored, and either may come first. `labels=` names the basemap's labels that are
+ * drawn (empty: none); an unknown word is ignored, and a value with nothing but unknown words is ignored as a whole. The legacy
  * hash of the 2015–2022 site, `#zoom/lat/lng/rotation/!a3!p2`, decodes to its map view; its layer
  * codes (`!…`) are ignored and `legacy` tells the viewer to rewrite the hash in the v1 form.
  */
 import { clampToBBox, type BBox } from '../geo/bbox.js';
 import { clamp, MAX_MERCATOR_LAT, roundTo, wrapBearing, type LngLat } from '../geo/math.js';
 import type { Locale } from '../i18n/index.js';
+import { MAP_LABEL_KINDS, type MapLabels } from '../overlays/map-labels.js';
 import { isId } from '../schemas/primitives.js';
 
 /** Hashes longer than this are ignored (a link that long was not made by the viewer). */
@@ -56,6 +58,8 @@ export interface HashState {
     readonly overlayOpacity?: Readonly<Record<string, number>>;
     /** M4: swipe compare is open (V06); absent when it is not. */
     readonly compare?: CompareState;
+    /** The basemap's labels that are drawn; absent means the city's default. */
+    readonly labels?: MapLabels;
     readonly photo?: string;
     readonly lang?: Locale;
 }
@@ -114,6 +118,11 @@ function encodeCompare(compare: CompareState): string | null {
     return percent === DEFAULT_COMPARE_POSITION * 100 ? layer : `${layer}&sw=${String(percent)}`;
 }
 
+/** `labels=` with the kinds that are drawn, in their fixed order; empty when none is. */
+function encodeLabels(labels: MapLabels): string {
+    return `labels=${MAP_LABEL_KINDS.filter((kind) => labels[kind]).join(',')}`;
+}
+
 type Encoder = (state: HashState) => string | null;
 
 /** One encoder per field, in the order the parameters appear in the hash. */
@@ -123,6 +132,7 @@ const ENCODERS: readonly Encoder[] = [
     (state) => (state.opacity === undefined ? null : `opacity=${String(roundTo(clamp(state.opacity, 0, 1), 2))}`),
     (state) => (state.overlayOpacity === undefined ? null : encodeOverlays(state.overlayOpacity)),
     (state) => (state.compare === undefined ? null : encodeCompare(state.compare)),
+    (state) => (state.labels === undefined ? null : encodeLabels(state.labels)),
     (state) => (state.photo !== undefined && isId(state.photo) ? `photo=${state.photo}` : null),
     (state) => (state.lang === undefined ? null : `lang=${state.lang}`),
 ];
@@ -218,6 +228,15 @@ function decodeOpacity(value: string): Partial<HashState> {
     return opacity === null ? {} : { opacity: clamp(opacity, 0, 1) };
 }
 
+/** `labels=`: the kinds it names; empty is none, and a value naming no kind this viewer knows is ignored. */
+function decodeLabels(value: string): Partial<HashState> {
+    const words = value.split(',');
+    if (value !== '' && !MAP_LABEL_KINDS.some((kind) => words.includes(kind))) {
+        return {};
+    }
+    return { labels: { streets: words.includes('streets'), pois: words.includes('pois') } };
+}
+
 type ParamDecoder = (value: string, limits: HashLimits) => Partial<Decoding>;
 
 function decodeLang(value: string): Partial<HashState> {
@@ -232,6 +251,7 @@ const PARAM_DECODERS: ReadonlyMap<string, ParamDecoder> = new Map<string, ParamD
     ['op', decodeOverlays],
     ['cmp', decodeCompareLayer],
     ['sw', decodeComparePosition],
+    ['labels', decodeLabels],
     ['photo', (value) => (isId(value) ? { photo: value } : {})],
     ['lang', decodeLang],
 ]);

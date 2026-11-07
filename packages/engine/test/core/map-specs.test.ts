@@ -1,9 +1,25 @@
-import { overlaysFromManifest, withOverlayOpacity, withOverlayVisibility } from '@hcm/shared';
+import { overlaysFromManifest, withOverlayOpacity, withOverlayVisibility, type Manifest } from '@hcm/shared';
+import type { MapLabels } from '@hcm/shared/map-labels';
 import { describe, expect, it } from 'vitest';
 
-import { CONE_LENGTH_M, localized, mapOptions, photoFeatures, poiSpecs, rasterSpec, resolveAssetUrl } from '../../src/core/map-specs.js';
+import {
+    CONE_LENGTH_M,
+    localized,
+    mapOptions,
+    photoFeatures,
+    poiSpecs,
+    rasterSpec,
+    resolveAssetUrl,
+    type MapMoment,
+} from '../../src/core/map-specs.js';
 import { cityView } from '../../src/core/state.js';
 import { category, layer, manifest, omit, photo, poi } from './fixtures.js';
+
+const ALL_LABELS = { streets: true, pois: true };
+
+function moment(city: Manifest, labels: MapLabels): MapMoment {
+    return { view: cityView(city), locale: 'ro', reducedMotion: false, labels };
+}
 
 describe('map specs', () => {
     it('happyPath_englishFallsBackToRomanian', () => {
@@ -151,7 +167,14 @@ describe('map specs: photos, POIs, options', () => {
     it('happyPath_mapOptionsOfACity', () => {
         const city = manifest();
 
-        expect(mapOptions(city, { center: [26.1, 44.43], zoom: 15, bearing: 10 }, 'en', true)).toEqual({
+        expect(
+            mapOptions(city, {
+                view: { center: [26.1, 44.43], zoom: 15, bearing: 10 },
+                locale: 'en',
+                reducedMotion: true,
+                labels: ALL_LABELS,
+            }),
+        ).toEqual({
             style: 'mapbox://styles/mapbox/standard-satellite',
             config: { lightPreset: 'day' },
             accessToken: 'pk.test-viewer-token',
@@ -163,6 +186,24 @@ describe('map specs: photos, POIs, options', () => {
             reducedMotion: true,
         });
         const plain = { ...city, city: { ...city.city, basemap: { style: 'mapbox://styles/mapbox/standard' } } };
-        expect(mapOptions(plain, cityView(city), 'ro', false)).not.toHaveProperty('config');
+        expect(mapOptions(plain, moment(city, ALL_LABELS))).not.toHaveProperty('config');
+    });
+
+    it('happyPath_aChosenLabelGoesIntoTheMountSoALinkNeverFlashesIt', () => {
+        const city = manifest();
+
+        expect(mapOptions(city, moment(city, { streets: false, pois: true })).config).toEqual({
+            lightPreset: 'day',
+            showRoadLabels: false,
+        });
+    });
+
+    it('happyPath_theCityConfigStaysItsOwnWhenTheChoiceAgreesWithIt', () => {
+        const city = manifest();
+        const basemap = { style: 'mapbox://styles/mapbox/standard', config: { showPointOfInterestLabels: false } };
+        const quiet = { ...city, city: { ...city.city, basemap } };
+
+        expect(mapOptions(quiet, moment(quiet, { streets: true, pois: false })).config).toEqual(basemap.config);
+        expect(mapOptions(quiet, moment(quiet, ALL_LABELS)).config).toEqual({ showPointOfInterestLabels: true });
     });
 });

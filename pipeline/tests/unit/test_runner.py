@@ -295,3 +295,57 @@ def test_bad_path_a_stop_asked_before_the_run_requeues_the_job_before_its_first_
     assert (job["status"], job["retryAt"]) == ("queued", Timestamp.at(NOW + 60))
     assert all(step.runs == 0 for step in steps.values())
     assert "steps" not in job
+
+
+def _parked_import(world: PipelineWorld, steps: dict[str, object]) -> tuple[Config, dict[str, Scripted]]:
+    """An import `imagery.locateAgain` queued again: what it fetched and unpacked recorded, `stitch` and after pending."""
+    world.seed_city()
+    params = {"entityId": "DS1035-1057DA023", "dataset": "corona2", "sensor": "KH-4A"}
+    world.seed_job(JOB, "usgs-import", params)
+    world.store.documents[world.job_path(JOB)]["steps"] = steps
+    world.store.seed(
+        world.version_path(JOB),
+        {"layerId": "layer-1", "jobId": JOB, "origin": "usgs", "state": "processing", "label": {"ro": "x"}, "year": 1966},
+    )
+    names = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "register")
+    return Config(**{**world.config.__dict__, "job_id": JOB}), {name: Scripted(name) for name in names}
+
+
+def _stored(world: PipelineWorld, path: str) -> dict[str, object]:
+    world.gcs.put(path, b"x")
+    return {"status": "done", "gcsPath": path}
+
+
+def test_happy_path_locate_again_keeps_the_segments_and_joins_them_again(world: PipelineWorld) -> None:
+    steps = {
+        "fetch": {"status": "done", "gcsPath": "usgs-raw/corona2/x/a.tgz"},
+        "extract": _stored(world, "work/c/j/segments/a.tif"),
+        "stitch": {"status": "pending"},
+    }
+    config, scripts = _parked_import(world, steps)
+
+    runner(world, config, scripts).run()
+
+    assert [name for name, step in scripts.items() if step.runs] == [
+        "stitch",
+        "locate",
+        "reference",
+        "georef",
+        "warp",
+        "export",
+        "register",
+    ]
+
+
+def test_happy_path_locate_again_unpacks_a_kept_delivery_when_the_segments_expired(world: PipelineWorld) -> None:
+    steps = {
+        "fetch": _stored(world, "usgs-raw/corona2/x/a.tgz"),
+        "extract": {"status": "done", "gcsPath": "work/c/j/segments/a.tif"},
+        "stitch": {"status": "pending"},
+    }
+    config, scripts = _parked_import(world, steps)
+
+    runner(world, config, scripts).run()
+
+    assert scripts["fetch"].runs == 0
+    assert (scripts["extract"].runs, scripts["stitch"].runs, scripts["locate"].runs) == (1, 1, 1)

@@ -268,6 +268,8 @@ export const ADMIN_CALLABLES = {
     'imagery.crop': cityEditor('fn-imagery', imageryCropRequestSchema, imageryCropResponseSchema),
     'imagery.join': cityEditor('fn-imagery', imageryJoinRequestSchema, imageryJoinResponseSchema),
     'imagery.retry': cityEditor('fn-imagery', imageryRetryRequestSchema, imageryRetryResponseSchema),
+    // A frame waiting for points searches again (`functions/src/imagery/locate-again.ts`): what the version page already sends, what Retry answers.
+    'imagery.locateAgain': cityEditor('fn-imagery', imageryVersionRequestSchema, imageryRetryResponseSchema),
     'imagery.probeTiles': cityEditor('fn-imagery', imageryProbeRequestSchema, imageryProbeResponseSchema),
     // M5: the budget guard is the project's (docs/research/M5-interfaces.md §1.3).
     'imagery.resumeGuard': projectOwner('fn-imagery', imageryResumeGuardRequestSchema, imageryResumeGuardResponseSchema, 'consume'),

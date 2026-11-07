@@ -150,6 +150,8 @@ export const API_ERRORS: Readonly<Record<ApiErrorCode, ApiErrorSpec>> = {
     'apiError.imagery.addressRefused': spec('invalid-argument'),
     'apiError.imagery.outOfMemory': spec('failed-precondition'),
     'apiError.imagery.attemptsExhausted': spec('failed-precondition'),
+    'apiError.imagery.locateInputsGone': spec('failed-precondition'),
+    'apiError.imagery.locateFilesElsewhere': spec('failed-precondition'),
     'apiError.imagery.mapboxFinishing': spec('failed-precondition'),
     'apiError.imagery.workerLost': spec('unavailable'),
     // M8 (docs/research/M8-join-interfaces.md §4): joining frames of one date into one layer.

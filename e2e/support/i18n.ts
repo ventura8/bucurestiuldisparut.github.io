@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 import type { Page } from '@playwright/test';
 import { translate, type MessageKey } from '@hcm/shared';
+import { translateMapLabels, type MapLabelsKey } from '@hcm/shared/map-labels';
 
 /**
  * The i18n leak check of the tour (docs/research/design-review-testability.md §4.3): no raw message id on the page,
@@ -16,11 +17,21 @@ const CATALOGUE = readFileSync(resolve(import.meta.dirname, '../../packages/shar
 /** Every message key, in catalogue order. */
 const MESSAGE_KEYS: readonly MessageKey[] = [...CATALOGUE.matchAll(/^ {4}'([\w.-]+)': /gm)].map((match) => match[1] as MessageKey);
 
+/** The Map labels group's own catalogue (`@hcm/shared/map-labels`), viewer-only; none of its texts is the same in both languages. */
+const MAP_LABEL_KEYS: readonly MapLabelsKey[] = [
+    'mapLabels.group',
+    'mapLabels.streets',
+    'mapLabels.pois',
+    'mapLabels.note',
+    'mapLabels.notePlaces',
+];
+
 /** English texts without placeholders that differ from their Romanian text: shown in a Romanian page, they leaked. */
 const ENGLISH_ONLY_TEXTS: ReadonlySet<string> = new Set(
     MESSAGE_KEYS.map((key) => [translate('en', key), translate('ro', key)] as const)
         .filter(([english, romanian]) => english !== romanian && !english.includes('{'))
-        .map(([english]) => english),
+        .map(([english]) => english)
+        .concat(MAP_LABEL_KEYS.map((key) => translateMapLabels('en', key))),
 );
 
 /** Runs in the page: every visible text node and accessible name, open shadow roots included. */

@@ -154,6 +154,22 @@ describe('<hcm-map-viewer>: overlays and timeline', () => {
         expect(events).toEqual([{ type: 'hcm-overlay-change', detail: { overlayId: 'cladiri', kind: 'poi', visible: false, opacity: 1 } }]);
     });
 
+    it('happyPath_aMapLabelSwitchReachesTheStoreAndStaysInsideTheViewer', async () => {
+        const mapLabels = {
+            shown: { streets: true, pois: true },
+            defaults: { streets: true, pois: true },
+            available: ['streets', 'pois'] as const,
+        };
+        const mounted = await mountViewer(readyState(undefined, { mapLabels }), EXTRA_LARGE);
+        const events = publicEvents(mounted.element);
+        const panel = part(mounted, 'hcm-layer-panel');
+
+        panel.dispatchEvent(new CustomEvent('hcm-map-label', { bubbles: true, composed: true, detail: { kind: 'pois', visible: false } }));
+
+        expect(mounted.store.callsOf('setMapLabels')).toEqual([[{ pois: false }]]);
+        expect(events).toEqual([{ type: 'hcm-map-labels-change', detail: { streets: true, pois: false } }]);
+    });
+
     it('badPath_aSliderReleaseWithoutAChangeAnnouncesNothing', async () => {
         const mounted = await mountViewer(readyState(), EXTRA_LARGE);
         const events = publicEvents(mounted.element);

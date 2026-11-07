@@ -26,6 +26,10 @@ export const IMAGERY_STATES = {
         title: 'Historical imagery: a scene whose preview cannot be fetched, with Try again',
         visit: 'specs/imagery/search.spec.ts',
     },
+    'imagery.preview-unavailable': {
+        title: "Historical imagery: a scene whose larger picture could not be made, its row's thumbnail kept, with Try again",
+        visit: 'specs/imagery/rows.spec.ts',
+    },
     'imagery.scene-unread': {
         title: 'Historical imagery: a scene named by the address whose read failed, why, with Try again',
         visit: 'specs/imagery/search.spec.ts',
@@ -60,6 +64,10 @@ export const IMAGERY_STATES = {
     },
     'imagery.version-not-found': {
         title: 'Historical imagery: a frame nothing found, asking for a few rough points',
+        visit: 'specs/imagery/calibration.spec.ts',
+    },
+    'imagery.version-locate-refused': {
+        title: 'Historical imagery: a frame waiting for points whose Locate again was refused, why, and the georeferencer still open',
         visit: 'specs/imagery/calibration.spec.ts',
     },
     'imagery.version-not-proved': {

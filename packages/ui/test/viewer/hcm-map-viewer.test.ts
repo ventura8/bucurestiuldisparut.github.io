@@ -20,6 +20,7 @@ const CONTROLLER: ViewerController = {
     openCompare: () => undefined,
     setComparePosition: () => undefined,
     closeCompare: () => undefined,
+    setMapLabels: () => undefined,
     destroy: () => undefined,
 };
 
