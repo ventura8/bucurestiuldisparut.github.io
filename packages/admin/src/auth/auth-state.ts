@@ -29,6 +29,8 @@ export const ADMIN_AUTH_STATES = [
     'notAdmin',
     /** The shell in normal mode. */
     'admin',
+    /** M13: a signed-in account of no role here, on the Contribute page, which needs no more (`docs/research/M13-roles.md` §3). */
+    'visitor',
 ] as const;
 
 export type AdminAuthState = (typeof ADMIN_AUTH_STATES)[number];
@@ -38,5 +40,5 @@ export type AdminMode = 'bootstrap' | 'normal';
 
 /** The states whose screen is the shell itself (navigation and pages). */
 export function showsShell(state: AdminAuthState): boolean {
-    return state === 'admin' || state === 'bootstrap';
+    return state === 'admin' || state === 'bootstrap' || state === 'visitor';
 }

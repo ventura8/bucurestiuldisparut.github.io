@@ -1,4 +1,5 @@
 import { CITIES_STATES } from '../admin/specs/cities/states.js';
+import { ROLES_STATES } from '../admin/specs/roles/states.js';
 import { EXPORT_STATES } from '../admin/specs/export/states.js';
 import { JOIN_STATES } from '../admin/specs/imagery/join-states.js';
 import { ORDERS_STATES } from '../admin/specs/imagery/orders-states.js';
@@ -32,6 +33,7 @@ export const ADMIN_SECTION_STATES = {
     // from a file of its own, as the M4 sections are).
     // [section cities] owner: multi-city
     ...CITIES_STATES,
+    ...ROLES_STATES,
     // [end cities]
     // [section export] owner: export (Settings → Export the city: docs/research/M5-interfaces.md §5.6)
     ...EXPORT_STATES,

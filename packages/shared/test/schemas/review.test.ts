@@ -47,16 +47,20 @@ describe('isReviewCleared', () => {
 });
 
 describe('the manifest (additive)', () => {
-    it('happyPath_aManifestFromBeforeStaysValid @S-V40-HAPPY-OLD-MANIFEST', () => {
+    it('happyPath_aManifestFromBeforeStaysValid', () => {
         expect(validateManifest(siteManifestLike()).ok).toBe(true);
     });
 
     it('happyPath_theUnplacedListAndTheLink', () => {
-        const result = validateManifest({ ...siteManifestLike(), unplaced: [UNPLACED], contributeUrl: 'https://demo.web.app/admin/#/contribute/x' });
+        const result = validateManifest({
+            ...siteManifestLike(),
+            unplaced: [UNPLACED],
+            contributeUrl: 'https://demo.web.app/admin/#/contribute/x',
+        });
         expect(result.ok).toBe(true);
     });
 
-    it('badPath_aPlacedPhotoStillNeedsItsPlace @S-V40-BAD-PLACED-NEEDS-LOCATION', () => {
+    it('badPath_aPlacedPhotoStillNeedsItsPlace', () => {
         const manifest = siteManifestLike();
         expect(validateManifest({ ...manifest, photos: [{ ...UNPLACED }] }).ok).toBe(false);
     });

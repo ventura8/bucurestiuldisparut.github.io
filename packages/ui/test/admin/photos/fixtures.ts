@@ -14,6 +14,8 @@ import { adminState, FakeAdminApp, mount, updated } from '../shell/fake-app.js';
 
 export function row(overrides: Partial<PhotoRowPort> = {}): PhotoRowPort {
     return {
+        reviewStatus: null,
+        reviewNote: null,
         id: 'p1',
         title: { ro: 'Calea Victoriei', en: 'Victory Avenue' },
         year: 1936,
@@ -55,6 +57,7 @@ export const VALUE: PhotoValuePort = {
 
 export function editor(overrides: Partial<PhotoEditorPort> = {}): PhotoEditorPort {
     return {
+        role: 'editor',
         id: 'p1',
         status: 'ready',
         reconnecting: false,
@@ -80,6 +83,7 @@ export function editor(overrides: Partial<PhotoEditorPort> = {}): PhotoEditorPor
 
 export function photosState(overrides: Partial<PhotosViewState> = {}): PhotosViewState {
     return {
+        role: 'editor',
         list: {
             status: 'ready',
             reconnecting: false,

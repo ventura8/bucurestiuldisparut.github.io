@@ -15,7 +15,7 @@ import type { WindowClass } from '../theme/tokens.js';
 export type { ThemeMode } from '../theme/apply.js';
 
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
-export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'about';
+export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'about';
 export type ConsentState = 'unknown' | 'granted' | 'denied';
 export type Unsubscribe = () => void;
 

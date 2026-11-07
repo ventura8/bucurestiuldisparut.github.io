@@ -39,6 +39,8 @@ interface Options {
     readonly seen?: boolean;
     /** M4: what this browser forgets before sign-out (the uids it was called with are recorded). */
     readonly leaving?: boolean;
+    /** M13: the page is the Contribute page. */
+    readonly contributing?: () => boolean;
 }
 
 function harness(options: Options = {}) {
@@ -89,6 +91,7 @@ function harness(options: Options = {}) {
         unsaved,
         serverSeen,
         ...(options.leaving === true ? { leaving } : {}),
+        ...(options.contributing === undefined ? {} : { contributing: options.contributing }),
     });
     return {
         ...{ auth, callables, port, google, ownership, enableApi, shell, session, recording, controller, memory, left },
@@ -742,5 +745,26 @@ describe('AuthController: sessions ending', () => {
         h.controller.stop();
 
         expect(h.auth.listening).toBe(0);
+    });
+});
+
+describe('M13: the Contribute page', () => {
+    it('happyPath_aStrangerStaysSignedInThere @S-A92-HAPPY-REQUEST', async () => {
+        const h = harness({ user: STRANGER, contributing: () => true });
+        deployed(h.callables, h.auth, SESSION.stranger);
+
+        await started(h);
+
+        expect(h.state()).toMatchObject({ auth: 'visitor', mode: 'normal' });
+        expect(h.auth.signOuts).toBe(0);
+    });
+
+    it('badPath_elsewhereAStrangerIsSignedOutAsBefore', async () => {
+        const h = harness({ user: STRANGER, contributing: () => false });
+        deployed(h.callables, h.auth, SESSION.stranger);
+
+        await started(h);
+
+        expect(h.state().auth).toBe('notAdmin');
     });
 });

@@ -24,7 +24,7 @@ const request = (w: CommunityWorld) => w.documents.get(FIRESTORE_PATHS.roleReque
 const admin = (w: CommunityWorld, uid = 'u-applicant') => w.documents.get(FIRESTORE_PATHS.admin(uid), adminDocSchema);
 
 describe('contribute.request', () => {
-    it('happyPath_anyoneAsksForARole @S-A60-HAPPY-REQUEST', async () => {
+    it('happyPath_anyoneAsksForARole @S-A92-HAPPY-REQUEST', async () => {
         const w = await communityWorld();
         await expect(ask(w, 'u-applicant', { credit: 'Maria' })).resolves.toEqual({ status: 'pending' });
         expect(await request(w)).toMatchObject({
@@ -38,20 +38,20 @@ describe('contribute.request', () => {
         expect(w.auth.claims.size).toBe(0);
     });
 
-    it('badPath_oneOpenRequestPerAccount @S-A60-BAD-ALREADY-PENDING', async () => {
+    it('badPath_oneOpenRequestPerAccount @S-A92-BAD-ALREADY-PENDING', async () => {
         const w = await communityWorld();
         await ask(w, 'u-applicant');
         expect(await refusal(ask(w, 'u-applicant', { role: 'moderator' }))).toBe('apiError.contribute.alreadyPending');
     });
 
-    it('badPath_aBlockedAccountIsRefused @S-A60-BAD-BLOCKED', async () => {
+    it('badPath_aBlockedAccountIsRefused @S-A92-BAD-BLOCKED', async () => {
         const w = await communityWorld();
         await w.documents.set(FIRESTORE_PATHS.contributor(CITY_ID, 'u-applicant'), contributorDocSchema, {
             day: '2026-10-12',
             count: 0,
             blocked: true,
             updatedBy: 'u-owner',
-            updatedAt: { seconds: 0, nanoseconds: 0 } as never,
+            updatedAt: { seconds: 0, nanoseconds: 0 },
         });
         expect(await refusal(ask(w, 'u-applicant'))).toBe('apiError.contribute.blocked');
     });
@@ -92,7 +92,7 @@ describe('contribute.request', () => {
 });
 
 describe('contribute.decide', () => {
-    it('happyPath_anOwnerApprovesAndTheAccountIsAMemberOfThisCityOnly @S-A60-HAPPY-APPROVE', async () => {
+    it('happyPath_anOwnerApprovesAndTheAccountIsAMemberOfThisCityOnly @S-A92-HAPPY-APPROVE', async () => {
         const w = await communityWorld();
         await ask(w, 'u-applicant');
         await expect(decide(w, 'u-owner')).resolves.toEqual({ status: 'approved' });
@@ -110,10 +110,12 @@ describe('contribute.decide', () => {
         expect((await admin(w))?.cities).toEqual({ cluj: 'editor', [CITY_ID]: 'moderator' });
     });
 
-    it('badPath_aRefusedPersonIsToldAndWaits @S-A60-BAD-REFUSED-TOLD', async () => {
+    it('badPath_aRefusedPersonIsToldAndWaits @S-A92-BAD-REFUSED-TOLD', async () => {
         const w = await communityWorld();
         await ask(w, 'u-applicant');
-        await expect(decide(w, 'u-owner', { decision: 'refuse', note: 'Trimite mai multe detalii.' })).resolves.toEqual({ status: 'refused' });
+        await expect(decide(w, 'u-owner', { decision: 'refuse', note: 'Trimite mai multe detalii.' })).resolves.toEqual({
+            status: 'refused',
+        });
         expect(await admin(w)).toBeUndefined();
         expect(w.auth.claims.size).toBe(0);
         const told = await context(w, 'u-applicant');
@@ -131,7 +133,7 @@ describe('contribute.decide', () => {
         expect((await request(w))?.note).toBeUndefined();
     });
 
-    it('badPath_decidedTwice @S-A60-BAD-DECIDED-TWICE', async () => {
+    it('badPath_decidedTwice @S-A92-BAD-DECIDED-TWICE', async () => {
         const w = await communityWorld();
         await ask(w, 'u-applicant');
         await decide(w, 'u-owner');
@@ -149,7 +151,7 @@ describe('contribute.decide', () => {
         ['u-uploader', 'apiError.city.notOwner'],
         ['u-other', 'apiError.city.notMember'],
         ['u-stranger', 'apiError.notAdmin'],
-    ])('badPath_%s_mayNotDecide @S-A60-BAD-NOT-OWNER', async (uid, code) => {
+    ])('badPath_%s_mayNotDecide @S-A92-BAD-NOT-OWNER', async (uid, code) => {
         const w = await communityWorld();
         await ask(w, 'u-applicant');
         expect(await refusal(decide(w, uid))).toBe(code);
@@ -158,7 +160,7 @@ describe('contribute.decide', () => {
 });
 
 describe('contribute.context', () => {
-    it('happyPath_aStrangerReadsTheCityAndAPublicPhoto @S-A61-HAPPY-CONTEXT', async () => {
+    it('happyPath_aStrangerReadsTheCityAndAPublicPhoto @S-A92-HAPPY-CONTEXT', async () => {
         const w = await communityWorld();
         await seedPhoto(w, 'p1');
         const answer = await context(w, 'u-stranger', { photoId: 'p1' });
@@ -178,7 +180,7 @@ describe('contribute.context', () => {
         ['pending', { reviewStatus: 'pending', published: true }],
         ['refused', { reviewStatus: 'refused', published: true }],
         ['without pictures', { image: undefined }],
-    ])('badPath_aPhoto_%s_isNotThere @S-A61-BAD-NOT-PUBLIC', async (_name, overrides) => {
+    ])('badPath_aPhoto_%s_isNotThere @S-A92-BAD-NOT-PUBLIC', async (_name, overrides) => {
         const w = await communityWorld();
         await seedPhoto(w, 'p1', overrides as object);
         expect(await refusal(context(w, 'u-stranger', { photoId: 'p1' }))).toBe('apiError.notFound');

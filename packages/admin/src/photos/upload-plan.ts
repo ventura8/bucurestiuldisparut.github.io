@@ -70,13 +70,14 @@ export function newPhotoFields(
     file: PhotoFile,
     photoId: string,
     sticky: StickyFields,
-    pin: LngLat,
+    pin: LngLat | null,
 ): Omit<PhotoDoc, 'updatedBy' | 'updatedAt' | 'createdAt' | 'createdBy'> {
     return {
         title: { ro: titleFromName(file.name, photoId) },
         ...definedSticky(sticky),
         license: sticky.license ?? 'unknown',
-        location: { lat: pin[1], lng: pin[0] },
+        // M13 §5: no pin, no place: the photo waits for one.
+        ...(pin === null ? {} : { location: { lat: pin[1], lng: pin[0] } }),
         published: false,
         processing: 'pending',
     };

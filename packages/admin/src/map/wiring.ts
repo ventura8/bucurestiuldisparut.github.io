@@ -47,11 +47,27 @@ export async function adminTokenOf(readDoc: AdminMapSources['readDoc'], log: Log
     }
 }
 
-/** Where the map's token comes from: `setup/status` (production), or the `e2e` build's fixed token or none. */
-function tokenSource(sources: AdminMapSources): () => Promise<string | null> {
+/**
+ * M13 §8: a moderator or an uploader reads no `setup/status`: the map then wears the city's public token, which the viewer
+ * uses and every role of the city may read.
+ */
+async function cityTokenOf(readDoc: AdminMapSources['readDoc'], cityId: string | undefined): Promise<string | null> {
+    if (cityId === undefined) {
+        return null;
+    }
+    try {
+        const token = objectAt(objectAt(await readDoc(FIRESTORE_PATHS.city(cityId)), 'mapbox'), 'publicToken');
+        return typeof token === 'string' && PUBLIC_TOKEN.test(token) ? token : null;
+    } catch {
+        return null;
+    }
+}
+
+/** Where the map's token comes from: `setup/status`, else the city's (production), or the `e2e` build's fixed token or none. */
+function tokenSource(sources: AdminMapSources): (cityId?: string) => Promise<string | null> {
     const fixed = sources.fixedToken;
     if (fixed === undefined) {
-        return () => adminTokenOf(sources.readDoc, sources.log);
+        return async (cityId) => (await adminTokenOf(sources.readDoc, sources.log)) ?? cityTokenOf(sources.readDoc, cityId);
     }
     const token = fixed !== null && PUBLIC_TOKEN.test(fixed) ? fixed : null;
     return () => Promise.resolve(token);

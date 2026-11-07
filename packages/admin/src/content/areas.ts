@@ -32,6 +32,9 @@ export const CONTENT_AREAS = [
     'inbox',
     /** M5 (`docs/research/M5-interfaces.md` §1.6): the project owner's New city flow. */
     'cities',
+    /** M13 (`docs/research/M13-roles.md` §8): the review queue and the Contribute page. */
+    'review',
+    'contribute',
 ] as const;
 
 export type ContentArea = (typeof CONTENT_AREAS)[number];

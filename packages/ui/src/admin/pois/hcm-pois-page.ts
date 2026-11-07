@@ -7,6 +7,7 @@
  * the selection, the photo picker and the import; the export is saved as a file from here.
  */
 import type { Locale } from '@hcm/shared';
+import { cityRoleOfState } from '../shell/city-role.js';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { WindowClassController } from '../../layout/window-class.js';
@@ -179,6 +180,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
             .intents=${this.intents}
             .locale=${locale}
             .selected=${open}
+            .role=${cityRoleOfState(this.state)}
             ?read-only=${this.readOnly}
             @hcm-add=${(event: CustomEvent<{ readonly shape: PoiShapePort }>) => {
                 this.#add(event.detail.shape);
@@ -211,6 +213,7 @@ export class HcmPoisPage extends AreaPage<PoisViewState, PoisIntentsPort> {
         const value = editor.draft?.value ?? null;
         return html`<hcm-poi-editor
             .editor=${editor}
+            .role=${cityRoleOfState(this.state)}
             .assist=${view.assist}
             .categories=${view.categories.items}
             .categoriesKnown=${categoriesListed(view)}

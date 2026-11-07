@@ -7,7 +7,7 @@
 import { showsShell } from '../auth/auth-state.js';
 import type { PageRegistry } from '../routing/pages.js';
 import { isBlankAddress, navigationDestinations, resolveAdminRoute, RETURN_TO_KEY, type RouteContext } from '../routing/router.js';
-import { ADMIN_ROUTE_SPECS, adminRouteHash, parseAdminRoute, type AdminRoute } from '../routing/routes.js';
+import { ADMIN_ROUTE_SPECS, adminRouteHash, parseAdminRoute, type AdminRoute, type RouteStanding } from '../routing/routes.js';
 import type { NoticeInput, ShellState, ShellStateAccess } from '../state/state.js';
 import { cityName } from './current-city.js';
 import type { HashLocation, KeyValueStore, Unsubscribe } from './ports.js';
@@ -23,6 +23,15 @@ export interface NavigationDeps {
     readonly unsaved?: () => boolean;
     /** M5: opens another of the admin's cities (a page load, `./current-city.ts` → `switchTo`). */
     readonly switchCity?: (cityId: string) => void;
+}
+
+/** M13 §8: who the shell shows pages to: a visitor, a limited role of the open city, or staff. */
+export function standingOf(state: Pick<ShellState, 'auth' | 'cities' | 'cityId'>): RouteStanding {
+    if (state.auth === 'visitor') {
+        return 'visitor';
+    }
+    const role = state.cities.find((city) => city.id === state.cityId)?.role;
+    return role === 'uploader' || role === 'moderator' ? role : 'staff';
 }
 
 /** M5 (`docs/research/M5-interfaces.md` §1.5): what an address naming a city means for the open one. */
@@ -135,7 +144,12 @@ export class Navigation {
 
     #context(): RouteContext {
         const state = this.#deps.shell.get();
-        return { mode: state.mode, hasPage: (id) => this.#deps.pages.has(id), setupReady: state.setupReady === true };
+        return {
+            mode: state.mode,
+            hasPage: (id) => this.#deps.pages.has(id),
+            setupReady: state.setupReady === true,
+            standing: standingOf(state),
+        };
     }
 
     /** The kept address (removed once read); it replaces the current one. */

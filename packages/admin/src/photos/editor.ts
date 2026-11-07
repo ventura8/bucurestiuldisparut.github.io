@@ -17,7 +17,10 @@ import type { PhotoEditorState } from './state.js';
 import type { PhotoFile } from './upload-plan.js';
 
 export interface PhotoEditorDeps {
-    readonly services: Pick<PhotosServices, 'cityId' | 'store' | 'uploads' | 'user' | 'clock' | 'denied' | 'people' | 'readOnly'>;
+    readonly services: Pick<
+        PhotosServices,
+        'cityId' | 'store' | 'uploads' | 'user' | 'clock' | 'denied' | 'people' | 'readOnly' | 'cityRole'
+    >;
     readonly memory: PhotoMemory;
     readonly bounds: () => BBox | null;
     /** Created in this session: Published starts on (publish on save, §5.4). */
@@ -211,6 +214,7 @@ export class PhotoEditor {
         const photo = draft.base === null ? null : draft.base.data;
         const checkPlace = this.#deps.memory.checkPlace().has(this.id);
         return {
+            role: this.#deps.services.cityRole(),
             ...{
                 id: this.id,
                 status: statusOf(draft, this.#doc.state),

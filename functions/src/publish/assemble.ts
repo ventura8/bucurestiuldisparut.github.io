@@ -209,7 +209,7 @@ function hasImage(photo: PhotoDoc): photo is PhotoDoc & { readonly image: NonNul
 /** The listed documents in a stable order: ready published layers, processed published photos, every category. */
 function listsOf(content: CityContent): Lists {
     const shown = content.photos.documents.flatMap(({ id, data }) => (hasImage(data) ? [{ id, data }] : []));
-    const items = (placed: boolean, entry: (typeof photoEntry | typeof photoCommon)) =>
+    const items = (placed: boolean, entry: typeof photoEntry | typeof photoCommon) =>
         shown
             .filter(({ data }) => (data.location !== undefined) === placed)
             .map(({ id, data }) => ({ id, entry: () => entry(data, id) }))
@@ -314,7 +314,11 @@ function settle(
         return { ok: false, issues: result.issues.filter((_, index) => located[index] === undefined), skipped: state.skipped };
     }
     const next = drop(lists, items);
-    return settle(content, city, next.lists, { passes: state.passes - 1, skipped: [...state.skipped, ...next.skipped], links: state.links });
+    return settle(content, city, next.lists, {
+        passes: state.passes - 1,
+        skipped: [...state.skipped, ...next.skipped],
+        links: state.links,
+    });
 }
 
 function refused(entity: ManifestEntity, documents: readonly InvalidDocument[]): SkippedDocument[] {

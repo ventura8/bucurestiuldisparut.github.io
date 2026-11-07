@@ -73,6 +73,14 @@ test(
 );
 
 test(
+    'Photos with no place yet, and the Contribute link',
+    { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE', '@S-V40-HAPPY-GALLERY'] },
+    async ({ page, context, lang }) => {
+        await expectJourneySound({ page, context, lang }, journey('unplaced'));
+    },
+);
+
+test(
     'Bucharest today: no layers yet and the consent banner',
     { tag: ['@S-V15-HAPPY', '@S-V15-BAD-TEXT-SPACING', '@S-V15-BAD-REFLOW-320', '@S-V14-HAPPY-EVERY-STATE'] },
     async ({ page, context, lang }) => {

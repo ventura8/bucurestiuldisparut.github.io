@@ -20,7 +20,7 @@ import { layerIdsOfYear, snapYear, timelineYears, yearOfLayers } from './timelin
 
 export type ViewerStatus = 'idle' | 'loading' | 'ready' | 'error';
 export type ThemeMode = 'system' | 'light' | 'dark';
-export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'about';
+export type SheetName = 'none' | 'layers' | 'photo' | 'poi' | 'photos' | 'unplaced' | 'about';
 
 export const THEME_MODES: readonly ThemeMode[] = ['system', 'light', 'dark'];
 

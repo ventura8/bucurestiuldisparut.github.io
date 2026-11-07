@@ -34,6 +34,9 @@ export const POI_EDITABLE = [
     'published',
 ] as const;
 
+/** M13 §2: what the rules want of an uploader's new place, added to its fields as it is created. */
+export const UPLOADER_POI_FIELDS = { reviewStatus: 'pending', published: false } as const;
+
 export type PoiEditable = (typeof POI_EDITABLE)[number];
 
 export type PoiShape = 'point' | 'line' | 'area';

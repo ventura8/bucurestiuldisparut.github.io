@@ -147,6 +147,11 @@ export const ro = {
     'adminShell.city.new': 'Oraș nou',
     'adminShell.city.role.owner': 'Proprietar',
     'adminShell.city.role.editor': 'Editor',
+    'adminShell.nav.review': 'Verificare',
+    'adminShell.nav.contribute': 'Contribuie',
+    'adminShell.route.notAllowed': 'Rolul tău nu include acea pagină.',
+    'adminShell.city.role.moderator': 'Moderator',
+    'adminShell.city.role.uploader': 'Contribuitor',
     'adminShell.city.notMember': 'Nu administrezi orașul {cityId}; s-a deschis {city}.',
 } as const;
 

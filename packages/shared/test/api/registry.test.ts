@@ -57,7 +57,14 @@ describe('the function registry', () => {
             .filter(([, spec]) => spec.access === 'signedIn')
             .map(([name]) => name);
 
-        expect(open).toEqual(['admin.session', 'admin.claim', 'admin.join', 'contribute.context', 'contribute.request', 'suggestions.submit']);
+        expect(open).toEqual([
+            'admin.session',
+            'admin.claim',
+            'admin.join',
+            'contribute.context',
+            'contribute.request',
+            'suggestions.submit',
+        ]);
     });
 
     it('badPath_onlyPairingAndTheStartersImageNeedNoSignInAndOnlyTheWorkersOwnCallablesAdmitAPairedToken', () => {

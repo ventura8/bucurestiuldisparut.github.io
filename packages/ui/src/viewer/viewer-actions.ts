@@ -14,7 +14,7 @@ import { localizedText } from './text.js';
 export const LOCATE_ZOOM = 16;
 
 /** The FAB menu's actions (`language` switches to the other language). */
-const MENU_ACTIONS = ['layers', 'photos', 'locate', 'share', 'about', 'language'] as const;
+const MENU_ACTIONS = ['layers', 'photos', 'unplaced', 'locate', 'share', 'contribute', 'about', 'language'] as const;
 
 export type MenuAction = (typeof MENU_ACTIONS)[number];
 
@@ -131,6 +131,15 @@ export function menuAction(store: ViewerStorePort, services: ViewerServices, act
         },
         photos: () => {
             store.openSheet('photos');
+        },
+        unplaced: () => {
+            store.openSheet('unplaced');
+        },
+        contribute: () => {
+            const url = store.getState().manifest?.contributeUrl;
+            if (url !== undefined) {
+                services.openPage(url);
+            }
         },
         about: () => {
             store.openSheet('about');

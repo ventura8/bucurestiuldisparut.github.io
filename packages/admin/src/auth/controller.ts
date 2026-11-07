@@ -74,6 +74,8 @@ export interface AuthControllerDeps {
     readonly unsaved?: () => boolean;
     /** M5: what the session's cities make of the shell (`../app/current-city.ts`: the cities, the current one). */
     readonly cities?: (session: SessionResponse) => Partial<ShellState>;
+    /** M13 §3: this page is the Contribute page, where a signed-in account of no role stays signed in. */
+    readonly contributing?: () => boolean;
     /**
      * What this browser forgets before the account goes, while it may still call the server: the admin's push
      * registration (M4, `inbox/push-device.ts`), so a shared computer stops showing their notifications. Best effort:
@@ -303,7 +305,7 @@ export class AuthController {
         if (previous === 'notAdmin' && !this.#leaving) {
             return;
         }
-        const expired = previous === 'admin' && !this.#leaving;
+        const expired = ['admin', 'visitor'].includes(previous) && !this.#leaving;
         this.#leaving = false;
         const issue = expired ? this.#deps.shell.notice({ key: 'adminShell.session.expired' }) : null;
         this.#set({ auth: 'signedOut', role: null, busy: false, revoked: false, people: {}, gate: { ...NO_GATE, issue } });
@@ -345,7 +347,20 @@ export class AuthController {
     async #applySession(session: SessionResponse): Promise<void> {
         if (session.admin) {
             this.#set({ auth: 'admin', mode: 'normal', role: session.role, busy: false, gate: NO_GATE, ...this.#deps.cities?.(session) });
-        } else if (!session.ownerClaimed) {
+        } else if (this.#visiting(session)) {
+            // M13 §3: the Contribute page is for any signed-in account: no refusal, and the session stays.
+            this.#set({ auth: 'visitor', mode: 'normal', role: null, busy: false, gate: NO_GATE });
+        } else {
+            await this.#notAnAdmin(session);
+        }
+    }
+
+    #visiting(session: SessionResponse): boolean {
+        return session.ownerClaimed && this.#deps.contributing?.() === true;
+    }
+
+    async #notAnAdmin(session: SessionResponse): Promise<void> {
+        if (!session.ownerClaimed) {
             await this.#claimOrWait();
         } else if (session.invitePending) {
             this.#set({ auth: 'joinPending', busy: false });

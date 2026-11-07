@@ -10,7 +10,7 @@ import { bboxCenter, bboxFromRecord, cityDocSchema, FIRESTORE_PATHS, type CityDo
 import type { Unsubscribe } from '../app/ports.js';
 import type { EditorAssists } from '../assist/editor-assists.js';
 import { LiveDoc } from '../content/doc.js';
-import type { Stored } from '../content/services.js';
+import { ownerOnlyOf, type Stored } from '../content/services.js';
 import { PhotoActions, type ActionIntents } from './actions.js';
 import { photoAssists, type PhotoAssistIntents } from './assists.js';
 import type { AreaContext, CityPlace } from './context.js';
@@ -77,6 +77,12 @@ export function cityPlace(city: Pick<CityDoc, 'bounds' | 'center' | 'zoom'>): Ci
     return { bounds, view: { center, zoom: city.zoom ?? DEFAULT_CITY_ZOOM, bearing: 0 } };
 }
 
+/** What the list reads through. */
+function listPartsOf(services: PhotosServices) {
+    const { store, clock, cityId, denied } = services;
+    return { store, clock, cityId, denied, ownerOnly: () => ownerOnlyOf(services) };
+}
+
 export class PhotosArea implements PhotosStore {
     readonly #services: PhotosServices;
     readonly #listeners = new Set<(state: PhotosState) => void>();
@@ -93,9 +99,9 @@ export class PhotosArea implements PhotosStore {
     constructor(services: PhotosServices) {
         this.#services = services;
         const memory = new PhotoMemory(services.local);
-        this.#state = initialPhotosState(memory.sticky());
+        this.#state = initialPhotosState(memory.sticky(), services.cityRole());
         const list = new PhotoList({
-            ...{ store: services.store, clock: services.clock, cityId: services.cityId, denied: services.denied },
+            ...listPartsOf(services),
             checkPlace: () => memory.checkPlace(),
             changed: (state) => {
                 this.#set({ list: state });
@@ -228,14 +234,20 @@ export class PhotosArea implements PhotosStore {
             .filter((stored) => stored.id !== editor?.id)
             .map((stored) => ({ id: stored.id, photo: stored.data }));
         const shown = editor === null || draft === null ? photos : [...photos, { id: editor.id, photo: draft }];
-        return shown.map(({ id, photo }) => ({
-            id,
-            title: english ? (photo.title.en ?? photo.title.ro) : photo.title.ro,
-            year: nullable(photo.year),
-            location: photo.location,
-            bearing: nullable(photo.bearing),
-            fov: nullable(photo.fov),
-        }));
+        return shown.flatMap(({ id, photo }) =>
+            photo.location === undefined
+                ? []
+                : [
+                      {
+                          id,
+                          title: english ? (photo.title.en ?? photo.title.ro) : photo.title.ro,
+                          year: nullable(photo.year),
+                          location: photo.location,
+                          bearing: nullable(photo.bearing),
+                          fov: nullable(photo.fov),
+                      },
+                  ],
+        );
     }
 
     #showMap(): void {
@@ -337,7 +349,7 @@ export class PhotosArea implements PhotosStore {
             },
             focusPhoto: (photoId) => {
                 const stored = this.#context.list.doc(photoId);
-                if (stored !== undefined) {
+                if (stored?.data.location !== undefined) {
                     this.#map?.focus(stored.data.location);
                 }
             },

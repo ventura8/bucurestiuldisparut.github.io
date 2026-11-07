@@ -26,6 +26,7 @@ export interface EditingIntents {
     cancelDirection(): void;
     /** The keyboard's way: the camera looked at the map's centre (the crosshair). */
     pointAtCentre(): void;
+    placeAtCentre(): void;
     replaceImage(file: PhotoFile): void;
     cancelReplace(): void;
     dismissReplace(): void;
@@ -120,10 +121,14 @@ export class PhotoEditing {
         if (map === null) {
             return;
         }
+        this.#showPin(map);
+    }
+
+    #showPin(map: NonNullable<ReturnType<AreaContext['map']>>): void {
         const open = this.#openPlace();
-        void map.editPin(open === null ? null : open.location);
+        void map.editPin(open?.location ?? null);
         // The open photo is brought into view once (PhotoMapSession.reveal).
-        if (open !== null) {
+        if (open?.location !== undefined) {
             map.reveal(open.id, open.location);
         }
     }
@@ -143,11 +148,20 @@ export class PhotoEditing {
         }
     }
 
+    /** M13 §5: a photo with no place gets a pin at the map's centre, to drag. */
+    #placeAtCentre(): void {
+        const centre = this.#context.map()?.centre() ?? null;
+        if (centre !== null) {
+            this.pinMoved(centre);
+            this.#syncPin();
+        }
+    }
+
     /** The bearing from the photo's place to `target`. */
     #pointAt(target: LngLat | null): void {
-        const value = this.#editor?.value ?? null;
-        if (target !== null && value !== null) {
-            this.#edit({ bearing: roundTo(bearingBetween([value.location.lng, value.location.lat], target), 1) });
+        const location = this.#editor?.value?.location;
+        if (target !== null && location !== undefined) {
+            this.#edit({ bearing: roundTo(bearingBetween([location.lng, location.lat], target), 1) });
         }
     }
 
@@ -185,7 +199,7 @@ export class PhotoEditing {
             memory.rememberSticky(value);
             this.#context.set({ sticky: memory.sticky() });
         }
-        if (value !== null && moved) {
+        if (value?.location !== undefined && moved) {
             memory.rememberPin([value.location.lng, value.location.lat]);
             memory.markCheckPlace(photoId, false);
             list.refresh();
@@ -217,6 +231,9 @@ export class PhotoEditing {
             cancelDirection: () => this.#context.map()?.cancelPick(),
             pointAtCentre: () => {
                 this.#pointAt(this.#context.map()?.centre() ?? null);
+            },
+            placeAtCentre: () => {
+                this.#placeAtCentre();
             },
             replaceImage: (file) => this.#editor?.replaceImage(file),
             cancelReplace: () => this.#editor?.cancelReplace(),

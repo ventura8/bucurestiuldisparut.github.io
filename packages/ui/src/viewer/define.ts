@@ -11,6 +11,7 @@ import { defineHcmMapAttribution, HCM_MAP_ATTRIBUTION_TAG } from './hcm-map-attr
 import { defineHcmMapViewer, HCM_MAP_VIEWER_TAG } from './hcm-map-viewer.js';
 import { defineHcmPhotoList, HCM_PHOTO_LIST_TAG } from './hcm-photo-list.js';
 import { defineHcmPhotoSheet, HCM_PHOTO_SHEET_TAG } from './hcm-photo-sheet.js';
+import { defineHcmUnplacedGallery, HCM_UNPLACED_GALLERY_TAG } from './hcm-unplaced-gallery.js';
 import { defineHcmPoiDetail, HCM_POI_DETAIL_TAG } from './hcm-poi-detail.js';
 import { defineHcmTimeline, HCM_TIMELINE_TAG } from './hcm-timeline.js';
 
@@ -22,6 +23,7 @@ export const VIEWER_TAGS = [
     HCM_PHOTO_SHEET_TAG,
     HCM_POI_DETAIL_TAG,
     HCM_PHOTO_LIST_TAG,
+    HCM_UNPLACED_GALLERY_TAG,
     HCM_LIGHTBOX_TAG,
     HCM_ABOUT_DIALOG_TAG,
     HCM_ERROR_CARD_TAG,
@@ -35,6 +37,7 @@ const DEFINERS: readonly ((registry: CustomElementRegistry) => void)[] = [
     defineHcmPhotoSheet,
     defineHcmPoiDetail,
     defineHcmPhotoList,
+    defineHcmUnplacedGallery,
     defineHcmLightbox,
     defineHcmAboutDialog,
     defineHcmErrorCard,

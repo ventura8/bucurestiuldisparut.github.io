@@ -17,6 +17,8 @@ export interface ViewerServices {
     /** The page address to share (the URL hash carries the viewer state). */
     readonly pageUrl: () => string;
     readonly matchMedia: (query: string) => MediaQueryList;
+    /** M13: opens a page of its own (the Contribute page), with nothing of this page passed on. */
+    readonly openPage: (url: string) => void;
 }
 
 /** How long the browser may look for a position, and how old a cached one may be. */
@@ -48,6 +50,9 @@ export function browserServices(win: Window): ViewerServices {
         locate: () => locateWith(navigator.geolocation),
         pageUrl: () => win.location.href,
         matchMedia: (query) => win.matchMedia(query),
+        openPage: (url) => {
+            win.open(url, '_blank', 'noopener');
+        },
     };
 }
 

@@ -7,7 +7,7 @@
  * writes: Save and the actions are off, the fields read-only. Fires `hcm-delete`, `hcm-redraw` with `{shape}`,
  * `hcm-history` and `hcm-pick-photos`; everything else goes to the area's intents.
  */
-import type { AdminContentKey, LngLat, Locale } from '@hcm/shared';
+import type { CityRole, AdminContentKey, LngLat, Locale } from '@hcm/shared';
 import { LitElement, html, type TemplateResult } from 'lit';
 
 import { defineOnce, emit } from '../../components/internal.js';
@@ -58,6 +58,7 @@ export class HcmPoiEditor extends LitElement {
         locale: { type: String },
         centreKnown: { attribute: false },
         readOnly: { type: Boolean, reflect: true, attribute: 'read-only' },
+        role: { attribute: false },
         who: { attribute: false },
         mode: { state: true },
         assist: { attribute: false },
@@ -65,6 +66,8 @@ export class HcmPoiEditor extends LitElement {
 
     static override readonly styles = [...poiStyles, ...assistStyles];
 
+    /** M13: the admin's role in the city: an uploader's place is published by its review. */
+    declare role: CityRole | null;
     declare editor: PlaceEditorPort | null;
     declare categories: readonly CategoryItemPort[];
     /** The city's categories were listed: without any, the category field offers the starter categories. */
@@ -93,6 +96,7 @@ export class HcmPoiEditor extends LitElement {
 
     constructor() {
         super();
+        this.role = null;
         this.editor = null;
         this.categories = [];
         this.categoriesKnown = false;
@@ -194,7 +198,7 @@ export class HcmPoiEditor extends LitElement {
         };
         return {
             ...{ locale: this.locale, value: draft.value, issues: draft.issues, edit },
-            ...{ left: this.#left.forItem(draft.id), readOnly: this.readOnly },
+            ...{ left: this.#left.forItem(draft.id), readOnly: this.readOnly, role: this.role },
         };
     }
 

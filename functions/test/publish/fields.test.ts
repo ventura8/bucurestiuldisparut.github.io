@@ -66,11 +66,15 @@ describe('needsManifestBuild: M13', () => {
     const photo = { published: true, title: { ro: 'x' } };
 
     it('happyPath_approvalPutsAPhotoInTheManifest', () => {
-        expect(needsManifestBuild('photo', { ...photo, reviewStatus: 'pending', published: false }, { ...photo, reviewStatus: 'approved' })).toBe(true);
+        expect(
+            needsManifestBuild('photo', { ...photo, reviewStatus: 'pending', published: false }, { ...photo, reviewStatus: 'approved' }),
+        ).toBe(true);
     });
 
     it('badPath_aPendingPhotoIsNotListedWhateverItsPublishedSays', () => {
-        expect(needsManifestBuild('photo', { ...photo, reviewStatus: 'pending' }, { ...photo, reviewStatus: 'pending', title: { ro: 'y' } })).toBe(false);
+        expect(
+            needsManifestBuild('photo', { ...photo, reviewStatus: 'pending' }, { ...photo, reviewStatus: 'pending', title: { ro: 'y' } }),
+        ).toBe(false);
     });
 
     it('happyPath_aCreditChangesTheManifest', () => {

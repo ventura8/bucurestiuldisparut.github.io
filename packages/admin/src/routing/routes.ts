@@ -23,6 +23,10 @@ export const ADMIN_ROUTES = [
     'crashes',
     'georef',
     'cities',
+    /** M13 (`docs/research/M13-roles.md` §8): the review queue. */
+    'review',
+    /** M13: the Contribute page (`#/contribute/<city>/<photoId>`), from the public map, for any signed-in account. */
+    'contribute',
 ] as const;
 
 export type AdminRouteId = (typeof ADMIN_ROUTES)[number];
@@ -77,6 +81,15 @@ export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> =
         scope: 'city',
     },
     /** M5's New city flow (`#/cities/new`): opened from the city menu by the project's owner, never from the navigation. */
+    review: { icon: 'approval', needsBackend: true, inCompactBar: false, inCompactBarOnceSetUp: false, scope: 'city' },
+    contribute: {
+        icon: 'add_photo_alternate',
+        needsBackend: true,
+        inCompactBar: false,
+        inCompactBarOnceSetUp: false,
+        inNavigation: false,
+        scope: 'project',
+    },
     cities: {
         icon: 'add_location_alt',
         needsBackend: true,
@@ -86,6 +99,28 @@ export const ADMIN_ROUTE_SPECS: Readonly<Record<AdminRouteId, AdminRouteSpec>> =
         scope: 'project',
     },
 };
+
+/**
+ * M13 (`docs/research/M13-roles.md` §8): the pages each limited standing opens, in the navigation's order. The rules deny the
+ * data anyway; this keeps a moderator or an uploader away from screens that could only fail. Staff open every route.
+ */
+const LIMITED_ROUTES: Readonly<Record<'uploader' | 'moderator' | 'visitor', readonly AdminRouteId[]>> = {
+    uploader: ['photos', 'pois', 'inbox', 'contribute'],
+    moderator: ['photos', 'pois', 'review', 'inbox', 'contribute'],
+    visitor: ['contribute'],
+};
+
+/** Who the shell shows pages to: staff (the default), a limited role of the open city, or a visitor of the Contribute page. */
+export type RouteStanding = 'staff' | keyof typeof LIMITED_ROUTES;
+
+export function routeAllowed(id: AdminRouteId, standing: RouteStanding): boolean {
+    return standing === 'staff' || LIMITED_ROUTES[standing].includes(id);
+}
+
+/** Where a limited standing lands when its address opens nothing it may see. */
+export function firstAllowedRoute(standing: Exclude<RouteStanding, 'staff'>): AdminRoute {
+    return { id: LIMITED_ROUTES[standing][0] ?? 'contribute', params: [] };
+}
 
 export interface AdminRoute {
     readonly id: AdminRouteId;

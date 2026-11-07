@@ -57,7 +57,7 @@ interface Entry {
 }
 
 export interface UploadQueueDeps {
-    readonly services: Pick<PhotosServices, 'cityId' | 'store' | 'uploads' | 'user' | 'log'>;
+    readonly services: Pick<PhotosServices, 'cityId' | 'store' | 'uploads' | 'user' | 'log' | 'cityRole'>;
     readonly memory: PhotoMemory;
     /** The city's bounds, once read (the fallback pin is their centre; EXIF positions are checked against them). */
     readonly bounds: () => BBox | null;
@@ -233,7 +233,10 @@ export class UploadQueue {
     async #createDocument(entry: Entry, pin: LngLat): Promise<string | null> {
         const { store, cityId } = this.#deps.services;
         const photoId = store.newId();
-        const fields = newPhotoFields(entry.file, photoId, this.#deps.memory.sticky(), pin);
+        // M13 §2: an uploader's photo waits for review and, until they place it, has no location.
+        const uploader = this.#deps.services.cityRole() === 'uploader';
+        const made = newPhotoFields(entry.file, photoId, this.#deps.memory.sticky(), uploader ? null : pin);
+        const fields = uploader ? { ...made, reviewStatus: 'pending' } : made;
         const outcome = await store.create(FIRESTORE_PATHS.photo(cityId, photoId), fields, { withCreator: true });
         if (!outcome.ok) {
             if (entry.item.phase === 'uploading') {

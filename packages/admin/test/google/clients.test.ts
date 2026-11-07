@@ -206,7 +206,7 @@ describe('the deployment', () => {
         // admin never calls but waits for, by name) and `imagery.runOn` (docs/research/M7-local-worker.md §2.4, §3); finding
         // 67 of 2026-11-02: `worker.pair` (the worker's) and `worker.pairCode`, `worker.revoke` (the admin's); finding 72:
         // `worker.image` (the starter file's supervisor's); finding 73: `worker.starter` (the starter file, HTTPS); `imagery.locateAgain`.
-        expect(expected).toHaveLength(82);
+        expect(expected).toHaveLength(89);
         expect(expected).toEqual(
             expect.arrayContaining([
                 'worker-hello',
@@ -220,7 +220,7 @@ describe('the deployment', () => {
                 'worker-starter',
             ]),
         );
-        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 82, total: 82, failed: [] });
+        expect(deploymentStatus(active)).toEqual({ state: 'ok', ready: 89, total: 89, failed: [] });
     });
 
     it('badPath_someMissingIsPendingAndOneFailedIsInvalid', () => {

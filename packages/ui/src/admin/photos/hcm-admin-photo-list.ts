@@ -14,6 +14,7 @@ import { emit } from '../../components/internal.js';
 import { bulkBar } from '../editing/bulk-bar.js';
 import { current, errorTemplate, loadingTemplate, reconnectingStatus } from '../editing/states.js';
 import { EMPTY } from '../shell/empty.js';
+import { contentText } from '../shell/text.js';
 import { FILTER_ORDER, bulkActionText, filterText, localized, messageText, partId, photoHref, photoText, yearsText } from './photo-text.js';
 import { photoStyles } from './photo-styles.js';
 import type { PhotoFilePort, PhotoFilterPort, PhotoRowPort, PhotosIntentsPort, PhotosViewState } from './photos-port.js';
@@ -38,6 +39,30 @@ export function yearOf(text: string): number | null {
 /** A chip of a row: its tone and text. */
 function tag(tone: string, text: string): TemplateResult {
     return html`<span class="tag" data-tone=${tone}>${text}</span>`;
+}
+
+/** M13 §2: where a photo stands in the queue, with what the reviewer said. */
+function reviewChip(locale: Locale, row: PhotoRowPort, status: 'pending' | 'refused'): TemplateResult {
+    const text = contentText(locale, `adminContent.review.status.${status}`);
+    return tag(status === 'refused' ? 'error' : 'wait', row.reviewNote === null ? text : `${text}: ${row.reviewNote}`);
+}
+
+/** M13 §1: the selection's actions of a role: an uploader publishes nothing and a moderator deletes nothing. */
+function bulkActions(locale: Locale, role: PhotosViewState['role']) {
+    const publishing = [
+        { id: 'publish', label: bulkActionText(locale, 'publish'), icon: 'publish' },
+        { id: 'unpublish', label: bulkActionText(locale, 'unpublish'), icon: 'unpublished' },
+    ];
+    const rights = { id: 'confirmRights', label: bulkActionText(locale, 'confirmRights'), icon: 'check' };
+    const remove = { id: 'delete', label: photoText(locale, 'adminContent.photos.bulk.deleteAction'), icon: 'delete' };
+    return {
+        buttons: role === 'uploader' ? [] : publishing,
+        more: [
+            { id: 'setFields', label: bulkActionText(locale, 'setFields'), icon: 'edit' },
+            ...(role === 'uploader' ? [] : [rights]),
+            ...(role === 'moderator' ? [] : [remove]),
+        ],
+    };
 }
 
 export class HcmAdminPhotoList extends LitElement {
@@ -84,7 +109,11 @@ export class HcmAdminPhotoList extends LitElement {
         return html`<div class="pane">
             <div class="toolbar">
                 <h2>${photoText(locale, 'adminContent.photos.title')}</h2>
-                <hcm-button variant="filled" icon="add_photo_alternate" ?disabled=${this.readOnly} @click=${this.#choose}
+                <hcm-button
+                    variant="filled"
+                    icon="add_photo_alternate"
+                    ?disabled=${this.readOnly || view.role === 'moderator'}
+                    @click=${this.#choose}
                     >${photoText(locale, 'adminContent.photos.add')}</hcm-button
                 >
                 <input class="file-input" type="file" multiple accept=${PHOTO_ACCEPT} hidden @change=${this.#chosen} />
@@ -167,15 +196,7 @@ export class HcmAdminPhotoList extends LitElement {
             ...{ label: text('adminContent.photos.bulk.actions'), selectAll: text('adminContent.photos.bulk.selectAll') },
             count: photoText(locale, 'adminContent.photos.bulk.selected', { count: String(selection.length) }),
             clear: text('adminContent.photos.bulk.clear'),
-            buttons: [
-                { id: 'publish', label: bulkActionText(locale, 'publish'), icon: 'publish' },
-                { id: 'unpublish', label: bulkActionText(locale, 'unpublish'), icon: 'unpublished' },
-            ],
-            more: [
-                { id: 'setFields', label: bulkActionText(locale, 'setFields'), icon: 'edit' },
-                { id: 'confirmRights', label: bulkActionText(locale, 'confirmRights'), icon: 'check' },
-                { id: 'delete', label: text('adminContent.photos.bulk.deleteAction'), icon: 'delete' },
-            ],
+            ...bulkActions(locale, view.role),
             ...{ moreLabel: text('adminContent.photos.bulk.more'), closeLabel: text('adminContent.common.close') },
             off: view.busy || this.readOnly,
             onSelectAll: () => intents?.selectAll(),
@@ -258,6 +279,16 @@ export class HcmAdminPhotoList extends LitElement {
         return tags.length === 0 ? EMPTY : html`<div class="row-chips">${tags}</div>`;
     }
 
+    /** Unpublished or, M13, where it stands in the queue. */
+    #publicChips(locale: Locale, row: PhotoRowPort): TemplateResult[] {
+        if (row.reviewStatus === 'pending' || row.reviewStatus === 'refused') {
+            return [reviewChip(locale, row, row.reviewStatus)];
+        }
+        return !row.published && row.processing === 'done'
+            ? [tag('neutral', photoText(locale, 'adminContent.photos.chip.unpublished'))]
+            : [];
+    }
+
     /** Processing, refused (with the reason), unpublished. */
     #stateChips(locale: Locale, row: PhotoRowPort): TemplateResult[] {
         const tags: TemplateResult[] = [];
@@ -267,9 +298,7 @@ export class HcmAdminPhotoList extends LitElement {
         if (row.error !== null) {
             tags.push(tag('error', messageText(locale, row.error)));
         }
-        if (!row.published && row.processing === 'done') {
-            tags.push(tag('neutral', photoText(locale, 'adminContent.photos.chip.unpublished')));
-        }
+        tags.push(...this.#publicChips(locale, row));
         return tags;
     }
 

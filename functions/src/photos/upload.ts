@@ -165,6 +165,13 @@ interface Derivative {
     readonly height: number;
 }
 
+/** One upload of a known photo, and whether it is held back for review (M13 §2). */
+interface KnownUpload {
+    readonly upload: PhotoUpload;
+    readonly object: FinalizedObject;
+    readonly held: boolean;
+}
+
 interface Rendered {
     readonly web: Derivative;
     readonly thumb: Derivative;
@@ -213,11 +220,18 @@ async function stored(deps: PhotoDeps, upload: PhotoUpload, held: boolean, rende
     const { web, thumb, sha256 } = rendered;
     const size = { sha256, w: web.width, h: web.height };
     return held
-        ? { image: undefined, heldImage: { web: await hold(deps, upload, sha256, web), thumb: await hold(deps, upload, sha256, thumb), ...size } }
-        : { heldImage: undefined, image: { web: await store(deps, upload, sha256, web), thumb: await store(deps, upload, sha256, thumb), ...size } };
+        ? {
+              image: undefined,
+              heldImage: { web: await hold(deps, upload, sha256, web), thumb: await hold(deps, upload, sha256, thumb), ...size },
+          }
+        : {
+              heldImage: undefined,
+              image: { web: await store(deps, upload, sha256, web), thumb: await store(deps, upload, sha256, thumb), ...size },
+          };
 }
 
-async function processBytes(deps: PhotoDeps, upload: PhotoUpload, object: FinalizedObject, bytes: Uint8Array, held: boolean): Promise<Processed> {
+async function processBytes(deps: PhotoDeps, known: KnownUpload, bytes: Uint8Array): Promise<Processed> {
+    const { upload, object, held } = known;
     const accepted = accept(await deps.images.inspect(bytes).catch(refuseUnreadable));
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     await refuseDuplicate(deps, upload, sha256);
@@ -305,13 +319,14 @@ async function recordFailure(deps: PhotoDeps, upload: PhotoUpload, object: Final
     deps.log.info('photo refused', { cityId: upload.cityId, photoId: upload.photoId, code: error.refusal.code });
 }
 
-async function processKnownUpload(deps: PhotoDeps, upload: PhotoUpload, object: FinalizedObject, held: boolean): Promise<UploadOutcome> {
+async function processKnownUpload(deps: PhotoDeps, known: KnownUpload): Promise<UploadOutcome> {
+    const { upload, object, held } = known;
     try {
         const bytes = await readUpload(deps, object);
         if (bytes === undefined) {
             return 'gone';
         }
-        const processed = await processBytes(deps, upload, object, bytes, held);
+        const processed = await processBytes(deps, known, bytes);
         await recordDone(deps, upload, processed);
         deps.log.info('photo processed', { cityId: upload.cityId, photoId: upload.photoId, held });
     } catch (error) {
@@ -341,5 +356,5 @@ export async function processPhotoUpload(deps: PhotoDeps, object: FinalizedObjec
         deps.log.warn('upload without its photo document deleted', { cityId: upload.cityId, photoId: upload.photoId });
         return 'orphan';
     }
-    return processKnownUpload(deps, upload, object, photo.reviewStatus === 'pending');
+    return processKnownUpload(deps, { upload, object, held: photo.reviewStatus === 'pending' });
 }

@@ -63,6 +63,7 @@ export class HcmPoiList extends LitElement {
         locale: { type: String },
         selected: { type: String },
         readOnly: { type: Boolean, attribute: 'read-only' },
+        role: { attribute: false },
         adding: { state: true },
     };
 
@@ -75,6 +76,8 @@ export class HcmPoiList extends LitElement {
     declare selected: string;
     /** A revoked admin's page (`DECISIONS-for-review.md` §42d): adding, importing and the selection's actions are off. */
     declare readOnly: boolean;
+    /** M13: a moderator edits and unpublishes places, and adds none. */
+    declare role: string | null;
     /** Add place asks which shape. */
     declare adding: boolean;
 
@@ -85,6 +88,7 @@ export class HcmPoiList extends LitElement {
         this.locale = 'en';
         this.selected = '';
         this.readOnly = false;
+        this.role = null;
         this.adding = false;
     }
 
@@ -117,7 +121,7 @@ export class HcmPoiList extends LitElement {
                     class="add"
                     variant="filled"
                     icon="add"
-                    ?disabled=${this.readOnly}
+                    ?disabled=${this.readOnly || this.role === 'moderator'}
                     aria-expanded=${this.adding ? 'true' : 'false'}
                     @click=${() => {
                         this.adding = !this.adding;

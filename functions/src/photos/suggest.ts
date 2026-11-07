@@ -59,43 +59,49 @@ function cell(value: number): number {
  */
 export function suggestionGroupId(request: Pick<Request, 'photoId' | 'kind' | 'proposal'>): string {
     const { location, bearing, year, yearEnd, dateText } = request.proposal;
-    const key = [
-        request.photoId,
-        request.kind,
-        location === undefined ? '' : `${String(cell(location.lat))},${String(cell(location.lng))}`,
-        bearing === undefined ? '' : String(Math.floor(bearing / SUGGESTION_BEARING_STEP)),
-        year ?? '',
-        yearEnd ?? '',
-        dateText ?? '',
-    ].join('|');
+    const place = location === undefined ? '' : `${String(cell(location.lat))},${String(cell(location.lng))}`;
+    const sector = bearing === undefined ? '' : String(Math.floor(bearing / SUGGESTION_BEARING_STEP));
+    const date = [year, yearEnd, dateText].map((part) => String(part ?? ''));
+    const key = [request.photoId, request.kind, place, sector, ...date].join('|');
     return createHash('sha256').update(key).digest('hex').slice(0, 40);
 }
 
-/** A place is for a photo with none, a correction for a photo that has one. Only what the public sees can be suggested on. */
-function requireTarget(photo: PhotoDoc | undefined, kind: Request['kind']): void {
-    if (photo?.published !== true || !isReviewCleared(photo) || photo.image === undefined) {
+/** Only what the public sees can be suggested on. */
+function isPublicPhoto(photo: PhotoDoc | undefined): photo is PhotoDoc {
+    return photo?.published === true && isReviewCleared(photo) && photo.image !== undefined;
+}
+
+/** A place is for a photo with none, a correction for a photo that has one. */
+function targetOf(photo: PhotoDoc | undefined, kind: Request['kind']): PhotoDoc {
+    if (!isPublicPhoto(photo)) {
         throw new ApiError('apiError.notFound');
     }
     if ((kind === 'place') !== (photo.location === undefined)) {
         throw new ApiError('apiError.suggestion.wrongKind');
     }
+    return photo;
 }
 
-function differs(current: unknown, proposed: unknown): boolean {
+function differs([current, proposed]: readonly [unknown, unknown]): boolean {
     return proposed !== undefined && JSON.stringify(current) !== JSON.stringify(proposed);
 }
 
 /** What the photo already says is no suggestion. */
 function requireChange(photo: PhotoDoc, proposal: SuggestionProposal): void {
-    const changes =
-        differs(photo.location, proposal.location) ||
-        differs(photo.bearing, proposal.bearing) ||
-        differs(photo.year, proposal.year) ||
-        differs(photo.yearEnd, proposal.yearEnd) ||
-        differs(photo.dateText?.ro, proposal.dateText);
-    if (!changes) {
+    const pairs: readonly (readonly [unknown, unknown])[] = [
+        [photo.location, proposal.location],
+        [photo.bearing, proposal.bearing],
+        [photo.year, proposal.year],
+        [photo.yearEnd, proposal.yearEnd],
+        [photo.dateText?.ro, proposal.dateText],
+    ];
+    if (!pairs.some(differs)) {
         throw new ApiError('apiError.suggestion.noChange');
     }
+}
+
+function usedToday(contributor: ContributorDoc | undefined, today: string): number {
+    return contributor?.day === today ? contributor.count : 0;
 }
 
 /** Today's count of the account; refuses a blocked account and the one over its limit. */
@@ -103,7 +109,7 @@ function countedToday(contributor: ContributorDoc | undefined, today: string): n
     if (contributor?.blocked === true) {
         throw new ApiError('apiError.contribute.blocked');
     }
-    const used = contributor?.day === today ? contributor.count : 0;
+    const used = usedToday(contributor, today);
     if (used >= SUGGESTIONS_PER_DAY) {
         throw new ApiError('apiError.suggestion.dailyLimit', { max: String(SUGGESTIONS_PER_DAY) });
     }
@@ -126,11 +132,13 @@ function voiceOf({ data, caller, now }: Submission): SuggestionDoc['voices'][num
     });
 }
 
-function newGroup(submission: Submission): SuggestionDoc {
+function newGroup(submission: Submission, photo: PhotoDoc): SuggestionDoc {
     const { data, caller, now } = submission;
     const at = timestampFromDate(now);
     return {
         photoId: data.photoId,
+        photoTitle: photo.title,
+        photoThumb: photo.image?.thumb ?? '',
         kind: data.kind,
         proposal: data.proposal,
         status: 'pending',
@@ -164,23 +172,31 @@ function joined(group: SuggestionDoc, submission: Submission): SuggestionDoc {
 }
 
 /** The limit and the group in one transaction. Whether the group is new is what the reviewers are told about. */
-async function record(transaction: DocumentTransaction, submission: Submission, groupId: string): Promise<{ readonly isNew: boolean; readonly used: number }> {
+async function record(
+    transaction: DocumentTransaction,
+    submission: Submission,
+    target: { readonly groupId: string; readonly photo: PhotoDoc },
+): Promise<{ readonly isNew: boolean; readonly used: number }> {
     const { data, caller, now } = submission;
     const counter = FIRESTORE_PATHS.contributor(data.cityId, caller.uid);
     const today = now.toISOString().slice(0, 10);
     const contributor = await transaction.get(counter, contributorDocSchema);
     const used = countedToday(contributor, today);
-    const groupPath = FIRESTORE_PATHS.suggestion(data.cityId, groupId);
+    const groupPath = FIRESTORE_PATHS.suggestion(data.cityId, target.groupId);
     const group = await transaction.get(groupPath, suggestionDocSchema);
     const stamp = { updatedBy: caller.uid, updatedAt: timestampFromDate(now) };
     await transaction.set(counter, contributorDocSchema, { ...contributor, day: today, count: used, ...stamp });
-    await transaction.set(groupPath, suggestionDocSchema, group === undefined ? newGroup(submission) : joined(group, submission));
+    await transaction.set(
+        groupPath,
+        suggestionDocSchema,
+        group === undefined ? newGroup(submission, target.photo) : joined(group, submission),
+    );
     return { isNew: group === undefined, used };
 }
 
 /**
- * `suggestions.submit` (any verified Google account, no role; `docs/research/M13-roles.md` §4; S-A63-HAPPY-PLACE,
- * S-A63-HAPPY-CORRECTION, S-A63-BAD-DAILY-LIMIT, S-A63-BAD-BLOCKED, S-A63-BAD-OUTSIDE, S-A63-HAPPY-GROUP): a place for an unplaced
+ * `suggestions.submit` (any verified Google account, no role; `docs/research/M13-roles.md` §4; S-A93-HAPPY-PLACE,
+ * S-A93-HAPPY-CORRECTION, S-A93-BAD-DAILY-LIMIT, S-A93-BAD-BLOCKED, S-A93-BAD-OUTSIDE, S-A93-HAPPY-GROUP): a place for an unplaced
  * photo, or a contested date, location or direction of a placed one, on public photos only. Nothing public changes here. A
  * repeat of a decided proposal is answered like any other.
  */
@@ -189,16 +205,21 @@ async function submitSuggestion(deps: SuggestDeps, caller: VerifiedCaller, data:
         deps.documents.get(FIRESTORE_PATHS.photo(data.cityId, data.photoId), photoDocSchema),
         deps.documents.get(FIRESTORE_PATHS.city(data.cityId), cityDocSchema),
     ]);
-    requireTarget(photo, data.kind);
-    requireChange(photo as PhotoDoc, data.proposal);
+    const target = targetOf(photo, data.kind);
+    requireChange(target, data.proposal);
     if (city === undefined || !onCityMap(city, data.proposal.location)) {
         throw new ApiError('apiError.suggestion.outsideCity');
     }
     const groupId = suggestionGroupId(data);
     const submission = { data, caller, now: deps.clock.now() };
-    const { isNew, used } = await deps.documents.transaction((transaction) => record(transaction, submission, groupId));
+    const { isNew, used } = await deps.documents.transaction((transaction) => record(transaction, submission, { groupId, photo: target }));
     if (isNew) {
-        await emitNotification(deps, 'photos', { kind: 'suggestion.waiting', parts: [data.cityId, groupId], link: '#/review', cityId: data.cityId });
+        await emitNotification(deps, 'photos', {
+            kind: 'suggestion.waiting',
+            parts: [data.cityId, groupId],
+            link: '#/review',
+            cityId: data.cityId,
+        });
     }
     deps.log.info('suggestion received', { cityId: data.cityId, photoId: data.photoId, kind: data.kind, group: groupId, isNew });
     return { received: true, remainingToday: Math.max(0, SUGGESTIONS_PER_DAY - used) };

@@ -18,7 +18,7 @@ import {
 import type { VerifiedCaller } from '../api/access.js';
 import { ApiError } from '../api/api-error.js';
 import { defineCallable, type CallableDeps } from '../api/callable.js';
-import { compact } from '../api/objects.js';
+import { compact, omit } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
 import { onCityMap } from './suggest.js';
@@ -45,7 +45,12 @@ function creditOf(photo: PhotoDoc, group: SuggestionDoc): string | undefined {
  * The photo with what was approved, stamped by the reviewer: `history.onPhotoWrite` keeps the version before, and
  * `history.revert` puts it back in one click. A date text is Romanian, as the suggestion was written.
  */
-function appliedPhoto(photo: PhotoDoc, group: SuggestionDoc, applied: SuggestionProposal, stamp: Pick<PhotoDoc, 'updatedBy' | 'updatedAt'>): PhotoDoc {
+function appliedPhoto(
+    photo: PhotoDoc,
+    group: SuggestionDoc,
+    applied: SuggestionProposal,
+    stamp: Pick<PhotoDoc, 'updatedBy' | 'updatedAt'>,
+): PhotoDoc {
     const { dateText, ...fields } = applied;
     return {
         ...photo,
@@ -58,6 +63,11 @@ function appliedPhoto(photo: PhotoDoc, group: SuggestionDoc, applied: Suggestion
     };
 }
 
+interface Applying {
+    readonly applied: SuggestionProposal;
+    readonly stamp: Pick<PhotoDoc, 'updatedBy' | 'updatedAt'>;
+}
+
 function requireOpen(group: SuggestionDoc | undefined): SuggestionDoc {
     if (group === undefined) {
         throw new ApiError('apiError.notFound');
@@ -68,13 +78,8 @@ function requireOpen(group: SuggestionDoc | undefined): SuggestionDoc {
     return group;
 }
 
-async function applyToPhoto(
-    transaction: DocumentTransaction,
-    cityId: string,
-    group: SuggestionDoc,
-    applied: SuggestionProposal,
-    stamp: Pick<PhotoDoc, 'updatedBy' | 'updatedAt'>,
-): Promise<void> {
+async function applyToPhoto(transaction: DocumentTransaction, cityId: string, group: SuggestionDoc, change: Applying): Promise<void> {
+    const { applied, stamp } = change;
     const path = FIRESTORE_PATHS.photo(cityId, group.photoId);
     const [photo, city] = [await transaction.get(path, photoDocSchema), await transaction.get(FIRESTORE_PATHS.city(cityId), cityDocSchema)];
     if (photo === undefined || city === undefined) {
@@ -93,7 +98,7 @@ async function decide(transaction: DocumentTransaction, data: Request, by: strin
     const stamp = { updatedBy: by, updatedAt: timestampFromDate(now) };
     const applied = appliedProposal(data, group);
     if (applied !== undefined) {
-        await applyToPhoto(transaction, data.cityId, group, applied, stamp);
+        await applyToPhoto(transaction, data.cityId, group, { applied, stamp });
     }
     await transaction.set(path, suggestionDocSchema, {
         ...group,
@@ -106,10 +111,14 @@ async function decide(transaction: DocumentTransaction, data: Request, by: strin
 }
 
 /**
- * `suggestions.decide` (a city's reviewers; `docs/research/M13-roles.md` §4; S-A63-HAPPY-APPROVE, S-A63-HAPPY-ADJUST,
- * S-A63-HAPPY-REJECT, S-A63-BAD-DECIDED-TWICE): approve applies the proposal, adjust the reviewer's values, reject nothing.
+ * `suggestions.decide` (a city's reviewers; `docs/research/M13-roles.md` §4; S-A93-HAPPY-APPROVE, S-A93-HAPPY-ADJUST,
+ * S-A93-HAPPY-REJECT, S-A93-BAD-DECIDED-TWICE): approve applies the proposal, adjust the reviewer's values, reject nothing.
  */
-async function decideSuggestion(deps: SuggestDecideDeps, caller: VerifiedCaller, data: Request): Promise<CallableResponse<'suggestions.decide'>> {
+async function decideSuggestion(
+    deps: SuggestDecideDeps,
+    caller: VerifiedCaller,
+    data: Request,
+): Promise<CallableResponse<'suggestions.decide'>> {
     await deps.documents.transaction((transaction) => decide(transaction, data, caller.uid, deps.clock.now()));
     deps.log.info('suggestion decided', { by: caller.uid, cityId: data.cityId, id: data.suggestionId, decision: data.decision });
     return { status: STATUS_OF[data.decision] };
@@ -117,12 +126,12 @@ async function decideSuggestion(deps: SuggestDecideDeps, caller: VerifiedCaller,
 
 function blockedDoc(current: ContributorDoc | undefined, blocked: boolean, by: string, now: Date): ContributorDoc {
     const at = timestampFromDate(now);
-    const { blocked: _blocked, blockedBy: _by, blockedAt: _at, ...rest } = current ?? { day: now.toISOString().slice(0, 10), count: 0 };
+    const rest = omit(current ?? { day: now.toISOString().slice(0, 10), count: 0 }, ['blocked', 'blockedBy', 'blockedAt'] as never[]);
     return { ...rest, ...(blocked ? { blocked: true, blockedBy: by, blockedAt: at } : {}), updatedBy: by, updatedAt: at };
 }
 
 /**
- * `contributors.setBlocked` (a city's reviewers; S-A63-BAD-BLOCKED): an account of this city can no longer suggest or ask for a
+ * `contributors.setBlocked` (a city's reviewers; S-A93-BAD-BLOCKED): an account of this city can no longer suggest or ask for a
  * role, or can again. It takes no role away: that is `admins.revoke`, the owner's.
  */
 async function setBlocked(

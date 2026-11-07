@@ -1,0 +1,27 @@
+/**
+ * M13's states of the tour inventory (docs/research/M13-roles.md §8; `ADMIN_STATES` of e2e/tour/states.ts spreads them), ids
+ * `roles.<state>`, each reached by e2e/admin/specs/roles/roles.spec.ts at the admin tier's projects.
+ */
+export const ROLES_STATES = {
+    'roles.contribute-request': { title: 'The Contribute page: asking for a role', visit: 'specs/roles/roles.spec.ts' },
+    'roles.contribute-pending': { title: 'The Contribute page: the request waits', visit: 'specs/roles/roles.spec.ts' },
+    'roles.contribute-refused': {
+        title: 'The Contribute page: a refused person is told, with the note',
+        visit: 'specs/roles/roles.spec.ts',
+    },
+    'roles.contribute-place': { title: 'The Contribute page: where was this photo taken', visit: 'specs/roles/roles.spec.ts' },
+    'roles.contribute-correct': {
+        title: "The Contribute page: contesting a placed photo's date, place or direction",
+        visit: 'specs/roles/roles.spec.ts',
+    },
+    'roles.review': { title: 'The review queue: contributions, suggestions, requests', visit: 'specs/roles/roles.spec.ts' },
+    'roles.review-compare': { title: 'The review queue: the photo now and as proposed, on the map', visit: 'specs/roles/roles.spec.ts' },
+    'roles.moderator-nav': {
+        title: "A moderator's navigation, and a page their role does not include",
+        visit: 'specs/roles/roles.spec.ts',
+    },
+    'roles.uploader-photos': {
+        title: "An uploader's photos: their own only, each saying where it stands",
+        visit: 'specs/roles/roles.spec.ts',
+    },
+} as const;

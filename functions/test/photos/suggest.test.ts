@@ -39,24 +39,33 @@ async function world() {
 }
 
 describe('suggestions.submit', () => {
-    it('happyPath_anyoneSignedInSuggestsAPlaceAndThePublicPhotoStays @S-A63-HAPPY-PLACE', async () => {
+    it('happyPath_anyoneSignedInSuggestsAPlaceAndThePublicPhotoStays @S-A93-HAPPY-PLACE', async () => {
         const w = await world();
-        await expect(submit(w, 'u-stranger', { credit: 'Maria' })).resolves.toEqual({ received: true, remainingToday: SUGGESTIONS_PER_DAY - 1 });
+        await expect(submit(w, 'u-stranger', { credit: 'Maria' })).resolves.toEqual({
+            received: true,
+            remainingToday: SUGGESTIONS_PER_DAY - 1,
+        });
         expect(await group(w)).toMatchObject({ photoId: 'lost', status: 'pending', count: 1, accounts: ['u-stranger'], proposal: PLACE });
         expect((await photo(w))?.location).toBeUndefined();
         const id = notificationEventId('suggestion.waiting', CITY_ID, GROUP);
         expect(await w.documents.get(FIRESTORE_PATHS.notificationEvent(id), notificationEventDocSchema)).toMatchObject({ cityId: CITY_ID });
     });
 
-    it('happyPath_aPlacedPhotoIsContestedWithAReason @S-A63-HAPPY-CORRECTION', async () => {
+    it('happyPath_aPlacedPhotoIsContestedWithAReason @S-A93-HAPPY-CORRECTION', async () => {
         const w = await world();
-        const correction = { photoId: 'placed', kind: 'correction', proposal: { year: 1950 }, reason: 'Pe verso scrie 1950.', sourceUrl: 'https://example.org/x' };
+        const correction = {
+            photoId: 'placed',
+            kind: 'correction',
+            proposal: { year: 1950 },
+            reason: 'Pe verso scrie 1950.',
+            sourceUrl: 'https://example.org/x',
+        };
         await expect(submit(w, 'u-stranger', correction)).resolves.toMatchObject({ received: true });
         const id = suggestionGroupId({ photoId: 'placed', kind: 'correction', proposal: { year: 1950 } });
         expect((await group(w, id))?.voices[0]).toMatchObject({ reason: 'Pe verso scrie 1950.', sourceUrl: 'https://example.org/x' });
     });
 
-    it('happyPath_repeatsGroupAndAnAccountCountsOnce @S-A63-HAPPY-GROUP', async () => {
+    it('happyPath_repeatsGroupAndAnAccountCountsOnce @S-A93-HAPPY-GROUP', async () => {
         const w = await world();
         await submit(w, 'u-a');
         await submit(w, 'u-a');
@@ -75,13 +84,13 @@ describe('suggestions.submit', () => {
         expect((await group(w))?.voices).toHaveLength(1);
     });
 
-    it('badPath_theDailyLimitHolds @S-A63-BAD-DAILY-LIMIT', async () => {
+    it('badPath_theDailyLimitHolds @S-A93-BAD-DAILY-LIMIT', async () => {
         const w = await world();
         await w.documents.set(FIRESTORE_PATHS.contributor(CITY_ID, 'u-a'), contributorDocSchema, {
             day: w.clock.now().toISOString().slice(0, 10),
             count: SUGGESTIONS_PER_DAY,
             updatedBy: 'u-a',
-            updatedAt: { seconds: 0, nanoseconds: 0 } as never,
+            updatedAt: { seconds: 0, nanoseconds: 0 },
         });
         expect(await refusal(submit(w, 'u-a'))).toBe('apiError.suggestion.dailyLimit');
         expect(await group(w)).toBeUndefined();
@@ -93,12 +102,12 @@ describe('suggestions.submit', () => {
             day: '2020-01-01',
             count: SUGGESTIONS_PER_DAY,
             updatedBy: 'u-a',
-            updatedAt: { seconds: 0, nanoseconds: 0 } as never,
+            updatedAt: { seconds: 0, nanoseconds: 0 },
         });
         await expect(submit(w, 'u-a')).resolves.toMatchObject({ remainingToday: SUGGESTIONS_PER_DAY - 1 });
     });
 
-    it('badPath_aBlockedAccountIsRefused @S-A63-BAD-BLOCKED', async () => {
+    it('badPath_aBlockedAccountIsRefused @S-A93-BAD-BLOCKED', async () => {
         const w = await world();
         await contributorsFunctions(() => w).setBlocked.run(as('u-moderator', { cityId: CITY_ID, uid: 'u-a', blocked: true }));
         expect(await refusal(submit(w, 'u-a'))).toBe('apiError.contribute.blocked');
@@ -112,7 +121,7 @@ describe('suggestions.submit', () => {
         expect(await refusal(run)).toBe('apiError.city.notReviewer');
     });
 
-    it('badPath_outsideTheCity @S-A63-BAD-OUTSIDE', async () => {
+    it('badPath_outsideTheCity @S-A93-BAD-OUTSIDE', async () => {
         const w = await world();
         expect(await refusal(submit(w, 'u-a', { proposal: { location: { lat: 10, lng: 10 } } }))).toBe('apiError.suggestion.outsideCity');
     });
@@ -121,7 +130,7 @@ describe('suggestions.submit', () => {
         ['an unpublished photo', { published: false }],
         ['a photo waiting for review', { reviewStatus: 'pending', published: true }],
         ['a refused photo', { reviewStatus: 'refused', published: true }],
-    ])('badPath_%s_isNotThere @S-A63-BAD-NOT-PUBLIC', async (_name, overrides) => {
+    ])('badPath_%s_isNotThere @S-A93-BAD-NOT-PUBLIC', async (_name, overrides) => {
         const w = await world();
         await seedPhoto(w, 'hidden', { location: undefined, bearing: undefined, ...(overrides as object) });
         expect(await refusal(submit(w, 'u-a', { photoId: 'hidden' }))).toBe('apiError.notFound');
@@ -135,7 +144,12 @@ describe('suggestions.submit', () => {
 
     it('badPath_whatThePhotoAlreadySays', async () => {
         const w = await world();
-        const same = { photoId: 'placed', kind: 'correction', proposal: { location: { lat: 44.43, lng: 26.09 }, bearing: 90 }, reason: 'x' };
+        const same = {
+            photoId: 'placed',
+            kind: 'correction',
+            proposal: { location: { lat: 44.43, lng: 26.09 }, bearing: 90 },
+            reason: 'x',
+        };
         expect(await refusal(submit(w, 'u-a', same))).toBe('apiError.suggestion.noChange');
     });
 
@@ -157,7 +171,7 @@ describe('suggestions.submit', () => {
 });
 
 describe('suggestions.decide', () => {
-    it('happyPath_approvingPlacesThePhotoAsTheReviewer @S-A63-HAPPY-APPROVE', async () => {
+    it('happyPath_approvingPlacesThePhotoAsTheReviewer @S-A93-HAPPY-APPROVE', async () => {
         const w = await world();
         await submit(w, 'u-a', { credit: 'Maria' });
         await expect(decide(w, 'u-moderator', GROUP)).resolves.toEqual({ status: 'approved' });
@@ -165,11 +179,13 @@ describe('suggestions.decide', () => {
         expect(await group(w)).toMatchObject({ status: 'approved', decidedBy: 'u-moderator' });
     });
 
-    it('happyPath_adjustingAppliesTheReviewersValues @S-A63-HAPPY-ADJUST', async () => {
+    it('happyPath_adjustingAppliesTheReviewersValues @S-A93-HAPPY-ADJUST', async () => {
         const w = await world();
         await submit(w, 'u-a');
         const adjusted = { location: { lat: 44.45, lng: 26.11 }, bearing: 90 };
-        await expect(decide(w, 'u-editor', GROUP, { decision: 'adjust', adjusted, note: 'Puțin mai la nord.' })).resolves.toEqual({ status: 'adjusted' });
+        await expect(decide(w, 'u-editor', GROUP, { decision: 'adjust', adjusted, note: 'Puțin mai la nord.' })).resolves.toEqual({
+            status: 'adjusted',
+        });
         expect(await photo(w)).toMatchObject(adjusted);
         expect(await group(w)).toMatchObject({ status: 'adjusted', applied: adjusted, note: 'Puțin mai la nord.' });
     });
@@ -182,14 +198,14 @@ describe('suggestions.decide', () => {
         expect((await photo(w, 'placed'))?.dateText).toEqual({ ro: 'Vara lui 1936' });
     });
 
-    it('happyPath_rejectingChangesNothingPublic @S-A63-HAPPY-REJECT', async () => {
+    it('happyPath_rejectingChangesNothingPublic @S-A93-HAPPY-REJECT', async () => {
         const w = await world();
         await submit(w, 'u-a');
         await expect(decide(w, 'u-owner', GROUP, { decision: 'reject' })).resolves.toEqual({ status: 'rejected' });
         expect((await photo(w))?.location).toBeUndefined();
     });
 
-    it('badPath_decidedTwice @S-A63-BAD-DECIDED-TWICE', async () => {
+    it('badPath_decidedTwice @S-A93-BAD-DECIDED-TWICE', async () => {
         const w = await world();
         await submit(w, 'u-a');
         await decide(w, 'u-owner', GROUP);

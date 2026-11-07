@@ -14,6 +14,7 @@ import {
     strongerRole,
     timestampFromDate,
     timestampToDate,
+    type AdminDoc,
     type CallableRequest,
     type CallableResponse,
     type CityDoc,
@@ -117,8 +118,8 @@ function cityView(id: string, city: CityDoc): CallableResponse<'contribute.conte
 }
 
 /**
- * `contribute.context` (any verified Google account; `docs/research/M13-roles.md` §3; S-A60-HAPPY-REQUEST, S-A60-BAD-REFUSED-TOLD,
- * S-A61-BAD-NOT-PUBLIC): what the Contribute page shows: the city's public name and view, the caller's standing, and the public
+ * `contribute.context` (any verified Google account; `docs/research/M13-roles.md` §3; S-A92-HAPPY-REQUEST, S-A92-BAD-REFUSED-TOLD,
+ * S-A92-BAD-NOT-PUBLIC): what the Contribute page shows: the city's public name and view, the caller's standing, and the public
  * photo it was opened for. It reads with the Admin SDK, so a stranger needs no rule and no Firestore: this answer is all they
  * get, and a photo that is not public answers `apiError.notFound`.
  */
@@ -139,14 +140,30 @@ async function contributeContext(
     };
 }
 
-/** One open request per account; a refused account waits; a decided, approved one may ask for more. */
-function refuseRepeat(existing: RoleRequestDoc | undefined, now: Date): void {
-    if (existing?.status === 'pending') {
-        throw new ApiError('apiError.contribute.alreadyPending');
-    }
-    const retry = existing === undefined ? undefined : retryAt(existing);
+/** A refused account waits; an approved one may ask for more. */
+function refuseTooSoon(existing: RoleRequestDoc, now: Date): void {
+    const retry = retryAt(existing);
     if (retry !== undefined && now.getTime() < retry.getTime()) {
         throw new ApiError('apiError.contribute.retryLater', { date: retry.toISOString().slice(0, 10) });
+    }
+}
+
+/** One open request per account. */
+function refuseRepeat(existing: RoleRequestDoc | undefined, now: Date): void {
+    if (existing === undefined) {
+        return;
+    }
+    if (existing.status === 'pending') {
+        throw new ApiError('apiError.contribute.alreadyPending');
+    }
+    refuseTooSoon(existing, now);
+}
+
+/** A role that already covers the ask. */
+function refuseCovered(admin: AdminDoc | undefined, data: CallableRequest<'contribute.request'>): void {
+    const held = cityRoleOf(admin?.cities, data.cityId);
+    if (held !== null && strongerRole(held, data.role) === held) {
+        throw new ApiError('apiError.contribute.alreadyMember');
     }
 }
 
@@ -184,17 +201,13 @@ async function writeRequest(transaction: DocumentTransaction, asking: Asking): P
     if (contributor?.blocked === true) {
         throw new ApiError('apiError.contribute.blocked');
     }
-    const admin = await transaction.get(FIRESTORE_PATHS.admin(caller.uid), adminDocSchema);
-    const held = cityRoleOf(admin?.cities, data.cityId);
-    if (held !== null && strongerRole(held, data.role) === held) {
-        throw new ApiError('apiError.contribute.alreadyMember');
-    }
+    refuseCovered(await transaction.get(FIRESTORE_PATHS.admin(caller.uid), adminDocSchema), data);
     refuseRepeat(await transaction.get(path, roleRequestDocSchema), now);
     await transaction.set(path, roleRequestDocSchema, requestDoc(asking));
 }
 
 /**
- * `contribute.request` (any verified Google account; S-A60-HAPPY-REQUEST, S-A60-BAD-ALREADY-PENDING, S-A60-BAD-BLOCKED): asks for
+ * `contribute.request` (any verified Google account; S-A92-HAPPY-REQUEST, S-A92-BAD-ALREADY-PENDING, S-A92-BAD-BLOCKED): asks for
  * `uploader` or `moderator`. A blocked account is refused, so is a repeat or an account whose role already covers it; the
  * city's owners hear of it. The address is kept for the owner to recognise the person, and never logged.
  */

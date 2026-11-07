@@ -41,13 +41,14 @@ function verdict(data: Request, caller: VerifiedCaller, now: Date) {
     };
 }
 
-function requirePending(item: { readonly reviewStatus?: string | undefined } | undefined): void {
+function pendingItem<Item extends { readonly reviewStatus?: string | undefined }>(item: Item | undefined): Item {
     if (item === undefined) {
         throw new ApiError('apiError.notFound');
     }
     if (item.reviewStatus !== 'pending') {
         throw new ApiError('apiError.review.alreadyDecided');
     }
+    return item;
 }
 
 /** A photo can be approved once processed and with a known licence: the rules ask no less of an editor who publishes. */
@@ -89,17 +90,15 @@ async function forgetHeld(deps: ReviewDeps, held: HeldImage | undefined): Promis
 async function rewritePhoto(deps: ReviewDeps, data: Request, change: (photo: PhotoDoc) => PhotoDoc): Promise<void> {
     const path = FIRESTORE_PATHS.photo(data.cityId, data.id);
     await deps.documents.transaction(async (transaction) => {
-        const photo = await transaction.get(path, photoDocSchema);
-        requirePending(photo);
-        await transaction.set(path, photoDocSchema, change(photo as PhotoDoc));
+        const photo = pendingItem(await transaction.get(path, photoDocSchema));
+        await transaction.set(path, photoDocSchema, change(photo));
     });
 }
 
 /** Files first and the document after, so a public photo always has its pictures; a failure leaves it pending and retryable. */
 async function approvePhoto(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Promise<void> {
-    const photo = await deps.documents.get(FIRESTORE_PATHS.photo(data.cityId, data.id), photoDocSchema);
-    requirePending(photo);
-    const held = requireApprovable(photo as PhotoDoc);
+    const photo = pendingItem(await deps.documents.get(FIRESTORE_PATHS.photo(data.cityId, data.id), photoDocSchema));
+    const held = requireApprovable(photo);
     const image = {
         web: await moveOut(deps, data, held, 'web'),
         thumb: await moveOut(deps, data, held, 'thumb'),
@@ -129,9 +128,8 @@ async function refusePhoto(deps: ReviewDeps, caller: VerifiedCaller, data: Reque
 async function decidePoi(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Promise<void> {
     const path = FIRESTORE_PATHS.poi(data.cityId, data.id);
     await deps.documents.transaction(async (transaction) => {
-        const poi = await transaction.get(path, poiDocSchema);
-        requirePending(poi);
-        const decided: PoiDoc = { ...(poi as PoiDoc), published: data.decision === 'approve', ...verdict(data, caller, deps.clock.now()) };
+        const poi = pendingItem(await transaction.get(path, poiDocSchema));
+        const decided: PoiDoc = { ...poi, published: data.decision === 'approve', ...verdict(data, caller, deps.clock.now()) };
         await transaction.set(path, poiDocSchema, decided);
     });
 }
@@ -141,8 +139,8 @@ function decidePhoto(deps: ReviewDeps, caller: VerifiedCaller, data: Request): P
 }
 
 /**
- * `review.decide` (a city's reviewers; `docs/research/M13-roles.md` §2; S-A62-HAPPY-APPROVE, S-A62-HAPPY-REFUSE,
- * S-A62-BAD-DECIDED-TWICE): the one door out of the queue. The write goes through `history.on*Write` as any edit and the publish
+ * `review.decide` (a city's reviewers; `docs/research/M13-roles.md` §2; S-A90-HAPPY-APPROVE, S-A90-HAPPY-REFUSE,
+ * S-A90-BAD-DECIDED-TWICE): the one door out of the queue. The write goes through `history.on*Write` as any edit and the publish
  * triggers rebuild the manifest; the note goes to the uploader.
  */
 async function reviewDecide(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Promise<CallableResponse<'review.decide'>> {

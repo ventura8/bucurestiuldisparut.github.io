@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 109 | 999 | 386 | 613 | 997 | 2 | 264 |
+| 116 | 1046 | 408 | 638 | 1044 | 2 | 272 |
 
 ## Viewer
 
@@ -164,6 +164,16 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V31-BAD-CUSTOM-BASEMAP` | V31 | bad | A custom basemap offers no switch, drops the link's choice and is never written to | a style without the basemap import and labels= in the link -> no Map labels group, Mapbox GL reports no such configuration, the hash loses labels, the controller's call changes nothing and fires nothing | e2e-viewer | exists | `e2e/specs/viewer/map-labels.spec.ts` |
 | `S-V31-BAD-HASH-INVALID` | V31 | bad | An invalid hash value is ignored and the viewer rewrites the hash without it | labels=nonsense,__proto__ -> both drawn, the switches on, the next write drops the parameter | e2e-viewer | exists | `e2e/specs/viewer/map-labels.spec.ts` |
 | `S-V31-BAD-STYLE-DEFAULT` | V31 | bad | A link over a style's own default loses nothing on the next reload | labels=pois over that style -> the map cannot tell the default beneath the choice, so turning streets on keeps labels=streets,pois in the hash and a reload shows them on | e2e-viewer | exists | `e2e/specs/viewer/map-labels.spec.ts` |
+| `S-V40-HAPPY-GALLERY` | V40 | happy | A photo with no place waits in the gallery and links to its suggestion page | the menu's gallery lists it with its picture and title; I know where opens the Contribute page on that photo; the tour's checkers pass | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts`<br>`e2e/tour/viewer.tour.ts` |
+| `S-V40-HAPPY-MANIFEST` | V40 | happy | The builder lists a photo with no place apart | published and processed with no location -> unplaced, not photos; none -> no key in the JSON | functions | exists | `functions/test/publish/assemble.test.ts` |
+| `S-V40-HAPPY-OLD-MANIFEST` | V40 | happy | A manifest from before stays valid | no unplaced list and no link: validateManifest passes | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
+| `S-V40-BAD-NO-BACKEND` | V40 | bad | A map with no Contribute page shows the gallery without links | no contributeUrl -> pictures and no link | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
+| `S-V40-BAD-OLD-MANIFEST` | V40 | bad | A manifest with no such photos shows no gallery | the menu has no Where was this taken? | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
+| `S-V40-BAD-PLACED-NEEDS-LOCATION` | V40 | bad | A placed photo still needs its location | a photos[] entry with no location, or an unplaced one with a location, or one in both lists: refused | e2e-viewer | exists | `functions/test/publish/assemble.test.ts` |
+| `S-V41-HAPPY-CORRECTION-LINK` | V41 | happy | A photo's sheet offers a correction and says its credit | Suggest a correction links to the page on that photo; Added by the credit | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
+| `S-V41-HAPPY-LINK` | V41 | happy | Contribute opens a page of its own | the menu's item opens contributeUrl in a new tab with nothing passed on | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
+| `S-V41-BAD-NO-BACKEND` | V41 | bad | A manifest without the link offers no Contribute | the menu has no Contribute | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
+| `S-V41-BAD-NO-SIGN-IN` | V41 | bad | The map signs nothing in, reads no Firestore and sets no cookie | with the link on the page: no cookie in the context, no request to Firestore, Identity Toolkit, Secure Token or Firebase | e2e-viewer | exists | `e2e/specs/viewer/unplaced.spec.ts` |
 
 ## Admin
 
@@ -867,6 +877,43 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-A69-BAD-FILES-ELSEWHERE` | A69 | bad | A frame moved after it parked is refused rather than downloaded again | a job parked in the cloud and moved to the computer, or the reverse: apiError.imagery.locateFilesElsewhere, nothing moves and no delivery starts; moved back, its files count again and the refusal is gone | functions | exists | `functions/test/imagery/locate-again.test.ts`<br>`functions/test/imagery/run-on.test.ts` |
 | `S-A69-BAD-INPUTS-GONE` | A69 | bad | With neither segments nor delivery the refusal says why | apiError.imagery.locateInputsGone on the page, the job and version unchanged, the frame still waits for points and the georeferencer stays open | e2e-admin | exists | `e2e/admin/specs/imagery/calibration.spec.ts`<br>`functions/test/imagery/locate-again.test.ts` |
 | `S-A69-BAD-NOT-WAITING` | A69 | bad | Only a USGS frame still waiting for points is located again | a job not waiting, asked to stop, moved during the check or of a type with no locate is refused with apiError.imagery.versionState; the page offers no button for an upload or a version that moved on | functions | exists | `functions/test/imagery/locate-again.test.ts` |
+| `S-A90-HAPPY-APPROVE` | A90 | happy | Approving publishes the item and moves its pictures out | review.decide: published, approved, the reviewer as updatedBy, the held pictures in the public bucket and gone from the private one | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts`<br>`functions/test/photos/review-decide.test.ts` |
+| `S-A90-HAPPY-NOTIFIED` | A90 | happy | The reviewers hear of a new item, and each kind reaches its audience | a new pending item -> review.waiting; a moderator hears it, not a job, the budget or a role request; an uploader hears none | functions | exists | `functions/test/history/moderator.test.ts`<br>`functions/test/notify/fan-out.test.ts` |
+| `S-A90-HAPPY-OWN` | A90 | happy | An uploader sees their own photos with where each stands | the list asks createdBy == uid; a chip says Waiting for review | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts` |
+| `S-A90-HAPPY-REFUSE` | A90 | happy | Refusing keeps it private and deletes its pictures | refused, unpublished, the note kept, nothing in the public bucket | functions | exists | `functions/test/photos/review-decide.test.ts` |
+| `S-A90-BAD-DECIDED-TWICE` | A90 | bad | A decided item is decided | a second decision: apiError.review.alreadyDecided | functions | exists | `functions/test/photos/review-decide.test.ts` |
+| `S-A90-BAD-MODERATOR-SETTINGS` | A90 | bad | A moderator reverts no city, layer or category | history.revert: apiError.city.notEditor | functions | exists | `functions/test/history/moderator.test.ts` |
+| `S-A90-BAD-NOT-PUBLIC-BEFORE` | A90 | bad | Nothing of a pending item is public | photos.onUpload holds the pictures in the private bucket; the builder drops pending and refused whatever published says | functions | exists | `functions/test/photos/review-decide.test.ts`<br>`functions/test/publish/assemble.test.ts` |
+| `S-A90-BAD-NOT-REVIEWER` | A90 | bad | An uploader, another city's member or a stranger decides nothing | review.decide refuses each, and the photo stays | functions | exists | `functions/test/photos/review-decide.test.ts` |
+| `S-A90-BAD-OTHERS-HIDDEN` | A90 | bad | An uploader sees nobody else's | another's photo is not listed, and no Review in the navigation | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts` |
+| `S-A91-HAPPY-NAV` | A91 | happy | A moderator's navigation is theirs | Photos, Places, Notifications and Review; an uploader without Review | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts` |
+| `S-A91-BAD-NO-REQUESTS` | A91 | bad | A moderator is not shown requests for a role | the page has no Requests section; the rules refuse the read | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts` |
+| `S-A91-BAD-NOT-ALLOWED` | A91 | bad | A page the role does not include is refused and says why | settings, imagery, admins, jobs, setup and the rest open Photos with adminShell.route.notAllowed | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts` |
+| `S-A92-HAPPY-APPROVE` | A92 | happy | An owner approves and the account is a member of this city only | the role written, the stronger one kept, the admin claim set | functions | exists | `functions/test/admin/contribute.test.ts` |
+| `S-A92-HAPPY-CONTEXT` | A92 | happy | The page reads the city and a public photo through the callable | a stranger reads no Firestore: name, bounds, standing, the photo's public fields | functions | exists | `functions/test/admin/contribute.test.ts` |
+| `S-A92-HAPPY-REQUEST` | A92 | happy | A stranger stays signed in on the Contribute page and asks for a role | no sign-out, no admin document, the request written with their address, the page says it waits | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts`<br>`functions/test/admin/contribute.test.ts` |
+| `S-A92-HAPPY-VISITOR-STAYS` | A92 | happy | A reload keeps the visitor's page | the form is there again | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts` |
+| `S-A92-BAD-ALREADY-PENDING` | A92 | bad | One open request per account | a second: apiError.contribute.alreadyPending | functions | exists | `functions/test/admin/contribute.test.ts` |
+| `S-A92-BAD-BLOCKED` | A92 | bad | A blocked account may not ask | apiError.contribute.blocked | functions | exists | `functions/test/admin/contribute.test.ts` |
+| `S-A92-BAD-DECIDED-TWICE` | A92 | bad | A request is answered once | apiError.contribute.alreadyDecided | functions | exists | `functions/test/admin/contribute.test.ts` |
+| `S-A92-BAD-NOT-OWNER` | A92 | bad | Only the city's owners answer | an editor, a moderator or an uploader: apiError.city.notOwner; nothing written | functions | exists | `functions/test/admin/contribute.test.ts` |
+| `S-A92-BAD-NOT-PUBLIC` | A92 | bad | A photo that is not public is not there | unpublished, pending, refused, no picture: apiError.notFound | functions | exists | `functions/test/admin/contribute.test.ts` |
+| `S-A92-BAD-REFUSED-TOLD` | A92 | bad | A refused person is told, and waits to ask again | the page says refused with the note and the date; a new ask before it: apiError.contribute.retryLater | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts`<br>`functions/test/admin/contribute.test.ts` |
+| `S-A93-HAPPY-ADJUST` | A93 | happy | Adjusting applies the reviewer's values, side by side on the map | the marker and the pin on one map; the pin dragged; adjusted applied and recorded | functions | exists | `functions/test/photos/suggest.test.ts` |
+| `S-A93-HAPPY-APPROVE` | A93 | happy | Approving applies the proposal as the reviewer | the photo placed with the reviewer as updatedBy; the credit taken | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts`<br>`functions/test/photos/suggest.test.ts` |
+| `S-A93-HAPPY-CORRECTION` | A93 | happy | A placed photo is contested with a reason and a source | the group holds the reason and the link | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts`<br>`functions/test/photos/suggest.test.ts` |
+| `S-A93-HAPPY-GROUP` | A93 | happy | Repeats group, and an account counts once | nearby proposals land on one document with the count | functions | exists | `functions/test/photos/suggest.test.ts` |
+| `S-A93-HAPPY-PLACE` | A93 | happy | Anyone signed in suggests where a photo was taken, and the public photo stays | a group written with the proposal, the location of the photo untouched | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts`<br>`functions/test/photos/suggest.test.ts` |
+| `S-A93-HAPPY-REJECT` | A93 | happy | Rejecting changes nothing public | the status only | functions | exists | `functions/test/photos/suggest.test.ts` |
+| `S-A93-HAPPY-REVERT` | A93 | happy | An approved change comes off in one click through the history | the entry history.onPhotoWrite kept restores the photo; the page finds it and calls history.revert | functions | exists | `functions/test/history/moderator.test.ts` |
+| `S-A93-BAD-BLOCKED` | A93 | bad | A blocked account suggests nothing | apiError.contribute.blocked until let back; an uploader may not block | functions | exists | `functions/test/photos/suggest.test.ts` |
+| `S-A93-BAD-DAILY-LIMIT` | A93 | bad | The daily limit holds | past SUGGESTIONS_PER_DAY: apiError.suggestion.dailyLimit, no group written | functions | exists | `functions/test/photos/suggest.test.ts` |
+| `S-A93-BAD-DECIDED-TWICE` | A93 | bad | A group is decided once, and a repeat reopens nothing | apiError.suggestion.alreadyDecided; a repeat after a refusal only counts | functions | exists | `functions/test/photos/suggest.test.ts` |
+| `S-A93-BAD-MARKUP-IS-TEXT` | A93 | bad | What a stranger typed is text | markup in a reason shows as written, no element made; a source link is nofollow and https | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts` |
+| `S-A93-BAD-NOT-PUBLIC` | A93 | bad | Only what the public sees can be suggested on | unpublished, pending, refused: apiError.notFound | e2e-admin | exists | `e2e/admin/specs/roles/roles.spec.ts`<br>`functions/test/photos/suggest.test.ts` |
+| `S-A93-BAD-OUTSIDE` | A93 | bad | A place outside the city is refused | apiError.suggestion.outsideCity, also for an adjustment | functions | exists | `functions/test/photos/suggest.test.ts` |
+| `S-A94-HAPPY-MATRIX` | A94 | happy | Each role reaches what its row says | every path and operation for an uploader, a moderator, an editor and an owner | rules | exists | `firebase/rules-tests/test/roles.test.ts` |
+| `S-A94-BAD-MATRIX` | A94 | bad | Nobody reaches what their row does not say | a stranger, an account of no role, another uploader and another city's owner, and every direct write of review fields, suggestions, contributors and role requests: denied | rules | exists | `firebase/rules-tests/test/roles.test.ts` |
 
 ## Starter kit
 

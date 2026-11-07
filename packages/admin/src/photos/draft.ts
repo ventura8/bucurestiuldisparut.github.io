@@ -33,6 +33,7 @@ const PHOTO_EDITABLE = [
     'fov',
     'published',
     'rightsReview',
+    'credit',
 ] as const;
 
 export type PhotoEditable = (typeof PHOTO_EDITABLE)[number];
@@ -117,7 +118,9 @@ function changedFields(value: PhotoValue, photo: PhotoDoc): PhotoEditable[] {
 }
 
 function placeIssues(value: PhotoValue, bounds: BBox | null): ValidationIssue[] {
-    return bounds === null || insideCity(value.location, bounds) ? [] : [{ path: 'location', code: 'validation.outsideCity' }];
+    return bounds === null || value.location === undefined || insideCity(value.location, bounds)
+        ? []
+        : [{ path: 'location', code: 'validation.outsideCity' }];
 }
 
 /** Published needs a processed image and a known licence (the rules' publish gate). */

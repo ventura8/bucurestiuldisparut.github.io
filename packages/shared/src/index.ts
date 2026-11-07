@@ -83,6 +83,7 @@ export type {
     License,
     Manifest,
     Photo,
+    UnplacedPhoto,
     PhotoImage,
     PhotoLink,
     Theme,

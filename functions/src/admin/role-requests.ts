@@ -25,16 +25,31 @@ export type RoleDecideDeps = Pick<Ports, 'documents' | 'auth' | 'clock' | 'log'>
 
 type Request = CallableRequest<'contribute.decide'>;
 
+interface Decision {
+    readonly data: Request;
+    readonly by: string;
+    readonly now: Date;
+}
+
 /** The applicant's document with the role: a new admin gets a plain admin record, the stronger role wins for one who is. */
-function adminWithRole(existing: AdminDoc | undefined, request: RoleRequestDoc, data: Request, by: string, now: Date): AdminDoc {
+function adminWithRole(existing: AdminDoc | undefined, request: RoleRequestDoc, decision: Decision): AdminDoc {
+    const { data, by, now } = decision;
     const base =
         existing ??
-        adminRecord({ uid: by, email: request.email ?? '', role: 'admin', displayName: request.displayName, invitedBy: by, createdAt: undefined, now });
+        adminRecord({
+            uid: by,
+            email: request.email ?? '',
+            role: 'admin',
+            displayName: request.displayName,
+            invitedBy: by,
+            createdAt: undefined,
+            now,
+        });
     const role = strongerRole(cityRoleOf(existing?.cities, data.cityId), request.role);
     return { ...base, cities: { ...existing?.cities, [data.cityId]: role }, ...callerStamp(by, now) };
 }
 
-function decided(request: RoleRequestDoc, data: Request, by: string, now: Date): RoleRequestDoc {
+function decided(request: RoleRequestDoc, { data, by, now }: Decision): RoleRequestDoc {
     const at = timestampFromDate(now);
     return {
         ...omit(request, ['note']),
@@ -48,7 +63,8 @@ function decided(request: RoleRequestDoc, data: Request, by: string, now: Date):
 }
 
 /** The request read and answered, and on approval the role written, in one transaction: an answer is given once. */
-async function decide(transaction: DocumentTransaction, data: Request, by: string, now: Date): Promise<void> {
+async function decide(transaction: DocumentTransaction, decision: Decision): Promise<void> {
+    const { data } = decision;
     const path = FIRESTORE_PATHS.roleRequest(data.cityId, data.uid);
     const request = await transaction.get(path, roleRequestDocSchema);
     if (request === undefined) {
@@ -60,14 +76,14 @@ async function decide(transaction: DocumentTransaction, data: Request, by: strin
     const adminPath = FIRESTORE_PATHS.admin(data.uid);
     const existing = await transaction.get(adminPath, adminDocSchema);
     if (data.decision === 'approve') {
-        await transaction.set(adminPath, adminDocSchema, adminWithRole(existing, request, data, by, now));
+        await transaction.set(adminPath, adminDocSchema, adminWithRole(existing, request, decision));
     }
-    await transaction.set(path, roleRequestDocSchema, decided(request, data, by, now));
+    await transaction.set(path, roleRequestDocSchema, decided(request, decision));
 }
 
 /**
- * `contribute.decide` (a city's owner; `docs/research/M13-roles.md` §3; S-A60-HAPPY-APPROVE, S-A60-BAD-REFUSED-TOLD,
- * S-A60-BAD-DECIDED-TWICE): approving makes the account a member of this city with the role it asked for (the stronger one if it
+ * `contribute.decide` (a city's owner; `docs/research/M13-roles.md` §3; S-A92-HAPPY-APPROVE, S-A92-BAD-REFUSED-TOLD,
+ * S-A92-BAD-DECIDED-TWICE): approving makes the account a member of this city with the role it asked for (the stronger one if it
  * has one already) and sets the `admin` claim; refusing records the note the applicant reads on the Contribute page.
  */
 async function decideRoleRequest(
@@ -75,7 +91,7 @@ async function decideRoleRequest(
     caller: VerifiedCaller,
     data: Request,
 ): Promise<CallableResponse<'contribute.decide'>> {
-    await deps.documents.transaction((transaction) => decide(transaction, data, caller.uid, deps.clock.now()));
+    await deps.documents.transaction((transaction) => decide(transaction, { data, by: caller.uid, now: deps.clock.now() }));
     if (data.decision === 'approve') {
         await deps.auth.setAdminClaim(data.uid, true);
     }

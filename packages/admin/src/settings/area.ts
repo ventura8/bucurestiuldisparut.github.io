@@ -89,7 +89,7 @@ export function contentOutside(
     pois: readonly { readonly id: string; readonly data: PoiDoc }[],
 ): Outside[] {
     const photosOut = photos
-        .filter((photo) => !inside(bounds, [photo.data.location.lng, photo.data.location.lat]))
+        .filter((photo) => photo.data.location !== undefined && !inside(bounds, [photo.data.location.lng, photo.data.location.lat]))
         .map((photo): Outside => ({ kind: 'photo', id: photo.id, title: photo.data.title.ro }));
     const poisOut = pois
         .filter((poi) => !geometryPositions(geometryFromDoc(poi.data.geometry)).every((position) => inside(bounds, position)))

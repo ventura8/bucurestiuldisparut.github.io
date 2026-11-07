@@ -148,6 +148,10 @@ ADMIN_CHUNK_BUDGETS: Mapping[str, int] = {
     # its section opens), measured on 2026-10-25 plus about 20 % (docs/research/M5-interfaces.md §1.6, §1.8;
     # DECISIONS-for-review.md §62c).
     "cities": 6,
+    # M13 (docs/research/M13-roles.md §8): the review queue and the Contribute page: 4.1 and 3.4 KB measured on 2026-11-07 plus
+    # about 20 %, rounded up; the total stays under ADMIN_TOTAL_KB.
+    "review": 5,
+    "contribute": 5,
     "city-budget": 2,
     # Step (g)'s Create the measurement reports (`packages/admin/src/google/analytics-reports.ts`: the GA4 property found
     # from the measurement id and the field measurements' custom definitions), fetched on its button's click only: 0.8 KB

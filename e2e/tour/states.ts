@@ -4,6 +4,7 @@ import { expect, type BrowserContext, type Locator, type Page, type Route } from
 import { IMAGERY_STATES } from '../admin/specs/imagery/states.js';
 import { ADMIN_SECTION_STATES } from './admin-sections.js';
 import { COMPARE_STATES, openComparing } from './compare-states.js';
+import { UNPLACED_JOURNEY, unplacedStates } from './unplaced-states.js';
 import { MAP_LABEL_JOURNEY, MAP_LABEL_STATES } from './map-labels-states.js';
 import { hasBottomSheets, toDetent } from './sheets.js';
 import { OPS_STATES } from '../admin/specs/ops/states.js';
@@ -183,6 +184,7 @@ const VIEWER_STATES = {
             await mapIdle(page);
         },
     },
+    ...unplacedStates(sheetEscape),
     'near-year-photos': {
         title: 'The photos near the year, from the chip',
         enter: async ({ page, lang }) => {
@@ -463,6 +465,7 @@ const VIEWER_JOURNEYS: readonly Journey[] = [
         booted: (tour) => expectFrame(tour, false),
         states: ['consent'],
     },
+    UNPLACED_JOURNEY,
     {
         title: 'A toast',
         id: 'toast',

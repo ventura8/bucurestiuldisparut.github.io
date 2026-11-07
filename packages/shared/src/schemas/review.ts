@@ -7,12 +7,14 @@ import { z } from 'zod';
 
 import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import {
+    assetUrlSchema,
     bearingSchema,
     coded,
     httpsUrlSchema,
     idSchema,
     isoDateSchema,
     latLngSchema,
+    localizedPartial,
     plainText,
     validYearRange,
     yearSchema,
@@ -117,6 +119,9 @@ const suggestionVoiceSchema = z.strictObject({
 /** `cities/{city}/suggestions/{group}`: one proposal for one photo, with everyone who made it. */
 export const suggestionDocSchema = z.strictObject({
     photoId: idSchema,
+    /** The photo's title and thumbnail when the group began: what the queue lists without reading every photo. */
+    photoTitle: localizedPartial(200),
+    photoThumb: assetUrlSchema,
     kind: z.enum(SUGGESTION_KINDS),
     proposal: suggestionProposalSchema,
     status: z.enum(SUGGESTION_STATUSES),

@@ -45,7 +45,15 @@ export function fakeAuth(): AuthAdmin & { readonly claims: Map<string, boolean> 
     const claims = new Map<string, boolean>();
     return {
         claims,
-        getUser: (uid) => Promise.resolve({ uid, displayName: `Name of ${uid}` } as never),
+        getUser: (uid) =>
+            Promise.resolve({
+                uid,
+                displayName: `Name of ${uid}`,
+                emailVerified: true,
+                providers: [],
+                createdAt: new Date(0),
+                customClaims: {},
+            }),
         setAdminClaim: (uid, admin) => {
             claims.set(uid, admin);
             return Promise.resolve();
@@ -73,9 +81,14 @@ export async function communityWorld(): Promise<CommunityWorld> {
 export function as(uid: string | null, data: unknown): CallableRequest<unknown> {
     const base = { data, rawRequest: {} as CallableRequest['rawRequest'], acceptsStreaming: false };
     if (uid === null) {
-        return base as CallableRequest<unknown>;
+        return base;
     }
-    const token = { email: `${uid}@example.test`, email_verified: true, firebase: { sign_in_provider: 'google.com' }, admin: ROLES[uid] !== undefined };
+    const token = {
+        email: `${uid}@example.test`,
+        email_verified: true,
+        firebase: { sign_in_provider: 'google.com' },
+        admin: ROLES[uid] !== undefined,
+    };
     return { ...base, auth: { uid, token, rawToken: 't' } } as unknown as CallableRequest<unknown>;
 }
 
@@ -94,5 +107,11 @@ export async function seedPhoto(world: CommunityWorld, id: string, overrides: Pa
 }
 
 export async function seedMember(world: CommunityWorld, uid: string, cities: Readonly<Record<string, CityRole>>): Promise<void> {
-    await world.documents.set(FIRESTORE_PATHS.admin(uid), adminDocSchema, { role: 'admin', cities, createdAt: AT, updatedBy: uid, updatedAt: AT });
+    await world.documents.set(FIRESTORE_PATHS.admin(uid), adminDocSchema, {
+        role: 'admin',
+        cities,
+        createdAt: AT,
+        updatedBy: uid,
+        updatedAt: AT,
+    });
 }

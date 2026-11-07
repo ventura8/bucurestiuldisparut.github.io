@@ -37,7 +37,7 @@ function decide(world: CommunityWorld, uid: string | null, data: Record<string, 
 const stored = (world: CommunityWorld) => world.documents.get(FIRESTORE_PATHS.photo(CITY_ID, 'p1'), photoDocSchema);
 
 describe('review.decide', () => {
-    it('happyPath_approvingPublishesThePhotoAndMovesItsPicturesOut @S-A62-HAPPY-APPROVE', async () => {
+    it('happyPath_approvingPublishesThePhotoAndMovesItsPicturesOut @S-A90-HAPPY-APPROVE', async () => {
         const world = await communityWorld();
         await pending(world);
         await expect(decide(world, 'u-moderator', {})).resolves.toEqual({ status: 'approved' });
@@ -49,7 +49,7 @@ describe('review.decide', () => {
         expect(world.blobs.paths('public', 'photos/')).toHaveLength(2);
     });
 
-    it('happyPath_refusingKeepsItPrivateAndDeletesThePictures @S-A62-HAPPY-REFUSE', async () => {
+    it('happyPath_refusingKeepsItPrivateAndDeletesThePictures @S-A90-HAPPY-REFUSE', async () => {
         const world = await communityWorld();
         await pending(world);
         await expect(decide(world, 'u-editor', { decision: 'refuse', note: 'Nu e din oraș.' })).resolves.toEqual({ status: 'refused' });
@@ -66,11 +66,17 @@ describe('review.decide', () => {
         await seed('b');
         await decide(world, 'u-owner', { entity: 'poi', id: 'a' });
         await decide(world, 'u-owner', { entity: 'poi', id: 'b', decision: 'refuse' });
-        expect(await world.documents.get(FIRESTORE_PATHS.poi(CITY_ID, 'a'), poiDocSchema)).toMatchObject({ published: true, reviewStatus: 'approved' });
-        expect(await world.documents.get(FIRESTORE_PATHS.poi(CITY_ID, 'b'), poiDocSchema)).toMatchObject({ published: false, reviewStatus: 'refused' });
+        expect(await world.documents.get(FIRESTORE_PATHS.poi(CITY_ID, 'a'), poiDocSchema)).toMatchObject({
+            published: true,
+            reviewStatus: 'approved',
+        });
+        expect(await world.documents.get(FIRESTORE_PATHS.poi(CITY_ID, 'b'), poiDocSchema)).toMatchObject({
+            published: false,
+            reviewStatus: 'refused',
+        });
     });
 
-    it('badPath_decidedTwiceIsRefused @S-A62-BAD-DECIDED-TWICE', async () => {
+    it('badPath_decidedTwiceIsRefused @S-A90-BAD-DECIDED-TWICE', async () => {
         const world = await communityWorld();
         await pending(world);
         await decide(world, 'u-owner', {});
@@ -95,7 +101,7 @@ describe('review.decide', () => {
         ['u-uploader', 'apiError.city.notReviewer'],
         ['u-other', 'apiError.city.notMember'],
         ['u-stranger', 'apiError.notAdmin'],
-    ])('badPath_%s_mayNotDecide @S-A62-BAD-NOT-REVIEWER', async (uid, code) => {
+    ])('badPath_%s_mayNotDecide @S-A90-BAD-NOT-REVIEWER', async (uid, code) => {
         const world = await communityWorld();
         await pending(world);
         expect(await refusal(decide(world, uid, {}))).toBe(code);
@@ -109,7 +115,10 @@ describe('review.decide', () => {
 });
 
 describe('photos.onUpload, for a pending photo (M13 §2)', () => {
-    const jpeg = () => sharp({ create: { width: 50, height: 40, channels: 3, background: '#808080' } }).jpeg().toBuffer();
+    const jpeg = () =>
+        sharp({ create: { width: 50, height: 40, channels: 3, background: '#808080' } })
+            .jpeg()
+            .toBuffer();
     const objectOf = async (world: CommunityWorld) => {
         const path = STORAGE_PATHS.photoUpload(CITY_ID, 'u-uploader', 'p1', 'nonce-0001.jpg');
         const bytes = new Uint8Array(await jpeg());
@@ -117,9 +126,16 @@ describe('photos.onUpload, for a pending photo (M13 §2)', () => {
         return { name: path, size: String(bytes.length), metadata: {} };
     };
 
-    it('happyPath_itsPicturesStayPrivate @S-A62-BAD-NOT-PUBLIC-BEFORE', async () => {
+    it('happyPath_itsPicturesStayPrivate @S-A90-BAD-NOT-PUBLIC-BEFORE', async () => {
         const world = await communityWorld();
-        await seedPhoto(world, 'p1', { image: undefined, published: false, processing: 'pending', reviewStatus: 'pending', location: undefined, bearing: undefined });
+        await seedPhoto(world, 'p1', {
+            image: undefined,
+            published: false,
+            processing: 'pending',
+            reviewStatus: 'pending',
+            location: undefined,
+            bearing: undefined,
+        });
         await expect(processPhotoUpload(world, await objectOf(world))).resolves.toBe('done');
         const photo = await stored(world);
         expect(photo?.image).toBeUndefined();

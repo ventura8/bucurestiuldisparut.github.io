@@ -2,7 +2,7 @@
  * The admin's state (`docs/research/M2b-interfaces.md` §1.7): one immutable object the shell renders, replaced on every
  * change (`store.ts`). `setup` is the Setup Assistant's own part (setup-ui), opaque to the shell.
  */
-import type { AdminContentKey, AdminSetupKey, AdminShellKey, ApiErrorCode, Locale, ThemeTokens } from '@hcm/shared';
+import type { AdminContentKey, AdminSetupKey, AdminShellKey, ApiErrorCode, CityRole, Locale, ThemeTokens } from '@hcm/shared';
 
 import type { AdminAuthState, AdminMode } from '../auth/auth-state.js';
 import type { AuthUser } from '../firebase/ports.js';
@@ -68,7 +68,7 @@ type AdminLeaving =
 /** M5 (`docs/research/M5-interfaces.md` §1.5): one of the signed-in admin's cities, as `admin.session` lists it. */
 export interface AdminCity {
     readonly id: string;
-    readonly role: 'owner' | 'editor';
+    readonly role: CityRole;
     readonly name: { readonly ro: string; readonly en?: string | undefined };
 }
 

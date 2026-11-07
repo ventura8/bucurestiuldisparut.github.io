@@ -14,6 +14,8 @@ import { en as photosEn } from '../admin-photos/en.js';
 import { ro as photosRo, type AdminPhotosKey } from '../admin-photos/ro.js';
 import { en as poisEn } from '../admin-pois/en.js';
 import { ro as poisRo, type AdminPoisKey } from '../admin-pois/ro.js';
+import { en as reviewEn } from '../admin-review/en.js';
+import { ro as reviewRo, type AdminReviewKey } from '../admin-review/ro.js';
 import { en as settingsEn } from '../admin-settings/en.js';
 import { ro as settingsRo, type AdminSettingsKey } from '../admin-settings/ro.js';
 import { catalogueTranslator } from '../catalogue.js';
@@ -31,7 +33,8 @@ export type AdminContentKey =
     | AdminImageryKey
     | AdminNotifyKey
     | AdminCitiesKey
-    | AdminExportKey;
+    | AdminExportKey
+    | AdminReviewKey;
 
 export type AdminContentMessages = Readonly<Record<AdminContentKey, string>>;
 
@@ -43,8 +46,32 @@ export type AdminContentMessages = Readonly<Record<AdminContentKey, string>>;
  * another area's text.
  */
 export const ADMIN_CONTENT_CATALOGUES: Readonly<Record<'ro' | 'en', AdminContentMessages>> = {
-    ro: { ...kitRo, ...photosRo, ...poisRo, ...layersRo, ...settingsRo, ...opsRo, ...imageryRo, ...notifyRo, ...citiesRo, ...exportRo },
-    en: { ...kitEn, ...photosEn, ...poisEn, ...layersEn, ...settingsEn, ...opsEn, ...imageryEn, ...notifyEn, ...citiesEn, ...exportEn },
+    ro: {
+        ...kitRo,
+        ...photosRo,
+        ...poisRo,
+        ...layersRo,
+        ...settingsRo,
+        ...opsRo,
+        ...imageryRo,
+        ...notifyRo,
+        ...citiesRo,
+        ...exportRo,
+        ...reviewRo,
+    },
+    en: {
+        ...kitEn,
+        ...photosEn,
+        ...poisEn,
+        ...layersEn,
+        ...settingsEn,
+        ...opsEn,
+        ...imageryEn,
+        ...notifyEn,
+        ...citiesEn,
+        ...exportEn,
+        ...reviewEn,
+    },
 };
 
 /** The admin editors' texts (`docs/research/M2c-interfaces.md` §10.1). */

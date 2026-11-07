@@ -1,4 +1,12 @@
-import { CITY_ACCESSES, REVIEW_ROLES, STAFF_ROLES, WORKER_PAIR_ID_PATTERN, type ApiErrorCode, type CallableAccess, type CityRole } from '@hcm/shared';
+import {
+    CITY_ACCESSES,
+    REVIEW_ROLES,
+    STAFF_ROLES,
+    WORKER_PAIR_ID_PATTERN,
+    type ApiErrorCode,
+    type CallableAccess,
+    type CityRole,
+} from '@hcm/shared';
 
 import type { AdminDirectory, AdminMembership } from '../ports/admin-directory.js';
 import { ApiError } from './api-error.js';
@@ -189,18 +197,25 @@ function roleOf(caller: VerifiedCaller, cityId: string): CityRole | null {
 }
 
 /** M13 §1: what each city access needs, named role by role, so a new role opens nothing it does not name. */
-const CITY_ACCESS_ROLES: Readonly<Record<string, { readonly roles: readonly CityRole[]; readonly refusal: ApiErrorCode }>> = {
+const CITY_ACCESS_ROLES: Readonly<
+    Partial<Record<CallableAccess, { readonly roles: readonly CityRole[]; readonly refusal: ApiErrorCode }>>
+> = {
     cityOwner: { roles: ['owner'], refusal: 'apiError.city.notOwner' },
     cityEditor: { roles: STAFF_ROLES, refusal: 'apiError.city.notEditor' },
     cityReviewer: { roles: REVIEW_ROLES, refusal: 'apiError.city.notReviewer' },
 };
 
+/** A city access the table does not name wants the owner: fail closed. */
+function neededFor(access: CallableAccess): { readonly roles: readonly CityRole[]; readonly refusal: ApiErrorCode } {
+    return CITY_ACCESS_ROLES[access] ?? { roles: ['owner'], refusal: 'apiError.city.notOwner' };
+}
+
 function requireRoleIn(cityId: string, role: CityRole | null, access: CallableAccess): void {
     if (role === null) {
         throw new ApiError('apiError.city.notMember', { cityId });
     }
-    const needed = CITY_ACCESS_ROLES[access];
-    if (needed === undefined || !needed.roles.includes(role)) {
-        throw new ApiError(needed?.refusal ?? 'apiError.city.notMember', { cityId });
+    const needed = neededFor(access);
+    if (!needed.roles.includes(role)) {
+        throw new ApiError(needed.refusal, { cityId });
     }
 }

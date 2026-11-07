@@ -60,11 +60,20 @@ function currentCityOf(parts: ContentShell): () => string {
     return () => parts.shell.get().cityId ?? parts.content.cityId ?? parts.cities[0] ?? '';
 }
 
+/** The admin's map, told which city it shows: an account that cannot read Setup's token wears that city's public one (M13 §8). */
+function mapsOfCity(maps: ContentDeps['areas']['maps'], cityId: () => string): Pick<ContentServices, 'maps'> {
+    if (maps === undefined || maps === null) {
+        return {};
+    }
+    return { maps: { create: (container, options) => maps.create(container, { cityId: cityId(), ...options }) } };
+}
+
 export function contentServices(parts: ContentShell): ContentServices {
     const { content, shell } = parts;
     const cityId = currentCityOf(parts);
     return {
         ...content.areas,
+        ...mapsOfCity(content.areas.maps, cityId),
         get cityId() {
             return cityId();
         },
@@ -76,6 +85,10 @@ export function contentServices(parts: ContentShell): ContentServices {
             return user === null ? null : { uid: user.uid, name: user.displayName ?? user.email };
         },
         locale: () => shell.get().locale,
+        cityRole: () => {
+            const state = shell.get();
+            return state.cities.find((city) => city.id === cityId())?.role ?? null;
+        },
         people: peopleOf(parts, cityId),
         readOnly: () => shell.get().revoked,
         notify: (notice) => {

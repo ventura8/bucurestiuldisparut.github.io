@@ -35,18 +35,18 @@ let world: World;
 
 function dbOf(actor: Actor): firebase.firestore.Firestore {
     if (actor === 'anonymous') {
-        return world.env.unauthenticatedContext().firestore() as unknown as firebase.firestore.Firestore;
+        return world.env.unauthenticatedContext().firestore();
     }
     const claims = ROLES[actor] === undefined ? GOOGLE : { ...GOOGLE, admin: true };
-    return world.env.authenticatedContext(uid(actor), claims).firestore() as unknown as firebase.firestore.Firestore;
+    return world.env.authenticatedContext(uid(actor), claims).firestore();
 }
 
 function storageOf(actor: Actor): firebase.storage.Storage {
     if (actor === 'anonymous') {
-        return world.env.unauthenticatedContext().storage() as unknown as firebase.storage.Storage;
+        return world.env.unauthenticatedContext().storage();
     }
     const claims = ROLES[actor] === undefined ? GOOGLE : { ...GOOGLE, admin: true };
-    return world.env.authenticatedContext(uid(actor), claims).storage() as unknown as firebase.storage.Storage;
+    return world.env.authenticatedContext(uid(actor), claims).storage();
 }
 
 async function outcome(run: () => Promise<unknown>): Promise<'allow' | 'deny'> {
@@ -97,24 +97,20 @@ async function freshPoi(id: string, data: Data): Promise<string> {
     return target;
 }
 
-const pendingPhoto = (creator: Actor): Data => ({
-    ...photoDoc(CITY, 'x', uid(creator)),
-    image: firebase.firestore.FieldValue.delete(),
-    published: false,
-    reviewStatus: 'pending',
-});
+/** `data` without `keys`. */
+function without(data: Data, ...keys: readonly string[]): Data {
+    return Object.fromEntries(Object.entries(data).filter(([key]) => !keys.includes(key)));
+}
 
 function seededPending(creator: Actor): Data {
-    const { image: _image, ...rest } = pendingPhoto(creator);
-    return rest;
+    return { ...without(photoDoc(CITY, 'x', uid(creator)), 'image'), published: false, reviewStatus: 'pending' };
 }
 
 const pendingPoi = (creator: Actor): Data => ({ ...poiDoc(uid(creator)), published: false, reviewStatus: 'pending' });
 
 /** An uploader's create: `newPhoto` (every field a client may send) without the legacy id, which is never theirs. */
 function uploaderPhoto(actor: Actor): Data {
-    const { legacyId: _legacyId, ...photo } = newPhoto(uid(actor));
-    return { ...photo, reviewStatus: 'pending' };
+    return { ...without(newPhoto(uid(actor)), 'legacyId'), reviewStatus: 'pending' };
 }
 
 const uploaderPoi = (actor: Actor): Data => ({ ...newPoi(uid(actor)), reviewStatus: 'pending', category: 'cat' });
@@ -146,7 +142,14 @@ const READS: readonly Row[] = [
         run: (a) => dbOf(a).collection(`${path.approved}/history`).get(),
     },
     { name: "a place's history", allowed: REVIEWERS, run: (a) => dbOf(a).collection(`${path.poiApproved}/history`).get() },
-    { name: "the city's own history", allowed: STAFF, run: (a) => dbOf(a).collection(`${FIRESTORE_PATHS.city(CITY)}/history`).get() },
+    {
+        name: "the city's own history",
+        allowed: STAFF,
+        run: (a) =>
+            dbOf(a)
+                .collection(`${FIRESTORE_PATHS.city(CITY)}/history`)
+                .get(),
+    },
     {
         name: 'recent changes',
         allowed: STAFF,
@@ -156,9 +159,30 @@ const READS: readonly Row[] = [
     { name: 'jobs', allowed: STAFF, run: (a) => dbOf(a).collection(FIRESTORE_PATHS.jobs(CITY)).get() },
     { name: 'layer versions', allowed: STAFF, run: (a) => dbOf(a).collection(FIRESTORE_PATHS.layerVersions(CITY)).get() },
     { name: 'USGS scenes', allowed: STAFF, run: (a) => dbOf(a).collection(FIRESTORE_PATHS.usgsScenes(CITY)).get() },
-    { name: "the city's usage", allowed: STAFF, run: (a) => dbOf(a).collection(`${FIRESTORE_PATHS.city(CITY)}/usage`).get() },
-    { name: 'exports', allowed: STAFF, run: (a) => dbOf(a).collection(`${FIRESTORE_PATHS.city(CITY)}/exports`).get() },
-    { name: 'workers', allowed: STAFF, run: (a) => dbOf(a).collection(`${FIRESTORE_PATHS.city(CITY)}/workers`).get() },
+    {
+        name: "the city's usage",
+        allowed: STAFF,
+        run: (a) =>
+            dbOf(a)
+                .collection(`${FIRESTORE_PATHS.city(CITY)}/usage`)
+                .get(),
+    },
+    {
+        name: 'exports',
+        allowed: STAFF,
+        run: (a) =>
+            dbOf(a)
+                .collection(`${FIRESTORE_PATHS.city(CITY)}/exports`)
+                .get(),
+    },
+    {
+        name: 'workers',
+        allowed: STAFF,
+        run: (a) =>
+            dbOf(a)
+                .collection(`${FIRESTORE_PATHS.city(CITY)}/workers`)
+                .get(),
+    },
     { name: 'suggestions', allowed: REVIEWERS, run: (a) => dbOf(a).collection(FIRESTORE_PATHS.suggestions(CITY)).get() },
     { name: 'contributors', allowed: REVIEWERS, run: (a) => dbOf(a).collection(FIRESTORE_PATHS.contributors(CITY)).get() },
     { name: 'role requests', allowed: ['owner'], run: (a) => dbOf(a).collection(FIRESTORE_PATHS.roleRequests(CITY)).get() },
@@ -172,19 +196,35 @@ const WRITES: readonly Row[] = [
     {
         name: 'settings',
         allowed: STAFF,
-        run: (a) => dbOf(a).doc(FIRESTORE_PATHS.city(CITY)).update(edit(a, { published: true })),
+        run: (a) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.city(CITY))
+                .update(edit(a, { published: true })),
     },
     {
         name: 'a layer',
         allowed: STAFF,
-        run: (a) => dbOf(a).doc(FIRESTORE_PATHS.layer(CITY, 'l1')).update(edit(a, { opacity: 0.5 })),
+        run: (a) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.layer(CITY, 'l1'))
+                .update(edit(a, { opacity: 0.5 })),
     },
     {
         name: 'a category',
         allowed: STAFF,
-        run: (a) => dbOf(a).doc(FIRESTORE_PATHS.poiCategory(CITY, 'cat')).update(edit(a, { order: 3 })),
+        run: (a) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.poiCategory(CITY, 'cat'))
+                .update(edit(a, { order: 3 })),
     },
-    { name: 'a new photo as staff', allowed: STAFF, run: (a, s) => dbOf(a).doc(FIRESTORE_PATHS.photo(CITY, s)).set(newPhoto(uid(a))) },
+    {
+        name: 'a new photo as staff',
+        allowed: STAFF,
+        run: (a, s) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.photo(CITY, s))
+                .set(newPhoto(uid(a))),
+    },
     {
         name: 'a new photo marked pending',
         allowed: ['uploader', 'otherUploader'],
@@ -193,51 +233,67 @@ const WRITES: readonly Row[] = [
     {
         name: 'a new photo with no location',
         allowed: ['uploader', 'otherUploader'],
-        run: (a, s) => {
-            const { location: _l, bearing: _b, fov: _f, ...photo } = uploaderPhoto(a);
-            return dbOf(a).doc(FIRESTORE_PATHS.photo(CITY, s)).set(photo);
-        },
+        run: (a, s) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.photo(CITY, s))
+                .set(without(uploaderPhoto(a), 'location', 'bearing', 'fov')),
     },
     {
         name: "staff's new photo with no location",
         allowed: STAFF,
-        run: (a, s) => {
-            const { location: _l, bearing: _b, fov: _f, ...photo } = newPhoto(uid(a));
-            return dbOf(a).doc(FIRESTORE_PATHS.photo(CITY, s)).set(photo);
-        },
+        run: (a, s) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.photo(CITY, s))
+                .set(without(newPhoto(uid(a)), 'location', 'bearing', 'fov')),
     },
     {
         name: 'a direction with no location',
         allowed: SERVER_ONLY,
-        run: (a, s) => {
-            const { location: _l, ...photo } = uploaderPhoto(a);
-            return dbOf(a).doc(FIRESTORE_PATHS.photo(CITY, s)).set(photo);
-        },
+        run: (a, s) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.photo(CITY, s))
+                .set(without(uploaderPhoto(a), 'location')),
     },
     {
         name: 'a field of view with no location, as staff',
         allowed: SERVER_ONLY,
-        run: (a, s) => {
-            const { location: _l, bearing: _b, ...photo } = newPhoto(uid(a));
-            return dbOf(a).doc(FIRESTORE_PATHS.photo(CITY, s)).set(photo);
-        },
+        run: (a, s) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.photo(CITY, s))
+                .set(without(newPhoto(uid(a)), 'location', 'bearing')),
     },
     {
         name: 'a new photo calling itself approved',
         allowed: SERVER_ONLY,
-        run: (a, s) => dbOf(a).doc(FIRESTORE_PATHS.photo(CITY, s)).set({ ...uploaderPhoto(a), reviewStatus: 'approved' }),
+        run: (a, s) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.photo(CITY, s))
+                .set({ ...uploaderPhoto(a), reviewStatus: 'approved' }),
     },
     {
         name: 'a new photo already published',
         allowed: SERVER_ONLY,
-        run: (a, s) => dbOf(a).doc(FIRESTORE_PATHS.photo(CITY, s)).set({ ...uploaderPhoto(a), published: true }),
+        run: (a, s) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.photo(CITY, s))
+                .set({ ...uploaderPhoto(a), published: true }),
     },
     {
         name: 'a pending photo with a legacy id',
         allowed: SERVER_ONLY,
-        run: (a, s) => dbOf(a).doc(FIRESTORE_PATHS.photo(CITY, s)).set({ ...uploaderPhoto(a), legacyId: 'old' }),
+        run: (a, s) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.photo(CITY, s))
+                .set({ ...uploaderPhoto(a), legacyId: 'old' }),
     },
-    { name: 'a new place as staff', allowed: STAFF, run: (a, s) => dbOf(a).doc(FIRESTORE_PATHS.poi(CITY, s)).set({ ...newPoi(uid(a)), category: 'cat' }) },
+    {
+        name: 'a new place as staff',
+        allowed: STAFF,
+        run: (a, s) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.poi(CITY, s))
+                .set({ ...newPoi(uid(a)), category: 'cat' }),
+    },
     {
         name: 'a new place marked pending',
         allowed: ['uploader', 'otherUploader'],
@@ -246,17 +302,26 @@ const WRITES: readonly Row[] = [
     {
         name: 'a new place already published',
         allowed: SERVER_ONLY,
-        run: (a, s) => dbOf(a).doc(FIRESTORE_PATHS.poi(CITY, s)).set({ ...uploaderPoi(a), published: true }),
+        run: (a, s) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.poi(CITY, s))
+                .set({ ...uploaderPoi(a), published: true }),
     },
     {
-        name: "a staff place published at once",
+        name: 'a staff place published at once',
         allowed: STAFF,
-        run: (a, s) => dbOf(a).doc(FIRESTORE_PATHS.poi(CITY, s)).set({ ...newPoi(uid(a)), category: 'cat', published: true }),
+        run: (a, s) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.poi(CITY, s))
+                .set({ ...newPoi(uid(a)), category: 'cat', published: true }),
     },
     {
         name: "an approved photo's title",
         allowed: REVIEWERS,
-        run: async (a, s) => dbOf(a).doc(await freshPhoto(s, photoDoc(CITY, s, uid('uploader')))).update(edit(a, { title: { ro: 'Nou' } })),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPhoto(s, photoDoc(CITY, s, uid('uploader'))))
+                .update(edit(a, { title: { ro: 'Nou' } })),
     },
     {
         name: 'unpublishing an approved photo',
@@ -269,17 +334,26 @@ const WRITES: readonly Row[] = [
     {
         name: "the uploader's pending photo's title",
         allowed: ['uploader', ...REVIEWERS],
-        run: async (a, s) => dbOf(a).doc(await freshPhoto(s, seededPending('uploader'))).update(edit(a, { title: { ro: 'Nou' } })),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPhoto(s, seededPending('uploader')))
+                .update(edit(a, { title: { ro: 'Nou' } })),
     },
     {
         name: 'publishing a pending photo directly',
         allowed: SERVER_ONLY,
-        run: async (a, s) => dbOf(a).doc(await freshPhoto(s, seededPending('uploader'))).update(edit(a, { published: true })),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPhoto(s, seededPending('uploader')))
+                .update(edit(a, { published: true })),
     },
     {
         name: 'approving a photo directly',
         allowed: SERVER_ONLY,
-        run: async (a, s) => dbOf(a).doc(await freshPhoto(s, seededPending('uploader'))).update(edit(a, { reviewStatus: 'approved' })),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPhoto(s, seededPending('uploader')))
+                .update(edit(a, { reviewStatus: 'approved' })),
     },
     {
         name: "the uploader's refused photo's title",
@@ -300,52 +374,104 @@ const WRITES: readonly Row[] = [
     {
         name: 'giving a pending photo a rights mark',
         allowed: REVIEWERS,
-        run: async (a, s) => dbOf(a).doc(await freshPhoto(s, seededPending('uploader'))).update(edit(a, { rightsReview: true })),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPhoto(s, seededPending('uploader')))
+                .update(edit(a, { rightsReview: true })),
     },
     {
         name: 'deleting an approved photo',
         allowed: STAFF,
-        run: async (a, s) => dbOf(a).doc(await freshPhoto(s, photoDoc(CITY, s, uid('uploader')))).delete(),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPhoto(s, photoDoc(CITY, s, uid('uploader'))))
+                .delete(),
     },
     {
         name: "deleting the uploader's pending photo",
         allowed: ['uploader', 'editor', 'owner'],
-        run: async (a, s) => dbOf(a).doc(await freshPhoto(s, seededPending('uploader'))).delete(),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPhoto(s, seededPending('uploader')))
+                .delete(),
     },
     {
         name: "deleting the uploader's refused photo",
         allowed: ['uploader', 'editor', 'owner'],
-        run: async (a, s) => dbOf(a).doc(await freshPhoto(s, { ...seededPending('uploader'), reviewStatus: 'refused' })).delete(),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPhoto(s, { ...seededPending('uploader'), reviewStatus: 'refused' }))
+                .delete(),
     },
     {
         name: "an approved place's title",
         allowed: REVIEWERS,
-        run: async (a, s) => dbOf(a).doc(await freshPoi(s, poiDoc(uid('uploader')))).update(edit(a, { title: { ro: 'Nou' } })),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPoi(s, poiDoc(uid('uploader'))))
+                .update(edit(a, { title: { ro: 'Nou' } })),
     },
     {
         name: "the uploader's pending place's title",
         allowed: ['uploader', ...REVIEWERS],
-        run: async (a, s) => dbOf(a).doc(await freshPoi(s, pendingPoi('uploader'))).update(edit(a, { title: { ro: 'Nou' } })),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPoi(s, pendingPoi('uploader')))
+                .update(edit(a, { title: { ro: 'Nou' } })),
     },
     {
         name: 'publishing a pending place directly',
         allowed: SERVER_ONLY,
-        run: async (a, s) => dbOf(a).doc(await freshPoi(s, pendingPoi('uploader'))).update(edit(a, { published: true })),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPoi(s, pendingPoi('uploader')))
+                .update(edit(a, { published: true })),
     },
     {
         name: 'deleting an approved place',
         allowed: STAFF,
-        run: async (a, s) => dbOf(a).doc(await freshPoi(s, poiDoc(uid('uploader')))).delete(),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPoi(s, poiDoc(uid('uploader'))))
+                .delete(),
     },
     {
         name: "deleting the uploader's pending place",
         allowed: ['uploader', 'editor', 'owner'],
-        run: async (a, s) => dbOf(a).doc(await freshPoi(s, pendingPoi('uploader'))).delete(),
+        run: async (a, s) =>
+            dbOf(a)
+                .doc(await freshPoi(s, pendingPoi('uploader')))
+                .delete(),
     },
-    { name: 'a suggestion', allowed: SERVER_ONLY, run: (a, s) => dbOf(a).doc(FIRESTORE_PATHS.suggestion(CITY, s)).set({ photoId: 'approved', updatedAt: serverTime() }) },
-    { name: 'a contributor', allowed: SERVER_ONLY, run: (a) => dbOf(a).doc(FIRESTORE_PATHS.contributor(CITY, uid(a))).set({ blocked: false }) },
-    { name: 'a role request', allowed: SERVER_ONLY, run: (a) => dbOf(a).doc(FIRESTORE_PATHS.roleRequest(CITY, uid(a))).set({ role: 'moderator' }) },
-    { name: 'their own role', allowed: SERVER_ONLY, run: (a) => dbOf(a).doc(FIRESTORE_PATHS.admin(uid(a))).set({ cities: { [CITY]: 'owner' } }) },
+    {
+        name: 'a suggestion',
+        allowed: SERVER_ONLY,
+        run: (a, s) => dbOf(a).doc(FIRESTORE_PATHS.suggestion(CITY, s)).set({ photoId: 'approved', updatedAt: serverTime() }),
+    },
+    {
+        name: 'a contributor',
+        allowed: SERVER_ONLY,
+        run: (a) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.contributor(CITY, uid(a)))
+                .set({ blocked: false }),
+    },
+    {
+        name: 'a role request',
+        allowed: SERVER_ONLY,
+        run: (a) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.roleRequest(CITY, uid(a)))
+                .set({ role: 'moderator' }),
+    },
+    {
+        name: 'their own role',
+        allowed: SERVER_ONLY,
+        run: (a) =>
+            dbOf(a)
+                .doc(FIRESTORE_PATHS.admin(uid(a)))
+                .set({ cities: { [CITY]: 'owner' } }),
+    },
 ];
 
 beforeAll(async () => {
@@ -378,7 +504,7 @@ afterAll(async () => {
     await world.close();
 });
 
-describe.each(ACTORS)('M13 roles: %s', (actor) => {
+describe.each(ACTORS)('M13 roles: %s @S-A94-HAPPY-MATRIX @S-A94-BAD-MATRIX', (actor) => {
     it.each(READS)('reads $name', async (row) => {
         expect(await outcome(() => row.run(actor, `r-${actor}`))).toBe(row.allowed.includes(actor) ? 'allow' : 'deny');
     });
@@ -402,8 +528,20 @@ describe('M13 roles: a place of a photo', () => {
 
     it('outside the city is refused for an uploader as for an editor', async () => {
         const far = { location: { lat: 10, lng: 10 } };
-        expect(await outcome(() => dbOf('uploader').doc(FIRESTORE_PATHS.photo(CITY, 'far-u')).set({ ...uploaderPhoto('uploader'), ...far }))).toBe('deny');
-        expect(await outcome(() => dbOf('editor').doc(FIRESTORE_PATHS.photo(CITY, 'far-e')).set({ ...newPhoto(uid('editor')), ...far }))).toBe('deny');
+        expect(
+            await outcome(() =>
+                dbOf('uploader')
+                    .doc(FIRESTORE_PATHS.photo(CITY, 'far-u'))
+                    .set({ ...uploaderPhoto('uploader'), ...far }),
+            ),
+        ).toBe('deny');
+        expect(
+            await outcome(() =>
+                dbOf('editor')
+                    .doc(FIRESTORE_PATHS.photo(CITY, 'far-e'))
+                    .set({ ...newPhoto(uid('editor')), ...far }),
+            ),
+        ).toBe('deny');
     });
 });
 

@@ -20,7 +20,7 @@ import type { EditorAssists } from '../assist/editor-assists.js';
 import type { AreaModule, AreaStore } from '../content/areas.js';
 import { LiveDoc } from '../content/doc.js';
 import { LiveList, type ListState, type LiveListDeps } from '../content/list.js';
-import type { ContentServices, WriteOutcome } from '../content/services.js';
+import { ownerOnlyOf, type ContentServices, type WriteOutcome } from '../content/services.js';
 import { Store } from '../state/store.js';
 import { LAST_CATEGORY_KEY, PlaceActions } from './actions.js';
 import type { BulkAction } from './bulk.js';
@@ -175,7 +175,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
 
     open(params: readonly string[]): void {
         if (!this.#list.active) {
-            this.#list.show(poisQuery(this.#cell.state.filter));
+            this.#list.show(poisQuery(this.#cell.state.filter, ownerOnlyOf(this.#services)));
             this.#categories.show({ orderBy: [['order', 'asc']] });
             this.#city.show(FIRESTORE_PATHS.city(this.#services.cityId));
         }
@@ -260,7 +260,9 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
     #newEditor(id: string, fresh: { readonly value: PoiValue; readonly shape: PlaceShape } | null): PlaceEditor {
         const { store, clock, cityId, people } = this.#services;
         return new PlaceEditor(id, fresh, {
-            ...{ store, clock, cityId, people, context: () => this.#context(), locked: () => this.#services.readOnly() },
+            ...{ store, clock, cityId, people },
+            ...{ context: () => this.#context(), locked: () => this.#services.readOnly() },
+            reviewed: () => this.#services.cityRole() === 'uploader',
             denied: () => {
                 this.#services.denied();
             },
@@ -310,7 +312,7 @@ class PoisStore implements AreaStore<PoisState, PoisIntents> {
         const filter = { ...before, ...patch };
         this.#cell.update({ filter });
         if (filter.category !== before.category || filter.unpublished !== before.unpublished) {
-            this.#list.show(poisQuery(filter));
+            this.#list.show(poisQuery(filter, ownerOnlyOf(this.#services)));
         }
         this.#placesChanged();
     }

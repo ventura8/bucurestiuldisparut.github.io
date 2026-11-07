@@ -42,6 +42,8 @@ export interface PlaceEditorDeps {
     readonly changed: (state: PlaceEditorState) => void;
     /** The admin's access was removed: the draft takes no edit (`DECISIONS-for-review.md` §42d). */
     readonly locked?: () => boolean;
+    /** M13 §2: the admin is an uploader: their new places wait for review. */
+    readonly reviewed?: () => boolean;
     /** A conflict appeared: the shell learns the admins' names, so the banner names who saved (§42c). */
     readonly people?: () => void;
 }
@@ -103,6 +105,7 @@ export class PlaceEditor {
         return new PoiDraft(this.#state.id, start, {
             ...{ store, cityId, context },
             ...(locked === undefined ? {} : { locked }),
+            ...(this.#deps.reviewed === undefined ? {} : { reviewed: this.#deps.reviewed }),
             changed: (draft) => {
                 if (draft.conflict !== null) {
                     this.#deps.people?.();

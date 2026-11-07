@@ -16,7 +16,7 @@ import { ContentRegistry, type ContentDeps } from '../content/registry.js';
 import type { FirebasePorts } from '../firebase/ports.js';
 import { unregisterOnSignOut } from '../inbox/push-device.js';
 import type { PageRegistry } from '../routing/pages.js';
-import type { AdminRoute, AdminRouteId } from '../routing/routes.js';
+import { parseAdminRoute, type AdminRoute, type AdminRouteId } from '../routing/routes.js';
 import { LANGUAGE_KEY, resolveAdminLocale } from '../state/locale.js';
 import { NO_GATE, type AdminState, type NoticeInput, type ShellStateAccess, type ThemeMode } from '../state/state.js';
 import { Store } from '../state/store.js';
@@ -27,7 +27,7 @@ import { chooseCity, cityRefresher, switchTo, type CityChoiceDeps } from './curr
 import { Navigation } from './navigation.js';
 import { rememberedSetupReady } from './setup-readiness.js';
 import { shellWatches, type ShellWatchSources } from './shell-watches.js';
-import { destinationOf } from '../routing/router.js';
+import { destinationOf, RETURN_TO_KEY } from '../routing/router.js';
 import type { Clock, HashLocation, KeyValueStore, PageVisibility, Unsubscribe } from './ports.js';
 import { guardCallables, type AdminProject, type SetupModuleSpec, type ShellServices } from './services.js';
 import type { AdminEvent, AdminTelemetry, Measure } from './telemetry.js';
@@ -331,6 +331,8 @@ function authControllerOf<Setup, SetupIntents>(
         serverSeen: serverMemory(deps.local, projectId),
         leaving: (uid) => unregisterOnSignOut({ local: deps.local, callables: deps.firebase.callables, uid }),
         cities: (session) => chooseCity(session, cityChoiceDeps(deps, parts.shell)),
+        // M13 §3: the address, or the deep link kept while signed out, is the Contribute page.
+        contributing: () => parseAdminRoute(deps.session.get(RETURN_TO_KEY) ?? deps.location.hash())?.id === 'contribute',
     });
 }
 
@@ -396,7 +398,7 @@ export function mount<Setup, SetupIntents>(deps: AdminDeps<Setup, SetupIntents>)
     const stopWatching = store.subscribe((state) => {
         watches.stateChanged(state);
         navigation.stateChanged(state);
-        if (state.auth !== 'admin') {
+        if (state.auth !== 'admin' && state.auth !== 'visitor') {
             content.destroyAll();
         }
     });
