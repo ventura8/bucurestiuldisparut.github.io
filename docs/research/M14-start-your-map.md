@@ -59,7 +59,7 @@ A Hosting site of its own in the maintainer's project: `start-historic-city.web.
 - Its origin shares no storage with any admin.
 - It must carry the release's files anyway (§6).
 
-The tree is relative-pathed, so any static host works. Nothing about it is deployed by this milestone: it is the owner's ask-first step (§10). `npm run build:start` makes it in `dist/start/`.
+The tree is relative-pathed, so any static host works. Nothing about it is deployed by this milestone: it is the owner's ask-first step (§10). `npm run build:start` makes it in `dist/start/`, after the admin's build (which builds the page, `dist/start-app/`) and `build:hosting`; the `build` stage's gate `start-build` runs it.
 
 ## 6. The release files: source and integrity
 
@@ -71,7 +71,7 @@ The tree is relative-pathed, so any static host works. Nothing about it is deplo
 
 ```text
 dist/start/
-  index.html, start.mjs, start.css, oauth files   the page (budget row `start`)
+  index.html, start.mjs                           the page (row `dist/start-app/start.mjs` of the bundle budget)
   start-config.json                               {oauthClientId} or {} (written at build: HCM_START_OAUTH_CLIENT_ID)
   release/<slug>/start-release.json               startReleaseSchema
   release/<slug>/tree/…                           every file of the tree, as the manifest lists it
@@ -137,3 +137,7 @@ Every fake in `packages/test-support/src/fakes/google-hosting.ts` follows the do
 ## 11. Scenarios and tests
 
 Behaviour `A70` (`e2e/scenarios.json`), `e2e/admin/specs/start/`, on the fakes and emulators. `V29`'s rows follow CR-M5-7. Tour states `start.*` in `e2e/admin/specs/start/states.ts`.
+
+`S-A70-HAPPY-LIVE` is the owner's question end to end: a seeded Fostul Bacău from nothing. The project id is the emulators' own (`demo-hcm`), because the Functions emulator serves one project; the display name, the city and its id are Fostul Bacău's. The fake Hosting keeps what the page uploaded, the spec unpacks the live release, and the admin server serves those very bytes: the released admin runs Setup without GitHub, the fake Cloud Build plays the install from the released generic bundle, New city opens filled in, and the map boots at `/fostul-bacau/` through the released generic city page.
+
+What the e2e does not run: Cloud Build's step scripts (as in M6, tested apart: `fetch` with the adoption in `packages/admin/test/install/fetch-script.test.ts`), real Google anywhere, Mapbox's token step (a project without Mapbox is refused best effort, as in A54; the spec gives the city the token Setup's card would).

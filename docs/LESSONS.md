@@ -2381,11 +2381,13 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: a targeted run while the map labels were built, then reproduced on a clean export.
     - Fix and pin: the test reads the focused row's own `.title` and asks for that heading exactly.
     - **A name composed for a screen reader is not a data format: read the part from the element that holds it.**
-- **A list of what to show is not the list of what exists: the start page's own project dropped a step from `state.order`, and a rebuild over `order` lost its record.**
+393. **A list of what to show is not the list of what exists: the start page's own project dropped a step from `state.order`, and a rebuild over `order` lost its record.**
     - Seen: 2026-11-07, `@S-A70-HAPPY-LIVE`: Setup hid the old photos' step for a project of the owner's own, and the next status answer rebuilt `steps` from `order`, so a reader of `steps.legacyImport` threw.
     - Found by: the journey from the start page to a live map, on the bytes the page released.
     - Fix and pin: the rebuild walks every step (`SETUP_STEPS`); `order` only says what shows.
-- **Wait for what a scenario finishes before finishing it: `cloud-build.finish` before the build exists finishes nothing.**
+394. **Wait for what a scenario finishes before finishing it: `cloud-build.finish` before the build exists finishes nothing.**
     - Seen: 2026-11-07, `@S-A70-HAPPY-LIVE`: the build was queued after the scenario ran, so the card waited for ever and the claim never came.
     - Fix and pin: the spec polls `submittedBuilds` first, as the Setup journey does.
-- **`isGoogleFailure(error)` with no kinds is always false: naming kinds is what it checks.** Seen on the start page: every refusal read as an unknown failure until `instanceof GoogleApiError` replaced it. Pinned by `packages/admin/test/start/failure.test.ts`.
+395. **`isGoogleFailure(error)` with no kinds is always false: naming kinds is what it checks.**
+    - Seen: 2026-11-07, on the start page: every refusal read as an unknown failure until `instanceof GoogleApiError` replaced it.
+    - Fix and pin: `packages/admin/test/start/failure.test.ts`.

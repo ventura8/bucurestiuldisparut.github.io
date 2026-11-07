@@ -2375,7 +2375,7 @@
             "area": "starter-kit",
             "path": "happy",
             "title": "The self-host steps run the owner's own CLIs, one consent each",
-            "asserts": "with fake firebase and gcloud first on PATH and a fake xdg-open: each step asks y/N first; firebase login, projects:create, the billing page opened, billing polled until linked, the admin deployed to Hosting and its Setup opened; no credential is ever asked for or printed With --experimental only (CR-M5-7), whose warning comes first; the sign-in is probed with firebase login:list as plain text, never --json (whose answer holds the account's tokens), and no token reaches the output.",
+            "asserts": "with fake firebase and gcloud first on PATH and a fake xdg-open: each step asks y/N first; firebase login, projects:create, the billing page opened, billing polled until linked, the admin deployed to Hosting and its Setup opened; no credential is ever asked for or printed With only (CR-M5-7), whose warning comes first; the sign-in is probed with firebase login:list as plain text, never --json (whose answer holds the account's tokens), and no token reaches the output.",
             "tier": "e2e-starter-kit",
             "status": "exists",
             "notes": "Milestone M5 (docs/research/M5-interfaces.md §4.4; owner: kit-cli). Test: e2e/specs/starter-kit/create-city.spec.ts."

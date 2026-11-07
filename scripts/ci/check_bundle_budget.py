@@ -58,7 +58,7 @@ BUDGETS: Mapping[str, int] = {
     # DECISIONS-for-review.md §13a; 112.0 KB in M1).
     "packages/engine/dist/engine.iife.js": 125,
     # M14 (docs/research/M14-start-your-map.md): the start page, one module (Lit, zod, the `start.*` texts, the transport).
-    # Apart from the admin's folder and its totals: 65.1 KB measured on 2026-11-07, a new row of the measurement plus 10 %.
+    # Apart from the admin's folder and its totals: 69.0 KB measured on 2026-11-07, a new row just above it.
     "dist/start-app/start.mjs": 72,
 }
 

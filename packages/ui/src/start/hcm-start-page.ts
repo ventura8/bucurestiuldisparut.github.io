@@ -7,9 +7,11 @@ import { translateStart, type Locale, type StartKey } from '@hcm/shared';
 import { LitElement, html, nothing, type TemplateResult } from 'lit';
 
 import { defineOnce } from '../components/internal.js';
+import { applyTheme } from '../theme/apply.js';
+import { BASELINE_THEME } from '../theme/baseline.js';
 import { defineHcmStartLanguage } from './hcm-start-language.js';
 import { closedScreen, introScreen, type StartText } from './start-intro.js';
-import { startStyles } from './start-styles.js';
+import { startHostStyles, startStyles } from './start-styles.js';
 
 export const HCM_START_PAGE_TAG = 'hcm-start-page';
 
@@ -88,13 +90,14 @@ const valueOf = (event: Event): string => (event.target as HTMLInputElement).val
 
 export class HcmStartPage extends LitElement {
     static override readonly properties = { port: { attribute: false } };
-    static override readonly styles = startStyles;
+    static override readonly styles = [startHostStyles, startStyles];
 
     declare port: StartPagePort | undefined;
     #unsubscribe: (() => void) | null = null;
 
     override connectedCallback(): void {
         super.connectedCallback();
+        applyTheme(this, BASELINE_THEME, 'system', false);
         this.#follow();
     }
 

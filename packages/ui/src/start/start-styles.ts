@@ -1,28 +1,31 @@
 import { css } from 'lit';
 
 /**
- * The start page's own styles: logical properties only, `light-dark()` for both schemes (the seed's palette, contrast
- * checked by the tour), 48 px targets, one column up to a readable width.
+ * The start page's own styles: logical properties only, colours from the kit's M3 tokens (its baseline theme, both schemes,
+ * contrast checked by the tour), 48 px targets, one column up to a readable width.
  */
-export const startStyles = css`
+export const startHostStyles = css`
     :host {
-        --surface: light-dark(#fff8f5, #1a1210);
-        --on-surface: light-dark(#231a15, #f1dfd8);
-        --muted: light-dark(#54433b, #d7c2b9);
-        --primary: light-dark(#6f4a2d, #f0bd94);
-        --on-primary: light-dark(#ffffff, #452b13);
-        --panel: light-dark(#f8e8df, #2a1f1a);
-        --error: light-dark(#a0271a, #ffb4a8);
-        --line: light-dark(#85736a, #9f8d84);
+        --surface: var(--md-sys-color-surface);
+        --on-surface: var(--md-sys-color-on-surface);
+        --muted: var(--md-sys-color-on-surface-variant);
+        --primary: var(--md-sys-color-primary);
+        --on-primary: var(--md-sys-color-on-primary);
+        --panel: var(--md-sys-color-surface-container);
+        --error: var(--md-sys-color-error);
+        --line: var(--md-sys-color-outline);
+
         display: block;
         min-block-size: 100dvh;
-        color-scheme: light dark;
         background: var(--surface);
         color: var(--on-surface);
         font:
             1rem/1.5 system-ui,
             sans-serif;
     }
+`;
+
+export const startStyles = css`
     header {
         display: flex;
         flex-wrap: wrap;
@@ -33,14 +36,17 @@ export const startStyles = css`
         padding-block: 8px;
         border-block-end: 1px solid var(--line);
     }
+
     .brand {
         margin: 0;
         font-weight: 600;
     }
+
     nav {
         display: flex;
         gap: 4px;
     }
+
     main {
         box-sizing: border-box;
         max-inline-size: 44rem;
@@ -48,34 +54,41 @@ export const startStyles = css`
         padding-inline: 16px;
         padding-block: 16px 48px;
     }
+
     h1 {
         font-size: 2rem;
         line-height: 1.2;
         margin-block: 16px;
     }
+
     h2 {
         font-size: 1.25rem;
         margin-block: 24px 8px;
     }
+
     .lede {
         font-size: 1.125rem;
         color: var(--muted);
     }
+
     .note {
         color: var(--muted);
         font-size: 0.875rem;
         margin-block: 4px;
     }
+
     .alert {
         color: var(--error);
         margin-block: 4px;
     }
+
     a {
         color: var(--primary);
         display: inline-flex;
         align-items: center;
         min-block-size: 48px;
     }
+
     button,
     a.filled {
         box-sizing: border-box;
@@ -88,47 +101,48 @@ export const startStyles = css`
         font-weight: 600;
         cursor: pointer;
     }
+
     button.filled,
     a.filled {
         background: var(--primary);
         color: var(--on-primary);
         text-decoration: none;
     }
+
     button[disabled] {
         cursor: not-allowed;
         background: var(--panel);
         color: var(--muted);
     }
+
     button.text {
         background: transparent;
         color: var(--primary);
         padding-inline: 8px;
     }
+
     button.text[aria-pressed='true'] {
         background: var(--panel);
         text-decoration: underline;
     }
-    button:focus-visible,
-    a:focus-visible,
-    input:focus-visible,
-    select:focus-visible {
-        outline: 3px solid var(--primary);
-        outline-offset: 2px;
-    }
+
     .panel {
         margin-block: 24px;
         padding: 16px;
         border-radius: 12px;
         background: var(--panel);
     }
+
     .panel h2 {
         margin-block-start: 0;
     }
+
     form {
         display: grid;
         gap: 16px;
         justify-items: start;
     }
+
     fieldset {
         box-sizing: border-box;
         inline-size: 100%;
@@ -137,15 +151,18 @@ export const startStyles = css`
         border: 1px solid var(--line);
         border-radius: 12px;
     }
+
     legend {
         font-weight: 600;
         padding-inline: 4px;
     }
+
     .field {
         display: grid;
         gap: 4px;
         inline-size: 100%;
     }
+
     input:not([type='radio']),
     select {
         box-sizing: border-box;
@@ -158,17 +175,28 @@ export const startStyles = css`
         color: var(--on-surface);
         font: inherit;
     }
+
+    button:focus-visible,
+    a:focus-visible,
+    input:focus-visible,
+    select:focus-visible {
+        outline: 3px solid var(--primary);
+        outline-offset: 2px;
+    }
+
     .edges {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
         gap: 8px;
     }
+
     .choice {
         display: flex;
         align-items: center;
         gap: 8px;
         min-block-size: 48px;
     }
+
     .choice input {
         appearance: none;
         box-sizing: border-box;
@@ -180,10 +208,12 @@ export const startStyles = css`
         border-radius: 50%;
         background: var(--surface);
     }
+
     .choice input:checked {
         border-color: var(--primary);
         background: radial-gradient(circle, var(--primary) 0 30%, var(--surface) 35%);
     }
+
     .steps {
         list-style: none;
         padding: 0;
@@ -191,6 +221,7 @@ export const startStyles = css`
         display: grid;
         gap: 8px;
     }
+
     .steps li {
         display: flex;
         flex-wrap: wrap;
@@ -200,10 +231,12 @@ export const startStyles = css`
         border-radius: 8px;
         background: var(--panel);
     }
-    .steps li[data-state='failed'] .chip {
-        color: var(--error);
-    }
+
     .chip {
         font-weight: 600;
+    }
+
+    .steps li[data-state='failed'] .chip {
+        color: var(--error);
     }
 `;

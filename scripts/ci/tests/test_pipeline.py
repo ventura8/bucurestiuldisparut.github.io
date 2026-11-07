@@ -360,6 +360,7 @@ def test_happy_path_main_runs_the_stage_inside_the_image(monkeypatch: pytest.Mon
         "node --import ./scripts/site/register-ts.mjs scripts/site/build-hosting.ts",
         "node --import ./scripts/site/register-ts.mjs scripts/site/build-install.ts",
         "python3 scripts/ci/check_bundle_budget.py --install",
+        "npm run --silent build:start",
     ]
 
 

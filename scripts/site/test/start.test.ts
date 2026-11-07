@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { SiteBuildError } from '../src/errors.js';
 import type { SiteFileSystem } from '../src/files.js';
 import { buildStartSite, EXIT_INVALID, EXIT_OK, EXIT_USAGE, runStartCli } from '../src/start/build.js';
+import { renderFirstCityPage } from '../src/hosting/static-pages.js';
 import { servingConfigOf } from '../src/start/hosting-config.js';
 import { renderStartPage, startPagePolicy, takenByStartTree } from '../src/start/tree.js';
 import { cleanup, recordingLogger, repositoryWithTemporaryDist } from './support.js';
@@ -162,5 +163,14 @@ describe('the start site', () => {
         expect(
             await runStartCli(['--public-tree', OPTIONS.publicTree, '--app', OPTIONS.appDir, '--functions', OPTIONS.functionsDir], context),
         ).toBe(EXIT_OK);
+    });
+});
+
+describe('the root of a map made from the start page', () => {
+    it('happyPath_itLoadsItsScriptAndKeepsALinkForNoScript', () => {
+        const page = renderFirstCityPage();
+        expect(page).toContain('src="/first-city.js"');
+        expect(page).toContain('href="/admin/"');
+        expect(page).toContain("connect-src 'self'");
     });
 });
