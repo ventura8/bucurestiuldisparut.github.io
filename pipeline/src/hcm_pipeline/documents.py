@@ -14,6 +14,7 @@ import numpy
 
 from hcm_pipeline.contract import GCP_ORIGINS, LAYER_VERSION_STATES, MAX_JOB_LOGS
 from hcm_pipeline.geo import Bounds, near_lng, to_mercator_arrays
+from hcm_pipeline.georef.lattice import LATTICE_MODELS, Lattice, LatticeNode
 from hcm_pipeline.georef.transforms import Gcp
 from hcm_pipeline.model import (
     DocumentError,
@@ -134,6 +135,23 @@ def _gcps_of(value: object) -> tuple[Gcp, ...]:
     return tuple(gcp_of(item) for item in value)
 
 
+def _lattice_node(value: object) -> LatticeNode:
+    record = record_of(value, "a lattice node")
+    pixel, geo = record_of(record.get("pixel"), "pixel"), record_of(record.get("geo"), "geo")
+    return LatticeNode(number_of(pixel, "x"), number_of(pixel, "y"), number_of(geo, "lat"), number_of(geo, "lng"))
+
+
+def lattice_of(value: object) -> Lattice | None:
+    """`georef.lattice` (M15 §1): None when absent; a malformed one is refused, never half read."""
+    if value is None:
+        return None
+    record = record_of(value, "lattice")
+    nodes = record.get("nodes")
+    if not isinstance(nodes, list):
+        raise DocumentError("lattice.nodes must be a list")
+    return Lattice(member_of(record, "model", tuple(sorted(LATTICE_MODELS))), tuple(_lattice_node(node) for node in nodes))
+
+
 def _optional_metres(value: float | None) -> float | None:
     return None if value is None else metres(value)
 
@@ -152,12 +170,15 @@ class GeorefInfo:
     weak_corners: bool = False
     # `checkpointKind`: `held-out` or `leave-one-out`, which the approval policy tells apart (M9 §11).
     kind: str | None = None
+    # M15 §1: the nodes a warp renders when the pairs cannot rebuild the map (the panoramic camera); None: the pairs' own fit.
+    lattice: Lattice | None = None
 
     @classmethod
     def of(cls, value: object) -> GeorefInfo:
         record = record_of(value, "georef")
         method, transform = member_of(record, "method", GEOREF_METHODS), require_transform(text_of(record, "transform"))
-        return cls(method, transform, _gcps_of(record.get("gcps")), weak_corners=record.get("weakCorners") is True)
+        lattice = lattice_of(record.get("lattice"))
+        return cls(method, transform, _gcps_of(record.get("gcps")), weak_corners=record.get("weakCorners") is True, lattice=lattice)
 
     def as_record(self) -> Record:
         return _without_none(
@@ -170,6 +191,7 @@ class GeorefInfo:
                 "checkpointCount": self.checkpoint_count,
                 "checkpointKind": self.kind,
                 "weakCorners": True if self.weak_corners else None,
+                "lattice": None if self.lattice is None else self.lattice.as_record(),
             }
         )
 

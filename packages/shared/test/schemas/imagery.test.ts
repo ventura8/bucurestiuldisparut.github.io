@@ -73,6 +73,31 @@ describe('georeferencing as stored', () => {
         expect(result.ok ? [] : result.issues).toContainEqual({ path, code });
     });
 
+    /** M15 §1: a panoramic camera's map, sampled for the warp. */
+    function lattice(count: number, model = 'panoramic'): unknown {
+        const nodes = Array.from({ length: count }, (_, index) => ({
+            pixel: { x: index * 10, y: 0 },
+            geo: { lat: 44.4, lng: 26 + index * 0.001 },
+        }));
+        return { model, nodes };
+    }
+
+    it('happyPath_aPanoramicMapCarriesTheLatticeTheWarpRendersThrough @S-P06-HAPPY-PANORAMIC-CAMERA', () => {
+        const georef = { method: 'auto', transform: 'affine', gcps, lattice: lattice(289) };
+
+        expect(validate(georefSchema, georef).ok).toBe(true);
+    });
+
+    it.each([
+        ['a model no pipeline writes', lattice(9, 'poly3'), 'lattice.model', 'validation.value'],
+        ['more nodes than the 17 x 17 the pipeline samples', lattice(290), 'lattice.nodes', 'validation.tooBig'],
+        ['fewer nodes than the 17 x 17 the pipeline samples', lattice(288), 'lattice.nodes', 'validation.tooSmall'],
+    ])('badPath_aLatticeWith_%s @S-P06-BAD-RENDERED-OWN-POINTS', (_name, value, path, code) => {
+        const result = validate(georefSchema, { method: 'auto', transform: 'affine', gcps, lattice: value });
+
+        expect(result.ok ? [] : result.issues).toContainEqual({ path, code });
+    });
+
     it('badPath_aPairWithAnUnknownOriginIsRefused', () => {
         expect(gcpSchema.safeParse({ ...pair('g1', 0), origin: 'guess' }).success).toBe(false);
     });

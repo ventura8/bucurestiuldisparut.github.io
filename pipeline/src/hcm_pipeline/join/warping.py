@@ -23,17 +23,13 @@ from hcm_pipeline.join.room import out_of_room
 from hcm_pipeline.raster import gdal
 from hcm_pipeline.rasters import GTIFF_OPTIONS, WEB_MERCATOR, driver_of, srs_wkt
 from hcm_pipeline.steps.common import gdal_step
-from hcm_pipeline.steps.warp import WARP_MEMORY_MB, cutline, gcp_source, warp_method
+from hcm_pipeline.steps.warp import WARP_MEMORY_MB, cutline, gcp_source, rendered_points, warp_method
 
 FLAT_GROUND: Final = 0.0
 DST_SRS: Final = "DST_SRS=EPSG:3857"
 FORWARD: Final = 0
 REVERSE: Final = 1
-TRANSFORMER_METHODS: Final = {
-    "affine": ("METHOD=GCP_POLYNOMIAL", "MAX_GCP_ORDER=1"),
-    "poly2": ("METHOD=GCP_POLYNOMIAL", "MAX_GCP_ORDER=2"),
-    "tps": ("METHOD=GCP_TPS",),
-}
+TPS_METHOD: Final = ("METHOD=GCP_TPS",)
 
 
 def node_source(scan: Path, nodes: Sequence[Node], target: Path) -> Path:
@@ -60,9 +56,10 @@ def _transformer(gcps: Sequence[gdal.GCP], size: tuple[int, int], method: Sequen
 
 
 def base_transform(georef: GeorefInfo, size: tuple[int, int]) -> BaseTransform:
-    """GDAL's own transforms of the part's enabled points, pixel to EPSG:3857 and back: the very ones a warp through them uses."""
-    gcps = [gdal.GCP(*to_mercator(gcp.lng, gcp.lat), FLAT_GROUND, gcp.x, gcp.y) for gcp in georef.gcps if gcp.enabled]
-    transformer = _transformer(gcps, size, TRANSFORMER_METHODS[georef.transform])
+    """GDAL's own transforms of the points the part renders through (`rendered_points`), pixel to EPSG:3857 and back: the very ones
+    a warp through them uses."""
+    gcps = [gdal.GCP(x, y, FLAT_GROUND, column, row) for x, y, column, row in rendered_points(georef, size)]
+    transformer = _transformer(gcps, size, TPS_METHOD)
     return BaseTransform(_mapping(transformer, FORWARD), _mapping(transformer, REVERSE), _anchors(georef))
 
 
@@ -76,7 +73,7 @@ def _anchors(georef: GeorefInfo) -> tuple[tuple[float, float], ...]:
 def node_reverse(nodes: Sequence[Node], size: tuple[int, int]) -> Mapping:
     """What a warp through the nodes runs on: a place to the pixel it reads there."""
     gcps = [gdal.GCP(x, y, FLAT_GROUND, u, v) for u, v, x, y in nodes]
-    return _mapping(_transformer(gcps, size, TRANSFORMER_METHODS["tps"]), REVERSE)
+    return _mapping(_transformer(gcps, size, TPS_METHOD), REVERSE)
 
 
 @dataclass

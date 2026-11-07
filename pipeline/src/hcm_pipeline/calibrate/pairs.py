@@ -6,26 +6,38 @@ its strongest clear tile is a checkpoint (`enabled: false`), one over 100 m drop
 may be a false match or a part of the map that is wrong, nothing here can tell them apart, so `checkpointRmseM` is the survivors' figure
 and any dropped check keeps the version from publishing itself (`approval.ts`). Of the other cells, each one's strongest inlier is a
 pair. `affine` or `poly2` by a blocked 5-fold over the pairs; `tps` is never automatic.
+
+A KH-9 panoramic frame (`rad_per_px`, M15 §2) is mapped by its camera (`camera.py`), fitted on **every** gated tile of the cells not
+held: the pairs stay the editor's sample, their residuals, the checks and the blocked figure are the camera's, a check over 100 m from
+it is dropped, and the map goes to the warp as a lattice of nodes over the scan (`georef/lattice.py`), since the pairs cannot rebuild
+it. Too few tiles, or a camera that holds under 90 % of the tiles within 25 m the polynomial's RANSAC kept: the frame keeps its
+polynomial.
 """
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from typing import Final
 
 import numpy
 from numpy.typing import NDArray
 
+from hcm_pipeline.calibrate.camera import PanoramicMap, fit_panoramic
 from hcm_pipeline.calibrate.dense import PROOF_RANSAC_M
-from hcm_pipeline.calibrate.poly import Mask, fit_poly, ground_errors, rmse_m, robust_fit
+from hcm_pipeline.calibrate.poly import Mask, Poly, fit_poly, ground_errors, rmse_m, robust_fit
 from hcm_pipeline.calibrate.proof import CHECK_FOLDS, CHECK_GROSS_M, PAIR_CELL_GROUND_M, cells_of, strongest_checks
 from hcm_pipeline.contract import MIN_GCPS
-from hcm_pipeline.geo import FloatArray, ground_scale, to_lnglat_arrays
+from hcm_pipeline.geo import FloatArray, ground_scale, to_lnglat_arrays, to_mercator
 from hcm_pipeline.georef.autogcp import AUTO_GCP_CHECKPOINT_SHARE, AUTO_GCP_MIN_CONFIDENCE, ID_DIGITS, MIN_POLY2_PAIRS
+from hcm_pipeline.georef.lattice import Lattice, sampled
 from hcm_pipeline.georef.matcher import MAX_AUTO_GCPS
-from hcm_pipeline.georef.transforms import Fit, Gcp, fit
+from hcm_pipeline.georef.transforms import Fit, Gcp, fit, rmse
 
 PAIR_CELL_DOUBLINGS: Final = 8
 TRANSFORM_MIN_GAIN_M: Final = 2.0
 PEAK_TO_SCORE: Final = 2.0
+# A camera that converged holds within 2 % of the tiles the polynomial's RANSAC kept (500 fits on real KH-9 frames: 0.989 at worst);
+# one that failed holds far fewer. "At least as many" sent 9 of those 500 back to the poly2 of ~100 pairs, 20 to 30 m off (M15).
+CAMERA_MIN_KEPT_SHARE: Final = 0.9
 HELD_EVERY: Final = round(1 / AUTO_GCP_CHECKPOINT_SHARE)
 
 
@@ -45,17 +57,43 @@ def _per_cell(rows: FloatArray, cells: NDArray[numpy.int64]) -> FloatArray:
     return numpy.array(found, numpy.float64).reshape(-1, rows.shape[1])
 
 
+def _gross(to_places: Callable[[FloatArray], FloatArray], checks: FloatArray) -> Mask:
+    errors = ground_errors(to_places(checks[:, :2]), checks[:, 2:4]) if len(checks) else numpy.empty(0)
+    return numpy.asarray(errors > CHECK_GROSS_M, numpy.bool_)
+
+
 @dataclass(frozen=True)
 class Chosen:
-    """What `choose` keeps: the pairs' rows, the checks' rows, how many checks went as gross errors."""
+    """What `choose` keeps: the pairs' rows, the checks' rows, how many checks went as gross errors, the tiles of the cells not held
+    and how many of them RANSAC kept."""
 
     pairs: FloatArray
     checks: FloatArray
     dropped: int
+    training: FloatArray
+    kept: int
+
+    def checked_by(self, to_places: Callable[[FloatArray], FloatArray], candidates: FloatArray) -> Chosen:
+        """The same pairs, the checks gated against another map."""
+        gross = _gross(to_places, candidates)
+        return replace(self, checks=candidates[~gross], dropped=int(numpy.count_nonzero(gross)))
+
+
+@dataclass(frozen=True)
+class _Ransac:
+    """The polynomial RANSAC found on the cells not held, and every held cell's candidate check."""
+
+    poly: Poly
+    candidates: FloatArray
 
 
 def choose(rows: FloatArray, order: int, middle_lat: float, seed: int) -> Chosen | None:
     """Pairs and checks from a proof's tiles; None when RANSAC finds nothing on the remaining cells."""
+    found = _chosen(rows, order, middle_lat, seed)
+    return None if found is None else found[0]
+
+
+def _chosen(rows: FloatArray, order: int, middle_lat: float, seed: int) -> tuple[Chosen, _Ransac] | None:
     cell = _cell_size(rows, middle_lat)
     cells = cells_of(rows[:, 2:4], cell)
     held = numpy.unique(cells)[::HELD_EVERY]
@@ -65,8 +103,9 @@ def choose(rows: FloatArray, order: int, middle_lat: float, seed: int) -> Chosen
         return None
     pairs = _per_cell(rows[rest][fitted[1]], cells[rest][fitted[1]])
     checks = strongest_checks(rows, cells, held)
-    errors = ground_errors(fitted[0](checks[:, :2]), checks[:, 2:4]) if len(checks) else numpy.empty(0)
-    return Chosen(pairs, checks[errors <= CHECK_GROSS_M], int(numpy.count_nonzero(errors > CHECK_GROSS_M)))
+    gross = _gross(fitted[0], checks)
+    chosen = Chosen(pairs, checks[~gross], int(numpy.count_nonzero(gross)), rows[rest], int(numpy.count_nonzero(fitted[1])))
+    return chosen, _Ransac(fitted[0], checks)
 
 
 def blocked_figure(pairs: FloatArray, order: int, cell_m: float) -> float | None:
@@ -98,6 +137,29 @@ def transform_of(pairs: FloatArray, middle_lat: float) -> tuple[str, float | Non
     return ("poly2", curved) if earned else ("affine", affine)
 
 
+def panoramic_figure(training: FloatArray, pairs: FloatArray, rad_per_px: float, cell_m: float) -> float | None:
+    """The camera's blocked figure: each fold of the pairs' cells against the camera fitted on the tiles outside them."""
+    cells, tile_cells = cells_of(pairs[:, 2:4], cell_m), cells_of(training[:, 2:4], cell_m)
+    unique = numpy.unique(cells)
+    errors = [_camera_held(training, pairs, rad_per_px, (cells, tile_cells), unique[fold::CHECK_FOLDS]) for fold in range(CHECK_FOLDS)]
+    found = [each for each in errors if each is not None]
+    return rmse_m(numpy.concatenate(found)) if found else None
+
+
+def _camera_held(
+    training: FloatArray,
+    pairs: FloatArray,
+    rad_per_px: float,
+    cells: tuple[NDArray[numpy.int64], NDArray[numpy.int64]],
+    held: NDArray[numpy.int64],
+) -> FloatArray | None:
+    held_pairs = numpy.isin(cells[0], held)
+    camera = fit_panoramic(training[~numpy.isin(cells[1], held), :2], training[~numpy.isin(cells[1], held), 2:4], rad_per_px)
+    if camera is None or not held_pairs.any():
+        return None
+    return ground_errors(camera.to_places(pairs[held_pairs, :2]), pairs[held_pairs, 2:4])
+
+
 def _gcps(rows: FloatArray, offset: tuple[int, int], enabled: bool, first: int) -> list[Gcp]:
     lng, lat = to_lnglat_arrays(rows[:, 2], rows[:, 3])
     found = []
@@ -109,34 +171,89 @@ def _gcps(rows: FloatArray, offset: tuple[int, int], enabled: bool, first: int) 
 
 @dataclass(frozen=True)
 class Calibrated:
-    """The frame's automatic georeference: the fit, its pairs and checks, the blocked figure and what was dropped."""
+    """The frame's automatic georeference: the fit, its pairs and checks, the blocked figure and what was dropped; `lattice`, the nodes
+    of a map the pairs cannot rebuild (a panoramic camera's), else None."""
 
     fitted: Fit
     cross_validated_m: float | None
     checks_dropped: int
+    lattice: Lattice | None = None
 
 
 @dataclass(frozen=True)
 class ScanBox:
-    """Where the scan lies in the film: its corner, and its size."""
+    """Where the scan lies in the film: its corner, its size, and a panoramic camera's radians a film column (M15 §2; None: no camera
+    map)."""
 
     left: int
     top: int
     width: int
     height: int
+    rad_per_px: float | None = None
 
 
 def calibrated(rows: FloatArray, order: int, scan: ScanBox, middle_lat: float, seed: int) -> Calibrated | None:
-    """The fit of a proof's tiles in the scan's pixels; None when the pairs do not fit: the matcher, or the admin, goes on."""
-    chosen = choose(rows[_inside(rows, scan)], order, middle_lat, seed)
-    if chosen is None or len(chosen.pairs) < MIN_GCPS["poly2"]:
+    """The fit of a proof's tiles in the scan's pixels; None when the pairs do not fit: the matcher, or the admin, goes on. A panoramic
+    frame's camera when it holds (module docstring)."""
+    found = _chosen(rows[_inside(rows, scan)], order, middle_lat, seed)
+    if found is None or len(found[0].pairs) < MIN_GCPS["poly2"]:
         return None
+    return _by_camera(found, scan, middle_lat) or _by_polynomial(found[0], scan, middle_lat)
+
+
+def _by_polynomial(chosen: Chosen, scan: ScanBox, middle_lat: float) -> Calibrated | None:
     kind, figure = transform_of(chosen.pairs, middle_lat)
-    offset = (scan.left, scan.top)
-    pairs = _gcps(chosen.pairs, offset, True, 1)
-    gcps = pairs + _gcps(chosen.checks, offset, False, len(pairs) + 1)
-    result = fit(kind, gcps)
+    result = fit(kind, _all_gcps(chosen, (scan.left, scan.top)))
     return Calibrated(result, figure, chosen.dropped) if isinstance(result, Fit) else None
+
+
+def _by_camera(found: tuple[Chosen, _Ransac], scan: ScanBox, middle_lat: float) -> Calibrated | None:
+    """The camera's georeference, when the frame has one and it holds nearly the tiles the polynomial's RANSAC kept."""
+    chosen, ransac = found
+    camera = None if scan.rad_per_px is None else fit_panoramic(chosen.training[:, :2], chosen.training[:, 2:4], scan.rad_per_px)
+    if camera is None or camera.kept < CAMERA_MIN_KEPT_SHARE * chosen.kept:
+        return None
+    return _panoramic(chosen.checked_by(camera.to_places, ransac.candidates), scan, camera, middle_lat)
+
+
+def _all_gcps(chosen: Chosen, offset: tuple[int, int]) -> list[Gcp]:
+    pairs = _gcps(chosen.pairs, offset, True, 1)
+    return pairs + _gcps(chosen.checks, offset, False, len(pairs) + 1)
+
+
+def _camera_residuals(gcps: tuple[Gcp, ...], camera: PanoramicMap, offset: FloatArray) -> tuple[Gcp, ...]:
+    """Each pair's and check's ground metres from the camera's map."""
+    film = numpy.array([[gcp.x, gcp.y] for gcp in gcps], numpy.float64) + offset
+    places = numpy.array([to_mercator(gcp.lng, gcp.lat) for gcp in gcps], numpy.float64)
+    errors = ground_errors(camera.to_places(film), places).tolist()
+    return tuple(replace(gcp, residual_m=error) for gcp, error in zip(gcps, errors, strict=True))
+
+
+def _residual_rmse(gcps: tuple[Gcp, ...], enabled: bool) -> float | None:
+    found = [gcp.residual_m for gcp in gcps if gcp.enabled is enabled and gcp.residual_m is not None]
+    return rmse(found) if found else None
+
+
+def _panoramic(chosen: Chosen, scan: ScanBox, camera: PanoramicMap, middle_lat: float) -> Calibrated | None:
+    """The camera's georeference: the sample's transform for the editor, the camera's residuals, checks, figure and lattice."""
+    sample = fit(transform_of(chosen.pairs, middle_lat)[0], _all_gcps(chosen, (scan.left, scan.top)))
+    if not isinstance(sample, Fit):
+        return None
+    offset = numpy.array([scan.left, scan.top], numpy.float64)
+    gcps = _camera_residuals(sample.gcps, camera, offset)
+    checks = len(chosen.checks)
+    fitted = Fit(sample.transform, gcps, _residual_rmse(gcps, True) or 0.0, _residual_rmse(gcps, False), checks)
+    figure = panoramic_figure(chosen.training, chosen.pairs, camera.frame.rad_per_px, 2 * PAIR_CELL_GROUND_M / ground_scale(middle_lat))
+    lattice = Lattice("panoramic", sampled(_in_scan(camera, offset), scan.width, scan.height))
+    return Calibrated(fitted, figure, chosen.dropped, lattice)
+
+
+def _in_scan(camera: PanoramicMap, offset: FloatArray) -> Callable[[FloatArray, FloatArray], tuple[FloatArray, FloatArray]]:
+    def to_lnglat(x: FloatArray, y: FloatArray) -> tuple[FloatArray, FloatArray]:
+        places = camera.to_places(numpy.column_stack((x, y)) + offset)
+        return to_lnglat_arrays(places[:, 0], places[:, 1])
+
+    return to_lnglat
 
 
 def _inside(rows: FloatArray, scan: ScanBox) -> Mask:

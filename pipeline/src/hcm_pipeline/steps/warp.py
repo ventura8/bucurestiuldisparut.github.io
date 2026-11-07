@@ -1,7 +1,9 @@
 """`warp`: the scan to EPSG:3857 on the tile grid (docs/research/M3-interfaces.md §5.3).
 
-`gdalwarp` with the version's enabled GCPs in EPSG:3857 metres (`-order 1` for affine, `-order 2` for poly2, `-tps`),
-or with the upload's own georeference; the resolution of the layer's `maxzoom` (156543.03392804097 / 2^z m, the
+`gdalwarp -tps` through the map the version was fitted to, or with the upload's own georeference: a thin-plate spline's own
+enabled GCPs; an affine or poly2 fit sampled on a 17 x 17 lattice over the scan (`-order 2` rendered GDAL's own place-to-pixel
+polynomial, 8.5 to 13 m RMS off the fit on real frames: docs/research/M15-calibration-accuracy.md §1); a map the pairs cannot rebuild,
+its stored `georef.lattice`. GCPs in EPSG:3857 metres; the resolution of the layer's `maxzoom` (156543.03392804097 / 2^z m, the
 camera's from `SENSOR_SPECS`, else the scan's own resolution rounded to a zoom), pixels aligned on the tile grid,
 bilinear, an alpha band, and `-cutline` with `-crop_to_cutline` when the version has a crop ring. A USGS frame renders no further than
 the city's window (`outputBounds`, M9 §5): a wide crop rendered 1,249 km² and a 500 compute-unit estimate for one city.
@@ -15,6 +17,8 @@ from typing import Final
 from hcm_pipeline.contract import SENSOR_SPECS, Errors
 from hcm_pipeline.documents import GeorefInfo, Version
 from hcm_pipeline.geo import ZOOM0_RESOLUTION_M, to_mercator, zoom_resolution
+from hcm_pipeline.georef.lattice import LatticeNode, sampled
+from hcm_pipeline.georef.transforms import enabled_gcps, fit_transform
 from hcm_pipeline.jobs import Done, JobContext, StepFailedError, StepResult
 from hcm_pipeline.join.canvas import aligned_box
 from hcm_pipeline.raster import gdal
@@ -23,21 +27,43 @@ from hcm_pipeline.steps.common import city_window, gdal_step
 
 DEFAULT_MINZOOM: Final = 10
 MAX_UPLOAD_ZOOM: Final = 18
-POLYNOMIAL_ORDER: Final = {"affine": 1, "poly2": 2}
 WARP_MEMORY_MB: Final = 2048
+FLAT_GROUND: Final = 0.0
+# EPSG:3857 x, y, the scan's column and row.
+Point = tuple[float, float, float, float]
+
+
+def _nodes(georef: GeorefInfo, size: tuple[int, int]) -> tuple[LatticeNode, ...]:
+    """The stored lattice, else a polynomial fit's sampled; none for a thin-plate spline or a degenerate set."""
+    if georef.lattice is not None:
+        return georef.lattice.nodes
+    transform = None if georef.transform == "tps" else fit_transform(georef.transform, enabled_gcps(georef.gcps))
+    return () if transform is None else sampled(transform.to_lnglat, *size)
+
+
+def rendered_points(georef: GeorefInfo, size: tuple[int, int]) -> list[Point]:
+    """The points a thin-plate warp renders the version's map through (module docstring); with no nodes, its enabled points."""
+    nodes = [node.as_point() for node in _nodes(georef, size)]
+    return nodes or [(*to_mercator(gcp.lng, gcp.lat), gcp.x, gcp.y) for gcp in enabled_gcps(georef.gcps)]
+
+
+def scan_size(scan: Path) -> tuple[int, int]:
+    dataset = gdal.Open(str(scan))
+    size = (dataset.RasterXSize, dataset.RasterYSize)
+    dataset.Close()
+    return size
 
 
 def gcp_source(scan: Path, georef: GeorefInfo, target: Path) -> Path:
-    """A VRT of the scan carrying the enabled GCPs in EPSG:3857 metres."""
-    gcps = [gdal.GCP(*to_mercator(gcp.lng, gcp.lat), 0.0, gcp.x, gcp.y) for gcp in georef.gcps if gcp.enabled]
+    """A VRT of the scan carrying the points its map renders through (`rendered_points`) in EPSG:3857 metres."""
+    gcps = [gdal.GCP(x, y, FLAT_GROUND, column, row) for x, y, column, row in rendered_points(georef, scan_size(scan))]
     gdal.Translate(str(target), str(scan), format="VRT", GCPs=gcps, outputSRS="EPSG:3857").Close()
     return target
 
 
 def warp_method(georef: GeorefInfo) -> dict[str, object]:
-    if georef.method == "embedded":
-        return {}
-    return {"tps": True} if georef.transform == "tps" else {"polynomialOrder": POLYNOMIAL_ORDER[georef.transform]}
+    """Every georeferenced scan renders through a thin-plate spline (`rendered_points`); an upload's own georeference as it is."""
+    return {} if georef.method == "embedded" else {"tps": True}
 
 
 def native_zoom(source: Path, method: dict[str, object], probe: Path) -> int:

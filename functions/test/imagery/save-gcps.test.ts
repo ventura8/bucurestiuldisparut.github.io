@@ -18,6 +18,7 @@ import {
     CITY,
     NOW,
     at,
+    goldenGeoref,
     readJob,
     readLayer,
     readScene,
@@ -230,6 +231,30 @@ describe('imagery.saveGcps', () => {
         expect(failure).toMatchObject({ details: { code: 'apiError.imagery.versionState' } });
         expect((await readJob(world, CORONA))?.status).toBe('mts_processing');
         expect(world.deps.documents.paths(FIRESTORE_PATHS.jobs(CITY))).toEqual([FIRESTORE_PATHS.job(CITY, CORONA)]);
+    });
+});
+
+describe('imagery.saveGcps: a camera map (M15)', () => {
+    it('badPath_newPointsDropTheCameraMapTheyCannotRebuild @S-A16-BAD-POINTS-DROP-LATTICE', async () => {
+        const world = await readyWorld();
+        // The 17 x 17 nodes the pipeline samples over the scan.
+        const nodes = Array.from({ length: 289 }, (_, index) => ({
+            pixel: { x: (index % 17) * 1000, y: Math.floor(index / 17) * 1000 },
+            geo: { lat: 44.4, lng: 26 + index * 0.001 },
+        }));
+        const georef = { ...goldenGeoref(), lattice: { model: 'panoramic' as const, nodes } };
+        await seedVersion(world, CORONA, renderedVersion({ georef }));
+        await seedJob(
+            world,
+            CORONA,
+            job({ type: 'usgs-import', status: 'awaiting_approval', waitReason: 'approval', layerId: LAYER, versionId: CORONA }),
+        );
+
+        const response = await save(world, { versionId: CORONA, gcps: pairs(6, 20480, 16384) });
+
+        const saved = (await readVersion(world, response.jobId))?.georef;
+        expect(saved).toMatchObject({ method: 'gcps', transform: 'affine' });
+        expect(saved?.lattice).toBeUndefined();
     });
 });
 

@@ -74,6 +74,26 @@ def test_happy_path_a_retry_of_georef_with_its_tiles_gone_measures_them_again(wo
     assert any("measured again" in line for line in world.log_lines())
 
 
+def test_bad_path_a_retry_keeps_a_camera_map_its_pairs_cannot_rebuild(world: PipelineWorld) -> None:
+    """Scenarios: S-P06-BAD-PANORAMIC-FALLS-BACK"""
+    world.seed_import()
+    runner = world.runner()
+    for step in ("fetch", "extract", "stitch", "locate", "reference", "georef"):
+        assert runner.run(step) is RunOutcome.DONE
+    georef = record(world.version()["georef"])
+    sides = range(0, 1700, 100)
+    nodes = [{"pixel": {"x": x, "y": y}, "geo": {"lat": 44.4 + y * 1e-6, "lng": 26.0 + x * 1e-6}} for y in sides for x in sides]
+    kept = {**georef, "lattice": {"model": "panoramic", "nodes": nodes}}
+    world.store.update(world.version_path(), {"georef": kept})
+    # A retry runs the step again (a job retried after `georef`, or resumed while it ran).
+    world.store.update(world.job_path(), {"steps.georef": {"status": "pending"}})
+
+    assert world.runner().run("georef") is RunOutcome.DONE
+
+    assert world.version()["georef"] == kept
+    assert any(line.startswith("kept: the panoramic map") for line in world.log_lines())
+
+
 def test_bad_path_tiles_that_no_longer_prove_go_on_to_the_matcher(world: PipelineWorld, tmp_path: Path) -> None:
     """Scenarios: S-P06-BAD-SEEDED-REFUSED"""
     world.seed_import()

@@ -2381,3 +2381,35 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: a targeted run while the map labels were built, then reproduced on a clean export.
     - Fix and pin: the test reads the focused row's own `.title` and asks for that heading exactly.
     - **A name composed for a screen reader is not a data format: read the part from the element that holds it.**
+
+393. **A hold-out against a noisy reference hid the largest error in the map.**
+    - Seen: 2026-11-07, `docs/research/M9-calibration.md` §14 *The measuring stick*: poly3 had been cut for "about 1 m" read on tiles against Sentinel-2, while film against film it takes the 52 pairs from 10.8 to 6.5 m and the one same-pass pair from 13.1 to 3.4 m.
+    - Cause: a tile against Sentinel-2 carries 10 to 14 m of noise and the term repeats across frames, so a smooth 8 to 11 m misfit barely moves that figure; the saved figures, on the strongest tiles, hid it from another side.
+    - Found by: warping the frames onto one grid and matching them with each other, a ruler no fit saw, checked first on a known injected field.
+    - Fix and pin: no product change yet; `tools/acc-ruler.py` on the NUC, a copy in `reports/calib/accuracy/`.
+    - **Before a gain is called small, ask whether the ruler can see it: prove the ruler on a known error, and read the error on something the fit did not use.**
+394. **Noise put into a reference moved a figure that noise taken out barely moved.**
+    - Seen: 2026-11-07, `docs/research/M9-calibration.md` §14 *Reference variants*: removing the error local to a place took the film ruler's 52 pairs from 6.51 to 6.38 m, yet noise at 0.25 of the image's spread took them to 7.67 m and the same pass from 3.24 to 9.95 m.
+    - Cause: the two act differently. Tiles that pass are averaged over, so their noise matters little; noise in the image stops tiles passing the gate, and a cubic on few tiles runs away.
+    - Found by: both directions on the same ruler, with a control that reproduced the earlier reading.
+    - Fix and pin: no product change; `tools/acc-references-noise.py`, `acc-references-simex.py`, `acc-references.py` on the NUC, copies in `reports/calib/accuracy/references/`.
+    - **Bound what a better input could buy before fetching it, and read a stand-in in both directions: a stand-in is a bound, never a before and after.**
+
+395. **The map every figure measured was not the map the layer showed.**
+    - Seen: 2026-11-07, `docs/research/M9-calibration.md` §14 *Frames together, a rigid stitch, and the join*: GDAL's reverse polynomial of the saved points lay 8.5 to 13.2 m RMS from the fit on five of eleven frames, and a real warp of F003 read 10.0 m against its own fit.
+    - Cause: `warp` and `align` hand GDAL points with `-order 2`, and GDAL fits place to pixel separately from the pixel-to-place fit that `checkpointRmseM`, the proof and the ruler all read. A poly2 has no poly2 inverse.
+    - Found by: the same transformer the product builds, read against the fit's exact inverse, then a real warp at maxzoom read on the film ruler.
+    - Fix and pin: no product change; `tools/acc-joins.py rev`, `acc-joins-export.py`, `acc-joins-cost.py warp` on the NUC, copies in `reports/calib/accuracy/joins/`. A cubic exported as 17 x 17 `tps` points reads 0.39 m, and as `-order 3` 0.80 m.
+    - **Measure what the published layer shows, through the transformer that renders it, not the fit it was made from.**
+396. **A matcher's own figure fell nine metres; the map moved less than half of one.**
+    - Seen: 2026-11-08, `docs/research/M9-calibration.md` §14 *Matching variants on the ruler*: gradient orientation halved a tile's noise against film (12.0 to 7.4 m) and its own blocked figure (21.7 to 12.3 m); the film ruler moved 6.45 to 6.01 m, and larger tiles, strong tiles only or weights by peak lowered the own figure while the ruler got worse.
+    - Cause: a variant's own held-out tiles share its matcher, so a smoother or stricter matcher scores itself better; the map already averages thousands of tiles, so tile noise is a small part of its error.
+    - Found by: every variant gated on a wrong-place null to the same false-accept share, then read on the film ruler, on fixed Sentinel-2 tiles and on its own tiles side by side.
+    - Fix and pin: no product change; `tools/acc-matching.py`, `acc-matching-score.py` on the NUC, copies in `reports/calib/accuracy/matching/`.
+    - **Never judge a matcher by its own tiles; a gate set by a peak value is a different gate at another tile size: set it on a null.**
+397. **A guard of "at least as many" was a coin flip, and the fix alone read worse than the bug.**
+    - Seen: 2026-11-08, `docs/research/M15-calibration-accuracy.md` *As built*: the KH-9 pan camera fell back to the poly2 of ~100 pairs whenever it kept fewer tiles within 25 m than the polynomial's RANSAC; 9 of 500 fold fits did, by one to five tiles, read 20 to 30 m, and took the film ruler from 8.14 to 9.79 m. Separately, rendering the poly2 fit faithfully (`-tps` through a lattice) read 14.64 to 16.03 m, as GDAL's reverse polynomial happened to sit nearer the truth on panoramic frames.
+    - Cause: two counts of the same order, each maximised its own way, differ by noise when both models hold; and a model that is wrong everywhere can be beaten by another wrong one by accident.
+    - Found by: the ruler's per-fold figures against the product's camera read directly (`tools/m15b-product.py diag`, `diag3` on the NUC), not the summary line.
+    - Fix and pin: `CAMERA_MIN_KEPT_SHARE` 0.9, from the counts (0.989 at worst when the camera converged, none or under a third when it failed: `test_calibrate_camera.py`); the lattice stays, as the camera reaches the layer through it.
+    - **A fallback guard compares against a margin set from how the healthy case varies; and judge a fix by the configuration it enables, saying plainly what it costs alone.**

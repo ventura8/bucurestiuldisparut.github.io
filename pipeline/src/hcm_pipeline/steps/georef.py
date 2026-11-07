@@ -38,6 +38,7 @@ from hcm_pipeline.frames import Segment
 from hcm_pipeline.geo import FloatArray, Grid, fnv1a, ground_scale, to_mercator
 from hcm_pipeline.georef.autogcp import Decision, GcpSuggestions, decide
 from hcm_pipeline.georef.corners import corner_transform
+from hcm_pipeline.georef.lattice import Lattice
 from hcm_pipeline.georef.matcher import MatchResult, References, Scan, match
 from hcm_pipeline.georef.transforms import Fit, FitRefusal, Gcp, Transform, enabled_gcps, fit
 from hcm_pipeline.images import UInt8Array, seeded
@@ -60,11 +61,18 @@ SEED_MAX_SEARCH_M: Final = 2000.0
 SEED_SEARCH_RMSE_SHARE: Final = 3.0
 
 
-def recorded(fitted: Fit, method: str) -> GeorefInfo:
-    """The version's `georef` for a fit."""
+def recorded(fitted: Fit, method: str, lattice: Lattice | None = None) -> GeorefInfo:
+    """The version's `georef` for a fit; `lattice`, the nodes of a map its pairs cannot rebuild (M15 §1)."""
     kind = fitted.checkpoint_kind
     return GeorefInfo(
-        method, fitted.transform.kind, fitted.gcps, fitted.fit_rmse_m, fitted.checkpoint_rmse_m, fitted.checkpoint_count, kind=kind
+        method,
+        fitted.transform.kind,
+        fitted.gcps,
+        fitted.fit_rmse_m,
+        fitted.checkpoint_rmse_m,
+        fitted.checkpoint_count,
+        kind=kind,
+        lattice=lattice,
     )
 
 
@@ -268,6 +276,9 @@ class GeorefStep:
         return wait_for_points(ctx, 0) if georef is None or not georef.gcps else self._of_gcps(ctx, georef, scan)
 
     def _of_gcps(self, ctx: JobContext, georef: GeorefInfo, scan: ScanInfo) -> StepResult:
+        if georef.lattice is not None:
+            ctx.log.info(f"kept: the {georef.lattice.model} map a retry cannot refit from its pairs", self.name)
+            return Done()
         if georef.method != "corners":
             return self._of_points(ctx, georef, scan)
         return self._of_proof(ctx, georef, scan) or self._matched(ctx, georef, match_scan(ctx, georef, scan))
@@ -301,15 +312,16 @@ class GeorefStep:
         if corners.weak_corners or not ctx.version.calibration:
             return None
         found = self._stored_fit(ctx, scan) or self._remeasured_fit(ctx, corners, scan)
-        return None if found is None else self._fitted(ctx, recorded(found.fitted, AUTO_METHOD), {"calibration": _figures(ctx, found)})
+        if found is None:
+            return None
+        return self._fitted(ctx, recorded(found.fitted, AUTO_METHOD, found.lattice), {"calibration": _figures(ctx, found)})
 
     def _stored_fit(self, ctx: JobContext, scan: ScanInfo) -> Calibrated | None:
         stored = _stored(ctx)
         if stored is None:
             return None
-        return calibrated(
-            stored.rows, stored.order, ScanBox(stored.left, stored.top, scan.width, scan.height), stored.middle_lat, job_seed(ctx)
-        )
+        box = ScanBox(stored.left, stored.top, scan.width, scan.height, stored.rad_per_px)
+        return calibrated(stored.rows, stored.order, box, stored.middle_lat, job_seed(ctx))
 
     def _remeasured_fit(self, ctx: JobContext, corners: GeorefInfo, scan: ScanInfo) -> Calibrated | None:
         """The work folder is gone (a resume): the tiles again, from the proved corners."""

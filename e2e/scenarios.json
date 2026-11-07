@@ -5278,6 +5278,17 @@
             "notes": "Milestone M3, CR-M3-47 (the M3 security and minimum-input reviews)."
         },
         {
+            "id": "S-A16-BAD-POINTS-DROP-LATTICE",
+            "behaviour": "A16",
+            "area": "admin",
+            "path": "bad",
+            "title": "The admin's points replace a camera map they cannot rebuild",
+            "asserts": "saving points over a version whose georef carries a panoramic lattice -> the new version's georef is the points' fit (method gcps) with no lattice, so the warp renders what the georeferencer showed",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M15-calibration-accuracy.md §1. Test: functions/test/imagery/save-gcps.test.ts."
+        },
+        {
             "id": "S-A16-HAPPY-POINTS-AFTER-ATTEMPTS",
             "behaviour": "A16",
             "area": "admin",
@@ -11381,6 +11392,50 @@
             "tier": "e2e-pipeline",
             "status": "exists",
             "notes": "docs/research/M9-calibration.md §5. Test: pipeline/tests/integration/test_calibration_job.py."
+        },
+        {
+            "id": "S-P06-HAPPY-RENDERED-FIT",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The published layer shows the map the fit holds, not GDAL's own reverse polynomial",
+            "asserts": "an affine or poly2 georef -> the warp renders with -tps through 17 x 17 nodes sampled on the fit over the scan, within 1 px of the fit where -order 2 is 5 px and more off; a stored lattice is rendered as stored",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M15-calibration-accuracy.md §1. Test: pipeline/tests/unit/test_render_lattice.py."
+        },
+        {
+            "id": "S-P06-BAD-RENDERED-OWN-POINTS",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A thin-plate spline, a degenerate set or an upload renders through its own points; a malformed lattice is refused",
+            "asserts": "a tps georef or a collinear set -> its enabled points; an embedded georef -> no transform; a lattice of an unknown model, without nodes, with a node missing a coordinate, other than the 17 x 17 (289) nodes the pipeline samples -> DocumentError in the pipeline and a validation issue in georefSchema",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M15-calibration-accuracy.md §1. Tests: pipeline/tests/unit/test_render_lattice.py, packages/shared/test/schemas/imagery.test.ts."
+        },
+        {
+            "id": "S-P06-HAPPY-PANORAMIC-CAMERA",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A KH-9 panoramic frame is mapped by its camera, fitted on every tile, and rendered through a stored lattice",
+            "asserts": "tiles of a panoramic camera -> the camera within 4 m where poly2 is twice as far off; calibrated() with the film's radians a column -> held-out checks and the blocked figure from the camera and lower than poly2's, residuals on every pair, georef.lattice of 289 panoramic nodes over the scan; locate stores radPerPx for KH-9 pan only; the lattice round-trips the document",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M15-calibration-accuracy.md §2. Tests: pipeline/tests/unit/test_calibrate_camera.py, pipeline/tests/unit/test_render_lattice.py, packages/shared/test/schemas/imagery.test.ts."
+        },
+        {
+            "id": "S-P06-BAD-PANORAMIC-FALLS-BACK",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A camera that cannot hold the frame is not used, and a retry keeps the camera's map",
+            "asserts": "under 60 tiles -> no camera; a wrong rate whose camera holds under 90 % of the tiles RANSAC kept -> poly2 with no lattice; KH-7, KH-9 mapping or a calibration.json without radPerPx -> poly2; a georef retry over a stored lattice -> the georef unchanged and 'kept: the panoramic map ...'",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M15-calibration-accuracy.md §2. Tests: pipeline/tests/unit/test_calibrate_camera.py, pipeline/tests/unit/test_render_lattice.py, pipeline/tests/integration/test_calibration_job.py."
         },
         {
             "id": "S-A17-BAD-NOT-PROVED",

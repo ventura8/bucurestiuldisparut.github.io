@@ -50,6 +50,21 @@ export const pixelSchema = z.strictObject({
     y: z.number().min(0).max(MAX_SCAN_PIXELS),
 });
 
+/** The maps a pipeline fit stores as a lattice (M15 §2): a KH-9 panoramic camera fitted on every tile, which its pairs cannot rebuild. */
+const LATTICE_MODELS = ['panoramic'] as const;
+
+/** 17 x 17 nodes, as the pipeline samples them (`georef/lattice.py`): within 0.4 m of the map on a 40,000-pixel KH-9 crop. */
+const LATTICE_NODES = 289;
+
+/**
+ * M15 (`docs/research/M15-calibration-accuracy.md` §1): the fitted map sampled on a lattice over the scan, what the warp renders with
+ * a thin-plate spline. Nodes are not measurements: no editor, residual or checkpoint reads them, and saving points drops them.
+ */
+const latticeSchema = z.strictObject({
+    model: z.enum(LATTICE_MODELS),
+    nodes: z.array(z.strictObject({ pixel: pixelSchema, geo: latLngSchema })).length(LATTICE_NODES),
+});
+
 /** One ground control point. */
 export const gcpSchema = z.strictObject({
     /** Stable across edits (`g1`, `g2`, ... or the matcher's `a017`): the residual table's row and the markers' label. */
@@ -98,6 +113,8 @@ export const georefSchema = z
          * when the scan waits for the admin (`pipeline/src/hcm_pipeline/steps/georef.py`), so they never spoil the admin's fit.
          */
         weakCorners: z.boolean().optional(),
+        /** M15 §1: the nodes the warp renders a map through when its pairs cannot rebuild it; absent, the pairs' own fit renders. */
+        lattice: latticeSchema.optional(),
     })
     .refine(
         (georef) => georef.method === 'embedded' || enabledGcps(georef.gcps) >= MIN_GCPS[georef.transform],
