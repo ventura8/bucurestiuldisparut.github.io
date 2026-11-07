@@ -132,3 +132,30 @@ describe('the admin map wiring', () => {
         expect(result).toEqual({ ok: false, reason: 'no-token' });
     });
 });
+
+describe('M13: a role that cannot read Setup (docs/research/M13-roles.md §8)', () => {
+    const denied = (path: string): Promise<Readonly<Record<string, unknown>> | null> => {
+        if (path === FIRESTORE_PATHS.setupStatus) {
+            return Promise.reject(new Error('permission-denied'));
+        }
+        return Promise.resolve(path === FIRESTORE_PATHS.city('cluj') ? { mapbox: { publicToken: 'pk.city-token' } } : null);
+    };
+    const created = async (readDoc: typeof denied, cityId?: string) => {
+        const factory = adminMapFactoryOf({ scope: scope(null), readDoc, terraDraw: null, log: log().log });
+        const options = { bounds: [[25, 44], [27, 45]], view: { center: [26, 44.5], zoom: 12, bearing: 0 }, locale: 'ro' } as const;
+        return factory.create({} as HTMLElement, { ...options, ...(cityId === undefined ? {} : { cityId }) });
+    };
+
+    it('happyPath_theMapWearsTheCitysPublicToken', async () => {
+        expect((await created(denied, 'cluj')).ok).toBe(true);
+    });
+
+    it('badPath_noCityNoToken', async () => {
+        expect(await created(denied)).toEqual({ ok: false, reason: 'no-token' });
+    });
+
+    it('badPath_aCityWithNoTokenOrARefusedRead', async () => {
+        expect(await created(denied, 'bucharest')).toEqual({ ok: false, reason: 'no-token' });
+        expect(await created(() => Promise.reject(new Error('denied')), 'cluj')).toEqual({ ok: false, reason: 'no-token' });
+    });
+});

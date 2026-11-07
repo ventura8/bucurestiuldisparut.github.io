@@ -5892,3 +5892,13 @@ The local stack's seeded second city (`e2e/stack/seed-cities.ts`: `bacau`, its r
 - **§86h reviewed: both savings kept.** The stand-in for zod's JSON Schema conversion and `sourcemap: 'hidden'` stay.
 - **§83i decided: no Uploads API; tiles from the project's own public bucket.** Mapbox's documentation bills Uploads jobs in compute units with no per-job meter or cap (`docs/research/M11-mapbox-automatic.md`), so the path is not free as M7 §6 assumed. The owner chose to serve the historical layers' tiles from the project's public bucket, drawn over the Mapbox basemap: automatic after Approve. The bootstrap token the owner pasted that day carries the uploads scopes, unused.
 - **`autoPublish` stays on** by the owner's choice: a frame with at least 90 % of the city and a held-out checkpoint within the threshold publishes by itself; every other waits for Approve. The owner sees each image before approving.
+
+## 95. Roles and review (2026-11-07) — APPLIED (the owner's decisions: code, tests and documentation on `track/roles`; no gate relaxed, no budget raised, no download, no deploy)
+
+- **95a The contract** is `docs/research/M13-roles.md`.
+- **95b Two new chunk rows**: `review` (4.1 KB measured) and `contribute` (3.4 KB), each plus about 20 %, in `ADMIN_CHUNK_BUDGETS`; the admin's total 642.5 KB of 650, the entry 376.8 of 450, the engine 95.3 of 100 and its IIFE 121.6 of 125: none raised.
+- **95c `admin` access narrowed.** It now leaves out an account whose every role is `moderator` or `uploader`; `notify.*` moved to a new `member` access. An account with no city at all keeps what it had.
+- **95d The Contribute page is a route of the admin**, not a page of its own: it reuses sign-in, the catalogues and the Mapbox loader at the cost of one chunk. A signed-in account of no role gets the new auth state `visitor` there instead of being signed out.
+- **95e No `minVersion`.** No release is tagged, so the manifest's additions join the v1 baseline, as `photosOverlay` did.
+- **95f For review: a pending photo's duplicate check.** `photos.onUpload` still refuses a repeat of another photo of the city and names it in `duplicateOf`, so an uploader can learn that a file they hold is already in the city and its id. Nothing else of that photo is readable to them.
+- **95g For review: no daily limit on an uploader's uploads.** Rules cannot count; an uploader is a person an owner approved, and an owner can revoke them. Say if a cap is wanted.

@@ -251,3 +251,88 @@ describe('the review queue: the rest', () => {
         expect(w.maps.created).toHaveLength(0);
     });
 });
+
+describe('the review queue: its edges', () => {
+    it('badPath_aHeldPictureThatCannotBeReadShowsNothing', async () => {
+        const w = world();
+        w.store.put(FIRESTORE_PATHS.photo(CITY, 'p1'), { ...PENDING_PHOTO, heldImage: { ...PENDING_PHOTO.heldImage, thumb: 'none' } });
+        w.area.open([]);
+        await settle();
+        expect(w.area.state.pictures).toEqual({});
+        expect(w.area.state.photos.items[0]?.thumbPath).toBe('none');
+    });
+
+    it('happyPath_leavingFreesThePictures', async () => {
+        const released: string[] = [];
+        const w = world();
+        const files = { url: () => Promise.resolve('blob:x'), read: () => Promise.resolve(null), release: (url: string) => released.push(url), save: () => Promise.resolve(false) };
+        const area = REVIEW_MODULE.create({ ...w.services, files: files as never });
+        w.store.put(FIRESTORE_PATHS.photo(CITY, 'p1'), PENDING_PHOTO);
+        area.open([]);
+        await settle();
+        area.destroy();
+        expect(released).toEqual(['blob:x']);
+    });
+
+    it('badPath_withoutTheFileReaderOrTheMapFactory', async () => {
+        const w = world();
+        const area = REVIEW_MODULE.create({ ...w.services, files: null, maps: null });
+        w.store.put(FIRESTORE_PATHS.photo(CITY, 'p1'), PENDING_PHOTO);
+        area.open([]);
+        area.intents.attachMap(CONTAINER);
+        await settle();
+        expect(area.state.pictures).toEqual({});
+        expect(area.state.map).toBe('unavailable');
+        area.intents.zoomBy(1);
+        area.destroy();
+    });
+
+    it('happyPath_aPhotoGoneWhileComparedAndAProposalWithNoPlace', async () => {
+        const w = world();
+        w.store.put(FIRESTORE_PATHS.suggestion(CITY, 's1'), suggestion('pending', { proposal: { year: 1950 }, kind: 'correction' }));
+        w.area.open([]);
+        await settle();
+        w.area.intents.attachMap(CONTAINER);
+        await settle();
+        w.area.intents.select('s1');
+        await settle();
+        expect(w.area.state.current).toBeNull();
+        w.area.intents.startAdjusting();
+        expect(w.area.state.adjusted).toEqual({ year: 1950 });
+        w.store.put(FIRESTORE_PATHS.photo(CITY, 'p1'), { ...PENDING_PHOTO, reviewStatus: 'approved' });
+        await settle();
+        expect(w.area.state.current).toEqual({});
+    });
+
+    it('badPath_adjustingWithNothingSelectedSendsEmptyValues', async () => {
+        const w = world();
+        w.callables.fail('suggestions.decide', failure('invalid-argument', 'apiError.invalidRequest'));
+        w.area.intents.startAdjusting();
+        expect(w.area.state.adjusted).toEqual({});
+        await w.area.intents.decideSuggestion('s1', 'adjust', '');
+        expect(w.notices.at(-1)).toEqual({ key: 'apiError.invalidRequest' });
+    });
+
+    it('badPath_aMapPinMovedWithNothingSelectedAndAPinRefused', async () => {
+        const w = world();
+        w.area.open([]);
+        await settle();
+        w.area.intents.attachMap(CONTAINER);
+        await settle();
+        w.area.intents.select('nosuch');
+        await settle();
+        w.maps.draw.emitRefused();
+        expect(w.notices.at(-1)).toEqual({ key: 'apiError.suggestion.outsideCity' });
+        expect(w.area.state.map).toBe('ready');
+    });
+
+    it('badPath_aRevertThatFindsNoEntryIsRefusedByTheServer', async () => {
+        const w = world();
+        w.callables.fail('history.revert', failure('invalid-argument', 'apiError.invalidRequest'));
+        const row = { id: 's', photoId: 'p9', title: { ro: 'x' }, thumb: '', kind: 'place', status: 'approved', proposal: {}, count: 1, voices: [], decidedBy: 'u' } as const;
+        const pending = w.area.intents.revert(row);
+        await settle();
+        await pending;
+        expect(w.notices.at(-1)).toEqual({ key: 'apiError.invalidRequest' });
+    });
+});

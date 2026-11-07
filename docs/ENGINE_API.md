@@ -349,6 +349,7 @@ A fetch that returns 404 shows `error.manifest.notFound`, a network failure `err
 - **`config.js`, the element and the JavaScript API** change additively in minor releases; a deprecated name keeps working for at least one minor release and is removed only in a major one.
 - **The URL hash** keeps v1's grammar for the whole 1.x line; new parameters are additive and old readers ignore them. The legacy hash stays readable.
 - **Additions before 1.0.0 (M4, 2026-10-24)**: the hash's `cmp=` and `sw=`, the controller's `openCompare`, `setComparePosition` and `closeCompare`, and the event `hcm-compare-change` are part of the v1 baseline too; the manifest does not change.
+- **Additions before 1.0.0 (M13, 2026-11-07)**: `unplaced[]`, `contributeUrl` and the optional `credit` of a photo and a place (`docs/research/M13-roles.md` §5). A photo in `photos[]` still needs its `location`; a manifest from before them stays valid. The map gains only a link: no sign-in, no Firestore, no cookie.
 - **Additions before 1.0.0** (PLAN Addendum 3, 2026-10-12): `photosOverlay`, `poiCategories[]`, `pois[]`, the overlay namespace rule and the `op=` overlay ids. They are part of the v1 baseline that every 1.x engine reads, so a manifest that uses them needs no `minVersion`. A Material Symbols name outside the bundled set falls back to the default pin instead of failing validation, so new icons never need a new manifest generation.
 
 ### Releases on jsDelivr

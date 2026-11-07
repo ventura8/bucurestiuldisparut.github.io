@@ -40,3 +40,37 @@ describe('the city the areas edit', () => {
         expect(contentServices(shellOf(null, null, [])).cityId).toBe('');
     });
 });
+
+describe('M13: the open city, told to what needs it', () => {
+    function shellWith(maps: unknown): ContentShell {
+        const base = shellOf('cluj', null, ['bucharest']);
+        return { ...base, content: { ...base.content, areas: { maps } as ContentShell['content']['areas'] } };
+    }
+
+    it('happyPath_theRoleInTheOpenCity', () => {
+        const base = shellOf('cluj', null, []);
+        const shell = { ...base, shell: shellStateAccess({ cityId: 'cluj', cities: [{ id: 'cluj', role: 'moderator', name: { ro: 'Cluj' } }] }) };
+        expect(contentServices(shell).cityRole()).toBe('moderator');
+    });
+
+    it('badPath_noRoleInACityNotListed', () => {
+        expect(contentServices(shellOf('cluj', null, [])).cityRole()).toBeNull();
+    });
+
+    it('happyPath_theMapIsToldTheCity', async () => {
+        const asked: unknown[] = [];
+        const maps = {
+            create: (_container: HTMLElement, options: unknown) => {
+                asked.push(options);
+                return Promise.resolve({ ok: false, reason: 'failed' });
+            },
+        };
+        const services = contentServices(shellWith(maps));
+        await services.maps?.create({} as HTMLElement, { bounds: [[0, 0], [1, 1]], view: { center: [0, 0], zoom: 1, bearing: 0 }, locale: 'ro' });
+        expect(asked).toEqual([expect.objectContaining({ cityId: 'cluj' })]);
+    });
+
+    it('badPath_noMapWithoutAFactory', () => {
+        expect(contentServices(shellWith(null)).maps).toBeUndefined();
+    });
+});

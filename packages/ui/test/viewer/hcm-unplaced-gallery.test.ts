@@ -1,5 +1,6 @@
 /** `<hcm-unplaced-gallery>` (M13, V40): the photos with no place, each linking to the page that signs in. */
 import type { UnplacedPhoto } from '@hcm/shared';
+import { render } from 'lit';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 
@@ -7,6 +8,7 @@ import { browserServices } from '../../src/viewer/services.js';
 import { HCM_UNPLACED_GALLERY_TAG, defineHcmUnplacedGallery, type HcmUnplacedGallery } from '../../src/viewer/hcm-unplaced-gallery.js';
 import { HCM_PHOTO_SHEET_TAG, defineHcmPhotoSheet, type HcmPhotoSheet } from '../../src/viewer/hcm-photo-sheet.js';
 import { menuAction } from '../../src/viewer/viewer-actions.js';
+import { unplacedSheet } from '../../src/viewer/viewer-unplaced.js';
 import { mountElement, shadowQueryAll } from './doubles.js';
 import { FakeStore, readyState } from './fake-store.js';
 import { TEST_MANIFEST_URL, testManifest } from './fixtures.js';
@@ -69,6 +71,35 @@ describe('<hcm-unplaced-gallery>', () => {
         });
         await expect.element(page.getByText('Added by Maria')).toBeVisible();
         await expect.element(page.getByRole('link', { name: 'Suggest a correction' })).toHaveAttribute('href', `${CONTRIBUTE}/${photo.id}`);
+    });
+
+    it('badPath_aThumbnailThatCannotBeResolvedShowsNoAddress', async () => {
+        const photo = { ...unplaced(), image: { ...unplaced().image, thumb: 'relative/t.webp' } };
+        const element = await mountElement<HcmUnplacedGallery>(HCM_UNPLACED_GALLERY_TAG, { photos: [photo], manifestUrl: 'not a url' });
+        expect(shadowQueryAll(element, 'img')).toHaveLength(1);
+    });
+
+    it('happyPath_theDockedSheetCloses', () => {
+        const closed: string[] = [];
+        const host = document.createElement('div');
+        document.body.append(host);
+        const manifest = { ...testManifest(), unplaced: [unplaced()] };
+        const view = { locale: 'en', manifestUrl: TEST_MANIFEST_URL } as const;
+        render(
+            unplacedSheet(view, manifest, { mode: 'docked', open: true }, (event) => {
+                closed.push(event.type);
+            }),
+            host,
+        );
+        host.querySelector('hcm-icon-button')?.dispatchEvent(new Event('click'));
+        expect(closed).toEqual(['hcm-close']);
+    });
+
+    it('happyPath_aManifestWithNoListHasAnEmptyGallery', () => {
+        const host = document.createElement('div');
+        document.body.append(host);
+        render(unplacedSheet({ locale: 'en', manifestUrl: '' }, testManifest(), { mode: 'bottom', open: false, inert: true }, () => undefined), host);
+        expect(host.querySelector('.unplaced-sheet')?.hasAttribute('inert')).toBe(true);
     });
 
     it('badPath_noCorrectionLinkWithoutAContributePage', async () => {
