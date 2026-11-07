@@ -11854,6 +11854,17 @@
             "tier": "e2e-admin",
             "status": "exists",
             "notes": "The owner's request, 2026-11-07 (docs/research/photo-date-source.md). Tests: e2e/admin/specs/photos/editor.spec.ts, packages/admin/test/photos/bulk.test.ts."
+        },
+        {
+            "id": "S-A09-BAD-DISCARD-MONTH",
+            "behaviour": "A09",
+            "area": "admin",
+            "path": "bad",
+            "title": "Discard shows the month the photo has, not the one just picked",
+            "asserts": "March saved, May picked, Discard changes -> the field reads March, as the document does",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "A picked option ignores its selected attribute, so the field kept May with Save off (docs/LESSONS.md). Tests: e2e/admin/specs/photos/editor.spec.ts, packages/ui/test/admin/photos/editor-fields.test.ts."
         }
     ]
 }

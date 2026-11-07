@@ -96,6 +96,7 @@ const REASON_KEYS: Readonly<Record<string, AdminContentKey>> = {
     failed: 'adminContent.photos.reason.failed',
     license: 'adminContent.photos.reason.license',
     place: 'adminContent.photos.reason.place',
+    sourceUrl: 'adminContent.photos.reason.sourceUrl',
     invalid: 'adminContent.photos.reason.invalid',
     conflict: 'adminContent.photos.reason.conflict',
     gone: 'adminContent.photos.reason.gone',

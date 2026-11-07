@@ -515,4 +515,17 @@ describe('<hcm-admin-photo-editor>: the date at its precision, the source', () =
         type(element, '#photo-sourceLabel', 'Muzeul');
         expect(photos.calls).toEqual(['edit {"sourceUrl":"https://b.example"}', 'edit {"sourceLabel":"Muzeul"}']);
     });
+
+    it.each([
+        ['#photo-dateText-ro', 'When filled in, visitors read this text instead of the date above.'],
+        ['#photo-dateText-en', 'When filled in, visitors read this text instead of the date above.'],
+        ['#photo-sourceLabel', 'Shown as the link. Without an address, visitors see nothing.'],
+    ])('happyPath_aNoteAboutAFieldIsTiedToIt_%s', async (selector, note) => {
+        const { element } = await editorOf(editor());
+
+        const described = deep(element, selector).getAttribute('aria-describedby');
+
+        expect(described).not.toBeNull();
+        expect(deep(element, `#${String(described)}`).textContent.trim()).toBe(note);
+    });
 });

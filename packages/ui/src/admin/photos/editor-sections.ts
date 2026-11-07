@@ -67,8 +67,9 @@ function localizedPair(
     input: SectionInput,
     field: 'description' | 'dateText',
     keys: { ro: 'descriptionRo' | 'dateTextRo'; en: 'descriptionEn' | 'dateTextEn' },
-    max: number,
+    limits: { readonly max: number; readonly sharedHint?: string },
 ): TemplateResult {
+    const { max, sharedHint } = limits;
     const { locale, value, issues, edit } = input;
     const text = value[field];
     const make = (language: 'ro' | 'en', key: 'descriptionRo' | 'dateTextRo' | 'descriptionEn' | 'dateTextEn'): TemplateResult => {
@@ -79,6 +80,7 @@ function localizedPair(
             error: fieldIssue(locale, issues, `${field}.${language}`),
             maxlength: max,
             readOnly: input.readOnly,
+            ...(sharedHint === undefined ? {} : { sharedHint }),
         };
         const changed = (typed: string): void => {
             edit({ [field]: withLanguage(text, language, typed) });
@@ -87,6 +89,9 @@ function localizedPair(
     };
     return html`${make('ro', keys.ro)} ${make('en', keys.en)} ${pairDraft(input, field, text)}`;
 }
+
+/** The one note above both "date as written" fields, which each name it. */
+const DATE_TEXT_HINT = partId('photo-dateText', 'hint');
 
 export function textsSection(input: SectionInput): TemplateResult {
     const { locale, value, issues, edit } = input;
@@ -120,7 +125,8 @@ export function textsSection(input: SectionInput): TemplateResult {
                 edit({ title: en === undefined ? { ro: title.ro } : { ro: title.ro, en } });
             },
         )}
-        ${pairDraft(input, 'title', title)} ${localizedPair(input, 'description', { ro: 'descriptionRo', en: 'descriptionEn' }, 5000)}
+        ${pairDraft(input, 'title', title)}
+        ${localizedPair(input, 'description', { ro: 'descriptionRo', en: 'descriptionEn' }, { max: 5000 })}
     </fieldset>`;
 }
 
@@ -147,14 +153,19 @@ export function datesSection(input: SectionInput): TemplateResult {
         <legend>${photoText(locale, 'adminContent.photos.section.dates')}</legend>
         <div class="pair">${year('year', 'year')} ${year('yearEnd', 'yearEnd')}</div>
         ${dateParts(input)}
-        <p class="note">${photoText(locale, 'adminContent.photos.field.dateTextHint')}</p>
-        ${localizedPair(input, 'dateText', { ro: 'dateTextRo', en: 'dateTextEn' }, 100)}
+        <p class="note" id=${DATE_TEXT_HINT}>${photoText(locale, 'adminContent.photos.field.dateTextHint')}</p>
+        ${localizedPair(input, 'dateText', { ro: 'dateTextRo', en: 'dateTextEn' }, { max: 100, sharedHint: DATE_TEXT_HINT })}
     </fieldset>`;
 }
 
 type CreditField = 'author' | 'rightsHolder' | 'sourceLabel' | 'sourceUrl' | 'permissionNote';
 
 const CREDIT_MAX: Partial<Record<CreditField, number>> = { sourceUrl: 2048, permissionNote: 2000 };
+
+/** The source's name says what it does at the field, where a screen reader hears it. */
+function creditHint(locale: SectionInput['locale'], field: CreditField): { readonly hint?: string } {
+    return field === 'sourceLabel' ? { hint: photoText(locale, 'adminContent.photos.field.sourceLabelHint') } : {};
+}
 
 function creditField(input: SectionInput, field: CreditField, type: 'text' | 'url' = 'text'): TemplateResult {
     const { locale, value, issues, edit } = input;
@@ -166,6 +177,7 @@ function creditField(input: SectionInput, field: CreditField, type: 'text' | 'ur
         error: fieldIssue(locale, issues, field),
         maxlength: max,
         readOnly: input.readOnly,
+        ...creditHint(locale, field),
     };
     const changed = (typed: string): void => {
         edit({ [field]: textOf(typed) });
@@ -202,7 +214,6 @@ export function sourceSection(input: SectionInput): TemplateResult {
     return html`<fieldset>
         <legend>${photoText(locale, 'adminContent.photos.section.source')}</legend>
         ${creditField(input, 'sourceUrl', 'url')} ${creditField(input, 'sourceLabel')}
-        <p class="note">${photoText(locale, 'adminContent.photos.field.sourceLabelHint')}</p>
     </fieldset>`;
 }
 

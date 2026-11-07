@@ -2381,3 +2381,31 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: a targeted run while the map labels were built, then reproduced on a clean export.
     - Fix and pin: the test reads the focused row's own `.title` and asks for that heading exactly.
     - **A name composed for a screen reader is not a data format: read the part from the element that holds it.**
+
+393. **A select driven by the `selected` attribute kept the admin's pick after the model changed.**
+    - Seen: 2026-11-07, code review of the photo's date: March saved, May picked, Discard: draft and document said March, Month said May, with Save off, so the next save kept March while the screen said May. The licence select shared the helper.
+    - Cause: an option the user has picked is dirty, and a dirty option ignores its `selected` attribute; Lit only moved attributes.
+    - Found by: review, reproduced with the real `selectField` and Lit in Chromium before the fix.
+    - Fix and pin: `.selected=${live(...)}` on each option (`packages/ui/test/admin/photos/editor-fields.test.ts`, S-A09-BAD-DISCARD-MONTH).
+    - **A form control's state after user input is a property: bind the property, live, and test a model change after a pick.**
+
+394. **Moving a fixture to a new rule turned five refusal rows into tests of that rule.**
+    - Seen: 2026-11-07, code review: `newPhoto` gained `month` and `day`, so the rows about years in `firebase/rules-tests/test/photos.test.ts` were denied by `validPhotoDate`, and removing the year checks from `validPhoto` left them green.
+    - Cause: a bad row merges into a full fixture and only asks for `deny`, so it says nothing about which clause refused.
+    - Found by: review, then a mutation of the rules: the rows only fail on the mutated rules since the fix.
+    - Fix and pin: the rows drop the month and the day (`YEARS_ONLY`); the update block gained year and date rows.
+    - **A deny row proves its clause only if every other clause would allow: after changing a fixture, mutate the rule a row names.**
+
+395. **A strict reader makes an optional field breaking for whichever reader is live.**
+    - Seen: 2026-11-07, code review: a new function publishes `source` while an older viewer may still be on Hosting, and that viewer's strict schema refuses the whole manifest. The contract had only considered the v1.0.0 tag.
+    - Cause: "additive" was checked from the new reader's side only; `firebase deploy` runs functions before hosting.
+    - Found by: review, by reading the code; no deployment was run.
+    - Fix and pin: documented, not yet enforced (`docs/research/photo-date-source.md` §3): Hosting first. Update the map holds it by construction; the CI job's split waits for the owner's yes.
+    - **Before adding a field to a strict format, name the order writers and readers deploy in, and what a rollback of one of them does.**
+
+396. **A hint in a loose paragraph and a catch-all reason both left out what the admin needed.**
+    - Seen: 2026-11-07, code review: the notes under "date as written" and the source's name were tied to no input, and a bulk source that was not https reported only "it has a value that is not valid", though its scenario promised the reason.
+    - Cause: the field kit's `hint` and the schema's issue path were at hand and unused; the e2e test asserted the generic text it got.
+    - Found by: review.
+    - Fix and pin: `hint` and `sharedHint` (`aria-describedby`, `toHaveAccessibleDescription` in S-A09-HAPPY-DATE-PRECISION); `adminContent.photos.reason.sourceUrl` from the issue's path.
+    - **A test of "says why" must fail on a reason that would fit any field.**

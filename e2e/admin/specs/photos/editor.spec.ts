@@ -226,7 +226,14 @@ test(
         await expect(day).toBeVisible();
         await day.fill('12');
         await field(page, lang, 'adminContent.photos.field.sourceUrl').fill('https://arhiva.example/cv');
-        await field(page, lang, 'adminContent.photos.field.sourceLabel').fill('Arhiva');
+        const sourceName = field(page, lang, 'adminContent.photos.field.sourceLabel');
+        await sourceName.fill('Arhiva');
+
+        // A note about a field is heard at that field.
+        await expect(sourceName).toHaveAccessibleDescription(photosText(lang, 'adminContent.photos.field.sourceLabelHint'));
+        await expect(field(page, lang, 'adminContent.photos.field.dateTextRo')).toHaveAccessibleDescription(
+            photosText(lang, 'adminContent.photos.field.dateTextHint'),
+        );
 
         await saveButton(page, lang).click();
         await saved(page, lang);
@@ -271,6 +278,26 @@ test(
         await saveButton(page, lang).click();
         await saved(page, lang);
         expect(await content.document('photos/cv')).toMatchObject({ year: 1936, month: 2, day: 29 });
+    },
+);
+
+test(
+    'Discard shows the month the photo has, not the one just picked',
+    { tag: ['@S-A09-BAD-DISCARD-MONTH'] },
+    async ({ page, lang, content }) => {
+        test.setTimeout(180_000);
+        await openEditor(page, content, lang, false);
+        await field(page, lang, 'adminContent.photos.field.year').fill('1936');
+        const month = field(page, lang, 'adminContent.photos.field.month');
+        await month.selectOption('3');
+        await saveButton(page, lang).click();
+        await saved(page, lang);
+
+        await month.selectOption('5');
+        await page.getByRole('button', { name: photosText(lang, 'adminContent.photos.editor.discard'), exact: true }).click();
+
+        await expect(month).toHaveValue('3');
+        expect((await content.document('photos/cv'))?.['month']).toBe(3);
     },
 );
 
@@ -321,7 +348,7 @@ test(
 
         await page.getByRole('button', { name: photosText(lang, 'adminContent.photos.bulk.seeWhy') }).click();
         const report = page.locator('hcm-dialog.report');
-        const reason = photosText(lang, 'adminContent.photos.reason.invalid');
+        const reason = photosText(lang, 'adminContent.photos.reason.sourceUrl');
         await expect(
             report.getByText(photosText(lang, 'adminContent.photos.reason.line', { title: 'Piața Romană', reason })),
         ).toBeVisible();

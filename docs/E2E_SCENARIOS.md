@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 109 | 1008 | 390 | 618 | 1006 | 2 | 264 |
+| 109 | 1009 | 390 | 619 | 1007 | 2 | 264 |
 
 ## Viewer
 
@@ -297,6 +297,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-A09-HAPPY-TRANSLATE-DRAFT` | A09 | happy | An English draft of the Romanian title fills the field until Save | English draft (offered while only Romanian has text) -> the English field holds the fake model's text and the note Draft proposed by gemini-3.5-flash-lite: check it before you save, and no button offers to replace it; the manifest unchanged until Save; after Save the viewer shows the English title (input budget translateDraft: 2) | e2e-admin | exists | `e2e/admin/specs/assists/drafts.spec.ts` |
 | `S-A09-BAD-AI-UNAVAILABLE` | A09 | bad | An unavailable AI gives no draft and nothing is published | the fake Vertex AI answers 503: English draft -> apiError.assist.unavailable under the field, the English field as it was, nothing saved, the manifest unchanged | e2e-admin | exists | `e2e/admin/specs/assists/drafts.spec.ts` |
 | `S-A09-BAD-BULK-SOURCE-NOT-HTTPS` | A09 | bad | A source that is not https, set on a selection, changes nothing and says why | http:// in the dialog -> every photo named in the report with its reason; no document changes | e2e-admin | exists | `e2e/admin/specs/photos/editor.spec.ts` |
+| `S-A09-BAD-DISCARD-MONTH` | A09 | bad | Discard shows the month the photo has, not the one just picked | March saved, May picked, Discard changes -> the field reads March, as the document does | e2e-admin | exists | `e2e/admin/specs/photos/editor.spec.ts` |
 | `S-A09-BAD-IMPOSSIBLE-DATE` | A09 | bad | A day that month does not have is refused with its reason | 1937, February, 29 -> validation.dateImpossible at the Day field, Save off, nothing written; 1936 makes it valid and it saves; the rules refuse the same | e2e-admin | exists | `e2e/admin/specs/photos/editor.spec.ts` |
 | `S-A09-BAD-NOMINATIM-429` | A09 | bad | A Nominatim refusal leaves the admin typing the title | the fake Nominatim answers 429: the place set -> apiError.assist.rateLimited under the title, the field empty and editable, Save with a typed title publishes; for ten minutes no other request reaches Nominatim (the fake counts one) | e2e-admin | exists | `e2e/admin/specs/assists/title.spec.ts` |
 | `S-A09-BAD-PIN-OUTSIDE-CITY` | A09 | bad | A pin moved outside the city snaps back with a message | a place typed beyond the city bounds plus 0.5 degrees -> the pin stays at its last valid place, the fields name the limit, and Save writes nothing outside the city (a dragged pin waits for Terra Draw, §34g) | e2e-admin | exists | `e2e/admin/specs/photos/editor.spec.ts` |

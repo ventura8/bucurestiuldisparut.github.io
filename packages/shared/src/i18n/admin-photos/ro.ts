@@ -63,6 +63,7 @@ export const ro = {
     'adminContent.photos.reason.failed': 'imaginea a fost refuzată',
     'adminContent.photos.reason.license': 'licența e necunoscută',
     'adminContent.photos.reason.place': 'locul trebuie verificat',
+    'adminContent.photos.reason.sourceUrl': 'adresa sursei nu este o adresă https validă',
     'adminContent.photos.reason.invalid': 'are o valoare nevalidă',
     'adminContent.photos.reason.conflict': 'altcineva a modificat-o între timp',
     'adminContent.photos.reason.gone': 'nu mai există',

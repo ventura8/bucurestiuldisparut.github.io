@@ -61,6 +61,7 @@ export const en: Readonly<Record<AdminPhotosKey, string>> = {
     'adminContent.photos.reason.failed': 'its image was refused',
     'adminContent.photos.reason.license': 'the licence is unknown',
     'adminContent.photos.reason.place': 'the place is to be checked',
+    'adminContent.photos.reason.sourceUrl': 'the source address is not a valid https address',
     'adminContent.photos.reason.invalid': 'it has a value that is not valid',
     'adminContent.photos.reason.conflict': 'someone else changed it meanwhile',
     'adminContent.photos.reason.gone': 'it no longer exists',

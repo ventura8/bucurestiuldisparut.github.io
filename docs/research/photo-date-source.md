@@ -22,10 +22,16 @@ The owner's words: "for pictures we want the ability to set the year or the year
 
 ## 3. Compatibility
 
-Additive within manifest v1: an old manifest stays valid and reads as before. v1.0.0 is prepared and not tagged yet, so these fields join the baseline every 1.x engine reads (`docs/ENGINE_API.md` → *Additions before 1.0.0*) and need no `city.engine.minVersion`. Should v1.0.0 be tagged first, this becomes a minor release and the manifest needs `minVersion`.
+Additive for a new engine reading an old manifest: it stays valid and reads as before. v1.0.0 is prepared and not tagged yet, so these fields join the baseline every 1.x engine reads (`docs/ENGINE_API.md` → *Additions before 1.0.0*) and need no `city.engine.minVersion`. Should v1.0.0 be tagged first, this becomes a minor release and the manifest needs `minVersion`.
+
+**Not additive for an engine from before these fields**: its `photoSchema` is strict, so `month`, `day` or `source` fail its whole manifest and every visitor gets `error.manifest.invalid`. `minVersion` would not help: both builds are 1.0.0, and it would only change the card. So the reader goes first, the new viewer on Hosting before the new functions:
+
+- **Setup's Update the map** holds this by construction: the admin installs its own bundle, which Hosting serves (`M6-interfaces.md`, *The same release everywhere*), and it got there in a Hosting release with the viewer of the same commit. The server build that `build-spec.ts` runs before the site build finds the new viewer already live.
+- **A deploy outside the app must keep that order**: `firebase deploy --only hosting` first, the rest after. One command does not: `firebase-tools` deploys functions before hosting, so `--only firestore,storage,functions,hosting` leaves a window of minutes, for good if Hosting then fails. That is the `deploy-firebase` job of `.github/workflows/ci.yml` (master only, off while `DEPLOY_ENABLED` is not `true`). **Open, for the owner's yes** (a workflow edit that makes no gate stricter is *Ask first*): split it in two commands, Hosting first.
+- **A rollback of Hosting alone across this release** breaks the map at once, since the manifest already published carries the fields. Roll forward instead, or roll the server back too and save any edit so the manifest is built again.
 
 ## 4. Scenarios
 
 Viewer: `S-V07-HAPPY-PRECISE-DATE`, `S-V07-BAD-IMPOSSIBLE-DATE`, `S-V07-HAPPY-SOURCE-LINK`, `S-V07-BAD-SOURCE-NOT-HTTPS`, `S-V07-BAD-NO-SOURCE`; tour state `photo-source`.
 
-Admin: `S-A09-HAPPY-DATE-PRECISION`, `S-A09-BAD-IMPOSSIBLE-DATE`, `S-A09-HAPPY-BULK-SOURCE`, `S-A09-BAD-BULK-SOURCE-NOT-HTTPS`; tour states `photos.editor-date` and `photos.editor-impossible-date`. A source address that is not https in the editor stays `photos.editor-invalid`.
+Admin: `S-A09-HAPPY-DATE-PRECISION`, `S-A09-BAD-IMPOSSIBLE-DATE`, `S-A09-HAPPY-BULK-SOURCE`, `S-A09-BAD-BULK-SOURCE-NOT-HTTPS` (its reason names the source address: `adminContent.photos.reason.sourceUrl`), `S-A09-BAD-DISCARD-MONTH`; tour states `photos.editor-date` and `photos.editor-impossible-date`. A source address that is not https in the editor stays `photos.editor-invalid`.

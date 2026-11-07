@@ -47,8 +47,9 @@ describe('planFor', () => {
             skip: 'license',
         });
         expect(planFor({ kind: 'setFields', fields: { sourceUrl: 'http://insecure.example' } }, stored('p1'), path, false)).toEqual({
-            skip: 'invalid',
+            skip: 'sourceUrl',
         });
+        expect(planFor({ kind: 'setFields', fields: { author: 'x'.repeat(201) } }, stored('p1'), path, false)).toEqual({ skip: 'invalid' });
     });
 
     it('happyPath_deleteIsADelete', () => {
