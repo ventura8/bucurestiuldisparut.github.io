@@ -50,6 +50,7 @@ function seen(changes: Partial<NonNullable<WorkerViewPort['worker']>> = {}): Non
         lastJob: null,
         outdated: false,
         revoked: false,
+        ai: null,
         ...changes,
     };
 }
@@ -339,6 +340,53 @@ describe('<hcm-worker-panel>: findings 66-68 of 2026-11-02', () => {
         expect(deepAll(element, '[data-outdated]')).toHaveLength(0);
         expect(deepText(element)).toContain(t('en', 'adminWorker.disconnected'));
         expect(deepAll(element, 'hcm-button').some((found) => found.textContent.trim() === t('en', 'adminWorker.disconnect'))).toBe(false);
+    });
+});
+
+describe('<hcm-worker-panel>: the local AI (docs/research/M10-local-ai.md)', () => {
+    afterEach(cleanup);
+
+    it('happyPath_itNamesTheGraphicsCardItRunsOn @S-A68-HAPPY-DEVICE-SHOWN', async () => {
+        const ai = { state: 'ready', device: 'gpu', deviceName: 'NVIDIA RTX 3080' } as const;
+        const element = await panel(new FakeHost(view({ connected: true, worker: seen({ ai }) })));
+
+        expect(deep(element, '[data-ai="ready"]').textContent).toBe(t('en', 'adminWorker.ai.gpu', { name: 'NVIDIA RTX 3080' }));
+        expect(deep(element, '[data-ai="ready"]').textContent).toBe('Local AI: graphics card NVIDIA RTX 3080.');
+        expect(await axeViolations(element)).toEqual([]);
+    });
+
+    it.each([
+        [{ state: 'ready', device: 'cpu' }, 'adminWorker.ai.cpu'],
+        [{ state: 'idle' }, 'adminWorker.ai.idle'],
+        [{ state: 'preparing' }, 'adminWorker.ai.preparing'],
+    ] as const)('happyPath_%jIsSaid @S-A68-HAPPY-DEVICE-SHOWN', async (ai, key) => {
+        const element = await panel(new FakeHost(view({ connected: true, worker: seen({ ai }) })));
+
+        expect(deep(element, `[data-ai="${ai.state}"]`).textContent).toBe(t('en', key));
+    });
+
+    it.each(['old-starter', 'arm64', 'disk', 'pull', 'tampered', 'unreachable', 'no-answer', 'garbage'] as const)(
+        'badPath_unavailableBecause_%s_saysWhy @S-A68-BAD-AI-UNAVAILABLE',
+        async (why) => {
+            const ai = { state: 'unavailable', why } as const;
+            const element = await panel(new FakeHost(view({ connected: true, worker: seen({ ai }) })));
+
+            const said = deep(element, '[data-ai="unavailable"]').textContent;
+            expect(said).toBe(t('en', 'adminWorker.ai.unavailable', { why: t('en', `adminWorker.ai.why.${why}`) }));
+            expect(said).not.toContain('{why}');
+        },
+    );
+
+    it('badPath_noReasonOnRecordStillSaysItIsUnavailable @S-A68-BAD-AI-UNAVAILABLE', async () => {
+        const element = await panel(new FakeHost(view({ connected: true, worker: seen({ ai: { state: 'unavailable' } }) })));
+
+        expect(deep(element, '[data-ai="unavailable"]').textContent).toContain(t('en', 'adminWorker.ai.why.no-answer'));
+    });
+
+    it('badPath_aWorkerOlderThanTheAiOrNotConnectedSaysNothingOfIt @S-A68-BAD-AI-UNAVAILABLE', async () => {
+        expect(deepAll(await panel(new FakeHost(view({ connected: true, worker: seen() }))), '[data-ai]')).toHaveLength(0);
+        const gone = new FakeHost(view({ connected: false, worker: seen({ ai: { state: 'idle' } }) }));
+        expect(deepAll(await panel(gone), '[data-ai]')).toHaveLength(0);
     });
 });
 

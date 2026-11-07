@@ -68,6 +68,7 @@ class Shot:
     turned: int = 0
     mirrored: bool = False
     film_centre_ground_m: tuple[float, float] = (0.0, 0.0)
+    shear_deg: float = 0.0
 
 
 def _place_grid(lat: float, lng: float, side_px: int) -> Grid:
@@ -87,6 +88,17 @@ def _matrix(shot: Shot, centre: tuple[float, float], ground: float) -> FloatArra
     return numpy.array(
         [[a, b, centre[0] - a * width / 2 - b * height / 2], [c, d, centre[1] - c * width / 2 - d * height / 2], [0.0, 0.0, 1.0]]
     )
+
+
+def _sheared(matrix: FloatArray, centre: tuple[float, float], shear_deg: float) -> FloatArray:
+    """The film as a parallelogram: its long side as it was, its short side turned on the ground towards the long side's north end."""
+    along = matrix[:2, 0] / numpy.linalg.norm(matrix[:2, 0])
+    along = along if along[1] >= 0 else -along
+    linear = numpy.eye(2) + math.tan(math.radians(shear_deg)) * numpy.outer(along, [along[1], -along[0]])
+    move = numpy.eye(3)
+    move[:2, :2] = linear
+    move[:2, 2] = numpy.array(centre) - linear @ numpy.array(centre)
+    return numpy.asarray(move @ matrix, numpy.float64)
 
 
 def _film_of(pixels: UInt8Array, grid: Grid, truth: FloatArray) -> UInt8Array:
@@ -118,12 +130,13 @@ def scene_of(given: Shot | None = None) -> Scene:
     world = render_world(shot.seed, side)
     grid = _place_grid(shot.lat, shot.lng, side)
     centre = grid.left + side * 5.0 + shot.film_centre_ground_m[0] / ground, grid.top - side * 5.0 + shot.film_centre_ground_m[1] / ground
-    truth = _matrix(shot, centre, ground)
+    rectangle = _matrix(shot, centre, ground)
+    truth = _sheared(rectangle, centre, shot.shear_deg)
     error = shot.error_ground_m[0] / ground, shot.error_ground_m[1] / ground
     margin = round(side * 0.2)
     window = Grid(grid.left + margin * 10.0, grid.top - margin * 10.0, 10.0, side - 2 * margin, side - 2 * margin)
     reference = world.pixels[margin : side - margin, margin : side - margin]
-    return Scene(reference, window, _film_of(world.pixels, grid, truth), truth, _quad(truth, error))
+    return Scene(reference, window, _film_of(world.pixels, grid, truth), truth, _quad(rectangle, error))
 
 
 def elsewhere(scene: Scene, seed: int = 99) -> Scene:

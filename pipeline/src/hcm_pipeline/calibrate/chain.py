@@ -7,16 +7,17 @@ them.
 """
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Final
 
 from hcm_pipeline.calibrate.dense import PROOF_SEARCH_GROUND_M, DenseGrid, FilmReader, dense_grid, nothing_measured, read_film
 from hcm_pipeline.calibrate.poly import MatrixMap, PlaceMap
-from hcm_pipeline.calibrate.ports import NullProposalMatcher, ProposalMatcher, ProposalRequest
+from hcm_pipeline.calibrate.ports import NO_LOCAL_AI, NullProposalMatcher, Proposal, ProposalMatcher, ProposalRequest, Proposer
 from hcm_pipeline.calibrate.prior import MeasuredModel, measured_model, prior_margin_m
-from hcm_pipeline.calibrate.proof import Proof, no_film
+from hcm_pipeline.calibrate.proof import Proof, no_film, spread_over
+from hcm_pipeline.calibrate.reach import reach_of
 from hcm_pipeline.calibrate.rival import proved
-from hcm_pipeline.calibrate.votes import Hypothesis, VoteGrid, VoteProposal, merged, tiles_per_warp, vote_grid, warp_votes
+from hcm_pipeline.calibrate.votes import Hypothesis, VoteGrid, VoteProposal, merged, scaled_about, tiles_per_warp, vote_grid, warp_votes
 from hcm_pipeline.contract import SearchRange
 from hcm_pipeline.geo import FloatArray, Grid, MercatorBox, ground_scale
 from hcm_pipeline.georef.corners import Assignment, Frame
@@ -24,6 +25,10 @@ from hcm_pipeline.georef.panoramic import PanoramicCamera
 from hcm_pipeline.images import UInt8Array
 
 PROOF_MAX_PROPOSALS: Final = 3
+# A matcher's proposal is proved over at least this much ground, under the same gates: a 6 by 4.8 km window reaches 35 tiles against the
+# gate's 60 and 10 of 86 tiles pass from the truth itself, so a perfect proposal would be refused (Test C, M10). The crop stays the city's.
+MATCHER_PROOF_SIDE_GROUND_M: Final = 30000.0
+NOT_ASKED: Final = "local AI not asked: the votes spent every proof this frame may have; the frame waits for the admin's points"
 
 
 @dataclass(frozen=True)
@@ -43,6 +48,8 @@ class FrameSearch:
     prior: MeasuredModel | None = None
     osm_lines: UInt8Array | None = None
     matcher: ProposalMatcher = field(default_factory=NullProposalMatcher)
+    # The reference and its grid over a wider box, fetched only when a matcher proposes (None: it cannot be had).
+    wide: Callable[[MercatorBox], tuple[UInt8Array, Grid] | None] | None = None
 
     @property
     def window(self) -> MercatorBox:
@@ -63,14 +70,18 @@ class Found:
     votes: tuple[int, int]
     refused: Proof | None
     tried: tuple[VoteProposal, ...]
+    proposer: Proposer | None = None
+    # A proof over more ground than the window: what its agreeing tiles span of the window itself (None: the proof's own spread says it).
+    window_spread: float | None = None
 
 
 def hypotheses(search: FrameSearch) -> list[Hypothesis]:
-    """The pass's prior first (its own margin), then each orientation at each of the sensor's scales, the model's own scale first: a
-    strong proposal there ends the search before the wider scales cost anything."""
+    """The pass's prior first (its own margin), then each orientation at each of the sensor's scales and shears, the model's own scale
+    first: a strong proposal there ends the search before the wider scales cost anything."""
     margin = search.search.margin_ground_m / search.ground
     scales = sorted(search.search.scales, key=lambda scale: abs(scale - 1))
-    plain = [Hypothesis(each, scale, margin) for scale in scales for each in search.orientations]
+    shears = search.search.shears_deg
+    plain = [Hypothesis(each, scale, margin, False, shear) for scale in scales for shear in shears for each in search.orientations]
     prior = search.prior
     return [*_from_prior(prior, search), *plain] if prior is not None else plain
 
@@ -130,7 +141,8 @@ def _vote_line(proposal: VoteProposal, ground: float) -> str:
     moved = (proposal.shift[0] ** 2 + proposal.shift[1] ** 2) ** 0.5 * ground / 1000
     place = proposal.hypothesis.assignment
     mirror = ", mirrored" if place.mirrored else ""
-    turned = f"rotation {place.rotation * 90}{mirror}, scale {proposal.scale:.3f}, moved {moved:.1f} km"
+    shear = f", shear {proposal.hypothesis.shear_deg:g}" if proposal.hypothesis.shear_deg else ""
+    turned = f"rotation {place.rotation * 90}{mirror}{shear}, scale {proposal.scale:.3f}, moved {moved:.1f} km"
     return f"tile votes: {proposal.agreed} of {proposal.tiles} agree ({turned})"
 
 
@@ -173,16 +185,98 @@ def _origin(search: FrameSearch, proposal: VoteProposal) -> Assignment:
     return next(each for each in search.orientations if (each.rotation, each.mirrored) == (place.rotation, place.mirrored))
 
 
-def _from_matcher(search: FrameSearch, run: _Run, tried: list[VoteProposal]) -> Found | None:
-    """A local matcher's proposals, the same proof deciding; only after nothing else proved."""
-    request = ProposalRequest(search.frame.pixels, search.frame.factor, search.reference, search.osm_lines, search.grid, search.sensor)
-    for proposal in search.matcher.propose(request):
-        proof = prove_map(search, run.reference, MatrixMap(proposal.matrix), run.tick)
+def _start_scales(search: FrameSearch) -> list[float]:
+    """The sensor's scales, the model's own first, as the votes take them."""
+    return sorted(search.search.scales, key=lambda each: abs(each - 1))
+
+
+def _ranked_starts(search: FrameSearch, tried: Sequence[VoteProposal]) -> tuple[FloatArray, ...]:
+    """Each orientation's first guess at each of the sensor's scales, the orientations most votes named first. Every scale, not the one
+    nearest 1: a full sweep's film at the model's own scale is 4 to 9 % too large, and on F006 at Fetești it matches nothing there."""
+    centre = _centre(search.window)
+
+    def votes(each: Assignment) -> int:
+        named = [
+            p.agreed
+            for p in tried
+            if (p.hypothesis.assignment.rotation, p.hypothesis.assignment.mirrored) == (each.rotation, each.mirrored)
+        ]
+        return max(named, default=0)
+
+    ranked = sorted(search.orientations, key=lambda each: -votes(each))
+    return tuple(scaled_about(each.matrix, centre, scale) for each in ranked for scale in _start_scales(search))
+
+
+def _centre(window: MercatorBox) -> tuple[float, float]:
+    return (window.left + window.right) / 2, (window.bottom + window.top) / 2
+
+
+def wider_box(window: MercatorBox, ground: float) -> MercatorBox | None:
+    """The window grown about its centre to `MATCHER_PROOF_SIDE_GROUND_M` a side; None when it is as large already."""
+    side = MATCHER_PROOF_SIDE_GROUND_M / ground
+    if window.width >= side and window.height >= side:
+        return None
+    half_x, half_y = max(window.width, side) / 2, max(window.height, side) / 2
+    x, y = _centre(window)
+    return MercatorBox(x - half_x, y - half_y, x + half_x, y + half_y)
+
+
+def _proving_ground(search: FrameSearch, run: _Run) -> tuple[FrameSearch, DenseGrid]:
+    """What a matcher's proposal is proved over: at least 30 km, under the same gates; the window itself when no wider one can be had."""
+    box = wider_box(search.window, search.ground)
+    found = None if box is None or search.wide is None else search.wide(box)
+    if found is None:
+        return search, run.reference
+    wide = replace(search, reference=found[0], grid=found[1])
+    return wide, dense_grid(wide.reference, wide.grid)
+
+
+def _request(search: FrameSearch, run: _Run, tried: Sequence[VoteProposal]) -> ProposalRequest:
+    return ProposalRequest(
+        search.frame.pixels,
+        search.frame.factor,
+        search.reference,
+        search.osm_lines,
+        search.grid,
+        search.sensor,
+        _ranked_starts(search, tried),
+        search.reader,
+        search.limits,
+        search.search.margin_ground_m / search.ground,
+        run.tick,
+        run.say,
+        len(search.search.scales),
+    )
+
+
+def _proved_by_matcher(search: FrameSearch, run: _Run, proposals: Sequence[Proposal], tried: Sequence[VoteProposal]) -> Found | None:
+    """The proposals the proofs left allow, best first; what a matcher counts stays out of every gate and of `Found.votes`."""
+    ground, reference = _proving_ground(search, run)
+    for proposal in proposals[: max(run.left, 0)]:
+        run.left -= 1
+        proof = prove_map(ground, reference, MatrixMap(proposal.matrix), run.tick)
         run.say(_proof_line(proof))
         if proof.accepted:
-            return Found(proof, "local-ai", None, (proposal.support, proposal.support), None, tuple(tried))
+            spread = None if ground is search else _spread_on_window(search, proof)
+            return Found(proof, "local-ai", None, _best_votes(tried), None, tuple(tried), proposal.proposer, spread)
         run.heard(proof)
     return None
+
+
+def _spread_on_window(search: FrameSearch, proof: Proof) -> float:
+    """A wide proof's tiles over the city's window, not the box they were measured on: a corner of a town must not read as all of it."""
+    mapping = proof.mapping
+    covered = 0.0 if mapping is None else reach_of(mapping, search.window, search.limits).share
+    return spread_over(proof, search.grid, covered)
+
+
+def _from_matcher(search: FrameSearch, run: _Run, tried: list[VoteProposal]) -> Found | None:
+    """A local matcher's proposals, the same proof deciding; only after nothing else proved, and only while proofs are left."""
+    if run.left <= 0:
+        run.say(NO_LOCAL_AI if isinstance(search.matcher, NullProposalMatcher) else NOT_ASKED)
+        return None
+    proposals = search.matcher.propose(_request(search, run, tried))
+    return _proved_by_matcher(search, run, proposals, tried) if proposals else None
 
 
 def find_frame(search: FrameSearch, tick: Callable[[], None], say: Callable[[str], None]) -> Found:
@@ -196,7 +290,10 @@ def find_frame(search: FrameSearch, tick: Callable[[], None], say: Callable[[str
     return _from_matcher(search, run, tried) or _not_found(run, tried)
 
 
-def _not_found(run: _Run, tried: list[VoteProposal]) -> Found:
+def _best_votes(tried: Sequence[VoteProposal]) -> tuple[int, int]:
     best = max(tried, key=lambda each: each.agreed, default=None)
-    votes = (0, 0) if best is None else (best.agreed, best.tiles)
-    return Found(None, "none", None, votes, run.refused, tuple(tried))
+    return (0, 0) if best is None else (best.agreed, best.tiles)
+
+
+def _not_found(run: _Run, tried: list[VoteProposal]) -> Found:
+    return Found(None, "none", None, _best_votes(tried), run.refused, tuple(tried))

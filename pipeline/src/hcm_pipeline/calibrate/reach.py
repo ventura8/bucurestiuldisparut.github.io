@@ -47,10 +47,10 @@ def reach_of(mapping: PlaceMap, box: MercatorBox, limits: tuple[int, int, int]) 
     return Reach(numpy.asarray(inside.reshape(mx.shape), numpy.bool_), film, grid)
 
 
-def measured_pct(proof: Proof) -> float:
+def measured_pct(proof: Proof, window_spread: float | None = None) -> float:
     """How much of what the frame covers of the window its agreeing tiles span, percent: what the tiles speak for. The rest of the frame
-    renders too, on the polynomial's word alone."""
-    return round(min(proof.spread, 1.0) * PERCENT, 1)
+    renders too, on the polynomial's word alone. `window_spread`: a proof over a wider box's figure for the window itself."""
+    return round(min(proof.spread if window_spread is None else window_spread, 1.0) * PERCENT, 1)
 
 
 def proved_box(reach: Reach, limits: tuple[int, int, int]) -> Box | None:

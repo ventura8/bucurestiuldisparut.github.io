@@ -18,6 +18,7 @@ from http import HTTPStatus
 from typing import Final, Self
 
 import httpx
+from hcm_pipeline.calibrate.ports import NullProposalMatcher, ProposalMatcher
 from hcm_pipeline.config import Config, load_config
 from hcm_pipeline.geo import MercatorBox, to_lnglat, to_mercator
 from hcm_pipeline.jobs import Services
@@ -54,6 +55,7 @@ TEST_CHUNK_BYTES: Final = 256 * 1024
 NOW: Final = 1_792_000_000.0
 OWNER_UID: Final = "uid-owner"
 CITY_HALF_M: Final = (4150.0, 3100.0)
+SMALL_CITY_HALF_M: Final = (1750.0, 1400.0)
 
 
 @dataclass
@@ -84,6 +86,16 @@ def stamp_of(seconds: float) -> dict[str, object]:
     return {"updatedBy": OWNER_UID, "updatedAt": Timestamp.at(seconds)}
 
 
+def small_city(world: PipelineWorld) -> None:
+    """The city's bounds shrunk to `S-P01-HAPPY-ADMIN`'s small town around the world's centre (too small to prove by itself, M9 §14), and a
+    catalogue whose item reaches over the wider box a matcher's proposal is proved on; the asset still holds the world alone."""
+    cx, cy = to_mercator(*CENTRE)
+    box = MercatorBox(cx - SMALL_CITY_HALF_M[0], cy - SMALL_CITY_HALF_M[1], cx + SMALL_CITY_HALF_M[0], cy + SMALL_CITY_HALF_M[1])
+    path = f"cities/{CITY}"
+    world.store.seed(path, {**world.store.documents[path], "bounds": box.bounds().as_record()})
+    world.stac_reach_m = 50_000.0
+
+
 @dataclass
 class PipelineWorld:
     """The fakes, the documents and the services of one test."""
@@ -98,6 +110,10 @@ class PipelineWorld:
     delivered: bytes | None = None
     secrets: SecretSource | None = None
     stac_href: str | None = None
+    # How far around the world's centre the catalogue's item reaches (None: the world's own edges).
+    stac_reach_m: float | None = None
+    # A test's local matcher (`Services.proposal_matcher`); Cloud Run's Null otherwise.
+    matcher: ProposalMatcher = field(default_factory=NullProposalMatcher)
 
     def __enter__(self) -> Self:
         self.m2m = self.stack.enter_context(FakeM2MServer())
@@ -154,8 +170,7 @@ class PipelineWorld:
         return Reply(reply.status, reply.body, reply.content_type, {**reply.headers, **headers})
 
     def _stac(self, _request: Request) -> Reply:
-        west, south = to_lnglat(self.scene.world.grid.left, self.scene.world.grid.box().bottom)
-        east, north = to_lnglat(self.scene.world.grid.box().right, self.scene.world.grid.top)
+        west, south, east, north = self._stac_box()
         item = {
             "type": "Feature",
             "id": S2_ITEM,
@@ -164,6 +179,14 @@ class PipelineWorld:
             "assets": {"visual": {"href": self.stac_href or self.http.url("/s2/visual.tif"), "type": "image/tiff; application=geotiff"}},
         }
         return Reply.json(json.dumps({"type": "FeatureCollection", "features": [item] if self.stac_items else []}))
+
+    def _stac_box(self) -> tuple[float, float, float, float]:
+        grid = self.scene.world.grid
+        if self.stac_reach_m is None:
+            return (*to_lnglat(grid.left, grid.box().bottom), *to_lnglat(grid.box().right, grid.top))
+        cx, cy = to_mercator(*CENTRE)
+        reach = self.stac_reach_m
+        return (*to_lnglat(cx - reach, cy - reach), *to_lnglat(cx + reach, cy + reach))
 
     # --- services ----------------------------------------------------------------------------------------
 
@@ -185,6 +208,7 @@ class PipelineWorld:
             clock=self.clock,
             sleep=lambda _seconds: None,
             resolver=lambda _host: ["127.0.0.1"],
+            proposal_matcher=self.matcher,
         )
 
     def runner(self, config: Config | None = None) -> JobRunner:

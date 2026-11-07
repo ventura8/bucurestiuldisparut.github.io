@@ -86,7 +86,9 @@ ENV PATH=/opt/venv/bin:$PATH \
 # The local worker's work folder (M7, finding 66 of 2026-11-02): the admin's command mounts the named volume
 # `hcm-worker` here; Docker initialises an empty named volume from this folder, owner included, so the worker's user can
 # write it with no preparation on the computer (no `mkdir -m 777`).
-RUN mkdir -p /work && chown 10001:10001 /work
+# The local matcher's two volumes (M10, `hcm-ai-files` and `hcm-ai-box`) start from these empty folders, owner included, for the same
+# reason. Cloud Run mounts nothing here: its image carries them, and the matcher's few KB of Python, unused.
+RUN mkdir -p /work /ai/files /ai/box && chown 10001:10001 /work /ai/files /ai/box
 WORKDIR /tmp
 USER 10001:10001
 ENTRYPOINT ["/opt/venv/bin/python", "-m", "hcm_pipeline"]

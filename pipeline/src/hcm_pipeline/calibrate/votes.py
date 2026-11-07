@@ -112,18 +112,40 @@ def vote_grid(reference: UInt8Array, grid: Grid, margin_ground_m: float) -> Vote
 
 @dataclass(frozen=True)
 class Hypothesis:
-    """A warp: an orientation's first guess at a scale; `margin_m`, how far (EPSG:3857) the search goes around the window."""
+    """A warp: an orientation's first guess at a scale and a shear; `margin_m`, how far (EPSG:3857) the search goes around the window."""
 
     assignment: Assignment
     scale: float
     margin_m: float
     from_pass: bool = False
+    shear_deg: float = 0.0
 
 
 def scaled_about(matrix: FloatArray, centre: tuple[float, float], scale: float) -> FloatArray:
     """`matrix` with every place drawn towards `centre` by `scale`."""
     similarity = numpy.array([[scale, 0.0, centre[0] * (1 - scale)], [0.0, scale, centre[1] * (1 - scale)], [0.0, 0.0, 1.0]])
     return numpy.asarray(similarity @ matrix, numpy.float64)
+
+
+def _long_side(matrix: FloatArray, frame: Frame) -> FloatArray:
+    """The film's long side on the ground, a unit vector pointing north: the same for all of a frame's orientations."""
+    x0, y0 = frame.width / 2, frame.height / 2
+    x1, y1 = (x0 + 1, y0) if frame.width >= frame.height else (x0, y0 + 1)
+    x, y = apply(matrix, numpy.array([x0, x1]), numpy.array([y0, y1]))
+    along = numpy.array([x[1] - x[0], y[1] - y[0]])
+    along = along / numpy.linalg.norm(along)
+    return numpy.asarray(along if along[1] >= 0 else -along, numpy.float64)
+
+
+def sheared_about(matrix: FloatArray, frame: Frame, centre: tuple[float, float], shear_deg: float) -> FloatArray:
+    """`matrix` with the film's short side turned `shear_deg` towards the long side's north end, the long side staying where it runs:
+    a strip's corners give a rectangle where its film lies as a parallelogram (`SearchRange.shears_deg`)."""
+    along = _long_side(matrix, frame)
+    linear = numpy.eye(2) + math.tan(math.radians(shear_deg)) * numpy.outer(along, [along[1], -along[0]])
+    shear = numpy.eye(3)
+    shear[:2, :2] = linear
+    shear[:2, 2] = numpy.array(centre) - linear @ numpy.array(centre)
+    return numpy.asarray(shear @ matrix, numpy.float64)
 
 
 def _grid_matrix(grid: Grid) -> FloatArray:
@@ -271,7 +293,7 @@ def warp_votes(frame: Frame, hypothesis: Hypothesis, grid: VoteGrid, tiles: int,
     """The proposal of one warp, from at most `tiles` matches."""
     centre_box = grid.grid.box()
     centre = ((centre_box.left + centre_box.right) / 2, (centre_box.top + centre_box.bottom) / 2)
-    matrix = scaled_about(hypothesis.assignment.matrix, centre, hypothesis.scale)
+    matrix = scaled_about(sheared_about(hypothesis.assignment.matrix, frame, centre, hypothesis.shear_deg), centre, hypothesis.scale)
     warped = warp_frame(frame, matrix, grid, hypothesis.margin_m)
     if not warped.any_place:
         return None

@@ -4,7 +4,7 @@
  * time). The elements get their feed from the Jobs area's store (`JobsIntentsPort.worker`), which the page they sit on
  * loads through the app (`WorkerHostPort`: the Jobs page, the pipeline card, a version's page).
  */
-import type { JobStatus, JobWaitReason, RunChoice, RunPlace } from '@hcm/shared';
+import type { JobStatus, JobWaitReason, RunChoice, RunPlace, WorkerAi } from '@hcm/shared';
 
 import type { LoadStatusPort, StoreFailurePort } from '../area-port.js';
 import type { AdminNoticeInputPort } from '../notice-port.js';
@@ -22,6 +22,8 @@ export interface WorkerSeenPort {
     readonly lastJob: { readonly id: string; readonly outcome: 'done' | 'failed'; readonly at: string } | null;
     readonly outdated: boolean;
     readonly revoked: boolean;
+    /** Its local AI (`docs/research/M10-local-ai.md`), or null for a worker older than it. */
+    readonly ai: WorkerAi | null;
 }
 
 export interface WorkerJobPort {

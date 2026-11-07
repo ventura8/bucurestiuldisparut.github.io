@@ -146,7 +146,7 @@ describe('the layer-join job', () => {
 
         expect(JOB_PARAMS_SCHEMAS['layer-join'].safeParse({ parts, sensor: 'KH-9-pan' }).success).toBe(true);
         expect(layerJoinParamsSchema.safeParse({ parts: parts.slice(1), sensor: 'KH-9-pan' }).success).toBe(false);
-        expect(layerJoinParamsSchema.safeParse({ parts, sensor: 'KH-5' }).success).toBe(false);
+        expect(layerJoinParamsSchema.safeParse({ parts, sensor: 'KH-6' }).success).toBe(false);
         expect(layerJoinParamsSchema.safeParse({ parts, sensor: 'KH-9-pan', extra: 1 }).success).toBe(false);
     });
 

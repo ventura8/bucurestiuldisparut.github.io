@@ -30,6 +30,15 @@ export const WORKER_STATES = {
         title: "Jobs: your computer at work, its job's step and progress live, Disconnect this computer",
         visit: 'specs/imagery/worker.spec.ts',
     },
+    // M10 (docs/research/M10-local-ai.md): the local AI on the computer.
+    'worker.panel-ai-gpu': {
+        title: 'Jobs: your computer connected, its local AI on the graphics card it names',
+        visit: 'specs/imagery/worker.spec.ts',
+    },
+    'worker.panel-ai-unavailable': {
+        title: 'Jobs: your computer connected, its local AI unavailable, and why',
+        visit: 'specs/imagery/worker.spec.ts',
+    },
     'worker.panel-outdated': {
         title: 'Jobs: your computer runs an older imagery pipeline: run the command again to update it',
         visit: 'specs/imagery/worker.spec.ts',

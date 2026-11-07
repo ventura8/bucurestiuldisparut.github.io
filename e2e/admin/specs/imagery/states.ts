@@ -54,6 +54,10 @@ export const IMAGERY_STATES = {
         title: 'Historical imagery: a frame found with no landmark, how, how many areas agree, its error and the city it covers',
         visit: 'specs/imagery/calibration.spec.ts',
     },
+    'imagery.version-local-ai': {
+        title: 'Historical imagery: a frame the AI on your computer proposed and the proof held, on which graphics card',
+        visit: 'specs/imagery/calibration.spec.ts',
+    },
     'imagery.version-not-found': {
         title: 'Historical imagery: a frame nothing found, asking for a few rough points',
         visit: 'specs/imagery/calibration.spec.ts',

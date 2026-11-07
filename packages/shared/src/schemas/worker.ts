@@ -15,6 +15,19 @@ const digestSchema = z.string().regex(/^sha256:[0-9a-f]{64}$/);
 /** What a worker is doing: waiting for a job, or running one. */
 export const WORKER_STATES = ['idle', 'busy'] as const;
 
+/** The local AI on a worker's computer (`docs/research/M10-local-ai.md`): waiting for a frame, getting ready, running, or why not. */
+export const WORKER_AI_STATES = ['idle', 'preparing', 'ready', 'unavailable'] as const;
+
+/** Why the local AI is unavailable, in words the panel has (`adminWorker.ai.why.*`). */
+export const WORKER_AI_WHYS = ['old-starter', 'arm64', 'disk', 'pull', 'tampered', 'unreachable', 'no-answer', 'garbage'] as const;
+
+export const workerAiSchema = z.strictObject({
+    state: z.enum(WORKER_AI_STATES),
+    device: z.enum(['gpu', 'cpu']).optional(),
+    deviceName: z.string().min(1).max(120).optional(),
+    why: z.enum(WORKER_AI_WHYS).optional(),
+});
+
 /** `cities/{city}/workers/{workerId}`: one local worker process, refreshed by `worker.hello` and `worker.claim`. */
 export const workerDocSchema = z.strictObject({
     uid: uidSchema,
@@ -32,6 +45,8 @@ export const workerDocSchema = z.strictObject({
      */
     image: digestSchema.optional(),
     outdated: z.boolean().optional(),
+    /** Its local AI, as the worker last said through `worker.hello`. */
+    ai: workerAiSchema.optional(),
     /** Disconnect this computer (`worker.revoke`): every later call of this worker is refused. */
     revokedAt: timestampSchema.optional(),
     ...stamp,
@@ -73,6 +88,7 @@ export const cloudRunUsageDocSchema = z.strictObject({
 });
 
 export type WorkerDoc = z.infer<typeof workerDocSchema>;
+export type WorkerAi = z.infer<typeof workerAiSchema>;
 export type RunChoiceDoc = z.infer<typeof runChoiceDocSchema>;
 export type CloudRunUsageDoc = z.infer<typeof cloudRunUsageDocSchema>;
 export type WorkerPairingDoc = z.infer<typeof workerPairingDocSchema>;

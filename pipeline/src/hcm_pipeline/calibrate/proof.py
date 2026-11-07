@@ -119,6 +119,14 @@ def _spread(rows: FloatArray, covered: float, grid: Grid) -> float:
     return float(cv2.contourArea(hull)) / (covered * grid.width * grid.height * grid.resolution**2)
 
 
+def spread_over(proof: Proof, grid: Grid, covered: float) -> float:
+    """The agreeing tiles' hull over a part of what they were measured on: those inside `grid`, over the share of it on film."""
+    held = proof.measured.rows[proof.measured.inliers]
+    box = grid.box()
+    inside = (held[:, 2] >= box.left) & (held[:, 2] <= box.right) & (held[:, 3] >= box.bottom) & (held[:, 3] <= box.top)
+    return _spread(held[inside], covered, grid)
+
+
 def _first_refusal(inliers: int, tried: int, spread: float, covered: float, checked: Checked) -> str | None:
     gates = (
         (inliers >= PROOF_MIN_INLIERS, "few-inliers"),

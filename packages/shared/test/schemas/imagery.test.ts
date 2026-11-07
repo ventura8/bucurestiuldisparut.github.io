@@ -165,6 +165,7 @@ describe('sensors', () => {
             'corona2',
             'corona2',
             'corona2',
+            'corona2',
             'declassii',
             'declassii',
             'declassiii',

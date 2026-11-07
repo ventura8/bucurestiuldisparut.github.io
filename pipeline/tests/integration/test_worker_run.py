@@ -6,6 +6,7 @@ pipeline's own, unchanged.
 """
 
 import hashlib
+import json
 import os
 import shutil
 import time
@@ -14,18 +15,22 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from hcm_pipeline.calibrate import chain
 from hcm_pipeline.contract import Errors
 from hcm_pipeline.m2m import M2MClient, http_client
 from hcm_pipeline.secrets import EmulatorSecrets, usgs_credentials
 from hcm_pipeline.store import DELETE
+from hcm_pipeline.worker.ai_files import AiFiles
 from hcm_pipeline.worker.args import Endpoints, WorkerArgs
 from hcm_pipeline.worker.local_store import DAY_SECONDS
 from hcm_pipeline.worker.loop import Pass
 from hcm_pipeline.worker.worker import Worker
 
+from tests.contracts_loader import record
 from tests.fakes.http import FakeHttpServer, Reply
+from tests.fakes.sidecar import BoxSidecar
 from tests.fakes.worker_api import PROJECT, FakeWorkerApi
-from tests.fakes.world import CITY, ENTITY_ID, JOB_ID, LAYER_ID, OVERPASS_PATH, STAC_PATH, FakeClock, PipelineWorld, dig
+from tests.fakes.world import CITY, ENTITY_ID, JOB_ID, LAYER_ID, OVERPASS_PATH, STAC_PATH, FakeClock, PipelineWorld, dig, small_city
 
 STEPS = ("fetch", "extract", "stitch", "locate", "reference", "georef", "warp", "export", "register")
 VERSION_FILES = ("cog.tif", "preview.png", "reference-osm.png", "reference-s2.jpg", "scan-preview.jpg", "scan.tif", "studio.tif")
@@ -221,3 +226,58 @@ def test_bad_path_a_worker_that_lost_its_job_stops_writing_and_reports_the_end(
     assert "step stitch started" not in world.log_lines()
     assert world.job()["status"] == "running"
     assert api.objects == {}
+
+
+def test_happy_path_the_real_worker_asks_a_sidecar_through_the_box(
+    world: PipelineWorld, api: FakeWorkerApi, tmp_path: Path, built: list[Worker], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P04-HAPPY-WORKER-RUN, S-P07-HAPPY-GPU"""
+    monkeypatch.setenv("HCM_STARTER", "2")
+    monkeypatch.setattr(chain, "MATCHER_PROOF_SIDE_GROUND_M", 20_000.0)
+    local_import(world)
+    small_city(world)
+    root = tmp_path / "ai"
+    (root / "box").mkdir(parents=True)
+    worker = signed_in_worker(world, api, tmp_path / "work", built)
+    assert worker.state.snapshot()["ai"] == {"state": "idle", "wanted": False, "image": None, "files": False}
+    worker.runtime.ai_root = root
+    sidecar = BoxSidecar(root / "box")
+    worker.runtime.ai_sleep = sidecar
+    files = AiFiles(root / "files", worker.client)
+    (root / "files").mkdir()
+    (root / "files" / "ready.json").write_text(json.dumps({"pins": files._stamp()}), encoding="utf-8")
+    # The real pins' weights are not in a test: that the placed ones are hashed each run is `test_ai_files.py`'s.
+    monkeypatch.setattr(AiFiles, "_weights_intact", lambda _self: True)
+
+    assert worker.loop.run_once() is Pass.RAN
+
+    found = record(world.version()["calibration"])
+    assert sidecar.answered
+    assert found["how"] == "matcher"
+    assert record(found["proposer"])["device"] == "gpu"
+    # The panel heard, and the starter can read the device on `/state`.
+    told = [call.data["ai"] for call in api.calls if call.name == "worker-hello" and "ai" in call.data]
+    assert told[0] == {"state": "idle"}
+    assert {"state": "ready", "device": "gpu", "deviceName": "NVIDIA RTX 3080"} in told
+    state = record(worker.state.snapshot()["ai"])
+    # The run is over: `/state` stops saying `wanted`, and the starter removes the sidecar; the panel still reads the device.
+    assert (state["state"], state["wanted"], state["files"], state["device"]) == ("ready", False, True, "gpu")
+    assert not list((root / "box").glob("*.request.npz"))
+    assert (root / "files" / "code" / "matcher" / "serve.py").exists()
+    assert any(line.startswith("local AI (aliked-lightglue, gpu, NVIDIA RTX 3080):") for line in world.log_lines())
+
+
+def test_bad_path_a_worker_under_an_old_starter_goes_to_points_and_says_so(
+    world: PipelineWorld, api: FakeWorkerApi, tmp_path: Path, built: list[Worker], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Scenarios: S-P07-BAD-NO-ANSWER"""
+    monkeypatch.delenv("HCM_STARTER", raising=False)
+    local_import(world)
+    small_city(world)
+    worker = signed_in_worker(world, api, tmp_path / "work", built)
+    assert record(worker.state.snapshot()["ai"])["why"] == "old-starter"
+
+    assert worker.loop.run_once() is Pass.RAN
+
+    assert record(world.version()["calibration"])["how"] == "none"
+    assert any("local AI unavailable (old-starter)" in line for line in world.log_lines())

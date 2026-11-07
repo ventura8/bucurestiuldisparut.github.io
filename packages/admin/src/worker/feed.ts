@@ -27,6 +27,7 @@ import {
     type RunChoiceDoc,
     type RunPlace,
     type SetupStatusView,
+    type WorkerAi,
     type WorkerDoc,
 } from '@hcm/shared';
 
@@ -49,6 +50,8 @@ export interface WorkerSeen {
     readonly outdated: boolean;
     /** Disconnected in the admin (`worker.revoke`). */
     readonly revoked: boolean;
+    /** Its local AI (M10), or null for a worker older than it. */
+    readonly ai: WorkerAi | null;
 }
 
 /** The job of a version's page: where it runs, why it waits, and what a cloud run of it would use. */
@@ -109,7 +112,7 @@ function seenOf(doc: Stored<WorkerDoc>): WorkerSeen {
     const { state, jobId, lastJob, lastSeenAt } = doc.data;
     const last = lastJob === undefined ? null : { id: lastJob.id, outcome: lastJob.outcome, at: isoOf(lastJob.at) };
     const flags = { outdated: doc.data.outdated === true, revoked: doc.data.revokedAt !== undefined };
-    return { id: doc.id, state, seenAt: isoOf(lastSeenAt), jobId: jobId ?? null, lastJob: last, ...flags };
+    return { id: doc.id, state, seenAt: isoOf(lastSeenAt), jobId: jobId ?? null, lastJob: last, ai: doc.data.ai ?? null, ...flags };
 }
 
 /** The jobs the raster pipeline runs, whose place may be the computer or the cloud. */

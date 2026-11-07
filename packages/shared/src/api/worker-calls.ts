@@ -8,6 +8,7 @@ import { z } from 'zod';
 
 import { idSchema } from '../schemas/primitives.js';
 import { cityIdSchema } from '../schemas/paths.js';
+import { workerAiSchema } from '../schemas/worker.js';
 import { JOB_STATUSES, WORKER_ID_PATTERN } from '../schemas/firestore-ops.js';
 import { isoTimeSchema } from './common.js';
 import type { CallableSpec, WorkerCallableName } from './registry.js';
@@ -41,6 +42,8 @@ export const workerHelloRequestSchema = z.strictObject({
     workerId: workerIdSchema,
     version: versionSchema,
     image: digestSchema.optional(),
+    /** Its local AI's state (M10): said again whenever it changes. */
+    ai: workerAiSchema.optional(),
 });
 export const workerHelloResponseSchema = z.strictObject({
     pollSeconds: z.number().int().min(1),

@@ -42,8 +42,9 @@ SCORE_RESOLUTION_M: Final = 60.0
 # A crop narrower or shorter than this many pixels misses the window.
 MIN_CROP_PX: Final = 2
 # An assignment whose ground pixel is longer one way than the other by more than this many times the best-shaped
-# assignment's is not scored: a quarter turn of a 1:12 strip stretches its pixels about 140 times.
-MAX_ANISOTROPY: Final = 3.0
+# assignment's is not scored: a quarter turn of a 1:12 strip stretches its pixels about 140 times, of the real KH-7 strip 1:2.25 about
+# 4 times where its true orientation reads 1.3, which 3 times let through: eight orientations to search instead of four.
+MAX_ANISOTROPY: Final = 2.5
 # Whether a frame reaches the window: over the window widened on every side by this share of its size, or by the sensor's search range
 # on the ground when that is more (a town's own size is no measure of the metadata's error), film over at least this share of the
 # window widened by `REACH_MARGIN` alone.

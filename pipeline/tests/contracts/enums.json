@@ -130,6 +130,14 @@
             "maxzoom": 16,
             "machine": "std"
         },
+        "KH-5": {
+            "dataset": "corona2",
+            "name": "KH-5 Argon",
+            "resolutionM": 140,
+            "minzoom": 8,
+            "maxzoom": 12,
+            "machine": "std"
+        },
         "KH-7": {
             "dataset": "declassii",
             "name": "KH-7 Gambit",

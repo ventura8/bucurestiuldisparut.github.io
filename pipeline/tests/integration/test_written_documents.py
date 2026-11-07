@@ -25,13 +25,15 @@ from pathlib import Path
 from typing import Final
 
 import pytest
+from hcm_pipeline.calibrate.ports import Proposer
 from hcm_pipeline.contract import Errors
 from hcm_pipeline.model import contract_json
 
 from tests.contracts_loader import CONTRACTS, golden, record, records
 from tests.fakes.documents import MemoryStore
 from tests.fakes.http import Reply
-from tests.fakes.world import CITY, ENTITY_ID, OVERPASS_PATH, PipelineWorld, dig
+from tests.fakes.sidecar import TrueProposer, truth_matrix
+from tests.fakes.world import CITY, ENTITY_ID, OVERPASS_PATH, PipelineWorld, dig, small_city
 from tests.integration.joining import JOB, Frame, run_join, seed_frames
 from tests.integration.matching import seed_matching, uniform
 from tests.synthetic.scenes import Scene, overpass_answer, render_world, write_sentinel2
@@ -232,6 +234,15 @@ def city_off_frame(world: PipelineWorld, _tmp: Path) -> None:
     assert "scan" not in world.version()
 
 
+def found_by_local_ai(world: PipelineWorld, _tmp: Path) -> None:
+    """A frame only a matcher's proposal proved (M10): `calibration.proposer`, on the processor after the graphics card's memory ran out."""
+    world.seed_import()
+    named = Proposer("aliked-lightglue", "cpu", 40.5, 46, "NVIDIA RTX 3080", "out-of-memory")
+    world.matcher = TrueProposer(truth_matrix(world.scene.truth), named)
+    small_city(world)
+    world.run()
+
+
 def _join_frames(world: PipelineWorld, tmp: Path, apart_m: float = 0.0) -> None:
     """Two frames of one date over the scene's own ground, `apart_m` from each other."""
     size = (500, 400)
@@ -266,6 +277,7 @@ PATHS: Final[dict[str, Callable[[PipelineWorld, Path], None]]] = {
     "corners-far-off": corners_far_off,
     "weak-guess": weak_guess,
     "city-off-frame": city_off_frame,
+    "found-by-local-ai": found_by_local_ai,
     "joined-frames": joined_frames,
     "join-too-far": join_too_far,
 }
@@ -298,7 +310,8 @@ def nearest_difference(written_shape: Shape, known: set[Shape]) -> list[str]:
 @pytest.mark.parametrize("name", list(PATHS))
 def test_happy_path_each_path_writes_only_documents_of_a_known_shape(name: str, recorded: dict[str, Recorded]) -> None:
     """Scenarios: S-P01-HAPPY-WRITTEN-CONTRACT, S-P01-BAD-WRITTEN-PARAMS, S-P01-HAPPY-KH9-STRIP, S-P01-BAD-CITY-NOT-FOUND
-    Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS, S-P01-BAD-CITY-OFF-FRAME, S-P05-HAPPY, S-P05-BAD-TOO-FAR"""
+    Scenarios: S-P01-BAD-WEAK-GUESS-TO-POINTS, S-P01-BAD-CITY-OFF-FRAME, S-P05-HAPPY, S-P05-BAD-TOO-FAR
+    Scenarios: S-P07-HAPPY-SMALL-WINDOW"""
     known = known_shapes()
 
     unknown = [

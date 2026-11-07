@@ -32,12 +32,30 @@ export type SceneFields = Pick<
 const CAMERA_FIELD = 'Camera Type';
 
 /** Each dataset's cameras by how the metadata spells them, and the camera when it says none. */
-const CAMERAS: Readonly<Record<UsgsDataset, { readonly patterns: readonly (readonly [RegExp, Sensor])[]; readonly fallback: Sensor }>> = {
+const CAMERAS: Readonly<
+    Record<
+        UsgsDataset,
+        {
+            readonly patterns: readonly (readonly [RegExp, Sensor])[];
+            /** What a frame's id says when the metadata does not: a real Argon frame, DS09065A089MC039, fell through to KH-4A. */
+            readonly ids: readonly (readonly [RegExp, Sensor])[];
+            readonly fallback: Sensor;
+        }
+    >
+> = {
     corona2: {
         patterns: [
             [/KH-?4B/i, 'KH-4B'],
             [/KH-?4A/i, 'KH-4A'],
             [/KH-?4(?![A-Z])/i, 'KH-4'],
+            [/KH-?5|ARGON/i, 'KH-5'],
+        ],
+        // Mission numbers: Argon 9xxxA (MC, its mapping camera), KH-4B 11xx, KH-4A 10xx, KH-4 9xxx.
+        ids: [
+            [/^DS0*9\d{3}A\d+MC\d+$/i, 'KH-5'],
+            [/^DS0*11\d{2}/i, 'KH-4B'],
+            [/^DS0*10\d{2}/i, 'KH-4A'],
+            [/^DS0*9\d{3}/i, 'KH-4'],
         ],
         fallback: 'KH-4A',
     },
@@ -46,17 +64,24 @@ const CAMERAS: Readonly<Record<UsgsDataset, { readonly patterns: readonly (reado
             [/KH-?7/i, 'KH-7'],
             [/KH-?9/i, 'KH-9-mapping'],
         ],
+        // H: the high-resolution KH-7, L: the lower-resolution KH-9 mapping camera.
+        ids: [
+            [/^DZB[\d-]+H\d+$/i, 'KH-7'],
+            [/^DZB[\d-]+L\d+$/i, 'KH-9-mapping'],
+        ],
         fallback: 'KH-9-mapping',
     },
-    declassiii: { patterns: [], fallback: 'KH-9-pan' },
+    declassiii: { patterns: [], ids: [], fallback: 'KH-9-pan' },
 };
 
 const CORNERS = ['nw', 'ne', 'se', 'sw'] as const;
 
-function sensorOf(dataset: UsgsDataset, metadata: Readonly<Record<string, string>>): Sensor {
-    const camera = metadata[CAMERA_FIELD] ?? '';
+function sensorOf(dataset: UsgsDataset, record: Pick<SceneRecord, 'entityId' | 'metadata'>): Sensor {
+    const camera = record.metadata[CAMERA_FIELD] ?? '';
     const cameras = CAMERAS[dataset];
-    return cameras.patterns.find(([pattern]) => pattern.test(camera))?.[1] ?? cameras.fallback;
+    const named =
+        cameras.patterns.find(([pattern]) => pattern.test(camera)) ?? cameras.ids.find(([pattern]) => pattern.test(record.entityId));
+    return named?.[1] ?? cameras.fallback;
 }
 
 /** A metadata number, or undefined when the field is missing or not a number in range. */
@@ -99,7 +124,7 @@ export function sceneFields(record: SceneRecord, dataset: UsgsDataset, bounds: B
     if (!isId(record.entityId) || footprint === undefined) {
         return undefined;
     }
-    const sensor = sensorOf(dataset, record.metadata);
+    const sensor = sensorOf(dataset, record);
     const corners = cornersOf(record.metadata);
     const optional = { displayId: displayIdOf(record), corners, cloudCover: cloudOf(record.cloudCover) };
     return {

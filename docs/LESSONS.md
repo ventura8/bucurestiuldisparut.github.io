@@ -2291,3 +2291,50 @@ Append a numbered entry to *Lessons from this repository* in the task that finds
     - Found by: the real functions on a frame at Suva, and a sweep of the live catalog at latitudes 5, 8, 14 and 44.4.
     - Fix and pin: S-P01-HAPPY-ANTIMERIDIAN, S-P01-BAD-FOOTPRINT-HOLE, S-P01-HAPPY-TWO-DATES, S-P06-BAD-FEW-PAIRS-FIGURE. Real frames far from Bucharest are still owed (M9 §14).
     - **A claim about the whole Earth needs a test at its edges, not a bigger table at one place.**
+
+378. **A label that fell through, and a rectangle that was a parallelogram.**
+    - Seen: 2026-11-07, the first real frames of other cameras: DS09065A089MC039 was read as a 2.75 m KH-4A where it is a 140 m KH-5 Argon; the 1966 KH-7 strip got no vote at any scale, though a proof started by hand held it at 519 of 678 tiles.
+    - Cause: `sensorOf` has a fallback for a camera field it cannot read, and nothing said so; the corner homography took the metadata's rectangle for the film, 10 degrees off in shear, where a 64-cell tile cannot follow, and the range marked UNVERIFIED was the wrong dimension, not only the wrong number.
+    - Found by: looking at the previews and reading the frame by eye before tuning anything, then the proof from a hand start, then the true affine under the votes: each step said which layer was at fault.
+    - Fix and pin: the id names the camera (S-A11-HAPPY-CAMERA-FROM-ID), `SearchRange.shears_deg` (S-P06-HAPPY-SHEARED-STRIP, S-P06-BAD-SHEAR-FALSE), a frame no proof holds is refused (S-P06-BAD-COARSE-FILM). M9 §14.
+    - **Before widening a search, find out on a real frame which dimension it is missing.**
+
+379. **Code that runs under another Python, formatted for this one.**
+    - Seen: 2026-11-07, the first run of the local matcher's sidecar on its real image: `SyntaxError: multiple exception types must be parenthesized`, on a line whose tests were green.
+    - Cause: the repository's ruff target is Python 3.14, where `except A, B:` is legal and ruff writes it so; the sidecar's image runs 3.12. mypy, ruff, the tests and coverage all ran under 3.14. An unquoted annotation naming its own class would have failed the same way.
+    - Found by: running the real container once, with a real request, though no gate needs it (`docs/research/M10-local-ai.md` *What ran on real hardware*). That run also gave the only real figures on VRAM and idle memory.
+    - Fix and pin: the two exception types are a named tuple; `Self`; `test_matcher_box.py` parses each sidecar file with `feature_version=(3, 12)` and checks annotations in definition order (S-P07-HAPPY-GPU).
+    - **What runs under another interpreter gets a test of that interpreter's grammar, and one real run: fakes do not parse your source for you.**
+380. **A second scale for the votes took the matcher's only start away from it.**
+    - Seen: 2026-11-07, the first run of the whole local AI on a real frame (F006, the Fetești window): the sidecar on the graphics card, four requests, 190 s, no proposal, `how: none`, where gate R1 had proved it.
+    - Cause: `_ranked_starts` took "the sensor's scale nearest 1". When KH-9-pan's scales became `(1.0, 0.94)` for the short films, that scale moved from R1's 0.94 to 1.0, and a full sweep's film at 1.0 is 4 to 9 % too large: the same search finds nothing there. Every test ran with a fake matcher, and the real-hardware check of the sidecar replayed R1's prepared requests, so neither saw the start.
+    - Found by: rehearsing the starter's loop, `warp_start` and `find_frame` end to end on real film (`docs/research/M10-local-ai.md` *The whole chain on a real frame*).
+    - Fix and pin: the request starts each orientation at each of the sensor's scales, the model's own first; the processor keeps two orientations, at each scale (`test_matcher_chain.py`, `test_local_matcher.py`, S-P07-HAPPY-GPU, S-P07-HAPPY-CPU-FALLBACK).
+    - **A measured result holds for the inputs it measured: when a setting changes under it, run the measurement again through the path that builds those inputs, not a replay of the old ones.**
+381. **A pull at every start, for an image already on the computer.**
+    - Seen: 2026-11-07, the same rehearsal: the starter said "first use: about 10 GB to fetch" with the image present, and it says so again at every start of its loop. Reading why: `ai_pull` runs `docker pull` at each start, so a computer offline, or Docker Hub refusing, would have stood the sidecar aside (`why: pull`) with a working image in Docker's store.
+    - Found by: reading the real starter's log. The failing case itself, offline with the image present, did not run for real.
+    - Fix and pin: `docker image inspect` first; an image already here is used as it is, with no pull and no disk check (`functions/test/worker/starter.test.ts`, S-P07-HAPPY-GPU; the `.bat` the same, text only).
+    - **A step meant for the first use asks whether it is the first use.**
+382. **A line copied from the shell starter stopped every Windows worker.**
+    - Seen: 2026-11-07, review of the local AI's starter files: `$word = "printf '{\"state\"...` in `hcm-worker.bat`. A backslash escapes nothing in PowerShell, so the string ended at the first quote, and `[scriptblock]::Create` refused the whole file: no install, no supervisor, no removal. Under it, `probe gpu ""`: Windows PowerShell 5.1 drops an empty argument to a native command, so the probe exited 78 and every working card read as no card.
+    - Cause: the line and the call were carried over from `hcm-worker.sh`, where both are right. The test counted brackets: the quality image has no PowerShell, and M10 had written down "text assertions only".
+    - Found by: a review running the real parser (`pwsh`, `Parser::ParseFile`) on the part after `#PS-BEGIN`, and `$PSNativeCommandArgumentPassing = 'Legacy'` for what 5.1 does to arguments.
+    - Fix and pin: the quotes in octal, a word for the empty reason; `functions/test/worker/starter-windows.test.ts`, a reader of the file's strings, and no empty or quoted argument to `docker` (S-P07-HAPPY-WINDOWS-STARTER, S-P07-BAD-WINDOWS-STARTER).
+    - **A file a gate cannot run still gets a gate that reads its grammar: "text assertions only" means the worst bug in it is a typo nobody will see. And a shell's quoting does not cross to another shell by copying a line.**
+383. **A supervisor that waited on what it supervised.**
+    - Seen: 2026-11-07, the same review: `ai_run` ran the sidecar in the foreground of the loop meant to watch `/state`. A healthy sidecar never ends, so a new `pins.json` image went unseen until a reboot while the new code ran under the old Python, a processor sidecar was never probed again, a hung one was never removed, and each frame then waited its 30 minutes. A run that ended left `wanted` true, so a sidecar that exited was started again for nobody.
+    - Found by: reading the blocking call; a stand-in of `docker` with a sidecar that holds confirmed that `/state` was not polled until it ended. Every test had a sidecar that ended at once.
+    - Fix and pin: the sidecar beside the loop and only while wanted, `wanted` false however a run ends, `Patience` across runs, SIGTERM handled by the sidecar's PID 1 (S-P07-HAPPY-SIDECAR-WHILE-WANTED, S-P07-BAD-SIDECAR-HUNG).
+    - **Whatever is meant to notice a change must not be blocked on the thing that changes. And a fake that ends at once cannot show that a real one never does.**
+384. **"Never a failed job", held by two `except` lines.**
+    - Seen: 2026-11-07, the same review. `propose` caught its own two errors only: a full disk, a volume that refuses, `cv2.error`, an answer of `{"device": []}` (unhashable in `value in frozenset`) or a number of 400 digits (`OverflowError`) failed the whole job. One lost request also threw away the proposals already answered, and a child's own word, `tampered`, was overwritten by its exit code and read as "a bad answer".
+    - Found by: injecting those inputs into the real code; `chain`, `gdal_step` and `locate` had no catch either, so `runner.py` ended the job with `INTERNAL`. The tests covered every failure anybody had named.
+    - Fix and pin: anything but the run's own stop stands aside, with its class in the log; lost requests cost themselves; validation asks a value's type before it asks a set (S-P07-BAD-LOCAL-FAULT, S-P07-BAD-LOST-REQUEST, S-P07-BAD-NO-ANSWER, S-P07-BAD-TAMPERED-FILE).
+    - **A promise of the form "every failure ends here" lives at one boundary that lets through only what must pass, not in a list of failures somebody thought of.**
+385. **A proof over more ground than the city spoke for all of the city.**
+    - Seen: 2026-11-07, the same review: a proposal proved over a 30 km box records `measuredPct` from the spread over that box, so tiles agreeing in one corner of a small town read as 85, past the 70 that lets a version publish itself. Then `how: matcher` kept the proof's "Measured error 18.8 m" on the card for a fit whose own error was 60 m.
+    - Cause: widening the proving ground (M10) moved what the figure's denominator meant, and the figure kept its name. No gate moved, so every gate's test stayed green.
+    - Found by: following `measuredPct` from `proof._spread` to `approval.ts`; a simulated corner of a town confirmed it (S-P07-BAD-WIDE-SPREAD, S-P07-BAD-MATCHER-FIGURES). A real frame in that state was not observed.
+    - Fix and pin: the window's own figure for a wide proof; figures of another map no longer recorded for this fit, so the card has none to show.
+    - **When a measurement's ground changes, follow every reader of its result: a figure is true only of what it was measured over.**

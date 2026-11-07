@@ -56,6 +56,31 @@ describe('the worker callables (§2.4)', () => {
     });
 });
 
+describe('the local AI on a worker (docs/research/M10-local-ai.md)', () => {
+    const worker = { uid: 'owner-uid', version: '0.7.0', startedAt: AT, lastSeenAt: AT, state: 'idle', ...STAMP };
+
+    it('happyPath_aDeviceOrAReasonValidates @S-A68-HAPPY-DEVICE-SHOWN', () => {
+        for (const ai of [
+            { state: 'idle' },
+            { state: 'ready', device: 'gpu', deviceName: 'NVIDIA RTX 3080' },
+            { state: 'unavailable', why: 'old-starter' },
+        ]) {
+            expect(workerDocSchema.safeParse({ ...worker, ai }).success).toBe(true);
+        }
+    });
+
+    it('badPath_anUnknownStateDeviceOrReasonIsRefused @S-A68-BAD-AI-UNAVAILABLE', () => {
+        for (const ai of [
+            { state: 'asleep' },
+            { state: 'ready', device: 'tpu' },
+            { state: 'unavailable', why: 'because' },
+            { state: 'idle', more: 1 },
+        ]) {
+            expect(workerDocSchema.safeParse({ ...worker, ai }).success).toBe(false);
+        }
+    });
+});
+
 describe('the M7 documents (§8)', () => {
     it('happyPath_aWorkerItsCitysChoiceAndTheMonthsUseValidate', () => {
         const worker = { uid: 'owner-uid', version: '0.7.0', startedAt: AT, lastSeenAt: AT, state: 'busy', jobId: 'job-1', ...STAMP };

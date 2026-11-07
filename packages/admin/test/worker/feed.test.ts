@@ -261,6 +261,27 @@ describe('the local worker feed: pairing, progress and Disconnect (findings 66-6
         feed.stop();
     });
 
+    it('happyPath_itReadsWhatTheWorkerSaidOfItsLocalAi @S-A68-HAPPY-DEVICE-SHOWN', async () => {
+        const world = contentWorld();
+        world.callables.answer('setup.status', () => status());
+        const ai = { state: 'ready', device: 'gpu', deviceName: 'NVIDIA RTX 3080' } as const;
+        world.store.docs.set(FIRESTORE_PATHS.worker(CITY, WORKER), workerDoc(before(world, 10), { ai }));
+        const { feed } = feedOf(world);
+        await settle();
+
+        expect(feed.state.worker?.ai).toEqual(ai);
+    });
+
+    it('badPath_aWorkerOlderThanTheAiHasNone @S-A68-BAD-AI-UNAVAILABLE', async () => {
+        const world = contentWorld();
+        world.callables.answer('setup.status', () => status());
+        world.store.docs.set(FIRESTORE_PATHS.worker(CITY, WORKER), workerDoc(before(world, 10)));
+        const { feed } = feedOf(world);
+        await settle();
+
+        expect(feed.state.worker?.ai).toBeNull();
+    });
+
     it('happyPath_disconnectRevokesTheSeenWorker @S-A62-HAPPY-DISCONNECT', async () => {
         const world = contentWorld();
         world.callables.answer('setup.status', () => status());

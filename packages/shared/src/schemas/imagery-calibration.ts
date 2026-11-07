@@ -47,9 +47,24 @@ export const calibrationModelSchema = z.strictObject({
     dyM: z.number(),
 });
 
+/** What the local matcher ran on (`docs/research/M10-local-ai.md`). */
+export const PROPOSER_DEVICES = ['gpu', 'cpu'] as const;
+
+/** Who proposed the place a proof then held: shown to the admin, read by no gate. `support` is the matcher's own count. */
+export const calibrationProposerSchema = z.strictObject({
+    name: z.string().regex(/^[a-z0-9-]{1,40}$/),
+    device: z.enum(PROPOSER_DEVICES),
+    deviceName: z.string().min(1).max(120).optional(),
+    seconds: metres,
+    support: count,
+    /** Why not the graphics card: there is none, or it ran out of memory and this request ran again on the processor. */
+    fallback: z.enum(['no-gpu', 'out-of-memory']).optional(),
+});
+
 export const calibrationSchema = z.strictObject({
     how: z.enum(CALIBRATION_HOWS),
     model: calibrationModelSchema.optional(),
+    proposer: calibrationProposerSchema.optional(),
     votes: z.strictObject({ agreed: count, tiles: count }).optional(),
     /** The proof's tiles: `{agreed} of {tried}` agree. */
     tiles: z.strictObject({ agreed: count, tried: count }).optional(),

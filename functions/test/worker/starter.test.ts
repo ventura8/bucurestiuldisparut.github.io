@@ -13,25 +13,20 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { WORKER_OSES, WORKER_OUTDATED_EXIT, type WorkerOs } from '@hcm/shared';
+import { WORKER_OSES, WORKER_OUTDATED_EXIT } from '@hcm/shared';
 import { describe, expect, it } from 'vitest';
 
 import { createDiskStarterTemplates } from '../../src/adapters/starter-templates.js';
 import { handleStarterRequest, serveStarters, type StarterDeps } from '../../src/worker/starter.js';
 import { recordingLogger } from '../support/fakes.js';
+import { CITY, starterFile as file, TEMPLATES } from '../support/starter-file.js';
 
-const TEMPLATES = new URL('../../../packages/admin/starter/', import.meta.url);
-const CITY = 'bucharest';
 const DIGEST = 'e2'.repeat(32);
 
 function deps(starters = createDiskStarterTemplates(TEMPLATES)) {
     const { log, recording } = recordingLogger();
     const world: StarterDeps = { log, starters, config: { projectId: 'demo-hcm' } as StarterDeps['config'] };
     return { deps: world, recording };
-}
-
-async function file(os: WorkerOs, action: 'install' | 'uninstall') {
-    return handleStarterRequest(deps().deps, { method: 'GET', query: { city: CITY, os, action } });
 }
 
 function count(text: string, character: string): number {
@@ -182,8 +177,8 @@ async function supervise(code: number): Promise<{ readonly output: string; reado
     const tools: Readonly<Record<string, string>> = {
         curl: `printf '%s' '{"result":{"image":"us-central1-docker.pkg.dev/demo-hcm/hcm/pipeline@sha256:${DIGEST}"}}'`,
         docker: `[ "$1" = run ] && { echo run >>"${log}"; exit ${String(code)}; }\nexit 0`,
-        // The fourth wait ends the supervisor (its parent shell), as a stop of the service would.
-        sleep: `echo "sleep $1" >>"${log}"\n[ "$(grep -c sleep "${log}")" -ge 4 ] && kill -9 "$PPID"\nexit 0`,
+        // The fourth wait ends the supervisor (its parent shell), as a stop of the service would; the sidecar's loop beside it waits apart.
+        sleep: `[ "$1" = 20 ] && exec /bin/sleep 0.05\necho "sleep $1" >>"${log}"\n[ "$(grep -c sleep "${log}")" -ge 4 ] && kill -9 "$PPID"\nexit 0`,
     };
     for (const [name, body] of Object.entries(tools)) {
         writeFileSync(join(bin, name), `#!/bin/sh\n${body}\n`);

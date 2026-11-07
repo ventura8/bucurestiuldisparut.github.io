@@ -26,7 +26,16 @@ function howKey(how: Exclude<CalibrationHow, 'none'>): AdminContentKey {
         : 'adminContent.imagery.calibration.how.votes';
 }
 
-/** Each figure the block has, in words. */
+/** The heading: the local AI proposed this place (M10), on which device; `georef`'s matcher may have fitted it since, the proof stands. */
+function howText(locale: Locale, { how, proposer }: Calibration & { readonly how: Exclude<CalibrationHow, 'none'> }): string {
+    if (proposer === undefined || (how !== 'local-ai' && how !== 'matcher')) {
+        return contentText(locale, howKey(how));
+    }
+    const device = proposer.deviceName ?? contentText(locale, 'adminContent.imagery.calibration.device.cpu');
+    return contentText(locale, 'adminContent.imagery.calibration.how.localAi', { device });
+}
+
+/** Each figure the block has, in words: `georef`'s matcher, having fitted a frame, leaves it none of the proof's (`georef.py`). */
 function facts(locale: Locale, { tiles, crossValidatedM }: Calibration, covered: number | undefined): readonly string[] {
     return [
         ...(tiles === undefined
@@ -59,7 +68,7 @@ export function calibrationCard(locale: Locale, version: VersionViewPort): Templ
         }
         const covered = version.output?.coveragePct ?? calibration.coveredPct;
         return html`<section class="card" data-calibration=${how}>
-            <h3 data-how>${contentText(locale, howKey(how))}</h3>
+            <h3 data-how>${howText(locale, { ...calibration, how })}</h3>
             ${facts(locale, calibration, covered).map((fact) => html`<p class="note">${fact}</p>`)}
         </section>`;
     });

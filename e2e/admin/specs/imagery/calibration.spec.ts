@@ -53,6 +53,28 @@ test(
 );
 
 test(
+    'A frame the local AI proposed says on which graphics card, and that the proof held it',
+    { tag: '@S-A68-HAPPY-DEVICE-SHOWN' },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        test.setTimeout(420_000);
+        const fixtures = { emulators: adminWorld.emulators, api: mockApiRequest, upstream };
+        const imagery = await readyImagery(fixtures, adminWorld.accounts.owner.uid);
+        const proposer = { name: 'aliked-lightglue', device: 'gpu', deviceName: 'NVIDIA RTX 3080', seconds: 31, support: 46 } as const;
+        await imagery.script({ attempts: [{ outcome: 'over', calibration: { ...PROVED, how: 'local-ai', proposer }, coveragePct: 96 }] });
+
+        await importFromList(page, lang, SCENE);
+
+        await expect(versionState(page, lang, 'adminContent.imagery.version.awaitingApproval')).toBeVisible({
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        const block = detail(page).locator('[data-calibration="local-ai"]');
+        await expect(block).toContainText(imageryText(lang, 'adminContent.imagery.calibration.how.localAi', { device: 'NVIDIA RTX 3080' }));
+        await expect(block).toContainText(imageryText(lang, 'adminContent.imagery.calibration.tiles', { agreed: '712', tried: '946' }));
+        await expectStateSound(page, adminVisit('imagery.version-local-ai', lang));
+    },
+);
+
+test(
     'A frame nothing found asks for a few rough points',
     { tag: '@S-A67-BAD-NOT-FOUND' },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {

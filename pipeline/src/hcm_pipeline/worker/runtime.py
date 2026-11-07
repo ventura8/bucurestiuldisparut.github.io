@@ -7,8 +7,10 @@ under `--emulators`, sealed to this machine). The steps are the pipeline's own, 
 arm on this computer: `sweep` does its work for what a failed or waiting import leaves in the work folder.
 """
 
+import os
 import time
 from collections.abc import Callable, Mapping
+from pathlib import Path
 from typing import Final
 
 import httpx
@@ -22,9 +24,12 @@ from hcm_pipeline.secrets import SecretUnavailableError
 from hcm_pipeline.services import delivery_client, emulated_guard, guarded, http
 from hcm_pipeline.stac import StacClient
 from hcm_pipeline.urlguard import resolve
+from hcm_pipeline.worker.ai_files import AiFiles, ai_client
+from hcm_pipeline.worker.ai_state import AiState
 from hcm_pipeline.worker.api import WorkerApi
 from hcm_pipeline.worker.args import WorkerArgs
 from hcm_pipeline.worker.documents import ApiDocumentStore, JobIds
+from hcm_pipeline.worker.local_matcher import LocalMatcher, Patience, Ports
 from hcm_pipeline.worker.local_store import LocalObjectStore
 from hcm_pipeline.worker.m2m_proxy import ProxyM2MSession
 from hcm_pipeline.worker.routed import RoutedObjectStore
@@ -33,6 +38,8 @@ from hcm_pipeline.worker.state import WorkerState
 
 LEASE_PREFIX: Final = "worker:"
 EXECUTION: Final = "worker"
+# Mounted by the starter file (`-v hcm-ai-files:/ai/files -v hcm-ai-box:/ai/box`): empty folders of the image otherwise.
+AI_ROOT: Final = Path("/ai")
 StepsFactory = Callable[[], Mapping[str, JobStep]]
 
 
@@ -74,6 +81,10 @@ class WorkerRuntime:
     def __init__(self, args: WorkerArgs, api: WorkerApi, worker_id: str, state: WorkerState, steps: StepsFactory) -> None:
         # What the sweep measures the work folder's ages with (tests give a controlled clock).
         self.clock: Callable[[], float] = time.time
+        # Where the matcher's volumes lie, and who hears of its state (`PageActions.announce_ai`: `worker.py`).
+        self.ai_root = AI_ROOT
+        self.announce_ai: Callable[[AiState], None] = state.set_ai
+        self.ai_sleep: Callable[[float], None] = time.sleep
         self._args = args
         self._api = api
         self._worker_id = worker_id
@@ -81,6 +92,8 @@ class WorkerRuntime:
         self._steps = steps
         self._signed = signed_client(args.emulators)
         self._http = http()
+        self._ai_client = ai_client()
+        self._ai_patience = Patience()
 
     def services(self, config: Config) -> Services:
         ids = JobIds(config.city_id, self._worker_id, config.job_id)
@@ -99,6 +112,14 @@ class WorkerRuntime:
             clock=time.time,
             sleep=time.sleep,
             resolver=resolve,
+            proposal_matcher=self._matcher(),
+        )
+
+    def _matcher(self) -> LocalMatcher:
+        """Only here does a run get a matcher: Cloud Run's `services.build` keeps `NullProposalMatcher` (M10)."""
+        files = AiFiles(self.ai_root / "files", self._ai_client)
+        return LocalMatcher(
+            Ports(self.ai_root / "box", files, self.announce_ai, os.environ, sleep=self.ai_sleep, patience=self._ai_patience)
         )
 
     def sweep(self, claimed_job: str | None) -> None:
@@ -109,6 +130,7 @@ class WorkerRuntime:
     def close(self) -> None:
         self._signed.close()
         self._http.close()
+        self._ai_client.close()
 
     def run(self, job_id: str, asked_to_stop: Callable[[], bool]) -> RunOutcome:
         """The job's run; it stops at its next checkpoint once `asked_to_stop` (the loop's signal) says so."""

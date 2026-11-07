@@ -736,6 +736,20 @@
             "name": "How a frame was found, and why it waits",
             "milestone": "M9",
             "source": "docs/research/M9-calibration.md §2, §8 (the owner, 2026-11-06)"
+        },
+        {
+            "id": "P07",
+            "area": "pipeline",
+            "name": "The local matcher proposes, the proof decides",
+            "milestone": "M10",
+            "source": "docs/research/M10-local-ai.md (the owner, 2026-11-06)"
+        },
+        {
+            "id": "A68",
+            "area": "admin",
+            "name": "What the local AI ran on, or why it cannot",
+            "milestone": "M10",
+            "source": "docs/research/M10-local-ai.md (the owner, 2026-11-06)"
         }
     ],
     "scenarios": [
@@ -4203,6 +4217,28 @@
             "tier": "functions",
             "status": "exists",
             "notes": "Round of 2026-11-06. In functions/test/imagery/search.test.ts; every other sensor in packages/shared/test/imagery/coverage.test.ts."
+        },
+        {
+            "id": "S-A11-HAPPY-CAMERA-FROM-ID",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "happy",
+            "title": "A frame's id names its camera when the metadata does not",
+            "asserts": "DS09065A089MC039 -> KH-5 Argon at 140 m, not KH-4A; DS11xx KH-4B, DS10xx KH-4A, DS9xxx KH-4, DZB...H KH-7, DZB...L KH-9 mapping; metadata saying ARGON too",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §14. In functions/test/imagery/scene-record.test.ts."
+        },
+        {
+            "id": "S-A11-BAD-CAMERA-UNKNOWN-ID",
+            "behaviour": "A11",
+            "area": "admin",
+            "path": "bad",
+            "title": "The metadata outranks the id, and an unknown id keeps the dataset's camera",
+            "asserts": "Camera Type KH-4A on a DS11xx id -> KH-4A; an id of no known form -> the dataset's fallback, as before: KH-6 Lanyard ids are not told apart yet",
+            "tier": "functions",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §14. In functions/test/imagery/scene-record.test.ts."
         },
         {
             "id": "S-A11-HAPPY-SAME-DATE-RANK",
@@ -11025,6 +11061,50 @@
             "notes": "docs/research/M9-calibration.md §2, §9. Test: pipeline/tests/unit/test_calibrate_votes.py; real frames in §14."
         },
         {
+            "id": "S-P06-HAPPY-SHEARED-STRIP",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A strip lying as a parallelogram is found under its shear and proved",
+            "asserts": "a film whose short side lies 9 degrees off the rectangle of its corners, its corners kilometres off -> a warp at a searched shear agrees and the proof holds it within 25 m; the shear keeps the long side and the window's centre under every orientation; a 1:2.25 strip searches 4 orientations, not 8; the real KH-7 frame's place lies inside its search range",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §14. Test: pipeline/tests/unit/test_calibrate_cameras.py. One real frame only: DZB00403000026H017001."
+        },
+        {
+            "id": "S-P06-BAD-SHEAR-FALSE",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "More shears over another place prove nothing",
+            "asserts": "the same film over a reference of another place, searched at three shears -> no proof, how none: more warps are more chances, and the proof still decides",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §14. Test: pipeline/tests/unit/test_calibrate_cameras.py."
+        },
+        {
+            "id": "S-P06-HAPPY-FOOTPRINT-ONLY",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A frame with no corners stands on its footprint",
+            "asserts": "no corners, a footprint standing on one of its own corners (the real KH-5 frame) -> its extremes in north-west-first order, all 8 orientations searched, the frame's pixel from them (58.5 m); a film turned 40 degrees is found and proved through them",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §14. Test: pipeline/tests/unit/test_calibrate_cameras.py."
+        },
+        {
+            "id": "S-P06-BAD-COARSE-FILM",
+            "behaviour": "P06",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A film far coarser than its pixels is refused, never proved",
+            "asserts": "a film holding only what a 140 m camera holds -> how none, no proof, no exception, so the admin's points are next; KH-5 is a camera of its own at 140 m",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M9-calibration.md §14: the real DS09065A089MC039 refuses the same way. Test: pipeline/tests/unit/test_calibrate_cameras.py."
+        },
+        {
             "id": "S-P06-BAD-NORTH-SOUTH-STRIP",
             "behaviour": "P06",
             "area": "pipeline",
@@ -11033,7 +11113,7 @@
             "asserts": "a 22 by 200 km strip running north-south, 333,000 px wide -> the frame's pixel is its long side over the film's, about 0.83 Mercator metres, not the short edge's 0.09, so the votes' preview is not shrunk ten times too far; an east-west KH-9 strip reads what it always did",
             "tier": "e2e-pipeline",
             "status": "exists",
-            "notes": "docs/research/M9-calibration.md §2. Test: pipeline/tests/unit/test_corners.py. KH-7's delivery is unverified: no KH-7 frame has run."
+            "notes": "docs/research/M9-calibration.md §2. Test: pipeline/tests/unit/test_corners.py. The real KH-7 strip (§14) runs north-south and reads its pixel this way."
         },
         {
             "id": "S-P06-BAD-REPEATING-PATTERN",
@@ -11144,6 +11224,237 @@
             "tier": "functions",
             "status": "exists",
             "notes": "M9 (docs/research/M9-calibration.md §5). Tests: packages/shared/test/imagery/join.test.ts, functions/test/imagery/join-plan.test.ts."
+        },
+        {
+            "id": "S-P07-HAPPY-GPU",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A frame the votes miss is proposed by the AI on the graphics card and proved by the same proof",
+            "asserts": "the votes find nothing, a matcher's map arrives -> `how: local-ai`, `calibration.proposer` names the graphics card, the matcher's count stays out of the votes and of every gate; the worker warps the film through each orientation's start at 15 m and asks one at a time through the box; the sidecar's search takes the consensus of tile pairs (fake network of real keypoints); the starter tries --gpus all first, with --network none, --cap-drop ALL and the limits, and never mounts the worker's volume or the Docker socket; files are fetched and hashed only when a frame needs them",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_chain.py, test_local_matcher.py, test_matcher_search.py, test_matcher_serve.py, test_matcher_torch.py, test_ai_files.py, pipeline/tests/integration/test_worker_run.py, functions/test/worker/starter-sidecar.test.ts. No gate needs a graphics card or weights."
+        },
+        {
+            "id": "S-P07-HAPPY-CPU-FALLBACK",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "With no graphics card the processor runs, said in plain words; a silent processor run is impossible",
+            "asserts": "--gpus all and CDI both fail the probe -> the starter logs NO GRAPHICS CARD and runs HCM_AI_DEVICE=cpu with the reason; the proposer records `fallback: no-gpu`; the processor looks at the first two orientations, on half the threads; HCM_AI_DEVICE=gpu that finds no card exits 77 (76 under 2 GB) and is probed again, and HCM_AI_DEVICE=cpu with no reason is refused",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_serve.py, test_matcher_torch.py, test_local_matcher.py, functions/test/worker/starter-sidecar.test.ts. PowerShell: starter-windows.test.ts."
+        },
+        {
+            "id": "S-P07-HAPPY-SMALL-WINDOW",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "A small town is proved over a wider reference and cropped to the city",
+            "asserts": "a perfect proposal on a window too small for the proof's 60 tiles is refused there and proved over a Sentinel-2 box of at least the proving side, the gates unchanged; the crop stays the city's; with too few tiles in the crop `georef`'s matcher fits it (`how: matcher`, the proposer kept), and a wider reference that cannot be had costs the proposal, not the job",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_chain.py, pipeline/tests/integration/test_local_ai_job.py. Fitted by the matcher it does not publish itself (approval.ts)."
+        },
+        {
+            "id": "S-P07-BAD-FALSE-PROPOSAL",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A wrong proposal is refused whatever the matcher says of it",
+            "asserts": "a map kilometres off with a huge support -> the proof refuses, `how: none`, no proposer recorded; more proposals than proofs stop at the proofs left, and none left means the matcher is not asked; a mirrored reference or an empty film proposes nothing; a film covering under 5 % of the wider box is refused `small`",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_chain.py, test_matcher_search.py, pipeline/tests/integration/test_local_ai_job.py, packages/ui/test/admin/imagery/calibration-card.test.ts. Real wrong proposals: gate R1, M10."
+        },
+        {
+            "id": "S-P07-BAD-TAMPERED-FILE",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A file that does not match its pin never runs",
+            "asserts": "a fetched file with another hash is deleted, fetched once more, then the matcher stands aside with `tampered`; weights are hashed again at load and read with weights_only, and each run hashes the placed ones first, placing them again when altered; refused at load, the panel says `tampered`, not a bad answer, and no further request is asked; only allowed hosts are reached, every redirect hop through the address guard; an archive cannot name where its file lands; `superpoint.py` never leaves the LightGlue tarball; the starter refuses any image but pytorch/pytorch by digest",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_ai_files.py, test_matcher_torch.py, test_local_matcher.py, functions/test/worker/starter-sidecar.test.ts."
+        },
+        {
+            "id": "S-P07-BAD-OUT-OF-MEMORY",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A graphics card out of memory reruns that request once on the processor",
+            "asserts": "the child exits 75 -> the request reruns on the processor with a rerun mark, so the worker's wait gets the processor's time, and the proposer records `fallback: out-of-memory`; a second failure answers with a failure, never a failed job",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_serve.py, test_matcher_torch.py, test_local_matcher_waits.py, pipeline/tests/integration/test_written_documents.py."
+        },
+        {
+            "id": "S-P07-BAD-NO-ANSWER",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A sidecar that cannot help ends at the admin's points with a line in the log",
+            "asserts": "an old starter, an arm computer, no sidecar in 30 minutes, a sidecar that stops beating or never answers, a garbage or a pickled answer, of any JSON shape, an unreachable upstream -> no proposal, `how: none`, the delivery kept, the job not failed, the reason on the panel; a cancelled job stops the wait and leaves a cancel file, which kills the child",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_local_matcher.py, test_local_matcher_waits.py, test_matcher_box.py, test_matcher_serve.py, pipeline/tests/integration/test_worker_run.py."
+        },
+        {
+            "id": "S-P07-BAD-CLOUD-NO-AI",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "Cloud Run has no AI, and says so",
+            "asserts": "the same frame in a cloud run -> Null matcher, `how: none`, the log says no local AI in Google Cloud, the delivery is kept and the admin's points are next; only `worker/runtime.py` injects the local matcher",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_chain.py, pipeline/tests/integration/test_local_ai_job.py."
+        },
+        {
+            "id": "S-P07-HAPPY-SIDECAR-WHILE-WANTED",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The sidecar lives only while a frame wants it, beside a loop that keeps reading /state",
+            "asserts": "a frame wants the AI -> the starter probes and starts the sidecar and goes on polling `/state`, one running sidecar left alone; the run ends -> `/state` stops saying `wanted` (the panel still reads the device) and the sidecar is removed, so the next frame probes the card again and gets the image it names, the earlier image removed; SIGTERM ends the sidecar at once, as the container's PID 1",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: functions/test/worker/starter-sidecar.test.ts, starter-windows.test.ts, pipeline/tests/unit/test_local_matcher_faults.py, test_matcher_serve.py"
+        },
+        {
+            "id": "S-P07-HAPPY-WINDOWS-STARTER",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "happy",
+            "title": "The Windows starter parses and holds the same loop",
+            "asserts": "every string of the PowerShell part ends where it should, in the file that installs and in the file that removes; the loop looks at its supervisor and a new supervisor stops the loops an earlier one left. Read by a small string reader in the gate (the quality image has no PowerShell), parsed for real with pwsh's parser by hand",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: functions/test/worker/starter-windows.test.ts."
+        },
+        {
+            "id": "S-P07-BAD-WINDOWS-STARTER",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "What Windows PowerShell 5.1 does to arguments cannot cost the Windows worker",
+            "asserts": "no call of docker holds an empty argument (5.1 drops it: `probe gpu` would exit 78 and every card read as none) or a quote inside one (5.1 strips it: the refusal would not read as JSON and the worker would wait 30 minutes); a backslash-quote, a parse error of the whole file, is refused by the reader of strings",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: functions/test/worker/starter-windows.test.ts."
+        },
+        {
+            "id": "S-P07-BAD-LOCAL-FAULT",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A fault nobody named goes to the admin's points, never a failed job",
+            "asserts": "a disk that fills while the files are fetched or a request is written, a volume that refuses, a box that cannot be cleared, a warp that raises -> no proposal, `how: none`, the job not failed; a full disk reads `disk` on the panel, anything else `no-answer`, the log has the rest; no `.part` left; a disk too full for the cancel file still stops a cancelled job",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_local_matcher_faults.py, test_ai_files.py."
+        },
+        {
+            "id": "S-P07-BAD-LOST-REQUEST",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A request lost costs that request, not the proposals in hand",
+            "asserts": "one request proposes, a later child dies -> the proposal goes to the proof and the remaining starts are asked; a sidecar gone stops the asking and keeps it; with nothing proposed, the loss is the run's reason on the panel",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_local_matcher_faults.py."
+        },
+        {
+            "id": "S-P07-BAD-STALE-ANSWER",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An old child's late answer is nobody's",
+            "asserts": "each request's id names its run, so a child a dead worker left cannot answer a new run's request; the sidecar stops a child whose request file is gone, and writes no answer for it",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_local_matcher_faults.py, test_matcher_serve.py."
+        },
+        {
+            "id": "S-P07-BAD-SIDECAR-HUNG",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A hung sidecar costs one frame half an hour, not every frame",
+            "asserts": "a sidecar that does not answer -> `/state` stops saying `wanted`, and the starter removes it; the worker's later runs wait 5 minutes, not 30, until a sidecar beats again; a worker that stops answering loses its sidecar at the second miss; a cancelled or lost run leaves no AI wanted",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_local_matcher_faults.py, functions/test/worker/starter-sidecar.test.ts."
+        },
+        {
+            "id": "S-P07-BAD-ARM-HOST",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "An arm computer says so, whatever an emulated image reads",
+            "asserts": "Docker's own architecture reaches the worker (`HCM_DOCKER_ARCH`): arm64 -> `arm64` on the panel from the start, nothing fetched, no wait, though the image reads x86_64 under Rosetta or QEMU",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_local_matcher_faults.py, functions/test/worker/starter-sidecar.test.ts, starter-windows.test.ts."
+        },
+        {
+            "id": "S-P07-BAD-WIDE-SPREAD",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A proof over 30 km does not speak for the whole town",
+            "asserts": "a matcher's proposal proved over the wider box, with its agreeing tiles only in a corner of the city's window -> `measuredPct` is measured over the window, under the bar, and the version waits for a click; a town covered across reads over the bar; the gates are the same, none softened",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_chain.py."
+        },
+        {
+            "id": "S-P07-BAD-MATCHER-FIGURES",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "The admin is not shown figures of another map",
+            "asserts": "`georef`'s matcher fitted the frame -> the record drops the proof's areas, error and share, so the card shows only the coverage; the job's log keeps the proof's line, and the fit's own error is on the approval card",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/integration/test_local_ai_job.py."
+        },
+        {
+            "id": "S-P07-BAD-NO-PROOF-LEFT",
+            "behaviour": "P07",
+            "area": "pipeline",
+            "path": "bad",
+            "title": "A frame the AI is not offered says why",
+            "asserts": "the votes spent every proof -> the matcher is not asked, by the design, and the job's log says so; a cloud run says it has no local AI there too",
+            "tier": "e2e-pipeline",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: pipeline/tests/unit/test_matcher_chain.py."
+        },
+        {
+            "id": "S-A68-HAPPY-DEVICE-SHOWN",
+            "behaviour": "A68",
+            "area": "admin",
+            "path": "happy",
+            "title": "The admin sees what the local AI ran on",
+            "asserts": "a connected computer's panel says Local AI: graphics card NVIDIA RTX 3080, processor only, or comes when a frame needs it; a version the AI proposed says Proposed by the AI on your computer (NVIDIA RTX 3080), proved by the map's own check, with the proof's own figures",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: e2e/admin/specs/imagery/worker.spec.ts, calibration.spec.ts, packages/ui/test/admin/worker/worker.test.ts, packages/ui/test/admin/imagery/calibration-card.test.ts, packages/admin/test/worker/feed.test.ts, packages/shared/test/api/worker.test.ts."
+        },
+        {
+            "id": "S-A68-BAD-AI-UNAVAILABLE",
+            "behaviour": "A68",
+            "area": "admin",
+            "path": "bad",
+            "title": "The panel says why the local AI is unavailable",
+            "asserts": "each reason (a new starter needed, arm, disk, pull, tampered, unreachable, no answer, garbage) -> Local AI unavailable and the reason in the page's language; a worker older than the AI, or not connected, says nothing of it; the starter tells the worker through the box when the disk is short or the pull fails",
+            "tier": "e2e-admin",
+            "status": "exists",
+            "notes": "docs/research/M10-local-ai.md. Tests: e2e/admin/specs/imagery/worker.spec.ts, packages/ui/test/admin/worker/worker.test.ts, packages/admin/test/worker/feed.test.ts, packages/shared/test/api/worker.test.ts, functions/test/worker/starter-sidecar.test.ts."
         }
     ]
 }

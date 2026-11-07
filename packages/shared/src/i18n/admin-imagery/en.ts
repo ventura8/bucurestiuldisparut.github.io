@@ -144,6 +144,8 @@ export const en: Readonly<Record<AdminImageryKey, string>> = {
     'adminContent.imagery.calibration.how.votes': 'Found automatically',
     'adminContent.imagery.calibration.how.pass': 'Found from a neighbouring frame',
     'adminContent.imagery.calibration.how.points': 'Refined from your points',
+    'adminContent.imagery.calibration.how.localAi': "Proposed by the AI on your computer ({device}), proved by the map's own check",
+    'adminContent.imagery.calibration.device.cpu': 'processor',
     'adminContent.imagery.calibration.tiles': '{agreed} of {tried} areas agree',
     'adminContent.imagery.calibration.error': 'Measured error {metres} m',
     'adminContent.imagery.calibration.notFound': 'Not found: place a few rough points, the rest is automatic',

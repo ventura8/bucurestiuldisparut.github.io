@@ -51,8 +51,10 @@ from hcm_pipeline.store import DELETE
 NEEDS_POINTS: Final = "the scan needs the admin's points (georeferencer)"
 AUTO_METHOD: Final = "auto"
 MATCHER_HOW: Final = "matcher"
+# What `locate` recorded of the proof, gone once the matcher fits the frame.
+PROOF_FIGURES: Final = frozenset({"measuredPct", "crossValidatedM", "tiles"})
 NOT_PROVED_HOW: Final = "none"
-TILES_GONE: Final = "the proof's tiles are gone: they are measured again on the scan"
+TILES_GONE: Final = "the proof's tiles are gone, or too few lie in the crop: they are measured again on the scan"
 # How far the tiles search around the admin's points: as far as a proposal, further with points that hold worse (ground metres).
 SEED_MAX_SEARCH_M: Final = 2000.0
 SEED_SEARCH_RMSE_SHARE: Final = 3.0
@@ -171,8 +173,10 @@ def _figures(ctx: JobContext, found: Calibrated) -> dict[str, object]:
 
 
 def _matcher_took_over(ctx: JobContext) -> Mapping[str, object]:
-    """A proved frame whose tiles gave no fit, fitted by the matcher: the fit is no longer the proof's, and the record says so."""
-    calibration = {key: value for key, value in ctx.version.calibration.items() if key != "measuredPct"}
+    """A proved frame whose tiles gave no fit, fitted by the matcher: the fit is no longer the proof's, and the record says so: its tiles,
+    the share they span and their error describe another map, over more ground than the city. The fit's own error is on the approval
+    card."""
+    calibration = {key: value for key, value in ctx.version.calibration.items() if key not in PROOF_FIGURES}
     return {"calibration": {**calibration, "how": MATCHER_HOW}} if calibration and calibration.get("how") != NOT_PROVED_HOW else {}
 
 

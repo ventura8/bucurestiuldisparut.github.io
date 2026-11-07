@@ -28,7 +28,7 @@ from hcm_pipeline.calibrate.stored import StoredTiles
 from hcm_pipeline.contract import MAX_SCAN_PIXELS, SENSOR_SPECS, Errors, SensorSpec
 from hcm_pipeline.documents import GeorefInfo, Scene, city_bounds
 from hcm_pipeline.frames import FRAME_JSON, FRAME_PREVIEW, FrameLayout, Placement, Segment
-from hcm_pipeline.geo import MercatorBox, fnv1a, to_lnglat, to_mercator
+from hcm_pipeline.geo import Grid, MercatorBox, fnv1a, to_lnglat, to_mercator
 from hcm_pipeline.georef.corners import (
     Assignment,
     CityNotFoundError,
@@ -177,6 +177,16 @@ def proved_gcps(mapping: PlaceMap, box: Box) -> tuple[Gcp, ...]:
     return tuple(gcps)
 
 
+def _wide_reference(ctx: JobContext, box: MercatorBox) -> tuple[UInt8Array, Grid] | None:
+    """Sentinel-2 over the wider box a matcher's proposal is proved on (M10); one that cannot be had costs the matcher, not the job."""
+    try:
+        source = sentinel2(ctx, box)
+    except StepFailedError as error:
+        ctx.log.warn(f"the wider reference is not to be had ({error}): the proposal is proved over the city's window", LocateStep.name)
+        return None
+    return grey_reference(source), source.grid()
+
+
 def _pass_prior(ctx: JobContext, scene: Scene) -> MeasuredModel | None:
     """The last proved frame of the scene's pass, when the city has one (only a first place to look)."""
     key = pass_key(scene.entity_id, scene.acquisition_date)
@@ -243,6 +253,7 @@ class LocateStep:
             seed,
             _pass_prior(ctx, scene),
             matcher=ctx.services.proposal_matcher,
+            wide=lambda box: _wide_reference(ctx, box),
         )
 
     def _proved(self, ctx: JobContext, search: FrameSearch, found: Found, proved: Proved, layout: FrameLayout) -> StepResult:
@@ -297,20 +308,29 @@ def _calibration(ctx: JobContext, found: Found, mapping: PlaceMap, limits: tuple
     """`version.calibration` of a proved frame: the city's own bounds, not the window with its margin, decide what it covers."""
     record = ctx.read(f"cities/{ctx.city}") or {}
     reach = reach_of(mapping, city_bounds(record).mercator(), limits)
-    proof = found.proof
     fields: dict[str, object] = {
         "how": found.how,
         "votes": {"agreed": found.votes[0], "tiles": found.votes[1]},
         "coveredPct": round(reach.share * PERCENT, 1),
+        **_of_the_chain(found),
     }
+    edge = outline(reach)
+    return {**fields, "outline": edge} if edge else fields
+
+
+def _of_the_chain(found: Found) -> dict[str, object]:
+    """What this proposal and proof add: only what they hold."""
+    fields: dict[str, object] = {}
     if found.model is not None:
         fields["model"] = found.model.as_record()
+    if found.proposer is not None:
+        fields["proposer"] = found.proposer.as_record()
+    proof = found.proof
     if proof is not None:
         fields["tiles"] = {"agreed": proof.inliers, "tried": proof.tried}
         fields["crossValidatedM"] = round(proof.checked.cv_m, 2)
-        fields["measuredPct"] = measured_pct(proof)
-    edge = outline(reach)
-    return {**fields, "outline": edge} if edge else fields
+        fields["measuredPct"] = measured_pct(proof, found.window_spread)
+    return fields
 
 
 def _refusal_record(found: Found, cut: int) -> dict[str, object]:

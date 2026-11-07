@@ -265,7 +265,7 @@ provisioner's `bucket-lifecycle` item applies `PRIVATE_BUCKET_LIFECYCLE` (CR-M3-
 | `corners` | the full metadata's corner fields when present (**UNVERIFIED** names: `NW Corner Lat dec`, `NW Corner Long dec`, …; the fixtures define them), else absent (the pipeline then uses the footprint) |
 | `cloudCover` | `cloudCover`, absent when `-1` |
 | `downloadAvailable` | `options.download` (already scanned); `imagery.import` confirms it with `download-options` |
-| `sensor` | the camera field of the full metadata (**UNVERIFIED** name, `Camera Type`): `KH-4B`, `KH-4A`, `KH-4` for `corona2`; `KH-7` or `KH-9-mapping` for `declassii`; `KH-9-pan` for `declassiii`; without it, the dataset's default (`KH-4A`, `KH-9-mapping`, `KH-9-pan`) |
+| `sensor` | the camera field of the full metadata (**UNVERIFIED** name, `Camera Type`): `KH-4B`, `KH-4A`, `KH-4`, `KH-5` for `corona2`; `KH-7` or `KH-9-mapping` for `declassii`, else what the entity id says (M9 §14); `KH-9-pan` for `declassiii`; without it, the dataset's default (`KH-4A`, `KH-9-mapping`, `KH-9-pan`) |
 | `resolutionM` | `SENSOR_SPECS[sensor].resolutionM` (a metadata resolution, when present, wins) |
 | `coverage` | the share of the city's bounds inside the footprint (the footprint clipped to the bounds, areas in an equal-area approximation: longitudes times the cosine of the bounds' middle latitude) |
 | `browse.sourceUrl` | the first `browse[].browsePath` when it passes `usgsBrowseUrlSchema` (`ims.cr.usgs.gov`, a browse or thumbnail path, no query, no `..`) |

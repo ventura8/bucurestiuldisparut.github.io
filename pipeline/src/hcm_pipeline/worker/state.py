@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from hcm_pipeline.log import get_logger
+from hcm_pipeline.worker.ai_state import AiState
 from hcm_pipeline.worker.api import REVOKED
 from hcm_pipeline.worker.session import Session
 
@@ -39,6 +40,7 @@ class WorkerState:
         self._step: str | None = None
         self._error: str | None = None
         self._outdated = False
+        self._ai = AiState()
         self.timing = Timing()
 
     def busy(self, job_id: str) -> None:
@@ -76,6 +78,17 @@ class WorkerState:
             if self._job is not None and path.endswith(f"/jobs/{self._job}") and isinstance(step, str):
                 self._step = step
 
+    @property
+    def ai(self) -> AiState:
+        """The local AI's state (docs/research/M10-local-ai.md)."""
+        with self._lock:
+            return self._ai
+
+    def set_ai(self, ai: AiState) -> None:
+        """What `GET /state` says of it from now on: the starter polls `wanted` there."""
+        with self._lock:
+            self._ai = ai
+
     def _phase(self) -> str:
         if not self._session.active:
             return "signed-out"
@@ -96,4 +109,5 @@ class WorkerState:
                 "step": self._step,
                 "lastError": last_error,
                 "outdated": self._outdated,
+                "ai": self._ai.on_state(),
             }

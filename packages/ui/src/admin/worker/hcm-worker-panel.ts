@@ -13,9 +13,10 @@
  *
  * Finding 72 of 2026-11-02 ("I should not have to copy and paste"): the computer's part is `<hcm-worker-local>` of the
  * lazy `worker-local` chunk (the starter file, the auto-pair, Stop using this computer, the command behind Advanced),
- * asked of the feed once the image's digest is known and stopped with the panel.
+ * asked of the feed once the image's digest is known and stopped with the panel. M10 (`docs/research/M10-local-ai.md`): the computer's
+ * local AI: graphics card, processor only, comes when a frame needs it, or unavailable and why.
  */
-import { RUN_CHOICES, type RunChoice } from '@hcm/shared';
+import { RUN_CHOICES, type RunChoice, type WorkerAi } from '@hcm/shared';
 import { html, type PropertyValues, type TemplateResult } from 'lit';
 
 import { errorTemplate, formatWhen } from '../editing/states.js';
@@ -110,7 +111,23 @@ export class HcmWorkerPanel extends WorkerElement {
             ? this.t('adminWorker.connected', { when })
             : `${this.t('adminWorker.none')} ${this.t('adminWorker.lastSeen', { when })}`;
         return html`<p>${line}</p>
-            ${this.#job(view, worker)} ${this.#outdated(view, worker)} ${this.#disconnect(view, worker)}`;
+            ${this.#job(view, worker)} ${this.#ai(view, worker)} ${this.#outdated(view, worker)} ${this.#disconnect(view, worker)}`;
+    }
+
+    /** M10: whether a frame the votes miss can ask the AI on this computer, on which device, or why not. */
+    #ai(view: WorkerViewPort, { ai }: WorkerSeenPort): TemplateResult {
+        return view.connected && ai !== null ? html`<p class="note" data-ai=${ai.state}>${this.#aiWords(ai)}</p>` : html``;
+    }
+
+    #aiWords({ state, why, ...on }: WorkerAi): string {
+        if (state === 'unavailable') {
+            return this.t('adminWorker.ai.unavailable', { why: this.t(`adminWorker.ai.why.${why ?? 'no-answer'}`) });
+        }
+        return state === 'ready' ? this.#aiDevice(on) : this.t(`adminWorker.ai.${state}`);
+    }
+
+    #aiDevice({ device, deviceName }: Pick<WorkerAi, 'device' | 'deviceName'>): string {
+        return device === 'gpu' ? this.t('adminWorker.ai.gpu', { name: deviceName ?? '' }) : this.t('adminWorker.ai.cpu');
     }
 
     /** Finding 67: a connected worker whose image is not the installed one takes no job until the command runs again. */

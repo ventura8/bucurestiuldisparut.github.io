@@ -53,6 +53,40 @@ describe('<hcm-imagery-page>: what calibration measured', () => {
         expect(deepAll(deep(element, `[data-calibration="${how}"]`), '.note')).toEqual([]);
     });
 
+    it.each([
+        [
+            'local-ai',
+            { name: 'aliked-lightglue', device: 'gpu', deviceName: 'NVIDIA RTX 3080', seconds: 31, support: 46 },
+            'NVIDIA RTX 3080',
+        ],
+        ['local-ai', { name: 'aliked-lightglue', device: 'cpu', seconds: 900, support: 46, fallback: 'no-gpu' }, 'processor'],
+        [
+            'matcher',
+            { name: 'aliked-lightglue', device: 'gpu', deviceName: 'NVIDIA RTX 3080', seconds: 31, support: 46 },
+            'NVIDIA RTX 3080',
+        ],
+    ] as const)('happyPath_%sSaysTheAiProposedOn_%j @S-A68-HAPPY-DEVICE-SHOWN', async (how, proposer, device) => {
+        const { element } = await page(versionView({ calibration: { how, proposer } }));
+
+        expect(deep(element, '[data-how]').textContent).toBe(
+            `Proposed by the AI on your computer (${device}), proved by the map's own check`,
+        );
+    });
+
+    it('badPath_aMatchersCountIsNeverShownAsTilesThatAgree @S-P07-BAD-FALSE-PROPOSAL', async () => {
+        const proposer = { name: 'aliked-lightglue', device: 'gpu', seconds: 31, support: 99_999 } as const;
+        const { element } = await page(versionView({ calibration: { how: 'local-ai', proposer } }));
+
+        expect(deep(element, '[data-calibration="local-ai"]').textContent).not.toContain('99');
+    });
+
+    it('happyPath_pointsThatReplacedAProposalSayPoints', async () => {
+        const proposer = { name: 'aliked-lightglue', device: 'gpu', seconds: 31, support: 46 } as const;
+        const { element } = await page(versionView({ calibration: { how: 'points', proposer } }));
+
+        expect(deep(element, '[data-how]').textContent).toBe('Refined from your points');
+    });
+
     it('happyPath_theRendersFigureBeatsWhatLocateWorkedOut', async () => {
         const { element } = await page(versionView({ calibration: PROVED, output: output(94.2) }));
 

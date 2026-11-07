@@ -106,10 +106,12 @@ PIPELINE_WRITER: Final = "system:pipeline"
 @dataclass(frozen=True)
 class SearchRange:
     """How far `locate` looks for a frame around where its model puts it (the pipeline's alone, docs/research/M9-calibration.md §1):
-    ground metres, and the scales relative to the model. KH-9-pan's were measured on four real frames; **UNVERIFIED** for the others."""
+    ground metres, the scales relative to the model, and the shears of the film's short side (`calibrate/votes.py`'s `sheared_about`).
+    What each was measured on, and what still rests on one frame or none: the table of M9 §1."""
 
     margin_ground_m: float
     scales: tuple[float, ...]
+    shears_deg: tuple[float, ...] = (0.0,)
 
 
 @dataclass(frozen=True)
@@ -149,12 +151,19 @@ SENSOR_SPECS: Final[Mapping[str, SensorSpec]] = {
     "KH-4": SensorSpec("corona2", "KH-4 Corona", 7.5, 10, 15, "std", search=_CORONA_SEARCH),
     "KH-4A": SensorSpec("corona2", "KH-4A Corona", 2.75, 10, 16, "std", search=_CORONA_SEARCH),
     "KH-4B": SensorSpec("corona2", "KH-4B Corona", 1.8, 10, 16, "std", search=_CORONA_SEARCH),
-    "KH-7": SensorSpec("declassii", "KH-7 Gambit", 1.2, 10, 17, "std", search=SearchRange(15_000.0, (0.9, 1.0, 1.1))),
+    # The Argon mapping camera: a frame 550 km across at 34 m a pixel, 140 m on the ground. DS09065A089MC039 (1964) was read as KH-4A. Its
+    # true place is 20 km from its footprint's, and nothing proves it: no vote agrees, and the proof reaches 14 tiles at most (M9 §14).
+    "KH-5": SensorSpec("corona2", "KH-5 Argon", 140, 8, 12, "std", search=SearchRange(30_000.0, (1.0,))),
+    # Measured on one frame, DZB00403000026H017001 (1966): 22 km ground off, 8 to 13 % small, and the film a parallelogram, about 9 degrees
+    # from the rectangle of its corners (M9 §14).
+    "KH-7": SensorSpec("declassii", "KH-7 Gambit", 1.2, 10, 17, "std", search=SearchRange(30_000.0, (1.0, 1.1), (0.0, 7.5, -7.5))),
+    # Measured on one frame, DZB1214-500086L005001 (1978): 0.1 km off, 3 % large (M9 §14).
     "KH-9-mapping": SensorSpec("declassii", "KH-9 Hexagon (mapping camera)", 7.5, 10, 15, "std", search=SearchRange(15_000.0, (1.0,))),
     # 60.5 degrees: fitted on the 1972 frame D3C1202-200149F039 (17 hand-read landmarks, 0.24 km RMS after one shift). Its full
     # sweep's film: 19.6 to 20.5 times as long as it is high on four real frames. Scale 0.94: the model is 4 to 9 % large (F006 0.92,
-    # F007 0.92, F039 0.956).
-    "KH-9-pan": SensorSpec("declassiii", "KH-9 Hexagon", 1, 10, 17, "xl", 60.5, 20.2, SearchRange(30_000.0, (0.94,))),
+    # F007 0.92, F039 0.956; five more full sweeps 0.915 to 0.950), but a short film's is about right (0.998 to 1.010; A015, 1983, is found
+    # only there): the model's own scale first, one warp set more for a full sweep, which agrees at either (M9 §14).
+    "KH-9-pan": SensorSpec("declassiii", "KH-9 Hexagon", 1, 10, 17, "xl", 60.5, 20.2, SearchRange(30_000.0, (1.0, 0.94))),
 }
 
 # The share of a job's progress each pipeline step stands for (`usgs-import`'s weights add up to 1; other job

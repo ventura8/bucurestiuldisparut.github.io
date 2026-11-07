@@ -320,6 +320,33 @@ test(
 );
 
 test(
+    'A connected computer says what its local AI runs on, or why it cannot',
+    { tag: ['@S-A68-HAPPY-DEVICE-SHOWN', '@S-A68-BAD-AI-UNAVAILABLE'] },
+    async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {
+        const owner = adminWorld.accounts.owner.uid;
+        const imagery = await readyImagery({ emulators: adminWorld.emulators, api: mockApiRequest, upstream }, owner);
+        await recordPipeline(imagery);
+        await seedWorker(imagery, owner, 10);
+        const workerPath = `cities/${imagery.city}/workers/${WORKER}`;
+        const ready = { state: 'ready', device: 'gpu', deviceName: 'NVIDIA RTX 3080' };
+        await imagery.cityWorld.emulators.updateFields(workerPath, { ai: ready }, ['ai']);
+
+        await page.goto(adminPath(lang, 'jobs'));
+        await expect(panel(page).locator('[data-ai="ready"]')).toHaveText(text(lang, 'adminWorker.ai.gpu', { name: 'NVIDIA RTX 3080' }), {
+            timeout: FUNCTIONS_TIMEOUT_MS,
+        });
+        await expectStateSound(page, adminVisit('worker.panel-ai-gpu', lang));
+
+        await imagery.cityWorld.emulators.updateFields(workerPath, { ai: { state: 'unavailable', why: 'disk' } }, ['ai']);
+        await expect(panel(page).locator('[data-ai="unavailable"]')).toHaveText(
+            text(lang, 'adminWorker.ai.unavailable', { why: text(lang, 'adminWorker.ai.why.disk') }),
+            { timeout: FUNCTIONS_TIMEOUT_MS },
+        );
+        await expectStateSound(page, adminVisit('worker.panel-ai-unavailable', lang));
+    },
+);
+
+test(
     'A job no computer came for offers Run in Google Cloud instead, which moves it there in one click',
     { tag: ['@S-A62-HAPPY-NO-WORKER-OFFER'] },
     async ({ page, lang, adminWorld, mockApiRequest, upstream }) => {

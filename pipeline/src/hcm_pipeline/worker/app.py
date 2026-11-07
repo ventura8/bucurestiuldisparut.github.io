@@ -16,9 +16,10 @@ from typing import Final
 from hcm_pipeline import __version__
 from hcm_pipeline.contract import Errors
 from hcm_pipeline.log import get_logger
+from hcm_pipeline.worker.ai_state import AiState
 from hcm_pipeline.worker.api import HELLO, RevokedError, WorkerApi, WorkerApiError
 from hcm_pipeline.worker.args import PAIR_CODE
-from hcm_pipeline.worker.session import SIGNED_OUT, Session, Tokens
+from hcm_pipeline.worker.session import SIGNED_OUT, RefreshUnavailableError, Session, Tokens
 from hcm_pipeline.worker.state import WorkerState
 from hcm_pipeline.worker.webconfig import WebConfig, WebConfigError
 
@@ -92,10 +93,24 @@ class PageActions:
         if self.web_config() is None:
             return CONFIG_MISSING
         try:
-            return tokens, self._api.call(HELLO, self._hello, token=tokens.id_token)
+            return tokens, self._api.call(HELLO, self._introduction(), token=tokens.id_token)
         except (WorkerApiError, RevokedError) as error:
             LOG.warning("worker.hello refused the sign-in: %s", error.code)
             return str(error.code)
+
+    def _introduction(self) -> Mapping[str, object]:
+        return {**self._hello, "ai": self._state.ai.as_record()}
+
+    def announce_ai(self, ai: AiState) -> None:
+        """The local AI's new state, on `/state` for the starter and through `worker.hello` for the panel (M10); a refused hello changes
+        nothing in the run: the panel only lags."""
+        self._state.set_ai(ai)
+        if not self._session.active:
+            return
+        try:
+            self._api.call(HELLO, self._introduction())
+        except (WorkerApiError, RevokedError, RefreshUnavailableError) as error:
+            LOG.warning("worker.hello did not take the local AI's state: %s", error)
 
     def sign_out(self) -> None:
         self._session.end(SIGNED_OUT)

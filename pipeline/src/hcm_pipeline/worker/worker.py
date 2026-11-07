@@ -4,6 +4,7 @@ Finding 67 of 2026-11-02: the connector (`pairing.py`) signs it in from the comm
 in the work folder, so the page is for its state only (its Google sign-in stays as the fallback).
 """
 
+import os
 import secrets
 import time
 from collections.abc import Callable
@@ -14,6 +15,7 @@ import httpx
 
 from hcm_pipeline.log import get_logger
 from hcm_pipeline.services import default_steps, http
+from hcm_pipeline.worker.ai_state import initial_state
 from hcm_pipeline.worker.api import WorkerApi
 from hcm_pipeline.worker.app import PageActions
 from hcm_pipeline.worker.args import WorkerArgs
@@ -68,6 +70,7 @@ class Worker:
         )
         api = WorkerApi(client, args.endpoints.function, session.bearer, time.sleep)
         state = WorkerState(args.city, args.project, session, worker_id)
+        state.set_ai(initial_state(os.environ))
         ids = {"cityId": args.city, "workerId": worker_id}
         # Finding 72: the image the starter's supervisor runs, which `worker.hello` compares with the installed one.
         actions = PageActions(session, api, state, web_config, {**ids, **({"image": args.image} if args.image else {})})
@@ -77,6 +80,7 @@ class Worker:
         server = LocalServer(actions, settings, (bind_host, args.port), policy, args.endpoints.hosting_origins)
         runtime = WorkerRuntime(args, api, worker_id, state, steps)
         runtime.clock = clock
+        runtime.announce_ai = actions.announce_ai
         pairing = Pairing(client, api, args.endpoints, web_config, args.city)
         loop = WorkerLoop(session, api, state, runtime, ids)
         connector = Connector(pairing, session_file, Signer(session, actions, state.failed, loop.stop), args.pair, clock)

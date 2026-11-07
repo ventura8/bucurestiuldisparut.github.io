@@ -20,10 +20,10 @@ import { EE_DATASET_ID_PATTERN, usgsOrderSchema } from './usgs-order.js';
 export const USGS_SCENE_STATUSES = ['candidate', 'ordered', 'available', 'imported', 'rejected'] as const;
 
 /**
- * The cameras of the three datasets: `corona2` (Declass 1: KH-4, KH-4A, KH-4B Corona), `declassii` (Declass 2: KH-7 Gambit
+ * The cameras of the three datasets: `corona2` (Declass 1: KH-4, KH-4A, KH-4B Corona, KH-5 Argon), `declassii` (Declass 2: KH-7 Gambit
  * and the KH-9 Hexagon mapping camera), `declassiii` (Declass 3: the KH-9 Hexagon panoramic camera).
  */
-export const SENSORS = ['KH-4', 'KH-4A', 'KH-4B', 'KH-7', 'KH-9-mapping', 'KH-9-pan'] as const;
+export const SENSORS = ['KH-4', 'KH-4A', 'KH-4B', 'KH-5', 'KH-7', 'KH-9-mapping', 'KH-9-pan'] as const;
 
 export type Sensor = (typeof SENSORS)[number];
 
@@ -46,6 +46,7 @@ export const SENSOR_SPECS: Readonly<Record<Sensor, SensorSpec>> = {
     'KH-4': { dataset: 'corona2', name: 'KH-4 Corona', resolutionM: 7.5, minzoom: 10, maxzoom: 15, machine: 'std' },
     'KH-4A': { dataset: 'corona2', name: 'KH-4A Corona', resolutionM: 2.75, minzoom: 10, maxzoom: 16, machine: 'std' },
     'KH-4B': { dataset: 'corona2', name: 'KH-4B Corona', resolutionM: 1.8, minzoom: 10, maxzoom: 16, machine: 'std' },
+    'KH-5': { dataset: 'corona2', name: 'KH-5 Argon', resolutionM: 140, minzoom: 8, maxzoom: 12, machine: 'std' },
     'KH-7': { dataset: 'declassii', name: 'KH-7 Gambit', resolutionM: 1.2, minzoom: 10, maxzoom: 17, machine: 'std' },
     'KH-9-mapping': {
         dataset: 'declassii',

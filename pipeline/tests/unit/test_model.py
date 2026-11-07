@@ -181,7 +181,7 @@ def test_happy_path_each_type_reads_its_own_params(job_type: str, params: dict[s
         ("layer-join", {"parts": [{"versionId": "v", "layerId": "../l"}] * 2, "sensor": "KH-9-pan"}, "layerId must be an id"),
         ("layer-join", {"parts": [{"versionId": "v", "layerId": "l", "x": 1}] * 2, "sensor": "KH-9-pan"}, "unknown keys: x"),
         ("layer-join", {"parts": ["v", "w"], "sensor": "KH-9-pan"}, "a part must be a record"),
-        ("layer-join", {"parts": [{"versionId": "v", "layerId": "l"}] * 2, "sensor": "KH-5"}, "sensor must be one of"),
+        ("layer-join", {"parts": [{"versionId": "v", "layerId": "l"}] * 2, "sensor": "KH-6"}, "sensor must be one of"),
     ],
 )
 def test_bad_path_malformed_params_are_refused(job_type: str, params: dict[str, object], problem: str) -> None:

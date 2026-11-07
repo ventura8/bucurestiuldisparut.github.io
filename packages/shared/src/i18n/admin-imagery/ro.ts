@@ -146,6 +146,8 @@ export const ro = {
     'adminContent.imagery.calibration.how.votes': 'Găsită automat',
     'adminContent.imagery.calibration.how.pass': 'Găsită după un cadru vecin',
     'adminContent.imagery.calibration.how.points': 'Rafinată din punctele tale',
+    'adminContent.imagery.calibration.how.localAi': 'Propusă de AI pe calculatorul tău ({device}), dovedită de verificarea hărții',
+    'adminContent.imagery.calibration.device.cpu': 'procesor',
     'adminContent.imagery.calibration.tiles': '{agreed} din {tried} zone se potrivesc',
     'adminContent.imagery.calibration.error': 'Eroare măsurată {metres} m',
     'adminContent.imagery.calibration.notFound': 'Negăsită: pune câteva puncte aproximative, restul e automat',
