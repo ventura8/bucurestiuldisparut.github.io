@@ -86,13 +86,17 @@ export const roleRequestDecideRequestSchema = z.strictObject({
 export const roleRequestDecideResponseSchema = z.strictObject({ status: z.enum(['approved', 'refused']) });
 
 /** `review.decide`: a reviewer approves or refuses an uploader's photo or place. */
-export const reviewDecideRequestSchema = z.strictObject({
-    cityId: cityIdSchema,
-    entity: z.enum(['photo', 'poi']),
-    id: idSchema,
-    decision: z.enum(['approve', 'refuse']),
-    note: plainText(MAX_REVIEW_NOTE).optional(),
-});
+export const reviewDecideRequestSchema = z
+    .strictObject({
+        cityId: cityIdSchema,
+        entity: z.enum(['photo', 'poi']),
+        id: idSchema,
+        decision: z.enum(['approve', 'refuse']),
+        /** The item's `updatedAt` as the reviewer read it: an approval is of what they saw, anything newer answers `review.changed`. */
+        seenAt: isoTimeSchema.optional(),
+        note: plainText(MAX_REVIEW_NOTE).optional(),
+    })
+    .refine((request) => request.decision !== 'approve' || request.seenAt !== undefined, coded('validation.required', ['seenAt']));
 export const reviewDecideResponseSchema = z.strictObject({ status: z.enum(['approved', 'refused']) });
 
 function changesSomething(proposal: z.infer<typeof suggestionProposalSchema>): boolean {
@@ -127,20 +131,26 @@ export const suggestionSubmitRequestSchema = z
 /** Whichever the account's standing, a repeat answers the same: nobody learns how to go around a decision. */
 export const suggestionSubmitResponseSchema = z.strictObject({ received: z.literal(true), remainingToday: z.number().int().min(0) });
 
-/** `suggestions.decide`: `adjust` needs the reviewer's values; `reject` applies nothing. */
+/** `suggestions.decide`: `adjust` needs the reviewer's values; `reject` applies nothing; `revert` takes one applied decision off. */
 export const suggestionDecideRequestSchema = z
     .strictObject({
         cityId: cityIdSchema,
         suggestionId: idSchema,
-        decision: z.enum(['approve', 'adjust', 'reject']),
+        decision: z.enum(['approve', 'adjust', 'reject', 'revert']),
         adjusted: suggestionProposalSchema.optional(),
         note: plainText(MAX_REVIEW_NOTE).optional(),
     })
     .refine((request) => request.decision !== 'adjust' || request.adjusted !== undefined, coded('validation.required', ['adjusted']));
-export const suggestionDecideResponseSchema = z.strictObject({ status: z.enum(['approved', 'adjusted', 'rejected']) });
+export const suggestionDecideResponseSchema = z.strictObject({ status: z.enum(['approved', 'adjusted', 'rejected', 'reverted']) });
 
 /** `contributors.setBlocked`: a reviewer blocks or lets back one account of a city. */
-export const contributorBlockRequestSchema = z.strictObject({ cityId: cityIdSchema, uid: uidSchema, blocked: z.boolean() });
+export const contributorBlockRequestSchema = z.strictObject({
+    cityId: cityIdSchema,
+    uid: uidSchema,
+    blocked: z.boolean(),
+    /** What they had written, kept for whoever reads the list of blocked accounts later. */
+    about: plainText(MAX_REASON).optional(),
+});
 export const contributorBlockResponseSchema = z.strictObject({ blocked: z.boolean() });
 
 export type ContributeContextResponse = z.infer<typeof contributeContextResponseSchema>;

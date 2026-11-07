@@ -58,6 +58,14 @@ function requestView(request: RoleRequestDoc | undefined): CallableResponse<'con
     });
 }
 
+/**
+ * An approved request says nothing once the role is gone (`admins.revoke` leaves the document): they stand as anyone who has not
+ * asked, and `contribute.request` already takes a new ask.
+ */
+function asIfAsked(request: RoleRequestDoc | undefined, role: CityRole | null): RoleRequestDoc | undefined {
+    return request?.status === 'approved' && role === null ? undefined : request;
+}
+
 /** A photo the public may see: it is on the map or in the gallery. Anything else answers as if it did not exist. */
 function publicPhoto(photo: PhotoDoc | undefined): photo is PhotoDoc & { readonly image: NonNullable<PhotoDoc['image']> } {
     return photo?.published === true && isReviewCleared(photo) && photo.image !== undefined;
@@ -135,7 +143,7 @@ async function contributeContext(
         city: cityView(data.cityId, city),
         role,
         blocked: await isBlocked(deps, data.cityId, caller.uid),
-        request: requestView(request),
+        request: requestView(asIfAsked(request, role)),
         photo: await askedPhoto(deps, data.cityId, data.photoId),
     };
 }

@@ -1,5 +1,5 @@
 /** A city's photo documents and uploads for the `photos.*` tests. */
-import { FIRESTORE_PATHS, STORAGE_PATHS, photoDocSchema, timestampFromDate, type PhotoDoc } from '@hcm/shared';
+import { FIRESTORE_PATHS, STORAGE_PATHS, adminDocSchema, photoDocSchema, timestampFromDate, type PhotoDoc } from '@hcm/shared';
 
 import type { FinalizedObject } from '../../src/photos/upload.js';
 import type { ContentDeps } from '../publish/fakes.js';
@@ -25,6 +25,14 @@ function newPhoto(overrides: Partial<PhotoDoc> = {}): PhotoDoc {
 }
 
 export async function seedPhoto(deps: ContentDeps, photoId: string, overrides: Partial<PhotoDoc> = {}): Promise<void> {
+    const at = timestampFromDate(new Date('2026-10-12T08:00:00.000Z'));
+    await deps.documents.set(FIRESTORE_PATHS.admin(UID), adminDocSchema, {
+        role: 'admin',
+        cities: { [CITY]: 'owner' },
+        createdAt: at,
+        updatedBy: UID,
+        updatedAt: at,
+    });
     await deps.documents.set(FIRESTORE_PATHS.photo(CITY, photoId), photoDocSchema, newPhoto(overrides));
 }
 

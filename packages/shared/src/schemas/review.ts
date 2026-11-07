@@ -5,6 +5,8 @@
  */
 import { z } from 'zod';
 
+import { LOCALES } from '../i18n/index.js';
+
 import { sha256Schema, stamp, timestampSchema, uidSchema } from './firestore-common.js';
 import {
     assetUrlSchema,
@@ -99,13 +101,33 @@ export const suggestionProposalSchema = z
         year: yearSchema.optional(),
         yearEnd: yearSchema.optional(),
         dateText: plainText(100).optional(),
+        /** The language `dateText` was typed in; Romanian when absent. */
+        dateLocale: z.enum(LOCALES).optional(),
     })
-    .refine(validYearRange, coded('validation.yearRange', ['yearEnd']));
+    .refine(validYearRange, coded('validation.yearRange', ['yearEnd']))
+    .refine(
+        (proposal) => proposal.dateLocale === undefined || proposal.dateText !== undefined,
+        coded('validation.reference', ['dateLocale']),
+    );
 
 export type SuggestionProposal = z.infer<typeof suggestionProposalSchema>;
 
-export const SUGGESTION_STATUSES = ['pending', 'approved', 'adjusted', 'rejected'] as const;
+/** `reverted`: an applied decision was taken off again (M13 §4). */
+export const SUGGESTION_STATUSES = ['pending', 'approved', 'adjusted', 'rejected', 'reverted'] as const;
 export type SuggestionStatus = (typeof SUGGESTION_STATUSES)[number];
+
+/** The fields of a photo one decision can write, as the photo stores them. */
+const decidedFieldsSchema = z.strictObject({
+    location: latLngSchema.optional(),
+    bearing: bearingSchema.optional(),
+    year: yearSchema.optional(),
+    yearEnd: yearSchema.optional(),
+    dateText: localizedPartial(100).optional(),
+    credit: creditSchemaText.optional(),
+});
+
+/** What one decision wrote and what stood there before: exactly that comes off again, and only while it still stands. */
+const suggestionUndoSchema = z.strictObject({ before: decidedFieldsSchema, after: decidedFieldsSchema });
 
 /** One person's words on a suggestion. `name` is their optional credit. */
 const suggestionVoiceSchema = z.strictObject({
@@ -131,6 +153,8 @@ export const suggestionDocSchema = z.strictObject({
     voices: z.array(suggestionVoiceSchema).max(SUGGESTION_MAX_REASONS),
     /** What the reviewer applied, when it differs from the proposal. */
     applied: suggestionProposalSchema.optional(),
+    /** The way back of an applied decision, gone once it is taken. */
+    undo: suggestionUndoSchema.optional(),
     note: plainText(MAX_REVIEW_NOTE).optional(),
     decidedBy: uidSchema.optional(),
     decidedAt: timestampSchema.optional(),
@@ -146,10 +170,13 @@ export const contributorDocSchema = z.strictObject({
     blocked: z.boolean().optional(),
     blockedBy: uidSchema.optional(),
     blockedAt: timestampSchema.optional(),
+    /** What they had written when they were blocked, so whoever reads the list later knows who this was. */
+    blockedFor: plainText(MAX_REASON).optional(),
     ...stamp,
 });
 
 export type HeldImage = z.infer<typeof heldImageSchema>;
 export type RoleRequestDoc = z.infer<typeof roleRequestDocSchema>;
 export type SuggestionDoc = z.infer<typeof suggestionDocSchema>;
+export type SuggestionUndo = z.infer<typeof suggestionUndoSchema>;
 export type ContributorDoc = z.infer<typeof contributorDocSchema>;

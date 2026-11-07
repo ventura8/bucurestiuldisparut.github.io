@@ -10,10 +10,12 @@ import {
     SUGGESTION_GRID_DEGREES,
     SUGGESTION_MAX_ACCOUNTS,
     SUGGESTION_MAX_REASONS,
+    adminDocSchema,
     bboxContains,
     bboxExpand,
     bboxFromRecord,
     cityDocSchema,
+    cityRoleOf,
     contributorDocSchema,
     isReviewCleared,
     photoDocSchema,
@@ -35,6 +37,7 @@ import { emitNotification } from '../api/notification-event.js';
 import { compact } from '../api/objects.js';
 import type { DocumentTransaction } from '../ports/documents.js';
 import type { Ports } from '../ports/index.js';
+import { changedProposal } from './suggest-apply.js';
 
 export type SuggestDeps = Pick<Ports, 'documents' | 'clock' | 'log'>;
 
@@ -58,12 +61,26 @@ function cell(value: number): number {
  * same date. Repeats land on one document.
  */
 export function suggestionGroupId(request: Pick<Request, 'photoId' | 'kind' | 'proposal'>): string {
-    const { location, bearing, year, yearEnd, dateText } = request.proposal;
+    const { location, bearing, year, yearEnd, dateText, dateLocale } = request.proposal;
     const place = location === undefined ? '' : `${String(cell(location.lat))},${String(cell(location.lng))}`;
     const sector = bearing === undefined ? '' : String(Math.floor(bearing / SUGGESTION_BEARING_STEP));
-    const date = [year, yearEnd, dateText].map((part) => String(part ?? ''));
+    const date = [year, yearEnd, dateText, dateLocale].map((part) => String(part ?? ''));
     const key = [request.photoId, request.kind, place, sector, ...date].join('|');
     return createHash('sha256').update(key).digest('hex').slice(0, 40);
+}
+
+async function isMember(deps: SuggestDeps, caller: VerifiedCaller, cityId: string): Promise<boolean> {
+    const admin = await deps.documents.get(FIRESTORE_PATHS.admin(caller.uid), adminDocSchema);
+    return cityRoleOf(admin?.cities, cityId) !== null;
+}
+
+/** As `contribute.context`: the city is for anyone once it is public, and for its own people before; ids cannot be probed. */
+async function visibleCity(deps: SuggestDeps, caller: VerifiedCaller, cityId: string): Promise<CityDoc> {
+    const city = await deps.documents.get(FIRESTORE_PATHS.city(cityId), cityDocSchema);
+    if (city === undefined || (!city.published && !(await isMember(deps, caller, cityId)))) {
+        throw new ApiError('apiError.notFound');
+    }
+    return city;
 }
 
 /** Only what the public sees can be suggested on. */
@@ -80,24 +97,6 @@ function targetOf(photo: PhotoDoc | undefined, kind: Request['kind']): PhotoDoc 
         throw new ApiError('apiError.suggestion.wrongKind');
     }
     return photo;
-}
-
-function differs([current, proposed]: readonly [unknown, unknown]): boolean {
-    return proposed !== undefined && JSON.stringify(current) !== JSON.stringify(proposed);
-}
-
-/** What the photo already says is no suggestion. */
-function requireChange(photo: PhotoDoc, proposal: SuggestionProposal): void {
-    const pairs: readonly (readonly [unknown, unknown])[] = [
-        [photo.location, proposal.location],
-        [photo.bearing, proposal.bearing],
-        [photo.year, proposal.year],
-        [photo.yearEnd, proposal.yearEnd],
-        [photo.dateText?.ro, proposal.dateText],
-    ];
-    if (!pairs.some(differs)) {
-        throw new ApiError('apiError.suggestion.noChange');
-    }
 }
 
 function usedToday(contributor: ContributorDoc | undefined, today: string): number {
@@ -196,20 +195,23 @@ async function record(
 
 /**
  * `suggestions.submit` (any verified Google account, no role; `docs/research/M13-roles.md` §4; S-A93-HAPPY-PLACE,
- * S-A93-HAPPY-CORRECTION, S-A93-BAD-DAILY-LIMIT, S-A93-BAD-BLOCKED, S-A93-BAD-OUTSIDE, S-A93-HAPPY-GROUP): a place for an unplaced
- * photo, or a contested date, location or direction of a placed one, on public photos only. Nothing public changes here. A
- * repeat of a decided proposal is answered like any other.
+ * S-A93-HAPPY-CORRECTION, S-A93-BAD-DAILY-LIMIT, S-A93-BAD-BLOCKED, S-A93-BAD-OUTSIDE, S-A93-HAPPY-GROUP, S-A93-HAPPY-ONLY-CHANGED,
+ * S-A93-BAD-NOT-PUBLIC-CITY): a place for an unplaced photo, or a contested date, location or direction of a
+ * placed one, on public photos of a public city only. Only what would change is kept. Nothing public
+ * changes here. A repeat of a decided proposal is answered like any other.
  */
-async function submitSuggestion(deps: SuggestDeps, caller: VerifiedCaller, data: Request): Promise<CallableResponse<'suggestions.submit'>> {
-    const [photo, city] = await Promise.all([
-        deps.documents.get(FIRESTORE_PATHS.photo(data.cityId, data.photoId), photoDocSchema),
-        deps.documents.get(FIRESTORE_PATHS.city(data.cityId), cityDocSchema),
-    ]);
-    const target = targetOf(photo, data.kind);
-    requireChange(target, data.proposal);
-    if (city === undefined || !onCityMap(city, data.proposal.location)) {
+async function submitSuggestion(
+    deps: SuggestDeps,
+    caller: VerifiedCaller,
+    request: Request,
+): Promise<CallableResponse<'suggestions.submit'>> {
+    const city = await visibleCity(deps, caller, request.cityId);
+    const target = targetOf(await deps.documents.get(FIRESTORE_PATHS.photo(request.cityId, request.photoId), photoDocSchema), request.kind);
+    const proposal = changedProposal(target, request.proposal);
+    if (!onCityMap(city, proposal.location)) {
         throw new ApiError('apiError.suggestion.outsideCity');
     }
+    const data = { ...request, proposal };
     const groupId = suggestionGroupId(data);
     const submission = { data, caller, now: deps.clock.now() };
     const { isNew, used } = await deps.documents.transaction((transaction) => record(transaction, submission, { groupId, photo: target }));

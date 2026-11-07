@@ -12,6 +12,8 @@ import {
     IMMUTABLE_CACHE_CONTROL,
     PHOTO_LIMITS,
     STORAGE_PATHS,
+    adminDocSchema,
+    hasCityRole,
     parsePhotoUploadPath,
     photoDocSchema,
     publicObjectUrl,
@@ -172,6 +174,28 @@ interface KnownUpload {
     readonly held: boolean;
 }
 
+const DECIDED: Refusal = { code: 'apiError.review.alreadyDecided' };
+
+async function byReviewer(deps: PhotoDeps, upload: PhotoUpload): Promise<boolean> {
+    const admin = await deps.documents.get(FIRESTORE_PATHS.admin(upload.uid), adminDocSchema);
+    return hasCityRole(admin?.cities, upload.cityId, 'moderator');
+}
+
+/**
+ * M13 §2, §9: whether this upload is held back, read when the trigger runs. A waiting photo's always is. A decided photo takes no
+ * more from anyone who is not a reviewer now (the Storage rule let it in while it waited), and a refused one from nobody: it
+ * must never get a public address. An older or staff document's goes public, as a reviewer's does.
+ */
+async function heldBack(deps: PhotoDeps, upload: PhotoUpload, photo: PhotoDoc): Promise<boolean> {
+    if (photo.reviewStatus === 'pending') {
+        return true;
+    }
+    if (photo.reviewStatus === 'refused' || !(await byReviewer(deps, upload))) {
+        throw new PhotoRefused(DECIDED);
+    }
+    return false;
+}
+
 interface Rendered {
     readonly web: Derivative;
     readonly thumb: Derivative;
@@ -261,13 +285,29 @@ function stamp(deps: PhotoDeps): Pick<PhotoDoc, 'updatedBy' | 'updatedAt'> {
     return { updatedBy: systemWriter('photos'), updatedAt: timestampFromDate(deps.clock.now()) };
 }
 
+/** A decision made while this ran wins: held pictures never overwrite a decided photo, whose `image` this would take away. */
 async function recordDone(deps: PhotoDeps, upload: PhotoUpload, processed: Processed): Promise<void> {
-    await updatePhoto(deps, upload, (current) => ({
-        ...omit(current, SERVER_FIELDS),
-        ...processed,
-        processing: 'done',
-        ...stamp(deps),
-    }));
+    await updatePhoto(deps, upload, (current) => {
+        if (processed.heldImage !== undefined && current.reviewStatus !== 'pending') {
+            throw new PhotoRefused(DECIDED);
+        }
+        return { ...omit(current, SERVER_FIELDS), ...processed, processing: 'done', ...stamp(deps) };
+    });
+}
+
+/** The held pictures of a decision that came first have no one to show them to. */
+async function recordProcessed(deps: PhotoDeps, upload: PhotoUpload, processed: Processed): Promise<void> {
+    try {
+        await recordDone(deps, upload, processed);
+    } catch (error) {
+        if (error instanceof PhotoRefused && processed.heldImage !== undefined) {
+            await Promise.all([
+                deps.blobs.delete('private', processed.heldImage.web),
+                deps.blobs.delete('private', processed.heldImage.thumb),
+            ]);
+        }
+        throw error;
+    }
 }
 
 /** A photo without an image fails: it has nothing to show, so the manifest leaves it out. */
@@ -319,15 +359,14 @@ async function recordFailure(deps: PhotoDeps, upload: PhotoUpload, object: Final
     deps.log.info('photo refused', { cityId: upload.cityId, photoId: upload.photoId, code: error.refusal.code });
 }
 
-async function processKnownUpload(deps: PhotoDeps, known: KnownUpload): Promise<UploadOutcome> {
-    const { upload, object, held } = known;
+async function processKnownUpload(deps: PhotoDeps, upload: PhotoUpload, object: FinalizedObject, photo: PhotoDoc): Promise<UploadOutcome> {
     try {
         const bytes = await readUpload(deps, object);
         if (bytes === undefined) {
             return 'gone';
         }
-        const processed = await processBytes(deps, known, bytes);
-        await recordDone(deps, upload, processed);
+        const held = await heldBack(deps, upload, photo);
+        await recordProcessed(deps, upload, await processBytes(deps, { upload, object, held }, bytes));
         deps.log.info('photo processed', { cityId: upload.cityId, photoId: upload.photoId, held });
     } catch (error) {
         await recordFailure(deps, upload, object, error);
@@ -356,5 +395,5 @@ export async function processPhotoUpload(deps: PhotoDeps, object: FinalizedObjec
         deps.log.warn('upload without its photo document deleted', { cityId: upload.cityId, photoId: upload.photoId });
         return 'orphan';
     }
-    return processKnownUpload(deps, { upload, object, held: photo.reviewStatus === 'pending' });
+    return processKnownUpload(deps, upload, object, photo);
 }

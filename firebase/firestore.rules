@@ -591,6 +591,9 @@ service cloud.firestore {
                         'rightsReview', 'credit', 'updatedBy', 'updatedAt'])
                     && validPhoto(request.resource.data)
                     && (!('location' in changedKeys()) || inCity(request.resource.data.location, city))
+                    // zod `aimedOnlyIfPlaced`, as on create: a document the server's schema refuses gets stuck in every callable.
+                    && ('location' in request.resource.data
+                        || (!('bearing' in request.resource.data) && !('fov' in request.resource.data)))
                     && (!changedKeys().hasAny(['published', 'license']) || publishable(request.resource.data));
                 // M13: a moderator unpublishes and never deletes; an uploader takes back their own until it is approved.
                 allow delete: if isCityMember(city)

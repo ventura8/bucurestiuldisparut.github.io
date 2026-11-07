@@ -247,6 +247,46 @@ const WRITES: readonly Row[] = [
                 .set(without(newPhoto(uid(a)), 'location', 'bearing', 'fov')),
     },
     {
+        name: "an uploader's update aiming their own unplaced photo @S-A94-BAD-AIMED-UNPLACED",
+        allowed: SERVER_ONLY,
+        run: async (a, s) => {
+            const target = await freshPhoto(`aim-${a}-${s}`, without(seededPending('uploader'), 'location', 'bearing', 'fov'));
+            await dbOf(a)
+                .doc(target)
+                .update(edit(a, { bearing: 90 }));
+        },
+    },
+    {
+        name: 'a field of view added to an unplaced photo',
+        allowed: SERVER_ONLY,
+        run: async (a, s) => {
+            const target = await freshPhoto(`fov-${a}-${s}`, without(seededPending('uploader'), 'location', 'bearing', 'fov'));
+            await dbOf(a)
+                .doc(target)
+                .update(edit(a, { fov: 60 }));
+        },
+    },
+    {
+        name: "a reviewer's update aiming a staff photo with no place",
+        allowed: SERVER_ONLY,
+        run: async (a, s) => {
+            const target = await freshPhoto(`aim2-${a}-${s}`, without(photoDoc(CITY, 'x', uid('editor')), 'location', 'bearing', 'fov'));
+            await dbOf(a)
+                .doc(target)
+                .update(edit(a, { bearing: 90 }));
+        },
+    },
+    {
+        name: "an uploader's update placing and aiming their own photo",
+        allowed: ['uploader', ...REVIEWERS],
+        run: async (a, s) => {
+            const target = await freshPhoto(`aim3-${a}-${s}`, without(seededPending('uploader'), 'location', 'bearing', 'fov'));
+            await dbOf(a)
+                .doc(target)
+                .update(edit(a, { location: { lat: 44.43, lng: 26.09 }, bearing: 90 }));
+        },
+    },
+    {
         name: 'a direction with no location',
         allowed: SERVER_ONLY,
         run: (a, s) =>

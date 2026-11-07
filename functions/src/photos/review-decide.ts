@@ -9,12 +9,14 @@ import {
     poiDocSchema,
     publicObjectUrl,
     timestampFromDate,
+    timestampToDate,
     type CallableRequest,
     type CallableResponse,
     type HeldImage,
     type PhotoDoc,
     type PhotoVariant,
     type PoiDoc,
+    type TimestampLike,
 } from '@hcm/shared';
 
 import type { VerifiedCaller } from '../api/access.js';
@@ -41,12 +43,19 @@ function verdict(data: Request, caller: VerifiedCaller, now: Date) {
     };
 }
 
-function pendingItem<Item extends { readonly reviewStatus?: string | undefined }>(item: Item | undefined): Item {
+/** Still waiting, and still what the reviewer read: an approval is of what they saw (M13 §2), and every write moves `updatedAt`. */
+function pendingItem<Item extends { readonly reviewStatus?: string | undefined; readonly updatedAt: TimestampLike }>(
+    item: Item | undefined,
+    data: Request,
+): Item {
     if (item === undefined) {
         throw new ApiError('apiError.notFound');
     }
     if (item.reviewStatus !== 'pending') {
         throw new ApiError('apiError.review.alreadyDecided');
+    }
+    if (data.seenAt !== undefined && timestampToDate(item.updatedAt).toISOString() !== data.seenAt) {
+        throw new ApiError('apiError.review.changed');
     }
     return item;
 }
@@ -90,14 +99,14 @@ async function forgetHeld(deps: ReviewDeps, held: HeldImage | undefined): Promis
 async function rewritePhoto(deps: ReviewDeps, data: Request, change: (photo: PhotoDoc) => PhotoDoc): Promise<void> {
     const path = FIRESTORE_PATHS.photo(data.cityId, data.id);
     await deps.documents.transaction(async (transaction) => {
-        const photo = pendingItem(await transaction.get(path, photoDocSchema));
+        const photo = pendingItem(await transaction.get(path, photoDocSchema), data);
         await transaction.set(path, photoDocSchema, change(photo));
     });
 }
 
 /** Files first and the document after, so a public photo always has its pictures; a failure leaves it pending and retryable. */
 async function approvePhoto(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Promise<void> {
-    const photo = pendingItem(await deps.documents.get(FIRESTORE_PATHS.photo(data.cityId, data.id), photoDocSchema));
+    const photo = pendingItem(await deps.documents.get(FIRESTORE_PATHS.photo(data.cityId, data.id), photoDocSchema), data);
     const held = requireApprovable(photo);
     const image = {
         web: await moveOut(deps, data, held, 'web'),
@@ -128,7 +137,7 @@ async function refusePhoto(deps: ReviewDeps, caller: VerifiedCaller, data: Reque
 async function decidePoi(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Promise<void> {
     const path = FIRESTORE_PATHS.poi(data.cityId, data.id);
     await deps.documents.transaction(async (transaction) => {
-        const poi = pendingItem(await transaction.get(path, poiDocSchema));
+        const poi = pendingItem(await transaction.get(path, poiDocSchema), data);
         const decided: PoiDoc = { ...poi, published: data.decision === 'approve', ...verdict(data, caller, deps.clock.now()) };
         await transaction.set(path, poiDocSchema, decided);
     });
@@ -140,7 +149,7 @@ function decidePhoto(deps: ReviewDeps, caller: VerifiedCaller, data: Request): P
 
 /**
  * `review.decide` (a city's reviewers; `docs/research/M13-roles.md` §2; S-A90-HAPPY-APPROVE, S-A90-HAPPY-REFUSE,
- * S-A90-BAD-DECIDED-TWICE): the one door out of the queue. The write goes through `history.on*Write` as any edit and the publish
+ * S-A90-BAD-DECIDED-TWICE, S-A90-BAD-CHANGED-SINCE): the one door out of the queue. The write goes through `history.on*Write` as any edit and the publish
  * triggers rebuild the manifest; the note goes to the uploader.
  */
 async function reviewDecide(deps: ReviewDeps, caller: VerifiedCaller, data: Request): Promise<CallableResponse<'review.decide'>> {

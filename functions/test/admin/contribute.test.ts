@@ -23,6 +23,24 @@ const decide = (w: CommunityWorld, uid: string, data: Record<string, unknown> = 
 const request = (w: CommunityWorld) => w.documents.get(FIRESTORE_PATHS.roleRequest(CITY_ID, 'u-applicant'), roleRequestDocSchema);
 const admin = (w: CommunityWorld, uid = 'u-applicant') => w.documents.get(FIRESTORE_PATHS.admin(uid), adminDocSchema);
 
+describe('contribute.context after a removal', () => {
+    it('happyPath_aRemovedMemberIsNotToldTheyAreApprovedAndMayAskAgain @S-A92-HAPPY-ASK-AGAIN', async () => {
+        const w = await communityWorld();
+        await ask(w, 'u-applicant');
+        await decide(w, 'u-owner');
+        await w.documents.delete(FIRESTORE_PATHS.admin('u-applicant'));
+        await expect(context(w, 'u-applicant')).resolves.toMatchObject({ role: null, request: null });
+        await expect(ask(w, 'u-applicant')).resolves.toEqual({ status: 'pending' });
+    });
+
+    it('happyPath_aMemberStillSeesTheirApprovedRequest', async () => {
+        const w = await communityWorld();
+        await ask(w, 'u-applicant');
+        await decide(w, 'u-owner');
+        await expect(context(w, 'u-applicant')).resolves.toMatchObject({ role: 'uploader', request: { status: 'approved' } });
+    });
+});
+
 describe('contribute.request', () => {
     it('happyPath_anyoneAsksForARole @S-A92-HAPPY-REQUEST', async () => {
         const w = await communityWorld();
