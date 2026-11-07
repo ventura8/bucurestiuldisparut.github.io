@@ -504,10 +504,19 @@ describe('the layers command and the focus', () => {
         mounted.element.runInput('layers');
         await mounted.element.updateComplete;
         await vi.waitFor(() => {
-            expect(part(mounted, 'hcm-layer-panel').shadowRoot?.activeElement ?? deepActiveElement()).not.toBeNull();
+            expect(part(mounted, 'hcm-layer-panel').shadowRoot?.activeElement ?? null).not.toBeNull();
         });
 
-        expect(mounted.store.getState().sheet).toBe('layers');
+        expect(mounted.store.getState().sheet).toBe('none');
+    });
+
+    it('badPath_onAnExtraLargeWindowItKeepsThePhotoThatIsOpen', async () => {
+        const mounted = await mountViewer(readyState(testManifest(), { sheet: 'photo', selectedPhotoId: 'uranus-1984' }), EXTRA_LARGE);
+
+        mounted.element.runInput('layers');
+        await mounted.element.updateComplete;
+
+        expect(mounted.store.getState()).toMatchObject({ sheet: 'photo', selectedPhotoId: 'uranus-1984' });
     });
 
     it('edge_closingItMovesNoFocusIntoThePanel', async () => {

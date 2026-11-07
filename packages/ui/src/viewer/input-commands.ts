@@ -5,6 +5,7 @@
  */
 import { clamp, type Photo } from '@hcm/shared';
 
+import { layoutFor } from './layout.js';
 import type { ViewerState, ViewerStorePort } from './store-port.js';
 import { photosNearYear, stopIndex, timelineStops } from './timeline-model.js';
 import { closeSheet, selectPhoto } from './viewer-actions.js';
@@ -95,8 +96,12 @@ function toggleSheet(store: ViewerStorePort, sheet: 'layers' | 'help'): void {
     store.openSheet(store.getState().sheet === sheet ? 'none' : sheet);
 }
 
+/** Where the panel is always docked nothing opens, and the photo or place open beside it stays: the viewer only moves the focus. */
 function toggleLayers(store: ViewerStorePort): void {
-    toggleSheet(store, 'layers');
+    const { windowClass, compactHeight } = store.getState();
+    if (!layoutFor(windowClass, compactHeight).layersDocked) {
+        toggleSheet(store, 'layers');
+    }
 }
 
 function toggleHelp(store: ViewerStorePort): void {

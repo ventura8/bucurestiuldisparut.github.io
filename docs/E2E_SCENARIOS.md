@@ -8,7 +8,7 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 
 | Behaviours | Scenarios | Happy | Bad | Exists | Planned | Test files |
 | --- | --- | --- | --- | --- | --- | --- |
-| 113 | 1014 | 392 | 622 | 1012 | 2 | 265 |
+| 113 | 1018 | 394 | 624 | 1016 | 2 | 265 |
 
 ## Viewer
 
@@ -166,19 +166,23 @@ Every user-visible behaviour has at least one happy and one bad scenario. The re
 | `S-V31-BAD-STYLE-DEFAULT` | V31 | bad | A link over a style's own default loses nothing on the next reload | labels=pois over that style -> the map cannot tell the default beneath the choice, so turning streets on keeps labels=streets,pois in the hash and a reload shows them on | e2e-viewer | exists | `e2e/specs/viewer/map-labels.spec.ts` |
 | `S-V32-HAPPY` | V32 | happy | Year, opacity, photos, Layers and the help panel from single keys | `.`, `,`, `i`, `l`, `?` -> the timeline moves and says its year, the layer's opacity changes in the hash and a toast, Layers and the help panel open | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V32-HAPPY-PHOTOS` | V32 | happy | Next and previous photo step through the list and back | `n`, `n`, `p` -> the hash names each photo, back to the first | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
+| `S-V32-BAD-DOCKED-KEEPS-PHOTO` | V32 | bad | On an extra-large window Layers only moves the focus: the photo beside the panel stays open | a photo open at 1920 px, `l` -> the focus in the docked panel, the photo sheet and photo= in the hash stay | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V32-BAD-NO-LAYER` | V32 | bad | Opacity without a layer on show says so and changes nothing | `o` at today -> the toast, no op in the hash | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V32-BAD-TURNED-OFF` | V32 | bad | Turned off in the help panel they stay off, and About still opens the panel | the switch off, a reload -> `?` does nothing, About's button opens the panel with the switch off | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V32-BAD-TYPING` | V32 | bad | Typing in a field of the page takes no shortcut, nor does a key with a modifier | every shortcut typed into a host page's input lands in the field and changes nothing; Alt+? opens nothing | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
-| `S-V33-HAPPY` | V33 | happy | Its chunk comes only with a pad; the sticks and triggers move the map | no gamepad chunk before a fake pad connects, one after; the left stick moves the view, the right trigger zooms; one map | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
-| `S-V33-HAPPY-BUTTONS` | V33 | happy | Its buttons: the menu, a visible focus, close, Layers, photos, the year and help | Start opens the menu, the D-pad moves a focus with a visible ring, B closes, left and right step the year, Back opens help | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
+| `S-V33-HAPPY` | V33 | happy | Its chunk comes only with a pad; the sticks and triggers move the map | no gamepad chunk before a fake pad connects, one after; the left stick moves the view, the triggers and the right stick zoom; one map | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
+| `S-V33-HAPPY-ACTIVATE` | V33 | happy | A presses what has the focus, and with none the photo at the map's centre | nothing focused -> A opens the photo at the centre; the menu button focused -> A opens the menu | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
+| `S-V33-HAPPY-BUTTONS` | V33 | happy | Its buttons: the menu, a visible focus, close, Layers, photos, the year and help | Start opens the menu, the D-pad moves a focus with a visible ring, B closes, left and right step the year, RB and LB step the photos, Y opens Layers, Back opens help | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
+| `S-V33-HAPPY-RING` | V33 | happy | After a mouse click the pad still shows where the focus went | a click on the map, then Y into Layers or Start into the menu -> an outline on the focused control | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V33-BAD-COVERED-MAP` | V33 | bad | A modal surface keeps the map still | the help panel open -> a tilted stick leaves the hash as it was | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V33-BAD-NOT-STANDARD` | V33 | bad | A pad without the standard layout is refused and moves nothing | mapping '' -> the refused toast, a tilted stick leaves the hash as it was | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
+| `S-V33-BAD-START-UNDER-MODAL` | V33 | bad | Start under a modal surface opens no menu behind it, and B closes the surface at once | help open, Start -> the menu stays closed; B -> help closes on the first press | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V33-BAD-TAB-HIDDEN` | V33 | bad | It stops while the tab is hidden and goes on when it comes back | hidden -> a tilted stick moves nothing; visible again -> the view moves | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V34-HAPPY` | V34 | happy | It follows the theme live, with one map load | prefers-color-scheme dark -> lightPreset night as Mapbox GL reports it; light -> day; one map created | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V34-BAD-CITY-CONFIG` | V34 | bad | A city's basemap.config keeps its own light | config lightPreset dusk -> dusk under both schemes | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 | `S-V34-BAD-NO-PROPERTY` | V34 | bad | A style without the property is left alone | a custom style without the import -> nothing reported, the viewer works, one map created | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
-| `S-V35-HAPPY` | V35 | happy | About says what works, what is missing and how to report a problem | the heading and the three catalogue paragraphs in the page's language | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
-| `S-V35-BAD-BARE-CITY` | V35 | bad | A city with no credits and no analytics still has it | empty credits, no analytics -> the statement shows | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
+| `S-V35-HAPPY` | V35 | happy | About says what works, what is missing and how to report a problem | the heading, what works, what is missing and the report link in the page's language | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
+| `S-V35-BAD-BARE-CITY` | V35 | bad | A city with no credits and no analytics still has it | empty credits, no analytics -> the statement and the report link show | e2e-viewer | exists | `e2e/specs/viewer/input.spec.ts` |
 
 ## Admin
 

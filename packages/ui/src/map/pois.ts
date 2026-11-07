@@ -5,7 +5,8 @@
  * a satellite photo, where a thin stroke in the category colour almost disappeared (the live manual test of 2026-11-01,
  * finding 36): the category colour is dark by rule (the white glyph reads on it at 3:1), so the stroke stands on the white
  * band on any basemap. Every layer's opacity scales with the overlay's (`layerOpacityPaint`): at 0 the casing goes too.
- * The POIs are the ones the timeline shows; titles are already localized.
+ * The POIs are the ones the timeline shows; titles are already localized. Fills, lines and discs are emissive, as icons and
+ * text are by default: on Mapbox Standard's night a city owner's colour would otherwise go dark (docs/research/viewer-input.md §4).
  */
 import type { MapLayerType, OpacityBase } from '@hcm/shared';
 
@@ -61,7 +62,7 @@ const POI_LAYER_KINDS: readonly PoiLayerKind[] = [
         suffix: 'fill',
         type: 'fill',
         base: { 'fill-opacity': 0.35 },
-        style: (spec) => ({ filter: geometryIs('Polygon'), layout: {}, paint: { 'fill-color': spec.color } }),
+        style: (spec) => ({ filter: geometryIs('Polygon'), layout: {}, paint: { 'fill-color': spec.color, 'fill-emissive-strength': 1 } }),
     },
     {
         suffix: 'casing',
@@ -70,7 +71,7 @@ const POI_LAYER_KINDS: readonly PoiLayerKind[] = [
         style: () => ({
             filter: geometryIs('LineString', 'Polygon'),
             layout: LINE_LAYOUT,
-            paint: { 'line-color': '#ffffff', 'line-width': POI_CASING_WIDTH },
+            paint: { 'line-color': '#ffffff', 'line-width': POI_CASING_WIDTH, 'line-emissive-strength': 1 },
         }),
     },
     {
@@ -80,7 +81,7 @@ const POI_LAYER_KINDS: readonly PoiLayerKind[] = [
         style: (spec) => ({
             filter: geometryIs('LineString', 'Polygon'),
             layout: LINE_LAYOUT,
-            paint: { 'line-color': spec.color, 'line-width': POI_LINE_WIDTH },
+            paint: { 'line-color': spec.color, 'line-width': POI_LINE_WIDTH, 'line-emissive-strength': 1 },
         }),
     },
     {
@@ -90,7 +91,13 @@ const POI_LAYER_KINDS: readonly PoiLayerKind[] = [
         style: (spec) => ({
             filter: geometryIs('Point'),
             layout: {},
-            paint: { 'circle-color': spec.color, 'circle-radius': 13, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 },
+            paint: {
+                'circle-color': spec.color,
+                'circle-radius': 13,
+                'circle-stroke-color': '#ffffff',
+                'circle-stroke-width': 2,
+                'circle-emissive-strength': 1,
+            },
         }),
     },
     {

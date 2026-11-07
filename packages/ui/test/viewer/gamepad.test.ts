@@ -283,6 +283,135 @@ describe('the gamepad session', () => {
     });
 });
 
+/** A FAB menu in `w`, with its FAB's clicks counted, inside `parent` (the viewer's frame). */
+function fabMenu(w: World, parent: HTMLElement = w.root): { readonly menu: HTMLElement; readonly clicks: () => number } {
+    const menu = document.createElement('hcm-fab-menu');
+    const fab = document.createElement('button');
+    fab.className = 'fab';
+    let clicks = 0;
+    fab.addEventListener('click', () => {
+        clicks += 1;
+    });
+    menu.attachShadow({ mode: 'open' }).append(fab);
+    parent.append(menu);
+    return { menu, clicks: () => clicks };
+}
+
+describe('the gamepad session: the menu and a modal surface', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    it('badPath_startUnderAModalLeavesTheMenuClosedAndBClosesTheModal', () => {
+        const w = world();
+        const pad = fakePad();
+        const frame = document.createElement('div');
+        frame.setAttribute('inert', '');
+        w.root.append(frame);
+        const { clicks } = fabMenu(w, frame);
+        started(w, pad);
+
+        pad.press(9);
+        w.win.frame(1016);
+        expect(clicks()).toBe(0);
+        pad.press(9, false);
+        pad.press(1);
+        w.win.frame(1032);
+
+        expect(clicks()).toBe(0);
+        expect(w.commands).toEqual(['close']);
+    });
+
+    it('badPath_anOpenMenuTakesNoCommandAsItTakesNoShortcut', () => {
+        const w = world();
+        const pad = fakePad();
+        const { menu } = fabMenu(w);
+        menu.setAttribute('open', '');
+        started(w, pad);
+
+        pad.press(8);
+        pad.press(3);
+        w.win.frame(1016);
+
+        expect(w.commands).toEqual([]);
+    });
+});
+
+describe('the gamepad session: the ring', () => {
+    afterEach(() => {
+        document.body.replaceChildren();
+    });
+
+    /** A command that moves the focus later, as Layers does after its render, and its first frames. */
+    function focusAfterCommand(w: World, target: HTMLElement): void {
+        w.root.append(target);
+        w.surface.runInput = () => {
+            queueMicrotask(() => {
+                target.focus();
+            });
+        };
+    }
+
+    it('happyPath_aFocusACommandMovedGetsTheRingToo', async () => {
+        const w = world();
+        const pad = fakePad();
+        const target = document.createElement('button');
+        focusAfterCommand(w, target);
+        started(w, pad);
+
+        pad.press(3);
+        w.win.frame(1016);
+        await Promise.resolve();
+        expect(document.activeElement).toBe(target);
+        w.win.frame(1032);
+
+        expect(target.style.outline).toContain('3px');
+    });
+
+    it('badPath_beforeAnyPressAFocusGetsNoRing', () => {
+        const w = world();
+        const pad = fakePad();
+        const clicked = document.createElement('button');
+        w.root.append(clicked);
+        started(w, pad);
+
+        clicked.focus();
+        w.win.frame(1016);
+
+        expect(document.activeElement).toBe(clicked);
+        expect(clicked.style.outline).toBe('');
+    });
+
+    it('edge_aPageWithNothingFocusedDrawsNoRingOnTheBody', () => {
+        const w = world();
+        const pad = fakePad();
+        started(w, pad);
+        pad.press(5);
+        w.win.frame(1016);
+
+        expect(document.body.style.outline).toBe('');
+    });
+
+    it('edge_aRingLostToABlurComesBackWhenTheFocusReturns', () => {
+        const w = world();
+        const pad = fakePad();
+        const target = document.createElement('button');
+        w.root.append(target);
+        started(w, pad);
+        pad.press(13);
+        w.win.frame(1016);
+        pad.press(13, false);
+        w.win.frame(1032);
+
+        target.blur();
+        expect(target.style.outline).toBe('');
+        target.focus();
+        w.win.frame(1048);
+
+        expect(target.style.outline).toContain('3px');
+    });
+});
+
 describe('the gamepad session: focus and A', () => {
     afterEach(() => {
         document.body.replaceChildren();

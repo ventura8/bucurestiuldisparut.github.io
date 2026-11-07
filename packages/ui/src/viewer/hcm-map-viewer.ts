@@ -172,7 +172,7 @@ export class HcmMapViewer extends LitElement {
     #focusLayers(command: InputCommand): void {
         if (command === 'layers' && (this.#store?.getState().sheet === 'layers' || layoutOf(this.viewState).layersDocked)) {
             void this.updateComplete.then(() => {
-                tabbableElements(this.renderRoot.querySelector('hcm-layer-panel') as HTMLElement)[0]?.focus();
+                tabbableElements(this.renderRoot.querySelector('hcm-layer-panel')?.shadowRoot ?? this.renderRoot)[0]?.focus();
             });
         }
     }

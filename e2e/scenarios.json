@@ -11845,7 +11845,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "Its chunk comes only with a pad; the sticks and triggers move the map",
-            "asserts": "no gamepad chunk before a fake pad connects, one after; the left stick moves the view, the right trigger zooms; one map",
+            "asserts": "no gamepad chunk before a fake pad connects, one after; the left stick moves the view, the triggers and the right stick zoom; one map",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
@@ -11856,7 +11856,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "Its buttons: the menu, a visible focus, close, Layers, photos, the year and help",
-            "asserts": "Start opens the menu, the D-pad moves a focus with a visible ring, B closes, left and right step the year, Back opens help",
+            "asserts": "Start opens the menu, the D-pad moves a focus with a visible ring, B closes, left and right step the year, RB and LB step the photos, Y opens Layers, Back opens help",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
@@ -11933,7 +11933,7 @@
             "area": "viewer",
             "path": "happy",
             "title": "About says what works, what is missing and how to report a problem",
-            "asserts": "the heading and the three catalogue paragraphs in the page's language",
+            "asserts": "the heading, what works, what is missing and the report link in the page's language",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
@@ -11944,7 +11944,51 @@
             "area": "viewer",
             "path": "bad",
             "title": "A city with no credits and no analytics still has it",
-            "asserts": "empty credits, no analytics -> the statement shows",
+            "asserts": "empty credits, no analytics -> the statement and the report link show",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V32-BAD-DOCKED-KEEPS-PHOTO",
+            "behaviour": "V32",
+            "area": "viewer",
+            "path": "bad",
+            "title": "On an extra-large window Layers only moves the focus: the photo beside the panel stays open",
+            "asserts": "a photo open at 1920 px, `l` -> the focus in the docked panel, the photo sheet and photo= in the hash stay",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V33-HAPPY-ACTIVATE",
+            "behaviour": "V33",
+            "area": "viewer",
+            "path": "happy",
+            "title": "A presses what has the focus, and with none the photo at the map's centre",
+            "asserts": "nothing focused -> A opens the photo at the centre; the menu button focused -> A opens the menu",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V33-HAPPY-RING",
+            "behaviour": "V33",
+            "area": "viewer",
+            "path": "happy",
+            "title": "After a mouse click the pad still shows where the focus went",
+            "asserts": "a click on the map, then Y into Layers or Start into the menu -> an outline on the focused control",
+            "tier": "e2e-viewer",
+            "status": "exists",
+            "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."
+        },
+        {
+            "id": "S-V33-BAD-START-UNDER-MODAL",
+            "behaviour": "V33",
+            "area": "viewer",
+            "path": "bad",
+            "title": "Start under a modal surface opens no menu behind it, and B closes the surface at once",
+            "asserts": "help open, Start -> the menu stays closed; B -> help closes on the first press",
             "tier": "e2e-viewer",
             "status": "exists",
             "notes": "The owner's request of 2026-11-07. Test: e2e/specs/viewer/input.spec.ts."

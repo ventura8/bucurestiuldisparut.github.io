@@ -25,6 +25,9 @@ import type { ConsentState, ThemeMode } from './store-port.js';
 
 export const HCM_ABOUT_DIALOG_TAG = 'hcm-about-dialog';
 
+/** Where anyone reports a problem of the viewer, on every city: the manifest has no contact field (docs/research/viewer-input.md §5). */
+const REPORT_URL = 'https://github.com/ventura8/bucurestiuldisparut.github.io/issues';
+
 const THEMES: readonly ThemeMode[] = ['system', 'light', 'dark'];
 
 /** A credit line: a link when the credit names a page. */
@@ -191,7 +194,7 @@ export class HcmAboutDialog extends LitElement {
             <h3>${translate(locale, 'about.accessibility')}</h3>
             <p>${translate(locale, 'about.a11yWorks')}</p>
             <p>${translate(locale, 'about.a11yMissing')}</p>
-            <p>${translate(locale, 'about.a11yReport')}</p>
+            <p>${externalLink(REPORT_URL, translate(locale, 'about.a11yReport'))}</p>
             <hcm-button variant="outlined" @click=${onHelp}>${translate(locale, 'input.help')}</hcm-button>
         </section>`;
     }

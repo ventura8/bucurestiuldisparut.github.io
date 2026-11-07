@@ -88,18 +88,13 @@ function isInert(element: Element): boolean {
     return root instanceof ShadowRoot && isInert(root.host);
 }
 
-/** The ring of a focus the pad moved: `:focus-visible` shows none on a programmatic focus after a mouse click. */
-function showRing(element: Element | null): void {
-    if (element instanceof HTMLElement) {
-        element.style.outline = '3px solid var(--md-sys-color-secondary,Highlight)';
-        element.addEventListener(
-            'blur',
-            () => {
-                element.style.removeProperty('outline');
-            },
-            { once: true },
-        );
-    }
+/** One listener per element however many frames ask: the browser keeps a function only once. */
+function clearRing(event: Event): void {
+    (event.currentTarget as HTMLElement).style.outline = '';
+}
+
+function isControl(element: Element | null, body: HTMLElement): element is HTMLElement {
+    return element instanceof HTMLElement && element !== body;
 }
 
 class Session implements GamepadSession {
@@ -110,6 +105,7 @@ class Session implements GamepadSession {
     #held: ReadonlySet<number> = new Set();
     #greeted = false;
     #refused = false;
+    #pressed = false;
 
     readonly #onVisibility = (): void => {
         if (this.#deps.win.document.hidden) {
@@ -122,7 +118,9 @@ class Session implements GamepadSession {
     constructor(deps: GamepadDeps) {
         this.#deps = deps;
         const command = (name: InputCommand) => (): void => {
-            deps.surface.runInput(name);
+            if (!this.#menuOpen()) {
+                deps.surface.runInput(name);
+            }
         };
         this.#buttons = new Map([
             [
@@ -144,7 +142,7 @@ class Session implements GamepadSession {
             [
                 9,
                 () => {
-                    this.#fab()?.click();
+                    this.#openMenu();
                 },
             ],
             [
@@ -208,6 +206,7 @@ class Session implements GamepadSession {
         if (this.#last !== null) {
             this.#move(pad, Math.min(now - this.#last, MAX_FRAME_MS) / 1000);
             this.#press(pad);
+            this.#ringFocus();
         }
         this.#held = held(pad);
         this.#last = now;
@@ -218,8 +217,21 @@ class Session implements GamepadSession {
         const now = held(pad);
         for (const [index, action] of this.#buttons) {
             if (now.has(index) && !this.#held.has(index)) {
+                this.#pressed = true;
                 action();
             }
+        }
+    }
+
+    /**
+     * Once the pad is in use, the ring of what has the focus, whichever command moved it and however many frames later:
+     * `:focus-visible` shows none on a programmatic focus after a mouse click.
+     */
+    #ringFocus(): void {
+        const active = this.#active();
+        if (this.#pressed && isControl(active, this.#deps.win.document.body)) {
+            active.style.outline = '3px solid var(--md-sys-color-secondary,Highlight)';
+            active.addEventListener('blur', clearRing, { once: true });
         }
     }
 
@@ -239,6 +251,18 @@ class Session implements GamepadSession {
         return this.#deps.surface.renderRoot.querySelector('hcm-fab-menu')?.shadowRoot?.querySelector<HTMLElement>('.fab') ?? null;
     }
 
+    /** Not under a modal surface: `click()` fires on an inert element too, and a hidden menu would take the next B. */
+    #openMenu(): void {
+        const fab = this.#fab();
+        if (fab !== null && !isInert(fab)) {
+            fab.click();
+        }
+    }
+
+    #menuOpen(): boolean {
+        return this.#deps.surface.renderRoot.querySelector('hcm-fab-menu')?.hasAttribute('open') === true;
+    }
+
     #active(): Element | null {
         return deepActiveElement(this.#deps.win.document);
     }
@@ -246,7 +270,7 @@ class Session implements GamepadSession {
     /** What has the focus, or what Enter does on the map: the photo or place at its centre (`map/pointer.ts`). */
     #activate(): void {
         const active = this.#active();
-        if (active instanceof HTMLElement && active !== this.#deps.win.document.body && active.localName !== 'canvas') {
+        if (isControl(active, this.#deps.win.document.body) && active.localName !== 'canvas') {
             active.click();
         } else {
             this.#enterOnMap();
@@ -262,7 +286,7 @@ class Session implements GamepadSession {
     }
 
     #close(): void {
-        if (this.#deps.surface.renderRoot.querySelector('hcm-fab-menu')?.hasAttribute('open') === true) {
+        if (this.#menuOpen()) {
             this.#fab()?.click();
         } else {
             this.#deps.surface.runInput('close');
@@ -278,7 +302,6 @@ class Session implements GamepadSession {
             const list = tabbableElements(this.#deps.surface.renderRoot as ShadowRoot).filter((element) => !isInert(element));
             list[wrapped(list.indexOf(active as HTMLElement), step, list.length)]?.focus();
         }
-        showRing(this.#active());
     }
 
     destroy(): void {

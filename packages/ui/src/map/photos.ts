@@ -1,7 +1,8 @@
 /**
  * The photos overlay on the Mapbox map (`PHOTOS_OVERLAY_ID`): clustered camera markers rotated by the photo's bearing,
  * and view cones (fill and outline) from zoom 17. Points and cones come in one collection (`setPhotosData`) and are
- * split into two GeoJSON sources, because only the points are clustered.
+ * split into two GeoJSON sources, because only the points are clustered. The cones are emissive, as the markers are by
+ * default, so Mapbox Standard's night does not dim them (docs/research/viewer-input.md §4).
  */
 import type { MapSlot, PhotoConeFeature, PhotoFeatureCollection, PhotoPointFeature } from './map-port.js';
 import { PHOTO_CAMERA_ICON, PHOTO_CLUSTER_ICON, PHOTO_DIRECTION_ICON } from './icons.js';
@@ -67,13 +68,18 @@ export function photoLayers(slot: MapSlot, visible: boolean, opacity: number): r
             ...cone,
             id: CONE_FILL.id,
             type: 'fill',
-            paint: { 'fill-color': CONE_COLOR, ...layerOpacityPaint('photos', CONE_FILL, opacity) },
+            paint: { 'fill-color': CONE_COLOR, 'fill-emissive-strength': 1, ...layerOpacityPaint('photos', CONE_FILL, opacity) },
         },
         {
             ...cone,
             id: CONE_LINE.id,
             type: 'line',
-            paint: { 'line-color': CONE_COLOR, 'line-width': 1.5, ...layerOpacityPaint('photos', CONE_LINE, opacity) },
+            paint: {
+                'line-color': CONE_COLOR,
+                'line-width': 1.5,
+                'line-emissive-strength': 1,
+                ...layerOpacityPaint('photos', CONE_LINE, opacity),
+            },
         },
         {
             ...points,

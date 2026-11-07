@@ -1,3 +1,4 @@
+import { translate } from '@hcm/shared';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 
@@ -139,14 +140,22 @@ describe('<hcm-about-dialog>: the statement and the help panel', () => {
         document.body.replaceChildren();
     });
 
+    it('badPath_aCityWithNoCreditsStillHasAWayToReportAProblem', async () => {
+        const element = await about({ city: { ...CITY, credits: [] } });
+
+        const label = translate(element.locale, 'about.a11yReport');
+        const link = shadowQueryAll(element, 'a').find((anchor) => anchor.textContent === label) as HTMLAnchorElement | undefined;
+
+        expect(link?.href).toBe('https://github.com/ventura8/bucurestiuldisparut.github.io/issues');
+    });
+
     it('happyPath_theStatementSaysWhatWorksWhatIsMissingAndHowToReport', async () => {
         const text = shadowText(await about());
         expect(text).toContain('Accesibilitate');
         expect(text).toContain('Lipsesc: o alternativă text');
-        expect(text).toContain('Nu pretindem conformitatea');
-        expect(text).toContain('Pentru o problemă, scrieți');
+        expect(text).toContain('Raportați o problemă pe GitHub');
 
-        expect(shadowText(await about({ locale: 'en' }))).toContain('claims no conformance');
+        expect(shadowText(await about({ locale: 'en' }))).toContain('Report problems');
     });
 
     it('happyPath_aboutOpensTheHelpPanelWhichListsTheKeysAndThePad', async () => {

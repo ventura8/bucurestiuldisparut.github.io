@@ -212,7 +212,7 @@ describe('photo layers', () => {
             ['hcm-photos-cluster', 'symbol', undefined],
             ['hcm-photos-marker', 'symbol', undefined],
         ]);
-        expect(layers[0]?.['paint']).toEqual({ 'fill-color': '#ffb74d', 'fill-opacity': 0.125 });
+        expect(layers[0]?.['paint']).toEqual({ 'fill-color': '#ffb74d', 'fill-emissive-strength': 1, 'fill-opacity': 0.125 });
         expect(layers[1]?.['paint']).toMatchObject({ 'line-opacity': 0.4 });
         expect(layers[3]?.['layout']).toMatchObject({
             visibility: 'none',
@@ -237,10 +237,20 @@ describe('POI layers', () => {
             ['hcm-poi-cladiri-label-line', 'symbol'],
             ['hcm-poi-cladiri-label-area', 'symbol'],
         ]);
-        expect(layers[0]?.['paint']).toEqual({ 'fill-color': '#8B5E3C', 'fill-opacity': 0.175 });
+        expect(layers[0]?.['paint']).toEqual({ 'fill-color': '#8B5E3C', 'fill-emissive-strength': 1, 'fill-opacity': 0.175 });
         // The casing is wider than the stroke at every zoom, and both scale with the overlay's opacity.
-        expect(layers[1]?.['paint']).toEqual({ 'line-color': '#ffffff', 'line-width': POI_CASING_WIDTH, 'line-opacity': 0.45 });
-        expect(layers[2]?.['paint']).toEqual({ 'line-color': '#8B5E3C', 'line-width': POI_LINE_WIDTH, 'line-opacity': 0.5 });
+        expect(layers[1]?.['paint']).toEqual({
+            'line-color': '#ffffff',
+            'line-width': POI_CASING_WIDTH,
+            'line-emissive-strength': 1,
+            'line-opacity': 0.45,
+        });
+        expect(layers[2]?.['paint']).toEqual({
+            'line-color': '#8B5E3C',
+            'line-width': POI_LINE_WIDTH,
+            'line-emissive-strength': 1,
+            'line-opacity': 0.5,
+        });
         expect(layers[1]?.['filter']).toEqual(layers[2]?.['filter']);
         const widths = (width: unknown): number[] => (width as unknown[]).slice(3).filter((_value, index) => index % 2 === 1) as number[];
         widths(POI_CASING_WIDTH).forEach((casing, index) => {

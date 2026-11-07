@@ -282,6 +282,8 @@ export interface FocusInfo {
     readonly host: string;
     /** True when `:focus-visible` matches and an outline or a focus shadow is drawn. */
     readonly ringVisible: boolean;
+    /** True when an outline is drawn, whatever `:focus-visible` says (the gamepad draws its own after a mouse click). */
+    readonly outlined: boolean;
 }
 
 /** Runs in the page: the element that has the keyboard focus, through every shadow root, and its focus ring. */
@@ -303,6 +305,7 @@ function focusInPage(): FocusInfo | null {
         role: active.getAttribute('role') ?? '',
         host: root instanceof ShadowRoot ? root.host.tagName.toLowerCase() : '',
         ringVisible: active.matches(':focus-visible') && (outline || shadow),
+        outlined: outline,
     };
 }
 

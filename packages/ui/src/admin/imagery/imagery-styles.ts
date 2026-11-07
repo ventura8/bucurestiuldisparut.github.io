@@ -49,8 +49,8 @@ export const imageryStyles = [
             max-inline-size: 100%;
             max-block-size: 360px;
             border-radius: var(--md-sys-shape-corner-medium, 12px);
-            object-fit: contain;
             background: var(--md-sys-color-surface-container-high, Canvas);
+            object-fit: contain;
         }
 
         /* Wrapped chip rows 16 px apart, like the kit's .chips: 8 px let a 32 px chip's 48 px target reach the next row's

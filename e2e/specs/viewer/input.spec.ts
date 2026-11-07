@@ -16,6 +16,14 @@ import { chooseMenuItem, currentHash, hashParam, menuButton, openViewer, serveMa
 
 const VIEW = '15/44.42700/26.08530';
 const AT_1966 = `${VIEW}&layers=e2e-1966`;
+/** The bottom sheets' window, where Layers is a modal surface that takes the focus. */
+const COMPACT_WINDOW = { width: 400, height: 800 };
+/** Where the layers panel is always docked. */
+const EXTRA_LARGE_WINDOW = { width: 1920, height: 1080 };
+/** The right stick's vertical axis. */
+const RIGHT_STICK_Y = 3;
+/** A view centred on the one photo there (the lone photo of the keyboard scenarios). */
+const ON_A_PHOTO = '18/44.429359/26.095447';
 const BUTTON = {
     a: 0,
     b: 1,
@@ -143,6 +151,29 @@ test.describe('Keyboard shortcuts (V32)', () => {
         },
     );
 
+    test(
+        'On an extra-large window Layers only moves the focus: the photo beside the panel stays open',
+        { tag: '@S-V32-BAD-DOCKED-KEEPS-PHOTO' },
+        async ({ page, lang }) => {
+            await page.setViewportSize(EXTRA_LARGE_WINDOW);
+            await openViewer(page, { lang, hash: VIEW });
+            await page.keyboard.press('n');
+            await expect.poll(() => hashParam(page, 'photo')).not.toBeNull();
+            const photo = await hashParam(page, 'photo');
+
+            await page.keyboard.press('l');
+
+            await expect(viewer(page).locator('hcm-layer-panel:focus-within')).toHaveCount(1);
+            await expect(
+                viewer(page)
+                    .locator('hcm-layer-panel')
+                    .getByRole('heading', { name: t(lang, 'layers.title'), exact: true }),
+            ).toBeVisible();
+            expect(await hashParam(page, 'photo')).toBe(photo);
+            await expect(viewer(page).locator('hcm-photo-sheet').getByRole('heading').first()).toBeVisible();
+        },
+    );
+
     test('Opacity without a layer on show says so and changes nothing', { tag: '@S-V32-BAD-NO-LAYER' }, async ({ page, lang }) => {
         await openViewer(page, { lang, hash: VIEW });
         await page.keyboard.press('o');
@@ -184,9 +215,21 @@ test.describe('The gamepad, a fake pad (V33)', () => {
         await holdButton(page, BUTTON.rightTrigger, 1);
         await expect.poll(async () => viewOf(await currentHash(page))[0]).toBeGreaterThan(zoom);
         await holdButton(page, BUTTON.rightTrigger, 0);
+
+        const zoomed = viewOf(await currentHash(page))[0] ?? 0;
+        await holdButton(page, BUTTON.leftTrigger, 1);
+        await expect.poll(async () => viewOf(await currentHash(page))[0]).toBeLessThan(zoomed);
+        await holdButton(page, BUTTON.leftTrigger, 0);
+
+        const lower = viewOf(await currentHash(page))[0] ?? 0;
+        await setAxis(page, RIGHT_STICK_Y, -1);
+        await expect.poll(async () => viewOf(await currentHash(page))[0]).toBeGreaterThan(lower);
+        await setAxis(page, RIGHT_STICK_Y, 0);
         await expectMapCounts(page, 1, 0);
     });
+});
 
+test.describe('The gamepad, its buttons and a modal surface (V33)', () => {
     test(
         'Its buttons: the menu, a visible focus, close, Layers, photos, the year and help',
         { tag: '@S-V33-HAPPY-BUTTONS' },
@@ -211,6 +254,20 @@ test.describe('The gamepad, a fake pad (V33)', () => {
             await pressButton(page, BUTTON.left);
             await expect(timeline(page, lang)).toHaveAttribute('aria-valuetext', year ?? '');
 
+            await pressButton(page, BUTTON.rb);
+            await expect.poll(() => hashParam(page, 'photo')).not.toBeNull();
+            const photo = await hashParam(page, 'photo');
+            await pressButton(page, BUTTON.rb);
+            await expect.poll(() => hashParam(page, 'photo')).not.toBe(photo);
+            await pressButton(page, BUTTON.lb);
+            await expect.poll(() => hashParam(page, 'photo')).toBe(photo);
+            await pressButton(page, BUTTON.b);
+            await expect.poll(() => hashParam(page, 'photo')).toBeNull();
+
+            await pressButton(page, BUTTON.y);
+            await expect(page.getByRole('heading', { name: t(lang, 'layers.title'), exact: true }).first()).toBeVisible();
+            await pressButton(page, BUTTON.y);
+
             await pressButton(page, BUTTON.back);
             await expect(helpDialog(page, lang)).toBeVisible();
             await pressButton(page, BUTTON.b);
@@ -218,6 +275,65 @@ test.describe('The gamepad, a fake pad (V33)', () => {
         },
     );
 
+    test(
+        "A presses what has the focus, and with none the photo at the map's centre",
+        { tag: '@S-V33-HAPPY-ACTIVATE' },
+        async ({ page, lang }) => {
+            await installFakePads(page);
+            await openViewer(page, { lang, hash: ON_A_PHOTO });
+            await connectedPad(page, lang);
+            await expect.poll(() => hashParam(page, 'photo')).toBeNull();
+
+            await pressButton(page, BUTTON.a);
+            await expect.poll(() => hashParam(page, 'photo')).not.toBeNull();
+
+            await pressButton(page, BUTTON.b);
+            await expect.poll(() => hashParam(page, 'photo')).toBeNull();
+            await menuButton(page, lang).focus();
+            await pressButton(page, BUTTON.a);
+            await expect(page.getByRole('menu', { name: t(lang, 'action.menu') })).toBeVisible();
+        },
+    );
+
+    test('After a mouse click the pad still shows where the focus went', { tag: '@S-V33-HAPPY-RING' }, async ({ page, lang }) => {
+        await page.setViewportSize(COMPACT_WINDOW);
+        await installFakePads(page);
+        await openViewer(page, { lang, hash: VIEW });
+        await connectedPad(page, lang);
+        await viewer(page).locator('canvas.mapboxgl-canvas').click();
+
+        await pressButton(page, BUTTON.y);
+        await expect(page.getByRole('heading', { name: t(lang, 'layers.title'), exact: true }).first()).toBeVisible();
+        await expect.poll(async () => (await focused(page))?.outlined).toBe(true);
+        await pressButton(page, BUTTON.b);
+
+        await viewer(page).locator('canvas.mapboxgl-canvas').click();
+        await pressButton(page, BUTTON.start);
+        await expect.poll(async () => (await focused(page))?.role).toBe('menuitem');
+        await expect.poll(async () => (await focused(page))?.outlined).toBe(true);
+    });
+
+    test(
+        'Start under a modal surface opens no menu behind it, and B closes the surface at once',
+        { tag: '@S-V33-BAD-START-UNDER-MODAL' },
+        async ({ page, lang }) => {
+            await installFakePads(page);
+            await openViewer(page, { lang, hash: VIEW });
+            await connectedPad(page, lang);
+            await pressButton(page, BUTTON.back);
+            await expect(helpDialog(page, lang)).toBeVisible();
+
+            await pressButton(page, BUTTON.start);
+            await expect(viewer(page).locator('hcm-fab-menu')).not.toHaveAttribute('open');
+
+            await pressButton(page, BUTTON.b);
+            await expect(helpDialog(page, lang)).toBeHidden();
+            await expect(viewer(page).locator('hcm-fab-menu')).not.toHaveAttribute('open');
+        },
+    );
+});
+
+test.describe('The gamepad refused, hidden or covered (V33)', () => {
     test('A pad without the standard layout is refused and moves nothing', { tag: '@S-V33-BAD-NOT-STANDARD' }, async ({ page, lang }) => {
         await installFakePads(page);
         await openViewer(page, { lang, hash: VIEW });
@@ -272,6 +388,22 @@ async function lightOf(page: Page): Promise<readonly unknown[]> {
     });
 }
 
+/** How much of the map's light the view cones ignore: 1 keeps them bright on Standard's night, whatever the fake style draws. */
+async function coneEmissive(page: Page): Promise<readonly unknown[]> {
+    return page.evaluate(() => {
+        interface PaintMap {
+            getPaintProperty(layer: string, name: string): unknown;
+        }
+        const map = (window as unknown as { __hcmE2e?: { maps: PaintMap[] } }).__hcmE2e?.maps.at(-1);
+        return map === undefined
+            ? []
+            : [
+                  map.getPaintProperty('hcm-photos-cone-fill', 'fill-emissive-strength'),
+                  map.getPaintProperty('hcm-photos-cone-line', 'line-emissive-strength'),
+              ];
+    });
+}
+
 function withBasemap(change: Json): Json {
     const manifest = siteManifestData();
     Object.assign((manifest['city'] as Json)['basemap'] as Json, change);
@@ -283,6 +415,7 @@ test.describe("The basemap's light (V34)", () => {
         await page.emulateMedia({ colorScheme: 'dark' });
         await openViewer(page, { lang, hash: VIEW });
         await expect.poll(() => lightOf(page)).toEqual(['night']);
+        await expect.poll(() => coneEmissive(page)).toEqual([1, 1]);
 
         await page.emulateMedia({ colorScheme: 'light' });
         await expect.poll(() => lightOf(page)).toEqual(['day']);
@@ -320,7 +453,7 @@ test.describe('The accessibility statement (V35)', () => {
         await expect(about.getByRole('heading', { name: t(lang, 'about.accessibility') })).toBeVisible();
         await expect(about).toContainText(t(lang, 'about.a11yWorks'));
         await expect(about).toContainText(t(lang, 'about.a11yMissing'));
-        await expect(about).toContainText(t(lang, 'about.a11yReport'));
+        await expect(about.getByRole('link', { name: t(lang, 'about.a11yReport') })).toHaveAttribute('href', /\/issues$/);
     });
 
     test('A city with no credits and no analytics still has it', { tag: '@S-V35-BAD-BARE-CITY' }, async ({ page, lang }) => {
@@ -331,5 +464,6 @@ test.describe('The accessibility statement (V35)', () => {
         await chooseMenuItem(page, lang, t(lang, 'about.title'));
 
         await expect(dialogContent(page)).toContainText(t(lang, 'about.a11yMissing'));
+        await expect(dialogContent(page).getByRole('link', { name: t(lang, 'about.a11yReport') })).toHaveAttribute('href', /\/issues$/);
     });
 });
